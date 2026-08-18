@@ -1,0 +1,21 @@
+name: Audit
+
+on: [push, pull_request]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@v4.0.1
+        with:
+          node-version: 24.x
+          cache: "npm"
+
+      - name: Install
+        run: npm install
+
+      - name: Audit signatures
+        run: npm audit signatures

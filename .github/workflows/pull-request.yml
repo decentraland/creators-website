@@ -1,0 +1,42 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches:
+      - master
+    types:
+      - opened
+      - synchronize
+
+permissions:
+  checks: write
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@main
+
+      - name: Reconfigure git to use HTTP authentication
+        run: >
+          git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
+
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@v4.0.1
+        with:
+          node-version: 24.x
+          registry-url: https://registry.npmjs.org/
+
+      - name: Install
+        run: npm install
+
+      - name: Lint
+        uses: wearerequired/lint-action@v2.3.0
+        with:
+          prettier: true
+          prettier_extensions: ts,tsx,js,jsx,json,md,mdx,css
+          continue_on_error: false
+          eslint: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
