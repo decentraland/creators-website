@@ -21,7 +21,7 @@
     "lint:pkg": "npmPkgJsonLint ."
   },
   "dependencies": {
-    "@dcl/hooks": "^1.2.1",
+    "@dcl/hooks": "^1.4.0",
     "@dcl/ui-env": "^2.0.0",
     "decentraland-ui2": "^1.6.0",
     "react": "18.3.1",
