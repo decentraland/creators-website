@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 *.tsbuildinfo
+
+# local env (prebuild.cjs rewrites it on every build)
+.env
