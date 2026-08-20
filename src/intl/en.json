@@ -1,74 +1,106 @@
 {
-  "overview_page.title": "Overview",
-  "collections_page.title": "My collections",
-  "collections_page.back": "Back",
-  "collections_page.search_placeholder": "Search Collection",
-  "collections_page.open_editor": "Open editor",
-  "collections_page.new_collection": "New collection",
-  "collections_page.coming_soon": "Coming soon",
-  "collections_page.filter.all": "All",
-  "collections_page.filter.published": "Published",
-  "collections_page.filter.submitted": "Submitted",
-  "collections_page.filter.draft": "Draft",
-  "collections_page.filter.rejected": "Rejected",
-  "collections_page.view_mode": "View mode",
-  "collections_page.view_grid": "Grid view",
-  "collections_page.view_list": "List view",
-  "collections_page.item_count": "{count, plural, one {# Item} other {# Items}}",
-  "collections_page.updated_ago": "Updated {timeAgo}",
-  "collections_page.status.published": "Published",
-  "collections_page.status.under_review": "Under review",
-  "collections_page.status.draft": "Draft",
-  "collections_page.list.collection": "Collection",
-  "collections_page.list.items": "Items",
-  "collections_page.list.status": "Status",
-  "collections_page.list.last_updated": "Last Updated",
-  "collections_page.list.created": "Created",
-  "collections_page.list.actions": "Actions",
-  "collections_page.row_actions": "Collection actions",
-  "collections_page.showing": "Showing {shown} of {total} collections",
-  "collections_page.previous_page": "Previous page",
-  "collections_page.next_page": "Next page",
-  "collections_page.sign_in.title": "Sign in to view your collections",
-  "collections_page.sign_in.action": "Sign in",
-  "collections_page.empty.title": "Your first collection starts here",
-  "collections_page.empty.description": "Create your first collection and start bringing your wearables and emotes to Decentraland.",
-  "collections_page.empty.description_mobile": "Create and publish collections from your desktop, then view and manage them here.",
-  "collections_page.empty.learn_more": "Learn more",
-  "collections_page.empty.create_first": "Create first collection",
-  "collections_page.no_results.title": "No collections found",
-  "collections_page.no_results.description": "Try a different search or filter.",
-  "collections_page.error.title": "Something went wrong",
-  "collections_page.error.description": "We couldn't load your collections. Please try again.",
-  "collections_page.error.retry": "Try again",
-  "collection_detail_page.title": "Collection",
-  "item_detail_page.title": "Item",
-  "item_editor_page.title": "Item Editor",
-  "curation_page.title": "Curation",
-  "not_found_page.title": "Page not found",
-  "not_found_page.go_home": "Go back home",
-  "nav.overview": "Overview",
-  "nav.collections": "Collections",
-  "nav.scenes": "Scenes",
-  "nav.land": "Land/World",
-  "footer.newsletterTitle": "Get the weekly highlights in your inbox",
-  "footer.newsletterFrameTitle": "Newsletter signup",
-  "footer.connect": "Connect",
-  "footer.gettingStarted": "Getting Started",
-  "footer.resources": "Resources",
-  "footer.menu": "Menu",
-  "footer.linkWhatIs": "What is Decentraland",
-  "footer.linkDownload": "Download",
-  "footer.linkSystemRequirements": "System Requirements",
-  "footer.linkFaqs": "FAQs",
-  "footer.linkContactSupport": "Contact Support",
-  "footer.linkMarketplace": "Marketplace",
-  "footer.linkCreatorHub": "Creator Hub",
-  "footer.linkDocs": "Docs",
-  "footer.linkBlog": "Blog",
-  "footer.linkVote": "Vote",
-  "footer.linkPrivacy": "Privacy Policy",
-  "footer.linkTerms": "Terms of Use",
-  "footer.linkContentPolicy": "Content Policy",
-  "footer.linkEthics": "Code of Ethics"
+  "overview_page": {
+    "title": "Overview"
+  },
+  "collections_page": {
+    "title": "My collections",
+    "back": "Back",
+    "search_placeholder": "Search Collection",
+    "open_editor": "Open editor",
+    "new_collection": "New collection",
+    "coming_soon": "Coming soon",
+    "filter": {
+      "all": "All",
+      "published": "Published",
+      "submitted": "Submitted",
+      "draft": "Draft",
+      "rejected": "Rejected"
+    },
+    "view_mode": "View mode",
+    "view_grid": "Grid view",
+    "view_list": "List view",
+    "item_count": "{count, plural, one {# Item} other {# Items}}",
+    "updated_ago": "Updated {timeAgo}",
+    "status": {
+      "published": "Published",
+      "under_review": "Under review",
+      "draft": "Draft"
+    },
+    "list": {
+      "collection": "Collection",
+      "items": "Items",
+      "status": "Status",
+      "last_updated": "Last Updated",
+      "created": "Created",
+      "actions": "Actions"
+    },
+    "row_actions": "Collection actions",
+    "showing": "Showing {shown} of {total} collections",
+    "previous_page": "Previous page",
+    "next_page": "Next page",
+    "sign_in": {
+      "title": "Sign in to view your collections",
+      "action": "Sign in"
+    },
+    "empty": {
+      "title": "Your first collection starts here",
+      "description": "Create your first collection and start bringing your wearables and emotes to Decentraland.",
+      "description_mobile": "Create and publish collections from your desktop, then view and manage them here.",
+      "learn_more": "Learn more",
+      "create_first": "Create first collection"
+    },
+    "no_results": {
+      "title": "No collections found",
+      "description": "Try a different search or filter."
+    },
+    "error": {
+      "title": "Something went wrong",
+      "description": "We couldn't load your collections. Please try again.",
+      "retry": "Try again"
+    }
+  },
+  "collection_detail_page": {
+    "title": "Collection"
+  },
+  "item_detail_page": {
+    "title": "Item"
+  },
+  "item_editor_page": {
+    "title": "Item Editor"
+  },
+  "curation_page": {
+    "title": "Curation"
+  },
+  "not_found_page": {
+    "title": "Page not found",
+    "go_home": "Go back home"
+  },
+  "nav": {
+    "overview": "Overview",
+    "collections": "Collections",
+    "scenes": "Scenes",
+    "land": "Land/World"
+  },
+  "footer": {
+    "newsletterTitle": "Get the weekly highlights in your inbox",
+    "newsletterFrameTitle": "Newsletter signup",
+    "connect": "Connect",
+    "gettingStarted": "Getting Started",
+    "resources": "Resources",
+    "menu": "Menu",
+    "linkWhatIs": "What is Decentraland",
+    "linkDownload": "Download",
+    "linkSystemRequirements": "System Requirements",
+    "linkFaqs": "FAQs",
+    "linkContactSupport": "Contact Support",
+    "linkMarketplace": "Marketplace",
+    "linkCreatorHub": "Creator Hub",
+    "linkDocs": "Docs",
+    "linkBlog": "Blog",
+    "linkVote": "Vote",
+    "linkPrivacy": "Privacy Policy",
+    "linkTerms": "Terms of Use",
+    "linkContentPolicy": "Content Policy",
+    "linkEthics": "Code of Ethics"
+  }
 }
