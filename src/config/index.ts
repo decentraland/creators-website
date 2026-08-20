@@ -3,6 +3,11 @@ import dev from './env/dev.json'
 import prod from './env/prd.json'
 import stg from './env/stg.json'
 
+// Router basename: the pathname of Vite's base, which is VITE_BASE_URL (a CDN URL) in CI builds and '/' locally
+export const basePath = import.meta.env.BASE_URL.startsWith('http')
+  ? new URL(import.meta.env.BASE_URL).pathname
+  : import.meta.env.BASE_URL
+
 export const config = createConfig(
   {
     [Env.DEVELOPMENT as string]: dev,
@@ -11,8 +16,7 @@ export const config = createConfig(
   },
   {
     systemEnvVariables: {
-      // eslint-disable-next-line @typescript-eslint/naming-convention
-      REACT_APP_DCL_DEFAULT_ENV: process.env.VITE_REACT_APP_DCL_DEFAULT_ENV ?? 'dev'
+      VITE_DCL_DEFAULT_ENV: import.meta.env.VITE_DCL_DEFAULT_ENV ?? 'dev'
     }
   }
 )

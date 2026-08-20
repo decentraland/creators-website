@@ -1,10 +1,8 @@
-# {{project_name}} UI
+# Wemotes Builder
 
-[![Coverage Status](https://coveralls.io/repos/github/{org-name}/{repo-name}/badge.svg?branch=main)](https://coveralls.io/github/{org-name}/{repo-name}?branch=main)
+Wemotes Builder is the new UI for Decentraland **wearables and emotes creators**. It replaces the front end of the legacy [builder](https://github.com/decentraland/builder) project with a modern interface, better UX, and new creator tools, while continuing to use the existing [builder-server](https://github.com/decentraland/builder-server) back end.
 
-<!-- A brief description of the purpose of this UI -->
-
-This UI displays A and B using the external services X and Y.
+This project follows the same approach as the **shop** project (the modern re-version of the legacy marketplace UI): same tech stack and the same color palette, for visual consistency across the new Decentraland front ends. Feature designs and mockups live in Figma.
 
 ## Table of Contents
 
@@ -17,18 +15,25 @@ This UI displays A and B using the external services X and Y.
   - [Running the UI](#running-the-ui)
 - [Testing](#testing)
 
-<!-- List of features the server has -->
+## Features
 
-- **Feature 1**: Provides Y functionality to the users.
+<!-- To be expanded as features are implemented -->
+
+- Creation and management of wearable and emote collections for Decentraland creators (replacing the legacy builder front end).
 
 ## Dependencies & Related Services
 
-<!-- List any services this server depends on or interacts with -->
+This UI interacts with the following services:
 
-This service interacts with the following services:
+- **[builder-server](https://github.com/decentraland/builder)**: Existing back end for creator collections, items, and publishing — reused as-is by this new front end.
 
-- **[Service Name 1](link-to-service-repo)**: Description of interaction
-- **[Service Name 2](link-to-service-repo)**: Description of interaction
+Related projects:
+
+- **[shop](https://github.com/decentraland/shop)**: The modern re-version of the marketplace UI; this project shares its tech stack and visual identity.
+
+## Tech Stack
+
+Vite + React 18 + TypeScript (strict), React Router, @tanstack/react-query (server state), zustand (client state), react-intl (en/es), Emotion + decentraland-ui2 for styling (shop's theme and color palette), Sentry for monitoring, Vitest + Testing Library for unit tests and Puppeteer for e2e. Auth via decentraland-connect + single sign-on, with AuthChain-signed requests to builder-server.
 
 ## Getting Started
 
@@ -36,18 +41,16 @@ This service interacts with the following services:
 
 Before running this service, ensure you have the following installed:
 
-- **Node.js**: Version 22.x or higher (LTS recommended)
-- **Yarn**: Version 1.22.x or higher
-
-<!-- List any other dependencies that are required to run the UI -->
+- **Node.js**: Version 24.x or higher
+- **npm**: Version 8.x or higher
 
 ### Installation
 
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/{org-name}/{repo-name}.git
-cd {repo-name}
+git clone https://github.com/decentraland/wemotes-builder.git
+cd wemotes-builder
 ```
 
 2. Install dependencies:
@@ -60,12 +63,9 @@ npm install
 
 The UI uses the `@dcl/ui-env` module to configure the environment in which it the UI will run.
 
-All of these different configurations are located under the `/src/config/env` directory, where a `json` file can be found for each environment.
-This package automatically loads the environment file for each site in production (zone, today, org) and can be configured to run on a different
-environment while live by using the `?env=` query parameter with the desired environment, i.e: `?env=prod`.
+All of these different configurations are located under the `/src/config/env` directory, where a `json` file can be found for each environment. This package automatically loads the environment file for each site in production (zone, today, org) and can be configured to run on a different environment while live by using the `?env=` query parameter with the desired environment, i.e: `?env=prod`.
 
-In order to configure the starting environment of the site in the development mode, copy the create a new `.env` file based on the `.default.env`.
-The `.default.env` also contains other variables that are usually modified at build time.
+In order to configure the starting environment of the site in development mode, create a new `.env` file based on `.env.default`. The `.env.default` file also contains other variables that are usually modified at build time.
 
 ### Running the UI
 
@@ -95,14 +95,8 @@ npm run test:coverage
 
 ### Test Structure
 
-Tests are written in files named along the file they're testing, but with a different extension.
-
-```bash
-
-```
-
-## AI Agent Context
-
-For detailed AI Agent context, see [docs/ai-agent-context.md](docs/ai-agent-context.md).
+Tests are colocated with the file they're testing, using a `.spec.ts` / `.spec.tsx` extension.
 
 ---
+
+This repository was bootstrapped from Decentraland's [dapps-template](https://github.com/decentraland/dapps-template).

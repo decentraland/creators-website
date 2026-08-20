@@ -1,0 +1,10 @@
+{
+  "overview_page.title": "Resumen",
+  "collections_page.title": "Colecciones",
+  "collection_detail_page.title": "Colección",
+  "item_detail_page.title": "Item",
+  "item_editor_page.title": "Editor de items",
+  "curation_page.title": "Curado",
+  "not_found_page.title": "Página no encontrada",
+  "not_found_page.go_home": "Volver al inicio"
+}

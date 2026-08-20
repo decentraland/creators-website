@@ -1,1 +1,10 @@
-{}
+{
+  "overview_page.title": "Overview",
+  "collections_page.title": "Collections",
+  "collection_detail_page.title": "Collection",
+  "item_detail_page.title": "Item",
+  "item_editor_page.title": "Item Editor",
+  "curation_page.title": "Curation",
+  "not_found_page.title": "Page not found",
+  "not_found_page.go_home": "Go back home"
+}
