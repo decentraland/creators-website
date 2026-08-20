@@ -18,7 +18,7 @@ Ported from shop's config:
 - **i18n:** `react-intl` with `en.json` / `es.json`.
 - **Auth:** `decentraland-connect` + `@dcl/single-sign-on-client` + a zustand wallet store; builder-server requests signed with `@dcl/crypto` AuthChain.
 - **Monitoring:** Sentry (`@sentry/react`).
-- **Tests:** Jest (`ts-jest`) for unit tests today; target is Vitest + Testing Library for unit tests and Puppeteer + Vitest for e2e (migration pending).
+- **Tests:** Vitest + Testing Library for unit tests (`vitest.config.ts`, jsdom); Puppeteer + Vitest for e2e (e2e setup pending).
 - **Deploy:** Decentraland CDN convention (`prebuild.cjs`, env per hostname); Vercel is used for PR/dev previews only.
 - **Out of scope** (shop features that do not carry over): Stripe/thirdweb/credits/checkout, cart/favorites/follows, fitting room.
 
@@ -29,8 +29,8 @@ Current commands (keep this section in sync with `package.json`):
 - `npm run start` (or `npm run dev`) — Vite dev server
 - `npm run build` — `tsc -b` type-check + Vite build (runs `scripts/prebuild.cjs` first)
 - `npm run typecheck` — `tsc -b` only
-- `npm run test` — run all Jest tests; `npm run test:coverage` for coverage
-- `npx jest src/path/to/file.test.ts` — run a single test file; add `-t 'name'` to filter by test name
+- `npm run test` — run all Vitest tests once; `npm run test:watch` for watch mode; `npm run test:coverage` for coverage
+- `npx vitest run src/path/to/file.spec.ts` — run a single test file; add `-t 'name'` to filter by test name
 - `npm run lint` / `npm run lint:fix` — ESLint (flat config, `eslint.config.js`) over `src`
 - `npm run format` — Prettier check; `npm run format:fix` — write (rules in `.prettierrc`)
 
