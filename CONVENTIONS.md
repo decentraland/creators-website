@@ -2,6 +2,14 @@
 
 Code rules for wemotes-builder. General project guidance lives in `CLAUDE.md`; this file holds the hard rules that every PR must respect.
 
+## Component organization (semantic, hard rules)
+
+There is no separate `pages/` folder — page components live in `src/components/` (e.g. `components/OverviewPage`), one per route, declared in `src/App.tsx` and lazy-loaded.
+
+- A component used by a single page lives **inside that page's folder** (as its own folder or a single file), e.g. `components/OverviewPage/OverviewHeader` — never at the root of `components/`.
+- When a page-local component becomes needed by another page or component, **move it up** to the root of `components/`.
+- The root of `components/` holds only: page components, components used by more than one page, and components reused by multiple other root components. Nothing else.
+
 ## Architecture: host-portability seams (hard rules)
 
 The app is a standalone web app today. In the future it may also be embedded inside the creator-hub Electron app — rendered in an iframe and talking to the host over a two-way postMessage/`@dcl/mini-rpc` channel, the same pattern creator-hub uses for `@dcl/inspector`. We build **none** of that now (no RPC layer, no host adapter, no electron-mode flag). Instead, these four seams stay clean so a future embed is a bounded integration instead of a rewrite:
