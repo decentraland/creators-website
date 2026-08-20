@@ -27,7 +27,7 @@
     "**/*.{js,mjs,cjs,ts,tsx,json,css,html,md,mdx}": "prettier --write --log-level=error"
   },
   "dependencies": {
-    "@dcl/hooks": "^1.2.1",
+    "@dcl/hooks": "^1.5.0",
     "@dcl/ui-env": "^2.0.0",
     "decentraland-ui2": "^3.19.3",
     "react": "^18.3.1",
