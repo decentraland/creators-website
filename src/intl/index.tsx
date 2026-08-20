@@ -9,8 +9,9 @@ const messages: Record<Locale, Record<string, string>> = { en, es }
 
 const getPreferredLocale = (): Locale => (navigator.language.toLowerCase().startsWith('es') ? 'es' : 'en')
 
+const locale = getPreferredLocale()
+
 const TranslationProvider = ({ children }: { children: ReactNode }) => {
-  const locale = getPreferredLocale()
   return (
     <IntlProvider locale={locale} defaultLocale="en" messages={messages[locale]}>
       {children}

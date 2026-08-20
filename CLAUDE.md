@@ -8,13 +8,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Consistency rule: this app deliberately shares its tech stack and visual identity (theme, color palette) with the **shop** repo. Day-to-day code needs only this file and `CONVENTIONS.md` — do **not** consult shop for regular tasks. Check what shop uses only when making a _new_ technology choice (adding a dependency, a tool, a pattern for a problem this repo hasn't solved yet), and prefer shop's choice unless there's a strong reason not to.
 
-## Current state (delete this section once the scaffold lands)
-
-The target scaffold is not in place yet: the repo still carries template tooling (Jest, `start.sh`, a `{{project_name}}` placeholder in `package.json`). **Never run `npm run init` or `start.sh`** — the plan is to replace the template tooling with the target stack below, not to personalize the template.
-
 ## Tech stack
 
-Target stack (being ported from shop's config):
+Ported from shop's config:
 
 - **Core:** Vite + React 18 + TypeScript strict, React Router v6, `~` → `src/` path alias.
 - **State:** `@tanstack/react-query` for server state (builder-server data), `zustand` for client/session state. No redux.
@@ -22,13 +18,13 @@ Target stack (being ported from shop's config):
 - **i18n:** `react-intl` with `en.json` / `es.json`.
 - **Auth:** `decentraland-connect` + `@dcl/single-sign-on-client` + a zustand wallet store; builder-server requests signed with `@dcl/crypto` AuthChain.
 - **Monitoring:** Sentry (`@sentry/react`).
-- **Tests:** Vitest + Testing Library for unit tests; Puppeteer + Vitest for e2e.
+- **Tests:** Jest (`ts-jest`) for unit tests today; target is Vitest + Testing Library for unit tests and Puppeteer + Vitest for e2e (migration pending).
 - **Deploy:** Decentraland CDN convention (`prebuild.cjs`, env per hostname); Vercel is used for PR/dev previews only.
 - **Out of scope** (shop features that do not carry over): Stripe/thirdweb/credits/checkout, cart/favorites/follows, fitting room.
 
 ## Commands
 
-Current commands (these change when the scaffold lands — keep this section in sync):
+Current commands (keep this section in sync with `package.json`):
 
 - `npm run start` (or `npm run dev`) — Vite dev server
 - `npm run build` — `tsc -b` type-check + Vite build (runs `scripts/prebuild.cjs` first)
