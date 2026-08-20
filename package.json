@@ -14,8 +14,8 @@
     "test:coverage": "npm run test -- --coverage",
     "typecheck": "tsc -b",
     "prepare": "simple-git-hooks",
-    "format": "prettier --check \"**/*.{js,mjs,cjs,ts,tsx,json,css,html}\" --log-level=error",
-    "format:fix": "prettier --write \"**/*.{js,mjs,cjs,ts,tsx,json,css,html}\" --log-level=error",
+    "format": "prettier --check \"**/*.{js,mjs,cjs,ts,tsx,json,css,html,md,mdx}\" --log-level=error",
+    "format:fix": "prettier --write \"**/*.{js,mjs,cjs,ts,tsx,json,css,html,md,mdx}\" --log-level=error",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix"
   },
@@ -24,7 +24,7 @@
   },
   "nano-staged": {
     "src/**/*.{js,mjs,cjs,ts,tsx}": "eslint --fix",
-    "**/*.{js,mjs,cjs,ts,tsx,json,css,html}": "prettier --write --log-level=error"
+    "**/*.{js,mjs,cjs,ts,tsx,json,css,html,md,mdx}": "prettier --write --log-level=error"
   },
   "dependencies": {
     "@dcl/hooks": "^1.2.1",
