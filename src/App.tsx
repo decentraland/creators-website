@@ -43,6 +43,8 @@ const App = () => {
           <Suspense fallback={<PageFallback />}>
             <Routes>
               <Route path="/" element={<Navigate to="/collections" replace />} />
+              {/* Backward-compat: the old overview route now lives in sites; old links land on collections. */}
+              <Route path="/overview" element={<Navigate to="/collections" replace />} />
               <Route path="/collections" element={<CollectionsPage />} />
               <Route path="/collections/editor" element={<ItemEditorPage />} />
               <Route path="/collections/:collectionId" element={<CollectionDetailPage />} />
