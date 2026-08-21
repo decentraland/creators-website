@@ -144,6 +144,7 @@ const Footer = () => {
                 type="button"
                 aria-expanded={openSection === section.key}
                 aria-controls={`footer-section-${section.key}`}
+                data-testid={`footer-section-toggle-${section.key}`}
                 onClick={() => toggle(section.key)}
               >
                 {section.label}
