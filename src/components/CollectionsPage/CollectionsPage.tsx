@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Add as AddIcon,
-  ArrowBackIosNew as ArrowBackIosNewIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   FormatListBulleted as FormatListBulletedIcon,
@@ -100,12 +99,7 @@ const CollectionsPage = () => {
   return (
     <S.Page data-testid="collections-page">
       <S.Header>
-        <S.TitleRow>
-          <S.BackButton type="button" aria-label={t('collections_page.back')} onClick={() => navigate('/overview')}>
-            <ArrowBackIosNewIcon fontSize="small" />
-          </S.BackButton>
-          <S.Title>{t('collections_page.title')}</S.Title>
-        </S.TitleRow>
+        <S.Title>{t('collections_page.title')}</S.Title>
         <S.HeaderActions>
           <S.SearchBox>
             <SearchIcon fontSize="small" />

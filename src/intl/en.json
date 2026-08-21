@@ -4,12 +4,8 @@
     "description": "This page couldn't load. It may be a connection hiccup or a new version of the app.",
     "retry": "Reload"
   },
-  "overview_page": {
-    "title": "Overview"
-  },
   "collections_page": {
     "title": "My collections",
-    "back": "Back",
     "search_placeholder": "Search Collection",
     "open_editor": "Open editor",
     "new_collection": "New collection",

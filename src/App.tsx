@@ -1,14 +1,13 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { CollectionsPage } from '~/components/CollectionsPage'
 import { ErrorBoundary } from '~/components/ErrorBoundary'
 import { Footer } from '~/components/Footer'
 import { NavBar } from '~/components/NavBar'
-import { OverviewPage } from '~/components/OverviewPage'
 import { TranslationProvider } from '~/intl'
 import { useWallet } from '~/store/wallet'
 
-// Overview (home) stays eager for the fastest first paint; every other route is code-split.
-const CollectionsPage = lazy(() => import('~/components/CollectionsPage').then(m => ({ default: m.CollectionsPage })))
+// Collections (the landing route) stays eager for the fastest first paint; every other route is code-split.
 const CollectionDetailPage = lazy(() =>
   import('~/components/CollectionDetailPage').then(m => ({ default: m.CollectionDetailPage }))
 )
@@ -43,8 +42,7 @@ const App = () => {
         <ErrorBoundary>
           <Suspense fallback={<PageFallback />}>
             <Routes>
-              <Route path="/" element={<Navigate to="/overview" replace />} />
-              <Route path="/overview" element={<OverviewPage />} />
+              <Route path="/" element={<Navigate to="/collections" replace />} />
               <Route path="/collections" element={<CollectionsPage />} />
               <Route path="/collections/editor" element={<ItemEditorPage />} />
               <Route path="/collections/:collectionId" element={<CollectionDetailPage />} />

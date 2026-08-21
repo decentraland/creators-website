@@ -4,12 +4,8 @@
     "description": "No se pudo cargar esta página. Puede ser un problema de conexión o una nueva versión de la aplicación.",
     "retry": "Recargar"
   },
-  "overview_page": {
-    "title": "Resumen"
-  },
   "collections_page": {
     "title": "Mis colecciones",
-    "back": "Volver",
     "search_placeholder": "Buscar colección",
     "open_editor": "Abrir editor",
     "new_collection": "Nueva colección",

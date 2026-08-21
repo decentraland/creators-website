@@ -30,31 +30,8 @@ export const Header = styled.div`
   }
 `
 
-export const TitleRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-`
-
-// Mobile is a viewer pushed one level in from Overview; desktop needs no back affordance.
-export const BackButton = styled.button`
-  display: none;
-
-  ${mobile} {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    margin-left: -12px;
-    border: 0;
-    background: none;
-    color: ${theme.colors.white};
-  }
-`
-
 export const Title = styled.h1`
+  min-width: 0;
   font-size: 32px;
   font-weight: 700;
   line-height: 1.2;
