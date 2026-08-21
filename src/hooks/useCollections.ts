@@ -51,7 +51,7 @@ export function useRejectedCollectionsCount(address: string | undefined) {
 /** First 4 item thumbnails of a collection, for the 2x2 mosaic cover. */
 export function useCollectionPreview(address: string | undefined, collectionId: string, itemCount: number) {
   return useQuery({
-    queryKey: ['collection-preview', collectionId],
+    queryKey: ['collection-preview', address, collectionId],
     queryFn: () => fetchCollectionItemPreviews(address, collectionId),
     enabled: itemCount > 0,
     staleTime: 5 * 60_000

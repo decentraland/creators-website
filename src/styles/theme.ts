@@ -27,12 +27,14 @@ const colors = {
   brandViolet: '#a524b3',
   softWhite: '#fcfcfc',
   dclRed: '#ff2d55',
+  dclRedHover: '#ff4269',
   ok: '#1ea672',
   err: '#d33',
   okStrong: '#1f8a4c',
   errStrong: '#d64545',
   successBorder: '#34ce77',
   green: '#30cd00', // DCL/Green — published status
+  amber: '#ffbc5b', // Brand/Amber — under-review status, warm gradient stop
   orange: '#ff7439', // Brand/Orange — active tab underline, warm accents
   white: '#ffffff',
   // Hairline on a translucent field over the purple (search box border).

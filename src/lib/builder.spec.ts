@@ -66,6 +66,20 @@ describe('fetchCollections', () => {
     signedFetchMock.mockResolvedValue(jsonResponse({ ok: false, error: 'Unauthorized' }, false, 401))
     await expect(fetchCollections(ADDRESS, { page: 1 })).rejects.toThrow('Unauthorized')
   })
+
+  it('throws a descriptive error when the response body is not JSON', async () => {
+    signedFetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.reject(new Error('Unexpected token <'))
+    })
+    await expect(fetchCollections(ADDRESS, { page: 1 })).rejects.toThrow(/non-JSON response.*Unexpected token </)
+  })
+
+  it('throws when a successful envelope carries no data', async () => {
+    signedFetchMock.mockResolvedValue(jsonResponse({ ok: true }))
+    await expect(fetchCollections(ADDRESS, { page: 1 })).rejects.toThrow('builder-server request failed')
+  })
 })
 
 describe('fetchCollectionItemPreviews', () => {

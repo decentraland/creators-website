@@ -49,6 +49,7 @@ const CollectionsPage = () => {
   const [searchInput, setSearchInput] = useState(search)
   const searchTimer = useRef<ReturnType<typeof setTimeout>>()
   useEffect(() => setSearchInput(search), [search])
+  useEffect(() => () => clearTimeout(searchTimer.current), [])
 
   const collections = useCollections(address, { page, search, status })
   const { data: rejectedCount } = useRejectedCollectionsCount(address)
@@ -238,7 +239,7 @@ const CollectionsPage = () => {
             </S.Grid>
           ) : (
             <S.List data-testid="collections-list">
-              <S.ListHeader aria-hidden>
+              <S.ListHeader>
                 <span>{t('collections_page.list.collection')}</span>
                 <span>{t('collections_page.list.items')}</span>
                 <span>{t('collections_page.list.status')}</span>

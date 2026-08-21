@@ -141,7 +141,7 @@ export const ActionButton = styled.button`
     color: ${theme.colors.white};
 
     &:hover {
-      background: #ff4269;
+      background: ${theme.colors.dclRedHover};
     }
   }
   &[data-variant='secondary'] {

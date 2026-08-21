@@ -66,6 +66,7 @@ const Footer = () => {
   const [openSection, setOpenSection] = useState<string | null>(null)
   const [langOpen, setLangOpen] = useState(false)
   const langRef = useRef<HTMLDivElement>(null)
+  const langBtnRef = useRef<HTMLButtonElement>(null)
   const current = LANGUAGE_LABELS[locale] ?? LANGUAGE_LABELS.en
 
   useEffect(() => {
@@ -73,8 +74,18 @@ const Footer = () => {
     const onDown = (e: MouseEvent) => {
       if (langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false)
     }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setLangOpen(false)
+        langBtnRef.current?.focus()
+      }
+    }
     document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
   }, [langOpen])
 
   const toggle = (key: string) => setOpenSection(prev => (prev === key ? null : key))
@@ -129,13 +140,18 @@ const Footer = () => {
             { key: 'resources', label: t('footer.resources'), links: resourceLinks }
           ].map(section => (
             <div key={section.key}>
-              <S.Dropdown type="button" aria-expanded={openSection === section.key} onClick={() => toggle(section.key)}>
+              <S.Dropdown
+                type="button"
+                aria-expanded={openSection === section.key}
+                aria-controls={`footer-section-${section.key}`}
+                onClick={() => toggle(section.key)}
+              >
                 {section.label}
                 <S.Chev data-open={openSection === section.key || undefined}>
                   <ChevronDown />
                 </S.Chev>
               </S.Dropdown>
-              <S.DropContent data-open={openSection === section.key || undefined}>
+              <S.DropContent id={`footer-section-${section.key}`} data-open={openSection === section.key || undefined}>
                 {section.links.map(l => (
                   <S.MLink key={l.label} href={l.url} target="_blank" rel="noopener noreferrer">
                     {t(l.label)}
@@ -155,7 +171,7 @@ const Footer = () => {
       <S.Bottom>
         <S.BottomLeft>
           <S.Lang ref={langRef}>
-            <S.LangBtn type="button" onClick={() => setLangOpen(o => !o)}>
+            <S.LangBtn ref={langBtnRef} type="button" aria-expanded={langOpen} onClick={() => setLangOpen(o => !o)}>
               <span aria-hidden>{current.flag}</span>
               {current.label}
               <S.Chev data-open={langOpen || undefined}>
@@ -171,6 +187,7 @@ const Footer = () => {
                     onClick={() => {
                       setLocale(code)
                       setLangOpen(false)
+                      langBtnRef.current?.focus()
                     }}
                   >
                     <span aria-hidden>{LANGUAGE_LABELS[code].flag}</span>

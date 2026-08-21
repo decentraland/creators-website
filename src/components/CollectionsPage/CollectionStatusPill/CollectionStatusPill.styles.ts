@@ -19,8 +19,8 @@ export const Pill = styled.span`
     background: rgba(48, 205, 0, 0.2);
   }
   &[data-status='under_review'] {
-    color: #ffbc5b;
-    border-color: #ffbc5b;
+    color: ${theme.colors.amber};
+    border-color: ${theme.colors.amber};
     background: rgba(255, 188, 91, 0.2);
   }
   &[data-status='draft'] {

@@ -1,4 +1,5 @@
 import styled from '@emotion/styled'
+import { Link } from 'react-router-dom'
 import { theme } from '~/styles/theme'
 
 // Shared column template so the header and the rows stay aligned.
@@ -11,16 +12,30 @@ export const listColumns = `
 
 export const Row = styled.article`
   ${listColumns};
+  position: relative;
   padding: 12px 24px 12px 12px;
   border-radius: ${theme.radius.card};
   background: ${theme.colors.overlay};
-  cursor: pointer;
   transition: background 0.15s ease;
 
   &:hover,
-  &:focus-visible {
+  &:focus-within {
     background: ${theme.colors.overlayHover};
-    outline: none;
+  }
+`
+
+// The row's single real link: its ::after stretches over the row so the whole
+// surface navigates while keeping the actions button outside the anchor.
+export const RowLink = styled(Link)`
+  display: block;
+  min-width: 0;
+  text-decoration: none;
+  outline: none;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
   }
 `
 
@@ -83,6 +98,7 @@ export const ActionsCell = styled.div`
 `
 
 export const ActionsButton = styled.button`
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;

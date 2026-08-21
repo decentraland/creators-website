@@ -1,12 +1,14 @@
 import styled from '@emotion/styled'
+import { Link } from 'react-router-dom'
 import { theme } from '~/styles/theme'
 
 const mobile = theme.media.maxWidth('mobile')
 
-export const Card = styled.article`
+export const Card = styled(Link)`
   height: 318px;
   display: flex;
   flex-direction: column;
+  text-decoration: none;
   border-radius: ${theme.radius.cardLg};
   overflow: hidden;
   cursor: pointer;

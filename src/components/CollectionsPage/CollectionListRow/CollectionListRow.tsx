@@ -24,23 +24,15 @@ export function CollectionListRow({ collection }: Props) {
   }
 
   return (
-    <S.Row
-      data-testid="collection-row"
-      role="link"
-      tabIndex={0}
-      onClick={open}
-      onKeyDown={e => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          open()
-        }
-      }}
-    >
+    <S.Row data-testid="collection-row">
       <S.NameCell>
         <S.Thumb>
           <CollectionMosaic collectionId={collection.id} itemCount={collection.itemCount} />
         </S.Thumb>
-        <S.Name title={collection.name}>{collection.name}</S.Name>
+        {/* Stretched over the whole row (see RowLink) so the row is one real link. */}
+        <S.RowLink to={`/collections/${collection.id}`}>
+          <S.Name title={collection.name}>{collection.name}</S.Name>
+        </S.RowLink>
       </S.NameCell>
       <S.Cell data-testid="collection-row-items">
         {t('collections_page.item_count', { count: collection.itemCount })}
@@ -54,14 +46,7 @@ export function CollectionListRow({ collection }: Props) {
       </S.DateCell>
       <S.Cell data-testid="collection-row-created">{intl.formatDate(collection.createdAt, DATE_FORMAT)}</S.Cell>
       <S.ActionsCell>
-        <S.ActionsButton
-          type="button"
-          aria-label={t('collections_page.row_actions')}
-          onClick={e => {
-            e.stopPropagation()
-            open()
-          }}
-        >
+        <S.ActionsButton type="button" aria-label={t('collections_page.row_actions')} onClick={open}>
           <MoreHorizIcon fontSize="small" />
         </S.ActionsButton>
       </S.ActionsCell>

@@ -15,7 +15,11 @@ export type ProfileAvatar = {
 // profile" the same as "not ok".
 async function fetchProfile(address: string): Promise<ProfileAvatar | undefined> {
   const res = await fetch(`${config.get('PEER_URL')}/lambdas/profiles/${address.toLowerCase()}`)
-  if (!res.ok) return undefined
+  if (!res.ok) {
+    // Cancel the unread body so the connection is released back to the pool.
+    await res.body?.cancel()
+    return undefined
+  }
   const profile = (await res.json()) as { avatars?: ProfileAvatar[] }
   return profile?.avatars?.[0]
 }

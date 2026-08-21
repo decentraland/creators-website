@@ -30,11 +30,15 @@ export const getContentsStorageUrl = (hash = '') => `${baseUrl()}/storage/conten
 
 async function request<T>(address: string | undefined, method: string, path: string, query = ''): Promise<T> {
   const response = await signedFetch(address, baseUrl(), `${path}${query}`, { method })
-  const body = (await response.json().catch(() => null)) as { ok?: boolean; data?: T; error?: string } | null
-  if (!response.ok || !body || body.ok === false) {
-    throw new Error(body?.error ?? `builder-server request failed: ${method} ${path} (${response.status})`)
+  const body = (await response.json().catch((err: Error) => {
+    throw new Error(
+      `builder-server returned a non-JSON response: ${method} ${path} (${response.status}): ${err.message}`
+    )
+  })) as { ok?: boolean; data?: T; error?: string }
+  if (!response.ok || body.ok === false || body.data === undefined) {
+    throw new Error(body.error ?? `builder-server request failed: ${method} ${path} (${response.status})`)
   }
-  return body.data as T
+  return body.data
 }
 
 /**
