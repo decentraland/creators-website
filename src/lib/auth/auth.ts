@@ -64,12 +64,6 @@ async function toSession(res: {
   return { address, chainId: res.chainId, signer, web3Provider, identity, providerType: res.providerType }
 }
 
-export async function login(providerType: ProviderType = ProviderType.INJECTED): Promise<Session> {
-  const connection = await getConnection()
-  const res = await connection.connect(providerType, Number(config.get('CHAIN_ID')))
-  return toSession(res)
-}
-
 // Redirects to the auth app (method chooser). On return, restoreSession() rebuilds the session.
 export function signInRedirect(): void {
   const redirectTo = encodeURIComponent(window.location.href)
@@ -135,6 +129,7 @@ export async function signedFetch(
   return fetch(`${baseUrl}${path}`, {
     ...init,
     method,
+    // Caller headers win by design (e.g. Content-Type); no caller sets x-identity-* keys.
     headers: { ...authHeaders, ...init.headers }
   })
 }

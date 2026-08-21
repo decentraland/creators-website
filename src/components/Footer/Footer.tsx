@@ -103,6 +103,7 @@ const Footer = () => {
               height="65"
               frameBorder="0"
               scrolling="no"
+              loading="lazy"
               title={t('footer.newsletterFrameTitle')}
             />
           </S.News>

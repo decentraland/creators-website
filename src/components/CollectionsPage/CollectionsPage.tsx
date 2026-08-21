@@ -55,14 +55,21 @@ const CollectionsPage = () => {
   const { data: rejectedCount } = useRejectedCollectionsCount(address)
 
   // Filter/search/page changes all go through the URL, so back/forward and deep links just work.
+  // Functional updater: the debounced search callback would otherwise apply a stale snapshot and
+  // revert a filter clicked inside the debounce window.
   function changeParams(changes: Record<string, string | null>) {
-    const next = new URLSearchParams(searchParams)
-    next.delete('page')
-    for (const [key, value] of Object.entries(changes)) {
-      if (value) next.set(key, value)
-      else next.delete(key)
-    }
-    setSearchParams(next, { replace: true })
+    setSearchParams(
+      prev => {
+        const next = new URLSearchParams(prev)
+        next.delete('page')
+        for (const [key, value] of Object.entries(changes)) {
+          if (value) next.set(key, value)
+          else next.delete(key)
+        }
+        return next
+      },
+      { replace: true }
+    )
   }
 
   function onSearchChange(value: string) {
@@ -72,10 +79,7 @@ const CollectionsPage = () => {
   }
 
   function goToPage(next: number) {
-    const params = new URLSearchParams(searchParams)
-    if (next > 1) params.set('page', String(next))
-    else params.delete('page')
-    setSearchParams(params, { replace: true })
+    changeParams({ page: next > 1 ? String(next) : null })
     window.scrollTo({ top: 0 })
   }
 

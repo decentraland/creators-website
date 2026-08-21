@@ -32,7 +32,10 @@ const NavBar = () => {
     }
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      document.body.removeAttribute('data-scrolled')
+    }
   }, [])
 
   return (
