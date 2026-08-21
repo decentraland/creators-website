@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/auth/:match*", "destination": "https://decentraland.zone/auth/:match*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

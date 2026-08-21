@@ -1,10 +1,111 @@
 {
-  "overview_page.title": "Resumen",
-  "collections_page.title": "Colecciones",
-  "collection_detail_page.title": "Colección",
-  "item_detail_page.title": "Item",
-  "item_editor_page.title": "Editor de items",
-  "curation_page.title": "Curado",
-  "not_found_page.title": "Página no encontrada",
-  "not_found_page.go_home": "Volver al inicio"
+  "error_boundary": {
+    "title": "Algo salió mal",
+    "description": "No se pudo cargar esta página. Puede ser un problema de conexión o una nueva versión de la aplicación.",
+    "retry": "Recargar"
+  },
+  "overview_page": {
+    "title": "Resumen"
+  },
+  "collections_page": {
+    "title": "Mis colecciones",
+    "back": "Volver",
+    "search_placeholder": "Buscar colección",
+    "open_editor": "Abrir editor",
+    "new_collection": "Nueva colección",
+    "coming_soon": "Próximamente",
+    "filter": {
+      "all": "Todas",
+      "published": "Publicadas",
+      "submitted": "Enviadas",
+      "draft": "Borrador",
+      "rejected": "Rechazadas"
+    },
+    "view_mode": "Modo de vista",
+    "view_grid": "Vista de cuadrícula",
+    "view_list": "Vista de lista",
+    "item_count": "{count, plural, one {# ítem} other {# ítems}}",
+    "updated_ago": "Actualizada {timeAgo}",
+    "status": {
+      "published": "Publicada",
+      "under_review": "En revisión",
+      "draft": "Borrador"
+    },
+    "list": {
+      "collection": "Colección",
+      "items": "Ítems",
+      "status": "Estado",
+      "last_updated": "Última actualización",
+      "created": "Creada",
+      "actions": "Acciones"
+    },
+    "row_actions": "Acciones de la colección",
+    "showing": "Mostrando {shown} de {total} colecciones",
+    "previous_page": "Página anterior",
+    "next_page": "Página siguiente",
+    "sign_in": {
+      "title": "Inicia sesión para ver tus colecciones",
+      "action": "Iniciar sesión"
+    },
+    "empty": {
+      "title": "Tu primera colección empieza aquí",
+      "description": "Crea tu primera colección y empieza a llevar tus wearables y emotes a Decentraland.",
+      "description_mobile": "Crea y publica colecciones desde tu computadora, y luego míralas y gestiónalas aquí.",
+      "learn_more": "Más información",
+      "create_first": "Crear primera colección"
+    },
+    "no_results": {
+      "title": "No se encontraron colecciones",
+      "description": "Prueba con otra búsqueda u otro filtro."
+    },
+    "error": {
+      "title": "Algo salió mal",
+      "description": "No pudimos cargar tus colecciones. Inténtalo de nuevo.",
+      "retry": "Intentar de nuevo"
+    }
+  },
+  "collection_detail_page": {
+    "title": "Colección"
+  },
+  "item_detail_page": {
+    "title": "Item"
+  },
+  "item_editor_page": {
+    "title": "Editor de items"
+  },
+  "curation_page": {
+    "title": "Curado"
+  },
+  "not_found_page": {
+    "title": "Página no encontrada",
+    "go_home": "Volver al inicio"
+  },
+  "nav": {
+    "overview": "Resumen",
+    "collections": "Colecciones",
+    "scenes": "Escenas",
+    "land": "Land/Mundos"
+  },
+  "footer": {
+    "newsletterTitle": "Recibe lo más destacado de la semana en tu correo",
+    "newsletterFrameTitle": "Suscripción al boletín",
+    "connect": "Conecta",
+    "gettingStarted": "Primeros pasos",
+    "resources": "Recursos",
+    "menu": "Menú",
+    "linkWhatIs": "Qué es Decentraland",
+    "linkDownload": "Descargar",
+    "linkSystemRequirements": "Requisitos del sistema",
+    "linkFaqs": "Preguntas frecuentes",
+    "linkContactSupport": "Contactar con soporte",
+    "linkMarketplace": "Marketplace",
+    "linkCreatorHub": "Creator Hub",
+    "linkDocs": "Documentación",
+    "linkBlog": "Blog",
+    "linkVote": "Votar",
+    "linkPrivacy": "Política de privacidad",
+    "linkTerms": "Términos de uso",
+    "linkContentPolicy": "Política de contenido",
+    "linkEthics": "Código de ética"
+  }
 }

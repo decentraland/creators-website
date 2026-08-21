@@ -23,7 +23,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "types": ["@types/node", "@types/jest"]
+    "types": ["@types/node"]
   },
   "include": ["src"]
 }

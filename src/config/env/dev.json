@@ -1,1 +1,8 @@
-{}
+{
+  "ENVIRONMENT": "development",
+  "CHAIN_ID": "11155111",
+  "BUILDER_SERVER_URL": "https://builder-api.decentraland.zone/v1",
+  "AUTH_URL": "/auth",
+  "PEER_URL": "https://peer.decentraland.zone",
+  "BUILDER_URL": "https://decentraland.zone/builder"
+}

@@ -1,17 +1,17 @@
 import { ReactNode } from 'react'
 import { IntlProvider, useIntl } from 'react-intl'
+import { useLocale, type Locale } from '~/store/locale'
+import { flattenMessages } from '~/lib/messages'
 import en from './en.json'
 import es from './es.json'
 
-type Locale = 'en' | 'es'
-
-const messages: Record<Locale, Record<string, string>> = { en, es }
-
-const getPreferredLocale = (): Locale => (navigator.language.toLowerCase().startsWith('es') ? 'es' : 'en')
-
-const locale = getPreferredLocale()
+const messages: Record<Locale, Record<string, string>> = {
+  en: flattenMessages(en),
+  es: flattenMessages(es)
+}
 
 const TranslationProvider = ({ children }: { children: ReactNode }) => {
+  const locale = useLocale(s => s.locale)
   return (
     <IntlProvider locale={locale} defaultLocale="en" messages={messages[locale]}>
       {children}
