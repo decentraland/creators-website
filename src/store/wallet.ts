@@ -21,7 +21,7 @@ type WalletState = {
   restore: () => Promise<void>
 }
 
-export const useWallet = create<WalletState>(set => ({
+export const useWallet = create<WalletState>((set, get) => ({
   session: null,
   restored: false,
   connecting: false,
@@ -35,7 +35,7 @@ export const useWallet = create<WalletState>(set => ({
     signInRedirect()
   },
   disconnect: async () => {
-    await logout()
+    await logout(get().session?.address)
     set({ session: null })
   },
   // Silent restore on load (reads connection + stored identity, no popup). Deduped so any mount point

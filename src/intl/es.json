@@ -1,4 +1,9 @@
 {
+  "error_boundary": {
+    "title": "Algo salió mal",
+    "description": "No se pudo cargar esta página. Puede ser un problema de conexión o una nueva versión de la aplicación.",
+    "retry": "Recargar"
+  },
   "overview_page": {
     "title": "Resumen"
   },

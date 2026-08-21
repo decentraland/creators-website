@@ -53,7 +53,7 @@ export function useCollectionPreview(address: string | undefined, collectionId: 
   return useQuery({
     queryKey: ['collection-preview', address, collectionId],
     queryFn: () => fetchCollectionItemPreviews(address, collectionId),
-    enabled: itemCount > 0,
+    enabled: !!address && itemCount > 0,
     staleTime: 5 * 60_000
   })
 }

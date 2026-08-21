@@ -12,7 +12,7 @@ const builderUrl = config.get('BUILDER_URL')
 
 const NavBar = () => {
   const { t } = useTranslation()
-  const { session, connecting, signIn, disconnect, restore } = useWallet()
+  const { session, connecting, signIn, disconnect } = useWallet()
   const address = session?.address
   const { data: avatar, isLoading: isLoadingProfile } = useProfile(address)
   const { pathname } = useLocation()
@@ -34,11 +34,6 @@ const NavBar = () => {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
-
-  // Re-establish the previous session on load (silent, no popup) — handles the return from /auth.
-  useEffect(() => {
-    void restore()
-  }, [restore])
 
   return (
     <>

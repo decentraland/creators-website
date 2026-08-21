@@ -208,7 +208,7 @@ const CollectionsPage = () => {
           <S.PanelText data-desktop>{t('collections_page.empty.description')}</S.PanelText>
           <S.PanelText data-mobile>{t('collections_page.empty.description_mobile')}</S.PanelText>
           <S.EmptyActions>
-            <S.ActionLink data-variant="secondary" href={LEARN_MORE_URL}>
+            <S.ActionLink data-variant="secondary" href={LEARN_MORE_URL} target="_blank" rel="noopener noreferrer">
               {t('collections_page.empty.learn_more')}
             </S.ActionLink>
             <S.ActionButton

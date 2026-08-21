@@ -2,7 +2,11 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { ethers } from 'ethers'
 import { Authenticator, type AuthIdentity, type AuthLink } from '@dcl/crypto'
 import { localStorageStoreIdentity, localStorageClearIdentity } from '@dcl/single-sign-on-client'
-import { createAuthHeaders, getIdentity, signedFetch } from './auth'
+import { createAuthHeaders, getIdentity, logout, signedFetch } from './auth'
+
+vi.mock('decentraland-connect', () => ({
+  connection: { disconnect: vi.fn().mockResolvedValue(undefined) }
+}))
 
 async function makeStoredIdentity(): Promise<{ address: string; identity: AuthIdentity }> {
   const owner = ethers.Wallet.createRandom()
@@ -69,6 +73,15 @@ describe('auth', () => {
     expect(url).toBe(`https://builder-api.example/v1/${address}/collections?page=1&limit=20`)
     const chain = parseAuthChain(init.headers as Record<string, string>)
     expect(chain[chain.length - 1].payload).toBe(`get:/${address}/collections`)
+  })
+
+  it('logout clears the stored identity so it cannot outlive a sign-out', async () => {
+    const { address: other } = await makeStoredIdentity()
+    expect(getIdentity(other)).not.toBeNull()
+
+    await logout(other)
+
+    expect(getIdentity(other)).toBeNull()
   })
 
   it('signedFetch sends no auth headers when there is no address', async () => {

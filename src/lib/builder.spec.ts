@@ -98,6 +98,21 @@ describe('fetchCollectionItemPreviews', () => {
       { id: 'i1', name: 'Hat', thumbnailUrl: 'https://builder-api.decentraland.zone/v1/storage/contents/Qmhash' }
     ])
   })
+
+  it('drops items whose thumbnail hash is missing from contents', async () => {
+    signedFetchMock.mockResolvedValue(
+      okResponse({
+        results: [
+          { id: 'i1', name: 'Hat', thumbnail: 'thumbnail.png', contents: { 'thumbnail.png': 'Qmhash' } },
+          { id: 'i2', name: 'Broken', thumbnail: 'thumbnail.png', contents: {} }
+        ]
+      })
+    )
+
+    const previews = await fetchCollectionItemPreviews(ADDRESS, 'a1b2')
+
+    expect(previews.map(p => p.id)).toEqual(['i1'])
+  })
 })
 
 describe('getContentsStorageUrl', () => {

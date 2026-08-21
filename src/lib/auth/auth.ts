@@ -4,7 +4,11 @@
 import { ethers } from 'ethers'
 import { ChainId, ProviderType } from '@dcl/schemas'
 import { Authenticator, type AuthIdentity } from '@dcl/crypto'
-import { localStorageGetIdentity, localStorageStoreIdentity } from '@dcl/single-sign-on-client'
+import {
+  localStorageClearIdentity,
+  localStorageGetIdentity,
+  localStorageStoreIdentity
+} from '@dcl/single-sign-on-client'
 import { config } from '~/config'
 
 // ~31 days, same as the legacy builder and marketplace webapps.
@@ -84,13 +88,15 @@ export async function restoreSession(): Promise<Session | null> {
   }
 }
 
-export async function logout(): Promise<void> {
+export async function logout(address?: string): Promise<void> {
   try {
     const connection = await getConnection()
     await connection.disconnect()
   } catch {
     // ignore
   }
+  // The ephemeral signing identity must not outlive an explicit sign-out.
+  if (address) localStorageClearIdentity(address.toLowerCase())
 }
 
 export function getIdentity(address: string): AuthIdentity | null {

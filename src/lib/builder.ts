@@ -71,9 +71,11 @@ export async function fetchCollectionItemPreviews(
     `/collections/${collectionId}/items`,
     `?page=1&limit=${limit}`
   )
-  return results.map(item => ({
-    id: item.id,
-    name: item.name,
-    thumbnailUrl: getContentsStorageUrl(item.contents[item.thumbnail])
-  }))
+  return results
+    .filter(item => item.contents[item.thumbnail])
+    .map(item => ({
+      id: item.id,
+      name: item.name,
+      thumbnailUrl: getContentsStorageUrl(item.contents[item.thumbnail])
+    }))
 }

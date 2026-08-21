@@ -1,4 +1,9 @@
 {
+  "error_boundary": {
+    "title": "Something went wrong",
+    "description": "This page couldn't load. It may be a connection hiccup or a new version of the app.",
+    "retry": "Reload"
+  },
   "overview_page": {
     "title": "Overview"
   },
