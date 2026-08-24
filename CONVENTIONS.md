@@ -4,9 +4,9 @@ Code rules for wemotes-builder. General project guidance lives in `CLAUDE.md`; t
 
 ## Component organization (semantic, hard rules)
 
-There is no separate `pages/` folder — page components live in `src/components/` (e.g. `components/OverviewPage`), one per route, declared in `src/App.tsx` and lazy-loaded.
+There is no separate `pages/` folder — page components live in `src/components/` (e.g. `components/CollectionsPage`), one per route, declared in `src/App.tsx` and lazy-loaded.
 
-- A component used by a single page lives **inside that page's folder** (as its own folder or a single file), e.g. `components/OverviewPage/OverviewHeader` — never at the root of `components/`.
+- A component used by a single page lives **inside that page's folder** (as its own folder or a single file), e.g. `components/CollectionsPage/CollectionCard` — never at the root of `components/`.
 - When a page-local component becomes needed by another page or component, **move it up** to the root of `components/`.
 - The root of `components/` holds only: page components, components used by more than one page, and components reused by multiple other root components. Nothing else.
 

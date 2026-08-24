@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Add as AddIcon,
-  ArrowBackIosNew as ArrowBackIosNewIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   FormatListBulleted as FormatListBulletedIcon,
@@ -88,6 +87,11 @@ const CollectionsPage = () => {
     if (!session) signIn()
   }
 
+  function onOpenEditor() {
+    if (!session) signIn()
+    else navigate('/collections/editor')
+  }
+
   const data = collections.data
   const total = data?.total ?? 0
   const pages = data?.pages ?? 0
@@ -100,12 +104,7 @@ const CollectionsPage = () => {
   return (
     <S.Page data-testid="collections-page">
       <S.Header>
-        <S.TitleRow>
-          <S.BackButton type="button" aria-label={t('collections_page.back')} onClick={() => navigate('/overview')}>
-            <ArrowBackIosNewIcon fontSize="small" />
-          </S.BackButton>
-          <S.Title>{t('collections_page.title')}</S.Title>
-        </S.TitleRow>
+        <S.Title>{t('collections_page.title')}</S.Title>
         <S.HeaderActions>
           <S.SearchBox>
             <SearchIcon fontSize="small" />
@@ -117,12 +116,7 @@ const CollectionsPage = () => {
               onChange={e => onSearchChange(e.target.value)}
             />
           </S.SearchBox>
-          <S.ActionButton
-            type="button"
-            data-variant="secondary"
-            data-testid="open-editor"
-            onClick={() => navigate('/collections/editor')}
-          >
+          <S.ActionButton type="button" data-variant="secondary" data-testid="open-editor" onClick={onOpenEditor}>
             <FormatShapesIcon fontSize="small" />
             {t('collections_page.open_editor')}
           </S.ActionButton>

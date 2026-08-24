@@ -4,5 +4,6 @@
   "BUILDER_SERVER_URL": "https://builder-api.decentraland.today/v1",
   "AUTH_URL": "/auth",
   "PEER_URL": "https://peer.decentraland.org",
-  "BUILDER_URL": "https://decentraland.today/builder"
+  "BUILDER_URL": "https://decentraland.today/builder",
+  "CREATE_URL": "https://decentraland.today/create"
 }

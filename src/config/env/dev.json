@@ -4,5 +4,6 @@
   "BUILDER_SERVER_URL": "https://builder-api.decentraland.zone/v1",
   "AUTH_URL": "/auth",
   "PEER_URL": "https://peer.decentraland.zone",
-  "BUILDER_URL": "https://decentraland.zone/builder"
+  "BUILDER_URL": "https://decentraland.zone/builder",
+  "CREATE_URL": "https://decentraland.zone/create"
 }

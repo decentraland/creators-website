@@ -38,7 +38,17 @@ Node >= 24 required. Pre-commit (simple-git-hooks + nano-staged, installed on `n
 
 ## Architecture
 
-Entry: `index.html` → `src/main.tsx` (creates the `BrowserRouter`, the single router call site — see `CONVENTIONS.md` — with `basename` from `~/config`) → `src/App.tsx` (declares the routes: `React.lazy` pages + `<Routes>`). Page components live in `src/components/` (`components/OverviewPage`, …), one per route. Component organization is semantic — see "Component organization" in `CONVENTIONS.md`. Zustand stores in `src/store/`; business logic (API clients, flows, encoding) in `src/lib/` — heavily unit-tested, never in components; react-query hooks in `src/hooks/`; i18n provider and messages in `src/intl/`.
+### App boundaries: the creator home lives in `sites`
+
+This SPA does **not** own the creator home ("Overview") page: that page is implemented in the separate **sites** repo and served at `decentraland.org/create` (`.zone`/`.today` per environment). This app owns the collections surfaces and is mounted on the same domain under its own path, so the two apps feel like one: both render the same restyled `decentraland-ui2` navbar + sub-nav treatment, and identity is shared via SSO. Cross-app navigation is a plain full-page link, never a router route:
+
+- The navbar's **Overview** tab links to `CREATE_URL` from the env config (`src/config/env/*.json`).
+- **Scenes** and **Land** tabs link to the legacy builder at `BUILDER_URL`.
+- On the sites side, the create page's "Collections" navigation links back into this app.
+
+Don't re-add an overview/home page here — it was intentionally removed; `/overview` survives only as a redirect to `/collections` for old links.
+
+Entry: `index.html` → `src/main.tsx` (creates the `BrowserRouter`, the single router call site — see `CONVENTIONS.md` — with `basename` from `~/config`) → `src/App.tsx` (declares the routes: `React.lazy` pages + `<Routes>`). Page components live in `src/components/` (`components/CollectionsPage`, …), one per route. Component organization is semantic — see "Component organization" in `CONVENTIONS.md`. Zustand stores in `src/store/`; business logic (API clients, flows, encoding) in `src/lib/` — heavily unit-tested, never in components; react-query hooks in `src/hooks/`; i18n provider and messages in `src/intl/`.
 
 ### Environment configuration (`@dcl/ui-env`)
 

@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { TranslationProvider } from '~/intl'
+import { config } from '~/config'
 import { NavBar } from './NavBar'
 
 vi.mock('~/components/TopNav', () => ({
@@ -22,7 +23,7 @@ vi.mock('~/hooks/useProfile', () => ({
   useProfile: () => ({ data: undefined, isLoading: false })
 }))
 
-function renderNavBar(path = '/overview') {
+function renderNavBar(path = '/collections') {
   return render(
     <TranslationProvider>
       <MemoryRouter initialEntries={[path]}>
@@ -33,9 +34,9 @@ function renderNavBar(path = '/overview') {
 }
 
 describe('NavBar', () => {
-  it('shows the section tabs, sending Scenes and Land to the legacy builder', () => {
+  it('shows the section tabs, sending Overview to sites and Scenes and Land to the legacy builder', () => {
     renderNavBar()
-    expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('href', '/overview')
+    expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('href', config.get('CREATE_URL'))
     expect(screen.getByRole('link', { name: 'Collections' })).toHaveAttribute('href', '/collections')
     expect(screen.getByRole('link', { name: 'Scenes' })).toHaveAttribute(
       'href',

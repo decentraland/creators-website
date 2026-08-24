@@ -7,8 +7,10 @@ import { useTranslation } from '~/intl'
 import { config } from '~/config'
 import * as S from './NavBar.styles'
 
-// Scenes and Land live in the legacy builder web app, not this SPA — plain same-tab links.
+// Overview (the creator home) lives in the sites repo at /create, and Scenes and Land in the legacy
+// builder web app — none of them are routes of this SPA, so all three are plain same-tab links.
 const builderUrl = config.get('BUILDER_URL')
+const createUrl = config.get('CREATE_URL')
 
 const NavBar = () => {
   const { t } = useTranslation()
@@ -53,7 +55,7 @@ const NavBar = () => {
 
       <S.Subnav data-testid="subnav" data-scrolled={scrolled || undefined}>
         <S.Tabs data-testid="subnav-tabs">
-          <NavLink to="/overview">{t('nav.overview')}</NavLink>
+          <a href={createUrl}>{t('nav.overview')}</a>
           <NavLink to="/collections" className={() => (collectionsActive ? 'active' : '')}>
             {t('nav.collections')}
           </NavLink>
