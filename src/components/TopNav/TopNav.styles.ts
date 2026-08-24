@@ -43,8 +43,22 @@ export const NavbarViolet = styled.div`
     background: rgba(22, 21, 24, 0.8);
   }
 
-  /* Desktop nav tabs deliberately NOT overridden: ui2's own rest/hover/active tab styles are the
-     canonical visual, and they already read correctly on the dark bar. */
+  /* Desktop nav tabs (Explore / Shop / Create / Learn): light text on the dark bar. Direct-child
+     selectors deliberately exclude the dark dropdown panels that open on hover. */
+  & nav > div:first-of-type > div > a,
+  & nav > div:first-of-type > div > div > button {
+    color: #ecebed;
+  }
+  & nav > div:first-of-type > div > a:hover,
+  & nav > div:first-of-type > div > div > button:hover {
+    color: ${theme.colors.white};
+    background-color: rgba(255, 255, 255, 0.12);
+  }
+  & nav > div:first-of-type > div > a.active,
+  & nav > div:first-of-type > div > div > button.active {
+    color: ${theme.colors.white};
+    background-color: rgba(255, 255, 255, 0.18);
+  }
 
   /* Signed-in right cluster: force the cluster's buttons and any svg glyph to white so they read on
      the dark bar. The profile pic is an <img>, so it isn't affected by color/fill. */
