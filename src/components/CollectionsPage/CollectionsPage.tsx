@@ -87,6 +87,11 @@ const CollectionsPage = () => {
     if (!session) signIn()
   }
 
+  function onOpenEditor() {
+    if (!session) signIn()
+    else navigate('/collections/editor')
+  }
+
   const data = collections.data
   const total = data?.total ?? 0
   const pages = data?.pages ?? 0
@@ -111,12 +116,7 @@ const CollectionsPage = () => {
               onChange={e => onSearchChange(e.target.value)}
             />
           </S.SearchBox>
-          <S.ActionButton
-            type="button"
-            data-variant="secondary"
-            data-testid="open-editor"
-            onClick={() => navigate('/collections/editor')}
-          >
+          <S.ActionButton type="button" data-variant="secondary" data-testid="open-editor" onClick={onOpenEditor}>
             <FormatShapesIcon fontSize="small" />
             {t('collections_page.open_editor')}
           </S.ActionButton>
