@@ -24,7 +24,7 @@ export const Skeleton = styled.div`
 //
 // ⚠️ These structural selectors (`nav > div:first-of-type > …`) depend on decentraland-ui2's internal
 // DOM nesting, and the hamburger selectors on its English `aria-label`s ("Open menu" / "Close menu").
-// Validated against decentraland-ui2@3.19.3 — re-check on upgrade (a wrapper div added/removed, or a
+// Validated against decentraland-ui2@3.20.0 — re-check on upgrade (a wrapper div added/removed, or a
 // localized aria-label, would silently drop these overrides).
 export const NavbarViolet = styled.div`
   display: contents;

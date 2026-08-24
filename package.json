@@ -38,7 +38,7 @@
     "@mui/icons-material": "^5.18.0",
     "@tanstack/react-query": "^5.101.4",
     "decentraland-connect": "^12.1.1",
-    "decentraland-ui2": "3.19.3",
+    "decentraland-ui2": "3.20.0",
     "ethers": "^5.8.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
