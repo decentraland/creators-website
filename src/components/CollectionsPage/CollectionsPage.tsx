@@ -2,8 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Add as AddIcon,
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon,
   FormatListBulleted as FormatListBulletedIcon,
   FormatShapes as FormatShapesIcon,
   GridView as GridViewIcon,
@@ -13,7 +11,11 @@ import {
 import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
 import { useCollections, useRejectedCollectionsCount } from '~/hooks/useCollections'
+import { useSaveCollection } from '~/hooks/useCollection'
 import { CollectionStatusFilter } from '~/lib/collections'
+import { buildNewCollection } from '~/lib/saveCollection'
+import { CollectionNameModal } from '~/components/CollectionNameModal'
+import { Pagination } from '~/components/Pagination'
 import emptyCollectionsArt from '~/assets/empty-collections.png'
 import { CollectionCard } from './CollectionCard'
 import { CollectionListRow } from './CollectionListRow'
@@ -53,6 +55,21 @@ const CollectionsPage = () => {
   const collections = useCollections(address, { page, search, status })
   const { data: rejectedCount } = useRejectedCollectionsCount(address)
 
+  const [isCreateOpen, setCreateOpen] = useState(false)
+  const saveCollection = useSaveCollection(address)
+
+  function closeCreateModal() {
+    setCreateOpen(false)
+    saveCollection.reset()
+  }
+
+  function onCreateSubmit(name: string) {
+    if (!address) return
+    saveCollection.mutate(buildNewCollection(name, address), {
+      onSuccess: collection => navigate(`/collections/${collection.id}`)
+    })
+  }
+
   // Filter/search/page changes all go through the URL, so back/forward and deep links just work.
   // Functional updater: the debounced search callback would otherwise apply a stale snapshot and
   // revert a filter clicked inside the debounce window.
@@ -82,9 +99,9 @@ const CollectionsPage = () => {
     window.scrollTo({ top: 0 })
   }
 
-  // The creation flow ships separately; until then the CTA signs a visitor in, and is inert once signed in.
   function onNewCollection() {
     if (!session) signIn()
+    else setCreateOpen(true)
   }
 
   function onOpenEditor() {
@@ -120,14 +137,7 @@ const CollectionsPage = () => {
             <FormatShapesIcon fontSize="small" />
             {t('collections_page.open_editor')}
           </S.ActionButton>
-          <S.ActionButton
-            type="button"
-            data-variant="primary"
-            data-testid="new-collection"
-            aria-disabled={!!session || undefined}
-            title={session ? t('collections_page.coming_soon') : undefined}
-            onClick={onNewCollection}
-          >
+          <S.ActionButton type="button" data-variant="primary" data-testid="new-collection" onClick={onNewCollection}>
             <AddIcon fontSize="small" />
             {t('collections_page.new_collection')}
           </S.ActionButton>
@@ -213,8 +223,6 @@ const CollectionsPage = () => {
               type="button"
               data-variant="primary"
               data-testid="create-first-collection"
-              aria-disabled={!!session || undefined}
-              title={session ? t('collections_page.coming_soon') : undefined}
               onClick={onNewCollection}
             >
               <AddIcon fontSize="small" />
@@ -254,49 +262,22 @@ const CollectionsPage = () => {
             <S.ShowingCount data-testid="collections-count">
               {t('collections_page.showing', { shown, total })}
             </S.ShowingCount>
-            {pages > 1 && (
-              <S.Pagination data-testid="collections-pagination">
-                <S.PageButton
-                  type="button"
-                  aria-label={t('collections_page.previous_page')}
-                  disabled={page <= 1}
-                  onClick={() => goToPage(page - 1)}
-                >
-                  <ChevronLeftIcon fontSize="small" />
-                </S.PageButton>
-                {pageWindow(page, pages).map(n => (
-                  <S.PageButton
-                    key={n}
-                    type="button"
-                    data-current={n === page || undefined}
-                    aria-current={n === page ? 'page' : undefined}
-                    onClick={() => goToPage(n)}
-                  >
-                    {n}
-                  </S.PageButton>
-                ))}
-                <S.PageButton
-                  type="button"
-                  aria-label={t('collections_page.next_page')}
-                  disabled={page >= pages}
-                  onClick={() => goToPage(page + 1)}
-                >
-                  <ChevronRightIcon fontSize="small" />
-                </S.PageButton>
-              </S.Pagination>
-            )}
+            {pages > 1 && <Pagination page={page} pages={pages} onPageChange={goToPage} />}
           </S.FooterRow>
         </>
       )}
+
+      {isCreateOpen && (
+        <CollectionNameModal
+          variant="create"
+          isPending={saveCollection.isPending}
+          error={saveCollection.error?.message ?? null}
+          onSubmit={onCreateSubmit}
+          onClose={closeCreateModal}
+        />
+      )}
     </S.Page>
   )
-}
-
-/** Up to 5 page numbers centred on the current page. */
-function pageWindow(current: number, pages: number): number[] {
-  const size = Math.min(5, pages)
-  const start = Math.min(Math.max(1, current - 2), pages - size + 1)
-  return Array.from({ length: size }, (_, i) => start + i)
 }
 
 export { CollectionsPage }

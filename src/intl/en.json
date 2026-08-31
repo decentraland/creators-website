@@ -9,7 +9,6 @@
     "search_placeholder": "Search Collection",
     "open_editor": "Open editor",
     "new_collection": "New collection",
-    "coming_soon": "Coming soon",
     "filter": {
       "all": "All",
       "published": "Published",
@@ -22,11 +21,6 @@
     "view_list": "List view",
     "item_count": "{count, plural, one {# Item} other {# Items}}",
     "updated_ago": "Updated {timeAgo}",
-    "status": {
-      "published": "Published",
-      "under_review": "Under review",
-      "draft": "Draft"
-    },
     "list": {
       "collection": "Collection",
       "items": "Items",
@@ -37,8 +31,6 @@
     },
     "row_actions": "Collection actions",
     "showing": "Showing {shown} of {total} collections",
-    "previous_page": "Previous page",
-    "next_page": "Next page",
     "sign_in": {
       "title": "Sign in to view your collections",
       "action": "Sign in"
@@ -60,8 +52,123 @@
       "retry": "Try again"
     }
   },
+  "collection_status": {
+    "published": "Published",
+    "under_review": "Under review",
+    "draft": "Draft"
+  },
+  "pagination": {
+    "previous": "Previous page",
+    "next": "Next page"
+  },
+  "modal": {
+    "close": "Close"
+  },
+  "collection_name_modal": {
+    "title": "{variant, select, create {New Collection} other {Rename Collection}}",
+    "heading": "{variant, select, create {Name your collection} other {Choose a new name}}",
+    "subtitle": "This is the name people will see in the Shop.",
+    "name_label": "Collection Name",
+    "name_placeholder": "e.g. Halloween",
+    "char_count": "{count}/{max}",
+    "cancel": "Cancel",
+    "submit": "{variant, select, create {Continue} other {Save}}",
+    "error_invalid_character": "The \":\" character can't be used in collection names.",
+    "error_name_taken": "That name is already in use. Try another one.",
+    "error_generic": "{variant, select, create {We couldn't create your collection. Please try again.} other {We couldn't rename your collection. Please try again.}}"
+  },
   "collection_detail_page": {
-    "title": "Collection"
+    "back": "Back to collections",
+    "rename": "Rename collection",
+    "search_placeholder": "Search Item",
+    "add_items": "Add Items",
+    "publish": "Publish Collection",
+    "more_actions": "More actions",
+    "coming_soon": "Coming soon",
+    "items_count": "Items ({count})",
+    "no_items": "No items yet",
+    "list": {
+      "item": "Item",
+      "body_type": "Body Type",
+      "rarity": "Rarity",
+      "category": "Category",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "row_actions": "Item actions",
+    "body_type": {
+      "male": "Male",
+      "female": "Female",
+      "both": "Unisex"
+    },
+    "rarity": {
+      "unique": "Unique",
+      "mythic": "Mythic",
+      "exotic": "Exotic",
+      "legendary": "Legendary",
+      "epic": "Epic",
+      "rare": "Rare",
+      "uncommon": "Uncommon",
+      "common": "Common"
+    },
+    "category": {
+      "eyebrows": "Eyebrows",
+      "eyes": "Eyes",
+      "facial_hair": "Facial Hair",
+      "hair": "Hair",
+      "body_shape": "Body Shape",
+      "mouth": "Mouth",
+      "upper_body": "Upper Body",
+      "lower_body": "Lower Body",
+      "feet": "Feet",
+      "earring": "Earring",
+      "eyewear": "Eyewear",
+      "hat": "Hat",
+      "helmet": "Helmet",
+      "mask": "Mask",
+      "tiara": "Tiara",
+      "top_head": "Top Head",
+      "skin": "Skin",
+      "hands_wear": "Handwear",
+      "dance": "Dance",
+      "stunt": "Stunt",
+      "greetings": "Greetings",
+      "fun": "Fun",
+      "poses": "Poses",
+      "reactions": "Reactions",
+      "horror": "Horror",
+      "miscellaneous": "Miscellaneous"
+    },
+    "status": {
+      "published": "Published",
+      "under_review": "Under review",
+      "draft": "Draft"
+    },
+    "empty": {
+      "title": "Add items to your collection",
+      "description": "Drag and drop your files here, or <browse>browse your device</browse> to get started.",
+      "description_mobile": "Add items to this collection from your desktop.",
+      "formats": "(Supported formats: GLB, GLTF, PNG, ZIP size: 1340 × 670)"
+    },
+    "no_results": {
+      "title": "No items found",
+      "description": "Try a different search."
+    },
+    "not_found": {
+      "title": "Collection not found",
+      "description": "It may have been deleted, or you may not have access to it.",
+      "back": "Back to collections"
+    },
+    "error": {
+      "title": "Something went wrong",
+      "description": "We couldn't load this collection. Please try again.",
+      "retry": "Try again"
+    },
+    "sign_in": {
+      "title": "Sign in to view this collection",
+      "action": "Sign in"
+    },
+    "showing": "Showing {shown} of {total} items"
   },
   "item_detail_page": {
     "title": "Item"

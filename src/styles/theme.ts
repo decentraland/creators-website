@@ -45,6 +45,12 @@ const colors = {
   overlayStrong: 'rgba(0, 0, 0, 0.6)',
   overlayHover: 'rgba(0, 0, 0, 0.55)',
   chipDark: 'rgba(0, 0, 0, 0.3)',
+  // Modal surface: the solid deep purple dialogs sit on (Figma "Create Collection Modal").
+  modalSurface: '#4c147c',
+  // System/info blues (Figma "Status Tab" draft variant).
+  info: '#1764c0',
+  infoLight: '#63b4f6',
+  infoLighter: '#bbdefb',
   // Sub-nav band: translucent deep purple (#401458, shop's designer value), deepening on scroll.
   subnavOverlay: 'rgba(64, 20, 88, 0.2)',
   subnavOverlayScrolled: 'rgba(64, 20, 88, 0.8)',
@@ -69,7 +75,8 @@ const radius = {
   btn: '12px',
   pill: '50px',
   banner: '24px',
-  modal: '16px'
+  modal: '16px',
+  dropzone: '20px'
 } as const
 
 const font = {

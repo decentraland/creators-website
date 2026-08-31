@@ -3,7 +3,7 @@ import { useTranslation } from '~/intl'
 import { formatTimeAgo } from '~/lib/time'
 import { type Collection } from '~/lib/collections'
 import { CollectionMosaic } from '../CollectionMosaic'
-import { CollectionStatusPill } from '../CollectionStatusPill'
+import { CollectionStatusPill } from '~/components/CollectionStatusPill'
 import * as S from './CollectionCard.styles'
 
 type Props = {
