@@ -174,9 +174,10 @@ export type CollectionNameError = 'empty' | 'too_long' | 'invalid_character'
 
 // Same rules the legacy builder enforces: non-empty, ≤32 chars, and no ':' (names feed URNs).
 export function validateCollectionName(name: string): CollectionNameError | null {
-  if (!name.trim()) return 'empty'
-  if (name.length > COLLECTION_NAME_MAX_LENGTH) return 'too_long'
-  if (name.includes(':')) return 'invalid_character'
+  const trimmed = name.trim()
+  if (!trimmed) return 'empty'
+  if (trimmed.length > COLLECTION_NAME_MAX_LENGTH) return 'too_long'
+  if (trimmed.includes(':')) return 'invalid_character'
   return null
 }
 

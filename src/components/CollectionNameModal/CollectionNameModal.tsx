@@ -20,6 +20,8 @@ export function CollectionNameModal({ variant, initialName = '', isPending, erro
   const { t } = useTranslation()
   const [name, setName] = useState(initialName)
   const [localError, setLocalError] = useState<string | null>(null)
+  // Hides a stale server error once the user starts typing a different name.
+  const [editedSinceSubmit, setEditedSinceSubmit] = useState(false)
 
   const trimmed = name.trim()
 
@@ -32,14 +34,16 @@ export function CollectionNameModal({ variant, initialName = '', isPending, erro
       return
     }
     setLocalError(null)
+    setEditedSinceSubmit(false)
     onSubmit(trimmed)
   }
 
   const serverError =
-    error &&
-    (error === NAME_ALREADY_IN_USE_ERROR
-      ? t('collection_name_modal.error_name_taken')
-      : t('collection_name_modal.error_generic', { variant }))
+    error && !editedSinceSubmit
+      ? error === NAME_ALREADY_IN_USE_ERROR
+        ? t('collection_name_modal.error_name_taken')
+        : t('collection_name_modal.error_generic', { variant })
+      : null
   const shownError = localError ?? serverError
 
   return (
@@ -67,6 +71,7 @@ export function CollectionNameModal({ variant, initialName = '', isPending, erro
                 onChange={event => {
                   setName(event.target.value)
                   setLocalError(null)
+                  setEditedSinceSubmit(true)
                 }}
               />
               <S.CharCount data-testid="collection-name-count">

@@ -59,6 +59,13 @@ describe('CollectionNameModal', () => {
     expect(screen.getByTestId('collection-name-error')).toHaveTextContent(/already in use/i)
   })
 
+  it('hides a stale server error once the user edits the name', async () => {
+    renderModal({ error: NAME_ALREADY_IN_USE_ERROR })
+    expect(screen.getByTestId('collection-name-error')).toBeInTheDocument()
+    await userEvent.type(screen.getByTestId('collection-name-input'), 'Another Name')
+    expect(screen.queryByTestId('collection-name-error')).not.toBeInTheDocument()
+  })
+
   it('shows generic copy for any other server error, never the raw message', () => {
     renderModal({ error: 'ECONNREFUSED 10.0.0.1' })
     const error = screen.getByTestId('collection-name-error')
