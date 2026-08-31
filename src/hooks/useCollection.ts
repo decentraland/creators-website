@@ -34,9 +34,10 @@ export function useSaveCollection(address: string | undefined) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (collection: Collection) => {
-      const items = collection.itemCount > 0 ? await fetchAllCollectionItems(address!, collection.id) : []
-      const data = buildCollectionInitializeData(collection, items, address!)
-      return saveCollection(address!, collection, data)
+      if (!address) throw new Error('Wallet disconnected')
+      const items = collection.itemCount > 0 ? await fetchAllCollectionItems(address, collection.id) : []
+      const data = buildCollectionInitializeData(collection, items, address)
+      return saveCollection(address, collection, data)
     },
     onSuccess: saved => {
       queryClient.setQueryData(['collection', address, saved.id], saved)

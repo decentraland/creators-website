@@ -27,6 +27,27 @@ export function Modal({ title, onClose, children, closeDisabled = false, testId 
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape' && !closeDisabledRef.current) closeRef.current()
+
+      // aria-modal alone doesn't stop Tab from reaching the page behind the scrim.
+      if (event.key !== 'Tab' || !dialogRef.current) return
+      const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+      if (focusables.length === 0) {
+        event.preventDefault()
+        return
+      }
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      const active = document.activeElement
+      const isInside = dialogRef.current.contains(active)
+      if (event.shiftKey && (active === first || !isInside)) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && (active === last || !isInside)) {
+        event.preventDefault()
+        first.focus()
+      }
     }
     document.addEventListener('keydown', onKeyDown)
 

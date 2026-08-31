@@ -168,7 +168,8 @@
       "title": "Sign in to view this collection",
       "action": "Sign in"
     },
-    "showing": "Showing {shown} of {total} items"
+    "showing": "Showing {shown} of {total} items",
+    "showing_filtered": "Showing {shown} matching {shown, plural, one {item} other {items}} on this page"
   },
   "item_detail_page": {
     "title": "Item"

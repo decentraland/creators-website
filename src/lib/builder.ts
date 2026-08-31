@@ -47,9 +47,9 @@ async function request<T>(
     init.headers = { 'Content-Type': 'application/json' }
   }
   const response = await signedFetch(address, baseUrl(), `${path}${query}`, init)
-  const parsed = (await response.json().catch((err: Error) => {
+  const parsed = (await response.json().catch(() => {
     throw new BuilderServerError(
-      `builder-server returned a non-JSON response: ${method} ${path} (${response.status}): ${err.message}`,
+      `builder-server returned a non-JSON response: ${method} ${path} (${response.status})`,
       response.status
     )
   })) as { ok?: boolean; data?: T; error?: string }

@@ -168,7 +168,8 @@
       "title": "Inicia sesión para ver esta colección",
       "action": "Iniciar sesión"
     },
-    "showing": "Mostrando {shown} de {total} ítems"
+    "showing": "Mostrando {shown} de {total} ítems",
+    "showing_filtered": "Mostrando {shown} {shown, plural, one {ítem coincidente} other {ítems coincidentes}} en esta página"
   },
   "item_detail_page": {
     "title": "Item"

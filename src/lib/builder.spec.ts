@@ -73,7 +73,7 @@ describe('fetchCollections', () => {
       status: 200,
       json: () => Promise.reject(new Error('Unexpected token <'))
     })
-    await expect(fetchCollections(ADDRESS, { page: 1 })).rejects.toThrow(/non-JSON response.*Unexpected token </)
+    await expect(fetchCollections(ADDRESS, { page: 1 })).rejects.toThrow(/non-JSON response/)
   })
 
   it('throws when a successful envelope carries no data', async () => {

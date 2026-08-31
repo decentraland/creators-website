@@ -243,7 +243,10 @@ const CollectionDetailPage = () => {
               )}
               <S.FooterRow>
                 <S.ShowingCount data-testid="items-showing">
-                  {t('collection_detail_page.showing', { shown: filtered.length, total })}
+                  {/* The search filters only the loaded page, so the cross-page total would mislead. */}
+                  {query
+                    ? t('collection_detail_page.showing_filtered', { shown: filtered.length })
+                    : t('collection_detail_page.showing', { shown: filtered.length, total })}
                 </S.ShowingCount>
                 {pages > 1 && <Pagination page={page} pages={pages} onPageChange={goToPage} />}
               </S.FooterRow>

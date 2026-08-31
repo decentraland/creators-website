@@ -98,7 +98,7 @@ export function fromRemoteItem(remote: RemoteItem): Item {
 }
 
 /** All distinct body shapes across an item's representations. */
-export function getBodyShapes(item: Item): string[] {
+function getBodyShapes(item: Item): string[] {
   const bodyShapes = new Set<string>()
   for (const representation of item.data.representations) {
     for (const bodyShape of representation.bodyShapes) bodyShapes.add(bodyShape)

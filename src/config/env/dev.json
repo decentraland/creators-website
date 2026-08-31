@@ -5,7 +5,7 @@
   "AUTH_URL": "/auth",
   "PEER_URL": "https://peer.decentraland.zone",
   "BUILDER_URL": "https://decentraland.zone/builder",
-  "CREATE_URL": "http://localhost:5173/create",
+  "CREATE_URL": "https://decentraland.zone/create",
   "MATIC_URN_PROTOCOL": "amoy",
   "ERC721_COLLECTION_BASE_URI": "https://peer.decentraland.zone/lambdas/collections/standard/erc721/",
   "RARITIES_WITH_ORACLE_ADDRESS": "0x25b6b4bac4adb582a0abd475439da6730777fbf7"
