@@ -28,3 +28,5 @@ coverage/*
 
 # local env (prebuild.cjs rewrites it on every build)
 .env
+
+design/*

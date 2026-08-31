@@ -11,7 +11,7 @@ export function CollectionStatusPill({ collection }: Props) {
   const status = getCollectionDisplayStatus(collection)
   return (
     <S.Pill data-testid="collection-status" data-status={status}>
-      {t(`collections_page.status.${status}`)}
+      {t(`collection_status.${status}`)}
     </S.Pill>
   )
 }

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  COLLECTION_NAME_MAX_LENGTH,
   CollectionDisplayStatus,
   CollectionSort,
   CollectionStatusFilter,
@@ -7,8 +8,11 @@ import {
   CurationStatus,
   fromRemoteCollection,
   getCollectionDisplayStatus,
+  isCollectionLocked,
   statusFilterToParams,
   toCollectionsQueryString,
+  toRemoteCollection,
+  validateCollectionName,
   type Collection,
   type RemoteCollection
 } from './collections'
@@ -110,5 +114,67 @@ describe('getCollectionDisplayStatus', () => {
     expect(getCollectionDisplayStatus(withFlags(true, true))).toBe(CollectionDisplayStatus.PUBLISHED)
     expect(getCollectionDisplayStatus(withFlags(true, false))).toBe(CollectionDisplayStatus.UNDER_REVIEW)
     expect(getCollectionDisplayStatus(withFlags(false, false))).toBe(CollectionDisplayStatus.DRAFT)
+  })
+})
+
+describe('validateCollectionName', () => {
+  it('rejects empty, over-long and colon-containing names, accepts the rest', () => {
+    expect(validateCollectionName('')).toBe('empty')
+    expect(validateCollectionName('   ')).toBe('empty')
+    expect(validateCollectionName('a'.repeat(COLLECTION_NAME_MAX_LENGTH + 1))).toBe('too_long')
+    expect(validateCollectionName('urn:like')).toBe('invalid_character')
+    expect(validateCollectionName('Pirate Hats')).toBeNull()
+    expect(validateCollectionName('a'.repeat(COLLECTION_NAME_MAX_LENGTH))).toBeNull()
+  })
+})
+
+describe('isCollectionLocked', () => {
+  const base = fromRemoteCollection(remote)
+  const HOUR = 3_600_000
+
+  it('locks for a day after the lock timestamp, unless published', () => {
+    const now = Date.now()
+    const draft = { ...base, isPublished: false }
+    expect(isCollectionLocked({ ...draft, lock: now - HOUR }, now)).toBe(true)
+    expect(isCollectionLocked({ ...draft, lock: now - 25 * HOUR }, now)).toBe(false)
+    expect(isCollectionLocked({ ...draft, lock: undefined }, now)).toBe(false)
+    expect(isCollectionLocked({ ...base, isPublished: true, lock: now - HOUR }, now)).toBe(false)
+  })
+})
+
+describe('toRemoteCollection', () => {
+  it('maps to the snake_case upsert payload, forcing the publish flags off', () => {
+    const collection = fromRemoteCollection(remote)
+    expect(toRemoteCollection(collection)).toEqual({
+      id: 'a1b2',
+      name: 'Pirate Hats',
+      eth_address: remote.eth_address,
+      salt: '0xsalt',
+      contract_address: '0xcontract',
+      urn: remote.urn,
+      is_published: false,
+      is_approved: false,
+      linked_contract_address: null,
+      linked_contract_network: null,
+      minters: ['0xminter'],
+      managers: [],
+      forum_link: null,
+      reviewed_at: '2026-04-01T10:00:00.000Z'
+    })
+  })
+
+  it('nulls absent optionals', () => {
+    const collection = fromRemoteCollection({
+      ...remote,
+      salt: null,
+      contract_address: null,
+      forum_link: null,
+      reviewed_at: null
+    })
+    const payload = toRemoteCollection(collection)
+    expect(payload.salt).toBeNull()
+    expect(payload.contract_address).toBeNull()
+    expect(payload.forum_link).toBeNull()
+    expect(payload.reviewed_at).toBeNull()
   })
 })

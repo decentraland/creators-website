@@ -161,3 +161,52 @@ export function getCollectionDisplayStatus(collection: Collection): CollectionDi
   if (!collection.isPublished) return CollectionDisplayStatus.DRAFT
   return collection.isApproved ? CollectionDisplayStatus.PUBLISHED : CollectionDisplayStatus.UNDER_REVIEW
 }
+
+// Same limit as the legacy builder's standard collections (the server schema allows 42, but the
+// legacy UI caps standard collections at 32 and we keep that contract).
+export const COLLECTION_NAME_MAX_LENGTH = 32
+
+// The exact error string builder-server answers when the (globally unique, case-insensitive)
+// collection name is taken — the legacy front end string-matches it too.
+export const NAME_ALREADY_IN_USE_ERROR = 'Name already in use'
+
+export type CollectionNameError = 'empty' | 'too_long' | 'invalid_character'
+
+// Same rules the legacy builder enforces: non-empty, ≤32 chars, and no ':' (names feed URNs).
+export function validateCollectionName(name: string): CollectionNameError | null {
+  const trimmed = name.trim()
+  if (!trimmed) return 'empty'
+  if (trimmed.length > COLLECTION_NAME_MAX_LENGTH) return 'too_long'
+  if (trimmed.includes(':')) return 'invalid_character'
+  return null
+}
+
+/** Whether the collection is under the one-day publish lock (legacy `isLocked`). */
+export function isCollectionLocked(collection: Collection, now = Date.now()): boolean {
+  if (!collection.lock || collection.isPublished) return false
+  const DAY = 24 * 60 * 60 * 1000
+  return collection.lock + DAY > now
+}
+
+// The PUT payload shape, mirroring the legacy toRemoteCollection: is_published/is_approved are
+// forced false because the server rejects attempts to change them through an upsert.
+export function toRemoteCollection(
+  collection: Collection
+): Omit<RemoteCollection, 'created_at' | 'updated_at' | 'lock' | 'is_mapping_complete'> {
+  return {
+    id: collection.id,
+    name: collection.name,
+    eth_address: collection.owner,
+    salt: collection.salt || null,
+    contract_address: collection.contractAddress || null,
+    urn: collection.urn,
+    is_published: false,
+    is_approved: false,
+    linked_contract_address: collection.linkedContractAddress || null,
+    linked_contract_network: collection.linkedContractNetwork || null,
+    minters: collection.minters,
+    managers: collection.managers,
+    forum_link: collection.forumLink || null,
+    reviewed_at: collection.reviewedAt ? new Date(collection.reviewedAt).toISOString() : null
+  }
+}

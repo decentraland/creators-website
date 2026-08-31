@@ -9,7 +9,6 @@
     "search_placeholder": "Buscar colección",
     "open_editor": "Abrir editor",
     "new_collection": "Nueva colección",
-    "coming_soon": "Próximamente",
     "filter": {
       "all": "Todas",
       "published": "Publicadas",
@@ -22,11 +21,6 @@
     "view_list": "Vista de lista",
     "item_count": "{count, plural, one {# ítem} other {# ítems}}",
     "updated_ago": "Actualizada {timeAgo}",
-    "status": {
-      "published": "Publicada",
-      "under_review": "En revisión",
-      "draft": "Borrador"
-    },
     "list": {
       "collection": "Colección",
       "items": "Ítems",
@@ -37,8 +31,6 @@
     },
     "row_actions": "Acciones de la colección",
     "showing": "Mostrando {shown} de {total} colecciones",
-    "previous_page": "Página anterior",
-    "next_page": "Página siguiente",
     "sign_in": {
       "title": "Inicia sesión para ver tus colecciones",
       "action": "Iniciar sesión"
@@ -60,8 +52,124 @@
       "retry": "Intentar de nuevo"
     }
   },
+  "collection_status": {
+    "published": "Publicada",
+    "under_review": "En revisión",
+    "draft": "Borrador"
+  },
+  "pagination": {
+    "previous": "Página anterior",
+    "next": "Página siguiente"
+  },
+  "modal": {
+    "close": "Cerrar"
+  },
+  "collection_name_modal": {
+    "title": "{variant, select, create {Nueva colección} other {Renombrar colección}}",
+    "heading": "{variant, select, create {Ponle nombre a tu colección} other {Elige un nuevo nombre}}",
+    "subtitle": "Este es el nombre que la gente verá en el Shop.",
+    "name_label": "Nombre de la colección",
+    "name_placeholder": "p. ej. Halloween",
+    "char_count": "{count}/{max}",
+    "cancel": "Cancelar",
+    "submit": "{variant, select, create {Continuar} other {Guardar}}",
+    "error_invalid_character": "El carácter \":\" no se puede usar en nombres de colecciones.",
+    "error_name_taken": "Ese nombre ya está en uso. Prueba con otro.",
+    "error_generic": "{variant, select, create {No pudimos crear tu colección. Inténtalo de nuevo.} other {No pudimos renombrar tu colección. Inténtalo de nuevo.}}"
+  },
   "collection_detail_page": {
-    "title": "Colección"
+    "back": "Volver a colecciones",
+    "rename": "Renombrar colección",
+    "search_placeholder": "Buscar ítem",
+    "add_items": "Agregar ítems",
+    "publish": "Publicar colección",
+    "more_actions": "Más acciones",
+    "coming_soon": "Próximamente",
+    "items_count": "Ítems ({count})",
+    "no_items": "Aún no hay ítems",
+    "list": {
+      "item": "Ítem",
+      "body_type": "Tipo de cuerpo",
+      "rarity": "Rareza",
+      "category": "Categoría",
+      "status": "Estado",
+      "actions": "Acciones"
+    },
+    "row_actions": "Acciones del ítem",
+    "body_type": {
+      "male": "Masculino",
+      "female": "Femenino",
+      "both": "Unisex"
+    },
+    "rarity": {
+      "unique": "Único",
+      "mythic": "Mítico",
+      "exotic": "Exótico",
+      "legendary": "Legendario",
+      "epic": "Épico",
+      "rare": "Raro",
+      "uncommon": "Poco común",
+      "common": "Común"
+    },
+    "category": {
+      "eyebrows": "Cejas",
+      "eyes": "Ojos",
+      "facial_hair": "Vello facial",
+      "hair": "Pelo",
+      "body_shape": "Cuerpo",
+      "mouth": "Boca",
+      "upper_body": "Parte superior",
+      "lower_body": "Parte inferior",
+      "feet": "Pies",
+      "earring": "Aretes",
+      "eyewear": "Gafas",
+      "hat": "Sombrero",
+      "helmet": "Casco",
+      "mask": "Máscara",
+      "tiara": "Tiara",
+      "top_head": "Sobre la cabeza",
+      "skin": "Piel",
+      "hands_wear": "Manos",
+      "dance": "Baile",
+      "stunt": "Acrobacia",
+      "greetings": "Saludos",
+      "fun": "Diversión",
+      "poses": "Poses",
+      "reactions": "Reacciones",
+      "horror": "Terror",
+      "miscellaneous": "Varios"
+    },
+    "status": {
+      "published": "Publicado",
+      "under_review": "En revisión",
+      "draft": "Borrador"
+    },
+    "empty": {
+      "title": "Agrega ítems a tu colección",
+      "description": "Arrastra y suelta tus archivos aquí, o <browse>explora tu dispositivo</browse> para empezar.",
+      "description_mobile": "Agrega ítems a esta colección desde tu computadora.",
+      "formats": "(Formatos soportados: GLB, GLTF, PNG, ZIP; tamaño: 1340 × 670)"
+    },
+    "no_results": {
+      "title": "No se encontraron ítems",
+      "description": "Prueba con otra búsqueda."
+    },
+    "not_found": {
+      "title": "Colección no encontrada",
+      "description": "Puede que haya sido eliminada o que no tengas acceso a ella.",
+      "back": "Volver a colecciones"
+    },
+    "error": {
+      "title": "Algo salió mal",
+      "description": "No pudimos cargar esta colección. Inténtalo de nuevo.",
+      "retry": "Intentar de nuevo"
+    },
+    "sign_in": {
+      "title": "Inicia sesión para ver esta colección",
+      "action": "Iniciar sesión"
+    },
+    "showing": "Mostrando {shown} de {total} ítems",
+    "showing_filtered": "Mostrando {shown} {shown, plural, one {ítem coincidente} other {ítems coincidentes}} en esta página"
   },
   "item_detail_page": {
     "title": "Item"
