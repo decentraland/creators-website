@@ -11,7 +11,7 @@ export const Scrim = styled.div`
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: ${theme.colors.overlayStrong};
+  background: ${theme.colors.scrim};
 `
 
 export const Dialog = styled.div`
@@ -38,8 +38,6 @@ export const TitleBar = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid ${theme.colors.gray0};
 `
 
 export const Title = styled.h2`

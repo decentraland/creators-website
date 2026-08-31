@@ -43,6 +43,8 @@ const colors = {
   overlay: 'rgba(0, 0, 0, 0.4)',
   overlayLight: 'rgba(0, 0, 0, 0.2)',
   overlayStrong: 'rgba(0, 0, 0, 0.6)',
+  // Full-screen modal scrim.
+  scrim: 'rgba(0, 0, 0, 0.8)',
   overlayHover: 'rgba(0, 0, 0, 0.55)',
   chipDark: 'rgba(0, 0, 0, 0.3)',
   // Modal surface: the solid deep purple dialogs sit on (Figma "Create Collection Modal").
