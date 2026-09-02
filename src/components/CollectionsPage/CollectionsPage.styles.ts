@@ -4,16 +4,7 @@ import { listColumns } from './CollectionListRow/CollectionListRow.styles'
 
 import { SearchBox as SharedSearchBox } from '~/styles/shared'
 
-export {
-  ActionButton,
-  ActionLink,
-  FooterRow,
-  Panel,
-  PanelText,
-  PanelTitle,
-  SearchSpinner,
-  ShowingCount
-} from '~/styles/shared'
+export { FooterRow, Panel, PanelText, PanelTitle, SearchSpinner, ShowingCount } from '~/styles/shared'
 
 const mobile = theme.media.maxWidth('mobile')
 const stacked = theme.media.maxWidth('xl')

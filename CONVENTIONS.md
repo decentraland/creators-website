@@ -38,3 +38,12 @@ Only `src/config/` may read `window.location.search`, query params, or `window.p
 ### 4. The router is created at one call site
 
 One file creates the router, with `basename` taken from config. No other module constructs routers or assumes how the app is served (path, host, hash), so serving from a different origin/path under a host is a one-file change.
+
+## Icons
+
+Two sources, nothing else — no icon fonts, no SVG loader/svgr, no per-icon `<img>`:
+
+- **Generic glyphs** (add, edit, chevrons, more, close, search…) come from `@mui/icons-material`, which decentraland-ui2 already ships: `import { Add as AddIcon } from '@mui/icons-material'`. Prefer these whenever the design uses a stock Material glyph.
+- **Figma-specific glyphs** (brand/product icons that have no Material equivalent, e.g. Jump In, Open Editor) live in `src/components/Icons/`, one file per icon (`JumpInIcon.tsx`), re-exported from `index.ts`. Each is a plain React component rendering an inline `<svg>` with `fill="currentColor"`, `aria-hidden`, `focusable="false"`, the design's intrinsic `width`/`height`, and `...props: SVGProps<SVGSVGElement>` spread last so callers can override. Paste the Figma path data as-is; drop wrappers (`<g clip-path>`, `<defs>`) and hard-coded fills so the glyph inherits the button/text color. Never import `@mui/material` to build icons — it is only a transitive dependency here.
+
+Icons are decorative: the accessible name comes from the button/link text or its `aria-label`, never from the SVG.

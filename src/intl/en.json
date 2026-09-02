@@ -30,7 +30,7 @@
       "actions": "Actions"
     },
     "row_actions": "Collection actions",
-    "showing": "Showing {shown} of {total} {total, plural, one {collection} other {collections}}",
+    "showing": "Showing {range} of {total} {total, plural, one {collection} other {collections}}",
     "sign_in": {
       "title": "Sign in to view your collections",
       "action": "Sign in"
@@ -81,7 +81,6 @@
   "collection_detail_page": {
     "back": "Back to collections",
     "rename": "Rename collection",
-    "search_placeholder": "Search Item",
     "add_items": "Add Items",
     "open_editor": "Open Editor",
     "publish": "Publish Collection",
@@ -149,13 +148,10 @@
     },
     "empty": {
       "title": "Add items to your collection",
+      "title_mobile": "Add items from desktop",
       "description": "Drag and drop your files here, or <browse>browse your device</browse> to get started.",
-      "description_mobile": "Add items to this collection from your desktop.",
+      "description_mobile": "To add items to your collection, open the Builder on a desktop device.",
       "formats": "(Supported formats: GLB, GLTF, PNG, ZIP · Max 3MB per item, 8MB for skins)"
-    },
-    "no_results": {
-      "title": "No items found",
-      "description": "Try a different search."
     },
     "not_found": {
       "title": "Collection not found",

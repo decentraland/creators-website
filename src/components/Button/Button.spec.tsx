@@ -25,4 +25,13 @@ describe('Button', () => {
     await userEvent.click(button)
     expect(onClick).not.toHaveBeenCalled()
   })
+
+  it('renders as a link when asked to', () => {
+    render(
+      <Button as="a" href="https://example.com" variant="secondary">
+        Learn more
+      </Button>
+    )
+    expect(screen.getByRole('link', { name: 'Learn more' })).toHaveAttribute('href', 'https://example.com')
+  })
 })

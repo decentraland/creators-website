@@ -29,9 +29,9 @@ export const Dialog = styled.div`
   outline: none;
 
   &[data-size='wide'] {
-    width: 1240px;
+    width: 1100px;
     height: 100%;
-    max-height: 860px;
+    max-height: 800px;
   }
 
   ${mobile} {
@@ -94,5 +94,9 @@ export const Body = styled.div`
 
   ${mobile} {
     padding-top: 32px;
+
+    &[data-titleless] {
+      padding-top: 0;
+    }
   }
 `

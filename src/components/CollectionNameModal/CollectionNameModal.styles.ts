@@ -1,6 +1,5 @@
 import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
-import { ActionButton } from '~/styles/shared'
 
 export const Form = styled.form`
   display: flex;
@@ -50,7 +49,7 @@ export const FieldBox = styled.div`
   background: rgba(255, 255, 255, 0.05);
 
   &[data-invalid] {
-    border-color: ${theme.colors.errStrong};
+    border-color: ${theme.colors.errLight};
   }
 
   & input {
@@ -79,7 +78,22 @@ export const ErrorText = styled.p`
   margin: 8px 0 0;
   font-size: 13px;
   line-height: 1.4;
-  color: ${theme.colors.errStrong};
+  color: ${theme.colors.errLight};
+`
+
+export const HintText = styled.p`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: ${theme.colors.gray4};
+
+  & svg {
+    flex: none;
+    font-size: 16px;
+  }
 `
 
 export const Actions = styled.div`
@@ -94,5 +108,3 @@ export const Actions = styled.div`
     min-width: 0;
   }
 `
-
-export { ActionButton }

@@ -30,7 +30,7 @@
       "actions": "Acciones"
     },
     "row_actions": "Acciones de la colección",
-    "showing": "Mostrando {shown} de {total} {total, plural, one {colección} other {colecciones}}",
+    "showing": "Mostrando {range} de {total} {total, plural, one {colección} other {colecciones}}",
     "sign_in": {
       "title": "Inicia sesión para ver tus colecciones",
       "action": "Iniciar sesión"
@@ -81,7 +81,6 @@
   "collection_detail_page": {
     "back": "Volver a colecciones",
     "rename": "Renombrar colección",
-    "search_placeholder": "Buscar ítem",
     "add_items": "Agregar ítems",
     "open_editor": "Abrir editor",
     "publish": "Publicar colección",
@@ -149,13 +148,10 @@
     },
     "empty": {
       "title": "Agrega ítems a tu colección",
+      "title_mobile": "Agrega ítems desde tu computadora",
       "description": "Arrastra y suelta tus archivos aquí, o <browse>explora tu dispositivo</browse> para empezar.",
-      "description_mobile": "Agrega ítems a esta colección desde tu computadora.",
+      "description_mobile": "Para agregar ítems a tu colección, abre el Builder en una computadora.",
       "formats": "(Formatos soportados: GLB, GLTF, PNG, ZIP · Máx. 3MB por ítem, 8MB para skins)"
-    },
-    "no_results": {
-      "title": "No se encontraron ítems",
-      "description": "Prueba con otra búsqueda."
     },
     "not_found": {
       "title": "Colección no encontrada",
