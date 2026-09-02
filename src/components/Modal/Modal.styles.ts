@@ -28,6 +28,12 @@ export const Dialog = styled.div`
   overflow: hidden;
   outline: none;
 
+  &[data-size='wide'] {
+    width: 1240px;
+    height: 100%;
+    max-height: 860px;
+  }
+
   ${mobile} {
     padding: 24px 16px;
   }
@@ -71,6 +77,20 @@ export const CloseButton = styled.button`
 export const Body = styled.div`
   padding-top: 48px;
   overflow-y: auto;
+
+  &[data-titleless] {
+    padding-top: 0;
+  }
+
+  /* The wide dialog's body owns the remaining height; inner panes manage their own scroll. */
+  [data-size='wide'] > & {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+    padding-top: 24px;
+    overflow: hidden;
+  }
 
   ${mobile} {
     padding-top: 32px;

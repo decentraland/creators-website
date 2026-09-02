@@ -3,14 +3,13 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Add as AddIcon,
   FormatListBulleted as FormatListBulletedIcon,
-  FormatShapes as FormatShapesIcon,
   GridView as GridViewIcon,
   PersonOutline as PersonOutlineIcon,
   Search as SearchIcon
 } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
-import { useCollections, useRejectedCollectionsCount } from '~/hooks/useCollections'
+import { COLLECTIONS_PAGE_SIZE, useCollections, useRejectedCollectionsCount } from '~/hooks/useCollections'
 import { useSaveCollection } from '~/hooks/useCollection'
 import { CollectionStatusFilter } from '~/lib/collections'
 import { buildNewCollection } from '~/lib/saveCollection'
@@ -104,11 +103,6 @@ const CollectionsPage = () => {
     else setCreateOpen(true)
   }
 
-  function onOpenEditor() {
-    if (!session) signIn()
-    else navigate('/collections/editor')
-  }
-
   const data = collections.data
   const total = data?.total ?? 0
   const pages = data?.pages ?? 0
@@ -117,6 +111,8 @@ const CollectionsPage = () => {
   const isEmpty = !!data && total === 0 && !hasActiveFilters
   const noResults = !!data && total === 0 && hasActiveFilters
   const isLoading = !restored || (!!address && (collections.isLoading || (collections.isFetching && !data)))
+  // Debounce window (input ahead of the URL) or a refetch with a search applied.
+  const isSearching = searchInput.trim() !== search || (!!search && collections.isFetching)
 
   return (
     <S.Page data-testid="collections-page">
@@ -132,11 +128,8 @@ const CollectionsPage = () => {
               data-testid="collections-search"
               onChange={e => onSearchChange(e.target.value)}
             />
+            {isSearching && <S.SearchSpinner data-testid="search-spinner" aria-hidden />}
           </S.SearchBox>
-          <S.ActionButton type="button" data-variant="secondary" data-testid="open-editor" onClick={onOpenEditor}>
-            <FormatShapesIcon fontSize="small" />
-            {t('collections_page.open_editor')}
-          </S.ActionButton>
           <S.ActionButton type="button" data-variant="primary" data-testid="new-collection" onClick={onNewCollection}>
             <AddIcon fontSize="small" />
             {t('collections_page.new_collection')}
@@ -197,7 +190,7 @@ const CollectionsPage = () => {
         </S.Panel>
       ) : isLoading ? (
         <S.Grid data-testid="collections-loading" aria-hidden>
-          {Array.from({ length: 10 }, (_, i) => (
+          {Array.from({ length: COLLECTIONS_PAGE_SIZE }, (_, i) => (
             <S.SkeletonCard key={i} className="skeleton" />
           ))}
         </S.Grid>
@@ -232,6 +225,7 @@ const CollectionsPage = () => {
         </S.Panel>
       ) : noResults ? (
         <S.Panel data-testid="collections-no-results">
+          <S.EmptyArt src={emptyCollectionsArt} alt="" />
           <S.PanelTitle>{t('collections_page.no_results.title')}</S.PanelTitle>
           <S.PanelText>{t('collections_page.no_results.description')}</S.PanelText>
         </S.Panel>

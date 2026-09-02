@@ -2,6 +2,9 @@ import styled from '@emotion/styled'
 import { Link } from 'react-router-dom'
 import { theme } from '~/styles/theme'
 
+const mobile = theme.media.maxWidth('mobile')
+const desktop = theme.media.minWidth('mobile')
+
 // Shared column template so the header and the rows stay aligned.
 export const listColumns = `
   display: grid;
@@ -16,11 +19,52 @@ export const Row = styled.article`
   padding: 12px 24px 12px 12px;
   border-radius: ${theme.radius.card};
   background: ${theme.colors.overlay};
-  transition: background 0.15s ease;
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+
+  /* Inner 2px gradient border: gradient layer with the padding-box masked out. */
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 2px;
+    background: ${theme.gradients.cerise};
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
 
   &:hover,
   &:focus-within {
     background: ${theme.colors.overlayHover};
+    box-shadow: 0 0 8px ${theme.colors.brandViolet};
+
+    &::after {
+      opacity: 1;
+    }
+  }
+
+  /* The view toggle is desktop-only state; on mobile the row reshapes into the card layout. */
+  ${mobile} {
+    display: flex;
+    flex-direction: column;
+    /* listColumns' align-items: center would center the stacked cells horizontally here. */
+    align-items: stretch;
+    justify-content: center;
+    gap: 8px;
+    height: 136px;
+    padding: 16px 12px 16px calc(136px + 16px);
+    overflow: hidden;
+
+    & [data-testid='collection-row-created'] {
+      display: none;
+    }
   }
 `
 
@@ -44,6 +88,10 @@ export const NameCell = styled.div`
   align-items: center;
   gap: 12px;
   min-width: 0;
+
+  ${mobile} {
+    display: contents;
+  }
 `
 
 export const Thumb = styled.div`
@@ -52,13 +100,22 @@ export const Thumb = styled.div`
   height: 74px;
   border-radius: 6px;
   overflow: hidden;
+
+  ${mobile} {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 136px;
+    height: 100%;
+    border-radius: 0;
+  }
 `
 
 export const Name = styled.h3`
   margin: 0;
   min-width: 0;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.2;
   color: ${theme.colors.softWhite};
   white-space: nowrap;
@@ -72,6 +129,10 @@ export const Cell = styled.div`
   font-weight: 600;
   line-height: 1.57;
   color: ${theme.colors.softWhite};
+
+  ${desktop} {
+    text-align: center;
+  }
 `
 
 export const DateCell = styled.div`
@@ -79,6 +140,11 @@ export const DateCell = styled.div`
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+
+  ${desktop} {
+    align-items: center;
+    text-align: center;
+  }
 
   & strong {
     font-size: 14px;
@@ -90,11 +156,21 @@ export const DateCell = styled.div`
     font-size: 12px;
     color: ${theme.colors.gray4};
   }
+
+  ${mobile} {
+    & span {
+      display: none;
+    }
+  }
 `
 
 export const ActionsCell = styled.div`
   display: flex;
   justify-content: flex-end;
+
+  ${mobile} {
+    display: none;
+  }
 `
 
 export const ActionsButton = styled.button`
@@ -104,8 +180,8 @@ export const ActionsButton = styled.button`
   justify-content: center;
   width: 32px;
   height: 32px;
-  border: 0;
-  border-radius: ${theme.radius.btn};
+  border: 1px solid ${theme.colors.glassLine};
+  border-radius: ${theme.radius.btnSm};
   background: none;
   color: ${theme.colors.softWhite};
 

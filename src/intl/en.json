@@ -7,7 +7,6 @@
   "collections_page": {
     "title": "My collections",
     "search_placeholder": "Search Collection",
-    "open_editor": "Open editor",
     "new_collection": "New collection",
     "filter": {
       "all": "All",
@@ -21,6 +20,7 @@
     "view_list": "List view",
     "item_count": "{count, plural, one {# Item} other {# Items}}",
     "updated_ago": "Updated {timeAgo}",
+    "manage": "Manage",
     "list": {
       "collection": "Collection",
       "items": "Items",
@@ -30,7 +30,7 @@
       "actions": "Actions"
     },
     "row_actions": "Collection actions",
-    "showing": "Showing {shown} of {total} collections",
+    "showing": "Showing {shown} of {total} {total, plural, one {collection} other {collections}}",
     "sign_in": {
       "title": "Sign in to view your collections",
       "action": "Sign in"
@@ -75,14 +75,17 @@
     "submit": "{variant, select, create {Continue} other {Save}}",
     "error_invalid_character": "The \":\" character can't be used in collection names.",
     "error_name_taken": "That name is already in use. Try another one.",
-    "error_generic": "{variant, select, create {We couldn't create your collection. Please try again.} other {We couldn't rename your collection. Please try again.}}"
+    "error_generic": "{variant, select, create {We couldn't create your collection. Please try again.} other {We couldn't rename your collection. Please try again.}}",
+    "unique_hint": "Names must be unique across all Decentraland collections."
   },
   "collection_detail_page": {
     "back": "Back to collections",
     "rename": "Rename collection",
     "search_placeholder": "Search Item",
     "add_items": "Add Items",
+    "open_editor": "Open Editor",
     "publish": "Publish Collection",
+    "preview": "Preview in Decentraland",
     "more_actions": "More actions",
     "coming_soon": "Coming soon",
     "items_count": "Items ({count})",
@@ -148,7 +151,7 @@
       "title": "Add items to your collection",
       "description": "Drag and drop your files here, or <browse>browse your device</browse> to get started.",
       "description_mobile": "Add items to this collection from your desktop.",
-      "formats": "(Supported formats: GLB, GLTF, PNG, ZIP size: 1340 × 670)"
+      "formats": "(Supported formats: GLB, GLTF, PNG, ZIP · Max 3MB per item, 8MB for skins)"
     },
     "no_results": {
       "title": "No items found",

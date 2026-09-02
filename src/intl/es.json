@@ -7,7 +7,6 @@
   "collections_page": {
     "title": "Mis colecciones",
     "search_placeholder": "Buscar colección",
-    "open_editor": "Abrir editor",
     "new_collection": "Nueva colección",
     "filter": {
       "all": "Todas",
@@ -21,6 +20,7 @@
     "view_list": "Vista de lista",
     "item_count": "{count, plural, one {# ítem} other {# ítems}}",
     "updated_ago": "Actualizada {timeAgo}",
+    "manage": "Administrar",
     "list": {
       "collection": "Colección",
       "items": "Ítems",
@@ -30,7 +30,7 @@
       "actions": "Acciones"
     },
     "row_actions": "Acciones de la colección",
-    "showing": "Mostrando {shown} de {total} colecciones",
+    "showing": "Mostrando {shown} de {total} {total, plural, one {colección} other {colecciones}}",
     "sign_in": {
       "title": "Inicia sesión para ver tus colecciones",
       "action": "Iniciar sesión"
@@ -75,14 +75,17 @@
     "submit": "{variant, select, create {Continuar} other {Guardar}}",
     "error_invalid_character": "El carácter \":\" no se puede usar en nombres de colecciones.",
     "error_name_taken": "Ese nombre ya está en uso. Prueba con otro.",
-    "error_generic": "{variant, select, create {No pudimos crear tu colección. Inténtalo de nuevo.} other {No pudimos renombrar tu colección. Inténtalo de nuevo.}}"
+    "error_generic": "{variant, select, create {No pudimos crear tu colección. Inténtalo de nuevo.} other {No pudimos renombrar tu colección. Inténtalo de nuevo.}}",
+    "unique_hint": "El nombre debe ser único entre todas las colecciones de Decentraland."
   },
   "collection_detail_page": {
     "back": "Volver a colecciones",
     "rename": "Renombrar colección",
     "search_placeholder": "Buscar ítem",
     "add_items": "Agregar ítems",
+    "open_editor": "Abrir editor",
     "publish": "Publicar colección",
+    "preview": "Vista previa en Decentraland",
     "more_actions": "Más acciones",
     "coming_soon": "Próximamente",
     "items_count": "Ítems ({count})",
@@ -148,7 +151,7 @@
       "title": "Agrega ítems a tu colección",
       "description": "Arrastra y suelta tus archivos aquí, o <browse>explora tu dispositivo</browse> para empezar.",
       "description_mobile": "Agrega ítems a esta colección desde tu computadora.",
-      "formats": "(Formatos soportados: GLB, GLTF, PNG, ZIP; tamaño: 1340 × 670)"
+      "formats": "(Formatos soportados: GLB, GLTF, PNG, ZIP · Máx. 3MB por ítem, 8MB para skins)"
     },
     "no_results": {
       "title": "No se encontraron ítems",

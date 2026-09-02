@@ -8,5 +8,7 @@
   "CREATE_URL": "https://decentraland.today/create",
   "MATIC_URN_PROTOCOL": "matic",
   "ERC721_COLLECTION_BASE_URI": "https://peer.decentraland.org/lambdas/collections/standard/erc721/",
-  "RARITIES_WITH_ORACLE_ADDRESS": "0xA9158E22F89Bb3F69c5600338895Cb5FB81e5090"
+  "RARITIES_WITH_ORACLE_ADDRESS": "0xA9158E22F89Bb3F69c5600338895Cb5FB81e5090",
+  "EXPLORER_URL": "https://decentraland.org/play",
+  "PEER_TESTING_URL": "https://peer-testing.decentraland.org"
 }

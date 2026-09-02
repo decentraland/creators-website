@@ -4,6 +4,7 @@ import { CollectionsPage } from '~/components/CollectionsPage'
 import { ErrorBoundary } from '~/components/ErrorBoundary'
 import { Footer } from '~/components/Footer'
 import { NavBar } from '~/components/NavBar'
+import { Toasts } from '~/components/Toasts'
 import { TranslationProvider } from '~/intl'
 import { useWallet } from '~/store/wallet'
 
@@ -56,6 +57,7 @@ const App = () => {
         </ErrorBoundary>
       </main>
       <Footer />
+      <Toasts />
     </TranslationProvider>
   )
 }

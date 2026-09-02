@@ -32,9 +32,13 @@ const colors = {
   err: '#d33',
   okStrong: '#1f8a4c',
   errStrong: '#d64545',
+  errLight: '#ff7070',
   successBorder: '#34ce77',
   green: '#30cd00', // DCL/Green — published status
   amber: '#ffbc5b', // Brand/Amber — under-review status, warm gradient stop
+  orangeStrong: '#f48221', // under-review pill fill (at 20%)
+  redRejected: '#cc1d2c', // rejected pill fill (at 20%)
+  redBright: '#ff0404', // rejected pill border/text
   orange: '#ff7439', // Brand/Orange — active tab underline, warm accents
   white: '#ffffff',
   // Hairline on a translucent field over the purple (search box border).
@@ -75,6 +79,7 @@ const radius = {
   cardLg: '16px',
   chip: '4px',
   btn: '12px',
+  btnSm: '8px',
   pill: '50px',
   banner: '24px',
   modal: '16px',

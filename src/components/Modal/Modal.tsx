@@ -4,16 +4,48 @@ import { Close as CloseIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import * as S from './Modal.styles'
 
+// Refcounted scroll lock: modals can stack (add-items + its confirm dialogs), and a
+// last-writer-wins restore of body overflow would leave the page locked after closing both.
+let scrollLocks = 0
+let savedOverflow = ''
+
+function acquireScrollLock() {
+  if (scrollLocks === 0) {
+    savedOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+  }
+  scrollLocks++
+}
+
+function releaseScrollLock() {
+  scrollLocks--
+  if (scrollLocks === 0) {
+    document.body.style.overflow = savedOverflow
+  }
+}
+
 type Props = {
   title: string
   onClose: () => void
   children: ReactNode
   /** Blocks every close affordance (✕, Escape, scrim) while a submit is in flight. */
   closeDisabled?: boolean
+  /** 'wide' for editor-style dialogs (add items); default is the 560px form dialog. */
+  size?: 'default' | 'wide'
+  /** Renders no title bar (confirm/error dialogs); `title` still labels the dialog for a11y. */
+  hideTitle?: boolean
   testId?: string
 }
 
-export function Modal({ title, onClose, children, closeDisabled = false, testId = 'modal' }: Props) {
+export function Modal({
+  title,
+  onClose,
+  children,
+  closeDisabled = false,
+  size = 'default',
+  hideTitle = false,
+  testId = 'modal'
+}: Props) {
   const dialogRef = useRef<HTMLDivElement>(null)
 
   // Latest-value refs so the document-level listeners never rebind mid-interaction.
@@ -52,12 +84,11 @@ export function Modal({ title, onClose, children, closeDisabled = false, testId 
     document.addEventListener('keydown', onKeyDown)
 
     // The page must not scroll behind the scrim.
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    acquireScrollLock()
 
     return () => {
       document.removeEventListener('keydown', onKeyDown)
-      document.body.style.overflow = previousOverflow
+      releaseScrollLock()
     }
   }, [])
 
@@ -72,21 +103,24 @@ export function Modal({ title, onClose, children, closeDisabled = false, testId 
         aria-label={title}
         tabIndex={-1}
         data-testid={testId}
+        data-size={size}
         onClick={event => event.stopPropagation()}
       >
-        <S.TitleBar>
-          <S.Title>{title}</S.Title>
-          <S.CloseButton
-            type="button"
-            aria-label={t('modal.close')}
-            data-testid={`${testId}-close`}
-            disabled={closeDisabled}
-            onClick={onClose}
-          >
-            <CloseIcon fontSize="small" />
-          </S.CloseButton>
-        </S.TitleBar>
-        <S.Body>{children}</S.Body>
+        {!hideTitle && (
+          <S.TitleBar>
+            <S.Title>{title}</S.Title>
+            <S.CloseButton
+              type="button"
+              aria-label={t('modal.close')}
+              data-testid={`${testId}-close`}
+              disabled={closeDisabled}
+              onClick={onClose}
+            >
+              <CloseIcon fontSize="small" />
+            </S.CloseButton>
+          </S.TitleBar>
+        )}
+        <S.Body data-titleless={hideTitle || undefined}>{children}</S.Body>
       </S.Dialog>
     </S.Scrim>,
     document.body

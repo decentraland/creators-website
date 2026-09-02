@@ -85,6 +85,16 @@ export const SearchBox = styled.div`
   }
 `
 
+export const SearchSpinner = styled.span`
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: ${theme.colors.white};
+  animation: spin 0.8s linear infinite;
+`
+
 // Shared shell for the sign-in / empty / error / no-results states.
 export const Panel = styled.section`
   display: flex;

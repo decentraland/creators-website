@@ -50,4 +50,21 @@ describe('Modal', () => {
     view.unmount()
     expect(document.body.style.overflow).toBe('')
   })
+
+  it('keeps the page scroll unlocked only after every stacked modal is gone', () => {
+    const first = renderModal()
+    const second = render(
+      <Modal title="Stacked" onClose={vi.fn()}>
+        <p>Stacked body</p>
+      </Modal>,
+      { wrapper }
+    )
+    expect(document.body.style.overflow).toBe('hidden')
+
+    // Closing in either order must not leave the page locked.
+    first.view.unmount()
+    expect(document.body.style.overflow).toBe('hidden')
+    second.unmount()
+    expect(document.body.style.overflow).toBe('')
+  })
 })

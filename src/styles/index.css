@@ -2,6 +2,7 @@
   /* Height of the ui2 navbar everything offsets against (body top padding, sub-nav sticky top,
      viewport-filling min-heights). 991px is UI2'S OWN Navbar breakpoint, not one of ours. */
   --nav-h: 92px;
+  --sub-nav-h: 64px;
   --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 @media (max-width: 991px) {
@@ -56,17 +57,17 @@ h2 {
 
 .page {
   /* 54px side gutter matches the ui2 Navbar's desktop padding so content lines up with the top nav. */
-  padding: 28px 54px 80px;
-  max-width: 1760px;
+  padding: 54px;
+  max-width: 1920px;
   margin: 0 auto;
   width: 100%;
   flex: 1 0 auto;
   /* Content fills the first viewport below the fixed navbar so the branded footer stays below the fold. */
-  min-height: calc(100vh - var(--nav-h));
+  min-height: calc(100vh - var(--nav-h) - var(--sub-nav-h));
 }
 @media (max-width: 768px) {
   .page {
-    padding: 16px 16px 56px;
+    padding: 10px;
   }
 }
 

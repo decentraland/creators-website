@@ -25,6 +25,16 @@ export function useCollectionItems(address: string | undefined, collectionId: st
   })
 }
 
+/** Every item of the collection — the add-items flow needs them all as variant targets. */
+export function useAllCollectionItems(address: string | undefined, collectionId: string | undefined) {
+  return useQuery({
+    queryKey: ['collection-items-all', address, collectionId],
+    queryFn: () => fetchAllCollectionItems(address!, collectionId!),
+    enabled: !!address && !!collectionId,
+    staleTime: 30_000
+  })
+}
+
 /**
  * Create or rename a collection. Mirrors the legacy save-collection saga: for a collection that
  * already has items the initialize calldata is regenerated over all of them, so the server derives
