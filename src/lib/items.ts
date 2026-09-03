@@ -13,22 +13,46 @@ export enum BodyShapeType {
   FEMALE = 'female'
 }
 
-const BODY_SHAPE_MALE = 'urn:decentraland:off-chain:base-avatars:BaseMale'
-const BODY_SHAPE_FEMALE = 'urn:decentraland:off-chain:base-avatars:BaseFemale'
+export const BODY_SHAPE_MALE = 'urn:decentraland:off-chain:base-avatars:BaseMale'
+export const BODY_SHAPE_FEMALE = 'urn:decentraland:off-chain:base-avatars:BaseFemale'
 
 export type ItemRepresentation = {
   bodyShapes: string[]
   mainFile: string
   contents: string[]
+  overrideHides?: string[]
+  overrideReplaces?: string[]
 }
 
 // Wearables and emotes share this shape on the wire; emote-only fields are optional extras.
 export type ItemData = {
   category?: string
   representations: ItemRepresentation[]
+  hides?: string[]
+  replaces?: string[]
+  removesDefaultHiding?: string[]
+  tags?: string[]
+  blockVrmExport?: boolean
+  outlineCompatible?: boolean
   loop?: boolean
   outcomes?: unknown[]
   randomizeOutcomes?: boolean
+}
+
+// Wearable render stats or emote animation stats, as reported to builder-server.
+export type ItemMetrics = {
+  triangles?: number
+  materials?: number
+  textures?: number
+  meshes?: number
+  bodies?: number
+  entities?: number
+  sequences?: number
+  duration?: number
+  frames?: number
+  fps?: number
+  props?: number
+  additionalArmatures?: number
 }
 
 export type RemoteItem = {
@@ -36,18 +60,25 @@ export type RemoteItem = {
   name: string
   description: string
   thumbnail: string
+  video?: string | null
+  urn?: string | null
   eth_address: string
   collection_id: string | null
+  blockchain_item_id?: string | null
   price: string | null
   beneficiary: string | null
   rarity: string | null
+  total_supply?: number | null
   is_published: boolean
   is_approved: boolean
   in_catalyst: boolean
+  utility?: string | null
+  mappings?: unknown
   type: ItemType
   data: ItemData
-  metrics?: { props?: number }
+  metrics?: ItemMetrics
   contents: Record<string, string>
+  content_hash?: string | null
   created_at: string
   updated_at: string
 }
@@ -57,17 +88,20 @@ export type Item = {
   name: string
   description: string
   thumbnail: string
+  video?: string
+  urn?: string
   owner: string
   collectionId?: string
   price?: string
   beneficiary?: string
   rarity?: string
+  totalSupply?: number
   isPublished: boolean
   isApproved: boolean
   inCatalyst: boolean
   type: ItemType
   data: ItemData
-  metrics?: { props?: number }
+  metrics?: ItemMetrics
   contents: Record<string, string>
   createdAt: number
   updatedAt: number
@@ -94,7 +128,38 @@ export function fromRemoteItem(remote: RemoteItem): Item {
   if (remote.price) item.price = remote.price
   if (remote.beneficiary) item.beneficiary = remote.beneficiary
   if (remote.rarity) item.rarity = remote.rarity
+  if (remote.urn) item.urn = remote.urn
+  if (remote.video) item.video = remote.video
+  if (remote.total_supply !== undefined && remote.total_supply !== null) item.totalSupply = remote.total_supply
   return item
+}
+
+/** The wire shape for PUT /items/:id, byte-compatible with the legacy builder's toRemoteItem. */
+export function toRemoteItem(item: Item): Omit<RemoteItem, 'created_at' | 'updated_at' | 'in_catalyst'> {
+  return {
+    id: item.id,
+    name: item.name,
+    description: item.description || '',
+    thumbnail: item.thumbnail,
+    video: item.video || null,
+    eth_address: item.owner,
+    collection_id: item.collectionId || null,
+    blockchain_item_id: null,
+    price: item.price || null,
+    urn: item.urn || null,
+    beneficiary: item.beneficiary || null,
+    rarity: item.rarity || null,
+    total_supply: item.totalSupply === undefined ? null : item.totalSupply,
+    is_published: false,
+    is_approved: false,
+    utility: null,
+    mappings: null,
+    type: item.type,
+    data: item.data,
+    metrics: item.metrics,
+    contents: item.contents,
+    content_hash: null
+  }
 }
 
 /** All distinct body shapes across an item's representations. */
@@ -114,6 +179,14 @@ export function getItemBodyShapeType(item: Item): BodyShapeType | null {
   if (hasMale && hasFemale) return BodyShapeType.BOTH
   if (hasMale) return BodyShapeType.MALE
   if (hasFemale) return BodyShapeType.FEMALE
+  return null
+}
+
+/** The body shape an item is still missing (male/female), or null when it's already unisex. */
+export function getMissingBodyShapeType(item: Item): BodyShapeType | null {
+  const bodyShapeType = getItemBodyShapeType(item)
+  if (bodyShapeType === BodyShapeType.MALE) return BodyShapeType.FEMALE
+  if (bodyShapeType === BodyShapeType.FEMALE) return BodyShapeType.MALE
   return null
 }
 

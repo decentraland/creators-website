@@ -44,11 +44,21 @@ describe('Modal', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
+  it('hides the ✕ with hideTitle unless showClose asks for it', async () => {
+    const { view } = renderModal({ hideTitle: true })
+    expect(screen.queryByTestId('modal-close')).not.toBeInTheDocument()
+    view.unmount()
+
+    const { onClose } = renderModal({ hideTitle: true, showClose: true })
+    await userEvent.click(screen.getByTestId('modal-close'))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
   it('locks page scroll while open and restores it on unmount', () => {
     const { view } = renderModal()
-    expect(document.body.style.overflow).toBe('hidden')
+    expect(document.documentElement.style.overflow).toBe('hidden')
     view.unmount()
-    expect(document.body.style.overflow).toBe('')
+    expect(document.documentElement.style.overflow).toBe('')
   })
 
   it('keeps the page scroll unlocked only after every stacked modal is gone', () => {
@@ -59,12 +69,12 @@ describe('Modal', () => {
       </Modal>,
       { wrapper }
     )
-    expect(document.body.style.overflow).toBe('hidden')
+    expect(document.documentElement.style.overflow).toBe('hidden')
 
     // Closing in either order must not leave the page locked.
     first.view.unmount()
-    expect(document.body.style.overflow).toBe('hidden')
+    expect(document.documentElement.style.overflow).toBe('hidden')
     second.unmount()
-    expect(document.body.style.overflow).toBe('')
+    expect(document.documentElement.style.overflow).toBe('')
   })
 })

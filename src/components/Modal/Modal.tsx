@@ -5,14 +5,15 @@ import { useTranslation } from '~/intl'
 import * as S from './Modal.styles'
 
 // Refcounted scroll lock: modals can stack (add-items + its confirm dialogs), and a
-// last-writer-wins restore of body overflow would leave the page locked after closing both.
+// last-writer-wins restore would leave the page locked after closing both. The lock goes on <html>:
+// with `overflow-x: clip` on the root, a body overflow no longer propagates to the viewport.
 let scrollLocks = 0
 let savedOverflow = ''
 
 function acquireScrollLock() {
   if (scrollLocks === 0) {
-    savedOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    savedOverflow = document.documentElement.style.overflow
+    document.documentElement.style.overflow = 'hidden'
   }
   scrollLocks++
 }
@@ -20,7 +21,7 @@ function acquireScrollLock() {
 function releaseScrollLock() {
   scrollLocks--
   if (scrollLocks === 0) {
-    document.body.style.overflow = savedOverflow
+    document.documentElement.style.overflow = savedOverflow
   }
 }
 
@@ -34,6 +35,8 @@ type Props = {
   size?: 'default' | 'wide'
   /** Renders no title bar (confirm/error dialogs); `title` still labels the dialog for a11y. */
   hideTitle?: boolean
+  /** With `hideTitle`, still shows a floating ✕ in the dialog corner. */
+  showClose?: boolean
   testId?: string
 }
 
@@ -44,6 +47,7 @@ export function Modal({
   closeDisabled = false,
   size = 'default',
   hideTitle = false,
+  showClose = false,
   testId = 'modal'
 }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -94,6 +98,18 @@ export function Modal({
 
   const { t } = useTranslation()
 
+  const closeButton = (
+    <S.CloseButton
+      type="button"
+      aria-label={t('modal.close')}
+      data-testid={`${testId}-close`}
+      disabled={closeDisabled}
+      onClick={onClose}
+    >
+      <CloseIcon fontSize="small" />
+    </S.CloseButton>
+  )
+
   return createPortal(
     <S.Scrim data-testid={`${testId}-scrim`} onClick={() => !closeDisabled && onClose()}>
       <S.Dialog
@@ -109,17 +125,10 @@ export function Modal({
         {!hideTitle && (
           <S.TitleBar>
             <S.Title>{title}</S.Title>
-            <S.CloseButton
-              type="button"
-              aria-label={t('modal.close')}
-              data-testid={`${testId}-close`}
-              disabled={closeDisabled}
-              onClick={onClose}
-            >
-              <CloseIcon fontSize="small" />
-            </S.CloseButton>
+            {closeButton}
           </S.TitleBar>
         )}
+        {hideTitle && showClose && <S.FloatingClose>{closeButton}</S.FloatingClose>}
         <S.Body data-titleless={hideTitle || undefined}>{children}</S.Body>
       </S.Dialog>
     </S.Scrim>,

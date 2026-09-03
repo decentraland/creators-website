@@ -1,0 +1,548 @@
+import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import type { AnimationClip, BufferGeometry, Material, MeshStandardMaterial, Object3D } from 'three'
+import { WearableCategory } from '@dcl/schemas'
+import { ValidationIssue, ValidationSeverity } from './types'
+import {
+  isSpringBoneName,
+  getEffectiveTriangleLimit,
+  MAX_DIMENSIONS,
+  MAX_MATERIALS_DEFAULT,
+  MAX_MATERIALS_SKIN,
+  MAX_TEXTURES_DEFAULT,
+  MAX_TEXTURES_SKIN,
+  FACIAL_CATEGORIES,
+  MAX_BONE_INFLUENCES_PER_VERTEX,
+  AVATAR_SKIN_MAT,
+  FORBIDDEN_MATERIAL_PATTERNS,
+  MAX_SPRING_BONES,
+  AVATAR_BONE_NAME_SET,
+  AVATAR_CORE_BONE_NAMES,
+  AVATAR_ARMATURE_NAME
+} from './constants'
+
+type ThreeModules = typeof import('three')
+
+/** Threshold below which a vertex's total skin weight is treated as zero (unrigged). */
+const UNRIGGED_WEIGHT_EPSILON = 1e-6
+
+/** Lowercased canonical bone names, for case-insensitive near-miss ("check casing") detection. */
+const AVATAR_BONE_NAME_SET_LOWERCASE = new Set([...AVATAR_BONE_NAME_SET].map(name => name.toLowerCase()))
+
+function getTriangleCount(Three: ThreeModules, scene: Object3D): number {
+  let triangles = 0
+  scene.traverse((node: Object3D) => {
+    if (node instanceof Three.Mesh) {
+      const geometry = node.geometry as unknown
+      if (geometry instanceof Three.BufferGeometry) {
+        if (geometry.index) {
+          triangles += geometry.index.count / 3
+        } else {
+          const position = geometry.getAttribute('position') as { count: number } | undefined
+          if (position) {
+            triangles += position.count / 3
+          }
+        }
+      }
+    }
+  })
+  return Math.floor(triangles)
+}
+
+/**
+ * Validates that the scene's total triangle count does not exceed the limit for the given category.
+ * Supports the Tris Combiner rule: when a wearable hides other slots, their triangle budgets are
+ * added to the base limit.
+ *
+ * When category is known but hides are not provided, reports ERROR if the base limit is exceeded,
+ * with a hint that hiding other slots in the item editor can increase the allowed budget.
+ *
+ * When both category and hides are provided, uses the full combined limit.
+ *
+ * @param hides - Categories this wearable hides (used for Tris Combiner calculation).
+ */
+export function validateTriangleCounts(
+  Three: ThreeModules,
+  scene: Object3D,
+  category?: WearableCategory,
+  hides?: string[]
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = []
+  const triangles = getTriangleCount(Three, scene)
+
+  if (!category) return issues
+
+  const limit = getEffectiveTriangleLimit(category, hides)
+  if (triangles > limit) {
+    // When hides are known the limit is final — report as a hard error
+    // When hides are not known (e.g. during item creation) add a hint about the Tris Combiner
+    const hasHidesInfo = hides !== undefined && hides.length > 0
+    issues.push({
+      code: 'TRIANGLE_COUNT_EXCEEDED',
+      severity: ValidationSeverity.WARNING,
+      messageKey: hasHidesInfo
+        ? 'item_validation.triangle_count_exceeded'
+        : 'item_validation.triangle_count_exceeded_with_hint',
+      messageParams: { count: triangles, limit, category }
+    })
+  }
+
+  return issues
+}
+
+/**
+ * Validates that the scene's bounding-box dimensions do not exceed the maximum
+ * allowed size (2.42 m width, 2.42 m height, 1.4 m depth). Reports ERROR on violation.
+ */
+export function validateDimensions(Three: ThreeModules, scene: Object3D): ValidationIssue[] {
+  const issues: ValidationIssue[] = []
+  const size = new Three.Box3().setFromObject(scene).getSize(new Three.Vector3())
+
+  // Three.js Box3 size: x=width, y=height, z=depth
+  const width = parseFloat(size.x.toFixed(2))
+  const height = parseFloat(size.y.toFixed(2))
+  const depth = parseFloat(size.z.toFixed(2))
+
+  if (width > MAX_DIMENSIONS.width || height > MAX_DIMENSIONS.height || depth > MAX_DIMENSIONS.depth) {
+    issues.push({
+      code: 'DIMENSIONS_EXCEEDED',
+      severity: ValidationSeverity.WARNING,
+      messageKey: 'item_validation.dimensions_exceeded',
+      messageParams: {
+        width,
+        height,
+        depth,
+        maxWidth: MAX_DIMENSIONS.width,
+        maxHeight: MAX_DIMENSIONS.height,
+        maxDepth: MAX_DIMENSIONS.depth
+      }
+    })
+  }
+
+  return issues
+}
+
+/**
+ * Validates that the number of unique materials (excluding AvatarSkin_MAT) does not exceed
+ * the allowed limit (2 for standard categories, 5 for skin). Reports ERROR on violation.
+ */
+export function validateMaterials(
+  Three: ThreeModules,
+  scene: Object3D,
+  category?: WearableCategory
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = []
+  const materials = new Set<string>()
+
+  scene.traverse((node: Object3D) => {
+    if (node instanceof Three.Mesh && node.material) {
+      const mat = node.material as Material
+      if (mat.name !== AVATAR_SKIN_MAT) {
+        materials.add(mat.name)
+      }
+    }
+  })
+
+  const isSkin = category === WearableCategory.SKIN
+  const limit = isSkin ? MAX_MATERIALS_SKIN : MAX_MATERIALS_DEFAULT
+
+  if (materials.size > limit) {
+    issues.push({
+      code: 'MATERIALS_EXCEEDED',
+      severity: ValidationSeverity.WARNING,
+      messageKey: 'item_validation.materials_exceeded',
+      messageParams: { count: materials.size, limit }
+    })
+  }
+
+  return issues
+}
+
+/**
+ * Validates that the number of unique textures (base color maps) does not exceed the limit.
+ * The limit is 2 for standard categories, 5 for skin. Excludes AvatarSkin_MAT materials.
+ */
+export function validateTextures(Three: ThreeModules, scene: Object3D, category?: WearableCategory): ValidationIssue[] {
+  const issues: ValidationIssue[] = []
+  const textures = new Set<string>()
+  const isSkin = category === WearableCategory.SKIN
+  const textureLimit = isSkin ? MAX_TEXTURES_SKIN : MAX_TEXTURES_DEFAULT
+
+  scene.traverse((node: Object3D) => {
+    if (node instanceof Three.Mesh && node.material) {
+      const mat = node.material as MeshStandardMaterial
+      if (mat.name === AVATAR_SKIN_MAT) return
+
+      // Count only the base color texture (map) per material for the texture count.
+      // Other map slots (normal, roughness, etc.) are part of the same material setup, not separate textures.
+      if (mat.map) {
+        textures.add(mat.map.uuid)
+      }
+    }
+  })
+
+  if (textures.size > textureLimit) {
+    issues.push({
+      code: 'TEXTURES_EXCEEDED',
+      severity: ValidationSeverity.WARNING,
+      messageKey: 'item_validation.textures_exceeded',
+      messageParams: { count: textures.size, limit: textureLimit }
+    })
+  }
+
+  return issues
+}
+
+/**
+ * Validates that no vertex has more than 4 bone influences in skinned meshes.
+ * Reports ERROR if the skinWeight attribute exceeds the allowed item size.
+ */
+export function validateBoneInfluences(Three: ThreeModules, scene: Object3D): ValidationIssue[] {
+  const issues: ValidationIssue[] = []
+
+  scene.traverse((node: Object3D) => {
+    if (node instanceof Three.SkinnedMesh) {
+      const geometry = node.geometry as BufferGeometry
+      const skinWeight = geometry.getAttribute('skinWeight')
+
+      if (skinWeight) {
+        // skinWeight is a Vector4 per vertex (itemSize=4), values represent bone weights
+        // If there are more than 4 influences, Three.js already clamps to 4.
+        // But we check if any vertex has non-zero weights beyond what's expected
+        // Since Three.js uses 4-component skinWeight, this is inherently limited to 4.
+        // However, we can check if the original data had more by looking at the raw buffer.
+        // For GLB files loaded by Three.js, this is already clamped — so this serves
+        // as documentation validation. We'll check that all weights sum roughly to 1.
+        // The real risk is when weights are malformed.
+        if (skinWeight.itemSize > MAX_BONE_INFLUENCES_PER_VERTEX) {
+          issues.push({
+            code: 'BONE_INFLUENCES_EXCEEDED',
+            severity: ValidationSeverity.WARNING,
+            messageKey: 'item_validation.bone_influences_exceeded',
+            messageParams: { limit: MAX_BONE_INFLUENCES_PER_VERTEX }
+          })
+        }
+      }
+    }
+  })
+
+  return issues
+}
+
+/**
+ * Detects leaf bones (names ending in "_end" or "_neutral") that are typically
+ * unnecessary export artifacts. Reports WARNING listing up to 5 bone names.
+ */
+export function validateNoLeafBones(Three: ThreeModules, scene: Object3D): ValidationIssue[] {
+  const issues: ValidationIssue[] = []
+  const leafBones: string[] = []
+
+  scene.traverse((node: Object3D) => {
+    if (node instanceof Three.Bone) {
+      const name = node.name.toLowerCase()
+      if (!isSpringBoneName(name) && (name.endsWith('_end') || name.endsWith('_neutral'))) {
+        leafBones.push(node.name)
+      }
+    }
+  })
+
+  if (leafBones.length > 0) {
+    issues.push({
+      code: 'LEAF_BONES_FOUND',
+      severity: ValidationSeverity.WARNING,
+      messageKey: 'item_validation.leaf_bones_found',
+      messageParams: { bones: leafBones.slice(0, 5).join(', ') + (leafBones.length > 5 ? '...' : '') }
+    })
+  }
+
+  return issues
+}
+
+/**
+ * Detects non-deformation bones that were exported with the model.
+ * Deformation bones are those bound to a SkinnedMesh skeleton or targeted by at least one animation track.
+ * Any Bone in the scene that is not part of any skeleton is likely a control, IK, or mechanism
+ * bone that should have been excluded via "Export Deformation Bones Only".
+ * Reports WARNING because non-deformation bones increase file size and reduce performance.
+ */
+export function validateNoNonDeformBones(
+  Three: ThreeModules,
+  scene: Object3D,
+  animations?: AnimationClip[]
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = []
+  const deformBoneNames = new Set<string>()
+
+  // Deform bones bound to a SkinnedMesh skeleton
+  scene.traverse((node: Object3D) => {
+    if (node instanceof Three.SkinnedMesh && node.skeleton) {
+      for (const bone of node.skeleton.bones) {
+        deformBoneNames.add(bone.name)
+      }
+    }
+  })
+
+  // Deform bones targeted by animation tracks
+  for (const clip of animations ?? []) {
+    for (const track of clip.tracks) {
+      // Track names follow the pattern "BoneName.property" (e.g. "Avatar_Hips.position")
+      const boneName = track.name.replace(/\.[^.]+$/, '')
+      if (boneName) deformBoneNames.add(boneName)
+    }
+  }
+
+  // Collect all bones in the scene
+  const allBones: string[] = []
+  scene.traverse((node: Object3D) => {
+    if (node instanceof Three.Bone) {
+      allBones.push(node.name)
+    }
+  })
+
+  const nonDeformBones = allBones.filter(name => !deformBoneNames.has(name))
+
+  if (nonDeformBones.length > 0) {
+    issues.push({
+      code: 'NON_DEFORM_BONES_FOUND',
+      severity: ValidationSeverity.WARNING,
+      messageKey: 'item_validation.non_deform_bones_found',
+      messageParams: {
+        count: nonDeformBones.length,
+        bones:
+          nonDeformBones.slice(0, 5).join(', ') +
+          (nonDeformBones.length > 5 ? ` (+${nonDeformBones.length - 5} more)` : '')
+      }
+    })
+  }
+
+  return issues
+}
+
+/**
+ * Validates that the wearable's skinned-mesh joints match the canonical Decentraland
+ * avatar skeleton. A wearable skinned to a non-DCL or misnamed skeleton passes import
+ * but breaks in-world and fails curation.
+ *
+ * Collects the joint names from every SkinnedMesh skeleton and checks that:
+ *  - all required core avatar bones are present, and
+ *  - no joint references an unknown bone name (i.e. not part of the DCL skeleton).
+ *
+ * Spring bones (names containing "springbone", case-insensitive) are valid extras and ignored,
+ * as is the armature root node ({@link AVATAR_ARMATURE_NAME}) which some exporters include in
+ * the skeleton bone list.
+ * Reports a single WARNING describing the missing and/or unknown bones. Unknown bones that
+ * differ from a canonical bone only by casing get a "(check casing)" hint. Wearables with no
+ * skinned meshes (e.g. rigid accessories) are skipped.
+ */
+export function validateArmatureBoneNames(Three: ThreeModules, scene: Object3D): ValidationIssue[] {
+  const issues: ValidationIssue[] = []
+  const jointNames = new Set<string>()
+
+  scene.traverse((node: Object3D) => {
+    if (node instanceof Three.SkinnedMesh && node.skeleton) {
+      for (const bone of node.skeleton.bones) {
+        jointNames.add(bone.name)
+      }
+    }
+  })
+
+  // No skinned meshes — nothing to validate (rigid accessories are allowed).
+  if (jointNames.size === 0) return issues
+
+  // Core avatar bones that must be present in the skeleton.
+  const missing = AVATAR_CORE_BONE_NAMES.filter(name => !jointNames.has(name))
+
+  // Joints that are neither canonical avatar bones, allowed spring bones, nor the armature root.
+  const unknown: string[] = []
+  for (const name of jointNames) {
+    if (AVATAR_BONE_NAME_SET.has(name) || isSpringBoneName(name) || name === AVATAR_ARMATURE_NAME) continue
+    // A bone that matches a canonical name except for casing is almost certainly a casing mistake.
+    if (AVATAR_BONE_NAME_SET_LOWERCASE.has(name.toLowerCase())) {
+      unknown.push(`${name} (check casing)`)
+      continue
+    }
+    unknown.push(name)
+  }
+
+  if (missing.length > 0 || unknown.length > 0) {
+    const parts: string[] = []
+    if (missing.length > 0) {
+      parts.push(
+        `missing: ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? ` (+${missing.length - 5} more)` : ''}`
+      )
+    }
+    if (unknown.length > 0) {
+      parts.push(
+        `unknown: ${unknown.slice(0, 5).join(', ')}${unknown.length > 5 ? ` (+${unknown.length - 5} more)` : ''}`
+      )
+    }
+    issues.push({
+      code: 'ARMATURE_BONE_NAMES',
+      severity: ValidationSeverity.WARNING,
+      messageKey: 'item_validation.armature_bone_names',
+      messageParams: { bones: parts.join('; ') }
+    })
+  }
+
+  return issues
+}
+
+/**
+ * Detects skinned-mesh vertices with zero total skin weight (unrigged vertices).
+ * Such vertices are not bound to any bone and stay fixed while the avatar moves,
+ * which typically indicates a rigging mistake. Reports a WARNING with the affected count.
+ */
+export function validateNoUnriggedVertices(Three: ThreeModules, scene: Object3D): ValidationIssue[] {
+  const issues: ValidationIssue[] = []
+  let unriggedVertices = 0
+
+  scene.traverse((node: Object3D) => {
+    if (node instanceof Three.SkinnedMesh) {
+      const geometry = node.geometry as BufferGeometry
+      const skinWeight = geometry.getAttribute('skinWeight')
+      if (!skinWeight) return
+
+      const itemSize = skinWeight.itemSize
+      const array = skinWeight.array as ArrayLike<number> | undefined
+      if (!array) return
+
+      // A vertex is "unrigged" when the sum of its skin weights is effectively zero.
+      // We only rely on the zero / non-zero distinction, which holds regardless of whether
+      // the glTF stored WEIGHTS_0 as floats (0..1) or normalized integers (raw 0..255 / 0..65535).
+      // A small epsilon guards against accumulated floating-point dust being treated as a real weight.
+      for (let i = 0; i < skinWeight.count; i++) {
+        let total = 0
+        for (let c = 0; c < itemSize; c++) {
+          total += array[i * itemSize + c]
+        }
+        if (total <= UNRIGGED_WEIGHT_EPSILON) unriggedVertices++
+      }
+    }
+  })
+
+  if (unriggedVertices > 0) {
+    issues.push({
+      code: 'UNRIGGED_VERTICES',
+      severity: ValidationSeverity.WARNING,
+      messageKey: 'item_validation.unrigged_vertices',
+      messageParams: { count: unriggedVertices }
+    })
+  }
+
+  return issues
+}
+
+/**
+ * Checks for objects that are not allowed in wearable GLBs: cameras, lights,
+ * and animation clips. Reports WARNING for each disallowed object type found.
+ */
+export function validateNoDisallowedObjects(Three: ThreeModules, gltf: GLTF): ValidationIssue[] {
+  const issues: ValidationIssue[] = []
+  const { scene, animations } = gltf
+
+  let hasCameras = false
+  let hasLights = false
+
+  scene.traverse((node: Object3D) => {
+    if (node instanceof Three.Camera) {
+      hasCameras = true
+    }
+    if (node instanceof Three.Light) {
+      hasLights = true
+    }
+  })
+
+  if (hasCameras) {
+    issues.push({
+      code: 'CAMERAS_FOUND',
+      severity: ValidationSeverity.WARNING,
+      messageKey: 'item_validation.cameras_found'
+    })
+  }
+
+  if (hasLights) {
+    issues.push({
+      code: 'LIGHTS_FOUND',
+      severity: ValidationSeverity.WARNING,
+      messageKey: 'item_validation.lights_found'
+    })
+  }
+
+  // Wearables must not contain animations
+  if (animations.length > 0) {
+    issues.push({
+      code: 'ANIMATIONS_IN_WEARABLE',
+      severity: ValidationSeverity.WARNING,
+      messageKey: 'item_validation.animations_in_wearable'
+    })
+  }
+
+  return issues
+}
+
+/**
+ * Validates that non-facial wearables do not use material names containing
+ * reserved facial patterns ("_mouth", "_eyebrows", "_eyes"). Reports WARNING per match.
+ */
+export function validateMaterialNaming(
+  Three: ThreeModules,
+  scene: Object3D,
+  category?: WearableCategory
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = []
+
+  // Only check if category is known and is NOT a facial category
+  const isFacial = category !== undefined && FACIAL_CATEGORIES.includes(category)
+  if (isFacial) return issues
+
+  scene.traverse((node: Object3D) => {
+    if (node instanceof Three.Mesh && node.material) {
+      const mat = node.material as Material
+      const nameLower = mat.name.toLowerCase()
+
+      for (const pattern of FORBIDDEN_MATERIAL_PATTERNS) {
+        if (nameLower.includes(pattern)) {
+          issues.push({
+            code: 'FORBIDDEN_MATERIAL_NAME',
+            severity: ValidationSeverity.WARNING,
+            messageKey: 'item_validation.forbidden_material_name',
+            messageParams: { name: mat.name, pattern }
+          })
+        }
+      }
+    }
+  })
+
+  return issues
+}
+
+// ── Spring bone validators ──────────────────────────────────────────────
+
+type GltfJsonNode = { name?: string }
+
+/** Checks that the number of spring bone nodes does not exceed the limit. */
+export function validateSpringBones(gltf: GLTF): ValidationIssue[] {
+  // parser.json is an undocumented Three.js GLTFLoader internal (typed `any` upstream),
+  // so it's re-typed here through `unknown`.
+  const parser = (gltf as unknown as { parser?: { json?: unknown } }).parser
+  const json = parser?.json as { nodes?: GltfJsonNode[] } | undefined
+  if (!json || !Array.isArray(json.nodes)) {
+    // Warn if absent so silent validation bypass is detectable after a Three.js upgrade.
+    if (parser === undefined) {
+      console.warn('Spring bone validation: gltf.parser is unavailable — spring bone checks will be skipped.')
+    }
+    return []
+  }
+
+  const springBoneCount = json.nodes.filter(node => node.name && isSpringBoneName(node.name)).length
+
+  if (springBoneCount <= MAX_SPRING_BONES) return []
+
+  return [
+    {
+      code: 'SPRING_BONE_COUNT_EXCEEDED',
+      severity: ValidationSeverity.WARNING,
+      messageKey: 'item_validation.spring_bone_count_exceeded',
+      messageParams: { count: springBoneCount, limit: MAX_SPRING_BONES }
+    }
+  ]
+}

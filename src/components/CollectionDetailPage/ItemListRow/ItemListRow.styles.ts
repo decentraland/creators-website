@@ -1,45 +1,43 @@
 import styled from '@emotion/styled'
-import { Link } from 'react-router-dom'
 import { theme } from '~/styles/theme'
 
 const mobile = theme.media.maxWidth('mobile')
 
-// Shared column template so the header and the rows stay aligned.
+// Shared column template so the header and the rows stay aligned: thumbnail, then four equal
+// columns (name, body shape, category, rarity), then actions. The header's "Item" spans the first two.
 export const itemListColumns = `
   display: grid;
-  grid-template-columns: minmax(200px, 2fr) minmax(90px, 1fr) minmax(110px, 1fr) minmax(120px, 1fr) minmax(110px, 1fr) 56px;
+  grid-template-columns: 74px repeat(4, minmax(0, 1fr)) minmax(56px, auto);
   align-items: center;
   gap: 16px;
 `
 
 export const Row = styled.article`
   ${itemListColumns};
-  position: relative;
   padding: 12px 24px 12px 12px;
   border-radius: ${theme.radius.card};
   background: ${theme.colors.overlay};
-  transition: background 0.15s ease;
-
-  &:hover,
-  &:focus-within {
-    background: ${theme.colors.overlayHover};
-  }
 
   ${mobile} {
-    grid-template-columns: minmax(0, 1fr) auto;
-    row-gap: 4px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
     padding: 12px;
   }
 `
 
-export const NameCell = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
+// Transparent on desktop so name and fields stay grid children; a wrapping row beside the thumbnail on mobile.
+export const Content = styled.div`
+  display: contents;
 
   ${mobile} {
-    grid-row: span 2;
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    align-items: center;
+    min-width: 0;
+    row-gap: 6px;
+    column-gap: 16px;
   }
 `
 
@@ -58,30 +56,21 @@ export const Thumb = styled.div`
   }
 
   ${mobile} {
-    width: 50px;
-    height: 50px;
+    width: 62px;
+    height: 62px;
   }
 `
 
-export const NameLink = styled(Link)`
+export const Name = styled.span`
   min-width: 0;
-  font-size: 16px;
+  max-width: 100%;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1.2;
   color: ${theme.colors.softWhite};
-  text-decoration: underline;
-  text-underline-offset: 3px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  outline: none;
-
-  /* Stretched over the whole row so the row is one real link. */
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-  }
 `
 
 export const Cell = styled.div`
@@ -90,33 +79,12 @@ export const Cell = styled.div`
   font-weight: 600;
   line-height: 1.57;
   color: ${theme.colors.softWhite};
-  text-align: center;
+  display: flex;
+  justify-content: center;
 
   ${mobile} {
-    text-align: right;
+    justify-content: flex-start;
   }
-
-  &[data-desktop] {
-    ${mobile} {
-      display: none;
-    }
-  }
-`
-
-// Figma "Rarity Label": fill = rarity color @ 33%, border/text = the rarity's light gradient stop.
-export const RarityPill = styled.span`
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: ${theme.radius.pill};
-  border: 0.5px solid var(--rarity-light, ${theme.colors.gray4});
-  background: color-mix(in srgb, var(--rarity-color, ${theme.colors.gray4}) 33%, transparent);
-  color: var(--rarity-light, ${theme.colors.gray4});
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 18px;
-  text-transform: uppercase;
-  white-space: nowrap;
 `
 
 export const ActionsCell = styled.div`

@@ -46,7 +46,7 @@ export const FieldBox = styled.div`
   padding: 0 16px;
   border: 1.5px solid ${theme.colors.white};
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  background: transparent;
 
   &[data-invalid] {
     border-color: ${theme.colors.errLight};

@@ -4,7 +4,6 @@ import {
   Add as AddIcon,
   ArrowBackIosNew as ArrowBackIcon,
   Edit as EditIcon,
-  MoreHoriz as MoreHorizIcon,
   PersonOutline as PersonOutlineIcon
 } from '@mui/icons-material'
 import { useIntl } from 'react-intl'
@@ -13,7 +12,7 @@ import { useWallet } from '~/store/wallet'
 import { ITEMS_PAGE_SIZE, useCollection, useCollectionItems, useSaveCollection } from '~/hooks/useCollection'
 import { BuilderServerError } from '~/lib/builder'
 import { isCollectionLocked } from '~/lib/collections'
-import { getCollectionPreviewUrl } from '~/lib/explorer'
+import { previewCollection } from '~/lib/explorer'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS } from '~/lib/itemFiles'
 import { Button } from '~/components/Button'
@@ -23,6 +22,7 @@ import { CollectionStatusPill } from '~/components/CollectionStatusPill'
 import { Pagination } from '~/components/Pagination'
 import addItemsArt from '~/assets/add-items.png'
 import { AddItemsModal } from './AddItemsModal'
+import { CollectionActionsMenu } from './CollectionActionsMenu'
 import { ItemListRow } from './ItemListRow'
 import * as S from './CollectionDetailPage.styles'
 
@@ -42,6 +42,7 @@ const CollectionDetailPage = () => {
   const [isRenameOpen, setRenameOpen] = useState(false)
   const [addItemsFiles, setAddItemsFiles] = useState<File[] | null>(null)
   const [isDragging, setDragging] = useState(false)
+  const [isPreviewLaunching, setPreviewLaunching] = useState(false)
   const filesInputRef = useRef<HTMLInputElement>(null)
 
   const collectionQuery = useCollection(address, collectionId)
@@ -199,14 +200,14 @@ const CollectionDetailPage = () => {
             </S.HeaderLeft>
             <S.HeaderActions>
               <Button
-                as="a"
+                type="button"
                 variant="dark"
-                href={hasItems ? getCollectionPreviewUrl(collection.id) : undefined}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-disabled={hasItems ? undefined : true}
-                tabIndex={hasItems ? undefined : -1}
+                disabled={!hasItems || isPreviewLaunching}
                 data-testid="preview-collection"
+                onClick={() => {
+                  setPreviewLaunching(true)
+                  void previewCollection(collection.id).finally(() => setPreviewLaunching(false))
+                }}
               >
                 {t('collection_detail_page.preview')}
                 <JumpInIcon />
@@ -222,17 +223,7 @@ const CollectionDetailPage = () => {
                   {t('collection_detail_page.publish')}
                 </Button>
               )}
-              <Button
-                variant="secondary"
-                size="icon"
-                type="button"
-                aria-label={t('collection_detail_page.more_actions')}
-                aria-disabled
-                title={t('collection_detail_page.coming_soon')}
-                data-testid="collection-actions"
-              >
-                <MoreHorizIcon />
-              </Button>
+              {address && <CollectionActionsMenu collection={collection} address={address} />}
             </S.HeaderActions>
           </S.Header>
 
@@ -297,10 +288,9 @@ const CollectionDetailPage = () => {
               <S.List data-testid="items-list">
                 <S.ListHeader>
                   <span>{t('collection_detail_page.list.item')}</span>
-                  <span>{t('collection_detail_page.list.body_type')}</span>
-                  <span>{t('collection_detail_page.list.rarity')}</span>
+                  <span>{t('collection_detail_page.list.body_shape')}</span>
                   <span>{t('collection_detail_page.list.category')}</span>
-                  <span>{t('collection_detail_page.list.status')}</span>
+                  <span>{t('collection_detail_page.list.rarity')}</span>
                   <S.ListHeaderActions>{t('collection_detail_page.list.actions')}</S.ListHeaderActions>
                 </S.ListHeader>
                 {results.map(item => (

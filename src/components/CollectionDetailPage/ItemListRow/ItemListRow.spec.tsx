@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { type ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
 import { TranslationProvider } from '~/intl'
 import { ItemType, type Item } from '~/lib/items'
 import { ItemListRow } from './ItemListRow'
@@ -34,40 +33,35 @@ const item: Item = {
 }
 
 function renderRow(overrides: Partial<Item> = {}) {
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <TranslationProvider>
-      <MemoryRouter>{children}</MemoryRouter>
-    </TranslationProvider>
-  )
+  const wrapper = ({ children }: { children: ReactNode }) => <TranslationProvider>{children}</TranslationProvider>
   return render(<ItemListRow item={{ ...item, ...overrides }} />, { wrapper })
 }
 
 describe('ItemListRow', () => {
-  it('shows name, body type, rarity, category and status', () => {
+  it('shows name, body shape, category and rarity with its supply', () => {
     renderRow()
     expect(screen.getByText('Pirate Hat')).toBeInTheDocument()
-    expect(screen.getByTestId('item-row-body-type')).toHaveTextContent('Female')
-    expect(screen.getByTestId('item-row-rarity')).toHaveTextContent(/legendary/i)
+    expect(screen.getByTestId('item-row-body-shape')).toHaveTextContent('Female')
+    expect(screen.getByRole('img', { name: 'Female' })).toBeInTheDocument()
     expect(screen.getByTestId('item-row-category')).toHaveTextContent('Upper Body')
-    expect(screen.getByTestId('item-row-status')).toHaveTextContent(/published/i)
+    expect(screen.getByRole('img', { name: 'Upper Body' })).toBeInTheDocument()
+    expect(screen.getByTestId('item-row-rarity')).toHaveTextContent(/legendary \(100\)/i)
+    expect(screen.queryByTestId('item-row-status')).not.toBeInTheDocument()
   })
 
-  it('links the name to the item detail route and resolves the thumbnail through storage', () => {
+  it('resolves the thumbnail through storage', () => {
     renderRow()
-    expect(screen.getByRole('link', { name: 'Pirate Hat' })).toHaveAttribute('href', '/collections/c1/items/i1')
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
     const img = screen.getByTestId('item-row').querySelector('img')
     expect(img?.src).toContain('/storage/contents/Qmthumb')
   })
 
-  it('shows draft status and placeholders for missing fields', () => {
+  it('shows placeholders for missing fields', () => {
     renderRow({
-      isPublished: false,
-      isApproved: false,
       rarity: undefined,
       data: { representations: [] }
     })
-    expect(screen.getByTestId('item-row-status')).toHaveTextContent(/draft/i)
-    expect(screen.getByTestId('item-row-body-type')).toHaveTextContent('—')
+    expect(screen.getByTestId('item-row-body-shape')).toHaveTextContent('—')
     expect(screen.getByTestId('item-row-category')).toHaveTextContent('—')
     expect(screen.getByTestId('item-row-rarity')).toBeEmptyDOMElement()
   })

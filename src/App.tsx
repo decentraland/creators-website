@@ -12,7 +12,6 @@ import { useWallet } from '~/store/wallet'
 const CollectionDetailPage = lazy(() =>
   import('~/components/CollectionDetailPage').then(m => ({ default: m.CollectionDetailPage }))
 )
-const ItemDetailPage = lazy(() => import('~/components/ItemDetailPage').then(m => ({ default: m.ItemDetailPage })))
 const ItemEditorPage = lazy(() => import('~/components/ItemEditorPage').then(m => ({ default: m.ItemEditorPage })))
 const CurationPage = lazy(() => import('~/components/CurationPage').then(m => ({ default: m.CurationPage })))
 const NotFoundPage = lazy(() => import('~/components/NotFoundPage').then(m => ({ default: m.NotFoundPage })))
@@ -35,6 +34,11 @@ const App = () => {
     void restore()
   }, [restore])
 
+  // Pagination and in-page filters update the query string only; a new pathname is a new page.
+  useEffect(() => {
+    window.scrollTo({ top: 0 })
+  }, [location.pathname])
+
   return (
     <TranslationProvider>
       <NavBar />
@@ -49,7 +53,6 @@ const App = () => {
               <Route path="/collections" element={<CollectionsPage />} />
               <Route path="/collections/editor" element={<ItemEditorPage />} />
               <Route path="/collections/:collectionId" element={<CollectionDetailPage />} />
-              <Route path="/collections/:collectionId/items/:itemId" element={<ItemDetailPage />} />
               <Route path="/curation" element={<CurationPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>

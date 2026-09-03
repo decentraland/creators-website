@@ -171,6 +171,7 @@ export const ListHeader = styled.div`
   color: ${theme.colors.softWhite};
 
   & > span:first-of-type {
+    grid-column: span 2;
     font-weight: 700;
     font-size: 16px;
     text-align: left;

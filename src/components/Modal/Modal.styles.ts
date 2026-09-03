@@ -15,6 +15,7 @@ export const Scrim = styled.div`
 `
 
 export const Dialog = styled.div`
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 560px;
@@ -29,9 +30,10 @@ export const Dialog = styled.div`
   outline: none;
 
   &[data-size='wide'] {
-    width: 1100px;
-    height: 100%;
-    max-height: 800px;
+    width: max-content;
+    max-width: 80vw;
+    height: max-content;
+    max-height: 90vh;
   }
 
   ${mobile} {
@@ -72,6 +74,12 @@ export const CloseButton = styled.button`
     opacity: 0.4;
     cursor: default;
   }
+`
+
+export const FloatingClose = styled.div`
+  position: absolute;
+  top: 16px;
+  right: 16px;
 `
 
 export const Body = styled.div`

@@ -1,5 +1,11 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchAllCollectionItems, fetchCollection, fetchCollectionItems, saveCollection } from '~/lib/builder'
+import {
+  fetchAllCollectionItems,
+  fetchCollection,
+  fetchCollectionItems,
+  saveCollection,
+  deleteCollection
+} from '~/lib/builder'
 import { buildCollectionInitializeData } from '~/lib/saveCollection'
 import { type Collection } from '~/lib/collections'
 
@@ -51,6 +57,21 @@ export function useSaveCollection(address: string | undefined) {
     },
     onSuccess: saved => {
       queryClient.setQueryData(['collection', address, saved.id], saved)
+      void queryClient.invalidateQueries({ queryKey: ['collections'] })
+    }
+  })
+}
+
+export function useDeleteCollection(address: string | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (collectionId: string) => {
+      if (!address) throw new Error('Wallet disconnected')
+      await deleteCollection(address, collectionId)
+      return collectionId
+    },
+    onSuccess: collectionId => {
+      queryClient.removeQueries({ queryKey: ['collection', address, collectionId] })
       void queryClient.invalidateQueries({ queryKey: ['collections'] })
     }
   })

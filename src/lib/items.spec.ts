@@ -1,12 +1,16 @@
 import { describe, it, expect } from 'vitest'
 import { CollectionDisplayStatus } from './collections'
 import {
+  BODY_SHAPE_FEMALE,
+  BODY_SHAPE_MALE,
   BodyShapeType,
   fromRemoteItem,
   getItemBodyShapeType,
   getItemDisplayStatus,
   getItemMetadata,
+  getMissingBodyShapeType,
   ItemType,
+  toRemoteItem,
   type Item,
   type RemoteItem
 } from './items'
@@ -134,5 +138,71 @@ describe('getItemMetadata', () => {
 
   it('throws when the item has no category', () => {
     expect(() => getItemMetadata(makeItem({ data: { representations: [] } }))).toThrow(/category/)
+  })
+})
+
+describe('toRemoteItem', () => {
+  it('maps the write-direction wire shape the legacy builder sends', () => {
+    const item: Item = {
+      id: 'item-1',
+      name: 'Hat',
+      description: '',
+      thumbnail: 'thumbnail.png',
+      owner: '0xowner',
+      collectionId: 'col-1',
+      rarity: 'epic',
+      totalSupply: 0,
+      price: '10',
+      beneficiary: '0xowner',
+      isPublished: true,
+      isApproved: true,
+      inCatalyst: false,
+      type: ItemType.WEARABLE,
+      data: { representations: [] },
+      metrics: { triangles: 10 },
+      contents: { 'male/model.glb': 'Qm1' },
+      createdAt: 1,
+      updatedAt: 1
+    }
+
+    const remote = toRemoteItem(item)
+
+    expect(remote.eth_address).toBe('0xowner')
+    expect(remote.collection_id).toBe('col-1')
+    expect(remote.total_supply).toBe(0)
+    expect(remote.urn).toBeNull()
+    expect(remote.video).toBeNull()
+    // The server owns publication state; the client always sends false.
+    expect(remote.is_published).toBe(false)
+    expect(remote.is_approved).toBe(false)
+    expect(remote.contents).toEqual({ 'male/model.glb': 'Qm1' })
+  })
+})
+
+describe('getMissingBodyShapeType', () => {
+  const representation = (bodyShapes: string[]) => ({ bodyShapes, mainFile: 'f', contents: ['f'] })
+
+  function itemWithShapes(bodyShapes: string[]): Item {
+    return {
+      id: 'i',
+      name: 'n',
+      description: '',
+      thumbnail: 't',
+      owner: '0x',
+      isPublished: false,
+      isApproved: false,
+      inCatalyst: false,
+      type: ItemType.WEARABLE,
+      data: { representations: [representation(bodyShapes)] },
+      contents: {},
+      createdAt: 1,
+      updatedAt: 1
+    }
+  }
+
+  it('returns the opposite single shape, or null for unisex items', () => {
+    expect(getMissingBodyShapeType(itemWithShapes([BODY_SHAPE_MALE]))).toBe(BodyShapeType.FEMALE)
+    expect(getMissingBodyShapeType(itemWithShapes([BODY_SHAPE_FEMALE]))).toBe(BodyShapeType.MALE)
+    expect(getMissingBodyShapeType(itemWithShapes([BODY_SHAPE_MALE, BODY_SHAPE_FEMALE]))).toBeNull()
   })
 })

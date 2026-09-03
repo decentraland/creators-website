@@ -86,15 +86,32 @@
     "publish": "Publicar colección",
     "preview": "Vista previa en Decentraland",
     "more_actions": "Más acciones",
+    "actions": {
+      "copy_urn": "Copiar URN",
+      "copy_address": "Copiar dirección del contrato",
+      "collaborators": "Colaboradores",
+      "minters": "Minters",
+      "delete": "Eliminar colección",
+      "copied_urn": "URN copiado al portapapeles",
+      "copied_address": "Dirección del contrato copiada al portapapeles",
+      "copy_failed": "No pudimos copiarlo. Inténtalo de nuevo.",
+      "deleted": "“{name}” fue eliminada",
+      "delete_error": "No pudimos eliminar la colección. Inténtalo de nuevo.",
+      "delete_modal": {
+        "title": "¿Eliminar colección?",
+        "description": "“{name}” y todos sus ítems se eliminarán de forma permanente. Esta acción no se puede deshacer.",
+        "cancel": "Cancelar",
+        "confirm": "Eliminar"
+      }
+    },
     "coming_soon": "Próximamente",
     "items_count": "Ítems ({count})",
     "no_items": "Aún no hay ítems",
     "list": {
       "item": "Ítem",
-      "body_type": "Tipo de cuerpo",
-      "rarity": "Rareza",
+      "body_shape": "Forma del cuerpo",
       "category": "Categoría",
-      "status": "Estado",
+      "rarity": "Rareza",
       "actions": "Acciones"
     },
     "row_actions": "Acciones del ítem",
@@ -167,11 +184,131 @@
       "title": "Inicia sesión para ver esta colección",
       "action": "Iniciar sesión"
     },
-    "showing": "Mostrando {shown} de {total} ítems",
-    "showing_filtered": "Mostrando {shown} {shown, plural, one {ítem coincidente} other {ítems coincidentes}} en esta página"
+    "showing": "Mostrando {range} de {total} {total, plural, one {ítem} other {ítems}}"
   },
-  "item_detail_page": {
-    "title": "Item"
+  "rarity_select": {
+    "units": "{count, plural, one {# unidad} other {# unidades}}"
+  },
+  "add_items_modal": {
+    "title": "{count, plural, one {Detalles del ítem} other {Detalles de los ítems}}",
+    "form_heading": "Detalles del ítem",
+    "processing": "Procesando…",
+    "type": {
+      "wearable": "Wearable",
+      "emote": "Emote"
+    },
+    "delete": "Eliminar",
+    "item_name": "Nombre del ítem",
+    "char_count": "{count}/{max}",
+    "item_name_placeholder": "ejemplo",
+    "invalid_name": "El nombre puede tener hasta 32 caracteres y no puede incluir \":\".",
+    "body_shape": "Tipo de cuerpo",
+    "body_shape_option": {
+      "both": "Ambos",
+      "female": "Femenino",
+      "male": "Masculino"
+    },
+    "variant_question": "¿Es una variante de tipo de cuerpo de otro ítem?",
+    "yes": "Sí",
+    "no": "No",
+    "select_item": "Selecciona un ítem",
+    "variant_target_label": "{name} - {bodyShape}",
+    "no_variant_targets": "Todavía no hay ítems {bodyShape} en esta colección para vincular. Agrega primero la versión {bodyShape} o responde No.",
+    "category": "Categoría",
+    "select_category": "Selecciona una categoría",
+    "rarity": "Rareza",
+    "rarity_tooltip": "La rareza determina cuántas copias de un ítem pueden existir. Cuanto más raro el ítem, menor su cantidad máxima.",
+    "play_mode": "Modo de reproducción",
+    "play_mode_option": {
+      "simple": "Una vez",
+      "loop": "En bucle"
+    },
+    "edit_thumbnail": "Editar miniatura",
+    "metrics": {
+      "triangles": "{count} Triángulos",
+      "materials": "{count, plural, one {# Material} other {# Materiales}}",
+      "textures": "{count, plural, one {# Textura} other {# Texturas}}",
+      "duration": "{count}s",
+      "frames": "{count} Fotogramas",
+      "fps": "{count} FPS"
+    },
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "previous": "Anterior",
+    "save_next": "Guardar y seguir",
+    "finish": "Finalizar",
+    "success_toast": "¡{count, plural, one {# ítem se agregó} other {# ítems se agregaron}} a tu colección!",
+    "error": {
+      "title": "No pudimos subir tus ítems",
+      "description_generic": "Algo salió mal al subir tus ítems. Inténtalo de nuevo.",
+      "description_locked": "Esta colección está bloqueada mientras se revisa, así que por ahora no se pueden agregar ítems.",
+      "description_published": "Esta colección ya fue publicada, así que no se le pueden agregar ítems nuevos.",
+      "try_again": "Intentar de nuevo"
+    },
+    "leave": {
+      "save_title": "¿Guardar antes de salir?",
+      "save_description": "Si sales sin guardar, perderás los ítems que subiste y los cambios que hiciste.",
+      "discard_title": "¿Descartar tus ítems?",
+      "discard_description": "Si sales ahora, perderás los ítems que subiste y los cambios que hiciste.",
+      "leave_without_saving": "Salir sin guardar",
+      "save_changes": "Guardar cambios",
+      "keep_editing": "Seguir editando"
+    },
+    "thumbnail": {
+      "title": "Miniatura del ítem",
+      "capture": "Guardar miniatura",
+      "upload_picture": "Subir imagen",
+      "wrong_format": "La miniatura debe ser una imagen PNG.",
+      "capture_failed": "No pudimos actualizar la miniatura. Inténtalo de nuevo."
+    },
+    "file_error_label": "Archivo inválido",
+    "file_error": {
+      "wrong_extension": "Este tipo de archivo no es compatible. Usa {extensions}.",
+      "file_too_big": "El archivo es demasiado grande: el tamaño máximo es {size}MB.",
+      "thumbnail_too_big": "La miniatura es demasiado grande: el tamaño máximo es {size}MB.",
+      "size_exceeded": "Este ítem es demasiado grande: el tamaño máximo es {size}MB incluyendo la miniatura.",
+      "missing_model_file": "No encontramos un modelo 3D o una textura dentro de este archivo.",
+      "invalid_zip": "No pudimos leer este archivo ZIP.",
+      "invalid_manifest": "La configuración {fileName} dentro del ZIP es inválida.",
+      "manifest_file_missing": "La configuración del ZIP menciona {fileName}, pero no está en el ZIP.",
+      "orphaned_auxiliary_file": "{fileName} necesita su archivo complementario {expected} en el mismo ZIP.",
+      "smart_wearable_not_supported": "Los smart wearables aún no se pueden subir aquí.",
+      "emote_duration_too_long": "Los emotes pueden durar hasta {seconds} segundos.",
+      "emote_with_mesh": "Este emote incluye la malla del avatar. Exporta solo el esqueleto y la animación.",
+      "emote_animations_out_of_sync": "Las animaciones del avatar y del prop deben tener la misma duración.",
+      "missing_external_resources": "El modelo referencia archivos que no están incluidos: {fileNames}.",
+      "invalid_model_file": "No pudimos cargar este modelo 3D. Revisa el archivo e inténtalo de nuevo.",
+      "invalid_representation": "Este archivo no puede usarse como variante de tipo de cuerpo de ese ítem."
+    }
+  },
+  "item_validation": {
+    "triangle_count_exceeded": "La cantidad de triángulos ({count}) supera el límite de {limit} para wearables de tipo {category}.",
+    "triangle_count_exceeded_with_hint": "La cantidad de triángulos ({count}) supera el límite base de {limit} para wearables de tipo {category}. Puedes aumentar este límite ocultando otras categorías de wearables en el Editor de Ítems.",
+    "dimensions_exceeded": "Las dimensiones del modelo ({width}m x {height}m x {depth}m) superan el máximo permitido ({maxWidth}m x {maxHeight}m x {maxDepth}m).",
+    "materials_exceeded": "La cantidad de materiales ({count}) supera el límite de {limit}.",
+    "textures_exceeded": "La cantidad de texturas ({count}) supera el límite de {limit}.",
+    "bone_influences_exceeded": "Algunos vértices tienen más de {limit} influencias de huesos.",
+    "leaf_bones_found": "Se encontraron huesos terminales: {bones}. Elimina los huesos con sufijo _end o _neutral antes de exportar.",
+    "non_deform_bones_found": "Se encontraron {count} huesos no deformantes: {bones}. Activa \"Exportar solo huesos de deformación\" en la configuración de exportación para reducir el tamaño del archivo y mejorar el rendimiento.",
+    "armature_bone_names": "Los nombres de los huesos de la armadura no coinciden con el esqueleto del avatar de Decentraland ({bones}). Vuelve a vincular tu wearable a la armadura estándar del avatar antes de exportar.",
+    "unrigged_vertices": "Se encontraron {count} vértices sin pesos de piel (no vinculados a ningún hueso). Estos vértices no seguirán el movimiento del avatar. Revisa el rigging y los pesos de piel antes de exportar.",
+    "cameras_found": "No se permiten cámaras en archivos GLB de wearables/emotes.",
+    "lights_found": "No se permiten luces en archivos GLB de wearables/emotes.",
+    "animations_in_wearable": "Los archivos GLB de wearables no deben contener animaciones. Si es un emote, las animaciones son esperadas.",
+    "forbidden_material_name": "El material \"{name}\" usa un patrón de nombre reservado ({pattern}). Este patrón está reservado para categorías faciales.",
+    "emote_frame_rate": "La tasa de fotogramas de la animación ({fps} fps) difiere de los {expected} fps esperados.",
+    "emote_max_frames": "La animación tiene {frames} fotogramas, superando el máximo de {limit}.",
+    "emote_max_clips": "El archivo tiene {count} clips de animación, superando el máximo de {limit}.",
+    "emote_missing_keyframes": "Algunos huesos de deformación no tienen keyframes en el primer/último fotograma: {bones}.",
+    "prop_triangle_count": "La cantidad de triángulos del prop ({count}) supera el límite de {limit}.",
+    "prop_materials": "La cantidad de materiales del prop ({count}) supera el límite de {limit}.",
+    "prop_textures": "La cantidad de texturas del prop ({count}) supera el límite de {limit}.",
+    "prop_armature_bones": "La armadura del prop tiene {count} huesos, superando el límite de {limit}.",
+    "armature_naming": "Se encontraron nombres de armadura inesperados: {names}. La armadura del avatar debe llamarse 'Armature' y la del prop 'Armature_Prop'.",
+    "animation_naming": "Los clips de animación deben terminar en '_Avatar' o '_Prop' cuando hay props. Nombres inválidos: {names}.",
+    "audio_format": "El archivo de audio \"{name}\" tiene un formato no soportado. Solo se permiten .mp3 y .ogg.",
+    "spring_bone_count_exceeded": "Este modelo tiene {count} spring bones (máximo: {limit}). Reduce la cantidad de nodos de spring bones en tu editor 3D y vuelve a subir el archivo.",
+    "thumbnail_not_transparent": "El fondo de la miniatura no parece transparente. Los mercados muestran el color de rareza del ítem detrás de la miniatura, por lo que se requiere un fondo transparente."
   },
   "item_editor_page": {
     "title": "Editor de items"

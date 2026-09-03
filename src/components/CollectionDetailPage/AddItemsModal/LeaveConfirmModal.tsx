@@ -2,7 +2,7 @@ import { Button } from '~/components/Button'
 import { WarningIcon } from '~/components/Icons'
 import { Modal } from '~/components/Modal'
 import { useTranslation } from '~/intl'
-import * as S from './ConfirmModals.styles'
+import * as S from '../ConfirmModals.styles'
 
 type Props = {
   /** With reviewed items, offer to save them; with none, collapse to a simple discard confirm. */
@@ -23,6 +23,7 @@ export function LeaveConfirmModal({ hasCheckedDrafts, isSaving, onLeave, onSaveC
       onClose={onStay}
       closeDisabled={isSaving}
       hideTitle
+      showClose={hasCheckedDrafts}
       testId="leave-confirm-modal"
     >
       <S.Wrap>

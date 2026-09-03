@@ -11,7 +11,7 @@ import {
   type PaginatedResource,
   type RemoteCollection
 } from '~/lib/collections'
-import { fromRemoteItem, type Item, type RemoteItem } from '~/lib/items'
+import { fromRemoteItem, toRemoteItem, type Item, type RemoteItem } from '~/lib/items'
 
 export type CollectionItemPreview = {
   id: string
@@ -39,10 +39,15 @@ async function request<T>(
   method: string,
   path: string,
   query = '',
-  body?: unknown
+  body?: unknown,
+  // The file-upload endpoint answers { ok: true } with no data; every other one carries data.
+  expectData = true
 ): Promise<T> {
   const init: RequestInit = { method }
-  if (body !== undefined) {
+  if (body instanceof FormData) {
+    // No Content-Type: the browser sets multipart/form-data with the boundary itself.
+    init.body = body
+  } else if (body !== undefined) {
     init.body = JSON.stringify(body)
     init.headers = { 'Content-Type': 'application/json' }
   }
@@ -53,13 +58,13 @@ async function request<T>(
       response.status
     )
   })) as { ok?: boolean; data?: T; error?: string }
-  if (!response.ok || parsed.ok === false || parsed.data === undefined) {
+  if (!response.ok || parsed.ok === false || (expectData && parsed.data === undefined)) {
     throw new BuilderServerError(
       parsed.error ?? `builder-server request failed: ${method} ${path} (${response.status})`,
       response.status
     )
   }
-  return parsed.data
+  return parsed.data as T
 }
 
 /**
@@ -117,6 +122,32 @@ export async function saveCollection(address: string, collection: Collection, da
     data
   })
   return fromRemoteCollection(remote)
+}
+
+/** Delete an unpublished collection and its items: DELETE /collections/{id} (409 published, 423 locked). */
+export async function deleteCollection(address: string, collectionId: string): Promise<void> {
+  await request<boolean>(address, 'DELETE', `/collections/${collectionId}`, '', undefined, false)
+}
+
+// builder-server statuses that make an item upload permanently un-retriable.
+export const COLLECTION_LOCKED_STATUS = 423
+export const ALREADY_PUBLISHED_STATUS = 409
+
+/**
+ * Create or update an item and upload its files: PUT /items/{id} with the remote item, then
+ * POST /items/{id}/files as multipart where each field name is the file's content hash — the
+ * same two-step save the legacy builder performs.
+ */
+export async function saveItem(address: string, item: Item, blobs: Record<string, Blob>): Promise<Item> {
+  const remote = await request<RemoteItem>(address, 'PUT', `/items/${item.id}`, '', { item: toRemoteItem(item) })
+  if (Object.keys(blobs).length > 0) {
+    const formData = new FormData()
+    for (const path in blobs) {
+      formData.append(item.contents[path], blobs[path])
+    }
+    await request<unknown>(address, 'POST', `/items/${item.id}/files`, '', formData, false)
+  }
+  return fromRemoteItem(remote)
 }
 
 /**
