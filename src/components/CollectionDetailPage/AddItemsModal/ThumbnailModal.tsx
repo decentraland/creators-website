@@ -1,9 +1,15 @@
 import { useRef, useState } from 'react'
 import { PreviewProjection } from '@dcl/schemas'
 import { WearablePreview } from 'decentraland-ui2'
+import { VerticalPosition } from 'decentraland-ui2/dist/components/WearablePreview/TranslationControls'
+import { Position } from 'decentraland-ui2/dist/components/WearablePreview/ZoomControls'
+import PauseIcon from '@mui/icons-material/Pause'
+import PlayArrowIcon from '@mui/icons-material/PlayArrow'
+import VolumeOffIcon from '@mui/icons-material/VolumeOff'
+import VolumeUpIcon from '@mui/icons-material/VolumeUp'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
-import { EmoteControls, ZoomControls } from '~/components/PreviewControls'
+import { EmoteControls, TranslationControls, ZoomControls } from '~/components/PreviewControls'
 import { useTranslation } from '~/intl'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { ItemType } from '~/lib/items'
@@ -115,7 +121,7 @@ export function ThumbnailModal({ draft, onSave, onClose }: Props) {
             blob={blob}
             disableBackground
             disableAutoRotate
-            projection={PreviewProjection.ORTHOGRAPHIC}
+            projection={PreviewProjection.PERSPECTIVE}
             wheelZoom={2}
             {...(isEmote
               ? {
@@ -130,11 +136,68 @@ export function ThumbnailModal({ draft, onSave, onClose }: Props) {
           />
           {isReady && (
             <>
-              <ZoomControls className="zoom-controls" wearablePreviewId={PREVIEW_ID} />
-              {isEmote && <EmoteControls className="emote-controls" wearablePreviewId={PREVIEW_ID} />}
+              <ZoomControls className="zoom-controls" position={Position.RIGHT} wearablePreviewId={PREVIEW_ID} />
+              <TranslationControls
+                className="translation-controls"
+                vertical
+                verticalPosition={VerticalPosition.LEFT}
+                wearablePreviewId={PREVIEW_ID}
+              />
             </>
           )}
         </S.PreviewArea>
+        {isEmote && isReady && (
+          <S.EmoteBar data-testid="thumbnail-emote-controls">
+            <EmoteControls
+              wearablePreviewId={PREVIEW_ID}
+              renderPlayButton={({ isPlaying, onToggle }) => (
+                <Button
+                  type="button"
+                  variant="dark"
+                  size="icon"
+                  aria-label={t(isPlaying ? 'add_items_modal.thumbnail.pause' : 'add_items_modal.thumbnail.play')}
+                  data-testid="thumbnail-emote-play"
+                  onClick={() => void onToggle()}
+                >
+                  {isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+                </Button>
+              )}
+              renderProgressBar={({ frame, length, onChange, onMouseUp }) => (
+                <S.Scrubber
+                  type="range"
+                  min={0}
+                  max={Math.ceil(length * 100)}
+                  step={1}
+                  value={frame}
+                  aria-label={t('add_items_modal.thumbnail.timeline')}
+                  onChange={event => void onChange(Number(event.target.value))}
+                  onMouseUp={() => void onMouseUp()}
+                  onTouchEnd={() => void onMouseUp()}
+                />
+              )}
+              renderFrameInput={({ frame, onChange }) => (
+                <S.FrameInput
+                  type="number"
+                  min={0}
+                  value={frame}
+                  aria-label={t('add_items_modal.thumbnail.frame')}
+                  onChange={event => void onChange(Number(event.target.value))}
+                />
+              )}
+              renderSoundButton={({ isSoundEnabled, onToggle }) => (
+                <Button
+                  type="button"
+                  variant="dark"
+                  size="icon"
+                  aria-label={t(isSoundEnabled ? 'add_items_modal.thumbnail.mute' : 'add_items_modal.thumbnail.unmute')}
+                  onClick={onToggle}
+                >
+                  {isSoundEnabled ? <VolumeUpIcon /> : <VolumeOffIcon />}
+                </Button>
+              )}
+            />
+          </S.EmoteBar>
+        )}
         {error && <S.ErrorText data-testid="thumbnail-error">{error}</S.ErrorText>}
         <S.Actions>
           {!isEmote && (

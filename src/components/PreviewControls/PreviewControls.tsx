@@ -1,5 +1,6 @@
 import { lazy, Suspense, type ComponentProps } from 'react'
 import type { EmoteControls as EmoteControlsComponent } from 'decentraland-ui2/dist/components/WearablePreview/EmoteControls'
+import type { TranslationControls as TranslationControlsComponent } from 'decentraland-ui2/dist/components/WearablePreview/TranslationControls'
 import type { ZoomControls as ZoomControlsComponent } from 'decentraland-ui2/dist/components/WearablePreview/ZoomControls'
 
 // ui2's preview controls are MUI components: their styles read `theme.spacing()` and the Button
@@ -38,6 +39,20 @@ const ZoomControlsLazy = lazy(async () => {
   }
 })
 
+const TranslationControlsLazy = lazy(async () => {
+  const [{ TranslationControls }, { CssVarsProvider, theme }] = await Promise.all([
+    import('decentraland-ui2/dist/components/WearablePreview/TranslationControls'),
+    loadTheme()
+  ])
+  return {
+    default: (props: ComponentProps<typeof TranslationControlsComponent>) => (
+      <CssVarsProvider theme={theme}>
+        <TranslationControls {...props} />
+      </CssVarsProvider>
+    )
+  }
+})
+
 export function EmoteControls(props: ComponentProps<typeof EmoteControlsComponent>) {
   return (
     <Suspense fallback={null}>
@@ -50,6 +65,14 @@ export function ZoomControls(props: ComponentProps<typeof ZoomControlsComponent>
   return (
     <Suspense fallback={null}>
       <ZoomControlsLazy {...props} />
+    </Suspense>
+  )
+}
+
+export function TranslationControls(props: ComponentProps<typeof TranslationControlsComponent>) {
+  return (
+    <Suspense fallback={null}>
+      <TranslationControlsLazy {...props} />
     </Suspense>
   )
 }

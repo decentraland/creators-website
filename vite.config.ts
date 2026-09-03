@@ -11,7 +11,10 @@ export default defineConfig(({ command, mode }) => {
     resolve: {
       alias: {
         '~': fileURLToPath(new URL('./src', import.meta.url))
-      }
+      },
+      // decentraland-ui2 nests its own @emotion/styled; two emotion copies means two ThemeContexts,
+      // so MUI's theme provider never reaches ui2's styled components.
+      dedupe: ['@emotion/react', '@emotion/styled']
     },
     ...(command === 'build' ? { base: envVariables.VITE_BASE_URL } : undefined),
     server: {
