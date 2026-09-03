@@ -262,13 +262,7 @@
       "capture": "Save thumbnail",
       "upload_picture": "Upload picture",
       "wrong_format": "The thumbnail must be a PNG image.",
-      "capture_failed": "We couldn't update the thumbnail. Please try again.",
-      "play": "Play",
-      "pause": "Pause",
-      "timeline": "Emote timeline",
-      "frame": "Second",
-      "mute": "Mute",
-      "unmute": "Unmute"
+      "capture_failed": "We couldn't update the thumbnail. Please try again."
     },
     "file_error_label": "Invalid file",
     "file_error": {

@@ -3,10 +3,6 @@ import { PreviewProjection } from '@dcl/schemas'
 import { WearablePreview } from 'decentraland-ui2'
 import { VerticalPosition } from 'decentraland-ui2/dist/components/WearablePreview/TranslationControls'
 import { Position } from 'decentraland-ui2/dist/components/WearablePreview/ZoomControls'
-import PauseIcon from '@mui/icons-material/Pause'
-import PlayArrowIcon from '@mui/icons-material/PlayArrow'
-import VolumeOffIcon from '@mui/icons-material/VolumeOff'
-import VolumeUpIcon from '@mui/icons-material/VolumeUp'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { EmoteControls, TranslationControls, ZoomControls } from '~/components/PreviewControls'
@@ -138,6 +134,7 @@ export function ThumbnailModal({ draft, onSave, onClose }: Props) {
               : {})}
             onLoad={() => setReady(true)}
           />
+          <S.Frame aria-hidden data-testid="thumbnail-frame" />
           {isReady && (
             <>
               <ZoomControls className="zoom-controls" position={Position.RIGHT} wearablePreviewId={PREVIEW_ID} />
@@ -152,54 +149,7 @@ export function ThumbnailModal({ draft, onSave, onClose }: Props) {
         </S.PreviewArea>
         {isEmote && isReady && (
           <S.EmoteBar data-testid="thumbnail-emote-controls">
-            <EmoteControls
-              wearablePreviewId={PREVIEW_ID}
-              renderPlayButton={({ isPlaying, onToggle }) => (
-                <Button
-                  type="button"
-                  variant="dark"
-                  size="icon"
-                  aria-label={t(isPlaying ? 'add_items_modal.thumbnail.pause' : 'add_items_modal.thumbnail.play')}
-                  data-testid="thumbnail-emote-play"
-                  onClick={() => void onToggle()}
-                >
-                  {isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
-                </Button>
-              )}
-              renderProgressBar={({ frame, length, onChange, onMouseUp }) => (
-                <S.Scrubber
-                  type="range"
-                  min={0}
-                  max={Math.ceil(length * 100)}
-                  step={1}
-                  value={frame}
-                  aria-label={t('add_items_modal.thumbnail.timeline')}
-                  onChange={event => void onChange(Number(event.target.value))}
-                  onMouseUp={() => void onMouseUp()}
-                  onTouchEnd={() => void onMouseUp()}
-                />
-              )}
-              renderFrameInput={({ frame, onChange }) => (
-                <S.FrameInput
-                  type="number"
-                  min={0}
-                  value={frame}
-                  aria-label={t('add_items_modal.thumbnail.frame')}
-                  onChange={event => void onChange(Number(event.target.value))}
-                />
-              )}
-              renderSoundButton={({ isSoundEnabled, onToggle }) => (
-                <Button
-                  type="button"
-                  variant="dark"
-                  size="icon"
-                  aria-label={t(isSoundEnabled ? 'add_items_modal.thumbnail.mute' : 'add_items_modal.thumbnail.unmute')}
-                  onClick={onToggle}
-                >
-                  {isSoundEnabled ? <VolumeUpIcon /> : <VolumeOffIcon />}
-                </Button>
-              )}
-            />
+            <EmoteControls className="emote-controls" wearablePreviewId={PREVIEW_ID} />
           </S.EmoteBar>
         )}
         {error && <S.ErrorText data-testid="thumbnail-error">{error}</S.ErrorText>}

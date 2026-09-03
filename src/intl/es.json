@@ -262,13 +262,7 @@
       "capture": "Guardar miniatura",
       "upload_picture": "Subir imagen",
       "wrong_format": "La miniatura debe ser una imagen PNG.",
-      "capture_failed": "No pudimos actualizar la miniatura. Inténtalo de nuevo.",
-      "play": "Reproducir",
-      "pause": "Pausar",
-      "timeline": "Línea de tiempo del emote",
-      "frame": "Segundo",
-      "mute": "Silenciar",
-      "unmute": "Activar sonido"
+      "capture_failed": "No pudimos actualizar la miniatura. Inténtalo de nuevo."
     },
     "file_error_label": "Archivo inválido",
     "file_error": {
