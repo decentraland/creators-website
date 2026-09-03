@@ -25,8 +25,14 @@ export const IconWrap = styled.div`
   }
 `
 
+export const Art = styled.img`
+  display: block;
+  height: 125px;
+  margin: 0 auto 24px;
+`
+
 export const Heading = styled.h3`
-  margin: 0 auto 16px;
+  margin: 0 auto 12px;
   font-size: 20px;
   font-weight: 700;
   line-height: 1.3;
@@ -34,10 +40,11 @@ export const Heading = styled.h3`
 `
 
 export const Text = styled.p`
-  margin: 0 auto 32px;
+  margin: 0 auto 48px;
   font-size: 20px;
+  font-weight: 500;
   line-height: 1.3;
-  color: ${theme.colors.gray4};
+  color: ${theme.colors.softWhite};
 `
 
 export const Actions = styled.div`

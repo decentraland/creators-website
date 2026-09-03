@@ -239,11 +239,14 @@
     "finish": "Finalizar",
     "success_toast": "¡{count, plural, one {# ítem se agregó} other {# ítems se agregaron}} a tu colección!",
     "error": {
-      "title": "No pudimos subir tus ítems",
+      "title_generic": "No pudimos subir tus ítems",
+      "title_locked": "Esta colección está en revisión",
+      "title_published": "Esta colección ya está publicada",
       "description_generic": "Algo salió mal al subir tus ítems. Inténtalo de nuevo.",
-      "description_locked": "Esta colección está bloqueada mientras se revisa, así que por ahora no se pueden agregar ítems.",
-      "description_published": "Esta colección ya fue publicada, así que no se le pueden agregar ítems nuevos.",
-      "try_again": "Intentar de nuevo"
+      "description_locked": "No se pueden agregar ítems mientras la colección está en revisión. Tus archivos no se guardaron; podrás agregarlos cuando termine la revisión.",
+      "description_published": "Las colecciones publicadas no admiten ítems nuevos. Tus archivos no se guardaron; crea una nueva colección para agregarlos.",
+      "try_again": "Intentar de nuevo",
+      "got_it": "Entendido"
     },
     "leave": {
       "save_title": "¿Guardar antes de salir?",

@@ -239,11 +239,14 @@
     "finish": "Finish",
     "success_toast": "{count, plural, one {# Item} other {# Items}} successfully added to your collection!",
     "error": {
-      "title": "We couldn't upload your items",
+      "title_generic": "We couldn't upload your items",
+      "title_locked": "This collection is under review",
+      "title_published": "This collection is already published",
       "description_generic": "Something went wrong while uploading your items. Please try again.",
-      "description_locked": "This collection is locked while it's being reviewed, so new items can't be added right now.",
-      "description_published": "This collection has already been published, so new items can't be added to it.",
-      "try_again": "Try again"
+      "description_locked": "Items can't be added while the collection is being reviewed. Your files weren't saved — you can add them once the review is done.",
+      "description_published": "Published collections can't receive new items. Your files weren't saved — create a new collection to add them.",
+      "try_again": "Try again",
+      "got_it": "Got it"
     },
     "leave": {
       "save_title": "Save before leaving?",
