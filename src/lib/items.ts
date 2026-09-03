@@ -134,7 +134,10 @@ export function fromRemoteItem(remote: RemoteItem): Item {
   return item
 }
 
-/** The wire shape for PUT /items/:id, byte-compatible with the legacy builder's toRemoteItem. */
+/**
+ * The wire shape for PUT /items/:id, byte-compatible with the legacy builder's toRemoteItem. Meant for
+ * creating/updating draft items only: publication flags are always sent as false, since the server owns them.
+ */
 export function toRemoteItem(item: Item): Omit<RemoteItem, 'created_at' | 'updated_at' | 'in_catalyst'> {
   return {
     id: item.id,

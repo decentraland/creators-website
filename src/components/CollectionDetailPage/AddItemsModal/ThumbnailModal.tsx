@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { PreviewProjection } from '@dcl/schemas'
 import { WearablePreview } from 'decentraland-ui2'
 import { VerticalPosition } from 'decentraland-ui2/dist/components/WearablePreview/TranslationControls'
@@ -67,7 +67,11 @@ export function ThumbnailModal({ draft, onSave, onClose }: Props) {
   const [error, setError] = useState<string | null>(null)
 
   const isEmote = draft.type === ItemType.EMOTE
-  const blob = isEmote ? toEmoteWithBlobs(draft.contents) : toWearableWithBlobs(draft.contents)
+  // A new blob reference remounts the preview iframe, so keep it stable across local state changes.
+  const blob = useMemo(
+    () => (isEmote ? toEmoteWithBlobs(draft.contents) : toWearableWithBlobs(draft.contents)),
+    [isEmote, draft.contents]
+  )
 
   function handleCapture() {
     setSaving(true)

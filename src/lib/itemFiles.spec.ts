@@ -196,6 +196,11 @@ describe('loadItemFile', () => {
     expect(result.bodyShape).toBe(BodyShapeType.BOTH)
   })
 
+  it('rejects an emote.json manifest with wrongly typed fields', async () => {
+    const file = await zipFile({ 'emote.json': JSON.stringify({ name: 42 }), 'emote.glb': 'glb' })
+    await expectItemFileError(loadItemFile(file), 'invalid_manifest')
+  })
+
   it('rejects smart wearable zips', async () => {
     const file = await zipFile({ 'scene.json': '{}', 'model.glb': 'glb' })
     await expectItemFileError(loadItemFile(file), 'smart_wearable_not_supported')

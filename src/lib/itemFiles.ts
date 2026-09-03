@@ -253,11 +253,20 @@ function toWearableManifest(value: unknown): WearableManifest {
   return manifest as WearableManifest
 }
 
+const EMOTE_MANIFEST_STRING_FIELDS = ['name', 'description', 'rarity', 'category', 'play_mode'] as const
+
 function toEmoteManifest(value: unknown): EmoteManifest {
-  if (!value || typeof value !== 'object') {
+  const manifest = value as Record<string, unknown> | null
+  const isValid =
+    !!manifest &&
+    typeof manifest === 'object' &&
+    EMOTE_MANIFEST_STRING_FIELDS.every(field => manifest[field] === undefined || typeof manifest[field] === 'string') &&
+    (manifest.tags === undefined ||
+      (Array.isArray(manifest.tags) && manifest.tags.every(tag => typeof tag === 'string')))
+  if (!isValid) {
     throw new ItemFileError('invalid_manifest', { fileName: EMOTE_MANIFEST })
   }
-  return value
+  return manifest
 }
 
 function getManifestBodyShape(wearable: WearableManifest): BodyShapeType {
