@@ -1,10 +1,12 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { PreviewProjection } from '@dcl/schemas'
 import { WearablePreview } from 'decentraland-ui2'
 import { dataURLToBlob, isPngBackgroundTransparent } from '~/lib/media'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { ItemType, type ItemMetrics } from '~/lib/items'
 import { toEmoteWithBlobs, toWearableWithBlobs } from '~/lib/preview'
+import { renderPosedThumbnail } from '~/lib/renderPosedThumbnail'
+import { getThumbnailPose, isAutoThumbnailStale } from '~/lib/thumbnailPose'
 import { type ItemDraft } from './AddItemsModal.state'
 import * as S from './AddItemsModal.styles'
 
@@ -23,22 +25,27 @@ type Props = {
 
 /**
  * Off-screen WearablePreview that fills a draft's metrics and auto thumbnail, one draft at a
- * time (the parent passes the next draft that still needs preview data).
+ * time (the parent passes the next draft that still needs preview data). Categories with a
+ * thumbnail pose are rendered offscreen instead of screenshotting the preview, and re-rendered
+ * when the category change alters the pose.
  */
 export function DraftProcessor({ draft, onResult, onError }: Props) {
   // The preview loads each model twice and disposes the first scene, so a controller call made
   // after the first onLoad can fail mid-flight. Attempts are retried (also re-triggered by the
   // second onLoad) until one round-trip completes against a live scene.
-  const runRef = useRef({ draftId: '', done: false, busy: false, attempts: 0, retryTimer: 0 })
+  const pose = draft.type === ItemType.WEARABLE ? getThumbnailPose(draft.category) : null
+  // A pose change on an already-processed draft is a new run against the same iframe.
+  const runKey = `${draft.id}:${pose ?? ''}`
+  const runRef = useRef({ runKey: '', done: false, busy: false, attempts: 0, retryTimer: 0 })
 
-  if (runRef.current.draftId !== draft.id) {
+  if (runRef.current.runKey !== runKey) {
     window.clearTimeout(runRef.current.retryTimer)
-    runRef.current = { draftId: draft.id, done: false, busy: false, attempts: 0, retryTimer: 0 }
+    runRef.current = { runKey, done: false, busy: false, attempts: 0, retryTimer: 0 }
   }
 
   const attempt = () => {
     const run = runRef.current
-    if (run.draftId !== draft.id || run.done || run.busy) return
+    if (run.runKey !== runKey || run.done || run.busy) return
     run.busy = true
     run.attempts++
 
@@ -58,22 +65,29 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
           draft.type === ItemType.WEARABLE ? await controller.scene.getMetrics() : (draft.metrics ?? {})
 
         const patch: Partial<ItemDraft> = { metrics }
-        if (!draft.thumbnail) {
-          const thumbnail = await controller.scene.getScreenshot(THUMBNAIL_SIZE, THUMBNAIL_SIZE)
+        if (!draft.thumbnail || isAutoThumbnailStale(draft)) {
+          const thumbnail = pose
+            ? await renderPosedThumbnail(draft.contents, draft.model, pose).catch((error: unknown) => {
+                console.warn('Posed thumbnail render failed, falling back to preview screenshot', error)
+                return controller.scene.getScreenshot(THUMBNAIL_SIZE, THUMBNAIL_SIZE)
+              })
+            : await controller.scene.getScreenshot(THUMBNAIL_SIZE, THUMBNAIL_SIZE)
           const thumbnailBlob = dataURLToBlob(thumbnail)
           patch.thumbnail = thumbnail
+          patch.isAutoThumbnail = true
+          patch.autoThumbnailCategory = draft.category
           if (thumbnailBlob) {
             patch.contents = { ...draft.contents, [THUMBNAIL_PATH]: thumbnailBlob }
             patch.thumbnailNotTransparent = !(await isPngBackgroundTransparent(thumbnailBlob))
           }
         }
 
-        if (run.draftId !== draft.id) return
+        if (run.runKey !== runKey) return
         run.done = true
         onResult(draft.id, patch)
       } catch (error) {
         run.busy = false
-        if (run.draftId !== draft.id || run.done) return
+        if (run.runKey !== runKey || run.done) return
         if (run.attempts >= MAX_ATTEMPTS) {
           console.error('Preview processing failed:', error)
           onError(draft.id)
@@ -85,6 +99,13 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
       }
     })()
   }
+
+  // The iframe's onLoad only fires once per draft: a later pose change has to kick off its run here.
+  const isLoadedRef = useRef(false)
+  useEffect(() => {
+    if (isLoadedRef.current) attempt()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runKey])
 
   const isEmote = draft.type === ItemType.EMOTE
   // Rewrapping the same contents each render would reload the iframe endlessly.
@@ -103,11 +124,14 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
         disableAutoRotate
         projection={PreviewProjection.ORTHOGRAPHIC}
         {...(isEmote ? { profile: 'default', disableFace: true, disableDefaultWearables: true, skin: '000000' } : {})}
-        onLoad={attempt}
+        onLoad={() => {
+          isLoadedRef.current = true
+          attempt()
+        }}
         onError={() => {
           // Iframe-level errors also count as attempts so a broken preview can't hang forever.
           const run = runRef.current
-          if (run.draftId !== draft.id || run.done || run.busy) return
+          if (run.runKey !== runKey || run.done || run.busy) return
           run.attempts++
           if (run.attempts >= MAX_ATTEMPTS) {
             onError(draft.id)

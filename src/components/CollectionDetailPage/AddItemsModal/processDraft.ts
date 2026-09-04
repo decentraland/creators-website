@@ -8,6 +8,7 @@ import { THUMBNAIL_PATH, isImageFile, loadItemFile } from '~/lib/itemFiles'
 import { BodyShapeType, ItemType, type ItemMetrics } from '~/lib/items'
 import { analyzeModel } from '~/lib/models'
 import { isRarity } from '~/lib/rarities'
+import { isAutoThumbnailStale } from '~/lib/thumbnailPose'
 import { type ItemDraft } from './AddItemsModal.state'
 
 const IMAGE_WEARABLE_METRICS: ItemMetrics = {
@@ -93,9 +94,9 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
   return patch
 }
 
-/** True when the draft still needs the WearablePreview pass (metrics and/or auto thumbnail). */
+/** True when the draft still needs metrics or an auto thumbnail (missing, or posed for another category). */
 export function needsPreviewData(draft: ItemDraft): boolean {
   if (draft.status !== 'ready' || !draft.type) return false
   if (isImageFile(draft.model)) return false
-  return !draft.metrics || !draft.thumbnail
+  return !draft.metrics || !draft.thumbnail || isAutoThumbnailStale(draft)
 }

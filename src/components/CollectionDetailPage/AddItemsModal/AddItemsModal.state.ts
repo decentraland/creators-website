@@ -36,6 +36,10 @@ export type ItemDraft = {
   /** Data URL of the current thumbnail; also stored as contents['thumbnail.png'] once final. */
   thumbnail: string | null
   thumbnailNotTransparent: boolean
+  /** True when we generated the thumbnail (not zip-provided or user-picked), so it can be regenerated. */
+  isAutoThumbnail: boolean
+  /** Category the auto thumbnail was rendered for; its pose decides whether a category change regenerates it. */
+  autoThumbnailCategory: string | null
   metrics: ItemMetrics | null
   emoteMetrics: AnimationMetrics | null
   validationIssues: ValidationIssue[]
@@ -70,6 +74,8 @@ export function createDraft(file: File): ItemDraft {
     playMode: EmotePlayMode.SIMPLE,
     thumbnail: null,
     thumbnailNotTransparent: false,
+    isAutoThumbnail: false,
+    autoThumbnailCategory: null,
     metrics: null,
     emoteMetrics: null,
     validationIssues: [],

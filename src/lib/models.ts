@@ -37,7 +37,7 @@ function revokeObjectURLs(mappings: Record<string, string>): void {
   for (const url of Object.values(mappings)) URL.revokeObjectURL(url)
 }
 
-async function loadGltf(url: string, mappings: Record<string, string>): Promise<GLTF> {
+export async function loadGltf(url: string, mappings: Record<string, string>): Promise<GLTF> {
   const Three = await import('three')
   const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js')
 

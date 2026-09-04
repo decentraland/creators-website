@@ -24,7 +24,7 @@ import * as S from './ThumbnailModal.styles'
 const PREVIEW_ID = 'thumbnail-editor'
 const THUMBNAIL_SIZE = 1024
 
-export type ThumbnailPatch = Pick<ItemDraft, 'thumbnail' | 'contents' | 'thumbnailNotTransparent'>
+export type ThumbnailPatch = Pick<ItemDraft, 'thumbnail' | 'contents' | 'thumbnailNotTransparent' | 'isAutoThumbnail'>
 
 export class ThumbnailFormatError extends Error {}
 
@@ -34,7 +34,8 @@ export async function thumbnailPatchFromDataURL(draft: ItemDraft, thumbnail: str
   return {
     thumbnail,
     contents: { ...draft.contents, [THUMBNAIL_PATH]: thumbnailBlob },
-    thumbnailNotTransparent: !(await isPngBackgroundTransparent(thumbnailBlob))
+    thumbnailNotTransparent: !(await isPngBackgroundTransparent(thumbnailBlob)),
+    isAutoThumbnail: false
   }
 }
 
