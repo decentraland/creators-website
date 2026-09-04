@@ -81,10 +81,30 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
   }, [])
 
   const { drafts, selectedId, view, failureReason, isUploading } = state
-  const selected = drafts.find(draft => draft.id === selectedId) ?? drafts[0] ?? null
+  const selected = useMemo(
+    () => drafts.find(draft => draft.id === selectedId) ?? drafts[0] ?? null,
+    [drafts, selectedId]
+  )
   const processingIdRef = useRef<string | null>(null)
-  const previewDraft = pickPreviewDraft(drafts, selected?.id ?? null, processingIdRef.current)
-  processingIdRef.current = previewDraft?.id ?? null
+  const previewDraft = useMemo(() => {
+    const next = pickPreviewDraft(drafts, selected?.id ?? null, processingIdRef.current)
+    processingIdRef.current = next?.id ?? null
+    return next
+  }, [drafts, selected?.id])
+
+  const isSelectedComplete = useMemo(
+    () => !!selected && isDraftComplete(selected, drafts, collectionItems),
+    [selected, drafts, collectionItems]
+  )
+  const othersChecked = useMemo(
+    () => !!selected && drafts.every(draft => draft.id === selected.id || draft.checked),
+    [selected, drafts]
+  )
+  const selectedIndex = useMemo(
+    () => (selected ? drafts.findIndex(draft => draft.id === selected.id) : -1),
+    [selected, drafts]
+  )
+  const hasCheckedDrafts = useMemo(() => drafts.some(draft => draft.checked), [drafts])
 
   // Everything deleted → nothing left to review, close silently.
   useEffect(() => {
@@ -217,12 +237,8 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
     )
   }
 
-  const isSelectedComplete = !!selected && isDraftComplete(selected, drafts, collectionItems)
-  const othersChecked = !!selected && drafts.every(draft => draft.id === selected.id || draft.checked)
   const isSingle = drafts.length === 1
-  const selectedIndex = selected ? drafts.findIndex(draft => draft.id === selected.id) : -1
   const showFinish = isSingle || othersChecked
-  const hasCheckedDrafts = drafts.some(draft => draft.checked)
 
   return (
     <>

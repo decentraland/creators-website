@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import {
   CameraAlt as CameraIcon,
   ChangeHistory as TriangleIcon,
@@ -40,19 +40,29 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
   const isEmote = draft.type === ItemType.EMOTE
   const isWearable = draft.type === ItemType.WEARABLE
   const isSingleShape = isWearable && draft.bodyShape !== BodyShapeType.BOTH
-  const variantTargets = isSingleShape ? getVariantTargets(draft, drafts, collectionItems) : []
+  const variantTargets = useMemo(
+    () => (isSingleShape ? getVariantTargets(draft, drafts, collectionItems) : []),
+    [isSingleShape, draft, drafts, collectionItems]
+  )
   const variantTargetShape = draft.bodyShape === BodyShapeType.MALE ? BodyShapeType.FEMALE : BodyShapeType.MALE
   const showItemFields = !draft.isVariant
-  const sizeError = draft.type ? getSizeError(draft.type, draft.category ?? undefined, draft.contents) : null
+  const sizeError = useMemo(
+    () => (draft.type ? getSizeError(draft.type, draft.category ?? undefined, draft.contents) : null),
+    [draft.type, draft.category, draft.contents]
+  )
   const nameInvalid = draft.name.length > 0 && !isValidItemName(draft.name)
+  const categories = useMemo(() => getCategoryOptions(draft), [draft])
 
-  const warnings: Array<{ key: string; text: string }> = draft.validationIssues.map(issue => ({
-    key: issue.code,
-    text: t(`${issue.messageKey}`, issue.messageParams)
-  }))
-  if (draft.thumbnailNotTransparent) {
-    warnings.push({ key: 'THUMBNAIL_NOT_TRANSPARENT', text: t('item_validation.thumbnail_not_transparent') })
-  }
+  const warnings = useMemo(() => {
+    const list = draft.validationIssues.map(issue => ({
+      key: issue.code,
+      text: t(`${issue.messageKey}`, issue.messageParams)
+    }))
+    if (draft.thumbnailNotTransparent) {
+      list.push({ key: 'THUMBNAIL_NOT_TRANSPARENT', text: t('item_validation.thumbnail_not_transparent') })
+    }
+    return list
+  }, [draft.validationIssues, draft.thumbnailNotTransparent, t])
 
   return (
     <S.Content data-testid="draft-form">
@@ -223,7 +233,7 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
               {t('add_items_modal.category')}
               <CategorySelect
                 value={draft.category}
-                categories={getCategoryOptions(draft)}
+                categories={categories}
                 testId="item-category"
                 onChange={category => onUpdate(draft.id, { category })}
               />

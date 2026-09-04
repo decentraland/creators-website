@@ -47,3 +47,12 @@ Two sources, nothing else — no icon fonts, no SVG loader/svgr, no per-icon `<i
 - **Figma-specific glyphs** (brand/product icons that have no Material equivalent, e.g. Jump In, Open Editor) live in `src/components/Icons/`, one file per icon (`JumpInIcon.tsx`), re-exported from `index.ts`. Each is a plain React component rendering an inline `<svg>` with `fill="currentColor"`, `aria-hidden`, `focusable="false"`, the design's intrinsic `width`/`height`, and `...props: SVGProps<SVGSVGElement>` spread last so callers can override. Paste the Figma path data as-is; drop wrappers (`<g clip-path>`, `<defs>`) and hard-coded fills so the glyph inherits the button/text color. Never import `@mui/material` to build icons — it is only a transitive dependency here.
 
 Icons are decorative: the accessible name comes from the button/link text or its `aria-label`, never from the SVG.
+
+## Memoization (hard rule)
+
+Any O(n) derivation computed in a component's render body — `find`, `some`, `every`, `filter`, `map`, `sort`, `reduce`, `Object.keys/values/entries` over data, or a helper that does one of those — goes in `useMemo` with exact deps, regardless of how small the array is today. Values, not size, decide: a memo is also required whenever the result feeds a dependency array, a react-query key, or a heavy child such as `WearablePreview`, since a fresh identity there costs a rerun or a reload.
+
+- A JSX `.map` that only renders children is exempt; wrap it once its result is reused.
+- Hooks sit above any early `return`; move the derivation up rather than skipping the memo.
+- Callbacks passed to memoized or heavy children go through `useCallback`, otherwise the memo on the child is dead.
+- `t` from `useTranslation` is referentially stable and safe in deps. Keep it that way: any hook returned from `~/intl` or a store must return stable functions.
