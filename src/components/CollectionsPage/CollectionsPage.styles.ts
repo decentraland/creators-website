@@ -7,6 +7,7 @@ import { SearchBox as SharedSearchBox } from '~/styles/shared'
 export { FooterRow, Panel, PanelText, PanelTitle, SearchSpinner, ShowingCount } from '~/styles/shared'
 
 const mobile = theme.media.maxWidth('mobile')
+const noActions = theme.media.maxWidth('lg')
 const stacked = theme.media.maxWidth('xl')
 
 export const Page = styled.div`
@@ -51,7 +52,7 @@ export const HeaderActions = styled.div`
   align-items: center;
   gap: 16px;
 
-  ${mobile} {
+  ${noActions} {
     /* Mobile is a viewer: collections are searched and managed from desktop. */
     display: none;
   }
@@ -220,7 +221,7 @@ export const EmptyActions = styled.div`
     min-width: 240px;
   }
 
-  ${mobile} {
+  ${noActions} {
     /* Mobile is a viewer: collections are created from desktop. */
     display: none;
   }

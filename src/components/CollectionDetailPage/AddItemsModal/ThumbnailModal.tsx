@@ -123,6 +123,7 @@ export function ThumbnailModal({ draft, onSave, onClose }: Props) {
             disableBackground
             disableAutoRotate
             projection={PreviewProjection.PERSPECTIVE}
+            zoom={50}
             wheelZoom={2}
             {...(isEmote
               ? {

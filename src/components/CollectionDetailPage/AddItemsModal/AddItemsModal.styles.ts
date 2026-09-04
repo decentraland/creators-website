@@ -6,9 +6,9 @@ const wellColor = 'rgba(0, 0, 0, 0.25)'
 
 export const Layout = styled.div`
   display: flex;
-  flex: 1;
-  min-height: 600px;
-  gap: 24px;
+  width: 100%;
+  height: min(750px, 90vh); /* limit height to avoid overflowing the viewport on small screens */
+  overflow: hidden;
 
   &[data-uploading] {
     pointer-events: none;
@@ -19,13 +19,17 @@ export const Layout = styled.div`
 export const Sidebar = styled.aside`
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   width: 290px;
+  height: 100%;
   flex-shrink: 0;
-  /* 3px on the scroll-side edges so the selected card's outer ring isn't clipped by overflow. */
-  padding: 3px 16px 3px 3px;
-  border-right: 1px solid ${theme.colors.glassFaint};
-  overflow-y: auto;
+  padding: 16px;
+  border-right: 1px solid ${theme.colors.gray4};
+  overflow: auto;
+
+  ${theme.media.maxWidth('xl')} {
+    width: 220px;
+  }
 `
 
 export const DraftCard = styled.button`
@@ -78,6 +82,11 @@ export const DraftThumbWrap = styled.span`
   border-radius: ${theme.radius.btnSm};
   background: ${theme.colors.media};
   overflow: hidden;
+
+  ${theme.media.maxWidth('xl')} {
+    width: 50px;
+    height: 50px;
+  }
 
   img {
     width: 100%;
@@ -177,21 +186,35 @@ export const DeleteButton = styled.span`
   }
 `
 
+/* Right-hand column: the form/processing pane plus the actions, so the sidebar spans full height. */
+export const Main = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+`
+
 export const Content = styled.section`
   display: flex;
   flex: 1;
   width: 1045px;
-  min-height: 600px;
+  max-width: 100%;
   gap: 24px;
   overflow-y: auto;
-  padding-right: 8px;
+  padding: 16px 24px 24px 16px;
+
+  [data-flush] & {
+    padding-left: 24px;
+  }
 `
 
 export const PreviewPane = styled.div`
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-width: 475px;
+  width: 50%;
+  max-width: 450px;
   padding: 24px;
   border-radius: ${theme.radius.banner};
   background: ${wellColor};
@@ -410,7 +433,7 @@ export const SegmentButton = styled.button`
   align-items: center;
   gap: 8px;
   height: 44px;
-  padding: 0 18px;
+  padding: 0 16px 0 12px;
   border: 1px solid ${theme.colors.glassLine};
   border-radius: ${theme.radius.btn};
   background: none;
@@ -444,12 +467,22 @@ export const ErrorText = styled.p`
 
 export const Footer = styled.div`
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-top: 24px;
   padding-top: 24px;
-  border-top: 1px solid ${theme.colors.glassFaint};
+  border-top: 1px solid ${theme.colors.gray4};
+
+  [data-flush] & {
+    padding: 24px;
+  }
+
+  ${theme.media.maxWidth('xl')} {
+    button {
+      min-width: 0;
+    }
+  }
 `
 
 export const FooterRight = styled.div`
@@ -466,6 +499,7 @@ export const ProcessingPane = styled.div`
   color: ${theme.colors.softWhite};
   font-size: 16px;
   text-align: center;
+  flex: 1;
   width: 1045px;
   max-width: 100%;
 `

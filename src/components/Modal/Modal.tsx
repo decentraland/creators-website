@@ -37,6 +37,8 @@ type Props = {
   hideTitle?: boolean
   /** With `hideTitle`, still shows a floating ✕ in the dialog corner. */
   showClose?: boolean
+  /** Removes the dialog padding so children can draw edge-to-edge panes; the title bar keeps its own. */
+  flush?: boolean
   testId?: string
 }
 
@@ -48,6 +50,7 @@ export function Modal({
   size = 'default',
   hideTitle = false,
   showClose = false,
+  flush = false,
   testId = 'modal'
 }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -120,6 +123,7 @@ export function Modal({
         tabIndex={-1}
         data-testid={testId}
         data-size={size}
+        data-flush={flush || undefined}
         onClick={event => event.stopPropagation()}
       >
         {!hideTitle && (

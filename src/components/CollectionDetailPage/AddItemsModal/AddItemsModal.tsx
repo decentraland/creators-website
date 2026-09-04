@@ -228,11 +228,13 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
         title={t('add_items_modal.title', { count: drafts.length })}
         onClose={requestClose}
         size="wide"
+        flush={!isSingle}
         closeDisabled={isUploading}
         testId="add-items-modal"
       >
         {/* `inert` isn't in React 18's typings, so it goes through the spread. */}
         <S.Layout
+          data-flush={!isSingle || undefined}
           data-uploading={isUploading || undefined}
           aria-busy={isUploading || undefined}
           {...(isUploading ? { inert: '' } : {})}
@@ -246,79 +248,80 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
               onRemove={id => dispatch({ type: 'draftRemoved', id })}
             />
           )}
-          {selected && selected.status === 'ready' ? (
-            <DraftForm
-              draft={selected}
-              drafts={drafts}
-              collectionItems={collectionItems}
-              onUpdate={(id, patch) => dispatch({ type: 'draftUpdated', id, patch })}
-              onOpenThumbnail={() =>
-                isImageWearable(selected) ? thumbnailInputRef.current?.click() : setThumbnailOpen(true)
-              }
-            />
-          ) : (
-            <S.ProcessingPane data-testid="draft-processing">
-              {selected?.status === 'failed' ? (
-                t(`add_items_modal.file_error.${selected.errorKey ?? 'invalid_model_file'}`, selected.errorParams)
-              ) : (
-                <>
-                  <S.ProcessingSpinner data-testid="draft-processing-spinner" aria-hidden />
-                  {t('add_items_modal.processing')}
-                </>
-              )}
-            </S.ProcessingPane>
-          )}
-        </S.Layout>
-
-        <S.Footer>
-          <Button
-            type="button"
-            variant="secondary"
-            data-testid="add-items-cancel"
-            disabled={isUploading}
-            onClick={requestClose}
-          >
-            {t('add_items_modal.cancel')}
-          </Button>
-          <S.FooterRight>
-            {!isSingle && (
+          <S.Main>
+            {selected && selected.status === 'ready' ? (
+              <DraftForm
+                draft={selected}
+                drafts={drafts}
+                collectionItems={collectionItems}
+                onUpdate={(id, patch) => dispatch({ type: 'draftUpdated', id, patch })}
+                onOpenThumbnail={() =>
+                  isImageWearable(selected) ? thumbnailInputRef.current?.click() : setThumbnailOpen(true)
+                }
+              />
+            ) : (
+              <S.ProcessingPane data-testid="draft-processing">
+                {selected?.status === 'failed' ? (
+                  t(`add_items_modal.file_error.${selected.errorKey ?? 'invalid_model_file'}`, selected.errorParams)
+                ) : (
+                  <>
+                    <S.ProcessingSpinner data-testid="draft-processing-spinner" aria-hidden />
+                    {t('add_items_modal.processing')}
+                  </>
+                )}
+              </S.ProcessingPane>
+            )}
+            <S.Footer>
               <Button
                 type="button"
                 variant="secondary"
-                data-testid="add-items-previous"
-                disabled={isUploading || selectedIndex <= 0}
-                onClick={() => {
-                  const previous = drafts[selectedIndex - 1]
-                  if (previous) dispatch({ type: 'draftSelected', id: previous.id })
-                }}
+                data-testid="add-items-cancel"
+                disabled={isUploading}
+                onClick={requestClose}
               >
-                {t('add_items_modal.previous')}
+                {t('add_items_modal.cancel')}
               </Button>
-            )}
-            {showFinish ? (
-              <Button
-                type="button"
-                variant="primary"
-                data-testid="add-items-finish"
-                disabled={!isSelectedComplete}
-                loading={isUploading}
-                onClick={handleFinish}
-              >
-                {isSingle ? t('add_items_modal.save') : t('add_items_modal.finish')}
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="primary"
-                data-testid="add-items-save-next"
-                disabled={!isSelectedComplete || isUploading}
-                onClick={() => selected && dispatch({ type: 'draftChecked', id: selected.id })}
-              >
-                {t('add_items_modal.save_next')}
-              </Button>
-            )}
-          </S.FooterRight>
-        </S.Footer>
+              <S.FooterRight>
+                {!isSingle && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    data-testid="add-items-previous"
+                    disabled={isUploading || selectedIndex <= 0}
+                    onClick={() => {
+                      const previous = drafts[selectedIndex - 1]
+                      if (previous) dispatch({ type: 'draftSelected', id: previous.id })
+                    }}
+                  >
+                    {t('add_items_modal.previous')}
+                  </Button>
+                )}
+                {showFinish ? (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    data-testid="add-items-finish"
+                    disabled={!isSelectedComplete}
+                    loading={isUploading}
+                    onClick={handleFinish}
+                  >
+                    {isSingle ? t('add_items_modal.save') : t('add_items_modal.finish')}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    data-testid="add-items-save-next"
+                    disabled={!isSelectedComplete || isUploading}
+                    onClick={() => selected && dispatch({ type: 'draftChecked', id: selected.id })}
+                  >
+                    {t('add_items_modal.save_next')}
+                  </Button>
+                )}
+              </S.FooterRight>
+            </S.Footer>
+          </S.Main>
+        </S.Layout>
       </Modal>
 
       {previewDraft && (

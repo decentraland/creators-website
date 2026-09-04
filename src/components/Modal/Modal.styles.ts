@@ -39,6 +39,10 @@ export const Dialog = styled.div`
   ${mobile} {
     padding: 24px 16px;
   }
+
+  &[data-flush] {
+    padding: 0;
+  }
 `
 
 export const TitleBar = styled.div`
@@ -46,6 +50,11 @@ export const TitleBar = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  padding-bottom: 24px;
+
+  [data-flush] > & {
+    padding: 16px;
+  }
 `
 
 export const Title = styled.h2`
@@ -96,7 +105,7 @@ export const Body = styled.div`
     flex: 1;
     min-height: 0;
     flex-direction: column;
-    padding-top: 24px;
+    padding-top: 0;
     overflow: hidden;
   }
 

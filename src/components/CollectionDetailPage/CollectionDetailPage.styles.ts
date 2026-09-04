@@ -5,6 +5,7 @@ import { itemListColumns } from './ItemListRow/ItemListRow.styles'
 export { FooterRow, Panel, PanelText, PanelTitle, ShowingCount } from '~/styles/shared'
 
 const mobile = theme.media.maxWidth('mobile')
+const noActions = theme.media.maxWidth('lg')
 
 export const Page = styled.div`
   display: flex;
@@ -108,7 +109,7 @@ export const RenameButton = styled.button`
     color: ${theme.colors.white};
   }
 
-  ${mobile} {
+  ${noActions} {
     /* Mobile is a viewer: collections are managed from desktop. */
     display: none;
   }
@@ -119,7 +120,7 @@ export const HeaderActions = styled.div`
   align-items: center;
   gap: 16px;
 
-  ${mobile} {
+  ${noActions} {
     display: none;
   }
 `
@@ -137,7 +138,7 @@ export const SubActions = styled.div`
   align-items: center;
   gap: 12px;
 
-  ${mobile} {
+  ${noActions} {
     display: none;
   }
 `
