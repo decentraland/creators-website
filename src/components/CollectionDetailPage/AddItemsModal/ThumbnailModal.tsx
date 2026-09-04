@@ -149,8 +149,10 @@ export function ThumbnailModal({ draft, onSave, onClose }: Props) {
             </>
           )}
         </S.PreviewArea>
-        {isEmote && isReady && (
-          <S.EmoteBar data-testid="thumbnail-emote-controls">
+        {/* Mount before the preview loads so its PLAY event is delivered at load
+            time. Controls subscribed after that miss it and stay stuck until the next play. */}
+        {isEmote && (
+          <S.EmoteBar data-testid="thumbnail-emote-controls" data-ready={isReady}>
             <EmoteControls className="emote-controls" wearablePreviewId={PREVIEW_ID} />
           </S.EmoteBar>
         )}

@@ -83,6 +83,10 @@ export const Frame = styled.div`
 export const EmoteBar = styled.div`
   width: 100%;
 
+  &[data-ready='false'] {
+    display: none;
+  }
+
   && .emote-controls {
     position: static;
     align-items: center;
