@@ -19,7 +19,7 @@ import {
   isImageWearable,
   type ItemDraft
 } from './AddItemsModal.state'
-import { processDraftFile, needsPreviewData } from './processDraft'
+import { processDraftFile, pickPreviewDraft } from './processDraft'
 import { DraftList } from './DraftList'
 import { DraftForm } from './DraftForm'
 import { DraftProcessor } from './DraftProcessor'
@@ -82,7 +82,9 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
 
   const { drafts, selectedId, view, failureReason, isUploading } = state
   const selected = drafts.find(draft => draft.id === selectedId) ?? drafts[0] ?? null
-  const previewDraft = drafts.find(needsPreviewData) ?? null
+  const processingIdRef = useRef<string | null>(null)
+  const previewDraft = pickPreviewDraft(drafts, selected?.id ?? null, processingIdRef.current)
+  processingIdRef.current = previewDraft?.id ?? null
 
   // Everything deleted → nothing left to review, close silently.
   useEffect(() => {

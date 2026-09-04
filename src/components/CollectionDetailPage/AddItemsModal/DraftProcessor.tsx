@@ -12,8 +12,8 @@ import * as S from './AddItemsModal.styles'
 
 const PREVIEW_ID = 'draft-processor'
 const THUMBNAIL_SIZE = 1024
-// The iframe renders a model up to twice ("The scene was disposed, a newer render has replaced
-// it"); a couple of extra attempts absorb slow reloads without hiding a genuinely broken file.
+// A controller call against a scene being replaced throws ("The scene was disposed, a newer render
+// has replaced it"); a few attempts absorb that without hiding a genuinely broken file.
 const MAX_ATTEMPTS = 4
 const RETRY_DELAY_MS = 750
 
@@ -23,6 +23,8 @@ type Props = {
   onError: (id: string) => void
 }
 
+type LoadPhase = 'idle' | 'update-sent' | 'loaded'
+
 /**
  * Off-screen WearablePreview that fills a draft's metrics and auto thumbnail, one draft at a
  * time (the parent passes the next draft that still needs preview data). Categories with a
@@ -30,9 +32,8 @@ type Props = {
  * when the category change alters the pose.
  */
 export function DraftProcessor({ draft, onResult, onError }: Props) {
-  // The preview loads each model twice and disposes the first scene, so a controller call made
-  // after the first onLoad can fail mid-flight. Attempts are retried (also re-triggered by the
-  // second onLoad) until one round-trip completes against a live scene.
+  // A controller call can still fail mid-flight when the scene is being replaced, so attempts are
+  // retried until one round-trip completes against a live scene.
   const pose = draft.type === ItemType.WEARABLE ? getThumbnailPose(draft.category) : null
   // A pose change on an already-processed draft is a new run against the same iframe.
   const runKey = `${draft.id}:${pose ?? ''}`
@@ -41,6 +42,14 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
   if (runRef.current.runKey !== runKey) {
     window.clearTimeout(runRef.current.retryTimer)
     runRef.current = { runKey, done: false, busy: false, attempts: 0, retryTimer: 0 }
+  }
+
+  // The iframe is kept across drafts (a remount reboots the whole preview app), so a new draft's
+  // model travels as an UPDATE message. Until that message is out, any LOAD still belongs to the
+  // previous scene and must not trigger an attempt.
+  const loadRef = useRef<{ draftId: string; phase: LoadPhase }>({ draftId: '', phase: 'idle' })
+  if (loadRef.current.draftId !== draft.id) {
+    loadRef.current = { draftId: draft.id, phase: 'idle' }
   }
 
   const attempt = () => {
@@ -101,31 +110,35 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
   }
 
   // The iframe's onLoad only fires once per draft: a later pose change has to kick off its run here.
-  const isLoadedRef = useRef(false)
   useEffect(() => {
-    if (isLoadedRef.current) attempt()
+    if (loadRef.current.phase === 'loaded') attempt()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runKey])
 
   const isEmote = draft.type === ItemType.EMOTE
   // Rewrapping the same contents each render would reload the iframe endlessly.
   const blob = useMemo(
-    () => (isEmote ? toEmoteWithBlobs(draft.contents) : toWearableWithBlobs(draft.contents)),
-    [isEmote, draft.contents]
+    () => (isEmote ? toEmoteWithBlobs(draft.contents, draft.id) : toWearableWithBlobs(draft.contents, draft.id)),
+    [isEmote, draft.contents, draft.id]
   )
 
   return (
     <S.HiddenPreview aria-hidden data-testid="draft-processor">
+      {/* Emote-only options are URL params, so a type switch is the one case that needs a fresh iframe. */}
       <WearablePreview
-        key={draft.id}
+        key={isEmote ? 'emote' : 'wearable'}
         id={PREVIEW_ID}
         blob={blob}
         disableBackground
         disableAutoRotate
         projection={PreviewProjection.ORTHOGRAPHIC}
         {...(isEmote ? { profile: 'default', disableFace: true, disableDefaultWearables: true, skin: '000000' } : {})}
+        onUpdate={() => {
+          if (loadRef.current.phase === 'idle') loadRef.current.phase = 'update-sent'
+        }}
         onLoad={() => {
-          isLoadedRef.current = true
+          if (loadRef.current.phase === 'idle') return
+          loadRef.current.phase = 'loaded'
           attempt()
         }}
         onError={() => {

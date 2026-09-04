@@ -11,9 +11,11 @@ function findMainFile(contents: Record<string, Blob>): string {
   return mainFile
 }
 
-export function toWearableWithBlobs(contents: Record<string, Blob>): WearableWithBlobs {
+// WearablePreview diffs its options with deep-equal, which sees every Blob as equal to any other, so a
+// reused iframe only notices a new model when the wrapper carries a distinct `id`.
+export function toWearableWithBlobs(contents: Record<string, Blob>, id = 'preview-item'): WearableWithBlobs {
   return {
-    id: 'preview-item',
+    id,
     name: '',
     description: '',
     image: '',
@@ -40,9 +42,9 @@ export function toWearableWithBlobs(contents: Record<string, Blob>): WearableWit
   }
 }
 
-export function toEmoteWithBlobs(contents: Record<string, Blob>): EmoteWithBlobs {
+export function toEmoteWithBlobs(contents: Record<string, Blob>, id = 'preview-item'): EmoteWithBlobs {
   return {
-    id: 'preview-item',
+    id,
     name: '',
     description: '',
     image: '',

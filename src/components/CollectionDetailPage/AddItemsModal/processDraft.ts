@@ -100,3 +100,19 @@ export function needsPreviewData(draft: ItemDraft): boolean {
   if (isImageFile(draft.model)) return false
   return !draft.metrics || !draft.thumbnail || isAutoThumbnailStale(draft)
 }
+
+/**
+ * Next draft for the DraftProcessor. Switching the processor mid-load throws that load away, so a
+ * draft already in flight keeps its turn; otherwise the one on screen goes before the rest.
+ */
+export function pickPreviewDraft(
+  drafts: ItemDraft[],
+  selectedId: string | null,
+  inFlightId: string | null
+): ItemDraft | null {
+  const inFlight = drafts.find(draft => draft.id === inFlightId)
+  if (inFlight && needsPreviewData(inFlight)) return inFlight
+  const selected = drafts.find(draft => draft.id === selectedId)
+  if (selected && needsPreviewData(selected)) return selected
+  return drafts.find(needsPreviewData) ?? null
+}
