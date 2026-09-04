@@ -124,6 +124,12 @@ describe('loadItemFile', () => {
     await expectItemFileError(loadItemFile(big), 'file_too_big')
   })
 
+  it('rejects a zip with too many entries', async () => {
+    const entries: Record<string, string> = { 'model.glb': 'glb-bytes' }
+    for (let index = 0; index < 500; index++) entries[`extra-${index}.png`] = 'x'
+    await expectItemFileError(loadItemFile(await zipFile(entries)), 'too_many_files')
+  })
+
   it('unzips a flat zip and finds the main model', async () => {
     const file = await zipFile({ 'model.glb': 'glb-bytes', 'texture.png': 'texture' })
     const result = await loadItemFile(file)

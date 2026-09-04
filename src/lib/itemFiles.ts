@@ -18,6 +18,7 @@ const WEARABLE_MANIFEST = 'wearable.json'
 const EMOTE_MANIFEST = 'emote.json'
 const SCENE_MANIFEST = 'scene.json'
 const BUILDER_MANIFEST = 'builder.json'
+const MAX_ZIP_ENTRIES = 500
 
 /** Import failure the UI can translate: `add_items_modal.file_error.{messageKey}`. */
 export class ItemFileError extends Error {
@@ -300,6 +301,10 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
       entries.push({ path, entry })
     }
   })
+
+  if (entries.length > MAX_ZIP_ENTRIES) {
+    throw new ItemFileError('too_many_files', { max: MAX_ZIP_ENTRIES })
+  }
 
   const blobs = await Promise.all(entries.map(({ entry }) => entry.async('blob')))
   const rawContent: Record<string, Blob> = {}

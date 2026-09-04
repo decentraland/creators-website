@@ -272,6 +272,7 @@
       "size_exceeded": "This item is too big — the maximum size is {size}MB including the thumbnail.",
       "missing_model_file": "We couldn't find a 3D model or texture inside this file.",
       "invalid_zip": "We couldn't read this ZIP file.",
+      "too_many_files": "This ZIP has too many files — the maximum is {max}.",
       "invalid_manifest": "The {fileName} configuration inside the ZIP is invalid.",
       "manifest_file_missing": "The ZIP configuration references {fileName}, but it isn't in the ZIP.",
       "orphaned_auxiliary_file": "{fileName} needs its companion file {expected} in the same ZIP.",

@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent } from 'react'
+import { useCallback, useRef, useState, type DragEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Add as AddIcon,
@@ -77,6 +77,8 @@ const CollectionDetailPage = () => {
     const list = files ? Array.from(files) : []
     if (list.length > 0) setAddItemsFiles(list)
   }
+
+  const closeAddItems = useCallback(() => setAddItemsFiles(null), [])
 
   function onDropzoneDrop(event: DragEvent) {
     event.preventDefault()
@@ -334,12 +336,7 @@ const CollectionDetailPage = () => {
           />
 
           {addItemsFiles && address && (
-            <AddItemsModal
-              collection={collection}
-              address={address}
-              files={addItemsFiles}
-              onClose={() => setAddItemsFiles(null)}
-            />
+            <AddItemsModal collection={collection} address={address} files={addItemsFiles} onClose={closeAddItems} />
           )}
         </>
       )}

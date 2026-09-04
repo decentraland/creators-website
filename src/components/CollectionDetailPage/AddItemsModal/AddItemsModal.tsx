@@ -86,11 +86,13 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
     [drafts, selectedId]
   )
   const processingIdRef = useRef<string | null>(null)
-  const previewDraft = useMemo(() => {
-    const next = pickPreviewDraft(drafts, selected?.id ?? null, processingIdRef.current)
-    processingIdRef.current = next?.id ?? null
-    return next
-  }, [drafts, selected?.id])
+  const previewDraft = useMemo(
+    () => pickPreviewDraft(drafts, selected?.id ?? null, processingIdRef.current),
+    [drafts, selected?.id]
+  )
+  useEffect(() => {
+    processingIdRef.current = previewDraft?.id ?? null
+  }, [previewDraft?.id])
 
   const isSelectedComplete = useMemo(
     () => !!selected && isDraftComplete(selected, drafts, collectionItems),

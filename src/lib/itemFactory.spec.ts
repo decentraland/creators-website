@@ -41,6 +41,11 @@ describe('sortContent', () => {
     const sorted = sortContent(BodyShapeType.MALE, baseDraft.contents)
     expect(Object.keys(sorted.female)).toEqual([])
   })
+
+  it('omits the thumbnail from `all` when the draft has none yet', () => {
+    const sorted = sortContent(BodyShapeType.BOTH, { 'model.glb': blob('model') })
+    expect(Object.keys(sorted.all).sort()).toEqual(['female/model.glb', 'male/model.glb'])
+  })
 })
 
 describe('sortContentZipBothBodyShape', () => {

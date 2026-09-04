@@ -85,7 +85,8 @@ export function sortContent(bodyShape: BodyShapeType, contents: Record<string, B
     bodyShape === BodyShapeType.BOTH || bodyShape === BodyShapeType.FEMALE
       ? prefixContents(BodyShapeType.FEMALE, contents)
       : {}
-  const all: Record<string, Blob> = { [THUMBNAIL_PATH]: contents[THUMBNAIL_PATH], ...male, ...female }
+  const all: Record<string, Blob> = { ...male, ...female }
+  if (contents[THUMBNAIL_PATH]) all[THUMBNAIL_PATH] = contents[THUMBNAIL_PATH]
   return { male, female, all }
 }
 
@@ -118,7 +119,8 @@ export function sortContentZipBothBodyShape(bodyShape: BodyShapeType, contents: 
       : {})
   }
 
-  const all = { [THUMBNAIL_PATH]: contents[THUMBNAIL_PATH], ...male, ...female }
+  const all: Record<string, Blob> = { ...male, ...female }
+  if (contents[THUMBNAIL_PATH]) all[THUMBNAIL_PATH] = contents[THUMBNAIL_PATH]
   return { male, female, all }
 }
 
