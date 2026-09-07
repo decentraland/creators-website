@@ -7,6 +7,8 @@ import * as S from './Modal.styles'
 // Refcounted scroll lock: modals can stack (add-items + its confirm dialogs), and a
 // last-writer-wins restore would leave the page locked after closing both. The lock goes on <html>:
 // with `overflow-x: clip` on the root, a body overflow no longer propagates to the viewport.
+// `savedOverflow` is captured only when the first modal opens: nothing else touches the root
+// overflow while a modal is up, so a value set mid-stack would be clobbered on release.
 let scrollLocks = 0
 let savedOverflow = ''
 
