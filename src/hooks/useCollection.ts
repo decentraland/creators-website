@@ -1,5 +1,11 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchAllCollectionItems, fetchCollection, fetchCollectionItems, saveCollection } from '~/lib/builder'
+import {
+  fetchAllCollectionItems,
+  fetchCollection,
+  fetchCollectionItems,
+  saveCollection,
+  deleteCollection
+} from '~/lib/builder'
 import { buildCollectionInitializeData } from '~/lib/saveCollection'
 import { type Collection } from '~/lib/collections'
 
@@ -25,6 +31,16 @@ export function useCollectionItems(address: string | undefined, collectionId: st
   })
 }
 
+/** Every item of the collection — the add-items flow needs them all as variant targets. */
+export function useAllCollectionItems(address: string | undefined, collectionId: string | undefined) {
+  return useQuery({
+    queryKey: ['collection-items-all', address, collectionId],
+    queryFn: () => fetchAllCollectionItems(address!, collectionId!),
+    enabled: !!address && !!collectionId,
+    staleTime: 30_000
+  })
+}
+
 /**
  * Create or rename a collection. Mirrors the legacy save-collection saga: for a collection that
  * already has items the initialize calldata is regenerated over all of them, so the server derives
@@ -41,6 +57,21 @@ export function useSaveCollection(address: string | undefined) {
     },
     onSuccess: saved => {
       queryClient.setQueryData(['collection', address, saved.id], saved)
+      void queryClient.invalidateQueries({ queryKey: ['collections'] })
+    }
+  })
+}
+
+export function useDeleteCollection(address: string | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (collectionId: string) => {
+      if (!address) throw new Error('Wallet disconnected')
+      await deleteCollection(address, collectionId)
+      return collectionId
+    },
+    onSuccess: collectionId => {
+      queryClient.removeQueries({ queryKey: ['collection', address, collectionId] })
       void queryClient.invalidateQueries({ queryKey: ['collections'] })
     }
   })

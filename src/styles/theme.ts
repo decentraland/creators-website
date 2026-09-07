@@ -32,9 +32,14 @@ const colors = {
   err: '#d33',
   okStrong: '#1f8a4c',
   errStrong: '#d64545',
+  errLight: '#ff7070',
+  success: '#00b453',
   successBorder: '#34ce77',
   green: '#30cd00', // DCL/Green — published status
   amber: '#ffbc5b', // Brand/Amber — under-review status, warm gradient stop
+  orangeStrong: '#f48221', // under-review pill fill (at 20%)
+  redRejected: '#cc1d2c', // rejected pill fill (at 20%)
+  redBright: '#ff0404', // rejected pill border/text
   orange: '#ff7439', // Brand/Orange — active tab underline, warm accents
   white: '#ffffff',
   // Hairline on a translucent field over the purple (search box border).
@@ -60,7 +65,9 @@ const colors = {
   glass: 'rgba(255, 255, 255, 0.2)',
   glassFaint: 'rgba(255, 255, 255, 0.1)',
   glassHover: 'rgba(255, 255, 255, 0.3)',
-  glassLine: 'rgba(255, 255, 255, 0.5)'
+  glassLine: 'rgba(255, 255, 255, 0.5)',
+  // Legendary's light gradient stop (#A657ED) is too close to the purple surfaces; lift it for the pill text.
+  rarityLegendaryLight: '#e8b9ff'
 } as const
 
 const gradients = {
@@ -75,6 +82,7 @@ const radius = {
   cardLg: '16px',
   chip: '4px',
   btn: '12px',
+  btnSm: '8px',
   pill: '50px',
   banner: '24px',
   modal: '16px',

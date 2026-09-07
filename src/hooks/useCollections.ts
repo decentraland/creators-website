@@ -3,7 +3,7 @@ import { fetchCollectionItemPreviews, fetchCollections } from '~/lib/builder'
 import { CollectionStatusFilter, CollectionType, statusFilterToParams, type CollectionSort } from '~/lib/collections'
 
 // Same page size as the legacy builder's collections page.
-export const COLLECTIONS_PAGE_SIZE = 20
+export const COLLECTIONS_PAGE_SIZE = 8
 
 export type CollectionsFilters = {
   page: number

@@ -1,9 +1,9 @@
 import { MoreHoriz as MoreHorizIcon } from '@mui/icons-material'
-import { Rarity } from '@dcl/schemas'
 import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'
-import { getItemBodyShapeType, getItemDisplayStatus, type Item } from '~/lib/items'
-import { Pill } from '~/components/CollectionStatusPill/CollectionStatusPill.styles'
+import { getItemBodyShapeType, type Item } from '~/lib/items'
+import { BodyShapeIcon, CategoryIcon } from '~/components/ItemIcons'
+import { RarityPill } from '~/components/RarityPill'
 import * as S from './ItemListRow.styles'
 
 type Props = {
@@ -16,41 +16,20 @@ export function ItemListRow({ item }: Props) {
   const thumbnailHash = item.contents[item.thumbnail]
   const bodyShapeType = getItemBodyShapeType(item)
   const category = item.data.category
-  const status = getItemDisplayStatus(item)
 
   return (
     <S.Row data-testid="item-row">
-      <S.NameCell>
-        <S.Thumb>{thumbnailHash && <img src={getContentsStorageUrl(thumbnailHash)} alt="" />}</S.Thumb>
-        {/* Stretched over the whole row (see NameLink) so the row is one real link. */}
-        <S.NameLink to={`/collections/${item.collectionId}/items/${item.id}`} title={item.name}>
-          {item.name}
-        </S.NameLink>
-      </S.NameCell>
-      <S.Cell data-desktop data-testid="item-row-body-type">
-        {bodyShapeType ? t(`collection_detail_page.body_type.${bodyShapeType}`) : '—'}
-      </S.Cell>
-      <S.Cell data-testid="item-row-rarity">
-        {item.rarity && (
-          <S.RarityPill
-            data-rarity={item.rarity}
-            style={
-              {
-                '--rarity-color': Rarity.getColor(item.rarity as Rarity),
-                '--rarity-light': Rarity.getGradient(item.rarity as Rarity)[0]
-              } as React.CSSProperties
-            }
-          >
-            {t(`collection_detail_page.rarity.${item.rarity}`)}
-          </S.RarityPill>
-        )}
-      </S.Cell>
-      <S.Cell data-desktop data-testid="item-row-category">
-        {category ? t(`collection_detail_page.category.${category}`) : '—'}
-      </S.Cell>
-      <S.Cell data-testid="item-row-status">
-        <Pill data-status={status}>{t(`collection_detail_page.status.${status}`)}</Pill>
-      </S.Cell>
+      <S.Thumb>{thumbnailHash && <img src={getContentsStorageUrl(thumbnailHash)} alt="" />}</S.Thumb>
+      <S.Content>
+        <S.Name title={item.name}>{item.name}</S.Name>
+        <S.Cell data-testid="item-row-body-shape">
+          {bodyShapeType ? <BodyShapeIcon bodyShape={bodyShapeType} withLabel /> : '—'}
+        </S.Cell>
+        <S.Cell data-testid="item-row-category">
+          {category ? <CategoryIcon category={category} withLabel /> : '—'}
+        </S.Cell>
+        <S.Cell data-testid="item-row-rarity">{item.rarity && <RarityPill rarity={item.rarity} />}</S.Cell>
+      </S.Content>
       <S.ActionsCell>
         <S.ActionsButton
           type="button"

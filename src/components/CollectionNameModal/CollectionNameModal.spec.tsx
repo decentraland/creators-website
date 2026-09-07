@@ -54,6 +54,12 @@ describe('CollectionNameModal', () => {
     expect(screen.getByTestId('collection-name-error')).toHaveTextContent(/":"/)
   })
 
+  it('shows the uniqueness hint until an error replaces it', () => {
+    renderModal({ error: NAME_ALREADY_IN_USE_ERROR })
+    expect(screen.getByTestId('collection-name-error')).toBeInTheDocument()
+    expect(screen.queryByTestId('collection-name-hint')).not.toBeInTheDocument()
+  })
+
   it('maps the server name-taken error to friendly copy', () => {
     renderModal({ error: NAME_ALREADY_IN_USE_ERROR })
     expect(screen.getByTestId('collection-name-error')).toHaveTextContent(/already in use/i)
@@ -84,6 +90,14 @@ describe('CollectionNameModal', () => {
     expect(screen.getByTestId('collection-name-cancel')).toBeDisabled()
     expect(screen.getByTestId('collection-name-modal-close')).toBeDisabled()
     expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('shows a spinner instead of the submit label while saving', () => {
+    renderModal({ isPending: true })
+    const submit = screen.getByTestId('collection-name-submit')
+    expect(screen.getByTestId('button-spinner')).toBeInTheDocument()
+    expect(submit).not.toHaveTextContent(/continue/i)
+    expect(submit).toBeDisabled()
   })
 
   it('seeds the field for renames and submits the new name', async () => {

@@ -3,20 +3,21 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Add as AddIcon,
   FormatListBulleted as FormatListBulletedIcon,
-  FormatShapes as FormatShapesIcon,
   GridView as GridViewIcon,
   PersonOutline as PersonOutlineIcon,
   Search as SearchIcon
 } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
+import { pageRangeLabel } from '~/lib/pagination'
 import { useWallet } from '~/store/wallet'
-import { useCollections, useRejectedCollectionsCount } from '~/hooks/useCollections'
+import { COLLECTIONS_PAGE_SIZE, useCollections, useRejectedCollectionsCount } from '~/hooks/useCollections'
 import { useSaveCollection } from '~/hooks/useCollection'
 import { CollectionStatusFilter } from '~/lib/collections'
 import { buildNewCollection } from '~/lib/saveCollection'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { Pagination } from '~/components/Pagination'
 import emptyCollectionsArt from '~/assets/empty-collections.png'
+import { Button } from '~/components/Button'
 import { CollectionCard } from './CollectionCard'
 import { CollectionListRow } from './CollectionListRow'
 import * as S from './CollectionsPage.styles'
@@ -104,11 +105,6 @@ const CollectionsPage = () => {
     else setCreateOpen(true)
   }
 
-  function onOpenEditor() {
-    if (!session) signIn()
-    else navigate('/collections/editor')
-  }
-
   const data = collections.data
   const total = data?.total ?? 0
   const pages = data?.pages ?? 0
@@ -117,6 +113,8 @@ const CollectionsPage = () => {
   const isEmpty = !!data && total === 0 && !hasActiveFilters
   const noResults = !!data && total === 0 && hasActiveFilters
   const isLoading = !restored || (!!address && (collections.isLoading || (collections.isFetching && !data)))
+  // Debounce window (input ahead of the URL) or a refetch with a search applied.
+  const isSearching = searchInput.trim() !== search || (!!search && collections.isFetching)
 
   return (
     <S.Page data-testid="collections-page">
@@ -132,15 +130,12 @@ const CollectionsPage = () => {
               data-testid="collections-search"
               onChange={e => onSearchChange(e.target.value)}
             />
+            {isSearching && <S.SearchSpinner data-testid="search-spinner" aria-hidden />}
           </S.SearchBox>
-          <S.ActionButton type="button" data-variant="secondary" data-testid="open-editor" onClick={onOpenEditor}>
-            <FormatShapesIcon fontSize="small" />
-            {t('collections_page.open_editor')}
-          </S.ActionButton>
-          <S.ActionButton type="button" data-variant="primary" data-testid="new-collection" onClick={onNewCollection}>
+          <Button type="button" variant="primary" data-testid="new-collection" onClick={onNewCollection}>
             <AddIcon fontSize="small" />
             {t('collections_page.new_collection')}
-          </S.ActionButton>
+          </Button>
         </S.HeaderActions>
       </S.Header>
 
@@ -191,13 +186,13 @@ const CollectionsPage = () => {
             <PersonOutlineIcon />
           </S.SignInIcon>
           <S.PanelTitle>{t('collections_page.sign_in.title')}</S.PanelTitle>
-          <S.ActionButton type="button" data-variant="primary" data-testid="sign-in" onClick={() => signIn()}>
+          <Button type="button" variant="primary" data-testid="sign-in" onClick={() => signIn()}>
             {t('collections_page.sign_in.action')}
-          </S.ActionButton>
+          </Button>
         </S.Panel>
       ) : isLoading ? (
         <S.Grid data-testid="collections-loading" aria-hidden>
-          {Array.from({ length: 10 }, (_, i) => (
+          {Array.from({ length: COLLECTIONS_PAGE_SIZE }, (_, i) => (
             <S.SkeletonCard key={i} className="skeleton" />
           ))}
         </S.Grid>
@@ -205,9 +200,9 @@ const CollectionsPage = () => {
         <S.Panel data-testid="collections-error">
           <S.PanelTitle>{t('collections_page.error.title')}</S.PanelTitle>
           <S.PanelText>{t('collections_page.error.description')}</S.PanelText>
-          <S.ActionButton type="button" data-variant="secondary" onClick={() => void collections.refetch()}>
+          <Button type="button" variant="secondary" onClick={() => void collections.refetch()}>
             {t('collections_page.error.retry')}
-          </S.ActionButton>
+          </Button>
         </S.Panel>
       ) : isEmpty ? (
         <S.Panel data-testid="collections-empty">
@@ -216,22 +211,18 @@ const CollectionsPage = () => {
           <S.PanelText data-desktop>{t('collections_page.empty.description')}</S.PanelText>
           <S.PanelText data-mobile>{t('collections_page.empty.description_mobile')}</S.PanelText>
           <S.EmptyActions>
-            <S.ActionLink data-variant="secondary" href={LEARN_MORE_URL} target="_blank" rel="noopener noreferrer">
+            <Button as="a" variant="secondary" href={LEARN_MORE_URL} target="_blank" rel="noopener noreferrer">
               {t('collections_page.empty.learn_more')}
-            </S.ActionLink>
-            <S.ActionButton
-              type="button"
-              data-variant="primary"
-              data-testid="create-first-collection"
-              onClick={onNewCollection}
-            >
+            </Button>
+            <Button type="button" variant="primary" data-testid="create-first-collection" onClick={onNewCollection}>
               <AddIcon fontSize="small" />
               {t('collections_page.empty.create_first')}
-            </S.ActionButton>
+            </Button>
           </S.EmptyActions>
         </S.Panel>
       ) : noResults ? (
         <S.Panel data-testid="collections-no-results">
+          <S.EmptyArt src={emptyCollectionsArt} alt="" />
           <S.PanelTitle>{t('collections_page.no_results.title')}</S.PanelTitle>
           <S.PanelText>{t('collections_page.no_results.description')}</S.PanelText>
         </S.Panel>
@@ -260,7 +251,7 @@ const CollectionsPage = () => {
           )}
           <S.FooterRow>
             <S.ShowingCount data-testid="collections-count">
-              {t('collections_page.showing', { shown, total })}
+              {t('collections_page.showing', { range: pageRangeLabel(page, COLLECTIONS_PAGE_SIZE, shown), total })}
             </S.ShowingCount>
             {pages > 1 && <Pagination page={page} pages={pages} onPageChange={goToPage} />}
           </S.FooterRow>

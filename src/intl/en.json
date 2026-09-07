@@ -7,7 +7,6 @@
   "collections_page": {
     "title": "My collections",
     "search_placeholder": "Search Collection",
-    "open_editor": "Open editor",
     "new_collection": "New collection",
     "filter": {
       "all": "All",
@@ -21,6 +20,7 @@
     "view_list": "List view",
     "item_count": "{count, plural, one {# Item} other {# Items}}",
     "updated_ago": "Updated {timeAgo}",
+    "manage": "Manage",
     "list": {
       "collection": "Collection",
       "items": "Items",
@@ -30,7 +30,7 @@
       "actions": "Actions"
     },
     "row_actions": "Collection actions",
-    "showing": "Showing {shown} of {total} collections",
+    "showing": "Showing {range} of {total} {total, plural, one {collection} other {collections}}",
     "sign_in": {
       "title": "Sign in to view your collections",
       "action": "Sign in"
@@ -75,24 +75,43 @@
     "submit": "{variant, select, create {Continue} other {Save}}",
     "error_invalid_character": "The \":\" character can't be used in collection names.",
     "error_name_taken": "That name is already in use. Try another one.",
-    "error_generic": "{variant, select, create {We couldn't create your collection. Please try again.} other {We couldn't rename your collection. Please try again.}}"
+    "error_generic": "{variant, select, create {We couldn't create your collection. Please try again.} other {We couldn't rename your collection. Please try again.}}",
+    "unique_hint": "Names must be unique across all Decentraland collections."
   },
   "collection_detail_page": {
     "back": "Back to collections",
     "rename": "Rename collection",
-    "search_placeholder": "Search Item",
     "add_items": "Add Items",
+    "open_editor": "Open Editor",
     "publish": "Publish Collection",
+    "preview": "Preview in Decentraland",
     "more_actions": "More actions",
+    "actions": {
+      "copy_urn": "Copy URN",
+      "copy_address": "Copy contract address",
+      "collaborators": "Collaborators",
+      "minters": "Minters",
+      "delete": "Delete collection",
+      "copied_urn": "URN copied to clipboard",
+      "copied_address": "Contract address copied to clipboard",
+      "copy_failed": "We couldn't copy that. Please try again.",
+      "deleted": "“{name}” was deleted",
+      "delete_error": "We couldn't delete the collection. Please try again.",
+      "delete_modal": {
+        "title": "Delete collection?",
+        "description": "“{name}” and all its items will be permanently deleted. This can't be undone.",
+        "cancel": "Cancel",
+        "confirm": "Delete"
+      }
+    },
     "coming_soon": "Coming soon",
     "items_count": "Items ({count})",
     "no_items": "No items yet",
     "list": {
       "item": "Item",
-      "body_type": "Body Type",
-      "rarity": "Rarity",
+      "body_shape": "Body Shape",
       "category": "Category",
-      "status": "Status",
+      "rarity": "Rarity",
       "actions": "Actions"
     },
     "row_actions": "Item actions",
@@ -146,13 +165,10 @@
     },
     "empty": {
       "title": "Add items to your collection",
+      "title_mobile": "Add items from desktop",
       "description": "Drag and drop your files here, or <browse>browse your device</browse> to get started.",
-      "description_mobile": "Add items to this collection from your desktop.",
-      "formats": "(Supported formats: GLB, GLTF, PNG, ZIP size: 1340 × 670)"
-    },
-    "no_results": {
-      "title": "No items found",
-      "description": "Try a different search."
+      "description_mobile": "To add items to your collection, open the Builder on a desktop device.",
+      "formats": "(Supported formats: GLB, GLTF, PNG, ZIP · Max 3MB per item, 8MB for skins)"
     },
     "not_found": {
       "title": "Collection not found",
@@ -168,11 +184,135 @@
       "title": "Sign in to view this collection",
       "action": "Sign in"
     },
-    "showing": "Showing {shown} of {total} items",
-    "showing_filtered": "Showing {shown} matching {shown, plural, one {item} other {items}} on this page"
+    "showing": "Showing {range} of {total} {total, plural, one {item} other {items}}"
   },
-  "item_detail_page": {
-    "title": "Item"
+  "rarity_select": {
+    "units": "{count, plural, one {# unit} other {# units}}"
+  },
+  "add_items_modal": {
+    "title": "{count, plural, one {Item Details} other {Items Details}}",
+    "form_heading": "Item Details",
+    "processing": "Processing…",
+    "type": {
+      "wearable": "Wearable",
+      "emote": "Emote"
+    },
+    "delete": "Delete",
+    "item_name": "Item Name",
+    "char_count": "{count}/{max}",
+    "item_name_placeholder": "example",
+    "invalid_name": "Names can be up to 32 characters and can't include \":\".",
+    "body_shape": "Body Shape",
+    "body_shape_option": {
+      "both": "Both",
+      "female": "Female",
+      "male": "Male"
+    },
+    "variant_question": "Is this a body shape variant of another item?",
+    "yes": "Yes",
+    "no": "No",
+    "select_item": "Select Item",
+    "variant_target_label": "{name} - {bodyShape}",
+    "no_variant_targets": "There are no {bodyShape} items in this collection yet to pair this with. Add the {bodyShape} version first, or answer No.",
+    "category": "Category",
+    "select_category": "Select Category",
+    "rarity": "Rarity",
+    "rarity_tooltip": "Rarity determines how many copies of an item can exist. The rarer the item, the lower its maximum supply.",
+    "play_mode": "Play Mode",
+    "play_mode_option": {
+      "simple": "Play Once",
+      "loop": "Loop"
+    },
+    "edit_thumbnail": "Edit thumbnail",
+    "metrics": {
+      "triangles": "{count} Triangles",
+      "materials": "{count, plural, one {# Material} other {# Materials}}",
+      "textures": "{count, plural, one {# Texture} other {# Textures}}",
+      "duration": "{count}s",
+      "frames": "{count} Frames",
+      "fps": "{count} FPS"
+    },
+    "cancel": "Cancel",
+    "save": "Save",
+    "previous": "Previous",
+    "save_next": "Save & Next",
+    "finish": "Finish",
+    "success_toast": "{count, plural, one {# Item} other {# Items}} successfully added to your collection!",
+    "error": {
+      "title_generic": "We couldn't upload your items",
+      "title_locked": "This collection is under review",
+      "title_published": "This collection is already published",
+      "description_generic": "Something went wrong while uploading your items. Please try again.",
+      "description_locked": "Items can't be added while the collection is being reviewed. Your files weren't saved — you can add them once the review is done.",
+      "description_published": "Published collections can't receive new items. Your files weren't saved — create a new collection to add them.",
+      "try_again": "Try again",
+      "got_it": "Got it"
+    },
+    "leave": {
+      "save_title": "Save before leaving?",
+      "save_description": "If you leave without saving, you'll lose the items you uploaded and any changes you made.",
+      "discard_title": "Discard your items?",
+      "discard_description": "If you leave now, you'll lose the items you uploaded and any changes you made.",
+      "leave_without_saving": "Leave without saving",
+      "save_changes": "Save changes",
+      "keep_editing": "Keep editing"
+    },
+    "thumbnail": {
+      "title": "Item Thumbnail",
+      "capture": "Save thumbnail",
+      "upload_picture": "Upload picture",
+      "wrong_format": "The thumbnail must be a PNG image.",
+      "capture_failed": "We couldn't update the thumbnail. Please try again."
+    },
+    "file_error_label": "Invalid file",
+    "file_error": {
+      "wrong_extension": "This file type isn't supported. Use {extensions}.",
+      "file_too_big": "The file is too big — the maximum size is {size}MB.",
+      "thumbnail_too_big": "The thumbnail is too big — the maximum size is {size}MB.",
+      "size_exceeded": "This item is too big — the maximum size is {size}MB including the thumbnail.",
+      "missing_model_file": "We couldn't find a 3D model or texture inside this file.",
+      "invalid_zip": "We couldn't read this ZIP file.",
+      "too_many_files": "This ZIP has too many files — the maximum is {max}.",
+      "invalid_manifest": "The {fileName} configuration inside the ZIP is invalid.",
+      "manifest_file_missing": "The ZIP configuration references {fileName}, but it isn't in the ZIP.",
+      "orphaned_auxiliary_file": "{fileName} needs its companion file {expected} in the same ZIP.",
+      "smart_wearable_not_supported": "Smart wearables can't be uploaded here yet.",
+      "emote_duration_too_long": "Emotes can last up to {seconds} seconds.",
+      "emote_with_mesh": "This emote includes an avatar mesh. Export only the armature and animation.",
+      "emote_animations_out_of_sync": "The avatar and prop animations must have the same duration.",
+      "missing_external_resources": "The model references files that aren't included: {fileNames}.",
+      "invalid_model_file": "We couldn't load this 3D model. Check the file and try again.",
+      "invalid_representation": "This file can't be used as a body shape variant of that item."
+    }
+  },
+  "item_validation": {
+    "triangle_count_exceeded": "Triangle count ({count}) exceeds the limit of {limit} for {category} wearables.",
+    "triangle_count_exceeded_with_hint": "Triangle count ({count}) exceeds the base limit of {limit} for {category} wearables. You can increase this limit by hiding other wearable slots in the Item Editor.",
+    "dimensions_exceeded": "Model dimensions ({width}m x {height}m x {depth}m) exceed the maximum allowed ({maxWidth}m x {maxHeight}m x {maxDepth}m).",
+    "materials_exceeded": "Material count ({count}) exceeds the limit of {limit}.",
+    "textures_exceeded": "Texture count ({count}) exceeds the limit of {limit}.",
+    "bone_influences_exceeded": "Some vertices have more than {limit} bone influences.",
+    "leaf_bones_found": "Leaf/end bones found: {bones}. Remove _end or _neutral suffixed bones before export.",
+    "non_deform_bones_found": "Found {count} non-deformation bones: {bones}. Enable \"Export Deformation Bones Only\" in your export settings to reduce file size and improve performance.",
+    "armature_bone_names": "Armature bone names do not match the Decentraland avatar skeleton ({bones}). Re-rig your wearable to the standard avatar armature before export.",
+    "unrigged_vertices": "Found {count} vertices with no skin weights (not bound to any bone). These vertices will not follow the avatar's movement. Check the rigging/skin weights before export.",
+    "cameras_found": "Cameras are not allowed in wearable/emote GLB files.",
+    "lights_found": "Lights are not allowed in wearable/emote GLB files.",
+    "animations_in_wearable": "Wearable GLB files must not contain animations. If this is an emote, animations are expected.",
+    "forbidden_material_name": "Material \"{name}\" uses a reserved naming pattern ({pattern}). This pattern is reserved for facial categories.",
+    "emote_frame_rate": "Animation frame rate ({fps} fps) differs from the expected {expected} fps.",
+    "emote_max_frames": "Animation has {frames} frames, exceeding the maximum of {limit}.",
+    "emote_max_clips": "File has {count} animation clips, exceeding the maximum of {limit}.",
+    "emote_missing_keyframes": "Some deform bones are missing keyframes at first/last frame: {bones}.",
+    "prop_triangle_count": "Prop triangle count ({count}) exceeds the limit of {limit}.",
+    "prop_materials": "Prop material count ({count}) exceeds the limit of {limit}.",
+    "prop_textures": "Prop texture count ({count}) exceeds the limit of {limit}.",
+    "prop_armature_bones": "Prop armature has {count} bones, exceeding the limit of {limit}.",
+    "armature_naming": "Unexpected armature names found: {names}. Avatar armature should be named 'Armature' and prop armature 'Armature_Prop'.",
+    "animation_naming": "Animation clips should end with '_Avatar' or '_Prop' when props are present. Invalid names: {names}.",
+    "audio_format": "Audio file \"{name}\" has an unsupported format. Only .mp3 and .ogg are allowed.",
+    "spring_bone_count_exceeded": "This model has {count} spring bones (maximum: {limit}). Reduce the number of spring bone nodes in your 3D editor and re-upload.",
+    "thumbnail_not_transparent": "The thumbnail background doesn't look transparent. Marketplaces show the item's rarity color behind the thumbnail, so a transparent background is required."
   },
   "item_editor_page": {
     "title": "Item Editor"

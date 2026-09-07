@@ -80,6 +80,8 @@ Prefer friendly copy and hide blockchain plumbing where possible. Wallet/MANA/tr
 - Pull colors/radii/breakpoints from the theme, never re-hardcode hexes or pixel breakpoints. **Import the theme directly** (`import { theme } from '~/styles/theme'`), never via ThemeProvider or `({ theme }) =>` callbacks — there is no runtime theming, and the direct import keeps unit tests provider-free.
 - Media queries via `theme.media.maxWidth(bp)` / `.minWidth(bp)`; raw `@media` strings only for genuinely non-canonical values.
 - State and variants are `data-*` attributes (`data-open`, `data-variant`, `data-selected`) styled via `&[data-…]` selectors — never `is-*`/BEM-modifier classNames.
+- **Buttons**: every action button/link is `~/components/Button` (`variant` / `size` / `loading`, polymorphic `as`). Layout-only tweaks go through `styled(Button)`; never re-declare a button's colors or variants in a page's styles.
+- **Icons**: Material glyphs from `@mui/icons-material`; Figma-specific glyphs as inline-SVG components in `~/components/Icons` — see "Icons" in `CONVENTIONS.md`.
 - **Never use a styled component as a selector** inside another styled template (`${Name} { … }`): it compiles in the Vite build but throws in Vitest. Target a stable `[data-testid]` / `[data-*]` hook instead.
 
 ### Testing

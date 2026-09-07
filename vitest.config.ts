@@ -20,9 +20,9 @@ export default defineConfig({
     // Vitest loads the developer's .env; a local VITE_DCL_DEFAULT_ENV override would flip
     // ~/config away from the dev values the specs assert on.
     env: { VITE_DCL_DEFAULT_ENV: 'dev' },
-    // @dcl/ui-env ships extensionless internal imports (dist/index.js → './config') that Vitest's
+    // @dcl/ui-env and @dcl/hooks (via decentraland-ui2) ship extensionless/directory imports that Vitest's
     // resolver can't follow; inlining it routes the dep through Vite's resolver, which can.
-    server: { deps: { inline: ['@dcl/ui-env'] } },
+    server: { deps: { inline: ['@dcl/ui-env', '@dcl/hooks'] } },
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'html'],

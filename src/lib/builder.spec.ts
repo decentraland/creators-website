@@ -1,11 +1,18 @@
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest'
-import { fetchCollectionItemPreviews, fetchCollections, getContentsStorageUrl } from './builder'
+import {
+  deleteCollection,
+  fetchCollectionItemPreviews,
+  fetchCollections,
+  getContentsStorageUrl,
+  saveItem
+} from './builder'
 
 vi.mock('~/lib/auth', () => ({
   signedFetch: vi.fn()
 }))
 
 import { signedFetch } from '~/lib/auth'
+import { ItemType, type Item } from './items'
 
 const signedFetchMock = signedFetch as Mock
 
@@ -118,5 +125,97 @@ describe('fetchCollectionItemPreviews', () => {
 describe('getContentsStorageUrl', () => {
   it('builds the storage URL for a content hash', () => {
     expect(getContentsStorageUrl('Qmx')).toBe('https://builder-api.decentraland.zone/v1/storage/contents/Qmx')
+  })
+})
+
+describe('saveItem', () => {
+  const remoteItem = {
+    id: 'item-1',
+    name: 'Hat',
+    description: '',
+    thumbnail: 'thumbnail.png',
+    eth_address: ADDRESS,
+    collection_id: 'a1b2',
+    price: null,
+    beneficiary: null,
+    rarity: 'epic',
+    is_published: false,
+    is_approved: false,
+    in_catalyst: false,
+    type: 'wearable',
+    data: { representations: [] },
+    contents: { 'male/model.glb': 'QmModel', 'thumbnail.png': 'QmThumb' },
+    created_at: '2026-03-01T10:00:00Z',
+    updated_at: '2026-03-01T10:00:00Z'
+  }
+
+  const item: Item = {
+    id: 'item-1',
+    name: 'Hat',
+    description: '',
+    thumbnail: 'thumbnail.png',
+    owner: ADDRESS,
+    collectionId: 'a1b2',
+    rarity: 'epic',
+    isPublished: false,
+    isApproved: false,
+    inCatalyst: false,
+    type: ItemType.WEARABLE,
+    data: { representations: [] },
+    contents: { 'male/model.glb': 'QmModel', 'thumbnail.png': 'QmThumb' },
+    createdAt: 1,
+    updatedAt: 1
+  }
+
+  it('PUTs the item then POSTs its files keyed by content hash', async () => {
+    signedFetchMock.mockResolvedValueOnce(okResponse(remoteItem)).mockResolvedValueOnce(jsonResponse({ ok: true }))
+
+    const blobs = { 'male/model.glb': new Blob(['model']), 'thumbnail.png': new Blob(['thumb']) }
+    const saved = await saveItem(ADDRESS, item, blobs)
+
+    expect(saved.id).toBe('item-1')
+    const [, , putPath, putInit] = signedFetchMock.mock.calls[0] as [string, string, string, RequestInit]
+    expect(putPath).toBe('/items/item-1')
+    expect(putInit.method).toBe('PUT')
+    const putBody = JSON.parse(putInit.body as string) as { item: { eth_address: string; is_published: boolean } }
+    expect(putBody.item.eth_address).toBe(ADDRESS)
+    expect(putBody.item.is_published).toBe(false)
+
+    const [, , postPath, postInit] = signedFetchMock.mock.calls[1] as [string, string, string, RequestInit]
+    expect(postPath).toBe('/items/item-1/files')
+    expect(postInit.body).toBeInstanceOf(FormData)
+    const formKeys = Array.from((postInit.body as FormData).keys()).sort()
+    expect(formKeys).toEqual(['QmModel', 'QmThumb'])
+  })
+
+  it('skips the files request when there is nothing to upload', async () => {
+    signedFetchMock.mockResolvedValueOnce(okResponse(remoteItem))
+    await saveItem(ADDRESS, item, {})
+    expect(signedFetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('surfaces the server error with its status', async () => {
+    signedFetchMock.mockResolvedValueOnce(jsonResponse({ ok: false, error: 'locked' }, false, 423))
+    await expect(saveItem(ADDRESS, item, {})).rejects.toMatchObject({ status: 423 })
+  })
+})
+
+describe('deleteCollection', () => {
+  beforeEach(() => signedFetchMock.mockReset())
+
+  it('sends a signed DELETE for the collection', async () => {
+    signedFetchMock.mockResolvedValue(jsonResponse({ ok: true, data: true }))
+    await deleteCollection(ADDRESS, 'a1b2')
+    expect(signedFetchMock).toHaveBeenCalledWith(
+      ADDRESS,
+      expect.any(String),
+      '/collections/a1b2',
+      expect.objectContaining({ method: 'DELETE' })
+    )
+  })
+
+  it('surfaces the server status when the collection can no longer be deleted', async () => {
+    signedFetchMock.mockResolvedValue(jsonResponse({ ok: false, error: 'already published' }, false, 409))
+    await expect(deleteCollection(ADDRESS, 'a1b2')).rejects.toMatchObject({ status: 409 })
   })
 })

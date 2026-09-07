@@ -14,7 +14,7 @@ export const PageButton = styled.button`
   width: 32px;
   height: 32px;
   border: 0;
-  border-radius: ${theme.radius.btn};
+  border-radius: ${theme.radius.btnSm};
   background: none;
   color: ${theme.colors.softWhite};
   font-size: 13px;

@@ -1,0 +1,286 @@
+import { useMemo, type ReactNode } from 'react'
+import {
+  CameraAlt as CameraIcon,
+  ChangeHistory as TriangleIcon,
+  Circle as MaterialIcon,
+  Female as FemaleIcon,
+  InfoOutlined as InfoIcon,
+  Male as MaleIcon,
+  ReportProblemOutlined as WarningIcon,
+  Texture as TextureIcon,
+  Transgender as BothIcon
+} from '@mui/icons-material'
+import { CategorySelect } from '~/components/CategorySelect'
+import { ClockIcon, FilmReelIcon, ImageIcon } from '~/components/Icons'
+import { RaritySelect } from '~/components/RaritySelect'
+import { Tooltip } from '~/components/Tooltip'
+import { useTranslation } from '~/intl'
+import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError } from '~/lib/itemFactory'
+import { BodyShapeType, ItemType, type Item } from '~/lib/items'
+import { getCategoryOptions, getVariantTargets, isValidItemName, type ItemDraft } from './AddItemsModal.state'
+import * as S from './AddItemsModal.styles'
+
+type Props = {
+  draft: ItemDraft
+  drafts: ItemDraft[]
+  collectionItems: Item[]
+  onUpdate: (id: string, patch: Partial<ItemDraft>) => void
+  onOpenThumbnail: () => void
+}
+
+const BODY_SHAPES: Array<{ value: BodyShapeType; icon: ReactNode }> = [
+  { value: BodyShapeType.BOTH, icon: <BothIcon /> },
+  { value: BodyShapeType.FEMALE, icon: <FemaleIcon /> },
+  { value: BodyShapeType.MALE, icon: <MaleIcon /> }
+]
+
+export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThumbnail }: Props) {
+  const { t } = useTranslation()
+
+  const isEmote = draft.type === ItemType.EMOTE
+  const isWearable = draft.type === ItemType.WEARABLE
+  const isSingleShape = isWearable && draft.bodyShape !== BodyShapeType.BOTH
+  const variantTargets = useMemo(
+    () => (isSingleShape ? getVariantTargets(draft, drafts, collectionItems) : []),
+    [isSingleShape, draft, drafts, collectionItems]
+  )
+  const variantTargetShape = draft.bodyShape === BodyShapeType.MALE ? BodyShapeType.FEMALE : BodyShapeType.MALE
+  const showItemFields = !draft.isVariant
+  const sizeError = useMemo(
+    () => (draft.type ? getSizeError(draft.type, draft.category ?? undefined, draft.contents) : null),
+    [draft.type, draft.category, draft.contents]
+  )
+  const nameInvalid = draft.name.length > 0 && !isValidItemName(draft.name)
+  const categories = useMemo(() => getCategoryOptions(draft), [draft])
+
+  const warnings = useMemo(() => {
+    const list = draft.validationIssues.map(issue => ({
+      key: issue.code,
+      text: t(`${issue.messageKey}`, issue.messageParams)
+    }))
+    if (draft.thumbnailNotTransparent) {
+      list.push({ key: 'THUMBNAIL_NOT_TRANSPARENT', text: t('item_validation.thumbnail_not_transparent') })
+    }
+    return list
+  }, [draft.validationIssues, draft.thumbnailNotTransparent, t])
+
+  return (
+    <S.Content data-testid="draft-form">
+      <S.PreviewPane>
+        <S.ThumbnailBox
+          type="button"
+          aria-label={t('add_items_modal.edit_thumbnail')}
+          data-testid="edit-thumbnail"
+          onClick={onOpenThumbnail}
+        >
+          {draft.thumbnail && <img src={draft.thumbnail} alt="" />}
+          <S.ThumbnailOverlay data-thumb-overlay>
+            <CameraIcon />
+          </S.ThumbnailOverlay>
+        </S.ThumbnailBox>
+        <S.MetricsRow data-testid="draft-metrics">
+          {isEmote && draft.metrics ? (
+            <>
+              <S.MetricPill>
+                <ClockIcon />
+                {t('add_items_modal.metrics.duration', { count: Math.round((draft.metrics.duration ?? 0) * 10) / 10 })}
+              </S.MetricPill>
+              <S.MetricPill>
+                <ImageIcon />
+                {t('add_items_modal.metrics.frames', { count: draft.metrics.frames ?? 0 })}
+              </S.MetricPill>
+              <S.MetricPill>
+                <FilmReelIcon />
+                {t('add_items_modal.metrics.fps', { count: Math.round(draft.metrics.fps ?? 0) })}
+              </S.MetricPill>
+            </>
+          ) : draft.metrics ? (
+            <>
+              <S.MetricPill>
+                <TriangleIcon />
+                {t('add_items_modal.metrics.triangles', { count: draft.metrics.triangles ?? 0 })}
+              </S.MetricPill>
+              <S.MetricPill>
+                <MaterialIcon />
+                {t('add_items_modal.metrics.materials', { count: draft.metrics.materials ?? 0 })}
+              </S.MetricPill>
+              <S.MetricPill>
+                <TextureIcon />
+                {t('add_items_modal.metrics.textures', { count: draft.metrics.textures ?? 0 })}
+              </S.MetricPill>
+            </>
+          ) : null}
+        </S.MetricsRow>
+        {warnings.length > 0 && (
+          <S.WarningsList data-testid="draft-warnings">
+            {warnings.map(warning => (
+              <S.WarningCard key={warning.key}>
+                <WarningIcon />
+                {warning.text}
+              </S.WarningCard>
+            ))}
+          </S.WarningsList>
+        )}
+      </S.PreviewPane>
+
+      <S.FormPane>
+        <S.FormHeading>{t('add_items_modal.form_heading')}</S.FormHeading>
+
+        {showItemFields && (
+          <S.Field>
+            {t('add_items_modal.item_name')}
+            <S.TextInputBox data-invalid={nameInvalid || undefined}>
+              <input
+                value={draft.name}
+                maxLength={ITEM_NAME_MAX_LENGTH}
+                placeholder={t('add_items_modal.item_name_placeholder')}
+                data-testid="item-name"
+                data-invalid={nameInvalid || undefined}
+                onChange={event => onUpdate(draft.id, { name: event.target.value })}
+              />
+              <S.CharCount data-testid="item-name-count">
+                {t('add_items_modal.char_count', { count: draft.name.length, max: ITEM_NAME_MAX_LENGTH })}
+              </S.CharCount>
+            </S.TextInputBox>
+            {nameInvalid && <S.ErrorText>{t('add_items_modal.invalid_name')}</S.ErrorText>}
+          </S.Field>
+        )}
+
+        {isWearable && (
+          <S.Field as="div">
+            {t('add_items_modal.body_shape')}
+            <S.Segmented role="radiogroup" aria-label={t('add_items_modal.body_shape')}>
+              {BODY_SHAPES.map(({ value, icon }) => (
+                <S.SegmentButton
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={draft.bodyShape === value}
+                  data-selected={draft.bodyShape === value || undefined}
+                  data-testid={`body-shape-${value}`}
+                  onClick={() =>
+                    onUpdate(draft.id, {
+                      bodyShape: value,
+                      // Going back to BOTH clears the variant answer entirely.
+                      ...(value === BodyShapeType.BOTH
+                        ? { isVariant: false, variantTargetId: null }
+                        : { variantTargetId: null })
+                    })
+                  }
+                >
+                  {icon}
+                  {t(`add_items_modal.body_shape_option.${value}`)}
+                </S.SegmentButton>
+              ))}
+            </S.Segmented>
+          </S.Field>
+        )}
+
+        {isSingleShape && (
+          <S.Field as="div">
+            {t('add_items_modal.variant_question')}
+            <S.Segmented role="radiogroup" aria-label={t('add_items_modal.variant_question')}>
+              {[true, false].map(answer => (
+                <S.SegmentButton
+                  key={String(answer)}
+                  type="button"
+                  role="radio"
+                  aria-checked={draft.isVariant === answer}
+                  data-selected={draft.isVariant === answer || undefined}
+                  data-testid={`variant-${answer ? 'yes' : 'no'}`}
+                  onClick={() => onUpdate(draft.id, { isVariant: answer, variantTargetId: null })}
+                >
+                  {t(answer ? 'add_items_modal.yes' : 'add_items_modal.no')}
+                </S.SegmentButton>
+              ))}
+            </S.Segmented>
+          </S.Field>
+        )}
+
+        {draft.isVariant && variantTargets.length === 0 && (
+          <S.WarningCard data-testid="variant-target-empty">
+            <InfoIcon />
+            {t('add_items_modal.no_variant_targets', {
+              bodyShape: t(`add_items_modal.body_shape_option.${variantTargetShape}`)
+            })}
+          </S.WarningCard>
+        )}
+
+        {draft.isVariant && variantTargets.length > 0 && (
+          <S.Field as="div">
+            <S.Select
+              value={draft.variantTargetId ?? ''}
+              aria-label={t('add_items_modal.select_item')}
+              data-testid="variant-target"
+              onChange={event => onUpdate(draft.id, { variantTargetId: event.target.value || null })}
+            >
+              <option value="">{t('add_items_modal.select_item')}</option>
+              {variantTargets.map(target => (
+                <option key={target.id} value={target.id}>
+                  {t('add_items_modal.variant_target_label', {
+                    name: target.label,
+                    bodyShape: t(`add_items_modal.body_shape_option.${target.bodyShape}`)
+                  })}
+                </option>
+              ))}
+            </S.Select>
+          </S.Field>
+        )}
+
+        {showItemFields && (
+          <S.FieldRow>
+            <S.Field>
+              {t('add_items_modal.category')}
+              <CategorySelect
+                value={draft.category}
+                categories={categories}
+                testId="item-category"
+                onChange={category => onUpdate(draft.id, { category })}
+              />
+            </S.Field>
+            <S.Field>
+              <S.FieldLabelRow>
+                {t('add_items_modal.rarity')}
+                <Tooltip content={t('add_items_modal.rarity_tooltip')} testId="rarity-tooltip">
+                  <InfoIcon />
+                </Tooltip>
+              </S.FieldLabelRow>
+              <RaritySelect
+                value={draft.rarity}
+                testId="item-rarity"
+                onChange={rarity => onUpdate(draft.id, { rarity })}
+              />
+            </S.Field>
+          </S.FieldRow>
+        )}
+
+        {isEmote && showItemFields && (
+          <S.Field as="div">
+            {t('add_items_modal.play_mode')}
+            <S.Segmented role="radiogroup" aria-label={t('add_items_modal.play_mode')}>
+              {[EmotePlayMode.SIMPLE, EmotePlayMode.LOOP].map(mode => (
+                <S.SegmentButton
+                  key={mode}
+                  type="button"
+                  role="radio"
+                  aria-checked={draft.playMode === mode}
+                  data-selected={draft.playMode === mode || undefined}
+                  data-testid={`play-mode-${mode}`}
+                  onClick={() => onUpdate(draft.id, { playMode: mode })}
+                >
+                  {t(`add_items_modal.play_mode_option.${mode}`)}
+                </S.SegmentButton>
+              ))}
+            </S.Segmented>
+          </S.Field>
+        )}
+
+        {sizeError !== null && (
+          <S.ErrorText data-testid="size-error">
+            {t('add_items_modal.file_error.size_exceeded', { size: sizeError })}
+          </S.ErrorText>
+        )}
+      </S.FormPane>
+    </S.Content>
+  )
+}

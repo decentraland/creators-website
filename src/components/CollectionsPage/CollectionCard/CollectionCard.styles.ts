@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom'
 import { theme } from '~/styles/theme'
 
 const mobile = theme.media.maxWidth('mobile')
+const desktop = theme.media.minWidth('mobile')
 
 export const Card = styled(Link)`
+  position: relative;
   height: 318px;
   display: flex;
   flex-direction: column;
@@ -15,15 +17,50 @@ export const Card = styled(Link)`
   filter: drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.04));
   transition: box-shadow 0.15s ease;
 
+  /* Inner 2px gradient border: gradient layer with the padding-box masked out. */
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 2px;
+    background: ${theme.gradients.cerise};
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+
   &:hover,
+  &:active,
   &:focus-visible {
-    box-shadow: 0 0 8px 2px ${theme.colors.brandViolet};
+    box-shadow: 0 0 8px ${theme.colors.brandViolet};
     outline: none;
+
+    &::after {
+      opacity: 1;
+    }
+  }
+
+  ${desktop} {
+    &:hover,
+    &:focus-visible {
+      & [data-testid='collection-card-items'],
+      & [data-testid='collection-card-updated'] {
+        display: none;
+      }
+      & [data-testid='collection-card-manage'] {
+        display: flex;
+      }
+    }
   }
 
   ${mobile} {
     flex-direction: row;
-    height: 128px;
+    height: 136px;
     border-radius: ${theme.radius.card};
     background: ${theme.colors.overlay};
   }
@@ -35,7 +72,7 @@ export const Media = styled.div`
 
   ${mobile} {
     flex: none;
-    width: 128px;
+    width: 136px;
     height: 100%;
   }
 `
@@ -53,7 +90,7 @@ export const Body = styled.div`
     min-width: 0;
     justify-content: center;
     background: none;
-    padding: 12px 16px;
+    padding: 16px 12px 16px 16px;
 
     /* The design stacks name / items / status / updated on mobile. */
     & [data-testid='collection-card-items'] {
@@ -91,6 +128,21 @@ export const Name = styled.h3`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+`
+
+export const Manage = styled.span`
+  display: none;
+  align-items: center;
+  justify-content: center;
+  /* Same height as the two meta lines it replaces, so the footer doesn't jump. */
+  height: 52px;
+  border-radius: ${theme.radius.btn};
+  background: ${theme.colors.text};
+  color: ${theme.colors.white};
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.46px;
+  text-transform: uppercase;
 `
 
 export const Meta = styled.span`

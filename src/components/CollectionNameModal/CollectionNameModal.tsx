@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { ChevronRight as ChevronRightIcon } from '@mui/icons-material'
+import { ChevronRight as ChevronRightIcon, InfoOutlined as InfoOutlinedIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { COLLECTION_NAME_MAX_LENGTH, NAME_ALREADY_IN_USE_ERROR, validateCollectionName } from '~/lib/collections'
 import { Modal } from '~/components/Modal'
+import { Button } from '~/components/Button'
 import * as S from './CollectionNameModal.styles'
 
 type Props = {
@@ -79,27 +80,29 @@ export function CollectionNameModal({ variant, initialName = '', isPending, erro
               </S.CharCount>
             </S.FieldBox>
           </S.FieldLabel>
-          {shownError && <S.ErrorText data-testid="collection-name-error">{shownError}</S.ErrorText>}
+          {shownError ? (
+            <S.ErrorText data-testid="collection-name-error">{shownError}</S.ErrorText>
+          ) : (
+            <S.HintText data-testid="collection-name-hint">
+              <InfoOutlinedIcon fontSize="inherit" aria-hidden />
+              {t('collection_name_modal.unique_hint')}
+            </S.HintText>
+          )}
         </div>
         <S.Actions>
-          <S.ActionButton
+          <Button
             type="button"
-            data-variant="secondary"
+            variant="secondary"
             data-testid="collection-name-cancel"
             disabled={isPending}
             onClick={onClose}
           >
             {t('collection_name_modal.cancel')}
-          </S.ActionButton>
-          <S.ActionButton
-            type="submit"
-            data-variant="primary"
-            data-testid="collection-name-submit"
-            disabled={!trimmed || isPending}
-          >
+          </Button>
+          <Button type="submit" data-testid="collection-name-submit" loading={isPending} disabled={!trimmed}>
             {t('collection_name_modal.submit', { variant })}
             <ChevronRightIcon fontSize="small" />
-          </S.ActionButton>
+          </Button>
         </S.Actions>
       </S.Form>
     </Modal>

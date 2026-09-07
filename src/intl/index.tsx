@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+import { ReactNode, useCallback } from 'react'
 import { IntlProvider, useIntl } from 'react-intl'
 import { useLocale, type Locale } from '~/store/locale'
 import { flattenMessages } from '~/lib/messages'
@@ -21,9 +21,12 @@ const TranslationProvider = ({ children }: { children: ReactNode }) => {
 
 const useTranslation = () => {
   const intl = useIntl()
-  return {
-    t: (id: string, values?: Record<string, string | number>) => intl.formatMessage({ id }, values)
-  }
+  // Stable across renders so `t` can sit in hook dependency arrays without defeating them.
+  const t = useCallback(
+    (id: string, values?: Record<string, string | number>) => intl.formatMessage({ id }, values),
+    [intl]
+  )
+  return { t }
 }
 
 export { TranslationProvider, useTranslation }

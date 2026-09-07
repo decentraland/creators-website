@@ -4,20 +4,20 @@ import { listColumns } from './CollectionListRow/CollectionListRow.styles'
 
 import { SearchBox as SharedSearchBox } from '~/styles/shared'
 
-export { ActionButton, ActionLink, FooterRow, Panel, PanelText, PanelTitle, ShowingCount } from '~/styles/shared'
+export { FooterRow, Panel, PanelText, PanelTitle, SearchSpinner, ShowingCount } from '~/styles/shared'
 
 const mobile = theme.media.maxWidth('mobile')
+const noActions = theme.media.maxWidth('lg')
 const stacked = theme.media.maxWidth('xl')
 
 export const Page = styled.div`
   display: flex;
   flex-direction: column;
   gap: 32px;
-  padding-top: 20px;
 
   ${mobile} {
-    gap: 16px;
-    padding-top: 4px;
+    gap: 24px;
+    padding-top: 12px;
   }
 `
 
@@ -26,10 +26,10 @@ export const Header = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: 32px;
+  padding-bottom: 12px;
 
   ${stacked} {
-    flex-direction: column;
-    align-items: stretch;
+    flex-flow: row wrap;
     gap: 16px;
   }
 `
@@ -43,7 +43,7 @@ export const Title = styled.h1`
   color: ${theme.colors.white};
 
   ${mobile} {
-    font-size: 24px;
+    font-size: 20px;
   }
 `
 
@@ -52,24 +52,19 @@ export const HeaderActions = styled.div`
   align-items: center;
   gap: 16px;
 
-  ${mobile} {
+  ${noActions} {
     /* Mobile is a viewer: collections are searched and managed from desktop. */
     display: none;
   }
 `
 
-export const SearchBox = styled(SharedSearchBox)`
-  ${stacked} {
-    flex: 1;
-    width: auto;
-  }
-`
+export const SearchBox = SharedSearchBox
 
 export const FilterRow = styled.div`
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
 `
 
 export const Chips = styled.div`
@@ -86,6 +81,11 @@ export const Chips = styled.div`
     &::-webkit-scrollbar {
       display: none;
     }
+  }
+
+  /* Chips only overflow below ~490px, a non-canonical width */
+  @media (max-width: 490px) {
+    mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
   }
 `
 
@@ -167,7 +167,7 @@ export const ViewButton = styled.button`
 
 export const Grid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
 
   ${mobile} {
@@ -188,13 +188,17 @@ export const ListHeader = styled.div`
   border-radius: ${theme.radius.card};
   background: ${theme.colors.overlayStrong};
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 1.57;
   color: ${theme.colors.softWhite};
+  text-align: center;
 
   & > span:first-of-type {
-    font-weight: 700;
-    font-size: 16px;
+    text-align: left;
+  }
+
+  ${mobile} {
+    display: none;
   }
 `
 
@@ -217,7 +221,7 @@ export const EmptyActions = styled.div`
     min-width: 240px;
   }
 
-  ${mobile} {
+  ${noActions} {
     /* Mobile is a viewer: collections are created from desktop. */
     display: none;
   }
@@ -228,8 +232,15 @@ export const SignInIcon = styled.div`
   color: ${theme.colors.white};
 
   & svg {
-    width: 72px;
-    height: 72px;
+    width: 140px;
+    height: 140px;
+  }
+
+  ${mobile} {
+    & svg {
+      width: 100px;
+      height: 100px;
+    }
   }
 `
 
@@ -238,7 +249,7 @@ export const SkeletonCard = styled.div`
   border-radius: ${theme.radius.cardLg};
 
   ${mobile} {
-    height: 128px;
+    height: 136px;
     border-radius: ${theme.radius.card};
   }
 `

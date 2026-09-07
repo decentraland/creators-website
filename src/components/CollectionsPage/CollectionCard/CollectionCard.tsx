@@ -34,6 +34,9 @@ export function CollectionCard({ collection }: Props) {
         <S.Meta data-testid="collection-card-updated">
           {t('collections_page.updated_ago', { timeAgo: formatTimeAgo(collection.updatedAt, locale) })}
         </S.Meta>
+        <S.Manage data-testid="collection-card-manage" aria-hidden>
+          {t('collections_page.manage')}
+        </S.Manage>
       </S.Body>
     </S.Card>
   )

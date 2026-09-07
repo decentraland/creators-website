@@ -4,16 +4,57 @@ import { Close as CloseIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import * as S from './Modal.styles'
 
+// Refcounted scroll lock: modals can stack (add-items + its confirm dialogs), and a
+// last-writer-wins restore would leave the page locked after closing both. The lock goes on <html>:
+// with `overflow-x: clip` on the root, a body overflow no longer propagates to the viewport.
+// `savedOverflow` is captured only when the first modal opens: nothing else touches the root
+// overflow while a modal is up, so a value set mid-stack would be clobbered on release.
+let scrollLocks = 0
+let savedOverflow = ''
+
+function acquireScrollLock() {
+  if (scrollLocks === 0) {
+    savedOverflow = document.documentElement.style.overflow
+    document.documentElement.style.overflow = 'hidden'
+  }
+  scrollLocks++
+}
+
+function releaseScrollLock() {
+  scrollLocks--
+  if (scrollLocks === 0) {
+    document.documentElement.style.overflow = savedOverflow
+  }
+}
+
 type Props = {
   title: string
   onClose: () => void
   children: ReactNode
   /** Blocks every close affordance (✕, Escape, scrim) while a submit is in flight. */
   closeDisabled?: boolean
+  /** 'wide' for editor-style dialogs (add items); default is the 560px form dialog. */
+  size?: 'default' | 'wide'
+  /** Renders no title bar (confirm/error dialogs); `title` still labels the dialog for a11y. */
+  hideTitle?: boolean
+  /** With `hideTitle`, still shows a floating ✕ in the dialog corner. */
+  showClose?: boolean
+  /** Removes the dialog padding so children can draw edge-to-edge panes; the title bar keeps its own. */
+  flush?: boolean
   testId?: string
 }
 
-export function Modal({ title, onClose, children, closeDisabled = false, testId = 'modal' }: Props) {
+export function Modal({
+  title,
+  onClose,
+  children,
+  closeDisabled = false,
+  size = 'default',
+  hideTitle = false,
+  showClose = false,
+  flush = false,
+  testId = 'modal'
+}: Props) {
   const dialogRef = useRef<HTMLDivElement>(null)
 
   // Latest-value refs so the document-level listeners never rebind mid-interaction.
@@ -52,16 +93,27 @@ export function Modal({ title, onClose, children, closeDisabled = false, testId 
     document.addEventListener('keydown', onKeyDown)
 
     // The page must not scroll behind the scrim.
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    acquireScrollLock()
 
     return () => {
       document.removeEventListener('keydown', onKeyDown)
-      document.body.style.overflow = previousOverflow
+      releaseScrollLock()
     }
   }, [])
 
   const { t } = useTranslation()
+
+  const closeButton = (
+    <S.CloseButton
+      type="button"
+      aria-label={t('modal.close')}
+      data-testid={`${testId}-close`}
+      disabled={closeDisabled}
+      onClick={onClose}
+    >
+      <CloseIcon fontSize="small" />
+    </S.CloseButton>
+  )
 
   return createPortal(
     <S.Scrim data-testid={`${testId}-scrim`} onClick={() => !closeDisabled && onClose()}>
@@ -72,21 +124,18 @@ export function Modal({ title, onClose, children, closeDisabled = false, testId 
         aria-label={title}
         tabIndex={-1}
         data-testid={testId}
+        data-size={size}
+        data-flush={flush || undefined}
         onClick={event => event.stopPropagation()}
       >
-        <S.TitleBar>
-          <S.Title>{title}</S.Title>
-          <S.CloseButton
-            type="button"
-            aria-label={t('modal.close')}
-            data-testid={`${testId}-close`}
-            disabled={closeDisabled}
-            onClick={onClose}
-          >
-            <CloseIcon fontSize="small" />
-          </S.CloseButton>
-        </S.TitleBar>
-        <S.Body>{children}</S.Body>
+        {!hideTitle && (
+          <S.TitleBar>
+            <S.Title>{title}</S.Title>
+            {closeButton}
+          </S.TitleBar>
+        )}
+        {hideTitle && showClose && <S.FloatingClose>{closeButton}</S.FloatingClose>}
+        <S.Body data-titleless={hideTitle || undefined}>{children}</S.Body>
       </S.Dialog>
     </S.Scrim>,
     document.body

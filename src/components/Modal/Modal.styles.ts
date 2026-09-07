@@ -15,6 +15,7 @@ export const Scrim = styled.div`
 `
 
 export const Dialog = styled.div`
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 560px;
@@ -28,8 +29,19 @@ export const Dialog = styled.div`
   overflow: hidden;
   outline: none;
 
+  &[data-size='wide'] {
+    width: max-content;
+    max-width: 80vw;
+    height: max-content;
+    max-height: 90vh;
+  }
+
   ${mobile} {
     padding: 24px 16px;
+  }
+
+  &[data-flush] {
+    padding: 0;
   }
 `
 
@@ -38,6 +50,11 @@ export const TitleBar = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  padding-bottom: 24px;
+
+  [data-flush] > & {
+    padding: 16px;
+  }
 `
 
 export const Title = styled.h2`
@@ -68,11 +85,35 @@ export const CloseButton = styled.button`
   }
 `
 
+export const FloatingClose = styled.div`
+  position: absolute;
+  top: 16px;
+  right: 16px;
+`
+
 export const Body = styled.div`
   padding-top: 48px;
   overflow-y: auto;
 
+  &[data-titleless] {
+    padding-top: 0;
+  }
+
+  /* The wide dialog's body owns the remaining height; inner panes manage their own scroll. */
+  [data-size='wide'] > & {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+    padding-top: 0;
+    overflow: hidden;
+  }
+
   ${mobile} {
     padding-top: 32px;
+
+    &[data-titleless] {
+      padding-top: 0;
+    }
   }
 `

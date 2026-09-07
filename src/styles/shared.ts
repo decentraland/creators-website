@@ -5,52 +5,6 @@ import { theme } from '~/styles/theme'
 
 const mobile = theme.media.maxWidth('mobile')
 
-export const ActionButton = styled.button`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: 46px;
-  min-width: 180px;
-  padding: 0 12px;
-  border-radius: ${theme.radius.btn};
-  border: 0;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 24px;
-  letter-spacing: 0.46px;
-  text-transform: uppercase;
-  white-space: nowrap;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease;
-
-  &[data-variant='primary'] {
-    background: ${theme.colors.dclRed};
-    color: ${theme.colors.white};
-
-    &:hover {
-      background: ${theme.colors.dclRedHover};
-    }
-  }
-  &[data-variant='secondary'] {
-    background: none;
-    border: 0.5px solid ${theme.colors.white};
-    color: ${theme.colors.softWhite};
-
-    &:hover {
-      background: ${theme.colors.glassFaint};
-    }
-  }
-  &[aria-disabled],
-  &:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
-`
-
-export const ActionLink = ActionButton.withComponent('a')
-
 export const SearchBox = styled.div`
   display: flex;
   align-items: center;
@@ -83,6 +37,16 @@ export const SearchBox = styled.div`
       color: ${theme.colors.gray4};
     }
   }
+`
+
+export const SearchSpinner = styled.span`
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: ${theme.colors.white};
+  animation: spin 0.8s linear infinite;
 `
 
 // Shared shell for the sign-in / empty / error / no-results states.
