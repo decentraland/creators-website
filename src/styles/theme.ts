@@ -32,7 +32,8 @@ const colors = {
   err: '#d33',
   okStrong: '#1f8a4c',
   errStrong: '#d64545',
-  errLight: '#ff7070',
+  errLight: '#FB3B3B',
+  errOverlay: 'rgba(255, 0, 0, 0.05)',
   success: '#00b453',
   successBorder: '#34ce77',
   green: '#30cd00', // DCL/Green — published status
