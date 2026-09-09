@@ -143,15 +143,55 @@ export const SubActions = styled.div`
   }
 `
 
-export const SectionLabel = styled.h2`
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: 0.46px;
-  color: ${theme.colors.white};
+export const FilterChips = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 
   ${mobile} {
-    font-size: 14px;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+`
+
+export const FilterChip = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: ${theme.radius.pill};
+  background: ${theme.colors.glassFaint};
+  color: ${theme.colors.softWhite};
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.46px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+
+  & svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  &:hover {
+    background: ${theme.colors.glassHover};
+  }
+  &[data-active] {
+    background: ${theme.colors.softWhite};
+    color: ${theme.colors.text};
   }
 `
 
@@ -327,10 +367,10 @@ export const SkeletonButton = styled.div`
   }
 `
 
-export const SkeletonLabel = styled.div`
+export const SkeletonChip = styled.div`
   width: 120px;
-  height: 24px;
-  border-radius: ${theme.radius.btnSm};
+  height: 40px;
+  border-radius: ${theme.radius.pill};
 `
 
 export const SkeletonListHeader = styled.div`

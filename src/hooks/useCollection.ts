@@ -1,11 +1,5 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  fetchAllCollectionItems,
-  fetchCollection,
-  fetchCollectionItems,
-  saveCollection,
-  deleteCollection
-} from '~/lib/builder'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { fetchAllCollectionItems, fetchCollection, saveCollection, deleteCollection } from '~/lib/builder'
 import { buildCollectionInitializeData } from '~/lib/saveCollection'
 import { type Collection } from '~/lib/collections'
 
@@ -20,18 +14,7 @@ export function useCollection(address: string | undefined, collectionId: string 
   })
 }
 
-export function useCollectionItems(address: string | undefined, collectionId: string | undefined, page: number) {
-  return useQuery({
-    queryKey: ['collection-items', address, collectionId, page],
-    queryFn: () => fetchCollectionItems(address!, collectionId!, { page, limit: ITEMS_PAGE_SIZE }),
-    enabled: !!address && !!collectionId,
-    // Keeps the previous page rendered while the next one loads, like the collections page.
-    placeholderData: keepPreviousData,
-    staleTime: 30_000
-  })
-}
-
-/** Every item of the collection — the add-items flow needs them all as variant targets. */
+/** Every item of the collection: the detail page filters and pages them client-side. */
 export function useAllCollectionItems(address: string | undefined, collectionId: string | undefined) {
   return useQuery({
     queryKey: ['collection-items-all', address, collectionId],

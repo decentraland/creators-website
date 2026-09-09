@@ -107,8 +107,17 @@
       }
     },
     "coming_soon": "Coming soon",
-    "items_count": "Items ({count})",
-    "no_items": "No items yet",
+    "filter": {
+      "all": "All ({count})",
+      "wearable": "Wearables ({count})",
+      "emote": "Emotes ({count})"
+    },
+    "no_items": {
+      "all": "No items in this collection",
+      "wearable": "No wearables in this collection",
+      "emote": "No emotes in this collection",
+      "description": "Items can no longer be added to this collection."
+    },
     "list": {
       "item": "Item",
       "body_shape": "Body Shape",

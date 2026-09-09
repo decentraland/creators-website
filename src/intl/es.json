@@ -107,8 +107,17 @@
       }
     },
     "coming_soon": "Próximamente",
-    "items_count": "Ítems ({count})",
-    "no_items": "Aún no hay ítems",
+    "filter": {
+      "all": "Todos ({count})",
+      "wearable": "Wearables ({count})",
+      "emote": "Emotes ({count})"
+    },
+    "no_items": {
+      "all": "Esta colección no tiene ítems",
+      "wearable": "Esta colección no tiene wearables",
+      "emote": "Esta colección no tiene emotes",
+      "description": "Ya no se pueden agregar ítems a esta colección."
+    },
     "list": {
       "item": "Ítem",
       "body_shape": "Forma del cuerpo",

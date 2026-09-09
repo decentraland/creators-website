@@ -71,10 +71,6 @@ export function useApproveMana(session: Session | null) {
 
 function invalidateCollectionItems(queryClient: ReturnType<typeof useQueryClient>, collectionId: string) {
   void queryClient.invalidateQueries({
-    queryKey: ['collection-items'],
-    predicate: q => q.queryKey.includes(collectionId)
-  })
-  void queryClient.invalidateQueries({
     queryKey: ['collection-items-all'],
     predicate: q => q.queryKey.includes(collectionId)
   })

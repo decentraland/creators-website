@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type DragEvent } from 'react'
+import { useCallback, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Add as AddIcon,
@@ -9,9 +9,17 @@ import {
 import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
-import { ITEMS_PAGE_SIZE, useCollection, useCollectionItems, useSaveCollection } from '~/hooks/useCollection'
+import { ITEMS_PAGE_SIZE, useAllCollectionItems, useCollection, useSaveCollection } from '~/hooks/useCollection'
 import { BuilderServerError } from '~/lib/builder'
 import { isCollectionLocked } from '~/lib/collections'
+import {
+  ITEM_TYPE_FILTERS,
+  ItemTypeFilter,
+  countItemsByType,
+  filterItemsByType,
+  paginateItems,
+  parseItemTypeFilter
+} from '~/lib/itemFilters'
 import { MAX_PUBLISH_ITEMS, getPublishBlocker } from '~/lib/publishCollection'
 import { useSyncPublishedItems } from '~/hooks/usePublishCollection'
 import { previewCollection } from '~/lib/explorer'
@@ -19,7 +27,7 @@ import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS } from '~/lib/itemFiles'
 import { Button } from '~/components/Button'
 import { Tooltip } from '~/components/Tooltip'
-import { JumpInIcon, OpenEditorIcon } from '~/components/Icons'
+import { EmoteIcon, JumpInIcon, OpenEditorIcon, WearableIcon } from '~/components/Icons'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
 import { Pagination } from '~/components/Pagination'
@@ -42,6 +50,7 @@ const CollectionDetailPage = () => {
 
   const [searchParams, setSearchParams] = useSearchParams()
   const page = Math.max(1, Number(searchParams.get('page')) || 1)
+  const typeFilter = parseItemTypeFilter(searchParams.get('type'))
 
   const [isRenameOpen, setRenameOpen] = useState(false)
   const [publishView, setPublishView] = useState<'closed' | 'wizard' | 'success'>('closed')
@@ -51,25 +60,30 @@ const CollectionDetailPage = () => {
   const filesInputRef = useRef<HTMLInputElement>(null)
 
   const collectionQuery = useCollection(address, collectionId)
-  const itemsQuery = useCollectionItems(address, collectionId, page)
+  const itemsQuery = useAllCollectionItems(address, collectionId)
   const saveCollection = useSaveCollection(address)
 
   const collection = collectionQuery.data
-  const items = itemsQuery.data
-  const total = items?.total ?? 0
-  const pages = items?.pages ?? 0
+  const allItems = itemsQuery.data
+  const total = allItems?.length ?? 0
+  const counts = useMemo(() => countItemsByType(allItems ?? []), [allItems])
+  const {
+    results,
+    total: filteredTotal,
+    pages
+  } = useMemo(
+    () => paginateItems(filterItemsByType(allItems ?? [], typeFilter), page, ITEMS_PAGE_SIZE),
+    [allItems, typeFilter, page]
+  )
+  useSyncPublishedItems(address, collection, allItems ?? [])
 
-  const results = items?.results ?? []
-  useSyncPublishedItems(address, collection, results)
-
-  const isLoading =
-    !restored || (!!address && (collectionQuery.isLoading || (itemsQuery.isFetching && !items) || itemsQuery.isLoading))
+  const isLoading = !restored || (!!address && (collectionQuery.isLoading || itemsQuery.isLoading))
   const isNotFound =
     collectionQuery.isError &&
     collectionQuery.error instanceof BuilderServerError &&
     NOT_FOUND_STATUSES.includes(collectionQuery.error.status)
   const isError = !isNotFound && (collectionQuery.isError || itemsQuery.isError)
-  const isEmpty = !!collection && !!items && total === 0
+  const isEmpty = filteredTotal === 0
   const hasItems = total > 0
   const canRename = !!collection && !collection.isPublished && !isCollectionLocked(collection)
   const canAddItems = canRename
@@ -103,6 +117,19 @@ const CollectionDetailPage = () => {
       { replace: true }
     )
     window.scrollTo({ top: 0 })
+  }
+
+  function changeTypeFilter(next: ItemTypeFilter) {
+    setSearchParams(
+      prev => {
+        const params = new URLSearchParams(prev)
+        if (next === ItemTypeFilter.ALL) params.delete('type')
+        else params.set('type', next)
+        params.delete('page')
+        return params
+      },
+      { replace: true }
+    )
   }
 
   function closeRenameModal() {
@@ -143,7 +170,11 @@ const CollectionDetailPage = () => {
             </S.HeaderActions>
           </S.Header>
           <S.SubHeader>
-            <S.SkeletonLabel className="skeleton" />
+            <S.FilterChips>
+              <S.SkeletonChip className="skeleton" />
+              <S.SkeletonChip className="skeleton" />
+              <S.SkeletonChip className="skeleton" />
+            </S.FilterChips>
             <S.SubActions>
               <S.SkeletonButton className="skeleton" data-compact />
               <S.SkeletonButton className="skeleton" data-compact />
@@ -247,11 +278,21 @@ const CollectionDetailPage = () => {
           </S.Header>
 
           <S.SubHeader>
-            <S.SectionLabel data-testid="items-count">
-              {isEmpty
-                ? t('collection_detail_page.no_items')
-                : t('collection_detail_page.items_count', { count: total })}
-            </S.SectionLabel>
+            <S.FilterChips data-testid="type-filters">
+              {ITEM_TYPE_FILTERS.map(filter => (
+                <S.FilterChip
+                  key={filter}
+                  type="button"
+                  data-active={typeFilter === filter || undefined}
+                  data-testid={`type-filter-${filter}`}
+                  onClick={() => changeTypeFilter(filter)}
+                >
+                  {filter === ItemTypeFilter.WEARABLE && <WearableIcon />}
+                  {filter === ItemTypeFilter.EMOTE && <EmoteIcon />}
+                  {t(`collection_detail_page.filter.${filter}`, { count: counts[filter] })}
+                </S.FilterChip>
+              ))}
+            </S.FilterChips>
             <S.SubActions>
               <Button
                 variant="secondary"
@@ -271,7 +312,13 @@ const CollectionDetailPage = () => {
             </S.SubActions>
           </S.SubHeader>
 
-          {isEmpty ? (
+          {isEmpty && !canAddItems ? (
+            <S.Panel data-testid="collection-no-items">
+              <S.DropArt src={addItemsArt} alt="" />
+              <S.PanelTitle>{t(`collection_detail_page.no_items.${typeFilter}`)}</S.PanelTitle>
+              <S.PanelText>{t('collection_detail_page.no_items.description')}</S.PanelText>
+            </S.Panel>
+          ) : isEmpty ? (
             <>
               <S.Dropzone
                 data-testid="collection-empty"
@@ -320,7 +367,7 @@ const CollectionDetailPage = () => {
                 <S.ShowingCount data-testid="items-showing">
                   {t('collection_detail_page.showing', {
                     range: pageRangeLabel(page, ITEMS_PAGE_SIZE, results.length),
-                    total
+                    total: filteredTotal
                   })}
                 </S.ShowingCount>
                 {pages > 1 && <Pagination page={page} pages={pages} onPageChange={goToPage} />}
