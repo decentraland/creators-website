@@ -210,11 +210,6 @@ export function getItemSales(item: Item): ItemSales | undefined {
   return { minted: Math.min(item.totalSupply ?? 0, maxSupply), maxSupply }
 }
 
-export function isItemSoldOut(item: Item): boolean {
-  const sales = getItemSales(item)
-  return !!sales && sales.minted >= sales.maxSupply
-}
-
 export function getItemDisplayStatus(item: Item): CollectionDisplayStatus {
   if (!item.isPublished) return CollectionDisplayStatus.DRAFT
   return item.isApproved ? CollectionDisplayStatus.PUBLISHED : CollectionDisplayStatus.UNDER_REVIEW

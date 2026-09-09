@@ -10,7 +10,6 @@ import {
   getItemMetadata,
   getItemSales,
   getMissingBodyShapeType,
-  isItemSoldOut,
   ItemType,
   toRemoteItem,
   type Item,
@@ -222,11 +221,5 @@ describe('getItemSales', () => {
 
   it('has no sales without a rarity', () => {
     expect(getItemSales({ ...base, rarity: undefined })).toBeUndefined()
-  })
-
-  it('is sold out once every unit is minted', () => {
-    expect(isItemSoldOut({ ...base, rarity: 'legendary', totalSupply: 100 })).toBe(true)
-    expect(isItemSoldOut({ ...base, rarity: 'legendary', totalSupply: 99 })).toBe(false)
-    expect(isItemSoldOut({ ...base, rarity: undefined, totalSupply: 100 })).toBe(false)
   })
 })

@@ -1,9 +1,9 @@
 import { MoreHoriz as MoreHorizIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'
-import { ItemType, getItemBodyShapeType, getItemSales, isItemSoldOut, type Item } from '~/lib/items'
+import { ItemType, getItemBodyShapeType, getItemSales, type Item } from '~/lib/items'
 import { EmotePlayMode } from '~/lib/itemFactory'
-import { isFreeListing, type ItemListing } from '~/lib/listings'
+import { type ItemListing } from '~/lib/listings'
 import { formatCredits, formatMana } from '~/lib/publishFee'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
 import { BodyShapeIcon, CategoryIcon, PlayModeIcon } from '~/components/ItemIcons'
@@ -35,21 +35,20 @@ export function ItemListRow({ item, withPlayMode = false, withMarket = false, li
   const category = item.data.category
   const isEmote = item.type === ItemType.EMOTE
   const sales = withMarket ? getItemSales(item) : undefined
-  const soldOut = withMarket && isItemSoldOut(item)
 
   function renderPrice() {
     if (listing === undefined) return null
-    if (listing === null || soldOut) return EMPTY
-    if (isFreeListing(listing)) return t('collection_detail_page.price.free')
+    if (listing === null) return EMPTY
     if (listing.currency === 'mana') {
-      if (listing.manaWei === null) return EMPTY
-      const amount = formatMana(BigInt(listing.manaWei))
+      if (listing.manaWei === 0n) return t('collection_detail_page.price.free')
+      const amount = formatMana(listing.manaWei)
       return (
         <S.Amount title={t('collection_detail_page.price.mana', { amount })}>
           <CurrencyAmount currency="mana">{amount}</CurrencyAmount>
         </S.Amount>
       )
     }
+    if (listing.credits === 0) return t('collection_detail_page.price.free')
     const amount = formatCredits(listing.credits)
     return (
       <S.Amount title={t('collection_detail_page.price.credits', { amount })}>
@@ -89,12 +88,12 @@ export function ItemListRow({ item, withPlayMode = false, withMarket = false, li
           <>
             <S.Cell
               data-testid="item-row-price"
-              data-currency={listing && !soldOut ? listing.currency : undefined}
-              data-empty={listing === null || soldOut || undefined}
+              data-currency={listing?.currency}
+              data-empty={listing === null || undefined}
             >
               {renderPrice()}
             </S.Cell>
-            <S.Cell data-testid="item-row-sales" data-sold-out={soldOut || undefined} data-empty={!sales || undefined}>
+            <S.Cell data-testid="item-row-sales" data-empty={!sales || undefined}>
               {sales ? `${formatCount(sales.minted)}/${formatCount(sales.maxSupply)}` : EMPTY}
             </S.Cell>
           </>

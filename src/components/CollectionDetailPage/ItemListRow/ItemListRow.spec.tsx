@@ -41,15 +41,8 @@ function renderRow(overrides: Partial<Item> = {}, props: RowProps | boolean = {}
   return render(<ItemListRow item={{ ...item, ...overrides }} {...rowProps} />, { wrapper })
 }
 
-const creditsListing: ItemListing = {
-  itemId: '3',
-  currency: 'credits',
-  credits: 500,
-  manaWei: null,
-  available: 85,
-  free: false
-}
-const manaListing: ItemListing = { ...creditsListing, currency: 'mana', credits: 12, manaWei: '5000000000000000000' }
+const creditsListing: ItemListing = { itemId: '3', currency: 'credits', credits: 500 }
+const manaListing: ItemListing = { itemId: '3', currency: 'mana', manaWei: 5000000000000000000n }
 
 const emote: Partial<Item> = {
   type: ItemType.EMOTE,
@@ -132,7 +125,7 @@ describe('ItemListRow', () => {
   })
 
   it('shows Free for a listing priced at zero', () => {
-    renderRow({ tokenId: '3' }, { withMarket: true, listing: { ...creditsListing, credits: 0, free: true } })
+    renderRow({ tokenId: '3' }, { withMarket: true, listing: { ...creditsListing, credits: 0 } })
     expect(screen.getByTestId('item-row-price')).toHaveTextContent('Free')
   })
 
@@ -142,11 +135,10 @@ describe('ItemListRow', () => {
     expect(screen.getByTestId('item-row-sales')).toHaveTextContent('0/100')
   })
 
-  it('shows a dash instead of a price once the item is sold out', () => {
-    renderRow({ tokenId: '3', totalSupply: 100 }, { withMarket: true, listing: creditsListing })
+  it('shows every unit minted for a sold-out item', () => {
+    renderRow({ tokenId: '3', totalSupply: 100 }, { withMarket: true, listing: null })
     expect(screen.getByTestId('item-row-price')).toHaveTextContent('—')
     expect(screen.getByTestId('item-row-sales')).toHaveTextContent('100/100')
-    expect(screen.getByTestId('item-row-sales')).toHaveAttribute('data-sold-out')
   })
 
   it('leaves the price blank while listings are loading', () => {

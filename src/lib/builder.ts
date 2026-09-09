@@ -90,24 +90,6 @@ export async function fetchCollection(address: string, collectionId: string): Pr
   return fromRemoteCollection(remote)
 }
 
-/**
- * One page of a collection's items: GET /collections/{id}/items. As with collections, the
- * paginated envelope only comes back when both page and limit are sent.
- */
-export async function fetchCollectionItems(
-  address: string,
-  collectionId: string,
-  { page, limit }: { page: number; limit: number }
-): Promise<PaginatedResource<Item>> {
-  const remote = await request<PaginatedResource<RemoteItem>>(
-    address,
-    'GET',
-    `/collections/${collectionId}/items`,
-    `?page=${page}&limit=${limit}`
-  )
-  return { ...remote, results: remote.results.map(fromRemoteItem) }
-}
-
 /** Every item of a collection (bare-array legacy response) — the rename flow re-encodes them all. */
 export async function fetchAllCollectionItems(address: string, collectionId: string): Promise<Item[]> {
   const remote = await request<RemoteItem[]>(address, 'GET', `/collections/${collectionId}/items`)
