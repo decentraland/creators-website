@@ -1,9 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { useDeleteItem, useItemContents, useUpdateItem } from '~/hooks/usePublishCollection'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
-import { withThumbnail } from '~/lib/itemFactory'
 import { type Item } from '~/lib/items'
 import { Button } from '~/components/Button'
 import { ThumbnailModal, type ThumbnailPatch } from '~/components/ThumbnailModal'
@@ -16,12 +15,13 @@ import * as S from './PublishCollectionModal.styles'
 type Props = {
   address: string
   items: Item[]
+  onBusyChange: (busy: boolean) => void
   onBack: () => void
   onConfirm: () => void
 }
 
 /** Step 2: review every item; names and rarities are editable in place, items can be removed. */
-export function ConfirmItemsStep({ address, items, onBack, onConfirm }: Props) {
+export function ConfirmItemsStep({ address, items, onBusyChange, onBack, onConfirm }: Props) {
   const { t } = useTranslation()
   const [accepted, setAccepted] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -37,6 +37,11 @@ export function ConfirmItemsStep({ address, items, onBack, onConfirm }: Props) {
 
   const canContinue = accepted && items.length > 0 && editingId === null
 
+  const isBusy = updateItem.isPending || deleteItem.isPending
+  useEffect(() => {
+    onBusyChange(isBusy)
+  }, [isBusy, onBusyChange])
+
   function stopEditing() {
     updateItem.reset()
     setEditingId(null)
@@ -48,11 +53,10 @@ export function ConfirmItemsStep({ address, items, onBack, onConfirm }: Props) {
       stopEditing()
       return
     }
-    const updated = { ...item, ...changes }
-    const variables = thumbnailPatch
-      ? withThumbnail(updated, thumbnailPatch.contents[THUMBNAIL_PATH])
-      : Promise.resolve({ item: updated })
-    void variables.then(built => updateItem.mutate(built, { onSuccess: stopEditing }))
+    updateItem.mutate(
+      { item: { ...item, ...changes }, thumbnail: thumbnailPatch?.contents[THUMBNAIL_PATH] },
+      { onSuccess: stopEditing }
+    )
   }
 
   function confirmDelete() {

@@ -352,7 +352,7 @@ describe('consolidatePublishedCollection', () => {
         3,
         0
       )
-    ).rejects.toMatchObject({ reason: 'reverted' })
+    ).rejects.toThrow(/reverted/)
     await expect(
       consolidatePublishedCollection(
         'col-1',

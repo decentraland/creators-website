@@ -16,7 +16,7 @@ import {
 import { sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { authorizePublication } from '~/lib/credits'
-import { withRehashedContents } from '~/lib/itemFactory'
+import { withRehashedContents, withThumbnail } from '~/lib/itemFactory'
 import { type Item } from '~/lib/items'
 import { buildManaApproveCall, fetchManaAllowance } from '~/lib/mana'
 import {
@@ -103,9 +103,10 @@ export function useDeleteItem(address: string | undefined) {
 export function useUpdateItem(address: string | undefined) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ item, blobs = {} }: { item: Item; blobs?: Record<string, Blob> }) => {
+    mutationFn: async ({ item, thumbnail }: { item: Item; thumbnail?: Blob }) => {
       if (!address) throw new Error('Wallet disconnected')
-      return saveItem(address, item, blobs)
+      const built = thumbnail ? await withThumbnail(item, thumbnail) : { item, blobs: {} }
+      return saveItem(address, built.item, built.blobs)
     },
     onSuccess: item => {
       if (item.collectionId) invalidateCollectionItems(queryClient, item.collectionId)

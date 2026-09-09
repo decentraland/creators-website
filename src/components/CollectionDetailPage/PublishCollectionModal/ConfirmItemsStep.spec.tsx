@@ -81,7 +81,10 @@ function renderStep(list = items) {
       <TranslationProvider>{children}</TranslationProvider>
     </QueryClientProvider>
   )
-  render(<ConfirmItemsStep address={ADDRESS} items={list} onBack={onBack} onConfirm={onConfirm} />, { wrapper })
+  render(
+    <ConfirmItemsStep address={ADDRESS} items={list} onBusyChange={vi.fn()} onBack={onBack} onConfirm={onConfirm} />,
+    { wrapper }
+  )
   return { onConfirm, onBack }
 }
 

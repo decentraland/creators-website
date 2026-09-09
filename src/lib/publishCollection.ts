@@ -133,7 +133,7 @@ export function buildUseCreditsCall(
 }
 
 export type PublishFailureReason =
-  'missing_salt' | 'unsynced' | 'locked' | 'insufficient_credits' | 'rejected' | 'reverted' | 'generic'
+  'missing_salt' | 'unsynced' | 'locked' | 'insufficient_credits' | 'rejected' | 'generic'
 
 export class PublishCollectionError extends Error {
   reason: PublishFailureReason
@@ -312,6 +312,6 @@ export async function consolidatePublishedCollection(
   retryDelayMs = CONSOLIDATE_RETRY_DELAY_MS
 ): Promise<void> {
   const mined = await deps.waitForTransaction(txHash)
-  if (!mined) throw new PublishCollectionError('reverted')
+  if (!mined) throw new Error(`Publish transaction ${txHash} reverted`)
   await syncPublishedItems(collectionId, deps, retries, retryDelayMs)
 }

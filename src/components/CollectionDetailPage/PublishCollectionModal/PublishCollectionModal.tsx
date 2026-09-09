@@ -39,7 +39,7 @@ export function PublishCollectionModal({ collection, session, onClose, onPublish
   const [error, setError] = useState<PublishCollectionError | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null)
   const [termsAccepted, setTermsAccepted] = useState(false)
-  const [isPaying, setPaying] = useState(false)
+  const [isStepBusy, setStepBusy] = useState(false)
 
   const itemsQuery = useAllCollectionItems(address, collection.id)
   const items = itemsQuery.data ?? []
@@ -66,7 +66,7 @@ export function PublishCollectionModal({ collection, session, onClose, onPublish
     )
   }
 
-  const busy = saveCollection.isPending || isPaying
+  const busy = saveCollection.isPending || isStepBusy
 
   return (
     <Modal
@@ -96,6 +96,7 @@ export function PublishCollectionModal({ collection, session, onClose, onPublish
             <ConfirmItemsStep
               address={address}
               items={items}
+              onBusyChange={setStepBusy}
               onBack={() => setStep(Step.Name)}
               onConfirm={() => setStep(Step.Payment)}
             />
@@ -109,7 +110,7 @@ export function PublishCollectionModal({ collection, session, onClose, onPublish
             onPaymentMethodChange={setPaymentMethod}
             accepted={termsAccepted}
             onAcceptedChange={setTermsAccepted}
-            onBusyChange={setPaying}
+            onBusyChange={setStepBusy}
             onBack={() => setStep(Step.Items)}
             onPublished={onPublished}
             onFailed={setError}
