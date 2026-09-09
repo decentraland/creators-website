@@ -16,6 +16,7 @@ import {
   canPayWith,
   consolidatePublishedCollection,
   getAvailablePaymentMethods,
+  syncPublishedItems,
   getPublishBlocker,
   publishCollection,
   toPublishError,
@@ -108,6 +109,7 @@ function makeDeps(overrides: Partial<PublishDeps> = {}): PublishDeps & { calls: 
       contractAddress: '0xc0ffee'
     })),
     fetchItems: track('fetchItems', async () => items),
+    rehashItem: track('rehashItem', async (item: Item) => item),
     saveTOS: track('saveTOS', async () => undefined),
     authorizePublication: track('authorizePublication', async () => authorization),
     sendTransaction: track('sendTransaction', async () => '0xtx'),
@@ -273,6 +275,23 @@ describe('publishCollection', () => {
     expect(deps.calls).not.toContain('saveTOS')
   })
 
+  it('re-saves items still carrying legacy hashes before the ToS and the payment', async () => {
+    const legacy = { ...items[0], contents: { 'm.glb': 'QmOld', 'thumbnail.png': 'thumb' } }
+    const rehashed = { ...legacy, contents: { 'm.glb': 'bafnew', 'thumbnail.png': 'thumb' } }
+    const rehash = vi.fn().mockResolvedValue(rehashed)
+    const deps = makeDeps({ fetchItems: async () => [legacy, items[1]], rehashItem: rehash })
+    await publishCollection({ ...params, items: [legacy, items[1]] }, deps)
+    expect(rehash).toHaveBeenCalledTimes(1)
+    expect(rehash).toHaveBeenCalledWith(legacy)
+    expect(deps.calls.indexOf('rehashItem')).toBeLessThan(deps.calls.indexOf('saveTOS'))
+  })
+
+  it('leaves items with current hashes alone', async () => {
+    const deps = makeDeps()
+    await publishCollection(params, deps)
+    expect(deps.calls).not.toContain('rehashItem')
+  })
+
   it('aborts before paying when the server items differ from the reviewed ones', async () => {
     const deps = makeDeps({ fetchItems: async () => [items[0]] })
     await expect(publishCollection(params, deps)).rejects.toMatchObject({ reason: 'unsynced' })
@@ -295,6 +314,19 @@ describe('publishCollection', () => {
   it('normalizes payment failures', async () => {
     const deps = makeDeps({ authorizePublication: async () => Promise.reject(new CreditsServerError('no', 402)) })
     await expect(publishCollection(params, deps)).rejects.toMatchObject({ reason: 'insufficient_credits' })
+  })
+})
+
+describe('syncPublishedItems', () => {
+  it('polls for an hour at most while the graph lags, by default', async () => {
+    vi.useFakeTimers()
+    const publish = vi.fn().mockRejectedValue(new BuilderServerError('not yet', 401))
+    const run = syncPublishedItems('col-1', { publishCollectionItems: publish })
+    const failure = expect(run).rejects.toThrow('not yet')
+    await vi.advanceTimersByTimeAsync(60 * 60 * 1000)
+    await failure
+    expect(publish).toHaveBeenCalledTimes(721)
+    vi.useRealTimers()
   })
 })
 

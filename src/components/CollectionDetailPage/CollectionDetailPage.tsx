@@ -13,6 +13,7 @@ import { ITEMS_PAGE_SIZE, useCollection, useCollectionItems, useSaveCollection }
 import { BuilderServerError } from '~/lib/builder'
 import { isCollectionLocked } from '~/lib/collections'
 import { MAX_PUBLISH_ITEMS, getPublishBlocker } from '~/lib/publishCollection'
+import { useSyncPublishedItems } from '~/hooks/usePublishCollection'
 import { previewCollection } from '~/lib/explorer'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS } from '~/lib/itemFiles'
@@ -59,6 +60,7 @@ const CollectionDetailPage = () => {
   const pages = items?.pages ?? 0
 
   const results = items?.results ?? []
+  useSyncPublishedItems(address, collection, results)
 
   const isLoading =
     !restored || (!!address && (collectionQuery.isLoading || (itemsQuery.isFetching && !items) || itemsQuery.isLoading))

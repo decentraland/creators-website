@@ -10,6 +10,7 @@ import {
   isValidItemName,
   sortContent,
   sortContentZipBothBodyShape,
+  withRehashedContents,
   withThumbnail,
   type ItemDraftPayload
 } from './itemFactory'
@@ -205,5 +206,31 @@ describe('isValidItemName', () => {
     expect(isValidItemName('  ')).toBe(false)
     expect(isValidItemName('a'.repeat(33))).toBe(false)
     expect(isValidItemName('a:b')).toBe(false)
+  })
+})
+
+describe('withRehashedContents', () => {
+  const legacy: Item = {
+    id: 'item-1',
+    name: 'Hat',
+    description: '',
+    thumbnail: 'thumbnail.png',
+    owner: '0xowner',
+    isPublished: false,
+    isApproved: false,
+    inCatalyst: false,
+    type: ItemType.WEARABLE,
+    data: { category: 'hat', representations: [] },
+    contents: { 'male/model.glb': 'QmOldModel', 'thumbnail.png': 'bafthumb' },
+    createdAt: 1,
+    updatedAt: 1
+  }
+
+  it('re-hashes only the legacy-hashed files and returns them for upload', async () => {
+    const download = async (hash: string) => blob(`file ${hash}`)
+    const built = await withRehashedContents(legacy, download)
+    expect(built.item.contents['male/model.glb']).toMatch(/^baf/)
+    expect(built.item.contents['thumbnail.png']).toBe('bafthumb')
+    expect(Object.keys(built.blobs)).toEqual(['male/model.glb'])
   })
 })

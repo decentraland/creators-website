@@ -227,17 +227,20 @@ export async function publishCollectionItems(
   return { collection: fromRemoteCollection(result.collection), items: result.items.map(fromRemoteItem) }
 }
 
+/** One stored file by hash, from public storage. */
+export async function fetchContent(hash: string): Promise<Blob> {
+  const response = await fetch(getContentsStorageUrl(hash))
+  if (!response.ok) {
+    await response.body?.cancel()
+    throw new BuilderServerError(`Could not download ${hash} (${response.status})`, response.status)
+  }
+  return response.blob()
+}
+
 /** Downloads every file of a saved item from public storage, keyed by path, for the local preview/editor. */
 export async function fetchItemContents(item: Item): Promise<Record<string, Blob>> {
   const entries = await Promise.all(
-    Object.entries(item.contents).map(async ([path, hash]) => {
-      const response = await fetch(getContentsStorageUrl(hash))
-      if (!response.ok) {
-        await response.body?.cancel()
-        throw new BuilderServerError(`Could not download ${path} (${response.status})`, response.status)
-      }
-      return [path, await response.blob()] as const
-    })
+    Object.entries(item.contents).map(async ([path, hash]) => [path, await fetchContent(hash)] as const)
   )
   return Object.fromEntries(entries)
 }

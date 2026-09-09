@@ -9,6 +9,7 @@ import { type ContractCall } from '~/lib/auth'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS } from '~/lib/builder'
 import { isCollectionLocked, type Collection } from '~/lib/collections'
 import { CreditsServerError, type ExternalCall, type PublicationAuthorization } from '~/lib/credits'
+import { hasOldHashedContents } from '~/lib/itemFactory'
 import { type Item } from '~/lib/items'
 import { weiToUsdCents, type PublicationFee } from '~/lib/publishFee'
 import { getCollectionSymbol, toInitializeItems, type InitializeItem } from '~/lib/saveCollection'
@@ -192,6 +193,8 @@ export type PublishParams = {
 export type PublishDeps = {
   saveCollection: (collection: Collection, items: Item[]) => Promise<Collection>
   fetchItems: (collectionId: string) => Promise<Item[]>
+  /** Re-hashes and re-saves an item whose files still carry legacy hashes; answers the saved item. */
+  rehashItem: (item: Item) => Promise<Item>
   saveTOS: (collection: Collection, email: string) => Promise<void>
   authorizePublication: (params: {
     usdPriceCents: number
@@ -210,13 +213,14 @@ export type PublishResult = {
 
 /**
  * The publish sequence: re-save the collection (regenerates salt + contract address), verify the
- * items match the server, record the ToS, pay and send createCollection, then lock the collection.
- * Errors are normalized to PublishCollectionError.
+ * items match the server, re-save items still carrying legacy hashes, record the ToS, pay and send
+ * createCollection, then lock the collection. Errors are normalized to PublishCollectionError.
  */
 export async function publishCollection(params: PublishParams, deps: PublishDeps): Promise<PublishResult> {
-  const { address, items, paymentMethod, fee, email, chainId } = params
+  const { address, paymentMethod, fee, email, chainId } = params
   try {
     let collection = params.collection
+    let items = params.items
     if (!isCollectionLocked(collection)) {
       collection = await deps.saveCollection(collection, items)
     }
@@ -227,6 +231,11 @@ export async function publishCollection(params: PublishParams, deps: PublishDeps
     if (serverItems.length !== items.length || serverItems.some(item => !localIds.has(item.id))) {
       throw new PublishCollectionError('unsynced')
     }
+
+    // Legacy "Qm…" hashes can't be deployed to Catalyst: re-hash those files before they go on-chain.
+    const rehashed: Item[] = []
+    for (const item of items) rehashed.push(hasOldHashedContents(item) ? await deps.rehashItem(item) : item)
+    items = rehashed
 
     // Recorded before the transaction so a ToS failure never leaves the collection locked.
     if (email) await retry(3, 500, () => deps.saveTOS(collection, email))
@@ -260,27 +269,28 @@ export async function publishCollection(params: PublishParams, deps: PublishDeps
   }
 }
 
-export type ConsolidateDeps = {
-  waitForTransaction: (txHash: string) => Promise<boolean>
+export type SyncDeps = {
   publishCollectionItems: (collectionId: string) => Promise<unknown>
 }
 
-const CONSOLIDATE_RETRIES = 24
+export type ConsolidateDeps = SyncDeps & {
+  waitForTransaction: (txHash: string) => Promise<boolean>
+}
+
+// One hour of 5s polls: the subgraph can lag well past a couple of minutes on a busy Polygon day.
 const CONSOLIDATE_RETRY_DELAY_MS = 5000
+const CONSOLIDATE_RETRIES = (60 * 60 * 1000) / CONSOLIDATE_RETRY_DELAY_MS
 
 /**
- * After the transaction is mined, asks builder-server to sync the collection with the chain (item
- * token ids). The server answers 401 until the subgraph indexes the block, so that status is retried.
+ * Asks builder-server to sync a published collection with the chain (item token ids). The server
+ * answers 401 until the subgraph indexes the block, so that status is retried.
  */
-export async function consolidatePublishedCollection(
+export async function syncPublishedItems(
   collectionId: string,
-  txHash: string,
-  deps: ConsolidateDeps,
+  deps: SyncDeps,
   retries = CONSOLIDATE_RETRIES,
   retryDelayMs = CONSOLIDATE_RETRY_DELAY_MS
 ): Promise<void> {
-  const mined = await deps.waitForTransaction(txHash)
-  if (!mined) throw new PublishCollectionError('reverted')
   for (let attempt = 0; ; attempt++) {
     try {
       await deps.publishCollectionItems(collectionId)
@@ -291,4 +301,17 @@ export async function consolidatePublishedCollection(
       await new Promise(resolve => setTimeout(resolve, retryDelayMs))
     }
   }
+}
+
+/** Waits for the publish transaction to be mined, then runs the server sync. */
+export async function consolidatePublishedCollection(
+  collectionId: string,
+  txHash: string,
+  deps: ConsolidateDeps,
+  retries = CONSOLIDATE_RETRIES,
+  retryDelayMs = CONSOLIDATE_RETRY_DELAY_MS
+): Promise<void> {
+  const mined = await deps.waitForTransaction(txHash)
+  if (!mined) throw new PublishCollectionError('reverted')
+  await syncPublishedItems(collectionId, deps, retries, retryDelayMs)
 }

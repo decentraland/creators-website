@@ -340,3 +340,25 @@ export async function withThumbnail(item: Item, thumbnail: Blob): Promise<BuiltI
     blobs: { [THUMBNAIL_PATH]: thumbnail }
   }
 }
+
+/** Hashes from the legacy CIDv0 algorithm ("Qm…"); Catalyst deployments need the current hashV1. */
+export function isOldHash(hash: string): boolean {
+  return hash.startsWith('Qm')
+}
+
+export function hasOldHashedContents(item: Item): boolean {
+  return Object.values(item.contents).some(isOldHash)
+}
+
+/**
+ * Re-hashes the item's legacy-hashed files with the current algorithm (legacy reHashOlderContents):
+ * downloads each of them and returns the item pointing at the new hashes plus the files to re-upload.
+ */
+export async function withRehashedContents(item: Item, download: (hash: string) => Promise<Blob>): Promise<BuiltItem> {
+  const stale = Object.entries(item.contents).filter(([, hash]) => isOldHash(hash))
+  const blobs = Object.fromEntries(
+    await Promise.all(stale.map(async ([path, hash]) => [path, await download(hash)] as const))
+  )
+  const hashes = await computeHashes(blobs)
+  return { item: { ...item, contents: { ...item.contents, ...hashes }, updatedAt: Date.now() }, blobs }
+}
