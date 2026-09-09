@@ -131,7 +131,10 @@ export function PaymentStep({
   }
 
   const thumbnails = useMemo(
-    () => items.slice(0, 4).map(item => getContentsStorageUrl(item.contents[item.thumbnail])),
+    () =>
+      items
+        .slice(0, 4)
+        .map(item => ({ url: getContentsStorageUrl(item.contents[item.thumbnail]), rarity: item.rarity })),
     [items]
   )
 

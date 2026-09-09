@@ -26,18 +26,7 @@ export const Mosaic = styled.div`
 export const Cell = styled.div`
   min-width: 0;
   min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: ${theme.colors.media};
   border: 0.25px solid ${theme.colors.cardLine};
-
-  & img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    display: block;
-  }
 `
 
 export const Loading = styled.div`

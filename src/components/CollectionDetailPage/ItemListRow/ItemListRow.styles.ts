@@ -51,14 +51,7 @@ export const Thumb = styled.div`
   width: 74px;
   height: 74px;
   border-radius: 6px;
-  background: ${theme.colors.media};
   overflow: hidden;
-
-  & img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
 
   ${mobile} {
     width: 62px;

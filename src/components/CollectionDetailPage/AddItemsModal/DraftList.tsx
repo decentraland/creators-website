@@ -4,6 +4,7 @@ import { useTranslation } from '~/intl'
 import { ItemType } from '~/lib/items'
 import { type ItemDraft } from './AddItemsModal.state'
 import * as S from './AddItemsModal.styles'
+import { ItemThumbnail } from '~/components/ItemThumbnail'
 
 type Props = {
   drafts: ItemDraft[]
@@ -29,7 +30,7 @@ export function DraftList({ drafts, selectedId, onSelect, onRemove }: Props) {
           onClick={() => onSelect(draft.id)}
         >
           <S.DraftThumbWrap>
-            {draft.thumbnail && <img src={draft.thumbnail} alt="" />}
+            <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId={`draft-thumbnail-${draft.id}`} />
             {draft.status !== 'failed' && (
               <S.DraftCheck data-checked={draft.checked || undefined} data-testid={`draft-check-${draft.id}`}>
                 {draft.checked && <CheckIcon />}

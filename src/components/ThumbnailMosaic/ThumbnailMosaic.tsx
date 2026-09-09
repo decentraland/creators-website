@@ -1,8 +1,14 @@
+import { ItemThumbnail } from '~/components/ItemThumbnail'
 import * as S from './ThumbnailMosaic.styles'
 
+export type MosaicThumbnail = {
+  url: string
+  rarity?: string | null
+}
+
 type Props = {
-  /** Up to four thumbnail URLs; extra entries are ignored. */
-  thumbnails: string[]
+  /** Up to four thumbnails; extra entries are ignored. */
+  thumbnails: MosaicThumbnail[]
   loading?: boolean
   className?: string
   testId?: string
@@ -16,9 +22,9 @@ export function ThumbnailMosaic({ thumbnails, loading = false, className, testId
       {loading ? (
         <S.Loading className="skeleton" data-testid={`${testId}-loading`} aria-hidden />
       ) : (
-        urls.map((url, index) => (
+        urls.map(({ url, rarity }, index) => (
           <S.Cell key={`${index}-${url}`} data-testid={`${testId}-cell`}>
-            <img src={url} alt="" loading="lazy" />
+            <ItemThumbnail src={url} rarity={rarity} testId={`${testId}-thumbnail`} />
           </S.Cell>
         ))
       )}

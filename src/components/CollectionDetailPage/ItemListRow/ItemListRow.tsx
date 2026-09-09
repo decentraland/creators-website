@@ -4,6 +4,7 @@ import { getContentsStorageUrl } from '~/lib/builder'
 import { ItemType, getItemBodyShapeType, type Item } from '~/lib/items'
 import { EmotePlayMode } from '~/lib/itemFactory'
 import { BodyShapeIcon, CategoryIcon, PlayModeIcon } from '~/components/ItemIcons'
+import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { RarityPill } from '~/components/RarityPill'
 import * as S from './ItemListRow.styles'
 
@@ -23,7 +24,9 @@ export function ItemListRow({ item, withPlayMode = false }: Props) {
 
   return (
     <S.Row data-testid="item-row" data-with-play-mode={withPlayMode || undefined}>
-      <S.Thumb>{thumbnailHash && <img src={getContentsStorageUrl(thumbnailHash)} alt="" />}</S.Thumb>
+      <S.Thumb>
+        <ItemThumbnail src={thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null} rarity={item.rarity} />
+      </S.Thumb>
       <S.Content>
         <S.Name title={item.name}>{item.name}</S.Name>
         <S.Cell data-testid="item-row-body-shape">

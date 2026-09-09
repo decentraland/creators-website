@@ -71,6 +71,19 @@ const colors = {
   rarityLegendaryLight: '#e8b9ff'
 } as const
 
+// Per-rarity design colors (Figma "Rarities/*", shop's palette). Distinct from @dcl/schemas' Rarity.getColor:
+// the designer re-tuned every one for the dark field.
+const rarities = {
+  common: '#73d3d3',
+  uncommon: '#ff8362',
+  rare: '#34ce76',
+  epic: '#289cff',
+  legendary: '#a24bf3',
+  exotic: '#9cd71e',
+  mythic: '#ff4bed',
+  unique: '#fea217'
+} as const
+
 const gradients = {
   amethyst: 'linear-gradient(180deg, #c640cd 0%, #691fa9 100%)',
   cerise: 'linear-gradient(135deg, #ff2d55 0%, #c640cd 100%)',
@@ -121,6 +134,6 @@ const media = {
   minWidth: (bp: Breakpoint) => `@media (min-width: ${breakpoints[bp] + 1}px)`
 }
 
-export const theme = { colors, gradients, radius, font, media, z }
+export const theme = { colors, rarities, gradients, radius, font, media, z }
 
 export type AppTheme = typeof theme

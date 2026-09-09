@@ -18,6 +18,7 @@ export type CollectionItemPreview = {
   id: string
   name: string
   thumbnailUrl: string
+  rarity?: string
 }
 
 /** Carries the HTTP status so callers can tell "no access / gone" from a transient failure. */
@@ -171,7 +172,8 @@ export async function fetchCollectionItemPreviews(
     .map(item => ({
       id: item.id,
       name: item.name,
-      thumbnailUrl: getContentsStorageUrl(item.contents[item.thumbnail])
+      thumbnailUrl: getContentsStorageUrl(item.contents[item.thumbnail]),
+      rarity: item.rarity ?? undefined
     }))
 }
 

@@ -11,6 +11,7 @@ import {
   Transgender as BothIcon
 } from '@mui/icons-material'
 import { CategorySelect } from '~/components/CategorySelect'
+import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { ClockIcon, FilmReelIcon, ImageIcon, LoopIcon, PlayOnceIcon } from '~/components/Icons'
 import { RaritySelect } from '~/components/RaritySelect'
 import { Tooltip } from '~/components/Tooltip'
@@ -73,10 +74,11 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
           data-testid="edit-thumbnail"
           onClick={onOpenThumbnail}
         >
-          {draft.thumbnail && <img src={draft.thumbnail} alt="" />}
-          <S.ThumbnailOverlay data-thumb-overlay>
-            <CameraIcon />
-          </S.ThumbnailOverlay>
+          <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId="draft-thumbnail">
+            <S.ThumbnailOverlay data-thumb-overlay>
+              <CameraIcon />
+            </S.ThumbnailOverlay>
+          </ItemThumbnail>
         </S.ThumbnailBox>
         <S.MetricsRow data-testid="draft-metrics">
           {isEmote && draft.metrics ? (
