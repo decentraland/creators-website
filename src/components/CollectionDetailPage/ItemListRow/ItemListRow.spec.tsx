@@ -32,9 +32,14 @@ const item: Item = {
   updatedAt: 1000
 }
 
-function renderRow(overrides: Partial<Item> = {}) {
+function renderRow(overrides: Partial<Item> = {}, withPlayMode = false) {
   const wrapper = ({ children }: { children: ReactNode }) => <TranslationProvider>{children}</TranslationProvider>
-  return render(<ItemListRow item={{ ...item, ...overrides }} />, { wrapper })
+  return render(<ItemListRow item={{ ...item, ...overrides }} withPlayMode={withPlayMode} />, { wrapper })
+}
+
+const emote: Partial<Item> = {
+  type: ItemType.EMOTE,
+  data: { category: 'dance', representations: [], loop: true }
 }
 
 describe('ItemListRow', () => {
@@ -64,5 +69,28 @@ describe('ItemListRow', () => {
     expect(screen.getByTestId('item-row-body-shape')).toHaveTextContent('—')
     expect(screen.getByTestId('item-row-category')).toHaveTextContent('—')
     expect(screen.getByTestId('item-row-rarity')).toBeEmptyDOMElement()
+  })
+
+  it('omits the play mode cell when the list has no emotes', () => {
+    renderRow()
+    expect(screen.queryByTestId('item-row-play-mode')).not.toBeInTheDocument()
+  })
+
+  it('shows the emote play mode between category and rarity when the list has emotes', () => {
+    renderRow(emote, true)
+    const cell = screen.getByTestId('item-row-play-mode')
+    expect(cell).toHaveTextContent('Loop')
+    expect(cell.nextElementSibling).toBe(screen.getByTestId('item-row-rarity'))
+    expect(cell.previousElementSibling).toBe(screen.getByTestId('item-row-category'))
+  })
+
+  it('shows play once for a non-looping emote', () => {
+    renderRow({ ...emote, data: { ...emote.data!, loop: false } }, true)
+    expect(screen.getByTestId('item-row-play-mode')).toHaveTextContent('Play Once')
+  })
+
+  it('shows a dash for a wearable in a list with emotes', () => {
+    renderRow({}, true)
+    expect(screen.getByTestId('item-row-play-mode')).toHaveTextContent('—')
   })
 })

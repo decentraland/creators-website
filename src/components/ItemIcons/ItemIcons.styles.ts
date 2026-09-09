@@ -23,4 +23,10 @@ export const Labeled = styled.span`
     overflow: hidden;
     text-overflow: ellipsis;
   }
+
+  & > svg {
+    flex: none;
+    width: 20px;
+    height: 20px;
+  }
 `

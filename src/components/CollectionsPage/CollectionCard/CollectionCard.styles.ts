@@ -1,5 +1,6 @@
 import styled from '@emotion/styled'
 import { Link } from 'react-router-dom'
+import { CollectionRolePill } from '~/components/CollectionRolePill'
 import { theme } from '~/styles/theme'
 
 const mobile = theme.media.maxWidth('mobile')
@@ -67,6 +68,7 @@ export const Card = styled(Link)`
 `
 
 export const Media = styled.div`
+  position: relative;
   flex: 1;
   min-height: 0;
 
@@ -75,6 +77,12 @@ export const Media = styled.div`
     width: 136px;
     height: 100%;
   }
+`
+
+export const RoleBadge = styled(CollectionRolePill)`
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
 `
 
 export const Body = styled.div`

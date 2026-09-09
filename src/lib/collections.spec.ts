@@ -8,6 +8,8 @@ import {
   CurationStatus,
   fromRemoteCollection,
   getCollectionDisplayStatus,
+  getCollectionRole,
+  CollectionRole,
   isCollectionLocked,
   statusFilterToParams,
   toCollectionsQueryString,
@@ -114,6 +116,25 @@ describe('getCollectionDisplayStatus', () => {
     expect(getCollectionDisplayStatus(withFlags(true, true))).toBe(CollectionDisplayStatus.PUBLISHED)
     expect(getCollectionDisplayStatus(withFlags(true, false))).toBe(CollectionDisplayStatus.UNDER_REVIEW)
     expect(getCollectionDisplayStatus(withFlags(false, false))).toBe(CollectionDisplayStatus.DRAFT)
+  })
+})
+
+describe('getCollectionRole', () => {
+  const base: Collection = {
+    ...fromRemoteCollection(remote),
+    owner: '0xOwner',
+    managers: ['0xManager'],
+    minters: ['0xMinter', '0xManager']
+  }
+
+  it('reports collaborator or minter for non-owners, case-insensitively', () => {
+    expect(getCollectionRole(base, '0xmanager')).toBe(CollectionRole.COLLABORATOR)
+    expect(getCollectionRole(base, '0xMINTER')).toBe(CollectionRole.MINTER)
+  })
+
+  it('reports no role for the owner or a stranger', () => {
+    expect(getCollectionRole(base, '0xowner')).toBeNull()
+    expect(getCollectionRole(base, '0xother')).toBeNull()
   })
 })
 

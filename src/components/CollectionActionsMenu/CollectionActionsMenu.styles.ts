@@ -1,9 +1,17 @@
 import styled from '@emotion/styled'
+import { Button } from '~/components/Button'
 import { theme } from '~/styles/theme'
 
 export const Wrap = styled.div`
   position: relative;
   flex: none;
+`
+
+export const Trigger = styled(Button)`
+  &[data-compact] {
+    width: 32px;
+    height: 32px;
+  }
 `
 
 export const Menu = styled.div`

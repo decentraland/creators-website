@@ -172,20 +172,3 @@ export const ActionsCell = styled.div`
     display: none;
   }
 `
-
-export const ActionsButton = styled.button`
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid ${theme.colors.glassLine};
-  border-radius: ${theme.radius.btnSm};
-  background: none;
-  color: ${theme.colors.softWhite};
-
-  &:hover {
-    background: ${theme.colors.glass};
-  }
-`

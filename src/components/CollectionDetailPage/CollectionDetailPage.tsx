@@ -12,6 +12,7 @@ import { useWallet } from '~/store/wallet'
 import { ITEMS_PAGE_SIZE, useAllCollectionItems, useCollection, useSaveCollection } from '~/hooks/useCollection'
 import { BuilderServerError } from '~/lib/builder'
 import { isCollectionLocked } from '~/lib/collections'
+import { ItemType } from '~/lib/items'
 import {
   ITEM_TYPE_FILTERS,
   ItemTypeFilter,
@@ -29,11 +30,12 @@ import { Button } from '~/components/Button'
 import { Tooltip } from '~/components/Tooltip'
 import { EmoteIcon, JumpInIcon, OpenEditorIcon, WearableIcon } from '~/components/Icons'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
+import { CollectionRolePill } from '~/components/CollectionRolePill'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
 import { Pagination } from '~/components/Pagination'
 import addItemsArt from '~/assets/add-items.png'
+import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { AddItemsModal } from './AddItemsModal'
-import { CollectionActionsMenu } from './CollectionActionsMenu'
 import { ItemListRow } from './ItemListRow'
 import { PublishCollectionModal, PublishSuccessModal } from './PublishCollectionModal'
 import * as S from './CollectionDetailPage.styles'
@@ -75,6 +77,8 @@ const CollectionDetailPage = () => {
     () => paginateItems(filterItemsByType(allItems ?? [], typeFilter), page, ITEMS_PAGE_SIZE),
     [allItems, typeFilter, page]
   )
+  // Play Mode is an emote-only attribute; the column exists only while the visible page has emotes.
+  const withPlayMode = useMemo(() => results.some(item => item.type === ItemType.EMOTE), [results])
   useSyncPublishedItems(address, collection, allItems ?? [])
 
   const isLoading = !restored || (!!address && (collectionQuery.isLoading || itemsQuery.isLoading))
@@ -236,6 +240,7 @@ const CollectionDetailPage = () => {
                 )}
               </S.TitleGroup>
               <CollectionStatusPill collection={collection} />
+              {address && <CollectionRolePill collection={collection} address={address} />}
             </S.HeaderLeft>
             <S.HeaderActions>
               <Button
@@ -273,7 +278,13 @@ const CollectionDetailPage = () => {
                   </Button>
                 </Tooltip>
               )}
-              {address && <CollectionActionsMenu collection={collection} address={address} />}
+              {address && (
+                <CollectionActionsMenu
+                  collection={collection}
+                  address={address}
+                  onDeleted={() => navigate('/collections', { replace: true })}
+                />
+              )}
             </S.HeaderActions>
           </S.Header>
 
@@ -352,15 +363,18 @@ const CollectionDetailPage = () => {
           ) : (
             <>
               <S.List data-testid="items-list">
-                <S.ListHeader>
+                <S.ListHeader data-with-play-mode={withPlayMode || undefined}>
                   <span>{t('collection_detail_page.list.item')}</span>
                   <span>{t('collection_detail_page.list.body_shape')}</span>
                   <span>{t('collection_detail_page.list.category')}</span>
+                  {withPlayMode && (
+                    <span data-testid="list-header-play-mode">{t('collection_detail_page.list.play_mode')}</span>
+                  )}
                   <span>{t('collection_detail_page.list.rarity')}</span>
                   <S.ListHeaderActions>{t('collection_detail_page.list.actions')}</S.ListHeaderActions>
                 </S.ListHeader>
                 {results.map(item => (
-                  <ItemListRow key={item.id} item={item} />
+                  <ItemListRow key={item.id} item={item} withPlayMode={withPlayMode} />
                 ))}
               </S.List>
               <S.FooterRow>

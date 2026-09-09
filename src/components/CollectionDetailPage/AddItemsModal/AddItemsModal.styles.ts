@@ -455,6 +455,8 @@ export const SegmentButton = styled.button`
   }
 
   svg {
+    width: 20px;
+    height: 20px;
     font-size: 17px;
   }
 `

@@ -1,10 +1,11 @@
-import { useNavigate } from 'react-router-dom'
-import { MoreHoriz as MoreHorizIcon } from '@mui/icons-material'
 import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
+import { useWallet } from '~/store/wallet'
 import { formatTimeAgo } from '~/lib/time'
 import { type Collection } from '~/lib/collections'
 import { CollectionMosaic } from '../CollectionMosaic'
+import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
+import { CollectionRolePill } from '~/components/CollectionRolePill'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
 import * as S from './CollectionListRow.styles'
 
@@ -15,13 +16,9 @@ type Props = {
 const DATE_FORMAT = { month: 'short', day: 'numeric', year: 'numeric' } as const
 
 export function CollectionListRow({ collection }: Props) {
-  const navigate = useNavigate()
   const { t } = useTranslation()
   const intl = useIntl()
-
-  function open() {
-    navigate(`/collections/${collection.id}`)
-  }
+  const address = useWallet(state => state.session?.address)
 
   return (
     <S.Row data-testid="collection-row">
@@ -33,6 +30,7 @@ export function CollectionListRow({ collection }: Props) {
         <S.RowLink to={`/collections/${collection.id}`}>
           <S.Name title={collection.name}>{collection.name}</S.Name>
         </S.RowLink>
+        {address && <CollectionRolePill collection={collection} address={address} />}
       </S.NameCell>
       <S.Cell data-testid="collection-row-items">
         {t('collections_page.item_count', { count: collection.itemCount })}
@@ -46,9 +44,15 @@ export function CollectionListRow({ collection }: Props) {
       </S.DateCell>
       <S.Cell data-testid="collection-row-created">{intl.formatDate(collection.createdAt, DATE_FORMAT)}</S.Cell>
       <S.ActionsCell>
-        <S.ActionsButton type="button" aria-label={t('collections_page.row_actions')} onClick={open}>
-          <MoreHorizIcon fontSize="small" />
-        </S.ActionsButton>
+        {address && (
+          <CollectionActionsMenu
+            collection={collection}
+            address={address}
+            variant="row"
+            showRoles={false}
+            label={t('collections_page.row_actions')}
+          />
+        )}
       </S.ActionsCell>
     </S.Row>
   )

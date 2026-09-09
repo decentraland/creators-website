@@ -3,13 +3,18 @@ import { theme } from '~/styles/theme'
 
 const mobile = theme.media.maxWidth('mobile')
 
-// Shared column template so the header and the rows stay aligned: thumbnail, then four equal
-// columns (name, body shape, category, rarity), then actions. The header's "Item" spans the first two.
+// Shared column template so the header and the rows stay aligned: thumbnail, then equal columns
+// (name, body shape, category, [play mode], rarity), then actions. The header's "Item" spans the first two.
+// Play Mode is only laid out when the list being shown has emotes.
 export const itemListColumns = `
   display: grid;
   grid-template-columns: 74px repeat(4, minmax(0, 1fr)) minmax(56px, auto);
   align-items: center;
   gap: 16px;
+
+  &[data-with-play-mode] {
+    grid-template-columns: 74px repeat(5, minmax(0, 1fr)) minmax(56px, auto);
+  }
 `
 
 export const Row = styled.article`
@@ -84,6 +89,11 @@ export const Cell = styled.div`
 
   ${mobile} {
     justify-content: flex-start;
+
+    /* The desktop grid needs the "—" to keep columns aligned; the wrapped mobile row does not. */
+    &[data-empty] {
+      display: none;
+    }
   }
 `
 

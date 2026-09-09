@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { MoreHoriz as MoreHorizIcon } from '@mui/icons-material'
-import { Button } from '~/components/Button'
 import { useTranslation } from '~/intl'
 import { useDeleteCollection } from '~/hooks/useCollection'
 import { copyToClipboard } from '~/lib/clipboard'
@@ -13,11 +11,23 @@ import * as S from './CollectionActionsMenu.styles'
 type Props = {
   collection: Collection
   address: string
+  /** Compact 32px trigger for table rows; the default is the page-header icon button. */
+  variant?: 'header' | 'row'
+  /** The owner-only role placeholders (collaborators / minters); off in list rows. */
+  showRoles?: boolean
+  label?: string
+  onDeleted?: () => void
 }
 
-export function CollectionActionsMenu({ collection, address }: Props) {
+export function CollectionActionsMenu({
+  collection,
+  address,
+  variant = 'header',
+  showRoles = true,
+  label,
+  onDeleted
+}: Props) {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const showToast = useNotifications(state => state.showToast)
   const deleteCollection = useDeleteCollection(address)
 
@@ -60,7 +70,7 @@ export function CollectionActionsMenu({ collection, address }: Props) {
       onSuccess: () => {
         setDeleteOpen(false)
         showToast(t('collection_detail_page.actions.deleted', { name: collection.name }))
-        navigate('/collections', { replace: true })
+        onDeleted?.()
       },
       onError: () => showToast(t('collection_detail_page.actions.delete_error'), { type: 'error' })
     })
@@ -68,18 +78,19 @@ export function CollectionActionsMenu({ collection, address }: Props) {
 
   return (
     <S.Wrap ref={wrapRef}>
-      <Button
+      <S.Trigger
         variant="secondary"
         size="icon"
         type="button"
-        aria-label={t('collection_detail_page.more_actions')}
+        aria-label={label ?? t('collection_detail_page.more_actions')}
         aria-haspopup="menu"
         aria-expanded={isOpen}
+        data-compact={variant === 'row' || undefined}
         data-testid="collection-actions"
         onClick={() => setOpen(open => !open)}
       >
-        <MoreHorizIcon />
-      </Button>
+        <MoreHorizIcon fontSize={variant === 'row' ? 'small' : 'medium'} />
+      </S.Trigger>
 
       {isOpen && (
         <S.Menu role="menu" data-testid="collection-actions-menu">
@@ -103,7 +114,7 @@ export function CollectionActionsMenu({ collection, address }: Props) {
               </S.Item>
             </>
           )}
-          {isOnChain && isOwner && (
+          {isOnChain && isOwner && showRoles && (
             <>
               <S.Divider />
               {/* TODO: wire the on-chain setManagers / setMinters flows (legacy ManageCollectionRoleModal). */}

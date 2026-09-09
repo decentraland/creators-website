@@ -52,6 +52,10 @@
       "retry": "Intentar de nuevo"
     }
   },
+  "collection_role": {
+    "collaborator": "Colaborador",
+    "minter": "Minter"
+  },
   "collection_status": {
     "published": "Publicada",
     "under_review": "En revisión",
@@ -122,10 +126,15 @@
       "item": "Ítem",
       "body_shape": "Forma del cuerpo",
       "category": "Categoría",
+      "play_mode": "Modo de reproducción",
       "rarity": "Rareza",
       "actions": "Acciones"
     },
     "row_actions": "Acciones del ítem",
+    "play_mode": {
+      "loop": "En bucle",
+      "simple": "Una vez"
+    },
     "body_type": {
       "male": "Masculino",
       "female": "Femenino",

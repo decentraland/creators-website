@@ -165,6 +165,20 @@ export function getCollectionDisplayStatus(collection: Collection): CollectionDi
   return collection.isApproved ? CollectionDisplayStatus.PUBLISHED : CollectionDisplayStatus.UNDER_REVIEW
 }
 
+export enum CollectionRole {
+  COLLABORATOR = 'collaborator',
+  MINTER = 'minter'
+}
+
+/** The non-owner role that gives this address access to the collection, if any. Collaborator wins over minter. */
+export function getCollectionRole(collection: Collection, address: string): CollectionRole | null {
+  const target = address.toLowerCase()
+  if (collection.owner.toLowerCase() === target) return null
+  if (collection.managers.some(manager => manager.toLowerCase() === target)) return CollectionRole.COLLABORATOR
+  if (collection.minters.some(minter => minter.toLowerCase() === target)) return CollectionRole.MINTER
+  return null
+}
+
 // Same limit as the legacy builder's standard collections (the server schema allows 42, but the
 // legacy UI caps standard collections at 32 and we keep that contract).
 export const COLLECTION_NAME_MAX_LENGTH = 32

@@ -1,5 +1,6 @@
 import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
+import { useWallet } from '~/store/wallet'
 import { formatTimeAgo } from '~/lib/time'
 import { type Collection } from '~/lib/collections'
 import { CollectionMosaic } from '../CollectionMosaic'
@@ -17,11 +18,13 @@ type Props = {
 export function CollectionCard({ collection }: Props) {
   const { t } = useTranslation()
   const { locale } = useIntl()
+  const address = useWallet(state => state.session?.address)
 
   return (
     <S.Card data-testid="collection-card" to={`/collections/${collection.id}`}>
       <S.Media>
         <CollectionMosaic collectionId={collection.id} itemCount={collection.itemCount} />
+        {address && <S.RoleBadge collection={collection} address={address} />}
       </S.Media>
       <S.Body>
         <S.NameRow>
