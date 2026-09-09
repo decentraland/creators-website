@@ -21,6 +21,7 @@ export const Step = styled.div`
 
 // Everything but the footer; while the wallet prompt is pending it goes inert and dims like the add-items upload.
 export const Fields = styled.div`
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -89,7 +90,7 @@ export const StepDot = styled.span`
 `
 
 export const Heading = styled.h3`
-  margin: auto 0 16px;
+  margin: 0 0 16px;
   font-size: 24px;
   font-weight: 700;
   line-height: 1.5;
@@ -125,7 +126,7 @@ export const FeeTerm = styled.span`
 
 export const InputWrapper = styled.div`
   padding-bottom: 32px;
-  margin: 32px 0 auto;
+  margin: 32px 0;
 `
 
 export const ErrorText = styled.p`
@@ -144,6 +145,7 @@ export const CheckboxRow = styled.label`
   color: ${theme.colors.softWhite};
   cursor: pointer;
   padding-left: 12px;
+  margin-top: auto;
 
   /* Visually hidden but still the real, clickable control (no pointer-events: none). */
   & input {
@@ -219,7 +221,6 @@ export const Table = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: auto;
   flex: 1;
   overflow: hidden;
 `

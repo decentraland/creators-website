@@ -34,7 +34,7 @@ export const Card = styled.label`
       content: '';
       position: absolute;
       inset: -2px;
-      padding: 2px;
+      padding: 3px;
       border-radius: 13px;
       background: ${theme.gradients.ember};
       -webkit-mask:
