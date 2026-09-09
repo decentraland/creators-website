@@ -13,9 +13,9 @@ import {
 } from '~/lib/builder'
 import { sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
-import { authorizePublication, fetchCreditsBalance } from '~/lib/credits'
+import { authorizePublication } from '~/lib/credits'
 import { type Item } from '~/lib/items'
-import { buildManaApproveCall, fetchManaAllowance, fetchManaBalance } from '~/lib/mana'
+import { buildManaApproveCall, fetchManaAllowance } from '~/lib/mana'
 import {
   consolidatePublishedCollection,
   getMaticChainId,
@@ -32,25 +32,6 @@ export function useRarities(address: string | undefined) {
     queryFn: () => fetchRarities(address),
     enabled: !!address,
     staleTime: 60_000
-  })
-}
-
-export function useCreditsBalance(address: string | undefined) {
-  return useQuery({
-    queryKey: ['credits-balance', address],
-    queryFn: () => fetchCreditsBalance(address!),
-    enabled: !!address,
-    staleTime: 30_000
-  })
-}
-
-export function useManaBalance(address: string | undefined) {
-  const chainId = getMaticChainId()
-  return useQuery({
-    queryKey: ['mana-balance', address, chainId],
-    queryFn: () => fetchManaBalance(address!, chainId),
-    enabled: !!address,
-    staleTime: 30_000
   })
 }
 

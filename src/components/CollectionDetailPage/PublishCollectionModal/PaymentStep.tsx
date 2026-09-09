@@ -4,14 +4,8 @@ import { useIntl } from 'react-intl'
 import { config } from '~/config'
 import { useTranslation } from '~/intl'
 import { useProfile } from '~/hooks/useProfile'
-import {
-  useApproveMana,
-  useCreditsBalance,
-  useManaAllowance,
-  useManaBalance,
-  usePublishCollection,
-  useRarities
-} from '~/hooks/usePublishCollection'
+import { useCreditsBalance, useManaBalance } from '~/hooks/useBalances'
+import { useApproveMana, useManaAllowance, usePublishCollection, useRarities } from '~/hooks/usePublishCollection'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { type Session } from '~/lib/auth'
 import { getContentsStorageUrl } from '~/lib/builder'

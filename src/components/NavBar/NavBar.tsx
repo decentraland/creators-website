@@ -1,8 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
+import { Network } from '@dcl/schemas'
+import { ethers } from 'ethers'
 import { TopNav } from '~/components/TopNav'
 import { useWallet } from '~/store/wallet'
+import { useCreditsBalance, useManaBalance } from '~/hooks/useBalances'
 import { useProfile } from '~/hooks/useProfile'
+import { openExternal } from '~/lib/navigation'
 import { useTranslation } from '~/intl'
 import { config } from '~/config'
 import * as S from './NavBar.styles'
@@ -11,12 +15,22 @@ import * as S from './NavBar.styles'
 // builder web app — none of them are routes of this SPA, so all three are plain same-tab links.
 const builderUrl = config.get('BUILDER_URL')
 const createUrl = config.get('CREATE_URL')
+const shopCreditsUrl = `${config.get('SHOP_URL')}/credits`
+const accountUrl = config.get('ACCOUNT_URL')
 
 const NavBar = () => {
   const { t } = useTranslation()
   const { session, connecting, signIn, disconnect } = useWallet()
   const address = session?.address
   const { data: avatar, isLoading: isLoadingProfile } = useProfile(address)
+  const { data: credits } = useCreditsBalance(address)
+  const { data: manaWei } = useManaBalance(address)
+  // Polygon only: it's the network publishing pays on. Like the legacy builder, an empty wallet shows
+  // no MANA chip at all; ui2 renders whole units.
+  const manaBalances = useMemo(
+    () => (manaWei ? { [Network.MATIC]: Number(ethers.utils.formatEther(manaWei)) } : undefined),
+    [manaWei]
+  )
   const { pathname } = useLocation()
   // Collections stays active across the collection detail / item detail / editor pages too, not just
   // the /collections list — a NavLink to /collections alone wouldn't light up on the nested routes.
@@ -49,6 +63,11 @@ const NavBar = () => {
         isLoadingProfile={!!session && isLoadingProfile}
         address={address}
         avatar={avatar}
+        shopCreditsBalance={credits?.credits}
+        onClickShopCredits={() => openExternal(shopCreditsUrl)}
+        manaBalances={manaBalances}
+        showManaBalancesInNavbar
+        onClickBalance={() => openExternal(accountUrl)}
         onClickSignIn={() => signIn()}
         onClickSignOut={() => void disconnect()}
       />
