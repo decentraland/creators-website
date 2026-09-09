@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { ChevronRight as ChevronRightIcon, InfoOutlined as InfoOutlinedIcon } from '@mui/icons-material'
+import { ChevronRight as ChevronRightIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
-import { COLLECTION_NAME_MAX_LENGTH, NAME_ALREADY_IN_USE_ERROR, validateCollectionName } from '~/lib/collections'
+import { NAME_ALREADY_IN_USE_ERROR, validateCollectionName } from '~/lib/collections'
 import { Modal } from '~/components/Modal'
 import { Button } from '~/components/Button'
+import { CollectionNameInput } from '~/components/CollectionNameInput'
 import * as S from './CollectionNameModal.styles'
 
 type Props = {
@@ -59,36 +60,18 @@ export function CollectionNameModal({ variant, initialName = '', isPending, erro
           <S.Heading>{t('collection_name_modal.heading', { variant })}</S.Heading>
           <S.Subtitle>{t('collection_name_modal.subtitle')}</S.Subtitle>
         </S.Intro>
-        <div>
-          <S.FieldLabel>
-            {t('collection_name_modal.name_label')}
-            <S.FieldBox data-invalid={shownError ? true : undefined}>
-              <input
-                value={name}
-                placeholder={t('collection_name_modal.name_placeholder')}
-                maxLength={COLLECTION_NAME_MAX_LENGTH}
-                autoFocus
-                data-testid="collection-name-input"
-                onChange={event => {
-                  setName(event.target.value)
-                  setLocalError(null)
-                  setEditedSinceSubmit(true)
-                }}
-              />
-              <S.CharCount data-testid="collection-name-count">
-                {t('collection_name_modal.char_count', { count: name.length, max: COLLECTION_NAME_MAX_LENGTH })}
-              </S.CharCount>
-            </S.FieldBox>
-          </S.FieldLabel>
-          {shownError ? (
-            <S.ErrorText data-testid="collection-name-error">{shownError}</S.ErrorText>
-          ) : (
-            <S.HintText data-testid="collection-name-hint">
-              <InfoOutlinedIcon fontSize="inherit" aria-hidden />
-              {t('collection_name_modal.unique_hint')}
-            </S.HintText>
-          )}
-        </div>
+        <CollectionNameInput
+          value={name}
+          error={shownError}
+          placeholder={t('collection_name_modal.name_placeholder')}
+          autoFocus
+          testId="collection-name"
+          onChange={value => {
+            setName(value)
+            setLocalError(null)
+            setEditedSinceSubmit(true)
+          }}
+        />
         <S.Actions>
           <Button
             type="button"

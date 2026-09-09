@@ -15,9 +15,9 @@ import { ClockIcon, FilmReelIcon, ImageIcon } from '~/components/Icons'
 import { RaritySelect } from '~/components/RaritySelect'
 import { Tooltip } from '~/components/Tooltip'
 import { useTranslation } from '~/intl'
-import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError } from '~/lib/itemFactory'
+import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
 import { BodyShapeType, ItemType, type Item } from '~/lib/items'
-import { getCategoryOptions, getVariantTargets, isValidItemName, type ItemDraft } from './AddItemsModal.state'
+import { getCategoryOptions, getVariantTargets, type ItemDraft } from './AddItemsModal.state'
 import * as S from './AddItemsModal.styles'
 
 type Props = {

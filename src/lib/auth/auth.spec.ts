@@ -50,19 +50,23 @@ describe('auth', () => {
     expect(getIdentity('0x0000000000000000000000000000000000000000')).toBeNull()
   })
 
-  it('createAuthHeaders signs the lowercased method:path payload as an auth chain', () => {
-    const headers = createAuthHeaders(address, 'GET', `/${address}/collections`)
+  it('createAuthHeaders signs the ADR-44 payload and sends the timestamp and metadata it used', () => {
+    const headers = createAuthHeaders(address, 'GET', `/v1/${address}/collections`)
     const chain = parseAuthChain(headers)
     expect(chain.length).toBeGreaterThanOrEqual(2)
-    // The last link carries the signed payload builder-server verifies.
-    expect(chain[chain.length - 1].payload).toBe(`get:/${address}/collections`)
+    // The last link carries the signed payload the server rebuilds from method, path and these headers.
+    expect(chain[chain.length - 1].payload).toBe(
+      `get:/v1/${address}/collections:${headers['x-identity-timestamp']}:${headers['x-identity-metadata']}`
+    )
+    expect(Number(headers['x-identity-timestamp'])).toBeGreaterThan(0)
+    expect(JSON.parse(headers['x-identity-metadata'])).toEqual({})
   })
 
   it('createAuthHeaders returns no headers without a stored identity', () => {
     expect(createAuthHeaders('0x0000000000000000000000000000000000000000', 'GET', '/x')).toEqual({})
   })
 
-  it('signedFetch signs the path without its query string and fetches the full URL', async () => {
+  it('signedFetch signs the full pathname without its query string and fetches the full URL', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true })
     global.fetch = fetchMock
 
@@ -71,8 +75,9 @@ describe('auth', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe(`https://builder-api.example/v1/${address}/collections?page=1&limit=20`)
-    const chain = parseAuthChain(init.headers as Record<string, string>)
-    expect(chain[chain.length - 1].payload).toBe(`get:/${address}/collections`)
+    const headers = init.headers as Record<string, string>
+    const chain = parseAuthChain(headers)
+    expect(chain[chain.length - 1].payload).toBe(`get:/v1/${address}/collections:${headers['x-identity-timestamp']}:{}`)
   })
 
   it('logout clears the stored identity so it cannot outlive a sign-out', async () => {

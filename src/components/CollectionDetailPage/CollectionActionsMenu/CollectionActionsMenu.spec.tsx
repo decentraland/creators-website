@@ -70,7 +70,7 @@ describe('CollectionActionsMenu', () => {
     expect(screen.queryByTestId('manage-minters')).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByTestId('delete-collection'))
-    expect(screen.getByTestId('delete-collection-description')).toHaveTextContent('Pirate Hats')
+    expect(screen.getByTestId('delete-collection-modal-description')).toHaveTextContent('Pirate Hats')
     await userEvent.click(screen.getByTestId('delete-collection-confirm'))
 
     await waitFor(() => expect(screen.getByTestId('collections-page')).toBeInTheDocument())

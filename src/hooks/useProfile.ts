@@ -6,6 +6,7 @@ export type ProfileAvatar = {
   name?: string
   hasClaimedName?: boolean
   ethAddress?: string
+  email?: string
   avatar?: {
     snapshots?: { face256?: string; body?: string }
   }

@@ -37,3 +37,18 @@ export function formatRarityLabel(label: string, rarity: string | null | undefin
   const supply = getRarityMaxSupply(rarity)
   return supply === undefined ? label : `${label} (${formatSupply(supply)})`
 }
+
+/**
+ * One entry of builder-server `GET /rarities`: the subgraph rarity plus `prices` — the USD price
+ * from the graph and the MANA price the RaritiesWithOracle contract converts it to. Both are wei strings.
+ */
+export type BlockchainRarity = {
+  id: string
+  name: string
+  price: string
+  maxSupply: string
+  prices?: {
+    MANA: string
+    USD: string
+  }
+}

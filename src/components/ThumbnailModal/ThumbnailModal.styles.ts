@@ -184,3 +184,30 @@ export const ErrorText = styled.p`
   font-size: 13px;
   color: ${theme.colors.errStrong};
 `
+
+export const Spinner = styled.span`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 32px;
+  height: 32px;
+  margin: -16px 0 0 -16px;
+  border-radius: 50%;
+  border: 3px solid ${theme.colors.glass};
+  border-top-color: ${theme.colors.text};
+  animation: spin 0.8s linear infinite;
+`
+
+export const LoadError = styled.p`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 24px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: ${theme.colors.errStrong};
+`

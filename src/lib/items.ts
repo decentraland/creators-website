@@ -96,6 +96,8 @@ export type Item = {
   beneficiary?: string
   rarity?: string
   totalSupply?: number
+  /** On-chain item id (`blockchain_item_id`), assigned once the collection is published. */
+  tokenId?: string
   isPublished: boolean
   isApproved: boolean
   inCatalyst: boolean
@@ -131,6 +133,7 @@ export function fromRemoteItem(remote: RemoteItem): Item {
   if (remote.urn) item.urn = remote.urn
   if (remote.video) item.video = remote.video
   if (remote.total_supply !== undefined && remote.total_supply !== null) item.totalSupply = remote.total_supply
+  if (remote.blockchain_item_id) item.tokenId = remote.blockchain_item_id
   return item
 }
 
@@ -147,7 +150,7 @@ export function toRemoteItem(item: Item): Omit<RemoteItem, 'created_at' | 'updat
     video: item.video || null,
     eth_address: item.owner,
     collection_id: item.collectionId || null,
-    blockchain_item_id: null,
+    blockchain_item_id: item.tokenId || null,
     price: item.price || null,
     urn: item.urn || null,
     beneficiary: item.beneficiary || null,

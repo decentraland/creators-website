@@ -39,7 +39,7 @@ export const SearchBox = styled.div`
   }
 `
 
-export const SearchSpinner = styled.span`
+export const Spinner = styled.span`
   flex: none;
   width: 16px;
   height: 16px;

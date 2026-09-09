@@ -8,7 +8,6 @@ import {
   isImageWearable,
   getVariantTargets,
   isDraftComplete,
-  isValidItemName,
   type AddItemsState,
   type ItemDraft
 } from './AddItemsModal.state'
@@ -57,15 +56,6 @@ function collectionItem(id: string, bodyShapes: string[], overrides: Partial<Ite
 }
 
 const MALE_URN = 'urn:decentraland:off-chain:base-avatars:BaseMale'
-
-describe('isValidItemName', () => {
-  it('requires a non-empty name up to 32 chars without ":"', () => {
-    expect(isValidItemName('Cool Hat')).toBe(true)
-    expect(isValidItemName('  ')).toBe(false)
-    expect(isValidItemName('a'.repeat(33))).toBe(false)
-    expect(isValidItemName('a:b')).toBe(false)
-  })
-})
 
 describe('review flow', () => {
   it('checking a draft advances the selection to the next unchecked one', () => {

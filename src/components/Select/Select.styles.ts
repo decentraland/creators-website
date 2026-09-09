@@ -75,7 +75,7 @@ export const Listbox = styled.ul`
   border: 1px solid ${theme.colors.glassLine};
   border-radius: ${theme.radius.btn};
   background: ${theme.colors.modalSurface};
-  box-shadow: 0 16px 48px ${theme.colors.overlayStrong};
+  box-shadow: 0 8px 32px ${theme.colors.overlayStrong};
 `
 
 export const Option = styled.li`

@@ -4,7 +4,7 @@ import { listColumns } from './CollectionListRow/CollectionListRow.styles'
 
 import { SearchBox as SharedSearchBox } from '~/styles/shared'
 
-export { FooterRow, Panel, PanelText, PanelTitle, SearchSpinner, ShowingCount } from '~/styles/shared'
+export { FooterRow, Panel, PanelText, PanelTitle, Spinner, ShowingCount } from '~/styles/shared'
 
 const mobile = theme.media.maxWidth('mobile')
 const noActions = theme.media.maxWidth('lg')

@@ -22,7 +22,7 @@ export default defineConfig({
     env: { VITE_DCL_DEFAULT_ENV: 'dev' },
     // @dcl/ui-env and @dcl/hooks (via decentraland-ui2) ship extensionless/directory imports that Vitest's
     // resolver can't follow; inlining it routes the dep through Vite's resolver, which can.
-    server: { deps: { inline: ['@dcl/ui-env', '@dcl/hooks'] } },
+    server: { deps: { inline: ['@dcl/ui-env', '@dcl/hooks', 'decentraland-transactions'] } },
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'html'],

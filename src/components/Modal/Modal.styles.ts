@@ -19,8 +19,9 @@ export const Dialog = styled.div`
   display: flex;
   flex-direction: column;
   width: 560px;
-  max-width: 100%;
-  max-height: 100%;
+  max-width: 80vw;
+  height: max-content;
+  max-height: 90vh;
   padding: 32px;
   border-radius: ${theme.radius.modal};
   background: ${theme.colors.modalSurface};
@@ -29,11 +30,12 @@ export const Dialog = styled.div`
   overflow: hidden;
   outline: none;
 
+  &[data-size='large'] {
+    width: 860px;
+  }
+
   &[data-size='wide'] {
     width: max-content;
-    max-width: 80vw;
-    height: max-content;
-    max-height: 90vh;
   }
 
   ${mobile} {
@@ -93,13 +95,13 @@ export const FloatingClose = styled.div`
 
 export const Body = styled.div`
   padding-top: 48px;
-  overflow-y: auto;
 
   &[data-titleless] {
     padding-top: 0;
   }
 
   /* The wide dialog's body owns the remaining height; inner panes manage their own scroll. */
+  [data-size='large'] > &,
   [data-size='wide'] > & {
     display: flex;
     flex: 1;

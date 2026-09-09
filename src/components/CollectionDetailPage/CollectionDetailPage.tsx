@@ -12,10 +12,13 @@ import { useWallet } from '~/store/wallet'
 import { ITEMS_PAGE_SIZE, useCollection, useCollectionItems, useSaveCollection } from '~/hooks/useCollection'
 import { BuilderServerError } from '~/lib/builder'
 import { isCollectionLocked } from '~/lib/collections'
+import { MAX_PUBLISH_ITEMS, getPublishBlocker } from '~/lib/publishCollection'
+import { useSyncPublishedItems } from '~/hooks/usePublishCollection'
 import { previewCollection } from '~/lib/explorer'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS } from '~/lib/itemFiles'
 import { Button } from '~/components/Button'
+import { Tooltip } from '~/components/Tooltip'
 import { JumpInIcon, OpenEditorIcon } from '~/components/Icons'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
@@ -24,6 +27,7 @@ import addItemsArt from '~/assets/add-items.png'
 import { AddItemsModal } from './AddItemsModal'
 import { CollectionActionsMenu } from './CollectionActionsMenu'
 import { ItemListRow } from './ItemListRow'
+import { PublishCollectionModal, PublishSuccessModal } from './PublishCollectionModal'
 import * as S from './CollectionDetailPage.styles'
 
 const NOT_FOUND_STATUSES = [401, 403, 404]
@@ -40,6 +44,7 @@ const CollectionDetailPage = () => {
   const page = Math.max(1, Number(searchParams.get('page')) || 1)
 
   const [isRenameOpen, setRenameOpen] = useState(false)
+  const [publishView, setPublishView] = useState<'closed' | 'wizard' | 'success'>('closed')
   const [addItemsFiles, setAddItemsFiles] = useState<File[] | null>(null)
   const [isDragging, setDragging] = useState(false)
   const [isPreviewLaunching, setPreviewLaunching] = useState(false)
@@ -55,6 +60,7 @@ const CollectionDetailPage = () => {
   const pages = items?.pages ?? 0
 
   const results = items?.results ?? []
+  useSyncPublishedItems(address, collection, results)
 
   const isLoading =
     !restored || (!!address && (collectionQuery.isLoading || (itemsQuery.isFetching && !items) || itemsQuery.isLoading))
@@ -67,7 +73,7 @@ const CollectionDetailPage = () => {
   const hasItems = total > 0
   const canRename = !!collection && !collection.isPublished && !isCollectionLocked(collection)
   const canAddItems = canRename
-  const canPublish = canRename && hasItems
+  const publishBlocker = collection ? getPublishBlocker(collection, total) : 'not_draft'
 
   function openFileBrowser() {
     filesInputRef.current?.click()
@@ -214,16 +220,27 @@ const CollectionDetailPage = () => {
                 {t('collection_detail_page.preview')}
                 <JumpInIcon />
               </Button>
-              {!collection.isPublished && (
-                <Button
-                  type="button"
-                  variant="primary"
-                  data-testid="publish-collection"
-                  aria-disabled={canPublish ? undefined : true}
-                  title={t('collection_detail_page.coming_soon')}
+              {publishBlocker !== 'not_draft' && (
+                <Tooltip
+                  content={
+                    publishBlocker
+                      ? t(`collection_detail_page.publish_blocker.${publishBlocker}`, { max: MAX_PUBLISH_ITEMS })
+                      : null
+                  }
+                  placement="bottom"
+                  asChild
+                  testId="publish-blocker"
                 >
-                  {t('collection_detail_page.publish')}
-                </Button>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    data-testid="publish-collection"
+                    aria-disabled={publishBlocker ? true : undefined}
+                    onClick={() => !publishBlocker && setPublishView('wizard')}
+                  >
+                    {t('collection_detail_page.publish')}
+                  </Button>
+                </Tooltip>
               )}
               {address && <CollectionActionsMenu collection={collection} address={address} />}
             </S.HeaderActions>
@@ -338,6 +355,16 @@ const CollectionDetailPage = () => {
           {addItemsFiles && address && (
             <AddItemsModal collection={collection} address={address} files={addItemsFiles} onClose={closeAddItems} />
           )}
+
+          {publishView === 'wizard' && session && (
+            <PublishCollectionModal
+              collection={collection}
+              session={session}
+              onClose={() => setPublishView('closed')}
+              onPublished={() => setPublishView('success')}
+            />
+          )}
+          {publishView === 'success' && <PublishSuccessModal onDone={() => setPublishView('closed')} />}
         </>
       )}
     </S.Page>

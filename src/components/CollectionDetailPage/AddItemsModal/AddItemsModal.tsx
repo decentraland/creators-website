@@ -4,6 +4,7 @@ import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { useTranslation } from '~/intl'
 import { useAllCollectionItems } from '~/hooks/useCollection'
+import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { installBackGuard } from '~/lib/backGuard'
 import { ItemFileError } from '~/lib/itemFiles'
 import { type ItemDraftPayload } from '~/lib/itemFactory'
@@ -23,7 +24,12 @@ import { processDraftFile, pickPreviewDraft } from './processDraft'
 import { DraftList } from './DraftList'
 import { DraftForm } from './DraftForm'
 import { DraftProcessor } from './DraftProcessor'
-import { ThumbnailFormatError, ThumbnailModal, thumbnailPatchFromFile, type ThumbnailPatch } from './ThumbnailModal'
+import {
+  ThumbnailFormatError,
+  ThumbnailModal,
+  thumbnailPatchFromFile,
+  type ThumbnailPatch
+} from '~/components/ThumbnailModal'
 import { LeaveConfirmModal } from './LeaveConfirmModal'
 import { UploadErrorModal } from './UploadErrorModal'
 import * as S from './AddItemsModal.styles'
@@ -113,16 +119,7 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
     if (drafts.length === 0 && !isUploading) onClose()
   }, [drafts.length, isUploading, onClose])
 
-  // Reload / tab close with unsaved work gets the native prompt (custom UI isn't allowed there).
-  useEffect(() => {
-    if (drafts.length === 0) return
-    const handler = (event: BeforeUnloadEvent) => {
-      event.preventDefault()
-      event.returnValue = ''
-    }
-    window.addEventListener('beforeunload', handler)
-    return () => window.removeEventListener('beforeunload', handler)
-  }, [drafts.length])
+  useBeforeUnloadGuard(drafts.length > 0)
 
   // Browser back would silently unmount the modal; the back guard absorbs it and shows the same
   // leave confirmation instead.
@@ -190,15 +187,11 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
   function handleThumbnailUpload(file: File | undefined) {
     if (!file || !selected) return
     const id = selected.id
-    void thumbnailPatchFromFile(selected, file)
+    void thumbnailPatchFromFile(selected.contents, file)
       .then(patch => dispatch({ type: 'draftUpdated', id, patch }))
       .catch((err: unknown) => {
         showToast(
-          t(
-            err instanceof ThumbnailFormatError
-              ? 'add_items_modal.thumbnail.wrong_format'
-              : 'add_items_modal.thumbnail.capture_failed'
-          ),
+          t(err instanceof ThumbnailFormatError ? 'thumbnail_modal.wrong_format' : 'thumbnail_modal.capture_failed'),
           { type: 'error' }
         )
       })
@@ -366,7 +359,8 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
 
       {isThumbnailOpen && selected && selected.status === 'ready' && (
         <ThumbnailModal
-          draft={selected}
+          type={selected.type}
+          contents={selected.contents}
           onClose={() => setThumbnailOpen(false)}
           onSave={(patch: ThumbnailPatch) => {
             dispatch({ type: 'draftUpdated', id: selected.id, patch })

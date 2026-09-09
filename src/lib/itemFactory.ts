@@ -26,6 +26,12 @@ import {
 
 export const ITEM_NAME_MAX_LENGTH = 32
 
+// Same rules as collection names: non-empty, ≤32 chars and no ':' (names feed the on-chain metadata).
+export function isValidItemName(name: string): boolean {
+  const trimmed = name.trim()
+  return trimmed.length > 0 && trimmed.length <= ITEM_NAME_MAX_LENGTH && !trimmed.includes(':')
+}
+
 export enum EmotePlayMode {
   SIMPLE = 'simple',
   LOOP = 'loop'
@@ -322,4 +328,37 @@ export async function addRepresentationToItem(
   }
 
   return { item, blobs: { ...(target.blobs ?? {}), ...newBlobs } }
+}
+
+/** Replaces a saved item's thumbnail with a new PNG, hashing it so the file can be uploaded alongside. */
+export async function withThumbnail(item: Item, thumbnail: Blob): Promise<BuiltItem> {
+  const hashes = await computeHashes({ [THUMBNAIL_PATH]: thumbnail })
+  const contents = { ...item.contents }
+  if (item.thumbnail !== THUMBNAIL_PATH) delete contents[item.thumbnail]
+  return {
+    item: { ...item, thumbnail: THUMBNAIL_PATH, contents: { ...contents, ...hashes }, updatedAt: Date.now() },
+    blobs: { [THUMBNAIL_PATH]: thumbnail }
+  }
+}
+
+/** Hashes from the legacy CIDv0 algorithm ("Qm…"); Catalyst deployments need the current hashV1. */
+export function isOldHash(hash: string): boolean {
+  return hash.startsWith('Qm')
+}
+
+export function hasOldHashedContents(item: Item): boolean {
+  return Object.values(item.contents).some(isOldHash)
+}
+
+/**
+ * Re-hashes the item's legacy-hashed files with the current algorithm (legacy reHashOlderContents):
+ * downloads each of them and returns the item pointing at the new hashes plus the files to re-upload.
+ */
+export async function withRehashedContents(item: Item, download: (hash: string) => Promise<Blob>): Promise<BuiltItem> {
+  const stale = Object.entries(item.contents).filter(([, hash]) => isOldHash(hash))
+  const blobs = Object.fromEntries(
+    await Promise.all(stale.map(async ([path, hash]) => [path, await download(hash)] as const))
+  )
+  const hashes = await computeHashes(blobs)
+  return { item: { ...item, contents: { ...item.contents, ...hashes }, updatedAt: Date.now() }, blobs }
 }

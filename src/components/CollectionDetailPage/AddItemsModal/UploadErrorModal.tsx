@@ -1,9 +1,7 @@
-import uploadErrorArt from '~/assets/upload-error.png'
-import { Button } from '~/components/Button'
-import { Modal } from '~/components/Modal'
+import uploadErrorArt from '~/assets/modal-error.png'
+import { ConfirmModal } from '~/components/ConfirmModal'
 import { useTranslation } from '~/intl'
 import { type UploadFailureReason } from '~/lib/uploadItems'
-import * as S from '../ConfirmModals.styles'
 
 type Props = {
   reason: UploadFailureReason
@@ -16,31 +14,22 @@ export function UploadErrorModal({ reason, onCancel, onRetry }: Props) {
   const { t } = useTranslation()
   // Locked/published collections can never be retried: they get a reason-specific title and a single acknowledge action.
   const canRetry = reason === 'generic'
-  const title = t(`add_items_modal.error.title_${reason}`)
 
   return (
-    <Modal title={title} onClose={onCancel} hideTitle testId="upload-error-modal">
-      <S.Wrap>
-        <S.Art src={uploadErrorArt} alt="" />
-        <S.Heading data-testid="upload-error-title">{title}</S.Heading>
-        <S.Text data-testid="upload-error-description">{t(`add_items_modal.error.description_${reason}`)}</S.Text>
-        <S.Actions>
-          {canRetry ? (
-            <>
-              <Button type="button" variant="secondary" data-testid="upload-error-cancel" onClick={onCancel}>
-                {t('add_items_modal.cancel')}
-              </Button>
-              <Button type="button" variant="primary" data-testid="upload-error-retry" onClick={onRetry}>
-                {t('add_items_modal.error.try_again')}
-              </Button>
-            </>
-          ) : (
-            <Button type="button" variant="primary" data-testid="upload-error-dismiss" onClick={onCancel}>
-              {t('add_items_modal.error.got_it')}
-            </Button>
-          )}
-        </S.Actions>
-      </S.Wrap>
-    </Modal>
+    <ConfirmModal
+      title={t(`add_items_modal.error.title_${reason}`)}
+      description={t(`add_items_modal.error.description_${reason}`)}
+      art={{ src: uploadErrorArt }}
+      onClose={onCancel}
+      cancel={
+        canRetry ? { label: t('add_items_modal.cancel'), onClick: onCancel, testId: 'upload-error-cancel' } : undefined
+      }
+      confirm={
+        canRetry
+          ? { label: t('add_items_modal.error.try_again'), onClick: onRetry, testId: 'upload-error-retry' }
+          : { label: t('add_items_modal.error.got_it'), onClick: onCancel, testId: 'upload-error-dismiss' }
+      }
+      testId="upload-error-modal"
+    />
   )
 }

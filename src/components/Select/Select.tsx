@@ -8,8 +8,10 @@ export type SelectOption<T extends string> = {
   label: string
   /** Leading glyph shown before the label, in the trigger and in the list. */
   icon?: ReactNode
-  /** Trailing badge (e.g. a rarity's supply). */
+  /** Trailing badge (e.g. a rarity's supply), shown in the list and, unless `triggerLabel` is set, in the trigger. */
   trailing?: ReactNode
+  /** Compact text for the closed trigger, replacing `label` + `trailing`. */
+  triggerLabel?: string
 }
 
 type Props<T extends string> = {
@@ -19,6 +21,9 @@ type Props<T extends string> = {
   placeholder?: string
   testId?: string
 }
+
+const LIST_MIN_WIDTH = 230
+const VIEWPORT_MARGIN = 8
 
 /** Custom listbox select: portaled to <body> so scroll containers never clip it, keyboard navigable. */
 export function Select<T extends string>({ value, options, onChange, placeholder, testId = 'select' }: Props<T>) {
@@ -49,10 +54,15 @@ export function Select<T extends string>({ value, options, onChange, placeholder
       if (!trigger) return
       const gap = 6
       const fitsBelow = trigger.bottom + gap + listHeight <= window.innerHeight
+      // A list wider than its trigger keeps its left edge but never spills past the viewport.
+      const width = Math.max(trigger.width, LIST_MIN_WIDTH)
+      const left = Math.max(VIEWPORT_MARGIN, Math.min(trigger.left, window.innerWidth - width - VIEWPORT_MARGIN))
       setListStyle({
-        left: trigger.left,
-        width: trigger.width,
-        ...(fitsBelow ? { top: trigger.bottom + gap } : { top: Math.max(8, trigger.top - gap - listHeight) })
+        left,
+        width,
+        ...(fitsBelow
+          ? { top: trigger.bottom + gap }
+          : { top: Math.max(VIEWPORT_MARGIN, trigger.top - gap - listHeight) })
       })
     }
     position()
@@ -120,9 +130,9 @@ export function Select<T extends string>({ value, options, onChange, placeholder
         <S.TriggerLabel data-placeholder={selected ? undefined : true}>
           <S.OptionLabel>
             {selected?.icon}
-            <span>{selected ? selected.label : placeholder}</span>
+            <span>{selected ? (selected.triggerLabel ?? selected.label) : placeholder}</span>
           </S.OptionLabel>
-          {selected?.trailing && <S.Trailing>{selected.trailing}</S.Trailing>}
+          {selected?.trailing && !selected.triggerLabel && <S.Trailing>{selected.trailing}</S.Trailing>}
         </S.TriggerLabel>
         <ChevronIcon fontSize="small" />
       </S.Trigger>

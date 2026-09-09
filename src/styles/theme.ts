@@ -74,7 +74,8 @@ const gradients = {
   amethyst: 'linear-gradient(180deg, #c640cd 0%, #691fa9 100%)',
   cerise: 'linear-gradient(135deg, #ff2d55 0%, #c640cd 100%)',
   flare: 'linear-gradient(157.44deg, #ffbc5b 0%, #ff2d55 50.52%, #c640cd 100%)',
-  ember: 'linear-gradient(69deg, #ffbc5b 0%, #ff2d55 100%)'
+  ember: 'linear-gradient(69deg, #ffbc5b 0%, #ff2d55 100%)',
+  coral: 'linear-gradient(90deg, #ff7439 0%, #ff2d55 100%)'
 } as const
 
 const radius = {
