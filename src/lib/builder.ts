@@ -232,7 +232,10 @@ export async function fetchItemContents(item: Item): Promise<Record<string, Blob
   const entries = await Promise.all(
     Object.entries(item.contents).map(async ([path, hash]) => {
       const response = await fetch(getContentsStorageUrl(hash))
-      if (!response.ok) throw new BuilderServerError(`Could not download ${path} (${response.status})`, response.status)
+      if (!response.ok) {
+        await response.body?.cancel()
+        throw new BuilderServerError(`Could not download ${path} (${response.status})`, response.status)
+      }
       return [path, await response.blob()] as const
     })
   )

@@ -33,7 +33,7 @@ export function ConfirmNameStep({ initialName, isSaving, saveError, onCancel, on
         : t('publish_collection_modal.name_step.save_error')
       : null
   const shownError = localError ?? serverError
-  const canContinue = accepted && !validation && !isSaving
+  const canContinue = accepted && !validation && !isSaving && !serverError
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()

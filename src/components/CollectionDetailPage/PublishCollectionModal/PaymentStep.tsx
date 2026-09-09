@@ -97,10 +97,10 @@ export function PaymentStep({
   // A wallet prompt is pending: leaving the page now would orphan the transaction.
   useBeforeUnloadGuard(isSubmitting)
 
-  // A lone method is the selection; a vanished one (balance refetch) is dropped.
+  // A lone method is the selection; a vanished one (balance refetch) falls back to the first available.
   useEffect(() => {
-    if (paymentMethod && !methods.includes(paymentMethod)) return
-    if (!paymentMethod && methods.length === 1) onPaymentMethodChange(methods[0])
+    if (paymentMethod && !methods.includes(paymentMethod)) onPaymentMethodChange(methods[0])
+    else if (!paymentMethod && methods.length === 1) onPaymentMethodChange(methods[0])
   }, [methods, paymentMethod, onPaymentMethodChange])
 
   const balances = { credits: credits.data?.credits ?? 0, manaWei: mana.data ?? 0n }
