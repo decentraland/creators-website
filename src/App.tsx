@@ -6,6 +6,7 @@ import { Footer } from '~/components/Footer'
 import { NavBar } from '~/components/NavBar'
 import { Toasts } from '~/components/Toasts'
 import { TranslationProvider } from '~/intl'
+import { useAccountWatcher } from '~/hooks/useAccountWatcher'
 import { useWallet } from '~/store/wallet'
 
 // Collections (the landing route) stays eager for the fastest first paint; every other route is code-split.
@@ -33,6 +34,7 @@ const App = () => {
   useEffect(() => {
     void restore()
   }, [restore])
+  useAccountWatcher()
 
   // Pagination and in-page filters update the query string only; a new pathname is a new page.
   useEffect(() => {
