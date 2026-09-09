@@ -4,7 +4,7 @@
 import { EmoteCategory, WearableCategory } from '@dcl/schemas'
 import { checkTriangleCount, type ValidationIssue } from '~/lib/glbValidation'
 import { cleanAssetName, isModelFile } from '~/lib/itemFiles'
-import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError } from '~/lib/itemFactory'
+import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
 import { BodyShapeType, ItemType, getMissingBodyShapeType, type Item, type ItemMetrics } from '~/lib/items'
 import { type UploadFailureReason } from '~/lib/uploadItems'
 import { type AnimationMetrics } from '~/lib/models'
@@ -184,11 +184,6 @@ export function addItemsReducer(state: AddItemsState, action: AddItemsAction): A
     case 'retryRequested':
       return { ...state, view: 'details', failureReason: null }
   }
-}
-
-export function isValidItemName(name: string): boolean {
-  const trimmed = name.trim()
-  return trimmed.length > 0 && trimmed.length <= ITEM_NAME_MAX_LENGTH && !trimmed.includes(':')
 }
 
 export type VariantTargetOption = {

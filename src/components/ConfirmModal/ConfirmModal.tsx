@@ -14,8 +14,6 @@ type Props = {
   description: string
   /** Illustration shown instead of the warning glyph. */
   art?: { src: string }
-  /** Colors the warning glyph amber for destructive confirms. */
-  tone?: 'default' | 'error'
   /** Failure copy shown under the description after a rejected confirm. */
   error?: string | null
   /** While the confirm action is in flight: blocks closing, disables cancel, spins the confirm button. */
@@ -32,7 +30,6 @@ export function ConfirmModal({
   title,
   description,
   art,
-  tone = 'default',
   error,
   busy = false,
   showClose = false,
@@ -47,7 +44,7 @@ export function ConfirmModal({
         {art ? (
           <S.Art src={art.src} alt="" />
         ) : (
-          <S.IconWrap data-tone={tone} aria-hidden>
+          <S.IconWrap aria-hidden>
             <WarningIcon />
           </S.IconWrap>
         )}

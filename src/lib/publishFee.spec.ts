@@ -52,7 +52,7 @@ describe('getPublicationFee', () => {
     expect(fee.itemCount).toBe(6)
     expect(fee.perItem).toEqual({ manaWei: 500n * ETHER, usdWei: 5n * ETHER, credits: 50 })
     expect(fee.total).toEqual({ manaWei: 3000n * ETHER, usdWei: 30n * ETHER, credits: 300 })
-    expect(fee.manaPerCredit).toBe(10)
+    expect(fee.manaPerCredit).toBe(10n * ETHER)
   })
 
   it('is null until the rarities carry prices', () => {
@@ -64,7 +64,7 @@ describe('getPublicationFee', () => {
     const free = RARITIES.map(r => ({ ...r, prices: { USD: '0', MANA: '0' } }))
     const fee = getPublicationFee(free, 2)!
     expect(fee.total.credits).toBe(0)
-    expect(fee.manaPerCredit).toBe(0)
+    expect(fee.manaPerCredit).toBe(0n)
   })
 })
 

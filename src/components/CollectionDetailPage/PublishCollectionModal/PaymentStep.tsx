@@ -222,7 +222,7 @@ export function PaymentStep({
                   note={
                     method === 'mana'
                       ? t('publish_collection_modal.payment_step.rate', {
-                          mana: formatMana(BigInt(Math.round(fee.manaPerCredit * 1e18)))
+                          mana: formatMana(fee.manaPerCredit)
                         })
                       : undefined
                   }

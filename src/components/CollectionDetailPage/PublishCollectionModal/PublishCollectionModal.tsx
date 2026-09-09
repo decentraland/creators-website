@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from '~/intl'
 import { useAllCollectionItems, useSaveCollection } from '~/hooks/useCollection'
 import { type Session } from '~/lib/auth'
@@ -44,8 +44,6 @@ export function PublishCollectionModal({ collection, session, onClose, onPublish
   const itemsQuery = useAllCollectionItems(address, collection.id)
   const items = itemsQuery.data ?? []
   const saveCollection = useSaveCollection(address)
-
-  const onBusyChange = useCallback((busy: boolean) => setPaying(busy), [])
 
   function confirmName(name: string) {
     if (name === collection.name) {
@@ -111,7 +109,7 @@ export function PublishCollectionModal({ collection, session, onClose, onPublish
             onPaymentMethodChange={setPaymentMethod}
             accepted={termsAccepted}
             onAcceptedChange={setTermsAccepted}
-            onBusyChange={onBusyChange}
+            onBusyChange={setPaying}
             onBack={() => setStep(Step.Items)}
             onPublished={onPublished}
             onFailed={setError}

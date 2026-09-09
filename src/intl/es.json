@@ -160,11 +160,6 @@
       "horror": "Terror",
       "miscellaneous": "Varios"
     },
-    "status": {
-      "published": "Publicado",
-      "under_review": "En revisión",
-      "draft": "Borrador"
-    },
     "empty": {
       "title": "Agrega ítems a tu colección",
       "title_mobile": "Agrega ítems desde tu computadora",

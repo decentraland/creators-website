@@ -130,7 +130,7 @@ const CollectionsPage = () => {
               data-testid="collections-search"
               onChange={e => onSearchChange(e.target.value)}
             />
-            {isSearching && <S.SearchSpinner data-testid="search-spinner" aria-hidden />}
+            {isSearching && <S.Spinner data-testid="search-spinner" aria-hidden />}
           </S.SearchBox>
           <Button type="button" variant="primary" data-testid="new-collection" onClick={onNewCollection}>
             <AddIcon fontSize="small" />

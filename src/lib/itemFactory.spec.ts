@@ -7,6 +7,7 @@ import {
   buildRepresentations,
   computeHashes,
   getSizeError,
+  isValidItemName,
   sortContent,
   sortContentZipBothBodyShape,
   withThumbnail,
@@ -195,5 +196,14 @@ describe('withThumbnail', () => {
     expect(built.item.contents['male/model.glb']).toBe('bafmodel')
     expect(built.item.contents).not.toHaveProperty('old-thumb.png')
     expect(built.blobs).toEqual({ 'thumbnail.png': thumbnail })
+  })
+})
+
+describe('isValidItemName', () => {
+  it('requires a non-empty name up to 32 chars without ":"', () => {
+    expect(isValidItemName('Cool Hat')).toBe(true)
+    expect(isValidItemName('  ')).toBe(false)
+    expect(isValidItemName('a'.repeat(33))).toBe(false)
+    expect(isValidItemName('a:b')).toBe(false)
   })
 })

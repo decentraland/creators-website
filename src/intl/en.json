@@ -160,11 +160,6 @@
       "horror": "Horror",
       "miscellaneous": "Miscellaneous"
     },
-    "status": {
-      "published": "Published",
-      "under_review": "Under review",
-      "draft": "Draft"
-    },
     "empty": {
       "title": "Add items to your collection",
       "title_mobile": "Add items from desktop",

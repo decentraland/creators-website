@@ -1,6 +1,8 @@
 import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
 
+export { Spinner } from '~/styles/shared'
+
 export const Main = styled.div`
   display: flex;
   flex-direction: column;
@@ -333,14 +335,4 @@ export const InlineNote = styled.p`
   font-size: 14px;
   line-height: 1.4;
   color: ${theme.colors.gray4};
-`
-
-export const Spinner = styled.span`
-  flex: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.25);
-  border-top-color: ${theme.colors.white};
-  animation: spin 0.8s linear infinite;
 `

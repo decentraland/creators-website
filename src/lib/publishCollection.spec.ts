@@ -279,6 +279,14 @@ describe('publishCollection', () => {
     expect(deps.calls).not.toContain('sendTransaction')
   })
 
+  it('still succeeds when the lock fails after the transaction was sent, so it is never paid twice', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const deps = makeDeps({ lockCollection: async () => Promise.reject(new Error('boom')) })
+    const result = await publishCollection(params, deps)
+    expect(result.txHash).toBe('0xtx')
+    expect(result.collection.lock).toBe(collection.lock)
+  })
+
   it('fails when the server never produced a salt', async () => {
     const deps = makeDeps({ saveCollection: async c => ({ ...c, salt: undefined }) })
     await expect(publishCollection(params, deps)).rejects.toMatchObject({ reason: 'missing_salt' })

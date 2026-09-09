@@ -246,7 +246,14 @@ export async function publishCollection(params: PublishParams, deps: PublishDeps
       txHash = await deps.sendTransaction(buildCreateCollectionCall(chainId, args))
     }
 
-    const lock = await retry(10, 500, () => deps.lockCollection(collection.id))
+    // The fee is paid once the transaction is out: a lock failure must never surface as a retriable
+    // publish error, or "try again" would send (and charge) createCollection a second time.
+    let lock = collection.lock
+    try {
+      lock = await retry(10, 500, () => deps.lockCollection(collection.id))
+    } catch (error) {
+      console.error('Collection lock failed after publishing', error)
+    }
     return { collection: { ...collection, lock }, txHash }
   } catch (error) {
     throw toPublishError(error)

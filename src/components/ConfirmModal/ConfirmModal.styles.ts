@@ -19,10 +19,6 @@ export const IconWrap = styled.div`
     width: 48px;
     height: 48px;
   }
-
-  &[data-tone='error'] {
-    color: ${theme.colors.amber};
-  }
 `
 
 export const Art = styled.img`

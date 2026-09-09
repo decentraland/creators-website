@@ -19,14 +19,13 @@ export type PublicationFee = {
   itemCount: number
   perItem: FeeAmount
   total: FeeAmount
-  /** MANA per credit at the current oracle rate (0 when the fee is free). */
-  manaPerCredit: number
+  /** MANA wei per credit at the current oracle rate (0 when the fee is free). */
+  manaPerCredit: bigint
 }
 
 /** USD wei → whole cents, rounded up so a fraction of a cent never under-charges. */
 export function weiToUsdCents(usdWei: bigint): number {
-  const cents = usdWei / WEI_PER_USD_CENT
-  return Number(usdWei % WEI_PER_USD_CENT === 0n ? cents : cents + 1n)
+  return Number((usdWei + WEI_PER_USD_CENT - 1n) / WEI_PER_USD_CENT)
 }
 
 export function usdCentsToCredits(cents: number): number {
@@ -49,12 +48,11 @@ export function getPublicationFee(rarities: BlockchainRarity[], itemCount: numbe
   const perItemUsd = BigInt(prices.USD)
   const count = BigInt(Math.max(itemCount, 0))
   const total = toFeeAmount(perItemMana * count, perItemUsd * count)
-  const manaPerCredit = total.credits > 0 ? Number(ethers.utils.formatEther(total.manaWei)) / total.credits : 0
   return {
     itemCount,
     perItem: toFeeAmount(perItemMana, perItemUsd),
     total,
-    manaPerCredit: Math.round(manaPerCredit * 100) / 100
+    manaPerCredit: total.credits > 0 ? total.manaWei / BigInt(total.credits) : 0n
   }
 }
 
