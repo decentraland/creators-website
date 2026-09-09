@@ -12,6 +12,7 @@
   "DOWNLOAD_URL": "https://decentraland.org/download",
   "MATIC_CHAIN_ID": "137",
   "CREDITS_SERVER_URL": "https://credits.decentraland.today",
+  "MARKETPLACE_SERVER_URL": "https://marketplace-api.decentraland.today",
   "TRANSACTIONS_API_URL": "https://transactions-api.decentraland.today/v1",
   "SHOP_URL": "https://decentraland.today/shop",
   "ACCOUNT_URL": "https://decentraland.today/account",

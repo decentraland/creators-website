@@ -1,33 +1,15 @@
-import { type CSSProperties, type ReactNode } from 'react'
 import { Check as CheckIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { Button } from '~/components/Button'
+import { CurrencyAmount } from '~/components/CurrencyAmount'
 import { openExternal } from '~/lib/navigation'
 import { type PaymentMethod } from '~/lib/publishCollection'
 import creditsMark from '~/assets/payment/credits-logo.webp'
 import manaMark from '~/assets/payment/mana-logo.webp'
-import creditsGlyph from '~/assets/icons/credits.svg'
-import manaGlyph from '~/assets/icons/mana-matic.svg'
 import * as Shared from './PublishCollectionModal.styles'
 import * as S from './PaymentMethodCard.styles'
 
-const GLYPHS: Record<PaymentMethod, string> = { credits: creditsGlyph, mana: manaGlyph }
 const MARKS: Record<PaymentMethod, string> = { credits: creditsMark, mana: manaMark }
-
-type CurrencyProps = {
-  method: PaymentMethod
-  children: ReactNode
-}
-
-/** An amount prefixed with its currency glyph — "Ⓒ 300" / "◈ 500". */
-export function CurrencyAmount({ method, children }: CurrencyProps) {
-  return (
-    <>
-      <S.CurrencyMark aria-hidden style={{ '--icon-url': `url("${GLYPHS[method]}")` } as CSSProperties} />
-      {children}
-    </>
-  )
-}
 
 type Props = {
   method: PaymentMethod
@@ -91,13 +73,13 @@ export function PaymentMethodCard({
         <S.Balance data-insufficient={hasEnough ? undefined : true} data-testid={`payment-method-${method}-balance`}>
           {t(`publish_collection_modal.payment_step.${method}_balance`)}{' '}
           <span>
-            <CurrencyAmount method={method}>{balance}</CurrencyAmount>
+            <CurrencyAmount currency={method}>{balance}</CurrencyAmount>
           </span>
         </S.Balance>
       </S.Info>
       <S.Price>
         <S.Amount data-testid={`payment-method-${method}-price`}>
-          <CurrencyAmount method={method}>{price}</CurrencyAmount>
+          <CurrencyAmount currency={method}>{price}</CurrencyAmount>
         </S.Amount>
         {note && <S.Rate>{note}</S.Rate>}
       </S.Price>
@@ -113,7 +95,7 @@ export function PaymentMethodCard({
             openExternal(getMoreUrl)
           }}
         >
-          <CurrencyAmount method={method}>
+          <CurrencyAmount currency={method}>
             {t(
               compactBuy
                 ? 'publish_collection_modal.payment_step.buy'

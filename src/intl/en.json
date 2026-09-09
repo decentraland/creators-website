@@ -128,6 +128,8 @@
       "category": "Category",
       "play_mode": "Play Mode",
       "rarity": "Rarity",
+      "price": "Price",
+      "sales": "Sales",
       "actions": "Actions"
     },
     "row_actions": "Item actions",
@@ -203,6 +205,11 @@
     "publish_blocker": {
       "no_items": "Add at least one item to publish your collection.",
       "too_many_items": "A collection can be published with up to {max} items."
+    },
+    "price": {
+      "credits": "{amount} credits",
+      "mana": "{amount} MANA",
+      "free": "Free"
     }
   },
   "publish_collection_modal": {

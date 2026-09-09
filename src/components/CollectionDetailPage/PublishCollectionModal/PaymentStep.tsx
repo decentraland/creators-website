@@ -25,7 +25,8 @@ import { Button } from '~/components/Button'
 import { Tooltip } from '~/components/Tooltip'
 import { Checkbox } from './Checkbox'
 import { ThumbnailMosaic } from '~/components/ThumbnailMosaic'
-import { CurrencyAmount, PaymentMethodCard } from './PaymentMethodCard'
+import { CurrencyAmount } from '~/components/CurrencyAmount'
+import { PaymentMethodCard } from './PaymentMethodCard'
 import { Methods } from './PaymentMethodCard.styles'
 import * as S from './PublishCollectionModal.styles'
 
@@ -193,10 +194,10 @@ export function PaymentStep({
               {t('publish_collection_modal.payment_step.items_count', { count: items.length })}
             </span>
             <span data-testid="publish-summary-fee-per-item">
-              {fee ? <CurrencyAmount method="credits">{formatCredits(fee.perItem.credits)}</CurrencyAmount> : '—'}
+              {fee ? <CurrencyAmount currency="credits">{formatCredits(fee.perItem.credits)}</CurrencyAmount> : '—'}
             </span>
             <S.SummaryTotal data-testid="publish-summary-total">
-              {fee ? <CurrencyAmount method="credits">{formatCredits(fee.total.credits)}</CurrencyAmount> : '—'}
+              {fee ? <CurrencyAmount currency="credits">{formatCredits(fee.total.credits)}</CurrencyAmount> : '—'}
             </S.SummaryTotal>
           </S.SummaryRow>
         </S.SummaryTable>

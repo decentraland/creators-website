@@ -1,50 +1,104 @@
 import { MoreHoriz as MoreHorizIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'
-import { ItemType, getItemBodyShapeType, type Item } from '~/lib/items'
+import { ItemType, getItemBodyShapeType, getItemSales, isItemSoldOut, type Item } from '~/lib/items'
 import { EmotePlayMode } from '~/lib/itemFactory'
+import { isFreeListing, type ItemListing } from '~/lib/listings'
+import { formatCredits, formatMana } from '~/lib/publishFee'
+import { CurrencyAmount } from '~/components/CurrencyAmount'
 import { BodyShapeIcon, CategoryIcon, PlayModeIcon } from '~/components/ItemIcons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { RarityPill } from '~/components/RarityPill'
 import * as S from './ItemListRow.styles'
 
+const EMPTY = '—'
+
 type Props = {
   item: Item
   /** Lay out the Play Mode column; the list shows it only when the current view has emotes. */
   withPlayMode?: boolean
+  /** Lay out the Price and Sales columns; the list shows them once the collection has been published. */
+  withMarket?: boolean
+  /** The item's primary listing: `null` when it has none, `undefined` while listings are still loading. */
+  listing?: ItemListing | null
 }
 
-export function ItemListRow({ item, withPlayMode = false }: Props) {
+function formatCount(value: number): string {
+  return value.toLocaleString('en-US')
+}
+
+export function ItemListRow({ item, withPlayMode = false, withMarket = false, listing }: Props) {
   const { t } = useTranslation()
 
   const thumbnailHash = item.contents[item.thumbnail]
   const bodyShapeType = getItemBodyShapeType(item)
   const category = item.data.category
   const isEmote = item.type === ItemType.EMOTE
+  const sales = withMarket ? getItemSales(item) : undefined
+  const soldOut = withMarket && isItemSoldOut(item)
+
+  function renderPrice() {
+    if (listing === undefined) return null
+    if (listing === null || soldOut) return EMPTY
+    if (isFreeListing(listing)) return t('collection_detail_page.price.free')
+    if (listing.currency === 'mana') {
+      if (listing.manaWei === null) return EMPTY
+      const amount = formatMana(BigInt(listing.manaWei))
+      return (
+        <S.Amount title={t('collection_detail_page.price.mana', { amount })}>
+          <CurrencyAmount currency="mana">{amount}</CurrencyAmount>
+        </S.Amount>
+      )
+    }
+    const amount = formatCredits(listing.credits)
+    return (
+      <S.Amount title={t('collection_detail_page.price.credits', { amount })}>
+        <CurrencyAmount currency="credits">{amount}</CurrencyAmount>
+      </S.Amount>
+    )
+  }
 
   return (
-    <S.Row data-testid="item-row" data-with-play-mode={withPlayMode || undefined}>
+    <S.Row
+      data-testid="item-row"
+      data-with-play-mode={withPlayMode || undefined}
+      data-with-market={withMarket || undefined}
+    >
       <S.Thumb>
         <ItemThumbnail src={thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null} rarity={item.rarity} />
       </S.Thumb>
       <S.Content>
         <S.Name title={item.name}>{item.name}</S.Name>
         <S.Cell data-testid="item-row-body-shape">
-          {bodyShapeType ? <BodyShapeIcon bodyShape={bodyShapeType} withLabel /> : '—'}
+          {bodyShapeType ? <BodyShapeIcon bodyShape={bodyShapeType} withLabel /> : EMPTY}
         </S.Cell>
         <S.Cell data-testid="item-row-category">
-          {category ? <CategoryIcon category={category} withLabel /> : '—'}
+          {category ? <CategoryIcon category={category} withLabel /> : EMPTY}
         </S.Cell>
         {withPlayMode && (
           <S.Cell data-testid="item-row-play-mode" data-empty={!isEmote || undefined}>
             {isEmote ? (
               <PlayModeIcon playMode={item.data.loop ? EmotePlayMode.LOOP : EmotePlayMode.SIMPLE} withLabel />
             ) : (
-              '—'
+              EMPTY
             )}
           </S.Cell>
         )}
         <S.Cell data-testid="item-row-rarity">{item.rarity && <RarityPill rarity={item.rarity} />}</S.Cell>
+        {withMarket && (
+          <>
+            <S.Cell
+              data-testid="item-row-price"
+              data-currency={listing && !soldOut ? listing.currency : undefined}
+              data-empty={listing === null || soldOut || undefined}
+            >
+              {renderPrice()}
+            </S.Cell>
+            <S.Cell data-testid="item-row-sales" data-sold-out={soldOut || undefined} data-empty={!sales || undefined}>
+              {sales ? `${formatCount(sales.minted)}/${formatCount(sales.maxSupply)}` : EMPTY}
+            </S.Cell>
+          </>
+        )}
       </S.Content>
       <S.ActionsCell>
         <S.ActionsButton

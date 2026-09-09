@@ -1,6 +1,7 @@
 // Item domain model + wire mapping for builder-server, ported from the legacy builder
 // (src/modules/item + lib/api/builder.ts) so both apps read the same API identically.
 import { CollectionDisplayStatus } from './collections'
+import { getRarityMaxSupply } from './rarities'
 
 export enum ItemType {
   WEARABLE = 'wearable',
@@ -197,6 +198,23 @@ export function getMissingBodyShapeType(item: Item): BodyShapeType | null {
 }
 
 /** Same published / under-review / draft derivation as collections, at the item level. */
+export type ItemSales = {
+  minted: number
+  maxSupply: number
+}
+
+/** Minted vs. maximum supply of a published item; undefined without a rarity. */
+export function getItemSales(item: Item): ItemSales | undefined {
+  const maxSupply = getRarityMaxSupply(item.rarity)
+  if (maxSupply === undefined) return undefined
+  return { minted: Math.min(item.totalSupply ?? 0, maxSupply), maxSupply }
+}
+
+export function isItemSoldOut(item: Item): boolean {
+  const sales = getItemSales(item)
+  return !!sales && sales.minted >= sales.maxSupply
+}
+
 export function getItemDisplayStatus(item: Item): CollectionDisplayStatus {
   if (!item.isPublished) return CollectionDisplayStatus.DRAFT
   return item.isApproved ? CollectionDisplayStatus.PUBLISHED : CollectionDisplayStatus.UNDER_REVIEW

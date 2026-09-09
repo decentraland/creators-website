@@ -11,8 +11,8 @@ import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
 import { ITEMS_PAGE_SIZE, useAllCollectionItems, useCollection, useSaveCollection } from '~/hooks/useCollection'
 import { BuilderServerError } from '~/lib/builder'
-import { isCollectionLocked } from '~/lib/collections'
-import { ItemType } from '~/lib/items'
+import { hasBeenApproved, isCollectionLocked } from '~/lib/collections'
+import { ItemType, type Item } from '~/lib/items'
 import {
   ITEM_TYPE_FILTERS,
   ItemTypeFilter,
@@ -23,6 +23,7 @@ import {
 } from '~/lib/itemFilters'
 import { MAX_PUBLISH_ITEMS, getPublishBlocker } from '~/lib/publishCollection'
 import { useSyncPublishedItems } from '~/hooks/usePublishCollection'
+import { useCollectionListings } from '~/hooks/useCollectionListings'
 import { previewCollection } from '~/lib/explorer'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS } from '~/lib/itemFiles'
@@ -80,6 +81,13 @@ const CollectionDetailPage = () => {
   // Play Mode is an emote-only attribute; the column exists only while the visible page has emotes.
   const withPlayMode = useMemo(() => results.some(item => item.type === ItemType.EMOTE), [results])
   useSyncPublishedItems(address, collection, allItems ?? [])
+  // Price and Sales exist once the collection has been approved at least once, even if it is under review again.
+  const withMarket = !!collection && hasBeenApproved(collection)
+  const listingsQuery = useCollectionListings(withMarket ? collection.contractAddress : undefined)
+  const listings = listingsQuery.data
+  // `undefined` keeps the price cell blank while the catalog loads; a failed request shows no price rather than an error.
+  const listingFor = (item: Item) =>
+    listings ? (listings.get(item.tokenId ?? '') ?? null) : listingsQuery.isError ? null : undefined
 
   const isLoading = !restored || (!!address && (collectionQuery.isLoading || itemsQuery.isLoading))
   const isNotFound =
@@ -363,7 +371,10 @@ const CollectionDetailPage = () => {
           ) : (
             <>
               <S.List data-testid="items-list">
-                <S.ListHeader data-with-play-mode={withPlayMode || undefined}>
+                <S.ListHeader
+                  data-with-play-mode={withPlayMode || undefined}
+                  data-with-market={withMarket || undefined}
+                >
                   <span>{t('collection_detail_page.list.item')}</span>
                   <span>{t('collection_detail_page.list.body_shape')}</span>
                   <span>{t('collection_detail_page.list.category')}</span>
@@ -371,10 +382,22 @@ const CollectionDetailPage = () => {
                     <span data-testid="list-header-play-mode">{t('collection_detail_page.list.play_mode')}</span>
                   )}
                   <span>{t('collection_detail_page.list.rarity')}</span>
+                  {withMarket && (
+                    <>
+                      <span data-testid="list-header-price">{t('collection_detail_page.list.price')}</span>
+                      <span data-testid="list-header-sales">{t('collection_detail_page.list.sales')}</span>
+                    </>
+                  )}
                   <S.ListHeaderActions>{t('collection_detail_page.list.actions')}</S.ListHeaderActions>
                 </S.ListHeader>
                 {results.map(item => (
-                  <ItemListRow key={item.id} item={item} withPlayMode={withPlayMode} />
+                  <ItemListRow
+                    key={item.id}
+                    item={item}
+                    withPlayMode={withPlayMode}
+                    withMarket={withMarket}
+                    listing={withMarket ? listingFor(item) : undefined}
+                  />
                 ))}
               </S.List>
               <S.FooterRow>

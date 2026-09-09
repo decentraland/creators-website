@@ -165,6 +165,14 @@ export function getCollectionDisplayStatus(collection: Collection): CollectionDi
   return collection.isApproved ? CollectionDisplayStatus.PUBLISHED : CollectionDisplayStatus.UNDER_REVIEW
 }
 
+/**
+ * Published and approved at least once: the collection is on the market even while a later change of
+ * its items is being reviewed again, so its items carry a price and sales.
+ */
+export function hasBeenApproved(collection: Collection): boolean {
+  return collection.isPublished && (collection.isApproved || collection.reviewedAt !== undefined)
+}
+
 export enum CollectionRole {
   COLLABORATOR = 'collaborator',
   MINTER = 'minter'

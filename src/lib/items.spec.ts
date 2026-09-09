@@ -8,7 +8,9 @@ import {
   getItemBodyShapeType,
   getItemDisplayStatus,
   getItemMetadata,
+  getItemSales,
   getMissingBodyShapeType,
+  isItemSoldOut,
   ItemType,
   toRemoteItem,
   type Item,
@@ -204,5 +206,27 @@ describe('getMissingBodyShapeType', () => {
     expect(getMissingBodyShapeType(itemWithShapes([BODY_SHAPE_MALE]))).toBe(BodyShapeType.FEMALE)
     expect(getMissingBodyShapeType(itemWithShapes([BODY_SHAPE_FEMALE]))).toBe(BodyShapeType.MALE)
     expect(getMissingBodyShapeType(itemWithShapes([BODY_SHAPE_MALE, BODY_SHAPE_FEMALE]))).toBeNull()
+  })
+})
+
+describe('getItemSales', () => {
+  const base = fromRemoteItem(remote)
+
+  it('pairs the minted count with the rarity max supply', () => {
+    expect(getItemSales({ ...base, rarity: 'legendary', totalSupply: 15 })).toEqual({ minted: 15, maxSupply: 100 })
+    expect(getItemSales({ ...base, rarity: 'legendary', totalSupply: undefined })).toEqual({
+      minted: 0,
+      maxSupply: 100
+    })
+  })
+
+  it('has no sales without a rarity', () => {
+    expect(getItemSales({ ...base, rarity: undefined })).toBeUndefined()
+  })
+
+  it('is sold out once every unit is minted', () => {
+    expect(isItemSoldOut({ ...base, rarity: 'legendary', totalSupply: 100 })).toBe(true)
+    expect(isItemSoldOut({ ...base, rarity: 'legendary', totalSupply: 99 })).toBe(false)
+    expect(isItemSoldOut({ ...base, rarity: undefined, totalSupply: 100 })).toBe(false)
   })
 })

@@ -4,16 +4,25 @@ import { theme } from '~/styles/theme'
 const mobile = theme.media.maxWidth('mobile')
 
 // Shared column template so the header and the rows stay aligned: thumbnail, then equal columns
-// (name, body shape, category, [play mode], rarity), then actions. The header's "Item" spans the first two.
-// Play Mode is only laid out when the list being shown has emotes.
+// (name, body shape, category, [play mode], rarity, [price, sales]), then actions. The header's "Item"
+// spans the first two. Play Mode is only laid out when the list being shown has emotes; Price and
+// Sales only once the collection has been published.
+const columns = (count: number) => `grid-template-columns: 74px repeat(${count}, minmax(0, 1fr)) minmax(56px, auto);`
+
 export const itemListColumns = `
   display: grid;
-  grid-template-columns: 74px repeat(4, minmax(0, 1fr)) minmax(56px, auto);
+  ${columns(4)}
   align-items: center;
   gap: 16px;
 
   &[data-with-play-mode] {
-    grid-template-columns: 74px repeat(5, minmax(0, 1fr)) minmax(56px, auto);
+    ${columns(5)}
+  }
+  &[data-with-market] {
+    ${columns(6)}
+  }
+  &[data-with-play-mode][data-with-market] {
+    ${columns(7)}
   }
 `
 
@@ -88,6 +97,13 @@ export const Cell = styled.div`
       display: none;
     }
   }
+`
+
+export const Amount = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
 `
 
 export const ActionsCell = styled.div`

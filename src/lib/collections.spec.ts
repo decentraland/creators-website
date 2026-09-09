@@ -10,6 +10,7 @@ import {
   getCollectionDisplayStatus,
   getCollectionRole,
   CollectionRole,
+  hasBeenApproved,
   isCollectionLocked,
   statusFilterToParams,
   toCollectionsQueryString,
@@ -116,6 +117,20 @@ describe('getCollectionDisplayStatus', () => {
     expect(getCollectionDisplayStatus(withFlags(true, true))).toBe(CollectionDisplayStatus.PUBLISHED)
     expect(getCollectionDisplayStatus(withFlags(true, false))).toBe(CollectionDisplayStatus.UNDER_REVIEW)
     expect(getCollectionDisplayStatus(withFlags(false, false))).toBe(CollectionDisplayStatus.DRAFT)
+  })
+})
+
+describe('hasBeenApproved', () => {
+  const base = fromRemoteCollection(remote)
+
+  it('is true for an approved collection and for one reviewed before that is under review again', () => {
+    expect(hasBeenApproved({ ...base, isPublished: true, isApproved: true })).toBe(true)
+    expect(hasBeenApproved({ ...base, isPublished: true, isApproved: false, reviewedAt: 1 })).toBe(true)
+  })
+
+  it('is false for drafts and for a first review', () => {
+    expect(hasBeenApproved({ ...base, isPublished: false, isApproved: false })).toBe(false)
+    expect(hasBeenApproved({ ...base, isPublished: true, isApproved: false, reviewedAt: undefined })).toBe(false)
   })
 })
 
