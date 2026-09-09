@@ -51,7 +51,7 @@ async function parseError(response: Response, fallback: string): Promise<Credits
 
 /** The creator's shop-credit balance: GET /users/{address}/credits (the `usd` block). */
 export async function fetchCreditsBalance(address: string): Promise<CreditsBalance> {
-  const response = await signedFetch(address, baseUrl(), `/users/${address}/credits`, {}, { scheme: 'adr44' })
+  const response = await signedFetch(address, baseUrl(), `/users/${address}/credits`)
   if (!response.ok) throw await parseError(response, 'credits-server request failed')
   const data = (await response.json()) as { usd?: { balanceCents: number; credits: number } }
   return { credits: data.usd?.credits ?? 0, balanceCents: data.usd?.balanceCents ?? 0 }
@@ -73,13 +73,11 @@ export async function authorizePublication(
   address: string,
   params: AuthorizePublicationParams
 ): Promise<PublicationAuthorization> {
-  const response = await signedFetch(
-    address,
-    baseUrl(),
-    '/credits/authorize-publication',
-    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(params) },
-    { scheme: 'adr44' }
-  )
+  const response = await signedFetch(address, baseUrl(), '/credits/authorize-publication', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params)
+  })
   if (!response.ok) throw await parseError(response, 'Failed to authorize the publication')
   const data = (await response.json()) as Partial<PublicationAuthorization>
   const credit = data.credit

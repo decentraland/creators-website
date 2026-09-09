@@ -19,11 +19,10 @@ describe('fetchCreditsBalance', () => {
       jsonResponse({ credits: [], totalCredits: '0', usd: { balanceCents: 5600, credits: 560 } })
     )
     await expect(fetchCreditsBalance(ADDRESS)).resolves.toEqual({ credits: 560, balanceCents: 5600 })
-    const [address, baseUrl, path, , options] = mockedFetch.mock.calls[0]
+    const [address, baseUrl, path] = mockedFetch.mock.calls[0]
     expect(address).toBe(ADDRESS)
     expect(baseUrl).toBe('https://credits.decentraland.zone')
     expect(path).toBe(`/users/${ADDRESS}/credits`)
-    expect(options).toEqual({ scheme: 'adr44' })
   })
 
   it('treats a missing USD block as an empty balance', async () => {

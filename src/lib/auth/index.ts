@@ -1,12 +1,4 @@
-export {
-  logout,
-  restoreSession,
-  signInRedirect,
-  signedFetch,
-  type Session,
-  type SignatureScheme,
-  type SignedFetchOptions
-} from './auth'
+export { logout, restoreSession, signInRedirect, signedFetch, type Session } from './auth'
 export {
   encodeContractCall,
   readContract,
