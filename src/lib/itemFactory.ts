@@ -26,6 +26,12 @@ import {
 
 export const ITEM_NAME_MAX_LENGTH = 32
 
+// Same rules as collection names: non-empty, ≤32 chars and no ':' (names feed the on-chain metadata).
+export function isValidItemName(name: string): boolean {
+  const trimmed = name.trim()
+  return trimmed.length > 0 && trimmed.length <= ITEM_NAME_MAX_LENGTH && !trimmed.includes(':')
+}
+
 export enum EmotePlayMode {
   SIMPLE = 'simple',
   LOOP = 'loop'
@@ -322,4 +328,15 @@ export async function addRepresentationToItem(
   }
 
   return { item, blobs: { ...(target.blobs ?? {}), ...newBlobs } }
+}
+
+/** Replaces a saved item's thumbnail with a new PNG, hashing it so the file can be uploaded alongside. */
+export async function withThumbnail(item: Item, thumbnail: Blob): Promise<BuiltItem> {
+  const hashes = await computeHashes({ [THUMBNAIL_PATH]: thumbnail })
+  const contents = { ...item.contents }
+  if (item.thumbnail !== THUMBNAIL_PATH) delete contents[item.thumbnail]
+  return {
+    item: { ...item, thumbnail: THUMBNAIL_PATH, contents: { ...contents, ...hashes }, updatedAt: Date.now() },
+    blobs: { [THUMBNAIL_PATH]: thumbnail }
+  }
 }

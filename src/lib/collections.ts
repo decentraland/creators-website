@@ -158,7 +158,10 @@ export function statusFilterToParams(filter: CollectionStatusFilter): Partial<Fe
 }
 
 export function getCollectionDisplayStatus(collection: Collection): CollectionDisplayStatus {
-  if (!collection.isPublished) return CollectionDisplayStatus.DRAFT
+  // A locked draft has its publish transaction in flight: the server just hasn't seen it yet.
+  if (!collection.isPublished) {
+    return isCollectionLocked(collection) ? CollectionDisplayStatus.UNDER_REVIEW : CollectionDisplayStatus.DRAFT
+  }
   return collection.isApproved ? CollectionDisplayStatus.PUBLISHED : CollectionDisplayStatus.UNDER_REVIEW
 }
 

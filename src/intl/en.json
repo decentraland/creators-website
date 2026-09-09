@@ -64,19 +64,21 @@
   "modal": {
     "close": "Close"
   },
+  "collection_name_input": {
+    "label": "Collection Name",
+    "char_count": "{count}/{max}",
+    "unique_hint": "Names must be unique across all Decentraland collections."
+  },
   "collection_name_modal": {
     "title": "{variant, select, create {New Collection} other {Rename Collection}}",
     "heading": "{variant, select, create {Name your collection} other {Choose a new name}}",
     "subtitle": "This is the name people will see in the Shop.",
-    "name_label": "Collection Name",
     "name_placeholder": "e.g. Halloween",
-    "char_count": "{count}/{max}",
     "cancel": "Cancel",
     "submit": "{variant, select, create {Continue} other {Save}}",
     "error_invalid_character": "The \":\" character can't be used in collection names.",
     "error_name_taken": "That name is already in use. Try another one.",
-    "error_generic": "{variant, select, create {We couldn't create your collection. Please try again.} other {We couldn't rename your collection. Please try again.}}",
-    "unique_hint": "Names must be unique across all Decentraland collections."
+    "error_generic": "{variant, select, create {We couldn't create your collection. Please try again.} other {We couldn't rename your collection. Please try again.}}"
   },
   "collection_detail_page": {
     "back": "Back to collections",
@@ -184,10 +186,101 @@
       "title": "Sign in to view this collection",
       "action": "Sign in"
     },
-    "showing": "Showing {range} of {total} {total, plural, one {item} other {items}}"
+    "showing": "Showing {range} of {total} {total, plural, one {item} other {items}}",
+    "publish_blocker": {
+      "no_items": "Add at least one item to publish your collection.",
+      "too_many_items": "A collection can be published with up to {max} items."
+    }
+  },
+  "publish_collection_modal": {
+    "title": "Publish Collection",
+    "step_label": "Step {step} of {total}",
+    "cancel": "Cancel",
+    "back": "Back",
+    "name_step": {
+      "title": "Confirm your collection name",
+      "description": "The name of the collection can't be modified after sending it for review.",
+      "description_2": "Make sure it doesn't have any typos, and it doesn't contain any Intellectual Property you don't own (E.g: Star Wars, Sailor Moon, etc)",
+      "invalid_name": "Names can be up to 32 characters and can't include \":\".",
+      "name_taken": "That name is already in use. Try a different one.",
+      "save_error": "We couldn't save the new name. Please try again.",
+      "checkbox": "I understand that once published, I won't be able to change the collection name and I confirm that \"{name}\" doesn't infringe any third-party intellectual property rights.",
+      "confirm": "Confirm Name"
+    },
+    "items_step": {
+      "title": "Confirm your Items before publishing",
+      "subtitle": "Items can't be added or deleted after publishing. Rarity can't be changed after publishing.",
+      "description": "You won't be able to add or remove items or change their rarity after publishing. Other item details can still be edited later.",
+      "columns": {
+        "item": "Item",
+        "body_shape": "Body Shape",
+        "category": "Category",
+        "rarity": "Rarity",
+        "actions": "Actions"
+      },
+      "edit": "Edit item",
+      "edit_thumbnail": "Edit thumbnail",
+      "delete": "Delete item",
+      "save": "Save changes",
+      "cancel_edit": "Cancel",
+      "name_placeholder": "Item name",
+      "save_error": "We couldn't save the item. Please try again.",
+      "empty": "This collection has no items left to publish. Add items before publishing.",
+      "checkbox": "I understand that once published I won't be able to add or remove items, or change their rarity.",
+      "confirm": "Confirm Items"
+    },
+    "delete_item": {
+      "title": "Delete this item?",
+      "description": "\"{name}\" will be removed from the collection. This can't be undone.",
+      "error": "We couldn't delete the item. Please try again.",
+      "cancel": "Keep item",
+      "confirm": "Delete item"
+    },
+    "payment_step": {
+      "title": "Confirm & Pay",
+      "description": "You’re about to submit {count, plural, one {# item} other {# items}} from “{name}” for review. Choose a payment method to pay the <fee>publication fee</fee> and continue.",
+      "fee_tooltip_title": "What is the publication fee?",
+      "fee_tooltip_body": "A one-time fee paid when submitting your items for review.",
+      "columns": {
+        "collection": "Collection",
+        "items": "Items",
+        "fee_per_item": "Fee per item",
+        "total_fee": "Total Fee"
+      },
+      "items_count": "{count, plural, one {# Item} other {# Items}}",
+      "payment_method": "Payment Method",
+      "credits": "Credits",
+      "credits_balance": "Credits Balance:",
+      "mana": "MANA",
+      "mana_balance": "MANA Balance:",
+      "buy": "Buy",
+      "buy_credits": "Buy Credits",
+      "buy_mana": "Buy MANA",
+      "rate": "1 Credit = {mana} MANA",
+      "fee_error": "We couldn't load the publication fee.",
+      "retry": "Try again",
+      "approve_error": "The MANA approval didn't go through. Please try again.",
+      "checkbox": "I agree to the <terms>Terms of Use</terms> and <policy>Content Policy</policy>. I understand that my collection may be rejected if it doesn't comply, and that the publication fee is non-refundable.",
+      "submit": "Publish & Pay"
+    },
+    "success": {
+      "title": "Collection sent for review",
+      "description": "Your collection is being reviewed for approval. This may take up to 5 minutes. We'll notify you once the review is complete.",
+      "done": "Done"
+    },
+    "error": {
+      "title": "We couldn't publish your collection",
+      "description_generic": "Something went wrong while publishing your collection. Don't worry, your Credits are safe and will automatically return to your balance within 5–10 minutes.",
+      "description_insufficient_credits": "You don't have enough Credits to cover the publication fee. Get more Credits and try again.",
+      "description_locked": "This collection is already being published. Give it a few minutes and refresh the page.",
+      "description_unsynced": "The items in this collection changed while you were publishing. Close this dialog and start again.",
+      "cancel": "Cancel",
+      "try_again": "Try again"
+    }
   },
   "rarity_select": {
-    "units": "{count, plural, one {# unit} other {# units}}"
+    "units": "{count, plural, one {# unit} other {# units}}",
+    "with_supply": "{label} ({count, number})"
   },
   "add_items_modal": {
     "title": "{count, plural, one {Item Details} other {Items Details}}",
@@ -257,13 +350,6 @@
       "save_changes": "Save changes",
       "keep_editing": "Keep editing"
     },
-    "thumbnail": {
-      "title": "Item Thumbnail",
-      "capture": "Save thumbnail",
-      "upload_picture": "Upload picture",
-      "wrong_format": "The thumbnail must be a PNG image.",
-      "capture_failed": "We couldn't update the thumbnail. Please try again."
-    },
     "file_error_label": "Invalid file",
     "file_error": {
       "wrong_extension": "This file type isn't supported. Use {extensions}.",
@@ -284,6 +370,14 @@
       "invalid_model_file": "We couldn't load this 3D model. Check the file and try again.",
       "invalid_representation": "This file can't be used as a body shape variant of that item."
     }
+  },
+  "thumbnail_modal": {
+    "title": "Item Thumbnail",
+    "capture": "Save thumbnail",
+    "upload_picture": "Upload picture",
+    "wrong_format": "The thumbnail must be a PNG image.",
+    "capture_failed": "We couldn't update the thumbnail. Please try again.",
+    "load_failed": "We couldn't load the item. Please try again."
   },
   "item_validation": {
     "triangle_count_exceeded": "Triangle count ({count}) exceeds the limit of {limit} for {category} wearables.",

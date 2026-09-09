@@ -41,9 +41,10 @@ export const Root = styled.button`
   }
 
   &[data-variant='gradient'] {
-    background: ${theme.gradients.ember};
+    background: ${theme.gradients.coral};
   }
   &[data-variant='gradient']:hover${enabled} {
+    transition: none;
     background: ${theme.colors.dclRed};
   }
 

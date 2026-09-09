@@ -12,6 +12,7 @@ import {
   type RemoteCollection
 } from '~/lib/collections'
 import { fromRemoteItem, toRemoteItem, type Item, type RemoteItem } from '~/lib/items'
+import { type BlockchainRarity } from '~/lib/rarities'
 
 export type CollectionItemPreview = {
   id: string
@@ -172,4 +173,68 @@ export async function fetchCollectionItemPreviews(
       name: item.name,
       thumbnailUrl: getContentsStorageUrl(item.contents[item.thumbnail])
     }))
+}
+
+/** Rarities with their current USD and MANA prices: GET /rarities. Every rarity costs the same. */
+export async function fetchRarities(address: string | undefined): Promise<BlockchainRarity[]> {
+  return request<BlockchainRarity[]>(address, 'GET', '/rarities')
+}
+
+/** Removes a draft item (and its files): DELETE /items/{id}. */
+export async function deleteItem(address: string, itemId: string): Promise<void> {
+  await request<boolean>(address, 'DELETE', `/items/${itemId}`)
+}
+
+const PUBLISH_COLLECTION_TOS_EVENT = 'publish_collection_tos'
+
+/** Records the creator's Terms of Service acceptance for a publication: POST /collections/{id}/tos. */
+export async function saveCollectionTOS(address: string, collection: Collection, email: string): Promise<void> {
+  await request<unknown>(
+    address,
+    'POST',
+    `/collections/${collection.id}/tos`,
+    '',
+    { event: PUBLISH_COLLECTION_TOS_EVENT, email, collection_address: collection.contractAddress },
+    false
+  )
+}
+
+/**
+ * Starts the one-day publish lock: POST /collections/{id}/lock. Answers the lock timestamp; the
+ * body mirrors the legacy client (the server ignores it).
+ */
+export async function lockCollection(address: string, collectionId: string): Promise<number> {
+  const lock = await request<string>(address, 'POST', `/collections/${collectionId}/lock`, '', {
+    collection_address: collectionId
+  })
+  return +new Date(lock)
+}
+
+/**
+ * Consolidates a published collection with the chain: POST /collections/{id}/publish. builder-server
+ * reads the collection from the subgraph and assigns every item its on-chain id; it answers 401
+ * while the graph hasn't indexed the transaction yet, so callers retry on that status.
+ */
+export async function publishCollectionItems(
+  address: string,
+  collectionId: string
+): Promise<{ collection: Collection; items: Item[] }> {
+  const result = await request<{ collection: RemoteCollection; items: RemoteItem[] }>(
+    address,
+    'POST',
+    `/collections/${collectionId}/publish`
+  )
+  return { collection: fromRemoteCollection(result.collection), items: result.items.map(fromRemoteItem) }
+}
+
+/** Downloads every file of a saved item from public storage, keyed by path, for the local preview/editor. */
+export async function fetchItemContents(item: Item): Promise<Record<string, Blob>> {
+  const entries = await Promise.all(
+    Object.entries(item.contents).map(async ([path, hash]) => {
+      const response = await fetch(getContentsStorageUrl(hash))
+      if (!response.ok) throw new BuilderServerError(`Could not download ${path} (${response.status})`, response.status)
+      return [path, await response.blob()] as const
+    })
+  )
+  return Object.fromEntries(entries)
 }

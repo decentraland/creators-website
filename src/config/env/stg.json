@@ -9,5 +9,12 @@
   "MATIC_URN_PROTOCOL": "matic",
   "ERC721_COLLECTION_BASE_URI": "https://peer.decentraland.org/lambdas/collections/standard/erc721/",
   "RARITIES_WITH_ORACLE_ADDRESS": "0xA9158E22F89Bb3F69c5600338895Cb5FB81e5090",
-  "DOWNLOAD_URL": "https://decentraland.org/download"
+  "DOWNLOAD_URL": "https://decentraland.org/download",
+  "MATIC_CHAIN_ID": "137",
+  "CREDITS_SERVER_URL": "https://credits.decentraland.today",
+  "TRANSACTIONS_API_URL": "https://transactions-api.decentraland.today/v1",
+  "SHOP_URL": "https://decentraland.today/shop",
+  "ACCOUNT_URL": "https://decentraland.today/account",
+  "TERMS_OF_USE_URL": "https://decentraland.org/terms/",
+  "CONTENT_POLICY_URL": "https://decentraland.org/content/"
 }

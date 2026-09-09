@@ -3,6 +3,7 @@ import {
   deleteCollection,
   fetchCollectionItemPreviews,
   fetchCollections,
+  fetchItemContents,
   getContentsStorageUrl,
   saveItem
 } from './builder'
@@ -217,5 +218,31 @@ describe('deleteCollection', () => {
   it('surfaces the server status when the collection can no longer be deleted', async () => {
     signedFetchMock.mockResolvedValue(jsonResponse({ ok: false, error: 'already published' }, false, 409))
     await expect(deleteCollection(ADDRESS, 'a1b2')).rejects.toMatchObject({ status: 409 })
+  })
+})
+
+describe('fetchItemContents', () => {
+  const item = {
+    id: 'item-1',
+    contents: { 'male/model.glb': 'QmModel', 'thumbnail.png': 'QmThumb' }
+  } as unknown as Item
+
+  it('downloads every file from public storage keyed by its path', async () => {
+    const fetchMock = vi.fn(async (url: string) => new Response(url.endsWith('QmModel') ? 'model' : 'thumb'))
+    vi.stubGlobal('fetch', fetchMock)
+    const contents = await fetchItemContents(item)
+    expect(Object.keys(contents).sort()).toEqual(['male/model.glb', 'thumbnail.png'])
+    expect(await contents['male/model.glb'].text()).toBe('model')
+    expect(fetchMock).toHaveBeenCalledWith(getContentsStorageUrl('QmThumb'))
+    vi.unstubAllGlobals()
+  })
+
+  it('fails when any file cannot be downloaded', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(null, { status: 404 }))
+    )
+    await expect(fetchItemContents(item)).rejects.toThrow(/404/)
+    vi.unstubAllGlobals()
   })
 })

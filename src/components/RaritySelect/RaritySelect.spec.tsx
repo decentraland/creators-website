@@ -8,11 +8,12 @@ import { RaritySelect } from './RaritySelect'
 const wrapper = ({ children }: { children: ReactNode }) => <TranslationProvider>{children}</TranslationProvider>
 
 describe('RaritySelect', () => {
-  it('shows the current rarity with its full supply and lists every option on open', async () => {
+  it('shows the current rarity with its supply in brackets and lists every option with units on open', async () => {
     const onChange = vi.fn()
     render(<RaritySelect value="epic" onChange={onChange} />, { wrapper })
     expect(screen.getByTestId('rarity-select')).toHaveTextContent('Epic')
-    expect(screen.getByTestId('rarity-select')).toHaveTextContent('1,000 units')
+    expect(screen.getByTestId('rarity-select')).toHaveTextContent('Epic (1,000)')
+    expect(screen.getByTestId('rarity-select')).not.toHaveTextContent('units')
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByTestId('rarity-select'))

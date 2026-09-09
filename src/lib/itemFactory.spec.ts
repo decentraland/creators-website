@@ -9,6 +9,7 @@ import {
   getSizeError,
   sortContent,
   sortContentZipBothBodyShape,
+  withThumbnail,
   type ItemDraftPayload
 } from './itemFactory'
 import { BODY_SHAPE_FEMALE, BODY_SHAPE_MALE, BodyShapeType, ItemType, type Item } from './items'
@@ -166,5 +167,33 @@ describe('addRepresentationToItem', () => {
     const base = await buildBase()
     const variant = { ...baseDraft, id: 'draft-2', bodyShape: BodyShapeType.MALE }
     await expect(addRepresentationToItem({ item: base }, variant)).rejects.toThrow()
+  })
+})
+
+describe('withThumbnail', () => {
+  const saved: Item = {
+    id: 'item-1',
+    name: 'Hat',
+    description: '',
+    thumbnail: 'old-thumb.png',
+    owner: '0xowner',
+    isPublished: false,
+    isApproved: false,
+    inCatalyst: false,
+    type: ItemType.WEARABLE,
+    data: { category: 'hat', representations: [] },
+    contents: { 'male/model.glb': 'bafmodel', 'old-thumb.png': 'bafold' },
+    createdAt: 1,
+    updatedAt: 1
+  }
+
+  it('points the item at the new hashed thumbnail and returns the file to upload', async () => {
+    const thumbnail = blob('new png')
+    const built = await withThumbnail(saved, thumbnail)
+    expect(built.item.thumbnail).toBe('thumbnail.png')
+    expect(built.item.contents['thumbnail.png']).toMatch(/^baf/)
+    expect(built.item.contents['male/model.glb']).toBe('bafmodel')
+    expect(built.item.contents).not.toHaveProperty('old-thumb.png')
+    expect(built.blobs).toEqual({ 'thumbnail.png': thumbnail })
   })
 })

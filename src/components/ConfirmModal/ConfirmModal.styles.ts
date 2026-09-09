@@ -20,7 +20,7 @@ export const IconWrap = styled.div`
     height: 48px;
   }
 
-  &[data-variant='error'] {
+  &[data-tone='error'] {
     color: ${theme.colors.amber};
   }
 `
@@ -39,12 +39,26 @@ export const Heading = styled.h3`
   color: ${theme.colors.softWhite};
 `
 
-export const Text = styled.p`
+export const Body = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   margin: 0 auto 48px;
+`
+
+export const Text = styled.p`
+  margin: 0;
   font-size: 20px;
   font-weight: 500;
   line-height: 1.3;
   color: ${theme.colors.softWhite};
+
+  /* Illustrated notices carry longer copy, so they read at body size. */
+  [data-art='image'] & {
+    max-width: 615px;
+    font-size: 16px;
+    line-height: 1.6;
+  }
 `
 
 export const Actions = styled.div`
@@ -52,7 +66,7 @@ export const Actions = styled.div`
   gap: 12px;
   width: 100%;
   padding-top: 24px;
-  border-top: 0.5px solid ${theme.colors.glassHover};
+  border-top: 1px solid ${theme.colors.glassHover};
 
   > * {
     flex: 1;

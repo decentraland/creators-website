@@ -31,3 +31,26 @@ describe('Tooltip', () => {
     await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument())
   })
 })
+
+describe('Tooltip asChild', () => {
+  it('uses the child element itself as the trigger', async () => {
+    render(
+      <Tooltip content="Blocked" asChild>
+        <button data-testid="own-button">Publish</button>
+      </Tooltip>
+    )
+    expect(screen.queryByTestId('tooltip-trigger')).not.toBeInTheDocument()
+    await userEvent.hover(screen.getByTestId('own-button'))
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Blocked')
+  })
+
+  it('renders the child alone when there is no content', async () => {
+    render(
+      <Tooltip content={null} asChild>
+        <button data-testid="own-button">Publish</button>
+      </Tooltip>
+    )
+    await userEvent.hover(screen.getByTestId('own-button'))
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+})

@@ -1,0 +1,36 @@
+import { ConfirmModal } from '~/components/ConfirmModal'
+import { useTranslation } from '~/intl'
+import { type Item } from '~/lib/items'
+
+type Props = {
+  item: Item
+  isDeleting: boolean
+  error: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}
+
+/** "Delete this item?" — the confirm step before an item leaves the collection for good. */
+export function DeleteItemModal({ item, isDeleting, error, onCancel, onConfirm }: Props) {
+  const { t } = useTranslation()
+  return (
+    <ConfirmModal
+      title={t('publish_collection_modal.delete_item.title')}
+      description={t('publish_collection_modal.delete_item.description', { name: item.name })}
+      error={error ? t('publish_collection_modal.delete_item.error') : null}
+      busy={isDeleting}
+      onClose={onCancel}
+      cancel={{
+        label: t('publish_collection_modal.delete_item.cancel'),
+        onClick: onCancel,
+        testId: 'delete-item-cancel'
+      }}
+      confirm={{
+        label: t('publish_collection_modal.delete_item.confirm'),
+        onClick: onConfirm,
+        testId: 'delete-item-confirm'
+      }}
+      testId="delete-item-modal"
+    />
+  )
+}

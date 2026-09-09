@@ -1,13 +1,16 @@
 import styled from '@emotion/styled'
 import { Tooltip as UiTooltip } from 'decentraland-ui2'
-import type { ComponentProps, ReactNode } from 'react'
+import type { ComponentProps, ReactElement, ReactNode } from 'react'
 import { theme } from '~/styles/theme'
 import * as S from './Tooltip.styles'
 
 type Props = {
+  /** Nothing to say (null) renders the children alone. */
   content: ReactNode
-  /** The icon or glyph that opens the tooltip on hover, focus or tap. */
+  /** The icon or glyph that opens the tooltip on hover, focus or tap; with `asChild`, the trigger element itself. */
   children: ReactNode
+  /** Use the child as the trigger instead of wrapping it: it must be a single element that forwards its ref. */
+  asChild?: boolean
   placement?: UiTooltipProps['placement']
   testId?: string
 }
@@ -39,7 +42,8 @@ const Popper = styled(({ className, ...props }: UiTooltipProps) => (
   }
 `
 
-export function Tooltip({ content, children, testId = 'tooltip', placement = 'top' }: Props) {
+export function Tooltip({ content, children, asChild = false, testId = 'tooltip', placement = 'top' }: Props) {
+  if (content === null || content === undefined || content === false) return <>{children}</>
   return (
     <Popper
       arrow
@@ -49,9 +53,13 @@ export function Tooltip({ content, children, testId = 'tooltip', placement = 'to
       leaveTouchDelay={4000}
       placement={placement}
     >
-      <S.Trigger type="button" data-testid={`${testId}-trigger`}>
-        {children}
-      </S.Trigger>
+      {asChild ? (
+        (children as ReactElement)
+      ) : (
+        <S.Trigger type="button" data-testid={`${testId}-trigger`}>
+          {children}
+        </S.Trigger>
+      )}
     </Popper>
   )
 }

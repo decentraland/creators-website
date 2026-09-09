@@ -33,8 +33,8 @@ type Props = {
   children: ReactNode
   /** Blocks every close affordance (✕, Escape, scrim) while a submit is in flight. */
   closeDisabled?: boolean
-  /** 'wide' for editor-style dialogs (add items); default is the 560px form dialog. */
-  size?: 'default' | 'wide'
+  /** 'large' for wizards, 'wide' for editor-style dialogs (add items); default is the 560px form dialog. */
+  size?: 'default' | 'large' | 'wide'
   /** Renders no title bar (confirm/error dialogs); `title` still labels the dialog for a11y. */
   hideTitle?: boolean
   /** With `hideTitle`, still shows a floating ✕ in the dialog corner. */

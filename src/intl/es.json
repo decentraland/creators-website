@@ -64,19 +64,21 @@
   "modal": {
     "close": "Cerrar"
   },
+  "collection_name_input": {
+    "label": "Nombre de la colección",
+    "char_count": "{count}/{max}",
+    "unique_hint": "El nombre debe ser único entre todas las colecciones de Decentraland."
+  },
   "collection_name_modal": {
     "title": "{variant, select, create {Nueva colección} other {Renombrar colección}}",
     "heading": "{variant, select, create {Ponle nombre a tu colección} other {Elige un nuevo nombre}}",
     "subtitle": "Este es el nombre que la gente verá en el Shop.",
-    "name_label": "Nombre de la colección",
     "name_placeholder": "p. ej. Halloween",
-    "char_count": "{count}/{max}",
     "cancel": "Cancelar",
     "submit": "{variant, select, create {Continuar} other {Guardar}}",
     "error_invalid_character": "El carácter \":\" no se puede usar en nombres de colecciones.",
     "error_name_taken": "Ese nombre ya está en uso. Prueba con otro.",
-    "error_generic": "{variant, select, create {No pudimos crear tu colección. Inténtalo de nuevo.} other {No pudimos renombrar tu colección. Inténtalo de nuevo.}}",
-    "unique_hint": "El nombre debe ser único entre todas las colecciones de Decentraland."
+    "error_generic": "{variant, select, create {No pudimos crear tu colección. Inténtalo de nuevo.} other {No pudimos renombrar tu colección. Inténtalo de nuevo.}}"
   },
   "collection_detail_page": {
     "back": "Volver a colecciones",
@@ -184,10 +186,101 @@
       "title": "Inicia sesión para ver esta colección",
       "action": "Iniciar sesión"
     },
-    "showing": "Mostrando {range} de {total} {total, plural, one {ítem} other {ítems}}"
+    "showing": "Mostrando {range} de {total} {total, plural, one {ítem} other {ítems}}",
+    "publish_blocker": {
+      "no_items": "Agrega al menos un ítem para publicar tu colección.",
+      "too_many_items": "Una colección puede publicarse con hasta {max} ítems."
+    }
+  },
+  "publish_collection_modal": {
+    "title": "Publicar colección",
+    "step_label": "Paso {step} de {total}",
+    "cancel": "Cancelar",
+    "back": "Atrás",
+    "name_step": {
+      "title": "Confirma el nombre de tu colección",
+      "description": "El nombre de la colección no se puede modificar después de enviarla a revisión.",
+      "description_2": "Asegúrate de que no tenga errores de tipeo y de que no contenga propiedad intelectual que no te pertenezca (por ejemplo: Star Wars, Sailor Moon, etc.)",
+      "invalid_name": "Los nombres pueden tener hasta 32 caracteres y no pueden incluir \":\".",
+      "name_taken": "Ese nombre ya está en uso. Prueba con otro.",
+      "save_error": "No pudimos guardar el nuevo nombre. Inténtalo de nuevo.",
+      "checkbox": "Entiendo que una vez publicada no podré cambiar el nombre de la colección y confirmo que \"{name}\" no infringe derechos de propiedad intelectual de terceros.",
+      "confirm": "Confirmar nombre"
+    },
+    "items_step": {
+      "title": "Confirma tus ítems antes de publicar",
+      "subtitle": "No se pueden agregar ni eliminar ítems después de publicar. La rareza no se puede cambiar después de publicar.",
+      "description": "No podrás agregar ni quitar ítems ni cambiar su rareza después de publicar. Los demás detalles del ítem podrán editarse más adelante.",
+      "columns": {
+        "item": "Ítem",
+        "body_shape": "Tipo de cuerpo",
+        "category": "Categoría",
+        "rarity": "Rareza",
+        "actions": "Acciones"
+      },
+      "edit": "Editar ítem",
+      "edit_thumbnail": "Editar miniatura",
+      "delete": "Eliminar ítem",
+      "save": "Guardar cambios",
+      "cancel_edit": "Cancelar",
+      "name_placeholder": "Nombre del ítem",
+      "save_error": "No pudimos guardar el ítem. Inténtalo de nuevo.",
+      "empty": "Esta colección no tiene ítems para publicar. Agrega ítems antes de publicar.",
+      "checkbox": "Entiendo que una vez publicada no podré agregar ni quitar ítems, ni cambiar su rareza.",
+      "confirm": "Confirmar ítems"
+    },
+    "delete_item": {
+      "title": "¿Eliminar este ítem?",
+      "description": "\"{name}\" se quitará de la colección. Esta acción no se puede deshacer.",
+      "error": "No pudimos eliminar el ítem. Inténtalo de nuevo.",
+      "cancel": "Conservar ítem",
+      "confirm": "Eliminar ítem"
+    },
+    "payment_step": {
+      "title": "Confirmar y pagar",
+      "description": "Estás por enviar {count, plural, one {# ítem} other {# ítems}} de “{name}” a revisión. Elige un método de pago para pagar la <fee>tarifa de publicación</fee> y continuar.",
+      "fee_tooltip_title": "¿Qué es la tarifa de publicación?",
+      "fee_tooltip_body": "Una tarifa única que se paga al enviar tus ítems a revisión.",
+      "columns": {
+        "collection": "Colección",
+        "items": "Ítems",
+        "fee_per_item": "Tarifa por ítem",
+        "total_fee": "Tarifa total"
+      },
+      "items_count": "{count, plural, one {# ítem} other {# ítems}}",
+      "payment_method": "Método de pago",
+      "credits": "Créditos",
+      "credits_balance": "Saldo de créditos:",
+      "mana": "MANA",
+      "mana_balance": "Saldo de MANA:",
+      "buy": "Comprar",
+      "buy_credits": "Comprar créditos",
+      "buy_mana": "Comprar MANA",
+      "rate": "1 crédito = {mana} MANA",
+      "fee_error": "No pudimos cargar la tarifa de publicación.",
+      "retry": "Intentar de nuevo",
+      "approve_error": "La aprobación de MANA no se completó. Inténtalo de nuevo.",
+      "checkbox": "Acepto los <terms>Términos de uso</terms> y la <policy>Política de contenido</policy>. Entiendo que mi colección puede ser rechazada si no cumple con ellos y que la tarifa de publicación no es reembolsable.",
+      "submit": "Publicar y pagar"
+    },
+    "success": {
+      "title": "Colección enviada a revisión",
+      "description": "Tu colección está siendo revisada para su aprobación. Esto puede tardar hasta 5 minutos. Te avisaremos cuando la revisión esté completa.",
+      "done": "Listo"
+    },
+    "error": {
+      "title": "No pudimos publicar tu colección",
+      "description_generic": "Algo salió mal al publicar tu colección. No te preocupes, tus créditos están a salvo y volverán automáticamente a tu saldo en 5 a 10 minutos.",
+      "description_insufficient_credits": "No tienes suficientes créditos para cubrir la tarifa de publicación. Obtén más créditos e inténtalo de nuevo.",
+      "description_locked": "Esta colección ya se está publicando. Espera unos minutos y actualiza la página.",
+      "description_unsynced": "Los ítems de esta colección cambiaron mientras publicabas. Cierra este diálogo y vuelve a empezar.",
+      "cancel": "Cancelar",
+      "try_again": "Intentar de nuevo"
+    }
   },
   "rarity_select": {
-    "units": "{count, plural, one {# unidad} other {# unidades}}"
+    "units": "{count, plural, one {# unidad} other {# unidades}}",
+    "with_supply": "{label} ({count, number})"
   },
   "add_items_modal": {
     "title": "{count, plural, one {Detalles del ítem} other {Detalles de los ítems}}",
@@ -257,13 +350,6 @@
       "save_changes": "Guardar cambios",
       "keep_editing": "Seguir editando"
     },
-    "thumbnail": {
-      "title": "Miniatura del ítem",
-      "capture": "Guardar miniatura",
-      "upload_picture": "Subir imagen",
-      "wrong_format": "La miniatura debe ser una imagen PNG.",
-      "capture_failed": "No pudimos actualizar la miniatura. Inténtalo de nuevo."
-    },
     "file_error_label": "Archivo inválido",
     "file_error": {
       "wrong_extension": "Este tipo de archivo no es compatible. Usa {extensions}.",
@@ -284,6 +370,14 @@
       "invalid_model_file": "No pudimos cargar este modelo 3D. Revisa el archivo e inténtalo de nuevo.",
       "invalid_representation": "Este archivo no puede usarse como variante de tipo de cuerpo de ese ítem."
     }
+  },
+  "thumbnail_modal": {
+    "title": "Miniatura del ítem",
+    "capture": "Guardar miniatura",
+    "upload_picture": "Subir imagen",
+    "wrong_format": "La miniatura debe ser una imagen PNG.",
+    "capture_failed": "No pudimos actualizar la miniatura. Inténtalo de nuevo.",
+    "load_failed": "No pudimos cargar el ítem. Inténtalo de nuevo."
   },
   "item_validation": {
     "triangle_count_exceeded": "La cantidad de triángulos ({count}) supera el límite de {limit} para wearables de tipo {category}.",
