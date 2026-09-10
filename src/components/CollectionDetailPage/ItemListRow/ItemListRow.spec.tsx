@@ -131,10 +131,15 @@ describe('ItemListRow', () => {
   })
 
   it('shows a dash and offers to put on sale an item that is not on sale', () => {
-    renderRow({ tokenId: '3' }, { withMarket: true, listing: null })
+    renderRow({ tokenId: '3' }, { withMarket: true, listing: null, canSell: true })
     expect(screen.getByTestId('item-row-price')).toHaveTextContent('—')
     expect(screen.getByTestId('item-row-sales')).toHaveTextContent('0/100')
-    expect(screen.getByRole('button', { name: /put on sale/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /put on sale/i })).toBeEnabled()
+  })
+
+  it('keeps the put on sale action disabled while the collection awaits its first approval', () => {
+    renderRow({ tokenId: '3' }, { withMarket: true, listing: null })
+    expect(screen.getByRole('button', { name: /put on sale/i })).toBeDisabled()
   })
 
   it('shows every unit minted and a sold-out status for a sold-out item', () => {

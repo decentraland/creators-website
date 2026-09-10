@@ -167,10 +167,13 @@ export function getCollectionDisplayStatus(collection: Collection): CollectionDi
 
 /**
  * Published and approved at least once: the collection is on the market even while a later change of
- * its items is being reviewed again, so its items carry a price and sales.
+ * its items is being reviewed again. The contract stamps `reviewedAt` with `createdAt` on creation,
+ * so only a later review counts.
  */
 export function hasBeenApproved(collection: Collection): boolean {
-  return collection.isPublished && (collection.isApproved || collection.reviewedAt !== undefined)
+  if (!collection.isPublished) return false
+  if (collection.isApproved) return true
+  return collection.reviewedAt !== undefined && collection.reviewedAt !== collection.createdAt
 }
 
 export enum CollectionRole {

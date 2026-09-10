@@ -137,7 +137,8 @@
     "sale_status": {
       "put_on_sale": "Put on sale",
       "on_sale": "On sale",
-      "sold_out": "Sold out"
+      "sold_out": "Sold out",
+      "awaiting_approval": "Available once the collection is approved"
     },
     "play_mode": {
       "loop": "Loop",

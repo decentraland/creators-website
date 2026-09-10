@@ -14,8 +14,15 @@ function renderStatus(props: Parameters<typeof ItemSaleStatus>[0]) {
 
 describe('ItemSaleStatus', () => {
   it('offers to put an item on sale when it has no listing', () => {
-    renderStatus({ sales: { minted: 3, maxSupply: 100 }, listing: null })
-    expect(screen.getByRole('button', { name: /put on sale/i })).toBeInTheDocument()
+    renderStatus({ sales: { minted: 3, maxSupply: 100 }, listing: null, canSell: true })
+    expect(screen.getByRole('button', { name: /put on sale/i })).toBeEnabled()
+  })
+
+  it('disables putting an item on sale until the collection is approved for the first time', () => {
+    renderStatus({ sales: { minted: 0, maxSupply: 100 }, listing: null, canSell: false })
+    const button = screen.getByRole('button', { name: /put on sale/i })
+    expect(button).toBeDisabled()
+    expect(button).toHaveAccessibleDescription(/approved/i)
   })
 
   it('shows the item is on sale when it has a listing', () => {

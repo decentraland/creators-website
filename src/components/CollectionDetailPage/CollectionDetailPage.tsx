@@ -83,8 +83,10 @@ const CollectionDetailPage = () => {
   // Play Mode is an emote-only attribute; the column exists only while the visible page has emotes.
   const withPlayMode = useMemo(() => results.some(item => item.type === ItemType.EMOTE), [results])
   useSyncPublishedItems(address, collection, allItems ?? [])
-  // Price and Sales exist once the collection has been approved at least once, even if it is under review again.
-  const withMarket = !!collection && hasBeenApproved(collection)
+  // Price, Sales and Sale Status exist once the collection is published; items can only be put on sale
+  // once it has been approved at least once, even if it is under review again.
+  const withMarket = !!collection?.isPublished
+  const canSell = !!collection && hasBeenApproved(collection)
   const listingsQuery = useCollectionListings(withMarket ? collection.contractAddress : undefined)
   const listings = listingsQuery.data
   // `undefined` keeps the price cell blank while the catalog loads; a failed request shows no price rather than an error.
@@ -403,6 +405,7 @@ const CollectionDetailPage = () => {
                     withPlayMode={withPlayMode}
                     withMarket={withMarket}
                     listing={withMarket ? listingFor(item) : undefined}
+                    canSell={canSell}
                     actions={
                       address && (
                         <ItemActionsMenu

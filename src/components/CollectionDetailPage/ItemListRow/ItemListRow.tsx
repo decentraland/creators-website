@@ -23,11 +23,20 @@ type Props = {
   withMarket?: boolean
   /** The item's primary listing: `null` when it has none, `undefined` while listings are still loading. */
   listing?: ItemListing | null
+  /** Whether the collection has been approved at least once, so its items can be put on sale. */
+  canSell?: boolean
   /** The row's ⋯ menu; the page supplies it once the viewer is signed in. */
   actions?: ReactNode
 }
 
-export function ItemListRow({ item, withPlayMode = false, withMarket = false, listing, actions }: Props) {
+export function ItemListRow({
+  item,
+  withPlayMode = false,
+  withMarket = false,
+  listing,
+  canSell = false,
+  actions
+}: Props) {
   const { t } = useTranslation()
   const intl = useIntl()
 
@@ -98,7 +107,7 @@ export function ItemListRow({ item, withPlayMode = false, withMarket = false, li
               {sales ? `${intl.formatNumber(sales.minted)}/${intl.formatNumber(sales.maxSupply)}` : EMPTY}
             </S.Cell>
             <S.Cell data-testid="item-row-sale-status" data-empty={listing === undefined || undefined}>
-              <ItemSaleStatus sales={sales} listing={listing} />
+              <ItemSaleStatus sales={sales} listing={listing} canSell={canSell} />
             </S.Cell>
           </>
         )}

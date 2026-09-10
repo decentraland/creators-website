@@ -132,6 +132,8 @@ describe('hasBeenApproved', () => {
   it('is false for drafts and for a first review', () => {
     expect(hasBeenApproved({ ...base, isPublished: false, isApproved: false })).toBe(false)
     expect(hasBeenApproved({ ...base, isPublished: true, isApproved: false, reviewedAt: undefined })).toBe(false)
+    // The contract stamps reviewedAt with createdAt on creation, before any review.
+    expect(hasBeenApproved({ ...base, isPublished: true, isApproved: false, reviewedAt: base.createdAt })).toBe(false)
   })
 })
 

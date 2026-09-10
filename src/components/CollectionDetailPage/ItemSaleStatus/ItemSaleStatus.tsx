@@ -9,10 +9,12 @@ type Props = {
   sales: ItemSales | undefined
   /** The item's primary listing: `null` when it has none, `undefined` while listings are still loading. */
   listing: ItemListing | null | undefined
+  /** Whether the collection has been approved at least once; until then the "Put on sale" CTA is disabled. */
+  canSell?: boolean
 }
 
 /** Sold out / on sale pill, or the "Put on sale" CTA; nothing while listings are still loading. */
-export function ItemSaleStatus({ sales, listing }: Props) {
+export function ItemSaleStatus({ sales, listing, canSell = false }: Props) {
   const { t } = useTranslation()
 
   if (sales && sales.minted >= sales.maxSupply) {
@@ -38,8 +40,9 @@ export function ItemSaleStatus({ sales, listing }: Props) {
       data-testid="item-sale-status"
       data-status="not_on_sale"
       type="button"
+      disabled={!canSell}
       aria-disabled
-      title={t('collection_detail_page.coming_soon')}
+      title={t(canSell ? 'collection_detail_page.coming_soon' : 'collection_detail_page.sale_status.awaiting_approval')}
     >
       <PriceTagIcon />
       {t('collection_detail_page.sale_status.put_on_sale')}
