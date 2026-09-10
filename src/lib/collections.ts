@@ -235,3 +235,40 @@ export function toRemoteCollection(
     reviewed_at: collection.reviewedAt ? new Date(collection.reviewedAt).toISOString() : null
   }
 }
+
+/** The latest curation request of a collection: what the committee has (or hasn't) answered. */
+export type CollectionCuration = {
+  id: string
+  collectionId: string
+  status: CurationStatus
+  assignee?: string
+  createdAt: number
+  updatedAt: number
+}
+
+export type RemoteCollectionCuration = {
+  id: string
+  collection_id: string
+  status: CurationStatus
+  assignee: string | null
+  created_at: string
+  updated_at: string
+}
+
+export function fromRemoteCollectionCuration(remote: RemoteCollectionCuration): CollectionCuration {
+  return {
+    id: remote.id,
+    collectionId: remote.collection_id,
+    status: remote.status,
+    assignee: remote.assignee ?? undefined,
+    createdAt: +new Date(remote.created_at),
+    updatedAt: +new Date(remote.updated_at)
+  }
+}
+
+/** Owners and collaborators (managers) may change a collection's items; minters only sell them. */
+export function canManageCollectionItems(collection: Collection, address: string | undefined): boolean {
+  if (!address) return false
+  const target = address.toLowerCase()
+  return collection.owner.toLowerCase() === target || collection.managers.some(m => m.toLowerCase() === target)
+}

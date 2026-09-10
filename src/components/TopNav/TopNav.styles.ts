@@ -60,6 +60,14 @@ export const NavbarViolet = styled.div`
     background-color: rgba(255, 255, 255, 0.18);
   }
 
+  /* ui2 sizes the avatar only under max-width: 991px / min-width: 992px. At a fractional viewport
+     width in between (browser zoom, DPR scaling) neither matches, the button has no size and the
+     <img> at width: 100% renders at its intrinsic size. Clamp to ui2's desktop size as a guard. */
+  & nav button[aria-label='User menu'] {
+    max-width: 48px;
+    max-height: 48px;
+  }
+
   /* Signed-in right cluster: force the cluster's buttons and any svg glyph to white so they read on
      the dark bar. The profile pic is an <img>, so it isn't affected by color/fill. */
   & nav > div:last-of-type button {

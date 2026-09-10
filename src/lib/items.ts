@@ -1,6 +1,6 @@
 // Item domain model + wire mapping for builder-server, ported from the legacy builder
 // (src/modules/item + lib/api/builder.ts) so both apps read the same API identically.
-import { CollectionDisplayStatus } from './collections'
+import { CollectionDisplayStatus, canManageCollectionItems, type Collection } from './collections'
 import { getRarityMaxSupply } from './rarities'
 
 export enum ItemType {
@@ -251,4 +251,10 @@ function getEmoteOutcomeType(item: Item): string {
   if (!outcomes || outcomes.length === 0) return ''
   if (outcomes.length === 1) return 'so'
   return randomizeOutcomes ? 'ro' : 'mo'
+}
+
+/** The item's creator, or anyone who manages its collection, may edit, move, reset or delete it. */
+export function canManageItem(collection: Collection, item: Item, address: string | undefined): boolean {
+  if (!address) return false
+  return item.owner.toLowerCase() === address.toLowerCase() || canManageCollectionItems(collection, address)
 }

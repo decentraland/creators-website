@@ -130,9 +130,15 @@
       "rarity": "Rareza",
       "price": "Precio",
       "sales": "Ventas",
+      "sale_status": "Estado de venta",
       "actions": "Acciones"
     },
     "row_actions": "Acciones del ítem",
+    "sale_status": {
+      "put_on_sale": "Poner en venta",
+      "on_sale": "En venta",
+      "sold_out": "Agotado"
+    },
     "play_mode": {
       "loop": "En bucle",
       "simple": "Una vez"
@@ -210,6 +216,44 @@
       "credits": "{amount} créditos",
       "mana": "{amount} MANA",
       "free": "Gratis"
+    },
+    "delete_item": {
+      "title": "¿Eliminar este ítem?",
+      "description": "\"{name}\" se quitará de la colección. Esta acción no se puede deshacer.",
+      "error": "No pudimos eliminar el ítem. Inténtalo de nuevo.",
+      "cancel": "Conservar ítem",
+      "confirm": "Eliminar ítem"
+    },
+    "item_actions": {
+      "copy_urn": "Copiar URN",
+      "copied_urn": "URN del ítem copiado al portapapeles",
+      "preview": "Vista previa en el editor",
+      "move": "Mover a otra colección",
+      "edit_price": "Editar precio",
+      "remove_from_sale": "Quitar de la venta",
+      "reset": "Restablecer ítem",
+      "delete": "Eliminar ítem",
+      "deleted": "“{name}” fue eliminado",
+      "move_modal": {
+        "title": "Mover a otra colección",
+        "description": "Selecciona la colección en borrador a la que mover “{name}”.",
+        "collection": "Colección",
+        "placeholder": "Selecciona una colección",
+        "loading": "Cargando tus colecciones en borrador…",
+        "empty": "No hay otras colecciones en borrador a las que moverlo.",
+        "error": "No pudimos mover el ítem. Inténtalo de nuevo.",
+        "cancel": "Cancelar",
+        "confirm": "Mover ítem",
+        "moved": "“{item}” se movió a “{collection}”"
+      },
+      "reset_modal": {
+        "title": "¿Restablecer cambios?",
+        "description": "Esta versión de “{name}” es distinta de la aprobada por el comité y visible en Decentraland. Al restablecer, se descartan tus cambios y se restaura la versión aprobada.",
+        "error": "No pudimos restablecer el ítem. Inténtalo de nuevo.",
+        "cancel": "Conservar cambios",
+        "confirm": "Restablecer ítem",
+        "done": "“{name}” se restableció a su versión aprobada"
+      }
     }
   },
   "publish_collection_modal": {
@@ -248,13 +292,6 @@
       "empty": "Esta colección no tiene ítems para publicar. Agrega ítems antes de publicar.",
       "checkbox": "Entiendo que una vez publicada no podré agregar ni quitar ítems, ni cambiar su rareza.",
       "confirm": "Confirmar ítems"
-    },
-    "delete_item": {
-      "title": "¿Eliminar este ítem?",
-      "description": "\"{name}\" se quitará de la colección. Esta acción no se puede deshacer.",
-      "error": "No pudimos eliminar el ítem. Inténtalo de nuevo.",
-      "cancel": "Conservar ítem",
-      "confirm": "Eliminar ítem"
     },
     "payment_step": {
       "title": "Confirmar y pagar",

@@ -5,7 +5,7 @@ import { itemListColumns } from './ItemListRow/ItemListRow.styles'
 export { FooterRow, Panel, PanelText, PanelTitle, ShowingCount } from '~/styles/shared'
 
 const mobile = theme.media.maxWidth('mobile')
-const noActions = theme.media.maxWidth('lg')
+const noActions = theme.media.noActions
 
 export const Page = styled.div`
   display: flex;
@@ -199,6 +199,19 @@ export const List = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow-x: auto;
+
+  & > * {
+    min-width: 1000px;
+  }
+
+  ${noActions} {
+    overflow-x: visible;
+
+    & > * {
+      min-width: 0;
+    }
+  }
 `
 
 export const ListHeader = styled.div`
@@ -221,7 +234,7 @@ export const ListHeader = styled.div`
     text-align: center;
   }
 
-  ${mobile} {
+  ${noActions} {
     display: none;
   }
 `

@@ -24,6 +24,7 @@ import {
 import { MAX_PUBLISH_ITEMS, getPublishBlocker } from '~/lib/publishCollection'
 import { useSyncPublishedItems } from '~/hooks/usePublishCollection'
 import { useCollectionListings } from '~/hooks/useCollectionListings'
+import { useItemSyncs } from '~/hooks/useItemSync'
 import { previewCollection } from '~/lib/explorer'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS } from '~/lib/itemFiles'
@@ -37,6 +38,7 @@ import { Pagination } from '~/components/Pagination'
 import addItemsArt from '~/assets/add-items.png'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { AddItemsModal } from './AddItemsModal'
+import { ItemActionsMenu } from './ItemActionsMenu'
 import { ItemListRow } from './ItemListRow'
 import { PublishCollectionModal, PublishSuccessModal } from './PublishCollectionModal'
 import * as S from './CollectionDetailPage.styles'
@@ -88,6 +90,7 @@ const CollectionDetailPage = () => {
   // `undefined` keeps the price cell blank while the catalog loads; a failed request shows no price rather than an error.
   const listingFor = (item: Item) =>
     listings ? (listings.get(item.tokenId ?? '') ?? null) : listingsQuery.isError ? null : undefined
+  const syncs = useItemSyncs(address, collection, allItems ?? [])
 
   const isLoading = !restored || (!!address && (collectionQuery.isLoading || itemsQuery.isLoading))
   const isNotFound =
@@ -386,6 +389,7 @@ const CollectionDetailPage = () => {
                     <>
                       <span data-testid="list-header-price">{t('collection_detail_page.list.price')}</span>
                       <span data-testid="list-header-sales">{t('collection_detail_page.list.sales')}</span>
+                      <span data-testid="list-header-sale-status">{t('collection_detail_page.list.sale_status')}</span>
                     </>
                   )}
                   <S.ListHeaderActions>{t('collection_detail_page.list.actions')}</S.ListHeaderActions>
@@ -397,6 +401,17 @@ const CollectionDetailPage = () => {
                     withPlayMode={withPlayMode}
                     withMarket={withMarket}
                     listing={withMarket ? listingFor(item) : undefined}
+                    actions={
+                      address && (
+                        <ItemActionsMenu
+                          item={item}
+                          collection={collection}
+                          address={address}
+                          sync={syncs.get(item.id)}
+                          listing={withMarket ? listingFor(item) : undefined}
+                        />
+                      )
+                    }
                   />
                 ))}
               </S.List>

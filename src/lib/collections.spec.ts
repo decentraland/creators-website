@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   COLLECTION_NAME_MAX_LENGTH,
   CollectionDisplayStatus,
+  canManageCollectionItems,
   CollectionSort,
   CollectionStatusFilter,
   CollectionType,
@@ -212,5 +213,28 @@ describe('toRemoteCollection', () => {
     expect(payload.contract_address).toBeNull()
     expect(payload.forum_link).toBeNull()
     expect(payload.reviewed_at).toBeNull()
+  })
+})
+
+describe('canManageCollectionItems', () => {
+  const collection: Collection = {
+    id: 'c1',
+    name: 'Hats',
+    owner: '0xOwner',
+    urn: 'urn',
+    isPublished: false,
+    isApproved: false,
+    itemCount: 0,
+    minters: ['0xMinter'],
+    managers: ['0xManager'],
+    createdAt: 1,
+    updatedAt: 1
+  }
+
+  it('is granted to the owner and collaborators regardless of address casing, never to minters', () => {
+    expect(canManageCollectionItems(collection, '0xowner')).toBe(true)
+    expect(canManageCollectionItems(collection, '0xMANAGER')).toBe(true)
+    expect(canManageCollectionItems(collection, '0xminter')).toBe(false)
+    expect(canManageCollectionItems(collection, undefined)).toBe(false)
   })
 })

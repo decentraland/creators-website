@@ -1,4 +1,4 @@
-import { MoreHoriz as MoreHorizIcon } from '@mui/icons-material'
+import { type ReactNode } from 'react'
 import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'
 import { ItemType, getItemBodyShapeType, getItemSales, type Item } from '~/lib/items'
@@ -9,6 +9,7 @@ import { CurrencyAmount } from '~/components/CurrencyAmount'
 import { BodyShapeIcon, CategoryIcon, PlayModeIcon } from '~/components/ItemIcons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { RarityPill } from '~/components/RarityPill'
+import { ItemSaleStatus } from '../ItemSaleStatus'
 import * as S from './ItemListRow.styles'
 
 const EMPTY = '—'
@@ -17,17 +18,19 @@ type Props = {
   item: Item
   /** Lay out the Play Mode column; the list shows it only when the current view has emotes. */
   withPlayMode?: boolean
-  /** Lay out the Price and Sales columns; the list shows them once the collection has been published. */
+  /** Lay out the Price, Sales and Sale Status columns; the list shows them once the collection has been published. */
   withMarket?: boolean
   /** The item's primary listing: `null` when it has none, `undefined` while listings are still loading. */
   listing?: ItemListing | null
+  /** The row's ⋯ menu; the page supplies it once the viewer is signed in. */
+  actions?: ReactNode
 }
 
 function formatCount(value: number): string {
   return value.toLocaleString('en-US')
 }
 
-export function ItemListRow({ item, withPlayMode = false, withMarket = false, listing }: Props) {
+export function ItemListRow({ item, withPlayMode = false, withMarket = false, listing, actions }: Props) {
   const { t } = useTranslation()
 
   const thumbnailHash = item.contents[item.thumbnail]
@@ -96,19 +99,13 @@ export function ItemListRow({ item, withPlayMode = false, withMarket = false, li
             <S.Cell data-testid="item-row-sales" data-empty={!sales || undefined}>
               {sales ? `${formatCount(sales.minted)}/${formatCount(sales.maxSupply)}` : EMPTY}
             </S.Cell>
+            <S.Cell data-testid="item-row-sale-status" data-empty={listing === undefined || undefined}>
+              <ItemSaleStatus sales={sales} listing={listing} />
+            </S.Cell>
           </>
         )}
       </S.Content>
-      <S.ActionsCell>
-        <S.ActionsButton
-          type="button"
-          aria-label={t('collection_detail_page.row_actions')}
-          aria-disabled
-          title={t('collection_detail_page.coming_soon')}
-        >
-          <MoreHorizIcon fontSize="small" />
-        </S.ActionsButton>
-      </S.ActionsCell>
+      <S.ActionsCell>{actions}</S.ActionsCell>
     </S.Row>
   )
 }

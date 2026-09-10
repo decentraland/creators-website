@@ -114,6 +114,7 @@ describe('ItemListRow', () => {
     expect(price).toHaveAttribute('data-currency', 'credits')
     expect(price.previousElementSibling).toBe(screen.getByTestId('item-row-rarity'))
     expect(screen.getByTestId('item-row-sales')).toHaveTextContent('15/100')
+    expect(screen.getByTestId('item-row-sale-status')).toHaveTextContent(/on sale/i)
   })
 
   it('shows a MANA price for a listing made from the legacy marketplace', () => {
@@ -129,20 +130,24 @@ describe('ItemListRow', () => {
     expect(screen.getByTestId('item-row-price')).toHaveTextContent('Free')
   })
 
-  it('shows a dash for an item that is not on sale', () => {
+  it('shows a dash and offers to put on sale an item that is not on sale', () => {
     renderRow({ tokenId: '3' }, { withMarket: true, listing: null })
     expect(screen.getByTestId('item-row-price')).toHaveTextContent('—')
     expect(screen.getByTestId('item-row-sales')).toHaveTextContent('0/100')
+    expect(screen.getByRole('button', { name: /put on sale/i })).toBeInTheDocument()
   })
 
-  it('shows every unit minted for a sold-out item', () => {
+  it('shows every unit minted and a sold-out status for a sold-out item', () => {
     renderRow({ tokenId: '3', totalSupply: 100 }, { withMarket: true, listing: null })
     expect(screen.getByTestId('item-row-price')).toHaveTextContent('—')
     expect(screen.getByTestId('item-row-sales')).toHaveTextContent('100/100')
+    expect(screen.getByTestId('item-row-sale-status')).toHaveTextContent(/sold out/i)
+    expect(screen.queryByRole('button', { name: /put on sale/i })).not.toBeInTheDocument()
   })
 
-  it('leaves the price blank while listings are loading', () => {
+  it('leaves the price and sale status blank while listings are loading', () => {
     renderRow({ tokenId: '3' }, { withMarket: true })
     expect(screen.getByTestId('item-row-price')).toBeEmptyDOMElement()
+    expect(screen.getByTestId('item-row-sale-status')).toBeEmptyDOMElement()
   })
 })

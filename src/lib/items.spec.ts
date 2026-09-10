@@ -4,6 +4,7 @@ import {
   BODY_SHAPE_FEMALE,
   BODY_SHAPE_MALE,
   BodyShapeType,
+  canManageItem,
   fromRemoteItem,
   getItemBodyShapeType,
   getItemDisplayStatus,
@@ -221,5 +222,34 @@ describe('getItemSales', () => {
 
   it('has no sales without a rarity', () => {
     expect(getItemSales({ ...base, rarity: undefined })).toBeUndefined()
+  })
+})
+
+describe('canManageItem', () => {
+  const collection = {
+    id: 'c1',
+    name: 'Hats',
+    owner: '0xOwner',
+    urn: 'urn',
+    isPublished: false,
+    isApproved: false,
+    itemCount: 1,
+    minters: ['0xMinter'],
+    managers: ['0xManager'],
+    createdAt: 1,
+    updatedAt: 1
+  }
+  const item = fromRemoteItem({ ...remote, eth_address: '0xCreator' })
+
+  it('lets the item creator, the collection owner and its collaborators manage the item', () => {
+    expect(canManageItem(collection, item, '0xcreator')).toBe(true)
+    expect(canManageItem(collection, item, '0xowner')).toBe(true)
+    expect(canManageItem(collection, item, '0xmanager')).toBe(true)
+  })
+
+  it('keeps minters and strangers out', () => {
+    expect(canManageItem(collection, item, '0xminter')).toBe(false)
+    expect(canManageItem(collection, item, '0xother')).toBe(false)
+    expect(canManageItem(collection, item, undefined)).toBe(false)
   })
 })

@@ -130,9 +130,15 @@
       "rarity": "Rarity",
       "price": "Price",
       "sales": "Sales",
+      "sale_status": "Sale Status",
       "actions": "Actions"
     },
     "row_actions": "Item actions",
+    "sale_status": {
+      "put_on_sale": "Put on sale",
+      "on_sale": "On sale",
+      "sold_out": "Sold out"
+    },
     "play_mode": {
       "loop": "Loop",
       "simple": "Play Once"
@@ -210,6 +216,44 @@
       "credits": "{amount} credits",
       "mana": "{amount} MANA",
       "free": "Free"
+    },
+    "delete_item": {
+      "title": "Delete this item?",
+      "description": "\"{name}\" will be removed from the collection. This can't be undone.",
+      "error": "We couldn't delete the item. Please try again.",
+      "cancel": "Keep item",
+      "confirm": "Delete item"
+    },
+    "item_actions": {
+      "copy_urn": "Copy URN",
+      "copied_urn": "Item URN copied to clipboard",
+      "preview": "Preview in editor",
+      "move": "Move to another collection",
+      "edit_price": "Edit price",
+      "remove_from_sale": "Remove from sale",
+      "reset": "Reset item",
+      "delete": "Delete item",
+      "deleted": "“{name}” was deleted",
+      "move_modal": {
+        "title": "Move to another collection",
+        "description": "Select the draft collection to move “{name}” to.",
+        "collection": "Collection",
+        "placeholder": "Select a collection",
+        "loading": "Loading your draft collections…",
+        "empty": "No other draft collections to move it to.",
+        "error": "We couldn't move the item. Please try again.",
+        "cancel": "Cancel",
+        "confirm": "Move item",
+        "moved": "“{item}” moved to “{collection}”"
+      },
+      "reset_modal": {
+        "title": "Reset changes?",
+        "description": "This version of “{name}” differs from the one approved by the committee and shown in Decentraland. Resetting discards your changes and restores the approved version.",
+        "error": "We couldn't reset the item. Please try again.",
+        "cancel": "Keep changes",
+        "confirm": "Reset item",
+        "done": "“{name}” was reset to its approved version"
+      }
     }
   },
   "publish_collection_modal": {
@@ -248,13 +292,6 @@
       "empty": "This collection has no items left to publish. Add items before publishing.",
       "checkbox": "I understand that once published I won't be able to add or remove items, or change their rarity.",
       "confirm": "Confirm Items"
-    },
-    "delete_item": {
-      "title": "Delete this item?",
-      "description": "\"{name}\" will be removed from the collection. This can't be undone.",
-      "error": "We couldn't delete the item. Please try again.",
-      "cancel": "Keep item",
-      "confirm": "Delete item"
     },
     "payment_step": {
       "title": "Confirm & Pay",

@@ -1,12 +1,13 @@
 import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
 
-const mobile = theme.media.maxWidth('mobile')
+// Below the actions breakpoint the table row reshapes into a card; see theme.media.noActions.
+const card = theme.media.noActions
 
 // Shared column template so the header and the rows stay aligned: thumbnail, then equal columns
-// (name, body shape, category, [play mode], rarity, [price, sales]), then actions. The header's "Item"
+// (name, body shape, category, [play mode], rarity, [price, sales, sale status]), then actions. The header's "Item"
 // spans the first two. Play Mode is only laid out when the list being shown has emotes; Price and
-// Sales only once the collection has been published.
+// Sales and Sale Status only once the collection has been published.
 const columns = (count: number) => `grid-template-columns: 74px repeat(${count}, minmax(0, 1fr)) minmax(56px, auto);`
 
 export const itemListColumns = `
@@ -19,10 +20,10 @@ export const itemListColumns = `
     ${columns(5)}
   }
   &[data-with-market] {
-    ${columns(6)}
+    ${columns(7)}
   }
   &[data-with-play-mode][data-with-market] {
-    ${columns(7)}
+    ${columns(8)}
   }
 `
 
@@ -32,7 +33,7 @@ export const Row = styled.article`
   border-radius: ${theme.radius.card};
   background: ${theme.colors.overlay};
 
-  ${mobile} {
+  ${card} {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -40,11 +41,11 @@ export const Row = styled.article`
   }
 `
 
-// Transparent on desktop so name and fields stay grid children; a wrapping row beside the thumbnail on mobile.
+// Transparent in the table so name and fields stay grid children; a wrapping row beside the thumbnail in the card.
 export const Content = styled.div`
   display: contents;
 
-  ${mobile} {
+  ${card} {
     display: flex;
     flex: 1;
     flex-wrap: wrap;
@@ -62,7 +63,7 @@ export const Thumb = styled.div`
   border-radius: 6px;
   overflow: hidden;
 
-  ${mobile} {
+  ${card} {
     width: 62px;
     height: 62px;
   }
@@ -89,10 +90,10 @@ export const Cell = styled.div`
   display: flex;
   justify-content: center;
 
-  ${mobile} {
+  ${card} {
     justify-content: flex-start;
 
-    /* The desktop grid needs the "—" to keep columns aligned; the wrapped mobile row does not. */
+    /* The table grid needs the "—" to keep columns aligned; the wrapped card does not. */
     &[data-empty] {
       display: none;
     }
@@ -110,28 +111,7 @@ export const ActionsCell = styled.div`
   display: flex;
   justify-content: flex-end;
 
-  ${mobile} {
+  ${theme.media.noActions} {
     display: none;
-  }
-`
-
-export const ActionsButton = styled.button`
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid ${theme.colors.lineStrong};
-  border-radius: ${theme.radius.chip};
-  background: none;
-  color: ${theme.colors.softWhite};
-
-  &:hover {
-    background: ${theme.colors.glass};
-  }
-  &[aria-disabled] {
-    opacity: 0.6;
-    cursor: default;
   }
 `

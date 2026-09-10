@@ -131,7 +131,13 @@ export type Breakpoint = keyof typeof breakpoints
 
 const media = {
   maxWidth: (bp: Breakpoint) => `@media (max-width: ${breakpoints[bp]}px)`,
-  minWidth: (bp: Breakpoint) => `@media (min-width: ${breakpoints[bp] + 1}px)`
+  // Exact complement of maxWidth. `min-width: bp + 1` leaves a gap for fractional viewport widths
+  // (browser zoom, DPR scaling) where neither query matches and unstyled layout leaks through.
+  minWidth: (bp: Breakpoint) => `@media not all and (max-width: ${breakpoints[bp]}px)`,
+  /** Below this width the app is a viewer: header buttons and row menus that manage collections are hidden. */
+  noActions: `@media (max-width: ${breakpoints.lg}px)`,
+  /** Exact complement of `noActions`: the table layouts with their actions column. */
+  withActions: `@media not all and (max-width: ${breakpoints.lg}px)`
 }
 
 export const theme = { colors, rarities, gradients, radius, font, media, z }

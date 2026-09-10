@@ -15,18 +15,18 @@ export function DeleteItemModal({ item, isDeleting, error, onCancel, onConfirm }
   const { t } = useTranslation()
   return (
     <ConfirmModal
-      title={t('publish_collection_modal.delete_item.title')}
-      description={t('publish_collection_modal.delete_item.description', { name: item.name })}
-      error={error ? t('publish_collection_modal.delete_item.error') : null}
+      title={t('collection_detail_page.delete_item.title')}
+      description={t('collection_detail_page.delete_item.description', { name: item.name })}
+      error={error ? t('collection_detail_page.delete_item.error') : null}
       busy={isDeleting}
       onClose={onCancel}
       cancel={{
-        label: t('publish_collection_modal.delete_item.cancel'),
+        label: t('collection_detail_page.delete_item.cancel'),
         onClick: onCancel,
         testId: 'delete-item-cancel'
       }}
       confirm={{
-        label: t('publish_collection_modal.delete_item.confirm'),
+        label: t('collection_detail_page.delete_item.confirm'),
         onClick: onConfirm,
         testId: 'delete-item-confirm'
       }}

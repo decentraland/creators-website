@@ -5,6 +5,7 @@ export const Form = styled.form`
   display: flex;
   flex-direction: column;
   gap: 48px;
+  margin-top: 48px;
 `
 
 export const Intro = styled.div`
