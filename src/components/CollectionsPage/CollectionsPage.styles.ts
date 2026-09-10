@@ -7,7 +7,7 @@ import { SearchBox as SharedSearchBox } from '~/styles/shared'
 export { FooterRow, Panel, PanelText, PanelTitle, Spinner, ShowingCount } from '~/styles/shared'
 
 const mobile = theme.media.maxWidth('mobile')
-const noActions = theme.media.maxWidth('lg')
+const noActions = theme.media.noActions
 const stacked = theme.media.maxWidth('xl')
 
 export const Page = styled.div`
@@ -180,6 +180,14 @@ export const List = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
+
+  ${theme.media.withActions} {
+    overflow-x: auto;
+
+    & > * {
+      min-width: 950px;
+    }
+  }
 `
 
 export const ListHeader = styled.div`
@@ -197,7 +205,7 @@ export const ListHeader = styled.div`
     text-align: left;
   }
 
-  ${mobile} {
+  ${noActions} {
     display: none;
   }
 `

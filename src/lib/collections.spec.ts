@@ -2,12 +2,16 @@ import { describe, it, expect } from 'vitest'
 import {
   COLLECTION_NAME_MAX_LENGTH,
   CollectionDisplayStatus,
+  canManageCollectionItems,
   CollectionSort,
   CollectionStatusFilter,
   CollectionType,
   CurationStatus,
   fromRemoteCollection,
   getCollectionDisplayStatus,
+  getCollectionRole,
+  CollectionRole,
+  hasBeenApproved,
   isCollectionLocked,
   statusFilterToParams,
   toCollectionsQueryString,
@@ -117,6 +121,39 @@ describe('getCollectionDisplayStatus', () => {
   })
 })
 
+describe('hasBeenApproved', () => {
+  const base = fromRemoteCollection(remote)
+
+  it('is true for an approved collection and for one reviewed before that is under review again', () => {
+    expect(hasBeenApproved({ ...base, isPublished: true, isApproved: true })).toBe(true)
+    expect(hasBeenApproved({ ...base, isPublished: true, isApproved: false, reviewedAt: 1 })).toBe(true)
+  })
+
+  it('is false for drafts and for a first review', () => {
+    expect(hasBeenApproved({ ...base, isPublished: false, isApproved: false })).toBe(false)
+    expect(hasBeenApproved({ ...base, isPublished: true, isApproved: false, reviewedAt: undefined })).toBe(false)
+  })
+})
+
+describe('getCollectionRole', () => {
+  const base: Collection = {
+    ...fromRemoteCollection(remote),
+    owner: '0xOwner',
+    managers: ['0xManager'],
+    minters: ['0xMinter', '0xManager']
+  }
+
+  it('reports collaborator or minter for non-owners, case-insensitively', () => {
+    expect(getCollectionRole(base, '0xmanager')).toBe(CollectionRole.COLLABORATOR)
+    expect(getCollectionRole(base, '0xMINTER')).toBe(CollectionRole.MINTER)
+  })
+
+  it('reports no role for the owner or a stranger', () => {
+    expect(getCollectionRole(base, '0xowner')).toBeNull()
+    expect(getCollectionRole(base, '0xother')).toBeNull()
+  })
+})
+
 describe('validateCollectionName', () => {
   it('rejects empty, over-long and colon-containing names, accepts the rest', () => {
     expect(validateCollectionName('')).toBe('empty')
@@ -176,5 +213,28 @@ describe('toRemoteCollection', () => {
     expect(payload.contract_address).toBeNull()
     expect(payload.forum_link).toBeNull()
     expect(payload.reviewed_at).toBeNull()
+  })
+})
+
+describe('canManageCollectionItems', () => {
+  const collection: Collection = {
+    id: 'c1',
+    name: 'Hats',
+    owner: '0xOwner',
+    urn: 'urn',
+    isPublished: false,
+    isApproved: false,
+    itemCount: 0,
+    minters: ['0xMinter'],
+    managers: ['0xManager'],
+    createdAt: 1,
+    updatedAt: 1
+  }
+
+  it('is granted to the owner and collaborators regardless of address casing, never to minters', () => {
+    expect(canManageCollectionItems(collection, '0xowner')).toBe(true)
+    expect(canManageCollectionItems(collection, '0xMANAGER')).toBe(true)
+    expect(canManageCollectionItems(collection, '0xminter')).toBe(false)
+    expect(canManageCollectionItems(collection, undefined)).toBe(false)
   })
 })

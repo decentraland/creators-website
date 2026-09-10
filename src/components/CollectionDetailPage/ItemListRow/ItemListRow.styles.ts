@@ -1,15 +1,26 @@
 import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
 
-const mobile = theme.media.maxWidth('mobile')
+const card = theme.media.noActions
 
-// Shared column template so the header and the rows stay aligned: thumbnail, then four equal
-// columns (name, body shape, category, rarity), then actions. The header's "Item" spans the first two.
+// Shared by the header and the rows so they stay aligned; the header's "Item" spans the first two columns.
+const columns = (count: number) => `grid-template-columns: 74px repeat(${count}, minmax(0, 1fr)) minmax(56px, auto);`
+
 export const itemListColumns = `
   display: grid;
-  grid-template-columns: 74px repeat(4, minmax(0, 1fr)) minmax(56px, auto);
+  ${columns(4)}
   align-items: center;
   gap: 16px;
+
+  &[data-with-play-mode] {
+    ${columns(5)}
+  }
+  &[data-with-market] {
+    ${columns(7)}
+  }
+  &[data-with-play-mode][data-with-market] {
+    ${columns(8)}
+  }
 `
 
 export const Row = styled.article`
@@ -18,7 +29,7 @@ export const Row = styled.article`
   border-radius: ${theme.radius.card};
   background: ${theme.colors.overlay};
 
-  ${mobile} {
+  ${card} {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -26,11 +37,11 @@ export const Row = styled.article`
   }
 `
 
-// Transparent on desktop so name and fields stay grid children; a wrapping row beside the thumbnail on mobile.
+// Transparent in the table so name and fields stay grid children; a wrapping row beside the thumbnail in the card.
 export const Content = styled.div`
   display: contents;
 
-  ${mobile} {
+  ${card} {
     display: flex;
     flex: 1;
     flex-wrap: wrap;
@@ -46,16 +57,9 @@ export const Thumb = styled.div`
   width: 74px;
   height: 74px;
   border-radius: 6px;
-  background: ${theme.colors.media};
   overflow: hidden;
 
-  & img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  ${mobile} {
+  ${card} {
     width: 62px;
     height: 62px;
   }
@@ -82,37 +86,29 @@ export const Cell = styled.div`
   display: flex;
   justify-content: center;
 
-  ${mobile} {
+  ${card} {
     justify-content: flex-start;
+
+    /* The table grid needs the "—" to keep columns aligned; the wrapped card does not. */
+    &[data-empty] {
+      display: none;
+    }
   }
+`
+
+export const Amount = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
 `
 
 export const ActionsCell = styled.div`
   display: flex;
   justify-content: flex-end;
 
-  ${mobile} {
-    display: none;
-  }
-`
-
-export const ActionsButton = styled.button`
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid ${theme.colors.lineStrong};
-  border-radius: ${theme.radius.chip};
-  background: none;
-  color: ${theme.colors.softWhite};
-
-  &:hover {
-    background: ${theme.colors.glass};
-  }
-  &[aria-disabled] {
-    opacity: 0.6;
-    cursor: default;
+  ${card} {
+    flex: none;
+    margin-left: auto;
   }
 `

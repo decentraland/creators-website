@@ -5,6 +5,7 @@ export const Form = styled.form`
   display: flex;
   flex-direction: column;
   gap: 48px;
+  margin-top: 48px;
 `
 
 export const Intro = styled.div`
@@ -29,15 +30,4 @@ export const Subtitle = styled.p`
   color: ${theme.colors.gray4};
 `
 
-export const Actions = styled.div`
-  display: flex;
-  gap: 12px;
-  /* Separator above the actions, per the modal spec (0.5px white @ 30%). */
-  padding-top: 24px;
-  border-top: 0.5px solid ${theme.colors.glassHover};
-
-  & > * {
-    flex: 1;
-    min-width: 0;
-  }
-`
+export { ModalActions as Actions } from '~/styles/shared'

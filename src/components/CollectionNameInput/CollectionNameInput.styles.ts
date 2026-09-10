@@ -27,6 +27,7 @@ export const Box = styled.div`
   background: rgba(255, 255, 255, 0.05);
 
   &[data-invalid] {
+    background: ${theme.colors.errOverlay};
     border-color: ${theme.colors.errLight};
   }
 

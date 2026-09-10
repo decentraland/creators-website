@@ -181,7 +181,7 @@ describe('ConfirmItemsStep thumbnail editing', () => {
     await userEvent.click(screen.getByTestId('thumbnail-capture'))
 
     expect(screen.queryByTestId('thumbnail-modal')).not.toBeInTheDocument()
-    expect(within(row).getByTestId('publish-item-thumbnail')).toHaveAttribute('src', 'data:image/png;base64,bmV3')
+    expect(within(row).getByTestId('publish-item-img')).toHaveAttribute('src', 'data:image/png;base64,bmV3')
     expect(saveItem).not.toHaveBeenCalled()
 
     await userEvent.click(within(row).getByTestId('publish-item-save'))
@@ -201,7 +201,7 @@ describe('ConfirmItemsStep thumbnail editing', () => {
     await userEvent.click(await screen.findByTestId('thumbnail-capture'))
     await userEvent.click(within(row).getByTestId('publish-item-cancel'))
 
-    expect(within(row).getByTestId('publish-item-thumbnail')).toHaveAttribute('src', expect.stringContaining('Qmthumb'))
+    expect(within(row).getByTestId('publish-item-img')).toHaveAttribute('src', expect.stringContaining('Qmthumb'))
     expect(saveItem).not.toHaveBeenCalled()
   })
 })

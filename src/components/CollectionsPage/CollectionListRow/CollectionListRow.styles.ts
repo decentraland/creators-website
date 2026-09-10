@@ -2,8 +2,8 @@ import styled from '@emotion/styled'
 import { Link } from 'react-router-dom'
 import { theme } from '~/styles/theme'
 
-const mobile = theme.media.maxWidth('mobile')
-const desktop = theme.media.minWidth('mobile')
+const card = theme.media.noActions
+const table = theme.media.withActions
 
 // Shared column template so the header and the rows stay aligned.
 export const listColumns = `
@@ -50,8 +50,8 @@ export const Row = styled.article`
     }
   }
 
-  /* The view toggle is desktop-only state; on mobile the row reshapes into the card layout. */
-  ${mobile} {
+  /* Without an actions column the row reshapes into the card layout. */
+  ${card} {
     display: flex;
     flex-direction: column;
     /* listColumns' align-items: center would center the stacked cells horizontally here. */
@@ -89,7 +89,7 @@ export const NameCell = styled.div`
   gap: 12px;
   min-width: 0;
 
-  ${mobile} {
+  ${card} {
     display: contents;
   }
 `
@@ -101,7 +101,7 @@ export const Thumb = styled.div`
   border-radius: 6px;
   overflow: hidden;
 
-  ${mobile} {
+  ${card} {
     position: absolute;
     top: 0;
     left: 0;
@@ -130,7 +130,7 @@ export const Cell = styled.div`
   line-height: 1.57;
   color: ${theme.colors.softWhite};
 
-  ${desktop} {
+  ${table} {
     text-align: center;
   }
 `
@@ -141,7 +141,7 @@ export const DateCell = styled.div`
   gap: 4px;
   min-width: 0;
 
-  ${desktop} {
+  ${table} {
     align-items: center;
     text-align: center;
   }
@@ -157,7 +157,7 @@ export const DateCell = styled.div`
     color: ${theme.colors.gray4};
   }
 
-  ${mobile} {
+  ${card} {
     & span {
       display: none;
     }
@@ -168,24 +168,8 @@ export const ActionsCell = styled.div`
   display: flex;
   justify-content: flex-end;
 
-  ${mobile} {
+  /* Grid cards have no menu, so the row card hides its own too. */
+  ${card} {
     display: none;
-  }
-`
-
-export const ActionsButton = styled.button`
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid ${theme.colors.glassLine};
-  border-radius: ${theme.radius.btnSm};
-  background: none;
-  color: ${theme.colors.softWhite};
-
-  &:hover {
-    background: ${theme.colors.glass};
   }
 `

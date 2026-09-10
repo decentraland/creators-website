@@ -34,7 +34,7 @@ export const Card = styled.label`
       content: '';
       position: absolute;
       inset: -2px;
-      padding: 2px;
+      padding: 3px;
       border-radius: 13px;
       background: ${theme.gradients.ember};
       -webkit-mask:
@@ -119,14 +119,4 @@ export const Rate = styled.span`
   width: max-content;
   font-size: 12px;
   color: ${theme.colors.gray4};
-`
-
-// Currency glyphs (credits "C", MANA diamond) sized to the surrounding text.
-export const CurrencyMark = styled.span`
-  display: inline-block;
-  width: 1em;
-  height: 1em;
-  background-color: currentColor;
-  -webkit-mask: var(--icon-url) center / contain no-repeat;
-  mask: var(--icon-url) center / contain no-repeat;
 `

@@ -7,6 +7,7 @@ import {
   toCollectionsQueryString,
   toRemoteCollection,
   type Collection,
+  type CollectionCuration,
   type FetchCollectionsParams,
   type PaginatedResource,
   type RemoteCollection
@@ -18,6 +19,7 @@ export type CollectionItemPreview = {
   id: string
   name: string
   thumbnailUrl: string
+  rarity?: string
 }
 
 /** Carries the HTTP status so callers can tell "no access / gone" from a transient failure. */
@@ -89,24 +91,6 @@ export async function fetchCollection(address: string, collectionId: string): Pr
   return fromRemoteCollection(remote)
 }
 
-/**
- * One page of a collection's items: GET /collections/{id}/items. As with collections, the
- * paginated envelope only comes back when both page and limit are sent.
- */
-export async function fetchCollectionItems(
-  address: string,
-  collectionId: string,
-  { page, limit }: { page: number; limit: number }
-): Promise<PaginatedResource<Item>> {
-  const remote = await request<PaginatedResource<RemoteItem>>(
-    address,
-    'GET',
-    `/collections/${collectionId}/items`,
-    `?page=${page}&limit=${limit}`
-  )
-  return { ...remote, results: remote.results.map(fromRemoteItem) }
-}
-
 /** Every item of a collection (bare-array legacy response) — the rename flow re-encodes them all. */
 export async function fetchAllCollectionItems(address: string, collectionId: string): Promise<Item[]> {
   const remote = await request<RemoteItem[]>(address, 'GET', `/collections/${collectionId}/items`)
@@ -123,6 +107,22 @@ export async function saveCollection(address: string, collection: Collection, da
     data
   })
   return fromRemoteCollection(remote)
+}
+
+/** The collection's latest curation request: GET /collections/{id}/curation. Empty data when it was never reviewed. */
+export async function fetchCollectionCuration(
+  address: string,
+  collectionId: string
+): Promise<CollectionCuration | null> {
+  const curation = await request<CollectionCuration | null | undefined>(
+    address,
+    'GET',
+    `/collections/${collectionId}/curation`,
+    '',
+    undefined,
+    false
+  )
+  return curation ?? null
 }
 
 /** Delete an unpublished collection and its items: DELETE /collections/{id} (409 published, 423 locked). */
@@ -171,7 +171,8 @@ export async function fetchCollectionItemPreviews(
     .map(item => ({
       id: item.id,
       name: item.name,
-      thumbnailUrl: getContentsStorageUrl(item.contents[item.thumbnail])
+      thumbnailUrl: getContentsStorageUrl(item.contents[item.thumbnail]),
+      rarity: item.rarity ?? undefined
     }))
 }
 

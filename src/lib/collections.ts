@@ -165,6 +165,28 @@ export function getCollectionDisplayStatus(collection: Collection): CollectionDi
   return collection.isApproved ? CollectionDisplayStatus.PUBLISHED : CollectionDisplayStatus.UNDER_REVIEW
 }
 
+/**
+ * Published and approved at least once: the collection is on the market even while a later change of
+ * its items is being reviewed again, so its items carry a price and sales.
+ */
+export function hasBeenApproved(collection: Collection): boolean {
+  return collection.isPublished && (collection.isApproved || collection.reviewedAt !== undefined)
+}
+
+export enum CollectionRole {
+  COLLABORATOR = 'collaborator',
+  MINTER = 'minter'
+}
+
+/** The non-owner role that gives this address access to the collection, if any. Collaborator wins over minter. */
+export function getCollectionRole(collection: Collection, address: string): CollectionRole | null {
+  const target = address.toLowerCase()
+  if (collection.owner.toLowerCase() === target) return null
+  if (collection.managers.some(manager => manager.toLowerCase() === target)) return CollectionRole.COLLABORATOR
+  if (collection.minters.some(minter => minter.toLowerCase() === target)) return CollectionRole.MINTER
+  return null
+}
+
 // Same limit as the legacy builder's standard collections (the server schema allows 42, but the
 // legacy UI caps standard collections at 32 and we keep that contract).
 export const COLLECTION_NAME_MAX_LENGTH = 32
@@ -212,4 +234,14 @@ export function toRemoteCollection(
     forum_link: collection.forumLink || null,
     reviewed_at: collection.reviewedAt ? new Date(collection.reviewedAt).toISOString() : null
   }
+}
+
+/** The latest curation request of a collection; only its status matters here. */
+export type CollectionCuration = { status: CurationStatus }
+
+/** Owners and collaborators (managers) may change a collection's items; minters only sell them. */
+export function canManageCollectionItems(collection: Collection, address: string | undefined): boolean {
+  if (!address) return false
+  const isOwner = collection.owner.toLowerCase() === address.toLowerCase()
+  return isOwner || getCollectionRole(collection, address) === CollectionRole.COLLABORATOR
 }

@@ -11,7 +11,8 @@ import {
   Transgender as BothIcon
 } from '@mui/icons-material'
 import { CategorySelect } from '~/components/CategorySelect'
-import { ClockIcon, FilmReelIcon, ImageIcon } from '~/components/Icons'
+import { ItemThumbnail } from '~/components/ItemThumbnail'
+import { ClockIcon, FilmReelIcon, ImageIcon, LoopIcon, PlayOnceIcon } from '~/components/Icons'
 import { RaritySelect } from '~/components/RaritySelect'
 import { Tooltip } from '~/components/Tooltip'
 import { useTranslation } from '~/intl'
@@ -73,10 +74,11 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
           data-testid="edit-thumbnail"
           onClick={onOpenThumbnail}
         >
-          {draft.thumbnail && <img src={draft.thumbnail} alt="" />}
-          <S.ThumbnailOverlay data-thumb-overlay>
-            <CameraIcon />
-          </S.ThumbnailOverlay>
+          <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId="draft-thumbnail">
+            <S.ThumbnailOverlay data-thumb-overlay>
+              <CameraIcon />
+            </S.ThumbnailOverlay>
+          </ItemThumbnail>
         </S.ThumbnailBox>
         <S.MetricsRow data-testid="draft-metrics">
           {isEmote && draft.metrics ? (
@@ -268,6 +270,7 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
                   data-testid={`play-mode-${mode}`}
                   onClick={() => onUpdate(draft.id, { playMode: mode })}
                 >
+                  {mode === EmotePlayMode.LOOP ? <LoopIcon /> : <PlayOnceIcon />}
                   {t(`add_items_modal.play_mode_option.${mode}`)}
                 </S.SegmentButton>
               ))}

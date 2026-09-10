@@ -11,8 +11,12 @@ import { CollectionListRow } from './CollectionListRow'
 vi.mock('~/lib/builder', () => ({
   fetchCollectionItemPreviews: vi
     .fn()
-    .mockResolvedValue([{ id: 'i1', name: 'Hat', thumbnailUrl: 'https://cdn.example/1.png' }])
+    .mockResolvedValue([{ id: 'i1', name: 'Hat', thumbnailUrl: 'https://cdn.example/1.png' }]),
+  deleteCollection: vi.fn().mockResolvedValue(undefined)
 }))
+vi.mock('~/lib/clipboard', () => ({ copyToClipboard: vi.fn().mockResolvedValue(true) }))
+
+import { copyToClipboard } from '~/lib/clipboard'
 
 vi.mock('~/store/wallet', () => ({
   useWallet: (selector: (state: { session: { address: string } }) => unknown) =>
@@ -62,6 +66,16 @@ describe('CollectionListRow', () => {
     expect(screen.getByTestId('collection-row-created')).toHaveTextContent(/\d{4}/)
   })
 
+  it('badges collections the signed-in address only collaborates on', () => {
+    renderRow({ owner: '0xother', managers: ['0xabc'] })
+    expect(screen.getByTestId('collection-role')).toHaveTextContent(/collaborator/i)
+  })
+
+  it("shows no role badge on the address's own collections", () => {
+    renderRow()
+    expect(screen.queryByTestId('collection-role')).not.toBeInTheDocument()
+  })
+
   it('links the row to the collection detail', async () => {
     renderRow()
     const link = screen.getByRole('link', { name: 'Pirate Hats' })
@@ -70,9 +84,26 @@ describe('CollectionListRow', () => {
     expect(screen.getByTestId('detail-page')).toBeInTheDocument()
   })
 
-  it('opens the collection detail from the actions button', async () => {
+  it('offers copy URN and copy address for a published collection', async () => {
     renderRow()
     await userEvent.click(screen.getByRole('button', { name: 'Collection actions' }))
-    expect(screen.getByTestId('detail-page')).toBeInTheDocument()
+    expect(screen.queryByTestId('delete-collection')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('manage-minters')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('manage-collaborators')).not.toBeInTheDocument()
+    expect(screen.getByTestId('copy-address')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByTestId('copy-urn'))
+    expect(copyToClipboard).toHaveBeenCalledWith(collection.urn)
+    expect(screen.queryByTestId('detail-page')).not.toBeInTheDocument()
+  })
+
+  it('offers only deletion for a draft', async () => {
+    renderRow({ isPublished: false, isApproved: false })
+    await userEvent.click(screen.getByRole('button', { name: 'Collection actions' }))
+    expect(screen.getByTestId('delete-collection')).toBeInTheDocument()
+    expect(screen.queryByTestId('copy-urn')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByTestId('delete-collection'))
+    expect(screen.getByTestId('delete-collection-modal')).toBeInTheDocument()
   })
 })

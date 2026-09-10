@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { type ReactNode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -32,7 +32,13 @@ const draft: Collection = {
   updatedAt: 1000
 }
 
-function renderMenu(collection: Collection, address = OWNER) {
+const onDeleted = vi.fn()
+
+function renderMenu(
+  collection: Collection,
+  address = OWNER,
+  props: Partial<Parameters<typeof CollectionActionsMenu>[0]> = {}
+) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
@@ -46,7 +52,9 @@ function renderMenu(collection: Collection, address = OWNER) {
       </TranslationProvider>
     </QueryClientProvider>
   )
-  return render(<CollectionActionsMenu collection={collection} address={address} />, { wrapper })
+  return render(<CollectionActionsMenu collection={collection} address={address} onDeleted={onDeleted} {...props} />, {
+    wrapper
+  })
 }
 
 async function openMenu() {
@@ -54,11 +62,21 @@ async function openMenu() {
   return screen.getByTestId('collection-actions-menu')
 }
 
+function stubViewport(compact: boolean) {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn().mockReturnValue({ matches: compact, addEventListener: vi.fn(), removeEventListener: vi.fn() })
+  )
+}
+
+afterEach(() => vi.unstubAllGlobals())
+
 describe('CollectionActionsMenu', () => {
   beforeEach(() => {
     useNotifications.setState({ toasts: [] })
     ;(deleteCollection as Mock).mockReset()
     ;(copyToClipboard as Mock).mockClear()
+    onDeleted.mockClear()
   })
 
   it('offers only deletion for a draft, and deletes after confirmation', async () => {
@@ -73,7 +91,7 @@ describe('CollectionActionsMenu', () => {
     expect(screen.getByTestId('delete-collection-modal-description')).toHaveTextContent('Pirate Hats')
     await userEvent.click(screen.getByTestId('delete-collection-confirm'))
 
-    await waitFor(() => expect(screen.getByTestId('collections-page')).toBeInTheDocument())
+    await waitFor(() => expect(onDeleted).toHaveBeenCalledTimes(1))
     expect(deleteCollection).toHaveBeenCalledWith(OWNER, 'c1')
     expect(useNotifications.getState().toasts[0]?.message).toMatch(/deleted/i)
   })
@@ -86,7 +104,7 @@ describe('CollectionActionsMenu', () => {
     await userEvent.click(screen.getByTestId('delete-collection-confirm'))
     await waitFor(() => expect(useNotifications.getState().toasts).toHaveLength(1))
     expect(screen.getByTestId('delete-collection-modal')).toBeInTheDocument()
-    expect(screen.queryByTestId('collections-page')).not.toBeInTheDocument()
+    expect(onDeleted).not.toHaveBeenCalled()
   })
 
   it('renders nothing for a draft under the publish lock', () => {
@@ -117,10 +135,34 @@ describe('CollectionActionsMenu', () => {
     expect(screen.getByTestId('manage-minters')).toHaveAttribute('aria-disabled')
   })
 
+  it('hides the role placeholders when asked, even for the owner', async () => {
+    renderMenu({ ...draft, isPublished: true }, OWNER, { showRoles: false })
+    await openMenu()
+    expect(screen.getByTestId('copy-urn')).toBeInTheDocument()
+    expect(screen.queryByTestId('manage-collaborators')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('manage-minters')).not.toBeInTheDocument()
+  })
+
   it('closes with Escape', async () => {
     renderMenu(draft)
     await openMenu()
     await userEvent.keyboard('{Escape}')
     expect(screen.queryByTestId('collection-actions-menu')).not.toBeInTheDocument()
+  })
+
+  describe('on a small screen', () => {
+    beforeEach(() => stubViewport(true))
+
+    it('keeps copying and the role placeholders for the owner of an on-chain collection', async () => {
+      renderMenu({ ...draft, isPublished: true })
+      const menu = await openMenu()
+      const ids = Array.from(menu.querySelectorAll('[role="menuitem"]')).map(el => el.getAttribute('data-testid'))
+      expect(ids).toEqual(['copy-urn', 'copy-address', 'manage-collaborators', 'manage-minters'])
+    })
+
+    it('renders nothing for a draft, since deleting is desktop-only', () => {
+      renderMenu(draft)
+      expect(screen.queryByTestId('collection-actions')).not.toBeInTheDocument()
+    })
   })
 })

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest'
 import {
   deleteCollection,
+  fetchCollectionCuration,
   fetchCollectionItemPreviews,
   fetchCollections,
   fetchItemContents,
@@ -244,5 +245,18 @@ describe('fetchItemContents', () => {
     )
     await expect(fetchItemContents(item)).rejects.toThrow(/404/)
     vi.unstubAllGlobals()
+  })
+})
+
+describe('fetchCollectionCuration', () => {
+  it('answers the latest curation request of the collection', async () => {
+    signedFetchMock.mockResolvedValue(okResponse({ id: 'cu1', status: 'pending' }))
+    await expect(fetchCollectionCuration(ADDRESS, 'a1b2')).resolves.toMatchObject({ status: 'pending' })
+    expect(signedFetchMock.mock.calls[0][2]).toBe('/collections/a1b2/curation')
+  })
+
+  it('answers null for a collection that was never reviewed', async () => {
+    signedFetchMock.mockResolvedValue(jsonResponse({ ok: true }))
+    await expect(fetchCollectionCuration(ADDRESS, 'a1b2')).resolves.toBeNull()
   })
 })

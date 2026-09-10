@@ -1,1 +1,1 @@
-export { BodyShapeIcon, CategoryIcon } from './ItemIcons'
+export { BodyShapeIcon, CategoryIcon, PlayModeIcon } from './ItemIcons'

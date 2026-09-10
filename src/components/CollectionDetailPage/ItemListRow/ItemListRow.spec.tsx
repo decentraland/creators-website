@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { type ReactNode } from 'react'
+import { type ComponentProps, type ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import { TranslationProvider } from '~/intl'
 import { ItemType, type Item } from '~/lib/items'
+import { type ItemListing } from '~/lib/listings'
 import { ItemListRow } from './ItemListRow'
 
 const item: Item = {
@@ -32,9 +33,20 @@ const item: Item = {
   updatedAt: 1000
 }
 
-function renderRow(overrides: Partial<Item> = {}) {
+type RowProps = Omit<ComponentProps<typeof ItemListRow>, 'item'>
+
+function renderRow(overrides: Partial<Item> = {}, props: RowProps | boolean = {}) {
+  const rowProps = typeof props === 'boolean' ? { withPlayMode: props } : props
   const wrapper = ({ children }: { children: ReactNode }) => <TranslationProvider>{children}</TranslationProvider>
-  return render(<ItemListRow item={{ ...item, ...overrides }} />, { wrapper })
+  return render(<ItemListRow item={{ ...item, ...overrides }} {...rowProps} />, { wrapper })
+}
+
+const creditsListing: ItemListing = { itemId: '3', currency: 'credits', credits: 500 }
+const manaListing: ItemListing = { itemId: '3', currency: 'mana', manaWei: 5000000000000000000n }
+
+const emote: Partial<Item> = {
+  type: ItemType.EMOTE,
+  data: { category: 'dance', representations: [], loop: true }
 }
 
 describe('ItemListRow', () => {
@@ -64,5 +76,78 @@ describe('ItemListRow', () => {
     expect(screen.getByTestId('item-row-body-shape')).toHaveTextContent('—')
     expect(screen.getByTestId('item-row-category')).toHaveTextContent('—')
     expect(screen.getByTestId('item-row-rarity')).toBeEmptyDOMElement()
+  })
+
+  it('omits the play mode cell when the list has no emotes', () => {
+    renderRow()
+    expect(screen.queryByTestId('item-row-play-mode')).not.toBeInTheDocument()
+  })
+
+  it('shows the emote play mode between category and rarity when the list has emotes', () => {
+    renderRow(emote, true)
+    const cell = screen.getByTestId('item-row-play-mode')
+    expect(cell).toHaveTextContent('Loop')
+    expect(cell.nextElementSibling).toBe(screen.getByTestId('item-row-rarity'))
+    expect(cell.previousElementSibling).toBe(screen.getByTestId('item-row-category'))
+  })
+
+  it('shows play once for a non-looping emote', () => {
+    renderRow({ ...emote, data: { ...emote.data!, loop: false } }, true)
+    expect(screen.getByTestId('item-row-play-mode')).toHaveTextContent('Play Once')
+  })
+
+  it('shows a dash for a wearable in a list with emotes', () => {
+    renderRow({}, true)
+    expect(screen.getByTestId('item-row-play-mode')).toHaveTextContent('—')
+  })
+
+  it('has no price or sales cells while the collection has not been published', () => {
+    renderRow()
+    expect(screen.queryByTestId('item-row-price')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('item-row-sales')).not.toBeInTheDocument()
+  })
+
+  it('shows a credits price and the minted count over the max supply after rarity', () => {
+    renderRow({ tokenId: '3', totalSupply: 15 }, { withMarket: true, listing: creditsListing })
+    const price = screen.getByTestId('item-row-price')
+    expect(price).toHaveTextContent('500')
+    expect(price).toHaveAttribute('data-currency', 'credits')
+    expect(price.previousElementSibling).toBe(screen.getByTestId('item-row-rarity'))
+    expect(screen.getByTestId('item-row-sales')).toHaveTextContent('15/100')
+    expect(screen.getByTestId('item-row-sale-status')).toHaveTextContent(/on sale/i)
+  })
+
+  it('shows a MANA price for a listing made from the legacy marketplace', () => {
+    renderRow({ tokenId: '3' }, { withMarket: true, listing: manaListing })
+    const price = screen.getByTestId('item-row-price')
+    expect(price).toHaveTextContent('5')
+    expect(price).toHaveAttribute('data-currency', 'mana')
+    expect(screen.getByTestId('item-row-sales')).toHaveTextContent('0/100')
+  })
+
+  it('shows Free for a listing priced at zero', () => {
+    renderRow({ tokenId: '3' }, { withMarket: true, listing: { ...creditsListing, credits: 0 } })
+    expect(screen.getByTestId('item-row-price')).toHaveTextContent('Free')
+  })
+
+  it('shows a dash and offers to put on sale an item that is not on sale', () => {
+    renderRow({ tokenId: '3' }, { withMarket: true, listing: null })
+    expect(screen.getByTestId('item-row-price')).toHaveTextContent('—')
+    expect(screen.getByTestId('item-row-sales')).toHaveTextContent('0/100')
+    expect(screen.getByRole('button', { name: /put on sale/i })).toBeInTheDocument()
+  })
+
+  it('shows every unit minted and a sold-out status for a sold-out item', () => {
+    renderRow({ tokenId: '3', totalSupply: 100 }, { withMarket: true, listing: null })
+    expect(screen.getByTestId('item-row-price')).toHaveTextContent('—')
+    expect(screen.getByTestId('item-row-sales')).toHaveTextContent('100/100')
+    expect(screen.getByTestId('item-row-sale-status')).toHaveTextContent(/sold out/i)
+    expect(screen.queryByRole('button', { name: /put on sale/i })).not.toBeInTheDocument()
+  })
+
+  it('leaves the price and sale status blank while listings are loading', () => {
+    renderRow({ tokenId: '3' }, { withMarket: true })
+    expect(screen.getByTestId('item-row-price')).toBeEmptyDOMElement()
+    expect(screen.getByTestId('item-row-sale-status')).toBeEmptyDOMElement()
   })
 })

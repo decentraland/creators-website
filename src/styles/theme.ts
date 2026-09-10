@@ -32,7 +32,8 @@ const colors = {
   err: '#d33',
   okStrong: '#1f8a4c',
   errStrong: '#d64545',
-  errLight: '#ff7070',
+  errLight: '#FB3B3B',
+  errOverlay: 'rgba(255, 0, 0, 0.05)',
   success: '#00b453',
   successBorder: '#34ce77',
   green: '#30cd00', // DCL/Green — published status
@@ -68,6 +69,19 @@ const colors = {
   glassLine: 'rgba(255, 255, 255, 0.5)',
   // Legendary's light gradient stop (#A657ED) is too close to the purple surfaces; lift it for the pill text.
   rarityLegendaryLight: '#e8b9ff'
+} as const
+
+// Per-rarity design colors (Figma "Rarities/*", shop's palette). Distinct from @dcl/schemas' Rarity.getColor:
+// the designer re-tuned every one for the dark field.
+const rarities = {
+  common: '#73d3d3',
+  uncommon: '#ff8362',
+  rare: '#34ce76',
+  epic: '#289cff',
+  legendary: '#a24bf3',
+  exotic: '#9cd71e',
+  mythic: '#ff4bed',
+  unique: '#fea217'
 } as const
 
 const gradients = {
@@ -117,9 +131,15 @@ export type Breakpoint = keyof typeof breakpoints
 
 const media = {
   maxWidth: (bp: Breakpoint) => `@media (max-width: ${breakpoints[bp]}px)`,
-  minWidth: (bp: Breakpoint) => `@media (min-width: ${breakpoints[bp] + 1}px)`
+  // Exact complement of maxWidth. `min-width: bp + 1` leaves a gap for fractional viewport widths
+  // (browser zoom, DPR scaling) where neither query matches and unstyled layout leaks through.
+  minWidth: (bp: Breakpoint) => `@media not all and (max-width: ${breakpoints[bp]}px)`,
+  /** Below this width the app is a viewer: header buttons and row menus that manage collections are hidden. */
+  noActions: `@media (max-width: ${breakpoints.lg}px)`,
+  /** Exact complement of `noActions`: the table layouts with their actions column. */
+  withActions: `@media not all and (max-width: ${breakpoints.lg}px)`
 }
 
-export const theme = { colors, gradients, radius, font, media, z }
+export const theme = { colors, rarities, gradients, radius, font, media, z }
 
 export type AppTheme = typeof theme

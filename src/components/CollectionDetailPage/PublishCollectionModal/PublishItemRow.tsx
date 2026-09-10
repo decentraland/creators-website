@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Check as CheckIcon, Close as CloseIcon, Edit as EditIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'
+import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
 import { getItemBodyShapeType, type Item } from '~/lib/items'
 import { DEFAULT_RARITY, isRarity, type RarityName } from '~/lib/rarities'
@@ -77,7 +78,7 @@ export function PublishItemRow({
             onClick={onEditThumbnail}
           >
             <Shared.Thumb>
-              {thumbnailUrl && <img src={thumbnailUrl} alt="" data-testid="publish-item-thumbnail" />}
+              <ItemThumbnail src={thumbnailUrl} rarity={item.rarity} testId="publish-item" />
             </Shared.Thumb>
             <S.ThumbBadge aria-hidden>
               <EditIcon />
@@ -85,7 +86,7 @@ export function PublishItemRow({
           </S.ThumbButton>
         ) : (
           <Shared.Thumb>
-            {thumbnailUrl && <img src={thumbnailUrl} alt="" data-testid="publish-item-thumbnail" />}
+            <ItemThumbnail src={thumbnailUrl} rarity={item.rarity} testId="publish-item" />
           </Shared.Thumb>
         )}
         {isEditing ? (

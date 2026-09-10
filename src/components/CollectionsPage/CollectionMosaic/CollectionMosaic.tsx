@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useWallet } from '~/store/wallet'
 import { useCollectionPreview } from '~/hooks/useCollections'
 import { ThumbnailMosaic } from '~/components/ThumbnailMosaic'
@@ -12,9 +13,13 @@ type Props = {
 export function CollectionMosaic({ collectionId, itemCount, className }: Props) {
   const address = useWallet(state => state.session?.address)
   const { data: previews, isLoading } = useCollectionPreview(address, collectionId, itemCount)
+  const thumbnails = useMemo(
+    () => (previews ?? []).map(item => ({ url: item.thumbnailUrl, rarity: item.rarity })),
+    [previews]
+  )
   return (
     <ThumbnailMosaic
-      thumbnails={(previews ?? []).map(item => item.thumbnailUrl)}
+      thumbnails={thumbnails}
       loading={itemCount > 0 && isLoading}
       className={className}
       testId="collection-mosaic"

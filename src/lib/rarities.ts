@@ -1,4 +1,5 @@
 // Rarity constants shared by every rarity control (pill, select, forms).
+import { theme } from '~/styles/theme'
 
 export const RARITIES = ['unique', 'mythic', 'exotic', 'legendary', 'epic', 'rare', 'uncommon', 'common'] as const
 
@@ -20,6 +21,30 @@ export const RARITY_MAX_SUPPLY: Record<RarityName, number> = {
 
 export function isRarity(value: string | null | undefined): value is RarityName {
   return !!value && (RARITIES as readonly string[]).includes(value)
+}
+
+/** The design palette color of a rarity (theme.rarities); undefined for an unknown rarity. */
+function getRarityColor(rarity: string | null | undefined): string | undefined {
+  const key = rarity?.toLowerCase()
+  return isRarity(key) ? theme.rarities[key] : undefined
+}
+
+function parseHex(color: string): [number, number, number] {
+  const hex = color.replace('#', '')
+  return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)]
+}
+
+/**
+ * Rarity wash behind an item's artwork (shop's card media): the rarity color, light at the center so the
+ * artwork still cuts against it and gathering toward the edges. `undefined` for an unknown rarity, so the
+ * media keeps its neutral fill.
+ */
+export function getRarityMediaBackground(rarity: string | null | undefined): string | undefined {
+  const color = getRarityColor(rarity)
+  if (!color) return undefined
+  const [r, g, b] = parseHex(color)
+  const stop = (alpha: number) => `rgba(${r}, ${g}, ${b}, ${alpha})`
+  return `radial-gradient(circle at 50% 38%, ${stop(0.04)} 0%, ${stop(0.3)} 50%, ${stop(0.62)} 100%)`
 }
 
 export function getRarityMaxSupply(rarity: string | null | undefined): number | undefined {

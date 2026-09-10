@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type DragEvent } from 'react'
+import { useCallback, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Add as AddIcon,
@@ -9,23 +9,36 @@ import {
 import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
-import { ITEMS_PAGE_SIZE, useCollection, useCollectionItems, useSaveCollection } from '~/hooks/useCollection'
+import { ITEMS_PAGE_SIZE, useAllCollectionItems, useCollection, useSaveCollection } from '~/hooks/useCollection'
 import { BuilderServerError } from '~/lib/builder'
-import { isCollectionLocked } from '~/lib/collections'
+import { hasBeenApproved, isCollectionLocked } from '~/lib/collections'
+import { ItemType, type Item } from '~/lib/items'
+import {
+  ITEM_TYPE_FILTERS,
+  ItemTypeFilter,
+  countItemsByType,
+  filterItemsByType,
+  paginateItems,
+  parseItemTypeFilter
+} from '~/lib/itemFilters'
 import { MAX_PUBLISH_ITEMS, getPublishBlocker } from '~/lib/publishCollection'
 import { useSyncPublishedItems } from '~/hooks/usePublishCollection'
+import { useCollectionListings } from '~/hooks/useCollectionListings'
+import { useItemSyncs } from '~/hooks/useItemSync'
 import { previewCollection } from '~/lib/explorer'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS } from '~/lib/itemFiles'
 import { Button } from '~/components/Button'
 import { Tooltip } from '~/components/Tooltip'
-import { JumpInIcon, OpenEditorIcon } from '~/components/Icons'
+import { EmoteIcon, JumpInIcon, OpenEditorIcon, WearableIcon } from '~/components/Icons'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
+import { CollectionRolePill } from '~/components/CollectionRolePill'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
 import { Pagination } from '~/components/Pagination'
 import addItemsArt from '~/assets/add-items.png'
+import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { AddItemsModal } from './AddItemsModal'
-import { CollectionActionsMenu } from './CollectionActionsMenu'
+import { ItemActionsMenu } from './ItemActionsMenu'
 import { ItemListRow } from './ItemListRow'
 import { PublishCollectionModal, PublishSuccessModal } from './PublishCollectionModal'
 import * as S from './CollectionDetailPage.styles'
@@ -42,6 +55,7 @@ const CollectionDetailPage = () => {
 
   const [searchParams, setSearchParams] = useSearchParams()
   const page = Math.max(1, Number(searchParams.get('page')) || 1)
+  const typeFilter = parseItemTypeFilter(searchParams.get('type'))
 
   const [isRenameOpen, setRenameOpen] = useState(false)
   const [publishView, setPublishView] = useState<'closed' | 'wizard' | 'success'>('closed')
@@ -51,25 +65,40 @@ const CollectionDetailPage = () => {
   const filesInputRef = useRef<HTMLInputElement>(null)
 
   const collectionQuery = useCollection(address, collectionId)
-  const itemsQuery = useCollectionItems(address, collectionId, page)
+  const itemsQuery = useAllCollectionItems(address, collectionId)
   const saveCollection = useSaveCollection(address)
 
   const collection = collectionQuery.data
-  const items = itemsQuery.data
-  const total = items?.total ?? 0
-  const pages = items?.pages ?? 0
+  const allItems = itemsQuery.data
+  const total = allItems?.length ?? 0
+  const counts = useMemo(() => countItemsByType(allItems ?? []), [allItems])
+  const {
+    results,
+    total: filteredTotal,
+    pages
+  } = useMemo(
+    () => paginateItems(filterItemsByType(allItems ?? [], typeFilter), page, ITEMS_PAGE_SIZE),
+    [allItems, typeFilter, page]
+  )
+  // Play Mode is an emote-only attribute; the column exists only while the visible page has emotes.
+  const withPlayMode = useMemo(() => results.some(item => item.type === ItemType.EMOTE), [results])
+  useSyncPublishedItems(address, collection, allItems ?? [])
+  // Price and Sales exist once the collection has been approved at least once, even if it is under review again.
+  const withMarket = !!collection && hasBeenApproved(collection)
+  const listingsQuery = useCollectionListings(withMarket ? collection.contractAddress : undefined)
+  const listings = listingsQuery.data
+  // `undefined` keeps the price cell blank while the catalog loads; a failed request shows no price rather than an error.
+  const listingFor = (item: Item) =>
+    listings ? (listings.get(item.tokenId ?? '') ?? null) : listingsQuery.isError ? null : undefined
+  const syncs = useItemSyncs(address, collection, allItems ?? [])
 
-  const results = items?.results ?? []
-  useSyncPublishedItems(address, collection, results)
-
-  const isLoading =
-    !restored || (!!address && (collectionQuery.isLoading || (itemsQuery.isFetching && !items) || itemsQuery.isLoading))
+  const isLoading = !restored || (!!address && (collectionQuery.isLoading || itemsQuery.isLoading))
   const isNotFound =
     collectionQuery.isError &&
     collectionQuery.error instanceof BuilderServerError &&
     NOT_FOUND_STATUSES.includes(collectionQuery.error.status)
   const isError = !isNotFound && (collectionQuery.isError || itemsQuery.isError)
-  const isEmpty = !!collection && !!items && total === 0
+  const isEmpty = filteredTotal === 0
   const hasItems = total > 0
   const canRename = !!collection && !collection.isPublished && !isCollectionLocked(collection)
   const canAddItems = canRename
@@ -105,6 +134,19 @@ const CollectionDetailPage = () => {
     window.scrollTo({ top: 0 })
   }
 
+  function changeTypeFilter(next: ItemTypeFilter) {
+    setSearchParams(
+      prev => {
+        const params = new URLSearchParams(prev)
+        if (next === ItemTypeFilter.ALL) params.delete('type')
+        else params.set('type', next)
+        params.delete('page')
+        return params
+      },
+      { replace: true }
+    )
+  }
+
   function closeRenameModal() {
     setRenameOpen(false)
     saveCollection.reset()
@@ -137,13 +179,17 @@ const CollectionDetailPage = () => {
               <S.SkeletonTitle className="skeleton" />
             </S.HeaderLeft>
             <S.HeaderActions>
-              <S.SkeletonButton className="skeleton" />
-              <S.SkeletonButton className="skeleton" />
+              <S.SkeletonButton className="skeleton" data-desktop-only />
+              <S.SkeletonButton className="skeleton" data-desktop-only />
               <S.SkeletonButton className="skeleton" data-icon />
             </S.HeaderActions>
           </S.Header>
           <S.SubHeader>
-            <S.SkeletonLabel className="skeleton" />
+            <S.FilterChips>
+              <S.SkeletonChip className="skeleton" />
+              <S.SkeletonChip className="skeleton" />
+              <S.SkeletonChip className="skeleton" />
+            </S.FilterChips>
             <S.SubActions>
               <S.SkeletonButton className="skeleton" data-compact />
               <S.SkeletonButton className="skeleton" data-compact />
@@ -205,12 +251,14 @@ const CollectionDetailPage = () => {
                 )}
               </S.TitleGroup>
               <CollectionStatusPill collection={collection} />
+              {address && <CollectionRolePill collection={collection} address={address} />}
             </S.HeaderLeft>
             <S.HeaderActions>
               <Button
                 type="button"
                 variant="dark"
                 disabled={!hasItems || isPreviewLaunching}
+                data-desktop-only
                 data-testid="preview-collection"
                 onClick={() => {
                   setPreviewLaunching(true)
@@ -234,6 +282,7 @@ const CollectionDetailPage = () => {
                   <Button
                     type="button"
                     variant="primary"
+                    data-desktop-only
                     data-testid="publish-collection"
                     aria-disabled={publishBlocker ? true : undefined}
                     onClick={() => !publishBlocker && setPublishView('wizard')}
@@ -242,16 +291,32 @@ const CollectionDetailPage = () => {
                   </Button>
                 </Tooltip>
               )}
-              {address && <CollectionActionsMenu collection={collection} address={address} />}
+              {address && (
+                <CollectionActionsMenu
+                  collection={collection}
+                  address={address}
+                  onDeleted={() => navigate('/collections', { replace: true })}
+                />
+              )}
             </S.HeaderActions>
           </S.Header>
 
           <S.SubHeader>
-            <S.SectionLabel data-testid="items-count">
-              {isEmpty
-                ? t('collection_detail_page.no_items')
-                : t('collection_detail_page.items_count', { count: total })}
-            </S.SectionLabel>
+            <S.FilterChips data-testid="type-filters">
+              {ITEM_TYPE_FILTERS.map(filter => (
+                <S.FilterChip
+                  key={filter}
+                  type="button"
+                  data-active={typeFilter === filter || undefined}
+                  data-testid={`type-filter-${filter}`}
+                  onClick={() => changeTypeFilter(filter)}
+                >
+                  {filter === ItemTypeFilter.WEARABLE && <WearableIcon />}
+                  {filter === ItemTypeFilter.EMOTE && <EmoteIcon />}
+                  {t(`collection_detail_page.filter.${filter}`, { count: counts[filter] })}
+                </S.FilterChip>
+              ))}
+            </S.FilterChips>
             <S.SubActions>
               <Button
                 variant="secondary"
@@ -271,7 +336,13 @@ const CollectionDetailPage = () => {
             </S.SubActions>
           </S.SubHeader>
 
-          {isEmpty ? (
+          {isEmpty && !canAddItems ? (
+            <S.Panel data-testid="collection-no-items">
+              <S.DropArt src={addItemsArt} alt="" />
+              <S.PanelTitle>{t(`collection_detail_page.no_items.${typeFilter}`)}</S.PanelTitle>
+              <S.PanelText>{t('collection_detail_page.no_items.description')}</S.PanelText>
+            </S.Panel>
+          ) : isEmpty ? (
             <>
               <S.Dropzone
                 data-testid="collection-empty"
@@ -305,22 +376,52 @@ const CollectionDetailPage = () => {
           ) : (
             <>
               <S.List data-testid="items-list">
-                <S.ListHeader>
+                <S.ListHeader
+                  data-with-play-mode={withPlayMode || undefined}
+                  data-with-market={withMarket || undefined}
+                >
                   <span>{t('collection_detail_page.list.item')}</span>
                   <span>{t('collection_detail_page.list.body_shape')}</span>
                   <span>{t('collection_detail_page.list.category')}</span>
+                  {withPlayMode && (
+                    <span data-testid="list-header-play-mode">{t('collection_detail_page.list.play_mode')}</span>
+                  )}
                   <span>{t('collection_detail_page.list.rarity')}</span>
+                  {withMarket && (
+                    <>
+                      <span data-testid="list-header-price">{t('collection_detail_page.list.price')}</span>
+                      <span data-testid="list-header-sales">{t('collection_detail_page.list.sales')}</span>
+                      <span data-testid="list-header-sale-status">{t('collection_detail_page.list.sale_status')}</span>
+                    </>
+                  )}
                   <S.ListHeaderActions>{t('collection_detail_page.list.actions')}</S.ListHeaderActions>
                 </S.ListHeader>
                 {results.map(item => (
-                  <ItemListRow key={item.id} item={item} />
+                  <ItemListRow
+                    key={item.id}
+                    item={item}
+                    withPlayMode={withPlayMode}
+                    withMarket={withMarket}
+                    listing={withMarket ? listingFor(item) : undefined}
+                    actions={
+                      address && (
+                        <ItemActionsMenu
+                          item={item}
+                          collection={collection}
+                          address={address}
+                          sync={syncs.get(item.id)}
+                          listing={withMarket ? listingFor(item) : undefined}
+                        />
+                      )
+                    }
+                  />
                 ))}
               </S.List>
               <S.FooterRow>
                 <S.ShowingCount data-testid="items-showing">
                   {t('collection_detail_page.showing', {
                     range: pageRangeLabel(page, ITEMS_PAGE_SIZE, results.length),
-                    total
+                    total: filteredTotal
                   })}
                 </S.ShowingCount>
                 {pages > 1 && <Pagination page={page} pages={pages} onPageChange={goToPage} />}

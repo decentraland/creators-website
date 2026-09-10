@@ -1,6 +1,7 @@
 // Item domain model + wire mapping for builder-server, ported from the legacy builder
 // (src/modules/item + lib/api/builder.ts) so both apps read the same API identically.
-import { CollectionDisplayStatus } from './collections'
+import { CollectionDisplayStatus, canManageCollectionItems, type Collection } from './collections'
+import { getRarityMaxSupply } from './rarities'
 
 export enum ItemType {
   WEARABLE = 'wearable',
@@ -197,6 +198,18 @@ export function getMissingBodyShapeType(item: Item): BodyShapeType | null {
 }
 
 /** Same published / under-review / draft derivation as collections, at the item level. */
+export type ItemSales = {
+  minted: number
+  maxSupply: number
+}
+
+/** Minted vs. maximum supply of a published item; undefined without a rarity. */
+export function getItemSales(item: Item): ItemSales | undefined {
+  const maxSupply = getRarityMaxSupply(item.rarity)
+  if (maxSupply === undefined) return undefined
+  return { minted: Math.min(item.totalSupply ?? 0, maxSupply), maxSupply }
+}
+
 export function getItemDisplayStatus(item: Item): CollectionDisplayStatus {
   if (!item.isPublished) return CollectionDisplayStatus.DRAFT
   return item.isApproved ? CollectionDisplayStatus.PUBLISHED : CollectionDisplayStatus.UNDER_REVIEW
@@ -238,4 +251,10 @@ function getEmoteOutcomeType(item: Item): string {
   if (!outcomes || outcomes.length === 0) return ''
   if (outcomes.length === 1) return 'so'
   return randomizeOutcomes ? 'ro' : 'mo'
+}
+
+/** The item's creator, or anyone who manages its collection, may edit, move, reset or delete it. */
+export function canManageItem(collection: Collection, item: Item, address: string | undefined): boolean {
+  if (!address) return false
+  return item.owner.toLowerCase() === address.toLowerCase() || canManageCollectionItems(collection, address)
 }

@@ -163,9 +163,9 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
             </>
           )}
         </S.PreviewArea>
-        {/* Mount before the preview loads so its PLAY event is delivered at load
-            time. Controls subscribed after that miss it and stay stuck until the next play. */}
-        {isEmote && (
+        {/* Mount together with the preview iframe (not after it loads) so the PLAY event fired at load
+            time is delivered. Mounting earlier throws: the controls look the iframe up by id. */}
+        {isEmote && blob && (
           <S.EmoteBar data-testid="thumbnail-emote-controls" data-ready={isReady}>
             <EmoteControls className="emote-controls" wearablePreviewId={PREVIEW_ID} />
           </S.EmoteBar>

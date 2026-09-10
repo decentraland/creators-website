@@ -153,7 +153,6 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
       if (result.savedDraftIds.length > 0) {
         showToast(t('add_items_modal.success_toast', { count: result.savedDraftIds.length }))
         await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ['collection-items', address, collection.id] }),
           queryClient.invalidateQueries({ queryKey: ['collection-items-all', address, collection.id] }),
           queryClient.invalidateQueries({ queryKey: ['collection', address, collection.id] }),
           queryClient.invalidateQueries({ queryKey: ['collection-preview', address, collection.id] }),

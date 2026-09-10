@@ -4,9 +4,16 @@ import { ThumbnailMosaic } from './ThumbnailMosaic'
 
 describe('ThumbnailMosaic', () => {
   it('renders one cell per thumbnail, capped at four, and exposes the count for the layout', () => {
-    render(<ThumbnailMosaic thumbnails={['a.png', 'b.png', 'c.png', 'd.png', 'e.png']} />)
+    render(<ThumbnailMosaic thumbnails={['a.png', 'b.png', 'c.png', 'd.png', 'e.png'].map(url => ({ url }))} />)
     expect(screen.getAllByTestId('thumbnail-mosaic-cell')).toHaveLength(4)
     expect(screen.getByTestId('thumbnail-mosaic')).toHaveAttribute('data-count', '4')
+  })
+
+  it('tints each cell with its item rarity', () => {
+    render(<ThumbnailMosaic thumbnails={[{ url: 'a.png', rarity: 'mythic' }, { url: 'b.png' }]} />)
+    const [mythic, plain] = screen.getAllByTestId('thumbnail-mosaic-thumbnail')
+    expect(mythic.style.backgroundImage).toContain('radial-gradient')
+    expect(plain.style.backgroundImage).toBe('')
   })
 
   it('shows a skeleton instead of cells while loading', () => {

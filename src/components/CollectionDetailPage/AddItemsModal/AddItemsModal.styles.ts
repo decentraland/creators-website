@@ -80,18 +80,11 @@ export const DraftThumbWrap = styled.span`
   height: 78px;
   flex-shrink: 0;
   border-radius: ${theme.radius.btnSm};
-  background: ${theme.colors.media};
   overflow: hidden;
 
   ${theme.media.maxWidth('xl')} {
     width: 50px;
     height: 50px;
-  }
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
   }
 `
 
@@ -228,15 +221,8 @@ export const ThumbnailBox = styled.button`
   padding: 0;
   border: 0;
   border-radius: 36px;
-  background: ${theme.colors.media};
   overflow: hidden;
   cursor: pointer;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
 
   /* Styled components must not be used as selectors (Vitest); target the data hook instead. */
   &:hover [data-thumb-overlay],
@@ -455,6 +441,8 @@ export const SegmentButton = styled.button`
   }
 
   svg {
+    width: 20px;
+    height: 20px;
     font-size: 17px;
   }
 `

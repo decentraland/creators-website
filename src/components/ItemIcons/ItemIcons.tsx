@@ -1,6 +1,8 @@
 import { type CSSProperties } from 'react'
 import { useTranslation } from '~/intl'
 import { BodyShapeType } from '~/lib/items'
+import { EmotePlayMode } from '~/lib/itemFactory'
+import { LoopIcon, PlayOnceIcon } from '~/components/Icons'
 import catAccessories from '~/assets/icons/cat-accessories.svg'
 import catEarring from '~/assets/icons/cat-earring.svg'
 import catEyebrows from '~/assets/icons/cat-eyebrows.svg'
@@ -111,6 +113,27 @@ export function BodyShapeIcon({ bodyShape, withLabel = false, testId = 'body-sha
   if (!withLabel) return icon
   return (
     <S.Labeled data-testid={testId} data-body-shape={bodyShape}>
+      {icon}
+      <span>{label}</span>
+    </S.Labeled>
+  )
+}
+
+type PlayModeProps = {
+  playMode: EmotePlayMode
+  withLabel?: boolean
+  testId?: string
+}
+
+/** The emote play-mode glyph (loop / play once), optionally with its label. */
+export function PlayModeIcon({ playMode, withLabel = false, testId = 'play-mode-icon' }: PlayModeProps) {
+  const { t } = useTranslation()
+  const label = t(`collection_detail_page.play_mode.${playMode}`)
+  const Glyph = playMode === EmotePlayMode.LOOP ? LoopIcon : PlayOnceIcon
+  const icon = <Glyph role="img" aria-label={label} aria-hidden={false} />
+  if (!withLabel) return icon
+  return (
+    <S.Labeled data-testid={testId} data-play-mode={playMode}>
       {icon}
       <span>{label}</span>
     </S.Labeled>

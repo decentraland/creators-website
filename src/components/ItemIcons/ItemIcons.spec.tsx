@@ -3,7 +3,8 @@ import { type ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import { TranslationProvider } from '~/intl'
 import { BodyShapeType } from '~/lib/items'
-import { BodyShapeIcon, CategoryIcon } from './ItemIcons'
+import { EmotePlayMode } from '~/lib/itemFactory'
+import { BodyShapeIcon, CategoryIcon, PlayModeIcon } from './ItemIcons'
 
 const wrapper = ({ children }: { children: ReactNode }) => <TranslationProvider>{children}</TranslationProvider>
 
@@ -24,5 +25,11 @@ describe('ItemIcons', () => {
     render(<BodyShapeIcon bodyShape={BodyShapeType.FEMALE} withLabel />, { wrapper })
     expect(screen.getByTestId('body-shape-icon')).toHaveTextContent('Female')
     expect(screen.getByRole('img', { name: 'Female' })).toBeInTheDocument()
+  })
+
+  it('renders a play-mode glyph with its label', () => {
+    render(<PlayModeIcon playMode={EmotePlayMode.LOOP} withLabel />, { wrapper })
+    expect(screen.getByTestId('play-mode-icon')).toHaveTextContent('Loop')
+    expect(screen.getByRole('img', { name: 'Loop' })).toBeInTheDocument()
   })
 })

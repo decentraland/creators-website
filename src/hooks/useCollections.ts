@@ -57,3 +57,23 @@ export function useCollectionPreview(address: string | undefined, collectionId: 
     staleTime: 5 * 60_000
   })
 }
+
+// Far more than any creator has.
+const ALL_DRAFTS_LIMIT = 1000
+
+/** Every draft standard collection of the creator, for picking where to move an item. */
+export function useDraftCollections(address: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ['collections', address, 'drafts'],
+    queryFn: () =>
+      fetchCollections(address!, {
+        page: 1,
+        limit: ALL_DRAFTS_LIMIT,
+        type: CollectionType.STANDARD,
+        isPublished: false
+      }),
+    enabled: !!address && enabled,
+    staleTime: 30_000,
+    select: data => data.results
+  })
+}
