@@ -11,6 +11,12 @@ export const Trigger = styled(Button)`
   &[data-compact] {
     width: 32px;
     height: 32px;
+
+    /* Touch target on small screens. */
+    ${theme.media.noActions} {
+      width: 40px;
+      height: 40px;
+    }
   }
 `
 

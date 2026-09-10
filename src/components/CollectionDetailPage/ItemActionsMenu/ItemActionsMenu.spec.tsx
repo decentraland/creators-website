@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { type ReactNode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -107,6 +107,15 @@ async function openMenu() {
 
 const ids = (menu: HTMLElement) =>
   Array.from(menu.querySelectorAll('[role="menuitem"]')).map(el => el.getAttribute('data-testid'))
+
+function stubViewport(compact: boolean) {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn().mockReturnValue({ matches: compact, addEventListener: vi.fn(), removeEventListener: vi.fn() })
+  )
+}
+
+afterEach(() => vi.unstubAllGlobals())
 
 beforeEach(() => {
   useNotifications.setState({ toasts: [] })
@@ -256,5 +265,23 @@ describe('ItemActionsMenu', () => {
     await userEvent.click(screen.getByTestId('delete-item-confirm'))
     expect(await screen.findByTestId('delete-item-modal-error')).toBeInTheDocument()
     expect(screen.getByTestId('delete-item-modal')).toBeInTheDocument()
+  })
+
+  describe('on a small screen', () => {
+    beforeEach(() => stubViewport(true))
+
+    it('keeps only copy URN and the sale actions', async () => {
+      renderMenu({
+        item: publishedItem,
+        collection: published,
+        listing: { itemId: '0', currency: 'mana', manaWei: 1n }
+      })
+      expect(ids(await openMenu())).toEqual(['item-copy-urn', 'item-edit-price', 'item-remove-from-sale'])
+    })
+
+    it('hides the menu entirely for a draft item, which has nothing left to offer', () => {
+      renderMenu()
+      expect(screen.queryByTestId('item-actions')).not.toBeInTheDocument()
+    })
   })
 })

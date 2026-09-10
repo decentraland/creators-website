@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '~/intl'
 import { useDraftCollections } from '~/hooks/useCollections'
+import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useMoveItem, useResetItem } from '~/hooks/useItem'
 import { type ItemSync } from '~/hooks/useItemSync'
 import { useDeleteItem } from '~/hooks/usePublishCollection'
@@ -11,6 +12,7 @@ import { ItemSyncStatus } from '~/lib/itemSync'
 import { canManageItem, type Item } from '~/lib/items'
 import { type ItemListing } from '~/lib/listings'
 import { useNotifications } from '~/lib/notifications'
+import { theme } from '~/styles/theme'
 import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
 import { DeleteItemModal } from '../DeleteItemModal'
 import { MoveItemModal } from './MoveItemModal'
@@ -39,11 +41,16 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
   const deleteItem = useDeleteItem(address)
   const drafts = useDraftCollections(address, dialog === 'move')
 
-  const isDraft = !collection.isPublished && !isCollectionLocked(collection)
+  // Small screens are mostly a viewer: only copying the URN and the sale actions stay available there.
+  const compact = useMediaQuery(theme.media.noActions)
+
   const canManage = canManageItem(collection, item, address)
-  const onMarket = hasBeenApproved(collection)
-  const canReset = canManage && sync?.status === ItemSyncStatus.UNSYNCED && !!sync.entity
+  const canCopyUrn = !!item.urn
+  const canEditDraft = !compact && canManage && !collection.isPublished && !isCollectionLocked(collection)
+  const canSell = canManage && hasBeenApproved(collection)
   const isOnSale = !!listing
+  const canReset = !compact && canManage && sync?.status === ItemSyncStatus.UNSYNCED && !!sync.entity
+  const canPreview = !compact
 
   async function copyUrn() {
     const copied = !!item.urn && (await copyToClipboard(item.urn))
@@ -98,23 +105,27 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
     })
   }
 
+  if (!canCopyUrn && !canPreview && !canEditDraft && !canSell) return null
+
   return (
     <>
       <ActionsMenu label={t('collection_detail_page.row_actions')} variant="row" testId="item-actions">
-        {item.urn && (
+        {canCopyUrn && (
           <ActionsMenuItem testId="item-copy-urn" onClick={() => void copyUrn()}>
             {t('collection_detail_page.item_actions.copy_urn')}
           </ActionsMenuItem>
         )}
-        <ActionsMenuItem testId="item-preview" onClick={openEditor}>
-          {t('collection_detail_page.item_actions.preview')}
-        </ActionsMenuItem>
-        {isDraft && canManage && (
+        {canPreview && (
+          <ActionsMenuItem testId="item-preview" onClick={openEditor}>
+            {t('collection_detail_page.item_actions.preview')}
+          </ActionsMenuItem>
+        )}
+        {canEditDraft && (
           <ActionsMenuItem testId="item-move" onClick={() => setDialog('move')}>
             {t('collection_detail_page.item_actions.move')}
           </ActionsMenuItem>
         )}
-        {onMarket && canManage && (
+        {canSell && (
           <>
             {/* TODO: price editing and delisting land with the sale flows. */}
             <ActionsMenuItem disabled title={t('collection_detail_page.coming_soon')} testId="item-edit-price">
@@ -132,7 +143,7 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
             {t('collection_detail_page.item_actions.reset')}
           </ActionsMenuItem>
         )}
-        {isDraft && canManage && (
+        {canEditDraft && (
           <>
             <ActionsMenuDivider />
             <ActionsMenuItem testId="item-delete" onClick={() => setDialog('delete')}>

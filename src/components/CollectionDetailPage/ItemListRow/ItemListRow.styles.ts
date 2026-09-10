@@ -111,7 +111,8 @@ export const ActionsCell = styled.div`
   display: flex;
   justify-content: flex-end;
 
-  ${theme.media.noActions} {
-    display: none;
+  ${card} {
+    flex: none;
+    margin-left: auto;
   }
 `
