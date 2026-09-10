@@ -8,9 +8,9 @@ import { useMoveItem, useResetItem } from '~/hooks/useItem'
 import { type ItemSync } from '~/hooks/useItemSync'
 import { useDeleteItem } from '~/hooks/usePublishCollection'
 import { copyToClipboard } from '~/lib/clipboard'
-import { hasBeenApproved, isCollectionLocked, type Collection } from '~/lib/collections'
+import { canSellCollectionItems, hasBeenApproved, isCollectionLocked, type Collection } from '~/lib/collections'
 import { ItemSyncStatus } from '~/lib/itemSync'
-import { canManageItem, type Item } from '~/lib/items'
+import { canManageItem, getItemSales, type Item } from '~/lib/items'
 import { type Session } from '~/lib/auth'
 import { type ItemListing } from '~/lib/listings'
 import { useNotifications } from '~/lib/notifications'
@@ -61,7 +61,11 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
   const canEditDraft = !compact && canManage && !collection.isPublished && !isCollectionLocked(collection)
   // Only an off-chain order can be re-priced or cancelled here; a legacy store price has no trade.
   const tradeListing = listing?.tradeId ? { ...listing, tradeId: listing.tradeId } : null
-  const canSell = canManage && hasBeenApproved(collection) && !!tradeListing && !!session
+  const canSell =
+    canSellCollectionItems(collection, address) && hasBeenApproved(collection) && !!tradeListing && !!session
+  const sales = getItemSales(item)
+  // Every unit is minted: the listing can still be taken down, but there is nothing left to re-price.
+  const canEditPrice = canSell && !(sales && sales.minted >= sales.maxSupply)
   const canReset = !compact && canManage && sync?.status === ItemSyncStatus.UNSYNCED && !!sync.entity
   const canPreview = !compact
 
@@ -142,15 +146,15 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
             {t('collection_detail_page.item_actions.move')}
           </ActionsMenuItem>
         )}
+        {canEditPrice && (
+          <ActionsMenuItem testId="item-edit-price" onClick={() => openSaleDialog('update-price')}>
+            {t('collection_detail_page.item_actions.edit_price')}
+          </ActionsMenuItem>
+        )}
         {canSell && (
-          <>
-            <ActionsMenuItem testId="item-edit-price" onClick={() => openSaleDialog('update-price')}>
-              {t('collection_detail_page.item_actions.edit_price')}
-            </ActionsMenuItem>
-            <ActionsMenuItem testId="item-remove-from-sale" onClick={() => openSaleDialog('remove-listing')}>
-              {t('collection_detail_page.item_actions.remove_from_sale')}
-            </ActionsMenuItem>
-          </>
+          <ActionsMenuItem testId="item-remove-from-sale" onClick={() => openSaleDialog('remove-listing')}>
+            {t('collection_detail_page.item_actions.remove_from_sale')}
+          </ActionsMenuItem>
         )}
         {canReset && (
           <ActionsMenuItem testId="item-reset" onClick={() => setDialog('reset')}>

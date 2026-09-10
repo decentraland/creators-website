@@ -417,7 +417,7 @@ const CollectionDetailPage = () => {
                     withPlayMode={withPlayMode}
                     withMarket={withMarket}
                     listing={withMarket ? listingFor(item) : undefined}
-                    canSell={canSell}
+                    canSell={canSell && item.isPublished && !!item.tokenId}
                     onPutOnSale={setSellingItem}
                     actions={
                       address && (

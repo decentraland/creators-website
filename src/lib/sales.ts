@@ -317,6 +317,10 @@ export function withConflictRetry(
  */
 export async function updatePrice(params: UpdatePriceParams, deps: UpdatePriceDeps): Promise<ItemListing> {
   const { tradeId, credits, ...rest } = params
+  // A sold-out item can't be re-listed: refuse before taking the current order down.
+  const sales = getItemSales(params.item)
+  if (sales && sales.minted >= sales.maxSupply)
+    throw new SellItemError('sold_out', `Item "${params.item.id}" is sold out`)
   let terms: ListingTerms
   try {
     const trade = await deps.fetchTrade(tradeId)

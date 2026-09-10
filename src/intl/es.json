@@ -348,7 +348,8 @@
       "title": "¿Habilitar ventas para esta colección?",
       "description": "Como es el primer ítem de esta colección que pones en venta, primero tienes que habilitar las ventas. Una vez habilitadas, podrás vender cualquier ítem de esta colección en la Tienda de Decentraland.",
       "confirm": "Habilitar ventas",
-      "pending": "Habilitando ventas..."
+      "pending": "Habilitando ventas...",
+      "owner_only": "Las ventas de esta colección aún no están habilitadas y solo su dueño puede hacerlo. Pídele que las habilite y entonces podrás poner ítems en venta."
     },
     "beneficiary": {
       "label": "Beneficiario",

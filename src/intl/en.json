@@ -348,7 +348,8 @@
       "title": "Enable sales for this collection?",
       "description": "Since this is the first item you’re putting on sale from this collection, you’ll need to enable sales first. Once enabled, you’ll be able to sell any item from this collection in the Decentraland Shop.",
       "confirm": "Enable sales",
-      "pending": "Enabling Sales..."
+      "pending": "Enabling Sales...",
+      "owner_only": "Sales for this collection haven’t been enabled yet, and only its owner can do that. Ask them to enable sales, then you’ll be able to put items on sale."
     },
     "beneficiary": {
       "label": "Beneficiary",

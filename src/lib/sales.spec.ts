@@ -317,6 +317,31 @@ describe('updating the price', () => {
     expect(listing).toEqual({ itemId: '3', tradeId: 'trade-2', currency: 'credits', credits: 80 })
   })
 
+  it('refuses a sold-out item before cancelling its order', async () => {
+    const deps = {
+      fetchTrade: vi.fn(),
+      sendTransaction: vi.fn(),
+      waitForTransaction: vi.fn(),
+      fetchSignatureIndexes: vi.fn(),
+      signTrade: vi.fn(),
+      createTrade: vi.fn()
+    }
+    await expect(
+      updatePrice(
+        {
+          address: ADDRESS,
+          chainId: CHAIN_ID,
+          collection,
+          item: { ...item, totalSupply: 100 },
+          tradeId: 'trade-1',
+          credits: 80
+        },
+        deps
+      )
+    ).rejects.toMatchObject({ reason: 'sold_out' })
+    expect(deps.sendTransaction).not.toHaveBeenCalled()
+  })
+
   it('stops before cancelling anything when the wallet prompt is dismissed', async () => {
     const deps = {
       fetchTrade: vi.fn().mockResolvedValue(storedTrade),
