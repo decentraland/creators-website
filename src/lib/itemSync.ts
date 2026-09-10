@@ -52,7 +52,9 @@ function getDeployableFiles(contents: Record<string, string>): Set<string> {
 }
 
 function sameList(a: unknown[] | undefined, b: unknown[] | undefined): boolean {
-  return (a ?? []).toString() === (b ?? []).toString()
+  const listA = a ?? []
+  const listB = b ?? []
+  return listA.length === listB.length && listA.every((x, i) => x === listB[i])
 }
 
 function sameSet<T>(a: T[], b: T[]): boolean {
@@ -71,10 +73,8 @@ function sameRepresentations(a: ItemRepresentation[], b: ItemRepresentation[]): 
     const repB = b[i]
     if (!sameSet(repA.bodyShapes, repB.bodyShapes) || !sameSet(repA.contents, repB.contents)) return false
     if (repA.mainFile !== repB.mainFile) return false
-    if (repA.overrideHides && repB.overrideHides && repA.overrideReplaces && repB.overrideReplaces) {
-      return sameSet(repA.overrideHides, repB.overrideHides) && sameSet(repA.overrideReplaces, repB.overrideReplaces)
-    }
-    return true
+    if (!sameSet(repA.overrideHides ?? [], repB.overrideHides ?? [])) return false
+    return sameSet(repA.overrideReplaces ?? [], repB.overrideReplaces ?? [])
   })
 }
 

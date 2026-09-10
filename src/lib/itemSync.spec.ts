@@ -117,6 +117,26 @@ describe('isItemSynced', () => {
     expect(isItemSynced({ ...wearable, data: { ...wearable.data, representations } }, entityFor(wearable))).toBe(false)
   })
 
+  it('is out of sync when a representation gains or drops per-representation overrides', () => {
+    const [rep] = wearable.data.representations
+    const withOverrides = {
+      ...wearable,
+      data: { ...wearable.data, representations: [{ ...rep, overrideHides: ['hair'] }] }
+    }
+    expect(isItemSynced(withOverrides, entityFor(wearable))).toBe(false)
+    expect(isItemSynced(wearable, entityFor(withOverrides))).toBe(false)
+    expect(isItemSynced(withOverrides, entityFor(withOverrides))).toBe(true)
+  })
+
+  it('does not confuse a tag containing a comma with two tags', () => {
+    expect(
+      isItemSynced(
+        { ...wearable, data: { ...wearable.data, tags: ['pirate,hat'] } },
+        entityFor({ ...wearable, data: { ...wearable.data, tags: ['pirate', 'hat'] } })
+      )
+    ).toBe(false)
+  })
+
   it('treats an emote deployed before ADR-74 as out of sync', () => {
     const legacy = entityFor(emote, { emoteDataADR74: undefined, data: emote.data })
     expect(isItemSynced(emote, legacy)).toBe(false)

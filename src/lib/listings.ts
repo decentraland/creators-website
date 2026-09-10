@@ -14,6 +14,7 @@ type ItemRow = { itemId: string; price: string; isOnSale: boolean }
 const FIRST = '1000'
 // The legacy builder's "no price set" marker on a store-minted item.
 const NO_PRICE = ethers.constants.MaxUint256.toString()
+const WEI = /^\d+$/
 
 async function getJson<T>(path: string, query: Record<string, string>): Promise<T> {
   const response = await fetch(`${config.get('MARKETPLACE_SERVER_URL')}${path}?${new URLSearchParams(query)}`)
@@ -33,7 +34,7 @@ export async function fetchCollectionListings(contractAddress: string): Promise<
   }
   const listings = new Map<string, ItemListing>()
   for (const { itemId, price, isOnSale } of items.data ?? []) {
-    if (!isOnSale || price === NO_PRICE) continue
+    if (!isOnSale || price === NO_PRICE || !WEI.test(price)) continue
     const inCredits = credits.get(itemId)
     listings.set(
       itemId,

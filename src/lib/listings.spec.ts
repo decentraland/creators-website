@@ -21,6 +21,7 @@ const manaItem = { itemId: '1', price: '5000000000000000000', isOnSale: true }
 const freeItem = { itemId: '2', price: '0', isOnSale: true }
 const notOnSale = { itemId: '3', price: '7000000000000000000', isOnSale: false }
 const noPrice = { itemId: '4', price: ethers.constants.MaxUint256.toString(), isOnSale: true }
+const malformed = { itemId: '5', price: '1.5', isOnSale: true }
 const catalog = [
   { itemId: '0', priceCredits: 500, source: 'native' },
   { itemId: '1', priceCredits: 12, source: 'legacy' }
@@ -30,7 +31,7 @@ afterEach(() => fetchMock.mockReset())
 
 describe('fetchCollectionListings', () => {
   it('prices credits listings from the shop catalog and everything else in MANA from the items endpoint', async () => {
-    mockServer([creditsItem, manaItem, freeItem, notOnSale, noPrice], catalog)
+    mockServer([creditsItem, manaItem, freeItem, notOnSale, noPrice, malformed], catalog)
     const listings = await fetchCollectionListings(CONTRACT)
 
     const urls = fetchMock.mock.calls.map(call => new URL(call[0] as string))
@@ -45,6 +46,7 @@ describe('fetchCollectionListings', () => {
     expect(listings.get('2')).toEqual({ itemId: '2', currency: 'mana', manaWei: 0n })
     expect(listings.has('3')).toBe(false)
     expect(listings.has('4')).toBe(false)
+    expect(listings.has('5')).toBe(false)
   })
 
   it('fails when either request fails', async () => {
