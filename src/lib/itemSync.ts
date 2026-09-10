@@ -2,19 +2,15 @@
 // and the marketplace show. Ported from the legacy builder (modules/item/utils areSynced + the
 // getStatusForStandard selector) so both apps judge the same item the same way.
 import { type Entity } from '@dcl/schemas'
-import { CurationStatus, type CollectionCuration } from './collections'
 import { ItemType, type Item, type ItemData, type ItemRepresentation } from './items'
 
 export enum ItemSyncStatus {
-  /** Not on-chain yet. */
   UNPUBLISHED = 'unpublished',
   /** On-chain, waiting for the committee — either the first review or a pushed change. */
   UNDER_REVIEW = 'under_review',
-  /** Approved and identical to the deployed entity. */
   SYNCED = 'synced',
   /** Approved, but the builder copy differs from the deployed entity (or none is deployed). */
   UNSYNCED = 'unsynced',
-  /** The deployed entity has not been fetched yet. */
   LOADING = 'loading'
 }
 
@@ -32,7 +28,7 @@ const EMPTY_CONTENT_HASH = 'bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevten
 const VIDEO_PATH = 'video.mp4'
 
 /** The item fields as deployed: `data` for wearables, `emoteDataADR74` for emotes. */
-export function getEntityItemData(entity: Entity): ItemData | undefined {
+function getEntityItemData(entity: Entity): ItemData | undefined {
   const metadata = entity.metadata as CatalystItemMetadata
   return metadata.emoteDataADR74 ?? metadata.data
 }
@@ -62,7 +58,7 @@ function sameList(a: unknown[] | undefined, b: unknown[] | undefined): boolean {
 function sameSet<T>(a: T[], b: T[]): boolean {
   const setA = new Set(a)
   const setB = new Set(b)
-  return setA.size === setB.size && a.every(x => setB.has(x)) && b.every(x => setA.has(x))
+  return setA.size === setB.size && a.every(x => setB.has(x))
 }
 
 function sameJson(a: unknown, b: unknown): boolean {
@@ -145,10 +141,6 @@ export function getItemSyncStatus(item: Item, entity: Entity | undefined, contex
   return context.entitiesLoaded ? ItemSyncStatus.UNSYNCED : ItemSyncStatus.LOADING
 }
 
-export function isCurationPending(curation: CollectionCuration | null | undefined): boolean {
-  return curation?.status === CurationStatus.PENDING
-}
-
 /**
  * The item as deployed: name, description, item data and file hashes taken from the entity, so saving it
  * (with the entity's files re-uploaded) puts the builder copy back in sync.
@@ -157,7 +149,6 @@ export function buildResetItem(item: Item, entity: Entity): Item {
   const metadata = entity.metadata as CatalystItemMetadata
   const deployed = getEntityItemData(entity)
   if (!deployed || !entity.content) throw new Error(`Entity ${entity.id} has no item data or content`)
-  const contents: Record<string, string> = {}
-  for (const { file, hash } of entity.content) contents[file] = hash
+  const contents = Object.fromEntries(entity.content.map(({ file, hash }) => [file, hash]))
   return { ...item, name: metadata.name, description: metadata.description, data: deployed, contents }
 }

@@ -1,15 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { type Entity, EntityType } from '@dcl/schemas'
-import { CurationStatus, type CollectionCuration } from './collections'
 import { ItemType, type Item } from './items'
-import {
-  ItemSyncStatus,
-  buildResetItem,
-  getItemSyncStatus,
-  isCurationPending,
-  isItemSynced,
-  mapEntitiesByItemId
-} from './itemSync'
+import { ItemSyncStatus, buildResetItem, getItemSyncStatus, isItemSynced, mapEntitiesByItemId } from './itemSync'
 
 const MALE = 'urn:decentraland:off-chain:base-avatars:BaseMale'
 const URN = 'urn:decentraland:amoy:collections-v2:0xc0ffee:0'
@@ -163,21 +155,6 @@ describe('mapEntitiesByItemId', () => {
     const map = mapEntitiesByItemId([wearable, emote], [entityFor(emote)])
     expect(map.get('e1')?.pointers).toEqual([emote.urn])
     expect(map.has('i1')).toBe(false)
-  })
-})
-
-describe('isCurationPending', () => {
-  const curation: CollectionCuration = {
-    id: 'cu',
-    collectionId: 'c1',
-    status: CurationStatus.PENDING,
-    createdAt: 1,
-    updatedAt: 1
-  }
-  it('is pending only for a pending request', () => {
-    expect(isCurationPending(curation)).toBe(true)
-    expect(isCurationPending({ ...curation, status: CurationStatus.APPROVED })).toBe(false)
-    expect(isCurationPending(null)).toBe(false)
   })
 })
 

@@ -16,11 +16,7 @@ type Props = {
 export function CurrencyAmount({ currency, children }: Props) {
   return (
     <>
-      <S.Mark
-        aria-hidden
-        data-currency={currency}
-        style={{ '--icon-url': `url("${GLYPHS[currency]}")` } as CSSProperties}
-      />
+      <S.Mark aria-hidden style={{ '--icon-url': `url("${GLYPHS[currency]}")` } as CSSProperties} />
       {children}
     </>
   )

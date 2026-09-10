@@ -12,13 +12,14 @@ type Props = {
   /** The creator's draft collections; `undefined` while they load. */
   collections: Collection[] | undefined
   isMoving: boolean
+  isLoading: boolean
   error: boolean
   onConfirm: (collection: Collection) => void
   onClose: () => void
 }
 
 /** Pick the draft collection an item moves to. Locked drafts (publish in flight) can't take items. */
-export function MoveItemModal({ item, collections, isMoving, error, onConfirm, onClose }: Props) {
+export function MoveItemModal({ item, collections, isMoving, isLoading, error, onConfirm, onClose }: Props) {
   const { t } = useTranslation()
   const [targetId, setTargetId] = useState<string | null>(null)
 
@@ -27,7 +28,6 @@ export function MoveItemModal({ item, collections, isMoving, error, onConfirm, o
     [collections, item.collectionId]
   )
   const options = useMemo(() => targets.map(c => ({ value: c.id, label: c.name })), [targets])
-  const target = useMemo(() => targets.find(c => c.id === targetId) ?? null, [targets, targetId])
 
   return (
     <Modal
@@ -40,13 +40,13 @@ export function MoveItemModal({ item, collections, isMoving, error, onConfirm, o
         <S.Text data-testid="move-item-modal-description">
           {t('collection_detail_page.item_actions.move_modal.description', { name: item.name })}
         </S.Text>
-        {!collections ? (
+        {isLoading ? (
           <S.Loading role="status" data-testid="move-item-loading">
             <S.Spinner aria-hidden />
             {t('collection_detail_page.item_actions.move_modal.loading')}
           </S.Loading>
         ) : targets.length === 0 ? (
-          <S.Info data-testid="move-item-empty">{t('collection_detail_page.item_actions.move_modal.empty')}</S.Info>
+          <S.Text data-testid="move-item-empty">{t('collection_detail_page.item_actions.move_modal.empty')}</S.Text>
         ) : (
           <S.Field>
             {t('collection_detail_page.item_actions.move_modal.collection')}
@@ -75,9 +75,12 @@ export function MoveItemModal({ item, collections, isMoving, error, onConfirm, o
           <Button
             type="button"
             loading={isMoving}
-            disabled={!target}
+            disabled={!targetId}
             data-testid="move-item-confirm"
-            onClick={() => target && onConfirm(target)}
+            onClick={() => {
+              const target = targets.find(c => c.id === targetId)
+              if (target) onConfirm(target)
+            }}
           >
             {t('collection_detail_page.item_actions.move_modal.confirm')}
           </Button>

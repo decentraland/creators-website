@@ -5,8 +5,6 @@ import { config } from '~/config'
 
 const contentUrl = () => `${config.get('PEER_URL')}/content`
 
-export const getCatalystContentUrl = (hash: string) => `${contentUrl()}/contents/${hash}`
-
 /** The active entities deployed under the given pointers (item URNs). Pointers with no entity are simply absent. */
 export async function fetchEntitiesByPointers(pointers: string[]): Promise<Entity[]> {
   if (pointers.length === 0) return []
@@ -21,7 +19,7 @@ export async function fetchEntitiesByPointers(pointers: string[]): Promise<Entit
 
 /** One deployed file by hash. */
 export async function fetchCatalystContent(hash: string): Promise<Blob> {
-  const response = await fetch(getCatalystContentUrl(hash))
+  const response = await fetch(`${contentUrl()}/contents/${hash}`)
   if (!response.ok) {
     await response.body?.cancel()
     throw new Error(`catalyst request failed: contents/${hash} (${response.status})`)

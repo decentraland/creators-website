@@ -180,17 +180,12 @@ export const List = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
-  overflow-x: auto;
 
-  & > * {
-    min-width: 950px;
-  }
-
-  ${noActions} {
-    overflow-x: visible;
+  ${theme.media.withActions} {
+    overflow-x: auto;
 
     & > * {
-      min-width: 0;
+      min-width: 950px;
     }
   }
 `

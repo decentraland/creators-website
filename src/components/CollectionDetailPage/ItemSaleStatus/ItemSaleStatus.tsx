@@ -34,7 +34,13 @@ export function ItemSaleStatus({ sales, listing }: Props) {
   }
   // TODO: opens the put-on-sale flow once it lands.
   return (
-    <S.PutOnSale data-testid="item-sale-status" data-status="not_on_sale" type="button">
+    <S.PutOnSale
+      data-testid="item-sale-status"
+      data-status="not_on_sale"
+      type="button"
+      aria-disabled
+      title={t('collection_detail_page.coming_soon')}
+    >
       <PriceTagIcon />
       {t('collection_detail_page.sale_status.put_on_sale')}
     </S.PutOnSale>

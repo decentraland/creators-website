@@ -49,6 +49,20 @@ export const Spinner = styled.span`
   animation: spin 0.8s linear infinite;
 `
 
+// Footer of a form/confirm dialog: hairline on top, actions sharing the width.
+export const ModalActions = styled.div`
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  padding-top: 24px;
+  border-top: 1px solid ${theme.colors.glassHover};
+
+  & > button {
+    flex: 1;
+    min-width: 0;
+  }
+`
+
 // Shared shell for the sign-in / empty / error / no-results states.
 export const Panel = styled.section`
   display: flex;

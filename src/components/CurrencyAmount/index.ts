@@ -1,1 +1,1 @@
-export { CurrencyAmount, type Currency } from './CurrencyAmount'
+export { CurrencyAmount } from './CurrencyAmount'

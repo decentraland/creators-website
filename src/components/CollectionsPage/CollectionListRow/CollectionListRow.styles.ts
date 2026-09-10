@@ -2,7 +2,6 @@ import styled from '@emotion/styled'
 import { Link } from 'react-router-dom'
 import { theme } from '~/styles/theme'
 
-// Below the actions breakpoint the table row reshapes into a card; see theme.media.noActions.
 const card = theme.media.noActions
 const table = theme.media.withActions
 

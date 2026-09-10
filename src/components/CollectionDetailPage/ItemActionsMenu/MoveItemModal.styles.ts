@@ -1,7 +1,7 @@
 import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
 
-export { Spinner } from '~/styles/shared'
+export { ModalActions as Actions, Spinner } from '~/styles/shared'
 
 export const Body = styled.div`
   display: flex;
@@ -15,13 +15,10 @@ export const Text = styled.p`
   font-size: 20px;
   line-height: 1.4;
   color: ${theme.colors.gray4};
-`
 
-export const Info = styled.p`
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.4;
-  color: ${theme.colors.gray4};
+  &[data-testid='move-item-empty'] {
+    font-size: 16px;
+  }
 `
 
 export const Field = styled.label`
@@ -39,18 +36,6 @@ export const Error = styled.p`
   margin: 0;
   font-size: 14px;
   color: ${theme.colors.errLight};
-`
-
-export const Actions = styled.div`
-  display: flex;
-  gap: 12px;
-  padding-top: 24px;
-  border-top: 1px solid ${theme.colors.glassHover};
-
-  & > button {
-    flex: 1;
-    min-width: 0;
-  }
 `
 
 export const Loading = styled.div`

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchCatalystContent, fetchEntitiesByPointers, getCatalystContentUrl } from './catalyst'
+import { fetchCatalystContent, fetchEntitiesByPointers } from './catalyst'
 
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
@@ -33,8 +33,7 @@ describe('fetchCatalystContent', () => {
   it('downloads a deployed file by hash', async () => {
     fetchMock.mockResolvedValue(new Response('glb-bytes', { status: 200 }))
     const blob = await fetchCatalystContent('Qmhash')
-    expect(fetchMock).toHaveBeenCalledWith(getCatalystContentUrl('Qmhash'))
-    expect(getCatalystContentUrl('Qmhash')).toBe('https://peer.decentraland.zone/content/contents/Qmhash')
+    expect(fetchMock).toHaveBeenCalledWith('https://peer.decentraland.zone/content/contents/Qmhash')
     await expect(blob.text()).resolves.toBe('glb-bytes')
   })
 

@@ -119,14 +119,12 @@ export const HeaderActions = styled.div`
   display: flex;
   align-items: center;
   gap: 16px;
-`
 
-// Preview and publish are desktop-only; the ⋯ menu beside them stays on every screen.
-export const DesktopActions = styled.div`
-  display: contents;
-
+  /* Preview and publish are desktop-only; the ⋯ menu beside them stays on every screen. */
   ${noActions} {
-    display: none;
+    & > [data-desktop-only] {
+      display: none;
+    }
   }
 `
 
@@ -204,17 +202,12 @@ export const List = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
-  overflow-x: auto;
 
-  & > * {
-    min-width: 1000px;
-  }
-
-  ${noActions} {
-    overflow-x: visible;
+  ${theme.media.withActions} {
+    overflow-x: auto;
 
     & > * {
-      min-width: 0;
+      min-width: 1000px;
     }
   }
 `

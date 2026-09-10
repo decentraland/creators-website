@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react'
+import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'
 import { ItemType, getItemBodyShapeType, getItemSales, type Item } from '~/lib/items'
@@ -26,12 +27,9 @@ type Props = {
   actions?: ReactNode
 }
 
-function formatCount(value: number): string {
-  return value.toLocaleString('en-US')
-}
-
 export function ItemListRow({ item, withPlayMode = false, withMarket = false, listing, actions }: Props) {
   const { t } = useTranslation()
+  const intl = useIntl()
 
   const thumbnailHash = item.contents[item.thumbnail]
   const bodyShapeType = getItemBodyShapeType(item)
@@ -97,7 +95,7 @@ export function ItemListRow({ item, withPlayMode = false, withMarket = false, li
               {renderPrice()}
             </S.Cell>
             <S.Cell data-testid="item-row-sales" data-empty={!sales || undefined}>
-              {sales ? `${formatCount(sales.minted)}/${formatCount(sales.maxSupply)}` : EMPTY}
+              {sales ? `${intl.formatNumber(sales.minted)}/${intl.formatNumber(sales.maxSupply)}` : EMPTY}
             </S.Cell>
             <S.Cell data-testid="item-row-sale-status" data-empty={listing === undefined || undefined}>
               <ItemSaleStatus sales={sales} listing={listing} />

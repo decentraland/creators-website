@@ -1,13 +1,9 @@
 import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
 
-// Below the actions breakpoint the table row reshapes into a card; see theme.media.noActions.
 const card = theme.media.noActions
 
-// Shared column template so the header and the rows stay aligned: thumbnail, then equal columns
-// (name, body shape, category, [play mode], rarity, [price, sales, sale status]), then actions. The header's "Item"
-// spans the first two. Play Mode is only laid out when the list being shown has emotes; Price and
-// Sales and Sale Status only once the collection has been published.
+// Shared by the header and the rows so they stay aligned; the header's "Item" spans the first two columns.
 const columns = (count: number) => `grid-template-columns: 74px repeat(${count}, minmax(0, 1fr)) minmax(56px, auto);`
 
 export const itemListColumns = `

@@ -1,1 +1,1 @@
-export { ThumbnailMosaic, type MosaicThumbnail } from './ThumbnailMosaic'
+export { ThumbnailMosaic } from './ThumbnailMosaic'

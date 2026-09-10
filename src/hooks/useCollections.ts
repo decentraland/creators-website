@@ -58,7 +58,7 @@ export function useCollectionPreview(address: string | undefined, collectionId: 
   })
 }
 
-// Far more than any creator has; the server caps at 100000 and answers a bare array past it.
+// Far more than any creator has.
 const ALL_DRAFTS_LIMIT = 1000
 
 /** Every draft standard collection of the creator, for picking where to move an item. */

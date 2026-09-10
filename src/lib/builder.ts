@@ -4,15 +4,13 @@ import { config } from '~/config'
 import { signedFetch } from '~/lib/auth'
 import {
   fromRemoteCollection,
-  fromRemoteCollectionCuration,
   toCollectionsQueryString,
   toRemoteCollection,
   type Collection,
   type CollectionCuration,
   type FetchCollectionsParams,
   type PaginatedResource,
-  type RemoteCollection,
-  type RemoteCollectionCuration
+  type RemoteCollection
 } from '~/lib/collections'
 import { fromRemoteItem, toRemoteItem, type Item, type RemoteItem } from '~/lib/items'
 import { type BlockchainRarity } from '~/lib/rarities'
@@ -116,7 +114,7 @@ export async function fetchCollectionCuration(
   address: string,
   collectionId: string
 ): Promise<CollectionCuration | null> {
-  const remote = await request<RemoteCollectionCuration | null | undefined>(
+  const curation = await request<CollectionCuration | null | undefined>(
     address,
     'GET',
     `/collections/${collectionId}/curation`,
@@ -124,7 +122,7 @@ export async function fetchCollectionCuration(
     undefined,
     false
   )
-  return remote ? fromRemoteCollectionCuration(remote) : null
+  return curation ?? null
 }
 
 /** Delete an unpublished collection and its items: DELETE /collections/{id} (409 published, 423 locked). */

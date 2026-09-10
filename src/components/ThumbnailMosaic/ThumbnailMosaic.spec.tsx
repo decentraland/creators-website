@@ -12,8 +12,8 @@ describe('ThumbnailMosaic', () => {
   it('tints each cell with its item rarity', () => {
     render(<ThumbnailMosaic thumbnails={[{ url: 'a.png', rarity: 'mythic' }, { url: 'b.png' }]} />)
     const [mythic, plain] = screen.getAllByTestId('thumbnail-mosaic-thumbnail')
-    expect(mythic).toHaveAttribute('data-rarity', 'mythic')
-    expect(plain).not.toHaveAttribute('data-rarity')
+    expect(mythic.style.backgroundImage).toContain('radial-gradient')
+    expect(plain.style.backgroundImage).toBe('')
   })
 
   it('shows a skeleton instead of cells while loading', () => {

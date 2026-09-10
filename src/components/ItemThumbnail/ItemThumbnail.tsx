@@ -15,12 +15,7 @@ type Props = {
 export function ItemThumbnail({ src, rarity, children, className, testId = 'item-thumbnail' }: Props) {
   const backgroundImage = getRarityMediaBackground(rarity)
   return (
-    <S.Frame
-      className={className}
-      data-testid={testId}
-      data-rarity={backgroundImage ? rarity?.toLowerCase() : undefined}
-      style={backgroundImage ? { backgroundImage } : undefined}
-    >
+    <S.Frame className={className} data-testid={testId} style={backgroundImage ? { backgroundImage } : undefined}>
       {src && <S.Img src={src} alt="" loading="lazy" data-testid={`${testId}-img`} />}
       {children}
     </S.Frame>

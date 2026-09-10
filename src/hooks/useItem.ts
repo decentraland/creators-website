@@ -12,12 +12,12 @@ export function useMoveItem(address: string | undefined) {
   return useMutation({
     mutationFn: async ({ item, collectionId }: { item: Item; collectionId: string }) => {
       if (!address) throw new Error('Wallet disconnected')
-      const moved = await saveItem(address, { ...item, collectionId }, {})
-      return { from: item.collectionId, moved }
+      return saveItem(address, { ...item, collectionId }, {})
     },
-    onSuccess: ({ from, moved }) => {
-      if (from) invalidateCollectionItems(queryClient, from)
-      if (moved.collectionId) invalidateCollectionItems(queryClient, moved.collectionId)
+    // Both collections change, so every collection query is refetched rather than the two by id.
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['collection-items-all'] })
+      void queryClient.invalidateQueries({ queryKey: ['collection'] })
       void queryClient.invalidateQueries({ queryKey: ['collections'] })
     }
   })

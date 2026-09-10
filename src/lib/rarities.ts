@@ -24,7 +24,7 @@ export function isRarity(value: string | null | undefined): value is RarityName 
 }
 
 /** The design palette color of a rarity (theme.rarities); undefined for an unknown rarity. */
-export function getRarityColor(rarity: string | null | undefined): string | undefined {
+function getRarityColor(rarity: string | null | undefined): string | undefined {
   const key = rarity?.toLowerCase()
   return isRarity(key) ? theme.rarities[key] : undefined
 }

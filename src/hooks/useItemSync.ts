@@ -3,8 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { type Entity } from '@dcl/schemas'
 import { fetchCollectionCuration } from '~/lib/builder'
 import { fetchEntitiesByPointers } from '~/lib/catalyst'
-import { type Collection } from '~/lib/collections'
-import { getItemSyncStatus, isCurationPending, mapEntitiesByItemId, type ItemSyncStatus } from '~/lib/itemSync'
+import { CurationStatus, type Collection } from '~/lib/collections'
+import { getItemSyncStatus, mapEntitiesByItemId, type ItemSyncStatus } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
 
 export type ItemSync = {
@@ -25,7 +25,7 @@ export function useItemSyncs(
   const collectionId = collection?.id
   const isPublished = !!collection?.isPublished
   const pointers = useMemo(
-    () => (isPublished ? items.filter(item => item.isPublished && item.urn).map(item => item.urn!) : []),
+    () => (isPublished ? items.flatMap(item => (item.isPublished && item.urn ? [item.urn] : [])) : []),
     [isPublished, items]
   )
 
@@ -45,7 +45,7 @@ export function useItemSyncs(
   const entities = entitiesQuery.data
   // A failed entities request settles too: an approved item then reads as unsynced rather than loading forever.
   const entitiesLoaded = pointers.length === 0 || entitiesQuery.isFetched
-  const curationPending = isCurationPending(curationQuery.data)
+  const curationPending = curationQuery.data?.status === CurationStatus.PENDING
 
   return useMemo(() => {
     const byItemId = mapEntitiesByItemId(items, entities ?? [])

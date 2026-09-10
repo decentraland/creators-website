@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  formatRarityLabel,
-  formatSupply,
-  getRarityColor,
-  getRarityMaxSupply,
-  getRarityMediaBackground,
-  isRarity
-} from './rarities'
+import { formatRarityLabel, formatSupply, getRarityMaxSupply, getRarityMediaBackground, isRarity } from './rarities'
 
 describe('rarities', () => {
   it('recognises the eight rarities and nothing else', () => {
@@ -32,9 +25,7 @@ describe('rarities', () => {
   })
 
   it('tints the media with the rarity color and leaves unknown rarities neutral', () => {
-    expect(getRarityColor('LEGENDARY')).toBe('#a24bf3')
     expect(getRarityMediaBackground('legendary')).toMatch(/^radial-gradient\(.*rgba\(162, 75, 243, 0\.62\) 100%\)$/)
-    expect(getRarityColor('mystery')).toBeUndefined()
     expect(getRarityMediaBackground(undefined)).toBeUndefined()
   })
 })

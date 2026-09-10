@@ -157,6 +157,7 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
         <MoveItemModal
           item={item}
           collections={drafts.data}
+          isLoading={drafts.isFetching}
           isMoving={moveItem.isPending}
           error={moveItem.isError}
           onConfirm={confirmMove}

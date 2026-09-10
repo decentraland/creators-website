@@ -57,15 +57,4 @@ export const Text = styled.p`
   }
 `
 
-export const Actions = styled.div`
-  display: flex;
-  gap: 12px;
-  width: 100%;
-  padding-top: 24px;
-  border-top: 1px solid ${theme.colors.glassHover};
-
-  > * {
-    flex: 1;
-    min-width: 0;
-  }
-`
+export { ModalActions as Actions } from '~/styles/shared'
