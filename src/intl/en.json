@@ -59,6 +59,7 @@
   "collection_status": {
     "published": "Published",
     "under_review": "Under review",
+    "under_review_hint": "Your collection is being reviewed for approval. This may take up to 5 minutes.\nWe’ll notify you once the review is complete.",
     "draft": "Draft"
   },
   "pagination": {

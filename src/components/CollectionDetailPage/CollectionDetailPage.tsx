@@ -11,7 +11,13 @@ import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
 import { ITEMS_PAGE_SIZE, useAllCollectionItems, useCollection, useSaveCollection } from '~/hooks/useCollection'
 import { BuilderServerError } from '~/lib/builder'
-import { hasBeenApproved, isCollectionLocked } from '~/lib/collections'
+import {
+  CollectionDisplayStatus,
+  canSellCollectionItems,
+  getCollectionDisplayStatus,
+  hasBeenApproved,
+  isCollectionLocked
+} from '~/lib/collections'
 import { ItemType, type Item } from '~/lib/items'
 import {
   ITEM_TYPE_FILTERS,
@@ -41,6 +47,7 @@ import { AddItemsModal } from './AddItemsModal'
 import { ItemActionsMenu } from './ItemActionsMenu'
 import { ItemListRow } from './ItemListRow'
 import { PublishCollectionModal, PublishSuccessModal } from './PublishCollectionModal'
+import { SellItemFlow } from './SellItemFlow'
 import * as S from './CollectionDetailPage.styles'
 
 const NOT_FOUND_STATUSES = [401, 403, 404]
@@ -62,6 +69,7 @@ const CollectionDetailPage = () => {
   const [addItemsFiles, setAddItemsFiles] = useState<File[] | null>(null)
   const [isDragging, setDragging] = useState(false)
   const [isPreviewLaunching, setPreviewLaunching] = useState(false)
+  const [sellingItem, setSellingItem] = useState<Item | null>(null)
   const filesInputRef = useRef<HTMLInputElement>(null)
 
   const collectionQuery = useCollection(address, collectionId)
@@ -83,10 +91,14 @@ const CollectionDetailPage = () => {
   // Play Mode is an emote-only attribute; the column exists only while the visible page has emotes.
   const withPlayMode = useMemo(() => results.some(item => item.type === ItemType.EMOTE), [results])
   useSyncPublishedItems(address, collection, allItems ?? [])
-  // Price, Sales and Sale Status exist once the collection is published; items can only be put on sale
-  // once it has been approved at least once, even if it is under review again.
+  // Price, Sales and Sale Status exist once the collection is published; owners, collaborators and minters
+  // can put items on sale once it has been approved at least once, even if it is under review again.
   const withMarket = !!collection?.isPublished
-  const canSell = !!collection && hasBeenApproved(collection)
+  const statusHint =
+    collection && getCollectionDisplayStatus(collection) === CollectionDisplayStatus.UNDER_REVIEW
+      ? t('collection_status.under_review_hint')
+      : null
+  const canSell = !!collection && hasBeenApproved(collection) && canSellCollectionItems(collection, address)
   const listingsQuery = useCollectionListings(withMarket ? collection.contractAddress : undefined)
   const listings = listingsQuery.data
   // `undefined` keeps the price cell blank while the catalog loads; a failed request shows no price rather than an error.
@@ -252,7 +264,7 @@ const CollectionDetailPage = () => {
                   </S.RenameButton>
                 )}
               </S.TitleGroup>
-              <CollectionStatusPill collection={collection} />
+              <CollectionStatusPill collection={collection} hint={statusHint} />
               {address && <CollectionRolePill collection={collection} address={address} />}
             </S.HeaderLeft>
             <S.HeaderActions>
@@ -406,6 +418,7 @@ const CollectionDetailPage = () => {
                     withMarket={withMarket}
                     listing={withMarket ? listingFor(item) : undefined}
                     canSell={canSell}
+                    onPutOnSale={setSellingItem}
                     actions={
                       address && (
                         <ItemActionsMenu
@@ -469,6 +482,14 @@ const CollectionDetailPage = () => {
             />
           )}
           {publishView === 'success' && <PublishSuccessModal onDone={() => setPublishView('closed')} />}
+          {sellingItem && session && (
+            <SellItemFlow
+              item={sellingItem}
+              collection={collection}
+              session={session}
+              onClose={() => setSellingItem(null)}
+            />
+          )}
         </>
       )}
     </S.Page>

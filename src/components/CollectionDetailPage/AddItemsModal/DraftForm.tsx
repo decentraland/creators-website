@@ -14,7 +14,7 @@ import { CategorySelect } from '~/components/CategorySelect'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { ClockIcon, FilmReelIcon, ImageIcon, LoopIcon, PlayOnceIcon } from '~/components/Icons'
 import { RaritySelect } from '~/components/RaritySelect'
-import { Tooltip } from '~/components/Tooltip'
+import { InfoTooltip } from '~/components/Tooltip'
 import { useTranslation } from '~/intl'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
 import { BodyShapeType, ItemType, type Item } from '~/lib/items'
@@ -243,9 +243,7 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
             <S.Field>
               <S.FieldLabelRow>
                 {t('add_items_modal.rarity')}
-                <Tooltip content={t('add_items_modal.rarity_tooltip')} testId="rarity-tooltip">
-                  <InfoIcon />
-                </Tooltip>
+                <InfoTooltip content={t('add_items_modal.rarity_tooltip')} testId="rarity-tooltip" />
               </S.FieldLabelRow>
               <RaritySelect
                 value={draft.rarity}

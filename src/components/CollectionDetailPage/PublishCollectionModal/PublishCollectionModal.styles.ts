@@ -17,6 +17,10 @@ export const Step = styled.div`
   padding-top: 32px;
   gap: 16px;
   overflow: hidden;
+
+  & [data-testid='checkbox-label'] {
+    margin-top: auto;
+  }
 `
 
 // Everything but the footer; while the wallet prompt is pending it goes inert and dims like the add-items upload.
@@ -112,6 +116,13 @@ export const Text = styled.p`
   color: ${theme.colors.gray4};
 `
 
+export const TooltipText = styled.p`
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: ${theme.colors.softWhite};
+`
+
 // The "publication fee" term in the step intro: highlighted, with its info tooltip glued to it.
 export const FeeTerm = styled.span`
   display: inline-flex;
@@ -134,75 +145,6 @@ export const ErrorText = styled.p`
   font-size: 13px;
   line-height: 1.4;
   color: ${theme.colors.errLight};
-`
-
-export const CheckboxRow = styled.label`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 14px;
-  line-height: 1.5;
-  color: ${theme.colors.softWhite};
-  cursor: pointer;
-  padding-left: 12px;
-  margin-top: auto;
-
-  /* Visually hidden but still the real, clickable control (no pointer-events: none). */
-  & input {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: 0;
-    opacity: 0;
-  }
-
-  & a {
-    color: inherit;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-
-    &:hover {
-      color: ${theme.colors.dclRed};
-    }
-  }
-
-  &[data-disabled] {
-    opacity: 0.6;
-    cursor: default;
-  }
-`
-
-export const CheckboxBox = styled.span`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  width: 20px;
-  height: 20px;
-  margin-top: 1px;
-  border: 1.5px solid ${theme.colors.gray4};
-  border-radius: 4px;
-  color: ${theme.colors.white};
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease;
-
-  & svg {
-    font-size: 16px;
-    opacity: 0;
-  }
-
-  input:checked + & {
-    border-color: ${theme.colors.dclRed};
-    background: ${theme.colors.dclRed};
-
-    & svg {
-      opacity: 1;
-    }
-  }
-  input:focus-visible + & {
-    box-shadow: 0 0 0 2px ${theme.colors.glassLine};
-  }
 `
 
 export const Footer = styled.div`

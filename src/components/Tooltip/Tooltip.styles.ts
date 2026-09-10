@@ -16,3 +16,9 @@ export const Trigger = styled.button`
     outline-offset: 2px;
   }
 `
+
+export const Content = styled.span`
+  max-width: 300px;
+  color: ${theme.colors.softWhite};
+  font-size: 16px;
+`

@@ -59,6 +59,7 @@
   "collection_status": {
     "published": "Publicada",
     "under_review": "En revisión",
+    "under_review_hint": "Tu colección está siendo revisada para su aprobación. Esto puede tardar hasta 5 minutos.\nTe avisaremos cuando la revisión termine.",
     "draft": "Borrador"
   },
   "pagination": {

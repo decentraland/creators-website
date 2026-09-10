@@ -25,6 +25,7 @@ type Props = {
   listing?: ItemListing | null
   /** Whether the collection has been approved at least once, so its items can be put on sale. */
   canSell?: boolean
+  onPutOnSale?: (item: Item) => void
   /** The row's ⋯ menu; the page supplies it once the viewer is signed in. */
   actions?: ReactNode
 }
@@ -35,6 +36,7 @@ export function ItemListRow({
   withMarket = false,
   listing,
   canSell = false,
+  onPutOnSale,
   actions
 }: Props) {
   const { t } = useTranslation()
@@ -107,7 +109,12 @@ export function ItemListRow({
               {sales ? `${intl.formatNumber(sales.minted)}/${intl.formatNumber(sales.maxSupply)}` : EMPTY}
             </S.Cell>
             <S.Cell data-testid="item-row-sale-status" data-empty={listing === undefined || undefined}>
-              <ItemSaleStatus sales={sales} listing={listing} canSell={canSell} />
+              <ItemSaleStatus
+                sales={sales}
+                listing={listing}
+                canSell={canSell}
+                onPutOnSale={onPutOnSale && (() => onPutOnSale(item))}
+              />
             </S.Cell>
           </>
         )}

@@ -4,7 +4,7 @@ import { useTranslation } from '~/intl'
 import { NAME_ALREADY_IN_USE_ERROR, validateCollectionName } from '~/lib/collections'
 import { Button } from '~/components/Button'
 import { CollectionNameInput } from '~/components/CollectionNameInput'
-import { Checkbox } from './Checkbox'
+import { Checkbox } from '~/components/Checkbox'
 import * as S from './PublishCollectionModal.styles'
 
 type Props = {
