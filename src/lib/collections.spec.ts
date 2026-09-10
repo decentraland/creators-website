@@ -3,6 +3,7 @@ import {
   COLLECTION_NAME_MAX_LENGTH,
   CollectionDisplayStatus,
   canManageCollectionItems,
+  canSellCollectionItems,
   CollectionSort,
   CollectionStatusFilter,
   CollectionType,
@@ -238,5 +239,13 @@ describe('canManageCollectionItems', () => {
     expect(canManageCollectionItems(collection, '0xMANAGER')).toBe(true)
     expect(canManageCollectionItems(collection, '0xminter')).toBe(false)
     expect(canManageCollectionItems(collection, undefined)).toBe(false)
+  })
+
+  it('lets owners, collaborators and minters sell, but not strangers', () => {
+    expect(canSellCollectionItems(collection, '0xowner')).toBe(true)
+    expect(canSellCollectionItems(collection, '0xMANAGER')).toBe(true)
+    expect(canSellCollectionItems(collection, '0xminter')).toBe(true)
+    expect(canSellCollectionItems(collection, '0xstranger')).toBe(false)
+    expect(canSellCollectionItems(collection, undefined)).toBe(false)
   })
 })

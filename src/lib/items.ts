@@ -234,9 +234,14 @@ export function getItemMetadata(item: Item): string {
   }`
 }
 
+/** A wearable shipping scene code (a `.js` file) is a smart wearable. */
+export function isSmartWearable(item: Item): boolean {
+  return item.type === ItemType.WEARABLE && Object.keys(item.contents).some(path => path.endsWith('.js'))
+}
+
 function getItemMetadataType(item: Item): 'w' | 'sw' | 'e' {
   if (item.type === ItemType.EMOTE) return 'e'
-  return Object.keys(item.contents).some(path => path.endsWith('.js')) ? 'sw' : 'w'
+  return isSmartWearable(item) ? 'sw' : 'w'
 }
 
 function getEmoteAdditionalProperties(item: Item): string {

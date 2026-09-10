@@ -3,6 +3,7 @@ export {
   encodeContractCall,
   readContract,
   sendContractTransaction,
+  signTypedData,
   waitForTransaction,
   type ContractCall,
   type ContractData

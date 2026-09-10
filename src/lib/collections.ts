@@ -248,3 +248,11 @@ export function canManageCollectionItems(collection: Collection, address: string
   const isOwner = collection.owner.toLowerCase() === address.toLowerCase()
   return isOwner || getCollectionRole(collection, address) === CollectionRole.COLLABORATOR
 }
+
+/** Owners, collaborators and minters may put a collection's items on sale. */
+export function canSellCollectionItems(collection: Collection, address: string | undefined): boolean {
+  if (!address) return false
+  return (
+    canManageCollectionItems(collection, address) || getCollectionRole(collection, address) === CollectionRole.MINTER
+  )
+}

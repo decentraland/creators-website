@@ -16,7 +16,7 @@ export function CollectionStatusPill({ collection, hint }: Props) {
   return (
     <S.Pill data-testid="collection-status" data-status={status}>
       {t(`collection_status.${status}`)}
-      {hint && <InfoTooltip content={hint} testId="collection-status-hint" />}
+      {hint && <InfoTooltip placement="right" content={hint} testId="collection-status-hint" />}
     </S.Pill>
   )
 }

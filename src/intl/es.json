@@ -59,7 +59,7 @@
   "collection_status": {
     "published": "Publicada",
     "under_review": "En revisión",
-    "under_review_hint": "Tu colección está siendo revisada para su aprobación. Esto puede tardar hasta 5 minutos.\nTe avisaremos cuando la revisión termine.",
+    "under_review_hint": "Tu colección está siendo revisada para su aprobación. Esto puede tardar hasta 5 minutos. Te avisaremos cuando la revisión termine.",
     "draft": "Borrador"
   },
   "pagination": {
@@ -333,7 +333,55 @@
       "description_insufficient_credits": "No tienes suficientes créditos para cubrir la tarifa de publicación. Obtén más créditos e inténtalo de nuevo.",
       "description_locked": "Esta colección ya se está publicando. Espera unos minutos y actualiza la página.",
       "description_unsynced": "Los ítems de esta colección cambiaron mientras publicabas. Cierra este diálogo y vuelve a empezar.",
-      "cancel": "Cancelar",
+      "try_again": "Intentar de nuevo"
+    }
+  },
+  "sell_item_modal": {
+    "title": "Vender ítem",
+    "subtitle": "Define el precio y el beneficiario del ítem",
+    "cancel": "Cancelar",
+    "submit": "Poner en venta",
+    "confirm_in_wallet": "Confirma en tu wallet...",
+    "selling": "Poniendo en venta...",
+    "smart_wearable": "Wearable inteligente",
+    "enable_sales": {
+      "title": "¿Habilitar ventas para esta colección?",
+      "description": "Como es el primer ítem de esta colección que pones en venta, primero tienes que habilitar las ventas. Una vez habilitadas, podrás vender cualquier ítem de esta colección en la Tienda de Decentraland.",
+      "confirm": "Habilitar ventas",
+      "pending": "Habilitando ventas..."
+    },
+    "beneficiary": {
+      "label": "Beneficiario",
+      "self": "Yo soy el beneficiario",
+      "placeholder": "Pega o selecciona el ID de usuario del beneficiario",
+      "open": "Mostrar amigos",
+      "clear": "Quitar beneficiario",
+      "friends_loading": "Cargando tus amigos…",
+      "no_matches": "Ningún amigo coincide. Pega una dirección de wallet (0x…) en su lugar.",
+      "invalid": "Ingresa una dirección de wallet válida (0x…)."
+    },
+    "price": {
+      "label": "Precio",
+      "rate": "1 Crédito = {usd}USD",
+      "giveaway": "Hacerlo un regalo"
+    },
+    "expiration": {
+      "label": "Fecha de vencimiento",
+      "invalid": "Elige una fecha a partir de mañana."
+    },
+    "note": "Tu ítem se publicará en la Tienda de Decentraland en Créditos. Cuando se venda, recibirás el <b>valor equivalente en MANA.</b>",
+    "note_tooltip": "Los Créditos están atados al dólar estadounidense. El MANA que recibes se calcula con el tipo de cambio del momento de cada venta.",
+    "success": {
+      "title": "¡Tu ítem está en venta!",
+      "description": "Ya está disponible en la Tienda de Decentraland.",
+      "done": "Listo"
+    },
+    "error": {
+      "title_enable": "No pudimos habilitar las ventas",
+      "description_enable": "Algo salió mal al habilitar las ventas de esta colección. Inténtalo de nuevo.",
+      "title_sell": "No pudimos poner tu ítem en venta",
+      "description_sell": "Algo salió mal al poner tu ítem en venta. Inténtalo de nuevo.",
+      "description_sold_out": "Ya se acuñaron todas las unidades de este ítem, así que no se puede poner en venta.",
       "try_again": "Intentar de nuevo"
     }
   },

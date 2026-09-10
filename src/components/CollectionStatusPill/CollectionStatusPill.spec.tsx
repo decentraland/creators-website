@@ -29,21 +29,16 @@ function renderPill(props: Parameters<typeof CollectionStatusPill>[0]) {
 }
 
 describe('CollectionStatusPill', () => {
-  it('explains the review when hovering an under-review pill with the hint enabled', async () => {
-    renderPill({ collection: underReview, reviewHint: true })
+  it('shows the hint as an (i) tooltip inside the pill', async () => {
+    renderPill({ collection: underReview, hint: 'Review takes up to 5 minutes' })
     expect(screen.getByTestId('collection-status')).toHaveAttribute('data-status', 'under_review')
 
     await userEvent.hover(screen.getByTestId('collection-status-hint-trigger'))
     expect(await screen.findByRole('tooltip')).toHaveTextContent(/up to 5 minutes/i)
   })
 
-  it('shows no hint on the collections list (hint disabled)', () => {
-    renderPill({ collection: underReview })
-    expect(screen.queryByTestId('collection-status-hint-trigger')).not.toBeInTheDocument()
-  })
-
-  it('shows no hint for other statuses even when enabled', () => {
-    renderPill({ collection: published, reviewHint: true })
+  it('renders only the status when there is no hint', () => {
+    renderPill({ collection: published })
     expect(screen.getByTestId('collection-status')).toHaveAttribute('data-status', 'published')
     expect(screen.queryByTestId('collection-status-hint-trigger')).not.toBeInTheDocument()
   })

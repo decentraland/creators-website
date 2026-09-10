@@ -1,0 +1,128 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { NO_EXPIRATION, minExpirationDate, parseExpirationDate } from '~/lib/sales'
+import { SellItemModal } from './SellItemModal'
+import { ADDRESS, FRIEND, Providers, item, makeSession } from './testUtils'
+
+vi.mock('~/hooks/useSales', () => ({ useFriends: vi.fn(() => ({ data: [], isLoading: false })) }))
+vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })))
+
+type Props = Partial<Parameters<typeof SellItemModal>[0]>
+
+function renderModal(props: Props = {}) {
+  const onSubmit = vi.fn()
+  const onClose = vi.fn()
+  render(
+    <SellItemModal item={item} session={makeSession()} busy={false} onSubmit={onSubmit} onClose={onClose} {...props} />,
+    {
+      wrapper: Providers
+    }
+  )
+  return { onSubmit, onClose }
+}
+
+const submit = () => screen.getByTestId('sell-submit')
+const price = () => screen.getByTestId('sell-price')
+
+beforeEach(() => vi.clearAllMocks())
+
+describe('SellItemModal', () => {
+  it('shows the item with its badges and only lets a priced item be put on sale', async () => {
+    const { onSubmit } = renderModal()
+    expect(screen.getByTestId('sell-item-card')).toHaveTextContent('Pirate Hat')
+    expect(screen.getByTestId('rarity-pill')).toHaveTextContent(/legendary/i)
+    expect(screen.getByTestId('sell-item-badge-category')).toBeInTheDocument()
+    expect(screen.getByTestId('sell-item-badge-body-shape')).toBeInTheDocument()
+    expect(screen.getByTestId('sell-item-badge-smart')).toBeInTheDocument()
+    expect(screen.queryByTestId('sell-item-badge-play-mode')).not.toBeInTheDocument()
+    expect(submit()).toBeDisabled()
+
+    await userEvent.type(price(), '5a0')
+    expect(price()).toHaveValue('50')
+    expect(screen.getByTestId('sell-price-usd')).toHaveTextContent('$5.00')
+    expect(submit()).toBeEnabled()
+
+    await userEvent.click(submit())
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ credits: '50', selfBeneficiary: true }), {
+      price: { kind: 'credits', credits: 50 },
+      beneficiary: ADDRESS,
+      expiresAt: NO_EXPIRATION
+    })
+  })
+
+  it('freezes the price at 0 for a giveaway and submits it as free', async () => {
+    const { onSubmit } = renderModal()
+    await userEvent.click(screen.getByTestId('sell-free'))
+    expect(price()).toBeDisabled()
+    expect(price()).toHaveValue('0')
+    expect(screen.getByTestId('sell-price-usd')).toHaveTextContent('$0.00')
+    await userEvent.click(submit())
+    expect(onSubmit.mock.calls[0][1]).toMatchObject({ price: { kind: 'free' } })
+  })
+
+  it('asks for another beneficiary when the creator is not the one, and validates the address', async () => {
+    const { onSubmit } = renderModal()
+    await userEvent.type(price(), '50')
+    await userEvent.click(screen.getByTestId('sell-self-beneficiary'))
+    expect(submit()).toBeDisabled()
+
+    const input = screen.getByTestId('sell-beneficiary-input')
+    await userEvent.type(input, 'not-an-address')
+    await userEvent.tab()
+    expect(screen.getByTestId('sell-beneficiary-error')).toBeInTheDocument()
+    expect(submit()).toBeDisabled()
+
+    await userEvent.clear(input)
+    await userEvent.type(input, FRIEND)
+    expect(screen.getByTestId('sell-beneficiary-selected')).toHaveTextContent(FRIEND)
+    expect(submit()).toBeEnabled()
+    await userEvent.click(submit())
+    expect(onSubmit.mock.calls[0][1]).toMatchObject({ beneficiary: FRIEND })
+
+    await userEvent.click(screen.getByTestId('sell-beneficiary-clear'))
+    expect(screen.getByTestId('sell-beneficiary-input')).toBeInTheDocument()
+  })
+
+  it('requires a future date once an expiration is set and expires at the end of that day', async () => {
+    const { onSubmit } = renderModal()
+    await userEvent.type(price(), '50')
+    await userEvent.click(screen.getByTestId('sell-expiration-toggle'))
+    const date = screen.getByTestId('sell-expiration-date')
+    expect(date).toHaveAttribute('min', minExpirationDate())
+
+    fireEvent.change(date, { target: { value: '2020-01-01' } })
+    expect(screen.getByTestId('sell-expiration-error')).toBeInTheDocument()
+    expect(submit()).toBeDisabled()
+
+    const tomorrow = minExpirationDate()
+    fireEvent.change(date, { target: { value: tomorrow } })
+    expect(screen.queryByTestId('sell-expiration-error')).not.toBeInTheDocument()
+    await userEvent.click(submit())
+    expect(onSubmit.mock.calls[0][1]).toMatchObject({ expiresAt: parseExpirationDate(tomorrow) })
+
+    // Turning the toggle off drops the date again.
+    await userEvent.click(screen.getByTestId('sell-expiration-toggle'))
+    await userEvent.click(submit())
+    expect(onSubmit.mock.calls[1][1]).toMatchObject({ expiresAt: NO_EXPIRATION })
+  })
+
+  it('restores a previous attempt and locks the form while a submit is in flight', () => {
+    renderModal({
+      busy: true,
+      initialValues: {
+        selfBeneficiary: true,
+        beneficiary: '',
+        credits: '25',
+        free: false,
+        withExpiration: false,
+        expirationDate: ''
+      }
+    })
+    expect(price()).toHaveValue('25')
+    expect(screen.getByTestId('sell-item-form').querySelector('[data-busy]')).not.toBeNull()
+    expect(screen.getByTestId('sell-cancel')).toBeDisabled()
+    expect(submit()).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByTestId('sell-item-modal-close')).toBeDisabled()
+  })
+})

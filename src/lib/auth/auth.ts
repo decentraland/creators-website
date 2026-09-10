@@ -113,35 +113,42 @@ const AUTH_METADATA_HEADER = 'x-identity-metadata'
  * lowercased, and the timestamp/metadata travel as headers so the server can rebuild the payload.
  * `path` is the full URL pathname (API base included), without the query string.
  */
-export function createAuthHeaders(address: string, method: string, path: string): Record<string, string> {
+export function createAuthHeaders(
+  address: string,
+  method: string,
+  path: string,
+  metadata: Record<string, string> = {}
+): Record<string, string> {
   const headers: Record<string, string> = {}
   const identity = getIdentity(address)
   if (!identity) return headers
   const timestamp = String(Date.now())
-  const metadata = '{}'
-  const payload = `${method}:${path}:${timestamp}:${metadata}`.toLowerCase()
+  const metadataJson = JSON.stringify(metadata)
+  const payload = `${method}:${path}:${timestamp}:${metadataJson}`.toLowerCase()
   const authChain = Authenticator.signPayload(identity, payload)
   for (let i = 0; i < authChain.length; i++) {
     headers[`${AUTH_CHAIN_HEADER_PREFIX}${i}`] = JSON.stringify(authChain[i])
   }
   headers[AUTH_TIMESTAMP_HEADER] = timestamp
-  headers[AUTH_METADATA_HEADER] = metadata
+  headers[AUTH_METADATA_HEADER] = metadataJson
   return headers
 }
 
 /**
  * The single signing chokepoint for server requests. `path` is relative to `baseUrl` and may carry
  * a query string; what gets signed is the resulting URL's pathname, which is what the servers verify.
+ * `metadata` is signed along and sent as-is for servers that check the caller's `signer`/`intent`.
  */
 export async function signedFetch(
   address: string | undefined,
   baseUrl: string,
   path: string,
-  init: RequestInit = {}
+  init: RequestInit = {},
+  metadata: Record<string, string> = {}
 ): Promise<Response> {
   const method = (init.method ?? 'GET').toUpperCase()
   const url = `${baseUrl}${path}`
-  const authHeaders = address ? createAuthHeaders(address, method, new URL(url).pathname) : {}
+  const authHeaders = address ? createAuthHeaders(address, method, new URL(url).pathname, metadata) : {}
   return fetch(url, {
     ...init,
     method,

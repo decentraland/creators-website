@@ -59,7 +59,7 @@
   "collection_status": {
     "published": "Published",
     "under_review": "Under review",
-    "under_review_hint": "Your collection is being reviewed for approval. This may take up to 5 minutes.\nWe’ll notify you once the review is complete.",
+    "under_review_hint": "Your collection is being reviewed for approval. This may take up to 5 minutes. We’ll notify you once the review is complete.",
     "draft": "Draft"
   },
   "pagination": {
@@ -333,7 +333,55 @@
       "description_insufficient_credits": "You don't have enough Credits to cover the publication fee. Get more Credits and try again.",
       "description_locked": "This collection is already being published. Give it a few minutes and refresh the page.",
       "description_unsynced": "The items in this collection changed while you were publishing. Close this dialog and start again.",
-      "cancel": "Cancel",
+      "try_again": "Try again"
+    }
+  },
+  "sell_item_modal": {
+    "title": "Sell Item",
+    "subtitle": "Set the item price and beneficiary",
+    "cancel": "Cancel",
+    "submit": "Put on sale",
+    "confirm_in_wallet": "Confirm in your wallet...",
+    "selling": "Putting for Sale...",
+    "smart_wearable": "Smart wearable",
+    "enable_sales": {
+      "title": "Enable sales for this collection?",
+      "description": "Since this is the first item you’re putting on sale from this collection, you’ll need to enable sales first. Once enabled, you’ll be able to sell any item from this collection in the Decentraland Shop.",
+      "confirm": "Enable sales",
+      "pending": "Enabling Sales..."
+    },
+    "beneficiary": {
+      "label": "Beneficiary",
+      "self": "I’m the beneficiary",
+      "placeholder": "Copy or select beneficiary User ID",
+      "open": "Show friends",
+      "clear": "Clear beneficiary",
+      "friends_loading": "Loading your friends…",
+      "no_matches": "No friends match. Paste a wallet address (0x…) instead.",
+      "invalid": "Enter a valid wallet address (0x…)."
+    },
+    "price": {
+      "label": "Price",
+      "rate": "1 Credit = {usd}USD",
+      "giveaway": "Make it for giveaway"
+    },
+    "expiration": {
+      "label": "Expiration Date",
+      "invalid": "Pick a date from tomorrow on."
+    },
+    "note": "Your item will be listed in the Decentraland Shop for Credits. When it sells, you’ll receive the <b>equivalent value in MANA.</b>",
+    "note_tooltip": "Credits are pegged to the US dollar. The MANA you receive is calculated with the exchange rate at the moment of each sale.",
+    "success": {
+      "title": "Your item is on sale!",
+      "description": "It’s now available in the Decentraland Shop.",
+      "done": "Done"
+    },
+    "error": {
+      "title_enable": "We couldn’t enable sales",
+      "description_enable": "Something went wrong while enabling sales for this collection. Please try again.",
+      "title_sell": "We couldn’t put your item on sale",
+      "description_sell": "Something went wrong while putting your item on sale. Please try again.",
+      "description_sold_out": "Every unit of this item has already been minted, so it can’t be put on sale.",
       "try_again": "Try again"
     }
   },

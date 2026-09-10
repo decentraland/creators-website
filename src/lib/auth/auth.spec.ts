@@ -81,6 +81,27 @@ describe('auth', () => {
     expect(chain[chain.length - 1].payload).toBe(`get:/v1/${address}/collections:${headers['x-identity-timestamp']}:{}`)
   })
 
+  it('signedFetch signs the caller metadata along and sends it verbatim', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true })
+    global.fetch = fetchMock
+
+    await signedFetch(
+      address,
+      'https://marketplace.example',
+      '/v1/trades',
+      { method: 'POST' },
+      { signer: 'dcl:builder', intent: 'dcl:create-trade' }
+    )
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const headers = init.headers as Record<string, string>
+    expect(JSON.parse(headers['x-identity-metadata'])).toEqual({ signer: 'dcl:builder', intent: 'dcl:create-trade' })
+    const chain = parseAuthChain(headers)
+    expect(chain[chain.length - 1].payload).toBe(
+      `post:/v1/trades:${headers['x-identity-timestamp']}:${headers['x-identity-metadata']}`.toLowerCase()
+    )
+  })
+
   it('logout clears the stored identity so it cannot outlive a sign-out', async () => {
     const { address: other } = await makeStoredIdentity()
     expect(getIdentity(other)).not.toBeNull()
