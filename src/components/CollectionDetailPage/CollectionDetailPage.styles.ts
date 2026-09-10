@@ -119,6 +119,11 @@ export const HeaderActions = styled.div`
   display: flex;
   align-items: center;
   gap: 16px;
+`
+
+// Preview and publish are desktop-only; the ⋯ menu beside them stays on every screen.
+export const DesktopActions = styled.div`
+  display: contents;
 
   ${noActions} {
     display: none;

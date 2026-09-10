@@ -169,7 +169,8 @@ export const ActionsCell = styled.div`
   display: flex;
   justify-content: flex-end;
 
-  ${theme.media.noActions} {
+  /* Grid cards have no menu, so the row card hides its own too. */
+  ${card} {
     display: none;
   }
 `

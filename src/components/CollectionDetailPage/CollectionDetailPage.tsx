@@ -179,8 +179,10 @@ const CollectionDetailPage = () => {
               <S.SkeletonTitle className="skeleton" />
             </S.HeaderLeft>
             <S.HeaderActions>
-              <S.SkeletonButton className="skeleton" />
-              <S.SkeletonButton className="skeleton" />
+              <S.DesktopActions>
+                <S.SkeletonButton className="skeleton" />
+                <S.SkeletonButton className="skeleton" />
+              </S.DesktopActions>
               <S.SkeletonButton className="skeleton" data-icon />
             </S.HeaderActions>
           </S.Header>
@@ -254,41 +256,43 @@ const CollectionDetailPage = () => {
               {address && <CollectionRolePill collection={collection} address={address} />}
             </S.HeaderLeft>
             <S.HeaderActions>
-              <Button
-                type="button"
-                variant="dark"
-                disabled={!hasItems || isPreviewLaunching}
-                data-testid="preview-collection"
-                onClick={() => {
-                  setPreviewLaunching(true)
-                  void previewCollection(collection.id).finally(() => setPreviewLaunching(false))
-                }}
-              >
-                {t('collection_detail_page.preview')}
-                <JumpInIcon />
-              </Button>
-              {publishBlocker !== 'not_draft' && (
-                <Tooltip
-                  content={
-                    publishBlocker
-                      ? t(`collection_detail_page.publish_blocker.${publishBlocker}`, { max: MAX_PUBLISH_ITEMS })
-                      : null
-                  }
-                  placement="bottom"
-                  asChild
-                  testId="publish-blocker"
+              <S.DesktopActions>
+                <Button
+                  type="button"
+                  variant="dark"
+                  disabled={!hasItems || isPreviewLaunching}
+                  data-testid="preview-collection"
+                  onClick={() => {
+                    setPreviewLaunching(true)
+                    void previewCollection(collection.id).finally(() => setPreviewLaunching(false))
+                  }}
                 >
-                  <Button
-                    type="button"
-                    variant="primary"
-                    data-testid="publish-collection"
-                    aria-disabled={publishBlocker ? true : undefined}
-                    onClick={() => !publishBlocker && setPublishView('wizard')}
+                  {t('collection_detail_page.preview')}
+                  <JumpInIcon />
+                </Button>
+                {publishBlocker !== 'not_draft' && (
+                  <Tooltip
+                    content={
+                      publishBlocker
+                        ? t(`collection_detail_page.publish_blocker.${publishBlocker}`, { max: MAX_PUBLISH_ITEMS })
+                        : null
+                    }
+                    placement="bottom"
+                    asChild
+                    testId="publish-blocker"
                   >
-                    {t('collection_detail_page.publish')}
-                  </Button>
-                </Tooltip>
-              )}
+                    <Button
+                      type="button"
+                      variant="primary"
+                      data-testid="publish-collection"
+                      aria-disabled={publishBlocker ? true : undefined}
+                      onClick={() => !publishBlocker && setPublishView('wizard')}
+                    >
+                      {t('collection_detail_page.publish')}
+                    </Button>
+                  </Tooltip>
+                )}
+              </S.DesktopActions>
               {address && (
                 <CollectionActionsMenu
                   collection={collection}

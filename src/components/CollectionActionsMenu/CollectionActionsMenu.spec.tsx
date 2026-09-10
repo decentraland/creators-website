@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { type ReactNode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -61,6 +61,15 @@ async function openMenu() {
   await userEvent.click(screen.getByTestId('collection-actions'))
   return screen.getByTestId('collection-actions-menu')
 }
+
+function stubViewport(compact: boolean) {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn().mockReturnValue({ matches: compact, addEventListener: vi.fn(), removeEventListener: vi.fn() })
+  )
+}
+
+afterEach(() => vi.unstubAllGlobals())
 
 describe('CollectionActionsMenu', () => {
   beforeEach(() => {
@@ -139,5 +148,21 @@ describe('CollectionActionsMenu', () => {
     await openMenu()
     await userEvent.keyboard('{Escape}')
     expect(screen.queryByTestId('collection-actions-menu')).not.toBeInTheDocument()
+  })
+
+  describe('on a small screen', () => {
+    beforeEach(() => stubViewport(true))
+
+    it('keeps copying and the role placeholders for the owner of an on-chain collection', async () => {
+      renderMenu({ ...draft, isPublished: true })
+      const menu = await openMenu()
+      const ids = Array.from(menu.querySelectorAll('[role="menuitem"]')).map(el => el.getAttribute('data-testid'))
+      expect(ids).toEqual(['copy-urn', 'copy-address', 'manage-collaborators', 'manage-minters'])
+    })
+
+    it('renders nothing for a draft, since deleting is desktop-only', () => {
+      renderMenu(draft)
+      expect(screen.queryByTestId('collection-actions')).not.toBeInTheDocument()
+    })
   })
 })

@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useTranslation } from '~/intl'
 import { useDeleteCollection } from '~/hooks/useCollection'
+import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { copyToClipboard } from '~/lib/clipboard'
 import { isCollectionLocked, type Collection } from '~/lib/collections'
 import { useNotifications } from '~/lib/notifications'
+import { theme } from '~/styles/theme'
 import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
 import { DeleteCollectionModal } from './DeleteCollectionModal'
 
@@ -31,10 +33,13 @@ export function CollectionActionsMenu({
   const deleteCollection = useDeleteCollection(address)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
 
+  // Small screens are mostly a viewer: copying and the role placeholders stay, deleting is desktop-only.
+  const compact = useMediaQuery(theme.media.noActions)
+
   const isOnChain = collection.isPublished
   const isOwner = collection.owner.toLowerCase() === address.toLowerCase()
   // A locked draft has a publish transaction in flight: nothing can be done to it yet.
-  const canDelete = !isOnChain && !isCollectionLocked(collection)
+  const canDelete = !compact && !isOnChain && !isCollectionLocked(collection)
 
   if (!isOnChain && !canDelete) return null
 
