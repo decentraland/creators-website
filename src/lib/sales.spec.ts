@@ -1,17 +1,26 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ethers } from 'ethers'
-import { Network, TradeAssetType, TradeType } from '@dcl/schemas'
+import { Network, TradeAssetType, TradeType, type Trade } from '@dcl/schemas'
 import { ContractName, getContract } from 'decentraland-transactions'
 import { encodeContractCall } from './auth/transactions'
+import { TradeConflictError } from './trades'
 import { type Collection } from './collections'
 import { ItemType, type Item } from './items'
 import {
   NO_EXPIRATION,
   SellItemError,
+  buildCancelListingCall,
   buildEnableSalesCall,
   buildItemOrder,
+  getListingTerms,
+  removeListing,
+  updatePrice,
+  withConflictRetry,
   creditsToUsdWei,
+  MAX_SALE_CREDITS,
   formatCreditsAsUsd,
+  isValidCredits,
+  formatDateValue,
   isSalesEnabled,
   isValidAddress,
   minExpirationDate,
@@ -86,6 +95,15 @@ describe('price and date helpers', () => {
     expect(formatCreditsAsUsd(1)).toBe('$0.10')
   })
 
+  it('accepts whole credits from 1 up to the catalog ceiling', () => {
+    expect(MAX_SALE_CREDITS).toBe(10_000_000_000_000n)
+    expect(isValidCredits(1)).toBe(true)
+    expect(isValidCredits(Number(MAX_SALE_CREDITS))).toBe(true)
+    expect(isValidCredits(Number(MAX_SALE_CREDITS) + 1)).toBe(false)
+    expect(isValidCredits(0)).toBe(false)
+    expect(isValidCredits(1.5)).toBe(false)
+  })
+
   it('validates wallet addresses', () => {
     expect(isValidAddress(BENEFICIARY)).toBe(true)
     expect(isValidAddress('0x123')).toBe(false)
@@ -94,7 +112,7 @@ describe('price and date helpers', () => {
 
   it('expires at the end of the picked day, and only accepts dates from tomorrow on', () => {
     const now = new Date(2026, 8, 10, 12, 0, 0).getTime()
-    expect(minExpirationDate(now)).toBe('2026-09-11')
+    expect(formatDateValue(minExpirationDate(now))).toBe('2026-09-11')
     const picked = parseExpirationDate('2026-09-11')!
     expect(new Date(picked).getHours()).toBe(23)
     expect(parseExpirationDate('09/11/2026')).toBeNull()
@@ -209,12 +227,12 @@ describe('sellItem', () => {
     expect(signed.checks.salt).toMatch(/^0x[0-9a-f]{64}$/)
     expect(deps.onSigned).toHaveBeenCalledTimes(1)
     expect(deps.createTrade).toHaveBeenCalledWith({ ...signed, signature: '0xsignature' })
-    expect(result).toEqual({ itemId: '3', currency: 'credits', credits: 50 })
+    expect(result).toEqual({ itemId: '3', tradeId: 'trade-1', currency: 'credits', credits: 50 })
   })
 
   it('answers a free listing for a giveaway', async () => {
     const result = await sellItem({ ...params, price: { kind: 'free' } }, makeDeps())
-    expect(result).toEqual({ itemId: '3', currency: 'mana', manaWei: 0n })
+    expect(result).toEqual({ itemId: '3', tradeId: 'trade-1', currency: 'mana', manaWei: 0n })
   })
 
   it('maps a dismissed wallet prompt to a rejection without storing anything', async () => {
@@ -228,5 +246,125 @@ describe('sellItem', () => {
     expect(toSellItemError(new SellItemError('sold_out')).reason).toBe('sold_out')
     expect(toSellItemError(new Error('500')).reason).toBe('generic')
     expect(toSellItemError('ACTION_REJECTED')).toMatchObject({ reason: 'generic' })
+  })
+})
+
+const storedTrade: Trade = {
+  ...buildItemOrder(params, indexes, SALT, 1000),
+  id: 'trade-1',
+  signature: '0x' + 'ab'.repeat(65),
+  createdAt: 1,
+  contract: MARKETPLACE_V2
+}
+
+describe('removing a listing', () => {
+  it('cancels the stored order on the marketplace it was signed for', () => {
+    const call = buildCancelListingCall(storedTrade)
+    expect(call.contract.address).toBe(MARKETPLACE_V2)
+    expect(call.method).toBe('cancelSignature')
+    const iface = new ethers.utils.Interface(call.contract.abi)
+    expect(() => iface.encodeFunctionData(call.method, call.args)).not.toThrow()
+  })
+
+  it('reads the order, sends the cancellation, reports the signature and waits for the receipt', async () => {
+    const deps = {
+      fetchTrade: vi.fn().mockResolvedValue(storedTrade),
+      sendTransaction: vi.fn().mockResolvedValue('0xhash'),
+      waitForTransaction: vi.fn().mockResolvedValue(true),
+      onSigned: vi.fn()
+    }
+    await removeListing('trade-1', deps)
+    expect(deps.fetchTrade).toHaveBeenCalledWith('trade-1')
+    expect(deps.sendTransaction.mock.calls[0][0]).toMatchObject({ method: 'cancelSignature' })
+    expect(deps.onSigned).toHaveBeenCalledTimes(1)
+    expect(deps.waitForTransaction).toHaveBeenCalledWith('0xhash')
+
+    deps.waitForTransaction.mockResolvedValue(false)
+    await expect(removeListing('trade-1', deps)).rejects.toMatchObject({ reason: 'generic' })
+    deps.sendTransaction.mockRejectedValue({ code: 4001 })
+    await expect(removeListing('trade-1', deps)).rejects.toMatchObject({ reason: 'rejected' })
+  })
+})
+
+describe('updating the price', () => {
+  it('keeps the beneficiary and expiration of the old order, paying the signer for a giveaway', () => {
+    expect(getListingTerms(storedTrade, ADDRESS)).toEqual({ beneficiary: BENEFICIARY, expiresAt: NO_EXPIRATION })
+    const free = buildItemOrder({ ...params, price: { kind: 'free' } }, indexes, SALT)
+    expect(getListingTerms({ ...storedTrade, ...free }, ADDRESS).beneficiary).toBe(ADDRESS)
+  })
+
+  it('cancels the old order, then signs and stores a new one at the new price with the same terms', async () => {
+    const deps = {
+      fetchTrade: vi.fn().mockResolvedValue(storedTrade),
+      sendTransaction: vi.fn().mockResolvedValue('0xhash'),
+      waitForTransaction: vi.fn().mockResolvedValue(true),
+      fetchSignatureIndexes: vi.fn().mockResolvedValue(indexes),
+      signTrade: vi.fn().mockResolvedValue('0xnewsig'),
+      createTrade: vi.fn().mockResolvedValue('trade-2'),
+      onSigned: vi.fn(),
+      onCancelled: vi.fn()
+    }
+    const listing = await updatePrice(
+      { address: ADDRESS, chainId: CHAIN_ID, collection, item, tradeId: 'trade-1', credits: 80 },
+      deps
+    )
+
+    expect(deps.onSigned.mock.calls.map(c => c[0])).toEqual(['cancel', 'sign'])
+    expect(deps.onCancelled).toHaveBeenCalledWith({ beneficiary: BENEFICIARY, expiresAt: NO_EXPIRATION })
+    const signed = deps.signTrade.mock.calls[0][0]
+    expect(signed.received[0]).toMatchObject({ amount: creditsToUsdWei(80), beneficiary: BENEFICIARY })
+    expect(signed.checks.expiration).toBe(NO_EXPIRATION)
+    expect(listing).toEqual({ itemId: '3', tradeId: 'trade-2', currency: 'credits', credits: 80 })
+  })
+
+  it('stops before cancelling anything when the wallet prompt is dismissed', async () => {
+    const deps = {
+      fetchTrade: vi.fn().mockResolvedValue(storedTrade),
+      sendTransaction: vi.fn().mockRejectedValue({ code: 4001 }),
+      waitForTransaction: vi.fn(),
+      fetchSignatureIndexes: vi.fn(),
+      signTrade: vi.fn(),
+      createTrade: vi.fn(),
+      onCancelled: vi.fn()
+    }
+    await expect(
+      updatePrice({ address: ADDRESS, chainId: CHAIN_ID, collection, item, tradeId: 'trade-1', credits: 80 }, deps)
+    ).rejects.toMatchObject({ reason: 'rejected' })
+    expect(deps.onCancelled).not.toHaveBeenCalled()
+    expect(deps.signTrade).not.toHaveBeenCalled()
+  })
+})
+
+describe('withConflictRetry', () => {
+  const conflict = new TradeConflictError('There is already an open order for this Item')
+
+  it('re-posts the same signed order while the server still sees the old one, reporting each wait', async () => {
+    const createTrade = vi
+      .fn()
+      .mockRejectedValueOnce(conflict)
+      .mockRejectedValueOnce(conflict)
+      .mockResolvedValue('trade-2')
+    const onIndexing = vi.fn()
+    const wait = vi.fn().mockResolvedValue(undefined)
+    const post = withConflictRetry(createTrade, onIndexing, wait, [10, 20, 30])
+    const signed = { signature: '0x1' } as never
+    await expect(post(signed)).resolves.toBe('trade-2')
+    expect(createTrade).toHaveBeenCalledTimes(3)
+    expect(createTrade.mock.calls.every(call => call[0] === signed)).toBe(true)
+    expect(wait.mock.calls.map(c => c[0])).toEqual([10, 20])
+    expect(onIndexing.mock.calls).toEqual([
+      [1, 3],
+      [2, 3]
+    ])
+  })
+
+  it('gives up after the last delay and never retries other failures', async () => {
+    const wait = vi.fn().mockResolvedValue(undefined)
+    const stuck = withConflictRetry(vi.fn().mockRejectedValue(conflict), undefined, wait, [1, 1])
+    await expect(stuck({} as never)).rejects.toBe(conflict)
+    expect(wait).toHaveBeenCalledTimes(2)
+    const other = vi.fn().mockRejectedValue(new Error('Invalid signature'))
+    await expect(withConflictRetry(other, undefined, wait, [1])({} as never)).rejects.toThrow('Invalid signature')
+    expect(other).toHaveBeenCalledTimes(1)
   })
 })

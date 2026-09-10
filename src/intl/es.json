@@ -363,11 +363,11 @@
     "price": {
       "label": "Precio",
       "rate": "1 Crédito = {usd}USD",
-      "giveaway": "Hacerlo un regalo"
+      "giveaway": "Hacerlo un regalo",
+      "too_high": "El precio puede ser de hasta {max} créditos."
     },
     "expiration": {
-      "label": "Fecha de vencimiento",
-      "invalid": "Elige una fecha a partir de mañana."
+      "label": "Fecha de vencimiento"
     },
     "note": "Tu ítem se publicará en la Tienda de Decentraland en Créditos. Cuando se venda, recibirás el <b>valor equivalente en MANA.</b>",
     "note_tooltip": "Los Créditos están atados al dólar estadounidense. El MANA que recibes se calcula con el tipo de cambio del momento de cada venta.",
@@ -381,8 +381,35 @@
       "description_enable": "Algo salió mal al habilitar las ventas de esta colección. Inténtalo de nuevo.",
       "title_sell": "No pudimos poner tu ítem en venta",
       "description_sell": "Algo salió mal al poner tu ítem en venta. Inténtalo de nuevo.",
+      "title_remove": "No pudimos quitar tu ítem de la venta",
+      "description_remove": "Algo salió mal al quitar tu ítem de la venta. Inténtalo de nuevo.",
+      "title_update": "No pudimos actualizar el precio",
+      "description_update": "Algo salió mal al actualizar el precio. Espera un momento e inténtalo de nuevo.",
       "description_sold_out": "Ya se acuñaron todas las unidades de este ítem, así que no se puede poner en venta.",
       "try_again": "Intentar de nuevo"
+    },
+    "remove": {
+      "title": "¿Quitar de la venta?",
+      "description": "“{name}” dejará de estar disponible en la Tienda de Decentraland. Puedes volver a ponerlo en venta cuando quieras.",
+      "confirm": "Quitar de la venta",
+      "pending": "Quitando de la venta...",
+      "success_title": "Tu ítem se quitó de la venta",
+      "success_description": "Ya no está publicado en la Tienda de Decentraland. Puedes volver a ponerlo en venta cuando quieras."
+    },
+    "update_price": {
+      "title": "Editar precio",
+      "price_label": "Define el nuevo precio",
+      "available": "{available} / {total} disponibles",
+      "submit": "Actualizar precio",
+      "pending": "Actualizando el precio",
+      "two_signatures": "Se requieren 2 firmas",
+      "step_remove": "Quitar el listado actual",
+      "step_confirm": "Confirmar el nuevo precio",
+      "confirm_removal": "Primero, confirma en tu wallet la eliminación de tu precio actual...",
+      "confirm_new": "¡Casi listo! Confirma tu nuevo precio en tu wallet...",
+      "success_title": "¡Precio actualizado!",
+      "success_description": "Tu ítem ya está disponible en la Tienda con su nuevo precio.",
+      "indexing": "Esperando a que se libere tu listado anterior… (intento {attempt} de {of})"
     }
   },
   "rarity_select": {

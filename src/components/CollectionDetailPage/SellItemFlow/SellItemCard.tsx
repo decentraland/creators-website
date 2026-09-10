@@ -1,7 +1,7 @@
 import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'
 import { EmotePlayMode } from '~/lib/itemFactory'
-import { ItemType, getItemBodyShapeType, isSmartWearable, type Item } from '~/lib/items'
+import { ItemType, getItemBodyShapeType, getItemSales, isSmartWearable, type Item } from '~/lib/items'
 import { SmartIcon } from '~/components/Icons'
 import { BodyShapeIcon, CategoryIcon, PlayModeIcon } from '~/components/ItemIcons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
@@ -10,11 +10,14 @@ import * as S from './SellItemModal.styles'
 
 type Props = {
   item: Item
+  /** Adds the "70 / 100 available" line under the badges. */
+  showAvailability?: boolean
 }
 
 /** The item being sold: artwork, name, and its rarity / category / body shape / play mode / smart badges. */
-export function SellItemCard({ item }: Props) {
+export function SellItemCard({ item, showAvailability = false }: Props) {
   const { t } = useTranslation()
+  const sales = showAvailability ? getItemSales(item) : undefined
   const thumbnailHash = item.contents[item.thumbnail]
   const bodyShape = getItemBodyShapeType(item)
   const category = item.data.category
@@ -59,6 +62,14 @@ export function SellItemCard({ item }: Props) {
             </S.Badge>
           )}
         </S.Badges>
+        {sales && (
+          <S.Availability data-testid="sell-item-availability">
+            {t('sell_item_modal.update_price.available', {
+              available: sales.maxSupply - sales.minted,
+              total: sales.maxSupply
+            })}
+          </S.Availability>
+        )}
       </S.CardBody>
     </S.Card>
   )

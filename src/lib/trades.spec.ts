@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ethers } from 'ethers'
-import { Network, TradeAssetType, TradeType, type TradeCreation } from '@dcl/schemas'
+import { Network, TradeAssetType, TradeType, type Trade, type TradeCreation } from '@dcl/schemas'
 import { ContractName, getContract } from 'decentraland-transactions'
 
 vi.mock('~/lib/auth', async () => {
@@ -11,9 +11,13 @@ vi.mock('~/lib/auth', async () => {
 import { readContract, signedFetch } from '~/lib/auth'
 import {
   OFFCHAIN_MARKETPLACE_TYPES,
+  TradeConflictError,
   createTrade,
   fetchSignatureIndexes,
+  fetchTrade,
+  getTradeContract,
   getTradeDomain,
+  toOnChainTrade,
   toTradeTypedValues,
   type UnsignedTrade
 } from './trades'
@@ -124,5 +128,53 @@ describe('createTrade', () => {
       new Response(JSON.stringify({ ok: false, message: 'Invalid signature' }), { status: 400 })
     )
     await expect(createTrade(SIGNER, signed)).rejects.toThrow('Invalid signature')
+
+    vi.mocked(signedFetch).mockResolvedValue(
+      new Response(JSON.stringify({ ok: false, message: 'There is already an open order for this Item' }), {
+        status: 409
+      })
+    )
+    await expect(createTrade(SIGNER, signed)).rejects.toBeInstanceOf(TradeConflictError)
+  })
+})
+
+const V2 = getContract(ContractName.OffChainMarketplaceV2, CHAIN_ID)
+const stored: Trade = { ...trade, id: 'trade-1', signature: '0xsig', createdAt: 1, contract: V2.address }
+
+describe('toOnChainTrade', () => {
+  it('carries the signature, an empty allowed proof and nobody as the sent beneficiary', () => {
+    const onChain = toOnChainTrade(stored)
+    expect(onChain.signer).toBe(SIGNER)
+    expect(onChain.signature).toBe('0xsig')
+    expect(onChain.checks.allowedProof).toEqual([])
+    expect(onChain.checks.expiration).toBe(4102444800)
+    expect(onChain.sent[0]).toMatchObject({ value: '7', beneficiary: ethers.constants.AddressZero })
+    expect(onChain.received[0]).toMatchObject({ beneficiary: SIGNER })
+  })
+})
+
+describe('getTradeContract', () => {
+  it('resolves the marketplace generation by address and falls back to the V2 ABI for unknown ones', () => {
+    const v1 = getContract(ContractName.OffChainMarketplace, CHAIN_ID)
+    expect(getTradeContract({ contract: v1.address, chainId: CHAIN_ID }).name).toBe(v1.name)
+    expect(
+      getTradeContract({ contract: '0x00000000000000000000000000000000000000ee', chainId: CHAIN_ID })
+    ).toMatchObject({
+      address: '0x00000000000000000000000000000000000000ee',
+      abi: V2.abi
+    })
+  })
+})
+
+describe('fetchTrade', () => {
+  it('reads the stored order and fails loudly when it is missing', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ ok: true, data: stored }), { status: 200 }))
+    await expect(fetchTrade('trade-1')).resolves.toMatchObject({ id: 'trade-1' })
+    expect(fetchMock.mock.calls[0][0]).toBe('https://marketplace-api.decentraland.zone/v1/trades/trade-1')
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ ok: false }), { status: 404 }))
+    await expect(fetchTrade('nope')).rejects.toThrow(/404/)
+    vi.unstubAllGlobals()
   })
 })

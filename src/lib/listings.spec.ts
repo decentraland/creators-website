@@ -16,7 +16,7 @@ function mockServer(items: unknown[], catalog: unknown[]) {
   )
 }
 
-const creditsItem = { itemId: '0', price: '50000000000000000000', isOnSale: true }
+const creditsItem = { itemId: '0', price: '50000000000000000000', isOnSale: true, tradeId: 'trade-0' }
 const manaItem = { itemId: '1', price: '5000000000000000000', isOnSale: true }
 const freeItem = { itemId: '2', price: '0', isOnSale: true }
 const notOnSale = { itemId: '3', price: '7000000000000000000', isOnSale: false }
@@ -41,8 +41,13 @@ describe('fetchCollectionListings', () => {
     ])
     expect(urls.every(url => url.searchParams.get('contractAddress') === CONTRACT)).toBe(true)
 
-    expect(listings.get('0')).toEqual({ itemId: '0', currency: 'credits', credits: 500 })
-    expect(listings.get('1')).toEqual({ itemId: '1', currency: 'mana', manaWei: 5000000000000000000n })
+    expect(listings.get('0')).toEqual({ itemId: '0', tradeId: 'trade-0', currency: 'credits', credits: 500 })
+    expect(listings.get('1')).toEqual({
+      itemId: '1',
+      tradeId: undefined,
+      currency: 'mana',
+      manaWei: 5000000000000000000n
+    })
     expect(listings.get('2')).toEqual({ itemId: '2', currency: 'mana', manaWei: 0n })
     expect(listings.has('3')).toBe(false)
     expect(listings.has('4')).toBe(false)

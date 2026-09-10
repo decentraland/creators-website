@@ -363,11 +363,11 @@
     "price": {
       "label": "Price",
       "rate": "1 Credit = {usd}USD",
-      "giveaway": "Make it for giveaway"
+      "giveaway": "Make it for giveaway",
+      "too_high": "The price can be at most {max} credits."
     },
     "expiration": {
-      "label": "Expiration Date",
-      "invalid": "Pick a date from tomorrow on."
+      "label": "Expiration Date"
     },
     "note": "Your item will be listed in the Decentraland Shop for Credits. When it sells, you’ll receive the <b>equivalent value in MANA.</b>",
     "note_tooltip": "Credits are pegged to the US dollar. The MANA you receive is calculated with the exchange rate at the moment of each sale.",
@@ -381,8 +381,35 @@
       "description_enable": "Something went wrong while enabling sales for this collection. Please try again.",
       "title_sell": "We couldn’t put your item on sale",
       "description_sell": "Something went wrong while putting your item on sale. Please try again.",
+      "title_remove": "We couldn’t remove your item from sale",
+      "description_remove": "Something went wrong while removing your item from sale. Please try again.",
+      "title_update": "We couldn’t update the price",
+      "description_update": "Something went wrong while updating the price. Please wait a moment and try again.",
       "description_sold_out": "Every unit of this item has already been minted, so it can’t be put on sale.",
       "try_again": "Try again"
+    },
+    "remove": {
+      "title": "Remove from sale?",
+      "description": "“{name}” will no longer be available in the Decentraland Shop. You can put it on sale again anytime.",
+      "confirm": "Remove from sale",
+      "pending": "Removing from sale...",
+      "success_title": "Your item was removed from sale",
+      "success_description": "It’s no longer listed in the Decentraland Shop. You can put it on sale again whenever you want."
+    },
+    "update_price": {
+      "title": "Edit Price",
+      "price_label": "Set New Price",
+      "available": "{available} / {total} available",
+      "submit": "Update price",
+      "pending": "Updating price",
+      "two_signatures": "2 Signatures Required",
+      "step_remove": "Remove current listing",
+      "step_confirm": "Confirm new price",
+      "confirm_removal": "First, confirm the removal of your current price in your wallet...",
+      "confirm_new": "Almost done! Confirm your new price in your wallet...",
+      "success_title": "Price updated!",
+      "success_description": "Your item is now available in the Shop with its new price.",
+      "indexing": "Waiting for your previous listing to clear… (attempt {attempt} of {of})"
     }
   },
   "rarity_select": {

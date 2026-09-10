@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { sendContractTransaction, signTypedData, waitForTransaction, type Session } from '~/lib/auth'
+import { type TradeCreation } from '@dcl/schemas'
+import { sendContractTransaction, signTypedData, waitForTransaction, type ContractCall, type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { fetchFriends } from '~/lib/friends'
 import { type Item } from '~/lib/items'
@@ -8,17 +9,22 @@ import { getMaticChainId } from '~/lib/publishCollection'
 import {
   buildEnableSalesCall,
   isSalesEnabled,
+  removeListing,
   sellItem,
   SellItemError,
+  updatePrice,
   withSalesEnabled,
+  type ListingTerms,
   type SalePrice
 } from '~/lib/sales'
 import {
   OFFCHAIN_MARKETPLACE_TYPES,
   createTrade,
   fetchSignatureIndexes,
+  fetchTrade,
   getTradeDomain,
-  toTradeTypedValues
+  toTradeTypedValues,
+  type UnsignedTrade
 } from '~/lib/trades'
 
 // Collections whose sales this tab enabled: builder-server reports minters from the subgraph, which
@@ -65,6 +71,19 @@ export type SellItemVariables = {
   onSigned?: () => void
 }
 
+// The wallet-facing half of signing and storing an order, shared by selling and re-pricing.
+function orderDeps(session: Session, chainId: number) {
+  return {
+    fetchTrade,
+    fetchSignatureIndexes,
+    sendTransaction: (call: ContractCall) => sendContractTransaction(session, call),
+    waitForTransaction: (hash: string) => waitForTransaction(chainId, hash),
+    signTrade: (trade: UnsignedTrade) =>
+      signTypedData(session, getTradeDomain(chainId), OFFCHAIN_MARKETPLACE_TYPES, toTradeTypedValues(trade)),
+    createTrade: (trade: TradeCreation) => createTrade(session.address, trade)
+  }
+}
+
 /** Signs the item's primary order and stores it; the collection's listings pick it up right away. */
 export function useSellItem(session: Session | null) {
   const queryClient = useQueryClient()
@@ -72,23 +91,88 @@ export function useSellItem(session: Session | null) {
   return useMutation({
     mutationFn: async ({ onSigned, ...variables }: SellItemVariables): Promise<ItemListing> => {
       if (!session) throw new Error('Wallet disconnected')
-      const { address } = session
-      return sellItem(
-        { ...variables, address, chainId },
+      return sellItem({ ...variables, address: session.address, chainId }, { ...orderDeps(session, chainId), onSigned })
+    },
+    onSuccess: (listing, { collection }) => setListing(queryClient, collection, listing)
+  })
+}
+
+function setListing(queryClient: ReturnType<typeof useQueryClient>, collection: Collection, listing: ItemListing) {
+  queryClient.setQueryData<Map<string, ItemListing>>(['collection-listings', collection.contractAddress], current =>
+    new Map(current ?? []).set(listing.itemId, listing)
+  )
+}
+
+function removeListingFromCache(
+  queryClient: ReturnType<typeof useQueryClient>,
+  collection: Collection,
+  itemId: string
+) {
+  queryClient.setQueryData<Map<string, ItemListing>>(['collection-listings', collection.contractAddress], current => {
+    const next = new Map(current ?? [])
+    next.delete(itemId)
+    return next
+  })
+}
+
+export type RemoveListingVariables = {
+  collection: Collection
+  listing: ItemListing
+  /** The wallet prompt is over; the cancellation is mining. */
+  onSigned?: () => void
+}
+
+/** Cancels the item's order on chain and waits until it is mined; the row drops its price right away. */
+export function useRemoveListing(session: Session | null) {
+  const queryClient = useQueryClient()
+  const chainId = getMaticChainId()
+  return useMutation({
+    mutationFn: async ({ listing, onSigned }: RemoveListingVariables): Promise<void> => {
+      if (!session) throw new Error('Wallet disconnected')
+      if (!listing.tradeId) throw new SellItemError('generic', 'The listing has no order to cancel')
+      return removeListing(listing.tradeId, { ...orderDeps(session, chainId), onSigned })
+    },
+    onSuccess: (_, { collection, listing }) => removeListingFromCache(queryClient, collection, listing.itemId)
+  })
+}
+
+export type UpdatePriceVariables = {
+  collection: Collection
+  item: Item
+  tradeId: string
+  credits: number
+  onSigned?: (step: 'cancel' | 'sign') => void
+  onCancelled?: (terms: ListingTerms) => void
+  onIndexing?: (attempt: number, of: number) => void
+}
+
+/** Cancels the current order and signs a new one at the given price, keeping beneficiary and expiration. */
+export function useUpdatePrice(session: Session | null) {
+  const queryClient = useQueryClient()
+  const chainId = getMaticChainId()
+  return useMutation({
+    mutationFn: async ({
+      onSigned,
+      onCancelled,
+      onIndexing,
+      ...variables
+    }: UpdatePriceVariables): Promise<ItemListing> => {
+      if (!session) throw new Error('Wallet disconnected')
+      return updatePrice(
+        { ...variables, address: session.address, chainId },
         {
-          fetchSignatureIndexes,
-          signTrade: trade =>
-            signTypedData(session, getTradeDomain(chainId), OFFCHAIN_MARKETPLACE_TYPES, toTradeTypedValues(trade)),
-          createTrade: trade => createTrade(address, trade),
-          onSigned
+          ...orderDeps(session, chainId),
+          onSigned,
+          onIndexing,
+          onCancelled: terms => {
+            // The old order is gone even if the new one never lands.
+            removeListingFromCache(queryClient, variables.collection, variables.item.tokenId!)
+            onCancelled?.(terms)
+          }
         }
       )
     },
-    onSuccess: (listing, { collection }) => {
-      queryClient.setQueryData<Map<string, ItemListing>>(['collection-listings', collection.contractAddress], current =>
-        new Map(current ?? []).set(listing.itemId, listing)
-      )
-    }
+    onSuccess: (listing, { collection }) => setListing(queryClient, collection, listing)
   })
 }
 

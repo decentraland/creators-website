@@ -1,18 +1,24 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { CalendarTodayOutlined as CalendarIcon, InfoOutlined as InfoIcon } from '@mui/icons-material'
+import DatePicker from 'react-datepicker'
 import { useIntl } from 'react-intl'
+import 'react-datepicker/dist/react-datepicker.css'
 import { useTranslation } from '~/intl'
 import { useFriends } from '~/hooks/useSales'
 import { type Session } from '~/lib/auth'
 import { type Item } from '~/lib/items'
 import {
+  MAX_SALE_CREDITS,
   NO_EXPIRATION,
   formatCreditsAsUsd,
+  formatDateValue,
   isValidAddress,
+  isValidCredits,
   minExpirationDate,
   parseExpirationDate,
   type SalePrice
 } from '~/lib/sales'
+import { formatCredits } from '~/lib/publishFee'
 import { Button } from '~/components/Button'
 import { Checkbox } from '~/components/Checkbox'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
@@ -64,7 +70,7 @@ export function toSubmission(values: SellFormValues, address: string, now = Date
   const beneficiary = values.selfBeneficiary ? address : values.beneficiary
   if (!values.free && !isValidAddress(beneficiary)) return null
   const credits = Number(values.credits)
-  if (!values.free && (!Number.isInteger(credits) || credits < 1)) return null
+  if (!values.free && !isValidCredits(credits)) return null
   let expiresAt = NO_EXPIRATION
   if (values.withExpiration) {
     const parsed = parseExpirationDate(values.expirationDate)
@@ -90,12 +96,11 @@ export function SellItemModal({ item, session, initialValues = DEFAULT_SELL_VALU
   const canSubmit = submission !== null && !busy
 
   const creditsNumber = Number(values.credits) || 0
-  const expirationSet = values.withExpiration && values.expirationDate !== ''
-  const expirationInvalid = useMemo(() => {
-    if (!expirationSet) return false
+  const priceTooHigh = !values.free && creditsNumber > Number(MAX_SALE_CREDITS)
+  const expirationDate = useMemo(() => {
     const parsed = parseExpirationDate(values.expirationDate)
-    return parsed === null || parsed <= Date.now()
-  }, [expirationSet, values.expirationDate])
+    return parsed === null ? null : new Date(parsed)
+  }, [values.expirationDate])
 
   function update(patch: Partial<SellFormValues>) {
     setValues(current => ({ ...current, ...patch }))
@@ -144,7 +149,7 @@ export function SellItemModal({ item, session, initialValues = DEFAULT_SELL_VALU
 
           <S.Field>
             <S.Label>{t('sell_item_modal.price.label')}</S.Label>
-            <S.Box data-disabled={values.free || undefined}>
+            <S.Box data-disabled={values.free || undefined} data-invalid={priceTooHigh || undefined}>
               <S.Glyph aria-hidden>
                 <CurrencyAmount currency="credits">{null}</CurrencyAmount>
               </S.Glyph>
@@ -161,6 +166,11 @@ export function SellItemModal({ item, session, initialValues = DEFAULT_SELL_VALU
               <S.Usd data-testid="sell-price-usd">{formatCreditsAsUsd(values.free ? 0 : creditsNumber)}</S.Usd>
             </S.Box>
             <S.Rate>{t('sell_item_modal.price.rate', { usd: formatCreditsAsUsd(1) })}</S.Rate>
+            {priceTooHigh && (
+              <S.ErrorText data-testid="sell-price-error">
+                {t('sell_item_modal.price.too_high', { max: formatCredits(Number(MAX_SALE_CREDITS)) })}
+              </S.ErrorText>
+            )}
             <Checkbox checked={values.free} onChange={free => update({ free })} disabled={busy} testId="sell-free">
               {t('sell_item_modal.price.giveaway')}
             </Checkbox>
@@ -178,25 +188,22 @@ export function SellItemModal({ item, session, initialValues = DEFAULT_SELL_VALU
               />
             </S.Row>
             {values.withExpiration && (
-              <>
-                <S.Box data-invalid={expirationInvalid || undefined}>
-                  <CalendarIcon aria-hidden />
-                  <input
-                    type="date"
-                    aria-labelledby="sell-expiration-label"
-                    min={minDate}
-                    value={values.expirationDate}
-                    disabled={busy}
-                    data-testid="sell-expiration-date"
-                    onChange={event => update({ expirationDate: event.target.value })}
-                  />
-                </S.Box>
-                {expirationInvalid && (
-                  <S.ErrorText data-testid="sell-expiration-error">
-                    {t('sell_item_modal.expiration.invalid')}
-                  </S.ErrorText>
-                )}
-              </>
+              <S.DateField>
+                <CalendarIcon aria-hidden />
+                <DatePicker
+                  selected={expirationDate}
+                  onChange={date => update({ expirationDate: date ? formatDateValue(date) : '' })}
+                  minDate={minDate}
+                  dateFormat="MM/dd/yyyy"
+                  placeholderText="MM/DD/YYYY"
+                  disabled={busy}
+                  showPopperArrow={false}
+                  popperProps={{ strategy: 'fixed' }}
+                  popperPlacement="bottom-start"
+                  ariaLabelledBy="sell-expiration-label"
+                  customInput={<input data-testid="sell-expiration-date" />}
+                />
+              </S.DateField>
             )}
           </S.Field>
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { NO_EXPIRATION, minExpirationDate, parseExpirationDate } from '~/lib/sales'
+import { NO_EXPIRATION, formatDateValue, minExpirationDate, parseExpirationDate } from '~/lib/sales'
 import { SellItemModal } from './SellItemModal'
 import { ADDRESS, FRIEND, Providers, item, makeSession } from './testUtils'
 
@@ -51,6 +51,16 @@ describe('SellItemModal', () => {
     })
   })
 
+  it('refuses a price the Shop would never list', async () => {
+    renderModal()
+    await userEvent.type(price(), '10000000000001')
+    expect(screen.getByTestId('sell-price-error')).toHaveTextContent('10,000,000,000,000')
+    expect(submit()).toBeDisabled()
+    await userEvent.type(price(), '{backspace}')
+    expect(screen.queryByTestId('sell-price-error')).not.toBeInTheDocument()
+    expect(submit()).toBeEnabled()
+  })
+
   it('freezes the price at 0 for a giveaway and submits it as free', async () => {
     const { onSubmit } = renderModal()
     await userEvent.click(screen.getByTestId('sell-free'))
@@ -89,17 +99,18 @@ describe('SellItemModal', () => {
     await userEvent.type(price(), '50')
     await userEvent.click(screen.getByTestId('sell-expiration-toggle'))
     const date = screen.getByTestId('sell-expiration-date')
-    expect(date).toHaveAttribute('min', minExpirationDate())
+    expect(submit()).toBeDisabled()
 
-    fireEvent.change(date, { target: { value: '2020-01-01' } })
-    expect(screen.getByTestId('sell-expiration-error')).toBeInTheDocument()
+    // A past day is not selectable: the picker leaves the field empty.
+    fireEvent.change(date, { target: { value: '01/01/2020' } })
     expect(submit()).toBeDisabled()
 
     const tomorrow = minExpirationDate()
-    fireEvent.change(date, { target: { value: tomorrow } })
-    expect(screen.queryByTestId('sell-expiration-error')).not.toBeInTheDocument()
+    const mmddyyyy = `${String(tomorrow.getMonth() + 1).padStart(2, '0')}/${String(tomorrow.getDate()).padStart(2, '0')}/${tomorrow.getFullYear()}`
+    fireEvent.change(date, { target: { value: mmddyyyy } })
+    expect(date).toHaveValue(mmddyyyy)
     await userEvent.click(submit())
-    expect(onSubmit.mock.calls[0][1]).toMatchObject({ expiresAt: parseExpirationDate(tomorrow) })
+    expect(onSubmit.mock.calls[0][1]).toMatchObject({ expiresAt: parseExpirationDate(formatDateValue(tomorrow)) })
 
     // Turning the toggle off drops the date again.
     await userEvent.click(screen.getByTestId('sell-expiration-toggle'))

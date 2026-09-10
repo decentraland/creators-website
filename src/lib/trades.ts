@@ -2,8 +2,8 @@
 // marketplace-server endpoint that stores the signed order. Ported from the legacy builder's
 // lib/trades + TradeService; the shop reads these orders back through its unified catalog.
 import { ethers } from 'ethers'
-import { TradeAssetType, type TradeAsset, type TradeCreation } from '@dcl/schemas'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { TradeAssetType, type OnChainTrade, type Trade, type TradeAsset, type TradeCreation } from '@dcl/schemas'
+import { ContractName, getContract, getContractName } from 'decentraland-transactions'
 import { config } from '~/config'
 import { readContract, signedFetch } from '~/lib/auth'
 
@@ -114,6 +114,30 @@ export function toTradeTypedValues(trade: UnsignedTrade): Record<string, unknown
   }
 }
 
+/** The marketplace generation a stored trade belongs to (older listings sit on the V1 contract). */
+export function getTradeContract(trade: Pick<Trade, 'contract' | 'chainId'>) {
+  let name: ContractName = ContractName.OffChainMarketplaceV2
+  try {
+    name = getContractName(trade.contract)
+  } catch {
+    // Unknown address: the V2 ABI is the same shape.
+  }
+  return { ...getContract(name, trade.chainId), address: trade.contract }
+}
+
+/** A stored trade in the struct the marketplace contract takes for `cancelSignature` / `accept`. */
+export function toOnChainTrade(trade: Trade): OnChainTrade {
+  const values = toTradeTypedValues(trade) as Omit<OnChainTrade, 'signer' | 'signature'>
+  return {
+    signer: trade.signer,
+    signature: trade.signature,
+    ...values,
+    checks: { ...values.checks, allowedProof: [] },
+    // Nobody receives the sent asset when cancelling.
+    sent: values.sent.map(asset => ({ ...asset, beneficiary: ethers.constants.AddressZero }))
+  }
+}
+
 export type SignatureIndexes = { contractSignatureIndex: number; signerSignatureIndex: number }
 
 /** The marketplace's current signature indexes; an order signed with stale ones is unredeemable. */
@@ -124,6 +148,23 @@ export async function fetchSignatureIndexes(signer: string, chainId: number): Pr
     readContract<ethers.BigNumber>(contract, 'signerSignatureIndex', [signer])
   ])
   return { contractSignatureIndex: contractIndex.toNumber(), signerSignatureIndex: signerIndex.toNumber() }
+}
+
+/** A stored order: GET /v1/trades/:id. */
+export async function fetchTrade(tradeId: string): Promise<Trade> {
+  const response = await fetch(`${config.get('MARKETPLACE_SERVER_URL')}/v1/trades/${encodeURIComponent(tradeId)}`)
+  const body = (await response.json().catch(() => null)) as { ok?: boolean; data?: Trade } | null
+  if (!response.ok || !body?.ok || !body.data)
+    throw new Error(`marketplace-server trade ${tradeId} unavailable (${response.status})`)
+  return body.data
+}
+
+/** marketplace-server still sees an open order for the item: the previous one isn't indexed as cancelled yet. */
+export class TradeConflictError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'TradeConflictError'
+  }
 }
 
 /** Stores a signed order: POST /v1/trades. Answers the stored trade id. */
@@ -141,7 +182,8 @@ export async function createTrade(address: string, trade: TradeCreation): Promis
     message?: string
   } | null
   if (!response.ok || !body?.ok || !body.data?.id) {
-    throw new Error(body?.message ?? `marketplace-server rejected the order (${response.status})`)
+    const message = body?.message ?? `marketplace-server rejected the order (${response.status})`
+    throw response.status === 409 ? new TradeConflictError(message) : new Error(message)
   }
   return body.data.id
 }

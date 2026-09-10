@@ -86,6 +86,11 @@ export const CardName = styled.h3`
   white-space: nowrap;
 `
 
+export const Availability = styled.span`
+  font-size: 13px;
+  color: ${theme.colors.gray4};
+`
+
 export const Badges = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -181,19 +186,69 @@ export const Box = styled.div`
     }
   }
 
-  /* The whole date box opens the picker, not just the tiny native glyph. */
-  & input[type='date']::-webkit-calendar-picker-indicator {
-    position: absolute;
-    inset: 0;
-    width: auto;
-    height: auto;
-    opacity: 0;
-    cursor: pointer;
-  }
-
   & > svg {
     flex: none;
     font-size: 18px;
+  }
+`
+
+// The react-datepicker field and its calendar, on the dialog's dark surface (shop restyles it the same way, in white).
+export const DateField = styled(Box)`
+  .react-datepicker-wrapper,
+  .react-datepicker__input-container {
+    flex: 1;
+    display: flex;
+  }
+
+  .react-datepicker-popper {
+    z-index: ${theme.z.prompt};
+  }
+  .react-datepicker {
+    font-family: ${theme.font.sans};
+    font-size: 13px;
+    color: ${theme.colors.white};
+    background: ${theme.colors.modalSurface};
+    border: 1px solid ${theme.colors.glassHover};
+    border-radius: ${theme.radius.btn};
+    box-shadow: 0 12px 32px ${theme.colors.overlayStrong};
+    overflow: hidden;
+  }
+  .react-datepicker__header {
+    background: none;
+    border-bottom: 1px solid ${theme.colors.glassHover};
+    padding-top: 12px;
+  }
+  .react-datepicker__current-month {
+    color: ${theme.colors.white};
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .react-datepicker__day-name {
+    color: ${theme.colors.gray4};
+  }
+  .react-datepicker__day {
+    color: ${theme.colors.white};
+    border-radius: ${theme.radius.btnSm};
+  }
+  .react-datepicker__day:hover {
+    background: ${theme.colors.glassFaint};
+  }
+  .react-datepicker__day--selected,
+  .react-datepicker__day--keyboard-selected {
+    background: ${theme.colors.dclRed};
+    color: ${theme.colors.white};
+  }
+  .react-datepicker__day--today {
+    font-weight: 700;
+  }
+  .react-datepicker__day--disabled,
+  .react-datepicker__day--disabled:hover {
+    color: ${theme.colors.gray4};
+    background: none;
+    opacity: 0.4;
+  }
+  .react-datepicker__navigation-icon::before {
+    border-color: ${theme.colors.white};
   }
 `
 

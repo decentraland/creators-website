@@ -97,7 +97,6 @@ export function SellItemFlow({ item, collection, session, onClose }: Props) {
             phase === 'confirm' ? t('sell_item_modal.confirm_in_wallet') : t('sell_item_modal.enable_sales.pending')
           }
           onCancel={phase === 'confirm' ? () => backOut('enable') : undefined}
-          cancelLabel={t('sell_item_modal.cancel')}
           testId="enable-sales-pending"
         />
       )
@@ -117,12 +116,17 @@ export function SellItemFlow({ item, collection, session, onClose }: Props) {
         <PendingModal
           label={phase === 'confirm' ? t('sell_item_modal.confirm_in_wallet') : t('sell_item_modal.selling')}
           onCancel={phase === 'confirm' ? () => backOut('form') : undefined}
-          cancelLabel={t('sell_item_modal.cancel')}
           testId="sell-item-pending"
         />
       )
     case 'success':
-      return <SaleSuccessModal onDone={onClose} />
+      return (
+        <SaleSuccessModal
+          title={t('sell_item_modal.success.title')}
+          description={t('sell_item_modal.success.description')}
+          onDone={onClose}
+        />
+      )
     case 'error':
       return error ? (
         <SaleErrorModal
