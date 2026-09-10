@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { ethers } from 'ethers'
 import { Authenticator, type AuthIdentity, type AuthLink } from '@dcl/crypto'
 import { localStorageStoreIdentity, localStorageClearIdentity } from '@dcl/single-sign-on-client'
-import { createAuthHeaders, getIdentity, logout, signedFetch } from './auth'
+import { ProviderType } from '@dcl/schemas'
+import { createAuthHeaders, getIdentity, isSocialLogin, logout, signedFetch } from './auth'
 
 vi.mock('decentraland-connect', () => ({
   connection: { disconnect: vi.fn().mockResolvedValue(undefined) }
@@ -97,5 +98,12 @@ describe('auth', () => {
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(Object.keys(init.headers as Record<string, string>)).toHaveLength(0)
+  })
+
+  it('isSocialLogin is true only for Magic-backed sessions', () => {
+    expect(isSocialLogin({ providerType: ProviderType.MAGIC })).toBe(true)
+    expect(isSocialLogin({ providerType: ProviderType.MAGIC_TEST })).toBe(true)
+    expect(isSocialLogin({ providerType: ProviderType.INJECTED })).toBe(false)
+    expect(isSocialLogin({ providerType: ProviderType.WALLET_CONNECT_V2 })).toBe(false)
   })
 })

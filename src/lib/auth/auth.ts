@@ -64,6 +64,14 @@ async function toSession(res: {
   return { address, chainId: res.chainId, signer, web3Provider, identity, providerType: res.providerType }
 }
 
+/**
+ * Social login (Google, Discord, Apple, email) runs through Magic, whose custodial key signs without any
+ * wallet prompt. Use it to decide whether the UI must explain a pending wallet confirmation.
+ */
+export function isSocialLogin(session: Pick<Session, 'providerType'>): boolean {
+  return session.providerType === ProviderType.MAGIC || session.providerType === ProviderType.MAGIC_TEST
+}
+
 // Redirects to the auth app (method chooser). On return, restoreSession() rebuilds the session.
 export function signInRedirect(): void {
   const redirectTo = encodeURIComponent(window.location.href)
