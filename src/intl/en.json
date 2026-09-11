@@ -440,6 +440,7 @@
       "female": "Female",
       "male": "Male"
     },
+    "body_shape_emote_hint": "Emotes are always available for all body shapes.",
     "variant_question": "Is this a body shape variant of another item?",
     "yes": "Yes",
     "no": "No",
@@ -453,16 +454,17 @@
     "play_mode": "Play Mode",
     "play_mode_option": {
       "simple": "Play Once",
-      "loop": "Loop"
+      "loop": "Play Loop"
     },
     "edit_thumbnail": "Edit thumbnail",
     "metrics": {
       "triangles": "{count} Triangles",
       "materials": "{count, plural, one {# Material} other {# Materials}}",
       "textures": "{count, plural, one {# Texture} other {# Textures}}",
-      "duration": "{count}s",
-      "frames": "{count} Frames",
-      "fps": "{count} FPS"
+      "sequences": "{count, plural, one {# sequence} other {# sequences}}",
+      "duration": "{count} seconds",
+      "frames": "{count} frames",
+      "fps": "{count} fps"
     },
     "cancel": "Cancel",
     "save": "Save",

@@ -3,11 +3,13 @@ import {
   CameraAlt as CameraIcon,
   ChangeHistory as TriangleIcon,
   Circle as MaterialIcon,
+  ErrorOutline as HintIcon,
   Female as FemaleIcon,
   InfoOutlined as InfoIcon,
   Male as MaleIcon,
   ReportProblemOutlined as WarningIcon,
   Texture as TextureIcon,
+  ThirtyFpsSelect as FpsIcon,
   Transgender as BothIcon
 } from '@mui/icons-material'
 import { CategorySelect } from '~/components/CategorySelect'
@@ -80,9 +82,13 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
             </S.ThumbnailOverlay>
           </ItemThumbnail>
         </S.ThumbnailBox>
-        <S.MetricsRow data-testid="draft-metrics">
+        <S.MetricsRow data-testid="draft-metrics" data-compact={isEmote || undefined}>
           {isEmote && draft.metrics ? (
             <>
+              <S.MetricPill>
+                <FilmReelIcon />
+                {t('add_items_modal.metrics.sequences', { count: draft.metrics.sequences ?? 0 })}
+              </S.MetricPill>
               <S.MetricPill>
                 <ClockIcon />
                 {t('add_items_modal.metrics.duration', { count: Math.round((draft.metrics.duration ?? 0) * 10) / 10 })}
@@ -92,8 +98,8 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
                 {t('add_items_modal.metrics.frames', { count: draft.metrics.frames ?? 0 })}
               </S.MetricPill>
               <S.MetricPill>
-                <FilmReelIcon />
-                {t('add_items_modal.metrics.fps', { count: Math.round(draft.metrics.fps ?? 0) })}
+                <FpsIcon />
+                {t('add_items_modal.metrics.fps', { count: Math.round((draft.metrics.fps ?? 0) * 10) / 10 })}
               </S.MetricPill>
             </>
           ) : draft.metrics ? (
@@ -148,15 +154,26 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
           </S.Field>
         )}
 
-        {isWearable && (
-          <S.Field as="div">
-            {t('add_items_modal.body_shape')}
+        {(isWearable || isEmote) && (
+          <S.Field as="div" data-hinted={isEmote || undefined}>
+            {isEmote ? (
+              <S.FieldLabel>
+                {t('add_items_modal.body_shape')}
+                <S.FieldHint data-testid="body-shape-hint">
+                  <HintIcon />
+                  {t('add_items_modal.body_shape_emote_hint')}
+                </S.FieldHint>
+              </S.FieldLabel>
+            ) : (
+              t('add_items_modal.body_shape')
+            )}
             <S.Segmented role="radiogroup" aria-label={t('add_items_modal.body_shape')}>
               {BODY_SHAPES.map(({ value, icon }) => (
                 <S.SegmentButton
                   key={value}
                   type="button"
                   role="radio"
+                  disabled={draft.bodyShapeLocked}
                   aria-checked={draft.bodyShape === value}
                   data-selected={draft.bodyShape === value || undefined}
                   data-testid={`body-shape-${value}`}
@@ -181,7 +198,7 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
         {isSingleShape && (
           <S.Field as="div">
             {t('add_items_modal.variant_question')}
-            <S.Segmented role="radiogroup" aria-label={t('add_items_modal.variant_question')}>
+            <S.Segmented data-joined role="radiogroup" aria-label={t('add_items_modal.variant_question')}>
               {[true, false].map(answer => (
                 <S.SegmentButton
                   key={String(answer)}
@@ -229,6 +246,28 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
           </S.Field>
         )}
 
+        {isEmote && showItemFields && (
+          <S.Field as="div">
+            {t('add_items_modal.play_mode')}
+            <S.Segmented role="radiogroup" aria-label={t('add_items_modal.play_mode')}>
+              {[EmotePlayMode.LOOP, EmotePlayMode.SIMPLE].map(mode => (
+                <S.SegmentButton
+                  key={mode}
+                  type="button"
+                  role="radio"
+                  aria-checked={draft.playMode === mode}
+                  data-selected={draft.playMode === mode || undefined}
+                  data-testid={`play-mode-${mode}`}
+                  onClick={() => onUpdate(draft.id, { playMode: mode })}
+                >
+                  {mode === EmotePlayMode.LOOP ? <LoopIcon /> : <PlayOnceIcon />}
+                  {t(`add_items_modal.play_mode_option.${mode}`)}
+                </S.SegmentButton>
+              ))}
+            </S.Segmented>
+          </S.Field>
+        )}
+
         {showItemFields && (
           <S.FieldRow>
             <S.Field>
@@ -252,28 +291,6 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
               />
             </S.Field>
           </S.FieldRow>
-        )}
-
-        {isEmote && showItemFields && (
-          <S.Field as="div">
-            {t('add_items_modal.play_mode')}
-            <S.Segmented role="radiogroup" aria-label={t('add_items_modal.play_mode')}>
-              {[EmotePlayMode.SIMPLE, EmotePlayMode.LOOP].map(mode => (
-                <S.SegmentButton
-                  key={mode}
-                  type="button"
-                  role="radio"
-                  aria-checked={draft.playMode === mode}
-                  data-selected={draft.playMode === mode || undefined}
-                  data-testid={`play-mode-${mode}`}
-                  onClick={() => onUpdate(draft.id, { playMode: mode })}
-                >
-                  {mode === EmotePlayMode.LOOP ? <LoopIcon /> : <PlayOnceIcon />}
-                  {t(`add_items_modal.play_mode_option.${mode}`)}
-                </S.SegmentButton>
-              ))}
-            </S.Segmented>
-          </S.Field>
         )}
 
         {sizeError !== null && (

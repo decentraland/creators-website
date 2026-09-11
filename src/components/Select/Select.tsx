@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { ExpandMore as ChevronIcon } from '@mui/icons-material'
+import { ArrowDropDown as ChevronIcon } from '@mui/icons-material'
 import * as S from './Select.styles'
 
 export type SelectOption<T extends string> = {
@@ -134,7 +134,7 @@ export function Select<T extends string>({ value, options, onChange, placeholder
           </S.OptionLabel>
           {selected?.trailing && !selected.triggerLabel && <S.Trailing>{selected.trailing}</S.Trailing>}
         </S.TriggerLabel>
-        <ChevronIcon fontSize="small" />
+        <ChevronIcon />
       </S.Trigger>
       {open &&
         createPortal(

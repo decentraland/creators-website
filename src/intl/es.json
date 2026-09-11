@@ -440,6 +440,7 @@
       "female": "Femenino",
       "male": "Masculino"
     },
+    "body_shape_emote_hint": "Los emotes siempre están disponibles para todos los tipos de cuerpo.",
     "variant_question": "¿Es una variante de tipo de cuerpo de otro ítem?",
     "yes": "Sí",
     "no": "No",
@@ -452,17 +453,18 @@
     "rarity_tooltip": "La rareza determina cuántas copias de un ítem pueden existir. Cuanto más raro el ítem, menor su cantidad máxima.",
     "play_mode": "Modo de reproducción",
     "play_mode_option": {
-      "simple": "Una vez",
-      "loop": "En bucle"
+      "simple": "Reproducir una vez",
+      "loop": "Reproducir en bucle"
     },
     "edit_thumbnail": "Editar miniatura",
     "metrics": {
       "triangles": "{count} Triángulos",
       "materials": "{count, plural, one {# Material} other {# Materiales}}",
       "textures": "{count, plural, one {# Textura} other {# Texturas}}",
-      "duration": "{count}s",
-      "frames": "{count} Fotogramas",
-      "fps": "{count} FPS"
+      "sequences": "{count, plural, one {# secuencia} other {# secuencias}}",
+      "duration": "{count} segundos",
+      "frames": "{count} fotogramas",
+      "fps": "{count} fps"
     },
     "cancel": "Cancelar",
     "save": "Guardar",
