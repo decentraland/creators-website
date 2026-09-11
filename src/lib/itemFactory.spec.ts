@@ -93,6 +93,11 @@ describe('getSizeError', () => {
     expect(getSizeError(ItemType.EMOTE, undefined, { 'model.glb': bigBlob })).toBe(3)
     expect(getSizeError(ItemType.WEARABLE, 'hat', { 'model.glb': blob() })).toBeNull()
   })
+
+  it('caps smart wearables at 3MB without counting the preview video', () => {
+    expect(getSizeError(ItemType.WEARABLE, 'hat', { 'model.glb': bigBlob, 'bin/game.js': blob() })).toBe(3)
+    expect(getSizeError(ItemType.WEARABLE, 'hat', { 'model.glb': blob(), 'video.mp4': bigBlob })).toBeNull()
+  })
 })
 
 describe('buildItem', () => {
@@ -123,6 +128,41 @@ describe('buildItem', () => {
     })
     expect(item.data.loop).toBe(true)
     expect(item.data.representations).toHaveLength(2)
+  })
+
+  it('ships scene code per body shape and keeps the video at the root of a smart wearable', async () => {
+    const { item, blobs } = await buildItem({
+      ...baseDraft,
+      requiredPermissions: ['USE_FETCH'],
+      contents: {
+        ...baseDraft.contents,
+        'scene.json': blob('{}'),
+        'bin/game.js': blob('code'),
+        'video.mp4': blob('video')
+      }
+    })
+    expect(Object.keys(item.contents).sort()).toEqual([
+      'female/bin/game.js',
+      'female/model.glb',
+      'female/scene.json',
+      'male/bin/game.js',
+      'male/model.glb',
+      'male/scene.json',
+      'thumbnail.png',
+      'video.mp4'
+    ])
+    expect(item.data.representations[0].contents).toContain('male/bin/game.js')
+    expect(item.data.requiredPermissions).toEqual(['USE_FETCH'])
+    expect(item.video).toBe(item.contents['video.mp4'])
+    expect(Object.keys(blobs)).toContain('video.mp4')
+  })
+
+  it('sends an empty permission list for plain wearables and none for emotes', async () => {
+    const wearable = await buildItem(baseDraft)
+    expect(wearable.item.data.requiredPermissions).toEqual([])
+    expect(wearable.item.video).toBeUndefined()
+    const emote = await buildItem({ ...baseDraft, type: ItemType.EMOTE, category: 'dance' })
+    expect(emote.item.data.requiredPermissions).toBeUndefined()
   })
 
   it('handles zips that already carry both body-shape folders', async () => {

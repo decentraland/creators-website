@@ -77,6 +77,18 @@ export const Name = styled.span`
   text-overflow: ellipsis;
 `
 
+export const SmartBadge = styled.span`
+  display: inline-flex;
+  vertical-align: -3px;
+  margin-right: 4px;
+  color: ${theme.colors.amber};
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+`
+
 export const Cell = styled.div`
   min-width: 0;
   font-size: 14px;

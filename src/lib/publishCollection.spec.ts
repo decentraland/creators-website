@@ -126,6 +126,14 @@ describe('getPublishBlocker', () => {
     expect(getPublishBlocker({ ...collection, isPublished: true }, 3)).toBe('not_draft')
     expect(getPublishBlocker({ ...collection, lock: Date.now() }, 3)).toBe('not_draft')
   })
+
+  it('blocks publishing while a smart wearable has no preview video', () => {
+    const smart = makeItem('sw', 3)
+    smart.contents = { ...smart.contents, 'male/bin/game.js': 'js' }
+    expect(getPublishBlocker(collection, 1, [smart])).toBe('missing_smart_wearable_video')
+    smart.contents['video.mp4'] = 'video'
+    expect(getPublishBlocker(collection, 1, [smart])).toBeNull()
+  })
 })
 
 describe('payment methods', () => {

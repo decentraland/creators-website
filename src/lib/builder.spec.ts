@@ -190,6 +190,23 @@ describe('saveItem', () => {
     expect(formKeys).toEqual(['QmModel', 'QmThumb'])
   })
 
+  it('POSTs a smart wearable video to the videos endpoint keyed by path', async () => {
+    signedFetchMock
+      .mockResolvedValueOnce(okResponse(remoteItem))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+
+    const smartItem = { ...item, contents: { ...item.contents, 'video.mp4': 'QmVideo' } }
+    await saveItem(ADDRESS, smartItem, { 'male/model.glb': new Blob(['model']), 'video.mp4': new Blob(['video']) })
+
+    const [, , filesPath, filesInit] = signedFetchMock.mock.calls[1] as [string, string, string, RequestInit]
+    expect(filesPath).toBe('/items/item-1/files')
+    expect(Array.from((filesInit.body as FormData).keys())).toEqual(['QmModel'])
+    const [, , videosPath, videosInit] = signedFetchMock.mock.calls[2] as [string, string, string, RequestInit]
+    expect(videosPath).toBe('/items/item-1/videos')
+    expect(Array.from((videosInit.body as FormData).keys())).toEqual(['video.mp4'])
+  })
+
   it('skips the files request when there is nothing to upload', async () => {
     signedFetchMock.mockResolvedValueOnce(okResponse(remoteItem))
     await saveItem(ADDRESS, item, {})

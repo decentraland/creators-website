@@ -29,6 +29,16 @@ function readyDraft(overrides: Partial<ItemDraft> = {}): ItemDraft {
   }
 }
 
+function smartDraft(overrides: Partial<ItemDraft> = {}): ItemDraft {
+  return readyDraft({
+    isSmart: true,
+    bodyShapeLocked: true,
+    requiredPermissions: ['USE_FETCH'],
+    contents: { 'model.glb': blob(), 'scene.json': blob(), 'bin/game.js': blob(), 'thumbnail.png': blob() },
+    ...overrides
+  })
+}
+
 function stateWith(drafts: ItemDraft[]): AddItemsState {
   return createInitialState(drafts)
 }
@@ -186,5 +196,14 @@ describe('isDraftComplete', () => {
     const big = readyDraft({ contents: { 'model.glb': new Blob([new Uint8Array(4 * 1024 * 1024)]) } })
     expect(isDraftComplete(big, [], [])).toBe(false)
     expect(isDraftComplete({ ...big, category: 'skin' }, [], [])).toBe(true)
+  })
+})
+
+describe('smart wearable drafts', () => {
+  it('can be saved without a preview video and never act as variant targets', () => {
+    const smart = smartDraft()
+    expect(isDraftComplete(smart, [smart], [])).toBe(true)
+    const single = readyDraft({ bodyShape: BodyShapeType.MALE })
+    expect(getVariantTargets(single, [single, smart], [])).toEqual([])
   })
 })

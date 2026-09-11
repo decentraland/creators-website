@@ -10,7 +10,7 @@ import { BuilderServerError, COLLECTION_LOCKED_STATUS } from '~/lib/builder'
 import { isCollectionLocked, type Collection } from '~/lib/collections'
 import { CreditsServerError, type ExternalCall, type PublicationAuthorization } from '~/lib/credits'
 import { hasOldHashedContents } from '~/lib/itemFactory'
-import { type Item } from '~/lib/items'
+import { isMissingSmartWearableVideo, type Item } from '~/lib/items'
 import { weiToUsdCents, type PublicationFee } from '~/lib/publishFee'
 import { isWalletRejection } from '~/lib/walletErrors'
 import { getCollectionSymbol, toInitializeItems, type InitializeItem } from '~/lib/saveCollection'
@@ -22,12 +22,18 @@ export type PaymentMethod = 'credits' | 'mana'
 // larger ones, so publishing more would leave the collection impossible to approve.
 export const MAX_PUBLISH_ITEMS = 50
 
-export type PublishBlocker = 'not_draft' | 'no_items' | 'too_many_items'
+export type PublishBlocker = 'not_draft' | 'no_items' | 'too_many_items' | 'missing_smart_wearable_video'
 
-export function getPublishBlocker(collection: Collection, itemCount: number): PublishBlocker | null {
+/** `items` are the collection's items when loaded; a smart wearable without its preview video blocks publishing. */
+export function getPublishBlocker(
+  collection: Collection,
+  itemCount: number,
+  items: Item[] = []
+): PublishBlocker | null {
   if (collection.isPublished || isCollectionLocked(collection)) return 'not_draft'
   if (itemCount === 0) return 'no_items'
   if (itemCount > MAX_PUBLISH_ITEMS) return 'too_many_items'
+  if (items.some(isMissingSmartWearableVideo)) return 'missing_smart_wearable_video'
   return null
 }
 

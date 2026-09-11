@@ -216,7 +216,8 @@
     "showing": "Mostrando {range} de {total} {total, plural, one {ítem} other {ítems}}",
     "publish_blocker": {
       "no_items": "Agrega al menos un ítem para publicar tu colección.",
-      "too_many_items": "Una colección puede publicarse con hasta {max} ítems."
+      "too_many_items": "Una colección puede publicarse con hasta {max} ítems.",
+      "missing_smart_wearable_video": "Cada smart wearable necesita un video de vista previa antes de poder publicar."
     },
     "price": {
       "credits": "{amount} créditos",
@@ -260,7 +261,8 @@
         "confirm": "Restablecer ítem",
         "done": "“{name}” se restableció a su versión aprobada"
       }
-    }
+    },
+    "smart_wearable": "Smart wearable"
   },
   "publish_collection_modal": {
     "title": "Publicar colección",
@@ -427,7 +429,8 @@
     "processing": "Procesando…",
     "type": {
       "wearable": "Wearable",
-      "emote": "Emote"
+      "emote": "Emote",
+      "smart_wearable": "Smart Wearable"
     },
     "delete": "Eliminar",
     "item_name": "Nombre del ítem",
@@ -441,6 +444,8 @@
       "male": "Masculino"
     },
     "body_shape_emote_hint": "Los emotes siempre están disponibles para todos los tipos de cuerpo.",
+    "body_shape_smart_hint": "Los smart wearables están disponibles para todos los tipos de cuerpo.",
+    "smart_video_notice": "Los smart wearables necesitan un video de vista previa antes de publicar la colección. Podrás agregarlo desde el editor del ítem.",
     "variant_question": "¿Es una variante de tipo de cuerpo de otro ítem?",
     "yes": "Sí",
     "no": "No",
@@ -503,7 +508,10 @@
       "invalid_manifest": "La configuración {fileName} dentro del ZIP es inválida.",
       "manifest_file_missing": "La configuración del ZIP menciona {fileName}, pero no está en el ZIP.",
       "orphaned_auxiliary_file": "{fileName} necesita su archivo complementario {expected} en el mismo ZIP.",
-      "smart_wearable_not_supported": "Los smart wearables aún no se pueden subir aquí.",
+      "smart_wearable_missing_manifest": "Los smart wearables necesitan un wearable.json junto al scene.json.",
+      "unknown_required_permissions": "scene.json declara permisos que no existen: {permissions}.",
+      "duplicated_required_permissions": "scene.json declara el mismo permiso más de una vez.",
+      "allowed_media_hostnames_empty": "scene.json pide ALLOW_MEDIA_HOSTNAMES pero no lista ningún hostname.",
       "emote_duration_too_long": "Los emotes pueden durar hasta {seconds} segundos.",
       "emote_with_mesh": "Este emote incluye la malla del avatar. Exporta solo el esqueleto y la animación.",
       "emote_animations_out_of_sync": "Las animaciones del avatar y del prop deben tener la misma duración.",
@@ -586,5 +594,10 @@
     "linkTerms": "Términos de uso",
     "linkContentPolicy": "Política de contenido",
     "linkEthics": "Código de ética"
+  },
+  "required_permissions": {
+    "title": "Permisos requeridos",
+    "learn_more": "Más información",
+    "none": "Este smart wearable no solicita ningún permiso."
   }
 }

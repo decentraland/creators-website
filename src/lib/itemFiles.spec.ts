@@ -207,9 +207,76 @@ describe('loadItemFile', () => {
     await expectItemFileError(loadItemFile(file), 'invalid_manifest')
   })
 
-  it('rejects smart wearable zips', async () => {
-    const file = await zipFile({ 'scene.json': '{}', 'model.glb': 'glb' })
-    await expectItemFileError(loadItemFile(file), 'smart_wearable_not_supported')
+  describe('smart wearables', () => {
+    const wearableManifest = JSON.stringify({
+      name: 'Glasses',
+      data: {
+        category: 'eyewear',
+        representations: [
+          {
+            bodyShapes: ['urn:decentraland:off-chain:base-avatars:BaseMale'],
+            mainFile: 'glasses.glb',
+            contents: ['glasses.glb']
+          }
+        ]
+      }
+    })
+    const scene = (overrides: Record<string, unknown> = {}) =>
+      JSON.stringify({
+        main: 'bin/game.js',
+        scene: { parcels: ['0,0'], base: '0,0' },
+        requiredPermissions: ['USE_FETCH', 'OPEN_EXTERNAL_LINK'],
+        ...overrides
+      })
+    const files = { 'wearable.json': wearableManifest, 'glasses.glb': 'glb', 'bin/game.js': 'code' }
+
+    it('loads the scene code, keeps a normalized scene.json and forces both body shapes', async () => {
+      const result = await loadItemFile(await zipFile({ ...files, 'scene.json': scene() }))
+      expect(result.scene?.main).toBe('bin/game.js')
+      expect(result.scene?.requiredPermissions).toEqual(['USE_FETCH', 'OPEN_EXTERNAL_LINK'])
+      expect(Object.keys(result.contents).sort()).toEqual(['bin/game.js', 'glasses.glb', 'scene.json'])
+      expect(JSON.parse(await result.contents['scene.json'].text())).toMatchObject({ main: 'bin/game.js' })
+      expect(result.bodyShape).toBe(BodyShapeType.BOTH)
+    })
+
+    it('needs a wearable.json next to scene.json', async () => {
+      const file = await zipFile({ 'scene.json': scene(), 'model.glb': 'glb', 'bin/game.js': 'code' })
+      await expectItemFileError(loadItemFile(file), 'smart_wearable_missing_manifest')
+    })
+
+    it('needs the file scene.main points at', async () => {
+      const file = await zipFile({ ...files, 'scene.json': scene({ main: 'bin/index.js' }) })
+      await expectItemFileError(loadItemFile(file), 'manifest_file_missing')
+    })
+
+    it('rejects unknown, duplicated and hostname-less permissions with their own errors', async () => {
+      await expectItemFileError(
+        loadItemFile(await zipFile({ ...files, 'scene.json': scene({ requiredPermissions: ['FLY'] }) })),
+        'unknown_required_permissions'
+      )
+      await expectItemFileError(
+        loadItemFile(
+          await zipFile({ ...files, 'scene.json': scene({ requiredPermissions: ['USE_FETCH', 'USE_FETCH'] }) })
+        ),
+        'duplicated_required_permissions'
+      )
+      await expectItemFileError(
+        loadItemFile(
+          await zipFile({ ...files, 'scene.json': scene({ requiredPermissions: ['ALLOW_MEDIA_HOSTNAMES'] }) })
+        ),
+        'allowed_media_hostnames_empty'
+      )
+    })
+
+    it('rejects a scene.json missing its required fields', async () => {
+      const file = await zipFile({ ...files, 'scene.json': JSON.stringify({ main: 'bin/game.js' }) })
+      await expectItemFileError(loadItemFile(file), 'invalid_manifest')
+    })
+
+    it('caps the model at the smart wearable size', async () => {
+      const file = await zipFile({ ...files, 'glasses.glb': blob(3 * 1024 * 1024 + 1), 'scene.json': scene() })
+      await expectItemFileError(loadItemFile(file), 'file_too_big')
+    })
   })
 
   it('rejects zips whose only PNGs are orphaned auxiliaries', async () => {

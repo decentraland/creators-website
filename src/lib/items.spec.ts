@@ -5,6 +5,7 @@ import {
   BODY_SHAPE_MALE,
   BodyShapeType,
   canManageItem,
+  isMissingSmartWearableVideo,
   isSmartWearable,
   fromRemoteItem,
   getItemBodyShapeType,
@@ -231,6 +232,15 @@ describe('isSmartWearable', () => {
     expect(isSmartWearable(makeItem())).toBe(false)
     expect(isSmartWearable(makeItem({ contents: { ...remote.contents, 'game.js': 'Qmjs' } }))).toBe(true)
     expect(isSmartWearable(makeItem({ type: ItemType.EMOTE, contents: { 'game.js': 'Qmjs' } }))).toBe(false)
+  })
+})
+
+describe('isMissingSmartWearableVideo', () => {
+  it('only flags smart wearables whose video.mp4 is not in the contents yet', () => {
+    const smart = { ...remote.contents, 'male/bin/game.js': 'Qmjs' }
+    expect(isMissingSmartWearableVideo(makeItem())).toBe(false)
+    expect(isMissingSmartWearableVideo(makeItem({ contents: smart }))).toBe(true)
+    expect(isMissingSmartWearableVideo(makeItem({ contents: { ...smart, 'video.mp4': 'Qmvideo' } }))).toBe(false)
   })
 })
 

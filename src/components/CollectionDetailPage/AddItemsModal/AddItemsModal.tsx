@@ -134,6 +134,7 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
       category: draft.category ?? '',
       rarity: draft.rarity,
       playMode: draft.playMode,
+      requiredPermissions: draft.isSmart ? draft.requiredPermissions : undefined,
       contents: draft.contents,
       model: draft.model,
       metrics: draft.metrics ?? {},

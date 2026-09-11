@@ -2,7 +2,7 @@
 // and the marketplace show. Ported from the legacy builder (modules/item/utils areSynced + the
 // getStatusForStandard selector) so both apps judge the same item the same way.
 import { type Entity } from '@dcl/schemas'
-import { ItemType, type Item, type ItemData, type ItemRepresentation } from './items'
+import { ItemType, VIDEO_PATH, type Item, type ItemData, type ItemRepresentation } from './items'
 
 /** Edited after approval (submitted for review or not): the Shop and the world still serve the approved version. */
 export function hasPendingChanges(status: ItemSyncStatus | undefined): boolean {
@@ -30,7 +30,6 @@ type CatalystItemMetadata = {
 
 // Hash of an empty file: directory entries and 0-byte files are never deployed.
 const EMPTY_CONTENT_HASH = 'bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku'
-const VIDEO_PATH = 'video.mp4'
 
 /** The item fields as deployed: `data` for wearables, `emoteDataADR74` for emotes. */
 function getEntityItemData(entity: Entity): ItemData | undefined {

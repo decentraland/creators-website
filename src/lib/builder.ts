@@ -12,7 +12,7 @@ import {
   type PaginatedResource,
   type RemoteCollection
 } from '~/lib/collections'
-import { fromRemoteItem, toRemoteItem, type Item, type RemoteItem } from '~/lib/items'
+import { VIDEO_PATH, fromRemoteItem, toRemoteItem, type Item, type RemoteItem } from '~/lib/items'
 import { type BlockchainRarity } from '~/lib/rarities'
 
 export type CollectionItemPreview = {
@@ -137,17 +137,26 @@ export const ALREADY_PUBLISHED_STATUS = 409
 /**
  * Create or update an item and upload its files: PUT /items/{id} with the remote item, then
  * POST /items/{id}/files as multipart where each field name is the file's content hash — the
- * same two-step save the legacy builder performs.
+ * same two-step save the legacy builder performs. A smart wearable's preview video goes to
+ * POST /items/{id}/videos instead (field name = path), which has its own 250MB cap.
  */
 export async function saveItem(address: string, item: Item, blobs: Record<string, Blob>): Promise<Item> {
   const remote = await request<RemoteItem>(address, 'PUT', `/items/${item.id}`, '', { item: toRemoteItem(item) })
-  if (Object.keys(blobs).length > 0) {
-    const formData = new FormData()
-    for (const path in blobs) {
-      formData.append(item.contents[path], blobs[path])
+  const files = new FormData()
+  const videos = new FormData()
+  let hasFiles = false
+  let hasVideos = false
+  for (const path in blobs) {
+    if (path === VIDEO_PATH) {
+      videos.append(path, blobs[path])
+      hasVideos = true
+    } else {
+      files.append(item.contents[path], blobs[path])
+      hasFiles = true
     }
-    await request<unknown>(address, 'POST', `/items/${item.id}/files`, '', formData, false)
   }
+  if (hasFiles) await request<unknown>(address, 'POST', `/items/${item.id}/files`, '', files, false)
+  if (hasVideos) await request<unknown>(address, 'POST', `/items/${item.id}/videos`, '', videos, false)
   return fromRemoteItem(remote)
 }
 

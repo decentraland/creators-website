@@ -1,5 +1,5 @@
 import { Check as CheckIcon, ErrorRounded as ErrorIcon } from '@mui/icons-material'
-import { EmoteIcon, TrashIcon, WearableIcon } from '~/components/Icons'
+import { EmoteIcon, SmartIcon, TrashIcon, WearableIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { ItemType } from '~/lib/items'
 import { type ItemDraft } from './AddItemsModal.state'
@@ -47,9 +47,9 @@ export function DraftList({ drafts, selectedId, onSelect, onRemove }: Props) {
             ) : draft.status === 'processing' || !draft.type ? (
               <S.DraftType>{t('add_items_modal.processing')}</S.DraftType>
             ) : (
-              <S.DraftType>
-                {draft.type === ItemType.EMOTE ? <EmoteIcon /> : <WearableIcon />}
-                {t(`add_items_modal.type.${draft.type}`)}
+              <S.DraftType data-testid={`draft-type-${draft.id}`} data-smart={draft.isSmart || undefined}>
+                {draft.type === ItemType.EMOTE ? <EmoteIcon /> : draft.isSmart ? <SmartIcon /> : <WearableIcon />}
+                {t(draft.isSmart ? 'add_items_modal.type.smart_wearable' : `add_items_modal.type.${draft.type}`)}
               </S.DraftType>
             )}
           </S.DraftInfo>

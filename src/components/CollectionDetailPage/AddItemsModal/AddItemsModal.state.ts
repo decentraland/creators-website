@@ -26,8 +26,11 @@ export type ItemDraft = {
   contents: Record<string, Blob>
   model: string
   bodyShape: BodyShapeType
-  /** True when the zip structure fixed the shape (male/+female/ folders or a manifest). */
+  /** True when the zip structure fixed the shape (male/+female/ folders or a manifest), or the item is unisex by nature. */
   bodyShapeLocked: boolean
+  /** Wearable shipping scene code (a zip with scene.json). Unisex, no variants, needs a video before publishing. */
+  isSmart: boolean
+  requiredPermissions: string[]
   isVariant: boolean
   variantTargetId: string | null
   category: string | null
@@ -67,6 +70,8 @@ export function createDraft(file: File): ItemDraft {
     model: '',
     bodyShape: BodyShapeType.BOTH,
     bodyShapeLocked: false,
+    isSmart: false,
+    requiredPermissions: [],
     isVariant: false,
     variantTargetId: null,
     category: null,

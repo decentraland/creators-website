@@ -2,21 +2,27 @@
 // ImportStep + @dcl/builder-client loadFile: unzips, reads manifests, normalizes contents and
 // detects body shapes. 3D model analysis lives in lib/models; this module is engine-free.
 import JSZip from 'jszip'
-import { BodyShapeType } from './items'
+import { RequiredPermission, Scene } from '@dcl/schemas'
+import { BodyShapeType, VIDEO_PATH } from './items'
 
 export const THUMBNAIL_PATH = 'thumbnail.png'
+/** A smart wearable's scene manifest; kept inside the item contents so the explorer can run it. */
+export const SCENE_PATH = 'scene.json'
+export { VIDEO_PATH }
 
 export const ITEM_EXTENSIONS = ['.zip', '.gltf', '.glb', '.png']
+export const VIDEO_EXTENSIONS = ['.mp4']
 
 export const MAX_THUMBNAIL_FILE_SIZE = 1024 * 1024 // 1MB
 export const MAX_WEARABLE_FILE_SIZE = 3 * 1024 * 1024 // 3MB
+export const MAX_SMART_WEARABLE_FILE_SIZE = 3 * 1024 * 1024 // 3MB
 export const MAX_SKIN_FILE_SIZE = 8 * 1024 * 1024 // 8MB
 export const MAX_EMOTE_FILE_SIZE = 3 * 1024 * 1024 // 3MB
+export const MAX_VIDEO_FILE_SIZE = 262144000 // 250MB
 export const MAX_EMOTE_DURATION = 10 // seconds
 
 const WEARABLE_MANIFEST = 'wearable.json'
 const EMOTE_MANIFEST = 'emote.json'
-const SCENE_MANIFEST = 'scene.json'
 const BUILDER_MANIFEST = 'builder.json'
 const MAX_ZIP_ENTRIES = 500
 
@@ -221,8 +227,15 @@ export type EmoteManifest = {
   tags?: string[]
 }
 
+/** scene.json of a smart wearable — the subset this app reads. */
+export type SceneManifest = {
+  main: string
+  requiredPermissions?: string[]
+  allowedMediaHostnames?: string[]
+}
+
 export type LoadedItemFile = {
-  /** File contents by path, manifests excluded, ready for representation building. */
+  /** File contents by path, manifests excluded (a smart wearable keeps its normalized scene.json). */
   contents: Record<string, Blob>
   /** Main model or texture path within contents. */
   model: string
@@ -230,6 +243,8 @@ export type LoadedItemFile = {
   bodyShape: BodyShapeType | null
   wearable?: WearableManifest
   emote?: EmoteManifest
+  /** Present for smart wearables. */
+  scene?: SceneManifest
 }
 
 function parseJson(text: string, fileName: string): unknown {
@@ -270,6 +285,37 @@ function toEmoteManifest(value: unknown): EmoteManifest {
   return manifest
 }
 
+const KNOWN_PERMISSIONS = new Set<string>(Object.values(RequiredPermission))
+
+// Permission checks run before the schema so each failure gets its own message (legacy loadSceneConfig).
+function toSceneManifest(value: unknown): SceneManifest {
+  const scene = value as Partial<Scene> | null
+  const permissions = scene?.requiredPermissions as unknown
+  if (Array.isArray(permissions)) {
+    const unknown = permissions.filter(permission => !KNOWN_PERMISSIONS.has(String(permission)))
+    if (unknown.length > 0) {
+      throw new ItemFileError('unknown_required_permissions', { permissions: unknown.join(', ') })
+    }
+    if (new Set(permissions).size !== permissions.length) {
+      throw new ItemFileError('duplicated_required_permissions')
+    }
+    if (permissions.includes(RequiredPermission.ALLOW_MEDIA_HOSTNAMES)) {
+      const hostnames = scene?.allowedMediaHostnames
+      if (!Array.isArray(hostnames) || hostnames.length === 0 || hostnames.some(host => !host?.trim())) {
+        throw new ItemFileError('allowed_media_hostnames_empty')
+      }
+    }
+  }
+  if (!scene || !Scene.validate(scene)) {
+    throw new ItemFileError('invalid_manifest', { fileName: SCENE_PATH })
+  }
+  return {
+    main: scene.main,
+    requiredPermissions: scene.requiredPermissions,
+    allowedMediaHostnames: scene.allowedMediaHostnames
+  }
+}
+
 function getManifestBodyShape(wearable: WearableManifest): BodyShapeType {
   const bodyShapes = new Set(wearable.data.representations.flatMap(representation => representation.bodyShapes))
   const hasMale = [...bodyShapes].some(shape => shape.endsWith('BaseMale'))
@@ -289,11 +335,14 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
     throw new ItemFileError('invalid_zip')
   }
 
-  if (zip.file(SCENE_MANIFEST)) {
-    throw new ItemFileError('smart_wearable_not_supported')
+  const sceneFile = zip.file(SCENE_PATH)
+  const wearableFile = zip.file(WEARABLE_MANIFEST)
+  const emoteFile = zip.file(EMOTE_MANIFEST)
+  if (sceneFile && !wearableFile) {
+    throw new ItemFileError('smart_wearable_missing_manifest')
   }
 
-  const manifests = new Set([WEARABLE_MANIFEST, EMOTE_MANIFEST, SCENE_MANIFEST, BUILDER_MANIFEST])
+  const manifests = new Set([WEARABLE_MANIFEST, EMOTE_MANIFEST, SCENE_PATH, BUILDER_MANIFEST])
   const entries: Array<{ path: string; entry: JSZip.JSZipObject }> = []
   zip.forEach((path, entry) => {
     const base = path.split('/').pop() ?? path
@@ -323,9 +372,6 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
     0
   )
 
-  const wearableFile = zip.file(WEARABLE_MANIFEST)
-  const emoteFile = zip.file(EMOTE_MANIFEST)
-
   if (wearableFile) {
     const wearable = toWearableManifest(parseJson(await wearableFile.async('text'), WEARABLE_MANIFEST))
     for (const representation of wearable.data.representations) {
@@ -333,16 +379,29 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
         if (!rawContent[path]) throw new ItemFileError('manifest_file_missing', { fileName: path })
       }
     }
+
+    // Smart wearable: the scene code must ship, and the normalized scene.json travels with the contents.
+    let scene: SceneManifest | undefined
+    const contents = rawContent
+    if (sceneFile) {
+      const rawScene = parseJson(await sceneFile.async('text'), SCENE_PATH)
+      scene = toSceneManifest(rawScene)
+      if (!rawContent[scene.main]) throw new ItemFileError('manifest_file_missing', { fileName: scene.main })
+      contents[SCENE_PATH] = new Blob([JSON.stringify(rawScene)], { type: 'application/json' })
+    }
+
     const isSkin = wearable.data.category === 'skin'
-    const maxSize = isSkin ? MAX_SKIN_FILE_SIZE : MAX_WEARABLE_FILE_SIZE
+    const maxSize = isSkin ? MAX_SKIN_FILE_SIZE : scene ? MAX_SMART_WEARABLE_FILE_SIZE : MAX_WEARABLE_FILE_SIZE
     if (contentsSize > maxSize) {
       throw new ItemFileError('file_too_big', { size: toMB(maxSize) })
     }
     return {
-      contents: rawContent,
+      contents,
       model: wearable.data.representations[0].mainFile,
-      bodyShape: getManifestBodyShape(wearable),
-      wearable
+      // Smart wearables are always unisex, like emotes.
+      bodyShape: scene ? BodyShapeType.BOTH : getManifestBodyShape(wearable),
+      wearable,
+      scene
     }
   }
 

@@ -16,6 +16,7 @@ import { CategorySelect } from '~/components/CategorySelect'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { ClockIcon, FilmReelIcon, ImageIcon, LoopIcon, PlayOnceIcon } from '~/components/Icons'
 import { RaritySelect } from '~/components/RaritySelect'
+import { RequiredPermissions } from '~/components/RequiredPermissions'
 import { InfoTooltip } from '~/components/Tooltip'
 import { useTranslation } from '~/intl'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
@@ -42,6 +43,12 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
 
   const isEmote = draft.type === ItemType.EMOTE
   const isWearable = draft.type === ItemType.WEARABLE
+  const isSmart = isWearable && draft.isSmart
+  const bodyShapeHint = isEmote
+    ? 'add_items_modal.body_shape_emote_hint'
+    : isSmart
+      ? 'add_items_modal.body_shape_smart_hint'
+      : null
   const isSingleShape = isWearable && draft.bodyShape !== BodyShapeType.BOTH
   const variantTargets = useMemo(
     () => (isSingleShape ? getVariantTargets(draft, drafts, collectionItems) : []),
@@ -119,6 +126,15 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
             </>
           ) : null}
         </S.MetricsRow>
+        {isSmart && (
+          <>
+            <RequiredPermissions permissions={draft.requiredPermissions} testId="draft-permissions" />
+            <S.InfoCard data-testid="smart-video-notice">
+              <InfoIcon />
+              {t('add_items_modal.smart_video_notice')}
+            </S.InfoCard>
+          </>
+        )}
         {warnings.length > 0 && (
           <S.WarningsList data-testid="draft-warnings">
             {warnings.map(warning => (
@@ -155,13 +171,13 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
         )}
 
         {(isWearable || isEmote) && (
-          <S.Field as="div" data-hinted={isEmote || undefined}>
-            {isEmote ? (
+          <S.Field as="div" data-hinted={bodyShapeHint ? true : undefined}>
+            {bodyShapeHint ? (
               <S.FieldLabel>
                 {t('add_items_modal.body_shape')}
                 <S.FieldHint data-testid="body-shape-hint">
                   <HintIcon />
-                  {t('add_items_modal.body_shape_emote_hint')}
+                  {t(bodyShapeHint)}
                 </S.FieldHint>
               </S.FieldLabel>
             ) : (

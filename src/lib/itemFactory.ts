@@ -17,8 +17,10 @@ import {
   ItemFileError,
   MAX_EMOTE_FILE_SIZE,
   MAX_SKIN_FILE_SIZE,
+  MAX_SMART_WEARABLE_FILE_SIZE,
   MAX_WEARABLE_FILE_SIZE,
   THUMBNAIL_PATH,
+  VIDEO_PATH,
   getBodyShapeTypeFromContents,
   isModelPath,
   toMB
@@ -56,7 +58,9 @@ export type ItemDraftPayload = {
   category: string
   rarity: string
   playMode?: EmotePlayMode
-  /** Normalized contents including thumbnail.png; model/texture keys unprefixed unless a BOTH zip. */
+  /** Smart wearables only: permissions read from the zip's scene.json. */
+  requiredPermissions?: string[]
+  /** Normalized contents including thumbnail.png (and video.mp4 for a smart wearable); model/texture keys unprefixed unless a BOTH zip. */
   contents: Record<string, Blob>
   /** Main model/texture path within contents. */
   model: string
@@ -67,10 +71,13 @@ export type ItemDraftPayload = {
 
 const prefixContentName = (bodyShape: BodyShapeType, contentKey: string): string => `${bodyShape}/${contentKey}`
 
-/** Prefixes every content key with the body shape; the thumbnail stays at the root. */
+// Item-level files that are never part of a body-shape representation.
+const ROOT_PATHS = new Set([THUMBNAIL_PATH, VIDEO_PATH])
+
+/** Prefixes every content key with the body shape; the thumbnail and video stay at the root. */
 const prefixContents = (bodyShape: BodyShapeType, contents: Record<string, Blob>): Record<string, Blob> => {
   return Object.keys(contents).reduce((newContents: Record<string, Blob>, key: string) => {
-    if (key === THUMBNAIL_PATH) {
+    if (ROOT_PATHS.has(key)) {
       return newContents
     }
     newContents[prefixContentName(bodyShape, key)] = contents[key]
@@ -91,9 +98,14 @@ export function sortContent(bodyShape: BodyShapeType, contents: Record<string, B
     bodyShape === BodyShapeType.BOTH || bodyShape === BodyShapeType.FEMALE
       ? prefixContents(BodyShapeType.FEMALE, contents)
       : {}
-  const all: Record<string, Blob> = { ...male, ...female }
-  if (contents[THUMBNAIL_PATH]) all[THUMBNAIL_PATH] = contents[THUMBNAIL_PATH]
-  return { male, female, all }
+  return { male, female, all: withRootFiles({ ...male, ...female }, contents) }
+}
+
+function withRootFiles(all: Record<string, Blob>, contents: Record<string, Blob>): Record<string, Blob> {
+  for (const path of ROOT_PATHS) {
+    if (contents[path]) all[path] = contents[path]
+  }
+  return all
 }
 
 /** Variant of sortContent for zips that already ship male/ and female/ folders. */
@@ -125,9 +137,7 @@ export function sortContentZipBothBodyShape(bodyShape: BodyShapeType, contents: 
       : {})
   }
 
-  const all: Record<string, Blob> = { ...male, ...female }
-  if (contents[THUMBNAIL_PATH]) all[THUMBNAIL_PATH] = contents[THUMBNAIL_PATH]
-  return { male, female, all }
+  return { male, female, all: withRootFiles({ ...male, ...female }, contents) }
 }
 
 export function buildRepresentations(
@@ -202,22 +212,33 @@ export async function computeHashes(contents: Record<string, Blob>): Promise<Rec
   return hashes
 }
 
+/** Contents shipping scene code make a smart wearable (same `.js` heuristic as items.isSmartWearable). */
+export function hasSceneCode(contents: Record<string, unknown>): boolean {
+  return Object.keys(contents).some(path => path.endsWith('.js'))
+}
+
 /**
- * The per-type size cap over the final payload (model + thumbnail), re-checked at the details
- * step where type and category are known. Returns the violated cap in MB, or null when valid.
+ * The per-type size cap over the final payload (model + thumbnail, never the video), re-checked
+ * at the details step where type and category are known. Returns the violated cap in MB, or null
+ * when valid.
  */
 export function getSizeError(
   type: ItemType,
   category: string | undefined,
   contents: Record<string, Blob>
 ): number | null {
-  const totalSize = Object.values(contents).reduce((total, blob) => total + blob.size, 0)
+  const totalSize = Object.entries(contents).reduce(
+    (total, [path, blob]) => (path === VIDEO_PATH ? total : total + blob.size),
+    0
+  )
   const maxSize =
     type === ItemType.EMOTE
       ? MAX_EMOTE_FILE_SIZE
       : category === SKIN_CATEGORY
         ? MAX_SKIN_FILE_SIZE
-        : MAX_WEARABLE_FILE_SIZE
+        : hasSceneCode(contents)
+          ? MAX_SMART_WEARABLE_FILE_SIZE
+          : MAX_WEARABLE_FILE_SIZE
   return totalSize > maxSize ? toMB(maxSize) : null
 }
 
@@ -251,7 +272,9 @@ export async function buildItem(draft: ItemDraftPayload): Promise<BuiltItem> {
           tags: [],
           representations,
           blockVrmExport: false,
-          outlineCompatible: true
+          outlineCompatible: true,
+          // Legacy sends an empty list for every wearable; a smart one carries its scene.json permissions.
+          requiredPermissions: draft.requiredPermissions ?? []
         }
       : {
           category: draft.category,
@@ -261,11 +284,13 @@ export async function buildItem(draft: ItemDraftPayload): Promise<BuiltItem> {
         }
 
   const now = Date.now()
+  const contents = await computeHashes(sorted.all)
   const item: Item = {
     id: draft.id,
     name: draft.name,
     description: '',
     thumbnail: THUMBNAIL_PATH,
+    ...(contents[VIDEO_PATH] ? { video: contents[VIDEO_PATH] } : {}),
     owner: draft.owner,
     collectionId: draft.collectionId,
     totalSupply: 0,
@@ -276,7 +301,7 @@ export async function buildItem(draft: ItemDraftPayload): Promise<BuiltItem> {
     type: draft.type,
     data,
     metrics: draft.metrics,
-    contents: await computeHashes(sorted.all),
+    contents,
     // "Not for sale" defaults, as the legacy modal saves standard items.
     price: ethers.constants.MaxUint256.toString(),
     beneficiary: draft.owner,

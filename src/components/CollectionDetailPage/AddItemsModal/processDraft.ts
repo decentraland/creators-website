@@ -40,14 +40,19 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
   const loaded = await loadItemFile(file)
   const analysis = await analyzeModel(loaded.model, loaded.contents)
 
+  const isSmart = !!loaded.scene
+  // Emotes and smart wearables are always unisex.
+  const isUnisex = analysis.type === ItemType.EMOTE || isSmart
   const patch: Partial<ItemDraft> = {
     contents: loaded.contents,
     model: loaded.model,
     type: analysis.type,
     validationIssues: analysis.validationIssues,
     emoteMetrics: analysis.emoteMetrics ?? null,
-    bodyShape: analysis.type === ItemType.EMOTE ? BodyShapeType.BOTH : (loaded.bodyShape ?? BodyShapeType.BOTH),
-    bodyShapeLocked: analysis.type === ItemType.EMOTE
+    bodyShape: isUnisex ? BodyShapeType.BOTH : (loaded.bodyShape ?? BodyShapeType.BOTH),
+    bodyShapeLocked: isUnisex,
+    isSmart,
+    requiredPermissions: loaded.scene?.requiredPermissions ?? []
   }
 
   if (analysis.suggestedCategory) {
