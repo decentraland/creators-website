@@ -20,6 +20,7 @@ export const Step = styled.div`
 
   & [data-testid='checkbox-label'] {
     margin-top: auto;
+    padding-left: 12px;
   }
 `
 
