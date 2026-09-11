@@ -35,6 +35,7 @@ export const Menu = styled.div`
 export const Item = styled.button`
   display: flex;
   align-items: center;
+  gap: 6px;
   width: 100%;
   min-height: 44px;
   padding: 0 12px;
@@ -56,6 +57,11 @@ export const Item = styled.button`
   &[aria-disabled] {
     opacity: 0.5;
     cursor: default;
+  }
+
+  & svg {
+    flex-shrink: 0;
+    font-size: 16px;
   }
 `
 

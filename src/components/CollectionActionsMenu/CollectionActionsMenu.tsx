@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import styled from '@emotion/styled'
 import { OpenInNew as OpenInNewIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { useDeleteCollection } from '~/hooks/useCollection'
@@ -12,16 +11,6 @@ import { useNotifications } from '~/lib/notifications'
 import { theme } from '~/styles/theme'
 import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
 import { DeleteCollectionModal } from './DeleteCollectionModal'
-
-const ExternalLabel = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-
-  & svg {
-    font-size: 16px;
-  }
-`
 
 type Props = {
   collection: Collection
@@ -99,10 +88,8 @@ export function CollectionActionsMenu({
             </ActionsMenuItem>
             {shopUrl && (
               <ActionsMenuItem testId="view-in-shop" onClick={() => openExternal(shopUrl)}>
-                <ExternalLabel>
-                  {t('collection_detail_page.actions.view_in_shop')}
-                  <OpenInNewIcon aria-hidden />
-                </ExternalLabel>
+                {t('collection_detail_page.actions.view_in_shop')}
+                <OpenInNewIcon aria-hidden />
               </ActionsMenuItem>
             )}
           </>
