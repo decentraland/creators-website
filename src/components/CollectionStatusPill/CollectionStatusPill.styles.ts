@@ -12,6 +12,7 @@ export const Pill = styled.span`
   font-weight: 500;
   line-height: 18px;
   text-transform: uppercase;
+  gap: 4px;
   white-space: nowrap;
 
   &[data-status='published'] {

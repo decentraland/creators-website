@@ -6,7 +6,7 @@ import { openExternal } from '~/lib/navigation'
 import { type PaymentMethod } from '~/lib/publishCollection'
 import creditsMark from '~/assets/payment/credits-logo.webp'
 import manaMark from '~/assets/payment/mana-logo.webp'
-import * as Shared from './PublishCollectionModal.styles'
+import { CheckboxBox } from '~/components/Checkbox'
 import * as S from './PaymentMethodCard.styles'
 
 const MARKS: Record<PaymentMethod, string> = { credits: creditsMark, mana: manaMark }
@@ -63,9 +63,9 @@ export function PaymentMethodCard({
         onChange={onSelect}
       />
       {showCheckbox && (
-        <Shared.CheckboxBox aria-hidden data-checked={isSelected || undefined}>
+        <CheckboxBox aria-hidden data-checked={isSelected || undefined}>
           <CheckIcon />
-        </Shared.CheckboxBox>
+        </CheckboxBox>
       )}
       <S.Mark src={MARKS[method]} alt="" />
       <S.Info>

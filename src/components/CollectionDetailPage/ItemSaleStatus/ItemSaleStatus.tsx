@@ -1,7 +1,8 @@
-import { Check as CheckIcon } from '@mui/icons-material'
+import { Check as CheckIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { type ItemSales } from '~/lib/items'
 import { type ItemListing } from '~/lib/listings'
+import { openExternal } from '~/lib/navigation'
 import { PriceTagIcon } from '~/components/Icons'
 import * as S from './ItemSaleStatus.styles'
 
@@ -9,10 +10,15 @@ type Props = {
   sales: ItemSales | undefined
   /** The item's primary listing: `null` when it has none, `undefined` while listings are still loading. */
   listing: ItemListing | null | undefined
+  /** Whether the collection has been approved at least once; until then the "Put on sale" CTA is disabled. */
+  canSell?: boolean
+  onPutOnSale?: () => void
+  /** The item's page in the Shop; the ON SALE pill links there. */
+  shopUrl?: string
 }
 
 /** Sold out / on sale pill, or the "Put on sale" CTA; nothing while listings are still loading. */
-export function ItemSaleStatus({ sales, listing }: Props) {
+export function ItemSaleStatus({ sales, listing, canSell = false, onPutOnSale, shopUrl }: Props) {
   const { t } = useTranslation()
 
   if (sales && sales.minted >= sales.maxSupply) {
@@ -24,22 +30,44 @@ export function ItemSaleStatus({ sales, listing }: Props) {
   }
   if (listing === undefined) return null
   if (listing) {
+    if (!shopUrl) {
+      return (
+        <S.Pill data-testid="item-sale-status" data-status="on_sale">
+          <CheckIcon aria-hidden />
+          {t('collection_detail_page.sale_status.on_sale')}
+          <S.Dot aria-hidden />
+        </S.Pill>
+      )
+    }
     return (
-      <S.Pill data-testid="item-sale-status" data-status="on_sale">
+      <S.PillLink
+        href={shopUrl}
+        title={t('collection_detail_page.actions.view_in_shop')}
+        data-testid="item-sale-status"
+        data-status="on_sale"
+        onClick={event => {
+          event.preventDefault()
+          openExternal(shopUrl)
+        }}
+      >
         <CheckIcon aria-hidden />
         {t('collection_detail_page.sale_status.on_sale')}
-        <S.Dot aria-hidden />
-      </S.Pill>
+        {/* The dot gives way to the external-link glyph on hover/focus, so the pill reads as a link. */}
+        <S.Trailing aria-hidden>
+          <S.Dot />
+          <OpenInNewIcon />
+        </S.Trailing>
+      </S.PillLink>
     )
   }
-  // TODO: opens the put-on-sale flow once it lands.
   return (
     <S.PutOnSale
       data-testid="item-sale-status"
       data-status="not_on_sale"
       type="button"
-      aria-disabled
-      title={t('collection_detail_page.coming_soon')}
+      disabled={!canSell}
+      title={canSell ? undefined : t('collection_detail_page.sale_status.awaiting_approval')}
+      onClick={onPutOnSale}
     >
       <PriceTagIcon />
       {t('collection_detail_page.sale_status.put_on_sale')}

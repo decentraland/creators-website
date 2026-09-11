@@ -59,6 +59,7 @@
   "collection_status": {
     "published": "Publicada",
     "under_review": "En revisión",
+    "under_review_hint": "Tu colección está siendo revisada para su aprobación. Esto puede tardar hasta 5 minutos. Te avisaremos cuando la revisión termine.",
     "draft": "Borrador"
   },
   "pagination": {
@@ -67,6 +68,9 @@
   },
   "modal": {
     "close": "Cerrar"
+  },
+  "step_indicator": {
+    "label": "Paso {step} de {total}"
   },
   "collection_name_input": {
     "label": "Nombre de la colección",
@@ -108,7 +112,8 @@
         "description": "“{name}” y todos sus ítems se eliminarán de forma permanente. Esta acción no se puede deshacer.",
         "cancel": "Cancelar",
         "confirm": "Eliminar"
-      }
+      },
+      "view_in_shop": "Ver en la Tienda"
     },
     "coming_soon": "Próximamente",
     "filter": {
@@ -137,7 +142,8 @@
     "sale_status": {
       "put_on_sale": "Poner en venta",
       "on_sale": "En venta",
-      "sold_out": "Agotado"
+      "sold_out": "Agotado",
+      "awaiting_approval": "Disponible cuando la colección sea aprobada"
     },
     "play_mode": {
       "loop": "En bucle",
@@ -258,7 +264,6 @@
   },
   "publish_collection_modal": {
     "title": "Publicar colección",
-    "step_label": "Paso {step} de {total}",
     "cancel": "Cancelar",
     "back": "Atrás",
     "name_step": {
@@ -331,9 +336,86 @@
       "description_insufficient_credits": "No tienes suficientes créditos para cubrir la tarifa de publicación. Obtén más créditos e inténtalo de nuevo.",
       "description_locked": "Esta colección ya se está publicando. Espera unos minutos y actualiza la página.",
       "description_unsynced": "Los ítems de esta colección cambiaron mientras publicabas. Cierra este diálogo y vuelve a empezar.",
-      "cancel": "Cancelar",
       "try_again": "Intentar de nuevo"
     }
+  },
+  "sell_item_modal": {
+    "title": "Vender ítem",
+    "subtitle": "Define el precio y el beneficiario del ítem",
+    "cancel": "Cancelar",
+    "submit": "Poner en venta",
+    "confirm_in_wallet": "Confirma en tu wallet...",
+    "selling": "Poniendo en venta...",
+    "smart_wearable": "Wearable inteligente",
+    "enable_sales": {
+      "title": "¿Habilitar ventas para esta colección?",
+      "description": "Como es el primer ítem de esta colección que pones en venta, primero tienes que habilitar las ventas. Una vez habilitadas, podrás vender cualquier ítem de esta colección en la Tienda de Decentraland.",
+      "confirm": "Habilitar ventas",
+      "pending": "Habilitando ventas...",
+      "owner_only": "Las ventas de esta colección aún no están habilitadas y solo su dueño puede hacerlo. Pídele que las habilite y entonces podrás poner ítems en venta."
+    },
+    "beneficiary": {
+      "label": "Beneficiario",
+      "self": "Yo soy el beneficiario",
+      "placeholder": "Pega o selecciona el ID de usuario del beneficiario",
+      "open": "Mostrar amigos",
+      "clear": "Quitar beneficiario",
+      "friends_loading": "Cargando tus amigos…",
+      "no_matches": "Ningún amigo coincide. Pega una dirección de wallet (0x…) en su lugar.",
+      "invalid": "Ingresa una dirección de wallet válida (0x…)."
+    },
+    "price": {
+      "label": "Precio",
+      "rate": "1 Crédito = {usd}USD",
+      "giveaway": "Hacerlo un regalo",
+      "too_high": "El precio puede ser de hasta {max} créditos."
+    },
+    "expiration": {
+      "label": "Fecha de vencimiento"
+    },
+    "note": "Tu ítem se publicará en la Tienda de Decentraland en Créditos. Cuando se venda, recibirás el <b>valor equivalente en MANA.</b>",
+    "note_tooltip": "Los Créditos están atados al dólar estadounidense. El MANA que recibes se calcula con el tipo de cambio del momento de cada venta.",
+    "success": {
+      "title": "¡Tu ítem está en venta!",
+      "description": "Ya está disponible en la Tienda de Decentraland.",
+      "done": "Listo"
+    },
+    "error": {
+      "title_enable": "No pudimos habilitar las ventas",
+      "description_enable": "Algo salió mal al habilitar las ventas de esta colección. Inténtalo de nuevo.",
+      "title_sell": "No pudimos poner tu ítem en venta",
+      "description_sell": "Algo salió mal al poner tu ítem en venta. Inténtalo de nuevo.",
+      "title_remove": "No pudimos quitar tu ítem de la venta",
+      "description_remove": "Algo salió mal al quitar tu ítem de la venta. Inténtalo de nuevo.",
+      "title_update": "No pudimos actualizar el precio",
+      "description_update": "Algo salió mal al actualizar el precio. Espera un momento e inténtalo de nuevo.",
+      "description_sold_out": "Ya se acuñaron todas las unidades de este ítem, así que no se puede poner en venta.",
+      "try_again": "Intentar de nuevo",
+      "description_not_listed": "Este ítem ya no está en venta, así que no hay nada que cambiar. Recarga la página para ver su estado actual."
+    },
+    "remove": {
+      "title": "¿Quitar de la venta?",
+      "description": "“{name}” dejará de estar disponible en la Tienda de Decentraland. Puedes volver a ponerlo en venta cuando quieras.",
+      "confirm": "Quitar de la venta",
+      "pending": "Quitando de la venta...",
+      "success_title": "Tu ítem se quitó de la venta",
+      "success_description": "Ya no está publicado en la Tienda de Decentraland. Puedes volver a ponerlo en venta cuando quieras."
+    },
+    "update_price": {
+      "title": "Editar precio",
+      "price_label": "Define el nuevo precio",
+      "available": "{available} / {total} disponibles",
+      "submit": "Actualizar precio",
+      "pending": "Actualizando el precio",
+      "two_signatures": "Se requieren 2 firmas",
+      "step_remove": "Quitar el listado actual",
+      "step_confirm": "Confirmar el nuevo precio",
+      "confirm_removal": "Primero, confirma en tu wallet la eliminación de tu precio actual...",
+      "confirm_new": "¡Casi listo! Confirma tu nuevo precio en tu wallet...",
+      "success_title": "¡Precio actualizado!",
+      "success_description": "Tu ítem ya está disponible en la Tienda con su nuevo precio."
+    },
+    "pending_changes": "Este ítem tiene cambios que aún no fueron aprobados. Los compradores recibirán la última versión aprobada hasta que el comité los apruebe."
   },
   "rarity_select": {
     "units": "{count, plural, one {# unidad} other {# unidades}}",

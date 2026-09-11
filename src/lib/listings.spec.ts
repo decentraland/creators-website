@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ethers } from 'ethers'
-import { fetchCollectionListings } from './listings'
+import { fetchCollectionListings, fetchItemTradeId } from './listings'
 
 const CONTRACT = '0x00000000000000000000000000000000000000cc'
 const fetchMock = vi.fn()
@@ -16,7 +16,7 @@ function mockServer(items: unknown[], catalog: unknown[]) {
   )
 }
 
-const creditsItem = { itemId: '0', price: '50000000000000000000', isOnSale: true }
+const creditsItem = { itemId: '0', price: '50000000000000000000', isOnSale: true, tradeId: 'trade-0' }
 const manaItem = { itemId: '1', price: '5000000000000000000', isOnSale: true }
 const freeItem = { itemId: '2', price: '0', isOnSale: true }
 const notOnSale = { itemId: '3', price: '7000000000000000000', isOnSale: false }
@@ -41,8 +41,13 @@ describe('fetchCollectionListings', () => {
     ])
     expect(urls.every(url => url.searchParams.get('contractAddress') === CONTRACT)).toBe(true)
 
-    expect(listings.get('0')).toEqual({ itemId: '0', currency: 'credits', credits: 500 })
-    expect(listings.get('1')).toEqual({ itemId: '1', currency: 'mana', manaWei: 5000000000000000000n })
+    expect(listings.get('0')).toEqual({ itemId: '0', tradeId: 'trade-0', currency: 'credits', credits: 500 })
+    expect(listings.get('1')).toEqual({
+      itemId: '1',
+      tradeId: undefined,
+      currency: 'mana',
+      manaWei: 5000000000000000000n
+    })
     expect(listings.get('2')).toEqual({ itemId: '2', currency: 'mana', manaWei: 0n })
     expect(listings.has('3')).toBe(false)
     expect(listings.has('4')).toBe(false)
@@ -52,5 +57,25 @@ describe('fetchCollectionListings', () => {
   it('fails when either request fails', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ error: 'nope' }, 500))
     await expect(fetchCollectionListings(CONTRACT)).rejects.toThrow(/500/)
+  })
+})
+
+describe('fetchItemTradeId', () => {
+  it('asks the unified catalog for the one item and answers its order id, or null without one', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        data: [
+          { itemId: '3', tradeId: null },
+          { itemId: '3', tradeId: 'trade-9' }
+        ]
+      })
+    )
+    await expect(fetchItemTradeId(CONTRACT, '3')).resolves.toBe('trade-9')
+    const url = new URL(fetchMock.mock.calls[0][0] as string)
+    expect(url.pathname).toBe('/v3/catalog/unified')
+    expect(url.searchParams.get('itemId')).toBe('3')
+    expect(url.searchParams.get('listingType')).toBe('primary')
+    fetchMock.mockResolvedValueOnce(jsonResponse({ data: [] }))
+    await expect(fetchItemTradeId(CONTRACT, '3')).resolves.toBeNull()
   })
 })

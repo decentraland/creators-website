@@ -4,11 +4,13 @@
 import { ethers } from 'ethers'
 import { config } from '~/config'
 
-export type ItemListing =
-  { itemId: string; currency: 'credits'; credits: number } | { itemId: string; currency: 'mana'; manaWei: bigint }
+/** `tradeId` identifies the off-chain order behind the listing; a legacy CollectionStore price has none. */
+export type ItemListing = { itemId: string; tradeId?: string } & (
+  { currency: 'credits'; credits: number } | { currency: 'mana'; manaWei: bigint }
+)
 
 type CatalogRow = { itemId: string | null; priceCredits: number; source: 'native' | 'legacy' }
-type ItemRow = { itemId: string; price: string; isOnSale: boolean }
+type ItemRow = { itemId: string; price: string; isOnSale: boolean; tradeId?: string }
 
 // A collection has at most a few dozen items; the catalog caps `first` at 1000.
 const FIRST = '1000'
@@ -22,6 +24,17 @@ async function getJson<T>(path: string, query: Record<string, string>): Promise<
   return (await response.json()) as T
 }
 
+/** The id of the item's current primary order, or null when it has none (or only a legacy store price). */
+export async function fetchItemTradeId(contractAddress: string, itemId: string): Promise<string | null> {
+  const catalog = await getJson<{ data?: { tradeId: string | null }[] }>('/v3/catalog/unified', {
+    contractAddress,
+    itemId,
+    listingType: 'primary',
+    first: '5'
+  })
+  return catalog.data?.find(row => row.tradeId)?.tradeId ?? null
+}
+
 /** The collection's primary listings keyed by on-chain item id. Items not on sale (or sold out) are absent. */
 export async function fetchCollectionListings(contractAddress: string): Promise<Map<string, ItemListing>> {
   const [items, catalog] = await Promise.all([
@@ -33,14 +46,14 @@ export async function fetchCollectionListings(contractAddress: string): Promise<
     if (row.source === 'native' && row.itemId !== null) credits.set(row.itemId, row.priceCredits)
   }
   const listings = new Map<string, ItemListing>()
-  for (const { itemId, price, isOnSale } of items.data ?? []) {
+  for (const { itemId, price, isOnSale, tradeId } of items.data ?? []) {
     if (!isOnSale || price === NO_PRICE || !WEI.test(price)) continue
     const inCredits = credits.get(itemId)
     listings.set(
       itemId,
       inCredits === undefined
-        ? { itemId, currency: 'mana', manaWei: BigInt(price) }
-        : { itemId, currency: 'credits', credits: inCredits }
+        ? { itemId, tradeId, currency: 'mana', manaWei: BigInt(price) }
+        : { itemId, tradeId, currency: 'credits', credits: inCredits }
     )
   }
   return listings

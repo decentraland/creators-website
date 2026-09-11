@@ -1,4 +1,14 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode
+} from 'react'
+import { createPortal } from 'react-dom'
 import { MoreHoriz as MoreHorizIcon } from '@mui/icons-material'
 import * as S from './ActionsMenu.styles'
 
@@ -15,15 +25,24 @@ type Props = {
   children: ReactNode
 }
 
-/** The ⋯ dropdown: right-aligned, closes on Escape, outside click, or any item click. */
+const VIEWPORT_MARGIN = 8
+const GAP = 8
+
+/**
+ * The ⋯ dropdown: right-aligned under its trigger, closes on Escape, outside click, or any item click.
+ * Portaled to <body> and fixed-positioned, like Select, so a scrolling table never clips or grows for it.
+ */
 export function ActionsMenu({ label, variant = 'header', testId, children }: Props) {
   const [isOpen, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>()
 
   useEffect(() => {
     if (!isOpen) return
     function onMouseDown(event: MouseEvent) {
-      if (!wrapRef.current?.contains(event.target as Node)) setOpen(false)
+      const target = event.target as Node
+      if (!wrapRef.current?.contains(target) && !menuRef.current?.contains(target)) setOpen(false)
     }
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') setOpen(false)
@@ -33,6 +52,31 @@ export function ActionsMenu({ label, variant = 'header', testId, children }: Pro
     return () => {
       document.removeEventListener('mousedown', onMouseDown)
       document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [isOpen])
+
+  // Anchor the menu's right edge to the trigger; open upward when the viewport has no room below.
+  useLayoutEffect(() => {
+    if (!isOpen) return
+    function position() {
+      const trigger = wrapRef.current?.getBoundingClientRect()
+      const menu = menuRef.current
+      if (!trigger || !menu) return
+      const fitsBelow = trigger.bottom + GAP + menu.offsetHeight <= window.innerHeight
+      const right = Math.max(VIEWPORT_MARGIN, window.innerWidth - trigger.right)
+      setMenuStyle({
+        right,
+        ...(fitsBelow
+          ? { top: trigger.bottom + GAP }
+          : { top: Math.max(VIEWPORT_MARGIN, trigger.top - GAP - menu.offsetHeight) })
+      })
+    }
+    position()
+    window.addEventListener('resize', position)
+    window.addEventListener('scroll', position, true)
+    return () => {
+      window.removeEventListener('resize', position)
+      window.removeEventListener('scroll', position, true)
     }
   }, [isOpen])
 
@@ -51,13 +95,15 @@ export function ActionsMenu({ label, variant = 'header', testId, children }: Pro
       >
         <MoreHorizIcon fontSize={variant === 'row' ? 'small' : 'medium'} />
       </S.Trigger>
-      {isOpen && (
-        <MenuContext.Provider value={{ close: () => setOpen(false) }}>
-          <S.Menu role="menu" data-testid={`${testId}-menu`}>
-            {children}
-          </S.Menu>
-        </MenuContext.Provider>
-      )}
+      {isOpen &&
+        createPortal(
+          <MenuContext.Provider value={{ close: () => setOpen(false) }}>
+            <S.Menu ref={menuRef} role="menu" style={menuStyle} data-testid={`${testId}-menu`}>
+              {children}
+            </S.Menu>
+          </MenuContext.Provider>,
+          document.body
+        )}
     </S.Wrap>
   )
 }

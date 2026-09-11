@@ -6,6 +6,7 @@ import { ItemType, getItemBodyShapeType, getItemSales, type Item } from '~/lib/i
 import { EmotePlayMode } from '~/lib/itemFactory'
 import { type ItemListing } from '~/lib/listings'
 import { formatCredits, formatMana } from '~/lib/publishFee'
+import { shopItemUrl } from '~/lib/shop'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
 import { BodyShapeIcon, CategoryIcon, PlayModeIcon } from '~/components/ItemIcons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
@@ -23,11 +24,25 @@ type Props = {
   withMarket?: boolean
   /** The item's primary listing: `null` when it has none, `undefined` while listings are still loading. */
   listing?: ItemListing | null
+  /** Whether the collection has been approved at least once, so its items can be put on sale. */
+  canSell?: boolean
+  onPutOnSale?: (item: Item) => void
+  /** The collection's contract, for the Shop link on a listed item. */
+  contractAddress?: string
   /** The row's ⋯ menu; the page supplies it once the viewer is signed in. */
   actions?: ReactNode
 }
 
-export function ItemListRow({ item, withPlayMode = false, withMarket = false, listing, actions }: Props) {
+export function ItemListRow({
+  item,
+  withPlayMode = false,
+  withMarket = false,
+  listing,
+  canSell = false,
+  onPutOnSale,
+  contractAddress,
+  actions
+}: Props) {
   const { t } = useTranslation()
   const intl = useIntl()
 
@@ -36,6 +51,7 @@ export function ItemListRow({ item, withPlayMode = false, withMarket = false, li
   const category = item.data.category
   const isEmote = item.type === ItemType.EMOTE
   const sales = withMarket ? getItemSales(item) : undefined
+  const shopUrl = withMarket && contractAddress && item.tokenId ? shopItemUrl(contractAddress, item.tokenId) : undefined
 
   function renderPrice() {
     if (listing === undefined) return null
@@ -98,7 +114,13 @@ export function ItemListRow({ item, withPlayMode = false, withMarket = false, li
               {sales ? `${intl.formatNumber(sales.minted)}/${intl.formatNumber(sales.maxSupply)}` : EMPTY}
             </S.Cell>
             <S.Cell data-testid="item-row-sale-status" data-empty={listing === undefined || undefined}>
-              <ItemSaleStatus sales={sales} listing={listing} />
+              <ItemSaleStatus
+                sales={sales}
+                listing={listing}
+                canSell={canSell}
+                onPutOnSale={onPutOnSale && (() => onPutOnSale(item))}
+                shopUrl={shopUrl}
+              />
             </S.Cell>
           </>
         )}

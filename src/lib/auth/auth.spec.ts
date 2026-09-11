@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { ethers } from 'ethers'
 import { Authenticator, type AuthIdentity, type AuthLink } from '@dcl/crypto'
 import { localStorageStoreIdentity, localStorageClearIdentity } from '@dcl/single-sign-on-client'
-import { createAuthHeaders, getIdentity, logout, signedFetch } from './auth'
+import { ProviderType } from '@dcl/schemas'
+import { createAuthHeaders, getIdentity, isSocialLogin, logout, signedFetch } from './auth'
 
 vi.mock('decentraland-connect', () => ({
   connection: { disconnect: vi.fn().mockResolvedValue(undefined) }
@@ -80,6 +81,27 @@ describe('auth', () => {
     expect(chain[chain.length - 1].payload).toBe(`get:/v1/${address}/collections:${headers['x-identity-timestamp']}:{}`)
   })
 
+  it('signedFetch signs the caller metadata along and sends it verbatim', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true })
+    global.fetch = fetchMock
+
+    await signedFetch(
+      address,
+      'https://marketplace.example',
+      '/v1/trades',
+      { method: 'POST' },
+      { signer: 'dcl:builder', intent: 'dcl:create-trade' }
+    )
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const headers = init.headers as Record<string, string>
+    expect(JSON.parse(headers['x-identity-metadata'])).toEqual({ signer: 'dcl:builder', intent: 'dcl:create-trade' })
+    const chain = parseAuthChain(headers)
+    expect(chain[chain.length - 1].payload).toBe(
+      `post:/v1/trades:${headers['x-identity-timestamp']}:${headers['x-identity-metadata']}`.toLowerCase()
+    )
+  })
+
   it('logout clears the stored identity so it cannot outlive a sign-out', async () => {
     const { address: other } = await makeStoredIdentity()
     expect(getIdentity(other)).not.toBeNull()
@@ -97,5 +119,12 @@ describe('auth', () => {
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(Object.keys(init.headers as Record<string, string>)).toHaveLength(0)
+  })
+
+  it('isSocialLogin is true only for Magic-backed sessions', () => {
+    expect(isSocialLogin({ providerType: ProviderType.MAGIC })).toBe(true)
+    expect(isSocialLogin({ providerType: ProviderType.MAGIC_TEST })).toBe(true)
+    expect(isSocialLogin({ providerType: ProviderType.INJECTED })).toBe(false)
+    expect(isSocialLogin({ providerType: ProviderType.WALLET_CONNECT_V2 })).toBe(false)
   })
 })

@@ -21,10 +21,9 @@ export const Trigger = styled(Button)`
 `
 
 export const Menu = styled.div`
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: ${theme.z.overlay};
+  position: fixed;
+  z-index: ${theme.z.tooltip};
+  max-width: calc(100vw - 16px);
   min-width: 240px;
   padding: 8px;
   border: 1px solid ${theme.colors.glassLine};
@@ -36,6 +35,7 @@ export const Menu = styled.div`
 export const Item = styled.button`
   display: flex;
   align-items: center;
+  gap: 6px;
   width: 100%;
   min-height: 44px;
   padding: 0 12px;
@@ -57,6 +57,11 @@ export const Item = styled.button`
   &[aria-disabled] {
     opacity: 0.5;
     cursor: default;
+  }
+
+  & svg {
+    flex-shrink: 0;
+    font-size: 16px;
   }
 `
 

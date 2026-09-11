@@ -1,4 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+
+vi.mock('~/lib/navigation', () => ({ openExternal: vi.fn() }))
+import { openExternal } from '~/lib/navigation'
 import { type ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import { TranslationProvider } from '~/intl'
@@ -14,14 +18,29 @@ function renderStatus(props: Parameters<typeof ItemSaleStatus>[0]) {
 
 describe('ItemSaleStatus', () => {
   it('offers to put an item on sale when it has no listing', () => {
-    renderStatus({ sales: { minted: 3, maxSupply: 100 }, listing: null })
-    expect(screen.getByRole('button', { name: /put on sale/i })).toBeInTheDocument()
+    renderStatus({ sales: { minted: 3, maxSupply: 100 }, listing: null, canSell: true })
+    expect(screen.getByRole('button', { name: /put on sale/i })).toBeEnabled()
+  })
+
+  it('disables putting an item on sale until the collection is approved for the first time', () => {
+    renderStatus({ sales: { minted: 0, maxSupply: 100 }, listing: null, canSell: false })
+    const button = screen.getByRole('button', { name: /put on sale/i })
+    expect(button).toBeDisabled()
+    expect(button).toHaveAccessibleDescription(/approved/i)
   })
 
   it('shows the item is on sale when it has a listing', () => {
     renderStatus({ sales: { minted: 3, maxSupply: 100 }, listing })
     expect(screen.getByTestId('item-sale-status')).toHaveTextContent(/on sale/i)
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('links a listed item to its Shop page', async () => {
+    renderStatus({ sales: { minted: 3, maxSupply: 100 }, listing, shopUrl: 'https://shop.example/item/0xc/3' })
+    const pill = screen.getByTestId('item-sale-status')
+    expect(pill).toHaveAttribute('href', 'https://shop.example/item/0xc/3')
+    await userEvent.click(pill)
+    expect(openExternal).toHaveBeenCalledWith('https://shop.example/item/0xc/3')
   })
 
   it('shows sold out once the whole supply is minted, even without a listing', () => {

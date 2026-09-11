@@ -48,6 +48,45 @@ export const Pill = styled.span`
   }
 `
 
+export const PillLink = styled(Pill.withComponent('a'))`
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: #2a2a3a;
+  }
+`
+
+// Fixed-size slot at the end of the link pill: the dot at rest, the external-link glyph on hover/focus.
+export const Trailing = styled.span`
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+
+  & > svg {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+
+  a:hover > &,
+  a:focus-visible > & {
+    & > span {
+      opacity: 0;
+    }
+    & > svg {
+      opacity: 1;
+    }
+  }
+`
+
 export const Dot = styled.span`
   width: 8px;
   height: 8px;

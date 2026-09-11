@@ -5,6 +5,7 @@ import {
   BODY_SHAPE_MALE,
   BodyShapeType,
   canManageItem,
+  isSmartWearable,
   fromRemoteItem,
   getItemBodyShapeType,
   getItemDisplayStatus,
@@ -222,6 +223,14 @@ describe('getItemSales', () => {
 
   it('has no sales without a rarity', () => {
     expect(getItemSales({ ...base, rarity: undefined })).toBeUndefined()
+  })
+})
+
+describe('isSmartWearable', () => {
+  it('is a wearable that ships scene code, never an emote', () => {
+    expect(isSmartWearable(makeItem())).toBe(false)
+    expect(isSmartWearable(makeItem({ contents: { ...remote.contents, 'game.js': 'Qmjs' } }))).toBe(true)
+    expect(isSmartWearable(makeItem({ type: ItemType.EMOTE, contents: { 'game.js': 'Qmjs' } }))).toBe(false)
   })
 })
 

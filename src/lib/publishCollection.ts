@@ -12,6 +12,7 @@ import { CreditsServerError, type ExternalCall, type PublicationAuthorization } 
 import { hasOldHashedContents } from '~/lib/itemFactory'
 import { type Item } from '~/lib/items'
 import { weiToUsdCents, type PublicationFee } from '~/lib/publishFee'
+import { isWalletRejection } from '~/lib/walletErrors'
 import { getCollectionSymbol, toInitializeItems, type InitializeItem } from '~/lib/saveCollection'
 
 /** 'card' (buying credits with Stripe) is the planned third method; only these two ship today. */
@@ -145,9 +146,6 @@ export class PublishCollectionError extends Error {
   }
 }
 
-const WALLET_REJECTION_CODE = 4001
-const WALLET_REJECTION_PATTERN = /user rejected|user denied|rejected the request/i
-
 /** Maps any failure of the sequence to the reason the UI shows copy for. */
 export function toPublishError(error: unknown): PublishCollectionError {
   if (error instanceof PublishCollectionError) return error
@@ -158,10 +156,7 @@ export function toPublishError(error: unknown): PublishCollectionError {
     return new PublishCollectionError('locked', error.message)
   }
   const message = error instanceof Error ? error.message : String(error)
-  const code = (error as { code?: unknown } | null)?.code
-  if (code === WALLET_REJECTION_CODE || code === 'ACTION_REJECTED' || WALLET_REJECTION_PATTERN.test(message)) {
-    return new PublishCollectionError('rejected', message)
-  }
+  if (isWalletRejection(error)) return new PublishCollectionError('rejected', message)
   return new PublishCollectionError('generic', message)
 }
 

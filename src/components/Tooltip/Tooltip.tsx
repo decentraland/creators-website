@@ -47,7 +47,7 @@ export function Tooltip({ content, children, asChild = false, testId = 'tooltip'
   return (
     <Popper
       arrow
-      title={<span data-testid={testId}>{content}</span>}
+      title={<S.Content data-testid={testId}>{content}</S.Content>}
       enterDelay={0}
       enterTouchDelay={0}
       leaveTouchDelay={4000}

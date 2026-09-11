@@ -167,10 +167,13 @@ export function getCollectionDisplayStatus(collection: Collection): CollectionDi
 
 /**
  * Published and approved at least once: the collection is on the market even while a later change of
- * its items is being reviewed again, so its items carry a price and sales.
+ * its items is being reviewed again. The contract stamps `reviewedAt` with `createdAt` on creation,
+ * so only a later review counts.
  */
 export function hasBeenApproved(collection: Collection): boolean {
-  return collection.isPublished && (collection.isApproved || collection.reviewedAt !== undefined)
+  if (!collection.isPublished) return false
+  if (collection.isApproved) return true
+  return collection.reviewedAt !== undefined && collection.reviewedAt !== collection.createdAt
 }
 
 export enum CollectionRole {
@@ -244,4 +247,12 @@ export function canManageCollectionItems(collection: Collection, address: string
   if (!address) return false
   const isOwner = collection.owner.toLowerCase() === address.toLowerCase()
   return isOwner || getCollectionRole(collection, address) === CollectionRole.COLLABORATOR
+}
+
+/** Owners, collaborators and minters may put a collection's items on sale. */
+export function canSellCollectionItems(collection: Collection, address: string | undefined): boolean {
+  if (!address) return false
+  return (
+    canManageCollectionItems(collection, address) || getCollectionRole(collection, address) === CollectionRole.MINTER
+  )
 }

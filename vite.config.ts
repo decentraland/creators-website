@@ -9,9 +9,12 @@ export default defineConfig(({ command, mode }) => {
   return {
     plugins: [react()],
     resolve: {
-      alias: {
-        '~': fileURLToPath(new URL('./src', import.meta.url))
-      },
+      alias: [
+        { find: '~', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
+        // Its `browser` field is a UMD bundle whose default export Vite can't interop; use the ESM build.
+        // Exact match only: the package's CSS import must keep resolving from the package root.
+        { find: /^react-datepicker$/, replacement: 'react-datepicker/dist/es/index.js' }
+      ],
       // decentraland-ui2 nests its own @emotion/styled; two emotion copies means two ThemeContexts,
       // so MUI's theme provider never reaches ui2's styled components.
       dedupe: ['@emotion/react', '@emotion/styled']

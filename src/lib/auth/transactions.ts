@@ -59,6 +59,16 @@ export async function sendContractTransaction(session: Session, call: ContractCa
   )
 }
 
+/** EIP-712 signature of `value` by the connected wallet (an off-chain order, not a transaction). */
+export async function signTypedData(
+  session: Session,
+  domain: ethers.TypedDataDomain,
+  types: Record<string, ethers.TypedDataField[]>,
+  value: Record<string, unknown>
+): Promise<string> {
+  return session.signer._signTypedData(domain, types, value)
+}
+
 /** Resolves true when the transaction is mined successfully, false when it reverted. */
 export async function waitForTransaction(chainId: number, txHash: string, timeoutMs?: number): Promise<boolean> {
   const provider = await getReadProvider(chainId)

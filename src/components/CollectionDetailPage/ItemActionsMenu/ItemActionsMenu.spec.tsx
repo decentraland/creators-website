@@ -10,13 +10,16 @@ import { type Collection } from '~/lib/collections'
 import { ItemSyncStatus } from '~/lib/itemSync'
 import { ItemType, type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
+import { useWallet } from '~/store/wallet'
+import { type Session } from '~/lib/auth'
 import { ItemActionsMenu } from './ItemActionsMenu'
 
 vi.mock('~/lib/builder', () => ({
   saveItem: vi.fn(),
   deleteItem: vi.fn(),
   fetchCollections: vi.fn(),
-  fetchCollectionCuration: vi.fn()
+  fetchCollectionCuration: vi.fn(),
+  getContentsStorageUrl: (hash: string) => `https://storage.example/${hash}`
 }))
 vi.mock('~/lib/catalyst', () => ({ fetchCatalystContent: vi.fn() }))
 vi.mock('~/lib/clipboard', () => ({ copyToClipboard: vi.fn().mockResolvedValue(true) }))
@@ -119,6 +122,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 beforeEach(() => {
   useNotifications.setState({ toasts: [] })
+  useWallet.setState({ session: { address: OWNER } as unknown as Session })
   vi.mocked(saveItem).mockReset()
   vi.mocked(deleteItem).mockReset()
   vi.mocked(fetchCollections).mockReset()
@@ -150,16 +154,24 @@ describe('ItemActionsMenu', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/collections/editor?collection=c1&item=i1')
   })
 
-  it('copies the URN of a published item and offers the sale placeholders once the collection is on the market', async () => {
+  it('copies the URN of a published item and offers the sale actions for a listed item', async () => {
     renderMenu({
       item: publishedItem,
       collection: published,
-      listing: { itemId: '0', currency: 'credits', credits: 5 }
+      listing: { itemId: '0', tradeId: 'trade-1', currency: 'credits', credits: 5 }
     })
     const menu = await openMenu()
     expect(ids(menu)).toEqual(['item-copy-urn', 'item-preview', 'item-edit-price', 'item-remove-from-sale'])
-    expect(screen.getByTestId('item-edit-price')).toHaveAttribute('aria-disabled')
-    expect(screen.getByTestId('item-remove-from-sale')).toHaveAttribute('aria-disabled')
+
+    await userEvent.click(screen.getByTestId('item-edit-price'))
+    expect(screen.getByTestId('update-price-modal')).toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('update-price-cancel'))
+    await openMenu()
+    await userEvent.click(screen.getByTestId('item-remove-from-sale'))
+    expect(screen.getByTestId('remove-listing-modal')).toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('remove-listing-cancel'))
+
+    await openMenu()
 
     await userEvent.click(screen.getByTestId('item-copy-urn'))
     expect(copyToClipboard).toHaveBeenCalledWith(publishedItem.urn)
@@ -167,9 +179,42 @@ describe('ItemActionsMenu', () => {
     expect(screen.queryByTestId('item-actions-menu')).not.toBeInTheDocument()
   })
 
-  it('has no remove-from-sale for an item that is not on sale', async () => {
+  it('keeps the remove-from-sale flow open after the listing is gone from the row', async () => {
+    const listing = { itemId: '0', tradeId: 'trade-1', currency: 'credits' as const, credits: 5 }
+    const { rerender } = renderMenu({ item: publishedItem, collection: published, listing })
+    await openMenu()
+    await userEvent.click(screen.getByTestId('item-remove-from-sale'))
+    expect(screen.getByTestId('remove-listing-modal')).toBeInTheDocument()
+    // The cache update that follows a successful cancellation removes the row's listing.
+    rerender(<ItemActionsMenu item={publishedItem} collection={published} address={OWNER} listing={null} />)
+    expect(screen.getByTestId('remove-listing-modal')).toBeInTheDocument()
+  })
+
+  it('lets a minter sell, and drops Edit price once the item is sold out', async () => {
+    useWallet.setState({ session: { address: MINTER } as unknown as Session })
+    const listing = { itemId: '0', tradeId: 'trade-1', currency: 'credits' as const, credits: 5 }
+    const { unmount } = renderMenu({ item: publishedItem, collection: published, address: MINTER, listing })
+    expect(ids(await openMenu())).toEqual(['item-copy-urn', 'item-preview', 'item-edit-price', 'item-remove-from-sale'])
+    unmount()
+    renderMenu({ item: { ...publishedItem, totalSupply: 100 }, collection: published, address: MINTER, listing })
+    expect(ids(await openMenu())).toEqual(['item-copy-urn', 'item-preview', 'item-remove-from-sale'])
+  })
+
+  it('offers no sale actions for an item that is not on sale', async () => {
     renderMenu({ item: publishedItem, collection: published, listing: null })
-    expect(ids(await openMenu())).toEqual(['item-copy-urn', 'item-preview', 'item-edit-price'])
+    expect(ids(await openMenu())).toEqual(['item-copy-urn', 'item-preview'])
+  })
+
+  it('lets the owner remove a legacy store price but not re-price it, and keeps minters out of it', async () => {
+    const storeListing = { itemId: '0', currency: 'mana' as const, manaWei: 1n }
+    const { unmount } = renderMenu({ item: publishedItem, collection: published, listing: storeListing })
+    expect(ids(await openMenu())).toEqual(['item-copy-urn', 'item-preview', 'item-remove-from-sale'])
+    await userEvent.click(screen.getByTestId('item-remove-from-sale'))
+    expect(screen.getByTestId('remove-listing-modal')).toBeInTheDocument()
+    unmount()
+    useWallet.setState({ session: { address: MINTER } as unknown as Session })
+    renderMenu({ item: publishedItem, collection: published, address: MINTER, listing: storeListing })
+    expect(ids(await openMenu())).toEqual(['item-copy-urn', 'item-preview'])
   })
 
   it('moves the item to another draft collection', async () => {
@@ -274,7 +319,7 @@ describe('ItemActionsMenu', () => {
       renderMenu({
         item: publishedItem,
         collection: published,
-        listing: { itemId: '0', currency: 'mana', manaWei: 1n }
+        listing: { itemId: '0', tradeId: 'trade-1', currency: 'mana', manaWei: 1n }
       })
       expect(ids(await openMenu())).toEqual(['item-copy-urn', 'item-edit-price', 'item-remove-from-sale'])
     })

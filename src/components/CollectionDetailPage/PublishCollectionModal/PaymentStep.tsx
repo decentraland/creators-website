@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft as ChevronLeftIcon, InfoOutlined as InfoIcon } from '@mui/icons-material'
+import { ChevronLeft as ChevronLeftIcon } from '@mui/icons-material'
 import { useIntl } from 'react-intl'
 import { config } from '~/config'
 import { useTranslation } from '~/intl'
@@ -22,8 +22,8 @@ import {
 } from '~/lib/publishCollection'
 import { formatCredits, formatMana, getPublicationFee } from '~/lib/publishFee'
 import { Button } from '~/components/Button'
-import { Tooltip } from '~/components/Tooltip'
-import { Checkbox } from './Checkbox'
+import { InfoTooltip } from '~/components/Tooltip'
+import { Checkbox } from '~/components/Checkbox'
 import { ThumbnailMosaic } from '~/components/ThumbnailMosaic'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
 import { PaymentMethodCard } from './PaymentMethodCard'
@@ -157,7 +157,7 @@ export function PaymentStep({
                 fee: chunks => (
                   <S.FeeTerm>
                     {chunks}
-                    <Tooltip
+                    <InfoTooltip
                       content={
                         <>
                           <strong>{t('publish_collection_modal.payment_step.fee_tooltip_title')}</strong>
@@ -166,9 +166,7 @@ export function PaymentStep({
                         </>
                       }
                       testId="publish-fee-tooltip"
-                    >
-                      <InfoIcon />
-                    </Tooltip>
+                    />
                   </S.FeeTerm>
                 )
               }

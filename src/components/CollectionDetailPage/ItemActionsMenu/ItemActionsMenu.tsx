@@ -1,15 +1,23 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '~/intl'
+import { useWallet } from '~/store/wallet'
 import { useDraftCollections } from '~/hooks/useCollections'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useMoveItem, useResetItem } from '~/hooks/useItem'
 import { type ItemSync } from '~/hooks/useItemSync'
 import { useDeleteItem } from '~/hooks/usePublishCollection'
 import { copyToClipboard } from '~/lib/clipboard'
-import { hasBeenApproved, isCollectionLocked, type Collection } from '~/lib/collections'
+import {
+  canManageCollectionItems,
+  canSellCollectionItems,
+  hasBeenApproved,
+  isCollectionLocked,
+  type Collection
+} from '~/lib/collections'
 import { ItemSyncStatus } from '~/lib/itemSync'
-import { canManageItem, type Item } from '~/lib/items'
+import { canManageItem, getItemSales, type Item } from '~/lib/items'
+import { type Session } from '~/lib/auth'
 import { type ItemListing } from '~/lib/listings'
 import { useNotifications } from '~/lib/notifications'
 import { theme } from '~/styles/theme'
@@ -17,6 +25,7 @@ import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/A
 import { DeleteItemModal } from '../DeleteItemModal'
 import { MoveItemModal } from './MoveItemModal'
 import { ResetItemModal } from './ResetItemModal'
+import { RemoveListingFlow, UpdatePriceFlow } from '../SellItemFlow'
 
 type Props = {
   item: Item
@@ -28,12 +37,21 @@ type Props = {
   listing?: ItemListing | null
 }
 
-type Dialog = 'move' | 'reset' | 'delete' | null
+// The sale dialogs keep the listing they opened with: the flows themselves rewrite the listings cache
+// (drop on cancel, set on re-list), and the live prop vanishing must not unmount them mid-flow.
+type Dialog =
+  | 'move'
+  | 'reset'
+  | 'delete'
+  | { kind: 'update-price'; listing: ItemListing & { tradeId: string }; session: Session }
+  | { kind: 'remove-listing'; listing: ItemListing; session: Session }
+  | null
 
 export function ItemActionsMenu({ item, collection, address, sync, listing }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const showToast = useNotifications(state => state.showToast)
+  const session = useWallet(state => state.session)
   const [dialog, setDialog] = useState<Dialog>(null)
 
   const moveItem = useMoveItem(address)
@@ -47,8 +65,19 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
   const canManage = canManageItem(collection, item, address)
   const canCopyUrn = !!item.urn
   const canEditDraft = !compact && canManage && !collection.isPublished && !isCollectionLocked(collection)
-  const canSell = canManage && hasBeenApproved(collection)
-  const isOnSale = !!listing
+  const onMarket = hasBeenApproved(collection) && !!listing && !!session
+  // An off-chain order is cancelled by whoever may sell (owner, collaborator, minter); a legacy store
+  // price is cleared on the collection contract, which only the creator and collaborators may edit.
+  const canRemove =
+    onMarket &&
+    (listing.tradeId ? canSellCollectionItems(collection, address) : canManageCollectionItems(collection, address))
+  const sales = getItemSales(item)
+  // Only an off-chain order can be re-priced, and only while some supply is left to sell.
+  const canEditPrice =
+    onMarket &&
+    !!listing.tradeId &&
+    canSellCollectionItems(collection, address) &&
+    !(sales && sales.minted >= sales.maxSupply)
   const canReset = !compact && canManage && sync?.status === ItemSyncStatus.UNSYNCED && !!sync.entity
   const canPreview = !compact
 
@@ -60,6 +89,12 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
 
   function openEditor() {
     navigate(`/collections/editor?collection=${collection.id}&item=${item.id}`)
+  }
+
+  function openSaleDialog(kind: 'update-price' | 'remove-listing') {
+    if (!listing || !session) return
+    if (kind === 'remove-listing') setDialog({ kind, listing, session })
+    else if (listing.tradeId) setDialog({ kind, listing: { ...listing, tradeId: listing.tradeId }, session })
   }
 
   function closeDialog() {
@@ -105,7 +140,7 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
     })
   }
 
-  if (!canCopyUrn && !canPreview && !canEditDraft && !canSell) return null
+  if (!canCopyUrn && !canPreview && !canEditDraft && !canRemove) return null
 
   return (
     <>
@@ -125,18 +160,15 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
             {t('collection_detail_page.item_actions.move')}
           </ActionsMenuItem>
         )}
-        {canSell && (
-          <>
-            {/* TODO: price editing and delisting land with the sale flows. */}
-            <ActionsMenuItem disabled title={t('collection_detail_page.coming_soon')} testId="item-edit-price">
-              {t('collection_detail_page.item_actions.edit_price')}
-            </ActionsMenuItem>
-            {isOnSale && (
-              <ActionsMenuItem disabled title={t('collection_detail_page.coming_soon')} testId="item-remove-from-sale">
-                {t('collection_detail_page.item_actions.remove_from_sale')}
-              </ActionsMenuItem>
-            )}
-          </>
+        {canEditPrice && (
+          <ActionsMenuItem testId="item-edit-price" onClick={() => openSaleDialog('update-price')}>
+            {t('collection_detail_page.item_actions.edit_price')}
+          </ActionsMenuItem>
+        )}
+        {canRemove && (
+          <ActionsMenuItem testId="item-remove-from-sale" onClick={() => openSaleDialog('remove-listing')}>
+            {t('collection_detail_page.item_actions.remove_from_sale')}
+          </ActionsMenuItem>
         )}
         {canReset && (
           <ActionsMenuItem testId="item-reset" onClick={() => setDialog('reset')}>
@@ -170,6 +202,24 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
           isResetting={resetItem.isPending}
           error={resetItem.isError}
           onConfirm={confirmReset}
+          onClose={closeDialog}
+        />
+      )}
+      {typeof dialog === 'object' && dialog?.kind === 'update-price' && (
+        <UpdatePriceFlow
+          item={item}
+          collection={collection}
+          listing={dialog.listing}
+          session={dialog.session}
+          onClose={closeDialog}
+        />
+      )}
+      {typeof dialog === 'object' && dialog?.kind === 'remove-listing' && (
+        <RemoveListingFlow
+          item={item}
+          collection={collection}
+          listing={dialog.listing}
+          session={dialog.session}
           onClose={closeDialog}
         />
       )}

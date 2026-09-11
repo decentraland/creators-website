@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 import { Check as CheckIcon } from '@mui/icons-material'
-import * as S from './PublishCollectionModal.styles'
+import * as S from './Checkbox.styles'
 
 type Props = {
   checked: boolean
@@ -12,7 +12,7 @@ type Props = {
 
 export function Checkbox({ checked, onChange, disabled, children, testId }: Props) {
   return (
-    <S.CheckboxRow data-disabled={disabled || undefined}>
+    <S.CheckboxRow data-disabled={disabled || undefined} data-testid="checkbox-label">
       <input
         type="checkbox"
         checked={checked}
