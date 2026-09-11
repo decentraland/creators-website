@@ -122,7 +122,10 @@ export function SellItemModal({
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (submission && !busy) onSubmit(values, submission)
+    if (busy) return
+    // Re-derived at submit time: the memoized check may hold a stale `now` if the form sat open past midnight.
+    const fresh = toSubmission(values, session.address)
+    if (fresh) onSubmit(values, fresh)
   }
 
   return (
