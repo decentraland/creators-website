@@ -1,4 +1,4 @@
-import { Check as CheckIcon } from '@mui/icons-material'
+import { Check as CheckIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { type ItemSales } from '~/lib/items'
 import { type ItemListing } from '~/lib/listings'
@@ -30,17 +30,12 @@ export function ItemSaleStatus({ sales, listing, canSell = false, onPutOnSale, s
   }
   if (listing === undefined) return null
   if (listing) {
-    const content = (
-      <>
-        <CheckIcon aria-hidden />
-        {t('collection_detail_page.sale_status.on_sale')}
-        <S.Dot aria-hidden />
-      </>
-    )
     if (!shopUrl) {
       return (
         <S.Pill data-testid="item-sale-status" data-status="on_sale">
-          {content}
+          <CheckIcon aria-hidden />
+          {t('collection_detail_page.sale_status.on_sale')}
+          <S.Dot aria-hidden />
         </S.Pill>
       )
     }
@@ -55,7 +50,13 @@ export function ItemSaleStatus({ sales, listing, canSell = false, onPutOnSale, s
           openExternal(shopUrl)
         }}
       >
-        {content}
+        <CheckIcon aria-hidden />
+        {t('collection_detail_page.sale_status.on_sale')}
+        {/* The dot gives way to the external-link glyph on hover/focus, so the pill reads as a link. */}
+        <S.Trailing aria-hidden>
+          <S.Dot />
+          <OpenInNewIcon />
+        </S.Trailing>
       </S.PillLink>
     )
   }
