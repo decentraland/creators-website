@@ -9,7 +9,7 @@ import { ConfirmItemsStep } from './ConfirmItemsStep'
 import { ConfirmNameStep } from './ConfirmNameStep'
 import { PaymentStep } from './PaymentStep'
 import { PublishErrorModal } from './PublishErrorModal'
-import { StepIndicator } from './StepIndicator'
+import { StepIndicator } from '~/components/StepIndicator'
 import * as S from './PublishCollectionModal.styles'
 
 enum Step {
@@ -77,7 +77,7 @@ export function PublishCollectionModal({ collection, session, onClose, onPublish
       testId="publish-collection-modal"
     >
       <S.Main>
-        <StepIndicator current={step} total={TOTAL_STEPS} />
+        <StepIndicator current={step} total={TOTAL_STEPS} testId="publish-steps" />
         {step === Step.Name && (
           <ConfirmNameStep
             initialName={collection.name}

@@ -12,7 +12,6 @@ type UpdateVariables = {
   credits: number
   onSigned?: (step: 'cancel' | 'sign') => void
   onCancelled?: (terms: unknown) => void
-  onIndexing?: (attempt: number, of: number) => void
 }
 type SellVariables = { onSigned?: () => void }
 const update = { mutate: vi.fn<(variables: UpdateVariables, callbacks: Callbacks) => void>(), isPending: false }
@@ -70,21 +69,18 @@ describe('UpdatePriceFlow', () => {
     const { onClose } = renderFlow()
     await submitPrice('80')
     expect(last(update.mutate)[0]).toMatchObject({ credits: 80 })
-    const steps = screen.getByTestId('update-price-signing-steps')
-    expect(steps.children[0]).toHaveAttribute('data-state', 'current')
+    expect(screen.getByTestId('update-price-signing-step-1')).toHaveAttribute('data-state', 'current')
     expect(screen.getByTestId('update-price-signing-label')).toHaveTextContent(/removal of your current price/i)
     expect(screen.getByTestId('update-price-signing-cancel')).toBeInTheDocument()
 
     await act(async () => last(update.mutate)[0].onSigned?.('cancel'))
-    expect(steps.children[0]).toHaveAttribute('data-state', 'done')
-    expect(steps.children[1]).toHaveAttribute('data-state', 'current')
+    expect(screen.getByTestId('update-price-signing-step-1')).toHaveAttribute('data-state', 'done')
+    expect(screen.getByTestId('update-price-signing-step-2')).toHaveAttribute('data-state', 'current')
     expect(screen.getByTestId('update-price-signing-label')).toHaveTextContent(/confirm your new price/i)
     expect(screen.queryByTestId('update-price-signing-cancel')).not.toBeInTheDocument()
 
     await act(async () => last(update.mutate)[0].onSigned?.('sign'))
     expect(screen.getByTestId('update-price-pending-label')).toHaveTextContent(/updating price/i)
-    await act(async () => last(update.mutate)[0].onIndexing?.(2, 7))
-    expect(screen.getByTestId('update-price-pending-note')).toHaveTextContent('attempt 2 of 7')
 
     await act(async () => last(update.mutate)[1].onSuccess?.({}))
     expect(screen.getByTestId('sale-success-description')).toHaveTextContent(/new price/i)
@@ -113,7 +109,7 @@ describe('UpdatePriceFlow', () => {
       beneficiary: ADDRESS,
       expiresAt: NO_EXPIRATION
     })
-    expect(screen.getByTestId('update-price-signing-steps').children[1]).toHaveAttribute('data-state', 'current')
+    expect(screen.getByTestId('update-price-signing-step-2')).toHaveAttribute('data-state', 'current')
     await act(async () => last(sell.mutate)[1].onSuccess?.({}))
     expect(screen.getByTestId('sale-success-title')).toBeInTheDocument()
   })

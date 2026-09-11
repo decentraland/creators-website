@@ -308,8 +308,6 @@ export type UpdatePriceDeps = Omit<CancelListingDeps, 'onSigned'> &
     onSigned?: (step: 'cancel' | 'sign') => void
     /** The old listing is gone; a failure from here on leaves the item off sale. */
     onCancelled?: (terms: ListingTerms) => void
-    /** The server still sees the old order; the store is being retried. */
-    onIndexing?: (attempt: number, of: number) => void
   }
 
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
@@ -317,7 +315,6 @@ const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, m
 /** `createTrade` that waits out the indexer on "already an open order", then gives up. */
 export function withConflictRetry(
   createTrade: SellItemDeps['createTrade'],
-  onIndexing?: UpdatePriceDeps['onIndexing'],
   wait: (ms: number) => Promise<void> = sleep,
   delays = CONFLICT_RETRY_DELAYS_MS
 ): SellItemDeps['createTrade'] {
@@ -327,7 +324,6 @@ export function withConflictRetry(
         return await createTrade(trade)
       } catch (error) {
         if (!(error instanceof TradeConflictError) || attempt >= delays.length) throw error
-        onIndexing?.(attempt + 1, delays.length)
         await wait(delays[attempt])
       }
     }
@@ -360,7 +356,7 @@ export async function updatePrice(params: UpdatePriceParams, deps: UpdatePriceDe
     { ...rest, price: { kind: 'credits', credits }, ...terms },
     {
       ...deps,
-      createTrade: withConflictRetry(deps.createTrade, deps.onIndexing),
+      createTrade: withConflictRetry(deps.createTrade),
       onSigned: () => deps.onSigned?.('sign')
     }
   )

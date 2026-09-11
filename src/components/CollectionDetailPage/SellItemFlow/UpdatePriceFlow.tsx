@@ -7,7 +7,7 @@ import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
 import { type ItemListing } from '~/lib/listings'
 import { toSellItemError, type ListingTerms, type SellFailureReason } from '~/lib/sales'
-import { PendingModal, type PendingStep } from './PendingModal'
+import { PendingModal } from './PendingModal'
 import { SaleErrorModal } from './SaleErrorModal'
 import { SaleSuccessModal } from './SaleSuccessModal'
 import { UpdatePriceModal } from './UpdatePriceModal'
@@ -40,7 +40,6 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
   // Set once the old listing is cancelled: from then on only the new order is missing. A ref, because
   // the mutation callbacks close over the render they were created in and nothing renders it.
   const terms = useRef<ListingTerms | null>(null)
-  const [indexing, setIndexing] = useState<{ attempt: number; of: number } | null>(null)
   const attempt = useRef(0)
 
   const update = useUpdatePrice(session)
@@ -61,7 +60,6 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
 
   function submit(value: number) {
     setCredits(String(value))
-    setIndexing(null)
     const id = ++attempt.current
     const guard =
       <T,>(fn: (arg: T) => void) =>
@@ -97,10 +95,7 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
         }),
         onCancelled: guard((cancelled: ListingTerms) => {
           terms.current = cancelled
-        }),
-        onIndexing: (n, of) => {
-          if (attempt.current === id) setIndexing({ attempt: n, of })
-        }
+        })
       },
       { onSuccess: guard(() => setView('success')), onError: guard(fail) }
     )
@@ -112,10 +107,10 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
   }
 
   const currentCredits = listing.currency === 'credits' ? listing.credits : null
-  const steps: PendingStep[] = [
-    { label: t('sell_item_modal.update_price.step_remove'), state: step === 'cancel' ? 'current' : 'done' },
-    { label: t('sell_item_modal.update_price.step_confirm'), state: step === 'sign' ? 'current' : 'todo' }
-  ]
+  const steps = {
+    labels: [t('sell_item_modal.update_price.step_remove'), t('sell_item_modal.update_price.step_confirm')],
+    current: step === 'cancel' ? 1 : 2
+  }
 
   switch (view) {
     case 'form':
@@ -144,13 +139,7 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
         />
       )
     case 'storing':
-      return (
-        <PendingModal
-          label={t('sell_item_modal.update_price.pending')}
-          note={indexing ? t('sell_item_modal.update_price.indexing', indexing) : undefined}
-          testId="update-price-pending"
-        />
-      )
+      return <PendingModal label={t('sell_item_modal.update_price.pending')} testId="update-price-pending" />
     case 'success':
       return (
         <SaleSuccessModal

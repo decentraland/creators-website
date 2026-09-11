@@ -401,33 +401,28 @@ describe('updating the price', () => {
 describe('withConflictRetry', () => {
   const conflict = new TradeConflictError('There is already an open order for this Item')
 
-  it('re-posts the same signed order while the server still sees the old one, reporting each wait', async () => {
+  it('re-posts the same signed order while the server still sees the old one', async () => {
     const createTrade = vi
       .fn()
       .mockRejectedValueOnce(conflict)
       .mockRejectedValueOnce(conflict)
       .mockResolvedValue('trade-2')
-    const onIndexing = vi.fn()
     const wait = vi.fn().mockResolvedValue(undefined)
-    const post = withConflictRetry(createTrade, onIndexing, wait, [10, 20, 30])
+    const post = withConflictRetry(createTrade, wait, [10, 20, 30])
     const signed = { signature: '0x1' } as never
     await expect(post(signed)).resolves.toBe('trade-2')
     expect(createTrade).toHaveBeenCalledTimes(3)
     expect(createTrade.mock.calls.every(call => call[0] === signed)).toBe(true)
     expect(wait.mock.calls.map(c => c[0])).toEqual([10, 20])
-    expect(onIndexing.mock.calls).toEqual([
-      [1, 3],
-      [2, 3]
-    ])
   })
 
   it('gives up after the last delay and never retries other failures', async () => {
     const wait = vi.fn().mockResolvedValue(undefined)
-    const stuck = withConflictRetry(vi.fn().mockRejectedValue(conflict), undefined, wait, [1, 1])
+    const stuck = withConflictRetry(vi.fn().mockRejectedValue(conflict), wait, [1, 1])
     await expect(stuck({} as never)).rejects.toBe(conflict)
     expect(wait).toHaveBeenCalledTimes(2)
     const other = vi.fn().mockRejectedValue(new Error('Invalid signature'))
-    await expect(withConflictRetry(other, undefined, wait, [1])({} as never)).rejects.toThrow('Invalid signature')
+    await expect(withConflictRetry(other, wait, [1])({} as never)).rejects.toThrow('Invalid signature')
     expect(other).toHaveBeenCalledTimes(1)
   })
 })

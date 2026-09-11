@@ -69,6 +69,9 @@
   "modal": {
     "close": "Cerrar"
   },
+  "step_indicator": {
+    "label": "Paso {step} de {total}"
+  },
   "collection_name_input": {
     "label": "Nombre de la colección",
     "char_count": "{count}/{max}",
@@ -261,7 +264,6 @@
   },
   "publish_collection_modal": {
     "title": "Publicar colección",
-    "step_label": "Paso {step} de {total}",
     "cancel": "Cancelar",
     "back": "Atrás",
     "name_step": {
@@ -411,8 +413,7 @@
       "confirm_removal": "Primero, confirma en tu wallet la eliminación de tu precio actual...",
       "confirm_new": "¡Casi listo! Confirma tu nuevo precio en tu wallet...",
       "success_title": "¡Precio actualizado!",
-      "success_description": "Tu ítem ya está disponible en la Tienda con su nuevo precio.",
-      "indexing": "Esperando a que se libere tu listado anterior… (intento {attempt} de {of})"
+      "success_description": "Tu ítem ya está disponible en la Tienda con su nuevo precio."
     },
     "pending_changes": "Este ítem tiene cambios que aún no fueron aprobados. Los compradores recibirán la última versión aprobada hasta que el comité los apruebe."
   },

@@ -162,7 +162,6 @@ export type UpdatePriceVariables = {
   credits: number
   onSigned?: (step: 'cancel' | 'sign') => void
   onCancelled?: (terms: ListingTerms) => void
-  onIndexing?: (attempt: number, of: number) => void
 }
 
 /** Cancels the current order and signs a new one at the given price, keeping beneficiary and expiration. */
@@ -170,19 +169,13 @@ export function useUpdatePrice(session: Session | null) {
   const queryClient = useQueryClient()
   const chainId = getMaticChainId()
   return useMutation({
-    mutationFn: async ({
-      onSigned,
-      onCancelled,
-      onIndexing,
-      ...variables
-    }: UpdatePriceVariables): Promise<ItemListing> => {
+    mutationFn: async ({ onSigned, onCancelled, ...variables }: UpdatePriceVariables): Promise<ItemListing> => {
       if (!session) throw new Error('Wallet disconnected')
       return updatePrice(
         { ...variables, address: session.address, chainId },
         {
           ...orderDeps(session, chainId),
           onSigned,
-          onIndexing,
           onCancelled: terms => {
             // The old order is gone even if the new one never lands.
             removeListingFromCache(queryClient, variables.collection, variables.item.tokenId!)
