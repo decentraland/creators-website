@@ -200,11 +200,20 @@ describe('ItemActionsMenu', () => {
     expect(ids(await openMenu())).toEqual(['item-copy-urn', 'item-preview', 'item-remove-from-sale'])
   })
 
-  it('offers no sale actions for an item that is not on sale, or listed by the legacy store', async () => {
-    const { unmount } = renderMenu({ item: publishedItem, collection: published, listing: null })
+  it('offers no sale actions for an item that is not on sale', async () => {
+    renderMenu({ item: publishedItem, collection: published, listing: null })
     expect(ids(await openMenu())).toEqual(['item-copy-urn', 'item-preview'])
+  })
+
+  it('lets the owner remove a legacy store price but not re-price it, and keeps minters out of it', async () => {
+    const storeListing = { itemId: '0', currency: 'mana' as const, manaWei: 1n }
+    const { unmount } = renderMenu({ item: publishedItem, collection: published, listing: storeListing })
+    expect(ids(await openMenu())).toEqual(['item-copy-urn', 'item-preview', 'item-remove-from-sale'])
+    await userEvent.click(screen.getByTestId('item-remove-from-sale'))
+    expect(screen.getByTestId('remove-listing-modal')).toBeInTheDocument()
     unmount()
-    renderMenu({ item: publishedItem, collection: published, listing: { itemId: '0', currency: 'mana', manaWei: 1n } })
+    useWallet.setState({ session: { address: MINTER } as unknown as Session })
+    renderMenu({ item: publishedItem, collection: published, address: MINTER, listing: storeListing })
     expect(ids(await openMenu())).toEqual(['item-copy-urn', 'item-preview'])
   })
 

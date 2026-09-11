@@ -4,7 +4,7 @@
 import { ethers } from 'ethers'
 import { Network, TradeAssetType, TradeType, type Trade, type TradeCreation } from '@dcl/schemas'
 import { ContractName, getContract } from 'decentraland-transactions'
-import { type ContractCall } from '~/lib/auth'
+import { type ContractCall, type ContractData } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { getItemSales, type Item } from '~/lib/items'
 import { type ItemListing } from '~/lib/listings'
@@ -364,4 +364,63 @@ export async function updatePrice(params: UpdatePriceParams, deps: UpdatePriceDe
       onSigned: () => deps.onSigned?.('sign')
     }
   )
+}
+
+/** What `editItemsData` must carry over untouched when only the price changes. */
+export type StoreItemData = { beneficiary: string; metadata: string }
+
+/** The item's current on-chain data, so delisting rewrites nothing but the price. */
+export async function readStoreItem(
+  collection: Collection,
+  item: Item,
+  chainId: number,
+  read: <T>(contract: ContractData, method: string, args: unknown[]) => Promise<T>
+): Promise<StoreItemData> {
+  if (!collection.contractAddress || !item.tokenId)
+    throw new SellItemError('not_published', `Item "${item.id}" is not published`)
+  const contract = { ...getContract(ContractName.ERC721CollectionV2, chainId), address: collection.contractAddress }
+  const data = await read<{ beneficiary: string; metadata: string }>(contract, 'items', [item.tokenId])
+  return { beneficiary: data.beneficiary, metadata: data.metadata }
+}
+
+/**
+ * A legacy CollectionStore listing lives on the collection contract as the item's price; "not for sale"
+ * is the max uint256 sentinel, set with `editItemsData` (creator and collaborators only).
+ */
+export function buildStoreDelistCall(
+  collection: Collection,
+  item: Item,
+  current: StoreItemData,
+  chainId: number
+): ContractCall {
+  if (!collection.contractAddress || !item.tokenId)
+    throw new SellItemError('not_published', `Item "${item.id}" is not published`)
+  const contract = { ...getContract(ContractName.ERC721CollectionV2, chainId), address: collection.contractAddress }
+  return {
+    contract,
+    method: 'editItemsData',
+    args: [[item.tokenId], [ethers.constants.MaxUint256.toString()], [current.beneficiary], [current.metadata]]
+  }
+}
+
+export type RemoveStoreListingDeps = Omit<CancelListingDeps, 'fetchTrade' | 'fetchItemTradeId'> & {
+  readContract: <T>(contract: ContractData, method: string, args: unknown[]) => Promise<T>
+}
+
+/** Removes a legacy store listing: reads the item on chain, clears its price and waits for the receipt. */
+export async function removeStoreListing(
+  collection: Collection,
+  item: Item,
+  chainId: number,
+  deps: RemoveStoreListingDeps
+): Promise<void> {
+  try {
+    const current = await readStoreItem(collection, item, chainId, deps.readContract)
+    const txHash = await deps.sendTransaction(buildStoreDelistCall(collection, item, current, chainId))
+    deps.onSigned?.()
+    const mined = await deps.waitForTransaction(txHash)
+    if (!mined) throw new SellItemError('generic', 'The delist transaction reverted')
+  } catch (error) {
+    throw toSellItemError(error)
+  }
 }

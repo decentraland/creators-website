@@ -41,7 +41,7 @@ export function RemoveListingFlow({ item, collection, listing, session, onClose 
     setPhase('confirm')
     if (!social) setView('pending')
     remove.mutate(
-      { collection, listing, onSigned: () => attempt.current === id && setPhase('mining') },
+      { collection, item, listing, onSigned: () => attempt.current === id && setPhase('mining') },
       {
         onSuccess: () => attempt.current === id && setView('success'),
         onError: cause => {

@@ -8,7 +8,13 @@ import { useMoveItem, useResetItem } from '~/hooks/useItem'
 import { type ItemSync } from '~/hooks/useItemSync'
 import { useDeleteItem } from '~/hooks/usePublishCollection'
 import { copyToClipboard } from '~/lib/clipboard'
-import { canSellCollectionItems, hasBeenApproved, isCollectionLocked, type Collection } from '~/lib/collections'
+import {
+  canManageCollectionItems,
+  canSellCollectionItems,
+  hasBeenApproved,
+  isCollectionLocked,
+  type Collection
+} from '~/lib/collections'
 import { ItemSyncStatus } from '~/lib/itemSync'
 import { canManageItem, getItemSales, type Item } from '~/lib/items'
 import { type Session } from '~/lib/auth'
@@ -31,14 +37,14 @@ type Props = {
   listing?: ItemListing | null
 }
 
-type TradeListing = ItemListing & { tradeId: string }
 // The sale dialogs keep the listing they opened with: the flows themselves rewrite the listings cache
 // (drop on cancel, set on re-list), and the live prop vanishing must not unmount them mid-flow.
 type Dialog =
   | 'move'
   | 'reset'
   | 'delete'
-  | { kind: 'update-price' | 'remove-listing'; listing: TradeListing; session: Session }
+  | { kind: 'update-price'; listing: ItemListing & { tradeId: string }; session: Session }
+  | { kind: 'remove-listing'; listing: ItemListing; session: Session }
   | null
 
 export function ItemActionsMenu({ item, collection, address, sync, listing }: Props) {
@@ -59,13 +65,19 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
   const canManage = canManageItem(collection, item, address)
   const canCopyUrn = !!item.urn
   const canEditDraft = !compact && canManage && !collection.isPublished && !isCollectionLocked(collection)
-  // Only an off-chain order can be re-priced or cancelled here; a legacy store price has no trade.
-  const tradeListing = listing?.tradeId ? { ...listing, tradeId: listing.tradeId } : null
-  const canSell =
-    canSellCollectionItems(collection, address) && hasBeenApproved(collection) && !!tradeListing && !!session
+  const onMarket = hasBeenApproved(collection) && !!listing && !!session
+  // An off-chain order is cancelled by whoever may sell (owner, collaborator, minter); a legacy store
+  // price is cleared on the collection contract, which only the creator and collaborators may edit.
+  const canRemove =
+    onMarket &&
+    (listing.tradeId ? canSellCollectionItems(collection, address) : canManageCollectionItems(collection, address))
   const sales = getItemSales(item)
-  // Every unit is minted: the listing can still be taken down, but there is nothing left to re-price.
-  const canEditPrice = canSell && !(sales && sales.minted >= sales.maxSupply)
+  // Only an off-chain order can be re-priced, and only while some supply is left to sell.
+  const canEditPrice =
+    onMarket &&
+    !!listing.tradeId &&
+    canSellCollectionItems(collection, address) &&
+    !(sales && sales.minted >= sales.maxSupply)
   const canReset = !compact && canManage && sync?.status === ItemSyncStatus.UNSYNCED && !!sync.entity
   const canPreview = !compact
 
@@ -80,7 +92,9 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
   }
 
   function openSaleDialog(kind: 'update-price' | 'remove-listing') {
-    if (tradeListing && session) setDialog({ kind, listing: tradeListing, session })
+    if (!listing || !session) return
+    if (kind === 'remove-listing') setDialog({ kind, listing, session })
+    else if (listing.tradeId) setDialog({ kind, listing: { ...listing, tradeId: listing.tradeId }, session })
   }
 
   function closeDialog() {
@@ -126,7 +140,7 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
     })
   }
 
-  if (!canCopyUrn && !canPreview && !canEditDraft && !canSell) return null
+  if (!canCopyUrn && !canPreview && !canEditDraft && !canRemove) return null
 
   return (
     <>
@@ -151,7 +165,7 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
             {t('collection_detail_page.item_actions.edit_price')}
           </ActionsMenuItem>
         )}
-        {canSell && (
+        {canRemove && (
           <ActionsMenuItem testId="item-remove-from-sale" onClick={() => openSaleDialog('remove-listing')}>
             {t('collection_detail_page.item_actions.remove_from_sale')}
           </ActionsMenuItem>

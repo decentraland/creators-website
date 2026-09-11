@@ -14,6 +14,7 @@ import {
   buildItemOrder,
   getListingTerms,
   removeListing,
+  removeStoreListing,
   updatePrice,
   withConflictRetry,
   creditsToUsdWei,
@@ -428,5 +429,43 @@ describe('withConflictRetry', () => {
     const other = vi.fn().mockRejectedValue(new Error('Invalid signature'))
     await expect(withConflictRetry(other, undefined, wait, [1])({} as never)).rejects.toThrow('Invalid signature')
     expect(other).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('removing a legacy store listing', () => {
+  const onChain = { beneficiary: BENEFICIARY, metadata: '1:w:Pirate Hat:Yarr:hat:BaseMale' }
+
+  it('reads the item on chain and clears only its price, keeping beneficiary and metadata', async () => {
+    const deps = {
+      readContract: vi.fn().mockResolvedValue(onChain),
+      sendTransaction: vi.fn().mockResolvedValue('0xhash'),
+      waitForTransaction: vi.fn().mockResolvedValue(true),
+      onSigned: vi.fn()
+    }
+    await removeStoreListing(collection, item, CHAIN_ID, deps)
+    expect(deps.readContract).toHaveBeenCalledWith(expect.objectContaining({ address: CONTRACT }), 'items', ['3'])
+    const call = deps.sendTransaction.mock.calls[0][0]
+    expect(call.contract.address).toBe(CONTRACT)
+    const decoded = new ethers.utils.Interface(call.contract.abi).decodeFunctionData(
+      'editItemsData',
+      encodeContractCall(call)
+    )
+    expect(decoded[0].map(String)).toEqual(['3'])
+    expect(decoded[1].map(String)).toEqual([ethers.constants.MaxUint256.toString()])
+    expect((decoded[2] as string[]).map(a => a.toLowerCase())).toEqual([BENEFICIARY])
+    expect(decoded[3]).toEqual([onChain.metadata])
+    expect(deps.onSigned).toHaveBeenCalledTimes(1)
+    expect(deps.waitForTransaction).toHaveBeenCalledWith('0xhash')
+  })
+
+  it('maps a dismissed prompt and a revert like the other sale actions', async () => {
+    const deps = {
+      readContract: vi.fn().mockResolvedValue(onChain),
+      sendTransaction: vi.fn().mockRejectedValue({ code: 4001 }),
+      waitForTransaction: vi.fn().mockResolvedValue(false)
+    }
+    await expect(removeStoreListing(collection, item, CHAIN_ID, deps)).rejects.toMatchObject({ reason: 'rejected' })
+    deps.sendTransaction.mockResolvedValue('0xhash')
+    await expect(removeStoreListing(collection, item, CHAIN_ID, deps)).rejects.toMatchObject({ reason: 'generic' })
   })
 })

@@ -51,9 +51,10 @@ export const Pill = styled.span`
 export const PillLink = styled(Pill.withComponent('a'))`
   text-decoration: none;
   cursor: pointer;
+  transition: background 0.15s ease;
 
   &:hover {
-    background: ${theme.colors.gray0};
+    background: #2a2a3a;
   }
 `
 

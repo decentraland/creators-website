@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type TradeCreation } from '@dcl/schemas'
-import { sendContractTransaction, signTypedData, waitForTransaction, type ContractCall, type Session } from '~/lib/auth'
+import {
+  readContract,
+  sendContractTransaction,
+  signTypedData,
+  waitForTransaction,
+  type ContractCall,
+  type Session
+} from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { fetchFriends } from '~/lib/friends'
 import { type Item } from '~/lib/items'
@@ -10,6 +17,7 @@ import {
   buildEnableSalesCall,
   isSalesEnabled,
   removeListing,
+  removeStoreListing,
   sellItem,
   SellItemError,
   updatePrice,
@@ -119,24 +127,28 @@ function removeListingFromCache(
 
 export type RemoveListingVariables = {
   collection: Collection
+  item: Item
   listing: ItemListing
   /** The wallet prompt is over; the cancellation is mining. */
   onSigned?: () => void
 }
 
-/** Cancels the item's order on chain and waits until it is mined; the row drops its price right away. */
+/**
+ * Takes the item off sale and waits until it is mined; the row drops its price right away. An off-chain
+ * order gets its signature cancelled; a legacy CollectionStore price gets cleared on the collection.
+ */
 export function useRemoveListing(session: Session | null) {
   const queryClient = useQueryClient()
   const chainId = getMaticChainId()
   return useMutation({
-    mutationFn: async ({ collection, listing, onSigned }: RemoveListingVariables): Promise<void> => {
+    mutationFn: async ({ collection, item, listing, onSigned }: RemoveListingVariables): Promise<void> => {
       if (!session) throw new Error('Wallet disconnected')
-      if (!listing.tradeId || !collection.contractAddress) {
-        throw new SellItemError('generic', 'The listing has no order to cancel')
-      }
+      if (!collection.contractAddress) throw new SellItemError('not_published', 'The collection has no contract')
+      const deps = { ...orderDeps(session, chainId), onSigned }
+      if (!listing.tradeId) return removeStoreListing(collection, item, chainId, { ...deps, readContract })
       return removeListing(
         { tradeId: listing.tradeId, contractAddress: collection.contractAddress, itemId: listing.itemId },
-        { ...orderDeps(session, chainId), onSigned }
+        deps
       )
     },
     onSuccess: (_, { collection, listing }) => removeListingFromCache(queryClient, collection, listing.itemId)
