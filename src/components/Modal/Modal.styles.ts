@@ -40,6 +40,8 @@ export const Dialog = styled.div`
 
   ${mobile} {
     padding: 24px 16px;
+    max-width: 100%;
+    max-height: 100%;
   }
 
   &[data-flush] {

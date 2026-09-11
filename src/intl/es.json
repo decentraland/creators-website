@@ -260,7 +260,8 @@
         "confirm": "Restablecer ítem",
         "done": "“{name}” se restableció a su versión aprobada"
       }
-    }
+    },
+    "send_items": "Enviar ítems"
   },
   "publish_collection_modal": {
     "title": "Publicar colección",
@@ -391,7 +392,9 @@
       "description_update": "Algo salió mal al actualizar el precio. Espera un momento e inténtalo de nuevo.",
       "description_sold_out": "Ya se acuñaron todas las unidades de este ítem, así que no se puede poner en venta.",
       "try_again": "Intentar de nuevo",
-      "description_not_listed": "Este ítem ya no está en venta, así que no hay nada que cambiar. Recarga la página para ver su estado actual."
+      "description_not_listed": "Este ítem ya no está en venta, así que no hay nada que cambiar. Recarga la página para ver su estado actual.",
+      "title_send": "No pudimos enviar tus ítems",
+      "description_send": "Algo salió mal al enviar tus ítems. Por favor, inténtalo de nuevo."
     },
     "remove": {
       "title": "¿Quitar de la venta?",
@@ -584,5 +587,31 @@
     "linkTerms": "Términos de uso",
     "linkContentPolicy": "Política de contenido",
     "linkEthics": "Código de ética"
+  },
+  "send_items_modal": {
+    "title": "Enviar ítems",
+    "step_select": "Seleccionar ítems",
+    "step_confirm": "Confirmar ítems",
+    "transfer": "Envío {n}",
+    "remove_transfer": "Quitar envío",
+    "recipient_placeholder": "Selecciona o pega el User ID del destinatario",
+    "add_recipient": "Agregar otro destinatario",
+    "duplicate_recipient": "Este destinatario ya está en este envío.",
+    "items_for_recipient": "Ítems para este destinatario",
+    "available": "{available} / {total} disponibles",
+    "sold_out": "Agotado",
+    "select_item": "Enviar {name}",
+    "decrease": "Menos copias de {name}",
+    "increase": "Más copias de {name}",
+    "add_transfer": "Agregar otro envío",
+    "total": "{count} / {max} ítems",
+    "limit_reached": "Puedes enviar hasta {max} ítems a la vez. Quita algunas copias para continuar.",
+    "continue": "Continuar",
+    "submit": "Enviar ítems",
+    "confirm_intro": "Estás a punto de enviar {count, plural, one {# ítem} other {# ítems}}. Revisa los destinatarios y las cantidades antes de enviar.",
+    "summary": "{recipients, plural, one {# destinatario} other {# destinatarios}} - {items, plural, one {# ítem} other {# ítems}} - {copies, plural, one {# copia} other {# copias}}",
+    "sending": "Enviando ítems...",
+    "success_title": "¡Ítems enviados!",
+    "success_description": "Tus ítems van en camino a los destinatarios seleccionados."
   }
 }

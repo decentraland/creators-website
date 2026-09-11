@@ -12,6 +12,7 @@ import { type Collection } from '~/lib/collections'
 import { fetchFriends } from '~/lib/friends'
 import { type Item } from '~/lib/items'
 import { fetchItemTradeId, type ItemListing } from '~/lib/listings'
+import { buildIssueTokensCall, copiesPerItem, flattenTransfers, type Transfer } from '~/lib/mint'
 import { getMaticChainId } from '~/lib/publishCollection'
 import {
   buildEnableSalesCall,
@@ -185,6 +186,45 @@ export function useUpdatePrice(session: Session | null) {
       )
     },
     onSuccess: (listing, { collection }) => setListing(queryClient, collection, listing)
+  })
+}
+
+export type SendItemsVariables = {
+  collection: Collection
+  items: Item[]
+  transfers: Transfer[]
+  /** The wallet prompt is over; the transaction is mining. */
+  onSigned?: () => void
+}
+
+/**
+ * Mints the transfers straight to their recipients and waits until mined. builder-server reads
+ * `total_supply` from the subgraph, which lags the transaction, so the items are patched in the cache
+ * rather than refetched.
+ */
+export function useSendItems(session: Session | null) {
+  const queryClient = useQueryClient()
+  const chainId = getMaticChainId()
+  return useMutation({
+    mutationFn: async ({ collection, items, transfers, onSigned }: SendItemsVariables): Promise<void> => {
+      if (!session) throw new Error('Wallet disconnected')
+      const { beneficiaries, tokenIds } = flattenTransfers(transfers, items)
+      const txHash = await sendContractTransaction(
+        session,
+        buildIssueTokensCall(collection, beneficiaries, tokenIds, chainId)
+      )
+      onSigned?.()
+      const mined = await waitForTransaction(chainId, txHash)
+      if (!mined) throw new SellItemError('generic', 'The send items transaction reverted')
+    },
+    onSuccess: (_, { collection, transfers }) => {
+      const copies = copiesPerItem(transfers)
+      queryClient.setQueryData<Item[]>(['collection-items-all', session?.address, collection.id], current =>
+        current?.map(item =>
+          copies[item.id] ? { ...item, totalSupply: (item.totalSupply ?? 0) + copies[item.id] } : item
+        )
+      )
+    }
   })
 }
 
