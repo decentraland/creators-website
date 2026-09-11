@@ -49,6 +49,8 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
 
   function fail(cause: unknown) {
     const failure = toSellItemError(cause).reason
+    // Rejecting the first prompt leaves the listing untouched, so the form comes back. Rejecting the
+    // second one happens after the old order is already cancelled: the item is off sale, hence the error view.
     if (failure === 'rejected' && !terms.current) {
       setView('form')
       return

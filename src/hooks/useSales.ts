@@ -29,6 +29,7 @@ import {
 
 // Collections whose sales this tab enabled: builder-server reports minters from the subgraph, which
 // lags the transaction by a while, so a refetch in between must not bring the Enable Sales step back.
+// Never evicted: this app cannot remove the minter, so only a full reload picks up an external removal.
 const enabledInSession = new Set<string>()
 
 export function useSalesEnabled(collection: Collection): boolean {
