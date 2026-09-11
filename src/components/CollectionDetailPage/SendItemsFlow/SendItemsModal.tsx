@@ -64,16 +64,15 @@ export function SendItemsModal({
   return (
     <Modal title={t('send_items_modal.title')} onClose={onClose} closeDisabled={busy} testId="send-items-modal">
       <Sell.Divider />
+      <S.Steps>
+        <StepIndicator
+          current={step === 'select' ? 1 : 2}
+          total={2}
+          labels={[t('send_items_modal.step_select'), t('send_items_modal.step_confirm')]}
+          testId="send-steps"
+        />
+      </S.Steps>
       <S.Body data-busy={busy || undefined} aria-busy={busy || undefined} {...(busy ? { inert: '' } : {})}>
-        <S.Steps>
-          <StepIndicator
-            current={step === 'select' ? 1 : 2}
-            total={2}
-            labels={[t('send_items_modal.step_select'), t('send_items_modal.step_confirm')]}
-            testId="send-steps"
-          />
-        </S.Steps>
-
         {step === 'select' ? (
           <>
             {transfers.map((_, index) => (

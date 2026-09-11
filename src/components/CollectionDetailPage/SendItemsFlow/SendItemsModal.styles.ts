@@ -3,10 +3,15 @@ import { theme } from '~/styles/theme'
 
 export const Body = styled.div`
   flex: 1;
+  /* Without min-height:0 a flex child won't shrink below its content, so the overflow never scrolls. */
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Keeps the scrollbar off the cards and lets the last one clear the footer. */
+  padding: 4px 4px 8px 0;
 
   &[data-busy] {
     opacity: 0.6;
