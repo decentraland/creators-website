@@ -109,7 +109,8 @@
         "description": "“{name}” and all its items will be permanently deleted. This can't be undone.",
         "cancel": "Cancel",
         "confirm": "Delete"
-      }
+      },
+      "view_in_shop": "View in Shop"
     },
     "coming_soon": "Coming soon",
     "filter": {
@@ -387,7 +388,8 @@
       "title_update": "We couldn’t update the price",
       "description_update": "Something went wrong while updating the price. Please wait a moment and try again.",
       "description_sold_out": "Every unit of this item has already been minted, so it can’t be put on sale.",
-      "try_again": "Try again"
+      "try_again": "Try again",
+      "description_not_listed": "This item is no longer on sale, so there is nothing to change. Refresh the page to see its current status."
     },
     "remove": {
       "title": "Remove from sale?",
@@ -411,7 +413,8 @@
       "success_title": "Price updated!",
       "success_description": "Your item is now available in the Shop with its new price.",
       "indexing": "Waiting for your previous listing to clear… (attempt {attempt} of {of})"
-    }
+    },
+    "pending_changes": "This item has changes that haven’t been approved yet. Buyers will get the last approved version until the committee approves them."
   },
   "rarity_select": {
     "units": "{count, plural, one {# unit} other {# units}}",

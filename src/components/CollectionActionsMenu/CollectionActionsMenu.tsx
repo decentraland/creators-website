@@ -1,13 +1,27 @@
 import { useState } from 'react'
+import styled from '@emotion/styled'
+import { OpenInNew as OpenInNewIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { useDeleteCollection } from '~/hooks/useCollection'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { copyToClipboard } from '~/lib/clipboard'
-import { isCollectionLocked, type Collection } from '~/lib/collections'
+import { hasBeenApproved, isCollectionLocked, type Collection } from '~/lib/collections'
+import { openExternal } from '~/lib/navigation'
+import { shopCollectionUrl } from '~/lib/shop'
 import { useNotifications } from '~/lib/notifications'
 import { theme } from '~/styles/theme'
 import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
 import { DeleteCollectionModal } from './DeleteCollectionModal'
+
+const ExternalLabel = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  & svg {
+    font-size: 16px;
+  }
+`
 
 type Props = {
   collection: Collection
@@ -38,6 +52,8 @@ export function CollectionActionsMenu({
 
   const isOnChain = collection.isPublished
   const isOwner = collection.owner.toLowerCase() === address.toLowerCase()
+  const shopUrl =
+    hasBeenApproved(collection) && collection.contractAddress ? shopCollectionUrl(collection.contractAddress) : null
   // A locked draft has a publish transaction in flight: nothing can be done to it yet.
   const canDelete = !compact && !isOnChain && !isCollectionLocked(collection)
 
@@ -81,6 +97,14 @@ export function CollectionActionsMenu({
             >
               {t('collection_detail_page.actions.copy_address')}
             </ActionsMenuItem>
+            {shopUrl && (
+              <ActionsMenuItem testId="view-in-shop" onClick={() => openExternal(shopUrl)}>
+                <ExternalLabel>
+                  {t('collection_detail_page.actions.view_in_shop')}
+                  <OpenInNewIcon aria-hidden />
+                </ExternalLabel>
+              </ActionsMenuItem>
+            )}
           </>
         )}
         {isOnChain && isOwner && showRoles && (

@@ -4,7 +4,7 @@ import { sendContractTransaction, signTypedData, waitForTransaction, type Contra
 import { type Collection } from '~/lib/collections'
 import { fetchFriends } from '~/lib/friends'
 import { type Item } from '~/lib/items'
-import { type ItemListing } from '~/lib/listings'
+import { fetchItemTradeId, type ItemListing } from '~/lib/listings'
 import { getMaticChainId } from '~/lib/publishCollection'
 import {
   buildEnableSalesCall,
@@ -76,6 +76,7 @@ export type SellItemVariables = {
 function orderDeps(session: Session, chainId: number) {
   return {
     fetchTrade,
+    fetchItemTradeId,
     fetchSignatureIndexes,
     sendTransaction: (call: ContractCall) => sendContractTransaction(session, call),
     waitForTransaction: (hash: string) => waitForTransaction(chainId, hash),
@@ -128,10 +129,15 @@ export function useRemoveListing(session: Session | null) {
   const queryClient = useQueryClient()
   const chainId = getMaticChainId()
   return useMutation({
-    mutationFn: async ({ listing, onSigned }: RemoveListingVariables): Promise<void> => {
+    mutationFn: async ({ collection, listing, onSigned }: RemoveListingVariables): Promise<void> => {
       if (!session) throw new Error('Wallet disconnected')
-      if (!listing.tradeId) throw new SellItemError('generic', 'The listing has no order to cancel')
-      return removeListing(listing.tradeId, { ...orderDeps(session, chainId), onSigned })
+      if (!listing.tradeId || !collection.contractAddress) {
+        throw new SellItemError('generic', 'The listing has no order to cancel')
+      }
+      return removeListing(
+        { tradeId: listing.tradeId, contractAddress: collection.contractAddress, itemId: listing.itemId },
+        { ...orderDeps(session, chainId), onSigned }
+      )
     },
     onSuccess: (_, { collection, listing }) => removeListingFromCache(queryClient, collection, listing.itemId)
   })

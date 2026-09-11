@@ -12,6 +12,7 @@ import { readContract, signedFetch } from '~/lib/auth'
 import {
   OFFCHAIN_MARKETPLACE_TYPES,
   TradeConflictError,
+  TradeNotFoundError,
   createTrade,
   fetchSignatureIndexes,
   fetchTrade,
@@ -174,7 +175,7 @@ describe('fetchTrade', () => {
     await expect(fetchTrade('trade-1')).resolves.toMatchObject({ id: 'trade-1' })
     expect(fetchMock.mock.calls[0][0]).toBe('https://marketplace-api.decentraland.zone/v1/trades/trade-1')
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ ok: false }), { status: 404 }))
-    await expect(fetchTrade('nope')).rejects.toThrow(/404/)
+    await expect(fetchTrade('nope')).rejects.toBeInstanceOf(TradeNotFoundError)
     vi.unstubAllGlobals()
   })
 })

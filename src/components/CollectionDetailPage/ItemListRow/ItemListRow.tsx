@@ -6,6 +6,7 @@ import { ItemType, getItemBodyShapeType, getItemSales, type Item } from '~/lib/i
 import { EmotePlayMode } from '~/lib/itemFactory'
 import { type ItemListing } from '~/lib/listings'
 import { formatCredits, formatMana } from '~/lib/publishFee'
+import { shopItemUrl } from '~/lib/shop'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
 import { BodyShapeIcon, CategoryIcon, PlayModeIcon } from '~/components/ItemIcons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
@@ -26,6 +27,8 @@ type Props = {
   /** Whether the collection has been approved at least once, so its items can be put on sale. */
   canSell?: boolean
   onPutOnSale?: (item: Item) => void
+  /** The collection's contract, for the Shop link on a listed item. */
+  contractAddress?: string
   /** The row's ⋯ menu; the page supplies it once the viewer is signed in. */
   actions?: ReactNode
 }
@@ -37,6 +40,7 @@ export function ItemListRow({
   listing,
   canSell = false,
   onPutOnSale,
+  contractAddress,
   actions
 }: Props) {
   const { t } = useTranslation()
@@ -47,6 +51,7 @@ export function ItemListRow({
   const category = item.data.category
   const isEmote = item.type === ItemType.EMOTE
   const sales = withMarket ? getItemSales(item) : undefined
+  const shopUrl = withMarket && contractAddress && item.tokenId ? shopItemUrl(contractAddress, item.tokenId) : undefined
 
   function renderPrice() {
     if (listing === undefined) return null
@@ -114,6 +119,7 @@ export function ItemListRow({
                 listing={listing}
                 canSell={canSell}
                 onPutOnSale={onPutOnSale && (() => onPutOnSale(item))}
+                shopUrl={shopUrl}
               />
             </S.Cell>
           </>

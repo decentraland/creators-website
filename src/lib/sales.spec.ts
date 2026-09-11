@@ -3,7 +3,7 @@ import { ethers } from 'ethers'
 import { Network, TradeAssetType, TradeType, type Trade } from '@dcl/schemas'
 import { ContractName, getContract } from 'decentraland-transactions'
 import { encodeContractCall } from './auth/transactions'
-import { TradeConflictError } from './trades'
+import { TradeConflictError, TradeNotFoundError } from './trades'
 import { type Collection } from './collections'
 import { ItemType, type Item } from './items'
 import {
@@ -257,6 +257,8 @@ const storedTrade: Trade = {
   contract: MARKETPLACE_V2
 }
 
+const REF = { tradeId: 'trade-1', contractAddress: CONTRACT, itemId: '3' }
+
 describe('removing a listing', () => {
   it('cancels the stored order on the marketplace it was signed for', () => {
     const call = buildCancelListingCall(storedTrade)
@@ -269,20 +271,52 @@ describe('removing a listing', () => {
   it('reads the order, sends the cancellation, reports the signature and waits for the receipt', async () => {
     const deps = {
       fetchTrade: vi.fn().mockResolvedValue(storedTrade),
+      fetchItemTradeId: vi.fn().mockResolvedValue(null),
       sendTransaction: vi.fn().mockResolvedValue('0xhash'),
       waitForTransaction: vi.fn().mockResolvedValue(true),
       onSigned: vi.fn()
     }
-    await removeListing('trade-1', deps)
+    await removeListing(REF, deps)
     expect(deps.fetchTrade).toHaveBeenCalledWith('trade-1')
     expect(deps.sendTransaction.mock.calls[0][0]).toMatchObject({ method: 'cancelSignature' })
     expect(deps.onSigned).toHaveBeenCalledTimes(1)
     expect(deps.waitForTransaction).toHaveBeenCalledWith('0xhash')
 
     deps.waitForTransaction.mockResolvedValue(false)
-    await expect(removeListing('trade-1', deps)).rejects.toMatchObject({ reason: 'generic' })
+    await expect(removeListing(REF, deps)).rejects.toMatchObject({ reason: 'generic' })
     deps.sendTransaction.mockRejectedValue({ code: 4001 })
-    await expect(removeListing('trade-1', deps)).rejects.toMatchObject({ reason: 'rejected' })
+    await expect(removeListing(REF, deps)).rejects.toMatchObject({ reason: 'rejected' })
+  })
+})
+
+describe('a stale listing id', () => {
+  const base = {
+    sendTransaction: vi.fn().mockResolvedValue('0xhash'),
+    waitForTransaction: vi.fn().mockResolvedValue(true)
+  }
+
+  it("falls back to the item's current order when the server retired the cached one", async () => {
+    const fetchTrade = vi.fn(async (id: string) => {
+      if (id === 'trade-1') throw new TradeNotFoundError(id)
+      return { ...storedTrade, id }
+    })
+    const fetchItemTradeId = vi.fn().mockResolvedValue('trade-9')
+    await removeListing(REF, { ...base, fetchTrade, fetchItemTradeId })
+    expect(fetchItemTradeId).toHaveBeenCalledWith(CONTRACT, '3')
+    expect(fetchTrade).toHaveBeenLastCalledWith('trade-9')
+    expect(base.sendTransaction).toHaveBeenCalled()
+  })
+
+  it('reports an item that is no longer on sale instead of cancelling anything', async () => {
+    const fetchTrade = vi.fn().mockRejectedValue(new TradeNotFoundError('trade-1'))
+    await expect(
+      removeListing(REF, {
+        ...base,
+        sendTransaction: vi.fn(),
+        fetchTrade,
+        fetchItemTradeId: vi.fn().mockResolvedValue(null)
+      })
+    ).rejects.toMatchObject({ reason: 'not_listed' })
   })
 })
 
@@ -296,6 +330,7 @@ describe('updating the price', () => {
   it('cancels the old order, then signs and stores a new one at the new price with the same terms', async () => {
     const deps = {
       fetchTrade: vi.fn().mockResolvedValue(storedTrade),
+      fetchItemTradeId: vi.fn().mockResolvedValue(null),
       sendTransaction: vi.fn().mockResolvedValue('0xhash'),
       waitForTransaction: vi.fn().mockResolvedValue(true),
       fetchSignatureIndexes: vi.fn().mockResolvedValue(indexes),
@@ -320,6 +355,7 @@ describe('updating the price', () => {
   it('refuses a sold-out item before cancelling its order', async () => {
     const deps = {
       fetchTrade: vi.fn(),
+      fetchItemTradeId: vi.fn(),
       sendTransaction: vi.fn(),
       waitForTransaction: vi.fn(),
       fetchSignatureIndexes: vi.fn(),
@@ -345,6 +381,7 @@ describe('updating the price', () => {
   it('stops before cancelling anything when the wallet prompt is dismissed', async () => {
     const deps = {
       fetchTrade: vi.fn().mockResolvedValue(storedTrade),
+      fetchItemTradeId: vi.fn(),
       sendTransaction: vi.fn().mockRejectedValue({ code: 4001 }),
       waitForTransaction: vi.fn(),
       fetchSignatureIndexes: vi.fn(),

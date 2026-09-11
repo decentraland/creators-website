@@ -150,9 +150,21 @@ export async function fetchSignatureIndexes(signer: string, chainId: number): Pr
   return { contractSignatureIndex: contractIndex.toNumber(), signerSignatureIndex: signerIndex.toNumber() }
 }
 
+/** The server retires an order (re-signing it as supply shrinks, or after it is cancelled), so a cached id can vanish. */
+export class TradeNotFoundError extends Error {
+  constructor(tradeId: string) {
+    super(`Trade ${tradeId} not found`)
+    this.name = 'TradeNotFoundError'
+  }
+}
+
 /** A stored order: GET /v1/trades/:id. */
 export async function fetchTrade(tradeId: string): Promise<Trade> {
   const response = await fetch(`${config.get('MARKETPLACE_SERVER_URL')}/v1/trades/${encodeURIComponent(tradeId)}`)
+  if (response.status === 404) {
+    await response.body?.cancel()
+    throw new TradeNotFoundError(tradeId)
+  }
   const body = (await response.json().catch(() => null)) as { ok?: boolean; data?: Trade } | null
   if (!response.ok || !body?.ok || !body.data)
     throw new Error(`marketplace-server trade ${tradeId} unavailable (${response.status})`)

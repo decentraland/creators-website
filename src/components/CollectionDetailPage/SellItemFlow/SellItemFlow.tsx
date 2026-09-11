@@ -20,6 +20,8 @@ type Props = {
   item: Item
   collection: Collection
   session: Session
+  /** The item was edited after its approval: buyers get the approved version until the changes are approved. */
+  hasPendingChanges?: boolean
   onClose: () => void
 }
 
@@ -28,7 +30,7 @@ type Props = {
  * item's order. Web3 wallets get a whole-dialog "confirm in your wallet" status with a way out while the
  * prompt is open; custodial (social login) wallets sign silently, so their submit button just spins.
  */
-export function SellItemFlow({ item, collection, session, onClose }: Props) {
+export function SellItemFlow({ item, collection, session, hasPendingChanges = false, onClose }: Props) {
   const { t } = useTranslation()
   const social = isSocialLogin(session)
   const salesEnabled = useSalesEnabled(collection)
@@ -113,6 +115,7 @@ export function SellItemFlow({ item, collection, session, onClose }: Props) {
           item={item}
           session={session}
           initialValues={values}
+          hasPendingChanges={hasPendingChanges}
           busy={social && sell.isPending}
           onSubmit={submitSell}
           onClose={onClose}

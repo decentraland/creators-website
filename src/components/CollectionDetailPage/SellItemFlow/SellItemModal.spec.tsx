@@ -51,6 +51,11 @@ describe('SellItemModal', () => {
     })
   })
 
+  it('warns when the item has edits the committee has not approved yet', () => {
+    renderModal({ hasPendingChanges: true })
+    expect(screen.getByTestId('sell-pending-changes')).toHaveTextContent(/last approved version/i)
+  })
+
   it('refuses a price the Shop would never list', async () => {
     renderModal()
     await userEvent.type(price(), '10000000000001')

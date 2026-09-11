@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ethers } from 'ethers'
-import { fetchCollectionListings } from './listings'
+import { fetchCollectionListings, fetchItemTradeId } from './listings'
 
 const CONTRACT = '0x00000000000000000000000000000000000000cc'
 const fetchMock = vi.fn()
@@ -57,5 +57,25 @@ describe('fetchCollectionListings', () => {
   it('fails when either request fails', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ error: 'nope' }, 500))
     await expect(fetchCollectionListings(CONTRACT)).rejects.toThrow(/500/)
+  })
+})
+
+describe('fetchItemTradeId', () => {
+  it('asks the unified catalog for the one item and answers its order id, or null without one', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        data: [
+          { itemId: '3', tradeId: null },
+          { itemId: '3', tradeId: 'trade-9' }
+        ]
+      })
+    )
+    await expect(fetchItemTradeId(CONTRACT, '3')).resolves.toBe('trade-9')
+    const url = new URL(fetchMock.mock.calls[0][0] as string)
+    expect(url.pathname).toBe('/v3/catalog/unified')
+    expect(url.searchParams.get('itemId')).toBe('3')
+    expect(url.searchParams.get('listingType')).toBe('primary')
+    fetchMock.mockResolvedValueOnce(jsonResponse({ data: [] }))
+    await expect(fetchItemTradeId(CONTRACT, '3')).resolves.toBeNull()
   })
 })

@@ -48,6 +48,15 @@ export const Pill = styled.span`
   }
 `
 
+export const PillLink = styled(Pill.withComponent('a'))`
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    background: ${theme.colors.gray0};
+  }
+`
+
 export const Dot = styled.span`
   width: 8px;
   height: 8px;

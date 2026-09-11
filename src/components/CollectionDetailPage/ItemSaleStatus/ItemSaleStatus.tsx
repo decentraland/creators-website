@@ -2,6 +2,7 @@ import { Check as CheckIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { type ItemSales } from '~/lib/items'
 import { type ItemListing } from '~/lib/listings'
+import { openExternal } from '~/lib/navigation'
 import { PriceTagIcon } from '~/components/Icons'
 import * as S from './ItemSaleStatus.styles'
 
@@ -12,10 +13,12 @@ type Props = {
   /** Whether the collection has been approved at least once; until then the "Put on sale" CTA is disabled. */
   canSell?: boolean
   onPutOnSale?: () => void
+  /** The item's page in the Shop; the ON SALE pill links there. */
+  shopUrl?: string
 }
 
 /** Sold out / on sale pill, or the "Put on sale" CTA; nothing while listings are still loading. */
-export function ItemSaleStatus({ sales, listing, canSell = false, onPutOnSale }: Props) {
+export function ItemSaleStatus({ sales, listing, canSell = false, onPutOnSale, shopUrl }: Props) {
   const { t } = useTranslation()
 
   if (sales && sales.minted >= sales.maxSupply) {
@@ -27,12 +30,33 @@ export function ItemSaleStatus({ sales, listing, canSell = false, onPutOnSale }:
   }
   if (listing === undefined) return null
   if (listing) {
-    return (
-      <S.Pill data-testid="item-sale-status" data-status="on_sale">
+    const content = (
+      <>
         <CheckIcon aria-hidden />
         {t('collection_detail_page.sale_status.on_sale')}
         <S.Dot aria-hidden />
-      </S.Pill>
+      </>
+    )
+    if (!shopUrl) {
+      return (
+        <S.Pill data-testid="item-sale-status" data-status="on_sale">
+          {content}
+        </S.Pill>
+      )
+    }
+    return (
+      <S.PillLink
+        href={shopUrl}
+        title={t('collection_detail_page.actions.view_in_shop')}
+        data-testid="item-sale-status"
+        data-status="on_sale"
+        onClick={event => {
+          event.preventDefault()
+          openExternal(shopUrl)
+        }}
+      >
+        {content}
+      </S.PillLink>
     )
   }
   return (

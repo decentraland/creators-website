@@ -11,9 +11,11 @@ import { CollectionActionsMenu } from './CollectionActionsMenu'
 
 vi.mock('~/lib/builder', () => ({ deleteCollection: vi.fn() }))
 vi.mock('~/lib/clipboard', () => ({ copyToClipboard: vi.fn().mockResolvedValue(true) }))
+vi.mock('~/lib/navigation', () => ({ openExternal: vi.fn() }))
 
 import { deleteCollection } from '~/lib/builder'
 import { copyToClipboard } from '~/lib/clipboard'
+import { openExternal } from '~/lib/navigation'
 
 const OWNER = '0xabc'
 
@@ -126,6 +128,19 @@ describe('CollectionActionsMenu', () => {
     await openMenu()
     await userEvent.click(screen.getByTestId('copy-address'))
     expect(copyToClipboard).toHaveBeenCalledWith('0xcontract')
+  })
+
+  it('links an approved collection to its Shop page', async () => {
+    renderMenu({ ...draft, isPublished: true, isApproved: true, contractAddress: '0xc0ffee' }, '0xmanager')
+    await openMenu()
+    await userEvent.click(screen.getByTestId('view-in-shop'))
+    expect(openExternal).toHaveBeenCalledWith('https://decentraland.zone/shop/collection/0xc0ffee')
+  })
+
+  it('offers no Shop link before the first approval', async () => {
+    renderMenu({ ...draft, isPublished: true, contractAddress: '0xc0ffee' })
+    await openMenu()
+    expect(screen.queryByTestId('view-in-shop')).not.toBeInTheDocument()
   })
 
   it('shows the role placeholders only to the owner of an on-chain collection', async () => {

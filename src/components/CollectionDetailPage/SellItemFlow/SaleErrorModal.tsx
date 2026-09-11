@@ -13,13 +13,14 @@ type Props = {
 }
 
 // A sold-out item can't be listed no matter how many times you try.
-const UNRETRIABLE_REASONS: SellFailureReason[] = ['sold_out']
+const UNRETRIABLE_REASONS: SellFailureReason[] = ['sold_out', 'not_listed']
 
 /** "We couldn't put your item on sale" — TRY AGAIN returns to the step that failed with everything kept. */
 export function SaleErrorModal({ stage, reason, onCancel, onRetry }: Props) {
   const { t } = useTranslation()
   const canRetry = !UNRETRIABLE_REASONS.includes(reason)
-  const description = reason === 'sold_out' ? 'description_sold_out' : `description_${stage}`
+  const description =
+    reason === 'sold_out' || reason === 'not_listed' ? `description_${reason}` : `description_${stage}`
   return (
     <ConfirmModal
       title={t(`sell_item_modal.error.title_${stage}`)}

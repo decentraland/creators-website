@@ -308,6 +308,15 @@ export const Note = styled.div`
   & b svg {
     font-size: 14px;
   }
+
+  &[data-variant='warning'] {
+    border: 1px solid ${theme.colors.amber};
+    color: ${theme.colors.softWhite};
+
+    & > svg {
+      color: ${theme.colors.amber};
+    }
+  }
 `
 
 export const Footer = styled.div`

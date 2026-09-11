@@ -12,6 +12,7 @@ import { getManaContract } from '~/lib/mana'
 import { USD_CENTS_PER_CREDIT } from '~/lib/publishFee'
 import {
   TradeConflictError,
+  TradeNotFoundError,
   getOffchainMarketplaceContract,
   getTradeContract,
   toOnChainTrade,
@@ -102,7 +103,7 @@ export function withSalesEnabled(collection: Collection, chainId: number): Colle
   return { ...collection, minters: [...collection.minters, minter] }
 }
 
-export type SellFailureReason = 'rejected' | 'sold_out' | 'not_published' | 'generic'
+export type SellFailureReason = 'rejected' | 'sold_out' | 'not_published' | 'not_listed' | 'generic'
 
 export class SellItemError extends Error {
   reason: SellFailureReason
@@ -233,13 +234,35 @@ export function buildCancelListingCall(trade: Trade): ContractCall {
   return { contract: getTradeContract(trade), method: 'cancelSignature', args: [[toOnChainTrade(trade)]] }
 }
 
+/** Which order a listing is: the cached id plus what identifies the item, should the id have gone stale. */
+export type ListingRef = { tradeId: string; contractAddress: string; itemId: string }
+
 /** The chain calls a cancellation needs, so it can run against fakes in tests. */
 export type CancelListingDeps = {
   fetchTrade: (tradeId: string) => Promise<Trade>
+  /** The item's current order id, for when the cached one has been retired by the server. */
+  fetchItemTradeId: (contractAddress: string, itemId: string) => Promise<string | null>
   sendTransaction: (call: ContractCall) => Promise<string>
   waitForTransaction: (txHash: string) => Promise<boolean>
   /** The wallet prompt is over; the cancellation is mining. */
   onSigned?: () => void
+}
+
+/** The listing's live order: the cached id first, then the server's current one when that id is gone. */
+async function resolveOrder(
+  ref: ListingRef,
+  deps: Pick<CancelListingDeps, 'fetchTrade' | 'fetchItemTradeId'>
+): Promise<Trade> {
+  try {
+    return await deps.fetchTrade(ref.tradeId)
+  } catch (error) {
+    if (!(error instanceof TradeNotFoundError)) throw error
+    const current = await deps.fetchItemTradeId(ref.contractAddress, ref.itemId)
+    if (!current || current === ref.tradeId) {
+      throw new SellItemError('not_listed', `Item ${ref.itemId} is no longer on sale`)
+    }
+    return deps.fetchTrade(current)
+  }
 }
 
 async function cancelOrder(trade: Trade, deps: CancelListingDeps): Promise<void> {
@@ -250,9 +273,9 @@ async function cancelOrder(trade: Trade, deps: CancelListingDeps): Promise<void>
 }
 
 /** Removes a listing: reads the stored order, cancels its signature on chain and waits for the receipt. */
-export async function removeListing(tradeId: string, deps: CancelListingDeps): Promise<void> {
+export async function removeListing(ref: ListingRef, deps: CancelListingDeps): Promise<void> {
   try {
-    await cancelOrder(await deps.fetchTrade(tradeId), deps)
+    await cancelOrder(await resolveOrder(ref, deps), deps)
   } catch (error) {
     throw toSellItemError(error)
   }
@@ -323,7 +346,10 @@ export async function updatePrice(params: UpdatePriceParams, deps: UpdatePriceDe
     throw new SellItemError('sold_out', `Item "${params.item.id}" is sold out`)
   let terms: ListingTerms
   try {
-    const trade = await deps.fetchTrade(tradeId)
+    const trade = await resolveOrder(
+      { tradeId, contractAddress: params.collection.contractAddress!, itemId: params.item.tokenId! },
+      deps
+    )
     terms = getListingTerms(trade, params.address)
     await cancelOrder(trade, { ...deps, onSigned: () => deps.onSigned?.('cancel') })
   } catch (error) {

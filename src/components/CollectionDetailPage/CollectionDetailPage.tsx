@@ -31,6 +31,7 @@ import { MAX_PUBLISH_ITEMS, getPublishBlocker } from '~/lib/publishCollection'
 import { useSyncPublishedItems } from '~/hooks/usePublishCollection'
 import { useCollectionListings } from '~/hooks/useCollectionListings'
 import { useItemSyncs } from '~/hooks/useItemSync'
+import { hasPendingChanges } from '~/lib/itemSync'
 import { previewCollection } from '~/lib/explorer'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS } from '~/lib/itemFiles'
@@ -419,6 +420,7 @@ const CollectionDetailPage = () => {
                     listing={withMarket ? listingFor(item) : undefined}
                     canSell={canSell && item.isPublished && !!item.tokenId}
                     onPutOnSale={setSellingItem}
+                    contractAddress={collection.contractAddress}
                     actions={
                       address && (
                         <ItemActionsMenu
@@ -487,6 +489,7 @@ const CollectionDetailPage = () => {
               item={sellingItem}
               collection={collection}
               session={session}
+              hasPendingChanges={hasPendingChanges(syncs.get(sellingItem.id)?.status)}
               onClose={() => setSellingItem(null)}
             />
           )}

@@ -4,6 +4,11 @@
 import { type Entity } from '@dcl/schemas'
 import { ItemType, type Item, type ItemData, type ItemRepresentation } from './items'
 
+/** Edited after approval (submitted for review or not): the Shop and the world still serve the approved version. */
+export function hasPendingChanges(status: ItemSyncStatus | undefined): boolean {
+  return status === ItemSyncStatus.UNSYNCED || status === ItemSyncStatus.UNDER_REVIEW
+}
+
 export enum ItemSyncStatus {
   UNPUBLISHED = 'unpublished',
   /** On-chain, waiting for the committee — either the first review or a pushed change. */

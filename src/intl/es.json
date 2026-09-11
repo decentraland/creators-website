@@ -109,7 +109,8 @@
         "description": "“{name}” y todos sus ítems se eliminarán de forma permanente. Esta acción no se puede deshacer.",
         "cancel": "Cancelar",
         "confirm": "Eliminar"
-      }
+      },
+      "view_in_shop": "Ver en la Tienda"
     },
     "coming_soon": "Próximamente",
     "filter": {
@@ -387,7 +388,8 @@
       "title_update": "No pudimos actualizar el precio",
       "description_update": "Algo salió mal al actualizar el precio. Espera un momento e inténtalo de nuevo.",
       "description_sold_out": "Ya se acuñaron todas las unidades de este ítem, así que no se puede poner en venta.",
-      "try_again": "Intentar de nuevo"
+      "try_again": "Intentar de nuevo",
+      "description_not_listed": "Este ítem ya no está en venta, así que no hay nada que cambiar. Recarga la página para ver su estado actual."
     },
     "remove": {
       "title": "¿Quitar de la venta?",
@@ -411,7 +413,8 @@
       "success_title": "¡Precio actualizado!",
       "success_description": "Tu ítem ya está disponible en la Tienda con su nuevo precio.",
       "indexing": "Esperando a que se libere tu listado anterior… (intento {attempt} de {of})"
-    }
+    },
+    "pending_changes": "Este ítem tiene cambios que aún no fueron aprobados. Los compradores recibirán la última versión aprobada hasta que el comité los apruebe."
   },
   "rarity_select": {
     "units": "{count, plural, one {# unidad} other {# unidades}}",

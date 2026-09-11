@@ -1,5 +1,9 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import { CalendarTodayOutlined as CalendarIcon, InfoOutlined as InfoIcon } from '@mui/icons-material'
+import {
+  CalendarTodayOutlined as CalendarIcon,
+  InfoOutlined as InfoIcon,
+  WarningAmberOutlined as WarningIcon
+} from '@mui/icons-material'
 import DatePicker from 'react-datepicker'
 import { useIntl } from 'react-intl'
 import 'react-datepicker/dist/react-datepicker.css'
@@ -59,6 +63,8 @@ type Props = {
   session: Session
   /** Restores a previous attempt's form after a failure. */
   initialValues?: SellFormValues
+  /** Warns that buyers get the last approved version while edits await the committee. */
+  hasPendingChanges?: boolean
   /** A submit is in flight (custodial wallet, no prompt to wait for): the form dims and the button spins. */
   busy: boolean
   onSubmit: (values: SellFormValues, submission: SellSubmission) => void
@@ -85,7 +91,15 @@ export function toSubmission(values: SellFormValues, address: string, now = Date
 }
 
 /** The Sell Item form: beneficiary, credits price (or giveaway), optional expiration date. */
-export function SellItemModal({ item, session, initialValues = DEFAULT_SELL_VALUES, busy, onSubmit, onClose }: Props) {
+export function SellItemModal({
+  item,
+  session,
+  initialValues = DEFAULT_SELL_VALUES,
+  hasPendingChanges = false,
+  busy,
+  onSubmit,
+  onClose
+}: Props) {
   const { t } = useTranslation()
   const intl = useIntl()
   const [values, setValues] = useState<SellFormValues>(initialValues)
@@ -123,6 +137,12 @@ export function SellItemModal({ item, session, initialValues = DEFAULT_SELL_VALU
       <S.Form onSubmit={handleSubmit} data-testid="sell-item-form">
         <S.Fields data-busy={busy || undefined} aria-busy={busy || undefined} {...(busy ? { inert: '' } : {})}>
           <SellItemCard item={item} />
+          {hasPendingChanges && (
+            <S.Note data-variant="warning" data-testid="sell-pending-changes">
+              <WarningIcon aria-hidden />
+              <p>{t('sell_item_modal.pending_changes')}</p>
+            </S.Note>
+          )}
           <S.Subtitle>{t('sell_item_modal.subtitle')}</S.Subtitle>
 
           <S.Field>

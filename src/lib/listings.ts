@@ -24,6 +24,17 @@ async function getJson<T>(path: string, query: Record<string, string>): Promise<
   return (await response.json()) as T
 }
 
+/** The id of the item's current primary order, or null when it has none (or only a legacy store price). */
+export async function fetchItemTradeId(contractAddress: string, itemId: string): Promise<string | null> {
+  const catalog = await getJson<{ data?: { tradeId: string | null }[] }>('/v3/catalog/unified', {
+    contractAddress,
+    itemId,
+    listingType: 'primary',
+    first: '5'
+  })
+  return catalog.data?.find(row => row.tradeId)?.tradeId ?? null
+}
+
 /** The collection's primary listings keyed by on-chain item id. Items not on sale (or sold out) are absent. */
 export async function fetchCollectionListings(contractAddress: string): Promise<Map<string, ItemListing>> {
   const [items, catalog] = await Promise.all([
