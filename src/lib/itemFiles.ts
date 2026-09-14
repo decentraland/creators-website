@@ -316,6 +316,25 @@ function toSceneManifest(value: unknown): SceneManifest {
   }
 }
 
+/** The zip's scene.json: at the root, or the single one inside a zipped project folder. */
+function findSceneFile(zip: JSZip): JSZip.JSZipObject | null {
+  const root = zip.file(SCENE_PATH)
+  if (root) return root
+  const nested = zip.file(/(^|\/)scene\.json$/)
+  return nested.length === 1 ? nested[0] : null
+}
+
+/** Parses and validates the scene manifest, checks its code bundle shipped, and returns the normalized file to store. */
+async function loadScene(
+  sceneFile: JSZip.JSZipObject,
+  content: Record<string, Blob>
+): Promise<{ scene: SceneManifest; blob: Blob }> {
+  const rawScene = parseJson(await sceneFile.async('text'), SCENE_PATH)
+  const scene = toSceneManifest(rawScene)
+  if (!content[scene.main]) throw new ItemFileError('manifest_file_missing', { fileName: scene.main })
+  return { scene, blob: new Blob([JSON.stringify(rawScene)], { type: 'application/json' }) }
+}
+
 function getManifestBodyShape(wearable: WearableManifest): BodyShapeType {
   const bodyShapes = new Set(wearable.data.representations.flatMap(representation => representation.bodyShapes))
   const hasMale = [...bodyShapes].some(shape => shape.endsWith('BaseMale'))
@@ -335,12 +354,9 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
     throw new ItemFileError('invalid_zip')
   }
 
-  const sceneFile = zip.file(SCENE_PATH)
+  const sceneFile = findSceneFile(zip)
   const wearableFile = zip.file(WEARABLE_MANIFEST)
   const emoteFile = zip.file(EMOTE_MANIFEST)
-  if (sceneFile && !wearableFile) {
-    throw new ItemFileError('smart_wearable_missing_manifest')
-  }
 
   const manifests = new Set([WEARABLE_MANIFEST, EMOTE_MANIFEST, SCENE_PATH, BUILDER_MANIFEST])
   const entries: Array<{ path: string; entry: JSZip.JSZipObject }> = []
@@ -367,8 +383,9 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
   if (thumbnailSize > MAX_THUMBNAIL_FILE_SIZE) {
     throw new ItemFileError('thumbnail_too_big', { size: toMB(MAX_THUMBNAIL_FILE_SIZE) })
   }
+  // The thumbnail has its own cap and a smart wearable's preview video is uploaded separately.
   const contentsSize = Object.entries(rawContent).reduce(
-    (total, [path, blob]) => (path === THUMBNAIL_PATH ? total : total + blob.size),
+    (total, [path, blob]) => (path === THUMBNAIL_PATH || path === VIDEO_PATH ? total : total + blob.size),
     0
   )
 
@@ -384,10 +401,9 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
     let scene: SceneManifest | undefined
     const contents = rawContent
     if (sceneFile) {
-      const rawScene = parseJson(await sceneFile.async('text'), SCENE_PATH)
-      scene = toSceneManifest(rawScene)
-      if (!rawContent[scene.main]) throw new ItemFileError('manifest_file_missing', { fileName: scene.main })
-      contents[SCENE_PATH] = new Blob([JSON.stringify(rawScene)], { type: 'application/json' })
+      const loaded = await loadScene(sceneFile, rawContent)
+      scene = loaded.scene
+      contents[SCENE_PATH] = loaded.blob
     }
 
     const isSkin = wearable.data.category === 'skin'
@@ -417,6 +433,20 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
 
   // No manifest: unwrap a zipped folder, find the main model, normalize body-shape folders.
   const content = stripWrappingFolder(rawContent)
+
+  // Smart wearable without wearable.json (e.g. a packed SDK project): the scene manifest is enough,
+  // the form supplies name, category and rarity. Always unisex; the cap is the smart wearable one.
+  if (sceneFile) {
+    const { scene, blob } = await loadScene(sceneFile, content)
+    const keys = Object.keys(content)
+    const model = keys.find(isModelFile) ?? keys.find(isModelPath)
+    if (!model) throw new ItemFileError('missing_model_file')
+    if (contentsSize > MAX_SMART_WEARABLE_FILE_SIZE) {
+      throw new ItemFileError('file_too_big', { size: toMB(MAX_SMART_WEARABLE_FILE_SIZE) })
+    }
+    return { contents: { ...content, [SCENE_PATH]: blob }, model, bodyShape: BodyShapeType.BOTH, scene }
+  }
+
   const model = Object.keys(content).find(isModelPath)
   if (!model) throw new ItemFileError('missing_model_file')
 

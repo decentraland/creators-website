@@ -20,7 +20,7 @@ import { RequiredPermissions } from '~/components/RequiredPermissions'
 import { InfoTooltip } from '~/components/Tooltip'
 import { useTranslation } from '~/intl'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
-import { BodyShapeType, ItemType, type Item } from '~/lib/items'
+import { BodyShapeType, ItemType, VIDEO_PATH, type Item } from '~/lib/items'
 import { getCategoryOptions, getVariantTargets, type ItemDraft } from './AddItemsModal.state'
 import * as S from './AddItemsModal.styles'
 
@@ -129,10 +129,12 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
         {isSmart && (
           <>
             <RequiredPermissions permissions={draft.requiredPermissions} testId="draft-permissions" />
-            <S.InfoCard data-testid="smart-video-notice">
-              <InfoIcon />
-              {t('add_items_modal.smart_video_notice')}
-            </S.InfoCard>
+            {!draft.contents[VIDEO_PATH] && (
+              <S.InfoCard data-testid="smart-video-notice">
+                <InfoIcon />
+                {t('add_items_modal.smart_video_notice')}
+              </S.InfoCard>
+            )}
           </>
         )}
         {warnings.length > 0 && (

@@ -508,7 +508,6 @@
       "invalid_manifest": "La configuración {fileName} dentro del ZIP es inválida.",
       "manifest_file_missing": "La configuración del ZIP menciona {fileName}, pero no está en el ZIP.",
       "orphaned_auxiliary_file": "{fileName} necesita su archivo complementario {expected} en el mismo ZIP.",
-      "smart_wearable_missing_manifest": "Los smart wearables necesitan un wearable.json junto al scene.json.",
       "unknown_required_permissions": "scene.json declara permisos que no existen: {permissions}.",
       "duplicated_required_permissions": "scene.json declara el mismo permiso más de una vez.",
       "allowed_media_hostnames_empty": "scene.json pide ALLOW_MEDIA_HOSTNAMES pero no lista ningún hostname.",

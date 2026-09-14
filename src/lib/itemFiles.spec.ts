@@ -239,9 +239,52 @@ describe('loadItemFile', () => {
       expect(result.bodyShape).toBe(BodyShapeType.BOTH)
     })
 
-    it('needs a wearable.json next to scene.json', async () => {
-      const file = await zipFile({ 'scene.json': scene(), 'model.glb': 'glb', 'bin/game.js': 'code' })
-      await expectItemFileError(loadItemFile(file), 'smart_wearable_missing_manifest')
+    it('accepts a scene.json without wearable.json, preferring the 3D model over loose PNGs', async () => {
+      const result = await loadItemFile(
+        await zipFile({
+          'scene.json': scene(),
+          'menupic.png': 'png',
+          'model.glb': 'glb',
+          'bin/game.js': 'code',
+          'asset.json': '{}'
+        })
+      )
+      expect(result.wearable).toBeUndefined()
+      expect(result.scene?.requiredPermissions).toEqual(['USE_FETCH', 'OPEN_EXTERNAL_LINK'])
+      expect(result.model).toBe('model.glb')
+      expect(result.bodyShape).toBe(BodyShapeType.BOTH)
+      expect(Object.keys(result.contents).sort()).toEqual([
+        'asset.json',
+        'bin/game.js',
+        'menupic.png',
+        'model.glb',
+        'scene.json'
+      ])
+    })
+
+    it('finds the scene.json of a zipped project folder', async () => {
+      const result = await loadItemFile(
+        await zipFile({ 'my-sw/scene.json': scene(), 'my-sw/model.glb': 'glb', 'my-sw/bin/game.js': 'code' })
+      )
+      expect(result.scene?.main).toBe('bin/game.js')
+      expect(Object.keys(result.contents).sort()).toEqual(['bin/game.js', 'model.glb', 'scene.json'])
+    })
+
+    it('keeps a bundled video.mp4 without counting it toward the size cap', async () => {
+      const result = await loadItemFile(
+        await zipFile({
+          'scene.json': scene(),
+          'model.glb': 'glb',
+          'bin/game.js': 'code',
+          'video.mp4': blob(3 * 1024 * 1024)
+        })
+      )
+      expect(result.contents['video.mp4']).toBeDefined()
+    })
+
+    it('still needs the code bundle when there is no wearable.json', async () => {
+      const file = await zipFile({ 'scene.json': scene(), 'model.glb': 'glb' })
+      await expectItemFileError(loadItemFile(file), 'manifest_file_missing')
     })
 
     it('needs the file scene.main points at', async () => {

@@ -188,12 +188,12 @@ export const Main = styled.div`
 export const Content = styled.section`
   display: flex;
   flex: 1;
-  align-items: center;
+  align-items: flex-start;
   width: 1045px;
   max-width: 100%;
   gap: 24px;
   overflow-y: auto;
-  padding: 16px 24px 24px;
+  padding: 16px 24px 24px 16px;
 
   [data-flush] & {
     padding-left: 16px;
@@ -266,7 +266,6 @@ export const MetricsRow = styled.div`
     flex: 1;
   }
   &[data-compact] > * {
-    flex: none;
     gap: 4px;
     font-size: 12px;
     color: ${theme.colors.gray4};
