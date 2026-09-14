@@ -140,6 +140,43 @@ describe('getVariantTargets', () => {
     const draft = readyDraft({ bodyShape: BodyShapeType.BOTH })
     expect(getVariantTargets(draft, [draft], [])).toEqual([])
   })
+
+  it('only pairs image wearables with image wearables and models with models', () => {
+    const imageContents = { 'eyes.png': blob(), 'thumbnail.png': blob() }
+    const femaleEyes = readyDraft({
+      bodyShape: BodyShapeType.FEMALE,
+      name: 'eyes 2',
+      contents: imageContents,
+      model: 'eyes.png',
+      category: 'eyes'
+    })
+    const maleEyes = readyDraft({
+      bodyShape: BodyShapeType.MALE,
+      name: 'eyes',
+      contents: imageContents,
+      model: 'eyes.png',
+      category: 'eyes'
+    })
+    const maleHat = readyDraft({ bodyShape: BodyShapeType.MALE })
+    const femaleHat = readyDraft({ bodyShape: BodyShapeType.FEMALE, name: 'hat 2' })
+    const maleUpperBody = collectionItem('upper', [MALE_URN], {
+      data: {
+        category: 'upper_body',
+        representations: [{ bodyShapes: [MALE_URN], mainFile: 'male/model.glb', contents: ['male/model.glb'] }]
+      }
+    })
+    const maleMouth = collectionItem('mouth', [MALE_URN], {
+      data: {
+        category: 'mouth',
+        representations: [{ bodyShapes: [MALE_URN], mainFile: 'male/mouth.png', contents: ['male/mouth.png'] }]
+      }
+    })
+    const drafts = [femaleEyes, maleEyes, maleHat, femaleHat]
+    const items = [maleUpperBody, maleMouth]
+
+    expect(getVariantTargets(femaleEyes, drafts, items).map(target => target.id)).toEqual([maleEyes.id, 'mouth'])
+    expect(getVariantTargets(femaleHat, drafts, items).map(target => target.id)).toEqual([maleHat.id, 'upper'])
+  })
 })
 
 describe('isImageWearable', () => {

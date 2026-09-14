@@ -200,7 +200,8 @@ export type VariantTargetOption = {
 
 /**
  * Items a single-shape draft can become a representation of: other batch drafts and unpublished
- * collection wearables that are missing exactly the draft's body shape.
+ * collection wearables that are missing exactly the draft's body shape and are the same kind of
+ * wearable (a PNG can only pair with eyes/eyebrows/mouth, a model only with model categories).
  */
 export function getVariantTargets(
   draft: ItemDraft,
@@ -209,6 +210,7 @@ export function getVariantTargets(
 ): VariantTargetOption[] {
   if (draft.bodyShape === BodyShapeType.BOTH) return []
   const targetShape = draft.bodyShape === BodyShapeType.MALE ? BodyShapeType.FEMALE : BodyShapeType.MALE
+  const isImage = isImageWearable(draft)
 
   const draftTargets = drafts
     .filter(
@@ -218,17 +220,26 @@ export function getVariantTargets(
         candidate.type === ItemType.WEARABLE &&
         !candidate.isVariant &&
         candidate.bodyShape === targetShape &&
+        isImageWearable(candidate) === isImage &&
         candidate.name.trim().length > 0
     )
     .map(candidate => ({ id: candidate.id, label: candidate.name, bodyShape: candidate.bodyShape }))
 
   const itemTargets = collectionItems
     .filter(
-      item => item.type === ItemType.WEARABLE && !item.isPublished && getMissingBodyShapeType(item) === draft.bodyShape
+      item =>
+        item.type === ItemType.WEARABLE &&
+        !item.isPublished &&
+        getMissingBodyShapeType(item) === draft.bodyShape &&
+        isImageCategory(item.data.category) === isImage
     )
     .map(item => ({ id: item.id, label: item.name, bodyShape: targetShape }))
 
   return [...draftTargets, ...itemTargets]
+}
+
+function isImageCategory(category: string | undefined): boolean {
+  return category !== undefined && IMAGE_WEARABLE_CATEGORIES.includes(category)
 }
 
 /** Wearable made of a plain PNG (eyes / eyebrows / mouth) rather than a 3D model. */
