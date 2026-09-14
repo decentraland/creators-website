@@ -18,6 +18,7 @@ vi.mock('~/hooks/useSales', () => ({
 vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })))
 
 const OTHER = '0x00000000000000000000000000000000000000dd'
+const THIRD = '0x00000000000000000000000000000000000000ee'
 // mythic: 10 copies. hat has 90 left (legendary), scarce 2, soldOut none, draft isn't sendable.
 const scarce: Item = { ...item, id: 'i2', name: 'Scarce', tokenId: '4', rarity: 'mythic', totalSupply: 8 }
 const soldOut: Item = { ...item, id: 'i3', name: 'Gone', tokenId: '5', totalSupply: 100 }
@@ -103,6 +104,26 @@ describe('SendItemsFlow', () => {
     expect(screen.getByTestId('send-continue')).toBeDisabled()
   })
 
+  it('removes a middle transfer without disturbing the ones after it', async () => {
+    renderFlow()
+    await addRecipient(1, FRIEND)
+    await userEvent.click(screen.getByTestId('send-add-transfer'))
+    await addRecipient(2, OTHER)
+    // Leave the second transfer mid-edit, with an open input for another recipient.
+    await userEvent.click(screen.getByTestId('transfer-2-add-recipient'))
+    await userEvent.click(screen.getByTestId('send-add-transfer'))
+    await addRecipient(3, THIRD)
+    await userEvent.click(screen.getByTestId('transfer-3-item-i1-check'))
+    expect(screen.getByTestId('transfer-2-recipient-input')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByTestId('transfer-2-remove'))
+    expect(screen.queryByTestId('transfer-3')).not.toBeInTheDocument()
+    expect(screen.getByTestId('transfer-2-recipient-selected')).toHaveTextContent(THIRD)
+    expect(screen.getByTestId('transfer-2-item-i1-amount')).toHaveTextContent('1')
+    expect(screen.queryByTestId('transfer-2-recipient-input')).not.toBeInTheDocument()
+    expect(screen.getByTestId('send-total')).toHaveTextContent('1 / 50 items')
+  })
+
   it('reviews every complete transfer, walks a web3 wallet through the prompt and celebrates the send', async () => {
     const { onClose } = renderFlow()
     await addRecipient(1, FRIEND)
@@ -124,7 +145,7 @@ describe('SendItemsFlow', () => {
     await userEvent.click(screen.getByTestId('send-submit'))
     expect(screen.getByTestId('send-items-pending-label')).toHaveTextContent(/confirm in your wallet/i)
     const [variables, callbacks] = last(send.mutate)
-    expect(variables.transfers).toEqual([
+    expect(variables.transfers).toMatchObject([
       { recipients: [FRIEND], amounts: { i1: 1 } },
       { recipients: [OTHER], amounts: { i2: 2 } },
       { recipients: [], amounts: {} }

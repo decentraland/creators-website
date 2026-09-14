@@ -8,13 +8,14 @@ import { getContentsStorageUrl } from '~/lib/builder'
 import { type Friend } from '~/lib/friends'
 import { type Item } from '~/lib/items'
 import {
-  EMPTY_TRANSFER,
   MAX_ITEMS_PER_SEND,
   canContinue,
+  createTransfer,
   getStock,
   totalCopies,
   transferCopies,
-  type Transfer
+  type Transfer,
+  type TransferDraft
 } from '~/lib/mint'
 import { Button } from '~/components/Button'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
@@ -30,9 +31,9 @@ type Props = {
   items: Item[]
   session: Session
   step: SendStep
-  transfers: Transfer[]
+  transfers: TransferDraft[]
   onStep: (step: SendStep) => void
-  onTransfers: (transfers: Transfer[]) => void
+  onTransfers: (transfers: TransferDraft[]) => void
   /** A submit is in flight (custodial wallet, no prompt to wait for): the button spins. */
   busy: boolean
   onSubmit: () => void
@@ -58,7 +59,7 @@ export function SendItemsModal({
   const complete = useMemo(() => transfers.filter(transfer => transferCopies(transfer) > 0), [transfers])
 
   function replace(index: number, transfer: Transfer) {
-    onTransfers(transfers.map((current, i) => (i === index ? transfer : current)))
+    onTransfers(transfers.map((current, i) => (i === index ? { ...transfer, key: current.key } : current)))
   }
 
   return (
@@ -75,9 +76,9 @@ export function SendItemsModal({
       <S.Body data-busy={busy || undefined} aria-busy={busy || undefined} {...(busy ? { inert: '' } : {})}>
         {step === 'select' ? (
           <>
-            {transfers.map((_, index) => (
+            {transfers.map((transfer, index) => (
               <TransferCard
-                key={index}
+                key={transfer.key}
                 index={index}
                 transfers={transfers}
                 items={items}
@@ -91,7 +92,7 @@ export function SendItemsModal({
               type="button"
               variant="secondary"
               data-testid="send-add-transfer"
-              onClick={() => onTransfers([...transfers, EMPTY_TRANSFER])}
+              onClick={() => onTransfers([...transfers, createTransfer()])}
             >
               <AddIcon fontSize="small" />
               {t('send_items_modal.add_transfer')}

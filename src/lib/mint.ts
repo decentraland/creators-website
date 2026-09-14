@@ -13,7 +13,14 @@ export type Transfer = {
   amounts: Record<string, number>
 }
 
-export const EMPTY_TRANSFER: Transfer = { recipients: [], amounts: {} }
+/** A transfer being edited: `key` keeps each card's React state with its own transfer when one is removed. */
+export type TransferDraft = Transfer & { key: number }
+
+let nextTransferKey = 0
+
+export function createTransfer(): TransferDraft {
+  return { key: nextTransferKey++, recipients: [], amounts: {} }
+}
 
 /** Only the owner and minters may call issueTokens; collaborators would get a reverted transaction. */
 export function canSendCollectionItems(collection: Collection, address: string | undefined): boolean {
@@ -27,7 +34,10 @@ export function isSendableItem(item: Item): boolean {
   return item.isPublished && item.isApproved && !!item.tokenId && getItemSales(item) !== undefined
 }
 
-/** Copies not yet minted, before this dialog's allocations. */
+/**
+ * Copies not yet minted, before this dialog's allocations. Read from the item as loaded with the page:
+ * a mint landing in the meantime makes the contract revert, which the flow reports as a generic error.
+ */
 export function getStock(item: Item): { available: number; total: number } {
   const sales = getItemSales(item)
   if (!sales) return { available: 0, total: 0 }

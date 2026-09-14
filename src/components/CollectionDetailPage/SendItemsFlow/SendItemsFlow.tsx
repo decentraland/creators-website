@@ -6,7 +6,7 @@ import { useSendItems } from '~/hooks/useSales'
 import { isSocialLogin, type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
-import { EMPTY_TRANSFER, isSendableItem, type Transfer } from '~/lib/mint'
+import { createTransfer, isSendableItem, type TransferDraft } from '~/lib/mint'
 import { toSellItemError, type SellFailureReason } from '~/lib/sales'
 import { PendingModal } from '../SellItemFlow/PendingModal'
 import { SaleErrorModal } from '../SellItemFlow/SaleErrorModal'
@@ -36,7 +36,7 @@ export function SendItemsFlow({ collection, items, session, onClose }: Props) {
   const [view, setView] = useState<View>('form')
   const [phase, setPhase] = useState<Phase>('confirm')
   const [step, setStep] = useState<SendStep>('select')
-  const [transfers, setTransfers] = useState<Transfer[]>([EMPTY_TRANSFER])
+  const [transfers, setTransfers] = useState<TransferDraft[]>(() => [createTransfer()])
   const [reason, setReason] = useState<SellFailureReason | null>(null)
   // Bumped when the creator backs out of a wallet prompt, so that attempt's outcome is ignored.
   const attempt = useRef(0)
