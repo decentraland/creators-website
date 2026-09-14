@@ -9,6 +9,7 @@ import { formatCredits, formatMana } from '~/lib/publishFee'
 import { shopItemUrl } from '~/lib/shop'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
 import { SmartIcon } from '~/components/Icons'
+import { Tooltip } from '~/components/Tooltip'
 import { BodyShapeIcon, CategoryIcon, PlayModeIcon } from '~/components/ItemIcons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { RarityPill } from '~/components/RarityPill'
@@ -87,12 +88,14 @@ export function ItemListRow({
       </S.Thumb>
       <S.Content>
         <S.Name title={item.name}>
-          {isSmart && (
-            <S.SmartBadge data-testid="item-row-smart" title={t('collection_detail_page.smart_wearable')}>
-              <SmartIcon />
-            </S.SmartBadge>
-          )}
           {item.name}
+          {isSmart && (
+            <Tooltip content={t('collection_detail_page.smart_wearable')} asChild testId="item-row-smart-tooltip">
+              <S.SmartBadge data-testid="item-row-smart" tabIndex={0}>
+                <SmartIcon />
+              </S.SmartBadge>
+            </Tooltip>
+          )}
         </S.Name>
         <S.Cell data-testid="item-row-body-shape">
           {bodyShapeType ? <BodyShapeIcon bodyShape={bodyShapeType} withLabel /> : EMPTY}

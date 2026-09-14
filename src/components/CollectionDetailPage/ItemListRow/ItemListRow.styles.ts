@@ -75,17 +75,21 @@ export const Name = styled.span`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 `
 
 export const SmartBadge = styled.span`
   display: inline-flex;
-  vertical-align: -3px;
-  margin-right: 4px;
-  color: ${theme.colors.amber};
+  color: ${theme.colors.softWhite};
+  background: ${theme.colors.glassHover};
+  border-radius: ${theme.radius.chip};
+  padding: 1px;
 
   svg {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
   }
 `
 
