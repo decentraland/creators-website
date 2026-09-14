@@ -461,6 +461,10 @@
       "simple": "Reproducir una vez",
       "loop": "Reproducir en bucle"
     },
+    "play_mode_tooltip": {
+      "simple": "Al activarlo, el emote se reproducirá una vez y volverá a la pose por defecto.",
+      "loop": "Al activarlo, el emote se repetirá hasta que el jugador se mueva o active otro emote."
+    },
     "edit_thumbnail": "Editar miniatura",
     "metrics": {
       "triangles": "{count} Triángulos",

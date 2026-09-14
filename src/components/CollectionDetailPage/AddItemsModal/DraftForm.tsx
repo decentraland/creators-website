@@ -17,7 +17,7 @@ import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { ClockIcon, FilmReelIcon, ImageIcon, LoopIcon, PlayOnceIcon } from '~/components/Icons'
 import { RaritySelect } from '~/components/RaritySelect'
 import { RequiredPermissions } from '~/components/RequiredPermissions'
-import { InfoTooltip } from '~/components/Tooltip'
+import { InfoTooltip, Tooltip } from '~/components/Tooltip'
 import { useTranslation } from '~/intl'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
 import { BodyShapeType, ItemType, VIDEO_PATH, type Item } from '~/lib/items'
@@ -186,29 +186,40 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
               t('add_items_modal.body_shape')
             )}
             <S.Segmented role="radiogroup" aria-label={t('add_items_modal.body_shape')}>
-              {BODY_SHAPES.map(({ value, icon }) => (
-                <S.SegmentButton
-                  key={value}
-                  type="button"
-                  role="radio"
-                  disabled={draft.bodyShapeLocked}
-                  aria-checked={draft.bodyShape === value}
-                  data-selected={draft.bodyShape === value || undefined}
-                  data-testid={`body-shape-${value}`}
-                  onClick={() =>
-                    onUpdate(draft.id, {
-                      bodyShape: value,
-                      // Going back to BOTH clears the variant answer entirely.
-                      ...(value === BodyShapeType.BOTH
-                        ? { isVariant: false, variantTargetId: null }
-                        : { variantTargetId: null })
-                    })
-                  }
-                >
-                  {icon}
-                  {t(`add_items_modal.body_shape_option.${value}`)}
-                </S.SegmentButton>
-              ))}
+              {BODY_SHAPES.map(({ value, icon }) => {
+                const selected = draft.bodyShape === value
+                const locked = draft.bodyShapeLocked
+                return (
+                  <Tooltip
+                    key={value}
+                    content={locked && !selected && bodyShapeHint ? t(bodyShapeHint) : null}
+                    asChild
+                    testId={`body-shape-${value}-tooltip`}
+                  >
+                    <S.SegmentButton
+                      type="button"
+                      role="radio"
+                      aria-disabled={locked || undefined}
+                      aria-checked={selected}
+                      data-selected={selected || undefined}
+                      data-testid={`body-shape-${value}`}
+                      onClick={() => {
+                        if (locked) return
+                        onUpdate(draft.id, {
+                          bodyShape: value,
+                          // Going back to BOTH clears the variant answer entirely.
+                          ...(value === BodyShapeType.BOTH
+                            ? { isVariant: false, variantTargetId: null }
+                            : { variantTargetId: null })
+                        })
+                      }}
+                    >
+                      {icon}
+                      {t(`add_items_modal.body_shape_option.${value}`)}
+                    </S.SegmentButton>
+                  </Tooltip>
+                )
+              })}
             </S.Segmented>
           </S.Field>
         )}
@@ -269,18 +280,24 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
             {t('add_items_modal.play_mode')}
             <S.Segmented role="radiogroup" aria-label={t('add_items_modal.play_mode')}>
               {[EmotePlayMode.LOOP, EmotePlayMode.SIMPLE].map(mode => (
-                <S.SegmentButton
+                <Tooltip
                   key={mode}
-                  type="button"
-                  role="radio"
-                  aria-checked={draft.playMode === mode}
-                  data-selected={draft.playMode === mode || undefined}
-                  data-testid={`play-mode-${mode}`}
-                  onClick={() => onUpdate(draft.id, { playMode: mode })}
+                  content={t(`add_items_modal.play_mode_tooltip.${mode}`)}
+                  asChild
+                  testId={`play-mode-${mode}-tooltip`}
                 >
-                  {mode === EmotePlayMode.LOOP ? <LoopIcon /> : <PlayOnceIcon />}
-                  {t(`add_items_modal.play_mode_option.${mode}`)}
-                </S.SegmentButton>
+                  <S.SegmentButton
+                    type="button"
+                    role="radio"
+                    aria-checked={draft.playMode === mode}
+                    data-selected={draft.playMode === mode || undefined}
+                    data-testid={`play-mode-${mode}`}
+                    onClick={() => onUpdate(draft.id, { playMode: mode })}
+                  >
+                    {mode === EmotePlayMode.LOOP ? <LoopIcon /> : <PlayOnceIcon />}
+                    {t(`add_items_modal.play_mode_option.${mode}`)}
+                  </S.SegmentButton>
+                </Tooltip>
               ))}
             </S.Segmented>
           </S.Field>

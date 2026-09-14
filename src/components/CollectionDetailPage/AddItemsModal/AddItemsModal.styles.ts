@@ -532,15 +532,16 @@ export const SegmentButton = styled.button`
     color: ${theme.colors.white};
   }
 
-  &:hover:not(:disabled) {
+  &:hover:not([aria-disabled]) {
     background: ${theme.colors.glassFaint};
   }
 
-  &:disabled {
+  &[aria-disabled] {
     cursor: default;
   }
-  &:disabled:not([data-selected]) {
+  &[aria-disabled]:not([data-selected]) {
     opacity: 0.5;
+    cursor: not-allowed;
   }
 
   svg {

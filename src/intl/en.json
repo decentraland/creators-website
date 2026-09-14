@@ -461,6 +461,10 @@
       "simple": "Play Once",
       "loop": "Play Loop"
     },
+    "play_mode_tooltip": {
+      "simple": "Once triggered, the Emote will play once and return to the default pose.",
+      "loop": "Once triggered, the Emote will keep repeating until the player moves or triggers another Emote."
+    },
     "edit_thumbnail": "Edit thumbnail",
     "metrics": {
       "triangles": "{count} Triangles",
