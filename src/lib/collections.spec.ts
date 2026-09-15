@@ -11,6 +11,7 @@ import {
   fromRemoteCollection,
   getCollectionDisplayStatus,
   getCollectionRole,
+  hasCollectionRole,
   CollectionRole,
   hasBeenApproved,
   isCollectionLocked,
@@ -239,6 +240,14 @@ describe('canManageCollectionItems', () => {
     expect(canManageCollectionItems(collection, '0xMANAGER')).toBe(true)
     expect(canManageCollectionItems(collection, '0xminter')).toBe(false)
     expect(canManageCollectionItems(collection, undefined)).toBe(false)
+  })
+
+  it('grants access to the owner, collaborators and minters, but not to strangers or signed-out users', () => {
+    expect(hasCollectionRole(collection, '0xowner')).toBe(true)
+    expect(hasCollectionRole(collection, '0xMANAGER')).toBe(true)
+    expect(hasCollectionRole(collection, '0xminter')).toBe(true)
+    expect(hasCollectionRole(collection, '0xstranger')).toBe(false)
+    expect(hasCollectionRole(collection, undefined)).toBe(false)
   })
 
   it('lets owners, collaborators and minters sell, but not strangers', () => {

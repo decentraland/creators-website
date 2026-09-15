@@ -16,6 +16,7 @@ import {
   canSellCollectionItems,
   getCollectionDisplayStatus,
   hasBeenApproved,
+  hasCollectionRole,
   isCollectionLocked
 } from '~/lib/collections'
 import { ItemType, type Item } from '~/lib/items'
@@ -108,10 +109,13 @@ const CollectionDetailPage = () => {
   const syncs = useItemSyncs(address, collection, allItems ?? [])
 
   const isLoading = !restored || (!!address && (collectionQuery.isLoading || itemsQuery.isLoading))
+  // builder-server serves published collections to any signer; addresses with no role on it get
+  // the same "not found" as a rejected request, so strangers can't browse other creators' work.
   const isNotFound =
-    collectionQuery.isError &&
-    collectionQuery.error instanceof BuilderServerError &&
-    NOT_FOUND_STATUSES.includes(collectionQuery.error.status)
+    (collectionQuery.isError &&
+      collectionQuery.error instanceof BuilderServerError &&
+      NOT_FOUND_STATUSES.includes(collectionQuery.error.status)) ||
+    (!!collection && !hasCollectionRole(collection, address))
   const isError = !isNotFound && (collectionQuery.isError || itemsQuery.isError)
   const isEmpty = filteredTotal === 0
   const hasItems = total > 0
