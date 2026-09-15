@@ -259,7 +259,12 @@ export function canManageCollectionItems(collection: Collection, address: string
   return isOwner || getCollectionRole(collection, address) === CollectionRole.COLLABORATOR
 }
 
+const SELLER_ROLES: readonly CollectionRole[] = [CollectionRole.COLLABORATOR, CollectionRole.MINTER]
+
 /** Owners, collaborators and minters may put a collection's items on sale. */
 export function canSellCollectionItems(collection: Collection, address: string | undefined): boolean {
-  return hasCollectionRole(collection, address)
+  if (!address) return false
+  const isOwner = collection.owner.toLowerCase() === address.toLowerCase()
+  const role = getCollectionRole(collection, address)
+  return isOwner || (role !== null && SELLER_ROLES.includes(role))
 }
