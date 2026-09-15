@@ -16,7 +16,7 @@ import {
   type Collection
 } from '~/lib/collections'
 import { ItemSyncStatus } from '~/lib/itemSync'
-import { canManageItem, getItemSales, type Item } from '~/lib/items'
+import { canEditItemPrice, canManageItem, type Item } from '~/lib/items'
 import { type Session } from '~/lib/auth'
 import { type ItemListing } from '~/lib/listings'
 import { useNotifications } from '~/lib/notifications'
@@ -71,13 +71,7 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
   const canRemove =
     onMarket &&
     (listing.tradeId ? canSellCollectionItems(collection, address) : canManageCollectionItems(collection, address))
-  const sales = getItemSales(item)
-  // Only an off-chain order can be re-priced, and only while some supply is left to sell.
-  const canEditPrice =
-    onMarket &&
-    !!listing.tradeId &&
-    canSellCollectionItems(collection, address) &&
-    !(sales && sales.minted >= sales.maxSupply)
+  const canEditPrice = !!session && canEditItemPrice(collection, item, listing, address)
   const canReset = !compact && canManage && sync?.status === ItemSyncStatus.UNSYNCED && !!sync.entity
   const canPreview = !compact
 

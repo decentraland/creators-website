@@ -20,7 +20,7 @@ import {
   isCollectionLocked
 } from '~/lib/collections'
 import { canSendCollectionItems } from '~/lib/mint'
-import { ItemType, type Item } from '~/lib/items'
+import { ItemType, canEditItemDetails, canEditItemPrice, type Item } from '~/lib/items'
 import {
   ITEM_TYPE_FILTERS,
   ItemTypeFilter,
@@ -30,13 +30,17 @@ import {
   parseItemTypeFilter
 } from '~/lib/itemFilters'
 import { MAX_PUBLISH_ITEMS, getPublishBlocker } from '~/lib/publishCollection'
-import { useSyncPublishedItems } from '~/hooks/usePublishCollection'
+import { useItemContents, useSyncPublishedItems, useUpdateItem } from '~/hooks/usePublishCollection'
 import { useCollectionListings } from '~/hooks/useCollectionListings'
+import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { hasPendingChanges } from '~/lib/itemSync'
 import { previewCollection } from '~/lib/explorer'
 import { pageRangeLabel } from '~/lib/pagination'
-import { ITEM_EXTENSIONS } from '~/lib/itemFiles'
+import { ITEM_EXTENSIONS, THUMBNAIL_PATH } from '~/lib/itemFiles'
+import { type ItemListing } from '~/lib/listings'
+import { useNotifications } from '~/lib/notifications'
+import { theme } from '~/styles/theme'
 import { Button } from '~/components/Button'
 import { Tooltip } from '~/components/Tooltip'
 import { EmoteIcon, JumpInIcon, OpenEditorIcon, WearableIcon } from '~/components/Icons'
@@ -44,13 +48,14 @@ import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { CollectionRolePill } from '~/components/CollectionRolePill'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
 import { Pagination } from '~/components/Pagination'
+import { ThumbnailModal } from '~/components/ThumbnailModal'
 import addItemsArt from '~/assets/add-items.png'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { AddItemsModal } from './AddItemsModal'
 import { ItemActionsMenu } from './ItemActionsMenu'
 import { ItemListRow } from './ItemListRow'
 import { PublishCollectionModal, PublishSuccessModal } from './PublishCollectionModal'
-import { SellItemFlow } from './SellItemFlow'
+import { SellItemFlow, UpdatePriceFlow } from './SellItemFlow'
 import { SendItemsFlow } from './SendItemsFlow'
 import * as S from './CollectionDetailPage.styles'
 
@@ -74,11 +79,19 @@ const CollectionDetailPage = () => {
   const [isDragging, setDragging] = useState(false)
   const [isPreviewLaunching, setPreviewLaunching] = useState(false)
   const [sellingItem, setSellingItem] = useState<Item | null>(null)
+  const [thumbnailItem, setThumbnailItem] = useState<Item | null>(null)
+  // The price dialog keeps the listing it opened with: the flow rewrites the listings cache itself.
+  const [priceEdit, setPriceEdit] = useState<{ item: Item; listing: ItemListing & { tradeId: string } } | null>(null)
   const filesInputRef = useRef<HTMLInputElement>(null)
 
   const collectionQuery = useCollection(address, collectionId)
   const itemsQuery = useAllCollectionItems(address, collectionId)
   const saveCollection = useSaveCollection(address)
+  const updateItem = useUpdateItem(address)
+  const itemContents = useItemContents(thumbnailItem)
+  const showToast = useNotifications(state => state.showToast)
+  // Small screens are a viewer: the in-row edit shortcuts are desktop-only, like the menu's edit actions.
+  const compact = useMediaQuery(theme.media.noActions)
 
   const collection = collectionQuery.data
   const allItems = itemsQuery.data
@@ -171,6 +184,19 @@ const CollectionDetailPage = () => {
       },
       { replace: true }
     )
+  }
+
+  function renameItem(item: Item, name: string) {
+    return updateItem.mutateAsync({ item: { ...item, name } }).catch((error: unknown) => {
+      showToast(t('collection_detail_page.item_row.rename_error', { name: item.name }), { type: 'error' })
+      throw error
+    })
+  }
+
+  function openPriceEdit(item: Item) {
+    if (!collection) return
+    const listing = listingFor(item)
+    if (canEditItemPrice(collection, item, listing, address)) setPriceEdit({ item, listing })
   }
 
   function closeRenameModal() {
@@ -444,6 +470,14 @@ const CollectionDetailPage = () => {
                     listing={withMarket ? listingFor(item) : undefined}
                     canSell={canSell && item.isPublished && !!item.tokenId}
                     onPutOnSale={setSellingItem}
+                    onEditPrice={
+                      !compact && session && canEditItemPrice(collection, item, listingFor(item), address)
+                        ? openPriceEdit
+                        : undefined
+                    }
+                    editable={!compact && canEditItemDetails(collection, item, address)}
+                    onRename={renameItem}
+                    onEditThumbnail={setThumbnailItem}
                     contractAddress={collection.contractAddress}
                     actions={
                       address && (
@@ -514,6 +548,36 @@ const CollectionDetailPage = () => {
               items={allItems ?? []}
               session={session}
               onClose={() => setSending(false)}
+            />
+          )}
+          {thumbnailItem && (
+            <ThumbnailModal
+              type={thumbnailItem.type}
+              contents={itemContents.data ?? null}
+              loadError={itemContents.isError}
+              onClose={() => setThumbnailItem(null)}
+              onSave={patch => {
+                const item = thumbnailItem
+                updateItem.mutate(
+                  { item, thumbnail: patch.contents[THUMBNAIL_PATH] },
+                  {
+                    onSettled: () => setThumbnailItem(null),
+                    onError: () =>
+                      showToast(t('collection_detail_page.item_row.thumbnail_error', { name: item.name }), {
+                        type: 'error'
+                      })
+                  }
+                )
+              }}
+            />
+          )}
+          {priceEdit && session && (
+            <UpdatePriceFlow
+              item={priceEdit.item}
+              collection={collection}
+              listing={priceEdit.listing}
+              session={session}
+              onClose={() => setPriceEdit(null)}
             />
           )}
           {sellingItem && session && (

@@ -263,7 +263,16 @@
       }
     },
     "send_items": "Enviar ítems",
-    "smart_wearable": "Smart Wearable"
+    "smart_wearable": "Smart Wearable",
+    "item_row": {
+      "edit_name": "Editar nombre",
+      "edit_thumbnail": "Editar miniatura",
+      "name_placeholder": "Nombre del ítem",
+      "rename_error": "No pudimos renombrar “{name}”. Inténtalo de nuevo.",
+      "thumbnail_error": "No pudimos actualizar la miniatura de “{name}”. Inténtalo de nuevo.",
+      "cancel_edit": "Cancelar",
+      "save": "Guardar nombre"
+    }
   },
   "publish_collection_modal": {
     "title": "Publicar colección",
