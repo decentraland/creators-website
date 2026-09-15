@@ -242,6 +242,16 @@ export function toRemoteCollection(
 /** The latest curation request of a collection; only its status matters here. */
 export type CollectionCuration = { status: CurationStatus }
 
+/**
+ * Whether this address is the owner, a collaborator or a minter of the collection. builder-server
+ * serves published collections to anyone, so this is the app's own gate: the detail page (and later
+ * the editor) shows "not found" to addresses with no role instead of a read-only view.
+ */
+export function hasCollectionRole(collection: Collection, address: string | undefined): boolean {
+  if (!address) return false
+  return collection.owner.toLowerCase() === address.toLowerCase() || getCollectionRole(collection, address) !== null
+}
+
 /** Owners and collaborators (managers) may change a collection's items; minters only sell them. */
 export function canManageCollectionItems(collection: Collection, address: string | undefined): boolean {
   if (!address) return false
@@ -249,10 +259,12 @@ export function canManageCollectionItems(collection: Collection, address: string
   return isOwner || getCollectionRole(collection, address) === CollectionRole.COLLABORATOR
 }
 
+const SELLER_ROLES: readonly CollectionRole[] = [CollectionRole.COLLABORATOR, CollectionRole.MINTER]
+
 /** Owners, collaborators and minters may put a collection's items on sale. */
 export function canSellCollectionItems(collection: Collection, address: string | undefined): boolean {
   if (!address) return false
-  return (
-    canManageCollectionItems(collection, address) || getCollectionRole(collection, address) === CollectionRole.MINTER
-  )
+  const isOwner = collection.owner.toLowerCase() === address.toLowerCase()
+  const role = getCollectionRole(collection, address)
+  return isOwner || (role !== null && SELLER_ROLES.includes(role))
 }
