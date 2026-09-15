@@ -1,23 +1,32 @@
-import { useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   CameraAlt as CameraIcon,
   ChangeHistory as TriangleIcon,
   Circle as MaterialIcon,
+  ErrorOutline as HintIcon,
   Female as FemaleIcon,
   InfoOutlined as InfoIcon,
   Male as MaleIcon,
+  PlayArrow as PlayIcon,
   ReportProblemOutlined as WarningIcon,
+  SentimentSatisfiedAlt as SmileIcon,
+  VideocamOutlined as VideoIcon,
   Texture as TextureIcon,
+  ThirtyFpsSelect as FpsIcon,
   Transgender as BothIcon
 } from '@mui/icons-material'
 import { CategorySelect } from '~/components/CategorySelect'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { ClockIcon, FilmReelIcon, ImageIcon, LoopIcon, PlayOnceIcon } from '~/components/Icons'
 import { RaritySelect } from '~/components/RaritySelect'
-import { InfoTooltip } from '~/components/Tooltip'
+import { RequiredPermissions } from '~/components/RequiredPermissions'
+import { InfoTooltip, Tooltip } from '~/components/Tooltip'
+import { VideoDropzone } from '~/components/VideoModal'
+import { useObjectURL } from '~/hooks/useObjectURL'
 import { useTranslation } from '~/intl'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
-import { BodyShapeType, ItemType, type Item } from '~/lib/items'
+import { hasFacialExpressions, toMB } from '~/lib/itemFiles'
+import { BodyShapeType, ItemType, VIDEO_PATH, type Item } from '~/lib/items'
 import { getCategoryOptions, getVariantTargets, type ItemDraft } from './AddItemsModal.state'
 import * as S from './AddItemsModal.styles'
 
@@ -27,6 +36,10 @@ type Props = {
   collectionItems: Item[]
   onUpdate: (id: string, patch: Partial<ItemDraft>) => void
   onOpenThumbnail: () => void
+  /** Smart wearables only: opens the preview video overlay. */
+  onOpenVideo: () => void
+  /** Smart wearables only: a picked file replaces the preview video. */
+  onVideoChange: (video: File) => void
 }
 
 const BODY_SHAPES: Array<{ value: BodyShapeType; icon: ReactNode }> = [
@@ -35,11 +48,25 @@ const BODY_SHAPES: Array<{ value: BodyShapeType; icon: ReactNode }> = [
   { value: BodyShapeType.MALE, icon: <MaleIcon /> }
 ]
 
-export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThumbnail }: Props) {
+export function DraftForm({
+  draft,
+  drafts,
+  collectionItems,
+  onUpdate,
+  onOpenThumbnail,
+  onOpenVideo,
+  onVideoChange
+}: Props) {
   const { t } = useTranslation()
 
   const isEmote = draft.type === ItemType.EMOTE
   const isWearable = draft.type === ItemType.WEARABLE
+  const isSmart = isWearable && draft.isSmart
+  const bodyShapeHint = isEmote
+    ? 'add_items_modal.body_shape_emote_hint'
+    : isSmart
+      ? 'add_items_modal.body_shape_smart_hint'
+      : null
   const isSingleShape = isWearable && draft.bodyShape !== BodyShapeType.BOTH
   const variantTargets = useMemo(
     () => (isSingleShape ? getVariantTargets(draft, drafts, collectionItems) : []),
@@ -53,6 +80,12 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
   )
   const nameInvalid = draft.name.length > 0 && !isValidItemName(draft.name)
   const categories = useMemo(() => getCategoryOptions(draft), [draft])
+
+  const video = draft.contents[VIDEO_PATH]
+  const videoUrl = useObjectURL(video)
+  const [videoDuration, setVideoDuration] = useState<number | null>(null)
+  // A new video (or draft) must not flash the previous one's duration until its metadata loads.
+  useEffect(() => setVideoDuration(null), [videoUrl])
 
   const warnings = useMemo(() => {
     const list = draft.validationIssues.map(issue => ({
@@ -68,21 +101,38 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
   return (
     <S.Content data-testid="draft-form">
       <S.PreviewPane>
-        <S.ThumbnailBox
-          type="button"
-          aria-label={t('add_items_modal.edit_thumbnail')}
-          data-testid="edit-thumbnail"
-          onClick={onOpenThumbnail}
-        >
-          <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId="draft-thumbnail">
-            <S.ThumbnailOverlay data-thumb-overlay>
-              <CameraIcon />
-            </S.ThumbnailOverlay>
-          </ItemThumbnail>
-        </S.ThumbnailBox>
-        <S.MetricsRow data-testid="draft-metrics">
+        <S.ThumbnailWrap>
+          <S.ThumbnailBox
+            type="button"
+            aria-label={t('add_items_modal.edit_thumbnail')}
+            data-testid="edit-thumbnail"
+            onClick={onOpenThumbnail}
+          >
+            <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId="draft-thumbnail">
+              <S.ThumbnailOverlay data-thumb-overlay>
+                <CameraIcon />
+              </S.ThumbnailOverlay>
+            </ItemThumbnail>
+          </S.ThumbnailBox>
+          {isWearable && hasFacialExpressions(draft.contents) && (
+            <Tooltip content={t('add_items_modal.facial_expressions')} asChild>
+              <S.ThumbnailBadge
+                tabIndex={0}
+                aria-label={t('add_items_modal.facial_expressions')}
+                data-testid="facial-expressions-badge"
+              >
+                <SmileIcon />
+              </S.ThumbnailBadge>
+            </Tooltip>
+          )}
+        </S.ThumbnailWrap>
+        <S.MetricsRow data-testid="draft-metrics" data-compact={isEmote || undefined}>
           {isEmote && draft.metrics ? (
             <>
+              <S.MetricPill>
+                <FilmReelIcon />
+                {t('add_items_modal.metrics.sequences', { count: draft.metrics.sequences ?? 0 })}
+              </S.MetricPill>
               <S.MetricPill>
                 <ClockIcon />
                 {t('add_items_modal.metrics.duration', { count: Math.round((draft.metrics.duration ?? 0) * 10) / 10 })}
@@ -92,8 +142,8 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
                 {t('add_items_modal.metrics.frames', { count: draft.metrics.frames ?? 0 })}
               </S.MetricPill>
               <S.MetricPill>
-                <FilmReelIcon />
-                {t('add_items_modal.metrics.fps', { count: Math.round(draft.metrics.fps ?? 0) })}
+                <FpsIcon />
+                {t('add_items_modal.metrics.fps', { count: Math.round((draft.metrics.fps ?? 0) * 10) / 10 })}
               </S.MetricPill>
             </>
           ) : draft.metrics ? (
@@ -113,6 +163,7 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
             </>
           ) : null}
         </S.MetricsRow>
+        {isSmart && <RequiredPermissions permissions={draft.requiredPermissions} testId="draft-permissions" />}
         {warnings.length > 0 && (
           <S.WarningsList data-testid="draft-warnings">
             {warnings.map(warning => (
@@ -148,32 +199,54 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
           </S.Field>
         )}
 
-        {isWearable && (
-          <S.Field as="div">
-            {t('add_items_modal.body_shape')}
+        {(isWearable || isEmote) && (
+          <S.Field as="div" data-hinted={bodyShapeHint ? true : undefined}>
+            {bodyShapeHint ? (
+              <S.FieldLabel>
+                {t('add_items_modal.body_shape')}
+                <S.FieldHint data-testid="body-shape-hint">
+                  <HintIcon />
+                  {t(bodyShapeHint)}
+                </S.FieldHint>
+              </S.FieldLabel>
+            ) : (
+              t('add_items_modal.body_shape')
+            )}
             <S.Segmented role="radiogroup" aria-label={t('add_items_modal.body_shape')}>
-              {BODY_SHAPES.map(({ value, icon }) => (
-                <S.SegmentButton
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={draft.bodyShape === value}
-                  data-selected={draft.bodyShape === value || undefined}
-                  data-testid={`body-shape-${value}`}
-                  onClick={() =>
-                    onUpdate(draft.id, {
-                      bodyShape: value,
-                      // Going back to BOTH clears the variant answer entirely.
-                      ...(value === BodyShapeType.BOTH
-                        ? { isVariant: false, variantTargetId: null }
-                        : { variantTargetId: null })
-                    })
-                  }
-                >
-                  {icon}
-                  {t(`add_items_modal.body_shape_option.${value}`)}
-                </S.SegmentButton>
-              ))}
+              {BODY_SHAPES.map(({ value, icon }) => {
+                const selected = draft.bodyShape === value
+                const locked = draft.bodyShapeLocked
+                return (
+                  <Tooltip
+                    key={value}
+                    content={locked && !selected && bodyShapeHint ? t(bodyShapeHint) : null}
+                    asChild
+                    testId={`body-shape-${value}-tooltip`}
+                  >
+                    <S.SegmentButton
+                      type="button"
+                      role="radio"
+                      aria-disabled={locked || undefined}
+                      aria-checked={selected}
+                      data-selected={selected || undefined}
+                      data-testid={`body-shape-${value}`}
+                      onClick={() => {
+                        if (locked) return
+                        onUpdate(draft.id, {
+                          bodyShape: value,
+                          // Going back to BOTH clears the variant answer entirely.
+                          ...(value === BodyShapeType.BOTH
+                            ? { isVariant: false, variantTargetId: null }
+                            : { variantTargetId: null })
+                        })
+                      }}
+                    >
+                      {icon}
+                      {t(`add_items_modal.body_shape_option.${value}`)}
+                    </S.SegmentButton>
+                  </Tooltip>
+                )
+              })}
             </S.Segmented>
           </S.Field>
         )}
@@ -181,7 +254,7 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
         {isSingleShape && (
           <S.Field as="div">
             {t('add_items_modal.variant_question')}
-            <S.Segmented role="radiogroup" aria-label={t('add_items_modal.variant_question')}>
+            <S.Segmented data-joined role="radiogroup" aria-label={t('add_items_modal.variant_question')}>
               {[true, false].map(answer => (
                 <S.SegmentButton
                   key={String(answer)}
@@ -229,6 +302,34 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
           </S.Field>
         )}
 
+        {isEmote && showItemFields && (
+          <S.Field as="div">
+            {t('add_items_modal.play_mode')}
+            <S.Segmented role="radiogroup" aria-label={t('add_items_modal.play_mode')}>
+              {[EmotePlayMode.LOOP, EmotePlayMode.SIMPLE].map(mode => (
+                <Tooltip
+                  key={mode}
+                  content={t(`add_items_modal.play_mode_tooltip.${mode}`)}
+                  asChild
+                  testId={`play-mode-${mode}-tooltip`}
+                >
+                  <S.SegmentButton
+                    type="button"
+                    role="radio"
+                    aria-checked={draft.playMode === mode}
+                    data-selected={draft.playMode === mode || undefined}
+                    data-testid={`play-mode-${mode}`}
+                    onClick={() => onUpdate(draft.id, { playMode: mode })}
+                  >
+                    {mode === EmotePlayMode.LOOP ? <LoopIcon /> : <PlayOnceIcon />}
+                    {t(`add_items_modal.play_mode_option.${mode}`)}
+                  </S.SegmentButton>
+                </Tooltip>
+              ))}
+            </S.Segmented>
+          </S.Field>
+        )}
+
         {showItemFields && (
           <S.FieldRow>
             <S.Field>
@@ -239,6 +340,14 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
                 testId="item-category"
                 onChange={category => onUpdate(draft.id, { category })}
               />
+              {isWearable && draft.suggestedCategory !== null && draft.category === draft.suggestedCategory && (
+                <S.FieldHint data-testid="suggested-category">
+                  <HintIcon />
+                  {t('add_items_modal.suggested_category', {
+                    category: t(`collection_detail_page.category.${draft.suggestedCategory}`)
+                  })}
+                </S.FieldHint>
+              )}
             </S.Field>
             <S.Field>
               <S.FieldLabelRow>
@@ -254,25 +363,51 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
           </S.FieldRow>
         )}
 
-        {isEmote && showItemFields && (
-          <S.Field as="div">
-            {t('add_items_modal.play_mode')}
-            <S.Segmented role="radiogroup" aria-label={t('add_items_modal.play_mode')}>
-              {[EmotePlayMode.SIMPLE, EmotePlayMode.LOOP].map(mode => (
-                <S.SegmentButton
-                  key={mode}
-                  type="button"
-                  role="radio"
-                  aria-checked={draft.playMode === mode}
-                  data-selected={draft.playMode === mode || undefined}
-                  data-testid={`play-mode-${mode}`}
-                  onClick={() => onUpdate(draft.id, { playMode: mode })}
-                >
-                  {mode === EmotePlayMode.LOOP ? <LoopIcon /> : <PlayOnceIcon />}
-                  {t(`add_items_modal.play_mode_option.${mode}`)}
-                </S.SegmentButton>
-              ))}
-            </S.Segmented>
+        {isSmart && (
+          <S.Field as="div" data-testid="draft-video-field">
+            <S.FieldLabel>
+              {t('add_items_modal.video.label')}
+              <S.FieldHint>{t('add_items_modal.video.field_hint')}</S.FieldHint>
+            </S.FieldLabel>
+            <VideoDropzone compact testId="draft-video" onPick={onVideoChange}>
+              {video && videoUrl && (
+                <>
+                  <S.VideoPoster
+                    type="button"
+                    aria-label={t('add_items_modal.video.edit')}
+                    data-testid="draft-video-preview"
+                    onClick={onOpenVideo}
+                  >
+                    <video
+                      key={videoUrl}
+                      src={videoUrl}
+                      preload="metadata"
+                      muted
+                      playsInline
+                      onLoadedMetadata={event => {
+                        const { duration } = event.currentTarget
+                        setVideoDuration(Number.isFinite(duration) ? duration : null)
+                      }}
+                    />
+                    <S.VideoPlay>
+                      <PlayIcon />
+                    </S.VideoPlay>
+                    <S.VideoPosterOverlay data-video-overlay>
+                      <VideoIcon />
+                    </S.VideoPosterOverlay>
+                  </S.VideoPoster>
+                  <S.VideoInfo>
+                    <S.VideoName>{video instanceof File ? video.name : VIDEO_PATH}</S.VideoName>
+                    <S.VideoMeta data-testid="draft-video-meta">
+                      {videoDuration !== null && (
+                        <span>{t('add_items_modal.video.duration', { seconds: Math.round(videoDuration) })}</span>
+                      )}
+                      <span>{t('add_items_modal.video.size', { size: toMB(video.size) })}</span>
+                    </S.VideoMeta>
+                  </S.VideoInfo>
+                </>
+              )}
+            </VideoDropzone>
           </S.Field>
         )}
 

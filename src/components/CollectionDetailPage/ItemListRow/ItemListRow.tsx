@@ -2,12 +2,14 @@ import { type ReactNode } from 'react'
 import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'
-import { ItemType, getItemBodyShapeType, getItemSales, type Item } from '~/lib/items'
+import { ItemType, getItemBodyShapeType, getItemSales, isSmartWearable, type Item } from '~/lib/items'
 import { EmotePlayMode } from '~/lib/itemFactory'
 import { type ItemListing } from '~/lib/listings'
 import { formatCredits, formatMana } from '~/lib/publishFee'
 import { shopItemUrl } from '~/lib/shop'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
+import { SmartIcon } from '~/components/Icons'
+import { Tooltip } from '~/components/Tooltip'
 import { BodyShapeIcon, CategoryIcon, PlayModeIcon } from '~/components/ItemIcons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { RarityPill } from '~/components/RarityPill'
@@ -50,6 +52,7 @@ export function ItemListRow({
   const bodyShapeType = getItemBodyShapeType(item)
   const category = item.data.category
   const isEmote = item.type === ItemType.EMOTE
+  const isSmart = isSmartWearable(item)
   const sales = withMarket ? getItemSales(item) : undefined
   const shopUrl = withMarket && contractAddress && item.tokenId ? shopItemUrl(contractAddress, item.tokenId) : undefined
 
@@ -84,7 +87,16 @@ export function ItemListRow({
         <ItemThumbnail src={thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null} rarity={item.rarity} />
       </S.Thumb>
       <S.Content>
-        <S.Name title={item.name}>{item.name}</S.Name>
+        <S.Name title={item.name}>
+          {item.name}
+          {isSmart && (
+            <Tooltip content={t('collection_detail_page.smart_wearable')} asChild testId="item-row-smart-tooltip">
+              <S.SmartBadge data-testid="item-row-smart" tabIndex={0}>
+                <SmartIcon />
+              </S.SmartBadge>
+            </Tooltip>
+          )}
+        </S.Name>
         <S.Cell data-testid="item-row-body-shape">
           {bodyShapeType ? <BodyShapeIcon bodyShape={bodyShapeType} withLabel /> : EMPTY}
         </S.Cell>

@@ -75,6 +75,22 @@ export const Name = styled.span`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+`
+
+export const SmartBadge = styled.span`
+  display: inline-flex;
+  color: ${theme.colors.softWhite};
+  background: ${theme.colors.glassHover};
+  border-radius: ${theme.radius.chip};
+  padding: 1px;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
 `
 
 export const Cell = styled.div`

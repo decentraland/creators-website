@@ -216,7 +216,8 @@
     "showing": "Showing {range} of {total} {total, plural, one {item} other {items}}",
     "publish_blocker": {
       "no_items": "Add at least one item to publish your collection.",
-      "too_many_items": "A collection can be published with up to {max} items."
+      "too_many_items": "A collection can be published with up to {max} items.",
+      "missing_smart_wearable_video": "Every smart wearable needs a preview video before you can publish."
     },
     "price": {
       "credits": "{amount} credits",
@@ -260,7 +261,8 @@
         "confirm": "Reset item",
         "done": "“{name}” was reset to its approved version"
       }
-    }
+    },
+    "smart_wearable": "Smart Wearable"
   },
   "publish_collection_modal": {
     "title": "Publish Collection",
@@ -427,7 +429,8 @@
     "processing": "Processing…",
     "type": {
       "wearable": "Wearable",
-      "emote": "Emote"
+      "emote": "Emote",
+      "smart_wearable": "Smart Wearable"
     },
     "delete": "Delete",
     "item_name": "Item Name",
@@ -440,6 +443,15 @@
       "female": "Female",
       "male": "Male"
     },
+    "body_shape_emote_hint": "Emotes are always available for all body shapes.",
+    "body_shape_smart_hint": "Smart wearables are available for all body shapes.",
+    "video": {
+      "label": "Preview Video",
+      "field_hint": "Upload a video that showcases the smart wearable's functionality.",
+      "edit": "Edit preview video",
+      "duration": "{seconds}s",
+      "size": "{size} MB"
+    },
     "variant_question": "Is this a body shape variant of another item?",
     "yes": "Yes",
     "no": "No",
@@ -448,21 +460,28 @@
     "no_variant_targets": "There are no {bodyShape} items in this collection yet to pair this with. Add the {bodyShape} version first, or answer No.",
     "category": "Category",
     "select_category": "Select Category",
+    "facial_expressions": "This wearable includes facial expressions",
+    "suggested_category": "Suggested from your model. You can change it if it's not right.",
     "rarity": "Rarity",
     "rarity_tooltip": "Rarity determines how many copies of an item can exist. The rarer the item, the lower its maximum supply.",
     "play_mode": "Play Mode",
     "play_mode_option": {
       "simple": "Play Once",
-      "loop": "Loop"
+      "loop": "Play Loop"
+    },
+    "play_mode_tooltip": {
+      "simple": "Once triggered, the Emote will play once and return to the default pose.",
+      "loop": "Once triggered, the Emote will keep repeating until the player moves or triggers another Emote."
     },
     "edit_thumbnail": "Edit thumbnail",
     "metrics": {
       "triangles": "{count} Triangles",
       "materials": "{count, plural, one {# Material} other {# Materials}}",
       "textures": "{count, plural, one {# Texture} other {# Textures}}",
-      "duration": "{count}s",
-      "frames": "{count} Frames",
-      "fps": "{count} FPS"
+      "sequences": "{count, plural, one {# sequence} other {# sequences}}",
+      "duration": "{count} seconds",
+      "frames": "{count} frames",
+      "fps": "{count} fps"
     },
     "cancel": "Cancel",
     "save": "Save",
@@ -472,9 +491,11 @@
     "success_toast": "{count, plural, one {# Item} other {# Items}} successfully added to your collection!",
     "error": {
       "title_generic": "We couldn't upload your items",
+      "title_too_big": "An item is over the size limit",
       "title_locked": "This collection is under review",
       "title_published": "This collection is already published",
       "description_generic": "Something went wrong while uploading your items. Please try again.",
+      "description_too_big": "One of your items exceeds its size limit once combined with the files already saved. Reduce the file size and try again.",
       "description_locked": "Items can't be added while the collection is being reviewed. Your files weren't saved — you can add them once the review is done.",
       "description_published": "Published collections can't receive new items. Your files weren't saved — create a new collection to add them.",
       "try_again": "Try again",
@@ -487,7 +508,8 @@
       "discard_description": "If you leave now, you'll lose the items you uploaded and any changes you made.",
       "leave_without_saving": "Leave without saving",
       "save_changes": "Save changes",
-      "keep_editing": "Keep editing"
+      "keep_editing": "Keep editing",
+      "review_target_first": "Review {target} before saving: {variant} is a body shape variant of it."
     },
     "file_error_label": "Invalid file",
     "file_error": {
@@ -501,20 +523,40 @@
       "invalid_manifest": "The {fileName} configuration inside the ZIP is invalid.",
       "manifest_file_missing": "The ZIP configuration references {fileName}, but it isn't in the ZIP.",
       "orphaned_auxiliary_file": "{fileName} needs its companion file {expected} in the same ZIP.",
-      "smart_wearable_not_supported": "Smart wearables can't be uploaded here yet.",
+      "unknown_required_permissions": "scene.json declares permissions that don't exist: {permissions}.",
+      "duplicated_required_permissions": "scene.json declares the same permission more than once.",
+      "allowed_media_hostnames_empty": "scene.json asks for ALLOW_MEDIA_HOSTNAMES but lists no hostnames.",
+      "scene_manifest_missing": "This ZIP includes scene code but no scene.json. Smart wearables need their scene.json.",
+      "scene_manifest_nested": "With a wearable.json, scene.json must sit at the root of the ZIP next to it.",
+      "scene_main_not_code": "scene.json points main at {fileName}, but it must be the JavaScript bundle.",
       "emote_duration_too_long": "Emotes can last up to {seconds} seconds.",
       "emote_with_mesh": "This emote includes an avatar mesh. Export only the armature and animation.",
       "emote_animations_out_of_sync": "The avatar and prop animations must have the same duration.",
       "missing_external_resources": "The model references files that aren't included: {fileNames}.",
       "invalid_model_file": "We couldn't load this 3D model. Check the file and try again.",
-      "invalid_representation": "This file can't be used as a body shape variant of that item."
+      "invalid_representation": "This file can't be used as a body shape variant of that item.",
+      "multiple_videos": "The ZIP includes more than one video. Keep only the preview video.",
+      "video_too_big": "The video is too big — the maximum size is {size}MB.",
+      "video_wrong_format": "The video must be an MP4 file.",
+      "invalid_video": "Your video seems to be invalid or broken. Check the file and try again."
     }
+  },
+  "video_modal": {
+    "title": "Preview Video",
+    "description": "Upload a video that showcases the smart wearable's functionality.",
+    "drop_cta": "Drag and drop your video here, or",
+    "browse": "Browse files",
+    "hint": "{extensions} · up to {size}MB",
+    "replace": "Replace",
+    "done": "Done",
+    "cancel": "Cancel"
   },
   "thumbnail_modal": {
     "title": "Item Thumbnail",
     "capture": "Save thumbnail",
     "upload_picture": "Upload picture",
     "wrong_format": "The thumbnail must be a PNG image.",
+    "too_big": "The thumbnail is too big — the maximum size is {size}MB.",
     "capture_failed": "We couldn't update the thumbnail. Please try again.",
     "load_failed": "We couldn't load the item. Please try again."
   },
@@ -584,5 +626,19 @@
     "linkTerms": "Terms of Use",
     "linkContentPolicy": "Content Policy",
     "linkEthics": "Code of Ethics"
+  },
+  "required_permissions": {
+    "title": "Required permissions",
+    "learn_more": "Learn more",
+    "none": "This smart wearable doesn't request any permissions.",
+    "permission": {
+      "ALLOW_TO_MOVE_PLAYER_INSIDE_SCENE": "Move the player inside the scene",
+      "ALLOW_TO_TRIGGER_AVATAR_EMOTE": "Trigger avatar emotes",
+      "ALLOW_MEDIA_HOSTNAMES": "Load media from allowed hostnames",
+      "USE_WEB3_API": "Use the Web3 API",
+      "USE_FETCH": "Use fetch",
+      "USE_WEBSOCKET": "Use websockets",
+      "OPEN_EXTERNAL_LINK": "Open external links"
+    }
   }
 }

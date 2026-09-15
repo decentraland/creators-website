@@ -1,5 +1,5 @@
 // Image/blob helpers for the add-items flow, ported from the legacy builder's modules/media/utils.
-import { WearableCategory } from '@dcl/schemas'
+import { Rarity, WearableCategory } from '@dcl/schemas'
 
 export enum ImageType {
   PNG = 'png',
@@ -28,6 +28,32 @@ export async function blobToDataURL(blob: Blob): Promise<string> {
     reader.onload = () => resolve(reader.result as string)
     reader.onerror = () => reject(new Error('Could not read the file'))
     reader.readAsDataURL(blob)
+  })
+}
+
+/**
+ * Decodes a video's metadata; rejects when the browser can't play the file. Chrome defers media
+ * loading in hidden tabs, so a stalled decode resolves without a duration instead of hanging.
+ */
+export function loadVideoMetadata(blob: Blob, timeoutMs = 15000): Promise<{ duration: number | null }> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video')
+    const url = URL.createObjectURL(blob)
+    let done = false
+    const timer = setTimeout(() => finish({ duration: null }), timeoutMs)
+    const finish = (result: { duration: number | null } | Error) => {
+      if (done) return
+      done = true
+      clearTimeout(timer)
+      video.removeAttribute('src')
+      URL.revokeObjectURL(url)
+      if (result instanceof Error) reject(result)
+      else resolve(result)
+    }
+    video.preload = 'metadata'
+    video.onloadedmetadata = () => finish({ duration: video.duration })
+    video.onerror = () => finish(new Error('Invalid video'))
+    video.src = url
   })
 }
 
@@ -73,6 +99,33 @@ export async function resizeImage(blob: Blob, width = 256, height = 256): Promis
   ctx.drawImage(image, 0, 0, width, height)
   return new Promise((resolve, reject) => {
     canvas.toBlob(result => (result ? resolve(result) : reject(new Error('Could not encode the image'))), 'image/png')
+  })
+}
+
+/**
+ * The catalyst image (legacy generateImage): the thumbnail drawn over the rarity's radial
+ * gradient at 512x512. Without a canvas context (tests) the thumbnail itself is returned.
+ */
+export async function generateCatalystImage(thumbnail: Blob, rarity: string, size = 512): Promise<Blob> {
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const context = canvas.getContext('2d')
+  if (!context || !Rarity.validate(rarity)) return thumbnail
+
+  const gradient = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 1.75)
+  const [from, to] = Rarity.getGradient(rarity)
+  gradient.addColorStop(0, from)
+  gradient.addColorStop(1, to)
+  context.fillStyle = gradient
+  context.fillRect(0, 0, size, size)
+  context.drawImage(await loadImage(thumbnail), 0, 0, size, size)
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      blob => (blob ? resolve(blob) : reject(new Error('Could not generate the catalyst image'))),
+      'image/png'
+    )
   })
 }
 

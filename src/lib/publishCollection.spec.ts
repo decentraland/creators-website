@@ -120,11 +120,19 @@ function makeDeps(overrides: Partial<PublishDeps> = {}): PublishDeps & { calls: 
 
 describe('getPublishBlocker', () => {
   it('only lets an unlocked draft with 1..50 items publish', () => {
-    expect(getPublishBlocker(collection, 3)).toBeNull()
-    expect(getPublishBlocker(collection, 0)).toBe('no_items')
-    expect(getPublishBlocker(collection, MAX_PUBLISH_ITEMS + 1)).toBe('too_many_items')
-    expect(getPublishBlocker({ ...collection, isPublished: true }, 3)).toBe('not_draft')
-    expect(getPublishBlocker({ ...collection, lock: Date.now() }, 3)).toBe('not_draft')
+    expect(getPublishBlocker(collection, 3, [])).toBeNull()
+    expect(getPublishBlocker(collection, 0, [])).toBe('no_items')
+    expect(getPublishBlocker(collection, MAX_PUBLISH_ITEMS + 1, [])).toBe('too_many_items')
+    expect(getPublishBlocker({ ...collection, isPublished: true }, 3, [])).toBe('not_draft')
+    expect(getPublishBlocker({ ...collection, lock: Date.now() }, 3, [])).toBe('not_draft')
+  })
+
+  it('blocks publishing while a smart wearable has no preview video', () => {
+    const smart = makeItem('sw', 3)
+    smart.contents = { ...smart.contents, 'male/bin/game.js': 'js' }
+    expect(getPublishBlocker(collection, 1, [smart])).toBe('missing_smart_wearable_video')
+    smart.contents['video.mp4'] = 'video'
+    expect(getPublishBlocker(collection, 1, [smart])).toBeNull()
   })
 })
 

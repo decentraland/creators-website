@@ -14,15 +14,19 @@ import {
   type ItemRepresentation
 } from './items'
 import {
+  IMAGE_PATH,
   ItemFileError,
   MAX_EMOTE_FILE_SIZE,
   MAX_SKIN_FILE_SIZE,
+  MAX_THUMBNAIL_FILE_SIZE,
   MAX_WEARABLE_FILE_SIZE,
   THUMBNAIL_PATH,
+  VIDEO_PATH,
   getBodyShapeTypeFromContents,
   isModelPath,
   toMB
 } from './itemFiles'
+import { generateCatalystImage } from './media'
 
 export const ITEM_NAME_MAX_LENGTH = 32
 
@@ -56,7 +60,13 @@ export type ItemDraftPayload = {
   category: string
   rarity: string
   playMode?: EmotePlayMode
-  /** Normalized contents including thumbnail.png; model/texture keys unprefixed unless a BOTH zip. */
+  /** Smart wearables only: permissions read from the zip's scene.json. */
+  requiredPermissions?: string[]
+  /** From wearable.json / emote.json when the zip ships one. */
+  description?: string
+  tags?: string[]
+  blockVrmExport?: boolean
+  /** Normalized contents including thumbnail.png (and video.mp4 for a smart wearable); model/texture keys unprefixed unless a BOTH zip. */
   contents: Record<string, Blob>
   /** Main model/texture path within contents. */
   model: string
@@ -67,10 +77,13 @@ export type ItemDraftPayload = {
 
 const prefixContentName = (bodyShape: BodyShapeType, contentKey: string): string => `${bodyShape}/${contentKey}`
 
-/** Prefixes every content key with the body shape; the thumbnail stays at the root. */
+// Item-level files that are never part of a body-shape representation.
+const ROOT_PATHS = new Set([THUMBNAIL_PATH, VIDEO_PATH, IMAGE_PATH])
+
+/** Prefixes every content key with the body shape; the thumbnail, catalyst image and video stay at the root. */
 const prefixContents = (bodyShape: BodyShapeType, contents: Record<string, Blob>): Record<string, Blob> => {
   return Object.keys(contents).reduce((newContents: Record<string, Blob>, key: string) => {
-    if (key === THUMBNAIL_PATH) {
+    if (ROOT_PATHS.has(key)) {
       return newContents
     }
     newContents[prefixContentName(bodyShape, key)] = contents[key]
@@ -91,9 +104,14 @@ export function sortContent(bodyShape: BodyShapeType, contents: Record<string, B
     bodyShape === BodyShapeType.BOTH || bodyShape === BodyShapeType.FEMALE
       ? prefixContents(BodyShapeType.FEMALE, contents)
       : {}
-  const all: Record<string, Blob> = { ...male, ...female }
-  if (contents[THUMBNAIL_PATH]) all[THUMBNAIL_PATH] = contents[THUMBNAIL_PATH]
-  return { male, female, all }
+  return { male, female, all: withRootFiles({ ...male, ...female }, contents) }
+}
+
+function withRootFiles(all: Record<string, Blob>, contents: Record<string, Blob>): Record<string, Blob> {
+  for (const path of ROOT_PATHS) {
+    if (contents[path]) all[path] = contents[path]
+  }
+  return all
 }
 
 /** Variant of sortContent for zips that already ship male/ and female/ folders. */
@@ -125,9 +143,7 @@ export function sortContentZipBothBodyShape(bodyShape: BodyShapeType, contents: 
       : {})
   }
 
-  const all: Record<string, Blob> = { ...male, ...female }
-  if (contents[THUMBNAIL_PATH]) all[THUMBNAIL_PATH] = contents[THUMBNAIL_PATH]
-  return { male, female, all }
+  return { male, female, all: withRootFiles({ ...male, ...female }, contents) }
 }
 
 export function buildRepresentations(
@@ -203,15 +219,25 @@ export async function computeHashes(contents: Record<string, Blob>): Promise<Rec
 }
 
 /**
- * The per-type size cap over the final payload (model + thumbnail), re-checked at the details
- * step where type and category are known. Returns the violated cap in MB, or null when valid.
+ * The per-type size cap over the final payload (model + thumbnail, never the video), re-checked
+ * at the details step where type and category are known. Returns the violated cap in MB, or null
+ * when valid.
  */
 export function getSizeError(
   type: ItemType,
   category: string | undefined,
-  contents: Record<string, Blob>
+  contents: Record<string, Blob>,
+  /** Sizes of already-stored files kept by an update (legacy calculateModelFinalSize). */
+  storedSizes: number[] = []
 ): number | null {
-  const totalSize = Object.values(contents).reduce((total, blob) => total + blob.size, 0)
+  // A unisex item carries the same blob under male/ and female/; like legacy's getUniqueFiles, count it once.
+  const uniqueBlobs = new Set(
+    Object.entries(contents)
+      .filter(([path]) => path !== VIDEO_PATH && path !== IMAGE_PATH)
+      .map(([, blob]) => blob)
+  )
+  let totalSize = storedSizes.reduce((total, size) => total + size, 0)
+  for (const blob of uniqueBlobs) totalSize += blob.size
   const maxSize =
     type === ItemType.EMOTE
       ? MAX_EMOTE_FILE_SIZE
@@ -219,6 +245,16 @@ export function getSizeError(
         ? MAX_SKIN_FILE_SIZE
         : MAX_WEARABLE_FILE_SIZE
   return totalSize > maxSize ? toMB(maxSize) : null
+}
+
+/** Save-time re-check of every cap (legacy sagas): the item cap over model + thumbnail, plus the thumbnail's own. */
+export function assertUploadSize(item: Item, blobs: Record<string, Blob>, storedSizes: number[] = []): void {
+  const thumbnail = blobs[THUMBNAIL_PATH]
+  if (thumbnail && thumbnail.size > MAX_THUMBNAIL_FILE_SIZE) {
+    throw new ItemFileError('thumbnail_too_big', { size: toMB(MAX_THUMBNAIL_FILE_SIZE) })
+  }
+  const size = getSizeError(item.type, item.data.category, blobs, storedSizes)
+  if (size !== null) throw new ItemFileError('size_exceeded', { size })
 }
 
 /** An item to persist plus the blobs to upload, keyed by content path. */
@@ -248,24 +284,29 @@ export async function buildItem(draft: ItemDraftPayload): Promise<BuiltItem> {
           replaces: [],
           hides: [],
           removesDefaultHiding: draft.category === UPPER_BODY_CATEGORY ? [HANDS_BODY_PART] : [],
-          tags: [],
+          tags: draft.tags ?? [],
           representations,
-          blockVrmExport: false,
-          outlineCompatible: true
+          blockVrmExport: draft.blockVrmExport ?? false,
+          outlineCompatible: true,
+          // Legacy sends an empty list for every wearable; a smart one carries its scene.json permissions.
+          requiredPermissions: draft.requiredPermissions ?? []
         }
       : {
           category: draft.category,
           loop: draft.playMode === EmotePlayMode.LOOP,
-          tags: [],
+          tags: draft.tags ?? [],
           representations
         }
 
   const now = Date.now()
+  const blobs = await withCatalystImage(sorted.all, draft.rarity)
+  const contents = await computeHashes(blobs)
   const item: Item = {
     id: draft.id,
     name: draft.name,
-    description: '',
+    description: draft.description ?? '',
     thumbnail: THUMBNAIL_PATH,
+    ...(contents[VIDEO_PATH] ? { video: contents[VIDEO_PATH] } : {}),
     owner: draft.owner,
     collectionId: draft.collectionId,
     totalSupply: 0,
@@ -276,7 +317,7 @@ export async function buildItem(draft: ItemDraftPayload): Promise<BuiltItem> {
     type: draft.type,
     data,
     metrics: draft.metrics,
-    contents: await computeHashes(sorted.all),
+    contents,
     // "Not for sale" defaults, as the legacy modal saves standard items.
     price: ethers.constants.MaxUint256.toString(),
     beneficiary: draft.owner,
@@ -284,7 +325,14 @@ export async function buildItem(draft: ItemDraftPayload): Promise<BuiltItem> {
     updatedAt: now
   }
 
-  return { item, blobs: sorted.all }
+  return { item, blobs }
+}
+
+/** Adds the catalyst image next to the thumbnail (legacy generateCatalystImage before every save). */
+async function withCatalystImage(blobs: Record<string, Blob>, rarity: string): Promise<Record<string, Blob>> {
+  const thumbnail = blobs[THUMBNAIL_PATH]
+  if (!thumbnail) return blobs
+  return { ...blobs, [IMAGE_PATH]: await generateCatalystImage(thumbnail, rarity) }
 }
 
 /**
@@ -332,12 +380,13 @@ export async function addRepresentationToItem(
 
 /** Replaces a saved item's thumbnail with a new PNG, hashing it so the file can be uploaded alongside. */
 export async function withThumbnail(item: Item, thumbnail: Blob): Promise<BuiltItem> {
-  const hashes = await computeHashes({ [THUMBNAIL_PATH]: thumbnail })
+  const blobs = await withCatalystImage({ [THUMBNAIL_PATH]: thumbnail }, item.rarity ?? '')
+  const hashes = await computeHashes(blobs)
   const contents = { ...item.contents }
   if (item.thumbnail !== THUMBNAIL_PATH) delete contents[item.thumbnail]
   return {
     item: { ...item, thumbnail: THUMBNAIL_PATH, contents: { ...contents, ...hashes }, updatedAt: Date.now() },
-    blobs: { [THUMBNAIL_PATH]: thumbnail }
+    blobs
   }
 }
 
