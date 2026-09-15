@@ -7,7 +7,6 @@ import {
   diffRoles,
   getRoleAddressError,
   getRoleAddresses,
-  hasRoleChanges,
   isCollectionOwner,
   withRoles
 } from './collectionRoles'
@@ -64,8 +63,7 @@ describe('saving roles', () => {
       addresses: [MINTER, OTHER],
       values: [false, true]
     })
-    expect(hasRoleChanges([MINTER], [MINTER])).toBe(false)
-    expect(hasRoleChanges([MINTER], [])).toBe(true)
+    expect(diffRoles([MINTER], [MINTER]).addresses).toEqual([])
   })
 
   it('encodes setMinters / setManagers on the collection contract', () => {

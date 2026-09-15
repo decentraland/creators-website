@@ -6,12 +6,12 @@ import { useFriends } from '~/hooks/useSales'
 import { isSocialLogin, type Session } from '~/lib/auth'
 import { installBackGuard } from '~/lib/backGuard'
 import { type Collection } from '~/lib/collections'
-import { hasRoleChanges, type RoleKind } from '~/lib/collectionRoles'
+import { diffRoles, type RoleKind } from '~/lib/collectionRoles'
 import { toSellItemError, type SellFailureReason } from '~/lib/sales'
 import { PendingModal } from '../SellItemFlow/PendingModal'
 import { SaleErrorModal } from '../SellItemFlow/SaleErrorModal'
 import { SaleSuccessModal } from '../SellItemFlow/SaleSuccessModal'
-import { DiscardChangesModal } from './DiscardChangesModal'
+import { ConfirmModal } from '~/components/ConfirmModal'
 import { ManageRolesModal } from './ManageRolesModal'
 import { RemoveRoleModal } from './RemoveRoleModal'
 
@@ -46,7 +46,7 @@ export function ManageRolesFlow({ collection, kind, session, onClose }: Props) {
   const attempt = useRef(0)
 
   const save = useSetCollectionRoles(session)
-  const dirty = useMemo(() => hasRoleChanges(current, addresses), [current, addresses])
+  const dirty = useMemo(() => diffRoles(current, addresses).addresses.length > 0, [current, addresses])
   const busy = social && save.isPending
   useBeforeUnloadGuard(dirty || save.isPending)
 
@@ -110,7 +110,20 @@ export function ManageRolesFlow({ collection, kind, session, onClose }: Props) {
               onCancel={() => setRemoving(null)}
             />
           )}
-          {isDiscardOpen && <DiscardChangesModal onDiscard={onClose} onKeep={() => setDiscardOpen(false)} />}
+          {isDiscardOpen && (
+            <ConfirmModal
+              title={t('manage_roles_modal.discard.title')}
+              description={t('manage_roles_modal.discard.description')}
+              onClose={() => setDiscardOpen(false)}
+              cancel={{ label: t('manage_roles_modal.discard.leave'), onClick: onClose, testId: 'discard-roles-leave' }}
+              confirm={{
+                label: t('manage_roles_modal.discard.keep'),
+                onClick: () => setDiscardOpen(false),
+                testId: 'discard-roles-keep'
+              }}
+              testId="discard-roles-modal"
+            />
+          )}
         </>
       )
     case 'saving':

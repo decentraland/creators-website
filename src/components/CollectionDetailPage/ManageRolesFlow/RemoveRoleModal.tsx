@@ -4,6 +4,7 @@ import { useProfile } from '~/hooks/useProfile'
 import { type RoleKind } from '~/lib/collectionRoles'
 import { type Friend } from '~/lib/friends'
 import { ConfirmModal } from '~/components/ConfirmModal'
+import { shorten } from '../SellItemFlow/BeneficiaryInput'
 
 type Props = {
   kind: RoleKind
@@ -12,8 +13,6 @@ type Props = {
   onConfirm: () => void
   onCancel: () => void
 }
-
-const shorten = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`
 
 /** "Remove this sender?" — drops the address from the draft; nothing changes on-chain until the list is saved. */
 export function RemoveRoleModal({ kind, address, friends, onConfirm, onCancel }: Props) {

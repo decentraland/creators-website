@@ -80,10 +80,6 @@ export function diffRoles(current: string[], next: string[]): RoleDiff {
   return { addresses, values }
 }
 
-export function hasRoleChanges(current: string[], next: string[]): boolean {
-  return diffRoles(current, next).addresses.length > 0
-}
-
 /** `setMinters` / `setManagers(address[], bool[])` on the collection contract itself; owner-only on-chain. */
 export function buildSetRolesCall(
   collection: Collection,
