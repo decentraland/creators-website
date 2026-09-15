@@ -87,7 +87,7 @@ describe('CollectionActionsMenu', () => {
     await openMenu()
     expect(screen.getByTestId('delete-collection')).toBeInTheDocument()
     expect(screen.queryByTestId('copy-urn')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('manage-minters')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('manage-senders')).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByTestId('delete-collection'))
     expect(screen.getByTestId('delete-collection-modal-description')).toHaveTextContent('Pirate Hats')
@@ -143,19 +143,23 @@ describe('CollectionActionsMenu', () => {
     expect(screen.queryByTestId('view-in-shop')).not.toBeInTheDocument()
   })
 
-  it('shows the role placeholders only to the owner of an on-chain collection', async () => {
-    renderMenu({ ...draft, isPublished: true })
+  it('opens the collaborators and senders lists for the owner of an on-chain collection', async () => {
+    const onManageRoles = vi.fn()
+    renderMenu({ ...draft, isPublished: true }, OWNER, { onManageRoles })
     await openMenu()
-    expect(screen.getByTestId('manage-collaborators')).toHaveAttribute('aria-disabled')
-    expect(screen.getByTestId('manage-minters')).toHaveAttribute('aria-disabled')
+    await userEvent.click(screen.getByTestId('manage-collaborators'))
+    expect(onManageRoles).toHaveBeenCalledWith('collaborators')
+    await openMenu()
+    await userEvent.click(screen.getByTestId('manage-senders'))
+    expect(onManageRoles).toHaveBeenCalledWith('senders')
   })
 
-  it('hides the role placeholders when asked, even for the owner', async () => {
-    renderMenu({ ...draft, isPublished: true }, OWNER, { showRoles: false })
+  it('hides the role entries when asked, even for the owner', async () => {
+    renderMenu({ ...draft, isPublished: true }, OWNER, { showRoles: false, onManageRoles: vi.fn() })
     await openMenu()
     expect(screen.getByTestId('copy-urn')).toBeInTheDocument()
     expect(screen.queryByTestId('manage-collaborators')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('manage-minters')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('manage-senders')).not.toBeInTheDocument()
   })
 
   it('closes with Escape', async () => {
@@ -168,11 +172,11 @@ describe('CollectionActionsMenu', () => {
   describe('on a small screen', () => {
     beforeEach(() => stubViewport(true))
 
-    it('keeps copying and the role placeholders for the owner of an on-chain collection', async () => {
-      renderMenu({ ...draft, isPublished: true })
+    it('keeps copying and the role entries for the owner of an on-chain collection', async () => {
+      renderMenu({ ...draft, isPublished: true }, OWNER, { onManageRoles: vi.fn() })
       const menu = await openMenu()
       const ids = Array.from(menu.querySelectorAll('[role="menuitem"]')).map(el => el.getAttribute('data-testid'))
-      expect(ids).toEqual(['copy-urn', 'copy-address', 'manage-collaborators', 'manage-minters'])
+      expect(ids).toEqual(['copy-urn', 'copy-address', 'manage-collaborators', 'manage-senders'])
     })
 
     it('renders nothing for a draft, since deleting is desktop-only', () => {

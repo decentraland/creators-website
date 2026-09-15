@@ -17,6 +17,8 @@ type Props = {
   placeholder?: string
   /** Rejects an address already used, with this copy under the field. */
   duplicateError?: (address: string) => string | null
+  /** Accessible name of the chip's ✕; "Clear beneficiary" unless the chip stands for something else. */
+  clearLabel?: string
   testId?: string
 }
 
@@ -34,6 +36,7 @@ export function BeneficiaryInput({
   disabled,
   placeholder,
   duplicateError,
+  clearLabel,
   testId = 'beneficiary'
 }: Props) {
   const { t } = useTranslation()
@@ -108,7 +111,7 @@ export function BeneficiaryInput({
         <S.ChipAddress title={value}>({value})</S.ChipAddress>
         <S.ChipClear
           type="button"
-          aria-label={t('sell_item_modal.beneficiary.clear')}
+          aria-label={clearLabel ?? t('sell_item_modal.beneficiary.clear')}
           disabled={disabled}
           data-testid={`${testId}-clear`}
           onClick={() => onChange('')}

@@ -54,7 +54,7 @@
   },
   "collection_role": {
     "collaborator": "Colaborador",
-    "minter": "Minter"
+    "minter": "Emisor"
   },
   "collection_status": {
     "published": "Publicada",
@@ -100,7 +100,7 @@
       "copy_urn": "Copiar URN",
       "copy_address": "Copiar dirección del contrato",
       "collaborators": "Colaboradores",
-      "minters": "Minters",
+      "senders": "Emisores",
       "delete": "Eliminar colección",
       "copied_urn": "URN copiado al portapapeles",
       "copied_address": "Dirección del contrato copiada al portapapeles",
@@ -115,7 +115,6 @@
       },
       "view_in_shop": "Ver en la Tienda"
     },
-    "coming_soon": "Próximamente",
     "filter": {
       "all": "Todos ({count})",
       "wearable": "Wearables ({count})",
@@ -396,7 +395,11 @@
       "try_again": "Intentar de nuevo",
       "description_not_listed": "Este ítem ya no está en venta, así que no hay nada que cambiar. Recarga la página para ver su estado actual.",
       "title_send": "No pudimos enviar tus ítems",
-      "description_send": "Algo salió mal al enviar tus ítems. Por favor, inténtalo de nuevo."
+      "description_send": "Algo salió mal al enviar tus ítems. Por favor, inténtalo de nuevo.",
+      "title_senders": "No pudimos actualizar los emisores",
+      "description_senders": "Algo salió mal al guardar los emisores de esta colección. Por favor, inténtalo de nuevo.",
+      "title_collaborators": "No pudimos actualizar los colaboradores",
+      "description_collaborators": "Algo salió mal al guardar los colaboradores de esta colección. Por favor, inténtalo de nuevo."
     },
     "remove": {
       "title": "¿Quitar de la venta?",
@@ -657,6 +660,43 @@
     "sending": "Enviando ítems...",
     "success_title": "¡Ítems enviados!",
     "success_description": "Tus ítems van en camino a los destinatarios seleccionados."
+  },
+  "manage_roles_modal": {
+    "senders": {
+      "title": "Emisores",
+      "description": "Los emisores pueden enviar copias de los ítems de esta colección a cualquier wallet y ponerlos en venta. Solo tú, como dueño, puedes cambiar esta lista.",
+      "placeholder": "Selecciona o copia el User ID del emisor",
+      "add": "Agregar emisor",
+      "remove": "Quitar emisor",
+      "remove_title": "¿Quitar a este emisor?",
+      "remove_description": "{name} ya no podrá enviar los ítems de esta colección cuando guardes los cambios.",
+      "success_title": "¡Emisores actualizados!",
+      "success_description": "Los cambios sobre quién puede enviar los ítems de esta colección ya están activos."
+    },
+    "collaborators": {
+      "title": "Colaboradores",
+      "description": "Los colaboradores pueden editar los ítems de esta colección y ponerlos en venta, pero no enviar copias. Solo tú, como dueño, puedes cambiar esta lista.",
+      "placeholder": "Selecciona o copia el User ID del colaborador",
+      "add": "Agregar colaborador",
+      "remove": "Quitar colaborador",
+      "remove_title": "¿Quitar a este colaborador?",
+      "remove_description": "{name} ya no podrá editar esta colección cuando guardes los cambios.",
+      "success_title": "¡Colaboradores actualizados!",
+      "success_description": "Los cambios sobre quién puede editar esta colección ya están activos."
+    },
+    "duplicate": "Esta dirección ya está en la lista.",
+    "owner": "Esa es tu propia dirección: como dueño ya tienes todos los permisos.",
+    "system": "Esta dirección pertenece a la Tienda de Decentraland y no se puede cambiar aquí.",
+    "save": "Guardar cambios",
+    "saving": "Guardando cambios...",
+    "remove_confirm": "Quitar",
+    "remove_cancel": "Mantener",
+    "discard": {
+      "title": "¿Descartar tus cambios?",
+      "description": "Si sales ahora, los cambios que hiciste en esta lista no se guardarán.",
+      "leave": "Descartar cambios",
+      "keep": "Seguir editando"
+    }
   },
   "required_permissions": {
     "title": "Permisos requeridos",
