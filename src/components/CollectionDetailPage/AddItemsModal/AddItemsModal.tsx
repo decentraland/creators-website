@@ -6,7 +6,7 @@ import { useTranslation } from '~/intl'
 import { useAllCollectionItems } from '~/hooks/useCollection'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { installBackGuard } from '~/lib/backGuard'
-import { ItemFileError } from '~/lib/itemFiles'
+import { ItemFileError, MAX_THUMBNAIL_FILE_SIZE, VIDEO_PATH, toMB } from '~/lib/itemFiles'
 import { type ItemDraftPayload } from '~/lib/itemFactory'
 import { type Collection } from '~/lib/collections'
 import { ItemType } from '~/lib/items'
@@ -20,16 +20,18 @@ import {
   isImageWearable,
   type ItemDraft
 } from './AddItemsModal.state'
-import { processDraftFile, pickPreviewDraft } from './processDraft'
+import { imageThumbnailPatch, isImageThumbnailStale, processDraftFile, pickPreviewDraft } from './processDraft'
 import { DraftList } from './DraftList'
 import { DraftForm } from './DraftForm'
 import { DraftProcessor } from './DraftProcessor'
 import {
   ThumbnailFormatError,
   ThumbnailModal,
+  ThumbnailTooBigError,
   thumbnailPatchFromFile,
   type ThumbnailPatch
 } from '~/components/ThumbnailModal'
+import { VideoModal } from '~/components/VideoModal'
 import { LeaveConfirmModal } from './LeaveConfirmModal'
 import { UploadErrorModal } from './UploadErrorModal'
 import * as S from './AddItemsModal.styles'
@@ -59,6 +61,7 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
 
   const [isLeaveConfirmOpen, setLeaveConfirmOpen] = useState(false)
   const [isThumbnailOpen, setThumbnailOpen] = useState(false)
+  const [isVideoOpen, setVideoOpen] = useState(false)
   const thumbnailInputRef = useRef<HTMLInputElement>(null)
 
   // Variant targets need every unpublished wearable of the collection, not just the loaded page.
@@ -100,6 +103,20 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
     processingIdRef.current = previewDraft?.id ?? null
   }, [previewDraft?.id])
 
+  // Image wearables are padded per category, so a category change re-pads our auto thumbnail.
+  const repaddingIdsRef = useRef(new Set<string>())
+  useEffect(() => {
+    const stale = drafts.find(draft => isImageThumbnailStale(draft) && !repaddingIdsRef.current.has(draft.id))
+    if (!stale) return
+    repaddingIdsRef.current.add(stale.id)
+    void imageThumbnailPatch(stale.contents, stale.model, stale.category)
+      .then(patch =>
+        dispatch({ type: 'draftAnalyzed', id: stale.id, patch: { ...patch, autoThumbnailCategory: stale.category } })
+      )
+      .catch((error: unknown) => console.error('Thumbnail re-padding failed:', error))
+      .finally(() => repaddingIdsRef.current.delete(stale.id))
+  }, [drafts])
+
   const isSelectedComplete = useMemo(
     () => !!selected && isDraftComplete(selected, drafts, collectionItems),
     [selected, drafts, collectionItems]
@@ -134,6 +151,10 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
       category: draft.category ?? '',
       rarity: draft.rarity,
       playMode: draft.playMode,
+      requiredPermissions: draft.isSmart ? draft.requiredPermissions : undefined,
+      description: draft.description,
+      tags: draft.tags,
+      blockVrmExport: draft.blockVrmExport,
       contents: draft.contents,
       model: draft.model,
       metrics: draft.metrics ?? {},
@@ -190,29 +211,54 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
       .then(patch => dispatch({ type: 'draftUpdated', id, patch }))
       .catch((err: unknown) => {
         showToast(
-          t(err instanceof ThumbnailFormatError ? 'thumbnail_modal.wrong_format' : 'thumbnail_modal.capture_failed'),
+          t(
+            err instanceof ThumbnailFormatError
+              ? 'thumbnail_modal.wrong_format'
+              : err instanceof ThumbnailTooBigError
+                ? 'thumbnail_modal.too_big'
+                : 'thumbnail_modal.capture_failed',
+            { size: toMB(MAX_THUMBNAIL_FILE_SIZE) }
+          ),
           { type: 'error' }
         )
       })
   }
 
+  function handleVideoChange(video: File) {
+    if (!selected) return
+    dispatch({
+      type: 'draftUpdated',
+      id: selected.id,
+      patch: { contents: { ...selected.contents, [VIDEO_PATH]: video } }
+    })
+  }
+
   function handleSaveChanges() {
     const checked = drafts.filter(draft => draft.checked)
-    // A checked variant whose base draft isn't part of the save has nothing to attach to.
+    // A checked variant whose base draft is still unreviewed can't be saved on its own: point the
+    // creator at that base draft instead of silently dropping the variant.
     const checkedIds = new Set(checked.map(draft => draft.id))
-    const uploadable = checked.filter(
+    // Variants of existing collection items are fine on their own.
+    const orphan = checked.find(
       draft =>
-        !draft.isVariant ||
-        !draft.variantTargetId ||
-        checkedIds.has(draft.variantTargetId) ||
-        collectionItems.some(item => item.id === draft.variantTargetId)
+        draft.isVariant &&
+        !checkedIds.has(draft.variantTargetId ?? '') &&
+        drafts.some(candidate => candidate.id === draft.variantTargetId)
     )
+    const orphanTarget = orphan && drafts.find(draft => draft.id === orphan.variantTargetId)
     setLeaveConfirmOpen(false)
-    void upload(uploadable)
+    if (orphan && orphanTarget) {
+      dispatch({ type: 'draftSelected', id: orphanTarget.id })
+      showToast(t('add_items_modal.leave.review_target_first', { target: orphanTarget.name, variant: orphan.name }), {
+        type: 'error'
+      })
+      return
+    }
+    void upload(checked)
   }
 
   function requestClose() {
-    if (isUploading || isLeaveConfirmOpen || isThumbnailOpen) return
+    if (isUploading || isLeaveConfirmOpen || isThumbnailOpen || isVideoOpen) return
     // Nothing salvageable to lose: every file failed to import.
     if (drafts.every(draft => draft.status === 'failed')) {
       onClose()
@@ -270,6 +316,8 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
                 onOpenThumbnail={() =>
                   isImageWearable(selected) ? thumbnailInputRef.current?.click() : setThumbnailOpen(true)
                 }
+                onOpenVideo={() => setVideoOpen(true)}
+                onVideoChange={handleVideoChange}
               />
             ) : (
               <S.ProcessingPane data-testid="draft-processing">
@@ -365,6 +413,14 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
             dispatch({ type: 'draftUpdated', id: selected.id, patch })
             setThumbnailOpen(false)
           }}
+        />
+      )}
+
+      {isVideoOpen && selected && selected.status === 'ready' && (
+        <VideoModal
+          video={selected.contents[VIDEO_PATH] ?? null}
+          onChange={handleVideoChange}
+          onClose={() => setVideoOpen(false)}
         />
       )}
 

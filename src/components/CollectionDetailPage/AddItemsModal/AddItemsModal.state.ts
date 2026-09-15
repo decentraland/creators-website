@@ -3,7 +3,7 @@
 // feeds results in through actions, so this reducer stays fully unit-testable.
 import { EmoteCategory, WearableCategory } from '@dcl/schemas'
 import { checkTriangleCount, type ValidationIssue } from '~/lib/glbValidation'
-import { cleanAssetName, isModelFile } from '~/lib/itemFiles'
+import { VIDEO_PATH, cleanAssetName, isModelFile } from '~/lib/itemFiles'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
 import { BodyShapeType, ItemType, getMissingBodyShapeType, type Item, type ItemMetrics } from '~/lib/items'
 import { type UploadFailureReason } from '~/lib/uploadItems'
@@ -26,12 +26,21 @@ export type ItemDraft = {
   contents: Record<string, Blob>
   model: string
   bodyShape: BodyShapeType
-  /** True when the zip structure fixed the shape (male/+female/ folders or a manifest). */
+  /** True when the zip structure fixed the shape (male/+female/ folders or a manifest), or the item is unisex by nature. */
   bodyShapeLocked: boolean
+  /** Wearable shipping scene code (a zip with scene.json). Unisex, no variants, needs a preview video (contents['video.mp4']) to be saved. */
+  isSmart: boolean
+  requiredPermissions: string[]
   isVariant: boolean
   variantTargetId: string | null
   category: string | null
+  /** Category guessed from the model's geometry; shown as a hint while the user keeps it. */
+  suggestedCategory: string | null
   rarity: string
+  /** From wearable.json / emote.json when the zip ships one. */
+  description: string
+  tags: string[]
+  blockVrmExport: boolean
   playMode: EmotePlayMode
   /** Data URL of the current thumbnail; also stored as contents['thumbnail.png'] once final. */
   thumbnail: string | null
@@ -67,10 +76,16 @@ export function createDraft(file: File): ItemDraft {
     model: '',
     bodyShape: BodyShapeType.BOTH,
     bodyShapeLocked: false,
+    isSmart: false,
+    requiredPermissions: [],
     isVariant: false,
     variantTargetId: null,
     category: null,
+    suggestedCategory: null,
     rarity: DEFAULT_RARITY,
+    description: '',
+    tags: [],
+    blockVrmExport: false,
     playMode: EmotePlayMode.SIMPLE,
     thumbnail: null,
     thumbnailNotTransparent: false,
@@ -195,7 +210,8 @@ export type VariantTargetOption = {
 
 /**
  * Items a single-shape draft can become a representation of: other batch drafts and unpublished
- * collection wearables that are missing exactly the draft's body shape.
+ * collection wearables that are missing exactly the draft's body shape and are the same kind of
+ * wearable (a PNG can only pair with eyes/eyebrows/mouth, a model only with model categories).
  */
 export function getVariantTargets(
   draft: ItemDraft,
@@ -204,6 +220,7 @@ export function getVariantTargets(
 ): VariantTargetOption[] {
   if (draft.bodyShape === BodyShapeType.BOTH) return []
   const targetShape = draft.bodyShape === BodyShapeType.MALE ? BodyShapeType.FEMALE : BodyShapeType.MALE
+  const isImage = isImageWearable(draft)
 
   const draftTargets = drafts
     .filter(
@@ -213,17 +230,26 @@ export function getVariantTargets(
         candidate.type === ItemType.WEARABLE &&
         !candidate.isVariant &&
         candidate.bodyShape === targetShape &&
+        isImageWearable(candidate) === isImage &&
         candidate.name.trim().length > 0
     )
     .map(candidate => ({ id: candidate.id, label: candidate.name, bodyShape: candidate.bodyShape }))
 
   const itemTargets = collectionItems
     .filter(
-      item => item.type === ItemType.WEARABLE && !item.isPublished && getMissingBodyShapeType(item) === draft.bodyShape
+      item =>
+        item.type === ItemType.WEARABLE &&
+        !item.isPublished &&
+        getMissingBodyShapeType(item) === draft.bodyShape &&
+        isImageCategory(item.data.category) === isImage
     )
     .map(item => ({ id: item.id, label: item.name, bodyShape: targetShape }))
 
   return [...draftTargets, ...itemTargets]
+}
+
+function isImageCategory(category: string | undefined): boolean {
+  return category !== undefined && IMAGE_WEARABLE_CATEGORIES.includes(category)
 }
 
 /** Wearable made of a plain PNG (eyes / eyebrows / mouth) rather than a 3D model. */
@@ -251,6 +277,8 @@ export function isDraftComplete(draft: ItemDraft, drafts: ItemDraft[], collectio
   )
     return false
   if (draft.type === ItemType.EMOTE && getSizeError(draft.type, undefined, draft.contents) !== null) return false
+  // Legacy UploadVideoStep made the preview video mandatory for smart wearables.
+  if (draft.isSmart && !draft.contents[VIDEO_PATH]) return false
 
   if (draft.isVariant) {
     if (!draft.variantTargetId) return false

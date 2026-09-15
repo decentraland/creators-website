@@ -29,6 +29,16 @@ function readyDraft(overrides: Partial<ItemDraft> = {}): ItemDraft {
   }
 }
 
+function smartDraft(overrides: Partial<ItemDraft> = {}): ItemDraft {
+  return readyDraft({
+    isSmart: true,
+    bodyShapeLocked: true,
+    requiredPermissions: ['USE_FETCH'],
+    contents: { 'model.glb': blob(), 'scene.json': blob(), 'bin/game.js': blob(), 'thumbnail.png': blob() },
+    ...overrides
+  })
+}
+
 function stateWith(drafts: ItemDraft[]): AddItemsState {
   return createInitialState(drafts)
 }
@@ -130,6 +140,43 @@ describe('getVariantTargets', () => {
     const draft = readyDraft({ bodyShape: BodyShapeType.BOTH })
     expect(getVariantTargets(draft, [draft], [])).toEqual([])
   })
+
+  it('only pairs image wearables with image wearables and models with models', () => {
+    const imageContents = { 'eyes.png': blob(), 'thumbnail.png': blob() }
+    const femaleEyes = readyDraft({
+      bodyShape: BodyShapeType.FEMALE,
+      name: 'eyes 2',
+      contents: imageContents,
+      model: 'eyes.png',
+      category: 'eyes'
+    })
+    const maleEyes = readyDraft({
+      bodyShape: BodyShapeType.MALE,
+      name: 'eyes',
+      contents: imageContents,
+      model: 'eyes.png',
+      category: 'eyes'
+    })
+    const maleHat = readyDraft({ bodyShape: BodyShapeType.MALE })
+    const femaleHat = readyDraft({ bodyShape: BodyShapeType.FEMALE, name: 'hat 2' })
+    const maleUpperBody = collectionItem('upper', [MALE_URN], {
+      data: {
+        category: 'upper_body',
+        representations: [{ bodyShapes: [MALE_URN], mainFile: 'male/model.glb', contents: ['male/model.glb'] }]
+      }
+    })
+    const maleMouth = collectionItem('mouth', [MALE_URN], {
+      data: {
+        category: 'mouth',
+        representations: [{ bodyShapes: [MALE_URN], mainFile: 'male/mouth.png', contents: ['male/mouth.png'] }]
+      }
+    })
+    const drafts = [femaleEyes, maleEyes, maleHat, femaleHat]
+    const items = [maleUpperBody, maleMouth]
+
+    expect(getVariantTargets(femaleEyes, drafts, items).map(target => target.id)).toEqual([maleEyes.id, 'mouth'])
+    expect(getVariantTargets(femaleHat, drafts, items).map(target => target.id)).toEqual([maleHat.id, 'upper'])
+  })
 })
 
 describe('isImageWearable', () => {
@@ -186,5 +233,27 @@ describe('isDraftComplete', () => {
     const big = readyDraft({ contents: { 'model.glb': new Blob([new Uint8Array(4 * 1024 * 1024)]) } })
     expect(isDraftComplete(big, [], [])).toBe(false)
     expect(isDraftComplete({ ...big, category: 'skin' }, [], [])).toBe(true)
+  })
+})
+
+describe('smart wearable drafts', () => {
+  it('need a preview video to be saved and never act as variant targets', () => {
+    const smart = smartDraft()
+    expect(isDraftComplete(smart, [smart], [])).toBe(false)
+    const withVideo = { ...smart, contents: { ...smart.contents, 'video.mp4': blob() } }
+    expect(isDraftComplete(withVideo, [withVideo], [])).toBe(true)
+    const single = readyDraft({ bodyShape: BodyShapeType.MALE })
+    expect(getVariantTargets(single, [single, smart], [])).toEqual([])
+  })
+
+  it('a changed video invalidates the previous review', () => {
+    const smart = { ...smartDraft(), checked: true }
+    const state = addItemsReducer(stateWith([smart]), {
+      type: 'draftUpdated',
+      id: smart.id,
+      patch: { contents: { ...smart.contents, 'video.mp4': blob() } }
+    })
+    expect(state.drafts[0].checked).toBe(false)
+    expect(state.drafts[0].contents['video.mp4']).toBeDefined()
   })
 })

@@ -121,7 +121,7 @@ const CollectionDetailPage = () => {
   const hasItems = total > 0
   const canRename = !!collection && !collection.isPublished && !isCollectionLocked(collection)
   const canAddItems = canRename
-  const publishBlocker = collection ? getPublishBlocker(collection, total) : 'not_draft'
+  const publishBlocker = collection ? getPublishBlocker(collection, total, allItems ?? []) : 'not_draft'
 
   function openFileBrowser() {
     filesInputRef.current?.click()

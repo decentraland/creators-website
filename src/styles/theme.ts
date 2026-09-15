@@ -42,6 +42,9 @@ const colors = {
   redRejected: '#cc1d2c', // rejected pill fill (at 20%)
   redBright: '#ff0404', // rejected pill border/text
   orange: '#ff7439', // Brand/Orange — active tab underline, warm accents
+  // Inline validation warnings on dark surfaces (Figma System/Warning).
+  warningOverlay: 'rgba(255, 207, 137, 0.2)',
+  warningText: '#ffe1b7',
   white: '#ffffff',
   // Hairline on a translucent field over the purple (search box border).
   fieldBorder: '#c6bcd7',
@@ -96,6 +99,7 @@ const radius = {
   card: '12px',
   cardLg: '16px',
   chip: '4px',
+  input: '6px',
   btn: '12px',
   btnSm: '8px',
   pill: '50px',

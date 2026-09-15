@@ -2,9 +2,9 @@
 // dispatched into the pure reducer; WearablePreview-dependent data (wearable metrics, auto
 // thumbnails) is filled afterwards by DraftProcessor.
 import { WearableCategory } from '@dcl/schemas'
-import { blobToDataURL, convertImageIntoWearableThumbnail, dataURLToBlob } from '~/lib/media'
+import { blobToDataURL, convertImageIntoWearableThumbnail, dataURLToBlob, loadVideoMetadata } from '~/lib/media'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH } from '~/lib/itemFactory'
-import { THUMBNAIL_PATH, isImageFile, loadItemFile } from '~/lib/itemFiles'
+import { ItemFileError, THUMBNAIL_PATH, VIDEO_PATH, isImageFile, loadItemFile } from '~/lib/itemFiles'
 import { BodyShapeType, ItemType, type ItemMetrics } from '~/lib/items'
 import { analyzeModel } from '~/lib/models'
 import { isRarity } from '~/lib/rarities'
@@ -38,20 +38,38 @@ function sanitizePlayMode(playMode: string | undefined): EmotePlayMode | null {
  */
 export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> {
   const loaded = await loadItemFile(file)
-  const analysis = await analyzeModel(loaded.model, loaded.contents)
+  // A video shipped in the zip gets the same decode check as one picked in the form.
+  if (loaded.contents[VIDEO_PATH]) {
+    await loadVideoMetadata(loaded.contents[VIDEO_PATH]).catch(() => {
+      throw new ItemFileError('invalid_video')
+    })
+  }
+  // The manifest's category and hides drive the category-dependent limits (triangle budget, skin caps).
+  const analysis = await analyzeModel(
+    loaded.model,
+    loaded.contents,
+    loaded.wearable?.data.category as WearableCategory | undefined,
+    loaded.wearable?.data.hides
+  )
 
+  const isSmart = !!loaded.scene
+  // Emotes and smart wearables are always unisex.
+  const isUnisex = analysis.type === ItemType.EMOTE || isSmart
   const patch: Partial<ItemDraft> = {
     contents: loaded.contents,
     model: loaded.model,
     type: analysis.type,
     validationIssues: analysis.validationIssues,
     emoteMetrics: analysis.emoteMetrics ?? null,
-    bodyShape: analysis.type === ItemType.EMOTE ? BodyShapeType.BOTH : (loaded.bodyShape ?? BodyShapeType.BOTH),
-    bodyShapeLocked: analysis.type === ItemType.EMOTE
+    bodyShape: isUnisex ? BodyShapeType.BOTH : (loaded.bodyShape ?? BodyShapeType.BOTH),
+    bodyShapeLocked: isUnisex,
+    isSmart,
+    requiredPermissions: loaded.scene?.requiredPermissions ?? []
   }
 
   if (analysis.suggestedCategory) {
     patch.category = analysis.suggestedCategory
+    patch.suggestedCategory = analysis.suggestedCategory
   }
 
   if (analysis.type === ItemType.EMOTE && analysis.emoteMetrics) {
@@ -64,11 +82,16 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
     if (loaded.wearable.data.category) patch.category = loaded.wearable.data.category
     const rarity = sanitizeRarity(loaded.wearable.rarity)
     if (rarity) patch.rarity = rarity
+    patch.description = loaded.wearable.description ?? ''
+    patch.tags = loaded.wearable.data.tags ?? []
+    patch.blockVrmExport = loaded.wearable.data.blockVrmExport ?? false
   } else if (loaded.emote) {
     if (loaded.emote.name) patch.name = loaded.emote.name.slice(0, ITEM_NAME_MAX_LENGTH)
     if (loaded.emote.category) patch.category = loaded.emote.category
     const rarity = sanitizeRarity(loaded.emote.rarity)
     if (rarity) patch.rarity = rarity
+    patch.description = loaded.emote.description ?? ''
+    patch.tags = loaded.emote.tags ?? []
     const playMode = sanitizePlayMode(loaded.emote.play_mode)
     if (playMode) patch.playMode = playMode
   }
@@ -76,22 +99,42 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
   if (isImageFile(loaded.model)) {
     // Image wearables need no 3D render: fixed metrics + canvas-padded thumbnail.
     patch.metrics = IMAGE_WEARABLE_METRICS
-    const source = loaded.contents[THUMBNAIL_PATH] ?? loaded.contents[loaded.model]
-    const thumbnail = await convertImageIntoWearableThumbnail(
-      source,
-      (patch.category as WearableCategory | undefined) ?? WearableCategory.EYES
-    )
-    const thumbnailBlob = dataURLToBlob(thumbnail)
-    patch.thumbnail = thumbnail
-    if (thumbnailBlob) {
-      patch.contents = { ...loaded.contents, [THUMBNAIL_PATH]: thumbnailBlob }
-    }
+    Object.assign(patch, await imageThumbnailPatch(loaded.contents, loaded.model, patch.category ?? null))
+    // A zip-provided thumbnail is the creator's; only our own padding is redone on a category change.
+    patch.isAutoThumbnail = !loaded.contents[THUMBNAIL_PATH]
+    patch.autoThumbnailCategory = patch.category ?? null
   } else if (loaded.contents[THUMBNAIL_PATH]) {
     // A zip-provided thumbnail wins over the auto screenshot.
     patch.thumbnail = await blobToDataURL(loaded.contents[THUMBNAIL_PATH])
   }
 
   return patch
+}
+
+/** Canvas-padded thumbnail for an image wearable (legacy updateThumbnailByCategory). */
+export async function imageThumbnailPatch(
+  contents: Record<string, Blob>,
+  model: string,
+  category: string | null
+): Promise<Pick<ItemDraft, 'thumbnail' | 'contents'>> {
+  const source = contents[THUMBNAIL_PATH] ?? contents[model]
+  const thumbnail = await convertImageIntoWearableThumbnail(
+    source,
+    (category as WearableCategory | null) ?? WearableCategory.EYES
+  )
+  const thumbnailBlob = dataURLToBlob(thumbnail)
+  return { thumbnail, contents: thumbnailBlob ? { ...contents, [THUMBNAIL_PATH]: thumbnailBlob } : contents }
+}
+
+/** Image wearable whose auto thumbnail was padded for a different category (the padding differs per category). */
+export function isImageThumbnailStale(draft: ItemDraft): boolean {
+  return (
+    draft.status === 'ready' &&
+    isImageFile(draft.model) &&
+    draft.isAutoThumbnail &&
+    draft.category !== null &&
+    draft.autoThumbnailCategory !== draft.category
+  )
 }
 
 /** True when the draft still needs metrics or an auto thumbnail (missing, or posed for another category). */

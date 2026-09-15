@@ -216,7 +216,8 @@
     "showing": "Mostrando {range} de {total} {total, plural, one {ítem} other {ítems}}",
     "publish_blocker": {
       "no_items": "Agrega al menos un ítem para publicar tu colección.",
-      "too_many_items": "Una colección puede publicarse con hasta {max} ítems."
+      "too_many_items": "Una colección puede publicarse con hasta {max} ítems.",
+      "missing_smart_wearable_video": "Cada smart wearable necesita un video de vista previa antes de poder publicar."
     },
     "price": {
       "credits": "{amount} créditos",
@@ -261,7 +262,8 @@
         "done": "“{name}” se restableció a su versión aprobada"
       }
     },
-    "send_items": "Enviar ítems"
+    "send_items": "Enviar ítems",
+    "smart_wearable": "Smart Wearable"
   },
   "publish_collection_modal": {
     "title": "Publicar colección",
@@ -430,7 +432,8 @@
     "processing": "Procesando…",
     "type": {
       "wearable": "Wearable",
-      "emote": "Emote"
+      "emote": "Emote",
+      "smart_wearable": "Smart Wearable"
     },
     "delete": "Eliminar",
     "item_name": "Nombre del ítem",
@@ -443,6 +446,15 @@
       "female": "Femenino",
       "male": "Masculino"
     },
+    "body_shape_emote_hint": "Los emotes siempre están disponibles para todos los tipos de cuerpo.",
+    "body_shape_smart_hint": "Los smart wearables están disponibles para todos los tipos de cuerpo.",
+    "video": {
+      "label": "Video de vista previa",
+      "field_hint": "Sube un video que muestre la funcionalidad del smart wearable.",
+      "edit": "Editar el video de vista previa",
+      "duration": "{seconds}s",
+      "size": "{size} MB"
+    },
     "variant_question": "¿Es una variante de tipo de cuerpo de otro ítem?",
     "yes": "Sí",
     "no": "No",
@@ -451,21 +463,28 @@
     "no_variant_targets": "Todavía no hay ítems {bodyShape} en esta colección para vincular. Agrega primero la versión {bodyShape} o responde No.",
     "category": "Categoría",
     "select_category": "Selecciona una categoría",
+    "facial_expressions": "Este wearable incluye expresiones faciales",
+    "suggested_category": "Sugerida según tu modelo. Puedes cambiarla si no es correcta.",
     "rarity": "Rareza",
     "rarity_tooltip": "La rareza determina cuántas copias de un ítem pueden existir. Cuanto más raro el ítem, menor su cantidad máxima.",
     "play_mode": "Modo de reproducción",
     "play_mode_option": {
-      "simple": "Una vez",
-      "loop": "En bucle"
+      "simple": "Reproducir una vez",
+      "loop": "Reproducir en bucle"
+    },
+    "play_mode_tooltip": {
+      "simple": "Al activarlo, el emote se reproducirá una vez y volverá a la pose por defecto.",
+      "loop": "Al activarlo, el emote se repetirá hasta que el jugador se mueva o active otro emote."
     },
     "edit_thumbnail": "Editar miniatura",
     "metrics": {
       "triangles": "{count} Triángulos",
       "materials": "{count, plural, one {# Material} other {# Materiales}}",
       "textures": "{count, plural, one {# Textura} other {# Texturas}}",
-      "duration": "{count}s",
-      "frames": "{count} Fotogramas",
-      "fps": "{count} FPS"
+      "sequences": "{count, plural, one {# secuencia} other {# secuencias}}",
+      "duration": "{count} segundos",
+      "frames": "{count} fotogramas",
+      "fps": "{count} fps"
     },
     "cancel": "Cancelar",
     "save": "Guardar",
@@ -475,9 +494,11 @@
     "success_toast": "¡{count, plural, one {# ítem se agregó} other {# ítems se agregaron}} a tu colección!",
     "error": {
       "title_generic": "No pudimos subir tus ítems",
+      "title_too_big": "Un ítem supera el límite de tamaño",
       "title_locked": "Esta colección está en revisión",
       "title_published": "Esta colección ya está publicada",
       "description_generic": "Algo salió mal al subir tus ítems. Inténtalo de nuevo.",
+      "description_too_big": "Uno de tus ítems supera su límite de tamaño al combinarlo con los archivos ya guardados. Reduce el tamaño del archivo e inténtalo de nuevo.",
       "description_locked": "No se pueden agregar ítems mientras la colección está en revisión. Tus archivos no se guardaron; podrás agregarlos cuando termine la revisión.",
       "description_published": "Las colecciones publicadas no admiten ítems nuevos. Tus archivos no se guardaron; crea una nueva colección para agregarlos.",
       "try_again": "Intentar de nuevo",
@@ -490,7 +511,8 @@
       "discard_description": "Si sales ahora, perderás los ítems que subiste y los cambios que hiciste.",
       "leave_without_saving": "Salir sin guardar",
       "save_changes": "Guardar cambios",
-      "keep_editing": "Seguir editando"
+      "keep_editing": "Seguir editando",
+      "review_target_first": "Revisa {target} antes de guardar: {variant} es una variante de tipo de cuerpo de ese ítem."
     },
     "file_error_label": "Archivo inválido",
     "file_error": {
@@ -504,20 +526,40 @@
       "invalid_manifest": "La configuración {fileName} dentro del ZIP es inválida.",
       "manifest_file_missing": "La configuración del ZIP menciona {fileName}, pero no está en el ZIP.",
       "orphaned_auxiliary_file": "{fileName} necesita su archivo complementario {expected} en el mismo ZIP.",
-      "smart_wearable_not_supported": "Los smart wearables aún no se pueden subir aquí.",
+      "unknown_required_permissions": "scene.json declara permisos que no existen: {permissions}.",
+      "duplicated_required_permissions": "scene.json declara el mismo permiso más de una vez.",
+      "allowed_media_hostnames_empty": "scene.json pide ALLOW_MEDIA_HOSTNAMES pero no lista ningún hostname.",
+      "scene_manifest_missing": "Este ZIP incluye código de escena pero no scene.json. Los smart wearables necesitan su scene.json.",
+      "scene_manifest_nested": "Con un wearable.json, scene.json debe estar en la raíz del ZIP, junto a él.",
+      "scene_main_not_code": "scene.json apunta main a {fileName}, pero debe ser el bundle de JavaScript.",
       "emote_duration_too_long": "Los emotes pueden durar hasta {seconds} segundos.",
       "emote_with_mesh": "Este emote incluye la malla del avatar. Exporta solo el esqueleto y la animación.",
       "emote_animations_out_of_sync": "Las animaciones del avatar y del prop deben tener la misma duración.",
       "missing_external_resources": "El modelo referencia archivos que no están incluidos: {fileNames}.",
       "invalid_model_file": "No pudimos cargar este modelo 3D. Revisa el archivo e inténtalo de nuevo.",
-      "invalid_representation": "Este archivo no puede usarse como variante de tipo de cuerpo de ese ítem."
+      "invalid_representation": "Este archivo no puede usarse como variante de tipo de cuerpo de ese ítem.",
+      "multiple_videos": "El ZIP incluye más de un video. Deja solo el video de vista previa.",
+      "video_too_big": "El video es demasiado grande — el tamaño máximo es {size}MB.",
+      "video_wrong_format": "El video debe ser un archivo MP4.",
+      "invalid_video": "Tu video parece estar dañado o no es válido. Revisa el archivo e inténtalo de nuevo."
     }
+  },
+  "video_modal": {
+    "title": "Video de vista previa",
+    "description": "Sube un video que muestre la funcionalidad del smart wearable.",
+    "drop_cta": "Arrastra y suelta tu video aquí, o",
+    "browse": "Buscar archivos",
+    "hint": "{extensions} · hasta {size}MB",
+    "replace": "Reemplazar",
+    "done": "Listo",
+    "cancel": "Cancelar"
   },
   "thumbnail_modal": {
     "title": "Miniatura del ítem",
     "capture": "Guardar miniatura",
     "upload_picture": "Subir imagen",
     "wrong_format": "La miniatura debe ser una imagen PNG.",
+    "too_big": "La miniatura es demasiado grande — el tamaño máximo es {size}MB.",
     "capture_failed": "No pudimos actualizar la miniatura. Inténtalo de nuevo.",
     "load_failed": "No pudimos cargar el ítem. Inténtalo de nuevo."
   },
@@ -613,5 +655,19 @@
     "sending": "Enviando ítems...",
     "success_title": "¡Ítems enviados!",
     "success_description": "Tus ítems van en camino a los destinatarios seleccionados."
+  },
+  "required_permissions": {
+    "title": "Permisos requeridos",
+    "learn_more": "Más información",
+    "none": "Este smart wearable no solicita ningún permiso.",
+    "permission": {
+      "ALLOW_TO_MOVE_PLAYER_INSIDE_SCENE": "Mover al jugador dentro de la escena",
+      "ALLOW_TO_TRIGGER_AVATAR_EMOTE": "Activar emotes del avatar",
+      "ALLOW_MEDIA_HOSTNAMES": "Cargar medios desde hosts permitidos",
+      "USE_WEB3_API": "Usar la API Web3",
+      "USE_FETCH": "Usar fetch",
+      "USE_WEBSOCKET": "Usar websockets",
+      "OPEN_EXTERNAL_LINK": "Abrir enlaces externos"
+    }
   }
 }

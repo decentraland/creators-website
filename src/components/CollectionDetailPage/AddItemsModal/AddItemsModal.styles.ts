@@ -1,9 +1,6 @@
 import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
 
-// Deeper purple than the modal surface, used for sidebar cards and the preview panel.
-const wellColor = 'rgba(0, 0, 0, 0.25)'
-
 export const Layout = styled.div`
   display: flex;
   width: 100%;
@@ -191,6 +188,7 @@ export const Main = styled.div`
 export const Content = styled.section`
   display: flex;
   flex: 1;
+  align-items: flex-start;
   width: 1045px;
   max-width: 100%;
   gap: 24px;
@@ -198,7 +196,13 @@ export const Content = styled.section`
   padding: 16px 24px 24px 16px;
 
   [data-flush] & {
-    padding-left: 24px;
+    padding-left: 16px;
+  }
+
+  ${theme.media.maxWidth('mobile')} {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
   }
 `
 
@@ -206,12 +210,41 @@ export const PreviewPane = styled.div`
   display: flex;
   flex-direction: column;
   gap: 16px;
-  width: 50%;
-  max-width: 450px;
+  width: 476px;
+  max-width: 50%;
+  flex-shrink: 0;
   padding: 24px;
   border-radius: ${theme.radius.banner};
-  background: ${wellColor};
-  align-self: flex-start;
+  background: ${theme.colors.overlayLight};
+
+  ${theme.media.maxWidth('mobile')} {
+    width: 100%;
+    max-width: none;
+  }
+`
+
+export const ThumbnailWrap = styled.div`
+  position: relative;
+`
+
+export const ThumbnailBadge = styled.span`
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: ${theme.colors.overlayStrong};
+  color: ${theme.colors.white};
+  cursor: default;
+
+  svg {
+    width: 22px;
+    height: 22px;
+  }
 `
 
 export const ThumbnailBox = styled.button`
@@ -220,7 +253,7 @@ export const ThumbnailBox = styled.button`
   aspect-ratio: 1;
   padding: 0;
   border: 0;
-  border-radius: 36px;
+  border-radius: ${theme.radius.banner};
   overflow: hidden;
   cursor: pointer;
 
@@ -247,29 +280,43 @@ export const ThumbnailOverlay = styled.span`
   }
 `
 
+/* Wearable pills share the row equally; the emote set (four pills) hugs its content instead. */
 export const MetricsRow = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
+
+  > * {
+    flex: 1;
+  }
+  &[data-compact] > * {
+    gap: 4px;
+    font-size: 12px;
+    color: ${theme.colors.gray4};
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
 `
 
 export const MetricPill = styled.span`
-  height: 40px;
-  min-width: 120px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 4px;
   padding: 8px;
   border-radius: ${theme.radius.btnSm};
   background: ${theme.colors.glassFaint};
   color: ${theme.colors.softWhite};
   font-size: 14px;
+  line-height: 1.5;
+  white-space: nowrap;
 
   svg {
-    font-size: 18px;
-    width: 1em;
-    height: 1em;
+    width: 24px;
+    height: 24px;
     flex-shrink: 0;
   }
 `
@@ -282,34 +329,130 @@ export const WarningsList = styled.div`
 
 export const WarningCard = styled.div`
   display: flex;
+  align-items: center;
   gap: 8px;
-  padding: 10px 12px;
-  border-radius: ${theme.radius.card};
-  background: ${theme.colors.glassFaint};
-  color: ${theme.colors.softWhite};
-  font-size: 13px;
-  line-height: 1.4;
+  padding: 12px 8px;
+  border-radius: ${theme.radius.btnSm};
+  background: ${theme.colors.warningOverlay};
+  color: ${theme.colors.warningText};
+  font-size: 12px;
+  line-height: 1.334;
 
   svg {
     flex-shrink: 0;
-    margin-top: 1px;
-    font-size: 16px;
+    width: 24px;
+    height: 24px;
     color: ${theme.colors.amber};
   }
+`
+
+export const VideoPoster = styled.button`
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 132px;
+  min-height: 84px;
+  padding: 0;
+  border: 0;
+  border-radius: ${theme.radius.btnSm};
+  background: ${theme.colors.text};
+  overflow: hidden;
+  cursor: pointer;
+
+  video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+  }
+
+  &:hover [data-video-overlay],
+  &:focus-visible [data-video-overlay] {
+    opacity: 1;
+  }
+
+  ${theme.media.maxWidth('mobile')} {
+    width: 96px;
+  }
+`
+
+export const VideoPosterOverlay = styled.span`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${theme.colors.overlayStrong};
+  opacity: 0;
+  transition: opacity 0.3s ease;
+
+  svg {
+    width: 32px;
+    height: 32px;
+    color: ${theme.colors.white};
+  }
+`
+
+export const VideoPlay = styled.span`
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: ${theme.colors.overlayStrong};
+  transition: background 0.2s ease;
+
+  svg {
+    width: 24px;
+    height: 24px;
+    color: ${theme.colors.white};
+  }
+`
+
+export const VideoInfo = styled.span`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+`
+
+export const VideoName = styled.span`
+  font-size: 14px;
+  font-weight: 600;
+  color: ${theme.colors.softWhite};
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`
+
+export const VideoMeta = styled.span`
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: ${theme.colors.gray4};
 `
 
 export const FormPane = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 32px;
   flex: 1;
-  min-width: 320px;
+  min-width: 0;
 `
 
 export const FormHeading = styled.h3`
   margin: 0;
   font-size: 24px;
-  font-weight: 600;
+  font-weight: 500;
+  line-height: 1.334;
   color: ${theme.colors.softWhite};
 `
 
@@ -318,28 +461,62 @@ export const Field = styled.label`
   flex-direction: column;
   gap: 8px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
+  line-height: 1.57;
   color: ${theme.colors.softWhite};
+
+  &[data-hinted] {
+    gap: 12px;
+  }
+`
+
+export const FieldLabel = styled.span`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`
+
+export const FieldHint = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  line-height: normal;
+  color: ${theme.colors.muted2};
+
+  svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+  }
 `
 
 export const FieldRow = styled.div`
   display: flex;
-  gap: 16px;
+  gap: 12px;
 
   > * {
     flex: 1;
     min-width: 0;
+  }
+
+  ${theme.media.maxWidth('mobile')} {
+    flex-wrap: wrap;
+
+    > * {
+      flex-basis: 100%;
+    }
   }
 `
 
 export const FieldLabelRow = styled.span`
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 
   svg {
-    font-size: 15px;
-    color: ${theme.colors.gray4};
+    font-size: 12px;
+    color: ${theme.colors.softWhite};
   }
 `
 
@@ -347,10 +524,10 @@ export const TextInputBox = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 46px;
-  padding: 0 14px;
-  border: 1px solid ${theme.colors.glassLine};
-  border-radius: ${theme.radius.btn};
+  height: 56px;
+  padding: 0 12px;
+  border: 1px solid ${theme.colors.muted2};
+  border-radius: ${theme.radius.input};
   background: transparent;
 
   &:focus-within {
@@ -366,13 +543,16 @@ export const TextInputBox = styled.div`
     border: 0;
     padding: 0;
     background: transparent;
-    color: ${theme.colors.white};
+    color: ${theme.colors.softWhite};
     font: inherit;
-    font-size: 15px;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 24px;
     outline: 0;
   }
   & input::placeholder {
-    color: ${theme.colors.gray4};
+    color: ${theme.colors.muted2};
+    font-weight: 600;
   }
 `
 
@@ -387,14 +567,15 @@ export const CharCount = styled.span`
 const chevron = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fcfcfc'%3E%3Cpath d='M16.59 8.59 12 13.17 7.41 8.59 6 10l6 6 6-6z'/%3E%3C/svg%3E")`
 
 export const Select = styled.select`
-  height: 46px;
-  padding: 0 44px 0 14px;
-  border: 1px solid ${theme.colors.glassLine};
-  border-radius: ${theme.radius.btn};
-  background: transparent ${chevron} no-repeat right 12px center / 20px 20px;
-  color: ${theme.colors.white};
+  height: 56px;
+  padding: 0 44px 0 12px;
+  border: 1px solid ${theme.colors.muted2};
+  border-radius: ${theme.radius.input};
+  background: transparent ${chevron} no-repeat right 12px center / 24px 24px;
+  color: ${theme.colors.softWhite};
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
+  font-weight: 600;
   outline: 0;
   cursor: pointer;
   appearance: none;
@@ -411,39 +592,71 @@ export const Select = styled.select`
 
 export const Segmented = styled.div`
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
+
+  /* Joined variant (Yes/No): one pill, shared inner borders. */
+  &[data-joined] {
+    gap: 0;
+
+    > * {
+      padding: 0 12px;
+      border-radius: 0;
+    }
+    > * + * {
+      margin-left: -1px;
+    }
+    > :first-of-type {
+      border-radius: ${theme.radius.input} 0 0 ${theme.radius.input};
+    }
+    > :last-of-type {
+      border-radius: 0 ${theme.radius.input} ${theme.radius.input} 0;
+    }
+  }
 `
 
 export const SegmentButton = styled.button`
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 44px;
+  height: 48px;
   padding: 0 16px 0 12px;
-  border: 1px solid ${theme.colors.glassLine};
-  border-radius: ${theme.radius.btn};
+  border: 1px solid ${theme.colors.muted2};
+  border-radius: ${theme.radius.input};
   background: none;
-  color: ${theme.colors.gray4};
+  color: ${theme.colors.muted2};
   font: inherit;
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
   cursor: pointer;
 
+  /* The 2px selected stroke is border + inset shadow so the box never grows. */
   &[data-selected] {
-    border-width: 2px;
+    z-index: 1;
     border-color: ${theme.colors.white};
+    box-shadow: inset 0 0 0 1px ${theme.colors.white};
+    background: ${theme.colors.glassFaint};
     color: ${theme.colors.white};
-    font-weight: 600;
   }
 
-  &:hover {
+  &:hover:not([aria-disabled]) {
     background: ${theme.colors.glassFaint};
   }
 
+  &[aria-disabled] {
+    cursor: default;
+  }
+  &[aria-disabled]:not([data-selected]) {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
   svg {
-    width: 20px;
-    height: 20px;
-    font-size: 17px;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
   }
 `
 

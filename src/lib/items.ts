@@ -17,6 +17,11 @@ export enum BodyShapeType {
 export const BODY_SHAPE_MALE = 'urn:decentraland:off-chain:base-avatars:BaseMale'
 export const BODY_SHAPE_FEMALE = 'urn:decentraland:off-chain:base-avatars:BaseFemale'
 
+/** A smart wearable's preview video; stored with the item but never deployed to the Catalyst. */
+export const VIDEO_PATH = 'video.mp4'
+/** Catalyst image: the thumbnail over its rarity gradient, referenced by every deployed entity. */
+export const IMAGE_PATH = 'image.png'
+
 export type ItemRepresentation = {
   bodyShapes: string[]
   mainFile: string
@@ -35,6 +40,8 @@ export type ItemData = {
   tags?: string[]
   blockVrmExport?: boolean
   outlineCompatible?: boolean
+  /** Smart wearables only: the scene permissions declared in its scene.json. */
+  requiredPermissions?: string[]
   loop?: boolean
   outcomes?: unknown[]
   randomizeOutcomes?: boolean
@@ -234,9 +241,25 @@ export function getItemMetadata(item: Item): string {
   }`
 }
 
-/** A wearable shipping scene code (a `.js` file) is a smart wearable. */
+/**
+ * Contents shipping scene code (a `.js` file) make a smart wearable. The same heuristic as the
+ * legacy builder and builder-server; older smart wearables carry no scene.json in their contents.
+ */
+export function isSceneCodeFile(path: string): boolean {
+  return path.toLowerCase().endsWith('.js')
+}
+
+export function hasSceneCode(contents: Record<string, unknown>): boolean {
+  return Object.keys(contents).some(isSceneCodeFile)
+}
+
 export function isSmartWearable(item: Item): boolean {
-  return item.type === ItemType.WEARABLE && Object.keys(item.contents).some(path => path.endsWith('.js'))
+  return item.type === ItemType.WEARABLE && hasSceneCode(item.contents)
+}
+
+/** A smart wearable can't be published until its preview video has been uploaded (legacy isComplete). */
+export function isMissingSmartWearableVideo(item: Item): boolean {
+  return isSmartWearable(item) && !(VIDEO_PATH in item.contents)
 }
 
 function getItemMetadataType(item: Item): 'w' | 'sw' | 'e' {

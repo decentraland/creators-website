@@ -12,7 +12,7 @@ import {
   type PaginatedResource,
   type RemoteCollection
 } from '~/lib/collections'
-import { fromRemoteItem, toRemoteItem, type Item, type RemoteItem } from '~/lib/items'
+import { VIDEO_PATH, fromRemoteItem, toRemoteItem, type Item, type RemoteItem } from '~/lib/items'
 import { type BlockchainRarity } from '~/lib/rarities'
 
 export type CollectionItemPreview = {
@@ -137,16 +137,33 @@ export const ALREADY_PUBLISHED_STATUS = 409
 /**
  * Create or update an item and upload its files: PUT /items/{id} with the remote item, then
  * POST /items/{id}/files as multipart where each field name is the file's content hash — the
- * same two-step save the legacy builder performs.
+ * same two-step save the legacy builder performs. A smart wearable's preview video goes to
+ * POST /items/{id}/videos instead (field name = path), which has its own 250MB cap.
  */
 export async function saveItem(address: string, item: Item, blobs: Record<string, Blob>): Promise<Item> {
   const remote = await request<RemoteItem>(address, 'PUT', `/items/${item.id}`, '', { item: toRemoteItem(item) })
-  if (Object.keys(blobs).length > 0) {
-    const formData = new FormData()
-    for (const path in blobs) {
-      formData.append(item.contents[path], blobs[path])
+  const { [VIDEO_PATH]: video, ...fileBlobs } = blobs
+  if (Object.keys(fileBlobs).length > 0) {
+    const files = new FormData()
+    for (const path in fileBlobs) files.append(item.contents[path], fileBlobs[path])
+    await request<unknown>(address, 'POST', `/items/${item.id}/files`, '', files, false)
+  }
+  if (video) {
+    const videos = new FormData()
+    videos.append(VIDEO_PATH, video)
+    try {
+      await request<unknown>(address, 'POST', `/items/${item.id}/videos`, '', videos, false)
+    } catch (error) {
+      // The PUT already stored the video reference; drop it so the item never points at a file
+      // that was not uploaded (it would look complete and pass the publish gate). Best effort:
+      // the caller gets the upload error either way.
+      const contents = { ...item.contents }
+      delete contents[VIDEO_PATH]
+      await request<RemoteItem>(address, 'PUT', `/items/${item.id}`, '', {
+        item: toRemoteItem({ ...item, video: undefined, contents })
+      }).catch(() => undefined)
+      throw error
     }
-    await request<unknown>(address, 'POST', `/items/${item.id}/files`, '', formData, false)
   }
   return fromRemoteItem(remote)
 }

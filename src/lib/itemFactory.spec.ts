@@ -3,6 +3,7 @@ import { ethers } from 'ethers'
 import {
   EmotePlayMode,
   addRepresentationToItem,
+  assertUploadSize,
   buildItem,
   buildRepresentations,
   computeHashes,
@@ -93,6 +94,11 @@ describe('getSizeError', () => {
     expect(getSizeError(ItemType.EMOTE, undefined, { 'model.glb': bigBlob })).toBe(3)
     expect(getSizeError(ItemType.WEARABLE, 'hat', { 'model.glb': blob() })).toBeNull()
   })
+
+  it('caps smart wearables at 3MB without counting the preview video', () => {
+    expect(getSizeError(ItemType.WEARABLE, 'hat', { 'model.glb': bigBlob, 'bin/game.js': blob() })).toBe(3)
+    expect(getSizeError(ItemType.WEARABLE, 'hat', { 'model.glb': blob(), 'video.mp4': bigBlob })).toBeNull()
+  })
 })
 
 describe('buildItem', () => {
@@ -105,8 +111,25 @@ describe('buildItem', () => {
     expect(item.beneficiary).toBe('0xowner')
     expect(item.data.representations).toHaveLength(2)
     expect(item.data.category).toBe('hat')
-    expect(Object.keys(item.contents).sort()).toEqual(['female/model.glb', 'male/model.glb', 'thumbnail.png'])
-    expect(Object.keys(blobs).sort()).toEqual(['female/model.glb', 'male/model.glb', 'thumbnail.png'])
+    expect(Object.keys(item.contents).sort()).toEqual([
+      'female/model.glb',
+      'image.png',
+      'male/model.glb',
+      'thumbnail.png'
+    ])
+    expect(Object.keys(blobs).sort()).toEqual(['female/model.glb', 'image.png', 'male/model.glb', 'thumbnail.png'])
+  })
+
+  it('carries the manifest description, tags and VRM flag into the item', async () => {
+    const { item } = await buildItem({
+      ...baseDraft,
+      description: 'A hat',
+      tags: ['hat', 'cool'],
+      blockVrmExport: true
+    })
+    expect(item.description).toBe('A hat')
+    expect(item.data.tags).toEqual(['hat', 'cool'])
+    expect(item.data.blockVrmExport).toBe(true)
   })
 
   it('marks upper_body wearables as removing the default hands hiding', async () => {
@@ -123,6 +146,42 @@ describe('buildItem', () => {
     })
     expect(item.data.loop).toBe(true)
     expect(item.data.representations).toHaveLength(2)
+  })
+
+  it('ships scene code per body shape and keeps the video at the root of a smart wearable', async () => {
+    const { item, blobs } = await buildItem({
+      ...baseDraft,
+      requiredPermissions: ['USE_FETCH'],
+      contents: {
+        ...baseDraft.contents,
+        'scene.json': blob('{}'),
+        'bin/game.js': blob('code'),
+        'video.mp4': blob('video')
+      }
+    })
+    expect(Object.keys(item.contents).sort()).toEqual([
+      'female/bin/game.js',
+      'female/model.glb',
+      'female/scene.json',
+      'image.png',
+      'male/bin/game.js',
+      'male/model.glb',
+      'male/scene.json',
+      'thumbnail.png',
+      'video.mp4'
+    ])
+    expect(item.data.representations[0].contents).toContain('male/bin/game.js')
+    expect(item.data.requiredPermissions).toEqual(['USE_FETCH'])
+    expect(item.video).toBe(item.contents['video.mp4'])
+    expect(Object.keys(blobs)).toContain('video.mp4')
+  })
+
+  it('sends an empty permission list for plain wearables and none for emotes', async () => {
+    const wearable = await buildItem(baseDraft)
+    expect(wearable.item.data.requiredPermissions).toEqual([])
+    expect(wearable.item.video).toBeUndefined()
+    const emote = await buildItem({ ...baseDraft, type: ItemType.EMOTE, category: 'dance' })
+    expect(emote.item.data.requiredPermissions).toBeUndefined()
   })
 
   it('handles zips that already carry both body-shape folders', async () => {
@@ -196,7 +255,8 @@ describe('withThumbnail', () => {
     expect(built.item.contents['thumbnail.png']).toMatch(/^baf/)
     expect(built.item.contents['male/model.glb']).toBe('bafmodel')
     expect(built.item.contents).not.toHaveProperty('old-thumb.png')
-    expect(built.blobs).toEqual({ 'thumbnail.png': thumbnail })
+    expect(Object.keys(built.blobs).sort()).toEqual(['image.png', 'thumbnail.png'])
+    expect(built.blobs['thumbnail.png']).toBe(thumbnail)
   })
 })
 
@@ -232,5 +292,26 @@ describe('withRehashedContents', () => {
     expect(built.item.contents['male/model.glb']).toMatch(/^baf/)
     expect(built.item.contents['thumbnail.png']).toBe('bafthumb')
     expect(Object.keys(built.blobs)).toEqual(['male/model.glb'])
+  })
+})
+
+describe('assertUploadSize', () => {
+  it('counts a blob shared by both body shapes once', async () => {
+    const model = new Blob([new Uint8Array(2 * 1024 * 1024)])
+    const { item, blobs } = await buildItem({
+      ...baseDraft,
+      contents: { 'model.glb': model, 'thumbnail.png': blob('t') }
+    })
+    expect(Object.keys(blobs).filter(path => path.endsWith('model.glb'))).toHaveLength(2)
+    expect(() => assertUploadSize(item, blobs)).not.toThrow()
+  })
+
+  it('re-checks the thumbnail cap and the item cap including files already stored', async () => {
+    const { item, blobs } = await buildItem(baseDraft)
+    expect(() => assertUploadSize(item, blobs)).not.toThrow()
+    expect(() =>
+      assertUploadSize(item, { ...blobs, 'thumbnail.png': new Blob([new Uint8Array(1024 * 1024 + 1)]) })
+    ).toThrow(/thumbnail_too_big/)
+    expect(() => assertUploadSize(item, blobs, [3 * 1024 * 1024])).toThrow(/size_exceeded/)
   })
 })

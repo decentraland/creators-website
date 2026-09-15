@@ -9,16 +9,18 @@ export const Trigger = styled.button`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
-  height: 46px;
-  padding: 0 14px;
-  border: 1px solid ${theme.colors.glassLine};
-  border-radius: ${theme.radius.btn};
+  height: 56px;
+  padding: 0 12px;
+  border: 1px solid ${theme.colors.muted2};
+  border-radius: ${theme.radius.input};
   background: transparent;
-  color: ${theme.colors.white};
+  color: ${theme.colors.softWhite};
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
   text-align: left;
   cursor: pointer;
 
@@ -28,8 +30,10 @@ export const Trigger = styled.button`
     outline: 0;
   }
 
-  svg {
+  > svg {
     flex: none;
+    width: 24px;
+    height: 24px;
     transition: transform 0.15s ease;
   }
   &[aria-expanded='true'] svg {
@@ -46,15 +50,21 @@ export const TriggerLabel = styled.span`
   min-width: 0;
 
   &[data-placeholder] {
-    color: ${theme.colors.gray4};
+    color: ${theme.colors.muted2};
   }
 `
 
 export const OptionLabel = styled.span`
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
+
+  > svg,
+  > [role='img'] {
+    width: 24px;
+    height: 24px;
+  }
 
   > span:last-child {
     overflow: hidden;
