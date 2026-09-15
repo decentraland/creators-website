@@ -526,6 +526,7 @@
       "duplicated_required_permissions": "scene.json declara el mismo permiso más de una vez.",
       "allowed_media_hostnames_empty": "scene.json pide ALLOW_MEDIA_HOSTNAMES pero no lista ningún hostname.",
       "scene_manifest_missing": "Este ZIP incluye código de escena pero no scene.json. Los smart wearables necesitan su scene.json.",
+      "scene_main_not_code": "scene.json apunta main a {fileName}, pero debe ser el bundle de JavaScript.",
       "emote_duration_too_long": "Los emotes pueden durar hasta {seconds} segundos.",
       "emote_with_mesh": "Este emote incluye la malla del avatar. Exporta solo el esqueleto y la animación.",
       "emote_animations_out_of_sync": "Las animaciones del avatar y del prop deben tener la misma duración.",

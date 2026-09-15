@@ -14,7 +14,7 @@ import {
   generateLazyValidator,
   type JSONSchema
 } from '@dcl/schemas'
-import { BodyShapeType, IMAGE_PATH, VIDEO_PATH, hasSceneCode } from './items'
+import { BodyShapeType, IMAGE_PATH, VIDEO_PATH, hasSceneCode, isSceneCodeFile } from './items'
 
 export const THUMBNAIL_PATH = 'thumbnail.png'
 /** A smart wearable's scene manifest; kept inside the item contents so the explorer can run it. */
@@ -403,6 +403,8 @@ async function loadScene(
 ): Promise<{ scene: SceneManifest; blob: Blob }> {
   const rawScene = parseJson(await sceneFile.async('text'), SCENE_PATH)
   const scene = toSceneManifest(rawScene)
+  // The entry point is what makes the wearable "smart" downstream (hasSceneCode), so it must be code.
+  if (!isSceneCodeFile(scene.main)) throw new ItemFileError('scene_main_not_code', { fileName: scene.main })
   if (!content[scene.main]) throw new ItemFileError('manifest_file_missing', { fileName: scene.main })
   return { scene, blob: new Blob([JSON.stringify(rawScene)], { type: 'application/json' }) }
 }

@@ -91,6 +91,31 @@ describe('Modal', () => {
     expect(parent.onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('gives keyboard ownership to a modal nested inside another in the same tree', async () => {
+    const closeParent = vi.fn()
+    const closeChild = vi.fn()
+    render(
+      <Modal title="Parent" onClose={closeParent}>
+        <button type="button">Parent action</button>
+        <Modal title="Child" onClose={closeChild} testId="child">
+          <button type="button">One</button>
+        </Modal>
+      </Modal>,
+      { wrapper }
+    )
+
+    await userEvent.tab()
+    expect(screen.getByTestId('child-close')).toHaveFocus()
+    await userEvent.tab()
+    expect(screen.getByRole('button', { name: 'One' })).toHaveFocus()
+    await userEvent.tab()
+    expect(screen.getByTestId('child-close')).toHaveFocus()
+
+    await userEvent.keyboard('{Escape}')
+    expect(closeChild).toHaveBeenCalledTimes(1)
+    expect(closeParent).not.toHaveBeenCalled()
+  })
+
   it('keeps the page scroll unlocked only after every stacked modal is gone', () => {
     const first = renderModal()
     const second = render(

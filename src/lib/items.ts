@@ -245,8 +245,12 @@ export function getItemMetadata(item: Item): string {
  * Contents shipping scene code (a `.js` file) make a smart wearable. The same heuristic as the
  * legacy builder and builder-server; older smart wearables carry no scene.json in their contents.
  */
+export function isSceneCodeFile(path: string): boolean {
+  return path.toLowerCase().endsWith('.js')
+}
+
 export function hasSceneCode(contents: Record<string, unknown>): boolean {
-  return Object.keys(contents).some(path => path.endsWith('.js'))
+  return Object.keys(contents).some(isSceneCodeFile)
 }
 
 export function isSmartWearable(item: Item): boolean {

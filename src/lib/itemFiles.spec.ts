@@ -408,6 +408,13 @@ describe('loadItemFile', () => {
       expect(result.contents['video.mp4'].size).toBe(4 * 1024 * 1024)
     })
 
+    it('requires scene.main to point at the JS bundle', async () => {
+      await expectItemFileError(
+        loadItemFile(await zipFile({ ...files, 'scene.json': scene({ main: 'glasses.glb' }) })),
+        'scene_main_not_code'
+      )
+    })
+
     it('rejects scene code shipped without a scene.json', async () => {
       await expectItemFileError(loadItemFile(await zipFile(files)), 'scene_manifest_missing')
     })
