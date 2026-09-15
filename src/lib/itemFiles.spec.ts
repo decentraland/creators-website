@@ -12,7 +12,9 @@ import {
   isModelPath,
   loadItemFile,
   stripWrappingFolder,
-  toMB
+  toMB,
+  validateVideoFile,
+  MAX_VIDEO_FILE_SIZE
 } from './itemFiles'
 
 const blob = (size = 10) => new Blob([new Uint8Array(size)])
@@ -316,6 +318,26 @@ describe('loadItemFile', () => {
       await expectItemFileError(loadItemFile(file), 'invalid_manifest')
     })
 
+    it('keeps a preview video shipped in the zip as video.mp4, outside the model size cap', async () => {
+      const result = await loadItemFile(
+        await zipFile({ ...files, 'scene.json': scene(), 'media/showcase.mp4': blob(4 * 1024 * 1024) })
+      )
+      expect(Object.keys(result.contents).sort()).toEqual(['bin/game.js', 'glasses.glb', 'scene.json', 'video.mp4'])
+      expect(result.contents['video.mp4'].size).toBe(4 * 1024 * 1024)
+    })
+
+    it('rejects a zip with more than one video', async () => {
+      await expectItemFileError(
+        loadItemFile(await zipFile({ ...files, 'scene.json': scene(), 'a.mp4': 'a', 'b.mp4': 'b' })),
+        'multiple_videos'
+      )
+    })
+
+    it('drops a stray video from a plain wearable zip', async () => {
+      const result = await loadItemFile(await zipFile({ ...files, 'video.mp4': 'x' }))
+      expect(Object.keys(result.contents).sort()).toEqual(['bin/game.js', 'glasses.glb'])
+    })
+
     it('caps the model at the smart wearable size', async () => {
       const file = await zipFile({ ...files, 'glasses.glb': blob(3 * 1024 * 1024 + 1), 'scene.json': scene() })
       await expectItemFileError(loadItemFile(file), 'file_too_big')
@@ -330,5 +352,18 @@ describe('loadItemFile', () => {
   it('rejects zips with no model at all', async () => {
     const file = await zipFile({ 'readme.txt': 'hello' })
     await expectItemFileError(loadItemFile(file), 'missing_model_file')
+  })
+})
+
+describe('validateVideoFile', () => {
+  it('accepts an mp4 under the cap and rejects other formats or oversized files', () => {
+    expect(() => validateVideoFile(new File([blob()], 'clip.MP4'))).not.toThrow()
+    expect(() => validateVideoFile(new File([blob()], 'clip.mov'))).toThrow(ItemFileError)
+    try {
+      validateVideoFile(new File([blob(MAX_VIDEO_FILE_SIZE + 1)], 'clip.mp4'))
+      expect.fail('expected an ItemFileError')
+    } catch (error) {
+      expect((error as ItemFileError).messageKey).toBe('video_too_big')
+    }
   })
 })

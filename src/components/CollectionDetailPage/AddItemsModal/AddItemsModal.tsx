@@ -6,7 +6,7 @@ import { useTranslation } from '~/intl'
 import { useAllCollectionItems } from '~/hooks/useCollection'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { installBackGuard } from '~/lib/backGuard'
-import { ItemFileError } from '~/lib/itemFiles'
+import { ItemFileError, VIDEO_PATH } from '~/lib/itemFiles'
 import { type ItemDraftPayload } from '~/lib/itemFactory'
 import { type Collection } from '~/lib/collections'
 import { ItemType } from '~/lib/items'
@@ -30,6 +30,7 @@ import {
   thumbnailPatchFromFile,
   type ThumbnailPatch
 } from '~/components/ThumbnailModal'
+import { VideoModal } from '~/components/VideoModal'
 import { LeaveConfirmModal } from './LeaveConfirmModal'
 import { UploadErrorModal } from './UploadErrorModal'
 import * as S from './AddItemsModal.styles'
@@ -59,6 +60,7 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
 
   const [isLeaveConfirmOpen, setLeaveConfirmOpen] = useState(false)
   const [isThumbnailOpen, setThumbnailOpen] = useState(false)
+  const [isVideoOpen, setVideoOpen] = useState(false)
   const thumbnailInputRef = useRef<HTMLInputElement>(null)
 
   // Variant targets need every unpublished wearable of the collection, not just the loaded page.
@@ -197,6 +199,15 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
       })
   }
 
+  function handleVideoChange(video: File) {
+    if (!selected) return
+    dispatch({
+      type: 'draftUpdated',
+      id: selected.id,
+      patch: { contents: { ...selected.contents, [VIDEO_PATH]: video } }
+    })
+  }
+
   function handleSaveChanges() {
     const checked = drafts.filter(draft => draft.checked)
     // A checked variant whose base draft isn't part of the save has nothing to attach to.
@@ -213,7 +224,7 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
   }
 
   function requestClose() {
-    if (isUploading || isLeaveConfirmOpen || isThumbnailOpen) return
+    if (isUploading || isLeaveConfirmOpen || isThumbnailOpen || isVideoOpen) return
     // Nothing salvageable to lose: every file failed to import.
     if (drafts.every(draft => draft.status === 'failed')) {
       onClose()
@@ -271,6 +282,8 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
                 onOpenThumbnail={() =>
                   isImageWearable(selected) ? thumbnailInputRef.current?.click() : setThumbnailOpen(true)
                 }
+                onOpenVideo={() => setVideoOpen(true)}
+                onVideoChange={handleVideoChange}
               />
             ) : (
               <S.ProcessingPane data-testid="draft-processing">
@@ -366,6 +379,14 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
             dispatch({ type: 'draftUpdated', id: selected.id, patch })
             setThumbnailOpen(false)
           }}
+        />
+      )}
+
+      {isVideoOpen && selected && selected.status === 'ready' && (
+        <VideoModal
+          video={selected.contents[VIDEO_PATH] ?? null}
+          onChange={handleVideoChange}
+          onClose={() => setVideoOpen(false)}
         />
       )}
 

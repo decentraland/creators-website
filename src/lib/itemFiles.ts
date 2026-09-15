@@ -58,6 +58,24 @@ export function isImageFile(fileName: string): boolean {
   return fileName.toLowerCase().endsWith('.png')
 }
 
+export function isVideoFile(fileName: string): boolean {
+  const extension = getExtension(fileName)
+  return extension !== null && VIDEO_EXTENSIONS.includes(extension)
+}
+
+/**
+ * Checks a smart wearable preview video's extension and size. Whether the bytes decode is checked
+ * separately in the browser (lib/media loadVideoMetadata). Throws ItemFileError.
+ */
+export function validateVideoFile(file: File): void {
+  if (!isVideoFile(file.name)) {
+    throw new ItemFileError('video_wrong_format', { extensions: VIDEO_EXTENSIONS.join(', ') })
+  }
+  if (file.size > MAX_VIDEO_FILE_SIZE) {
+    throw new ItemFileError('video_too_big', { size: toMB(MAX_VIDEO_FILE_SIZE) })
+  }
+}
+
 export function isModelFile(fileName: string): boolean {
   const lower = fileName.toLowerCase()
   return lower.endsWith('.gltf') || lower.endsWith('.glb')
@@ -383,9 +401,21 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
   if (thumbnailSize > MAX_THUMBNAIL_FILE_SIZE) {
     throw new ItemFileError('thumbnail_too_big', { size: toMB(MAX_THUMBNAIL_FILE_SIZE) })
   }
-  // The thumbnail has its own cap and a smart wearable's preview video is uploaded separately.
+
+  // A smart wearable zip may ship its preview video (any .mp4, any folder); it is pulled out of the
+  // model contents and stored at the root as video.mp4. Plain zips drop it: only smart items have one.
+  const videoPaths = Object.keys(rawContent).filter(isVideoFile)
+  if (videoPaths.length > 1) throw new ItemFileError('multiple_videos')
+  const video = videoPaths.length === 1 && sceneFile ? rawContent[videoPaths[0]] : null
+  for (const path of videoPaths) delete rawContent[path]
+  if (video && video.size > MAX_VIDEO_FILE_SIZE) {
+    throw new ItemFileError('video_too_big', { size: toMB(MAX_VIDEO_FILE_SIZE) })
+  }
+  const withVideo = (contents: Record<string, Blob>) => (video ? { ...contents, [VIDEO_PATH]: video } : contents)
+
+  // The thumbnail has its own cap.
   const contentsSize = Object.entries(rawContent).reduce(
-    (total, [path, blob]) => (path === THUMBNAIL_PATH || path === VIDEO_PATH ? total : total + blob.size),
+    (total, [path, blob]) => (path === THUMBNAIL_PATH ? total : total + blob.size),
     0
   )
 
@@ -412,7 +442,7 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
       throw new ItemFileError('file_too_big', { size: toMB(maxSize) })
     }
     return {
-      contents,
+      contents: withVideo(contents),
       model: wearable.data.representations[0].mainFile,
       // Smart wearables are always unisex, like emotes.
       bodyShape: scene ? BodyShapeType.BOTH : getManifestBodyShape(wearable),
@@ -444,7 +474,7 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
     if (contentsSize > MAX_SMART_WEARABLE_FILE_SIZE) {
       throw new ItemFileError('file_too_big', { size: toMB(MAX_SMART_WEARABLE_FILE_SIZE) })
     }
-    return { contents: { ...content, [SCENE_PATH]: blob }, model, bodyShape: BodyShapeType.BOTH, scene }
+    return { contents: withVideo({ ...content, [SCENE_PATH]: blob }), model, bodyShape: BodyShapeType.BOTH, scene }
   }
 
   const model = Object.keys(content).find(isModelPath)

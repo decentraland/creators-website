@@ -31,6 +31,29 @@ export async function blobToDataURL(blob: Blob): Promise<string> {
   })
 }
 
+/**
+ * Decodes a video's metadata; rejects when the browser can't play the file. Chrome defers media
+ * loading in hidden tabs, so a stalled decode resolves without a duration instead of hanging.
+ */
+export function loadVideoMetadata(blob: Blob, timeoutMs = 15000): Promise<{ duration: number | null }> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video')
+    const url = URL.createObjectURL(blob)
+    const timer = setTimeout(() => finish({ duration: null }), timeoutMs)
+    const finish = (result: { duration: number | null } | Error) => {
+      clearTimeout(timer)
+      video.removeAttribute('src')
+      URL.revokeObjectURL(url)
+      if (result instanceof Error) reject(result)
+      else resolve(result)
+    }
+    video.preload = 'metadata'
+    video.onloadedmetadata = () => finish({ duration: video.duration })
+    video.onerror = () => finish(new Error('Invalid video'))
+    video.src = url
+  })
+}
+
 /** True type of an image, from its magic bytes — the file extension can lie. */
 export async function getImageType(image: Blob): Promise<ImageType> {
   const buffer = await image.arrayBuffer()

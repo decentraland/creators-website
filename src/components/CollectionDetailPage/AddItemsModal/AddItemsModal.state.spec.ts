@@ -237,10 +237,23 @@ describe('isDraftComplete', () => {
 })
 
 describe('smart wearable drafts', () => {
-  it('can be saved without a preview video and never act as variant targets', () => {
+  it('need a preview video to be saved and never act as variant targets', () => {
     const smart = smartDraft()
-    expect(isDraftComplete(smart, [smart], [])).toBe(true)
+    expect(isDraftComplete(smart, [smart], [])).toBe(false)
+    const withVideo = { ...smart, contents: { ...smart.contents, 'video.mp4': blob() } }
+    expect(isDraftComplete(withVideo, [withVideo], [])).toBe(true)
     const single = readyDraft({ bodyShape: BodyShapeType.MALE })
     expect(getVariantTargets(single, [single, smart], [])).toEqual([])
+  })
+
+  it('a changed video invalidates the previous review', () => {
+    const smart = { ...smartDraft(), checked: true }
+    const state = addItemsReducer(stateWith([smart]), {
+      type: 'draftUpdated',
+      id: smart.id,
+      patch: { contents: { ...smart.contents, 'video.mp4': blob() } }
+    })
+    expect(state.drafts[0].checked).toBe(false)
+    expect(state.drafts[0].contents['video.mp4']).toBeDefined()
   })
 })

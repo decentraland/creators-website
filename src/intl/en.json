@@ -445,7 +445,13 @@
     },
     "body_shape_emote_hint": "Emotes are always available for all body shapes.",
     "body_shape_smart_hint": "Smart wearables are available for all body shapes.",
-    "smart_video_notice": "Smart wearables need a preview video before the collection can be published. You'll be able to add it from the item editor.",
+    "video": {
+      "label": "Preview Video",
+      "field_hint": "Upload a video that showcases the smart wearable's functionality.",
+      "edit": "Edit preview video",
+      "duration": "{seconds}s",
+      "size": "{size} MB"
+    },
     "variant_question": "Is this a body shape variant of another item?",
     "yes": "Yes",
     "no": "No",
@@ -520,8 +526,22 @@
       "emote_animations_out_of_sync": "The avatar and prop animations must have the same duration.",
       "missing_external_resources": "The model references files that aren't included: {fileNames}.",
       "invalid_model_file": "We couldn't load this 3D model. Check the file and try again.",
-      "invalid_representation": "This file can't be used as a body shape variant of that item."
+      "invalid_representation": "This file can't be used as a body shape variant of that item.",
+      "multiple_videos": "The ZIP includes more than one video. Keep only the preview video.",
+      "video_too_big": "The video is too big — the maximum size is {size}MB.",
+      "video_wrong_format": "The video must be an MP4 file.",
+      "invalid_video": "Your video seems to be invalid or broken. Check the file and try again."
     }
+  },
+  "video_modal": {
+    "title": "Preview Video",
+    "description": "Upload a video that showcases the smart wearable's functionality.",
+    "drop_cta": "Drag and drop your video here, or",
+    "browse": "Browse files",
+    "hint": "{extensions} · up to {size}MB",
+    "replace": "Replace",
+    "done": "Done",
+    "cancel": "Cancel"
   },
   "thumbnail_modal": {
     "title": "Item Thumbnail",

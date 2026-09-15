@@ -3,7 +3,7 @@
 // feeds results in through actions, so this reducer stays fully unit-testable.
 import { EmoteCategory, WearableCategory } from '@dcl/schemas'
 import { checkTriangleCount, type ValidationIssue } from '~/lib/glbValidation'
-import { cleanAssetName, isModelFile } from '~/lib/itemFiles'
+import { VIDEO_PATH, cleanAssetName, isModelFile } from '~/lib/itemFiles'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
 import { BodyShapeType, ItemType, getMissingBodyShapeType, type Item, type ItemMetrics } from '~/lib/items'
 import { type UploadFailureReason } from '~/lib/uploadItems'
@@ -28,7 +28,7 @@ export type ItemDraft = {
   bodyShape: BodyShapeType
   /** True when the zip structure fixed the shape (male/+female/ folders or a manifest), or the item is unisex by nature. */
   bodyShapeLocked: boolean
-  /** Wearable shipping scene code (a zip with scene.json). Unisex, no variants, needs a video before publishing. */
+  /** Wearable shipping scene code (a zip with scene.json). Unisex, no variants, needs a preview video (contents['video.mp4']) to be saved. */
   isSmart: boolean
   requiredPermissions: string[]
   isVariant: boolean
@@ -267,6 +267,8 @@ export function isDraftComplete(draft: ItemDraft, drafts: ItemDraft[], collectio
   )
     return false
   if (draft.type === ItemType.EMOTE && getSizeError(draft.type, undefined, draft.contents) !== null) return false
+  // Legacy UploadVideoStep made the preview video mandatory for smart wearables.
+  if (draft.isSmart && !draft.contents[VIDEO_PATH]) return false
 
   if (draft.isVariant) {
     if (!draft.variantTargetId) return false

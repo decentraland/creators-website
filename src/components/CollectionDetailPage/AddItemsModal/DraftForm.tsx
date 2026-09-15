@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import {
   CameraAlt as CameraIcon,
   ChangeHistory as TriangleIcon,
@@ -7,7 +7,9 @@ import {
   Female as FemaleIcon,
   InfoOutlined as InfoIcon,
   Male as MaleIcon,
+  PlayArrow as PlayIcon,
   ReportProblemOutlined as WarningIcon,
+  VideocamOutlined as VideoIcon,
   Texture as TextureIcon,
   ThirtyFpsSelect as FpsIcon,
   Transgender as BothIcon
@@ -18,8 +20,11 @@ import { ClockIcon, FilmReelIcon, ImageIcon, LoopIcon, PlayOnceIcon } from '~/co
 import { RaritySelect } from '~/components/RaritySelect'
 import { RequiredPermissions } from '~/components/RequiredPermissions'
 import { InfoTooltip, Tooltip } from '~/components/Tooltip'
+import { VideoDropzone } from '~/components/VideoModal'
+import { useObjectURL } from '~/hooks/useObjectURL'
 import { useTranslation } from '~/intl'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
+import { toMB } from '~/lib/itemFiles'
 import { BodyShapeType, ItemType, VIDEO_PATH, type Item } from '~/lib/items'
 import { getCategoryOptions, getVariantTargets, type ItemDraft } from './AddItemsModal.state'
 import * as S from './AddItemsModal.styles'
@@ -30,6 +35,10 @@ type Props = {
   collectionItems: Item[]
   onUpdate: (id: string, patch: Partial<ItemDraft>) => void
   onOpenThumbnail: () => void
+  /** Smart wearables only: opens the preview video overlay. */
+  onOpenVideo: () => void
+  /** Smart wearables only: a picked file replaces the preview video. */
+  onVideoChange: (video: File) => void
 }
 
 const BODY_SHAPES: Array<{ value: BodyShapeType; icon: ReactNode }> = [
@@ -38,7 +47,15 @@ const BODY_SHAPES: Array<{ value: BodyShapeType; icon: ReactNode }> = [
   { value: BodyShapeType.MALE, icon: <MaleIcon /> }
 ]
 
-export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThumbnail }: Props) {
+export function DraftForm({
+  draft,
+  drafts,
+  collectionItems,
+  onUpdate,
+  onOpenThumbnail,
+  onOpenVideo,
+  onVideoChange
+}: Props) {
   const { t } = useTranslation()
 
   const isEmote = draft.type === ItemType.EMOTE
@@ -62,6 +79,10 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
   )
   const nameInvalid = draft.name.length > 0 && !isValidItemName(draft.name)
   const categories = useMemo(() => getCategoryOptions(draft), [draft])
+
+  const video = draft.contents[VIDEO_PATH]
+  const videoUrl = useObjectURL(video)
+  const [videoDuration, setVideoDuration] = useState<number | null>(null)
 
   const warnings = useMemo(() => {
     const list = draft.validationIssues.map(issue => ({
@@ -126,17 +147,7 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
             </>
           ) : null}
         </S.MetricsRow>
-        {isSmart && (
-          <>
-            <RequiredPermissions permissions={draft.requiredPermissions} testId="draft-permissions" />
-            {!draft.contents[VIDEO_PATH] && (
-              <S.InfoCard data-testid="smart-video-notice">
-                <InfoIcon />
-                {t('add_items_modal.smart_video_notice')}
-              </S.InfoCard>
-            )}
-          </>
-        )}
+        {isSmart && <RequiredPermissions permissions={draft.requiredPermissions} testId="draft-permissions" />}
         {warnings.length > 0 && (
           <S.WarningsList data-testid="draft-warnings">
             {warnings.map(warning => (
@@ -326,6 +337,51 @@ export function DraftForm({ draft, drafts, collectionItems, onUpdate, onOpenThum
               />
             </S.Field>
           </S.FieldRow>
+        )}
+
+        {isSmart && (
+          <S.Field as="div" data-testid="draft-video-field">
+            <S.FieldLabel>
+              {t('add_items_modal.video.label')}
+              <S.FieldHint>{t('add_items_modal.video.field_hint')}</S.FieldHint>
+            </S.FieldLabel>
+            <VideoDropzone compact testId="draft-video" onPick={onVideoChange}>
+              {video && videoUrl && (
+                <>
+                  <S.VideoPoster
+                    type="button"
+                    aria-label={t('add_items_modal.video.edit')}
+                    data-testid="draft-video-preview"
+                    onClick={onOpenVideo}
+                  >
+                    <video
+                      key={videoUrl}
+                      src={videoUrl}
+                      preload="metadata"
+                      muted
+                      playsInline
+                      onLoadedMetadata={event => setVideoDuration(event.currentTarget.duration)}
+                    />
+                    <S.VideoPlay>
+                      <PlayIcon />
+                    </S.VideoPlay>
+                    <S.VideoPosterOverlay data-video-overlay>
+                      <VideoIcon />
+                    </S.VideoPosterOverlay>
+                  </S.VideoPoster>
+                  <S.VideoInfo>
+                    <S.VideoName>{video instanceof File ? video.name : VIDEO_PATH}</S.VideoName>
+                    <S.VideoMeta data-testid="draft-video-meta">
+                      {videoDuration !== null && (
+                        <span>{t('add_items_modal.video.duration', { seconds: Math.round(videoDuration) })}</span>
+                      )}
+                      <span>{t('add_items_modal.video.size', { size: toMB(video.size) })}</span>
+                    </S.VideoMeta>
+                  </S.VideoInfo>
+                </>
+              )}
+            </VideoDropzone>
+          </S.Field>
         )}
 
         {sizeError !== null && (

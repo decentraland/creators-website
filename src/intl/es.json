@@ -445,7 +445,13 @@
     },
     "body_shape_emote_hint": "Los emotes siempre están disponibles para todos los tipos de cuerpo.",
     "body_shape_smart_hint": "Los smart wearables están disponibles para todos los tipos de cuerpo.",
-    "smart_video_notice": "Los smart wearables necesitan un video de vista previa antes de publicar la colección. Podrás agregarlo desde el editor del ítem.",
+    "video": {
+      "label": "Video de vista previa",
+      "field_hint": "Sube un video que muestre la funcionalidad del smart wearable.",
+      "edit": "Editar el video de vista previa",
+      "duration": "{seconds}s",
+      "size": "{size} MB"
+    },
     "variant_question": "¿Es una variante de tipo de cuerpo de otro ítem?",
     "yes": "Sí",
     "no": "No",
@@ -520,8 +526,22 @@
       "emote_animations_out_of_sync": "Las animaciones del avatar y del prop deben tener la misma duración.",
       "missing_external_resources": "El modelo referencia archivos que no están incluidos: {fileNames}.",
       "invalid_model_file": "No pudimos cargar este modelo 3D. Revisa el archivo e inténtalo de nuevo.",
-      "invalid_representation": "Este archivo no puede usarse como variante de tipo de cuerpo de ese ítem."
+      "invalid_representation": "Este archivo no puede usarse como variante de tipo de cuerpo de ese ítem.",
+      "multiple_videos": "El ZIP incluye más de un video. Deja solo el video de vista previa.",
+      "video_too_big": "El video es demasiado grande — el tamaño máximo es {size}MB.",
+      "video_wrong_format": "El video debe ser un archivo MP4.",
+      "invalid_video": "Tu video parece estar dañado o no es válido. Revisa el archivo e inténtalo de nuevo."
     }
+  },
+  "video_modal": {
+    "title": "Video de vista previa",
+    "description": "Sube un video que muestre la funcionalidad del smart wearable.",
+    "drop_cta": "Arrastra y suelta tu video aquí, o",
+    "browse": "Buscar archivos",
+    "hint": "{extensions} · hasta {size}MB",
+    "replace": "Reemplazar",
+    "done": "Listo",
+    "cancel": "Cancelar"
   },
   "thumbnail_modal": {
     "title": "Miniatura del ítem",

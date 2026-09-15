@@ -331,6 +331,100 @@ export const InfoCard = styled(WarningCard)`
   }
 `
 
+export const VideoPoster = styled.button`
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 132px;
+  min-height: 84px;
+  padding: 0;
+  border: 0;
+  border-radius: ${theme.radius.btnSm};
+  background: ${theme.colors.text};
+  overflow: hidden;
+  cursor: pointer;
+
+  video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+  }
+
+  &:hover [data-video-overlay],
+  &:focus-visible [data-video-overlay] {
+    opacity: 1;
+  }
+
+  ${theme.media.maxWidth('mobile')} {
+    width: 96px;
+  }
+`
+
+export const VideoPosterOverlay = styled.span`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${theme.colors.overlayStrong};
+  opacity: 0;
+  transition: opacity 0.3s ease;
+
+  svg {
+    width: 32px;
+    height: 32px;
+    color: ${theme.colors.white};
+  }
+`
+
+export const VideoPlay = styled.span`
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: ${theme.colors.overlayStrong};
+  transition: background 0.2s ease;
+
+  svg {
+    width: 24px;
+    height: 24px;
+    color: ${theme.colors.white};
+  }
+`
+
+export const VideoInfo = styled.span`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+`
+
+export const VideoName = styled.span`
+  font-size: 14px;
+  font-weight: 600;
+  color: ${theme.colors.softWhite};
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`
+
+export const VideoMeta = styled.span`
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: ${theme.colors.gray4};
+`
+
 export const FormPane = styled.div`
   display: flex;
   flex-direction: column;
