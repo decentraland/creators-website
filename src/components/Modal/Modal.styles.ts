@@ -44,6 +44,10 @@ export const Dialog = styled.div`
     max-height: 100%;
   }
 
+  &[data-compact] {
+    padding: 12px 16px 16px;
+  }
+
   &[data-flush] {
     padding: 0;
   }
@@ -55,6 +59,10 @@ export const TitleBar = styled.div`
   justify-content: space-between;
   gap: 16px;
   padding-bottom: 24px;
+
+  [data-compact] > & {
+    padding-bottom: 16px;
+  }
 
   [data-flush] > & {
     padding: 16px;

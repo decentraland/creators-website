@@ -63,7 +63,7 @@ export function SendItemsModal({
   }
 
   return (
-    <Modal title={t('send_items_modal.title')} onClose={onClose} closeDisabled={busy} testId="send-items-modal">
+    <Modal title={t('send_items_modal.title')} compact onClose={onClose} closeDisabled={busy} testId="send-items-modal">
       <Sell.Divider />
       <S.Steps>
         <StepIndicator
