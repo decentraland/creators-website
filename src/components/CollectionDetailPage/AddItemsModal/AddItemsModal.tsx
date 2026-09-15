@@ -238,8 +238,12 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
     // A checked variant whose base draft is still unreviewed can't be saved on its own: point the
     // creator at that base draft instead of silently dropping the variant.
     const checkedIds = new Set(checked.map(draft => draft.id))
+    // Variants of existing collection items are fine on their own.
     const orphan = checked.find(
-      draft => draft.isVariant && !!draft.variantTargetId && !checkedIds.has(draft.variantTargetId)
+      draft =>
+        draft.isVariant &&
+        !checkedIds.has(draft.variantTargetId ?? '') &&
+        drafts.some(candidate => candidate.id === draft.variantTargetId)
     )
     const orphanTarget = orphan && drafts.find(draft => draft.id === orphan.variantTargetId)
     setLeaveConfirmOpen(false)

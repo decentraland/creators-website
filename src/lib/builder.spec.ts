@@ -226,6 +226,19 @@ describe('saveItem', () => {
     expect(body.item.contents['video.mp4']).toBeUndefined()
   })
 
+  it('still reports the video upload error when the rollback PUT fails too', async () => {
+    signedFetchMock
+      .mockResolvedValueOnce(okResponse(remoteItem))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+      .mockResolvedValueOnce(jsonResponse({ ok: false, error: 'too large' }, false, 413))
+      .mockResolvedValueOnce(jsonResponse({ ok: false, error: 'down' }, false, 500))
+
+    const smartItem = { ...item, video: 'QmVideo', contents: { ...item.contents, 'video.mp4': 'QmVideo' } }
+    await expect(
+      saveItem(ADDRESS, smartItem, { 'male/model.glb': new Blob(['model']), 'video.mp4': new Blob(['video']) })
+    ).rejects.toMatchObject({ status: 413 })
+  })
+
   it('skips the files request when there is nothing to upload', async () => {
     signedFetchMock.mockResolvedValueOnce(okResponse(remoteItem))
     await saveItem(ADDRESS, item, {})

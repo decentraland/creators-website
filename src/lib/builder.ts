@@ -155,12 +155,13 @@ export async function saveItem(address: string, item: Item, blobs: Record<string
       await request<unknown>(address, 'POST', `/items/${item.id}/videos`, '', videos, false)
     } catch (error) {
       // The PUT already stored the video reference; drop it so the item never points at a file
-      // that was not uploaded (it would look complete and pass the publish gate).
+      // that was not uploaded (it would look complete and pass the publish gate). Best effort:
+      // the caller gets the upload error either way.
       const contents = { ...item.contents }
       delete contents[VIDEO_PATH]
       await request<RemoteItem>(address, 'PUT', `/items/${item.id}`, '', {
         item: toRemoteItem({ ...item, video: undefined, contents })
-      })
+      }).catch(() => undefined)
       throw error
     }
   }
