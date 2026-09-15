@@ -155,6 +155,7 @@ describe('ItemListRow', () => {
     expect(screen.getByTestId('item-row-price')).toHaveTextContent('—')
     expect(screen.getByTestId('item-row-sales')).toHaveTextContent('100/100')
     expect(screen.getByTestId('item-row-sale-status')).toHaveTextContent(/sold out/i)
+    expect(screen.getByTestId('item-row-sale-status')).not.toHaveAttribute('data-empty')
     expect(screen.queryByRole('button', { name: /put on sale/i })).not.toBeInTheDocument()
   })
 

@@ -71,6 +71,8 @@ export function ItemListRow({
   const isSmart = isSmartWearable(item)
   const sales = withMarket ? getItemSales(item) : undefined
   const isSoldOut = !!sales && sales.minted >= sales.maxSupply
+  // Blank while listings load, and for a viewer who may not sell an unlisted item (the sold-out pill still shows).
+  const isSaleStatusEmpty = listing === undefined || (listing === null && !onPutOnSale && !isSoldOut)
   const shopUrl = withMarket && contractAddress && item.tokenId ? shopItemUrl(contractAddress, item.tokenId) : undefined
   const canRename = editable && !!onRename
   const canEditThumbnail = editable && !!onEditThumbnail
@@ -271,10 +273,7 @@ export function ItemListRow({
             <S.Cell data-testid="item-row-sales" data-empty={!sales || undefined}>
               {sales ? `${intl.formatNumber(sales.minted)}/${intl.formatNumber(sales.maxSupply)}` : EMPTY}
             </S.Cell>
-            <S.Cell
-              data-testid="item-row-sale-status"
-              data-empty={listing === undefined || (listing === null && !onPutOnSale && !isSoldOut) || undefined}
-            >
+            <S.Cell data-testid="item-row-sale-status" data-empty={isSaleStatusEmpty || undefined}>
               <ItemSaleStatus
                 sales={sales}
                 listing={listing}
