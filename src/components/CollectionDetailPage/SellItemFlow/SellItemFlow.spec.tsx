@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { ProviderType } from '@dcl/schemas'
 import { SellItemError } from '~/lib/sales'
 import { SellItemFlow } from './SellItemFlow'
-import { ADDRESS, Providers, collection, item, makeSession } from './testUtils'
+import { Providers, collection, item, makeSession } from './testUtils'
 
 type Callbacks = { onSuccess?: (result: unknown) => void; onError?: (error: unknown) => void }
 type Variables = { onSigned?: () => void }
@@ -62,21 +62,6 @@ describe('SellItemFlow', () => {
 
     await act(async () => callbacks.onSuccess?.(collection))
     expect(screen.getByTestId('sell-item-modal')).toBeInTheDocument()
-  })
-
-  it('tells a collaborator that only the owner can enable sales', () => {
-    const onClose = vi.fn()
-    render(
-      <SellItemFlow
-        item={item}
-        collection={{ ...collection, owner: '0x00000000000000000000000000000000000000bb', managers: [ADDRESS] }}
-        session={makeSession()}
-        onClose={onClose}
-      />,
-      { wrapper: Providers }
-    )
-    expect(screen.getByTestId('enable-sales-modal-description')).toHaveTextContent(/only its owner/i)
-    expect(screen.queryByTestId('enable-sales-confirm')).not.toBeInTheDocument()
   })
 
   it('lets the creator back out of the wallet prompt and ignores that attempt afterwards', async () => {

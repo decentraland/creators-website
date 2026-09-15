@@ -108,8 +108,8 @@ const CollectionDetailPage = () => {
   // Play Mode is an emote-only attribute; the column exists only while the visible page has emotes.
   const withPlayMode = useMemo(() => results.some(item => item.type === ItemType.EMOTE), [results])
   useSyncPublishedItems(address, collection, allItems ?? [])
-  // Price, Sales and Sale Status exist once the collection is published; owners, collaborators and minters
-  // can put items on sale once it has been approved at least once, even if it is under review again.
+  // Price, Sales and Sale Status exist once the collection is published; the owner can put items on sale
+  // once it has been approved at least once, even if it is under review again.
   const withMarket = !!collection?.isPublished
   const statusHint =
     collection && getCollectionDisplayStatus(collection) === CollectionDisplayStatus.UNDER_REVIEW
