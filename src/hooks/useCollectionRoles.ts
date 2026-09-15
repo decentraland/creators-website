@@ -6,13 +6,18 @@ import { getMaticChainId } from '~/lib/publishCollection'
 import { SellItemError } from '~/lib/sales'
 
 // Role lists this tab saved: builder-server reports minters and managers from the subgraph, which lags the
-// transaction by a while, so a refetch in between must not bring the old list back.
+// transaction by a while, so a refetch in between must not bring the old list back. Keyed by wallet too,
+// so switching accounts in the tab never shows the previous one's save.
 const savedInSession = new Map<string, string[]>()
-const sessionKey = (collection: Collection, kind: RoleKind) => `${collection.id}:${kind}`
+const sessionKey = (address: string, collection: Collection, kind: RoleKind) =>
+  `${address.toLowerCase()}:${collection.id}:${kind}`
 
 /** The senders or collaborators to show: what this tab last saved, else what builder-server reports. */
-export function useRoleAddresses(collection: Collection, kind: RoleKind): string[] {
-  return savedInSession.get(sessionKey(collection, kind)) ?? getRoleAddresses(collection, kind, getMaticChainId())
+export function useRoleAddresses(session: Session, collection: Collection, kind: RoleKind): string[] {
+  return (
+    savedInSession.get(sessionKey(session.address, collection, kind)) ??
+    getRoleAddresses(collection, kind, getMaticChainId())
+  )
 }
 
 export type SetRolesVariables = {
@@ -39,8 +44,9 @@ export function useSetCollectionRoles(session: Session | null) {
       return withRoles(collection, kind, next, chainId)
     },
     onSuccess: (collection, { kind, next }) => {
-      savedInSession.set(sessionKey(collection, kind), next)
-      queryClient.setQueryData(['collection', session?.address, collection.id], collection)
+      if (!session) return
+      savedInSession.set(sessionKey(session.address, collection, kind), next)
+      queryClient.setQueryData(['collection', session.address, collection.id], collection)
     }
   })
 }

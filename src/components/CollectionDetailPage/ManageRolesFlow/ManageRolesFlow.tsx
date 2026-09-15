@@ -33,7 +33,7 @@ type Props = {
 export function ManageRolesFlow({ collection, kind, session, onClose }: Props) {
   const { t } = useTranslation()
   const social = isSocialLogin(session)
-  const current = useRoleAddresses(collection, kind)
+  const current = useRoleAddresses(session, collection, kind)
   const friends = useFriends(session, true)
 
   const [view, setView] = useState<View>('form')

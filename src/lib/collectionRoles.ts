@@ -19,15 +19,23 @@ export function isCollectionOwner(collection: Collection, address: string | unde
  * removing one would silently take the collection off sale, so the list keeps them untouched.
  */
 export function getSystemMinters(chainId: number): Set<string> {
-  return new Set(
-    [
-      ContractName.OffChainMarketplace,
-      ContractName.OffChainMarketplaceV2,
-      ContractName.OffChainMarketplaceV3,
-      ContractName.CollectionStore
-    ].map(name => getContract(name, chainId).address.toLowerCase())
-  )
+  let minters = systemMinters.get(chainId)
+  if (!minters) {
+    minters = new Set(
+      [
+        ContractName.OffChainMarketplace,
+        ContractName.OffChainMarketplaceV2,
+        ContractName.OffChainMarketplaceV3,
+        ContractName.CollectionStore
+      ].map(name => getContract(name, chainId).address.toLowerCase())
+    )
+    systemMinters.set(chainId, minters)
+  }
+  return minters
 }
+
+// Static per chain, and asked for on every keystroke of the address picker.
+const systemMinters = new Map<number, Set<string>>()
 
 /** The addresses currently holding the role, lowercased and de-duplicated, without the system minters. */
 export function getRoleAddresses(collection: Collection, kind: RoleKind, chainId: number): string[] {
