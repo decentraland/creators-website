@@ -408,6 +408,10 @@ describe('loadItemFile', () => {
       expect(result.contents['video.mp4'].size).toBe(4 * 1024 * 1024)
     })
 
+    it('rejects scene code shipped without a scene.json', async () => {
+      await expectItemFileError(loadItemFile(await zipFile(files)), 'scene_manifest_missing')
+    })
+
     it('rejects a zip with more than one video', async () => {
       await expectItemFileError(
         loadItemFile(await zipFile({ ...files, 'scene.json': scene(), 'a.mp4': 'a', 'b.mp4': 'b' })),
@@ -416,8 +420,10 @@ describe('loadItemFile', () => {
     })
 
     it('drops a stray video from a plain wearable zip', async () => {
-      const result = await loadItemFile(await zipFile({ ...files, 'video.mp4': 'x' }))
-      expect(Object.keys(result.contents).sort()).toEqual(['bin/game.js', 'glasses.glb'])
+      const result = await loadItemFile(
+        await zipFile({ 'wearable.json': wearableManifest, 'glasses.glb': 'glb', 'video.mp4': 'x' })
+      )
+      expect(Object.keys(result.contents)).toEqual(['glasses.glb'])
     })
 
     it('caps the model at the smart wearable size', async () => {

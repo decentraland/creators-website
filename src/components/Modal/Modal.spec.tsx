@@ -61,6 +61,36 @@ describe('Modal', () => {
     expect(document.documentElement.style.overflow).toBe('')
   })
 
+  it('lets only the topmost stacked modal trap Tab and handle Escape', async () => {
+    const parent = renderModal()
+    const closeChild = vi.fn()
+    const child = render(
+      <Modal title="Stacked" onClose={closeChild} testId="child">
+        <button type="button">One</button>
+        <button type="button">Two</button>
+      </Modal>,
+      { wrapper }
+    )
+
+    await userEvent.tab()
+    expect(screen.getByTestId('child-close')).toHaveFocus()
+    await userEvent.tab()
+    expect(screen.getByRole('button', { name: 'One' })).toHaveFocus()
+    await userEvent.tab()
+    expect(screen.getByRole('button', { name: 'Two' })).toHaveFocus()
+    // Wraps inside the child instead of being pulled back by the parent's trap.
+    await userEvent.tab()
+    expect(screen.getByTestId('child-close')).toHaveFocus()
+
+    await userEvent.keyboard('{Escape}')
+    expect(closeChild).toHaveBeenCalledTimes(1)
+    expect(parent.onClose).not.toHaveBeenCalled()
+
+    child.unmount()
+    await userEvent.keyboard('{Escape}')
+    expect(parent.onClose).toHaveBeenCalledTimes(1)
+  })
+
   it('keeps the page scroll unlocked only after every stacked modal is gone', () => {
     const first = renderModal()
     const second = render(

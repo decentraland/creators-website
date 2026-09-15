@@ -525,6 +525,7 @@
       "unknown_required_permissions": "scene.json declares permissions that don't exist: {permissions}.",
       "duplicated_required_permissions": "scene.json declares the same permission more than once.",
       "allowed_media_hostnames_empty": "scene.json asks for ALLOW_MEDIA_HOSTNAMES but lists no hostnames.",
+      "scene_manifest_missing": "This ZIP includes scene code but no scene.json. Smart wearables need their scene.json.",
       "emote_duration_too_long": "Emotes can last up to {seconds} seconds.",
       "emote_with_mesh": "This emote includes an avatar mesh. Export only the armature and animation.",
       "emote_animations_out_of_sync": "The avatar and prop animations must have the same duration.",

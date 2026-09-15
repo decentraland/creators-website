@@ -12,6 +12,10 @@ import * as S from './Modal.styles'
 let scrollLocks = 0
 let savedOverflow = ''
 
+// Open dialogs, bottom to top. Every modal listens on the document, so without this the parent
+// would treat focus inside a stacked child as "outside" and drag it back on every Tab.
+const openDialogs: HTMLElement[] = []
+
 function acquireScrollLock() {
   if (scrollLocks === 0) {
     savedOverflow = document.documentElement.style.overflow
@@ -64,9 +68,12 @@ export function Modal({
   closeDisabledRef.current = closeDisabled
 
   useEffect(() => {
-    dialogRef.current?.focus()
+    const dialog = dialogRef.current
+    if (dialog) openDialogs.push(dialog)
+    dialog?.focus()
 
     function onKeyDown(event: KeyboardEvent) {
+      if (openDialogs[openDialogs.length - 1] !== dialog) return
       if (event.key === 'Escape' && !closeDisabledRef.current) closeRef.current()
 
       // aria-modal alone doesn't stop Tab from reaching the page behind the scrim.
@@ -97,7 +104,10 @@ export function Modal({
 
     return () => {
       document.removeEventListener('keydown', onKeyDown)
+      if (dialog) openDialogs.splice(openDialogs.indexOf(dialog), 1)
       releaseScrollLock()
+      // Hand focus back to the dialog underneath, if any.
+      openDialogs[openDialogs.length - 1]?.focus()
     }
   }, [])
 

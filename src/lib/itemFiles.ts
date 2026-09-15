@@ -14,7 +14,7 @@ import {
   generateLazyValidator,
   type JSONSchema
 } from '@dcl/schemas'
-import { BodyShapeType, IMAGE_PATH, VIDEO_PATH } from './items'
+import { BodyShapeType, IMAGE_PATH, VIDEO_PATH, hasSceneCode } from './items'
 
 export const THUMBNAIL_PATH = 'thumbnail.png'
 /** A smart wearable's scene manifest; kept inside the item contents so the explorer can run it. */
@@ -459,6 +459,10 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
 
   // A smart wearable zip may ship its preview video (any .mp4, any folder); it is pulled out of the
   // model contents and stored at the root as video.mp4. Plain zips drop it: only smart items have one.
+  // Scene code marks a smart wearable everywhere after import (hasSceneCode), so a zip can't ship
+  // it without the manifest that makes it runnable and gates the video.
+  if (!sceneFile && hasSceneCode(rawContent)) throw new ItemFileError('scene_manifest_missing')
+
   const videoPaths = Object.keys(rawContent).filter(isVideoFile)
   if (videoPaths.length > 1) throw new ItemFileError('multiple_videos')
   const video = videoPaths.length === 1 && sceneFile ? rawContent[videoPaths[0]] : null
