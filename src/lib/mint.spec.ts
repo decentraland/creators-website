@@ -6,7 +6,6 @@ import { ItemType, type Item } from './items'
 import {
   MAX_ITEMS_PER_SEND,
   buildIssueTokensCall,
-  canContinue,
   canSendCollectionItems,
   copiesPerItem,
   copiesPerRecipient,
@@ -119,14 +118,6 @@ describe('allocation math', () => {
     expect(maxAmount(hat, transfers, 0)).toBe(45)
     // A transfer without recipients yet is sized as if it had one.
     expect(maxAmount(hat, [{ recipients: [], amounts: {} }], 0)).toBe(93)
-  })
-
-  it('continues only with something to send and at most the per-transaction limit', () => {
-    expect(canContinue([{ recipients: ['0xa'], amounts: {} }])).toBe(false)
-    expect(canContinue([{ recipients: [], amounts: { hat: 5 } }])).toBe(false)
-    expect(canContinue(transfers)).toBe(true)
-    expect(canContinue([{ recipients: ['0xa'], amounts: { hat: MAX_ITEMS_PER_SEND } }])).toBe(true)
-    expect(canContinue([{ recipients: ['0xa'], amounts: { hat: MAX_ITEMS_PER_SEND + 1 } }])).toBe(false)
   })
 })
 

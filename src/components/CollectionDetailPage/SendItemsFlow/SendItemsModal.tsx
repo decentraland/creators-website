@@ -14,7 +14,6 @@ import { type Friend } from '~/lib/friends'
 import { type Item } from '~/lib/items'
 import {
   MAX_ITEMS_PER_SEND,
-  canContinue,
   copiesPerRecipient,
   createTransfer,
   getStock,
@@ -148,7 +147,7 @@ export function SendItemsModal({
           <Button
             type="button"
             variant="primary"
-            disabled={!canContinue(transfers)}
+            disabled={total === 0 || over}
             data-testid="send-continue"
             onClick={() => onStep('confirm')}
           >

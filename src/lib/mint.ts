@@ -44,12 +44,11 @@ export function getStock(item: Item): { available: number; total: number } {
   return { available: sales.maxSupply - sales.minted, total: sales.maxSupply }
 }
 
-export function transferCopies(transfer: Transfer): number {
-  return transfer.recipients.length * Object.values(transfer.amounts).reduce((sum, amount) => sum + amount, 0)
-}
-
 export function totalCopies(transfers: Transfer[]): number {
-  return transfers.reduce((sum, transfer) => sum + transferCopies(transfer), 0)
+  return transfers.reduce(
+    (sum, { recipients, amounts }) => sum + recipients.length * Object.values(amounts).reduce((a, b) => a + b, 0),
+    0
+  )
 }
 
 /** Copies of `itemId` claimed by every transfer other than `except`. */
@@ -82,11 +81,6 @@ export function copiesPerRecipient(transfers: Transfer[]): RecipientBundle[] {
     }
   }
   return [...bundles].map(([address, amounts]) => ({ address, amounts }))
-}
-
-export function canContinue(transfers: Transfer[]): boolean {
-  const total = totalCopies(transfers)
-  return total > 0 && total <= MAX_ITEMS_PER_SEND
 }
 
 /**

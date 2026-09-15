@@ -187,14 +187,13 @@ type AmountProps = {
 
 /** The stepper's count, typed directly: digits only, clamped to the cap; emptied and left, it drops to 0. */
 function AmountInput({ amount, max, disabled, label, testId, onChange }: AmountProps) {
-  // '' while the field is cleared mid-edit, so the creator can retype without fighting the clamp.
-  const [draft, setDraft] = useState<string | null>(null)
+  // Stays empty while cleared mid-edit, so the creator can retype without fighting the clamp.
+  const [cleared, setCleared] = useState(false)
 
   function handleChange(value: string) {
     const digits = value.replace(/\D/g, '')
-    if (digits === '') return setDraft('')
-    setDraft(null)
-    onChange(Math.min(Number(digits), max))
+    setCleared(digits === '')
+    if (digits !== '') onChange(Math.min(Number(digits), max))
   }
 
   return (
@@ -204,13 +203,13 @@ function AmountInput({ amount, max, disabled, label, testId, onChange }: AmountP
       autoComplete="off"
       aria-label={label}
       disabled={disabled}
-      value={draft ?? String(amount)}
+      value={cleared ? '' : String(amount)}
       data-testid={testId}
       onChange={event => handleChange(event.target.value)}
       onFocus={event => event.target.select()}
       onBlur={() => {
-        if (draft === '') onChange(0)
-        setDraft(null)
+        if (cleared) onChange(0)
+        setCleared(false)
       }}
     />
   )
