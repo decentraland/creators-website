@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   CameraAlt as CameraIcon,
   ChangeHistory as TriangleIcon,
@@ -84,6 +84,8 @@ export function DraftForm({
   const video = draft.contents[VIDEO_PATH]
   const videoUrl = useObjectURL(video)
   const [videoDuration, setVideoDuration] = useState<number | null>(null)
+  // A new video (or draft) must not flash the previous one's duration until its metadata loads.
+  useEffect(() => setVideoDuration(null), [videoUrl])
 
   const warnings = useMemo(() => {
     const list = draft.validationIssues.map(issue => ({
@@ -382,7 +384,10 @@ export function DraftForm({
                       preload="metadata"
                       muted
                       playsInline
-                      onLoadedMetadata={event => setVideoDuration(event.currentTarget.duration)}
+                      onLoadedMetadata={event => {
+                        const { duration } = event.currentTarget
+                        setVideoDuration(Number.isFinite(duration) ? duration : null)
+                      }}
                     />
                     <S.VideoPlay>
                       <PlayIcon />

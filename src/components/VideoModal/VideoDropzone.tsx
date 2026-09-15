@@ -12,6 +12,7 @@ import * as S from './VideoDropzone.styles'
 export async function pickVideoFile(file: File): Promise<File> {
   validateVideoFile(file)
   try {
+    // Only decodability matters here; the duration (null on a stalled decode) is read by the poster itself.
     await loadVideoMetadata(file)
   } catch {
     throw new ItemFileError('invalid_video')

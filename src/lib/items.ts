@@ -241,9 +241,16 @@ export function getItemMetadata(item: Item): string {
   }`
 }
 
-/** A wearable shipping scene code (a `.js` file) is a smart wearable. */
+/**
+ * Contents shipping scene code (a `.js` file) make a smart wearable. The same heuristic as the
+ * legacy builder and builder-server; older smart wearables carry no scene.json in their contents.
+ */
+export function hasSceneCode(contents: Record<string, unknown>): boolean {
+  return Object.keys(contents).some(path => path.endsWith('.js'))
+}
+
 export function isSmartWearable(item: Item): boolean {
-  return item.type === ItemType.WEARABLE && Object.keys(item.contents).some(path => path.endsWith('.js'))
+  return item.type === ItemType.WEARABLE && hasSceneCode(item.contents)
 }
 
 /** A smart wearable can't be published until its preview video has been uploaded (legacy isComplete). */

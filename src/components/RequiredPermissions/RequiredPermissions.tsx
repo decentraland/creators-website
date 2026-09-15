@@ -26,7 +26,7 @@ export function RequiredPermissions({ permissions, testId = 'required-permission
         <S.List>
           {permissions.map(permission => (
             <S.Chip key={permission} data-testid={`${testId}-${permission}`}>
-              {permission.replace(/_/g, ' ').toLowerCase()}
+              {t(`required_permissions.permission.${permission}`)}
             </S.Chip>
           ))}
         </S.List>

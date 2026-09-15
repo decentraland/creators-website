@@ -39,8 +39,11 @@ export function loadVideoMetadata(blob: Blob, timeoutMs = 15000): Promise<{ dura
   return new Promise((resolve, reject) => {
     const video = document.createElement('video')
     const url = URL.createObjectURL(blob)
+    let done = false
     const timer = setTimeout(() => finish({ duration: null }), timeoutMs)
     const finish = (result: { duration: number | null } | Error) => {
+      if (done) return
+      done = true
       clearTimeout(timer)
       video.removeAttribute('src')
       URL.revokeObjectURL(url)

@@ -24,12 +24,8 @@ export const MAX_PUBLISH_ITEMS = 50
 
 export type PublishBlocker = 'not_draft' | 'no_items' | 'too_many_items' | 'missing_smart_wearable_video'
 
-/** `items` are the collection's items when loaded; a smart wearable without its preview video blocks publishing. */
-export function getPublishBlocker(
-  collection: Collection,
-  itemCount: number,
-  items: Item[] = []
-): PublishBlocker | null {
+/** `items` are the collection's items; a smart wearable without its preview video blocks publishing. */
+export function getPublishBlocker(collection: Collection, itemCount: number, items: Item[]): PublishBlocker | null {
   if (collection.isPublished || isCollectionLocked(collection)) return 'not_draft'
   if (itemCount === 0) return 'no_items'
   if (itemCount > MAX_PUBLISH_ITEMS) return 'too_many_items'

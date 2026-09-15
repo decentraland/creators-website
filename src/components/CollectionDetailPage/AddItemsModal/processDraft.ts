@@ -2,9 +2,9 @@
 // dispatched into the pure reducer; WearablePreview-dependent data (wearable metrics, auto
 // thumbnails) is filled afterwards by DraftProcessor.
 import { WearableCategory } from '@dcl/schemas'
-import { blobToDataURL, convertImageIntoWearableThumbnail, dataURLToBlob } from '~/lib/media'
+import { blobToDataURL, convertImageIntoWearableThumbnail, dataURLToBlob, loadVideoMetadata } from '~/lib/media'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH } from '~/lib/itemFactory'
-import { THUMBNAIL_PATH, isImageFile, loadItemFile } from '~/lib/itemFiles'
+import { ItemFileError, THUMBNAIL_PATH, VIDEO_PATH, isImageFile, loadItemFile } from '~/lib/itemFiles'
 import { BodyShapeType, ItemType, type ItemMetrics } from '~/lib/items'
 import { analyzeModel } from '~/lib/models'
 import { isRarity } from '~/lib/rarities'
@@ -38,6 +38,12 @@ function sanitizePlayMode(playMode: string | undefined): EmotePlayMode | null {
  */
 export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> {
   const loaded = await loadItemFile(file)
+  // A video shipped in the zip gets the same decode check as one picked in the form.
+  if (loaded.contents[VIDEO_PATH]) {
+    await loadVideoMetadata(loaded.contents[VIDEO_PATH]).catch(() => {
+      throw new ItemFileError('invalid_video')
+    })
+  }
   // The manifest's category and hides drive the category-dependent limits (triangle budget, skin caps).
   const analysis = await analyzeModel(
     loaded.model,

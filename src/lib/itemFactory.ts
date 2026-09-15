@@ -9,6 +9,7 @@ import {
   BodyShapeType,
   ItemType,
   getItemBodyShapeType,
+  hasSceneCode,
   type Item,
   type ItemMetrics,
   type ItemRepresentation
@@ -217,11 +218,6 @@ export async function computeHashes(contents: Record<string, Blob>): Promise<Rec
     hashes[path] = await hashV1(new Uint8Array(buffer))
   }
   return hashes
-}
-
-/** Contents shipping scene code make a smart wearable (same `.js` heuristic as items.isSmartWearable). */
-export function hasSceneCode(contents: Record<string, unknown>): boolean {
-  return Object.keys(contents).some(path => path.endsWith('.js'))
 }
 
 /**

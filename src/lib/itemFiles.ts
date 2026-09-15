@@ -26,6 +26,7 @@ export const VIDEO_EXTENSIONS = ['.mp4']
 
 export const MAX_THUMBNAIL_FILE_SIZE = 1024 * 1024 // 1MB
 export const MAX_WEARABLE_FILE_SIZE = 3 * 1024 * 1024 // 3MB
+// Same as plain wearables for now (the video is capped separately); kept apart so the policies can diverge.
 export const MAX_SMART_WEARABLE_FILE_SIZE = 3 * 1024 * 1024 // 3MB
 export const MAX_SKIN_FILE_SIZE = 8 * 1024 * 1024 // 8MB
 export const MAX_EMOTE_FILE_SIZE = 3 * 1024 * 1024 // 3MB
@@ -359,16 +360,20 @@ function toSceneManifest(value: unknown): SceneManifest {
   const scene = value as Partial<Scene> | null
   const permissions = scene?.requiredPermissions as unknown
   if (Array.isArray(permissions)) {
-    const unknown = permissions.filter(permission => !KNOWN_PERMISSIONS.has(String(permission)))
-    if (unknown.length > 0) {
-      throw new ItemFileError('unknown_required_permissions', { permissions: unknown.join(', ') })
+    const unknownPermissions = permissions.filter(permission => !KNOWN_PERMISSIONS.has(String(permission)))
+    if (unknownPermissions.length > 0) {
+      throw new ItemFileError('unknown_required_permissions', { permissions: unknownPermissions.join(', ') })
     }
     if (new Set(permissions).size !== permissions.length) {
       throw new ItemFileError('duplicated_required_permissions')
     }
     if (permissions.includes(RequiredPermission.ALLOW_MEDIA_HOSTNAMES)) {
       const hostnames = scene?.allowedMediaHostnames
-      if (!Array.isArray(hostnames) || hostnames.length === 0 || hostnames.some(host => !host?.trim())) {
+      if (
+        !Array.isArray(hostnames) ||
+        hostnames.length === 0 ||
+        hostnames.some(host => typeof host !== 'string' || !host.trim())
+      ) {
         throw new ItemFileError('allowed_media_hostnames_empty')
       }
     }

@@ -626,6 +626,15 @@
   "required_permissions": {
     "title": "Permisos requeridos",
     "learn_more": "Más información",
-    "none": "Este smart wearable no solicita ningún permiso."
+    "none": "Este smart wearable no solicita ningún permiso.",
+    "permission": {
+      "ALLOW_TO_MOVE_PLAYER_INSIDE_SCENE": "Mover al jugador dentro de la escena",
+      "ALLOW_TO_TRIGGER_AVATAR_EMOTE": "Activar emotes del avatar",
+      "ALLOW_MEDIA_HOSTNAMES": "Cargar medios desde hosts permitidos",
+      "USE_WEB3_API": "Usar la API Web3",
+      "USE_FETCH": "Usar fetch",
+      "USE_WEBSOCKET": "Usar websockets",
+      "OPEN_EXTERNAL_LINK": "Abrir enlaces externos"
+    }
   }
 }
