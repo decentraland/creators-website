@@ -461,7 +461,7 @@
     "category": "Categoría",
     "select_category": "Selecciona una categoría",
     "facial_expressions": "Este wearable incluye expresiones faciales",
-    "suggested_category": "Sugerida según tu modelo: {category}. Puedes cambiarla si no es correcta.",
+    "suggested_category": "Sugerida según tu modelo. Puedes cambiarla si no es correcta.",
     "rarity": "Rareza",
     "rarity_tooltip": "La rareza determina cuántas copias de un ítem pueden existir. Cuanto más raro el ítem, menor su cantidad máxima.",
     "play_mode": "Modo de reproducción",
