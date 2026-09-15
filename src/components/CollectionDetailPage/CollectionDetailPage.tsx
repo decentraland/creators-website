@@ -102,8 +102,11 @@ const CollectionDetailPage = () => {
     collection && getCollectionDisplayStatus(collection) === CollectionDisplayStatus.UNDER_REVIEW
       ? t('collection_status.under_review_hint')
       : null
-  const canSell = !!collection && hasBeenApproved(collection) && canSellCollectionItems(collection, address)
-  const canSend = !!collection && canSendCollectionItems(collection, address)
+  const canSell = useMemo(
+    () => !!collection && hasBeenApproved(collection) && canSellCollectionItems(collection, address),
+    [collection, address]
+  )
+  const canSend = useMemo(() => !!collection && canSendCollectionItems(collection, address), [collection, address])
   const [isSending, setSending] = useState(false)
   const listingsQuery = useCollectionListings(withMarket ? collection.contractAddress : undefined)
   const listings = listingsQuery.data

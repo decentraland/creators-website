@@ -143,6 +143,11 @@ describe('flattenTransfers / buildIssueTokensCall', () => {
     })
   })
 
+  it('refuses more copies than one transaction can mint', () => {
+    const transfers: Transfer[] = [{ recipients: ['0xa'], amounts: { hat: MAX_ITEMS_PER_SEND + 1 } }]
+    expect(() => flattenTransfers(transfers, [hat])).toThrow(/more than/)
+  })
+
   it('encodes issueTokens on the collection contract and refuses a collection without one', () => {
     const call = buildIssueTokensCall(collection, ['0x00000000000000000000000000000000000000ee'], ['1'], CHAIN_ID)
     expect(call.contract.address).toBe(CONTRACT)

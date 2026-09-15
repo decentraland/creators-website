@@ -89,7 +89,10 @@ export function canContinue(transfers: Transfer[]): boolean {
   return total > 0 && total <= MAX_ITEMS_PER_SEND
 }
 
-/** The parallel `issueTokens(beneficiaries, itemIds)` arrays: one entry per copy. */
+/**
+ * The parallel `issueTokens(beneficiaries, itemIds)` arrays: one entry per copy. Re-checks the cap the UI
+ * enforces so a programming error can't pay gas for a transaction bound to run out of it.
+ */
 export function flattenTransfers(
   transfers: Transfer[],
   items: Item[]
@@ -108,6 +111,9 @@ export function flattenTransfers(
         }
       }
     }
+  }
+  if (beneficiaries.length > MAX_ITEMS_PER_SEND) {
+    throw new SellItemError('generic', `Cannot send more than ${MAX_ITEMS_PER_SEND} items at once`)
   }
   return { beneficiaries, tokenIds }
 }
