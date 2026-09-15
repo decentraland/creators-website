@@ -113,8 +113,7 @@ export function ItemListRow({
     }
   }
 
-  function renderAmount() {
-    if (listing === undefined || listing === null) return null
+  function renderAmount(listing: ItemListing) {
     if (listing.currency === 'mana') {
       if (listing.manaWei === 0n) return t('collection_detail_page.price.free')
       const amount = formatMana(listing.manaWei)
@@ -136,7 +135,7 @@ export function ItemListRow({
   function renderPrice() {
     if (listing === undefined) return null
     if (listing === null) return EMPTY
-    const amount = renderAmount()
+    const amount = renderAmount(listing)
     if (!onEditPrice) return amount
     return (
       <S.PriceButton
