@@ -6,11 +6,12 @@ import { executeUpload, planUpload, type UploadDraft } from './uploadItems'
 
 vi.mock('./builder', async importOriginal => {
   const original = await importOriginal<typeof import('./builder')>()
-  return { ...original, saveItem: vi.fn() }
+  return { ...original, saveItem: vi.fn(), fetchContent: vi.fn() }
 })
 
-const { saveItem } = await import('./builder')
+const { saveItem, fetchContent } = await import('./builder')
 const saveItemMock = vi.mocked(saveItem)
+const fetchContentMock = vi.mocked(fetchContent)
 
 const blob = (text = 'x') => new Blob([text])
 
@@ -35,6 +36,8 @@ function draft(id: string, overrides: Partial<UploadDraft> = {}): UploadDraft {
 beforeEach(() => {
   saveItemMock.mockReset()
   saveItemMock.mockResolvedValue({} as never)
+  fetchContentMock.mockReset()
+  fetchContentMock.mockResolvedValue(blob('stored'))
 })
 
 describe('planUpload', () => {
@@ -106,6 +109,26 @@ describe('executeUpload', () => {
     expect(result.savedDraftIds).toEqual([])
     expect(result.failedDraftIds).toEqual(['a', 'b', 'c'])
     expect(result.failureReason).toBe('locked')
+    expect(saveItemMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('refuses a representation that would push the stored item over its cap, and keeps uploading', async () => {
+    const { item: existing } = await buildItem({
+      ...(draft('existing') as ItemDraftPayload),
+      bodyShape: BodyShapeType.MALE
+    })
+    const variant = draft('variant', {
+      bodyShape: BodyShapeType.FEMALE,
+      variantTargetId: existing.id,
+      contents: { 'f.glb': blob('f'), 'thumbnail.png': blob('t') },
+      model: 'f.glb'
+    })
+    fetchContentMock.mockResolvedValue(new Blob([new Uint8Array(3 * 1024 * 1024)]))
+    const operations = await planUpload([variant, draft('b')], [existing])
+    const result = await executeUpload('0xowner', operations)
+    expect(result.failedDraftIds).toEqual(['variant'])
+    expect(result.savedDraftIds).toEqual(['b'])
+    expect(result.failureReason).toBe('too_big')
     expect(saveItemMock).toHaveBeenCalledTimes(1)
   })
 

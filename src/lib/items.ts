@@ -19,6 +19,8 @@ export const BODY_SHAPE_FEMALE = 'urn:decentraland:off-chain:base-avatars:BaseFe
 
 /** A smart wearable's preview video; stored with the item but never deployed to the Catalyst. */
 export const VIDEO_PATH = 'video.mp4'
+/** Catalyst image: the thumbnail over its rarity gradient, referenced by every deployed entity. */
+export const IMAGE_PATH = 'image.png'
 
 export type ItemRepresentation = {
   bodyShapes: string[]

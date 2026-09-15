@@ -6,7 +6,7 @@ import { useTranslation } from '~/intl'
 import { useAllCollectionItems } from '~/hooks/useCollection'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { installBackGuard } from '~/lib/backGuard'
-import { ItemFileError, VIDEO_PATH } from '~/lib/itemFiles'
+import { ItemFileError, MAX_THUMBNAIL_FILE_SIZE, VIDEO_PATH, toMB } from '~/lib/itemFiles'
 import { type ItemDraftPayload } from '~/lib/itemFactory'
 import { type Collection } from '~/lib/collections'
 import { ItemType } from '~/lib/items'
@@ -20,13 +20,14 @@ import {
   isImageWearable,
   type ItemDraft
 } from './AddItemsModal.state'
-import { processDraftFile, pickPreviewDraft } from './processDraft'
+import { imageThumbnailPatch, isImageThumbnailStale, processDraftFile, pickPreviewDraft } from './processDraft'
 import { DraftList } from './DraftList'
 import { DraftForm } from './DraftForm'
 import { DraftProcessor } from './DraftProcessor'
 import {
   ThumbnailFormatError,
   ThumbnailModal,
+  ThumbnailTooBigError,
   thumbnailPatchFromFile,
   type ThumbnailPatch
 } from '~/components/ThumbnailModal'
@@ -102,6 +103,20 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
     processingIdRef.current = previewDraft?.id ?? null
   }, [previewDraft?.id])
 
+  // Image wearables are padded per category, so a category change re-pads our auto thumbnail.
+  const repaddingIdsRef = useRef(new Set<string>())
+  useEffect(() => {
+    const stale = drafts.find(draft => isImageThumbnailStale(draft) && !repaddingIdsRef.current.has(draft.id))
+    if (!stale) return
+    repaddingIdsRef.current.add(stale.id)
+    void imageThumbnailPatch(stale.contents, stale.model, stale.category)
+      .then(patch =>
+        dispatch({ type: 'draftAnalyzed', id: stale.id, patch: { ...patch, autoThumbnailCategory: stale.category } })
+      )
+      .catch((error: unknown) => console.error('Thumbnail re-padding failed:', error))
+      .finally(() => repaddingIdsRef.current.delete(stale.id))
+  }, [drafts])
+
   const isSelectedComplete = useMemo(
     () => !!selected && isDraftComplete(selected, drafts, collectionItems),
     [selected, drafts, collectionItems]
@@ -137,6 +152,9 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
       rarity: draft.rarity,
       playMode: draft.playMode,
       requiredPermissions: draft.isSmart ? draft.requiredPermissions : undefined,
+      description: draft.description,
+      tags: draft.tags,
+      blockVrmExport: draft.blockVrmExport,
       contents: draft.contents,
       model: draft.model,
       metrics: draft.metrics ?? {},
@@ -193,7 +211,14 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
       .then(patch => dispatch({ type: 'draftUpdated', id, patch }))
       .catch((err: unknown) => {
         showToast(
-          t(err instanceof ThumbnailFormatError ? 'thumbnail_modal.wrong_format' : 'thumbnail_modal.capture_failed'),
+          t(
+            err instanceof ThumbnailFormatError
+              ? 'thumbnail_modal.wrong_format'
+              : err instanceof ThumbnailTooBigError
+                ? 'thumbnail_modal.too_big'
+                : 'thumbnail_modal.capture_failed',
+            { size: toMB(MAX_THUMBNAIL_FILE_SIZE) }
+          ),
           { type: 'error' }
         )
       })

@@ -13,7 +13,7 @@ type Props = {
 export function UploadErrorModal({ reason, onCancel, onRetry }: Props) {
   const { t } = useTranslation()
   // Locked/published collections can never be retried: they get a reason-specific title and a single acknowledge action.
-  const canRetry = reason === 'generic'
+  const canRetry = reason === 'generic' || reason === 'too_big'
 
   return (
     <ConfirmModal

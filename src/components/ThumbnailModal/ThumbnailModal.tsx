@@ -7,7 +7,7 @@ import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { EmoteControls, TranslationControls, ZoomControls } from '~/components/PreviewControls'
 import { useTranslation } from '~/intl'
-import { THUMBNAIL_PATH } from '~/lib/itemFiles'
+import { MAX_THUMBNAIL_FILE_SIZE, THUMBNAIL_PATH, toMB } from '~/lib/itemFiles'
 import { ItemType } from '~/lib/items'
 import {
   ImageType,
@@ -32,6 +32,7 @@ export type ThumbnailPatch = {
 }
 
 export class ThumbnailFormatError extends Error {}
+export class ThumbnailTooBigError extends Error {}
 
 export async function thumbnailPatchFromDataURL(
   contents: Record<string, Blob>,
@@ -39,6 +40,7 @@ export async function thumbnailPatchFromDataURL(
 ): Promise<ThumbnailPatch> {
   const thumbnailBlob = dataURLToBlob(thumbnail)
   if (!thumbnailBlob) throw new Error('Could not decode the thumbnail')
+  if (thumbnailBlob.size > MAX_THUMBNAIL_FILE_SIZE) throw new ThumbnailTooBigError()
   return {
     thumbnail,
     contents: { ...contents, [THUMBNAIL_PATH]: thumbnailBlob },
@@ -82,6 +84,13 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
     [isEmote, contents]
   )
 
+  function thumbnailErrorMessage(err: unknown): string {
+    if (err instanceof ThumbnailFormatError) return t('thumbnail_modal.wrong_format')
+    if (err instanceof ThumbnailTooBigError)
+      return t('thumbnail_modal.too_big', { size: toMB(MAX_THUMBNAIL_FILE_SIZE) })
+    return t('thumbnail_modal.capture_failed')
+  }
+
   function handleCapture() {
     setSaving(true)
     setError(null)
@@ -91,8 +100,8 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
         if (isEmote) await controller.emote.pause()
         const screenshot = await controller.scene.getScreenshot(THUMBNAIL_SIZE, THUMBNAIL_SIZE)
         onSave(await thumbnailPatchFromDataURL(contents!, screenshot))
-      } catch {
-        setError(t('thumbnail_modal.capture_failed'))
+      } catch (err) {
+        setError(thumbnailErrorMessage(err))
         setSaving(false)
       }
     })()
@@ -107,9 +116,7 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
       try {
         onSave(await thumbnailPatchFromFile(contents!, file))
       } catch (err) {
-        setError(
-          t(err instanceof ThumbnailFormatError ? 'thumbnail_modal.wrong_format' : 'thumbnail_modal.capture_failed')
-        )
+        setError(thumbnailErrorMessage(err))
         setSaving(false)
       }
     })()

@@ -2,13 +2,24 @@
 // ImportStep + @dcl/builder-client loadFile: unzips, reads manifests, normalizes contents and
 // detects body shapes. 3D model analysis lives in lib/models; this module is engine-free.
 import JSZip from 'jszip'
-import { RequiredPermission, Scene } from '@dcl/schemas'
-import { BodyShapeType, VIDEO_PATH } from './items'
+import {
+  EmoteCategory,
+  EmotePlayMode,
+  HideableWearableCategory,
+  Rarity,
+  RequiredPermission,
+  Scene,
+  WearableCategory,
+  WearableRepresentation,
+  generateLazyValidator,
+  type JSONSchema
+} from '@dcl/schemas'
+import { BodyShapeType, IMAGE_PATH, VIDEO_PATH } from './items'
 
 export const THUMBNAIL_PATH = 'thumbnail.png'
 /** A smart wearable's scene manifest; kept inside the item contents so the explorer can run it. */
 export const SCENE_PATH = 'scene.json'
-export { VIDEO_PATH }
+export { IMAGE_PATH, VIDEO_PATH }
 
 export const ITEM_EXTENSIONS = ['.zip', '.gltf', '.glb', '.png']
 export const VIDEO_EXTENSIONS = ['.mp4']
@@ -225,6 +236,7 @@ export type WearableManifest = {
     hides?: string[]
     replaces?: string[]
     tags?: string[]
+    blockVrmExport?: boolean
     representations: Array<{
       bodyShapes: string[]
       mainFile: string
@@ -273,34 +285,66 @@ function parseJson(text: string, fileName: string): unknown {
   }
 }
 
+// Same rules as @dcl/builder-client's WearableConfigSchema / EmoteConfigSchema (legacy loadFile),
+// except a representation's overrideHides / overrideReplaces are optional: representations are
+// rebuilt from the files anyway and hand-written manifests rarely carry them.
+const TAGS_SCHEMA = { type: 'array', items: { type: 'string', minLength: 1 } }
+const REPRESENTATION_SCHEMA = {
+  ...WearableRepresentation.schema,
+  required: ['bodyShapes', 'mainFile', 'contents']
+}
+const validateWearableManifest = generateLazyValidator<WearableManifest>({
+  type: 'object',
+  properties: {
+    id: { type: 'string', nullable: true },
+    description: { type: 'string', nullable: true, maxLength: 64 },
+    rarity: { ...Rarity.schema, nullable: true },
+    name: { type: 'string' },
+    data: {
+      type: 'object',
+      properties: {
+        replaces: { type: 'array', items: HideableWearableCategory.schema },
+        hides: { type: 'array', items: HideableWearableCategory.schema },
+        tags: TAGS_SCHEMA,
+        representations: { type: 'array', items: REPRESENTATION_SCHEMA, minItems: 1 },
+        category: WearableCategory.schema,
+        removesDefaultHiding: { type: 'array', nullable: true, items: HideableWearableCategory.schema },
+        blockVrmExport: { type: 'boolean', nullable: true }
+      },
+      required: ['replaces', 'hides', 'tags', 'representations', 'category']
+    },
+    mapping: { type: 'object', nullable: true }
+  },
+  additionalProperties: false,
+  required: ['name', 'data']
+} as unknown as JSONSchema<WearableManifest>)
+
+const validateEmoteManifest = generateLazyValidator<EmoteManifest>({
+  type: 'object',
+  properties: {
+    name: { type: 'string', nullable: true },
+    description: { type: 'string', nullable: true, maxLength: 64 },
+    rarity: { ...Rarity.schema, nullable: true },
+    category: { ...EmoteCategory.schema, nullable: true },
+    play_mode: { ...EmotePlayMode.schema, nullable: true },
+    tags: { ...TAGS_SCHEMA, nullable: true }
+  },
+  additionalProperties: true,
+  required: []
+} as unknown as JSONSchema<EmoteManifest>)
+
 function toWearableManifest(value: unknown): WearableManifest {
-  const manifest = value as Partial<WearableManifest> | null
-  const representations = manifest?.data?.representations
-  if (
-    !manifest ||
-    typeof manifest.name !== 'string' ||
-    !Array.isArray(representations) ||
-    representations.length === 0
-  ) {
+  if (!validateWearableManifest(value)) {
     throw new ItemFileError('invalid_manifest', { fileName: WEARABLE_MANIFEST })
   }
-  return manifest as WearableManifest
+  return value
 }
 
-const EMOTE_MANIFEST_STRING_FIELDS = ['name', 'description', 'rarity', 'category', 'play_mode'] as const
-
 function toEmoteManifest(value: unknown): EmoteManifest {
-  const manifest = value as Record<string, unknown> | null
-  const isValid =
-    !!manifest &&
-    typeof manifest === 'object' &&
-    EMOTE_MANIFEST_STRING_FIELDS.every(field => manifest[field] === undefined || typeof manifest[field] === 'string') &&
-    (manifest.tags === undefined ||
-      (Array.isArray(manifest.tags) && manifest.tags.every(tag => typeof tag === 'string')))
-  if (!isValid) {
+  if (!validateEmoteManifest(value)) {
     throw new ItemFileError('invalid_manifest', { fileName: EMOTE_MANIFEST })
   }
-  return manifest
+  return value
 }
 
 const KNOWN_PERMISSIONS = new Set<string>(Object.values(RequiredPermission))
@@ -359,7 +403,8 @@ function getManifestBodyShape(wearable: WearableManifest): BodyShapeType {
   const hasFemale = [...bodyShapes].some(shape => shape.endsWith('BaseFemale'))
   if (hasMale && hasFemale) return BodyShapeType.BOTH
   if (hasMale) return BodyShapeType.MALE
-  return BodyShapeType.FEMALE
+  if (hasFemale) return BodyShapeType.FEMALE
+  throw new ItemFileError('invalid_manifest', { fileName: WEARABLE_MANIFEST })
 }
 
 async function loadZip(file: File): Promise<LoadedItemFile> {
@@ -426,6 +471,16 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
         if (!rawContent[path]) throw new ItemFileError('manifest_file_missing', { fileName: path })
       }
     }
+    const mainFile = wearable.data.representations[0].mainFile
+    if (isImageFile(mainFile)) {
+      const orphans = findOrphanedAuxiliaryFiles(rawContent)
+      if (orphans.length > 0) {
+        throw new ItemFileError('orphaned_auxiliary_file', {
+          fileName: orphans[0].orphan,
+          expected: orphans[0].expected
+        })
+      }
+    }
 
     // Smart wearable: the scene code must ship, and the normalized scene.json travels with the contents.
     let scene: SceneManifest | undefined
@@ -443,7 +498,7 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
     }
     return {
       contents: withVideo(contents),
-      model: wearable.data.representations[0].mainFile,
+      model: mainFile,
       // Smart wearables are always unisex, like emotes.
       bodyShape: scene ? BodyShapeType.BOTH : getManifestBodyShape(wearable),
       wearable,

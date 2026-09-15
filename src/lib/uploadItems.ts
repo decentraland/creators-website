@@ -1,9 +1,21 @@
 // Turns reviewed drafts into an ordered upload plan and executes it against builder-server.
 // Variants merge into their target (batch drafts client-side, existing items via representation
 // append) so a base item is never uploaded after a variant that depends on it.
-import { ALREADY_PUBLISHED_STATUS, BuilderServerError, COLLECTION_LOCKED_STATUS, saveItem } from './builder'
-import { THUMBNAIL_PATH } from './itemFiles'
-import { addRepresentationToItem, buildItem, type BuiltItem, type ItemDraftPayload } from './itemFactory'
+import {
+  ALREADY_PUBLISHED_STATUS,
+  BuilderServerError,
+  COLLECTION_LOCKED_STATUS,
+  fetchContent,
+  saveItem
+} from './builder'
+import { IMAGE_PATH, ItemFileError, THUMBNAIL_PATH, VIDEO_PATH } from './itemFiles'
+import {
+  addRepresentationToItem,
+  assertUploadSize,
+  buildItem,
+  type BuiltItem,
+  type ItemDraftPayload
+} from './itemFactory'
 import { type Item } from './items'
 
 export type UploadDraft = ItemDraftPayload & {
@@ -19,7 +31,7 @@ export type UploadOperation = {
   isExistingItemUpdate: boolean
 }
 
-export type UploadFailureReason = 'locked' | 'published' | 'generic'
+export type UploadFailureReason = 'locked' | 'published' | 'too_big' | 'generic'
 
 export type UploadResult = {
   savedDraftIds: string[]
@@ -72,7 +84,27 @@ function toFailureReason(error: unknown): UploadFailureReason {
     if (error.status === COLLECTION_LOCKED_STATUS) return 'locked'
     if (error.status === ALREADY_PUBLISHED_STATUS) return 'published'
   }
+  if (error instanceof ItemFileError) return 'too_big'
   return 'generic'
+}
+
+// Only a collection-level refusal makes the remaining operations pointless.
+const ABORTING_REASONS: UploadFailureReason[] = ['locked', 'published']
+
+/**
+ * Re-checks the caps right before the PUT (legacy sagas). An update onto an existing item counts
+ * the stored files it keeps (legacy calculateModelFinalSize), fetched to learn their sizes.
+ */
+async function checkOperationSize(operation: UploadOperation): Promise<void> {
+  const { item, blobs } = operation.built
+  const stored = operation.isExistingItemUpdate
+    ? await Promise.all(
+        Object.entries(item.contents)
+          .filter(([path]) => !blobs[path] && path !== THUMBNAIL_PATH && path !== VIDEO_PATH && path !== IMAGE_PATH)
+          .map(async ([, hash]) => (await fetchContent(hash)).size)
+      )
+    : []
+  assertUploadSize(item, blobs, stored)
 }
 
 /**
@@ -87,13 +119,14 @@ export async function executeUpload(address: string, operations: UploadOperation
   for (let i = 0; i < operations.length; i++) {
     const operation = operations[i]
     try {
+      await checkOperationSize(operation)
       await saveItem(address, operation.built.item, operation.built.blobs)
       savedDraftIds.push(...operation.draftIds)
     } catch (error) {
       const reason = toFailureReason(error)
       failureReason = failureReason === null || reason !== 'generic' ? reason : failureReason
       failedDraftIds.push(...operation.draftIds)
-      if (reason !== 'generic') {
+      if (ABORTING_REASONS.includes(reason)) {
         for (const remaining of operations.slice(i + 1)) {
           failedDraftIds.push(...remaining.draftIds)
         }

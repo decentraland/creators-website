@@ -460,6 +460,7 @@
     "no_variant_targets": "There are no {bodyShape} items in this collection yet to pair this with. Add the {bodyShape} version first, or answer No.",
     "category": "Category",
     "select_category": "Select Category",
+    "suggested_category": "Suggested from your model: {category}. You can change it if it's not right.",
     "rarity": "Rarity",
     "rarity_tooltip": "Rarity determines how many copies of an item can exist. The rarer the item, the lower its maximum supply.",
     "play_mode": "Play Mode",
@@ -489,9 +490,11 @@
     "success_toast": "{count, plural, one {# Item} other {# Items}} successfully added to your collection!",
     "error": {
       "title_generic": "We couldn't upload your items",
+      "title_too_big": "An item is over the size limit",
       "title_locked": "This collection is under review",
       "title_published": "This collection is already published",
       "description_generic": "Something went wrong while uploading your items. Please try again.",
+      "description_too_big": "One of your items exceeds its size limit once combined with the files already saved. Reduce the file size and try again.",
       "description_locked": "Items can't be added while the collection is being reviewed. Your files weren't saved — you can add them once the review is done.",
       "description_published": "Published collections can't receive new items. Your files weren't saved — create a new collection to add them.",
       "try_again": "Try again",
@@ -548,6 +551,7 @@
     "capture": "Save thumbnail",
     "upload_picture": "Upload picture",
     "wrong_format": "The thumbnail must be a PNG image.",
+    "too_big": "The thumbnail is too big — the maximum size is {size}MB.",
     "capture_failed": "We couldn't update the thumbnail. Please try again.",
     "load_failed": "We couldn't load the item. Please try again."
   },

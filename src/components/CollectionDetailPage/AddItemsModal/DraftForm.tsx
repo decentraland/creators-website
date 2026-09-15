@@ -324,6 +324,14 @@ export function DraftForm({
                 testId="item-category"
                 onChange={category => onUpdate(draft.id, { category })}
               />
+              {isWearable && draft.suggestedCategory !== null && draft.category === draft.suggestedCategory && (
+                <S.FieldHint data-testid="suggested-category">
+                  <HintIcon />
+                  {t('add_items_modal.suggested_category', {
+                    category: t(`collection_detail_page.category.${draft.suggestedCategory}`)
+                  })}
+                </S.FieldHint>
+              )}
             </S.Field>
             <S.Field>
               <S.FieldLabelRow>

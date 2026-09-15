@@ -460,6 +460,7 @@
     "no_variant_targets": "Todavía no hay ítems {bodyShape} en esta colección para vincular. Agrega primero la versión {bodyShape} o responde No.",
     "category": "Categoría",
     "select_category": "Selecciona una categoría",
+    "suggested_category": "Sugerida según tu modelo: {category}. Puedes cambiarla si no es correcta.",
     "rarity": "Rareza",
     "rarity_tooltip": "La rareza determina cuántas copias de un ítem pueden existir. Cuanto más raro el ítem, menor su cantidad máxima.",
     "play_mode": "Modo de reproducción",
@@ -489,9 +490,11 @@
     "success_toast": "¡{count, plural, one {# ítem se agregó} other {# ítems se agregaron}} a tu colección!",
     "error": {
       "title_generic": "No pudimos subir tus ítems",
+      "title_too_big": "Un ítem supera el límite de tamaño",
       "title_locked": "Esta colección está en revisión",
       "title_published": "Esta colección ya está publicada",
       "description_generic": "Algo salió mal al subir tus ítems. Inténtalo de nuevo.",
+      "description_too_big": "Uno de tus ítems supera su límite de tamaño al combinarlo con los archivos ya guardados. Reduce el tamaño del archivo e inténtalo de nuevo.",
       "description_locked": "No se pueden agregar ítems mientras la colección está en revisión. Tus archivos no se guardaron; podrás agregarlos cuando termine la revisión.",
       "description_published": "Las colecciones publicadas no admiten ítems nuevos. Tus archivos no se guardaron; crea una nueva colección para agregarlos.",
       "try_again": "Intentar de nuevo",
@@ -548,6 +551,7 @@
     "capture": "Guardar miniatura",
     "upload_picture": "Subir imagen",
     "wrong_format": "La miniatura debe ser una imagen PNG.",
+    "too_big": "La miniatura es demasiado grande — el tamaño máximo es {size}MB.",
     "capture_failed": "No pudimos actualizar la miniatura. Inténtalo de nuevo.",
     "load_failed": "No pudimos cargar el ítem. Inténtalo de nuevo."
   },

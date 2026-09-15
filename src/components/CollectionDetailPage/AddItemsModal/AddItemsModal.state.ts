@@ -34,7 +34,13 @@ export type ItemDraft = {
   isVariant: boolean
   variantTargetId: string | null
   category: string | null
+  /** Category guessed from the model's geometry; shown as a hint while the user keeps it. */
+  suggestedCategory: string | null
   rarity: string
+  /** From wearable.json / emote.json when the zip ships one. */
+  description: string
+  tags: string[]
+  blockVrmExport: boolean
   playMode: EmotePlayMode
   /** Data URL of the current thumbnail; also stored as contents['thumbnail.png'] once final. */
   thumbnail: string | null
@@ -75,7 +81,11 @@ export function createDraft(file: File): ItemDraft {
     isVariant: false,
     variantTargetId: null,
     category: null,
+    suggestedCategory: null,
     rarity: DEFAULT_RARITY,
+    description: '',
+    tags: [],
+    blockVrmExport: false,
     playMode: EmotePlayMode.SIMPLE,
     thumbnail: null,
     thumbnailNotTransparent: false,

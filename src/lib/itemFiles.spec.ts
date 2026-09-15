@@ -166,6 +166,9 @@ describe('loadItemFile', () => {
       rarity: 'legendary',
       data: {
         category: 'hat',
+        replaces: [],
+        hides: [],
+        tags: ['cool'],
         representations: [
           {
             bodyShapes: ['urn:decentraland:off-chain:base-avatars:BaseMale'],
@@ -187,7 +190,17 @@ describe('loadItemFile', () => {
     const manifest = {
       name: 'Cool Hat',
       data: {
-        representations: [{ bodyShapes: ['...BaseMale'], mainFile: 'missing.glb', contents: ['missing.glb'] }]
+        category: 'hat',
+        replaces: [],
+        hides: [],
+        tags: [],
+        representations: [
+          {
+            bodyShapes: ['urn:decentraland:off-chain:base-avatars:BaseMale'],
+            mainFile: 'missing.glb',
+            contents: ['missing.glb']
+          }
+        ]
       }
     }
     const file = await zipFile({ 'wearable.json': JSON.stringify(manifest), 'model.glb': 'glb-bytes' })
@@ -209,11 +222,79 @@ describe('loadItemFile', () => {
     await expectItemFileError(loadItemFile(file), 'invalid_manifest')
   })
 
+  it('validates the wearable.json schema like the legacy builder-client', async () => {
+    const manifest = (data: Record<string, unknown>) =>
+      JSON.stringify({
+        name: 'Hat',
+        data: {
+          category: 'hat',
+          replaces: [],
+          hides: [],
+          tags: [],
+          representations: [
+            {
+              bodyShapes: ['urn:decentraland:off-chain:base-avatars:BaseMale'],
+              mainFile: 'model.glb',
+              contents: ['model.glb']
+            }
+          ],
+          ...data
+        }
+      })
+    await expectItemFileError(
+      loadItemFile(await zipFile({ 'wearable.json': manifest({ category: 'spaceship' }), 'model.glb': 'glb' })),
+      'invalid_manifest'
+    )
+    await expectItemFileError(
+      loadItemFile(await zipFile({ 'wearable.json': manifest({ tags: undefined }), 'model.glb': 'glb' })),
+      'invalid_manifest'
+    )
+    await expectItemFileError(
+      loadItemFile(
+        await zipFile({
+          'wearable.json': manifest({
+            representations: [{ bodyShapes: ['urn:something:else'], mainFile: 'model.glb', contents: ['model.glb'] }]
+          }),
+          'model.glb': 'glb'
+        })
+      ),
+      'invalid_manifest'
+    )
+    const result = await loadItemFile(await zipFile({ 'wearable.json': manifest({}), 'model.glb': 'glb' }))
+    expect(result.bodyShape).toBe(BodyShapeType.MALE)
+  })
+
+  it('rejects an orphaned mask texture even when a wearable.json names the main file', async () => {
+    const manifest = JSON.stringify({
+      name: 'Eyes',
+      data: {
+        category: 'eyes',
+        replaces: [],
+        hides: [],
+        tags: [],
+        representations: [
+          {
+            bodyShapes: ['urn:decentraland:off-chain:base-avatars:BaseMale'],
+            mainFile: 'eyes.png',
+            contents: ['eyes.png']
+          }
+        ]
+      }
+    })
+    await expectItemFileError(
+      loadItemFile(await zipFile({ 'wearable.json': manifest, 'eyes.png': 'png', 'other_mask.png': 'png' })),
+      'orphaned_auxiliary_file'
+    )
+  })
+
   describe('smart wearables', () => {
     const wearableManifest = JSON.stringify({
       name: 'Glasses',
       data: {
         category: 'eyewear',
+        replaces: [],
+        hides: [],
+        tags: [],
         representations: [
           {
             bodyShapes: ['urn:decentraland:off-chain:base-avatars:BaseMale'],
