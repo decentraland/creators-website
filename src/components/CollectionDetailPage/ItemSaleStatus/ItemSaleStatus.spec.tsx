@@ -18,12 +18,18 @@ function renderStatus(props: Parameters<typeof ItemSaleStatus>[0]) {
 
 describe('ItemSaleStatus', () => {
   it('offers to put an item on sale when it has no listing', () => {
-    renderStatus({ sales: { minted: 3, maxSupply: 100 }, listing: null, canSell: true })
+    renderStatus({ sales: { minted: 3, maxSupply: 100 }, listing: null, canSell: true, onPutOnSale: vi.fn() })
     expect(screen.getByRole('button', { name: /put on sale/i })).toBeEnabled()
   })
 
+  it('shows a dash instead of the CTA to a viewer who may not sell', () => {
+    renderStatus({ sales: { minted: 3, maxSupply: 100 }, listing: null, canSell: true })
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.getByTestId('item-sale-status')).toHaveTextContent('—')
+  })
+
   it('disables putting an item on sale until the collection is approved for the first time', () => {
-    renderStatus({ sales: { minted: 0, maxSupply: 100 }, listing: null, canSell: false })
+    renderStatus({ sales: { minted: 0, maxSupply: 100 }, listing: null, canSell: false, onPutOnSale: vi.fn() })
     const button = screen.getByRole('button', { name: /put on sale/i })
     expect(button).toBeDisabled()
     expect(button).toHaveAccessibleDescription(/approved/i)

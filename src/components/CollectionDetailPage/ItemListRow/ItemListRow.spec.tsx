@@ -132,14 +132,21 @@ describe('ItemListRow', () => {
   })
 
   it('shows a dash and offers to put on sale an item that is not on sale', () => {
-    renderRow({ tokenId: '3' }, { withMarket: true, listing: null, canSell: true })
+    renderRow({ tokenId: '3' }, { withMarket: true, listing: null, canSell: true, onPutOnSale: vi.fn() })
     expect(screen.getByTestId('item-row-price')).toHaveTextContent('—')
     expect(screen.getByTestId('item-row-sales')).toHaveTextContent('0/100')
     expect(screen.getByRole('button', { name: /put on sale/i })).toBeEnabled()
   })
 
+  it('shows no put on sale action to a viewer who may not sell', () => {
+    renderRow({ tokenId: '3' }, { withMarket: true, listing: null, canSell: true })
+    expect(screen.queryByRole('button', { name: /put on sale/i })).not.toBeInTheDocument()
+    expect(screen.getByTestId('item-row-sale-status')).toHaveTextContent('—')
+    expect(screen.getByTestId('item-row-sale-status')).toHaveAttribute('data-empty')
+  })
+
   it('keeps the put on sale action disabled while the collection awaits its first approval', () => {
-    renderRow({ tokenId: '3' }, { withMarket: true, listing: null })
+    renderRow({ tokenId: '3' }, { withMarket: true, listing: null, onPutOnSale: vi.fn() })
     expect(screen.getByRole('button', { name: /put on sale/i })).toBeDisabled()
   })
 

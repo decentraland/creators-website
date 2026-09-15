@@ -70,6 +70,7 @@ export function ItemListRow({
   const isEmote = item.type === ItemType.EMOTE
   const isSmart = isSmartWearable(item)
   const sales = withMarket ? getItemSales(item) : undefined
+  const isSoldOut = !!sales && sales.minted >= sales.maxSupply
   const shopUrl = withMarket && contractAddress && item.tokenId ? shopItemUrl(contractAddress, item.tokenId) : undefined
   const canRename = editable && !!onRename
   const canEditThumbnail = editable && !!onEditThumbnail
@@ -270,7 +271,10 @@ export function ItemListRow({
             <S.Cell data-testid="item-row-sales" data-empty={!sales || undefined}>
               {sales ? `${intl.formatNumber(sales.minted)}/${intl.formatNumber(sales.maxSupply)}` : EMPTY}
             </S.Cell>
-            <S.Cell data-testid="item-row-sale-status" data-empty={listing === undefined || undefined}>
+            <S.Cell
+              data-testid="item-row-sale-status"
+              data-empty={listing === undefined || (listing === null && !onPutOnSale && !isSoldOut) || undefined}
+            >
               <ItemSaleStatus
                 sales={sales}
                 listing={listing}

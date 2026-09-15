@@ -115,10 +115,8 @@ const CollectionDetailPage = () => {
     collection && getCollectionDisplayStatus(collection) === CollectionDisplayStatus.UNDER_REVIEW
       ? t('collection_status.under_review_hint')
       : null
-  const canSell = useMemo(
-    () => !!collection && hasBeenApproved(collection) && canSellCollectionItems(collection, address),
-    [collection, address]
-  )
+  const canSell = !!collection && hasBeenApproved(collection)
+  const isSeller = useMemo(() => !!collection && canSellCollectionItems(collection, address), [collection, address])
   const canSend = useMemo(() => !!collection && canSendCollectionItems(collection, address), [collection, address])
   const [isSending, setSending] = useState(false)
   const listingsQuery = useCollectionListings(withMarket ? collection.contractAddress : undefined)
@@ -469,7 +467,7 @@ const CollectionDetailPage = () => {
                     withMarket={withMarket}
                     listing={withMarket ? listingFor(item) : undefined}
                     canSell={canSell && item.isPublished && !!item.tokenId}
-                    onPutOnSale={setSellingItem}
+                    onPutOnSale={isSeller ? setSellingItem : undefined}
                     onEditPrice={
                       !compact && session && canEditItemPrice(collection, item, listingFor(item), address)
                         ? openPriceEdit

@@ -6,18 +6,21 @@ import { openExternal } from '~/lib/navigation'
 import { PriceTagIcon } from '~/components/Icons'
 import * as S from './ItemSaleStatus.styles'
 
+const EMPTY = '—'
+
 type Props = {
   sales: ItemSales | undefined
   /** The item's primary listing: `null` when it has none, `undefined` while listings are still loading. */
   listing: ItemListing | null | undefined
   /** Whether the collection has been approved at least once; until then the "Put on sale" CTA is disabled. */
   canSell?: boolean
+  /** Absent for viewers who may not sell (only the owner can), who get a dash instead of the CTA. */
   onPutOnSale?: () => void
   /** The item's page in the Shop; the ON SALE pill links there. */
   shopUrl?: string
 }
 
-/** Sold out / on sale pill, or the "Put on sale" CTA; nothing while listings are still loading. */
+/** Sold out / on sale pill, or the "Put on sale" CTA (a dash for those who may not sell); nothing while listings load. */
 export function ItemSaleStatus({ sales, listing, canSell = false, onPutOnSale, shopUrl }: Props) {
   const { t } = useTranslation()
 
@@ -60,6 +63,12 @@ export function ItemSaleStatus({ sales, listing, canSell = false, onPutOnSale, s
       </S.PillLink>
     )
   }
+  if (!onPutOnSale)
+    return (
+      <span data-testid="item-sale-status" data-status="not_on_sale">
+        {EMPTY}
+      </span>
+    )
   return (
     <S.PutOnSale
       data-testid="item-sale-status"
