@@ -19,6 +19,7 @@ const CONTRACT = '0x00000000000000000000000000000000000000ee'
 const CHAIN_ID = 80002
 const MARKETPLACE = getContract(ContractName.OffChainMarketplaceV2, CHAIN_ID).address
 const STORE = getContract(ContractName.CollectionStore, CHAIN_ID).address
+const MARKETPLACE_V3 = getContract(ContractName.OffChainMarketplaceV3, CHAIN_ID).address
 
 const collection: Collection = {
   id: 'c1',
@@ -29,7 +30,7 @@ const collection: Collection = {
   isPublished: true,
   isApproved: true,
   itemCount: 2,
-  minters: [MINTER.toUpperCase(), MARKETPLACE, STORE.toUpperCase(), MINTER],
+  minters: [MINTER.toUpperCase(), MARKETPLACE, STORE.toUpperCase(), MINTER, MARKETPLACE_V3],
   managers: [MANAGER],
   createdAt: 1,
   updatedAt: 1
@@ -90,7 +91,7 @@ describe('saving roles', () => {
 
   it('patches the collection keeping the sale contracts among the minters', () => {
     const patched = withRoles(collection, 'senders', [OTHER], CHAIN_ID)
-    expect(patched.minters).toEqual([MARKETPLACE, STORE.toUpperCase(), OTHER])
+    expect(patched.minters).toEqual([MARKETPLACE, STORE.toUpperCase(), MARKETPLACE_V3, OTHER])
     expect(withRoles(collection, 'collaborators', [], CHAIN_ID).managers).toEqual([])
   })
 })

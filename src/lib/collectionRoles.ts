@@ -14,15 +14,18 @@ export function isCollectionOwner(collection: Collection, address: string | unde
 }
 
 /**
- * Minters that belong to Decentraland's sale plumbing rather than to a person: the off-chain marketplaces
- * (what "enable sales" adds) and the legacy CollectionStore. They never show in the senders list, and
+ * Minters that belong to Decentraland's sale plumbing rather than to a person: every generation of the
+ * off-chain marketplace (what "enable sales" adds here or in the Shop) and the legacy CollectionStore. They never show in the senders list, and
  * removing one would silently take the collection off sale, so the list keeps them untouched.
  */
 export function getSystemMinters(chainId: number): Set<string> {
   return new Set(
-    [ContractName.OffChainMarketplace, ContractName.OffChainMarketplaceV2, ContractName.CollectionStore].map(name =>
-      getContract(name, chainId).address.toLowerCase()
-    )
+    [
+      ContractName.OffChainMarketplace,
+      ContractName.OffChainMarketplaceV2,
+      ContractName.OffChainMarketplaceV3,
+      ContractName.CollectionStore
+    ].map(name => getContract(name, chainId).address.toLowerCase())
   )
 }
 
