@@ -502,6 +502,9 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
     let scene: SceneManifest | undefined
     const contents = rawContent
     if (sceneFile) {
+      // The manifest's paths are relative to itself; next to a root wearable.json only a root scene.json
+      // can address the files as they will be stored.
+      if (sceneFile.name !== SCENE_PATH) throw new ItemFileError('scene_manifest_nested')
       const loaded = await loadScene(sceneFile, rawContent)
       scene = loaded.scene
       contents[SCENE_PATH] = loaded.blob

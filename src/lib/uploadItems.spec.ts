@@ -123,7 +123,12 @@ describe('executeUpload', () => {
       contents: { 'f.glb': blob('f'), 'thumbnail.png': blob('t') },
       model: 'f.glb'
     })
-    fetchContentMock.mockResolvedValue(new Blob([new Uint8Array(3 * 1024 * 1024)]))
+    // Stored model + retained thumbnail together cross the cap; neither alone does.
+    fetchContentMock.mockImplementation(async (hash: string) =>
+      hash === existing.contents['thumbnail.png']
+        ? new Blob([new Uint8Array(1024 * 1024)])
+        : new Blob([new Uint8Array(2.5 * 1024 * 1024)])
+    )
     const operations = await planUpload([variant, draft('b')], [existing])
     const result = await executeUpload('0xowner', operations)
     expect(result.failedDraftIds).toEqual(['variant'])

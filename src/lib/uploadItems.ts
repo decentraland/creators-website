@@ -100,7 +100,9 @@ async function checkOperationSize(operation: UploadOperation): Promise<void> {
   const stored = operation.isExistingItemUpdate
     ? await Promise.all(
         Object.entries(item.contents)
-          .filter(([path]) => !blobs[path] && path !== THUMBNAIL_PATH && path !== VIDEO_PATH && path !== IMAGE_PATH)
+          // Every stored file the update keeps counts, the retained thumbnail included; the video
+          // and catalyst image are outside the cap.
+          .filter(([path]) => !blobs[path] && path !== VIDEO_PATH && path !== IMAGE_PATH)
           .map(async ([, hash]) => (await fetchContent(hash)).size)
       )
     : []

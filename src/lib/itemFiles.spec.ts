@@ -346,6 +346,20 @@ describe('loadItemFile', () => {
       ])
     })
 
+    it('rejects a nested scene.json next to a root wearable.json', async () => {
+      await expectItemFileError(
+        loadItemFile(
+          await zipFile({
+            'wearable.json': wearableManifest,
+            'glasses.glb': 'glb',
+            'project/scene.json': scene(),
+            'project/bin/game.js': 'code'
+          })
+        ),
+        'scene_manifest_nested'
+      )
+    })
+
     it('finds the scene.json of a zipped project folder', async () => {
       const result = await loadItemFile(
         await zipFile({ 'my-sw/scene.json': scene(), 'my-sw/model.glb': 'glb', 'my-sw/bin/game.js': 'code' })
