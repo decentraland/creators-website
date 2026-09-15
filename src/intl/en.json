@@ -54,7 +54,7 @@
   },
   "collection_role": {
     "collaborator": "Collaborator",
-    "minter": "Minter"
+    "minter": "Sender"
   },
   "collection_status": {
     "published": "Published",
@@ -100,7 +100,7 @@
       "copy_urn": "Copy URN",
       "copy_address": "Copy contract address",
       "collaborators": "Collaborators",
-      "minters": "Minters",
+      "senders": "Senders",
       "delete": "Delete collection",
       "copied_urn": "URN copied to clipboard",
       "copied_address": "Contract address copied to clipboard",
@@ -115,7 +115,6 @@
       },
       "view_in_shop": "View in Shop"
     },
-    "coming_soon": "Coming soon",
     "filter": {
       "all": "All ({count})",
       "wearable": "Wearables ({count})",
@@ -404,7 +403,11 @@
       "try_again": "Try again",
       "description_not_listed": "This item is no longer on sale, so there is nothing to change. Refresh the page to see its current status.",
       "title_send": "We couldn’t send your items",
-      "description_send": "Something went wrong while sending your items. Please try again."
+      "description_send": "Something went wrong while sending your items. Please try again.",
+      "title_senders": "We couldn’t update the senders",
+      "description_senders": "Something went wrong while saving the senders of this collection. Please try again.",
+      "title_collaborators": "We couldn’t update the collaborators",
+      "description_collaborators": "Something went wrong while saving the collaborators of this collection. Please try again."
     },
     "remove": {
       "title": "Remove from sale?",
@@ -665,6 +668,37 @@
     "sending": "Sending items...",
     "success_title": "Items sent!",
     "success_description": "Your items are on their way to the selected recipients."
+  },
+  "manage_roles_modal": {
+    "senders": {
+      "title": "Senders",
+      "description": "Senders can send copies of this collection’s items to any wallet and put them on sale. Only you, as the owner, can change this list.",
+      "placeholder": "Select or copy the sender’s User ID",
+      "add": "Add sender",
+      "remove": "Remove sender",
+      "success_title": "Senders updated!",
+      "success_description": "The changes to who can send this collection’s items are live."
+    },
+    "collaborators": {
+      "title": "Collaborators",
+      "description": "Collaborators can edit this collection’s items and put them on sale, but can’t send copies. Only you, as the owner, can change this list.",
+      "placeholder": "Select or copy the collaborator’s User ID",
+      "add": "Add collaborator",
+      "remove": "Remove collaborator",
+      "success_title": "Collaborators updated!",
+      "success_description": "The changes to who can edit this collection are live."
+    },
+    "duplicate": "This address is already on the list.",
+    "owner": "That’s your own address: as the owner you already have every permission.",
+    "system": "This address belongs to the Decentraland Shop and can’t be changed here.",
+    "save": "Save changes",
+    "saving": "Saving changes...",
+    "discard": {
+      "title": "Discard your changes?",
+      "description": "If you leave now, the changes you made to this list won’t be saved.",
+      "leave": "Discard changes",
+      "keep": "Keep editing"
+    }
   },
   "required_permissions": {
     "title": "Required permissions",

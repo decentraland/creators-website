@@ -3,7 +3,7 @@ import { ConfirmModal } from '~/components/ConfirmModal'
 import { useTranslation } from '~/intl'
 import { type SellFailureReason } from '~/lib/sales'
 
-export type SaleStage = 'enable' | 'sell' | 'remove' | 'update' | 'send'
+export type SaleStage = 'enable' | 'sell' | 'remove' | 'update' | 'send' | 'senders' | 'collaborators'
 
 type Props = {
   stage: SaleStage

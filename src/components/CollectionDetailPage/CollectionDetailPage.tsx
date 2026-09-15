@@ -19,6 +19,7 @@ import {
   hasCollectionRole,
   isCollectionLocked
 } from '~/lib/collections'
+import { type RoleKind } from '~/lib/collectionRoles'
 import { canSendCollectionItems } from '~/lib/mint'
 import { ItemType, canEditItemDetails, canEditItemPrice, type Item } from '~/lib/items'
 import {
@@ -56,6 +57,7 @@ import { ItemActionsMenu } from './ItemActionsMenu'
 import { ItemListRow } from './ItemListRow'
 import { PublishCollectionModal, PublishSuccessModal } from './PublishCollectionModal'
 import { SellItemFlow, UpdatePriceFlow } from './SellItemFlow'
+import { ManageRolesFlow } from './ManageRolesFlow'
 import { SendItemsFlow } from './SendItemsFlow'
 import * as S from './CollectionDetailPage.styles'
 
@@ -119,6 +121,7 @@ const CollectionDetailPage = () => {
   const isSeller = !!collection && canSellCollectionItems(collection, address)
   const canSend = useMemo(() => !!collection && canSendCollectionItems(collection, address), [collection, address])
   const [isSending, setSending] = useState(false)
+  const [managingRoles, setManagingRoles] = useState<RoleKind | null>(null)
   const listingsQuery = useCollectionListings(withMarket ? collection.contractAddress : undefined)
   const listings = listingsQuery.data
   // `undefined` keeps the price cell blank while the catalog loads; a failed request shows no price rather than an error.
@@ -358,6 +361,7 @@ const CollectionDetailPage = () => {
                   collection={collection}
                   address={address}
                   onSendItems={canSend ? () => setSending(true) : undefined}
+                  onManageRoles={setManagingRoles}
                   onDeleted={() => navigate('/collections', { replace: true })}
                 />
               )}
@@ -546,6 +550,14 @@ const CollectionDetailPage = () => {
               items={allItems ?? []}
               session={session}
               onClose={() => setSending(false)}
+            />
+          )}
+          {managingRoles && session && (
+            <ManageRolesFlow
+              collection={collection}
+              kind={managingRoles}
+              session={session}
+              onClose={() => setManagingRoles(null)}
             />
           )}
           {thumbnailItem && (
