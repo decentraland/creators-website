@@ -11,6 +11,7 @@ import {
   fromRemoteCollection,
   getCollectionDisplayStatus,
   getCollectionRole,
+  hasCollectionRole,
   CollectionRole,
   hasBeenApproved,
   isCollectionLocked,
@@ -219,33 +220,45 @@ describe('toRemoteCollection', () => {
   })
 })
 
-describe('canManageCollectionItems', () => {
-  const collection: Collection = {
-    id: 'c1',
-    name: 'Hats',
-    owner: '0xOwner',
-    urn: 'urn',
-    isPublished: false,
-    isApproved: false,
-    itemCount: 0,
-    minters: ['0xMinter'],
-    managers: ['0xManager'],
-    createdAt: 1,
-    updatedAt: 1
-  }
+const roleCollection: Collection = {
+  id: 'c1',
+  name: 'Hats',
+  owner: '0xOwner',
+  urn: 'urn',
+  isPublished: false,
+  isApproved: false,
+  itemCount: 0,
+  minters: ['0xMinter'],
+  managers: ['0xManager'],
+  createdAt: 1,
+  updatedAt: 1
+}
 
-  it('is granted to the owner and collaborators regardless of address casing, never to minters', () => {
-    expect(canManageCollectionItems(collection, '0xowner')).toBe(true)
-    expect(canManageCollectionItems(collection, '0xMANAGER')).toBe(true)
-    expect(canManageCollectionItems(collection, '0xminter')).toBe(false)
-    expect(canManageCollectionItems(collection, undefined)).toBe(false)
+describe('hasCollectionRole', () => {
+  it('grants access to the owner, collaborators and minters, but not to strangers or signed-out users', () => {
+    expect(hasCollectionRole(roleCollection, '0xowner')).toBe(true)
+    expect(hasCollectionRole(roleCollection, '0xMANAGER')).toBe(true)
+    expect(hasCollectionRole(roleCollection, '0xminter')).toBe(true)
+    expect(hasCollectionRole(roleCollection, '0xstranger')).toBe(false)
+    expect(hasCollectionRole(roleCollection, undefined)).toBe(false)
   })
+})
 
+describe('canManageCollectionItems', () => {
+  it('is granted to the owner and collaborators regardless of address casing, never to minters', () => {
+    expect(canManageCollectionItems(roleCollection, '0xowner')).toBe(true)
+    expect(canManageCollectionItems(roleCollection, '0xMANAGER')).toBe(true)
+    expect(canManageCollectionItems(roleCollection, '0xminter')).toBe(false)
+    expect(canManageCollectionItems(roleCollection, undefined)).toBe(false)
+  })
+})
+
+describe('canSellCollectionItems', () => {
   it('lets owners, collaborators and minters sell, but not strangers', () => {
-    expect(canSellCollectionItems(collection, '0xowner')).toBe(true)
-    expect(canSellCollectionItems(collection, '0xMANAGER')).toBe(true)
-    expect(canSellCollectionItems(collection, '0xminter')).toBe(true)
-    expect(canSellCollectionItems(collection, '0xstranger')).toBe(false)
-    expect(canSellCollectionItems(collection, undefined)).toBe(false)
+    expect(canSellCollectionItems(roleCollection, '0xowner')).toBe(true)
+    expect(canSellCollectionItems(roleCollection, '0xMANAGER')).toBe(true)
+    expect(canSellCollectionItems(roleCollection, '0xminter')).toBe(true)
+    expect(canSellCollectionItems(roleCollection, '0xstranger')).toBe(false)
+    expect(canSellCollectionItems(roleCollection, undefined)).toBe(false)
   })
 })
