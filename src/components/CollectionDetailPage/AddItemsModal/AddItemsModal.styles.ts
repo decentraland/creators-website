@@ -223,6 +223,30 @@ export const PreviewPane = styled.div`
   }
 `
 
+export const ThumbnailWrap = styled.div`
+  position: relative;
+`
+
+export const ThumbnailBadge = styled.span`
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: ${theme.colors.overlayStrong};
+  color: ${theme.colors.white};
+  cursor: default;
+
+  svg {
+    width: 22px;
+    height: 22px;
+  }
+`
+
 export const ThumbnailBox = styled.button`
   position: relative;
   width: 100%;

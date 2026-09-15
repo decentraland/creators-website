@@ -9,6 +9,7 @@ import {
   Male as MaleIcon,
   PlayArrow as PlayIcon,
   ReportProblemOutlined as WarningIcon,
+  SentimentSatisfiedAlt as SmileIcon,
   VideocamOutlined as VideoIcon,
   Texture as TextureIcon,
   ThirtyFpsSelect as FpsIcon,
@@ -24,7 +25,7 @@ import { VideoDropzone } from '~/components/VideoModal'
 import { useObjectURL } from '~/hooks/useObjectURL'
 import { useTranslation } from '~/intl'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
-import { toMB } from '~/lib/itemFiles'
+import { hasFacialExpressions, toMB } from '~/lib/itemFiles'
 import { BodyShapeType, ItemType, VIDEO_PATH, type Item } from '~/lib/items'
 import { getCategoryOptions, getVariantTargets, type ItemDraft } from './AddItemsModal.state'
 import * as S from './AddItemsModal.styles'
@@ -98,18 +99,31 @@ export function DraftForm({
   return (
     <S.Content data-testid="draft-form">
       <S.PreviewPane>
-        <S.ThumbnailBox
-          type="button"
-          aria-label={t('add_items_modal.edit_thumbnail')}
-          data-testid="edit-thumbnail"
-          onClick={onOpenThumbnail}
-        >
-          <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId="draft-thumbnail">
-            <S.ThumbnailOverlay data-thumb-overlay>
-              <CameraIcon />
-            </S.ThumbnailOverlay>
-          </ItemThumbnail>
-        </S.ThumbnailBox>
+        <S.ThumbnailWrap>
+          <S.ThumbnailBox
+            type="button"
+            aria-label={t('add_items_modal.edit_thumbnail')}
+            data-testid="edit-thumbnail"
+            onClick={onOpenThumbnail}
+          >
+            <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId="draft-thumbnail">
+              <S.ThumbnailOverlay data-thumb-overlay>
+                <CameraIcon />
+              </S.ThumbnailOverlay>
+            </ItemThumbnail>
+          </S.ThumbnailBox>
+          {isWearable && hasFacialExpressions(draft.contents) && (
+            <Tooltip content={t('add_items_modal.facial_expressions')} asChild>
+              <S.ThumbnailBadge
+                tabIndex={0}
+                aria-label={t('add_items_modal.facial_expressions')}
+                data-testid="facial-expressions-badge"
+              >
+                <SmileIcon />
+              </S.ThumbnailBadge>
+            </Tooltip>
+          )}
+        </S.ThumbnailWrap>
         <S.MetricsRow data-testid="draft-metrics" data-compact={isEmote || undefined}>
           {isEmote && draft.metrics ? (
             <>

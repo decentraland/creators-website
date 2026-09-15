@@ -9,6 +9,7 @@ import {
   getBodyShapeTypeFromContents,
   getExtension,
   getRequiredCounterpartFile,
+  hasFacialExpressions,
   isModelPath,
   loadItemFile,
   stripWrappingFolder,
@@ -433,6 +434,13 @@ describe('loadItemFile', () => {
   it('rejects zips with no model at all', async () => {
     const file = await zipFile({ 'readme.txt': 'hello' })
     await expectItemFileError(loadItemFile(file), 'missing_model_file')
+  })
+})
+
+describe('hasFacialExpressions', () => {
+  it('is true only when an _expressions texture ships with the item', () => {
+    expect(hasFacialExpressions({ 'eyes.png': blob(), 'eyes_expressions.png': blob() })).toBe(true)
+    expect(hasFacialExpressions({ 'eyes.png': blob(), 'eyes_mask.png': blob() })).toBe(false)
   })
 })
 

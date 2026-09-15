@@ -110,6 +110,11 @@ export function isExpressionsFile(fileName: string): boolean {
   return fileName.toLowerCase().endsWith('_expressions.png')
 }
 
+/** An `_expressions.png` texture marks a facial-feature wearable that animates expressions. */
+export function hasFacialExpressions(contents: Record<string, unknown>): boolean {
+  return Object.keys(contents).some(isExpressionsFile)
+}
+
 export function isMaskFile(fileName: string): boolean {
   const lower = fileName.toLowerCase()
   return lower.endsWith('_mask.png') && !isExpressionsMaskFile(lower)

@@ -460,6 +460,7 @@
     "no_variant_targets": "There are no {bodyShape} items in this collection yet to pair this with. Add the {bodyShape} version first, or answer No.",
     "category": "Category",
     "select_category": "Select Category",
+    "facial_expressions": "This wearable includes facial expressions",
     "suggested_category": "Suggested from your model: {category}. You can change it if it's not right.",
     "rarity": "Rarity",
     "rarity_tooltip": "Rarity determines how many copies of an item can exist. The rarer the item, the lower its maximum supply.",

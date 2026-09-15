@@ -460,6 +460,7 @@
     "no_variant_targets": "Todavía no hay ítems {bodyShape} en esta colección para vincular. Agrega primero la versión {bodyShape} o responde No.",
     "category": "Categoría",
     "select_category": "Selecciona una categoría",
+    "facial_expressions": "Este wearable incluye expresiones faciales",
     "suggested_category": "Sugerida según tu modelo: {category}. Puedes cambiarla si no es correcta.",
     "rarity": "Rareza",
     "rarity_tooltip": "La rareza determina cuántas copias de un ítem pueden existir. Cuanto más raro el ítem, menor su cantidad máxima.",
