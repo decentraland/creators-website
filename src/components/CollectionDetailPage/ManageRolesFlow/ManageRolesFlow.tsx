@@ -13,7 +13,6 @@ import { SaleErrorModal } from '../SellItemFlow/SaleErrorModal'
 import { SaleSuccessModal } from '../SellItemFlow/SaleSuccessModal'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { ManageRolesModal } from './ManageRolesModal'
-import { RemoveRoleModal } from './RemoveRoleModal'
 
 type View = 'form' | 'saving' | 'success' | 'error'
 type Phase = 'confirm' | 'pending'
@@ -28,7 +27,8 @@ type Props = {
 /**
  * Edit who may send the collection's items (senders) or change them (collaborators). The list is a draft
  * until SAVE CHANGES sends the diff in one transaction: web3 wallets get the whole-dialog "confirm in your
- * wallet" status, custodial ones just see the button spin. Closing with unsaved changes asks first.
+ * wallet" status, custodial ones just see the button spin. Removing a row only edits the draft, so it
+ * doesn't ask; closing with unsaved changes does.
  */
 export function ManageRolesFlow({ collection, kind, session, onClose }: Props) {
   const { t } = useTranslation()
@@ -39,7 +39,6 @@ export function ManageRolesFlow({ collection, kind, session, onClose }: Props) {
   const [view, setView] = useState<View>('form')
   const [phase, setPhase] = useState<Phase>('confirm')
   const [addresses, setAddresses] = useState(current)
-  const [removing, setRemoving] = useState<string | null>(null)
   const [isDiscardOpen, setDiscardOpen] = useState(false)
   const [reason, setReason] = useState<SellFailureReason | null>(null)
   // Bumped when the creator backs out of a wallet prompt, so that attempt's outcome is ignored.
@@ -51,7 +50,7 @@ export function ManageRolesFlow({ collection, kind, session, onClose }: Props) {
   useBeforeUnloadGuard(dirty || save.isPending)
 
   function requestClose() {
-    if (busy || removing || isDiscardOpen) return
+    if (busy || isDiscardOpen) return
     if (dirty) setDiscardOpen(true)
     else onClose()
   }
@@ -94,22 +93,10 @@ export function ManageRolesFlow({ collection, kind, session, onClose }: Props) {
             busy={busy}
             canSave={dirty && !save.isPending}
             onAdd={address => setAddresses(list => [...list, address])}
-            onRemove={setRemoving}
+            onRemove={address => setAddresses(list => list.filter(other => other !== address))}
             onSubmit={submit}
             onClose={requestClose}
           />
-          {removing && (
-            <RemoveRoleModal
-              kind={kind}
-              address={removing}
-              friends={friends.data}
-              onConfirm={() => {
-                setAddresses(list => list.filter(address => address !== removing))
-                setRemoving(null)
-              }}
-              onCancel={() => setRemoving(null)}
-            />
-          )}
           {isDiscardOpen && (
             <ConfirmModal
               title={t('manage_roles_modal.discard.title')}

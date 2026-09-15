@@ -78,16 +78,9 @@ describe('ManageRolesFlow', () => {
     expect(screen.getByTestId('role-save')).toBeDisabled()
   })
 
-  it('asks before removing a sender, and the removal only enters the draft once confirmed', async () => {
+  it('removes a sender from the draft straight away, since nothing changes until saving', async () => {
     renderFlow()
     await userEvent.click(screen.getByTestId('role-1-clear'))
-    expect(screen.getByTestId('remove-role-modal-title')).toHaveTextContent(/remove this sender/i)
-    await userEvent.click(screen.getByTestId('remove-role-cancel'))
-    expect(screen.getAllByTestId('role-row')).toHaveLength(1)
-    expect(screen.getByTestId('role-save')).toBeDisabled()
-
-    await userEvent.click(screen.getByTestId('role-1-clear'))
-    await userEvent.click(screen.getByTestId('remove-role-confirm'))
     expect(screen.queryByTestId('role-row')).not.toBeInTheDocument()
     // The empty list shows the picker right away.
     expect(screen.getByTestId('role-new-input')).toBeInTheDocument()
@@ -116,7 +109,6 @@ describe('ManageRolesFlow', () => {
   it('saves the diff in one transaction, walking a web3 wallet through the prompt, then celebrates', async () => {
     const { onClose } = renderFlow()
     await userEvent.click(screen.getByTestId('role-1-clear'))
-    await userEvent.click(screen.getByTestId('remove-role-confirm'))
     await userEvent.type(screen.getByTestId('role-new-input'), FRIEND)
     await userEvent.click(screen.getByTestId('role-save'))
 
@@ -145,7 +137,6 @@ describe('ManageRolesFlow', () => {
     renderFlow('collaborators', ProviderType.MAGIC)
     expect(screen.getByTestId('role-1-selected')).toHaveTextContent(short(MANAGER))
     await userEvent.click(screen.getByTestId('role-1-clear'))
-    await userEvent.click(screen.getByTestId('remove-role-confirm'))
     save.isPending = true
     await userEvent.click(screen.getByTestId('role-save'))
     expect(screen.queryByTestId('manage-roles-pending')).not.toBeInTheDocument()

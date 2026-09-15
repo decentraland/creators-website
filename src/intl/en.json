@@ -668,8 +668,6 @@
       "placeholder": "Select or copy the sender’s User ID",
       "add": "Add sender",
       "remove": "Remove sender",
-      "remove_title": "Remove this sender?",
-      "remove_description": "{name} will no longer be able to send this collection’s items once you save your changes.",
       "success_title": "Senders updated!",
       "success_description": "The changes to who can send this collection’s items are live."
     },
@@ -679,8 +677,6 @@
       "placeholder": "Select or copy the collaborator’s User ID",
       "add": "Add collaborator",
       "remove": "Remove collaborator",
-      "remove_title": "Remove this collaborator?",
-      "remove_description": "{name} will no longer be able to edit this collection once you save your changes.",
       "success_title": "Collaborators updated!",
       "success_description": "The changes to who can edit this collection are live."
     },
@@ -689,8 +685,6 @@
     "system": "This address belongs to the Decentraland Shop and can’t be changed here.",
     "save": "Save changes",
     "saving": "Saving changes...",
-    "remove_confirm": "Remove",
-    "remove_cancel": "Keep",
     "discard": {
       "title": "Discard your changes?",
       "description": "If you leave now, the changes you made to this list won’t be saved.",

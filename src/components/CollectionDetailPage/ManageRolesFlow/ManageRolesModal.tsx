@@ -22,7 +22,7 @@ type Props = {
   busy: boolean
   canSave: boolean
   onAdd: (address: string) => void
-  /** Asks to drop an address; the flow confirms before it leaves the draft. */
+  /** Drops an address from the draft; nothing changes on-chain until the list is saved. */
   onRemove: (address: string) => void
   onSubmit: () => void
   onClose: () => void

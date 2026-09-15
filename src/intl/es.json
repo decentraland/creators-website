@@ -668,8 +668,6 @@
       "placeholder": "Selecciona o copia el User ID del emisor",
       "add": "Agregar emisor",
       "remove": "Quitar emisor",
-      "remove_title": "¿Quitar a este emisor?",
-      "remove_description": "{name} ya no podrá enviar los ítems de esta colección cuando guardes los cambios.",
       "success_title": "¡Emisores actualizados!",
       "success_description": "Los cambios sobre quién puede enviar los ítems de esta colección ya están activos."
     },
@@ -679,8 +677,6 @@
       "placeholder": "Selecciona o copia el User ID del colaborador",
       "add": "Agregar colaborador",
       "remove": "Quitar colaborador",
-      "remove_title": "¿Quitar a este colaborador?",
-      "remove_description": "{name} ya no podrá editar esta colección cuando guardes los cambios.",
       "success_title": "¡Colaboradores actualizados!",
       "success_description": "Los cambios sobre quién puede editar esta colección ya están activos."
     },
@@ -689,8 +685,6 @@
     "system": "Esta dirección pertenece a la Tienda de Decentraland y no se puede cambiar aquí.",
     "save": "Guardar cambios",
     "saving": "Guardando cambios...",
-    "remove_confirm": "Quitar",
-    "remove_cancel": "Mantener",
     "discard": {
       "title": "¿Descartar tus cambios?",
       "description": "Si sales ahora, los cambios que hiciste en esta lista no se guardarán.",
