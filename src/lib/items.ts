@@ -1,6 +1,14 @@
 // Item domain model + wire mapping for builder-server, ported from the legacy builder
 // (src/modules/item + lib/api/builder.ts) so both apps read the same API identically.
-import { CollectionDisplayStatus, canManageCollectionItems, type Collection } from './collections'
+import {
+  CollectionDisplayStatus,
+  canManageCollectionItems,
+  canSellCollectionItems,
+  hasBeenApproved,
+  isCollectionLocked,
+  type Collection
+} from './collections'
+import { type ItemListing } from './listings'
 import { getRarityMaxSupply } from './rarities'
 
 export enum ItemType {
@@ -285,4 +293,25 @@ function getEmoteOutcomeType(item: Item): string {
 export function canManageItem(collection: Collection, item: Item, address: string | undefined): boolean {
   if (!address) return false
   return item.owner.toLowerCase() === address.toLowerCase() || canManageCollectionItems(collection, address)
+}
+
+/** Name and thumbnail stay editable after publishing (edits go through curation), but not during the publish lock. */
+export function canEditItemDetails(collection: Collection, item: Item, address: string | undefined): boolean {
+  return canManageItem(collection, item, address) && !isCollectionLocked(collection)
+}
+
+/**
+ * Only an off-chain order can be re-priced, by whoever may sell (the owner), and only while some
+ * supply is left to sell. A legacy CollectionStore price has no `tradeId` and can only be removed.
+ */
+export function canEditItemPrice(
+  collection: Collection,
+  item: Item,
+  listing: ItemListing | null | undefined,
+  address: string | undefined
+): listing is ItemListing & { tradeId: string } {
+  if (!listing?.tradeId || !hasBeenApproved(collection)) return false
+  if (!canSellCollectionItems(collection, address)) return false
+  const sales = getItemSales(item)
+  return !(sales && sales.minted >= sales.maxSupply)
 }

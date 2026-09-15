@@ -262,7 +262,16 @@
       }
     },
     "send_items": "Enviar ítems",
-    "smart_wearable": "Smart Wearable"
+    "smart_wearable": "Smart Wearable",
+    "item_row": {
+      "edit_name": "Editar nombre",
+      "edit_thumbnail": "Editar miniatura",
+      "name_placeholder": "Nombre del ítem",
+      "rename_error": "No pudimos renombrar “{name}”. Inténtalo de nuevo.",
+      "thumbnail_error": "No pudimos actualizar la miniatura de “{name}”. Inténtalo de nuevo.",
+      "cancel_edit": "Cancelar",
+      "save": "Guardar nombre"
+    }
   },
   "publish_collection_modal": {
     "title": "Publicar colección",
@@ -353,8 +362,7 @@
       "title": "¿Habilitar ventas para esta colección?",
       "description": "Como es el primer ítem de esta colección que pones en venta, primero tienes que habilitar las ventas. Una vez habilitadas, podrás vender cualquier ítem de esta colección en la Tienda de Decentraland.",
       "confirm": "Habilitar ventas",
-      "pending": "Habilitando ventas...",
-      "owner_only": "Las ventas de esta colección aún no están habilitadas y solo su dueño puede hacerlo. Pídele que las habilite y entonces podrás poner ítems en venta."
+      "pending": "Habilitando ventas..."
     },
     "beneficiary": {
       "label": "Beneficiario",

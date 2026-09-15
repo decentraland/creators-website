@@ -190,14 +190,21 @@ describe('ItemActionsMenu', () => {
     expect(screen.getByTestId('remove-listing-modal')).toBeInTheDocument()
   })
 
-  it('lets a minter sell, and drops Edit price once the item is sold out', async () => {
-    useWallet.setState({ session: { address: MINTER } as unknown as Session })
+  it('drops Edit price once the item is sold out', async () => {
     const listing = { itemId: '0', tradeId: 'trade-1', currency: 'credits' as const, credits: 5 }
-    const { unmount } = renderMenu({ item: publishedItem, collection: published, address: MINTER, listing })
-    expect(ids(await openMenu())).toEqual(['item-copy-urn', 'item-preview', 'item-edit-price', 'item-remove-from-sale'])
-    unmount()
-    renderMenu({ item: { ...publishedItem, totalSupply: 100 }, collection: published, address: MINTER, listing })
+    renderMenu({ item: { ...publishedItem, totalSupply: 100 }, collection: published, listing })
     expect(ids(await openMenu())).toEqual(['item-copy-urn', 'item-preview', 'item-remove-from-sale'])
+  })
+
+  it('keeps collaborators and minters out of the sale actions: only the creator can sign orders', async () => {
+    const listing = { itemId: '0', tradeId: 'trade-1', currency: 'credits' as const, credits: 5 }
+    useWallet.setState({ session: { address: MANAGER } as unknown as Session })
+    const { unmount } = renderMenu({ item: publishedItem, collection: published, address: MANAGER, listing })
+    expect(ids(await openMenu())).toEqual(['item-copy-urn', 'item-preview'])
+    unmount()
+    useWallet.setState({ session: { address: MINTER } as unknown as Session })
+    renderMenu({ item: publishedItem, collection: published, address: MINTER, listing })
+    expect(ids(await openMenu())).toEqual(['item-copy-urn', 'item-preview'])
   })
 
   it('offers no sale actions for an item that is not on sale', async () => {

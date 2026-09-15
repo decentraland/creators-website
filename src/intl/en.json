@@ -262,7 +262,16 @@
       }
     },
     "send_items": "Send items",
-    "smart_wearable": "Smart Wearable"
+    "smart_wearable": "Smart Wearable",
+    "item_row": {
+      "edit_name": "Edit name",
+      "edit_thumbnail": "Edit thumbnail",
+      "name_placeholder": "Item name",
+      "rename_error": "We couldn't rename “{name}”. Please try again.",
+      "thumbnail_error": "We couldn't update the thumbnail of “{name}”. Please try again.",
+      "cancel_edit": "Cancel",
+      "save": "Save name"
+    }
   },
   "publish_collection_modal": {
     "title": "Publish Collection",
@@ -353,8 +362,7 @@
       "title": "Enable sales for this collection?",
       "description": "Since this is the first item you’re putting on sale from this collection, you’ll need to enable sales first. Once enabled, you’ll be able to sell any item from this collection in the Decentraland Shop.",
       "confirm": "Enable sales",
-      "pending": "Enabling Sales...",
-      "owner_only": "Sales for this collection haven’t been enabled yet, and only its owner can do that. Ask them to enable sales, then you’ll be able to put items on sale."
+      "pending": "Enabling Sales..."
     },
     "beneficiary": {
       "label": "Beneficiary",
