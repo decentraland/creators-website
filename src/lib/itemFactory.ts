@@ -9,7 +9,6 @@ import {
   BodyShapeType,
   ItemType,
   getItemBodyShapeType,
-  hasSceneCode,
   type Item,
   type ItemMetrics,
   type ItemRepresentation
@@ -19,7 +18,6 @@ import {
   ItemFileError,
   MAX_EMOTE_FILE_SIZE,
   MAX_SKIN_FILE_SIZE,
-  MAX_SMART_WEARABLE_FILE_SIZE,
   MAX_THUMBNAIL_FILE_SIZE,
   MAX_WEARABLE_FILE_SIZE,
   THUMBNAIL_PATH,
@@ -238,18 +236,14 @@ export function getSizeError(
       .filter(([path]) => path !== VIDEO_PATH && path !== IMAGE_PATH)
       .map(([, blob]) => blob)
   )
-  const totalSize = [...uniqueBlobs, ...storedSizes].reduce<number>(
-    (total, entry) => total + (typeof entry === 'number' ? entry : entry.size),
-    0
-  )
+  let totalSize = storedSizes.reduce((total, size) => total + size, 0)
+  for (const blob of uniqueBlobs) totalSize += blob.size
   const maxSize =
     type === ItemType.EMOTE
       ? MAX_EMOTE_FILE_SIZE
       : category === SKIN_CATEGORY
         ? MAX_SKIN_FILE_SIZE
-        : hasSceneCode(contents)
-          ? MAX_SMART_WEARABLE_FILE_SIZE
-          : MAX_WEARABLE_FILE_SIZE
+        : MAX_WEARABLE_FILE_SIZE
   return totalSize > maxSize ? toMB(maxSize) : null
 }
 

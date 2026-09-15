@@ -26,8 +26,6 @@ export const VIDEO_EXTENSIONS = ['.mp4']
 
 export const MAX_THUMBNAIL_FILE_SIZE = 1024 * 1024 // 1MB
 export const MAX_WEARABLE_FILE_SIZE = 3 * 1024 * 1024 // 3MB
-// Same as plain wearables for now (the video is capped separately); kept apart so the policies can diverge.
-export const MAX_SMART_WEARABLE_FILE_SIZE = 3 * 1024 * 1024 // 3MB
 export const MAX_SKIN_FILE_SIZE = 8 * 1024 * 1024 // 8MB
 export const MAX_EMOTE_FILE_SIZE = 3 * 1024 * 1024 // 3MB
 export const MAX_VIDEO_FILE_SIZE = 262144000 // 250MB
@@ -409,6 +407,13 @@ async function loadScene(
   return { scene, blob: new Blob([JSON.stringify(rawScene)], { type: 'application/json' }) }
 }
 
+function assertNoOrphanedAuxiliaryFiles(content: Record<string, Blob>): void {
+  const [orphan] = findOrphanedAuxiliaryFiles(content)
+  if (orphan) {
+    throw new ItemFileError('orphaned_auxiliary_file', { fileName: orphan.orphan, expected: orphan.expected })
+  }
+}
+
 function getManifestBodyShape(wearable: WearableManifest): BodyShapeType {
   const bodyShapes = new Set(wearable.data.representations.flatMap(representation => representation.bodyShapes))
   const hasMale = [...bodyShapes].some(shape => shape.endsWith('BaseMale'))
@@ -488,35 +493,26 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
       }
     }
     const mainFile = wearable.data.representations[0].mainFile
-    if (isImageFile(mainFile)) {
-      const orphans = findOrphanedAuxiliaryFiles(rawContent)
-      if (orphans.length > 0) {
-        throw new ItemFileError('orphaned_auxiliary_file', {
-          fileName: orphans[0].orphan,
-          expected: orphans[0].expected
-        })
-      }
-    }
+    if (isImageFile(mainFile)) assertNoOrphanedAuxiliaryFiles(rawContent)
 
     // Smart wearable: the scene code must ship, and the normalized scene.json travels with the contents.
     let scene: SceneManifest | undefined
-    const contents = rawContent
     if (sceneFile) {
       // The manifest's paths are relative to itself; next to a root wearable.json only a root scene.json
       // can address the files as they will be stored.
       if (sceneFile.name !== SCENE_PATH) throw new ItemFileError('scene_manifest_nested')
       const loaded = await loadScene(sceneFile, rawContent)
       scene = loaded.scene
-      contents[SCENE_PATH] = loaded.blob
+      rawContent[SCENE_PATH] = loaded.blob
     }
 
     const isSkin = wearable.data.category === 'skin'
-    const maxSize = isSkin ? MAX_SKIN_FILE_SIZE : scene ? MAX_SMART_WEARABLE_FILE_SIZE : MAX_WEARABLE_FILE_SIZE
+    const maxSize = isSkin ? MAX_SKIN_FILE_SIZE : MAX_WEARABLE_FILE_SIZE
     if (contentsSize > maxSize) {
       throw new ItemFileError('file_too_big', { size: toMB(maxSize) })
     }
     return {
-      contents: withVideo(contents),
+      contents: withVideo(rawContent),
       model: mainFile,
       // Smart wearables are always unisex, like emotes.
       bodyShape: scene ? BodyShapeType.BOTH : getManifestBodyShape(wearable),
@@ -539,14 +535,14 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
   const content = stripWrappingFolder(rawContent)
 
   // Smart wearable without wearable.json (e.g. a packed SDK project): the scene manifest is enough,
-  // the form supplies name, category and rarity. Always unisex; the cap is the smart wearable one.
+  // the form supplies name, category and rarity. Always unisex.
   if (sceneFile) {
     const { scene, blob } = await loadScene(sceneFile, content)
     const keys = Object.keys(content)
     const model = keys.find(isModelFile) ?? keys.find(isModelPath)
     if (!model) throw new ItemFileError('missing_model_file')
-    if (contentsSize > MAX_SMART_WEARABLE_FILE_SIZE) {
-      throw new ItemFileError('file_too_big', { size: toMB(MAX_SMART_WEARABLE_FILE_SIZE) })
+    if (contentsSize > MAX_WEARABLE_FILE_SIZE) {
+      throw new ItemFileError('file_too_big', { size: toMB(MAX_WEARABLE_FILE_SIZE) })
     }
     return { contents: withVideo({ ...content, [SCENE_PATH]: blob }), model, bodyShape: BodyShapeType.BOTH, scene }
   }
@@ -554,15 +550,7 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
   const model = Object.keys(content).find(isModelPath)
   if (!model) throw new ItemFileError('missing_model_file')
 
-  if (isImageFile(model)) {
-    const orphans = findOrphanedAuxiliaryFiles(content)
-    if (orphans.length > 0) {
-      throw new ItemFileError('orphaned_auxiliary_file', {
-        fileName: orphans[0].orphan,
-        expected: orphans[0].expected
-      })
-    }
-  }
+  if (isImageFile(model)) assertNoOrphanedAuxiliaryFiles(content)
 
   // Import-time cap: the most permissive model budget (8MB); the exact per-category/type cap is
   // re-checked at the details step once the type and category are known.

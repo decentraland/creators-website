@@ -9,7 +9,7 @@ import * as S from './VideoDropzone.styles'
  * Validates a picked preview video (mp4, ≤ 250MB, decodable) and returns it; throws ItemFileError
  * with the `add_items_modal.file_error.*` key to show.
  */
-export async function pickVideoFile(file: File): Promise<File> {
+async function pickVideoFile(file: File): Promise<File> {
   validateVideoFile(file)
   try {
     // Only decodability matters here; the duration (null on a stalled decode) is read by the poster itself.

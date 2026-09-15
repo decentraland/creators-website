@@ -346,15 +346,6 @@ export const WarningCard = styled.div`
   }
 `
 
-export const InfoCard = styled(WarningCard)`
-  background: ${theme.colors.glassFaint};
-  color: ${theme.colors.softWhite};
-
-  svg {
-    color: ${theme.colors.gray4};
-  }
-`
-
 export const VideoPoster = styled.button`
   position: relative;
   display: flex;

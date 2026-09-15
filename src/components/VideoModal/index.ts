@@ -1,2 +1,2 @@
 export { VideoModal } from './VideoModal'
-export { VideoDropzone, pickVideoFile } from './VideoDropzone'
+export { VideoDropzone } from './VideoDropzone'

@@ -142,21 +142,15 @@ export const ALREADY_PUBLISHED_STATUS = 409
  */
 export async function saveItem(address: string, item: Item, blobs: Record<string, Blob>): Promise<Item> {
   const remote = await request<RemoteItem>(address, 'PUT', `/items/${item.id}`, '', { item: toRemoteItem(item) })
-  const files = new FormData()
-  const videos = new FormData()
-  let hasFiles = false
-  let hasVideos = false
-  for (const path in blobs) {
-    if (path === VIDEO_PATH) {
-      videos.append(path, blobs[path])
-      hasVideos = true
-    } else {
-      files.append(item.contents[path], blobs[path])
-      hasFiles = true
-    }
+  const { [VIDEO_PATH]: video, ...fileBlobs } = blobs
+  if (Object.keys(fileBlobs).length > 0) {
+    const files = new FormData()
+    for (const path in fileBlobs) files.append(item.contents[path], fileBlobs[path])
+    await request<unknown>(address, 'POST', `/items/${item.id}/files`, '', files, false)
   }
-  if (hasFiles) await request<unknown>(address, 'POST', `/items/${item.id}/files`, '', files, false)
-  if (hasVideos) {
+  if (video) {
+    const videos = new FormData()
+    videos.append(VIDEO_PATH, video)
     try {
       await request<unknown>(address, 'POST', `/items/${item.id}/videos`, '', videos, false)
     } catch (error) {
