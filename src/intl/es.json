@@ -508,7 +508,8 @@
       "discard_description": "Si sales ahora, perderás los ítems que subiste y los cambios que hiciste.",
       "leave_without_saving": "Salir sin guardar",
       "save_changes": "Guardar cambios",
-      "keep_editing": "Seguir editando"
+      "keep_editing": "Seguir editando",
+      "review_target_first": "Revisa {target} antes de guardar: {variant} es una variante de tipo de cuerpo de ese ítem."
     },
     "file_error_label": "Archivo inválido",
     "file_error": {

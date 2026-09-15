@@ -508,7 +508,8 @@
       "discard_description": "If you leave now, you'll lose the items you uploaded and any changes you made.",
       "leave_without_saving": "Leave without saving",
       "save_changes": "Save changes",
-      "keep_editing": "Keep editing"
+      "keep_editing": "Keep editing",
+      "review_target_first": "Review {target} before saving: {variant} is a body shape variant of it."
     },
     "file_error_label": "Invalid file",
     "file_error": {

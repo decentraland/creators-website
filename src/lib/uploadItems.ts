@@ -97,15 +97,16 @@ const ABORTING_REASONS: UploadFailureReason[] = ['locked', 'published']
  */
 async function checkOperationSize(operation: UploadOperation): Promise<void> {
   const { item, blobs } = operation.built
-  const stored = operation.isExistingItemUpdate
-    ? await Promise.all(
+  // Every stored file the update keeps counts, the retained thumbnail included; the video and
+  // catalyst image are outside the cap. The same hash at several paths is one stored file.
+  const retainedHashes = operation.isExistingItemUpdate
+    ? new Set(
         Object.entries(item.contents)
-          // Every stored file the update keeps counts, the retained thumbnail included; the video
-          // and catalyst image are outside the cap.
           .filter(([path]) => !blobs[path] && path !== VIDEO_PATH && path !== IMAGE_PATH)
-          .map(async ([, hash]) => (await fetchContent(hash)).size)
+          .map(([, hash]) => hash)
       )
-    : []
+    : new Set<string>()
+  const stored = await Promise.all([...retainedHashes].map(async hash => (await fetchContent(hash)).size))
   assertUploadSize(item, blobs, stored)
 }
 

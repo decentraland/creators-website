@@ -137,6 +137,28 @@ describe('executeUpload', () => {
     expect(saveItemMock).toHaveBeenCalledTimes(1)
   })
 
+  it('counts a stored file referenced at several paths once', async () => {
+    const { item: built } = await buildItem({
+      ...(draft('existing') as ItemDraftPayload),
+      bodyShape: BodyShapeType.MALE
+    })
+    const modelHash = built.contents['male/model.glb']
+    const existing = { ...built, contents: { ...built.contents, 'male/copy.glb': modelHash } }
+    const variant = draft('variant', {
+      bodyShape: BodyShapeType.FEMALE,
+      variantTargetId: existing.id,
+      contents: { 'f.glb': blob('f'), 'thumbnail.png': blob('t') },
+      model: 'f.glb'
+    })
+    // 2MB once fits; counted per path it would not.
+    fetchContentMock.mockImplementation(async (hash: string) =>
+      hash === modelHash ? new Blob([new Uint8Array(2 * 1024 * 1024)]) : blob('small')
+    )
+    const result = await executeUpload('0xowner', await planUpload([variant], [existing]))
+    expect(result.savedDraftIds).toEqual(['variant'])
+    expect(fetchContentMock).toHaveBeenCalledTimes(2)
+  })
+
   it('maps an already-published conflict to its own reason', async () => {
     saveItemMock.mockRejectedValue(new BuilderServerError('published', 409))
     const operations = await planUpload([draft('a')], [])

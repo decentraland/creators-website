@@ -193,6 +193,21 @@ describe('buildResetItem', () => {
     expect(reset.contents).toEqual({ 'hat.glb': 'Qmglb', 'thumbnail.png': 'Qmthumb', 'image.png': 'Qmimage' })
   })
 
+  it('keeps the smart wearable video and permissions the Catalyst never receives, so the reset item is synced', () => {
+    const smart: Item = {
+      ...wearable,
+      video: 'Qmvideo',
+      data: { ...wearable.data, requiredPermissions: ['USE_FETCH'] },
+      contents: { ...wearable.contents, 'game.js': 'Qmjs', 'video.mp4': 'Qmvideo' }
+    }
+    const deployedContents = Object.fromEntries(Object.entries(smart.contents).filter(([path]) => path !== 'video.mp4'))
+    const entity = entityFor({ ...smart, data: wearable.data }, {}, deployedContents)
+    const reset = buildResetItem({ ...smart, contents: { ...smart.contents, 'game.js': 'Qmedited' } }, entity)
+    expect(reset.contents['video.mp4']).toBe('Qmvideo')
+    expect(reset.data.requiredPermissions).toEqual(['USE_FETCH'])
+    expect(isItemSynced(reset, entity)).toBe(true)
+  })
+
   it('takes the ADR-74 data for an emote', () => {
     const reset = buildResetItem({ ...emote, data: { ...emote.data, loop: false } }, entityFor(emote))
     expect(reset.data.loop).toBe(true)

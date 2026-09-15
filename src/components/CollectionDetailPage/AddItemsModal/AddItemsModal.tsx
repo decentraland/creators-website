@@ -235,17 +235,22 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
 
   function handleSaveChanges() {
     const checked = drafts.filter(draft => draft.checked)
-    // A checked variant whose base draft isn't part of the save has nothing to attach to.
+    // A checked variant whose base draft is still unreviewed can't be saved on its own: point the
+    // creator at that base draft instead of silently dropping the variant.
     const checkedIds = new Set(checked.map(draft => draft.id))
-    const uploadable = checked.filter(
-      draft =>
-        !draft.isVariant ||
-        !draft.variantTargetId ||
-        checkedIds.has(draft.variantTargetId) ||
-        collectionItems.some(item => item.id === draft.variantTargetId)
+    const orphan = checked.find(
+      draft => draft.isVariant && !!draft.variantTargetId && !checkedIds.has(draft.variantTargetId)
     )
+    const orphanTarget = orphan && drafts.find(draft => draft.id === orphan.variantTargetId)
     setLeaveConfirmOpen(false)
-    void upload(uploadable)
+    if (orphan && orphanTarget) {
+      dispatch({ type: 'draftSelected', id: orphanTarget.id })
+      showToast(t('add_items_modal.leave.review_target_first', { target: orphanTarget.name, variant: orphan.name }), {
+        type: 'error'
+      })
+      return
+    }
+    void upload(checked)
   }
 
   function requestClose() {
