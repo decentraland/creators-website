@@ -5,7 +5,7 @@ import * as Send from '../SendItemsFlow/SendItemsModal.styles'
 export { Body } from '../SendItemsFlow/SendItemsModal.styles'
 
 export const Description = styled.p`
-  margin: 0;
+  margin: 0 0 8px;
   font-size: 14px;
   line-height: 1.5;
   color: ${theme.colors.gray4};

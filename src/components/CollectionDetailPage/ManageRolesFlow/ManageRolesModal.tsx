@@ -56,6 +56,7 @@ export function ManageRolesModal({
       title={t(`manage_roles_modal.${kind}.title`)}
       onClose={onClose}
       closeDisabled={busy}
+      compact
       testId="manage-roles-modal"
     >
       <Sell.Divider />
