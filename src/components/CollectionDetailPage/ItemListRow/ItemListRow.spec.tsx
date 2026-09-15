@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { type ComponentProps, type ReactNode } from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { TranslationProvider } from '~/intl'
 import { ItemType, type Item } from '~/lib/items'
 import { type ItemListing } from '~/lib/listings'
@@ -154,5 +155,88 @@ describe('ItemListRow', () => {
     renderRow({ tokenId: '3' }, { withMarket: true })
     expect(screen.getByTestId('item-row-price')).toBeEmptyDOMElement()
     expect(screen.getByTestId('item-row-sale-status')).toBeEmptyDOMElement()
+  })
+
+  it('offers no edit shortcuts to a viewer who cannot edit the item', () => {
+    renderRow(
+      { tokenId: '3' },
+      { withMarket: true, listing: creditsListing, onRename: vi.fn(), onEditThumbnail: vi.fn() }
+    )
+    expect(screen.queryByTestId('item-row-edit-name')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('item-row-edit-thumbnail')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('item-row-edit-price')).not.toBeInTheDocument()
+    expect(screen.getByTestId('item-row-price')).toHaveTextContent('500')
+  })
+
+  it('opens the price editor from the price itself when the listing can be re-priced', async () => {
+    const onEditPrice = vi.fn()
+    renderRow({ tokenId: '3' }, { withMarket: true, listing: creditsListing, onEditPrice })
+    const price = screen.getByTestId('item-row-edit-price')
+    expect(price).toHaveTextContent('500')
+    await userEvent.click(price)
+    expect(onEditPrice).toHaveBeenCalledWith(expect.objectContaining({ id: 'i1' }))
+  })
+
+  it('opens the thumbnail picker from the thumbnail of an editable item', async () => {
+    const onEditThumbnail = vi.fn()
+    renderRow({}, { editable: true, onEditThumbnail })
+    await userEvent.click(screen.getByTestId('item-row-edit-thumbnail'))
+    expect(onEditThumbnail).toHaveBeenCalledWith(expect.objectContaining({ id: 'i1' }))
+  })
+
+  it('renames the item in place and shows the name again once saved', async () => {
+    const onRename = vi.fn().mockResolvedValue(undefined)
+    renderRow({}, { editable: true, onRename })
+    await userEvent.click(screen.getByTestId('item-row-edit-name'))
+    const input = screen.getByTestId('item-row-name-input')
+    expect(input).toHaveValue('Pirate Hat')
+    expect(input).toHaveFocus()
+    await userEvent.clear(input)
+    await userEvent.type(input, '  Captain Hat {Enter}')
+    expect(onRename).toHaveBeenCalledWith(expect.objectContaining({ id: 'i1' }), 'Captain Hat')
+    await waitFor(() => expect(screen.queryByTestId('item-row-name-input')).not.toBeInTheDocument())
+    expect(screen.getByTestId('item-row-name')).toBeInTheDocument()
+  })
+
+  it('discards the draft on Escape or cancel', async () => {
+    const onRename = vi.fn()
+    renderRow({}, { editable: true, onRename })
+    await userEvent.click(screen.getByTestId('item-row-edit-name'))
+    await userEvent.type(screen.getByTestId('item-row-name-input'), ' II{Escape}')
+    expect(screen.queryByTestId('item-row-name-input')).not.toBeInTheDocument()
+    expect(screen.getByTestId('item-row-name')).toHaveTextContent('Pirate Hat')
+
+    await userEvent.click(screen.getByTestId('item-row-edit-name'))
+    await userEvent.type(screen.getByTestId('item-row-name-input'), ' II')
+    await userEvent.click(screen.getByTestId('item-row-name-cancel'))
+    expect(screen.queryByTestId('item-row-name-input')).not.toBeInTheDocument()
+    expect(onRename).not.toHaveBeenCalled()
+  })
+
+  it('saves a changed name from the confirm button', async () => {
+    const onRename = vi.fn().mockResolvedValue(undefined)
+    renderRow({}, { editable: true, onRename })
+    await userEvent.click(screen.getByTestId('item-row-edit-name'))
+    await userEvent.type(screen.getByTestId('item-row-name-input'), ' II')
+    await userEvent.click(screen.getByTestId('item-row-name-save'))
+    expect(onRename).toHaveBeenCalledWith(expect.anything(), 'Pirate Hat II')
+    await waitFor(() => expect(screen.queryByTestId('item-row-name-input')).not.toBeInTheDocument())
+  })
+
+  it('refuses to save an invalid name and keeps editing when saving fails', async () => {
+    const onRename = vi.fn().mockRejectedValue(new Error('boom'))
+    renderRow({}, { editable: true, onRename })
+    await userEvent.click(screen.getByTestId('item-row-edit-name'))
+    const input = screen.getByTestId('item-row-name-input')
+    await userEvent.type(input, ': the sequel{Enter}')
+    expect(input).toHaveAttribute('data-invalid')
+    expect(screen.getByTestId('item-row-name-save')).toBeDisabled()
+    expect(onRename).not.toHaveBeenCalled()
+
+    await userEvent.clear(input)
+    await userEvent.type(input, 'Captain Hat{Enter}')
+    expect(onRename).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(screen.getByTestId('item-row-name-input')).toBeEnabled())
+    expect(screen.getByTestId('item-row-name-input')).toHaveValue('Captain Hat')
   })
 })
