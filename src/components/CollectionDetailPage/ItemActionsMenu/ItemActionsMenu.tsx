@@ -66,7 +66,7 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
   const canCopyUrn = !!item.urn
   const canEditDraft = !compact && canManage && !collection.isPublished && !isCollectionLocked(collection)
   const onMarket = hasBeenApproved(collection) && !!listing && !!session
-  // An off-chain order is cancelled by whoever may sell (owner, collaborator, minter); a legacy store
+  // An off-chain order is cancelled by whoever may sell (the owner, who signed it); a legacy store
   // price is cleared on the collection contract, which only the creator and collaborators may edit.
   const canRemove =
     onMarket &&

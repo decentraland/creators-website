@@ -108,17 +108,15 @@ const CollectionDetailPage = () => {
   // Play Mode is an emote-only attribute; the column exists only while the visible page has emotes.
   const withPlayMode = useMemo(() => results.some(item => item.type === ItemType.EMOTE), [results])
   useSyncPublishedItems(address, collection, allItems ?? [])
-  // Price, Sales and Sale Status exist once the collection is published; owners, collaborators and minters
-  // can put items on sale once it has been approved at least once, even if it is under review again.
+  // Price, Sales and Sale Status exist once the collection is published; the owner can put items on sale
+  // once it has been approved at least once, even if it is under review again.
   const withMarket = !!collection?.isPublished
   const statusHint =
     collection && getCollectionDisplayStatus(collection) === CollectionDisplayStatus.UNDER_REVIEW
       ? t('collection_status.under_review_hint')
       : null
-  const canSell = useMemo(
-    () => !!collection && hasBeenApproved(collection) && canSellCollectionItems(collection, address),
-    [collection, address]
-  )
+  const isApprovedForSale = !!collection && hasBeenApproved(collection)
+  const isSeller = !!collection && canSellCollectionItems(collection, address)
   const canSend = useMemo(() => !!collection && canSendCollectionItems(collection, address), [collection, address])
   const [isSending, setSending] = useState(false)
   const listingsQuery = useCollectionListings(withMarket ? collection.contractAddress : undefined)
@@ -468,8 +466,8 @@ const CollectionDetailPage = () => {
                     withPlayMode={withPlayMode}
                     withMarket={withMarket}
                     listing={withMarket ? listingFor(item) : undefined}
-                    canSell={canSell && item.isPublished && !!item.tokenId}
-                    onPutOnSale={setSellingItem}
+                    canSell={isApprovedForSale && item.isPublished && !!item.tokenId}
+                    onPutOnSale={isSeller ? setSellingItem : undefined}
                     onEditPrice={
                       !compact && session && canEditItemPrice(collection, item, listingFor(item), address)
                         ? openPriceEdit

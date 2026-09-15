@@ -254,10 +254,10 @@ describe('canManageCollectionItems', () => {
 })
 
 describe('canSellCollectionItems', () => {
-  it('lets owners, collaborators and minters sell, but not strangers', () => {
+  it('lets only the owner sell: collaborators, minters and strangers are kept out', () => {
     expect(canSellCollectionItems(roleCollection, '0xowner')).toBe(true)
-    expect(canSellCollectionItems(roleCollection, '0xMANAGER')).toBe(true)
-    expect(canSellCollectionItems(roleCollection, '0xminter')).toBe(true)
+    expect(canSellCollectionItems(roleCollection, '0xMANAGER')).toBe(false)
+    expect(canSellCollectionItems(roleCollection, '0xminter')).toBe(false)
     expect(canSellCollectionItems(roleCollection, '0xstranger')).toBe(false)
     expect(canSellCollectionItems(roleCollection, undefined)).toBe(false)
   })

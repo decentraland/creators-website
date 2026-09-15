@@ -259,12 +259,12 @@ export function canManageCollectionItems(collection: Collection, address: string
   return isOwner || getCollectionRole(collection, address) === CollectionRole.COLLABORATOR
 }
 
-const SELLER_ROLES: readonly CollectionRole[] = [CollectionRole.COLLABORATOR, CollectionRole.MINTER]
-
-/** Owners, collaborators and minters may put a collection's items on sale. */
+/**
+ * Only the collection's creator may sell its items: the off-chain marketplace rejects a primary order
+ * whose signer is not the creator (`NotCreator`), and enabling sales edits the contract's minters,
+ * which is creator-only as well.
+ */
 export function canSellCollectionItems(collection: Collection, address: string | undefined): boolean {
   if (!address) return false
-  const isOwner = collection.owner.toLowerCase() === address.toLowerCase()
-  const role = getCollectionRole(collection, address)
-  return isOwner || (role !== null && SELLER_ROLES.includes(role))
+  return collection.owner.toLowerCase() === address.toLowerCase()
 }

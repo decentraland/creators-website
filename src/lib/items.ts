@@ -301,8 +301,8 @@ export function canEditItemDetails(collection: Collection, item: Item, address: 
 }
 
 /**
- * Only an off-chain order can be re-priced, by whoever may sell (owner, collaborator, minter), and only
- * while some supply is left to sell. A legacy CollectionStore price has no `tradeId` and can only be removed.
+ * Only an off-chain order can be re-priced, by whoever may sell (the owner), and only while some
+ * supply is left to sell. A legacy CollectionStore price has no `tradeId` and can only be removed.
  */
 export function canEditItemPrice(
   collection: Collection,

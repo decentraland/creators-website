@@ -320,10 +320,10 @@ describe('canEditItemPrice', () => {
   const item = fromRemoteItem({ ...remote, total_supply: 10 })
   const order = { itemId: '3', tradeId: 'trade-1', currency: 'credits' as const, credits: 5 }
 
-  it('lets the owner, collaborators and minters re-price an off-chain order', () => {
+  it('lets only the owner re-price an off-chain order', () => {
     expect(canEditItemPrice(approved, item, order, '0xowner')).toBe(true)
-    expect(canEditItemPrice(approved, item, order, '0xmanager')).toBe(true)
-    expect(canEditItemPrice(approved, item, order, '0xminter')).toBe(true)
+    expect(canEditItemPrice(approved, item, order, '0xmanager')).toBe(false)
+    expect(canEditItemPrice(approved, item, order, '0xminter')).toBe(false)
     expect(canEditItemPrice(approved, item, order, '0xother')).toBe(false)
     expect(canEditItemPrice(approved, item, order, undefined)).toBe(false)
   })

@@ -91,14 +91,7 @@ export function SellItemFlow({ item, collection, session, hasPendingChanges = fa
 
   switch (view) {
     case 'enable':
-      return (
-        <EnableSalesModal
-          isOwner={collection.owner.toLowerCase() === session.address.toLowerCase()}
-          busy={social && enableSales.isPending}
-          onCancel={onClose}
-          onConfirm={startEnable}
-        />
-      )
+      return <EnableSalesModal busy={social && enableSales.isPending} onCancel={onClose} onConfirm={startEnable} />
     case 'enabling':
       return (
         <PendingModal
