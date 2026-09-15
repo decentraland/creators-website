@@ -296,6 +296,16 @@ describe('withRehashedContents', () => {
 })
 
 describe('assertUploadSize', () => {
+  it('counts a blob shared by both body shapes once', async () => {
+    const model = new Blob([new Uint8Array(2 * 1024 * 1024)])
+    const { item, blobs } = await buildItem({
+      ...baseDraft,
+      contents: { 'model.glb': model, 'thumbnail.png': blob('t') }
+    })
+    expect(Object.keys(blobs).filter(path => path.endsWith('model.glb'))).toHaveLength(2)
+    expect(() => assertUploadSize(item, blobs)).not.toThrow()
+  })
+
   it('re-checks the thumbnail cap and the item cap including files already stored', async () => {
     const { item, blobs } = await buildItem(baseDraft)
     expect(() => assertUploadSize(item, blobs)).not.toThrow()

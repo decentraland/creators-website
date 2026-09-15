@@ -232,9 +232,15 @@ export function getSizeError(
   /** Sizes of already-stored files kept by an update (legacy calculateModelFinalSize). */
   storedSizes: number[] = []
 ): number | null {
-  const totalSize = Object.entries(contents).reduce(
-    (total, [path, blob]) => (path === VIDEO_PATH || path === IMAGE_PATH ? total : total + blob.size),
-    storedSizes.reduce((total, size) => total + size, 0)
+  // A unisex item carries the same blob under male/ and female/; like legacy's getUniqueFiles, count it once.
+  const uniqueBlobs = new Set(
+    Object.entries(contents)
+      .filter(([path]) => path !== VIDEO_PATH && path !== IMAGE_PATH)
+      .map(([, blob]) => blob)
+  )
+  const totalSize = [...uniqueBlobs, ...storedSizes].reduce<number>(
+    (total, entry) => total + (typeof entry === 'number' ? entry : entry.size),
+    0
   )
   const maxSize =
     type === ItemType.EMOTE
