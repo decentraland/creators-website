@@ -150,7 +150,14 @@ export function TransferCard({ index, transfers, items, friends, isLoadingFriend
                 >
                   <RemoveIcon />
                 </button>
-                <output data-testid={`${testId}-item-${item.id}-amount`}>{amount}</output>
+                <AmountInput
+                  amount={amount}
+                  max={max}
+                  disabled={soldOut || (amount === 0 && max === 0)}
+                  label={t('send_items_modal.copies_of', { name: item.name })}
+                  testId={`${testId}-item-${item.id}-amount`}
+                  onChange={next => setAmount(item.id, next)}
+                />
                 <button
                   type="button"
                   aria-label={t('send_items_modal.increase', { name: item.name })}
@@ -166,5 +173,45 @@ export function TransferCard({ index, transfers, items, friends, isLoadingFriend
         })}
       </S.Items>
     </S.Transfer>
+  )
+}
+
+type AmountProps = {
+  amount: number
+  max: number
+  disabled: boolean
+  label: string
+  testId: string
+  onChange: (amount: number) => void
+}
+
+/** The stepper's count, typed directly: digits only, clamped to the cap; emptied and left, it drops to 0. */
+function AmountInput({ amount, max, disabled, label, testId, onChange }: AmountProps) {
+  // '' while the field is cleared mid-edit, so the creator can retype without fighting the clamp.
+  const [draft, setDraft] = useState<string | null>(null)
+
+  function handleChange(value: string) {
+    const digits = value.replace(/\D/g, '')
+    if (digits === '') return setDraft('')
+    setDraft(null)
+    onChange(Math.min(Number(digits), max))
+  }
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      autoComplete="off"
+      aria-label={label}
+      disabled={disabled}
+      value={draft ?? String(amount)}
+      data-testid={testId}
+      onChange={event => handleChange(event.target.value)}
+      onFocus={event => event.target.select()}
+      onBlur={() => {
+        if (draft === '') onChange(0)
+        setDraft(null)
+      }}
+    />
   )
 }

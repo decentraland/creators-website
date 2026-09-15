@@ -67,6 +67,23 @@ export function maxAmount(item: Item, transfers: Transfer[], index: number): num
   return Math.max(0, Math.floor(remaining / Math.max(1, transfers[index].recipients.length)))
 }
 
+export type RecipientBundle = { address: string; amounts: Record<string, number> }
+
+/** What each wallet ends up with once every transfer is merged: an address in two transfers gets both bundles. */
+export function copiesPerRecipient(transfers: Transfer[]): RecipientBundle[] {
+  const bundles = new Map<string, Record<string, number>>()
+  for (const transfer of transfers) {
+    const chosen = Object.entries(transfer.amounts).filter(([, amount]) => amount > 0)
+    if (chosen.length === 0) continue
+    for (const address of transfer.recipients) {
+      const amounts = bundles.get(address) ?? {}
+      for (const [itemId, amount] of chosen) amounts[itemId] = (amounts[itemId] ?? 0) + amount
+      bundles.set(address, amounts)
+    }
+  }
+  return [...bundles].map(([address, amounts]) => ({ address, amounts }))
+}
+
 export function canContinue(transfers: Transfer[]): boolean {
   const total = totalCopies(transfers)
   return total > 0 && total <= MAX_ITEMS_PER_SEND

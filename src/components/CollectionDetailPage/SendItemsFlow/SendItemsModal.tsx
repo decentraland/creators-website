@@ -1,5 +1,10 @@
 import { useMemo } from 'react'
-import { Add as AddIcon, ChevronRight as ChevronRightIcon, ExpandMore as ExpandIcon } from '@mui/icons-material'
+import {
+  Add as AddIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+  ExpandMore as ExpandIcon
+} from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { useFriends } from '~/hooks/useSales'
 import { useProfile } from '~/hooks/useProfile'
@@ -10,10 +15,11 @@ import { type Item } from '~/lib/items'
 import {
   MAX_ITEMS_PER_SEND,
   canContinue,
+  copiesPerRecipient,
   createTransfer,
   getStock,
   totalCopies,
-  transferCopies,
+  type RecipientBundle,
   type Transfer,
   type TransferDraft
 } from '~/lib/mint'
@@ -40,7 +46,7 @@ type Props = {
   onClose: () => void
 }
 
-/** Two steps: pick recipients and copies per transfer, then review what everyone gets before sending. */
+/** Two steps: pick recipients and copies per transfer, then review what each wallet ends up with before sending. */
 export function SendItemsModal({
   items,
   session,
@@ -56,7 +62,8 @@ export function SendItemsModal({
   const friends = useFriends(session, true)
   const total = useMemo(() => totalCopies(transfers), [transfers])
   const over = total > MAX_ITEMS_PER_SEND
-  const complete = useMemo(() => transfers.filter(transfer => transferCopies(transfer) > 0), [transfers])
+  const bundles = useMemo(() => copiesPerRecipient(transfers), [transfers])
+  const itemCount = useMemo(() => new Set(bundles.flatMap(bundle => Object.keys(bundle.amounts))).size, [bundles])
 
   function replace(index: number, transfer: Transfer) {
     onTransfers(transfers.map((current, i) => (i === index ? { ...transfer, key: current.key } : current)))
@@ -88,7 +95,7 @@ export function SendItemsModal({
                 onRemove={transfers.length > 1 ? () => onTransfers(transfers.filter((_, i) => i !== index)) : undefined}
               />
             ))}
-            <Button
+            <S.AddTransfer
               type="button"
               variant="secondary"
               data-testid="send-add-transfer"
@@ -96,7 +103,7 @@ export function SendItemsModal({
             >
               <AddIcon fontSize="small" />
               {t('send_items_modal.add_transfer')}
-            </Button>
+            </S.AddTransfer>
             <S.Total data-over={over || undefined} data-testid="send-total">
               <span>{t('send_items_modal.total', { count: total, max: MAX_ITEMS_PER_SEND })}</span>
               {over && <span>{t('send_items_modal.limit_reached', { max: MAX_ITEMS_PER_SEND })}</span>}
@@ -105,17 +112,38 @@ export function SendItemsModal({
         ) : (
           <>
             <S.Intro>{t('send_items_modal.confirm_intro', { count: total })}</S.Intro>
-            {complete.map((transfer, index) => (
-              <TransferSummary key={index} transfer={transfer} items={items} friends={friends.data} index={index} />
-            ))}
+            <S.Summary open data-testid="send-summary">
+              <summary>
+                {t('send_items_modal.summary', { recipients: bundles.length, items: itemCount, copies: total })}
+                <ExpandIcon />
+              </summary>
+              <S.SummaryBody>
+                {bundles.map(bundle => (
+                  <RecipientSummary key={bundle.address} bundle={bundle} items={items} friends={friends.data} />
+                ))}
+              </S.SummaryBody>
+            </S.Summary>
           </>
         )}
       </S.Body>
 
       <Sell.Footer>
-        <Button type="button" variant="secondary" disabled={busy} data-testid="send-cancel" onClick={onClose}>
-          {t('sell_item_modal.cancel')}
-        </Button>
+        {step === 'select' ? (
+          <Button type="button" variant="secondary" data-testid="send-cancel" onClick={onClose}>
+            {t('sell_item_modal.cancel')}
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={busy}
+            data-testid="send-back"
+            onClick={() => onStep('select')}
+          >
+            <ChevronLeftIcon fontSize="small" />
+            {t('send_items_modal.back')}
+          </Button>
+        )}
         {step === 'select' ? (
           <Button
             type="button"
@@ -137,54 +165,33 @@ export function SendItemsModal({
   )
 }
 
-type SummaryProps = { transfer: Transfer; items: Item[]; friends: Friend[] | undefined; index: number }
+type SummaryProps = { bundle: RecipientBundle; items: Item[]; friends: Friend[] | undefined }
 
-function TransferSummary({ transfer, items, friends, index }: SummaryProps) {
+function RecipientSummary({ bundle, items, friends }: SummaryProps) {
   const { t } = useTranslation()
-  const chosen = useMemo(() => items.filter(item => (transfer.amounts[item.id] ?? 0) > 0), [items, transfer])
+  const chosen = useMemo(() => items.filter(item => (bundle.amounts[item.id] ?? 0) > 0), [items, bundle])
   return (
-    <S.Summary open data-testid={`send-summary-${index + 1}`}>
-      <summary>
-        {t('send_items_modal.summary', {
-          recipients: transfer.recipients.length,
-          items: chosen.length,
-          copies: transferCopies(transfer)
+    <S.RecipientCard data-testid={`send-summary-${bundle.address}`}>
+      <RecipientLine address={bundle.address} friends={friends} />
+      <S.Items>
+        {chosen.map(item => {
+          const thumbnailHash = item.contents[item.thumbnail]
+          const stock = getStock(item)
+          return (
+            <S.ItemRow key={item.id}>
+              <S.Thumb>
+                <ItemThumbnail src={thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null} rarity={item.rarity} />
+              </S.Thumb>
+              <S.ItemText>
+                <S.ItemName title={item.name}>{item.name}</S.ItemName>
+                <S.Label>{t('send_items_modal.available', { available: stock.available, total: stock.total })}</S.Label>
+              </S.ItemText>
+              <S.Amount data-testid={`send-summary-${bundle.address}-${item.id}`}>{bundle.amounts[item.id]}</S.Amount>
+            </S.ItemRow>
+          )
         })}
-        <ExpandIcon />
-      </summary>
-      <S.SummaryBody>
-        {transfer.recipients.map(address => (
-          <S.RecipientCard key={address}>
-            <RecipientLine address={address} friends={friends} />
-            <S.Items>
-              {chosen.map(item => {
-                const thumbnailHash = item.contents[item.thumbnail]
-                const stock = getStock(item)
-                return (
-                  <S.ItemRow key={item.id}>
-                    <S.Thumb>
-                      <ItemThumbnail
-                        src={thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null}
-                        rarity={item.rarity}
-                      />
-                    </S.Thumb>
-                    <S.ItemText>
-                      <S.ItemName title={item.name}>{item.name}</S.ItemName>
-                      <S.Label>
-                        {t('send_items_modal.available', { available: stock.available, total: stock.total })}
-                      </S.Label>
-                    </S.ItemText>
-                    <S.Amount data-testid={`send-summary-${index + 1}-${address}-${item.id}`}>
-                      {transfer.amounts[item.id]}
-                    </S.Amount>
-                  </S.ItemRow>
-                )
-              })}
-            </S.Items>
-          </S.RecipientCard>
-        ))}
-      </S.SummaryBody>
-    </S.Summary>
+      </S.Items>
+    </S.RecipientCard>
   )
 }
 

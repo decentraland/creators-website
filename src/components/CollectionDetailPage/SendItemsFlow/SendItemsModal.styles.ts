@@ -1,5 +1,6 @@
 import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
+import { Button } from '~/components/Button'
 
 export const Body = styled.div`
   flex: 1;
@@ -16,6 +17,12 @@ export const Body = styled.div`
   &[data-busy] {
     opacity: 0.6;
   }
+`
+
+/* Inside the scrolling body the button must keep its height, and the mockup draws it borderless. */
+export const AddTransfer = styled(Button)`
+  flex-shrink: 0;
+  border: 0;
 `
 
 export const Steps = styled.div`
@@ -211,14 +218,24 @@ export const Stepper = styled.div`
     }
   }
 
-  & > output {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 44px;
+  & > input {
+    width: 44px;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    text-align: center;
     font-size: 14px;
     font-weight: 600;
     color: ${theme.colors.white};
+
+    &:focus-visible {
+      outline: none;
+      background: ${theme.colors.glassFaint};
+    }
+    &:disabled {
+      opacity: 0.4;
+    }
   }
 `
 

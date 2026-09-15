@@ -9,6 +9,7 @@ import {
   canContinue,
   canSendCollectionItems,
   copiesPerItem,
+  copiesPerRecipient,
   flattenTransfers,
   getStock,
   isSendableItem,
@@ -95,6 +96,19 @@ describe('allocation math', () => {
   it('counts copies as recipients × amounts across transfers', () => {
     expect(totalCopies(transfers)).toBe(2 * 4 + 2)
     expect(copiesPerItem(transfers)).toEqual({ hat: 8, cap: 2 })
+  })
+
+  it('merges what every wallet receives across transfers, skipping empty ones', () => {
+    const repeated: Transfer[] = [
+      ...transfers,
+      { recipients: ['0xa'], amounts: { cap: 2 } },
+      { recipients: ['0xd'], amounts: {} }
+    ]
+    expect(copiesPerRecipient(repeated)).toEqual([
+      { address: '0xa', amounts: { hat: 3, cap: 3 } },
+      { address: '0xb', amounts: { hat: 3, cap: 1 } },
+      { address: '0xc', amounts: { hat: 2 } }
+    ])
   })
 
   it('caps an amount by the stock left after the other transfers, per recipient', () => {

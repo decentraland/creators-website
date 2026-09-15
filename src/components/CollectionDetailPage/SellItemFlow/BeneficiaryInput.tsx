@@ -136,7 +136,6 @@ export function BeneficiaryInput({
           data-testid={`${testId}-input`}
           onChange={event => handleInput(event.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={() => setOpen(true)}
           onBlur={() => {
             setOpen(false)
             setTouched(true)

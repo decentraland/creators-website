@@ -55,7 +55,7 @@ describe('SendItemsFlow', () => {
     expect(screen.getByTestId('send-continue')).toBeDisabled()
 
     await userEvent.click(screen.getByTestId('transfer-1-item-i1-check'))
-    expect(screen.getByTestId('transfer-1-item-i1-amount')).toHaveTextContent('1')
+    expect(screen.getByTestId('transfer-1-item-i1-amount')).toHaveValue('1')
     expect(screen.getByTestId('send-continue')).toBeDisabled()
 
     await addRecipient(1, FRIEND)
@@ -69,7 +69,7 @@ describe('SendItemsFlow', () => {
     await addRecipient(1, FRIEND)
     await userEvent.click(screen.getByTestId('transfer-1-item-i2-plus'))
     await userEvent.click(screen.getByTestId('transfer-1-item-i2-plus'))
-    expect(screen.getByTestId('transfer-1-item-i2-amount')).toHaveTextContent('2')
+    expect(screen.getByTestId('transfer-1-item-i2-amount')).toHaveValue('2')
     expect(screen.getByTestId('transfer-1-item-i2-stock')).toHaveTextContent('0 / 10 available')
     expect(screen.getByTestId('transfer-1-item-i2-plus')).toBeDisabled()
 
@@ -89,16 +89,30 @@ describe('SendItemsFlow', () => {
     await userEvent.clear(screen.getByTestId('transfer-1-recipient-input'))
     await addRecipient(1, OTHER)
     expect(screen.getAllByTestId('transfer-1-recipient-selected')).toHaveLength(2)
-    expect(screen.getByTestId('transfer-1-item-i2-amount')).toHaveTextContent('1')
+    expect(screen.getByTestId('transfer-1-item-i2-amount')).toHaveValue('1')
     expect(screen.getByTestId('send-total')).toHaveTextContent('2 / 50 items')
+  })
+
+  it('takes a typed count, digits only and clamped to the stock, and unchecks an emptied one', async () => {
+    renderFlow()
+    await addRecipient(1, FRIEND)
+    const amount = screen.getByTestId('transfer-1-item-i2-amount')
+    await userEvent.type(amount, '9x9')
+    expect(amount).toHaveValue('2')
+    expect(screen.getByTestId('transfer-1-item-i2-check')).toBeChecked()
+
+    await userEvent.clear(amount)
+    expect(amount).toHaveValue('')
+    await userEvent.tab()
+    expect(amount).toHaveValue('0')
+    expect(screen.getByTestId('transfer-1-item-i2-check')).not.toBeChecked()
   })
 
   it('caps a send at 50 copies across transfers and explains why', async () => {
     renderFlow()
     await addRecipient(1, FRIEND)
-    await userEvent.click(screen.getByTestId('transfer-1-item-i1-check'))
-    for (let i = 0; i < 50; i++) await userEvent.click(screen.getByTestId('transfer-1-item-i1-plus'))
-    expect(screen.getByTestId('transfer-1-item-i1-amount')).toHaveTextContent('51')
+    await userEvent.type(screen.getByTestId('transfer-1-item-i1-amount'), '51')
+    expect(screen.getByTestId('transfer-1-item-i1-amount')).toHaveValue('51')
     expect(screen.getByTestId('send-total')).toHaveAttribute('data-over')
     expect(screen.getByTestId('send-total')).toHaveTextContent(/up to 50/i)
     expect(screen.getByTestId('send-continue')).toBeDisabled()
@@ -119,35 +133,45 @@ describe('SendItemsFlow', () => {
     await userEvent.click(screen.getByTestId('transfer-2-remove'))
     expect(screen.queryByTestId('transfer-3')).not.toBeInTheDocument()
     expect(screen.getByTestId('transfer-2-recipient-selected')).toHaveTextContent(THIRD)
-    expect(screen.getByTestId('transfer-2-item-i1-amount')).toHaveTextContent('1')
+    expect(screen.getByTestId('transfer-2-item-i1-amount')).toHaveValue('1')
     expect(screen.queryByTestId('transfer-2-recipient-input')).not.toBeInTheDocument()
     expect(screen.getByTestId('send-total')).toHaveTextContent('1 / 50 items')
   })
 
-  it('reviews every complete transfer, walks a web3 wallet through the prompt and celebrates the send', async () => {
+  it('reviews what each wallet receives across transfers, walks a web3 wallet through the prompt and celebrates the send', async () => {
     const { onClose } = renderFlow()
     await addRecipient(1, FRIEND)
     await userEvent.click(screen.getByTestId('transfer-1-item-i1-check'))
     await userEvent.click(screen.getByTestId('send-add-transfer'))
     await addRecipient(2, OTHER)
-    await userEvent.click(screen.getByTestId('transfer-2-item-i2-plus'))
+    await userEvent.click(screen.getByTestId('transfer-2-add-recipient'))
+    await addRecipient(2, FRIEND)
     await userEvent.click(screen.getByTestId('transfer-2-item-i2-plus'))
     // An extra, empty transfer is ignored rather than blocking the send.
     await userEvent.click(screen.getByTestId('send-add-transfer'))
     await userEvent.click(screen.getByTestId('send-continue'))
 
+    // The friend is in both transfers: one card with both bundles merged.
     expect(screen.getByTestId('send-steps-2')).toHaveAttribute('data-state', 'current')
-    expect(screen.getAllByTestId(/^send-summary-\d$/)).toHaveLength(2)
-    expect(screen.getByTestId('send-summary-1')).toHaveTextContent('1 Recipient - 1 Item - 1 Copy')
-    expect(screen.getByTestId('send-summary-2')).toHaveTextContent('1 Recipient - 1 Item - 2 Copies')
-    expect(screen.getByTestId(`send-summary-2-${OTHER}-i2`)).toHaveTextContent('2')
+    expect(screen.getByTestId('send-summary')).toHaveTextContent('2 Recipients - 2 Items - 3 Copies')
+    expect(screen.getAllByTestId('send-summary-recipient')).toHaveLength(2)
+    expect(screen.getByTestId(`send-summary-${FRIEND}-i1`)).toHaveTextContent('1')
+    expect(screen.getByTestId(`send-summary-${FRIEND}-i2`)).toHaveTextContent('1')
+    expect(screen.getByTestId(`send-summary-${OTHER}-i2`)).toHaveTextContent('1')
+    expect(screen.queryByTestId(`send-summary-${OTHER}-i1`)).not.toBeInTheDocument()
+
+    // Back keeps everything and returns to the first step.
+    await userEvent.click(screen.getByTestId('send-back'))
+    expect(screen.getByTestId('send-steps-1')).toHaveAttribute('data-state', 'current')
+    expect(screen.getByTestId('transfer-2-item-i2-amount')).toHaveValue('1')
+    await userEvent.click(screen.getByTestId('send-continue'))
 
     await userEvent.click(screen.getByTestId('send-submit'))
     expect(screen.getByTestId('send-items-pending-label')).toHaveTextContent(/confirm in your wallet/i)
     const [variables, callbacks] = last(send.mutate)
     expect(variables.transfers).toMatchObject([
       { recipients: [FRIEND], amounts: { i1: 1 } },
-      { recipients: [OTHER], amounts: { i2: 2 } },
+      { recipients: [OTHER, FRIEND], amounts: { i2: 1 } },
       { recipients: [], amounts: {} }
     ])
     await act(async () => variables.onSigned?.())
@@ -168,19 +192,19 @@ describe('SendItemsFlow', () => {
 
     await userEvent.click(screen.getByTestId('send-submit'))
     await userEvent.click(screen.getByTestId('send-items-pending-cancel'))
-    expect(screen.getByTestId('send-summary-1')).toBeInTheDocument()
+    expect(screen.getByTestId('send-summary')).toBeInTheDocument()
     await act(async () => last(send.mutate)[1].onSuccess?.(undefined))
     expect(screen.queryByTestId('sale-success-title')).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByTestId('send-submit'))
     await act(async () => last(send.mutate)[1].onError?.({ code: 4001, message: 'User rejected' }))
-    expect(screen.getByTestId('send-summary-1')).toBeInTheDocument()
+    expect(screen.getByTestId('send-summary')).toBeInTheDocument()
 
     await userEvent.click(screen.getByTestId('send-submit'))
     await act(async () => last(send.mutate)[1].onError?.(new Error('reverted')))
     expect(screen.getByTestId('sale-error-modal-title')).toHaveTextContent(/send your items/i)
     await userEvent.click(screen.getByTestId('sale-error-retry'))
-    expect(screen.getByTestId('send-summary-1')).toHaveTextContent('1 Recipient - 1 Item - 1 Copy')
+    expect(screen.getByTestId('send-summary')).toHaveTextContent('1 Recipient - 1 Item - 1 Copy')
   })
 
   it('keeps a social-login creator on the dialog with a spinning button', async () => {
