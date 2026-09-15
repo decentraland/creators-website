@@ -6,6 +6,7 @@ const StepsBase = styled.ol`
   align-items: center;
   list-style: none;
   padding: 0 4px;
+  margin: 0;
 `
 
 export const StepNode = styled.li`

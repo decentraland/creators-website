@@ -8,16 +8,17 @@ import * as S from './SaleSuccessModal.styles'
 type Props = {
   title: string
   description: string
+  art?: string
   onDone: () => void
 }
 
 /** The celebratory close of a sale action: illustration, heading, one line, DONE. */
-export function SaleSuccessModal({ title, description, onDone }: Props) {
+export function SaleSuccessModal({ title, description, art = successArt, onDone }: Props) {
   const { t } = useTranslation()
   return (
     <Modal title={title} onClose={onDone} hideTitle testId="sale-success-modal">
       <S.Wrap>
-        <S.Art src={successArt} alt="" />
+        <S.Art src={art} alt="" />
         <S.Heading data-testid="sale-success-title">{title}</S.Heading>
         <S.Text data-testid="sale-success-description">{description}</S.Text>
         <Button type="button" data-testid="sale-success-done" onClick={onDone}>

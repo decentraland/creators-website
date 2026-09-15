@@ -262,6 +262,7 @@
         "done": "“{name}” was reset to its approved version"
       }
     },
+    "send_items": "Send items",
     "smart_wearable": "Smart Wearable"
   },
   "publish_collection_modal": {
@@ -393,7 +394,9 @@
       "description_update": "Something went wrong while updating the price. Please wait a moment and try again.",
       "description_sold_out": "Every unit of this item has already been minted, so it can’t be put on sale.",
       "try_again": "Try again",
-      "description_not_listed": "This item is no longer on sale, so there is nothing to change. Refresh the page to see its current status."
+      "description_not_listed": "This item is no longer on sale, so there is nothing to change. Refresh the page to see its current status.",
+      "title_send": "We couldn’t send your items",
+      "description_send": "Something went wrong while sending your items. Please try again."
     },
     "remove": {
       "title": "Remove from sale?",
@@ -626,6 +629,34 @@
     "linkTerms": "Terms of Use",
     "linkContentPolicy": "Content Policy",
     "linkEthics": "Code of Ethics"
+  },
+  "send_items_modal": {
+    "title": "Send Items",
+    "step_select": "Select Items",
+    "step_confirm": "Confirm Items",
+    "transfer": "Transfer {n}",
+    "remove_transfer": "Remove transfer",
+    "recipient_placeholder": "Select or copy recipient User ID",
+    "add_recipient": "Add another recipient",
+    "duplicate_recipient": "This recipient is already in this transfer.",
+    "items_for_recipient": "Items for this recipient",
+    "available": "{available} / {total} available",
+    "sold_out": "Sold Out",
+    "select_item": "Send {name}",
+    "decrease": "Fewer copies of {name}",
+    "increase": "More copies of {name}",
+    "copies_of": "Copies of {name}",
+    "add_transfer": "Add another transfer",
+    "total": "{count} / {max} items",
+    "limit_reached": "You can send up to {max} items at a time. Remove some copies to continue.",
+    "continue": "Continue",
+    "back": "Back",
+    "submit": "Send items",
+    "confirm_intro": "You’re about to send {count, plural, one {# item} other {# items}}. Review the recipients and quantities before sending.",
+    "summary": "{recipients, plural, one {# Recipient} other {# Recipients}} - {items, plural, one {# Item} other {# Items}} - {copies, plural, one {# Copy} other {# Copies}}",
+    "sending": "Sending items...",
+    "success_title": "Items sent!",
+    "success_description": "Your items are on their way to the selected recipients."
   },
   "required_permissions": {
     "title": "Required permissions",

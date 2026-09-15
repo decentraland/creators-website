@@ -179,5 +179,22 @@ describe('CollectionActionsMenu', () => {
       renderMenu(draft)
       expect(screen.queryByTestId('collection-actions')).not.toBeInTheDocument()
     })
+
+    it('carries Send Items on a small screen, where the header button is hidden', async () => {
+      const onSendItems = vi.fn()
+      renderMenu({ ...draft, isPublished: true }, OWNER, { onSendItems })
+      const menu = await openMenu()
+      const ids = Array.from(menu.querySelectorAll('[role="menuitem"]')).map(el => el.getAttribute('data-testid'))
+      expect(ids[0]).toBe('send-items-action')
+      await userEvent.click(screen.getByTestId('send-items-action'))
+      expect(onSendItems).toHaveBeenCalled()
+    })
+  })
+
+  it('never shows Send Items on desktop, where the header button covers it', async () => {
+    stubViewport(false)
+    renderMenu({ ...draft, isPublished: true }, OWNER, { onSendItems: vi.fn() })
+    await openMenu()
+    expect(screen.queryByTestId('send-items-action')).not.toBeInTheDocument()
   })
 })

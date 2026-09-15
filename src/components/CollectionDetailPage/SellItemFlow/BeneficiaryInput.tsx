@@ -14,6 +14,9 @@ type Props = {
   friends: Friend[] | undefined
   isLoadingFriends: boolean
   disabled?: boolean
+  placeholder?: string
+  /** Rejects an address already used, with this copy under the field. */
+  duplicateError?: (address: string) => string | null
   testId?: string
 }
 
@@ -29,6 +32,8 @@ export function BeneficiaryInput({
   friends,
   isLoadingFriends,
   disabled,
+  placeholder,
+  duplicateError,
   testId = 'beneficiary'
 }: Props) {
   const { t } = useTranslation()
@@ -50,9 +55,13 @@ export function BeneficiaryInput({
   }, [friends, query])
 
   const trimmed = query.trim()
+  const duplicate = isValidAddress(trimmed) ? duplicateError?.(trimmed.toLowerCase()) : null
   const invalid = touched && trimmed !== '' && !isValidAddress(trimmed)
+  // Without friends to pick from the field is a plain address input.
+  const withFriends = isLoadingFriends || (friends?.length ?? 0) > 0
 
   function commit(address: string) {
+    if (duplicateError?.(address.toLowerCase())) return
     onChange(address.toLowerCase())
     setQuery('')
     setOpen(false)
@@ -112,42 +121,43 @@ export function BeneficiaryInput({
 
   return (
     <S.Combo>
-      <S.Box data-invalid={invalid || undefined} data-disabled={disabled || undefined}>
+      <S.Box data-invalid={invalid || !!duplicate || undefined} data-disabled={disabled || undefined}>
         <input
           type="text"
-          role="combobox"
-          aria-expanded={open}
-          aria-controls={listId}
-          aria-autocomplete="list"
+          role={withFriends ? 'combobox' : undefined}
+          aria-expanded={withFriends ? open : undefined}
+          aria-controls={withFriends ? listId : undefined}
+          aria-autocomplete={withFriends ? 'list' : undefined}
           autoComplete="off"
           spellCheck={false}
-          placeholder={t('sell_item_modal.beneficiary.placeholder')}
+          placeholder={placeholder ?? t('sell_item_modal.beneficiary.placeholder')}
           value={query}
           disabled={disabled}
           data-testid={`${testId}-input`}
           onChange={event => handleInput(event.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={() => setOpen(true)}
           onBlur={() => {
             setOpen(false)
             setTouched(true)
           }}
         />
-        <S.ComboToggle
-          type="button"
-          aria-label={t('sell_item_modal.beneficiary.open')}
-          aria-expanded={open}
-          aria-controls={listId}
-          disabled={disabled}
-          data-open={open || undefined}
-          data-testid={`${testId}-toggle`}
-          // Keep the input's focus so the blur doesn't close the list we're opening.
-          onMouseDown={event => event.preventDefault()}
-          onClick={() => setOpen(current => !current)}
-        >
-          <ChevronIcon />
-        </S.ComboToggle>
-        {open && (
+        {withFriends && (
+          <S.ComboToggle
+            type="button"
+            aria-label={t('sell_item_modal.beneficiary.open')}
+            aria-expanded={open}
+            aria-controls={listId}
+            disabled={disabled}
+            data-open={open || undefined}
+            data-testid={`${testId}-toggle`}
+            // Keep the input's focus so the blur doesn't close the list we're opening.
+            onMouseDown={event => event.preventDefault()}
+            onClick={() => setOpen(current => !current)}
+          >
+            <ChevronIcon />
+          </S.ComboToggle>
+        )}
+        {withFriends && open && (
           <S.Options role="listbox" id={listId} data-testid={`${testId}-options`}>
             {isLoadingFriends ? (
               <S.OptionNote>
@@ -180,6 +190,7 @@ export function BeneficiaryInput({
         )}
       </S.Box>
       {invalid && <S.ErrorText data-testid={`${testId}-error`}>{t('sell_item_modal.beneficiary.invalid')}</S.ErrorText>}
+      {duplicate && <S.ErrorText data-testid={`${testId}-error`}>{duplicate}</S.ErrorText>}
     </S.Combo>
   )
 }

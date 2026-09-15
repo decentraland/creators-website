@@ -56,6 +56,8 @@ type Props = {
   hideTitle?: boolean
   /** With `hideTitle`, still shows a floating ✕ in the dialog corner. */
   showClose?: boolean
+  /** Tighter dialog padding for small form dialogs (sell, send, update price). */
+  compact?: boolean
   /** Removes the dialog padding so children can draw edge-to-edge panes; the title bar keeps its own. */
   flush?: boolean
   testId?: string
@@ -69,6 +71,7 @@ export function Modal({
   size = 'default',
   hideTitle = false,
   showClose = false,
+  compact = false,
   flush = false,
   testId = 'modal'
 }: Props) {
@@ -151,6 +154,7 @@ export function Modal({
         tabIndex={-1}
         data-testid={testId}
         data-size={size}
+        data-compact={compact || undefined}
         data-flush={flush || undefined}
         onClick={event => event.stopPropagation()}
       >

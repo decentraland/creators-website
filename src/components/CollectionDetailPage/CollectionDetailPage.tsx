@@ -19,6 +19,7 @@ import {
   hasCollectionRole,
   isCollectionLocked
 } from '~/lib/collections'
+import { canSendCollectionItems } from '~/lib/mint'
 import { ItemType, type Item } from '~/lib/items'
 import {
   ITEM_TYPE_FILTERS,
@@ -50,6 +51,7 @@ import { ItemActionsMenu } from './ItemActionsMenu'
 import { ItemListRow } from './ItemListRow'
 import { PublishCollectionModal, PublishSuccessModal } from './PublishCollectionModal'
 import { SellItemFlow } from './SellItemFlow'
+import { SendItemsFlow } from './SendItemsFlow'
 import * as S from './CollectionDetailPage.styles'
 
 const NOT_FOUND_STATUSES = [401, 403, 404]
@@ -100,7 +102,12 @@ const CollectionDetailPage = () => {
     collection && getCollectionDisplayStatus(collection) === CollectionDisplayStatus.UNDER_REVIEW
       ? t('collection_status.under_review_hint')
       : null
-  const canSell = !!collection && hasBeenApproved(collection) && canSellCollectionItems(collection, address)
+  const canSell = useMemo(
+    () => !!collection && hasBeenApproved(collection) && canSellCollectionItems(collection, address),
+    [collection, address]
+  )
+  const canSend = useMemo(() => !!collection && canSendCollectionItems(collection, address), [collection, address])
+  const [isSending, setSending] = useState(false)
   const listingsQuery = useCollectionListings(withMarket ? collection.contractAddress : undefined)
   const listings = listingsQuery.data
   // `undefined` keeps the price cell blank while the catalog loads; a failed request shows no price rather than an error.
@@ -310,10 +317,23 @@ const CollectionDetailPage = () => {
                   </Button>
                 </Tooltip>
               )}
+              {canSend && (
+                <Button
+                  type="button"
+                  variant="dark"
+                  disabled={!hasItems}
+                  data-desktop-only
+                  data-testid="send-items"
+                  onClick={() => setSending(true)}
+                >
+                  {t('collection_detail_page.send_items')}
+                </Button>
+              )}
               {address && (
                 <CollectionActionsMenu
                   collection={collection}
                   address={address}
+                  onSendItems={canSend ? () => setSending(true) : undefined}
                   onDeleted={() => navigate('/collections', { replace: true })}
                 />
               )}
@@ -488,6 +508,14 @@ const CollectionDetailPage = () => {
             />
           )}
           {publishView === 'success' && <PublishSuccessModal onDone={() => setPublishView('closed')} />}
+          {isSending && session && (
+            <SendItemsFlow
+              collection={collection}
+              items={allItems ?? []}
+              session={session}
+              onClose={() => setSending(false)}
+            />
+          )}
           {sellingItem && session && (
             <SellItemFlow
               item={sellingItem}

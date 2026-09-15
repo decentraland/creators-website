@@ -20,6 +20,8 @@ type Props = {
   /** The owner-only role placeholders (collaborators / minters); off in list rows. */
   showRoles?: boolean
   label?: string
+  /** Opens the Send Items flow; the header button covers this on desktop, so the item shows only when compact. */
+  onSendItems?: () => void
   onDeleted?: () => void
 }
 
@@ -29,6 +31,7 @@ export function CollectionActionsMenu({
   variant = 'header',
   showRoles = true,
   label,
+  onSendItems,
   onDeleted
 }: Props) {
   const { t } = useTranslation()
@@ -45,8 +48,10 @@ export function CollectionActionsMenu({
     hasBeenApproved(collection) && collection.contractAddress ? shopCollectionUrl(collection.contractAddress) : null
   // A locked draft has a publish transaction in flight: nothing can be done to it yet.
   const canDelete = !compact && !isOnChain && !isCollectionLocked(collection)
+  // The header's Send Items button is desktop-only, so the menu carries the action on small screens.
+  const showSend = compact && !!onSendItems
 
-  if (!isOnChain && !canDelete) return null
+  if (!isOnChain && !canDelete && !showSend) return null
 
   async function copy(text: string | undefined, successKey: string) {
     const copied = !!text && (await copyToClipboard(text))
@@ -72,8 +77,14 @@ export function CollectionActionsMenu({
         variant={variant}
         testId="collection-actions"
       >
+        {showSend && (
+          <ActionsMenuItem testId="send-items-action" onClick={onSendItems}>
+            {t('collection_detail_page.send_items')}
+          </ActionsMenuItem>
+        )}
         {isOnChain && (
           <>
+            {showSend && <ActionsMenuDivider />}
             <ActionsMenuItem
               testId="copy-urn"
               onClick={() => void copy(collection.urn, 'collection_detail_page.actions.copied_urn')}
