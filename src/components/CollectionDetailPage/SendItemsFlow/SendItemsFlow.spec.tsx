@@ -132,7 +132,9 @@ describe('SendItemsFlow', () => {
 
     await userEvent.click(screen.getByTestId('transfer-2-remove'))
     expect(screen.queryByTestId('transfer-3')).not.toBeInTheDocument()
-    expect(screen.getByTestId('transfer-2-recipient-selected')).toHaveTextContent(THIRD)
+    expect(screen.getByTestId('transfer-2-recipient-selected')).toHaveTextContent(
+      `${THIRD.slice(0, 6)}…${THIRD.slice(-4)}`
+    )
     expect(screen.getByTestId('transfer-2-item-i1-amount')).toHaveValue('1')
     expect(screen.queryByTestId('transfer-2-recipient-input')).not.toBeInTheDocument()
     expect(screen.getByTestId('send-total')).toHaveTextContent('1 / 50 items')

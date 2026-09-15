@@ -19,6 +19,8 @@ type Props = {
   duplicateError?: (address: string) => string | null
   /** Accessible name of the chip's ✕; "Clear beneficiary" unless the chip stands for something else. */
   clearLabel?: string
+  /** `compact`: the chosen address as a dark pill with a shortened address (address lists), not a form field. */
+  variant?: 'field' | 'compact'
   testId?: string
 }
 
@@ -37,6 +39,7 @@ export function BeneficiaryInput({
   placeholder,
   duplicateError,
   clearLabel,
+  variant = 'field',
   testId = 'beneficiary'
 }: Props) {
   const { t } = useTranslation()
@@ -102,13 +105,15 @@ export function BeneficiaryInput({
   }
 
   if (value) {
-    const name = selectedFriend?.name ?? profile.data?.name ?? shorten(value)
+    const known = selectedFriend?.name ?? profile.data?.name
     const avatar = selectedFriend?.avatarUrl ?? profile.data?.avatar?.snapshots?.face256
+    const compact = variant === 'compact'
     return (
-      <S.Box data-testid={`${testId}-selected`} data-disabled={disabled || undefined}>
+      <S.Box data-testid={`${testId}-selected`} data-variant={variant} data-disabled={disabled || undefined}>
         {avatar ? <S.Avatar src={avatar} alt="" /> : <S.AvatarFallback aria-hidden />}
-        <S.ChipName data-testid={`${testId}-name`}>{name}</S.ChipName>
-        <S.ChipAddress title={value}>({value})</S.ChipAddress>
+        <S.ChipName data-testid={`${testId}-name`}>{known ?? shorten(value)}</S.ChipName>
+        {/* Without a name the compact pill would repeat the shortened address, so it shows it once. */}
+        {(known || !compact) && <S.ChipAddress title={value}>({compact ? shorten(value) : value})</S.ChipAddress>}
         <S.ChipClear
           type="button"
           aria-label={clearLabel ?? t('sell_item_modal.beneficiary.clear')}

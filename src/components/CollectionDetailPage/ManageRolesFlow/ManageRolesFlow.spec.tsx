@@ -38,6 +38,7 @@ function renderFlow(kind: RoleKind = 'senders', providerType = ProviderType.INJE
   return { onClose }
 }
 
+const short = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`
 const last = <T,>(mock: { mock: { calls: T[] } }) => mock.mock.calls[mock.mock.calls.length - 1]
 
 beforeEach(() => {
@@ -50,7 +51,7 @@ describe('ManageRolesFlow', () => {
     renderFlow()
     expect(screen.getByTestId('manage-roles-modal')).toHaveTextContent(/senders/i)
     expect(screen.getAllByTestId('role-row')).toHaveLength(1)
-    expect(screen.getByTestId('role-1-selected')).toHaveTextContent(MINTER)
+    expect(screen.getByTestId('role-1-selected')).toHaveTextContent(short(MINTER))
     expect(screen.queryByTestId('role-new-input')).not.toBeInTheDocument()
     expect(screen.getByTestId('role-save')).toBeDisabled()
 
@@ -125,7 +126,7 @@ describe('ManageRolesFlow', () => {
 
     // Backing out of the prompt returns to the draft, untouched.
     await userEvent.click(screen.getByTestId('manage-roles-pending-cancel'))
-    expect(screen.getByTestId('role-1-selected')).toHaveTextContent(FRIEND)
+    expect(screen.getByTestId('role-1-selected')).toHaveTextContent(short(FRIEND))
     await act(async () => callbacks.onSuccess?.(undefined))
     expect(screen.queryByTestId('sale-success-modal')).not.toBeInTheDocument()
 
@@ -142,7 +143,7 @@ describe('ManageRolesFlow', () => {
 
   it('keeps a custodial wallet in the dialog with the button spinning', async () => {
     renderFlow('collaborators', ProviderType.MAGIC)
-    expect(screen.getByTestId('role-1-selected')).toHaveTextContent(MANAGER)
+    expect(screen.getByTestId('role-1-selected')).toHaveTextContent(short(MANAGER))
     await userEvent.click(screen.getByTestId('role-1-clear'))
     await userEvent.click(screen.getByTestId('remove-role-confirm'))
     save.isPending = true

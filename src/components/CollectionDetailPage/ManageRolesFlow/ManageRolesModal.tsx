@@ -72,6 +72,7 @@ export function ManageRolesModal({
                 friends={friends}
                 isLoadingFriends={isLoadingFriends}
                 clearLabel={t(`manage_roles_modal.${kind}.remove`)}
+                variant="compact"
                 testId={`role-${index + 1}`}
               />
             </S.Row>

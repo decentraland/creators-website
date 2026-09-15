@@ -72,6 +72,7 @@ export function TransferCard({ index, transfers, items, friends, isLoadingFriend
               onChange={() => setRecipients(transfer.recipients.filter(other => other !== address))}
               friends={friends}
               isLoadingFriends={isLoadingFriends}
+              variant="compact"
               testId={`${testId}-recipient`}
             />
           </S.Recipient>
