@@ -10,7 +10,7 @@ describe('buildCollectionPreviewDeepLink', () => {
     const url = new URL(buildCollectionPreviewDeepLink('col-1'))
     expect(url.protocol).toBe('decentraland:')
     expect(url.searchParams.get('self-preview-builder-collections')).toBe('col-1')
-    expect(url.searchParams.get('realm')).toBe(config.get('PREVIEW_WORLD'))
+    expect(url.searchParams.get('realm')).toBe('district.dcl.eth')
     expect(url.searchParams.get('force-open-backpack')).toBe('true')
     expect(url.searchParams.has('position')).toBe(false)
   })
