@@ -1,34 +1,35 @@
-import { useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { useTranslation } from '~/intl'
 import { type Item } from '~/lib/items'
-import { formatCredits } from '~/lib/publishFee'
-import { MAX_SALE_CREDITS, formatCreditsAsUsd, isValidCredits } from '~/lib/sales'
+import { type ItemListing } from '~/lib/listings'
+import { isSamePrice, listingToSalePrice, toPricedSale, type PricedSale } from '~/lib/sales'
 import { Button } from '~/components/Button'
-import { CurrencyAmount } from '~/components/CurrencyAmount'
 import { Modal } from '~/components/Modal'
+import { PriceField, type PriceFormValues } from './PriceField'
 import { SellItemCard } from './SellItemCard'
 import * as S from './SellItemModal.styles'
 
 type Props = {
   item: Item
-  /** The listing's current price, so the same number can't be "updated" to itself. */
-  currentCredits: number | null
-  initialCredits?: string
-  onSubmit: (credits: number) => void
+  /** The listing being re-priced: its currency is the default, and the same price can't be "updated" to itself. */
+  listing: ItemListing
+  /** Restores a previous attempt's form. */
+  initialValues?: PriceFormValues
+  onSubmit: (values: PriceFormValues, price: PricedSale) => void
   onClose: () => void
 }
 
-/** Edit Price: one field for the new credits price; beneficiary and expiration carry over from the listing. */
-export function UpdatePriceModal({ item, currentCredits, initialCredits = '', onSubmit, onClose }: Props) {
+/** Edit Price: the new amount and currency; beneficiary and expiration carry over from the listing. */
+export function UpdatePriceModal({ item, listing, initialValues, onSubmit, onClose }: Props) {
   const { t } = useTranslation()
-  const [credits, setCredits] = useState(initialCredits)
-  const value = Number(credits)
-  const priceTooHigh = value > Number(MAX_SALE_CREDITS)
-  const canSubmit = isValidCredits(value) && value !== currentCredits
+  const [values, setValues] = useState<PriceFormValues>(initialValues ?? { currency: listing.currency, amount: '' })
+  const current = useMemo(() => listingToSalePrice(listing), [listing])
+  const price = useMemo(() => toPricedSale(values.currency, values.amount), [values])
+  const canSubmit = price !== null && !isSamePrice(price, current)
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (canSubmit) onSubmit(value)
+    if (price !== null && canSubmit) onSubmit(values, price)
   }
 
   return (
@@ -38,28 +39,12 @@ export function UpdatePriceModal({ item, currentCredits, initialCredits = '', on
         <S.Fields>
           <SellItemCard item={item} showAvailability />
           <S.Field>
-            <S.Label>{t('sell_item_modal.update_price.price_label')}</S.Label>
-            <S.Box data-invalid={priceTooHigh || undefined}>
-              <S.Glyph aria-hidden>
-                <CurrencyAmount currency="credits">{null}</CurrencyAmount>
-              </S.Glyph>
-              <input
-                type="text"
-                inputMode="numeric"
-                aria-label={t('sell_item_modal.update_price.price_label')}
-                placeholder="0"
-                value={credits}
-                data-testid="update-price-input"
-                onChange={event => setCredits(event.target.value.replace(/\D/g, ''))}
-              />
-              <S.Usd data-testid="update-price-usd">{formatCreditsAsUsd(value || 0)}</S.Usd>
-            </S.Box>
-            <S.Rate>{t('sell_item_modal.price.rate', { usd: formatCreditsAsUsd(1) })}</S.Rate>
-            {priceTooHigh && (
-              <S.ErrorText data-testid="update-price-error">
-                {t('sell_item_modal.price.too_high', { max: formatCredits(Number(MAX_SALE_CREDITS)) })}
-              </S.ErrorText>
-            )}
+            <PriceField
+              label={t('sell_item_modal.update_price.price_label')}
+              values={values}
+              onChange={setValues}
+              testId="update-price"
+            />
           </S.Field>
         </S.Fields>
         <S.Footer>

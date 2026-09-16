@@ -39,6 +39,50 @@ export const Trigger = styled.button`
   &[aria-expanded='true'] svg {
     transform: rotate(180deg);
   }
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  /* A square glyph box; it widens to fit the chevron on hover, focus or while open. */
+  &[data-variant='glyph'] {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: ${theme.radius.chip};
+    background: ${theme.colors.glass};
+    font-size: 20px;
+    line-height: 1;
+    transition: width 0.15s ease;
+
+    &:hover:not(:disabled),
+    &[aria-expanded='true'] {
+      background: ${theme.colors.glassHover};
+    }
+    > svg {
+      width: 0;
+      height: 18px;
+      opacity: 0;
+      transition:
+        width 0.15s ease,
+        opacity 0.15s ease,
+        transform 0.15s ease;
+    }
+    &:hover:not(:disabled),
+    &:focus-visible,
+    &[aria-expanded='true'] {
+      width: 50px;
+
+      > svg {
+        width: 18px;
+        opacity: 1;
+      }
+    }
+  }
 `
 
 export const TriggerLabel = styled.span`

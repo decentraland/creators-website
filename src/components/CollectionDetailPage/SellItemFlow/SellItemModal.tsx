@@ -12,23 +12,20 @@ import { useFriends } from '~/hooks/useSales'
 import { type Session } from '~/lib/auth'
 import { type Item } from '~/lib/items'
 import {
-  MAX_SALE_CREDITS,
   NO_EXPIRATION,
-  formatCreditsAsUsd,
   formatDateValue,
   isValidAddress,
-  isValidCredits,
   minExpirationDate,
   parseExpirationDate,
+  toPricedSale,
   type SalePrice
 } from '~/lib/sales'
-import { formatCredits } from '~/lib/publishFee'
 import { Button } from '~/components/Button'
 import { Checkbox } from '~/components/Checkbox'
-import { CurrencyAmount } from '~/components/CurrencyAmount'
 import { Modal } from '~/components/Modal'
 import { InfoTooltip } from '~/components/Tooltip'
 import { BeneficiaryInput } from './BeneficiaryInput'
+import { DEFAULT_PRICE_VALUES, PriceField, type PriceFormValues } from './PriceField'
 import { SellItemCard } from './SellItemCard'
 import { Switch } from './Switch'
 import * as S from './SellItemModal.styles'
@@ -36,7 +33,7 @@ import * as S from './SellItemModal.styles'
 export type SellFormValues = {
   selfBeneficiary: boolean
   beneficiary: string
-  credits: string
+  price: PriceFormValues
   free: boolean
   withExpiration: boolean
   /** `YYYY-MM-DD`, as the native date input reports it. */
@@ -46,7 +43,7 @@ export type SellFormValues = {
 export const DEFAULT_SELL_VALUES: SellFormValues = {
   selfBeneficiary: true,
   beneficiary: '',
-  credits: '',
+  price: DEFAULT_PRICE_VALUES,
   free: false,
   withExpiration: false,
   expirationDate: ''
@@ -75,8 +72,8 @@ type Props = {
 export function toSubmission(values: SellFormValues, address: string, now = Date.now()): SellSubmission | null {
   const beneficiary = values.selfBeneficiary ? address : values.beneficiary
   if (!values.free && !isValidAddress(beneficiary)) return null
-  const credits = Number(values.credits)
-  if (!values.free && !isValidCredits(credits)) return null
+  const price = toPricedSale(values.price.currency, values.price.amount)
+  if (!values.free && price === null) return null
   let expiresAt = NO_EXPIRATION
   if (values.withExpiration) {
     const parsed = parseExpirationDate(values.expirationDate)
@@ -84,13 +81,13 @@ export function toSubmission(values: SellFormValues, address: string, now = Date
     expiresAt = parsed
   }
   return {
-    price: values.free ? { kind: 'free' } : { kind: 'credits', credits },
+    price: values.free || price === null ? { kind: 'free' } : price,
     beneficiary: values.free ? address : beneficiary,
     expiresAt
   }
 }
 
-/** The Sell Item form: beneficiary, credits price (or giveaway), optional expiration date. */
+/** The Sell Item form: beneficiary, price in credits or MANA (or giveaway), optional expiration date. */
 export function SellItemModal({
   item,
   session,
@@ -109,12 +106,12 @@ export function SellItemModal({
   const submission = useMemo(() => toSubmission(values, session.address), [values, session.address])
   const canSubmit = submission !== null && !busy
 
-  const creditsNumber = Number(values.credits) || 0
-  const priceTooHigh = !values.free && creditsNumber > Number(MAX_SALE_CREDITS)
   const expirationDate = useMemo(() => {
     const parsed = parseExpirationDate(values.expirationDate)
     return parsed === null ? null : new Date(parsed)
   }, [values.expirationDate])
+
+  const noteCurrency = values.price.currency
 
   function update(patch: Partial<SellFormValues>) {
     setValues(current => ({ ...current, ...patch }))
@@ -172,29 +169,14 @@ export function SellItemModal({
           </S.Field>
 
           <S.Field>
-            <S.Label>{t('sell_item_modal.price.label')}</S.Label>
-            <S.Box data-disabled={values.free || undefined} data-invalid={priceTooHigh || undefined}>
-              <S.Glyph aria-hidden>
-                <CurrencyAmount currency="credits">{null}</CurrencyAmount>
-              </S.Glyph>
-              <input
-                type="text"
-                inputMode="numeric"
-                aria-label={t('sell_item_modal.price.label')}
-                placeholder="0"
-                value={values.free ? '0' : values.credits}
-                disabled={values.free || busy}
-                data-testid="sell-price"
-                onChange={event => update({ credits: event.target.value.replace(/\D/g, '') })}
-              />
-              <S.Usd data-testid="sell-price-usd">{formatCreditsAsUsd(values.free ? 0 : creditsNumber)}</S.Usd>
-            </S.Box>
-            <S.Rate>{t('sell_item_modal.price.rate', { usd: formatCreditsAsUsd(1) })}</S.Rate>
-            {priceTooHigh && (
-              <S.ErrorText data-testid="sell-price-error">
-                {t('sell_item_modal.price.too_high', { max: formatCredits(Number(MAX_SALE_CREDITS)) })}
-              </S.ErrorText>
-            )}
+            <PriceField
+              label={t('sell_item_modal.price.label')}
+              values={values.price}
+              onChange={price => update({ price })}
+              free={values.free}
+              disabled={busy}
+              testId="sell-price"
+            />
             <Checkbox checked={values.free} onChange={free => update({ free })} disabled={busy} testId="sell-free">
               {t('sell_item_modal.price.giveaway')}
             </Checkbox>
@@ -231,20 +213,22 @@ export function SellItemModal({
             )}
           </S.Field>
 
-          <S.Note data-testid="sell-note">
+          <S.Note data-testid="sell-note" data-currency={noteCurrency}>
             <InfoIcon aria-hidden />
             <p>
-              {intl.formatMessage(
-                { id: 'sell_item_modal.note' },
-                {
-                  b: chunks => (
-                    <b>
-                      {chunks}
-                      <InfoTooltip content={t('sell_item_modal.note_tooltip')} testId="sell-note-tooltip" />
-                    </b>
-                  )
-                }
-              )}
+              {noteCurrency === 'mana'
+                ? t('sell_item_modal.note_mana')
+                : intl.formatMessage(
+                    { id: 'sell_item_modal.note' },
+                    {
+                      b: chunks => (
+                        <b>
+                          {chunks}
+                          <InfoTooltip content={t('sell_item_modal.note_tooltip')} testId="sell-note-tooltip" />
+                        </b>
+                      )
+                    }
+                  )}
             </p>
           </S.Note>
         </S.Fields>
