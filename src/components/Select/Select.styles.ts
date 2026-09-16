@@ -65,26 +65,35 @@ export const Trigger = styled.button`
     }
   }
 
-  /* A glyph-only pill: the chevron keeps its room but only shows on hover, focus or while open. */
+  /* A square glyph box; it widens to fit the chevron on hover, focus or while open. */
   &[data-variant='glyph'] {
+    justify-content: center;
     gap: 0;
+    width: 32px;
     height: 32px;
-    padding: 0 2px 0 6px;
+    padding: 0;
     border-radius: ${theme.radius.chip};
     font-size: 20px;
+    transition: width 0.15s ease;
 
     > svg {
-      width: 18px;
+      width: 0;
       height: 18px;
       opacity: 0;
       transition:
+        width 0.15s ease,
         opacity 0.15s ease,
         transform 0.15s ease;
     }
-    &:hover:not(:disabled) > svg,
-    &:focus-visible > svg,
-    &[aria-expanded='true'] > svg {
-      opacity: 1;
+    &:hover:not(:disabled),
+    &:focus-visible,
+    &[aria-expanded='true'] {
+      width: 50px;
+
+      > svg {
+        width: 18px;
+        opacity: 1;
+      }
     }
   }
 `
