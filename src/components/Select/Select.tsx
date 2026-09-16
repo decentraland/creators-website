@@ -19,14 +19,14 @@ type Props<T extends string> = {
   options: SelectOption<T>[]
   onChange: (value: T) => void
   placeholder?: string
-  /** `inline` is a compact trigger for a select sitting inside another field. */
-  variant?: 'default' | 'inline'
+  /** `inline` is a compact trigger for a select sitting inside another field; `glyph` shows only the selected option's icon. */
+  variant?: 'default' | 'inline' | 'glyph'
   disabled?: boolean
   ariaLabel?: string
   testId?: string
 }
 
-const LIST_MIN_WIDTH = { default: 230, inline: 150 }
+const LIST_MIN_WIDTH = { default: 230, inline: 150, glyph: 150 }
 const VIEWPORT_MARGIN = 8
 
 /** Custom listbox select: portaled to <body> so scroll containers never clip it, keyboard navigable. */
@@ -143,13 +143,17 @@ export function Select<T extends string>({
         data-variant={variant}
         onClick={toggle}
       >
-        <S.TriggerLabel data-placeholder={selected ? undefined : true}>
-          <S.OptionLabel>
-            {selected?.icon}
-            <span>{selected ? (selected.triggerLabel ?? selected.label) : placeholder}</span>
-          </S.OptionLabel>
-          {selected?.trailing && !selected.triggerLabel && <S.Trailing>{selected.trailing}</S.Trailing>}
-        </S.TriggerLabel>
+        {variant === 'glyph' ? (
+          <S.OptionLabel title={selected?.label}>{selected?.icon}</S.OptionLabel>
+        ) : (
+          <S.TriggerLabel data-placeholder={selected ? undefined : true}>
+            <S.OptionLabel>
+              {selected?.icon}
+              <span>{selected ? (selected.triggerLabel ?? selected.label) : placeholder}</span>
+            </S.OptionLabel>
+            {selected?.trailing && !selected.triggerLabel && <S.Trailing>{selected.trailing}</S.Trailing>}
+          </S.TriggerLabel>
+        )}
         <ChevronIcon />
       </S.Trigger>
       {open &&

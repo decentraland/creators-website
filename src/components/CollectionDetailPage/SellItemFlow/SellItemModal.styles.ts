@@ -197,6 +197,11 @@ export const Box = styled.div`
     flex: none;
     font-size: 18px;
   }
+
+  /* The currency pill sits flush with the field's padding. */
+  & > [data-testid$='-currency'] {
+    margin-left: -6px;
+  }
 `
 
 // The react-datepicker field and its calendar, on the dialog's dark surface (shop restyles it the same way, in white).
@@ -257,12 +262,6 @@ export const DateField = styled(Box)`
   .react-datepicker__navigation-icon::before {
     border-color: ${theme.colors.white};
   }
-`
-
-export const Glyph = styled.span`
-  display: inline-flex;
-  flex: none;
-  font-size: 20px;
 `
 
 export const Usd = styled.span`

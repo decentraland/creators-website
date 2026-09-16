@@ -44,7 +44,8 @@ export const Trigger = styled.button`
     opacity: 0.6;
   }
 
-  &[data-variant='inline'] {
+  &[data-variant='inline'],
+  &[data-variant='glyph'] {
     width: auto;
     height: 36px;
     padding: 0 4px 0 10px;
@@ -61,6 +62,29 @@ export const Trigger = styled.button`
     > svg {
       width: 20px;
       height: 20px;
+    }
+  }
+
+  /* A glyph-only pill: the chevron keeps its room but only shows on hover, focus or while open. */
+  &[data-variant='glyph'] {
+    gap: 0;
+    height: 32px;
+    padding: 0 2px 0 6px;
+    border-radius: ${theme.radius.chip};
+    font-size: 20px;
+
+    > svg {
+      width: 18px;
+      height: 18px;
+      opacity: 0;
+      transition:
+        opacity 0.15s ease,
+        transform 0.15s ease;
+    }
+    &:hover:not(:disabled) > svg,
+    &:focus-visible > svg,
+    &[aria-expanded='true'] > svg {
+      opacity: 1;
     }
   }
 `

@@ -36,8 +36,8 @@ type Props = {
 const ONE_MANA = 10n ** 18n
 
 /**
- * Amount input with the currency picked inline (credits or MANA) and a USD equivalent: fixed for
- * credits, estimated from the marketplace's MANA/USD oracle for MANA. Rendered inside the caller's field.
+ * Amount input whose leading currency glyph is the picker (credits or MANA), with a USD equivalent:
+ * fixed for credits, estimated from the marketplace's MANA/USD oracle for MANA. Rendered inside the caller's field.
  */
 export function PriceField({ label, values, onChange, free = false, disabled = false, testId }: Props) {
   const { t } = useTranslation()
@@ -92,9 +92,15 @@ export function PriceField({ label, values, onChange, free = false, disabled = f
     <>
       <S.Label>{label}</S.Label>
       <S.Box data-disabled={free || undefined} data-invalid={error !== null || undefined}>
-        <S.Glyph aria-hidden>
-          <CurrencyAmount currency={free ? 'mana' : currency}>{null}</CurrencyAmount>
-        </S.Glyph>
+        <Select
+          value={currency}
+          options={options}
+          onChange={changeCurrency}
+          variant="glyph"
+          disabled={free || disabled}
+          ariaLabel={t('sell_item_modal.price.currency_label')}
+          testId={`${testId}-currency`}
+        />
         <input
           type="text"
           inputMode={currency === 'credits' ? 'numeric' : 'decimal'}
@@ -107,15 +113,6 @@ export function PriceField({ label, values, onChange, free = false, disabled = f
           onChange={event => changeAmount(event.target.value)}
         />
         {usd && <S.Usd data-testid={`${testId}-usd`}>{usd}</S.Usd>}
-        <Select
-          value={currency}
-          options={options}
-          onChange={changeCurrency}
-          variant="inline"
-          disabled={free || disabled}
-          ariaLabel={t('sell_item_modal.price.currency_label')}
-          testId={`${testId}-currency`}
-        />
       </S.Box>
       <S.Rate data-testid={`${testId}-rate`}>
         {currency === 'credits' || free
