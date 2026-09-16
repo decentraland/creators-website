@@ -21,6 +21,7 @@ export const Form = styled.form`
   width: 560px;
   max-width: 100%;
   min-height: 0;
+  padding: 0 2px;
 `
 
 // Everything but the footer, scrolling on short viewports so the actions stay in reach; while a submit is
@@ -148,7 +149,7 @@ export const Box = styled.div`
   align-items: center;
   gap: 8px;
   min-height: 54px;
-  padding: 0 16px;
+  padding: 0 16px 0 12px;
   border: 1.5px solid ${theme.colors.white};
   border-radius: ${theme.radius.btnSm};
   background: rgba(255, 255, 255, 0.05);
