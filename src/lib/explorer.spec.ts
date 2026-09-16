@@ -6,11 +6,13 @@ import { openExternal, openProtocolLink } from './navigation'
 vi.mock('./navigation', () => ({ openExternal: vi.fn(), openProtocolLink: vi.fn() }))
 
 describe('buildCollectionPreviewDeepLink', () => {
-  it('deep-links the desktop client to the collection self-preview at the empty parcel', () => {
+  it('deep-links the desktop client to the collection self-preview in the preview world with the backpack open', () => {
     const url = new URL(buildCollectionPreviewDeepLink('col-1'))
     expect(url.protocol).toBe('decentraland:')
     expect(url.searchParams.get('self-preview-builder-collections')).toBe('col-1')
-    expect(url.searchParams.get('position')).toBe('150,-150')
+    expect(url.searchParams.get('realm')).toBe('district.dcl.eth')
+    expect(url.searchParams.get('force-open-backpack')).toBe('true')
+    expect(url.searchParams.has('position')).toBe(false)
   })
 
   it('targets the development environment', () => {

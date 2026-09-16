@@ -2,13 +2,7 @@ import { Env } from '@dcl/ui-env'
 import { config } from '~/config'
 import { openExternal, openProtocolLink } from './navigation'
 
-// The legacy "Empty Parcel" jump-in spot: loads fast and has nothing else to render.
-export const PREVIEW_POSITION = { x: 150, y: -150 }
-
-type Position = { x: number; y: number }
-
 type LaunchOptions = {
-  position?: Position
   /** How long to wait for the tab to lose focus before assuming no desktop client is installed. */
   timeoutMs?: number
 }
@@ -21,13 +15,15 @@ function resolveDclEnv(): 'zone' | 'today' | 'org' {
 
 /**
  * `decentraland://` deep link that cold-starts the desktop explorer with an unreleased builder
- * collection injected. The client fetches it from the builder API with the logged-in wallet.
+ * collection injected. The client fetches it from the builder API with the logged-in wallet, lands
+ * in the per-environment preview world and opens the backpack right away.
  */
-export function buildCollectionPreviewDeepLink(collectionId: string, position: Position = PREVIEW_POSITION): string {
+export function buildCollectionPreviewDeepLink(collectionId: string): string {
   const params = new URLSearchParams()
   params.set('self-preview-builder-collections', collectionId)
   params.set('dclenv', resolveDclEnv())
-  params.set('position', `${position.x},${position.y}`)
+  params.set('realm', config.get('PREVIEW_WORLD'))
+  params.set('force-open-backpack', 'true')
   return `decentraland://?${params.toString()}`
 }
 
@@ -43,7 +39,7 @@ function isElectronApp(): boolean {
  */
 export function launchCollectionPreview(
   collectionId: string,
-  { position, timeoutMs = 750 }: LaunchOptions = {}
+  { timeoutMs = 750 }: LaunchOptions = {}
 ): Promise<boolean> {
   if (typeof window === 'undefined' || isElectronApp()) return Promise.resolve(false)
 
@@ -65,7 +61,7 @@ export function launchCollectionPreview(
   window.addEventListener('blur', onLoseFocus, { passive: true })
 
   try {
-    openProtocolLink(buildCollectionPreviewDeepLink(collectionId, position))
+    openProtocolLink(buildCollectionPreviewDeepLink(collectionId))
   } catch {
     cleanup()
     return Promise.resolve(false)
