@@ -68,12 +68,12 @@ describe('CollectionCard', () => {
     expect(screen.getByTestId('collection-status')).toHaveAttribute('data-status', 'draft')
   })
 
-  it('badges collections the signed-in address manages or mints for, but not its own', () => {
+  it('badges collections the signed-in address collaborates on or sends for, but not its own', () => {
     const { unmount } = renderCard({ owner: '0xother', managers: ['0xABC'] })
     expect(screen.getByTestId('collection-role')).toHaveTextContent(/collaborator/i)
     unmount()
     renderCard({ owner: '0xother', minters: ['0xabc'] })
-    expect(screen.getByTestId('collection-role')).toHaveTextContent(/minter/i)
+    expect(screen.getByTestId('collection-role')).toHaveTextContent(/sender/i)
   })
 
   it("shows no role badge on the address's own collections", () => {

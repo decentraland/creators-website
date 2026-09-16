@@ -16,7 +16,7 @@ export const Step = styled.div`
   flex-direction: column;
   padding-top: 32px;
   gap: 16px;
-  overflow: hidden;
+  overflow: auto;
 
   & [data-testid='checkbox-label'] {
     margin-top: auto;
@@ -96,9 +96,12 @@ export const Footer = styled.div`
   justify-content: space-between;
   gap: 16px;
   padding-top: 24px;
-  border-top: 0.5px solid ${theme.colors.glassHover};
+  border-top: 1px solid ${theme.colors.glassHover};
+  background: ${theme.colors.modalSurface};
+  position: sticky;
+  bottom: 0;
 
-  & > * {
+  & > button {
     min-width: 250px;
   }
 `

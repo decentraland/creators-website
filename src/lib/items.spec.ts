@@ -4,7 +4,10 @@ import {
   BODY_SHAPE_FEMALE,
   BODY_SHAPE_MALE,
   BodyShapeType,
+  canEditItemDetails,
+  canEditItemPrice,
   canManageItem,
+  isMissingSmartWearableVideo,
   isSmartWearable,
   fromRemoteItem,
   getItemBodyShapeType,
@@ -234,6 +237,15 @@ describe('isSmartWearable', () => {
   })
 })
 
+describe('isMissingSmartWearableVideo', () => {
+  it('only flags smart wearables whose video.mp4 is not in the contents yet', () => {
+    const smart = { ...remote.contents, 'male/bin/game.js': 'Qmjs' }
+    expect(isMissingSmartWearableVideo(makeItem())).toBe(false)
+    expect(isMissingSmartWearableVideo(makeItem({ contents: smart }))).toBe(true)
+    expect(isMissingSmartWearableVideo(makeItem({ contents: { ...smart, 'video.mp4': 'Qmvideo' } }))).toBe(false)
+  })
+})
+
 describe('canManageItem', () => {
   const collection = {
     id: 'c1',
@@ -260,5 +272,67 @@ describe('canManageItem', () => {
     expect(canManageItem(collection, item, '0xminter')).toBe(false)
     expect(canManageItem(collection, item, '0xother')).toBe(false)
     expect(canManageItem(collection, item, undefined)).toBe(false)
+  })
+})
+
+describe('canEditItemDetails', () => {
+  const collection = {
+    id: 'c1',
+    name: 'Hats',
+    owner: '0xOwner',
+    urn: 'urn',
+    isPublished: false,
+    isApproved: false,
+    itemCount: 1,
+    minters: ['0xMinter'],
+    managers: ['0xManager'],
+    createdAt: 1,
+    updatedAt: 1
+  }
+  const item = fromRemoteItem({ ...remote, eth_address: '0xCreator' })
+
+  it('lets whoever manages the item edit it, before and after publishing', () => {
+    expect(canEditItemDetails(collection, item, '0xcreator')).toBe(true)
+    expect(canEditItemDetails({ ...collection, isPublished: true, isApproved: true }, item, '0xmanager')).toBe(true)
+    expect(canEditItemDetails(collection, item, '0xminter')).toBe(false)
+    expect(canEditItemDetails(collection, item, undefined)).toBe(false)
+  })
+
+  it('blocks edits while the collection is under the publish lock', () => {
+    expect(canEditItemDetails({ ...collection, lock: Date.now() }, item, '0xowner')).toBe(false)
+  })
+})
+
+describe('canEditItemPrice', () => {
+  const approved = {
+    id: 'c1',
+    name: 'Hats',
+    owner: '0xOwner',
+    urn: 'urn',
+    isPublished: true,
+    isApproved: true,
+    itemCount: 1,
+    minters: ['0xMinter'],
+    managers: ['0xManager'],
+    createdAt: 1,
+    updatedAt: 1
+  }
+  const item = fromRemoteItem({ ...remote, total_supply: 10 })
+  const order = { itemId: '3', tradeId: 'trade-1', currency: 'credits' as const, credits: 5 }
+
+  it('lets only the owner re-price an off-chain order', () => {
+    expect(canEditItemPrice(approved, item, order, '0xowner')).toBe(true)
+    expect(canEditItemPrice(approved, item, order, '0xmanager')).toBe(false)
+    expect(canEditItemPrice(approved, item, order, '0xminter')).toBe(false)
+    expect(canEditItemPrice(approved, item, order, '0xother')).toBe(false)
+    expect(canEditItemPrice(approved, item, order, undefined)).toBe(false)
+  })
+
+  it('refuses legacy store prices, unlisted items, sold-out items and unapproved collections', () => {
+    expect(canEditItemPrice(approved, item, { itemId: '3', currency: 'mana', manaWei: 1n }, '0xowner')).toBe(false)
+    expect(canEditItemPrice(approved, item, null, '0xowner')).toBe(false)
+    expect(canEditItemPrice(approved, item, undefined, '0xowner')).toBe(false)
+    expect(canEditItemPrice(approved, { ...item, totalSupply: 100 }, order, '0xowner')).toBe(false)
+    expect(canEditItemPrice({ ...approved, isApproved: false }, item, order, '0xowner')).toBe(false)
   })
 })

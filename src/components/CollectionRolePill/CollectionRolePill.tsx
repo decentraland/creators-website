@@ -8,7 +8,7 @@ type Props = {
   className?: string
 }
 
-/** "Collaborator" / "Minter" badge for collections the address can access without owning; nothing for owners. */
+/** "Collaborator" / "Sender" badge for collections the address can access without owning; nothing for owners. */
 export function CollectionRolePill({ collection, address, className }: Props) {
   const { t } = useTranslation()
   const role = getCollectionRole(collection, address)

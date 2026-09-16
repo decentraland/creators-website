@@ -14,10 +14,17 @@ type Props = {
   friends: Friend[] | undefined
   isLoadingFriends: boolean
   disabled?: boolean
+  placeholder?: string
+  /** Rejects an address already used, with this copy under the field. */
+  duplicateError?: (address: string) => string | null
+  /** Accessible name of the chip's ✕; "Clear beneficiary" unless the chip stands for something else. */
+  clearLabel?: string
+  /** `compact`: the chosen address as a dark pill with a shortened address (address lists), not a form field. */
+  variant?: 'field' | 'compact'
   testId?: string
 }
 
-const shorten = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`
+export const shorten = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`
 
 /**
  * Pick a payout address: a friend from the list, or any wallet address pasted in. A valid address is
@@ -29,6 +36,10 @@ export function BeneficiaryInput({
   friends,
   isLoadingFriends,
   disabled,
+  placeholder,
+  duplicateError,
+  clearLabel,
+  variant = 'field',
   testId = 'beneficiary'
 }: Props) {
   const { t } = useTranslation()
@@ -50,9 +61,13 @@ export function BeneficiaryInput({
   }, [friends, query])
 
   const trimmed = query.trim()
+  const duplicate = isValidAddress(trimmed) ? duplicateError?.(trimmed.toLowerCase()) : null
   const invalid = touched && trimmed !== '' && !isValidAddress(trimmed)
+  // Without friends to pick from the field is a plain address input.
+  const withFriends = isLoadingFriends || (friends?.length ?? 0) > 0
 
   function commit(address: string) {
+    if (duplicateError?.(address.toLowerCase())) return
     onChange(address.toLowerCase())
     setQuery('')
     setOpen(false)
@@ -90,16 +105,18 @@ export function BeneficiaryInput({
   }
 
   if (value) {
-    const name = selectedFriend?.name ?? profile.data?.name ?? shorten(value)
+    const known = selectedFriend?.name ?? profile.data?.name
     const avatar = selectedFriend?.avatarUrl ?? profile.data?.avatar?.snapshots?.face256
+    const compact = variant === 'compact'
     return (
-      <S.Box data-testid={`${testId}-selected`} data-disabled={disabled || undefined}>
+      <S.Box data-testid={`${testId}-selected`} data-variant={variant} data-disabled={disabled || undefined}>
         {avatar ? <S.Avatar src={avatar} alt="" /> : <S.AvatarFallback aria-hidden />}
-        <S.ChipName data-testid={`${testId}-name`}>{name}</S.ChipName>
-        <S.ChipAddress title={value}>({value})</S.ChipAddress>
+        <S.ChipName data-testid={`${testId}-name`}>{known ?? shorten(value)}</S.ChipName>
+        {/* Without a name the compact pill would repeat the shortened address, so it shows it once. */}
+        {(known || !compact) && <S.ChipAddress title={value}>({compact ? shorten(value) : value})</S.ChipAddress>}
         <S.ChipClear
           type="button"
-          aria-label={t('sell_item_modal.beneficiary.clear')}
+          aria-label={clearLabel ?? t('sell_item_modal.beneficiary.clear')}
           disabled={disabled}
           data-testid={`${testId}-clear`}
           onClick={() => onChange('')}
@@ -112,42 +129,43 @@ export function BeneficiaryInput({
 
   return (
     <S.Combo>
-      <S.Box data-invalid={invalid || undefined} data-disabled={disabled || undefined}>
+      <S.Box data-invalid={invalid || !!duplicate || undefined} data-disabled={disabled || undefined}>
         <input
           type="text"
-          role="combobox"
-          aria-expanded={open}
-          aria-controls={listId}
-          aria-autocomplete="list"
+          role={withFriends ? 'combobox' : undefined}
+          aria-expanded={withFriends ? open : undefined}
+          aria-controls={withFriends ? listId : undefined}
+          aria-autocomplete={withFriends ? 'list' : undefined}
           autoComplete="off"
           spellCheck={false}
-          placeholder={t('sell_item_modal.beneficiary.placeholder')}
+          placeholder={placeholder ?? t('sell_item_modal.beneficiary.placeholder')}
           value={query}
           disabled={disabled}
           data-testid={`${testId}-input`}
           onChange={event => handleInput(event.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={() => setOpen(true)}
           onBlur={() => {
             setOpen(false)
             setTouched(true)
           }}
         />
-        <S.ComboToggle
-          type="button"
-          aria-label={t('sell_item_modal.beneficiary.open')}
-          aria-expanded={open}
-          aria-controls={listId}
-          disabled={disabled}
-          data-open={open || undefined}
-          data-testid={`${testId}-toggle`}
-          // Keep the input's focus so the blur doesn't close the list we're opening.
-          onMouseDown={event => event.preventDefault()}
-          onClick={() => setOpen(current => !current)}
-        >
-          <ChevronIcon />
-        </S.ComboToggle>
-        {open && (
+        {withFriends && (
+          <S.ComboToggle
+            type="button"
+            aria-label={t('sell_item_modal.beneficiary.open')}
+            aria-expanded={open}
+            aria-controls={listId}
+            disabled={disabled}
+            data-open={open || undefined}
+            data-testid={`${testId}-toggle`}
+            // Keep the input's focus so the blur doesn't close the list we're opening.
+            onMouseDown={event => event.preventDefault()}
+            onClick={() => setOpen(current => !current)}
+          >
+            <ChevronIcon />
+          </S.ComboToggle>
+        )}
+        {withFriends && open && (
           <S.Options role="listbox" id={listId} data-testid={`${testId}-options`}>
             {isLoadingFriends ? (
               <S.OptionNote>
@@ -180,6 +198,7 @@ export function BeneficiaryInput({
         )}
       </S.Box>
       {invalid && <S.ErrorText data-testid={`${testId}-error`}>{t('sell_item_modal.beneficiary.invalid')}</S.ErrorText>}
+      {duplicate && <S.ErrorText data-testid={`${testId}-error`}>{duplicate}</S.ErrorText>}
     </S.Combo>
   )
 }

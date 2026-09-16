@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Close as CloseIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
@@ -11,6 +11,23 @@ import * as S from './Modal.styles'
 // overflow while a modal is up, so a value set mid-stack would be clobbered on release.
 let scrollLocks = 0
 let savedOverflow = ''
+
+// Every modal listens on the document, so without a notion of "topmost" a parent would treat focus
+// inside a stacked child as "outside" and drag it back on every Tab. Topmost is the deepest dialog
+// in the React tree (nesting depth via context) and, among equals, the latest mounted; neither
+// depends on effect order, which runs children before parents.
+type OpenDialog = { element: HTMLElement; depth: number; order: number }
+const openDialogs: OpenDialog[] = []
+let mountCounter = 0
+const ModalDepthContext = createContext(0)
+
+function topmostDialog(): HTMLElement | undefined {
+  return openDialogs.reduce<OpenDialog | undefined>(
+    (top, entry) =>
+      !top || entry.depth > top.depth || (entry.depth === top.depth && entry.order > top.order) ? entry : top,
+    undefined
+  )?.element
+}
 
 function acquireScrollLock() {
   if (scrollLocks === 0) {
@@ -39,6 +56,8 @@ type Props = {
   hideTitle?: boolean
   /** With `hideTitle`, still shows a floating ✕ in the dialog corner. */
   showClose?: boolean
+  /** Tighter dialog padding for small form dialogs (sell, send, update price). */
+  compact?: boolean
   /** Removes the dialog padding so children can draw edge-to-edge panes; the title bar keeps its own. */
   flush?: boolean
   testId?: string
@@ -52,10 +71,12 @@ export function Modal({
   size = 'default',
   hideTitle = false,
   showClose = false,
+  compact = false,
   flush = false,
   testId = 'modal'
 }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null)
+  const depth = useContext(ModalDepthContext)
 
   // Latest-value refs so the document-level listeners never rebind mid-interaction.
   const closeRef = useRef(onClose)
@@ -64,9 +85,13 @@ export function Modal({
   closeDisabledRef.current = closeDisabled
 
   useEffect(() => {
-    dialogRef.current?.focus()
+    const dialog = dialogRef.current
+    const entry: OpenDialog | null = dialog ? { element: dialog, depth, order: ++mountCounter } : null
+    if (entry) openDialogs.push(entry)
+    dialog?.focus()
 
     function onKeyDown(event: KeyboardEvent) {
+      if (topmostDialog() !== dialog) return
       if (event.key === 'Escape' && !closeDisabledRef.current) closeRef.current()
 
       // aria-modal alone doesn't stop Tab from reaching the page behind the scrim.
@@ -97,8 +122,12 @@ export function Modal({
 
     return () => {
       document.removeEventListener('keydown', onKeyDown)
+      if (entry) openDialogs.splice(openDialogs.indexOf(entry), 1)
       releaseScrollLock()
+      // Hand focus back to the dialog underneath, if any.
+      topmostDialog()?.focus()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const { t } = useTranslation()
@@ -125,6 +154,7 @@ export function Modal({
         tabIndex={-1}
         data-testid={testId}
         data-size={size}
+        data-compact={compact || undefined}
         data-flush={flush || undefined}
         onClick={event => event.stopPropagation()}
       >
@@ -135,7 +165,9 @@ export function Modal({
           </S.TitleBar>
         )}
         {hideTitle && showClose && <S.FloatingClose>{closeButton}</S.FloatingClose>}
-        <S.Body data-titleless={hideTitle || undefined}>{children}</S.Body>
+        <S.Body data-titleless={hideTitle || undefined}>
+          <ModalDepthContext.Provider value={depth + 1}>{children}</ModalDepthContext.Provider>
+        </S.Body>
       </S.Dialog>
     </S.Scrim>,
     document.body

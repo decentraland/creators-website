@@ -32,7 +32,7 @@ export function UpdatePriceModal({ item, currentCredits, initialCredits = '', on
   }
 
   return (
-    <Modal title={t('sell_item_modal.update_price.title')} onClose={onClose} testId="update-price-modal">
+    <Modal title={t('sell_item_modal.update_price.title')} compact onClose={onClose} testId="update-price-modal">
       <S.Divider />
       <S.Form onSubmit={handleSubmit} data-testid="update-price-form">
         <S.Fields>

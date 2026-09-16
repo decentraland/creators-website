@@ -164,6 +164,13 @@ export const Box = styled.div`
   &[data-disabled] {
     opacity: 0.5;
   }
+  &[data-variant='compact'] {
+    gap: 4px;
+    min-height: 0;
+    padding: 8px;
+    border: 0;
+    background: ${theme.colors.overlay};
+  }
 
   & input {
     flex: 1;
@@ -433,6 +440,12 @@ export const Avatar = styled.img`
   border-radius: 50%;
   object-fit: cover;
   background: ${theme.colors.glassHover};
+
+  [data-variant='compact'] > & {
+    width: 26px;
+    height: 26px;
+    border: 2px solid ${theme.colors.glassLine};
+  }
 `
 
 export const AvatarFallback = styled.span`
@@ -441,6 +454,12 @@ export const AvatarFallback = styled.span`
   height: 24px;
   border-radius: 50%;
   background: ${theme.gradients.amethyst};
+
+  [data-variant='compact'] > & {
+    width: 26px;
+    height: 26px;
+    border: 2px solid ${theme.colors.glassLine};
+  }
 `
 
 export const ChipName = styled.span`
@@ -448,6 +467,14 @@ export const ChipName = styled.span`
   font-size: 14px;
   font-weight: 600;
   color: ${theme.colors.white};
+
+  [data-variant='compact'] > & {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 `
 
 export const ChipAddress = styled.span`
@@ -457,6 +484,11 @@ export const ChipAddress = styled.span`
   white-space: nowrap;
   font-size: 14px;
   color: ${theme.colors.white};
+
+  [data-variant='compact'] > & {
+    flex: none;
+    overflow: visible;
+  }
 `
 
 export const ChipClear = styled.button`
@@ -480,5 +512,15 @@ export const ChipClear = styled.button`
   &:disabled {
     opacity: 0.5;
     cursor: default;
+  }
+
+  [data-variant='compact'] > & {
+    width: 32px;
+    height: 32px;
+    margin: -7px -6px -7px auto;
+
+    & > svg {
+      font-size: 14px;
+    }
   }
 `

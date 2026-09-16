@@ -190,6 +190,55 @@ describe('saveItem', () => {
     expect(formKeys).toEqual(['QmModel', 'QmThumb'])
   })
 
+  it('POSTs a smart wearable video to the videos endpoint keyed by path', async () => {
+    signedFetchMock
+      .mockResolvedValueOnce(okResponse(remoteItem))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+
+    const smartItem = { ...item, contents: { ...item.contents, 'video.mp4': 'QmVideo' } }
+    await saveItem(ADDRESS, smartItem, { 'male/model.glb': new Blob(['model']), 'video.mp4': new Blob(['video']) })
+
+    const [, , filesPath, filesInit] = signedFetchMock.mock.calls[1] as [string, string, string, RequestInit]
+    expect(filesPath).toBe('/items/item-1/files')
+    expect(Array.from((filesInit.body as FormData).keys())).toEqual(['QmModel'])
+    const [, , videosPath, videosInit] = signedFetchMock.mock.calls[2] as [string, string, string, RequestInit]
+    expect(videosPath).toBe('/items/item-1/videos')
+    expect(Array.from((videosInit.body as FormData).keys())).toEqual(['video.mp4'])
+  })
+
+  it('drops the video reference again when the video upload fails', async () => {
+    signedFetchMock
+      .mockResolvedValueOnce(okResponse(remoteItem))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+      .mockResolvedValueOnce(jsonResponse({ ok: false, error: 'too large' }, false, 413))
+      .mockResolvedValueOnce(okResponse(remoteItem))
+
+    const smartItem = { ...item, video: 'QmVideo', contents: { ...item.contents, 'video.mp4': 'QmVideo' } }
+    await expect(
+      saveItem(ADDRESS, smartItem, { 'male/model.glb': new Blob(['model']), 'video.mp4': new Blob(['video']) })
+    ).rejects.toMatchObject({ status: 413 })
+
+    const [, , path, init] = signedFetchMock.mock.calls[3] as [string, string, string, RequestInit]
+    expect(path).toBe('/items/item-1')
+    const body = JSON.parse(init.body as string) as { item: { video?: string; contents: Record<string, string> } }
+    expect(body.item.video).toBeFalsy()
+    expect(body.item.contents['video.mp4']).toBeUndefined()
+  })
+
+  it('still reports the video upload error when the rollback PUT fails too', async () => {
+    signedFetchMock
+      .mockResolvedValueOnce(okResponse(remoteItem))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+      .mockResolvedValueOnce(jsonResponse({ ok: false, error: 'too large' }, false, 413))
+      .mockResolvedValueOnce(jsonResponse({ ok: false, error: 'down' }, false, 500))
+
+    const smartItem = { ...item, video: 'QmVideo', contents: { ...item.contents, 'video.mp4': 'QmVideo' } }
+    await expect(
+      saveItem(ADDRESS, smartItem, { 'male/model.glb': new Blob(['model']), 'video.mp4': new Blob(['video']) })
+    ).rejects.toMatchObject({ status: 413 })
+  })
+
   it('skips the files request when there is nothing to upload', async () => {
     signedFetchMock.mockResolvedValueOnce(okResponse(remoteItem))
     await saveItem(ADDRESS, item, {})

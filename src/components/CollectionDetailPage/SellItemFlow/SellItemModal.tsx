@@ -132,6 +132,7 @@ export function SellItemModal({
     <Modal
       title={t('sell_item_modal.title')}
       size="wide"
+      compact
       onClose={onClose}
       closeDisabled={busy}
       testId="sell-item-modal"

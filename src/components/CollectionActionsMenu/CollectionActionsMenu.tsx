@@ -5,6 +5,7 @@ import { useDeleteCollection } from '~/hooks/useCollection'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { copyToClipboard } from '~/lib/clipboard'
 import { hasBeenApproved, isCollectionLocked, type Collection } from '~/lib/collections'
+import { isCollectionOwner, type RoleKind } from '~/lib/collectionRoles'
 import { openExternal } from '~/lib/navigation'
 import { shopCollectionUrl } from '~/lib/shop'
 import { useNotifications } from '~/lib/notifications'
@@ -17,9 +18,13 @@ type Props = {
   address: string
   /** Compact 32px trigger for table rows; the default is the page-header icon button. */
   variant?: 'header' | 'row'
-  /** The owner-only role placeholders (collaborators / minters); off in list rows. */
+  /** The owner-only role entries (collaborators / senders); off in list rows. */
   showRoles?: boolean
   label?: string
+  /** Opens the Send Items flow; the header button covers this on desktop, so the item shows only when compact. */
+  onSendItems?: () => void
+  /** Opens the collaborators / senders list; without it the owner-only entries are not rendered. */
+  onManageRoles?: (kind: RoleKind) => void
   onDeleted?: () => void
 }
 
@@ -29,6 +34,8 @@ export function CollectionActionsMenu({
   variant = 'header',
   showRoles = true,
   label,
+  onSendItems,
+  onManageRoles,
   onDeleted
 }: Props) {
   const { t } = useTranslation()
@@ -36,17 +43,19 @@ export function CollectionActionsMenu({
   const deleteCollection = useDeleteCollection(address)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
 
-  // Small screens are mostly a viewer: copying and the role placeholders stay, deleting is desktop-only.
+  // Small screens are mostly a viewer: copying and the role lists stay, deleting is desktop-only.
   const compact = useMediaQuery(theme.media.noActions)
 
   const isOnChain = collection.isPublished
-  const isOwner = collection.owner.toLowerCase() === address.toLowerCase()
+  const isOwner = isCollectionOwner(collection, address)
   const shopUrl =
     hasBeenApproved(collection) && collection.contractAddress ? shopCollectionUrl(collection.contractAddress) : null
   // A locked draft has a publish transaction in flight: nothing can be done to it yet.
   const canDelete = !compact && !isOnChain && !isCollectionLocked(collection)
+  // The header's Send Items button is desktop-only, so the menu carries the action on small screens.
+  const showSend = compact && !!onSendItems
 
-  if (!isOnChain && !canDelete) return null
+  if (!isOnChain && !canDelete && !showSend) return null
 
   async function copy(text: string | undefined, successKey: string) {
     const copied = !!text && (await copyToClipboard(text))
@@ -72,8 +81,14 @@ export function CollectionActionsMenu({
         variant={variant}
         testId="collection-actions"
       >
+        {showSend && (
+          <ActionsMenuItem testId="send-items-action" onClick={onSendItems}>
+            {t('collection_detail_page.send_items')}
+          </ActionsMenuItem>
+        )}
         {isOnChain && (
           <>
+            {showSend && <ActionsMenuDivider />}
             <ActionsMenuItem
               testId="copy-urn"
               onClick={() => void copy(collection.urn, 'collection_detail_page.actions.copied_urn')}
@@ -94,15 +109,14 @@ export function CollectionActionsMenu({
             )}
           </>
         )}
-        {isOnChain && isOwner && showRoles && (
+        {isOnChain && isOwner && showRoles && onManageRoles && (
           <>
             <ActionsMenuDivider />
-            {/* TODO: wire the on-chain setManagers / setMinters flows (legacy ManageCollectionRoleModal). */}
-            <ActionsMenuItem disabled title={t('collection_detail_page.coming_soon')} testId="manage-collaborators">
+            <ActionsMenuItem testId="manage-collaborators" onClick={() => onManageRoles('collaborators')}>
               {t('collection_detail_page.actions.collaborators')}
             </ActionsMenuItem>
-            <ActionsMenuItem disabled title={t('collection_detail_page.coming_soon')} testId="manage-minters">
-              {t('collection_detail_page.actions.minters')}
+            <ActionsMenuItem testId="manage-senders" onClick={() => onManageRoles('senders')}>
+              {t('collection_detail_page.actions.senders')}
             </ActionsMenuItem>
           </>
         )}

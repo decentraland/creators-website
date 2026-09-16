@@ -30,9 +30,11 @@ function renderInput(props: Props = {}) {
 }
 
 describe('BeneficiaryInput', () => {
-  it('lists friends on focus, narrows them while typing, and picks one on click', async () => {
+  it('lists friends from the chevron, not on focus, narrows them while typing, and picks one on click', async () => {
     const { onChange } = renderInput()
     await userEvent.click(screen.getByTestId('beneficiary-input'))
+    expect(screen.queryByTestId('beneficiary-options')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('beneficiary-toggle'))
     expect(screen.getAllByTestId('beneficiary-option')).toHaveLength(2)
 
     await userEvent.type(screen.getByTestId('beneficiary-input'), 'black')
@@ -61,7 +63,7 @@ describe('BeneficiaryInput', () => {
 
   it('says when nothing matches and while friends load', async () => {
     renderInput({ friends: undefined, isLoadingFriends: true })
-    await userEvent.click(screen.getByTestId('beneficiary-input'))
+    await userEvent.click(screen.getByTestId('beneficiary-toggle'))
     expect(screen.getByTestId('beneficiary-options')).toHaveTextContent(/loading/i)
   })
 

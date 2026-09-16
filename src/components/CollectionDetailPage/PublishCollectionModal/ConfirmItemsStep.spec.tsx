@@ -189,7 +189,9 @@ describe('ConfirmItemsStep thumbnail editing', () => {
     const [, saved, blobs] = vi.mocked(saveItem).mock.calls[0]
     expect(saved.thumbnail).toBe('thumbnail.png')
     expect(saved.contents['thumbnail.png']).toMatch(/^baf/)
-    expect(blobs).toEqual({ 'thumbnail.png': NEW_THUMBNAIL })
+    // The catalyst image is regenerated alongside a new thumbnail.
+    expect(Object.keys(blobs).sort()).toEqual(['image.png', 'thumbnail.png'])
+    expect(blobs['thumbnail.png']).toBe(NEW_THUMBNAIL)
   })
 
   it('drops a picked thumbnail when the row edit is cancelled', async () => {
