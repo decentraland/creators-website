@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
+import { type Session } from '~/lib/auth'
+import { useTrackedTransactionCalls } from '~/hooks/useActivity'
 import { type Collection } from '~/lib/collections'
 import { buildSetRolesCall, diffRoles, getRoleAddresses, withRoles, type RoleKind } from '~/lib/collectionRoles'
 import { getMaticChainId } from '~/lib/publishCollection'
@@ -33,13 +34,15 @@ export type SetRolesVariables = {
 export function useSetCollectionRoles(session: Session | null) {
   const queryClient = useQueryClient()
   const chainId = getMaticChainId()
+  const tracked = useTrackedTransactionCalls(session)
   return useMutation({
     mutationFn: async ({ collection, kind, current, next, onSigned }: SetRolesVariables): Promise<Collection> => {
       if (!session) throw new Error('Wallet disconnected')
       const call = buildSetRolesCall(collection, kind, diffRoles(current, next), chainId)
-      const txHash = await sendContractTransaction(session, call)
+      const calls = tracked({ type: 'set_roles', kind, collectionId: collection.id, collectionName: collection.name })
+      const txHash = await calls.sendTransaction(call)
       onSigned?.()
-      const mined = await waitForTransaction(chainId, txHash)
+      const mined = await calls.waitForTransaction(txHash)
       if (!mined) throw new SellItemError('generic', `The ${call.method} transaction reverted`)
       return withRoles(collection, kind, next, chainId)
     },

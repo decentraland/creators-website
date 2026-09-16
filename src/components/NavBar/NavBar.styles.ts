@@ -1,4 +1,5 @@
 import styled from '@emotion/styled'
+import { NavLink } from 'react-router-dom'
 import { theme } from '~/styles/theme'
 
 const { colors, media } = theme
@@ -76,6 +77,57 @@ export const Tabs = styled.nav`
     & a {
       font-size: 12px;
       letter-spacing: 0.038em;
+    }
+  }
+`
+
+export const ActivityLink = styled(NavLink)`
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  height: 100%;
+  margin-left: auto;
+  padding-left: 24px;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 15px;
+  font-weight: 600;
+  color: ${colors.muted2};
+  border-bottom: 4px solid transparent;
+
+  &:hover {
+    color: ${colors.white};
+  }
+  &.active {
+    color: ${colors.white};
+    border-bottom-color: ${colors.orange};
+  }
+
+  &[data-pending]::after {
+    content: '';
+    position: absolute;
+    top: 18px;
+    left: 38px;
+    width: 8px;
+    height: 8px;
+    border-radius: ${theme.radius.pill};
+    background: ${colors.orange};
+  }
+
+  ${mobile} {
+    gap: 4px;
+    padding-left: 12px;
+    font-size: 12px;
+    letter-spacing: 0.038em;
+
+    &[data-pending]::after {
+      top: 20px;
+      left: 24px;
+      width: 6px;
+      height: 6px;
     }
   }
 `

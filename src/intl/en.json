@@ -617,7 +617,8 @@
     "overview": "Overview",
     "collections": "Collections",
     "scenes": "Scenes",
-    "land": "Land/World"
+    "land": "Land/World",
+    "activity": "Activity"
   },
   "footer": {
     "newsletterTitle": "Get the weekly highlights in your inbox",
@@ -712,6 +713,42 @@
       "USE_FETCH": "Use fetch",
       "USE_WEBSOCKET": "Use websockets",
       "OPEN_EXTERNAL_LINK": "Open external links"
+    }
+  },
+  "activity_page": {
+    "title": "Activity",
+    "subtitle": "Every transaction you send from here, on any device.",
+    "sign_in": {
+      "title": "Sign in to view your activity",
+      "action": "Sign in"
+    },
+    "empty": {
+      "title": "No activity yet",
+      "description": "Publishing a collection, sending items and other on-chain actions will show up here."
+    },
+    "error": {
+      "title": "Something went wrong",
+      "description": "We couldn't load your activity. Please try again.",
+      "retry": "Try again"
+    },
+    "status": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "reverted": "Failed",
+      "dropped": "Dropped"
+    },
+    "view_transaction": "View transaction",
+    "showing": "Showing {range} of {total} {total, plural, one {transaction} other {transactions}}",
+    "event": {
+      "approve_mana": "Approved MANA for publishing",
+      "publish_collection": "Published <link>{collection}</link>",
+      "enable_sales": "Enabled sales on <link>{collection}</link>",
+      "set_roles_senders": "Updated the senders of <link>{collection}</link>",
+      "set_roles_collaborators": "Updated the collaborators of <link>{collection}</link>",
+      "send_item": "Sent {item} from <link>{collection}</link>",
+      "send_items": "Sent {count, plural, one {# item} other {# items}} from <link>{collection}</link>",
+      "remove_listing": "Removed {item} from sale in <link>{collection}</link>",
+      "update_price": "Changed the price of {item} in <link>{collection}</link>"
     }
   }
 }
