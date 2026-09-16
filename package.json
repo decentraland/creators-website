@@ -30,7 +30,7 @@
   "dependencies": {
     "@dcl/crypto": "^3.7.0",
     "@dcl/hashing": "^1.2.0",
-    "@dcl/hooks": "^1.5.0",
+    "@dcl/hooks": "^2.0.0",
     "@dcl/schemas": "^26.5.0",
     "@dcl/single-sign-on-client": "^3.0.1",
     "@dcl/social-rpc-client": "^2.0.1",
