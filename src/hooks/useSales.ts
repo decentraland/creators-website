@@ -12,6 +12,7 @@ import { type Collection } from '~/lib/collections'
 import { fetchFriends } from '~/lib/friends'
 import { type Item } from '~/lib/items'
 import { fetchItemTradeId, type ItemListing } from '~/lib/listings'
+import { fetchManaUsdRate } from '~/lib/manaRate'
 import { buildIssueTokensCall, copiesPerItem, flattenTransfers, type Transfer } from '~/lib/mint'
 import { getMaticChainId } from '~/lib/publishCollection'
 import {
@@ -24,6 +25,7 @@ import {
   updatePrice,
   withSalesEnabled,
   type ListingTerms,
+  type PricedSale,
   type SalePrice
 } from '~/lib/sales'
 import {
@@ -160,7 +162,7 @@ export type UpdatePriceVariables = {
   collection: Collection
   item: Item
   tradeId: string
-  credits: number
+  price: PricedSale
   onSigned?: (step: 'cancel' | 'sign') => void
   onCancelled?: (terms: ListingTerms) => void
 }
@@ -225,6 +227,18 @@ export function useSendItems(session: Session | null) {
         )
       )
     }
+  })
+}
+
+/** The MANA/USD rate behind the estimate next to a MANA price; `undefined` while loading or when the oracle can't be read. */
+export function useManaUsdRate(enabled: boolean) {
+  const chainId = getMaticChainId()
+  return useQuery({
+    queryKey: ['mana-usd-rate', chainId],
+    queryFn: () => fetchManaUsdRate(chainId),
+    enabled,
+    staleTime: 5 * 60_000,
+    retry: false
   })
 }
 

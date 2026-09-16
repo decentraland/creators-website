@@ -39,6 +39,30 @@ export const Trigger = styled.button`
   &[aria-expanded='true'] svg {
     transform: rotate(180deg);
   }
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  &[data-variant='inline'] {
+    width: auto;
+    height: 36px;
+    padding: 0 4px 0 10px;
+    border: 0;
+    border-radius: ${theme.radius.btnSm};
+    background: ${theme.colors.glass};
+    font-size: 13px;
+    line-height: 1;
+
+    &:hover:not(:disabled),
+    &[aria-expanded='true'] {
+      background: ${theme.colors.glassHover};
+    }
+    > svg {
+      width: 20px;
+      height: 20px;
+    }
+  }
 `
 
 export const TriggerLabel = styled.span`

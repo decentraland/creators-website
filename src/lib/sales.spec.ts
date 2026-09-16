@@ -19,8 +19,17 @@ import {
   withConflictRetry,
   creditsToUsdWei,
   MAX_SALE_CREDITS,
+  MAX_SALE_MANA_WEI,
+  MIN_SALE_MANA_WEI,
   formatCreditsAsUsd,
+  formatManaAsUsd,
+  isSamePrice,
   isValidCredits,
+  isValidManaWei,
+  listingToSalePrice,
+  parseManaAmount,
+  sanitizeManaInput,
+  toPricedSale,
   formatDateValue,
   isSalesEnabled,
   isValidAddress,
@@ -105,6 +114,40 @@ describe('price and date helpers', () => {
     expect(isValidCredits(1.5)).toBe(false)
   })
 
+  it('takes MANA amounts with up to two decimals, from 1 MANA up to the catalog ceiling', () => {
+    expect(sanitizeManaInput('1a.2.345')).toBe('1.23')
+    expect(sanitizeManaInput('.5')).toBe('.5')
+    expect(parseManaAmount('1.5')).toBe(1_500_000_000_000_000_000n)
+    expect(parseManaAmount('.5')).toBe(500_000_000_000_000_000n)
+    expect(parseManaAmount('')).toBeNull()
+    expect(parseManaAmount('1.')).toBe(1_000_000_000_000_000_000n)
+    expect(isValidManaWei(MIN_SALE_MANA_WEI)).toBe(true)
+    expect(isValidManaWei(MIN_SALE_MANA_WEI - 1n)).toBe(false)
+    expect(isValidManaWei(MAX_SALE_MANA_WEI)).toBe(true)
+    expect(isValidManaWei(MAX_SALE_MANA_WEI + 1n)).toBe(false)
+    expect(toPricedSale('mana', '2.5')).toEqual({ kind: 'mana', manaWei: 2_500_000_000_000_000_000n })
+    expect(toPricedSale('mana', '0.99')).toBeNull()
+    expect(toPricedSale('credits', '50')).toEqual({ kind: 'credits', credits: 50 })
+    expect(toPricedSale('credits', '')).toBeNull()
+    expect(toPricedSale('credits', '1.5')).toBeNull()
+  })
+
+  it('estimates the USD value of a MANA amount at a USD-wei-per-MANA rate', () => {
+    expect(formatManaAsUsd(10n ** 18n, 300_000_000_000_000_000n)).toBe('$0.30')
+    expect(formatManaAsUsd(2_500_000_000_000_000_000n, 300_000_000_000_000_000n)).toBe('$0.75')
+  })
+
+  it('compares a new price against the listing it replaces', () => {
+    expect(listingToSalePrice({ itemId: '3', currency: 'credits', credits: 50 })).toEqual({
+      kind: 'credits',
+      credits: 50
+    })
+    expect(listingToSalePrice({ itemId: '3', currency: 'mana', manaWei: 0n })).toEqual({ kind: 'free' })
+    expect(isSamePrice({ kind: 'credits', credits: 50 }, { kind: 'credits', credits: 50 })).toBe(true)
+    expect(isSamePrice({ kind: 'credits', credits: 50 }, { kind: 'mana', manaWei: 50n * 10n ** 18n })).toBe(false)
+    expect(isSamePrice({ kind: 'mana', manaWei: 5n }, { kind: 'mana', manaWei: 6n })).toBe(false)
+  })
+
   it('validates wallet addresses', () => {
     expect(isValidAddress(BENEFICIARY)).toBe(true)
     expect(isValidAddress('0x123')).toBe(false)
@@ -184,6 +227,23 @@ describe('buildItemOrder', () => {
     })
   })
 
+  it('sells for plain MANA as an ERC20 order, like the legacy builder', () => {
+    const order = buildItemOrder(
+      { ...params, price: { kind: 'mana', manaWei: 2_500_000_000_000_000_000n } },
+      indexes,
+      SALT
+    )
+    expect(order.received).toEqual([
+      {
+        assetType: TradeAssetType.ERC20,
+        contractAddress: MANA,
+        amount: '2500000000000000000',
+        extra: '',
+        beneficiary: BENEFICIARY
+      }
+    ])
+  })
+
   it('encodes a giveaway as zero MANA to nobody, the way the legacy builder does', () => {
     const order = buildItemOrder({ ...params, price: { kind: 'free' } }, indexes, SALT)
     expect(order.received).toEqual([
@@ -231,9 +291,11 @@ describe('sellItem', () => {
     expect(result).toEqual({ itemId: '3', tradeId: 'trade-1', currency: 'credits', credits: 50 })
   })
 
-  it('answers a free listing for a giveaway', async () => {
-    const result = await sellItem({ ...params, price: { kind: 'free' } }, makeDeps())
-    expect(result).toEqual({ itemId: '3', tradeId: 'trade-1', currency: 'mana', manaWei: 0n })
+  it('answers a free listing for a giveaway and a MANA listing for a MANA price', async () => {
+    const free = await sellItem({ ...params, price: { kind: 'free' } }, makeDeps())
+    expect(free).toEqual({ itemId: '3', tradeId: 'trade-1', currency: 'mana', manaWei: 0n })
+    const mana = await sellItem({ ...params, price: { kind: 'mana', manaWei: 10n ** 18n } }, makeDeps())
+    expect(mana).toEqual({ itemId: '3', tradeId: 'trade-1', currency: 'mana', manaWei: 10n ** 18n })
   })
 
   it('maps a dismissed wallet prompt to a rejection without storing anything', async () => {
@@ -341,7 +403,14 @@ describe('updating the price', () => {
       onCancelled: vi.fn()
     }
     const listing = await updatePrice(
-      { address: ADDRESS, chainId: CHAIN_ID, collection, item, tradeId: 'trade-1', credits: 80 },
+      {
+        address: ADDRESS,
+        chainId: CHAIN_ID,
+        collection,
+        item,
+        tradeId: 'trade-1',
+        price: { kind: 'credits', credits: 80 }
+      },
       deps
     )
 
@@ -351,6 +420,35 @@ describe('updating the price', () => {
     expect(signed.received[0]).toMatchObject({ amount: creditsToUsdWei(80), beneficiary: BENEFICIARY })
     expect(signed.checks.expiration).toBe(NO_EXPIRATION)
     expect(listing).toEqual({ itemId: '3', tradeId: 'trade-2', currency: 'credits', credits: 80 })
+  })
+
+  it('can switch the listing to MANA, keeping the same terms', async () => {
+    const deps = {
+      fetchTrade: vi.fn().mockResolvedValue(storedTrade),
+      fetchItemTradeId: vi.fn().mockResolvedValue(null),
+      sendTransaction: vi.fn().mockResolvedValue('0xhash'),
+      waitForTransaction: vi.fn().mockResolvedValue(true),
+      fetchSignatureIndexes: vi.fn().mockResolvedValue(indexes),
+      signTrade: vi.fn().mockResolvedValue('0xnewsig'),
+      createTrade: vi.fn().mockResolvedValue('trade-2')
+    }
+    const listing = await updatePrice(
+      {
+        address: ADDRESS,
+        chainId: CHAIN_ID,
+        collection,
+        item,
+        tradeId: 'trade-1',
+        price: { kind: 'mana', manaWei: 10n ** 18n }
+      },
+      deps
+    )
+    expect(deps.signTrade.mock.calls[0][0].received[0]).toMatchObject({
+      assetType: TradeAssetType.ERC20,
+      amount: '1000000000000000000',
+      beneficiary: BENEFICIARY
+    })
+    expect(listing).toEqual({ itemId: '3', tradeId: 'trade-2', currency: 'mana', manaWei: 10n ** 18n })
   })
 
   it('refuses a sold-out item before cancelling its order', async () => {
@@ -371,7 +469,7 @@ describe('updating the price', () => {
           collection,
           item: { ...item, totalSupply: 100 },
           tradeId: 'trade-1',
-          credits: 80
+          price: { kind: 'credits', credits: 80 }
         },
         deps
       )
@@ -391,7 +489,17 @@ describe('updating the price', () => {
       onCancelled: vi.fn()
     }
     await expect(
-      updatePrice({ address: ADDRESS, chainId: CHAIN_ID, collection, item, tradeId: 'trade-1', credits: 80 }, deps)
+      updatePrice(
+        {
+          address: ADDRESS,
+          chainId: CHAIN_ID,
+          collection,
+          item,
+          tradeId: 'trade-1',
+          price: { kind: 'credits', credits: 80 }
+        },
+        deps
+      )
     ).rejects.toMatchObject({ reason: 'rejected' })
     expect(deps.onCancelled).not.toHaveBeenCalled()
     expect(deps.signTrade).not.toHaveBeenCalled()

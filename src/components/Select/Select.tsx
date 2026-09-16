@@ -19,14 +19,27 @@ type Props<T extends string> = {
   options: SelectOption<T>[]
   onChange: (value: T) => void
   placeholder?: string
+  /** `inline` is a compact trigger for a select sitting inside another field. */
+  variant?: 'default' | 'inline'
+  disabled?: boolean
+  ariaLabel?: string
   testId?: string
 }
 
-const LIST_MIN_WIDTH = 230
+const LIST_MIN_WIDTH = { default: 230, inline: 150 }
 const VIEWPORT_MARGIN = 8
 
 /** Custom listbox select: portaled to <body> so scroll containers never clip it, keyboard navigable. */
-export function Select<T extends string>({ value, options, onChange, placeholder, testId = 'select' }: Props<T>) {
+export function Select<T extends string>({
+  value,
+  options,
+  onChange,
+  placeholder,
+  variant = 'default',
+  disabled = false,
+  ariaLabel,
+  testId = 'select'
+}: Props<T>) {
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState<T | null>(value)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -55,7 +68,7 @@ export function Select<T extends string>({ value, options, onChange, placeholder
       const gap = 6
       const fitsBelow = trigger.bottom + gap + listHeight <= window.innerHeight
       // A list wider than its trigger keeps its left edge but never spills past the viewport.
-      const width = Math.max(trigger.width, LIST_MIN_WIDTH)
+      const width = Math.max(trigger.width, LIST_MIN_WIDTH[variant])
       const left = Math.max(VIEWPORT_MARGIN, Math.min(trigger.left, window.innerWidth - width - VIEWPORT_MARGIN))
       setListStyle({
         left,
@@ -72,7 +85,7 @@ export function Select<T extends string>({ value, options, onChange, placeholder
       window.removeEventListener('resize', position)
       window.removeEventListener('scroll', position, true)
     }
-  }, [open])
+  }, [open, variant])
 
   function toggle() {
     if (!open) setActive(value ?? options[0]?.value ?? null)
@@ -123,8 +136,11 @@ export function Select<T extends string>({ value, options, onChange, placeholder
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
+        aria-label={ariaLabel}
+        disabled={disabled}
         data-testid={testId}
         data-value={value ?? undefined}
+        data-variant={variant}
         onClick={toggle}
       >
         <S.TriggerLabel data-placeholder={selected ? undefined : true}>

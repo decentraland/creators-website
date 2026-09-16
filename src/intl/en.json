@@ -378,13 +378,21 @@
       "label": "Price",
       "rate": "1 Credit = {usd}USD",
       "giveaway": "Make it for giveaway",
-      "too_high": "The price can be at most {max} credits."
+      "too_high": "The price can be at most {max} credits.",
+      "currency_label": "Currency",
+      "currency_credits": "Credits",
+      "currency_mana": "MANA",
+      "mana_rate": "1 MANA ≈ {usd}USD (estimated)",
+      "mana_min": "Minimum {min} MANA",
+      "too_high_mana": "The price can be at most {max} MANA.",
+      "too_low_mana": "The price must be at least {min} MANA."
     },
     "expiration": {
       "label": "Expiration Date"
     },
     "note": "Your item will be listed in the Decentraland Shop for Credits. When it sells, you’ll receive the <b>equivalent value in MANA.</b>",
     "note_tooltip": "Credits are pegged to the US dollar. The MANA you receive is calculated with the exchange rate at the moment of each sale.",
+    "note_mana": "Your item will be listed in the Decentraland Shop for MANA. When it sells, you’ll receive the MANA directly.",
     "success": {
       "title": "Your item is on sale!",
       "description": "It’s now available in the Decentraland Shop.",

@@ -1,6 +1,7 @@
 // Putting a published item on sale in the Decentraland Shop: enabling sales on the collection (the
 // off-chain marketplace becomes a minter of the collection contract) and signing the item's primary
-// order. Ported from the legacy builder's SellCollectionModal + PutForSaleOffchainModal, credits-first.
+// order, priced in credits (USD-pegged MANA) or plain MANA. Ported from the legacy builder's
+// SellCollectionModal + PutForSaleOffchainModal.
 import { ethers } from 'ethers'
 import { Network, TradeAssetType, TradeType, type Trade, type TradeCreation } from '@dcl/schemas'
 import { ContractName, getContract } from 'decentraland-transactions'
@@ -27,29 +28,100 @@ const USD_WEI_PER_CREDIT = 10n ** 17n
 export const NO_EXPIRATION = Date.UTC(2100, 0, 1)
 const ONE_DAY_MS = 24 * 60 * 60 * 1000
 
-export type SalePrice = { kind: 'credits'; credits: number } | { kind: 'free' }
+export type PriceCurrency = 'credits' | 'mana'
+export type PricedSale = { kind: 'credits'; credits: number } | { kind: 'mana'; manaWei: bigint }
+export type SalePrice = PricedSale | { kind: 'free' }
 
-// marketplace-server drops catalog rows above 1e30 USD wei (its bigint cast guard), so a dearer listing
-// is stored but never shown in the Shop. Also keeps the price well inside Number's exact-integer range.
-export const MAX_SALE_CREDITS = 10n ** 30n / USD_WEI_PER_CREDIT
+// marketplace-server drops catalog rows above 1e30 wei (its bigint cast guard), so a dearer listing is
+// stored but never shown in the Shop. Also keeps a credits price well inside Number's exact-integer range.
+const MAX_SALE_WEI = 10n ** 30n
+export const MAX_SALE_CREDITS = MAX_SALE_WEI / USD_WEI_PER_CREDIT
+export const MAX_SALE_MANA_WEI = MAX_SALE_WEI
+// Below 1 MANA the buyer would have to cover the meta-transaction gas themselves, so the legacy builder
+// warned about it; here it is the floor.
+export const MIN_SALE_MANA_WEI = 10n ** 18n
+// MANA prices are typed with at most this many decimals, like the legacy builder's input mask.
+export const MANA_INPUT_DECIMALS = 2
 
 /** A whole-credit price the Shop can list: from 1 up to the catalog's ceiling. */
 export function isValidCredits(credits: number): boolean {
   return Number.isInteger(credits) && credits >= 1 && credits <= Number(MAX_SALE_CREDITS)
 }
 
+/** A MANA price the Shop can list: from the 1 MANA floor up to the catalog's ceiling. */
+export function isValidManaWei(wei: bigint): boolean {
+  return wei >= MIN_SALE_MANA_WEI && wei <= MAX_SALE_MANA_WEI
+}
+
+/** Keeps a typed MANA amount to digits and one decimal point with at most two decimals. */
+export function sanitizeManaInput(value: string): string {
+  const cleaned = value.replace(/[^\d.]/g, '')
+  const dot = cleaned.indexOf('.')
+  if (dot === -1) return cleaned
+  const whole = cleaned.slice(0, dot)
+  const decimals = cleaned
+    .slice(dot + 1)
+    .replace(/\./g, '')
+    .slice(0, MANA_INPUT_DECIMALS)
+  return `${whole}.${decimals}`
+}
+
+/** A typed MANA amount as wei, or null when it is empty or not a plain decimal number. */
+export function parseManaAmount(value: string): bigint | null {
+  if (!/^(\d+\.?\d*|\.\d+)$/.test(value)) return null
+  try {
+    return BigInt(ethers.utils.parseEther(value).toString())
+  } catch {
+    return null
+  }
+}
+
+/** The form's currency + typed amount as a price, or null while it is missing or out of bounds. */
+export function toPricedSale(currency: PriceCurrency, amount: string): PricedSale | null {
+  if (currency === 'credits') {
+    const credits = Number(amount)
+    return amount !== '' && isValidCredits(credits) ? { kind: 'credits', credits } : null
+  }
+  const manaWei = parseManaAmount(amount)
+  return manaWei !== null && isValidManaWei(manaWei) ? { kind: 'mana', manaWei } : null
+}
+
+/** The price a listing was signed with, so a new one can be compared against it. */
+export function listingToSalePrice(listing: ItemListing): SalePrice {
+  if (listing.currency === 'credits') return { kind: 'credits', credits: listing.credits }
+  return listing.manaWei === 0n ? { kind: 'free' } : { kind: 'mana', manaWei: listing.manaWei }
+}
+
+export function isSamePrice(a: SalePrice, b: SalePrice): boolean {
+  if (a.kind !== b.kind) return false
+  if (a.kind === 'credits' && b.kind === 'credits') return a.credits === b.credits
+  if (a.kind === 'mana' && b.kind === 'mana') return a.manaWei === b.manaWei
+  return true
+}
+
 export function creditsToUsdWei(credits: number): string {
   return (BigInt(credits) * USD_WEI_PER_CREDIT).toString()
 }
 
-/** Whole US dollars with cents — "$5.00" — for a credits amount. */
-export function formatCreditsAsUsd(credits: number): string {
-  return ((credits * USD_CENTS_PER_CREDIT) / 100).toLocaleString('en-US', {
+function formatUsd(dollars: number): string {
+  return dollars.toLocaleString('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   })
+}
+
+/** Whole US dollars with cents — "$5.00" — for a credits amount. */
+export function formatCreditsAsUsd(credits: number): string {
+  return formatUsd((credits * USD_CENTS_PER_CREDIT) / 100)
+}
+
+/** "$5.00" for a MANA amount at `rate` USD wei per whole MANA (see `lib/manaRate`). */
+export function formatManaAsUsd(manaWei: bigint, rate: bigint): string {
+  // MANA wei × USD wei per MANA is 1e36 per dollar; rounded to the nearest cent.
+  const usdCents = (manaWei * rate + 5n * 10n ** 33n) / 10n ** 34n
+  return formatUsd(Number(usdCents) / 100)
 }
 
 export function isValidAddress(value: string): boolean {
@@ -137,7 +209,8 @@ export type SellItemParams = {
 
 /**
  * The primary order for one item: every remaining unit is sellable, paid in USD-pegged MANA (the
- * shop's credits) or, for a giveaway, zero MANA — the legacy encoding the shop understands as free.
+ * shop's credits), in plain MANA, or, for a giveaway, zero MANA — the legacy encoding the shop
+ * understands as free.
  */
 export function buildItemOrder(
   params: SellItemParams,
@@ -178,23 +251,48 @@ export function buildItemOrder(
         extra: ''
       }
     ],
-    received: [
-      price.kind === 'free'
-        ? {
-            assetType: TradeAssetType.ERC20,
-            contractAddress: mana,
-            amount: '0',
-            extra: '',
-            beneficiary: ethers.constants.AddressZero
-          }
-        : {
-            assetType: TradeAssetType.USD_PEGGED_MANA,
-            contractAddress: mana,
-            amount: creditsToUsdWei(price.credits),
-            extra: '',
-            beneficiary
-          }
-    ]
+    received: [toReceivedAsset(price, mana, beneficiary)]
+  }
+}
+
+function toReceivedAsset(price: SalePrice, mana: string, beneficiary: string): UnsignedTrade['received'][number] {
+  switch (price.kind) {
+    case 'free':
+      return {
+        assetType: TradeAssetType.ERC20,
+        contractAddress: mana,
+        amount: '0',
+        extra: '',
+        beneficiary: ethers.constants.AddressZero
+      }
+    case 'mana':
+      return {
+        assetType: TradeAssetType.ERC20,
+        contractAddress: mana,
+        amount: price.manaWei.toString(),
+        extra: '',
+        beneficiary
+      }
+    case 'credits':
+      return {
+        assetType: TradeAssetType.USD_PEGGED_MANA,
+        contractAddress: mana,
+        amount: creditsToUsdWei(price.credits),
+        extra: '',
+        beneficiary
+      }
+  }
+}
+
+/** The listing the collection page shows for a stored order. */
+export function toListing(itemId: string, tradeId: string, price: SalePrice): ItemListing {
+  switch (price.kind) {
+    case 'free':
+      return { itemId, tradeId, currency: 'mana', manaWei: 0n }
+    case 'mana':
+      return { itemId, tradeId, currency: 'mana', manaWei: price.manaWei }
+    case 'credits':
+      return { itemId, tradeId, currency: 'credits', credits: price.credits }
   }
 }
 
@@ -219,11 +317,8 @@ export async function sellItem(params: SellItemParams, deps: SellItemDeps): Prom
     const signature = await deps.signTrade(trade)
     deps.onSigned?.()
     const tradeId = await deps.createTrade({ ...trade, signature })
-    const itemId = params.item.tokenId!
     // The trade id is what lets the row's menu re-price or cancel the listing without a refetch.
-    return params.price.kind === 'free'
-      ? { itemId, tradeId, currency: 'mana', manaWei: 0n }
-      : { itemId, tradeId, currency: 'credits', credits: params.price.credits }
+    return toListing(params.item.tokenId!, tradeId, params.price)
   } catch (error) {
     throw toSellItemError(error)
   }
@@ -295,7 +390,7 @@ export function getListingTerms(trade: Trade, fallbackBeneficiary: string): List
 
 export type UpdatePriceParams = Omit<SellItemParams, 'price' | 'beneficiary' | 'expiresAt'> & {
   tradeId: string
-  credits: number
+  price: PricedSale
 }
 
 // After the cancellation is mined the server may still index the old order as open for a few seconds
@@ -331,11 +426,11 @@ export function withConflictRetry(
 }
 
 /**
- * An order is immutable, so a new price means cancelling the current order (one transaction) and
- * signing a fresh one with the same beneficiary and expiration.
+ * An order is immutable, so a new price (or currency) means cancelling the current order (one
+ * transaction) and signing a fresh one with the same beneficiary and expiration.
  */
 export async function updatePrice(params: UpdatePriceParams, deps: UpdatePriceDeps): Promise<ItemListing> {
-  const { tradeId, credits, ...rest } = params
+  const { tradeId, price, ...rest } = params
   // A sold-out item can't be re-listed: refuse before taking the current order down.
   const sales = getItemSales(params.item)
   if (sales && sales.minted >= sales.maxSupply)
@@ -353,7 +448,7 @@ export async function updatePrice(params: UpdatePriceParams, deps: UpdatePriceDe
   }
   deps.onCancelled?.(terms)
   return sellItem(
-    { ...rest, price: { kind: 'credits', credits }, ...terms },
+    { ...rest, price, ...terms },
     {
       ...deps,
       createTrade: withConflictRetry(deps.createTrade),

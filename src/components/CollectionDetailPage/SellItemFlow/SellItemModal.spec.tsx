@@ -5,7 +5,11 @@ import { NO_EXPIRATION, formatDateValue, minExpirationDate, parseExpirationDate 
 import { SellItemModal } from './SellItemModal'
 import { ADDRESS, FRIEND, Providers, item, makeSession } from './testUtils'
 
-vi.mock('~/hooks/useSales', () => ({ useFriends: vi.fn(() => ({ data: [], isLoading: false })) }))
+const rate = { data: undefined as bigint | undefined }
+vi.mock('~/hooks/useSales', () => ({
+  useFriends: vi.fn(() => ({ data: [], isLoading: false })),
+  useManaUsdRate: vi.fn(() => rate)
+}))
 vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })))
 
 type Props = Partial<Parameters<typeof SellItemModal>[0]>
@@ -23,9 +27,12 @@ function renderModal(props: Props = {}) {
 }
 
 const submit = () => screen.getByTestId('sell-submit')
-const price = () => screen.getByTestId('sell-price')
+const price = () => screen.getByTestId('sell-price-input')
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  rate.data = undefined
+})
 
 describe('SellItemModal', () => {
   it('shows the item with its badges and only lets a priced item be put on sale', async () => {
@@ -44,11 +51,49 @@ describe('SellItemModal', () => {
     expect(submit()).toBeEnabled()
 
     await userEvent.click(submit())
-    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ credits: '50', selfBeneficiary: true }), {
-      price: { kind: 'credits', credits: 50 },
-      beneficiary: ADDRESS,
-      expiresAt: NO_EXPIRATION
-    })
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ price: { currency: 'credits', amount: '50' }, selfBeneficiary: true }),
+      {
+        price: { kind: 'credits', credits: 50 },
+        beneficiary: ADDRESS,
+        expiresAt: NO_EXPIRATION
+      }
+    )
+  })
+
+  it('lists in MANA once picked from the currency dropdown, at least 1 MANA, with an estimate from the oracle', async () => {
+    rate.data = 300_000_000_000_000_000n
+    const { onSubmit } = renderModal()
+    await userEvent.type(price(), '50')
+    await userEvent.click(screen.getByTestId('sell-price-currency'))
+    await userEvent.click(screen.getByTestId('sell-price-currency-option-mana'))
+    // The typed credits mean nothing in MANA: the amount starts over.
+    expect(price()).toHaveValue('')
+    expect(price()).toHaveAttribute('data-currency', 'mana')
+    expect(screen.getByTestId('sell-note')).toHaveTextContent(/for MANA/)
+    expect(screen.getByTestId('sell-price-rate')).toHaveTextContent('1 MANA ≈ $0.30')
+
+    await userEvent.type(price(), '0.5')
+    expect(screen.getByTestId('sell-price-error')).toHaveTextContent(/at least 1 MANA/)
+    expect(submit()).toBeDisabled()
+
+    await userEvent.clear(price())
+    await userEvent.type(price(), '2.5x99')
+    expect(price()).toHaveValue('2.59')
+    expect(screen.getByTestId('sell-price-usd')).toHaveTextContent('≈ $0.78')
+    expect(submit()).toBeEnabled()
+    await userEvent.click(submit())
+    expect(onSubmit.mock.calls[0][1]).toMatchObject({ price: { kind: 'mana', manaWei: 2_590_000_000_000_000_000n } })
+  })
+
+  it('hides the USD estimate for MANA when the oracle cannot be read', async () => {
+    renderModal()
+    await userEvent.click(screen.getByTestId('sell-price-currency'))
+    await userEvent.click(screen.getByTestId('sell-price-currency-option-mana'))
+    await userEvent.type(price(), '3')
+    expect(screen.queryByTestId('sell-price-usd')).not.toBeInTheDocument()
+    expect(screen.getByTestId('sell-price-rate')).toHaveTextContent(/minimum 1 MANA/i)
+    expect(submit()).toBeEnabled()
   })
 
   it('warns when the item has edits the committee has not approved yet', () => {
@@ -71,6 +116,7 @@ describe('SellItemModal', () => {
     await userEvent.click(screen.getByTestId('sell-free'))
     expect(price()).toBeDisabled()
     expect(price()).toHaveValue('0')
+    expect(screen.getByTestId('sell-price-currency')).toBeDisabled()
     expect(screen.getByTestId('sell-price-usd')).toHaveTextContent('$0.00')
     await userEvent.click(submit())
     expect(onSubmit.mock.calls[0][1]).toMatchObject({ price: { kind: 'free' } })
@@ -129,7 +175,7 @@ describe('SellItemModal', () => {
       initialValues: {
         selfBeneficiary: true,
         beneficiary: '',
-        credits: '25',
+        price: { currency: 'credits', amount: '25' },
         free: false,
         withExpiration: false,
         expirationDate: ''
