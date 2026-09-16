@@ -44,38 +44,25 @@ export const Trigger = styled.button`
     opacity: 0.6;
   }
 
-  &[data-variant='inline'],
-  &[data-variant='glyph'] {
-    width: auto;
-    height: 36px;
-    padding: 0 4px 0 10px;
-    border: 0;
-    border-radius: ${theme.radius.btnSm};
-    background: ${theme.colors.glass};
-    font-size: 13px;
-    line-height: 1;
-
-    &:hover:not(:disabled),
-    &[aria-expanded='true'] {
-      background: ${theme.colors.glassHover};
-    }
-    > svg {
-      width: 20px;
-      height: 20px;
-    }
-  }
-
   /* A square glyph box; it widens to fit the chevron on hover, focus or while open. */
   &[data-variant='glyph'] {
+    display: flex;
     justify-content: center;
     gap: 0;
     width: 32px;
     height: 32px;
     padding: 0;
+    border: 0;
     border-radius: ${theme.radius.chip};
+    background: ${theme.colors.glass};
     font-size: 20px;
+    line-height: 1;
     transition: width 0.15s ease;
 
+    &:hover:not(:disabled),
+    &[aria-expanded='true'] {
+      background: ${theme.colors.glassHover};
+    }
     > svg {
       width: 0;
       height: 18px;

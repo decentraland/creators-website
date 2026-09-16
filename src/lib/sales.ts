@@ -28,9 +28,9 @@ const USD_WEI_PER_CREDIT = 10n ** 17n
 export const NO_EXPIRATION = Date.UTC(2100, 0, 1)
 const ONE_DAY_MS = 24 * 60 * 60 * 1000
 
-export type PriceCurrency = 'credits' | 'mana'
 export type PricedSale = { kind: 'credits'; credits: number } | { kind: 'mana'; manaWei: bigint }
 export type SalePrice = PricedSale | { kind: 'free' }
+export type PriceCurrency = PricedSale['kind']
 
 // marketplace-server drops catalog rows above 1e30 wei (its bigint cast guard), so a dearer listing is
 // stored but never shown in the Shop. Also keeps a credits price well inside Number's exact-integer range.
@@ -94,9 +94,14 @@ export function listingToSalePrice(listing: ItemListing): SalePrice {
 
 export function isSamePrice(a: SalePrice, b: SalePrice): boolean {
   if (a.kind !== b.kind) return false
-  if (a.kind === 'credits' && b.kind === 'credits') return a.credits === b.credits
-  if (a.kind === 'mana' && b.kind === 'mana') return a.manaWei === b.manaWei
-  return true
+  switch (a.kind) {
+    case 'credits':
+      return (b as typeof a).credits === a.credits
+    case 'mana':
+      return (b as typeof a).manaWei === a.manaWei
+    case 'free':
+      return true
+  }
 }
 
 export function creditsToUsdWei(credits: number): string {

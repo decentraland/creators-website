@@ -19,14 +19,14 @@ type Props<T extends string> = {
   options: SelectOption<T>[]
   onChange: (value: T) => void
   placeholder?: string
-  /** `inline` is a compact trigger for a select sitting inside another field; `glyph` shows only the selected option's icon. */
-  variant?: 'default' | 'inline' | 'glyph'
+  /** `glyph` is a compact trigger showing only the selected option's icon, for a select sitting inside another field. */
+  variant?: 'default' | 'glyph'
   disabled?: boolean
   ariaLabel?: string
   testId?: string
 }
 
-const LIST_MIN_WIDTH = { default: 230, inline: 150, glyph: 150 }
+const LIST_MIN_WIDTH = { default: 230, glyph: 150 }
 const VIEWPORT_MARGIN = 8
 
 /** Custom listbox select: portaled to <body> so scroll containers never clip it, keyboard navigable. */

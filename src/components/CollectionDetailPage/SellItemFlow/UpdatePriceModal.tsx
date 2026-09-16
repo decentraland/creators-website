@@ -29,7 +29,7 @@ export function UpdatePriceModal({ item, listing, initialValues, onSubmit, onClo
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (price && canSubmit) onSubmit(values, price)
+    if (price !== null && canSubmit) onSubmit(values, price)
   }
 
   return (
