@@ -15,6 +15,7 @@ const CollectionDetailPage = lazy(() =>
 )
 const ItemEditorPage = lazy(() => import('~/components/ItemEditorPage').then(m => ({ default: m.ItemEditorPage })))
 const CurationPage = lazy(() => import('~/components/CurationPage').then(m => ({ default: m.CurationPage })))
+const ActivityPage = lazy(() => import('~/components/ActivityPage').then(m => ({ default: m.ActivityPage })))
 const NotFoundPage = lazy(() => import('~/components/NotFoundPage').then(m => ({ default: m.NotFoundPage })))
 
 const PageFallback = () => {
@@ -56,6 +57,7 @@ const App = () => {
               <Route path="/collections/editor" element={<ItemEditorPage />} />
               <Route path="/collections/:collectionId" element={<CollectionDetailPage />} />
               <Route path="/curation" element={<CurationPage />} />
+              <Route path="/activity" element={<ActivityPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>

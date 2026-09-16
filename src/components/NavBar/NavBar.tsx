@@ -2,8 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { Network } from '@dcl/schemas'
 import { ethers } from 'ethers'
+import { History as HistoryIcon } from '@mui/icons-material'
 import { TopNav } from '~/components/TopNav'
 import { useWallet } from '~/store/wallet'
+import { useActivityStore } from '~/store/activity'
+import { hasPendingActivity } from '~/lib/activity'
 import { useCreditsBalance, useManaBalance } from '~/hooks/useBalances'
 import { useProfile } from '~/hooks/useProfile'
 import { openExternal } from '~/lib/navigation'
@@ -32,6 +35,8 @@ const NavBar = () => {
     [manaWei]
   )
   const { pathname } = useLocation()
+  // Lights the Activity entry while a transaction sent from this tab is still mining.
+  const hasPending = useActivityStore(state => hasPendingActivity(state.local))
   // Collections stays active across the collection detail / item detail / editor pages too, not just
   // the /collections list — a NavLink to /collections alone wouldn't light up on the nested routes.
   const collectionsActive = /^\/collections(\/|$)/.test(pathname)
@@ -81,6 +86,12 @@ const NavBar = () => {
           <a href={`${builderUrl}/scenes`}>{t('nav.scenes')}</a>
           <a href={`${builderUrl}/land`}>{t('nav.land')}</a>
         </S.Tabs>
+        {session && (
+          <S.ActivityLink to="/activity" data-testid="subnav-activity" data-pending={hasPending || undefined}>
+            <HistoryIcon fontSize="small" />
+            <span>{t('nav.activity')}</span>
+          </S.ActivityLink>
+        )}
       </S.Subnav>
     </>
   )

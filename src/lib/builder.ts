@@ -14,6 +14,7 @@ import {
 } from '~/lib/collections'
 import { VIDEO_PATH, fromRemoteItem, toRemoteItem, type Item, type RemoteItem } from '~/lib/items'
 import { type BlockchainRarity } from '~/lib/rarities'
+import { type RemoteActivityEvent, type RemoteActivityInput } from '~/lib/activity'
 
 export type CollectionItemPreview = {
   id: string
@@ -261,4 +262,18 @@ export async function fetchItemContents(item: Item): Promise<Record<string, Blob
     Object.entries(item.contents).map(async ([path, hash]) => [path, await fetchContent(hash)] as const)
   )
   return Object.fromEntries(entries)
+}
+
+/** The signer's transaction log: GET /activity, newest first, in the paginated envelope. */
+export async function fetchActivity(
+  address: string,
+  page: number,
+  limit: number
+): Promise<PaginatedResource<RemoteActivityEvent>> {
+  return request<PaginatedResource<RemoteActivityEvent>>(address, 'GET', '/activity', `?page=${page}&limit=${limit}`)
+}
+
+/** Records a transaction the signer just sent: POST /activity. Idempotent per hash. */
+export async function recordActivity(address: string, input: RemoteActivityInput): Promise<RemoteActivityEvent> {
+  return request<RemoteActivityEvent>(address, 'POST', '/activity', '', input)
 }

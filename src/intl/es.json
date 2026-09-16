@@ -617,7 +617,8 @@
     "overview": "Resumen",
     "collections": "Colecciones",
     "scenes": "Escenas",
-    "land": "Land/Mundos"
+    "land": "Land/Mundos",
+    "activity": "Actividad"
   },
   "footer": {
     "newsletterTitle": "Recibe lo más destacado de la semana en tu correo",
@@ -712,6 +713,42 @@
       "USE_FETCH": "Usar fetch",
       "USE_WEBSOCKET": "Usar websockets",
       "OPEN_EXTERNAL_LINK": "Abrir enlaces externos"
+    }
+  },
+  "activity_page": {
+    "title": "Actividad",
+    "subtitle": "Cada transacción que envíes desde aquí, en cualquier dispositivo.",
+    "sign_in": {
+      "title": "Inicia sesión para ver tu actividad",
+      "action": "Iniciar sesión"
+    },
+    "empty": {
+      "title": "Aún no hay actividad",
+      "description": "Publicar una colección, enviar ítems y otras acciones en la blockchain aparecerán aquí."
+    },
+    "error": {
+      "title": "Algo salió mal",
+      "description": "No pudimos cargar tu actividad. Inténtalo de nuevo.",
+      "retry": "Reintentar"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "confirmed": "Confirmada",
+      "reverted": "Fallida",
+      "dropped": "Descartada"
+    },
+    "view_transaction": "Ver transacción",
+    "showing": "Mostrando {range} de {total} {total, plural, one {transacción} other {transacciones}}",
+    "event": {
+      "approve_mana": "Aprobaste MANA para publicar",
+      "publish_collection": "Publicaste <link>{collection}</link>",
+      "enable_sales": "Habilitaste las ventas en <link>{collection}</link>",
+      "set_roles_senders": "Actualizaste los remitentes de <link>{collection}</link>",
+      "set_roles_collaborators": "Actualizaste los colaboradores de <link>{collection}</link>",
+      "send_item": "Enviaste {item} de <link>{collection}</link>",
+      "send_items": "Enviaste {count, plural, one {# ítem} other {# ítems}} de <link>{collection}</link>",
+      "remove_listing": "Quitaste {item} de la venta en <link>{collection}</link>",
+      "update_price": "Cambiaste el precio de {item} en <link>{collection}</link>"
     }
   }
 }

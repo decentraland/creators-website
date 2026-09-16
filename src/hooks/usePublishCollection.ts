@@ -13,7 +13,8 @@ import {
   saveCollectionTOS,
   saveItem
 } from '~/lib/builder'
-import { sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
+import { type Session } from '~/lib/auth'
+import { useTrackedTransactionCalls } from '~/hooks/useActivity'
 import { type Collection } from '~/lib/collections'
 import { authorizePublication } from '~/lib/credits'
 import { withRehashedContents, withThumbnail } from '~/lib/itemFactory'
@@ -55,12 +56,14 @@ export function useManaAllowance(address: string | undefined, enabled = true) {
 export function useApproveMana(session: Session | null) {
   const queryClient = useQueryClient()
   const chainId = getMaticChainId()
+  const tracked = useTrackedTransactionCalls(session)
   return useMutation({
     mutationFn: async () => {
       if (!session) throw new Error('Wallet disconnected')
       const spender = getContract(ContractName.CollectionManager, chainId).address
-      const txHash = await sendContractTransaction(session, buildManaApproveCall(chainId, spender))
-      const mined = await waitForTransaction(chainId, txHash)
+      const calls = tracked({ type: 'approve_mana' })
+      const txHash = await calls.sendTransaction(buildManaApproveCall(chainId, spender))
+      const mined = await calls.waitForTransaction(txHash)
       if (!mined) throw new Error('MANA approval reverted')
     },
     onSuccess: () => {
@@ -125,11 +128,15 @@ export type PublishVariables = {
 export function usePublishCollection(session: Session | null) {
   const queryClient = useQueryClient()
   const chainId = getMaticChainId()
+  const tracked = useTrackedTransactionCalls(session)
+  const publishCalls = (collection: Collection) =>
+    tracked({ type: 'publish_collection', collectionId: collection.id, collectionName: collection.name })
 
   return useMutation({
     mutationFn: async (variables: PublishVariables): Promise<PublishResult> => {
       if (!session) throw new Error('Wallet disconnected')
       const { address } = session
+      const calls = publishCalls(variables.collection)
       return publishCollection(
         { ...variables, address, chainId },
         {
@@ -142,7 +149,7 @@ export function usePublishCollection(session: Session | null) {
           },
           saveTOS: (collection, email) => saveCollectionTOS(address, collection, email),
           authorizePublication: params => authorizePublication(address, params),
-          sendTransaction: call => sendContractTransaction(session, call),
+          sendTransaction: calls.sendTransaction,
           lockCollection: collectionId => lockCollection(address, collectionId)
         }
       )
@@ -156,7 +163,7 @@ export function usePublishCollection(session: Session | null) {
       // Detached on purpose: the modal closes right away and the server catches up on its own.
       syncing.add(collection.id)
       consolidatePublishedCollection(collection.id, txHash, {
-        waitForTransaction: hash => waitForTransaction(chainId, hash),
+        waitForTransaction: publishCalls(collection).waitForTransaction,
         publishCollectionItems: collectionId => publishCollectionItems(address!, collectionId)
       })
         .catch(error => console.error('Collection consolidation failed', error))

@@ -18,5 +18,6 @@
   "SHOP_URL": "https://decentraland.zone/shop",
   "ACCOUNT_URL": "https://decentraland.zone/account",
   "TERMS_OF_USE_URL": "https://decentraland.org/terms/",
-  "CONTENT_POLICY_URL": "https://decentraland.org/content/"
+  "CONTENT_POLICY_URL": "https://decentraland.org/content/",
+  "ACTIVITY_SOURCE": "builder-server"
 }

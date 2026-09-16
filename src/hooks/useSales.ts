@@ -1,18 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type TradeCreation } from '@dcl/schemas'
-import {
-  readContract,
-  sendContractTransaction,
-  signTypedData,
-  waitForTransaction,
-  type ContractCall,
-  type Session
-} from '~/lib/auth'
+import { readContract, signTypedData, type Session } from '~/lib/auth'
+import { type ActivityEventInput, type TransactionCalls } from '~/lib/activity'
+import { useTrackedTransactionCalls } from '~/hooks/useActivity'
 import { type Collection } from '~/lib/collections'
 import { fetchFriends } from '~/lib/friends'
 import { type Item } from '~/lib/items'
 import { fetchItemTradeId, type ItemListing } from '~/lib/listings'
-import { buildIssueTokensCall, copiesPerItem, flattenTransfers, type Transfer } from '~/lib/mint'
+import { buildIssueTokensCall, copiesPerItem, flattenTransfers, totalCopies, type Transfer } from '~/lib/mint'
 import { getMaticChainId } from '~/lib/publishCollection'
 import {
   buildEnableSalesCall,
@@ -55,12 +50,14 @@ export type EnableSalesVariables = {
 export function useEnableSales(session: Session | null) {
   const queryClient = useQueryClient()
   const chainId = getMaticChainId()
+  const tracked = useTrackedTransactionCalls(session)
   return useMutation({
     mutationFn: async ({ collection, onSigned }: EnableSalesVariables): Promise<Collection> => {
       if (!session) throw new Error('Wallet disconnected')
-      const txHash = await sendContractTransaction(session, buildEnableSalesCall(collection, chainId))
+      const calls = tracked({ type: 'enable_sales', collectionId: collection.id, collectionName: collection.name })
+      const txHash = await calls.sendTransaction(buildEnableSalesCall(collection, chainId))
       onSigned?.()
-      const mined = await waitForTransaction(chainId, txHash)
+      const mined = await calls.waitForTransaction(txHash)
       if (!mined) throw new SellItemError('generic', 'The enable sales transaction reverted')
       return withSalesEnabled(collection, chainId)
     },
@@ -81,14 +78,14 @@ export type SellItemVariables = {
   onSigned?: () => void
 }
 
-// The wallet-facing half of signing and storing an order, shared by selling and re-pricing.
-function orderDeps(session: Session, chainId: number) {
+// The wallet-facing half of signing and storing an order, shared by selling and re-pricing. The chain
+// calls come in already reporting to the activity log under the flow's description.
+function orderDeps(session: Session, chainId: number, calls: TransactionCalls) {
   return {
     fetchTrade,
     fetchItemTradeId,
     fetchSignatureIndexes,
-    sendTransaction: (call: ContractCall) => sendContractTransaction(session, call),
-    waitForTransaction: (hash: string) => waitForTransaction(chainId, hash),
+    ...calls,
     signTrade: (trade: UnsignedTrade) =>
       signTypedData(session, getTradeDomain(chainId), OFFCHAIN_MARKETPLACE_TYPES, toTradeTypedValues(trade)),
     createTrade: (trade: TradeCreation) => createTrade(session.address, trade)
@@ -99,10 +96,16 @@ function orderDeps(session: Session, chainId: number) {
 export function useSellItem(session: Session | null) {
   const queryClient = useQueryClient()
   const chainId = getMaticChainId()
+  const tracked = useTrackedTransactionCalls(session)
   return useMutation({
     mutationFn: async ({ onSigned, ...variables }: SellItemVariables): Promise<ItemListing> => {
       if (!session) throw new Error('Wallet disconnected')
-      return sellItem({ ...variables, address: session.address, chainId }, { ...orderDeps(session, chainId), onSigned })
+      // Selling signs an off-chain order: no transaction is sent, so nothing reaches the log.
+      const calls = tracked(describeListing('enable_sales', variables.collection, variables.item))
+      return sellItem(
+        { ...variables, address: session.address, chainId },
+        { ...orderDeps(session, chainId, calls), onSigned }
+      )
     },
     onSuccess: (listing, { collection }) => setListing(queryClient, collection, listing)
   })
@@ -141,11 +144,13 @@ export type RemoveListingVariables = {
 export function useRemoveListing(session: Session | null) {
   const queryClient = useQueryClient()
   const chainId = getMaticChainId()
+  const tracked = useTrackedTransactionCalls(session)
   return useMutation({
     mutationFn: async ({ collection, item, listing, onSigned }: RemoveListingVariables): Promise<void> => {
       if (!session) throw new Error('Wallet disconnected')
       if (!collection.contractAddress) throw new SellItemError('not_published', 'The collection has no contract')
-      const deps = { ...orderDeps(session, chainId), onSigned }
+      const calls = tracked(describeListing('remove_listing', collection, item))
+      const deps = { ...orderDeps(session, chainId, calls), onSigned }
       if (!listing.tradeId) return removeStoreListing(collection, item, chainId, { ...deps, readContract })
       return removeListing(
         { tradeId: listing.tradeId, contractAddress: collection.contractAddress, itemId: listing.itemId },
@@ -169,13 +174,16 @@ export type UpdatePriceVariables = {
 export function useUpdatePrice(session: Session | null) {
   const queryClient = useQueryClient()
   const chainId = getMaticChainId()
+  const tracked = useTrackedTransactionCalls(session)
   return useMutation({
     mutationFn: async ({ onSigned, onCancelled, ...variables }: UpdatePriceVariables): Promise<ItemListing> => {
       if (!session) throw new Error('Wallet disconnected')
+      // Only the cancellation of the old order is a transaction; the new price is an off-chain signature.
+      const calls = tracked(describeListing('update_price', variables.collection, variables.item))
       return updatePrice(
         { ...variables, address: session.address, chainId },
         {
-          ...orderDeps(session, chainId),
+          ...orderDeps(session, chainId, calls),
           onSigned,
           onCancelled: terms => {
             // The old order is gone even if the new one never lands.
@@ -205,16 +213,15 @@ export type SendItemsVariables = {
 export function useSendItems(session: Session | null) {
   const queryClient = useQueryClient()
   const chainId = getMaticChainId()
+  const tracked = useTrackedTransactionCalls(session)
   return useMutation({
     mutationFn: async ({ collection, items, transfers, onSigned }: SendItemsVariables): Promise<void> => {
       if (!session) throw new Error('Wallet disconnected')
       const { beneficiaries, tokenIds } = flattenTransfers(transfers, items)
-      const txHash = await sendContractTransaction(
-        session,
-        buildIssueTokensCall(collection, beneficiaries, tokenIds, chainId)
-      )
+      const calls = tracked(describeSend(collection, items, transfers))
+      const txHash = await calls.sendTransaction(buildIssueTokensCall(collection, beneficiaries, tokenIds, chainId))
       onSigned?.()
-      const mined = await waitForTransaction(chainId, txHash)
+      const mined = await calls.waitForTransaction(txHash)
       if (!mined) throw new SellItemError('generic', 'The send items transaction reverted')
     },
     onSuccess: (_, { collection, transfers }) => {
@@ -226,6 +233,30 @@ export function useSendItems(session: Session | null) {
       )
     }
   })
+}
+
+function describeListing(
+  type: 'enable_sales' | 'remove_listing' | 'update_price',
+  collection: Collection,
+  item: Item
+): ActivityEventInput {
+  return { type, collectionId: collection.id, collectionName: collection.name, itemId: item.id, itemName: item.name }
+}
+
+// One item across every transfer reads "sent 3 copies of X"; several items read "sent 5 items".
+function describeSend(collection: Collection, items: Item[], transfers: Transfer[]): ActivityEventInput {
+  const sent = new Set(
+    transfers.flatMap(transfer => Object.keys(transfer.amounts).filter(id => transfer.amounts[id] > 0))
+  )
+  const only = sent.size === 1 ? items.find(item => sent.has(item.id)) : undefined
+  return {
+    type: 'send_items',
+    collectionId: collection.id,
+    collectionName: collection.name,
+    itemId: only?.id,
+    itemName: only?.name,
+    count: totalCopies(transfers)
+  }
 }
 
 /** The creator's friends, loaded once the beneficiary picker needs them. */

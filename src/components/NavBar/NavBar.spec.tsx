@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import type { NavbarProps } from 'decentraland-ui2'
 import { TranslationProvider } from '~/intl'
 import { config } from '~/config'
 import { openExternal } from '~/lib/navigation'
+import { useActivityStore } from '~/store/activity'
 import { NavBar } from './NavBar'
 
 // Stands in for the ui2 navbar: surfaces the balance chips the real one renders from these props.
@@ -56,6 +57,7 @@ beforeEach(() => {
   balances.credits = undefined
   balances.manaWei = undefined
   vi.mocked(openExternal).mockReset()
+  useActivityStore.getState().clear()
 })
 
 function renderNavBar(path = '/collections') {
@@ -132,5 +134,34 @@ describe('NavBar', () => {
     renderNavBar()
     expect(screen.getByTestId('topnav-credits')).toHaveTextContent('0')
     expect(screen.queryByTestId('topnav-mana')).toBeNull()
+  })
+
+  it('offers the Activity log only to a signed-in wallet', () => {
+    renderNavBar()
+    expect(screen.queryByTestId('subnav-activity')).toBeNull()
+
+    wallet.session = { address: '0xabc' }
+    renderNavBar('/activity')
+    const link = screen.getByTestId('subnav-activity')
+    expect(link).toHaveAttribute('href', '/activity')
+    expect(link).toHaveAttribute('aria-current', 'page')
+    expect(link).not.toHaveAttribute('data-pending')
+  })
+
+  it('marks the Activity entry while a transaction sent from this tab is mining', () => {
+    wallet.session = { address: '0xabc' }
+    useActivityStore.getState().add({
+      id: 'local:0x1',
+      type: 'send_items',
+      txHash: '0x1',
+      chainId: 80002,
+      status: 'pending',
+      timestamp: Date.now()
+    })
+    renderNavBar()
+    expect(screen.getByTestId('subnav-activity')).toHaveAttribute('data-pending')
+
+    act(() => useActivityStore.getState().settle('0x1', 'confirmed'))
+    expect(screen.getByTestId('subnav-activity')).not.toHaveAttribute('data-pending')
   })
 })
