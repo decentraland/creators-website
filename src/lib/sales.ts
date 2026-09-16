@@ -100,6 +100,7 @@ export function isSamePrice(a: SalePrice, b: SalePrice): boolean {
 }
 
 export function creditsToUsdWei(credits: number): string {
+  if (!Number.isInteger(credits)) throw new SellItemError('generic', `Credits must be a whole number, got ${credits}`)
   return (BigInt(credits) * USD_WEI_PER_CREDIT).toString()
 }
 

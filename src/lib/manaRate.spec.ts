@@ -41,5 +41,14 @@ describe('fetchManaUsdRate', () => {
     await expect(fetchManaUsdRate(CHAIN_ID, makeRead({ updatedAt: NOW / 1000 - 100_000 }), NOW)).rejects.toThrow(
       /stale/
     )
+    // A round far ahead of the local clock is not trusted either; a little skew is fine.
+    await expect(fetchManaUsdRate(CHAIN_ID, makeRead({ updatedAt: NOW / 1000 + 3_600 }), NOW)).rejects.toThrow(/stale/)
+    await expect(fetchManaUsdRate(CHAIN_ID, makeRead({ updatedAt: NOW / 1000 + 60 }), NOW)).resolves.toBeTypeOf(
+      'bigint'
+    )
+  })
+
+  it('refuses an aggregator with more than 18 decimals', async () => {
+    await expect(fetchManaUsdRate(CHAIN_ID, makeRead({}, 19), NOW)).rejects.toThrow(/decimals/)
   })
 })

@@ -103,6 +103,7 @@ describe('price and date helpers', () => {
     expect(creditsToUsdWei(50)).toBe('5000000000000000000')
     expect(formatCreditsAsUsd(50)).toBe('$5.00')
     expect(formatCreditsAsUsd(1)).toBe('$0.10')
+    expect(() => creditsToUsdWei(1.5)).toThrow(expect.objectContaining({ reason: 'generic' }))
   })
 
   it('accepts whole credits from 1 up to the catalog ceiling', () => {
@@ -146,6 +147,8 @@ describe('price and date helpers', () => {
     expect(isSamePrice({ kind: 'credits', credits: 50 }, { kind: 'credits', credits: 50 })).toBe(true)
     expect(isSamePrice({ kind: 'credits', credits: 50 }, { kind: 'mana', manaWei: 50n * 10n ** 18n })).toBe(false)
     expect(isSamePrice({ kind: 'mana', manaWei: 5n }, { kind: 'mana', manaWei: 6n })).toBe(false)
+    expect(isSamePrice({ kind: 'mana', manaWei: 5n }, { kind: 'mana', manaWei: 5n })).toBe(true)
+    expect(isSamePrice({ kind: 'free' }, { kind: 'free' })).toBe(true)
   })
 
   it('validates wallet addresses', () => {

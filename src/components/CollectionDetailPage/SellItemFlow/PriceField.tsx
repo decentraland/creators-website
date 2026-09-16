@@ -77,7 +77,7 @@ export function PriceField({ label, values, onChange, free = false, disabled = f
   let usd: string
   if (free) usd = formatCreditsAsUsd(0)
   else if (currency === 'credits') usd = formatCreditsAsUsd(credits)
-  else usd = rate.data !== undefined ? `≈ ${formatManaAsUsd(manaWei ?? 0n, rate.data)}` : ''
+  else usd = rate.data !== undefined && manaWei !== null ? `≈ ${formatManaAsUsd(manaWei, rate.data)}` : ''
 
   function changeAmount(value: string) {
     onChange({ currency, amount: currency === 'credits' ? value.replace(/\D/g, '') : sanitizeManaInput(value) })

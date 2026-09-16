@@ -86,14 +86,27 @@ describe('SellItemModal', () => {
     expect(onSubmit.mock.calls[0][1]).toMatchObject({ price: { kind: 'mana', manaWei: 2_590_000_000_000_000_000n } })
   })
 
-  it('hides the USD estimate for MANA when the oracle cannot be read', async () => {
+  it('hides the USD estimate for MANA when the oracle cannot be read or nothing is typed yet', async () => {
+    rate.data = 300_000_000_000_000_000n
     renderModal()
     await userEvent.click(screen.getByTestId('sell-price-currency'))
     await userEvent.click(screen.getByTestId('sell-price-currency-option-mana'))
+    expect(screen.queryByTestId('sell-price-usd')).not.toBeInTheDocument()
+
+    rate.data = undefined
     await userEvent.type(price(), '3')
     expect(screen.queryByTestId('sell-price-usd')).not.toBeInTheDocument()
     expect(screen.getByTestId('sell-price-rate')).toHaveTextContent(/minimum 1 MANA/i)
     expect(submit()).toBeEnabled()
+  })
+
+  it('refuses a MANA price above the catalog ceiling', async () => {
+    renderModal()
+    await userEvent.click(screen.getByTestId('sell-price-currency'))
+    await userEvent.click(screen.getByTestId('sell-price-currency-option-mana'))
+    await userEvent.type(price(), '1000000000001')
+    expect(screen.getByTestId('sell-price-error')).toHaveTextContent(/at most 1,000,000,000,000 MANA/)
+    expect(submit()).toBeDisabled()
   })
 
   it('warns when the item has edits the committee has not approved yet', () => {

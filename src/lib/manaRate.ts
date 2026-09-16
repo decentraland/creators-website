@@ -6,6 +6,8 @@ import { getOffchainMarketplaceContract } from '~/lib/trades'
 
 // Aggregator heartbeat (~24h) plus a buffer: an older round is treated as stale rather than shown.
 const MAX_STALENESS_SECONDS = 90_000
+// A round "from the future" means the local clock is off; a few minutes of skew is tolerated, more is not trusted.
+const MAX_CLOCK_SKEW_SECONDS = 300
 
 const AGGREGATOR_ABI = new ethers.utils.Interface([
   'function decimals() view returns (uint8)',
@@ -48,7 +50,9 @@ export async function fetchManaUsdRate(
   // An answer carried over from an earlier round is not fresh data for this one.
   if (round.answeredInRound.lt(round.roundId)) throw new ManaRateError('MANA rate incomplete')
   const age = Math.floor(now / 1000) - round.updatedAt.toNumber()
-  if (round.updatedAt.lte(0) || age > MAX_STALENESS_SECONDS) throw new ManaRateError('MANA rate stale')
+  if (round.updatedAt.lte(0) || age < -MAX_CLOCK_SKEW_SECONDS || age > MAX_STALENESS_SECONDS) {
+    throw new ManaRateError('MANA rate stale')
+  }
   if (Number(decimals) > 18) throw new ManaRateError(`Unexpected oracle decimals: ${String(decimals)}`)
   return BigInt(round.answer.toString()) * 10n ** BigInt(18 - Number(decimals))
 }
