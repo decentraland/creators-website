@@ -129,7 +129,12 @@ export function itemToDefinition(item: Item): WearableDefinition | EmoteDefiniti
   } as WearableDefinition
 }
 
-/** The `base64` URL/option form of a definition; non-ASCII is dropped like the legacy encoder does. */
+/**
+ * The `base64` URL/option form of a definition. Non-ASCII is dropped, as the legacy encoder does:
+ * wearable-preview decodes with a bare `JSON.parse(atob(base64))`, so UTF-8 bytes smuggled through
+ * `btoa` would come back as mojibake. Only display strings (an item's name) can carry them, and the
+ * name shown in the editor comes from the item itself, not from the definition.
+ */
 export function definitionToBase64(definition: WearableDefinition | EmoteDefinition): string {
   return btoa(JSON.stringify(definition).replace(/[^\x20-\x7F]/g, ''))
 }

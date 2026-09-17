@@ -41,7 +41,12 @@ function iframe() {
 function ready() {
   act(() => {
     window.dispatchEvent(
-      new MessageEvent('message', { data: { type: PreviewMessageType.READY }, source: iframe().contentWindow })
+      new MessageEvent('message', {
+        data: { type: PreviewMessageType.READY },
+        source: iframe().contentWindow,
+        // The bridge checks the origin, which a real browser stamps on every message.
+        origin: 'https://wearable-preview.decentraland.zone'
+      })
     )
   })
 }

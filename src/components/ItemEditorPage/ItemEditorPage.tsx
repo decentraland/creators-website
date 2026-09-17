@@ -117,6 +117,9 @@ const ItemEditorPage = () => {
     if (baseWearables.data) seedBaseWearables(baseWearables.data)
   }, [baseWearables.data, seedBaseWearables])
   const selectedId = selected?.id ?? null
+  // Read inside async work (a save in flight) where the closed-over selection may already be stale.
+  const selectedIdRef = useRef(selectedId)
+  selectedIdRef.current = selectedId
   const selectedType = selected?.type ?? null
   const selectedCategory = selected?.data.category
   useEffect(() => {
@@ -244,7 +247,9 @@ const ItemEditorPage = () => {
     queryClient.setQueryData<Item[]>(['collection-items-all', address, collectionId], current =>
       current?.map(candidate => (candidate.id === saved.id ? saved : candidate))
     )
-    form.reset(saved)
+    // The selection may have moved on while the save was in flight; resetting then would wipe the
+    // form of whichever item is on screen now with this item's data.
+    if (selectedIdRef.current === saved.id) form.reset(saved)
     showToast(t('item_editor.save_success', { name: saved.name }))
   }
 

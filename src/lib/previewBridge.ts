@@ -50,7 +50,9 @@ export function createPreviewBridge({
   }
 
   function onMessage(event: MessageEvent<{ type?: string } | undefined>) {
-    if (event.source !== iframe.contentWindow || event.data?.type !== PreviewMessageType.READY) return
+    // Both checks: the window identifies the iframe, the origin rejects a page it may have navigated to.
+    if (event.source !== iframe.contentWindow || event.origin !== origin) return
+    if (event.data?.type !== PreviewMessageType.READY) return
     ready = true
     boots++
     onBoot?.(boots)

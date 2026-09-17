@@ -11,9 +11,11 @@ function mountIframe() {
   return { iframe, postMessage }
 }
 
-function ready(iframe: HTMLIFrameElement) {
+const ORIGIN = 'https://wearable-preview.decentraland.zone'
+
+function ready(iframe: HTMLIFrameElement, origin = ORIGIN) {
   window.dispatchEvent(
-    new MessageEvent('message', { data: { type: PreviewMessageType.READY }, source: iframe.contentWindow })
+    new MessageEvent('message', { data: { type: PreviewMessageType.READY }, source: iframe.contentWindow, origin })
   )
 }
 
@@ -37,7 +39,7 @@ describe('createPreviewBridge', () => {
     ready(iframe)
     expect(postMessage).toHaveBeenCalledWith(
       { type: PreviewMessageType.UPDATE, payload: { options: { skin: 'aaaaaa' } } },
-      'https://wearable-preview.decentraland.zone'
+      ORIGIN
     )
     expect(bridge.boots).toBe(1)
   })
@@ -57,11 +59,15 @@ describe('createPreviewBridge', () => {
     expect(onPost).toHaveBeenCalledWith({ skin: '333333' })
   })
 
-  it('re-sends the current set after every boot and ignores other windows', () => {
+  it('re-sends the current set after every boot and ignores messages from anywhere else', () => {
     const { iframe, postMessage } = mountIframe()
     bridge = createPreviewBridge({ iframe })
     bridge.update({ skin: 'aaaaaa' })
-    window.dispatchEvent(new MessageEvent('message', { data: { type: PreviewMessageType.READY }, source: window }))
+    // Another window, and the right window claiming a foreign origin.
+    window.dispatchEvent(
+      new MessageEvent('message', { data: { type: PreviewMessageType.READY }, source: window, origin: ORIGIN })
+    )
+    ready(iframe, 'https://evil.example')
     expect(postMessage).not.toHaveBeenCalled()
     ready(iframe)
     ready(iframe)

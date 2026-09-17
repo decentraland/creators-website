@@ -10,6 +10,9 @@ export function openProtocolLink(url: string): void {
   window.location.assign(url)
 }
 
+/** How long the blob URL outlives the click; some browsers start the download asynchronously. */
+const DOWNLOAD_URL_TTL_MS = 60_000
+
 /** Saves a blob to the user's downloads. */
 export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob)
@@ -20,5 +23,5 @@ export function downloadBlob(blob: Blob, filename: string): void {
   document.body.appendChild(anchor)
   anchor.click()
   anchor.remove()
-  URL.revokeObjectURL(url)
+  setTimeout(() => URL.revokeObjectURL(url), DOWNLOAD_URL_TTL_MS)
 }

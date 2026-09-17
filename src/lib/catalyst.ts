@@ -48,7 +48,10 @@ export async function fetchBaseWearables(): Promise<BaseWearable[]> {
   const response = await fetch(
     `${config.get('PEER_URL')}/lambdas/collections/wearables?collectionId=${BASE_AVATARS_COLLECTION}`
   )
-  if (!response.ok) throw new Error(`catalyst request failed: base wearables (${response.status})`)
+  if (!response.ok) {
+    await response.body?.cancel()
+    throw new Error(`catalyst request failed: base wearables (${response.status})`)
+  }
   const { wearables } = (await response.json()) as { wearables: CatalystWearable[] }
   return wearables
     .filter(wearable => !wearable.data.hides?.length && !wearable.data.replaces?.length)

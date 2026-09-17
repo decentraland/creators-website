@@ -87,7 +87,11 @@ export const useAvatarPreview = create<AvatarPreviewState>()((set, get) => ({
         : { dressedItemIds: dressOne(state.dressedItemIds, item) }
     ),
   setDressed: items => set({ dressedItemIds: items.reduce<string[]>((ids, item) => dressOne(ids, item), []) }),
-  clearDressed: () => set({ dressedItemIds: [] }),
+  clearDressed: () =>
+    set(() => {
+      dressedKinds.clear()
+      return { dressedItemIds: [] }
+    }),
   setEmote: emote => set({ emote }),
   setPlaying: isPlaying => set({ isPlaying })
 }))
