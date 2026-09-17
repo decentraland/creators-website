@@ -20,3 +20,9 @@ export const config = createConfig(
     }
   }
 )
+
+// The one place query params are read (see CONVENTIONS.md "Runtime config").
+const search = typeof window === 'undefined' ? new URLSearchParams() : new URLSearchParams(window.location.search)
+
+/** `?unity=false` forces the Babylon preview renderer, a debugging escape hatch; any other value is ignored. */
+export const previewRendererOverride: 'babylon' | null = search.get('unity') === 'false' ? 'babylon' : null

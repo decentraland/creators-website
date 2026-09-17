@@ -95,6 +95,17 @@ const gradients = {
   coral: 'linear-gradient(90deg, #ff7439 0%, #ff2d55 100%)'
 } as const
 
+// Item editor workspace (creator-hub inspector palette; no other hexes belong in the editor).
+const editor = {
+  bg: '#161518',
+  surface: '#242129',
+  surfaceHover: '#504e58',
+  handle: '#000000',
+  label: colors.muted2,
+  accent: colors.dclRed,
+  line: '#454545'
+} as const
+
 const radius = {
   card: '12px',
   cardLg: '16px',
@@ -144,6 +155,6 @@ const media = {
   withActions: `@media not all and (max-width: ${breakpoints.lg}px)`
 }
 
-export const theme = { colors, rarities, gradients, radius, font, media, z }
+export const theme = { colors, rarities, gradients, radius, font, media, z, editor }
 
 export type AppTheme = typeof theme

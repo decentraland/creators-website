@@ -9,8 +9,7 @@ import { BodyShapeType, ItemType, getMissingBodyShapeType, type Item, type ItemM
 import { type UploadFailureReason } from '~/lib/uploadItems'
 import { type AnimationMetrics } from '~/lib/models'
 import { DEFAULT_RARITY } from '~/lib/rarities'
-
-const IMAGE_WEARABLE_CATEGORIES = [WearableCategory.EYEBROWS, WearableCategory.EYES, WearableCategory.MOUTH] as string[]
+import { IMAGE_WEARABLE_CATEGORIES } from '~/lib/wearableCategories'
 
 export type DraftStatus = 'processing' | 'ready' | 'failed'
 

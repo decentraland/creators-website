@@ -1,0 +1,69 @@
+import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
+import { type SpringBonesData } from '~/hooks/useSpringBones'
+import { createItemDraft, isItemDraftDirty, itemDraftReducer, type ItemDraft } from '~/lib/itemDraft'
+import { type Item } from '~/lib/items'
+import { type SpringBoneParamsByHash } from '~/lib/springBones'
+
+const EMPTY_DRAFT: ItemDraft = {
+  name: '',
+  description: '',
+  utility: '',
+  category: null,
+  rarity: null,
+  hides: [],
+  tags: [],
+  loop: false,
+  blockVrmExport: false,
+  outlineCompatible: true,
+  thumbnail: null,
+  video: null,
+  fileUpdate: null
+}
+
+function sameParams(a: SpringBoneParamsByHash, b: SpringBoneParamsByHash): boolean {
+  return JSON.stringify(a) === JSON.stringify(b)
+}
+
+/** The properties form state for the selected item: field draft plus spring bone params, reset on selection. */
+export function useItemForm(item: Item | null, springBones: SpringBonesData) {
+  const [draft, dispatch] = useReducer(itemDraftReducer, item, initial =>
+    initial ? createItemDraft(initial) : EMPTY_DRAFT
+  )
+  const [springBoneParams, setSpringBoneParams] = useState<SpringBoneParamsByHash>({})
+  const itemId = item?.id ?? null
+
+  useEffect(() => {
+    if (item) dispatch({ type: 'reset', item })
+    // Only a different item resets the draft; a refetch of the same item keeps the edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemId])
+
+  useEffect(() => {
+    setSpringBoneParams(springBones.initialParams)
+  }, [springBones.initialParams])
+
+  const isDraftDirty = item ? isItemDraftDirty(draft, item) : false
+  const isSpringBonesDirty = useMemo(
+    () => !sameParams(springBoneParams, springBones.initialParams),
+    [springBoneParams, springBones.initialParams]
+  )
+
+  const reset = useCallback(
+    (from: Item) => {
+      dispatch({ type: 'reset', item: from })
+      setSpringBoneParams(springBones.initialParams)
+    },
+    [springBones.initialParams]
+  )
+
+  return {
+    draft,
+    dispatch,
+    springBoneParams,
+    setSpringBoneParams,
+    isDraftDirty,
+    isSpringBonesDirty,
+    isDirty: isDraftDirty || isSpringBonesDirty,
+    reset
+  }
+}

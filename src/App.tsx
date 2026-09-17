@@ -25,8 +25,12 @@ const PageFallback = () => {
   )
 }
 
+const EDITOR_PATH = '/collections/editor'
+
 const App = () => {
   const location = useLocation()
+  // The item editor is a fullscreen workspace: no navbar, no footer, no page scroll.
+  const isFullscreen = location.pathname === EDITOR_PATH
 
   // Auth bootstrap lives at the app root so the silent session restore (and the return from /auth)
   // doesn't depend on any layout component staying mounted.
@@ -41,11 +45,16 @@ const App = () => {
     window.scrollTo({ top: 0 })
   }, [location.pathname])
 
+  useEffect(() => {
+    if (isFullscreen) document.body.dataset.fullscreen = ''
+    else delete document.body.dataset.fullscreen
+  }, [isFullscreen])
+
   return (
     <TranslationProvider>
-      <NavBar />
+      {!isFullscreen && <NavBar />}
       {/* The route is exposed so a page can opt out of shell-level CSS by path if it ever needs to. */}
-      <main className="page" data-route={location.pathname}>
+      <main className="page" data-route={location.pathname} data-fullscreen={isFullscreen || undefined}>
         <ErrorBoundary>
           <Suspense fallback={<PageFallback />}>
             <Routes>
@@ -61,7 +70,7 @@ const App = () => {
           </Suspense>
         </ErrorBoundary>
       </main>
-      <Footer />
+      {!isFullscreen && <Footer />}
       <Toasts />
     </TranslationProvider>
   )

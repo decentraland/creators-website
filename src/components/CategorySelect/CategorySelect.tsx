@@ -6,11 +6,20 @@ type Props = {
   value: string | null
   categories: string[]
   onChange: (category: string) => void
+  disabled?: boolean
+  tone?: 'default' | 'dark'
   testId?: string
 }
 
 /** Wearable/emote category picker; every option and the current value carry the category glyph. */
-export function CategorySelect({ value, categories, onChange, testId = 'category-select' }: Props) {
+export function CategorySelect({
+  value,
+  categories,
+  onChange,
+  disabled = false,
+  tone,
+  testId = 'category-select'
+}: Props) {
   const { t } = useTranslation()
   const options = categories.map(category => ({
     value: category,
@@ -23,6 +32,8 @@ export function CategorySelect({ value, categories, onChange, testId = 'category
       options={options}
       onChange={onChange}
       placeholder={t('add_items_modal.select_category')}
+      disabled={disabled}
+      tone={tone}
       testId={testId}
     />
   )

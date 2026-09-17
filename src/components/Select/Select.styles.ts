@@ -44,6 +44,17 @@ export const Trigger = styled.button`
     opacity: 0.6;
   }
 
+  &[data-tone='dark'] {
+    border-color: ${theme.editor.line};
+    background: ${theme.editor.bg};
+    color: ${theme.colors.white};
+
+    &:focus-visible,
+    &[aria-expanded='true'] {
+      border-color: ${theme.editor.label};
+    }
+  }
+
   /* A square glyph box; it widens to fit the chevron on hover, focus or while open. */
   &[data-variant='glyph'] {
     display: flex;
@@ -96,6 +107,21 @@ export const TriggerLabel = styled.span`
   &[data-placeholder] {
     color: ${theme.colors.muted2};
   }
+
+  &[data-align='end'] {
+    justify-content: flex-end;
+    text-align: right;
+  }
+`
+
+// Field label inside the trigger, before the value (the legacy attribute dropdowns' look).
+export const InlineLabel = styled.span`
+  flex: none;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: ${theme.editor.label};
 `
 
 export const OptionLabel = styled.span`
@@ -130,9 +156,31 @@ export const Listbox = styled.ul`
   border-radius: ${theme.radius.btn};
   background: ${theme.colors.modalSurface};
   box-shadow: 0 8px 32px ${theme.colors.overlayStrong};
+
+  &[data-tone='dark'] {
+    border-color: ${theme.editor.line};
+    background: ${theme.editor.surface};
+  }
 `
 
-export const Option = styled.li`
+// Wraps each option so a group boundary can draw its separator without a second list item.
+export const OptionGroup = styled.li`
+  display: contents;
+
+  &[data-divider]::before {
+    content: '';
+    display: block;
+    height: 1px;
+    margin: 6px 4px;
+    background: ${theme.colors.glassLine};
+  }
+
+  [data-tone='dark'] &[data-divider]::before {
+    background: ${theme.editor.line};
+  }
+`
+
+export const Option = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -164,4 +212,10 @@ export const Trailing = styled.span`
   font-weight: 700;
   line-height: 1.4;
   white-space: nowrap;
+
+  /* An icon-only badge: square, no pill padding. */
+  &:has(> [data-icon-badge]) {
+    display: inline-flex;
+    padding: 4px;
+  }
 `

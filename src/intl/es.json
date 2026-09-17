@@ -560,7 +560,8 @@
       "multiple_videos": "El ZIP incluye más de un video. Deja solo el video de vista previa.",
       "video_too_big": "El video es demasiado grande — el tamaño máximo es {size}MB.",
       "video_wrong_format": "El video debe ser un archivo MP4.",
-      "invalid_video": "Tu video parece estar dañado o no es válido. Revisa el archivo e inténtalo de nuevo."
+      "invalid_video": "Tu video parece estar dañado o no es válido. Revisa el archivo e inténtalo de nuevo.",
+      "invalid_model_file_type": "El archivo es de otro tipo de ítem. Un wearable solo puede reemplazarse por un wearable y un emote por un emote."
     }
   },
   "video_modal": {
@@ -611,8 +612,172 @@
     "spring_bone_count_exceeded": "Este modelo tiene {count} spring bones (máximo: {limit}). Reduce la cantidad de nodos de spring bones en tu editor 3D y vuelve a subir el archivo.",
     "thumbnail_not_transparent": "El fondo de la miniatura no parece transparente. Los mercados muestran el color de rareza del ítem detrás de la miniatura, por lo que se requiere un fondo transparente."
   },
-  "item_editor_page": {
-    "title": "Editor de items"
+  "item_editor": {
+    "pick_collection": "Elige una colección para empezar a editar sus ítems.",
+    "mobile_hint": "La edición está disponible en escritorio. Aquí puedes previsualizar los ítems.",
+    "read_only": "Este ítem es de solo lectura: solo el dueño y los colaboradores de la colección pueden editarlo mientras la colección no se está publicando.",
+    "save": "Guardar",
+    "revert": "Descartar",
+    "save_success": "Se guardó “{name}”.",
+    "save_error": "No pudimos guardar el ítem. Inténtalo de nuevo.",
+    "save_error_locked": "La colección se está publicando y no se puede editar ahora.",
+    "sidebar": {
+      "items": "Ítems",
+      "back": "Volver a la colección",
+      "collapse": "Contraer barra lateral",
+      "expand": "Expandir barra lateral",
+      "add_items": "Agregar ítems",
+      "wearables": "Wearables",
+      "emotes": "Emotes",
+      "empty": "Esta colección aún no tiene ítems.",
+      "dress": "Mostrar {name} en el avatar",
+      "undress": "Quitar {name} del avatar",
+      "no_representation": "Este ítem no tiene versión para la forma de cuerpo actual. Cambia la forma de cuerpo para previsualizarlo."
+    },
+    "picker": {
+      "search": "Buscar colecciones",
+      "empty": "No se encontraron colecciones.",
+      "error": "No pudimos cargar tus colecciones. Inténtalo de nuevo."
+    },
+    "review": {
+      "title": "Modo de revisión"
+    },
+    "discard": {
+      "title": "¿Descartar tus cambios?",
+      "description": "Tienes cambios sin guardar en este ítem. Si cambias de ítem se perderán.",
+      "stay": "Seguir editando",
+      "confirm": "Descartar"
+    },
+    "customizer": {
+      "title": "Avatar",
+      "body_shape": "Forma de cuerpo",
+      "shape": {
+        "male": "Masculino",
+        "female": "Femenino",
+        "both": "Ambos"
+      },
+      "skin": "Color de piel",
+      "eyes": "Color de ojos",
+      "hair": "Color de cabello",
+      "none": "Ninguno",
+      "randomize": "Aleatorio",
+      "hair_style": "Peinado",
+      "drawer_title": "Personalizar avatar"
+    },
+    "playback": {
+      "stop": "Detener",
+      "select": "Animación",
+      "from_collection": "De la colección",
+      "emote": {
+        "walk": "Caminar",
+        "run": "Correr",
+        "jump": "Saltar",
+        "clap": "Aplaudir",
+        "dab": "Dab",
+        "dance": "Bailar",
+        "fashion": "Moda",
+        "fashion-2": "Moda 2",
+        "fashion-3": "Moda 3",
+        "fashion-4": "Moda 4",
+        "love": "Amor",
+        "money": "Dinero",
+        "fist-pump": "Puño en alto",
+        "head-explode": "Cabeza explosiva",
+        "wave": "Saludar"
+      },
+      "placeholder": "Reproducir emote"
+    },
+    "validation": {
+      "loading": "Revisando el modelo…",
+      "pass": "El modelo pasa todas las verificaciones.",
+      "warnings": "El modelo tiene advertencias. Haz clic para verlas.",
+      "errors": "El modelo tiene errores. Haz clic para verlos.",
+      "idle": "",
+      "modal_title": "Resultados de la validación",
+      "label": {
+        "loading": "Validando",
+        "pass": "Válido",
+        "warnings": "{count, plural, one {# advertencia} other {# advertencias}}",
+        "errors": "{count, plural, one {# problema} other {# problemas}}",
+        "idle": ""
+      }
+    },
+    "details": {
+      "title": "Detalles",
+      "edit_thumbnail": "Editar miniatura",
+      "download": "Descargar ítem",
+      "change_file": "Cambiar archivo",
+      "add_representation": "Agregar representación {shape}",
+      "file_update_pending": "Hay un modelo nuevo listo. Guarda para subirlo.",
+      "import_error_title": "No pudimos usar ese archivo",
+      "import_error_close": "OK",
+      "download_error": "No pudimos descargar el ítem. Inténtalo de nuevo.",
+      "video_required": "Se necesita un video de vista previa para publicar un smart wearable.",
+      "video_hint": "Un video corto que muestra lo que hace el smart wearable en el mundo."
+    },
+    "basics": {
+      "title": "Básicos",
+      "name": "Nombre",
+      "description": "Descripción",
+      "utility": "Utilidad",
+      "utility_hint": "Una descripción corta de lo que hace este wearable en el mundo, visible para los coleccionistas.",
+      "category": "Categoría",
+      "rarity": "Rareza"
+    },
+    "overrides": {
+      "title": "Anulaciones",
+      "body_parts": "Partes del cuerpo ocultas",
+      "body_parts_hint": "Partes del avatar base que este wearable oculta para que no atraviesen el modelo.",
+      "categories": "Categorías de wearables ocultas",
+      "categories_hint": "Otras ranuras de wearables que este ítem oculta al usarse junto a ellas, por ejemplo un casco que oculta el cabello.",
+      "none_available": "No hay nada que ocultar para este ítem.",
+      "none_selected": "Ninguna"
+    },
+    "body_part": {
+      "head": "Cabeza",
+      "hands": "Manos"
+    },
+    "animation": {
+      "title": "Animación"
+    },
+    "spring_bones": {
+      "title": "Huesos elásticos",
+      "body_shape": "Forma de cuerpo",
+      "counter": "{count} / {max} huesos",
+      "bones": "{count, plural, one {# hueso} other {# huesos}}",
+      "stiffness": "Rigidez",
+      "gravityPower": "Fuerza de gravedad",
+      "gravityDir": "Dirección de gravedad",
+      "drag": "Arrastre",
+      "add": "Agregar cadena de huesos",
+      "remove": "Quitar cadena de huesos",
+      "warning_title": "A “{name}” le faltan ajustes de huesos elásticos",
+      "warning_description": "Una de las formas de cuerpo no tiene huesos elásticos configurados, así que su física faltará en el mundo. ¿Guardar de todos modos?",
+      "warning_back": "Volver",
+      "warning_save": "Guardar de todos modos"
+    },
+    "tags": {
+      "title": "Etiquetas",
+      "placeholder": "Escribe una etiqueta y presiona Enter",
+      "remove": "Quitar etiqueta {tag}"
+    },
+    "options": {
+      "title": "Opciones",
+      "vrm_export": "Permitir exportar a VRM",
+      "vrm_export_hint": "Si está activo, los coleccionistas pueden exportar su avatar con este wearable como archivo VRM para otras plataformas.",
+      "outline": "Compatible con contorno",
+      "outline_hint": "Si está activo, el efecto de contorno del avatar se dibuja alrededor de este wearable."
+    },
+    "danger": {
+      "delete": "Eliminar ítem"
+    },
+    "actions": {
+      "label": "Acciones del ítem"
+    },
+    "zoom": {
+      "in": "Acercar",
+      "out": "Alejar"
+    }
   },
   "curation_page": {
     "title": "Curado"
