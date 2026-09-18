@@ -7,17 +7,6 @@ import { ItemType, type Item } from '../items'
 import { type BoneNode } from './parseSpringBones'
 
 export { parseSpringBones, extractGltfJson, type BoneNode } from './parseSpringBones'
-export {
-  MAX_SPRING_BONES,
-  SPRING_BONE_STIFFNESS_MIN,
-  SPRING_BONE_STIFFNESS_MAX,
-  SPRING_BONE_GRAVITY_POWER_MIN,
-  SPRING_BONE_GRAVITY_POWER_MAX,
-  SPRING_BONE_DRAG_MIN,
-  SPRING_BONE_DRAG_MAX,
-  SPRING_BONE_GRAVITY_DIR_MIN,
-  SPRING_BONE_GRAVITY_DIR_MAX
-} from '../glbValidation/constants'
 
 export const SPRING_BONES_VERSION = 1
 

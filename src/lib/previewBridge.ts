@@ -33,13 +33,19 @@ export function createPreviewBridge({
 }: BridgeParams): PreviewBridge {
   const origin = new URL(iframe.src, host.location?.href ?? 'http://localhost').origin
   let current: PreviewOptions | null = null
+  let posted: string | null = null
   let ready = false
   let boots = 0
   let timer: ReturnType<typeof setTimeout> | null = null
 
-  function post() {
+  // The iframe rebuilds its scene for every update it receives, so an update that says nothing new is
+  // a reload for nothing. A boot forces one through: the fresh scene knows none of it yet.
+  function post(force = false) {
     timer = null
     if (!ready || !current || !iframe.contentWindow) return
+    const serialized = JSON.stringify(current)
+    if (!force && serialized === posted) return
+    posted = serialized
     onPost?.(current)
     iframe.contentWindow.postMessage({ type: PreviewMessageType.UPDATE, payload: { options: current } }, origin)
   }
@@ -58,7 +64,7 @@ export function createPreviewBridge({
     onBoot?.(boots)
     // Nothing to coalesce on a boot: the scene is empty until it hears the current set.
     if (timer !== null) clearTimeout(timer)
-    post()
+    post(true)
   }
 
   host.addEventListener('message', onMessage as EventListener)

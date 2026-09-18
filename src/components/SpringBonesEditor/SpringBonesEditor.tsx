@@ -12,7 +12,9 @@ import {
   SPRING_BONE_GRAVITY_POWER_MAX,
   SPRING_BONE_GRAVITY_POWER_MIN,
   SPRING_BONE_STIFFNESS_MAX,
-  SPRING_BONE_STIFFNESS_MIN,
+  SPRING_BONE_STIFFNESS_MIN
+} from '~/lib/glbValidation/constants'
+import {
   buildSubtreeSizes,
   getChainRoots,
   getDefaultSpringBoneParams,

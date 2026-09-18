@@ -11,13 +11,11 @@ type Props = {
   icon?: ReactNode
   /** Header shows only the glyph (collapsed sidebar); the title stays as its accessible name. */
   iconOnly?: boolean
-  /** Extra header content (counters, badges). */
-  aside?: ReactNode
   testId: string
 }
 
 /** A collapsible surface with an uppercase title, the inspector's container format. */
-export function EditorSection({ title, children, defaultOpen = true, icon, iconOnly = false, aside, testId }: Props) {
+export function EditorSection({ title, children, defaultOpen = true, icon, iconOnly = false, testId }: Props) {
   const [isOpen, setOpen] = useState(defaultOpen)
   const header = (
     <S.SectionHeader
@@ -30,7 +28,6 @@ export function EditorSection({ title, children, defaultOpen = true, icon, iconO
     >
       {icon && <S.SectionIcon aria-hidden>{icon}</S.SectionIcon>}
       {!iconOnly && <S.SectionTitle>{title}</S.SectionTitle>}
-      {!iconOnly && aside}
       {!iconOnly && <ChevronIcon data-chevron fontSize="small" />}
     </S.SectionHeader>
   )

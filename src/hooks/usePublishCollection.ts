@@ -16,7 +16,7 @@ import {
 import { sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { authorizePublication } from '~/lib/credits'
-import { withRehashedContents, withThumbnail } from '~/lib/itemFactory'
+import { withRehashedContents } from '~/lib/itemFactory'
 import { type Item } from '~/lib/items'
 import { buildManaApproveCall, fetchManaAllowance } from '~/lib/mana'
 import {
@@ -88,21 +88,6 @@ export function useDeleteItem(address: string | undefined) {
       if (!address) throw new Error('Wallet disconnected')
       await deleteItem(address, item.id)
       return item
-    },
-    onSuccess: item => {
-      if (item.collectionId) invalidateCollectionItems(queryClient, item.collectionId)
-    }
-  })
-}
-
-/** Saves item fields (name, rarity, ...), uploading any files passed in `blobs`. */
-export function useUpdateItem(address: string | undefined) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ item, thumbnail }: { item: Item; thumbnail?: Blob }) => {
-      if (!address) throw new Error('Wallet disconnected')
-      const built = thumbnail ? await withThumbnail(item, thumbnail) : { item, blobs: {} }
-      return saveItem(address, built.item, built.blobs)
     },
     onSuccess: item => {
       if (item.collectionId) invalidateCollectionItems(queryClient, item.collectionId)

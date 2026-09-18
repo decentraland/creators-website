@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { BodyShape } from '@dcl/schemas'
 import {
   applyDraftToItem,
+  toPreviewItem,
   canUpdateVideo,
   computeRemovesDefaultHiding,
   createItemDraft,
@@ -80,6 +81,20 @@ describe('item draft', () => {
     expect(next.utility).toBe('glows')
     expect(computeRemovesDefaultHiding('hat', ['upper_body'])).toEqual(['hands'])
     expect(computeRemovesDefaultHiding('hat', [])).toEqual([])
+  })
+
+  it('keeps display-only edits out of what the renderer is handed', () => {
+    let draft = createItemDraft(item)
+    draft = itemDraftReducer(draft, { type: 'setText', field: 'name', value: 'Cap' })
+    draft = itemDraftReducer(draft, { type: 'setText', field: 'description', value: 'New' })
+    draft = itemDraftReducer(draft, { type: 'setTags', tags: ['new'] })
+    const preview = toPreviewItem(item, draft)
+    expect(preview.name).toBe(item.name)
+    expect(preview.description).toBe(item.description)
+    expect(preview.data.tags).toEqual(item.data.tags)
+    // What the renderer does read still comes from the draft.
+    draft = itemDraftReducer(draft, { type: 'setHides', hides: ['hat'] })
+    expect(toPreviewItem(item, draft).data.hides).toEqual(['hat'])
   })
 
   it('hashes new files into the save and merges the spring bones', async () => {

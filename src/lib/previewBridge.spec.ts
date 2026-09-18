@@ -75,6 +75,23 @@ describe('createPreviewBridge', () => {
     expect(bridge.boots).toBe(2)
   })
 
+  it('drops an update that says nothing new, since the iframe rebuilds its scene for each one', () => {
+    const { iframe, postMessage } = mountIframe()
+    bridge = createPreviewBridge({ iframe })
+    ready(iframe)
+    bridge.update({ skin: 'aaaaaa' })
+    vi.advanceTimersByTime(300)
+    bridge.update({ skin: 'aaaaaa' })
+    vi.advanceTimersByTime(300)
+    expect(postMessage).toHaveBeenCalledTimes(1)
+    bridge.update({ skin: 'bbbbbb' })
+    vi.advanceTimersByTime(300)
+    expect(postMessage).toHaveBeenCalledTimes(2)
+    // A reloaded scene knows nothing, so a boot re-sends even an unchanged set.
+    ready(iframe)
+    expect(postMessage).toHaveBeenCalledTimes(3)
+  })
+
   it('stops listening once disposed', () => {
     const { iframe, postMessage } = mountIframe()
     bridge = createPreviewBridge({ iframe })

@@ -16,7 +16,6 @@ import { ValidationBadge, getValidationStatus } from '~/components/ValidationBad
 import { useBaseWearables } from '~/hooks/useBaseWearables'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { useAllCollectionItems, useCollection, useSaveCollection } from '~/hooks/useCollection'
-import { useElementWidth } from '~/hooks/useElementWidth'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useModelValidation } from '~/hooks/useModelValidation'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
@@ -26,7 +25,7 @@ import { useTranslation } from '~/intl'
 import { type AvatarAttributes, toBaseWearableUrns } from '~/lib/avatar'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS } from '~/lib/builder'
 import { canManageCollectionItems, hasCollectionRole, isCollectionLocked, type Collection } from '~/lib/collections'
-import { applyDraftToItem, toSaveableItem } from '~/lib/itemDraft'
+import { toPreviewItem, toSaveableItem } from '~/lib/itemDraft'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
 import { ITEM_EXTENSIONS } from '~/lib/itemFiles'
 import { ItemType, canEditItemDetails, type Item } from '~/lib/items'
@@ -50,11 +49,11 @@ const NOT_FOUND_STATUSES = [401, 403, 404]
 const EMPTY_ITEMS: Item[] = []
 const SPRING_BONES_PUSH_DELAY_MS = 500
 
-// Panel widths in px (spec §3.1), converted to the percentages react-resizable-panels works in. The
-// sidebar sits outside the group with a fixed, animated width.
-const CENTER_MIN = 320
-const RIGHT_DEFAULT = 360
-const RIGHT_MIN = 300
+// Panel sizes as react-resizable-panels wants them, percentages of the group. The sidebar sits
+// outside the group with a fixed, animated width.
+const CENTER_MIN_PCT = 25
+const RIGHT_DEFAULT_PCT = 26
+const RIGHT_MIN_PCT = 20
 
 const isBodyShape = (value: string): value is BodyShape => BodyShape.validate(value)
 
@@ -132,10 +131,7 @@ const ItemEditorPage = () => {
   const [activeSpringHash, setActiveSpringHash] = useState<string | null>(null)
   useBeforeUnloadGuard(form.isDirty)
 
-  const previewSelected = useMemo(
-    () => (selected ? applyDraftToItem(selected, form.draft) : null),
-    [selected, form.draft]
-  )
+  const previewSelected = useMemo(() => (selected ? toPreviewItem(selected, form.draft) : null), [selected, form.draft])
   const previewItems = useMemo(() => {
     const withDraft = previewSelected
       ? items.map(item => (item.id === previewSelected.id ? previewSelected : item))
@@ -299,9 +295,6 @@ const ItemEditorPage = () => {
   const { sidebarCollapsed, toggleSidebar, panelStorage } = useEditorLayout()
   const [isCustomizerOpen, setCustomizerOpen] = useState(false)
   const closeCustomizer = useCallback(() => setCustomizerOpen(false), [])
-  const columnsRef = useRef<HTMLDivElement>(null)
-  const width = useElementWidth(columnsRef)
-  const pct = useCallback((px: number, fallback: number) => (width > 0 ? (px / width) * 100 : fallback), [width])
 
   // States.
   const isLoading = !restored || (!!address && !!collectionId && (collectionQuery.isLoading || itemsQuery.isLoading))
@@ -443,7 +436,7 @@ const ItemEditorPage = () => {
   return (
     <S.Workspace data-testid="item-editor-page" data-mode={mode}>
       {mode === 'review' && <ReviewBar />}
-      <S.Columns ref={columnsRef}>
+      <S.Columns>
         {collection ? sidebar : <S.PickerColumn>{sidebar}</S.PickerColumn>}
         <PanelGroup
           direction="horizontal"
@@ -451,7 +444,7 @@ const ItemEditorPage = () => {
           storage={panelStorage}
           style={{ flex: 1, minWidth: 0 }}
         >
-          <Panel minSize={pct(CENTER_MIN, 25)} order={2}>
+          <Panel minSize={CENTER_MIN_PCT} order={2}>
             <S.CenterPanel data-testid="editor-center">
               {collection ? (
                 <>
@@ -474,7 +467,7 @@ const ItemEditorPage = () => {
           <PanelResizeHandle>
             <S.Handle data-testid="resize-handle-right" />
           </PanelResizeHandle>
-          <Panel defaultSize={pct(RIGHT_DEFAULT, 26)} minSize={pct(RIGHT_MIN, 20)} order={3}>
+          <Panel defaultSize={RIGHT_DEFAULT_PCT} minSize={RIGHT_MIN_PCT} order={3}>
             {collection && selected ? (
               <PropertiesPanel
                 key={selected.id}

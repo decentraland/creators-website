@@ -180,6 +180,21 @@ export function applyDraftToItem(item: Item, draft: ItemDraft): Item {
   return next
 }
 
+/**
+ * The item as the renderer sees it: the draft applied, but the saved display strings kept. Name,
+ * description and utility change nothing on screen, and a definition that changes on every keystroke
+ * would rebuild the whole scene while typing.
+ */
+export function toPreviewItem(item: Item, draft: ItemDraft): Item {
+  return applyDraftToItem(item, {
+    ...draft,
+    name: item.name,
+    description: item.description,
+    utility: item.utility ?? '',
+    tags: item.data.tags ?? []
+  })
+}
+
 /** The preview video may change until the item is approved; after that it is frozen with the deployment. */
 export function canUpdateVideo(item: Item): boolean {
   return !item.isPublished || !item.isApproved
