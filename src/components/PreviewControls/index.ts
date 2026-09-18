@@ -1,1 +1,1 @@
-export { EmoteControls, TranslationControls, ZoomControls } from './PreviewControls'
+export { EmoteControls, TranslationControls } from './PreviewControls'

@@ -773,11 +773,11 @@
     },
     "actions": {
       "label": "Acciones del ítem"
-    },
-    "zoom": {
-      "in": "Acercar",
-      "out": "Alejar"
     }
+  },
+  "zoom_controls": {
+    "in": "Acercar",
+    "out": "Alejar"
   },
   "curation_page": {
     "title": "Curado"

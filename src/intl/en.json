@@ -773,11 +773,11 @@
     },
     "actions": {
       "label": "Item actions"
-    },
-    "zoom": {
-      "in": "Zoom in",
-      "out": "Zoom out"
     }
+  },
+  "zoom_controls": {
+    "in": "Zoom in",
+    "out": "Zoom out"
   },
   "curation_page": {
     "title": "Curation"

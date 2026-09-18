@@ -8,22 +8,24 @@ export const ZOOM_STEP = 2
 
 type Props = {
   controller: IPreviewController
+  /** Layout-only override (offsets); the look is fixed. */
+  className?: string
   testId?: string
 }
 
 /**
  * Zoom in / out over a Babylon preview (`scene.changeZoom` is a relative camera nudge there). Unity
  * only reads a zoom level when it frames the camera at load and draws its own buttons in the canvas,
- * so the editor does not mount these for it.
+ * so callers must not mount these for it.
  */
-export function ZoomControls({ controller, testId = 'zoom-controls' }: Props) {
+export function ZoomControls({ controller, className, testId = 'zoom-controls' }: Props) {
   const { t } = useTranslation()
   const step = (delta: number) => controller.scene.changeZoom(delta).catch(() => undefined)
   return (
-    <S.Wrap data-testid={testId}>
+    <S.Wrap className={className} data-testid={testId}>
       <S.ZoomButton
         type="button"
-        aria-label={t('item_editor.zoom.in')}
+        aria-label={t('zoom_controls.in')}
         data-testid={`${testId}-in`}
         onClick={() => void step(ZOOM_STEP)}
       >
@@ -31,7 +33,7 @@ export function ZoomControls({ controller, testId = 'zoom-controls' }: Props) {
       </S.ZoomButton>
       <S.ZoomButton
         type="button"
-        aria-label={t('item_editor.zoom.out')}
+        aria-label={t('zoom_controls.out')}
         data-testid={`${testId}-out`}
         onClick={() => void step(-ZOOM_STEP)}
       >
