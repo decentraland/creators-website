@@ -97,13 +97,12 @@ const gradients = {
 
 // Item editor workspace (creator-hub inspector palette; no other hexes belong in the editor).
 const editor = {
-  bg: '#161518',
-  surface: '#242129',
-  surfaceHover: '#504e58',
-  handle: '#000000',
+  bg: colors.text,
+  surface: colors.text2,
+  surfaceHover: colors.muted1,
   label: colors.muted2,
   accent: colors.dclRed,
-  line: '#454545'
+  line: colors.gray0
 } as const
 
 const radius = {
