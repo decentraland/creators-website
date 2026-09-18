@@ -191,6 +191,7 @@ export const SectionBody = styled.div`
   flex-direction: column;
   gap: 12px;
   padding: 0 12px 12px;
+  overflow: auto;
 
   [data-collapsed] & {
     padding: 0 3px 12px;
