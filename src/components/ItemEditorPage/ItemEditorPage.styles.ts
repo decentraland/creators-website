@@ -35,7 +35,6 @@ export const Handle = styled.div`
   flex: none;
   width: 5px;
   height: 100%;
-  background: ${theme.editor.handle};
   transition: background 120ms;
 
   &::after {

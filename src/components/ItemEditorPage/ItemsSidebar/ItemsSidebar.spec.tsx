@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { BodyShape } from '@dcl/schemas'
 import { TranslationProvider } from '~/intl'
 import { type Collection } from '~/lib/collections'
@@ -42,9 +42,15 @@ const hat = make('hat', ItemType.WEARABLE)
 const femaleOnly = make('dress', ItemType.WEARABLE, [BodyShape.FEMALE])
 const dance = make('dance', ItemType.EMOTE)
 
+/** Shows where the router ended up, so a test can tell a blocked link from one that navigated. */
+function Location() {
+  return <span data-testid="location">{useLocation().pathname}</span>
+}
+
 const wrapper = ({ children }: { children: ReactNode }) => (
   <MemoryRouter>
     <TranslationProvider>{children}</TranslationProvider>
+    <Location />
   </MemoryRouter>
 )
 
@@ -96,6 +102,21 @@ describe('ItemsSidebar', () => {
     await userEvent.click(screen.getByTestId('items-sidebar-select-dance'))
     expect(props.onToggleEmotePlay).toHaveBeenCalledWith(dance)
     expect(props.onSelect).not.toHaveBeenCalled()
+  })
+
+  it('asks before the back link leaves and stays put when the answer is no', async () => {
+    const onLeave = vi.fn().mockReturnValue(false)
+    renderSidebar({ onLeave })
+    await userEvent.click(screen.getByTestId('items-sidebar-back'))
+    expect(onLeave).toHaveBeenCalledWith('/collections/c1')
+    expect(screen.getByTestId('location')).toHaveTextContent('/')
+    expect(screen.getByTestId('location')).not.toHaveTextContent('/collections/c1')
+  })
+
+  it('leaves for the collection when nothing holds the editor back', async () => {
+    renderSidebar({ onLeave: vi.fn().mockReturnValue(true) })
+    await userEvent.click(screen.getByTestId('items-sidebar-back'))
+    expect(screen.getByTestId('location')).toHaveTextContent('/collections/c1')
   })
 
   it('hides the header actions in review mode and shows them to editors of a draft', () => {

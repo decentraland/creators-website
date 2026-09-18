@@ -18,11 +18,18 @@ import { ItemType } from '~/lib/items'
 /** What the avatar needs to know about an item to dress it: one emote and one wearable per slot at a time. */
 type Dressable = { id: string; type: ItemType; category?: string }
 
+/** What a dressed id is, kept so a newly dressed item can push out the one it competes with. */
+type DressedKind = { type: ItemType; category?: string }
+
+type Dressing = Pick<AvatarPreviewState, 'dressedItemIds' | 'dressedKinds'>
+
 export type AvatarPreviewState = AvatarColors & {
   bodyShape: BodyShape
   /** The base outfit per body shape; null until the catalog has been seeded. */
   baseWearables: Record<BodyShape, BaseWearableSelection> | null
   dressedItemIds: string[]
+  /** Kept in the store, not module scope, so it is reset with the ids it describes. */
+  dressedKinds: Record<string, DressedKind>
   emote: PreviewEmote
   isPlaying: boolean
   setBodyShape: (bodyShape: BodyShape) => void
@@ -49,6 +56,7 @@ export const useAvatarPreview = create<AvatarPreviewState>()((set, get) => ({
   ...initialColors,
   baseWearables: null,
   dressedItemIds: [],
+  dressedKinds: {},
   emote: PreviewEmote.IDLE,
   isPlaying: false,
   setBodyShape: bodyShape => set({ bodyShape }),
@@ -78,43 +86,43 @@ export const useAvatarPreview = create<AvatarPreviewState>()((set, get) => ({
       }
     }))
   },
-  dress: item => set(state => ({ dressedItemIds: dressOne(state.dressedItemIds, item) })),
-  undress: itemId => set(state => ({ dressedItemIds: state.dressedItemIds.filter(id => id !== itemId) })),
+  dress: item => set(state => dressOne(state, item)),
+  undress: itemId => set(state => undressOne(state, itemId)),
   toggleDressed: item =>
-    set(state =>
-      state.dressedItemIds.includes(item.id)
-        ? { dressedItemIds: state.dressedItemIds.filter(id => id !== item.id) }
-        : { dressedItemIds: dressOne(state.dressedItemIds, item) }
-    ),
-  setDressed: items => set({ dressedItemIds: items.reduce<string[]>((ids, item) => dressOne(ids, item), []) }),
-  clearDressed: () =>
-    set(() => {
-      dressedKinds.clear()
-      return { dressedItemIds: [] }
-    }),
+    set(state => (state.dressedItemIds.includes(item.id) ? undressOne(state, item.id) : dressOne(state, item))),
+  setDressed: items => set(() => items.reduce(dressOne, EMPTY_DRESSING)),
+  clearDressed: () => set(EMPTY_DRESSING),
   setEmote: emote => set({ emote }),
   setPlaying: isPlaying => set({ isPlaying })
 }))
 
-// The store keeps ids only; what every dressed id is (type and slot) is remembered here so a newly
-// dressed item can push out the one it competes with: the emote already playing, or the wearable
-// already occupying the same category slot (the preview would only show the last one anyway).
-const dressedKinds = new Map<string, { type: ItemType; category?: string }>()
+const EMPTY_DRESSING: Dressing = { dressedItemIds: [], dressedKinds: {} }
 
-function competes(a: { type: ItemType; category?: string }, b: { type: ItemType; category?: string }): boolean {
-  if (a.type !== b.type) return false
-  if (a.type === ItemType.EMOTE) return true
-  return a.category !== undefined && a.category === b.category
+/** Whether a dressed item has to come off for `item` to go on: the emote playing, or the same slot. */
+function competes(kind: DressedKind | undefined, item: Dressable): boolean {
+  if (!kind || kind.type !== item.type) return false
+  if (item.type === ItemType.EMOTE) return true
+  return item.category !== undefined && kind.category === item.category
 }
 
-function dressOne(ids: string[], item: Dressable): string[] {
-  dressedKinds.set(item.id, { type: item.type, category: item.category })
-  const keep = ids.filter(id => {
-    if (id === item.id) return true
-    const kind = dressedKinds.get(id)
-    return !kind || !competes(kind, item)
-  })
-  return keep.includes(item.id) ? keep : [...keep, item.id]
+function dressOne(state: Dressing, item: Dressable): Dressing {
+  const ids = state.dressedItemIds.filter(id => id === item.id || !competes(state.dressedKinds[id], item))
+  const kinds = { ...state.dressedKinds, [item.id]: { type: item.type, category: item.category } }
+  return toDressing(ids.includes(item.id) ? ids : [...ids, item.id], kinds)
+}
+
+function undressOne(state: Dressing, itemId: string): Dressing {
+  return toDressing(
+    state.dressedItemIds.filter(id => id !== itemId),
+    state.dressedKinds
+  )
+}
+
+/** Keeps the kinds down to the ids still dressed, so nothing accumulates across collections. */
+function toDressing(dressedItemIds: string[], kinds: Record<string, DressedKind>): Dressing {
+  const dressedKinds: Record<string, DressedKind> = {}
+  for (const id of dressedItemIds) if (kinds[id]) dressedKinds[id] = kinds[id]
+  return { dressedItemIds, dressedKinds }
 }
 
 function emptySelections(): Record<BodyShape, BaseWearableSelection> {

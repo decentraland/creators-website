@@ -42,6 +42,8 @@ type Props = {
   /** Draft collections the viewer manages: a pencil next to the name opens the rename dialog. */
   onRename?: () => void
   onSelect: (item: Item) => void
+  /** Asked before the back link leaves the editor; false keeps the user here (unsaved changes). */
+  onLeave?: (to: string) => boolean
   onToggleDressed: (item: Item) => void
   /** Clicking the selected, dressed emote row toggles its playback. */
   onToggleEmotePlay: (item: Item) => void
@@ -63,6 +65,7 @@ export function ItemsSidebar({
   onAddItems,
   onRename,
   onSelect,
+  onLeave,
   onToggleDressed,
   onToggleEmotePlay,
   testId = 'items-sidebar'
@@ -168,7 +171,15 @@ export function ItemsSidebar({
               asChild
               testId={`${testId}-back-tooltip`}
             >
-              <S.IconLink to={backTo} aria-label={t('item_editor.sidebar.back')} data-testid={`${testId}-back`}>
+              <S.IconLink
+                to={backTo}
+                aria-label={t('item_editor.sidebar.back')}
+                data-testid={`${testId}-back`}
+                // A router link never reaches the unload guard, so leaving is asked about here.
+                onClick={event => {
+                  if (onLeave && !onLeave(backTo)) event.preventDefault()
+                }}
+              >
                 <BackIcon fontSize="small" />
               </S.IconLink>
             </Tooltip>

@@ -19,6 +19,7 @@ beforeEach(() => {
   useAvatarPreview.setState({
     baseWearables: null,
     dressedItemIds: [],
+    dressedKinds: {},
     emote: PreviewEmote.IDLE,
     isPlaying: false,
     bodyShape: BodyShape.MALE
@@ -48,6 +49,17 @@ describe('avatar preview store', () => {
     dress({ id: 'mystery', type: ItemType.WEARABLE })
     dress({ id: 'mystery2', type: ItemType.WEARABLE })
     expect(useAvatarPreview.getState().dressedItemIds).toEqual(['shirt', 'hat2', 'mystery', 'mystery2'])
+  })
+
+  it('forgets what was dressed when the avatar is cleared, so nothing lingers between collections', () => {
+    const { dress, clearDressed } = useAvatarPreview.getState()
+    dress({ id: 'hat1', type: ItemType.WEARABLE, category: 'hat' })
+    clearDressed()
+    expect(useAvatarPreview.getState().dressedItemIds).toEqual([])
+    // The cleared hat must not push the new one out: it is no longer on the avatar.
+    dress({ id: 'shirt', type: ItemType.WEARABLE, category: 'upper_body' })
+    dress({ id: 'hat2', type: ItemType.WEARABLE, category: 'hat' })
+    expect(useAvatarPreview.getState().dressedItemIds).toEqual(['shirt', 'hat2'])
   })
 
   it('seeds a random base outfit once and reports the urns for the current body shape', () => {

@@ -57,6 +57,9 @@ const RIGHT_MIN_PCT = 20
 
 const isBodyShape = (value: string): value is BodyShape => BodyShape.validate(value)
 
+/** A navigation held back by unsaved changes: another item, or out of the editor entirely. */
+type PendingNavigation = { kind: 'item'; item: Item } | { kind: 'away'; to: string }
+
 // Until the curation feature lands there is no committee check: `?reviewing=true` is ignored.
 const isCurator = false
 
@@ -184,7 +187,7 @@ const ItemEditorPage = () => {
   }, [loadCount, isPlaying])
 
   // Selection: the URL is the only source of truth; a dirty draft asks before switching.
-  const [pendingSelection, setPendingSelection] = useState<Item | null>(null)
+  const [pending, setPending] = useState<PendingNavigation | null>(null)
   const navigateToItem = useCallback(
     (item: Item | null) => {
       setSearchParams(prev => {
@@ -199,7 +202,7 @@ const ItemEditorPage = () => {
   const selectItem = useCallback(
     (item: Item) => {
       if (item.id === selectedId) return
-      if (form.isDirty) setPendingSelection(item)
+      if (form.isDirty) setPending({ kind: 'item', item })
       else navigateToItem(item)
     },
     [selectedId, form.isDirty, navigateToItem]
@@ -264,6 +267,9 @@ const ItemEditorPage = () => {
     })
   }
 
+  // Read off `form` before the memo: `form` itself is a fresh object every render, so depending on it
+  // would defeat the caching and re-render the properties panel on every keystroke.
+  const { springBoneParams, setSpringBoneParams } = form
   const springBonesForm = useMemo<SpringBonesFormProps | null>(() => {
     if (!selected || springBones.models.length === 0) return null
     const activeHash =
@@ -272,7 +278,7 @@ const ItemEditorPage = () => {
         : (currentSpringHash ?? springBones.models[0].hash)
     return {
       models: springBones.models,
-      params: form.springBoneParams[activeHash] ?? {},
+      params: springBoneParams[activeHash] ?? {},
       activeHash,
       onActiveHashChange: hash => {
         setActiveSpringHash(hash)
@@ -281,10 +287,9 @@ const ItemEditorPage = () => {
         const shape = model?.bodyShapes.find(isBodyShape)
         if (shape) setBodyShape(shape)
       },
-      onChange: (params: SpringBoneParamsByName) =>
-        form.setSpringBoneParams({ ...form.springBoneParams, [activeHash]: params })
+      onChange: (params: SpringBoneParamsByName) => setSpringBoneParams({ ...springBoneParams, [activeHash]: params })
     }
-  }, [selected, springBones, activeSpringHash, currentSpringHash, form, setBodyShape])
+  }, [selected, springBones, activeSpringHash, currentSpringHash, springBoneParams, setSpringBoneParams, setBodyShape])
 
   const closeRename = useCallback(() => {
     setRenameOpen(false)
@@ -431,6 +436,11 @@ const ItemEditorPage = () => {
         filesInputRef.current?.click()
       }}
       onSelect={selectItem}
+      onLeave={to => {
+        if (!form.isDirty) return true
+        setPending({ kind: 'away', to })
+        return false
+      }}
       onToggleDressed={item => toggleDressed({ id: item.id, type: item.type, category: item.data.category })}
       onToggleEmotePlay={toggleEmotePlay}
     />
@@ -530,22 +540,23 @@ const ItemEditorPage = () => {
           onClose={closeRename}
         />
       )}
-      {pendingSelection && (
+      {pending && (
         <ConfirmModal
           title={t('item_editor.discard.title')}
           description={t('item_editor.discard.description')}
-          onClose={() => setPendingSelection(null)}
+          onClose={() => setPending(null)}
           cancel={{
             label: t('item_editor.discard.stay'),
-            onClick: () => setPendingSelection(null),
+            onClick: () => setPending(null),
             testId: 'discard-stay'
           }}
           confirm={{
             label: t('item_editor.discard.confirm'),
             onClick: () => {
-              const next = pendingSelection
-              setPendingSelection(null)
-              navigateToItem(next)
+              const next = pending
+              setPending(null)
+              if (next.kind === 'item') navigateToItem(next.item)
+              else navigate(next.to)
             },
             testId: 'discard-confirm'
           }}
