@@ -16,7 +16,6 @@ import { ValidationBadge, getValidationStatus } from '~/components/ValidationBad
 import { useBaseWearables } from '~/hooks/useBaseWearables'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { useAllCollectionItems, useCollection, useSaveCollection } from '~/hooks/useCollection'
-import { useElementWidth } from '~/hooks/useElementWidth'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useModelValidation } from '~/hooks/useModelValidation'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
@@ -38,7 +37,6 @@ import { useWallet } from '~/store/wallet'
 import { theme } from '~/styles/theme'
 import { CollectionPicker } from './CollectionPicker'
 import { ItemsSidebar } from './ItemsSidebar'
-import { COLLAPSED_WIDTH, EXPANDED_WIDTH } from './ItemsSidebar/ItemsSidebar.styles'
 import { MobilePreview } from './MobilePreview'
 import { PropertiesPanel, type SpringBonesFormProps } from './PropertiesPanel'
 import { ReviewBar } from './ReviewBar'
@@ -51,16 +49,11 @@ const NOT_FOUND_STATUSES = [401, 403, 404]
 const EMPTY_ITEMS: Item[] = []
 const SPRING_BONES_PUSH_DELAY_MS = 500
 
-// The sidebar sits outside the group with a fixed, animated width. react-resizable-panels speaks
-// only percentages, so the px minimums (spec §3.1) are converted against the measured group width,
-// falling back to percentages until it is known.
-/** Matches the resize handle in the styles; it sits between the panels, outside their percentages. */
-const HANDLE_WIDTH = 5
-const CENTER_MIN_PX = 320
+// Panel sizes as react-resizable-panels wants them, percentages of the group. The sidebar sits
+// outside the group with a fixed, animated width.
 const CENTER_MIN_PCT = 25
-const RIGHT_MIN_PX = 275
-const RIGHT_MIN_PCT = 20
 const RIGHT_DEFAULT_PCT = 26
+const RIGHT_MIN_PCT = 20
 
 const isBodyShape = (value: string): value is BodyShape => BodyShape.validate(value)
 
@@ -302,15 +295,6 @@ const ItemEditorPage = () => {
   const { sidebarCollapsed, toggleSidebar, panelStorage } = useEditorLayout()
   const [isCustomizerOpen, setCustomizerOpen] = useState(false)
   const closeCustomizer = useCallback(() => setCustomizerOpen(false), [])
-  const columnsRef = useRef<HTMLDivElement>(null)
-  const columnsWidth = useElementWidth(columnsRef)
-  // PanelGroup's ref is an imperative handle, so the row is measured instead: off come the sidebar,
-  // which sits outside the group at a known width, and the resize handle, which takes its own space
-  // outside the percentages the panels share. The viewport stands in until the first measurement
-  // lands, because the library validates the saved layout against the minimums it is first given.
-  const groupWidth =
-    (columnsWidth || window.innerWidth) - (sidebarCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH) - HANDLE_WIDTH
-  const pct = (px: number, fallback: number) => (groupWidth > 0 ? (px / groupWidth) * 100 : fallback)
 
   // States.
   const isLoading = !restored || (!!address && !!collectionId && (collectionQuery.isLoading || itemsQuery.isLoading))
@@ -411,12 +395,7 @@ const ItemEditorPage = () => {
         selectedId={selectedId}
         dressedIds={dressedItemIds}
         bodyShape={bodyShape}
-        // Tapping an item always puts it back on the avatar: the phone has no dress toggle, so this is
-        // the way back after Stop.
-        onSelect={item => {
-          navigateToItem(item)
-          dress({ id: item.id, type: item.type, category: item.data.category })
-        }}
+        onSelect={item => navigateToItem(item)}
       >
         {collection ? preview : <S.PreviewEmpty>{t('item_editor.pick_collection')}</S.PreviewEmpty>}
         {collection && isCustomizerOpen && (
@@ -457,7 +436,7 @@ const ItemEditorPage = () => {
   return (
     <S.Workspace data-testid="item-editor-page" data-mode={mode}>
       {mode === 'review' && <ReviewBar />}
-      <S.Columns ref={columnsRef}>
+      <S.Columns>
         {collection ? sidebar : <S.PickerColumn>{sidebar}</S.PickerColumn>}
         <PanelGroup
           direction="horizontal"
@@ -465,7 +444,7 @@ const ItemEditorPage = () => {
           storage={panelStorage}
           style={{ flex: 1, minWidth: 0 }}
         >
-          <Panel minSize={pct(CENTER_MIN_PX, CENTER_MIN_PCT)} order={1}>
+          <Panel minSize={CENTER_MIN_PCT} order={2}>
             <S.CenterPanel data-testid="editor-center">
               {collection ? (
                 <>
@@ -488,7 +467,7 @@ const ItemEditorPage = () => {
           <PanelResizeHandle>
             <S.Handle data-testid="resize-handle-right" />
           </PanelResizeHandle>
-          <Panel defaultSize={RIGHT_DEFAULT_PCT} minSize={pct(RIGHT_MIN_PX, RIGHT_MIN_PCT)} order={2}>
+          <Panel defaultSize={RIGHT_DEFAULT_PCT} minSize={RIGHT_MIN_PCT} order={3}>
             {collection && selected ? (
               <PropertiesPanel
                 key={selected.id}
