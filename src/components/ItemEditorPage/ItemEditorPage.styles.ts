@@ -176,6 +176,11 @@ export const SectionIcon = styled.span`
     height: 16px;
   }
 
+  [data-collapsed] & svg {
+    width: 24px;
+    height: 24px;
+  }
+
   [data-icon-only] > & {
     margin: 0 auto;
   }
