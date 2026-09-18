@@ -4,9 +4,11 @@ import { Bookmark as CollectionIcon, Stop as StopIcon } from '@mui/icons-materia
 import { EmoteControls } from '~/components/PreviewControls'
 import { Select } from '~/components/Select'
 import { Tooltip } from '~/components/Tooltip'
+import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useTranslation } from '~/intl'
 import { ItemType, type Item } from '~/lib/items'
 import { useAvatarPreview } from '~/store/avatarPreview'
+import { theme } from '~/styles/theme'
 import * as S from './PlaybackBar.styles'
 
 type Props = {
@@ -25,8 +27,9 @@ const DEFAULT_EMOTES = Object.values(PreviewEmote).filter(
 )
 
 /**
- * Picks and plays an emote on the avatar, a default one or one of the collection's; while one plays a
- * Stop button returns the avatar to its idle pose (the legacy CenterPanel behaviour).
+ * Picks and plays an emote on the avatar, a default one or one of the collection's. Stop returns the
+ * avatar to its idle pose, and is the only way out of an emote preview on a phone, where the sidebar's
+ * undress button is not there.
  */
 export function PlaybackBar({
   previewId,
@@ -36,6 +39,7 @@ export function PlaybackBar({
   testId = 'playback-bar'
 }: Props) {
   const { t } = useTranslation()
+  const isMobile = useMediaQuery(theme.media.maxWidth('mobile'))
   const emote = useAvatarPreview(state => state.emote)
   const dressedItemIds = useAvatarPreview(state => state.dressedItemIds)
   const setEmote = useAvatarPreview(state => state.setEmote)
@@ -69,16 +73,6 @@ export function PlaybackBar({
     [collectionEmotes, t, testId]
   )
 
-  if (subjectEmoteId) {
-    return (
-      <S.EmoteControlsWrap data-testid={`${testId}-emote-controls`}>
-        <EmoteControls key={subjectEmoteId} wearablePreviewId={previewId} />
-      </S.EmoteControlsWrap>
-    )
-  }
-
-  const isEmoteActive = emote !== PreviewEmote.IDLE || dressedEmote !== null
-
   function select(value: string) {
     const collectionEmote = collectionEmotes.find(item => item.id === value)
     if (collectionEmote) {
@@ -95,6 +89,31 @@ export function PlaybackBar({
     void controller?.emote.stop().catch(() => undefined)
   }
 
+  const stopButton = (
+    <Tooltip content={t('item_editor.playback.stop')} asChild testId={`${testId}-stop-tooltip`}>
+      <S.StopControl
+        type="button"
+        aria-label={t('item_editor.playback.stop')}
+        data-testid={`${testId}-stop`}
+        onClick={stop}
+      >
+        <StopIcon fontSize="small" />
+      </S.StopControl>
+    </Tooltip>
+  )
+
+  if (subjectEmoteId) {
+    return (
+      <S.EmoteControlsWrap data-testid={`${testId}-emote-controls`}>
+        {/* The frame counter is what gives way when the row has to fit a phone. */}
+        <EmoteControls key={subjectEmoteId} wearablePreviewId={previewId} hideFrameInput={isMobile} />
+        {stopButton}
+      </S.EmoteControlsWrap>
+    )
+  }
+
+  const isEmoteActive = emote !== PreviewEmote.IDLE || dressedEmote !== null
+
   return (
     <S.Wrap data-testid={testId} data-playing={isEmoteActive || undefined}>
       <Select
@@ -107,12 +126,7 @@ export function PlaybackBar({
         onChange={select}
       />
       {isEmoteActive && (
-        <S.StopButton
-          type="button"
-          aria-label={t('item_editor.playback.stop')}
-          data-testid={`${testId}-stop`}
-          onClick={stop}
-        >
+        <S.StopButton type="button" data-testid={`${testId}-stop`} onClick={stop}>
           <StopIcon fontSize="small" />
           {t('item_editor.playback.stop')}
         </S.StopButton>

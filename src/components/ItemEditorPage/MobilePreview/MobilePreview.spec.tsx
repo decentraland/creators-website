@@ -26,14 +26,14 @@ const dress = make('dress', [BodyShape.FEMALE])
 
 describe('MobilePreview', () => {
   it('shows the preview with a thumbnail strip that switches the selection and a dismissible hint', async () => {
-    const onSelect = vi.fn()
+    const onTap = vi.fn()
     render(
       <MobilePreview
         items={[hat, dress]}
         selectedId="hat"
         dressedIds={['hat']}
         bodyShape={BodyShape.MALE}
-        onSelect={onSelect}
+        onTap={onTap}
       >
         <div data-testid="preview" />
       </MobilePreview>,
@@ -43,8 +43,27 @@ describe('MobilePreview', () => {
     expect(screen.getByTestId('mobile-strip-item-hat')).toHaveAttribute('data-selected')
     expect(screen.getByTestId('mobile-strip-item-dress')).toHaveAttribute('data-unavailable')
     await userEvent.click(screen.getByTestId('mobile-strip-item-dress'))
-    expect(onSelect).toHaveBeenCalledWith(dress)
+    expect(onTap).toHaveBeenCalledWith(dress)
     await userEvent.click(screen.getByTestId('mobile-hint-dismiss'))
     expect(screen.queryByTestId('mobile-hint')).not.toBeInTheDocument()
+  })
+
+  it('offers each thumbnail as a toggle, telling apart what is on the avatar from what is not', async () => {
+    render(
+      <MobilePreview
+        items={[hat, dress]}
+        selectedId="hat"
+        dressedIds={['hat']}
+        bodyShape={BodyShape.MALE}
+        onTap={vi.fn()}
+      >
+        <div data-testid="preview" />
+      </MobilePreview>,
+      { wrapper: TranslationProvider }
+    )
+    expect(screen.getByRole('button', { name: 'Remove hat from the avatar' })).toHaveAttribute('data-dressed')
+    const off = screen.getByRole('button', { name: 'Show dress on the avatar' })
+    expect(off).not.toHaveAttribute('data-dressed')
+    expect(off).toHaveAttribute('aria-pressed', 'false')
   })
 })

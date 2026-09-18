@@ -395,7 +395,12 @@ const ItemEditorPage = () => {
         selectedId={selectedId}
         dressedIds={dressedItemIds}
         bodyShape={bodyShape}
-        onSelect={item => navigateToItem(item)}
+        // The strip is the phone's only item control, so a tap does what the sidebar's row and dress
+        // button do together: put the item on the avatar and edit it, or take it back off.
+        onTap={item => {
+          if (!dressedItemIds.includes(item.id)) navigateToItem(item)
+          toggleDressed({ id: item.id, type: item.type, category: item.data.category })
+        }}
       >
         {collection ? preview : <S.PreviewEmpty>{t('item_editor.pick_collection')}</S.PreviewEmpty>}
         {collection && isCustomizerOpen && (

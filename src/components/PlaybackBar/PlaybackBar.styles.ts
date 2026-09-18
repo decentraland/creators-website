@@ -51,14 +51,35 @@ export const StopButton = styled.button`
   }
 `
 
+/** Our own control alongside ui2's, matching the look given to theirs below. */
+export const StopControl = styled.button`
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid ${theme.editor.line};
+  border-radius: ${theme.radius.chip};
+  background: ${theme.editor.bg};
+  color: ${theme.colors.white};
+
+  &:hover {
+    background: ${theme.editor.surfaceHover};
+  }
+`
+
 // ui2 lays its controls out absolutely against the nearest positioned ancestor, sized to it; anchoring
 // them here and resetting that placement keeps them inside this box, in the row with the other controls.
 export const EmoteControlsWrap = styled.div`
   position: relative;
   display: flex;
   align-items: center;
+  gap: 5px;
   height: 48px;
-  min-width: 320px;
+  /* A floor, not a width: the overlay grows this box. Low enough that the row still fits a phone. */
+  min-width: 240px;
   padding: 0 5px;
   border: 1px solid ${theme.editor.line};
   border-radius: ${theme.radius.btnSm};
