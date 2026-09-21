@@ -9,6 +9,7 @@ import { type ContractCall } from '~/lib/auth'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS } from '~/lib/builder'
 import { isCollectionLocked, type Collection } from '~/lib/collections'
 import { CreditsServerError, type ExternalCall, type PublicationAuthorization } from '~/lib/credits'
+import { PublicationFeeMismatchError } from '~/lib/feeVerification'
 import { hasOldHashedContents } from '~/lib/itemFactory'
 import { isMissingSmartWearableVideo, type Item } from '~/lib/items'
 import { weiToUsdCents, type PublicationFee } from '~/lib/publishFee'
@@ -141,7 +142,7 @@ export function buildUseCreditsCall(
 }
 
 export type PublishFailureReason =
-  'missing_salt' | 'unsynced' | 'locked' | 'insufficient_credits' | 'rejected' | 'generic'
+  'missing_salt' | 'unsynced' | 'locked' | 'insufficient_credits' | 'fee_mismatch' | 'rejected' | 'generic'
 
 export class PublishCollectionError extends Error {
   reason: PublishFailureReason
@@ -156,6 +157,7 @@ export class PublishCollectionError extends Error {
 /** Maps any failure of the sequence to the reason the UI shows copy for. */
 export function toPublishError(error: unknown): PublishCollectionError {
   if (error instanceof PublishCollectionError) return error
+  if (error instanceof PublicationFeeMismatchError) return new PublishCollectionError('fee_mismatch', error.message)
   if (error instanceof CreditsServerError && error.code === 'insufficient_credits') {
     return new PublishCollectionError('insufficient_credits', error.message)
   }

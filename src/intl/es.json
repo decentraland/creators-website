@@ -347,6 +347,7 @@
       "description_insufficient_credits": "No tienes suficientes créditos para cubrir la tarifa de publicación. Obtén más créditos e inténtalo de nuevo.",
       "description_locked": "Esta colección ya se está publicando. Espera unos minutos y actualiza la página.",
       "description_unsynced": "Los ítems de esta colección cambiaron mientras publicabas. Cierra este diálogo y vuelve a empezar.",
+      "description_fee_mismatch": "La tarifa de publicación cambió mientras confirmabas. Ya la actualizamos: revisa el nuevo importe e inténtalo de nuevo.",
       "try_again": "Intentar de nuevo"
     }
   },

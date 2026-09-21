@@ -14,9 +14,11 @@ import { type Collection } from '~/lib/collections'
 import { FeatureFlag } from '~/lib/featureFlags'
 import { type Item } from '~/lib/items'
 import { openExternal } from '~/lib/navigation'
+import { verifyPublicationFee } from '~/lib/feeVerification'
 import {
   canPayWith,
   getAvailablePaymentMethods,
+  getMaticChainId,
   toPublishError,
   type PaymentMethod,
   type PublishCollectionError,
@@ -39,7 +41,7 @@ const openLink = (url: string) => (event: React.MouseEvent) => {
   openExternal(url)
 }
 
-type Status = 'idle' | 'approving' | 'confirming'
+type Status = 'idle' | 'checking' | 'approving' | 'confirming'
 
 type Props = {
   collection: Collection
@@ -114,6 +116,16 @@ export function PaymentStep({
   async function handleSubmit() {
     if (!fee || !paymentMethod || !canSubmit) return
     setApproveFailed(false)
+    // The quote is builder-server's word; the contract's own price decides whether a wallet prompt is warranted.
+    setStatus('checking')
+    try {
+      await verifyPublicationFee(fee, items, getMaticChainId())
+    } catch (error) {
+      setStatus('idle')
+      void rarities.refetch()
+      onFailed(toPublishError(error))
+      return
+    }
     if (paymentMethod === 'mana' && (allowance.data ?? 0n) < fee.total.manaWei) {
       setStatus('approving')
       try {
