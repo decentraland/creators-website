@@ -86,6 +86,10 @@ Prefer friendly copy and hide blockchain plumbing where possible. Wallet/MANA/tr
 - **Icons**: Material glyphs from `@mui/icons-material`; Figma-specific glyphs as inline-SVG components in `~/components/Icons` — see "Icons" in `CONVENTIONS.md`.
 - **Never use a styled component as a selector** inside another styled template (`${Name} { … }`): it compiles in the Vite build but throws in Vitest. Target a stable `[data-testid]` / `[data-*]` hook instead.
 
+### Feature flags
+
+Decentraland's flag service is read through `lib/featureFlags` (one `FeatureFlag` enum entry plus its owning application, `builder` or `dapps`) and consumed with `useFeatureFlag(flag)` → `{ enabled, isLoading }`. Reads fail closed: a flag still loading, absent, or unreachable is off. Add a flag by adding the enum entry and its `APPLICATION` row — never by fetching the service anywhere else. Locally, override with `VITE_FEATURE_FLAG_OVERRIDES=unity-wearable-preview:true`. In specs, mock `~/lib/featureFlags` onto `~/test/featureFlags` and declare the flags the subject runs with via `setFeatureFlags(...)`.
+
 ### Testing
 
 Unit tests for the logic layer, e2e for user flows.

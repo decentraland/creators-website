@@ -1,9 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { FeatureFlag } from '~/lib/featureFlags'
+import { setFeatureFlags } from '~/test/featureFlags'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NO_EXPIRATION, formatDateValue, minExpirationDate, parseExpirationDate } from '~/lib/sales'
 import { SellItemModal } from './SellItemModal'
 import { ADDRESS, FRIEND, Providers, item, makeSession } from './testUtils'
+
+vi.mock('~/lib/featureFlags', async () => {
+  const actual = await vi.importActual<typeof import('~/lib/featureFlags')>('~/lib/featureFlags')
+  const mock = await import('~/test/featureFlags')
+  return { ...actual, getIsFeatureEnabled: mock.getIsFeatureEnabled }
+})
+
+beforeEach(() => setFeatureFlags(FeatureFlag.CREDITS_PRIMARY_LISTINGS))
 
 const rate = { data: undefined as bigint | undefined }
 vi.mock('~/hooks/useSales', () => ({
@@ -84,6 +94,17 @@ describe('SellItemModal', () => {
     expect(submit()).toBeEnabled()
     await userEvent.click(submit())
     expect(onSubmit.mock.calls[0][1]).toMatchObject({ price: { kind: 'mana', manaWei: 2_590_000_000_000_000_000n } })
+  })
+
+  it('prices in MANA only, with no currency to pick, while credit listings are off', async () => {
+    setFeatureFlags()
+    rate.data = 300_000_000_000_000_000n
+    renderModal()
+    await waitFor(() => expect(price()).toHaveAttribute('data-currency', 'mana'))
+    expect(screen.getByTestId('sell-price-currency')).toBeDisabled()
+    await userEvent.type(price(), '2.5')
+    expect(screen.getByTestId('sell-price-usd')).toHaveTextContent('≈ $0.75')
+    expect(submit()).toBeEnabled()
   })
 
   it('hides the USD estimate for MANA when the oracle cannot be read or nothing is typed yet', async () => {
