@@ -198,9 +198,14 @@ function resolveAnalyticsUrl(url: string): URL | undefined {
  */
 function stampApp(analytics: Pick<SegmentApi, 'addSourceMiddleware'>): void {
   analytics.addSourceMiddleware?.(({ payload, next }) => {
-    const context = payload.obj.context
-    if (context) context.app = { name: SOURCE, version: APP_VERSION }
-    next(payload)
+    // `next` in a finally: a middleware that throws (or one handed an unexpected payload shape by a
+    // future analytics.js) would otherwise swallow the call, and every event with it.
+    try {
+      const context = payload.obj.context
+      if (context) context.app = { name: SOURCE, version: APP_VERSION }
+    } finally {
+      next(payload)
+    }
   })
 }
 
