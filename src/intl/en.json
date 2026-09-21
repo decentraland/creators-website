@@ -794,6 +794,10 @@
   "curation_page": {
     "title": "Curation"
   },
+  "maintenance_page": {
+    "title": "We'll be right back",
+    "description": "Decentraland's creator tools are down for maintenance. Nothing you've made is lost — try again in a little while."
+  },
   "not_found_page": {
     "title": "Page not found",
     "go_home": "Go back home"

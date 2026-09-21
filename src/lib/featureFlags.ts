@@ -10,13 +10,31 @@ export enum FeatureFlag {
    */
   UNITY_WEARABLE_PREVIEW = 'unity-wearable-preview',
   /** Marketing campaign surfaces (the event tag hint), shared with the legacy builder. */
-  CAMPAIGN = 'campaign'
+  CAMPAIGN = 'campaign',
+  /** Platform-wide stop: every surface of this app is replaced with the maintenance notice. */
+  MAINTENANCE = 'maintenance',
+  /** The item's Utility field, which the catalog surfaces on published items. */
+  WEARABLE_UTILITY = 'wearable-utility',
+  /** The per-wearable VRM export opt-out. */
+  VRM_OPTOUT = 'vrm-optout',
+  /** Listing items through off-chain public orders (trades), which is the only sale path here. */
+  OFFCHAIN_PUBLIC_ITEM_ORDERS = 'offchain-public-item-orders',
+  /** Credits as a listing currency; with it off, an item can only be priced in MANA. */
+  CREDITS_PRIMARY_LISTINGS = 'credits-primary-listings',
+  /** Paying the collection publication fee with shop credits. */
+  SHOP_CREDITS_FOR_COLLECTIONS_FEE = 'shop-credits-for-collections-fee'
 }
 
 /** Each flag lives under the application that owns it, and is fetched from that application's file. */
 const APPLICATION: Record<FeatureFlag, string> = {
   [FeatureFlag.UNITY_WEARABLE_PREVIEW]: 'dapps',
-  [FeatureFlag.CAMPAIGN]: 'builder'
+  [FeatureFlag.CAMPAIGN]: 'builder',
+  [FeatureFlag.MAINTENANCE]: 'builder',
+  [FeatureFlag.WEARABLE_UTILITY]: 'dapps',
+  [FeatureFlag.VRM_OPTOUT]: 'builder',
+  [FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS]: 'dapps',
+  [FeatureFlag.CREDITS_PRIMARY_LISTINGS]: 'builder',
+  [FeatureFlag.SHOP_CREDITS_FOR_COLLECTIONS_FEE]: 'builder'
 }
 
 const TTL_MS = 60_000

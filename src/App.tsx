@@ -3,10 +3,13 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { CollectionsPage } from '~/components/CollectionsPage'
 import { ErrorBoundary } from '~/components/ErrorBoundary'
 import { Footer } from '~/components/Footer'
+import { MaintenancePage } from '~/components/MaintenancePage'
 import { NavBar } from '~/components/NavBar'
 import { Toasts } from '~/components/Toasts'
 import { TranslationProvider } from '~/intl'
+import { FeatureFlag } from '~/lib/featureFlags'
 import { useAccountWatcher } from '~/hooks/useAccountWatcher'
+import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useWallet } from '~/store/wallet'
 
 // Collections (the landing route) stays eager for the fastest first paint; every other route is code-split.
@@ -29,8 +32,9 @@ const EDITOR_PATH = '/collections/editor'
 
 const App = () => {
   const location = useLocation()
+  const maintenance = useFeatureFlag(FeatureFlag.MAINTENANCE)
   // The item editor is a fullscreen workspace: no navbar, no footer, no page scroll.
-  const isFullscreen = location.pathname.replace(/\/+$/, '') === EDITOR_PATH
+  const isFullscreen = !maintenance.enabled && location.pathname.replace(/\/+$/, '') === EDITOR_PATH
 
   // Auth bootstrap lives at the app root so the silent session restore (and the return from /auth)
   // doesn't depend on any layout component staying mounted.
@@ -60,18 +64,22 @@ const App = () => {
       {/* The route is exposed so a page can opt out of shell-level CSS by path if it ever needs to. */}
       <main className="page" data-route={location.pathname} data-fullscreen={isFullscreen || undefined}>
         <ErrorBoundary>
-          <Suspense fallback={<PageFallback />}>
-            <Routes>
-              <Route path="/" element={<Navigate to="/collections" replace />} />
-              {/* Backward-compat: the old overview route now lives in sites; old links land on collections. */}
-              <Route path="/overview" element={<Navigate to="/collections" replace />} />
-              <Route path="/collections" element={<CollectionsPage />} />
-              <Route path="/collections/editor" element={<ItemEditorPage />} />
-              <Route path="/collections/:collectionId" element={<CollectionDetailPage />} />
-              <Route path="/curation" element={<CurationPage />} />
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </Suspense>
+          {maintenance.enabled ? (
+            <MaintenancePage />
+          ) : (
+            <Suspense fallback={<PageFallback />}>
+              <Routes>
+                <Route path="/" element={<Navigate to="/collections" replace />} />
+                {/* Backward-compat: the old overview route now lives in sites; old links land on collections. */}
+                <Route path="/overview" element={<Navigate to="/collections" replace />} />
+                <Route path="/collections" element={<CollectionsPage />} />
+                <Route path="/collections/editor" element={<ItemEditorPage />} />
+                <Route path="/collections/:collectionId" element={<CollectionDetailPage />} />
+                <Route path="/curation" element={<CurationPage />} />
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+            </Suspense>
+          )}
         </ErrorBoundary>
       </main>
       {!isFullscreen && <Footer />}

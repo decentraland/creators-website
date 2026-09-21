@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { FeatureFlag } from '~/lib/featureFlags'
+import { setFeatureFlags } from '~/test/featureFlags'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ProviderType } from '@dcl/schemas'
@@ -6,6 +8,14 @@ import { type ItemListing } from '~/lib/listings'
 import { NO_EXPIRATION } from '~/lib/sales'
 import { UpdatePriceFlow } from './UpdatePriceFlow'
 import { ADDRESS, Providers, collection, item, makeSession } from './testUtils'
+
+vi.mock('~/lib/featureFlags', async () => {
+  const actual = await vi.importActual<typeof import('~/lib/featureFlags')>('~/lib/featureFlags')
+  const mock = await import('~/test/featureFlags')
+  return { ...actual, getIsFeatureEnabled: mock.getIsFeatureEnabled }
+})
+
+beforeEach(() => setFeatureFlags(FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS, FeatureFlag.CREDITS_PRIMARY_LISTINGS))
 
 type Callbacks = { onSuccess?: (result: unknown) => void; onError?: (error: unknown) => void }
 type UpdateVariables = {
