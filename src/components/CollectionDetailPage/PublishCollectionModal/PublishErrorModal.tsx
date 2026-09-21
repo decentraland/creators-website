@@ -10,7 +10,7 @@ type Props = {
 }
 
 // Reasons with dedicated copy; the rest share the generic message.
-const DESCRIBED_REASONS: PublishFailureReason[] = ['insufficient_credits', 'locked', 'unsynced']
+const DESCRIBED_REASONS: PublishFailureReason[] = ['insufficient_credits', 'locked', 'unsynced', 'fee_mismatch']
 // Retrying can never succeed once the collection is locked or its items drifted.
 const UNRETRIABLE_REASONS: PublishFailureReason[] = ['locked', 'unsynced']
 

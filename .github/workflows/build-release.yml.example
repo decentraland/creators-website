@@ -3,36 +3,44 @@ name: Build and release
 on:
   push:
     branches:
-      - master
+      - main
   release:
     types:
       - created
 
+permissions:
+  contents: read
+
 jobs:
   build-release:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     permissions:
+      contents: read
+      # npm Trusted Publishing (OIDC).
       id-token: write
 
     steps:
-      - uses: actions/checkout@main
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
 
-      - name: Use Node.js 20.x
-        uses: actions/setup-node@v4.0.1
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 24
 
       - name: Set package.json version
-        uses: decentraland/oddish-action@master
+        uses: decentraland/oddish-action@a4e98664bf53d4aae1f6d20d1a43ff2c79b555b3 # master (2026-09-21)
         with:
           deterministic-snapshot: true
           only-update-versions: true
 
       - name: Install
-        run: npm ci
-        env:
-          HUSKY: 0
+        # --ignore-scripts and the Sentry upload coexist: sentry-cli's binary comes from the
+        # @sentry/cli-<platform> optional package in the lockfile, not from its postinstall.
+        run: npm ci --ignore-scripts
 
       - name: Build
         run: npm run build
@@ -55,7 +63,7 @@ jobs:
         run: find dist -name '*.map' -delete
 
       - name: Publish
-        uses: decentraland/oddish-action@master
+        uses: decentraland/oddish-action@a4e98664bf53d4aae1f6d20d1a43ff2c79b555b3 # master (2026-09-21)
         with:
           cwd: './dist'
           deterministic-snapshot: true

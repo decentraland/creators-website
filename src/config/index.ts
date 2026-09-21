@@ -1,4 +1,5 @@
-import { Env, createConfig } from '@dcl/ui-env'
+import { Env } from '@dcl/ui-env'
+import { createEnvConfig, resolveEnv } from './env'
 import dev from './env/dev.json'
 import prod from './env/prd.json'
 import stg from './env/stg.json'
@@ -8,17 +9,15 @@ export const basePath = import.meta.env.BASE_URL.startsWith('http')
   ? new URL(import.meta.env.BASE_URL).pathname
   : import.meta.env.BASE_URL
 
-export const config = createConfig(
+const systemEnvVariables = { VITE_DCL_DEFAULT_ENV: import.meta.env.VITE_DCL_DEFAULT_ENV ?? 'dev' }
+
+export const config = createEnvConfig(
   {
-    [Env.DEVELOPMENT as string]: dev,
-    [Env.STAGING as string]: stg,
-    [Env.PRODUCTION as string]: prod
+    [Env.DEVELOPMENT]: dev,
+    [Env.STAGING]: stg,
+    [Env.PRODUCTION]: prod
   },
-  {
-    systemEnvVariables: {
-      VITE_DCL_DEFAULT_ENV: import.meta.env.VITE_DCL_DEFAULT_ENV ?? 'dev'
-    }
-  }
+  resolveEnv(typeof window === 'undefined' ? undefined : window.location, systemEnvVariables)
 )
 
 // The one place query params are read (see CONVENTIONS.md "Runtime config").

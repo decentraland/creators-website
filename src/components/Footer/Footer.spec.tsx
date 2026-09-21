@@ -58,4 +58,11 @@ describe('Footer', () => {
     expect(section).toHaveAttribute('aria-expanded', 'false')
     expect(panel).not.toHaveAttribute('data-open')
   })
+
+  it('keeps the newsletter embed from navigating the page', () => {
+    renderFooter()
+    const frame = screen.getByTestId('footer-newsletter-frame')
+    expect(frame).toHaveAttribute('sandbox')
+    expect(frame.getAttribute('sandbox')).not.toContain('allow-top-navigation')
+  })
 })

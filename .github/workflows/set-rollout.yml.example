@@ -2,16 +2,21 @@ name: Set rollout by path
 
 on: [deployment_status]
 
+permissions:
+  contents: read
+
 jobs:
   set-rollout:
     if: ${{ github.event.deployment.task == 'upload-to-cdn' && github.event.deployment_status.state == 'success' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # set-rollout-action records the rollout as a GitHub deployment.
+      deployments: write
     steps:
-      - uses: hmarr/debug-action@v2
-
       # Dev
       - name: Set Rollout - Development
-        uses: decentraland/set-rollout-action@v2
+        uses: decentraland/set-rollout-action@26ead404b6944fd0ce0d087cc59fd817607454d6 # v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -31,7 +36,7 @@ jobs:
 
       # Stg
       - name: Set Rollout - Staging
-        uses: decentraland/set-rollout-action@v2
+        uses: decentraland/set-rollout-action@26ead404b6944fd0ce0d087cc59fd817607454d6 # v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 

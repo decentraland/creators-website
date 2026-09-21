@@ -22,6 +22,7 @@ import { useTranslation } from '~/intl'
 import { type AvatarAttributes } from '~/lib/avatar'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS } from '~/lib/builder'
 import { canManageCollectionItems, hasCollectionRole, isCollectionLocked, type Collection } from '~/lib/collections'
+import { parseUuidParam } from '~/lib/ids'
 import { toPreviewItem, toSaveableItem } from '~/lib/itemDraft'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
 import { pickFiles } from '~/lib/filePicker'
@@ -69,8 +70,9 @@ const ItemEditorPage = () => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
-  const collectionId = searchParams.get('collection')
-  const itemParam = searchParams.get('item')
+  const collectionParam = searchParams.get('collection')
+  const collectionId = parseUuidParam(collectionParam) ?? null
+  const itemParam = parseUuidParam(searchParams.get('item')) ?? null
   const mode = useMemo(() => getEditorMode(searchParams, isCurator), [searchParams])
   const { session, restored, signIn } = useWallet()
   const address = session?.address
@@ -321,11 +323,12 @@ const ItemEditorPage = () => {
   // States.
   const isLoading = !restored || (!!address && !!collectionId && (collectionQuery.isLoading || itemsQuery.isLoading))
   const isNotFound =
-    !!collectionId &&
-    ((collectionQuery.isError &&
-      collectionQuery.error instanceof BuilderServerError &&
-      NOT_FOUND_STATUSES.includes(collectionQuery.error.status)) ||
-      (!!collection && !hasCollectionRole(collection, address)))
+    (!!collectionParam && !collectionId) ||
+    (!!collectionId &&
+      ((collectionQuery.isError &&
+        collectionQuery.error instanceof BuilderServerError &&
+        NOT_FOUND_STATUSES.includes(collectionQuery.error.status)) ||
+        (!!collection && !hasCollectionRole(collection, address))))
   const isError = !isNotFound && !!collectionId && (collectionQuery.isError || itemsQuery.isError)
 
   const preview =

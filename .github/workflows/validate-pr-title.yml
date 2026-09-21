@@ -4,6 +4,9 @@ on:
   pull_request:
     types: [edited, opened, reopened, synchronize]
 
+permissions:
+  pull-requests: read
+
 jobs:
   title-matches-convention:
-    uses: decentraland/actions/.github/workflows/validate-pr-title.yml@main
+    uses: decentraland/actions/.github/workflows/validate-pr-title.yml@1cbc80e5d7f389a44293eba73361c2dadb658584 # main (2026-09-21)

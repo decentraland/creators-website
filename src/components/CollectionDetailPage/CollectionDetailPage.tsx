@@ -20,6 +20,7 @@ import {
   hasCollectionRole,
   isCollectionLocked
 } from '~/lib/collections'
+import { parseUuidParam } from '~/lib/ids'
 import { type RoleKind } from '~/lib/collectionRoles'
 import { canSendCollectionItems } from '~/lib/mint'
 import { ItemType, canEditItemDetails, canEditItemPrice, type Item } from '~/lib/items'
@@ -70,7 +71,8 @@ const CollectionDetailPage = () => {
   const { t } = useTranslation()
   const intl = useIntl()
   const navigate = useNavigate()
-  const { collectionId } = useParams()
+  const { collectionId: collectionIdParam } = useParams()
+  const collectionId = parseUuidParam(collectionIdParam)
   const { session, restored, signIn } = useWallet()
   const address = session?.address
 
@@ -138,6 +140,7 @@ const CollectionDetailPage = () => {
   // builder-server serves published collections to any signer; addresses with no role on it get
   // the same "not found" as a rejected request, so strangers can't browse other creators' work.
   const isNotFound =
+    !collectionId ||
     (collectionQuery.isError &&
       collectionQuery.error instanceof BuilderServerError &&
       NOT_FOUND_STATUSES.includes(collectionQuery.error.status)) ||

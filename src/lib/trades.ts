@@ -114,15 +114,43 @@ export function toTradeTypedValues(trade: UnsignedTrade): Record<string, unknown
   }
 }
 
-/** The marketplace generation a stored trade belongs to (older listings sit on the V1 contract). */
+const MARKETPLACE_CONTRACTS = new Set<ContractName>([
+  ContractName.OffChainMarketplace,
+  ContractName.OffChainMarketplaceV2
+])
+
+/** The stored order's marketplace names a contract this client does not know. */
+export class UnknownTradeContractError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'UnknownTradeContractError'
+  }
+}
+
+/**
+ * The marketplace generation a stored trade belongs to (older listings sit on the V1 contract), always
+ * resolved to the canonical address for that generation. The server's `contract` is only a lookup key:
+ * a transaction is never sent to an address the client cannot vouch for, nor to another chain.
+ */
 export function getTradeContract(trade: Pick<Trade, 'contract' | 'chainId'>) {
-  let name: ContractName = ContractName.OffChainMarketplaceV2
+  const expectedChainId = Number(config.get('MATIC_CHAIN_ID'))
+  if (Number(trade.chainId) !== expectedChainId) {
+    throw new UnknownTradeContractError(`Trade is on chain ${trade.chainId}, expected ${expectedChainId}`)
+  }
+  let name: ContractName
   try {
     name = getContractName(trade.contract)
   } catch {
-    // Unknown address: the V2 ABI is the same shape.
+    throw new UnknownTradeContractError(`Trade contract ${trade.contract} is not a known marketplace`)
   }
-  return { ...getContract(name, trade.chainId), address: trade.contract }
+  if (!MARKETPLACE_CONTRACTS.has(name)) {
+    throw new UnknownTradeContractError(`Trade contract ${trade.contract} is ${name}, not a marketplace`)
+  }
+  const contract = getContract(name, trade.chainId)
+  if (contract.address.toLowerCase() !== trade.contract.toLowerCase()) {
+    throw new UnknownTradeContractError(`Trade contract ${trade.contract} does not match ${name} on this chain`)
+  }
+  return contract
 }
 
 /** A stored trade in the struct the marketplace contract takes for `cancelSignature` / `accept`. */
