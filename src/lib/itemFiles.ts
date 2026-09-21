@@ -35,6 +35,10 @@ const WEARABLE_MANIFEST = 'wearable.json'
 const EMOTE_MANIFEST = 'emote.json'
 const BUILDER_MANIFEST = 'builder.json'
 const MAX_ZIP_ENTRIES = 500
+/** The unpacked bytes one zip may produce: the largest model budget plus a thumbnail and a smart wearable's video. */
+export const MAX_ZIP_CONTENTS_SIZE = MAX_SKIN_FILE_SIZE + MAX_THUMBNAIL_FILE_SIZE + MAX_VIDEO_FILE_SIZE
+/** A zip bigger than anything it is allowed to unpack to is refused before it is opened. */
+export const MAX_ZIP_FILE_SIZE = MAX_ZIP_CONTENTS_SIZE
 
 /** Import failure the UI can translate: `add_items_modal.file_error.{messageKey}`. */
 export class ItemFileError extends Error {
@@ -51,6 +55,44 @@ export class ItemFileError extends Error {
 
 export function toMB(bytes: number): number {
   return Math.round((bytes / 1024 / 1024) * 10) / 10
+}
+
+// JSZip documents `internalStream` on entries; its shipped typings leave it out.
+type StreamableEntry = JSZip.JSZipObject & {
+  internalStream(type: 'uint8array'): JSZip.JSZipStreamHelper<Uint8Array<ArrayBuffer>>
+}
+
+/**
+ * Inflates zip entries one at a time against a shared byte budget, aborting the very chunk that takes the
+ * running unpacked total past `maxBytes`: a zip bomb never gets to allocate its payload.
+ */
+export function createZipInflater(maxBytes: number) {
+  let total = 0
+  return {
+    inflate(entry: JSZip.JSZipObject): Promise<Blob> {
+      return new Promise((resolve, reject) => {
+        const chunks: BlobPart[] = []
+        let size = 0
+        const stream = (entry as StreamableEntry).internalStream('uint8array')
+        stream
+          .on('data', chunk => {
+            size += chunk.length
+            if (total + size > maxBytes) {
+              stream.pause()
+              reject(new ItemFileError('zip_too_big', { size: toMB(maxBytes) }))
+              return
+            }
+            chunks.push(chunk)
+          })
+          .on('error', reject)
+          .on('end', () => {
+            total += size
+            resolve(new Blob(chunks))
+          })
+          .resume()
+      })
+    }
+  }
 }
 
 export function getExtension(fileName: string): string | null {
@@ -397,9 +439,10 @@ function findSceneFile(zip: JSZip): JSZip.JSZipObject | null {
 /** Parses and validates the scene manifest, checks its code bundle shipped, and returns the normalized file to store. */
 async function loadScene(
   sceneFile: JSZip.JSZipObject,
-  content: Record<string, Blob>
+  content: Record<string, Blob>,
+  readText: (entry: JSZip.JSZipObject) => Promise<string>
 ): Promise<{ scene: SceneManifest; blob: Blob }> {
-  const rawScene = parseJson(await sceneFile.async('text'), SCENE_PATH)
+  const rawScene = parseJson(await readText(sceneFile), SCENE_PATH)
   const scene = toSceneManifest(rawScene)
   // The entry point is what makes the wearable "smart" downstream (hasSceneCode), so it must be code.
   if (!isSceneCodeFile(scene.main)) throw new ItemFileError('scene_main_not_code', { fileName: scene.main })
@@ -425,6 +468,7 @@ function getManifestBodyShape(wearable: WearableManifest): BodyShapeType {
 }
 
 async function loadZip(file: File): Promise<LoadedItemFile> {
+  if (file.size > MAX_ZIP_FILE_SIZE) throw new ItemFileError('zip_too_big', { size: toMB(MAX_ZIP_CONTENTS_SIZE) })
   // Read fully into memory first to avoid racing jszip's lazy reads.
   const buffer = await file.arrayBuffer()
   let zip: JSZip
@@ -451,13 +495,14 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
     throw new ItemFileError('too_many_files', { max: MAX_ZIP_ENTRIES })
   }
 
-  const blobs = await Promise.all(entries.map(({ entry }) => entry.async('blob')))
+  // Manifests share the budget: a bogus wearable.json is as good a bomb as any model file.
+  const inflater = createZipInflater(MAX_ZIP_CONTENTS_SIZE)
+  const readText = async (entry: JSZip.JSZipObject) => (await inflater.inflate(entry)).text()
   const rawContent: Record<string, Blob> = {}
-  entries.forEach(({ path }, index) => {
-    if (blobs[index].size > 0) {
-      rawContent[path] = blobs[index]
-    }
-  })
+  for (const { path, entry } of entries) {
+    const blob = await inflater.inflate(entry)
+    if (blob.size > 0) rawContent[path] = blob
+  }
 
   const thumbnailSize = rawContent[THUMBNAIL_PATH]?.size ?? 0
   if (thumbnailSize > MAX_THUMBNAIL_FILE_SIZE) {
@@ -486,7 +531,7 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
   )
 
   if (wearableFile) {
-    const wearable = toWearableManifest(parseJson(await wearableFile.async('text'), WEARABLE_MANIFEST))
+    const wearable = toWearableManifest(parseJson(await readText(wearableFile), WEARABLE_MANIFEST))
     for (const representation of wearable.data.representations) {
       for (const path of [representation.mainFile, ...representation.contents]) {
         if (!rawContent[path]) throw new ItemFileError('manifest_file_missing', { fileName: path })
@@ -501,7 +546,7 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
       // The manifest's paths are relative to itself; next to a root wearable.json only a root scene.json
       // can address the files as they will be stored.
       if (sceneFile.name !== SCENE_PATH) throw new ItemFileError('scene_manifest_nested')
-      const loaded = await loadScene(sceneFile, rawContent)
+      const loaded = await loadScene(sceneFile, rawContent, readText)
       scene = loaded.scene
       rawContent[SCENE_PATH] = loaded.blob
     }
@@ -522,7 +567,7 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
   }
 
   if (emoteFile) {
-    const emote = toEmoteManifest(parseJson(await emoteFile.async('text'), EMOTE_MANIFEST))
+    const emote = toEmoteManifest(parseJson(await readText(emoteFile), EMOTE_MANIFEST))
     if (contentsSize > MAX_EMOTE_FILE_SIZE) {
       throw new ItemFileError('file_too_big', { size: toMB(MAX_EMOTE_FILE_SIZE) })
     }
@@ -537,7 +582,7 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
   // Smart wearable without wearable.json (e.g. a packed SDK project): the scene manifest is enough,
   // the form supplies name, category and rarity. Always unisex.
   if (sceneFile) {
-    const { scene, blob } = await loadScene(sceneFile, content)
+    const { scene, blob } = await loadScene(sceneFile, content, readText)
     const keys = Object.keys(content)
     const model = keys.find(isModelFile) ?? keys.find(isModelPath)
     if (!model) throw new ItemFileError('missing_model_file')
