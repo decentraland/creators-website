@@ -17,8 +17,8 @@
     "prepare": "simple-git-hooks",
     "format": "prettier --check \"**/*.{js,mjs,cjs,ts,tsx,json,css,html,md,mdx}\" --log-level=error",
     "format:fix": "prettier --write \"**/*.{js,mjs,cjs,ts,tsx,json,css,html,md,mdx}\" --log-level=error",
-    "lint": "eslint src",
-    "lint:fix": "eslint src --fix"
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "simple-git-hooks": {
     "pre-commit": "npx nano-staged && npm run typecheck"

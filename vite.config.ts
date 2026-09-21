@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv, type PluginOption } from 'vite'
 
 const pkg = JSON.parse(readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf8')) as {
   version: string
@@ -29,6 +29,7 @@ export default defineConfig(({ command, mode }) => {
       react(),
       ...(sentryUpload
         ? [
+            // The plugin is declared `=> any`; pin it to vite's own plugin type so the spread stays typed.
             sentryVitePlugin({
               org: process.env.SENTRY_ORG,
               project: process.env.SENTRY_PROJECT,
@@ -38,7 +39,7 @@ export default defineConfig(({ command, mode }) => {
               telemetry: false,
               // Upload, then delete: a .map served from the CDN would publish the whole source.
               sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] }
-            })
+            }) as PluginOption
           ]
         : [])
     ],
