@@ -101,7 +101,8 @@ describe('SellItemModal', () => {
     rate.data = 300_000_000_000_000_000n
     renderModal()
     await waitFor(() => expect(price()).toHaveAttribute('data-currency', 'mana'))
-    expect(screen.getByTestId('sell-price-currency')).toBeDisabled()
+    expect(screen.getByTestId('sell-price-currency-glyph')).toBeInTheDocument()
+    expect(screen.queryByTestId('sell-price-currency')).not.toBeInTheDocument()
     await userEvent.type(price(), '2.5')
     expect(screen.getByTestId('sell-price-usd')).toHaveTextContent('≈ $0.75')
     expect(submit()).toBeEnabled()

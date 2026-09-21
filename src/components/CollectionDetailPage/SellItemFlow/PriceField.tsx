@@ -31,7 +31,8 @@ type Props = {
   /** A giveaway: the amount is frozen at 0 and the currency can't be picked. */
   free?: boolean
   disabled?: boolean
-  /** Prefix of the field's test ids: `-input`, `-usd`, `-rate`, `-currency`, `-error`. */
+  /** Prefix of the field's test ids: `-input`, `-usd`, `-rate`, `-currency` (`-currency-glyph` when
+   * there is only one currency to price in), `-error`. */
   testId: string
 }
 
@@ -107,15 +108,21 @@ export function PriceField({ label, values, onChange, free = false, disabled = f
     <>
       <S.Label>{label}</S.Label>
       <S.Box data-disabled={free || undefined} data-invalid={error !== null || undefined}>
-        <Select
-          value={currency}
-          options={options}
-          onChange={changeCurrency}
-          variant="glyph"
-          disabled={free || disabled || options.length === 1}
-          ariaLabel={t('sell_item_modal.price.currency_label')}
-          testId={`${testId}-currency`}
-        />
+        {options.length === 1 ? (
+          <S.CurrencyGlyph data-testid={`${testId}-currency-glyph`}>
+            <CurrencyAmount currency={options[0].value}>{null}</CurrencyAmount>
+          </S.CurrencyGlyph>
+        ) : (
+          <Select
+            value={currency}
+            options={options}
+            onChange={changeCurrency}
+            variant="glyph"
+            disabled={free || disabled}
+            ariaLabel={t('sell_item_modal.price.currency_label')}
+            testId={`${testId}-currency`}
+          />
+        )}
         <input
           type="text"
           inputMode={currency === 'credits' ? 'numeric' : 'decimal'}
