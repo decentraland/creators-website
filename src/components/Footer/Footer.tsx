@@ -100,6 +100,9 @@ const Footer = () => {
             <S.NewsTitle>{t('footer.newsletterTitle')}</S.NewsTitle>
             <S.NewsFrame
               src={BEEHIIV_EMBED_URL}
+              // Cross-origin embed: it may run and submit its form, never navigate this page or open unscoped windows.
+              sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
+              data-testid="footer-newsletter-frame"
               height="65"
               frameBorder="0"
               scrolling="no"
