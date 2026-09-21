@@ -14,6 +14,7 @@ This project follows the same approach as the **shop** project (the modern re-ve
   - [Configuration](#configuration)
   - [Running the UI](#running-the-ui)
 - [Testing](#testing)
+- [Security](#security)
 
 ## Features
 
@@ -33,7 +34,7 @@ Related projects:
 
 ## Tech Stack
 
-Vite + React 18 + TypeScript (strict), React Router, @tanstack/react-query (server state), zustand (client state), react-intl (en/es), Emotion + decentraland-ui2 for styling (shop's theme and color palette), Sentry for monitoring, Vitest + Testing Library for unit tests and Puppeteer for e2e. Auth via decentraland-connect + single sign-on, with AuthChain-signed requests to builder-server.
+Vite + React 18 + TypeScript (strict), React Router, @tanstack/react-query (server state), zustand (client state), react-intl (en/es), Emotion + decentraland-ui2 for styling (shop's theme and color palette), Vitest + Testing Library for unit tests. Auth via decentraland-connect + single sign-on, with AuthChain-signed requests to builder-server. Error monitoring (Sentry) and browser e2e tests (Puppeteer) are planned and not wired yet.
 
 ## Getting Started
 
@@ -59,11 +60,13 @@ cd wemotes-builder
 npm install
 ```
 
+`npm install` also sets up the pre-commit hook (`simple-git-hooks`). That hook is the only install script this project needs: CI installs with `npm ci --ignore-scripts`, so none of the dependencies' own install scripts run there.
+
 ### Configuration
 
 The UI uses the `@dcl/ui-env` module to configure the environment in which it the UI will run.
 
-All of these different configurations are located under the `/src/config/env` directory, where a `json` file can be found for each environment. This package automatically loads the environment file for each site in production (zone, today, org) and can be configured to run on a different environment while live by using the `?env=` query parameter with the desired environment, i.e: `?env=prod`.
+All of these different configurations are located under the `/src/config/env` directory, where a `json` file can be found for each environment. This package automatically loads the environment file for each site in production (zone, today, org). On `.zone`, `.today` and localhost the `?env=` query parameter switches to another environment while live, i.e: `?env=prod`; production hostnames ignore it, so a link can never point a production visitor at the dev or staging back ends.
 
 In order to configure the starting environment of the site in development mode, create a new `.env` file based on `.env.default`. The `.env.default` file also contains other variables that are usually modified at build time.
 
@@ -77,7 +80,7 @@ npm run start
 
 ## Testing
 
-This UI contains tests that assert the behavior of components, stores and business logic.
+This UI contains unit tests that assert the behavior of components, stores and business logic. Browser-level e2e tests are not set up yet.
 
 ### Running tests
 
@@ -96,6 +99,10 @@ npm run test:coverage
 ### Test Structure
 
 Tests are colocated with the file they're testing, using a `.spec.ts` / `.spec.tsx` extension.
+
+## Security
+
+Please report vulnerabilities privately as described in [SECURITY.md](SECURITY.md), never in a public issue.
 
 ---
 

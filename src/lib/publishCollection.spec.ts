@@ -15,6 +15,7 @@ import {
   buildUseCreditsCall,
   canPayWith,
   consolidatePublishedCollection,
+  PublishTransactionRevertedError,
   getAvailablePaymentMethods,
   syncPublishedItems,
   getPublishBlocker,
@@ -366,7 +367,7 @@ describe('consolidatePublishedCollection', () => {
         3,
         0
       )
-    ).rejects.toThrow(/reverted/)
+    ).rejects.toBeInstanceOf(PublishTransactionRevertedError)
     await expect(
       consolidatePublishedCollection(
         'col-1',

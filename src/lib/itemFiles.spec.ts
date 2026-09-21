@@ -15,7 +15,9 @@ import {
   stripWrappingFolder,
   toMB,
   validateVideoFile,
-  MAX_VIDEO_FILE_SIZE
+  createZipInflater,
+  MAX_VIDEO_FILE_SIZE,
+  MAX_ZIP_FILE_SIZE
 } from './itemFiles'
 
 const blob = (size = 10) => new Blob([new Uint8Array(size)])
@@ -131,6 +133,22 @@ describe('loadItemFile', () => {
     const entries: Record<string, string> = { 'model.glb': 'glb-bytes' }
     for (let index = 0; index < 500; index++) entries[`extra-${index}.png`] = 'x'
     await expectItemFileError(loadItemFile(await zipFile(entries)), 'too_many_files')
+  })
+
+  it('refuses a zip bigger than anything it may unpack to, without opening it', async () => {
+    const file = await zipFile({ 'model.glb': blob() })
+    Object.defineProperty(file, 'size', { value: MAX_ZIP_FILE_SIZE + 1 })
+    await expectItemFileError(loadItemFile(file), 'zip_too_big')
+  })
+
+  it('stops inflating entries as soon as the unpacked total passes the budget', async () => {
+    const zip = new JSZip()
+    zip.file('a.bin', new Uint8Array(600))
+    zip.file('b.bin', new Uint8Array(600))
+    const loaded = await JSZip.loadAsync(await zip.generateAsync({ type: 'arraybuffer' }))
+    const inflater = createZipInflater(1000)
+    await expect(inflater.inflate(loaded.file('a.bin')!)).resolves.toHaveProperty('size', 600)
+    await expectItemFileError(inflater.inflate(loaded.file('b.bin')!), 'zip_too_big')
   })
 
   it('unzips a flat zip and finds the main model', async () => {

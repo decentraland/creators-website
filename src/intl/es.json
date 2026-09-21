@@ -347,7 +347,12 @@
       "description_insufficient_credits": "No tienes suficientes créditos para cubrir la tarifa de publicación. Obtén más créditos e inténtalo de nuevo.",
       "description_locked": "Esta colección ya se está publicando. Espera unos minutos y actualiza la página.",
       "description_unsynced": "Los ítems de esta colección cambiaron mientras publicabas. Cierra este diálogo y vuelve a empezar.",
+      "description_fee_mismatch": "La tarifa de publicación cambió mientras confirmabas. Ya la actualizamos: revisa el nuevo importe e inténtalo de nuevo.",
       "try_again": "Intentar de nuevo"
+    },
+    "consolidation": {
+      "reverted": "La publicación de “{name}” no se completó en la blockchain, así que no se cobró nada. La colección se desbloquea en 24 horas; entonces podrás publicarla de nuevo.",
+      "sync_failed": "“{name}” se publicó, pero no pudimos terminar de sincronizarla con la blockchain. Actualiza la página en unos minutos; si sigue sin estar en revisión, contacta a soporte."
     }
   },
   "sell_item_modal": {
@@ -542,6 +547,7 @@
       "missing_model_file": "No encontramos un modelo 3D o una textura dentro de este archivo.",
       "invalid_zip": "No pudimos leer este archivo ZIP.",
       "too_many_files": "Este ZIP tiene demasiados archivos — el máximo es {max}.",
+      "zip_too_big": "Este ZIP es demasiado grande: su contenido no puede superar los {size}MB.",
       "invalid_manifest": "La configuración {fileName} dentro del ZIP es inválida.",
       "manifest_file_missing": "La configuración del ZIP menciona {fileName}, pero no está en el ZIP.",
       "orphaned_auxiliary_file": "{fileName} necesita su archivo complementario {expected} en el mismo ZIP.",
