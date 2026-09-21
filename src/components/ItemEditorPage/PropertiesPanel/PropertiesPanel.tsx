@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react'
+import { useEffect, useMemo, useState, type Dispatch } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   CameraAlt as CameraIcon,
@@ -50,6 +50,7 @@ import {
   VIDEO_PATH,
   toMB
 } from '~/lib/itemFiles'
+import { pickFile } from '~/lib/filePicker'
 import { importItemModel, type ModelImportKind } from '~/lib/itemModelImport'
 import { ItemType, getMissingBodyShapeType, isMissingSmartWearableVideo, isSmartWearable, type Item } from '~/lib/items'
 import { ImageType, getImageType, resizeImage } from '~/lib/media'
@@ -107,9 +108,6 @@ export function PropertiesPanel({
 }: Props) {
   const { t } = useTranslation()
   const showToast = useNotifications(state => state.showToast)
-  const thumbnailInputRef = useRef<HTMLInputElement>(null)
-  const modelInputRef = useRef<HTMLInputElement>(null)
-  const [modelImport, setModelImport] = useState<ModelImportKind | null>(null)
   const [isImporting, setImporting] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const [isThumbnailOpen, setThumbnailOpen] = useState(false)
@@ -154,7 +152,8 @@ export function PropertiesPanel({
   })
   const metrics = draft.fileUpdate?.item.metrics ?? item.metrics
 
-  async function onThumbnailFile(file: File | undefined) {
+  async function pickThumbnail() {
+    const file = await pickFile({ accept: 'image/png' })
     if (!file) return
     try {
       if ((await getImageType(file)) !== ImageType.PNG) throw new Error('format')
@@ -170,15 +169,9 @@ export function PropertiesPanel({
     }
   }
 
-  function startModelImport(kind: ModelImportKind) {
-    setModelImport(kind)
-    modelInputRef.current?.click()
-  }
-
-  async function onModelFile(file: File | undefined) {
-    const kind = modelImport
-    setModelImport(null)
-    if (!file || !kind) return
+  async function importModel(kind: ModelImportKind) {
+    const file = await pickFile({ accept: ITEM_EXTENSIONS.join(',') })
+    if (!file) return
     setImporting(true)
     try {
       dispatch({ type: 'setFileUpdate', update: await importItemModel(file, item, kind) })
@@ -246,7 +239,7 @@ export function PropertiesPanel({
             <ActionsMenuItem
               testId={`${testId}-change-file`}
               disabled={isImporting}
-              onClick={() => startModelImport({ kind: 'replace' })}
+              onClick={() => void importModel({ kind: 'replace' })}
             >
               {t('item_editor.details.change_file')}
             </ActionsMenuItem>
@@ -255,7 +248,7 @@ export function PropertiesPanel({
             <ActionsMenuItem
               testId={`${testId}-add-representation`}
               disabled={isImporting}
-              onClick={() => startModelImport({ kind: 'add-representation', bodyShape: missingShape })}
+              onClick={() => void importModel({ kind: 'add-representation', bodyShape: missingShape })}
             >
               {t('item_editor.details.add_representation', {
                 shape: t(`add_items_modal.body_shape_option.${missingShape}`)
@@ -281,7 +274,7 @@ export function PropertiesPanel({
             aria-label={t('item_editor.details.edit_thumbnail')}
             disabled={disabled}
             data-testid={`${testId}-thumbnail`}
-            onClick={() => (isImageWearable ? thumbnailInputRef.current?.click() : setThumbnailOpen(true))}
+            onClick={() => (isImageWearable ? void pickThumbnail() : setThumbnailOpen(true))}
           >
             <ItemThumbnail
               src={thumbnailUrl ?? (thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null)}
@@ -620,29 +613,6 @@ export function PropertiesPanel({
           </Button>
         </S.Footer>
       )}
-
-      <input
-        ref={thumbnailInputRef}
-        type="file"
-        accept="image/png"
-        hidden
-        data-testid={`${testId}-thumbnail-input`}
-        onChange={event => {
-          void onThumbnailFile(event.target.files?.[0])
-          event.target.value = ''
-        }}
-      />
-      <input
-        ref={modelInputRef}
-        type="file"
-        accept={ITEM_EXTENSIONS.join(',')}
-        hidden
-        data-testid={`${testId}-model-input`}
-        onChange={event => {
-          void onModelFile(event.target.files?.[0])
-          event.target.value = ''
-        }}
-      />
 
       {isThumbnailOpen && (
         <ThumbnailModal

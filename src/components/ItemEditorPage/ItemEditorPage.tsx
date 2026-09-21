@@ -27,6 +27,7 @@ import { BuilderServerError, COLLECTION_LOCKED_STATUS } from '~/lib/builder'
 import { canManageCollectionItems, hasCollectionRole, isCollectionLocked, type Collection } from '~/lib/collections'
 import { toPreviewItem, toSaveableItem } from '~/lib/itemDraft'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
+import { pickFiles } from '~/lib/filePicker'
 import { ITEM_EXTENSIONS } from '~/lib/itemFiles'
 import { ItemType, canEditItemDetails, isSocialEmote, type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
@@ -215,10 +216,16 @@ const ItemEditorPage = () => {
   }, [controller, isPlaying])
 
   // Add items: the modal's new item becomes the selection once the list refetches.
-  const filesInputRef = useRef<HTMLInputElement>(null)
   const [addItemsFiles, setAddItemsFiles] = useState<File[] | null>(null)
   const knownIdsRef = useRef<Set<string> | null>(null)
   const [awaitingNewItem, setAwaitingNewItem] = useState(false)
+  async function addItems() {
+    const files = await pickFiles({ accept: ITEM_EXTENSIONS.join(','), multiple: true })
+    if (files.length === 0) return
+    // Snapshot the list before the upload so the item the modal creates can be told apart afterwards.
+    knownIdsRef.current = new Set(items.map(item => item.id))
+    setAddItemsFiles(files)
+  }
   const closeAddItems = useCallback(() => {
     setAddItemsFiles(null)
     setAwaitingNewItem(true)
@@ -441,10 +448,7 @@ const ItemEditorPage = () => {
       onRename={
         isDraftCollection && canManageCollectionItems(collection, address) ? () => setRenameOpen(true) : undefined
       }
-      onAddItems={() => {
-        knownIdsRef.current = new Set(items.map(item => item.id))
-        filesInputRef.current?.click()
-      }}
+      onAddItems={() => void addItems()}
       onSelect={selectItem}
       onLeave={to => {
         if (!form.isDirty) return true
@@ -516,19 +520,6 @@ const ItemEditorPage = () => {
         </PanelGroup>
       </S.Columns>
 
-      <input
-        ref={filesInputRef}
-        type="file"
-        multiple
-        accept={ITEM_EXTENSIONS.join(',')}
-        hidden
-        data-testid="editor-add-items-input"
-        onChange={event => {
-          const files = event.target.files ? Array.from(event.target.files) : []
-          if (files.length > 0) setAddItemsFiles(files)
-          event.target.value = ''
-        }}
-      />
       {addItemsFiles && collection && (
         <AddItemsModal collection={collection} address={address} files={addItemsFiles} onClose={closeAddItems} />
       )}

@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { CategoryIcon } from '~/components/ItemIcons'
 import { Select } from '~/components/Select'
 import { useTranslation } from '~/intl'
@@ -21,11 +22,15 @@ export function CategorySelect({
   testId = 'category-select'
 }: Props) {
   const { t } = useTranslation()
-  const options = categories.map(category => ({
-    value: category,
-    label: t(`collection_detail_page.category.${category}`),
-    icon: <CategoryIcon category={category} />
-  }))
+  const options = useMemo(
+    () =>
+      categories.map(category => ({
+        value: category,
+        label: t(`collection_detail_page.category.${category}`),
+        icon: <CategoryIcon category={category} />
+      })),
+    [categories, t]
+  )
   return (
     <Select
       value={value}

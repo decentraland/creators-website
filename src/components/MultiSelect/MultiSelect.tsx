@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowDropDown as ChevronIcon, Check as CheckIcon } from '@mui/icons-material'
 import * as Base from '~/components/Select/Select.styles'
@@ -38,7 +39,7 @@ export function MultiSelect<T extends string>({
     keepOpen: true,
     minWidth: LIST_MIN_WIDTH
   })
-  const selected = options.filter(option => values.includes(option.value))
+  const selected = useMemo(() => options.filter(option => values.includes(option.value)), [options, values])
 
   return (
     <Base.Wrap ref={wrapRef} onKeyDown={onKeyDown}>

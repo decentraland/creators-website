@@ -34,7 +34,10 @@ async function fetchSnapshot(application: string): Promise<Snapshot> {
     const response = await fetch(`${config.get('FEATURE_FLAGS_URL')}/${application}.json`, {
       signal: controller.signal
     })
-    if (!response.ok) throw new Error(`feature flags request failed with ${response.status}`)
+    if (!response.ok) {
+      await response.body?.cancel()
+      throw new Error(`feature flags request failed with ${response.status}`)
+    }
     const body = (await response.json()) as { flags?: Record<string, boolean> }
     return { flags: body.flags ?? {}, fetchedAt: Date.now() }
   } finally {

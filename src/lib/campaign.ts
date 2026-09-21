@@ -27,7 +27,10 @@ function isEntryLink(value: unknown): value is EntryLink {
 async function fetchEntry(id: string, signal: AbortSignal): Promise<Entry | null> {
   const base = `${config.get('CMS_API_URL')}/spaces/${config.get('CONTENTFUL_SPACE_ID')}/environments/${config.get('CONTENTFUL_ENVIRONMENT')}`
   const response = await fetch(`${base}/entries/${id}?locale=${LOCALE}`, { signal })
-  if (!response.ok) return null
+  if (!response.ok) {
+    await response.body?.cancel()
+    return null
+  }
   return (await response.json()) as Entry
 }
 

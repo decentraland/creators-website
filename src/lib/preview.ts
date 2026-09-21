@@ -6,8 +6,10 @@ import {
   Locale,
   PreviewEmote,
   WearableCategory,
+  type EmoteDataADR74,
   type EmoteDefinition,
   type EmoteWithBlobs,
+  type HideableWearableCategory,
   type PreviewOptions,
   type WearableDefinition,
   type WearableWithBlobs
@@ -100,6 +102,9 @@ export function itemToDefinition(item: Item): WearableDefinition | EmoteDefiniti
       emoteDataADR74: {
         ...item.data,
         category: item.data.category as EmoteCategory,
+        // `Item` keeps social emote data opaque: the editor never edits it, it only passes it through.
+        startAnimation: item.data.startAnimation as EmoteDataADR74['startAnimation'],
+        outcomes: item.data.outcomes as EmoteDataADR74['outcomes'],
         tags: item.data.tags ?? [],
         loop: !!item.data.loop,
         representations: item.data.representations.map(representation => ({
@@ -108,25 +113,26 @@ export function itemToDefinition(item: Item): WearableDefinition | EmoteDefiniti
           contents: toContents(representation.contents)
         }))
       }
-    } as EmoteDefinition
+    } satisfies EmoteDefinition
   }
   return {
     ...base,
     data: {
       ...item.data,
       category: item.data.category as WearableCategory,
-      hides: item.data.hides ?? [],
-      replaces: item.data.replaces ?? [],
+      hides: (item.data.hides ?? []) as HideableWearableCategory[],
+      replaces: (item.data.replaces ?? []) as HideableWearableCategory[],
+      removesDefaultHiding: item.data.removesDefaultHiding as HideableWearableCategory[] | undefined,
       tags: item.data.tags ?? [],
       representations: item.data.representations.map(representation => ({
         bodyShapes: representation.bodyShapes as BodyShape[],
         mainFile: representation.mainFile,
         contents: toContents(representation.contents),
-        overrideHides: representation.overrideHides ?? [],
-        overrideReplaces: representation.overrideReplaces ?? []
+        overrideHides: (representation.overrideHides ?? []) as HideableWearableCategory[],
+        overrideReplaces: (representation.overrideReplaces ?? []) as HideableWearableCategory[]
       }))
     }
-  } as WearableDefinition
+  } satisfies WearableDefinition
 }
 
 /**
