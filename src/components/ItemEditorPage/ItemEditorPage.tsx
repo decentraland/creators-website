@@ -12,14 +12,14 @@ import { ConfirmModal } from '~/components/ConfirmModal'
 import { ZoomControls } from '~/components/ZoomControls'
 import { useBaseWearables } from '~/hooks/useBaseWearables'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
-import { useAllCollectionItems, useCollection, useSaveCollection } from '~/hooks/useCollection'
+import { allCollectionItemsKey, useAllCollectionItems, useCollection, useSaveCollection } from '~/hooks/useCollection'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useModelValidation } from '~/hooks/useModelValidation'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { useSaveItem } from '~/hooks/useSaveItem'
 import { useSpringBones } from '~/hooks/useSpringBones'
 import { useTranslation } from '~/intl'
-import { type AvatarAttributes, toBaseWearableUrns } from '~/lib/avatar'
+import { type AvatarAttributes } from '~/lib/avatar'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS } from '~/lib/builder'
 import { canManageCollectionItems, hasCollectionRole, isCollectionLocked, type Collection } from '~/lib/collections'
 import { toPreviewItem, toSaveableItem } from '~/lib/itemDraft'
@@ -30,7 +30,7 @@ import { ItemType, canEditItemDetails, isSocialEmote, type Item } from '~/lib/it
 import { useNotifications } from '~/lib/notifications'
 import { type AvatarPreviewSource } from '~/lib/preview'
 import { getShapesMissingSpringBones, mergeSpringBonesIntoItem, type SpringBoneParamsByName } from '~/lib/springBones'
-import { useAvatarPreview } from '~/store/avatarPreview'
+import { selectAvatarAttributes, useAvatarPreview } from '~/store/avatarPreview'
 import { useWallet } from '~/store/wallet'
 import { theme } from '~/styles/theme'
 import { AvatarCustomizerDrawer, AvatarCustomizerToggle } from './AvatarCustomizer'
@@ -105,14 +105,10 @@ const ItemEditorPage = () => {
   const clearDressed = useAvatarPreview(state => state.clearDressed)
   const setBodyShape = useAvatarPreview(state => state.setBodyShape)
   const seedBaseWearables = useAvatarPreview(state => state.seedBaseWearables)
+  // The store's own mapping, memoized on the fields it reads: subscribing to the selector directly
+  // would hand the bridge a new object on every store change and rebuild the preview.
   const avatar = useMemo<AvatarAttributes>(
-    () => ({
-      bodyShape,
-      skin,
-      eyes,
-      hair,
-      baseWearableUrns: toBaseWearableUrns(baseSelection?.[bodyShape], bodyShape)
-    }),
+    () => selectAvatarAttributes({ bodyShape, skin, eyes, hair, baseWearables: baseSelection }),
     [bodyShape, skin, eyes, hair, baseSelection]
   )
 
@@ -182,14 +178,16 @@ const ItemEditorPage = () => {
     if (!controller || !selectedId || !springParamsForPreview) return
     controller.physics.setSpringBonesParams(selectedId, springParamsForPreview).catch(() => undefined)
   }, [controller, selectedId, springParamsForPreview])
+  const pushSpringBonesRef = useRef(pushSpringBones)
+  pushSpringBonesRef.current = pushSpringBones
   useEffect(() => {
     const timer = window.setTimeout(pushSpringBones, SPRING_BONES_PUSH_DELAY_MS)
     return () => window.clearTimeout(timer)
   }, [pushSpringBones])
+  // A reloaded scene and a restarted emote both come up with no chains, so they get the params
+  // again. Through the ref: this fires on the load/play edge only, with whatever is current then.
   useEffect(() => {
-    if (loadCount > 0 || isPlaying) pushSpringBones()
-    // Re-push on load/play only; edits are covered by the debounced effect above.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (loadCount > 0 || isPlaying) pushSpringBonesRef.current()
   }, [loadCount, isPlaying])
 
   // Selection: the URL is the only source of truth; a dirty draft asks before switching.
@@ -261,7 +259,7 @@ const ItemEditorPage = () => {
       springBones: hasSpringModels ? (mergeSpringBonesIntoItem(form.springBoneParams) ?? null) : undefined
     })
     const saved = await saveItem.mutateAsync(built)
-    queryClient.setQueryData<Item[]>(['collection-items-all', address, collectionId], current =>
+    queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collectionId ?? undefined), current =>
       current?.map(candidate => (candidate.id === saved.id ? saved : candidate))
     )
     // The selection may have moved on while the save was in flight; resetting then would wipe the

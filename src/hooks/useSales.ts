@@ -9,6 +9,7 @@ import {
   type Session
 } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
+import { allCollectionItemsKey } from '~/hooks/useCollection'
 import { fetchFriends } from '~/lib/friends'
 import { type Item } from '~/lib/items'
 import { fetchItemTradeId, type ItemListing } from '~/lib/listings'
@@ -221,7 +222,7 @@ export function useSendItems(session: Session | null) {
     },
     onSuccess: (_, { collection, transfers }) => {
       const copies = copiesPerItem(transfers)
-      queryClient.setQueryData<Item[]>(['collection-items-all', session?.address, collection.id], current =>
+      queryClient.setQueryData<Item[]>(allCollectionItemsKey(session?.address, collection.id), current =>
         current?.map(item =>
           copies[item.id] ? { ...item, totalSupply: (item.totalSupply ?? 0) + copies[item.id] } : item
         )

@@ -130,8 +130,11 @@ function emptySelections(): Record<BodyShape, BaseWearableSelection> {
   return { [BodyShape.MALE]: { ...empty }, [BodyShape.FEMALE]: { ...empty } }
 }
 
-/** The attributes the preview iframe needs, derived from the store. */
-export function selectAvatarAttributes(state: AvatarPreviewState): AvatarAttributes {
+/** The fields the preview iframe's attributes are derived from. */
+export type AvatarSelection = Pick<AvatarPreviewState, 'bodyShape' | 'skin' | 'eyes' | 'hair' | 'baseWearables'>
+
+/** The attributes the preview iframe needs, derived from the store (or from the same fields held elsewhere). */
+export function selectAvatarAttributes(state: AvatarSelection): AvatarAttributes {
   return {
     bodyShape: state.bodyShape,
     skin: state.skin,

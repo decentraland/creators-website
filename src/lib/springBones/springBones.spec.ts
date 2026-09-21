@@ -3,12 +3,14 @@ import {
   buildBoneTree,
   buildSubtreeSizes,
   getChainRoots,
+  getDefaultSpringBoneParams,
   getDefaultSpringBoneRoots,
   getInitialSpringBoneParams,
   getRepresentationModelHashes,
   getShapesMissingSpringBones,
   mergeSpringBonesIntoItem,
   parseSpringBones,
+  sameSpringBoneParams,
   sortByHierarchy,
   sumConfiguredBones,
   type BoneNode
@@ -150,5 +152,23 @@ describe('spring bones', () => {
     expect(getShapesMissingSpringBones({ bafyA: params, bafyB: {} }, { bafyA: bones, bafyB: bones })).toEqual(['bafyB'])
     expect(getShapesMissingSpringBones({ bafyA: params, bafyB: params }, { bafyA: bones, bafyB: bones })).toEqual([])
     expect(getShapesMissingSpringBones({ bafyA: params }, { bafyA: bones })).toEqual([])
+  })
+})
+
+describe('sameSpringBoneParams', () => {
+  const chain = () => ({ ...getDefaultSpringBoneParams(), stiffness: 3 })
+
+  it('compares by value, not by key order', () => {
+    const a = { m: { Tail_springbone: chain(), Hair_springbone: chain() } }
+    const b = { m: { Hair_springbone: chain(), Tail_springbone: chain() } }
+    expect(sameSpringBoneParams(a, b)).toBe(true)
+  })
+
+  it('sees an edited param, an added chain and a dropped model', () => {
+    const base = { m: { Tail_springbone: chain() } }
+    expect(sameSpringBoneParams(base, { m: { Tail_springbone: { ...chain(), drag: 0.9 } } })).toBe(false)
+    expect(sameSpringBoneParams(base, { m: { Tail_springbone: { ...chain(), center: 'Hips' } } })).toBe(false)
+    expect(sameSpringBoneParams(base, { m: { Tail_springbone: chain(), Hair_springbone: chain() } })).toBe(false)
+    expect(sameSpringBoneParams(base, {})).toBe(false)
   })
 })

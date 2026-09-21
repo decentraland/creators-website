@@ -15,9 +15,14 @@ export function useCollection(address: string | undefined, collectionId: string 
 }
 
 /** Every item of the collection: the detail page filters and pages them client-side. */
+/** The cache key of the all-items query, so callers can read or patch it without restating it. */
+export function allCollectionItemsKey(address: string | undefined, collectionId: string | undefined) {
+  return ['collection-items-all', address, collectionId] as const
+}
+
 export function useAllCollectionItems(address: string | undefined, collectionId: string | undefined) {
   return useQuery({
-    queryKey: ['collection-items-all', address, collectionId],
+    queryKey: allCollectionItemsKey(address, collectionId),
     queryFn: () => fetchAllCollectionItems(address!, collectionId!),
     enabled: !!address && !!collectionId,
     staleTime: 30_000

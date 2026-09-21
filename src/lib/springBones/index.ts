@@ -33,6 +33,37 @@ export function pickTunableSpringBoneParams(params: SpringBoneParams): Omit<Spri
   }
 }
 
+/** Whether two chains carry the same physics. */
+function sameParams(a: SpringBoneParams, b: SpringBoneParams): boolean {
+  return (
+    a.stiffness === b.stiffness &&
+    a.gravityPower === b.gravityPower &&
+    a.drag === b.drag &&
+    a.center === b.center &&
+    a.isRoot === b.isRoot &&
+    a.gravityDir.every((value, axis) => value === b.gravityDir[axis])
+  )
+}
+
+/**
+ * Whether two sets of params are the same, by value: the editor's dirty check. Key order is not
+ * content — deleting a chain and adding it back must not read as an edit.
+ */
+export function sameSpringBoneParams(a: SpringBoneParamsByHash, b: SpringBoneParamsByHash): boolean {
+  const hashes = Object.keys(a)
+  if (hashes.length !== Object.keys(b).length) return false
+  return hashes.every(hash => {
+    const left = a[hash]
+    const right = b[hash]
+    if (!right) return false
+    const names = Object.keys(left)
+    return (
+      names.length === Object.keys(right).length &&
+      names.every(name => right[name] && sameParams(left[name], right[name]))
+    )
+  })
+}
+
 export function getSpringBones(bones: BoneNode[]): BoneNode[] {
   return bones.filter(bone => bone.type === 'spring')
 }

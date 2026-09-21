@@ -48,6 +48,10 @@ const App = () => {
   useEffect(() => {
     if (isFullscreen) document.body.dataset.fullscreen = ''
     else delete document.body.dataset.fullscreen
+    // The flag belongs to this mount: an unmount (StrictMode, HMR) must not leave the shell hidden.
+    return () => {
+      delete document.body.dataset.fullscreen
+    }
   }, [isFullscreen])
 
   return (

@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { useTranslation } from '~/intl'
-import { useAllCollectionItems } from '~/hooks/useCollection'
+import { allCollectionItemsKey, useAllCollectionItems } from '~/hooks/useCollection'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { installBackGuard } from '~/lib/backGuard'
 import { ItemFileError, MAX_THUMBNAIL_FILE_SIZE, VIDEO_PATH, toMB } from '~/lib/itemFiles'
@@ -174,7 +174,7 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
       if (result.savedDraftIds.length > 0) {
         showToast(t('add_items_modal.success_toast', { count: result.savedDraftIds.length }))
         await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ['collection-items-all', address, collection.id] }),
+          queryClient.invalidateQueries({ queryKey: allCollectionItemsKey(address, collection.id) }),
           queryClient.invalidateQueries({ queryKey: ['collection', address, collection.id] }),
           queryClient.invalidateQueries({ queryKey: ['collection-preview', address, collection.id] }),
           queryClient.invalidateQueries({ queryKey: ['collections'] })

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
 import { type SpringBonesData } from '~/hooks/useSpringBones'
 import { createItemDraft, isItemDraftDirty, itemDraftReducer, type ItemDraft } from '~/lib/itemDraft'
 import { type Item } from '~/lib/items'
-import { type SpringBoneParamsByHash } from '~/lib/springBones'
+import { sameSpringBoneParams, type SpringBoneParamsByHash } from '~/lib/springBones'
 
 const EMPTY_DRAFT: ItemDraft = {
   name: '',
@@ -18,10 +18,6 @@ const EMPTY_DRAFT: ItemDraft = {
   thumbnail: null,
   video: null,
   fileUpdate: null
-}
-
-function sameParams(a: SpringBoneParamsByHash, b: SpringBoneParamsByHash): boolean {
-  return JSON.stringify(a) === JSON.stringify(b)
 }
 
 /** The properties form state for the selected item: field draft plus spring bone params, reset on selection. */
@@ -44,7 +40,7 @@ export function useItemForm(item: Item | null, springBones: SpringBonesData) {
 
   const isDraftDirty = useMemo(() => (item ? isItemDraftDirty(draft, item) : false), [draft, item])
   const isSpringBonesDirty = useMemo(
-    () => !sameParams(springBoneParams, springBones.initialParams),
+    () => !sameSpringBoneParams(springBoneParams, springBones.initialParams),
     [springBoneParams, springBones.initialParams]
   )
 
