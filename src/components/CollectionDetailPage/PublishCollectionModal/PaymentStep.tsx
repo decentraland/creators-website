@@ -117,7 +117,7 @@ export function PaymentStep({
     if (paymentMethod === 'mana' && (allowance.data ?? 0n) < fee.total.manaWei) {
       setStatus('approving')
       try {
-        await approve.mutateAsync()
+        await approve.mutateAsync(fee.total.manaWei)
       } catch (error) {
         setStatus('idle')
         if (toPublishError(error).reason !== 'rejected') setApproveFailed(true)
