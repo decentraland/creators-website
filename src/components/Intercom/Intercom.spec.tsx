@@ -20,11 +20,17 @@ vi.mock('~/config', () => ({
 const intercom = vi.fn()
 
 /** Loads the widget script the way the real one does: by defining window.Intercom on load. */
-function autoLoadScript() {
+function autoLoadScript({ failFirst = false } = {}) {
+  let seen = 0
   const observer = new MutationObserver(() => {
-    const script = document.head.querySelector<HTMLScriptElement>('script[src*="widget.intercom.io"]')
-    if (!script || script.dataset.loaded) return
-    script.dataset.loaded = 'true'
+    const script = document.head.querySelector<HTMLScriptElement>('script[src*="widget.intercom.io"]:not([data-seen])')
+    if (!script) return
+    script.dataset.seen = 'true'
+    seen += 1
+    if (failFirst && seen === 1) {
+      script.dispatchEvent(new Event('error'))
+      return
+    }
     ;(window as unknown as { Intercom: unknown }).Intercom = intercom
     script.dispatchEvent(new Event('load'))
   })
@@ -71,6 +77,25 @@ describe('Intercom', () => {
         'Wallet type': 'injected',
         anon_id: 'anon-1'
       })
+    )
+  })
+
+  it('tries again after a failed load instead of leaving support unreachable for the visit', async () => {
+    observer.disconnect()
+    observer = autoLoadScript({ failFirst: true })
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    const { Intercom } = await import('./Intercom')
+    const { rerender } = render(<Intercom />)
+    await waitFor(() => expect(console.error).toHaveBeenCalled())
+    expect(intercom).not.toHaveBeenCalled()
+
+    // Signing in re-runs the effect, which is the retry.
+    wallet.session = { address: '0xCreAtoR' }
+    rerender(<Intercom />)
+
+    await waitFor(() =>
+      expect(intercom).toHaveBeenCalledWith('update', expect.objectContaining({ Wallet: '0xcreator' }))
     )
   })
 

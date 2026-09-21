@@ -67,7 +67,7 @@ export function track(event: string, props: Props = {}): void {
 
 export function identify(address: string, traits: Props = {}): void {
   const analytics = segment()
-  if (analytics) analytics.identify(address.toLowerCase(), { source: SOURCE, ...traits })
+  if (analytics) analytics.identify(address.toLowerCase(), { ...traits, source: SOURCE })
   else if (import.meta.env.DEV && !IS_BOT) console.debug('[analytics] identify', address, traits)
 }
 

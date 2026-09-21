@@ -14,7 +14,7 @@ function intercom(): IntercomFn | undefined {
 
 let injecting: Promise<void> | undefined
 
-/** Loads the widget script once per page, whoever asks first. */
+/** Loads the widget script once per page, whoever asks first. A failed load is retried on the next call. */
 function injectWidget(appId: string): Promise<void> {
   if (intercom()) return Promise.resolve()
   injecting ??= new Promise<void>((resolve, reject) => {
@@ -22,7 +22,13 @@ function injectWidget(appId: string): Promise<void> {
     script.async = true
     script.src = `${WIDGET_URL}/${appId}`
     script.addEventListener('load', () => resolve())
-    script.addEventListener('error', () => reject(new Error('Intercom widget failed to load')))
+    script.addEventListener('error', () => {
+      // Without this a single network blip would keep the rejected promise, and support would stay
+      // unreachable for the rest of the visit.
+      injecting = undefined
+      script.remove()
+      reject(new Error('Intercom widget failed to load'))
+    })
     document.head.appendChild(script)
   })
   return injecting

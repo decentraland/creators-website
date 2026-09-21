@@ -122,6 +122,16 @@ describe('identify', () => {
     expect(analytics.identify).toHaveBeenCalledWith('0xabcdef', expect.objectContaining({ provider_type: 'injected' }))
     expect(analytics.reset).toHaveBeenCalled()
   })
+
+  it('keeps its own source even when a trait passes one', async () => {
+    const analytics = segmentStub()
+    ;(window as unknown as { analytics: unknown }).analytics = analytics
+
+    const { identify } = await loadAnalytics()
+    identify('0xabc', { source: 'somewhere-else' })
+
+    expect(analytics.identify.mock.calls[0][1]).toMatchObject({ source: 'wemotes-builder' })
+  })
 })
 
 describe('trackPage', () => {
