@@ -63,7 +63,7 @@ npm install
 
 The UI uses the `@dcl/ui-env` module to configure the environment in which it the UI will run.
 
-All of these different configurations are located under the `/src/config/env` directory, where a `json` file can be found for each environment. This package automatically loads the environment file for each site in production (zone, today, org) and can be configured to run on a different environment while live by using the `?env=` query parameter with the desired environment, i.e: `?env=prod`.
+All of these different configurations are located under the `/src/config/env` directory, where a `json` file can be found for each environment. This package automatically loads the environment file for each site in production (zone, today, org). On `.zone`, `.today` and localhost the `?env=` query parameter switches to another environment while live, i.e: `?env=prod`; production hostnames ignore it, so a link can never point a production visitor at the dev or staging back ends.
 
 In order to configure the starting environment of the site in development mode, create a new `.env` file based on `.env.default`. The `.env.default` file also contains other variables that are usually modified at build time.
 
