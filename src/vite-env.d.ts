@@ -1,5 +1,8 @@
 /// <reference types="vite/client" />
 
+/** Baked in by vite.config (and by vitest.config for tests): the Sentry release this build reports. */
+declare const __SENTRY_RELEASE__: string
+
 interface ImportMetaEnv {
   readonly VITE_DCL_DEFAULT_ENV?: string
   readonly VITE_BASE_URL?: string

@@ -64,7 +64,9 @@ export const useWallet = create<WalletState>((set, get) => ({
             address: session.address,
             chainId: session.chainId,
             providerType: session.providerType,
-            walletName: session.walletName ?? null
+            // The wallet names itself over WalletConnect, so the value is the wallet's to choose:
+            // bound it rather than let it define a column's width.
+            walletName: session.walletName?.slice(0, 64) ?? null
           })
           setMonitoringUser(session.address)
         }

@@ -38,6 +38,21 @@ jobs:
         run: npm run build
         env:
           NODE_OPTIONS: '--max-old-space-size=6144'
+          # Source maps for Sentry. This is the build that produces the bundle creators run, so it is
+          # the only place its maps can come from — without the token every stack trace stays minified.
+          # vite.config gates the whole thing on the token: it turns `build.sourcemap` on, uploads under
+          # the same release name the runtime reports, then DELETES the .map files so they never reach
+          # the CDN. An absent or empty secret restores exactly the previous behaviour.
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          # Not secrets — the slugs in every Sentry URL for this app. The project is the LEGACY
+          # BUILDER's: this app shares its Sentry project (same SENTRY_DSN in src/config/env/*.json).
+          SENTRY_ORG: decentraland
+          SENTRY_PROJECT: builder
+
+      # Belt and braces: the build deletes the maps right after uploading them, and fails outright if
+      # the upload fails. This guarantees a .map can never reach the CDN even if that ever changes.
+      - name: Drop any leftover source maps
+        run: find dist -name '*.map' -delete
 
       - name: Publish
         uses: decentraland/oddish-action@master

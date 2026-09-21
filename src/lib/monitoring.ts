@@ -6,7 +6,7 @@
 // Convention: pass a `flow` in the context (e.g. { flow: 'publish-collection' }) so console and Sentry
 // group failures by user action. Never put secrets in the context — `beforeSend` scrubs defensively anyway.
 import * as Sentry from '@sentry/react'
-import { APP_VERSION, config } from '~/config'
+import { config } from '~/config'
 import { currentAddress } from '~/lib/currentAddress'
 
 export type ErrorContext = Record<string, unknown>
@@ -185,7 +185,9 @@ export function initSentry(): void {
     dsn,
     environment: config.get('ENVIRONMENT'),
     // Shares the legacy builder's Sentry project; the release prefix is what separates the two apps.
-    release: `wemotes-builder@${APP_VERSION}`,
+    // Baked in by vite.config, which uploads the source maps under this exact string — a release name
+    // that doesn't match byte for byte means no map is ever applied and every stack stays minified.
+    release: __SENTRY_RELEASE__,
     integrations: [Sentry.browserTracingIntegration()],
     tracesSampleRate: 0.01,
     sendDefaultPii: false,
