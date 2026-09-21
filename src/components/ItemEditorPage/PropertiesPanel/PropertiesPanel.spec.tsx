@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { FeatureFlag } from '~/lib/featureFlags'
+import { setFeatureFlags } from '~/test/featureFlags'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BodyShape } from '@dcl/schemas'
@@ -6,6 +8,14 @@ import { Providers } from '~/components/CollectionDetailPage/SellItemFlow/testUt
 import { ItemType, type Item } from '~/lib/items'
 import { useItemForm } from '../useItemForm'
 import { PropertiesPanel } from './PropertiesPanel'
+
+vi.mock('~/lib/featureFlags', async () => {
+  const actual = await vi.importActual<typeof import('~/lib/featureFlags')>('~/lib/featureFlags')
+  const mock = await import('~/test/featureFlags')
+  return { ...actual, getIsFeatureEnabled: mock.getIsFeatureEnabled }
+})
+
+beforeEach(() => setFeatureFlags(FeatureFlag.WEARABLE_UTILITY, FeatureFlag.VRM_OPTOUT))
 
 const item: Item = {
   id: 'w1',
@@ -92,11 +102,20 @@ describe('PropertiesPanel', () => {
 
   it('exposes the wearable options as switches', async () => {
     render(<Harness />, { wrapper: Providers })
-    const vrm = screen.getByTestId('properties-panel-vrm-export')
+    const vrm = await screen.findByTestId('properties-panel-vrm-export')
     expect(vrm).toHaveAttribute('aria-checked', 'true')
     await userEvent.click(vrm)
     expect(vrm).toHaveAttribute('aria-checked', 'false')
     expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
+  })
+
+  it('drops the utility field and the VRM switch while their feature flags are off', async () => {
+    setFeatureFlags()
+    render(<Harness />, { wrapper: Providers })
+    // The outline switch shares the section, so its arrival is what says the panel has settled.
+    expect(await screen.findByTestId('properties-panel-outline')).toBeInTheDocument()
+    expect(screen.queryByTestId('properties-panel-vrm-export')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('properties-panel-utility')).not.toBeInTheDocument()
   })
 
   it('keeps a name without characters from being saved', async () => {
@@ -123,7 +142,7 @@ describe('PropertiesPanel', () => {
       data: { category: 'fun', tags: [], loop: false, representations: item.data.representations }
     }
     render(<Harness subject={emote} />, { wrapper: Providers })
-    await userEvent.type(screen.getByTestId('properties-panel-utility'), 'greets')
+    await userEvent.type(await screen.findByTestId('properties-panel-utility'), 'greets')
     expect(screen.getByTestId('properties-panel-utility')).toHaveValue('greets')
     expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
   })

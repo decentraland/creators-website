@@ -5,11 +5,13 @@ import { config } from '~/config'
 import { useTranslation } from '~/intl'
 import { useProfile } from '~/hooks/useProfile'
 import { useCreditsBalance, useManaBalance } from '~/hooks/useBalances'
+import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useApproveMana, useManaAllowance, usePublishCollection, useRarities } from '~/hooks/usePublishCollection'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { type Session } from '~/lib/auth'
 import { getContentsStorageUrl } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
+import { FeatureFlag } from '~/lib/featureFlags'
 import { type Item } from '~/lib/items'
 import { openExternal } from '~/lib/navigation'
 import {
@@ -77,7 +79,11 @@ export function PaymentStep({
   const profile = useProfile(address)
   const fee = useMemo(() => getPublicationFee(rarities.data ?? [], items.length), [rarities.data, items.length])
 
-  const methods = useMemo(() => getAvailablePaymentMethods(mana.data), [mana.data])
+  const creditsFlag = useFeatureFlag(FeatureFlag.SHOP_CREDITS_FOR_COLLECTIONS_FEE)
+  const methods = useMemo(
+    () => getAvailablePaymentMethods(mana.data, creditsFlag.enabled),
+    [mana.data, creditsFlag.enabled]
+  )
   const allowance = useManaAllowance(address, methods.includes('mana'))
   const approve = useApproveMana(session)
   const publish = usePublishCollection(session)
@@ -93,15 +99,17 @@ export function PaymentStep({
   useBeforeUnloadGuard(isSubmitting)
 
   // A lone method is the selection; a vanished one (balance refetch) falls back to the first available.
+  // The still-unread flag would offer a list the creator never sees, so nothing is selected until it lands.
   useEffect(() => {
+    if (creditsFlag.isLoading) return
     if (paymentMethod && !methods.includes(paymentMethod)) onPaymentMethodChange(methods[0])
     else if (!paymentMethod && methods.length === 1) onPaymentMethodChange(methods[0])
-  }, [methods, paymentMethod, onPaymentMethodChange])
+  }, [methods, paymentMethod, onPaymentMethodChange, creditsFlag.isLoading])
 
   const balances = { credits: credits.data?.credits ?? 0, manaWei: mana.data ?? 0n }
   const selectedIsPayable =
     !!fee && !!paymentMethod && methods.includes(paymentMethod) && canPayWith(paymentMethod, fee, balances)
-  const canSubmit = selectedIsPayable && accepted && !isSubmitting && !credits.isLoading
+  const canSubmit = selectedIsPayable && accepted && !isSubmitting && !credits.isLoading && !creditsFlag.isLoading
 
   async function handleSubmit() {
     if (!fee || !paymentMethod || !canSubmit) return
@@ -209,7 +217,7 @@ export function PaymentStep({
                 {t('publish_collection_modal.payment_step.retry')}
               </Button>
             </S.InlineNote>
-          ) : !fee ? (
+          ) : !fee || creditsFlag.isLoading ? (
             <S.InlineNote data-testid="publish-fee-loading">
               <S.Spinner aria-hidden />
             </S.InlineNote>

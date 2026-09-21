@@ -11,6 +11,7 @@ import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
 import { ITEMS_PAGE_SIZE, useAllCollectionItems, useCollection, useSaveCollection } from '~/hooks/useCollection'
 import { BuilderServerError } from '~/lib/builder'
+import { FeatureFlag } from '~/lib/featureFlags'
 import {
   CollectionDisplayStatus,
   canSellCollectionItems,
@@ -34,6 +35,7 @@ import { MAX_PUBLISH_ITEMS, getPublishBlocker } from '~/lib/publishCollection'
 import { useSaveItem } from '~/hooks/useSaveItem'
 import { useItemContents, useSyncPublishedItems } from '~/hooks/usePublishCollection'
 import { useCollectionListings } from '~/hooks/useCollectionListings'
+import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { hasPendingChanges } from '~/lib/itemSync'
@@ -118,8 +120,10 @@ const CollectionDetailPage = () => {
     collection && getCollectionDisplayStatus(collection) === CollectionDisplayStatus.UNDER_REVIEW
       ? t('collection_status.under_review_hint')
       : null
-  const isApprovedForSale = !!collection && hasBeenApproved(collection)
-  const isSeller = !!collection && canSellCollectionItems(collection, address)
+  // Sales here are off-chain public orders only: with the flag off there is no other way to list an item.
+  const canListItems = useFeatureFlag(FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS).enabled
+  const isApprovedForSale = canListItems && !!collection && hasBeenApproved(collection)
+  const isSeller = canListItems && !!collection && canSellCollectionItems(collection, address)
   const canSend = useMemo(() => !!collection && canSendCollectionItems(collection, address), [collection, address])
   const [isSending, setSending] = useState(false)
   const [managingRoles, setManagingRoles] = useState<RoleKind | null>(null)
@@ -474,7 +478,10 @@ const CollectionDetailPage = () => {
                     canSell={isApprovedForSale && item.isPublished && !!item.tokenId}
                     onPutOnSale={isSeller ? setSellingItem : undefined}
                     onEditPrice={
-                      !compact && session && canEditItemPrice(collection, item, listingFor(item), address)
+                      canListItems &&
+                      !compact &&
+                      session &&
+                      canEditItemPrice(collection, item, listingFor(item), address)
                         ? openPriceEdit
                         : undefined
                     }

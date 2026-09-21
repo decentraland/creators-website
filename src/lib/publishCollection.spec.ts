@@ -143,6 +143,12 @@ describe('payment methods', () => {
     expect(getAvailablePaymentMethods(1n)).toEqual(['credits', 'mana'])
   })
 
+  it('leaves MANA as the only method, at any balance, when credits are turned off', () => {
+    expect(getAvailablePaymentMethods(undefined, false)).toEqual(['mana'])
+    expect(getAvailablePaymentMethods(0n, false)).toEqual(['mana'])
+    expect(getAvailablePaymentMethods(1n, false)).toEqual(['mana'])
+  })
+
   it('checks each method against its own balance', () => {
     expect(canPayWith('credits', fee, { credits: 100, manaWei: 0n })).toBe(true)
     expect(canPayWith('credits', fee, { credits: 99, manaWei: 0n })).toBe(false)

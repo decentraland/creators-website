@@ -794,6 +794,10 @@
   "curation_page": {
     "title": "Curado"
   },
+  "maintenance_page": {
+    "title": "Volvemos enseguida",
+    "description": "Las herramientas de creación de Decentraland están en mantenimiento. No perdiste nada de lo que creaste: vuelve a intentarlo en un rato."
+  },
   "not_found_page": {
     "title": "Página no encontrada",
     "go_home": "Volver al inicio"

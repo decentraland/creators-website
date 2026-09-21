@@ -143,6 +143,18 @@ export const Row = styled.div`
   gap: 16px;
 `
 
+// The price field's currency when there is nothing to pick.
+export const CurrencyGlyph = styled.span`
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-size: 20px;
+  line-height: 1;
+`
+
 export const Box = styled.div`
   position: relative;
   display: flex;

@@ -26,10 +26,12 @@ import { ThumbnailModal } from '~/components/ThumbnailModal'
 import { InfoTooltip, Tooltip } from '~/components/Tooltip'
 import { VideoDropzone, VideoModal } from '~/components/VideoModal'
 import { useCampaign } from '~/hooks/useCampaign'
+import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useObjectURL } from '~/hooks/useObjectURL'
 import { useDeleteItem, useItemContents } from '~/hooks/usePublishCollection'
 import { useTranslation } from '~/intl'
 import { fetchContent, fetchItemContents, getContentsStorageUrl } from '~/lib/builder'
+import { FeatureFlag } from '~/lib/featureFlags'
 import {
   ITEM_DESCRIPTION_MAX_LENGTH,
   ITEM_UTILITY_MAX_LENGTH,
@@ -116,6 +118,8 @@ export function PropertiesPanel({
   const [isDownloading, setDownloading] = useState(false)
   const deleteItem = useDeleteItem(address)
   const campaign = useCampaign()
+  const utilityFlag = useFeatureFlag(FeatureFlag.WEARABLE_UTILITY)
+  const vrmFlag = useFeatureFlag(FeatureFlag.VRM_OPTOUT)
   const itemContents = useItemContents(isThumbnailOpen ? item : null)
 
   const isEmote = item.type === ItemType.EMOTE
@@ -442,24 +446,26 @@ export function PropertiesPanel({
             onChange={event => dispatch({ type: 'setText', field: 'description', value: event.target.value })}
           />
         </S.Field>
-        <S.Field>
-          <S.FieldLabel>
-            <S.LabelText>
-              {t('item_editor.basics.utility')}{' '}
-              <InfoTooltip content={t('item_editor.basics.utility_hint')} testId={`${testId}-utility-hint`} />
-            </S.LabelText>
-            <S.CharCount>
-              {t('add_items_modal.char_count', { count: draft.utility.length, max: ITEM_UTILITY_MAX_LENGTH })}
-            </S.CharCount>
-          </S.FieldLabel>
-          <S.TextInput
-            value={draft.utility}
-            maxLength={ITEM_UTILITY_MAX_LENGTH}
-            disabled={disabled}
-            data-testid={`${testId}-utility`}
-            onChange={event => dispatch({ type: 'setText', field: 'utility', value: event.target.value })}
-          />
-        </S.Field>
+        {utilityFlag.enabled && (
+          <S.Field>
+            <S.FieldLabel>
+              <S.LabelText>
+                {t('item_editor.basics.utility')}{' '}
+                <InfoTooltip content={t('item_editor.basics.utility_hint')} testId={`${testId}-utility-hint`} />
+              </S.LabelText>
+              <S.CharCount>
+                {t('add_items_modal.char_count', { count: draft.utility.length, max: ITEM_UTILITY_MAX_LENGTH })}
+              </S.CharCount>
+            </S.FieldLabel>
+            <S.TextInput
+              value={draft.utility}
+              maxLength={ITEM_UTILITY_MAX_LENGTH}
+              disabled={disabled}
+              data-testid={`${testId}-utility`}
+              onChange={event => dispatch({ type: 'setText', field: 'utility', value: event.target.value })}
+            />
+          </S.Field>
+        )}
         <S.Field as="div">
           <S.FieldLabel>{t('item_editor.basics.category')}</S.FieldLabel>
           <CategorySelect
@@ -559,19 +565,21 @@ export function PropertiesPanel({
 
       {isWearable && (
         <EditorSection title={t('item_editor.options.title')} testId={`${testId}-options`}>
-          <S.Toggle>
-            <S.LabelText>
-              {t('item_editor.options.vrm_export')}
-              <InfoTooltip content={t('item_editor.options.vrm_export_hint')} testId={`${testId}-vrm-hint`} />
-            </S.LabelText>
-            <Switch
-              checked={!draft.blockVrmExport}
-              disabled={disabled}
-              label={t('item_editor.options.vrm_export')}
-              testId={`${testId}-vrm-export`}
-              onChange={checked => dispatch({ type: 'setFlag', field: 'blockVrmExport', value: !checked })}
-            />
-          </S.Toggle>
+          {vrmFlag.enabled && (
+            <S.Toggle>
+              <S.LabelText>
+                {t('item_editor.options.vrm_export')}
+                <InfoTooltip content={t('item_editor.options.vrm_export_hint')} testId={`${testId}-vrm-hint`} />
+              </S.LabelText>
+              <Switch
+                checked={!draft.blockVrmExport}
+                disabled={disabled}
+                label={t('item_editor.options.vrm_export')}
+                testId={`${testId}-vrm-export`}
+                onChange={checked => dispatch({ type: 'setFlag', field: 'blockVrmExport', value: !checked })}
+              />
+            </S.Toggle>
+          )}
           <S.Toggle>
             <S.LabelText>
               {t('item_editor.options.outline')}

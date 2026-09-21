@@ -37,8 +37,13 @@ export function getMaticChainId(): number {
   return Number(config.get('MATIC_CHAIN_ID'))
 }
 
-/** Which payment methods to offer: credits always, MANA only when the wallet holds some. */
-export function getAvailablePaymentMethods(manaBalanceWei: bigint | undefined): PaymentMethod[] {
+/**
+ * Which payment methods to offer: credits always, MANA only when the wallet holds some. With credits
+ * off (`shop-credits-for-collections-fee`), MANA is the only way to pay and shows at any balance —
+ * an empty wallet then sees the card disabled with its Get MANA link rather than no card at all.
+ */
+export function getAvailablePaymentMethods(manaBalanceWei: bigint | undefined, creditsEnabled = true): PaymentMethod[] {
+  if (!creditsEnabled) return ['mana']
   const methods: PaymentMethod[] = ['credits']
   if (manaBalanceWei !== undefined && manaBalanceWei > 0n) methods.push('mana')
   return methods

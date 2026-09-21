@@ -1,6 +1,8 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from '~/intl'
+import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useManaUsdRate } from '~/hooks/useSales'
+import { FeatureFlag } from '~/lib/featureFlags'
 import { formatCredits, formatMana } from '~/lib/publishFee'
 import {
   MAX_SALE_CREDITS,
@@ -29,7 +31,8 @@ type Props = {
   /** A giveaway: the amount is frozen at 0 and the currency can't be picked. */
   free?: boolean
   disabled?: boolean
-  /** Prefix of the field's test ids: `-input`, `-usd`, `-rate`, `-currency`, `-error`. */
+  /** Prefix of the field's test ids: `-input`, `-usd`, `-rate`, `-currency` (`-currency-glyph` when
+   * there is only one currency to price in), `-error`. */
   testId: string
 }
 
@@ -43,22 +46,35 @@ export function PriceField({ label, values, onChange, free = false, disabled = f
   const { t } = useTranslation()
   const { currency, amount } = values
   const rate = useManaUsdRate(currency === 'mana' && !free)
+  const creditsFlag = useFeatureFlag(FeatureFlag.CREDITS_PRIMARY_LISTINGS)
+  // Credits stay offered until the flag actually says otherwise: a form that flipped to MANA while the
+  // flag was still being read would clear the amount the creator had already typed.
+  const creditsEnabled = creditsFlag.isLoading || creditsFlag.enabled
 
   const options = useMemo<SelectOption<PriceCurrency>[]>(
     () => [
-      {
-        value: 'credits',
-        label: t('sell_item_modal.price.currency_credits'),
-        icon: <CurrencyAmount currency="credits">{null}</CurrencyAmount>
-      },
+      ...(creditsEnabled
+        ? [
+            {
+              value: 'credits' as const,
+              label: t('sell_item_modal.price.currency_credits'),
+              icon: <CurrencyAmount currency="credits">{null}</CurrencyAmount>
+            }
+          ]
+        : []),
       {
         value: 'mana',
         label: t('sell_item_modal.price.currency_mana'),
         icon: <CurrencyAmount currency="mana">{null}</CurrencyAmount>
       }
     ],
-    [t]
+    [t, creditsEnabled]
   )
+
+  // The default currency is credits: with them off, a form that opened on credits moves to MANA.
+  useEffect(() => {
+    if (!creditsEnabled && currency === 'credits') onChange({ currency: 'mana', amount: '' })
+  }, [creditsEnabled, currency, onChange])
 
   const credits = Number(amount) || 0
   const manaWei = useMemo(() => parseManaAmount(amount), [amount])
@@ -92,15 +108,21 @@ export function PriceField({ label, values, onChange, free = false, disabled = f
     <>
       <S.Label>{label}</S.Label>
       <S.Box data-disabled={free || undefined} data-invalid={error !== null || undefined}>
-        <Select
-          value={currency}
-          options={options}
-          onChange={changeCurrency}
-          variant="glyph"
-          disabled={free || disabled}
-          ariaLabel={t('sell_item_modal.price.currency_label')}
-          testId={`${testId}-currency`}
-        />
+        {options.length === 1 ? (
+          <S.CurrencyGlyph data-testid={`${testId}-currency-glyph`}>
+            <CurrencyAmount currency={options[0].value}>{null}</CurrencyAmount>
+          </S.CurrencyGlyph>
+        ) : (
+          <Select
+            value={currency}
+            options={options}
+            onChange={changeCurrency}
+            variant="glyph"
+            disabled={free || disabled}
+            ariaLabel={t('sell_item_modal.price.currency_label')}
+            testId={`${testId}-currency`}
+          />
+        )}
         <input
           type="text"
           inputMode={currency === 'credits' ? 'numeric' : 'decimal'}
