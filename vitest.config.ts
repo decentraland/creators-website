@@ -7,6 +7,7 @@ import { fileURLToPath, URL } from 'node:url'
 export default defineConfig({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   plugins: [react() as any],
+  define: { __SENTRY_RELEASE__: JSON.stringify('wemotes-builder@test') },
   resolve: {
     alias: {
       '~': fileURLToPath(new URL('./src', import.meta.url))

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { errorCode, track } from '~/lib/analytics'
 import { fetchAllCollectionItems, fetchCollection, saveCollection, deleteCollection } from '~/lib/builder'
 import { buildCollectionInitializeData } from '~/lib/saveCollection'
 import { type Collection } from '~/lib/collections'
@@ -44,9 +45,12 @@ export function useSaveCollection(address: string | undefined) {
       return saveCollection(address, collection, data)
     },
     onSuccess: saved => {
+      track('Save collection', { collectionId: saved.id, item_count: saved.itemCount })
       queryClient.setQueryData(['collection', address, saved.id], saved)
       void queryClient.invalidateQueries({ queryKey: ['collections'] })
-    }
+    },
+    onError: (error, collection) =>
+      track('Save collection error', { collectionId: collection.id, error: errorCode(error) })
   })
 }
 
@@ -59,8 +63,10 @@ export function useDeleteCollection(address: string | undefined) {
       return collectionId
     },
     onSuccess: collectionId => {
+      track('Delete collection', { collectionId })
       queryClient.removeQueries({ queryKey: ['collection', address, collectionId] })
       void queryClient.invalidateQueries({ queryKey: ['collections'] })
-    }
+    },
+    onError: (error, collectionId) => track('Delete collection error', { collectionId, error: errorCode(error) })
   })
 }

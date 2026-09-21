@@ -3,7 +3,10 @@ import { type ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TranslationProvider } from '~/intl'
+import { track } from '~/lib/analytics'
 import { Modal } from './Modal'
+
+vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
 
 const wrapper = ({ children }: { children: ReactNode }) => <TranslationProvider>{children}</TranslationProvider>
 
@@ -19,6 +22,14 @@ function renderModal(props: Partial<React.ComponentProps<typeof Modal>> = {}) {
 }
 
 describe('Modal', () => {
+  it('reports the dialog opening and closing under its name', () => {
+    const { view } = renderModal({ testId: 'publish-collection-modal' })
+    expect(track).toHaveBeenCalledWith('Open modal', { name: 'publish-collection-modal' })
+
+    view.unmount()
+    expect(track).toHaveBeenCalledWith('Close modal', { name: 'publish-collection-modal' })
+  })
+
   it('renders the title, body and an accessible dialog', () => {
     renderModal()
     expect(screen.getByRole('dialog', { name: 'Test Modal' })).toBeInTheDocument()

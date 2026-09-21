@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { errorCode, track } from '~/lib/analytics'
 import { saveItem } from '~/lib/builder'
 import { withThumbnail, type BuiltItem } from '~/lib/itemFactory'
 import { type Item } from '~/lib/items'
@@ -20,7 +21,9 @@ export function useSaveItem(address: string | undefined) {
       return saveItem(address, built.item, built.blobs)
     },
     onSuccess: item => {
+      track('Save item', { itemId: item.id })
       if (item.collectionId) invalidateCollectionItems(queryClient, item.collectionId)
-    }
+    },
+    onError: (error, { item }) => track('Save item error', { itemId: item.id, error: errorCode(error) })
   })
 }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ContractName, getContract } from 'decentraland-transactions'
+import { errorCode, track } from '~/lib/analytics'
 import {
   deleteItem,
   fetchAllCollectionItems,
@@ -93,8 +94,10 @@ export function useDeleteItem(address: string | undefined) {
       return item
     },
     onSuccess: item => {
+      track('Delete item', { itemId: item.id })
       if (item.collectionId) invalidateCollectionItems(queryClient, item.collectionId)
-    }
+    },
+    onError: (error, item) => track('Delete item error', { itemId: item.id, error: errorCode(error) })
   })
 }
 
@@ -136,7 +139,17 @@ export function usePublishCollection(session: Session | null) {
         }
       )
     },
-    onSuccess: ({ collection, txHash }) => {
+    onSuccess: ({ collection, txHash }, { paymentMethod, fee }) => {
+      // Legacy prop names (txHash, collectionId, usedCredits, creditsAmount) so the event lines up with
+      // the same one from the old builder; `isFiat` is always false here — this app has no fiat publish.
+      track('Publish collection', {
+        collectionId: collection.id,
+        txHash,
+        isFiat: false,
+        usedCredits: paymentMethod === 'credits',
+        creditsAmount: paymentMethod === 'credits' ? fee.total.credits : 0,
+        item_count: fee.itemCount
+      })
       const address = session?.address
       queryClient.setQueryData(['collection', address, collection.id], collection)
       void queryClient.invalidateQueries({ queryKey: ['collections'] })
@@ -164,7 +177,14 @@ export function usePublishCollection(session: Session | null) {
           syncing.delete(collection.id)
           invalidateCollectionItems(queryClient, collection.id)
         })
-    }
+    },
+    onError: (error, { collection, paymentMethod }) =>
+      track('Publish collection error', {
+        collectionId: collection.id,
+        isFiat: false,
+        usedCredits: paymentMethod === 'credits',
+        error: errorCode(error)
+      })
   })
 }
 
