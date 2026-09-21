@@ -43,6 +43,32 @@ export default tseslint.config(
     }
   },
 
+  // Auth is a sealed module (CONVENTIONS.md): only src/lib/auth may touch the wallet and identity
+  // libraries. Types are fine anywhere; a provider or identity instance is not.
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/lib/auth/**'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: ['decentraland-connect', '@dcl/crypto', '@dcl/single-sign-on-client'].map(name => ({
+            name,
+            message: `Import ${name} only inside src/lib/auth; consume the wallet store or ~/lib/auth helpers instead.`,
+            allowTypeImports: true
+          })),
+          patterns: [
+            {
+              group: ['decentraland-connect/*', '@dcl/crypto/*', '@dcl/single-sign-on-client/*'],
+              message: 'Import auth libraries only inside src/lib/auth.',
+              allowTypeImports: true
+            }
+          ]
+        }
+      ]
+    }
+  },
+
   // Mocks and fixtures legitimately traffic in `any` and unbound methods, so the
   // no-unsafe-* family is high-noise here — real source stays strict.
   {

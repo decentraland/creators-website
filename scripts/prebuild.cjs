@@ -21,10 +21,12 @@ publicPackageJson.version = packageJson.version
 Object.assign(ENV_CONTENT, getPublicUrls())
 packageJson.homepage = ENV_CONTENT['VITE_BASE_URL']
 publicPackageJson.homepage = packageJson.homepage
-if (packageJson.homepage) {
-  // github action outputs. Do not touch.
-  console.log('::set-output name=public_url::' + packageJson.homepage)
-  console.log('::set-output name=public_path::' + new URL(packageJson.homepage).pathname)
+if (packageJson.homepage && process.env.GITHUB_OUTPUT) {
+  // GitHub Actions step outputs (the `::set-output` command is deprecated).
+  fs.appendFileSync(
+    process.env.GITHUB_OUTPUT,
+    `public_url=${packageJson.homepage}\npublic_path=${new URL(packageJson.homepage).pathname}\n`
+  )
 }
 
 // log stuff
