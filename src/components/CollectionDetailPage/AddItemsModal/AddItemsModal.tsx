@@ -11,6 +11,7 @@ import { type ItemDraftPayload } from '~/lib/itemFactory'
 import { type Collection } from '~/lib/collections'
 import { ItemType } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
+import { errorCode, track } from '~/lib/analytics'
 import { executeUpload, planUpload, type UploadDraft } from '~/lib/uploadItems'
 import {
   addItemsReducer,
@@ -171,6 +172,15 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
       const operations = await planUpload(draftsToUpload.map(toPayload), collectionItems)
       const result = await executeUpload(address, operations)
 
+      // One event per upload rather than per item: the legacy builder's per-item `Save item` on creation
+      // reads here as `item_count` (see design/TRACKING_SPEC.md).
+      track('Add items', {
+        collectionId: collection.id,
+        item_count: result.savedDraftIds.length,
+        failed_count: result.failedDraftIds.length,
+        error: result.failedDraftIds.length > 0 ? (result.failureReason ?? 'generic') : undefined
+      })
+
       if (result.savedDraftIds.length > 0) {
         showToast(t('add_items_modal.success_toast', { count: result.savedDraftIds.length }))
         await Promise.all([
@@ -190,7 +200,8 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
       } else {
         onClose()
       }
-    } catch {
+    } catch (error) {
+      track('Add items error', { collectionId: collection.id, item_count: allIds.length, error: errorCode(error) })
       dispatch({ type: 'uploadFailed', failureReason: 'generic', failedDraftIds: allIds })
     }
   }

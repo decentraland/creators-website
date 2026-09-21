@@ -17,6 +17,7 @@ import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { Tooltip } from '~/components/Tooltip'
 import { useScrollFades } from '~/hooks/useScrollFades'
 import { useTranslation } from '~/intl'
+import { track } from '~/lib/analytics'
 import { getContentsStorageUrl } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { groupItemsByType, hasRepresentationFor, type EditorMode } from '~/lib/itemEditor'
@@ -85,6 +86,15 @@ export function ItemsSidebar({
   const showAddItems = mode === 'edit' && canAddItems
 
   function onRowClick(item: Item) {
+    if (item.id !== selectedId) {
+      // Legacy builder prop names, so the event lines up with the same one from the old item editor.
+      track('Preview Item', {
+        ITEM_ID: item.tokenId ?? null,
+        ITEM_TYPE: item.type,
+        ITEM_NAME: item.name,
+        ITEM_IS_THIRD_PARTY: false
+      })
+    }
     if (item.type === ItemType.EMOTE && item.id === selectedId && dressedIds.includes(item.id)) {
       onToggleEmotePlay(item)
       return

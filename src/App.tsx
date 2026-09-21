@@ -3,10 +3,12 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { CollectionsPage } from '~/components/CollectionsPage'
 import { ErrorBoundary } from '~/components/ErrorBoundary'
 import { Footer } from '~/components/Footer'
+import { Intercom } from '~/components/Intercom'
 import { NavBar } from '~/components/NavBar'
 import { Toasts } from '~/components/Toasts'
 import { TranslationProvider } from '~/intl'
 import { useAccountWatcher } from '~/hooks/useAccountWatcher'
+import { trackPage } from '~/lib/analytics'
 import { useWallet } from '~/store/wallet'
 
 // Collections (the landing route) stays eager for the fastest first paint; every other route is code-split.
@@ -27,6 +29,18 @@ const PageFallback = () => {
 
 const EDITOR_PATH = '/collections/editor'
 
+// Stable page names for the funnel: a raw pathname carries collection ids and would never group.
+const PAGE_NAMES: Record<string, string> = {
+  '/collections': 'collections',
+  '/collections/editor': 'item_editor',
+  '/curation': 'curation'
+}
+
+function pageName(pathname: string): string {
+  const path = pathname.replace(/\/+$/, '') || '/'
+  return PAGE_NAMES[path] ?? (path.startsWith('/collections/') ? 'collection_detail' : 'other')
+}
+
 const App = () => {
   const location = useLocation()
   // The item editor is a fullscreen workspace: no navbar, no footer, no page scroll.
@@ -43,6 +57,7 @@ const App = () => {
   // Pagination and in-page filters update the query string only; a new pathname is a new page.
   useEffect(() => {
     window.scrollTo({ top: 0 })
+    trackPage(pageName(location.pathname))
   }, [location.pathname])
 
   useEffect(() => {
@@ -76,6 +91,7 @@ const App = () => {
       </main>
       {!isFullscreen && <Footer />}
       <Toasts />
+      <Intercom />
     </TranslationProvider>
   )
 }

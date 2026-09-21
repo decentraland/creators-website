@@ -1,5 +1,7 @@
 import { create } from 'zustand'
+import { identify, reset as resetAnalytics, track } from '~/lib/analytics'
 import { logout, restoreSession, signInRedirect, type Session } from '~/lib/auth'
+import { setMonitoringUser } from '~/lib/monitoring'
 
 // The IN-FLIGHT silent restore, so concurrent callers share one pass rather than racing. Cleared once
 // it settles — it dedupes overlapping calls, it is not a run-once latch.
@@ -23,10 +25,18 @@ export const useWallet = create<WalletState>((set, get) => ({
   restored: false,
   connecting: false,
   // Redirect to the auth app; the user picks wallet / Magic there.
-  signIn: () => signInRedirect(),
+  signIn: () => {
+    // The attempt, not its outcome — the app navigates away and comes back through `restore`.
+    track('Login')
+    signInRedirect()
+  },
   disconnect: async () => {
+    track('Logout')
     await logout(get().session?.address)
     set({ session: null })
+    // Drops the identity↔anonymousId link so the next account isn't attributed to this one.
+    resetAnalytics()
+    setMonitoringUser(null)
   },
   // Silent restore on load (reads connection + stored identity, no popup). Deduped so any mount point
   // can fire it freely.
@@ -37,7 +47,13 @@ export const useWallet = create<WalletState>((set, get) => ({
     // (e.g. the dynamic import of decentraland-connect fails).
     restoring = restoreSession()
       .catch(() => null)
-      .then(session => set({ session, restored: true, connecting: false }))
+      .then(session => {
+        set({ session, restored: true, connecting: false })
+        if (session) {
+          identify(session.address, { provider_type: session.providerType })
+          setMonitoringUser(session.address)
+        }
+      })
       .finally(() => {
         restoring = undefined
       })

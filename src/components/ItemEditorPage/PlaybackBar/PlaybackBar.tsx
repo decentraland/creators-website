@@ -6,6 +6,7 @@ import { Select } from '~/components/Select'
 import { Tooltip } from '~/components/Tooltip'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useTranslation } from '~/intl'
+import { track } from '~/lib/analytics'
 import { ItemType, type Item } from '~/lib/items'
 import { useAvatarPreview } from '~/store/avatarPreview'
 import { theme } from '~/styles/theme'
@@ -75,6 +76,12 @@ export function PlaybackBar({
 
   function select(value: string) {
     const collectionEmote = collectionEmotes.find(item => item.id === value)
+    // Legacy builder prop names, so the event lines up with the same one from the old item editor.
+    track('Play Emote', {
+      EMOTE_PLAYED_BASE: !collectionEmote,
+      EMOTE_PLAYED_ITEM_ID: collectionEmote?.tokenId ?? null,
+      EMOTE_PLAYED_NAME: collectionEmote ? collectionEmote.name : value
+    })
     if (collectionEmote) {
       dress({ id: collectionEmote.id, type: ItemType.EMOTE })
       return

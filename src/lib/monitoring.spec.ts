@@ -1,0 +1,136 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  captureError,
+  isLocalhost,
+  redact,
+  rpcFactsFrom,
+  scrubEvent,
+  setErrorForwarder,
+  tagsFrom,
+  toReportable
+} from './monitoring'
+
+const SIGNATURE = `0x${'a'.repeat(130)}`
+const HEX32 = `0x${'b'.repeat(64)}`
+
+beforeEach(() => {
+  vi.spyOn(console, 'error').mockImplementation(() => undefined)
+})
+
+afterEach(() => {
+  setErrorForwarder(null)
+  vi.restoreAllMocks()
+})
+
+describe('captureError', () => {
+  it('always logs the failure and hands it to the reporter with the flow that produced it', () => {
+    const reported = vi.fn()
+    setErrorForwarder(reported)
+
+    captureError(new Error('publish reverted'), { flow: 'publish-collection', collectionId: 'col-1' })
+
+    expect(console.error).toHaveBeenCalled()
+    expect(reported).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'publish reverted' }),
+      expect.objectContaining({ flow: 'publish-collection', collectionId: 'col-1' })
+    )
+  })
+
+  it('does not throw back into the caller when reporting itself fails', () => {
+    setErrorForwarder(() => {
+      throw new Error('sentry is down')
+    })
+
+    expect(() => captureError(new Error('boom'), { flow: 'sell-item' })).not.toThrow()
+  })
+
+  it('reports a wallet failure that is not an Error with a readable name and its rpc facts', () => {
+    const reported = vi.fn()
+    setErrorForwarder(reported)
+
+    captureError({ code: -32603, message: 'Failed to fetch', data: { httpStatus: 401 } }, { flow: 'send-items' })
+
+    const [error, context] = reported.mock.calls[0]
+    expect((error as Error).message).toBe('Failed to fetch (code -32603)')
+    expect(context).toMatchObject({ rpc_code: -32603, http_status: 401, flow: 'send-items' })
+  })
+
+  it('lets the caller override a fact read off the thrown value', () => {
+    const reported = vi.fn()
+    setErrorForwarder(reported)
+
+    captureError({ code: 1 }, { rpc_code: 'known-better' })
+
+    expect(reported.mock.calls[0][1]).toMatchObject({ rpc_code: 'known-better' })
+  })
+})
+
+describe('toReportable', () => {
+  it('keeps a real Error as it was thrown', () => {
+    const error = new Error('as thrown')
+    expect(toReportable(error)).toBe(error)
+  })
+
+  it('keeps the original stack so failures still group by where they happened', () => {
+    const reportable = toReportable({ message: 'rejected', stack: 'at sellItem (sales.ts:1:1)' })
+    expect((reportable as Error).stack).toBe('at sellItem (sales.ts:1:1)')
+  })
+})
+
+describe('rpcFactsFrom', () => {
+  it('finds nothing to report in a value that carries no codes', () => {
+    expect(rpcFactsFrom('a string')).toEqual({})
+    expect(rpcFactsFrom(null)).toEqual({})
+  })
+})
+
+describe('scrubEvent', () => {
+  it('never lets a signature, an identity key or a token-shaped field reach the reporter', () => {
+    const event = scrubEvent({
+      message: `signed with ${SIGNATURE}`,
+      exception: { values: [{ value: `key ${HEX32}` }] },
+      breadcrumbs: [{ message: `secret-value` }],
+      request: { url: `https://x.test/?sig=${SIGNATURE}`, cookies: { session: 'x' }, headers: { auth: 'x' } },
+      tags: { authorization: 'bearer x', flow: 'publish-collection' },
+      extra: { identity: 'private key', collectionId: 'col-1' }
+    } as unknown as Parameters<typeof scrubEvent>[0])
+
+    expect(event.message).toBe('signed with <signature>')
+    expect(event.exception?.values?.[0].value).toBe('key <hex32>')
+    expect(event.breadcrumbs?.[0].message).toBe('<secret>')
+    expect(event.request?.url).not.toContain(SIGNATURE)
+    expect(event.request?.cookies).toBeUndefined()
+    expect(event.request?.headers).toBeUndefined()
+    expect(event.tags).toEqual({ flow: 'publish-collection' })
+    expect(event.extra).toEqual({ collectionId: 'col-1' })
+  })
+})
+
+describe('tagsFrom', () => {
+  it('promotes only the fields worth searching by, as strings', () => {
+    expect(tagsFrom({ flow: 'publish-collection', step: 'pay', rpc_code: -32603, collectionId: 'col-1' })).toEqual({
+      flow: 'publish-collection',
+      step: 'pay',
+      rpc_code: '-32603'
+    })
+  })
+
+  it('drops values a tag cannot be made of', () => {
+    expect(tagsFrom({ flow: '', step: { nested: true }, http_status: 401 })).toEqual({ http_status: '401' })
+  })
+})
+
+describe('redact', () => {
+  it('leaves ordinary copy alone', () => {
+    expect(redact('the collection is locked')).toBe('the collection is locked')
+  })
+})
+
+describe('isLocalhost', () => {
+  it('recognises the hosts a creator runs the app on locally', () => {
+    expect(isLocalhost('localhost')).toBe(true)
+    expect(isLocalhost('127.0.0.1')).toBe(true)
+    expect(isLocalhost('my-mac.local')).toBe(true)
+    expect(isLocalhost('decentraland.org')).toBe(false)
+  })
+})
