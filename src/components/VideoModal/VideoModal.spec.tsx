@@ -13,11 +13,11 @@ vi.mock('~/lib/media', () => ({ loadVideoMetadata }))
 URL.createObjectURL = vi.fn(() => 'blob:video')
 URL.revokeObjectURL = vi.fn()
 
-function renderModal(video: Blob | null = null) {
+function renderModal(video: Blob | null = null, viewOnly = false) {
   const onChange = vi.fn()
   const onClose = vi.fn()
   const wrapper = ({ children }: { children: ReactNode }) => <TranslationProvider>{children}</TranslationProvider>
-  render(<VideoModal video={video} onChange={onChange} onClose={onClose} />, { wrapper })
+  render(<VideoModal video={video} viewOnly={viewOnly} onChange={onChange} onClose={onClose} />, { wrapper })
   return { onChange, onClose }
 }
 
@@ -72,5 +72,17 @@ describe('VideoModal', () => {
     await userEvent.click(screen.getByTestId('video-modal-done'))
     expect(onClose).toHaveBeenCalledTimes(1)
     expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('plays without offering replace when watching', () => {
+    renderModal(mp4(), true)
+    expect(screen.getByTestId('video-modal-player')).toBeInTheDocument()
+    expect(screen.queryByTestId('video-modal-replace')).toBeNull()
+  })
+
+  it('waits for the stored video instead of showing a watcher the dropzone', () => {
+    renderModal(null, true)
+    expect(screen.getByTestId('video-modal-loading')).toBeInTheDocument()
+    expect(screen.queryByTestId('video-modal-dropzone')).toBeNull()
   })
 })

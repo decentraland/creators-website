@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildBoneTree,
   buildSubtreeSizes,
   getChainRoots,
   getDefaultSpringBoneRoots,
@@ -46,6 +47,29 @@ describe('spring bones', () => {
     expect(parseSpringBones(new TextEncoder().encode(JSON.stringify({ nodes })).buffer)).toHaveLength(5)
   })
 
+  it('builds a bone tree from the model\u2019s skin joints', () => {
+    // Armature and the mesh node are not joints: the tree lifts Hips to the top and drops the mesh.
+    const bones = parseSpringBones(
+      glb({
+        nodes: [
+          { name: 'Armature', children: [1] },
+          { name: 'Hips', children: [2, 3] },
+          { name: 'Tail_springbone_1' },
+          { name: 'Wearable_mesh' }
+        ],
+        skins: [{ joints: [1, 2] }]
+      })
+    )
+    expect(bones.map(bone => bone.isJoint)).toEqual([false, true, true, false])
+    const tree = buildBoneTree(bones)
+    expect(tree.map(node => node.bone.name)).toEqual(['Hips'])
+    expect(tree[0].children.map(node => node.bone.name)).toEqual(['Tail_springbone_1'])
+  })
+
+  it('treats every node as a bone when the model declares no skin', () => {
+    expect(buildBoneTree(parseSpringBones(glb({ nodes }))).map(node => node.bone.name)).toEqual(['Avatar_Hips'])
+  })
+
   it('finds chain roots and how many bones each chain drives', () => {
     const bones = parseSpringBones(glb({ nodes }))
     expect(getChainRoots(bones).map(bone => bone.name)).toEqual(['Tail_springbone_1', 'Hair_springbone'])
@@ -59,12 +83,12 @@ describe('spring bones', () => {
   })
 
   it('admits roots greedily under the cap', () => {
-    const big: BoneNode[] = [{ name: 'Root_springbone', nodeId: 0, type: 'spring', children: [] }]
+    const big: BoneNode[] = [{ name: 'Root_springbone', nodeId: 0, type: 'spring', isJoint: true, children: [] }]
     for (let i = 1; i <= 13; i++) {
       big[i - 1].children.push(i)
-      big.push({ name: `Chain_springbone_${i}`, nodeId: i, type: 'spring', children: [] })
+      big.push({ name: `Chain_springbone_${i}`, nodeId: i, type: 'spring', isJoint: true, children: [] })
     }
-    big.push({ name: 'Small_springbone', nodeId: 14, type: 'spring', children: [] })
+    big.push({ name: 'Small_springbone', nodeId: 14, type: 'spring', isJoint: true, children: [] })
     expect(Object.keys(getDefaultSpringBoneRoots(big))).toEqual(['Small_springbone'])
   })
 

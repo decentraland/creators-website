@@ -32,11 +32,19 @@ const item: Item = {
 }
 const noSpringBones = { isLoading: false, models: [], initialParams: {}, bonesByHash: {} }
 
-function Harness({ editable = true, onSave = vi.fn() }: { editable?: boolean; onSave?: () => void }) {
-  const form = useItemForm(item, noSpringBones)
+function Harness({
+  editable = true,
+  onSave = vi.fn(),
+  subject = item
+}: {
+  editable?: boolean
+  onSave?: () => void
+  subject?: Item
+}) {
+  const form = useItemForm(subject, noSpringBones)
   return (
     <PropertiesPanel
-      item={item}
+      item={subject}
       address="0xabc"
       editable={editable}
       canDelete={editable}
@@ -46,7 +54,7 @@ function Harness({ editable = true, onSave = vi.fn() }: { editable?: boolean; on
       isSaving={false}
       springBones={null}
       onSave={onSave}
-      onRevert={() => form.reset(item)}
+      onRevert={() => form.reset(subject)}
       onDeleted={vi.fn()}
     />
   )
@@ -106,6 +114,18 @@ describe('PropertiesPanel', () => {
     expect(screen.getByTestId('properties-panel-name')).toBeDisabled()
     expect(screen.getByTestId('properties-panel-hides-categories')).toBeDisabled()
     expect(screen.queryByTestId('properties-panel-footer')).not.toBeInTheDocument()
+  })
+
+  it('offers the utility field for emotes too', async () => {
+    const emote: Item = {
+      ...item,
+      type: ItemType.EMOTE,
+      data: { category: 'fun', tags: [], loop: false, representations: item.data.representations }
+    }
+    render(<Harness subject={emote} />, { wrapper: Providers })
+    await userEvent.type(screen.getByTestId('properties-panel-utility'), 'greets')
+    expect(screen.getByTestId('properties-panel-utility')).toHaveValue('greets')
+    expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
   })
 
   it('adds and removes tags', async () => {

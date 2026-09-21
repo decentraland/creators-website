@@ -150,6 +150,25 @@ export function isEmoteSubject(source: AvatarPreviewSource): boolean {
 }
 
 /**
+ * Camera range. wearable-preview frames the avatar between `radius / zoom` (closest) and
+ * `wheelZoom ×` that (farthest), starting at `wheelStart`% of the way in — the prop is inverted, so 80
+ * means 20% out. Scaling `zoom` by 2 halves the closest radius and `wheelStart: 80` puts the start back
+ * at `radius / base zoom`: the legacy framing, with twice the zoom in and three times the zoom out.
+ */
+export const PREVIEW_ZOOM_SCALE = 2
+export const PREVIEW_WHEEL_ZOOM = 6
+export const PREVIEW_WHEEL_START = 80
+/** wearable-preview's own default; restated because scaling it has to start from a known value. */
+const BASE_ZOOM = 1.75
+// The jump animation leaves the frame at the default zoom, so it is framed further out (legacy quirk).
+const JUMP_ZOOM = 1
+
+/** The zoom for an emote, scaled so the camera keeps the legacy framing with a wider range. */
+export function getPreviewZoom(emote: PreviewEmote | undefined): number {
+  return (emote === PreviewEmote.JUMP ? JUMP_ZOOM : BASE_ZOOM) * PREVIEW_ZOOM_SCALE
+}
+
+/**
  * The full option set the iframe needs to dress and animate the avatar. Sent whole on every change:
  * wearable-preview replaces its overrides with each UPDATE rather than merging them.
  */
@@ -172,10 +191,7 @@ export function buildPreviewOptions(
   } else {
     options.blob = source.definition
   }
-  if (!emoteSubject) {
-    options.emote = emote
-    // Legacy quirk: the jump animation leaves the frame at the default zoom.
-    if (emote === PreviewEmote.JUMP) options.zoom = 1
-  }
+  options.zoom = getPreviewZoom(emoteSubject ? undefined : emote)
+  if (!emoteSubject) options.emote = emote
   return options
 }

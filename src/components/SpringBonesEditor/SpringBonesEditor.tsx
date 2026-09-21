@@ -1,6 +1,6 @@
-import { useMemo, type CSSProperties } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import { BodyShape, type SpringBoneParams } from '@dcl/schemas'
-import { Close as RemoveIcon } from '@mui/icons-material'
+import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
 import { Select } from '~/components/Select'
 import { useTranslation } from '~/intl'
 import {
@@ -15,14 +15,17 @@ import {
   SPRING_BONE_STIFFNESS_MIN
 } from '~/lib/glbValidation/constants'
 import {
+  buildBoneTree,
   buildSubtreeSizes,
   getChainRoots,
   getDefaultSpringBoneParams,
+  pickTunableSpringBoneParams,
   sortByHierarchy,
   sumConfiguredBones,
   type BoneNode,
   type SpringBoneParamsByName
 } from '~/lib/springBones'
+import { BoneTreePicker } from './BoneTreePicker'
 import * as S from './SpringBonesEditor.styles'
 
 export type SpringBonesModel = {
@@ -73,6 +76,7 @@ export function SpringBonesEditor({
   testId = 'spring-bones'
 }: Props) {
   const { t } = useTranslation()
+  const [copied, setCopied] = useState<Omit<SpringBoneParams, 'isRoot'> | null>(null)
   const model = useMemo(
     () => models.find(candidate => candidate.hash === activeHash) ?? models[0],
     [models, activeHash]
@@ -93,6 +97,9 @@ export function SpringBonesEditor({
     [bones, params, configured, subtreeSizes, t]
   )
 
+  // A chain's center is an ordinary avatar bone: the pivot its physics swing around.
+  const boneTree = useMemo(() => buildBoneTree(bones), [bones])
+
   if (!model) return null
 
   function update(name: string, patch: Partial<SpringBoneParams>) {
@@ -103,6 +110,10 @@ export function SpringBonesEditor({
     const next = { ...params }
     delete next[name]
     onChange(next)
+  }
+
+  function paste(name: string) {
+    if (copied) update(name, copied)
   }
 
   return (
@@ -133,15 +144,30 @@ export function SpringBonesEditor({
             <S.CardHeader>
               <span title={name}>{name}</span>
               <S.Counter>{t('item_editor.spring_bones.bones', { count: subtreeSizes.get(name) ?? 1 })}</S.Counter>
-              <S.IconButton
-                type="button"
-                aria-label={t('item_editor.spring_bones.remove')}
-                disabled={disabled}
-                data-testid={`${testId}-remove-${name}`}
-                onClick={() => remove(name)}
+              <ActionsMenu
+                label={t('item_editor.spring_bones.actions')}
+                variant="row"
+                tone="dark"
+                testId={`${testId}-actions-${name}`}
               >
-                <RemoveIcon fontSize="small" />
-              </S.IconButton>
+                <ActionsMenuItem
+                  testId={`${testId}-copy-${name}`}
+                  onClick={() => setCopied(pickTunableSpringBoneParams(bone))}
+                >
+                  {t('item_editor.spring_bones.copy_params')}
+                </ActionsMenuItem>
+                <ActionsMenuItem
+                  testId={`${testId}-paste-${name}`}
+                  disabled={disabled || !copied}
+                  onClick={() => paste(name)}
+                >
+                  {t('item_editor.spring_bones.paste_params')}
+                </ActionsMenuItem>
+                <ActionsMenuDivider />
+                <ActionsMenuItem testId={`${testId}-remove-${name}`} disabled={disabled} onClick={() => remove(name)}>
+                  {t('item_editor.spring_bones.remove')}
+                </ActionsMenuItem>
+              </ActionsMenu>
             </S.CardHeader>
             {SLIDERS.map(({ field, min, max }) => (
               <S.Param key={field}>
@@ -198,6 +224,22 @@ export function SpringBonesEditor({
                   </label>
                 ))}
               </S.Vector>
+            </S.Param>
+            <S.Param as="div">
+              <span>{t('item_editor.spring_bones.center')}</span>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <BoneTreePicker
+                  tree={boneTree}
+                  value={bone.center}
+                  disabledType="spring"
+                  disabled={disabled}
+                  noneLabel={t('item_editor.spring_bones.center_none')}
+                  clearLabel={t('item_editor.spring_bones.center_clear')}
+                  ariaLabel={t('item_editor.spring_bones.center')}
+                  testId={`${testId}-${name}-center`}
+                  onChange={center => update(name, { center })}
+                />
+              </div>
             </S.Param>
           </S.Card>
         )

@@ -567,6 +567,7 @@
   "video_modal": {
     "title": "Preview Video",
     "description": "Upload a video that showcases the smart wearable's functionality.",
+    "loading": "Loading the video…",
     "drop_cta": "Drag and drop your video here, or",
     "browse": "Browse files",
     "hint": "{extensions} · up to {size}MB",
@@ -635,7 +636,10 @@
       "no_representation": "This item has no version for the current body shape. Switch the body shape to preview it."
     },
     "picker": {
+      "title": "Collections",
+      "back": "Back to collections",
       "search": "Search collections",
+      "create": "New collection",
       "empty": "No collections found.",
       "error": "We couldn't load your collections. Please try again."
     },
@@ -706,6 +710,7 @@
       "title": "Details",
       "edit_thumbnail": "Edit thumbnail",
       "download": "Download item",
+      "watch_video": "Watch preview video",
       "change_file": "Change file",
       "add_representation": "Add {shape} representation",
       "file_update_pending": "A new model is ready. Save to upload it.",
@@ -720,7 +725,7 @@
       "name": "Name",
       "description": "Description",
       "utility": "Utility",
-      "utility_hint": "A short description of what this wearable does in-world, shown to collectors.",
+      "utility_hint": "A short description of what this item does in-world, shown to collectors.",
       "category": "Category",
       "rarity": "Rarity"
     },
@@ -751,6 +756,12 @@
       "drag": "Drag",
       "add": "Add a bone chain",
       "remove": "Remove bone chain",
+      "center": "Center bone",
+      "center_none": "None",
+      "center_clear": "Clear center bone",
+      "actions": "Bone chain actions",
+      "copy_params": "Copy settings",
+      "paste_params": "Paste settings",
       "warning_title": "“{name}” is missing spring bone settings",
       "warning_description": "One of the body shapes has no spring bones configured, so its physics will be missing in-world. Save anyway?",
       "warning_back": "Go back",
@@ -759,7 +770,8 @@
     "tags": {
       "title": "Tags",
       "placeholder": "Add a tag and press Enter",
-      "remove": "Remove tag {tag}"
+      "remove": "Remove tag {tag}",
+      "campaign_hint": "Add the “{tag}” tag to enter this item in {name}."
     },
     "options": {
       "title": "Options",

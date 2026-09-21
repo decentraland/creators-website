@@ -2,33 +2,36 @@
 // lib/featureFlags): a cached fetch behind an async accessor, keyed `${app}-${feature}`.
 import { config } from '~/config'
 
-/** Flag names as they appear in the service, without the `dapps-` prefix. */
+/** Flag names as they appear in the service, without their application prefix. */
 export enum FeatureFlag {
   /**
    * Ceiling for the Unity wearable preview, shared with the shop and the legacy builder: one switch turns
    * Unity off across every dapp. The device heuristic in `lib/pickRenderer` still applies on top.
    */
-  UNITY_WEARABLE_PREVIEW = 'unity-wearable-preview'
+  UNITY_WEARABLE_PREVIEW = 'unity-wearable-preview',
+  /** Marketing campaign surfaces (the event tag hint), shared with the legacy builder. */
+  CAMPAIGN = 'campaign'
 }
 
-const APPLICATION = 'dapps'
+/** Each flag lives under the application that owns it, and is fetched from that application's file. */
+const APPLICATION: Record<FeatureFlag, string> = {
+  [FeatureFlag.UNITY_WEARABLE_PREVIEW]: 'dapps',
+  [FeatureFlag.CAMPAIGN]: 'builder'
+}
+
 const TTL_MS = 60_000
 const TIMEOUT_MS = 3_000
 
 type Snapshot = { flags: Record<string, boolean>; fetchedAt: number }
 
-let snapshot: Snapshot | undefined
-let inFlight: Promise<Snapshot> | undefined
+const snapshots = new Map<string, Snapshot>()
+const inFlight = new Map<string, Promise<Snapshot>>()
 
-function flagKey(flag: FeatureFlag): string {
-  return `${APPLICATION}-${flag}`
-}
-
-async function fetchSnapshot(): Promise<Snapshot> {
+async function fetchSnapshot(application: string): Promise<Snapshot> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
-    const response = await fetch(`${config.get('FEATURE_FLAGS_URL')}/${APPLICATION}.json`, {
+    const response = await fetch(`${config.get('FEATURE_FLAGS_URL')}/${application}.json`, {
       signal: controller.signal
     })
     if (!response.ok) throw new Error(`feature flags request failed with ${response.status}`)
@@ -40,19 +43,22 @@ async function fetchSnapshot(): Promise<Snapshot> {
 }
 
 // A failed fetch is not cached: the next read retries, so an outage never outlives itself.
-async function getSnapshot(): Promise<Snapshot> {
-  if (snapshot && Date.now() - snapshot.fetchedAt < TTL_MS) return snapshot
-  if (!inFlight) {
-    inFlight = fetchSnapshot()
+async function getSnapshot(application: string): Promise<Snapshot> {
+  const cached = snapshots.get(application)
+  if (cached && Date.now() - cached.fetchedAt < TTL_MS) return cached
+  let pending = inFlight.get(application)
+  if (!pending) {
+    pending = fetchSnapshot(application)
       .then(fresh => {
-        snapshot = fresh
+        snapshots.set(application, fresh)
         return fresh
       })
       .finally(() => {
-        inFlight = undefined
+        inFlight.delete(application)
       })
+    inFlight.set(application, pending)
   }
-  return await inFlight
+  return await pending
 }
 
 /**
@@ -78,8 +84,9 @@ function devOverrideFor(flag: FeatureFlag): boolean | undefined {
 export async function getIsFeatureEnabled(flag: FeatureFlag): Promise<boolean> {
   const override = devOverrideFor(flag)
   if (override !== undefined) return override
+  const application = APPLICATION[flag]
   try {
-    return (await getSnapshot()).flags[flagKey(flag)] === true
+    return (await getSnapshot(application)).flags[`${application}-${flag}`] === true
   } catch {
     return false
   }
@@ -87,6 +94,6 @@ export async function getIsFeatureEnabled(flag: FeatureFlag): Promise<boolean> {
 
 /** Test seam: drops the cached snapshot so a spec starts from a known state. */
 export function resetFeatureFlagsCache(): void {
-  snapshot = undefined
-  inFlight = undefined
+  snapshots.clear()
+  inFlight.clear()
 }

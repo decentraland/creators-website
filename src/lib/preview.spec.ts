@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BodyShape, PreviewEmote } from '@dcl/schemas'
-import { buildPreviewOptions, definitionToBase64, itemToDefinition } from './preview'
+import { buildPreviewOptions, definitionToBase64, getPreviewZoom, itemToDefinition } from './preview'
 import { ItemType, type Item } from './items'
 import { type AvatarAttributes } from './avatar'
 
@@ -78,13 +78,18 @@ describe('buildPreviewOptions', () => {
       disableDefaultEmotes: false
     })
     expect(options.base64s).toHaveLength(1)
-    expect(options.zoom).toBeUndefined()
+    expect(options.zoom).toBe(getPreviewZoom(PreviewEmote.DANCE))
   })
 
-  it('lets an emote item own the animation and keeps the legacy jump zoom', () => {
+  it('lets an emote item own the animation and frames the jump further out', () => {
     const withEmote = buildPreviewOptions({ kind: 'items', items: [wearable, emote] }, avatar, PreviewEmote.DANCE)
     expect(withEmote.disableDefaultEmotes).toBe(true)
     expect(withEmote.emote).toBeUndefined()
-    expect(buildPreviewOptions({ kind: 'items', items: [] }, avatar, PreviewEmote.JUMP).zoom).toBe(1)
+    const jump = buildPreviewOptions({ kind: 'items', items: [] }, avatar, PreviewEmote.JUMP).zoom!
+    const dance = buildPreviewOptions({ kind: 'items', items: [] }, avatar, PreviewEmote.DANCE).zoom!
+    // A lower zoom is a larger camera radius: the jump has to fit in frame.
+    expect(jump).toBeLessThan(dance)
+    // Both are scaled together, so the camera starts where the legacy editor framed it.
+    expect(dance / jump).toBe(1.75)
   })
 })

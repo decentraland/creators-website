@@ -11,10 +11,13 @@ export type BoneNode = {
   name: string
   nodeId: number
   type: 'spring' | 'avatar'
+  /** The node is a skin joint: a real bone, not a mesh, armature or other container node. */
+  isJoint: boolean
   children: number[]
 }
 
 type GltfNode = { name?: string; children?: number[] }
+type GltfSkin = { joints?: unknown }
 
 /** The glTF JSON of a binary GLB, or of a plain .gltf; null when the bytes are neither. */
 export function extractGltfJson(buffer: ArrayBuffer): Record<string, unknown> | null {
@@ -40,17 +43,31 @@ function parseJson(bytes: Uint8Array): Record<string, unknown> | null {
   }
 }
 
-/** Every node of the model as a bone entry, spring bones flagged by name. */
+/** The nodes referenced as joints by any skin, or null when the model declares none. */
+function collectJoints(skins: unknown): Set<number> | null {
+  if (!Array.isArray(skins)) return null
+  const joints = new Set<number>()
+  for (const skin of skins as GltfSkin[]) {
+    if (!Array.isArray(skin?.joints)) continue
+    for (const joint of skin.joints) if (typeof joint === 'number') joints.add(joint)
+  }
+  return joints.size > 0 ? joints : null
+}
+
+/** Every node of the model as a bone entry, spring bones flagged by name and joints by the skins. */
 export function parseSpringBones(buffer: ArrayBuffer): BoneNode[] {
   const json = extractGltfJson(buffer)
   const nodes = json?.nodes
   if (!Array.isArray(nodes)) return []
+  const joints = collectJoints(json?.skins)
   return (nodes as GltfNode[]).map((node, index) => {
     const name = node.name ?? `node_${index}`
     return {
       name,
       nodeId: index,
       type: node.name && isSpringBoneName(node.name) ? 'spring' : 'avatar',
+      // Without a skin there is nothing to tell bones from other nodes, so every node counts as one.
+      isJoint: joints ? joints.has(index) : true,
       children: node.children ?? []
     }
   })

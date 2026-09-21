@@ -83,6 +83,21 @@ describe('item draft', () => {
     expect(computeRemovesDefaultHiding('hat', [])).toEqual([])
   })
 
+  it('saves and clears the utility of an emote too', () => {
+    const emote: Item = {
+      ...item,
+      type: ItemType.EMOTE,
+      utility: 'waves',
+      data: { category: 'fun', tags: [], loop: false, representations: item.data.representations }
+    }
+    let draft = itemDraftReducer(createItemDraft(emote), { type: 'setText', field: 'utility', value: ' greets ' })
+    expect(isItemDraftDirty(draft, emote)).toBe(true)
+    expect(applyDraftToItem(emote, draft).utility).toBe('greets')
+
+    draft = itemDraftReducer(draft, { type: 'setText', field: 'utility', value: '   ' })
+    expect(applyDraftToItem(emote, draft)).not.toHaveProperty('utility')
+  })
+
   it('keeps display-only edits out of what the renderer is handed', () => {
     let draft = createItemDraft(item)
     draft = itemDraftReducer(draft, { type: 'setText', field: 'name', value: 'Cap' })

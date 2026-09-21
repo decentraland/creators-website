@@ -9,6 +9,7 @@ import {
   canManageItem,
   isMissingSmartWearableVideo,
   isSmartWearable,
+  isSocialEmote,
   fromRemoteItem,
   getItemBodyShapeType,
   getItemDisplayStatus,
@@ -234,6 +235,16 @@ describe('isSmartWearable', () => {
     expect(isSmartWearable(makeItem())).toBe(false)
     expect(isSmartWearable(makeItem({ contents: { ...remote.contents, 'game.js': 'Qmjs' } }))).toBe(true)
     expect(isSmartWearable(makeItem({ type: ItemType.EMOTE, contents: { 'game.js': 'Qmjs' } }))).toBe(false)
+  })
+})
+
+describe('isSocialEmote', () => {
+  it('flags emotes with extra armatures or a start animation, never a wearable', () => {
+    const emote = makeItem({ type: ItemType.EMOTE })
+    expect(isSocialEmote(emote)).toBe(false)
+    expect(isSocialEmote({ ...emote, metrics: { additionalArmatures: 1 } })).toBe(true)
+    expect(isSocialEmote({ ...emote, data: { ...emote.data, startAnimation: {} } })).toBe(true)
+    expect(isSocialEmote(makeItem({ metrics: { additionalArmatures: 1 } }))).toBe(false)
   })
 })
 

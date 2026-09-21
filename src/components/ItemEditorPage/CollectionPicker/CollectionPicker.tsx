@@ -1,13 +1,20 @@
 import { useState } from 'react'
-import { Search as SearchIcon } from '@mui/icons-material'
+import { Add as AddIcon, ArrowBackIosNew as BackIcon, Search as SearchIcon } from '@mui/icons-material'
+import { Button } from '~/components/Button'
+import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
 import { Pagination } from '~/components/Pagination'
 import { useTranslation } from '~/intl'
-import { COLLECTIONS_PAGE_SIZE, useCollections } from '~/hooks/useCollections'
+import { useSaveCollection } from '~/hooks/useCollection'
+import { useCollections } from '~/hooks/useCollections'
 import { CollectionStatusFilter, type Collection } from '~/lib/collections'
+import { buildNewCollection } from '~/lib/saveCollection'
 import { SearchBox } from '~/styles/shared'
 import * as S from '../ItemEditorPage.styles'
 import * as Sidebar from '../ItemsSidebar/ItemsSidebar.styles'
+
+// The picker's rows are shorter than the collections page's cards, so it fits more per page.
+const PICKER_PAGE_SIZE = 12
 
 type Props = {
   address: string
@@ -20,13 +27,33 @@ export function CollectionPicker({ address, onPick, testId = 'collection-picker'
   const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const query = useCollections(address, { page, search, status: CollectionStatusFilter.ALL })
+  const [isCreateOpen, setCreateOpen] = useState(false)
+  const saveCollection = useSaveCollection(address)
+  const query = useCollections(address, {
+    page,
+    search,
+    status: CollectionStatusFilter.ALL,
+    limit: PICKER_PAGE_SIZE
+  })
   const collections = query.data?.results ?? []
   const pages = query.data?.pages ?? 1
+
+  function closeCreate() {
+    setCreateOpen(false)
+    saveCollection.reset()
+  }
 
   return (
     <Sidebar.Wrap data-testid={testId}>
       <Sidebar.Header>
+        <Sidebar.HeaderRow>
+          <Sidebar.IconLink to="/collections" aria-label={t('item_editor.picker.back')} data-testid={`${testId}-back`}>
+            <BackIcon fontSize="small" />
+          </Sidebar.IconLink>
+          <Sidebar.CollectionName>
+            <Sidebar.CollectionTitle>{t('item_editor.picker.title')}</Sidebar.CollectionTitle>
+          </Sidebar.CollectionName>
+        </Sidebar.HeaderRow>
         <SearchBox style={{ width: '100%', height: 40 }}>
           <SearchIcon fontSize="small" />
           <input
@@ -40,11 +67,21 @@ export function CollectionPicker({ address, onPick, testId = 'collection-picker'
             }}
           />
         </SearchBox>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          data-testid={`${testId}-create`}
+          onClick={() => setCreateOpen(true)}
+        >
+          <AddIcon fontSize="small" />
+          {t('item_editor.picker.create')}
+        </Button>
       </Sidebar.Header>
       <Sidebar.List>
         {query.isLoading ? (
           <Sidebar.Rows aria-busy="true" data-testid={`${testId}-loading`}>
-            {Array.from({ length: COLLECTIONS_PAGE_SIZE }, (_, index) => (
+            {Array.from({ length: PICKER_PAGE_SIZE }, (_, index) => (
               <Sidebar.SkeletonRow key={index} className="skeleton" />
             ))}
           </Sidebar.Rows>
@@ -68,8 +105,29 @@ export function CollectionPicker({ address, onPick, testId = 'collection-picker'
             ))}
           </Sidebar.Rows>
         )}
-        {pages > 1 && <Pagination page={page} pages={pages} onPageChange={setPage} />}
+        {pages > 1 && (
+          <Sidebar.PaginationWrap>
+            <Pagination page={page} pages={pages} onPageChange={setPage} />
+          </Sidebar.PaginationWrap>
+        )}
       </Sidebar.List>
+      {isCreateOpen && (
+        <CollectionNameModal
+          variant="create"
+          isPending={saveCollection.isPending}
+          error={saveCollection.error?.message ?? null}
+          onSubmit={name =>
+            saveCollection.mutate(buildNewCollection(name, address), {
+              // A collection created here is the one the creator wants to fill: open it right away.
+              onSuccess: created => {
+                closeCreate()
+                onPick(created)
+              }
+            })
+          }
+          onClose={closeCreate}
+        />
+      )}
     </Sidebar.Wrap>
   )
 }

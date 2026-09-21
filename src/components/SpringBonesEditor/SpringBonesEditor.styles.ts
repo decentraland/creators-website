@@ -74,28 +74,6 @@ export const CardHeader = styled.div`
   }
 `
 
-export const IconButton = styled.button`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 0;
-  border-radius: ${theme.radius.chip};
-  background: transparent;
-  color: ${theme.editor.label};
-
-  &:hover:not(:disabled) {
-    background: ${theme.editor.surfaceHover};
-    color: ${theme.colors.white};
-  }
-
-  &:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
-`
-
 export const Param = styled.label`
   display: grid;
   grid-template-columns: 1fr 64px;

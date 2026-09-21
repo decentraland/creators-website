@@ -10,7 +10,14 @@ import { Env } from '@dcl/ui-env'
 import { WearablePreview } from 'decentraland-ui2'
 import { config } from '~/config'
 import { type AvatarAttributes } from '~/lib/avatar'
-import { buildPreviewOptions, isEmoteSubject, type AvatarPreviewSource } from '~/lib/preview'
+import {
+  PREVIEW_WHEEL_START,
+  PREVIEW_WHEEL_ZOOM,
+  buildPreviewOptions,
+  getPreviewZoom,
+  isEmoteSubject,
+  type AvatarPreviewSource
+} from '~/lib/preview'
 import { createPreviewBridge, type PreviewBridge } from '~/lib/previewBridge'
 import { useAvatarPreview } from '~/store/avatarPreview'
 import * as S from './AvatarPreview.styles'
@@ -110,8 +117,9 @@ export function AvatarPreview({
         disableDefaultEmotes={snapshot.emoteSubject || undefined}
         disableAutoRotate
         disableBackground
-        wheelZoom={1.5}
-        wheelStart={100}
+        zoom={getPreviewZoom(snapshot.emoteSubject ? undefined : snapshot.emote)}
+        wheelZoom={PREVIEW_WHEEL_ZOOM}
+        wheelStart={PREVIEW_WHEEL_START}
         unity={snapshot.unity}
         unityMode={PreviewUnityMode.BUILDER}
         dev={config.is(Env.DEVELOPMENT)}

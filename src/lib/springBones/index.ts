@@ -16,7 +16,21 @@ export type SpringBoneParamsByName = Record<string, SpringBoneParams>
 export type SpringBoneParamsByHash = Record<string, SpringBoneParamsByName>
 
 export function getDefaultSpringBoneParams(): SpringBoneParams {
-  return { stiffness: 2, gravityPower: 0, gravityDir: [0, -1, 0], drag: 0.5, isRoot: true }
+  return { stiffness: 2, gravityPower: 0, gravityDir: [0, -1, 0], drag: 0.5, center: undefined, isRoot: true }
+}
+
+/**
+ * The tunable half of a chain's params, without `isRoot`: what the editor's copy/paste moves between
+ * chains. `center` is always present so pasting a chain without one clears the target's.
+ */
+export function pickTunableSpringBoneParams(params: SpringBoneParams): Omit<SpringBoneParams, 'isRoot'> {
+  return {
+    stiffness: params.stiffness,
+    gravityPower: params.gravityPower,
+    gravityDir: [...params.gravityDir],
+    drag: params.drag,
+    center: params.center
+  }
 }
 
 export function getSpringBones(bones: BoneNode[]): BoneNode[] {
@@ -73,6 +87,29 @@ export function getDefaultSpringBoneRoots(bones: BoneNode[]): SpringBoneParamsBy
     total += size
   }
   return roots
+}
+
+/** A bone with its bone children: what the hierarchy pickers render. */
+export type BoneTreeNode = {
+  bone: BoneNode
+  children: BoneTreeNode[]
+}
+
+/**
+ * The model's bones as a tree. Nodes that are not skin joints (meshes, the armature, empty
+ * containers) are dropped and their bone descendants lift to the nearest bone ancestor, so the
+ * picker shows the skeleton and nothing else.
+ */
+export function buildBoneTree(bones: BoneNode[]): BoneTreeNode[] {
+  const boneById = new Map(bones.map(bone => [bone.nodeId, bone]))
+  const childIds = new Set(bones.flatMap(bone => bone.children))
+  const visit = (nodeId: number): BoneTreeNode[] => {
+    const bone = boneById.get(nodeId)
+    if (!bone) return []
+    const children = bone.children.flatMap(visit)
+    return bone.isJoint ? [{ bone, children }] : children
+  }
+  return bones.filter(bone => !childIds.has(bone.nodeId)).flatMap(bone => visit(bone.nodeId))
 }
 
 /** Bone names in depth-first tree order, so configured chains list top-down like the model. */

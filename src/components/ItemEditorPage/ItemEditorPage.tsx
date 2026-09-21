@@ -28,7 +28,7 @@ import { canManageCollectionItems, hasCollectionRole, isCollectionLocked, type C
 import { toPreviewItem, toSaveableItem } from '~/lib/itemDraft'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
 import { ITEM_EXTENSIONS } from '~/lib/itemFiles'
-import { ItemType, canEditItemDetails, type Item } from '~/lib/items'
+import { ItemType, canEditItemDetails, isSocialEmote, type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import { type AvatarPreviewSource } from '~/lib/preview'
 import { getShapesMissingSpringBones, mergeSpringBonesIntoItem, type SpringBoneParamsByName } from '~/lib/springBones'
@@ -79,7 +79,7 @@ const ItemEditorPage = () => {
   const collectionQuery = useCollection(address, collectionId ?? undefined)
   const itemsQuery = useAllCollectionItems(address, collectionId ?? undefined)
   const baseWearables = useBaseWearables()
-  const renderer = usePreviewRenderer()
+  const pickedRenderer = usePreviewRenderer()
   const saveItem = useSaveItem(address)
   const saveCollection = useSaveCollection(address)
   const [isRenameOpen, setRenameOpen] = useState(false)
@@ -87,6 +87,8 @@ const ItemEditorPage = () => {
   const collection = collectionQuery.data
   const items = itemsQuery.data ?? EMPTY_ITEMS
   const selected = useMemo(() => resolveSelectedItem(items, itemParam), [items, itemParam])
+  // Unity cannot play a social emote's extra armatures: those items always preview in Babylon.
+  const renderer = selected && isSocialEmote(selected) ? PreviewRenderer.BABYLON : pickedRenderer
 
   // Avatar state (session-only store).
   const bodyShape = useAvatarPreview(state => state.bodyShape)
@@ -223,10 +225,16 @@ const ItemEditorPage = () => {
   }, [])
   useEffect(() => {
     if (!awaitingNewItem || !knownIdsRef.current || itemsQuery.isFetching) return
-    const added = items.find(item => !knownIdsRef.current!.has(item.id))
+    const known = knownIdsRef.current
+    // Several files can be uploaded at once: the last one created is the one to open.
+    const added = items
+      .filter(item => !known.has(item.id))
+      .reduce<Item | null>((latest, item) => (!latest || item.createdAt > latest.createdAt ? item : latest), null)
+    // The refetch that follows the upload may not have landed yet; keep waiting for it.
+    if (!added) return
     setAwaitingNewItem(false)
     knownIdsRef.current = null
-    if (added) navigateToItem(added)
+    navigateToItem(added)
   }, [awaitingNewItem, items, itemsQuery.isFetching, navigateToItem])
 
   // Save / revert.
@@ -314,6 +322,8 @@ const ItemEditorPage = () => {
   const preview =
     renderer === undefined ? null : (
       <AvatarPreview
+        // The renderer is baked into the iframe URL at mount, so a switch has to remount the preview.
+        key={renderer}
         id={PREVIEW_ID}
         source={source}
         avatar={avatar}
@@ -459,7 +469,7 @@ const ItemEditorPage = () => {
           storage={panelStorage}
           style={{ flex: 1, minWidth: 0 }}
         >
-          <Panel minSize={CENTER_MIN_PCT} order={2}>
+          <Panel id="editor-center" minSize={CENTER_MIN_PCT} order={2}>
             <S.CenterPanel data-testid="editor-center">
               {collection ? (
                 <>
@@ -479,32 +489,30 @@ const ItemEditorPage = () => {
               )}
             </S.CenterPanel>
           </Panel>
-          <PanelResizeHandle>
-            <S.Handle data-testid="resize-handle-right" />
-          </PanelResizeHandle>
-          <Panel defaultSize={RIGHT_DEFAULT_PCT} minSize={RIGHT_MIN_PCT} order={3}>
-            {collection && selected ? (
-              <PropertiesPanel
-                key={selected.id}
-                item={selected}
-                address={address}
-                editable={editable}
-                canDelete={canDelete}
-                draft={form.draft}
-                dispatch={form.dispatch}
-                isDirty={form.isDirty}
-                isSaving={saveItem.isPending}
-                springBones={springBonesForm}
-                onSave={save}
-                onRevert={() => form.reset(selected)}
-                onDeleted={() => navigateToItem(null)}
-              />
-            ) : (
-              <S.PreviewEmpty data-testid="properties-empty">
-                {collection ? t('item_editor.sidebar.empty') : t('item_editor.pick_collection')}
-              </S.PreviewEmpty>
-            )}
-          </Panel>
+          {collection && selected && (
+            <>
+              <PanelResizeHandle>
+                <S.Handle data-testid="resize-handle-right" />
+              </PanelResizeHandle>
+              <Panel id="editor-properties" defaultSize={RIGHT_DEFAULT_PCT} minSize={RIGHT_MIN_PCT} order={3}>
+                <PropertiesPanel
+                  key={selected.id}
+                  item={selected}
+                  address={address}
+                  editable={editable}
+                  canDelete={canDelete}
+                  draft={form.draft}
+                  dispatch={form.dispatch}
+                  isDirty={form.isDirty}
+                  isSaving={saveItem.isPending}
+                  springBones={springBonesForm}
+                  onSave={save}
+                  onRevert={() => form.reset(selected)}
+                  onDeleted={() => navigateToItem(null)}
+                />
+              </Panel>
+            </>
+          )}
         </PanelGroup>
       </S.Columns>
 

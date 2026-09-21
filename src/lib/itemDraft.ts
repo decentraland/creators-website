@@ -132,6 +132,15 @@ export function computeRemovesDefaultHiding(category: string | null, hides: stri
   return category === UPPER_BODY || hides.includes(UPPER_BODY) ? [HANDS] : []
 }
 
+/** An empty utility field clears the property instead of saving an empty string. */
+function applyUtility(item: Item, utility: string): Item {
+  const next = { ...item }
+  const trimmed = utility.trim()
+  if (trimmed) next.utility = trimmed
+  else delete next.utility
+  return next
+}
+
 /**
  * The item with the draft's fields applied, synchronously (no file hashing): what the live preview
  * and validation see while editing. `replaces` is retired into `hides`; every representation mirrors
@@ -146,17 +155,19 @@ export function applyDraftToItem(item: Item, draft: ItemDraft): Item {
     rarity: draft.rarity ?? base.rarity
   }
   if (base.type === ItemType.EMOTE) {
-    return {
-      ...shared,
-      data: {
-        ...base.data,
-        category: draft.category ?? base.data.category,
-        tags: draft.tags,
-        loop: draft.loop
-      }
-    }
+    return applyUtility(
+      {
+        ...shared,
+        data: {
+          ...base.data,
+          category: draft.category ?? base.data.category,
+          tags: draft.tags,
+          loop: draft.loop
+        }
+      },
+      draft.utility
+    )
   }
-  const utility = draft.utility.trim()
   const next: Item = {
     ...shared,
     data: {
@@ -175,9 +186,7 @@ export function applyDraftToItem(item: Item, draft: ItemDraft): Item {
       }))
     }
   }
-  if (utility) next.utility = utility
-  else delete next.utility
-  return next
+  return applyUtility(next, draft.utility)
 }
 
 /**

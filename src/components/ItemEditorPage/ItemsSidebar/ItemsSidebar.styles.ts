@@ -396,3 +396,9 @@ export const Empty = styled.p`
 export const SkeletonRow = styled.div`
   height: 44px;
 `
+
+export const PaginationWrap = styled.div`
+  width: max-content;
+  margin: auto auto 0;
+  padding: 8px 0;
+`

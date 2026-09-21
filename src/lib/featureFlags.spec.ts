@@ -27,6 +27,22 @@ describe('getIsFeatureEnabled', () => {
     await expect(getIsFeatureEnabled(FeatureFlag.UNITY_WEARABLE_PREVIEW)).resolves.toBe(false)
   })
 
+  it('reads each flag from the file of the application that owns it', async () => {
+    fetchMock.mockImplementation((url: string) =>
+      Promise.resolve(
+        url.endsWith('/builder.json')
+          ? flags({ flags: { 'builder-campaign': true } })
+          : flags({ flags: { 'dapps-unity-wearable-preview': true } })
+      )
+    )
+    await expect(getIsFeatureEnabled(FeatureFlag.CAMPAIGN)).resolves.toBe(true)
+    await expect(getIsFeatureEnabled(FeatureFlag.UNITY_WEARABLE_PREVIEW)).resolves.toBe(true)
+    expect(fetchMock.mock.calls.map(call => call[0])).toEqual([
+      'https://feature-flags.decentraland.zone/builder.json',
+      'https://feature-flags.decentraland.zone/dapps.json'
+    ])
+  })
+
   it('serves repeated reads from one fetch', async () => {
     fetchMock.mockResolvedValue(flags({ flags: { 'dapps-unity-wearable-preview': true } }))
     await Promise.all([

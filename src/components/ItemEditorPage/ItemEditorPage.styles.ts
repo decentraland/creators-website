@@ -194,6 +194,7 @@ export const SectionBody = styled.div`
 
   [data-collapsed] & {
     padding: 0 3px 12px;
+  }
 `
 
 export const Field = styled.label`
@@ -255,7 +256,7 @@ const fieldControl = `
 `
 
 export const TextInput = styled.input`
-  height: 44px;
+  height: 46px;
   ${fieldControl}
 `
 
@@ -305,7 +306,7 @@ export const SegmentButton = styled.button`
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 44px;
+  height: 46px;
   padding: 0 12px;
   border: 1px solid ${theme.editor.line};
   border-radius: ${theme.radius.input};
@@ -364,14 +365,21 @@ export const PanelTitle = styled.h2`
   color: ${theme.colors.white};
 `
 
-export const SmartBadge = styled.span`
+export const PanelTitleRow = styled.div`
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+`
+
+export const HeaderBadge = styled.span`
   display: inline-flex;
   flex-shrink: 0;
   padding: 1px;
   border-radius: ${theme.radius.chip};
   background: ${theme.colors.glassHover};
   color: ${theme.colors.softWhite};
-  margin-right: auto;
 
   svg {
     width: 18px;
@@ -575,6 +583,18 @@ export const ReadOnlyNote = styled.p`
   background: ${theme.editor.surface};
   font-size: 13px;
   color: ${theme.editor.label};
+`
+
+export const SectionNote = styled.p`
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: ${theme.editor.label};
+
+  strong {
+    color: ${theme.colors.white};
+    font-weight: 600;
+  }
 `
 
 export const ReviewBar = styled.div`

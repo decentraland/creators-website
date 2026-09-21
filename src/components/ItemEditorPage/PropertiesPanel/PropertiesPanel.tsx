@@ -6,6 +6,7 @@ import {
   Circle as MaterialIcon,
   PlayArrow as PlayIcon,
   ReportProblemOutlined as WarningIcon,
+  SentimentSatisfiedAlt as SmileIcon,
   Storage as SizeIcon,
   VideocamOutlined as VideoIcon,
   SwapHorizOutlined as ChangeFileIcon,
@@ -26,6 +27,7 @@ import { Switch } from '~/components/Switch'
 import { ThumbnailModal } from '~/components/ThumbnailModal'
 import { InfoTooltip, Tooltip } from '~/components/Tooltip'
 import { VideoDropzone, VideoModal } from '~/components/VideoModal'
+import { useCampaign } from '~/hooks/useCampaign'
 import { useObjectURL } from '~/hooks/useObjectURL'
 import { useDeleteItem, useItemContents } from '~/hooks/usePublishCollection'
 import { useTranslation } from '~/intl'
@@ -42,6 +44,7 @@ import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/item
 import {
   ITEM_EXTENSIONS,
   ItemFileError,
+  hasFacialExpressions,
   MAX_THUMBNAIL_FILE_SIZE,
   THUMBNAIL_PATH,
   VIDEO_PATH,
@@ -114,6 +117,7 @@ export function PropertiesPanel({
   const [isDeleteOpen, setDeleteOpen] = useState(false)
   const [isDownloading, setDownloading] = useState(false)
   const deleteItem = useDeleteItem(address)
+  const campaign = useCampaign()
   const itemContents = useItemContents(isThumbnailOpen ? item : null)
 
   const isEmote = item.type === ItemType.EMOTE
@@ -213,14 +217,27 @@ export function PropertiesPanel({
   return (
     <S.PanelBody data-testid={testId} data-editable={editable || undefined}>
       <S.PanelHeader data-testid={`${testId}-header`}>
-        <S.PanelTitle title={item.name}>{item.name}</S.PanelTitle>
-        {isSmart && (
-          <Tooltip content={t('collection_detail_page.smart_wearable')} asChild testId={`${testId}-smart-tooltip`}>
-            <S.SmartBadge data-testid={`${testId}-smart`} tabIndex={0}>
-              <SmartIcon />
-            </S.SmartBadge>
-          </Tooltip>
-        )}
+        <S.PanelTitleRow>
+          <S.PanelTitle title={item.name}>{item.name}</S.PanelTitle>
+          {isSmart && (
+            <Tooltip content={t('collection_detail_page.smart_wearable')} asChild testId={`${testId}-smart-tooltip`}>
+              <S.HeaderBadge data-testid={`${testId}-smart`} tabIndex={0}>
+                <SmartIcon />
+              </S.HeaderBadge>
+            </Tooltip>
+          )}
+          {isWearable && hasFacialExpressions(contents) && (
+            <Tooltip
+              content={t('add_items_modal.facial_expressions')}
+              asChild
+              testId={`${testId}-facial-expressions-tooltip`}
+            >
+              <S.HeaderBadge data-testid={`${testId}-facial-expressions`} tabIndex={0}>
+                <SmileIcon />
+              </S.HeaderBadge>
+            </Tooltip>
+          )}
+        </S.PanelTitleRow>
         <ActionsMenu label={t('item_editor.actions.label')} variant="row" tone="dark" testId={`${testId}-actions`}>
           <ActionsMenuItem testId={`${testId}-download`} disabled={isDownloading} onClick={() => void download()}>
             {t('item_editor.details.download')}
@@ -330,8 +347,7 @@ export function PropertiesPanel({
               <S.DetailsRow>
                 <S.ThumbButton
                   type="button"
-                  aria-label={t('add_items_modal.video.edit')}
-                  disabled={!canEditVideo}
+                  aria-label={t(canEditVideo ? 'add_items_modal.video.edit' : 'item_editor.details.watch_video')}
                   data-testid={`${testId}-video-preview`}
                   onClick={() => setVideoOpen(true)}
                 >
@@ -433,26 +449,24 @@ export function PropertiesPanel({
             onChange={event => dispatch({ type: 'setText', field: 'description', value: event.target.value })}
           />
         </S.Field>
-        {isWearable && (
-          <S.Field>
-            <S.FieldLabel>
-              <S.LabelText>
-                {t('item_editor.basics.utility')}{' '}
-                <InfoTooltip content={t('item_editor.basics.utility_hint')} testId={`${testId}-utility-hint`} />
-              </S.LabelText>
-              <S.CharCount>
-                {t('add_items_modal.char_count', { count: draft.utility.length, max: ITEM_UTILITY_MAX_LENGTH })}
-              </S.CharCount>
-            </S.FieldLabel>
-            <S.TextInput
-              value={draft.utility}
-              maxLength={ITEM_UTILITY_MAX_LENGTH}
-              disabled={disabled}
-              data-testid={`${testId}-utility`}
-              onChange={event => dispatch({ type: 'setText', field: 'utility', value: event.target.value })}
-            />
-          </S.Field>
-        )}
+        <S.Field>
+          <S.FieldLabel>
+            <S.LabelText>
+              {t('item_editor.basics.utility')}{' '}
+              <InfoTooltip content={t('item_editor.basics.utility_hint')} testId={`${testId}-utility-hint`} />
+            </S.LabelText>
+            <S.CharCount>
+              {t('add_items_modal.char_count', { count: draft.utility.length, max: ITEM_UTILITY_MAX_LENGTH })}
+            </S.CharCount>
+          </S.FieldLabel>
+          <S.TextInput
+            value={draft.utility}
+            maxLength={ITEM_UTILITY_MAX_LENGTH}
+            disabled={disabled}
+            data-testid={`${testId}-utility`}
+            onChange={event => dispatch({ type: 'setText', field: 'utility', value: event.target.value })}
+          />
+        </S.Field>
         <S.Field as="div">
           <S.FieldLabel>{t('item_editor.basics.category')}</S.FieldLabel>
           <CategorySelect
@@ -543,6 +557,11 @@ export function PropertiesPanel({
 
       <EditorSection title={t('item_editor.tags.title')} testId={`${testId}-tags`}>
         <TagsInput tags={draft.tags} disabled={disabled} onChange={tags => dispatch({ type: 'setTags', tags })} />
+        {editable && campaign && (
+          <S.SectionNote data-testid={`${testId}-campaign-hint`}>
+            {t('item_editor.tags.campaign_hint', { tag: campaign.mainTag, name: campaign.name })}
+          </S.SectionNote>
+        )}
       </EditorSection>
 
       {isWearable && (
@@ -640,6 +659,7 @@ export function PropertiesPanel({
       {isVideoOpen && (
         <VideoModal
           video={draft.video ?? storedVideo.data ?? null}
+          viewOnly={!canEditVideo}
           onChange={video => dispatch({ type: 'setVideo', video })}
           onClose={() => setVideoOpen(false)}
         />

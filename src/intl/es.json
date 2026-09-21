@@ -567,6 +567,7 @@
   "video_modal": {
     "title": "Video de vista previa",
     "description": "Sube un video que muestre la funcionalidad del smart wearable.",
+    "loading": "Cargando el video…",
     "drop_cta": "Arrastra y suelta tu video aquí, o",
     "browse": "Buscar archivos",
     "hint": "{extensions} · hasta {size}MB",
@@ -635,7 +636,10 @@
       "no_representation": "Este ítem no tiene versión para la forma de cuerpo actual. Cambia la forma de cuerpo para previsualizarlo."
     },
     "picker": {
+      "title": "Colecciones",
+      "back": "Volver a colecciones",
       "search": "Buscar colecciones",
+      "create": "Nueva colección",
       "empty": "No se encontraron colecciones.",
       "error": "No pudimos cargar tus colecciones. Inténtalo de nuevo."
     },
@@ -706,6 +710,7 @@
       "title": "Detalles",
       "edit_thumbnail": "Editar miniatura",
       "download": "Descargar ítem",
+      "watch_video": "Ver video de vista previa",
       "change_file": "Cambiar archivo",
       "add_representation": "Agregar representación {shape}",
       "file_update_pending": "Hay un modelo nuevo listo. Guarda para subirlo.",
@@ -720,7 +725,7 @@
       "name": "Nombre",
       "description": "Descripción",
       "utility": "Utilidad",
-      "utility_hint": "Una descripción corta de lo que hace este wearable en el mundo, visible para los coleccionistas.",
+      "utility_hint": "Una descripción corta de lo que hace este ítem en el mundo, visible para los coleccionistas.",
       "category": "Categoría",
       "rarity": "Rareza"
     },
@@ -751,6 +756,12 @@
       "drag": "Arrastre",
       "add": "Agregar cadena de huesos",
       "remove": "Quitar cadena de huesos",
+      "center": "Hueso central",
+      "center_none": "Ninguno",
+      "center_clear": "Quitar hueso central",
+      "actions": "Acciones de la cadena",
+      "copy_params": "Copiar ajustes",
+      "paste_params": "Pegar ajustes",
       "warning_title": "A “{name}” le faltan ajustes de huesos elásticos",
       "warning_description": "Una de las formas de cuerpo no tiene huesos elásticos configurados, así que su física faltará en el mundo. ¿Guardar de todos modos?",
       "warning_back": "Volver",
@@ -759,7 +770,8 @@
     "tags": {
       "title": "Etiquetas",
       "placeholder": "Escribe una etiqueta y presiona Enter",
-      "remove": "Quitar etiqueta {tag}"
+      "remove": "Quitar etiqueta {tag}",
+      "campaign_hint": "Agrega la etiqueta “{tag}” para participar con este ítem en {name}."
     },
     "options": {
       "title": "Opciones",

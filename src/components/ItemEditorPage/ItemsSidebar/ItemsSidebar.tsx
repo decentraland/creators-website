@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { type BodyShape } from '@dcl/schemas'
 import {
   Add as AddIcon,
@@ -73,6 +73,12 @@ export function ItemsSidebar({
   const { t } = useTranslation()
   const listRef = useRef<HTMLDivElement>(null)
   useScrollFades(listRef, 'y')
+  // A selection made elsewhere (a freshly added item, a deep link) can sit outside the scrolled list.
+  useEffect(() => {
+    if (!selectedId) return
+    const row = listRef.current?.querySelector(`[data-testid="${testId}-row-${CSS.escape(selectedId)}"]`)
+    row?.scrollIntoView?.({ block: 'nearest' })
+  }, [selectedId, testId])
   const groups = useMemo(() => groupItemsByType(items), [items])
   const grouped = groups.wearables.length > 0 && groups.emotes.length > 0
   const backTo = mode === 'review' ? '/curation' : `/collections/${collection.id}`
