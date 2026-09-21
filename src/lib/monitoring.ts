@@ -67,8 +67,10 @@ export function captureError(error: unknown, context: ErrorContext = {}): void {
   if (forward) {
     try {
       forward(toReportable(error), enriched)
-    } catch {
-      // reporting must never throw back into the caller's catch block
+    } catch (forwardError) {
+      // Reporting must never throw back into the caller's catch block — but a forwarder that is
+      // broken would otherwise lose every error in silence.
+      console.warn('[wemotes-builder] error forwarder failed', forwardError)
     }
   }
 }
@@ -76,6 +78,9 @@ export function captureError(error: unknown, context: ErrorContext = {}): void {
 // Sentry wiring — PII/secret scrubbing. A wallet address is public on-chain (fine to attach); AuthChain
 // signatures, ephemeral identity keys and bearer tokens must never leave the device.
 const SIGNATURE_RE = /0x[a-fA-F0-9]{130}\b/g
+// Nothing mints JWTs here today, but a bearer token from any future API would sail through the
+// hex-shaped patterns below. Matches the trailing segments too: the payload is the readable part.
+const JWT_RE = /eyJ[A-Za-z0-9_-]{8,}(?:\.[A-Za-z0-9_-]+)*/g
 const HEX32_RE = /0x[a-fA-F0-9]{64}\b/g
 const SECRET_RE = /[A-Za-z0-9-]*secret[A-Za-z0-9-]*/gi
 const SENSITIVE_KEY =
@@ -83,7 +88,11 @@ const SENSITIVE_KEY =
 
 /** Redact secret-shaped substrings from free text (messages, exception values, urls). */
 export function redact(input: string): string {
-  return input.replace(SIGNATURE_RE, '<signature>').replace(SECRET_RE, '<secret>').replace(HEX32_RE, '<hex32>')
+  return input
+    .replace(SIGNATURE_RE, '<signature>')
+    .replace(JWT_RE, '<jwt>')
+    .replace(SECRET_RE, '<secret>')
+    .replace(HEX32_RE, '<hex32>')
 }
 
 /** Redact the free text in a bag of context values and drop the sensitive keys outright, in place. */

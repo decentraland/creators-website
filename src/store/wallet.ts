@@ -21,6 +21,16 @@ type WalletState = {
   restore: () => Promise<void>
 }
 
+/**
+ * The wallet names itself over WalletConnect, so the value is the wallet's to choose. Bound the
+ * length and drop control/formatting characters, which nothing legitimate needs and which would
+ * misrender (or reorder) the string in whatever dashboard shows it.
+ */
+function safeWalletName(name: string | undefined): string | null {
+  const clean = name?.replace(/[\p{Cc}\p{Cf}]/gu, '').slice(0, 64)
+  return clean ? clean : null
+}
+
 export const useWallet = create<WalletState>((set, get) => ({
   session: null,
   restored: false,
@@ -64,9 +74,7 @@ export const useWallet = create<WalletState>((set, get) => ({
             address: session.address,
             chainId: session.chainId,
             providerType: session.providerType,
-            // The wallet names itself over WalletConnect, so the value is the wallet's to choose:
-            // bound it rather than let it define a column's width.
-            walletName: session.walletName?.slice(0, 64) ?? null
+            walletName: safeWalletName(session.walletName)
           })
           setMonitoringUser(session.address)
         }

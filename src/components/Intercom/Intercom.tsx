@@ -75,7 +75,11 @@ export const Intercom = () => {
   }, [appId, data])
 
   useEffect(() => {
-    return () => intercom()?.('shutdown')
+    return () => {
+      intercom()?.('shutdown')
+      // A remount has to inject again: the cached promise would resolve to a widget that is now dead.
+      injecting = undefined
+    }
   }, [])
 
   return null

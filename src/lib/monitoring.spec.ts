@@ -15,6 +15,7 @@ const HEX32 = `0x${'b'.repeat(64)}`
 
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  vi.spyOn(console, 'warn').mockImplementation(() => undefined)
 })
 
 afterEach(() => {
@@ -42,6 +43,8 @@ describe('captureError', () => {
     })
 
     expect(() => captureError(new Error('boom'), { flow: 'sell-item' })).not.toThrow()
+    // A broken forwarder loses every report, so it has to be visible somewhere.
+    expect(console.warn).toHaveBeenCalled()
   })
 
   it('reports a wallet failure that is not an Error with a readable name and its rpc facts', () => {
@@ -143,6 +146,12 @@ describe('tagsFrom', () => {
 describe('redact', () => {
   it('leaves ordinary copy alone', () => {
     expect(redact('the collection is locked')).toBe('the collection is locked')
+  })
+
+  it('takes out a bearer token whole, payload included', () => {
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIweGNyZWF0b3IifQ.c2lnbmF0dXJl'
+
+    expect(redact(`request failed with ${jwt}`)).toBe('request failed with <jwt>')
   })
 })
 

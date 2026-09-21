@@ -63,6 +63,19 @@ describe('restore', () => {
     expect(analytics.track).not.toHaveBeenCalled()
   })
 
+  it('bounds and sanitises the name the wallet reports about itself', async () => {
+    auth.restoreSession.mockResolvedValue({ ...session, walletName: `Trust\u0000\u202eWallet${'!'.repeat(80)}` })
+    const useWallet = await loadStore()
+
+    await useWallet.getState().restore()
+
+    const props = analytics.track.mock.calls.find(([event]) => event === 'Connect Wallet')?.[1] as {
+      walletName: string
+    }
+    expect(props.walletName).toBe(`TrustWallet${'!'.repeat(53)}`)
+    expect(props.walletName).toHaveLength(64)
+  })
+
   it('exposes the signed-in address to analytics and Sentry', async () => {
     const useWallet = await loadStore()
     const { currentAddress } = await import('~/lib/currentAddress')
