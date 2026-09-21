@@ -42,7 +42,7 @@ export function useItemForm(item: Item | null, springBones: SpringBonesData) {
     setSpringBoneParams(springBones.initialParams)
   }, [springBones.initialParams])
 
-  const isDraftDirty = item ? isItemDraftDirty(draft, item) : false
+  const isDraftDirty = useMemo(() => (item ? isItemDraftDirty(draft, item) : false), [draft, item])
   const isSpringBonesDirty = useMemo(
     () => !sameParams(springBoneParams, springBones.initialParams),
     [springBoneParams, springBones.initialParams]

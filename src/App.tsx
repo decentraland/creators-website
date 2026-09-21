@@ -30,7 +30,7 @@ const EDITOR_PATH = '/collections/editor'
 const App = () => {
   const location = useLocation()
   // The item editor is a fullscreen workspace: no navbar, no footer, no page scroll.
-  const isFullscreen = location.pathname === EDITOR_PATH
+  const isFullscreen = location.pathname.replace(/\/+$/, '') === EDITOR_PATH
 
   // Auth bootstrap lives at the app root so the silent session restore (and the return from /auth)
   // doesn't depend on any layout component staying mounted.

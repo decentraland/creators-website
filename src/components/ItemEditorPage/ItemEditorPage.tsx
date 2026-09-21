@@ -4,15 +4,12 @@ import { useQueryClient } from '@tanstack/react-query'
 import { BodyShape, PreviewRenderer, type IPreviewController } from '@dcl/schemas'
 import { PersonOutline as PersonOutlineIcon } from '@mui/icons-material'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
-import { AvatarCustomizerDrawer, AvatarCustomizerToggle } from '~/components/AvatarCustomizer'
 import { AvatarPreview } from '~/components/AvatarPreview'
 import { Button } from '~/components/Button'
 import { AddItemsModal } from '~/components/CollectionDetailPage/AddItemsModal'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { ConfirmModal } from '~/components/ConfirmModal'
-import { PlaybackBar } from '~/components/PlaybackBar'
 import { ZoomControls } from '~/components/ZoomControls'
-import { ValidationBadge, getValidationStatus } from '~/components/ValidationBadge'
 import { useBaseWearables } from '~/hooks/useBaseWearables'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { useAllCollectionItems, useCollection, useSaveCollection } from '~/hooks/useCollection'
@@ -36,11 +33,14 @@ import { getShapesMissingSpringBones, mergeSpringBonesIntoItem, type SpringBoneP
 import { useAvatarPreview } from '~/store/avatarPreview'
 import { useWallet } from '~/store/wallet'
 import { theme } from '~/styles/theme'
+import { AvatarCustomizerDrawer, AvatarCustomizerToggle } from './AvatarCustomizer'
 import { CollectionPicker } from './CollectionPicker'
 import { ItemsSidebar } from './ItemsSidebar'
 import { MobilePreview } from './MobilePreview'
+import { PlaybackBar } from './PlaybackBar'
 import { PropertiesPanel, type SpringBonesFormProps } from './PropertiesPanel'
 import { ReviewBar } from './ReviewBar'
+import { ValidationBadge, getValidationStatus } from './ValidationBadge'
 import { useEditorLayout } from './useEditorLayout'
 import { useItemForm } from './useItemForm'
 import * as S from './ItemEditorPage.styles'
@@ -162,7 +162,10 @@ const ItemEditorPage = () => {
     [previewSelected, bodyShape]
   )
   const validation = useModelValidation(validationSource, validationCtx)
-  const validationStatus = getValidationStatus(validation.data?.issues, validation.isLoading)
+  const validationStatus = useMemo(
+    () => getValidationStatus(validation.data?.issues, validation.isLoading),
+    [validation.data?.issues, validation.isLoading]
+  )
 
   // Preview controller: spring bones are pushed on edits (debounced), on every load and on play.
   const [controller, setController] = useState<IPreviewController | null>(null)
@@ -448,7 +451,9 @@ const ItemEditorPage = () => {
       onRename={
         isDraftCollection && canManageCollectionItems(collection, address) ? () => setRenameOpen(true) : undefined
       }
-      onAddItems={() => void addItems()}
+      onAddItems={() => {
+        addItems().catch((error: unknown) => console.error('Add items failed:', error))
+      }}
       onSelect={selectItem}
       onLeave={to => {
         if (!form.isDirty) return true

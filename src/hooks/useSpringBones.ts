@@ -41,7 +41,9 @@ export function useSpringBones(item: Item | null): SpringBonesData {
     }))
   })
   const isLoading = queries.some(query => query.isLoading)
-  // One scalar stands in for the per-query results: a dependency array must keep its length.
+  // One scalar stands in for the per-query results: a dependency array must keep its length. Not
+  // memoized on purpose: `queries` is a new array every render, so a useMemo keyed on it would
+  // recompute every render anyway — this map is what produces the stable key the real memo uses.
   const dataVersion = queries.map(query => query.dataUpdatedAt).join('|')
   return useMemo(() => {
     if (!item || hashes.length === 0) return EMPTY
