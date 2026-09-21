@@ -13,6 +13,10 @@ export const Stack = styled.div`
   gap: 8px;
   width: max-content;
   max-width: min(450px, calc(100vw - 48px));
+
+  body[data-fullscreen] & {
+    top: 16px;
+  }
 `
 
 export const ToastCard = styled.div`

@@ -411,3 +411,43 @@ export async function withRehashedContents(item: Item, download: (hash: string) 
   const hashes = await computeHashes(blobs)
   return { item: { ...item, contents: { ...item.contents, ...hashes }, updatedAt: Date.now() }, blobs }
 }
+
+/** A freshly imported model for an existing item: the same file-side shape the add-items flow produces. */
+export type ReplacementModel = {
+  contents: Record<string, Blob>
+  model: string
+  bodyShape: BodyShapeType
+  metrics: ItemMetrics
+}
+
+/**
+ * Swaps a saved item's model for a new file (legacy "change file"): the representations are rebuilt for
+ * the item's current body shapes from the new contents, while the thumbnail, catalyst image and video
+ * stay. Callers reject a wearable↔emote type switch before getting here.
+ */
+export async function withReplacedModel(item: Item, replacement: ReplacementModel): Promise<BuiltItem> {
+  const bodyShape = getItemBodyShapeType(item) ?? replacement.bodyShape
+  const isBothZip = getBodyShapeTypeFromContents(replacement.contents) === BodyShapeType.BOTH
+  const sorted = isBothZip
+    ? sortContentZipBothBodyShape(bodyShape, replacement.contents)
+    : sortContent(bodyShape, replacement.contents)
+  const representations = isBothZip
+    ? buildRepresentationsZipBothBodyShape(bodyShape, sorted)
+    : buildRepresentations(bodyShape, replacement.model, sorted)
+  const modelBlobs = { ...sorted.male, ...sorted.female }
+  const hashes = await computeHashes(modelBlobs)
+  const kept: Record<string, string> = {}
+  for (const path of ROOT_PATHS) {
+    if (item.contents[path]) kept[path] = item.contents[path]
+  }
+  return {
+    item: {
+      ...item,
+      data: { ...item.data, representations },
+      metrics: replacement.metrics,
+      contents: { ...kept, ...hashes },
+      updatedAt: Date.now()
+    },
+    blobs: modelBlobs
+  }
+}

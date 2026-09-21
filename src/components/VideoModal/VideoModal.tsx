@@ -9,6 +9,8 @@ import * as S from './VideoModal.styles'
 type Props = {
   /** The current preview video, or null when the item has none yet. */
   video: Blob | null
+  /** Watch-only: the video is frozen (a published, approved item) or the viewer has no edit rights. */
+  viewOnly?: boolean
   /** A picked file replaces the video. */
   onChange: (video: File) => void
   onClose: () => void
@@ -18,11 +20,11 @@ type Props = {
  * Smart wearable preview video editor, stacked over the add-items modal (legacy UploadVideoStep +
  * EditVideoModal): drop or browse an MP4, watch it, replace it. Holds no draft state.
  */
-export function VideoModal({ video, onChange, onClose }: Props) {
+export function VideoModal({ video, viewOnly = false, onChange, onClose }: Props) {
   const { t } = useTranslation()
   const [isReplacing, setReplacing] = useState(false)
   const videoUrl = useObjectURL(video)
-  const showPlayer = !!video && !isReplacing
+  const showPlayer = !!video && (viewOnly || !isReplacing)
 
   return (
     <Modal title={t('video_modal.title')} onClose={onClose} testId="video-modal">
@@ -38,19 +40,26 @@ export function VideoModal({ video, onChange, onClose }: Props) {
               data-testid="video-modal-player"
             />
             <S.Actions>
-              <Button
-                type="button"
-                variant="secondary"
-                data-testid="video-modal-replace"
-                onClick={() => setReplacing(true)}
-              >
-                {t('video_modal.replace')}
-              </Button>
+              {!viewOnly && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  data-testid="video-modal-replace"
+                  onClick={() => setReplacing(true)}
+                >
+                  {t('video_modal.replace')}
+                </Button>
+              )}
               <Button type="button" variant="primary" data-testid="video-modal-done" onClick={onClose}>
                 {t('video_modal.done')}
               </Button>
             </S.Actions>
           </>
+        ) : viewOnly ? (
+          // The stored video is still being fetched: a watcher never gets the dropzone.
+          <S.Loading aria-busy="true" aria-label={t('video_modal.loading')} data-testid="video-modal-loading">
+            <span className="spinner" aria-hidden />
+          </S.Loading>
         ) : (
           <>
             <S.Description>{t('video_modal.description')}</S.Description>

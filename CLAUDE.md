@@ -14,7 +14,7 @@ Ported from shop's config:
 
 - **Core:** Vite + React 18 + TypeScript strict, React Router v6, `~` → `src/` path alias.
 - **State:** `@tanstack/react-query` for server state (builder-server data), `zustand` for client/session state. No redux.
-- **Styling:** Emotion `styled` + a `src/styles/theme.ts` token file (shop's palette), `decentraland-ui2` (MUI-based) where it fits.
+- **Styling:** Emotion `styled` + a `src/styles/theme.ts` token file (shop's palette), `decentraland-ui2` (MUI-based) where it fits. The item editor's resizable columns use `react-resizable-panels` (creator-hub inspector's choice).
 - **i18n:** `react-intl` with `en.json` / `es.json`.
 - **Auth:** `decentraland-connect` + `@dcl/single-sign-on-client` + a zustand wallet store; builder-server requests signed with `@dcl/crypto` AuthChain.
 - **Monitoring:** Sentry (`@sentry/react`).
@@ -47,6 +47,8 @@ This SPA does **not** own the creator home ("Overview") page: that page is imple
 - On the sites side, the create page's "Collections" navigation links back into this app.
 
 Don't re-add an overview/home page here — it was intentionally removed; `/overview` survives only as a redirect to `/collections` for old links.
+
+Item editor (`/collections/editor`, spec `design/ITEM_EDITOR_SPEC.md`): the shared `~/components/AvatarPreview` mounts ui2's `WearablePreview` once with a frozen URL snapshot and pushes every later change through `lib/previewBridge` (postMessage UPDATE), so avatar/item changes never reload the iframe. The renderer is decided per mount by `lib/pickRenderer` (`unity-wearable-preview` flag via `lib/featureFlags`, `?unity=false` override resolved in `src/config`). Model checks go through the swappable `lib/validation` module (README inside); spring bone physics through `lib/springBones`.
 
 Entry: `index.html` → `src/main.tsx` (creates the `BrowserRouter`, the single router call site — see `CONVENTIONS.md` — with `basename` from `~/config`) → `src/App.tsx` (declares the routes: `React.lazy` pages + `<Routes>`). Page components live in `src/components/` (`components/CollectionsPage`, …), one per route. Component organization is semantic — see "Component organization" in `CONVENTIONS.md`. Zustand stores in `src/store/`; business logic (API clients, flows, encoding) in `src/lib/` — heavily unit-tested, never in components; react-query hooks in `src/hooks/`; i18n provider and messages in `src/intl/`.
 

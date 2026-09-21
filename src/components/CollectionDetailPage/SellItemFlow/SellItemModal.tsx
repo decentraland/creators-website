@@ -27,7 +27,7 @@ import { InfoTooltip } from '~/components/Tooltip'
 import { BeneficiaryInput } from './BeneficiaryInput'
 import { DEFAULT_PRICE_VALUES, PriceField, type PriceFormValues } from './PriceField'
 import { SellItemCard } from './SellItemCard'
-import { Switch } from './Switch'
+import { Switch } from '~/components/Switch'
 import * as S from './SellItemModal.styles'
 
 export type SellFormValues = {

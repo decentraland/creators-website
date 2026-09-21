@@ -119,3 +119,19 @@ h2 {
     animation-duration: 2s;
   }
 }
+
+/* Fullscreen routes (the item editor): no navbar offset, no page gutter or width cap, no page scroll. */
+body[data-fullscreen] {
+  padding-top: 0;
+  overflow: hidden;
+}
+body[data-fullscreen] #root {
+  height: 100vh;
+  min-height: 0;
+}
+.page[data-fullscreen] {
+  padding: 0;
+  max-width: none;
+  flex: 1;
+  min-height: 0;
+}

@@ -31,7 +31,8 @@ import {
   parseItemTypeFilter
 } from '~/lib/itemFilters'
 import { MAX_PUBLISH_ITEMS, getPublishBlocker } from '~/lib/publishCollection'
-import { useItemContents, useSyncPublishedItems, useUpdateItem } from '~/hooks/usePublishCollection'
+import { useSaveItem } from '~/hooks/useSaveItem'
+import { useItemContents, useSyncPublishedItems } from '~/hooks/usePublishCollection'
 import { useCollectionListings } from '~/hooks/useCollectionListings'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
@@ -89,7 +90,7 @@ const CollectionDetailPage = () => {
   const collectionQuery = useCollection(address, collectionId)
   const itemsQuery = useAllCollectionItems(address, collectionId)
   const saveCollection = useSaveCollection(address)
-  const updateItem = useUpdateItem(address)
+  const updateItem = useSaveItem(address)
   const itemContents = useItemContents(thumbnailItem)
   const showToast = useNotifications(state => state.showToast)
   // Small screens are a viewer: the in-row edit shortcuts are desktop-only, like the menu's edit actions.

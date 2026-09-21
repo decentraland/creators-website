@@ -560,12 +560,14 @@
       "multiple_videos": "The ZIP includes more than one video. Keep only the preview video.",
       "video_too_big": "The video is too big — the maximum size is {size}MB.",
       "video_wrong_format": "The video must be an MP4 file.",
-      "invalid_video": "Your video seems to be invalid or broken. Check the file and try again."
+      "invalid_video": "Your video seems to be invalid or broken. Check the file and try again.",
+      "invalid_model_file_type": "The file is a different item type. A wearable can only be replaced with a wearable, and an emote with an emote."
     }
   },
   "video_modal": {
     "title": "Preview Video",
     "description": "Upload a video that showcases the smart wearable's functionality.",
+    "loading": "Loading the video…",
     "drop_cta": "Drag and drop your video here, or",
     "browse": "Browse files",
     "hint": "{extensions} · up to {size}MB",
@@ -611,8 +613,183 @@
     "spring_bone_count_exceeded": "This model has {count} spring bones (maximum: {limit}). Reduce the number of spring bone nodes in your 3D editor and re-upload.",
     "thumbnail_not_transparent": "The thumbnail background doesn't look transparent. Marketplaces show the item's rarity color behind the thumbnail, so a transparent background is required."
   },
-  "item_editor_page": {
-    "title": "Item Editor"
+  "item_editor": {
+    "pick_collection": "Pick a collection to start editing its items.",
+    "mobile_hint": "Editing is available on desktop. Here you can preview the items.",
+    "read_only": "This item is read-only: only the collection owner and collaborators can edit it while the collection is not being published.",
+    "save": "Save",
+    "revert": "Revert",
+    "save_success": "“{name}” was saved.",
+    "save_error": "We couldn't save the item. Please try again.",
+    "save_error_locked": "The collection is being published and can't be edited right now.",
+    "sidebar": {
+      "items": "Items",
+      "back": "Back to collection",
+      "collapse": "Collapse sidebar",
+      "expand": "Expand sidebar",
+      "add_items": "Add items",
+      "wearables": "Wearables",
+      "emotes": "Emotes",
+      "empty": "This collection has no items yet.",
+      "dress": "Show {name} on the avatar",
+      "undress": "Remove {name} from the avatar",
+      "no_representation": "This item has no version for the current body shape. Switch the body shape to preview it."
+    },
+    "picker": {
+      "title": "Collections",
+      "back": "Back to collections",
+      "search": "Search collections",
+      "create": "New collection",
+      "empty": "No collections found.",
+      "error": "We couldn't load your collections. Please try again."
+    },
+    "review": {
+      "title": "Review mode"
+    },
+    "discard": {
+      "title": "Discard your changes?",
+      "description": "You have unsaved changes on this item. Switching items will discard them.",
+      "stay": "Keep editing",
+      "confirm": "Discard"
+    },
+    "customizer": {
+      "title": "Avatar",
+      "body_shape": "Body shape",
+      "shape": {
+        "male": "Male",
+        "female": "Female",
+        "both": "Both"
+      },
+      "skin": "Skin color",
+      "eyes": "Eyes color",
+      "hair": "Hair color",
+      "none": "None",
+      "randomize": "Randomize",
+      "hair_style": "Hair style",
+      "drawer_title": "Customize avatar"
+    },
+    "playback": {
+      "stop": "Stop",
+      "select": "Animation",
+      "from_collection": "From collection",
+      "emote": {
+        "walk": "Walk",
+        "run": "Run",
+        "jump": "Jump",
+        "clap": "Clap",
+        "dab": "Dab",
+        "dance": "Dance",
+        "fashion": "Fashion",
+        "fashion-2": "Fashion 2",
+        "fashion-3": "Fashion 3",
+        "fashion-4": "Fashion 4",
+        "love": "Love",
+        "money": "Money",
+        "fist-pump": "Fist pump",
+        "head-explode": "Head explode",
+        "wave": "Wave"
+      },
+      "placeholder": "Play emote"
+    },
+    "validation": {
+      "loading": "Checking the model…",
+      "pass": "The model passes every check.",
+      "warnings": "The model has warnings. Click to see them.",
+      "errors": "The model has errors. Click to see them.",
+      "idle": "",
+      "modal_title": "Validation results",
+      "label": {
+        "loading": "Validating",
+        "pass": "Valid",
+        "warnings": "{count, plural, one {# warning} other {# warnings}}",
+        "errors": "{count, plural, one {# issue} other {# issues}}",
+        "idle": ""
+      }
+    },
+    "details": {
+      "title": "Details",
+      "edit_thumbnail": "Edit thumbnail",
+      "download": "Download item",
+      "watch_video": "Watch preview video",
+      "change_file": "Change file",
+      "add_representation": "Add {shape} representation",
+      "file_update_pending": "A new model is ready. Save to upload it.",
+      "import_error_title": "We couldn't use that file",
+      "import_error_close": "OK",
+      "download_error": "We couldn't download the item. Please try again.",
+      "video_required": "A preview video is required to publish a smart wearable.",
+      "video_hint": "A short video showcasing what the smart wearable does in-world."
+    },
+    "basics": {
+      "title": "Basics",
+      "name": "Name",
+      "description": "Description",
+      "utility": "Utility",
+      "utility_hint": "A short description of what this item does in-world, shown to collectors.",
+      "category": "Category",
+      "rarity": "Rarity"
+    },
+    "overrides": {
+      "title": "Overrides",
+      "body_parts": "Hidden base body parts",
+      "body_parts_hint": "Parts of the base avatar this wearable hides so they don't poke through the model.",
+      "categories": "Hidden wearable categories",
+      "categories_hint": "Other wearable slots this item hides when worn together, for example a helmet hiding hair.",
+      "none_available": "Nothing to hide for this item.",
+      "none_selected": "None"
+    },
+    "body_part": {
+      "head": "Head",
+      "hands": "Hands"
+    },
+    "animation": {
+      "title": "Animation"
+    },
+    "spring_bones": {
+      "title": "Spring bones",
+      "body_shape": "Body shape",
+      "counter": "{count} / {max} bones",
+      "bones": "{count, plural, one {# bone} other {# bones}}",
+      "stiffness": "Stiffness",
+      "gravityPower": "Gravity power",
+      "gravityDir": "Gravity direction",
+      "drag": "Drag",
+      "add": "Add a bone chain",
+      "remove": "Remove bone chain",
+      "center": "Center bone",
+      "center_none": "None",
+      "center_clear": "Clear center bone",
+      "actions": "Bone chain actions",
+      "copy_params": "Copy settings",
+      "paste_params": "Paste settings",
+      "warning_title": "“{name}” is missing spring bone settings",
+      "warning_description": "One of the body shapes has no spring bones configured, so its physics will be missing in-world. Save anyway?",
+      "warning_back": "Go back",
+      "warning_save": "Save anyway"
+    },
+    "tags": {
+      "title": "Tags",
+      "placeholder": "Add a tag and press Enter",
+      "remove": "Remove tag {tag}",
+      "campaign_hint": "Add the “{tag}” tag to enter this item in {name}."
+    },
+    "options": {
+      "title": "Options",
+      "vrm_export": "Allow VRM export",
+      "vrm_export_hint": "When on, collectors can export their avatar with this wearable as a VRM file for other platforms.",
+      "outline": "Outline compatible",
+      "outline_hint": "When on, the avatar outline effect is drawn around this wearable."
+    },
+    "danger": {
+      "delete": "Delete item"
+    },
+    "actions": {
+      "label": "Item actions"
+    }
+  },
+  "zoom_controls": {
+    "in": "Zoom in",
+    "out": "Zoom out"
   },
   "curation_page": {
     "title": "Curation"

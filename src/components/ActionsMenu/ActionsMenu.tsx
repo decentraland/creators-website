@@ -20,6 +20,8 @@ type Props = {
   label: string
   /** Compact 32px trigger for table rows; the default is the page-header icon button. */
   variant?: 'header' | 'row'
+  /** `dark` sits the menu on the editor's dark surfaces instead of the violet ones. */
+  tone?: 'default' | 'dark'
   /** Trigger test id; the open menu gets `${testId}-menu`. */
   testId: string
   children: ReactNode
@@ -32,7 +34,7 @@ const GAP = 8
  * The ⋯ dropdown: right-aligned under its trigger, closes on Escape, outside click, or any item click.
  * Portaled to <body> and fixed-positioned, like Select, so a scrolling table never clips or grows for it.
  */
-export function ActionsMenu({ label, variant = 'header', testId, children }: Props) {
+export function ActionsMenu({ label, variant = 'header', tone = 'default', testId, children }: Props) {
   const [isOpen, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -98,7 +100,7 @@ export function ActionsMenu({ label, variant = 'header', testId, children }: Pro
       {isOpen &&
         createPortal(
           <MenuContext.Provider value={{ close: () => setOpen(false) }}>
-            <S.Menu ref={menuRef} role="menu" style={menuStyle} data-testid={`${testId}-menu`}>
+            <S.Menu ref={menuRef} role="menu" style={menuStyle} data-tone={tone} data-testid={`${testId}-menu`}>
               {children}
             </S.Menu>
           </MenuContext.Provider>,

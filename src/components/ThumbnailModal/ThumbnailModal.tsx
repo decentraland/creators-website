@@ -1,11 +1,11 @@
 import { useMemo, useRef, useState } from 'react'
-import { PreviewProjection } from '@dcl/schemas'
+import { PreviewProjection, type IPreviewController } from '@dcl/schemas'
 import { WearablePreview } from 'decentraland-ui2'
 import { VerticalPosition } from 'decentraland-ui2/dist/components/WearablePreview/TranslationControls'
-import { Position } from 'decentraland-ui2/dist/components/WearablePreview/ZoomControls'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
-import { EmoteControls, TranslationControls, ZoomControls } from '~/components/PreviewControls'
+import { EmoteControls, TranslationControls } from '~/components/PreviewControls'
+import { ZoomControls } from '~/components/ZoomControls'
 import { useTranslation } from '~/intl'
 import { MAX_THUMBNAIL_FILE_SIZE, THUMBNAIL_PATH, toMB } from '~/lib/itemFiles'
 import { ItemType } from '~/lib/items'
@@ -73,7 +73,8 @@ type Props = {
 export function ThumbnailModal({ type, contents, loadError = false, onSave, onClose }: Props) {
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [isReady, setReady] = useState(false)
+  const [controller, setController] = useState<IPreviewController | null>(null)
+  const isReady = controller !== null
   const [isSaving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -92,11 +93,11 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
   }
 
   function handleCapture() {
+    if (!controller) return
     setSaving(true)
     setError(null)
     void (async () => {
       try {
-        const controller = WearablePreview.createController(PREVIEW_ID)
         if (isEmote) await controller.emote.pause()
         const screenshot = await controller.scene.getScreenshot(THUMBNAIL_SIZE, THUMBNAIL_SIZE)
         onSave(await thumbnailPatchFromDataURL(contents!, screenshot))
@@ -154,13 +155,13 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
                     skin: '000000'
                   }
                 : {})}
-              onLoad={() => setReady(true)}
+              onLoad={() => setController(WearablePreview.createController(PREVIEW_ID))}
             />
           )}
           <S.Frame aria-hidden data-testid="thumbnail-frame" />
           {isReady && (
             <>
-              <ZoomControls className="zoom-controls" position={Position.RIGHT} wearablePreviewId={PREVIEW_ID} />
+              <ZoomControls className="zoom-controls" controller={controller} />
               <TranslationControls
                 className="translation-controls"
                 vertical
