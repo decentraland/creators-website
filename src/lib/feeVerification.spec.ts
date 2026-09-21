@@ -30,6 +30,15 @@ describe('verifyPublicationFee', () => {
     await expect(verifyPublicationFee(fee, items, CHAIN_ID, drifted)).resolves.toBeUndefined()
   })
 
+  it('weighs each rarity by its own on-chain price and item count', async () => {
+    // 2 common × 300 + 1 epic × 900 = 1500 MANA: matches the quote although neither price is the quoted 500.
+    const perRarity = vi.fn((rarity: string) => Promise.resolve((rarity === 'epic' ? 900n : 300n) * ETHER))
+    await expect(verifyPublicationFee(fee, items, CHAIN_ID, perRarity)).resolves.toBeUndefined()
+    // 2 common × 300 + 1 epic × 300 = 900 MANA: the same per-rarity read, priced flat, no longer matches.
+    const flat = vi.fn().mockResolvedValue(300n * ETHER)
+    await expect(verifyPublicationFee(fee, items, CHAIN_ID, flat)).rejects.toMatchObject({ onChainWei: 900n * ETHER })
+  })
+
   it('refuses a quote that is not what the contract charges', async () => {
     const cheaper = vi.fn().mockResolvedValue(700n * ETHER)
     await expect(verifyPublicationFee(fee, items, CHAIN_ID, cheaper)).rejects.toBeInstanceOf(

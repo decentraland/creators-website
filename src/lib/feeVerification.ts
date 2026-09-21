@@ -53,10 +53,9 @@ export async function verifyPublicationFee(
     const rarity = item.rarity ?? ''
     counts.set(rarity, (counts.get(rarity) ?? 0n) + 1n)
   }
-  let onChainTotal = 0n
-  for (const [rarity, count] of counts) {
-    onChainTotal += (await readPrice(rarity, chainId)) * count
-  }
+  const entries = [...counts.entries()]
+  const prices = await Promise.all(entries.map(([rarity]) => readPrice(rarity, chainId)))
+  const onChainTotal = entries.reduce((total, [, count], index) => total + prices[index] * count, 0n)
   if (!isWithinFeeTolerance(fee.total.manaWei, onChainTotal)) {
     throw new PublicationFeeMismatchError(fee.total.manaWei, onChainTotal)
   }

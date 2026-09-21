@@ -73,19 +73,29 @@ export function createZipInflater(maxBytes: number) {
       return new Promise((resolve, reject) => {
         const chunks: BlobPart[] = []
         let size = 0
+        // JSZip may still flush buffered events after pause(); nothing past the first outcome counts.
+        let settled = false
         const stream = (entry as StreamableEntry).internalStream('uint8array')
         stream
           .on('data', chunk => {
+            if (settled) return
             size += chunk.length
             if (total + size > maxBytes) {
+              settled = true
               stream.pause()
               reject(new ItemFileError('zip_too_big', { size: toMB(maxBytes) }))
               return
             }
             chunks.push(chunk)
           })
-          .on('error', reject)
+          .on('error', error => {
+            if (settled) return
+            settled = true
+            reject(error)
+          })
           .on('end', () => {
+            if (settled) return
+            settled = true
             total += size
             resolve(new Blob(chunks))
           })

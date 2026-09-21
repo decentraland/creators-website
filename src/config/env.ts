@@ -2,11 +2,12 @@ import { Env, getEnv } from '@dcl/ui-env'
 
 type SystemEnvVariables = NonNullable<Parameters<typeof getEnv>[0]>
 
-// The same hostname rule @dcl/ui-env applies for production.
-const PRODUCTION_TLDS = ['.org', '.co']
+// The production domains (and their subdomains); narrower than @dcl/ui-env's "any .org / .co" rule.
+const PRODUCTION_HOSTS = ['decentraland.org', 'decentraland.co']
 
 export function isProductionHost(host: string): boolean {
-  return PRODUCTION_TLDS.some(tld => host.endsWith(tld))
+  const hostname = host.split(':')[0].toLowerCase()
+  return PRODUCTION_HOSTS.some(domain => hostname === domain || hostname.endsWith(`.${domain}`))
 }
 
 /**
