@@ -10,7 +10,7 @@ describe('resolveEnv', () => {
   it('ignores ?env= on a production hostname', () => {
     window.history.replaceState({}, '', '/collections?env=dev')
     expect(resolveEnv({ host: 'decentraland.org' }, SYSTEM)).toBe(Env.PRODUCTION)
-    expect(resolveEnv({ host: 'play.decentraland.co' }, SYSTEM)).toBe(Env.PRODUCTION)
+    expect(resolveEnv({ host: 'play.decentraland.org:443' }, SYSTEM)).toBe(Env.PRODUCTION)
     // Other .org hosts are not ours: the override keeps working there (previews, mirrors).
     expect(resolveEnv({ host: 'example.org' }, SYSTEM)).toBe(Env.DEVELOPMENT)
     expect(resolveEnv({ host: 'notdecentraland.org' }, SYSTEM)).toBe(Env.DEVELOPMENT)
