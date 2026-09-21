@@ -307,6 +307,17 @@ export async function syncPublishedItems(
   }
 }
 
+/** The publish transaction was mined but reverted: nothing was charged and nothing went on chain. */
+export class PublishTransactionRevertedError extends Error {
+  txHash: string
+
+  constructor(txHash: string) {
+    super(`Publish transaction ${txHash} reverted`)
+    this.name = 'PublishTransactionRevertedError'
+    this.txHash = txHash
+  }
+}
+
 /** Waits for the publish transaction to be mined, then runs the server sync. */
 export async function consolidatePublishedCollection(
   collectionId: string,
@@ -316,6 +327,6 @@ export async function consolidatePublishedCollection(
   retryDelayMs = CONSOLIDATE_RETRY_DELAY_MS
 ): Promise<void> {
   const mined = await deps.waitForTransaction(txHash)
-  if (!mined) throw new Error(`Publish transaction ${txHash} reverted`)
+  if (!mined) throw new PublishTransactionRevertedError(txHash)
   await syncPublishedItems(collectionId, deps, retries, retryDelayMs)
 }

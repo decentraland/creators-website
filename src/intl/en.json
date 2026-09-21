@@ -349,6 +349,10 @@
       "description_unsynced": "The items in this collection changed while you were publishing. Close this dialog and start again.",
       "description_fee_mismatch": "The publication fee changed while you were confirming. We've refreshed it — review the new amount and try again.",
       "try_again": "Try again"
+    },
+    "consolidation": {
+      "reverted": "The publication of “{name}” didn't go through on the blockchain, so nothing was charged. The collection unlocks in 24 hours; you can publish it again then.",
+      "sync_failed": "“{name}” was published, but we couldn't finish syncing it with the blockchain. Refresh the page in a few minutes; if it still isn't under review, contact support."
     }
   },
   "sell_item_modal": {

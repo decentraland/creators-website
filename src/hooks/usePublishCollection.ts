@@ -19,7 +19,9 @@ import { authorizePublication } from '~/lib/credits'
 import { withRehashedContents } from '~/lib/itemFactory'
 import { type Item } from '~/lib/items'
 import { buildManaApproveCall, fetchManaAllowance } from '~/lib/mana'
+import { useNotifications } from '~/lib/notifications'
 import {
+  PublishTransactionRevertedError,
   consolidatePublishedCollection,
   getMaticChainId,
   publishCollection,
@@ -29,6 +31,7 @@ import {
 } from '~/lib/publishCollection'
 import { type PublicationFee } from '~/lib/publishFee'
 import { buildCollectionInitializeData } from '~/lib/saveCollection'
+import { useTranslation } from '~/intl'
 
 export function useRarities(address: string | undefined) {
   return useQuery({
@@ -110,6 +113,7 @@ export type PublishVariables = {
 export function usePublishCollection(session: Session | null) {
   const queryClient = useQueryClient()
   const chainId = getMaticChainId()
+  const { t } = useTranslation()
 
   return useMutation({
     mutationFn: async (variables: PublishVariables): Promise<PublishResult> => {
@@ -144,7 +148,18 @@ export function usePublishCollection(session: Session | null) {
         waitForTransaction: hash => waitForTransaction(chainId, hash),
         publishCollectionItems: collectionId => publishCollectionItems(address!, collectionId)
       })
-        .catch(error => console.error('Collection consolidation failed', error))
+        .catch((error: unknown) => {
+          console.error('Collection consolidation failed', error)
+          // The modal is long gone: a lasting toast is the only way the creator learns the publish did not land.
+          const key =
+            error instanceof PublishTransactionRevertedError
+              ? 'publish_collection_modal.consolidation.reverted'
+              : 'publish_collection_modal.consolidation.sync_failed'
+          useNotifications.getState().showToast(t(key, { name: collection.name }), {
+            type: 'error',
+            durationMs: CONSOLIDATION_TOAST_MS
+          })
+        })
         .finally(() => {
           syncing.delete(collection.id)
           invalidateCollectionItems(queryClient, collection.id)
@@ -152,6 +167,8 @@ export function usePublishCollection(session: Session | null) {
     }
   })
 }
+
+const CONSOLIDATION_TOAST_MS = 20_000
 
 // Collections whose chain→server sync is running in this tab, so a page mount doesn't start a second one.
 const syncing = new Set<string>()
