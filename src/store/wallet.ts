@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { identify, reset as resetAnalytics, track } from '~/lib/analytics'
 import { logout, restoreSession, signInRedirect, type Session } from '~/lib/auth'
+import { setCurrentAddressReader } from '~/lib/currentAddress'
 import { setMonitoringUser } from '~/lib/monitoring'
 
 // The IN-FLIGHT silent restore, so concurrent callers share one pass rather than racing. Cleared once
@@ -50,7 +51,21 @@ export const useWallet = create<WalletState>((set, get) => ({
       .then(session => {
         set({ session, restored: true, connecting: false })
         if (session) {
-          identify(session.address, { provider_type: session.providerType })
+          // `ethAddress` and `chainId` are the legacy builder's traits (decentraland-dapps sends them
+          // on every connection), kept so an audience built on them also covers this app.
+          identify(session.address, {
+            ethAddress: session.address,
+            chainId: session.chainId,
+            provider_type: session.providerType
+          })
+          // The legacy builder's connection event, fired the same way: on every load that restores a
+          // session, not only on a fresh sign-in.
+          track('Connect Wallet', {
+            address: session.address,
+            chainId: session.chainId,
+            providerType: session.providerType,
+            walletName: session.walletName ?? null
+          })
           setMonitoringUser(session.address)
         }
       })
@@ -60,3 +75,6 @@ export const useWallet = create<WalletState>((set, get) => ({
     return restoring
   }
 }))
+
+// Lets analytics and Sentry stamp the signed-in creator without importing this store back.
+setCurrentAddressReader(() => useWallet.getState().session?.address)

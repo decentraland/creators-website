@@ -143,6 +143,7 @@ const ItemEditorPage = () => {
   const source = useMemo<AvatarPreviewSource>(() => ({ kind: 'items', items: previewItems }), [previewItems])
   const collectionEmotes = useMemo(() => items.filter(item => item.type === ItemType.EMOTE), [items])
   const subjectEmote = useMemo(() => previewItems.find(item => item.type === ItemType.EMOTE) ?? null, [previewItems])
+  const previewedWearables = useMemo(() => previewItems.filter(item => item.type === ItemType.WEARABLE), [previewItems])
 
   const validationSource = useMemo(
     () => (previewSelected ? ({ kind: 'item', item: previewSelected } as const) : null),
@@ -345,6 +346,7 @@ const ItemEditorPage = () => {
           previewId={PREVIEW_ID}
           controller={controller}
           collectionEmotes={collectionEmotes}
+          previewedWearables={previewedWearables}
           subjectEmoteId={subjectEmote?.id ?? null}
         />
         <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />

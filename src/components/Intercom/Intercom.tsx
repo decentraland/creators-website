@@ -20,7 +20,7 @@ function injectWidget(appId: string): Promise<void> {
   injecting ??= new Promise<void>((resolve, reject) => {
     const script = document.createElement('script')
     script.async = true
-    script.src = `${WIDGET_URL}/${appId}`
+    script.src = `${WIDGET_URL}/${encodeURIComponent(appId)}`
     script.addEventListener('load', () => resolve())
     script.addEventListener('error', () => {
       // Without this a single network blip would keep the rejected promise, and support would stay

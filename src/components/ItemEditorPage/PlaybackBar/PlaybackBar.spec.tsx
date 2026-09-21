@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PreviewEmote, type IPreviewController } from '@dcl/schemas'
 import { TranslationProvider } from '~/intl'
+import { track } from '~/lib/analytics'
 import { ItemType, type Item } from '~/lib/items'
 import { useAvatarPreview } from '~/store/avatarPreview'
 import { PlaybackBar } from './PlaybackBar'
@@ -12,6 +13,8 @@ import { PlaybackBar } from './PlaybackBar'
 vi.mock('~/components/PreviewControls', () => ({
   EmoteControls: () => <div data-testid="ui2-emote-controls" />
 }))
+
+vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
 
 const emote = (id: string): Item =>
   ({
@@ -23,6 +26,7 @@ const emote = (id: string): Item =>
   }) as unknown as Item
 
 const dance = emote('dance-item')
+const hat = { id: 'hat-item', name: 'Party Hat', tokenId: '7', type: ItemType.WEARABLE } as unknown as Item
 const wrapper = ({ children }: { children: ReactNode }) => <TranslationProvider>{children}</TranslationProvider>
 
 function makeController() {
@@ -39,6 +43,7 @@ function Bar({ controller }: { controller: IPreviewController }) {
       previewId="preview"
       controller={controller}
       collectionEmotes={[dance]}
+      previewedWearables={[]}
       subjectEmoteId={subject?.id ?? null}
     />
   )
@@ -65,6 +70,47 @@ describe('PlaybackBar', () => {
     expect(screen.getByTestId('playback-bar-select')).toBeInTheDocument()
   })
 
+  it('reports the emote played alongside each wearable on the avatar, as the legacy editor does', async () => {
+    const { controller } = makeController()
+    render(
+      <PlaybackBar
+        previewId="preview"
+        controller={controller}
+        collectionEmotes={[dance]}
+        previewedWearables={[hat]}
+        subjectEmoteId={null}
+      />,
+      { wrapper }
+    )
+
+    await userEvent.click(screen.getByTestId('playback-bar-select'))
+    await userEvent.click(screen.getByTestId('playback-bar-select-option-wave'))
+
+    expect(track).toHaveBeenCalledWith('Play Emote', {
+      EMOTE_PLAYED_BASE: true,
+      EMOTE_PLAYED_ITEM_ID: null,
+      EMOTE_PLAYED_NAME: 'wave',
+      PREVIEWED_WEARABLE_ITEM_ID: '7',
+      PREVIEWED_WEARABLE_NAME: 'Party Hat'
+    })
+  })
+
+  it('still reports an emote played on a bare avatar, where the legacy editor reported nothing', async () => {
+    const { controller } = makeController()
+    render(<Bar controller={controller} />, { wrapper })
+
+    await userEvent.click(screen.getByTestId('playback-bar-select'))
+    await userEvent.click(screen.getByTestId('playback-bar-select-option-dance-item'))
+
+    expect(track).toHaveBeenCalledWith('Play Emote', {
+      EMOTE_PLAYED_BASE: false,
+      EMOTE_PLAYED_ITEM_ID: null,
+      EMOTE_PLAYED_NAME: 'dance-item',
+      PREVIEWED_WEARABLE_ITEM_ID: null,
+      PREVIEWED_WEARABLE_NAME: null
+    })
+  })
+
   it('stops a default animation and offers it again', async () => {
     const { stop, controller } = makeController()
     render(<Bar controller={controller} />, { wrapper })
@@ -81,7 +127,13 @@ describe('PlaybackBar', () => {
 
   it('keeps working when the preview has no controller yet', async () => {
     render(
-      <PlaybackBar previewId="preview" controller={null} collectionEmotes={[dance]} subjectEmoteId="dance-item" />,
+      <PlaybackBar
+        previewId="preview"
+        controller={null}
+        collectionEmotes={[dance]}
+        previewedWearables={[]}
+        subjectEmoteId="dance-item"
+      />,
       { wrapper }
     )
     useAvatarPreview.getState().dress({ id: dance.id, type: ItemType.EMOTE })

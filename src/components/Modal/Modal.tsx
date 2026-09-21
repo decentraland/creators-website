@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, type ReactNode } from 're
 import { createPortal } from 'react-dom'
 import { Close as CloseIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
+import { track } from '~/lib/analytics'
 import * as S from './Modal.styles'
 
 // Refcounted scroll lock: modals can stack (add-items + its confirm dialogs), and a
@@ -90,6 +91,8 @@ export function Modal({
     if (entry) openDialogs.push(entry)
     dialog?.focus()
 
+    track('Open modal', { name: testId })
+
     function onKeyDown(event: KeyboardEvent) {
       if (topmostDialog() !== dialog) return
       if (event.key === 'Escape' && !closeDisabledRef.current) closeRef.current()
@@ -126,6 +129,7 @@ export function Modal({
       releaseScrollLock()
       // Hand focus back to the dialog underneath, if any.
       topmostDialog()?.focus()
+      track('Close modal', { name: testId })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

@@ -93,7 +93,7 @@ describe('scrubEvent', () => {
       request: { url: `https://x.test/?sig=${SIGNATURE}`, cookies: { session: 'x' }, headers: { auth: 'x' } },
       tags: { authorization: 'bearer x', flow: 'publish-collection' },
       extra: { identity: 'private key', collectionId: 'col-1' }
-    } as unknown as Parameters<typeof scrubEvent>[0])
+    })
 
     expect(event.message).toBe('signed with <signature>')
     expect(event.exception?.values?.[0].value).toBe('key <hex32>')
@@ -103,6 +103,26 @@ describe('scrubEvent', () => {
     expect(event.request?.headers).toBeUndefined()
     expect(event.tags).toEqual({ flow: 'publish-collection' })
     expect(event.extra).toEqual({ collectionId: 'col-1' })
+  })
+
+  it('scrubs the urls a request carries in its own data, not only the ones in a message', () => {
+    const event = scrubEvent({
+      breadcrumbs: [{ category: 'fetch', data: { url: `https://x.test/items?sig=${SIGNATURE}`, token: 'abc' } }],
+      spans: [
+        {
+          span_id: 'span-1',
+          trace_id: 'trace-1',
+          start_timestamp: 0,
+          description: `GET ${HEX32}`,
+          data: { 'http.url': `https://x.test/?k=${HEX32}` }
+        }
+      ]
+    })
+
+    expect(event.breadcrumbs?.[0].data?.url).toBe('https://x.test/items?sig=<signature>')
+    expect(event.breadcrumbs?.[0].data?.token).toBeUndefined()
+    expect(event.spans?.[0].description).toBe('GET <hex32>')
+    expect(event.spans?.[0].data?.['http.url']).toBe('https://x.test/?k=<hex32>')
   })
 })
 

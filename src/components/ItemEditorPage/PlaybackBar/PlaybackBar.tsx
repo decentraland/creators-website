@@ -17,6 +17,8 @@ type Props = {
   controller: IPreviewController | null
   /** The collection's emotes, offered next to the default animations. */
   collectionEmotes: Item[]
+  /** The wearables currently on the avatar — reported alongside the emote, as the legacy editor does. */
+  previewedWearables: Item[]
   /** When an emote item is the subject, ui2's scrubber controls replace the play/stop bar. */
   subjectEmoteId: string | null
   testId?: string
@@ -36,6 +38,7 @@ export function PlaybackBar({
   previewId,
   controller,
   collectionEmotes,
+  previewedWearables,
   subjectEmoteId,
   testId = 'playback-bar'
 }: Props) {
@@ -76,12 +79,24 @@ export function PlaybackBar({
 
   function select(value: string) {
     const collectionEmote = collectionEmotes.find(item => item.id === value)
-    // Legacy builder prop names, so the event lines up with the same one from the old item editor.
-    track('Play Emote', {
+    // Legacy builder prop names, so the event lines up with the same one from the old item editor,
+    // which emits one event per wearable on the avatar. With a bare avatar legacy emits nothing at
+    // all; here that case is one event with no wearable, so a pick is never invisible.
+    const emoteProps = {
       EMOTE_PLAYED_BASE: !collectionEmote,
       EMOTE_PLAYED_ITEM_ID: collectionEmote?.tokenId ?? null,
       EMOTE_PLAYED_NAME: collectionEmote ? collectionEmote.name : value
-    })
+    }
+    if (previewedWearables.length === 0) {
+      track('Play Emote', { ...emoteProps, PREVIEWED_WEARABLE_ITEM_ID: null, PREVIEWED_WEARABLE_NAME: null })
+    }
+    for (const wearable of previewedWearables) {
+      track('Play Emote', {
+        ...emoteProps,
+        PREVIEWED_WEARABLE_ITEM_ID: wearable.tokenId ?? null,
+        PREVIEWED_WEARABLE_NAME: wearable.name
+      })
+    }
     if (collectionEmote) {
       dress({ id: collectionEmote.id, type: ItemType.EMOTE })
       return

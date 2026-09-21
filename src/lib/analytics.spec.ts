@@ -6,11 +6,11 @@ const WRITE_KEY = 'segment-write-key-test'
 const PROXY_URL = 'https://proxy.example.com/abc/def.min.js'
 
 const wallet = vi.hoisted(() => ({ session: null as { address: string } | null }))
-vi.mock('~/store/wallet', () => ({ useWallet: { getState: () => ({ session: wallet.session }) } }))
 
 const settings = vi.hoisted((): { values: Record<string, string | undefined> } => ({ values: {} }))
 vi.mock('~/config', () => ({
-  config: { get: (key: string, fallback = '') => settings.values[key] ?? fallback }
+  config: { get: (key: string, fallback = '') => settings.values[key] ?? fallback },
+  APP_VERSION: '1.2.3'
 }))
 
 function segmentStub() {
@@ -28,6 +28,9 @@ function segmentStub() {
 async function loadAnalytics(userAgent = BROWSER_USER_AGENT) {
   vi.resetModules()
   Object.defineProperty(window.navigator, 'userAgent', { value: userAgent, configurable: true })
+  // The wallet store registers this in the app; here the test plays that part.
+  const { setCurrentAddressReader } = await import('./currentAddress')
+  setCurrentAddressReader(() => wallet.session?.address)
   return import('./analytics')
 }
 
@@ -57,6 +60,7 @@ describe('track', () => {
       'Publish collection',
       expect.objectContaining({
         source: 'wemotes-builder',
+        version: '1.2.3',
         collectionId: 'col-1',
         address: '0xCreAtoR',
         is_signed_in: true,
@@ -123,14 +127,14 @@ describe('identify', () => {
     expect(analytics.reset).toHaveBeenCalled()
   })
 
-  it('keeps its own source even when a trait passes one', async () => {
+  it('never tags the creator with a source, which would outlive the app they used', async () => {
     const analytics = segmentStub()
     ;(window as unknown as { analytics: unknown }).analytics = analytics
 
     const { identify } = await loadAnalytics()
-    identify('0xabc', { source: 'somewhere-else' })
+    identify('0xabc', { chainId: 137 })
 
-    expect(analytics.identify.mock.calls[0][1]).toMatchObject({ source: 'wemotes-builder' })
+    expect(analytics.identify).toHaveBeenCalledWith('0xabc', { chainId: 137 })
   })
 })
 
@@ -178,6 +182,28 @@ describe('initAnalytics', () => {
 
     expect(document.head.querySelector('script')).toBeNull()
     expect((window as { analytics?: unknown }).analytics).toBeUndefined()
+  })
+
+  it('names this app in Segment’s own context.app, so page and identify calls carry it too', async () => {
+    type Payload = { obj: { context: Record<string, unknown> } }
+    type Middleware = (params: { payload: Payload; next: (payload: Payload) => void }) => void
+    const addSourceMiddleware = vi.fn<(middleware: Middleware) => void>()
+    ;(window as unknown as { analytics: unknown }).analytics = {
+      ...segmentStub(),
+      initialize: true,
+      addSourceMiddleware
+    }
+
+    const { initAnalytics } = await loadAnalytics()
+    initAnalytics()
+
+    const middleware = addSourceMiddleware.mock.calls[0][0]
+    const payload: Payload = { obj: { context: {} } }
+    const next = vi.fn()
+    middleware({ payload, next })
+
+    expect(payload.obj.context.app).toEqual({ name: 'wemotes-builder', version: '1.2.3' })
+    expect(next).toHaveBeenCalledWith(payload)
   })
 
   it('queues events made before analytics.js has loaded and loads only once', async () => {

@@ -6,8 +6,8 @@
 // Convention: pass a `flow` in the context (e.g. { flow: 'publish-collection' }) so console and Sentry
 // group failures by user action. Never put secrets in the context — `beforeSend` scrubs defensively anyway.
 import * as Sentry from '@sentry/react'
-import { config } from '~/config'
-import { useWallet } from '~/store/wallet'
+import { APP_VERSION, config } from '~/config'
+import { currentAddress } from '~/lib/currentAddress'
 
 export type ErrorContext = Record<string, unknown>
 
@@ -86,32 +86,47 @@ export function redact(input: string): string {
   return input.replace(SIGNATURE_RE, '<signature>').replace(SECRET_RE, '<secret>').replace(HEX32_RE, '<hex32>')
 }
 
-/** Scrub an outgoing Sentry event: redact free text, drop sensitive keys, strip cookies/headers. */
-export function scrubEvent(event: Sentry.ErrorEvent): Sentry.ErrorEvent {
+/** Redact the free text in a bag of context values and drop the sensitive keys outright, in place. */
+function cleanBag(bag?: Record<string, unknown>): void {
+  if (!bag) return
+  for (const key of Object.keys(bag)) {
+    if (SENSITIVE_KEY.test(key)) {
+      delete bag[key]
+      continue
+    }
+    if (typeof bag[key] === 'string') bag[key] = redact(bag[key])
+  }
+}
+
+/**
+ * Scrub an outgoing Sentry event — an error OR a transaction: redact free text, drop sensitive keys,
+ * strip cookies/headers.
+ *
+ * Breadcrumb and span DATA matter as much as messages: a fetch/xhr breadcrumb carries the request url
+ * under `data.url` and a span carries its own under `data`, neither of which is a message, so a token
+ * in a query string would otherwise sail straight through.
+ */
+export function scrubEvent<T extends Sentry.Event>(event: T): T {
   if (event.message) event.message = redact(event.message)
   for (const exception of event.exception?.values ?? []) {
     if (exception.value) exception.value = redact(exception.value)
   }
   for (const breadcrumb of event.breadcrumbs ?? []) {
     if (breadcrumb.message) breadcrumb.message = redact(breadcrumb.message)
+    cleanBag(breadcrumb.data)
   }
+  for (const span of event.spans ?? []) {
+    if (span.description) span.description = redact(span.description)
+    cleanBag(span.data)
+  }
+  if (event.transaction) event.transaction = redact(event.transaction)
   if (event.request) {
     if (event.request.url) event.request.url = redact(event.request.url)
     delete event.request.cookies
     delete event.request.headers
   }
-  const clean = (bag?: Record<string, unknown>) => {
-    if (!bag) return
-    for (const key of Object.keys(bag)) {
-      if (SENSITIVE_KEY.test(key)) {
-        delete bag[key]
-        continue
-      }
-      if (typeof bag[key] === 'string') bag[key] = redact(bag[key])
-    }
-  }
-  clean(event.tags)
-  clean(event.extra)
+  cleanBag(event.tags)
+  cleanBag(event.extra)
   return event
 }
 
@@ -170,13 +185,15 @@ export function initSentry(): void {
     dsn,
     environment: config.get('ENVIRONMENT'),
     // Shares the legacy builder's Sentry project; the release prefix is what separates the two apps.
-    release: `wemotes-builder@${import.meta.env.VITE_REACT_APP_WEBSITE_VERSION ?? 'unknown'}`,
+    release: `wemotes-builder@${APP_VERSION}`,
     integrations: [Sentry.browserTracingIntegration()],
     tracesSampleRate: 0.01,
     sendDefaultPii: false,
     // Expected user actions, not bugs.
     ignoreErrors: [/user rejected/i, /user denied/i, 'ResizeObserver loop limit exceeded'],
-    beforeSend: scrubEvent
+    beforeSend: scrubEvent,
+    // Performance events don't go through `beforeSend`, and they carry urls of their own.
+    beforeSendTransaction: scrubEvent
   })
   setMonitoringUser(safeAddress())
   setErrorForwarder(sentryForwarder)
@@ -189,9 +206,5 @@ export function setMonitoringUser(address: string | null): void {
 }
 
 function safeAddress(): string | null {
-  try {
-    return useWallet.getState().session?.address ?? null
-  } catch {
-    return null
-  }
+  return currentAddress() ?? null
 }

@@ -26,3 +26,6 @@ const search = typeof window === 'undefined' ? new URLSearchParams() : new URLSe
 
 /** `?unity=false` forces the Babylon preview renderer, a debugging escape hatch; any other value is ignored. */
 export const previewRendererOverride: 'babylon' | null = search.get('unity') === 'false' ? 'babylon' : null
+
+/** The deployed version, written into `.env` from package.json by `scripts/prebuild.cjs`. */
+export const APP_VERSION = import.meta.env.VITE_REACT_APP_WEBSITE_VERSION ?? 'unknown'

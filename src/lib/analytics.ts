@@ -9,9 +9,9 @@
 // Nothing here is user-facing, so the copy/i18n rules don't apply. Never emit PII or secrets; wallet
 // addresses are pseudonymous public ids and are allowed.
 import { isbot } from 'isbot'
-import { config } from '~/config'
+import { APP_VERSION, config } from '~/config'
+import { currentAddress } from '~/lib/currentAddress'
 import { isWalletRejection } from '~/lib/walletErrors'
-import { useWallet } from '~/store/wallet'
 
 type Props = Record<string, unknown>
 
@@ -22,7 +22,12 @@ type SegmentApi = {
   reset: () => void
   ready: (cb: () => void) => void
   user: () => { anonymousId?: () => string | undefined } | undefined
+  addSourceMiddleware?: (middleware: SourceMiddleware) => void
 }
+
+/** A call on its way out, before analytics.js hands it to the destinations. */
+type SegmentPayload = { obj: { context?: Props } }
+type SourceMiddleware = (params: { payload: SegmentPayload; next: (payload: SegmentPayload) => void }) => void
 
 export const SOURCE = 'wemotes-builder'
 
@@ -38,17 +43,13 @@ function segment(): SegmentApi | undefined {
   return (window as unknown as { analytics?: SegmentApi }).analytics
 }
 
-// Stamped on every event. The wallet store is read imperatively so pre- and post-sign-in events share
-// one anonymousId; a store that throws (or is mocked in a test) must never break the flow being tracked.
+// Stamped on every event. The address is read at call time so pre- and post-sign-in events share one
+// anonymousId. `version` mirrors the legacy builder, which stamps its package version on every payload.
 function context(): Props {
-  let address: string | undefined
-  try {
-    address = useWallet.getState().session?.address
-  } catch {
-    address = undefined
-  }
+  const address = currentAddress()
   return {
     source: SOURCE,
+    version: APP_VERSION,
     address: address ?? null,
     is_signed_in: !!address,
     session_id: SESSION_ID,
@@ -65,9 +66,11 @@ export function track(event: string, props: Props = {}): void {
   else if (import.meta.env.DEV && !IS_BOT) console.debug('[analytics] track', event, payload)
 }
 
+// No `source` here on purpose: traits are USER-level and sticky, so it would permanently tag anyone who
+// ever opened this app, whichever app they use next. Telling the two apart is the job of the event prop.
 export function identify(address: string, traits: Props = {}): void {
   const analytics = segment()
-  if (analytics) analytics.identify(address.toLowerCase(), { ...traits, source: SOURCE })
+  if (analytics) analytics.identify(address.toLowerCase(), traits)
   else if (import.meta.env.DEV && !IS_BOT) console.debug('[analytics] identify', address, traits)
 }
 
@@ -132,7 +135,12 @@ const METHODS = [
 // A queued call of one of these carries the page context of the moment it was made, not of the replay.
 const METHODS_WITH_PAGE_CONTEXT = new Set(['track', 'page', 'identify', 'alias', 'group'])
 
-type Snippet = Props & { invoked?: boolean; initialize?: boolean; push: (args: unknown[]) => void }
+type Snippet = Props & {
+  invoked?: boolean
+  initialize?: boolean
+  push: (args: unknown[]) => void
+  addSourceMiddleware?: (middleware: SourceMiddleware) => void
+}
 
 function installSnippet(): Snippet | undefined {
   const anyWindow = window as unknown as { analytics?: Snippet }
@@ -182,6 +190,20 @@ function resolveAnalyticsUrl(url: string): URL | undefined {
   }
 }
 
+/**
+ * Names this app in `context.app`, Segment's own field for it, on EVERY call the page makes — page and
+ * identify included, where an event prop can't reach. It arrives in the warehouse as the canonical
+ * `context_app_name` / `context_app_version` columns, which no caller prop can collide with; the
+ * `source` and `version` props stay as the cross-app filter the legacy builder's queries already use.
+ */
+function stampApp(analytics: Pick<SegmentApi, 'addSourceMiddleware'>): void {
+  analytics.addSourceMiddleware?.(({ payload, next }) => {
+    const context = payload.obj.context
+    if (context) context.app = { name: SOURCE, version: APP_VERSION }
+    next(payload)
+  })
+}
+
 let initialized = false
 
 /** Loads analytics.js. No-ops without a write key, and for bots. The first page view comes from the router. */
@@ -195,6 +217,7 @@ export function initAnalytics(): void {
   }
   const snippet = installSnippet()
   if (!snippet) return
+  stampApp(snippet)
   const proxy = resolveAnalyticsUrl(config.get('SEGMENT_ANALYTICS_URL', ''))
   if (proxy) snippet._cdn = proxy.origin
   snippet._writeKey = writeKey
