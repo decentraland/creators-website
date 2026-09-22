@@ -336,6 +336,29 @@
       "checkbox": "I agree to the <terms>Terms of Use</terms> and <policy>Content Policy</policy>. I understand that my collection may be rejected if it doesn't comply, and that the publication fee is non-refundable.",
       "submit": "Publish & Pay"
     },
+    "buy_credits": {
+      "title": "Choose your Credits Pack",
+      "balance": "My Credits Balance:",
+      "recommended": "Recommended",
+      "credits": "Credits",
+      "pack_label": "{credits} Credits for {usd}",
+      "decrease": "One less pack of {credits} Credits",
+      "increase": "One more pack of {credits} Credits",
+      "total": "Total:",
+      "cancel": "Cancel",
+      "buy": "Buy {credits} Credits",
+      "error": "We couldn't start the checkout. Please try again."
+    },
+    "top_up": {
+      "confirming": "Confirming your purchase…",
+      "success_title": "Your purchase was successful!",
+      "success_description": "{credits} Credits added to your account.",
+      "pending_title": "Your Credits are on the way!",
+      "pending_description": "Your payment went through, but it's taking a little longer than usual to confirm. Your balance will update on its own as soon as it lands, no need to pay again.",
+      "failed_title": "We couldn't complete your purchase",
+      "failed_description": "Something went wrong with the payment. If you were charged, your Credits will be added shortly; otherwise, pick a pack and try again.",
+      "done": "Done"
+    },
     "success": {
       "title": "Collection sent for review",
       "description": "Your collection is being reviewed for approval. This may take up to 5 minutes. We'll notify you once the review is complete.",

@@ -5,6 +5,11 @@ export function openExternal(url: string): void {
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 
+/** Leaves the app for an external page in the current tab (a hosted checkout that returns here). */
+export function redirectExternal(url: string): void {
+  window.location.assign(url)
+}
+
 /** Hands a custom-scheme URL (e.g. `decentraland://`) to the OS in the current tab. */
 export function openProtocolLink(url: string): void {
   window.location.assign(url)

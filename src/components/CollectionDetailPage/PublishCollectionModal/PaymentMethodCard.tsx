@@ -19,6 +19,8 @@ type Props = {
   note?: string
   hasEnough: boolean
   getMoreUrl: string
+  /** Buys the currency without leaving the wizard; the external link is the fallback when absent. */
+  onGetMore?: () => void
   selected: boolean
   /** Hidden when it's the only method: a lone card is always the selection. */
   showCheckbox: boolean
@@ -35,6 +37,7 @@ export function PaymentMethodCard({
   note,
   hasEnough,
   getMoreUrl,
+  onGetMore,
   selected,
   showCheckbox,
   compactBuy,
@@ -85,14 +88,15 @@ export function PaymentMethodCard({
       </S.Price>
       {!hasEnough && (
         <Button
-          as="a"
+          {...(onGetMore ? { type: 'button' as const } : { as: 'a' as const, href: getMoreUrl })}
           variant="gradient"
           size="sm"
-          href={getMoreUrl}
+          disabled={disabled}
           data-testid={`payment-method-${method}-buy`}
           onClick={(event: React.MouseEvent) => {
             event.preventDefault()
-            openExternal(getMoreUrl)
+            if (onGetMore) onGetMore()
+            else openExternal(getMoreUrl)
           }}
         >
           <CurrencyAmount currency={method}>

@@ -1,0 +1,208 @@
+import { useMemo, useState } from 'react'
+import {
+  Add as AddIcon,
+  ChevronRight as ChevronRightIcon,
+  Remove as RemoveIcon,
+  Star as StarIcon
+} from '@mui/icons-material'
+import { useTranslation } from '~/intl'
+import { useCreditPacks } from '~/hooks/useCreditPacks'
+import {
+  MAX_PACK_QUANTITY,
+  formatUsd,
+  recommendPack,
+  selectionTotals,
+  type CreditPack,
+  type PackSelection
+} from '~/lib/creditPacks'
+import { formatCredits } from '~/lib/publishFee'
+import { Button } from '~/components/Button'
+import { CurrencyAmount } from '~/components/CurrencyAmount'
+import { Modal } from '~/components/Modal'
+import packCoins from '~/assets/credits/pack-coins.webp'
+import packStacks from '~/assets/credits/pack-stacks.webp'
+import packChest from '~/assets/credits/pack-chest.webp'
+import * as S from './BuyCreditsModal.styles'
+
+// Art escalates with the pack size; the catalogue's own url wins when it publishes one.
+const PACK_ART: Record<string, string> = {
+  pack_5: packCoins,
+  pack_10: packCoins,
+  pack_25: packStacks,
+  pack_50: packChest
+}
+const PACK_ART_ORDER = [packCoins, packCoins, packStacks, packChest]
+
+function artFor(pack: CreditPack, index: number): string {
+  return pack.artUrl ?? PACK_ART[pack.id] ?? PACK_ART_ORDER[index % PACK_ART_ORDER.length]
+}
+
+type Props = {
+  balance: number
+  /** Credits the creator is short of the fee; drives the preselected pack and quantity. */
+  shortfall: number
+  onCancel: () => void
+  /** Starts the checkout; a rejection keeps the dialog open with an error line. */
+  onBuy: (selection: PackSelection) => Promise<void>
+}
+
+/**
+ * The credit-pack picker stacked on the publish wizard: every pack, one quantity stepper each (a
+ * checkout buys copies of a single pack), the recommended one preselected, and the running total.
+ */
+export function BuyCreditsModal({ balance, shortfall, onCancel, onBuy }: Props) {
+  const { t } = useTranslation()
+  const { packs } = useCreditPacks()
+  const recommended = useMemo(() => recommendPack(packs, shortfall), [packs, shortfall])
+  const [chosen, setChosen] = useState<PackSelection | null>(null)
+  const [isBuying, setBuying] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const selection = chosen ?? recommended
+  const totals = useMemo(() => selectionTotals(packs, selection), [packs, selection])
+  const canBuy = totals.credits > 0 && !isBuying
+
+  function setQuantity(packId: string, quantity: number) {
+    setChosen(quantity > 0 ? { packId, quantity: Math.min(MAX_PACK_QUANTITY, quantity) } : { packId, quantity: 0 })
+  }
+
+  function quantityOf(packId: string): number {
+    return selection?.packId === packId ? selection.quantity : 0
+  }
+
+  async function buy() {
+    if (!selection || !canBuy) return
+    setBuying(true)
+    setFailed(false)
+    try {
+      await onBuy(selection)
+    } catch {
+      setFailed(true)
+      setBuying(false)
+    }
+  }
+
+  return (
+    <Modal
+      title={t('publish_collection_modal.buy_credits.title')}
+      size="large"
+      hideTitle
+      showClose
+      closeDisabled={isBuying}
+      onClose={onCancel}
+      testId="buy-credits-modal"
+    >
+      <S.Wrap>
+        <S.Header>
+          <S.Heading>{t('publish_collection_modal.buy_credits.title')}</S.Heading>
+          <S.Balance data-testid="buy-credits-balance">
+            {t('publish_collection_modal.buy_credits.balance')}{' '}
+            <span>
+              <CurrencyAmount currency="credits">{formatCredits(balance)}</CurrencyAmount>
+            </span>
+          </S.Balance>
+        </S.Header>
+
+        <S.Packs data-testid="credit-packs">
+          {packs.map((pack, index) => {
+            const quantity = quantityOf(pack.id)
+            return (
+              <S.Pack
+                key={pack.id}
+                role="button"
+                tabIndex={0}
+                data-testid={`credit-pack-${pack.id}`}
+                data-selected={quantity > 0 || undefined}
+                data-disabled={isBuying || undefined}
+                aria-pressed={quantity > 0}
+                aria-label={t('publish_collection_modal.buy_credits.pack_label', {
+                  credits: formatCredits(pack.credits),
+                  usd: formatUsd(pack.usd)
+                })}
+                onClick={() => quantity === 0 && setQuantity(pack.id, 1)}
+                onKeyDown={event => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    if (quantity === 0) setQuantity(pack.id, 1)
+                  }
+                }}
+              >
+                {recommended?.packId === pack.id && (
+                  <S.Badge data-testid="credit-pack-recommended" aria-hidden>
+                    <StarIcon />
+                    {t('publish_collection_modal.buy_credits.recommended')}
+                  </S.Badge>
+                )}
+                <S.Credits>
+                  <S.CreditsAmount>
+                    <CurrencyAmount currency="credits">{formatCredits(pack.credits)}</CurrencyAmount>
+                  </S.CreditsAmount>
+                  <S.CreditsLabel>{t('publish_collection_modal.buy_credits.credits')}</S.CreditsLabel>
+                </S.Credits>
+                <S.Art src={artFor(pack, index)} alt="" />
+                <S.Price>{formatUsd(pack.usd)}</S.Price>
+                <S.Stepper onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
+                  <S.StepButton
+                    type="button"
+                    disabled={quantity === 0 || isBuying}
+                    aria-label={t('publish_collection_modal.buy_credits.decrease', {
+                      credits: formatCredits(pack.credits)
+                    })}
+                    data-testid={`credit-pack-${pack.id}-decrease`}
+                    onClick={() => setQuantity(pack.id, quantity - 1)}
+                  >
+                    <RemoveIcon />
+                  </S.StepButton>
+                  <span data-testid={`credit-pack-${pack.id}-quantity`}>{quantity}</span>
+                  <S.StepButton
+                    type="button"
+                    disabled={quantity >= MAX_PACK_QUANTITY || isBuying}
+                    aria-label={t('publish_collection_modal.buy_credits.increase', {
+                      credits: formatCredits(pack.credits)
+                    })}
+                    data-testid={`credit-pack-${pack.id}-increase`}
+                    onClick={() => setQuantity(pack.id, quantity + 1)}
+                  >
+                    <AddIcon />
+                  </S.StepButton>
+                </S.Stepper>
+              </S.Pack>
+            )
+          })}
+        </S.Packs>
+
+        <S.Total data-testid="buy-credits-total">
+          {t('publish_collection_modal.buy_credits.total')}
+          <span>
+            <CurrencyAmount currency="credits">{formatCredits(totals.credits)}</CurrencyAmount>
+          </span>
+          <span data-testid="buy-credits-total-usd">{formatUsd(totals.usd)}</span>
+        </S.Total>
+        {failed && (
+          <S.ErrorText data-testid="buy-credits-error">{t('publish_collection_modal.buy_credits.error')}</S.ErrorText>
+        )}
+
+        <S.Footer>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={isBuying}
+            data-testid="buy-credits-cancel"
+            onClick={onCancel}
+          >
+            {t('publish_collection_modal.buy_credits.cancel')}
+          </Button>
+          <Button
+            type="button"
+            loading={isBuying}
+            disabled={!canBuy}
+            data-testid="buy-credits-submit"
+            onClick={() => void buy()}
+          >
+            {t('publish_collection_modal.buy_credits.buy', { credits: formatCredits(totals.credits) })}
+            <ChevronRightIcon fontSize="small" />
+          </Button>
+        </S.Footer>
+      </S.Wrap>
+    </Modal>
+  )
+}

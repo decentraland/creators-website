@@ -8,12 +8,16 @@ import { useCreditsBalance, useManaBalance } from '~/hooks/useBalances'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useApproveMana, useManaAllowance, usePublishCollection, useRarities } from '~/hooks/usePublishCollection'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
+import { track } from '~/lib/analytics'
 import { type Session } from '~/lib/auth'
 import { getContentsStorageUrl } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { FeatureFlag } from '~/lib/featureFlags'
 import { type Item } from '~/lib/items'
-import { openExternal } from '~/lib/navigation'
+import { createCreditsCheckout } from '~/lib/credits'
+import { type PackSelection, selectionTotals } from '~/lib/creditPacks'
+import { saveTopUpResume } from '~/lib/creditsTopUp'
+import { openExternal, redirectExternal } from '~/lib/navigation'
 import { verifyPublicationFee } from '~/lib/feeVerification'
 import {
   canPayWith,
@@ -30,6 +34,8 @@ import { InfoTooltip } from '~/components/Tooltip'
 import { Checkbox } from '~/components/Checkbox'
 import { ThumbnailMosaic } from '~/components/ThumbnailMosaic'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
+import { useCreditPacks } from '~/hooks/useCreditPacks'
+import { BuyCreditsModal } from './BuyCreditsModal'
 import { PaymentMethodCard } from './PaymentMethodCard'
 import { Methods } from './PaymentMethodCard.styles'
 import * as S from './PublishCollectionModal.styles'
@@ -82,6 +88,8 @@ export function PaymentStep({
   const fee = useMemo(() => getPublicationFee(rarities.data ?? [], items.length), [rarities.data, items.length])
 
   const creditsFlag = useFeatureFlag(FeatureFlag.SHOP_CREDITS_FOR_COLLECTIONS_FEE)
+  const topUpFlag = useFeatureFlag(FeatureFlag.SHOP_CREDITS_TOP_UP, { enabled: creditsFlag.enabled })
+  const { packs } = useCreditPacks()
   const methods = useMemo(
     () => getAvailablePaymentMethods(mana.data, creditsFlag.enabled),
     [mana.data, creditsFlag.enabled]
@@ -92,6 +100,7 @@ export function PaymentStep({
 
   const [status, setStatus] = useState<Status>('idle')
   const [approveFailed, setApproveFailed] = useState(false)
+  const [isBuyingCredits, setBuyingCredits] = useState(false)
   const isSubmitting = status !== 'idle'
 
   useEffect(() => {
@@ -109,6 +118,7 @@ export function PaymentStep({
   }, [methods, paymentMethod, onPaymentMethodChange, creditsFlag.isLoading])
 
   const balances = { credits: credits.data?.credits ?? 0, manaWei: mana.data ?? 0n }
+  const creditsShortfall = Math.max(0, (fee?.total.credits ?? 0) - balances.credits)
   const selectedIsPayable =
     !!fee && !!paymentMethod && methods.includes(paymentMethod) && canPayWith(paymentMethod, fee, balances)
   const canSubmit = selectedIsPayable && accepted && !isSubmitting && !credits.isLoading && !creditsFlag.isLoading
@@ -149,6 +159,28 @@ export function PaymentStep({
         }
       }
     )
+  }
+
+  function openBuyCredits() {
+    track('Open buy credits', { collectionId: collection.id, shortfall: creditsShortfall })
+    setBuyingCredits(true)
+  }
+
+  // Leaves for Stripe's hosted page; the hand-off record brings the creator back to this step.
+  async function buyCredits(selection: PackSelection) {
+    const totals = selectionTotals(packs, selection)
+    const checkout = await createCreditsCheckout(address, selection)
+    saveTopUpResume({ collectionId: collection.id, orderId: checkout.orderId, paymentMethod, termsAccepted: accepted })
+    track('Start credits checkout', {
+      collectionId: collection.id,
+      orderId: checkout.orderId,
+      packId: selection.packId,
+      quantity: selection.quantity,
+      credits: totals.credits,
+      usd: totals.usd,
+      shortfall: creditsShortfall
+    })
+    redirectExternal(checkout.url)
   }
 
   const thumbnails = useMemo(
@@ -250,6 +282,7 @@ export function PaymentStep({
                   }
                   hasEnough={canPayWith(method, fee, balances)}
                   getMoreUrl={method === 'credits' ? `${config.get('SHOP_URL')}/credits` : config.get('ACCOUNT_URL')}
+                  onGetMore={method === 'credits' && topUpFlag.enabled ? openBuyCredits : undefined}
                   selected={paymentMethod === method}
                   showCheckbox={methods.length > 1}
                   compactBuy={methods.length > 1}
@@ -299,6 +332,14 @@ export function PaymentStep({
           {t('publish_collection_modal.payment_step.submit')}
         </Button>
       </S.Footer>
+      {isBuyingCredits && (
+        <BuyCreditsModal
+          balance={balances.credits}
+          shortfall={creditsShortfall}
+          onCancel={() => setBuyingCredits(false)}
+          onBuy={buyCredits}
+        />
+      )}
     </S.Step>
   )
 }
