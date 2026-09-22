@@ -1,5 +1,8 @@
-name: Set rollout by path
+name: Set rollout
 
+# Fires after the CDN deploy (GitLab) reports success for an auto-deploy (push to main / release) and
+# rolls the new version out to zone and today. Production is deliberately NOT here: a push to main must
+# not reach creators on its own. Promote to .org by hand with set-rollout-manual.yml.
 on: [deployment_status]
 
 permissions:
@@ -14,42 +17,28 @@ jobs:
       # set-rollout-action records the rollout as a GitHub deployment.
       deployments: write
     steps:
-      # Dev
-      - name: Set Rollout - Development
+      - name: Set Rollout - zone
         uses: decentraland/set-rollout-action@26ead404b6944fd0ce0d087cc59fd817607454d6 # v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-
-          # Repo deployment info
           ref: ${{ github.event.deployment.ref }}
           sha: ${{ github.event.deployment.sha }}
-
-          # CDN information
           packageName: ${{ github.event.deployment.payload.packageName }}
           packageVersion: ${{ github.event.deployment.payload.packageVersion }}
-
-          # Rollout information
-          deploymentPath: '{{project_name}}-site'
+          deploymentPath: 'collections'
           deploymentEnvironment: 'zone'
           deploymentName: '_site'
           percentage: 100
 
-      # Stg
-      - name: Set Rollout - Staging
+      - name: Set Rollout - today
         uses: decentraland/set-rollout-action@26ead404b6944fd0ce0d087cc59fd817607454d6 # v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-
-          # Repo deployment info
           ref: ${{ github.event.deployment.ref }}
           sha: ${{ github.event.deployment.sha }}
-
-          # CDN information
           packageName: ${{ github.event.deployment.payload.packageName }}
           packageVersion: ${{ github.event.deployment.payload.packageVersion }}
-
-          # Rollout information
-          deploymentPath: '{{project_name}}'
+          deploymentPath: 'collections'
           deploymentEnvironment: 'today'
           deploymentName: '_site'
           percentage: 100

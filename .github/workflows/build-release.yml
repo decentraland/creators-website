@@ -1,0 +1,171 @@
+name: Build and release
+
+# Publishes the built app as the @dcl/wemotes-builder-site npm package; the Decentraland CDN serves it
+# and the `collections` by-path site in decentraland/definitions maps it to decentraland.<tld>/collections.
+# One artifact serves every environment: src/config picks dev/stg/prd at runtime by hostname.
+#
+# Auto-deploys (push to main, GitHub release) roll out to zone + today through set-rollout.yml, fired by
+# the CDN's `deployment_status` event. Production (.org) is promoted by hand with set-rollout-manual.yml.
+#
+# Repo-wide setup required before this can deploy (see the PR that introduced it):
+#   NPM_TOKEN                   publish token for @dcl/wemotes-builder-site (automation token, scope @dcl)
+#   GITLAB_CDN_DEPLOYER_TOKEN   CDN deploy pipeline trigger token
+#   GITLAB_CDN_DEPLOYER_URL     CDN deploy pipeline trigger url
+#   SENTRY_AUTH_TOKEN           OPTIONAL: uploads source maps; without it the release still ships,
+#                               stack traces just stay minified. Scope: project:releases.
+
+on:
+  push:
+    branches:
+      - main
+  release:
+    types:
+      - created
+  # Manual branch deploy to a non-production environment.
+  workflow_dispatch:
+    inputs:
+      deploymentEnvironment:
+        type: choice
+        description: 'Deployment environment'
+        required: true
+        default: 'zone'
+        options:
+          - zone
+          - today
+      rolloutPercentage:
+        description: 'Rollout percentage'
+        required: true
+        default: '100'
+
+permissions:
+  contents: read
+
+# The version is derived from the registry twice (Set version, then Publish), so a second run publishing
+# in between would leave the HTML pointing at assets under a version that never shipped. Runs queue,
+# never cancel: each one publishes.
+concurrency:
+  group: build-release
+  cancel-in-progress: false
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    # Build plus the Publish step's registry poll (60 x 15s = 15min).
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      # npm provenance attestation (OIDC).
+      id-token: write
+
+    outputs:
+      version: ${{ steps.publish.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Set package.json version
+        uses: decentraland/oddish-action@a4e98664bf53d4aae1f6d20d1a43ff2c79b555b3 # master (2026-09-14)
+        with:
+          deterministic-snapshot: true
+          only-update-versions: true
+
+      - name: Install
+        # --ignore-scripts and the Sentry upload coexist: sentry-cli's binary comes from the
+        # @sentry/cli-<platform> optional package in the lockfile, not from its postinstall.
+        run: npm ci --ignore-scripts
+
+      - name: Build
+        run: npm run build
+        env:
+          NODE_OPTIONS: '--max-old-space-size=6144'
+          # Source maps for Sentry. This is the build that produces the bundle creators run, so it is
+          # the only place its maps can come from. vite.config gates the whole thing on the token: it
+          # turns `build.sourcemap` on, uploads under the same release name the runtime reports, then
+          # DELETES the .map files so they never reach the CDN. An absent or empty secret restores
+          # exactly the previous behaviour.
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          # Not secrets — the slugs in every Sentry URL for this app. The project is the LEGACY
+          # BUILDER's: this app shares its Sentry project (same SENTRY_DSN in src/config/env/*.json).
+          SENTRY_ORG: decentraland
+          SENTRY_PROJECT: builder
+
+      # Belt and braces: the build deletes the maps right after uploading them, and fails outright if
+      # the upload fails. This guarantees a .map can never reach the CDN even if that ever changes.
+      - name: Drop any leftover source maps
+        run: find dist -name '*.map' -delete
+
+      - name: Publish
+        id: publish
+        uses: decentraland/oddish-action@a4e98664bf53d4aae1f6d20d1a43ff2c79b555b3 # master (2026-09-14)
+        with:
+          cwd: './dist'
+          deterministic-snapshot: true
+          provenance: true
+          registry-url: 'https://registry.npmjs.org'
+          access: public
+          # Manual branch deploys publish under a `manual` dist-tag so they never become `latest`.
+          custom-tag: ${{ github.event_name == 'workflow_dispatch' && 'manual' || '' }}
+          branch-to-custom-tag: ${{ github.event_name == 'workflow_dispatch' && github.ref_name || '' }}
+          gitlab-token: ${{ secrets.GITLAB_CDN_DEPLOYER_TOKEN }}
+          gitlab-pipeline-url: ${{ secrets.GITLAB_CDN_DEPLOYER_URL }}
+          # A publish the registry is slow to serve would skip the CDN trigger, and a re-run can't
+          # recover it (the snapshot version is keyed on the run id), so wait up to 15min.
+          registry-wait-attempts: '60'
+          registry-wait-delay: '15'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  rollout:
+    # Manual branch deploys only. Auto-deploys are rolled out by set-rollout.yml on `deployment_status`.
+    if: github.event_name == 'workflow_dispatch'
+    needs: build-release
+    runs-on: ubuntu-latest
+    # The CDN propagation poll below is 60 x 15s = 15min; the rollout itself is immediate.
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+      # set-rollout-action records the rollout as a GitHub deployment.
+      deployments: write
+
+    steps:
+      - name: Wait for CDN propagation
+        env:
+          PACKAGE_NAME: '@dcl/wemotes-builder-site'
+          PACKAGE_VERSION: ${{ needs.build-release.outputs.version }}
+        run: |
+          URL="https://cdn.decentraland.org/${PACKAGE_NAME}/${PACKAGE_VERSION}"
+          echo "Polling ${URL} until the CDN serves the package..."
+          for attempt in $(seq 1 60); do
+            status=$(curl -s -o /dev/null -w '%{http_code}' -I "${URL}" || echo "000")
+            if [ "${status}" -ge 200 ] && [ "${status}" -lt 400 ]; then
+              echo "Package available in CDN (status ${status}) after attempt ${attempt}"
+              exit 0
+            fi
+            echo "Attempt ${attempt}: status ${status}, retrying in 15s..."
+            sleep 15
+          done
+          echo "Timed out waiting for ${URL}"
+          exit 1
+
+      - name: Set Rollout
+        uses: decentraland/set-rollout-action@26ead404b6944fd0ce0d087cc59fd817607454d6 # v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.ref }}
+          sha: ${{ github.sha }}
+          packageName: '@dcl/wemotes-builder-site'
+          packageVersion: ${{ needs.build-release.outputs.version }}
+          deploymentPath: 'collections'
+          deploymentEnvironment: ${{ github.event.inputs.deploymentEnvironment }}
+          deploymentName: '_site'
+          percentage: ${{ github.event.inputs.rolloutPercentage }}
