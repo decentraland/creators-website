@@ -125,7 +125,8 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   rollout:
-    # Manual branch deploys only. Auto-deploys are rolled out by set-rollout.yml on `deployment_status`.
+    # Manual branch deploys only. Auto-deploys are rolled out by set-rollout.yml on `deployment_status`,
+    # which skips shas that are not on main so it never overrides the environment chosen here.
     if: github.event_name == 'workflow_dispatch'
     needs: build-release
     runs-on: ubuntu-latest
@@ -147,7 +148,8 @@ jobs:
           echo "Polling ${URL} until the CDN serves the package..."
           for attempt in $(seq 1 60); do
             status=$(curl -s -o /dev/null -w '%{http_code}' -I "${URL}" || echo "000")
-            if [ "${status}" -ge 200 ] && [ "${status}" -lt 400 ]; then
+            # 2xx only: a HEAD is not followed, so a redirect would pass before the content is servable.
+            if [ "${status}" -ge 200 ] && [ "${status}" -lt 300 ]; then
               echo "Package available in CDN (status ${status}) after attempt ${attempt}"
               exit 0
             fi

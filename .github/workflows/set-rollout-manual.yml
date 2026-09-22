@@ -32,6 +32,7 @@ permissions:
 jobs:
   set-manual-by-path-rollout:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       # set-rollout-action records the rollout as a GitHub deployment.
