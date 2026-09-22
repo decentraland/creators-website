@@ -11,20 +11,26 @@ export function createQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } },
     queryCache: new QueryCache({
-      onError: (error, query) => captureError(error, { flow: 'query', query_key: keyOf(query.queryKey) })
+      onError: (error, query) => {
+        if (isWalletRejection(error)) return
+        captureError(error, { flow: 'query', query_key: nameOf(query.queryKey) })
+      }
     }),
     mutationCache: new MutationCache({
       onError: (error, _variables, _context, mutation) => {
         // Dismissing the wallet prompt is a choice, not a failure.
         if (isWalletRejection(error)) return
-        captureError(error, { flow: 'mutation', mutation_key: keyOf(mutation.options.mutationKey) })
+        captureError(error, { flow: 'mutation', mutation_key: nameOf(mutation.options.mutationKey) })
       }
     })
   })
 }
 
-/** A key as a readable string — a mutation may have none. */
-function keyOf(key: readonly unknown[] | undefined): string | undefined {
-  if (!key || key.length === 0) return undefined
-  return key.map(part => (typeof part === 'object' && part !== null ? JSON.stringify(part) : String(part))).join('/')
+/**
+ * Only the key's first segment, the query's name. The rest carries ids, addresses and free-text input
+ * such as a search term, none of which belongs in a third party's error log.
+ */
+function nameOf(key: readonly unknown[] | undefined): string | undefined {
+  const name = key?.[0]
+  return typeof name === 'string' ? name : undefined
 }
