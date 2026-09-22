@@ -11,6 +11,7 @@ import { type ItemDraftPayload } from '~/lib/itemFactory'
 import { type Collection } from '~/lib/collections'
 import { ItemType } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
+import { type SpringBoneParamsByName } from '~/lib/springBones'
 import { errorCode, track } from '~/lib/analytics'
 import { executeUpload, planUpload, type UploadDraft } from '~/lib/uploadItems'
 import {
@@ -37,15 +38,23 @@ import { LeaveConfirmModal } from './LeaveConfirmModal'
 import { UploadErrorModal } from './UploadErrorModal'
 import * as S from './AddItemsModal.styles'
 
+/** Values decided before the modal opened (the Blender live preview's tuning), applied to every draft. */
+export type AddItemsPrefill = {
+  category?: string
+  hides?: string[]
+  springBoneParams?: SpringBoneParamsByName
+}
+
 type Props = {
   collection: Collection
   address: string
   /** The files picked or dropped on the collection page; processing starts immediately. */
   files: File[]
+  prefill?: AddItemsPrefill
   onClose: () => void
 }
 
-export function AddItemsModal({ collection, address, files, onClose }: Props) {
+export function AddItemsModal({ collection, address, files, prefill, onClose }: Props) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const showToast = useNotifications(state => state.showToast)
@@ -69,11 +78,21 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
   const collectionItemsQuery = useAllCollectionItems(address, collection.id)
   const collectionItems = useMemo(() => collectionItemsQuery.data ?? [], [collectionItemsQuery.data])
 
-  // Load + analyze each dropped file once.
+  // Load + analyze each dropped file once. The prefill is what it was when the modal opened.
+  const prefillRef = useRef(prefill)
   useEffect(() => {
     for (const { draft, file } of initialDraftsRef.current ?? []) {
       void processDraftFile(file)
-        .then(patch => dispatch({ type: 'draftAnalyzed', id: draft.id, patch }))
+        .then(patch =>
+          dispatch({
+            type: 'draftAnalyzed',
+            id: draft.id,
+            patch:
+              prefillRef.current?.category && patch.type === ItemType.WEARABLE
+                ? { ...patch, category: prefillRef.current.category }
+                : patch
+          })
+        )
         .catch((error: unknown) => {
           if (error instanceof ItemFileError) {
             dispatch({
@@ -156,6 +175,8 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
       description: draft.description,
       tags: draft.tags,
       blockVrmExport: draft.blockVrmExport,
+      hides: draft.type === ItemType.WEARABLE ? prefill?.hides : undefined,
+      springBoneParams: draft.type === ItemType.WEARABLE ? prefill?.springBoneParams : undefined,
       contents: draft.contents,
       model: draft.model,
       metrics: draft.metrics ?? {},
@@ -176,6 +197,7 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
       // reads here as `item_count` (see design/TRACKING_SPEC.md).
       track('Add items', {
         collectionId: collection.id,
+        origin: prefill ? 'live_preview' : 'collection',
         item_count: result.savedDraftIds.length,
         failed_count: result.failedDraftIds.length,
         error: result.failedDraftIds.length > 0 ? (result.failureReason ?? 'generic') : undefined

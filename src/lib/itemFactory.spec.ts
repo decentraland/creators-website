@@ -137,6 +137,32 @@ describe('buildItem', () => {
     expect(item.data.removesDefaultHiding).toEqual(['hands'])
   })
 
+  it('writes prefilled hides into the data and every representation, with the hands rule', async () => {
+    const { item } = await buildItem({ ...baseDraft, hides: ['upper_body', 'hair'] })
+    expect(item.data.hides).toEqual(['upper_body', 'hair'])
+    expect(item.data.removesDefaultHiding).toEqual(['hands'])
+    expect(item.data.representations.map(representation => representation.overrideHides)).toEqual([
+      ['upper_body', 'hair'],
+      ['upper_body', 'hair']
+    ])
+  })
+
+  it('keys prefilled spring bone params by the hashed model of each representation', async () => {
+    const params = {
+      springbone_tail: {
+        stiffness: 1,
+        gravityPower: 0,
+        gravityDir: [0, -1, 0] as [number, number, number],
+        drag: 0.5,
+        isRoot: true
+      }
+    }
+    const { item } = await buildItem({ ...baseDraft, springBoneParams: params })
+    const hash = item.contents['male/model.glb']
+    expect(item.data.springBones).toEqual({ version: 1, models: { [hash]: params } })
+    expect((await buildItem(baseDraft)).item.data.springBones).toBeUndefined()
+  })
+
   it('builds emotes with loop derived from the play mode', async () => {
     const { item } = await buildItem({
       ...baseDraft,

@@ -908,5 +908,58 @@
       "USE_WEBSOCKET": "Usar websockets",
       "OPEN_EXTERNAL_LINK": "Abrir enlaces externos"
     }
+  },
+  "live_preview": {
+    "title": "Vista previa en vivo de Blender",
+    "status": {
+      "connected": "Conectado",
+      "connecting": "Conectando…",
+      "disconnected": "Desconectado",
+      "error": "Error"
+    },
+    "bridge_url": "URL de Blender",
+    "connect": "Conectar",
+    "disconnect": "Desconectar",
+    "refresh": "Actualizar",
+    "updated": "Actualizado {time_ago}",
+    "updated_now": "justo ahora",
+    "waiting": "Esperando una exportación desde Blender. Haz clic en Preview Wearable o Preview Emote en el panel Decentraland Tools.",
+    "properties": "Propiedades",
+    "loop": "Repetir",
+    "add_to_collection": "Agregar a una colección",
+    "mobile_hint": "Ajustar y agregar a una colección se hace en la computadora donde corre Blender. Aquí puedes previsualizar el modelo.",
+    "errors": {
+      "unreachable": "No pudimos conectarnos con Blender. Revisa que la vista previa en vivo esté activa y que la URL sea correcta.",
+      "permission_denied": "Tu navegador bloqueó la conexión con Blender. Permite el acceso a la red local para este sitio.",
+      "bridge_response": "Blender respondió con un error. Intenta enviar la vista previa de nuevo.",
+      "invalid_state": "Blender envió algo que no pudimos leer. Actualiza el complemento Decentraland Tools.",
+      "model_fetch": "No pudimos descargar el modelo desde Blender. Intenta enviar la vista previa de nuevo."
+    },
+    "local_network": {
+      "prompt": {
+        "title": "Permite el acceso a la red local",
+        "description": "Tu navegador está pidiendo permiso para conectarse a tu red local. Haz clic en Permitir para que esta página pueda llegar a Blender."
+      },
+      "denied": {
+        "title": "Acceso a la red local bloqueado",
+        "description": "Tu navegador bloqueó el acceso de esta página a tu red local. Para conectarte con Blender:",
+        "step_site_info": "Abre la información del sitio junto a la barra de direcciones",
+        "step_allow": "Permite el acceso a la red local",
+        "step_reload": "Recarga esta página",
+        "reload": "Recargar página",
+        "retry": "Reintentar conexión"
+      }
+    },
+    "sign_in": {
+      "title": "Inicia sesión para continuar",
+      "description": "Inicia sesión para agregar este ítem a una de tus colecciones."
+    },
+    "add": {
+      "title": "Agregar a una colección",
+      "description": "Elige la colección en borrador a la que se agregará el ítem.",
+      "empty": "Todavía no tienes colecciones en borrador. Crea una para continuar.",
+      "new_collection": "Nueva colección",
+      "continue": "Continuar"
+    }
   }
 }
