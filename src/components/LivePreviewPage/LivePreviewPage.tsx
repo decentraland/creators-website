@@ -29,6 +29,7 @@ import { type SpringBonesModel } from '~/hooks/useSpringBones'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
 import { type AvatarAttributes } from '~/lib/avatar'
+import { EmotePlayMode } from '~/lib/itemFactory'
 import { ItemType } from '~/lib/items'
 import { MODEL_KEY, buildDefinition, isEmoteState, resolveBridgeUrl } from '~/lib/livePreview'
 import { captureError } from '~/lib/monitoring'
@@ -275,7 +276,7 @@ const LivePreviewPage = () => {
     setAdding({
       file: new File([glb], MODEL_KEY, { type: 'model/gltf-binary' }),
       prefill: isEmote
-        ? {}
+        ? { playMode: loop ? EmotePlayMode.LOOP : EmotePlayMode.SIMPLE }
         : {
             category: category ?? undefined,
             hides,

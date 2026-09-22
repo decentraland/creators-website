@@ -190,6 +190,20 @@ describe('LivePreviewPage', () => {
     await screen.findByTestId('collection-page')
   })
 
+  it('prefills the play mode when adding a streamed emote', async () => {
+    serve({ version: 1, type: 'emote', category: '' })
+    renderPage()
+    await screen.findByTestId('avatar-preview')
+    const user = userEvent.setup()
+    await user.click(screen.getByTestId('live-preview-loop'))
+    await user.click(screen.getByTestId('live-preview-add'))
+    await user.click(screen.getByTestId('live-preview-pick-target'))
+    await user.click(await screen.findByTestId('live-preview-pick-target-option-c1'))
+    await user.click(screen.getByTestId('live-preview-pick-confirm'))
+    await screen.findByTestId('add-items-modal')
+    expect(addItemsProps[addItemsProps.length - 1].prefill).toEqual({ playMode: 'simple' })
+  })
+
   it('asks to sign in before adding when there is no session', async () => {
     useWallet.setState({ session: null, restored: true })
     serve({ version: 1, type: 'wearable', category: 'hat' })

@@ -7,7 +7,7 @@ import { allCollectionItemsKey, useAllCollectionItems } from '~/hooks/useCollect
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { installBackGuard } from '~/lib/backGuard'
 import { ItemFileError, MAX_THUMBNAIL_FILE_SIZE, VIDEO_PATH, toMB } from '~/lib/itemFiles'
-import { type ItemDraftPayload } from '~/lib/itemFactory'
+import { type EmotePlayMode, type ItemDraftPayload } from '~/lib/itemFactory'
 import { type Collection } from '~/lib/collections'
 import { ItemType } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
@@ -43,6 +43,16 @@ export type AddItemsPrefill = {
   category?: string
   hides?: string[]
   springBoneParams?: SpringBoneParamsByName
+  /** Emotes only. */
+  playMode?: EmotePlayMode
+}
+
+/** The live preview's tuning on top of what the file itself said: category for wearables, play mode for emotes. */
+function applyPrefill(patch: Partial<ItemDraft>, prefill: AddItemsPrefill | undefined): Partial<ItemDraft> {
+  if (!prefill) return patch
+  if (patch.type === ItemType.WEARABLE && prefill.category) return { ...patch, category: prefill.category }
+  if (patch.type === ItemType.EMOTE && prefill.playMode) return { ...patch, playMode: prefill.playMode }
+  return patch
 }
 
 type Props = {
@@ -87,10 +97,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
           dispatch({
             type: 'draftAnalyzed',
             id: draft.id,
-            patch:
-              prefillRef.current?.category && patch.type === ItemType.WEARABLE
-                ? { ...patch, category: prefillRef.current.category }
-                : patch
+            patch: applyPrefill(patch, prefillRef.current)
           })
         )
         .catch((error: unknown) => {
