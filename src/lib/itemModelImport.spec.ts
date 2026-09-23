@@ -41,6 +41,9 @@ const item: Item = {
 const file = new File(['glb'], 'hat.glb')
 
 beforeEach(() => {
+  // jsdom's createObjectURL only accepts its own Blob class; the metrics loader is mocked anyway.
+  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:model')
+  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
   loadItemFile.mockReset().mockResolvedValue({
     contents: { 'hat.glb': new Blob(['new']), 'thumbnail.png': new Blob(['t']) },
     model: 'hat.glb',
