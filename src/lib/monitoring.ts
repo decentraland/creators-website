@@ -197,8 +197,13 @@ export function initSentry(): void {
     // Baked in by vite.config, which uploads the source maps under this exact string — a release name
     // that doesn't match byte for byte means no map is ever applied and every stack stays minified.
     release: __SENTRY_RELEASE__,
-    integrations: [Sentry.browserTracingIntegration()],
+    // Replay defaults mask every text node and block all media, so a recording never carries what
+    // the creator typed or uploaded — only the layout and the clicks that led to the failure.
+    integrations: [Sentry.browserTracingIntegration(), Sentry.replayIntegration()],
     tracesSampleRate: 0.01,
+    // Replays draw on the quota of the shared project, so the rates match the legacy builder's.
+    replaysSessionSampleRate: 0.01,
+    replaysOnErrorSampleRate: 0.01,
     sendDefaultPii: false,
     // Expected user actions, not bugs.
     ignoreErrors: [/user rejected/i, /user denied/i, 'ResizeObserver loop limit exceeded'],
