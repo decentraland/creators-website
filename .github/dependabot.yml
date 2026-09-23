@@ -1,21 +1,58 @@
-# Dependabot keeps every npm dependency and every SHA-pinned GitHub Action current.
+# Dependabot keeps direct npm dependencies and the SHA-pinned GitHub Actions current, in a handful of
+# grouped PRs rather than one per package.
 # Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 
 version: 2
 updates:
   - package-ecosystem: 'npm'
     directory: '/'
-    open-pull-requests-limit: 20
     schedule:
       interval: 'weekly'
+    open-pull-requests-limit: 3
     versioning-strategy: auto
     commit-message:
       prefix: 'chore: '
+    groups:
+      dcl:
+        patterns: ['@dcl/*', 'decentraland-*']
+      dev-tooling:
+        dependency-type: 'development'
+        update-types: ['minor', 'patch']
+      runtime-minor-patch:
+        dependency-type: 'production'
+        update-types: ['minor', 'patch']
+    ignore:
+      # Pinned by decentraland-ui2's peer dependencies (React 18, MUI 5, @dcl/hooks 1, @dcl/schemas 26):
+      # a major here fails to install or type-check until ui2 moves first.
+      - dependency-name: 'react'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'react-dom'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@types/react'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@types/react-dom'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@mui/*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@dcl/hooks'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@dcl/schemas'
+        update-types: ['version-update:semver-major']
+      # Deliberate migrations with code changes, not drive-by bumps.
+      - dependency-name: 'ethers'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'react-router*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'react-resizable-panels'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: 'github-actions'
     directory: '/'
-    open-pull-requests-limit: 10
     schedule:
-      interval: 'weekly'
+      interval: 'monthly'
+    open-pull-requests-limit: 2
     commit-message:
       prefix: 'chore: '
+    groups:
+      actions:
+        patterns: ['*']
