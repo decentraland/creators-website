@@ -60,9 +60,6 @@ function getPublicUrls() {
     }
   }
   if (isVercel) {
-    // Vercel preview/production deployments: assets serve from the domain root.
-    // An empty string makes Vite use a relative base ("./"), which React Router
-    // normalises to "/." and then fails to strip from "/", leaving all routes unmatched.
     console.log('Using root public url for Vercel')
     return {
       VITE_BASE_URL: '/'
