@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { BodyPartCategory, WearableCategory } from '@dcl/schemas'
+import { BodyPartCategory, BodyShape, WearableCategory } from '@dcl/schemas'
 import {
   LivePreviewError,
   blobsAreEqual,
@@ -19,6 +19,8 @@ describe('resolveBridgeUrl', () => {
     expect(resolveBridgeUrl('http://127.0.0.1:9000/')).toBe('http://127.0.0.1:9000')
     expect(resolveBridgeUrl('https://evil.example.com')).toBe('http://localhost:8080')
     expect(resolveBridgeUrl('not a url')).toBe('http://localhost:8080')
+    expect(resolveBridgeUrl('99999')).toBe('http://localhost:8080')
+    expect(resolveBridgeUrl('0')).toBe('http://localhost:8080')
   })
 })
 
@@ -57,6 +59,12 @@ describe('isSameModelMetadata', () => {
       )
     ).toBe(false)
     expect(isSameModelMetadata(null, { version: 1 })).toBe(false)
+    expect(
+      isSameModelMetadata(
+        { version: 1, bodyShapes: [BodyShape.MALE, BodyShape.FEMALE] },
+        { version: 2, bodyShapes: [BodyShape.FEMALE, BodyShape.MALE] }
+      )
+    ).toBe(true)
   })
 })
 

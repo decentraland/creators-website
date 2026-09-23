@@ -56,7 +56,10 @@ export function isLocalHostname(hostname: string): boolean {
  */
 export function resolveBridgeUrl(param: string | null): string {
   if (!param) return DEFAULT_BRIDGE_URL
-  if (/^\d+$/.test(param)) return `http://localhost:${param}`
+  if (/^\d+$/.test(param)) {
+    const port = Number(param)
+    return port >= 1 && port <= 65535 ? `http://localhost:${param}` : DEFAULT_BRIDGE_URL
+  }
   try {
     const url = new URL(param)
     if ((url.protocol === 'http:' || url.protocol === 'https:') && isLocalHostname(url.hostname)) {
@@ -134,7 +137,7 @@ export function isSameModelMetadata(a: BridgeState | null, b: BridgeState): bool
     a.type === b.type &&
     a.name === b.name &&
     a.category === b.category &&
-    JSON.stringify(a.bodyShapes ?? []) === JSON.stringify(b.bodyShapes ?? [])
+    JSON.stringify([...(a.bodyShapes ?? [])].sort()) === JSON.stringify([...(b.bodyShapes ?? [])].sort())
   )
 }
 

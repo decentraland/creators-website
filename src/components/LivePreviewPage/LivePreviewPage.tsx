@@ -266,7 +266,7 @@ const LivePreviewPage = () => {
   // Add to collection: the model is snapshotted so pushes while the modals are open don't affect it.
   const [adding, setAdding] = useState<{ file: File; prefill: AddItemsPrefill } | null>(null)
   const session = useWallet(s => s.session)
-  function addToCollection() {
+  const addToCollection = useCallback(() => {
     if (!glb || !state) return
     track('Live preview add to collection', {
       item_type: isEmote ? 'emote' : 'wearable',
@@ -283,7 +283,7 @@ const LivePreviewPage = () => {
             springBoneParams: hasSprings && Object.keys(springParams).length > 0 ? springParams : undefined
           }
     })
-  }
+  }, [glb, state, isEmote, bridge.pushCount, session, loop, category, hides, hasSprings, springParams])
 
   const [isCustomizerOpen, setCustomizerOpen] = useState(false)
   const closeCustomizer = useCallback(() => setCustomizerOpen(false), [])
