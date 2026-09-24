@@ -20,6 +20,7 @@ const CollectionDetailPage = lazy(() =>
 )
 const ItemEditorPage = lazy(() => import('~/components/ItemEditorPage').then(m => ({ default: m.ItemEditorPage })))
 const CurationPage = lazy(() => import('~/components/CurationPage').then(m => ({ default: m.CurationPage })))
+const LivePreviewPage = lazy(() => import('~/components/LivePreviewPage').then(m => ({ default: m.LivePreviewPage })))
 const NotFoundPage = lazy(() => import('~/components/NotFoundPage').then(m => ({ default: m.NotFoundPage })))
 
 const PageFallback = () => {
@@ -30,13 +31,15 @@ const PageFallback = () => {
   )
 }
 
-const EDITOR_PATH = '/collections/editor'
+// Fullscreen workspaces: no navbar, no footer, no page scroll.
+const FULLSCREEN_PATHS = ['/collections/editor', '/live-preview']
 
 // Stable page names for the funnel: a raw pathname carries collection ids and would never group.
 const PAGE_NAMES: Record<string, string> = {
   '/collections': 'collections',
   '/collections/editor': 'item_editor',
-  '/curation': 'curation'
+  '/curation': 'curation',
+  '/live-preview': 'live_preview'
 }
 
 function pageName(pathname: string): string {
@@ -47,8 +50,11 @@ function pageName(pathname: string): string {
 const App = () => {
   const location = useLocation()
   const maintenance = useFeatureFlag(FeatureFlag.MAINTENANCE)
-  // The item editor is a fullscreen workspace: no navbar, no footer, no page scroll.
-  const isFullscreen = !maintenance.enabled && location.pathname.replace(/\/+$/, '') === EDITOR_PATH
+  const livePreview = useFeatureFlag(FeatureFlag.BLENDER_LIVE_PREVIEW)
+  const path = location.pathname.replace(/\/+$/, '')
+  // With its flag off the live preview route is a not-found page, which keeps the shell.
+  const isFullscreen =
+    !maintenance.enabled && FULLSCREEN_PATHS.includes(path) && (path !== '/live-preview' || livePreview.enabled)
 
   // Auth bootstrap lives at the app root so the silent session restore (and the return from /auth)
   // doesn't depend on any layout component staying mounted.
@@ -91,6 +97,18 @@ const App = () => {
                 <Route path="/collections/editor" element={<ItemEditorPage />} />
                 <Route path="/collections/:collectionId" element={<CollectionDetailPage />} />
                 <Route path="/curation" element={<CurationPage />} />
+                <Route
+                  path="/live-preview"
+                  element={
+                    livePreview.enabled ? (
+                      <LivePreviewPage />
+                    ) : livePreview.isLoading ? (
+                      <PageFallback />
+                    ) : (
+                      <NotFoundPage />
+                    )
+                  }
+                />
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Suspense>

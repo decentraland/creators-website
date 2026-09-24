@@ -5,6 +5,7 @@ export const Workspace = styled.div`
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   background: ${theme.editor.bg};
   color: ${theme.colors.white};
 `
@@ -71,6 +72,7 @@ export const CenterPanel = styled.div`
   flex-direction: column;
   height: 100%;
   min-width: 0;
+  flex: 1;
 `
 
 export const PreviewArea = styled.div`
@@ -84,6 +86,7 @@ export const PreviewEmpty = styled.div`
   place-items: center;
   height: 100%;
   padding: 24px;
+  white-space: pre-wrap;
   text-align: center;
   color: ${theme.editor.label};
 `
@@ -139,7 +142,7 @@ export const SectionHeader = styled.button`
   font: inherit;
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
   text-transform: uppercase;
   text-align: left;
 
@@ -612,12 +615,15 @@ export const MobileWorkspace = styled.div`
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   background: ${theme.editor.bg};
   color: ${theme.colors.white};
 `
 
 export const MobilePreviewArea = styled.div`
   position: relative;
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
 `

@@ -100,6 +100,10 @@ Unit tests for the logic layer, e2e for user flows.
 - **Test functionality, not implementation (hard rule).** Write tests from the user's / use-case perspective: given this input or action, this observable outcome. Never assert on internals (call order, private state shape, intermediate steps) that a refactor could change without changing behavior. After a refactor, don't add or keep tests pinned to the old implementation's specifics — if a test breaks while behavior didn't, rewrite or delete it rather than patching it to match the new internals. Fewer meaningful use-case tests beat many noisy atomic ones.
 - **Select by `data-testid`, never by CSS class (hard rule).** Add a stable `data-testid` and select on `[data-testid="…"]`; for stateful/variant elements assert on `data-*` attributes. Styling class names are presentational and change with the design.
 
+### Analytics and error reporting (part of every feature plan)
+
+Every feature plan and spec includes an analytics section before implementation starts: the funnel of the feature's usage (entry → key steps → outcome) or the product metrics that match its business impact, as Segment events through `lib/analytics#track`, with names and props recorded in `design/TRACKING_SPEC.md` in the same change. Where a step can fail in a way the team must know about (a request the user can't recover from, a data or schema mismatch, an unexpected throw), report it to Sentry through `lib/monitoring#captureError` with a `flow` tag; expected states the user can fix themselves (offline, permission denied, validation warnings) are tracked as events, not errors. A feature without its events and error reporting is not "done".
+
 ### Responsive (standing requirement)
 
 Every feature or edit must work on mobile as well as desktop — responsive behavior is part of "done" for any UI change. Verify at a narrow viewport (≤ 768px, the primary mobile breakpoint) as well as desktop; keep touch targets ~44px; hover-only affordances need a tap/focus equivalent; anchored overlays must not spill off-screen on narrow widths.

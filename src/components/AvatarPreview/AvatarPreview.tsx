@@ -81,20 +81,21 @@ export function AvatarPreview({
 
     // Created at mount, not in onLoad: Babylon fires PLAY right after LOAD and a late subscriber misses it.
     const controller = WearablePreview.createController(id)
-    const setPlaying = useAvatarPreview.getState().setPlaying
+    const { setPlaying, endEmote } = useAvatarPreview.getState()
     const onPlay = () => setPlaying(true)
-    const onStop = () => setPlaying(false)
+    const onPause = () => setPlaying(false)
+    const onEnd = () => endEmote()
     controller.emote.events.on(PreviewEmoteEventType.ANIMATION_PLAY, onPlay)
-    controller.emote.events.on(PreviewEmoteEventType.ANIMATION_PAUSE, onStop)
-    controller.emote.events.on(PreviewEmoteEventType.ANIMATION_END, onStop)
+    controller.emote.events.on(PreviewEmoteEventType.ANIMATION_PAUSE, onPause)
+    controller.emote.events.on(PreviewEmoteEventType.ANIMATION_END, onEnd)
     onControllerRef.current?.(controller)
 
     return () => {
       bridge.dispose()
       bridgeRef.current = null
       controller.emote.events.off(PreviewEmoteEventType.ANIMATION_PLAY, onPlay)
-      controller.emote.events.off(PreviewEmoteEventType.ANIMATION_PAUSE, onStop)
-      controller.emote.events.off(PreviewEmoteEventType.ANIMATION_END, onStop)
+      controller.emote.events.off(PreviewEmoteEventType.ANIMATION_PAUSE, onPause)
+      controller.emote.events.off(PreviewEmoteEventType.ANIMATION_END, onEnd)
       setPlaying(false)
     }
   }, [id])
