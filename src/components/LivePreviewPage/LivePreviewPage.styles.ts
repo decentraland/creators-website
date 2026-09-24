@@ -63,6 +63,23 @@ export const StatusPill = styled.span`
   }
 `
 
+export const InputRow = styled.div`
+  display: flex;
+  gap: 8px;
+
+  & > input {
+    flex: 1;
+    min-width: 0;
+  }
+`
+
+export const ConnectButton = styled(Button)`
+  &[data-size='sm'] {
+    flex: none;
+    height: 46px;
+  }
+`
+
 export const AddButton = styled(Button)`
   width: 100%;
 `
@@ -78,8 +95,16 @@ export const Row = styled.div`
 `
 
 export const Meta = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 12px;
   color: ${theme.editor.label};
+
+  & svg {
+    width: 14px;
+    height: 14px;
+  }
 `
 
 export const ErrorText = styled.p`

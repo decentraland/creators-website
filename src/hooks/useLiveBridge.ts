@@ -23,6 +23,8 @@ export type LiveBridge = {
   state: BridgeState | null
   glb: Blob | null
   lastUpdateAt: number | null
+  /** When a refresh (button or tab return) last confirmed the model on screen is the latest export. */
+  lastCheckedAt: number | null
   /** How many models this session applied. */
   pushCount: number
   isRefreshing: boolean
@@ -49,6 +51,7 @@ export function useLiveBridge(bridgeUrl: string): LiveBridge {
   const [state, setState] = useState<BridgeState | null>(null)
   const [glb, setGlb] = useState<Blob | null>(null)
   const [lastUpdateAt, setLastUpdateAt] = useState<number | null>(null)
+  const [lastCheckedAt, setLastCheckedAt] = useState<number | null>(null)
   const [pushCount, setPushCount] = useState(0)
   const [isRefreshing, setRefreshing] = useState(false)
 
@@ -60,6 +63,9 @@ export function useLiveBridge(bridgeUrl: string): LiveBridge {
   const glbRef = useRef<Blob | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  // A refresh asks without `since`: a long-polling bridge would otherwise hold the request, and the
+  // spinner with it, until the next export.
+  const forcedRef = useRef(false)
   // Funnel events fire once per connection, and once per failure kind.
   const announcedRef = useRef(false)
   const lastErrorRef = useRef<LiveBridgeErrorCode | null>(null)
@@ -78,23 +84,31 @@ export function useLiveBridge(bridgeUrl: string): LiveBridge {
     abortRef.current = controller
     const startedAt = Date.now()
     const previousVersion = versionRef.current
+    const forced = forcedRef.current
+    forcedRef.current = false
     let delay = POLL_INTERVAL_MS
     try {
-      const next = await fetchBridgeState(bridgeUrl, { since: previousVersion, signal: controller.signal })
+      const next = await fetchBridgeState(bridgeUrl, {
+        since: forced ? null : previousVersion,
+        signal: controller.signal
+      })
       // After every await: a disconnect mid-flight must not overwrite the disconnected status.
       if (!connectedRef.current) return
       setStatus('connected')
       setErrorCode(null)
       lastErrorRef.current = null
-      const longPoll = Date.now() - startedAt >= LONG_POLL_FALLBACK_MS
-      if (!announcedRef.current) {
+      const longPoll = !forced && Date.now() - startedAt >= LONG_POLL_FALLBACK_MS
+      if (!announcedRef.current && !forced) {
         announcedRef.current = true
         track('Live preview connect', { long_poll: longPoll })
       }
 
       const changed = next.version !== previousVersion
       delay = changed || longPoll ? 0 : POLL_INTERVAL_MS
-      if (!changed) return
+      if (!changed) {
+        if (forced) setLastCheckedAt(Date.now())
+        return
+      }
 
       const model = await fetchModelBlob(bridgeUrl, controller.signal)
       if (!connectedRef.current) return
@@ -102,7 +116,10 @@ export function useLiveBridge(bridgeUrl: string): LiveBridge {
       if (!connectedRef.current) return
       versionRef.current = next.version
       // A save or an exporter side effect re-exported an unchanged scene: nothing to redraw.
-      if (sameBytes && isSameModelMetadata(stateRef.current, next)) return
+      if (sameBytes && isSameModelMetadata(stateRef.current, next)) {
+        if (forced) setLastCheckedAt(Date.now())
+        return
+      }
 
       stateRef.current = next
       setState(next)
@@ -182,6 +199,7 @@ export function useLiveBridge(bridgeUrl: string): LiveBridge {
   const refresh = useCallback(() => {
     if (!connectedRef.current) return
     setRefreshing(true)
+    forcedRef.current = true
     clearTimer()
     if (abortRef.current) abortRef.current.abort()
     else void poll()
@@ -232,6 +250,7 @@ export function useLiveBridge(bridgeUrl: string): LiveBridge {
     state,
     glb,
     lastUpdateAt,
+    lastCheckedAt,
     pushCount,
     isRefreshing,
     connect,

@@ -127,6 +127,51 @@ describe('useLiveBridge', () => {
     expect(result.current.permission).toBe('denied')
   })
 
+  it('refresh answers right away on a long-polling bridge instead of waiting for the next export', async () => {
+    // Long-poll: a `since` request never answers while the version stands; a plain ask answers at once.
+    const fetchMock = vi.fn((input: string | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes('since=')) {
+        return new Promise<Response>((_, reject) =>
+          init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
+        )
+      }
+      if (url.includes('/state')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ version: 1, type: 'wearable', name: 'Hat', category: 'hat' }))
+        )
+      }
+      return Promise.resolve(new Response(new Uint8Array([1, 2, 3])))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const { result } = renderHook(() => useLiveBridge(BRIDGE))
+    await settle()
+    expect(result.current.pushCount).toBe(1)
+
+    act(() => result.current.refresh())
+    expect(result.current.isRefreshing).toBe(true)
+    expect(result.current.lastCheckedAt).toBeNull()
+    await settle()
+    expect(result.current.isRefreshing).toBe(false)
+    expect(result.current.status).toBe('connected')
+    expect(result.current.pushCount).toBe(1)
+    // Nothing new: the check is confirmed so the page can say "up to date".
+    expect(result.current.lastCheckedAt).not.toBeNull()
+  })
+
+  it('a refresh that brings a new export applies it without claiming "up to date"', async () => {
+    const bridge = { version: 1, bytes: [1, 2, 3] }
+    serve(bridge)
+    const { result } = renderHook(() => useLiveBridge(BRIDGE))
+    await settle()
+    bridge.version = 2
+    bridge.bytes = [4, 5, 6]
+    act(() => result.current.refresh())
+    await settle()
+    expect(result.current.pushCount).toBe(2)
+    expect(result.current.lastCheckedAt).toBeNull()
+  })
+
   it('stops polling on disconnect and starts over on connect', async () => {
     const fetchMock = serve({ version: 1, bytes: [1] })
     const { result } = renderHook(() => useLiveBridge(BRIDGE))

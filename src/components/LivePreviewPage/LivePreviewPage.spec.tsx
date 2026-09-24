@@ -122,6 +122,11 @@ describe('LivePreviewPage', () => {
     await screen.findByTestId('avatar-preview')
     expect(screen.getByTestId('live-preview-status')).toHaveAttribute('data-status', 'connected')
     expect(screen.getByTestId('live-preview-updated')).toBeInTheDocument()
+    expect(screen.getByTestId('live-preview-updated')).not.toHaveAttribute('data-up-to-date')
+
+    await userEvent.click(screen.getByTestId('live-preview-refresh'))
+    await waitFor(() => expect(screen.getByTestId('live-preview-updated')).toHaveAttribute('data-up-to-date'))
+    expect(screen.getByTestId('live-preview-updated')).toHaveTextContent(/up to date/i)
     await waitFor(() => expect(validate).toHaveBeenCalled())
     const [source, ctx] = validate.mock.calls[0]
     expect(source).toMatchObject({ kind: 'blob', mainFile: 'model.glb' })

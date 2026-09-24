@@ -922,6 +922,7 @@
     "disconnect": "Desconectar",
     "refresh": "Actualizar",
     "updated": "Actualizado {time_ago}",
+    "up_to_date": "Al día · actualizado {time_ago}",
     "updated_now": "justo ahora",
     "waiting": "Esperando un export desde Blender.\n Haz clic en Preview Wearable o Preview Emote en el panel Decentraland Tools.",
     "properties": "Propiedades",

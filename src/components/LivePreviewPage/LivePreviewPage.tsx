@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { BodyShape, PreviewRenderer, type IPreviewController } from '@dcl/schemas'
 import {
+  Check as CheckIcon,
   Close as CloseIcon,
   DesktopWindowsOutlined as DesktopIcon,
   InfoOutlined as InfoIcon,
@@ -59,14 +60,20 @@ const SPRING_HASH = 'live'
 const SPRING_BONES_PUSH_DELAY_MS = 500
 const TIME_AGO_TICK_MS = 30_000
 const JUST_NOW_MS = 60_000
+// How long the label acknowledges a refresh that found nothing new.
+const UP_TO_DATE_MS = 4_000
 const BOTH_SHAPES = [BodyShape.MALE, BodyShape.FEMALE]
 // Panel sizes as react-resizable-panels wants them, percentages of the group.
 const LEFT_DEFAULT_PCT = 25
 const LEFT_MIN_PCT = 18
 const CENTER_MIN_PCT = 25
 
-/** Isolated so the periodic tick keeping the label fresh doesn't re-render the page. */
-function UpdatedLabel({ timestamp }: { timestamp: number }) {
+/**
+ * How old the model on screen is. Background polling never touches it; a refresh that found nothing
+ * new briefly turns it into an "up to date" acknowledgement. Isolated so the periodic tick keeping
+ * the time fresh doesn't re-render the page.
+ */
+function UpdatedLabel({ timestamp, checkedAt }: { timestamp: number; checkedAt: number | null }) {
   const { t } = useTranslation()
   const locale = useLocale(state => state.locale)
   const [now, setNow] = useState(() => Date.now())
@@ -74,10 +81,22 @@ function UpdatedLabel({ timestamp }: { timestamp: number }) {
     const interval = setInterval(() => setNow(Date.now()), TIME_AGO_TICK_MS)
     return () => clearInterval(interval)
   }, [])
+  const [upToDate, setUpToDate] = useState(false)
+  useEffect(() => {
+    if (checkedAt === null) return
+    setUpToDate(true)
+    const timer = setTimeout(() => setUpToDate(false), UP_TO_DATE_MS)
+    return () => clearTimeout(timer)
+  }, [checkedAt])
   const timeAgo = now - timestamp < JUST_NOW_MS ? t('live_preview.updated_now') : formatTimeAgo(timestamp, locale, now)
   return (
-    <S.Meta data-testid="live-preview-updated" title={new Date(timestamp).toLocaleTimeString()}>
-      {t('live_preview.updated', { time_ago: timeAgo })}
+    <S.Meta
+      data-testid="live-preview-updated"
+      data-up-to-date={upToDate || undefined}
+      title={new Date(timestamp).toLocaleTimeString()}
+    >
+      {upToDate && <CheckIcon aria-hidden />}
+      {t(upToDate ? 'live_preview.up_to_date' : 'live_preview.updated', { time_ago: timeAgo })}
     </S.Meta>
   )
 }
@@ -385,47 +404,58 @@ const LivePreviewPage = () => {
                     </S.StatusPill>
                   }
                 >
-                  <S.Field>
+                  {/* A div, not the usual label: two labelable controls may not share one label. */}
+                  <S.Field as="div">
                     <S.FieldLabel>{t('live_preview.bridge_url')}</S.FieldLabel>
-                    <S.TextInput
-                      value={bridgeUrl}
-                      disabled={isConnected}
-                      placeholder="http://localhost:8080"
-                      data-testid="live-preview-bridge-url"
-                      onChange={event => setBridgeUrl(event.target.value)}
-                    />
+                    <S.InputRow>
+                      <S.TextInput
+                        value={bridgeUrl}
+                        disabled={isConnected}
+                        placeholder="http://localhost:8080"
+                        aria-label={t('live_preview.bridge_url')}
+                        data-testid="live-preview-bridge-url"
+                        onChange={event => setBridgeUrl(event.target.value)}
+                      />
+                      {isConnected ? (
+                        <S.ConnectButton
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          data-testid="live-preview-disconnect"
+                          onClick={bridge.disconnect}
+                        >
+                          {t('live_preview.disconnect')}
+                        </S.ConnectButton>
+                      ) : (
+                        <S.ConnectButton
+                          type="button"
+                          size="sm"
+                          data-testid="live-preview-connect"
+                          onClick={bridge.connect}
+                        >
+                          {t('live_preview.connect')}
+                        </S.ConnectButton>
+                      )}
+                    </S.InputRow>
                   </S.Field>
-                  <S.Row>
-                    {isConnected ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        data-testid="live-preview-disconnect"
-                        onClick={bridge.disconnect}
-                      >
-                        {t('live_preview.disconnect')}
-                      </Button>
-                    ) : (
-                      <Button type="button" size="sm" data-testid="live-preview-connect" onClick={bridge.connect}>
-                        {t('live_preview.connect')}
-                      </Button>
-                    )}
-                    {isConnected && (
+                  {isConnected && (
+                    <S.Row>
                       <Button
                         type="button"
                         size="sm"
                         variant="dark"
                         loading={bridge.isRefreshing}
-                        aria-label={t('live_preview.refresh')}
                         data-testid="live-preview-refresh"
                         onClick={bridge.refresh}
                       >
                         <RefreshIcon fontSize="small" />
+                        {t('live_preview.refresh')}
                       </Button>
-                    )}
-                    {bridge.lastUpdateAt !== null && <UpdatedLabel timestamp={bridge.lastUpdateAt} />}
-                  </S.Row>
+                      {bridge.lastUpdateAt !== null && (
+                        <UpdatedLabel timestamp={bridge.lastUpdateAt} checkedAt={bridge.lastCheckedAt} />
+                      )}
+                    </S.Row>
+                  )}
                   {bridge.errorCode && (
                     <S.ErrorText data-testid="live-preview-error">
                       {t(`live_preview.errors.${bridge.errorCode}`)}
