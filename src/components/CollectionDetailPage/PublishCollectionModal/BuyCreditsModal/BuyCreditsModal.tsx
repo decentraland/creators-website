@@ -32,6 +32,8 @@ const PACK_ART: Record<string, string> = {
   pack_50: packChest
 }
 const PACK_ART_ORDER = [packCoins, packCoins, packStacks, packChest]
+// The catalogue has four packs; the placeholders keep the grid's shape while it loads.
+const SKELETON_PACKS = 4
 
 function artFor(pack: CreditPack, index: number): string {
   return pack.artUrl ?? PACK_ART[pack.id] ?? PACK_ART_ORDER[index % PACK_ART_ORDER.length]
@@ -105,12 +107,18 @@ export function BuyCreditsModal({ balance, shortfall, onCancel, onBuy }: Props) 
           </S.Balance>
         </S.Header>
 
-        {!catalogue && (
-          <S.Loading data-testid="credit-packs-loading">
-            <S.Spinner aria-hidden />
-          </S.Loading>
-        )}
-        <S.Packs data-testid="credit-packs">
+        <S.Packs data-testid="credit-packs" aria-busy={!catalogue || undefined}>
+          {!catalogue &&
+            Array.from({ length: SKELETON_PACKS }, (_, index) => (
+              <S.Pack key={index} data-skeleton data-testid="credit-pack-skeleton" aria-hidden>
+                <S.Credits>
+                  <S.SkeletonLine className="skeleton" data-size="amount" />
+                  <S.SkeletonLine className="skeleton" data-size="label" />
+                </S.Credits>
+                <S.SkeletonArt className="skeleton" />
+                <S.SkeletonLine className="skeleton" data-size="price" />
+              </S.Pack>
+            ))}
           {packs.map((pack, index) => {
             const quantity = quantityOf(pack.id)
             return (

@@ -23,7 +23,7 @@ async function renderModal(props: Partial<React.ComponentProps<typeof BuyCredits
   render(<BuyCreditsModal balance={60} shortfall={240} onCancel={onCancel} onBuy={onBuy} {...props} />, {
     wrapper: Providers
   })
-  await waitFor(() => expect(screen.queryByTestId('credit-packs-loading')).not.toBeInTheDocument())
+  await waitFor(() => expect(screen.queryAllByTestId('credit-pack-skeleton')).toHaveLength(0))
   return { onBuy, onCancel }
 }
 
@@ -90,14 +90,14 @@ describe('BuyCreditsModal', () => {
     expect(screen.getByTestId('buy-credits-submit')).toBeEnabled()
   })
 
-  it('shows a spinner until the catalogue answers, and the bundled packs if it never does', async () => {
+  it('shows pack skeletons until the catalogue answers, and the bundled packs if it never does', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 503 }))
     render(<BuyCreditsModal balance={60} shortfall={240} onCancel={vi.fn()} onBuy={vi.fn()} />, {
       wrapper: Providers
     })
-    expect(screen.getByTestId('credit-packs-loading')).toBeInTheDocument()
+    expect(screen.getAllByTestId('credit-pack-skeleton')).toHaveLength(4)
     expect(await screen.findByTestId('credit-pack-pack_25')).toHaveAttribute('data-selected')
-    expect(screen.queryByTestId('credit-packs-loading')).not.toBeInTheDocument()
+    expect(screen.queryAllByTestId('credit-pack-skeleton')).toHaveLength(0)
   })
 
   it('can be dismissed', async () => {

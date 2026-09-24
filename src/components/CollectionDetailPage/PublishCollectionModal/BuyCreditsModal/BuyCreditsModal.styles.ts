@@ -1,8 +1,6 @@
 import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
 
-export { Spinner } from '~/styles/shared'
-
 const mobile = theme.media.maxWidth('mobile')
 
 export const Wrap = styled.div`
@@ -43,12 +41,6 @@ export const Balance = styled.p`
     gap: 2px;
     font-weight: 600;
   }
-`
-
-export const Loading = styled.div`
-  display: flex;
-  justify-content: center;
-  padding: 48px 0;
 `
 
 export const Packs = styled.div`
@@ -113,8 +105,44 @@ export const Pack = styled.div`
     opacity: 0.7;
   }
 
+  &[data-skeleton] {
+    cursor: default;
+    pointer-events: none;
+  }
+
   ${mobile} {
     padding: 20px 8px 12px;
+  }
+`
+
+export const SkeletonLine = styled.span`
+  display: block;
+  height: 16px;
+  width: 64px;
+
+  &[data-size='amount'] {
+    height: 28px;
+    width: 80px;
+  }
+  &[data-size='label'] {
+    height: 12px;
+    width: 56px;
+  }
+  &[data-size='price'] {
+    height: 20px;
+    width: 64px;
+  }
+`
+
+export const SkeletonArt = styled.span`
+  display: block;
+  width: 96px;
+  height: 96px;
+  border-radius: ${theme.radius.card};
+
+  ${mobile} {
+    width: 72px;
+    height: 72px;
   }
 `
 
