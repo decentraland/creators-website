@@ -47,13 +47,15 @@ type Props = {
 }
 
 /**
- * The credit-pack picker stacked on the publish wizard: every pack, one quantity stepper each (a
- * checkout buys copies of a single pack), the recommended one preselected, and the running total.
+ * The credit-pack picker stacked on the publish wizard: every pack, the recommended one preselected, and
+ * the running total. While a single pack can cover the shortfall it is a plain one-pack picker; only when
+ * none can does each pack grow a quantity stepper, since a checkout buys copies of a single pack.
  */
 export function BuyCreditsModal({ balance, shortfall, onCancel, onBuy }: Props) {
   const { t } = useTranslation()
   const { packs } = useCreditPacks()
   const recommended = useMemo(() => recommendPack(packs, shortfall), [packs, shortfall])
+  const withQuantities = useMemo(() => !packs.some(pack => pack.credits >= shortfall), [packs, shortfall])
   const [chosen, setChosen] = useState<PackSelection | null>(null)
   const [isBuying, setBuying] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -120,9 +122,9 @@ export function BuyCreditsModal({ balance, shortfall, onCancel, onBuy }: Props) 
                 })}
                 onClick={() => quantity === 0 && setQuantity(pack.id, 1)}
                 onKeyDown={event => {
-                  if (event.key === 'Enter' || event.key === ' ') {
+                  if ((event.key === 'Enter' || event.key === ' ') && quantity === 0) {
                     event.preventDefault()
-                    if (quantity === 0) setQuantity(pack.id, 1)
+                    setQuantity(pack.id, 1)
                   }
                 }}
               >
@@ -140,31 +142,33 @@ export function BuyCreditsModal({ balance, shortfall, onCancel, onBuy }: Props) 
                 </S.Credits>
                 <S.Art src={artFor(pack, index)} alt="" />
                 <S.Price>{formatUsd(pack.usd)}</S.Price>
-                <S.Stepper onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
-                  <S.StepButton
-                    type="button"
-                    disabled={quantity === 0 || isBuying}
-                    aria-label={t('publish_collection_modal.buy_credits.decrease', {
-                      credits: formatCredits(pack.credits)
-                    })}
-                    data-testid={`credit-pack-${pack.id}-decrease`}
-                    onClick={() => setQuantity(pack.id, quantity - 1)}
-                  >
-                    <RemoveIcon />
-                  </S.StepButton>
-                  <span data-testid={`credit-pack-${pack.id}-quantity`}>{quantity}</span>
-                  <S.StepButton
-                    type="button"
-                    disabled={quantity >= MAX_PACK_QUANTITY || isBuying}
-                    aria-label={t('publish_collection_modal.buy_credits.increase', {
-                      credits: formatCredits(pack.credits)
-                    })}
-                    data-testid={`credit-pack-${pack.id}-increase`}
-                    onClick={() => setQuantity(pack.id, quantity + 1)}
-                  >
-                    <AddIcon />
-                  </S.StepButton>
-                </S.Stepper>
+                {withQuantities && (
+                  <S.Stepper onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
+                    <S.StepButton
+                      type="button"
+                      disabled={quantity === 0 || isBuying}
+                      aria-label={t('publish_collection_modal.buy_credits.decrease', {
+                        credits: formatCredits(pack.credits)
+                      })}
+                      data-testid={`credit-pack-${pack.id}-decrease`}
+                      onClick={() => setQuantity(pack.id, quantity - 1)}
+                    >
+                      <RemoveIcon />
+                    </S.StepButton>
+                    <span data-testid={`credit-pack-${pack.id}-quantity`}>{quantity}</span>
+                    <S.StepButton
+                      type="button"
+                      disabled={quantity >= MAX_PACK_QUANTITY || isBuying}
+                      aria-label={t('publish_collection_modal.buy_credits.increase', {
+                        credits: formatCredits(pack.credits)
+                      })}
+                      data-testid={`credit-pack-${pack.id}-increase`}
+                      onClick={() => setQuantity(pack.id, quantity + 1)}
+                    >
+                      <AddIcon />
+                    </S.StepButton>
+                  </S.Stepper>
+                )}
               </S.Pack>
             )
           })}

@@ -21,10 +21,19 @@ describe('BuyCreditsModal', () => {
     renderModal()
     expect(screen.getByTestId('credit-pack-pack_25')).toHaveAttribute('data-selected')
     expect(screen.getByTestId('credit-pack-pack_25')).toContainElement(screen.getByTestId('credit-pack-recommended'))
-    expect(screen.getByTestId('credit-pack-pack_25-quantity')).toHaveTextContent('1')
     expect(screen.getByTestId('buy-credits-total-usd')).toHaveTextContent('$29.99')
     expect(screen.getByTestId('buy-credits-submit')).toHaveTextContent('Buy 260 Credits')
     expect(screen.getByTestId('buy-credits-balance')).toHaveTextContent('60')
+  })
+
+  it('is a plain one-pack picker while a single pack can cover the shortfall', async () => {
+    renderModal()
+    expect(screen.queryByTestId('credit-pack-pack_25-increase')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('credit-pack-pack_50'))
+    expect(screen.getByTestId('credit-pack-pack_50')).toHaveAttribute('data-selected')
+    expect(screen.getByTestId('credit-pack-pack_25')).not.toHaveAttribute('data-selected')
+    expect(screen.getByTestId('buy-credits-submit')).toHaveTextContent('Buy 540 Credits')
+    expect(screen.getByTestId('buy-credits-total-usd')).toHaveTextContent('$59.99')
   })
 
   it('preselects several of the largest pack when no single pack is enough', () => {
@@ -35,24 +44,25 @@ describe('BuyCreditsModal', () => {
   })
 
   it('only ever buys copies of one pack: choosing another resets the first', async () => {
-    renderModal()
-    await userEvent.click(screen.getByTestId('credit-pack-pack_50-increase'))
-    expect(screen.getByTestId('credit-pack-pack_50-quantity')).toHaveTextContent('1')
-    expect(screen.getByTestId('credit-pack-pack_25-quantity')).toHaveTextContent('0')
-    expect(screen.getByTestId('credit-pack-pack_25')).not.toHaveAttribute('data-selected')
+    renderModal({ shortfall: 1000 })
+    await userEvent.click(screen.getByTestId('credit-pack-pack_25-increase'))
+    expect(screen.getByTestId('credit-pack-pack_25-quantity')).toHaveTextContent('1')
+    expect(screen.getByTestId('credit-pack-pack_50-quantity')).toHaveTextContent('0')
+    expect(screen.getByTestId('credit-pack-pack_50')).not.toHaveAttribute('data-selected')
 
-    await userEvent.click(screen.getByTestId('credit-pack-pack_50-increase'))
-    expect(screen.getByTestId('credit-pack-pack_50-quantity')).toHaveTextContent('2')
-    expect(screen.getByTestId('buy-credits-submit')).toHaveTextContent('Buy 1,080 Credits')
-    expect(screen.getByTestId('buy-credits-total-usd')).toHaveTextContent('$119.98')
+    await userEvent.click(screen.getByTestId('credit-pack-pack_25-increase'))
+    expect(screen.getByTestId('credit-pack-pack_25-quantity')).toHaveTextContent('2')
+    expect(screen.getByTestId('buy-credits-submit')).toHaveTextContent('Buy 520 Credits')
+    expect(screen.getByTestId('buy-credits-total-usd')).toHaveTextContent('$59.98')
   })
 
   it('disables buying once every pack is back to zero', async () => {
-    renderModal()
-    await userEvent.click(screen.getByTestId('credit-pack-pack_25-decrease'))
-    expect(screen.getByTestId('credit-pack-pack_25-quantity')).toHaveTextContent('0')
+    renderModal({ shortfall: 1000 })
+    await userEvent.click(screen.getByTestId('credit-pack-pack_50-decrease'))
+    await userEvent.click(screen.getByTestId('credit-pack-pack_50-decrease'))
+    expect(screen.getByTestId('credit-pack-pack_50-quantity')).toHaveTextContent('0')
     expect(screen.getByTestId('buy-credits-submit')).toBeDisabled()
-    expect(screen.getByTestId('credit-pack-pack_25-decrease')).toBeDisabled()
+    expect(screen.getByTestId('credit-pack-pack_50-decrease')).toBeDisabled()
   })
 
   it('hands the chosen pack and quantity to the checkout', async () => {
