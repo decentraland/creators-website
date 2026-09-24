@@ -167,7 +167,7 @@ export function PaymentStep({
 
   // Leaves for Stripe's hosted page; the hand-off record brings the creator back to this step.
   async function buyCredits(selection: PackSelection) {
-    const totals = selectionTotals(packs, selection)
+    const totals = selectionTotals(packs ?? [], selection)
     const checkout = await createCreditsCheckout(address, selection)
     saveTopUpResume({ collectionId: collection.id, orderId: checkout.orderId, paymentMethod, termsAccepted: accepted })
     track('Start credits checkout', {

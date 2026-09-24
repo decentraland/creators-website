@@ -1,6 +1,8 @@
 import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
 
+export { Spinner } from '~/styles/shared'
+
 const mobile = theme.media.maxWidth('mobile')
 
 export const Wrap = styled.div`
@@ -41,6 +43,12 @@ export const Balance = styled.p`
     gap: 2px;
     font-weight: 600;
   }
+`
+
+export const Loading = styled.div`
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
 `
 
 export const Packs = styled.div`

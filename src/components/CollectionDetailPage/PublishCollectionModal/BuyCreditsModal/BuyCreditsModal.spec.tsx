@@ -1,24 +1,35 @@
-import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BuyCreditsModal } from './BuyCreditsModal'
 import { Providers } from '../../SellItemFlow/testUtils'
 
-// The bundled catalogue stands in: the picker must work before, or without, the fetch.
-vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 503 })))
+const CATALOGUE = {
+  packs: [
+    { id: 'pack_5', usd: 5.99, credits: 40, order: 1 },
+    { id: 'pack_10', usd: 11.99, credits: 100, order: 2 },
+    { id: 'pack_25', usd: 29.99, credits: 260, order: 3 },
+    { id: 'pack_50', usd: 59.99, credits: 540, order: 4 }
+  ]
+}
 
-function renderModal(props: Partial<React.ComponentProps<typeof BuyCreditsModal>> = {}) {
+const fetchMock = vi.fn()
+vi.stubGlobal('fetch', fetchMock)
+beforeEach(() => fetchMock.mockResolvedValue(new Response(JSON.stringify(CATALOGUE), { status: 200 })))
+
+async function renderModal(props: Partial<React.ComponentProps<typeof BuyCreditsModal>> = {}) {
   const onBuy = vi.fn<(selection: { packId: string; quantity: number }) => Promise<void>>().mockResolvedValue()
   const onCancel = vi.fn()
   render(<BuyCreditsModal balance={60} shortfall={240} onCancel={onCancel} onBuy={onBuy} {...props} />, {
     wrapper: Providers
   })
+  await waitFor(() => expect(screen.queryByTestId('credit-packs-loading')).not.toBeInTheDocument())
   return { onBuy, onCancel }
 }
 
 describe('BuyCreditsModal', () => {
-  it('preselects and badges the cheapest pack that covers the shortfall, with its total', () => {
-    renderModal()
+  it('preselects and badges the cheapest pack that covers the shortfall, with its total', async () => {
+    await renderModal()
     expect(screen.getByTestId('credit-pack-pack_25')).toHaveAttribute('data-selected')
     expect(screen.getByTestId('credit-pack-pack_25')).toContainElement(screen.getByTestId('credit-pack-recommended'))
     expect(screen.getByTestId('buy-credits-total-usd')).toHaveTextContent('$29.99')
@@ -27,7 +38,7 @@ describe('BuyCreditsModal', () => {
   })
 
   it('is a plain one-pack picker while a single pack can cover the shortfall', async () => {
-    renderModal()
+    await renderModal()
     expect(screen.queryByTestId('credit-pack-pack_25-increase')).not.toBeInTheDocument()
     await userEvent.click(screen.getByTestId('credit-pack-pack_50'))
     expect(screen.getByTestId('credit-pack-pack_50')).toHaveAttribute('data-selected')
@@ -36,15 +47,15 @@ describe('BuyCreditsModal', () => {
     expect(screen.getByTestId('buy-credits-total-usd')).toHaveTextContent('$59.99')
   })
 
-  it('preselects several of the largest pack when no single pack is enough', () => {
-    renderModal({ shortfall: 1000 })
+  it('preselects several of the largest pack when no single pack is enough', async () => {
+    await renderModal({ shortfall: 1000 })
     expect(screen.getByTestId('credit-pack-pack_50-quantity')).toHaveTextContent('2')
     expect(screen.getByTestId('buy-credits-total-usd')).toHaveTextContent('$119.98')
     expect(screen.getByTestId('buy-credits-submit')).toHaveTextContent('Buy 1,080 Credits')
   })
 
   it('only ever buys copies of one pack: choosing another resets the first', async () => {
-    renderModal({ shortfall: 1000 })
+    await renderModal({ shortfall: 1000 })
     await userEvent.click(screen.getByTestId('credit-pack-pack_25-increase'))
     expect(screen.getByTestId('credit-pack-pack_25-quantity')).toHaveTextContent('1')
     expect(screen.getByTestId('credit-pack-pack_50-quantity')).toHaveTextContent('0')
@@ -57,7 +68,7 @@ describe('BuyCreditsModal', () => {
   })
 
   it('disables buying once every pack is back to zero', async () => {
-    renderModal({ shortfall: 1000 })
+    await renderModal({ shortfall: 1000 })
     await userEvent.click(screen.getByTestId('credit-pack-pack_50-decrease'))
     await userEvent.click(screen.getByTestId('credit-pack-pack_50-decrease'))
     expect(screen.getByTestId('credit-pack-pack_50-quantity')).toHaveTextContent('0')
@@ -66,21 +77,31 @@ describe('BuyCreditsModal', () => {
   })
 
   it('hands the chosen pack and quantity to the checkout', async () => {
-    const { onBuy } = renderModal({ shortfall: 1000 })
+    const { onBuy } = await renderModal({ shortfall: 1000 })
     await userEvent.click(screen.getByTestId('buy-credits-submit'))
     expect(onBuy).toHaveBeenCalledWith({ packId: 'pack_50', quantity: 2 })
   })
 
   it('keeps the dialog open with an error when the checkout cannot start', async () => {
-    const { onBuy } = renderModal()
+    const { onBuy } = await renderModal()
     onBuy.mockRejectedValue(new Error('down'))
     await userEvent.click(screen.getByTestId('buy-credits-submit'))
     expect(await screen.findByTestId('buy-credits-error')).toBeInTheDocument()
     expect(screen.getByTestId('buy-credits-submit')).toBeEnabled()
   })
 
+  it('shows a spinner until the catalogue answers, and the bundled packs if it never does', async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 503 }))
+    render(<BuyCreditsModal balance={60} shortfall={240} onCancel={vi.fn()} onBuy={vi.fn()} />, {
+      wrapper: Providers
+    })
+    expect(screen.getByTestId('credit-packs-loading')).toBeInTheDocument()
+    expect(await screen.findByTestId('credit-pack-pack_25')).toHaveAttribute('data-selected')
+    expect(screen.queryByTestId('credit-packs-loading')).not.toBeInTheDocument()
+  })
+
   it('can be dismissed', async () => {
-    const { onCancel } = renderModal()
+    const { onCancel } = await renderModal()
     await userEvent.click(screen.getByTestId('buy-credits-cancel'))
     expect(onCancel).toHaveBeenCalled()
   })

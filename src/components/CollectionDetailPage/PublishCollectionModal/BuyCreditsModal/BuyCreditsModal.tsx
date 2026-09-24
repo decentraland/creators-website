@@ -53,7 +53,8 @@ type Props = {
  */
 export function BuyCreditsModal({ balance, shortfall, onCancel, onBuy }: Props) {
   const { t } = useTranslation()
-  const { packs } = useCreditPacks()
+  const { packs: catalogue } = useCreditPacks()
+  const packs = useMemo(() => catalogue ?? [], [catalogue])
   const recommended = useMemo(() => recommendPack(packs, shortfall), [packs, shortfall])
   const withQuantities = useMemo(() => !packs.some(pack => pack.credits >= shortfall), [packs, shortfall])
   const [chosen, setChosen] = useState<PackSelection | null>(null)
@@ -104,6 +105,11 @@ export function BuyCreditsModal({ balance, shortfall, onCancel, onBuy }: Props) 
           </S.Balance>
         </S.Header>
 
+        {!catalogue && (
+          <S.Loading data-testid="credit-packs-loading">
+            <S.Spinner aria-hidden />
+          </S.Loading>
+        )}
         <S.Packs data-testid="credit-packs">
           {packs.map((pack, index) => {
             const quantity = quantityOf(pack.id)

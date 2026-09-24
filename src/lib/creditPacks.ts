@@ -18,6 +18,12 @@ export type PackSelection = {
   quantity: number
 }
 
+/**
+ * FALLBACK ONLY, used when the catalogue fetch fails. The packs come from credits-server (GET /credits/packs,
+ * the same map its checkout prices from); this copy exists so an outage still shows something to buy rather
+ * than an empty picker. It is not a price list: checkout is priced by the server from `packId`, so a drift
+ * here only affects what is displayed. Keep the ids in sync with the server catalogue.
+ */
 export const CREDIT_PACKS: CreditPack[] = [
   { id: 'pack_5', usd: 5.99, credits: 40 },
   { id: 'pack_10', usd: 11.99, credits: 100 },
