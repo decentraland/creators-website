@@ -47,10 +47,15 @@ export type AddItemsPrefill = {
   playMode?: EmotePlayMode
 }
 
-/** The live preview's tuning on top of what the file itself said: category for wearables, play mode for emotes. */
+/**
+ * The live preview's tuning on top of what the file itself said: category for wearables, play mode for
+ * emotes. A prefilled category is the creator's own pick, so the analysis suggestion hint is dropped.
+ */
 function applyPrefill(patch: Partial<ItemDraft>, prefill: AddItemsPrefill | undefined): Partial<ItemDraft> {
   if (!prefill) return patch
-  if (patch.type === ItemType.WEARABLE && prefill.category) return { ...patch, category: prefill.category }
+  if (patch.type === ItemType.WEARABLE && prefill.category) {
+    return { ...patch, category: prefill.category, suggestedCategory: null }
+  }
   if (patch.type === ItemType.EMOTE && prefill.playMode) return { ...patch, playMode: prefill.playMode }
   return patch
 }
@@ -71,7 +76,8 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
 
   const initialDraftsRef = useRef<Array<{ draft: ItemDraft; file: File }> | null>(null)
   if (initialDraftsRef.current === null) {
-    initialDraftsRef.current = files.map(file => ({ draft: createDraft(file), file }))
+    // The live preview streams a placeholder file name, not one worth suggesting as the item name.
+    initialDraftsRef.current = files.map(file => ({ draft: createDraft(file, { nameFromFile: !prefill }), file }))
   }
   const [state, dispatch] = useReducer(
     addItemsReducer,

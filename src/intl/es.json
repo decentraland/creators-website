@@ -923,7 +923,7 @@
     "refresh": "Actualizar",
     "updated": "Actualizado {time_ago}",
     "updated_now": "justo ahora",
-    "waiting": "Esperando una exportación desde Blender. Haz clic en Preview Wearable o Preview Emote en el panel Decentraland Tools.",
+    "waiting": "Esperando un export desde Blender.\n Haz clic en Preview Wearable o Preview Emote en el panel Decentraland Tools.",
     "properties": "Propiedades",
     "loop": "Repetir",
     "add_to_collection": "Agregar a una colección",

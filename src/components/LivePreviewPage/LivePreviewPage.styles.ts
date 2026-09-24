@@ -1,9 +1,11 @@
 import styled from '@emotion/styled'
+import { Button } from '~/components/Button'
 import { theme } from '~/styles/theme'
 
 export {
   Workspace,
   Columns,
+  Handle,
   PanelBody,
   CenterPanel,
   PreviewArea,
@@ -22,23 +24,21 @@ export {
 } from '~/components/ItemEditorPage/ItemEditorPage.styles'
 
 export const SidePanel = styled.aside`
-  flex: none;
-  width: 360px;
   height: 100%;
-  border-right: 1px solid ${theme.editor.line};
 `
 
 export const StatusPill = styled.span`
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
-  padding: 2px 8px;
+  padding: 4px 8px;
+  border: 1px solid currentColor;
   border-radius: ${theme.radius.pill};
-  background: ${theme.editor.bg};
+  background: color-mix(in srgb, currentColor 15%, transparent);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.2px;
   text-transform: none;
   color: ${theme.editor.label};
 
@@ -61,6 +61,10 @@ export const StatusPill = styled.span`
   &[data-status='error'] {
     color: ${theme.colors.errLight};
   }
+`
+
+export const AddButton = styled(Button)`
+  width: 100%;
 `
 
 export const Row = styled.div`

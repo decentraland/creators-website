@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { BodyShape, PreviewRenderer, type IPreviewController } from '@dcl/schemas'
 import {
   Close as CloseIcon,
   DesktopWindowsOutlined as DesktopIcon,
   InfoOutlined as InfoIcon,
+  LibraryAddOutlined as AddToCollectionIcon,
   Refresh as RefreshIcon,
   WarningAmberOutlined as WarningIcon
 } from '@mui/icons-material'
@@ -29,6 +31,7 @@ import { type SpringBonesModel } from '~/hooks/useSpringBones'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
 import { type AvatarAttributes } from '~/lib/avatar'
+import { createPanelStorage } from '~/lib/itemEditor'
 import { EmotePlayMode } from '~/lib/itemFactory'
 import { ItemType } from '~/lib/items'
 import { MODEL_KEY, buildDefinition, isEmoteState, resolveBridgeUrl } from '~/lib/livePreview'
@@ -57,6 +60,10 @@ const SPRING_BONES_PUSH_DELAY_MS = 500
 const TIME_AGO_TICK_MS = 30_000
 const JUST_NOW_MS = 60_000
 const BOTH_SHAPES = [BodyShape.MALE, BodyShape.FEMALE]
+// Panel sizes as react-resizable-panels wants them, percentages of the group.
+const LEFT_DEFAULT_PCT = 25
+const LEFT_MIN_PCT = 18
+const CENTER_MIN_PCT = 25
 
 /** Isolated so the periodic tick keeping the label fresh doesn't re-render the page. */
 function UpdatedLabel({ timestamp }: { timestamp: number }) {
@@ -287,6 +294,7 @@ const LivePreviewPage = () => {
 
   const [isCustomizerOpen, setCustomizerOpen] = useState(false)
   const closeCustomizer = useCallback(() => setCustomizerOpen(false), [])
+  const panelStorage = useMemo(() => createPanelStorage(), [])
   const contents = useMemo(() => ({ [MODEL_KEY]: glb ?? new Blob() }), [glb])
   const categories = useMemo(() => getWearableCategoryOptions(contents), [contents])
   const permission = bridge.permission === 'prompt' || bridge.permission === 'denied' ? bridge.permission : null
@@ -359,133 +367,156 @@ const LivePreviewPage = () => {
   return (
     <S.Workspace data-testid="live-preview-page">
       <S.Columns>
-        <S.SidePanel>
-          <S.PanelBody>
-            <EditorSection title={t('live_preview.title')} testId="live-preview-connection">
-              <S.Row>
-                <S.StatusPill data-status={bridge.status} data-testid="live-preview-status">
-                  {t(`live_preview.status.${bridge.status}`)}
-                </S.StatusPill>
-              </S.Row>
-              <S.Field>
-                <S.FieldLabel>{t('live_preview.bridge_url')}</S.FieldLabel>
-                <S.TextInput
-                  value={bridgeUrl}
-                  disabled={isConnected}
-                  placeholder="http://localhost:8080"
-                  data-testid="live-preview-bridge-url"
-                  onChange={event => setBridgeUrl(event.target.value)}
-                />
-              </S.Field>
-              <S.Row>
-                {isConnected ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    data-testid="live-preview-disconnect"
-                    onClick={bridge.disconnect}
-                  >
-                    {t('live_preview.disconnect')}
-                  </Button>
-                ) : (
-                  <Button type="button" size="sm" data-testid="live-preview-connect" onClick={bridge.connect}>
-                    {t('live_preview.connect')}
-                  </Button>
-                )}
-                {isConnected && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="dark"
-                    loading={bridge.isRefreshing}
-                    aria-label={t('live_preview.refresh')}
-                    data-testid="live-preview-refresh"
-                    onClick={bridge.refresh}
-                  >
-                    <RefreshIcon fontSize="small" />
-                  </Button>
-                )}
-                {bridge.lastUpdateAt !== null && <UpdatedLabel timestamp={bridge.lastUpdateAt} />}
-              </S.Row>
-              {bridge.errorCode && (
-                <S.ErrorText data-testid="live-preview-error">
-                  {t(`live_preview.errors.${bridge.errorCode}`)}
-                </S.ErrorText>
-              )}
-            </EditorSection>
-
-            {state && isEmote && (
-              <EditorSection title={t('item_editor.animation.title')} testId="live-preview-animation">
-                <S.Toggle>
-                  <span>{t('live_preview.loop')}</span>
-                  <Switch
-                    checked={loop}
-                    label={t('live_preview.loop')}
-                    testId="live-preview-loop"
-                    onChange={checked => {
-                      setLoop(checked)
-                      trackTune('loop')
-                    }}
-                  />
-                </S.Toggle>
-              </EditorSection>
-            )}
-
-            {state && !isEmote && (
-              <>
-                <EditorSection title={t('live_preview.properties')} testId="live-preview-properties">
+        <PanelGroup
+          direction="horizontal"
+          autoSaveId="live-preview"
+          storage={panelStorage}
+          style={{ flex: 1, minWidth: 0 }}
+        >
+          <Panel id="live-preview-panel" defaultSize={LEFT_DEFAULT_PCT} minSize={LEFT_MIN_PCT} order={1}>
+            <S.SidePanel>
+              <S.PanelBody>
+                <EditorSection
+                  title={t('live_preview.title')}
+                  testId="live-preview-connection"
+                  adornment={
+                    <S.StatusPill data-status={bridge.status} data-testid="live-preview-status">
+                      {t(`live_preview.status.${bridge.status}`)}
+                    </S.StatusPill>
+                  }
+                >
                   <S.Field>
-                    <S.FieldLabel>{t('item_editor.basics.category')}</S.FieldLabel>
-                    <CategorySelect
-                      value={category}
-                      categories={categories}
-                      tone="dark"
-                      testId="live-preview-category"
-                      onChange={value => {
-                        setCategoryOverride(value)
-                        trackTune('category')
-                      }}
+                    <S.FieldLabel>{t('live_preview.bridge_url')}</S.FieldLabel>
+                    <S.TextInput
+                      value={bridgeUrl}
+                      disabled={isConnected}
+                      placeholder="http://localhost:8080"
+                      data-testid="live-preview-bridge-url"
+                      onChange={event => setBridgeUrl(event.target.value)}
                     />
                   </S.Field>
+                  <S.Row>
+                    {isConnected ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        data-testid="live-preview-disconnect"
+                        onClick={bridge.disconnect}
+                      >
+                        {t('live_preview.disconnect')}
+                      </Button>
+                    ) : (
+                      <Button type="button" size="sm" data-testid="live-preview-connect" onClick={bridge.connect}>
+                        {t('live_preview.connect')}
+                      </Button>
+                    )}
+                    {isConnected && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="dark"
+                        loading={bridge.isRefreshing}
+                        aria-label={t('live_preview.refresh')}
+                        data-testid="live-preview-refresh"
+                        onClick={bridge.refresh}
+                      >
+                        <RefreshIcon fontSize="small" />
+                      </Button>
+                    )}
+                    {bridge.lastUpdateAt !== null && <UpdatedLabel timestamp={bridge.lastUpdateAt} />}
+                  </S.Row>
+                  {bridge.errorCode && (
+                    <S.ErrorText data-testid="live-preview-error">
+                      {t(`live_preview.errors.${bridge.errorCode}`)}
+                    </S.ErrorText>
+                  )}
                 </EditorSection>
-                <EditorSection title={t('item_editor.overrides.title')} testId="live-preview-overrides">
-                  <HidesEditor
-                    contents={contents}
-                    category={category}
-                    hides={hides}
-                    testId="live-preview-hides"
-                    onChange={value => {
-                      setHides(value)
-                      trackTune('hides')
-                    }}
-                  />
-                </EditorSection>
-                {hasSprings && (
-                  <EditorSection title={t('item_editor.spring_bones.title')} testId="live-preview-spring-bones">
-                    <SpringBonesEditor
-                      models={springModels}
-                      activeHash={SPRING_HASH}
-                      onActiveHashChange={() => undefined}
-                      params={springParams}
-                      onChange={next => {
-                        onSpringChange(next)
-                        trackTune('spring_bones')
-                      }}
-                    />
+
+                {state && isEmote && (
+                  <EditorSection title={t('item_editor.animation.title')} testId="live-preview-animation">
+                    <S.Toggle>
+                      <span>{t('live_preview.loop')}</span>
+                      <Switch
+                        checked={loop}
+                        label={t('live_preview.loop')}
+                        testId="live-preview-loop"
+                        onChange={checked => {
+                          setLoop(checked)
+                          trackTune('loop')
+                        }}
+                      />
+                    </S.Toggle>
                   </EditorSection>
                 )}
-              </>
-            )}
 
-            <S.Footer>
-              <Button type="button" disabled={!definition} data-testid="live-preview-add" onClick={addToCollection}>
-                {t('live_preview.add_to_collection')}
-              </Button>
-            </S.Footer>
-          </S.PanelBody>
-        </S.SidePanel>
-        <S.CenterPanel data-testid="live-preview-center">{center}</S.CenterPanel>
+                {state && !isEmote && (
+                  <>
+                    <EditorSection title={t('live_preview.properties')} testId="live-preview-properties">
+                      <S.Field>
+                        <S.FieldLabel>{t('item_editor.basics.category')}</S.FieldLabel>
+                        <CategorySelect
+                          value={category}
+                          categories={categories}
+                          tone="dark"
+                          testId="live-preview-category"
+                          onChange={value => {
+                            setCategoryOverride(value)
+                            trackTune('category')
+                          }}
+                        />
+                      </S.Field>
+                    </EditorSection>
+                    <EditorSection title={t('item_editor.overrides.title')} testId="live-preview-overrides">
+                      <HidesEditor
+                        contents={contents}
+                        category={category}
+                        hides={hides}
+                        testId="live-preview-hides"
+                        onChange={value => {
+                          setHides(value)
+                          trackTune('hides')
+                        }}
+                      />
+                    </EditorSection>
+                    {hasSprings && (
+                      <EditorSection title={t('item_editor.spring_bones.title')} testId="live-preview-spring-bones">
+                        <SpringBonesEditor
+                          models={springModels}
+                          activeHash={SPRING_HASH}
+                          onActiveHashChange={() => undefined}
+                          params={springParams}
+                          onChange={next => {
+                            onSpringChange(next)
+                            trackTune('spring_bones')
+                          }}
+                        />
+                      </EditorSection>
+                    )}
+                  </>
+                )}
+
+                <S.Footer>
+                  <S.AddButton
+                    type="button"
+                    disabled={!definition}
+                    data-testid="live-preview-add"
+                    onClick={addToCollection}
+                  >
+                    <AddToCollectionIcon fontSize="small" />
+                    {t('live_preview.add_to_collection')}
+                  </S.AddButton>
+                </S.Footer>
+              </S.PanelBody>
+            </S.SidePanel>
+          </Panel>
+          <PanelResizeHandle>
+            <S.Handle data-testid="resize-handle-left" />
+          </PanelResizeHandle>
+          <Panel id="live-preview-center" minSize={CENTER_MIN_PCT} order={2}>
+            <S.CenterPanel data-testid="live-preview-center">{center}</S.CenterPanel>
+          </Panel>
+        </PanelGroup>
       </S.Columns>
       {modals}
     </S.Workspace>
