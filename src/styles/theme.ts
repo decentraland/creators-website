@@ -71,7 +71,9 @@ const colors = {
   glassHover: 'rgba(255, 255, 255, 0.3)',
   glassLine: 'rgba(255, 255, 255, 0.5)',
   // Legendary's light gradient stop (#A657ED) is too close to the purple surfaces; lift it for the pill text.
-  rarityLegendaryLight: '#e8b9ff'
+  rarityLegendaryLight: '#e8b9ff',
+  // Overview page links over dark cards (sites' creator landing accent).
+  apricot: '#ffa25a'
 } as const
 
 // Per-rarity design colors (Figma "Rarities/*", shop's palette). Distinct from @dcl/schemas' Rarity.getColor:
@@ -92,7 +94,10 @@ const gradients = {
   cerise: 'linear-gradient(135deg, #ff2d55 0%, #c640cd 100%)',
   flare: 'linear-gradient(157.44deg, #ffbc5b 0%, #ff2d55 50.52%, #c640cd 100%)',
   ember: 'linear-gradient(69deg, #ffbc5b 0%, #ff2d55 100%)',
-  coral: 'linear-gradient(90deg, #ff7439 0%, #ff2d55 100%)'
+  coral: 'linear-gradient(90deg, #ff7439 0%, #ff2d55 100%)',
+  // Overview page: the warm "why" card and the FAQ row hover sweep.
+  apricot: 'linear-gradient(200deg, #ffa25a 0%, #ff4f57 100%)',
+  dusk: 'linear-gradient(90deg, #43404a 0%, #691fa9 100%)'
 } as const
 
 // Item editor workspace (creator-hub inspector palette; no other hexes belong in the editor).

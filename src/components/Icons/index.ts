@@ -1,3 +1,4 @@
+export { CircleAndArrowIcon } from './CircleAndArrowIcon'
 export { ClockIcon } from './ClockIcon'
 export { EmoteIcon } from './EmoteIcon'
 export { FilmReelIcon } from './FilmReelIcon'

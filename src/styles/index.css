@@ -91,6 +91,11 @@ h2 {
     padding: 10px;
   }
 }
+/* The overview is a full-bleed landing: its sections manage their own gutters. */
+.page[data-route="/"] {
+  padding: 0;
+  max-width: none;
+}
 
 /* Suspense fallback while a lazy route chunk downloads. */
 .page-loading {

@@ -1,11 +1,11 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { CollectionsPage } from '~/components/CollectionsPage'
 import { ErrorBoundary } from '~/components/ErrorBoundary'
 import { Footer } from '~/components/Footer'
 import { Intercom } from '~/components/Intercom'
 import { MaintenancePage } from '~/components/MaintenancePage'
 import { NavBar } from '~/components/NavBar'
+import { OverviewPage } from '~/components/OverviewPage'
 import { Toasts } from '~/components/Toasts'
 import { TranslationProvider } from '~/intl'
 import { trackPage } from '~/lib/analytics'
@@ -14,7 +14,8 @@ import { useAccountWatcher } from '~/hooks/useAccountWatcher'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useWallet } from '~/store/wallet'
 
-// Collections (the landing route) stays eager for the fastest first paint; every other route is code-split.
+// The overview (the landing route) stays eager for the fastest first paint; every other route is code-split.
+const CollectionsPage = lazy(() => import('~/components/CollectionsPage').then(m => ({ default: m.CollectionsPage })))
 const CollectionDetailPage = lazy(() =>
   import('~/components/CollectionDetailPage').then(m => ({ default: m.CollectionDetailPage }))
 )
@@ -36,6 +37,7 @@ const FULLSCREEN_PATHS = ['/collections/editor', '/live-preview']
 
 // Stable page names for the funnel: a raw pathname carries collection ids and would never group.
 const PAGE_NAMES: Record<string, string> = {
+  '/': 'overview',
   '/collections': 'collections',
   '/collections/editor': 'item_editor',
   '/curation': 'curation',
@@ -90,9 +92,9 @@ const App = () => {
           ) : (
             <Suspense fallback={<PageFallback />}>
               <Routes>
-                <Route path="/" element={<Navigate to="/collections" replace />} />
-                {/* Backward-compat: the old overview route now lives in sites; old links land on collections. */}
-                <Route path="/overview" element={<Navigate to="/collections" replace />} />
+                <Route path="/" element={<OverviewPage />} />
+                {/* Backward-compat: the overview used to live at /overview. */}
+                <Route path="/overview" element={<Navigate to="/" replace />} />
                 <Route path="/collections" element={<CollectionsPage />} />
                 <Route path="/collections/editor" element={<ItemEditorPage />} />
                 <Route path="/collections/:collectionId" element={<CollectionDetailPage />} />

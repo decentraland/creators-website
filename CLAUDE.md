@@ -38,15 +38,12 @@ Node >= 24 required. Pre-commit (simple-git-hooks + nano-staged, installed on `n
 
 ## Architecture
 
-### App boundaries: the creator home lives in `sites`
+### App boundaries: served by path at `/create`
 
-This SPA does **not** own the creator home ("Overview") page: that page is implemented in the separate **sites** repo and served at `decentraland.org/create` (`.zone`/`.today` per environment). This app owns the collections surfaces and is mounted on the same domain under its own path, so the two apps feel like one: both render the same restyled `decentraland-ui2` navbar + sub-nav treatment, and identity is shared via SSO. Cross-app navigation is a plain full-page link, never a router route:
+This SPA is the creator surface of decentraland.org: it is served **by path** at `decentraland.org/create` (`.zone`/`.today` per environment), the router's `basename` is `/create` whenever the page URL starts with it (`src/config/index.ts`, `resolveBasePath`) and `/` otherwise (local dev, Vercel previews), so one build works in both. It owns the creator home ("Overview", `components/OverviewPage`, spec `design/OVERVIEW_SPEC.md`) at `/` and the collections surfaces under `/collections`; `/overview` survives only as a redirect to `/` for old links. The overview's outbound destinations (places, blog, Creator Hub download, docs, Discord) are plain full-page links built from `SITES_URL` / `DOCS_URL` / `DISCORD_URL` in the env config, never router routes:
 
-- The navbar's **Overview** tab links to `CREATE_URL` from the env config (`src/config/env/*.json`).
 - **Scenes** and **Land** tabs link to the legacy builder at `BUILDER_URL`.
-- On the sites side, the create page's "Collections" navigation links back into this app.
-
-Don't re-add an overview/home page here — it was intentionally removed; `/overview` survives only as a redirect to `/collections` for old links.
+- The hot-scenes rail reads `HOT_SCENES_URL`; the blog rail reads the Contentful CMS (`CMS_API_URL` + space + environment).
 
 Item editor (`/collections/editor`, spec `design/ITEM_EDITOR_SPEC.md`): the shared `~/components/AvatarPreview` mounts ui2's `WearablePreview` once with a frozen URL snapshot and pushes every later change through `lib/previewBridge` (postMessage UPDATE), so avatar/item changes never reload the iframe. The renderer is decided per mount by `lib/pickRenderer` (`unity-wearable-preview` flag via `lib/featureFlags`, `?unity=false` override resolved in `src/config`). Model checks go through the swappable `lib/validation` module (README inside); spring bone physics through `lib/springBones`.
 

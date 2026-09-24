@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatTimeAgo } from './time'
+import { formatLongDate, formatTimeAgo } from './time'
 
 const NOW = +new Date('2026-08-20T12:00:00Z')
 
@@ -18,5 +18,21 @@ describe('formatTimeAgo', () => {
 
   it('localizes', () => {
     expect(formatTimeAgo(NOW - 21 * 24 * 3_600_000, 'es', NOW)).toBe('hace 3 semanas')
+  })
+})
+
+describe('formatLongDate', () => {
+  it('spells the date out in the given locale', () => {
+    expect(formatLongDate('2026-02-11T12:00:00Z', 'en')).toBe('February 11, 2026')
+    expect(formatLongDate('2026-02-11T12:00:00Z', 'es')).toBe('11 de febrero de 2026')
+  })
+
+  it('keeps a date-only value on its calendar day whatever the local zone', () => {
+    expect(formatLongDate('2026-02-11', 'en')).toBe('February 11, 2026')
+  })
+
+  it('is empty for a missing or unparsable date', () => {
+    expect(formatLongDate(null, 'en')).toBe('')
+    expect(formatLongDate('not a date', 'en')).toBe('')
   })
 })

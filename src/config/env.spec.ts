@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { Env } from '@dcl/ui-env'
-import { createEnvConfig, resolveEnv } from './env'
+import { createEnvConfig, resolveBasePath, resolveEnv } from './env'
 
 const SYSTEM = { VITE_DCL_DEFAULT_ENV: 'stg' }
 
@@ -36,5 +36,20 @@ describe('createEnvConfig', () => {
     expect(config.is(Env.PRODUCTION)).toBe(true)
     expect(config.getEnv()).toBe(Env.PRODUCTION)
     expect(() => createEnvConfig({}, Env.STAGING).get('URL')).toThrow()
+  })
+})
+
+describe('resolveBasePath', () => {
+  it('mounts the router on /create when the app is served by path', () => {
+    expect(resolveBasePath('/create')).toBe('/create')
+    expect(resolveBasePath('/create/')).toBe('/create')
+    expect(resolveBasePath('/create/collections/abc')).toBe('/create')
+  })
+
+  it('mounts it on the root everywhere else', () => {
+    expect(resolveBasePath('/')).toBe('/')
+    expect(resolveBasePath('/collections')).toBe('/')
+    // A path that merely starts with the word is not the mount point.
+    expect(resolveBasePath('/creator')).toBe('/')
   })
 })
