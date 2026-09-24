@@ -32,6 +32,7 @@ describe('resolveBasePath', () => {
   })
 
   it('mounts the router at the root everywhere else', () => {
+    expect(resolveBasePath('')).toBeUndefined()
     expect(resolveBasePath('/')).toBeUndefined()
     expect(resolveBasePath('/collections')).toBeUndefined()
     expect(resolveBasePath('/creator')).toBeUndefined()
