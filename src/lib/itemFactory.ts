@@ -27,6 +27,7 @@ import {
   toMB
 } from './itemFiles'
 import { generateCatalystImage } from './media'
+import { mergeSpringBonesIntoItem, type SpringBoneParamsByName } from './springBones'
 
 export const ITEM_NAME_MAX_LENGTH = 32
 
@@ -66,6 +67,10 @@ export type ItemDraftPayload = {
   description?: string
   tags?: string[]
   blockVrmExport?: boolean
+  /** Wearables only: slots and body parts the item hides (the Blender live preview hands these over). */
+  hides?: string[]
+  /** Wearables only: tuned spring bone params for the model, keyed by bone name. */
+  springBoneParams?: SpringBoneParamsByName
   /** Normalized contents including thumbnail.png (and video.mp4 for a smart wearable); model/texture keys unprefixed unless a BOTH zip. */
   contents: Record<string, Blob>
   /** Main model/texture path within contents. */
@@ -277,15 +282,20 @@ export async function buildItem(draft: ItemDraftPayload): Promise<BuiltItem> {
     ? buildRepresentationsZipBothBodyShape(draft.bodyShape, sorted)
     : buildRepresentations(draft.bodyShape, draft.model, sorted)
 
+  const hides = draft.hides ?? []
   const data =
     draft.type === ItemType.WEARABLE
       ? {
           category: draft.category,
           replaces: [],
-          hides: [],
-          removesDefaultHiding: draft.category === UPPER_BODY_CATEGORY ? [HANDS_BODY_PART] : [],
+          hides,
+          removesDefaultHiding:
+            draft.category === UPPER_BODY_CATEGORY || hides.includes(UPPER_BODY_CATEGORY) ? [HANDS_BODY_PART] : [],
           tags: draft.tags ?? [],
-          representations,
+          representations:
+            hides.length > 0
+              ? representations.map(representation => ({ ...representation, overrideHides: hides }))
+              : representations,
           blockVrmExport: draft.blockVrmExport ?? false,
           outlineCompatible: true,
           // Legacy sends an empty list for every wearable; a smart one carries its scene.json permissions.
@@ -301,6 +311,15 @@ export async function buildItem(draft: ItemDraftPayload): Promise<BuiltItem> {
   const now = Date.now()
   const blobs = await withCatalystImage(sorted.all, draft.rarity)
   const contents = await computeHashes(blobs)
+  // Spring bones are keyed by the representation model hash, known only now.
+  const springBones =
+    draft.type === ItemType.WEARABLE && draft.springBoneParams
+      ? mergeSpringBonesIntoItem(
+          Object.fromEntries(
+            representations.map(representation => [contents[representation.mainFile], draft.springBoneParams!])
+          )
+        )
+      : undefined
   const item: Item = {
     id: draft.id,
     name: draft.name,
@@ -315,7 +334,7 @@ export async function buildItem(draft: ItemDraftPayload): Promise<BuiltItem> {
     inCatalyst: false,
     rarity: draft.rarity,
     type: draft.type,
-    data,
+    data: springBones ? { ...data, springBones } : data,
     metrics: draft.metrics,
     contents,
     // "Not for sale" defaults, as the legacy modal saves standard items.

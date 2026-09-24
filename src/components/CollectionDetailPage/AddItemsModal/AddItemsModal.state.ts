@@ -64,11 +64,11 @@ export type AddItemsState = {
   isUploading: boolean
 }
 
-export function createDraft(file: File): ItemDraft {
+export function createDraft(file: File, { nameFromFile = true } = {}): ItemDraft {
   return {
     id: crypto.randomUUID(),
     fileName: file.name,
-    name: cleanAssetName(file.name).slice(0, ITEM_NAME_MAX_LENGTH),
+    name: nameFromFile ? cleanAssetName(file.name).slice(0, ITEM_NAME_MAX_LENGTH) : '',
     status: 'processing',
     type: null,
     contents: {},

@@ -46,6 +46,7 @@ export type AvatarPreviewState = AvatarColors & {
   setDressed: (items: Dressable[]) => void
   clearDressed: () => void
   setEmote: (emote: PreviewEmote) => void
+  endEmote: () => void
   setPlaying: (isPlaying: boolean) => void
 }
 
@@ -93,6 +94,7 @@ export const useAvatarPreview = create<AvatarPreviewState>()((set, get) => ({
   setDressed: items => set(() => items.reduce(dressOne, EMPTY_DRESSING)),
   clearDressed: () => set(EMPTY_DRESSING),
   setEmote: emote => set({ emote }),
+  endEmote: () => set({ emote: PreviewEmote.IDLE, isPlaying: false }),
   setPlaying: isPlaying => set({ isPlaying })
 }))
 
