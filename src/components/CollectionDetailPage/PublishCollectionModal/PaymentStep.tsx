@@ -88,7 +88,6 @@ export function PaymentStep({
   const fee = useMemo(() => getPublicationFee(rarities.data ?? [], items.length), [rarities.data, items.length])
 
   const creditsFlag = useFeatureFlag(FeatureFlag.SHOP_CREDITS_FOR_COLLECTIONS_FEE)
-  const topUpFlag = useFeatureFlag(FeatureFlag.SHOP_CREDITS_TOP_UP, { enabled: creditsFlag.enabled })
   const { packs } = useCreditPacks()
   const methods = useMemo(
     () => getAvailablePaymentMethods(mana.data, creditsFlag.enabled),
@@ -282,7 +281,7 @@ export function PaymentStep({
                   }
                   hasEnough={canPayWith(method, fee, balances)}
                   getMoreUrl={method === 'credits' ? `${config.get('SHOP_URL')}/credits` : config.get('ACCOUNT_URL')}
-                  onGetMore={method === 'credits' && topUpFlag.enabled ? openBuyCredits : undefined}
+                  onGetMore={method === 'credits' ? openBuyCredits : undefined}
                   selected={paymentMethod === method}
                   showCheckbox={methods.length > 1}
                   compactBuy={methods.length > 1}
