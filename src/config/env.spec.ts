@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { Env } from '@dcl/ui-env'
-import { createEnvConfig, resolveEnv } from './env'
+import { createEnvConfig, resolveBasePath, resolveEnv } from './env'
 
 const SYSTEM = { VITE_DCL_DEFAULT_ENV: 'stg' }
 
@@ -22,6 +22,20 @@ describe('resolveEnv', () => {
     window.history.replaceState({}, '', '/collections')
     expect(resolveEnv(window.location, SYSTEM)).toBe(Env.STAGING)
     expect(resolveEnv(undefined, SYSTEM)).toBe(Env.STAGING)
+  })
+})
+
+describe('resolveBasePath', () => {
+  it('mounts the router at /create when served by-path on the Decentraland domains', () => {
+    expect(resolveBasePath('/create')).toBe('/create')
+    expect(resolveBasePath('/create/collections/editor')).toBe('/create')
+  })
+
+  it('mounts the router at the root everywhere else', () => {
+    expect(resolveBasePath('/')).toBeUndefined()
+    expect(resolveBasePath('/collections')).toBeUndefined()
+    expect(resolveBasePath('/creator')).toBeUndefined()
+    expect(resolveBasePath('/@dcl/wemotes-builder-site/0.0.1/')).toBeUndefined()
   })
 })
 
