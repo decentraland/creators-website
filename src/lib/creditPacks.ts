@@ -32,7 +32,7 @@ export const CREDIT_PACKS: CreditPack[] = [
 ]
 
 /** One checkout buys several copies of one pack at most; the server refuses more. */
-export const MAX_PACK_QUANTITY = 10
+export const MAX_PACK_QUANTITY = 5
 
 type ServerCreditPack = {
   id: string
