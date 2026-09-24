@@ -40,6 +40,11 @@ describe('the Stripe return query', () => {
     expect(parseTopUpReturn(new URLSearchParams('page=2'))).toBeNull()
   })
 
+  it('ignores an order id that does not look like one', () => {
+    expect(parseTopUpReturn(new URLSearchParams('order=a%20b%26x'))).toBeNull()
+    expect(parseTopUpReturn(new URLSearchParams(`order=${'x'.repeat(129)}`))).toBeNull()
+  })
+
   it('strips only its own params', () => {
     expect(stripTopUpReturn(new URLSearchParams('page=2&order=order-1&canceled=1')).toString()).toBe('page=2')
   })

@@ -56,9 +56,12 @@ export function clearTopUpResume(): void {
 }
 
 /** The Stripe return carried by a query string, or null when this is an ordinary visit. */
+// Order ids are uuids; anything else in the query is noise, not an order to look up.
+const ORDER_ID = /^[\w-]{1,128}$/
+
 export function parseTopUpReturn(params: URLSearchParams): TopUpReturn | null {
   const orderId = params.get(TOP_UP_ORDER_PARAM)
-  if (!orderId) return null
+  if (!orderId || !ORDER_ID.test(orderId)) return null
   return { orderId, canceled: params.get(TOP_UP_CANCELED_PARAM) === '1' }
 }
 

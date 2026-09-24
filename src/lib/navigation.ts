@@ -5,8 +5,13 @@ export function openExternal(url: string): void {
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 
-/** Leaves the app for an external page in the current tab (a hosted checkout that returns here). */
+/**
+ * Leaves the app for an external page in the current tab (a hosted checkout that returns here). Only a
+ * web URL qualifies: the address comes from a server response, and a `javascript:` one would run here.
+ */
 export function redirectExternal(url: string): void {
+  const { protocol } = new URL(url)
+  if (protocol !== 'https:' && protocol !== 'http:') throw new Error(`Refused to redirect to a ${protocol} URL`)
   window.location.assign(url)
 }
 

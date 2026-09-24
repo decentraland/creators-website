@@ -112,7 +112,10 @@ export async function createCreditsCheckout(
  */
 export async function fetchCreditsOrder(address: string, orderId: string, signal?: AbortSignal): Promise<CreditsOrder> {
   const response = await signedFetch(address, baseUrl(), `/credits/orders/${encodeURIComponent(orderId)}`, { signal })
-  if (response.status === 404) return { status: 'processing' }
+  if (response.status === 404) {
+    await response.body?.cancel()
+    return { status: 'processing' }
+  }
   if (!response.ok) throw await parseError(response, 'Failed to read the order')
   return (await response.json()) as CreditsOrder
 }
@@ -147,11 +150,15 @@ function delay(ms: number, signal?: AbortSignal): Promise<void> {
       reject(new DOMException('Aborted', 'AbortError'))
       return
     }
-    const timer = setTimeout(resolve, ms)
-    signal?.addEventListener('abort', () => {
+    const abort = () => {
       clearTimeout(timer)
       reject(new DOMException('Aborted', 'AbortError'))
-    })
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', abort)
+      resolve()
+    }, ms)
+    signal?.addEventListener('abort', abort, { once: true })
   })
 }
 
@@ -161,7 +168,10 @@ function delay(ms: number, signal?: AbortSignal): Promise<void> {
  */
 export async function cancelCreditsOrder(address: string, orderId: string): Promise<void> {
   try {
-    await signedFetch(address, baseUrl(), `/credits/orders/${encodeURIComponent(orderId)}/cancel`, { method: 'POST' })
+    const response = await signedFetch(address, baseUrl(), `/credits/orders/${encodeURIComponent(orderId)}/cancel`, {
+      method: 'POST'
+    })
+    await response.body?.cancel()
   } catch {
     // The server retires it on its own; see above.
   }

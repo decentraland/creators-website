@@ -39,7 +39,10 @@ type ServerCreditPack = {
 
 export async function fetchCreditPacks(): Promise<CreditPack[]> {
   const response = await fetch(`${config.get('CREDITS_SERVER_URL')}/credits/packs`)
-  if (!response.ok) throw new Error(`credit packs request failed (${response.status})`)
+  if (!response.ok) {
+    await response.body?.cancel()
+    throw new Error(`credit packs request failed (${response.status})`)
+  }
   const { packs } = (await response.json()) as { packs: ServerCreditPack[] }
   return packs
     .slice()
