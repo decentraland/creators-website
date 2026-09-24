@@ -1,7 +1,7 @@
 name: Build and release
 
 # Publishes the built app as the @dcl/wemotes-builder-site npm package; the Decentraland CDN serves it
-# and the `collections` by-path site in decentraland/definitions maps it to decentraland.<tld>/collections.
+# and the `create` by-path site in decentraland/definitions maps it to decentraland.<tld>/create.
 # One artifact serves every environment: src/config picks dev/stg/prd at runtime by hostname.
 #
 # Auto-deploys (push to main, GitHub release) roll out to zone + today through set-rollout.yml, fired by
@@ -167,7 +167,7 @@ jobs:
           sha: ${{ github.sha }}
           packageName: '@dcl/wemotes-builder-site'
           packageVersion: ${{ needs.build-release.outputs.version }}
-          deploymentPath: 'collections'
+          deploymentPath: 'create'
           deploymentEnvironment: ${{ github.event.inputs.deploymentEnvironment }}
           deploymentName: '_site'
           percentage: ${{ github.event.inputs.rolloutPercentage }}

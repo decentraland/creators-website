@@ -48,7 +48,7 @@ jobs:
           sha: ${{ github.event.deployment.sha }}
           packageName: ${{ github.event.deployment.payload.packageName }}
           packageVersion: ${{ github.event.deployment.payload.packageVersion }}
-          deploymentPath: 'collections'
+          deploymentPath: 'create'
           deploymentEnvironment: 'zone'
           deploymentName: '_site'
           percentage: 100
@@ -62,7 +62,7 @@ jobs:
           sha: ${{ github.event.deployment.sha }}
           packageName: ${{ github.event.deployment.payload.packageName }}
           packageVersion: ${{ github.event.deployment.payload.packageVersion }}
-          deploymentPath: 'collections'
+          deploymentPath: 'create'
           deploymentEnvironment: 'today'
           deploymentName: '_site'
           percentage: 100

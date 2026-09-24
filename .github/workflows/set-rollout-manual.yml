@@ -46,7 +46,7 @@ jobs:
           sha: ${{ github.sha }}
           packageName: '@dcl/wemotes-builder-site'
           packageVersion: ${{ github.event.inputs.packageVersion }}
-          deploymentPath: 'collections'
+          deploymentPath: 'create'
           deploymentEnvironment: ${{ github.event.inputs.deploymentEnvironment }}
           deploymentName: '_site'
           percentage: ${{ github.event.inputs.rolloutPercentage }}
