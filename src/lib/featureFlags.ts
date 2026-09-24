@@ -17,6 +17,8 @@ export enum FeatureFlag {
   WEARABLE_UTILITY = 'wearable-utility',
   /** The per-wearable VRM export opt-out. */
   VRM_OPTOUT = 'vrm-optout',
+  /** The Blender live preview page (`/live-preview`), fed by the dcl-blender-toolkit add-on. */
+  BLENDER_LIVE_PREVIEW = 'blender-live-preview',
   /** Listing items through off-chain public orders (trades), which is the only sale path here. */
   OFFCHAIN_PUBLIC_ITEM_ORDERS = 'offchain-public-item-orders',
   /** Credits as a listing currency; with it off, an item can only be priced in MANA. */
@@ -34,6 +36,7 @@ const APPLICATION: Record<FeatureFlag, string> = {
   [FeatureFlag.MAINTENANCE]: 'builder',
   [FeatureFlag.WEARABLE_UTILITY]: 'dapps',
   [FeatureFlag.VRM_OPTOUT]: 'builder',
+  [FeatureFlag.BLENDER_LIVE_PREVIEW]: 'builder',
   [FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS]: 'dapps',
   [FeatureFlag.CREDITS_PRIMARY_LISTINGS]: 'builder',
   [FeatureFlag.SHOP_CREDITS_FOR_COLLECTIONS_FEE]: 'builder',

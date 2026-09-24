@@ -107,8 +107,17 @@ describe('AvatarPreview', () => {
 
     act(() => events.emit(PreviewEmoteEventType.ANIMATION_PLAY))
     expect(useAvatarPreview.getState().isPlaying).toBe(true)
+    act(() => events.emit(PreviewEmoteEventType.ANIMATION_PAUSE))
+    expect(useAvatarPreview.getState().isPlaying).toBe(false)
+  })
+
+  it('returns the avatar to idle once a one-shot default emote has ended', () => {
+    useAvatarPreview.getState().setEmote(PreviewEmote.WAVE)
+    render(<AvatarPreview id="preview" source={source} avatar={avatar} emote={PreviewEmote.WAVE} />)
+    act(() => events.emit(PreviewEmoteEventType.ANIMATION_PLAY))
     act(() => events.emit(PreviewEmoteEventType.ANIMATION_END))
     expect(useAvatarPreview.getState().isPlaying).toBe(false)
+    expect(useAvatarPreview.getState().emote).toBe(PreviewEmote.IDLE)
   })
 
   it('renders its children as the overlay', () => {

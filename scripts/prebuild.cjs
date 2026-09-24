@@ -59,8 +59,14 @@ function getPublicUrls() {
       VITE_BASE_URL: cdnUrl
     }
   }
+  if (isVercel) {
+    console.log('Using root public url for Vercel')
+    return {
+      VITE_BASE_URL: '/'
+    }
+  }
   // localhost
-  console.log('Using empty pubic url')
+  console.log('Using empty public url')
   return {
     VITE_BASE_URL: ''
   }

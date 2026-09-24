@@ -931,5 +931,59 @@
       "USE_WEBSOCKET": "Use websockets",
       "OPEN_EXTERNAL_LINK": "Open external links"
     }
+  },
+  "live_preview": {
+    "title": "Blender live preview",
+    "status": {
+      "connected": "Connected",
+      "connecting": "Connecting…",
+      "disconnected": "Disconnected",
+      "error": "Error"
+    },
+    "bridge_url": "Blender URL",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "refresh": "Refresh",
+    "updated": "Updated {time_ago}",
+    "up_to_date": "Up to date · updated {time_ago}",
+    "updated_now": "just now",
+    "waiting": "Waiting for an export from Blender.\n Click Preview Wearable or Preview Emote in the Decentraland Tools panel.",
+    "properties": "Properties",
+    "loop": "Loop",
+    "add_to_collection": "Add to collection",
+    "mobile_hint": "Tuning and adding to a collection happen on the computer running Blender. Here you can preview the model.",
+    "errors": {
+      "unreachable": "We couldn't reach Blender. Check that the live preview is running and the URL is right.",
+      "permission_denied": "Your browser blocked the connection to Blender. Allow local network access for this site.",
+      "bridge_response": "Blender answered with an error. Try pushing the preview again.",
+      "invalid_state": "Blender sent something we couldn't read. Update the Decentraland Tools add-on.",
+      "model_fetch": "We couldn't download the model from Blender. Try pushing the preview again."
+    },
+    "local_network": {
+      "prompt": {
+        "title": "Allow local network access",
+        "description": "Your browser is asking for permission to connect to your local network. Click Allow in the prompt so this page can reach Blender."
+      },
+      "denied": {
+        "title": "Local network access blocked",
+        "description": "Your browser blocked this page from reaching your local network. To connect to Blender:",
+        "step_site_info": "Open the site information next to the address bar",
+        "step_allow": "Allow local network access",
+        "step_reload": "Reload this page",
+        "reload": "Reload page",
+        "retry": "Retry connection"
+      }
+    },
+    "sign_in": {
+      "title": "Sign in to continue",
+      "description": "Sign in to add this item to one of your collections."
+    },
+    "add": {
+      "title": "Add to a collection",
+      "description": "Choose the draft collection the item will be added to.",
+      "empty": "You have no draft collections yet. Create one to continue.",
+      "new_collection": "New collection",
+      "continue": "Continue"
+    }
   }
 }
