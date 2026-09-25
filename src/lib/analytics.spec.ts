@@ -59,7 +59,7 @@ describe('track', () => {
     expect(analytics.track).toHaveBeenCalledWith(
       'Publish collection',
       expect.objectContaining({
-        source: 'wemotes-builder',
+        source: 'creators-website',
         version: '1.2.3',
         collectionId: 'col-1',
         address: '0xCreAtoR',
@@ -89,7 +89,7 @@ describe('track', () => {
     const { track } = await loadAnalytics()
     track('Add items', { source: 'somewhere-else' })
 
-    expect(analytics.track.mock.calls[0][1]).toMatchObject({ source: 'wemotes-builder' })
+    expect(analytics.track.mock.calls[0][1]).toMatchObject({ source: 'creators-website' })
   })
 
   it('sends nothing at all from a crawler', async () => {
@@ -148,7 +148,7 @@ describe('trackPage', () => {
 
     expect(analytics.page).toHaveBeenCalledWith(
       'collection_detail',
-      expect.objectContaining({ source: 'wemotes-builder' })
+      expect.objectContaining({ source: 'creators-website' })
     )
   })
 })
@@ -202,7 +202,7 @@ describe('initAnalytics', () => {
     const next = vi.fn()
     middleware({ payload, next })
 
-    expect(payload.obj.context.app).toEqual({ name: 'wemotes-builder', version: '1.2.3' })
+    expect(payload.obj.context.app).toEqual({ name: 'creators-website', version: '1.2.3' })
     expect(next).toHaveBeenCalledWith(payload)
   })
 

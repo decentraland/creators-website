@@ -29,7 +29,7 @@ type SegmentApi = {
 type SegmentPayload = { obj: { context?: Props } }
 type SourceMiddleware = (params: { payload: SegmentPayload; next: (payload: SegmentPayload) => void }) => void
 
-export const SOURCE = 'wemotes-builder'
+export const SOURCE = 'creators-website'
 
 // One id per page load, so the steps of a single visit stitch together in the warehouse.
 const SESSION_ID =

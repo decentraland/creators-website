@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this project is
 
-**wemotes-builder** is the new UI for Decentraland **wearables and emotes creators**: a modern front end (better UX, new creator tools) on top of the existing, unchanged **builder-server** back end. Feature designs and mockups live in Figma.
+**creators-website** is the new UI for Decentraland **wearables and emotes creators**: a modern front end (better UX, new creator tools) on top of the existing, unchanged **builder-server** back end. Feature designs and mockups live in Figma.
 
 Consistency rule: this app deliberately shares its tech stack and visual identity (theme, color palette) with the **shop** repo. Day-to-day code needs only this file and `CONVENTIONS.md` — do **not** consult shop for regular tasks. Check what shop uses only when making a _new_ technology choice (adding a dependency, a tool, a pattern for a problem this repo hasn't solved yet), and prefer shop's choice unless there's a strong reason not to.
 

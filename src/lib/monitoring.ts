@@ -63,14 +63,14 @@ export function captureError(error: unknown, context: ErrorContext = {}): void {
   // The caller's own context wins: these are a fallback read off the thrown value, never an override.
   const enriched = { ...rpcFactsFrom(error), ...context }
 
-  console.error(`[wemotes-builder] ${label}`, error, enriched)
+  console.error(`[creators-website] ${label}`, error, enriched)
   if (forward) {
     try {
       forward(toReportable(error), enriched)
     } catch (forwardError) {
       // Reporting must never throw back into the caller's catch block — but a forwarder that is
       // broken would otherwise lose every error in silence.
-      console.warn('[wemotes-builder] error forwarder failed', forwardError)
+      console.warn('[creators-website] error forwarder failed', forwardError)
     }
   }
 }

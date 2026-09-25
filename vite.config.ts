@@ -17,7 +17,7 @@ const sentryUpload = Boolean(process.env.SENTRY_AUTH_TOKEN)
  * `__SENTRY_RELEASE__` define). Sentry applies a map only when the two strings are identical, so
  * deriving both from here is what keeps them from drifting apart and leaving every stack minified.
  */
-const sentryRelease = `wemotes-builder@${pkg.version}`
+const sentryRelease = `creators-site@${pkg.version}`
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => {
