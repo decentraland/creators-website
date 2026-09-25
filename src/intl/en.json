@@ -798,7 +798,47 @@
     "out": "Zoom out"
   },
   "curation_page": {
-    "title": "Curation"
+    "title": "Curation",
+    "sign_in": "Sign in to review collections",
+    "search_placeholder": "Search by name or owner address",
+    "filter": {
+      "all": "All",
+      "to_review": "To review",
+      "under_review": "Under review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "all_assignees": "All assignees",
+      "you": "{name} (you)",
+      "assignee": "Assignee",
+      "sort": "Sort by"
+    },
+    "sort": {
+      "MOST_RELEVANT": "Most relevant",
+      "CREATED_AT_DESC": "Newest",
+      "NAME_ASC": "Name A-Z",
+      "NAME_DESC": "Name Z-A"
+    },
+    "list": {
+      "collection": "Collection",
+      "owner": "Owner",
+      "date": "Requested",
+      "last_update": "Last update",
+      "status": "Status",
+      "assignee": "Assignee",
+      "requested": "Review requested",
+      "published": "Published",
+      "unassigned": "Unassigned",
+      "assign_to_me": "Assign to me",
+      "edit_assignee": "Change the assigned curator"
+    },
+    "error": {
+      "title": "We couldn't load the collections",
+      "description": "Check your connection and try again.",
+      "retry": "Try again"
+    },
+    "empty": "There are no collections to review yet.",
+    "no_results": "No collections match these filters.",
+    "showing": "Showing {range} of {total} {total, plural, one {collection} other {collections}}"
   },
   "maintenance_page": {
     "title": "We'll be right back",
@@ -812,7 +852,8 @@
     "overview": "Overview",
     "collections": "Collections",
     "scenes": "Scenes",
-    "land": "Land/World"
+    "land": "Land/World",
+    "curation": "Curation"
   },
   "footer": {
     "newsletterTitle": "Get the weekly highlights in your inbox",
@@ -962,5 +1003,29 @@
       "new_collection": "New collection",
       "continue": "Continue"
     }
+  },
+  "profile_badge": {
+    "you": "(you)"
+  },
+  "curation_state": {
+    "to_review": "To review",
+    "under_review": "Under review",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "disabled": "Disabled"
+  },
+  "assign_curator_modal": {
+    "title_self": "Review {collection}",
+    "title_edit": "Assigned curator of {collection}",
+    "self_body": "You'll be responsible for reviewing this collection. You can reassign it to another curator later.",
+    "curator": "Curator",
+    "unassign": "Nobody (unassign)",
+    "you": "{name} (you)",
+    "assigned": "{collection} is now assigned to {name}",
+    "unassigned": "{collection} is no longer assigned",
+    "error": "We couldn't save the assignment. Please try again.",
+    "cancel": "Cancel",
+    "submit_self": "Assign to me",
+    "submit_edit": "Save"
   }
 }

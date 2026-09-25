@@ -798,7 +798,47 @@
     "out": "Alejar"
   },
   "curation_page": {
-    "title": "Curado"
+    "title": "Curaduría",
+    "sign_in": "Inicia sesión para revisar colecciones",
+    "search_placeholder": "Busca por nombre o dirección del dueño",
+    "filter": {
+      "all": "Todas",
+      "to_review": "Por revisar",
+      "under_review": "En revisión",
+      "approved": "Aprobadas",
+      "rejected": "Rechazadas",
+      "all_assignees": "Todos los curadores",
+      "you": "{name} (tú)",
+      "assignee": "Curador asignado",
+      "sort": "Ordenar por"
+    },
+    "sort": {
+      "MOST_RELEVANT": "Más relevantes",
+      "CREATED_AT_DESC": "Más recientes",
+      "NAME_ASC": "Nombre A-Z",
+      "NAME_DESC": "Nombre Z-A"
+    },
+    "list": {
+      "collection": "Colección",
+      "owner": "Dueño",
+      "date": "Solicitada",
+      "last_update": "Última actualización",
+      "status": "Estado",
+      "assignee": "Curador",
+      "requested": "Revisión solicitada",
+      "published": "Publicada",
+      "unassigned": "Sin asignar",
+      "assign_to_me": "Asignármela",
+      "edit_assignee": "Cambiar el curador asignado"
+    },
+    "error": {
+      "title": "No pudimos cargar las colecciones",
+      "description": "Revisa tu conexión e inténtalo de nuevo.",
+      "retry": "Reintentar"
+    },
+    "empty": "Todavía no hay colecciones para revisar.",
+    "no_results": "Ninguna colección coincide con estos filtros.",
+    "showing": "Mostrando {range} de {total} {total, plural, one {colección} other {colecciones}}"
   },
   "maintenance_page": {
     "title": "Volvemos enseguida",
@@ -812,7 +852,8 @@
     "overview": "Resumen",
     "collections": "Colecciones",
     "scenes": "Escenas",
-    "land": "Land/Mundos"
+    "land": "Land/Mundos",
+    "curation": "Curaduría"
   },
   "footer": {
     "newsletterTitle": "Recibe lo más destacado de la semana en tu correo",
@@ -962,5 +1003,29 @@
       "new_collection": "Nueva colección",
       "continue": "Continuar"
     }
+  },
+  "profile_badge": {
+    "you": "(tú)"
+  },
+  "curation_state": {
+    "to_review": "Por revisar",
+    "under_review": "En revisión",
+    "approved": "Aprobada",
+    "rejected": "Rechazada",
+    "disabled": "Deshabilitada"
+  },
+  "assign_curator_modal": {
+    "title_self": "Revisar {collection}",
+    "title_edit": "Curador asignado de {collection}",
+    "self_body": "Serás responsable de revisar esta colección. Puedes reasignarla a otro curador más adelante.",
+    "curator": "Curador",
+    "unassign": "Nadie (quitar asignación)",
+    "you": "{name} (tú)",
+    "assigned": "{collection} ahora está asignada a {name}",
+    "unassigned": "{collection} ya no está asignada",
+    "error": "No pudimos guardar la asignación. Inténtalo de nuevo.",
+    "cancel": "Cancelar",
+    "submit_self": "Asignármela",
+    "submit_edit": "Guardar"
   }
 }

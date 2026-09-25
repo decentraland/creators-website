@@ -5,6 +5,7 @@ import { ethers } from 'ethers'
 import { TopNav } from '~/components/TopNav'
 import { useWallet } from '~/store/wallet'
 import { useCreditsBalance, useManaBalance } from '~/hooks/useBalances'
+import { useCommittee } from '~/hooks/useCuration'
 import { useProfile } from '~/hooks/useProfile'
 import { openExternal } from '~/lib/navigation'
 import { useTranslation } from '~/intl'
@@ -25,6 +26,7 @@ const NavBar = () => {
   const { data: avatar, isLoading: isLoadingProfile } = useProfile(address)
   const { data: credits } = useCreditsBalance(address)
   const { data: manaWei } = useManaBalance(address)
+  const { isCurator } = useCommittee(address)
   // Polygon only: it's the network publishing pays on. Like the legacy builder, an empty wallet shows
   // no MANA chip at all; ui2 renders whole units.
   const manaBalances = useMemo(
@@ -78,6 +80,11 @@ const NavBar = () => {
           <NavLink to="/collections" className={() => (collectionsActive ? 'active' : '')}>
             {t('nav.collections')}
           </NavLink>
+          {isCurator && (
+            <NavLink to="/curation" data-testid="nav-curation">
+              {t('nav.curation')}
+            </NavLink>
+          )}
           <a href={`${builderUrl}/scenes`}>{t('nav.scenes')}</a>
           <a href={`${builderUrl}/land`}>{t('nav.land')}</a>
         </S.Tabs>

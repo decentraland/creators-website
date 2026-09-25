@@ -51,7 +51,11 @@ vi.mock('~/hooks/useBalances', () => ({
 
 vi.mock('~/lib/navigation', () => ({ openExternal: vi.fn() }))
 
+const committee = vi.hoisted(() => ({ isCurator: false }))
+vi.mock('~/hooks/useCuration', () => ({ useCommittee: () => ({ isCurator: committee.isCurator }) }))
+
 beforeEach(() => {
+  committee.isCurator = false
   wallet.session = undefined
   balances.credits = undefined
   balances.manaWei = undefined
@@ -81,6 +85,16 @@ describe('NavBar', () => {
       'href',
       'https://decentraland.zone/builder/land'
     )
+  })
+
+  it('shows the Curation tab to committee members only', () => {
+    renderNavBar()
+    expect(screen.queryByRole('link', { name: 'Curation' })).toBeNull()
+
+    committee.isCurator = true
+    renderNavBar('/curation')
+    expect(screen.getByRole('link', { name: 'Curation' })).toHaveAttribute('href', '/curation')
+    expect(screen.getByRole('link', { name: 'Curation' })).toHaveClass('active')
   })
 
   it('keeps the Collections tab active on nested collection routes', () => {
