@@ -113,8 +113,8 @@ export function filterBaseWearables(
   return catalog.filter(wearable => wearable.category === category && wearable.bodyShapes.includes(bodyShape))
 }
 
-// Every base wearable is modeled for both body shapes, so the catalog alone can't tell a pigtail from a
-// crew cut: these are the pieces the random outfit keeps to one shape. Anything unlisted is unisex.
+// Every base wearable is modeled for both body shapes. Match by shape the outfits users tend to combine.
+// Anything unlisted may be drawn by the random picker for either shape.
 const BASE_WEARABLE_STYLES: Record<BodyShape, string[]> = {
   [BodyShape.MALE]: [
     'casual_hair_01',
@@ -179,7 +179,7 @@ const BASE_WEARABLE_STYLES: Record<BodyShape, string[]> = {
   ]
 }
 
-/** Catalog entries of one slot the random outfit may draw for the body shape: all but the other shape's pieces. */
+/** Catalog entries of one slot the random outfit may draw for the given body shape. */
 function filterRandomBaseWearables(
   catalog: BaseWearable[],
   category: WearableCategory,
