@@ -5,7 +5,10 @@
   "AUTH_URL": "/auth",
   "PEER_URL": "https://peer.decentraland.org",
   "BUILDER_URL": "https://decentraland.org/builder",
-  "CREATE_URL": "https://decentraland.org/create",
+  "SITES_URL": "https://decentraland.org",
+  "HOT_SCENES_URL": "https://realm-provider-ea.decentraland.org/hot-scenes",
+  "DOCS_URL": "https://docs.decentraland.org",
+  "DISCORD_URL": "https://dcl.gg/discord",
   "MATIC_URN_PROTOCOL": "matic",
   "ERC721_COLLECTION_BASE_URI": "https://peer.decentraland.org/lambdas/collections/standard/erc721/",
   "RARITIES_WITH_ORACLE_ADDRESS": "0xA9158E22F89Bb3F69c5600338895Cb5FB81e5090",
@@ -26,6 +29,8 @@
   "CONTENTFUL_CAMPAIGN_ENTITY_ID": "7JRrew0kMt5fkXu45Vbx7e",
   "SEGMENT_API_KEY": "ZxBQcII46wT0TURGQczWYK7tyBq8BEmt",
   "SEGMENT_ANALYTICS_URL": "https://evs.e.decentraland.org/z8jpJNrQbg/cTZhpqvmud.min.js",
+  "SEGMENT_API_HOST": "api.e.decentraland.org/v1",
+  "SITES_SEGMENT_API_KEY": "f0S2L1sWumT8BPjBmIBDTN5gIWjhrRHG",
   "INTERCOM_APP_ID": "z0h94kay",
   "SENTRY_DSN": "https://428e8d298fb3f0fbcea645314a4a388c@o4504361728212992.ingest.sentry.io/4505748381564928"
 }

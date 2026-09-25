@@ -962,5 +962,221 @@
       "new_collection": "Nueva colección",
       "continue": "Continuar"
     }
+  },
+  "overview": {
+    "hero": {
+      "title_first_line": "Crea tus propios",
+      "title_last_line": "en Decentraland",
+      "words": {
+        "wearables": "Wearables",
+        "emotes": "Emotes",
+        "worlds": "Mundos",
+        "experiences": "Experiencias",
+        "scenes": "Escenas",
+        "games": "Juegos"
+      },
+      "subtitle": "Descarga el Creator Hub para empezar a construir escenas inmersivas y experiencias interactivas en Decentraland.",
+      "download_cta": "Descargar Creator Hub",
+      "mobile_docs_cta": "Explora la documentación para creadores",
+      "scroll_label": "Ir a la siguiente sección"
+    },
+    "why": {
+      "title_highlight": "Por qué",
+      "title": "los creadores eligen Decentraland",
+      "cards": {
+        "join": {
+          "title": "Únete a una comunidad de creadores",
+          "description": "Comparte conocimiento, colabora y crea vínculos en una comunidad de artistas, diseñadores y desarrolladores donde tu trabajo se valora todos los días.",
+          "cta": "Únete al Discord"
+        },
+        "create": {
+          "title": "Crea en un ecosistema abierto y descentralizado",
+          "description": "Conserva el control total de tu contenido en una plataforma gobernada por sus usuarios y construye junto a otros creadores en un mundo virtual abierto, listo para explorar.",
+          "cta": "Explora la documentación"
+        },
+        "benefit": {
+          "title": "Aprovecha una economía centrada en los creadores",
+          "description": "Decentraland pertenece a sus usuarios, así que te quedas con el 97,5% de las ventas del Marketplace mientras el resto financia subvenciones comunitarias para creadores como tú. Además, recibes un 2,5% de regalías en las reventas.",
+          "cta": "Crea Wearables"
+        }
+      }
+    },
+    "create": {
+      "title": "Explora las posibilidades ",
+      "title_highlight": "creativas",
+      "title_second_part": "",
+      "required_skills": "Habilidades necesarias",
+      "useful_links": "Enlaces útiles",
+      "skills": {
+        "modeling": "Modelado 3D",
+        "fashion": "Sentido de la moda imaginativo",
+        "animation": "Animación",
+        "typescript": "TypeScript",
+        "creator_hub": "Creator Hub",
+        "no_code": "Sin código",
+        "click": "Saber usar un mouse",
+        "imagination": "Imaginación desbordante"
+      },
+      "cards": {
+        "wearables": {
+          "title": "Diseña Wearables únicos",
+          "description": "En Decentraland, los Wearables van más allá de la ropa. Elementos flotantes, telas brillantes, prótesis robóticas, cuerpos alienígenas. ¡Todo es posible!",
+          "tabs": {
+            "regular": {
+              "title": "Regulares",
+              "heading": "Da forma a tu identidad digital",
+              "body": "Crea las skins, la ropa, los accesorios y los cuerpos que le dan a la comunidad de Decentraland infinitas opciones para personalizar su identidad digital.",
+              "links": {
+                "creating": "Cómo crear Wearables",
+                "shop": "Wearables en la Tienda",
+                "publishing": "Cómo publicar Wearables",
+                "tutorials": "Tutoriales de Wearables"
+              }
+            },
+            "smart": {
+              "title": "Smart Wearables",
+              "heading": "Experiencias y moda combinadas",
+              "body": "¿Quieres crear un jet pack que te permita volar o unos lentes que revelen un mundo secreto? Vincula Experiencias Portátiles a tus Wearables y abre un universo de posibilidades.",
+              "links": {
+                "portable_experiences": "Documentación de Experiencias Portátiles",
+                "sdk": "Documentación del SDK 7",
+                "smart_wearables": "Documentación de Smart Wearables",
+                "shop": "Smart Wearables en la Tienda"
+              }
+            }
+          }
+        },
+        "emotes": {
+          "title": "Anima Emotes expresivos",
+          "description": "Crea las animaciones de avatar que permiten a la comunidad de Decentraland conectar, compartir emociones y participar en infinitas actividades divertidas.",
+          "tabs": {
+            "motion": {
+              "title": "Más que movimiento",
+              "heading": "Más que movimiento",
+              "body": "Los Emotes de Decentraland van más allá de una simple animación: ¡llevan la expresión al siguiente nivel con la opción de agregar props y sonidos!",
+              "links": {
+                "creating": "Cómo crear Emotes",
+                "tutorials": "Tutoriales de Emotes",
+                "publishing": "Cómo publicar Emotes",
+                "shop": "Emotes en la Tienda"
+              }
+            }
+          }
+        },
+        "experiences": {
+          "title": "Construye experiencias inmersivas",
+          "description": "Construye escenas cautivadoras, experiencias interactivas y juegos en un ecosistema de mundo abierto. Reclama tu propio Mundo o renta/compra LAND para empezar a construir.",
+          "tabs": {
+            "scenes": {
+              "title": "Crear escenas",
+              "heading": "Construye y publica tu primera escena",
+              "body": "Abre el Editor de Escenas en el Creator Hub, coloca los objetos en su lugar y publica tu escena en un Mundo o en LAND. La documentación te guía paso a paso.",
+              "links": {
+                "about_editor": "Acerca del Editor de Escenas",
+                "publish_scene": "Publica tu escena",
+                "dev_workflow": "Flujo de desarrollo",
+                "download_hub": "Descargar Creator Hub"
+              }
+            },
+            "basic": {
+              "title": "Básico",
+              "heading": "Ideal para principiantes",
+              "body": "Arrastra y suelta elementos prediseñados para crear la escena de tus sueños, o empieza con una plantilla y personaliza los detalles para hacerla tuya.",
+              "links": {
+                "places": "Explora lugares",
+                "download_hub": "Descargar Creator Hub",
+                "tutorials": "Tutoriales de construcción",
+                "worlds_guide": "Guía esencial de Mundos"
+              }
+            },
+            "advanced": {
+              "title": "Avanzado",
+              "heading": "Control total sobre tus creaciones",
+              "body": "Convierte tus ideas en realidad con el SDK 7 de Decentraland. Crea todo lo que imagines, desde escenas complejas y experiencias interactivas hasta juegos completos.",
+              "links": {
+                "download_hub": "Descargar Creator Hub",
+                "docs": "Documentación de construcción",
+                "tutorials": "Tutoriales de construcción"
+              }
+            }
+          }
+        }
+      }
+    },
+    "live_scenes": {
+      "title_highlight": "Explora",
+      "title": "lo que los creadores están construyendo ahora mismo",
+      "online": "{count} en línea",
+      "view_all": "Ver todas las escenas en vivo"
+    },
+    "connect": {
+      "title_highlight": "Qué",
+      "title": "dicen los creadores de Decentraland",
+      "join_the_community": "Únete a la comunidad",
+      "cards": {
+        "mrdhingia": "Me encanta ser creador en DCL porque me permite crear espacios 3D increíbles con total libertad. Es genial trabajar con otros, aprender cosas nuevas y monetizar mi contenido llegando a personas de todo el mundo.",
+        "canessa": "Creo que tener Emotes únicos es una forma de convertir a tu avatar en otra versión de ti. Me hice un Emote único para tener siempre un saludo especial [distinto de las animaciones estándar que usan todos] para mis amigos.",
+        "polygonal_mind": "Decentraland evoluciona casi todos los días a nivel técnico, pero también a nivel comunitario. Llegan nuevas personas con ideas nuevas que hacen que toda la plataforma gire para acomodarlas. Es muy emocionante ver el cambio en tiempo real.",
+        "tangpoko": "Crear Wearables y Emotes en Decentraland es muy gratificante cuando ves que todos a tu alrededor los usan.",
+        "nikki_fuego": "Toda mi vida fui gamer y lo único que siempre quise de los juegos fue personalizar al máximo la ropa de mi personaje. [En Decentraland,] esa fantasía se hizo realidad."
+      }
+    },
+    "learn": {
+      "title_highlight": "Aprende",
+      "title": "con tutoriales de la comunidad",
+      "watch_more": "¿Quieres ver más?",
+      "watch_more_button": "Visita nuestro canal de YouTube",
+      "your_tutorial": "¿Crees que tu tutorial debería aparecer aquí?",
+      "your_tutorial_button": "Envía tu tutorial para revisión",
+      "cards": {
+        "blender_first_hat": "Blender para principiantes | Crea tu primer sombrero",
+        "first_virtual_gallery": "Tu primera galería virtual | Construcción paso a paso",
+        "canessa_intro_building": "Creator Hub | Introducción a la construcción",
+        "office_hours_custom_components": "Office Hours | Importar assets y componentes personalizados",
+        "first_wearable_academy": "Crea tu primer Wearable | Creator Academy"
+      }
+    },
+    "blog": {
+      "title_highlight": "Lo último",
+      "title": "del blog",
+      "view_all": "Leer el blog"
+    },
+    "faqs": {
+      "subtitle": "Conoce más sobre Decentraland",
+      "title": "Preguntas\nfrecuentes",
+      "aria_label": "Preguntas frecuentes",
+      "cta": "Ver más",
+      "items": {
+        "what_is": {
+          "question": "¿Qué es Decentraland?",
+          "answer": "Lanzado en 2020, Decentraland es un mundo social virtual, el primer metaverso descentralizado y el único de código abierto. Dentro de la plataforma, que funciona en el navegador o en la app de escritorio, las personas pueden crear, vivir y monetizar contenido y aplicaciones, además de socializar y asistir a una gran variedad de eventos diarios organizados por la comunidad. Decentraland es único porque es propiedad de quienes lo usan cada día, que también lo crean y lo gobiernan. A través de la organización autónoma descentralizada (DAO) de Decentraland, la comunidad puede presentar y votar propuestas, e incluso solicitar subvenciones que la comunidad vota."
+        },
+        "what_create": {
+          "question": "¿Qué puedo crear en Decentraland?",
+          "answer": "¡Sería más fácil preguntar qué no puedes crear en Decentraland! Como mundo virtual creado por sus usuarios, en Decentraland puedes crear prácticamente cualquier cosa.\nLos creadores de Decentraland hacen todos los componentes de una identidad digital, como los Wearables (que incluyen skins completas, partes del cuerpo, prendas, peinados, accesorios, etc.) y los Emotes, animaciones para tu avatar que además del movimiento pueden incluir props y sonidos.\nEl paisaje y las actividades de Decentraland también los definen los creadores. Al recorrer Genesis City puedes explorar contenido de distintos creadores construido uno junto a otro: galerías de arte, teatros, jardines, discotecas, pistas de carreras, casinos, juegos completos y mucho más. ¡Todo puede ser explorado y creado por cualquiera! Para empezar a construir, descarga el Creator Hub de Decentraland."
+        },
+        "become_creator": {
+          "question": "¿Cómo me convierto en creador de Decentraland?",
+          "answer": "Cualquiera puede ser creador en Decentraland: solo hacen falta un poco de conocimiento e ideas creativas sin fin. Según lo que quieras crear, los conocimientos necesarios cambian. Si solo quieres crear escenas virtuales geniales para ti o para organizar eventos, y aprender programación y modelado 3D no está en tus planes, puedes empezar a crear escenas de inmediato descargando el Creator Hub de Decentraland.\n\nSi conoces o quieres aprender modelado 3D y/o programación, todas las especificaciones técnicas y los procedimientos para crear en Decentraland están en la documentación para creadores, y hay muchos tutoriales en línea para crear Wearables, Emotes y experiencias.\nWearables y Emotes\nEl proceso de crear Wearables y Emotes incluye crear el asset en un programa de modelado 3D como Blender y enviarlo al Comité de Curación, que verifica que tu creación sea técnicamente correcta y cumpla la política de contenido de Decentraland (esto incluye pagar la tarifa de publicación de 100 USD, que va a la DAO para financiar subvenciones comunitarias). Finalmente, una vez aprobada, tu creación se publica oficialmente en el Marketplace. Recibes el 97,5% de todas las ventas primarias y un 2,5% de regalías en las ventas secundarias.\nExperiencias\nSi te interesa diseñar experiencias, descarga el Creator Hub de Decentraland y empieza a crear escenas inmersivas y juegos que luego puedes publicar en Mundos o en LAND dentro de Genesis City, el mundo abierto de Decentraland. Conservas todo el control sobre tu contenido, puedes editarlo o quitarlo cuando quieras y te quedas con todos los ingresos que generen tus experiencias."
+        },
+        "monetize": {
+          "question": "¿Es posible monetizar mis creaciones?",
+          "answer": "¡Sí, por supuesto! Los creadores de Decentraland pueden monetizar sus habilidades de muchas formas.\n\nQuienes crean Wearables y Emotes publican sus creaciones en el Marketplace pagando una tarifa de publicación de 100 USD, que va a la DAO para financiar subvenciones comunitarias, y a cambio ganan el 97,5% de las ventas primarias y un 2,5% de regalías en las ventas secundarias.\nAlgunos creadores de escenas monetizan sus experiencias y se quedan con la totalidad de los ingresos."
+        },
+        "need_land": {
+          "question": "¿Necesito tener LAND para crear experiencias en Decentraland?",
+          "answer": "No, tener LAND no es necesario para crear escenas o experiencias interactivas en Decentraland. Cualquiera puede crear contenido con el SDK 7 o con el Editor sin código. Luego, si quieres publicar tus creaciones para que tú y otras personas las exploren y disfruten, tienes varias opciones además de comprar LAND.\nMundos\nLos Mundos son tu espacio 3D personal en el metaverso. Existen aparte del mapa de Genesis City y son perfectos para experimentar con la creación 3D o para tener tu propio espacio virtual.\n\nConseguir tu propio Mundo es fácil: al reclamar un NAME de Decentraland (100 MANA) obtienes un nombre de usuario único que puedes usar en toda la Web3, 100 de Poder de Voto (para la gobernanza de Decentraland) y, por supuesto, tu propio Mundo para usarlo como quieras.\n\nRentar LAND\nSi te interesa publicar tu contenido en Genesis City pero no quieres comprometerte a comprar LAND, ¡no tienes que hacerlo! Es fácil rentar LAND a corto o largo plazo en el Marketplace, donde puedes pagar con tarjeta, transferencia bancaria o criptomonedas. Explora las rentas y mira qué hay disponible.\n\nConexiones con la comunidad, subvenciones y convocatorias abiertas para creadores\nSi alguien tiene pasión por compartir sus creaciones con la comunidad, en Decentraland siempre habrá una forma de hacerlo posible. La comunidad de creadores es muy acogedora y siempre dispuesta a ayudar. Si estás empezando, puedes conocer a muchos creadores en el Discord de Community Building.\nSi quieres construir una experiencia que beneficie a la comunidad pero necesitas recursos, siempre puedes solicitar una subvención comunitaria en la DAO. También puedes postularte a una de las convocatorias abiertas que se lanzan periódicamente durante el año para construir experiencias y escenas para distintos eventos de Decentraland, como los festivales anuales de música, arte y moda. ¡Sigue las redes de Decentraland o suscríbete al boletín semanal para mantenerte al día!"
+        },
+        "need_crypto": {
+          "question": "¿Necesito criptomonedas o una billetera digital para usar Decentraland?",
+          "answer": "No necesitas tener criptomonedas para disfrutar Decentraland, ya que su uso es gratuito. Si decides comprar una creación de la comunidad en el Marketplace, hay varias opciones de pago disponibles, como tarjeta de crédito/débito y transferencia bancaria, además de distintas criptomonedas.\n\nEn cuanto a la billetera digital, si todavía no tienes una, no necesitas conseguirla por tu cuenta si no quieres. Al iniciar sesión en Decentraland por primera vez y crear tu cuenta, se crea una billetera digital por ti en segundo plano. ¡Así de simple!\n\nEsta billetera digital forma parte de tu cuenta de Decentraland y guarda los activos digitales que adquieras, como Wearables gratuitos que reclames en el mundo o un Emote divertido que compres en el Marketplace."
+        }
+      }
+    },
+    "carousel": {
+      "previous": "Diapositiva anterior",
+      "next": "Siguiente diapositiva",
+      "go_to": "Ir a la diapositiva {index}"
+    }
   }
 }

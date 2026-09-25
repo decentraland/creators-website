@@ -4,6 +4,8 @@ import dev from './env/dev.json'
 import prod from './env/prd.json'
 import stg from './env/stg.json'
 
+export { SITE_PATH } from './env'
+
 export const basePath = resolveBasePath(typeof window === 'undefined' ? '' : window.location.pathname)
 
 const systemEnvVariables = { VITE_DCL_DEFAULT_ENV: import.meta.env.VITE_DCL_DEFAULT_ENV ?? 'dev' }
@@ -25,3 +27,6 @@ export const previewRendererOverride: 'babylon' | null = search.get('unity') ===
 
 /** The deployed version, written into `.env` from package.json by `scripts/prebuild.cjs`. */
 export const APP_VERSION = import.meta.env.VITE_REACT_APP_WEBSITE_VERSION ?? 'unknown'
+
+/** The query string at call time: campaign params and analytics page context must follow the current URL. */
+export const currentSearch = (): string => (typeof window === 'undefined' ? '' : window.location.search)

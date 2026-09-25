@@ -1,20 +1,21 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { CollectionsPage } from '~/components/CollectionsPage'
 import { ErrorBoundary } from '~/components/ErrorBoundary'
 import { Footer } from '~/components/Footer'
 import { Intercom } from '~/components/Intercom'
 import { MaintenancePage } from '~/components/MaintenancePage'
 import { NavBar } from '~/components/NavBar'
+import { OverviewPage } from '~/components/OverviewPage'
 import { Toasts } from '~/components/Toasts'
 import { TranslationProvider } from '~/intl'
-import { trackPage } from '~/lib/analytics'
 import { FeatureFlag } from '~/lib/featureFlags'
+import { trackPageView } from '~/lib/pageViews'
 import { useAccountWatcher } from '~/hooks/useAccountWatcher'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useWallet } from '~/store/wallet'
 
-// Collections (the landing route) stays eager for the fastest first paint; every other route is code-split.
+// The overview (the landing route) stays eager for the fastest first paint; every other route is code-split.
+const CollectionsPage = lazy(() => import('~/components/CollectionsPage').then(m => ({ default: m.CollectionsPage })))
 const CollectionDetailPage = lazy(() =>
   import('~/components/CollectionDetailPage').then(m => ({ default: m.CollectionDetailPage }))
 )
@@ -33,19 +34,6 @@ const PageFallback = () => {
 
 // Fullscreen workspaces: no navbar, no footer, no page scroll.
 const FULLSCREEN_PATHS = ['/collections/editor', '/live-preview']
-
-// Stable page names for the funnel: a raw pathname carries collection ids and would never group.
-const PAGE_NAMES: Record<string, string> = {
-  '/collections': 'collections',
-  '/collections/editor': 'item_editor',
-  '/curation': 'curation',
-  '/live-preview': 'live_preview'
-}
-
-function pageName(pathname: string): string {
-  const path = pathname.replace(/\/+$/, '') || '/'
-  return PAGE_NAMES[path] ?? (path.startsWith('/collections/') ? 'collection_detail' : 'other')
-}
 
 const App = () => {
   const location = useLocation()
@@ -67,7 +55,7 @@ const App = () => {
   // Pagination and in-page filters update the query string only; a new pathname is a new page.
   useEffect(() => {
     window.scrollTo({ top: 0 })
-    trackPage(pageName(location.pathname))
+    trackPageView(location.pathname)
   }, [location.pathname])
 
   useEffect(() => {
@@ -78,6 +66,14 @@ const App = () => {
       delete document.body.dataset.fullscreen
     }
   }, [isFullscreen])
+
+  // Mirrored on <body> so shell-level CSS (the page field behind the fixed navbar) can vary per route.
+  useEffect(() => {
+    document.body.dataset.route = path || '/'
+    return () => {
+      delete document.body.dataset.route
+    }
+  }, [path])
 
   return (
     <TranslationProvider>
@@ -90,9 +86,8 @@ const App = () => {
           ) : (
             <Suspense fallback={<PageFallback />}>
               <Routes>
-                <Route path="/" element={<Navigate to="/collections" replace />} />
-                {/* Backward-compat: the old overview route now lives in sites; old links land on collections. */}
-                <Route path="/overview" element={<Navigate to="/collections" replace />} />
+                <Route path="/" element={<OverviewPage />} />
+                <Route path="/overview" element={<Navigate to="/" replace />} />
                 <Route path="/collections" element={<CollectionsPage />} />
                 <Route path="/collections/editor" element={<ItemEditorPage />} />
                 <Route path="/collections/:collectionId" element={<CollectionDetailPage />} />

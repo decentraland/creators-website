@@ -29,4 +29,7 @@ const useTranslation = () => {
   return { t }
 }
 
-export { TranslationProvider, useTranslation }
+/** The English copy of a message, for analytics values that must not change with the visitor's language. */
+const englishMessage = (id: string): string => messages.en[id] ?? id
+
+export { TranslationProvider, englishMessage, useTranslation }
