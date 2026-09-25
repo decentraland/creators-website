@@ -13,7 +13,9 @@ function tick(state: TypingState, { wordLength, listLength }: Tick): TypingState
     if (state.letterPos >= wordLength - 1) return { ...state, action: 'erase' }
     return { ...state, letterPos: state.letterPos + 1 }
   }
-  if (state.letterPos === 0) return { letterPos: 0, wordIndex: (state.wordIndex + 1) % listLength, action: 'write' }
+  if (state.letterPos === 0) {
+    return { letterPos: 0, wordIndex: listLength ? (state.wordIndex + 1) % listLength : 0, action: 'write' }
+  }
   return { ...state, letterPos: state.letterPos - 1 }
 }
 
@@ -27,6 +29,7 @@ export function useTypingListEffect(list: readonly string[]): string {
 
   useEffect(() => {
     clearTimeout(timeout.current)
+    if (list.length === 0) return
     timeout.current = setTimeout(
       () => dispatch({ wordLength: word.length, listLength: list.length }),
       atEnd ? PAUSE_MS : LETTER_MS

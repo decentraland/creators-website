@@ -1,5 +1,6 @@
 // Read-only client for the latest blog posts on the Contentful-backed CMS API ("Fresh from the blog").
 import { config } from '~/config'
+import { captureError } from '~/lib/monitoring'
 
 type CMSLink = { sys: { id: string } }
 
@@ -57,7 +58,9 @@ async function fetchJson<T>(url: string, signal: AbortSignal): Promise<T | null>
       return null
     }
     return (await response.json()) as T
-  } catch {
+  } catch (error) {
+    // Degrades the card, but a CMS outage or schema change must still surface in monitoring.
+    captureError(error, { flow: 'blog' })
     return null
   }
 }

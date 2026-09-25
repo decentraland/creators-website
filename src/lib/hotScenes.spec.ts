@@ -25,6 +25,13 @@ describe('fetchHotScenes', () => {
     expect(fetchMock).toHaveBeenCalledWith('https://realm-provider-ea.decentraland.org/hot-scenes', expect.anything())
   })
 
+  it('drops malformed entries so a bad feed never renders broken cards', async () => {
+    const good = aScene({})
+    const payload = [good, { id: 'no-coords', name: 'X', usersTotalCount: 1 }, { baseCoords: [1, 2] }, null]
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(okResponse(payload)))
+    await expect(fetchHotScenes()).resolves.toEqual([good])
+  })
+
   it('treats a payload that is not a list as no scenes', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(okResponse({ error: 'shape' })))
     await expect(fetchHotScenes()).resolves.toEqual([])

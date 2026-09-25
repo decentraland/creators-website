@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { captureError } from '~/lib/monitoring'
 import { buildBlogPosts, fetchLatestBlogPosts, normalizeAssetUrl, postUrl } from './blog'
+
+vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
 
 const BASE = 'https://cms-api.decentraland.org/spaces/ea2ybdmmn1kv/environments/master'
 
@@ -35,7 +38,10 @@ function stubCms(overrides: Partial<Record<'posts' | 'categories' | 'assets', ()
   return fetchMock
 }
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.clearAllMocks()
+})
 
 describe('fetchLatestBlogPosts', () => {
   it('joins posts, categories and cover images into cards linking to the sites blog', async () => {
@@ -55,11 +61,12 @@ describe('fetchLatestBlogPosts', () => {
     expect(fetchMock).toHaveBeenCalledWith(`${BASE}/assets/asset-1`, expect.anything())
   })
 
-  it('keeps a post without its cover when the asset request fails', async () => {
+  it('keeps a post without its cover when the asset request fails, and reports it', async () => {
     stubCms({ assets: () => Promise.reject(new Error('asset down')) })
     const [post] = await fetchLatestBlogPosts()
     expect(post.imageUrl).toBeNull()
     expect(post.title).toBe('Fresh Post')
+    expect(captureError).toHaveBeenCalledWith(expect.any(Error), { flow: 'blog' })
   })
 
   it('links a post to the blog search when its category is unknown', async () => {

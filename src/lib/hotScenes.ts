@@ -23,7 +23,19 @@ export async function fetchHotScenes(): Promise<HotScene[]> {
     throw new Error(`hot scenes request failed (${response.status})`)
   }
   const scenes: unknown = await response.json()
-  return Array.isArray(scenes) ? (scenes as HotScene[]) : []
+  return Array.isArray(scenes) ? scenes.filter(isHotScene) : []
+}
+
+// The feed is trusted for the rest of the shape; these are the fields a card cannot render without.
+function isHotScene(value: unknown): value is HotScene {
+  if (typeof value !== 'object' || value === null) return false
+  const scene = value as Partial<HotScene>
+  return (
+    typeof scene.name === 'string' &&
+    Array.isArray(scene.baseCoords) &&
+    scene.baseCoords.length === 2 &&
+    typeof scene.usersTotalCount === 'number'
+  )
 }
 
 const isGenesisPlaza = (scene: HotScene) => scene.name.toLowerCase().includes('genesis plaza')

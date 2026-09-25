@@ -35,6 +35,13 @@ describe('useTypingListEffect', () => {
     expect(result.current).toBe('Xyz')
   })
 
+  it('renders nothing and schedules no ticks for an empty list', () => {
+    const { result } = renderHook(() => useTypingListEffect([]))
+    expect(result.current).toBe('')
+    ticks(3, 1000)
+    expect(result.current).toBe('')
+  })
+
   it('wraps around to the first word after the last', () => {
     const { result } = renderHook(() => useTypingListEffect(['A', 'B']))
     expect(result.current).toBe('A')

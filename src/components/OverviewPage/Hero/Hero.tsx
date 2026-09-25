@@ -27,6 +27,7 @@ const Hero = () => {
             loop
             muted
             playsInline
+            preload="metadata"
             poster={media.poster.url}
             width={media.video.width}
             height={media.video.height}
