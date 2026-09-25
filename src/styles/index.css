@@ -1,6 +1,4 @@
 /* Inter (SIL OFL 1.1, see assets/fonts/LICENSE-Inter.txt), served with the app so page views leak nothing to Google. */
-/* The files are the variable font (wght 100-900); the declared range must cover it or lighter weights (the FAQ
-   questions at 300) get clamped to 400. */
 @font-face {
   font-family: "Inter";
   font-style: normal;

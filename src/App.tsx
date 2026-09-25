@@ -101,7 +101,6 @@ const App = () => {
             <Suspense fallback={<PageFallback />}>
               <Routes>
                 <Route path="/" element={<OverviewPage />} />
-                {/* Backward-compat: the overview used to live at /overview. */}
                 <Route path="/overview" element={<Navigate to="/" replace />} />
                 <Route path="/collections" element={<CollectionsPage />} />
                 <Route path="/collections/editor" element={<ItemEditorPage />} />
