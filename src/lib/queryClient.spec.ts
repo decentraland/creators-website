@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { HttpError, NetworkError } from '~/lib/http'
 import { setErrorForwarder } from '~/lib/monitoring'
 import { createQueryClient } from './queryClient'
 
@@ -46,6 +47,57 @@ describe('createQueryClient', () => {
       .catch(() => undefined)
 
     expect(reported).not.toHaveBeenCalled()
+  })
+
+  it('tags a failed response with its HTTP status', async () => {
+    const client = createQueryClient()
+
+    await client
+      .fetchQuery({
+        queryKey: ['hot-scenes'],
+        queryFn: () => Promise.reject(new HttpError('hot scenes request failed', 503)),
+        retry: false,
+        meta: { reportNetworkErrors: false }
+      })
+      .catch(() => undefined)
+
+    expect(reported).toHaveBeenCalledTimes(1)
+    expect(reported).toHaveBeenCalledWith(
+      expect.any(HttpError),
+      expect.objectContaining({ flow: 'query', query_key: 'hot-scenes', http_status: 503 })
+    )
+  })
+
+  it('stays quiet about the network failures of a query that opts out of them', async () => {
+    const client = createQueryClient()
+    const failures = [new NetworkError(new TypeError('Failed to fetch')), new DOMException('timed out', 'TimeoutError')]
+
+    for (const failure of failures) {
+      await client
+        .fetchQuery({
+          queryKey: ['latest-blog-posts', failure.name],
+          queryFn: () => Promise.reject(failure),
+          retry: false,
+          meta: { reportNetworkErrors: false }
+        })
+        .catch(() => undefined)
+    }
+
+    expect(reported).not.toHaveBeenCalled()
+  })
+
+  it('still reports the network failures of every other query', async () => {
+    const client = createQueryClient()
+
+    await client
+      .fetchQuery({
+        queryKey: ['collections'],
+        queryFn: () => Promise.reject(new NetworkError(new TypeError('Failed to fetch'))),
+        retry: false
+      })
+      .catch(() => undefined)
+
+    expect(reported).toHaveBeenCalledTimes(1)
   })
 
   it('reports a mutation that fails', async () => {

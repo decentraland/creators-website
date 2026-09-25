@@ -1,6 +1,7 @@
 // Read-only client for the realm provider's hot-scenes feed, the "what creators are building right now"
 // rail of the overview page.
 import { config } from '~/config'
+import { HttpError, fetchOrNetworkError } from '~/lib/http'
 
 export type HotScene = {
   id: string
@@ -17,10 +18,12 @@ const FETCH_TIMEOUT_MS = 10_000
 export const MAX_LIVE_SCENES = 6
 
 export async function fetchHotScenes(): Promise<HotScene[]> {
-  const response = await fetch(config.get('HOT_SCENES_URL'), { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
+  const response = await fetchOrNetworkError(config.get('HOT_SCENES_URL'), {
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
+  })
   if (!response.ok) {
     await response.body?.cancel()
-    throw new Error(`hot scenes request failed (${response.status})`)
+    throw new HttpError('hot scenes request failed', response.status)
   }
   const scenes: unknown = await response.json()
   return Array.isArray(scenes) ? scenes.filter(isHotScene) : []

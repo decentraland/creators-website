@@ -1,8 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { captureError } from '~/lib/monitoring'
+import { HttpError, isNetworkError } from '~/lib/http'
 import { buildBlogPosts, fetchLatestBlogPosts, normalizeAssetUrl, postUrl } from './blog'
-
-vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
 
 const BASE = 'https://cms-api.decentraland.org/spaces/ea2ybdmmn1kv/environments/master'
 
@@ -61,12 +59,11 @@ describe('fetchLatestBlogPosts', () => {
     expect(fetchMock).toHaveBeenCalledWith(`${BASE}/assets/asset-1`, expect.anything())
   })
 
-  it('keeps a post without its cover when the asset request fails, and reports it', async () => {
-    stubCms({ assets: () => Promise.reject(new Error('asset down')) })
+  it('keeps a post without its cover when the asset request fails', async () => {
+    stubCms({ assets: () => Promise.reject(new TypeError('Failed to fetch')) })
     const [post] = await fetchLatestBlogPosts()
     expect(post.imageUrl).toBeNull()
     expect(post.title).toBe('Fresh Post')
-    expect(captureError).toHaveBeenCalledWith(expect.any(Error), { flow: 'blog' })
   })
 
   it('links a post to the blog search when its category is unknown', async () => {
@@ -81,11 +78,16 @@ describe('fetchLatestBlogPosts', () => {
     await expect(fetchLatestBlogPosts()).resolves.toEqual([])
   })
 
-  it('fails when the posts request itself fails', async () => {
+  it('fails with the status when the posts request gets an error response', async () => {
     stubCms({ posts: () => Promise.resolve(failedResponse) })
-    await expect(fetchLatestBlogPosts()).rejects.toThrow()
-    stubCms({ posts: () => Promise.reject(new Error('network down')) })
-    await expect(fetchLatestBlogPosts()).rejects.toThrow()
+    await expect(fetchLatestBlogPosts()).rejects.toEqual(expect.objectContaining({ status: 500 }))
+    await expect(fetchLatestBlogPosts()).rejects.toBeInstanceOf(HttpError)
+  })
+
+  it('fails as a network error when the posts request never gets a response', async () => {
+    stubCms({ posts: () => Promise.reject(new TypeError('Failed to fetch')) })
+    const error = await fetchLatestBlogPosts().catch((e: unknown) => e)
+    expect(isNetworkError(error)).toBe(true)
   })
 })
 

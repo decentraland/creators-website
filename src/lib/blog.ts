@@ -1,6 +1,6 @@
 // Read-only client for the latest blog posts on the Contentful-backed CMS API ("Fresh from the blog").
 import { config } from '~/config'
-import { captureError } from '~/lib/monitoring'
+import { HttpError, fetchOrNetworkError } from '~/lib/http'
 
 type CMSLink = { sys: { id: string } }
 
@@ -50,20 +50,17 @@ export function postUrl(post: { title: string; slug: string; categorySlug: strin
 // Contentful serves asset files behind protocol-relative URLs.
 export const normalizeAssetUrl = (url: string) => (url.startsWith('//') ? `https:${url}` : url)
 
-async function fetchJson<T>(url: string, signal: AbortSignal): Promise<T | null> {
-  try {
-    const response = await fetch(url, { signal })
-    if (!response.ok) {
-      await response.body?.cancel()
-      return null
-    }
-    return (await response.json()) as T
-  } catch (error) {
-    // Degrades the card, but a CMS outage or schema change must still surface in monitoring.
-    captureError(error, { flow: 'blog' })
-    return null
+async function fetchJson<T>(url: string, signal: AbortSignal): Promise<T> {
+  const response = await fetchOrNetworkError(url, { signal })
+  if (!response.ok) {
+    await response.body?.cancel()
+    throw new HttpError('blog request failed', response.status)
   }
+  return (await response.json()) as T
 }
+
+// A category list or cover that fails only degrades the card; the posts request is what react-query reports.
+const orNull = <T>(request: Promise<T>): Promise<T | null> => request.catch(() => null)
 
 /** Joins posts with their category slug/title and resolved cover image. Posts missing an id, slug or title are dropped. */
 export function buildBlogPosts(
@@ -102,13 +99,14 @@ export async function fetchLatestBlogPosts(): Promise<BlogPost[]> {
   const base = cmsUrl()
   const [posts, categories] = await Promise.all([
     fetchJson<CMSPostsResponse>(`${base}/blog/posts?limit=${POSTS_LIMIT}`, signal),
-    fetchJson<CMSCategoriesResponse>(`${base}/blog/categories`, signal)
+    orNull(fetchJson<CMSCategoriesResponse>(`${base}/blog/categories`, signal))
   ])
-  if (!posts) throw new Error('blog posts request failed')
-  if (!Array.isArray(posts.items) || posts.items.length === 0) return []
+  if (!Array.isArray(posts?.items) || posts.items.length === 0) return []
 
   const assetIds = posts.items.map(post => post.fields?.image?.sys.id).filter((id): id is string => Boolean(id))
-  const assets = await Promise.all(assetIds.map(id => fetchJson<CMSAssetResponse>(`${base}/assets/${id}`, signal)))
+  const assets = await Promise.all(
+    assetIds.map(id => orNull(fetchJson<CMSAssetResponse>(`${base}/assets/${id}`, signal)))
+  )
   const assetUrlById = new Map<string, string>()
   assetIds.forEach((id, index) => {
     const fileUrl = assets[index]?.fields?.file?.url

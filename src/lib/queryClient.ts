@@ -1,4 +1,5 @@
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query'
+import { HttpError, isNetworkError } from '~/lib/http'
 import { captureError } from '~/lib/monitoring'
 import { isWalletRejection } from '~/lib/walletErrors'
 
@@ -13,7 +14,13 @@ export function createQueryClient(): QueryClient {
     queryCache: new QueryCache({
       onError: (error, query) => {
         if (isWalletRejection(error)) return
-        captureError(error, { flow: 'query', query_key: nameOf(query.queryKey) })
+        // Third-party feeds opt out: their network failures are the visitor's (ad blockers, offline).
+        if (query.meta?.reportNetworkErrors === false && isNetworkError(error)) return
+        captureError(error, {
+          flow: 'query',
+          query_key: nameOf(query.queryKey),
+          ...(error instanceof HttpError ? { http_status: error.status } : {})
+        })
       }
     }),
     mutationCache: new MutationCache({
