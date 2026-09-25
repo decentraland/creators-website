@@ -26,7 +26,7 @@ describe('Footer', () => {
 
     // Copy re-renders in Spanish and the choice survives a reload.
     expect(screen.getAllByText('Recursos').length).toBeGreaterThan(0)
-    expect(localStorage.getItem('wemotes:locale')).toBe('es')
+    expect(localStorage.getItem('creators:locale')).toBe('es')
   })
 
   it('closes the language menu with Escape and returns focus to the trigger', async () => {
