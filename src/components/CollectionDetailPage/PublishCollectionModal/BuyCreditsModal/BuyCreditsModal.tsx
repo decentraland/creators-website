@@ -7,37 +7,16 @@ import {
 } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { useCreditPacks } from '~/hooks/useCreditPacks'
-import {
-  MAX_PACK_QUANTITY,
-  formatUsd,
-  recommendPack,
-  selectionTotals,
-  type CreditPack,
-  type PackSelection
-} from '~/lib/creditPacks'
+import { MAX_PACK_QUANTITY, formatUsd, recommendPack, selectionTotals, type PackSelection } from '~/lib/creditPacks'
 import { formatCredits } from '~/lib/publishFee'
 import { Button } from '~/components/Button'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
 import { Modal } from '~/components/Modal'
-import packCoins from '~/assets/credits/pack-coins.webp'
-import packStacks from '~/assets/credits/pack-stacks.webp'
-import packChest from '~/assets/credits/pack-chest.webp'
+import { artForPack } from '../packArt'
 import * as S from './BuyCreditsModal.styles'
 
-// Art escalates with the pack size; the catalogue's own url wins when it publishes one.
-const PACK_ART: Record<string, string> = {
-  pack_5: packCoins,
-  pack_10: packCoins,
-  pack_25: packStacks,
-  pack_50: packChest
-}
-const PACK_ART_ORDER = [packCoins, packCoins, packStacks, packChest]
 // The catalogue has four packs; the placeholders keep the grid's shape while it loads.
 const SKELETON_PACKS = 4
-
-function artFor(pack: CreditPack, index: number): string {
-  return pack.artUrl ?? PACK_ART[pack.id] ?? PACK_ART_ORDER[index % PACK_ART_ORDER.length]
-}
 
 type Props = {
   balance: number
@@ -154,7 +133,7 @@ export function BuyCreditsModal({ balance, shortfall, onCancel, onBuy }: Props) 
                   </S.CreditsAmount>
                   <S.CreditsLabel>{t('publish_collection_modal.buy_credits.credits')}</S.CreditsLabel>
                 </S.Credits>
-                <S.Art src={artFor(pack, index)} alt="" />
+                <S.Art src={artForPack(pack, index)} alt="" />
                 <S.Price>{formatUsd(pack.usd)}</S.Price>
                 {withQuantities && (
                   <S.Stepper onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>

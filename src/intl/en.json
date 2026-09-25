@@ -371,6 +371,7 @@
       "description_locked": "This collection is already being published. Give it a few minutes and refresh the page.",
       "description_unsynced": "The items in this collection changed while you were publishing. Close this dialog and start again.",
       "description_fee_mismatch": "The publication fee changed while you were confirming. We've refreshed it — review the new amount and try again.",
+      "cancel": "Cancel",
       "try_again": "Try again"
     },
     "consolidation": {

@@ -1,13 +1,15 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from '~/intl'
 import { useCreditsOrderOutcome } from '~/hooks/useCreditsOrderOutcome'
 import { track } from '~/lib/analytics'
 import { formatCredits } from '~/lib/publishFee'
 import { ConfirmModal } from '~/components/ConfirmModal'
-import creditsArt from '~/assets/credits/credit-coin.webp'
+import { useCreditPacks } from '~/hooks/useCreditPacks'
+import { CREDIT_PACKS } from '~/lib/creditPacks'
 import errorArt from '~/assets/modal-error.png'
 import { PendingModal } from '../SellItemFlow/PendingModal'
+import { artForCredits } from './packArt'
 
 type Props = {
   address: string
@@ -25,6 +27,9 @@ export function TopUpOutcome({ address, orderId, onDone }: Props) {
   const outcome = useCreditsOrderOutcome(address, orderId)
   const { status } = outcome
   const creditsGranted = 'creditsGranted' in outcome ? outcome.creditsGranted : undefined
+  const { packs } = useCreditPacks()
+  // The illustration of the pack just bought; the pending dialog knows no amount yet, so it shows the entry pack.
+  const creditsArt = useMemo(() => artForCredits(packs ?? CREDIT_PACKS, creditsGranted ?? 0), [packs, creditsGranted])
 
   useEffect(() => {
     if (status === 'confirming') return
