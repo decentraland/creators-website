@@ -7,8 +7,8 @@ name: Build and release
 # Auto-deploys (push to main, GitHub release) roll out to zone + today through set-rollout.yml, fired by
 # the CDN's `deployment_status` event. Production (.org) is promoted by hand with set-rollout-manual.yml.
 #
-# Repo-wide setup required before this can deploy (see the PR that introduced it):
-#   NPM_TOKEN                   publish token for @dcl/creators-site (automation token, scope @dcl)
+# npm auth is Trusted Publishing (OIDC): @dcl/creators-site on npmjs.com trusts this repo's
+# build-release.yml, so no npm token is stored anywhere. Secrets it needs:
 #   GITLAB_CDN_DEPLOYER_TOKEN   CDN deploy pipeline trigger token
 #   GITLAB_CDN_DEPLOYER_URL     CDN deploy pipeline trigger url
 #   SENTRY_AUTH_TOKEN           OPTIONAL: uploads source maps; without it the release still ships,
@@ -55,7 +55,7 @@ jobs:
 
     permissions:
       contents: read
-      # npm provenance attestation (OIDC).
+      # npm Trusted Publishing and provenance (OIDC).
       id-token: write
 
     outputs:
@@ -121,8 +121,6 @@ jobs:
           # recover it (the snapshot version is keyed on the run id), so wait up to 15min.
           registry-wait-attempts: '60'
           registry-wait-delay: '15'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   rollout:
     # Manual branch deploys only. Auto-deploys are rolled out by set-rollout.yml on `deployment_status`,
