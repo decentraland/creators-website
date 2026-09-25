@@ -56,6 +56,7 @@ export function TopUpOutcome({ address, orderId, onDone }: Props) {
           credits: formatCredits(creditsGranted ?? 0)
         })}
         art={{ src: creditsArt }}
+        celebrate
         onClose={onDone}
         confirm={{ label: t('publish_collection_modal.top_up.done'), onClick: onDone, testId: 'top-up-success-done' }}
         testId="top-up-success"
