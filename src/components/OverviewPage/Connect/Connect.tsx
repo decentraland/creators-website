@@ -58,8 +58,8 @@ const Connect = () => {
           data-title="join-discord"
           onClick={trackClick}
         >
-          <S.DiscordTitle>{t('overview.connect.join_the_community')}</S.DiscordTitle>
-          <S.DiscordIcon>
+          <S.DiscordTitle data-discord-title>{t('overview.connect.join_the_community')}</S.DiscordTitle>
+          <S.DiscordIcon data-discord-icon>
             <img src={discordIcon} alt="" />
           </S.DiscordIcon>
         </S.Discord>

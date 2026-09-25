@@ -133,6 +133,22 @@ export const Discord = styled.a`
     outline-offset: 2px;
   }
 
+  /* Keyboard focus gets the same affordance as hover; touch devices (no hover) skip it. */
+  @media (hover: hover) {
+    &:hover [data-discord-title] {
+      text-decoration: underline;
+    }
+    &:hover [data-discord-icon] img {
+      transform: scale(1.1);
+    }
+  }
+  &:focus-visible [data-discord-title] {
+    text-decoration: underline;
+  }
+  &:focus-visible [data-discord-icon] img {
+    transform: scale(1.1);
+  }
+
   ${tablet} {
     margin-top: 43px;
   }
@@ -146,6 +162,13 @@ export const DiscordIcon = styled.span`
     width: 93px;
     height: 80px;
     margin-top: 23px;
+    transition: transform 0.2s ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    & img {
+      transition: none;
+    }
   }
 
   ${tablet} {
@@ -163,6 +186,7 @@ export const DiscordTitle = styled.span`
   letter-spacing: ${font.tracking};
   text-align: center;
   text-shadow: 0 4px 20px ${colors.overlayHover};
+  text-underline-offset: 4px;
 
   ${tablet} {
     font-size: 18px;
