@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type DragEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Add as AddIcon,
@@ -21,6 +21,9 @@ import {
   isCollectionLocked
 } from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
+import { track } from '~/lib/analytics'
+import { cancelCreditsOrder } from '~/lib/credits'
+import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'
 import { type RoleKind } from '~/lib/collectionRoles'
 import { canSendCollectionItems } from '~/lib/mint'
 import { ItemType, canEditItemDetails, canEditItemPrice, type Item } from '~/lib/items'
@@ -59,7 +62,7 @@ import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { AddItemsModal } from './AddItemsModal'
 import { ItemActionsMenu } from './ItemActionsMenu'
 import { ItemListRow } from './ItemListRow'
-import { PublishCollectionModal, PublishSuccessModal } from './PublishCollectionModal'
+import { PublishCollectionModal, PublishSuccessModal, type PublishResume } from './PublishCollectionModal'
 import { SellItemFlow, UpdatePriceFlow } from './SellItemFlow'
 import { ManageRolesFlow } from './ManageRolesFlow'
 import { SendItemsFlow } from './SendItemsFlow'
@@ -82,6 +85,8 @@ const CollectionDetailPage = () => {
 
   const [isRenameOpen, setRenameOpen] = useState(false)
   const [publishView, setPublishView] = useState<'closed' | 'wizard' | 'success'>('closed')
+  const [publishResume, setPublishResume] = useState<PublishResume | undefined>(undefined)
+  const topUpReturn = useMemo(() => parseTopUpReturn(searchParams), [searchParams])
   const [addItemsFiles, setAddItemsFiles] = useState<File[] | null>(null)
   const [isDragging, setDragging] = useState(false)
   const [isPreviewLaunching, setPreviewLaunching] = useState(false)
@@ -90,6 +95,26 @@ const CollectionDetailPage = () => {
   // The price dialog keeps the listing it opened with: the flow rewrites the listings cache itself.
   const [priceEdit, setPriceEdit] = useState<{ item: Item; listing: ItemListing & { tradeId: string } } | null>(null)
   const filesInputRef = useRef<HTMLInputElement>(null)
+
+  // Back from buying credits: reopen the wizard on the payment step the creator left. Waits for the
+  // session, since a signed-out visitor is sent to sign in and comes back to this same URL.
+  useEffect(() => {
+    if (!topUpReturn || !restored || !session) return
+    const resume = readTopUpResume()
+    clearTopUpResume()
+    setSearchParams(prev => stripTopUpReturn(prev), { replace: true })
+    if (!resume || resume.collectionId !== collectionId || resume.orderId !== topUpReturn.orderId) return
+    if (topUpReturn.canceled) {
+      track('Credits checkout canceled', { collectionId, orderId: topUpReturn.orderId })
+      void cancelCreditsOrder(session.address, topUpReturn.orderId)
+    }
+    setPublishResume({
+      paymentMethod: resume.paymentMethod,
+      termsAccepted: resume.termsAccepted,
+      orderId: topUpReturn.canceled ? null : topUpReturn.orderId
+    })
+    setPublishView('wizard')
+  }, [topUpReturn, restored, session, collectionId, setSearchParams])
 
   const collectionQuery = useCollection(address, collectionId)
   const itemsQuery = useAllCollectionItems(address, collectionId)
@@ -346,7 +371,11 @@ const CollectionDetailPage = () => {
                     data-desktop-only
                     data-testid="publish-collection"
                     aria-disabled={publishBlocker ? true : undefined}
-                    onClick={() => !publishBlocker && setPublishView('wizard')}
+                    onClick={() => {
+                      if (publishBlocker) return
+                      setPublishResume(undefined)
+                      setPublishView('wizard')
+                    }}
                   >
                     {t('collection_detail_page.publish')}
                   </Button>
@@ -550,6 +579,7 @@ const CollectionDetailPage = () => {
             <PublishCollectionModal
               collection={collection}
               session={session}
+              resume={publishResume}
               onClose={() => setPublishView('closed')}
               onPublished={() => setPublishView('success')}
             />

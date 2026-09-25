@@ -20,7 +20,7 @@ Ported from shop's config:
 - **Monitoring:** Sentry (`@sentry/react`).
 - **Tests:** Vitest + Testing Library for unit tests (`vitest.config.ts`, jsdom); Puppeteer + Vitest for e2e (e2e setup pending).
 - **Deploy:** Decentraland CDN convention (`prebuild.cjs`, env per hostname); Vercel is used for PR/dev previews only.
-- **Out of scope** (shop features that do not carry over): Stripe/thirdweb/credits/checkout, cart/favorites/follows, fitting room.
+- **Out of scope** (shop features that do not carry over): thirdweb, cart/favorites/follows, fitting room.
 
 ## Commands
 

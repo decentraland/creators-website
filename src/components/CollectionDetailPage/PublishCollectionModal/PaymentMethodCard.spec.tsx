@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { type ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -7,6 +7,8 @@ import { openExternal } from '~/lib/navigation'
 import { PaymentMethodCard } from './PaymentMethodCard'
 
 vi.mock('~/lib/navigation', () => ({ openExternal: vi.fn() }))
+
+beforeEach(() => vi.mocked(openExternal).mockClear())
 
 const wrapper = ({ children }: { children: ReactNode }) => <TranslationProvider>{children}</TranslationProvider>
 
@@ -38,6 +40,16 @@ describe('PaymentMethodCard', () => {
     expect(screen.getByTestId('payment-method-credits-input')).toBeDisabled()
     await userEvent.click(buy)
     expect(openExternal).toHaveBeenCalledWith('https://example.com/credits')
+  })
+
+  it('buys inside the wizard instead of leaving for the shop when given an in-app action', async () => {
+    const onGetMore = vi.fn()
+    renderCard({ onGetMore })
+    const buy = screen.getByTestId('payment-method-credits-buy')
+    expect(buy).not.toHaveAttribute('href')
+    await userEvent.click(buy)
+    expect(onGetMore).toHaveBeenCalledTimes(1)
+    expect(openExternal).not.toHaveBeenCalled()
   })
 
   it('shortens the label to "Buy" when several methods are shown', () => {

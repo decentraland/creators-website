@@ -336,6 +336,29 @@
       "checkbox": "Acepto los <terms>Términos de uso</terms> y la <policy>Política de contenido</policy>. Entiendo que mi colección puede ser rechazada si no cumple con ellos y que la tarifa de publicación no es reembolsable.",
       "submit": "Publicar y pagar"
     },
+    "buy_credits": {
+      "title": "Elige tu pack de créditos",
+      "balance": "Mi saldo de créditos:",
+      "recommended": "Recomendado",
+      "credits": "Créditos",
+      "pack_label": "{credits} créditos por {usd}",
+      "decrease": "Un pack menos de {credits} créditos",
+      "increase": "Un pack más de {credits} créditos",
+      "total": "Total:",
+      "cancel": "Cancelar",
+      "buy": "Comprar {credits} créditos",
+      "error": "No pudimos iniciar el pago. Inténtalo de nuevo."
+    },
+    "top_up": {
+      "confirming": "Confirmando tu compra…",
+      "success_title": "¡Tu compra fue exitosa!",
+      "success_description": "Se agregaron {credits} créditos a tu cuenta.",
+      "pending_title": "¡Tus créditos están en camino!",
+      "pending_description": "Tu pago se realizó, pero está tardando un poco más de lo habitual en confirmarse. Tu saldo se actualizará solo en cuanto llegue; no necesitas pagar de nuevo.",
+      "failed_title": "No pudimos completar tu compra",
+      "failed_description": "Algo salió mal con el pago. Si se te cobró, tus créditos se agregarán en breve; si no, elige un pack e inténtalo de nuevo.",
+      "done": "Listo"
+    },
     "success": {
       "title": "Colección enviada a revisión",
       "description": "Tu colección está siendo revisada para su aprobación. Esto puede tardar hasta 5 minutos. Te avisaremos cuando la revisión esté completa.",
@@ -348,6 +371,7 @@
       "description_locked": "Esta colección ya se está publicando. Espera unos minutos y actualiza la página.",
       "description_unsynced": "Los ítems de esta colección cambiaron mientras publicabas. Cierra este diálogo y vuelve a empezar.",
       "description_fee_mismatch": "La tarifa de publicación cambió mientras confirmabas. Ya la actualizamos: revisa el nuevo importe e inténtalo de nuevo.",
+      "cancel": "Cancelar",
       "try_again": "Intentar de nuevo"
     },
     "consolidation": {
