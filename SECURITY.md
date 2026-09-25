@@ -7,7 +7,7 @@ _Last updated: 2026-09-21_
 If you believe you have found a security vulnerability in this repository or in any service it interacts with, please report it privately so we can address it before it is publicly disclosed.
 
 - **Email:** [security@decentraland.org](mailto:security@decentraland.org)
-- **GitHub:** [private vulnerability report](https://github.com/decentraland/wemotes-builder/security/advisories/new) via GitHub's "Report a vulnerability" workflow. Preferred when the issue is specific to this repository, as it keeps discussion attached to the source.
+- **GitHub:** [private vulnerability report](https://github.com/decentraland/creators-website/security/advisories/new) via GitHub's "Report a vulnerability" workflow. Preferred when the issue is specific to this repository, as it keeps discussion attached to the source.
 
 When reporting, please include as much of the following as possible:
 
@@ -69,4 +69,4 @@ Only the `main` branch and the currently deployed production build are supported
 
 ## Recognition
 
-Reporters who consent to attribution will be credited in the published GitHub Security Advisory for their finding and, where applicable, in release notes. Published advisories are visible under the repository's [Security tab](https://github.com/decentraland/wemotes-builder/security/advisories?state=published). Decentraland does not currently run a paid bug bounty program; recognition is by attribution and, where applicable, swag.
+Reporters who consent to attribution will be credited in the published GitHub Security Advisory for their finding and, where applicable, in release notes. Published advisories are visible under the repository's [Security tab](https://github.com/decentraland/creators-website/security/advisories?state=published). Decentraland does not currently run a paid bug bounty program; recognition is by attribution and, where applicable, swag.
