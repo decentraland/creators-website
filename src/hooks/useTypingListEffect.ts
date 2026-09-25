@@ -1,7 +1,7 @@
 import { useEffect, useReducer, useRef } from 'react'
 
 const LETTER_MS = 100
-// Hold the complete word before erasing it.
+// Held once when the word completes and again on the flip to erase, so a full word shows ~2s, as on sites.
 const PAUSE_MS = LETTER_MS * 10
 
 type TypingState = { letterPos: number; wordIndex: number; action: 'write' | 'erase' }
@@ -25,7 +25,7 @@ export function useTypingListEffect(list: readonly string[]): string {
   const timeout = useRef<ReturnType<typeof setTimeout>>()
 
   const word = list[state.wordIndex] ?? ''
-  const atEnd = state.action === 'write' && state.letterPos >= word.length - 1
+  const atEnd = state.letterPos >= word.length - 1
 
   useEffect(() => {
     clearTimeout(timeout.current)

@@ -15,18 +15,19 @@ function ticks(count: number, ms = 100) {
 }
 
 describe('useTypingListEffect', () => {
-  it('types the first word letter by letter, holds it, erases it and moves on to the next word', () => {
+  it('types the first word letter by letter, holds it ~2s, erases it and moves on to the next word', () => {
     const { result } = renderHook(() => useTypingListEffect(['Ab', 'Xyz']))
     expect(result.current).toBe('A')
 
     ticks(1)
     expect(result.current).toBe('Ab')
 
-    // The complete word stays up for the pause before erasing starts.
-    ticks(1, 500)
+    // Held once when the word completes and again on the flip to erase, as on sites.
+    ticks(1, 1000)
     expect(result.current).toBe('Ab')
-    ticks(1, 500)
-    ticks(1)
+    ticks(1, 999)
+    expect(result.current).toBe('Ab')
+    ticks(1, 1)
     expect(result.current).toBe('A')
 
     ticks(1)
@@ -45,11 +46,9 @@ describe('useTypingListEffect', () => {
   it('wraps around to the first word after the last', () => {
     const { result } = renderHook(() => useTypingListEffect(['A', 'B']))
     expect(result.current).toBe('A')
-    ticks(1, 1000)
-    ticks(1)
+    ticks(2, 1000)
     expect(result.current).toBe('B')
-    ticks(1, 1000)
-    ticks(1)
+    ticks(2, 1000)
     expect(result.current).toBe('A')
   })
 })
