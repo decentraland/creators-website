@@ -168,7 +168,8 @@ export const PREVIEW_WHEEL_START = 50
 const BASE_ZOOM = 1.75
 // The jump animation leaves the frame at the default zoom, so it is framed further out (legacy quirk).
 const JUMP_ZOOM = 1
-// The `zoom` option is not a multiplier: wearable-preview maps 0–100 onto this range.
+// The `zoom` option is not a multiplier: wearable-preview maps 0–100 onto this range. Keep in sync with
+// its `computeZoom` (src/lib/zoom.ts there), or the framing shifts silently.
 const MIN_ZOOM = 1
 const MAX_ZOOM = 2.8
 
