@@ -33,7 +33,10 @@ export async function fetchAvailableContent(hashes: string[]): Promise<Set<strin
   if (hashes.length === 0) return new Set()
   const query = hashes.map(hash => `cid=${encodeURIComponent(hash)}`).join('&')
   const response = await fetch(`${contentUrl()}/available-content?${query}`)
-  if (!response.ok) throw new Error(`catalyst request failed: available-content (${response.status})`)
+  if (!response.ok) {
+    await response.body?.cancel()
+    throw new Error(`catalyst request failed: available-content (${response.status})`)
+  }
   const results = (await response.json()) as { cid: string; available: boolean }[]
   return new Set(results.filter(result => result.available).map(result => result.cid))
 }
@@ -45,6 +48,7 @@ export async function deployEntity(form: FormData): Promise<void> {
     const body = (await response.json().catch(() => ({}))) as { errors?: string[] }
     throw new Error(`catalyst deployment failed (${response.status}): ${(body.errors ?? []).join(' ')}`)
   }
+  await response.body?.cancel()
 }
 
 const BASE_AVATARS_COLLECTION = 'urn:decentraland:off-chain:base-avatars'

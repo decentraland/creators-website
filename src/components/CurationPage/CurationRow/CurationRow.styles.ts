@@ -1,16 +1,10 @@
 import styled from '@emotion/styled'
 import { Link } from 'react-router-dom'
 import { theme } from '~/styles/theme'
+import { curationColumns } from '../CurationPage.styles'
 
 const card = theme.media.maxWidth('lg')
 const table = theme.media.minWidth('lg')
-
-export const curationColumns = `
-  display: grid;
-  grid-template-columns: minmax(220px, 2fr) minmax(140px, 1.2fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(120px, 1fr) minmax(200px, 1.4fr);
-  align-items: center;
-  gap: 16px;
-`
 
 export const Row = styled.article`
   ${curationColumns};

@@ -1,11 +1,31 @@
 import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
-import { curationColumns } from './CurationRow/CurationRow.styles'
 
-export { FooterRow, Panel, PanelText, PanelTitle, SearchBox, ShowingCount, Spinner } from '~/styles/shared'
-export { Chip, Chips, Header, Page, SignInIcon, Title } from '~/components/CollectionsPage/CollectionsPage.styles'
+export {
+  Chip,
+  Chips,
+  FooterRow,
+  Header,
+  Page,
+  Panel,
+  PanelText,
+  PanelTitle,
+  SearchBox,
+  ShowingCount,
+  SignInIcon,
+  Spinner,
+  Title
+} from '~/styles/shared'
 
 const card = theme.media.maxWidth('lg')
+
+// Shared by the list header and every row so their columns stay aligned.
+export const curationColumns = `
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) minmax(140px, 1.2fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(120px, 1fr) minmax(200px, 1.4fr);
+  align-items: center;
+  gap: 16px;
+`
 
 export const FilterRow = styled.div`
   display: flex;
