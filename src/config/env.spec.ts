@@ -25,6 +25,21 @@ describe('resolveEnv', () => {
   })
 })
 
+describe('resolveBasePath', () => {
+  it('mounts the router at /create when served by-path on the Decentraland domains', () => {
+    expect(resolveBasePath('/create')).toBe('/create')
+    expect(resolveBasePath('/create/collections/editor')).toBe('/create')
+  })
+
+  it('mounts the router at the root everywhere else', () => {
+    expect(resolveBasePath('')).toBeUndefined()
+    expect(resolveBasePath('/')).toBeUndefined()
+    expect(resolveBasePath('/collections')).toBeUndefined()
+    expect(resolveBasePath('/creator')).toBeUndefined()
+    expect(resolveBasePath('/@dcl/creators-site/0.0.1/')).toBeUndefined()
+  })
+})
+
 describe('createEnvConfig', () => {
   it('reads the resolved environment only', () => {
     const config = createEnvConfig(
@@ -36,20 +51,5 @@ describe('createEnvConfig', () => {
     expect(config.is(Env.PRODUCTION)).toBe(true)
     expect(config.getEnv()).toBe(Env.PRODUCTION)
     expect(() => createEnvConfig({}, Env.STAGING).get('URL')).toThrow()
-  })
-})
-
-describe('resolveBasePath', () => {
-  it('mounts the router on /create when the app is served by path', () => {
-    expect(resolveBasePath('/create')).toBe('/create')
-    expect(resolveBasePath('/create/')).toBe('/create')
-    expect(resolveBasePath('/create/collections/abc')).toBe('/create')
-  })
-
-  it('mounts it on the root everywhere else', () => {
-    expect(resolveBasePath('/')).toBe('/')
-    expect(resolveBasePath('/collections')).toBe('/')
-    // A path that merely starts with the word is not the mount point.
-    expect(resolveBasePath('/creator')).toBe('/')
   })
 })

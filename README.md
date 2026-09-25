@@ -1,6 +1,6 @@
-# Wemotes Builder
+# Creators Website
 
-Wemotes Builder is the new UI for Decentraland **wearables and emotes creators**. It replaces the front end of the legacy [builder](https://github.com/decentraland/builder) project with a modern interface, better UX, and new creator tools, while continuing to use the existing [builder-server](https://github.com/decentraland/builder-server) back end.
+Creators Website is the new UI for Decentraland **wearables and emotes creators**. It replaces the front end of the legacy [builder](https://github.com/decentraland/builder) project with a modern interface, better UX, and new creator tools, while continuing to use the existing [builder-server](https://github.com/decentraland/builder-server) back end.
 
 This project follows the same approach as the **shop** project (the modern re-version of the legacy marketplace UI): same tech stack and the same color palette, for visual consistency across the new Decentraland front ends. Feature designs and mockups live in Figma.
 
@@ -50,8 +50,8 @@ Before running this service, ensure you have the following installed:
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/decentraland/wemotes-builder.git
-cd wemotes-builder
+git clone https://github.com/decentraland/creators-website.git
+cd creators-website
 ```
 
 2. Install dependencies:

@@ -1,6 +1,6 @@
 # Conventions
 
-Code rules for wemotes-builder. General project guidance lives in `CLAUDE.md`; this file holds the hard rules that every PR must respect.
+Code rules for creators-website. General project guidance lives in `CLAUDE.md`; this file holds the hard rules that every PR must respect.
 
 ## Component organization (semantic, hard rules)
 

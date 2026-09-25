@@ -20,15 +20,17 @@ export function resolveEnv(location: Pick<Location, 'host'> | undefined, systemE
   return getEnv(systemEnvVariables)
 }
 
-/** The path the app is mounted on: decentraland.<tld>/create serves it by path, everything else at the root. */
-export const CREATE_PATH = '/create'
+/** Where the app is mounted on the Decentraland domains: decentraland.<tld>/create. */
+export const SITE_PATH = '/create'
 
 /**
- * Router basename for the current page. One build serves both the by-path deploy (`/create/...`) and
- * the root-served previews (Vercel, `vite dev`), so the mount point is read from the URL, not baked in.
+ * The router basename for this page load: `/create` when served by-path on the Decentraland domains,
+ * the root everywhere else (localhost, Vercel previews, tests). Decided from the pathname: a hostname
+ * allowlist blanks the page on any host it doesn't know, and the CDN base is where the assets live, not
+ * where the app is mounted.
  */
-export function resolveBasePath(pathname: string): string {
-  return pathname === CREATE_PATH || pathname.startsWith(`${CREATE_PATH}/`) ? CREATE_PATH : '/'
+export function resolveBasePath(pathname: string): string | undefined {
+  return pathname === SITE_PATH || pathname.startsWith(`${SITE_PATH}/`) ? SITE_PATH : undefined
 }
 
 export type EnvConfig = {

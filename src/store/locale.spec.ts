@@ -13,12 +13,12 @@ describe('locale store', () => {
   it('persists the chosen locale and exposes it as state', () => {
     useLocale.getState().setLocale('es')
     expect(useLocale.getState().locale).toBe('es')
-    expect(localStorage.getItem('wemotes:locale')).toBe('es')
+    expect(localStorage.getItem('creators:locale')).toBe('es')
     expect(getPreferredLocale()).toBe('es')
   })
 
   it('ignores an invalid saved value', () => {
-    localStorage.setItem('wemotes:locale', 'fr')
+    localStorage.setItem('creators:locale', 'fr')
     expect(getPreferredLocale()).toBe('en')
   })
 })

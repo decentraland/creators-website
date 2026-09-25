@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this project is
 
-**wemotes-builder** is the new UI for Decentraland **wearables and emotes creators**: a modern front end (better UX, new creator tools) on top of the existing, unchanged **builder-server** back end. Feature designs and mockups live in Figma.
+**creators-website** is the new UI for Decentraland **wearables and emotes creators**: a modern front end (better UX, new creator tools) on top of the existing, unchanged **builder-server** back end. Feature designs and mockups live in Figma.
 
 Consistency rule: this app deliberately shares its tech stack and visual identity (theme, color palette) with the **shop** repo. Day-to-day code needs only this file and `CONVENTIONS.md` — do **not** consult shop for regular tasks. Check what shop uses only when making a _new_ technology choice (adding a dependency, a tool, a pattern for a problem this repo hasn't solved yet), and prefer shop's choice unless there's a strong reason not to.
 
@@ -56,6 +56,8 @@ Runtime config lives in `src/config/index.ts`, built from per-environment JSON f
 ### Build/deploy plumbing
 
 `scripts/prebuild.cjs` runs before every build: it syncs the version from `package.json` into `public/package.json` and computes `VITE_BASE_URL` — empty for local builds, `https://cdn.decentraland.org/<name>/<version>` in CI — rewriting `.env` and both package.json `homepage` fields in place. Vite uses `VITE_BASE_URL` as `base` for production builds only.
+
+Releases: `.github/workflows/build-release.yml` (push to `main`, GitHub release, or manual dispatch) publishes `dist/` as the `@dcl/creators-site` npm package and triggers the CDN deploy; `set-rollout.yml` then points `.zone` and `.today` at it. Production (`.org`) is promoted by hand with `set-rollout-manual.yml` from an already-published version. Source maps upload to Sentry only when `SENTRY_AUTH_TOKEN` is set and are deleted before publish.
 
 ## Design specs are the source of truth
 

@@ -4,10 +4,7 @@ import dev from './env/dev.json'
 import prod from './env/prd.json'
 import stg from './env/stg.json'
 
-// Router basename. The app is served by path at decentraland.<tld>/create (assets still come from the
-// CDN via Vite's `base`), and from the root on local dev and Vercel previews; the mount point is derived
-// from the page URL so one build works in both.
-export const basePath = resolveBasePath(typeof window === 'undefined' ? '/' : window.location.pathname)
+export const basePath = resolveBasePath(typeof window === 'undefined' ? '' : window.location.pathname)
 
 const systemEnvVariables = { VITE_DCL_DEFAULT_ENV: import.meta.env.VITE_DCL_DEFAULT_ENV ?? 'dev' }
 
