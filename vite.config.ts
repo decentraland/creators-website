@@ -16,10 +16,8 @@ const sentryUpload = Boolean(process.env.SENTRY_AUTH_TOKEN)
  * The ONE release identifier: the maps are uploaded under it and the runtime reports it (via the
  * `__SENTRY_RELEASE__` define). Sentry applies a map only when the two strings are identical, so
  * deriving both from here is what keeps them from drifting apart and leaving every stack minified.
- * Named after the published package (the artifact the maps belong to), not the repo: analytics tags
- * events with the repo name instead (see SOURCE in src/lib/analytics.ts).
  */
-const sentryRelease = `creators-site@${pkg.version}`
+const sentryRelease = `creators-website@${pkg.version}`
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => {
