@@ -79,10 +79,9 @@ export function recommendPack(packs: CreditPack[], shortfall: number): PackSelec
 }
 
 /** What a selection buys, in credits and dollars (dollars kept to cents, so 3 × 5.99 is 17.97). */
-export function selectionTotals(
-  packs: CreditPack[],
-  selection: PackSelection | null
-): { credits: number; usd: number } {
+export type PackTotals = { credits: number; usd: number }
+
+export function selectionTotals(packs: CreditPack[], selection: PackSelection | null): PackTotals {
   const pack = selection ? packs.find(candidate => candidate.id === selection.packId) : undefined
   if (!pack || !selection) return { credits: 0, usd: 0 }
   return {

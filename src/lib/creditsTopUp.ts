@@ -29,14 +29,21 @@ function storage(): Storage | null {
   }
 }
 
-export function saveTopUpResume(resume: TopUpResume): void {
-  storage()?.setItem(STORAGE_KEY, JSON.stringify(resume))
+/** Whether the record was stored: restricted-storage contexts throw on the methods, not only on access. */
+export function saveTopUpResume(resume: TopUpResume): boolean {
+  try {
+    const store = storage()
+    store?.setItem(STORAGE_KEY, JSON.stringify(resume))
+    return !!store
+  } catch {
+    return false
+  }
 }
 
 export function readTopUpResume(): TopUpResume | null {
-  const raw = storage()?.getItem(STORAGE_KEY)
-  if (!raw) return null
   try {
+    const raw = storage()?.getItem(STORAGE_KEY)
+    if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<TopUpResume>
     if (typeof parsed.collectionId !== 'string' || typeof parsed.orderId !== 'string') return null
     return {
@@ -52,7 +59,11 @@ export function readTopUpResume(): TopUpResume | null {
 }
 
 export function clearTopUpResume(): void {
-  storage()?.removeItem(STORAGE_KEY)
+  try {
+    storage()?.removeItem(STORAGE_KEY)
+  } catch {
+    // Nothing stored is nothing to clear.
+  }
 }
 
 /** The Stripe return carried by a query string, or null when this is an ordinary visit. */

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearTopUpResume, parseTopUpReturn, readTopUpResume, saveTopUpResume, stripTopUpReturn } from './creditsTopUp'
 
 const resume = { collectionId: 'c1', orderId: 'order-1', paymentMethod: 'credits' as const, termsAccepted: true }
@@ -15,6 +15,21 @@ describe('the top-up hand-off record', () => {
     saveTopUpResume(resume)
     clearTopUpResume()
     expect(readTopUpResume()).toBeNull()
+  })
+
+  it('reports a record it could not store, and reads nothing back, when storage refuses it', () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('blocked', 'SecurityError')
+    })
+    const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('blocked', 'SecurityError')
+    })
+    expect(saveTopUpResume(resume)).toBe(false)
+    expect(readTopUpResume()).toBeNull()
+    expect(() => clearTopUpResume()).not.toThrow()
+    setItem.mockRestore()
+    getItem.mockRestore()
+    expect(saveTopUpResume(resume)).toBe(true)
   })
 
   it('ignores a record it cannot trust', () => {

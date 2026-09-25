@@ -7,7 +7,14 @@ import {
 } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { useCreditPacks } from '~/hooks/useCreditPacks'
-import { MAX_PACK_QUANTITY, formatUsd, recommendPack, selectionTotals, type PackSelection } from '~/lib/creditPacks'
+import {
+  MAX_PACK_QUANTITY,
+  formatUsd,
+  recommendPack,
+  selectionTotals,
+  type PackSelection,
+  type PackTotals
+} from '~/lib/creditPacks'
 import { formatCredits } from '~/lib/publishFee'
 import { Button } from '~/components/Button'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
@@ -24,7 +31,7 @@ type Props = {
   shortfall: number
   onCancel: () => void
   /** Starts the checkout; a rejection keeps the dialog open with an error line. */
-  onBuy: (selection: PackSelection) => Promise<void>
+  onBuy: (selection: PackSelection, totals: PackTotals) => Promise<void>
 }
 
 /**
@@ -58,7 +65,7 @@ export function BuyCreditsModal({ balance, shortfall, onCancel, onBuy }: Props) 
     setBuying(true)
     setFailed(false)
     try {
-      await onBuy(selection)
+      await onBuy(selection, totals)
     } catch {
       setFailed(true)
       setBuying(false)

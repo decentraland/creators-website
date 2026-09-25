@@ -18,7 +18,7 @@ vi.stubGlobal('fetch', fetchMock)
 beforeEach(() => fetchMock.mockResolvedValue(new Response(JSON.stringify(CATALOGUE), { status: 200 })))
 
 async function renderModal(props: Partial<React.ComponentProps<typeof BuyCreditsModal>> = {}) {
-  const onBuy = vi.fn<(selection: { packId: string; quantity: number }) => Promise<void>>().mockResolvedValue()
+  const onBuy = vi.fn<React.ComponentProps<typeof BuyCreditsModal>['onBuy']>().mockResolvedValue()
   const onCancel = vi.fn()
   render(<BuyCreditsModal balance={60} shortfall={240} onCancel={onCancel} onBuy={onBuy} {...props} />, {
     wrapper: Providers
@@ -79,7 +79,7 @@ describe('BuyCreditsModal', () => {
   it('hands the chosen pack and quantity to the checkout', async () => {
     const { onBuy } = await renderModal({ shortfall: 1000 })
     await userEvent.click(screen.getByTestId('buy-credits-submit'))
-    expect(onBuy).toHaveBeenCalledWith({ packId: 'pack_50', quantity: 2 })
+    expect(onBuy).toHaveBeenCalledWith({ packId: 'pack_50', quantity: 2 }, { credits: 1080, usd: 119.98 })
   })
 
   it('keeps the dialog open with an error when the checkout cannot start', async () => {

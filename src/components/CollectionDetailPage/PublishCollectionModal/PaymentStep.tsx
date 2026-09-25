@@ -15,7 +15,7 @@ import { type Collection } from '~/lib/collections'
 import { FeatureFlag } from '~/lib/featureFlags'
 import { type Item } from '~/lib/items'
 import { createCreditsCheckout } from '~/lib/credits'
-import { type PackSelection, selectionTotals } from '~/lib/creditPacks'
+import { type PackSelection, type PackTotals } from '~/lib/creditPacks'
 import { saveTopUpResume } from '~/lib/creditsTopUp'
 import { openExternal, redirectExternal } from '~/lib/navigation'
 import { verifyPublicationFee } from '~/lib/feeVerification'
@@ -34,7 +34,6 @@ import { InfoTooltip } from '~/components/Tooltip'
 import { Checkbox } from '~/components/Checkbox'
 import { ThumbnailMosaic } from '~/components/ThumbnailMosaic'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
-import { useCreditPacks } from '~/hooks/useCreditPacks'
 import { BuyCreditsModal } from './BuyCreditsModal'
 import { PaymentMethodCard } from './PaymentMethodCard'
 import { Methods } from './PaymentMethodCard.styles'
@@ -88,7 +87,6 @@ export function PaymentStep({
   const fee = useMemo(() => getPublicationFee(rarities.data ?? [], items.length), [rarities.data, items.length])
 
   const creditsFlag = useFeatureFlag(FeatureFlag.SHOP_CREDITS_FOR_COLLECTIONS_FEE)
-  const { packs } = useCreditPacks()
   const methods = useMemo(
     () => getAvailablePaymentMethods(mana.data, creditsFlag.enabled),
     [mana.data, creditsFlag.enabled]
@@ -166,10 +164,15 @@ export function PaymentStep({
   }
 
   // Leaves for Stripe's hosted page; the hand-off record brings the creator back to this step.
-  async function buyCredits(selection: PackSelection) {
-    const totals = selectionTotals(packs ?? [], selection)
+  async function buyCredits(selection: PackSelection, totals: PackTotals) {
     const checkout = await createCreditsCheckout(address, selection)
-    saveTopUpResume({ collectionId: collection.id, orderId: checkout.orderId, paymentMethod, termsAccepted: accepted })
+    // Blocked storage only costs the wizard's reopening; the credits still land, so the checkout goes on.
+    const resumeSaved = saveTopUpResume({
+      collectionId: collection.id,
+      orderId: checkout.orderId,
+      paymentMethod,
+      termsAccepted: accepted
+    })
     track('Start credits checkout', {
       collectionId: collection.id,
       orderId: checkout.orderId,
@@ -177,7 +180,8 @@ export function PaymentStep({
       quantity: selection.quantity,
       credits: totals.credits,
       usd: totals.usd,
-      shortfall: creditsShortfall
+      shortfall: creditsShortfall,
+      resumeSaved
     })
     redirectExternal(checkout.url)
   }
