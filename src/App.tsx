@@ -81,6 +81,14 @@ const App = () => {
     }
   }, [isFullscreen])
 
+  // Mirrored on <body> so shell-level CSS (the page field behind the fixed navbar) can vary per route.
+  useEffect(() => {
+    document.body.dataset.route = path || '/'
+    return () => {
+      delete document.body.dataset.route
+    }
+  }, [path])
+
   return (
     <TranslationProvider>
       {!isFullscreen && <NavBar />}

@@ -96,6 +96,30 @@ h2 {
   padding: 0;
   max-width: none;
 }
+/* The overview sits on near-black like sites' creator landing; only the navbar + sub-nav keep the
+   violet field, painted by a fixed strip of the same gradient (sized to the viewport so the bars
+   composite to the same colors as on every other page) behind the translucent bars. */
+body[data-route="/"] {
+  background: #161518;
+}
+body[data-route="/"]::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(var(--nav-h) + var(--sub-nav-h));
+  background: radial-gradient(
+    61.64% 109.58% at 50% 54.49%,
+    #952dc6 0%,
+    #7c27a8 25%,
+    #642089 50%,
+    #4b1a6b 75%,
+    #32134c 100%
+  );
+  background-size: 100% 100vh;
+  z-index: -1;
+}
 
 /* Suspense fallback while a lazy route chunk downloads. */
 .page-loading {
