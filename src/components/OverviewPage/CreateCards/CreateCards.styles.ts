@@ -7,6 +7,7 @@ const { colors, font, media, radius } = theme
 const tablet = media.maxWidth('tablet')
 const laptop = media.maxWidth('laptop')
 const desktop = media.maxWidth('desktop')
+const mobile = media.maxWidth('mobile')
 
 export const Section = styled.section`
   position: relative;
@@ -229,6 +230,10 @@ export const Links = styled.div`
 export const Link = styled.a`
   display: block;
   width: 50%;
+
+  ${mobile} {
+    width: 100%;
+  }
   margin-bottom: 8px;
   font-size: 16px;
   font-weight: 500;

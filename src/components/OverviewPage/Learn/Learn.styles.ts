@@ -163,7 +163,7 @@ export const Extras = styled.div`
 
   ${tablet} {
     flex-direction: column;
-    width: calc(100% - 16px);
+    gap: 32px;
     margin: 28px 0 32px;
     padding: 0 16px;
   }
@@ -199,13 +199,18 @@ export const Extra = styled.div`
     flex-direction: column;
   }
   ${tablet} {
+    gap: 16px;
     width: 100%;
     font-size: 18px;
+    line-height: 1.4;
 
+    &:first-of-type,
+    &:last-of-type {
+      margin: 0;
+    }
     & a {
       width: 100%;
-      margin-top: 16px;
-      margin-left: 0;
+      margin: 0;
     }
   }
 `
