@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { TranslationProvider } from '~/intl'
-import { track } from '~/lib/analytics'
+import { useLocale } from '~/store/locale'
+import { sendOverviewTrack as track } from '~/lib/overviewSegment'
 import { Learn } from './Learn'
 
-vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
+vi.mock('~/lib/overviewSegment', () => ({ sendOverviewTrack: vi.fn(), sendOverviewPage: vi.fn() }))
 vi.mock('react-intersection-observer', () => ({ useInView: () => ({ ref: vi.fn(), inView: true }) }))
 
-beforeEach(() => vi.mocked(track).mockClear())
+beforeEach(() => {
+  useLocale.setState({ locale: 'en' })
+  vi.mocked(track).mockClear()
+})
 
 const renderSection = () =>
   render(
@@ -26,6 +30,18 @@ describe('Learn', () => {
     expect(cards[0]).toHaveTextContent('Blender for Beginners | Making Your First Hat')
 
     fireEvent.click(cards[0])
+    expect(track).toHaveBeenCalledWith('Click', {
+      place: 'Creators Learn',
+      title: 'Blender for Beginners | Making Your First Hat'
+    })
+  })
+
+  it('tracks the English tutorial title for a Spanish-speaking visitor', () => {
+    useLocale.setState({ locale: 'es' })
+    renderSection()
+    const card = screen.getAllByTestId('overview-learn-card')[0]
+    expect(card).toHaveTextContent('Blender para principiantes')
+    fireEvent.click(card)
     expect(track).toHaveBeenCalledWith('Click', {
       place: 'Creators Learn',
       title: 'Blender for Beginners | Making Your First Hat'

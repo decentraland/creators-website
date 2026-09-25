@@ -1,4 +1,4 @@
-import { useTranslation } from '~/intl'
+import { englishMessage, useTranslation } from '~/intl'
 import { OverviewSection, trackClick } from '~/lib/overviewAnalytics'
 import { AnimatedSection } from '../AnimatedSection'
 import { whyCards } from '../data'
@@ -14,7 +14,7 @@ const Why = () => {
         </S.Title>
         <S.Grid>
           {whyCards.map(card => {
-            const title = t(`overview.why.cards.${card.id}.title`)
+            const titleKey = `overview.why.cards.${card.id}.title`
             return (
               <S.Card
                 key={card.id}
@@ -24,7 +24,7 @@ const Why = () => {
                 data-testid="overview-why-card"
                 data-gradient={card.gradient}
                 data-place={OverviewSection.WHY}
-                data-title={title}
+                data-title={englishMessage(titleKey)}
                 onClick={trackClick}
               >
                 <S.CardInner>
@@ -32,7 +32,7 @@ const Why = () => {
                     <img src={card.image} alt="" loading="lazy" />
                   </S.CardImage>
                   <S.CardText>
-                    <S.CardTitle>{title}</S.CardTitle>
+                    <S.CardTitle>{t(titleKey)}</S.CardTitle>
                     <S.CardDescription>{t(`overview.why.cards.${card.id}.description`)}</S.CardDescription>
                     <S.CardCta>{t(`overview.why.cards.${card.id}.cta`)}</S.CardCta>
                   </S.CardText>

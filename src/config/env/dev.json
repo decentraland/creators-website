@@ -29,6 +29,8 @@
   "CONTENTFUL_CAMPAIGN_ENTITY_ID": "7FJAHnPOiCEHMJhrZ3sRmG",
   "SEGMENT_API_KEY": "H21EgRI4eYwICDZf5uW6ek2BiykIR6wA",
   "SEGMENT_ANALYTICS_URL": "https://evs.e.decentraland.org/z8jpJNrQbg/PbFpPU15ic.min.js",
+  "SEGMENT_API_HOST": "api.e.decentraland.org/v1",
+  "SITES_SEGMENT_API_KEY": "",
   "INTERCOM_APP_ID": "z0h94kay",
   "SENTRY_DSN": "https://428e8d298fb3f0fbcea645314a4a388c@o4504361728212992.ingest.sentry.io/4505748381564928"
 }

@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { TranslationProvider } from '~/intl'
-import { track } from '~/lib/analytics'
+import { useLocale } from '~/store/locale'
+import { sendOverviewTrack as track } from '~/lib/overviewSegment'
 import { Why } from './Why'
 
-vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
+vi.mock('~/lib/overviewSegment', () => ({ sendOverviewTrack: vi.fn(), sendOverviewPage: vi.fn() }))
 vi.mock('react-intersection-observer', () => ({ useInView: () => ({ ref: vi.fn(), inView: true }) }))
 
-beforeEach(() => vi.mocked(track).mockClear())
+beforeEach(() => {
+  useLocale.setState({ locale: 'en' })
+  vi.mocked(track).mockClear()
+})
 
 describe('Why', () => {
   it('renders the three reasons as links out to Discord and the docs', () => {
@@ -33,6 +37,19 @@ describe('Why', () => {
       </TranslationProvider>
     )
     fireEvent.click(screen.getAllByTestId('overview-why-card')[0])
+    expect(track).toHaveBeenCalledWith('Click', { place: 'Creators Why', title: 'Join a Community of Creators' })
+  })
+
+  it('tracks the English card title for a Spanish-speaking visitor', () => {
+    useLocale.setState({ locale: 'es' })
+    render(
+      <TranslationProvider>
+        <Why />
+      </TranslationProvider>
+    )
+    const card = screen.getAllByTestId('overview-why-card')[0]
+    expect(card).toHaveTextContent('Únete a una comunidad de creadores')
+    fireEvent.click(card)
     expect(track).toHaveBeenCalledWith('Click', { place: 'Creators Why', title: 'Join a Community of Creators' })
   })
 })

@@ -8,8 +8,8 @@ import { NavBar } from '~/components/NavBar'
 import { OverviewPage } from '~/components/OverviewPage'
 import { Toasts } from '~/components/Toasts'
 import { TranslationProvider } from '~/intl'
-import { trackPage } from '~/lib/analytics'
 import { FeatureFlag } from '~/lib/featureFlags'
+import { trackPageView } from '~/lib/pageViews'
 import { useAccountWatcher } from '~/hooks/useAccountWatcher'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useWallet } from '~/store/wallet'
@@ -35,20 +35,6 @@ const PageFallback = () => {
 // Fullscreen workspaces: no navbar, no footer, no page scroll.
 const FULLSCREEN_PATHS = ['/collections/editor', '/live-preview']
 
-// Stable page names for the funnel: a raw pathname carries collection ids and would never group.
-const PAGE_NAMES: Record<string, string> = {
-  '/': 'overview',
-  '/collections': 'collections',
-  '/collections/editor': 'item_editor',
-  '/curation': 'curation',
-  '/live-preview': 'live_preview'
-}
-
-function pageName(pathname: string): string {
-  const path = pathname.replace(/\/+$/, '') || '/'
-  return PAGE_NAMES[path] ?? (path.startsWith('/collections/') ? 'collection_detail' : 'other')
-}
-
 const App = () => {
   const location = useLocation()
   const maintenance = useFeatureFlag(FeatureFlag.MAINTENANCE)
@@ -69,7 +55,7 @@ const App = () => {
   // Pagination and in-page filters update the query string only; a new pathname is a new page.
   useEffect(() => {
     window.scrollTo({ top: 0 })
-    trackPage(pageName(location.pathname))
+    trackPageView(location.pathname)
   }, [location.pathname])
 
   useEffect(() => {

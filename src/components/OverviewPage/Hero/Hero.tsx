@@ -4,14 +4,19 @@ import { ChevronDownIcon } from '~/components/Icons'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useTypingListEffect } from '~/hooks/useTypingListEffect'
 import { useTranslation } from '~/intl'
-import { OverviewSection, trackClick } from '~/lib/overviewAnalytics'
-import { theme } from '~/styles/theme'
+import {
+  CREATOR_HUB_TARGET,
+  DOWNLOAD_CLICK,
+  OVERVIEW_MOBILE_QUERY,
+  OverviewSection,
+  trackClick
+} from '~/lib/overviewAnalytics'
 import { CREATOR_DOCS_URL, CREATOR_HUB_DOWNLOAD_URL, heroData } from '../data'
 import * as S from './Hero.styles'
 
 const Hero = () => {
   const { t } = useTranslation()
-  const mobile = useMediaQuery(theme.media.maxWidth('mobile'))
+  const mobile = useMediaQuery(OVERVIEW_MOBILE_QUERY)
   const words = useMemo(() => heroData.words.map(word => t(`overview.hero.words.${word}`)), [t])
   const currentWord = useTypingListEffect(words)
   const media = mobile ? heroData.portrait : heroData.landscape
@@ -50,12 +55,9 @@ const Hero = () => {
               as="a"
               size="hero"
               href={CREATOR_DOCS_URL}
-              target="_blank"
-              rel="noopener noreferrer"
               onClick={trackClick}
               data-testid="overview-hero-cta"
               data-place={OverviewSection.HERO}
-              data-title="creator-docs"
             >
               {t('overview.hero.mobile_docs_cta')}
             </Button>
@@ -67,7 +69,8 @@ const Hero = () => {
               onClick={trackClick}
               data-testid="overview-hero-cta"
               data-place={OverviewSection.HERO}
-              data-title="download-creator-hub"
+              data-event={DOWNLOAD_CLICK}
+              data-download-target={CREATOR_HUB_TARGET}
             >
               {t('overview.hero.download_cta')}
             </Button>

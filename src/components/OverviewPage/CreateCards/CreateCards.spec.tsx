@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { TranslationProvider } from '~/intl'
-import { track } from '~/lib/analytics'
+import { useLocale } from '~/store/locale'
+import { sendOverviewTrack as track } from '~/lib/overviewSegment'
 import { CreateCards } from './CreateCards'
 
-vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
+vi.mock('~/lib/overviewSegment', () => ({ sendOverviewTrack: vi.fn(), sendOverviewPage: vi.fn() }))
 vi.mock('react-intersection-observer', () => ({ useInView: () => ({ ref: vi.fn(), inView: true }) }))
 
 const viewport = vi.hoisted(() => ({ mobile: false }))
@@ -12,6 +13,7 @@ vi.mock('~/hooks/useMediaQuery', () => ({ useMediaQuery: () => viewport.mobile }
 
 beforeEach(() => {
   viewport.mobile = false
+  useLocale.setState({ locale: 'en' })
   vi.mocked(track).mockClear()
 })
 
@@ -50,13 +52,28 @@ describe('CreateCards', () => {
     )
   })
 
+  it('gives every rendered copy of a card its own panel ids, so each tab controls exactly one panel', () => {
+    renderSection()
+    const panelIds = screen.getAllByTestId('overview-create-tab-panel').map(panel => panel.id)
+    expect(new Set(panelIds).size).toBe(panelIds.length)
+    for (const tab of screen.getAllByTestId('overview-create-tab')) {
+      const controlled = tab.getAttribute('aria-controls')
+      const panel = tab.closest('[data-testid="overview-create-card"]')!.querySelector(`[id="${controlled}"]`)
+      if (tab.getAttribute('aria-selected') === 'true') expect(panel).not.toBeNull()
+    }
+  })
+
   it('switches tabs and tracks the switch with the card and tab', () => {
     renderSection()
     const wearables = activeCard()
     fireEvent.click(within(wearables).getByRole('tab', { name: 'Smart Wearables' }))
     expect(within(wearables).getByRole('link', { name: 'Smart Wearables Docs' })).toBeInTheDocument()
     expect(within(wearables).queryByRole('link', { name: 'Creating Wearables' })).toBeNull()
-    expect(track).toHaveBeenCalledWith('Click', { place: 'Creators Create', card: 'wearables', tab: 'smart' })
+    expect(track).toHaveBeenCalledWith('Click', {
+      place: 'Creators Create',
+      card: 'design-unique-wearables',
+      tab: 'Smart Wearables'
+    })
   })
 
   it('tracks a resource link with its card, tab and label', () => {
@@ -64,8 +81,22 @@ describe('CreateCards', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Creating Wearables' }))
     expect(track).toHaveBeenCalledWith('Click', {
       place: 'Creators Create',
-      card: 'wearables',
-      tab: 'regular',
+      card: 'design-unique-wearables',
+      tab: 'Regular',
+      title: 'Creating Wearables'
+    })
+  })
+
+  it('tracks the English card, tab and link names for a Spanish-speaking visitor', () => {
+    useLocale.setState({ locale: 'es' })
+    renderSection()
+    const link = within(activeCard()).getAllByTestId('overview-create-link')[0]
+    expect(link).not.toHaveTextContent('Creating Wearables')
+    fireEvent.click(link)
+    expect(track).toHaveBeenCalledWith('Click', {
+      place: 'Creators Create',
+      card: 'design-unique-wearables',
+      tab: 'Regular',
       title: 'Creating Wearables'
     })
   })

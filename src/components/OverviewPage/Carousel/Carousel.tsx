@@ -27,7 +27,8 @@ const CAN_MEASURE = typeof ResizeObserver !== 'undefined'
 
 type CarouselProps<T> = {
   items: T[]
-  renderItem: (item: T) => ReactNode
+  /** `slide` is the rendered copy's index, unique across the clones: suffix any DOM id with it. */
+  renderItem: (item: T, slide: number) => ReactNode
   keyExtractor: (item: T) => string
   /** Accessible name of the region. */
   label: string
@@ -265,9 +266,11 @@ function Carousel<T>({
             data-position={position(i)}
             data-active={i === pos || undefined}
             aria-hidden={i !== pos || undefined}
+            // aria-hidden alone leaves the clones' links and tabs in the tab order.
+            inert={i !== pos ? '' : undefined}
             style={{ width: slideWidth || undefined, transition: animated ? undefined : 'none' }}
           >
-            {renderItem(item)}
+            {renderItem(item, i)}
           </S.Slide>
         ))}
       </S.Track>

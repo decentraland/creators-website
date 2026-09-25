@@ -79,10 +79,18 @@ export type CreateLink = {
   desktopOnly?: boolean
 }
 
-export type CreateTab = { id: string; skills: Skill[]; links: CreateLink[] }
+export type CreateTab = {
+  id: string
+  /** The Click `tab` value: sites' English tab title, fixed so the warehouse dimension never moves with the copy. */
+  analyticsTab: string
+  skills: Skill[]
+  links: CreateLink[]
+}
 
 export type CreateCard = {
   id: 'wearables' | 'emotes' | 'experiences'
+  /** The Click `card` value: sites' card id. */
+  analyticsCard: string
   image: string
   background: string
   tabs: CreateTab[]
@@ -96,11 +104,13 @@ const downloadHubLink: CreateLink = { id: 'download_hub', url: CREATOR_HUB_DOWNL
 export const createCards: CreateCard[] = [
   {
     id: 'wearables',
+    analyticsCard: 'design-unique-wearables',
     image: `${CONTENTFUL_IMAGES}/3Cu7b7wDmHMxdlnV1kPIHK/af575947c309275575ee1f456042596a/PNG_1.png`,
     background: `${CONTENTFUL_IMAGES}/5tQ56AeW3FWfsnDIgIr1ix/1ff51b5358a8ddf13a4bb4bddaf36601/BG_1.png`,
     tabs: [
       {
         id: 'regular',
+        analyticsTab: 'Regular',
         skills: ['modeling', 'fashion'],
         links: [
           { id: 'creating', url: `${docsUrl}/creator/wearables-and-emotes/wearables/creating-wearables` },
@@ -117,6 +127,7 @@ export const createCards: CreateCard[] = [
       },
       {
         id: 'smart',
+        analyticsTab: 'Smart Wearables',
         skills: ['animation', 'fashion', 'modeling', 'typescript'],
         links: [
           { id: 'portable_experiences', url: `${docsUrl}/creator/scenes-sdk7/kinds-of-projects/portable-experiences` },
@@ -129,11 +140,13 @@ export const createCards: CreateCard[] = [
   },
   {
     id: 'emotes',
+    analyticsCard: 'animate-expressive-emotes',
     image: `${CONTENTFUL_IMAGES}/5TILWmR3rrA6K2DMTrPwXx/aeafb6cfc8fd3ef829833c41fb4cda16/PNG_2.png`,
     background: `${CONTENTFUL_IMAGES}/26Oa8X59NGyCSnL2j2Tvrw/091c890f8a5bfcdf8878a3c09c1268ae/BG_2.png`,
     tabs: [
       {
         id: 'motion',
+        analyticsTab: 'More than Motion',
         skills: ['typescript', 'modeling', 'animation'],
         links: [
           { id: 'creating', url: `${docsUrl}/creator/wearables-and-emotes/emotes/creating-emotes` },
@@ -152,11 +165,13 @@ export const createCards: CreateCard[] = [
   },
   {
     id: 'experiences',
+    analyticsCard: 'craft-immersive-experiences',
     image: `${CONTENTFUL_IMAGES}/3JXtpqW33ILyBYzrpzykKl/f246d9529cbbc4d033c271cd02d4376b/PNG_3.png`,
     background: `${CONTENTFUL_IMAGES}/5E9WJJcBi3qeuqqetuleeT/6308247b5ca650adf34aaec41d7e7182/BG_3.png`,
     tabs: [
       {
         id: 'scenes',
+        analyticsTab: 'Create Scenes',
         skills: ['creator_hub', 'no_code'],
         links: [
           { id: 'about_editor', url: `${docsUrl}/creator/scene-editor/get-started/about-editor` },
@@ -167,6 +182,7 @@ export const createCards: CreateCard[] = [
       },
       {
         id: 'basic',
+        analyticsTab: 'Basic',
         skills: ['click', 'imagination'],
         links: [
           { id: 'places', url: `${sitesUrl}/places` },
@@ -177,6 +193,7 @@ export const createCards: CreateCard[] = [
       },
       {
         id: 'advanced',
+        analyticsTab: 'Advanced',
         skills: ['typescript', 'modeling', 'animation'],
         links: [
           downloadHubLink,

@@ -1,16 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { TranslationProvider } from '~/intl'
-import { track } from '~/lib/analytics'
+import { useLocale } from '~/store/locale'
+import { sendOverviewTrack as track } from '~/lib/overviewSegment'
 import { Faqs } from './Faqs'
 
-vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
+vi.mock('~/lib/overviewSegment', () => ({ sendOverviewTrack: vi.fn(), sendOverviewPage: vi.fn() }))
 
 const viewport = vi.hoisted(() => ({ inView: false }))
 vi.mock('react-intersection-observer', () => ({ useInView: () => ({ ref: vi.fn(), inView: viewport.inView }) }))
 
 beforeEach(() => {
   viewport.inView = false
+  useLocale.setState({ locale: 'en' })
   vi.mocked(track).mockClear()
 })
 
@@ -41,6 +43,15 @@ describe('Faqs', () => {
     expect(track).toHaveBeenCalledTimes(2)
   })
 
+  it('tracks the English question for a Spanish-speaking visitor', () => {
+    useLocale.setState({ locale: 'es' })
+    renderSection()
+    const first = screen.getAllByTestId('overview-faq')[0]
+    expect(first).toHaveTextContent('¿Qué es Decentraland?')
+    fireEvent.click(first)
+    expect(track).toHaveBeenCalledWith('Click', { place: 'Creators Faqs', title: 'What is Decentraland?' })
+  })
+
   it('toggles from the keyboard', () => {
     renderSection()
     const first = screen.getAllByTestId('overview-faq')[0]
@@ -56,6 +67,7 @@ describe('Faqs', () => {
     renderSection()
     const cta = screen.getByTestId('overview-faqs-cta')
     expect(cta).toHaveAttribute('href', 'https://docs.decentraland.org/faqs/')
+    expect(cta).not.toHaveAttribute('target')
     fireEvent.click(cta)
     expect(track).toHaveBeenCalledWith('Click', { place: 'Creators Faqs', title: 'faqs-cta' })
     expect(track).toHaveBeenCalledWith('Section Viewed', { section_viewed: 'Creators Faqs', mobile: false })

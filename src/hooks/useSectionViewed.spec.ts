@@ -1,17 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook } from '@testing-library/react'
-import { track } from '~/lib/analytics'
+import { sendOverviewTrack as track } from '~/lib/overviewSegment'
 import { OverviewSection } from '~/lib/overviewAnalytics'
 import { useSectionViewed } from './useSectionViewed'
 
-vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
+vi.mock('~/lib/overviewSegment', () => ({ sendOverviewTrack: vi.fn(), sendOverviewPage: vi.fn() }))
 
-const viewport = vi.hoisted(() => ({ mobile: false }))
-vi.mock('~/hooks/useMediaQuery', () => ({ useMediaQuery: () => viewport.mobile }))
+// A stand-in viewport that evaluates the `max-width` query it is asked about.
+const viewport = vi.hoisted(() => ({ width: 1280 }))
+vi.mock('~/hooks/useMediaQuery', () => ({
+  useMediaQuery: (query: string) => viewport.width <= Number(/max-width:\s*([\d.]+)px/.exec(query)?.[1] ?? 0)
+}))
 
 beforeEach(() => {
   vi.mocked(track).mockClear()
-  viewport.mobile = false
+  viewport.width = 1280
 })
 
 describe('useSectionViewed', () => {
@@ -30,9 +33,13 @@ describe('useSectionViewed', () => {
     expect(track).toHaveBeenCalledWith('Section Viewed', { section_viewed: 'Creators Why', mobile: false })
   })
 
-  it('flags mobile viewports', () => {
-    viewport.mobile = true
+  it('flags phone viewports as mobile with sites’ cut: 767px is mobile, 768px is not', () => {
+    viewport.width = 767
     renderHook(() => useSectionViewed(OverviewSection.FAQS, true))
-    expect(track).toHaveBeenCalledWith('Section Viewed', { section_viewed: 'Creators Faqs', mobile: true })
+    expect(track).toHaveBeenLastCalledWith('Section Viewed', { section_viewed: 'Creators Faqs', mobile: true })
+
+    viewport.width = 768
+    renderHook(() => useSectionViewed(OverviewSection.LEARN, true))
+    expect(track).toHaveBeenLastCalledWith('Section Viewed', { section_viewed: 'Creators Learn', mobile: false })
   })
 })

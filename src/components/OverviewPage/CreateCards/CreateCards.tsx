@@ -1,23 +1,25 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
-import { useTranslation } from '~/intl'
-import { OverviewSection, trackClick } from '~/lib/overviewAnalytics'
-import { theme } from '~/styles/theme'
+import { englishMessage, useTranslation } from '~/intl'
+import { OVERVIEW_MOBILE_QUERY, OverviewSection, trackClick } from '~/lib/overviewAnalytics'
 import { AnimatedSection } from '../AnimatedSection'
 import { Carousel } from '../Carousel'
 import { createCards, type CreateCard as CreateCardData, type CreateTab } from '../data'
 import * as S from './CreateCards.styles'
 
-type TabContentProps = { card: CreateCardData; tab: CreateTab }
+// The carousel renders every card three times, so DOM ids carry the slide they belong to.
+type TabContentProps = { card: CreateCardData; tab: CreateTab; slide: number }
 
-const TabContent = ({ card, tab }: TabContentProps) => {
+const panelId = (card: CreateCardData, tab: CreateTab, slide: number) => `create-panel-${card.id}-${tab.id}-${slide}`
+
+const TabContent = ({ card, tab, slide }: TabContentProps) => {
   const { t } = useTranslation()
-  const mobile = useMediaQuery(theme.media.maxWidth('mobile'))
+  const mobile = useMediaQuery(OVERVIEW_MOBILE_QUERY)
   const links = useMemo(() => tab.links.filter(link => !mobile || !link.desktopOnly), [tab.links, mobile])
   const prefix = `overview.create.cards.${card.id}.tabs.${tab.id}`
 
   return (
-    <S.TabPanel role="tabpanel" id={`create-panel-${card.id}-${tab.id}`} data-testid="overview-create-tab-panel">
+    <S.TabPanel role="tabpanel" id={panelId(card, tab, slide)} data-testid="overview-create-tab-panel">
       <S.InfoBlock>
         <S.InfoTitle>{t(`${prefix}.heading`)}</S.InfoTitle>
         <S.InfoBody>{t(`${prefix}.body`)}</S.InfoBody>
@@ -34,7 +36,7 @@ const TabContent = ({ card, tab }: TabContentProps) => {
         <S.InfoTitle>{t('overview.create.useful_links')}</S.InfoTitle>
         <S.Links>
           {links.map(link => {
-            const label = t(`${prefix}.links.${link.id}`)
+            const labelKey = `${prefix}.links.${link.id}`
             return (
               <S.Link
                 key={link.id}
@@ -43,12 +45,12 @@ const TabContent = ({ card, tab }: TabContentProps) => {
                 rel="noopener noreferrer"
                 data-testid="overview-create-link"
                 data-place={OverviewSection.CREATE}
-                data-card={card.id}
-                data-tab={tab.id}
-                data-title={label}
+                data-card={card.analyticsCard}
+                data-tab={tab.analyticsTab}
+                data-title={englishMessage(labelKey)}
                 onClick={trackClick}
               >
-                {label}
+                {t(labelKey)}
               </S.Link>
             )
           })}
@@ -58,7 +60,7 @@ const TabContent = ({ card, tab }: TabContentProps) => {
   )
 }
 
-const CreateCard = ({ card }: { card: CreateCardData }) => {
+const CreateCard = ({ card, slide }: { card: CreateCardData; slide: number }) => {
   const { t } = useTranslation()
   const [activeTabId, setActiveTabId] = useState(card.tabs[0].id)
   const activeTab = useMemo(
@@ -83,12 +85,12 @@ const CreateCard = ({ card }: { card: CreateCardData }) => {
                 type="button"
                 role="tab"
                 aria-selected={tab.id === activeTabId}
-                aria-controls={`create-panel-${card.id}-${tab.id}`}
+                aria-controls={panelId(card, tab, slide)}
                 data-testid="overview-create-tab"
                 data-selected={tab.id === activeTabId || undefined}
                 data-place={OverviewSection.CREATE}
-                data-card={card.id}
-                data-tab={tab.id}
+                data-card={card.analyticsCard}
+                data-tab={tab.analyticsTab}
                 onClick={event => {
                   trackClick(event)
                   setActiveTabId(tab.id)
@@ -99,7 +101,7 @@ const CreateCard = ({ card }: { card: CreateCardData }) => {
             ))}
           </S.Tabs>
         )}
-        <TabContent card={card} tab={activeTab} />
+        <TabContent card={card} tab={activeTab} slide={slide} />
       </S.Info>
     </S.Card>
   )
@@ -109,7 +111,7 @@ const keyExtractor = (card: CreateCardData) => card.id
 
 const CreateCards = () => {
   const { t } = useTranslation()
-  const renderCard = useCallback((card: CreateCardData) => <CreateCard card={card} />, [])
+  const renderCard = useCallback((card: CreateCardData, slide: number) => <CreateCard card={card} slide={slide} />, [])
   return (
     <AnimatedSection section={OverviewSection.CREATE}>
       <S.Section data-testid="overview-create">

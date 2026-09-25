@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { TranslationProvider } from '~/intl'
-import { track } from '~/lib/analytics'
+import { sendOverviewTrack as track } from '~/lib/overviewSegment'
 import { Connect } from './Connect'
 
-vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
+vi.mock('~/lib/overviewSegment', () => ({ sendOverviewTrack: vi.fn(), sendOverviewPage: vi.fn() }))
 vi.mock('react-intersection-observer', () => ({ useInView: () => ({ ref: vi.fn(), inView: true }) }))
 
 beforeEach(() => vi.mocked(track).mockClear())

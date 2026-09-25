@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Button } from '~/components/Button'
 import { PlayIcon } from '~/components/Icons'
-import { useTranslation } from '~/intl'
+import { englishMessage, useTranslation } from '~/intl'
 import { formatLongDate } from '~/lib/time'
 import { OverviewSection, trackClick } from '~/lib/overviewAnalytics'
 import { useLocale } from '~/store/locale'
@@ -17,6 +17,7 @@ const Learn = () => {
       learnCards.map(card => ({
         ...card,
         title: t(`overview.learn.cards.${card.id}`),
+        analyticsTitle: englishMessage(`overview.learn.cards.${card.id}`),
         date: formatLongDate(card.date, locale),
         ...learnVideo(card.videoId)
       })),
@@ -38,7 +39,7 @@ const Learn = () => {
               rel="noopener noreferrer"
               data-testid="overview-learn-card"
               data-place={OverviewSection.LEARN}
-              data-title={card.title}
+              data-title={card.analyticsTitle}
               onClick={trackClick}
             >
               <S.Thumbnail>

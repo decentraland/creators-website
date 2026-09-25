@@ -1,5 +1,5 @@
 // Segment wrapper for the creator funnel (spec: design/TRACKING_SPEC.md). This is the ONLY place the
-// app talks to Segment: callers use `track`/`identify`/`trackPage`, never `window.analytics`.
+// app talks to Segment: callers use `track`/`identify`/`trackPage`/`sendDirect`, never `window.analytics`.
 //
 // Events land in the SAME Segment source as the legacy builder, and reuse its event names wherever a
 // flow exists there, so old UI and new UI are comparable. Every event carries `source` to tell them
@@ -9,8 +9,9 @@
 // Nothing here is user-facing, so the copy/i18n rules don't apply. Never emit PII or secrets; wallet
 // addresses are pseudonymous public ids and are allowed.
 import { isbot } from 'isbot'
-import { APP_VERSION, config } from '~/config'
+import { APP_VERSION, config, currentSearch } from '~/config'
 import { currentAddress } from '~/lib/currentAddress'
+import { postToSegment, type SegmentCall } from '~/lib/segmentHttp'
 import { isWalletRejection } from '~/lib/walletErrors'
 
 type Props = Record<string, unknown>
@@ -57,10 +58,15 @@ function context(): Props {
   }
 }
 
-export function track(event: string, props: Props = {}): void {
+/** An event's properties as every call of this app sends them: the common props, then the caller's. */
+export function eventProperties(props: Props = {}): Props {
   // `source` goes last: it is what separates this app from the legacy builder in the shared Segment
   // source, so no event may overwrite it.
-  const payload = { ...context(), ...props, source: SOURCE }
+  return { ...context(), ...props, source: SOURCE }
+}
+
+export function track(event: string, props: Props = {}): void {
+  const payload = eventProperties(props)
   const analytics = segment()
   if (analytics) analytics.track(event, payload)
   else if (import.meta.env.DEV && !IS_BOT) console.debug('[analytics] track', event, payload)
@@ -106,6 +112,65 @@ export function getAnonymousId(): string | undefined {
   // Before analytics.js loads, `user` is a queueing stub and has no id to return yet.
   const user = analytics?.user?.()
   return typeof user?.anonymousId === 'function' ? user.anonymousId() : undefined
+}
+
+const ANONYMOUS_ID_KEY = 'ajs_anonymous_id'
+const USER_ID_KEY = 'ajs_user_id'
+
+// analytics.js stores its ids JSON-encoded; a bare string is tolerated.
+function readStoredId(key: string): string | undefined {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return undefined
+    try {
+      const parsed: unknown = JSON.parse(raw)
+      return typeof parsed === 'string' && parsed !== '' ? parsed : undefined
+    } catch {
+      return raw
+    }
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * The visitor's Segment anonymous id for calls sent outside analytics.js, so they join the same visitor.
+ * Before analytics.js has booted one is minted and stored the way analytics.js stores it, so it adopts it.
+ */
+export function ensureAnonymousId(): string {
+  const existing = getAnonymousId() ?? readStoredId(ANONYMOUS_ID_KEY)
+  if (existing) return existing
+  const id = crypto.randomUUID()
+  try {
+    localStorage.setItem(ANONYMOUS_ID_KEY, JSON.stringify(id))
+  } catch {
+    // Storage blocked: the id still labels this call.
+  }
+  return id
+}
+
+/**
+ * Sends one call to the Segment source of `writeKey` over the HTTP API, with this app's common props and
+ * the visitor's analytics.js identity. Unload-safe, so it also carries clicks on same-tab links.
+ */
+export function sendDirect(writeKey: string, call: SegmentCall, props: Props = {}): void {
+  if (IS_BOT || typeof window === 'undefined') return
+  const properties = eventProperties(props)
+  if (!writeKey) {
+    if (import.meta.env.DEV) console.debug('[analytics] direct', call, properties)
+    return
+  }
+  postToSegment({
+    writeKey,
+    call,
+    properties,
+    anonymousId: ensureAnonymousId(),
+    // The id analytics.js persisted on `identify`, so both transports agree on it byte for byte.
+    userId: readStoredId(USER_ID_KEY),
+    apiHost: config.get('SEGMENT_API_HOST', ''),
+    app: { name: SOURCE, version: APP_VERSION },
+    search: currentSearch()
+  })
 }
 
 /** Runs `cb` once analytics.js is loaded (immediately-ish; never if analytics is disabled). */

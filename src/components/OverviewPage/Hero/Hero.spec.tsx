@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { TranslationProvider } from '~/intl'
-import { track } from '~/lib/analytics'
+import { sendOverviewTrack as track } from '~/lib/overviewSegment'
 import { Hero } from './Hero'
 
-vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
+vi.mock('~/lib/overviewSegment', () => ({ sendOverviewTrack: vi.fn(), sendOverviewPage: vi.fn() }))
 
 const viewport = vi.hoisted(() => ({ mobile: false }))
 vi.mock('~/hooks/useMediaQuery', () => ({ useMediaQuery: () => viewport.mobile }))
@@ -30,7 +30,11 @@ describe('Hero', () => {
     expect(cta).not.toHaveAttribute('target')
 
     fireEvent.click(cta)
-    expect(track).toHaveBeenCalledWith('Click', { place: 'Creators Hero', title: 'download-creator-hub' })
+    expect(track).toHaveBeenCalledWith('Click', {
+      place: 'Creators Hero',
+      event: 'Download',
+      download_target: 'creator_hub'
+    })
   })
 
   it('sends phones to the creator docs instead of the desktop-only download', () => {
@@ -39,6 +43,10 @@ describe('Hero', () => {
     const cta = screen.getByTestId('overview-hero-cta')
     expect(cta).toHaveTextContent('Explore the Creator Docs')
     expect(cta).toHaveAttribute('href', 'https://docs.decentraland.org/creator/')
+    expect(cta).not.toHaveAttribute('target')
+
+    fireEvent.click(cta)
+    expect(track).toHaveBeenCalledWith('Click', { place: 'Creators Hero' })
   })
 
   it('types the rotating word into the title', () => {

@@ -53,6 +53,20 @@ describe('Carousel', () => {
     expect(currentDot()).toHaveAccessibleName('Go to slide 1')
   })
 
+  it('keeps the links of every other slide, clones included, out of keyboard reach', () => {
+    renderCarousel()
+    const slides = screen.getAllByTestId('carousel-slide')
+    expect(slides).toHaveLength(9)
+    for (const slide of slides) {
+      if (slide === activeSlide()) expect(slide).not.toHaveAttribute('inert')
+      else expect(slide).toHaveAttribute('inert')
+    }
+    next()
+    expect(activeSlide()).toHaveTextContent('Slide B')
+    expect(activeSlide()).not.toHaveAttribute('inert')
+    expect(slides.filter(slide => !slide.hasAttribute('inert'))).toHaveLength(1)
+  })
+
   it('loops endlessly: next on the last slide shows the first, previous on the first shows the last', () => {
     renderCarousel()
     next()

@@ -3,7 +3,7 @@ import { useInView } from 'react-intersection-observer'
 import { Button } from '~/components/Button'
 import { CircleAndArrowIcon } from '~/components/Icons'
 import { useSectionViewed } from '~/hooks/useSectionViewed'
-import { useTranslation } from '~/intl'
+import { englishMessage, useTranslation } from '~/intl'
 import { OverviewSection, trackClick } from '~/lib/overviewAnalytics'
 import { FAQS_URL, faqIds } from '../data'
 import * as S from './Faqs.styles'
@@ -12,7 +12,7 @@ type FaqRowProps = { id: string; open: boolean; onToggle: () => void }
 
 const FaqRow = ({ id, open, onToggle }: FaqRowProps) => {
   const { t } = useTranslation()
-  const question = t(`overview.faqs.items.${id}.question`)
+  const questionKey = `overview.faqs.items.${id}.question`
 
   const toggle = (event: SyntheticEvent<HTMLElement>) => {
     // Only the expand is an engagement signal.
@@ -35,12 +35,12 @@ const FaqRow = ({ id, open, onToggle }: FaqRowProps) => {
       data-testid="overview-faq"
       data-open={open || undefined}
       data-place={OverviewSection.FAQS}
-      data-title={question}
+      data-title={englishMessage(questionKey)}
       onClick={toggle}
       onKeyDown={onKeyDown}
     >
       <S.Question>
-        <S.QuestionText id={`faq-question-${id}`}>{question}</S.QuestionText>
+        <S.QuestionText id={`faq-question-${id}`}>{t(questionKey)}</S.QuestionText>
         <CircleAndArrowIcon />
       </S.Question>
       <S.Answer id={`faq-answer-${id}`} role="region" aria-labelledby={`faq-question-${id}`} aria-hidden={!open}>
@@ -72,8 +72,6 @@ const Faqs = () => {
               variant="ghost"
               size="lg"
               href={FAQS_URL}
-              target="_blank"
-              rel="noopener noreferrer"
               data-testid="overview-faqs-cta"
               data-place={OverviewSection.FAQS}
               data-title="faqs-cta"
