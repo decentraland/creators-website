@@ -156,22 +156,27 @@ export function isEmoteSubject(source: AvatarPreviewSource): boolean {
 }
 
 /**
- * Camera range. wearable-preview frames the avatar between `radius / zoom` (closest) and
- * `wheelZoom ×` that (farthest), starting at `wheelStart`% of the way in — the prop is inverted, so 80
- * means 20% out. Scaling `zoom` by 2 halves the closest radius and `wheelStart: 80` puts the start back
- * at `radius / base zoom`: the legacy framing, with twice the zoom in and three times the zoom out.
+ * Camera range, Babylon only (Unity drives its own camera). wearable-preview frames the avatar between
+ * `radius / (zoom × zoomScale)` (closest) and `wheelZoom ×` that (farthest), starting at `wheelStart`% of
+ * the way in — the prop is inverted, so 50 means halfway. With these values the start is the legacy
+ * framing (`radius / 1.75`) and the wheel zooms 3× in like Unity's FOV range, and ~1.7× out.
  */
-export const PREVIEW_ZOOM_SCALE = 2
-export const PREVIEW_WHEEL_ZOOM = 6
-export const PREVIEW_WHEEL_START = 80
-/** wearable-preview's own default; restated because scaling it has to start from a known value. */
+export const PREVIEW_ZOOM_SCALE = 3
+export const PREVIEW_WHEEL_ZOOM = 5
+export const PREVIEW_WHEEL_START = 50
+/** wearable-preview's own default multiplier; restated because the scale has to start from a known value. */
 const BASE_ZOOM = 1.75
 // The jump animation leaves the frame at the default zoom, so it is framed further out (legacy quirk).
 const JUMP_ZOOM = 1
+// The `zoom` option is not a multiplier: wearable-preview maps 0–100 onto this range. Keep in sync with
+// its `computeZoom` (src/lib/zoom.ts there), or the framing shifts silently.
+const MIN_ZOOM = 1
+const MAX_ZOOM = 2.8
 
-/** The zoom for an emote, scaled so the camera keeps the legacy framing with a wider range. */
+/** The `zoom` option (0–100) that puts the camera at the emote's legacy framing before scaling. */
 export function getPreviewZoom(emote: PreviewEmote | undefined): number {
-  return (emote === PreviewEmote.JUMP ? JUMP_ZOOM : BASE_ZOOM) * PREVIEW_ZOOM_SCALE
+  const multiplier = emote === PreviewEmote.JUMP ? JUMP_ZOOM : BASE_ZOOM
+  return ((multiplier - MIN_ZOOM) / (MAX_ZOOM - MIN_ZOOM)) * 100
 }
 
 /**
@@ -198,6 +203,8 @@ export function buildPreviewOptions(
     options.blob = source.definition
   }
   options.zoom = getPreviewZoom(emoteSubject ? undefined : emote)
+  // ui2 has no prop for it, so it only reaches the iframe through the UPDATE message.
+  options.zoomScale = PREVIEW_ZOOM_SCALE
   if (!emoteSubject) options.emote = emote
   return options
 }

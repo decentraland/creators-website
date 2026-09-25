@@ -89,7 +89,5 @@ describe('buildPreviewOptions', () => {
     const dance = buildPreviewOptions({ kind: 'items', items: [] }, avatar, PreviewEmote.DANCE).zoom!
     // A lower zoom is a larger camera radius: the jump has to fit in frame.
     expect(jump).toBeLessThan(dance)
-    // Both are scaled together, so the camera starts where the legacy editor framed it.
-    expect(dance / jump).toBe(1.75)
   })
 })
