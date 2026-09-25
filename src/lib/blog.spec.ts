@@ -100,6 +100,25 @@ describe('buildBlogPosts', () => {
     ]
     expect(buildBlogPosts(posts, null, new Map()).map(post => post.id)).toEqual(['p3'])
   })
+
+  it('degrades malformed CMS items instead of throwing', () => {
+    const posts = [
+      null,
+      'not a post',
+      { sys: {}, fields: { id: 'no-id', title: 'No id' } },
+      { sys: { id: 'p1' } },
+      { sys: { id: 'p2' }, fields: { id: 'ok', title: 'Ok', category: {}, image: { sys: null } } }
+    ]
+    const categories = { items: [null, { sys: { id: 'c1' } }] } as never
+    expect(buildBlogPosts(posts, categories, new Map())).toEqual([
+      expect.objectContaining({
+        id: 'p2',
+        categoryTitle: null,
+        imageUrl: null,
+        url: expect.stringContaining('/blog/search?q=Ok')
+      })
+    ])
+  })
 })
 
 describe('helpers', () => {

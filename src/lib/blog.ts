@@ -62,32 +62,52 @@ async function fetchJson<T>(url: string, signal: AbortSignal): Promise<T> {
 // A category list or cover that fails only degrades the card; the posts request is what react-query reports.
 const orNull = <T>(request: Promise<T>): Promise<T | null> => request.catch(() => null)
 
+// The CMS JSON is only type-asserted, so every nested field is narrowed before use: a malformed item is
+// dropped (or loses its category/cover) instead of throwing and blanking the whole rail.
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
+const stringOf = (value: unknown) => (typeof value === 'string' && value ? value : undefined)
+const sysId = (value: unknown) => (isRecord(value) && isRecord(value.sys) ? stringOf(value.sys.id) : undefined)
+const listOf = (response: unknown): unknown[] =>
+  isRecord(response) && Array.isArray(response.items) ? response.items : []
+
+/** The cover asset id of each post that has one. */
+const coverAssetIds = (posts: unknown[]): string[] =>
+  posts.flatMap(post => {
+    const id = isRecord(post) && isRecord(post.fields) ? sysId(post.fields.image) : undefined
+    return id ? [id] : []
+  })
+
 /** Joins posts with their category slug/title and resolved cover image. Posts missing an id, slug or title are dropped. */
 export function buildBlogPosts(
-  posts: CMSPostItem[],
+  posts: unknown[],
   categories: CMSCategoriesResponse | null,
   assetUrlById: Map<string, string>
 ): BlogPost[] {
   const categoryById = new Map<string, { slug: string; title: string }>()
-  for (const category of categories?.items ?? []) {
-    if (category.sys?.id && category.fields?.id) {
-      categoryById.set(category.sys.id, { slug: category.fields.id, title: category.fields.title })
-    }
+  for (const category of listOf(categories)) {
+    const id = sysId(category)
+    const fields = isRecord(category) && isRecord(category.fields) ? category.fields : undefined
+    const slug = stringOf(fields?.id)
+    if (id && slug) categoryById.set(id, { slug, title: stringOf(fields?.title) ?? '' })
   }
   const built: BlogPost[] = []
   for (const post of posts) {
-    const slug = post.fields?.id
-    if (!post.sys?.id || !slug || !post.fields.title) continue
-    const category = post.fields.category?.sys.id ? categoryById.get(post.fields.category.sys.id) : undefined
-    const assetId = post.fields.image?.sys.id
+    const id = sysId(post)
+    const fields = isRecord(post) && isRecord(post.fields) ? post.fields : undefined
+    const slug = stringOf(fields?.id)
+    const title = stringOf(fields?.title)
+    if (!id || !slug || !title) continue
+    const categoryId = sysId(fields?.category)
+    const category = categoryId ? categoryById.get(categoryId) : undefined
+    const assetId = sysId(fields?.image)
     const rawImageUrl = assetId ? assetUrlById.get(assetId) : undefined
     built.push({
-      id: post.sys.id,
-      title: post.fields.title,
-      publishedDate: post.fields.publishedDate ?? null,
-      categoryTitle: category?.title ?? null,
+      id,
+      title,
+      publishedDate: stringOf(fields?.publishedDate) ?? null,
+      categoryTitle: category?.title || null,
       imageUrl: rawImageUrl ? normalizeAssetUrl(rawImageUrl) : null,
-      url: postUrl({ title: post.fields.title, slug, categorySlug: category?.slug ?? null })
+      url: postUrl({ title, slug, categorySlug: category?.slug ?? null })
     })
   }
   return built
@@ -101,16 +121,20 @@ export async function fetchLatestBlogPosts(): Promise<BlogPost[]> {
     fetchJson<CMSPostsResponse>(`${base}/blog/posts?limit=${POSTS_LIMIT}`, signal),
     orNull(fetchJson<CMSCategoriesResponse>(`${base}/blog/categories`, signal))
   ])
-  if (!Array.isArray(posts?.items) || posts.items.length === 0) return []
+  const items = listOf(posts)
+  if (items.length === 0) return []
 
-  const assetIds = posts.items.map(post => post.fields?.image?.sys.id).filter((id): id is string => Boolean(id))
+  const assetIds = coverAssetIds(items)
   const assets = await Promise.all(
     assetIds.map(id => orNull(fetchJson<CMSAssetResponse>(`${base}/assets/${id}`, signal)))
   )
   const assetUrlById = new Map<string, string>()
   assetIds.forEach((id, index) => {
-    const fileUrl = assets[index]?.fields?.file?.url
+    const asset: unknown = assets[index]
+    const file =
+      isRecord(asset) && isRecord(asset.fields) && isRecord(asset.fields.file) ? asset.fields.file : undefined
+    const fileUrl = stringOf(file?.url)
     if (fileUrl) assetUrlById.set(id, fileUrl)
   })
-  return buildBlogPosts(posts.items, categories, assetUrlById)
+  return buildBlogPosts(items, categories, assetUrlById)
 }
