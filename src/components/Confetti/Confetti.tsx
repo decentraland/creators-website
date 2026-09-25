@@ -1,15 +1,9 @@
 import { Suspense, lazy, useState } from 'react'
 import * as S from './Confetti.styles'
 
-// The shop's purchase burst, played once. lottie-web and the animation are loaded on demand: both only
-// matter on the one dialog that celebrates a purchase.
-const LottieBurst = lazy(async () => {
-  const [{ default: Lottie }, { default: animationData }] = await Promise.all([
-    import('lottie-react'),
-    import('./confettiAnimation.json')
-  ])
-  return { default: () => <Lottie animationData={animationData} loop={1} /> }
-})
+// The shop's purchase burst, played once. Loaded on demand: it only matters on the one dialog that
+// celebrates a purchase.
+const LottieBurst = lazy(() => import('./LottieBurst'))
 
 export function Confetti() {
   // Decided once at mount, before anything is fetched: a burst of motion is what prefers-reduced-motion
