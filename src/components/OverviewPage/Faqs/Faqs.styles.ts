@@ -147,7 +147,7 @@ export const Question = styled.div`
 
 export const QuestionText = styled.h3`
   margin: 0;
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 300;
   line-height: 28px;
   letter-spacing: -0.011em;
