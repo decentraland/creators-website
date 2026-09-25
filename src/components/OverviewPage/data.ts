@@ -6,6 +6,7 @@ import dclLogo from '~/assets/overview/dcl-logo.svg'
 const sitesUrl = config.get('SITES_URL')
 const docsUrl = config.get('DOCS_URL')
 const discordUrl = config.get('DISCORD_URL')
+const shopUrl = config.get('SHOP_URL')
 
 const CONTENTFUL_IMAGES = 'https://images.ctfassets.net/ea2ybdmmn1kv'
 const CONTENTFUL_VIDEOS = 'https://videos.ctfassets.net/ea2ybdmmn1kv'
@@ -87,7 +88,7 @@ export type CreateCard = {
   tabs: CreateTab[]
 }
 
-const marketplaceBrowse = `${sitesUrl}/marketplace/browse`
+const shopItems = `${shopUrl}/items`
 const buildingTutorialsUrl =
   'https://www.youtube.com/watch?v=wm8ZD2kSyKA&list=PLAcRraQmr_GPrMmQekqbMWhyBxo3lXs8p&pp=iAQB'
 const downloadHubLink: CreateLink = { id: 'download_hub', url: CREATOR_HUB_DOWNLOAD_URL, desktopOnly: true }
@@ -103,10 +104,7 @@ export const createCards: CreateCard[] = [
         skills: ['modeling', 'fashion'],
         links: [
           { id: 'creating', url: `${docsUrl}/creator/wearables-and-emotes/wearables/creating-wearables` },
-          {
-            id: 'marketplace',
-            url: `${marketplaceBrowse}?section=wearables&vendor=decentraland&page=1&sortBy=newest&status=on_sale`
-          },
+          { id: 'shop', url: `${shopItems}?category=wearable` },
           {
             id: 'publishing',
             url: `${docsUrl}/creator/wearables-and-emotes/publishing-collections/publishing-collections`
@@ -124,10 +122,7 @@ export const createCards: CreateCard[] = [
           { id: 'portable_experiences', url: `${docsUrl}/creator/scenes-sdk7/kinds-of-projects/portable-experiences` },
           { id: 'sdk', url: `${docsUrl}/creator/scenes-sdk7/getting-started/sdk-101` },
           { id: 'smart_wearables', url: `${docsUrl}/creator/scenes-sdk7/kinds-of-projects/smart-wearables` },
-          {
-            id: 'marketplace',
-            url: `${marketplaceBrowse}?assetType=item&section=wearables&vendor=decentraland&page=1&sortBy=newest&status=on_sale&onlySmart=true`
-          }
+          { id: 'shop', url: `${shopItems}?category=wearable&smart=true` }
         ]
       }
     ]
@@ -150,10 +145,7 @@ export const createCards: CreateCard[] = [
             id: 'publishing',
             url: `${docsUrl}/creator/wearables-and-emotes/publishing-collections/publishing-collections`
           },
-          {
-            id: 'marketplace',
-            url: `${marketplaceBrowse}?assetType=item&section=emotes&vendor=decentraland&page=1&sortBy=newest&status=on_sale`
-          }
+          { id: 'shop', url: `${shopItems}?category=emote` }
         ]
       }
     ]

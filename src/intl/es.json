@@ -1028,7 +1028,7 @@
               "body": "Crea las skins, la ropa, los accesorios y los cuerpos que le dan a la comunidad de Decentraland infinitas opciones para personalizar su identidad digital.",
               "links": {
                 "creating": "Cómo crear Wearables",
-                "marketplace": "Wearables en el Marketplace",
+                "shop": "Wearables en la Tienda",
                 "publishing": "Cómo publicar Wearables",
                 "tutorials": "Tutoriales de Wearables"
               }
@@ -1041,7 +1041,7 @@
                 "portable_experiences": "Documentación de Experiencias Portátiles",
                 "sdk": "Documentación del SDK 7",
                 "smart_wearables": "Documentación de Smart Wearables",
-                "marketplace": "Smart Wearables en el Marketplace"
+                "shop": "Smart Wearables en la Tienda"
               }
             }
           }
@@ -1058,7 +1058,7 @@
                 "creating": "Cómo crear Emotes",
                 "tutorials": "Tutoriales de Emotes",
                 "publishing": "Cómo publicar Emotes",
-                "marketplace": "Emotes en el Marketplace"
+                "shop": "Emotes en la Tienda"
               }
             }
           }

@@ -1028,7 +1028,7 @@
               "body": "Craft the skins, clothes, accessories, and bodies that provide the Decentraland community with endless options to customize their digital identities.",
               "links": {
                 "creating": "Creating Wearables",
-                "marketplace": "Wearables in the Marketplace",
+                "shop": "Wearables in the Shop",
                 "publishing": "Publishing Wearables",
                 "tutorials": "Wearable Tutorials"
               }
@@ -1041,7 +1041,7 @@
                 "portable_experiences": "Portable Experience Docs",
                 "sdk": "SDK 7 Docs",
                 "smart_wearables": "Smart Wearables Docs",
-                "marketplace": "Smart Wearables in the Marketplace"
+                "shop": "Smart Wearables in the Shop"
               }
             }
           }
@@ -1058,7 +1058,7 @@
                 "creating": "Creating Emotes",
                 "tutorials": "Emote Tutorials",
                 "publishing": "Publishing Emotes",
-                "marketplace": "Emotes in the Marketplace"
+                "shop": "Emotes in the Shop"
               }
             }
           }
