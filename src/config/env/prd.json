@@ -30,7 +30,7 @@
   "SEGMENT_API_KEY": "ZxBQcII46wT0TURGQczWYK7tyBq8BEmt",
   "SEGMENT_ANALYTICS_URL": "https://evs.e.decentraland.org/z8jpJNrQbg/cTZhpqvmud.min.js",
   "SEGMENT_API_HOST": "api.e.decentraland.org/v1",
-  "SITES_SEGMENT_API_KEY": "",
+  "SITES_SEGMENT_API_KEY": "f0S2L1sWumT8BPjBmIBDTN5gIWjhrRHG",
   "INTERCOM_APP_ID": "z0h94kay",
   "SENTRY_DSN": "https://428e8d298fb3f0fbcea645314a4a388c@o4504361728212992.ingest.sentry.io/4505748381564928"
 }
