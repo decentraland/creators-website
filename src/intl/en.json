@@ -702,6 +702,8 @@
       "stop": "Stop",
       "select": "Animation",
       "from_collection": "From collection",
+      "mute": "Mute",
+      "unmute": "Unmute",
       "emote": {
         "walk": "Walk",
         "run": "Run",

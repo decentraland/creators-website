@@ -17,7 +17,13 @@ vi.mock('decentraland-ui2', async () => {
     return <iframe id={id} src="https://wearable-preview.decentraland.zone/?x=1" title="preview" />
   }
   WearablePreview.createController = vi.fn(() => ({
-    emote: { events: { on: vi.fn(), off: vi.fn() }, play: vi.fn(), pause: vi.fn(), stop: vi.fn() },
+    emote: {
+      events: { on: vi.fn(), off: vi.fn() },
+      play: vi.fn(),
+      pause: vi.fn(),
+      stop: vi.fn(),
+      hasSound: vi.fn().mockResolvedValue(false)
+    },
     scene: {},
     physics: { setSpringBonesParams: vi.fn().mockResolvedValue(undefined) }
   }))

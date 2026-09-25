@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { type ReactNode } from 'react'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { PreviewEmote, type IPreviewController } from '@dcl/schemas'
+import { PreviewEmote, PreviewEmoteEventType, type IPreviewController } from '@dcl/schemas'
 import { TranslationProvider } from '~/intl'
 import { track } from '~/lib/analytics'
 import { ItemType, type Item } from '~/lib/items'
@@ -29,9 +29,24 @@ const dance = emote('dance-item')
 const hat = { id: 'hat-item', name: 'Party Hat', tokenId: '7', type: ItemType.WEARABLE } as unknown as Item
 const wrapper = ({ children }: { children: ReactNode }) => <TranslationProvider>{children}</TranslationProvider>
 
-function makeController() {
+function makeController({ hasSound = false } = {}) {
   const stop = vi.fn().mockResolvedValue(undefined)
-  return { stop, controller: { emote: { stop } } as unknown as IPreviewController }
+  const disableSound = vi.fn().mockResolvedValue(undefined)
+  const enableSound = vi.fn().mockResolvedValue(undefined)
+  let soundLoaded = false
+  const listeners = new Map<string, Set<() => void>>()
+  const events = {
+    on: (type: string, fn: () => void) => listeners.set(type, (listeners.get(type) ?? new Set()).add(fn)),
+    off: (type: string, fn: () => void) => listeners.get(type)?.delete(fn)
+  }
+  // The iframe only knows about the emote's audio once it has loaded it, which it announces by playing.
+  const loadEmote = () =>
+    act(async () => {
+      soundLoaded = hasSound
+      listeners.get(PreviewEmoteEventType.ANIMATION_PLAY)?.forEach(fn => fn())
+    })
+  const emote = { stop, disableSound, enableSound, events, hasSound: async () => soundLoaded }
+  return { stop, disableSound, enableSound, loadEmote, controller: { emote } as unknown as IPreviewController }
 }
 
 /** Mirrors the editor: whichever collection emote is on the avatar becomes the preview's subject. */
@@ -123,6 +138,33 @@ describe('PlaybackBar', () => {
     expect(stop).toHaveBeenCalled()
     expect(useAvatarPreview.getState().emote).toBe(PreviewEmote.IDLE)
     expect(screen.queryByTestId('playback-bar-stop')).not.toBeInTheDocument()
+  })
+
+  it('offers mute once the emote turns out to have audio, and keeps it muted across reloads', async () => {
+    const { controller, loadEmote, disableSound, enableSound } = makeController({ hasSound: true })
+    render(<Bar controller={controller} />, { wrapper })
+    act(() => useAvatarPreview.getState().dress({ id: dance.id, type: ItemType.EMOTE }))
+    expect(screen.queryByTestId('playback-bar-sound')).not.toBeInTheDocument()
+
+    await loadEmote()
+    await userEvent.click(screen.getByTestId('playback-bar-sound'))
+    expect(disableSound).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('playback-bar-sound')).toHaveAttribute('data-muted', 'true')
+
+    await loadEmote()
+    expect(disableSound).toHaveBeenCalledTimes(2)
+
+    await userEvent.click(screen.getByTestId('playback-bar-sound'))
+    expect(enableSound).toHaveBeenCalled()
+    expect(screen.getByTestId('playback-bar-sound')).not.toHaveAttribute('data-muted')
+  })
+
+  it('shows no sound toggle for a silent emote', async () => {
+    const { controller, loadEmote } = makeController()
+    render(<Bar controller={controller} />, { wrapper })
+    act(() => useAvatarPreview.getState().dress({ id: dance.id, type: ItemType.EMOTE }))
+    await loadEmote()
+    expect(screen.queryByTestId('playback-bar-sound')).not.toBeInTheDocument()
   })
 
   it('keeps working when the preview has no controller yet', async () => {

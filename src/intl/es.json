@@ -702,6 +702,8 @@
       "stop": "Detener",
       "select": "Animación",
       "from_collection": "De la colección",
+      "mute": "Silenciar",
+      "unmute": "Activar sonido",
       "emote": {
         "walk": "Caminar",
         "run": "Correr",

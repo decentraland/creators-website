@@ -89,7 +89,12 @@ describe('buildPreviewOptions', () => {
     const dance = buildPreviewOptions({ kind: 'items', items: [] }, avatar, PreviewEmote.DANCE).zoom!
     // A lower zoom is a larger camera radius: the jump has to fit in frame.
     expect(jump).toBeLessThan(dance)
-    // Both are scaled together, so the camera starts where the legacy editor framed it.
-    expect(dance / jump).toBe(1.75)
+  })
+
+  it('starts the camera at the legacy framing, on the 0–100 scale wearable-preview reads zoom on', () => {
+    const options = buildPreviewOptions({ kind: 'items', items: [] }, avatar, PreviewEmote.DANCE)
+    const toMultiplier = (zoom: number) => 1 + (zoom / 100) * 1.8
+    expect(toMultiplier(options.zoom!)).toBeCloseTo(1.75)
+    expect(options.zoomScale).toBeGreaterThan(1)
   })
 })
