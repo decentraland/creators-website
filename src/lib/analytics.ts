@@ -29,6 +29,7 @@ type SegmentApi = {
 type SegmentPayload = { obj: { context?: Props } }
 type SourceMiddleware = (params: { payload: SegmentPayload; next: (payload: SegmentPayload) => void }) => void
 
+// The repo name, on purpose distinct from the Sentry release (the package name, see vite.config.ts).
 export const SOURCE = 'creators-website'
 
 // One id per page load, so the steps of a single visit stitch together in the warehouse.
