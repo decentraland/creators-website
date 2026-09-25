@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { HttpError, isNetworkError } from '~/lib/http'
+import { HttpError } from '~/lib/http'
 import { buildBlogPosts, fetchLatestBlogPosts, normalizeAssetUrl, postUrl } from './blog'
 
 const BASE = 'https://cms-api.decentraland.org/spaces/ea2ybdmmn1kv/environments/master'
@@ -82,12 +82,6 @@ describe('fetchLatestBlogPosts', () => {
     stubCms({ posts: () => Promise.resolve(failedResponse) })
     await expect(fetchLatestBlogPosts()).rejects.toEqual(expect.objectContaining({ status: 500 }))
     await expect(fetchLatestBlogPosts()).rejects.toBeInstanceOf(HttpError)
-  })
-
-  it('fails as a network error when the posts request never gets a response', async () => {
-    stubCms({ posts: () => Promise.reject(new TypeError('Failed to fetch')) })
-    const error = await fetchLatestBlogPosts().catch((e: unknown) => e)
-    expect(isNetworkError(error)).toBe(true)
   })
 })
 

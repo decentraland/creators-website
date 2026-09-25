@@ -4,7 +4,6 @@
 
 type Props = Record<string, unknown>
 
-const DEFAULT_API_HOST = 'api.segment.io/v1'
 const LIBRARY = { name: 'creators-website-beacon', version: '1.0.0' }
 
 export type SegmentCall = { type: 'track'; event: string } | { type: 'page'; name: string }
@@ -15,8 +14,8 @@ export type SegmentHttpInput = {
   properties: Props
   anonymousId: string
   userId?: string
-  /** `host/basePath` without protocol, as sites' `SEGMENT_API_HOST`; Segment's own host when empty. */
-  apiHost?: string
+  /** `host/basePath` without protocol, as sites' `SEGMENT_API_HOST`. */
+  apiHost: string
   app: { name: string; version: string }
   search: string
 }
@@ -82,14 +81,9 @@ export function segmentBody(input: SegmentHttpInput): Props {
   }
 }
 
-export function segmentUrl(apiHost: string | undefined, type: SegmentCall['type']): string {
-  const host = (apiHost || DEFAULT_API_HOST).replace(/^https?:\/\//, '').replace(/\/+$/, '')
-  return `https://${host}/${type}`
-}
-
 /** Sends one call over an unload-safe transport. Best effort: never throws. */
 export function postToSegment(input: SegmentHttpInput): void {
-  const url = segmentUrl(input.apiHost, input.call.type)
+  const url = `https://${input.apiHost}/${input.call.type}`
   const body = JSON.stringify(segmentBody(input))
   // text/plain keeps the request CORS-simple; a JSON content type would need a preflight, unsafe at unload.
   if (typeof navigator.sendBeacon === 'function') {
@@ -99,17 +93,12 @@ export function postToSegment(input: SegmentHttpInput): void {
       // Falls through to fetch.
     }
   }
-  if (typeof fetch !== 'function') return
-  try {
-    void fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body,
-      keepalive: true,
-      mode: 'cors',
-      credentials: 'omit'
-    }).catch(() => undefined)
-  } catch {
-    // Best effort.
-  }
+  void fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body,
+    keepalive: true,
+    mode: 'cors',
+    credentials: 'omit'
+  }).catch(() => undefined)
 }

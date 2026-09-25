@@ -1,6 +1,6 @@
 // Read-only client for the latest blog posts on the Contentful-backed CMS API ("Fresh from the blog").
 import { config } from '~/config'
-import { HttpError, fetchOrNetworkError } from '~/lib/http'
+import { HttpError } from '~/lib/http'
 
 type CMSLink = { sys: { id: string } }
 
@@ -51,7 +51,7 @@ export function postUrl(post: { title: string; slug: string; categorySlug: strin
 export const normalizeAssetUrl = (url: string) => (url.startsWith('//') ? `https:${url}` : url)
 
 async function fetchJson<T>(url: string, signal: AbortSignal): Promise<T> {
-  const response = await fetchOrNetworkError(url, { signal })
+  const response = await fetch(url, { signal })
   if (!response.ok) {
     await response.body?.cancel()
     throw new HttpError('blog request failed', response.status)

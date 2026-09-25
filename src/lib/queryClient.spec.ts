@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { HttpError, NetworkError } from '~/lib/http'
+import { HttpError } from '~/lib/http'
 import { setErrorForwarder } from '~/lib/monitoring'
 import { createQueryClient } from './queryClient'
 
@@ -57,7 +57,7 @@ describe('createQueryClient', () => {
         queryKey: ['hot-scenes'],
         queryFn: () => Promise.reject(new HttpError('hot scenes request failed', 503)),
         retry: false,
-        meta: { reportNetworkErrors: false }
+        meta: { reportOnlyHttpErrors: true }
       })
       .catch(() => undefined)
 
@@ -70,7 +70,7 @@ describe('createQueryClient', () => {
 
   it('stays quiet about the network failures of a query that opts out of them', async () => {
     const client = createQueryClient()
-    const failures = [new NetworkError(new TypeError('Failed to fetch')), new DOMException('timed out', 'TimeoutError')]
+    const failures = [new TypeError('Failed to fetch'), new DOMException('timed out', 'TimeoutError')]
 
     for (const failure of failures) {
       await client
@@ -78,7 +78,7 @@ describe('createQueryClient', () => {
           queryKey: ['latest-blog-posts', failure.name],
           queryFn: () => Promise.reject(failure),
           retry: false,
-          meta: { reportNetworkErrors: false }
+          meta: { reportOnlyHttpErrors: true }
         })
         .catch(() => undefined)
     }
@@ -92,7 +92,7 @@ describe('createQueryClient', () => {
     await client
       .fetchQuery({
         queryKey: ['collections'],
-        queryFn: () => Promise.reject(new NetworkError(new TypeError('Failed to fetch'))),
+        queryFn: () => Promise.reject(new TypeError('Failed to fetch')),
         retry: false
       })
       .catch(() => undefined)

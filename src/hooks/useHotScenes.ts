@@ -8,6 +8,6 @@ export function useHotScenes() {
     queryFn: fetchHotScenes,
     staleTime: 5 * 60_000,
     retry: 1,
-    meta: { reportNetworkErrors: false }
+    meta: { reportOnlyHttpErrors: true }
   })
 }

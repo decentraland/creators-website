@@ -32,9 +32,6 @@ export const CREATOR_HUB_TARGET = 'creator_hub'
  */
 export const OVERVIEW_MOBILE_QUERY = '(max-width: 767.98px)'
 
-/** The overview page view name: sites sent the full pathname. */
-export const OVERVIEW_PAGE_NAME = SITE_PATH
-
 /** Fired once per section per page load, the first time it scrolls into view. */
 export function trackSectionViewed(section: OverviewSection, mobile: boolean): void {
   sendOverviewTrack(SECTION_VIEWED_EVENT, { section_viewed: section, mobile })
@@ -68,6 +65,7 @@ export function trackClick(event: SyntheticEvent<Element>): void {
   sendOverviewTrack(CLICK_EVENT, clickPayload(event.currentTarget))
 }
 
+/** The overview page view, under the full pathname sites sent. */
 export function trackOverviewPage(): void {
-  sendOverviewPage(OVERVIEW_PAGE_NAME)
+  sendOverviewPage(SITE_PATH)
 }

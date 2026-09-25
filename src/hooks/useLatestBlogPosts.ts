@@ -8,6 +8,6 @@ export function useLatestBlogPosts() {
     queryFn: fetchLatestBlogPosts,
     staleTime: 30 * 60_000,
     retry: 1,
-    meta: { reportNetworkErrors: false }
+    meta: { reportOnlyHttpErrors: true }
   })
 }

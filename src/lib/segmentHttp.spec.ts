@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { postToSegment, segmentUrl, type SegmentHttpInput } from './segmentHttp'
+import { postToSegment, type SegmentHttpInput } from './segmentHttp'
 
 const input = (overrides: Partial<SegmentHttpInput> = {}): SegmentHttpInput => ({
   writeKey: 'write-key-example',
@@ -91,12 +91,5 @@ describe('postToSegment', () => {
     })
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
     expect(() => postToSegment(input())).not.toThrow()
-  })
-})
-
-describe('segmentUrl', () => {
-  it('uses Segment’s own host unless a proxy is configured', () => {
-    expect(segmentUrl('', 'track')).toBe('https://api.segment.io/v1/track')
-    expect(segmentUrl('https://api.example.com/v1/', 'page')).toBe('https://api.example.com/v1/page')
   })
 })
