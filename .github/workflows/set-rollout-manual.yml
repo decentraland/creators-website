@@ -1,6 +1,6 @@
 name: Set rollout - Manual
 
-# Points a domain at an ALREADY-PUBLISHED version of @dcl/wemotes-builder-site. Nothing is built here:
+# Points a domain at an ALREADY-PUBLISHED version of @dcl/creators-site. Nothing is built here:
 # the version must exist on the CDN, which is what makes this the way to promote the build that has been
 # running on .today to .org — the same bytes, not a fresh build nobody has looked at. The percentage is
 # an input so a production rollout can start small and be raised.
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       packageVersion:
-        description: 'Published npm version of @dcl/wemotes-builder-site to roll out (e.g. 1.4.0)'
+        description: 'Published npm version of @dcl/creators-site to roll out (e.g. 1.4.0)'
         required: true
         default: ''
       deploymentEnvironment:
@@ -44,7 +44,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ github.ref }}
           sha: ${{ github.sha }}
-          packageName: '@dcl/wemotes-builder-site'
+          packageName: '@dcl/creators-site'
           packageVersion: ${{ github.event.inputs.packageVersion }}
           deploymentPath: 'create'
           deploymentEnvironment: ${{ github.event.inputs.deploymentEnvironment }}

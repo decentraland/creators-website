@@ -1,6 +1,6 @@
 name: Build and release
 
-# Publishes the built app as the @dcl/wemotes-builder-site npm package; the Decentraland CDN serves it
+# Publishes the built app as the @dcl/creators-site npm package; the Decentraland CDN serves it
 # and the `create` by-path site in decentraland/definitions maps it to decentraland.<tld>/create.
 # One artifact serves every environment: src/config picks dev/stg/prd at runtime by hostname.
 #
@@ -8,7 +8,7 @@ name: Build and release
 # the CDN's `deployment_status` event. Production (.org) is promoted by hand with set-rollout-manual.yml.
 #
 # Repo-wide setup required before this can deploy (see the PR that introduced it):
-#   NPM_TOKEN                   publish token for @dcl/wemotes-builder-site (automation token, scope @dcl)
+#   NPM_TOKEN                   publish token for @dcl/creators-site (automation token, scope @dcl)
 #   GITLAB_CDN_DEPLOYER_TOKEN   CDN deploy pipeline trigger token
 #   GITLAB_CDN_DEPLOYER_URL     CDN deploy pipeline trigger url
 #   SENTRY_AUTH_TOKEN           OPTIONAL: uploads source maps; without it the release still ships,
@@ -141,7 +141,7 @@ jobs:
     steps:
       - name: Wait for CDN propagation
         env:
-          PACKAGE_NAME: '@dcl/wemotes-builder-site'
+          PACKAGE_NAME: '@dcl/creators-site'
           PACKAGE_VERSION: ${{ needs.build-release.outputs.version }}
         run: |
           URL="https://cdn.decentraland.org/${PACKAGE_NAME}/${PACKAGE_VERSION}"
@@ -165,7 +165,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ github.ref }}
           sha: ${{ github.sha }}
-          packageName: '@dcl/wemotes-builder-site'
+          packageName: '@dcl/creators-site'
           packageVersion: ${{ needs.build-release.outputs.version }}
           deploymentPath: 'create'
           deploymentEnvironment: ${{ github.event.inputs.deploymentEnvironment }}

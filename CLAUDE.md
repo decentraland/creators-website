@@ -60,7 +60,7 @@ Runtime config lives in `src/config/index.ts`, built from per-environment JSON f
 
 `scripts/prebuild.cjs` runs before every build: it syncs the version from `package.json` into `public/package.json` and computes `VITE_BASE_URL` — empty for local builds, `https://cdn.decentraland.org/<name>/<version>` in CI — rewriting `.env` and both package.json `homepage` fields in place. Vite uses `VITE_BASE_URL` as `base` for production builds only.
 
-Releases: `.github/workflows/build-release.yml` (push to `main`, GitHub release, or manual dispatch) publishes `dist/` as the `@dcl/wemotes-builder-site` npm package and triggers the CDN deploy; `set-rollout.yml` then points `.zone` and `.today` at it. Production (`.org`) is promoted by hand with `set-rollout-manual.yml` from an already-published version. Source maps upload to Sentry only when `SENTRY_AUTH_TOKEN` is set and are deleted before publish.
+Releases: `.github/workflows/build-release.yml` (push to `main`, GitHub release, or manual dispatch) publishes `dist/` as the `@dcl/creators-site` npm package and triggers the CDN deploy; `set-rollout.yml` then points `.zone` and `.today` at it. Production (`.org`) is promoted by hand with `set-rollout-manual.yml` from an already-published version. Source maps upload to Sentry only when `SENTRY_AUTH_TOKEN` is set and are deleted before publish.
 
 ## Design specs are the source of truth
 

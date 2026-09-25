@@ -37,7 +37,7 @@ If we miss a target, we will tell you why and propose a new date — we will not
 - Source code in this repository.
 - Build, deployment, and CI configuration in `.github/`, `vercel.json`, and `scripts/`.
 - Production deployments served from `decentraland.org`, `decentraland.zone`, and `decentraland.today` that are powered by this codebase.
-- Published artifacts derived from this repository (e.g. the `@dcl/wemotes-builder-site` npm package and any deployed bundles that contain code authored here).
+- Published artifacts derived from this repository (e.g. the `@dcl/creators-site` npm package and any deployed bundles that contain code authored here).
 
 ### Out of scope
 

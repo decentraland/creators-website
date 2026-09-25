@@ -36,7 +36,7 @@ describe('resolveBasePath', () => {
     expect(resolveBasePath('/')).toBeUndefined()
     expect(resolveBasePath('/collections')).toBeUndefined()
     expect(resolveBasePath('/creator')).toBeUndefined()
-    expect(resolveBasePath('/@dcl/wemotes-builder-site/0.0.1/')).toBeUndefined()
+    expect(resolveBasePath('/@dcl/creators-site/0.0.1/')).toBeUndefined()
   })
 })
 
