@@ -4,28 +4,32 @@ import { SectionTitle } from '../OverviewPage.styles'
 
 export { Centered, Rail, ViewAllLink } from '../OverviewPage.styles'
 
-const { colors, media } = theme
+const { colors, font, media } = theme
 
-const mobile = media.maxWidth('mobile')
+const tablet = media.maxWidth('tablet')
 
 export const Section = styled.section`
+  position: relative;
   width: 100%;
   padding-bottom: 40px;
+  overflow: hidden;
 `
 
 export const Title = styled(SectionTitle)`
-  margin-bottom: 54px;
-  padding: 0 16px;
+  margin-bottom: 62px;
 `
 
 export const SceneCard = styled.a`
   display: flex;
-  flex: 0 0 320px;
   flex-direction: column;
+  width: 320px;
+  min-width: 320px;
+  flex-shrink: 0;
   border-radius: 20px;
   background: ${colors.text2};
   color: ${colors.white};
   overflow: hidden;
+  cursor: pointer;
   transition: transform 0.35s ease-in-out;
 
   @media (hover: hover) {
@@ -38,13 +42,15 @@ export const SceneCard = styled.a`
     outline-offset: 2px;
   }
 
-  ${mobile} {
-    flex-basis: 280px;
+  ${tablet} {
+    width: 280px;
+    min-width: 280px;
   }
 `
 
 export const SceneImage = styled.div`
   position: relative;
+  width: 100%;
   height: 180px;
 
   & img {
@@ -63,8 +69,9 @@ export const OnlineBadge = styled.span`
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  border-radius: ${theme.radius.pill};
-  background: ${colors.overlayStrong};
+  border-radius: 999px;
+  background: ${colors.badgeOverlay};
+  color: ${colors.white};
   font-size: 13px;
   font-weight: 600;
 
@@ -73,7 +80,7 @@ export const OnlineBadge = styled.span`
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: ${colors.green};
+    background: ${colors.online};
   }
 `
 
@@ -89,6 +96,7 @@ export const SceneName = styled.h3`
   font-size: 18px;
   font-weight: 700;
   line-height: 24px;
+  letter-spacing: ${font.tracking};
   color: ${colors.softWhite};
   white-space: nowrap;
   overflow: hidden;
@@ -98,5 +106,7 @@ export const SceneName = styled.h3`
 export const SceneCoords = styled.span`
   font-size: 14px;
   font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: ${font.tracking};
   color: ${colors.muted2};
 `

@@ -1,30 +1,28 @@
 import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
-import { GUTTER, GUTTER_MOBILE, SectionTitle } from '../OverviewPage.styles'
+import { SectionTitle } from '../OverviewPage.styles'
 
-const { colors, gradients, media } = theme
+const { colors, font, gradients, media } = theme
 
 const mobile = media.maxWidth('mobile')
+const tablet = media.maxWidth('tablet')
 
 export const Section = styled.section`
+  position: relative;
   width: 100%;
-  padding: 80px ${GUTTER};
-  color: ${colors.white};
+  padding: 80px 160px;
+  color: ${colors.offWhite};
 
-  ${mobile} {
-    padding: 48px ${GUTTER_MOBILE} 80px;
+  ${tablet} {
+    padding: 48px 32px 80px;
   }
 `
 
-const corner = (to: string, size: string) => `linear-gradient(to ${to}, ${colors.white} ${size}, transparent ${size})`
+const corner = (to: string, size: string) =>
+  `linear-gradient(to ${to}, ${colors.offWhite} ${size}, transparent ${size})`
 
 /* Four L-shaped corner marks drawn with gradients, one per corner of the frame. */
 export const Frame = styled.div`
-  display: flex;
-  flex-direction: column;
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 64px 32px 80px;
   background:
     ${corner('right', '4px')} 0 0,
     ${corner('right', '4px')} 0 100%,
@@ -37,8 +35,7 @@ export const Frame = styled.div`
   background-repeat: no-repeat;
   background-size: 20px 20px;
 
-  ${mobile} {
-    padding: 48px 16px 64px;
+  ${tablet} {
     background:
       ${corner('right', '2px')} 0 0,
       ${corner('right', '2px')} 0 100%,
@@ -53,24 +50,32 @@ export const Frame = styled.div`
   }
 `
 
+export const Container = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1000px;
+  margin: auto;
+  padding: 64px 0 80px;
+
+  ${tablet} {
+    padding: 48px 0 64px;
+  }
+`
+
 export const Subtitle = styled.p`
   margin: 0;
   text-align: center;
   font-size: 14px;
   font-weight: 600;
   line-height: 19px;
+  letter-spacing: ${font.tracking};
   text-transform: uppercase;
-  color: ${colors.muted2};
+  color: ${colors.offWhiteMuted};
 `
 
 export const Title = styled(SectionTitle)`
-  margin-bottom: 40px;
-`
-
-export const List = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  padding-bottom: 0.5em;
 `
 
 export const Row = styled.div`
@@ -78,10 +83,11 @@ export const Row = styled.div`
   z-index: 1;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  margin-bottom: 12px;
   padding: 12px 32px;
   border-radius: 32px;
   background: ${colors.text2};
-  color: ${colors.white};
   cursor: pointer;
   overflow: hidden;
 
@@ -105,13 +111,24 @@ export const Row = styled.div`
 
   & svg {
     flex: none;
+    width: 40px;
+    height: 40px;
+    color: ${colors.white};
     transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   }
   &[data-open] svg {
     transform: rotate(180deg);
   }
+  &[data-open] svg circle {
+    fill: ${colors.white};
+    opacity: 1;
+  }
+  &[data-open] svg path {
+    fill: ${colors.text2};
+  }
 
   ${mobile} {
+    margin-bottom: 8px;
     padding: 16px 24px;
     border-radius: 24px;
 
@@ -126,21 +143,19 @@ export const Question = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  min-height: 44px;
 `
 
 export const QuestionText = styled.h3`
   margin: 0;
   font-size: 28px;
   font-weight: 300;
-  line-height: 1.15;
+  line-height: 28px;
   letter-spacing: -0.011em;
-  color: ${colors.gray4};
+  color: ${colors.offWhiteMuted};
 
-  ${mobile} {
+  ${tablet} {
     font-size: 16px;
-    line-height: 28px;
+    letter-spacing: -0.01em;
   }
 `
 
@@ -165,8 +180,11 @@ export const AnswerText = styled.p`
   margin: 0;
   overflow: hidden;
   font-size: 16px;
+  font-weight: 400;
   line-height: 165%;
+  letter-spacing: ${font.tracking};
   white-space: pre-line;
+  color: ${colors.offWhite};
 `
 
 export const Cta = styled.div`

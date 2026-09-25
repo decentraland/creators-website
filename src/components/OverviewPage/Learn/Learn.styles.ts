@@ -4,52 +4,63 @@ import { SectionTitle } from '../OverviewPage.styles'
 
 export { Rail } from '../OverviewPage.styles'
 
-const { colors, media } = theme
+const { colors, font, media } = theme
 
-const mobile = media.maxWidth('mobile')
-const stacked = media.maxWidth('lg')
+const mobileUp = media.minWidth('mobile')
+const tablet = media.maxWidth('tablet')
+const laptopUp = media.minWidth('laptop')
+const desktop = media.maxWidth('desktop')
 
 export const Section = styled.section`
+  position: relative;
   width: 100%;
   overflow: hidden;
 `
 
 export const Title = styled(SectionTitle)`
-  margin: 80px auto 54px;
-  padding: 0 16px;
-
-  ${mobile} {
-    margin: 48px auto 32px;
-  }
+  margin: 97px auto 62px;
 `
 
 export const VideoCard = styled.a`
+  position: relative;
   display: flex;
-  flex: 0 0 529px;
   flex-direction: column;
+  justify-content: space-between;
+  width: 529px;
+  min-width: 529px;
+  height: 398px;
+  flex-shrink: 0;
   border-radius: 20px;
   overflow: hidden;
   color: ${colors.white};
+  cursor: pointer;
+  transition: transform 0.35s ease-in-out;
 
   &:focus-visible {
     outline: 2px solid ${colors.softWhite};
     outline-offset: 2px;
   }
 
-  ${mobile} {
-    flex-basis: min(360px, calc(100vw - 32px));
+  ${tablet} {
+    width: 360px;
+    min-width: 360px;
+    max-width: 360px;
+    height: 310px;
   }
 `
 
 export const Thumbnail = styled.div`
   position: relative;
+  flex: 1;
+  width: 100%;
   height: 236px;
+  cursor: pointer;
 
   & img {
-    display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
+    border-radius: 10px 10px 0 0;
   }
   & svg {
     position: absolute;
@@ -61,21 +72,23 @@ export const Thumbnail = styled.div`
     opacity: 0.7;
     transform: translate(-50%, -50%);
     filter: drop-shadow(0 4px 20px ${colors.overlayHover});
-    transition: opacity 0.35s ease-in-out;
+    transition: all 0.35s ease-in-out;
   }
-  a:hover & svg {
+  &:hover svg {
     opacity: 1;
+    filter: drop-shadow(0 4px 20px ${colors.overlayHover}) brightness(1.3);
   }
 
-  ${mobile} {
+  ${tablet} {
     height: 160px;
   }
 `
 
 export const VideoInfo = styled.div`
   display: flex;
-  flex: 1;
   flex-direction: column;
+  width: 100%;
+  border-radius: 0 0 20px 20px;
   background: ${colors.text2};
 `
 
@@ -83,18 +96,14 @@ export const VideoMeta = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  width: 100%;
   padding: 18px 24px;
 `
 
 export const VideoAuthor = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-width: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: ${colors.muted2};
+  cursor: pointer;
 
   & img {
     width: 40px;
@@ -102,68 +111,101 @@ export const VideoAuthor = styled.div`
     border-radius: 50%;
     object-fit: cover;
   }
+  & span {
+    margin-left: 8px;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.5;
+    letter-spacing: ${font.tracking};
+    color: ${colors.muted2};
+  }
 
-  ${mobile} {
-    font-size: 16px;
+  ${tablet} {
+    & span {
+      font-size: 16px;
+    }
   }
 `
 
 export const VideoDate = styled.span`
-  flex: none;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: ${font.tracking};
+  text-align: right;
   text-transform: uppercase;
   color: ${colors.muted2};
 
-  ${mobile} {
-    font-size: 14px;
+  ${tablet} {
+    font-size: 16px;
   }
 `
 
 export const VideoTitle = styled.h3`
   margin: 0;
-  padding: 0 24px 32px;
+  padding: 0 24px 40px;
   font-size: 20px;
   font-weight: 700;
   line-height: 28px;
+  letter-spacing: ${font.tracking};
 
-  ${mobile} {
+  ${tablet} {
     font-size: 18px;
+    text-align: left;
   }
 `
 
 export const Extras = styled.div`
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 32px 80px;
-  margin: 64px 16px;
+  margin: 72px 20px;
 
-  ${mobile} {
+  ${tablet} {
     flex-direction: column;
-    align-items: stretch;
-    margin: 32px 16px;
+    width: calc(100% - 16px);
+    margin: 28px 0 32px;
+    padding: 0 16px;
   }
 `
 
 export const Extra = styled.div`
   display: flex;
   align-items: center;
-  gap: 16px;
   font-size: 20px;
   font-weight: 600;
+  line-height: 48px;
   text-align: center;
   color: ${colors.white};
 
-  ${stacked} {
+  & a {
+    margin-left: 16px;
+  }
+  &:first-of-type {
+    ${laptopUp} {
+      margin-right: 80px;
+    }
+  }
+  &:last-of-type {
+    ${mobileUp} {
+      margin-top: 33px;
+    }
+    ${laptopUp} {
+      margin-top: 0;
+    }
+  }
+
+  ${desktop} {
     flex-direction: column;
   }
-  ${mobile} {
+  ${tablet} {
+    width: 100%;
     font-size: 18px;
 
     & a {
       width: 100%;
+      margin-top: 16px;
+      margin-left: 0;
     }
   }
 `

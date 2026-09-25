@@ -1,9 +1,9 @@
 import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
 
-const { colors, gradients, media } = theme
+const { colors, font, gradients, media } = theme
 
-const mobile = media.maxWidth('mobile')
+const tablet = media.maxWidth('tablet')
 
 export const Hero = styled.section`
   position: relative;
@@ -13,13 +13,8 @@ export const Hero = styled.section`
   justify-content: center;
   width: 100%;
   /* Fills most of the first viewport below the fixed navbar and the sticky sub-nav. */
-  min-height: calc(90vh - var(--nav-h) - var(--sub-nav-h));
-  padding: 48px 32px;
+  height: calc(90vh - var(--nav-h) - var(--sub-nav-h));
   overflow: hidden;
-
-  ${mobile} {
-    padding: 40px 16px;
-  }
 `
 
 export const Background = styled.div`
@@ -41,8 +36,13 @@ export const Content = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  max-width: 740px;
+  max-width: 739px;
+  padding: 0 32px;
   text-align: center;
+
+  ${tablet} {
+    max-width: 100%;
+  }
 `
 
 export const Title = styled.h1`
@@ -54,13 +54,13 @@ export const Title = styled.h1`
   color: ${colors.white};
 
   & span {
-    background: ${gradients.ember};
+    background: ${gradients.dawn};
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
 
-  ${mobile} {
+  ${tablet} {
     margin-bottom: 32px;
     font-size: 48px;
     letter-spacing: -0.8px;
@@ -72,9 +72,10 @@ export const Subtitle = styled.p`
   font-size: 24px;
   font-weight: 500;
   line-height: 32px;
+  letter-spacing: ${font.tracking};
   color: ${colors.white};
 
-  ${mobile} {
+  ${tablet} {
     margin-bottom: 64px;
     font-size: 20px;
     font-weight: 400;
@@ -91,10 +92,8 @@ export const ScrollButton = styled.button`
   border: 0;
   background: none;
   color: ${colors.muted2};
+  cursor: pointer;
 
-  & svg {
-    font-size: 32px;
-  }
   &:hover svg {
     animation: overview-bounce 1s linear infinite;
   }

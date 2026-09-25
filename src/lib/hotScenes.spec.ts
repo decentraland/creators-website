@@ -22,7 +22,7 @@ describe('fetchHotScenes', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(fetchHotScenes()).resolves.toEqual(scenes)
-    expect(fetchMock).toHaveBeenCalledWith('https://realm-provider-ea.decentraland.zone/hot-scenes', expect.anything())
+    expect(fetchMock).toHaveBeenCalledWith('https://realm-provider-ea.decentraland.org/hot-scenes', expect.anything())
   })
 
   it('treats a payload that is not a list as no scenes', async () => {

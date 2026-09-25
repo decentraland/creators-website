@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { KeyboardArrowDown as KeyboardArrowDownIcon } from '@mui/icons-material'
 import { Button } from '~/components/Button'
+import { ChevronDownIcon } from '~/components/Icons'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useTypingListEffect } from '~/hooks/useTypingListEffect'
 import { useTranslation } from '~/intl'
@@ -47,6 +47,7 @@ const Hero = () => {
             // The Creator Hub only ships desktop installers, so phones get the docs instead of a dead end.
             <Button
               as="a"
+              size="hero"
               href={CREATOR_DOCS_URL}
               target="_blank"
               rel="noopener noreferrer"
@@ -60,6 +61,7 @@ const Hero = () => {
           ) : (
             <Button
               as="a"
+              size="hero"
               href={CREATOR_HUB_DOWNLOAD_URL}
               onClick={trackClick}
               data-testid="overview-hero-cta"
@@ -82,7 +84,7 @@ const Hero = () => {
           window.scrollBy({ top: window.innerHeight, behavior: 'smooth' })
         }}
       >
-        <KeyboardArrowDownIcon />
+        <ChevronDownIcon />
       </S.ScrollButton>
     </>
   )

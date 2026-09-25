@@ -1,17 +1,21 @@
 import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
-import { Section as BaseSection, SectionTitle } from '../OverviewPage.styles'
+import { SectionTitle } from '../OverviewPage.styles'
 
-const { colors, gradients, media, radius } = theme
+const { colors, font, gradients, media, radius } = theme
 
-const mobile = media.maxWidth('mobile')
-const stacked = media.maxWidth('lg')
+const tablet = media.maxWidth('tablet')
 
-export const Section = styled(BaseSection)`
+export const Section = styled.section`
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+  width: 100%;
   padding-bottom: 100px;
 
-  ${mobile} {
-    padding-bottom: 40px;
+  ${tablet} {
+    padding: 0 32px 40px;
+    overflow: hidden;
   }
 `
 
@@ -22,13 +26,9 @@ export const Title = styled(SectionTitle)`
 export const Grid = styled.div`
   display: flex;
   justify-content: center;
-  gap: 24px;
-  max-width: 1400px;
-  margin: 0 auto;
 
-  ${stacked} {
+  ${tablet} {
     flex-direction: column;
-    align-items: center;
     gap: 20px;
   }
 `
@@ -37,19 +37,23 @@ export const Card = styled.a`
   display: flex;
   flex: 1;
   max-width: 450px;
+  margin-right: 24px;
   border-radius: ${radius.banner};
   color: ${colors.white};
   /* Reveals the CTA on hover; devices without hover keep it always shown. */
   --cta-reveal: 1;
 
-  &[data-gradient='amethyst'] {
-    background: ${gradients.amethyst};
+  &:last-child {
+    margin-right: 0;
+  }
+  &[data-gradient='orchid'] {
+    background: ${gradients.orchid};
   }
   &[data-gradient='apricot'] {
     background: ${gradients.apricot};
   }
-  &[data-gradient='cerise'] {
-    background: ${gradients.cerise};
+  &[data-gradient='raspberry'] {
+    background: ${gradients.raspberry};
   }
   &:focus-visible {
     outline: 2px solid ${colors.softWhite};
@@ -64,16 +68,21 @@ export const Card = styled.a`
     }
   }
 
-  ${stacked} {
+  ${tablet} {
     width: 100%;
-    max-width: 640px;
+    max-width: 100%;
+    margin-right: 0;
   }
 `
 
 export const CardInner = styled.div`
+  position: relative;
   display: flex;
   flex: 1;
   flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
   padding: 24px 24px 32px;
   border-radius: 20px;
   overflow: hidden;
@@ -85,7 +94,8 @@ export const CardInner = styled.div`
     }
   }
 
-  ${mobile} {
+  ${tablet} {
+    justify-content: flex-start;
     padding: 26px 24px;
   }
 `
@@ -100,29 +110,42 @@ export const CardImage = styled.div`
   overflow: hidden;
 
   & img {
+    flex: 1 1 auto;
+    min-height: 0;
     max-width: 100%;
     object-fit: contain;
   }
 
-  ${mobile} {
+  ${tablet} {
     height: 138px;
+    min-height: 138px;
     margin-bottom: 16px;
 
     & img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
+      max-width: none;
+      min-width: 100%;
+      min-height: 100%;
     }
   }
 `
 
+export const CardText = styled.div`
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-self: flex-start;
+  justify-content: flex-start;
+`
+
 export const CardTitle = styled.h3`
-  margin: 0 10px 8px;
+  margin: 0 0 8px;
+  padding: 0 10px;
   font-size: 24px;
   font-weight: 600;
   line-height: 30px;
+  letter-spacing: ${font.tracking};
 
-  ${mobile} {
+  ${tablet} {
     font-size: 20px;
     font-weight: 700;
     line-height: 28px;
@@ -130,10 +153,12 @@ export const CardTitle = styled.h3`
 `
 
 export const CardDescription = styled.p`
-  flex: 1;
-  margin: 0 10px;
+  margin: 0;
+  padding: 0 10px;
   font-size: 18px;
+  font-weight: 400;
   line-height: 24px;
+  letter-spacing: ${font.tracking};
 `
 
 export const CardCta = styled.span`
@@ -154,7 +179,11 @@ export const CardCta = styled.span`
     opacity 0.3s ease-in-out,
     transform 0.3s ease-in-out;
 
-  ${mobile} {
+  &:hover {
+    background: ${colors.media};
+  }
+
+  ${tablet} {
     margin-top: 12px;
   }
 `

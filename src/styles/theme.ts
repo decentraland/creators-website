@@ -72,8 +72,18 @@ const colors = {
   glassLine: 'rgba(255, 255, 255, 0.5)',
   // Legendary's light gradient stop (#A657ED) is too close to the purple surfaces; lift it for the pill text.
   rarityLegendaryLight: '#e8b9ff',
-  // Overview page links over dark cards (sites' creator landing accent).
-  apricot: '#ffa25a'
+  // Overview page (sites' creator landing values, kept exact for visual parity).
+  apricot: '#ffa25a', // resource links over the dark create cards
+  offWhite: '#f0f0f0', // decentraland-ui2 dark scheme text.primary: FAQ frame, answers, CTA border
+  offWhiteMuted: 'rgba(240, 240, 240, 0.7)', // ui2 dark text.secondary: FAQ subtitle and questions
+  gray0Half: 'rgba(67, 64, 74, 0.5)', // Gray 0 @ 50%: create card info blocks
+  inkFade: 'rgba(24, 20, 26, 0.8)', // testimonials grid fading into the wings
+  badgeOverlay: 'rgba(0, 0, 0, 0.65)', // live scene "online" pill
+  online: '#3fb950', // live scene pill dot
+  dclRedLine: 'rgba(255, 45, 85, 0.5)', // MUI outlined-primary border (light button)
+  glassHint: 'rgba(255, 255, 255, 0.08)', // MUI dark action.hover (ghost button)
+  glassGlow: 'rgba(255, 255, 255, 0.15)', // active carousel slide halo
+  glassStrong: 'rgba(255, 255, 255, 0.4)' // idle carousel dot
 } as const
 
 // Per-rarity design colors (Figma "Rarities/*", shop's palette). Distinct from @dcl/schemas' Rarity.getColor:
@@ -95,9 +105,13 @@ const gradients = {
   flare: 'linear-gradient(157.44deg, #ffbc5b 0%, #ff2d55 50.52%, #c640cd 100%)',
   ember: 'linear-gradient(69deg, #ffbc5b 0%, #ff2d55 100%)',
   coral: 'linear-gradient(90deg, #ff7439 0%, #ff2d55 100%)',
-  // Overview page: the warm "why" card and the FAQ row hover sweep.
-  apricot: 'linear-gradient(200deg, #ffa25a 0%, #ff4f57 100%)',
-  dusk: 'linear-gradient(90deg, #43404a 0%, #691fa9 100%)'
+  // Overview page (sites' creator landing gradients, exact stops).
+  orchid: 'linear-gradient(206deg, #c640cd 2.47%, #691fa9 98.81%)', // "join" why card, blog cover fallback
+  apricot: 'radial-gradient(2917.83% 156.44% at 16.06% 114.57%, #ff4f57 13.42%, #ffa25a 100%)', // "create" why card
+  raspberry: 'linear-gradient(208deg, #ff2d55 13.94%, #c640cd 80.96%)', // "benefit" why card
+  sunrise: 'linear-gradient(244deg, #ff2d55 -11.67%, #ffbc5b 88.23%)', // section title highlight
+  dawn: 'linear-gradient(287deg, #ff2d55 5.21%, #ffbc5b 56.5%)', // hero title highlight
+  dusk: 'linear-gradient(90deg, #43404a 0%, #691fa9 100%)' // FAQ row hover sweep
 } as const
 
 // Item editor workspace (creator-hub inspector palette; no other hexes belong in the editor).
@@ -124,7 +138,9 @@ const radius = {
 } as const
 
 const font = {
-  sans: '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+  sans: '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  // MUI Typography's body tracking; the overview page carries it on every text block sites set in Typography.
+  tracking: '0.00938em'
 } as const
 
 // Stacking tiers. `overlay` sits above the global DCL navbar (position: fixed) + the sub-nav so a
@@ -143,7 +159,11 @@ export const breakpoints = {
   sm: 720,
   md: 820,
   lg: 900,
-  xl: 1200
+  xl: 1200,
+  // decentraland-ui2's MUI breakpoints (sm/md/lg), which the overview page inherits from sites.
+  tablet: 991,
+  laptop: 1024,
+  desktop: 1280
 } as const
 
 export type Breakpoint = keyof typeof breakpoints

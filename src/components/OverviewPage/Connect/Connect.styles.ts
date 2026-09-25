@@ -3,14 +3,13 @@ import { theme } from '~/styles/theme'
 import gridBackground from '~/assets/overview/connect-grid.webp'
 import { SectionTitle } from '../OverviewPage.styles'
 
-const { colors, media } = theme
+const { colors, font, media } = theme
 
-const mobile = media.maxWidth('mobile')
+const tablet = media.maxWidth('tablet')
 
 export const Section = styled.section`
   position: relative;
   width: 100%;
-  padding-bottom: 32px;
   background: url(${gridBackground}) center / cover no-repeat;
   overflow: hidden;
 
@@ -27,36 +26,39 @@ export const Section = styled.section`
   }
   &::before {
     left: 0;
-    background: linear-gradient(90deg, ${colors.overlayStrong} 0%, transparent 100%);
+    background: linear-gradient(90deg, ${colors.inkFade} 0%, transparent 100%);
   }
   &::after {
     right: 0;
-    background: linear-gradient(270deg, ${colors.overlayStrong} 0%, transparent 100%);
+    background: linear-gradient(270deg, ${colors.inkFade} 0%, transparent 100%);
   }
 `
 
 export const Title = styled(SectionTitle)`
-  margin: 56px auto 24px;
-  padding: 0 16px;
+  margin: 56px auto 40px;
 
-  ${mobile} {
-    margin: 40px auto 20px;
+  ${tablet} {
+    margin: 41px auto 36px;
+    padding: 0 20px;
   }
 `
 
 export const Card = styled.a`
+  position: relative;
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
   width: 100%;
   padding: 32px 24px;
   border-radius: 20px;
   background: ${colors.softWhite};
   color: ${colors.text};
+  cursor: pointer;
   transition: transform 0.3s ease-in-out;
 
   @media (hover: hover) {
     &:hover {
-      transform: scale(1.03);
+      transform: scale(1.05);
     }
   }
   &:focus-visible {
@@ -64,7 +66,7 @@ export const Card = styled.a`
     outline-offset: 2px;
   }
 
-  ${mobile} {
+  ${tablet} {
     padding: 24px;
   }
 `
@@ -72,12 +74,14 @@ export const Card = styled.a`
 export const Quote = styled.p`
   margin: 0;
   font-size: 16px;
+  font-weight: 400;
   font-style: italic;
   line-height: 24px;
+  letter-spacing: ${font.tracking};
 
-  ${mobile} {
-    font-size: 18px;
-    line-height: 28px;
+  ${tablet} {
+    font-size: 20px;
+    line-height: 30px;
     text-align: center;
   }
 `
@@ -86,54 +90,68 @@ export const Author = styled.div`
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
+  justify-content: center;
   margin-top: 16px;
 
   & img {
     width: 40px;
+    min-width: 40px;
     height: 40px;
     border-radius: 50%;
     object-fit: cover;
   }
 
-  ${mobile} {
+  ${tablet} {
     align-items: center;
     margin-top: 24px;
   }
 `
 
 export const AuthorName = styled.span`
+  max-width: 100%;
+  margin-top: 8px;
   font-size: 18px;
   font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: ${font.tracking};
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `
 
 export const Discord = styled.a`
-  position: relative;
-  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  width: fit-content;
-  margin: 40px auto 0;
-  padding: 8px 16px;
+  justify-content: center;
+  margin: 56px 0 32px;
   color: ${colors.white};
+  cursor: pointer;
 
-  & img {
-    width: 93px;
-    height: 80px;
-  }
   &:focus-visible {
     outline: 2px solid ${colors.softWhite};
     outline-offset: 2px;
   }
 
-  ${mobile} {
-    margin-top: 32px;
+  ${tablet} {
+    margin-top: 43px;
+  }
+`
 
+/* The image stays inline so its line box keeps the descender gap the design was measured with. */
+export const DiscordIcon = styled.span`
+  display: block;
+
+  & img {
+    width: 93px;
+    height: 80px;
+    margin-top: 23px;
+  }
+
+  ${tablet} {
     & img {
       width: 50px;
-      height: 43px;
+      margin-top: 0;
     }
   }
 `
@@ -141,10 +159,12 @@ export const Discord = styled.a`
 export const DiscordTitle = styled.span`
   font-size: 20px;
   font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: ${font.tracking};
   text-align: center;
   text-shadow: 0 4px 20px ${colors.overlayHover};
 
-  ${mobile} {
+  ${tablet} {
     font-size: 18px;
   }
 `

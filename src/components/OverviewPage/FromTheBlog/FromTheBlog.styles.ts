@@ -1,40 +1,53 @@
 import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
-import { Rail, SectionTitle } from '../OverviewPage.styles'
+import { SectionTitle } from '../OverviewPage.styles'
 
 export { Centered, ViewAllLink } from '../OverviewPage.styles'
 
-const { colors, gradients, media } = theme
+const { colors, font, gradients, media } = theme
 
-const stacked = media.maxWidth('lg')
+const laptop = media.maxWidth('laptop')
 
 export const Section = styled.section`
+  position: relative;
   width: 100%;
   padding: 40px 0 100px;
+  overflow: hidden;
 `
 
 export const Title = styled(SectionTitle)`
-  margin-bottom: 54px;
-  padding: 0 16px;
+  margin-bottom: 62px;
 `
 
-export const Posts = styled(Rail)`
+export const Posts = styled.div`
+  display: flex;
   justify-content: center;
+  gap: 20px;
+  padding: 0 100px;
 
-  ${stacked} {
+  ${laptop} {
     justify-content: flex-start;
+    padding: 0 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 `
 
 export const PostCard = styled.a`
   display: flex;
-  flex: 0 1 380px;
   flex-direction: column;
+  flex-shrink: 1;
+  width: 380px;
   min-width: 300px;
   border-radius: 20px;
   background: ${colors.text2};
   color: ${colors.white};
   overflow: hidden;
+  cursor: pointer;
   transition: transform 0.35s ease-in-out;
 
   @media (hover: hover) {
@@ -47,14 +60,16 @@ export const PostCard = styled.a`
     outline-offset: 2px;
   }
 
-  ${stacked} {
-    flex: 0 0 300px;
+  ${laptop} {
+    flex-shrink: 0;
+    width: 300px;
   }
 `
 
 export const PostImage = styled.div`
+  width: 100%;
   height: 200px;
-  background: ${gradients.amethyst};
+  background: ${gradients.orchid};
 
   & img {
     display: block;
@@ -81,6 +96,7 @@ export const PostMeta = styled.div`
 export const PostCategory = styled.span`
   font-size: 13px;
   font-weight: 700;
+  line-height: 1.5;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: ${colors.dclRed};
@@ -89,6 +105,8 @@ export const PostCategory = styled.span`
 export const PostDate = styled.span`
   font-size: 14px;
   font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: ${font.tracking};
   color: ${colors.muted2};
 `
 
@@ -97,5 +115,6 @@ export const PostTitle = styled.h3`
   font-size: 20px;
   font-weight: 700;
   line-height: 28px;
+  letter-spacing: ${font.tracking};
   color: ${colors.softWhite};
 `

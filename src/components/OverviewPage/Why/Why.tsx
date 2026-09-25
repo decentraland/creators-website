@@ -31,9 +31,11 @@ const Why = () => {
                   <S.CardImage>
                     <img src={card.image} alt="" loading="lazy" />
                   </S.CardImage>
-                  <S.CardTitle>{title}</S.CardTitle>
-                  <S.CardDescription>{t(`overview.why.cards.${card.id}.description`)}</S.CardDescription>
-                  <S.CardCta>{t(`overview.why.cards.${card.id}.cta`)}</S.CardCta>
+                  <S.CardText>
+                    <S.CardTitle>{title}</S.CardTitle>
+                    <S.CardDescription>{t(`overview.why.cards.${card.id}.description`)}</S.CardDescription>
+                    <S.CardCta>{t(`overview.why.cards.${card.id}.cta`)}</S.CardCta>
+                  </S.CardText>
                 </S.CardInner>
               </S.Card>
             )

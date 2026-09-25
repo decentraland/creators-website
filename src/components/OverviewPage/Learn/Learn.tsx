@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { PlayCircleFilled as PlayCircleFilledIcon } from '@mui/icons-material'
 import { Button } from '~/components/Button'
+import { PlayIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { formatLongDate } from '~/lib/time'
 import { OverviewSection, trackClick } from '~/lib/overviewAnalytics'
@@ -43,7 +43,7 @@ const Learn = () => {
             >
               <S.Thumbnail>
                 <img src={card.thumbnail} alt="" loading="lazy" />
-                <PlayCircleFilledIcon />
+                <PlayIcon />
               </S.Thumbnail>
               <S.VideoInfo>
                 <S.VideoMeta>
@@ -63,6 +63,7 @@ const Learn = () => {
             {t('overview.learn.watch_more')}
             <Button
               as="a"
+              size="compact"
               href={YOUTUBE_CHANNEL_URL}
               target="_blank"
               rel="noopener noreferrer"
@@ -78,7 +79,8 @@ const Learn = () => {
             {t('overview.learn.your_tutorial')}
             <Button
               as="a"
-              variant="secondary"
+              variant="light"
+              size="compact"
               href={SUBMIT_TUTORIAL_URL}
               target="_blank"
               rel="noopener noreferrer"

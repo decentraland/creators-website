@@ -60,28 +60,29 @@ const Faqs = () => {
   return (
     <S.Section ref={ref} aria-label={t('overview.faqs.aria_label')} data-testid="overview-faqs">
       <S.Frame>
-        <S.Subtitle>{t('overview.faqs.subtitle')}</S.Subtitle>
-        <S.Title>{t('overview.faqs.title')}</S.Title>
-        <S.List>
+        <S.Container>
+          <S.Subtitle>{t('overview.faqs.subtitle')}</S.Subtitle>
+          <S.Title>{t('overview.faqs.title')}</S.Title>
           {faqIds.map(id => (
             <FaqRow key={id} id={id} open={openId === id} onToggle={() => setOpenId(openId === id ? null : id)} />
           ))}
-        </S.List>
-        <S.Cta>
-          <Button
-            as="a"
-            variant="secondary"
-            href={FAQS_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            data-testid="overview-faqs-cta"
-            data-place={OverviewSection.FAQS}
-            data-title="faqs-cta"
-            onClick={trackClick}
-          >
-            {t('overview.faqs.cta')}
-          </Button>
-        </S.Cta>
+          <S.Cta>
+            <Button
+              as="a"
+              variant="ghost"
+              size="lg"
+              href={FAQS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="overview-faqs-cta"
+              data-place={OverviewSection.FAQS}
+              data-title="faqs-cta"
+              onClick={trackClick}
+            >
+              {t('overview.faqs.cta')}
+            </Button>
+          </S.Cta>
+        </S.Container>
       </S.Frame>
     </S.Section>
   )

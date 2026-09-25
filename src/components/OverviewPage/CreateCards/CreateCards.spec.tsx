@@ -22,7 +22,11 @@ const renderSection = () =>
     </TranslationProvider>
   )
 
-// Inactive carousel slides are aria-hidden, so role queries only see the first card; go by test id.
+// The carousel renders every card three times (clones for the infinite loop) and exposes only the active
+// slide to role queries, so cards are found by test id and the visible one by its slide's active flag.
+const cards = () => screen.getAllByTestId('overview-create-card')
+const activeCard = () =>
+  cards().find(card => card.closest('[data-testid="carousel-slide"]')?.hasAttribute('data-active'))!
 const linkNamed = (label: string) =>
   screen.getAllByTestId('overview-create-link').find(link => link.textContent === label)
 
@@ -34,8 +38,12 @@ const downloadLinks = () =>
 describe('CreateCards', () => {
   it('shows the wearables, emotes and experiences cards with the scene docs open by default', () => {
     renderSection()
-    const cards = screen.getAllByTestId('overview-create-card')
-    expect(cards.map(card => card.getAttribute('data-card'))).toEqual(['wearables', 'emotes', 'experiences'])
+    expect([...new Set(cards().map(card => card.getAttribute('data-card')))]).toEqual([
+      'wearables',
+      'emotes',
+      'experiences'
+    ])
+    expect(activeCard()).toHaveAttribute('data-card', 'wearables')
     expect(linkNamed('About the Scene Editor')).toHaveAttribute(
       'href',
       'https://docs.decentraland.org/creator/scene-editor/get-started/about-editor'
@@ -44,7 +52,7 @@ describe('CreateCards', () => {
 
   it('switches tabs and tracks the switch with the card and tab', () => {
     renderSection()
-    const wearables = screen.getAllByTestId('overview-create-card')[0]
+    const wearables = activeCard()
     fireEvent.click(within(wearables).getByRole('tab', { name: 'Smart Wearables' }))
     expect(within(wearables).getByRole('link', { name: 'Smart Wearables Docs' })).toBeInTheDocument()
     expect(within(wearables).queryByRole('link', { name: 'Creating Wearables' })).toBeNull()

@@ -6,7 +6,7 @@
   "PEER_URL": "https://peer.decentraland.zone",
   "BUILDER_URL": "https://decentraland.zone/builder",
   "SITES_URL": "https://decentraland.zone",
-  "HOT_SCENES_URL": "https://realm-provider-ea.decentraland.zone/hot-scenes",
+  "HOT_SCENES_URL": "https://realm-provider-ea.decentraland.org/hot-scenes",
   "DOCS_URL": "https://docs.decentraland.org",
   "DISCORD_URL": "https://dcl.gg/discord",
   "MATIC_URN_PROTOCOL": "amoy",

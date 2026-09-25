@@ -47,6 +47,7 @@ const Connect = () => {
           label={t('overview.connect.title')}
           slideWidth={500}
           autoplayMs={AUTOPLAY_MS}
+          alignItems="center"
         />
         <S.Discord
           href={DISCORD_URL}
@@ -58,7 +59,9 @@ const Connect = () => {
           onClick={trackClick}
         >
           <S.DiscordTitle>{t('overview.connect.join_the_community')}</S.DiscordTitle>
-          <img src={discordIcon} alt="" />
+          <S.DiscordIcon>
+            <img src={discordIcon} alt="" />
+          </S.DiscordIcon>
         </S.Discord>
       </S.Section>
     </AnimatedSection>

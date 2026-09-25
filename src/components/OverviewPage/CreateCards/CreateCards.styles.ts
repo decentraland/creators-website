@@ -1,41 +1,52 @@
 import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
-import { SectionTitle } from '../OverviewPage.styles'
+import { SectionTitle, hitArea } from '../OverviewPage.styles'
 
-const { colors, media, radius } = theme
+const { colors, font, media, radius } = theme
 
-const mobile = media.maxWidth('mobile')
-const stacked = media.maxWidth('lg')
+const tablet = media.maxWidth('tablet')
+const laptop = media.maxWidth('laptop')
+const desktop = media.maxWidth('desktop')
 
 export const Section = styled.section`
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
   width: 100%;
   margin: 40px 0;
+
+  ${tablet} {
+    padding: 0 32px;
+    overflow: hidden;
+  }
 `
 
 export const Title = styled(SectionTitle)`
   margin-bottom: 32px;
-  padding: 0 16px;
 `
 
 export const Card = styled.div`
   display: flex;
   align-items: center;
   width: 100%;
+  height: 100%;
   padding: 32px;
   border-radius: ${radius.banner};
   background: ${colors.text2};
   color: ${colors.white};
 
-  ${stacked} {
+  ${laptop} {
     flex-direction: column;
+    height: auto;
     padding: 0;
   }
 `
 
 export const Figure = styled.div`
-  display: flex;
-  flex: 0 0 35%;
-  align-self: stretch;
+  flex-shrink: 0;
+  width: 35%;
+  height: 100%;
   min-height: 530px;
   margin-right: 24px;
   border-radius: ${radius.cardLg};
@@ -56,31 +67,37 @@ export const Figure = styled.div`
     }
   }
 
-  ${stacked} {
-    flex: none;
+  ${laptop} {
+    position: relative;
     width: 100%;
     height: 223px;
     min-height: 223px;
     margin-right: 0;
     border-radius: ${radius.banner} ${radius.banner} 0 0;
+    background-size: 100%;
     overflow: hidden;
-    justify-content: center;
 
     & img {
+      position: absolute;
+      top: 50%;
+      left: 50%;
       width: auto;
+      height: 100%;
+      transform: translate(-50%, -50%);
     }
   }
 `
 
 export const Info = styled.div`
   display: flex;
-  flex: 1;
   flex-direction: column;
-  min-width: 0;
+  justify-content: flex-start;
+  width: calc(65% - 24px);
 
-  ${stacked} {
-    width: 100%;
-    padding: 32px 8px;
+  ${laptop} {
+    width: calc(100% - 16px);
+    margin: 0 8px 8px;
+    padding: 32px 0;
   }
 `
 
@@ -89,36 +106,39 @@ export const CardTitle = styled.h3`
   font-size: 24px;
   font-weight: 600;
   line-height: 30px;
+  letter-spacing: ${font.tracking};
 
-  ${mobile} {
+  ${desktop} {
     font-size: 20px;
+    line-height: 16px;
   }
 `
 
 export const CardDescription = styled.p`
   margin: 0 0 16px;
   font-size: 18px;
+  font-weight: 400;
   line-height: 24px;
+  letter-spacing: ${font.tracking};
   color: ${colors.muted2};
 
-  ${mobile} {
+  ${desktop} {
     font-size: 16px;
   }
 `
 
 export const Tabs = styled.div`
   display: flex;
-  gap: 24px;
+  height: 24px;
   margin-bottom: 24px;
 
-  ${mobile} {
+  ${tablet} {
     justify-content: center;
-    gap: 16px;
   }
 `
 
 export const Tab = styled.button`
-  min-height: 44px;
+  margin-right: 24px;
   padding: 0 0 8px;
   border: 0;
   border-bottom: 2px solid transparent;
@@ -128,6 +148,8 @@ export const Tab = styled.button`
   font-weight: 500;
   line-height: 16px;
   text-transform: uppercase;
+  cursor: pointer;
+  ${hitArea(10)}
 
   &[data-selected] {
     border-bottom-color: ${colors.white};
@@ -139,7 +161,9 @@ export const Tab = styled.button`
     outline-offset: 2px;
   }
 
-  ${mobile} {
+  ${tablet} {
+    margin-right: 16px;
+    padding: 8px 0 0;
     font-size: 16px;
   }
 `
@@ -147,13 +171,17 @@ export const Tab = styled.button`
 export const TabPanel = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
 `
 
 export const InfoBlock = styled.div`
+  margin-bottom: 8px;
   padding: 16px 24px;
   border-radius: ${radius.cardLg};
-  background: ${colors.overlay};
+  background: ${colors.gray0Half};
+
+  &:last-child {
+    margin-bottom: 0;
+  }
 `
 
 export const InfoTitle = styled.h4`
@@ -161,50 +189,58 @@ export const InfoTitle = styled.h4`
   font-size: 18px;
   font-weight: 500;
   line-height: 20px;
+  letter-spacing: ${font.tracking};
 `
 
 export const InfoBody = styled.p`
   margin: 0;
   font-size: 18px;
+  font-weight: 400;
   line-height: 24px;
+  letter-spacing: ${font.tracking};
   color: ${colors.gray4};
 `
 
 export const Skills = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
 `
 
 export const Skill = styled.span`
+  margin: 0 8px 8px 0;
   padding: 8px 16px;
   border-radius: ${radius.cardLg};
   background: ${colors.gray0};
   font-size: 13px;
   font-weight: 600;
+  line-height: normal;
   text-transform: uppercase;
 `
 
 export const Links = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
 
-  ${stacked} {
-    grid-template-columns: 1fr;
+  ${laptop} {
+    flex-direction: column;
   }
 `
 
 export const Link = styled.a`
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
+  display: block;
+  width: 50%;
+  margin-bottom: 8px;
   font-size: 16px;
   font-weight: 500;
   line-height: 24px;
   color: ${colors.apricot};
   text-decoration: underline;
 
+  &:hover,
+  &:active,
+  &:visited {
+    color: ${colors.apricot};
+  }
   &:focus-visible {
     outline: 2px solid ${colors.softWhite};
     outline-offset: 2px;

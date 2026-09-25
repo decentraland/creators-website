@@ -14,7 +14,11 @@ function renderCarousel(autoplayMs = 0) {
     <TranslationProvider>
       <Carousel
         items={items}
-        renderItem={item => <p>{item.text}</p>}
+        renderItem={item => (
+          <a href={`/${item.id}`} data-testid="card">
+            {item.text}
+          </a>
+        )}
         keyExtractor={item => item.id}
         label="Testimonials"
         slideWidth={500}
@@ -25,50 +29,118 @@ function renderCarousel(autoplayMs = 0) {
 }
 
 const activeSlide = () => screen.getAllByTestId('carousel-slide').find(slide => slide.hasAttribute('data-active'))
+const currentDot = () => screen.getByTestId('carousel-dots').querySelector('[aria-current="true"]')
+const track = () => screen.getByTestId('carousel-track')
+
+// The browser ends the slide animation; jsdom does not, so the test signals it.
+const settle = () => fireEvent.transitionEnd(track())
+
+const next = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'Next slide' }))
+  settle()
+}
+const prev = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'Previous slide' }))
+  settle()
+}
 
 describe('Carousel', () => {
-  it('shows every slide with the first one active', () => {
+  it('starts on the first slide, with only that slide exposed to assistive tech', () => {
     renderCarousel()
     expect(screen.getByRole('region', { name: 'Testimonials' })).toBeInTheDocument()
-    expect(screen.getAllByTestId('carousel-slide')).toHaveLength(3)
+    expect(activeSlide()).toHaveTextContent('Slide A')
+    expect(screen.getAllByRole('link')).toHaveLength(1)
+    expect(currentDot()).toHaveAccessibleName('Go to slide 1')
+  })
+
+  it('loops endlessly: next on the last slide shows the first, previous on the first shows the last', () => {
+    renderCarousel()
+    next()
+    expect(activeSlide()).toHaveTextContent('Slide B')
+    next()
+    expect(activeSlide()).toHaveTextContent('Slide C')
+    next()
+    expect(activeSlide()).toHaveTextContent('Slide A')
+    expect(currentDot()).toHaveAccessibleName('Go to slide 1')
+
+    prev()
+    expect(activeSlide()).toHaveTextContent('Slide C')
+    expect(currentDot()).toHaveAccessibleName('Go to slide 3')
+    prev()
+    prev()
+    prev()
+    expect(activeSlide()).toHaveTextContent('Slide C')
+  })
+
+  it('jumps straight to a slide from its dot', () => {
+    renderCarousel()
+    fireEvent.click(screen.getByRole('button', { name: 'Go to slide 3' }))
+    settle()
+    expect(activeSlide()).toHaveTextContent('Slide C')
+    expect(currentDot()).toHaveAccessibleName('Go to slide 3')
+  })
+
+  it('swipes to the next and previous slide, ignoring short drags', () => {
+    renderCarousel()
+    fireEvent.touchStart(track(), { touches: [{ clientX: 300 }] })
+    fireEvent.touchMove(track(), { touches: [{ clientX: 200 }] })
+    fireEvent.touchEnd(track())
+    settle()
+    expect(activeSlide()).toHaveTextContent('Slide B')
+
+    fireEvent.touchStart(track(), { touches: [{ clientX: 300 }] })
+    fireEvent.touchMove(track(), { touches: [{ clientX: 280 }] })
+    fireEvent.touchEnd(track())
+    settle()
+    expect(activeSlide()).toHaveTextContent('Slide B')
+
+    fireEvent.mouseDown(track(), { button: 0, clientX: 100 })
+    fireEvent.mouseMove(window, { clientX: 300 })
+    fireEvent.mouseUp(window)
+    settle()
     expect(activeSlide()).toHaveTextContent('Slide A')
   })
 
-  it('moves with the arrows, wrapping around at both ends, and jumps with the dots', () => {
+  it('does not open the card a mouse drag ends on', () => {
     renderCarousel()
-    fireEvent.click(screen.getByRole('button', { name: 'Next slide' }))
-    expect(activeSlide()).toHaveTextContent('Slide B')
+    const onClick = vi.fn((event: Event) => event.preventDefault())
+    screen.getAllByTestId('card').forEach(card => card.addEventListener('click', onClick))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Previous slide' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Previous slide' }))
-    expect(activeSlide()).toHaveTextContent('Slide C')
+    fireEvent.mouseDown(track(), { button: 0, clientX: 100 })
+    fireEvent.mouseMove(window, { clientX: 120 })
+    fireEvent.mouseUp(window)
+    fireEvent.click(activeSlide()!.querySelector('a')!)
+    expect(onClick).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Go to slide 2' }))
-    expect(activeSlide()).toHaveTextContent('Slide B')
-    expect(screen.getByRole('button', { name: 'Go to slide 2' })).toHaveAttribute('aria-current', 'true')
+    fireEvent.click(activeSlide()!.querySelector('a')!)
+    expect(onClick).toHaveBeenCalledTimes(1)
   })
 
   describe('autoplay', () => {
     beforeEach(() => vi.useFakeTimers())
     afterEach(() => vi.useRealTimers())
 
-    it('advances on its own and pauses while the pointer is over it', () => {
+    it('advances on its own, waits while the tab is hidden and resumes when it is shown again', () => {
       renderCarousel(1000)
       act(() => {
         vi.advanceTimersByTime(1000)
       })
+      settle()
       expect(activeSlide()).toHaveTextContent('Slide B')
 
-      fireEvent.mouseEnter(screen.getByTestId('carousel'))
+      Object.defineProperty(document, 'hidden', { configurable: true, value: true })
+      fireEvent(document, new Event('visibilitychange'))
       act(() => {
         vi.advanceTimersByTime(3000)
       })
       expect(activeSlide()).toHaveTextContent('Slide B')
 
-      fireEvent.mouseLeave(screen.getByTestId('carousel'))
+      Object.defineProperty(document, 'hidden', { configurable: true, value: false })
+      fireEvent(document, new Event('visibilitychange'))
       act(() => {
         vi.advanceTimersByTime(1000)
       })
+      settle()
       expect(activeSlide()).toHaveTextContent('Slide C')
     })
   })

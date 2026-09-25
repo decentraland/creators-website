@@ -2,41 +2,38 @@
 import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
 
-const { colors, gradients, media } = theme
+const { colors, font, gradients, media } = theme
 
-const mobile = media.maxWidth('mobile')
+const tablet = media.maxWidth('tablet')
 
-/** Side gutters: the ui2 navbar's 54px on desktop, 16px on phones. */
-export const GUTTER = '54px'
-export const GUTTER_MOBILE = '16px'
-
-export const Section = styled.section`
-  width: 100%;
-  padding: 0 ${GUTTER};
-
-  ${mobile} {
-    padding: 0 ${GUTTER_MOBILE};
+/** Invisible enlarged hit area (~44px targets) without changing the element's layout box. */
+export const hitArea = (vertical: number, horizontal = 0) => `
+  position: relative;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -${vertical}px -${horizontal}px;
   }
 `
 
 export const SectionTitle = styled.h2`
-  max-width: 900px;
+  max-width: 80vw;
   margin: 0 auto;
   text-align: center;
   font-size: 48px;
   font-weight: 600;
-  line-height: 1.15;
+  line-height: 1.5;
+  letter-spacing: ${font.tracking};
   color: ${colors.softWhite};
-  white-space: pre-line;
 
   & span {
-    background: ${gradients.ember};
+    background: ${gradients.sunrise};
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
 
-  ${mobile} {
+  ${tablet} {
     font-size: 32px;
   }
 `
@@ -45,33 +42,31 @@ export const SectionTitle = styled.h2`
 export const Rail = styled.div`
   display: flex;
   gap: 20px;
-  padding: 8px ${GUTTER};
+  padding: 0 100px;
   overflow-x: auto;
-  scroll-snap-type: x proximity;
   scrollbar-width: none;
 
   &::-webkit-scrollbar {
     display: none;
   }
 
-  & > * {
-    scroll-snap-align: start;
-  }
-
-  ${mobile} {
-    padding: 8px ${GUTTER_MOBILE};
+  ${tablet} {
+    padding: 0 16px;
   }
 `
 
 export const ViewAllLink = styled.a`
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 4px;
-  min-height: 44px;
-  margin: 32px auto 0;
+  justify-content: center;
+  width: fit-content;
+  margin: 40px auto 0;
   color: ${colors.softWhite};
   font-size: 18px;
   font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: ${font.tracking};
+  ${hitArea(9)}
 
   &:hover {
     text-decoration: underline;

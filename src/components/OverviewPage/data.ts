@@ -44,7 +44,7 @@ export type WhyCard = {
   id: 'join' | 'create' | 'benefit'
   image: string
   url: string
-  gradient: 'amethyst' | 'apricot' | 'cerise'
+  gradient: 'orchid' | 'apricot' | 'raspberry'
 }
 
 export const whyCards: WhyCard[] = [
@@ -52,7 +52,7 @@ export const whyCards: WhyCard[] = [
     id: 'join',
     image: `${CONTENTFUL_IMAGES}/2l0VUCaHXFG7NwltyZ1nWA/a6e18252e09a9916e8d735f098ef452a/Image_1.png`,
     url: discordUrl,
-    gradient: 'amethyst'
+    gradient: 'orchid'
   },
   {
     id: 'create',
@@ -64,7 +64,7 @@ export const whyCards: WhyCard[] = [
     id: 'benefit',
     image: `${CONTENTFUL_IMAGES}/3iCBvRrzEtgD7LT8PYxMZn/2f5fba37f044d426d24e25ce33dc1f9c/Image_3.png`,
     url: `${docsUrl}/creator/wearables-and-emotes/wearables/creating-wearables`,
-    gradient: 'cerise'
+    gradient: 'raspberry'
   }
 ]
 
