@@ -113,14 +113,92 @@ export function filterBaseWearables(
   return catalog.filter(wearable => wearable.category === category && wearable.bodyShapes.includes(bodyShape))
 }
 
-/** A random outfit per slot, like the legacy editor's boot: the female shape gets no facial hair. */
+// Every base wearable is modeled for both body shapes, so the catalog alone can't tell a pigtail from a
+// crew cut: these are the pieces the random outfit keeps to one shape. Anything unlisted is unisex.
+const BASE_WEARABLE_STYLES: Record<BodyShape, string[]> = {
+  [BodyShape.MALE]: [
+    'casual_hair_01',
+    'casual_hair_02',
+    'casual_hair_03',
+    'cool_hair',
+    'curtained_hair',
+    'hair_coolshortstyle',
+    'hair_oldie',
+    'hair_punk',
+    'hair_stylish_hair',
+    'modern_hair',
+    'punk',
+    'semi_bold',
+    'short_hair',
+    'tall_front_01',
+    'basketball_shorts',
+    'striped_swim_suit',
+    'swim_short'
+  ],
+  [BodyShape.FEMALE]: [
+    'curly_hair',
+    'double_bun',
+    'hair_anime_01',
+    'hair_bun',
+    'hair_f_oldie',
+    'hair_f_oldie_02',
+    'hair_undere',
+    'pony_tail',
+    'shoulder_bob_hair',
+    'shoulder_hair',
+    'two_tails',
+    'black_top',
+    'brown_sleveless_dress',
+    'elegant_striped_shirt',
+    'f_blue_elegant_shirt',
+    'f_blue_jacket',
+    'f_body_swimsuit',
+    'f_pride_t_shirt',
+    'f_red_elegant_jacket',
+    'f_sport_purple_tshirt',
+    'lovely_yellow_shirt',
+    'Red_topcoat',
+    'roller_outfit',
+    'school_shirt',
+    'striped_top',
+    'f_african_leggins',
+    'f_brown_skirt',
+    'f_capris',
+    'f_country_pants',
+    'f_diamond_leggings',
+    'f_jeans',
+    'f_red_modern_pants',
+    'f_roller_leggings',
+    'f_school_skirt',
+    'f_short_blue_jeans',
+    'f_short_colored_leggins',
+    'f_sport_shorts',
+    'f_stripe_long_skirt',
+    'f_stripe_white_pants',
+    'f_yoga_trousers'
+  ]
+}
+
+/** Catalog entries of one slot the random outfit may draw for the body shape: all but the other shape's pieces. */
+function filterRandomBaseWearables(
+  catalog: BaseWearable[],
+  category: WearableCategory,
+  bodyShape: BodyShape
+): BaseWearable[] {
+  const excluded = new Set(BASE_WEARABLE_STYLES[bodyShape === BodyShape.MALE ? BodyShape.FEMALE : BodyShape.MALE])
+  return filterBaseWearables(catalog, category, bodyShape).filter(
+    wearable => !excluded.has(wearable.urn.split(':').pop() ?? '')
+  )
+}
+
+/** A random outfit per slot that matches the body shape; the female shape gets no facial hair. */
 export function getRandomBaseWearables(
   catalog: BaseWearable[],
   bodyShape: BodyShape,
   random: () => number = Math.random
 ): BaseWearableSelection {
   const pick = (category: WearableCategory) =>
-    pickRandom(filterBaseWearables(catalog, category, bodyShape), random)?.urn ?? null
+    pickRandom(filterRandomBaseWearables(catalog, category, bodyShape), random)?.urn ?? null
   return {
     [WearableCategory.HAIR]: pick(WearableCategory.HAIR),
     [WearableCategory.FACIAL_HAIR]: bodyShape === BodyShape.FEMALE ? null : pick(WearableCategory.FACIAL_HAIR),
