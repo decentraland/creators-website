@@ -12,6 +12,7 @@ import { ConfirmModal } from '~/components/ConfirmModal'
 import { ZoomControls } from '~/components/ZoomControls'
 import { useBaseWearables } from '~/hooks/useBaseWearables'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
+import { useCommittee } from '~/hooks/useCuration'
 import { allCollectionItemsKey, useAllCollectionItems, useCollection, useSaveCollection } from '~/hooks/useCollection'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useModelValidation } from '~/hooks/useModelValidation'
@@ -62,9 +63,6 @@ const isBodyShape = (value: string): value is BodyShape => BodyShape.validate(va
 /** A navigation held back by unsaved changes: another item, or out of the editor entirely. */
 type PendingNavigation = { kind: 'item'; item: Item } | { kind: 'away'; to: string }
 
-// Until the curation feature lands there is no committee check: `?reviewing=true` is ignored.
-const isCurator = false
-
 const ItemEditorPage = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -73,9 +71,13 @@ const ItemEditorPage = () => {
   const collectionParam = searchParams.get('collection')
   const collectionId = parseUuidParam(collectionParam) ?? null
   const itemParam = parseUuidParam(searchParams.get('item')) ?? null
-  const mode = useMemo(() => getEditorMode(searchParams, isCurator), [searchParams])
   const { session, restored, signIn } = useWallet()
   const address = session?.address
+  const committee = useCommittee(address)
+  const isCurator = committee.isCurator
+  const mode = useMemo(() => getEditorMode(searchParams, isCurator), [searchParams, isCurator])
+  // Until the committee answers, a review link can't tell a curator from someone with no access.
+  const isResolvingReviewer = searchParams.get('reviewing') === 'true' && !!address && committee.isLoading
   const showToast = useNotifications(state => state.showToast)
   const isMobile = useMediaQuery(theme.media.maxWidth('mobile'))
 
@@ -321,14 +323,18 @@ const ItemEditorPage = () => {
   const closeCustomizer = useCallback(() => setCustomizerOpen(false), [])
 
   // States.
-  const isLoading = !restored || (!!address && !!collectionId && (collectionQuery.isLoading || itemsQuery.isLoading))
+  const isLoading =
+    !restored ||
+    isResolvingReviewer ||
+    (!!address && !!collectionId && (collectionQuery.isLoading || itemsQuery.isLoading))
   const isNotFound =
     (!!collectionParam && !collectionId) ||
     (!!collectionId &&
       ((collectionQuery.isError &&
         collectionQuery.error instanceof BuilderServerError &&
         NOT_FOUND_STATUSES.includes(collectionQuery.error.status)) ||
-        (!!collection && !hasCollectionRole(collection, address))))
+        // Curators review collections they hold no role in.
+        (!!collection && mode === 'edit' && !hasCollectionRole(collection, address))))
   const isError = !isNotFound && !!collectionId && (collectionQuery.isError || itemsQuery.isError)
 
   const preview =
@@ -416,9 +422,36 @@ const ItemEditorPage = () => {
     )
   }
 
+  const reviewBar =
+    mode === 'review' && collection && session ? (
+      <ReviewBar session={session} collection={collection} items={items} />
+    ) : null
+  const properties =
+    collection && selected ? (
+      <PropertiesPanel
+        key={selected.id}
+        item={selected}
+        address={address}
+        editable={editable}
+        readOnlyNote={mode === 'review' ? t('item_editor.review.read_only') : undefined}
+        canDelete={canDelete}
+        draft={form.draft}
+        dispatch={form.dispatch}
+        isDirty={form.isDirty}
+        isSaving={saveItem.isPending}
+        springBones={springBonesForm}
+        onSave={save}
+        onRevert={() => form.reset(selected)}
+        onDeleted={() => navigateToItem(null)}
+      />
+    ) : null
+
   if (isMobile) {
     return (
       <MobilePreview
+        header={reviewBar}
+        // Curators approve what they read: the item's properties sit under the preview on phones too.
+        details={mode === 'review' ? properties : null}
         items={items}
         selectedId={selectedId}
         dressedIds={dressedItemIds}
@@ -472,7 +505,7 @@ const ItemEditorPage = () => {
 
   return (
     <S.Workspace data-testid="item-editor-page" data-mode={mode}>
-      {mode === 'review' && <ReviewBar />}
+      {reviewBar}
       <S.Columns>
         {collection ? sidebar : <S.PickerColumn>{sidebar}</S.PickerColumn>}
         <PanelGroup
@@ -507,21 +540,7 @@ const ItemEditorPage = () => {
                 <S.Handle data-testid="resize-handle-right" />
               </PanelResizeHandle>
               <Panel id="editor-properties" defaultSize={RIGHT_DEFAULT_PCT} minSize={RIGHT_MIN_PCT} order={3}>
-                <PropertiesPanel
-                  key={selected.id}
-                  item={selected}
-                  address={address}
-                  editable={editable}
-                  canDelete={canDelete}
-                  draft={form.draft}
-                  dispatch={form.dispatch}
-                  isDirty={form.isDirty}
-                  isSaving={saveItem.isPending}
-                  springBones={springBonesForm}
-                  onSave={save}
-                  onRevert={() => form.reset(selected)}
-                  onDeleted={() => navigateToItem(null)}
-                />
+                {properties}
               </Panel>
             </>
           )}

@@ -271,6 +271,20 @@
       "thumbnail_error": "We couldn't update the thumbnail of “{name}”. Please try again.",
       "cancel_edit": "Cancel",
       "save": "Save name"
+    },
+    "push_changes": {
+      "action": "Publish updates",
+      "title": "Publish updates",
+      "description": "Your changes will be reviewed by the curation committee. Until they're approved, buyers get the last approved version of your items.",
+      "confirm": "Send for review",
+      "cancel": "Cancel",
+      "error": "We couldn't send your changes for review. Please try again.",
+      "success": "Your changes were sent for review"
+    },
+    "review_notice": {
+      "waiting": "Your collection is waiting for a curator.",
+      "reviewing": "A curator is reviewing your collection.",
+      "rejected": "The curation committee rejected the latest version of this collection."
     }
   },
   "publish_collection_modal": {
@@ -650,7 +664,37 @@
       "error": "We couldn't load your collections. Please try again."
     },
     "review": {
-      "title": "Review mode"
+      "title": "Review mode",
+      "back": "Back to curation",
+      "unpublished": "This collection isn't published yet",
+      "requested": "Review requested {time}",
+      "published": "Published {time}",
+      "change_assignee": "Change the assigned curator",
+      "assign_to_me": "Assign to me",
+      "cancel": "Cancel",
+      "action": {
+        "approve": "Approve",
+        "reject": "Reject",
+        "enable": "Enable",
+        "disable": "Disable",
+        "deploy_missing": "Deploy missing items"
+      },
+      "reject": {
+        "title": "Reject {collection}?",
+        "first": "The collection won't be mintable. The creator will see it as rejected.",
+        "changes": "The collection keeps its approved version. The creator will see the changes as rejected.",
+        "confirm": "Reject",
+        "error": "We couldn't reject the collection. Please try again.",
+        "success": "{collection} was rejected"
+      },
+      "disable": {
+        "title": "Disable {collection}?",
+        "description": "Nobody will be able to mint its items anymore. You can enable it again later. This needs a transaction from your wallet.",
+        "confirm": "Disable",
+        "error": "We couldn't disable the collection. Please try again.",
+        "success": "{collection} was disabled"
+      },
+      "read_only": "Review mode: nothing can be edited here. Check every property of each item before approving."
     },
     "discard": {
       "title": "Discard your changes?",
@@ -1027,5 +1071,49 @@
     "cancel": "Cancel",
     "submit_self": "Assign to me",
     "submit_edit": "Save"
+  },
+  "approval_flow": {
+    "cancel": "Cancel",
+    "assigned_to_other": {
+      "title": "Approve {collection}",
+      "body": "This collection is assigned to {assignee}. You can still approve it, but it will be assigned to you. Let {assignee} know.",
+      "action": "Assign to me and continue"
+    },
+    "loading": {
+      "title": "Approve {collection}",
+      "body": "Checking the collection's items…"
+    },
+    "rescue": {
+      "title": "Update items on chain",
+      "body": "{count, plural, one {# item changed} other {# items changed}} since it was published. Confirm in your wallet to update the collection contract.",
+      "progress": "Transaction {sent} of {total} sent. Waiting for it to confirm…",
+      "action": "Update items"
+    },
+    "deploy": {
+      "title": "Upload items",
+      "body": "{count, plural, one {# item needs} other {# items need}} to be uploaded so it shows in Decentraland.",
+      "progress": "Uploading {done} of {total}…",
+      "failed": "{count, plural, one {# item} other {# items}} couldn't be uploaded.",
+      "action": "Upload",
+      "retry": "Try again"
+    },
+    "approve": {
+      "title": "Enable the collection",
+      "body": "Last step: confirm in your wallet to make the collection mintable."
+    },
+    "success": {
+      "title": "Done",
+      "body_approve": "{collection} is approved. Thanks for reviewing it!",
+      "body_deploy_missing": "Every item of {collection} is uploaded.",
+      "action": "Done"
+    },
+    "error": {
+      "title": "Something went wrong",
+      "prepare": "We couldn't prepare the collection for approval.",
+      "rescue": "We couldn't update the items on chain.",
+      "deploy": "We couldn't upload the items.",
+      "approve": "We couldn't approve the collection.",
+      "retry": "Try again"
+    }
   }
 }

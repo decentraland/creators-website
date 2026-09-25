@@ -128,6 +128,33 @@ export const HeaderActions = styled.div`
   }
 `
 
+export const ReviewNotice = styled.p`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: ${theme.radius.btnSm};
+  background: ${theme.colors.warningOverlay};
+  color: ${theme.colors.warningText};
+  font-size: 14px;
+  line-height: 1.43;
+
+  & svg {
+    flex: none;
+    color: ${theme.colors.amber};
+  }
+
+  &[data-notice='rejected'] {
+    background: ${theme.colors.errOverlay};
+    color: ${theme.colors.softWhite};
+
+    & svg {
+      color: ${theme.colors.errLight};
+    }
+  }
+`
+
 export const SubHeader = styled.div`
   display: flex;
   align-items: center;

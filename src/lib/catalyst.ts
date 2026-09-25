@@ -28,6 +28,25 @@ export async function fetchCatalystContent(hash: string): Promise<Blob> {
   return response.blob()
 }
 
+/** The hashes among `hashes` the content server already stores, which a deployment doesn't need to upload. */
+export async function fetchAvailableContent(hashes: string[]): Promise<Set<string>> {
+  if (hashes.length === 0) return new Set()
+  const query = hashes.map(hash => `cid=${encodeURIComponent(hash)}`).join('&')
+  const response = await fetch(`${contentUrl()}/available-content?${query}`)
+  if (!response.ok) throw new Error(`catalyst request failed: available-content (${response.status})`)
+  const results = (await response.json()) as { cid: string; available: boolean }[]
+  return new Set(results.filter(result => result.available).map(result => result.cid))
+}
+
+/** Deploys an entity: POST /content/entities with the multipart body of `buildDeploymentForm`. */
+export async function deployEntity(form: FormData): Promise<void> {
+  const response = await fetch(`${contentUrl()}/entities`, { method: 'POST', body: form })
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { errors?: string[] }
+    throw new Error(`catalyst deployment failed (${response.status}): ${(body.errors ?? []).join(' ')}`)
+  }
+}
+
 const BASE_AVATARS_COLLECTION = 'urn:decentraland:off-chain:base-avatars'
 
 type CatalystWearable = {

@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { errorCode, track } from '~/lib/analytics'
+import { sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
 import {
   fetchCollectionCuration,
   fetchCommittee,
@@ -10,8 +11,11 @@ import {
   updateCollectionCuration
 } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
+import { buildSetApprovedCall } from '~/lib/collectionApproval'
 import { isCommitteeMember, type CollectionCuration, type CurationFilters } from '~/lib/curation'
 import { captureError } from '~/lib/monitoring'
+import { getMaticChainId } from '~/lib/publishCollection'
+import { isWalletRejection } from '~/lib/walletErrors'
 
 // Same refresh cadence as builder-server's own committee cache.
 const COMMITTEE_STALE_MS = 60 * 60_000
@@ -144,6 +148,35 @@ export function usePushCuration(address: string | undefined) {
     onError: (error, collection) => {
       track('Push curation error', { collectionId: collection.id, error: errorCode(error) })
       captureError(error, { flow: 'curation_push', collectionId: collection.id })
+    }
+  })
+}
+
+/** Disables an approved collection on chain (not mintable anymore) and waits until it is mined. */
+export function useDisableCollection(session: Session | null) {
+  const queryClient = useQueryClient()
+  const chainId = getMaticChainId()
+  return useMutation({
+    mutationFn: async (collection: Collection) => {
+      if (!session) throw new Error('Wallet disconnected')
+      const txHash = await sendContractTransaction(session, buildSetApprovedCall(chainId, collection, false))
+      if (!(await waitForTransaction(chainId, txHash))) throw new Error(`Disable ${txHash} reverted`)
+      return txHash
+    },
+    onSuccess: (txHash, collection) => {
+      // The legacy builder named the on-chain disable "Reject collection".
+      track('Reject collection', { collectionId: collection.id, txHash })
+      if (!session) return
+      queryClient.setQueryData<Collection>(['collection', session.address, collection.id], current =>
+        current ? { ...current, isApproved: false } : current
+      )
+      void queryClient.invalidateQueries({ queryKey: ['curation-collections'] })
+    },
+    onError: (error, collection) => {
+      track('Reject collection error', { collectionId: collection.id, error: errorCode(error) })
+      if (!isWalletRejection(error)) {
+        captureError(error, { flow: 'curation_disable', collectionId: collection.id })
+      }
     }
   })
 }

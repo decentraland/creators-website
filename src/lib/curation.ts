@@ -151,3 +151,27 @@ export function orderCurators(members: string[], address: string | undefined): s
   const lower = members.map(member => member.toLowerCase())
   return self && lower.includes(self) ? [self, ...lower.filter(member => member !== self)] : lower
 }
+
+export type CreatorReviewNotice = 'waiting' | 'reviewing' | 'rejected'
+
+/** What the creator is told about a published collection's latest review request, if anything. */
+export function getCreatorReviewNotice(
+  collection: Collection,
+  curation: CollectionCuration | null
+): CreatorReviewNotice | null {
+  if (!collection.isPublished || !curation) return null
+  if (curation.status === 'pending') return curation.assignee ? 'reviewing' : 'waiting'
+  return curation.status === 'rejected' ? 'rejected' : null
+}
+
+/** Owners and collaborators may send an approved collection's unsynced changes back to the committee. */
+export function canPushChanges(
+  collection: Collection,
+  curation: CollectionCuration | null,
+  hasUnsyncedItems: boolean,
+  canManage: boolean
+): boolean {
+  return (
+    collection.isPublished && collection.isApproved && canManage && hasUnsyncedItems && curation?.status !== 'pending'
+  )
+}

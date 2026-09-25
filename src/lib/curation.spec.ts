@@ -5,7 +5,9 @@ import {
   CurationStatusFilter,
   ReviewAction,
   canEditAssignee,
+  canPushChanges,
   fromRemoteCuration,
+  getCreatorReviewNotice,
   getCurationState,
   getReviewActions,
   isCommitteeMember,
@@ -184,5 +186,32 @@ describe('orderCurators', () => {
   it('puts the signed-in curator first', () => {
     expect(orderCurators(['0xa', '0xB', '0xc'], '0xb')).toEqual(['0xb', '0xa', '0xc'])
     expect(orderCurators(['0xa'], '0xz')).toEqual(['0xa'])
+  })
+})
+
+describe('getCreatorReviewNotice', () => {
+  it('tells the creator where the latest request stands', () => {
+    expect(getCreatorReviewNotice(collection(), null)).toBeNull()
+    expect(getCreatorReviewNotice(collection(), curation())).toBe('waiting')
+    expect(getCreatorReviewNotice(collection(), curation({ assignee: '0xc' }))).toBe('reviewing')
+    expect(getCreatorReviewNotice(collection(), curation({ status: 'rejected' }))).toBe('rejected')
+    expect(getCreatorReviewNotice(collection({ isApproved: true }), curation({ status: 'approved' }))).toBeNull()
+    expect(getCreatorReviewNotice(collection({ isPublished: false }), curation())).toBeNull()
+  })
+})
+
+describe('canPushChanges', () => {
+  const approved = collection({ isApproved: true })
+
+  it('lets managers send unsynced changes of an approved collection', () => {
+    expect(canPushChanges(approved, null, true, true)).toBe(true)
+    expect(canPushChanges(approved, curation({ status: 'rejected' }), true, true)).toBe(true)
+  })
+
+  it('refuses while a request is pending, without changes, without rights or before approval', () => {
+    expect(canPushChanges(approved, curation(), true, true)).toBe(false)
+    expect(canPushChanges(approved, null, false, true)).toBe(false)
+    expect(canPushChanges(approved, null, true, false)).toBe(false)
+    expect(canPushChanges(collection(), null, true, true)).toBe(false)
   })
 })

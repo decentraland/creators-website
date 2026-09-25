@@ -271,6 +271,20 @@
       "thumbnail_error": "No pudimos actualizar la miniatura de “{name}”. Inténtalo de nuevo.",
       "cancel_edit": "Cancelar",
       "save": "Guardar nombre"
+    },
+    "push_changes": {
+      "action": "Publicar cambios",
+      "title": "Publicar cambios",
+      "description": "El comité de curaduría revisará tus cambios. Hasta que se aprueben, los compradores reciben la última versión aprobada de tus ítems.",
+      "confirm": "Enviar a revisión",
+      "cancel": "Cancelar",
+      "error": "No pudimos enviar tus cambios a revisión. Inténtalo de nuevo.",
+      "success": "Tus cambios se enviaron a revisión"
+    },
+    "review_notice": {
+      "waiting": "Tu colección está esperando a un curador.",
+      "reviewing": "Un curador está revisando tu colección.",
+      "rejected": "El comité de curaduría rechazó la última versión de esta colección."
     }
   },
   "publish_collection_modal": {
@@ -650,7 +664,37 @@
       "error": "No pudimos cargar tus colecciones. Inténtalo de nuevo."
     },
     "review": {
-      "title": "Modo de revisión"
+      "title": "Modo de revisión",
+      "back": "Volver a curaduría",
+      "unpublished": "Esta colección todavía no está publicada",
+      "requested": "Revisión solicitada {time}",
+      "published": "Publicada {time}",
+      "change_assignee": "Cambiar el curador asignado",
+      "assign_to_me": "Asignármela",
+      "cancel": "Cancelar",
+      "action": {
+        "approve": "Aprobar",
+        "reject": "Rechazar",
+        "enable": "Habilitar",
+        "disable": "Deshabilitar",
+        "deploy_missing": "Subir ítems faltantes"
+      },
+      "reject": {
+        "title": "¿Rechazar {collection}?",
+        "first": "La colección no se podrá mintear. El creador la verá como rechazada.",
+        "changes": "La colección conserva su versión aprobada. El creador verá los cambios como rechazados.",
+        "confirm": "Rechazar",
+        "error": "No pudimos rechazar la colección. Inténtalo de nuevo.",
+        "success": "{collection} fue rechazada"
+      },
+      "disable": {
+        "title": "¿Deshabilitar {collection}?",
+        "description": "Nadie podrá mintear sus ítems. Puedes volver a habilitarla más adelante. Necesita una transacción desde tu wallet.",
+        "confirm": "Deshabilitar",
+        "error": "No pudimos deshabilitar la colección. Inténtalo de nuevo.",
+        "success": "{collection} fue deshabilitada"
+      },
+      "read_only": "Modo de revisión: aquí no se puede editar nada. Revisa todas las propiedades de cada ítem antes de aprobar."
     },
     "discard": {
       "title": "¿Descartar tus cambios?",
@@ -1027,5 +1071,49 @@
     "cancel": "Cancelar",
     "submit_self": "Asignármela",
     "submit_edit": "Guardar"
+  },
+  "approval_flow": {
+    "cancel": "Cancelar",
+    "assigned_to_other": {
+      "title": "Aprobar {collection}",
+      "body": "Esta colección está asignada a {assignee}. Puedes aprobarla igual, pero quedará asignada a ti. Avísale a {assignee}.",
+      "action": "Asignármela y continuar"
+    },
+    "loading": {
+      "title": "Aprobar {collection}",
+      "body": "Revisando los ítems de la colección…"
+    },
+    "rescue": {
+      "title": "Actualizar ítems en la blockchain",
+      "body": "{count, plural, one {# ítem cambió} other {# ítems cambiaron}} desde que se publicó. Confirma en tu wallet para actualizar el contrato de la colección.",
+      "progress": "Transacción {sent} de {total} enviada. Esperando la confirmación…",
+      "action": "Actualizar ítems"
+    },
+    "deploy": {
+      "title": "Subir ítems",
+      "body": "{count, plural, one {# ítem necesita} other {# ítems necesitan}} subirse para aparecer en Decentraland.",
+      "progress": "Subiendo {done} de {total}…",
+      "failed": "{count, plural, one {# ítem no se pudo subir} other {# ítems no se pudieron subir}}.",
+      "action": "Subir",
+      "retry": "Reintentar"
+    },
+    "approve": {
+      "title": "Habilitar la colección",
+      "body": "Último paso: confirma en tu wallet para que la colección se pueda mintear."
+    },
+    "success": {
+      "title": "Listo",
+      "body_approve": "{collection} está aprobada. ¡Gracias por revisarla!",
+      "body_deploy_missing": "Todos los ítems de {collection} están subidos.",
+      "action": "Listo"
+    },
+    "error": {
+      "title": "Algo salió mal",
+      "prepare": "No pudimos preparar la colección para aprobarla.",
+      "rescue": "No pudimos actualizar los ítems en la blockchain.",
+      "deploy": "No pudimos subir los ítems.",
+      "approve": "No pudimos aprobar la colección.",
+      "retry": "Reintentar"
+    }
   }
 }
