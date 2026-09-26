@@ -9,8 +9,8 @@ import type {
 } from 'react'
 import * as S from './Button.styles'
 
-export type ButtonVariant = 'primary' | 'gradient' | 'secondary' | 'dark'
-export type ButtonSize = 'md' | 'sm' | 'icon'
+export type ButtonVariant = 'primary' | 'gradient' | 'secondary' | 'dark' | 'light' | 'ghost'
+export type ButtonSize = 'md' | 'sm' | 'icon' | 'compact' | 'lg' | 'hero'
 
 type ButtonOwnProps = {
   variant?: ButtonVariant

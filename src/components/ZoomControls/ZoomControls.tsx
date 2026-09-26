@@ -3,8 +3,11 @@ import { Add as ZoomInIcon, Remove as ZoomOutIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import * as S from './ZoomControls.styles'
 
-/** Camera-radius nudge per click; ui2's 0.1 default is barely visible. */
-export const ZOOM_STEP = 2
+/**
+ * Inertial camera-radius nudge per click. Babylon's inertia (0.9) carries it ~10× further, so this moves
+ * the camera ~0.25 units: about five clicks from the start framing to either end of the range.
+ */
+export const ZOOM_STEP = 0.075
 
 type Props = {
   controller: IPreviewController

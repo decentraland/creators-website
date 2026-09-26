@@ -10,8 +10,12 @@ const wallet = vi.hoisted(() => ({ session: null as { address: string } | null }
 const settings = vi.hoisted((): { values: Record<string, string | undefined> } => ({ values: {} }))
 vi.mock('~/config', () => ({
   config: { get: (key: string, fallback = '') => settings.values[key] ?? fallback },
+  currentSearch: () => '?utm_source=x',
   APP_VERSION: '1.2.3'
 }))
+
+const posted = vi.hoisted(() => vi.fn())
+vi.mock('~/lib/segmentHttp', () => ({ postToSegment: posted }))
 
 function segmentStub() {
   return {
@@ -43,6 +47,8 @@ beforeEach(() => {
   }
   document.head.innerHTML = ''
   delete (window as { analytics?: unknown }).analytics
+  localStorage.clear()
+  posted.mockClear()
 })
 
 afterEach(() => vi.restoreAllMocks())
@@ -229,6 +235,61 @@ describe('getAnonymousId', () => {
 
     expect(ready).toHaveBeenCalled()
     expect(getAnonymousId()).toBe('anon-1')
+  })
+})
+
+describe('sendDirect', () => {
+  it('sends to the given source as the same visitor analytics.js knows, with the app’s common props', async () => {
+    ;(window as unknown as { analytics: unknown }).analytics = segmentStub()
+    localStorage.setItem('ajs_user_id', JSON.stringify('0xcreator'))
+    wallet.session = { address: '0xCreator' }
+    settings.values.SEGMENT_API_HOST = 'api.example.com/v1'
+
+    const { sendDirect } = await loadAnalytics()
+    sendDirect('other-write-key', { type: 'track', event: 'Click' }, { place: 'Creators Hero' })
+
+    expect(posted).toHaveBeenCalledWith({
+      writeKey: 'other-write-key',
+      call: { type: 'track', event: 'Click' },
+      properties: expect.objectContaining({
+        place: 'Creators Hero',
+        source: 'creators-website',
+        version: '1.2.3',
+        address: '0xCreator',
+        is_signed_in: true,
+        app_env: 'development'
+      }),
+      anonymousId: 'anon-1',
+      userId: '0xcreator',
+      apiHost: 'api.example.com/v1',
+      app: { name: 'creators-website', version: '1.2.3' },
+      search: '?utm_source=x'
+    })
+  })
+
+  it('reuses the stored anonymous id before analytics.js loads, or mints one analytics.js will adopt', async () => {
+    const { sendDirect } = await loadAnalytics()
+
+    localStorage.setItem('ajs_anonymous_id', JSON.stringify('stored-anon'))
+    sendDirect('key', { type: 'page', name: '/create' })
+    expect(posted).toHaveBeenLastCalledWith(expect.objectContaining({ anonymousId: 'stored-anon', userId: undefined }))
+
+    localStorage.clear()
+    sendDirect('key', { type: 'page', name: '/create' })
+    const minted = (posted.mock.lastCall![0] as { anonymousId: string }).anonymousId
+    expect(minted).toMatch(/^[0-9a-f-]{36}$/)
+    expect(localStorage.getItem('ajs_anonymous_id')).toBe(JSON.stringify(minted))
+  })
+
+  it('sends nothing without a write key or from a crawler', async () => {
+    const { sendDirect } = await loadAnalytics()
+    vi.spyOn(console, 'debug').mockImplementation(() => undefined)
+    sendDirect('', { type: 'track', event: 'Click' })
+
+    const bot = await loadAnalytics(BOT_USER_AGENT)
+    bot.sendDirect('key', { type: 'track', event: 'Click' })
+
+    expect(posted).not.toHaveBeenCalled()
   })
 })
 

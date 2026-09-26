@@ -52,7 +52,7 @@ export const StopButton = styled.button`
 `
 
 /** Our own control alongside ui2's, matching the look given to theirs below. */
-export const StopControl = styled.button`
+export const Control = styled.button`
   display: inline-flex;
   flex: none;
   align-items: center;

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Add as AddIcon,
@@ -8,6 +8,7 @@ import {
   Search as SearchIcon
 } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
+import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'
 import { pageRangeLabel } from '~/lib/pagination'
 import { useWallet } from '~/store/wallet'
 import { COLLECTIONS_PAGE_SIZE, useCollections, useRejectedCollectionsCount } from '~/hooks/useCollections'
@@ -46,6 +47,22 @@ const CollectionsPage = () => {
   const search = searchParams.get('q') ?? ''
   const status = parseStatus(searchParams.get('status'))
   const [view, setView] = useState<ViewMode>('grid')
+
+  // Stripe returns every credits purchase to this route; the hand-off record says which collection's
+  // publish wizard it belongs to. Without one there is nothing to resume, so the params are dropped.
+  const topUpReturn = useMemo(() => parseTopUpReturn(searchParams), [searchParams])
+  useEffect(() => {
+    if (!topUpReturn) return
+    const resume = readTopUpResume()
+    if (resume && resume.orderId === topUpReturn.orderId) {
+      const params = new URLSearchParams({ order: topUpReturn.orderId })
+      if (topUpReturn.canceled) params.set('canceled', '1')
+      navigate({ pathname: `/collections/${resume.collectionId}`, search: `?${params}` }, { replace: true })
+      return
+    }
+    clearTopUpResume()
+    setSearchParams(prev => stripTopUpReturn(prev), { replace: true })
+  }, [topUpReturn, navigate, setSearchParams])
 
   // The box updates on every keystroke; the URL (and with it the query) lags behind.
   const [searchInput, setSearchInput] = useState(search)

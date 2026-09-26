@@ -1,6 +1,11 @@
-import { useMemo } from 'react'
-import { PreviewEmote, type IPreviewController } from '@dcl/schemas'
-import { Bookmark as CollectionIcon, Stop as StopIcon } from '@mui/icons-material'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { PreviewEmote, PreviewEmoteEventType, type IPreviewController } from '@dcl/schemas'
+import {
+  Bookmark as CollectionIcon,
+  Stop as StopIcon,
+  VolumeOff as VolumeOffIcon,
+  VolumeUp as VolumeUpIcon
+} from '@mui/icons-material'
 import { EmoteControls } from '~/components/PreviewControls'
 import { Select } from '~/components/Select'
 import { Tooltip } from '~/components/Tooltip'
@@ -30,6 +35,45 @@ const DEFAULT_EMOTES = Object.values(PreviewEmote).filter(
 )
 
 /**
+ * Whether the subject emote has audio, and its mute toggle. ui2's own sound button asks once, on mount,
+ * before the iframe has loaded the emote, so it never shows; this asks again on every play instead.
+ */
+function useEmoteSound(controller: IPreviewController | null, subjectEmoteId: string | null) {
+  const [hasSound, setHasSound] = useState(false)
+  const [muted, setMuted] = useState(false)
+  const mutedRef = useRef(muted)
+  mutedRef.current = muted
+
+  useEffect(() => {
+    if (!controller || !subjectEmoteId) return
+    let cancelled = false
+    // Each load of the emote autoplays it, and Babylon comes back from a reload unmuted.
+    const sync = () => {
+      controller.emote
+        .hasSound()
+        .then(result => !cancelled && setHasSound(result))
+        .catch(() => undefined)
+      if (mutedRef.current) void controller.emote.disableSound().catch(() => undefined)
+    }
+    sync()
+    controller.emote.events.on(PreviewEmoteEventType.ANIMATION_PLAY, sync)
+    return () => {
+      cancelled = true
+      controller.emote.events.off(PreviewEmoteEventType.ANIMATION_PLAY, sync)
+      setHasSound(false)
+    }
+  }, [controller, subjectEmoteId])
+
+  function toggle() {
+    const next = !muted
+    setMuted(next)
+    void (next ? controller?.emote.disableSound() : controller?.emote.enableSound())?.catch(() => undefined)
+  }
+
+  return { hasSound, muted, toggle }
+}
+
+/**
  * Picks and plays an emote on the avatar, a default one or one of the collection's. Stop returns the
  * avatar to its idle pose, and is the only way out of an emote preview on a phone, where the sidebar's
  * undress button is not there.
@@ -49,6 +93,7 @@ export function PlaybackBar({
   const setEmote = useAvatarPreview(state => state.setEmote)
   const dress = useAvatarPreview(state => state.dress)
   const undress = useAvatarPreview(state => state.undress)
+  const sound = useEmoteSound(controller, subjectEmoteId)
 
   const dressedEmote = useMemo(
     () => collectionEmotes.find(item => dressedItemIds.includes(item.id)) ?? null,
@@ -113,14 +158,30 @@ export function PlaybackBar({
 
   const stopButton = (
     <Tooltip content={t('item_editor.playback.stop')} asChild testId={`${testId}-stop-tooltip`}>
-      <S.StopControl
+      <S.Control
         type="button"
         aria-label={t('item_editor.playback.stop')}
         data-testid={`${testId}-stop`}
         onClick={stop}
       >
         <StopIcon fontSize="small" />
-      </S.StopControl>
+      </S.Control>
+    </Tooltip>
+  )
+
+  const soundLabel = t(sound.muted ? 'item_editor.playback.unmute' : 'item_editor.playback.mute')
+  const soundButton = sound.hasSound && (
+    <Tooltip content={soundLabel} asChild testId={`${testId}-sound-tooltip`}>
+      <S.Control
+        type="button"
+        aria-label={soundLabel}
+        aria-pressed={sound.muted}
+        data-muted={sound.muted || undefined}
+        data-testid={`${testId}-sound`}
+        onClick={sound.toggle}
+      >
+        {sound.muted ? <VolumeOffIcon fontSize="small" /> : <VolumeUpIcon fontSize="small" />}
+      </S.Control>
     </Tooltip>
   )
 
@@ -128,7 +189,8 @@ export function PlaybackBar({
     return (
       <S.EmoteControlsWrap data-testid={`${testId}-emote-controls`}>
         {/* The frame counter is what gives way when the row has to fit a phone. */}
-        <EmoteControls key={subjectEmoteId} wearablePreviewId={previewId} hideFrameInput={isMobile} />
+        <EmoteControls key={subjectEmoteId} wearablePreviewId={previewId} hideFrameInput={isMobile} hideSoundButton />
+        {soundButton}
         {stopButton}
       </S.EmoteControlsWrap>
     )
