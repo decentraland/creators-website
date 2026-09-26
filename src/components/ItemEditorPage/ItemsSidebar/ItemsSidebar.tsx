@@ -215,7 +215,8 @@ export function ItemsSidebar({
                   </S.RenameButton>
                 )}
               </S.TitleGroup>
-              <CollectionStatusPill collection={collection} />
+              {/* The review bar shows the curation state instead. */}
+              {mode === 'edit' && <CollectionStatusPill collection={collection} />}
             </S.CollectionName>
           </S.HeaderRow>
           {showAddItems && (

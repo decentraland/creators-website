@@ -600,16 +600,6 @@ export const SectionNote = styled.p`
   }
 `
 
-export const ReviewBar = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 56px;
-  padding: 0 12px;
-  border-bottom: 1px solid ${theme.editor.line};
-  background: ${theme.editor.surface};
-`
-
 export const MobileWorkspace = styled.div`
   position: relative;
   display: flex;
@@ -626,6 +616,18 @@ export const MobilePreviewArea = styled.div`
   flex-direction: column;
   flex: 1;
   min-height: 0;
+
+  [data-details] > & {
+    flex: none;
+    height: 45dvh;
+  }
+`
+
+export const MobileDetails = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  border-top: 1px solid ${theme.editor.line};
 `
 
 export const MobileHint = styled.div`

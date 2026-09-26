@@ -3,7 +3,7 @@ import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
 import { formatTimeAgo } from '~/lib/time'
 import { type Collection } from '~/lib/collections'
-import { CollectionMosaic } from '../CollectionMosaic'
+import { CollectionMosaic } from '~/components/CollectionMosaic'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
 import * as S from './CollectionCard.styles'
 

@@ -239,9 +239,6 @@ export function toRemoteCollection(
   }
 }
 
-/** The latest curation request of a collection; only its status matters here. */
-export type CollectionCuration = { status: CurationStatus }
-
 /**
  * Whether this address is the owner, a collaborator or a minter of the collection. builder-server
  * serves published collections to anyone, so this is the app's own gate: the detail page (and later
