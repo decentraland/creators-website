@@ -4,10 +4,12 @@ import { useLocale, type Locale } from '~/store/locale'
 import { flattenMessages } from '~/lib/messages'
 import en from './en.json'
 import es from './es.json'
+import zh from './zh.json'
 
 const messages: Record<Locale, Record<string, string>> = {
   en: flattenMessages(en),
-  es: flattenMessages(es)
+  es: flattenMessages(es),
+  zh: flattenMessages(zh)
 }
 
 const TranslationProvider = ({ children }: { children: ReactNode }) => {

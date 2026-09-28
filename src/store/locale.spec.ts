@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { getPreferredLocale, useLocale } from './locale'
 
 describe('locale store', () => {
@@ -15,6 +15,12 @@ describe('locale store', () => {
     expect(useLocale.getState().locale).toBe('es')
     expect(localStorage.getItem('creators:locale')).toBe('es')
     expect(getPreferredLocale()).toBe('es')
+  })
+
+  it('picks up a supported browser language when nothing is saved', () => {
+    const language = vi.spyOn(navigator, 'language', 'get').mockReturnValue('zh-CN')
+    expect(getPreferredLocale()).toBe('zh')
+    language.mockRestore()
   })
 
   it('ignores an invalid saved value', () => {

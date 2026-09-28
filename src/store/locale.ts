@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 const KEY = 'creators:locale'
 
-export const LOCALES = ['en', 'es'] as const
+export const LOCALES = ['en', 'es', 'zh'] as const
 
 export type Locale = (typeof LOCALES)[number]
 
@@ -14,7 +14,8 @@ export const getPreferredLocale = (): Locale => {
   } catch {
     // restricted storage → fall through to browser language
   }
-  return navigator.language?.toLowerCase().startsWith('es') ? 'es' : 'en'
+  const browser = navigator.language?.toLowerCase() ?? ''
+  return LOCALES.find(locale => browser.startsWith(locale)) ?? 'en'
 }
 
 type LocaleState = {
