@@ -69,9 +69,9 @@ function renderNavBar(path = '/collections') {
 }
 
 describe('NavBar', () => {
-  it('shows the section tabs, sending Overview to sites and Scenes and Land to the legacy builder', () => {
+  it('shows the section tabs, keeping Overview and Collections in-app and sending Scenes and Land to the legacy builder', () => {
     renderNavBar()
-    expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('href', config.get('CREATE_URL'))
+    expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: 'Collections' })).toHaveAttribute('href', '/collections')
     expect(screen.getByRole('link', { name: 'Scenes' })).toHaveAttribute(
       'href',
@@ -87,6 +87,12 @@ describe('NavBar', () => {
     renderNavBar('/collections/a1b2')
     expect(screen.getByRole('link', { name: 'Collections' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Overview' })).not.toHaveAttribute('aria-current')
+  })
+
+  it('lights up Overview on the home route only', () => {
+    renderNavBar('/')
+    expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Collections' })).not.toHaveAttribute('aria-current')
   })
 
   it('deepens the sub-nav once the page scrolls', () => {

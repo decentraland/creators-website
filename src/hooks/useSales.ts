@@ -8,10 +8,13 @@ import {
   type ContractCall,
   type Session
 } from '~/lib/auth'
+import { errorCode, track } from '~/lib/analytics'
 import { type Collection } from '~/lib/collections'
+import { allCollectionItemsKey } from '~/hooks/useCollection'
 import { fetchFriends } from '~/lib/friends'
 import { type Item } from '~/lib/items'
 import { fetchItemTradeId, type ItemListing } from '~/lib/listings'
+import { fetchManaUsdRate } from '~/lib/manaRate'
 import { buildIssueTokensCall, copiesPerItem, flattenTransfers, type Transfer } from '~/lib/mint'
 import { getMaticChainId } from '~/lib/publishCollection'
 import {
@@ -24,6 +27,7 @@ import {
   updatePrice,
   withSalesEnabled,
   type ListingTerms,
+  type PricedSale,
   type SalePrice
 } from '~/lib/sales'
 import {
@@ -65,9 +69,12 @@ export function useEnableSales(session: Session | null) {
       return withSalesEnabled(collection, chainId)
     },
     onSuccess: collection => {
+      track('Enable sales', { collectionId: collection.id })
       enabledInSession.add(collection.id)
       queryClient.setQueryData(['collection', session?.address, collection.id], collection)
-    }
+    },
+    onError: (error, { collection }) =>
+      track('Enable sales error', { collectionId: collection.id, error: errorCode(error) })
   })
 }
 
@@ -104,8 +111,31 @@ export function useSellItem(session: Session | null) {
       if (!session) throw new Error('Wallet disconnected')
       return sellItem({ ...variables, address: session.address, chainId }, { ...orderDeps(session, chainId), onSigned })
     },
-    onSuccess: (listing, { collection }) => setListing(queryClient, collection, listing)
+    onSuccess: (listing, { collection, item, price }) => {
+      track(LISTING_EVENT, { ...listingProps(collection, item, price), is_update: false })
+      setListing(queryClient, collection, listing)
+    },
+    onError: (error, { collection, item, price }) =>
+      track(LISTING_FAILURE_EVENT, {
+        ...listingProps(collection, item, price),
+        is_update: false,
+        error: errorCode(error)
+      })
   })
+}
+
+// The legacy builder's put-on-sale event, reused so old and new UI are comparable; the mechanism differs
+// (off-chain trades here, an on-chain price + beneficiary there), so the props are ours.
+const LISTING_EVENT = 'Set price and beneficiary'
+const LISTING_FAILURE_EVENT = 'Set price and beneficiary failure'
+
+function listingProps(collection: Collection, item: Item, price: SalePrice) {
+  return {
+    collectionId: collection.id,
+    itemId: item.id,
+    price_kind: price.kind,
+    is_giveaway: price.kind === 'free'
+  }
 }
 
 function setListing(queryClient: ReturnType<typeof useQueryClient>, collection: Collection, listing: ItemListing) {
@@ -152,7 +182,12 @@ export function useRemoveListing(session: Session | null) {
         deps
       )
     },
-    onSuccess: (_, { collection, listing }) => removeListingFromCache(queryClient, collection, listing.itemId)
+    onSuccess: (_, { collection, item, listing }) => {
+      track('Remove item listing', { collectionId: collection.id, itemId: item.id })
+      removeListingFromCache(queryClient, collection, listing.itemId)
+    },
+    onError: (error, { collection, item }) =>
+      track('Remove item listing error', { collectionId: collection.id, itemId: item.id, error: errorCode(error) })
   })
 }
 
@@ -160,7 +195,7 @@ export type UpdatePriceVariables = {
   collection: Collection
   item: Item
   tradeId: string
-  credits: number
+  price: PricedSale
   onSigned?: (step: 'cancel' | 'sign') => void
   onCancelled?: (terms: ListingTerms) => void
 }
@@ -185,7 +220,16 @@ export function useUpdatePrice(session: Session | null) {
         }
       )
     },
-    onSuccess: (listing, { collection }) => setListing(queryClient, collection, listing)
+    onSuccess: (listing, { collection, item, price }) => {
+      track(LISTING_EVENT, { ...listingProps(collection, item, price), is_update: true })
+      setListing(queryClient, collection, listing)
+    },
+    onError: (error, { collection, item, price }) =>
+      track(LISTING_FAILURE_EVENT, {
+        ...listingProps(collection, item, price),
+        is_update: true,
+        error: errorCode(error)
+      })
   })
 }
 
@@ -219,12 +263,32 @@ export function useSendItems(session: Session | null) {
     },
     onSuccess: (_, { collection, transfers }) => {
       const copies = copiesPerItem(transfers)
-      queryClient.setQueryData<Item[]>(['collection-items-all', session?.address, collection.id], current =>
+      track('Mint items', {
+        collectionId: collection.id,
+        item_count: Object.keys(copies).length,
+        copies: Object.values(copies).reduce((total, amount) => total + amount, 0),
+        recipient_count: new Set(transfers.flatMap(transfer => transfer.recipients.map(to => to.toLowerCase()))).size
+      })
+      queryClient.setQueryData<Item[]>(allCollectionItemsKey(session?.address, collection.id), current =>
         current?.map(item =>
           copies[item.id] ? { ...item, totalSupply: (item.totalSupply ?? 0) + copies[item.id] } : item
         )
       )
-    }
+    },
+    onError: (error, { collection }) =>
+      track('Mint items error', { collectionId: collection.id, error: errorCode(error) })
+  })
+}
+
+/** The MANA/USD rate behind the estimate next to a MANA price; `undefined` while loading or when the oracle can't be read. */
+export function useManaUsdRate(enabled: boolean) {
+  const chainId = getMaticChainId()
+  return useQuery({
+    queryKey: ['mana-usd-rate', chainId],
+    queryFn: () => fetchManaUsdRate(chainId),
+    enabled,
+    staleTime: 5 * 60_000,
+    retry: false
   })
 }
 

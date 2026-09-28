@@ -1,7 +1,14 @@
 name: Lint Package.json
 
-on: [push]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   lint-package-json:
-    uses: decentraland/platform-actions/.github/workflows/lint-package-json.yml@main
+    uses: decentraland/platform-actions/.github/workflows/lint-package-json.yml@6a3a143a295aca589af92c6ad8f85f9fa27ec15f # main (2026-09-21)

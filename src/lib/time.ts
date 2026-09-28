@@ -16,3 +16,13 @@ export function formatTimeAgo(timestamp: number, locale: string, now = Date.now(
   }
   return rtf.format(-1, 'minute')
 }
+
+/** "February 11, 2026" / "11 de febrero de 2026"; empty for a missing or unparsable date. */
+export function formatLongDate(iso: string | null | undefined, locale: string): string {
+  if (!iso) return ''
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  // A bare `YYYY-MM-DD` parses as UTC midnight, which is the previous day west of Greenwich.
+  const timeZone = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? 'UTC' : undefined
+  return new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', day: 'numeric', timeZone }).format(date)
+}

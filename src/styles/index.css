@@ -1,3 +1,24 @@
+/* Inter (SIL OFL 1.1, see assets/fonts/LICENSE-Inter.txt), served with the app so page views leak nothing to Google. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../assets/fonts/inter-latin.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC,
+    U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../assets/fonts/inter-latin-ext.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
 :root {
   /* Height of the ui2 navbar everything offsets against (body top padding, sub-nav sticky top,
      viewport-filling min-heights). 991px is UI2'S OWN Navbar breakpoint, not one of ours. */
@@ -70,6 +91,35 @@ h2 {
     padding: 10px;
   }
 }
+/* The overview is a full-bleed landing: its sections manage their own gutters. */
+.page[data-route="/"] {
+  padding: 0;
+  max-width: none;
+}
+/* The overview sits on near-black like sites' creator landing; only the navbar + sub-nav keep the
+   violet field, painted by a fixed strip of the same gradient (sized to the viewport so the bars
+   composite to the same colors as on every other page) behind the translucent bars. */
+body[data-route="/"] {
+  background: #161518;
+}
+body[data-route="/"]::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(var(--nav-h) + var(--sub-nav-h));
+  background: radial-gradient(
+    61.64% 109.58% at 50% 54.49%,
+    #952dc6 0%,
+    #7c27a8 25%,
+    #642089 50%,
+    #4b1a6b 75%,
+    #32134c 100%
+  );
+  background-size: 100% 100vh;
+  z-index: -1;
+}
 
 /* Suspense fallback while a lazy route chunk downloads. */
 .page-loading {
@@ -118,4 +168,21 @@ h2 {
   .spinner {
     animation-duration: 2s;
   }
+}
+
+/* Fullscreen routes (the item editor): no navbar offset, no page gutter or width cap, no page scroll. */
+body[data-fullscreen] {
+  padding-top: 0;
+  overflow: hidden;
+}
+body[data-fullscreen] #root {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+}
+.page[data-fullscreen] {
+  padding: 0;
+  max-width: none;
+  flex: 1;
+  min-height: 0;
 }

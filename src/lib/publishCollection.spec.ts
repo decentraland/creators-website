@@ -15,6 +15,7 @@ import {
   buildUseCreditsCall,
   canPayWith,
   consolidatePublishedCollection,
+  PublishTransactionRevertedError,
   getAvailablePaymentMethods,
   syncPublishedItems,
   getPublishBlocker,
@@ -141,6 +142,12 @@ describe('payment methods', () => {
     expect(getAvailablePaymentMethods(undefined)).toEqual(['credits'])
     expect(getAvailablePaymentMethods(0n)).toEqual(['credits'])
     expect(getAvailablePaymentMethods(1n)).toEqual(['credits', 'mana'])
+  })
+
+  it('leaves MANA as the only method, at any balance, when credits are turned off', () => {
+    expect(getAvailablePaymentMethods(undefined, false)).toEqual(['mana'])
+    expect(getAvailablePaymentMethods(0n, false)).toEqual(['mana'])
+    expect(getAvailablePaymentMethods(1n, false)).toEqual(['mana'])
   })
 
   it('checks each method against its own balance', () => {
@@ -360,7 +367,7 @@ describe('consolidatePublishedCollection', () => {
         3,
         0
       )
-    ).rejects.toThrow(/reverted/)
+    ).rejects.toBeInstanceOf(PublishTransactionRevertedError)
     await expect(
       consolidatePublishedCollection(
         'col-1',

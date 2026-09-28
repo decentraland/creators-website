@@ -8,6 +8,7 @@ import {
   isCollectionLocked,
   type Collection
 } from './collections'
+import { type SpringBonesData } from '@dcl/schemas'
 import { type ItemListing } from './listings'
 import { getRarityMaxSupply } from './rarities'
 
@@ -50,7 +51,11 @@ export type ItemData = {
   outlineCompatible?: boolean
   /** Smart wearables only: the scene permissions declared in its scene.json. */
   requiredPermissions?: string[]
+  /** Spring bone physics per representation GLB, keyed by content hash. */
+  springBones?: SpringBonesData | null
   loop?: boolean
+  /** Social emotes only: the clips played when the emote starts. Not editable here. */
+  startAnimation?: unknown
   outcomes?: unknown[]
   randomizeOutcomes?: boolean
 }
@@ -111,6 +116,8 @@ export type Item = {
   price?: string
   beneficiary?: string
   rarity?: string
+  /** In-world effect text (≤ 64 chars), wearables only. */
+  utility?: string
   totalSupply?: number
   /** On-chain item id (`blockchain_item_id`), assigned once the collection is published. */
   tokenId?: string
@@ -148,6 +155,7 @@ export function fromRemoteItem(remote: RemoteItem): Item {
   if (remote.rarity) item.rarity = remote.rarity
   if (remote.urn) item.urn = remote.urn
   if (remote.video) item.video = remote.video
+  if (remote.utility) item.utility = remote.utility
   if (remote.total_supply !== undefined && remote.total_supply !== null) item.totalSupply = remote.total_supply
   if (remote.blockchain_item_id) item.tokenId = remote.blockchain_item_id
   return item
@@ -174,7 +182,7 @@ export function toRemoteItem(item: Item): Omit<RemoteItem, 'created_at' | 'updat
     total_supply: item.totalSupply === undefined ? null : item.totalSupply,
     is_published: false,
     is_approved: false,
-    utility: null,
+    utility: item.utility || null,
     mappings: null,
     type: item.type,
     data: item.data,
@@ -263,6 +271,14 @@ export function hasSceneCode(contents: Record<string, unknown>): boolean {
 
 export function isSmartWearable(item: Item): boolean {
   return item.type === ItemType.WEARABLE && hasSceneCode(item.contents)
+}
+
+/**
+ * A multi-armature "social" emote (two avatars and/or props). The Unity renderer does not play these,
+ * so the preview falls back to Babylon for them, as the legacy builder does.
+ */
+export function isSocialEmote(item: Item): boolean {
+  return item.type === ItemType.EMOTE && (!!item.metrics?.additionalArmatures || item.data.startAnimation !== undefined)
 }
 
 /** A smart wearable can't be published until its preview video has been uploaded (legacy isComplete). */

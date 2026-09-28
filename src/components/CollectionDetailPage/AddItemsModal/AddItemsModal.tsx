@@ -3,14 +3,16 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { useTranslation } from '~/intl'
-import { useAllCollectionItems } from '~/hooks/useCollection'
+import { allCollectionItemsKey, useAllCollectionItems } from '~/hooks/useCollection'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { installBackGuard } from '~/lib/backGuard'
 import { ItemFileError, MAX_THUMBNAIL_FILE_SIZE, VIDEO_PATH, toMB } from '~/lib/itemFiles'
-import { type ItemDraftPayload } from '~/lib/itemFactory'
+import { type EmotePlayMode, type ItemDraftPayload } from '~/lib/itemFactory'
 import { type Collection } from '~/lib/collections'
 import { ItemType } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
+import { type SpringBoneParamsByName } from '~/lib/springBones'
+import { errorCode, track } from '~/lib/analytics'
 import { executeUpload, planUpload, type UploadDraft } from '~/lib/uploadItems'
 import {
   addItemsReducer,
@@ -36,22 +38,46 @@ import { LeaveConfirmModal } from './LeaveConfirmModal'
 import { UploadErrorModal } from './UploadErrorModal'
 import * as S from './AddItemsModal.styles'
 
+/** Values decided before the modal opened (the Blender live preview's tuning), applied to every draft. */
+export type AddItemsPrefill = {
+  category?: string
+  hides?: string[]
+  springBoneParams?: SpringBoneParamsByName
+  /** Emotes only. */
+  playMode?: EmotePlayMode
+}
+
+/**
+ * The live preview's tuning on top of what the file itself said: category for wearables, play mode for
+ * emotes. A prefilled category is the creator's own pick, so the analysis suggestion hint is dropped.
+ */
+function applyPrefill(patch: Partial<ItemDraft>, prefill: AddItemsPrefill | undefined): Partial<ItemDraft> {
+  if (!prefill) return patch
+  if (patch.type === ItemType.WEARABLE && prefill.category) {
+    return { ...patch, category: prefill.category, suggestedCategory: null }
+  }
+  if (patch.type === ItemType.EMOTE && prefill.playMode) return { ...patch, playMode: prefill.playMode }
+  return patch
+}
+
 type Props = {
   collection: Collection
   address: string
   /** The files picked or dropped on the collection page; processing starts immediately. */
   files: File[]
+  prefill?: AddItemsPrefill
   onClose: () => void
 }
 
-export function AddItemsModal({ collection, address, files, onClose }: Props) {
+export function AddItemsModal({ collection, address, files, prefill, onClose }: Props) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const showToast = useNotifications(state => state.showToast)
 
   const initialDraftsRef = useRef<Array<{ draft: ItemDraft; file: File }> | null>(null)
   if (initialDraftsRef.current === null) {
-    initialDraftsRef.current = files.map(file => ({ draft: createDraft(file), file }))
+    // The live preview streams a placeholder file name, not one worth suggesting as the item name.
+    initialDraftsRef.current = files.map(file => ({ draft: createDraft(file, { nameFromFile: !prefill }), file }))
   }
   const [state, dispatch] = useReducer(
     addItemsReducer,
@@ -68,11 +94,18 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
   const collectionItemsQuery = useAllCollectionItems(address, collection.id)
   const collectionItems = useMemo(() => collectionItemsQuery.data ?? [], [collectionItemsQuery.data])
 
-  // Load + analyze each dropped file once.
+  // Load + analyze each dropped file once. The prefill is what it was when the modal opened.
+  const prefillRef = useRef(prefill)
   useEffect(() => {
     for (const { draft, file } of initialDraftsRef.current ?? []) {
       void processDraftFile(file)
-        .then(patch => dispatch({ type: 'draftAnalyzed', id: draft.id, patch }))
+        .then(patch =>
+          dispatch({
+            type: 'draftAnalyzed',
+            id: draft.id,
+            patch: applyPrefill(patch, prefillRef.current)
+          })
+        )
         .catch((error: unknown) => {
           if (error instanceof ItemFileError) {
             dispatch({
@@ -155,6 +188,8 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
       description: draft.description,
       tags: draft.tags,
       blockVrmExport: draft.blockVrmExport,
+      hides: draft.type === ItemType.WEARABLE ? prefill?.hides : undefined,
+      springBoneParams: draft.type === ItemType.WEARABLE ? prefill?.springBoneParams : undefined,
       contents: draft.contents,
       model: draft.model,
       metrics: draft.metrics ?? {},
@@ -171,10 +206,20 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
       const operations = await planUpload(draftsToUpload.map(toPayload), collectionItems)
       const result = await executeUpload(address, operations)
 
+      // One event per upload rather than per item: the legacy builder's per-item `Save item` on creation
+      // reads here as `item_count` (see design/TRACKING_SPEC.md).
+      track('Add items', {
+        collectionId: collection.id,
+        origin: prefill ? 'live_preview' : 'collection',
+        item_count: result.savedDraftIds.length,
+        failed_count: result.failedDraftIds.length,
+        error: result.failedDraftIds.length > 0 ? (result.failureReason ?? 'generic') : undefined
+      })
+
       if (result.savedDraftIds.length > 0) {
         showToast(t('add_items_modal.success_toast', { count: result.savedDraftIds.length }))
         await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ['collection-items-all', address, collection.id] }),
+          queryClient.invalidateQueries({ queryKey: allCollectionItemsKey(address, collection.id) }),
           queryClient.invalidateQueries({ queryKey: ['collection', address, collection.id] }),
           queryClient.invalidateQueries({ queryKey: ['collection-preview', address, collection.id] }),
           queryClient.invalidateQueries({ queryKey: ['collections'] })
@@ -190,7 +235,8 @@ export function AddItemsModal({ collection, address, files, onClose }: Props) {
       } else {
         onClose()
       }
-    } catch {
+    } catch (error) {
+      track('Add items error', { collectionId: collection.id, item_count: allIds.length, error: errorCode(error) })
       dispatch({ type: 'uploadFailed', failureReason: 'generic', failedDraftIds: allIds })
     }
   }

@@ -42,3 +42,53 @@ describe('fetchCatalystContent', () => {
     await expect(fetchCatalystContent('Qmmissing')).rejects.toThrow(/404/)
   })
 })
+
+describe('fetchBaseWearables', () => {
+  const wearable = (id: string, category: string, bodyShapes: string[], data: Record<string, unknown> = {}) => ({
+    id,
+    data: { category, representations: [{ bodyShapes }], ...data }
+  })
+
+  it('reads the base-avatars catalog and drops wearables that hide or replace anything', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          wearables: [
+            wearable('urn:decentraland:off-chain:base-avatars:f_jeans_00', 'lower_body', [
+              'urn:decentraland:off-chain:base-avatars:BaseFemale'
+            ]),
+            wearable(
+              'urn:decentraland:off-chain:base-avatars:hat',
+              'hat',
+              ['urn:decentraland:off-chain:base-avatars:BaseMale'],
+              {
+                hides: ['hair']
+              }
+            ),
+            wearable(
+              'urn:decentraland:off-chain:base-avatars:mask',
+              'mask',
+              ['urn:decentraland:off-chain:base-avatars:BaseMale'],
+              {
+                replaces: ['eyewear']
+              }
+            )
+          ]
+        }),
+        { status: 200 }
+      )
+    )
+    const { fetchBaseWearables } = await import('./catalyst')
+    await expect(fetchBaseWearables()).resolves.toEqual([
+      {
+        urn: 'urn:decentraland:off-chain:base-avatars:f_jeans_00',
+        category: 'lower_body',
+        bodyShapes: ['urn:decentraland:off-chain:base-avatars:BaseFemale'],
+        name: 'Jeans'
+      }
+    ])
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      'https://peer.decentraland.zone/lambdas/collections/wearables?collectionId=urn:decentraland:off-chain:base-avatars'
+    )
+  })
+})

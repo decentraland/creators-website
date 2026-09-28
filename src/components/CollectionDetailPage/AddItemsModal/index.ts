@@ -1,1 +1,1 @@
-export { AddItemsModal } from './AddItemsModal'
+export { AddItemsModal, type AddItemsPrefill } from './AddItemsModal'

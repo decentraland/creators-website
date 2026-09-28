@@ -336,6 +336,29 @@
       "checkbox": "Acepto los <terms>Términos de uso</terms> y la <policy>Política de contenido</policy>. Entiendo que mi colección puede ser rechazada si no cumple con ellos y que la tarifa de publicación no es reembolsable.",
       "submit": "Publicar y pagar"
     },
+    "buy_credits": {
+      "title": "Elige tu pack de créditos",
+      "balance": "Mi saldo de créditos:",
+      "recommended": "Recomendado",
+      "credits": "Créditos",
+      "pack_label": "{credits} créditos por {usd}",
+      "decrease": "Un pack menos de {credits} créditos",
+      "increase": "Un pack más de {credits} créditos",
+      "total": "Total:",
+      "cancel": "Cancelar",
+      "buy": "Comprar {credits} créditos",
+      "error": "No pudimos iniciar el pago. Inténtalo de nuevo."
+    },
+    "top_up": {
+      "confirming": "Confirmando tu compra…",
+      "success_title": "¡Tu compra fue exitosa!",
+      "success_description": "Se agregaron {credits} créditos a tu cuenta.",
+      "pending_title": "¡Tus créditos están en camino!",
+      "pending_description": "Tu pago se realizó, pero está tardando un poco más de lo habitual en confirmarse. Tu saldo se actualizará solo en cuanto llegue; no necesitas pagar de nuevo.",
+      "failed_title": "No pudimos completar tu compra",
+      "failed_description": "Algo salió mal con el pago. Si se te cobró, tus créditos se agregarán en breve; si no, elige un pack e inténtalo de nuevo.",
+      "done": "Listo"
+    },
     "success": {
       "title": "Colección enviada a revisión",
       "description": "Tu colección está siendo revisada para su aprobación. Esto puede tardar hasta 5 minutos. Te avisaremos cuando la revisión esté completa.",
@@ -347,7 +370,13 @@
       "description_insufficient_credits": "No tienes suficientes créditos para cubrir la tarifa de publicación. Obtén más créditos e inténtalo de nuevo.",
       "description_locked": "Esta colección ya se está publicando. Espera unos minutos y actualiza la página.",
       "description_unsynced": "Los ítems de esta colección cambiaron mientras publicabas. Cierra este diálogo y vuelve a empezar.",
+      "description_fee_mismatch": "La tarifa de publicación cambió mientras confirmabas. Ya la actualizamos: revisa el nuevo importe e inténtalo de nuevo.",
+      "cancel": "Cancelar",
       "try_again": "Intentar de nuevo"
+    },
+    "consolidation": {
+      "reverted": "La publicación de “{name}” no se completó en la blockchain, así que no se cobró nada. La colección se desbloquea en 24 horas; entonces podrás publicarla de nuevo.",
+      "sync_failed": "“{name}” se publicó, pero no pudimos terminar de sincronizarla con la blockchain. Actualiza la página en unos minutos; si sigue sin estar en revisión, contacta a soporte."
     }
   },
   "sell_item_modal": {
@@ -378,13 +407,21 @@
       "label": "Precio",
       "rate": "1 Crédito = {usd}USD",
       "giveaway": "Hacerlo un regalo",
-      "too_high": "El precio puede ser de hasta {max} créditos."
+      "too_high": "El precio puede ser de hasta {max} créditos.",
+      "currency_label": "Moneda",
+      "currency_credits": "Créditos",
+      "currency_mana": "MANA",
+      "mana_rate": "1 MANA ≈ {usd}USD (estimado)",
+      "mana_min": "Mínimo {min} MANA",
+      "too_high_mana": "El precio puede ser de hasta {max} MANA.",
+      "too_low_mana": "El precio debe ser de al menos {min} MANA."
     },
     "expiration": {
       "label": "Fecha de vencimiento"
     },
     "note": "Tu ítem se publicará en la Tienda de Decentraland en Créditos. Cuando se venda, recibirás el <b>valor equivalente en MANA.</b>",
     "note_tooltip": "Los Créditos están atados al dólar estadounidense. El MANA que recibes se calcula con el tipo de cambio del momento de cada venta.",
+    "note_mana": "Tu ítem se publicará en la Tienda de Decentraland en MANA. Cuando se venda, recibirás el MANA directamente.",
     "success": {
       "title": "¡Tu ítem está en venta!",
       "description": "Ya está disponible en la Tienda de Decentraland.",
@@ -534,6 +571,7 @@
       "missing_model_file": "No encontramos un modelo 3D o una textura dentro de este archivo.",
       "invalid_zip": "No pudimos leer este archivo ZIP.",
       "too_many_files": "Este ZIP tiene demasiados archivos — el máximo es {max}.",
+      "zip_too_big": "Este ZIP es demasiado grande: su contenido no puede superar los {size}MB.",
       "invalid_manifest": "La configuración {fileName} dentro del ZIP es inválida.",
       "manifest_file_missing": "La configuración del ZIP menciona {fileName}, pero no está en el ZIP.",
       "orphaned_auxiliary_file": "{fileName} necesita su archivo complementario {expected} en el mismo ZIP.",
@@ -552,12 +590,14 @@
       "multiple_videos": "El ZIP incluye más de un video. Deja solo el video de vista previa.",
       "video_too_big": "El video es demasiado grande — el tamaño máximo es {size}MB.",
       "video_wrong_format": "El video debe ser un archivo MP4.",
-      "invalid_video": "Tu video parece estar dañado o no es válido. Revisa el archivo e inténtalo de nuevo."
+      "invalid_video": "Tu video parece estar dañado o no es válido. Revisa el archivo e inténtalo de nuevo.",
+      "invalid_model_file_type": "El archivo es de otro tipo de ítem. Un wearable solo puede reemplazarse por un wearable y un emote por un emote."
     }
   },
   "video_modal": {
     "title": "Video de vista previa",
     "description": "Sube un video que muestre la funcionalidad del smart wearable.",
+    "loading": "Cargando el video…",
     "drop_cta": "Arrastra y suelta tu video aquí, o",
     "browse": "Buscar archivos",
     "hint": "{extensions} · hasta {size}MB",
@@ -603,11 +643,192 @@
     "spring_bone_count_exceeded": "Este modelo tiene {count} spring bones (máximo: {limit}). Reduce la cantidad de nodos de spring bones en tu editor 3D y vuelve a subir el archivo.",
     "thumbnail_not_transparent": "El fondo de la miniatura no parece transparente. Los mercados muestran el color de rareza del ítem detrás de la miniatura, por lo que se requiere un fondo transparente."
   },
-  "item_editor_page": {
-    "title": "Editor de items"
+  "item_editor": {
+    "pick_collection": "Elige una colección para empezar a editar sus ítems.",
+    "mobile_hint": "La edición está disponible en escritorio. Aquí puedes previsualizar los ítems.",
+    "read_only": "Este ítem es de solo lectura: solo el dueño y los colaboradores de la colección pueden editarlo mientras la colección no se está publicando.",
+    "save": "Guardar",
+    "revert": "Descartar",
+    "save_success": "Se guardó “{name}”.",
+    "save_error": "No pudimos guardar el ítem. Inténtalo de nuevo.",
+    "save_error_locked": "La colección se está publicando y no se puede editar ahora.",
+    "sidebar": {
+      "items": "Ítems",
+      "back": "Volver a la colección",
+      "collapse": "Contraer barra lateral",
+      "expand": "Expandir barra lateral",
+      "add_items": "Agregar ítems",
+      "wearables": "Wearables",
+      "emotes": "Emotes",
+      "empty": "Esta colección aún no tiene ítems.",
+      "dress": "Mostrar {name} en el avatar",
+      "undress": "Quitar {name} del avatar",
+      "no_representation": "Este ítem no tiene versión para la forma de cuerpo actual. Cambia la forma de cuerpo para previsualizarlo."
+    },
+    "picker": {
+      "title": "Colecciones",
+      "back": "Volver a colecciones",
+      "search": "Buscar colecciones",
+      "create": "Nueva colección",
+      "empty": "No se encontraron colecciones.",
+      "error": "No pudimos cargar tus colecciones. Inténtalo de nuevo."
+    },
+    "review": {
+      "title": "Modo de revisión"
+    },
+    "discard": {
+      "title": "¿Descartar tus cambios?",
+      "description": "Tienes cambios sin guardar en este ítem. Si cambias de ítem se perderán.",
+      "stay": "Seguir editando",
+      "confirm": "Descartar"
+    },
+    "customizer": {
+      "title": "Avatar",
+      "body_shape": "Forma de cuerpo",
+      "shape": {
+        "male": "Masculino",
+        "female": "Femenino",
+        "both": "Ambos"
+      },
+      "skin": "Color de piel",
+      "eyes": "Color de ojos",
+      "hair": "Color de cabello",
+      "none": "Ninguno",
+      "randomize": "Aleatorio",
+      "hair_style": "Peinado",
+      "drawer_title": "Personalizar avatar"
+    },
+    "playback": {
+      "stop": "Detener",
+      "select": "Animación",
+      "from_collection": "De la colección",
+      "mute": "Silenciar",
+      "unmute": "Activar sonido",
+      "emote": {
+        "walk": "Caminar",
+        "run": "Correr",
+        "jump": "Saltar",
+        "clap": "Aplaudir",
+        "dab": "Dab",
+        "dance": "Bailar",
+        "fashion": "Moda",
+        "fashion-2": "Moda 2",
+        "fashion-3": "Moda 3",
+        "fashion-4": "Moda 4",
+        "love": "Amor",
+        "money": "Dinero",
+        "fist-pump": "Puño en alto",
+        "head-explode": "Cabeza explosiva",
+        "wave": "Saludar"
+      },
+      "placeholder": "Reproducir emote"
+    },
+    "validation": {
+      "loading": "Revisando el modelo…",
+      "pass": "El modelo pasa todas las verificaciones.",
+      "warnings": "El modelo tiene advertencias. Haz clic para verlas.",
+      "errors": "El modelo tiene errores. Haz clic para verlos.",
+      "idle": "",
+      "modal_title": "Resultados de la validación",
+      "label": {
+        "loading": "Validando",
+        "pass": "Válido",
+        "warnings": "{count, plural, one {# advertencia} other {# advertencias}}",
+        "errors": "{count, plural, one {# problema} other {# problemas}}",
+        "idle": ""
+      }
+    },
+    "details": {
+      "title": "Detalles",
+      "edit_thumbnail": "Editar miniatura",
+      "download": "Descargar ítem",
+      "watch_video": "Ver video de vista previa",
+      "change_file": "Cambiar archivo",
+      "add_representation": "Agregar representación {shape}",
+      "file_update_pending": "Hay un modelo nuevo listo. Guarda para subirlo.",
+      "import_error_title": "No pudimos usar ese archivo",
+      "import_error_close": "OK",
+      "download_error": "No pudimos descargar el ítem. Inténtalo de nuevo.",
+      "video_required": "Se necesita un video de vista previa para publicar un smart wearable.",
+      "video_hint": "Un video corto que muestra lo que hace el smart wearable en el mundo."
+    },
+    "basics": {
+      "title": "Básicos",
+      "name": "Nombre",
+      "description": "Descripción",
+      "utility": "Utilidad",
+      "utility_hint": "Una descripción corta de lo que hace este ítem en el mundo, visible para los coleccionistas.",
+      "category": "Categoría",
+      "rarity": "Rareza"
+    },
+    "overrides": {
+      "title": "Anulaciones",
+      "body_parts": "Partes del cuerpo ocultas",
+      "body_parts_hint": "Partes del avatar base que este wearable oculta para que no atraviesen el modelo.",
+      "categories": "Categorías de wearables ocultas",
+      "categories_hint": "Otras ranuras de wearables que este ítem oculta al usarse junto a ellas, por ejemplo un casco que oculta el cabello.",
+      "none_available": "No hay nada que ocultar para este ítem.",
+      "none_selected": "Ninguna"
+    },
+    "body_part": {
+      "head": "Cabeza",
+      "hands": "Manos"
+    },
+    "animation": {
+      "title": "Animación"
+    },
+    "spring_bones": {
+      "title": "Huesos elásticos",
+      "body_shape": "Forma de cuerpo",
+      "counter": "{count} / {max} huesos",
+      "bones": "{count, plural, one {# hueso} other {# huesos}}",
+      "stiffness": "Rigidez",
+      "gravityPower": "Fuerza de gravedad",
+      "gravityDir": "Dirección de gravedad",
+      "drag": "Arrastre",
+      "add": "Agregar cadena de huesos",
+      "remove": "Quitar cadena de huesos",
+      "center": "Hueso central",
+      "center_none": "Ninguno",
+      "center_clear": "Quitar hueso central",
+      "actions": "Acciones de la cadena",
+      "copy_params": "Copiar ajustes",
+      "paste_params": "Pegar ajustes",
+      "warning_title": "A “{name}” le faltan ajustes de huesos elásticos",
+      "warning_description": "Una de las formas de cuerpo no tiene huesos elásticos configurados, así que su física faltará en el mundo. ¿Guardar de todos modos?",
+      "warning_back": "Volver",
+      "warning_save": "Guardar de todos modos"
+    },
+    "tags": {
+      "title": "Etiquetas",
+      "placeholder": "Escribe una etiqueta y presiona Enter",
+      "remove": "Quitar etiqueta {tag}",
+      "campaign_hint": "Agrega la etiqueta “{tag}” para participar con este ítem en {name}."
+    },
+    "options": {
+      "title": "Opciones",
+      "vrm_export": "Permitir exportar a VRM",
+      "vrm_export_hint": "Si está activo, los coleccionistas pueden exportar su avatar con este wearable como archivo VRM para otras plataformas.",
+      "outline": "Compatible con contorno",
+      "outline_hint": "Si está activo, el efecto de contorno del avatar se dibuja alrededor de este wearable."
+    },
+    "danger": {
+      "delete": "Eliminar ítem"
+    },
+    "actions": {
+      "label": "Acciones del ítem"
+    }
+  },
+  "zoom_controls": {
+    "in": "Acercar",
+    "out": "Alejar"
   },
   "curation_page": {
     "title": "Curado"
+  },
+  "maintenance_page": {
+    "title": "Volvemos enseguida",
+    "description": "Las herramientas de creación de Decentraland están en mantenimiento. No perdiste nada de lo que creaste: vuelve a intentarlo en un rato."
   },
   "not_found_page": {
     "title": "Página no encontrada",
@@ -712,6 +933,276 @@
       "USE_FETCH": "Usar fetch",
       "USE_WEBSOCKET": "Usar websockets",
       "OPEN_EXTERNAL_LINK": "Abrir enlaces externos"
+    }
+  },
+  "live_preview": {
+    "title": "Vista previa en vivo de Blender",
+    "status": {
+      "connected": "Conectado",
+      "connecting": "Conectando…",
+      "disconnected": "Desconectado",
+      "error": "Error"
+    },
+    "bridge_url": "URL de Blender",
+    "connect": "Conectar",
+    "disconnect": "Desconectar",
+    "refresh": "Actualizar",
+    "updated": "Actualizado {time_ago}",
+    "up_to_date": "Al día · actualizado {time_ago}",
+    "updated_now": "justo ahora",
+    "waiting": "Esperando un export desde Blender.\n Haz clic en Preview Wearable o Preview Emote en el panel Decentraland Tools.",
+    "properties": "Propiedades",
+    "loop": "Repetir",
+    "add_to_collection": "Agregar a una colección",
+    "mobile_hint": "Ajustar y agregar a una colección se hace en la computadora donde corre Blender. Aquí puedes previsualizar el modelo.",
+    "errors": {
+      "unreachable": "No pudimos conectarnos con Blender. Revisa que la vista previa en vivo esté activa y que la URL sea correcta.",
+      "permission_denied": "Tu navegador bloqueó la conexión con Blender. Permite el acceso a la red local para este sitio.",
+      "bridge_response": "Blender respondió con un error. Intenta enviar la vista previa de nuevo.",
+      "invalid_state": "Blender envió algo que no pudimos leer. Actualiza el complemento Decentraland Tools.",
+      "model_fetch": "No pudimos descargar el modelo desde Blender. Intenta enviar la vista previa de nuevo."
+    },
+    "local_network": {
+      "prompt": {
+        "title": "Permite el acceso a la red local",
+        "description": "Tu navegador está pidiendo permiso para conectarse a tu red local. Haz clic en Permitir para que esta página pueda llegar a Blender."
+      },
+      "denied": {
+        "title": "Acceso a la red local bloqueado",
+        "description": "Tu navegador bloqueó el acceso de esta página a tu red local. Para conectarte con Blender:",
+        "step_site_info": "Abre la información del sitio junto a la barra de direcciones",
+        "step_allow": "Permite el acceso a la red local",
+        "step_reload": "Recarga esta página",
+        "reload": "Recargar página",
+        "retry": "Reintentar conexión"
+      }
+    },
+    "sign_in": {
+      "title": "Inicia sesión para continuar",
+      "description": "Inicia sesión para agregar este ítem a una de tus colecciones."
+    },
+    "add": {
+      "title": "Agregar a una colección",
+      "description": "Elige la colección en borrador a la que se agregará el ítem.",
+      "empty": "Todavía no tienes colecciones en borrador. Crea una para continuar.",
+      "new_collection": "Nueva colección",
+      "continue": "Continuar"
+    }
+  },
+  "overview": {
+    "hero": {
+      "title_first_line": "Crea tus propios",
+      "title_last_line": "en Decentraland",
+      "words": {
+        "wearables": "Wearables",
+        "emotes": "Emotes",
+        "worlds": "Mundos",
+        "experiences": "Experiencias",
+        "scenes": "Escenas",
+        "games": "Juegos"
+      },
+      "subtitle": "Descarga el Creator Hub para empezar a construir escenas inmersivas y experiencias interactivas en Decentraland.",
+      "download_cta": "Descargar Creator Hub",
+      "mobile_docs_cta": "Explora la documentación para creadores",
+      "scroll_label": "Ir a la siguiente sección"
+    },
+    "why": {
+      "title_highlight": "Por qué",
+      "title": "los creadores eligen Decentraland",
+      "cards": {
+        "join": {
+          "title": "Únete a una comunidad de creadores",
+          "description": "Comparte conocimiento, colabora y crea vínculos en una comunidad de artistas, diseñadores y desarrolladores donde tu trabajo se valora todos los días.",
+          "cta": "Únete al Discord"
+        },
+        "create": {
+          "title": "Crea en un ecosistema abierto y descentralizado",
+          "description": "Conserva el control total de tu contenido en una plataforma gobernada por sus usuarios y construye junto a otros creadores en un mundo virtual abierto, listo para explorar.",
+          "cta": "Explora la documentación"
+        },
+        "benefit": {
+          "title": "Aprovecha una economía centrada en los creadores",
+          "description": "Decentraland pertenece a sus usuarios, así que te quedas con el 97,5% de las ventas del Marketplace mientras el resto financia subvenciones comunitarias para creadores como tú. Además, recibes un 2,5% de regalías en las reventas.",
+          "cta": "Crea Wearables"
+        }
+      }
+    },
+    "create": {
+      "title": "Explora las posibilidades ",
+      "title_highlight": "creativas",
+      "title_second_part": "",
+      "required_skills": "Habilidades necesarias",
+      "useful_links": "Enlaces útiles",
+      "skills": {
+        "modeling": "Modelado 3D",
+        "fashion": "Sentido de la moda imaginativo",
+        "animation": "Animación",
+        "typescript": "TypeScript",
+        "creator_hub": "Creator Hub",
+        "no_code": "Sin código",
+        "click": "Saber usar un mouse",
+        "imagination": "Imaginación desbordante"
+      },
+      "cards": {
+        "wearables": {
+          "title": "Diseña Wearables únicos",
+          "description": "En Decentraland, los Wearables van más allá de la ropa. Elementos flotantes, telas brillantes, prótesis robóticas, cuerpos alienígenas. ¡Todo es posible!",
+          "tabs": {
+            "regular": {
+              "title": "Regulares",
+              "heading": "Da forma a tu identidad digital",
+              "body": "Crea las skins, la ropa, los accesorios y los cuerpos que le dan a la comunidad de Decentraland infinitas opciones para personalizar su identidad digital.",
+              "links": {
+                "creating": "Cómo crear Wearables",
+                "shop": "Wearables en la Tienda",
+                "publishing": "Cómo publicar Wearables",
+                "tutorials": "Tutoriales de Wearables"
+              }
+            },
+            "smart": {
+              "title": "Smart Wearables",
+              "heading": "Experiencias y moda combinadas",
+              "body": "¿Quieres crear un jet pack que te permita volar o unos lentes que revelen un mundo secreto? Vincula Experiencias Portátiles a tus Wearables y abre un universo de posibilidades.",
+              "links": {
+                "portable_experiences": "Documentación de Experiencias Portátiles",
+                "sdk": "Documentación del SDK 7",
+                "smart_wearables": "Documentación de Smart Wearables",
+                "shop": "Smart Wearables en la Tienda"
+              }
+            }
+          }
+        },
+        "emotes": {
+          "title": "Anima Emotes expresivos",
+          "description": "Crea las animaciones de avatar que permiten a la comunidad de Decentraland conectar, compartir emociones y participar en infinitas actividades divertidas.",
+          "tabs": {
+            "motion": {
+              "title": "Más que movimiento",
+              "heading": "Más que movimiento",
+              "body": "Los Emotes de Decentraland van más allá de una simple animación: ¡llevan la expresión al siguiente nivel con la opción de agregar props y sonidos!",
+              "links": {
+                "creating": "Cómo crear Emotes",
+                "tutorials": "Tutoriales de Emotes",
+                "publishing": "Cómo publicar Emotes",
+                "shop": "Emotes en la Tienda"
+              }
+            }
+          }
+        },
+        "experiences": {
+          "title": "Construye experiencias inmersivas",
+          "description": "Construye escenas cautivadoras, experiencias interactivas y juegos en un ecosistema de mundo abierto. Reclama tu propio Mundo o renta/compra LAND para empezar a construir.",
+          "tabs": {
+            "scenes": {
+              "title": "Crear escenas",
+              "heading": "Construye y publica tu primera escena",
+              "body": "Abre el Editor de Escenas en el Creator Hub, coloca los objetos en su lugar y publica tu escena en un Mundo o en LAND. La documentación te guía paso a paso.",
+              "links": {
+                "about_editor": "Acerca del Editor de Escenas",
+                "publish_scene": "Publica tu escena",
+                "dev_workflow": "Flujo de desarrollo",
+                "download_hub": "Descargar Creator Hub"
+              }
+            },
+            "basic": {
+              "title": "Básico",
+              "heading": "Ideal para principiantes",
+              "body": "Arrastra y suelta elementos prediseñados para crear la escena de tus sueños, o empieza con una plantilla y personaliza los detalles para hacerla tuya.",
+              "links": {
+                "places": "Explora lugares",
+                "download_hub": "Descargar Creator Hub",
+                "tutorials": "Tutoriales de construcción",
+                "worlds_guide": "Guía esencial de Mundos"
+              }
+            },
+            "advanced": {
+              "title": "Avanzado",
+              "heading": "Control total sobre tus creaciones",
+              "body": "Convierte tus ideas en realidad con el SDK 7 de Decentraland. Crea todo lo que imagines, desde escenas complejas y experiencias interactivas hasta juegos completos.",
+              "links": {
+                "download_hub": "Descargar Creator Hub",
+                "docs": "Documentación de construcción",
+                "tutorials": "Tutoriales de construcción"
+              }
+            }
+          }
+        }
+      }
+    },
+    "live_scenes": {
+      "title_highlight": "Explora",
+      "title": "lo que los creadores están construyendo ahora mismo",
+      "online": "{count} en línea",
+      "view_all": "Ver todas las escenas en vivo"
+    },
+    "connect": {
+      "title_highlight": "Qué",
+      "title": "dicen los creadores de Decentraland",
+      "join_the_community": "Únete a la comunidad",
+      "cards": {
+        "mrdhingia": "Me encanta ser creador en DCL porque me permite crear espacios 3D increíbles con total libertad. Es genial trabajar con otros, aprender cosas nuevas y monetizar mi contenido llegando a personas de todo el mundo.",
+        "canessa": "Creo que tener Emotes únicos es una forma de convertir a tu avatar en otra versión de ti. Me hice un Emote único para tener siempre un saludo especial [distinto de las animaciones estándar que usan todos] para mis amigos.",
+        "polygonal_mind": "Decentraland evoluciona casi todos los días a nivel técnico, pero también a nivel comunitario. Llegan nuevas personas con ideas nuevas que hacen que toda la plataforma gire para acomodarlas. Es muy emocionante ver el cambio en tiempo real.",
+        "tangpoko": "Crear Wearables y Emotes en Decentraland es muy gratificante cuando ves que todos a tu alrededor los usan.",
+        "nikki_fuego": "Toda mi vida fui gamer y lo único que siempre quise de los juegos fue personalizar al máximo la ropa de mi personaje. [En Decentraland,] esa fantasía se hizo realidad."
+      }
+    },
+    "learn": {
+      "title_highlight": "Aprende",
+      "title": "con tutoriales de la comunidad",
+      "watch_more": "¿Quieres ver más?",
+      "watch_more_button": "Visita nuestro canal de YouTube",
+      "your_tutorial": "¿Crees que tu tutorial debería aparecer aquí?",
+      "your_tutorial_button": "Envía tu tutorial para revisión",
+      "cards": {
+        "blender_first_hat": "Blender para principiantes | Crea tu primer sombrero",
+        "first_virtual_gallery": "Tu primera galería virtual | Construcción paso a paso",
+        "canessa_intro_building": "Creator Hub | Introducción a la construcción",
+        "office_hours_custom_components": "Office Hours | Importar assets y componentes personalizados",
+        "first_wearable_academy": "Crea tu primer Wearable | Creator Academy"
+      }
+    },
+    "blog": {
+      "title_highlight": "Lo último",
+      "title": "del blog",
+      "view_all": "Leer el blog"
+    },
+    "faqs": {
+      "subtitle": "Conoce más sobre Decentraland",
+      "title": "Preguntas\nfrecuentes",
+      "aria_label": "Preguntas frecuentes",
+      "cta": "Ver más",
+      "items": {
+        "what_is": {
+          "question": "¿Qué es Decentraland?",
+          "answer": "Lanzado en 2020, Decentraland es un mundo social virtual, el primer metaverso descentralizado y el único de código abierto. Dentro de la plataforma, que funciona en el navegador o en la app de escritorio, las personas pueden crear, vivir y monetizar contenido y aplicaciones, además de socializar y asistir a una gran variedad de eventos diarios organizados por la comunidad. Decentraland es único porque es propiedad de quienes lo usan cada día, que también lo crean y lo gobiernan. A través de la organización autónoma descentralizada (DAO) de Decentraland, la comunidad puede presentar y votar propuestas, e incluso solicitar subvenciones que la comunidad vota."
+        },
+        "what_create": {
+          "question": "¿Qué puedo crear en Decentraland?",
+          "answer": "¡Sería más fácil preguntar qué no puedes crear en Decentraland! Como mundo virtual creado por sus usuarios, en Decentraland puedes crear prácticamente cualquier cosa.\nLos creadores de Decentraland hacen todos los componentes de una identidad digital, como los Wearables (que incluyen skins completas, partes del cuerpo, prendas, peinados, accesorios, etc.) y los Emotes, animaciones para tu avatar que además del movimiento pueden incluir props y sonidos.\nEl paisaje y las actividades de Decentraland también los definen los creadores. Al recorrer Genesis City puedes explorar contenido de distintos creadores construido uno junto a otro: galerías de arte, teatros, jardines, discotecas, pistas de carreras, casinos, juegos completos y mucho más. ¡Todo puede ser explorado y creado por cualquiera! Para empezar a construir, descarga el Creator Hub de Decentraland."
+        },
+        "become_creator": {
+          "question": "¿Cómo me convierto en creador de Decentraland?",
+          "answer": "Cualquiera puede ser creador en Decentraland: solo hacen falta un poco de conocimiento e ideas creativas sin fin. Según lo que quieras crear, los conocimientos necesarios cambian. Si solo quieres crear escenas virtuales geniales para ti o para organizar eventos, y aprender programación y modelado 3D no está en tus planes, puedes empezar a crear escenas de inmediato descargando el Creator Hub de Decentraland.\n\nSi conoces o quieres aprender modelado 3D y/o programación, todas las especificaciones técnicas y los procedimientos para crear en Decentraland están en la documentación para creadores, y hay muchos tutoriales en línea para crear Wearables, Emotes y experiencias.\nWearables y Emotes\nEl proceso de crear Wearables y Emotes incluye crear el asset en un programa de modelado 3D como Blender y enviarlo al Comité de Curación, que verifica que tu creación sea técnicamente correcta y cumpla la política de contenido de Decentraland (esto incluye pagar la tarifa de publicación de 100 USD, que va a la DAO para financiar subvenciones comunitarias). Finalmente, una vez aprobada, tu creación se publica oficialmente en el Marketplace. Recibes el 97,5% de todas las ventas primarias y un 2,5% de regalías en las ventas secundarias.\nExperiencias\nSi te interesa diseñar experiencias, descarga el Creator Hub de Decentraland y empieza a crear escenas inmersivas y juegos que luego puedes publicar en Mundos o en LAND dentro de Genesis City, el mundo abierto de Decentraland. Conservas todo el control sobre tu contenido, puedes editarlo o quitarlo cuando quieras y te quedas con todos los ingresos que generen tus experiencias."
+        },
+        "monetize": {
+          "question": "¿Es posible monetizar mis creaciones?",
+          "answer": "¡Sí, por supuesto! Los creadores de Decentraland pueden monetizar sus habilidades de muchas formas.\n\nQuienes crean Wearables y Emotes publican sus creaciones en el Marketplace pagando una tarifa de publicación de 100 USD, que va a la DAO para financiar subvenciones comunitarias, y a cambio ganan el 97,5% de las ventas primarias y un 2,5% de regalías en las ventas secundarias.\nAlgunos creadores de escenas monetizan sus experiencias y se quedan con la totalidad de los ingresos."
+        },
+        "need_land": {
+          "question": "¿Necesito tener LAND para crear experiencias en Decentraland?",
+          "answer": "No, tener LAND no es necesario para crear escenas o experiencias interactivas en Decentraland. Cualquiera puede crear contenido con el SDK 7 o con el Editor sin código. Luego, si quieres publicar tus creaciones para que tú y otras personas las exploren y disfruten, tienes varias opciones además de comprar LAND.\nMundos\nLos Mundos son tu espacio 3D personal en el metaverso. Existen aparte del mapa de Genesis City y son perfectos para experimentar con la creación 3D o para tener tu propio espacio virtual.\n\nConseguir tu propio Mundo es fácil: al reclamar un NAME de Decentraland (100 MANA) obtienes un nombre de usuario único que puedes usar en toda la Web3, 100 de Poder de Voto (para la gobernanza de Decentraland) y, por supuesto, tu propio Mundo para usarlo como quieras.\n\nRentar LAND\nSi te interesa publicar tu contenido en Genesis City pero no quieres comprometerte a comprar LAND, ¡no tienes que hacerlo! Es fácil rentar LAND a corto o largo plazo en el Marketplace, donde puedes pagar con tarjeta, transferencia bancaria o criptomonedas. Explora las rentas y mira qué hay disponible.\n\nConexiones con la comunidad, subvenciones y convocatorias abiertas para creadores\nSi alguien tiene pasión por compartir sus creaciones con la comunidad, en Decentraland siempre habrá una forma de hacerlo posible. La comunidad de creadores es muy acogedora y siempre dispuesta a ayudar. Si estás empezando, puedes conocer a muchos creadores en el Discord de Community Building.\nSi quieres construir una experiencia que beneficie a la comunidad pero necesitas recursos, siempre puedes solicitar una subvención comunitaria en la DAO. También puedes postularte a una de las convocatorias abiertas que se lanzan periódicamente durante el año para construir experiencias y escenas para distintos eventos de Decentraland, como los festivales anuales de música, arte y moda. ¡Sigue las redes de Decentraland o suscríbete al boletín semanal para mantenerte al día!"
+        },
+        "need_crypto": {
+          "question": "¿Necesito criptomonedas o una billetera digital para usar Decentraland?",
+          "answer": "No necesitas tener criptomonedas para disfrutar Decentraland, ya que su uso es gratuito. Si decides comprar una creación de la comunidad en el Marketplace, hay varias opciones de pago disponibles, como tarjeta de crédito/débito y transferencia bancaria, además de distintas criptomonedas.\n\nEn cuanto a la billetera digital, si todavía no tienes una, no necesitas conseguirla por tu cuenta si no quieres. Al iniciar sesión en Decentraland por primera vez y crear tu cuenta, se crea una billetera digital por ti en segundo plano. ¡Así de simple!\n\nEsta billetera digital forma parte de tu cuenta de Decentraland y guarda los activos digitales que adquieras, como Wearables gratuitos que reclames en el mundo o un Emote divertido que compres en el Marketplace."
+        }
+      }
+    },
+    "carousel": {
+      "previous": "Diapositiva anterior",
+      "next": "Siguiente diapositiva",
+      "go_to": "Ir a la diapositiva {index}"
     }
   }
 }

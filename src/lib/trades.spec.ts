@@ -13,6 +13,7 @@ import {
   OFFCHAIN_MARKETPLACE_TYPES,
   TradeConflictError,
   TradeNotFoundError,
+  UnknownTradeContractError,
   createTrade,
   fetchSignatureIndexes,
   fetchTrade,
@@ -155,15 +156,24 @@ describe('toOnChainTrade', () => {
 })
 
 describe('getTradeContract', () => {
-  it('resolves the marketplace generation by address and falls back to the V2 ABI for unknown ones', () => {
+  it('resolves the canonical marketplace of each generation from the stored order', () => {
     const v1 = getContract(ContractName.OffChainMarketplace, CHAIN_ID)
-    expect(getTradeContract({ contract: v1.address, chainId: CHAIN_ID }).name).toBe(v1.name)
-    expect(
-      getTradeContract({ contract: '0x00000000000000000000000000000000000000ee', chainId: CHAIN_ID })
-    ).toMatchObject({
-      address: '0x00000000000000000000000000000000000000ee',
-      abi: V2.abi
+    expect(getTradeContract({ contract: v1.address, chainId: CHAIN_ID })).toMatchObject({
+      name: v1.name,
+      address: v1.address
     })
+    expect(
+      getTradeContract({ contract: V2.address.toUpperCase().replace('0X', '0x'), chainId: CHAIN_ID })
+    ).toMatchObject({ name: V2.name, address: V2.address })
+  })
+
+  it('refuses to target an address the client does not know, another Decentraland contract or another chain', () => {
+    expect(() =>
+      getTradeContract({ contract: '0x00000000000000000000000000000000000000ee', chainId: CHAIN_ID })
+    ).toThrow(UnknownTradeContractError)
+    expect(() => getTradeContract({ contract: MANA, chainId: CHAIN_ID })).toThrow(UnknownTradeContractError)
+    const mainnetV2 = getContract(ContractName.OffChainMarketplaceV2, 137)
+    expect(() => getTradeContract({ contract: mainnetV2.address, chainId: 137 })).toThrow(UnknownTradeContractError)
   })
 })
 

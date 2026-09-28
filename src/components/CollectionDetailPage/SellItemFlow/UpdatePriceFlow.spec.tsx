@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { FeatureFlag } from '~/lib/featureFlags'
+import { setFeatureFlags } from '~/test/featureFlags'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ProviderType } from '@dcl/schemas'
@@ -7,28 +9,40 @@ import { NO_EXPIRATION } from '~/lib/sales'
 import { UpdatePriceFlow } from './UpdatePriceFlow'
 import { ADDRESS, Providers, collection, item, makeSession } from './testUtils'
 
+vi.mock('~/lib/featureFlags', async () => {
+  const actual = await vi.importActual<typeof import('~/lib/featureFlags')>('~/lib/featureFlags')
+  const mock = await import('~/test/featureFlags')
+  return { ...actual, getIsFeatureEnabled: mock.getIsFeatureEnabled }
+})
+
+beforeEach(() => setFeatureFlags(FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS, FeatureFlag.CREDITS_PRIMARY_LISTINGS))
+
 type Callbacks = { onSuccess?: (result: unknown) => void; onError?: (error: unknown) => void }
 type UpdateVariables = {
-  credits: number
+  price: unknown
   onSigned?: (step: 'cancel' | 'sign') => void
   onCancelled?: (terms: unknown) => void
 }
 type SellVariables = { onSigned?: () => void }
 const update = { mutate: vi.fn<(variables: UpdateVariables, callbacks: Callbacks) => void>(), isPending: false }
 const sell = { mutate: vi.fn<(variables: SellVariables, callbacks: Callbacks) => void>(), isPending: false }
-vi.mock('~/hooks/useSales', () => ({ useUpdatePrice: () => update, useSellItem: () => sell }))
+vi.mock('~/hooks/useSales', () => ({
+  useUpdatePrice: () => update,
+  useSellItem: () => sell,
+  useManaUsdRate: () => ({ data: undefined })
+}))
 vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })))
 
 const listing: ItemListing & { tradeId: string } = { itemId: '3', tradeId: 'trade-1', currency: 'credits', credits: 50 }
 const last = <T,>(mock: { mock: { calls: T[] } }) => mock.mock.calls[mock.mock.calls.length - 1]
 
-function renderFlow(providerType = ProviderType.INJECTED) {
+function renderFlow(providerType = ProviderType.INJECTED, current = listing) {
   const onClose = vi.fn()
   render(
     <UpdatePriceFlow
       item={item}
       collection={collection}
-      listing={listing}
+      listing={current}
       session={makeSession(providerType)}
       onClose={onClose}
     />,
@@ -65,10 +79,27 @@ describe('UpdatePriceFlow', () => {
     expect(submit).toBeDisabled()
   })
 
+  it("opens in the listing's currency and lets the creator switch it, refusing the same price", async () => {
+    renderFlow(ProviderType.INJECTED, { itemId: '3', tradeId: 'trade-1', currency: 'mana', manaWei: 5n * 10n ** 18n })
+    const input = screen.getByTestId('update-price-input')
+    expect(input).toHaveAttribute('data-currency', 'mana')
+    await userEvent.type(input, '5')
+    expect(screen.getByTestId('update-price-submit')).toBeDisabled()
+    await userEvent.type(input, '.5')
+    expect(screen.getByTestId('update-price-submit')).toBeEnabled()
+
+    await userEvent.click(screen.getByTestId('update-price-currency'))
+    await userEvent.click(screen.getByTestId('update-price-currency-option-credits'))
+    expect(input).toHaveValue('')
+    await userEvent.type(input, '50')
+    await userEvent.click(screen.getByTestId('update-price-submit'))
+    expect(last(update.mutate)[0]).toMatchObject({ price: { kind: 'credits', credits: 50 } })
+  })
+
   it('walks a web3 wallet through both signatures, then stores the new order', async () => {
     const { onClose } = renderFlow()
     await submitPrice('80')
-    expect(last(update.mutate)[0]).toMatchObject({ credits: 80 })
+    expect(last(update.mutate)[0]).toMatchObject({ price: { kind: 'credits', credits: 80 } })
     expect(screen.getByTestId('update-price-signing-step-1')).toHaveAttribute('data-state', 'current')
     expect(screen.getByTestId('update-price-signing-label')).toHaveTextContent(/removal of your current price/i)
     expect(screen.getByTestId('update-price-signing-cancel')).toBeInTheDocument()

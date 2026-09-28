@@ -21,6 +21,7 @@ export const Form = styled.form`
   width: 560px;
   max-width: 100%;
   min-height: 0;
+  padding: 0 2px;
 `
 
 // Everything but the footer, scrolling on short viewports so the actions stay in reach; while a submit is
@@ -142,13 +143,25 @@ export const Row = styled.div`
   gap: 16px;
 `
 
+// The price field's currency when there is nothing to pick.
+export const CurrencyGlyph = styled.span`
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-size: 20px;
+  line-height: 1;
+`
+
 export const Box = styled.div`
   position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
   min-height: 54px;
-  padding: 0 16px;
+  padding: 0 16px 0 12px;
   border: 1.5px solid ${theme.colors.white};
   border-radius: ${theme.radius.btnSm};
   background: rgba(255, 255, 255, 0.05);
@@ -196,6 +209,11 @@ export const Box = styled.div`
   & > svg {
     flex: none;
     font-size: 18px;
+  }
+
+  /* The currency pill sits flush with the field's padding. */
+  & > [data-testid$='-currency'] {
+    margin-left: -6px;
   }
 `
 
@@ -257,12 +275,6 @@ export const DateField = styled(Box)`
   .react-datepicker__navigation-icon::before {
     border-color: ${theme.colors.white};
   }
-`
-
-export const Glyph = styled.span`
-  display: inline-flex;
-  flex: none;
-  font-size: 20px;
 `
 
 export const Usd = styled.span`

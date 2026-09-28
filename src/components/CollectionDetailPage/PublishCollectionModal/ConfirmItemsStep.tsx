@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
-import { useDeleteItem, useItemContents, useUpdateItem } from '~/hooks/usePublishCollection'
+import { useDeleteItem, useItemContents } from '~/hooks/usePublishCollection'
+import { useSaveItem } from '~/hooks/useSaveItem'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { type Item } from '~/lib/items'
 import { Button } from '~/components/Button'
@@ -30,7 +31,7 @@ export function ConfirmItemsStep({ address, items, onBusyChange, onBack, onConfi
   const [thumbnailPatch, setThumbnailPatch] = useState<ThumbnailPatch | null>(null)
   const [isThumbnailOpen, setThumbnailOpen] = useState(false)
 
-  const updateItem = useUpdateItem(address)
+  const updateItem = useSaveItem(address)
   const deleteItem = useDeleteItem(address)
   const editingItem = items.find(item => item.id === editingId) ?? null
   const itemContents = useItemContents(isThumbnailOpen ? editingItem : null)

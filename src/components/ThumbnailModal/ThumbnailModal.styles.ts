@@ -21,33 +21,12 @@ export const PreviewArea = styled.div`
     border: 0;
   }
 
-  /* ui2's controls carry their own MUI look; recolor them to the app palette. */
   .zoom-controls {
     top: 16px;
     right: 16px;
-    gap: 2px;
-
-    .MuiButtonBase-root {
-      width: 32px;
-      height: 32px;
-      background-color: ${theme.colors.overlayStrong} !important;
-      color: ${theme.colors.white};
-
-      &:first-of-type {
-        border-radius: ${theme.radius.btnSm} ${theme.radius.btnSm} 0 0;
-      }
-      &:last-of-type {
-        border-radius: 0 0 ${theme.radius.btnSm} ${theme.radius.btnSm};
-      }
-      &:hover {
-        background-color: ${theme.colors.overlayHover} !important;
-      }
-      .MuiSvgIcon-root {
-        fill: ${theme.colors.white};
-      }
-    }
   }
 
+  /* ui2's controls carry their own MUI look; recolor them to the app palette. */
   .translation-controls {
     padding-left: 8px;
 

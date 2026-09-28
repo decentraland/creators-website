@@ -30,6 +30,11 @@ export const Menu = styled.div`
   border-radius: ${theme.radius.btn};
   background: ${theme.colors.modalSurface};
   box-shadow: 0 16px 48px ${theme.colors.overlayStrong};
+
+  &[data-tone='dark'] {
+    border-color: ${theme.editor.line};
+    background: ${theme.editor.surface};
+  }
 `
 
 export const Item = styled.button`

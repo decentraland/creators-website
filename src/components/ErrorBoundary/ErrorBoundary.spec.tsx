@@ -2,7 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TranslationProvider } from '~/intl'
+import { track } from '~/lib/analytics'
 import { ErrorBoundary } from './ErrorBoundary'
+
+vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
 
 function Boom(): never {
   throw new Error('boom')
@@ -30,6 +33,12 @@ describe('ErrorBoundary', () => {
     renderBoundary(<div data-testid="content" />)
     expect(screen.getByTestId('content')).toBeInTheDocument()
     expect(screen.queryByTestId('error-boundary')).not.toBeInTheDocument()
+    expect(track).not.toHaveBeenCalled()
+  })
+
+  it('reports the crash screen under the same event name as the legacy builder', () => {
+    renderBoundary(<Boom />)
+    expect(track).toHaveBeenCalledWith('Error page')
   })
 
   it('shows the fallback with a reload CTA when a child throws', async () => {

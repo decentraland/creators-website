@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { type Entity } from '@dcl/schemas'
+import { errorCode, track } from '~/lib/analytics'
 import { saveItem } from '~/lib/builder'
 import { fetchCatalystContent } from '~/lib/catalyst'
 import { buildResetItem } from '~/lib/itemSync'
@@ -15,11 +16,13 @@ export function useMoveItem(address: string | undefined) {
       return saveItem(address, { ...item, collectionId }, {})
     },
     // Both collections change, so every collection query is refetched rather than the two by id.
-    onSuccess: () => {
+    onSuccess: (_, { item, collectionId }) => {
+      track('Move item', { itemId: item.id, collectionId })
       void queryClient.invalidateQueries({ queryKey: ['collection-items-all'] })
       void queryClient.invalidateQueries({ queryKey: ['collection'] })
       void queryClient.invalidateQueries({ queryKey: ['collections'] })
-    }
+    },
+    onError: (error, { item }) => track('Move item error', { itemId: item.id, error: errorCode(error) })
   })
 }
 
@@ -39,8 +42,10 @@ export function useResetItem(address: string | undefined) {
       return saveItem(address, reset, Object.fromEntries(entries))
     },
     onSuccess: item => {
+      track('Reset changes', { itemId: item.id })
       if (item.collectionId) invalidateCollectionItems(queryClient, item.collectionId)
       void queryClient.invalidateQueries({ queryKey: ['item-entities'] })
-    }
+    },
+    onError: (error, { item }) => track('Reset changes error', { itemId: item.id, error: errorCode(error) })
   })
 }

@@ -12,7 +12,7 @@ export const Body = styled.div`
   overflow-y: auto;
   overflow-x: hidden;
   /* Keeps the scrollbar off the cards and lets the last one clear the footer. */
-  padding: 4px 4px 8px 0;
+  padding: 4px 4px 8px 2px;
 
   &[data-busy] {
     opacity: 0.6;

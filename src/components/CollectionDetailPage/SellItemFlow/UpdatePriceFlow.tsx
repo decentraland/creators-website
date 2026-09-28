@@ -6,8 +6,9 @@ import { isSocialLogin, type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
 import { type ItemListing } from '~/lib/listings'
-import { toSellItemError, type ListingTerms, type SellFailureReason } from '~/lib/sales'
+import { toSellItemError, type ListingTerms, type PricedSale, type SellFailureReason } from '~/lib/sales'
 import { PendingModal } from './PendingModal'
+import { type PriceFormValues } from './PriceField'
 import { SaleErrorModal } from './SaleErrorModal'
 import { SaleSuccessModal } from './SaleSuccessModal'
 import { UpdatePriceModal } from './UpdatePriceModal'
@@ -25,8 +26,8 @@ type Props = {
 }
 
 /**
- * Change a listing's price: the current order is cancelled on chain and a new one is signed with the
- * same beneficiary and expiration. Web3 wallets see the two signatures as steps; social login signs
+ * Change a listing's price or currency: the current order is cancelled on chain and a new one is signed
+ * with the same beneficiary and expiration. Web3 wallets see the two signatures as steps; social login signs
  * silently and only sees "Updating price". Once the old order is gone, a retry re-lists directly.
  */
 export function UpdatePriceFlow({ item, collection, listing, session, onClose }: Props) {
@@ -36,7 +37,7 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
   const [view, setView] = useState<View>('form')
   const [step, setStep] = useState<Step>('cancel')
   const [reason, setReason] = useState<SellFailureReason>('generic')
-  const [credits, setCredits] = useState('')
+  const [values, setValues] = useState<PriceFormValues | undefined>()
   // Set once the old listing is cancelled: from then on only the new order is missing. A ref, because
   // the mutation callbacks close over the render they were created in and nothing renders it.
   const terms = useRef<ListingTerms | null>(null)
@@ -58,8 +59,8 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
     setView('error')
   }
 
-  function submit(value: number) {
-    setCredits(String(value))
+  function submit(formValues: PriceFormValues, price: PricedSale) {
+    setValues(formValues)
     const id = ++attempt.current
     const guard =
       <T,>(fn: (arg: T) => void) =>
@@ -73,7 +74,7 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
         {
           collection,
           item,
-          price: { kind: 'credits', credits: value },
+          price,
           ...terms.current,
           onSigned: guard<void>(() => setView('storing'))
         },
@@ -88,7 +89,7 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
         collection,
         item,
         tradeId: listing.tradeId,
-        credits: value,
+        price,
         onSigned: guard(signed => {
           if (signed === 'cancel') setStep('sign')
           else setView('storing')
@@ -106,7 +107,6 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
     setView('form')
   }
 
-  const currentCredits = listing.currency === 'credits' ? listing.credits : null
   const steps = {
     labels: [t('sell_item_modal.update_price.step_remove'), t('sell_item_modal.update_price.step_confirm')],
     current: step === 'cancel' ? 1 : 2
@@ -115,13 +115,7 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
   switch (view) {
     case 'form':
       return (
-        <UpdatePriceModal
-          item={item}
-          currentCredits={currentCredits}
-          initialCredits={credits}
-          onSubmit={submit}
-          onClose={onClose}
-        />
+        <UpdatePriceModal item={item} listing={listing} initialValues={values} onSubmit={submit} onClose={onClose} />
       )
     case 'signing':
       return (

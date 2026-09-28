@@ -5,16 +5,24 @@ import { config } from '~/config'
 import { useTranslation } from '~/intl'
 import { useProfile } from '~/hooks/useProfile'
 import { useCreditsBalance, useManaBalance } from '~/hooks/useBalances'
+import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useApproveMana, useManaAllowance, usePublishCollection, useRarities } from '~/hooks/usePublishCollection'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
+import { track } from '~/lib/analytics'
 import { type Session } from '~/lib/auth'
 import { getContentsStorageUrl } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
+import { FeatureFlag } from '~/lib/featureFlags'
 import { type Item } from '~/lib/items'
-import { openExternal } from '~/lib/navigation'
+import { createCreditsCheckout } from '~/lib/credits'
+import { type PackSelection, type PackTotals } from '~/lib/creditPacks'
+import { saveTopUpResume } from '~/lib/creditsTopUp'
+import { openExternal, redirectExternal } from '~/lib/navigation'
+import { verifyPublicationFee } from '~/lib/feeVerification'
 import {
   canPayWith,
   getAvailablePaymentMethods,
+  getMaticChainId,
   toPublishError,
   type PaymentMethod,
   type PublishCollectionError,
@@ -26,6 +34,7 @@ import { InfoTooltip } from '~/components/Tooltip'
 import { Checkbox } from '~/components/Checkbox'
 import { ThumbnailMosaic } from '~/components/ThumbnailMosaic'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
+import { BuyCreditsModal } from './BuyCreditsModal'
 import { PaymentMethodCard } from './PaymentMethodCard'
 import { Methods } from './PaymentMethodCard.styles'
 import * as S from './PublishCollectionModal.styles'
@@ -37,7 +46,7 @@ const openLink = (url: string) => (event: React.MouseEvent) => {
   openExternal(url)
 }
 
-type Status = 'idle' | 'approving' | 'confirming'
+type Status = 'idle' | 'checking' | 'approving' | 'confirming'
 
 type Props = {
   collection: Collection
@@ -77,13 +86,18 @@ export function PaymentStep({
   const profile = useProfile(address)
   const fee = useMemo(() => getPublicationFee(rarities.data ?? [], items.length), [rarities.data, items.length])
 
-  const methods = useMemo(() => getAvailablePaymentMethods(mana.data), [mana.data])
+  const creditsFlag = useFeatureFlag(FeatureFlag.SHOP_CREDITS_FOR_COLLECTIONS_FEE)
+  const methods = useMemo(
+    () => getAvailablePaymentMethods(mana.data, creditsFlag.enabled),
+    [mana.data, creditsFlag.enabled]
+  )
   const allowance = useManaAllowance(address, methods.includes('mana'))
   const approve = useApproveMana(session)
   const publish = usePublishCollection(session)
 
   const [status, setStatus] = useState<Status>('idle')
   const [approveFailed, setApproveFailed] = useState(false)
+  const [isBuyingCredits, setBuyingCredits] = useState(false)
   const isSubmitting = status !== 'idle'
 
   useEffect(() => {
@@ -93,23 +107,36 @@ export function PaymentStep({
   useBeforeUnloadGuard(isSubmitting)
 
   // A lone method is the selection; a vanished one (balance refetch) falls back to the first available.
+  // The still-unread flag would offer a list the creator never sees, so nothing is selected until it lands.
   useEffect(() => {
+    if (creditsFlag.isLoading) return
     if (paymentMethod && !methods.includes(paymentMethod)) onPaymentMethodChange(methods[0])
     else if (!paymentMethod && methods.length === 1) onPaymentMethodChange(methods[0])
-  }, [methods, paymentMethod, onPaymentMethodChange])
+  }, [methods, paymentMethod, onPaymentMethodChange, creditsFlag.isLoading])
 
   const balances = { credits: credits.data?.credits ?? 0, manaWei: mana.data ?? 0n }
+  const creditsShortfall = Math.max(0, (fee?.total.credits ?? 0) - balances.credits)
   const selectedIsPayable =
     !!fee && !!paymentMethod && methods.includes(paymentMethod) && canPayWith(paymentMethod, fee, balances)
-  const canSubmit = selectedIsPayable && accepted && !isSubmitting && !credits.isLoading
+  const canSubmit = selectedIsPayable && accepted && !isSubmitting && !credits.isLoading && !creditsFlag.isLoading
 
   async function handleSubmit() {
     if (!fee || !paymentMethod || !canSubmit) return
     setApproveFailed(false)
+    // The quote is builder-server's word; the contract's own price decides whether a wallet prompt is warranted.
+    setStatus('checking')
+    try {
+      await verifyPublicationFee(fee, items, getMaticChainId())
+    } catch (error) {
+      setStatus('idle')
+      void rarities.refetch()
+      onFailed(toPublishError(error))
+      return
+    }
     if (paymentMethod === 'mana' && (allowance.data ?? 0n) < fee.total.manaWei) {
       setStatus('approving')
       try {
-        await approve.mutateAsync()
+        await approve.mutateAsync(fee.total.manaWei)
       } catch (error) {
         setStatus('idle')
         if (toPublishError(error).reason !== 'rejected') setApproveFailed(true)
@@ -129,6 +156,34 @@ export function PaymentStep({
         }
       }
     )
+  }
+
+  function openBuyCredits() {
+    track('Open buy credits', { collectionId: collection.id, shortfall: creditsShortfall })
+    setBuyingCredits(true)
+  }
+
+  // Leaves for Stripe's hosted page; the hand-off record brings the creator back to this step.
+  async function buyCredits(selection: PackSelection, totals: PackTotals) {
+    const checkout = await createCreditsCheckout(address, selection)
+    // Blocked storage only costs the wizard's reopening; the credits still land, so the checkout goes on.
+    const resumeSaved = saveTopUpResume({
+      collectionId: collection.id,
+      orderId: checkout.orderId,
+      paymentMethod,
+      termsAccepted: accepted
+    })
+    track('Start credits checkout', {
+      collectionId: collection.id,
+      orderId: checkout.orderId,
+      packId: selection.packId,
+      quantity: selection.quantity,
+      credits: totals.credits,
+      usd: totals.usd,
+      shortfall: creditsShortfall,
+      resumeSaved
+    })
+    redirectExternal(checkout.url)
   }
 
   const thumbnails = useMemo(
@@ -209,7 +264,7 @@ export function PaymentStep({
                 {t('publish_collection_modal.payment_step.retry')}
               </Button>
             </S.InlineNote>
-          ) : !fee ? (
+          ) : !fee || creditsFlag.isLoading ? (
             <S.InlineNote data-testid="publish-fee-loading">
               <S.Spinner aria-hidden />
             </S.InlineNote>
@@ -230,6 +285,7 @@ export function PaymentStep({
                   }
                   hasEnough={canPayWith(method, fee, balances)}
                   getMoreUrl={method === 'credits' ? `${config.get('SHOP_URL')}/credits` : config.get('ACCOUNT_URL')}
+                  onGetMore={method === 'credits' ? openBuyCredits : undefined}
                   selected={paymentMethod === method}
                   showCheckbox={methods.length > 1}
                   compactBuy={methods.length > 1}
@@ -279,6 +335,14 @@ export function PaymentStep({
           {t('publish_collection_modal.payment_step.submit')}
         </Button>
       </S.Footer>
+      {isBuyingCredits && (
+        <BuyCreditsModal
+          balance={balances.credits}
+          shortfall={creditsShortfall}
+          onCancel={() => setBuyingCredits(false)}
+          onBuy={buyCredits}
+        />
+      )}
     </S.Step>
   )
 }

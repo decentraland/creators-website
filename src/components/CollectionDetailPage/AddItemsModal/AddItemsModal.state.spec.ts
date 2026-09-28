@@ -67,6 +67,13 @@ function collectionItem(id: string, bodyShapes: string[], overrides: Partial<Ite
 
 const MALE_URN = 'urn:decentraland:off-chain:base-avatars:BaseMale'
 
+describe('createDraft', () => {
+  it('names the draft after the file unless told to leave it blank', () => {
+    expect(createDraft(new File([blob()], 'red_hat.glb')).name).toBe('red hat')
+    expect(createDraft(new File([blob()], 'model.glb'), { nameFromFile: false }).name).toBe('')
+  })
+})
+
 describe('review flow', () => {
   it('checking a draft advances the selection to the next unchecked one', () => {
     const [a, b, c] = [readyDraft(), readyDraft(), readyDraft()]

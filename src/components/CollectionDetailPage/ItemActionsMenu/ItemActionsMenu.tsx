@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
 import { useDraftCollections } from '~/hooks/useCollections'
+import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useMoveItem, useResetItem } from '~/hooks/useItem'
 import { type ItemSync } from '~/hooks/useItemSync'
 import { useDeleteItem } from '~/hooks/usePublishCollection'
 import { copyToClipboard } from '~/lib/clipboard'
+import { FeatureFlag } from '~/lib/featureFlags'
 import {
   canManageCollectionItems,
   canSellCollectionItems,
@@ -66,12 +68,15 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
   const canCopyUrn = !!item.urn
   const canEditDraft = !compact && canManage && !collection.isPublished && !isCollectionLocked(collection)
   const onMarket = hasBeenApproved(collection) && !!listing && !!session
+  const canListItems = useFeatureFlag(FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS).enabled
   // An off-chain order is cancelled by whoever may sell (the owner, who signed it); a legacy store
   // price is cleared on the collection contract, which only the creator and collaborators may edit.
   const canRemove =
     onMarket &&
-    (listing.tradeId ? canSellCollectionItems(collection, address) : canManageCollectionItems(collection, address))
-  const canEditPrice = !!session && canEditItemPrice(collection, item, listing, address)
+    (listing.tradeId
+      ? canListItems && canSellCollectionItems(collection, address)
+      : canManageCollectionItems(collection, address))
+  const canEditPrice = canListItems && !!session && canEditItemPrice(collection, item, listing, address)
   const canReset = !compact && canManage && sync?.status === ItemSyncStatus.UNSYNCED && !!sync.entity
   const canPreview = !compact
 

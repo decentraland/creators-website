@@ -1,14 +1,16 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from '~/intl'
 import { useAllCollectionItems, useSaveCollection } from '~/hooks/useCollection'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
+import { type TopUpResume } from '~/lib/creditsTopUp'
 import { type PaymentMethod, type PublishCollectionError, type PublishResult } from '~/lib/publishCollection'
 import { Modal } from '~/components/Modal'
 import { ConfirmItemsStep } from './ConfirmItemsStep'
 import { ConfirmNameStep } from './ConfirmNameStep'
 import { PaymentStep } from './PaymentStep'
 import { PublishErrorModal } from './PublishErrorModal'
+import { TopUpOutcome } from './TopUpOutcome'
 import { StepIndicator } from '~/components/StepIndicator'
 import * as S from './PublishCollectionModal.styles'
 
@@ -20,9 +22,16 @@ enum Step {
 
 const TOTAL_STEPS = 3
 
+/** Where a creator back from buying credits picks the wizard up: the payment step, with the order to settle. */
+export type PublishResume = Pick<TopUpResume, 'paymentMethod' | 'termsAccepted'> & {
+  /** Null when the checkout was cancelled: nothing to wait for. */
+  orderId: string | null
+}
+
 type Props = {
   collection: Collection
   session: Session
+  resume?: PublishResume
   onClose: () => void
   onPublished: (result: PublishResult) => void
 }
@@ -31,15 +40,17 @@ type Props = {
  * The three-step publish wizard: confirm name → review items → confirm & pay. A failed publish
  * swaps in the error dialog; TRY AGAIN comes back here on the payment step with everything kept.
  */
-export function PublishCollectionModal({ collection, session, onClose, onPublished }: Props) {
+export function PublishCollectionModal({ collection, session, resume, onClose, onPublished }: Props) {
   const { t } = useTranslation()
   const { address } = session
 
-  const [step, setStep] = useState<Step>(Step.Name)
+  const [step, setStep] = useState<Step>(resume ? Step.Payment : Step.Name)
   const [error, setError] = useState<PublishCollectionError | null>(null)
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null)
-  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(resume?.paymentMethod ?? null)
+  const [termsAccepted, setTermsAccepted] = useState(resume?.termsAccepted ?? false)
   const [isStepBusy, setStepBusy] = useState(false)
+  const [settlingOrder, setSettlingOrder] = useState<string | null>(resume?.orderId ?? null)
+  const settleOrder = useCallback(() => setSettlingOrder(null), [])
 
   const itemsQuery = useAllCollectionItems(address, collection.id)
   const items = itemsQuery.data ?? []
@@ -117,6 +128,7 @@ export function PublishCollectionModal({ collection, session, onClose, onPublish
           />
         )}
       </S.Main>
+      {settlingOrder && <TopUpOutcome address={address} orderId={settlingOrder} onDone={settleOrder} />}
     </Modal>
   )
 }

@@ -9,6 +9,7 @@ import { type ContractCall } from '~/lib/auth'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS } from '~/lib/builder'
 import { isCollectionLocked, type Collection } from '~/lib/collections'
 import { CreditsServerError, type ExternalCall, type PublicationAuthorization } from '~/lib/credits'
+import { PublicationFeeMismatchError } from '~/lib/feeVerification'
 import { hasOldHashedContents } from '~/lib/itemFactory'
 import { isMissingSmartWearableVideo, type Item } from '~/lib/items'
 import { weiToUsdCents, type PublicationFee } from '~/lib/publishFee'
@@ -37,8 +38,13 @@ export function getMaticChainId(): number {
   return Number(config.get('MATIC_CHAIN_ID'))
 }
 
-/** Which payment methods to offer: credits always, MANA only when the wallet holds some. */
-export function getAvailablePaymentMethods(manaBalanceWei: bigint | undefined): PaymentMethod[] {
+/**
+ * Which payment methods to offer: credits always, MANA only when the wallet holds some. With credits
+ * off (`shop-credits-for-collections-fee`), MANA is the only way to pay and shows at any balance —
+ * an empty wallet then sees the card disabled with its Get MANA link rather than no card at all.
+ */
+export function getAvailablePaymentMethods(manaBalanceWei: bigint | undefined, creditsEnabled = true): PaymentMethod[] {
+  if (!creditsEnabled) return ['mana']
   const methods: PaymentMethod[] = ['credits']
   if (manaBalanceWei !== undefined && manaBalanceWei > 0n) methods.push('mana')
   return methods
@@ -136,7 +142,7 @@ export function buildUseCreditsCall(
 }
 
 export type PublishFailureReason =
-  'missing_salt' | 'unsynced' | 'locked' | 'insufficient_credits' | 'rejected' | 'generic'
+  'missing_salt' | 'unsynced' | 'locked' | 'insufficient_credits' | 'fee_mismatch' | 'rejected' | 'generic'
 
 export class PublishCollectionError extends Error {
   reason: PublishFailureReason
@@ -151,6 +157,7 @@ export class PublishCollectionError extends Error {
 /** Maps any failure of the sequence to the reason the UI shows copy for. */
 export function toPublishError(error: unknown): PublishCollectionError {
   if (error instanceof PublishCollectionError) return error
+  if (error instanceof PublicationFeeMismatchError) return new PublishCollectionError('fee_mismatch', error.message)
   if (error instanceof CreditsServerError && error.code === 'insufficient_credits') {
     return new PublishCollectionError('insufficient_credits', error.message)
   }
@@ -300,6 +307,17 @@ export async function syncPublishedItems(
   }
 }
 
+/** The publish transaction was mined but reverted: nothing was charged and nothing went on chain. */
+export class PublishTransactionRevertedError extends Error {
+  txHash: string
+
+  constructor(txHash: string) {
+    super(`Publish transaction ${txHash} reverted`)
+    this.name = 'PublishTransactionRevertedError'
+    this.txHash = txHash
+  }
+}
+
 /** Waits for the publish transaction to be mined, then runs the server sync. */
 export async function consolidatePublishedCollection(
   collectionId: string,
@@ -309,6 +327,6 @@ export async function consolidatePublishedCollection(
   retryDelayMs = CONSOLIDATE_RETRY_DELAY_MS
 ): Promise<void> {
   const mined = await deps.waitForTransaction(txHash)
-  if (!mined) throw new Error(`Publish transaction ${txHash} reverted`)
+  if (!mined) throw new PublishTransactionRevertedError(txHash)
   await syncPublishedItems(collectionId, deps, retries, retryDelayMs)
 }

@@ -1,0 +1,135 @@
+import { useCallback, useMemo, useState } from 'react'
+import { useMediaQuery } from '~/hooks/useMediaQuery'
+import { englishMessage, useTranslation } from '~/intl'
+import { OVERVIEW_MOBILE_QUERY, OverviewSection, trackClick } from '~/lib/overviewAnalytics'
+import { AnimatedSection } from '../AnimatedSection'
+import { Carousel } from '../Carousel'
+import { createCards, type CreateCard as CreateCardData, type CreateTab } from '../data'
+import * as S from './CreateCards.styles'
+
+// The carousel renders every card three times, so DOM ids carry the slide they belong to.
+type TabContentProps = { card: CreateCardData; tab: CreateTab; slide: number }
+
+const panelId = (card: CreateCardData, tab: CreateTab, slide: number) => `create-panel-${card.id}-${tab.id}-${slide}`
+
+const TabContent = ({ card, tab, slide }: TabContentProps) => {
+  const { t } = useTranslation()
+  const mobile = useMediaQuery(OVERVIEW_MOBILE_QUERY)
+  const links = useMemo(() => tab.links.filter(link => !mobile || !link.desktopOnly), [tab.links, mobile])
+  const prefix = `overview.create.cards.${card.id}.tabs.${tab.id}`
+
+  return (
+    <S.TabPanel role="tabpanel" id={panelId(card, tab, slide)} data-testid="overview-create-tab-panel">
+      <S.InfoBlock>
+        <S.InfoTitle>{t(`${prefix}.heading`)}</S.InfoTitle>
+        <S.InfoBody>{t(`${prefix}.body`)}</S.InfoBody>
+      </S.InfoBlock>
+      <S.InfoBlock>
+        <S.InfoTitle>{t('overview.create.required_skills')}</S.InfoTitle>
+        <S.Skills>
+          {tab.skills.map(skill => (
+            <S.Skill key={skill}>{t(`overview.create.skills.${skill}`)}</S.Skill>
+          ))}
+        </S.Skills>
+      </S.InfoBlock>
+      <S.InfoBlock>
+        <S.InfoTitle>{t('overview.create.useful_links')}</S.InfoTitle>
+        <S.Links>
+          {links.map(link => {
+            const labelKey = `${prefix}.links.${link.id}`
+            return (
+              <S.Link
+                key={link.id}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="overview-create-link"
+                data-place={OverviewSection.CREATE}
+                data-card={card.analyticsCard}
+                data-tab={tab.analyticsTab}
+                data-title={englishMessage(labelKey)}
+                onClick={trackClick}
+              >
+                {t(labelKey)}
+              </S.Link>
+            )
+          })}
+        </S.Links>
+      </S.InfoBlock>
+    </S.TabPanel>
+  )
+}
+
+const CreateCard = ({ card, slide }: { card: CreateCardData; slide: number }) => {
+  const { t } = useTranslation()
+  const [activeTabId, setActiveTabId] = useState(card.tabs[0].id)
+  const activeTab = useMemo(
+    () => card.tabs.find(tab => tab.id === activeTabId) ?? card.tabs[0],
+    [card.tabs, activeTabId]
+  )
+  const title = t(`overview.create.cards.${card.id}.title`)
+
+  return (
+    <S.Card data-testid="overview-create-card" data-card={card.id}>
+      <S.Figure style={{ backgroundImage: `url(${card.background})` }}>
+        <img src={card.image} alt="" loading="lazy" />
+      </S.Figure>
+      <S.Info>
+        <S.CardTitle>{title}</S.CardTitle>
+        <S.CardDescription>{t(`overview.create.cards.${card.id}.description`)}</S.CardDescription>
+        {card.tabs.length > 1 && (
+          <S.Tabs role="tablist" aria-label={title}>
+            {card.tabs.map(tab => (
+              <S.Tab
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={tab.id === activeTabId}
+                aria-controls={panelId(card, tab, slide)}
+                data-testid="overview-create-tab"
+                data-selected={tab.id === activeTabId || undefined}
+                data-place={OverviewSection.CREATE}
+                data-card={card.analyticsCard}
+                data-tab={tab.analyticsTab}
+                onClick={event => {
+                  trackClick(event)
+                  setActiveTabId(tab.id)
+                }}
+              >
+                {t(`overview.create.cards.${card.id}.tabs.${tab.id}.title`)}
+              </S.Tab>
+            ))}
+          </S.Tabs>
+        )}
+        <TabContent card={card} tab={activeTab} slide={slide} />
+      </S.Info>
+    </S.Card>
+  )
+}
+
+const keyExtractor = (card: CreateCardData) => card.id
+
+const CreateCards = () => {
+  const { t } = useTranslation()
+  const renderCard = useCallback((card: CreateCardData, slide: number) => <CreateCard card={card} slide={slide} />, [])
+  return (
+    <AnimatedSection section={OverviewSection.CREATE}>
+      <S.Section data-testid="overview-create">
+        <S.Title>
+          {t('overview.create.title')}
+          <span>{t('overview.create.title_highlight')}</span>
+          {t('overview.create.title_second_part')}
+        </S.Title>
+        <Carousel
+          items={createCards}
+          renderItem={renderCard}
+          keyExtractor={keyExtractor}
+          label={t('overview.create.title_highlight')}
+          slideWidth={1200}
+        />
+      </S.Section>
+    </AnimatedSection>
+  )
+}
+
+export { CreateCards }

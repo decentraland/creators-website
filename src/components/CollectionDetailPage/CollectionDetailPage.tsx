@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type DragEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Add as AddIcon,
@@ -11,6 +11,7 @@ import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
 import { ITEMS_PAGE_SIZE, useAllCollectionItems, useCollection, useSaveCollection } from '~/hooks/useCollection'
 import { BuilderServerError } from '~/lib/builder'
+import { FeatureFlag } from '~/lib/featureFlags'
 import {
   CollectionDisplayStatus,
   canSellCollectionItems,
@@ -19,6 +20,10 @@ import {
   hasCollectionRole,
   isCollectionLocked
 } from '~/lib/collections'
+import { parseUuidParam } from '~/lib/ids'
+import { track } from '~/lib/analytics'
+import { cancelCreditsOrder } from '~/lib/credits'
+import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'
 import { type RoleKind } from '~/lib/collectionRoles'
 import { canSendCollectionItems } from '~/lib/mint'
 import { ItemType, canEditItemDetails, canEditItemPrice, type Item } from '~/lib/items'
@@ -31,8 +36,10 @@ import {
   parseItemTypeFilter
 } from '~/lib/itemFilters'
 import { MAX_PUBLISH_ITEMS, getPublishBlocker } from '~/lib/publishCollection'
-import { useItemContents, useSyncPublishedItems, useUpdateItem } from '~/hooks/usePublishCollection'
+import { useSaveItem } from '~/hooks/useSaveItem'
+import { useItemContents, useSyncPublishedItems } from '~/hooks/usePublishCollection'
 import { useCollectionListings } from '~/hooks/useCollectionListings'
+import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { hasPendingChanges } from '~/lib/itemSync'
@@ -55,7 +62,7 @@ import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { AddItemsModal } from './AddItemsModal'
 import { ItemActionsMenu } from './ItemActionsMenu'
 import { ItemListRow } from './ItemListRow'
-import { PublishCollectionModal, PublishSuccessModal } from './PublishCollectionModal'
+import { PublishCollectionModal, PublishSuccessModal, type PublishResume } from './PublishCollectionModal'
 import { SellItemFlow, UpdatePriceFlow } from './SellItemFlow'
 import { ManageRolesFlow } from './ManageRolesFlow'
 import { SendItemsFlow } from './SendItemsFlow'
@@ -67,7 +74,8 @@ const CollectionDetailPage = () => {
   const { t } = useTranslation()
   const intl = useIntl()
   const navigate = useNavigate()
-  const { collectionId } = useParams()
+  const { collectionId: collectionIdParam } = useParams()
+  const collectionId = parseUuidParam(collectionIdParam)
   const { session, restored, signIn } = useWallet()
   const address = session?.address
 
@@ -77,6 +85,8 @@ const CollectionDetailPage = () => {
 
   const [isRenameOpen, setRenameOpen] = useState(false)
   const [publishView, setPublishView] = useState<'closed' | 'wizard' | 'success'>('closed')
+  const [publishResume, setPublishResume] = useState<PublishResume | undefined>(undefined)
+  const topUpReturn = useMemo(() => parseTopUpReturn(searchParams), [searchParams])
   const [addItemsFiles, setAddItemsFiles] = useState<File[] | null>(null)
   const [isDragging, setDragging] = useState(false)
   const [isPreviewLaunching, setPreviewLaunching] = useState(false)
@@ -86,10 +96,30 @@ const CollectionDetailPage = () => {
   const [priceEdit, setPriceEdit] = useState<{ item: Item; listing: ItemListing & { tradeId: string } } | null>(null)
   const filesInputRef = useRef<HTMLInputElement>(null)
 
+  // Back from buying credits: reopen the wizard on the payment step the creator left. Waits for the
+  // session, since a signed-out visitor is sent to sign in and comes back to this same URL.
+  useEffect(() => {
+    if (!topUpReturn || !restored || !session) return
+    const resume = readTopUpResume()
+    clearTopUpResume()
+    setSearchParams(prev => stripTopUpReturn(prev), { replace: true })
+    if (!resume || resume.collectionId !== collectionId || resume.orderId !== topUpReturn.orderId) return
+    if (topUpReturn.canceled) {
+      track('Credits checkout canceled', { collectionId, orderId: topUpReturn.orderId })
+      void cancelCreditsOrder(session.address, topUpReturn.orderId)
+    }
+    setPublishResume({
+      paymentMethod: resume.paymentMethod,
+      termsAccepted: resume.termsAccepted,
+      orderId: topUpReturn.canceled ? null : topUpReturn.orderId
+    })
+    setPublishView('wizard')
+  }, [topUpReturn, restored, session, collectionId, setSearchParams])
+
   const collectionQuery = useCollection(address, collectionId)
   const itemsQuery = useAllCollectionItems(address, collectionId)
   const saveCollection = useSaveCollection(address)
-  const updateItem = useUpdateItem(address)
+  const updateItem = useSaveItem(address)
   const itemContents = useItemContents(thumbnailItem)
   const showToast = useNotifications(state => state.showToast)
   // Small screens are a viewer: the in-row edit shortcuts are desktop-only, like the menu's edit actions.
@@ -117,8 +147,10 @@ const CollectionDetailPage = () => {
     collection && getCollectionDisplayStatus(collection) === CollectionDisplayStatus.UNDER_REVIEW
       ? t('collection_status.under_review_hint')
       : null
-  const isApprovedForSale = !!collection && hasBeenApproved(collection)
-  const isSeller = !!collection && canSellCollectionItems(collection, address)
+  // Sales here are off-chain public orders only: with the flag off there is no other way to list an item.
+  const canListItems = useFeatureFlag(FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS).enabled
+  const isApprovedForSale = canListItems && !!collection && hasBeenApproved(collection)
+  const isSeller = canListItems && !!collection && canSellCollectionItems(collection, address)
   const canSend = useMemo(() => !!collection && canSendCollectionItems(collection, address), [collection, address])
   const [isSending, setSending] = useState(false)
   const [managingRoles, setManagingRoles] = useState<RoleKind | null>(null)
@@ -133,6 +165,7 @@ const CollectionDetailPage = () => {
   // builder-server serves published collections to any signer; addresses with no role on it get
   // the same "not found" as a rejected request, so strangers can't browse other creators' work.
   const isNotFound =
+    !collectionId ||
     (collectionQuery.isError &&
       collectionQuery.error instanceof BuilderServerError &&
       NOT_FOUND_STATUSES.includes(collectionQuery.error.status)) ||
@@ -338,7 +371,11 @@ const CollectionDetailPage = () => {
                     data-desktop-only
                     data-testid="publish-collection"
                     aria-disabled={publishBlocker ? true : undefined}
-                    onClick={() => !publishBlocker && setPublishView('wizard')}
+                    onClick={() => {
+                      if (publishBlocker) return
+                      setPublishResume(undefined)
+                      setPublishView('wizard')
+                    }}
                   >
                     {t('collection_detail_page.publish')}
                   </Button>
@@ -473,7 +510,10 @@ const CollectionDetailPage = () => {
                     canSell={isApprovedForSale && item.isPublished && !!item.tokenId}
                     onPutOnSale={isSeller ? setSellingItem : undefined}
                     onEditPrice={
-                      !compact && session && canEditItemPrice(collection, item, listingFor(item), address)
+                      canListItems &&
+                      !compact &&
+                      session &&
+                      canEditItemPrice(collection, item, listingFor(item), address)
                         ? openPriceEdit
                         : undefined
                     }
@@ -539,6 +579,7 @@ const CollectionDetailPage = () => {
             <PublishCollectionModal
               collection={collection}
               session={session}
+              resume={publishResume}
               onClose={() => setPublishView('closed')}
               onPublished={() => setPublishView('success')}
             />

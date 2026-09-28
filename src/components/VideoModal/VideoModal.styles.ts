@@ -26,6 +26,13 @@ export const Player = styled.video`
   background: ${theme.colors.text};
 `
 
+export const Loading = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+`
+
 export const Actions = styled.div`
   display: flex;
   justify-content: flex-end;

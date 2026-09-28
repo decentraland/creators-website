@@ -1,4 +1,5 @@
 import { Button } from '~/components/Button'
+import { Confetti } from '~/components/Confetti'
 import { WarningIcon } from '~/components/Icons'
 import { Modal } from '~/components/Modal'
 import * as S from './ConfirmModal.styles'
@@ -19,6 +20,8 @@ type Props = {
   /** While the confirm action is in flight: blocks closing, disables cancel, spins the confirm button. */
   busy?: boolean
   showClose?: boolean
+  /** Rains the purchase confetti over the dialog: for a celebration, never a confirmation. */
+  celebrate?: boolean
   onClose: () => void
   cancel?: Action
   confirm?: Action
@@ -33,6 +36,7 @@ export function ConfirmModal({
   error,
   busy = false,
   showClose = false,
+  celebrate = false,
   onClose,
   cancel,
   confirm,
@@ -40,6 +44,7 @@ export function ConfirmModal({
 }: Props) {
   return (
     <Modal title={title} onClose={onClose} closeDisabled={busy} hideTitle showClose={showClose} testId={testId}>
+      {celebrate && <Confetti />}
       <S.Wrap data-art={art ? 'image' : 'icon'}>
         {art ? (
           <S.Art src={art.src} alt="" />

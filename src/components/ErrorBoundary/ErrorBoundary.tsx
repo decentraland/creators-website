@@ -1,5 +1,7 @@
-import { Component, type ReactNode } from 'react'
+import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { useTranslation } from '~/intl'
+import { track } from '~/lib/analytics'
+import { captureError } from '~/lib/monitoring'
 import * as S from './ErrorBoundary.styles'
 
 type Props = { children: ReactNode }
@@ -11,6 +13,11 @@ export class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(): State {
     return { hasError: true }
+  }
+
+  componentDidCatch(error: unknown, info: ErrorInfo) {
+    captureError(error, { flow: 'render', component_stack: info.componentStack })
+    track('Error page')
   }
 
   render() {

@@ -26,7 +26,7 @@ describe('Footer', () => {
 
     // Copy re-renders in Spanish and the choice survives a reload.
     expect(screen.getAllByText('Recursos').length).toBeGreaterThan(0)
-    expect(localStorage.getItem('wemotes:locale')).toBe('es')
+    expect(localStorage.getItem('creators:locale')).toBe('es')
   })
 
   it('closes the language menu with Escape and returns focus to the trigger', async () => {
@@ -57,5 +57,12 @@ describe('Footer', () => {
     fireEvent.click(section)
     expect(section).toHaveAttribute('aria-expanded', 'false')
     expect(panel).not.toHaveAttribute('data-open')
+  })
+
+  it('keeps the newsletter embed from navigating the page', () => {
+    renderFooter()
+    const frame = screen.getByTestId('footer-newsletter-frame')
+    expect(frame).toHaveAttribute('sandbox')
+    expect(frame.getAttribute('sandbox')).not.toContain('allow-top-navigation')
   })
 })

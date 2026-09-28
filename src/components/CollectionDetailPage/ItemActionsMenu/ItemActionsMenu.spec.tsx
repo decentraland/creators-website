@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { FeatureFlag } from '~/lib/featureFlags'
+import { setFeatureFlags } from '~/test/featureFlags'
 import { type ReactNode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -13,6 +15,14 @@ import { useNotifications } from '~/lib/notifications'
 import { useWallet } from '~/store/wallet'
 import { type Session } from '~/lib/auth'
 import { ItemActionsMenu } from './ItemActionsMenu'
+
+vi.mock('~/lib/featureFlags', async () => {
+  const actual = await vi.importActual<typeof import('~/lib/featureFlags')>('~/lib/featureFlags')
+  const mock = await import('~/test/featureFlags')
+  return { ...actual, getIsFeatureEnabled: mock.getIsFeatureEnabled }
+})
+
+beforeEach(() => setFeatureFlags(FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS, FeatureFlag.CREDITS_PRIMARY_LISTINGS))
 
 vi.mock('~/lib/builder', () => ({
   saveItem: vi.fn(),
@@ -177,6 +187,17 @@ describe('ItemActionsMenu', () => {
     expect(copyToClipboard).toHaveBeenCalledWith(publishedItem.urn)
     await waitFor(() => expect(useNotifications.getState().toasts[0]?.message).toMatch(/urn/i))
     expect(screen.queryByTestId('item-actions-menu')).not.toBeInTheDocument()
+  })
+
+  it('offers no sale action on an off-chain listing while public item orders are off', async () => {
+    setFeatureFlags()
+    renderMenu({
+      item: publishedItem,
+      collection: published,
+      listing: { itemId: '0', tradeId: 'trade-1', currency: 'credits', credits: 5 }
+    })
+    const menu = await openMenu()
+    expect(ids(menu)).toEqual(['item-copy-urn', 'item-preview'])
   })
 
   it('keeps the remove-from-sale flow open after the listing is gone from the row', async () => {

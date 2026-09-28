@@ -10,15 +10,19 @@ export type CollectionsFilters = {
   search: string
   status: CollectionStatusFilter
   sort?: CollectionSort
+  limit?: number
 }
 
-export function useCollections(address: string | undefined, { page, search, status, sort }: CollectionsFilters) {
+export function useCollections(
+  address: string | undefined,
+  { page, search, status, sort, limit = COLLECTIONS_PAGE_SIZE }: CollectionsFilters
+) {
   return useQuery({
-    queryKey: ['collections', address, page, search, status, sort],
+    queryKey: ['collections', address, page, search, status, sort, limit],
     queryFn: () =>
       fetchCollections(address!, {
         page,
-        limit: COLLECTIONS_PAGE_SIZE,
+        limit,
         q: search || undefined,
         type: CollectionType.STANDARD,
         sort,

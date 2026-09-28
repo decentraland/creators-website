@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { errorCode, track } from '~/lib/analytics'
 import { fetchAllCollectionItems, fetchCollection, saveCollection, deleteCollection } from '~/lib/builder'
 import { buildCollectionInitializeData } from '~/lib/saveCollection'
 import { type Collection } from '~/lib/collections'
@@ -15,9 +16,14 @@ export function useCollection(address: string | undefined, collectionId: string 
 }
 
 /** Every item of the collection: the detail page filters and pages them client-side. */
+/** The cache key of the all-items query, so callers can read or patch it without restating it. */
+export function allCollectionItemsKey(address: string | undefined, collectionId: string | undefined) {
+  return ['collection-items-all', address, collectionId] as const
+}
+
 export function useAllCollectionItems(address: string | undefined, collectionId: string | undefined) {
   return useQuery({
-    queryKey: ['collection-items-all', address, collectionId],
+    queryKey: allCollectionItemsKey(address, collectionId),
     queryFn: () => fetchAllCollectionItems(address!, collectionId!),
     enabled: !!address && !!collectionId,
     staleTime: 30_000
@@ -39,9 +45,12 @@ export function useSaveCollection(address: string | undefined) {
       return saveCollection(address, collection, data)
     },
     onSuccess: saved => {
+      track('Save collection', { collectionId: saved.id, item_count: saved.itemCount })
       queryClient.setQueryData(['collection', address, saved.id], saved)
       void queryClient.invalidateQueries({ queryKey: ['collections'] })
-    }
+    },
+    onError: (error, collection) =>
+      track('Save collection error', { collectionId: collection.id, error: errorCode(error) })
   })
 }
 
@@ -54,8 +63,10 @@ export function useDeleteCollection(address: string | undefined) {
       return collectionId
     },
     onSuccess: collectionId => {
+      track('Delete collection', { collectionId })
       queryClient.removeQueries({ queryKey: ['collection', address, collectionId] })
       void queryClient.invalidateQueries({ queryKey: ['collections'] })
-    }
+    },
+    onError: (error, collectionId) => track('Delete collection error', { collectionId, error: errorCode(error) })
   })
 }

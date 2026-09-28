@@ -11,10 +11,8 @@ import { useTranslation } from '~/intl'
 import { config } from '~/config'
 import * as S from './NavBar.styles'
 
-// Overview (the creator home) lives in the sites repo at /create, and Scenes and Land in the legacy
-// builder web app — none of them are routes of this SPA, so all three are plain same-tab links.
+// Scenes and Land live in the legacy builder web app, not in this SPA, so both are plain same-tab links.
 const builderUrl = config.get('BUILDER_URL')
-const createUrl = config.get('CREATE_URL')
 const shopCreditsUrl = `${config.get('SHOP_URL')}/credits`
 const accountUrl = config.get('ACCOUNT_URL')
 
@@ -74,7 +72,9 @@ const NavBar = () => {
 
       <S.Subnav data-testid="subnav" data-scrolled={scrolled || undefined}>
         <S.Tabs data-testid="subnav-tabs">
-          <a href={createUrl}>{t('nav.overview')}</a>
+          <NavLink to="/" end>
+            {t('nav.overview')}
+          </NavLink>
           <NavLink to="/collections" className={() => (collectionsActive ? 'active' : '')}>
             {t('nav.collections')}
           </NavLink>

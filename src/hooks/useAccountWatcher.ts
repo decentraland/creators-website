@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { ProviderType } from '@dcl/schemas'
+import { reset as resetAnalytics } from '~/lib/analytics'
 import { useWallet } from '~/store/wallet'
 
 type Eip1193 = {
@@ -26,6 +27,9 @@ export function useAccountWatcher() {
       const accounts = (args[0] as string[] | undefined) ?? []
       const next = accounts[0]?.toLowerCase()
       if (next === current) return
+      // Drop the identity↔anonymousId link first: the reload re-identifies, and without this the two
+      // accounts would end up sharing one anonymous visitor.
+      resetAnalytics()
       window.location.reload()
     }
 

@@ -30,6 +30,8 @@ export type Session = {
   web3Provider: ethers.providers.Web3Provider
   identity: AuthIdentity
   providerType: ProviderType
+  /** The wallet behind the provider ("Trust Wallet" over WalletConnect, …), when it names itself. */
+  walletName?: string
 }
 
 async function toSession(res: {
@@ -84,7 +86,8 @@ export async function restoreSession(): Promise<Session | null> {
     const connection = await getConnection()
     const res = await connection.tryPreviousConnection()
     if (!res.account || !localStorageGetIdentity(res.account.toLowerCase())) return null
-    return await toSession(res)
+    const session = await toSession(res)
+    return { ...session, walletName: connection.getWalletName() }
   } catch {
     return null
   }

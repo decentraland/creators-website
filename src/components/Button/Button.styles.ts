@@ -76,6 +76,77 @@ export const Root = styled.button`
     min-width: 0;
     padding: 0;
   }
+
+  /* The sites landing recipes below (MUI medium, the FAQ "see more" and the hero download CTA). */
+  &[data-variant='light'] {
+    border: 1px solid ${theme.colors.dclRedLine};
+    background: ${theme.colors.white};
+    color: ${theme.colors.gray0};
+  }
+  &[data-variant='light']:hover${enabled} {
+    background: ${theme.colors.media};
+  }
+
+  &[data-variant='ghost'] {
+    border: 1px solid ${theme.colors.offWhite};
+    background: none;
+    color: ${theme.colors.offWhite};
+  }
+  &[data-variant='ghost']:hover${enabled} {
+    background: ${theme.colors.glassHint};
+  }
+
+  &[data-size='compact'] {
+    height: 36px;
+    min-width: 64px;
+    padding: 0 16px;
+    border-radius: ${theme.radius.input};
+    font-size: 14px;
+    letter-spacing: 0.4px;
+  }
+  &[data-size='compact'][data-variant='light'] {
+    padding: 0 15px;
+  }
+
+  &[data-size='lg'] {
+    height: auto;
+    min-width: 0;
+    padding: 24px 64px;
+    border-radius: ${theme.radius.input};
+    font-size: 15px;
+    line-height: 1.5;
+    letter-spacing: ${theme.font.tracking};
+  }
+
+  &[data-size='hero'] {
+    position: relative;
+    height: auto;
+    min-width: 0;
+    padding: 24px 48px;
+    border-radius: ${theme.radius.input};
+    font-size: 19.89px;
+    line-height: 31.82px;
+    letter-spacing: 0.61px;
+  }
+  &[data-size='hero']:hover${enabled} {
+    background: ${theme.colors.dclRed};
+  }
+  /* A white ring that grows out of the edge on hover. */
+  &[data-size='hero']::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 4px solid ${theme.colors.white};
+    border-radius: 14px;
+    opacity: 0;
+    transition:
+      inset 0.2s ease-in-out,
+      opacity 0.2s ease-in-out;
+  }
+  &[data-size='hero']:hover${enabled}::before {
+    inset: -7.5px;
+    opacity: 1;
+  }
 `
 
 export const Spinner = styled.span`

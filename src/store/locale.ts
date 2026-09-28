@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-const KEY = 'wemotes:locale'
+const KEY = 'creators:locale'
 
 export const LOCALES = ['en', 'es'] as const
 

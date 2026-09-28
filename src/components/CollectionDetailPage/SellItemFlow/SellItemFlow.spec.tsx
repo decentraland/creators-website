@@ -1,10 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { FeatureFlag } from '~/lib/featureFlags'
+import { setFeatureFlags } from '~/test/featureFlags'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ProviderType } from '@dcl/schemas'
 import { SellItemError } from '~/lib/sales'
 import { SellItemFlow } from './SellItemFlow'
 import { Providers, collection, item, makeSession } from './testUtils'
+
+vi.mock('~/lib/featureFlags', async () => {
+  const actual = await vi.importActual<typeof import('~/lib/featureFlags')>('~/lib/featureFlags')
+  const mock = await import('~/test/featureFlags')
+  return { ...actual, getIsFeatureEnabled: mock.getIsFeatureEnabled }
+})
+
+beforeEach(() => setFeatureFlags(FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS, FeatureFlag.CREDITS_PRIMARY_LISTINGS))
 
 type Callbacks = { onSuccess?: (result: unknown) => void; onError?: (error: unknown) => void }
 type Variables = { onSigned?: () => void }
@@ -18,7 +28,8 @@ vi.mock('~/hooks/useSales', () => ({
   useSalesEnabled: () => salesEnabled,
   useEnableSales: () => enable,
   useSellItem: () => sell,
-  useFriends: () => ({ data: [], isLoading: false })
+  useFriends: () => ({ data: [], isLoading: false }),
+  useManaUsdRate: () => ({ data: undefined })
 }))
 vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })))
 
@@ -34,7 +45,7 @@ function renderFlow(providerType = ProviderType.INJECTED) {
 const last = <T,>(mock: { mock: { calls: T[] } }) => mock.mock.calls[mock.mock.calls.length - 1]
 
 async function fillAndSubmit(credits = '50') {
-  await userEvent.type(screen.getByTestId('sell-price'), credits)
+  await userEvent.type(screen.getByTestId('sell-price-input'), credits)
   await userEvent.click(screen.getByTestId('sell-submit'))
 }
 
@@ -121,13 +132,13 @@ describe('SellItemFlow', () => {
     const { onClose } = renderFlow()
     await fillAndSubmit('25')
     await userEvent.click(screen.getByTestId('sell-item-pending-cancel'))
-    expect(screen.getByTestId('sell-price')).toHaveValue('25')
+    expect(screen.getByTestId('sell-price-input')).toHaveValue('25')
 
     await userEvent.click(screen.getByTestId('sell-submit'))
     await act(async () => last(sell.mutate)[1].onError?.(new Error('server down')))
     expect(screen.getByTestId('sale-error-modal-title')).toHaveTextContent(/put your item on sale/i)
     await userEvent.click(screen.getByTestId('sale-error-retry'))
-    expect(screen.getByTestId('sell-price')).toHaveValue('25')
+    expect(screen.getByTestId('sell-price-input')).toHaveValue('25')
 
     await userEvent.click(screen.getByTestId('sell-submit'))
     await act(async () => last(sell.mutate)[1].onError?.(new SellItemError('sold_out')))
