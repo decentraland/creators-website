@@ -1,4 +1,4 @@
-import { ReactNode, useCallback, useEffect } from 'react'
+import { ReactNode, useCallback, useLayoutEffect } from 'react'
 import { IntlProvider, useIntl } from 'react-intl'
 import { useLocale, type Locale } from '~/store/locale'
 import { flattenMessages } from '~/lib/messages'
@@ -15,7 +15,7 @@ const messages: Record<Locale, Record<string, string>> = {
 const TranslationProvider = ({ children }: { children: ReactNode }) => {
   const locale = useLocale(s => s.locale)
   // Without zh-Hans, browsers may pick Japanese glyph variants for shared characters and screen readers an English voice.
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.lang = locale === 'zh' ? 'zh-Hans' : locale
   }, [locale])
   return (
