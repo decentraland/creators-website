@@ -4,6 +4,7 @@ import { getPreferredLocale, useLocale } from './locale'
 describe('locale store', () => {
   afterEach(() => {
     localStorage.clear()
+    vi.restoreAllMocks()
   })
 
   it('defaults to en when nothing is saved', () => {
@@ -18,9 +19,8 @@ describe('locale store', () => {
   })
 
   it('picks up a supported browser language when nothing is saved', () => {
-    const language = vi.spyOn(navigator, 'language', 'get').mockReturnValue('zh-CN')
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue('zh-CN')
     expect(getPreferredLocale()).toBe('zh')
-    language.mockRestore()
   })
 
   it('ignores an invalid saved value', () => {

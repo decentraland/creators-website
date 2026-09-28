@@ -7,7 +7,7 @@
   "collections_page": {
     "title": "我的系列",
     "search_placeholder": "搜索系列",
-    "new_collection": "新系列",
+    "new_collection": "新建系列",
     "filter": {
       "all": "全部",
       "published": "已发布",
@@ -245,7 +245,7 @@
         "description": "选择要将“{name}”移动到的草稿系列。",
         "collection": "系列",
         "placeholder": "选择一个系列",
-        "loading": "正在加载您的草稿系列…",
+        "loading": "正在加载您的草稿系列……",
         "empty": "没有其他可移动到的草稿系列。",
         "error": "我们无法移动该物品，请重试。",
         "cancel": "取消",
@@ -350,7 +350,7 @@
       "error": "我们无法开始结账，请重试。"
     },
     "top_up": {
-      "confirming": "正在确认您的购买…",
+      "confirming": "正在确认您的购买……",
       "success_title": "购买成功！",
       "success_description": "已向您的账户添加 {credits} 积分。",
       "pending_title": "您的积分正在路上！",
@@ -400,8 +400,8 @@
       "open": "显示好友",
       "clear": "清除收款人",
       "friends_loading": "正在加载您的好友……",
-      "no_matches": "没有匹配的好友。您也可以粘贴钱包地址（0x…）。",
-      "invalid": "请输入有效的钱包地址（0x…）。"
+      "no_matches": "没有匹配的好友。您也可以粘贴钱包地址（0x……）。",
+      "invalid": "请输入有效的钱包地址（0x……）。"
     },
     "price": {
       "label": "价格",
@@ -417,7 +417,7 @@
       "too_low_mana": "价格至少为 {min} MANA。"
     },
     "expiration": {
-      "label": "截止日期"
+      "label": "到期日期"
     },
     "note": "您的物品将在 Decentraland Shop 中以积分标价出售。售出后，您将收到<b>等值的 MANA。</b>",
     "note_tooltip": "积分与美元挂钩。您收到的 MANA 按每次售出时的汇率计算。",
@@ -487,7 +487,7 @@
     "item_name": "物品名称",
     "char_count": "{count}/{max}",
     "item_name_placeholder": "示例",
-    "invalid_name": "名称最多 32 个字符，且不能包含 \":\"。",
+    "invalid_name": "名称最多 32 个字符，且不能包含“:”。",
     "body_shape": "体型",
     "body_shape_option": {
       "both": "两者",
@@ -718,13 +718,13 @@
         "love": "比心",
         "money": "撒钱",
         "fist-pump": "握拳庆祝",
-        "head-explode": "脑洞大开",
+        "head-explode": "脑袋爆炸",
         "wave": "挥手"
       },
       "placeholder": "播放表情动作"
     },
     "validation": {
-      "loading": "正在检查模型…",
+      "loading": "正在检查模型……",
       "pass": "模型通过了所有检查。",
       "warnings": "模型存在警告。点击查看。",
       "errors": "模型存在错误。点击查看。",
@@ -886,7 +886,7 @@
     "submit": "发送物品",
     "confirm_intro": "您即将发送 {count, plural, one {# 个物品} other {# 个物品}}。发送前请检查收件人和数量。",
     "summary": "{recipients, plural, one {# 位收件人} other {# 位收件人}} - {items, plural, one {# 个物品} other {# 个物品}} - {copies, plural, one {# 份} other {# 份}}",
-    "sending": "正在发送物品...",
+    "sending": "正在发送物品……",
     "success_title": "物品已发送！",
     "success_description": "您的物品正在发送给所选收件人。"
   },
@@ -913,7 +913,7 @@
     "owner": "这是您自己的地址：作为所有者，您已拥有所有权限。",
     "system": "此地址属于 Decentraland Shop，无法在此处更改。",
     "save": "保存更改",
-    "saving": "正在保存更改...",
+    "saving": "正在保存更改……",
     "discard": {
       "title": "放弃您的更改？",
       "description": "如果现在离开，您对此列表所做的更改将不会保存。",
@@ -939,7 +939,7 @@
     "title": "Blender 实时预览",
     "status": {
       "connected": "已连接",
-      "connecting": "正在连接…",
+      "connecting": "正在连接……",
       "disconnected": "已断开",
       "error": "错误"
     },
@@ -1141,7 +1141,7 @@
       "join_the_community": "加入社区",
       "cards": {
         "mrdhingia": "我喜欢成为 DCL 创作者，因为它让我可以自由地创建酷炫的 3D 空间。与他人合作、学习新事物、通过我的内容获得收益并触达世界各地的人，这些都很棒。",
-        "canessa": "我认为拥有独特的表情动作，是让您的虚拟形象成为自己另一种形式的方式。我为自己制作了一个独特的表情动作，这样我就总能用一个特别的问候（有别于大家都在用的标准动画）来招呼我的朋友。",
+        "canessa": "我认为拥有独特的表情动作，是让自己的虚拟形象成为自己另一种形式的方式。我为自己制作了一个独特的表情动作，这样我就总能用一个特别的问候（有别于大家都在用的标准动画）来招呼我的朋友。",
         "polygonal_mind": "Decentraland 几乎每天都在技术层面和社区层面不断发展。新人带着新想法来到平台，整个平台也随之调整来迎接他们。实时见证这种变化非常令人兴奋。",
         "tangpoko": "在 Decentraland 中创作可穿戴物品和表情动作非常有成就感，尤其是看到身边的每个人都在穿戴和使用它们的时候！",
         "nikki_fuego": "我这辈子一直是个游戏玩家，我一直希望游戏能让我对角色的可穿戴物品进行极致的定制。（在 Decentraland 中，）这个幻想成为了现实。"
