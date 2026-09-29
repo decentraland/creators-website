@@ -8,6 +8,7 @@ import { useCreditsBalance, useManaBalance } from '~/hooks/useBalances'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useApproveMana, useManaAllowance, usePublishCollection, useRarities } from '~/hooks/usePublishCollection'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
+import { type useStaticChecks } from '~/hooks/useStaticChecks'
 import { track } from '~/lib/analytics'
 import { type Session } from '~/lib/auth'
 import { getContentsStorageUrl } from '~/lib/builder'
@@ -37,6 +38,7 @@ import { CurrencyAmount } from '~/components/CurrencyAmount'
 import { BuyCreditsModal } from './BuyCreditsModal'
 import { PaymentMethodCard } from './PaymentMethodCard'
 import { Methods } from './PaymentMethodCard.styles'
+import { StaticChecksPanel } from './StaticChecksPanel'
 import * as S from './PublishCollectionModal.styles'
 
 const SUMMARY_COLUMNS = 'minmax(0, 2fr) 1fr 1fr 1fr'
@@ -52,6 +54,7 @@ type Props = {
   collection: Collection
   items: Item[]
   session: Session
+  staticChecks: ReturnType<typeof useStaticChecks>
   paymentMethod: PaymentMethod | null
   onPaymentMethodChange: (method: PaymentMethod) => void
   accepted: boolean
@@ -67,6 +70,7 @@ export function PaymentStep({
   collection,
   items,
   session,
+  staticChecks,
   paymentMethod,
   onPaymentMethodChange,
   accepted,
@@ -118,7 +122,10 @@ export function PaymentStep({
   const creditsShortfall = Math.max(0, (fee?.total.credits ?? 0) - balances.credits)
   const selectedIsPayable =
     !!fee && !!paymentMethod && methods.includes(paymentMethod) && canPayWith(paymentMethod, fee, balances)
-  const canSubmit = selectedIsPayable && accepted && !isSubmitting && !credits.isLoading && !creditsFlag.isLoading
+  // The fee is non-refundable: a static error the automatic review would reject must be fixed first.
+  const blockedByChecks = staticChecks.isFetching || (staticChecks.data?.errors ?? 0) > 0
+  const canSubmit =
+    selectedIsPayable && accepted && !isSubmitting && !credits.isLoading && !creditsFlag.isLoading && !blockedByChecks
 
   async function handleSubmit() {
     if (!fee || !paymentMethod || !canSubmit) return
@@ -254,6 +261,8 @@ export function PaymentStep({
             </S.SummaryTotal>
           </S.SummaryRow>
         </S.SummaryTable>
+
+        <StaticChecksPanel checks={staticChecks} items={items} />
 
         <S.PaymentMethods>
           <S.Lead as="h4">{t('publish_collection_modal.payment_step.payment_method')}</S.Lead>

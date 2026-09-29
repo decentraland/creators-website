@@ -3,12 +3,14 @@ import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from
 import { useTranslation } from '~/intl'
 import { useDeleteItem, useItemContents } from '~/hooks/usePublishCollection'
 import { useSaveItem } from '~/hooks/useSaveItem'
+import { type useStaticChecks } from '~/hooks/useStaticChecks'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { type Item } from '~/lib/items'
 import { Button } from '~/components/Button'
 import { ThumbnailModal, type ThumbnailPatch } from '~/components/ThumbnailModal'
 import { Checkbox } from '~/components/Checkbox'
 import { DeleteItemModal } from '../DeleteItemModal'
+import { StaticChecksPanel } from './StaticChecksPanel'
 import { PublishItemRow } from './PublishItemRow'
 import { ITEM_COLUMNS } from './PublishItemRow.styles'
 import * as S from './PublishCollectionModal.styles'
@@ -16,13 +18,14 @@ import * as S from './PublishCollectionModal.styles'
 type Props = {
   address: string
   items: Item[]
+  staticChecks: ReturnType<typeof useStaticChecks>
   onBusyChange: (busy: boolean) => void
   onBack: () => void
   onConfirm: () => void
 }
 
 /** Step 2: review every item; names and rarities are editable in place, items can be removed. */
-export function ConfirmItemsStep({ address, items, onBusyChange, onBack, onConfirm }: Props) {
+export function ConfirmItemsStep({ address, items, staticChecks, onBusyChange, onBack, onConfirm }: Props) {
   const { t } = useTranslation()
   const [accepted, setAccepted] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -36,7 +39,9 @@ export function ConfirmItemsStep({ address, items, onBusyChange, onBack, onConfi
   const editingItem = items.find(item => item.id === editingId) ?? null
   const itemContents = useItemContents(isThumbnailOpen ? editingItem : null)
 
-  const canContinue = accepted && items.length > 0 && editingId === null
+  // A static error is the same rejection the automatic review would return after the fee is paid.
+  const blockedByChecks = staticChecks.isFetching || (staticChecks.data?.errors ?? 0) > 0
+  const canContinue = accepted && items.length > 0 && editingId === null && !blockedByChecks
 
   const isBusy = updateItem.isPending || deleteItem.isPending
   useEffect(() => {
@@ -112,6 +117,7 @@ export function ConfirmItemsStep({ address, items, onBusyChange, onBack, onConfi
           )}
         </S.TableBody>
       </S.Table>
+      <StaticChecksPanel checks={staticChecks} items={items} />
       <Checkbox checked={accepted} onChange={setAccepted} testId="publish-items-accept">
         {t('publish_collection_modal.items_step.checkbox')}
       </Checkbox>

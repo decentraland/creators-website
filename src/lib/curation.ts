@@ -1,6 +1,7 @@
 // Curation domain: the committee's review requests on standard collections, ported from the legacy
 // builder (modules/curations, modules/committee, CurationPage) against the same builder-server API.
 import { CollectionSort, CollectionType, hasBeenApproved, type Collection } from '~/lib/collections'
+import { REJECT_REASON_CODES, type CollectionEvent, type RejectReasonCode } from '~/lib/events'
 
 export type CurationRequestStatus = 'pending' | 'approved' | 'rejected'
 
@@ -9,17 +10,32 @@ export type RemoteCollectionCuration = {
   collection_id: string
   status: CurationRequestStatus
   assignee?: string | null
+  reviewed_by?: string | null
+  rejection_reasons?: string[] | null
+  rejection_message?: string | null
   created_at: string
   updated_at: string
 }
+
+/** `reviewed_by` value when the automatic review, not a committee member, decided. */
+export const VALIDATOR_REVIEWER = 'validator'
 
 export type CollectionCuration = {
   id: string
   collectionId: string
   status: CurationRequestStatus
   assignee: string | null
+  /** `'validator'`, the deciding curator's lowercase address, or `null` while pending (and on legacy rows). */
+  reviewedBy: string | null
+  rejectionReasons: RejectReasonCode[] | null
+  rejectionMessage: string | null
   createdAt: number
   updatedAt: number
+}
+
+function toRejectReasons(codes: string[] | null | undefined): RejectReasonCode[] | null {
+  if (!codes) return null
+  return codes.filter((code): code is RejectReasonCode => (REJECT_REASON_CODES as readonly string[]).includes(code))
 }
 
 export function fromRemoteCuration(remote: RemoteCollectionCuration): CollectionCuration {
@@ -28,9 +44,54 @@ export function fromRemoteCuration(remote: RemoteCollectionCuration): Collection
     collectionId: remote.collection_id,
     status: remote.status,
     assignee: remote.assignee ? remote.assignee.toLowerCase() : null,
+    reviewedBy: remote.reviewed_by ? remote.reviewed_by.toLowerCase() : null,
+    rejectionReasons: toRejectReasons(remote.rejection_reasons),
+    rejectionMessage: remote.rejection_message ?? null,
     createdAt: +new Date(remote.created_at),
     updatedAt: +new Date(remote.updated_at)
   }
+}
+
+export enum ReviewStage {
+  AI_REVIEWING = 'ai_reviewing',
+  AWAITING_CURATOR = 'awaiting_curator',
+  REJECTED_BY_VALIDATOR = 'rejected_by_validator',
+  APPEALED = 'appealed',
+  REJECTED_BY_CURATOR = 'rejected_by_curator',
+  APPROVED = 'approved'
+}
+
+/**
+ * Where the review stands, from the latest request and the newest timeline event (the frozen curation
+ * contract's table). `null` when the rows predate the timeline or the stage is not one of these: callers
+ * fall back to the legacy curation state.
+ */
+export function getReviewStage(
+  curation: CollectionCuration | null,
+  latestEvent: CollectionEvent | null | undefined
+): ReviewStage | null {
+  if (!curation) return null
+  if (curation.status === 'approved') return ReviewStage.APPROVED
+  if (curation.status === 'rejected') {
+    if (curation.reviewedBy === VALIDATOR_REVIEWER) return ReviewStage.REJECTED_BY_VALIDATOR
+    return curation.reviewedBy ? ReviewStage.REJECTED_BY_CURATOR : null
+  }
+  switch (latestEvent?.type) {
+    case 'review.ai_started':
+    case 'review.ai_error':
+      return ReviewStage.AI_REVIEWING
+    case 'review.ai_passed':
+      return ReviewStage.AWAITING_CURATOR
+    case 'review.appeal_requested':
+      return ReviewStage.APPEALED
+    default:
+      return null
+  }
+}
+
+/** Stages in which the creator may ask for another automatic review or a human one. */
+export function isRejectedStage(stage: ReviewStage | null): boolean {
+  return stage === ReviewStage.REJECTED_BY_VALIDATOR || stage === ReviewStage.REJECTED_BY_CURATOR
 }
 
 export function isCommitteeMember(members: string[] | undefined, address: string | undefined): boolean {

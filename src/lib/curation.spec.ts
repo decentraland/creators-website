@@ -4,12 +4,14 @@ import {
   CurationState,
   CurationStatusFilter,
   ReviewAction,
+  ReviewStage,
   canEditAssignee,
   canPushChanges,
   fromRemoteCuration,
   getCreatorReviewNotice,
   getCurationState,
   getReviewActions,
+  getReviewStage,
   isCommitteeMember,
   orderCurators,
   parseCurationFilters,
@@ -38,7 +40,18 @@ function collection(overrides: Partial<Collection> = {}): Collection {
 }
 
 function curation(overrides: Partial<CollectionCuration> = {}): CollectionCuration {
-  return { id: 'r1', collectionId: 'c1', status: 'pending', assignee: null, createdAt: 1, updatedAt: 2, ...overrides }
+  return {
+    id: 'r1',
+    collectionId: 'c1',
+    status: 'pending',
+    assignee: null,
+    reviewedBy: null,
+    rejectionReasons: null,
+    rejectionMessage: null,
+    createdAt: 1,
+    updatedAt: 2,
+    ...overrides
+  }
 }
 
 const reviewedBefore = { reviewedAt: CREATED + 1000 }
@@ -59,6 +72,9 @@ describe('fromRemoteCuration', () => {
       collectionId: 'c1',
       status: 'pending',
       assignee: '0xabc',
+      reviewedBy: null,
+      rejectionReasons: null,
+      rejectionMessage: null,
       createdAt: Date.parse('2026-01-01T00:00:00Z'),
       updatedAt: Date.parse('2026-01-02T00:00:00Z')
     })
@@ -213,5 +229,67 @@ describe('canPushChanges', () => {
     expect(canPushChanges(approved, null, false, true)).toBe(false)
     expect(canPushChanges(approved, null, true, false)).toBe(false)
     expect(canPushChanges(collection(), null, true, true)).toBe(false)
+  })
+})
+
+describe('getReviewStage', () => {
+  const event = (type: string) => ({
+    id: 'e',
+    collectionId: 'c1',
+    type,
+    actor: 'validator' as const,
+    actorAddress: null,
+    payload: {},
+    createdAt: 1
+  })
+
+  it.each([
+    ['nothing without a request', null, event('review.ai_started'), null],
+    ['AI reviewing while the validator works', curation(), event('review.ai_started'), ReviewStage.AI_REVIEWING],
+    ['still AI reviewing after a validator error', curation(), event('review.ai_error'), ReviewStage.AI_REVIEWING],
+    ['awaiting a curator once the AI passed', curation(), event('review.ai_passed'), ReviewStage.AWAITING_CURATOR],
+    ['appealed', curation(), event('review.appeal_requested'), ReviewStage.APPEALED],
+    ['nothing for a pending request without a telling event', curation(), event('review.assigned'), null],
+    ['nothing for a pending request before the timeline', curation(), null, null],
+    [
+      'rejected by the validator',
+      curation({ status: 'rejected', reviewedBy: 'validator' }),
+      event('review.ai_rejected'),
+      ReviewStage.REJECTED_BY_VALIDATOR
+    ],
+    [
+      'rejected by a curator',
+      curation({ status: 'rejected', reviewedBy: '0xcurator' }),
+      event('review.rejected'),
+      ReviewStage.REJECTED_BY_CURATOR
+    ],
+    ['nothing for a legacy rejection', curation({ status: 'rejected' }), null, null],
+    [
+      'approved',
+      curation({ status: 'approved', reviewedBy: '0xcurator' }),
+      event('review.approved'),
+      ReviewStage.APPROVED
+    ]
+  ])('%s', (_, request, latest, expected) => {
+    expect(getReviewStage(request, latest)).toBe(expected)
+  })
+
+  it('maps the reviewer and the rejection fields from the row', () => {
+    expect(
+      fromRemoteCuration({
+        id: 'r1',
+        collection_id: 'c1',
+        status: 'rejected',
+        reviewed_by: '0xCURATOR',
+        rejection_reasons: ['clipping', 'bogus', 'other'],
+        rejection_message: 'Fix the sleeves',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-02T00:00:00Z'
+      })
+    ).toMatchObject({
+      reviewedBy: '0xcurator',
+      rejectionReasons: ['clipping', 'other'],
+      rejectionMessage: 'Fix the sleeves'
+    })
   })
 })

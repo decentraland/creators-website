@@ -19,6 +19,12 @@ import {
   type CurationRequestStatus,
   type RemoteCollectionCuration
 } from '~/lib/curation'
+import {
+  fromRemoteEvent,
+  type CollectionEventsPage,
+  type RejectReasonCode,
+  type RemoteCollectionEvent
+} from '~/lib/events'
 import { VIDEO_PATH, fromRemoteItem, toRemoteItem, type Item, type RemoteItem } from '~/lib/items'
 import { type BlockchainRarity } from '~/lib/rarities'
 
@@ -32,11 +38,14 @@ export type CollectionItemPreview = {
 /** Carries the HTTP status so callers can tell "no access / gone" from a transient failure. */
 export class BuilderServerError extends Error {
   status: number
+  /** The parsed error body, for endpoints that answer with more than a message (e.g. a 429's `retryAt`). */
+  body?: unknown
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, body?: unknown) {
     super(message)
     this.name = 'BuilderServerError'
     this.status = status
+    this.body = body
   }
 }
 
@@ -71,7 +80,8 @@ async function request<T>(
   if (!response.ok || parsed.ok === false || (expectData && parsed.data === undefined)) {
     throw new BuilderServerError(
       parsed.error ?? `builder-server request failed: ${method} ${path} (${response.status})`,
-      response.status
+      response.status,
+      parsed
     )
   }
   return parsed.data as T
@@ -178,11 +188,19 @@ export async function pushCollectionCuration(
   return fromRemoteCuration(remote)
 }
 
+export type CurationUpdate = {
+  status?: CurationRequestStatus
+  assignee?: string | null
+  /** Required together with `status: 'rejected'`: the codes and the message the creator reads. */
+  rejectionReasons?: RejectReasonCode[]
+  rejectionMessage?: string
+}
+
 /** Updates the latest request: PATCH /collections/{id}/curation. Status changes and assignees are committee-only. */
 export async function updateCollectionCuration(
   address: string,
   collectionId: string,
-  curation: { status?: CurationRequestStatus; assignee?: string | null }
+  curation: CurationUpdate
 ): Promise<CollectionCuration> {
   const remote = await request<RemoteCollectionCuration>(
     address,
@@ -194,6 +212,66 @@ export async function updateCollectionCuration(
     }
   )
   return fromRemoteCuration(remote)
+}
+
+export const VALIDATION_RUNNING_STATUS = 409
+export const VALIDATION_LIMIT_STATUS = 429
+
+/** The daily allowance is spent: builder-server says when the next automatic review may start. */
+export class ValidationLimitError extends BuilderServerError {
+  retryAt: number | null
+
+  constructor(error: BuilderServerError) {
+    super(error.message, error.status, error.body)
+    this.name = 'ValidationLimitError'
+    this.retryAt = readRetryAt(error.body)
+  }
+}
+
+function readRetryAt(body: unknown): number | null {
+  if (!body || typeof body !== 'object') return null
+  const record = body as { retryAt?: unknown; data?: { retryAt?: unknown } }
+  const value = record.retryAt ?? record.data?.retryAt
+  if (typeof value !== 'string' && typeof value !== 'number') return null
+  const time = +new Date(value)
+  return Number.isNaN(time) ? null : time
+}
+
+/**
+ * Asks for another automatic review: POST /collections/{id}/validations. 409 while one is running,
+ * 429 (`ValidationLimitError`) once today's three verdicts are spent.
+ */
+export async function requestCollectionValidation(address: string, collectionId: string): Promise<void> {
+  try {
+    await request<unknown>(address, 'POST', `/collections/${collectionId}/validations`, '', undefined, false)
+  } catch (error) {
+    if (error instanceof BuilderServerError && error.status === VALIDATION_LIMIT_STATUS) {
+      throw new ValidationLimitError(error)
+    }
+    throw error
+  }
+}
+
+/** Escalates a rejection to a human curator: POST /collections/{id}/curation/appeal. 409 while an appeal is open. */
+export async function appealCollectionCuration(address: string, collectionId: string, note: string): Promise<void> {
+  await request<unknown>(address, 'POST', `/collections/${collectionId}/curation/appeal`, '', { note }, false)
+}
+
+export const COLLECTION_EVENTS_PAGE_SIZE = 20
+
+/** The collection's timeline, newest first: GET /collections/{id}/events. Committee members see every collection. */
+export async function fetchCollectionEvents(
+  address: string,
+  collectionId: string,
+  { page = 1, limit = COLLECTION_EVENTS_PAGE_SIZE }: { page?: number; limit?: number } = {}
+): Promise<CollectionEventsPage> {
+  const remote = await request<{ results: RemoteCollectionEvent[]; total: number; page: number; limit: number }>(
+    address,
+    'GET',
+    `/collections/${collectionId}/events`,
+    `?page=${page}&limit=${limit}`
+  )
+  return { ...remote, results: remote.results.map(fromRemoteEvent) }
 }
 
 /** Delete an unpublished collection and its items: DELETE /collections/{id} (409 published, 423 locked). */

@@ -1,0 +1,87 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { type ReactNode } from 'react'
+import { type Collection } from '~/lib/collections'
+
+const api = vi.hoisted(() => ({
+  fetchCollectionEvents: vi.fn(),
+  requestCollectionValidation: vi.fn(),
+  appealCollectionCuration: vi.fn()
+}))
+vi.mock('~/lib/builder', async importOriginal => ({ ...(await importOriginal<object>()), ...api }))
+vi.mock('~/lib/analytics', () => ({ track: vi.fn(), errorCode: () => 'unknown' }))
+vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
+
+const { BuilderServerError } = await import('~/lib/builder')
+const { captureError } = await import('~/lib/monitoring')
+const { useAppealCuration, useCollectionEvents, useRequestValidation } = await import('./useCollectionEvents')
+
+const collection = { id: 'c1', name: 'Hats', isPublished: true } as Collection
+const remote = (id: string) => ({
+  id,
+  collectionId: 'c1',
+  type: 'review.ai_started',
+  actor: 'validator' as const,
+  actorAddress: null,
+  payload: {},
+  createdAt: 1
+})
+
+function wrapper({ children }: { children: ReactNode }) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>
+}
+
+beforeEach(() => {
+  Object.values(api).forEach(fn => fn.mockReset())
+})
+
+describe('useCollectionEvents', () => {
+  it('flattens the pages newest first and knows when more remain', async () => {
+    api.fetchCollectionEvents.mockResolvedValueOnce({
+      results: [remote('e1'), remote('e2')],
+      total: 3,
+      page: 1,
+      limit: 2
+    })
+    api.fetchCollectionEvents.mockResolvedValueOnce({ results: [remote('e3')], total: 3, page: 2, limit: 20 })
+    const { result } = renderHook(() => useCollectionEvents('0xme', collection), { wrapper })
+    await waitFor(() => expect(result.current.events).toHaveLength(2))
+    expect(result.current.hasNextPage).toBe(true)
+    await act(async () => {
+      await result.current.fetchNextPage()
+    })
+    await waitFor(() => expect(result.current.events.map(event => event.id)).toEqual(['e1', 'e2', 'e3']))
+    expect(result.current.hasNextPage).toBe(false)
+  })
+
+  it('reads a server without the timeline as an empty one', async () => {
+    api.fetchCollectionEvents.mockRejectedValue(new BuilderServerError('not found', 404))
+    const { result } = renderHook(() => useCollectionEvents('0xme', collection), { wrapper })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.events).toEqual([])
+  })
+})
+
+describe('useRequestValidation', () => {
+  it('reports unexpected failures but not the 409 the creator can act on', async () => {
+    api.requestCollectionValidation.mockRejectedValueOnce(new BuilderServerError('running', 409))
+    const { result } = renderHook(() => useRequestValidation('0xme'), { wrapper })
+    await act(() => result.current.mutateAsync({ collection, events: [] }).catch(() => undefined))
+    expect(captureError).not.toHaveBeenCalled()
+
+    api.requestCollectionValidation.mockRejectedValueOnce(new Error('boom'))
+    await act(() => result.current.mutateAsync({ collection, events: [] }).catch(() => undefined))
+    expect(captureError).toHaveBeenCalledWith(expect.any(Error), { flow: 'curation_validate', collectionId: 'c1' })
+  })
+})
+
+describe('useAppealCuration', () => {
+  it('sends the note', async () => {
+    api.appealCollectionCuration.mockResolvedValue(undefined)
+    const { result } = renderHook(() => useAppealCuration('0xme'), { wrapper })
+    await act(() => result.current.mutateAsync({ collection, note: 'Fixed' }))
+    expect(api.appealCollectionCuration).toHaveBeenCalledWith('0xme', 'c1', 'Fixed')
+  })
+})

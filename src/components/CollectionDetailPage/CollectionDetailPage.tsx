@@ -4,7 +4,6 @@ import {
   Add as AddIcon,
   ArrowBackIosNew as ArrowBackIcon,
   Edit as EditIcon,
-  InfoOutlined as InfoIcon,
   PersonOutline as PersonOutlineIcon
 } from '@mui/icons-material'
 import { useIntl } from 'react-intl'
@@ -45,8 +44,9 @@ import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { ItemSyncStatus, hasPendingChanges } from '~/lib/itemSync'
-import { canPushChanges, getCreatorReviewNotice } from '~/lib/curation'
+import { canPushChanges } from '~/lib/curation'
 import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
+import { useCollectionEvents } from '~/hooks/useCollectionEvents'
 import { previewCollection } from '~/lib/explorer'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS, THUMBNAIL_PATH } from '~/lib/itemFiles'
@@ -65,6 +65,7 @@ import { ThumbnailModal } from '~/components/ThumbnailModal'
 import addItemsArt from '~/assets/add-items.png'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { AddItemsModal } from './AddItemsModal'
+import { ReviewPanel } from './ReviewPanel'
 import { ItemActionsMenu } from './ItemActionsMenu'
 import { ItemListRow } from './ItemListRow'
 import { PublishCollectionModal, PublishSuccessModal, type PublishResume } from './PublishCollectionModal'
@@ -166,16 +167,15 @@ const CollectionDetailPage = () => {
     listings ? (listings.get(item.tokenId ?? '') ?? null) : listingsQuery.isError ? null : undefined
   const syncs = useItemSyncs(address, collection, allItems ?? [])
   const { data: curation = null } = useCollectionCuration(address, collection)
+  const { events } = useCollectionEvents(address, collection)
   const pushCuration = usePushCuration(address)
   const [isPushOpen, setPushOpen] = useState(false)
   const hasUnsyncedItems = useMemo(
     () => [...syncs.values()].some(sync => sync.status === ItemSyncStatus.UNSYNCED),
     [syncs]
   )
-  const reviewNotice = collection ? getCreatorReviewNotice(collection, curation) : null
-  const showPushChanges =
-    !!collection &&
-    canPushChanges(collection, curation, hasUnsyncedItems, canManageCollectionItems(collection, address))
+  const canManage = !!collection && canManageCollectionItems(collection, address)
+  const showPushChanges = !!collection && canPushChanges(collection, curation, hasUnsyncedItems, canManage)
 
   const isLoading = !restored || (!!address && (collectionQuery.isLoading || itemsQuery.isLoading))
   // builder-server serves published collections to any signer; addresses with no role on it get
@@ -424,6 +424,7 @@ const CollectionDetailPage = () => {
                 <CollectionActionsMenu
                   collection={collection}
                   address={address}
+                  items={allItems}
                   onSendItems={canSend ? () => setSending(true) : undefined}
                   onManageRoles={setManagingRoles}
                   onDeleted={() => navigate('/collections', { replace: true })}
@@ -432,11 +433,15 @@ const CollectionDetailPage = () => {
             </S.HeaderActions>
           </S.Header>
 
-          {reviewNotice && (
-            <S.ReviewNotice data-testid="review-notice" data-notice={reviewNotice}>
-              <InfoIcon fontSize="small" aria-hidden />
-              {t(`collection_detail_page.review_notice.${reviewNotice}`)}
-            </S.ReviewNotice>
+          {address && (
+            <ReviewPanel
+              collection={collection}
+              address={address}
+              curation={curation}
+              events={events}
+              items={allItems ?? []}
+              canManage={canManage}
+            />
           )}
 
           <S.SubHeader>

@@ -4,8 +4,10 @@ import { useTranslation } from '~/intl'
 import { CollectionMosaic } from '~/components/CollectionMosaic'
 import { CurationStatePill } from '~/components/CurationStatePill'
 import { ProfileBadge } from '~/components/ProfileBadge'
+import { ReviewStagePill } from '~/components/ReviewStagePill'
+import { useLatestCollectionEvent } from '~/hooks/useCollectionEvents'
 import { type Collection } from '~/lib/collections'
-import { canEditAssignee, getCurationState, type CollectionCuration } from '~/lib/curation'
+import { canEditAssignee, getCurationState, getReviewStage, type CollectionCuration } from '~/lib/curation'
 import { formatTimeAgo } from '~/lib/time'
 import * as S from './CurationRow.styles'
 
@@ -24,10 +26,13 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
   const { t } = useTranslation()
   const intl = useIntl()
   const state = getCurationState(collection, curation)
+  // Only a pending request needs the newest event to tell AI review, AI pass and appeal apart.
+  const latestEvent = useLatestCollectionEvent(address, collection.id, curation?.status === 'pending')
+  const stage = getReviewStage(curation, latestEvent.data)
   const assignee = curation?.assignee ?? null
 
   return (
-    <S.Row data-testid="curation-row" data-state={state}>
+    <S.Row data-testid="curation-row" data-state={state} data-stage={stage ?? undefined}>
       <S.NameCell>
         <S.Thumb>
           <CollectionMosaic collectionId={collection.id} itemCount={collection.itemCount} />
@@ -48,7 +53,7 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
         {curation ? formatTimeAgo(curation.updatedAt, intl.locale) : '—'}
       </S.Cell>
       <S.Cell data-cell="state">
-        <CurationStatePill state={state} />
+        {stage ? <ReviewStagePill stage={stage} /> : <CurationStatePill state={state} />}
       </S.Cell>
       <S.AssigneeCell data-testid="curation-row-assignee">
         {assignee ? (

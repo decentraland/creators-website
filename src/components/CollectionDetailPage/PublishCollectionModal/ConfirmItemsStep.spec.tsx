@@ -7,6 +7,7 @@ import { TranslationProvider } from '~/intl'
 import { deleteItem, fetchItemContents, saveItem } from '~/lib/builder'
 import { type ThumbnailPatch } from '~/components/ThumbnailModal'
 import { ItemType, type Item, BODY_SHAPE_MALE } from '~/lib/items'
+import { type useStaticChecks } from '~/hooks/useStaticChecks'
 import { ConfirmItemsStep } from './ConfirmItemsStep'
 
 vi.mock('~/lib/builder', async importOriginal => ({
@@ -71,6 +72,15 @@ function makeItem(id: string, name: string): Item {
 }
 
 const items = [makeItem('a', 'Pirate Hat'), makeItem('b', 'Ghost Cape')]
+// Checks that never ran: the step behaves as before them.
+const idleChecks = {
+  data: undefined,
+  isFetching: false,
+  isError: false,
+  fetchStatus: 'idle',
+  progress: null,
+  refetch: vi.fn()
+} as unknown as ReturnType<typeof useStaticChecks>
 
 function renderStep(list = items) {
   const onConfirm = vi.fn()
@@ -82,7 +92,14 @@ function renderStep(list = items) {
     </QueryClientProvider>
   )
   render(
-    <ConfirmItemsStep address={ADDRESS} items={list} onBusyChange={vi.fn()} onBack={onBack} onConfirm={onConfirm} />,
+    <ConfirmItemsStep
+      address={ADDRESS}
+      items={list}
+      staticChecks={idleChecks}
+      onBusyChange={vi.fn()}
+      onBack={onBack}
+      onConfirm={onConfirm}
+    />,
     { wrapper }
   )
   return { onConfirm, onBack }

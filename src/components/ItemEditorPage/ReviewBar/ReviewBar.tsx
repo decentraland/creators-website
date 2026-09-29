@@ -1,23 +1,33 @@
 import { useMemo, useState } from 'react'
 import { useIntl } from 'react-intl'
-import { ArrowBack as ArrowBackIcon, Edit as EditIcon, PersonAddAlt as AssignIcon } from '@mui/icons-material'
+import {
+  ArrowBack as ArrowBackIcon,
+  AutoAwesome as VerdictIcon,
+  Edit as EditIcon,
+  PersonAddAlt as AssignIcon
+} from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { AssignCuratorModal } from '~/components/AssignCuratorModal'
 import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { CurationStatePill } from '~/components/CurationStatePill'
 import { ProfileBadge } from '~/components/ProfileBadge'
-import { useCollectionCuration, useDisableCollection, useRejectCuration } from '~/hooks/useCuration'
+import { ReviewStagePill } from '~/components/ReviewStagePill'
+import { useCollectionEvents } from '~/hooks/useCollectionEvents'
+import { useCollectionCuration, useDisableCollection } from '~/hooks/useCuration'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { type ApprovalMode } from '~/hooks/useApprovalFlow'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
-import { ReviewAction, canEditAssignee, getCurationState, getReviewActions } from '~/lib/curation'
+import { ReviewAction, canEditAssignee, getCurationState, getReviewActions, getReviewStage } from '~/lib/curation'
+import { getLatestVerdict } from '~/lib/events'
 import { ItemSyncStatus } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import { formatTimeAgo } from '~/lib/time'
+import { AiVerdictModal } from './AiVerdictModal'
 import { ApprovalFlowModal } from './ApprovalFlowModal'
+import { RejectCurationModal } from './RejectCurationModal'
 import * as S from './ReviewBar.styles'
 
 type Props = {
@@ -26,7 +36,7 @@ type Props = {
   items: Item[]
 }
 
-type Dialog = 'assign' | 'reject' | 'disable' | null
+type Dialog = 'assign' | 'reject' | 'disable' | 'verdict' | null
 
 /** The curator's toolbar over the read-only editor: the collection's review state and the committee's actions. */
 export function ReviewBar({ session, collection, items }: Props) {
@@ -37,7 +47,7 @@ export function ReviewBar({ session, collection, items }: Props) {
   const curationQuery = useCollectionCuration(address, collection)
   const curation = curationQuery.data ?? null
   const syncs = useItemSyncs(address, collection, items)
-  const reject = useRejectCuration(address)
+  const { events } = useCollectionEvents(address, collection)
   const disable = useDisableCollection(session)
   const [dialog, setDialog] = useState<Dialog>(null)
   const [approval, setApproval] = useState<ApprovalMode | null>(null)
@@ -47,6 +57,8 @@ export function ReviewBar({ session, collection, items }: Props) {
     [syncs]
   )
   const state = getCurationState(collection, curation)
+  const stage = getReviewStage(curation, events[0] ?? null)
+  const verdict = useMemo(() => getLatestVerdict(events), [events])
   const actions = collection.isPublished ? getReviewActions(collection, curation, hasMissingEntities) : []
   const assignee = curation?.assignee ?? null
   const isLoading = collection.isPublished && curationQuery.isLoading
@@ -60,7 +72,6 @@ export function ReviewBar({ session, collection, items }: Props) {
 
   const closeDialog = () => {
     setDialog(null)
-    reject.reset()
     disable.reset()
   }
 
@@ -71,7 +82,7 @@ export function ReviewBar({ session, collection, items }: Props) {
           <ArrowBackIcon fontSize="small" />
         </S.BackLink>
         <S.Name title={collection.name}>{collection.name}</S.Name>
-        {!isLoading && <CurationStatePill state={state} />}
+        {!isLoading && (stage ? <ReviewStagePill stage={stage} /> : <CurationStatePill state={state} />)}
       </S.Identity>
 
       <S.Meta>
@@ -84,6 +95,17 @@ export function ReviewBar({ session, collection, items }: Props) {
                 ? t('item_editor.review.requested', { time: formatTimeAgo(curation.createdAt, intl.locale) })
                 : t('item_editor.review.published', { time: formatTimeAgo(collection.createdAt, intl.locale) })}
             </span>
+            {verdict && (
+              <S.AssigneeChip
+                type="button"
+                data-verdict={verdict.payload.verdict}
+                data-testid="review-ai-verdict"
+                onClick={() => setDialog('verdict')}
+              >
+                <VerdictIcon fontSize="small" />
+                {t('ai_verdict.button')}
+              </S.AssigneeChip>
+            )}
             {assignee ? (
               <S.AssigneeChip
                 type="button"
@@ -132,32 +154,9 @@ export function ReviewBar({ session, collection, items }: Props) {
         />
       )}
       {dialog === 'reject' && (
-        <ConfirmModal
-          title={t('item_editor.review.reject.title', { collection: collection.name })}
-          description={t(
-            collection.isApproved ? 'item_editor.review.reject.changes' : 'item_editor.review.reject.first'
-          )}
-          error={reject.isError ? t('item_editor.review.reject.error') : null}
-          busy={reject.isPending}
-          onClose={closeDialog}
-          cancel={{ label: t('item_editor.review.cancel'), onClick: closeDialog, testId: 'review-reject-cancel' }}
-          confirm={{
-            label: t('item_editor.review.reject.confirm'),
-            testId: 'review-reject-confirm',
-            onClick: () =>
-              reject.mutate(
-                { collection, curation },
-                {
-                  onSuccess: () => {
-                    showToast(t('item_editor.review.reject.success', { collection: collection.name }))
-                    closeDialog()
-                  }
-                }
-              )
-          }}
-          testId="review-reject"
-        />
+        <RejectCurationModal collection={collection} curation={curation} address={address} onClose={closeDialog} />
       )}
+      {dialog === 'verdict' && verdict && <AiVerdictModal verdict={verdict} items={items} onClose={closeDialog} />}
       {dialog === 'disable' && (
         <ConfirmModal
           title={t('item_editor.review.disable.title', { collection: collection.name })}

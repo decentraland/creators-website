@@ -28,6 +28,9 @@ const pending: CollectionCuration = {
   collectionId: 'c1',
   status: 'pending',
   assignee: null,
+  reviewedBy: null,
+  rejectionReasons: null,
+  rejectionMessage: null,
   createdAt: 1,
   updatedAt: 1
 }
@@ -62,16 +65,18 @@ describe('useCommittee', () => {
 })
 
 describe('useRejectCuration', () => {
-  it('rejects the pending request', async () => {
+  const decision = { rejectionReasons: ['clipping' as const], rejectionMessage: 'Clips through the torso' }
+
+  it('rejects the pending request with the reasons and message the creator will read', async () => {
     const { result } = renderHook(() => useRejectCuration(ADDRESS), { wrapper })
-    await act(() => result.current.mutateAsync({ collection, curation: pending }))
+    await act(() => result.current.mutateAsync({ collection, curation: pending, ...decision }))
     expect(api.pushCollectionCuration).not.toHaveBeenCalled()
-    expect(api.updateCollectionCuration).toHaveBeenCalledWith(ADDRESS, 'c1', { status: 'rejected' })
+    expect(api.updateCollectionCuration).toHaveBeenCalledWith(ADDRESS, 'c1', { status: 'rejected', ...decision })
   })
 
   it('opens a request first when nobody asked for a review, so the rejection reaches the creator', async () => {
     const { result } = renderHook(() => useRejectCuration(ADDRESS), { wrapper })
-    const rejected = await act(() => result.current.mutateAsync({ collection, curation: null }))
+    const rejected = await act(() => result.current.mutateAsync({ collection, curation: null, ...decision }))
     expect(api.pushCollectionCuration).toHaveBeenCalledWith(ADDRESS, 'c1')
     expect(rejected.status).toBe('rejected')
   })

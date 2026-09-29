@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useTranslation } from '~/intl'
 import { useAllCollectionItems, useSaveCollection } from '~/hooks/useCollection'
+import { useStaticChecks } from '~/hooks/useStaticChecks'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { type TopUpResume } from '~/lib/creditsTopUp'
@@ -55,6 +56,8 @@ export function PublishCollectionModal({ collection, session, resume, onClose, o
   const itemsQuery = useAllCollectionItems(address, collection.id)
   const items = itemsQuery.data ?? []
   const saveCollection = useSaveCollection(address)
+  // Started as soon as the wizard opens so the verdict is usually in before the creator reaches the fee.
+  const staticChecks = useStaticChecks(collection, items)
 
   function confirmName(name: string) {
     if (name === collection.name) {
@@ -107,6 +110,7 @@ export function PublishCollectionModal({ collection, session, resume, onClose, o
             <ConfirmItemsStep
               address={address}
               items={items}
+              staticChecks={staticChecks}
               onBusyChange={setStepBusy}
               onBack={() => setStep(Step.Name)}
               onConfirm={() => setStep(Step.Payment)}
@@ -117,6 +121,7 @@ export function PublishCollectionModal({ collection, session, resume, onClose, o
             collection={collection}
             items={items}
             session={session}
+            staticChecks={staticChecks}
             paymentMethod={paymentMethod}
             onPaymentMethodChange={setPaymentMethod}
             accepted={termsAccepted}

@@ -11,6 +11,8 @@ import { shopCollectionUrl } from '~/lib/shop'
 import { useNotifications } from '~/lib/notifications'
 import { theme } from '~/styles/theme'
 import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
+import { CollectionActivityModal } from '~/components/CollectionActivityModal'
+import { type Item } from '~/lib/items'
 import { DeleteCollectionModal } from './DeleteCollectionModal'
 
 type Props = {
@@ -21,6 +23,8 @@ type Props = {
   /** The owner-only role entries (collaborators / senders); off in list rows. */
   showRoles?: boolean
   label?: string
+  /** The collection's items, so the activity timeline can name them in validator findings. */
+  items?: Item[]
   /** Opens the Send Items flow; the header button covers this on desktop, so the item shows only when compact. */
   onSendItems?: () => void
   /** Opens the collaborators / senders list; without it the owner-only entries are not rendered. */
@@ -34,6 +38,7 @@ export function CollectionActionsMenu({
   variant = 'header',
   showRoles = true,
   label,
+  items,
   onSendItems,
   onManageRoles,
   onDeleted
@@ -42,6 +47,7 @@ export function CollectionActionsMenu({
   const showToast = useNotifications(state => state.showToast)
   const deleteCollection = useDeleteCollection(address)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
+  const [isActivityOpen, setActivityOpen] = useState(false)
 
   // Small screens are mostly a viewer: copying and the role lists stay, deleting is desktop-only.
   const compact = useMediaQuery(theme.media.noActions)
@@ -107,6 +113,9 @@ export function CollectionActionsMenu({
                 <OpenInNewIcon aria-hidden />
               </ActionsMenuItem>
             )}
+            <ActionsMenuItem testId="collection-activity" onClick={() => setActivityOpen(true)}>
+              {t('collection_detail_page.actions.activity')}
+            </ActionsMenuItem>
           </>
         )}
         {isOnChain && isOwner && showRoles && onManageRoles && (
@@ -127,6 +136,14 @@ export function CollectionActionsMenu({
         )}
       </ActionsMenu>
 
+      {isActivityOpen && (
+        <CollectionActivityModal
+          collection={collection}
+          address={address}
+          items={items}
+          onClose={() => setActivityOpen(false)}
+        />
+      )}
       {isDeleteOpen && (
         <DeleteCollectionModal
           name={collection.name}

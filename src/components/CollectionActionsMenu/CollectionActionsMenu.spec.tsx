@@ -176,7 +176,7 @@ describe('CollectionActionsMenu', () => {
       renderMenu({ ...draft, isPublished: true }, OWNER, { onManageRoles: vi.fn() })
       const menu = await openMenu()
       const ids = Array.from(menu.querySelectorAll('[role="menuitem"]')).map(el => el.getAttribute('data-testid'))
-      expect(ids).toEqual(['copy-urn', 'copy-address', 'manage-collaborators', 'manage-senders'])
+      expect(ids).toEqual(['copy-urn', 'copy-address', 'collection-activity', 'manage-collaborators', 'manage-senders'])
     })
 
     it('renders nothing for a draft, since deleting is desktop-only', () => {

@@ -13,6 +13,7 @@ import {
 import { type Collection } from '~/lib/collections'
 import { buildSetApprovedCall } from '~/lib/collectionApproval'
 import { isCommitteeMember, type CollectionCuration, type CurationFilters } from '~/lib/curation'
+import { type RejectReasonCode } from '~/lib/events'
 import { captureError } from '~/lib/monitoring'
 import { getMaticChainId } from '~/lib/publishCollection'
 import { isWalletRejection } from '~/lib/walletErrors'
@@ -108,23 +109,35 @@ export function useAssignCurator(address: string | undefined) {
   })
 }
 
-export type RejectVariables = { collection: Collection; curation: CollectionCuration | null }
+export type RejectVariables = {
+  collection: Collection
+  curation: CollectionCuration | null
+  rejectionReasons: RejectReasonCode[]
+  rejectionMessage: string
+}
 
 /**
- * Rejects the collection's review request. A collection nobody requested a review for has no request to
- * reject yet, so one is opened first: otherwise the rejection would leave no trace for the creator.
+ * Rejects the collection's review request with the reasons and message the creator will read. A collection
+ * nobody requested a review for has no request to reject yet, so one is opened first: otherwise the
+ * rejection would leave no trace for the creator.
  */
 export function useRejectCuration(address: string | undefined) {
   const store = useStoreCuration(address)
+  const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ collection, curation }: RejectVariables) => {
+    mutationFn: async ({ collection, curation, rejectionReasons, rejectionMessage }: RejectVariables) => {
       if (!address) throw new Error('Wallet disconnected')
       const current = curation?.status === 'pending' ? curation : await pushCollectionCuration(address, collection.id)
-      return updateCollectionCuration(address, current.collectionId, { status: 'rejected' })
+      return updateCollectionCuration(address, current.collectionId, {
+        status: 'rejected',
+        rejectionReasons,
+        rejectionMessage
+      })
     },
-    onSuccess: (curation, { collection, curation: previous }) => {
-      track('Reject curation', { collectionId: collection.id, first_review: !previous })
+    onSuccess: (curation, { collection, curation: previous, rejectionReasons }) => {
+      track('Reject curation', { collectionId: collection.id, first_review: !previous, reasons: rejectionReasons })
       store(curation)
+      void queryClient.invalidateQueries({ queryKey: ['collection-events', address, collection.id] })
     },
     onError: (error, { collection }) => {
       track('Reject curation error', { collectionId: collection.id, error: errorCode(error) })

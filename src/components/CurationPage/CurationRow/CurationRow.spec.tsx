@@ -8,6 +8,8 @@ import { CurationRow } from './CurationRow'
 
 vi.mock('~/components/CollectionMosaic', () => ({ CollectionMosaic: () => null }))
 vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: undefined }) }))
+const latest = vi.hoisted(() => ({ event: null as { type: string } | null }))
+vi.mock('~/hooks/useCollectionEvents', () => ({ useLatestCollectionEvent: () => ({ data: latest.event }) }))
 
 const ME = '0xme00000000000000000000000000000000000001'
 const collection = {
@@ -26,6 +28,9 @@ const pending: CollectionCuration = {
   collectionId: 'c1',
   status: 'pending',
   assignee: null,
+  reviewedBy: null,
+  rejectionReasons: null,
+  rejectionMessage: null,
   createdAt: 1,
   updatedAt: 2
 }
@@ -65,6 +70,19 @@ describe('CurationRow', () => {
     expect(screen.getByTestId('curation-row-curator')).toHaveTextContent('(you)')
     fireEvent.click(screen.getByTestId('curation-row-edit-assignee'))
     expect(onAssign).toHaveBeenCalledWith(collection, assigned, 'edit')
+  })
+
+  it('shows the derived stage over the legacy state when the timeline tells it apart', () => {
+    latest.event = { type: 'review.ai_started' }
+    renderRow(pending)
+    expect(screen.getByTestId('review-stage')).toHaveAttribute('data-stage', 'ai_reviewing')
+    expect(screen.queryByTestId('curation-state')).toBeNull()
+    latest.event = null
+  })
+
+  it('names the validator on its rejections', () => {
+    renderRow({ ...pending, status: 'rejected', reviewedBy: 'validator' })
+    expect(screen.getByTestId('review-stage')).toHaveAttribute('data-stage', 'rejected_by_validator')
   })
 
   it('locks the curator once the collection and its request are approved', () => {
