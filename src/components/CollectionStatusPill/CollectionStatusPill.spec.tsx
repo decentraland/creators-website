@@ -42,4 +42,13 @@ describe('CollectionStatusPill', () => {
     expect(screen.getByTestId('collection-status')).toHaveAttribute('data-status', 'published')
     expect(screen.queryByTestId('collection-status-hint-trigger')).not.toBeInTheDocument()
   })
+
+  it('reads Rejected from the latest review request', () => {
+    renderPill({
+      collection: underReview,
+      curation: { id: 'r1', collectionId: 'c1', status: 'rejected', assignee: null, createdAt: 1, updatedAt: 1 }
+    })
+    expect(screen.getByTestId('collection-status')).toHaveAttribute('data-status', 'rejected')
+    expect(screen.getByTestId('collection-status')).toHaveTextContent(/rejected/i)
+  })
 })

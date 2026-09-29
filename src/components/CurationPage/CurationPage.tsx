@@ -129,7 +129,8 @@ const CurationPage = () => {
     !!filters.tag
   // Rows can't tell "never requested" from "not loaded yet": without the curations their actions would open new requests.
   const isLoading = collections.isLoading || (collections.isFetching && !data) || curations.isLoading
-  const isError = collections.isError || curations.isError
+  // A failed background refetch keeps its cached data: only a failure with nothing to show blanks the list.
+  const isError = (collections.isError && !data) || (curations.isError && !curations.data)
   const isSearching = searchInput.trim() !== filters.search || (!!filters.search && collections.isFetching)
 
   return (
@@ -207,6 +208,7 @@ const CurationPage = () => {
           <S.PanelTitle>{t('curation_page.error.title')}</S.PanelTitle>
           <S.PanelText>{t('curation_page.error.description')}</S.PanelText>
           <Button
+            data-testid="curation-retry"
             type="button"
             variant="secondary"
             onClick={() => {

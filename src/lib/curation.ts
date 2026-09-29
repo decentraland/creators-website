@@ -53,9 +53,9 @@ export function getCurationState(collection: Collection, curation: CollectionCur
     if (!curation || curation.status === 'approved') return CurationState.APPROVED
     if (curation.status === 'rejected') return CurationState.REJECTED
   } else {
-    if (curation?.status === 'rejected') return CurationState.REJECTED
-    // Approving closes the pending request, so a later disable leaves an approved (or no) request behind.
+    // Approving closes the pending request, so a disable leaves an approved, rejected or no request behind.
     if (hasBeenApproved(collection) && curation?.status !== 'pending') return CurationState.DISABLED
+    if (curation?.status === 'rejected') return CurationState.REJECTED
   }
   if (curation?.status === 'pending' && curation.assignee) return CurationState.UNDER_REVIEW
   return CurationState.TO_REVIEW
@@ -167,16 +167,19 @@ export function getCreatorReviewNotice(
   return curation.status === 'rejected' ? 'rejected' : null
 }
 
-/** Owners and collaborators may send an approved collection's unsynced changes back to the committee. */
+/**
+ * Owners and collaborators may ask the committee for another look: an approved collection once its items
+ * are unsynced, or a never-approved one after a rejected first review (its items always read as under
+ * review, so there is no sync signal to wait for).
+ */
 export function canPushChanges(
   collection: Collection,
   curation: CollectionCuration | null,
   hasUnsyncedItems: boolean,
   canManage: boolean
 ): boolean {
-  return (
-    collection.isPublished && collection.isApproved && canManage && hasUnsyncedItems && curation?.status !== 'pending'
-  )
+  if (!collection.isPublished || !canManage || curation?.status === 'pending') return false
+  return collection.isApproved ? hasUnsyncedItems : curation?.status === 'rejected'
 }
 
 const LIST_SEARCH_KEY = 'wemotes-builder.curation-search'

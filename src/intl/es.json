@@ -60,7 +60,8 @@
     "published": "Publicada",
     "under_review": "En revisión",
     "under_review_hint": "Tu colección está siendo revisada para su aprobación. Esto puede tardar hasta 5 minutos. Te avisaremos cuando la revisión termine.",
-    "draft": "Borrador"
+    "draft": "Borrador",
+    "rejected": "Rechazada"
   },
   "pagination": {
     "previous": "Página anterior",
@@ -281,10 +282,19 @@
       "error": "No pudimos enviar tus cambios a revisión. Inténtalo de nuevo.",
       "success": "Tus cambios se enviaron a revisión"
     },
+    "request_review": {
+      "action": "Solicitar revisión de nuevo",
+      "title": "Solicitar revisión de nuevo",
+      "description": "El comité de curaduría revisará tu colección de nuevo. Asegúrate de haber resuelto los motivos del rechazo antes.",
+      "confirm": "Solicitar revisión",
+      "cancel": "Cancelar",
+      "error": "No pudimos solicitar una nueva revisión. Inténtalo de nuevo.",
+      "success": "Tu colección se envió a revisión"
+    },
     "review_notice": {
       "waiting": "Tu colección está esperando a un curador.",
       "reviewing": "Un curador está revisando tu colección.",
-      "rejected": "El comité de curaduría rechazó la última versión de esta colección."
+      "rejected": "El comité de curaduría rechazó la última versión de esta colección. Actualiza tus ítems y envíalos a revisión de nuevo."
     }
   },
   "publish_collection_modal": {

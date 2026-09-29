@@ -58,7 +58,7 @@ export function ReviewBar({ session, collection, items }: Props) {
   const canAssign = canEditAssignee(collection, curation)
   const isLoading = collection.isPublished && curationQuery.isLoading
   // Without the request, Reject and Assign would open a new one instead of updating it.
-  const isCurationError = collection.isPublished && curationQuery.isError
+  const isCurationError = collection.isPublished && curationQuery.isError && !curationQuery.data
 
   function onAction(action: ReviewAction) {
     if (action === ReviewAction.APPROVE || action === ReviewAction.ENABLE) setApproval('approve')
@@ -86,7 +86,7 @@ export function ReviewBar({ session, collection, items }: Props) {
       <S.Meta>
         {!collection.isPublished ? (
           <span data-testid="review-unpublished">{t('item_editor.review.unpublished')}</span>
-        ) : isCurationError ? (
+        ) : isLoading ? null : isCurationError ? (
           <>
             <span data-testid="review-curation-error">{t('item_editor.review.curation_error')}</span>
             <Button

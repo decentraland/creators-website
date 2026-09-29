@@ -109,6 +109,12 @@ describe('getCurationState', () => {
       CurationState.DISABLED
     ],
     [
+      'a collection disabled after its pushed changes were rejected',
+      collection(reviewedBefore),
+      curation({ status: 'rejected' }),
+      CurationState.DISABLED
+    ],
+    [
       'changes pushed on a disabled collection',
       collection(reviewedBefore),
       curation({ assignee: '0xc' }),
@@ -222,11 +228,18 @@ describe('canPushChanges', () => {
     expect(canPushChanges(approved, curation({ status: 'rejected' }), true, true)).toBe(true)
   })
 
-  it('refuses while a request is pending, without changes, without rights or before approval', () => {
+  it('refuses while a request is pending, without changes or without rights', () => {
     expect(canPushChanges(approved, curation(), true, true)).toBe(false)
     expect(canPushChanges(approved, null, false, true)).toBe(false)
     expect(canPushChanges(approved, null, true, false)).toBe(false)
+  })
+
+  it('lets managers ask for the first review again after a rejection, and only then', () => {
+    expect(canPushChanges(collection(), curation({ status: 'rejected' }), false, true)).toBe(true)
+    expect(canPushChanges(collection(), curation({ status: 'rejected' }), false, false)).toBe(false)
     expect(canPushChanges(collection(), null, true, true)).toBe(false)
+    expect(canPushChanges(collection(), curation(), true, true)).toBe(false)
+    expect(canPushChanges(collection({ isPublished: false }), curation({ status: 'rejected' }), true, true)).toBe(false)
   })
 })
 

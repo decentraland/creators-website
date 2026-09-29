@@ -183,6 +183,8 @@ const CollectionDetailPage = () => {
     !!collection &&
     curationQuery.isSuccess &&
     canPushChanges(collection, curation, hasUnsyncedItems, canManageCollectionItems(collection, address))
+  // A never-approved collection asks for its first review again; an approved one sends an update.
+  const pushCopy = collection?.isApproved ? 'push_changes' : 'request_review'
 
   const isLoading = !restored || (!!address && (collectionQuery.isLoading || itemsQuery.isLoading))
   // builder-server serves published collections to any signer; addresses with no role on it get
@@ -359,7 +361,7 @@ const CollectionDetailPage = () => {
                   </S.RenameButton>
                 )}
               </S.TitleGroup>
-              <CollectionStatusPill collection={collection} hint={statusHint} />
+              <CollectionStatusPill collection={collection} curation={curation} hint={statusHint} />
               {address && <CollectionRolePill collection={collection} address={address} />}
             </S.HeaderLeft>
             <S.HeaderActions>
@@ -412,7 +414,7 @@ const CollectionDetailPage = () => {
                   data-testid="push-changes"
                   onClick={() => setPushOpen(true)}
                 >
-                  {t('collection_detail_page.push_changes.action')}
+                  {t(`collection_detail_page.${pushCopy}.action`)}
                 </Button>
               )}
               {canSend && (
@@ -628,23 +630,23 @@ const CollectionDetailPage = () => {
           {publishView === 'success' && <PublishSuccessModal onDone={() => setPublishView('closed')} />}
           {isPushOpen && (
             <ConfirmModal
-              title={t('collection_detail_page.push_changes.title')}
-              description={t('collection_detail_page.push_changes.description')}
-              error={pushCuration.isError ? t('collection_detail_page.push_changes.error') : null}
+              title={t(`collection_detail_page.${pushCopy}.title`)}
+              description={t(`collection_detail_page.${pushCopy}.description`)}
+              error={pushCuration.isError ? t(`collection_detail_page.${pushCopy}.error`) : null}
               busy={pushCuration.isPending}
               onClose={closePush}
               cancel={{
-                label: t('collection_detail_page.push_changes.cancel'),
+                label: t(`collection_detail_page.${pushCopy}.cancel`),
                 onClick: closePush,
                 testId: 'push-changes-cancel'
               }}
               confirm={{
-                label: t('collection_detail_page.push_changes.confirm'),
+                label: t(`collection_detail_page.${pushCopy}.confirm`),
                 onClick: () =>
                   pushCuration.mutate(collection, {
                     onSuccess: () => {
                       setPushOpen(false)
-                      showToast(t('collection_detail_page.push_changes.success'))
+                      showToast(t(`collection_detail_page.${pushCopy}.success`))
                     }
                   }),
                 testId: 'push-changes-confirm'

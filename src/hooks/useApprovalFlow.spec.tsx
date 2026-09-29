@@ -20,6 +20,7 @@ const api = vi.hoisted(() => ({
   fetchAllCollectionItems: vi.fn(),
   publishCollectionItems: vi.fn(),
   updateCollectionCuration: vi.fn(),
+  pushCollectionCuration: vi.fn(),
   fetchContent: vi.fn()
 }))
 vi.mock('~/lib/approveCollection', () => flow)
@@ -86,6 +87,32 @@ describe('useApprovalFlow', () => {
     await act(() => result.current.start())
     await act(() => result.current.runApprove())
     expect(queryClient.getQueryData<Collection>(['collection', '0xme', 'c1'])).toMatchObject({ isApproved: true })
+  })
+
+  it('approves a rejected first review through a new request, so it stops reading as rejected', async () => {
+    const rejected = { status: 'rejected' } as CollectionCuration
+    const { result } = renderHook(() => useApprovalFlow(session, collection, rejected, 'approve'), { wrapper })
+    await act(() => result.current.start())
+    await act(() => result.current.runApprove())
+    expect(api.pushCollectionCuration).toHaveBeenCalledWith('0xme', 'c1')
+    expect(api.updateCollectionCuration).toHaveBeenCalledWith('0xme', 'c1', { status: 'approved' })
+  })
+
+  it('closes the request once the approval landed on chain, even if the flow unmounted meanwhile', async () => {
+    let land: (txHash: string) => void = () => undefined
+    flow.approveOnChain.mockReturnValue(new Promise<string>(resolve => (land = resolve)))
+    const { result } = renderHook(() => useApprovalFlow(session, collection, pending, 'approve'), { wrapper })
+    await act(() => result.current.start())
+    let approving: Promise<void> = Promise.resolve()
+    act(() => {
+      approving = result.current.runApprove()
+    })
+    result.current.stop()
+    await act(async () => {
+      land('0xtx')
+      await approving
+    })
+    expect(api.updateCollectionCuration).toHaveBeenCalledWith('0xme', 'c1', { status: 'approved' })
   })
 
   it('does not close the request when the curator closed the flow while it was loading', async () => {

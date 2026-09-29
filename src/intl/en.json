@@ -60,7 +60,8 @@
     "published": "Published",
     "under_review": "Under review",
     "under_review_hint": "Your collection is being reviewed for approval. This may take up to 5 minutes. We’ll notify you once the review is complete.",
-    "draft": "Draft"
+    "draft": "Draft",
+    "rejected": "Rejected"
   },
   "pagination": {
     "previous": "Previous page",
@@ -281,10 +282,19 @@
       "error": "We couldn't send your changes for review. Please try again.",
       "success": "Your changes were sent for review"
     },
+    "request_review": {
+      "action": "Request review again",
+      "title": "Request review again",
+      "description": "The curation committee will review your collection again. Make sure you've addressed the reasons for the rejection first.",
+      "confirm": "Request review",
+      "cancel": "Cancel",
+      "error": "We couldn't request a new review. Please try again.",
+      "success": "Your collection was sent for review"
+    },
     "review_notice": {
       "waiting": "Your collection is waiting for a curator.",
       "reviewing": "A curator is reviewing your collection.",
-      "rejected": "The curation committee rejected the latest version of this collection."
+      "rejected": "The curation committee rejected the latest version of this collection. Update your items and send them for review again."
     }
   },
   "publish_collection_modal": {

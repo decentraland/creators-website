@@ -121,6 +121,18 @@ describe('getCollectionDisplayStatus', () => {
     expect(getCollectionDisplayStatus(withFlags(true, false))).toBe(CollectionDisplayStatus.UNDER_REVIEW)
     expect(getCollectionDisplayStatus(withFlags(false, false))).toBe(CollectionDisplayStatus.DRAFT)
   })
+
+  it('shows a rejected first review as rejected, but keeps an approved collection published', () => {
+    expect(getCollectionDisplayStatus(withFlags(true, false), { status: 'rejected' })).toBe(
+      CollectionDisplayStatus.REJECTED
+    )
+    expect(getCollectionDisplayStatus(withFlags(true, false), { status: 'pending' })).toBe(
+      CollectionDisplayStatus.UNDER_REVIEW
+    )
+    expect(getCollectionDisplayStatus(withFlags(true, true), { status: 'rejected' })).toBe(
+      CollectionDisplayStatus.PUBLISHED
+    )
+  })
 })
 
 describe('hasBeenApproved', () => {

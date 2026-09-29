@@ -174,7 +174,7 @@ export function usePushCuration(address: string | undefined) {
       return pushCollectionCuration(address, collection.id)
     },
     onSuccess: (curation, collection) => {
-      track('Push curation', { collectionId: collection.id })
+      track('Push curation', { collectionId: collection.id, first_review: !collection.isApproved })
       store(curation)
     },
     onError: (error, collection) => {

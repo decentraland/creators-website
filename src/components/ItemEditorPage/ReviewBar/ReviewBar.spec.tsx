@@ -11,6 +11,7 @@ import { ReviewBar } from './ReviewBar'
 const state = vi.hoisted(() => ({
   curation: null as CollectionCuration | null,
   curationError: false,
+  curationLoading: false,
   refetch: vi.fn(),
   syncs: new Map<string, { status: string; entity?: object }>(),
   reject: vi.fn(),
@@ -19,7 +20,7 @@ const state = vi.hoisted(() => ({
 vi.mock('~/hooks/useCuration', () => ({
   useCollectionCuration: () => ({
     data: state.curation,
-    isLoading: false,
+    isLoading: state.curationLoading,
     isError: state.curationError,
     refetch: state.refetch
   }),
@@ -60,6 +61,7 @@ const actions = () => screen.queryAllByTestId(/^review-action-/).map(button => b
 beforeEach(() => {
   state.curation = null
   state.curationError = false
+  state.curationLoading = false
   state.syncs = new Map()
   state.reject.mockReset()
   state.disable.mockReset()
@@ -126,5 +128,13 @@ describe('ReviewBar', () => {
     expect(screen.queryByTestId('review-assign-me')).toBeNull()
     fireEvent.click(screen.getByTestId('review-curation-retry'))
     expect(state.refetch).toHaveBeenCalled()
+  })
+
+  it('offers nothing to act on while the review request loads', () => {
+    state.curationLoading = true
+    renderBar()
+    expect(actions()).toEqual([])
+    expect(screen.queryByTestId('review-assign-me')).toBeNull()
+    expect(screen.queryByTestId('review-assignee')).toBeNull()
   })
 })

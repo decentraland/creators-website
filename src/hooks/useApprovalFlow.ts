@@ -21,7 +21,13 @@ import {
   type ContractCall,
   type Session
 } from '~/lib/auth'
-import { fetchAllCollectionItems, fetchContent, publishCollectionItems, updateCollectionCuration } from '~/lib/builder'
+import {
+  fetchAllCollectionItems,
+  fetchContent,
+  publishCollectionItems,
+  pushCollectionCuration,
+  updateCollectionCuration
+} from '~/lib/builder'
 import { deployEntity, fetchAvailableContent, fetchEntitiesByPointers } from '~/lib/catalyst'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
@@ -59,8 +65,10 @@ export function useApprovalFlow(
   const chainId = getMaticChainId()
   const [view, setView] = useState<ApprovalView>({ kind: 'loading' })
   const context = useRef<Context>({ items: [], rescue: [], deploy: [] })
-  // A closed modal must not keep moving to the next step when a request in flight settles.
   const alive = useRef(true)
+  // Each start() gets a token and stop() retires it: a run settling after the modal closed (or a StrictMode
+  // remount restarted it) must not move on to the next step or write anything.
+  const run = useRef(0)
 
   const set = useCallback((next: ApprovalView) => {
     if (alive.current) setView(next)
@@ -91,10 +99,10 @@ export function useApprovalFlow(
   }, [queryClient, address, collection.id])
 
   // Legacy left a pending request open after approving, so the collection kept showing as under review.
+  // A rejected first review gets a new request to approve, or it would keep reading as rejected once live.
   const complete = useCallback(async () => {
-    // A closed modal may not write: the flow can still reach here from a request that was in flight.
-    if (!alive.current) return
-    if (mode === 'approve' && curation?.status === 'pending') {
+    if (mode === 'approve' && (curation?.status === 'pending' || curation?.status === 'rejected')) {
+      if (curation.status === 'rejected') await pushCollectionCuration(address, collection.id)
       await updateCollectionCuration(address, collection.id, { status: 'approved' })
       track('Approve curation', { collectionId: collection.id })
     }
@@ -103,27 +111,36 @@ export function useApprovalFlow(
     set({ kind: 'success' })
   }, [mode, curation, address, collection.id, refresh, set])
 
-  const finish = useCallback(async () => {
-    if (mode === 'approve' && !collection.isApproved) return set({ kind: 'approve', busy: false })
-    try {
-      await complete()
-    } catch (error) {
-      track('Approve curation error', { collectionId: collection.id, error: errorCode(error) })
-      fail('approve', error)
-    }
-  }, [mode, collection, complete, fail, set])
+  const finish = useCallback(
+    async (token: number) => {
+      if (token !== run.current) return
+      if (mode === 'approve' && !collection.isApproved) return set({ kind: 'approve', busy: false })
+      try {
+        await complete()
+      } catch (error) {
+        track('Approve curation error', { collectionId: collection.id, error: errorCode(error) })
+        fail('approve', error)
+      }
+    },
+    [mode, collection, complete, fail, set]
+  )
 
-  const toDeploy = useCallback(async () => {
-    const items = context.current.items
-    const pointers = items.flatMap(item => (item.urn ? [item.urn] : []))
-    const entities = await fetchEntitiesByPointers(pointers)
-    const deploy = findItemsToDeploy(items, entities)
-    context.current.deploy = deploy
-    if (deploy.length > 0) set({ kind: 'deploy', count: deploy.length, busy: false, done: 0, failed: 0 })
-    else await finish()
-  }, [finish, set])
+  const toDeploy = useCallback(
+    async (token: number) => {
+      const items = context.current.items
+      const pointers = items.flatMap(item => (item.urn ? [item.urn] : []))
+      const entities = await fetchEntitiesByPointers(pointers)
+      if (token !== run.current) return
+      const deploy = findItemsToDeploy(items, entities)
+      context.current.deploy = deploy
+      if (deploy.length > 0) set({ kind: 'deploy', count: deploy.length, busy: false, done: 0, failed: 0 })
+      else await finish(token)
+    },
+    [finish, set]
+  )
 
   const start = useCallback(async () => {
+    const token = ++run.current
     alive.current = true
     set({ kind: 'loading' })
     track('Approval flow started', { collectionId: collection.id, mode })
@@ -132,22 +149,25 @@ export function useApprovalFlow(
         publishCollectionItems: () => publishCollectionItems(address, collection.id),
         fetchItems
       })
+      if (token !== run.current) return
       context.current.items = items
       if (mode === 'approve') {
         const rescue = await findItemsToRescue(collection, items, item => buildMissingImage(item, imageDeps))
+        if (token !== run.current) return
         context.current.rescue = rescue
         if (rescue.length > 0) {
           set({ kind: 'rescue', count: rescue.length, busy: false, sent: 0, total: 0 })
           return
         }
       }
-      await toDeploy()
+      await toDeploy(token)
     } catch (error) {
       fail('prepare', error)
     }
   }, [collection, mode, address, fetchItems, toDeploy, fail, set])
 
   const runRescue = useCallback(async () => {
+    const token = run.current
     const targets = context.current.rescue
     set({ kind: 'rescue', count: targets.length, busy: true, sent: 0, total: 0 })
     try {
@@ -160,7 +180,7 @@ export function useApprovalFlow(
           set({ kind: 'rescue', count: targets.length, busy: true, sent: index + 1, total })
       })
       track('Rescue items', { collectionId: collection.id, item_count: targets.length })
-      await toDeploy()
+      await toDeploy(token)
     } catch (error) {
       track('Rescue items error', { collectionId: collection.id, error: errorCode(error) })
       fail('rescue', error)
@@ -168,6 +188,7 @@ export function useApprovalFlow(
   }, [collection, chainId, tx, wait, fetchItems, toDeploy, fail, set])
 
   const runDeploy = useCallback(async () => {
+    const token = run.current
     const items = context.current.deploy
     set({ kind: 'deploy', count: items.length, busy: true, done: 0, failed: 0 })
     const deps: DeployDeps = {
@@ -193,7 +214,7 @@ export function useApprovalFlow(
         return
       }
       track('Deploy entities', { collectionId: collection.id, item_count: items.length })
-      await finish()
+      await finish(token)
     } catch (error) {
       fail('deploy', error)
     }
@@ -216,6 +237,7 @@ export function useApprovalFlow(
 
   const stop = useCallback(() => {
     alive.current = false
+    run.current++
   }, [])
 
   return { view, start, runRescue, runDeploy, runApprove, stop }
