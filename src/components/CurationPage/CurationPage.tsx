@@ -8,6 +8,7 @@ import { NotFoundPage } from '~/components/NotFoundPage'
 import { Pagination } from '~/components/Pagination'
 import { Select, type SelectOption } from '~/components/Select'
 import { shortAddress } from '~/components/ProfileBadge'
+import { Switch } from '~/components/Switch'
 import { useCampaign } from '~/hooks/useCampaign'
 import { useCommittee, useCurationCollections, useCurationsByCollection } from '~/hooks/useCuration'
 import { useProfiles } from '~/hooks/useProfile'
@@ -170,34 +171,38 @@ const CurationPage = () => {
               {t(`curation_page.filter.${status}`)}
             </S.Chip>
           ))}
-          {campaign && (
-            <S.Chip
-              type="button"
-              data-active={filters.tag === campaign.mainTag || undefined}
-              aria-pressed={filters.tag === campaign.mainTag}
-              data-testid="curation-campaign-filter"
-              onClick={() => changeFilter('tag', filters.tag === campaign.mainTag ? null : campaign.mainTag)}
-            >
-              {campaign.name}
-            </S.Chip>
-          )}
         </S.Chips>
-        <S.Selects>
-          <Select
-            value={filters.assignee}
-            options={assigneeOptions}
-            onChange={value => changeFilter('assignee', value === ALL_ASSIGNEES ? null : value)}
-            ariaLabel={t('curation_page.filter.assignee')}
-            testId="curation-assignee-filter"
-          />
-          <Select
-            value={filters.sort}
-            options={sortOptions}
-            onChange={value => changeFilter('sort', value)}
-            ariaLabel={t('curation_page.filter.sort')}
-            testId="curation-sort"
-          />
-        </S.Selects>
+        <S.Controls>
+          {campaign && (
+            <S.CampaignToggle>
+              <Switch
+                checked={filters.tag === campaign.mainTag}
+                onChange={checked => changeFilter('tag', checked ? campaign.mainTag : null)}
+                label={campaign.name}
+                testId="curation-campaign-filter"
+              />
+              <span>{campaign.name}</span>
+            </S.CampaignToggle>
+          )}
+          <S.Selects>
+            <Select
+              value={filters.assignee}
+              options={assigneeOptions}
+              onChange={value => changeFilter('assignee', value === ALL_ASSIGNEES ? null : value)}
+              ariaLabel={t('curation_page.filter.assignee')}
+              variant="compact"
+              testId="curation-assignee-filter"
+            />
+            <Select
+              value={filters.sort}
+              options={sortOptions}
+              onChange={value => changeFilter('sort', value)}
+              ariaLabel={t('curation_page.filter.sort')}
+              variant="compact"
+              testId="curation-sort"
+            />
+          </S.Selects>
+        </S.Controls>
       </S.FilterRow>
 
       {isLoading ? (

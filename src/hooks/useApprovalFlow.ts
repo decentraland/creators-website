@@ -78,8 +78,9 @@ export function useApprovalFlow(
   const wait = useCallback((txHash: string) => waitForTransaction(chainId, txHash), [chainId])
   const fetchItems = useCallback(() => fetchAllCollectionItems(address, collection.id), [address, collection.id])
 
+  // The collection query is not refetched: builder-server reads `is_approved` from the subgraph, which lags
+  // behind the approval transaction, so the on-chain result is written to the cache instead (like disable).
   const refresh = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: ['collection', address, collection.id] })
     void queryClient.invalidateQueries({ queryKey: allCollectionItemsKey(address, collection.id) })
     void queryClient.invalidateQueries({ queryKey: collectionCurationKey(address, collection.id) })
     void queryClient.invalidateQueries({ queryKey: ['item-entities', collection.id] })
@@ -206,6 +207,9 @@ export function useApprovalFlow(
     try {
       const txHash = await approveOnChain(collection, { chainId, sendTransaction: tx, waitForTransaction: wait })
       track('Approve collection', { collectionId: collection.id, txHash })
+      queryClient.setQueryData<Collection>(['collection', address, collection.id], current =>
+        current ? { ...current, isApproved: true } : current
+      )
       // Legacy left a pending request open here, so the approved collection kept showing as under review.
       if (curation?.status === 'pending') {
         await updateCollectionCuration(address, collection.id, { status: 'approved' })
@@ -218,7 +222,7 @@ export function useApprovalFlow(
       track('Approve collection error', { collectionId: collection.id, error: errorCode(error) })
       fail('approve', error)
     }
-  }, [collection, curation, address, chainId, tx, wait, refresh, mode, fail, set])
+  }, [collection, curation, address, chainId, tx, wait, refresh, mode, fail, set, queryClient])
 
   const stop = useCallback(() => {
     alive.current = false

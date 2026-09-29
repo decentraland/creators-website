@@ -49,6 +49,13 @@ export function ReviewBar({ session, collection, items }: Props) {
   const state = getCurationState(collection, curation)
   const actions = collection.isPublished ? getReviewActions(collection, curation, hasMissingEntities) : []
   const assignee = curation?.assignee ?? null
+  // A first-review rejection opens the request itself, so its creation time only means something while pending.
+  const timeKey = !curation ? 'created' : curation.status === 'pending' ? 'requested' : curation.status
+  const time = !curation
+    ? collection.createdAt
+    : curation.status === 'pending'
+      ? curation.createdAt
+      : curation.updatedAt
   const isLoading = collection.isPublished && curationQuery.isLoading
 
   function onAction(action: ReviewAction) {
@@ -80,9 +87,7 @@ export function ReviewBar({ session, collection, items }: Props) {
         ) : (
           <>
             <span data-testid="review-requested">
-              {curation
-                ? t('item_editor.review.requested', { time: formatTimeAgo(curation.createdAt, intl.locale) })
-                : t('item_editor.review.published', { time: formatTimeAgo(collection.createdAt, intl.locale) })}
+              {t(`item_editor.review.${timeKey}`, { time: formatTimeAgo(time, intl.locale) })}
             </span>
             {assignee ? (
               <S.AssigneeChip
@@ -96,10 +101,12 @@ export function ReviewBar({ session, collection, items }: Props) {
                 {canEditAssignee(collection, curation) && <EditIcon fontSize="inherit" />}
               </S.AssigneeChip>
             ) : (
-              <S.AssigneeChip type="button" data-testid="review-assign-me" onClick={() => setDialog('assign')}>
-                <AssignIcon fontSize="small" />
-                {t('item_editor.review.assign_to_me')}
-              </S.AssigneeChip>
+              canEditAssignee(collection, curation) && (
+                <S.AssigneeChip type="button" data-testid="review-assign-me" onClick={() => setDialog('assign')}>
+                  <AssignIcon fontSize="small" />
+                  {t('item_editor.review.assign_to_me')}
+                </S.AssigneeChip>
+              )
             )}
           </>
         )}

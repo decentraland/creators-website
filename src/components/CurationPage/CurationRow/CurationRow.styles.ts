@@ -149,6 +149,14 @@ export const AssigneeCell = styled.div`
   font-size: 14px;
   font-weight: 600;
 
+  ${table} {
+    &[data-unassigned] {
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0;
+    }
+  }
+
   ${card} {
     grid-area: assignee;
     justify-content: space-between;
@@ -191,4 +199,9 @@ export const TextAction = styled.button`
   text-decoration: underline;
   text-underline-offset: 3px;
   white-space: nowrap;
+
+  ${table} {
+    /* Flush with the column's right edge despite the button's own padding. */
+    margin-right: -8px;
+  }
 `

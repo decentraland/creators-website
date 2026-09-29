@@ -45,11 +45,13 @@ const item = { id: 'i1', urn: 'urn:1' } as Item
 const collection = { id: 'c1', isApproved: false } as Collection
 const pending = { status: 'pending' } as CollectionCuration
 
+let queryClient: QueryClient
 function wrapper({ children }: { children: ReactNode }) {
-  return <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 
 beforeEach(() => {
+  queryClient = new QueryClient()
   Object.values(flow).forEach(fn => fn.mockReset())
   Object.values(api).forEach(fn => fn.mockReset())
   api.fetchAllCollectionItems.mockResolvedValue([item])
@@ -76,6 +78,14 @@ describe('useApprovalFlow', () => {
     await act(() => result.current.runApprove())
     expect(result.current.view).toEqual({ kind: 'success' })
     expect(api.updateCollectionCuration).toHaveBeenCalledWith('0xme', 'c1', { status: 'approved' })
+  })
+
+  it('shows the collection as approved right after the transaction, before the subgraph catches up', async () => {
+    queryClient.setQueryData(['collection', '0xme', 'c1'], collection)
+    const { result } = renderHook(() => useApprovalFlow(session, collection, pending, 'approve'), { wrapper })
+    await act(() => result.current.start())
+    await act(() => result.current.runApprove())
+    expect(queryClient.getQueryData<Collection>(['collection', '0xme', 'c1'])).toMatchObject({ isApproved: true })
   })
 
   it('approves pushed changes of an approved collection without a transaction', async () => {

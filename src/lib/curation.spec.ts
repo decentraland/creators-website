@@ -151,7 +151,7 @@ describe('curation filters', () => {
       search: '',
       status: CurationStatusFilter.ALL,
       assignee: 'all',
-      sort: CollectionSort.MOST_RELEVANT,
+      sort: CollectionSort.CURATION_UPDATED_AT_DESC,
       tag: null
     })
   })

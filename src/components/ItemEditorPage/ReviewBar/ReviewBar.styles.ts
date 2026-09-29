@@ -69,7 +69,7 @@ export const AssigneeChip = styled.button`
   align-items: center;
   gap: 6px;
   min-width: 0;
-  min-height: 44px;
+  height: 36px;
   padding: 0 12px;
   border: 1px solid ${theme.editor.line};
   border-radius: ${theme.radius.pill};
@@ -84,6 +84,10 @@ export const AssigneeChip = styled.button`
   }
   &:disabled {
     cursor: default;
+  }
+
+  ${mobile} {
+    min-height: 44px;
   }
 `
 
@@ -123,16 +127,6 @@ export const FlowCenter = styled.div`
   align-items: center;
   gap: 16px;
   text-align: center;
-`
-
-export const DoneGlyph = styled.span`
-  display: flex;
-  color: ${theme.colors.green};
-
-  & svg {
-    width: 56px;
-    height: 56px;
-  }
 `
 
 export { ModalActions as FlowActions } from '~/styles/shared'

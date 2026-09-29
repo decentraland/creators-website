@@ -97,6 +97,7 @@ export enum CurationStatusFilter {
 }
 
 export const CURATION_SORTS = [
+  CollectionSort.CURATION_UPDATED_AT_DESC,
   CollectionSort.MOST_RELEVANT,
   CollectionSort.CREATED_AT_DESC,
   CollectionSort.NAME_ASC,
@@ -125,7 +126,7 @@ export function parseCurationFilters(params: URLSearchParams): CurationFilters {
     search: params.get('q') ?? '',
     status: Object.values(CurationStatusFilter).includes(status) ? status : CurationStatusFilter.ALL,
     assignee: params.get('assignee')?.toLowerCase() || ALL_ASSIGNEES,
-    sort: CURATION_SORTS.includes(sort) ? sort : CollectionSort.MOST_RELEVANT,
+    sort: CURATION_SORTS.includes(sort) ? sort : CollectionSort.CURATION_UPDATED_AT_DESC,
     tag: params.get('tag') || null
   }
 }

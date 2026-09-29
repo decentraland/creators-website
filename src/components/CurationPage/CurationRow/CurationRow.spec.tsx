@@ -71,4 +71,10 @@ describe('CurationRow', () => {
     renderRow({ ...pending, status: 'approved', assignee: ME }, { ...collection, isApproved: true })
     expect(screen.queryByTestId('curation-row-edit-assignee')).toBeNull()
   })
+
+  it('stops offering the assignment once the collection and its request are approved', () => {
+    renderRow({ ...pending, status: 'approved' }, { ...collection, isApproved: true })
+    expect(screen.getByTestId('curation-row-assignee')).toHaveTextContent('Unassigned')
+    expect(screen.queryByTestId('curation-row-assign-me')).toBeNull()
+  })
 })

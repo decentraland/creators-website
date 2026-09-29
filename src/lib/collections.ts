@@ -59,7 +59,9 @@ export enum CollectionSort {
   CREATED_AT_DESC = 'CREATED_AT_DESC',
   CREATED_AT_ASC = 'CREATED_AT_ASC',
   UPDATED_AT_DESC = 'UPDATED_AT_DESC',
-  UPDATED_AT_ASC = 'UPDATED_AT_ASC'
+  UPDATED_AT_ASC = 'UPDATED_AT_ASC',
+  /** Latest review activity first; a collection never sent for review counts from its creation. */
+  CURATION_UPDATED_AT_DESC = 'CURATION_UPDATED_AT_DESC'
 }
 
 export enum CurationStatus {

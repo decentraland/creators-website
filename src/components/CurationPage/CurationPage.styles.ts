@@ -18,17 +18,19 @@ export {
 } from '~/styles/shared'
 
 const card = theme.media.maxWidth('lg')
+const table = theme.media.minWidth('lg')
 
 // Shared by the list header and every row so their columns stay aligned.
 export const curationColumns = `
   display: grid;
-  grid-template-columns: minmax(220px, 2fr) minmax(140px, 1.2fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(120px, 1fr) minmax(200px, 1.4fr);
+  grid-template-columns: minmax(220px, 2fr) minmax(140px, 1.2fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(120px, 1fr) minmax(140px, 1fr);
   align-items: center;
   gap: 16px;
 `
 
 export const FilterRow = styled.div`
   display: flex;
+  flex-flow: row wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -39,12 +41,36 @@ export const FilterRow = styled.div`
   }
 `
 
+export const Controls = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 24px;
+
+  ${theme.media.maxWidth('mobile')} {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+`
+
+export const CampaignToggle = styled.label`
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 600;
+  color: ${theme.colors.white};
+  white-space: nowrap;
+  cursor: pointer;
+`
+
 export const Selects = styled.div`
   display: flex;
   gap: 12px;
 
   & > * {
-    min-width: 200px;
+    min-width: 160px;
   }
 
   ${theme.media.maxWidth('mobile')} {
@@ -59,6 +85,17 @@ export const List = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
+
+  ${table} {
+    overflow-x: auto;
+    /* Room for the rows' hover glow, which the scroll container would otherwise clip. */
+    padding: 8px;
+    margin: -8px;
+
+    & > * {
+      min-width: 960px;
+    }
+  }
 `
 
 export const ListHeader = styled.div`

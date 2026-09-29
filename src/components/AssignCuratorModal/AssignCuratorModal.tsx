@@ -75,7 +75,6 @@ export function AssignCuratorModal({ collection, curation, address, mode, onClos
       title={t(`assign_curator_modal.title_${mode}`, { collection: collection.name })}
       onClose={onClose}
       closeDisabled={assign.isPending}
-      compact
       testId="assign-curator-modal"
     >
       <S.Form onSubmit={submit}>

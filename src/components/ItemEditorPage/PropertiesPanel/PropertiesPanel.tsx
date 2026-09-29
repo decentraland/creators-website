@@ -80,8 +80,8 @@ type Props = {
   address: string
   /** False in review mode, for viewers without edit rights, and while the collection is publish-locked. */
   editable: boolean
-  /** Replaces the default read-only note (review mode explains why curators can't edit). */
-  readOnlyNote?: string
+  /** Review mode hides the read-only note: curators know the editor is locked. */
+  showReadOnlyNote?: boolean
   /** Owner of a draft collection: the only one who may delete items here. */
   canDelete: boolean
   draft: ItemDraft
@@ -99,7 +99,7 @@ export function PropertiesPanel({
   item,
   address,
   editable,
-  readOnlyNote,
+  showReadOnlyNote = true,
   canDelete,
   draft,
   dispatch,
@@ -272,8 +272,8 @@ export function PropertiesPanel({
           )}
         </ActionsMenu>
       </S.PanelHeader>
-      {!editable && (
-        <S.ReadOnlyNote data-testid={`${testId}-readonly`}>{readOnlyNote ?? t('item_editor.read_only')}</S.ReadOnlyNote>
+      {!editable && showReadOnlyNote && (
+        <S.ReadOnlyNote data-testid={`${testId}-readonly`}>{t('item_editor.read_only')}</S.ReadOnlyNote>
       )}
 
       <EditorSection title={t('item_editor.details.title')} testId={`${testId}-details`}>

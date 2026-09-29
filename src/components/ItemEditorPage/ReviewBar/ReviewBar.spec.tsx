@@ -98,4 +98,16 @@ describe('ReviewBar', () => {
     fireEvent.click(screen.getByTestId('review-assign-me'))
     expect(screen.getByTestId('assign-modal')).toHaveAttribute('data-mode', 'self')
   })
+
+  it('dates a rejection by when it happened, not by the request it opened', () => {
+    state.curation = { status: 'rejected', assignee: null, createdAt: 1, updatedAt: Date.now() } as CollectionCuration
+    renderBar()
+    expect(screen.getByTestId('review-requested')).toHaveTextContent(/^Rejected/)
+  })
+
+  it('stops offering the assignment once the collection and its request are approved', () => {
+    state.curation = { status: 'approved', assignee: null, createdAt: 1, updatedAt: 2 } as CollectionCuration
+    renderBar({ ...base, isApproved: true })
+    expect(screen.queryByTestId('review-assign-me')).not.toBeInTheDocument()
+  })
 })

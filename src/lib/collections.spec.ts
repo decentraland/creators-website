@@ -90,10 +90,10 @@ describe('toCollectionsQueryString', () => {
         limit: 20,
         q: 'hat',
         type: CollectionType.STANDARD,
-        sort: CollectionSort.CREATED_AT_DESC,
+        sort: CollectionSort.CURATION_UPDATED_AT_DESC,
         isPublished: true
       })
-    ).toBe('?is_published=true&type=standard&sort=CREATED_AT_DESC&q=hat&page=2&limit=20')
+    ).toBe('?is_published=true&type=standard&sort=CURATION_UPDATED_AT_DESC&q=hat&page=2&limit=20')
   })
 
   it('serializes is_published=false and returns an empty string with no params', () => {
