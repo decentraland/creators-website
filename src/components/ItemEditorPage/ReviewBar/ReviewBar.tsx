@@ -50,12 +50,12 @@ export function ReviewBar({ session, collection, items }: Props) {
   const actions = collection.isPublished ? getReviewActions(collection, curation, hasMissingEntities) : []
   const assignee = curation?.assignee ?? null
   // A first-review rejection opens the request itself, so its creation time only means something while pending.
-  const timeKey = !curation ? 'created' : curation.status === 'pending' ? 'requested' : curation.status
-  const time = !curation
-    ? collection.createdAt
+  const [timeKey, time] = !curation
+    ? ['created', collection.createdAt]
     : curation.status === 'pending'
-      ? curation.createdAt
-      : curation.updatedAt
+      ? ['requested', curation.createdAt]
+      : [curation.status, curation.updatedAt]
+  const canAssign = canEditAssignee(collection, curation)
   const isLoading = collection.isPublished && curationQuery.isLoading
 
   function onAction(action: ReviewAction) {
@@ -92,16 +92,16 @@ export function ReviewBar({ session, collection, items }: Props) {
             {assignee ? (
               <S.AssigneeChip
                 type="button"
-                disabled={!canEditAssignee(collection, curation)}
+                disabled={!canAssign}
                 aria-label={t('item_editor.review.change_assignee')}
                 data-testid="review-assignee"
                 onClick={() => setDialog('assign')}
               >
                 <ProfileBadge address={assignee} self={assignee === address.toLowerCase()} />
-                {canEditAssignee(collection, curation) && <EditIcon fontSize="inherit" />}
+                {canAssign && <EditIcon fontSize="inherit" />}
               </S.AssigneeChip>
             ) : (
-              canEditAssignee(collection, curation) && (
+              canAssign && (
                 <S.AssigneeChip type="button" data-testid="review-assign-me" onClick={() => setDialog('assign')}>
                   <AssignIcon fontSize="small" />
                   {t('item_editor.review.assign_to_me')}

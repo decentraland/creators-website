@@ -7,11 +7,9 @@ import { AssignCuratorModal } from '~/components/AssignCuratorModal'
 import { NotFoundPage } from '~/components/NotFoundPage'
 import { Pagination } from '~/components/Pagination'
 import { Select, type SelectOption } from '~/components/Select'
-import { shortAddress } from '~/components/ProfileBadge'
 import { Switch } from '~/components/Switch'
 import { useCampaign } from '~/hooks/useCampaign'
-import { useCommittee, useCurationCollections, useCurationsByCollection } from '~/hooks/useCuration'
-import { useProfiles } from '~/hooks/useProfile'
+import { useCommittee, useCurationCollections, useCurationsByCollection, useCuratorOptions } from '~/hooks/useCuration'
 import { track } from '~/lib/analytics'
 import { type Collection } from '~/lib/collections'
 import {
@@ -19,7 +17,6 @@ import {
   CURATION_PAGE_SIZE,
   CURATION_SORTS,
   CurationStatusFilter,
-  orderCurators,
   parseCurationFilters,
   type CollectionCuration
 } from '~/lib/curation'
@@ -51,22 +48,8 @@ const CurationPage = () => {
   useEffect(() => setSearchInput(filters.search), [filters.search])
   useEffect(() => () => clearTimeout(searchTimer.current), [])
 
-  const curators = useMemo(() => orderCurators(committee.members, address), [committee.members, address])
-  const profiles = useProfiles(curators)
-  const assigneeOptions = useMemo<SelectOption<string>[]>(
-    () => [
-      { value: ALL_ASSIGNEES, label: t('curation_page.filter.all_assignees') },
-      ...curators.map((curator, index) => {
-        const name = profiles[index]?.name || shortAddress(curator)
-        return {
-          value: curator,
-          label: curator === address?.toLowerCase() ? t('curation_page.filter.you', { name }) : name,
-          dividerBefore: index === 0
-        }
-      })
-    ],
-    [curators, profiles, address, t]
-  )
+  const allAssignees = useMemo(() => ({ value: ALL_ASSIGNEES, label: t('curation_page.filter.all_assignees') }), [t])
+  const assigneeOptions = useCuratorOptions(address, allAssignees)
   const sortOptions = useMemo<SelectOption<string>[]>(
     () => CURATION_SORTS.map(sort => ({ value: sort, label: t(`curation_page.sort.${sort}`) })),
     [t]

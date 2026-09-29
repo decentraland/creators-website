@@ -1311,7 +1311,6 @@
     "self_body": "You'll be responsible for reviewing this collection. You can reassign it to another curator later.",
     "curator": "Curator",
     "unassign": "Nobody (unassign)",
-    "you": "{name} (you)",
     "assigned": "{collection} is now assigned to {name}",
     "unassigned": "{collection} is no longer assigned",
     "error": "We couldn't save the assignment. Please try again.",

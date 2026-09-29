@@ -172,6 +172,10 @@ const CollectionDetailPage = () => {
     () => [...syncs.values()].some(sync => sync.status === ItemSyncStatus.UNSYNCED),
     [syncs]
   )
+  const closePush = () => {
+    setPushOpen(false)
+    pushCuration.reset()
+  }
   const reviewNotice = collection ? getCreatorReviewNotice(collection, curation) : null
   const showPushChanges =
     !!collection &&
@@ -625,16 +629,10 @@ const CollectionDetailPage = () => {
               description={t('collection_detail_page.push_changes.description')}
               error={pushCuration.isError ? t('collection_detail_page.push_changes.error') : null}
               busy={pushCuration.isPending}
-              onClose={() => {
-                setPushOpen(false)
-                pushCuration.reset()
-              }}
+              onClose={closePush}
               cancel={{
                 label: t('collection_detail_page.push_changes.cancel'),
-                onClick: () => {
-                  setPushOpen(false)
-                  pushCuration.reset()
-                },
+                onClick: closePush,
                 testId: 'push-changes-cancel'
               }}
               confirm={{

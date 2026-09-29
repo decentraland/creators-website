@@ -1,4 +1,7 @@
 import { useMemo } from 'react'
+import { useTranslation } from '~/intl'
+import { shortAddress } from '~/components/ProfileBadge'
+import { type SelectOption } from '~/components/Select'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { errorCode, track } from '~/lib/analytics'
 import { sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
@@ -12,8 +15,9 @@ import {
 } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { buildSetApprovedCall } from '~/lib/collectionApproval'
-import { isCommitteeMember, type CollectionCuration, type CurationFilters } from '~/lib/curation'
+import { isCommitteeMember, orderCurators, type CollectionCuration, type CurationFilters } from '~/lib/curation'
 import { captureError } from '~/lib/monitoring'
+import { useProfiles } from '~/hooks/useProfile'
 import { getMaticChainId } from '~/lib/publishCollection'
 import { isWalletRejection } from '~/lib/walletErrors'
 
@@ -29,6 +33,29 @@ export function useCommittee(address: string | undefined) {
     isCurator: isCommitteeMember(members, address),
     isLoading: query.isLoading
   }
+}
+
+/** The committee as picker options, the signed-in curator first and marked, after `leading` and a divider. */
+export function useCuratorOptions(address: string | undefined, leading: SelectOption<string>) {
+  const { t } = useTranslation()
+  const { members } = useCommittee(address)
+  const curators = useMemo(() => orderCurators(members, address), [members, address])
+  const profiles = useProfiles(curators)
+  const self = address?.toLowerCase()
+  return useMemo<SelectOption<string>[]>(
+    () => [
+      leading,
+      ...curators.map((curator, index) => {
+        const name = profiles[index]?.name || shortAddress(curator)
+        return {
+          value: curator,
+          label: curator === self ? t('curation_page.filter.you', { name }) : name,
+          dividerBefore: index === 0
+        }
+      })
+    ],
+    [leading, curators, profiles, self, t]
+  )
 }
 
 export function collectionCurationKey(address: string | undefined, collectionId: string | undefined) {

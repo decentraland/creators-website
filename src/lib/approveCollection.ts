@@ -11,8 +11,7 @@ import {
   buildItemEntity,
   computeItemContentHash,
   getEntityContent,
-  type AuthLink,
-  type EntityContent
+  type AuthLink
 } from '~/lib/catalystEntity'
 import { isItemSynced } from '~/lib/itemSync'
 import { IMAGE_PATH, ItemType, getItemMetadata, type Item } from '~/lib/items'
@@ -148,7 +147,7 @@ export type DeployDeps = ImageDeps & {
 
 async function deployItem(collection: Collection, item: Item, deps: DeployDeps): Promise<void> {
   const image = await buildMissingImage(item, deps)
-  const content: EntityContent = getEntityContent(item, image?.hash)
+  const content = getEntityContent(item, image?.hash)
   const entity = await buildItemEntity(collection, item, content)
   const authChain = deps.sign(entity.entityId)
   if (!authChain) throw new ApprovalError('no_identity', 'The session has no signing identity')
@@ -160,7 +159,7 @@ async function deployItem(collection: Collection, item: Item, deps: DeployDeps):
     if (available.has(hash)) continue
     files.set(hash, image && hash === image.hash ? image.blob : await deps.fetchContent(hash))
   }
-  await deps.deployEntity(buildDeploymentForm(entity, authChain, files, available))
+  await deps.deployEntity(buildDeploymentForm(entity, authChain, files))
 }
 
 export type DeployResult = { deployed: Item[]; failed: Item[] }

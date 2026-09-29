@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TranslationProvider } from '~/intl'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
@@ -8,8 +9,9 @@ import { AssignCuratorModal } from './AssignCuratorModal'
 const ME = '0xme'
 const OTHER = '0xother'
 const mutate = vi.fn()
-vi.mock('~/hooks/useCuration', () => ({
-  useCommittee: () => ({ members: [OTHER, ME], isCurator: true, isLoading: false }),
+vi.mock('~/lib/builder', () => ({ fetchCommittee: async () => [OTHER, ME] }))
+vi.mock('~/hooks/useCuration', async importOriginal => ({
+  ...(await importOriginal<typeof import('~/hooks/useCuration')>()),
   useAssignCurator: () => ({ mutate, isPending: false, isError: false })
 }))
 vi.mock('~/hooks/useProfile', () => ({ useProfiles: (list: string[]) => list.map(() => undefined) }))
@@ -26,9 +28,11 @@ const curation: CollectionCuration = {
 
 function renderModal(mode: 'self' | 'edit', onClose = vi.fn()) {
   render(
-    <TranslationProvider>
-      <AssignCuratorModal collection={collection} curation={curation} address={ME} mode={mode} onClose={onClose} />
-    </TranslationProvider>
+    <QueryClientProvider client={new QueryClient()}>
+      <TranslationProvider>
+        <AssignCuratorModal collection={collection} curation={curation} address={ME} mode={mode} onClose={onClose} />
+      </TranslationProvider>
+    </QueryClientProvider>
   )
   return onClose
 }
@@ -42,10 +46,10 @@ describe('AssignCuratorModal', () => {
     expect(mutate).toHaveBeenCalledWith({ collection, curation, assignee: ME }, expect.anything())
   })
 
-  it('unassigns the collection', () => {
+  it('unassigns the collection', async () => {
     renderModal('edit')
     fireEvent.click(screen.getByTestId('assign-curator-select'))
-    fireEvent.click(screen.getByRole('option', { name: 'Nobody (unassign)' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Nobody (unassign)' }))
     fireEvent.click(screen.getByTestId('assign-curator-submit'))
     expect(mutate).toHaveBeenCalledWith({ collection, curation, assignee: null }, expect.anything())
   })

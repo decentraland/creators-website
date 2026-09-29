@@ -1311,7 +1311,6 @@
     "self_body": "Serás responsable de revisar esta colección. Puedes reasignarla a otro curador más adelante.",
     "curator": "Curador",
     "unassign": "Nadie (quitar asignación)",
-    "you": "{name} (tú)",
     "assigned": "{collection} ahora está asignada a {name}",
     "unassigned": "{collection} ya no está asignada",
     "error": "No pudimos guardar la asignación. Inténtalo de nuevo.",

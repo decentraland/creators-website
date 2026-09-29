@@ -25,6 +25,7 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
   const intl = useIntl()
   const state = getCurationState(collection, curation)
   const assignee = curation?.assignee ?? null
+  const canAssign = canEditAssignee(collection, curation)
 
   return (
     <S.Row data-testid="curation-row" data-state={state}>
@@ -54,7 +55,7 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
         {assignee ? (
           <>
             <ProfileBadge address={assignee} self={assignee === address.toLowerCase()} testId="curation-row-curator" />
-            {canEditAssignee(collection, curation) && (
+            {canAssign && (
               <S.IconAction
                 type="button"
                 aria-label={t('curation_page.list.edit_assignee')}
@@ -68,7 +69,7 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
         ) : (
           <>
             <S.Unassigned>{t('curation_page.list.unassigned')}</S.Unassigned>
-            {canEditAssignee(collection, curation) && (
+            {canAssign && (
               <S.TextAction
                 type="button"
                 data-testid="curation-row-assign-me"

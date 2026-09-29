@@ -52,11 +52,7 @@ export function ApprovalFlowModal({ session, collection, curation, mode, onClose
       />
     )
   }
-  const busy =
-    assign.isPending ||
-    (view.kind === 'rescue' && view.busy) ||
-    (view.kind === 'deploy' && view.busy) ||
-    (view.kind === 'approve' && view.busy)
+  const busy = assign.isPending || ('busy' in view && view.busy)
   const titleKey = !confirmed ? 'assigned_to_other' : view.kind
 
   function assignAndApprove() {

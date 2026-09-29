@@ -46,6 +46,8 @@ export type ApprovalStep = 'prepare' | 'rescue' | 'deploy' | 'approve'
 
 type Context = { items: Item[]; rescue: RescueTarget[]; deploy: Item[] }
 
+const imageDeps = { fetchContent, renderCatalystImage: generateCatalystImage }
+
 export function useApprovalFlow(
   session: Session,
   collection: Collection,
@@ -88,27 +90,26 @@ export function useApprovalFlow(
     void queryClient.invalidateQueries({ queryKey: ['curation-collections'] })
   }, [queryClient, address, collection.id])
 
-  const finish = useCallback(async () => {
-    if (mode === 'approve') {
-      if (!collection.isApproved) {
-        set({ kind: 'approve', busy: false })
-        return
-      }
-      if (curation?.status === 'pending') {
-        try {
-          await updateCollectionCuration(address, collection.id, { status: 'approved' })
-          track('Approve curation', { collectionId: collection.id })
-        } catch (error) {
-          track('Approve curation error', { collectionId: collection.id, error: errorCode(error) })
-          fail('approve', error)
-          return
-        }
-      }
+  // Legacy left a pending request open after approving, so the collection kept showing as under review.
+  const complete = useCallback(async () => {
+    if (mode === 'approve' && curation?.status === 'pending') {
+      await updateCollectionCuration(address, collection.id, { status: 'approved' })
+      track('Approve curation', { collectionId: collection.id })
     }
     refresh()
     track('Approval flow completed', { collectionId: collection.id, mode })
     set({ kind: 'success' })
-  }, [mode, collection, curation, address, fail, refresh, set])
+  }, [mode, curation, address, collection.id, refresh, set])
+
+  const finish = useCallback(async () => {
+    if (mode === 'approve' && !collection.isApproved) return set({ kind: 'approve', busy: false })
+    try {
+      await complete()
+    } catch (error) {
+      track('Approve curation error', { collectionId: collection.id, error: errorCode(error) })
+      fail('approve', error)
+    }
+  }, [mode, collection, complete, fail, set])
 
   const toDeploy = useCallback(async () => {
     const items = context.current.items
@@ -119,8 +120,6 @@ export function useApprovalFlow(
     if (deploy.length > 0) set({ kind: 'deploy', count: deploy.length, busy: false, done: 0, failed: 0 })
     else await finish()
   }, [finish, set])
-
-  const imageDeps = { fetchContent, renderCatalystImage: generateCatalystImage }
 
   const start = useCallback(async () => {
     alive.current = true
@@ -144,8 +143,6 @@ export function useApprovalFlow(
     } catch (error) {
       fail('prepare', error)
     }
-    // imageDeps is two module functions, stable across renders.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collection, mode, address, fetchItems, toDeploy, fail, set])
 
   const runRescue = useCallback(async () => {
@@ -198,8 +195,6 @@ export function useApprovalFlow(
     } catch (error) {
       fail('deploy', error)
     }
-    // imageDeps is two module functions, stable across renders.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collection, address, finish, fail, set])
 
   const runApprove = useCallback(async () => {
@@ -210,19 +205,12 @@ export function useApprovalFlow(
       queryClient.setQueryData<Collection>(['collection', address, collection.id], current =>
         current ? { ...current, isApproved: true } : current
       )
-      // Legacy left a pending request open here, so the approved collection kept showing as under review.
-      if (curation?.status === 'pending') {
-        await updateCollectionCuration(address, collection.id, { status: 'approved' })
-        track('Approve curation', { collectionId: collection.id })
-      }
-      refresh()
-      track('Approval flow completed', { collectionId: collection.id, mode })
-      set({ kind: 'success' })
+      await complete()
     } catch (error) {
       track('Approve collection error', { collectionId: collection.id, error: errorCode(error) })
       fail('approve', error)
     }
-  }, [collection, curation, address, chainId, tx, wait, refresh, mode, fail, set, queryClient])
+  }, [collection, address, chainId, tx, wait, complete, fail, set, queryClient])
 
   const stop = useCallback(() => {
     alive.current = false
