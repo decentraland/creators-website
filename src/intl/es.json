@@ -60,7 +60,8 @@
     "published": "Publicada",
     "under_review": "En revisión",
     "under_review_hint": "Tu colección está siendo revisada para su aprobación. Esto puede tardar hasta 5 minutos. Te avisaremos cuando la revisión termine.",
-    "draft": "Borrador"
+    "draft": "Borrador",
+    "rejected": "Rechazada"
   },
   "pagination": {
     "previous": "Página anterior",
@@ -282,10 +283,19 @@
       "error": "No pudimos enviar tus cambios a revisión. Inténtalo de nuevo.",
       "success": "Tus cambios se enviaron a revisión"
     },
+    "request_review": {
+      "action": "Solicitar revisión de nuevo",
+      "title": "Solicitar revisión de nuevo",
+      "description": "El comité de curaduría revisará tu colección de nuevo. Asegúrate de haber resuelto los motivos del rechazo antes.",
+      "confirm": "Solicitar revisión",
+      "cancel": "Cancelar",
+      "error": "No pudimos solicitar una nueva revisión. Inténtalo de nuevo.",
+      "success": "Tu colección se envió a revisión"
+    },
     "review_notice": {
       "waiting": "Tu colección está esperando a un curador.",
       "reviewing": "Un curador está revisando tu colección.",
-      "rejected": "El comité de curaduría rechazó la última versión de esta colección."
+      "rejected": "El comité de curaduría rechazó la última versión de esta colección. Actualiza tus ítems y envíalos a revisión de nuevo."
     }
   },
   "publish_collection_modal": {
@@ -678,7 +688,9 @@
       "empty": "Esta colección aún no tiene ítems.",
       "dress": "Mostrar {name} en el avatar",
       "undress": "Quitar {name} del avatar",
-      "no_representation": "Este ítem no tiene versión para la forma de cuerpo actual. Cambia la forma de cuerpo para previsualizarlo."
+      "no_representation": "Este ítem no tiene versión para la forma de cuerpo actual. Cambia la forma de cuerpo para previsualizarlo.",
+      "male_only": "Solo para la forma de cuerpo masculina",
+      "female_only": "Solo para la forma de cuerpo femenina"
     },
     "picker": {
       "title": "Colecciones",
@@ -692,8 +704,12 @@
       "title": "Modo de revisión",
       "back": "Volver a curaduría",
       "unpublished": "Esta colección todavía no está publicada",
+      "curation_error": "No pudimos cargar el estado de revisión de esta colección.",
+      "retry": "Reintentar",
       "requested": "Revisión solicitada {time}",
-      "published": "Publicada {time}",
+      "created": "Creada {time}",
+      "approved": "Aprobada {time}",
+      "rejected": "Rechazada {time}",
       "change_assignee": "Cambiar el curador asignado",
       "assign_to_me": "Asignármela",
       "cancel": "Cancelar",
@@ -711,7 +727,14 @@
         "error": "No pudimos deshabilitar la colección. Inténtalo de nuevo.",
         "success": "{collection} fue deshabilitada"
       },
-      "read_only": "Modo de revisión: aquí no se puede editar nada. Revisa todas las propiedades de cada ítem antes de aprobar."
+      "reject": {
+        "title": "¿Rechazar {collection}?",
+        "first": "La colección no se podrá mintear. El creador la verá como rechazada.",
+        "changes": "La colección conserva su versión aprobada. El creador verá los cambios como rechazados.",
+        "confirm": "Rechazar",
+        "error": "No pudimos rechazar la colección. Inténtalo de nuevo.",
+        "success": "{collection} fue rechazada"
+      }
     },
     "discard": {
       "title": "¿Descartar tus cambios?",
@@ -840,6 +863,7 @@
       "title": "Etiquetas",
       "placeholder": "Escribe una etiqueta y presiona Enter",
       "remove": "Quitar etiqueta {tag}",
+      "empty": "Este ítem no tiene etiquetas.",
       "campaign_hint": "Agrega la etiqueta “{tag}” para participar con este ítem en {name}."
     },
     "options": {
@@ -877,7 +901,8 @@
     },
     "sort": {
       "MOST_RELEVANT": "Más relevantes",
-      "CREATED_AT_DESC": "Más recientes",
+      "CURATION_UPDATED_AT_DESC": "Actividad reciente",
+      "CREATED_AT_DESC": "Colecciones más recientes",
       "NAME_ASC": "Nombre A-Z",
       "NAME_DESC": "Nombre Z-A"
     },
@@ -889,7 +914,7 @@
       "status": "Estado",
       "assignee": "Curador",
       "requested": "Revisión solicitada",
-      "published": "Publicada",
+      "created": "Creada",
       "unassigned": "Sin asignar",
       "assign_to_me": "Asignármela",
       "edit_assignee": "Cambiar el curador asignado"
@@ -1299,7 +1324,6 @@
     "self_body": "Serás responsable de revisar esta colección. Puedes reasignarla a otro curador más adelante.",
     "curator": "Curador",
     "unassign": "Nadie (quitar asignación)",
-    "you": "{name} (tú)",
     "assigned": "{collection} ahora está asignada a {name}",
     "unassigned": "{collection} ya no está asignada",
     "error": "No pudimos guardar la asignación. Inténtalo de nuevo.",
@@ -1319,10 +1343,10 @@
       "body": "Revisando los ítems de la colección…"
     },
     "rescue": {
-      "title": "Actualizar ítems en la blockchain",
-      "body": "{count, plural, one {# ítem cambió} other {# ítems cambiaron}} desde que se publicó. Confirma en tu wallet para actualizar el contrato de la colección.",
+      "title": "Registrar ítems en la blockchain",
+      "body": "El contenido de {count, plural, one {# ítem} other {# ítems}} debe registrarse en el contrato de la colección. Confirma en tu wallet para continuar.",
       "progress": "Transacción {sent} de {total} enviada. Esperando la confirmación…",
-      "action": "Actualizar ítems"
+      "action": "Registrar ítems"
     },
     "deploy": {
       "title": "Subir ítems",
@@ -1334,13 +1358,14 @@
     },
     "approve": {
       "title": "Habilitar la colección",
-      "body": "Último paso: confirma en tu wallet para que la colección se pueda mintear."
+      "body": "Último paso: confirma en tu wallet para que la colección se pueda mintear.",
+      "action": "Habilitar"
     },
     "success": {
-      "title": "Listo",
+      "title_approve": "¡Colección aprobada!",
+      "title_deploy_missing": "¡Ítems subidos!",
       "body_approve": "{collection} está aprobada. ¡Gracias por revisarla!",
-      "body_deploy_missing": "Todos los ítems de {collection} están subidos.",
-      "action": "Listo"
+      "body_deploy_missing": "Todos los ítems de {collection} están subidos."
     },
     "error": {
       "title": "Algo salió mal",

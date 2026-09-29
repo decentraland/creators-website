@@ -7,10 +7,9 @@ import { AssignCuratorModal } from '~/components/AssignCuratorModal'
 import { NotFoundPage } from '~/components/NotFoundPage'
 import { Pagination } from '~/components/Pagination'
 import { Select, type SelectOption } from '~/components/Select'
-import { shortAddress } from '~/components/ProfileBadge'
+import { Switch } from '~/components/Switch'
 import { useCampaign } from '~/hooks/useCampaign'
-import { useCommittee, useCurationCollections, useCurationsByCollection } from '~/hooks/useCuration'
-import { useProfiles } from '~/hooks/useProfile'
+import { useCommittee, useCurationCollections, useCurationsByCollection, useCuratorOptions } from '~/hooks/useCuration'
 import { track } from '~/lib/analytics'
 import { type Collection } from '~/lib/collections'
 import {
@@ -18,8 +17,8 @@ import {
   CURATION_PAGE_SIZE,
   CURATION_SORTS,
   CurationStatusFilter,
-  orderCurators,
   parseCurationFilters,
+  rememberCurationSearch,
   type CollectionCuration
 } from '~/lib/curation'
 import { pageRangeLabel } from '~/lib/pagination'
@@ -47,25 +46,16 @@ const CurationPage = () => {
 
   const [searchInput, setSearchInput] = useState(filters.search)
   const searchTimer = useRef<ReturnType<typeof setTimeout>>()
-  useEffect(() => setSearchInput(filters.search), [filters.search])
+  // The URL holds the trimmed query; writing it back verbatim would eat the space the user is typing.
+  useEffect(
+    () => setSearchInput(current => (current.trim() === filters.search ? current : filters.search)),
+    [filters.search]
+  )
+  useEffect(() => rememberCurationSearch(searchParams.size > 0 ? `?${searchParams}` : ''), [searchParams])
   useEffect(() => () => clearTimeout(searchTimer.current), [])
 
-  const curators = useMemo(() => orderCurators(committee.members, address), [committee.members, address])
-  const profiles = useProfiles(curators)
-  const assigneeOptions = useMemo<SelectOption<string>[]>(
-    () => [
-      { value: ALL_ASSIGNEES, label: t('curation_page.filter.all_assignees') },
-      ...curators.map((curator, index) => {
-        const name = profiles[index]?.name || shortAddress(curator)
-        return {
-          value: curator,
-          label: curator === address?.toLowerCase() ? t('curation_page.filter.you', { name }) : name,
-          dividerBefore: index === 0
-        }
-      })
-    ],
-    [curators, profiles, address, t]
-  )
+  const allAssignees = useMemo(() => ({ value: ALL_ASSIGNEES, label: t('curation_page.filter.all_assignees') }), [t])
+  const assigneeOptions = useCuratorOptions(address, allAssignees)
   const sortOptions = useMemo<SelectOption<string>[]>(
     () => CURATION_SORTS.map(sort => ({ value: sort, label: t(`curation_page.sort.${sort}`) })),
     [t]
@@ -137,7 +127,10 @@ const CurationPage = () => {
     filters.status !== CurationStatusFilter.ALL ||
     filters.assignee !== ALL_ASSIGNEES ||
     !!filters.tag
-  const isLoading = collections.isLoading || (collections.isFetching && !data)
+  // Rows can't tell "never requested" from "not loaded yet": without the curations their actions would open new requests.
+  const isLoading = collections.isLoading || (collections.isFetching && !data) || curations.isLoading
+  // A failed background refetch keeps its cached data: only a failure with nothing to show blanks the list.
+  const isError = (collections.isError && !data) || (curations.isError && !curations.data)
   const isSearching = searchInput.trim() !== filters.search || (!!filters.search && collections.isFetching)
 
   return (
@@ -170,34 +163,38 @@ const CurationPage = () => {
               {t(`curation_page.filter.${status}`)}
             </S.Chip>
           ))}
-          {campaign && (
-            <S.Chip
-              type="button"
-              data-active={filters.tag === campaign.mainTag || undefined}
-              aria-pressed={filters.tag === campaign.mainTag}
-              data-testid="curation-campaign-filter"
-              onClick={() => changeFilter('tag', filters.tag === campaign.mainTag ? null : campaign.mainTag)}
-            >
-              {campaign.name}
-            </S.Chip>
-          )}
         </S.Chips>
-        <S.Selects>
-          <Select
-            value={filters.assignee}
-            options={assigneeOptions}
-            onChange={value => changeFilter('assignee', value === ALL_ASSIGNEES ? null : value)}
-            ariaLabel={t('curation_page.filter.assignee')}
-            testId="curation-assignee-filter"
-          />
-          <Select
-            value={filters.sort}
-            options={sortOptions}
-            onChange={value => changeFilter('sort', value)}
-            ariaLabel={t('curation_page.filter.sort')}
-            testId="curation-sort"
-          />
-        </S.Selects>
+        <S.Controls>
+          {campaign && (
+            <S.CampaignToggle>
+              <Switch
+                checked={filters.tag === campaign.mainTag}
+                onChange={checked => changeFilter('tag', checked ? campaign.mainTag : null)}
+                label={campaign.name}
+                testId="curation-campaign-filter"
+              />
+              <span>{campaign.name}</span>
+            </S.CampaignToggle>
+          )}
+          <S.Selects>
+            <Select
+              value={filters.assignee}
+              options={assigneeOptions}
+              onChange={value => changeFilter('assignee', value === ALL_ASSIGNEES ? null : value)}
+              ariaLabel={t('curation_page.filter.assignee')}
+              variant="compact"
+              testId="curation-assignee-filter"
+            />
+            <Select
+              value={filters.sort}
+              options={sortOptions}
+              onChange={value => changeFilter('sort', value)}
+              ariaLabel={t('curation_page.filter.sort')}
+              variant="compact"
+              testId="curation-sort"
+            />
+          </S.Selects>
+        </S.Controls>
       </S.FilterRow>
 
       {isLoading ? (
@@ -206,11 +203,19 @@ const CurationPage = () => {
             <S.SkeletonRow key={i} className="skeleton" />
           ))}
         </S.List>
-      ) : collections.isError ? (
+      ) : isError ? (
         <S.Panel data-testid="curation-error">
           <S.PanelTitle>{t('curation_page.error.title')}</S.PanelTitle>
           <S.PanelText>{t('curation_page.error.description')}</S.PanelText>
-          <Button type="button" variant="secondary" onClick={() => void collections.refetch()}>
+          <Button
+            data-testid="curation-retry"
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              if (collections.isError) void collections.refetch()
+              if (curations.isError) void curations.refetch()
+            }}
+          >
             {t('curation_page.error.retry')}
           </Button>
         </S.Panel>

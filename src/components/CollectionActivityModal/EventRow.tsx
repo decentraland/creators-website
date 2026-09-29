@@ -112,6 +112,7 @@ export function EventRow({ event, items, isCurator }: Props) {
             <>
               <S.Toggle
                 type="button"
+                aria-expanded={showFindings}
                 data-testid="activity-toggle-findings"
                 onClick={() => setShowFindings(open => !open)}
               >

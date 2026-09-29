@@ -38,7 +38,7 @@ export function RejectCurationModal({ collection, curation, address, onClose }: 
     event.preventDefault()
     if (!canSubmit) return
     reject.mutate(
-      { collection, curation, rejectionReasons: reasons, rejectionMessage: trimmed },
+      { collection, curation, decision: { rejectionReasons: reasons, rejectionMessage: trimmed } },
       {
         onSuccess: () => {
           showToast(t('reject_curation_modal.success', { collection: collection.name }))

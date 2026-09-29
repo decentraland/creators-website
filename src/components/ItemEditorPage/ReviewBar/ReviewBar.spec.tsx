@@ -11,17 +11,29 @@ import { ReviewBar } from './ReviewBar'
 
 const state = vi.hoisted(() => ({
   curation: null as CollectionCuration | null,
-  events: [] as CollectionEvent[],
+  events: null as CollectionEvent[] | null,
+  autoCuration: true,
+  curationError: false,
+  curationLoading: false,
+  refetch: vi.fn(),
   syncs: new Map<string, { status: string; entity?: object }>(),
   reject: vi.fn(),
   disable: vi.fn()
 }))
 vi.mock('~/hooks/useCuration', () => ({
-  useCollectionCuration: () => ({ data: state.curation, isLoading: false }),
+  useCollectionCuration: () => ({
+    data: state.curation,
+    isLoading: state.curationLoading,
+    isError: state.curationError,
+    refetch: state.refetch
+  }),
   useRejectCuration: () => ({ mutate: state.reject, isPending: false, isError: false, reset: vi.fn() }),
   useDisableCollection: () => ({ mutate: state.disable, isPending: false, isError: false, reset: vi.fn() })
 }))
 vi.mock('~/hooks/useCollectionEvents', () => ({ useCollectionEvents: () => ({ events: state.events }) }))
+vi.mock('~/hooks/useFeatureFlag', () => ({
+  useFeatureFlag: () => ({ enabled: state.autoCuration, isLoading: false })
+}))
 vi.mock('~/hooks/useItemSync', () => ({ useItemSyncs: () => state.syncs }))
 vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: undefined }) }))
 vi.mock('./ApprovalFlowModal', () => ({
@@ -55,7 +67,10 @@ const actions = () => screen.queryAllByTestId(/^review-action-/).map(button => b
 
 beforeEach(() => {
   state.curation = null
-  state.events = []
+  state.events = null
+  state.autoCuration = true
+  state.curationError = false
+  state.curationLoading = false
   state.syncs = new Map()
   state.reject.mockReset()
   state.disable.mockReset()
@@ -69,6 +84,14 @@ describe('ReviewBar', () => {
     expect(screen.getByTestId('approval-flow')).toHaveAttribute('data-mode', 'approve')
   })
 
+  it('rejects with a plain confirmation while auto-curation is off, sending no reasons', () => {
+    state.autoCuration = false
+    renderBar()
+    fireEvent.click(screen.getByTestId('review-action-reject'))
+    fireEvent.click(screen.getByTestId('review-reject-confirm'))
+    expect(state.reject).toHaveBeenCalledWith({ collection: base, curation: null }, expect.anything())
+  })
+
   it('rejects only with at least one reason and a message, and sends both', () => {
     renderBar()
     fireEvent.click(screen.getByTestId('review-action-reject'))
@@ -80,7 +103,11 @@ describe('ReviewBar', () => {
     expect(confirm).toBeEnabled()
     fireEvent.click(confirm)
     expect(state.reject).toHaveBeenCalledWith(
-      { collection: base, curation: null, rejectionReasons: ['clipping'], rejectionMessage: 'Clips through the torso' },
+      {
+        collection: base,
+        curation: null,
+        decision: { rejectionReasons: ['clipping'], rejectionMessage: 'Clips through the torso' }
+      },
       expect.anything()
     )
   })
@@ -156,5 +183,34 @@ describe('ReviewBar', () => {
     renderBar()
     fireEvent.click(screen.getByTestId('review-assign-me'))
     expect(screen.getByTestId('assign-modal')).toHaveAttribute('data-mode', 'self')
+  })
+
+  it('dates a rejection by when it happened, not by the request it opened', () => {
+    state.curation = { status: 'rejected', assignee: null, createdAt: 1, updatedAt: Date.now() } as CollectionCuration
+    renderBar()
+    expect(screen.getByTestId('review-requested')).toHaveTextContent(/^Rejected/)
+  })
+
+  it('stops offering the assignment once the collection and its request are approved', () => {
+    state.curation = { status: 'approved', assignee: null, createdAt: 1, updatedAt: 2 } as CollectionCuration
+    renderBar({ ...base, isApproved: true })
+    expect(screen.queryByTestId('review-assign-me')).not.toBeInTheDocument()
+  })
+
+  it('holds back every action until the review request loads', () => {
+    state.curationError = true
+    renderBar()
+    expect(actions()).toEqual([])
+    expect(screen.queryByTestId('review-assign-me')).toBeNull()
+    fireEvent.click(screen.getByTestId('review-curation-retry'))
+    expect(state.refetch).toHaveBeenCalled()
+  })
+
+  it('offers nothing to act on while the review request loads', () => {
+    state.curationLoading = true
+    renderBar()
+    expect(actions()).toEqual([])
+    expect(screen.queryByTestId('review-assign-me')).toBeNull()
+    expect(screen.queryByTestId('review-assignee')).toBeNull()
   })
 })

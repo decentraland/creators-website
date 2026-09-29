@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
 import { type Collection } from './collections'
 import { BODY_SHAPE_MALE, ItemType, type Item } from './items'
-import { buildStaticCheckInput, runStaticChecks, toStaticFinding, withPublishedIdentity } from './staticChecks'
+import {
+  buildStaticCheckInput,
+  isPublishBlockedByChecks,
+  runStaticChecks,
+  toStaticFinding,
+  withPublishedIdentity
+} from './staticChecks'
 
 const collection = {
   id: 'c1',
@@ -145,5 +151,16 @@ describe('runStaticChecks', () => {
         docs: 'https://docs'
       })
     ).toMatchObject({ rule: 'M-01', where: 'male/hat.glb', measured: 1940, limit: 1500, docs: 'https://docs' })
+  })
+})
+
+describe('isPublishBlockedByChecks', () => {
+  it('blocks without items, while a run is in flight or with any error, and lets warnings through', () => {
+    const passed = { isFetching: false, data: { errors: 0 } }
+    expect(isPublishBlockedByChecks(passed, 0)).toBe(true)
+    expect(isPublishBlockedByChecks({ isFetching: true, data: { errors: 0 } }, 2)).toBe(true)
+    expect(isPublishBlockedByChecks({ isFetching: false, data: { errors: 1 } }, 2)).toBe(true)
+    expect(isPublishBlockedByChecks(passed, 2)).toBe(false)
+    expect(isPublishBlockedByChecks({ isFetching: false }, 2)).toBe(false)
   })
 })

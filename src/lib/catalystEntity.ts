@@ -124,13 +124,8 @@ export async function buildItemEntity(
 
 export type AuthLink = { type: string; payload: string; signature?: string }
 
-/** The multipart body of POST /content/entities; files already stored on the Catalyst are left out. */
-export function buildDeploymentForm(
-  entity: BuiltEntity,
-  authChain: AuthLink[],
-  files: Map<string, Blob>,
-  alreadyUploaded: Set<string>
-): FormData {
+/** The multipart body of POST /content/entities; `files` holds only what the Catalyst doesn't store yet. */
+export function buildDeploymentForm(entity: BuiltEntity, authChain: AuthLink[], files: Map<string, Blob>): FormData {
   const form = new FormData()
   form.append('entityId', entity.entityId)
   authChain.forEach((link, index) => {
@@ -139,8 +134,6 @@ export function buildDeploymentForm(
     if (link.signature !== undefined) form.append(`authChain[${index}][signature]`, link.signature)
   })
   form.append(entity.entityId, new Blob([entity.entityFile]), entity.entityId)
-  for (const [hash, blob] of files) {
-    if (!alreadyUploaded.has(hash)) form.append(hash, blob, hash)
-  }
+  for (const [hash, blob] of files) form.append(hash, blob, hash)
   return form
 }

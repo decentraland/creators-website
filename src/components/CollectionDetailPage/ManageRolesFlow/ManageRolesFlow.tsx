@@ -10,7 +10,7 @@ import { diffRoles, type RoleKind } from '~/lib/collectionRoles'
 import { toSellItemError, type SellFailureReason } from '~/lib/sales'
 import { PendingModal } from '../SellItemFlow/PendingModal'
 import { SaleErrorModal } from '../SellItemFlow/SaleErrorModal'
-import { SaleSuccessModal } from '../SellItemFlow/SaleSuccessModal'
+import { SuccessModal } from '~/components/SuccessModal'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { ManageRolesModal } from './ManageRolesModal'
 
@@ -130,7 +130,7 @@ export function ManageRolesFlow({ collection, kind, session, onClose }: Props) {
       )
     case 'success':
       return (
-        <SaleSuccessModal
+        <SuccessModal
           title={t(`manage_roles_modal.${kind}.success_title`)}
           description={t(`manage_roles_modal.${kind}.success_description`)}
           onDone={onClose}

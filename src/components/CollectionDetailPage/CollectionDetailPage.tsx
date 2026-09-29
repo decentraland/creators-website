@@ -44,7 +44,7 @@ import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { ItemSyncStatus, hasPendingChanges } from '~/lib/itemSync'
-import { canPushChanges } from '~/lib/curation'
+import { canPushChanges, getReviewStage, isRejectedStage } from '~/lib/curation'
 import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
 import { useCollectionEvents } from '~/hooks/useCollectionEvents'
 import { previewCollection } from '~/lib/explorer'
@@ -166,7 +166,8 @@ const CollectionDetailPage = () => {
   const listingFor = (item: Item) =>
     listings ? (listings.get(item.tokenId ?? '') ?? null) : listingsQuery.isError ? null : undefined
   const syncs = useItemSyncs(address, collection, allItems ?? [])
-  const { data: curation = null } = useCollectionCuration(address, collection)
+  const curationQuery = useCollectionCuration(address, collection)
+  const curation = curationQuery.data ?? null
   const { events } = useCollectionEvents(address, collection)
   const pushCuration = usePushCuration(address)
   const [isPushOpen, setPushOpen] = useState(false)
@@ -174,8 +175,24 @@ const CollectionDetailPage = () => {
     () => [...syncs.values()].some(sync => sync.status === ItemSyncStatus.UNSYNCED),
     [syncs]
   )
+  const closePush = () => {
+    setPushOpen(false)
+    pushCuration.reset()
+  }
   const canManage = !!collection && canManageCollectionItems(collection, address)
-  const showPushChanges = !!collection && canPushChanges(collection, curation, hasUnsyncedItems, canManage)
+  const stage = useMemo(
+    () => (collection ? getReviewStage(collection, curation, events) : null),
+    [collection, curation, events]
+  )
+  // Until the request loads, a pending one looks like none and the push would duplicate it. A rejection the
+  // automatic review tracks is resubmitted from the review panel (validate again / appeal), never from here.
+  const showPushChanges =
+    !!collection &&
+    curationQuery.isSuccess &&
+    !(isRejectedStage(stage) && !collection.isApproved) &&
+    canPushChanges(collection, curation, hasUnsyncedItems, canManage)
+  // A never-approved collection asks for its first review again; an approved one sends an update.
+  const pushCopy = collection?.isApproved ? 'push_changes' : 'request_review'
 
   const isLoading = !restored || (!!address && (collectionQuery.isLoading || itemsQuery.isLoading))
   // builder-server serves published collections to any signer; addresses with no role on it get
@@ -352,7 +369,7 @@ const CollectionDetailPage = () => {
                   </S.RenameButton>
                 )}
               </S.TitleGroup>
-              <CollectionStatusPill collection={collection} hint={statusHint} />
+              <CollectionStatusPill collection={collection} curation={curation} hint={statusHint} />
               {address && <CollectionRolePill collection={collection} address={address} />}
             </S.HeaderLeft>
             <S.HeaderActions>
@@ -405,7 +422,7 @@ const CollectionDetailPage = () => {
                   data-testid="push-changes"
                   onClick={() => setPushOpen(true)}
                 >
-                  {t('collection_detail_page.push_changes.action')}
+                  {t(`collection_detail_page.${pushCopy}.action`)}
                 </Button>
               )}
               {canSend && (
@@ -626,29 +643,23 @@ const CollectionDetailPage = () => {
           {publishView === 'success' && <PublishSuccessModal onDone={() => setPublishView('closed')} />}
           {isPushOpen && (
             <ConfirmModal
-              title={t('collection_detail_page.push_changes.title')}
-              description={t('collection_detail_page.push_changes.description')}
-              error={pushCuration.isError ? t('collection_detail_page.push_changes.error') : null}
+              title={t(`collection_detail_page.${pushCopy}.title`)}
+              description={t(`collection_detail_page.${pushCopy}.description`)}
+              error={pushCuration.isError ? t(`collection_detail_page.${pushCopy}.error`) : null}
               busy={pushCuration.isPending}
-              onClose={() => {
-                setPushOpen(false)
-                pushCuration.reset()
-              }}
+              onClose={closePush}
               cancel={{
-                label: t('collection_detail_page.push_changes.cancel'),
-                onClick: () => {
-                  setPushOpen(false)
-                  pushCuration.reset()
-                },
+                label: t(`collection_detail_page.${pushCopy}.cancel`),
+                onClick: closePush,
                 testId: 'push-changes-cancel'
               }}
               confirm={{
-                label: t('collection_detail_page.push_changes.confirm'),
+                label: t(`collection_detail_page.${pushCopy}.confirm`),
                 onClick: () =>
                   pushCuration.mutate(collection, {
                     onSuccess: () => {
                       setPushOpen(false)
-                      showToast(t('collection_detail_page.push_changes.success'))
+                      showToast(t(`collection_detail_page.${pushCopy}.success`))
                     }
                   }),
                 testId: 'push-changes-confirm'

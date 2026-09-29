@@ -12,6 +12,8 @@ const api = vi.hoisted(() => ({
 vi.mock('~/lib/builder', async importOriginal => ({ ...(await importOriginal<object>()), ...api }))
 vi.mock('~/lib/analytics', () => ({ track: vi.fn(), errorCode: () => 'unknown' }))
 vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
+const flag = vi.hoisted(() => ({ enabled: true }))
+vi.mock('~/hooks/useFeatureFlag', () => ({ useFeatureFlag: () => ({ enabled: flag.enabled, isLoading: false }) }))
 
 const { BuilderServerError } = await import('~/lib/builder')
 const { captureError } = await import('~/lib/monitoring')
@@ -35,6 +37,7 @@ function wrapper({ children }: { children: ReactNode }) {
 
 beforeEach(() => {
   Object.values(api).forEach(fn => fn.mockReset())
+  flag.enabled = true
 })
 
 describe('useCollectionEvents', () => {
@@ -49,20 +52,50 @@ describe('useCollectionEvents', () => {
     const { result } = renderHook(() => useCollectionEvents('0xme', collection), { wrapper })
     await waitFor(() => expect(result.current.events).toHaveLength(2))
     expect(result.current.hasNextPage).toBe(true)
+    expect(result.current.isAvailable).toBe(true)
     await act(async () => {
       await result.current.fetchNextPage()
     })
-    await waitFor(() => expect(result.current.events.map(event => event.id)).toEqual(['e1', 'e2', 'e3']))
+    await waitFor(() => expect(result.current.events?.map(event => event.id)).toEqual(['e1', 'e2', 'e3']))
     expect(result.current.hasNextPage).toBe(false)
     const limits = api.fetchCollectionEvents.mock.calls.map(call => (call[2] as { limit: number }).limit)
     expect(new Set(limits).size).toBe(1)
   })
 
-  it('reads a server without the timeline as an empty one', async () => {
+  it('reads a server without the timeline as no timeline, not an empty one', async () => {
     api.fetchCollectionEvents.mockRejectedValue(new BuilderServerError('not found', 404))
     const { result } = renderHook(() => useCollectionEvents('0xme', collection), { wrapper })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(result.current.events).toEqual([])
+    expect(result.current.events).toBeNull()
+    expect(result.current.isAvailable).toBe(false)
+  })
+
+  it('never asks for the timeline while auto-curation is off', () => {
+    flag.enabled = false
+    const { result } = renderHook(() => useCollectionEvents('0xme', collection), { wrapper })
+    expect(api.fetchCollectionEvents).not.toHaveBeenCalled()
+    expect(result.current.events).toBeNull()
+  })
+
+  it('drops a row repeated by an event landing between two pages', async () => {
+    api.fetchCollectionEvents.mockResolvedValueOnce({
+      results: [remote('e1'), remote('e2')],
+      total: 3,
+      page: 1,
+      limit: 2
+    })
+    api.fetchCollectionEvents.mockResolvedValueOnce({
+      results: [remote('e2'), remote('e3')],
+      total: 4,
+      page: 2,
+      limit: 2
+    })
+    const { result } = renderHook(() => useCollectionEvents('0xme', collection), { wrapper })
+    await waitFor(() => expect(result.current.events).toHaveLength(2))
+    await act(async () => {
+      await result.current.fetchNextPage()
+    })
+    await waitFor(() => expect(result.current.events?.map(event => event.id)).toEqual(['e1', 'e2', 'e3']))
   })
 })
 

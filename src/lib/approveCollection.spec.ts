@@ -101,11 +101,12 @@ describe('findItemsToRescue', () => {
 })
 
 describe('rescueItems', () => {
-  it('sends the chunks, then waits until the new hashes are indexed', async () => {
+  it('sends the chunks, then waits until the new hashes are indexed, through read errors', async () => {
     const stale = item('1', { blockchainContentHash: 'old' })
     const fetchItems = vi
       .fn()
       .mockResolvedValueOnce([stale])
+      .mockRejectedValueOnce(new Error('503'))
       .mockResolvedValueOnce([{ ...stale, blockchainContentHash: 'new' }])
     const deps = {
       chainId: CHAIN_ID,
@@ -117,7 +118,7 @@ describe('rescueItems', () => {
     const items = await rescueItems(collection, [{ item: stale, contentHash: 'new' }], deps)
     expect(deps.sendTransaction).toHaveBeenCalledTimes(1)
     expect(items[0].blockchainContentHash).toBe('new')
-    expect(fetchItems).toHaveBeenCalledTimes(2)
+    expect(fetchItems).toHaveBeenCalledTimes(3)
   })
 
   it('fails when a rescue transaction reverts', async () => {

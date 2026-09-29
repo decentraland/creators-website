@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useIntl } from 'react-intl'
 import { Edit as EditIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
@@ -28,8 +29,10 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
   const state = getCurationState(collection, curation)
   // Only a pending request needs the newest events to tell AI review, AI pass and appeal apart.
   const recent = useRecentCollectionEvents(address, collection.id, curation?.status === 'pending')
-  const stage = getReviewStage(curation, recent.data ?? [])
+  const events = recent.data ?? null
+  const stage = useMemo(() => getReviewStage(collection, curation, events), [collection, curation, events])
   const assignee = curation?.assignee ?? null
+  const canAssign = canEditAssignee(collection, curation)
 
   return (
     <S.Row data-testid="curation-row" data-state={state} data-stage={stage ?? undefined}>
@@ -46,7 +49,7 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
         <ProfileBadge address={collection.owner} testId="curation-row-owner" />
       </S.Cell>
       <S.Cell data-cell="requested" data-testid="curation-row-requested">
-        <S.CellLabel>{t(curation ? 'curation_page.list.requested' : 'curation_page.list.published')}</S.CellLabel>
+        <S.CellLabel>{t(curation ? 'curation_page.list.requested' : 'curation_page.list.created')}</S.CellLabel>
         {formatTimeAgo(curation?.createdAt ?? collection.createdAt, intl.locale)}
       </S.Cell>
       <S.Cell data-cell="updated" data-testid="curation-row-updated">
@@ -55,11 +58,11 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
       <S.Cell data-cell="state">
         {stage ? <ReviewStagePill stage={stage} /> : <CurationStatePill state={state} />}
       </S.Cell>
-      <S.AssigneeCell data-testid="curation-row-assignee">
+      <S.AssigneeCell data-testid="curation-row-assignee" data-unassigned={assignee ? undefined : ''}>
         {assignee ? (
           <>
             <ProfileBadge address={assignee} self={assignee === address.toLowerCase()} testId="curation-row-curator" />
-            {canEditAssignee(collection, curation) && (
+            {canAssign && (
               <S.IconAction
                 type="button"
                 aria-label={t('curation_page.list.edit_assignee')}
@@ -73,13 +76,15 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
         ) : (
           <>
             <S.Unassigned>{t('curation_page.list.unassigned')}</S.Unassigned>
-            <S.TextAction
-              type="button"
-              data-testid="curation-row-assign-me"
-              onClick={() => onAssign(collection, curation, 'self')}
-            >
-              {t('curation_page.list.assign_to_me')}
-            </S.TextAction>
+            {canAssign && (
+              <S.TextAction
+                type="button"
+                data-testid="curation-row-assign-me"
+                onClick={() => onAssign(collection, curation, 'self')}
+              >
+                {t('curation_page.list.assign_to_me')}
+              </S.TextAction>
+            )}
           </>
         )}
       </S.AssigneeCell>

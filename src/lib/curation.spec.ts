@@ -7,6 +7,8 @@ import {
   ReviewStage,
   canEditAssignee,
   canPushChanges,
+  curationListUrl,
+  rememberCurationSearch,
   fromRemoteCuration,
   getCreatorReviewNotice,
   getCurationState,
@@ -115,7 +117,25 @@ describe('getCurationState', () => {
       curation({ assignee: '0xc' }),
       CurationState.UNDER_REVIEW
     ],
-    ['a disabled collection', collection(reviewedBefore), null, CurationState.DISABLED]
+    ['a disabled collection', collection(reviewedBefore), null, CurationState.DISABLED],
+    [
+      'a collection disabled after its request was approved',
+      collection(reviewedBefore),
+      curation({ status: 'approved' }),
+      CurationState.DISABLED
+    ],
+    [
+      'a collection disabled after its pushed changes were rejected',
+      collection(reviewedBefore),
+      curation({ status: 'rejected' }),
+      CurationState.DISABLED
+    ],
+    [
+      'changes pushed on a disabled collection',
+      collection(reviewedBefore),
+      curation({ assignee: '0xc' }),
+      CurationState.UNDER_REVIEW
+    ]
   ])('%s', (_, subject, request, expected) => {
     expect(getCurationState(subject, request)).toBe(expected)
   })
@@ -224,11 +244,27 @@ describe('canPushChanges', () => {
     expect(canPushChanges(approved, curation({ status: 'rejected' }), true, true)).toBe(true)
   })
 
-  it('refuses while a request is pending, without changes, without rights or before approval', () => {
+  it('refuses while a request is pending, without changes or without rights', () => {
     expect(canPushChanges(approved, curation(), true, true)).toBe(false)
     expect(canPushChanges(approved, null, false, true)).toBe(false)
     expect(canPushChanges(approved, null, true, false)).toBe(false)
+  })
+
+  it('lets managers ask for the first review again after a rejection, and only then', () => {
+    expect(canPushChanges(collection(), curation({ status: 'rejected' }), false, true)).toBe(true)
+    expect(canPushChanges(collection(), curation({ status: 'rejected' }), false, false)).toBe(false)
     expect(canPushChanges(collection(), null, true, true)).toBe(false)
+    expect(canPushChanges(collection(), curation(), true, true)).toBe(false)
+    expect(canPushChanges(collection({ isPublished: false }), curation({ status: 'rejected' }), true, true)).toBe(false)
+  })
+})
+
+describe('curationListUrl', () => {
+  it('returns to the list with the filters it was left with', () => {
+    sessionStorage.clear()
+    expect(curationListUrl()).toBe('/curation')
+    rememberCurationSearch('?status=approved&page=2')
+    expect(curationListUrl()).toBe('/curation?status=approved&page=2')
   })
 })
 
@@ -242,49 +278,100 @@ describe('getReviewStage', () => {
     payload: {},
     createdAt: 1
   })
+  const approvedOnChain = collection({ isApproved: true })
 
   it.each([
-    ['nothing without a request', null, event('review.ai_started'), null],
-    ['AI reviewing while the validator works', curation(), event('review.ai_started'), ReviewStage.AI_REVIEWING],
-    ['still AI reviewing after a validator error', curation(), event('review.ai_error'), ReviewStage.AI_REVIEWING],
-    ['awaiting a curator once the AI passed', curation(), event('review.ai_passed'), ReviewStage.AWAITING_CURATOR],
-    ['appealed', curation(), event('review.appeal_requested'), ReviewStage.APPEALED],
-    ['nothing for a pending request without a telling event', curation(), event('review.assigned'), null],
-    ['nothing for a pending request before the timeline', curation(), null, null],
+    ['nothing without a request', collection(), null, [event('review.ai_started')], null],
+    ['nothing without a timeline', collection(), curation(), null, null],
+    [
+      'AI reviewing while the validator works',
+      collection(),
+      curation(),
+      [event('review.ai_started')],
+      ReviewStage.AI_REVIEWING
+    ],
+    [
+      'still AI reviewing after a validator error',
+      collection(),
+      curation(),
+      [event('review.ai_error')],
+      ReviewStage.AI_REVIEWING
+    ],
+    [
+      'awaiting a curator once the AI passed',
+      collection(),
+      curation(),
+      [event('review.ai_passed')],
+      ReviewStage.AWAITING_CURATOR
+    ],
+    [
+      'awaiting a curator when a third-party collection skips the AI',
+      collection(),
+      curation(),
+      [event('review.human_required'), event('review.ai_error'), event('review.ai_started')],
+      ReviewStage.AWAITING_CURATOR
+    ],
+    ['appealed', collection(), curation(), [event('review.appeal_requested')], ReviewStage.APPEALED],
+    [
+      'nothing for a pending request without a telling event',
+      collection(),
+      curation(),
+      [event('review.assigned')],
+      null
+    ],
+    ['nothing for a pending request with an empty timeline', collection(), curation(), [], null],
     [
       'awaiting a curator through a later assignment',
+      collection(),
       curation({ assignee: '0xc' }),
       [event('review.assigned'), event('changes.submitted'), event('review.ai_passed')],
       ReviewStage.AWAITING_CURATOR
     ],
     [
       'appealed through a later assignment',
+      collection(),
       curation(),
       [event('review.assigned'), event('review.appeal_requested')],
       ReviewStage.APPEALED
     ],
     [
       'rejected by the validator',
+      collection(),
       curation({ status: 'rejected', reviewedBy: 'validator' }),
-      event('review.ai_rejected'),
+      [event('review.ai_rejected')],
       ReviewStage.REJECTED_BY_VALIDATOR
     ],
     [
       'rejected by a curator',
+      collection(),
       curation({ status: 'rejected', reviewedBy: '0xcurator' }),
-      event('review.rejected'),
+      [event('review.rejected')],
       ReviewStage.REJECTED_BY_CURATOR
     ],
-    ['nothing for a legacy rejection', curation({ status: 'rejected' }), null, null],
+    [
+      'nothing for a curator rejection without a timeline, so the legacy state stays',
+      collection(),
+      curation({ status: 'rejected', reviewedBy: '0xcurator' }),
+      null,
+      null
+    ],
+    ['nothing for a legacy rejection', collection(), curation({ status: 'rejected' }), [], null],
     [
       'approved',
+      approvedOnChain,
       curation({ status: 'approved', reviewedBy: '0xcurator' }),
-      event('review.approved'),
+      [event('review.approved')],
       ReviewStage.APPROVED
+    ],
+    [
+      'nothing for an approved request on a collection disabled on chain',
+      collection(reviewedBefore),
+      curation({ status: 'approved', reviewedBy: '0xcurator' }),
+      [event('review.approved')],
+      null
     ]
-  ])('%s', (_, request, latest, expected) => {
-    const events = latest === null ? [] : Array.isArray(latest) ? latest : [latest]
-    expect(getReviewStage(request, events)).toBe(expected)
+  ])('%s', (_, subject, request, events, expected) => {
+    expect(getReviewStage(subject, request, events)).toBe(expected)
   })
 
   it('maps the reviewer and the rejection fields from the row', () => {

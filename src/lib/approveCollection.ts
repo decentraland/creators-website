@@ -11,8 +11,7 @@ import {
   buildItemEntity,
   computeItemContentHash,
   getEntityContent,
-  type AuthLink,
-  type EntityContent
+  type AuthLink
 } from '~/lib/catalystEntity'
 import { isItemSynced } from '~/lib/itemSync'
 import { IMAGE_PATH, ItemType, getItemMetadata, type Item } from '~/lib/items'
@@ -119,9 +118,10 @@ export async function rescueItems(
   const expected = new Map(targets.map(({ item, contentHash }) => [item.id, contentHash]))
   const sleep = deps.sleep ?? defaultSleep
   for (let waited = 0; waited <= timeoutMs; waited += INDEXER_POLL_MS) {
-    const items = await deps.fetchItems()
-    const indexed = items.every(item => !expected.has(item.id) || item.blockchainContentHash === expected.get(item.id))
-    if (indexed) return items
+    // A transient read error must not fail the step: a retry would resend (and pay for) every chunk.
+    const items = await deps.fetchItems().catch(() => null)
+    const indexed = items?.every(item => !expected.has(item.id) || item.blockchainContentHash === expected.get(item.id))
+    if (items && indexed) return items
     await sleep(INDEXER_POLL_MS)
   }
   throw new ApprovalError('not_indexed', 'The rescued hashes were not indexed in time')
@@ -148,7 +148,7 @@ export type DeployDeps = ImageDeps & {
 
 async function deployItem(collection: Collection, item: Item, deps: DeployDeps): Promise<void> {
   const image = await buildMissingImage(item, deps)
-  const content: EntityContent = getEntityContent(item, image?.hash)
+  const content = getEntityContent(item, image?.hash)
   const entity = await buildItemEntity(collection, item, content)
   const authChain = deps.sign(entity.entityId)
   if (!authChain) throw new ApprovalError('no_identity', 'The session has no signing identity')
@@ -160,7 +160,7 @@ async function deployItem(collection: Collection, item: Item, deps: DeployDeps):
     if (available.has(hash)) continue
     files.set(hash, image && hash === image.hash ? image.blob : await deps.fetchContent(hash))
   }
-  await deps.deployEntity(buildDeploymentForm(entity, authChain, files, available))
+  await deps.deployEntity(buildDeploymentForm(entity, authChain, files))
 }
 
 export type DeployResult = { deployed: Item[]; failed: Item[] }

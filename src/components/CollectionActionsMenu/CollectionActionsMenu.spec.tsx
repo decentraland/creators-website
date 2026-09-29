@@ -12,6 +12,7 @@ import { CollectionActionsMenu } from './CollectionActionsMenu'
 vi.mock('~/lib/builder', () => ({ deleteCollection: vi.fn() }))
 vi.mock('~/lib/clipboard', () => ({ copyToClipboard: vi.fn().mockResolvedValue(true) }))
 vi.mock('~/lib/navigation', () => ({ openExternal: vi.fn() }))
+vi.mock('~/hooks/useFeatureFlag', () => ({ useFeatureFlag: () => ({ enabled: true, isLoading: false }) }))
 
 import { deleteCollection } from '~/lib/builder'
 import { copyToClipboard } from '~/lib/clipboard'

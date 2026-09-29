@@ -6,6 +6,7 @@ import { useSaveItem } from '~/hooks/useSaveItem'
 import { type useStaticChecks } from '~/hooks/useStaticChecks'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { type Item } from '~/lib/items'
+import { isPublishBlockedByChecks } from '~/lib/staticChecks'
 import { Button } from '~/components/Button'
 import { ThumbnailModal, type ThumbnailPatch } from '~/components/ThumbnailModal'
 import { Checkbox } from '~/components/Checkbox'
@@ -40,8 +41,7 @@ export function ConfirmItemsStep({ address, items, staticChecks, onBusyChange, o
   const itemContents = useItemContents(isThumbnailOpen ? editingItem : null)
 
   // A static error is the same rejection the automatic review would return after the fee is paid.
-  const blockedByChecks = staticChecks.isFetching || (staticChecks.data?.errors ?? 0) > 0
-  const canContinue = accepted && items.length > 0 && editingId === null && !blockedByChecks
+  const canContinue = accepted && editingId === null && !isPublishBlockedByChecks(staticChecks, items.length)
 
   const isBusy = updateItem.isPending || deleteItem.isPending
   useEffect(() => {

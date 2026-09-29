@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { errorCode, track } from '~/lib/analytics'
 import {
@@ -10,13 +10,13 @@ import {
   requestCollectionValidation
 } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
-import { collectionCurationKey } from '~/hooks/useCuration'
-import { getValidationAttemptsLeft, type CollectionEvent } from '~/lib/events'
+import { collectionCurationKey, collectionEventsKey } from '~/hooks/useCuration'
+import { useFeatureFlag } from '~/hooks/useFeatureFlag'
+import { getValidationAttemptsLeft, isValidationRunning, type CollectionEvent } from '~/lib/events'
+import { FeatureFlag } from '~/lib/featureFlags'
 import { captureError } from '~/lib/monitoring'
 
-export function collectionEventsKey(address: string | undefined, collectionId: string | undefined) {
-  return ['collection-events', address, collectionId] as const
-}
+export { collectionEventsKey }
 
 /**
  * Enough rows for the stage, the latest verdict and today's attempts in the first page. The server offsets
@@ -24,56 +24,90 @@ export function collectionEventsKey(address: string | undefined, collectionId: s
  */
 export const EVENTS_PAGE_SIZE = 50
 
+/** While the validator works, the page polls so the verdict shows without a reload. */
+const RUNNING_POLL_MS = 10_000
+
+type EventsPage = Awaited<ReturnType<typeof fetchCollectionEvents>> & { available: boolean }
+
+/** A server without the timeline (404) is not an error: it reads as "no timeline", never as an empty one. */
+async function fetchPage(address: string, collectionId: string, page: number, limit: number): Promise<EventsPage> {
+  try {
+    return { ...(await fetchCollectionEvents(address, collectionId, { page, limit })), available: true }
+  } catch (error) {
+    if (error instanceof BuilderServerError && error.status === 404) {
+      return { results: [], total: 0, page, limit, available: false }
+    }
+    throw error
+  }
+}
+
+/** Offset paging over a newest-first list repeats a row when an event lands between two pages. */
+function dedupe(events: CollectionEvent[]): CollectionEvent[] {
+  const seen = new Set<string>()
+  return events.filter(event => (seen.has(event.id) ? false : (seen.add(event.id), true)))
+}
+
 /**
- * The collection's timeline, newest first, page by page. `pages[0]` doubles as the source of the review
- * stage and the validator's verdict; a 404 (server without the timeline yet) reads as an empty timeline.
+ * The collection's timeline, newest first, page by page, behind the auto-curation flag. `events` is `null`
+ * until the timeline is known to exist (flag on, first page loaded, server serves it), so every consumer
+ * falls back to the legacy curation state meanwhile. `pages[0]` doubles as the source of the review stage
+ * and the validator's verdict.
  */
 export function useCollectionEvents(address: string | undefined, collection: Collection | undefined, enabled = true) {
+  const flag = useFeatureFlag(FeatureFlag.AUTO_CURATION)
+  const queryClient = useQueryClient()
+  const collectionId = collection?.id
   const query = useInfiniteQuery({
-    queryKey: collectionEventsKey(address, collection?.id),
-    queryFn: async ({ pageParam }) => {
-      try {
-        return await fetchCollectionEvents(address!, collection!.id, { page: pageParam, limit: EVENTS_PAGE_SIZE })
-      } catch (error) {
-        if (error instanceof BuilderServerError && error.status === 404) {
-          return { results: [], total: 0, page: pageParam, limit: EVENTS_PAGE_SIZE }
-        }
-        throw error
-      }
-    },
+    queryKey: collectionEventsKey(address, collectionId),
+    queryFn: ({ pageParam }) => fetchPage(address!, collectionId!, pageParam, EVENTS_PAGE_SIZE),
     initialPageParam: 1,
     getNextPageParam: (lastPage, pages) => {
       const loaded = pages.reduce((sum, page) => sum + page.results.length, 0)
-      return loaded < lastPage.total && lastPage.results.length > 0 ? lastPage.page + 1 : undefined
+      return loaded < lastPage.total && lastPage.results.length > 0 ? pages.length + 1 : undefined
     },
-    enabled: !!address && !!collection?.isPublished && enabled,
-    staleTime: 30_000
+    enabled: !!address && !!collection?.isPublished && enabled && flag.enabled,
+    staleTime: 30_000,
+    refetchInterval: current => {
+      const first = current.state.data?.pages[0]?.results
+      return first && isValidationRunning(first) ? RUNNING_POLL_MS : false
+    }
   })
-  const events = useMemo<CollectionEvent[]>(() => query.data?.pages.flatMap(page => page.results) ?? [], [query.data])
-  return { ...query, events }
+  const events = useMemo<CollectionEvent[] | null>(() => {
+    const pages = query.data?.pages
+    if (!pages?.length || !pages[0].available) return null
+    return dedupe(pages.flatMap(page => page.results))
+  }, [query.data])
+
+  // A verdict that lands while polling also changed the request: refresh it so the stage and the pill agree.
+  const latestId = events?.[0]?.id
+  const seenLatest = useRef(latestId)
+  useEffect(() => {
+    if (seenLatest.current === latestId) return
+    const wasLoaded = seenLatest.current !== undefined
+    seenLatest.current = latestId
+    if (wasLoaded) void queryClient.invalidateQueries({ queryKey: collectionCurationKey(address, collectionId) })
+  }, [latestId, address, collectionId, queryClient])
+
+  return { ...query, events, isAvailable: events !== null }
 }
 
 /** Enough of the newest events to tell the stage: assignments and submitted changes sit between the telling ones. */
 const RECENT_EVENTS_LIMIT = 10
 
-/** The newest few events, for list rows that need the stage and nothing else. Enabled per caller. */
+/** The newest few events, for list rows that need the stage and nothing else; `null` without a timeline. */
 export function useRecentCollectionEvents(
   address: string | undefined,
   collectionId: string | undefined,
   enabled: boolean
 ) {
+  const flag = useFeatureFlag(FeatureFlag.AUTO_CURATION)
   return useQuery({
     queryKey: [...collectionEventsKey(address, collectionId), 'recent'],
-    queryFn: async () => {
-      try {
-        const page = await fetchCollectionEvents(address!, collectionId!, { page: 1, limit: RECENT_EVENTS_LIMIT })
-        return page.results
-      } catch (error) {
-        if (error instanceof BuilderServerError && error.status === 404) return []
-        throw error
-      }
+    queryFn: async (): Promise<CollectionEvent[] | null> => {
+      const page = await fetchPage(address!, collectionId!, 1, RECENT_EVENTS_LIMIT)
+      return page.available ? page.results : null
     },
-    enabled: !!address && !!collectionId && enabled,
+    enabled: !!address && !!collectionId && enabled && flag.enabled,
     staleTime: 30_000
   })
 }

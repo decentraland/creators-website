@@ -14,7 +14,10 @@ export async function fetchEntitiesByPointers(pointers: string[]): Promise<Entit
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ pointers })
   })
-  if (!response.ok) throw new Error(`catalyst request failed: entities/active (${response.status})`)
+  if (!response.ok) {
+    await response.body?.cancel()
+    throw new Error(`catalyst request failed: entities/active (${response.status})`)
+  }
   return (await response.json()) as Entity[]
 }
 

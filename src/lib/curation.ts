@@ -62,16 +62,21 @@ export enum ReviewStage {
 }
 
 /** Events that say nothing about the stage: an assignment or a submitted change leaves the review where it was. */
-const STAGE_NEUTRAL_EVENTS = new Set(['review.assigned', 'review.human_required', 'changes.submitted'])
+const STAGE_NEUTRAL_EVENTS = new Set(['review.assigned', 'changes.submitted'])
 
 /**
  * Where the review stands, from the latest request and the newest stage-defining timeline event (the frozen
- * curation contract's table). `events` newest first. `null` when the rows predate the timeline or the stage
- * is not one of these: callers fall back to the legacy curation state.
+ * curation contract's table). `events` newest first; `null` while the timeline is unavailable (feature off,
+ * not loaded, or a server without it), which keeps every surface on the legacy curation state. Never claims
+ * more than the chain does: an approved request on a collection that is not approved on chain is disabled.
  */
-export function getReviewStage(curation: CollectionCuration | null, events: CollectionEvent[]): ReviewStage | null {
-  if (!curation) return null
-  if (curation.status === 'approved') return ReviewStage.APPROVED
+export function getReviewStage(
+  collection: Collection,
+  curation: CollectionCuration | null,
+  events: CollectionEvent[] | null
+): ReviewStage | null {
+  if (!curation || !events) return null
+  if (curation.status === 'approved') return collection.isApproved ? ReviewStage.APPROVED : null
   if (curation.status === 'rejected') {
     if (curation.reviewedBy === VALIDATOR_REVIEWER) return ReviewStage.REJECTED_BY_VALIDATOR
     return curation.reviewedBy ? ReviewStage.REJECTED_BY_CURATOR : null
@@ -82,6 +87,7 @@ export function getReviewStage(curation: CollectionCuration | null, events: Coll
     case 'review.ai_error':
       return ReviewStage.AI_REVIEWING
     case 'review.ai_passed':
+    case 'review.human_required':
       return ReviewStage.AWAITING_CURATOR
     case 'review.appeal_requested':
       return ReviewStage.APPEALED
@@ -115,7 +121,8 @@ export function getCurationState(collection: Collection, curation: CollectionCur
     if (!curation || curation.status === 'approved') return CurationState.APPROVED
     if (curation.status === 'rejected') return CurationState.REJECTED
   } else {
-    if (!curation && hasBeenApproved(collection)) return CurationState.DISABLED
+    // Approving closes the pending request, so a disable leaves an approved, rejected or no request behind.
+    if (hasBeenApproved(collection) && curation?.status !== 'pending') return CurationState.DISABLED
     if (curation?.status === 'rejected') return CurationState.REJECTED
   }
   if (curation?.status === 'pending' && curation.assignee) return CurationState.UNDER_REVIEW
@@ -158,6 +165,8 @@ export enum CurationStatusFilter {
   REJECTED = 'rejected'
 }
 
+// ponytail: CURATION_UPDATED_AT_DESC joins (as the default) once builder-server ships that sort; unknown sorts
+// there drop the ORDER BY and paginate at random.
 export const CURATION_SORTS = [
   CollectionSort.MOST_RELEVANT,
   CollectionSort.CREATED_AT_DESC,
@@ -226,14 +235,36 @@ export function getCreatorReviewNotice(
   return curation.status === 'rejected' ? 'rejected' : null
 }
 
-/** Owners and collaborators may send an approved collection's unsynced changes back to the committee. */
+/**
+ * Owners and collaborators may ask the committee for another look: an approved collection once its items
+ * are unsynced, or a never-approved one after a rejected first review (its items always read as under
+ * review, so there is no sync signal to wait for).
+ */
 export function canPushChanges(
   collection: Collection,
   curation: CollectionCuration | null,
   hasUnsyncedItems: boolean,
   canManage: boolean
 ): boolean {
-  return (
-    collection.isPublished && collection.isApproved && canManage && hasUnsyncedItems && curation?.status !== 'pending'
-  )
+  if (!collection.isPublished || !canManage || curation?.status === 'pending') return false
+  return collection.isApproved ? hasUnsyncedItems : curation?.status === 'rejected'
+}
+
+const LIST_SEARCH_KEY = 'wemotes-builder.curation-search'
+
+/** Remembers the list's filters so the review bar's back link returns to the same view. */
+export function rememberCurationSearch(search: string): void {
+  try {
+    window.sessionStorage.setItem(LIST_SEARCH_KEY, search)
+  } catch {
+    // Storage blocked: the back link falls back to the unfiltered list.
+  }
+}
+
+export function curationListUrl(): string {
+  try {
+    return `/curation${window.sessionStorage.getItem(LIST_SEARCH_KEY) ?? ''}`
+  } catch {
+    return '/curation'
+  }
 }

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from '~/intl'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { errorCode, track } from '~/lib/analytics'
 import { sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
@@ -12,9 +13,11 @@ import {
 } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { buildSetApprovedCall } from '~/lib/collectionApproval'
-import { isCommitteeMember, type CollectionCuration, type CurationFilters } from '~/lib/curation'
+import { isCommitteeMember, orderCurators, type CollectionCuration, type CurationFilters } from '~/lib/curation'
 import { type RejectReasonCode } from '~/lib/events'
+import { shortAddress } from '~/lib/ids'
 import { captureError } from '~/lib/monitoring'
+import { useProfiles } from '~/hooks/useProfile'
 import { getMaticChainId } from '~/lib/publishCollection'
 import { isWalletRejection } from '~/lib/walletErrors'
 
@@ -32,8 +35,37 @@ export function useCommittee(address: string | undefined) {
   }
 }
 
+/** The committee as picker options, the signed-in curator first and marked, after `leading` and a divider. */
+type CuratorOption = { value: string; label: string; dividerBefore?: boolean }
+
+export function useCuratorOptions(address: string | undefined, leading: CuratorOption) {
+  const { t } = useTranslation()
+  const { members } = useCommittee(address)
+  const curators = useMemo(() => orderCurators(members, address), [members, address])
+  const profiles = useProfiles(curators)
+  const self = address?.toLowerCase()
+  return useMemo<CuratorOption[]>(
+    () => [
+      leading,
+      ...curators.map((curator, index) => {
+        const name = profiles[index]?.name || shortAddress(curator)
+        return {
+          value: curator,
+          label: curator === self ? t('curation_page.filter.you', { name }) : name,
+          dividerBefore: index === 0
+        }
+      })
+    ],
+    [leading, curators, profiles, self, t]
+  )
+}
+
 export function collectionCurationKey(address: string | undefined, collectionId: string | undefined) {
   return ['collection-curation', address, collectionId] as const
+}
+
+export function collectionEventsKey(address: string | undefined, collectionId: string | undefined) {
+  return ['collection-events', address, collectionId] as const
 }
 
 /** The collection's latest review request, `null` when it was never requested. */
@@ -79,7 +111,7 @@ function useStoreCuration(address: string | undefined) {
       current ? [...current.filter(existing => existing.collectionId !== curation.collectionId), curation] : current
     )
     void queryClient.invalidateQueries({ queryKey: ['curation-collections'] })
-    void queryClient.invalidateQueries({ queryKey: ['collection-events', address, curation.collectionId] })
+    void queryClient.invalidateQueries({ queryKey: collectionEventsKey(address, curation.collectionId) })
   }
 }
 
@@ -110,22 +142,24 @@ export function useAssignCurator(address: string | undefined) {
   })
 }
 
+export type RejectDecision = { rejectionReasons: RejectReasonCode[]; rejectionMessage: string }
+
 export type RejectVariables = {
   collection: Collection
   curation: CollectionCuration | null
-  rejectionReasons: RejectReasonCode[]
-  rejectionMessage: string
+  /** The reasons and message the creator reads; only sent where builder-server's auto-curation accepts them. */
+  decision?: RejectDecision
 }
 
 /**
- * Rejects the collection's review request with the reasons and message the creator will read. A collection
- * nobody requested a review for has no request to reject yet, so one is opened first: otherwise the
- * rejection would leave no trace for the creator.
+ * Rejects the collection's review request. A collection nobody requested a review for has no request to
+ * reject yet, so one is opened first: otherwise the rejection would leave no trace for the creator.
  */
 export function useRejectCuration(address: string | undefined) {
+  const queryClient = useQueryClient()
   const store = useStoreCuration(address)
   return useMutation({
-    mutationFn: async ({ collection, curation, rejectionReasons, rejectionMessage }: RejectVariables) => {
+    mutationFn: async ({ collection, curation, decision }: RejectVariables) => {
       if (!address) throw new Error('Wallet disconnected')
       let current = curation
       if (current?.status !== 'pending') {
@@ -133,17 +167,20 @@ export function useRejectCuration(address: string | undefined) {
         // Kept even if the PATCH below fails, so a retry patches this request instead of opening another.
         store(current)
       }
-      return updateCollectionCuration(address, current.collectionId, {
-        status: 'rejected',
-        rejectionReasons,
-        rejectionMessage
-      })
+      return updateCollectionCuration(address, current.collectionId, { status: 'rejected', ...decision })
     },
-    onSuccess: (curation, { collection, curation: previous, rejectionReasons }) => {
-      track('Reject curation', { collectionId: collection.id, first_review: !previous, reasons: rejectionReasons })
+    onSuccess: (curation, { collection, curation: previous, decision }) => {
+      track('Reject curation', {
+        collectionId: collection.id,
+        first_review: !previous,
+        reasons: decision?.rejectionReasons ?? []
+      })
       store(curation)
     },
     onError: (error, { collection }) => {
+      // The request may have been opened before the rejection failed; a retry must PATCH it, not POST again.
+      void queryClient.invalidateQueries({ queryKey: collectionCurationKey(address, collection.id) })
+      void queryClient.invalidateQueries({ queryKey: ['curations', address] })
       track('Reject curation error', { collectionId: collection.id, error: errorCode(error) })
       captureError(error, { flow: 'curation_reject', collectionId: collection.id })
     }
@@ -159,7 +196,7 @@ export function usePushCuration(address: string | undefined) {
       return pushCollectionCuration(address, collection.id)
     },
     onSuccess: (curation, collection) => {
-      track('Push curation', { collectionId: collection.id })
+      track('Push curation', { collectionId: collection.id, first_review: !collection.isApproved })
       store(curation)
     },
     onError: (error, collection) => {

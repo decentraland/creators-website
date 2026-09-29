@@ -21,7 +21,13 @@ import {
   type ContractCall,
   type Session
 } from '~/lib/auth'
-import { fetchAllCollectionItems, fetchContent, publishCollectionItems, updateCollectionCuration } from '~/lib/builder'
+import {
+  fetchAllCollectionItems,
+  fetchContent,
+  publishCollectionItems,
+  pushCollectionCuration,
+  updateCollectionCuration
+} from '~/lib/builder'
 import { deployEntity, fetchAvailableContent, fetchEntitiesByPointers } from '~/lib/catalyst'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
@@ -46,6 +52,8 @@ export type ApprovalStep = 'prepare' | 'rescue' | 'deploy' | 'approve'
 
 type Context = { items: Item[]; rescue: RescueTarget[]; deploy: Item[] }
 
+const imageDeps = { fetchContent, renderCatalystImage: generateCatalystImage }
+
 export function useApprovalFlow(
   session: Session,
   collection: Collection,
@@ -57,8 +65,10 @@ export function useApprovalFlow(
   const chainId = getMaticChainId()
   const [view, setView] = useState<ApprovalView>({ kind: 'loading' })
   const context = useRef<Context>({ items: [], rescue: [], deploy: [] })
-  // A closed modal must not keep moving to the next step when a request in flight settles.
   const alive = useRef(true)
+  // Each start() gets a token and stop() retires it: a run settling after the modal closed (or a StrictMode
+  // remount restarted it) must not move on to the next step or write anything.
+  const run = useRef(0)
 
   const set = useCallback((next: ApprovalView) => {
     if (alive.current) setView(next)
@@ -78,8 +88,9 @@ export function useApprovalFlow(
   const wait = useCallback((txHash: string) => waitForTransaction(chainId, txHash), [chainId])
   const fetchItems = useCallback(() => fetchAllCollectionItems(address, collection.id), [address, collection.id])
 
+  // The collection query is not refetched: builder-server reads `is_approved` from the subgraph, which lags
+  // behind the approval transaction, so the on-chain result is written to the cache instead (like disable).
   const refresh = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: ['collection', address, collection.id] })
     void queryClient.invalidateQueries({ queryKey: allCollectionItemsKey(address, collection.id) })
     void queryClient.invalidateQueries({ queryKey: collectionCurationKey(address, collection.id) })
     void queryClient.invalidateQueries({ queryKey: ['item-entities', collection.id] })
@@ -87,41 +98,49 @@ export function useApprovalFlow(
     void queryClient.invalidateQueries({ queryKey: ['curation-collections'] })
   }, [queryClient, address, collection.id])
 
-  const finish = useCallback(async () => {
-    if (mode === 'approve') {
-      if (!collection.isApproved) {
-        set({ kind: 'approve', busy: false })
-        return
-      }
-      if (curation?.status === 'pending') {
-        try {
-          await updateCollectionCuration(address, collection.id, { status: 'approved' })
-          track('Approve curation', { collectionId: collection.id })
-        } catch (error) {
-          track('Approve curation error', { collectionId: collection.id, error: errorCode(error) })
-          fail('approve', error)
-          return
-        }
-      }
+  // Legacy left a pending request open after approving, so the collection kept showing as under review.
+  // A rejected first review gets a new request to approve, or it would keep reading as rejected once live.
+  const complete = useCallback(async () => {
+    if (mode === 'approve' && (curation?.status === 'pending' || curation?.status === 'rejected')) {
+      if (curation.status === 'rejected') await pushCollectionCuration(address, collection.id)
+      await updateCollectionCuration(address, collection.id, { status: 'approved' })
+      track('Approve curation', { collectionId: collection.id })
     }
     refresh()
     track('Approval flow completed', { collectionId: collection.id, mode })
     set({ kind: 'success' })
-  }, [mode, collection, curation, address, fail, refresh, set])
+  }, [mode, curation, address, collection.id, refresh, set])
 
-  const toDeploy = useCallback(async () => {
-    const items = context.current.items
-    const pointers = items.flatMap(item => (item.urn ? [item.urn] : []))
-    const entities = await fetchEntitiesByPointers(pointers)
-    const deploy = findItemsToDeploy(items, entities)
-    context.current.deploy = deploy
-    if (deploy.length > 0) set({ kind: 'deploy', count: deploy.length, busy: false, done: 0, failed: 0 })
-    else await finish()
-  }, [finish, set])
+  const finish = useCallback(
+    async (token: number) => {
+      if (token !== run.current) return
+      if (mode === 'approve' && !collection.isApproved) return set({ kind: 'approve', busy: false })
+      try {
+        await complete()
+      } catch (error) {
+        track('Approve curation error', { collectionId: collection.id, error: errorCode(error) })
+        fail('approve', error)
+      }
+    },
+    [mode, collection, complete, fail, set]
+  )
 
-  const imageDeps = { fetchContent, renderCatalystImage: generateCatalystImage }
+  const toDeploy = useCallback(
+    async (token: number) => {
+      const items = context.current.items
+      const pointers = items.flatMap(item => (item.urn ? [item.urn] : []))
+      const entities = await fetchEntitiesByPointers(pointers)
+      if (token !== run.current) return
+      const deploy = findItemsToDeploy(items, entities)
+      context.current.deploy = deploy
+      if (deploy.length > 0) set({ kind: 'deploy', count: deploy.length, busy: false, done: 0, failed: 0 })
+      else await finish(token)
+    },
+    [finish, set]
+  )
 
   const start = useCallback(async () => {
+    const token = ++run.current
     alive.current = true
     set({ kind: 'loading' })
     track('Approval flow started', { collectionId: collection.id, mode })
@@ -130,24 +149,25 @@ export function useApprovalFlow(
         publishCollectionItems: () => publishCollectionItems(address, collection.id),
         fetchItems
       })
+      if (token !== run.current) return
       context.current.items = items
       if (mode === 'approve') {
         const rescue = await findItemsToRescue(collection, items, item => buildMissingImage(item, imageDeps))
+        if (token !== run.current) return
         context.current.rescue = rescue
         if (rescue.length > 0) {
           set({ kind: 'rescue', count: rescue.length, busy: false, sent: 0, total: 0 })
           return
         }
       }
-      await toDeploy()
+      await toDeploy(token)
     } catch (error) {
       fail('prepare', error)
     }
-    // imageDeps is two module functions, stable across renders.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collection, mode, address, fetchItems, toDeploy, fail, set])
 
   const runRescue = useCallback(async () => {
+    const token = run.current
     const targets = context.current.rescue
     set({ kind: 'rescue', count: targets.length, busy: true, sent: 0, total: 0 })
     try {
@@ -160,7 +180,7 @@ export function useApprovalFlow(
           set({ kind: 'rescue', count: targets.length, busy: true, sent: index + 1, total })
       })
       track('Rescue items', { collectionId: collection.id, item_count: targets.length })
-      await toDeploy()
+      await toDeploy(token)
     } catch (error) {
       track('Rescue items error', { collectionId: collection.id, error: errorCode(error) })
       fail('rescue', error)
@@ -168,6 +188,7 @@ export function useApprovalFlow(
   }, [collection, chainId, tx, wait, fetchItems, toDeploy, fail, set])
 
   const runDeploy = useCallback(async () => {
+    const token = run.current
     const items = context.current.deploy
     set({ kind: 'deploy', count: items.length, busy: true, done: 0, failed: 0 })
     const deps: DeployDeps = {
@@ -193,12 +214,10 @@ export function useApprovalFlow(
         return
       }
       track('Deploy entities', { collectionId: collection.id, item_count: items.length })
-      await finish()
+      await finish(token)
     } catch (error) {
       fail('deploy', error)
     }
-    // imageDeps is two module functions, stable across renders.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collection, address, finish, fail, set])
 
   const runApprove = useCallback(async () => {
@@ -206,22 +225,19 @@ export function useApprovalFlow(
     try {
       const txHash = await approveOnChain(collection, { chainId, sendTransaction: tx, waitForTransaction: wait })
       track('Approve collection', { collectionId: collection.id, txHash })
-      // Legacy left a pending request open here, so the approved collection kept showing as under review.
-      if (curation?.status === 'pending') {
-        await updateCollectionCuration(address, collection.id, { status: 'approved' })
-        track('Approve curation', { collectionId: collection.id })
-      }
-      refresh()
-      track('Approval flow completed', { collectionId: collection.id, mode })
-      set({ kind: 'success' })
+      queryClient.setQueryData<Collection>(['collection', address, collection.id], current =>
+        current ? { ...current, isApproved: true } : current
+      )
+      await complete()
     } catch (error) {
       track('Approve collection error', { collectionId: collection.id, error: errorCode(error) })
       fail('approve', error)
     }
-  }, [collection, curation, address, chainId, tx, wait, refresh, mode, fail, set])
+  }, [collection, address, chainId, tx, wait, complete, fail, set, queryClient])
 
   const stop = useCallback(() => {
     alive.current = false
+    run.current++
   }, [])
 
   return { view, start, runRescue, runDeploy, runApprove, stop }

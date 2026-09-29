@@ -257,13 +257,14 @@ export async function appealCollectionCuration(address: string, collectionId: st
   await request<unknown>(address, 'POST', `/collections/${collectionId}/curation/appeal`, '', { note }, false)
 }
 
-export const COLLECTION_EVENTS_PAGE_SIZE = 20
-
-/** The collection's timeline, newest first: GET /collections/{id}/events. Committee members see every collection. */
+/**
+ * The collection's timeline, newest first: GET /collections/{id}/events. Committee members see every
+ * collection. The server offsets by `limit * (page - 1)`, so callers page with one constant `limit`.
+ */
 export async function fetchCollectionEvents(
   address: string,
   collectionId: string,
-  { page = 1, limit = COLLECTION_EVENTS_PAGE_SIZE }: { page?: number; limit?: number } = {}
+  { page, limit }: { page: number; limit: number }
 ): Promise<CollectionEventsPage> {
   const remote = await request<{ results: RemoteCollectionEvent[]; total: number; page: number; limit: number }>(
     address,

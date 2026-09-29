@@ -60,7 +60,8 @@
     "published": "Published",
     "under_review": "Under review",
     "under_review_hint": "Your collection is being reviewed for approval. This may take up to 5 minutes. We’ll notify you once the review is complete.",
-    "draft": "Draft"
+    "draft": "Draft",
+    "rejected": "Rejected"
   },
   "pagination": {
     "previous": "Previous page",
@@ -282,10 +283,19 @@
       "error": "We couldn't send your changes for review. Please try again.",
       "success": "Your changes were sent for review"
     },
+    "request_review": {
+      "action": "Request review again",
+      "title": "Request review again",
+      "description": "The curation committee will review your collection again. Make sure you've addressed the reasons for the rejection first.",
+      "confirm": "Request review",
+      "cancel": "Cancel",
+      "error": "We couldn't request a new review. Please try again.",
+      "success": "Your collection was sent for review"
+    },
     "review_notice": {
       "waiting": "Your collection is waiting for a curator.",
       "reviewing": "A curator is reviewing your collection.",
-      "rejected": "The curation committee rejected the latest version of this collection."
+      "rejected": "The curation committee rejected the latest version of this collection. Update your items and send them for review again."
     }
   },
   "publish_collection_modal": {
@@ -678,7 +688,9 @@
       "empty": "This collection has no items yet.",
       "dress": "Show {name} on the avatar",
       "undress": "Remove {name} from the avatar",
-      "no_representation": "This item has no version for the current body shape. Switch the body shape to preview it."
+      "no_representation": "This item has no version for the current body shape. Switch the body shape to preview it.",
+      "male_only": "Made for the male body shape only",
+      "female_only": "Made for the female body shape only"
     },
     "picker": {
       "title": "Collections",
@@ -692,8 +704,12 @@
       "title": "Review mode",
       "back": "Back to curation",
       "unpublished": "This collection isn't published yet",
+      "curation_error": "We couldn't load this collection's review status.",
+      "retry": "Try again",
       "requested": "Review requested {time}",
-      "published": "Published {time}",
+      "created": "Created {time}",
+      "approved": "Approved {time}",
+      "rejected": "Rejected {time}",
       "change_assignee": "Change the assigned curator",
       "assign_to_me": "Assign to me",
       "cancel": "Cancel",
@@ -711,7 +727,14 @@
         "error": "We couldn't disable the collection. Please try again.",
         "success": "{collection} was disabled"
       },
-      "read_only": "Review mode: nothing can be edited here. Check every property of each item before approving."
+      "reject": {
+        "title": "Reject {collection}?",
+        "first": "The collection won't be mintable. The creator will see it as rejected.",
+        "changes": "The collection keeps its approved version. The creator will see the changes as rejected.",
+        "confirm": "Reject",
+        "error": "We couldn't reject the collection. Please try again.",
+        "success": "{collection} was rejected"
+      }
     },
     "discard": {
       "title": "Discard your changes?",
@@ -840,6 +863,7 @@
       "title": "Tags",
       "placeholder": "Add a tag and press Enter",
       "remove": "Remove tag {tag}",
+      "empty": "This item has no tags.",
       "campaign_hint": "Add the “{tag}” tag to enter this item in {name}."
     },
     "options": {
@@ -877,7 +901,8 @@
     },
     "sort": {
       "MOST_RELEVANT": "Most relevant",
-      "CREATED_AT_DESC": "Newest",
+      "CURATION_UPDATED_AT_DESC": "Latest activity",
+      "CREATED_AT_DESC": "Newest collections",
       "NAME_ASC": "Name A-Z",
       "NAME_DESC": "Name Z-A"
     },
@@ -889,7 +914,7 @@
       "status": "Status",
       "assignee": "Assignee",
       "requested": "Review requested",
-      "published": "Published",
+      "created": "Created",
       "unassigned": "Unassigned",
       "assign_to_me": "Assign to me",
       "edit_assignee": "Change the assigned curator"
@@ -1299,7 +1324,6 @@
     "self_body": "You'll be responsible for reviewing this collection. You can reassign it to another curator later.",
     "curator": "Curator",
     "unassign": "Nobody (unassign)",
-    "you": "{name} (you)",
     "assigned": "{collection} is now assigned to {name}",
     "unassigned": "{collection} is no longer assigned",
     "error": "We couldn't save the assignment. Please try again.",
@@ -1319,10 +1343,10 @@
       "body": "Checking the collection's items…"
     },
     "rescue": {
-      "title": "Update items on chain",
-      "body": "{count, plural, one {# item changed} other {# items changed}} since it was published. Confirm in your wallet to update the collection contract.",
+      "title": "Record items on chain",
+      "body": "The content of {count, plural, one {# item} other {# items}} needs to be recorded on the collection contract. Confirm in your wallet to continue.",
       "progress": "Transaction {sent} of {total} sent. Waiting for it to confirm…",
-      "action": "Update items"
+      "action": "Record items"
     },
     "deploy": {
       "title": "Upload items",
@@ -1334,13 +1358,14 @@
     },
     "approve": {
       "title": "Enable the collection",
-      "body": "Last step: confirm in your wallet to make the collection mintable."
+      "body": "Last step: confirm in your wallet to make the collection mintable.",
+      "action": "Enable"
     },
     "success": {
-      "title": "Done",
+      "title_approve": "Collection approved!",
+      "title_deploy_missing": "Items uploaded!",
       "body_approve": "{collection} is approved. Thanks for reviewing it!",
-      "body_deploy_missing": "Every item of {collection} is uploaded.",
-      "action": "Done"
+      "body_deploy_missing": "Every item of {collection} is uploaded."
     },
     "error": {
       "title": "Something went wrong",

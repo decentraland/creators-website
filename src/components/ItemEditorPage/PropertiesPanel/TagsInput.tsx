@@ -10,7 +10,10 @@ type Props = {
   testId?: string
 }
 
-/** Chip list plus a text field: Enter or comma adds a tag, Backspace on an empty field removes the last. */
+/**
+ * Chip list plus a text field: Enter or comma adds a tag, Backspace on an empty field removes the last.
+ * Disabled, it is a plain read-only list.
+ */
 export function TagsInput({ tags, disabled = false, onChange, testId = 'tags-input' }: Props) {
   const { t } = useTranslation()
   const [value, setValue] = useState('')
@@ -34,31 +37,36 @@ export function TagsInput({ tags, disabled = false, onChange, testId = 'tags-inp
     <S.Field as="div">
       <S.Chips data-testid={testId}>
         {tags.map(tag => (
-          <S.TagChip key={tag} data-testid={`${testId}-tag`}>
+          <S.TagChip key={tag} data-testid={`${testId}-tag`} data-readonly={disabled || undefined}>
             {tag}
-            <button
-              type="button"
-              aria-label={t('item_editor.tags.remove', { tag })}
-              disabled={disabled}
-              data-testid={`${testId}-remove-${tag}`}
-              onClick={() => onChange(tags.filter(candidate => candidate !== tag))}
-            >
-              <RemoveIcon sx={{ fontSize: 14 }} />
-            </button>
+            {!disabled && (
+              <button
+                type="button"
+                aria-label={t('item_editor.tags.remove', { tag })}
+                data-testid={`${testId}-remove-${tag}`}
+                onClick={() => onChange(tags.filter(candidate => candidate !== tag))}
+              >
+                <RemoveIcon sx={{ fontSize: 14 }} />
+              </button>
+            )}
           </S.TagChip>
         ))}
       </S.Chips>
-      <S.TextInput
-        value={value}
-        placeholder={t('item_editor.tags.placeholder')}
-        maxLength={32}
-        aria-label={t('item_editor.tags.title')}
-        disabled={disabled}
-        data-testid={`${testId}-field`}
-        onChange={event => setValue(event.target.value)}
-        onKeyDown={onKeyDown}
-        onBlur={commit}
-      />
+      {disabled && tags.length === 0 && (
+        <S.SectionNote data-testid={`${testId}-empty`}>{t('item_editor.tags.empty')}</S.SectionNote>
+      )}
+      {!disabled && (
+        <S.TextInput
+          value={value}
+          placeholder={t('item_editor.tags.placeholder')}
+          maxLength={32}
+          aria-label={t('item_editor.tags.title')}
+          data-testid={`${testId}-field`}
+          onChange={event => setValue(event.target.value)}
+          onKeyDown={onKeyDown}
+          onBlur={commit}
+        />
+      )}
     </S.Field>
   )
 }

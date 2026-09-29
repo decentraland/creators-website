@@ -34,7 +34,8 @@ type Props = {
   collection: Collection
   address: string
   curation: CollectionCuration | null
-  events: CollectionEvent[]
+  /** `null` while the timeline is unavailable: only the legacy notice shows then. */
+  events: CollectionEvent[] | null
   items: Item[]
   /** Owner or collaborator: may validate again and appeal. */
   canManage: boolean
@@ -51,12 +52,13 @@ export function ReviewPanel({ collection, address, curation, events, items, canM
   const requestValidation = useRequestValidation(address)
   const [isAppealOpen, setAppealOpen] = useState(false)
 
-  const stage = getReviewStage(curation, events)
-  const verdict = useMemo(() => getLatestVerdict(events), [events])
+  const timeline = useMemo(() => events ?? [], [events])
+  const stage = useMemo(() => getReviewStage(collection, curation, events), [collection, curation, events])
+  const verdict = useMemo(() => getLatestVerdict(timeline), [timeline])
   const failedItems = useMemo(() => (verdict ? getFailedItems(verdict.payload) : []), [verdict])
-  const attemptsLeft = useMemo(() => getValidationAttemptsLeft(events), [events])
-  const running = useMemo(() => isValidationRunning(events), [events])
-  const appealOpen = useMemo(() => hasOpenAppeal(events), [events])
+  const attemptsLeft = useMemo(() => getValidationAttemptsLeft(timeline), [timeline])
+  const running = useMemo(() => isValidationRunning(timeline), [timeline])
+  const appealOpen = useMemo(() => hasOpenAppeal(timeline), [timeline])
 
   if (!collection.isPublished) return null
 
@@ -82,7 +84,7 @@ export function ReviewPanel({ collection, address, curation, events, items, canM
 
   function validateAgain() {
     requestValidation.mutate(
-      { collection, events },
+      { collection, events: timeline },
       {
         onSuccess: () => showToast(t('review_panel.validation_started')),
         onError: error => {

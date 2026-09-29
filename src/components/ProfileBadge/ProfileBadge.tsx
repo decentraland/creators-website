@@ -1,5 +1,6 @@
 import { useProfile } from '~/hooks/useProfile'
 import { useTranslation } from '~/intl'
+import { shortAddress } from '~/lib/ids'
 import * as S from './ProfileBadge.styles'
 
 type Props = {
@@ -7,10 +8,6 @@ type Props = {
   /** Appends "(you)" when this is the signed-in wallet. */
   self?: boolean
   testId?: string
-}
-
-export function shortAddress(address: string): string {
-  return `${address.slice(0, 6)}…${address.slice(-4)}`
 }
 
 /** A wallet as a face and its Decentraland name, the short address while (or when) there is no profile. */

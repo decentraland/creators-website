@@ -64,7 +64,7 @@ const verdict = event('review.ai_rejected', {
   ]
 })
 
-function renderPanel(curation: CollectionCuration | null, events: CollectionEvent[], canManage = true) {
+function renderPanel(curation: CollectionCuration | null, events: CollectionEvent[] | null, canManage = true) {
   render(
     <TranslationProvider>
       <ReviewPanel
@@ -93,8 +93,14 @@ describe('ReviewPanel', () => {
   })
 
   it('falls back to the legacy notice without a timeline', () => {
-    renderPanel({ ...base, assignee: '0xcurator' }, [])
+    renderPanel({ ...base, assignee: '0xcurator' }, null)
     expect(screen.getByTestId('review-notice')).toHaveTextContent('A curator is reviewing your collection.')
+  })
+
+  it('offers no retry or appeal for a curator rejection without a timeline (auto-curation off)', () => {
+    renderPanel({ ...base, status: 'rejected', reviewedBy: '0xcurator', rejectionMessage: 'Fix it' }, null)
+    expect(screen.queryByTestId('review-panel')).toBeNull()
+    expect(screen.getByTestId('review-notice')).toHaveAttribute('data-stage', 'rejected')
   })
 
   it("lists the validator's findings per item and validates again", () => {

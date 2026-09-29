@@ -409,7 +409,7 @@ describe('collection events and review requests', () => {
         limit: 20
       })
     )
-    const page = await fetchCollectionEvents(ADDRESS, 'a1b2', { page: 2 })
+    const page = await fetchCollectionEvents(ADDRESS, 'a1b2', { page: 2, limit: 20 })
     expect(signedFetchMock.mock.calls[0][2]).toBe('/collections/a1b2/events?page=2&limit=20')
     expect(page.total).toBe(1)
     expect(page.results[0]).toMatchObject({ type: 'review.ai_started', payload: { trigger: 'publish' } })

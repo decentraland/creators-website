@@ -24,8 +24,8 @@ export function CollectionActivityModal({ collection, address, items = [], onClo
   const { t } = useTranslation()
   const { isCurator } = useCommittee(address)
   const query = useCollectionEvents(address, collection)
-  const { events, error, isLoading, hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage, refetch } =
-    query
+  const { error, isLoading, hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage, refetch } = query
+  const events = query.events ?? []
   // A failed "Load more" keeps what is loaded on screen; only a failed first page empties the modal.
   const isError = query.isError && !isFetchNextPageError
 

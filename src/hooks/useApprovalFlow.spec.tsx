@@ -20,6 +20,7 @@ const api = vi.hoisted(() => ({
   fetchAllCollectionItems: vi.fn(),
   publishCollectionItems: vi.fn(),
   updateCollectionCuration: vi.fn(),
+  pushCollectionCuration: vi.fn(),
   fetchContent: vi.fn()
 }))
 vi.mock('~/lib/approveCollection', () => flow)
@@ -45,11 +46,13 @@ const item = { id: 'i1', urn: 'urn:1' } as Item
 const collection = { id: 'c1', isApproved: false } as Collection
 const pending = { status: 'pending' } as CollectionCuration
 
+let queryClient: QueryClient
 function wrapper({ children }: { children: ReactNode }) {
-  return <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 
 beforeEach(() => {
+  queryClient = new QueryClient()
   Object.values(flow).forEach(fn => fn.mockReset())
   Object.values(api).forEach(fn => fn.mockReset())
   api.fetchAllCollectionItems.mockResolvedValue([item])
@@ -76,6 +79,57 @@ describe('useApprovalFlow', () => {
     await act(() => result.current.runApprove())
     expect(result.current.view).toEqual({ kind: 'success' })
     expect(api.updateCollectionCuration).toHaveBeenCalledWith('0xme', 'c1', { status: 'approved' })
+  })
+
+  it('shows the collection as approved right after the transaction, before the subgraph catches up', async () => {
+    queryClient.setQueryData(['collection', '0xme', 'c1'], collection)
+    const { result } = renderHook(() => useApprovalFlow(session, collection, pending, 'approve'), { wrapper })
+    await act(() => result.current.start())
+    await act(() => result.current.runApprove())
+    expect(queryClient.getQueryData<Collection>(['collection', '0xme', 'c1'])).toMatchObject({ isApproved: true })
+  })
+
+  it('approves a rejected first review through a new request, so it stops reading as rejected', async () => {
+    const rejected = { status: 'rejected' } as CollectionCuration
+    const { result } = renderHook(() => useApprovalFlow(session, collection, rejected, 'approve'), { wrapper })
+    await act(() => result.current.start())
+    await act(() => result.current.runApprove())
+    expect(api.pushCollectionCuration).toHaveBeenCalledWith('0xme', 'c1')
+    expect(api.updateCollectionCuration).toHaveBeenCalledWith('0xme', 'c1', { status: 'approved' })
+  })
+
+  it('closes the request once the approval landed on chain, even if the flow unmounted meanwhile', async () => {
+    let land: (txHash: string) => void = () => undefined
+    flow.approveOnChain.mockReturnValue(new Promise<string>(resolve => (land = resolve)))
+    const { result } = renderHook(() => useApprovalFlow(session, collection, pending, 'approve'), { wrapper })
+    await act(() => result.current.start())
+    let approving: Promise<void> = Promise.resolve()
+    act(() => {
+      approving = result.current.runApprove()
+    })
+    result.current.stop()
+    await act(async () => {
+      land('0xtx')
+      await approving
+    })
+    expect(api.updateCollectionCuration).toHaveBeenCalledWith('0xme', 'c1', { status: 'approved' })
+  })
+
+  it('does not close the request when the curator closed the flow while it was loading', async () => {
+    let release: (items: Item[]) => void = () => undefined
+    api.fetchAllCollectionItems.mockReturnValue(new Promise<Item[]>(resolve => (release = resolve)))
+    const approved = { ...collection, isApproved: true }
+    const { result } = renderHook(() => useApprovalFlow(session, approved, pending, 'approve'), { wrapper })
+    let running: Promise<void> = Promise.resolve()
+    act(() => {
+      running = result.current.start()
+    })
+    result.current.stop()
+    await act(async () => {
+      release([item])
+      await running
+    })
+    expect(api.updateCollectionCuration).not.toHaveBeenCalled()
   })
 
   it('approves pushed changes of an approved collection without a transaction', async () => {

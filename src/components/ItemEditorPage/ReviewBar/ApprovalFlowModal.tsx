@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
-import { CheckCircleOutline as DoneIcon } from '@mui/icons-material'
+import approvedArt from '~/assets/send-success.png'
 import { useTranslation } from '~/intl'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
-import { shortAddress } from '~/components/ProfileBadge'
+import { SuccessModal } from '~/components/SuccessModal'
 import { useApprovalFlow, type ApprovalMode } from '~/hooks/useApprovalFlow'
 import { useAssignCurator } from '~/hooks/useCuration'
 import { useProfile } from '~/hooks/useProfile'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
+import { shortAddress } from '~/lib/ids'
 import * as S from './ReviewBar.styles'
 
 type Props = {
@@ -31,18 +32,27 @@ export function ApprovalFlowModal({ session, collection, curation, mode, onClose
   const flow = useApprovalFlow(session, collection, curation, mode)
   const { start, stop } = flow
 
+  // Runs once per confirmation: the collection and curation refetch mid-flow, which recreates `start`,
+  // and re-running it would reopen the flow from its first step.
   useEffect(() => {
     if (!confirmed) return
     void start()
     return stop
-  }, [confirmed, start, stop])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [confirmed])
 
   const view = flow.view
-  const busy =
-    assign.isPending ||
-    (view.kind === 'rescue' && view.busy) ||
-    (view.kind === 'deploy' && view.busy) ||
-    (view.kind === 'approve' && view.busy)
+  if (view.kind === 'success') {
+    return (
+      <SuccessModal
+        title={t(`approval_flow.success.title_${mode}`)}
+        description={t(`approval_flow.success.body_${mode}`, { collection: collection.name })}
+        art={approvedArt}
+        onDone={onClose}
+      />
+    )
+  }
+  const busy = assign.isPending || ('busy' in view && view.busy)
   const titleKey = !confirmed ? 'assigned_to_other' : view.kind
 
   function assignAndApprove() {
@@ -53,7 +63,14 @@ export function ApprovalFlowModal({ session, collection, curation, mode, onClose
   let action: React.ReactNode = null
   if (!confirmed) {
     const assignee = assigneeProfile?.name || shortAddress(curation!.assignee!)
-    body = <S.FlowText>{t('approval_flow.assigned_to_other.body', { assignee })}</S.FlowText>
+    body = (
+      <>
+        <S.FlowText>{t('approval_flow.assigned_to_other.body', { assignee })}</S.FlowText>
+        {assign.isError && (
+          <S.FlowText data-testid="approval-assign-error">{t('assign_curator_modal.error')}</S.FlowText>
+        )}
+      </>
+    )
     action = (
       <Button type="button" loading={assign.isPending} data-testid="approval-assign-confirm" onClick={assignAndApprove}>
         {t('approval_flow.assigned_to_other.action')}
@@ -101,20 +118,6 @@ export function ApprovalFlowModal({ session, collection, curation, mode, onClose
         {t('approval_flow.approve.action')}
       </Button>
     )
-  } else if (view.kind === 'success') {
-    body = (
-      <S.FlowCenter data-testid="approval-success">
-        <S.DoneGlyph aria-hidden>
-          <DoneIcon />
-        </S.DoneGlyph>
-        <S.FlowText>{t(`approval_flow.success.body_${mode}`, { collection: collection.name })}</S.FlowText>
-      </S.FlowCenter>
-    )
-    action = (
-      <Button type="button" data-testid="approval-done" onClick={onClose}>
-        {t('approval_flow.success.action')}
-      </Button>
-    )
   } else {
     body = <S.FlowText data-testid="approval-error">{t(`approval_flow.error.${view.step}`)}</S.FlowText>
     action = (
@@ -129,17 +132,14 @@ export function ApprovalFlowModal({ session, collection, curation, mode, onClose
       title={t(`approval_flow.${titleKey}.title`, { collection: collection.name })}
       onClose={onClose}
       closeDisabled={busy}
-      compact
       testId="approval-flow-modal"
     >
       <S.FlowBody data-view={confirmed ? view.kind : 'assigned_to_other'}>
         {body}
         <S.FlowActions>
-          {view.kind !== 'success' && (
-            <Button type="button" variant="secondary" disabled={busy} onClick={onClose}>
-              {t('approval_flow.cancel')}
-            </Button>
-          )}
+          <Button type="button" variant="secondary" disabled={busy} onClick={onClose}>
+            {t('approval_flow.cancel')}
+          </Button>
           {action}
         </S.FlowActions>
       </S.FlowBody>

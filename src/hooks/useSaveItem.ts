@@ -3,6 +3,7 @@ import { errorCode, track } from '~/lib/analytics'
 import { saveItem } from '~/lib/builder'
 import { withThumbnail, type BuiltItem } from '~/lib/itemFactory'
 import { type Item } from '~/lib/items'
+import { allCollectionItemsKey } from './useCollection'
 import { invalidateCollectionItems } from './usePublishCollection'
 
 export type SaveItemVariables = Partial<BuiltItem> & {
@@ -22,7 +23,13 @@ export function useSaveItem(address: string | undefined) {
     },
     onSuccess: item => {
       track('Save item', { itemId: item.id })
-      if (item.collectionId) invalidateCollectionItems(queryClient, item.collectionId)
+      if (!item.collectionId) return
+      // Written straight into the list so anything keyed on the item (the publish wizard's static checks)
+      // sees the new version before the refetch lands.
+      queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, item.collectionId), current =>
+        current?.map(existing => (existing.id === item.id ? item : existing))
+      )
+      invalidateCollectionItems(queryClient, item.collectionId)
     },
     onError: (error, { item }) => track('Save item error', { itemId: item.id, error: errorCode(error) })
   })

@@ -93,6 +93,7 @@ export function StaticChecksPanel({ checks, items }: Props) {
         <>
           <S.Toggle
             type="button"
+            aria-expanded={showWarnings}
             data-testid="static-checks-toggle-warnings"
             onClick={() => setShowWarnings(open => !open)}
           >

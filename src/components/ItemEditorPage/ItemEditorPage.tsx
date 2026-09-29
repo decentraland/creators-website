@@ -433,7 +433,7 @@ const ItemEditorPage = () => {
         item={selected}
         address={address}
         editable={editable}
-        readOnlyNote={mode === 'review' ? t('item_editor.review.read_only') : undefined}
+        showReadOnlyNote={mode !== 'review'}
         canDelete={canDelete}
         draft={form.draft}
         dispatch={form.dispatch}

@@ -8,9 +8,9 @@ import { CurationRow } from './CurationRow'
 
 vi.mock('~/components/CollectionMosaic', () => ({ CollectionMosaic: () => null }))
 vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: undefined }) }))
-const latest = vi.hoisted(() => ({ event: null as { type: string } | null }))
+const latest = vi.hoisted(() => ({ event: null as { type: string } | null, timeline: true }))
 vi.mock('~/hooks/useCollectionEvents', () => ({
-  useRecentCollectionEvents: () => ({ data: latest.event ? [latest.event] : [] })
+  useRecentCollectionEvents: () => ({ data: latest.timeline ? (latest.event ? [latest.event] : []) : null })
 }))
 
 const ME = '0xme00000000000000000000000000000000000001'
@@ -87,8 +87,22 @@ describe('CurationRow', () => {
     expect(screen.getByTestId('review-stage')).toHaveAttribute('data-stage', 'rejected_by_validator')
   })
 
+  it('keeps the legacy state without a timeline, even when the server names the reviewer', () => {
+    latest.timeline = false
+    renderRow({ ...pending, status: 'rejected', reviewedBy: '0xcurator' })
+    expect(screen.queryByTestId('review-stage')).toBeNull()
+    expect(screen.getByTestId('curation-state')).toHaveAttribute('data-state', 'rejected')
+    latest.timeline = true
+  })
+
   it('locks the curator once the collection and its request are approved', () => {
     renderRow({ ...pending, status: 'approved', assignee: ME }, { ...collection, isApproved: true })
     expect(screen.queryByTestId('curation-row-edit-assignee')).toBeNull()
+  })
+
+  it('stops offering the assignment once the collection and its request are approved', () => {
+    renderRow({ ...pending, status: 'approved' }, { ...collection, isApproved: true })
+    expect(screen.getByTestId('curation-row-assignee')).toHaveTextContent('Unassigned')
+    expect(screen.queryByTestId('curation-row-assign-me')).toBeNull()
   })
 })

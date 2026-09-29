@@ -14,13 +14,22 @@ import { CurationStatePill } from '~/components/CurationStatePill'
 import { ProfileBadge } from '~/components/ProfileBadge'
 import { ReviewStagePill } from '~/components/ReviewStagePill'
 import { useCollectionEvents } from '~/hooks/useCollectionEvents'
-import { useCollectionCuration, useDisableCollection } from '~/hooks/useCuration'
+import { useCollectionCuration, useDisableCollection, useRejectCuration } from '~/hooks/useCuration'
+import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { type ApprovalMode } from '~/hooks/useApprovalFlow'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
-import { ReviewAction, canEditAssignee, getCurationState, getReviewActions, getReviewStage } from '~/lib/curation'
+import {
+  ReviewAction,
+  canEditAssignee,
+  curationListUrl,
+  getCurationState,
+  getReviewActions,
+  getReviewStage
+} from '~/lib/curation'
 import { getLatestVerdict } from '~/lib/events'
+import { FeatureFlag } from '~/lib/featureFlags'
 import { ItemSyncStatus } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
@@ -48,6 +57,9 @@ export function ReviewBar({ session, collection, items }: Props) {
   const curation = curationQuery.data ?? null
   const syncs = useItemSyncs(address, collection, items)
   const { events } = useCollectionEvents(address, collection)
+  // Off, the server still refuses the rejection fields (schema), so the plain confirm rejects as before.
+  const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION)
+  const reject = useRejectCuration(address)
   const disable = useDisableCollection(session)
   const [dialog, setDialog] = useState<Dialog>(null)
   const [approval, setApproval] = useState<ApprovalMode | null>(null)
@@ -57,11 +69,20 @@ export function ReviewBar({ session, collection, items }: Props) {
     [syncs]
   )
   const state = getCurationState(collection, curation)
-  const stage = getReviewStage(curation, events)
-  const verdict = useMemo(() => getLatestVerdict(events), [events])
+  const stage = useMemo(() => getReviewStage(collection, curation, events), [collection, curation, events])
+  const verdict = useMemo(() => (events ? getLatestVerdict(events) : null), [events])
   const actions = collection.isPublished ? getReviewActions(collection, curation, hasMissingEntities) : []
   const assignee = curation?.assignee ?? null
+  // A first-review rejection opens the request itself, so its creation time only means something while pending.
+  const [timeKey, time] = !curation
+    ? ['created', collection.createdAt]
+    : curation.status === 'pending'
+      ? ['requested', curation.createdAt]
+      : [curation.status, curation.updatedAt]
+  const canAssign = canEditAssignee(collection, curation)
   const isLoading = collection.isPublished && curationQuery.isLoading
+  // Without the request, Reject and Assign would open a new one instead of updating it.
+  const isCurationError = collection.isPublished && curationQuery.isError && !curationQuery.data
 
   function onAction(action: ReviewAction) {
     if (action === ReviewAction.APPROVE || action === ReviewAction.ENABLE) setApproval('approve')
@@ -72,28 +93,42 @@ export function ReviewBar({ session, collection, items }: Props) {
 
   const closeDialog = () => {
     setDialog(null)
+    reject.reset()
     disable.reset()
   }
 
   return (
     <S.ReviewBar role="toolbar" aria-label={t('item_editor.review.title')} data-testid="review-bar">
       <S.Identity>
-        <S.BackLink to="/curation" aria-label={t('item_editor.review.back')} data-testid="review-back">
+        <S.BackLink to={curationListUrl()} aria-label={t('item_editor.review.back')} data-testid="review-back">
           <ArrowBackIcon fontSize="small" />
         </S.BackLink>
         <S.Name title={collection.name}>{collection.name}</S.Name>
-        {!isLoading && (stage ? <ReviewStagePill stage={stage} /> : <CurationStatePill state={state} />)}
+        {!isLoading &&
+          !isCurationError &&
+          (stage ? <ReviewStagePill stage={stage} /> : <CurationStatePill state={state} />)}
       </S.Identity>
 
       <S.Meta>
         {!collection.isPublished ? (
           <span data-testid="review-unpublished">{t('item_editor.review.unpublished')}</span>
+        ) : isLoading ? null : isCurationError ? (
+          <>
+            <span data-testid="review-curation-error">{t('item_editor.review.curation_error')}</span>
+            <Button
+              type="button"
+              size="sm"
+              variant="dark"
+              data-testid="review-curation-retry"
+              onClick={() => void curationQuery.refetch()}
+            >
+              {t('item_editor.review.retry')}
+            </Button>
+          </>
         ) : (
           <>
             <span data-testid="review-requested">
-              {curation
-                ? t('item_editor.review.requested', { time: formatTimeAgo(curation.createdAt, intl.locale) })
-                : t('item_editor.review.published', { time: formatTimeAgo(collection.createdAt, intl.locale) })}
+              {t(`item_editor.review.${timeKey}`, { time: formatTimeAgo(time, intl.locale) })}
             </span>
             {verdict && (
               <S.AssigneeChip
@@ -109,25 +144,27 @@ export function ReviewBar({ session, collection, items }: Props) {
             {assignee ? (
               <S.AssigneeChip
                 type="button"
-                disabled={!canEditAssignee(collection, curation)}
+                disabled={!canAssign}
                 aria-label={t('item_editor.review.change_assignee')}
                 data-testid="review-assignee"
                 onClick={() => setDialog('assign')}
               >
                 <ProfileBadge address={assignee} self={assignee === address.toLowerCase()} />
-                {canEditAssignee(collection, curation) && <EditIcon fontSize="inherit" />}
+                {canAssign && <EditIcon fontSize="inherit" />}
               </S.AssigneeChip>
             ) : (
-              <S.AssigneeChip type="button" data-testid="review-assign-me" onClick={() => setDialog('assign')}>
-                <AssignIcon fontSize="small" />
-                {t('item_editor.review.assign_to_me')}
-              </S.AssigneeChip>
+              canAssign && (
+                <S.AssigneeChip type="button" data-testid="review-assign-me" onClick={() => setDialog('assign')}>
+                  <AssignIcon fontSize="small" />
+                  {t('item_editor.review.assign_to_me')}
+                </S.AssigneeChip>
+              )
             )}
           </>
         )}
       </S.Meta>
 
-      {!isLoading && actions.length > 0 && (
+      {!isLoading && !isCurationError && actions.length > 0 && (
         <S.Actions>
           {actions.map(action => (
             <Button
@@ -153,8 +190,35 @@ export function ReviewBar({ session, collection, items }: Props) {
           onClose={closeDialog}
         />
       )}
-      {dialog === 'reject' && (
+      {dialog === 'reject' && autoCuration.enabled && (
         <RejectCurationModal collection={collection} curation={curation} address={address} onClose={closeDialog} />
+      )}
+      {dialog === 'reject' && !autoCuration.enabled && (
+        <ConfirmModal
+          title={t('item_editor.review.reject.title', { collection: collection.name })}
+          description={t(
+            collection.isApproved ? 'item_editor.review.reject.changes' : 'item_editor.review.reject.first'
+          )}
+          error={reject.isError ? t('item_editor.review.reject.error') : null}
+          busy={reject.isPending}
+          onClose={closeDialog}
+          cancel={{ label: t('item_editor.review.cancel'), onClick: closeDialog, testId: 'review-reject-cancel' }}
+          confirm={{
+            label: t('item_editor.review.reject.confirm'),
+            testId: 'review-reject-confirm',
+            onClick: () =>
+              reject.mutate(
+                { collection, curation },
+                {
+                  onSuccess: () => {
+                    showToast(t('item_editor.review.reject.success', { collection: collection.name }))
+                    closeDialog()
+                  }
+                }
+              )
+          }}
+          testId="review-reject"
+        />
       )}
       {dialog === 'verdict' && verdict && <AiVerdictModal verdict={verdict} items={items} onClose={closeDialog} />}
       {dialog === 'disable' && (

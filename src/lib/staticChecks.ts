@@ -144,3 +144,11 @@ export async function runStaticChecks(
     durationMs: Date.now() - started
   }
 }
+
+/** The publish gate: no items yet, a run in flight or any error finding keeps the fee out of reach. */
+export function isPublishBlockedByChecks(
+  checks: { isFetching: boolean; data?: Pick<StaticChecksResult, 'errors'> },
+  itemCount: number
+): boolean {
+  return itemCount === 0 || checks.isFetching || (checks.data?.errors ?? 0) > 0
+}

@@ -549,6 +549,10 @@ export const Chips = styled.div`
   &:empty {
     display: none;
   }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
 `
 
 export const TagChip = styled.span`
@@ -574,8 +578,8 @@ export const TagChip = styled.span`
     color: inherit;
   }
 
-  & button:disabled {
-    display: none;
+  &[data-readonly] {
+    padding-right: 10px;
   }
 `
 

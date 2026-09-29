@@ -128,21 +128,16 @@ describe('buildItemEntity', () => {
 })
 
 describe('buildDeploymentForm', () => {
-  it('sends the entity, the auth chain and only the files the Catalyst lacks', () => {
+  it('sends the entity, the auth chain and the files', () => {
     const entity = { entityId: 'bafentity', entityFile: new Uint8Array([1]) }
     const chain = [
       { type: 'SIGNER', payload: '0xme', signature: '' },
       { type: 'ECDSA_SIGNED_ENTITY', payload: 'bafentity', signature: '0xsig' }
     ]
-    const files = new Map([
-      ['bafmodel', new Blob(['m'])],
-      ['bafimage', new Blob(['i'])]
-    ])
-    const form = buildDeploymentForm(entity, chain, files, new Set(['bafimage']))
+    const form = buildDeploymentForm(entity, chain, new Map([['bafmodel', new Blob(['m'])]]))
     expect(form.get('entityId')).toBe('bafentity')
     expect(form.get('authChain[1][signature]')).toBe('0xsig')
     expect(form.has('bafentity')).toBe(true)
     expect(form.has('bafmodel')).toBe(true)
-    expect(form.has('bafimage')).toBe(false)
   })
 })
