@@ -10,7 +10,9 @@ const Why = () => {
     <AnimatedSection section={OverviewSection.WHY}>
       <S.Section data-testid="overview-why">
         <S.Title>
-          <span>{t('overview.why.title_highlight')}</span> {t('overview.why.title')}
+          <span>{t('overview.why.title_highlight')}</span>
+          {t('overview.title_separator')}
+          {t('overview.why.title')}
         </S.Title>
         <S.Grid>
           {whyCards.map(card => {

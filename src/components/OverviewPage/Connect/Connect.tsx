@@ -38,7 +38,9 @@ const Connect = () => {
     <AnimatedSection section={OverviewSection.CONNECT}>
       <S.Section data-testid="overview-connect">
         <S.Title>
-          <span>{t('overview.connect.title_highlight')}</span> {t('overview.connect.title')}
+          <span>{t('overview.connect.title_highlight')}</span>
+          {t('overview.title_separator')}
+          {t('overview.connect.title')}
         </S.Title>
         <Carousel
           items={testimonials}

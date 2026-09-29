@@ -990,6 +990,7 @@
     }
   },
   "overview": {
+    "title_separator": " ",
     "hero": {
       "title_first_line": "Create your own",
       "title_last_line": "in Decentraland",

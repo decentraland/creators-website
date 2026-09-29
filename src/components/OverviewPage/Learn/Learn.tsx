@@ -28,7 +28,9 @@ const Learn = () => {
     <AnimatedSection section={OverviewSection.LEARN}>
       <S.Section data-testid="overview-learn">
         <S.Title>
-          <span>{t('overview.learn.title_highlight')}</span> {t('overview.learn.title')}
+          <span>{t('overview.learn.title_highlight')}</span>
+          {t('overview.title_separator')}
+          {t('overview.learn.title')}
         </S.Title>
         <S.Rail>
           {cards.map(card => (

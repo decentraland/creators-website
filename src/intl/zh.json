@@ -19,7 +19,7 @@
     "view_grid": "网格视图",
     "view_list": "列表视图",
     "item_count": "{count, plural, one {# 个物品} other {# 个物品}}",
-    "updated_ago": "更新于 {timeAgo}",
+    "updated_ago": "{timeAgo}更新",
     "manage": "管理",
     "list": {
       "collection": "系列",
@@ -615,8 +615,8 @@
     "load_failed": "我们无法加载该物品，请重试。"
   },
   "item_validation": {
-    "triangle_count_exceeded": "三角形数量（{count}）超过了{category}可穿戴物品的限制 {limit}。",
-    "triangle_count_exceeded_with_hint": "三角形数量（{count}）超过了{category}可穿戴物品的基础限制 {limit}。您可以在物品编辑器中隐藏其他可穿戴物品栏位来提高此限制。",
+    "triangle_count_exceeded": "三角形数量（{count}）超过了 {category} 可穿戴物品的限制 {limit}。",
+    "triangle_count_exceeded_with_hint": "三角形数量（{count}）超过了 {category} 可穿戴物品的基础限制 {limit}。您可以在物品编辑器中隐藏其他可穿戴物品栏位来提高此限制。",
     "dimensions_exceeded": "模型尺寸（{width}m x {height}m x {depth}m）超过了允许的最大值（{maxWidth}m x {maxHeight}m x {maxDepth}m）。",
     "materials_exceeded": "材质数量（{count}）超过了限制 {limit}。",
     "textures_exceeded": "贴图数量（{count}）超过了限制 {limit}。",
@@ -637,8 +637,8 @@
     "prop_materials": "道具材质数量（{count}）超过了限制 {limit}。",
     "prop_textures": "道具贴图数量（{count}）超过了限制 {limit}。",
     "prop_armature_bones": "道具骨架有 {count} 个骨骼，超过了限制 {limit}。",
-    "armature_naming": "发现意外的骨架名称：{names}。虚拟形象骨架应命名为 'Armature'，道具骨架应命名为 'Armature_Prop'。",
-    "animation_naming": "存在道具时，动画片段应以 '_Avatar' 或 '_Prop' 结尾。无效名称：{names}。",
+    "armature_naming": "发现意外的骨架名称：{names}。虚拟形象骨架应命名为“Armature”，道具骨架应命名为“Armature_Prop”。",
+    "animation_naming": "存在道具时，动画片段应以“_Avatar”或“_Prop”结尾。无效名称：{names}。",
     "audio_format": "音频文件“{name}”的格式不受支持。仅允许 .mp3 和 .ogg 格式。",
     "spring_bone_count_exceeded": "此模型有 {count} 个弹簧骨骼（最大值：{limit}）。请在 3D 编辑器中减少弹簧骨骼节点的数量，然后重新上传。",
     "thumbnail_not_transparent": "缩略图背景看起来不是透明的。Marketplace 会在缩略图后方显示物品的稀有度颜色，因此背景必须透明。"
@@ -841,7 +841,7 @@
     "land": "土地/世界"
   },
   "footer": {
-    "newsletterTitle": "订阅精选资讯",
+    "newsletterTitle": "每周精选资讯，直达您的邮箱",
     "newsletterFrameTitle": "订阅新闻通讯",
     "connect": "关注我们",
     "gettingStarted": "快速入门",
@@ -990,6 +990,7 @@
     }
   },
   "overview": {
+    "title_separator": "",
     "hero": {
       "title_first_line": "创建您自己的",
       "title_last_line": "尽在 Decentraland",
