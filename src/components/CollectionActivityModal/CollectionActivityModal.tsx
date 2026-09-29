@@ -24,15 +24,18 @@ export function CollectionActivityModal({ collection, address, items = [], onClo
   const { t } = useTranslation()
   const { isCurator } = useCommittee(address)
   const query = useCollectionEvents(address, collection)
-  const { events, isError, error, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage, refetch } = query
+  const { events, error, isLoading, hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage, refetch } =
+    query
+  // A failed "Load more" keeps what is loaded on screen; only a failed first page empties the modal.
+  const isError = query.isError && !isFetchNextPageError
 
   useEffect(() => {
     track('Open activity', { collectionId: collection.id })
   }, [collection.id])
 
   useEffect(() => {
-    if (isError) captureError(error, { flow: 'curation_events', collectionId: collection.id })
-  }, [isError, error, collection.id])
+    if (query.isError) captureError(error, { flow: 'curation_events', collectionId: collection.id })
+  }, [query.isError, error, collection.id])
 
   return (
     <Modal title={t('activity_modal.title')} onClose={onClose} size="large" testId="activity-modal">
@@ -61,6 +64,9 @@ export function CollectionActivityModal({ collection, address, items = [], onClo
                 <EventRow key={event.id} event={event} items={items} isCurator={isCurator} />
               ))}
             </S.Timeline>
+            {isFetchNextPageError && (
+              <S.State data-testid="activity-load-more-error">{t('activity_modal.error')}</S.State>
+            )}
             {hasNextPage && (
               <S.More>
                 <Button
@@ -71,7 +77,7 @@ export function CollectionActivityModal({ collection, address, items = [], onClo
                   data-testid="activity-load-more"
                   onClick={() => void fetchNextPage()}
                 >
-                  {t('activity_modal.load_more')}
+                  {t(isFetchNextPageError ? 'activity_modal.retry' : 'activity_modal.load_more')}
                 </Button>
               </S.More>
             )}

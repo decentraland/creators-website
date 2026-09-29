@@ -57,7 +57,7 @@ export function ReviewBar({ session, collection, items }: Props) {
     [syncs]
   )
   const state = getCurationState(collection, curation)
-  const stage = getReviewStage(curation, events[0] ?? null)
+  const stage = getReviewStage(curation, events)
   const verdict = useMemo(() => getLatestVerdict(events), [events])
   const actions = collection.isPublished ? getReviewActions(collection, curation, hasMissingEntities) : []
   const assignee = curation?.assignee ?? null

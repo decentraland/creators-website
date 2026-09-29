@@ -704,14 +704,6 @@
         "disable": "Deshabilitar",
         "deploy_missing": "Subir ítems faltantes"
       },
-      "reject": {
-        "title": "¿Rechazar {collection}?",
-        "first": "La colección no se podrá mintear. El creador la verá como rechazada.",
-        "changes": "La colección conserva su versión aprobada. El creador verá los cambios como rechazados.",
-        "confirm": "Rechazar",
-        "error": "No pudimos rechazar la colección. Inténtalo de nuevo.",
-        "success": "{collection} fue rechazada"
-      },
       "disable": {
         "title": "¿Deshabilitar {collection}?",
         "description": "Nadie podrá mintear sus ítems. Puedes volver a habilitarla más adelante. Necesita una transacción desde tu wallet.",
@@ -1428,7 +1420,6 @@
     "description": "Un curador revisará tu colección y decidirá. Cuéntale qué cambiaste o por qué crees que cumple.",
     "note": "Nota para los curadores",
     "note_placeholder": "¿Qué arreglaste o por qué no estás de acuerdo con el rechazo?",
-    "note_required": "Escribe una nota para los curadores antes de enviar.",
     "cancel": "Cancelar",
     "submit": "Enviar solicitud",
     "success": "Un curador revisará tu colección.",
@@ -1490,7 +1481,6 @@
       "collection.disabled": "deshabilitó la colección",
       "unknown": "{type}"
     },
-    "note": "Nota",
     "show_findings": "Ver hallazgos",
     "hide_findings": "Ocultar hallazgos"
   },

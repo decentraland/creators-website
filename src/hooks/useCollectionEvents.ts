@@ -3,7 +3,6 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import { errorCode, track } from '~/lib/analytics'
 import {
   BuilderServerError,
-  COLLECTION_EVENTS_PAGE_SIZE,
   VALIDATION_RUNNING_STATUS,
   ValidationLimitError,
   appealCollectionCuration,
@@ -19,8 +18,11 @@ export function collectionEventsKey(address: string | undefined, collectionId: s
   return ['collection-events', address, collectionId] as const
 }
 
-/** Enough rows for the stage, the latest verdict and today's attempts in a single page; the timeline pages on. */
-const FIRST_PAGE_SIZE = 50
+/**
+ * Enough rows for the stage, the latest verdict and today's attempts in the first page. The server offsets
+ * by `limit * (page - 1)`, so every page must ask for the same size or they overlap.
+ */
+export const EVENTS_PAGE_SIZE = 50
 
 /**
  * The collection's timeline, newest first, page by page. `pages[0]` doubles as the source of the review
@@ -31,13 +33,10 @@ export function useCollectionEvents(address: string | undefined, collection: Col
     queryKey: collectionEventsKey(address, collection?.id),
     queryFn: async ({ pageParam }) => {
       try {
-        return await fetchCollectionEvents(address!, collection!.id, {
-          page: pageParam,
-          limit: pageParam === 1 ? FIRST_PAGE_SIZE : COLLECTION_EVENTS_PAGE_SIZE
-        })
+        return await fetchCollectionEvents(address!, collection!.id, { page: pageParam, limit: EVENTS_PAGE_SIZE })
       } catch (error) {
         if (error instanceof BuilderServerError && error.status === 404) {
-          return { results: [], total: 0, page: pageParam, limit: FIRST_PAGE_SIZE }
+          return { results: [], total: 0, page: pageParam, limit: EVENTS_PAGE_SIZE }
         }
         throw error
       }
@@ -54,20 +53,23 @@ export function useCollectionEvents(address: string | undefined, collection: Col
   return { ...query, events }
 }
 
-/** Only the newest event, for list rows that need the stage and nothing else. Enabled per caller. */
-export function useLatestCollectionEvent(
+/** Enough of the newest events to tell the stage: assignments and submitted changes sit between the telling ones. */
+const RECENT_EVENTS_LIMIT = 10
+
+/** The newest few events, for list rows that need the stage and nothing else. Enabled per caller. */
+export function useRecentCollectionEvents(
   address: string | undefined,
   collectionId: string | undefined,
   enabled: boolean
 ) {
   return useQuery({
-    queryKey: [...collectionEventsKey(address, collectionId), 'latest'],
+    queryKey: [...collectionEventsKey(address, collectionId), 'recent'],
     queryFn: async () => {
       try {
-        const page = await fetchCollectionEvents(address!, collectionId!, { page: 1, limit: 1 })
-        return page.results[0] ?? null
+        const page = await fetchCollectionEvents(address!, collectionId!, { page: 1, limit: RECENT_EVENTS_LIMIT })
+        return page.results
       } catch (error) {
-        if (error instanceof BuilderServerError && error.status === 404) return null
+        if (error instanceof BuilderServerError && error.status === 404) return []
         throw error
       }
     },

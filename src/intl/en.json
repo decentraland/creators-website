@@ -704,14 +704,6 @@
         "disable": "Disable",
         "deploy_missing": "Deploy missing items"
       },
-      "reject": {
-        "title": "Reject {collection}?",
-        "first": "The collection won't be mintable. The creator will see it as rejected.",
-        "changes": "The collection keeps its approved version. The creator will see the changes as rejected.",
-        "confirm": "Reject",
-        "error": "We couldn't reject the collection. Please try again.",
-        "success": "{collection} was rejected"
-      },
       "disable": {
         "title": "Disable {collection}?",
         "description": "Nobody will be able to mint its items anymore. You can enable it again later. This needs a transaction from your wallet.",
@@ -1428,7 +1420,6 @@
     "description": "A curator will look at your collection and decide. Tell them what you changed or why you think it complies.",
     "note": "Note for the curators",
     "note_placeholder": "What did you fix, or why do you disagree with the rejection?",
-    "note_required": "Write a note for the curators before sending.",
     "cancel": "Cancel",
     "submit": "Send request",
     "success": "A curator will review your collection.",
@@ -1490,7 +1481,6 @@
       "collection.disabled": "disabled the collection",
       "unknown": "{type}"
     },
-    "note": "Note",
     "show_findings": "Show findings",
     "hide_findings": "Hide findings"
   },

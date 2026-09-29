@@ -1,7 +1,7 @@
 // Curation domain: the committee's review requests on standard collections, ported from the legacy
 // builder (modules/curations, modules/committee, CurationPage) against the same builder-server API.
 import { CollectionSort, CollectionType, hasBeenApproved, type Collection } from '~/lib/collections'
-import { REJECT_REASON_CODES, type CollectionEvent, type RejectReasonCode } from '~/lib/events'
+import { isRejectReasonCode, type CollectionEvent, type RejectReasonCode } from '~/lib/events'
 
 export type CurationRequestStatus = 'pending' | 'approved' | 'rejected'
 
@@ -35,7 +35,7 @@ export type CollectionCuration = {
 
 function toRejectReasons(codes: string[] | null | undefined): RejectReasonCode[] | null {
   if (!codes) return null
-  return codes.filter((code): code is RejectReasonCode => (REJECT_REASON_CODES as readonly string[]).includes(code))
+  return codes.filter(isRejectReasonCode)
 }
 
 export function fromRemoteCuration(remote: RemoteCollectionCuration): CollectionCuration {
@@ -61,22 +61,23 @@ export enum ReviewStage {
   APPROVED = 'approved'
 }
 
+/** Events that say nothing about the stage: an assignment or a submitted change leaves the review where it was. */
+const STAGE_NEUTRAL_EVENTS = new Set(['review.assigned', 'review.human_required', 'changes.submitted'])
+
 /**
- * Where the review stands, from the latest request and the newest timeline event (the frozen curation
- * contract's table). `null` when the rows predate the timeline or the stage is not one of these: callers
- * fall back to the legacy curation state.
+ * Where the review stands, from the latest request and the newest stage-defining timeline event (the frozen
+ * curation contract's table). `events` newest first. `null` when the rows predate the timeline or the stage
+ * is not one of these: callers fall back to the legacy curation state.
  */
-export function getReviewStage(
-  curation: CollectionCuration | null,
-  latestEvent: CollectionEvent | null | undefined
-): ReviewStage | null {
+export function getReviewStage(curation: CollectionCuration | null, events: CollectionEvent[]): ReviewStage | null {
   if (!curation) return null
   if (curation.status === 'approved') return ReviewStage.APPROVED
   if (curation.status === 'rejected') {
     if (curation.reviewedBy === VALIDATOR_REVIEWER) return ReviewStage.REJECTED_BY_VALIDATOR
     return curation.reviewedBy ? ReviewStage.REJECTED_BY_CURATOR : null
   }
-  switch (latestEvent?.type) {
+  const latest = events.find(event => !STAGE_NEUTRAL_EVENTS.has(event.type))
+  switch (latest?.type) {
     case 'review.ai_started':
     case 'review.ai_error':
       return ReviewStage.AI_REVIEWING

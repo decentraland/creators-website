@@ -79,6 +79,7 @@ function useStoreCuration(address: string | undefined) {
       current ? [...current.filter(existing => existing.collectionId !== curation.collectionId), curation] : current
     )
     void queryClient.invalidateQueries({ queryKey: ['curation-collections'] })
+    void queryClient.invalidateQueries({ queryKey: ['collection-events', address, curation.collectionId] })
   }
 }
 
@@ -123,11 +124,15 @@ export type RejectVariables = {
  */
 export function useRejectCuration(address: string | undefined) {
   const store = useStoreCuration(address)
-  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ collection, curation, rejectionReasons, rejectionMessage }: RejectVariables) => {
       if (!address) throw new Error('Wallet disconnected')
-      const current = curation?.status === 'pending' ? curation : await pushCollectionCuration(address, collection.id)
+      let current = curation
+      if (current?.status !== 'pending') {
+        current = await pushCollectionCuration(address, collection.id)
+        // Kept even if the PATCH below fails, so a retry patches this request instead of opening another.
+        store(current)
+      }
       return updateCollectionCuration(address, current.collectionId, {
         status: 'rejected',
         rejectionReasons,
@@ -137,7 +142,6 @@ export function useRejectCuration(address: string | undefined) {
     onSuccess: (curation, { collection, curation: previous, rejectionReasons }) => {
       track('Reject curation', { collectionId: collection.id, first_review: !previous, reasons: rejectionReasons })
       store(curation)
-      void queryClient.invalidateQueries({ queryKey: ['collection-events', address, collection.id] })
     },
     onError: (error, { collection }) => {
       track('Reject curation error', { collectionId: collection.id, error: errorCode(error) })

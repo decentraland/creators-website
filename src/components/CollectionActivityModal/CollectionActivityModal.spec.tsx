@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   isLoading: false,
   isError: false,
   hasNextPage: false,
+  isFetchNextPageError: false,
   fetchNextPage: vi.fn(),
   isCurator: false
 }))
@@ -17,9 +18,10 @@ vi.mock('~/hooks/useCollectionEvents', () => ({
   useCollectionEvents: () => ({
     events: state.events,
     isLoading: state.isLoading,
-    isError: state.isError,
+    isError: state.isError || state.isFetchNextPageError,
     error: null,
     hasNextPage: state.hasNextPage,
+    isFetchNextPageError: state.isFetchNextPageError,
     isFetchingNextPage: false,
     fetchNextPage: state.fetchNextPage,
     refetch: vi.fn()
@@ -61,6 +63,7 @@ beforeEach(() => {
   state.isLoading = false
   state.isError = false
   state.hasNextPage = false
+  state.isFetchNextPageError = false
   state.isCurator = false
   state.fetchNextPage.mockReset()
 })
@@ -77,8 +80,9 @@ describe('CollectionActivityModal', () => {
             itemId: 'i1',
             contentHash: 'h',
             passed: false,
-            findings: [{ rule: 'M-01', severity: 'error', message: 'Too many' }]
-          }
+            findings: [{ rule: 'M-01', severity: 'error', message: 'Too many', docs: 'javascript:alert(1)' }]
+          },
+          { itemId: 'i2', contentHash: 'h2', passed: null, findings: [] }
         ]
       }),
       event('review.assigned', 'curator', { assignee: '0xabc' }),
@@ -102,6 +106,23 @@ describe('CollectionActivityModal', () => {
     ])
     fireEvent.click(screen.getByTestId('activity-toggle-findings'))
     expect(screen.getByTestId('activity-findings-i1-finding')).toHaveTextContent('M-01')
+    expect(screen.getByTestId('activity-findings-i1-finding').querySelector('a')).toBeNull()
+  })
+
+  it('names an event type it does not know instead of an i18n key', () => {
+    state.events = [event('review.something_new', 'system')]
+    renderModal()
+    expect(screen.getByTestId('activity-line')).toHaveTextContent('review.something_new')
+  })
+
+  it('keeps the loaded rows when a later page fails', () => {
+    state.events = [event('collection.published', 'creator')]
+    state.hasNextPage = true
+    state.isFetchNextPageError = true
+    renderModal()
+    expect(screen.getByTestId('activity-timeline')).toBeInTheDocument()
+    expect(screen.getByTestId('activity-load-more-error')).toBeInTheDocument()
+    expect(screen.queryByTestId('activity-error')).toBeNull()
   })
 
   it('shows the validation id only when the server sent it, and softens errors for creators', () => {

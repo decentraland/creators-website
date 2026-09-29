@@ -26,7 +26,7 @@ import {
 } from '~/lib/events'
 import { type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
-import { formatTimeAgo } from '~/lib/time'
+import { formatTimeUntil } from '~/lib/time'
 import { AppealModal } from './AppealModal'
 import * as S from './ReviewPanel.styles'
 
@@ -51,7 +51,7 @@ export function ReviewPanel({ collection, address, curation, events, items, canM
   const requestValidation = useRequestValidation(address)
   const [isAppealOpen, setAppealOpen] = useState(false)
 
-  const stage = getReviewStage(curation, events[0] ?? null)
+  const stage = getReviewStage(curation, events)
   const verdict = useMemo(() => getLatestVerdict(events), [events])
   const failedItems = useMemo(() => (verdict ? getFailedItems(verdict.payload) : []), [verdict])
   const attemptsLeft = useMemo(() => getValidationAttemptsLeft(events), [events])
@@ -186,13 +186,4 @@ export function ReviewPanel({ collection, address, curation, events, items, canM
       {isAppealOpen && <AppealModal collection={collection} address={address} onClose={() => setAppealOpen(false)} />}
     </S.Panel>
   )
-}
-
-/** "in 3 hours" for a future timestamp; the relative formatter handles the sign. */
-function formatTimeUntil(timestamp: number, locale: string): string {
-  const elapsed = timestamp - Date.now()
-  if (elapsed <= 0) return formatTimeAgo(timestamp, locale)
-  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
-  const hours = Math.round(elapsed / 3_600_000)
-  return hours >= 1 ? rtf.format(hours, 'hour') : rtf.format(Math.max(1, Math.round(elapsed / 60_000)), 'minute')
 }

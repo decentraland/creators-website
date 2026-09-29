@@ -64,9 +64,9 @@ describe('useCommittee', () => {
   })
 })
 
-describe('useRejectCuration', () => {
-  const decision = { rejectionReasons: ['clipping' as const], rejectionMessage: 'Clips through the torso' }
+const decision = { rejectionReasons: ['clipping' as const], rejectionMessage: 'Clips through the torso' }
 
+describe('useRejectCuration', () => {
   it('rejects the pending request with the reasons and message the creator will read', async () => {
     const { result } = renderHook(() => useRejectCuration(ADDRESS), { wrapper })
     await act(() => result.current.mutateAsync({ collection, curation: pending, ...decision }))
@@ -79,6 +79,17 @@ describe('useRejectCuration', () => {
     const rejected = await act(() => result.current.mutateAsync({ collection, curation: null, ...decision }))
     expect(api.pushCollectionCuration).toHaveBeenCalledWith(ADDRESS, 'c1')
     expect(rejected.status).toBe('rejected')
+  })
+})
+
+describe('useRejectCuration after a half-success', () => {
+  it('patches the request it already opened instead of opening another', async () => {
+    api.updateCollectionCuration.mockRejectedValueOnce(new Error('down'))
+    const { result } = renderHook(() => useRejectCuration(ADDRESS), { wrapper })
+    await act(() => result.current.mutateAsync({ collection, curation: null, ...decision }).catch(() => undefined))
+    expect(api.pushCollectionCuration).toHaveBeenCalledTimes(1)
+    await act(() => result.current.mutateAsync({ collection, curation: pending, ...decision }))
+    expect(api.pushCollectionCuration).toHaveBeenCalledTimes(1)
   })
 })
 

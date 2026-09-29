@@ -1,7 +1,7 @@
 // The validator's code checks run in the browser before the publication fee: the same rule book the
 // collections-curation-server applies after payment, on the same files and metadata, so a creator never
 // pays for a collection the automatic review is going to reject on a static rule.
-import { validate as runValidator, fixes, type Finding, type Input } from '@dcl-regenesislabs/wearable-validator'
+import type { Finding, Input, validate as ValidateFn } from '@dcl-regenesislabs/wearable-validator'
 import { buildItemEntityMetadata, getEntityContent, type EntityContent } from '~/lib/catalystEntity'
 import { type Collection } from '~/lib/collections'
 import { type FindingSeverity, type ValidationFinding } from '~/lib/events'
@@ -25,12 +25,17 @@ export type StaticChecksResult = {
 
 export type StaticChecksProgress = { done: number; total: number; itemId: string }
 
+/** The slice of the validator package a run needs; loaded on demand so the wizard alone pays for its weight. */
+export type Validator = { validate: typeof ValidateFn; fixes: Record<string, string> }
+
 type Deps = {
-  fetchContent: (hash: string) => Promise<Blob>
-  validate?: typeof runValidator
+  fetchContent: (hash: string, signal?: AbortSignal) => Promise<Blob>
+  loadValidator?: () => Promise<Validator>
   onProgress?: (progress: StaticChecksProgress) => void
   signal?: AbortSignal
 }
+
+const loadPackage = (): Promise<Validator> => import('@dcl-regenesislabs/wearable-validator')
 
 /**
  * The identity `createCollection` will give each item: token ids follow the items' creation order, and the
@@ -75,7 +80,7 @@ export function buildStaticCheckInput(
   }
 }
 
-export function toStaticFinding(finding: Finding): StaticFinding {
+export function toStaticFinding(finding: Finding, fixes: Record<string, string> = {}): StaticFinding {
   return {
     check: finding.check,
     rule: finding.rule,
@@ -95,11 +100,12 @@ function count(findings: { severity: FindingSeverity }[], severity: FindingSever
 
 async function downloadContent(
   content: EntityContent,
-  fetchContent: Deps['fetchContent']
+  fetchContent: Deps['fetchContent'],
+  signal?: AbortSignal
 ): Promise<Map<string, Uint8Array>> {
   const entries = await Promise.all(
     Object.entries(content).map(async ([path, hash]) => {
-      const blob = await fetchContent(hash)
+      const blob = await fetchContent(hash, signal)
       return [path, new Uint8Array(await blob.arrayBuffer())] as const
     })
   )
@@ -110,21 +116,24 @@ async function downloadContent(
 export async function runStaticChecks(
   collection: Collection,
   items: Item[],
-  { fetchContent, validate = runValidator, onProgress, signal }: Deps
+  { fetchContent, loadValidator = loadPackage, onProgress, signal }: Deps
 ): Promise<StaticChecksResult> {
   const started = Date.now()
   const results: ItemStaticChecks[] = []
   const identified = withPublishedIdentity(collection, items)
+  const { validate, fixes } = await loadValidator()
   for (const [index, item] of identified.entries()) {
     signal?.throwIfAborted()
     const content = getEntityContent(item)
-    const files = await downloadContent(content, fetchContent)
+    const files = await downloadContent(content, fetchContent, signal)
     const result = await validate(buildStaticCheckInput(collection, item, files, content), {
       signal,
       // With a listener the validator yields between checks, so the wizard keeps painting.
       onProgress: () => undefined
     })
-    const findings = result.findings.map(toStaticFinding)
+    // A run whose inputs changed mid-flight must not report over the one that replaced it.
+    signal?.throwIfAborted()
+    const findings = result.findings.map(finding => toStaticFinding(finding, fixes))
     results.push({ itemId: item.id, findings, errors: count(findings, 'error'), warnings: count(findings, 'warning') })
     onProgress?.({ done: index + 1, total: identified.length, itemId: item.id })
   }

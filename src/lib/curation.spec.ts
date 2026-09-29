@@ -252,6 +252,18 @@ describe('getReviewStage', () => {
     ['nothing for a pending request without a telling event', curation(), event('review.assigned'), null],
     ['nothing for a pending request before the timeline', curation(), null, null],
     [
+      'awaiting a curator through a later assignment',
+      curation({ assignee: '0xc' }),
+      [event('review.assigned'), event('changes.submitted'), event('review.ai_passed')],
+      ReviewStage.AWAITING_CURATOR
+    ],
+    [
+      'appealed through a later assignment',
+      curation(),
+      [event('review.assigned'), event('review.appeal_requested')],
+      ReviewStage.APPEALED
+    ],
+    [
       'rejected by the validator',
       curation({ status: 'rejected', reviewedBy: 'validator' }),
       event('review.ai_rejected'),
@@ -271,7 +283,8 @@ describe('getReviewStage', () => {
       ReviewStage.APPROVED
     ]
   ])('%s', (_, request, latest, expected) => {
-    expect(getReviewStage(request, latest)).toBe(expected)
+    const events = latest === null ? [] : Array.isArray(latest) ? latest : [latest]
+    expect(getReviewStage(request, events)).toBe(expected)
   })
 
   it('maps the reviewer and the rejection fields from the row', () => {

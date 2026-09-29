@@ -9,7 +9,9 @@ import { CurationRow } from './CurationRow'
 vi.mock('~/components/CollectionMosaic', () => ({ CollectionMosaic: () => null }))
 vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: undefined }) }))
 const latest = vi.hoisted(() => ({ event: null as { type: string } | null }))
-vi.mock('~/hooks/useCollectionEvents', () => ({ useLatestCollectionEvent: () => ({ data: latest.event }) }))
+vi.mock('~/hooks/useCollectionEvents', () => ({
+  useRecentCollectionEvents: () => ({ data: latest.event ? [latest.event] : [] })
+}))
 
 const ME = '0xme00000000000000000000000000000000000001'
 const collection = {

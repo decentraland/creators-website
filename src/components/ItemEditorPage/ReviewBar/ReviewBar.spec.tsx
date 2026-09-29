@@ -115,7 +115,8 @@ describe('ReviewBar', () => {
               passed: true,
               findings: [{ rule: 'M-04', severity: 'warning', message: 'Large texture', measured: 2048, limit: 1024 }],
               visualSummary: 'Looks fine on both shapes.'
-            }
+            },
+            { itemId: 'i2', contentHash: 'h2', passed: null, findings: [] }
           ]
         }
       }
@@ -125,6 +126,7 @@ describe('ReviewBar', () => {
     fireEvent.click(screen.getByTestId('review-ai-verdict'))
     expect(screen.getByTestId('ai-verdict-headline')).toHaveAttribute('data-passed', 'true')
     expect(screen.getByTestId('ai-verdict-validation-id')).toHaveTextContent('val-1')
+    expect(screen.getByTestId('ai-verdict-modal')).toHaveTextContent('Every item passed')
     expect(screen.getByTestId('ai-verdict-items-i1-finding')).toHaveTextContent('M-04')
     expect(screen.getByTestId('ai-verdict-items-visual-summary')).toHaveTextContent('Looks fine')
   })

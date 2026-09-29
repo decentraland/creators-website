@@ -54,6 +54,8 @@ describe('useCollectionEvents', () => {
     })
     await waitFor(() => expect(result.current.events.map(event => event.id)).toEqual(['e1', 'e2', 'e3']))
     expect(result.current.hasNextPage).toBe(false)
+    const limits = api.fetchCollectionEvents.mock.calls.map(call => (call[2] as { limit: number }).limit)
+    expect(new Set(limits).size).toBe(1)
   })
 
   it('reads a server without the timeline as an empty one', async () => {

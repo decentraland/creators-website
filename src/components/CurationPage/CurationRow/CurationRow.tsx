@@ -5,7 +5,7 @@ import { CollectionMosaic } from '~/components/CollectionMosaic'
 import { CurationStatePill } from '~/components/CurationStatePill'
 import { ProfileBadge } from '~/components/ProfileBadge'
 import { ReviewStagePill } from '~/components/ReviewStagePill'
-import { useLatestCollectionEvent } from '~/hooks/useCollectionEvents'
+import { useRecentCollectionEvents } from '~/hooks/useCollectionEvents'
 import { type Collection } from '~/lib/collections'
 import { canEditAssignee, getCurationState, getReviewStage, type CollectionCuration } from '~/lib/curation'
 import { formatTimeAgo } from '~/lib/time'
@@ -26,9 +26,9 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
   const { t } = useTranslation()
   const intl = useIntl()
   const state = getCurationState(collection, curation)
-  // Only a pending request needs the newest event to tell AI review, AI pass and appeal apart.
-  const latestEvent = useLatestCollectionEvent(address, collection.id, curation?.status === 'pending')
-  const stage = getReviewStage(curation, latestEvent.data)
+  // Only a pending request needs the newest events to tell AI review, AI pass and appeal apart.
+  const recent = useRecentCollectionEvents(address, collection.id, curation?.status === 'pending')
+  const stage = getReviewStage(curation, recent.data ?? [])
   const assignee = curation?.assignee ?? null
 
   return (

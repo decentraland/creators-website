@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { openExternal, redirectExternal } from './navigation'
+import { isWebUrl, openExternal, redirectExternal } from './navigation'
 
 describe('openExternal', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -28,5 +28,15 @@ describe('redirectExternal', () => {
     expect(() => redirectExternal('not a url')).toThrow()
     expect(assign).not.toHaveBeenCalled()
     vi.unstubAllGlobals()
+  })
+})
+
+describe('isWebUrl', () => {
+  it('accepts only http(s) addresses', () => {
+    expect(isWebUrl('https://docs.decentraland.org/creator/wearables/')).toBe(true)
+    expect(isWebUrl('http://localhost:3000/x')).toBe(true)
+    expect(isWebUrl('javascript:alert(1)')).toBe(false)
+    expect(isWebUrl('not a url')).toBe(false)
+    expect(isWebUrl(undefined)).toBe(false)
   })
 })

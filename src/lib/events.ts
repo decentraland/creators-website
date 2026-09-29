@@ -77,7 +77,7 @@ export type CollectionEventPayload = Partial<ValidationVerdictPayload> &
   CurationDecisionPayload & {
     txHash?: string
     reason?: string
-    trigger?: 'publish' | 'retry' | 'changes' | 'sweep'
+    trigger?: string
     itemIds?: string[]
     note?: string
     assignee?: string | null
@@ -177,7 +177,23 @@ export function hasOpenAppeal(events: CollectionEvent[]): boolean {
   return events[0]?.type === 'review.appeal_requested'
 }
 
-/** The items the validator did not pass, in payload order; `null` counts as not passed. */
+/** The items the validator did not pass, in payload order; `null` (not checked) is listed too, never as a pass. */
 export function getFailedItems(payload: ValidationVerdictPayload): ValidationItemResult[] {
   return payload.items.filter(item => item.passed !== true)
+}
+
+/** Items the validator explicitly failed; an unchecked (`null`) item is not counted as one. */
+export function countFailedItems(items: ValidationItemResult[]): number {
+  return items.filter(item => item.passed === false).length
+}
+
+export function isRejectReasonCode(code: unknown): code is RejectReasonCode {
+  return typeof code === 'string' && (REJECT_REASON_CODES as readonly string[]).includes(code)
+}
+
+export const VALIDATION_TRIGGERS = ['publish', 'retry', 'changes', 'sweep'] as const
+export type ValidationTrigger = (typeof VALIDATION_TRIGGERS)[number]
+
+export function isValidationTrigger(value: unknown): value is ValidationTrigger {
+  return typeof value === 'string' && (VALIDATION_TRIGGERS as readonly string[]).includes(value)
 }

@@ -36,6 +36,20 @@ export const Head = styled.div`
   gap: 4px 8px;
 `
 
+export const Severity = styled.span`
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+
+  &[data-severity='error'] {
+    color: ${theme.colors.redBright};
+  }
+  &[data-severity='warning'] {
+    color: ${theme.colors.amber};
+  }
+`
+
 export const Rule = styled.span`
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;

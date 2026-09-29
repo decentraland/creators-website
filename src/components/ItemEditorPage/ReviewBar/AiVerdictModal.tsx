@@ -4,7 +4,7 @@ import { useTranslation } from '~/intl'
 import { Button } from '~/components/Button'
 import { ItemFindingsList } from '~/components/FindingsList'
 import { Modal } from '~/components/Modal'
-import { type CollectionEvent, type ValidationVerdictPayload } from '~/lib/events'
+import { countFailedItems, type CollectionEvent, type ValidationVerdictPayload } from '~/lib/events'
 import { type Item } from '~/lib/items'
 import { formatTimeAgo } from '~/lib/time'
 import * as S from './AiVerdictModal.styles'
@@ -23,7 +23,7 @@ export function AiVerdictModal({ verdict, items, onClose }: Props) {
   const totals = useMemo(() => {
     const findings = verdict.payload.items.flatMap(item => item.findings)
     return {
-      failed: verdict.payload.items.filter(item => item.passed !== true).length,
+      failed: countFailedItems(verdict.payload.items),
       errors: findings.filter(finding => finding.severity === 'error').length,
       warnings: findings.filter(finding => finding.severity === 'warning').length
     }

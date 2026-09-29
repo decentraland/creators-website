@@ -3,7 +3,13 @@ import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
 import { ItemFindingsList } from '~/components/FindingsList'
 import { ProfileBadge } from '~/components/ProfileBadge'
-import { type CollectionEvent } from '~/lib/events'
+import {
+  COLLECTION_EVENT_TYPES,
+  countFailedItems,
+  isRejectReasonCode,
+  isValidationTrigger,
+  type CollectionEvent
+} from '~/lib/events'
 import { type Item } from '~/lib/items'
 import { formatTimeAgo } from '~/lib/time'
 import { useProfile } from '~/hooks/useProfile'
@@ -38,15 +44,17 @@ export function EventRow({ event, items, isCurator }: Props) {
   const [showFindings, setShowFindings] = useState(false)
   const { payload } = event
   const failedItems = useMemo(() => payload.items?.filter(item => item.passed !== true) ?? [], [payload.items])
+  const reasons = useMemo(() => (payload.rejectionReasons ?? []).filter(isRejectReasonCode), [payload.rejectionReasons])
+  const known = (COLLECTION_EVENT_TYPES as readonly string[]).includes(event.type)
 
   function line() {
     switch (event.type) {
       case 'review.ai_started':
         return t('activity_modal.event.review.ai_started', {
-          trigger: t(`activity_modal.trigger.${payload.trigger ?? 'publish'}`)
+          trigger: t(`activity_modal.trigger.${isValidationTrigger(payload.trigger) ? payload.trigger : 'publish'}`)
         })
       case 'review.ai_rejected':
-        return t('activity_modal.event.review.ai_rejected', { count: failedItems.length })
+        return t('activity_modal.event.review.ai_rejected', { count: countFailedItems(payload.items ?? []) })
       case 'review.ai_error':
         return t(isCurator ? 'activity_modal.event.review.ai_error_curator' : 'activity_modal.event.review.ai_error')
       case 'review.assigned':
@@ -59,7 +67,7 @@ export function EventRow({ event, items, isCurator }: Props) {
       case 'changes.submitted':
         return t('activity_modal.event.changes.submitted', { count: payload.itemIds?.length ?? 0 })
       default:
-        return t(`activity_modal.event.${event.type}`, { type: event.type })
+        return known ? t(`activity_modal.event.${event.type}`) : t('activity_modal.event.unknown', { type: event.type })
     }
   }
 
@@ -71,7 +79,6 @@ export function EventRow({ event, items, isCurator }: Props) {
         {t(`activity_modal.actor.${event.actor === 'validator' ? 'validator' : 'system'}`)}
       </S.Actor>
     )
-  const reasons = payload.rejectionReasons ?? []
   const quote = payload.rejectionMessage ?? payload.note
 
   return (

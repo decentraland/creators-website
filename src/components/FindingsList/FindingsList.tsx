@@ -3,7 +3,7 @@ import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'
 import { type ValidationFinding, type ValidationItemResult } from '~/lib/events'
 import { type Item } from '~/lib/items'
-import { openExternal } from '~/lib/navigation'
+import { isWebUrl, openExternal } from '~/lib/navigation'
 import * as S from './FindingsList.styles'
 
 type ListProps = {
@@ -20,6 +20,7 @@ export function FindingsList({ findings, testId = 'findings' }: ListProps) {
       {findings.map((finding, index) => (
         <S.Finding key={`${finding.rule}-${index}`} data-severity={finding.severity} data-testid={`${testId}-finding`}>
           <S.Head>
+            <S.Severity data-severity={finding.severity}>{t(`findings.severity.${finding.severity}`)}</S.Severity>
             <S.Rule>{finding.rule}</S.Rule>
             {finding.where && <S.Where>{finding.where}</S.Where>}
           </S.Head>
@@ -35,7 +36,7 @@ export function FindingsList({ findings, testId = 'findings' }: ListProps) {
               <strong>{t('findings.fix')}:</strong> {finding.fix}
             </S.Fix>
           )}
-          {finding.docs && (
+          {isWebUrl(finding.docs) && (
             <S.DocsLink
               href={finding.docs}
               onClick={event => {

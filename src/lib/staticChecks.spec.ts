@@ -84,7 +84,7 @@ describe('buildStaticCheckInput', () => {
 
 describe('runStaticChecks', () => {
   it('downloads every deployable file but the video, runs each item and splits errors from warnings', async () => {
-    const fetchContent = vi.fn((hash: string) => Promise.resolve(new Blob([hash])))
+    const fetchContent = vi.fn((hash: string, _signal?: AbortSignal) => Promise.resolve(new Blob([hash])))
     const validate = vi.fn().mockResolvedValue({
       passed: false,
       checks: [],
@@ -96,18 +96,39 @@ describe('runStaticChecks', () => {
       ]
     })
     const progress = vi.fn()
+    const signal = new AbortController().signal
     const result = await runStaticChecks(collection, [item('a', 1), item('b', 2)], {
       fetchContent,
-      validate: validate as never,
-      onProgress: progress
+      loadValidator: () => Promise.resolve({ validate: validate as never, fixes: { 'triangle-count': 'Decimate' } }),
+      onProgress: progress,
+      signal
     })
     expect(fetchContent).toHaveBeenCalledTimes(6)
-    expect(fetchContent).not.toHaveBeenCalledWith('bafyvideo')
+    expect(fetchContent).toHaveBeenCalledWith('bafyglb', signal)
+    expect(fetchContent).not.toHaveBeenCalledWith('bafyvideo', expect.anything())
     expect(result.items.map(entry => entry.itemId)).toEqual(['a', 'b'])
     expect(result).toMatchObject({ errors: 2, warnings: 2 })
     expect(result.items[0].findings[0]).toMatchObject({ rule: 'M-01', severity: 'error' })
-    expect(typeof result.items[0].findings[0].fix).toBe('string')
+    expect(result.items[0].findings[0].fix).toBe('Decimate')
     expect(progress).toHaveBeenLastCalledWith({ done: 2, total: 2, itemId: 'b' })
+  })
+
+  it('stops reporting once the run was aborted', async () => {
+    const controller = new AbortController()
+    const validate = vi.fn().mockImplementation(() => {
+      controller.abort()
+      return Promise.resolve({ passed: true, checks: [], captures: [], summary: {}, findings: [] })
+    })
+    const progress = vi.fn()
+    await expect(
+      runStaticChecks(collection, [item('a', 1)], {
+        fetchContent: () => Promise.resolve(new Blob()),
+        loadValidator: () => Promise.resolve({ validate: validate as never, fixes: {} }),
+        onProgress: progress,
+        signal: controller.signal
+      })
+    ).rejects.toThrow()
+    expect(progress).not.toHaveBeenCalled()
   })
 
   it('keeps the validator finding fields the UI shows', () => {

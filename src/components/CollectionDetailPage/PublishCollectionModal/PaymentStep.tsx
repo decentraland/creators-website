@@ -122,8 +122,9 @@ export function PaymentStep({
   const creditsShortfall = Math.max(0, (fee?.total.credits ?? 0) - balances.credits)
   const selectedIsPayable =
     !!fee && !!paymentMethod && methods.includes(paymentMethod) && canPayWith(paymentMethod, fee, balances)
-  // The fee is non-refundable: a static error the automatic review would reject must be fixed first.
-  const blockedByChecks = staticChecks.isFetching || (staticChecks.data?.errors ?? 0) > 0
+  // The fee is non-refundable: a static error the automatic review would reject must be fixed first. With
+  // no items yet (a top-up resume opens this step before they load) the checks are off and the fee is zero.
+  const blockedByChecks = items.length === 0 || staticChecks.isFetching || (staticChecks.data?.errors ?? 0) > 0
   const canSubmit =
     selectedIsPayable && accepted && !isSubmitting && !credits.isLoading && !creditsFlag.isLoading && !blockedByChecks
 
