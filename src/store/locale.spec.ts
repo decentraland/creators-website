@@ -18,9 +18,15 @@ describe('locale store', () => {
     expect(getPreferredLocale()).toBe('es')
   })
 
-  it('picks up a supported browser language when nothing is saved', () => {
-    vi.spyOn(navigator, 'language', 'get').mockReturnValue('zh-CN')
-    expect(getPreferredLocale()).toBe('zh')
+  it.each([
+    ['zh-CN', 'zh'],
+    ['zh-TW', 'zh'],
+    ['zh_CN', 'zh'],
+    ['es-AR', 'es'],
+    ['fr-FR', 'en']
+  ])('maps the browser language %s to %s when nothing is saved', (language, expected) => {
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue(language)
+    expect(getPreferredLocale()).toBe(expected)
   })
 
   it('ignores an invalid saved value', () => {

@@ -53,7 +53,7 @@ describe('Why', () => {
     expect(track).toHaveBeenCalledWith('Click', { place: 'Creators Why', title: 'Join a Community of Creators' })
   })
 
-  it('joins the Chinese heading without a separator', () => {
+  it('joins the Chinese heading without a separator and marks the page as zh-Hans', () => {
     useLocale.setState({ locale: 'zh' })
     render(
       <TranslationProvider>
@@ -61,5 +61,6 @@ describe('Why', () => {
       </TranslationProvider>
     )
     expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(/^为什么创作者选择 Decentraland$/)
+    expect(document.documentElement.lang).toBe('zh-Hans')
   })
 })

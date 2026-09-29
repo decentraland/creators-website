@@ -14,8 +14,8 @@ export const getPreferredLocale = (): Locale => {
   } catch {
     // restricted storage → fall through to browser language
   }
-  // Primary subtag only, so zh-TW/zh-HK readers get Simplified Chinese (closest available) and `zha` doesn't match.
-  const primary = navigator.language?.toLowerCase().split('-')[0] ?? ''
+  // Primary subtag only (`-` or `_`): zh-TW/zh-HK get Simplified, the closest we have, and `zha` doesn't match.
+  const primary = navigator.language?.toLowerCase().split(/[-_]/)[0] ?? ''
   return LOCALES.find(locale => locale === primary) ?? 'en'
 }
 
