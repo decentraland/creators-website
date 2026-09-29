@@ -93,7 +93,7 @@ function UpdatedLabel({ timestamp, checkedAt }: { timestamp: number; checkedAt: 
     <S.Meta
       data-testid="live-preview-updated"
       data-up-to-date={upToDate || undefined}
-      title={new Date(timestamp).toLocaleTimeString()}
+      title={new Date(timestamp).toLocaleTimeString(locale)}
     >
       {upToDate && <CheckIcon aria-hidden />}
       {t(upToDate ? 'live_preview.up_to_date' : 'live_preview.updated', { time_ago: timeAgo })}
