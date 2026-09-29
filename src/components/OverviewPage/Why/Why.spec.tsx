@@ -52,4 +52,14 @@ describe('Why', () => {
     fireEvent.click(card)
     expect(track).toHaveBeenCalledWith('Click', { place: 'Creators Why', title: 'Join a Community of Creators' })
   })
+
+  it('joins the Chinese heading without a separator', () => {
+    useLocale.setState({ locale: 'zh' })
+    render(
+      <TranslationProvider>
+        <Why />
+      </TranslationProvider>
+    )
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(/^为什么创作者选择 Decentraland$/)
+  })
 })

@@ -598,7 +598,7 @@
     "title": "Video de vista previa",
     "description": "Sube un video que muestre la funcionalidad del smart wearable.",
     "loading": "Cargando el video…",
-    "drop_cta": "Arrastra y suelta tu video aquí, o",
+    "drop_cta": "Arrastra y suelta tu video aquí, o ",
     "browse": "Buscar archivos",
     "hint": "{extensions} · hasta {size}MB",
     "replace": "Reemplazar",

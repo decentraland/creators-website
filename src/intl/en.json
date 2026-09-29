@@ -598,7 +598,7 @@
     "title": "Preview Video",
     "description": "Upload a video that showcases the smart wearable's functionality.",
     "loading": "Loading the video…",
-    "drop_cta": "Drag and drop your video here, or",
+    "drop_cta": "Drag and drop your video here, or ",
     "browse": "Browse files",
     "hint": "{extensions} · up to {size}MB",
     "replace": "Replace",

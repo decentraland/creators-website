@@ -19,7 +19,7 @@ const TranslationProvider = ({ children }: { children: ReactNode }) => {
     document.documentElement.lang = locale === 'zh' ? 'zh-Hans' : locale
   }, [locale])
   return (
-    <IntlProvider locale={locale} defaultLocale="en" messages={messages[locale]}>
+    <IntlProvider locale={locale} defaultLocale="en" messages={messages[locale]} fallbackOnEmptyString={false}>
       {children}
     </IntlProvider>
   )
