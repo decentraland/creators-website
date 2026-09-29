@@ -92,6 +92,8 @@ export function useApprovalFlow(
 
   // Legacy left a pending request open after approving, so the collection kept showing as under review.
   const complete = useCallback(async () => {
+    // A closed modal may not write: the flow can still reach here from a request that was in flight.
+    if (!alive.current) return
     if (mode === 'approve' && curation?.status === 'pending') {
       await updateCollectionCuration(address, collection.id, { status: 'approved' })
       track('Approve curation', { collectionId: collection.id })

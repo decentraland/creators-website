@@ -118,9 +118,10 @@ export async function rescueItems(
   const expected = new Map(targets.map(({ item, contentHash }) => [item.id, contentHash]))
   const sleep = deps.sleep ?? defaultSleep
   for (let waited = 0; waited <= timeoutMs; waited += INDEXER_POLL_MS) {
-    const items = await deps.fetchItems()
-    const indexed = items.every(item => !expected.has(item.id) || item.blockchainContentHash === expected.get(item.id))
-    if (indexed) return items
+    // A transient read error must not fail the step: a retry would resend (and pay for) every chunk.
+    const items = await deps.fetchItems().catch(() => null)
+    const indexed = items?.every(item => !expected.has(item.id) || item.blockchainContentHash === expected.get(item.id))
+    if (items && indexed) return items
     await sleep(INDEXER_POLL_MS)
   }
   throw new ApprovalError('not_indexed', 'The rescued hashes were not indexed in time')

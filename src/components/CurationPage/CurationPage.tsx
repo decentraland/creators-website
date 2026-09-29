@@ -18,6 +18,7 @@ import {
   CURATION_SORTS,
   CurationStatusFilter,
   parseCurationFilters,
+  rememberCurationSearch,
   type CollectionCuration
 } from '~/lib/curation'
 import { pageRangeLabel } from '~/lib/pagination'
@@ -45,7 +46,12 @@ const CurationPage = () => {
 
   const [searchInput, setSearchInput] = useState(filters.search)
   const searchTimer = useRef<ReturnType<typeof setTimeout>>()
-  useEffect(() => setSearchInput(filters.search), [filters.search])
+  // The URL holds the trimmed query; writing it back verbatim would eat the space the user is typing.
+  useEffect(
+    () => setSearchInput(current => (current.trim() === filters.search ? current : filters.search)),
+    [filters.search]
+  )
+  useEffect(() => rememberCurationSearch(searchParams.size > 0 ? `?${searchParams}` : ''), [searchParams])
   useEffect(() => () => clearTimeout(searchTimer.current), [])
 
   const allAssignees = useMemo(() => ({ value: ALL_ASSIGNEES, label: t('curation_page.filter.all_assignees') }), [t])
@@ -121,7 +127,9 @@ const CurationPage = () => {
     filters.status !== CurationStatusFilter.ALL ||
     filters.assignee !== ALL_ASSIGNEES ||
     !!filters.tag
-  const isLoading = collections.isLoading || (collections.isFetching && !data)
+  // Rows can't tell "never requested" from "not loaded yet": without the curations their actions would open new requests.
+  const isLoading = collections.isLoading || (collections.isFetching && !data) || curations.isLoading
+  const isError = collections.isError || curations.isError
   const isSearching = searchInput.trim() !== filters.search || (!!filters.search && collections.isFetching)
 
   return (
@@ -194,11 +202,18 @@ const CurationPage = () => {
             <S.SkeletonRow key={i} className="skeleton" />
           ))}
         </S.List>
-      ) : collections.isError ? (
+      ) : isError ? (
         <S.Panel data-testid="curation-error">
           <S.PanelTitle>{t('curation_page.error.title')}</S.PanelTitle>
           <S.PanelText>{t('curation_page.error.description')}</S.PanelText>
-          <Button type="button" variant="secondary" onClick={() => void collections.refetch()}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              if (collections.isError) void collections.refetch()
+              if (curations.isError) void curations.refetch()
+            }}
+          >
             {t('curation_page.error.retry')}
           </Button>
         </S.Panel>

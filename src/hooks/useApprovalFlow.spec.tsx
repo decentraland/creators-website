@@ -88,6 +88,23 @@ describe('useApprovalFlow', () => {
     expect(queryClient.getQueryData<Collection>(['collection', '0xme', 'c1'])).toMatchObject({ isApproved: true })
   })
 
+  it('does not close the request when the curator closed the flow while it was loading', async () => {
+    let release: (items: Item[]) => void = () => undefined
+    api.fetchAllCollectionItems.mockReturnValue(new Promise<Item[]>(resolve => (release = resolve)))
+    const approved = { ...collection, isApproved: true }
+    const { result } = renderHook(() => useApprovalFlow(session, approved, pending, 'approve'), { wrapper })
+    let running: Promise<void> = Promise.resolve()
+    act(() => {
+      running = result.current.start()
+    })
+    result.current.stop()
+    await act(async () => {
+      release([item])
+      await running
+    })
+    expect(api.updateCollectionCuration).not.toHaveBeenCalled()
+  })
+
   it('approves pushed changes of an approved collection without a transaction', async () => {
     const { result } = renderHook(
       () => useApprovalFlow(session, { ...collection, isApproved: true }, pending, 'approve'),

@@ -10,12 +10,19 @@ import { ReviewBar } from './ReviewBar'
 
 const state = vi.hoisted(() => ({
   curation: null as CollectionCuration | null,
+  curationError: false,
+  refetch: vi.fn(),
   syncs: new Map<string, { status: string; entity?: object }>(),
   reject: vi.fn(),
   disable: vi.fn()
 }))
 vi.mock('~/hooks/useCuration', () => ({
-  useCollectionCuration: () => ({ data: state.curation, isLoading: false }),
+  useCollectionCuration: () => ({
+    data: state.curation,
+    isLoading: false,
+    isError: state.curationError,
+    refetch: state.refetch
+  }),
   useRejectCuration: () => ({ mutate: state.reject, isPending: false, isError: false, reset: vi.fn() }),
   useDisableCollection: () => ({ mutate: state.disable, isPending: false, isError: false, reset: vi.fn() })
 }))
@@ -52,6 +59,7 @@ const actions = () => screen.queryAllByTestId(/^review-action-/).map(button => b
 
 beforeEach(() => {
   state.curation = null
+  state.curationError = false
   state.syncs = new Map()
   state.reject.mockReset()
   state.disable.mockReset()
@@ -109,5 +117,14 @@ describe('ReviewBar', () => {
     state.curation = { status: 'approved', assignee: null, createdAt: 1, updatedAt: 2 } as CollectionCuration
     renderBar({ ...base, isApproved: true })
     expect(screen.queryByTestId('review-assign-me')).not.toBeInTheDocument()
+  })
+
+  it('holds back every action until the review request loads', () => {
+    state.curationError = true
+    renderBar()
+    expect(actions()).toEqual([])
+    expect(screen.queryByTestId('review-assign-me')).toBeNull()
+    fireEvent.click(screen.getByTestId('review-curation-retry'))
+    expect(state.refetch).toHaveBeenCalled()
   })
 })

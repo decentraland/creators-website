@@ -165,7 +165,8 @@ const CollectionDetailPage = () => {
   const listingFor = (item: Item) =>
     listings ? (listings.get(item.tokenId ?? '') ?? null) : listingsQuery.isError ? null : undefined
   const syncs = useItemSyncs(address, collection, allItems ?? [])
-  const { data: curation = null } = useCollectionCuration(address, collection)
+  const curationQuery = useCollectionCuration(address, collection)
+  const curation = curationQuery.data ?? null
   const pushCuration = usePushCuration(address)
   const [isPushOpen, setPushOpen] = useState(false)
   const hasUnsyncedItems = useMemo(
@@ -177,8 +178,10 @@ const CollectionDetailPage = () => {
     pushCuration.reset()
   }
   const reviewNotice = collection ? getCreatorReviewNotice(collection, curation) : null
+  // Until the request loads, a pending one looks like none and the push would duplicate it.
   const showPushChanges =
     !!collection &&
+    curationQuery.isSuccess &&
     canPushChanges(collection, curation, hasUnsyncedItems, canManageCollectionItems(collection, address))
 
   const isLoading = !restored || (!!address && (collectionQuery.isLoading || itemsQuery.isLoading))

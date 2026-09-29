@@ -6,6 +6,8 @@ import {
   ReviewAction,
   canEditAssignee,
   canPushChanges,
+  curationListUrl,
+  rememberCurationSearch,
   fromRemoteCuration,
   getCreatorReviewNotice,
   getCurationState,
@@ -99,7 +101,19 @@ describe('getCurationState', () => {
       curation({ assignee: '0xc' }),
       CurationState.UNDER_REVIEW
     ],
-    ['a disabled collection', collection(reviewedBefore), null, CurationState.DISABLED]
+    ['a disabled collection', collection(reviewedBefore), null, CurationState.DISABLED],
+    [
+      'a collection disabled after its request was approved',
+      collection(reviewedBefore),
+      curation({ status: 'approved' }),
+      CurationState.DISABLED
+    ],
+    [
+      'changes pushed on a disabled collection',
+      collection(reviewedBefore),
+      curation({ assignee: '0xc' }),
+      CurationState.UNDER_REVIEW
+    ]
   ])('%s', (_, subject, request, expected) => {
     expect(getCurationState(subject, request)).toBe(expected)
   })
@@ -151,7 +165,7 @@ describe('curation filters', () => {
       search: '',
       status: CurationStatusFilter.ALL,
       assignee: 'all',
-      sort: CollectionSort.CURATION_UPDATED_AT_DESC,
+      sort: CollectionSort.MOST_RELEVANT,
       tag: null
     })
   })
@@ -213,5 +227,14 @@ describe('canPushChanges', () => {
     expect(canPushChanges(approved, null, false, true)).toBe(false)
     expect(canPushChanges(approved, null, true, false)).toBe(false)
     expect(canPushChanges(collection(), null, true, true)).toBe(false)
+  })
+})
+
+describe('curationListUrl', () => {
+  it('returns to the list with the filters it was left with', () => {
+    sessionStorage.clear()
+    expect(curationListUrl()).toBe('/curation')
+    rememberCurationSearch('?status=approved&page=2')
+    expect(curationListUrl()).toBe('/curation?status=approved&page=2')
   })
 })

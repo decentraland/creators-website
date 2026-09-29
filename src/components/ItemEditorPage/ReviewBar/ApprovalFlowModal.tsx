@@ -3,14 +3,14 @@ import approvedArt from '~/assets/send-success.png'
 import { useTranslation } from '~/intl'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
-import { SaleSuccessModal } from '~/components/CollectionDetailPage/SellItemFlow/SaleSuccessModal'
-import { shortAddress } from '~/components/ProfileBadge'
+import { SuccessModal } from '~/components/SuccessModal'
 import { useApprovalFlow, type ApprovalMode } from '~/hooks/useApprovalFlow'
 import { useAssignCurator } from '~/hooks/useCuration'
 import { useProfile } from '~/hooks/useProfile'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
+import { shortAddress } from '~/lib/ids'
 import * as S from './ReviewBar.styles'
 
 type Props = {
@@ -44,7 +44,7 @@ export function ApprovalFlowModal({ session, collection, curation, mode, onClose
   const view = flow.view
   if (view.kind === 'success') {
     return (
-      <SaleSuccessModal
+      <SuccessModal
         title={t(`approval_flow.success.title_${mode}`)}
         description={t(`approval_flow.success.body_${mode}`, { collection: collection.name })}
         art={approvedArt}
@@ -63,7 +63,14 @@ export function ApprovalFlowModal({ session, collection, curation, mode, onClose
   let action: React.ReactNode = null
   if (!confirmed) {
     const assignee = assigneeProfile?.name || shortAddress(curation!.assignee!)
-    body = <S.FlowText>{t('approval_flow.assigned_to_other.body', { assignee })}</S.FlowText>
+    body = (
+      <>
+        <S.FlowText>{t('approval_flow.assigned_to_other.body', { assignee })}</S.FlowText>
+        {assign.isError && (
+          <S.FlowText data-testid="approval-assign-error">{t('assign_curator_modal.error')}</S.FlowText>
+        )}
+      </>
+    )
     action = (
       <Button type="button" loading={assign.isPending} data-testid="approval-assign-confirm" onClick={assignAndApprove}>
         {t('approval_flow.assigned_to_other.action')}

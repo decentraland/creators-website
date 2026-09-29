@@ -693,6 +693,8 @@
       "title": "Modo de revisión",
       "back": "Volver a curaduría",
       "unpublished": "Esta colección todavía no está publicada",
+      "curation_error": "No pudimos cargar el estado de revisión de esta colección.",
+      "retry": "Reintentar",
       "requested": "Revisión solicitada {time}",
       "created": "Creada {time}",
       "approved": "Aprobada {time}",

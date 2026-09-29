@@ -12,7 +12,7 @@ import { useItemSyncs } from '~/hooks/useItemSync'
 import { type ApprovalMode } from '~/hooks/useApprovalFlow'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
-import { ReviewAction, canEditAssignee, getCurationState, getReviewActions } from '~/lib/curation'
+import { ReviewAction, canEditAssignee, curationListUrl, getCurationState, getReviewActions } from '~/lib/curation'
 import { ItemSyncStatus } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
@@ -57,6 +57,8 @@ export function ReviewBar({ session, collection, items }: Props) {
       : [curation.status, curation.updatedAt]
   const canAssign = canEditAssignee(collection, curation)
   const isLoading = collection.isPublished && curationQuery.isLoading
+  // Without the request, Reject and Assign would open a new one instead of updating it.
+  const isCurationError = collection.isPublished && curationQuery.isError
 
   function onAction(action: ReviewAction) {
     if (action === ReviewAction.APPROVE || action === ReviewAction.ENABLE) setApproval('approve')
@@ -74,16 +76,29 @@ export function ReviewBar({ session, collection, items }: Props) {
   return (
     <S.ReviewBar role="toolbar" aria-label={t('item_editor.review.title')} data-testid="review-bar">
       <S.Identity>
-        <S.BackLink to="/curation" aria-label={t('item_editor.review.back')} data-testid="review-back">
+        <S.BackLink to={curationListUrl()} aria-label={t('item_editor.review.back')} data-testid="review-back">
           <ArrowBackIcon fontSize="small" />
         </S.BackLink>
         <S.Name title={collection.name}>{collection.name}</S.Name>
-        {!isLoading && <CurationStatePill state={state} />}
+        {!isLoading && !isCurationError && <CurationStatePill state={state} />}
       </S.Identity>
 
       <S.Meta>
         {!collection.isPublished ? (
           <span data-testid="review-unpublished">{t('item_editor.review.unpublished')}</span>
+        ) : isCurationError ? (
+          <>
+            <span data-testid="review-curation-error">{t('item_editor.review.curation_error')}</span>
+            <Button
+              type="button"
+              size="sm"
+              variant="dark"
+              data-testid="review-curation-retry"
+              onClick={() => void curationQuery.refetch()}
+            >
+              {t('item_editor.review.retry')}
+            </Button>
+          </>
         ) : (
           <>
             <span data-testid="review-requested">
@@ -112,7 +127,7 @@ export function ReviewBar({ session, collection, items }: Props) {
         )}
       </S.Meta>
 
-      {!isLoading && actions.length > 0 && (
+      {!isLoading && !isCurationError && actions.length > 0 && (
         <S.Actions>
           {actions.map(action => (
             <Button

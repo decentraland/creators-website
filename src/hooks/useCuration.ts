@@ -1,7 +1,5 @@
 import { useMemo } from 'react'
 import { useTranslation } from '~/intl'
-import { shortAddress } from '~/components/ProfileBadge'
-import { type SelectOption } from '~/components/Select'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { errorCode, track } from '~/lib/analytics'
 import { sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
@@ -16,6 +14,7 @@ import {
 import { type Collection } from '~/lib/collections'
 import { buildSetApprovedCall } from '~/lib/collectionApproval'
 import { isCommitteeMember, orderCurators, type CollectionCuration, type CurationFilters } from '~/lib/curation'
+import { shortAddress } from '~/lib/ids'
 import { captureError } from '~/lib/monitoring'
 import { useProfiles } from '~/hooks/useProfile'
 import { getMaticChainId } from '~/lib/publishCollection'
@@ -36,13 +35,15 @@ export function useCommittee(address: string | undefined) {
 }
 
 /** The committee as picker options, the signed-in curator first and marked, after `leading` and a divider. */
-export function useCuratorOptions(address: string | undefined, leading: SelectOption<string>) {
+type CuratorOption = { value: string; label: string; dividerBefore?: boolean }
+
+export function useCuratorOptions(address: string | undefined, leading: CuratorOption) {
   const { t } = useTranslation()
   const { members } = useCommittee(address)
   const curators = useMemo(() => orderCurators(members, address), [members, address])
   const profiles = useProfiles(curators)
   const self = address?.toLowerCase()
-  return useMemo<SelectOption<string>[]>(
+  return useMemo<CuratorOption[]>(
     () => [
       leading,
       ...curators.map((curator, index) => {
@@ -142,6 +143,7 @@ export type RejectVariables = { collection: Collection; curation: CollectionCura
  * reject yet, so one is opened first: otherwise the rejection would leave no trace for the creator.
  */
 export function useRejectCuration(address: string | undefined) {
+  const queryClient = useQueryClient()
   const store = useStoreCuration(address)
   return useMutation({
     mutationFn: async ({ collection, curation }: RejectVariables) => {
@@ -154,6 +156,9 @@ export function useRejectCuration(address: string | undefined) {
       store(curation)
     },
     onError: (error, { collection }) => {
+      // The request may have been opened before the rejection failed; a retry must PATCH it, not POST again.
+      void queryClient.invalidateQueries({ queryKey: collectionCurationKey(address, collection.id) })
+      void queryClient.invalidateQueries({ queryKey: ['curations', address] })
       track('Reject curation error', { collectionId: collection.id, error: errorCode(error) })
       captureError(error, { flow: 'curation_reject', collectionId: collection.id })
     }

@@ -10,7 +10,7 @@ import { toSellItemError, type SellFailureReason } from '~/lib/sales'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { PendingModal } from './PendingModal'
 import { SaleErrorModal } from './SaleErrorModal'
-import { SaleSuccessModal } from './SaleSuccessModal'
+import { SuccessModal } from '~/components/SuccessModal'
 
 type View = 'confirm' | 'pending' | 'success' | 'error'
 type Phase = 'confirm' | 'mining'
@@ -86,7 +86,7 @@ export function RemoveListingFlow({ item, collection, listing, session, onClose 
       )
     case 'success':
       return (
-        <SaleSuccessModal
+        <SuccessModal
           title={t('sell_item_modal.remove.success_title')}
           description={t('sell_item_modal.remove.success_description')}
           onDone={onClose}

@@ -53,8 +53,9 @@ export function getCurationState(collection: Collection, curation: CollectionCur
     if (!curation || curation.status === 'approved') return CurationState.APPROVED
     if (curation.status === 'rejected') return CurationState.REJECTED
   } else {
-    if (!curation && hasBeenApproved(collection)) return CurationState.DISABLED
     if (curation?.status === 'rejected') return CurationState.REJECTED
+    // Approving closes the pending request, so a later disable leaves an approved (or no) request behind.
+    if (hasBeenApproved(collection) && curation?.status !== 'pending') return CurationState.DISABLED
   }
   if (curation?.status === 'pending' && curation.assignee) return CurationState.UNDER_REVIEW
   return CurationState.TO_REVIEW
@@ -96,8 +97,9 @@ export enum CurationStatusFilter {
   REJECTED = 'rejected'
 }
 
+// ponytail: CURATION_UPDATED_AT_DESC joins (as the default) once builder-server ships that sort; unknown sorts
+// there drop the ORDER BY and paginate at random.
 export const CURATION_SORTS = [
-  CollectionSort.CURATION_UPDATED_AT_DESC,
   CollectionSort.MOST_RELEVANT,
   CollectionSort.CREATED_AT_DESC,
   CollectionSort.NAME_ASC,
@@ -126,7 +128,7 @@ export function parseCurationFilters(params: URLSearchParams): CurationFilters {
     search: params.get('q') ?? '',
     status: Object.values(CurationStatusFilter).includes(status) ? status : CurationStatusFilter.ALL,
     assignee: params.get('assignee')?.toLowerCase() || ALL_ASSIGNEES,
-    sort: CURATION_SORTS.includes(sort) ? sort : CollectionSort.CURATION_UPDATED_AT_DESC,
+    sort: CURATION_SORTS.includes(sort) ? sort : CollectionSort.MOST_RELEVANT,
     tag: params.get('tag') || null
   }
 }
@@ -175,4 +177,23 @@ export function canPushChanges(
   return (
     collection.isPublished && collection.isApproved && canManage && hasUnsyncedItems && curation?.status !== 'pending'
   )
+}
+
+const LIST_SEARCH_KEY = 'wemotes-builder.curation-search'
+
+/** Remembers the list's filters so the review bar's back link returns to the same view. */
+export function rememberCurationSearch(search: string): void {
+  try {
+    window.sessionStorage.setItem(LIST_SEARCH_KEY, search)
+  } catch {
+    // Storage blocked: the back link falls back to the unfiltered list.
+  }
+}
+
+export function curationListUrl(): string {
+  try {
+    return `/curation${window.sessionStorage.getItem(LIST_SEARCH_KEY) ?? ''}`
+  } catch {
+    return '/curation'
+  }
 }

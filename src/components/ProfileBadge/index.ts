@@ -1,1 +1,1 @@
-export { ProfileBadge, shortAddress } from './ProfileBadge'
+export { ProfileBadge } from './ProfileBadge'

@@ -10,7 +10,7 @@ import { createTransfer, isSendableItem, type TransferDraft } from '~/lib/mint'
 import { toSellItemError, type SellFailureReason } from '~/lib/sales'
 import { PendingModal } from '../SellItemFlow/PendingModal'
 import { SaleErrorModal } from '../SellItemFlow/SaleErrorModal'
-import { SaleSuccessModal } from '../SellItemFlow/SaleSuccessModal'
+import { SuccessModal } from '~/components/SuccessModal'
 import { SendItemsModal, type SendStep } from './SendItemsModal'
 
 type View = 'form' | 'sending' | 'success' | 'error'
@@ -96,7 +96,7 @@ export function SendItemsFlow({ collection, items, session, onClose }: Props) {
       )
     case 'success':
       return (
-        <SaleSuccessModal
+        <SuccessModal
           title={t('send_items_modal.success_title')}
           description={t('send_items_modal.success_description')}
           art={sentArt}
