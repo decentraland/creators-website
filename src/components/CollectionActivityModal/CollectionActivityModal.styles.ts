@@ -3,11 +3,22 @@ import { theme } from '~/styles/theme'
 
 const mobile = theme.media.maxWidth('mobile')
 
+/* The dialog caps itself at the viewport (90vh, full height on phones) and its title bar stays put; this
+   body takes the rest and scrolls, so a long timeline and the "Load more" control stay reachable. */
 export const Body = styled.div`
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 16px;
+  min-height: 0;
   margin-top: 16px;
+  padding-right: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  ${mobile} {
+    padding-right: 0;
+  }
 `
 
 export const Timeline = styled.ol`

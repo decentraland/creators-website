@@ -21,7 +21,9 @@ import {
   getLatestVerdict,
   getValidationAttemptsLeft,
   hasOpenAppeal,
+  isUnsupportedItemsReview,
   isValidationRunning,
+  latestStageEvent,
   type CollectionEvent
 } from '~/lib/events'
 import { type Item } from '~/lib/items'
@@ -67,7 +69,12 @@ export function ReviewPanel({ collection, address, curation, events, items, canM
     let text: string | null = null
     if (stage === ReviewStage.AI_REVIEWING) text = t('review_panel.ai_reviewing')
     else if (stage === ReviewStage.AWAITING_CURATOR) {
-      text = t(curation?.assignee ? 'review_panel.awaiting_curator_assigned' : 'review_panel.awaiting_curator')
+      const cause = latestStageEvent(timeline)
+      text = isUnsupportedItemsReview(cause)
+        ? t('review_panel.unsupported_items')
+        : cause?.type === 'review.human_required'
+          ? t('review_panel.human_review')
+          : t(curation?.assignee ? 'review_panel.awaiting_curator_assigned' : 'review_panel.awaiting_curator')
     } else if (stage === ReviewStage.APPEALED) text = t('review_panel.appealed')
     else if (legacy) text = t(`collection_detail_page.review_notice.${legacy}`)
     if (!text) return null

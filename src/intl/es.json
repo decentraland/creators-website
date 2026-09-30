@@ -1417,6 +1417,8 @@
     "ai_reviewing": "Estamos revisando tu colección automáticamente. Suele tardar unos minutos.",
     "awaiting_curator": "La revisión automática pasó. Ahora la revisará un curador.",
     "awaiting_curator_assigned": "La revisión automática pasó. Un curador está revisando tu colección.",
+    "human_review": "Un curador revisará tu colección.",
+    "unsupported_items": "Algunos ítems no se pueden revisar automáticamente. Un curador revisará tu colección.",
     "appealed": "Pediste una revisión humana. Un curador revisará tu colección.",
     "rejected_by_validator": {
       "title": "La revisión automática encontró problemas",
@@ -1493,6 +1495,7 @@
     "event": {
       "collection.published": "publicó la colección",
       "review.human_required": "Enviada al comité de curaduría (colección de terceros)",
+      "review.human_required_unsupported": "Algunos ítems no se pueden revisar automáticamente, un curador los revisará",
       "review.ai_started": "Revisión automática iniciada ({trigger})",
       "review.ai_passed": "La revisión automática pasó",
       "review.ai_rejected": "La revisión automática encontró problemas en {count, plural, one {# ítem} other {# ítems}}",

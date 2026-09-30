@@ -1417,6 +1417,8 @@
     "ai_reviewing": "We're checking your collection automatically. This usually takes a few minutes.",
     "awaiting_curator": "Automatic checks passed. A curator will review your collection next.",
     "awaiting_curator_assigned": "Automatic checks passed. A curator is reviewing your collection.",
+    "human_review": "A curator will review your collection.",
+    "unsupported_items": "Some items can't be reviewed automatically. A curator will review your collection.",
     "appealed": "You asked for a human review. A curator will look at your collection.",
     "rejected_by_validator": {
       "title": "The automatic review found issues",
@@ -1493,6 +1495,7 @@
     "event": {
       "collection.published": "published the collection",
       "review.human_required": "Sent to the curation committee (third-party collection)",
+      "review.human_required_unsupported": "Some items can't be reviewed automatically, a curator will review them",
       "review.ai_started": "Automatic review started ({trigger})",
       "review.ai_passed": "Automatic review passed",
       "review.ai_rejected": "Automatic review found issues in {count, plural, one {# item} other {# items}}",

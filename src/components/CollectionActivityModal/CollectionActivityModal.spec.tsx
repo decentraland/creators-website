@@ -135,6 +135,33 @@ describe('CollectionActivityModal', () => {
     expect(screen.getByTestId('activity-line')).toHaveTextContent('Automatic review restarted')
   })
 
+  it('explains items the validator could not check, with their findings and the id for curators', () => {
+    state.isCurator = true
+    state.events = [
+      event('review.human_required', 'system', {
+        reason: 'unsupported_items',
+        validationId: 'val-3',
+        verdict: 'error',
+        items: [
+          {
+            itemId: 'i1',
+            contentHash: 'h',
+            passed: null,
+            findings: [{ rule: 'S-01', severity: 'warning', message: 'PNG facial features need a curator' }]
+          }
+        ]
+      }),
+      event('review.human_required', 'system', { reason: 'third_party' })
+    ]
+    renderModal()
+    const lines = screen.getAllByTestId('activity-line').map(line => line.textContent)
+    expect(lines[0]).toBe("Some items can't be reviewed automatically, a curator will review them")
+    expect(lines[1]).toBe('Sent to the curation committee (third-party collection)')
+    expect(screen.getByTestId('activity-validation-id')).toHaveTextContent('val-3')
+    fireEvent.click(screen.getByTestId('activity-toggle-findings'))
+    expect(screen.getByTestId('activity-findings-i1-finding')).toHaveTextContent('S-01')
+  })
+
   it('tells curators about validator failures', () => {
     state.isCurator = true
     state.events = [event('review.ai_error', 'validator', { verdict: 'error', items: [] })]

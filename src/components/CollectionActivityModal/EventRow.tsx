@@ -8,6 +8,7 @@ import {
   countFailedItems,
   getFailedItems,
   isRejectReasonCode,
+  isUnsupportedItemsReview,
   isValidationTrigger,
   type CollectionEvent
 } from '~/lib/events'
@@ -62,6 +63,12 @@ export function EventRow({ event, items, isCurator }: Props) {
         return t('activity_modal.event.review.ai_rejected', { count: countFailedItems(payload.items ?? []) })
       case 'review.ai_error':
         return t(isCurator ? 'activity_modal.event.review.ai_error_curator' : 'activity_modal.event.review.ai_error')
+      case 'review.human_required':
+        return t(
+          isUnsupportedItemsReview(event)
+            ? 'activity_modal.event.review.human_required_unsupported'
+            : 'activity_modal.event.review.human_required'
+        )
       case 'review.assigned':
         return payload.assignee
           ? intl.formatMessage(

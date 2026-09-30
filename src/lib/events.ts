@@ -179,6 +179,13 @@ export function latestStageEvent(events: CollectionEvent[]): CollectionEvent | u
   return events.find(event => !STAGE_NEUTRAL_EVENT_TYPES.has(event.type))
 }
 
+/** `review.human_required` written because the validator cannot check some items (e.g. facial-feature PNGs). */
+export const UNSUPPORTED_ITEMS_REASON = 'unsupported_items'
+
+export function isUnsupportedItemsReview(event: CollectionEvent | undefined): boolean {
+  return event?.type === 'review.human_required' && event.payload.reason === UNSUPPORTED_ITEMS_REASON
+}
+
 /** A verdict is still to come: the validator is working, or failed and the server's sweep will resend. */
 export function isValidationInProgress(events: CollectionEvent[]): boolean {
   const type = latestStageEvent(events)?.type

@@ -92,6 +92,19 @@ describe('ReviewPanel', () => {
     expect(screen.queryByTestId('review-panel')).toBeNull()
   })
 
+  it('tells the creator a curator takes over when some items cannot be checked, with no retry offered', () => {
+    renderPanel(base, [
+      event('review.human_required', { reason: 'unsupported_items', items: [] }),
+      event('review.ai_started')
+    ])
+    const notice = screen.getByTestId('review-notice')
+    expect(notice).toHaveAttribute('data-stage', 'awaiting_curator')
+    expect(notice).toHaveTextContent(
+      "Some items can't be reviewed automatically. A curator will review your collection."
+    )
+    expect(screen.queryByTestId('validate-again')).toBeNull()
+  })
+
   it('falls back to the legacy notice without a timeline', () => {
     renderPanel({ ...base, assignee: '0xcurator' }, null)
     expect(screen.getByTestId('review-notice')).toHaveTextContent('A curator is reviewing your collection.')
