@@ -2,17 +2,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { BodyShape, PreviewRenderer, type IPreviewController } from '@dcl/schemas'
-import { PersonOutline as PersonOutlineIcon } from '@mui/icons-material'
+import { ArrowBackIosNew, PersonOutline as PersonOutlineIcon } from '@mui/icons-material'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { AvatarPreview } from '~/components/AvatarPreview'
 import { Button } from '~/components/Button'
 import { AddItemsModal } from '~/components/CollectionDetailPage/AddItemsModal'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
+import { CollectionStatusPill } from '~/components/CollectionStatusPill'
+import { CurationStatePill } from '~/components/CurationStatePill'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { ZoomControls } from '~/components/ZoomControls'
 import { useBaseWearables } from '~/hooks/useBaseWearables'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
-import { useCommittee } from '~/hooks/useCuration'
+import { useCollectionCuration, useCommittee } from '~/hooks/useCuration'
 import { allCollectionItemsKey, useAllCollectionItems, useCollection, useSaveCollection } from '~/hooks/useCollection'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useModelValidation } from '~/hooks/useModelValidation'
@@ -24,6 +26,7 @@ import { type AvatarAttributes } from '~/lib/avatar'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS } from '~/lib/builder'
 import { canManageCollectionItems, hasCollectionRole, isCollectionLocked, type Collection } from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
+import { getCurationState, curationListUrl } from '~/lib/curation'
 import { toPreviewItem, toSaveableItem } from '~/lib/itemDraft'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
 import { pickFiles } from '~/lib/filePicker'
@@ -90,6 +93,7 @@ const ItemEditorPage = () => {
   const [isRenameOpen, setRenameOpen] = useState(false)
 
   const collection = collectionQuery.data
+  const mobileCuration = useCollectionCuration(mode === 'review' ? address : undefined, collection)
   const items = itemsQuery.data ?? EMPTY_ITEMS
   const selected = useMemo(() => resolveSelectedItem(items, itemParam), [items, itemParam])
   // Unity cannot play a social emote's extra armatures: those items always preview in Babylon.
@@ -446,12 +450,40 @@ const ItemEditorPage = () => {
       />
     ) : null
 
+  const collectionUrl = collection ? `/collections/${collection.id}` : ''
+  const leaveEditor = () => {
+    if (!form.isDirty) return true
+    setPending({ kind: 'away', to: collectionUrl })
+    return false
+  }
+  const mobileHeader = collection ? (
+    <S.MobileEditorHeader>
+      <S.MobileBackLink
+        to={mode === 'review' ? curationListUrl() : collectionUrl}
+        aria-label={t(mode === 'review' ? 'item_editor.review.back' : 'item_editor.sidebar.back')}
+        onClick={event => {
+          if (mode === 'edit' && !leaveEditor()) event.preventDefault()
+        }}
+      >
+        <ArrowBackIosNew fontSize="small" />
+      </S.MobileBackLink>
+      <S.MobileCollectionName>{collection.name}</S.MobileCollectionName>
+      {mode === 'review' ? (
+        !mobileCuration.isLoading &&
+        !mobileCuration.isError && (
+          <CurationStatePill state={getCurationState(collection, mobileCuration.data ?? null)} />
+        )
+      ) : (
+        <CollectionStatusPill collection={collection} />
+      )}
+    </S.MobileEditorHeader>
+  ) : null
+
   if (isMobile) {
     return (
       <MobilePreview
-        header={reviewBar}
-        // Curators approve what they read: the item's properties sit under the preview on phones too.
-        details={mode === 'review' ? properties : null}
+        header={mobileHeader}
+        readOnly={mode === 'review'}
         items={items}
         selectedId={selectedId}
         dressedIds={dressedItemIds}

@@ -1,4 +1,5 @@
 import styled from '@emotion/styled'
+import { Link } from 'react-router-dom'
 import { theme } from '~/styles/theme'
 
 export const Workspace = styled.div`
@@ -614,24 +615,45 @@ export const MobileWorkspace = styled.div`
   color: ${theme.colors.white};
 `
 
+export const MobileEditorHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 56px;
+  padding: 6px 12px;
+  border-bottom: 1px solid ${theme.editor.line};
+  background: ${theme.editor.surface};
+`
+
+export const MobileBackLink = styled(Link)`
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: ${theme.colors.white};
+`
+
+export const MobileCollectionName = styled.h1`
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: ${theme.colors.white};
+  font-size: 16px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`
+
 export const MobilePreviewArea = styled.div`
   position: relative;
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
-
-  [data-details] > & {
-    flex: none;
-    height: 45dvh;
-  }
-`
-
-export const MobileDetails = styled.div`
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  border-top: 1px solid ${theme.editor.line};
 `
 
 export const MobileHint = styled.div`
