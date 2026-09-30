@@ -4,7 +4,6 @@ import {
   Add as AddIcon,
   ArrowBackIosNew as ArrowBackIcon,
   Edit as EditIcon,
-  InfoOutlined as InfoIcon,
   PersonOutline as PersonOutlineIcon
 } from '@mui/icons-material'
 import { useIntl } from 'react-intl'
@@ -45,7 +44,7 @@ import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { ItemSyncStatus, hasPendingChanges } from '~/lib/itemSync'
-import { canPushChanges, getCreatorReviewNotice } from '~/lib/curation'
+import { canPushChanges } from '~/lib/curation'
 import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
 import { previewCollection } from '~/lib/explorer'
 import { pageRangeLabel } from '~/lib/pagination'
@@ -148,10 +147,6 @@ const CollectionDetailPage = () => {
   // Price, Sales and Sale Status exist once the collection is published; the owner can put items on sale
   // once it has been approved at least once, even if it is under review again.
   const withMarket = !!collection?.isPublished
-  const statusHint =
-    collection && getCollectionDisplayStatus(collection) === CollectionDisplayStatus.UNDER_REVIEW
-      ? t('collection_status.under_review_hint')
-      : null
   // Sales here are off-chain public orders only: with the flag off there is no other way to list an item.
   const canListItems = useFeatureFlag(FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS).enabled
   const isApprovedForSale = canListItems && !!collection && hasBeenApproved(collection)
@@ -167,6 +162,13 @@ const CollectionDetailPage = () => {
   const syncs = useItemSyncs(address, collection, allItems ?? [])
   const curationQuery = useCollectionCuration(address, collection)
   const curation = curationQuery.data ?? null
+  const showStatus = !!collection && (!collection.isPublished || curationQuery.isSuccess)
+  const statusHint =
+    curation?.status === 'rejected'
+      ? t('collection_detail_page.review_notice.rejected')
+      : collection && getCollectionDisplayStatus(collection, curation) === CollectionDisplayStatus.UNDER_REVIEW
+        ? t('collection_status.under_review_hint')
+        : null
   const pushCuration = usePushCuration(address)
   const [isPushOpen, setPushOpen] = useState(false)
   const hasUnsyncedItems = useMemo(
@@ -177,7 +179,6 @@ const CollectionDetailPage = () => {
     setPushOpen(false)
     pushCuration.reset()
   }
-  const reviewNotice = collection ? getCreatorReviewNotice(collection, curation) : null
   // Until the request loads, a pending one looks like none and the push would duplicate it.
   const showPushChanges =
     !!collection &&
@@ -361,7 +362,7 @@ const CollectionDetailPage = () => {
                   </S.RenameButton>
                 )}
               </S.TitleGroup>
-              <CollectionStatusPill collection={collection} curation={curation} hint={statusHint} />
+              {showStatus && <CollectionStatusPill collection={collection} curation={curation} hint={statusHint} />}
               {address && <CollectionRolePill collection={collection} address={address} />}
             </S.HeaderLeft>
             <S.HeaderActions>
@@ -406,17 +407,6 @@ const CollectionDetailPage = () => {
                   </Button>
                 </Tooltip>
               )}
-              {showPushChanges && (
-                <Button
-                  type="button"
-                  variant="primary"
-                  data-desktop-only
-                  data-testid="push-changes"
-                  onClick={() => setPushOpen(true)}
-                >
-                  {t(`collection_detail_page.${pushCopy}.action`)}
-                </Button>
-              )}
               {canSend && (
                 <Button
                   type="button"
@@ -427,6 +417,17 @@ const CollectionDetailPage = () => {
                   onClick={() => setSending(true)}
                 >
                   {t('collection_detail_page.send_items')}
+                </Button>
+              )}
+              {showPushChanges && (
+                <Button
+                  type="button"
+                  variant="primary"
+                  data-desktop-only
+                  data-testid="push-changes"
+                  onClick={() => setPushOpen(true)}
+                >
+                  {t(`collection_detail_page.${pushCopy}.action`)}
                 </Button>
               )}
               {address && (
@@ -440,13 +441,6 @@ const CollectionDetailPage = () => {
               )}
             </S.HeaderActions>
           </S.Header>
-
-          {reviewNotice && (
-            <S.ReviewNotice data-testid="review-notice" data-notice={reviewNotice}>
-              <InfoIcon fontSize="small" aria-hidden />
-              {t(`collection_detail_page.review_notice.${reviewNotice}`)}
-            </S.ReviewNotice>
-          )}
 
           <S.SubHeader>
             <S.FilterChips data-testid="type-filters">

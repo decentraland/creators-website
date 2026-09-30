@@ -292,8 +292,6 @@
       "success": "Tu colección se envió a revisión"
     },
     "review_notice": {
-      "waiting": "Tu colección está esperando a un curador.",
-      "reviewing": "Un curador está revisando tu colección.",
       "rejected": "El comité de curaduría rechazó la última versión de esta colección. Actualiza tus ítems y envíalos a revisión de nuevo."
     }
   },

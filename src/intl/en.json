@@ -292,8 +292,6 @@
       "success": "Your collection was sent for review"
     },
     "review_notice": {
-      "waiting": "Your collection is waiting for a curator.",
-      "reviewing": "A curator is reviewing your collection.",
       "rejected": "The curation committee rejected the latest version of this collection. Update your items and send them for review again."
     }
   },

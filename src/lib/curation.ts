@@ -155,7 +155,7 @@ export function orderCurators(members: string[], address: string | undefined): s
   return self && lower.includes(self) ? [self, ...lower.filter(member => member !== self)] : lower
 }
 
-export type CreatorReviewNotice = 'waiting' | 'reviewing' | 'rejected'
+export type CreatorReviewNotice = 'rejected'
 
 /** What the creator is told about a published collection's latest review request, if anything. */
 export function getCreatorReviewNotice(
@@ -163,7 +163,6 @@ export function getCreatorReviewNotice(
   curation: CollectionCuration | null
 ): CreatorReviewNotice | null {
   if (!collection.isPublished || !curation) return null
-  if (curation.status === 'pending') return curation.assignee ? 'reviewing' : 'waiting'
   return curation.status === 'rejected' ? 'rejected' : null
 }
 
