@@ -14,6 +14,11 @@ export const ReviewBar = styled.div`
   border-bottom: 1px solid ${theme.editor.line};
   background: ${theme.editor.surface};
   color: ${theme.colors.white};
+
+  ${mobile} {
+    flex-wrap: nowrap;
+    min-height: 56px;
+  }
 `
 
 export const Identity = styled.div`
@@ -59,8 +64,7 @@ export const Meta = styled.div`
   color: ${theme.editor.label};
 
   ${mobile} {
-    flex: 1 1 100%;
-    justify-content: space-between;
+    display: none;
   }
 `
 
@@ -97,13 +101,7 @@ export const Actions = styled.div`
   margin-left: auto;
 
   ${mobile} {
-    flex: 1 1 100%;
-    margin-left: 0;
-
-    & > * {
-      flex: 1;
-      min-height: 44px;
-    }
+    display: none;
   }
 `
 

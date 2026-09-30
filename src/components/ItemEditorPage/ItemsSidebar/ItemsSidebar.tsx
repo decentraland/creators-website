@@ -198,49 +198,47 @@ export function ItemsSidebar({
       <S.Wrap data-testid={testId} data-collapsed={collapsed || undefined}>
         <S.Header>
           {/* The review bar carries its own back link, so the review sidebar only names the collection. */}
-          {(showBack || !collapsed) && (
-            <S.HeaderRow>
-              {showBack && (
-                <Tooltip
-                  content={t('item_editor.sidebar.back')}
-                  placement="right"
-                  asChild
-                  testId={`${testId}-back-tooltip`}
+          <S.HeaderRow>
+            {showBack && (
+              <Tooltip
+                content={t('item_editor.sidebar.back')}
+                placement="right"
+                asChild
+                testId={`${testId}-back-tooltip`}
+              >
+                <S.IconLink
+                  to={backTo}
+                  aria-label={t('item_editor.sidebar.back')}
+                  data-testid={`${testId}-back`}
+                  // A router link never reaches the unload guard, so leaving is asked about here.
+                  onClick={event => {
+                    if (onLeave && !onLeave(backTo)) event.preventDefault()
+                  }}
                 >
-                  <S.IconLink
-                    to={backTo}
-                    aria-label={t('item_editor.sidebar.back')}
-                    data-testid={`${testId}-back`}
-                    // A router link never reaches the unload guard, so leaving is asked about here.
-                    onClick={event => {
-                      if (onLeave && !onLeave(backTo)) event.preventDefault()
-                    }}
+                  <BackIcon fontSize="small" />
+                </S.IconLink>
+              </Tooltip>
+            )}
+            <S.CollectionName>
+              <S.TitleGroup>
+                <S.CollectionTitle title={collection.name} data-testid={`${testId}-collection`}>
+                  {collection.name}
+                </S.CollectionTitle>
+                {mode === 'edit' && onRename && (
+                  <S.RenameButton
+                    type="button"
+                    aria-label={t('collection_detail_page.rename')}
+                    data-testid={`${testId}-rename`}
+                    onClick={onRename}
                   >
-                    <BackIcon fontSize="small" />
-                  </S.IconLink>
-                </Tooltip>
-              )}
-              <S.CollectionName>
-                <S.TitleGroup>
-                  <S.CollectionTitle title={collection.name} data-testid={`${testId}-collection`}>
-                    {collection.name}
-                  </S.CollectionTitle>
-                  {mode === 'edit' && onRename && (
-                    <S.RenameButton
-                      type="button"
-                      aria-label={t('collection_detail_page.rename')}
-                      data-testid={`${testId}-rename`}
-                      onClick={onRename}
-                    >
-                      <EditIcon />
-                    </S.RenameButton>
-                  )}
-                </S.TitleGroup>
-                {/* The review bar shows the curation state instead. */}
-                {mode === 'edit' && <CollectionStatusPill collection={collection} />}
-              </S.CollectionName>
-            </S.HeaderRow>
-          )}
+                    <EditIcon />
+                  </S.RenameButton>
+                )}
+              </S.TitleGroup>
+              {/* The review bar shows the curation state instead. */}
+              {mode === 'edit' && <CollectionStatusPill collection={collection} />}
+            </S.CollectionName>
+          </S.HeaderRow>
           {showAddItems && (
             <S.HeaderMeta>
               {collapsed ? (
@@ -265,7 +263,7 @@ export function ItemsSidebar({
                 <Button
                   type="button"
                   variant="secondary"
-                  size="sm"
+                  size="md"
                   data-testid={`${testId}-add-items`}
                   onClick={onAddItems}
                 >

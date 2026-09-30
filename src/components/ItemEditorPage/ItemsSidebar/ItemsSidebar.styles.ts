@@ -199,11 +199,7 @@ export const HeaderMeta = styled.div`
   }
 
   & > button {
-    margin: 5px 0;
-  }
-
-  [data-collapsed] & > button {
-    margin: 0;
+    width: 100%;
   }
 `
 
