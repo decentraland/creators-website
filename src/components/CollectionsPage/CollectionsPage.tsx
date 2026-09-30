@@ -23,7 +23,13 @@ import { CollectionCard } from './CollectionCard'
 import { CollectionListRow } from './CollectionListRow'
 import * as S from './CollectionsPage.styles'
 
-const STATUS_FILTERS = Object.values(CollectionStatusFilter)
+const STATUS_FILTERS = [
+  CollectionStatusFilter.ALL,
+  CollectionStatusFilter.DRAFT,
+  CollectionStatusFilter.PUBLISHED,
+  CollectionStatusFilter.UNDER_REVIEW,
+  CollectionStatusFilter.REJECTED
+]
 const SEARCH_DEBOUNCE_MS = 500
 const LEARN_MORE_URL =
   'https://docs.decentraland.org/creator/wearables-and-emotes/manage-collections/creating-a-collection/'
@@ -31,6 +37,7 @@ const LEARN_MORE_URL =
 type ViewMode = 'grid' | 'list'
 
 function parseStatus(raw: string | null): CollectionStatusFilter {
+  if (raw === 'submitted') return CollectionStatusFilter.UNDER_REVIEW
   return STATUS_FILTERS.includes(raw as CollectionStatusFilter)
     ? (raw as CollectionStatusFilter)
     : CollectionStatusFilter.ALL
@@ -164,7 +171,11 @@ const CollectionsPage = () => {
               type="button"
               data-active={status === filter || undefined}
               data-testid={`status-filter-${filter}`}
-              onClick={() => changeParams({ status: filter === CollectionStatusFilter.ALL ? null : filter })}
+              onClick={() =>
+                changeParams({
+                  status: filter === CollectionStatusFilter.ALL || status === filter ? null : filter
+                })
+              }
             >
               {t(`collections_page.filter.${filter}`)}
               {filter === CollectionStatusFilter.REJECTED && !!rejectedCount && (

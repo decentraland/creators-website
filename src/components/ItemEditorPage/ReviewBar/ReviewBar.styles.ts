@@ -2,8 +2,6 @@ import styled from '@emotion/styled'
 import { Link } from 'react-router-dom'
 import { theme } from '~/styles/theme'
 
-const mobile = theme.media.maxWidth('mobile')
-
 export const ReviewBar = styled.div`
   display: flex;
   align-items: center;
@@ -80,26 +78,12 @@ export const AssigneeChip = styled.button`
   &:disabled {
     cursor: default;
   }
-
-  ${mobile} {
-    min-height: 44px;
-  }
 `
 
 export const Actions = styled.div`
   display: flex;
   gap: 8px;
   margin-left: auto;
-
-  ${mobile} {
-    flex: 1 1 100%;
-    margin-left: 0;
-
-    & > * {
-      flex: 1;
-      min-height: 44px;
-    }
-  }
 `
 
 export const FlowBody = styled.div`

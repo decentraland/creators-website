@@ -11,8 +11,8 @@
     "filter": {
       "all": "All",
       "published": "Published",
-      "submitted": "Submitted",
       "draft": "Draft",
+      "under_review": "Under Review",
       "rejected": "Rejected"
     },
     "view_mode": "View mode",

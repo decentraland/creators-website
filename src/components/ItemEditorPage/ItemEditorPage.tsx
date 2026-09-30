@@ -456,18 +456,22 @@ const ItemEditorPage = () => {
     setPending({ kind: 'away', to: collectionUrl })
     return false
   }
+  // Phones get no sidebar and no review bar, so this strip is the only way back out of the editor.
   const mobileHeader = collection ? (
-    <S.MobileEditorHeader>
+    <S.MobileEditorHeader data-testid="mobile-editor-header">
       <S.MobileBackLink
         to={mode === 'review' ? curationListUrl() : collectionUrl}
         aria-label={t(mode === 'review' ? 'item_editor.review.back' : 'item_editor.sidebar.back')}
+        data-testid="mobile-editor-back"
         onClick={event => {
           if (mode === 'edit' && !leaveEditor()) event.preventDefault()
         }}
       >
         <ArrowBackIosNew fontSize="small" />
       </S.MobileBackLink>
-      <S.MobileCollectionName>{collection.name}</S.MobileCollectionName>
+      <S.MobileCollectionName title={collection.name} data-testid="mobile-editor-collection">
+        {collection.name}
+      </S.MobileCollectionName>
       {mode === 'review' ? (
         !mobileCuration.isLoading &&
         !mobileCuration.isError && (

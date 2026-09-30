@@ -11,8 +11,8 @@
     "filter": {
       "all": "Todas",
       "published": "Publicadas",
-      "submitted": "Enviadas",
       "draft": "Borrador",
+      "under_review": "En revisión",
       "rejected": "Rechazadas"
     },
     "view_mode": "Modo de vista",

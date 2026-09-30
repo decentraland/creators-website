@@ -107,7 +107,7 @@ describe('statusFilterToParams', () => {
     expect(statusFilterToParams(CollectionStatusFilter.ALL)).toEqual({})
     expect(statusFilterToParams(CollectionStatusFilter.PUBLISHED)).toEqual({ isPublished: true })
     expect(statusFilterToParams(CollectionStatusFilter.DRAFT)).toEqual({ isPublished: false })
-    expect(statusFilterToParams(CollectionStatusFilter.SUBMITTED)).toEqual({ status: CurationStatus.UNDER_REVIEW })
+    expect(statusFilterToParams(CollectionStatusFilter.UNDER_REVIEW)).toEqual({ status: CurationStatus.UNDER_REVIEW })
     expect(statusFilterToParams(CollectionStatusFilter.REJECTED)).toEqual({ status: CurationStatus.REJECTED })
   })
 })

@@ -17,9 +17,9 @@ type Props = {
   onTap: (item: Item) => void
   /** The avatar preview with its overlay controls. */
   children: ReactNode
-  /** A bar above the preview (the curator's review bar). */
+  /** The bar above the preview: back link, collection name and status. */
   header?: ReactNode
-  /** Hide the desktop hint in review mode. */
+  /** Review mode: curators only look on phones, so the editing hint is left out. */
   readOnly?: boolean
 }
 

@@ -85,9 +85,9 @@ export enum CollectionDisplayStatus {
 /** The page's status filter chips. Values double as the `status` URL param. */
 export enum CollectionStatusFilter {
   ALL = 'all',
-  PUBLISHED = 'published',
-  SUBMITTED = 'submitted',
   DRAFT = 'draft',
+  PUBLISHED = 'published',
+  UNDER_REVIEW = 'under_review',
   REJECTED = 'rejected'
 }
 
@@ -152,7 +152,7 @@ export function statusFilterToParams(filter: CollectionStatusFilter): Partial<Fe
       return { isPublished: true }
     case CollectionStatusFilter.DRAFT:
       return { isPublished: false }
-    case CollectionStatusFilter.SUBMITTED:
+    case CollectionStatusFilter.UNDER_REVIEW:
       return { status: CurationStatus.UNDER_REVIEW }
     case CollectionStatusFilter.REJECTED:
       return { status: CurationStatus.REJECTED }
