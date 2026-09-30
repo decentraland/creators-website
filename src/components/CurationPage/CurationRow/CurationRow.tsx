@@ -27,8 +27,8 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
   const { t } = useTranslation()
   const intl = useIntl()
   const state = getCurationState(collection, curation)
-  // Only a pending request needs the newest events to tell AI review, AI pass and appeal apart.
-  const recent = useRecentCollectionEvents(address, collection.id, curation?.status === 'pending')
+  // A stage needs the timeline (pending: which step; decided: that the server has one at all).
+  const recent = useRecentCollectionEvents(address, collection.id, !!curation)
   const events = recent.data ?? null
   const stage = useMemo(() => getReviewStage(collection, curation, events), [collection, curation, events])
   const assignee = curation?.assignee ?? null

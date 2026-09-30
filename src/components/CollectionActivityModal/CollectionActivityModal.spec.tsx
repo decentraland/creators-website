@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
   isError: false,
   hasNextPage: false,
   isFetchNextPageError: false,
+  isAvailable: true,
   fetchNextPage: vi.fn(),
   isCurator: false
 }))
@@ -22,6 +23,7 @@ vi.mock('~/hooks/useCollectionEvents', () => ({
     error: null,
     hasNextPage: state.hasNextPage,
     isFetchNextPageError: state.isFetchNextPageError,
+    isAvailable: state.isAvailable,
     isFetchingNextPage: false,
     fetchNextPage: state.fetchNextPage,
     refetch: vi.fn()
@@ -64,6 +66,7 @@ beforeEach(() => {
   state.isError = false
   state.hasNextPage = false
   state.isFetchNextPageError = false
+  state.isAvailable = true
   state.isCurator = false
   state.fetchNextPage.mockReset()
 })
@@ -156,5 +159,12 @@ describe('CollectionActivityModal', () => {
     state.hasNextPage = false
     renderModal()
     expect(screen.getByTestId('activity-empty')).toBeInTheDocument()
+  })
+
+  it('tells a server without the timeline apart from an empty one', () => {
+    state.isAvailable = false
+    renderModal()
+    expect(screen.getByTestId('activity-unavailable')).toBeInTheDocument()
+    expect(screen.queryByTestId('activity-empty')).toBeNull()
   })
 })

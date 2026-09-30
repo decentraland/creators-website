@@ -87,6 +87,11 @@ describe('CurationRow', () => {
     expect(screen.getByTestId('review-stage')).toHaveAttribute('data-stage', 'rejected_by_validator')
   })
 
+  it('shows Approved from the timeline on an approved collection', () => {
+    renderRow({ ...pending, status: 'approved', reviewedBy: '0xcurator' }, { ...collection, isApproved: true })
+    expect(screen.getByTestId('review-stage')).toHaveAttribute('data-stage', 'approved')
+  })
+
   it('keeps the legacy state without a timeline, even when the server names the reviewer', () => {
     latest.timeline = false
     renderRow({ ...pending, status: 'rejected', reviewedBy: '0xcurator' })

@@ -1476,6 +1476,7 @@
   "activity_modal": {
     "title": "Actividad",
     "empty": "Todavía no hay actividad.",
+    "unavailable": "Esta colección todavía no tiene línea de actividad.",
     "error": "No pudimos cargar la actividad de esta colección.",
     "retry": "Intentar de nuevo",
     "load_more": "Cargar más",

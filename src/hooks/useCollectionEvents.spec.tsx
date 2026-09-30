@@ -37,6 +37,7 @@ function wrapper({ children }: { children: ReactNode }) {
 
 beforeEach(() => {
   Object.values(api).forEach(fn => fn.mockReset())
+  vi.mocked(captureError).mockReset()
   flag.enabled = true
 })
 
@@ -68,6 +69,14 @@ describe('useCollectionEvents', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(result.current.events).toBeNull()
     expect(result.current.isAvailable).toBe(false)
+  })
+
+  it('reports a broken timeline endpoint once, from the hook', async () => {
+    api.fetchCollectionEvents.mockRejectedValue(new BuilderServerError('boom', 500))
+    const { result } = renderHook(() => useCollectionEvents('0xme', collection), { wrapper })
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(captureError).toHaveBeenCalledWith(expect.anything(), { flow: 'curation_events', collectionId: 'c1' })
+    expect(result.current.events).toBeNull()
   })
 
   it('never asks for the timeline while auto-curation is off', () => {

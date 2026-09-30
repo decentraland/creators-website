@@ -1476,6 +1476,7 @@
   "activity_modal": {
     "title": "Activity",
     "empty": "No activity yet.",
+    "unavailable": "This collection has no activity timeline yet.",
     "error": "We couldn't load the activity of this collection.",
     "retry": "Try again",
     "load_more": "Load more",

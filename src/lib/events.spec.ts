@@ -6,6 +6,7 @@ import {
   getLatestVerdict,
   getValidationAttemptsLeft,
   hasOpenAppeal,
+  isValidationInProgress,
   isValidationRunning,
   startOfUtcDay,
   type CollectionEvent
@@ -103,5 +104,11 @@ describe('latest-event flags', () => {
     expect(isValidationRunning([event('review.ai_rejected', NOW)])).toBe(false)
     expect(hasOpenAppeal([event('review.appeal_requested', NOW)])).toBe(true)
     expect(hasOpenAppeal([])).toBe(false)
+  })
+
+  it('keeps a verdict pending through a validator error and an assignment, until it lands', () => {
+    expect(isValidationInProgress([event('review.assigned', NOW), event('review.ai_error', NOW - 1)])).toBe(true)
+    expect(isValidationInProgress([event('review.ai_started', NOW)])).toBe(true)
+    expect(isValidationInProgress([event('review.ai_rejected', NOW), event('review.ai_started', NOW - 1)])).toBe(false)
   })
 })

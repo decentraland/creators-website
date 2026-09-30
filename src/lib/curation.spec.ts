@@ -313,6 +313,20 @@ describe('getReviewStage', () => {
     ],
     ['appealed', collection(), curation(), [event('review.appeal_requested')], ReviewStage.APPEALED],
     [
+      'AI reviewing again after a retry: the server opens a new pending request over the rejected one',
+      collection(),
+      curation(),
+      [event('review.ai_started'), event('review.ai_rejected')],
+      ReviewStage.AI_REVIEWING
+    ],
+    [
+      'appealed after a rejection: the appeal also reopens the request as pending',
+      collection(),
+      curation(),
+      [event('review.appeal_requested'), event('review.rejected')],
+      ReviewStage.APPEALED
+    ],
+    [
       'nothing for a pending request without a telling event',
       collection(),
       curation(),

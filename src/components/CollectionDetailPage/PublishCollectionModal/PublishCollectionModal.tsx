@@ -1,9 +1,11 @@
 import { useCallback, useState } from 'react'
 import { useTranslation } from '~/intl'
 import { useAllCollectionItems, useSaveCollection } from '~/hooks/useCollection'
+import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useStaticChecks } from '~/hooks/useStaticChecks'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
+import { FeatureFlag } from '~/lib/featureFlags'
 import { type TopUpResume } from '~/lib/creditsTopUp'
 import { type PaymentMethod, type PublishCollectionError, type PublishResult } from '~/lib/publishCollection'
 import { Modal } from '~/components/Modal'
@@ -56,8 +58,10 @@ export function PublishCollectionModal({ collection, session, resume, onClose, o
   const itemsQuery = useAllCollectionItems(address, collection.id)
   const items = itemsQuery.data ?? []
   const saveCollection = useSaveCollection(address)
-  // Started as soon as the wizard opens so the verdict is usually in before the creator reaches the fee.
-  const staticChecks = useStaticChecks(collection, items)
+  // Only while the server runs the same rule book after the fee: off, the flag is the kill switch for a
+  // validator false positive. Started as soon as the wizard opens so the verdict is in before the fee.
+  const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION)
+  const staticChecks = useStaticChecks(collection, items, autoCuration.enabled)
 
   function confirmName(name: string) {
     if (name === collection.name) {

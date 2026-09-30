@@ -30,7 +30,9 @@ vi.mock('~/hooks/useCuration', () => ({
   useRejectCuration: () => ({ mutate: state.reject, isPending: false, isError: false, reset: vi.fn() }),
   useDisableCollection: () => ({ mutate: state.disable, isPending: false, isError: false, reset: vi.fn() })
 }))
-vi.mock('~/hooks/useCollectionEvents', () => ({ useCollectionEvents: () => ({ events: state.events }) }))
+vi.mock('~/hooks/useCollectionEvents', () => ({
+  useCollectionEvents: () => ({ events: state.events, isAvailable: state.events !== null })
+}))
 vi.mock('~/hooks/useFeatureFlag', () => ({
   useFeatureFlag: () => ({ enabled: state.autoCuration, isLoading: false })
 }))
@@ -92,7 +94,16 @@ describe('ReviewBar', () => {
     expect(state.reject).toHaveBeenCalledWith({ collection: base, curation: null }, expect.anything())
   })
 
+  it('also keeps the plain confirmation when the server has no timeline, whatever the flag says', () => {
+    state.events = null
+    renderBar()
+    fireEvent.click(screen.getByTestId('review-action-reject'))
+    expect(screen.getByTestId('review-reject-confirm')).toBeInTheDocument()
+    expect(screen.queryByTestId('reject-curation-confirm')).toBeNull()
+  })
+
   it('rejects only with at least one reason and a message, and sends both', () => {
+    state.events = []
     renderBar()
     fireEvent.click(screen.getByTestId('review-action-reject'))
     const confirm = screen.getByTestId('reject-curation-confirm')

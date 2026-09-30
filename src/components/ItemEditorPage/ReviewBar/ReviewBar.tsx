@@ -56,9 +56,10 @@ export function ReviewBar({ session, collection, items }: Props) {
   const curationQuery = useCollectionCuration(address, collection)
   const curation = curationQuery.data ?? null
   const syncs = useItemSyncs(address, collection, items)
-  const { events } = useCollectionEvents(address, collection)
-  // Off, the server still refuses the rejection fields (schema), so the plain confirm rejects as before.
-  const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION)
+  const { events, isAvailable } = useCollectionEvents(address, collection)
+  // A server without the timeline refuses the rejection fields (schema) whatever the flag says, so the
+  // reason form only replaces the plain confirm where the timeline answered.
+  const withReasons = useFeatureFlag(FeatureFlag.AUTO_CURATION).enabled && isAvailable
   const reject = useRejectCuration(address)
   const disable = useDisableCollection(session)
   const [dialog, setDialog] = useState<Dialog>(null)
@@ -190,10 +191,10 @@ export function ReviewBar({ session, collection, items }: Props) {
           onClose={closeDialog}
         />
       )}
-      {dialog === 'reject' && autoCuration.enabled && (
+      {dialog === 'reject' && withReasons && (
         <RejectCurationModal collection={collection} curation={curation} address={address} onClose={closeDialog} />
       )}
-      {dialog === 'reject' && !autoCuration.enabled && (
+      {dialog === 'reject' && !withReasons && (
         <ConfirmModal
           title={t('item_editor.review.reject.title', { collection: collection.name })}
           description={t(

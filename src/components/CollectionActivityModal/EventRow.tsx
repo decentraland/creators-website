@@ -6,10 +6,12 @@ import { ProfileBadge } from '~/components/ProfileBadge'
 import {
   COLLECTION_EVENT_TYPES,
   countFailedItems,
+  getFailedItems,
   isRejectReasonCode,
   isValidationTrigger,
   type CollectionEvent
 } from '~/lib/events'
+import { shortAddress } from '~/lib/ids'
 import { type Item } from '~/lib/items'
 import { formatTimeAgo } from '~/lib/time'
 import { useProfile } from '~/hooks/useProfile'
@@ -35,7 +37,7 @@ const ACTOR_LED = new Set([
 
 function AssigneeName({ address }: { address: string }) {
   const { data: profile } = useProfile(address)
-  return <>{profile?.name || `${address.slice(0, 6)}…${address.slice(-4)}`}</>
+  return <>{profile?.name || shortAddress(address)}</>
 }
 
 export function EventRow({ event, items, isCurator }: Props) {
@@ -43,7 +45,10 @@ export function EventRow({ event, items, isCurator }: Props) {
   const intl = useIntl()
   const [showFindings, setShowFindings] = useState(false)
   const { payload } = event
-  const failedItems = useMemo(() => payload.items?.filter(item => item.passed !== true) ?? [], [payload.items])
+  const failedItems = useMemo(
+    () => (payload.items ? getFailedItems({ verdict: 'rejected', items: payload.items }) : []),
+    [payload.items]
+  )
   const reasons = useMemo(() => (payload.rejectionReasons ?? []).filter(isRejectReasonCode), [payload.rejectionReasons])
   const known = (COLLECTION_EVENT_TYPES as readonly string[]).includes(event.type)
 

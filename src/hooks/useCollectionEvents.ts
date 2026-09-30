@@ -12,7 +12,7 @@ import {
 import { type Collection } from '~/lib/collections'
 import { collectionCurationKey, collectionEventsKey } from '~/hooks/useCuration'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
-import { getValidationAttemptsLeft, isValidationRunning, type CollectionEvent } from '~/lib/events'
+import { getValidationAttemptsLeft, isValidationInProgress, type CollectionEvent } from '~/lib/events'
 import { FeatureFlag } from '~/lib/featureFlags'
 import { captureError } from '~/lib/monitoring'
 
@@ -24,7 +24,7 @@ export { collectionEventsKey }
  */
 export const EVENTS_PAGE_SIZE = 50
 
-/** While the validator works, the page polls so the verdict shows without a reload. */
+/** While a verdict is pending (running, or errored and about to be resent), the page polls so it shows without a reload. */
 const RUNNING_POLL_MS = 10_000
 
 type EventsPage = Awaited<ReturnType<typeof fetchCollectionEvents>> & { available: boolean }
@@ -69,9 +69,14 @@ export function useCollectionEvents(address: string | undefined, collection: Col
     staleTime: 30_000,
     refetchInterval: current => {
       const first = current.state.data?.pages[0]?.results
-      return first && isValidationRunning(first) ? RUNNING_POLL_MS : false
+      return first && isValidationInProgress(first) ? RUNNING_POLL_MS : false
     }
   })
+  // Every surface falls back to the legacy state on a failure, so this is the one place that reports it.
+  useEffect(() => {
+    if (query.isError) captureError(query.error, { flow: 'curation_events', collectionId })
+  }, [query.isError, query.error, collectionId])
+
   const events = useMemo<CollectionEvent[] | null>(() => {
     const pages = query.data?.pages
     if (!pages?.length || !pages[0].available) return null

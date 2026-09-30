@@ -7,7 +7,6 @@ import { useCommittee } from '~/hooks/useCuration'
 import { track } from '~/lib/analytics'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
-import { captureError } from '~/lib/monitoring'
 import { EventRow } from './EventRow'
 import * as S from './CollectionActivityModal.styles'
 
@@ -24,7 +23,8 @@ export function CollectionActivityModal({ collection, address, items = [], onClo
   const { t } = useTranslation()
   const { isCurator } = useCommittee(address)
   const query = useCollectionEvents(address, collection)
-  const { error, isLoading, hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage, refetch } = query
+  const { isLoading, isAvailable, hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage, refetch } =
+    query
   const events = query.events ?? []
   // A failed "Load more" keeps what is loaded on screen; only a failed first page empties the modal.
   const isError = query.isError && !isFetchNextPageError
@@ -32,10 +32,6 @@ export function CollectionActivityModal({ collection, address, items = [], onClo
   useEffect(() => {
     track('Open activity', { collectionId: collection.id })
   }, [collection.id])
-
-  useEffect(() => {
-    if (query.isError) captureError(error, { flow: 'curation_events', collectionId: collection.id })
-  }, [query.isError, error, collection.id])
 
   return (
     <Modal title={t('activity_modal.title')} onClose={onClose} size="large" testId="activity-modal">
@@ -55,6 +51,8 @@ export function CollectionActivityModal({ collection, address, items = [], onClo
               </Button>
             </S.StateActions>
           </>
+        ) : !isAvailable ? (
+          <S.State data-testid="activity-unavailable">{t('activity_modal.unavailable')}</S.State>
         ) : events.length === 0 ? (
           <S.State data-testid="activity-empty">{t('activity_modal.empty')}</S.State>
         ) : (

@@ -172,6 +172,19 @@ export function isValidationRunning(events: CollectionEvent[]): boolean {
   return events[0]?.type === 'review.ai_started'
 }
 
+/** Events that say nothing about the review stage: an assignment or a submitted change leaves it where it was. */
+export const STAGE_NEUTRAL_EVENT_TYPES = new Set(['review.assigned', 'changes.submitted'])
+
+export function latestStageEvent(events: CollectionEvent[]): CollectionEvent | undefined {
+  return events.find(event => !STAGE_NEUTRAL_EVENT_TYPES.has(event.type))
+}
+
+/** A verdict is still to come: the validator is working, or failed and the server's sweep will resend. */
+export function isValidationInProgress(events: CollectionEvent[]): boolean {
+  const type = latestStageEvent(events)?.type
+  return type === 'review.ai_started' || type === 'review.ai_error'
+}
+
 /** The appeal endpoint answers 409 while the latest event is still the open appeal. */
 export function hasOpenAppeal(events: CollectionEvent[]): boolean {
   return events[0]?.type === 'review.appeal_requested'
