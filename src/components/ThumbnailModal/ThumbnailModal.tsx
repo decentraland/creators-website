@@ -19,6 +19,7 @@ import {
 } from '~/lib/media'
 import { toEmoteWithBlobs, toWearableWithBlobs } from '~/lib/preview'
 import * as S from './ThumbnailModal.styles'
+import { previewBaseUrlOverride } from '~/config'
 
 const PREVIEW_ID = 'thumbnail-editor'
 const THUMBNAIL_SIZE = 1024
@@ -139,6 +140,7 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
           )}
           {blob && (
             <WearablePreview
+              baseUrl={previewBaseUrlOverride}
               id={PREVIEW_ID}
               blob={blob}
               disableBackground

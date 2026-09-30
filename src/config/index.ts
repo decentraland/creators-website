@@ -23,6 +23,17 @@ export const config = createEnvConfig(
 const search = typeof window === 'undefined' ? new URLSearchParams() : new URLSearchParams(window.location.search)
 
 /** `?unity=false` forces the Babylon preview renderer, a debugging escape hatch; any other value is ignored. */
+/**
+ * Dev-only origin for the wearable-preview iframe (`VITE_WEARABLE_PREVIEW_URL`), so a local preview over http can
+ * load models from a local builder-server; the hosted https preview refuses them as mixed content.
+ */
+export const previewBaseUrlOverride: string | undefined =
+  import.meta.env.DEV &&
+  typeof import.meta.env.VITE_WEARABLE_PREVIEW_URL === 'string' &&
+  import.meta.env.VITE_WEARABLE_PREVIEW_URL
+    ? import.meta.env.VITE_WEARABLE_PREVIEW_URL
+    : undefined
+
 export const previewRendererOverride: 'babylon' | null = search.get('unity') === 'false' ? 'babylon' : null
 
 /** The deployed version, written into `.env` from package.json by `scripts/prebuild.cjs`. */

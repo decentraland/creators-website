@@ -9,6 +9,7 @@ import { renderPosedThumbnail } from '~/lib/renderPosedThumbnail'
 import { getThumbnailPose, isAutoThumbnailStale } from '~/lib/thumbnailPose'
 import { type ItemDraft } from './AddItemsModal.state'
 import * as S from './AddItemsModal.styles'
+import { previewBaseUrlOverride } from '~/config'
 
 const PREVIEW_ID = 'draft-processor'
 const THUMBNAIL_SIZE = 1024
@@ -126,6 +127,7 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
     <S.HiddenPreview aria-hidden data-testid="draft-processor">
       {/* Emote-only options are URL params, so a type switch is the one case that needs a fresh iframe. */}
       <WearablePreview
+        baseUrl={previewBaseUrlOverride}
         key={isEmote ? 'emote' : 'wearable'}
         id={PREVIEW_ID}
         blob={blob}
