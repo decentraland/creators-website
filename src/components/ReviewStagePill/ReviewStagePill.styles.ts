@@ -19,6 +19,7 @@ export const Pill = styled.span`
     background: rgba(48, 205, 0, 0.2); /* green @ 20% */
   }
   &[data-stage='awaiting_curator'],
+  &[data-stage='needs_curator'],
   &[data-stage='appealed'] {
     color: ${theme.colors.amber};
     border-color: ${theme.colors.amber};

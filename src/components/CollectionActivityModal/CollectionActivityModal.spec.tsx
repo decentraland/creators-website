@@ -162,6 +162,31 @@ describe('CollectionActivityModal', () => {
     expect(screen.getByTestId('activity-findings-i1-finding')).toHaveTextContent('S-01')
   })
 
+  it('says when the automatic review gave up, and labels items it cannot judge', () => {
+    state.events = [
+      event('review.ai_error', 'system', { reason: 'sweep_exhausted', validationId: 'val-4' }),
+      event('review.human_required', 'system', {
+        reason: 'unsupported_items',
+        verdict: 'error',
+        rulesVersion: '0.4.0',
+        items: [{ itemId: 'i1', contentHash: 'h', passed: null, unsupported: true, findings: [] }]
+      })
+    ]
+    renderModal()
+    const lines = screen.getAllByTestId('activity-line').map(line => line.textContent)
+    expect(lines[0]).toBe('Automatic review gave up after several tries, a curator will review the collection')
+    expect(screen.queryByTestId('activity-rules-version')).toBeNull()
+    fireEvent.click(screen.getByTestId('activity-toggle-findings'))
+    expect(screen.getByTestId('activity-findings-item')).toHaveTextContent("Can't be checked automatically")
+  })
+
+  it('shows the rules version to curators', () => {
+    state.isCurator = true
+    state.events = [event('review.ai_passed', 'validator', { verdict: 'passed', rulesVersion: '0.4.0', items: [] })]
+    renderModal()
+    expect(screen.getByTestId('activity-rules-version')).toHaveTextContent('Rules 0.4.0')
+  })
+
   it('tells curators about validator failures', () => {
     state.isCurator = true
     state.events = [event('review.ai_error', 'validator', { verdict: 'error', items: [] })]

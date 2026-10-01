@@ -25,6 +25,12 @@ export const Notice = styled.p`
   }
 `
 
+export const NoticeGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`
+
 export const Panel = styled.section`
   display: flex;
   flex-direction: column;

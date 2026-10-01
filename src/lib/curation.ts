@@ -1,7 +1,13 @@
 // Curation domain: the committee's review requests on standard collections, ported from the legacy
 // builder (modules/curations, modules/committee, CurationPage) against the same builder-server API.
 import { CollectionSort, CollectionType, hasBeenApproved, type Collection } from '~/lib/collections'
-import { isRejectReasonCode, latestStageEvent, type CollectionEvent, type RejectReasonCode } from '~/lib/events'
+import {
+  isFinalValidationError,
+  isRejectReasonCode,
+  latestStageEvent,
+  type CollectionEvent,
+  type RejectReasonCode
+} from '~/lib/events'
 
 export type CurationRequestStatus = 'pending' | 'approved' | 'rejected'
 
@@ -55,6 +61,8 @@ export function fromRemoteCuration(remote: RemoteCollectionCuration): Collection
 export enum ReviewStage {
   AI_REVIEWING = 'ai_reviewing',
   AWAITING_CURATOR = 'awaiting_curator',
+  /** The validator did not pass it (skipped, could not check, or gave up): a curator decides. */
+  NEEDS_CURATOR = 'needs_curator',
   REJECTED_BY_VALIDATOR = 'rejected_by_validator',
   APPEALED = 'appealed',
   REJECTED_BY_CURATOR = 'rejected_by_curator',
@@ -81,11 +89,13 @@ export function getReviewStage(
   const latest = latestStageEvent(events)
   switch (latest?.type) {
     case 'review.ai_started':
-    case 'review.ai_error':
       return ReviewStage.AI_REVIEWING
+    case 'review.ai_error':
+      return isFinalValidationError(latest) ? ReviewStage.NEEDS_CURATOR : ReviewStage.AI_REVIEWING
     case 'review.ai_passed':
-    case 'review.human_required':
       return ReviewStage.AWAITING_CURATOR
+    case 'review.human_required':
+      return ReviewStage.NEEDS_CURATOR
     case 'review.appeal_requested':
       return ReviewStage.APPEALED
     default:

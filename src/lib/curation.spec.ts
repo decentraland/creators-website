@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CollectionSort, type Collection } from './collections'
+import { type CollectionEvent } from './events'
 import {
   CurationState,
   CurationStatusFilter,
@@ -269,13 +270,13 @@ describe('curationListUrl', () => {
 })
 
 describe('getReviewStage', () => {
-  const event = (type: string) => ({
+  const event = (type: string, payload: CollectionEvent['payload'] = {}) => ({
     id: 'e',
     collectionId: 'c1',
     type,
     actor: 'validator' as const,
     actorAddress: null,
-    payload: {},
+    payload,
     createdAt: 1
   })
   const approvedOnChain = collection({ isApproved: true })
@@ -305,11 +306,25 @@ describe('getReviewStage', () => {
       ReviewStage.AWAITING_CURATOR
     ],
     [
-      'awaiting a curator when a third-party collection skips the AI',
+      'needing a curator when a third-party collection skips the AI',
       collection(),
       curation(),
       [event('review.human_required'), event('review.ai_error'), event('review.ai_started')],
-      ReviewStage.AWAITING_CURATOR
+      ReviewStage.NEEDS_CURATOR
+    ],
+    [
+      'needing a curator once the server gives up resending',
+      collection(),
+      curation(),
+      [event('review.ai_error', { reason: 'sweep_exhausted' }), event('review.ai_error')],
+      ReviewStage.NEEDS_CURATOR
+    ],
+    [
+      'needing a curator for a collection too large to send',
+      collection(),
+      curation(),
+      [event('review.ai_error', { reason: 'too_large' }), event('review.ai_started')],
+      ReviewStage.NEEDS_CURATOR
     ],
     ['appealed', collection(), curation(), [event('review.appeal_requested')], ReviewStage.APPEALED],
     [

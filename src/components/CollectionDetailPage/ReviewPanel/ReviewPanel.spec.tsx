@@ -98,11 +98,51 @@ describe('ReviewPanel', () => {
       event('review.ai_started')
     ])
     const notice = screen.getByTestId('review-notice')
-    expect(notice).toHaveAttribute('data-stage', 'awaiting_curator')
+    expect(notice).toHaveAttribute('data-stage', 'needs_curator')
     expect(notice).toHaveTextContent(
       "Some items can't be reviewed automatically. A curator will review your collection."
     )
     expect(screen.queryByTestId('validate-again')).toBeNull()
+  })
+
+  it('hands a given-up review to a curator and lets the creator validate again', () => {
+    const events = [event('review.ai_error', { reason: 'sweep_exhausted' }), event('review.ai_error')]
+    renderPanel(base, events)
+    const notice = screen.getByTestId('review-notice')
+    expect(notice).toHaveAttribute('data-stage', 'needs_curator')
+    expect(notice).toHaveTextContent("The automatic review couldn't check your collection.")
+    fireEvent.click(screen.getByTestId('validate-again'))
+    expect(mocks.validate).toHaveBeenCalledWith({ collection, events }, expect.anything())
+  })
+
+  it('offers no retry for a collection too large for the automatic review', () => {
+    renderPanel(base, [event('review.ai_error', { reason: 'too_large' })])
+    expect(screen.getByTestId('review-notice')).toHaveTextContent('too large for the automatic review')
+    expect(screen.queryByTestId('validate-again')).toBeNull()
+  })
+
+  it('merges findings found on both body shapes and explains items it could not validate', () => {
+    const finding = { rule: 'M-01', severity: 'error' as const, message: 'Too many triangles' }
+    renderPanel(rejectedByValidator, [
+      event('review.ai_rejected', {
+        verdict: 'rejected',
+        items: [
+          {
+            itemId: 'i1',
+            contentHash: 'h',
+            passed: false,
+            findings: [
+              { ...finding, where: 'male/hat.glb', bodyShape: 'male' },
+              { ...finding, where: 'female/hat.glb', bodyShape: 'female' }
+            ]
+          },
+          { itemId: 'i2', contentHash: 'h2', passed: null, findings: [], error: 'Download failed' }
+        ]
+      })
+    ])
+    expect(screen.getAllByTestId('review-panel-findings-i1-finding')).toHaveLength(1)
+    expect(screen.getByTestId('review-panel-findings-i1-body-shapes')).toHaveTextContent('Male · Female')
+    expect(screen.getByTestId('review-panel-findings-item-error')).toHaveTextContent('Download failed')
   })
 
   it('falls back to the legacy notice without a timeline', () => {

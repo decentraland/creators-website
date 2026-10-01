@@ -16,11 +16,13 @@ import {
   type CollectionCuration
 } from '~/lib/curation'
 import {
+  SWEEP_EXHAUSTED_REASON,
   VALIDATION_ATTEMPTS_PER_DAY,
   getFailedItems,
   getLatestVerdict,
   getValidationAttemptsLeft,
   hasOpenAppeal,
+  isFinalValidationError,
   isUnsupportedItemsReview,
   isValidationRunning,
   latestStageEvent,
@@ -64,29 +66,6 @@ export function ReviewPanel({ collection, address, curation, events, items, canM
 
   if (!collection.isPublished) return null
 
-  if (!isRejectedStage(stage)) {
-    const legacy = getCreatorReviewNotice(collection, curation)
-    let text: string | null = null
-    if (stage === ReviewStage.AI_REVIEWING) text = t('review_panel.ai_reviewing')
-    else if (stage === ReviewStage.AWAITING_CURATOR) {
-      const cause = latestStageEvent(timeline)
-      text = isUnsupportedItemsReview(cause)
-        ? t('review_panel.unsupported_items')
-        : cause?.type === 'review.human_required'
-          ? t('review_panel.human_review')
-          : t(curation?.assignee ? 'review_panel.awaiting_curator_assigned' : 'review_panel.awaiting_curator')
-    } else if (stage === ReviewStage.APPEALED) text = t('review_panel.appealed')
-    else if (legacy) text = t(`collection_detail_page.review_notice.${legacy}`)
-    if (!text) return null
-    return (
-      <S.Notice data-testid="review-notice" data-stage={stage ?? legacy} data-tone={stage ? 'info' : undefined}>
-        <InfoIcon fontSize="small" aria-hidden />
-        {text}
-      </S.Notice>
-    )
-  }
-
-  const byValidator = stage === ReviewStage.REJECTED_BY_VALIDATOR
   const canRetry = canManage && attemptsLeft > 0 && !running
 
   function validateAgain() {
@@ -111,6 +90,73 @@ export function ReviewPanel({ collection, address, curation, events, items, canM
       }
     )
   }
+
+  const validateAgainActions = (
+    <>
+      <Tooltip
+        content={
+          attemptsLeft === 0
+            ? t('review_panel.attempts_exhausted', { max: VALIDATION_ATTEMPTS_PER_DAY })
+            : running
+              ? t('review_panel.validation_running')
+              : null
+        }
+        placement="top"
+        asChild
+      >
+        <Button
+          type="button"
+          variant="primary"
+          loading={requestValidation.isPending}
+          aria-disabled={!canRetry || undefined}
+          data-testid="validate-again"
+          onClick={() => canRetry && validateAgain()}
+        >
+          {t('review_panel.validate_again')}
+        </Button>
+      </Tooltip>
+      <S.Attempts data-testid="validation-attempts" data-exhausted={attemptsLeft === 0 || undefined}>
+        {t('review_panel.attempts_left', { left: attemptsLeft, max: VALIDATION_ATTEMPTS_PER_DAY })}
+      </S.Attempts>
+    </>
+  )
+
+  if (!isRejectedStage(stage)) {
+    const legacy = getCreatorReviewNotice(collection, curation)
+    const cause = latestStageEvent(timeline)
+    let text: string | null = null
+    // Only a give-up after transient failures may go better on a new request; the other final errors repeat.
+    let offerRetry = false
+    if (stage === ReviewStage.AI_REVIEWING) text = t('review_panel.ai_reviewing')
+    else if (stage === ReviewStage.AWAITING_CURATOR) {
+      text = t(curation?.assignee ? 'review_panel.awaiting_curator_assigned' : 'review_panel.awaiting_curator')
+    } else if (stage === ReviewStage.NEEDS_CURATOR) {
+      if (isUnsupportedItemsReview(cause)) text = t('review_panel.unsupported_items')
+      else if (cause?.type === 'review.ai_error' && cause.payload.reason === 'too_large') {
+        text = t('review_panel.too_large')
+      } else if (isFinalValidationError(cause)) {
+        text = t('review_panel.validator_failed')
+        offerRetry = canManage && cause?.payload.reason === SWEEP_EXHAUSTED_REASON
+      } else text = t('review_panel.human_review')
+    } else if (stage === ReviewStage.APPEALED) text = t('review_panel.appealed')
+    else if (legacy) text = t(`collection_detail_page.review_notice.${legacy}`)
+    if (!text) return null
+    const notice = (
+      <S.Notice data-testid="review-notice" data-stage={stage ?? legacy} data-tone={stage ? 'info' : undefined}>
+        <InfoIcon fontSize="small" aria-hidden />
+        {text}
+      </S.Notice>
+    )
+    if (!offerRetry) return notice
+    return (
+      <S.NoticeGroup>
+        {notice}
+        <S.Actions>{validateAgainActions}</S.Actions>
+      </S.NoticeGroup>
+    )
+  }
+
+  const byValidator = stage === ReviewStage.REJECTED_BY_VALIDATOR
 
   return (
     <S.Panel data-testid="review-panel" data-stage={stage}>
@@ -151,31 +197,7 @@ export function ReviewPanel({ collection, address, curation, events, items, canM
 
       {canManage ? (
         <S.Actions>
-          <Tooltip
-            content={
-              attemptsLeft === 0
-                ? t('review_panel.attempts_exhausted', { max: VALIDATION_ATTEMPTS_PER_DAY })
-                : running
-                  ? t('review_panel.validation_running')
-                  : null
-            }
-            placement="top"
-            asChild
-          >
-            <Button
-              type="button"
-              variant="primary"
-              loading={requestValidation.isPending}
-              aria-disabled={!canRetry || undefined}
-              data-testid="validate-again"
-              onClick={() => canRetry && validateAgain()}
-            >
-              {t('review_panel.validate_again')}
-            </Button>
-          </Tooltip>
-          <S.Attempts data-testid="validation-attempts" data-exhausted={attemptsLeft === 0 || undefined}>
-            {t('review_panel.attempts_left', { left: attemptsLeft, max: VALIDATION_ATTEMPTS_PER_DAY })}
-          </S.Attempts>
+          {validateAgainActions}
           <Tooltip content={appealOpen ? t('review_panel.appeal_open') : null} placement="top" asChild>
             <Button
               type="button"

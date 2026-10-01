@@ -208,10 +208,20 @@ export function isUnsupportedItemsReview(event: CollectionEvent | undefined): bo
   return event?.type === 'review.human_required' && event.payload.reason === UNSUPPORTED_ITEMS_REASON
 }
 
+export const VALIDATOR_ERROR_REASON = 'validator_error'
+export const SWEEP_EXHAUSTED_REASON = 'sweep_exhausted'
+const FINAL_AI_ERROR_REASONS: readonly string[] = [SWEEP_EXHAUSTED_REASON, 'too_large'] satisfies FinalAiErrorReason[]
+
+/** The validator gave up on the latest request: no verdict will come without a curator or a new request. */
+export function isFinalValidationError(event: CollectionEvent | undefined): boolean {
+  if (event?.type === 'review.ai_error') return FINAL_AI_ERROR_REASONS.includes(event.payload.reason ?? '')
+  return event?.type === 'review.human_required' && event.payload.reason === VALIDATOR_ERROR_REASON
+}
+
 /** A verdict is still to come: the validator is working, or failed and the server's sweep will resend. */
 export function isValidationInProgress(events: CollectionEvent[]): boolean {
-  const type = latestStageEvent(events)?.type
-  return type === 'review.ai_started' || type === 'review.ai_error'
+  const latest = latestStageEvent(events)
+  return latest?.type === 'review.ai_started' || (latest?.type === 'review.ai_error' && !isFinalValidationError(latest))
 }
 
 /** The appeal endpoint answers 409 while the latest event is still the open appeal. */

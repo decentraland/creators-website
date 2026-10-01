@@ -7,6 +7,8 @@ import {
   COLLECTION_EVENT_TYPES,
   countFailedItems,
   getFailedItems,
+  SWEEP_EXHAUSTED_REASON,
+  VALIDATOR_ERROR_REASON,
   isRejectReasonCode,
   isUnsupportedItemsReview,
   isValidationTrigger,
@@ -62,11 +64,14 @@ export function EventRow({ event, items, isCurator }: Props) {
       case 'review.ai_rejected':
         return t('activity_modal.event.review.ai_rejected', { count: countFailedItems(payload.items ?? []) })
       case 'review.ai_error':
+        if (payload.reason === SWEEP_EXHAUSTED_REASON) return t('activity_modal.event.review.ai_error_exhausted')
+        if (payload.reason === 'too_large') return t('activity_modal.event.review.ai_error_too_large')
         return t(isCurator ? 'activity_modal.event.review.ai_error_curator' : 'activity_modal.event.review.ai_error')
       case 'review.human_required':
+        if (isUnsupportedItemsReview(event)) return t('activity_modal.event.review.human_required_unsupported')
         return t(
-          isUnsupportedItemsReview(event)
-            ? 'activity_modal.event.review.human_required_unsupported'
+          payload.reason === VALIDATOR_ERROR_REASON
+            ? 'activity_modal.event.review.human_required_validator_error'
             : 'activity_modal.event.review.human_required'
         )
       case 'review.assigned':
@@ -92,6 +97,7 @@ export function EventRow({ event, items, isCurator }: Props) {
       </S.Actor>
     )
   const quote = payload.rejectionMessage ?? payload.note
+  const rulesVersion = isCurator ? payload.rulesVersion : undefined
 
   return (
     <S.Row data-testid="activity-event" data-type={event.type}>
@@ -105,7 +111,7 @@ export function EventRow({ event, items, isCurator }: Props) {
       >
         {formatTimeAgo(event.createdAt, intl.locale)}
       </S.Time>
-      {(reasons.length > 0 || quote || payload.validationId || failedItems.length > 0) && (
+      {(reasons.length > 0 || quote || payload.validationId || rulesVersion || failedItems.length > 0) && (
         <S.Details>
           {reasons.length > 0 && (
             <S.Reasons data-testid="activity-reasons">
@@ -118,6 +124,11 @@ export function EventRow({ event, items, isCurator }: Props) {
           {payload.validationId && (
             <S.Mono data-testid="activity-validation-id">
               {t('ai_verdict.validation_id', { id: payload.validationId })}
+            </S.Mono>
+          )}
+          {rulesVersion && (
+            <S.Mono data-testid="activity-rules-version">
+              {t('ai_verdict.rules_version', { version: rulesVersion })}
             </S.Mono>
           )}
           {failedItems.length > 0 && (

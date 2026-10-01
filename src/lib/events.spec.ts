@@ -6,6 +6,7 @@ import {
   getLatestVerdict,
   getValidationAttemptsLeft,
   hasOpenAppeal,
+  isFinalValidationError,
   isValidationInProgress,
   isValidationRunning,
   mergeBodyShapeFindings,
@@ -112,6 +113,18 @@ describe('latest-event flags', () => {
     expect(isValidationInProgress([event('review.assigned', NOW), event('review.ai_error', NOW - 1)])).toBe(true)
     expect(isValidationInProgress([event('review.ai_started', NOW)])).toBe(true)
     expect(isValidationInProgress([event('review.ai_rejected', NOW), event('review.ai_started', NOW - 1)])).toBe(false)
+  })
+
+  it('stops waiting once the server gave up on the request', () => {
+    for (const reason of ['sweep_exhausted', 'too_large']) {
+      const gaveUp = event('review.ai_error', NOW, { reason, validationId: 'v1' })
+      expect(isFinalValidationError(gaveUp)).toBe(true)
+      expect(isValidationInProgress([event('review.assigned', NOW), gaveUp])).toBe(false)
+    }
+    const validatorError = event('review.human_required', NOW, { reason: 'validator_error' })
+    expect(isFinalValidationError(validatorError)).toBe(true)
+    expect(isFinalValidationError(event('review.human_required', NOW, { reason: 'third_party' }))).toBe(false)
+    expect(isFinalValidationError(event('review.ai_error', NOW, { verdict: 'error', retryable: true }))).toBe(false)
   })
 })
 
