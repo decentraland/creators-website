@@ -7,11 +7,18 @@ import {
   toCollectionsQueryString,
   toRemoteCollection,
   type Collection,
-  type CollectionCuration,
   type FetchCollectionsParams,
   type PaginatedResource,
   type RemoteCollection
 } from '~/lib/collections'
+import {
+  fromRemoteCuration,
+  toCurationQueryString,
+  type CollectionCuration,
+  type CurationFilters,
+  type CurationRequestStatus,
+  type RemoteCollectionCuration
+} from '~/lib/curation'
 import { VIDEO_PATH, fromRemoteItem, toRemoteItem, type Item, type RemoteItem } from '~/lib/items'
 import { type BlockchainRarity } from '~/lib/rarities'
 
@@ -114,7 +121,7 @@ export async function fetchCollectionCuration(
   address: string,
   collectionId: string
 ): Promise<CollectionCuration | null> {
-  const curation = await request<CollectionCuration | null | undefined>(
+  const curation = await request<RemoteCollectionCuration | null | undefined>(
     address,
     'GET',
     `/collections/${collectionId}/curation`,
@@ -122,7 +129,71 @@ export async function fetchCollectionCuration(
     undefined,
     false
   )
-  return curation ?? null
+  return curation ? fromRemoteCuration(curation) : null
+}
+
+/** The committee's address list: GET /committee (public). */
+export async function fetchCommittee(): Promise<string[]> {
+  const accounts = await request<{ address: string }[]>(undefined, 'GET', '/committee')
+  return accounts.map(account => account.address.toLowerCase())
+}
+
+/** Every published standard collection the committee reviews: GET /collections (committee only). */
+export async function fetchCurationCollections(
+  address: string,
+  filters: CurationFilters
+): Promise<PaginatedResource<Collection>> {
+  const remote = await request<PaginatedResource<RemoteCollection>>(
+    address,
+    'GET',
+    '/collections',
+    toCurationQueryString(filters)
+  )
+  return { ...remote, results: remote.results.map(fromRemoteCollection) }
+}
+
+/** The latest curation request of every collection the signer may see (all of them for the committee). */
+export async function fetchCurations(address: string): Promise<CollectionCuration[]> {
+  const remote = await request<RemoteCollectionCuration[]>(address, 'GET', '/curations')
+  return remote.map(fromRemoteCuration)
+}
+
+/**
+ * Opens a new review request: POST /collections/{id}/curation. Creators use it to push changes of an
+ * approved collection; the committee to assign a collection that was never requested. 400 while one is pending.
+ */
+export async function pushCollectionCuration(
+  address: string,
+  collectionId: string,
+  assignee?: string | null
+): Promise<CollectionCuration> {
+  const body = assignee === undefined ? undefined : { curation: { assignee } }
+  const remote = await request<RemoteCollectionCuration>(
+    address,
+    'POST',
+    `/collections/${collectionId}/curation`,
+    '',
+    body
+  )
+  return fromRemoteCuration(remote)
+}
+
+/** Updates the latest request: PATCH /collections/{id}/curation. Status changes and assignees are committee-only. */
+export async function updateCollectionCuration(
+  address: string,
+  collectionId: string,
+  curation: { status?: CurationRequestStatus; assignee?: string | null }
+): Promise<CollectionCuration> {
+  const remote = await request<RemoteCollectionCuration>(
+    address,
+    'PATCH',
+    `/collections/${collectionId}/curation`,
+    '',
+    {
+      curation
+    }
+  )
+  return fromRemoteCuration(remote)
 }
 
 /** Delete an unpublished collection and its items: DELETE /collections/{id} (409 published, 423 locked). */

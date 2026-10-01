@@ -4,6 +4,7 @@ import {
   Add as AddIcon,
   ArrowBackIosNew as ArrowBackIcon,
   Edit as EditIcon,
+  InfoOutlined as InfoIcon,
   PersonOutline as PersonOutlineIcon
 } from '@mui/icons-material'
 import { useIntl } from 'react-intl'
@@ -14,6 +15,7 @@ import { BuilderServerError } from '~/lib/builder'
 import { FeatureFlag } from '~/lib/featureFlags'
 import {
   CollectionDisplayStatus,
+  canManageCollectionItems,
   canSellCollectionItems,
   getCollectionDisplayStatus,
   hasBeenApproved,
@@ -42,7 +44,9 @@ import { useCollectionListings } from '~/hooks/useCollectionListings'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
-import { hasPendingChanges } from '~/lib/itemSync'
+import { ItemSyncStatus, hasPendingChanges } from '~/lib/itemSync'
+import { canPushChanges, getCreatorReviewNotice } from '~/lib/curation'
+import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
 import { previewCollection } from '~/lib/explorer'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS, THUMBNAIL_PATH } from '~/lib/itemFiles'
@@ -50,6 +54,7 @@ import { type ItemListing } from '~/lib/listings'
 import { useNotifications } from '~/lib/notifications'
 import { theme } from '~/styles/theme'
 import { Button } from '~/components/Button'
+import { ConfirmModal } from '~/components/ConfirmModal'
 import { Tooltip } from '~/components/Tooltip'
 import { EmoteIcon, JumpInIcon, OpenEditorIcon, WearableIcon } from '~/components/Icons'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
@@ -160,6 +165,26 @@ const CollectionDetailPage = () => {
   const listingFor = (item: Item) =>
     listings ? (listings.get(item.tokenId ?? '') ?? null) : listingsQuery.isError ? null : undefined
   const syncs = useItemSyncs(address, collection, allItems ?? [])
+  const curationQuery = useCollectionCuration(address, collection)
+  const curation = curationQuery.data ?? null
+  const pushCuration = usePushCuration(address)
+  const [isPushOpen, setPushOpen] = useState(false)
+  const hasUnsyncedItems = useMemo(
+    () => [...syncs.values()].some(sync => sync.status === ItemSyncStatus.UNSYNCED),
+    [syncs]
+  )
+  const closePush = () => {
+    setPushOpen(false)
+    pushCuration.reset()
+  }
+  const reviewNotice = collection ? getCreatorReviewNotice(collection, curation) : null
+  // Until the request loads, a pending one looks like none and the push would duplicate it.
+  const showPushChanges =
+    !!collection &&
+    curationQuery.isSuccess &&
+    canPushChanges(collection, curation, hasUnsyncedItems, canManageCollectionItems(collection, address))
+  // A never-approved collection asks for its first review again; an approved one sends an update.
+  const pushCopy = collection?.isApproved ? 'push_changes' : 'request_review'
 
   const isLoading = !restored || (!!address && (collectionQuery.isLoading || itemsQuery.isLoading))
   // builder-server serves published collections to any signer; addresses with no role on it get
@@ -336,7 +361,7 @@ const CollectionDetailPage = () => {
                   </S.RenameButton>
                 )}
               </S.TitleGroup>
-              <CollectionStatusPill collection={collection} hint={statusHint} />
+              <CollectionStatusPill collection={collection} curation={curation} hint={statusHint} />
               {address && <CollectionRolePill collection={collection} address={address} />}
             </S.HeaderLeft>
             <S.HeaderActions>
@@ -381,6 +406,17 @@ const CollectionDetailPage = () => {
                   </Button>
                 </Tooltip>
               )}
+              {showPushChanges && (
+                <Button
+                  type="button"
+                  variant="primary"
+                  data-desktop-only
+                  data-testid="push-changes"
+                  onClick={() => setPushOpen(true)}
+                >
+                  {t(`collection_detail_page.${pushCopy}.action`)}
+                </Button>
+              )}
               {canSend && (
                 <Button
                   type="button"
@@ -404,6 +440,13 @@ const CollectionDetailPage = () => {
               )}
             </S.HeaderActions>
           </S.Header>
+
+          {reviewNotice && (
+            <S.ReviewNotice data-testid="review-notice" data-notice={reviewNotice}>
+              <InfoIcon fontSize="small" aria-hidden />
+              {t(`collection_detail_page.review_notice.${reviewNotice}`)}
+            </S.ReviewNotice>
+          )}
 
           <S.SubHeader>
             <S.FilterChips data-testid="type-filters">
@@ -585,6 +628,32 @@ const CollectionDetailPage = () => {
             />
           )}
           {publishView === 'success' && <PublishSuccessModal onDone={() => setPublishView('closed')} />}
+          {isPushOpen && (
+            <ConfirmModal
+              title={t(`collection_detail_page.${pushCopy}.title`)}
+              description={t(`collection_detail_page.${pushCopy}.description`)}
+              error={pushCuration.isError ? t(`collection_detail_page.${pushCopy}.error`) : null}
+              busy={pushCuration.isPending}
+              onClose={closePush}
+              cancel={{
+                label: t(`collection_detail_page.${pushCopy}.cancel`),
+                onClick: closePush,
+                testId: 'push-changes-cancel'
+              }}
+              confirm={{
+                label: t(`collection_detail_page.${pushCopy}.confirm`),
+                onClick: () =>
+                  pushCuration.mutate(collection, {
+                    onSuccess: () => {
+                      setPushOpen(false)
+                      showToast(t(`collection_detail_page.${pushCopy}.success`))
+                    }
+                  }),
+                testId: 'push-changes-confirm'
+              }}
+              testId="push-changes-modal"
+            />
+          )}
           {isSending && session && (
             <SendItemsFlow
               collection={collection}

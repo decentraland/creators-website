@@ -2,17 +2,20 @@ import type { ReactNode } from 'react'
 import { useTranslation } from '~/intl'
 import { InfoTooltip } from '~/components/Tooltip'
 import { getCollectionDisplayStatus, type Collection } from '~/lib/collections'
+import { type CollectionCuration } from '~/lib/curation'
 import * as S from './CollectionStatusPill.styles'
 
 type Props = {
   collection: Collection
+  /** The latest review request, when the caller has it: it tells a rejected first review apart from one still waiting. */
+  curation?: CollectionCuration | null
   /** Shown as an (i) tooltip inside the pill; the caller decides which status deserves one. */
   hint?: ReactNode
 }
 
-export function CollectionStatusPill({ collection, hint }: Props) {
+export function CollectionStatusPill({ collection, curation, hint }: Props) {
   const { t } = useTranslation()
-  const status = getCollectionDisplayStatus(collection)
+  const status = getCollectionDisplayStatus(collection, curation)
   return (
     <S.Pill data-testid="collection-status" data-status={status}>
       {t(`collection_status.${status}`)}

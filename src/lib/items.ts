@@ -100,6 +100,7 @@ export type RemoteItem = {
   metrics?: ItemMetrics
   contents: Record<string, string>
   content_hash?: string | null
+  local_content_hash?: string | null
   created_at: string
   updated_at: string
 }
@@ -121,6 +122,10 @@ export type Item = {
   totalSupply?: number
   /** On-chain item id (`blockchain_item_id`), assigned once the collection is published. */
   tokenId?: string
+  /** Content hash of the builder copy, computed by builder-server once the item is published. */
+  currentContentHash?: string
+  /** Content hash the collection contract holds for the item. */
+  blockchainContentHash?: string
   isPublished: boolean
   isApproved: boolean
   inCatalyst: boolean
@@ -158,6 +163,8 @@ export function fromRemoteItem(remote: RemoteItem): Item {
   if (remote.utility) item.utility = remote.utility
   if (remote.total_supply !== undefined && remote.total_supply !== null) item.totalSupply = remote.total_supply
   if (remote.blockchain_item_id) item.tokenId = remote.blockchain_item_id
+  if (remote.local_content_hash) item.currentContentHash = remote.local_content_hash
+  if (remote.content_hash) item.blockchainContentHash = remote.content_hash
   return item
 }
 

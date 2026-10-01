@@ -9,7 +9,7 @@ import { toSellItemError, type SellFailureReason } from '~/lib/sales'
 import { EnableSalesModal } from './EnableSalesModal'
 import { PendingModal } from './PendingModal'
 import { SaleErrorModal, type SaleStage } from './SaleErrorModal'
-import { SaleSuccessModal } from './SaleSuccessModal'
+import { SuccessModal } from '~/components/SuccessModal'
 import { DEFAULT_SELL_VALUES, SellItemModal, type SellFormValues, type SellSubmission } from './SellItemModal'
 
 type View = 'enable' | 'enabling' | 'form' | 'selling' | 'success' | 'error'
@@ -124,7 +124,7 @@ export function SellItemFlow({ item, collection, session, hasPendingChanges = fa
       )
     case 'success':
       return (
-        <SaleSuccessModal
+        <SuccessModal
           title={t('sell_item_modal.success.title')}
           description={t('sell_item_modal.success.description')}
           onDone={onClose}

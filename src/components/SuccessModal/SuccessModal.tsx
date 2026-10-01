@@ -3,7 +3,7 @@ import successArt from '~/assets/sale-success.png'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { useTranslation } from '~/intl'
-import * as S from './SaleSuccessModal.styles'
+import * as S from './SuccessModal.styles'
 
 type Props = {
   title: string
@@ -13,7 +13,7 @@ type Props = {
 }
 
 /** The celebratory close of a sale action: illustration, heading, one line, DONE. */
-export function SaleSuccessModal({ title, description, art = successArt, onDone }: Props) {
+export function SuccessModal({ title, description, art = successArt, onDone }: Props) {
   const { t } = useTranslation()
   return (
     <Modal title={title} onClose={onDone} hideTitle testId="sale-success-modal">

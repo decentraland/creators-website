@@ -1,4 +1,5 @@
 import styled from '@emotion/styled'
+import { Link } from 'react-router-dom'
 import { theme } from '~/styles/theme'
 
 export const Workspace = styled.div`
@@ -549,6 +550,10 @@ export const Chips = styled.div`
   &:empty {
     display: none;
   }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
 `
 
 export const TagChip = styled.span`
@@ -574,8 +579,8 @@ export const TagChip = styled.span`
     color: inherit;
   }
 
-  & button:disabled {
-    display: none;
+  &[data-readonly] {
+    padding-right: 10px;
   }
 `
 
@@ -600,16 +605,6 @@ export const SectionNote = styled.p`
   }
 `
 
-export const ReviewBar = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 56px;
-  padding: 0 12px;
-  border-bottom: 1px solid ${theme.editor.line};
-  background: ${theme.editor.surface};
-`
-
 export const MobileWorkspace = styled.div`
   position: relative;
   display: flex;
@@ -618,6 +613,39 @@ export const MobileWorkspace = styled.div`
   height: 100dvh;
   background: ${theme.editor.bg};
   color: ${theme.colors.white};
+`
+
+export const MobileEditorHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 56px;
+  padding: 6px 12px;
+  border-bottom: 1px solid ${theme.editor.line};
+  background: ${theme.editor.surface};
+`
+
+export const MobileBackLink = styled(Link)`
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: ${theme.colors.white};
+`
+
+export const MobileCollectionName = styled.h1`
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: ${theme.colors.white};
+  font-size: 16px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `
 
 export const MobilePreviewArea = styled.div`

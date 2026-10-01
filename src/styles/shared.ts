@@ -4,6 +4,7 @@ import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
 
 const mobile = theme.media.maxWidth('mobile')
+const stacked = theme.media.maxWidth('xl')
 
 export const SearchBox = styled.div`
   display: flex;
@@ -133,4 +134,110 @@ export const ShowingCount = styled.span`
   font-size: 14px;
   line-height: 1.57;
   color: ${theme.colors.gray4};
+`
+
+export const Page = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+
+  ${mobile} {
+    gap: 24px;
+    padding-top: 12px;
+  }
+`
+
+export const Header = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  padding-bottom: 12px;
+
+  ${stacked} {
+    flex-flow: row wrap;
+    gap: 16px;
+  }
+`
+
+export const Title = styled.h1`
+  min-width: 0;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.46px;
+  color: ${theme.colors.white};
+
+  ${mobile} {
+    font-size: 20px;
+  }
+`
+
+export const Chips = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+
+  ${mobile} {
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 5px 0;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  /* Chips only overflow below ~490px, a non-canonical width */
+  @media (max-width: 490px) {
+    mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+  }
+`
+
+export const Chip = styled.button`
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 20px;
+  background: ${theme.colors.glass};
+  color: ${theme.colors.white};
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: 0.46px;
+  white-space: nowrap;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+
+  &:hover {
+    background: ${theme.colors.glassHover};
+  }
+  &[data-active] {
+    background: ${theme.colors.softWhite};
+    color: ${theme.colors.text};
+  }
+`
+
+export const SignInIcon = styled.div`
+  display: flex;
+  color: ${theme.colors.white};
+
+  & svg {
+    width: 140px;
+    height: 140px;
+  }
+
+  ${mobile} {
+    & svg {
+      width: 100px;
+      height: 100px;
+    }
+  }
 `

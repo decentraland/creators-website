@@ -1,5 +1,6 @@
 // Collection domain model + wire mapping for builder-server, ported from the legacy builder
 // (src/modules/collection + lib/api/builder.ts) so both apps read the same API identically.
+import type { CurationRequestStatus } from '~/lib/curation'
 
 export type RemoteCollection = {
   id: string
@@ -59,7 +60,9 @@ export enum CollectionSort {
   CREATED_AT_DESC = 'CREATED_AT_DESC',
   CREATED_AT_ASC = 'CREATED_AT_ASC',
   UPDATED_AT_DESC = 'UPDATED_AT_DESC',
-  UPDATED_AT_ASC = 'UPDATED_AT_ASC'
+  UPDATED_AT_ASC = 'UPDATED_AT_ASC',
+  /** Latest review activity first; a collection never sent for review counts from its creation. */
+  CURATION_UPDATED_AT_DESC = 'CURATION_UPDATED_AT_DESC'
 }
 
 export enum CurationStatus {
@@ -75,7 +78,8 @@ export enum CurationStatus {
 export enum CollectionDisplayStatus {
   PUBLISHED = 'published',
   UNDER_REVIEW = 'under_review',
-  DRAFT = 'draft'
+  DRAFT = 'draft',
+  REJECTED = 'rejected'
 }
 
 /** The page's status filter chips. Values double as the `status` URL param. */
@@ -157,12 +161,21 @@ export function statusFilterToParams(filter: CollectionStatusFilter): Partial<Fe
   }
 }
 
-export function getCollectionDisplayStatus(collection: Collection): CollectionDisplayStatus {
+/**
+ * The list response carries no review request, so cards only know the publish/approve flags; the detail
+ * page passes the latest request, which turns a rejected first review into Rejected. An approved
+ * collection stays Published when a later change is rejected: buyers still get the approved version.
+ */
+export function getCollectionDisplayStatus(
+  collection: Collection,
+  curation?: { status: CurationRequestStatus } | null
+): CollectionDisplayStatus {
   // A locked draft has its publish transaction in flight: the server just hasn't seen it yet.
   if (!collection.isPublished) {
     return isCollectionLocked(collection) ? CollectionDisplayStatus.UNDER_REVIEW : CollectionDisplayStatus.DRAFT
   }
-  return collection.isApproved ? CollectionDisplayStatus.PUBLISHED : CollectionDisplayStatus.UNDER_REVIEW
+  if (collection.isApproved) return CollectionDisplayStatus.PUBLISHED
+  return curation?.status === 'rejected' ? CollectionDisplayStatus.REJECTED : CollectionDisplayStatus.UNDER_REVIEW
 }
 
 /**
@@ -238,9 +251,6 @@ export function toRemoteCollection(
     reviewed_at: collection.reviewedAt ? new Date(collection.reviewedAt).toISOString() : null
   }
 }
-
-/** The latest curation request of a collection; only its status matters here. */
-export type CollectionCuration = { status: CurationStatus }
 
 /**
  * Whether this address is the owner, a collaborator or a minter of the collection. builder-server
