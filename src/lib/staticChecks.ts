@@ -7,7 +7,12 @@ import { type Collection } from '~/lib/collections'
 import { type FindingSeverity, type ValidationFinding } from '~/lib/events'
 import { ItemType, type Item } from '~/lib/items'
 
-export type StaticFinding = ValidationFinding & { check: string }
+/** The browser validator still reports some measures as text (e.g. a texture's size). */
+export type StaticFinding = Omit<ValidationFinding, 'measured' | 'limit'> & {
+  check: string
+  measured?: number | string
+  limit?: number | string
+}
 
 export type ItemStaticChecks = {
   itemId: string

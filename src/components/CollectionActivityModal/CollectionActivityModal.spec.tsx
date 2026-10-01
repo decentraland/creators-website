@@ -90,7 +90,7 @@ describe('CollectionActivityModal', () => {
       }),
       event('review.assigned', 'curator', { assignee: '0xabc' }),
       event('review.ai_started', 'validator', { trigger: 'retry' }),
-      event('collection.published', 'creator', { txHash: '0x1' })
+      event('collection.published', 'creator')
     ]
     renderModal()
     const lines = screen.getAllByTestId('activity-line').map(line => line.textContent)

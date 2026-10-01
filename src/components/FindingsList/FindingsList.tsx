@@ -6,8 +6,13 @@ import { type Item } from '~/lib/items'
 import { isWebUrl, openExternal } from '~/lib/navigation'
 import * as S from './FindingsList.styles'
 
+type ShownFinding = Omit<ValidationFinding, 'measured' | 'limit'> & {
+  measured?: number | string
+  limit?: number | string
+}
+
 type ListProps = {
-  findings: ValidationFinding[]
+  findings: ShownFinding[]
   testId?: string
 }
 
@@ -53,8 +58,9 @@ export function FindingsList({ findings, testId = 'findings' }: ListProps) {
   )
 }
 
-type ItemFindings = Pick<ValidationItemResult, 'itemId' | 'findings'> &
-  Partial<Pick<ValidationItemResult, 'passed' | 'visualSummary'>>
+type ItemFindings = Pick<ValidationItemResult, 'itemId'> & { findings: ShownFinding[] } & Partial<
+    Pick<ValidationItemResult, 'passed' | 'visualSummary'>
+  >
 
 type GroupedProps = {
   results: ItemFindings[]

@@ -38,14 +38,19 @@ export type RejectReasonCode = (typeof REJECT_REASON_CODES)[number]
 
 export type FindingSeverity = 'error' | 'warning'
 
-/** One validator finding, as the collections-curation-server reports it back. */
+export type BodyShape = 'male' | 'female'
+
+/** One validator finding, as the validation job reports it back. */
 export type ValidationFinding = {
+  /** Rule-book id, e.g. M-01. */
   rule: string
+  check?: string
   severity: FindingSeverity
   message: string
   where?: string
-  measured?: number | string
-  limit?: number | string
+  bodyShape?: BodyShape
+  measured?: number
+  limit?: number
   fix?: string
   docs?: string
 }
@@ -57,14 +62,25 @@ export type ValidationItemResult = {
   passed: boolean | null
   findings: ValidationFinding[]
   visualSummary?: string
+  /** Undecided because the validator cannot judge this kind of item, not because something failed. */
+  unsupported?: boolean
+  /** Why the item could not be validated. */
+  error?: string
 }
 
 export type ValidationVerdict = 'passed' | 'rejected' | 'error'
 
-/** Payload of `review.ai_passed` / `review.ai_rejected` / `review.ai_error`; `validationId` only reaches the committee. */
+/**
+ * Payload of `review.ai_passed` / `review.ai_rejected` / `review.ai_error`: the validator's whole result.
+ * `validationId` only reaches the committee; `collectionId` and `rulesVersion` are missing on older rows.
+ */
 export type ValidationVerdictPayload = {
   validationId?: string
+  collectionId?: string
   verdict: ValidationVerdict
+  reason?: 'unsupported'
+  retryable?: boolean
+  rulesVersion?: string
   items: ValidationItemResult[]
 }
 
@@ -73,9 +89,14 @@ export type CurationDecisionPayload = {
   rejectionMessage?: string
 }
 
-export type CollectionEventPayload = Partial<ValidationVerdictPayload> &
+export type HumanRequiredReason = 'third_party' | 'unsupported_items' | 'validator_error'
+
+/** `review.ai_error` reasons the server never resends: only a curator or a new request moves the review on. */
+export type FinalAiErrorReason = 'sweep_exhausted' | 'too_large'
+
+export type CollectionEventPayload = Omit<Partial<ValidationVerdictPayload>, 'reason'> &
   CurationDecisionPayload & {
-    txHash?: string
+    /** `HumanRequiredReason` on `review.human_required`, `FinalAiErrorReason` on `review.ai_error`; open for newer ones. */
     reason?: string
     trigger?: string
     itemIds?: string[]
@@ -139,6 +160,7 @@ export function getLatestVerdict(
     payload: {
       validationId: event.payload.validationId,
       verdict: event.payload.verdict ?? (event.type === 'review.ai_passed' ? 'passed' : 'rejected'),
+      rulesVersion: event.payload.rulesVersion,
       items: event.payload.items
     }
   }
