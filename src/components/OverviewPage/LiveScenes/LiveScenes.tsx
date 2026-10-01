@@ -19,7 +19,9 @@ const LiveScenes = () => {
     <AnimatedSection section={OverviewSection.LIVE_SCENES}>
       <S.Section data-testid="overview-live-scenes">
         <S.Title>
-          <span>{t('overview.live_scenes.title_highlight')}</span> {t('overview.live_scenes.title')}
+          <span>{t('overview.live_scenes.title_highlight')}</span>
+          {t('overview.title_separator')}
+          {t('overview.live_scenes.title')}
         </S.Title>
         <S.Rail>
           {scenes.map(scene => (

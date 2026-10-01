@@ -20,7 +20,9 @@ const FromTheBlog = () => {
     <AnimatedSection section={OverviewSection.BLOG}>
       <S.Section data-testid="overview-blog">
         <S.Title>
-          <span>{t('overview.blog.title_highlight')}</span> {t('overview.blog.title')}
+          <span>{t('overview.blog.title_highlight')}</span>
+          {t('overview.title_separator')}
+          {t('overview.blog.title')}
         </S.Title>
         <S.Posts>
           {posts.map(post => (

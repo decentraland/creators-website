@@ -1,0 +1,1209 @@
+{
+  "error_boundary": {
+    "title": "出现错误",
+    "description": "此页面无法加载。可能是网络连接不稳定，或应用有了新版本。",
+    "retry": "重新加载"
+  },
+  "collections_page": {
+    "title": "我的系列",
+    "search_placeholder": "搜索系列",
+    "new_collection": "新建系列",
+    "filter": {
+      "all": "全部",
+      "published": "已发布",
+      "submitted": "已提交",
+      "draft": "草稿",
+      "rejected": "已拒绝"
+    },
+    "view_mode": "视图模式",
+    "view_grid": "网格视图",
+    "view_list": "列表视图",
+    "item_count": "{count, plural, one {# 个物品} other {# 个物品}}",
+    "updated_ago": "{timeAgo}更新",
+    "manage": "管理",
+    "list": {
+      "collection": "系列",
+      "items": "物品",
+      "status": "状态",
+      "last_updated": "最后更新",
+      "created": "创建时间",
+      "actions": "操作"
+    },
+    "row_actions": "系列操作",
+    "showing": "显示第 {range} 个，共 {total} 个{total, plural, one {系列} other {系列}}",
+    "sign_in": {
+      "title": "登录以查看您的系列",
+      "action": "登录"
+    },
+    "empty": {
+      "title": "从这里开始您的第一个系列",
+      "description": "创建您的第一个系列，开始将您的可穿戴物品和表情动作带入 Decentraland。",
+      "description_mobile": "请在电脑上创建和发布系列，然后在这里查看和管理它们。",
+      "learn_more": "了解更多",
+      "create_first": "创建第一个系列"
+    },
+    "no_results": {
+      "title": "未找到系列",
+      "description": "请尝试其他搜索词或筛选条件。"
+    },
+    "error": {
+      "title": "出现错误",
+      "description": "我们无法加载您的系列，请重试。",
+      "retry": "重试"
+    }
+  },
+  "collection_role": {
+    "collaborator": "协作者",
+    "minter": "发送者"
+  },
+  "collection_status": {
+    "published": "已发布",
+    "under_review": "审核中",
+    "under_review_hint": "您的系列正在审核中，最多可能需要 5 分钟。审核完成后我们会通知您。",
+    "draft": "草稿"
+  },
+  "pagination": {
+    "previous": "上一页",
+    "next": "下一页"
+  },
+  "modal": {
+    "close": "关闭"
+  },
+  "step_indicator": {
+    "label": "第 {step} 步，共 {total} 步"
+  },
+  "collection_name_input": {
+    "label": "系列名称",
+    "char_count": "{count}/{max}",
+    "unique_hint": "名称在所有 Decentraland 系列中必须唯一。"
+  },
+  "collection_name_modal": {
+    "title": "{variant, select, create {新系列} other {重命名系列}}",
+    "heading": "{variant, select, create {为您的系列命名} other {选择一个新名称}}",
+    "subtitle": "这是大家在 Shop 中看到的名称。",
+    "name_placeholder": "例如：万圣节",
+    "cancel": "取消",
+    "submit": "{variant, select, create {继续} other {保存}}",
+    "error_invalid_character": "系列名称中不能使用“:”字符。",
+    "error_name_taken": "该名称已被使用，请换一个。",
+    "error_generic": "{variant, select, create {我们无法创建您的系列，请重试。} other {我们无法重命名您的系列，请重试。}}"
+  },
+  "collection_detail_page": {
+    "back": "返回系列",
+    "rename": "重命名系列",
+    "add_items": "添加物品",
+    "open_editor": "打开编辑器",
+    "publish": "发布系列",
+    "preview": "在 Decentraland 中预览",
+    "more_actions": "更多操作",
+    "actions": {
+      "copy_urn": "复制 URN",
+      "copy_address": "复制合约地址",
+      "collaborators": "协作者",
+      "senders": "发送者",
+      "delete": "删除系列",
+      "copied_urn": "URN 已复制到剪贴板",
+      "copied_address": "合约地址已复制到剪贴板",
+      "copy_failed": "复制失败，请重试。",
+      "deleted": "“{name}”已删除",
+      "delete_error": "我们无法删除该系列，请重试。",
+      "delete_modal": {
+        "title": "删除系列？",
+        "description": "“{name}”及其所有物品将被永久删除。此操作无法撤销。",
+        "cancel": "取消",
+        "confirm": "删除"
+      },
+      "view_in_shop": "在 Shop 中查看"
+    },
+    "filter": {
+      "all": "全部（{count}）",
+      "wearable": "可穿戴物品（{count}）",
+      "emote": "表情动作（{count}）"
+    },
+    "no_items": {
+      "all": "此系列中没有物品",
+      "wearable": "此系列中没有可穿戴物品",
+      "emote": "此系列中没有表情动作",
+      "description": "此系列已无法再添加物品。"
+    },
+    "list": {
+      "item": "物品",
+      "body_shape": "体型",
+      "category": "类别",
+      "play_mode": "播放模式",
+      "rarity": "稀有度",
+      "price": "价格",
+      "sales": "销量",
+      "sale_status": "销售状态",
+      "actions": "操作"
+    },
+    "row_actions": "物品操作",
+    "sale_status": {
+      "put_on_sale": "上架出售",
+      "on_sale": "出售中",
+      "sold_out": "已售罄",
+      "awaiting_approval": "系列获批后即可出售"
+    },
+    "play_mode": {
+      "loop": "循环",
+      "simple": "播放一次"
+    },
+    "body_type": {
+      "male": "男性",
+      "female": "女性",
+      "both": "男女通用"
+    },
+    "rarity": {
+      "unique": "独一无二",
+      "mythic": "神话",
+      "exotic": "奇异",
+      "legendary": "传说",
+      "epic": "史诗",
+      "rare": "稀有",
+      "uncommon": "非凡",
+      "common": "普通"
+    },
+    "category": {
+      "eyebrows": "眉毛",
+      "eyes": "眼睛",
+      "facial_hair": "胡须",
+      "hair": "头发",
+      "body_shape": "体型",
+      "mouth": "嘴巴",
+      "upper_body": "上半身",
+      "lower_body": "下半身",
+      "feet": "脚部",
+      "earring": "耳环",
+      "eyewear": "眼镜",
+      "hat": "帽子",
+      "helmet": "头盔",
+      "mask": "面具",
+      "tiara": "头饰",
+      "top_head": "头顶",
+      "skin": "皮肤",
+      "hands_wear": "手部穿戴",
+      "dance": "舞蹈",
+      "stunt": "特技",
+      "greetings": "问候",
+      "fun": "趣味",
+      "poses": "姿势",
+      "reactions": "反应",
+      "horror": "恐怖",
+      "miscellaneous": "其他"
+    },
+    "empty": {
+      "title": "向您的系列添加物品",
+      "title_mobile": "请在电脑上添加物品",
+      "description": "将文件拖放到此处，或<browse>浏览您的设备</browse>开始。",
+      "description_mobile": "要向您的系列添加物品，请在电脑上打开 Builder。",
+      "formats": "（支持的格式：GLB、GLTF、PNG、ZIP · 每个物品最大 3MB，皮肤最大 8MB）"
+    },
+    "not_found": {
+      "title": "未找到系列",
+      "description": "它可能已被删除，或者您没有访问权限。",
+      "back": "返回系列"
+    },
+    "error": {
+      "title": "出现错误",
+      "description": "我们无法加载此系列，请重试。",
+      "retry": "重试"
+    },
+    "sign_in": {
+      "title": "登录以查看此系列",
+      "action": "登录"
+    },
+    "showing": "显示第 {range} 个，共 {total} 个{total, plural, one {物品} other {物品}}",
+    "publish_blocker": {
+      "no_items": "请至少添加一个物品才能发布您的系列。",
+      "too_many_items": "一个系列最多可包含 {max} 个物品进行发布。",
+      "missing_smart_wearable_video": "每个智能可穿戴物品都需要预览视频才能发布。"
+    },
+    "price": {
+      "credits": "{amount} 积分",
+      "mana": "{amount} MANA",
+      "free": "免费"
+    },
+    "delete_item": {
+      "title": "删除此物品？",
+      "description": "“{name}”将从系列中移除。此操作无法撤销。",
+      "error": "我们无法删除该物品，请重试。",
+      "cancel": "保留物品",
+      "confirm": "删除物品"
+    },
+    "item_actions": {
+      "copy_urn": "复制 URN",
+      "copied_urn": "物品 URN 已复制到剪贴板",
+      "preview": "在编辑器中预览",
+      "move": "移动到其他系列",
+      "edit_price": "修改价格",
+      "remove_from_sale": "下架",
+      "reset": "重置物品",
+      "delete": "删除物品",
+      "deleted": "“{name}”已删除",
+      "move_modal": {
+        "title": "移动到其他系列",
+        "description": "选择要将“{name}”移动到的草稿系列。",
+        "collection": "系列",
+        "placeholder": "选择一个系列",
+        "loading": "正在加载您的草稿系列……",
+        "empty": "没有其他可移动到的草稿系列。",
+        "error": "我们无法移动该物品，请重试。",
+        "cancel": "取消",
+        "confirm": "移动物品",
+        "moved": "“{item}”已移动到“{collection}”"
+      },
+      "reset_modal": {
+        "title": "重置更改？",
+        "description": "此版本的“{name}”与审核委员会批准并在 Decentraland 中显示的版本不同。重置将放弃您的更改并恢复已批准的版本。",
+        "error": "我们无法重置该物品，请重试。",
+        "cancel": "保留更改",
+        "confirm": "重置物品",
+        "done": "“{name}”已重置为已批准的版本"
+      }
+    },
+    "send_items": "发送物品",
+    "smart_wearable": "智能可穿戴物品",
+    "item_row": {
+      "edit_name": "编辑名称",
+      "edit_thumbnail": "编辑缩略图",
+      "name_placeholder": "物品名称",
+      "rename_error": "我们无法重命名“{name}”，请重试。",
+      "thumbnail_error": "我们无法更新“{name}”的缩略图，请重试。",
+      "cancel_edit": "取消",
+      "save": "保存名称"
+    }
+  },
+  "publish_collection_modal": {
+    "title": "发布系列",
+    "cancel": "取消",
+    "back": "返回",
+    "name_step": {
+      "title": "确认您的系列名称",
+      "description": "提交审核后，系列名称将无法修改。",
+      "description_2": "请确保名称没有拼写错误，且不包含您不拥有的任何知识产权（例如：星球大战、美少女战士等）。",
+      "invalid_name": "名称最多 32 个字符，且不能包含“:”。",
+      "name_taken": "该名称已被使用，请换一个。",
+      "save_error": "我们无法保存新名称，请重试。",
+      "checkbox": "我了解发布后将无法更改系列名称，并确认“{name}”未侵犯任何第三方知识产权。",
+      "confirm": "确认名称"
+    },
+    "items_step": {
+      "title": "发布前请确认您的物品",
+      "subtitle": "发布后无法添加或删除物品，也无法更改稀有度。",
+      "description": "发布后，您将无法添加或移除物品，也无法更改其稀有度。其他物品详情之后仍可编辑。",
+      "columns": {
+        "item": "物品",
+        "body_shape": "体型",
+        "category": "类别",
+        "rarity": "稀有度",
+        "actions": "操作"
+      },
+      "edit": "编辑物品",
+      "edit_thumbnail": "编辑缩略图",
+      "delete": "删除物品",
+      "save": "保存更改",
+      "cancel_edit": "取消",
+      "name_placeholder": "物品名称",
+      "save_error": "我们无法保存该物品，请重试。",
+      "empty": "此系列已没有可发布的物品。请先添加物品再发布。",
+      "checkbox": "我了解发布后将无法添加或移除物品，也无法更改其稀有度。",
+      "confirm": "确认物品"
+    },
+    "payment_step": {
+      "title": "确认并支付",
+      "description": "您即将提交“{name}”中的 {count, plural, one {# 个物品} other {# 个物品}}进行审核。请选择支付方式来支付<fee>发布费</fee>并继续。",
+      "fee_tooltip_title": "什么是发布费？",
+      "fee_tooltip_body": "提交物品审核时支付的一次性费用。",
+      "columns": {
+        "collection": "系列",
+        "items": "物品",
+        "fee_per_item": "每个物品费用",
+        "total_fee": "总费用"
+      },
+      "items_count": "{count, plural, one {# 个物品} other {# 个物品}}",
+      "payment_method": "支付方式",
+      "credits": "积分",
+      "credits_balance": "积分余额：",
+      "mana": "MANA",
+      "mana_balance": "MANA 余额：",
+      "buy": "购买",
+      "buy_credits": "购买积分",
+      "buy_mana": "购买 MANA",
+      "rate": "1 积分 = {mana} MANA",
+      "fee_error": "我们无法加载发布费。",
+      "retry": "重试",
+      "approve_error": "MANA 授权未成功，请重试。",
+      "checkbox": "我同意<terms>使用条款</terms>和<policy>内容政策</policy>。我了解如果我的系列不符合规定可能会被拒绝，且发布费不予退还。",
+      "submit": "发布并支付"
+    },
+    "buy_credits": {
+      "title": "选择您的积分包",
+      "balance": "我的积分余额：",
+      "recommended": "推荐",
+      "credits": "积分",
+      "pack_label": "{credits} 积分，{usd}",
+      "decrease": "减少一个 {credits} 积分包",
+      "increase": "增加一个 {credits} 积分包",
+      "total": "总计：",
+      "cancel": "取消",
+      "buy": "购买 {credits} 积分",
+      "error": "我们无法开始结账，请重试。"
+    },
+    "top_up": {
+      "confirming": "正在确认您的购买……",
+      "success_title": "购买成功！",
+      "success_description": "已向您的账户添加 {credits} 积分。",
+      "pending_title": "您的积分正在路上！",
+      "pending_description": "您的付款已完成，但确认时间比平时稍长。积分到账后余额会自动更新，无需再次付款。",
+      "failed_title": "我们无法完成您的购买",
+      "failed_description": "付款时出现问题。如果您已被扣款，积分将很快到账；否则，请选择一个积分包并重试。",
+      "done": "完成"
+    },
+    "success": {
+      "title": "系列已提交审核",
+      "description": "您的系列正在审核中，最多可能需要 5 分钟。审核完成后我们会通知您。",
+      "done": "完成"
+    },
+    "error": {
+      "title": "我们无法发布您的系列",
+      "description_generic": "发布您的系列时出现问题。别担心，您的积分是安全的，将在 5–10 分钟内自动退回您的余额。",
+      "description_insufficient_credits": "您的积分不足以支付发布费。请获取更多积分后重试。",
+      "description_locked": "此系列正在发布中。请稍等几分钟后刷新页面。",
+      "description_unsynced": "您发布期间，此系列中的物品发生了变化。请关闭此对话框并重新开始。",
+      "description_fee_mismatch": "您确认期间发布费发生了变化。我们已刷新费用，请查看新金额后重试。",
+      "cancel": "取消",
+      "try_again": "重试"
+    },
+    "consolidation": {
+      "reverted": "“{name}”的发布未能在区块链上完成，因此未产生任何费用。该系列将在 24 小时后解锁，届时您可以再次发布。",
+      "sync_failed": "“{name}”已发布，但我们无法完成与区块链的同步。请在几分钟后刷新页面；如果它仍未显示为审核中，请联系支持团队。"
+    }
+  },
+  "sell_item_modal": {
+    "title": "出售物品",
+    "subtitle": "设置物品价格和收款人",
+    "cancel": "取消",
+    "submit": "上架出售",
+    "confirm_in_wallet": "请在钱包中确认……",
+    "selling": "正在上架……",
+    "smart_wearable": "智能可穿戴物品",
+    "enable_sales": {
+      "title": "要为此系列启用销售吗？",
+      "description": "这是您在此系列中上架的第一个物品，因此需要先启用销售。启用后，您就可以在 Decentraland Shop 中出售此系列的任何物品。",
+      "confirm": "启用销售",
+      "pending": "正在启用销售……"
+    },
+    "beneficiary": {
+      "label": "收款人",
+      "self": "我是收款人",
+      "placeholder": "复制或选择收款人的用户 ID",
+      "open": "显示好友",
+      "clear": "清除收款人",
+      "friends_loading": "正在加载您的好友……",
+      "no_matches": "没有匹配的好友。您也可以粘贴钱包地址（0x……）。",
+      "invalid": "请输入有效的钱包地址（0x……）。"
+    },
+    "price": {
+      "label": "价格",
+      "rate": "1 积分 = {usd}USD",
+      "giveaway": "设为免费赠送",
+      "too_high": "价格最多为 {max} 积分。",
+      "currency_label": "货币",
+      "currency_credits": "积分",
+      "currency_mana": "MANA",
+      "mana_rate": "1 MANA ≈ {usd}USD（估算）",
+      "mana_min": "最低 {min} MANA",
+      "too_high_mana": "价格最多为 {max} MANA。",
+      "too_low_mana": "价格至少为 {min} MANA。"
+    },
+    "expiration": {
+      "label": "到期日期"
+    },
+    "note": "您的物品将在 Decentraland Shop 中以积分标价出售。售出后，您将收到<b>等值的 MANA。</b>",
+    "note_tooltip": "积分与美元挂钩。您收到的 MANA 按每次售出时的汇率计算。",
+    "note_mana": "您的物品将在 Decentraland Shop 中以 MANA 标价出售。售出后，您将直接收到 MANA。",
+    "success": {
+      "title": "您的物品已上架！",
+      "description": "现在可以在 Decentraland Shop 中购买了。",
+      "done": "完成"
+    },
+    "error": {
+      "title_enable": "无法启用销售",
+      "description_enable": "为此系列启用销售时出错了，请重试。",
+      "title_sell": "无法上架您的物品",
+      "description_sell": "上架您的物品时出错了，请重试。",
+      "title_remove": "无法下架您的物品",
+      "description_remove": "下架您的物品时出错了，请重试。",
+      "title_update": "无法更新价格",
+      "description_update": "更新价格时出错了，请稍等片刻后重试。",
+      "description_sold_out": "此物品的所有份数都已铸造，因此无法上架出售。",
+      "try_again": "重试",
+      "description_not_listed": "此物品已不在出售中，无需更改。请刷新页面查看其当前状态。",
+      "title_send": "无法发送您的物品",
+      "description_send": "发送您的物品时出错了，请重试。",
+      "title_senders": "无法更新发送者",
+      "description_senders": "保存此系列的发送者时出错了，请重试。",
+      "title_collaborators": "无法更新协作者",
+      "description_collaborators": "保存此系列的协作者时出错了，请重试。"
+    },
+    "remove": {
+      "title": "要下架吗？",
+      "description": "“{name}”将不再在 Decentraland Shop 中出售。您可以随时重新上架。",
+      "confirm": "下架",
+      "pending": "正在下架……",
+      "success_title": "您的物品已下架",
+      "success_description": "它已不在 Decentraland Shop 中展示。您可以随时重新上架。"
+    },
+    "update_price": {
+      "title": "修改价格",
+      "price_label": "设置新价格",
+      "available": "{available} / {total} 可用",
+      "submit": "更新价格",
+      "pending": "正在更新价格",
+      "two_signatures": "需要 2 次签名",
+      "step_remove": "移除当前挂单",
+      "step_confirm": "确认新价格",
+      "confirm_removal": "首先，请在钱包中确认移除当前价格……",
+      "confirm_new": "快完成了！请在钱包中确认新价格……",
+      "success_title": "价格已更新！",
+      "success_description": "您的物品现已以新价格在 Shop 中出售。"
+    },
+    "pending_changes": "此物品有尚未获批的更改。在审核委员会批准之前，买家将获得最后一次获批的版本。"
+  },
+  "rarity_select": {
+    "units": "{count, plural, one {# 份} other {# 份}}",
+    "with_supply": "{label}（{count, number}）"
+  },
+  "add_items_modal": {
+    "title": "{count, plural, one {物品详情} other {物品详情}}",
+    "form_heading": "物品详情",
+    "processing": "处理中……",
+    "type": {
+      "wearable": "可穿戴物品",
+      "emote": "表情动作",
+      "smart_wearable": "智能可穿戴物品"
+    },
+    "delete": "删除",
+    "item_name": "物品名称",
+    "char_count": "{count}/{max}",
+    "item_name_placeholder": "示例",
+    "invalid_name": "名称最多 32 个字符，且不能包含“:”。",
+    "body_shape": "体型",
+    "body_shape_option": {
+      "both": "两者",
+      "female": "女性",
+      "male": "男性"
+    },
+    "body_shape_emote_hint": "表情动作始终适用于所有体型。",
+    "body_shape_smart_hint": "智能可穿戴物品适用于所有体型。",
+    "video": {
+      "label": "预览视频",
+      "field_hint": "上传一段展示该智能可穿戴物品功能的视频。",
+      "edit": "编辑预览视频",
+      "duration": "{seconds} 秒",
+      "size": "{size} MB"
+    },
+    "variant_question": "这是另一个物品的体型变体吗？",
+    "yes": "是",
+    "no": "否",
+    "select_item": "选择物品",
+    "variant_target_label": "{name} - {bodyShape}",
+    "no_variant_targets": "此系列中还没有可与之配对的{bodyShape}物品。请先添加{bodyShape}版本，或选择“否”。",
+    "category": "类别",
+    "select_category": "选择类别",
+    "facial_expressions": "该可穿戴物品包含面部表情",
+    "suggested_category": "根据您的模型推荐。如果不正确，您可以更改。",
+    "rarity": "稀有度",
+    "rarity_tooltip": "稀有度决定一个物品最多可以有多少份。物品越稀有，最大供应量越低。",
+    "play_mode": "播放模式",
+    "play_mode_option": {
+      "simple": "播放一次",
+      "loop": "循环播放"
+    },
+    "play_mode_tooltip": {
+      "simple": "触发后，表情动作将播放一次并返回默认姿势。",
+      "loop": "触发后，表情动作将持续重复，直到玩家移动或触发另一个表情动作。"
+    },
+    "edit_thumbnail": "编辑缩略图",
+    "metrics": {
+      "triangles": "{count} 个三角形",
+      "materials": "{count, plural, one {# 个材质} other {# 个材质}}",
+      "textures": "{count, plural, one {# 个贴图} other {# 个贴图}}",
+      "sequences": "{count, plural, one {# 个序列} other {# 个序列}}",
+      "duration": "{count} 秒",
+      "frames": "{count} 帧",
+      "fps": "{count} fps"
+    },
+    "cancel": "取消",
+    "save": "保存",
+    "previous": "上一个",
+    "save_next": "保存并继续",
+    "finish": "完成",
+    "success_toast": "{count, plural, one {# 个物品} other {# 个物品}}已成功添加到您的系列！",
+    "error": {
+      "title_generic": "无法上传您的物品",
+      "title_too_big": "有物品超出了大小限制",
+      "title_locked": "此系列正在审核中",
+      "title_published": "此系列已发布",
+      "description_generic": "上传您的物品时出错了，请重试。",
+      "description_too_big": "您的某个物品与已保存的文件合并后超出了大小限制。请减小文件大小后重试。",
+      "description_locked": "系列审核期间无法添加物品。您的文件未保存，审核完成后即可添加。",
+      "description_published": "已发布的系列无法添加新物品。您的文件未保存，请创建一个新系列来添加它们。",
+      "try_again": "重试",
+      "got_it": "知道了"
+    },
+    "leave": {
+      "save_title": "离开前要保存吗？",
+      "save_description": "如果不保存就离开，您将丢失已上传的物品和所做的所有更改。",
+      "discard_title": "要放弃您的物品吗？",
+      "discard_description": "如果现在离开，您将丢失已上传的物品和所做的所有更改。",
+      "leave_without_saving": "不保存并离开",
+      "save_changes": "保存更改",
+      "keep_editing": "继续编辑",
+      "review_target_first": "保存前请先检查 {target}：{variant} 是它的体型变体。"
+    },
+    "file_error_label": "无效文件",
+    "file_error": {
+      "wrong_extension": "不支持此文件类型。请使用 {extensions}。",
+      "file_too_big": "文件过大，最大为 {size}MB。",
+      "thumbnail_too_big": "缩略图过大，最大为 {size}MB。",
+      "size_exceeded": "此物品过大，包括缩略图在内最大为 {size}MB。",
+      "missing_model_file": "我们在此文件中未找到 3D 模型或贴图。",
+      "invalid_zip": "我们无法读取此 ZIP 文件。",
+      "too_many_files": "此 ZIP 包含的文件过多，最多 {max} 个。",
+      "zip_too_big": "此 ZIP 过大，其内容不能超过 {size}MB。",
+      "invalid_manifest": "ZIP 中的 {fileName} 配置无效。",
+      "manifest_file_missing": "ZIP 配置引用了 {fileName}，但 ZIP 中没有该文件。",
+      "orphaned_auxiliary_file": "{fileName} 需要同一 ZIP 中的配套文件 {expected}。",
+      "unknown_required_permissions": "scene.json 声明了不存在的权限：{permissions}。",
+      "duplicated_required_permissions": "scene.json 多次声明了同一权限。",
+      "allowed_media_hostnames_empty": "scene.json 请求了 ALLOW_MEDIA_HOSTNAMES，但未列出任何主机名。",
+      "scene_manifest_missing": "此 ZIP 包含场景代码，但没有 scene.json。智能可穿戴物品需要 scene.json。",
+      "scene_manifest_nested": "使用 wearable.json 时，scene.json 必须与其一同位于 ZIP 的根目录。",
+      "scene_main_not_code": "scene.json 的 main 指向 {fileName}，但它必须是 JavaScript 包。",
+      "emote_duration_too_long": "表情动作最长 {seconds} 秒。",
+      "emote_with_mesh": "此表情动作包含虚拟形象网格。请仅导出骨架和动画。",
+      "emote_animations_out_of_sync": "虚拟形象和道具的动画时长必须相同。",
+      "missing_external_resources": "模型引用了未包含的文件：{fileNames}。",
+      "invalid_model_file": "我们无法加载此 3D 模型。请检查文件后重试。",
+      "invalid_representation": "此文件不能用作该物品的体型变体。",
+      "multiple_videos": "ZIP 中包含多个视频。请仅保留预览视频。",
+      "video_too_big": "视频过大，最大为 {size}MB。",
+      "video_wrong_format": "视频必须是 MP4 文件。",
+      "invalid_video": "您的视频似乎无效或已损坏。请检查文件后重试。",
+      "invalid_model_file_type": "此文件属于不同的物品类型。可穿戴物品只能替换为可穿戴物品，表情动作只能替换为表情动作。"
+    }
+  },
+  "video_modal": {
+    "title": "预览视频",
+    "description": "上传一段展示该智能可穿戴物品功能的视频。",
+    "loading": "正在加载视频……",
+    "drop_cta": "将视频拖放到此处，或",
+    "browse": "浏览文件",
+    "hint": "{extensions} · 最大 {size}MB",
+    "replace": "替换",
+    "done": "完成",
+    "cancel": "取消"
+  },
+  "thumbnail_modal": {
+    "title": "物品缩略图",
+    "capture": "保存缩略图",
+    "upload_picture": "上传图片",
+    "wrong_format": "缩略图必须是 PNG 图片。",
+    "too_big": "缩略图过大，最大为 {size}MB。",
+    "capture_failed": "我们无法更新缩略图，请重试。",
+    "load_failed": "我们无法加载该物品，请重试。"
+  },
+  "item_validation": {
+    "triangle_count_exceeded": "三角形数量（{count}）超过了 {category} 可穿戴物品的限制 {limit}。",
+    "triangle_count_exceeded_with_hint": "三角形数量（{count}）超过了 {category} 可穿戴物品的基础限制 {limit}。您可以在物品编辑器中隐藏其他可穿戴物品栏位来提高此限制。",
+    "dimensions_exceeded": "模型尺寸（{width}m x {height}m x {depth}m）超过了允许的最大值（{maxWidth}m x {maxHeight}m x {maxDepth}m）。",
+    "materials_exceeded": "材质数量（{count}）超过了限制 {limit}。",
+    "textures_exceeded": "贴图数量（{count}）超过了限制 {limit}。",
+    "bone_influences_exceeded": "部分顶点的骨骼影响超过了 {limit} 个。",
+    "leaf_bones_found": "发现末端骨骼：{bones}。请在导出前删除带有 _end 或 _neutral 后缀的骨骼。",
+    "non_deform_bones_found": "发现 {count} 个非变形骨骼：{bones}。请在导出设置中启用“Export Deformation Bones Only”（仅导出变形骨骼），以减小文件大小并提升性能。",
+    "armature_bone_names": "骨架的骨骼名称与 Decentraland 虚拟形象骨架不匹配（{bones}）。请在导出前将可穿戴物品重新绑定到标准虚拟形象骨架。",
+    "unrigged_vertices": "发现 {count} 个没有蒙皮权重的顶点（未绑定到任何骨骼）。这些顶点不会跟随虚拟形象移动。请在导出前检查绑定和蒙皮权重。",
+    "cameras_found": "可穿戴物品/表情动作的 GLB 文件中不允许包含摄像机。",
+    "lights_found": "可穿戴物品/表情动作的 GLB 文件中不允许包含灯光。",
+    "animations_in_wearable": "可穿戴物品的 GLB 文件不能包含动画。如果这是表情动作，则应包含动画。",
+    "forbidden_material_name": "材质“{name}”使用了保留的命名模式（{pattern}）。此模式仅供面部类别使用。",
+    "emote_frame_rate": "动画帧率（{fps} fps）与预期的 {expected} fps 不同。",
+    "emote_max_frames": "动画有 {frames} 帧，超过了最大值 {limit}。",
+    "emote_max_clips": "文件有 {count} 个动画片段，超过了最大值 {limit}。",
+    "emote_missing_keyframes": "部分变形骨骼在第一帧/最后一帧缺少关键帧：{bones}。",
+    "prop_triangle_count": "道具三角形数量（{count}）超过了限制 {limit}。",
+    "prop_materials": "道具材质数量（{count}）超过了限制 {limit}。",
+    "prop_textures": "道具贴图数量（{count}）超过了限制 {limit}。",
+    "prop_armature_bones": "道具骨架有 {count} 个骨骼，超过了限制 {limit}。",
+    "armature_naming": "发现意外的骨架名称：{names}。虚拟形象骨架应命名为“Armature”，道具骨架应命名为“Armature_Prop”。",
+    "animation_naming": "存在道具时，动画片段应以“_Avatar”或“_Prop”结尾。无效名称：{names}。",
+    "audio_format": "音频文件“{name}”的格式不受支持。仅允许 .mp3 和 .ogg 格式。",
+    "spring_bone_count_exceeded": "此模型有 {count} 个弹簧骨骼（最大值：{limit}）。请在 3D 编辑器中减少弹簧骨骼节点的数量，然后重新上传。",
+    "thumbnail_not_transparent": "缩略图背景看起来不是透明的。Marketplace 会在缩略图后方显示物品的稀有度颜色，因此背景必须透明。"
+  },
+  "item_editor": {
+    "pick_collection": "选择一个系列，开始编辑其中的物品。",
+    "mobile_hint": "编辑功能仅在桌面端可用。您可以在这里预览物品。",
+    "read_only": "此物品为只读：在系列未处于发布过程中时，只有系列所有者和协作者可以编辑。",
+    "save": "保存",
+    "revert": "撤销",
+    "save_success": "“{name}”已保存。",
+    "save_error": "无法保存该物品，请重试。",
+    "save_error_locked": "该系列正在发布中，暂时无法编辑。",
+    "sidebar": {
+      "items": "物品",
+      "back": "返回系列",
+      "collapse": "收起侧栏",
+      "expand": "展开侧栏",
+      "add_items": "添加物品",
+      "wearables": "可穿戴物品",
+      "emotes": "表情动作",
+      "empty": "此系列中还没有物品。",
+      "dress": "在虚拟形象上显示 {name}",
+      "undress": "从虚拟形象上移除 {name}",
+      "no_representation": "此物品没有适用于当前体型的版本。切换体型即可预览。"
+    },
+    "picker": {
+      "title": "系列",
+      "back": "返回系列",
+      "search": "搜索系列",
+      "create": "新建系列",
+      "empty": "未找到系列。",
+      "error": "无法加载您的系列，请重试。"
+    },
+    "review": {
+      "title": "审核模式"
+    },
+    "discard": {
+      "title": "放弃您的更改？",
+      "description": "此物品有未保存的更改。切换物品将放弃这些更改。",
+      "stay": "继续编辑",
+      "confirm": "放弃"
+    },
+    "customizer": {
+      "title": "虚拟形象",
+      "body_shape": "体型",
+      "shape": {
+        "male": "男性",
+        "female": "女性",
+        "both": "两者"
+      },
+      "skin": "肤色",
+      "eyes": "瞳色",
+      "hair": "发色",
+      "none": "无",
+      "randomize": "随机",
+      "hair_style": "发型",
+      "drawer_title": "自定义虚拟形象"
+    },
+    "playback": {
+      "stop": "停止",
+      "select": "动画",
+      "from_collection": "来自系列",
+      "mute": "静音",
+      "unmute": "取消静音",
+      "emote": {
+        "walk": "行走",
+        "run": "奔跑",
+        "jump": "跳跃",
+        "clap": "鼓掌",
+        "dab": "Dab 舞",
+        "dance": "跳舞",
+        "fashion": "时尚",
+        "fashion-2": "时尚 2",
+        "fashion-3": "时尚 3",
+        "fashion-4": "时尚 4",
+        "love": "比心",
+        "money": "撒钱",
+        "fist-pump": "握拳庆祝",
+        "head-explode": "脑袋爆炸",
+        "wave": "挥手"
+      },
+      "placeholder": "播放表情动作"
+    },
+    "validation": {
+      "loading": "正在检查模型……",
+      "pass": "模型通过了所有检查。",
+      "warnings": "模型存在警告。点击查看。",
+      "errors": "模型存在错误。点击查看。",
+      "idle": "",
+      "modal_title": "验证结果",
+      "label": {
+        "loading": "正在验证",
+        "pass": "有效",
+        "warnings": "{count, plural, one {# 个警告} other {# 个警告}}",
+        "errors": "{count, plural, one {# 个问题} other {# 个问题}}",
+        "idle": ""
+      }
+    },
+    "details": {
+      "title": "详情",
+      "edit_thumbnail": "编辑缩略图",
+      "download": "下载物品",
+      "watch_video": "观看预览视频",
+      "change_file": "更换文件",
+      "add_representation": "添加{shape}版本",
+      "file_update_pending": "新模型已就绪。保存即可上传。",
+      "import_error_title": "无法使用该文件",
+      "import_error_close": "确定",
+      "download_error": "无法下载该物品，请重试。",
+      "video_required": "发布智能可穿戴物品需要提供预览视频。",
+      "video_hint": "一段简短的视频，展示该智能可穿戴物品在世界中的效果。"
+    },
+    "basics": {
+      "title": "基本信息",
+      "name": "名称",
+      "description": "描述",
+      "utility": "用途",
+      "utility_hint": "简要说明此物品在世界中的作用，将向收藏者展示。",
+      "category": "类别",
+      "rarity": "稀有度"
+    },
+    "overrides": {
+      "title": "覆盖",
+      "body_parts": "隐藏的基础身体部位",
+      "body_parts_hint": "此可穿戴物品会隐藏的基础虚拟形象部位，以免它们穿透模型。",
+      "categories": "隐藏的可穿戴物品类别",
+      "categories_hint": "同时穿戴时此物品会隐藏的其他可穿戴物品槽位，例如头盔隐藏头发。",
+      "none_available": "此物品没有可隐藏的内容。",
+      "none_selected": "无"
+    },
+    "body_part": {
+      "head": "头部",
+      "hands": "手部"
+    },
+    "animation": {
+      "title": "动画"
+    },
+    "spring_bones": {
+      "title": "弹簧骨骼",
+      "body_shape": "体型",
+      "counter": "{count} / {max} 根骨骼",
+      "bones": "{count, plural, one {# 根骨骼} other {# 根骨骼}}",
+      "stiffness": "刚度",
+      "gravityPower": "重力强度",
+      "gravityDir": "重力方向",
+      "drag": "阻尼",
+      "add": "添加骨骼链",
+      "remove": "移除骨骼链",
+      "center": "中心骨骼",
+      "center_none": "无",
+      "center_clear": "清除中心骨骼",
+      "actions": "骨骼链操作",
+      "copy_params": "复制设置",
+      "paste_params": "粘贴设置",
+      "warning_title": "“{name}”缺少弹簧骨骼设置",
+      "warning_description": "其中一种体型未配置弹簧骨骼，因此在世界中将缺少物理效果。仍然保存吗？",
+      "warning_back": "返回",
+      "warning_save": "仍然保存"
+    },
+    "tags": {
+      "title": "标签",
+      "placeholder": "输入标签后按 Enter 添加",
+      "remove": "移除标签 {tag}",
+      "campaign_hint": "添加“{tag}”标签，即可让此物品参加 {name}。"
+    },
+    "options": {
+      "title": "选项",
+      "vrm_export": "允许 VRM 导出",
+      "vrm_export_hint": "开启后，收藏者可以将穿戴此可穿戴物品的虚拟形象导出为 VRM 文件，用于其他平台。",
+      "outline": "兼容轮廓效果",
+      "outline_hint": "开启后，会在此可穿戴物品周围绘制虚拟形象的轮廓效果。"
+    },
+    "danger": {
+      "delete": "删除物品"
+    },
+    "actions": {
+      "label": "物品操作"
+    }
+  },
+  "zoom_controls": {
+    "in": "放大",
+    "out": "缩小"
+  },
+  "curation_page": {
+    "title": "审核"
+  },
+  "maintenance_page": {
+    "title": "我们马上回来",
+    "description": "Decentraland 创作者工具正在维护中。您创作的内容都不会丢失，请稍后再试。"
+  },
+  "not_found_page": {
+    "title": "页面未找到",
+    "go_home": "返回首页"
+  },
+  "nav": {
+    "overview": "概览",
+    "collections": "系列",
+    "scenes": "场景",
+    "land": "土地/世界"
+  },
+  "footer": {
+    "newsletterTitle": "每周精选资讯，直达您的邮箱",
+    "newsletterFrameTitle": "订阅新闻通讯",
+    "connect": "关注我们",
+    "gettingStarted": "快速入门",
+    "resources": "资源",
+    "menu": "菜单",
+    "linkWhatIs": "什么是 Decentraland",
+    "linkDownload": "下载",
+    "linkSystemRequirements": "系统要求",
+    "linkFaqs": "常见问题",
+    "linkContactSupport": "联系支持",
+    "linkMarketplace": "Marketplace",
+    "linkCreatorHub": "Creator Hub",
+    "linkDocs": "文档",
+    "linkBlog": "博客",
+    "linkVote": "投票",
+    "linkPrivacy": "隐私政策",
+    "linkTerms": "使用条款",
+    "linkContentPolicy": "内容政策",
+    "linkEthics": "道德准则"
+  },
+  "send_items_modal": {
+    "title": "发送物品",
+    "step_select": "选择物品",
+    "step_confirm": "确认物品",
+    "transfer": "第 {n} 笔转移",
+    "remove_transfer": "移除转移",
+    "recipient_placeholder": "选择或粘贴收件人的用户 ID",
+    "add_recipient": "添加其他收件人",
+    "duplicate_recipient": "此收件人已在本次转移中。",
+    "items_for_recipient": "发给此收件人的物品",
+    "available": "可用 {available} / {total}",
+    "sold_out": "已售罄",
+    "select_item": "发送 {name}",
+    "decrease": "减少 {name} 的份数",
+    "increase": "增加 {name} 的份数",
+    "copies_of": "{name} 的份数",
+    "add_transfer": "添加其他转移",
+    "total": "{count} / {max} 个物品",
+    "limit_reached": "您一次最多可以发送 {max} 个物品。请移除部分份数后继续。",
+    "continue": "继续",
+    "back": "返回",
+    "submit": "发送物品",
+    "confirm_intro": "您即将发送 {count, plural, one {# 个物品} other {# 个物品}}。发送前请检查收件人和数量。",
+    "summary": "{recipients, plural, one {# 位收件人} other {# 位收件人}} - {items, plural, one {# 个物品} other {# 个物品}} - {copies, plural, one {# 份} other {# 份}}",
+    "sending": "正在发送物品……",
+    "success_title": "物品已发送！",
+    "success_description": "您的物品正在发送给所选收件人。"
+  },
+  "manage_roles_modal": {
+    "senders": {
+      "title": "发送者",
+      "description": "发送者可以将此系列物品的副本发送到任意钱包，并将其上架出售。只有您作为所有者可以修改此列表。",
+      "placeholder": "选择或粘贴发送者的用户 ID",
+      "add": "添加发送者",
+      "remove": "移除发送者",
+      "success_title": "发送者已更新！",
+      "success_description": "关于谁可以发送此系列物品的更改已生效。"
+    },
+    "collaborators": {
+      "title": "协作者",
+      "description": "协作者可以编辑此系列的物品并将其上架出售，但不能发送副本。只有您作为所有者可以修改此列表。",
+      "placeholder": "选择或粘贴协作者的用户 ID",
+      "add": "添加协作者",
+      "remove": "移除协作者",
+      "success_title": "协作者已更新！",
+      "success_description": "关于谁可以编辑此系列的更改已生效。"
+    },
+    "duplicate": "此地址已在列表中。",
+    "owner": "这是您自己的地址：作为所有者，您已拥有所有权限。",
+    "system": "此地址属于 Decentraland Shop，无法在此处更改。",
+    "save": "保存更改",
+    "saving": "正在保存更改……",
+    "discard": {
+      "title": "放弃您的更改？",
+      "description": "如果现在离开，您对此列表所做的更改将不会保存。",
+      "leave": "放弃更改",
+      "keep": "继续编辑"
+    }
+  },
+  "required_permissions": {
+    "title": "所需权限",
+    "learn_more": "了解更多",
+    "none": "此智能可穿戴物品不需要任何权限。",
+    "permission": {
+      "ALLOW_TO_MOVE_PLAYER_INSIDE_SCENE": "在场景内移动玩家",
+      "ALLOW_TO_TRIGGER_AVATAR_EMOTE": "触发虚拟形象表情动作",
+      "ALLOW_MEDIA_HOSTNAMES": "从允许的主机名加载媒体",
+      "USE_WEB3_API": "使用 Web3 API",
+      "USE_FETCH": "使用 fetch",
+      "USE_WEBSOCKET": "使用 WebSocket",
+      "OPEN_EXTERNAL_LINK": "打开外部链接"
+    }
+  },
+  "live_preview": {
+    "title": "Blender 实时预览",
+    "status": {
+      "connected": "已连接",
+      "connecting": "正在连接……",
+      "disconnected": "已断开",
+      "error": "错误"
+    },
+    "bridge_url": "Blender 网址",
+    "connect": "连接",
+    "disconnect": "断开连接",
+    "refresh": "刷新",
+    "updated": "{time_ago}更新",
+    "up_to_date": "已是最新 · {time_ago}更新",
+    "updated_now": "刚刚",
+    "waiting": "正在等待 Blender 导出。\n 在 Decentraland Tools 面板中点击 Preview Wearable 或 Preview Emote。",
+    "properties": "属性",
+    "loop": "循环",
+    "add_to_collection": "添加到系列",
+    "mobile_hint": "调整和添加到系列需在运行 Blender 的电脑上进行。您可以在这里预览模型。",
+    "errors": {
+      "unreachable": "无法连接到 Blender。请检查实时预览是否正在运行，以及 URL 是否正确。",
+      "permission_denied": "您的浏览器阻止了与 Blender 的连接。请为此网站允许本地网络访问。",
+      "bridge_response": "Blender 返回了错误。请尝试重新推送预览。",
+      "invalid_state": "Blender 发送了无法识别的内容。请更新 Decentraland Tools 插件。",
+      "model_fetch": "无法从 Blender 下载模型。请尝试重新推送预览。"
+    },
+    "local_network": {
+      "prompt": {
+        "title": "允许本地网络访问",
+        "description": "您的浏览器正在请求连接本地网络的权限。请在提示中点击“允许”，以便此页面连接到 Blender。"
+      },
+      "denied": {
+        "title": "本地网络访问已被阻止",
+        "description": "您的浏览器阻止了此页面访问本地网络。要连接到 Blender：",
+        "step_site_info": "打开地址栏旁边的网站信息",
+        "step_allow": "允许本地网络访问",
+        "step_reload": "重新加载此页面",
+        "reload": "重新加载页面",
+        "retry": "重试连接"
+      }
+    },
+    "sign_in": {
+      "title": "登录以继续",
+      "description": "登录后即可将此物品添加到您的某个系列中。"
+    },
+    "add": {
+      "title": "添加到系列",
+      "description": "选择要添加该物品的草稿系列。",
+      "empty": "您还没有草稿系列。请创建一个以继续。",
+      "new_collection": "新建系列",
+      "continue": "继续"
+    }
+  },
+  "overview": {
+    "title_separator": "",
+    "hero": {
+      "title_first_line": "创建您自己的",
+      "title_last_line": "尽在 Decentraland",
+      "words": {
+        "wearables": "可穿戴物品",
+        "emotes": "表情动作",
+        "worlds": "世界",
+        "experiences": "体验",
+        "scenes": "场景",
+        "games": "游戏"
+      },
+      "subtitle": "下载 Creator Hub，开始在 Decentraland 中构建沉浸式场景和互动体验。",
+      "download_cta": "下载 Creator Hub",
+      "mobile_docs_cta": "浏览创作者文档",
+      "scroll_label": "滚动到下一部分"
+    },
+    "why": {
+      "title_highlight": "为什么",
+      "title": "创作者选择 Decentraland",
+      "cards": {
+        "join": {
+          "title": "加入创作者社区",
+          "description": "在由艺术家、设计师和开发者组成的社区中分享知识、协作并建立联系，每天都能看到您的作品受到欣赏。",
+          "cta": "加入 Discord"
+        },
+        "create": {
+          "title": "在开放、去中心化的生态中创作",
+          "description": "在由用户治理的平台上完全掌控您的内容，并在一个等待探索的开放虚拟世界中与其他创作者并肩构建。",
+          "cta": "浏览文档"
+        },
+        "benefit": {
+          "title": "受益于以创作者为中心的经济",
+          "description": "Decentraland 归其用户所有，因此您可以保留 Marketplace 销售额的 97.5%，其余部分用于资助像您这样的创作者的社区资助计划。此外，您还将获得转售的 2.5% 版税。",
+          "cta": "创建可穿戴物品"
+        }
+      }
+    },
+    "create": {
+      "title": "探索",
+      "title_highlight": "创意",
+      "title_second_part": "的无限可能",
+      "required_skills": "所需技能",
+      "useful_links": "实用链接",
+      "skills": {
+        "modeling": "3D 建模",
+        "fashion": "富有想象力的时尚感",
+        "animation": "动画",
+        "typescript": "TypeScript",
+        "creator_hub": "Creator Hub",
+        "no_code": "无需编写代码",
+        "click": "会点击鼠标即可",
+        "imagination": "天马行空的想象力"
+      },
+      "cards": {
+        "wearables": {
+          "title": "设计独特的可穿戴物品",
+          "description": "在 Decentraland 中，可穿戴物品不只是服装。漂浮的元素、发光的面料、机器人义肢、外星人身体……一切皆有可能！",
+          "tabs": {
+            "regular": {
+              "title": "常规",
+              "heading": "塑造您的数字身份",
+              "body": "打造皮肤、服装、配饰和身体，为 Decentraland 社区提供无尽的选择来定制他们的数字身份。",
+              "links": {
+                "creating": "创建可穿戴物品",
+                "shop": "Shop 中的可穿戴物品",
+                "publishing": "发布可穿戴物品",
+                "tutorials": "可穿戴物品教程"
+              }
+            },
+            "smart": {
+              "title": "智能可穿戴物品",
+              "heading": "体验与时尚的结合",
+              "body": "想创造一个能让您飞行的喷气背包，或是一副能揭示秘密世界的眼镜？将便携式体验与可穿戴物品结合，开启全新的可能。",
+              "links": {
+                "portable_experiences": "便携式体验文档",
+                "sdk": "SDK 7 文档",
+                "smart_wearables": "智能可穿戴物品文档",
+                "shop": "Shop 中的智能可穿戴物品"
+              }
+            }
+          }
+        },
+        "emotes": {
+          "title": "制作富有表现力的表情动作",
+          "description": "创作虚拟形象动画，让 Decentraland 社区建立联系、分享情感，并参与无穷无尽的趣味活动。",
+          "tabs": {
+            "motion": {
+              "title": "不止于动作",
+              "heading": "不止于动作",
+              "body": "在 Decentraland 中，表情动作超越了简单的动画，还可以添加道具和声音，将表达提升到新的高度！",
+              "links": {
+                "creating": "创建表情动作",
+                "tutorials": "表情动作教程",
+                "publishing": "发布表情动作",
+                "shop": "Shop 中的表情动作"
+              }
+            }
+          }
+        },
+        "experiences": {
+          "title": "打造沉浸式体验",
+          "description": "在开放世界生态中构建引人入胜的场景、互动体验和游戏。领取您自己的世界，或租用/购买土地，开始构建。",
+          "tabs": {
+            "scenes": {
+              "title": "创建场景",
+              "heading": "构建并发布您的第一个场景",
+              "body": "在 Creator Hub 中打开场景编辑器，将物品拖放到位，然后将您的场景发布到世界或土地。下面的文档将带您完成每一步。",
+              "links": {
+                "about_editor": "关于场景编辑器",
+                "publish_scene": "发布您的场景",
+                "dev_workflow": "开发工作流程",
+                "download_hub": "下载 Creator Hub"
+              }
+            },
+            "basic": {
+              "title": "基础",
+              "heading": "适合新手",
+              "body": "将预制元素拖放到位，打造您梦想中的场景，或从场景模板开始，自定义细节，让它成为您的专属作品。",
+              "links": {
+                "places": "探索地点",
+                "download_hub": "下载 Creator Hub",
+                "tutorials": "构建教程",
+                "worlds_guide": "世界入门指南"
+              }
+            },
+            "advanced": {
+              "title": "进阶",
+              "heading": "完全掌控您的作品",
+              "body": "借助 Decentraland 的 SDK 7 将您的想法变为现实。从复杂的场景、互动体验到完整的游戏，打造您能想象到的一切。",
+              "links": {
+                "download_hub": "下载 Creator Hub",
+                "docs": "构建文档",
+                "tutorials": "构建教程"
+              }
+            }
+          }
+        }
+      }
+    },
+    "live_scenes": {
+      "title_highlight": "探索",
+      "title": "创作者正在构建的世界",
+      "online": "{count} 人在线",
+      "view_all": "查看所有实时场景"
+    },
+    "connect": {
+      "title_highlight": "听听",
+      "title": " Decentraland 创作者怎么说",
+      "join_the_community": "加入社区",
+      "cards": {
+        "mrdhingia": "我喜欢成为 DCL 创作者，因为它让我可以自由地创建酷炫的 3D 空间。与他人合作、学习新事物、通过我的内容获得收益并触达世界各地的人，这些都很棒。",
+        "canessa": "我认为拥有独特的表情动作，是让自己的虚拟形象成为自己另一种形式的方式。我为自己制作了一个独特的表情动作，这样我就总能用一个特别的问候（有别于大家都在用的标准动画）来招呼我的朋友。",
+        "polygonal_mind": "Decentraland 几乎每天都在技术层面和社区层面不断发展。新人带着新想法来到平台，整个平台也随之调整来迎接他们。实时见证这种变化非常令人兴奋。",
+        "tangpoko": "在 Decentraland 中创作可穿戴物品和表情动作非常有成就感，尤其是看到身边的每个人都在穿戴和使用它们的时候！",
+        "nikki_fuego": "我这辈子一直是个游戏玩家，我一直希望游戏能让我对角色的可穿戴物品进行极致的定制。（在 Decentraland 中，）这个幻想成为了现实。"
+      }
+    },
+    "learn": {
+      "title_highlight": "学习",
+      "title": "社区教程",
+      "watch_more": "想看更多？",
+      "watch_more_button": "访问我们的 YouTube 频道",
+      "your_tutorial": "觉得您的教程应该在这里展示？",
+      "your_tutorial_button": "提交教程以供审核",
+      "cards": {
+        "blender_first_hat": "Blender 新手入门 | 制作您的第一顶帽子",
+        "first_virtual_gallery": "您的第一个虚拟画廊 | 分步构建",
+        "canessa_intro_building": "Creator Hub | 构建入门",
+        "office_hours_custom_components": "Office Hours | 导入资源与自定义组件",
+        "first_wearable_academy": "制作您的第一件可穿戴物品 | Creator Academy"
+      }
+    },
+    "blog": {
+      "title_highlight": "博客",
+      "title": "最新文章",
+      "view_all": "阅读博客"
+    },
+    "faqs": {
+      "subtitle": "了解更多关于 Decentraland",
+      "title": "常见\n问题",
+      "aria_label": "常见问题",
+      "cta": "查看更多",
+      "items": {
+        "what_is": {
+          "question": "什么是 Decentraland？",
+          "answer": "Decentraland 于 2020 年推出，是一个虚拟社交世界，也是首个去中心化的元宇宙，并且是唯一一个开源的元宇宙。Decentraland 平台可以在浏览器或桌面应用中运行，用户可以在其中创作、体验内容和应用并从中获得收益，还可以社交并参加各种由社区推动的日常活动。Decentraland 的独特之处在于，它由每天使用它的人所拥有、创造和治理。通过 Decentraland 的去中心化自治组织（DAO），用户可以提交提案并进行投票，甚至可以申请资助，交由社区投票决定。"
+        },
+        "what_create": {
+          "question": "我可以在 Decentraland 中创作什么？",
+          "answer": "与其问能创作什么，不如问在 Decentraland 中有什么不能创作！作为一个由用户创造的虚拟世界，在 Decentraland 中您几乎可以创作任何东西。\nDecentraland 创作者制作构建数字身份所需的所有组成部分，例如可穿戴物品（包括完整皮肤、身体部位、服装、发型、配饰等），以及表情动作，即虚拟形象的动画，除了动作之外还可以包含道具和声音。\nDecentraland 的景观和活动也都由创作者塑造。漫步在 Decentraland 的 Genesis City，您可以探索由不同创作者并肩构建的各种内容：美术馆、剧院、花园、夜店、赛道、赌场、完整的游戏体验等等，每个人都可以探索和创作！要开始构建，请下载 Decentraland 的 Creator Hub。"
+        },
+        "become_creator": {
+          "question": "如何成为 Decentraland 创作者？",
+          "answer": "任何人都可以成为 Decentraland 创作者，只需要一点专业知识和无穷的创意！根据您想创作的内容，所需的知识也有所不同。如果您只是想为自己创建酷炫的虚拟场景或举办活动，并且不打算学习编程和 3D 建模，那么只需下载 Decentraland 的 Creator Hub，就可以立即开始创建场景。\n\n对于熟悉或愿意学习 3D 建模和/或编程的人，您可以在创作者文档页面找到在 Decentraland 中创作所需的所有技术规范和流程，网上也有许多关于创建可穿戴物品、表情动作和体验的教程。\n可穿戴物品和表情动作\n创建可穿戴物品和表情动作的流程包括：在 Blender 等 3D 建模软件中制作资源，然后提交给审核委员会，由其确保您的作品在技术上合格并符合 Decentraland 的内容政策（这包括支付 100 美元的发布费用，该费用将归入 DAO，用于资助社区资助计划）。最后，一旦您的作品获得批准，它就会正式发布在 Marketplace 上！您将获得所有首次销售额的 97.5%，并从任何二次销售中赚取 2.5% 的版税。\n体验\n如果您有兴趣设计体验，请下载 Decentraland 的 Creator Hub，即可开始创建沉浸式场景和游戏，然后将其发布到世界，或发布到 Decentraland 开放世界 Genesis City 中的土地上。您保留对内容的完全控制权，可以随时编辑或删除，并保留通过体验获得的全部收益。"
+        },
+        "monetize": {
+          "question": "我可以通过我的作品获得收益吗？",
+          "answer": "当然可以！Decentraland 创作者可以通过多种方式将他们的技能变现。\n\n可穿戴物品和表情动作创作者在 Marketplace 上发布作品，支付 100 美元的发布费用（该费用将归入 DAO，用于资助社区资助计划），从而获得所有首次销售利润的 97.5%，以及任何二次销售的 2.5% 版税。\n一些场景创作者通过他们的体验获得收益，这些收入可以完全归他们自己所有。"
+        },
+        "need_land": {
+          "question": "我需要拥有土地才能在 Decentraland 中创建体验吗？",
+          "answer": "不需要，在 Decentraland 中创建场景或互动体验并不需要拥有土地。任何人都可以使用 Decentraland 的 SDK 7 或无代码编辑器自由创作内容。之后，如果您想发布作品，让自己和他人都能探索和享受，除了拥有土地之外，您还有多种选择。\n世界\n世界是您在元宇宙中的个人 3D 空间。它们独立于 Decentraland Genesis City 的开放世界地图而存在，非常适合想要尝试 3D 创作或拥有自己虚拟空间的人。\n\n获得自己的世界很简单：当您领取一个 Decentraland NAME（100 MANA）时，您不仅会获得一个可在 Web3 中通用的独特用户名，还会获得 100 投票权（用于 Decentraland 治理），当然还有一个可以随心使用的专属世界。\n\n租用土地\n如果您有兴趣在 Decentraland 的开放世界 Genesis City 中发布内容，但不想购买土地，完全没问题！您可以在 Marketplace 上轻松短期或长期租用土地，并可以通过银行卡、银行转账或加密货币付款。浏览可租用的土地，看看有哪些选择吧！\n\n社区联系、社区资助和创作者公开征集\n如果有人热衷于与社区分享自己的作品，在 Decentraland 中总会有办法实现。创作者社区非常热情，乐于伸出援手。如果您刚刚起步，可以在 Community Building Discord 中结识许多创作者。\n如果您想构建一个造福社区的体验，但需要资源来实现，您随时可以尝试在 DAO 中申请社区资助。您还可以申请全年定期举办的公开征集活动，为各种 Decentraland 活动（例如每年的音乐节、艺术节和时装节）构建体验和场景。请关注 Decentraland 的社交媒体或订阅每周简报，获取最新动态！"
+        },
+        "need_crypto": {
+          "question": "使用 Decentraland 需要加密货币或数字钱包吗？",
+          "answer": "您无需拥有加密货币即可畅享 Decentraland，因为它是免费使用的。如果您决定从 Marketplace 购买社区创作的作品，有多种付款方式可供选择，除了各种加密货币之外，还支持信用卡/借记卡和银行转账。\n\n至于数字钱包，如果您还没有，而且不想自己去获取，也完全不需要。当您首次登录 Decentraland 并创建账户时，系统会在后台自动为您创建一个数字钱包。就这么简单！\n\n这个数字钱包是您 Decentraland 账户的一部分，用于存储您获得的任何数字资产，例如您在世界中领取的免费可穿戴物品，或您在 Marketplace 上购买的有趣表情动作。"
+        }
+      }
+    },
+    "carousel": {
+      "previous": "上一张",
+      "next": "下一张",
+      "go_to": "前往第 {index} 张"
+    }
+  }
+}
