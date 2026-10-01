@@ -28,6 +28,7 @@
     "**/*.{js,mjs,cjs,ts,tsx,json,css,html,md,mdx}": "prettier --write --log-level=error"
   },
   "dependencies": {
+    "@dcl-regenesislabs/wearable-validator": "^0.5.0",
     "@dcl/crypto": "^3.7.0",
     "@dcl/hashing": "^1.2.0",
     "@dcl/hooks": "^1.6.0",

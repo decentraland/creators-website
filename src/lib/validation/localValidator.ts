@@ -1,62 +1,66 @@
-// The in-browser backend: loads the model with Three.js and runs the lib/glbValidation suite.
-import { type WearableCategory } from '@dcl/schemas'
+// The in-browser backend: the shared Decentraland rule book (@dcl-regenesislabs/wearable-validator),
+// restricted to the model and emote groups the editor can act on.
+import { validate, type Finding, type Result } from '@dcl-regenesislabs/wearable-validator'
 import { getContentsStorageUrl } from '../builder'
-import { validateEmoteGLTF, validateWearableGLTF, ValidationSeverity } from '../glbValidation'
-import { PROP_ARMATURE_NAME } from '../glbValidation/constants'
 import { isImageFile } from '../itemFiles'
 import { ItemType } from '../items'
-import { loadGltf } from '../models'
 import {
+  ValidationSeverity,
   type ItemValidator,
   type ValidateOptions,
   type ValidationContext,
   type ValidationEntry,
+  type ValidationIssue,
   type ValidationResult,
   type ValidationSource
 } from './types'
 
-class AbortedError extends Error {
-  constructor() {
-    super('Validation aborted')
-    this.name = 'AbortError'
-  }
-}
-
-function throwIfAborted(signal?: AbortSignal) {
-  if (signal?.aborted) throw new AbortedError()
-}
-
-type Loadable = {
-  mainFile: string
-  /** Every file the loader may request, by path, as a fetchable URL. */
-  mappings: Record<string, string>
-  /** Content paths, for the checks that only need file names (audio formats). */
-  paths: string[]
-  release: () => void
-}
-
-function toLoadable(source: ValidationSource, ctx: ValidationContext): Loadable {
+async function loadMainFile(
+  source: ValidationSource,
+  ctx: ValidationContext,
+  signal?: AbortSignal
+): Promise<{ mainFile: string; bytes?: Uint8Array }> {
   if (source.kind === 'blob') {
-    const mappings = Object.fromEntries(
-      Object.entries(source.contents).map(([path, blob]) => [path, URL.createObjectURL(blob)])
-    )
-    return {
-      mainFile: source.mainFile,
-      mappings,
-      paths: Object.keys(source.contents),
-      release: () => Object.values(mappings).forEach(url => URL.revokeObjectURL(url))
-    }
+    if (isImageFile(source.mainFile)) return { mainFile: source.mainFile }
+    return { mainFile: source.mainFile, bytes: new Uint8Array(await source.contents[source.mainFile].arrayBuffer()) }
   }
   const { item } = source
   const representation =
     item.data.representations.find(candidate => ctx.bodyShape && candidate.bodyShapes.includes(ctx.bodyShape)) ??
     item.data.representations[0]
   if (!representation) throw new Error(`Item "${item.id}" has no representation to validate`)
-  // The full mapping set: a .gltf's textures and buffers resolve through it, or the loader fails.
-  const mappings = Object.fromEntries(
-    Object.entries(item.contents).map(([path, hash]) => [path, getContentsStorageUrl(hash)])
-  )
-  return { mainFile: representation.mainFile, mappings, paths: Object.keys(item.contents), release: () => undefined }
+  if (isImageFile(representation.mainFile)) return { mainFile: representation.mainFile }
+  const response = await fetch(getContentsStorageUrl(item.contents[representation.mainFile]), { signal })
+  if (!response.ok) throw new Error(`Could not load "${representation.mainFile}" (${response.status})`)
+  return { mainFile: representation.mainFile, bytes: new Uint8Array(await response.arrayBuffer()) }
+}
+
+/** The slice of entity metadata the model/emote checks read: type, category and the hides that pool triangle budgets. */
+function toMetadata(ctx: ValidationContext) {
+  return ctx.type === ItemType.EMOTE
+    ? { emoteDataADR74: {} }
+    : { data: { category: ctx.category, hides: ctx.hides ?? [] } }
+}
+
+function toIssue(finding: Finding): ValidationIssue {
+  return {
+    code: finding.check,
+    severity: finding.severity === 'error' ? ValidationSeverity.ERROR : ValidationSeverity.WARNING,
+    message: finding.message,
+    where: finding.where
+  }
+}
+
+export function toIssues(result: Result): ValidationIssue[] {
+  // A category-dependent check without a category is not a problem with the model; the Add Items modal
+  // re-derives the triangle budget itself once a category is picked.
+  const issues = result.findings.filter(finding => finding.data?.reason !== 'category-unknown').map(toIssue)
+  // A model the validator could not parse (a damaged GLB, a .gltf) skips every check: never show that as a pass.
+  const skipped = result.checks.find(check => check.status === 'skipped' && check.skipReason)
+  if (skipped && issues.length === 0) {
+    issues.push({ code: 'file-format', severity: ValidationSeverity.ERROR, message: skipped.skipReason })
+  }
+  return issues
 }
 
 async function validateOne(
@@ -64,28 +68,15 @@ async function validateOne(
   ctx: ValidationContext,
   opts: ValidateOptions = {}
 ): Promise<ValidationResult> {
-  throwIfAborted(opts.signal)
-  const loadable = toLoadable(source, ctx)
+  opts.signal?.throwIfAborted()
+  const { mainFile, bytes } = await loadMainFile(source, ctx, opts.signal)
   // Texture-only wearables have no geometry to inspect.
-  if (isImageFile(loadable.mainFile)) {
-    loadable.release()
-    return { issues: [] }
-  }
-  try {
-    const gltf = await loadGltf(loadable.mappings[loadable.mainFile], loadable.mappings)
-    throwIfAborted(opts.signal)
-    if (ctx.type === ItemType.EMOTE) {
-      const hasProps = gltf.scene.children.some(child => child.name === PROP_ARMATURE_NAME)
-      // The audio check only reads file names.
-      const contents = Object.fromEntries(loadable.paths.map(path => [path, new Blob()]))
-      const result = await validateEmoteGLTF(gltf, hasProps, contents)
-      return { issues: result.issues }
-    }
-    const result = await validateWearableGLTF(gltf, ctx.category as WearableCategory | undefined, ctx.hides)
-    return { issues: result.issues }
-  } finally {
-    loadable.release()
-  }
+  if (!bytes) return { issues: [] }
+  const result = await validate(
+    { files: new Map([[mainFile, bytes]]), metadata: toMetadata(ctx) },
+    { groups: ['model', 'emote'], category: ctx.category, signal: opts.signal }
+  )
+  return { issues: toIssues(result) }
 }
 
 export const localValidator: ItemValidator = {

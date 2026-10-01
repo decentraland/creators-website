@@ -2,7 +2,8 @@
 // rules. All async work (file loading, model analysis, thumbnails, upload) lives outside and
 // feeds results in through actions, so this reducer stays fully unit-testable.
 import { EmoteCategory, WearableCategory } from '@dcl/schemas'
-import { checkTriangleCount, type ValidationIssue } from '~/lib/glbValidation'
+import { effectiveTriangleLimit } from '@dcl-regenesislabs/wearable-validator'
+import { ValidationSeverity, type ValidationIssue } from '~/lib/validation'
 import { VIDEO_PATH, cleanAssetName, isModelFile } from '~/lib/itemFiles'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
 import { BodyShapeType, ItemType, getMissingBodyShapeType, type Item, type ItemMetrics } from '~/lib/items'
@@ -119,16 +120,23 @@ export type AddItemsAction =
   | { type: 'uploadFailed'; failureReason: UploadFailureReason; failedDraftIds: string[] }
   | { type: 'retryRequested' }
 
-/** Re-derives the triangle warning when the category changes (legacy checkTriangleCount rerun). */
+const TRIANGLE_CODE = 'triangle-count'
+
+/** Re-derives the triangle warning from the stored metrics when the category changes (hides are not configured yet). */
 function withTriangleRecheck(draft: ItemDraft): ItemDraft {
   if (draft.type !== ItemType.WEARABLE || !draft.metrics || draft.metrics.triangles === undefined) {
     return draft
   }
-  const issues = draft.validationIssues.filter(issue => issue.code !== 'TRIANGLE_COUNT_EXCEEDED')
-  const triangleIssue = draft.category
-    ? checkTriangleCount(draft.metrics.triangles, draft.category as WearableCategory)
-    : null
-  return { ...draft, validationIssues: triangleIssue ? [...issues, triangleIssue] : issues }
+  const issues = draft.validationIssues.filter(issue => issue.code !== TRIANGLE_CODE)
+  const limit = draft.category ? effectiveTriangleLimit(draft.category) : Infinity
+  if (draft.metrics.triangles <= limit) return { ...draft, validationIssues: issues }
+  const triangleIssue: ValidationIssue = {
+    code: TRIANGLE_CODE,
+    severity: ValidationSeverity.WARNING,
+    messageKey: 'item_validation.triangle_count_exceeded_with_hint',
+    messageParams: { count: draft.metrics.triangles, limit, category: draft.category! }
+  }
+  return { ...draft, validationIssues: [...issues, triangleIssue] }
 }
 
 function updateDraft(state: AddItemsState, id: string, update: (draft: ItemDraft) => ItemDraft): AddItemsState {

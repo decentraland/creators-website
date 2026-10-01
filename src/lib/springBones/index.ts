@@ -2,9 +2,12 @@
 // params, chain roots, subtree sizes (the MAX_SPRING_BONES cap counts every bone a chain drives) and
 // the merge back into `item.data.springBones`, keyed by representation model hash.
 import { type SpringBoneParams, type SpringBonesData } from '@dcl/schemas'
-import { MAX_SPRING_BONES } from '../glbValidation/constants'
 import { ItemType, type Item } from '../items'
 import { type BoneNode } from './parseSpringBones'
+
+// Local copy: this module is on the app entry path and the validator package is ~300 KB gzipped.
+// springBones.spec.ts keeps it equal to the validator manifest.
+export const MAX_SPRING_BONES = 12
 
 export { parseSpringBones, extractGltfJson, type BoneNode } from './parseSpringBones'
 

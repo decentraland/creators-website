@@ -97,9 +97,9 @@ describe('review flow', () => {
       id: draft.id,
       patch: { category: 'eyewear' }
     })
-    expect(state.drafts[0].validationIssues.some(issue => issue.code === 'TRIANGLE_COUNT_EXCEEDED')).toBe(true)
+    expect(state.drafts[0].validationIssues.some(issue => issue.code === 'triangle-count')).toBe(true)
     const back = addItemsReducer(state, { type: 'draftUpdated', id: draft.id, patch: { category: 'hat' } })
-    expect(back.drafts[0].validationIssues.some(issue => issue.code === 'TRIANGLE_COUNT_EXCEEDED')).toBe(false)
+    expect(back.drafts[0].validationIssues.some(issue => issue.code === 'triangle-count')).toBe(false)
   })
 
   it('removing a draft clears variants that pointed at it', () => {

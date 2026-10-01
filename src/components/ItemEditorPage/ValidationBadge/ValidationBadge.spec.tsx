@@ -6,12 +6,12 @@ import { ValidationSeverity } from '~/lib/validation'
 import { ValidationBadge, getValidationStatus } from './ValidationBadge'
 
 const warning = {
-  code: 'W',
+  code: 'triangle-count',
   severity: ValidationSeverity.WARNING,
-  messageKey: 'item_validation.materials_exceeded',
-  messageParams: { count: 3, limit: 2 }
+  messageKey: 'item_validation.triangle_count_exceeded_with_hint',
+  messageParams: { count: 900, limit: 500, category: 'eyewear' }
 }
-const error = { code: 'E', severity: ValidationSeverity.ERROR, messageKey: 'item_validation.cameras_found' }
+const error = { code: 'skeleton', severity: ValidationSeverity.ERROR, message: 'The skeleton is not the avatar one.' }
 
 describe('ValidationBadge', () => {
   it('derives the traffic light from the issues', () => {
@@ -28,8 +28,9 @@ describe('ValidationBadge', () => {
     await userEvent.click(screen.getByTestId('validation-badge'))
     expect(screen.getByTestId('validation-badge-issues').children).toHaveLength(2)
     expect(screen.getByTestId('validation-badge-issues')).toHaveTextContent(
-      'Material count (3) exceeds the limit of 2.'
+      'Triangle count (900) exceeds the base limit of 500 for eyewear wearables.'
     )
+    expect(screen.getByTestId('validation-badge-issues')).toHaveTextContent('The skeleton is not the avatar one.')
   })
 
   it('is inert while passing and hidden while idle', () => {
