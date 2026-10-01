@@ -43,6 +43,11 @@ export function AiVerdictModal({ verdict, items, onClose }: Props) {
             {t('ai_verdict.validation_id', { id: verdict.payload.validationId })}
           </S.ValidationId>
         )}
+        {verdict.payload.rulesVersion && (
+          <S.ValidationId data-testid="ai-verdict-rules-version">
+            {t('ai_verdict.rules_version', { version: verdict.payload.rulesVersion })}
+          </S.ValidationId>
+        )}
         <ItemFindingsList results={verdict.payload.items} items={items} testId="ai-verdict-items" />
         <S.Actions>
           <Button type="button" variant="secondary" onClick={onClose}>

@@ -1382,7 +1382,8 @@
     "rejected_by_validator": "Rejected by validator",
     "appealed": "Appealed",
     "rejected_by_curator": "Rejected by curator",
-    "approved": "Approved"
+    "approved": "Approved",
+    "needs_curator": "Needs a curator"
   },
   "reject_reason": {
     "clipping": "Clipping",
@@ -1411,7 +1412,13 @@
     "item_failed": "Failed",
     "item_unchecked": "Not checked",
     "unknown_item": "Item {id}",
-    "visual_summary": "Visual review"
+    "visual_summary": "Visual review",
+    "item_unsupported": "Can't be checked automatically",
+    "item_error": "Couldn't be validated: {error}",
+    "body_shape": {
+      "male": "Male",
+      "female": "Female"
+    }
   },
   "review_panel": {
     "ai_reviewing": "We're checking your collection automatically. This usually takes a few minutes.",
@@ -1440,7 +1447,9 @@
     "validation_error": "We couldn't start the automatic review. Please try again.",
     "request_review": "Request human review",
     "appeal_open": "A human review was already requested.",
-    "no_access": "Only the owner and collaborators can validate again or request a human review."
+    "no_access": "Only the owner and collaborators can validate again or request a human review.",
+    "validator_failed": "The automatic review couldn't check your collection. A curator will review it.",
+    "too_large": "Your collection is too large for the automatic review. A curator will review it."
   },
   "appeal_modal": {
     "title": "Request a human review",
@@ -1473,7 +1482,8 @@
     "rejected": "Rejected {time}",
     "summary": "{failed, plural, =0 {Every item passed} one {# item failed} other {# items failed}} · {errors, plural, one {# error} other {# errors}} · {warnings, plural, one {# warning} other {# warnings}}",
     "validation_id": "Validation {id}",
-    "close": "Close"
+    "close": "Close",
+    "rules_version": "Rules {version}"
   },
   "activity_modal": {
     "title": "Activity",
@@ -1508,7 +1518,12 @@
       "review.rejected": "rejected the collection",
       "changes.submitted": "submitted changes to {count, plural, one {# item} other {# items}}",
       "collection.disabled": "disabled the collection",
-      "unknown": "{type}"
+      "unknown": "{type}",
+      "review": {
+        "ai_error_exhausted": "Automatic review gave up after several tries, a curator will review the collection",
+        "ai_error_too_large": "The collection is too large for the automatic review, a curator will review it",
+        "human_required_validator_error": "The automatic review couldn't check the collection, a curator will review it"
+      }
     },
     "show_findings": "Show findings",
     "hide_findings": "Hide findings"

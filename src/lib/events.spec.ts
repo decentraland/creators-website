@@ -8,8 +8,10 @@ import {
   hasOpenAppeal,
   isValidationInProgress,
   isValidationRunning,
+  mergeBodyShapeFindings,
   startOfUtcDay,
-  type CollectionEvent
+  type CollectionEvent,
+  type ValidationFinding
 } from './events'
 
 const NOW = Date.UTC(2026, 8, 29, 15, 0, 0)
@@ -110,5 +112,33 @@ describe('latest-event flags', () => {
     expect(isValidationInProgress([event('review.assigned', NOW), event('review.ai_error', NOW - 1)])).toBe(true)
     expect(isValidationInProgress([event('review.ai_started', NOW)])).toBe(true)
     expect(isValidationInProgress([event('review.ai_rejected', NOW), event('review.ai_started', NOW - 1)])).toBe(false)
+  })
+})
+
+describe('mergeBodyShapeFindings', () => {
+  const finding = { rule: 'M-01', check: 'triangles', severity: 'error' as const, message: 'Too many triangles' }
+
+  it('merges the same finding on both body shapes into one row', () => {
+    expect(
+      mergeBodyShapeFindings<ValidationFinding>([
+        { ...finding, where: 'male/hat.glb', bodyShape: 'male', measured: 1940, limit: 1500 },
+        { ...finding, where: 'female/hat.glb', bodyShape: 'female', measured: 1940, limit: 1500 },
+        { rule: 'S-05', severity: 'warning', message: 'Large file' }
+      ])
+    ).toEqual([
+      { ...finding, where: 'hat.glb', measured: 1940, limit: 1500, bodyShapes: ['male', 'female'] },
+      { rule: 'S-05', severity: 'warning', message: 'Large file', where: undefined, bodyShapes: [] }
+    ])
+  })
+
+  it('keeps findings apart when their measures differ', () => {
+    const rows = mergeBodyShapeFindings<ValidationFinding>([
+      { ...finding, where: '"male/hat.glb" › Albedo', bodyShape: 'male', measured: 1940 },
+      { ...finding, where: '"female/hat.glb" › Albedo', bodyShape: 'female', measured: 2100 }
+    ])
+    expect(rows.map(row => [row.where, row.bodyShapes])).toEqual([
+      ['"hat.glb" › Albedo', ['male']],
+      ['"hat.glb" › Albedo', ['female']]
+    ])
   })
 })

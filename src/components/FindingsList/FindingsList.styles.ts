@@ -57,6 +57,15 @@ export const Rule = styled.span`
   color: ${theme.colors.gray4};
 `
 
+export const BodyShapes = styled.span`
+  padding: 0 6px;
+  border-radius: ${theme.radius.pill};
+  background: ${theme.colors.overlay};
+  font-size: 11px;
+  font-weight: 600;
+  color: ${theme.colors.softWhite};
+`
+
 export const Where = styled.span`
   font-size: 12px;
   color: ${theme.colors.gray4};
@@ -132,6 +141,13 @@ export const ItemStatus = styled.span`
   &[data-passed='null'] {
     color: ${theme.colors.amber};
   }
+`
+
+export const ItemError = styled.p`
+  margin: 0;
+  font-size: 13px;
+  color: ${theme.colors.amber};
+  overflow-wrap: anywhere;
 `
 
 export const Summary = styled.p`

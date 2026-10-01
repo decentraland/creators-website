@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'
-import { type ValidationFinding, type ValidationItemResult } from '~/lib/events'
+import { mergeBodyShapeFindings, type ValidationFinding, type ValidationItemResult } from '~/lib/events'
 import { type Item } from '~/lib/items'
 import { isWebUrl, openExternal } from '~/lib/navigation'
 import * as S from './FindingsList.styles'
@@ -16,17 +16,23 @@ type ListProps = {
   testId?: string
 }
 
-/** Validator findings, one card each: rule, message, measured vs limit, fix and docs. */
+/** Validator findings, one card each: rule, body shapes, message, measured vs limit, fix and docs. */
 export function FindingsList({ findings, testId = 'findings' }: ListProps) {
   const { t } = useTranslation()
-  if (findings.length === 0) return null
+  const rows = useMemo(() => mergeBodyShapeFindings(findings), [findings])
+  if (rows.length === 0) return null
   return (
     <S.List data-testid={testId}>
-      {findings.map((finding, index) => (
+      {rows.map((finding, index) => (
         <S.Finding key={`${finding.rule}-${index}`} data-severity={finding.severity} data-testid={`${testId}-finding`}>
           <S.Head>
             <S.Severity data-severity={finding.severity}>{t(`findings.severity.${finding.severity}`)}</S.Severity>
             <S.Rule>{finding.rule}</S.Rule>
+            {finding.bodyShapes.length > 0 && (
+              <S.BodyShapes data-testid={`${testId}-body-shapes`}>
+                {finding.bodyShapes.map(shape => t(`findings.body_shape.${shape}`)).join(' · ')}
+              </S.BodyShapes>
+            )}
             {finding.where && <S.Where>{finding.where}</S.Where>}
           </S.Head>
           <S.Message>{finding.message}</S.Message>
@@ -59,7 +65,7 @@ export function FindingsList({ findings, testId = 'findings' }: ListProps) {
 }
 
 type ItemFindings = Pick<ValidationItemResult, 'itemId'> & { findings: ShownFinding[] } & Partial<
-    Pick<ValidationItemResult, 'passed' | 'visualSummary'>
+    Pick<ValidationItemResult, 'passed' | 'visualSummary' | 'unsupported' | 'error'>
   >
 
 type GroupedProps = {
@@ -93,11 +99,18 @@ export function ItemFindingsList({ results, items = [], showStatus = true, testI
                       ? 'findings.item_passed'
                       : passed === false
                         ? 'findings.item_failed'
-                        : 'findings.item_unchecked'
+                        : result.unsupported
+                          ? 'findings.item_unsupported'
+                          : 'findings.item_unchecked'
                   )}
                 </S.ItemStatus>
               )}
             </S.ItemHead>
+            {result.passed === null && result.error && (
+              <S.ItemError data-testid={`${testId}-item-error`}>
+                {t('findings.item_error', { error: result.error })}
+              </S.ItemError>
+            )}
             <FindingsList findings={result.findings} testId={`${testId}-${result.itemId}`} />
             {result.visualSummary && (
               <S.Summary data-testid={`${testId}-visual-summary`}>

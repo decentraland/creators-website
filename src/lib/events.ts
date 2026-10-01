@@ -229,6 +229,27 @@ export function countFailedItems(items: ValidationItemResult[]): number {
   return items.filter(item => item.passed === false).length
 }
 
+const BODY_SHAPE_FOLDER = /^("?)(male|female)\//i
+
+/**
+ * One row per finding, with the body shapes it was found on: the same finding on both shapes' files differs only
+ * in `bodyShape` and the shape's folder in `where`. Order follows each row's first occurrence.
+ */
+export function mergeBodyShapeFindings<F extends { bodyShape?: BodyShape; where?: string }>(
+  findings: F[]
+): (Omit<F, 'bodyShape'> & { bodyShapes: BodyShape[] })[] {
+  const rows = new Map<string, Omit<F, 'bodyShape'> & { bodyShapes: BodyShape[] }>()
+  for (const { bodyShape, ...rest } of findings) {
+    const where = bodyShape ? rest.where?.replace(BODY_SHAPE_FOLDER, '$1') : rest.where
+    const shown = { ...rest, where }
+    const key = JSON.stringify(shown)
+    const row = rows.get(key)
+    if (!row) rows.set(key, { ...shown, bodyShapes: bodyShape ? [bodyShape] : [] })
+    else if (bodyShape && !row.bodyShapes.includes(bodyShape)) row.bodyShapes.push(bodyShape)
+  }
+  return [...rows.values()]
+}
+
 export function isRejectReasonCode(code: unknown): code is RejectReasonCode {
   return typeof code === 'string' && (REJECT_REASON_CODES as readonly string[]).includes(code)
 }

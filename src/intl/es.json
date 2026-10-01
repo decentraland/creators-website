@@ -1382,7 +1382,8 @@
     "rejected_by_validator": "Rechazada por el validador",
     "appealed": "Apelada",
     "rejected_by_curator": "Rechazada por un curador",
-    "approved": "Aprobada"
+    "approved": "Aprobada",
+    "needs_curator": "Necesita un curador"
   },
   "reject_reason": {
     "clipping": "Clipping",
@@ -1411,7 +1412,13 @@
     "item_failed": "Rechazado",
     "item_unchecked": "Sin revisar",
     "unknown_item": "Ítem {id}",
-    "visual_summary": "Revisión visual"
+    "visual_summary": "Revisión visual",
+    "item_unsupported": "No se puede revisar automáticamente",
+    "item_error": "No se pudo validar: {error}",
+    "body_shape": {
+      "male": "Masculino",
+      "female": "Femenino"
+    }
   },
   "review_panel": {
     "ai_reviewing": "Estamos revisando tu colección automáticamente. Suele tardar unos minutos.",
@@ -1440,7 +1447,9 @@
     "validation_error": "No pudimos iniciar la revisión automática. Inténtalo de nuevo.",
     "request_review": "Pedir revisión humana",
     "appeal_open": "Ya se pidió una revisión humana.",
-    "no_access": "Solo el dueño y los colaboradores pueden volver a validar o pedir una revisión humana."
+    "no_access": "Solo el dueño y los colaboradores pueden volver a validar o pedir una revisión humana.",
+    "validator_failed": "La revisión automática no pudo revisar tu colección. La revisará un curador.",
+    "too_large": "Tu colección es demasiado grande para la revisión automática. La revisará un curador."
   },
   "appeal_modal": {
     "title": "Pedir una revisión humana",
@@ -1473,7 +1482,8 @@
     "rejected": "Rechazada {time}",
     "summary": "{failed, plural, =0 {Todos los ítems pasaron} one {# ítem falló} other {# ítems fallaron}} · {errors, plural, one {# error} other {# errores}} · {warnings, plural, one {# advertencia} other {# advertencias}}",
     "validation_id": "Validación {id}",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "rules_version": "Reglas {version}"
   },
   "activity_modal": {
     "title": "Actividad",
@@ -1508,7 +1518,12 @@
       "review.rejected": "rechazó la colección",
       "changes.submitted": "envió cambios en {count, plural, one {# ítem} other {# ítems}}",
       "collection.disabled": "deshabilitó la colección",
-      "unknown": "{type}"
+      "unknown": "{type}",
+      "review": {
+        "ai_error_exhausted": "La revisión automática se rindió tras varios intentos, un curador revisará la colección",
+        "ai_error_too_large": "La colección es demasiado grande para la revisión automática, la revisará un curador",
+        "human_required_validator_error": "La revisión automática no pudo revisar la colección, la revisará un curador"
+      }
     },
     "show_findings": "Ver hallazgos",
     "hide_findings": "Ocultar hallazgos"
