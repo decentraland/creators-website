@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatLongDate, formatTimeAgo } from './time'
+import { formatLongDate, formatTimeAgo, formatTimeUntil } from './time'
 
 const NOW = +new Date('2026-08-20T12:00:00Z')
 
@@ -34,5 +34,20 @@ describe('formatLongDate', () => {
   it('is empty for a missing or unparsable date', () => {
     expect(formatLongDate(null, 'en')).toBe('')
     expect(formatLongDate('not a date', 'en')).toBe('')
+  })
+})
+
+describe('formatTimeUntil', () => {
+  const now = Date.UTC(2026, 8, 29, 12, 0, 0)
+
+  it('counts forward in the largest unit and clamps under a minute', () => {
+    expect(formatTimeUntil(now + 3 * 3_600_000, 'en', now)).toBe('in 3 hours')
+    expect(formatTimeUntil(now + 150_000, 'en', now)).toBe('in 3 minutes')
+    expect(formatTimeUntil(now + 10_000, 'en', now)).toBe('in 1 minute')
+    expect(formatTimeUntil(now + 2 * 24 * 3_600_000, 'es', now)).toBe('dentro de 2 días')
+  })
+
+  it('reads a past timestamp as time ago', () => {
+    expect(formatTimeUntil(now - 3_600_000, 'en', now)).toBe('1 hour ago')
   })
 })

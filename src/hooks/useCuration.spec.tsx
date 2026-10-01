@@ -28,6 +28,9 @@ const pending: CollectionCuration = {
   collectionId: 'c1',
   status: 'pending',
   assignee: null,
+  reviewedBy: null,
+  rejectionReasons: null,
+  rejectionMessage: null,
   createdAt: 1,
   updatedAt: 1
 }
@@ -61,19 +64,39 @@ describe('useCommittee', () => {
   })
 })
 
+const decision = { rejectionReasons: ['clipping' as const], rejectionMessage: 'Clips through the torso' }
+const withDecision = { decision }
+
 describe('useRejectCuration', () => {
-  it('rejects the pending request', async () => {
+  it('rejects the pending request with the reasons and message the creator will read', async () => {
+    const { result } = renderHook(() => useRejectCuration(ADDRESS), { wrapper })
+    await act(() => result.current.mutateAsync({ collection, curation: pending, ...withDecision }))
+    expect(api.pushCollectionCuration).not.toHaveBeenCalled()
+    expect(api.updateCollectionCuration).toHaveBeenCalledWith(ADDRESS, 'c1', { status: 'rejected', ...decision })
+  })
+
+  it('sends only the status when there is no decision to attach (auto-curation off)', async () => {
     const { result } = renderHook(() => useRejectCuration(ADDRESS), { wrapper })
     await act(() => result.current.mutateAsync({ collection, curation: pending }))
-    expect(api.pushCollectionCuration).not.toHaveBeenCalled()
     expect(api.updateCollectionCuration).toHaveBeenCalledWith(ADDRESS, 'c1', { status: 'rejected' })
   })
 
   it('opens a request first when nobody asked for a review, so the rejection reaches the creator', async () => {
     const { result } = renderHook(() => useRejectCuration(ADDRESS), { wrapper })
-    const rejected = await act(() => result.current.mutateAsync({ collection, curation: null }))
+    const rejected = await act(() => result.current.mutateAsync({ collection, curation: null, ...withDecision }))
     expect(api.pushCollectionCuration).toHaveBeenCalledWith(ADDRESS, 'c1')
     expect(rejected.status).toBe('rejected')
+  })
+})
+
+describe('useRejectCuration after a half-success', () => {
+  it('patches the request it already opened instead of opening another', async () => {
+    api.updateCollectionCuration.mockRejectedValueOnce(new Error('down'))
+    const { result } = renderHook(() => useRejectCuration(ADDRESS), { wrapper })
+    await act(() => result.current.mutateAsync({ collection, curation: null, ...withDecision }).catch(() => undefined))
+    expect(api.pushCollectionCuration).toHaveBeenCalledTimes(1)
+    await act(() => result.current.mutateAsync({ collection, curation: pending, ...withDecision }))
+    expect(api.pushCollectionCuration).toHaveBeenCalledTimes(1)
   })
 })
 

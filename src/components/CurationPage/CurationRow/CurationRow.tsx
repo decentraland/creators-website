@@ -1,11 +1,14 @@
+import { useMemo } from 'react'
 import { useIntl } from 'react-intl'
 import { Edit as EditIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { CollectionMosaic } from '~/components/CollectionMosaic'
 import { CurationStatePill } from '~/components/CurationStatePill'
 import { ProfileBadge } from '~/components/ProfileBadge'
+import { ReviewStagePill } from '~/components/ReviewStagePill'
+import { useRecentCollectionEvents } from '~/hooks/useCollectionEvents'
 import { type Collection } from '~/lib/collections'
-import { canEditAssignee, getCurationState, type CollectionCuration } from '~/lib/curation'
+import { canEditAssignee, getCurationState, getReviewStage, type CollectionCuration } from '~/lib/curation'
 import { formatTimeAgo } from '~/lib/time'
 import * as S from './CurationRow.styles'
 
@@ -24,11 +27,15 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
   const { t } = useTranslation()
   const intl = useIntl()
   const state = getCurationState(collection, curation)
+  // A stage needs the timeline (pending: which step; decided: that the server has one at all).
+  const recent = useRecentCollectionEvents(address, collection.id, !!curation)
+  const events = recent.data ?? null
+  const stage = useMemo(() => getReviewStage(collection, curation, events), [collection, curation, events])
   const assignee = curation?.assignee ?? null
   const canAssign = canEditAssignee(collection, curation)
 
   return (
-    <S.Row data-testid="curation-row" data-state={state}>
+    <S.Row data-testid="curation-row" data-state={state} data-stage={stage ?? undefined}>
       <S.NameCell>
         <S.Thumb>
           <CollectionMosaic collectionId={collection.id} itemCount={collection.itemCount} />
@@ -49,7 +56,7 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
         {curation ? formatTimeAgo(curation.updatedAt, intl.locale) : '—'}
       </S.Cell>
       <S.Cell data-cell="state">
-        <CurationStatePill state={state} />
+        {stage ? <ReviewStagePill stage={stage} /> : <CurationStatePill state={state} />}
       </S.Cell>
       <S.AssigneeCell data-testid="curation-row-assignee" data-unassigned={assignee ? undefined : ''}>
         {assignee ? (

@@ -17,6 +17,17 @@ export function formatTimeAgo(timestamp: number, locale: string, now = Date.now(
   return rtf.format(-1, 'minute')
 }
 
+/** "in 3 hours" / "en 3 horas" for a future timestamp; a past one reads like `formatTimeAgo`. */
+export function formatTimeUntil(timestamp: number, locale: string, now = Date.now()): string {
+  const remaining = timestamp - now
+  if (remaining <= 0) return formatTimeAgo(timestamp, locale, now)
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'always' })
+  for (const [unit, ms] of UNITS) {
+    if (remaining >= ms) return rtf.format(Math.round(remaining / ms), unit)
+  }
+  return rtf.format(1, 'minute')
+}
+
 /** "February 11, 2026" / "11 de febrero de 2026"; empty for a missing or unparsable date. */
 export function formatLongDate(iso: string | null | undefined, locale: string): string {
   if (!iso) return ''

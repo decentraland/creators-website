@@ -4,7 +4,6 @@ import {
   Add as AddIcon,
   ArrowBackIosNew as ArrowBackIcon,
   Edit as EditIcon,
-  InfoOutlined as InfoIcon,
   PersonOutline as PersonOutlineIcon
 } from '@mui/icons-material'
 import { useIntl } from 'react-intl'
@@ -45,8 +44,9 @@ import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { ItemSyncStatus, hasPendingChanges } from '~/lib/itemSync'
-import { canPushChanges, getCreatorReviewNotice } from '~/lib/curation'
+import { canPushChanges, getReviewStage, isRejectedStage } from '~/lib/curation'
 import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
+import { useCollectionEvents } from '~/hooks/useCollectionEvents'
 import { previewCollection } from '~/lib/explorer'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS, THUMBNAIL_PATH } from '~/lib/itemFiles'
@@ -65,6 +65,7 @@ import { ThumbnailModal } from '~/components/ThumbnailModal'
 import addItemsArt from '~/assets/add-items.png'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { AddItemsModal } from './AddItemsModal'
+import { ReviewPanel } from './ReviewPanel'
 import { ItemActionsMenu } from './ItemActionsMenu'
 import { ItemListRow } from './ItemListRow'
 import { PublishCollectionModal, PublishSuccessModal, type PublishResume } from './PublishCollectionModal'
@@ -167,6 +168,7 @@ const CollectionDetailPage = () => {
   const syncs = useItemSyncs(address, collection, allItems ?? [])
   const curationQuery = useCollectionCuration(address, collection)
   const curation = curationQuery.data ?? null
+  const { events } = useCollectionEvents(address, collection)
   const pushCuration = usePushCuration(address)
   const [isPushOpen, setPushOpen] = useState(false)
   const hasUnsyncedItems = useMemo(
@@ -177,12 +179,18 @@ const CollectionDetailPage = () => {
     setPushOpen(false)
     pushCuration.reset()
   }
-  const reviewNotice = collection ? getCreatorReviewNotice(collection, curation) : null
-  // Until the request loads, a pending one looks like none and the push would duplicate it.
+  const canManage = !!collection && canManageCollectionItems(collection, address)
+  const stage = useMemo(
+    () => (collection ? getReviewStage(collection, curation, events) : null),
+    [collection, curation, events]
+  )
+  // Until the request loads, a pending one looks like none and the push would duplicate it. A rejection the
+  // automatic review tracks is resubmitted from the review panel (validate again / appeal), never from here.
   const showPushChanges =
     !!collection &&
     curationQuery.isSuccess &&
-    canPushChanges(collection, curation, hasUnsyncedItems, canManageCollectionItems(collection, address))
+    !(isRejectedStage(stage) && !collection.isApproved) &&
+    canPushChanges(collection, curation, hasUnsyncedItems, canManage)
   // A never-approved collection asks for its first review again; an approved one sends an update.
   const pushCopy = collection?.isApproved ? 'push_changes' : 'request_review'
 
@@ -433,6 +441,7 @@ const CollectionDetailPage = () => {
                 <CollectionActionsMenu
                   collection={collection}
                   address={address}
+                  items={allItems}
                   onSendItems={canSend ? () => setSending(true) : undefined}
                   onManageRoles={setManagingRoles}
                   onDeleted={() => navigate('/collections', { replace: true })}
@@ -441,11 +450,15 @@ const CollectionDetailPage = () => {
             </S.HeaderActions>
           </S.Header>
 
-          {reviewNotice && (
-            <S.ReviewNotice data-testid="review-notice" data-notice={reviewNotice}>
-              <InfoIcon fontSize="small" aria-hidden />
-              {t(`collection_detail_page.review_notice.${reviewNotice}`)}
-            </S.ReviewNotice>
+          {address && (
+            <ReviewPanel
+              collection={collection}
+              address={address}
+              curation={curation}
+              events={events}
+              items={allItems ?? []}
+              canManage={canManage}
+            />
           )}
 
           <S.SubHeader>

@@ -22,6 +22,9 @@ const curation: CollectionCuration = {
   collectionId: 'c1',
   status: 'pending',
   assignee: OTHER,
+  reviewedBy: null,
+  rejectionReasons: null,
+  rejectionMessage: null,
   createdAt: 1,
   updatedAt: 1
 }

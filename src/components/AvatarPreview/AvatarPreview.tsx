@@ -8,7 +8,7 @@ import {
 } from '@dcl/schemas'
 import { Env } from '@dcl/ui-env'
 import { WearablePreview } from 'decentraland-ui2'
-import { config } from '~/config'
+import { config, previewBaseUrlOverride } from '~/config'
 import { type AvatarAttributes } from '~/lib/avatar'
 import {
   PREVIEW_WHEEL_START,
@@ -107,6 +107,7 @@ export function AvatarPreview({
   return (
     <S.Wrap data-testid={testId} data-loading={isLoading || undefined}>
       <WearablePreview
+        baseUrl={previewBaseUrlOverride}
         id={id}
         profile="default"
         bodyShape={snapshot.bodyShape}

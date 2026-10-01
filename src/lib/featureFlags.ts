@@ -24,7 +24,12 @@ export enum FeatureFlag {
   /** Credits as a listing currency; with it off, an item can only be priced in MANA. */
   CREDITS_PRIMARY_LISTINGS = 'credits-primary-listings',
   /** Paying the collection publication fee with shop credits. */
-  SHOP_CREDITS_FOR_COLLECTIONS_FEE = 'shop-credits-for-collections-fee'
+  SHOP_CREDITS_FOR_COLLECTIONS_FEE = 'shop-credits-for-collections-fee',
+  /**
+   * builder-server's automatic review of published collections: the timeline, reason-coded rejections,
+   * retries and appeals. Mirrors the server's flag so the app never calls what the server doesn't serve.
+   */
+  AUTO_CURATION = 'auto-curation'
 }
 
 /** Each flag lives under the application that owns it, and is fetched from that application's file. */
@@ -37,7 +42,8 @@ const APPLICATION: Record<FeatureFlag, string> = {
   [FeatureFlag.BLENDER_LIVE_PREVIEW]: 'builder',
   [FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS]: 'dapps',
   [FeatureFlag.CREDITS_PRIMARY_LISTINGS]: 'builder',
-  [FeatureFlag.SHOP_CREDITS_FOR_COLLECTIONS_FEE]: 'builder'
+  [FeatureFlag.SHOP_CREDITS_FOR_COLLECTIONS_FEE]: 'builder',
+  [FeatureFlag.AUTO_CURATION]: 'builder'
 }
 
 const TTL_MS = 60_000

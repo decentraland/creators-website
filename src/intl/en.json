@@ -114,7 +114,8 @@
         "cancel": "Cancel",
         "confirm": "Delete"
       },
-      "view_in_shop": "View in Shop"
+      "view_in_shop": "View in Shop",
+      "activity": "Activity"
     },
     "filter": {
       "all": "All ({count})",
@@ -719,6 +720,13 @@
         "disable": "Disable",
         "deploy_missing": "Deploy missing items"
       },
+      "disable": {
+        "title": "Disable {collection}?",
+        "description": "Nobody will be able to mint its items anymore. You can enable it again later. This needs a transaction from your wallet.",
+        "confirm": "Disable",
+        "error": "We couldn't disable the collection. Please try again.",
+        "success": "{collection} was disabled"
+      },
       "reject": {
         "title": "Reject {collection}?",
         "first": "The collection won't be mintable. The creator will see it as rejected.",
@@ -726,13 +734,6 @@
         "confirm": "Reject",
         "error": "We couldn't reject the collection. Please try again.",
         "success": "{collection} was rejected"
-      },
-      "disable": {
-        "title": "Disable {collection}?",
-        "description": "Nobody will be able to mint its items anymore. You can enable it again later. This needs a transaction from your wallet.",
-        "confirm": "Disable",
-        "error": "We couldn't disable the collection. Please try again.",
-        "success": "{collection} was disabled"
       }
     },
     "discard": {
@@ -1374,5 +1375,168 @@
       "approve": "We couldn't approve the collection.",
       "retry": "Try again"
     }
+  },
+  "review_stage": {
+    "ai_reviewing": "AI reviewing",
+    "awaiting_curator": "Passed, awaiting curator",
+    "rejected_by_validator": "Rejected by validator",
+    "appealed": "Appealed",
+    "rejected_by_curator": "Rejected by curator",
+    "approved": "Approved",
+    "needs_curator": "Needs a curator"
+  },
+  "reject_reason": {
+    "clipping": "Clipping",
+    "thumbnail": "Thumbnail",
+    "category_hides": "Category, hides and replaces",
+    "rigging": "Skin weights or rigging",
+    "triangle_count": "Triangle count",
+    "emote": "Emote issues",
+    "file_size": "File size",
+    "textures_materials": "Textures or materials",
+    "reversed_faces": "Reversed faces or draw order",
+    "smart_wearable_files": "Smart wearable files",
+    "content_policy_ip": "Content policy or IP",
+    "other": "Other"
+  },
+  "findings": {
+    "measured": "Measured: {measured}",
+    "limit": "Limit: {limit}",
+    "fix": "How to fix",
+    "docs": "Learn more",
+    "severity": {
+      "error": "Error",
+      "warning": "Warning"
+    },
+    "item_passed": "Passed",
+    "item_failed": "Failed",
+    "item_unchecked": "Not checked",
+    "unknown_item": "Item {id}",
+    "visual_summary": "Visual review",
+    "item_unsupported": "Can't be checked automatically",
+    "item_error": "Couldn't be validated: {error}",
+    "body_shape": {
+      "male": "Male",
+      "female": "Female"
+    }
+  },
+  "review_panel": {
+    "ai_reviewing": "We're checking your collection automatically. This usually takes a few minutes.",
+    "awaiting_curator": "Automatic checks passed. A curator will review your collection next.",
+    "awaiting_curator_assigned": "Automatic checks passed. A curator is reviewing your collection.",
+    "human_review": "A curator will review your collection.",
+    "unsupported_items": "Some items can't be reviewed automatically. A curator will review your collection.",
+    "appealed": "You asked for a human review. A curator will look at your collection.",
+    "rejected_by_validator": {
+      "title": "The automatic review found issues",
+      "description": "Fix the issues below and validate again, or ask a curator to review it."
+    },
+    "rejected_by_curator": {
+      "title": "A curator rejected your collection",
+      "description": "Fix what the curator pointed out and validate again, or ask for another human review."
+    },
+    "reasons": "Reasons",
+    "message": "Message from the curator",
+    "validate_again": "Validate again",
+    "attempts_left": "{left, plural, =0 {No automatic reviews left today} one {# of {max} left today} other {# of {max} left today}}",
+    "attempts_exhausted": "You've used today's {max} automatic reviews. Try again tomorrow.",
+    "validation_running": "An automatic review is already running.",
+    "validation_started": "Automatic review started. We'll update this page when it finishes.",
+    "validation_limit": "You've used today's automatic reviews. Try again {time}.",
+    "validation_limit_tomorrow": "You've used today's automatic reviews. Try again tomorrow.",
+    "validation_error": "We couldn't start the automatic review. Please try again.",
+    "request_review": "Request human review",
+    "appeal_open": "A human review was already requested.",
+    "no_access": "Only the owner and collaborators can validate again or request a human review.",
+    "validator_failed": "The automatic review couldn't check your collection. A curator will review it.",
+    "too_large": "Your collection is too large for the automatic review. A curator will review it."
+  },
+  "appeal_modal": {
+    "title": "Request a human review",
+    "description": "A curator will look at your collection and decide. Tell them what you changed or why you think it complies.",
+    "note": "Note for the curators",
+    "note_placeholder": "What did you fix, or why do you disagree with the rejection?",
+    "cancel": "Cancel",
+    "submit": "Send request",
+    "success": "A curator will review your collection.",
+    "already_open": "A human review was already requested for this collection.",
+    "error": "We couldn't send your request. Please try again."
+  },
+  "reject_curation_modal": {
+    "title": "Reject {collection}",
+    "first": "The collection won't be mintable. The creator will see it as rejected, with the reasons below.",
+    "changes": "The collection keeps its approved version. The creator will see the changes as rejected, with the reasons below.",
+    "reasons": "Reasons",
+    "reasons_hint": "Pick every reason that applies.",
+    "message": "Message for the creator",
+    "message_placeholder": "What should the creator fix?",
+    "cancel": "Cancel",
+    "confirm": "Reject",
+    "error": "We couldn't reject the collection. Please try again.",
+    "success": "{collection} was rejected"
+  },
+  "ai_verdict": {
+    "button": "AI verdict",
+    "title": "Automatic review",
+    "passed": "Passed {time}",
+    "rejected": "Rejected {time}",
+    "summary": "{failed, plural, =0 {Every item passed} one {# item failed} other {# items failed}} · {errors, plural, one {# error} other {# errors}} · {warnings, plural, one {# warning} other {# warnings}}",
+    "validation_id": "Validation {id}",
+    "close": "Close",
+    "rules_version": "Rules {version}"
+  },
+  "activity_modal": {
+    "title": "Activity",
+    "empty": "No activity yet.",
+    "unavailable": "This collection has no activity timeline yet.",
+    "error": "We couldn't load the activity of this collection.",
+    "retry": "Try again",
+    "load_more": "Load more",
+    "actor": {
+      "validator": "Validator",
+      "system": "System"
+    },
+    "trigger": {
+      "publish": "on publish",
+      "retry": "requested by the creator",
+      "changes": "after changes",
+      "sweep": "resent automatically"
+    },
+    "event": {
+      "collection.published": "published the collection",
+      "review.human_required": "Sent to the curation committee (third-party collection)",
+      "review.human_required_unsupported": "Some items can't be reviewed automatically, a curator will review them",
+      "review.ai_started": "Automatic review started ({trigger})",
+      "review.ai_passed": "Automatic review passed",
+      "review.ai_rejected": "Automatic review found issues in {count, plural, one {# item} other {# items}}",
+      "review.ai_error": "Automatic review restarted",
+      "review.ai_error_curator": "Automatic review failed and will be retried",
+      "review.appeal_requested": "requested a human review",
+      "review.assigned": "assigned the review to {assignee}",
+      "review.unassigned": "unassigned the review",
+      "review.approved": "approved the collection",
+      "review.rejected": "rejected the collection",
+      "changes.submitted": "submitted changes to {count, plural, one {# item} other {# items}}",
+      "collection.disabled": "disabled the collection",
+      "unknown": "{type}",
+      "review": {
+        "ai_error_exhausted": "Automatic review gave up after several tries, a curator will review the collection",
+        "ai_error_too_large": "The collection is too large for the automatic review, a curator will review it",
+        "human_required_validator_error": "The automatic review couldn't check the collection, a curator will review it"
+      }
+    },
+    "show_findings": "Show findings",
+    "hide_findings": "Hide findings"
+  },
+  "static_checks": {
+    "checking": "Checking your items… ({done} of {total})",
+    "preparing": "Checking your items…",
+    "passed": "All checks passed.",
+    "warnings": "{count, plural, one {# warning} other {# warnings}}. Warnings don't block publishing.",
+    "errors": "{count, plural, one {# issue} other {# issues}} to fix before publishing.",
+    "failed": "We couldn't check your items.",
+    "retry": "Try again",
+    "show_warnings": "Show warnings",
+    "hide_warnings": "Hide warnings"
   }
 }

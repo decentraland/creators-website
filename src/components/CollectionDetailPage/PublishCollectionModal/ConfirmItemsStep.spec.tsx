@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { type ReactNode } from 'react'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TranslationProvider } from '~/intl'
 import { deleteItem, fetchItemContents, saveItem } from '~/lib/builder'
 import { type ThumbnailPatch } from '~/components/ThumbnailModal'
 import { ItemType, type Item, BODY_SHAPE_MALE } from '~/lib/items'
+import { type useStaticChecks } from '~/hooks/useStaticChecks'
 import { ConfirmItemsStep } from './ConfirmItemsStep'
 
 vi.mock('~/lib/builder', async importOriginal => ({
@@ -71,8 +72,17 @@ function makeItem(id: string, name: string): Item {
 }
 
 const items = [makeItem('a', 'Pirate Hat'), makeItem('b', 'Ghost Cape')]
+// Checks that never ran: the step behaves as before them.
+const idleChecks = {
+  data: undefined,
+  isFetching: false,
+  isError: false,
+  fetchStatus: 'idle',
+  progress: null,
+  refetch: vi.fn()
+} as unknown as ReturnType<typeof useStaticChecks>
 
-function renderStep(list = items) {
+function renderStep(list = items, staticChecks = idleChecks) {
   const onConfirm = vi.fn()
   const onBack = vi.fn()
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -82,7 +92,14 @@ function renderStep(list = items) {
     </QueryClientProvider>
   )
   render(
-    <ConfirmItemsStep address={ADDRESS} items={list} onBusyChange={vi.fn()} onBack={onBack} onConfirm={onConfirm} />,
+    <ConfirmItemsStep
+      address={ADDRESS}
+      items={list}
+      staticChecks={staticChecks}
+      onBusyChange={vi.fn()}
+      onBack={onBack}
+      onConfirm={onConfirm}
+    />,
     { wrapper }
   )
   return { onConfirm, onBack }
@@ -108,6 +125,23 @@ describe('ConfirmItemsStep', () => {
     await userEvent.click(screen.getByTestId('publish-items-accept'))
     await userEvent.click(confirm)
     expect(onConfirm).toHaveBeenCalled()
+  })
+
+  it('keeps continue disabled while the checks run or report an error', async () => {
+    const running = { ...idleChecks, isFetching: true, fetchStatus: 'fetching' } as typeof idleChecks
+    const { onConfirm } = renderStep(items, running)
+    await userEvent.click(screen.getByTestId('publish-items-accept'))
+    expect(screen.getByTestId('publish-items-confirm')).toBeDisabled()
+    cleanup()
+
+    const failed = {
+      ...idleChecks,
+      data: { items: [], errors: 1, warnings: 0, durationMs: 1 }
+    } as typeof idleChecks
+    renderStep(items, failed)
+    await userEvent.click(screen.getByTestId('publish-items-accept'))
+    expect(screen.getByTestId('publish-items-confirm')).toBeDisabled()
+    expect(onConfirm).not.toHaveBeenCalled()
   })
 
   it('saves an edited name and rarity as soon as the check button is clicked', async () => {

@@ -8,6 +8,10 @@ import { CurationRow } from './CurationRow'
 
 vi.mock('~/components/CollectionMosaic', () => ({ CollectionMosaic: () => null }))
 vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: undefined }) }))
+const latest = vi.hoisted(() => ({ event: null as { type: string } | null, timeline: true }))
+vi.mock('~/hooks/useCollectionEvents', () => ({
+  useRecentCollectionEvents: () => ({ data: latest.timeline ? (latest.event ? [latest.event] : []) : null })
+}))
 
 const ME = '0xme00000000000000000000000000000000000001'
 const collection = {
@@ -26,6 +30,9 @@ const pending: CollectionCuration = {
   collectionId: 'c1',
   status: 'pending',
   assignee: null,
+  reviewedBy: null,
+  rejectionReasons: null,
+  rejectionMessage: null,
   createdAt: 1,
   updatedAt: 2
 }
@@ -65,6 +72,32 @@ describe('CurationRow', () => {
     expect(screen.getByTestId('curation-row-curator')).toHaveTextContent('(you)')
     fireEvent.click(screen.getByTestId('curation-row-edit-assignee'))
     expect(onAssign).toHaveBeenCalledWith(collection, assigned, 'edit')
+  })
+
+  it('shows the derived stage over the legacy state when the timeline tells it apart', () => {
+    latest.event = { type: 'review.ai_started' }
+    renderRow(pending)
+    expect(screen.getByTestId('review-stage')).toHaveAttribute('data-stage', 'ai_reviewing')
+    expect(screen.queryByTestId('curation-state')).toBeNull()
+    latest.event = null
+  })
+
+  it('names the validator on its rejections', () => {
+    renderRow({ ...pending, status: 'rejected', reviewedBy: 'validator' })
+    expect(screen.getByTestId('review-stage')).toHaveAttribute('data-stage', 'rejected_by_validator')
+  })
+
+  it('shows Approved from the timeline on an approved collection', () => {
+    renderRow({ ...pending, status: 'approved', reviewedBy: '0xcurator' }, { ...collection, isApproved: true })
+    expect(screen.getByTestId('review-stage')).toHaveAttribute('data-stage', 'approved')
+  })
+
+  it('keeps the legacy state without a timeline, even when the server names the reviewer', () => {
+    latest.timeline = false
+    renderRow({ ...pending, status: 'rejected', reviewedBy: '0xcurator' })
+    expect(screen.queryByTestId('review-stage')).toBeNull()
+    expect(screen.getByTestId('curation-state')).toHaveAttribute('data-state', 'rejected')
+    latest.timeline = true
   })
 
   it('locks the curator once the collection and its request are approved', () => {
