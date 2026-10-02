@@ -27,7 +27,8 @@ export function useCollectionCuration(address: string | undefined, collection: C
     queryKey: ['collection-curation', address, collection?.id],
     queryFn: () => fetchCollectionCuration(address!, collection!.id),
     enabled: !!address && !!collection?.isPublished,
-    staleTime: 30_000
+    staleTime: 30_000,
+    retry: 1
   })
 }
 
@@ -39,7 +40,9 @@ export function useCollectionStatus(
   const curation = useCollectionCuration(address, collection)
   if (!collection) return undefined
   if (!collection.isPublished) return getCollectionDisplayStatus(collection, null)
-  return curation.isFetched ? getCollectionDisplayStatus(collection, curation.data?.status ?? null) : undefined
+  // Without its curation the status could be wrong, so a failed request keeps the pill hidden.
+  if (!curation.isSuccess) return undefined
+  return getCollectionDisplayStatus(collection, curation.data?.status ?? null)
 }
 
 /** Every item of the collection: the detail page filters and pages them client-side. */

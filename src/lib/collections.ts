@@ -185,13 +185,17 @@ export function getCollectionDisplayStatus(
   collection: Collection,
   curationStatus = collection.curationStatus
 ): CollectionDisplayStatus {
-  // A locked draft has its publish transaction in flight: the server just hasn't seen it yet.
+  // A locked draft has its publish transaction in flight: the server just hasn't seen it yet, so it stays
+  // under the Draft chip while its pill already says Publishing.
   if (!collection.isPublished) {
     return isCollectionLocked(collection) ? CollectionDisplayStatus.PUBLISHING : CollectionDisplayStatus.DRAFT
   }
   if (curationStatus === CurationStatus.REJECTED) return CollectionDisplayStatus.REJECTED
+  // reviewedAt also moves on rescueItems, so a pending curation means a first approval in progress, not a disable.
   if (!collection.isApproved) {
-    return hasBeenApproved(collection) ? CollectionDisplayStatus.DISABLED : CollectionDisplayStatus.UNDER_REVIEW
+    const isDisabled =
+      curationStatus === CurationStatus.APPROVED || (curationStatus == null && hasBeenApproved(collection))
+    return isDisabled ? CollectionDisplayStatus.DISABLED : CollectionDisplayStatus.UNDER_REVIEW
   }
   return curationStatus === CurationStatus.PENDING
     ? CollectionDisplayStatus.UNDER_REVIEW

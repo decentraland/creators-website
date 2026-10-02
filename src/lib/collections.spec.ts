@@ -174,6 +174,13 @@ describe('getCollectionDisplayStatus', () => {
       CollectionDisplayStatus.REJECTED
     ],
     ['a disabled collection', disabled, CurationStatus.APPROVED, CollectionDisplayStatus.DISABLED],
+    ['a disabled collection approved without a curation', disabled, null, CollectionDisplayStatus.DISABLED],
+    [
+      'a first approval stuck between rescueItems and setApproved',
+      disabled,
+      CurationStatus.PENDING,
+      CollectionDisplayStatus.UNDER_REVIEW
+    ],
     [
       'a disabled collection with a rejected curation',
       disabled,

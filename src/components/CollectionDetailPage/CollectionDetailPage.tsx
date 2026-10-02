@@ -149,8 +149,9 @@ const CollectionDetailPage = () => {
   // once it has been approved at least once, even if it is under review again.
   const withMarket = !!collection?.isPublished
   const status = useCollectionStatus(address, collection)
+  // The "few minutes" hint fits the first review only, not changes waiting on a curator.
   const statusHint =
-    status === CollectionDisplayStatus.UNDER_REVIEW
+    status === CollectionDisplayStatus.UNDER_REVIEW && !collection?.isApproved
       ? t('collection_status.under_review_hint')
       : status === CollectionDisplayStatus.DISABLED
         ? t('collection_status.disabled_hint')

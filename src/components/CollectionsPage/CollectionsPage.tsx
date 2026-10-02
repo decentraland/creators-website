@@ -110,8 +110,17 @@ const CollectionsPage = () => {
   // chip stays, showing (0) next to the no-results state.
   const isActiveChipGone = !!counts && !collections.isPlaceholderData && !search && !isStatusFilterShown(status, counts)
   useEffect(() => {
-    if (isActiveChipGone) changeParams({ status: null })
-  })
+    if (!isActiveChipGone) return
+    setSearchParams(
+      prev => {
+        const next = new URLSearchParams(prev)
+        next.delete('status')
+        next.delete('page')
+        return next
+      },
+      { replace: true }
+    )
+  }, [isActiveChipGone, setSearchParams])
 
   function onSearchChange(value: string) {
     setSearchInput(value)
@@ -134,7 +143,9 @@ const CollectionsPage = () => {
   const pages = data?.pages ?? 0
   const shown = data?.results.length ?? 0
   const hasActiveFilters = !!search || status !== CollectionStatusFilter.ALL
-  const allCount = Object.values(counts ?? {}).reduce((sum, count) => sum + count, 0)
+  const allCount = counts
+    ? counts.published + counts.draft + counts.under_review + counts.rejected + counts.disabled
+    : 0
   // Counts ignore the status filter but follow the search, so only an unsearched list proves there are no collections.
   const isEmpty = !!counts && !search && allCount === 0
   const noResults = !!data && total === 0 && hasActiveFilters && !isEmpty
