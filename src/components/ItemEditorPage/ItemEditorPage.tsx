@@ -12,7 +12,13 @@ import { ConfirmModal } from '~/components/ConfirmModal'
 import { ZoomControls } from '~/components/ZoomControls'
 import { useBaseWearables } from '~/hooks/useBaseWearables'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
-import { allCollectionItemsKey, useAllCollectionItems, useCollection, useSaveCollection } from '~/hooks/useCollection'
+import {
+  allCollectionItemsKey,
+  useAllCollectionItems,
+  useCollection,
+  useCollectionStatus,
+  useSaveCollection
+} from '~/hooks/useCollection'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useModelValidation } from '~/hooks/useModelValidation'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
@@ -80,6 +86,7 @@ const ItemEditorPage = () => {
   const isMobile = useMediaQuery(theme.media.maxWidth('mobile'))
 
   const collectionQuery = useCollection(address, collectionId ?? undefined)
+  const collectionStatus = useCollectionStatus(address, collectionQuery.data)
   const itemsQuery = useAllCollectionItems(address, collectionId ?? undefined)
   const baseWearables = useBaseWearables()
   const pickedRenderer = usePreviewRenderer()
@@ -441,6 +448,7 @@ const ItemEditorPage = () => {
   const sidebar = collection ? (
     <ItemsSidebar
       collection={collection}
+      collectionStatus={collectionStatus}
       items={items}
       isLoading={itemsQuery.isLoading}
       selectedId={selectedId}

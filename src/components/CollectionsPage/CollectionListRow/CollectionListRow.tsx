@@ -39,8 +39,8 @@ export function CollectionListRow({ collection }: Props) {
         <CollectionStatusPill collection={collection} />
       </S.Cell>
       <S.DateCell data-testid="collection-row-updated">
-        <strong>{formatTimeAgo(collection.updatedAt, intl.locale)}</strong>
-        <span>{intl.formatDate(collection.updatedAt, DATE_FORMAT)}</span>
+        <strong>{formatTimeAgo(collection.lastActivityAt ?? collection.updatedAt, intl.locale)}</strong>
+        <span>{intl.formatDate(collection.lastActivityAt ?? collection.updatedAt, DATE_FORMAT)}</span>
       </S.DateCell>
       <S.Cell data-testid="collection-row-created">{intl.formatDate(collection.createdAt, DATE_FORMAT)}</S.Cell>
       <S.ActionsCell>

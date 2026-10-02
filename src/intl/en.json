@@ -9,11 +9,12 @@
     "search_placeholder": "Search Collection",
     "new_collection": "New collection",
     "filter": {
-      "all": "All",
-      "published": "Published",
-      "submitted": "Submitted",
-      "draft": "Draft",
-      "rejected": "Rejected"
+      "all": "All ({count})",
+      "published": "Published ({count})",
+      "draft": "Draft ({count})",
+      "under_review": "Under review ({count})",
+      "rejected": "Rejected ({count})",
+      "disabled": "Disabled ({count})"
     },
     "view_mode": "View mode",
     "view_grid": "Grid view",
@@ -57,10 +58,14 @@
     "minter": "Sender"
   },
   "collection_status": {
-    "published": "Published",
+    "draft": "Draft",
+    "publishing": "Publishing",
     "under_review": "Under review",
-    "under_review_hint": "Your collection is being reviewed for approval. This may take up to 5 minutes. We’ll notify you once the review is complete.",
-    "draft": "Draft"
+    "under_review_hint": "Your collection is being reviewed for approval. We’ll notify you once the review is complete.",
+    "published": "Published",
+    "rejected": "Rejected",
+    "disabled": "Disabled",
+    "disabled_hint": "Your collection was disabled by the curation team. Please get in touch with your assigned curator to review it."
   },
   "pagination": {
     "previous": "Previous page",

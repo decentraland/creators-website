@@ -35,7 +35,9 @@ export function CollectionCard({ collection }: Props) {
           {t('collections_page.item_count', { count: collection.itemCount })}
         </S.Meta>
         <S.Meta data-testid="collection-card-updated">
-          {t('collections_page.updated_ago', { timeAgo: formatTimeAgo(collection.updatedAt, locale) })}
+          {t('collections_page.updated_ago', {
+            timeAgo: formatTimeAgo(collection.lastActivityAt ?? collection.updatedAt, locale)
+          })}
         </S.Meta>
         <S.Manage data-testid="collection-card-manage" aria-hidden>
           {t('collections_page.manage')}

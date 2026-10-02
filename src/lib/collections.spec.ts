@@ -15,6 +15,7 @@ import {
   CollectionRole,
   hasBeenApproved,
   isCollectionLocked,
+  isStatusFilterShown,
   statusFilterToParams,
   toCollectionsQueryString,
   toRemoteCollection,
@@ -65,6 +66,17 @@ describe('fromRemoteCollection', () => {
     expect(collection.lock).toBeUndefined()
   })
 
+  it('maps the list-only curation status and last activity', () => {
+    const collection = fromRemoteCollection({
+      ...remote,
+      curation_status: CurationStatus.PENDING,
+      last_activity_at: '2026-10-02T11:13:21Z'
+    })
+    expect(collection.curationStatus).toBe(CurationStatus.PENDING)
+    expect(collection.lastActivityAt).toBe(+new Date('2026-10-02T11:13:21Z'))
+    expect(fromRemoteCollection(remote).lastActivityAt).toBeUndefined()
+  })
+
   it('treats a missing item_count as zero and omits empty optionals', () => {
     const collection = fromRemoteCollection({
       ...remote,
@@ -103,23 +115,86 @@ describe('toCollectionsQueryString', () => {
 })
 
 describe('statusFilterToParams', () => {
-  it('maps each chip to its server-side filter', () => {
+  it('sends every chip but All as the status param', () => {
     expect(statusFilterToParams(CollectionStatusFilter.ALL)).toEqual({})
-    expect(statusFilterToParams(CollectionStatusFilter.PUBLISHED)).toEqual({ isPublished: true })
-    expect(statusFilterToParams(CollectionStatusFilter.DRAFT)).toEqual({ isPublished: false })
-    expect(statusFilterToParams(CollectionStatusFilter.SUBMITTED)).toEqual({ status: CurationStatus.UNDER_REVIEW })
-    expect(statusFilterToParams(CollectionStatusFilter.REJECTED)).toEqual({ status: CurationStatus.REJECTED })
+    expect(statusFilterToParams(CollectionStatusFilter.UNDER_REVIEW)).toEqual({ status: 'under_review' })
+    expect(toCollectionsQueryString(statusFilterToParams(CollectionStatusFilter.DISABLED))).toBe('?status=disabled')
+  })
+})
+
+describe('isStatusFilterShown', () => {
+  const counts = { draft: 0, under_review: 0, published: 0, rejected: 2, disabled: 0 }
+
+  it('always shows All, Draft and Published, and the rest only while they have collections', () => {
+    expect(isStatusFilterShown(CollectionStatusFilter.ALL, counts)).toBe(true)
+    expect(isStatusFilterShown(CollectionStatusFilter.DRAFT, counts)).toBe(true)
+    expect(isStatusFilterShown(CollectionStatusFilter.PUBLISHED, counts)).toBe(true)
+    expect(isStatusFilterShown(CollectionStatusFilter.REJECTED, counts)).toBe(true)
+    expect(isStatusFilterShown(CollectionStatusFilter.UNDER_REVIEW, counts)).toBe(false)
+    expect(isStatusFilterShown(CollectionStatusFilter.DISABLED, undefined)).toBe(false)
   })
 })
 
 describe('getCollectionDisplayStatus', () => {
-  const base = fromRemoteCollection(remote)
-  const withFlags = (isPublished: boolean, isApproved: boolean): Collection => ({ ...base, isPublished, isApproved })
+  const now = Date.now()
+  const base: Collection = { ...fromRemoteCollection(remote), createdAt: 1000, reviewedAt: 1000, lock: undefined }
+  const published = { ...base, isPublished: true }
+  const approved = { ...published, isApproved: true, reviewedAt: 2000 }
+  const disabled = { ...published, isApproved: false, reviewedAt: 2000 }
+  const firstReview = { ...published, isApproved: false }
 
-  it('derives the badge from the publish/approve flags', () => {
-    expect(getCollectionDisplayStatus(withFlags(true, true))).toBe(CollectionDisplayStatus.PUBLISHED)
-    expect(getCollectionDisplayStatus(withFlags(true, false))).toBe(CollectionDisplayStatus.UNDER_REVIEW)
-    expect(getCollectionDisplayStatus(withFlags(false, false))).toBe(CollectionDisplayStatus.DRAFT)
+  it.each([
+    ['a draft', { ...base, isPublished: false }, null, CollectionDisplayStatus.DRAFT],
+    [
+      'a draft whose publish is in flight',
+      { ...base, isPublished: false, lock: now },
+      null,
+      CollectionDisplayStatus.PUBLISHING
+    ],
+    ['a first review, unassigned', firstReview, null, CollectionDisplayStatus.UNDER_REVIEW],
+    ['a first review, assigned', firstReview, CurationStatus.PENDING, CollectionDisplayStatus.UNDER_REVIEW],
+    ['a rejected first review', firstReview, CurationStatus.REJECTED, CollectionDisplayStatus.REJECTED],
+    ['an approved collection', approved, null, CollectionDisplayStatus.PUBLISHED],
+    [
+      'an approved collection with an approved curation',
+      approved,
+      CurationStatus.APPROVED,
+      CollectionDisplayStatus.PUBLISHED
+    ],
+    [
+      'an approved collection with changes sent',
+      approved,
+      CurationStatus.PENDING,
+      CollectionDisplayStatus.UNDER_REVIEW
+    ],
+    [
+      'an approved collection with its changes rejected',
+      approved,
+      CurationStatus.REJECTED,
+      CollectionDisplayStatus.REJECTED
+    ],
+    ['a disabled collection', disabled, CurationStatus.APPROVED, CollectionDisplayStatus.DISABLED],
+    ['a disabled collection approved without a curation', disabled, null, CollectionDisplayStatus.DISABLED],
+    [
+      'a first approval stuck between rescueItems and setApproved',
+      disabled,
+      CurationStatus.PENDING,
+      CollectionDisplayStatus.UNDER_REVIEW
+    ],
+    [
+      'a disabled collection with a rejected curation',
+      disabled,
+      CurationStatus.REJECTED,
+      CollectionDisplayStatus.REJECTED
+    ]
+  ])('shows %s as its status', (_, collection, curationStatus, expected) => {
+    expect(getCollectionDisplayStatus(collection, curationStatus)).toBe(expected)
+  })
+
+  it("defaults to the list's curation status", () => {
+    expect(getCollectionDisplayStatus({ ...approved, curationStatus: CurationStatus.PENDING })).toBe(
+      CollectionDisplayStatus.UNDER_REVIEW
+    )
   })
 })
 

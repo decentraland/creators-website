@@ -35,23 +35,6 @@ export function useCollections(
   })
 }
 
-/** Total rejected collections, for the badge on the Rejected filter chip. */
-export function useRejectedCollectionsCount(address: string | undefined) {
-  return useQuery({
-    queryKey: ['collections-rejected-count', address],
-    queryFn: () =>
-      fetchCollections(address!, {
-        page: 1,
-        limit: 1,
-        type: CollectionType.STANDARD,
-        ...statusFilterToParams(CollectionStatusFilter.REJECTED)
-      }),
-    enabled: !!address,
-    staleTime: 30_000,
-    select: data => data.total
-  })
-}
-
 /** First 4 item thumbnails of a collection, for the 2x2 mosaic cover. */
 export function useCollectionPreview(address: string | undefined, collectionId: string, itemCount: number) {
   return useQuery({
