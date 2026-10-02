@@ -152,41 +152,28 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
       .finally(() => repaddingIdsRef.current.delete(stale.id))
   }, [drafts])
 
-  // Category-dependent limits (triangles, materials, textures, sizes) re-run the validator on every category pick.
-  const staleValidations = useMemo(
-    () =>
-      drafts
-        .filter(isValidationStale)
-        .map(draft => `${draft.id}:${draft.category ?? ''}`)
-        .join(','),
-    [drafts]
-  )
-  const draftsRef = useRef(drafts)
-  draftsRef.current = drafts
+  // Category-dependent limits re-run the validator on every category pick. A pick made mid-run leaves
+  // the draft stale for the category it just got, so the next pass validates it again.
+  const validatingIdsRef = useRef(new Set<string>())
   useEffect(() => {
-    if (!staleValidations) return
-    const controller = new AbortController()
-    for (const draft of draftsRef.current.filter(isValidationStale)) {
-      const { category } = draft
-      void getValidator()
-        .validate(
-          { kind: 'blob', contents: draft.contents, mainFile: draft.model },
-          { type: ItemType.WEARABLE, category: category ?? undefined, hides: prefillRef.current?.hides },
-          { signal: controller.signal }
-        )
-        .then(({ issues }) =>
-          dispatch({
-            type: 'draftAnalyzed',
-            id: draft.id,
-            patch: { validationIssues: issues, validatedCategory: category }
-          })
-        )
-        .catch((error: unknown) => {
-          if (!controller.signal.aborted) console.error('Draft validation failed:', error)
+    const stale = drafts.find(draft => isValidationStale(draft) && !validatingIdsRef.current.has(draft.id))
+    if (!stale) return
+    validatingIdsRef.current.add(stale.id)
+    void getValidator()
+      .validate(
+        { kind: 'blob', contents: stale.contents, mainFile: stale.model },
+        { type: ItemType.WEARABLE, category: stale.category ?? undefined, hides: prefillRef.current?.hides }
+      )
+      .then(({ issues }) =>
+        dispatch({
+          type: 'draftAnalyzed',
+          id: stale.id,
+          patch: { validationIssues: issues, validatedCategory: stale.category }
         })
-    }
-    return () => controller.abort()
-  }, [staleValidations])
+      )
+      .catch((error: unknown) => console.error('Draft validation failed:', error))
+      .finally(() => validatingIdsRef.current.delete(stale.id))
+  }, [drafts])
 
   const isSelectedComplete = useMemo(
     () => !!selected && isDraftComplete(selected, drafts, collectionItems),
