@@ -95,7 +95,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
   const prefillRef = useRef(prefill)
   useEffect(() => {
     for (const { draft, file } of initialDraftsRef.current ?? []) {
-      void processDraftFile(file)
+      void processDraftFile(file, prefillRef.current?.hides)
         .then(patch =>
           dispatch({
             type: 'draftAnalyzed',
@@ -157,7 +157,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
     void getValidator()
       .validate(
         { kind: 'blob', contents: stale.contents, mainFile: stale.model },
-        { type: ItemType.WEARABLE, category: stale.category ?? undefined, hides: prefillRef.current?.hides }
+        { type: ItemType.WEARABLE, category: stale.category ?? undefined, hides: stale.hides }
       )
       .then(({ issues }) => issues)
       // Advisory: a failure clears the previous category's issues and marks the draft done, so edits don't retry it.
@@ -213,7 +213,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
       description: draft.description,
       tags: draft.tags,
       blockVrmExport: draft.blockVrmExport,
-      hides: draft.type === ItemType.WEARABLE ? prefill?.hides : undefined,
+      hides: draft.type === ItemType.WEARABLE ? draft.hides : undefined,
       springBoneParams: draft.type === ItemType.WEARABLE ? prefill?.springBoneParams : undefined,
       contents: draft.contents,
       model: draft.model,
