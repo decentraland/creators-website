@@ -9,7 +9,8 @@ import {
   getVariantTargets,
   isDraftComplete,
   type AddItemsState,
-  type ItemDraft
+  type ItemDraft,
+  isValidationStale
 } from './AddItemsModal.state'
 
 const blob = (text = 'x') => new Blob([text])
@@ -89,17 +90,23 @@ describe('review flow', () => {
     expect(state.drafts[0].checked).toBe(false)
   })
 
-  it('re-derives the triangle warning when the category changes', () => {
-    const draft = readyDraft({ metrics: { triangles: 900 }, category: 'hat' })
-    // 900 triangles is fine for a hat (1500) but not for eyewear (500).
+  it('marks a wearable for re-validation when its category changes', () => {
+    const draft = readyDraft({ category: 'hat', validatedCategory: 'hat' })
+    expect(isValidationStale(draft)).toBe(false)
     const state = addItemsReducer(stateWith([draft]), {
       type: 'draftUpdated',
       id: draft.id,
       patch: { category: 'eyewear' }
     })
-    expect(state.drafts[0].validationIssues.some(issue => issue.code === 'triangle-count')).toBe(true)
-    const back = addItemsReducer(state, { type: 'draftUpdated', id: draft.id, patch: { category: 'hat' } })
-    expect(back.drafts[0].validationIssues.some(issue => issue.code === 'triangle-count')).toBe(false)
+    expect(isValidationStale(state.drafts[0])).toBe(true)
+    const done = addItemsReducer(state, {
+      type: 'draftAnalyzed',
+      id: draft.id,
+      patch: { validationIssues: [], validatedCategory: 'eyewear' }
+    })
+    expect(isValidationStale(done.drafts[0])).toBe(false)
+    expect(isValidationStale(readyDraft({ type: ItemType.EMOTE, category: 'dance' }))).toBe(false)
+    expect(isValidationStale(readyDraft({ model: 'eyes.png', category: 'eyes' }))).toBe(false)
   })
 
   it('removing a draft clears variants that pointed at it', () => {

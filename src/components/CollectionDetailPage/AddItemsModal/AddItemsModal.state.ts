@@ -2,9 +2,8 @@
 // rules. All async work (file loading, model analysis, thumbnails, upload) lives outside and
 // feeds results in through actions, so this reducer stays fully unit-testable.
 import { EmoteCategory, WearableCategory } from '@dcl/schemas'
-import { effectiveTriangleLimit } from '@dcl-regenesislabs/wearable-validator'
-import { ValidationSeverity, type ValidationIssue } from '~/lib/validation'
-import { VIDEO_PATH, cleanAssetName, isModelFile } from '~/lib/itemFiles'
+import { type ValidationIssue } from '~/lib/validation'
+import { VIDEO_PATH, cleanAssetName, isImageFile, isModelFile } from '~/lib/itemFiles'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
 import { BodyShapeType, ItemType, getMissingBodyShapeType, type Item, type ItemMetrics } from '~/lib/items'
 import { type UploadFailureReason } from '~/lib/uploadItems'
@@ -52,6 +51,8 @@ export type ItemDraft = {
   metrics: ItemMetrics | null
   emoteMetrics: AnimationMetrics | null
   validationIssues: ValidationIssue[]
+  /** Category the validation issues were computed for; a different pick re-runs the validator. */
+  validatedCategory: string | null
   checked: boolean
 }
 
@@ -94,6 +95,7 @@ export function createDraft(file: File, { nameFromFile = true } = {}): ItemDraft
     metrics: null,
     emoteMetrics: null,
     validationIssues: [],
+    validatedCategory: null,
     checked: false
   }
 }
@@ -120,23 +122,14 @@ export type AddItemsAction =
   | { type: 'uploadFailed'; failureReason: UploadFailureReason; failedDraftIds: string[] }
   | { type: 'retryRequested' }
 
-const TRIANGLE_CODE = 'triangle-count'
-
-/** Re-derives the triangle warning from the stored metrics when the category changes (hides are not configured yet). */
-function withTriangleRecheck(draft: ItemDraft): ItemDraft {
-  if (draft.type !== ItemType.WEARABLE || !draft.metrics || draft.metrics.triangles === undefined) {
-    return draft
-  }
-  const issues = draft.validationIssues.filter(issue => issue.code !== TRIANGLE_CODE)
-  const limit = draft.category ? effectiveTriangleLimit(draft.category) : Infinity
-  if (draft.metrics.triangles <= limit) return { ...draft, validationIssues: issues }
-  const triangleIssue: ValidationIssue = {
-    code: TRIANGLE_CODE,
-    severity: ValidationSeverity.WARNING,
-    messageKey: 'item_validation.triangle_count_exceeded_with_hint',
-    messageParams: { count: draft.metrics.triangles, limit, category: draft.category! }
-  }
-  return { ...draft, validationIssues: [...issues, triangleIssue] }
+/** A wearable model whose issues were computed for another category than the one now picked. */
+export function isValidationStale(draft: ItemDraft): boolean {
+  return (
+    draft.status === 'ready' &&
+    draft.type === ItemType.WEARABLE &&
+    !isImageFile(draft.model) &&
+    draft.category !== draft.validatedCategory
+  )
 }
 
 function updateDraft(state: AddItemsState, id: string, update: (draft: ItemDraft) => ItemDraft): AddItemsState {
@@ -150,7 +143,7 @@ export function addItemsReducer(state: AddItemsState, action: AddItemsAction): A
       return { ...state, drafts, selectedId: state.selectedId ?? action.drafts[0]?.id ?? null }
     }
     case 'draftAnalyzed':
-      return updateDraft(state, action.id, draft => withTriangleRecheck({ ...draft, ...action.patch, status: 'ready' }))
+      return updateDraft(state, action.id, draft => ({ ...draft, ...action.patch, status: 'ready' }))
     case 'draftFailed':
       return updateDraft(state, action.id, draft => ({
         ...draft,
@@ -180,7 +173,7 @@ export function addItemsReducer(state: AddItemsState, action: AddItemsAction): A
     }
     case 'draftUpdated':
       // Any edit invalidates a previous review: the draft must be saved (checked) again.
-      return updateDraft(state, action.id, draft => withTriangleRecheck({ ...draft, ...action.patch, checked: false }))
+      return updateDraft(state, action.id, draft => ({ ...draft, ...action.patch, checked: false }))
     case 'draftChecked': {
       const checkedState = updateDraft(state, action.id, draft => ({ ...draft, checked: true }))
       // SAVE & NEXT advances to the next unchecked draft, wrapping around.

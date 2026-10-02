@@ -615,7 +615,6 @@
     "load_failed": "We couldn't load the item. Please try again."
   },
   "item_validation": {
-    "triangle_count_exceeded_with_hint": "Triangle count ({count}) exceeds the base limit of {limit} for {category} wearables. You can increase this limit by hiding other wearable slots in the Item Editor.",
     "thumbnail_not_transparent": "The thumbnail background doesn't look transparent. Marketplaces show the item's rarity color behind the thumbnail, so a transparent background is required."
   },
   "item_editor": {

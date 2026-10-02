@@ -60,6 +60,7 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
     model: loaded.model,
     type: analysis.type,
     validationIssues: analysis.validationIssues,
+    validatedCategory: loaded.wearable?.data.category ?? null,
     emoteMetrics: analysis.emoteMetrics ?? null,
     bodyShape: isUnisex ? BodyShapeType.BOTH : (loaded.bodyShape ?? BodyShapeType.BOTH),
     bodyShapeLocked: isUnisex,

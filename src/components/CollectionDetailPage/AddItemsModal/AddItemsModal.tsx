@@ -10,6 +10,7 @@ import { ItemFileError, MAX_THUMBNAIL_FILE_SIZE, VIDEO_PATH, toMB } from '~/lib/
 import { type EmotePlayMode, type ItemDraftPayload } from '~/lib/itemFactory'
 import { type Collection } from '~/lib/collections'
 import { ItemType } from '~/lib/items'
+import { getValidator } from '~/lib/validation'
 import { useNotifications } from '~/lib/notifications'
 import { type SpringBoneParamsByName } from '~/lib/springBones'
 import { errorCode, track } from '~/lib/analytics'
@@ -20,6 +21,7 @@ import {
   createInitialState,
   isDraftComplete,
   isImageWearable,
+  isValidationStale,
   type ItemDraft
 } from './AddItemsModal.state'
 import { imageThumbnailPatch, isImageThumbnailStale, processDraftFile, pickPreviewDraft } from './processDraft'
@@ -149,6 +151,42 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
       .catch((error: unknown) => console.error('Thumbnail re-padding failed:', error))
       .finally(() => repaddingIdsRef.current.delete(stale.id))
   }, [drafts])
+
+  // Category-dependent limits (triangles, materials, textures, sizes) re-run the validator on every category pick.
+  const staleValidations = useMemo(
+    () =>
+      drafts
+        .filter(isValidationStale)
+        .map(draft => `${draft.id}:${draft.category ?? ''}`)
+        .join(','),
+    [drafts]
+  )
+  const draftsRef = useRef(drafts)
+  draftsRef.current = drafts
+  useEffect(() => {
+    if (!staleValidations) return
+    const controller = new AbortController()
+    for (const draft of draftsRef.current.filter(isValidationStale)) {
+      const { category } = draft
+      void getValidator()
+        .validate(
+          { kind: 'blob', contents: draft.contents, mainFile: draft.model },
+          { type: ItemType.WEARABLE, category: category ?? undefined, hides: prefillRef.current?.hides },
+          { signal: controller.signal }
+        )
+        .then(({ issues }) =>
+          dispatch({
+            type: 'draftAnalyzed',
+            id: draft.id,
+            patch: { validationIssues: issues, validatedCategory: category }
+          })
+        )
+        .catch((error: unknown) => {
+          if (!controller.signal.aborted) console.error('Draft validation failed:', error)
+        })
+    }
+    return () => controller.abort()
+  }, [staleValidations])
 
   const isSelectedComplete = useMemo(
     () => !!selected && isDraftComplete(selected, drafts, collectionItems),

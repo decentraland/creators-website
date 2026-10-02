@@ -8,8 +8,7 @@ import { ValidationBadge, getValidationStatus } from './ValidationBadge'
 const warning = {
   code: 'triangle-count',
   severity: ValidationSeverity.WARNING,
-  messageKey: 'item_validation.triangle_count_exceeded_with_hint',
-  messageParams: { count: 900, limit: 500, category: 'eyewear' }
+  messageKey: 'item_validation.thumbnail_not_transparent'
 }
 const error = { code: 'skeleton', severity: ValidationSeverity.ERROR, message: 'The skeleton is not the avatar one.' }
 
@@ -28,7 +27,7 @@ describe('ValidationBadge', () => {
     await userEvent.click(screen.getByTestId('validation-badge'))
     expect(screen.getByTestId('validation-badge-issues').children).toHaveLength(2)
     expect(screen.getByTestId('validation-badge-issues')).toHaveTextContent(
-      'Triangle count (900) exceeds the base limit of 500 for eyewear wearables.'
+      "The thumbnail background doesn't look transparent."
     )
     expect(screen.getByTestId('validation-badge-issues')).toHaveTextContent('The skeleton is not the avatar one.')
   })

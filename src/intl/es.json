@@ -615,7 +615,6 @@
     "load_failed": "No pudimos cargar el ítem. Inténtalo de nuevo."
   },
   "item_validation": {
-    "triangle_count_exceeded_with_hint": "La cantidad de triángulos ({count}) supera el límite base de {limit} para wearables de tipo {category}. Puedes aumentar este límite ocultando otras categorías de wearables en el Editor de Ítems.",
     "thumbnail_not_transparent": "El fondo de la miniatura no parece transparente. Los mercados muestran el color de rareza del ítem detrás de la miniatura, por lo que se requiere un fondo transparente."
   },
   "item_editor": {
