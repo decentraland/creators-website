@@ -40,6 +40,8 @@ export type ItemDraft = {
   description: string
   tags: string[]
   blockVrmExport: boolean
+  /** Wearables only: the live preview's hides, else the manifest's. Saved and used by every triangle check. */
+  hides: string[]
   playMode: EmotePlayMode
   /** Data URL of the current thumbnail; also stored as contents['thumbnail.png'] once final. */
   thumbnail: string | null
@@ -85,6 +87,7 @@ export function createDraft(file: File, { nameFromFile = true } = {}): ItemDraft
     description: '',
     tags: [],
     blockVrmExport: false,
+    hides: [],
     playMode: EmotePlayMode.SIMPLE,
     thumbnail: null,
     thumbnailNotTransparent: false,
@@ -126,7 +129,7 @@ function withTriangleRecheck(draft: ItemDraft): ItemDraft {
   }
   const issues = draft.validationIssues.filter(issue => issue.code !== 'TRIANGLE_COUNT_EXCEEDED')
   const triangleIssue = draft.category
-    ? checkTriangleCount(draft.metrics.triangles, draft.category as WearableCategory)
+    ? checkTriangleCount(draft.metrics.triangles, draft.category as WearableCategory, draft.hides)
     : null
   return { ...draft, validationIssues: triangleIssue ? [...issues, triangleIssue] : issues }
 }

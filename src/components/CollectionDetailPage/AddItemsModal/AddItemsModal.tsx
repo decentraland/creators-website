@@ -98,7 +98,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
   const prefillRef = useRef(prefill)
   useEffect(() => {
     for (const { draft, file } of initialDraftsRef.current ?? []) {
-      void processDraftFile(file)
+      void processDraftFile(file, prefillRef.current?.hides)
         .then(patch =>
           dispatch({
             type: 'draftAnalyzed',
@@ -188,7 +188,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
       description: draft.description,
       tags: draft.tags,
       blockVrmExport: draft.blockVrmExport,
-      hides: draft.type === ItemType.WEARABLE ? prefill?.hides : undefined,
+      hides: draft.type === ItemType.WEARABLE ? draft.hides : undefined,
       springBoneParams: draft.type === ItemType.WEARABLE ? prefill?.springBoneParams : undefined,
       contents: draft.contents,
       model: draft.model,
