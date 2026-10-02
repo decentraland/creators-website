@@ -58,9 +58,9 @@ export function ValidationBadge({ status, issues, testId = 'validation-badge' }:
           {hasIssues ? (
             <S.IssueList data-testid={`${testId}-issues`}>
               {issues.map(issue => (
-                <S.Issue key={`${issue.code}-${issue.messageKey}`} data-severity={issue.severity}>
+                <S.Issue key={`${issue.code}-${issue.where ?? ''}-${issue.message}`} data-severity={issue.severity}>
                   {issue.severity === ValidationSeverity.ERROR ? <ErrorIcon /> : <WarningIcon />}
-                  {t(issue.messageKey, issue.messageParams)}
+                  {issue.message}
                 </S.Issue>
               ))}
             </S.IssueList>

@@ -13,7 +13,7 @@ export type {
   ValidationSource
 } from './types'
 export { hasErrors } from './localValidator'
-export { ValidationSeverity } from '../glbValidation'
+export { ValidationSeverity } from './types'
 
 let validator: ItemValidator = localValidator
 

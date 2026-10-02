@@ -5,11 +5,12 @@ import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { WearableCategory } from '@dcl/schemas'
 import { ItemType, type ItemMetrics } from './items'
 import { ItemFileError, MAX_EMOTE_DURATION, isImageFile } from './itemFiles'
-import { validateEmoteGLTF, validateWearableGLTF, type ValidationIssue } from './glbValidation'
-import { PROP_ARMATURE_NAME } from './glbValidation/constants'
-import { suggestWearableCategory } from './glbValidation/suggestWearableCategory'
+import { suggestWearableCategory } from './suggestWearableCategory'
+import { getValidator, type ValidationIssue } from './validation'
 
 const ARMATURE_PREFIX = 'Armature'
+// Kept equal to the validator manifest's propArmatureName by springBones.spec.ts's rule book parity test.
+export const PROP_ARMATURE_NAME = 'Armature_Prop'
 const ARMATURE_OTHER = 'Armature_Other'
 
 export type AnimationMetrics = {
@@ -119,6 +120,7 @@ export async function analyzeModel(
   const Three = await import('three')
   const mappings = toObjectURLs(contents)
   const url = mappings[model]
+  const source = { kind: 'blob', contents, mainFile: model } as const
   try {
     const gltf = await loadGltf(url, mappings)
     const isEmote = gltf.animations.length > 0
@@ -128,12 +130,10 @@ export async function analyzeModel(
       if (emoteMetrics.duration > MAX_EMOTE_DURATION) {
         throw new ItemFileError('emote_duration_too_long', { seconds: MAX_EMOTE_DURATION })
       }
-      const hasProps = gltf.scene.children.some(child => child.name === PROP_ARMATURE_NAME)
-      const validationResult = await validateEmoteGLTF(gltf, hasProps, contents)
-      return { type: ItemType.EMOTE, validationIssues: validationResult.issues, suggestedCategory: null, emoteMetrics }
+      const { issues } = await getValidator().validate(source, { type: ItemType.EMOTE })
+      return { type: ItemType.EMOTE, validationIssues: issues, suggestedCategory: null, emoteMetrics }
     }
 
-    const validationResult = await validateWearableGLTF(gltf, category, hides)
     // Suggestion only — a throw on malformed geometry must never fail the import.
     let suggestedCategory: WearableCategory | null = null
     try {
@@ -141,7 +141,13 @@ export async function analyzeModel(
     } catch {
       suggestedCategory = null
     }
-    return { type: ItemType.WEARABLE, validationIssues: validationResult.issues, suggestedCategory }
+    // Validated for the category the draft will start with, so the modal doesn't re-run it right away.
+    const { issues } = await getValidator().validate(source, {
+      type: ItemType.WEARABLE,
+      category: category ?? suggestedCategory ?? undefined,
+      hides
+    })
+    return { type: ItemType.WEARABLE, validationIssues: issues, suggestedCategory }
   } finally {
     revokeObjectURLs(mappings)
   }

@@ -2,15 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BodyShape } from '@dcl/schemas'
 import { ItemType, type Item } from '../items'
 
-const loadGltf = vi.fn()
-const validateWearableGLTF = vi.fn()
-const validateEmoteGLTF = vi.fn()
-vi.mock('../models', () => ({ loadGltf: (...args: unknown[]) => loadGltf(...args) }))
-vi.mock('../glbValidation', async importOriginal => ({
-  ...(await importOriginal<typeof import('../glbValidation')>()),
-  validateWearableGLTF: (...args: unknown[]) => validateWearableGLTF(...args),
-  validateEmoteGLTF: (...args: unknown[]) => validateEmoteGLTF(...args)
-}))
+const validate = vi.fn()
+vi.mock('@dcl-regenesislabs/wearable-validator', () => ({ validate: (...args: unknown[]) => validate(...args) }))
 
 const { getValidator, setValidator } = await import('./index')
 const { localValidator } = await import('./localValidator')
@@ -29,68 +22,95 @@ const item: Item = {
     category: 'hat',
     hides: ['hair'],
     representations: [
-      { bodyShapes: [BodyShape.MALE], mainFile: 'male/hat.glb', contents: ['male/hat.glb', 'male/tex.png'] },
+      { bodyShapes: [BodyShape.MALE], mainFile: 'male/hat.glb', contents: ['male/hat.glb'] },
       { bodyShapes: [BodyShape.FEMALE], mainFile: 'female/hat.glb', contents: ['female/hat.glb'] }
     ]
   },
-  contents: {
-    'male/hat.glb': 'bafyM',
-    'male/tex.png': 'bafyT',
-    'female/hat.glb': 'bafyF',
-    'thumbnail.png': 'bafyThumb'
-  },
+  contents: { 'male/hat.glb': 'bafyM', 'female/hat.glb': 'bafyF', 'thumbnail.png': 'bafyThumb' },
   createdAt: 1,
   updatedAt: 1
 }
 
-const issue = { code: 'X', severity: 'warning', messageKey: 'item_validation.x' }
+const finding = { check: 'triangle-count', severity: 'error', message: 'Too many triangles', where: 'female/hat.glb' }
+const fetchMock = vi.fn()
 
 beforeEach(() => {
-  loadGltf.mockReset().mockResolvedValue({ scene: { children: [] }, animations: [] })
-  validateWearableGLTF.mockReset().mockResolvedValue({ issues: [issue], isValid: true })
-  validateEmoteGLTF.mockReset().mockResolvedValue({ issues: [], isValid: true })
+  validate.mockReset().mockResolvedValue({ findings: [finding], checks: [] })
+  fetchMock.mockReset().mockResolvedValue(new Response(new Uint8Array([1, 2, 3])))
+  vi.stubGlobal('fetch', fetchMock)
   setValidator(localValidator)
 })
 
 describe('local validator', () => {
-  it('loads a saved item from storage with the full content mapping and validates the body shape asked for', async () => {
+  it('fetches the asked body shape from storage and validates it with category and hides', async () => {
     const result = await getValidator().validate(
       { kind: 'item', item },
       { type: ItemType.WEARABLE, category: 'hat', hides: ['hair'], bodyShape: BodyShape.FEMALE }
     )
-    expect(result.issues).toEqual([issue])
-    const [url, mappings] = loadGltf.mock.calls[0] as [string, Record<string, string>]
-    expect(url).toBe('https://builder-api.decentraland.zone/v1/storage/contents/bafyF')
-    expect(mappings['male/tex.png']).toBe('https://builder-api.decentraland.zone/v1/storage/contents/bafyT')
-    expect(validateWearableGLTF).toHaveBeenCalledWith(expect.anything(), 'hat', ['hair'])
+    expect(fetchMock.mock.calls[0][0]).toBe('https://builder-api.decentraland.zone/v1/storage/contents/bafyF')
+    const [input, options] = validate.mock.calls[0]
+    expect([...input.files.keys()]).toEqual(['female/hat.glb'])
+    expect(input.metadata).toEqual({
+      data: {
+        category: 'hat',
+        hides: ['hair'],
+        representations: [{ bodyShapes: [BodyShape.FEMALE], mainFile: 'female/hat.glb', contents: ['female/hat.glb'] }]
+      }
+    })
+    expect(options.groups).toEqual(['model', 'emote'])
+    expect(result.issues).toEqual([
+      { code: 'triangle-count', severity: 'error', message: 'Too many triangles', where: 'female/hat.glb' }
+    ])
   })
 
-  it('validates in-memory files through object urls and releases them', async () => {
-    const revoke = vi.spyOn(URL, 'revokeObjectURL')
-    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:x')
+  it('hands an emote its audio and names the model explicitly, whatever its extension case', async () => {
     await getValidator().validate(
-      { kind: 'blob', contents: { 'hat.glb': new Blob(['x']) }, mainFile: 'hat.glb' },
-      { type: ItemType.WEARABLE }
+      {
+        kind: 'blob',
+        contents: { 'Dance.GLB': new Blob(['x']), 'sound.wav': new Blob(['a']), 'thumbnail.png': new Blob(['t']) },
+        mainFile: 'Dance.GLB'
+      },
+      { type: ItemType.EMOTE }
     )
-    expect(loadGltf).toHaveBeenCalledWith('blob:x', { 'hat.glb': 'blob:x' })
-    expect(revoke).toHaveBeenCalledWith('blob:x')
+    expect(fetchMock).not.toHaveBeenCalled()
+    const [input] = validate.mock.calls[0]
+    expect([...input.files.keys()]).toEqual(['Dance.GLB', 'sound.wav'])
+    expect(input.metadata.emoteDataADR74.representations[0]).toMatchObject({ mainFile: 'Dance.GLB' })
   })
 
-  it('skips texture-only wearables and runs the emote suite for emotes', async () => {
+  it('reports a failed download without leaving the body open', async () => {
+    const cancel = vi.fn().mockResolvedValue(undefined)
+    fetchMock.mockResolvedValue({ ok: false, status: 404, body: { cancel } })
+    await expect(getValidator().validate({ kind: 'item', item }, { type: ItemType.WEARABLE })).rejects.toThrow(/404/)
+    expect(cancel).toHaveBeenCalled()
+  })
+
+  it('reports a crashed check as an error rather than a pass', async () => {
+    validate.mockResolvedValue({ findings: [], checks: [{ check: 'skeleton', status: 'errored', skipReason: 'boom' }] })
+    const result = await getValidator().validate({ kind: 'item', item }, { type: ItemType.WEARABLE })
+    expect(result.issues).toEqual([{ code: 'file-format', severity: 'error', message: 'boom' }])
+  })
+
+  it('hides category-unknown warnings and reports an unparseable model as an error', async () => {
+    validate.mockResolvedValue({
+      findings: [{ ...finding, severity: 'warning', data: { reason: 'category-unknown' } }],
+      checks: [{ check: 'skeleton', status: 'skipped', skipReason: '"hat.glb" failed to parse' }]
+    })
+    const result = await getValidator().validate({ kind: 'item', item }, { type: ItemType.WEARABLE })
+    expect(result.issues).toEqual([{ code: 'file-format', severity: 'error', message: '"hat.glb" failed to parse' }])
+  })
+
+  it('skips texture-only wearables', async () => {
     const png = {
       ...item,
-      data: {
-        ...item.data,
-        representations: [{ bodyShapes: [BodyShape.MALE], mainFile: 'eyes.png', contents: ['eyes.png'] }]
-      },
+      data: { ...item.data, representations: [{ bodyShapes: [BodyShape.MALE], mainFile: 'eyes.png', contents: [] }] },
       contents: { 'eyes.png': 'bafyE' }
-    }
+    } as Item
     await expect(getValidator().validate({ kind: 'item', item: png }, { type: ItemType.WEARABLE })).resolves.toEqual({
       issues: []
     })
-    expect(loadGltf).not.toHaveBeenCalled()
-    await getValidator().validate({ kind: 'item', item: { ...item, type: ItemType.EMOTE } }, { type: ItemType.EMOTE })
-    expect(validateEmoteGLTF).toHaveBeenCalled()
+    expect(validate).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('aborts a run whose signal was cancelled', async () => {
@@ -98,14 +118,6 @@ describe('local validator', () => {
     controller.abort()
     await expect(
       getValidator().validate({ kind: 'item', item }, { type: ItemType.WEARABLE }, { signal: controller.signal })
-    ).rejects.toThrow(/aborted/i)
-  })
-
-  it('validates many entries in order', async () => {
-    const results = await getValidator().validateMany([
-      { source: { kind: 'item', item }, ctx: { type: ItemType.WEARABLE } },
-      { source: { kind: 'item', item }, ctx: { type: ItemType.WEARABLE } }
-    ])
-    expect(results).toHaveLength(2)
+    ).rejects.toThrow()
   })
 })

@@ -89,8 +89,8 @@ export function DraftForm({
 
   const warnings = useMemo(() => {
     const list = draft.validationIssues.map(issue => ({
-      key: issue.code,
-      text: t(`${issue.messageKey}`, issue.messageParams)
+      key: `${issue.code}-${issue.where ?? ''}-${issue.message}`,
+      text: issue.message
     }))
     if (draft.thumbnailNotTransparent) {
       list.push({ key: 'THUMBNAIL_NOT_TRANSPARENT', text: t('item_validation.thumbnail_not_transparent') })

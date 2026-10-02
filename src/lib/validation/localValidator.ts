@@ -1,62 +1,91 @@
-// The in-browser backend: loads the model with Three.js and runs the lib/glbValidation suite.
-import { type WearableCategory } from '@dcl/schemas'
+// The in-browser backend: the shared Decentraland rule book (@dcl-regenesislabs/wearable-validator),
+// restricted to the model and emote groups the editor can act on.
+import { type Finding, type Result } from '@dcl-regenesislabs/wearable-validator'
+import { BodyShape } from '@dcl/schemas'
 import { getContentsStorageUrl } from '../builder'
-import { validateEmoteGLTF, validateWearableGLTF, ValidationSeverity } from '../glbValidation'
-import { PROP_ARMATURE_NAME } from '../glbValidation/constants'
 import { isImageFile } from '../itemFiles'
 import { ItemType } from '../items'
-import { loadGltf } from '../models'
 import {
+  ValidationSeverity,
   type ItemValidator,
   type ValidateOptions,
   type ValidationContext,
   type ValidationEntry,
+  type ValidationIssue,
   type ValidationResult,
   type ValidationSource
 } from './types'
 
-class AbortedError extends Error {
-  constructor() {
-    super('Validation aborted')
-    this.name = 'AbortError'
+// The audio check (E-08) flags any of these; other content files (thumbnail, preview video) are never read.
+const AUDIO_LIKE = /\.(mp3|ogg|wav|aac|m4a|flac|opus|wma)$/i
+
+type Loaded = { mainFile: string; bodyShapes: string[]; files: Map<string, Uint8Array> }
+
+async function fetchContent(path: string, hash: string | undefined, signal?: AbortSignal): Promise<Uint8Array> {
+  if (!hash) throw new Error(`"${path}" has no stored content to validate`)
+  const response = await fetch(getContentsStorageUrl(hash), { signal })
+  if (!response.ok) {
+    await response.body?.cancel()
+    throw new Error(`Could not load "${path}" (${response.status})`)
   }
+  return new Uint8Array(await response.arrayBuffer())
 }
 
-function throwIfAborted(signal?: AbortSignal) {
-  if (signal?.aborted) throw new AbortedError()
-}
-
-type Loadable = {
-  mainFile: string
-  /** Every file the loader may request, by path, as a fetchable URL. */
-  mappings: Record<string, string>
-  /** Content paths, for the checks that only need file names (audio formats). */
-  paths: string[]
-  release: () => void
-}
-
-function toLoadable(source: ValidationSource, ctx: ValidationContext): Loadable {
+/** The main model plus any audio, or null for texture-only wearables (no geometry to inspect). */
+async function load(source: ValidationSource, ctx: ValidationContext, signal?: AbortSignal): Promise<Loaded | null> {
   if (source.kind === 'blob') {
-    const mappings = Object.fromEntries(
-      Object.entries(source.contents).map(([path, blob]) => [path, URL.createObjectURL(blob)])
+    if (isImageFile(source.mainFile)) return null
+    const paths = Object.keys(source.contents).filter(path => path === source.mainFile || AUDIO_LIKE.test(path))
+    const entries = await Promise.all(
+      paths.map(async path => [path, new Uint8Array(await source.contents[path].arrayBuffer())] as const)
     )
-    return {
-      mainFile: source.mainFile,
-      mappings,
-      paths: Object.keys(source.contents),
-      release: () => Object.values(mappings).forEach(url => URL.revokeObjectURL(url))
-    }
+    return { mainFile: source.mainFile, bodyShapes: [BodyShape.MALE, BodyShape.FEMALE], files: new Map(entries) }
   }
   const { item } = source
   const representation =
     item.data.representations.find(candidate => ctx.bodyShape && candidate.bodyShapes.includes(ctx.bodyShape)) ??
     item.data.representations[0]
   if (!representation) throw new Error(`Item "${item.id}" has no representation to validate`)
-  // The full mapping set: a .gltf's textures and buffers resolve through it, or the loader fails.
-  const mappings = Object.fromEntries(
-    Object.entries(item.contents).map(([path, hash]) => [path, getContentsStorageUrl(hash)])
+  if (isImageFile(representation.mainFile)) return null
+  const paths = Object.keys(item.contents).filter(path => path === representation.mainFile || AUDIO_LIKE.test(path))
+  const entries = await Promise.all(
+    paths.map(async path => [path, await fetchContent(path, item.contents[path], signal)] as const)
   )
-  return { mainFile: representation.mainFile, mappings, paths: Object.keys(item.contents), release: () => undefined }
+  return { mainFile: representation.mainFile, bodyShapes: representation.bodyShapes, files: new Map(entries) }
+}
+
+/**
+ * The slice of entity metadata the model/emote checks read. The explicit representation names the model, so
+ * the validator never has to guess it from the file extension.
+ */
+function toMetadata(ctx: ValidationContext, { mainFile, bodyShapes, files }: Loaded) {
+  const representations = [{ bodyShapes, mainFile, contents: [...files.keys()] }]
+  return ctx.type === ItemType.EMOTE
+    ? { emoteDataADR74: { representations } }
+    : { data: { category: ctx.category, hides: ctx.hides ?? [], representations } }
+}
+
+function toIssue(finding: Finding): ValidationIssue {
+  return {
+    code: finding.check,
+    severity: finding.severity === 'error' ? ValidationSeverity.ERROR : ValidationSeverity.WARNING,
+    message: finding.message,
+    where: finding.where
+  }
+}
+
+export function toIssues(result: Result): ValidationIssue[] {
+  // Without a category its limits are unknown, which is not a problem with the model.
+  const issues = result.findings.filter(finding => finding.data?.reason !== 'category-unknown').map(toIssue)
+  // An unparseable model (a damaged GLB, a .gltf) skips every check, and a crashed check asserts nothing:
+  // either way, never show the run as a pass.
+  const incomplete = result.checks.find(
+    check => (check.status === 'skipped' || check.status === 'errored') && check.skipReason
+  )
+  if (incomplete?.skipReason && issues.length === 0) {
+    issues.push({ code: 'file-format', severity: ValidationSeverity.ERROR, message: incomplete.skipReason })
+  }
+  return issues
 }
 
 async function validateOne(
@@ -64,28 +93,16 @@ async function validateOne(
   ctx: ValidationContext,
   opts: ValidateOptions = {}
 ): Promise<ValidationResult> {
-  throwIfAborted(opts.signal)
-  const loadable = toLoadable(source, ctx)
-  // Texture-only wearables have no geometry to inspect.
-  if (isImageFile(loadable.mainFile)) {
-    loadable.release()
-    return { issues: [] }
-  }
-  try {
-    const gltf = await loadGltf(loadable.mappings[loadable.mainFile], loadable.mappings)
-    throwIfAborted(opts.signal)
-    if (ctx.type === ItemType.EMOTE) {
-      const hasProps = gltf.scene.children.some(child => child.name === PROP_ARMATURE_NAME)
-      // The audio check only reads file names.
-      const contents = Object.fromEntries(loadable.paths.map(path => [path, new Blob()]))
-      const result = await validateEmoteGLTF(gltf, hasProps, contents)
-      return { issues: result.issues }
-    }
-    const result = await validateWearableGLTF(gltf, ctx.category as WearableCategory | undefined, ctx.hides)
-    return { issues: result.issues }
-  } finally {
-    loadable.release()
-  }
+  opts.signal?.throwIfAborted()
+  const loaded = await load(source, ctx, opts.signal)
+  if (!loaded) return { issues: [] }
+  // Loaded on first use: the rule book's parsers and decoders stay out of the route chunks.
+  const { validate } = await import('@dcl-regenesislabs/wearable-validator')
+  const result = await validate(
+    { files: loaded.files, metadata: toMetadata(ctx, loaded) },
+    { groups: ['model', 'emote'], category: ctx.category, signal: opts.signal }
+  )
+  return { issues: toIssues(result) }
 }
 
 export const localValidator: ItemValidator = {
