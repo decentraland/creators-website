@@ -61,7 +61,7 @@
     "draft": "Borrador",
     "publishing": "Publicando",
     "under_review": "En revisión",
-    "under_review_hint": "Tu colección está siendo revisada para su aprobación. Esto puede tardar hasta 5 minutos. Te avisaremos cuando la revisión termine.",
+    "under_review_hint": "Tu colección está siendo revisada para su aprobación. Te avisaremos cuando la revisión termine.",
     "published": "Publicada",
     "rejected": "Rechazada",
     "disabled": "Deshabilitada",
