@@ -134,8 +134,10 @@ const CollectionsPage = () => {
   const pages = data?.pages ?? 0
   const shown = data?.results.length ?? 0
   const hasActiveFilters = !!search || status !== CollectionStatusFilter.ALL
-  const isEmpty = !!data && total === 0 && !hasActiveFilters
-  const noResults = !!data && total === 0 && hasActiveFilters
+  const allCount = Object.values(counts ?? {}).reduce((sum, count) => sum + count, 0)
+  // Counts ignore the status filter but follow the search, so only an unsearched list proves there are no collections.
+  const isEmpty = !!counts && !search && allCount === 0
+  const noResults = !!data && total === 0 && hasActiveFilters && !isEmpty
   const isLoading = !restored || (!!address && (collections.isLoading || (collections.isFetching && !data)))
   // Debounce window (input ahead of the URL) or a refetch with a search applied.
   const isSearching = searchInput.trim() !== search || (!!search && collections.isFetching)
@@ -175,10 +177,7 @@ const CollectionsPage = () => {
                 onClick={() => changeParams({ status: filter === CollectionStatusFilter.ALL ? null : filter })}
               >
                 {t(`collections_page.filter.${filter}`, {
-                  count:
-                    filter === CollectionStatusFilter.ALL
-                      ? Object.values(counts).reduce((sum, count) => sum + count, 0)
-                      : counts[filter]
+                  count: filter === CollectionStatusFilter.ALL ? allCount : counts[filter]
                 })}
                 {filter === CollectionStatusFilter.REJECTED && !!counts.rejected && (
                   <S.ChipDot data-testid="rejected-dot" aria-hidden />
