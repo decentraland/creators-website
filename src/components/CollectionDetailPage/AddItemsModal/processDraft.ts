@@ -36,7 +36,7 @@ function sanitizePlayMode(playMode: string | undefined): EmotePlayMode | null {
  * import problems. The returned patch may still lack metrics/thumbnail — DraftProcessor fills
  * those through the WearablePreview iframe.
  */
-export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> {
+export async function processDraftFile(file: File, prefillHides?: string[]): Promise<Partial<ItemDraft>> {
   const loaded = await loadItemFile(file)
   // A video shipped in the zip gets the same decode check as one picked in the form.
   if (loaded.contents[VIDEO_PATH]) {
@@ -44,12 +44,13 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
       throw new ItemFileError('invalid_video')
     })
   }
-  // The manifest's category and hides drive the category-dependent limits (triangle budget, skin caps).
+  // The manifest's category and the hides (the live preview's win over the manifest's) drive the category-dependent limits (triangle budget, skin caps).
+  const hides = prefillHides ?? loaded.wearable?.data.hides ?? []
   const analysis = await analyzeModel(
     loaded.model,
     loaded.contents,
     loaded.wearable?.data.category as WearableCategory | undefined,
-    loaded.wearable?.data.hides
+    hides
   )
 
   const isSmart = !!loaded.scene
@@ -64,7 +65,8 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
     bodyShape: isUnisex ? BodyShapeType.BOTH : (loaded.bodyShape ?? BodyShapeType.BOTH),
     bodyShapeLocked: isUnisex,
     isSmart,
-    requiredPermissions: loaded.scene?.requiredPermissions ?? []
+    requiredPermissions: loaded.scene?.requiredPermissions ?? [],
+    hides
   }
 
   if (analysis.suggestedCategory) {
