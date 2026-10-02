@@ -1,18 +1,20 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from '~/intl'
 import { InfoTooltip } from '~/components/Tooltip'
-import { getCollectionDisplayStatus, type Collection } from '~/lib/collections'
+import { getCollectionDisplayStatus, type Collection, type CollectionDisplayStatus } from '~/lib/collections'
 import * as S from './CollectionStatusPill.styles'
 
 type Props = {
   collection: Collection
+  /** Overrides the status derived from the collection, e.g. once its curation has loaded. */
+  status?: CollectionDisplayStatus
   /** Shown as an (i) tooltip inside the pill; the caller decides which status deserves one. */
   hint?: ReactNode
 }
 
-export function CollectionStatusPill({ collection, hint }: Props) {
+export function CollectionStatusPill({ collection, status: statusOverride, hint }: Props) {
   const { t } = useTranslation()
-  const status = getCollectionDisplayStatus(collection)
+  const status = statusOverride ?? getCollectionDisplayStatus(collection)
   return (
     <S.Pill data-testid="collection-status" data-status={status}>
       {t(`collection_status.${status}`)}

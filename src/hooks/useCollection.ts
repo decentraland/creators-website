@@ -1,8 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { errorCode, track } from '~/lib/analytics'
-import { fetchAllCollectionItems, fetchCollection, saveCollection, deleteCollection } from '~/lib/builder'
+import {
+  fetchAllCollectionItems,
+  fetchCollection,
+  fetchCollectionCuration,
+  saveCollection,
+  deleteCollection
+} from '~/lib/builder'
 import { buildCollectionInitializeData } from '~/lib/saveCollection'
-import { type Collection } from '~/lib/collections'
+import { getCollectionDisplayStatus, type Collection, type CollectionDisplayStatus } from '~/lib/collections'
 
 export const ITEMS_PAGE_SIZE = 20
 
@@ -13,6 +19,27 @@ export function useCollection(address: string | undefined, collectionId: string 
     enabled: !!address && !!collectionId,
     staleTime: 30_000
   })
+}
+
+/** The collection's latest curation request. Drafts have none, so they cost no request. */
+export function useCollectionCuration(address: string | undefined, collection: Collection | undefined) {
+  return useQuery({
+    queryKey: ['collection-curation', address, collection?.id],
+    queryFn: () => fetchCollectionCuration(address!, collection!.id),
+    enabled: !!address && !!collection?.isPublished,
+    staleTime: 30_000
+  })
+}
+
+/** The collection's status, undefined until everything it depends on has loaded so the pill never flips. */
+export function useCollectionStatus(
+  address: string | undefined,
+  collection: Collection | undefined
+): CollectionDisplayStatus | undefined {
+  const curation = useCollectionCuration(address, collection)
+  if (!collection) return undefined
+  if (!collection.isPublished) return getCollectionDisplayStatus(collection, null)
+  return curation.isFetched ? getCollectionDisplayStatus(collection, curation.data?.status ?? null) : undefined
 }
 
 /** Every item of the collection: the detail page filters and pages them client-side. */

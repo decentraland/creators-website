@@ -8,6 +8,8 @@ import {
   toRemoteCollection,
   type Collection,
   type CollectionCuration,
+  type CollectionStatusCounts,
+  type CollectionsList,
   type FetchCollectionsParams,
   type PaginatedResource,
   type RemoteCollection
@@ -74,14 +76,16 @@ async function request<T>(
  * The creator's collections: GET /{address}/collections. Always sends page+limit — without both,
  * builder-server answers with a bare array instead of the paginated envelope.
  */
-export async function fetchCollections(
-  address: string,
-  params: FetchCollectionsParams
-): Promise<PaginatedResource<Collection>> {
+export async function fetchCollections(address: string, params: FetchCollectionsParams): Promise<CollectionsList> {
   const page = params.page ?? 1
   const limit = params.limit ?? 20
   const query = toCollectionsQueryString({ ...params, page, limit })
-  const remote = await request<PaginatedResource<RemoteCollection>>(address, 'GET', `/${address}/collections`, query)
+  const remote = await request<PaginatedResource<RemoteCollection> & { counts?: CollectionStatusCounts }>(
+    address,
+    'GET',
+    `/${address}/collections`,
+    query
+  )
   return { ...remote, results: remote.results.map(fromRemoteCollection) }
 }
 

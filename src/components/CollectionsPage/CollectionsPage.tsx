@@ -11,9 +11,9 @@ import { useTranslation } from '~/intl'
 import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'
 import { pageRangeLabel } from '~/lib/pagination'
 import { useWallet } from '~/store/wallet'
-import { COLLECTIONS_PAGE_SIZE, useCollections, useRejectedCollectionsCount } from '~/hooks/useCollections'
+import { COLLECTIONS_PAGE_SIZE, useCollections } from '~/hooks/useCollections'
 import { useSaveCollection } from '~/hooks/useCollection'
-import { CollectionStatusFilter } from '~/lib/collections'
+import { CollectionSort, CollectionStatusFilter, isStatusFilterShown } from '~/lib/collections'
 import { buildNewCollection } from '~/lib/saveCollection'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { Pagination } from '~/components/Pagination'
@@ -70,8 +70,8 @@ const CollectionsPage = () => {
   useEffect(() => setSearchInput(search), [search])
   useEffect(() => () => clearTimeout(searchTimer.current), [])
 
-  const collections = useCollections(address, { page, search, status })
-  const { data: rejectedCount } = useRejectedCollectionsCount(address)
+  const collections = useCollections(address, { page, search, status, sort: CollectionSort.LAST_ACTIVITY_DESC })
+  const counts = collections.data?.counts
 
   const [isCreateOpen, setCreateOpen] = useState(false)
   const saveCollection = useSaveCollection(address)
@@ -105,6 +105,13 @@ const CollectionsPage = () => {
       { replace: true }
     )
   }
+
+  // A chip whose last collection moved on disappears: fall back to All. While searching, the active
+  // chip stays, showing (0) next to the no-results state.
+  const isActiveChipGone = !!counts && !collections.isPlaceholderData && !search && !isStatusFilterShown(status, counts)
+  useEffect(() => {
+    if (isActiveChipGone) changeParams({ status: null })
+  })
 
   function onSearchChange(value: string) {
     setSearchInput(value)
@@ -158,20 +165,26 @@ const CollectionsPage = () => {
 
       <S.FilterRow>
         <S.Chips data-testid="status-filters">
-          {STATUS_FILTERS.map(filter => (
-            <S.Chip
-              key={filter}
-              type="button"
-              data-active={status === filter || undefined}
-              data-testid={`status-filter-${filter}`}
-              onClick={() => changeParams({ status: filter === CollectionStatusFilter.ALL ? null : filter })}
-            >
-              {t(`collections_page.filter.${filter}`)}
-              {filter === CollectionStatusFilter.REJECTED && !!rejectedCount && (
-                <S.ChipBadge data-testid="rejected-count">{rejectedCount}</S.ChipBadge>
-              )}
-            </S.Chip>
-          ))}
+          {counts &&
+            STATUS_FILTERS.filter(filter => filter === status || isStatusFilterShown(filter, counts)).map(filter => (
+              <S.Chip
+                key={filter}
+                type="button"
+                data-active={status === filter || undefined}
+                data-testid={`status-filter-${filter}`}
+                onClick={() => changeParams({ status: filter === CollectionStatusFilter.ALL ? null : filter })}
+              >
+                {t(`collections_page.filter.${filter}`, {
+                  count:
+                    filter === CollectionStatusFilter.ALL
+                      ? Object.values(counts).reduce((sum, count) => sum + count, 0)
+                      : counts[filter]
+                })}
+                {filter === CollectionStatusFilter.REJECTED && !!counts.rejected && (
+                  <S.ChipDot data-testid="rejected-dot" aria-hidden />
+                )}
+              </S.Chip>
+            ))}
         </S.Chips>
         <S.ViewToggle role="group" aria-label={t('collections_page.view_mode')}>
           <S.ViewButton

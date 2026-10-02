@@ -22,6 +22,9 @@ export type RemoteCollection = {
   linked_contract_network: string | null
   is_mapping_complete: boolean
   is_programmatic?: boolean
+  /** Only in `/:address/collections` lists. */
+  curation_status?: CurationStatus | null
+  last_activity_at?: string
 }
 
 export type Collection = {
@@ -45,6 +48,10 @@ export type Collection = {
   updatedAt: number
   isMappingComplete?: boolean
   isProgrammatic?: boolean
+  /** Status of the latest curation, when the collection comes from a list. */
+  curationStatus?: CurationStatus | null
+  /** Latest change to the collection, its items or its curation, when the collection comes from a list. */
+  lastActivityAt?: number
 }
 
 export enum CollectionType {
@@ -59,7 +66,9 @@ export enum CollectionSort {
   CREATED_AT_DESC = 'CREATED_AT_DESC',
   CREATED_AT_ASC = 'CREATED_AT_ASC',
   UPDATED_AT_DESC = 'UPDATED_AT_DESC',
-  UPDATED_AT_ASC = 'UPDATED_AT_ASC'
+  UPDATED_AT_ASC = 'UPDATED_AT_ASC',
+  LAST_ACTIVITY_DESC = 'LAST_ACTIVITY_DESC',
+  LAST_ACTIVITY_ASC = 'LAST_ACTIVITY_ASC'
 }
 
 export enum CurationStatus {
@@ -71,20 +80,41 @@ export enum CurationStatus {
   DISABLED = 'disabled'
 }
 
-/** The status a collection card/row displays, derived from the list response alone. */
+/** The status a collection pill displays. */
 export enum CollectionDisplayStatus {
-  PUBLISHED = 'published',
+  DRAFT = 'draft',
+  PUBLISHING = 'publishing',
   UNDER_REVIEW = 'under_review',
-  DRAFT = 'draft'
+  PUBLISHED = 'published',
+  REJECTED = 'rejected',
+  DISABLED = 'disabled'
 }
 
-/** The page's status filter chips. Values double as the `status` URL param. */
+/** The page's status filter chips, in display order. Values double as the `status` URL and API param. */
 export enum CollectionStatusFilter {
   ALL = 'all',
   PUBLISHED = 'published',
-  SUBMITTED = 'submitted',
   DRAFT = 'draft',
-  REJECTED = 'rejected'
+  UNDER_REVIEW = 'under_review',
+  REJECTED = 'rejected',
+  DISABLED = 'disabled'
+}
+
+export type CollectionStatusCounts = Record<Exclude<CollectionStatusFilter, CollectionStatusFilter.ALL>, number>
+
+const OPTIONAL_STATUS_FILTERS = [
+  CollectionStatusFilter.UNDER_REVIEW,
+  CollectionStatusFilter.REJECTED,
+  CollectionStatusFilter.DISABLED
+]
+
+/** Under review, rejected and disabled chips only show while some collection matches them. */
+export function isStatusFilterShown(
+  filter: CollectionStatusFilter,
+  counts: CollectionStatusCounts | undefined
+): boolean {
+  if (!OPTIONAL_STATUS_FILTERS.includes(filter)) return true
+  return !!counts?.[filter as keyof CollectionStatusCounts]
 }
 
 export type FetchCollectionsParams = {
@@ -93,12 +123,14 @@ export type FetchCollectionsParams = {
   q?: string
   type?: CollectionType
   sort?: CollectionSort
-  status?: CurationStatus
+  status?: Exclude<CollectionStatusFilter, CollectionStatusFilter.ALL>
   isPublished?: boolean
 }
 
 export type PaginationStats = { total: number; limit: number; page: number; pages: number }
 export type PaginatedResource<T> = { results: T[] } & PaginationStats
+/** Paginated `/:address/collections` lists also count the collections in each status, search included. */
+export type CollectionsList = PaginatedResource<Collection> & { counts?: CollectionStatusCounts }
 
 export function fromRemoteCollection(remote: RemoteCollection): Collection {
   const collection: Collection = {
@@ -119,7 +151,9 @@ export function fromRemoteCollection(remote: RemoteCollection): Collection {
     createdAt: +new Date(remote.created_at),
     updatedAt: +new Date(remote.updated_at),
     isMappingComplete: remote.is_mapping_complete,
-    isProgrammatic: remote.is_programmatic
+    isProgrammatic: remote.is_programmatic,
+    curationStatus: remote.curation_status,
+    lastActivityAt: remote.last_activity_at ? +new Date(remote.last_activity_at) : undefined
   }
   if (remote.salt) collection.salt = remote.salt
   if (remote.contract_address) collection.contractAddress = remote.contract_address
@@ -143,26 +177,25 @@ export function toCollectionsQueryString(params: FetchCollectionsParams): string
 
 /** Extra fetch params each status filter chip translates to. */
 export function statusFilterToParams(filter: CollectionStatusFilter): Partial<FetchCollectionsParams> {
-  switch (filter) {
-    case CollectionStatusFilter.PUBLISHED:
-      return { isPublished: true }
-    case CollectionStatusFilter.DRAFT:
-      return { isPublished: false }
-    case CollectionStatusFilter.SUBMITTED:
-      return { status: CurationStatus.UNDER_REVIEW }
-    case CollectionStatusFilter.REJECTED:
-      return { status: CurationStatus.REJECTED }
-    default:
-      return {}
-  }
+  return filter === CollectionStatusFilter.ALL ? {} : { status: filter }
 }
 
-export function getCollectionDisplayStatus(collection: Collection): CollectionDisplayStatus {
+/** Mirrors builder-server's `/:address/collections` status filter, so a pill always matches its chip. */
+export function getCollectionDisplayStatus(
+  collection: Collection,
+  curationStatus = collection.curationStatus
+): CollectionDisplayStatus {
   // A locked draft has its publish transaction in flight: the server just hasn't seen it yet.
   if (!collection.isPublished) {
-    return isCollectionLocked(collection) ? CollectionDisplayStatus.UNDER_REVIEW : CollectionDisplayStatus.DRAFT
+    return isCollectionLocked(collection) ? CollectionDisplayStatus.PUBLISHING : CollectionDisplayStatus.DRAFT
   }
-  return collection.isApproved ? CollectionDisplayStatus.PUBLISHED : CollectionDisplayStatus.UNDER_REVIEW
+  if (curationStatus === CurationStatus.REJECTED) return CollectionDisplayStatus.REJECTED
+  if (!collection.isApproved) {
+    return hasBeenApproved(collection) ? CollectionDisplayStatus.DISABLED : CollectionDisplayStatus.UNDER_REVIEW
+  }
+  return curationStatus === CurationStatus.PENDING
+    ? CollectionDisplayStatus.UNDER_REVIEW
+    : CollectionDisplayStatus.PUBLISHED
 }
 
 /**

@@ -9,13 +9,18 @@ import {
 import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
-import { ITEMS_PAGE_SIZE, useAllCollectionItems, useCollection, useSaveCollection } from '~/hooks/useCollection'
+import {
+  ITEMS_PAGE_SIZE,
+  useAllCollectionItems,
+  useCollection,
+  useCollectionStatus,
+  useSaveCollection
+} from '~/hooks/useCollection'
 import { BuilderServerError } from '~/lib/builder'
 import { FeatureFlag } from '~/lib/featureFlags'
 import {
   CollectionDisplayStatus,
   canSellCollectionItems,
-  getCollectionDisplayStatus,
   hasBeenApproved,
   hasCollectionRole,
   isCollectionLocked
@@ -143,10 +148,13 @@ const CollectionDetailPage = () => {
   // Price, Sales and Sale Status exist once the collection is published; the owner can put items on sale
   // once it has been approved at least once, even if it is under review again.
   const withMarket = !!collection?.isPublished
+  const status = useCollectionStatus(address, collection)
   const statusHint =
-    collection && getCollectionDisplayStatus(collection) === CollectionDisplayStatus.UNDER_REVIEW
+    status === CollectionDisplayStatus.UNDER_REVIEW
       ? t('collection_status.under_review_hint')
-      : null
+      : status === CollectionDisplayStatus.DISABLED
+        ? t('collection_status.disabled_hint')
+        : null
   // Sales here are off-chain public orders only: with the flag off there is no other way to list an item.
   const canListItems = useFeatureFlag(FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS).enabled
   const isApprovedForSale = canListItems && !!collection && hasBeenApproved(collection)
@@ -336,7 +344,7 @@ const CollectionDetailPage = () => {
                   </S.RenameButton>
                 )}
               </S.TitleGroup>
-              <CollectionStatusPill collection={collection} hint={statusHint} />
+              {status && <CollectionStatusPill collection={collection} status={status} hint={statusHint} />}
               {address && <CollectionRolePill collection={collection} address={address} />}
             </S.HeaderLeft>
             <S.HeaderActions>

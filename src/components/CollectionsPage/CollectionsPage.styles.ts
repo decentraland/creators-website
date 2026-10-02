@@ -119,20 +119,14 @@ export const Chip = styled.button`
   }
 `
 
-export const ChipBadge = styled.span`
+export const ChipDot = styled.span`
   position: absolute;
-  top: -5px;
-  right: -4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
+  top: -2px;
+  right: 0;
+  width: 10px;
+  height: 10px;
   border-radius: ${theme.radius.pill};
   background: ${theme.colors.dclRed};
-  color: ${theme.colors.white};
-  font-size: 12px;
-  font-weight: 600;
 `
 
 export const ViewToggle = styled.div`
