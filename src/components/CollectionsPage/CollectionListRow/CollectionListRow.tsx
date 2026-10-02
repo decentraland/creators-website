@@ -1,4 +1,5 @@
 import { useIntl } from 'react-intl'
+import { useLocation } from 'react-router-dom'
 import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
 import { formatTimeAgo } from '~/lib/time'
@@ -19,6 +20,7 @@ export function CollectionListRow({ collection }: Props) {
   const { t } = useTranslation()
   const intl = useIntl()
   const address = useWallet(state => state.session?.address)
+  const { search } = useLocation()
 
   return (
     <S.Row data-testid="collection-row">
@@ -27,7 +29,7 @@ export function CollectionListRow({ collection }: Props) {
           <CollectionMosaic collectionId={collection.id} itemCount={collection.itemCount} />
         </S.Thumb>
         {/* Stretched over the whole row (see RowLink) so the row is one real link. */}
-        <S.RowLink to={`/collections/${collection.id}`}>
+        <S.RowLink to={`/collections/${collection.id}`} state={{ listSearch: search }}>
           <S.Name title={collection.name}>{collection.name}</S.Name>
         </S.RowLink>
         {address && <CollectionRolePill collection={collection} address={address} />}

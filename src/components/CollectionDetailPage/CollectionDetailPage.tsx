@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Add as AddIcon,
   ArrowBackIosNew as ArrowBackIcon,
@@ -79,6 +79,7 @@ const CollectionDetailPage = () => {
   const { t } = useTranslation()
   const intl = useIntl()
   const navigate = useNavigate()
+  const location = useLocation()
   const { collectionId: collectionIdParam } = useParams()
   const collectionId = parseUuidParam(collectionIdParam)
   const { session, restored, signIn } = useWallet()
@@ -327,7 +328,12 @@ const CollectionDetailPage = () => {
                 type="button"
                 aria-label={t('collection_detail_page.back')}
                 data-testid="back-to-collections"
-                onClick={() => navigate('/collections')}
+                onClick={() =>
+                  navigate({
+                    pathname: '/collections',
+                    search: (location.state as { listSearch?: string } | null)?.listSearch
+                  })
+                }
               >
                 <ArrowBackIcon />
               </S.BackLink>
