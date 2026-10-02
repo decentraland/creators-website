@@ -6,18 +6,13 @@ export enum ValidationSeverity {
   WARNING = 'warning'
 }
 
-/**
- * One problem found in an item. Validator findings carry a ready creator-facing `message`; issues the
- * app derives itself (the triangle recheck, the thumbnail check) carry an i18n `messageKey` instead.
- */
+/** One problem found in an item, with the rule book's creator-facing English message. */
 export type ValidationIssue = {
   code: string
   severity: ValidationSeverity
-  message?: string
+  message: string
   /** File, mesh or bone the issue points at. */
   where?: string
-  messageKey?: string
-  messageParams?: Record<string, string | number>
 }
 
 /** What to validate: in-memory files (imports, live preview) or a saved item (storage URLs). */

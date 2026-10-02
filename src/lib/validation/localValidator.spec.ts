@@ -50,20 +50,45 @@ describe('local validator', () => {
     expect(fetchMock.mock.calls[0][0]).toBe('https://builder-api.decentraland.zone/v1/storage/contents/bafyF')
     const [input, options] = validate.mock.calls[0]
     expect([...input.files.keys()]).toEqual(['female/hat.glb'])
-    expect(input.metadata).toEqual({ data: { category: 'hat', hides: ['hair'] } })
+    expect(input.metadata).toEqual({
+      data: {
+        category: 'hat',
+        hides: ['hair'],
+        representations: [{ bodyShapes: [BodyShape.FEMALE], mainFile: 'female/hat.glb', contents: ['female/hat.glb'] }]
+      }
+    })
     expect(options.groups).toEqual(['model', 'emote'])
     expect(result.issues).toEqual([
       { code: 'triangle-count', severity: 'error', message: 'Too many triangles', where: 'female/hat.glb' }
     ])
   })
 
-  it('validates in-memory files and marks emotes through their metadata', async () => {
+  it('hands an emote its audio and names the model explicitly, whatever its extension case', async () => {
     await getValidator().validate(
-      { kind: 'blob', contents: { 'dance.glb': new Blob(['x']) }, mainFile: 'dance.glb' },
+      {
+        kind: 'blob',
+        contents: { 'Dance.GLB': new Blob(['x']), 'sound.wav': new Blob(['a']), 'thumbnail.png': new Blob(['t']) },
+        mainFile: 'Dance.GLB'
+      },
       { type: ItemType.EMOTE }
     )
     expect(fetchMock).not.toHaveBeenCalled()
-    expect(validate.mock.calls[0][0].metadata).toEqual({ emoteDataADR74: {} })
+    const [input] = validate.mock.calls[0]
+    expect([...input.files.keys()]).toEqual(['Dance.GLB', 'sound.wav'])
+    expect(input.metadata.emoteDataADR74.representations[0]).toMatchObject({ mainFile: 'Dance.GLB' })
+  })
+
+  it('reports a failed download without leaving the body open', async () => {
+    const cancel = vi.fn().mockResolvedValue(undefined)
+    fetchMock.mockResolvedValue({ ok: false, status: 404, body: { cancel } })
+    await expect(getValidator().validate({ kind: 'item', item }, { type: ItemType.WEARABLE })).rejects.toThrow(/404/)
+    expect(cancel).toHaveBeenCalled()
+  })
+
+  it('reports a crashed check as an error rather than a pass', async () => {
+    validate.mockResolvedValue({ findings: [], checks: [{ check: 'skeleton', status: 'errored', skipReason: 'boom' }] })
+    const result = await getValidator().validate({ kind: 'item', item }, { type: ItemType.WEARABLE })
+    expect(result.issues).toEqual([{ code: 'file-format', severity: 'error', message: 'boom' }])
   })
 
   it('hides category-unknown warnings and reports an unparseable model as an error', async () => {

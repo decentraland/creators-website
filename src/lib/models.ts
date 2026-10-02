@@ -5,12 +5,12 @@ import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { WearableCategory } from '@dcl/schemas'
 import { ItemType, type ItemMetrics } from './items'
 import { ItemFileError, MAX_EMOTE_DURATION, isImageFile } from './itemFiles'
-import { manifest } from '@dcl-regenesislabs/wearable-validator'
 import { suggestWearableCategory } from './suggestWearableCategory'
 import { getValidator, type ValidationIssue } from './validation'
 
 const ARMATURE_PREFIX = 'Armature'
-const PROP_ARMATURE_NAME = manifest.skeleton.propArmatureName
+// Kept equal to the validator manifest's propArmatureName by springBones.spec.ts's rule book parity test.
+export const PROP_ARMATURE_NAME = 'Armature_Prop'
 const ARMATURE_OTHER = 'Armature_Other'
 
 export type AnimationMetrics = {
@@ -134,7 +134,6 @@ export async function analyzeModel(
       return { type: ItemType.EMOTE, validationIssues: issues, suggestedCategory: null, emoteMetrics }
     }
 
-    const { issues } = await getValidator().validate(source, { type: ItemType.WEARABLE, category, hides })
     // Suggestion only — a throw on malformed geometry must never fail the import.
     let suggestedCategory: WearableCategory | null = null
     try {
@@ -142,6 +141,12 @@ export async function analyzeModel(
     } catch {
       suggestedCategory = null
     }
+    // Validated for the category the draft will start with, so the modal doesn't re-run it right away.
+    const { issues } = await getValidator().validate(source, {
+      type: ItemType.WEARABLE,
+      category: category ?? suggestedCategory ?? undefined,
+      hides
+    })
     return { type: ItemType.WEARABLE, validationIssues: issues, suggestedCategory }
   } finally {
     revokeObjectURLs(mappings)

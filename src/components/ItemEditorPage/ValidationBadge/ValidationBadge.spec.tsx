@@ -8,7 +8,7 @@ import { ValidationBadge, getValidationStatus } from './ValidationBadge'
 const warning = {
   code: 'triangle-count',
   severity: ValidationSeverity.WARNING,
-  messageKey: 'item_validation.thumbnail_not_transparent'
+  message: 'Thumbnail is 1024×1024 — a square 256×256 PNG is recommended.'
 }
 const error = { code: 'skeleton', severity: ValidationSeverity.ERROR, message: 'The skeleton is not the avatar one.' }
 
@@ -26,9 +26,7 @@ describe('ValidationBadge', () => {
     expect(screen.getByTestId('validation-badge')).toHaveAttribute('data-status', 'errors')
     await userEvent.click(screen.getByTestId('validation-badge'))
     expect(screen.getByTestId('validation-badge-issues').children).toHaveLength(2)
-    expect(screen.getByTestId('validation-badge-issues')).toHaveTextContent(
-      "The thumbnail background doesn't look transparent."
-    )
+    expect(screen.getByTestId('validation-badge-issues')).toHaveTextContent('a square 256×256 PNG is recommended.')
     expect(screen.getByTestId('validation-badge-issues')).toHaveTextContent('The skeleton is not the avatar one.')
   })
 

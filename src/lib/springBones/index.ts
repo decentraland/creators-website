@@ -5,9 +5,15 @@ import { type SpringBoneParams, type SpringBonesData } from '@dcl/schemas'
 import { ItemType, type Item } from '../items'
 import { type BoneNode } from './parseSpringBones'
 
-// Local copy: this module is on the app entry path and the validator package is ~300 KB gzipped.
-// springBones.spec.ts keeps it equal to the validator manifest.
+// Local copies: importing the validator package root pulls every check into the importing chunk.
+// springBones.spec.ts keeps them equal to the validator manifest.
 export const MAX_SPRING_BONES = 12
+export const SPRING_BONE_RANGES = {
+  stiffness: [0, 4],
+  gravityPower: [0, 2],
+  drag: [0, 1],
+  gravityDir: [-10, 10]
+} as const
 
 export { parseSpringBones, extractGltfJson, type BoneNode } from './parseSpringBones'
 

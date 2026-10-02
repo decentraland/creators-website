@@ -3,13 +3,13 @@ import { BodyShape, type SpringBoneParams } from '@dcl/schemas'
 import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
 import { Select } from '~/components/Select'
 import { useTranslation } from '~/intl'
-import { manifest } from '@dcl-regenesislabs/wearable-validator'
 import {
   buildBoneTree,
   buildSubtreeSizes,
   getChainRoots,
   getDefaultSpringBoneParams,
   MAX_SPRING_BONES,
+  SPRING_BONE_RANGES,
   pickTunableSpringBoneParams,
   sortByHierarchy,
   sumConfiguredBones,
@@ -38,7 +38,7 @@ type Props = {
 
 type NumericParam = 'stiffness' | 'gravityPower' | 'drag'
 
-const RANGES = manifest.skeleton.springBone
+const RANGES = SPRING_BONE_RANGES
 
 const SLIDERS: Array<{ field: NumericParam; min: number; max: number }> = [
   { field: 'stiffness', min: RANGES.stiffness[0], max: RANGES.stiffness[1] },
