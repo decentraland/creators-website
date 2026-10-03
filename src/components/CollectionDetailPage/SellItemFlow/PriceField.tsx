@@ -3,7 +3,7 @@ import { useTranslation } from '~/intl'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useManaUsdRate } from '~/hooks/useSales'
 import { FeatureFlag } from '~/lib/featureFlags'
-import { formatCredits, formatMana } from '~/lib/publishFee'
+import { formatMana } from '~/lib/publishFee'
 import {
   MAX_SALE_CREDITS,
   MAX_SALE_MANA_WEI,
@@ -11,6 +11,7 @@ import {
   formatCreditsAsUsd,
   formatManaAsUsd,
   parseManaAmount,
+  sanitizeCreditsInput,
   sanitizeManaInput,
   type PriceCurrency
 } from '~/lib/sales'
@@ -80,14 +81,8 @@ export function PriceField({ label, values, onChange, free = false, disabled = f
   const manaWei = useMemo(() => parseManaAmount(amount), [amount])
 
   let error: string | null = null
-  if (!free && currency === 'credits' && credits > Number(MAX_SALE_CREDITS)) {
-    error = t('sell_item_modal.price.too_high', { max: formatCredits(Number(MAX_SALE_CREDITS)) })
-  } else if (!free && currency === 'mana' && manaWei !== null) {
-    if (manaWei > MAX_SALE_MANA_WEI) {
-      error = t('sell_item_modal.price.too_high_mana', { max: formatMana(MAX_SALE_MANA_WEI) })
-    } else if (manaWei < MIN_SALE_MANA_WEI) {
-      error = t('sell_item_modal.price.too_low_mana', { min: formatMana(MIN_SALE_MANA_WEI) })
-    }
+  if (!free && currency === 'mana' && manaWei !== null && manaWei < MIN_SALE_MANA_WEI) {
+    error = t('sell_item_modal.price.too_low_mana', { min: formatMana(MIN_SALE_MANA_WEI) })
   }
 
   let usd: string
@@ -96,7 +91,13 @@ export function PriceField({ label, values, onChange, free = false, disabled = f
   else usd = rate.data !== undefined && manaWei !== null ? `≈ ${formatManaAsUsd(manaWei, rate.data)}` : ''
 
   function changeAmount(value: string) {
-    onChange({ currency, amount: currency === 'credits' ? value.replace(/\D/g, '') : sanitizeManaInput(value) })
+    const next = currency === 'credits' ? sanitizeCreditsInput(value) : sanitizeManaInput(value)
+    // A keystroke past the ceiling is dropped, so the field (and its USD equivalent) never outgrows the box.
+    const tooHigh =
+      currency === 'credits'
+        ? Number(next) > Number(MAX_SALE_CREDITS)
+        : (parseManaAmount(next) ?? 0n) > MAX_SALE_MANA_WEI
+    if (!tooHigh) onChange({ currency, amount: next })
   }
 
   function changeCurrency(next: PriceCurrency) {
