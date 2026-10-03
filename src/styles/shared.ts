@@ -56,6 +56,10 @@ export const ModalActions = styled.div`
   width: 100%;
   padding-top: 24px;
   border-top: 1px solid ${theme.colors.glassHover};
+  background-color: ${theme.colors.modalSurface};
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
 
   & > button {
     flex: 1;
