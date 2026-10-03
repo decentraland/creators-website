@@ -1,9 +1,9 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '~/intl'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useManaUsdRate } from '~/hooks/useSales'
 import { FeatureFlag } from '~/lib/featureFlags'
-import { formatMana } from '~/lib/publishFee'
+import { formatCredits, formatMana } from '~/lib/publishFee'
 import {
   MAX_SALE_CREDITS,
   MAX_SALE_MANA_WEI,
@@ -11,7 +11,6 @@ import {
   formatCreditsAsUsd,
   formatManaAsUsd,
   parseManaAmount,
-  sanitizeCreditsInput,
   sanitizeManaInput,
   type PriceCurrency
 } from '~/lib/sales'
@@ -77,12 +76,20 @@ export function PriceField({ label, values, onChange, free = false, disabled = f
     if (!creditsEnabled && currency === 'credits') onChange({ currency: 'mana', amount: '' })
   }, [creditsEnabled, currency, onChange])
 
+  // Set when an input past the ceiling was dropped, so the creator learns why the field didn't take it.
+  const [hitCeiling, setHitCeiling] = useState(false)
+
   const credits = Number(amount) || 0
   const manaWei = useMemo(() => parseManaAmount(amount), [amount])
 
   let error: string | null = null
   if (!free && currency === 'mana' && manaWei !== null && manaWei < MIN_SALE_MANA_WEI) {
     error = t('sell_item_modal.price.too_low_mana', { min: formatMana(MIN_SALE_MANA_WEI) })
+  } else if (!free && hitCeiling) {
+    error =
+      currency === 'credits'
+        ? t('sell_item_modal.price.too_high', { max: formatCredits(Number(MAX_SALE_CREDITS)) })
+        : t('sell_item_modal.price.too_high_mana', { max: formatMana(MAX_SALE_MANA_WEI) })
   }
 
   let usd: string
@@ -91,18 +98,22 @@ export function PriceField({ label, values, onChange, free = false, disabled = f
   else usd = rate.data !== undefined && manaWei !== null ? `≈ ${formatManaAsUsd(manaWei, rate.data)}` : ''
 
   function changeAmount(value: string) {
-    const next = currency === 'credits' ? sanitizeCreditsInput(value) : sanitizeManaInput(value)
-    // A keystroke past the ceiling is dropped, so the field (and its USD equivalent) never outgrows the box.
+    const next = currency === 'credits' ? value.replace(/\D/g, '') : sanitizeManaInput(value)
+    // Input past the ceiling is dropped whole (never truncated into a different price), so the field and
+    // its USD equivalent never outgrow the box.
     const tooHigh =
       currency === 'credits'
         ? Number(next) > Number(MAX_SALE_CREDITS)
         : (parseManaAmount(next) ?? 0n) > MAX_SALE_MANA_WEI
+    setHitCeiling(tooHigh)
     if (!tooHigh) onChange({ currency, amount: next })
   }
 
   function changeCurrency(next: PriceCurrency) {
     // A typed amount means a different number in the other unit: never carry it over.
-    if (next !== currency) onChange({ currency: next, amount: '' })
+    if (next === currency) return
+    setHitCeiling(false)
+    onChange({ currency: next, amount: '' })
   }
 
   return (

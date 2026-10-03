@@ -413,11 +413,13 @@
       "label": "Price",
       "rate": "1 Credit = {usd}USD",
       "giveaway": "Make it for giveaway",
+      "too_high": "The price can be at most {max} credits.",
       "currency_label": "Currency",
       "currency_credits": "Credits",
       "currency_mana": "MANA",
       "mana_rate": "1 MANA ≈ {usd}USD (estimated)",
       "mana_min": "Minimum {min} MANA",
+      "too_high_mana": "The price can be at most {max} MANA.",
       "too_low_mana": "The price must be at least {min} MANA."
     },
     "expiration": {

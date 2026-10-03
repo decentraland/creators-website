@@ -128,6 +128,7 @@ describe('SellItemModal', () => {
     await userEvent.click(screen.getByTestId('sell-price-currency-option-mana'))
     await userEvent.type(price(), '1000000000000.01')
     expect(price()).toHaveValue('1000000000000.0')
+    expect(screen.getByTestId('sell-price-error')).toHaveTextContent(/at most 1,000,000,000,000 MANA/)
     expect(submit()).toBeEnabled()
   })
 
@@ -140,8 +141,16 @@ describe('SellItemModal', () => {
     renderModal()
     await userEvent.type(price(), '10000000000009')
     expect(price()).toHaveValue('1000000000000')
-    expect(screen.queryByTestId('sell-price-error')).not.toBeInTheDocument()
+    expect(screen.getByTestId('sell-price-error')).toHaveTextContent('1,000,000,000,000')
     expect(submit()).toBeEnabled()
+  })
+
+  it('drops a pasted price past the ceiling instead of truncating it', async () => {
+    renderModal()
+    await userEvent.click(price())
+    await userEvent.paste('1000000000000500')
+    expect(price()).toHaveValue('')
+    expect(screen.getByTestId('sell-price-error')).toHaveTextContent('1,000,000,000,000')
   })
 
   it('freezes the price at 0 for a giveaway and submits it as free', async () => {

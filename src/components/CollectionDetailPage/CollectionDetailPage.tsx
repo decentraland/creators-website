@@ -80,6 +80,7 @@ const CollectionDetailPage = () => {
   const intl = useIntl()
   const navigate = useNavigate()
   const location = useLocation()
+  const listState = location.state as { listSearch?: string } | null
   const { collectionId: collectionIdParam } = useParams()
   const collectionId = parseUuidParam(collectionIdParam)
   const { session, restored, signIn } = useWallet()
@@ -211,7 +212,8 @@ const CollectionDetailPage = () => {
         else params.delete('page')
         return params
       },
-      { replace: true }
+      // Keeps the list's query that the back arrow returns to.
+      { replace: true, state: listState }
     )
     window.scrollTo({ top: 0 })
   }
@@ -225,7 +227,7 @@ const CollectionDetailPage = () => {
         params.delete('page')
         return params
       },
-      { replace: true }
+      { replace: true, state: listState }
     )
   }
 
@@ -331,7 +333,7 @@ const CollectionDetailPage = () => {
                 onClick={() =>
                   navigate({
                     pathname: '/collections',
-                    search: (location.state as { listSearch?: string } | null)?.listSearch
+                    search: listState?.listSearch
                   })
                 }
               >

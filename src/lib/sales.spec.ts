@@ -28,7 +28,6 @@ import {
   isValidManaWei,
   listingToSalePrice,
   parseManaAmount,
-  sanitizeCreditsInput,
   sanitizeManaInput,
   toPricedSale,
   formatDateValue,
@@ -119,8 +118,6 @@ describe('price and date helpers', () => {
   it('takes MANA amounts with up to two decimals, from 1 MANA up to the catalog ceiling', () => {
     expect(sanitizeManaInput('1a.2.345')).toBe('1.23')
     expect(sanitizeManaInput('.5')).toBe('.5')
-    expect(sanitizeManaInput('12345678901234567.891')).toBe('1234567890123.89')
-    expect(sanitizeCreditsInput('1a2345678901234567')).toBe('1234567890123')
     expect(parseManaAmount('1.5')).toBe(1_500_000_000_000_000_000n)
     expect(parseManaAmount('.5')).toBe(500_000_000_000_000_000n)
     expect(parseManaAmount('')).toBeNull()

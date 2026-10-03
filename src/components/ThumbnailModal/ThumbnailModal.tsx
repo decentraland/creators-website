@@ -92,7 +92,8 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
   // play/pause stuck until the emote ends.
   const hasBlob = blob !== null
   useEffect(() => {
-    if (hasBlob) setController(WearablePreview.createController(PREVIEW_ID))
+    setController(hasBlob ? WearablePreview.createController(PREVIEW_ID) : null)
+    if (!hasBlob) setLoaded(false)
   }, [hasBlob])
 
   function thumbnailErrorMessage(err: unknown): string {

@@ -37,8 +37,6 @@ export type PriceCurrency = PricedSale['kind']
 const MAX_SALE_PRICE = 1_000_000_000_000n
 export const MAX_SALE_CREDITS = MAX_SALE_PRICE
 export const MAX_SALE_MANA_WEI = MAX_SALE_PRICE * 10n ** 18n
-// A price input takes no more whole digits than the ceiling has.
-export const MAX_PRICE_DIGITS = String(MAX_SALE_PRICE).length
 // Below 1 MANA the buyer would have to cover the meta-transaction gas themselves, so the legacy builder
 // warned about it; here it is the floor.
 export const MIN_SALE_MANA_WEI = 10n ** 18n
@@ -55,17 +53,12 @@ export function isValidManaWei(wei: bigint): boolean {
   return wei >= MIN_SALE_MANA_WEI && wei <= MAX_SALE_MANA_WEI
 }
 
-/** Keeps a typed credits amount to whole digits, no longer than the ceiling. */
-export function sanitizeCreditsInput(value: string): string {
-  return value.replace(/\D/g, '').slice(0, MAX_PRICE_DIGITS)
-}
-
-/** Keeps a typed MANA amount to digits and one decimal point with at most two decimals, no longer than the ceiling. */
+/** Keeps a typed MANA amount to digits and one decimal point with at most two decimals. */
 export function sanitizeManaInput(value: string): string {
   const cleaned = value.replace(/[^\d.]/g, '')
   const dot = cleaned.indexOf('.')
-  if (dot === -1) return cleaned.slice(0, MAX_PRICE_DIGITS)
-  const whole = cleaned.slice(0, dot).slice(0, MAX_PRICE_DIGITS)
+  if (dot === -1) return cleaned
+  const whole = cleaned.slice(0, dot)
   const decimals = cleaned
     .slice(dot + 1)
     .replace(/\./g, '')
