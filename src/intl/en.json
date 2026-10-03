@@ -102,6 +102,7 @@
     "preview": "Preview in Decentraland",
     "more_actions": "More actions",
     "actions": {
+      "preview_items": "Preview items",
       "copy_urn": "Copy URN",
       "copy_address": "Copy contract address",
       "collaborators": "Collaborators",

@@ -102,6 +102,7 @@
     "preview": "Vista previa en Decentraland",
     "more_actions": "Más acciones",
     "actions": {
+      "preview_items": "Previsualizar ítems",
       "copy_urn": "Copiar URN",
       "copy_address": "Copiar dirección del contrato",
       "collaborators": "Colaboradores",

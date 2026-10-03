@@ -412,6 +412,7 @@ const CollectionDetailPage = () => {
                   collection={collection}
                   address={address}
                   onSendItems={canSend ? () => setSending(true) : undefined}
+                  onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
                   onManageRoles={setManagingRoles}
                   onDeleted={() => navigate('/collections', { replace: true })}
                 />
