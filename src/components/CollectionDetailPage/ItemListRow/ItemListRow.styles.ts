@@ -79,6 +79,11 @@ export const Name = styled.span`
   color: ${theme.colors.softWhite};
   display: inline-flex;
   align-items: center;
+
+  /* On desktop the rename button's padding spaces the badge; the card shows plain text. */
+  ${card} {
+    gap: 8px;
+  }
 `
 
 export const NameText = styled.span`

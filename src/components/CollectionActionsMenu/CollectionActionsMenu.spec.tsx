@@ -184,6 +184,14 @@ describe('CollectionActionsMenu', () => {
       expect(screen.queryByTestId('collection-actions')).not.toBeInTheDocument()
     })
 
+    it('offers Preview items on a small screen, even for a draft', async () => {
+      const onPreviewItems = vi.fn()
+      renderMenu(draft, OWNER, { onPreviewItems })
+      await openMenu()
+      await userEvent.click(screen.getByTestId('preview-items-action'))
+      expect(onPreviewItems).toHaveBeenCalled()
+    })
+
     it('carries Send Items on a small screen, where the header button is hidden', async () => {
       const onSendItems = vi.fn()
       renderMenu({ ...draft, isPublished: true }, OWNER, { onSendItems })
@@ -193,6 +201,13 @@ describe('CollectionActionsMenu', () => {
       await userEvent.click(screen.getByTestId('send-items-action'))
       expect(onSendItems).toHaveBeenCalled()
     })
+  })
+
+  it('never shows Preview items on desktop, where the Open Editor button covers it', async () => {
+    stubViewport(false)
+    renderMenu({ ...draft, isPublished: true }, OWNER, { onPreviewItems: vi.fn() })
+    await openMenu()
+    expect(screen.queryByTestId('preview-items-action')).not.toBeInTheDocument()
   })
 
   it('never shows Send Items on desktop, where the header button covers it', async () => {

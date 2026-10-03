@@ -1,4 +1,5 @@
 import { useIntl } from 'react-intl'
+import { useLocation } from 'react-router-dom'
 import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
 import { formatTimeAgo } from '~/lib/time'
@@ -19,9 +20,10 @@ export function CollectionCard({ collection }: Props) {
   const { t } = useTranslation()
   const { locale } = useIntl()
   const address = useWallet(state => state.session?.address)
+  const { search } = useLocation()
 
   return (
-    <S.Card data-testid="collection-card" to={`/collections/${collection.id}`}>
+    <S.Card data-testid="collection-card" to={`/collections/${collection.id}`} state={{ listSearch: search }}>
       <S.Media>
         <CollectionMosaic collectionId={collection.id} itemCount={collection.itemCount} />
         {address && <S.RoleBadge collection={collection} address={address} />}

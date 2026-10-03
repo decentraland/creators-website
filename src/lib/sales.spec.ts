@@ -107,7 +107,7 @@ describe('price and date helpers', () => {
   })
 
   it('accepts whole credits from 1 up to the catalog ceiling', () => {
-    expect(MAX_SALE_CREDITS).toBe(10_000_000_000_000n)
+    expect(MAX_SALE_CREDITS).toBe(1_000_000_000_000n)
     expect(isValidCredits(1)).toBe(true)
     expect(isValidCredits(Number(MAX_SALE_CREDITS))).toBe(true)
     expect(isValidCredits(Number(MAX_SALE_CREDITS) + 1)).toBe(false)

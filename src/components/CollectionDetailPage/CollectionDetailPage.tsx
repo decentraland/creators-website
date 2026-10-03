@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Add as AddIcon,
   ArrowBackIosNew as ArrowBackIcon,
@@ -79,6 +79,8 @@ const CollectionDetailPage = () => {
   const { t } = useTranslation()
   const intl = useIntl()
   const navigate = useNavigate()
+  const location = useLocation()
+  const listState = location.state as { listSearch?: string } | null
   const { collectionId: collectionIdParam } = useParams()
   const collectionId = parseUuidParam(collectionIdParam)
   const { session, restored, signIn } = useWallet()
@@ -210,7 +212,8 @@ const CollectionDetailPage = () => {
         else params.delete('page')
         return params
       },
-      { replace: true }
+      // Keeps the list's query that the back arrow returns to.
+      { replace: true, state: listState }
     )
     window.scrollTo({ top: 0 })
   }
@@ -224,7 +227,7 @@ const CollectionDetailPage = () => {
         params.delete('page')
         return params
       },
-      { replace: true }
+      { replace: true, state: listState }
     )
   }
 
@@ -327,7 +330,12 @@ const CollectionDetailPage = () => {
                 type="button"
                 aria-label={t('collection_detail_page.back')}
                 data-testid="back-to-collections"
-                onClick={() => navigate('/collections')}
+                onClick={() =>
+                  navigate({
+                    pathname: '/collections',
+                    search: listState?.listSearch
+                  })
+                }
               >
                 <ArrowBackIcon />
               </S.BackLink>
@@ -406,6 +414,7 @@ const CollectionDetailPage = () => {
                   collection={collection}
                   address={address}
                   onSendItems={canSend ? () => setSending(true) : undefined}
+                  onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
                   onManageRoles={setManagingRoles}
                   onDeleted={() => navigate('/collections', { replace: true })}
                 />

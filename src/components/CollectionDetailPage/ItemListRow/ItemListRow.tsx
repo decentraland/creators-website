@@ -222,7 +222,7 @@ export function ItemListRow({
             </S.EditorButton>
           </S.NameEditor>
         ) : (
-          <S.Name title={item.name}>
+          <S.Name>
             {canRename ? (
               <S.NameButton
                 type="button"
@@ -234,7 +234,9 @@ export function ItemListRow({
                 <EditIcon aria-hidden />
               </S.NameButton>
             ) : (
-              <S.NameText data-testid="item-row-name">{item.name}</S.NameText>
+              <S.NameText data-testid="item-row-name" title={item.name}>
+                {item.name}
+              </S.NameText>
             )}
             {isSmart && (
               <Tooltip content={t('collection_detail_page.smart_wearable')} asChild testId="item-row-smart-tooltip">
