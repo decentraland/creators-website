@@ -715,7 +715,8 @@
         "errors": "{count, plural, one {# issue} other {# issues}}",
         "idle": ""
       },
-      "previewed_item": "Previewed item"
+      "previewed_item": "Previewed item",
+      "check_failed": "We couldn't check the model. Try again, or save the item and reopen it."
     },
     "details": {
       "title": "Details",

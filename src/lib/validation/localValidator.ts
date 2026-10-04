@@ -77,7 +77,7 @@ function toIssue(finding: Finding, titles: CheckTitles): ValidationIssue {
   }
 }
 
-export function toIssues(result: Result, titles: CheckTitles = {}): ValidationIssue[] {
+function toIssues(result: Result, titles: CheckTitles = {}): ValidationIssue[] {
   // Without a category its limits are unknown, which is not a problem with the model.
   const issues = result.findings
     .filter(finding => finding.data?.reason !== 'category-unknown')

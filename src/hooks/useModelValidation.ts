@@ -1,5 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
-import { getValidator, type ValidationContext, type ValidationResult, type ValidationSource } from '~/lib/validation'
+import { useTranslation } from '~/intl'
+import { captureError } from '~/lib/monitoring'
+import {
+  ValidationSeverity,
+  getValidator,
+  type ValidationContext,
+  type ValidationResult,
+  type ValidationSource
+} from '~/lib/validation'
 
 /** Cache identity of a source: an item's content hashes, or the caller's id for in-memory files. */
 function sourceKey(source: ValidationSource, blobId: string | undefined): unknown {
@@ -17,6 +25,7 @@ export function useModelValidation(
   /** Blob sources have no stable identity of their own: the caller supplies one that changes with the files. */
   blobId?: string
 ) {
+  const { t } = useTranslation()
   return useQuery<ValidationResult>({
     queryKey: [
       'model-validation',
@@ -26,7 +35,19 @@ export function useModelValidation(
       ctx.hides ?? [],
       ctx.bodyShape ?? null
     ],
-    queryFn: ({ signal }) => getValidator().validate(source!, ctx, { signal }),
+    // A check that could not run (e.g. an unsaved model's files not uploaded yet) must never read as a pass.
+    queryFn: ({ signal }) =>
+      getValidator()
+        .validate(source!, ctx, { signal })
+        .catch((error: unknown) => {
+          if (signal.aborted) throw error
+          captureError(error, { flow: 'model_validation' })
+          return {
+            issues: [
+              { code: 'model', severity: ValidationSeverity.WARNING, message: t('item_editor.validation.check_failed') }
+            ]
+          }
+        }),
     enabled: source !== null,
     staleTime: Infinity,
     retry: false

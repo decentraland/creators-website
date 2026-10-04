@@ -715,7 +715,8 @@
         "errors": "{count, plural, one {# problema} other {# problemas}}",
         "idle": ""
       },
-      "previewed_item": "Ítem en vista previa"
+      "previewed_item": "Ítem en vista previa",
+      "check_failed": "No pudimos revisar el modelo. Inténtalo de nuevo, o guarda el ítem y vuelve a abrirlo."
     },
     "details": {
       "title": "Detalles",
