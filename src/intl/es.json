@@ -714,7 +714,8 @@
         "warnings": "{count, plural, one {# advertencia} other {# advertencias}}",
         "errors": "{count, plural, one {# problema} other {# problemas}}",
         "idle": ""
-      }
+      },
+      "previewed_item": "Ítem en vista previa"
     },
     "details": {
       "title": "Detalles",

@@ -5,7 +5,8 @@ import { ItemType, type Item } from '../items'
 const validate = vi.fn()
 vi.mock('@dcl-regenesislabs/wearable-validator', () => ({
   validate: (...args: unknown[]) => validate(...args),
-  manifest: { fileSize: { thumbnailRecommendedSize: 256 } }
+  manifest: { fileSize: { thumbnailRecommendedSize: 256 } },
+  checks: {}
 }))
 
 const { getValidator, setValidator } = await import('./index')

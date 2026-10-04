@@ -1,6 +1,7 @@
 // The in-browser backend: the shared Decentraland rule book (@dcl-regenesislabs/wearable-validator),
 // restricted to the model and emote groups plus the thumbnail rule, the parts the editor can act on.
 import { type Finding, type Result } from '@dcl-regenesislabs/wearable-validator'
+
 import { BodyShape } from '@dcl/schemas'
 import { fetchContent } from '../builder'
 import { THUMBNAIL_PATH, isImageFile } from '../itemFiles'
@@ -64,25 +65,35 @@ function toMetadata(ctx: ValidationContext, { mainFile, bodyShapes, files }: Loa
     : { data: { category: ctx.category, hides: ctx.hides ?? [], representations } }
 }
 
-function toIssue(finding: Finding): ValidationIssue {
+type CheckTitles = Record<string, { title: string } | undefined>
+
+function toIssue(finding: Finding, titles: CheckTitles): ValidationIssue {
   return {
     code: finding.check,
     severity: finding.severity === 'error' ? ValidationSeverity.ERROR : ValidationSeverity.WARNING,
     message: finding.message,
+    title: titles[finding.check]?.title,
     where: finding.where
   }
 }
 
-export function toIssues(result: Result): ValidationIssue[] {
+export function toIssues(result: Result, titles: CheckTitles = {}): ValidationIssue[] {
   // Without a category its limits are unknown, which is not a problem with the model.
-  const issues = result.findings.filter(finding => finding.data?.reason !== 'category-unknown').map(toIssue)
+  const issues = result.findings
+    .filter(finding => finding.data?.reason !== 'category-unknown')
+    .map(finding => toIssue(finding, titles))
   // A crashed check asserts nothing, so it always shows. An unparseable model (a damaged GLB, a .gltf)
   // skips every check: shown only when nothing else was found, so the run never reads as a pass.
   const errored = result.checks.filter(check => check.status === 'errored' && check.skipReason)
   const skipped = result.checks.find(check => check.status === 'skipped' && check.skipReason)
   const incomplete = errored.length > 0 ? errored : issues.length === 0 && skipped ? [skipped] : []
   for (const check of incomplete) {
-    issues.push({ code: 'file-format', severity: ValidationSeverity.ERROR, message: check.skipReason ?? '' })
+    issues.push({
+      code: 'file-format',
+      severity: ValidationSeverity.ERROR,
+      message: check.skipReason ?? '',
+      title: titles[check.status === 'errored' ? check.check : 'file-format']?.title
+    })
   }
   return issues
 }
@@ -96,12 +107,12 @@ async function validateOne(
   const loaded = await load(source, ctx, opts.signal)
   if (!loaded) return { issues: [] }
   // Loaded on first use: the rule book's parsers and decoders stay out of the route chunks.
-  const { validate } = await import('@dcl-regenesislabs/wearable-validator')
+  const { validate, checks } = await import('@dcl-regenesislabs/wearable-validator')
   const result = await validate(
     { files: loaded.files, metadata: toMetadata(ctx, loaded) },
     { groups: ['model', 'emote'], category: ctx.category, signal: opts.signal }
   )
-  return { issues: toIssues(result) }
+  return { issues: toIssues(result, checks) }
 }
 
 // The app always writes square 1024px thumbnails (legacy builder parity), so the 256px size hint is never actionable.
@@ -113,7 +124,7 @@ async function validateThumbnail(source: ThumbnailSource, opts: ValidateOptions 
     source.kind === 'blob'
       ? new Uint8Array(await source.blob.arrayBuffer())
       : await loadStored(source.item.thumbnail, source.item.contents[source.item.thumbnail], opts.signal)
-  const { validate, manifest } = await import('@dcl-regenesislabs/wearable-validator')
+  const { validate, manifest, checks } = await import('@dcl-regenesislabs/wearable-validator')
   const { thumbnailRecommendedSize } = manifest.fileSize
   const result = await validate(
     { files: new Map([[THUMBNAIL_PATH, bytes]]) },
@@ -126,7 +137,7 @@ async function validateThumbnail(source: ThumbnailSource, opts: ValidateOptions 
         SQUARE_SIZE_HINT.test(String(finding.measured))
       )
   )
-  return { issues: toIssues({ ...result, findings }) }
+  return { issues: toIssues({ ...result, findings }, checks) }
 }
 
 export const localValidator: ItemValidator = {

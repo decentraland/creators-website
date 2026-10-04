@@ -11,6 +11,8 @@ export type ValidationIssue = {
   code: string
   severity: ValidationSeverity
   message: string
+  /** The rule book's name for the check, e.g. "Triangle count". */
+  title?: string
   /** File, mesh or bone the issue points at. */
   where?: string
 }

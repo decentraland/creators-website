@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TranslationProvider } from '~/intl'
+import { ItemType } from '~/lib/items'
 import { ValidationSeverity } from '~/lib/validation'
 import { ValidationBadge, getValidationStatus } from './ValidationBadge'
 
@@ -28,6 +29,22 @@ describe('ValidationBadge', () => {
     expect(screen.getByTestId('validation-badge-issues').children).toHaveLength(2)
     expect(screen.getByTestId('validation-badge-issues')).toHaveTextContent('a square 256×256 PNG is recommended.')
     expect(screen.getByTestId('validation-badge-issues')).toHaveTextContent('The skeleton is not the avatar one.')
+  })
+
+  it('names the item and each check above its message', async () => {
+    render(
+      <ValidationBadge
+        status="errors"
+        issues={[{ ...error, title: 'Skeleton' }]}
+        subject={{ name: 'Pirate Hat', type: ItemType.WEARABLE, category: 'hat', thumbnail: null }}
+      />,
+      { wrapper: TranslationProvider }
+    )
+    await userEvent.click(screen.getByTestId('validation-badge'))
+    expect(screen.getByTestId('validation-badge-subject')).toHaveTextContent('Pirate Hat')
+    expect(screen.getByTestId('validation-badge-subject')).toHaveTextContent('Wearable')
+    expect(screen.getByTestId('validation-badge-subject')).toHaveTextContent('Hat')
+    expect(screen.getByTestId('validation-badge-issues')).toHaveTextContent('Skeleton')
   })
 
   it('is inert while passing and hidden while idle', () => {
