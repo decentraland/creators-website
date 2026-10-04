@@ -618,7 +618,8 @@
     "wrong_format": "La miniatura debe ser una imagen PNG.",
     "too_big": "La miniatura es demasiado grande — el tamaño máximo es {size}MB.",
     "capture_failed": "No pudimos actualizar la miniatura. Inténtalo de nuevo.",
-    "load_failed": "No pudimos cargar el ítem. Inténtalo de nuevo."
+    "load_failed": "No pudimos cargar el ítem. Inténtalo de nuevo.",
+    "check_failed": "No pudimos revisar la miniatura. Asegúrate de que sea un PNG cuadrado con fondo transparente."
   },
   "item_editor": {
     "pick_collection": "Elige una colección para empezar a editar sus ítems.",

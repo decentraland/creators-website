@@ -5,6 +5,8 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TranslationProvider } from '~/intl'
 import { pickFile } from '~/lib/filePicker'
+import { blobToDataURL, getImageType, resizeImage } from '~/lib/media'
+import { useNotifications } from '~/lib/notifications'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { ItemType, type Item } from '~/lib/items'
 import { useThumbnailEditor, type ThumbnailSubject } from './useThumbnailEditor'
@@ -66,6 +68,10 @@ beforeEach(() => {
   vi.mocked(pickFile)
     .mockReset()
     .mockResolvedValue(new File(['png'], 'eyes.png', { type: 'image/png' }))
+  vi.mocked(getImageType).mockResolvedValue('png' as never)
+  vi.mocked(resizeImage).mockResolvedValue(new Blob(['png'], { type: 'image/png' }))
+  vi.mocked(blobToDataURL).mockResolvedValue('data:image/png;base64,iVBORw0KGgo=')
+  useNotifications.setState({ toasts: [] })
 })
 
 describe('useThumbnailEditor', () => {
@@ -98,5 +104,40 @@ describe('useThumbnailEditor', () => {
     expect(screen.getByTestId('thumbnail-modal')).toBeInTheDocument()
     expect(pickFile).not.toHaveBeenCalled()
     expect(onSave).not.toHaveBeenCalled()
+  })
+
+  it('does nothing when the file picker is dismissed', async () => {
+    vi.mocked(pickFile).mockResolvedValue(null)
+    const { onSave } = renderEditor({ kind: 'item', item: makeItem({ 'eyes.png': 'Qm1' }) })
+    await userEvent.click(screen.getByTestId('edit'))
+
+    await waitFor(() => expect(pickFile).toHaveBeenCalled())
+    expect(onSave).not.toHaveBeenCalled()
+    expect(useNotifications.getState().toasts).toEqual([])
+  })
+
+  it('explains a picked file that is not a PNG instead of saving it', async () => {
+    vi.mocked(getImageType).mockResolvedValue('jpeg' as never)
+    const { onSave } = renderEditor({ kind: 'item', item: makeItem({ 'eyes.png': 'Qm1' }) })
+    await userEvent.click(screen.getByTestId('edit'))
+
+    await waitFor(() => expect(useNotifications.getState().toasts).toHaveLength(1))
+    expect(useNotifications.getState().toasts[0].type).toBe('error')
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
+  it('hands a picture saved from the modal back with the subject it was opened for', async () => {
+    // Its files never finish loading here, so no preview mounts; uploading doesn't need them.
+    const subject: ThumbnailSubject = { kind: 'item', item: makeItem({ 'hat.glb': 'Qm1', 'thumbnail.png': 'Qm2' }) }
+    const { onSave } = renderEditor(subject)
+    await userEvent.click(screen.getByTestId('edit'))
+    await userEvent.upload(
+      screen.getByTestId('thumbnail-file-input'),
+      new File(['png'], 't.png', { type: 'image/png' })
+    )
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled())
+    expect(onSave.mock.calls[0][1]).toBe(subject)
+    await waitFor(() => expect(screen.queryByTestId('thumbnail-modal')).not.toBeInTheDocument())
   })
 })

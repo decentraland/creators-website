@@ -618,7 +618,8 @@
     "wrong_format": "The thumbnail must be a PNG image.",
     "too_big": "The thumbnail is too big — the maximum size is {size}MB.",
     "capture_failed": "We couldn't update the thumbnail. Please try again.",
-    "load_failed": "We couldn't load the item. Please try again."
+    "load_failed": "We couldn't load the item. Please try again.",
+    "check_failed": "We couldn't check the thumbnail. Make sure it's a square PNG with a transparent background."
   },
   "item_editor": {
     "pick_collection": "Pick a collection to start editing its items.",

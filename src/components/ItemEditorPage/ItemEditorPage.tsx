@@ -176,7 +176,10 @@ const ItemEditorPage = () => {
   }, [form.draft.thumbnail, selected])
   const thumbnailValidation = useThumbnailValidation(thumbnailSource)
   const validationIssues = useMemo(
-    () => (validation.data ? [...validation.data.issues, ...(thumbnailValidation.data?.issues ?? [])] : undefined),
+    () =>
+      validation.data || thumbnailValidation.data
+        ? [...(validation.data?.issues ?? []), ...(thumbnailValidation.data?.issues ?? [])]
+        : undefined,
     [validation.data, thumbnailValidation.data]
   )
   const validationStatus = useMemo(

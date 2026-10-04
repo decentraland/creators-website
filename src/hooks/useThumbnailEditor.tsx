@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   ThumbnailModal,
   getThumbnailErrorMessage,
@@ -38,6 +38,11 @@ export function useThumbnailEditor(
   const { t } = useTranslation()
   const showToast = useNotifications(state => state.showToast)
   const [open, setOpen] = useState<ThumbnailSubject | null>(null)
+  // Saves land after async work (resize, a modal session), so they go to the caller's latest callback.
+  const onSaveRef = useRef(onSave)
+  useEffect(() => {
+    onSaveRef.current = onSave
+  })
   const itemContents = useItemContents(open?.kind === 'item' ? open.item : null)
 
   async function pickTexture(subject: ThumbnailSubject) {
@@ -51,7 +56,7 @@ export function useThumbnailEditor(
       showToast(t(key, params), { type: 'error' })
       return
     }
-    await onSave(patch, subject)
+    await onSaveRef.current(patch, subject)
   }
 
   function edit(subject: ThumbnailSubject) {
@@ -67,7 +72,7 @@ export function useThumbnailEditor(
       onClose={() => setOpen(null)}
       onSave={patch => {
         // The modal stays in its saving state until the caller's save settles.
-        void Promise.resolve(onSave(patch, open)).finally(() => setOpen(null))
+        void Promise.resolve(onSaveRef.current(patch, open)).finally(() => setOpen(null))
       }}
     />
   )

@@ -12,7 +12,7 @@ const { issues } = await getValidator().validate(
 )
 ```
 
-- **Sources**: `blob` (in-memory files: imports, live preview) or `item` (a saved item; its contents are loaded from public storage with the full path→URL mapping so a `.gltf`'s textures resolve).
+- **Sources**: `blob` (in-memory files: imports, live preview) or `item` (a saved item; only the chosen representation's main model and audio are loaded from public storage). A `.gltf` is not parsed and shows a single file-format error.
 - **Context**: item type plus the category and hides the category-dependent checks (triangle budget, material/texture caps, material naming) depend on. Re-validate whenever they change.
 - **Result**: a list of `ValidationIssue`. `code` is the validator's check name (`triangle-count`, `skeleton`, …). Every issue carries the English `message` written by the rule book.
 - **Backends**: `localValidator` runs the `model` and `emote` groups (and, through `validateThumbnail`, the `thumbnail` rule) of [`@dcl-regenesislabs/wearable-validator`](https://github.com/decentraland/wearable-validator), the same rule book curation uses. Rule changes go to that repo, not here. `setValidator()` swaps in another implementation (a remote service, a test double) without touching callers.

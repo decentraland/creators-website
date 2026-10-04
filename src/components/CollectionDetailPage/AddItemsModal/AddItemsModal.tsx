@@ -15,6 +15,7 @@ import { getValidator } from '~/lib/validation'
 import { useNotifications } from '~/lib/notifications'
 import { type SpringBoneParamsByName } from '~/lib/springBones'
 import { errorCode, track } from '~/lib/analytics'
+import { captureError } from '~/lib/monitoring'
 import { executeUpload, planUpload, type UploadDraft } from '~/lib/uploadItems'
 import {
   addItemsReducer,
@@ -158,14 +159,19 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
         { kind: 'blob', contents: stale.contents, mainFile: stale.model },
         { type: ItemType.WEARABLE, category: stale.category ?? undefined, hides: prefillRef.current?.hides }
       )
-      .then(({ issues }) =>
+      .then(({ issues }) => issues)
+      // Advisory: a failure clears the previous category's issues and marks the draft done, so edits don't retry it.
+      .catch((error: unknown) => {
+        captureError(error, { flow: 'add_items', step: 'revalidate' })
+        return []
+      })
+      .then(issues =>
         dispatch({
           type: 'draftAnalyzed',
           id: stale.id,
           patch: { validationIssues: issues, validatedCategory: stale.category }
         })
       )
-      .catch((error: unknown) => console.error('Draft validation failed:', error))
       .finally(() => validatingIdsRef.current.delete(stale.id))
   }, [drafts])
 

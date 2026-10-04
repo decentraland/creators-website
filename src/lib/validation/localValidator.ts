@@ -42,7 +42,11 @@ async function load(source: ValidationSource, ctx: ValidationContext, signal?: A
     item.data.representations[0]
   if (!representation) throw new Error(`Item "${item.id}" has no representation to validate`)
   if (isImageFile(representation.mainFile)) return null
-  const paths = Object.keys(item.contents).filter(path => path === representation.mainFile || AUDIO_LIKE.test(path))
+  // Only this representation's files: a unisex item stores each one under both body-shape folders.
+  const paths = [
+    representation.mainFile,
+    ...representation.contents.filter(path => path !== representation.mainFile && AUDIO_LIKE.test(path))
+  ]
   const entries = await Promise.all(
     paths.map(async path => [path, await loadStored(path, item.contents[path], signal)] as const)
   )
@@ -72,13 +76,13 @@ function toIssue(finding: Finding): ValidationIssue {
 export function toIssues(result: Result): ValidationIssue[] {
   // Without a category its limits are unknown, which is not a problem with the model.
   const issues = result.findings.filter(finding => finding.data?.reason !== 'category-unknown').map(toIssue)
-  // An unparseable model (a damaged GLB, a .gltf) skips every check, and a crashed check asserts nothing:
-  // either way, never show the run as a pass.
-  const incomplete = result.checks.find(
-    check => (check.status === 'skipped' || check.status === 'errored') && check.skipReason
-  )
-  if (incomplete?.skipReason && issues.length === 0) {
-    issues.push({ code: 'file-format', severity: ValidationSeverity.ERROR, message: incomplete.skipReason })
+  // A crashed check asserts nothing, so it always shows. An unparseable model (a damaged GLB, a .gltf)
+  // skips every check: shown only when nothing else was found, so the run never reads as a pass.
+  const errored = result.checks.filter(check => check.status === 'errored' && check.skipReason)
+  const skipped = result.checks.find(check => check.status === 'skipped' && check.skipReason)
+  const incomplete = errored.length > 0 ? errored : issues.length === 0 && skipped ? [skipped] : []
+  for (const check of incomplete) {
+    issues.push({ code: 'file-format', severity: ValidationSeverity.ERROR, message: check.skipReason ?? '' })
   }
   return issues
 }

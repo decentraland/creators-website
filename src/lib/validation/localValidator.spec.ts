@@ -81,6 +81,36 @@ describe('local validator', () => {
     expect(input.metadata.emoteDataADR74.representations[0]).toMatchObject({ mainFile: 'Dance.GLB' })
   })
 
+  it('loads only the chosen representation of a unisex emote, so its audio counts once', async () => {
+    const emote = {
+      ...item,
+      type: ItemType.EMOTE,
+      data: {
+        representations: [
+          { bodyShapes: [BodyShape.MALE], mainFile: 'male/dance.glb', contents: ['male/dance.glb', 'male/sound.mp3'] },
+          {
+            bodyShapes: [BodyShape.FEMALE],
+            mainFile: 'female/dance.glb',
+            contents: ['female/dance.glb', 'female/sound.mp3']
+          }
+        ]
+      },
+      contents: { 'male/dance.glb': 'a', 'male/sound.mp3': 'b', 'female/dance.glb': 'c', 'female/sound.mp3': 'd' }
+    } as Item
+    fetchMock.mockImplementation(async () => new Response(new Uint8Array([1])))
+    await getValidator().validate({ kind: 'item', item: emote }, { type: ItemType.EMOTE, bodyShape: BodyShape.MALE })
+    expect([...validate.mock.calls[0][0].files.keys()]).toEqual(['male/dance.glb', 'male/sound.mp3'])
+  })
+
+  it('shows a crashed check even when other checks found something', async () => {
+    validate.mockResolvedValue({
+      findings: [{ ...finding, severity: 'warning' }],
+      checks: [{ check: 'skeleton', status: 'errored', skipReason: 'boom' }]
+    })
+    const result = await getValidator().validate({ kind: 'item', item }, { type: ItemType.WEARABLE })
+    expect(result.issues.map(issue => issue.message)).toEqual(['Too many triangles', 'boom'])
+  })
+
   it('reports a failed download without leaving the body open', async () => {
     const cancel = vi.fn().mockResolvedValue(undefined)
     fetchMock.mockResolvedValue({ ok: false, status: 404, body: { cancel } })

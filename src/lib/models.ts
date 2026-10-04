@@ -6,7 +6,8 @@ import { WearableCategory } from '@dcl/schemas'
 import { ItemType, type ItemMetrics } from './items'
 import { ItemFileError, MAX_EMOTE_DURATION, isImageFile } from './itemFiles'
 import { suggestWearableCategory } from './suggestWearableCategory'
-import { getValidator, type ValidationIssue } from './validation'
+import { captureError } from './monitoring'
+import { getValidator, type ValidationContext, type ValidationIssue, type ValidationSource } from './validation'
 
 const ARMATURE_PREFIX = 'Armature'
 // Kept equal to the validator manifest's propArmatureName by springBones.spec.ts's rule book parity test.
@@ -102,6 +103,16 @@ function getEmoteMetrics(gltf: GLTF): AnimationMetrics {
   }
 }
 
+/** Validation is advisory at import: a validator failure (e.g. its chunk failing to load) keeps the model. */
+async function validateAdvisory(source: ValidationSource, ctx: ValidationContext): Promise<ValidationIssue[]> {
+  try {
+    return (await getValidator().validate(source, ctx)).issues
+  } catch (error) {
+    captureError(error, { flow: 'add_items', step: 'validate' })
+    return []
+  }
+}
+
 /**
  * Loads the main model once and derives everything the details step needs: wearable vs emote,
  * the full validation-issue list, a suggested category (wearables) and emote metrics (emotes).
@@ -130,7 +141,7 @@ export async function analyzeModel(
       if (emoteMetrics.duration > MAX_EMOTE_DURATION) {
         throw new ItemFileError('emote_duration_too_long', { seconds: MAX_EMOTE_DURATION })
       }
-      const { issues } = await getValidator().validate(source, { type: ItemType.EMOTE })
+      const issues = await validateAdvisory(source, { type: ItemType.EMOTE })
       return { type: ItemType.EMOTE, validationIssues: issues, suggestedCategory: null, emoteMetrics }
     }
 
@@ -142,7 +153,7 @@ export async function analyzeModel(
       suggestedCategory = null
     }
     // Validated for the category the draft will start with, so the modal doesn't re-run it right away.
-    const { issues } = await getValidator().validate(source, {
+    const issues = await validateAdvisory(source, {
       type: ItemType.WEARABLE,
       category: category ?? suggestedCategory ?? undefined,
       hides

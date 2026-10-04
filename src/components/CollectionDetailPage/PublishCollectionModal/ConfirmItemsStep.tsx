@@ -33,7 +33,10 @@ export function ConfirmItemsStep({ address, items, onBusyChange, onBack, onConfi
 
   const updateItem = useSaveItem(address)
   const deleteItem = useDeleteItem(address)
-  const thumbnailEditor = useThumbnailEditor(setThumbnailPatch)
+  const thumbnailEditor = useThumbnailEditor((patch, subject) => {
+    // A pick that finishes after the user moved to another row belongs to the row it started on.
+    if (subject.kind === 'item' && subject.item.id === editingId) setThumbnailPatch(patch)
+  })
 
   const canContinue = accepted && items.length > 0 && editingId === null
 
