@@ -23,6 +23,8 @@ type Props = {
   label?: string
   /** Opens the Send Items flow; the header button covers this on desktop, so the item shows only when compact. */
   onSendItems?: () => void
+  /** Opens the items in the editor; the header button covers this on desktop, so the item shows only when compact. */
+  onPreviewItems?: () => void
   /** Opens the collaborators / senders list; without it the owner-only entries are not rendered. */
   onManageRoles?: (kind: RoleKind) => void
   onDeleted?: () => void
@@ -35,6 +37,7 @@ export function CollectionActionsMenu({
   showRoles = true,
   label,
   onSendItems,
+  onPreviewItems,
   onManageRoles,
   onDeleted
 }: Props) {
@@ -54,8 +57,10 @@ export function CollectionActionsMenu({
   const canDelete = !compact && !isOnChain && !isCollectionLocked(collection)
   // The header's Send Items button is desktop-only, so the menu carries the action on small screens.
   const showSend = compact && !!onSendItems
+  // Same for the header's Open Editor button; on mobile the editor is a viewer, hence "Preview".
+  const showPreview = compact && !!onPreviewItems
 
-  if (!isOnChain && !canDelete && !showSend) return null
+  if (!isOnChain && !canDelete && !showSend && !showPreview) return null
 
   async function copy(text: string | undefined, successKey: string) {
     const copied = !!text && (await copyToClipboard(text))
@@ -81,6 +86,11 @@ export function CollectionActionsMenu({
         variant={variant}
         testId="collection-actions"
       >
+        {showPreview && (
+          <ActionsMenuItem testId="preview-items-action" onClick={onPreviewItems}>
+            {t('collection_detail_page.actions.preview_items')}
+          </ActionsMenuItem>
+        )}
         {showSend && (
           <ActionsMenuItem testId="send-items-action" onClick={onSendItems}>
             {t('collection_detail_page.send_items')}
@@ -88,7 +98,7 @@ export function CollectionActionsMenu({
         )}
         {isOnChain && (
           <>
-            {showSend && <ActionsMenuDivider />}
+            {(showSend || showPreview) && <ActionsMenuDivider />}
             <ActionsMenuItem
               testId="copy-urn"
               onClick={() => void copy(collection.urn, 'collection_detail_page.actions.copied_urn')}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Add as AddIcon,
   ArrowBackIosNew as ArrowBackIcon,
@@ -9,13 +9,18 @@ import {
 import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
-import { ITEMS_PAGE_SIZE, useAllCollectionItems, useCollection, useSaveCollection } from '~/hooks/useCollection'
+import {
+  ITEMS_PAGE_SIZE,
+  useAllCollectionItems,
+  useCollection,
+  useCollectionStatus,
+  useSaveCollection
+} from '~/hooks/useCollection'
 import { BuilderServerError } from '~/lib/builder'
 import { FeatureFlag } from '~/lib/featureFlags'
 import {
   CollectionDisplayStatus,
   canSellCollectionItems,
-  getCollectionDisplayStatus,
   hasBeenApproved,
   hasCollectionRole,
   isCollectionLocked
@@ -74,6 +79,8 @@ const CollectionDetailPage = () => {
   const { t } = useTranslation()
   const intl = useIntl()
   const navigate = useNavigate()
+  const location = useLocation()
+  const listState = location.state as { listSearch?: string } | null
   const { collectionId: collectionIdParam } = useParams()
   const collectionId = parseUuidParam(collectionIdParam)
   const { session, restored, signIn } = useWallet()
@@ -150,10 +157,13 @@ const CollectionDetailPage = () => {
   // Price, Sales and Sale Status exist once the collection is published; the owner can put items on sale
   // once it has been approved at least once, even if it is under review again.
   const withMarket = !!collection?.isPublished
+  const status = useCollectionStatus(address, collection)
   const statusHint =
-    collection && getCollectionDisplayStatus(collection) === CollectionDisplayStatus.UNDER_REVIEW
+    status === CollectionDisplayStatus.UNDER_REVIEW
       ? t('collection_status.under_review_hint')
-      : null
+      : status === CollectionDisplayStatus.DISABLED
+        ? t('collection_status.disabled_hint')
+        : null
   // Sales here are off-chain public orders only: with the flag off there is no other way to list an item.
   const canListItems = useFeatureFlag(FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS).enabled
   const isApprovedForSale = canListItems && !!collection && hasBeenApproved(collection)
@@ -209,7 +219,8 @@ const CollectionDetailPage = () => {
         else params.delete('page')
         return params
       },
-      { replace: true }
+      // Keeps the list's query that the back arrow returns to.
+      { replace: true, state: listState }
     )
     window.scrollTo({ top: 0 })
   }
@@ -223,7 +234,7 @@ const CollectionDetailPage = () => {
         params.delete('page')
         return params
       },
-      { replace: true }
+      { replace: true, state: listState }
     )
   }
 
@@ -326,7 +337,12 @@ const CollectionDetailPage = () => {
                 type="button"
                 aria-label={t('collection_detail_page.back')}
                 data-testid="back-to-collections"
-                onClick={() => navigate('/collections')}
+                onClick={() =>
+                  navigate({
+                    pathname: '/collections',
+                    search: listState?.listSearch
+                  })
+                }
               >
                 <ArrowBackIcon />
               </S.BackLink>
@@ -343,7 +359,7 @@ const CollectionDetailPage = () => {
                   </S.RenameButton>
                 )}
               </S.TitleGroup>
-              <CollectionStatusPill collection={collection} hint={statusHint} />
+              {status && <CollectionStatusPill collection={collection} status={status} hint={statusHint} />}
               {address && <CollectionRolePill collection={collection} address={address} />}
             </S.HeaderLeft>
             <S.HeaderActions>
@@ -405,6 +421,7 @@ const CollectionDetailPage = () => {
                   collection={collection}
                   address={address}
                   onSendItems={canSend ? () => setSending(true) : undefined}
+                  onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
                   onManageRoles={setManagingRoles}
                   onDeleted={() => navigate('/collections', { replace: true })}
                 />

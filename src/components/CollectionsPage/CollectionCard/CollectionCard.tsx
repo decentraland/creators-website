@@ -1,4 +1,5 @@
 import { useIntl } from 'react-intl'
+import { useLocation } from 'react-router-dom'
 import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
 import { formatTimeAgo } from '~/lib/time'
@@ -19,9 +20,10 @@ export function CollectionCard({ collection }: Props) {
   const { t } = useTranslation()
   const { locale } = useIntl()
   const address = useWallet(state => state.session?.address)
+  const { search } = useLocation()
 
   return (
-    <S.Card data-testid="collection-card" to={`/collections/${collection.id}`}>
+    <S.Card data-testid="collection-card" to={`/collections/${collection.id}`} state={{ listSearch: search }}>
       <S.Media>
         <CollectionMosaic collectionId={collection.id} itemCount={collection.itemCount} />
         {address && <S.RoleBadge collection={collection} address={address} />}
@@ -35,7 +37,9 @@ export function CollectionCard({ collection }: Props) {
           {t('collections_page.item_count', { count: collection.itemCount })}
         </S.Meta>
         <S.Meta data-testid="collection-card-updated">
-          {t('collections_page.updated_ago', { timeAgo: formatTimeAgo(collection.updatedAt, locale) })}
+          {t('collections_page.updated_ago', {
+            timeAgo: formatTimeAgo(collection.lastActivityAt ?? collection.updatedAt, locale)
+          })}
         </S.Meta>
         <S.Manage data-testid="collection-card-manage" aria-hidden>
           {t('collections_page.manage')}
