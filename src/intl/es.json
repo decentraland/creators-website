@@ -716,7 +716,8 @@
         "idle": ""
       },
       "previewed_item": "Ítem en vista previa",
-      "check_failed": "No pudimos revisar el modelo. Inténtalo de nuevo, o guarda el ítem y vuelve a abrirlo."
+      "check_failed": "No pudimos revisar el modelo. Inténtalo de nuevo, o guarda el ítem y vuelve a abrirlo.",
+      "check_crashed": "Esta verificación no pudo ejecutarse en el ítem. Inténtalo de nuevo más tarde."
     },
     "details": {
       "title": "Detalles",

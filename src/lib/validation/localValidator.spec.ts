@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BodyShape } from '@dcl/schemas'
+import { englishMessage } from '~/intl'
+import { captureError } from '../monitoring'
 import { ItemType, type Item } from '../items'
 
 const validate = vi.fn()
+vi.mock('../monitoring', () => ({ captureError: vi.fn() }))
 vi.mock('@dcl-regenesislabs/wearable-validator', () => ({
   validate: (...args: unknown[]) => validate(...args),
   manifest: { fileSize: { thumbnailRecommendedSize: 256 } },
@@ -109,7 +112,10 @@ describe('local validator', () => {
       checks: [{ check: 'skeleton', status: 'errored', skipReason: 'boom' }]
     })
     const result = await getValidator().validate({ kind: 'item', item }, { type: ItemType.WEARABLE })
-    expect(result.issues.map(issue => issue.message)).toEqual(['Too many triangles', 'boom'])
+    expect(result.issues.map(issue => issue.message)).toEqual([
+      'Too many triangles',
+      englishMessage('item_editor.validation.check_crashed')
+    ])
   })
 
   it('reports a failed download without leaving the body open', async () => {
@@ -122,7 +128,11 @@ describe('local validator', () => {
   it('reports a crashed check as an error rather than a pass', async () => {
     validate.mockResolvedValue({ findings: [], checks: [{ check: 'skeleton', status: 'errored', skipReason: 'boom' }] })
     const result = await getValidator().validate({ kind: 'item', item }, { type: ItemType.WEARABLE })
-    expect(result.issues).toEqual([{ code: 'file-format', severity: 'error', message: 'boom' }])
+    expect(result.issues).toEqual([
+      { code: 'file-format', severity: 'error', message: englishMessage('item_editor.validation.check_crashed') }
+    ])
+    // The raw exception goes to Sentry, never to the creator.
+    expect(captureError).toHaveBeenCalled()
   })
 
   it('hides category-unknown warnings and reports an unparseable model as an error', async () => {

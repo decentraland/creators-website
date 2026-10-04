@@ -716,7 +716,8 @@
         "idle": ""
       },
       "previewed_item": "Previewed item",
-      "check_failed": "We couldn't check the model. Try again, or save the item and reopen it."
+      "check_failed": "We couldn't check the model. Try again, or save the item and reopen it.",
+      "check_crashed": "This check couldn't run on the item. Try again later."
     },
     "details": {
       "title": "Details",

@@ -3,7 +3,9 @@
 import { type Finding, type Result } from '@dcl-regenesislabs/wearable-validator'
 
 import { BodyShape } from '@dcl/schemas'
+import { englishMessage } from '~/intl'
 import { fetchContent } from '../builder'
+import { captureError } from '../monitoring'
 import { THUMBNAIL_PATH, isImageFile } from '../itemFiles'
 import { ItemType } from '../items'
 import {
@@ -88,10 +90,14 @@ function toIssues(result: Result, titles: CheckTitles = {}): ValidationIssue[] {
   const skipped = result.checks.find(check => check.status === 'skipped' && check.skipReason)
   const incomplete = errored.length > 0 ? errored : issues.length === 0 && skipped ? [skipped] : []
   for (const check of incomplete) {
+    // A crash's reason is a raw exception message: report it, show friendly copy instead.
+    if (check.status === 'errored')
+      captureError(new Error(check.skipReason), { flow: 'validation', check: check.check })
     issues.push({
       code: 'file-format',
       severity: ValidationSeverity.ERROR,
-      message: check.skipReason ?? '',
+      message:
+        check.status === 'errored' ? englishMessage('item_editor.validation.check_crashed') : (check.skipReason ?? ''),
       title: titles[check.status === 'errored' ? check.check : 'file-format']?.title
     })
   }
