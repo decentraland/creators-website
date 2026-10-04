@@ -1,4 +1,5 @@
 import styled from '@emotion/styled'
+import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { theme } from '~/styles/theme'
 
 export const Badge = styled.button`
@@ -42,10 +43,57 @@ export const Spinner = styled.span`
   animation: spin 0.8s linear infinite;
 `
 
+export const Results = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border-radius: ${theme.radius.card};
+  background: ${theme.colors.overlay};
+`
+
+export const Subject = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+`
+
+export const Thumbnail = styled(ItemThumbnail)`
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: ${theme.radius.chip};
+`
+
+export const SubjectText = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1.57;
+`
+
+export const SubjectName = styled.span`
+  overflow: hidden;
+  color: ${theme.colors.softWhite};
+  font-size: 16px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`
+
+export const SubjectMeta = styled.span`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: ${theme.colors.gray4};
+  font-size: 12px;
+`
+
 export const IssueList = styled.ul`
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -53,21 +101,39 @@ export const IssueList = styled.ul`
 
 export const Issue = styled.li`
   display: flex;
-  gap: 10px;
-  padding: 12px;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 8px;
+  border: 1px solid transparent;
   border-radius: ${theme.radius.btnSm};
   background: ${theme.colors.warningOverlay};
   color: ${theme.colors.warningText};
-  font-size: 14px;
-  line-height: 1.4;
-
-  &[data-severity='error'] {
-    background: ${theme.colors.errOverlay};
-    color: ${theme.colors.white};
-  }
+  font-size: 12px;
+  line-height: 1.334;
 
   & svg {
     flex: none;
+    color: ${theme.colors.amber};
+  }
+
+  &[data-severity='error'] {
+    border-color: ${theme.colors.redRejected};
+    background: ${theme.colors.errorOverlay};
+    color: ${theme.colors.errorText};
+  }
+  &[data-severity='error'] svg {
+    color: ${theme.colors.errLight};
+  }
+`
+
+export const IssueText = styled.span`
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+
+  & strong {
+    font-weight: 700;
   }
 `
 

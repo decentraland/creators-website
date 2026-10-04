@@ -42,7 +42,8 @@ import {
 } from '~/lib/itemFilters'
 import { MAX_PUBLISH_ITEMS, getPublishBlocker } from '~/lib/publishCollection'
 import { useSaveItem } from '~/hooks/useSaveItem'
-import { useItemContents, useSyncPublishedItems } from '~/hooks/usePublishCollection'
+import { useSyncPublishedItems } from '~/hooks/usePublishCollection'
+import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useCollectionListings } from '~/hooks/useCollectionListings'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
@@ -61,7 +62,6 @@ import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { CollectionRolePill } from '~/components/CollectionRolePill'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
 import { Pagination } from '~/components/Pagination'
-import { ThumbnailModal } from '~/components/ThumbnailModal'
 import addItemsArt from '~/assets/add-items.png'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { AddItemsModal } from './AddItemsModal'
@@ -98,7 +98,6 @@ const CollectionDetailPage = () => {
   const [isDragging, setDragging] = useState(false)
   const [isPreviewLaunching, setPreviewLaunching] = useState(false)
   const [sellingItem, setSellingItem] = useState<Item | null>(null)
-  const [thumbnailItem, setThumbnailItem] = useState<Item | null>(null)
   // The price dialog keeps the listing it opened with: the flow rewrites the listings cache itself.
   const [priceEdit, setPriceEdit] = useState<{ item: Item; listing: ItemListing & { tradeId: string } } | null>(null)
   const filesInputRef = useRef<HTMLInputElement>(null)
@@ -127,8 +126,16 @@ const CollectionDetailPage = () => {
   const itemsQuery = useAllCollectionItems(address, collectionId)
   const saveCollection = useSaveCollection(address)
   const updateItem = useSaveItem(address)
-  const itemContents = useItemContents(thumbnailItem)
   const showToast = useNotifications(state => state.showToast)
+  const thumbnailEditor = useThumbnailEditor(async (patch, subject) => {
+    if (subject.kind !== 'item') return
+    const { item } = subject
+    await updateItem
+      .mutateAsync({ item, thumbnail: patch.contents[THUMBNAIL_PATH] })
+      .catch(() =>
+        showToast(t('collection_detail_page.item_row.thumbnail_error', { name: item.name }), { type: 'error' })
+      )
+  })
   // Small screens are a viewer: the in-row edit shortcuts are desktop-only, like the menu's edit actions.
   const compact = useMediaQuery(theme.media.noActions)
 
@@ -536,7 +543,7 @@ const CollectionDetailPage = () => {
                     }
                     editable={!compact && canEditItemDetails(collection, item, address)}
                     onRename={renameItem}
-                    onEditThumbnail={setThumbnailItem}
+                    onEditThumbnail={item => thumbnailEditor.edit({ kind: 'item', item })}
                     contractAddress={collection.contractAddress}
                     actions={
                       address && (
@@ -618,27 +625,7 @@ const CollectionDetailPage = () => {
               onClose={() => setManagingRoles(null)}
             />
           )}
-          {thumbnailItem && (
-            <ThumbnailModal
-              type={thumbnailItem.type}
-              contents={itemContents.data ?? null}
-              loadError={itemContents.isError}
-              onClose={() => setThumbnailItem(null)}
-              onSave={patch => {
-                const item = thumbnailItem
-                updateItem.mutate(
-                  { item, thumbnail: patch.contents[THUMBNAIL_PATH] },
-                  {
-                    onSettled: () => setThumbnailItem(null),
-                    onError: () =>
-                      showToast(t('collection_detail_page.item_row.thumbnail_error', { name: item.name }), {
-                        type: 'error'
-                      })
-                  }
-                )
-              }}
-            />
-          )}
+          {thumbnailEditor.modal}
           {priceEdit && session && (
             <UpdatePriceFlow
               item={priceEdit.item}

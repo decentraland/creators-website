@@ -35,7 +35,6 @@ vi.mock('~/components/ThumbnailModal', () => ({
           onSave({
             thumbnail: 'data:image/png;base64,bmV3',
             contents: { ...contents, 'thumbnail.png': NEW_THUMBNAIL },
-            thumbnailNotTransparent: false,
             isAutoThumbnail: false
           })
         }
@@ -64,7 +63,7 @@ function makeItem(id: string, name: string): Item {
       category: 'upper_body',
       representations: [{ bodyShapes: [BODY_SHAPE_MALE], mainFile: 'm.glb', contents: ['m.glb'] }]
     },
-    contents: { 'thumbnail.png': 'Qmthumb' },
+    contents: { 'm.glb': 'Qmmodel', 'thumbnail.png': 'Qmthumb' },
     createdAt: 1,
     updatedAt: 1
   }

@@ -21,12 +21,14 @@ import {
 } from '~/hooks/useCollection'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useModelValidation } from '~/hooks/useModelValidation'
+import { useObjectURL } from '~/hooks/useObjectURL'
+import { useThumbnailValidation } from '~/hooks/useThumbnailValidation'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { useSaveItem } from '~/hooks/useSaveItem'
 import { useSpringBones } from '~/hooks/useSpringBones'
 import { useTranslation } from '~/intl'
 import { type AvatarAttributes } from '~/lib/avatar'
-import { BuilderServerError, COLLECTION_LOCKED_STATUS } from '~/lib/builder'
+import { BuilderServerError, COLLECTION_LOCKED_STATUS, getContentsStorageUrl } from '~/lib/builder'
 import { canManageCollectionItems, hasCollectionRole, isCollectionLocked, type Collection } from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
 import { toPreviewItem, toSaveableItem } from '~/lib/itemDraft'
@@ -154,9 +156,20 @@ const ItemEditorPage = () => {
   const subjectEmote = useMemo(() => previewItems.find(item => item.type === ItemType.EMOTE) ?? null, [previewItems])
   const previewedWearables = useMemo(() => previewItems.filter(item => item.type === ItemType.WEARABLE), [previewItems])
 
-  const validationSource = useMemo(
-    () => (previewSelected ? ({ kind: 'item', item: previewSelected } as const) : null),
-    [previewSelected]
+  // An unsaved model's files exist only in memory: storage would 404 on their hashes.
+  const fileUpdate = form.draft.fileUpdate
+  const validationSource = useMemo(() => {
+    if (!previewSelected) return null
+    const representations = fileUpdate?.item.data.representations ?? []
+    const representation =
+      representations.find(candidate => candidate.bodyShapes.includes(bodyShape)) ?? representations[0]
+    return fileUpdate && representation
+      ? ({ kind: 'blob', contents: fileUpdate.blobs, mainFile: representation.mainFile } as const)
+      : ({ kind: 'item', item: previewSelected } as const)
+  }, [previewSelected, fileUpdate, bodyShape])
+  const fileUpdateId = useMemo(
+    () => (fileUpdate ? Object.values(fileUpdate.item.contents).sort().join() : undefined),
+    [fileUpdate]
   )
   const validationCtx = useMemo(
     () => ({
@@ -167,10 +180,34 @@ const ItemEditorPage = () => {
     }),
     [previewSelected, bodyShape]
   )
-  const validation = useModelValidation(validationSource, validationCtx)
+  const validation = useModelValidation(validationSource, validationCtx, fileUpdateId)
+  // An unsaved thumbnail is checked as picked; otherwise the stored one.
+  const thumbnailSource = useMemo(() => {
+    if (form.draft.thumbnail) return { kind: 'blob', blob: form.draft.thumbnail } as const
+    return selected?.contents[selected.thumbnail] ? ({ kind: 'item', item: selected } as const) : null
+  }, [form.draft.thumbnail, selected])
+  const thumbnailValidation = useThumbnailValidation(thumbnailSource)
+  const draftThumbnailUrl = useObjectURL(form.draft.thumbnail)
+  const validationSubject = useMemo(() => {
+    if (!previewSelected) return undefined
+    const storedThumbnail = previewSelected.contents[previewSelected.thumbnail]
+    return {
+      name: previewSelected.name,
+      type: previewSelected.type,
+      category: previewSelected.data.category,
+      thumbnail: draftThumbnailUrl ?? (storedThumbnail ? getContentsStorageUrl(storedThumbnail) : null)
+    }
+  }, [previewSelected, draftThumbnailUrl])
+  const validationIssues = useMemo(
+    () =>
+      validation.data || thumbnailValidation.data
+        ? [...(validation.data?.issues ?? []), ...(thumbnailValidation.data?.issues ?? [])]
+        : undefined,
+    [validation.data, thumbnailValidation.data]
+  )
   const validationStatus = useMemo(
-    () => getValidationStatus(validation.data?.issues, validation.isLoading),
-    [validation.data?.issues, validation.isLoading]
+    () => getValidationStatus(validationIssues, validation.isLoading || thumbnailValidation.isLoading),
+    [validationIssues, validation.isLoading, thumbnailValidation.isLoading]
   )
 
   // Preview controller: spring bones are pushed on edits (debounced), on every load and on play.
@@ -360,7 +397,9 @@ const ItemEditorPage = () => {
           subjectEmoteId={subjectEmote?.id ?? null}
         />
         <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />
-        {selected && <ValidationBadge status={validationStatus} issues={validation.data?.issues ?? []} />}
+        {selected && (
+          <ValidationBadge status={validationStatus} issues={validationIssues ?? []} subject={validationSubject} />
+        )}
       </AvatarPreview>
     )
 

@@ -339,7 +339,15 @@ const LivePreviewPage = () => {
           subjectEmoteId={isEmote ? definitionId : null}
         />
         <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />
-        <ValidationBadge status={validationStatus} issues={validation.data?.issues ?? []} />
+        <ValidationBadge
+          status={validationStatus}
+          issues={validation.data?.issues ?? []}
+          subject={{
+            name: t('item_editor.validation.previewed_item'),
+            type: validationCtx.type,
+            category: validationCtx.category
+          }}
+        />
       </AvatarPreview>
     )
 

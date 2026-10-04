@@ -283,7 +283,7 @@ describe('fetchItemContents', () => {
     const contents = await fetchItemContents(item)
     expect(Object.keys(contents).sort()).toEqual(['male/model.glb', 'thumbnail.png'])
     expect(await contents['male/model.glb'].text()).toBe('model')
-    expect(fetchMock).toHaveBeenCalledWith(getContentsStorageUrl('QmThumb'))
+    expect(fetchMock.mock.calls.map(([url]) => url)).toContain(getContentsStorageUrl('QmThumb'))
     vi.unstubAllGlobals()
   })
 
