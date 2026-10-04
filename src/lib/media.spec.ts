@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ImageType, dataURLToBlob, getImageType, isRgbaBackgroundTransparent } from './media'
+import { ImageType, dataURLToBlob, getImageType } from './media'
 
 // 1x1 transparent PNG
 const PNG_DATA_URL =
@@ -26,31 +26,5 @@ describe('getImageType', () => {
 
   it('reports unknown for arbitrary bytes', async () => {
     expect(await getImageType(new Blob([new Uint8Array([1, 2, 3, 4])]))).toBe(ImageType.UNKNOWN)
-  })
-})
-
-describe('isRgbaBackgroundTransparent', () => {
-  function image(width: number, height: number, alpha: (x: number, y: number) => number): Uint8Array {
-    const rgba = new Uint8Array(width * height * 4)
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        rgba[(y * width + x) * 4 + 3] = alpha(x, y)
-      }
-    }
-    return rgba
-  }
-
-  it('accepts an image with a fully transparent border', () => {
-    const rgba = image(10, 10, (x, y) => (x === 0 || y === 0 || x === 9 || y === 9 ? 0 : 255))
-    expect(isRgbaBackgroundTransparent(rgba, 10, 10)).toBe(true)
-  })
-
-  it('rejects an image with an opaque border', () => {
-    const rgba = image(10, 10, () => 255)
-    expect(isRgbaBackgroundTransparent(rgba, 10, 10)).toBe(false)
-  })
-
-  it('treats undecodable/too-small input as transparent (never block on no signal)', () => {
-    expect(isRgbaBackgroundTransparent(new Uint8Array(0), 10, 10)).toBe(true)
   })
 })

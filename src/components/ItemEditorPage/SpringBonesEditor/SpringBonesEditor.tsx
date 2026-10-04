@@ -9,7 +9,7 @@ import {
   getChainRoots,
   getDefaultSpringBoneParams,
   MAX_SPRING_BONES,
-  SPRING_BONE_RANGES,
+  SPRING_BONE_RANGES as RANGES,
   pickTunableSpringBoneParams,
   sortByHierarchy,
   sumConfiguredBones,
@@ -37,8 +37,6 @@ type Props = {
 }
 
 type NumericParam = 'stiffness' | 'gravityPower' | 'drag'
-
-const RANGES = SPRING_BONE_RANGES
 
 const SLIDERS: Array<{ field: NumericParam; min: number; max: number }> = [
   { field: 'stiffness', min: RANGES.stiffness[0], max: RANGES.stiffness[1] },

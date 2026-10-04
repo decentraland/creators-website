@@ -4,9 +4,10 @@ import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { useTranslation } from '~/intl'
 import { allCollectionItemsKey, useAllCollectionItems } from '~/hooks/useCollection'
+import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { installBackGuard } from '~/lib/backGuard'
-import { ItemFileError, MAX_THUMBNAIL_FILE_SIZE, VIDEO_PATH, toMB } from '~/lib/itemFiles'
+import { ItemFileError, VIDEO_PATH } from '~/lib/itemFiles'
 import { type EmotePlayMode, type ItemDraftPayload } from '~/lib/itemFactory'
 import { type Collection } from '~/lib/collections'
 import { ItemType } from '~/lib/items'
@@ -20,7 +21,6 @@ import {
   createDraft,
   createInitialState,
   isDraftComplete,
-  isImageWearable,
   isValidationStale,
   type ItemDraft
 } from './AddItemsModal.state'
@@ -28,13 +28,6 @@ import { imageThumbnailPatch, isImageThumbnailStale, processDraftFile, pickPrevi
 import { DraftList } from './DraftList'
 import { DraftForm } from './DraftForm'
 import { DraftProcessor } from './DraftProcessor'
-import {
-  ThumbnailFormatError,
-  ThumbnailModal,
-  ThumbnailTooBigError,
-  thumbnailPatchFromFile,
-  type ThumbnailPatch
-} from '~/components/ThumbnailModal'
 import { VideoModal } from '~/components/VideoModal'
 import { LeaveConfirmModal } from './LeaveConfirmModal'
 import { UploadErrorModal } from './UploadErrorModal'
@@ -88,9 +81,10 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
   )
 
   const [isLeaveConfirmOpen, setLeaveConfirmOpen] = useState(false)
-  const [isThumbnailOpen, setThumbnailOpen] = useState(false)
+  const thumbnailEditor = useThumbnailEditor((patch, subject) => {
+    if (subject.kind === 'files') dispatch({ type: 'draftUpdated', id: subject.id, patch })
+  })
   const [isVideoOpen, setVideoOpen] = useState(false)
-  const thumbnailInputRef = useRef<HTMLInputElement>(null)
 
   // Variant targets need every unpublished wearable of the collection, not just the loaded page.
   const collectionItemsQuery = useAllCollectionItems(address, collection.id)
@@ -275,26 +269,6 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
     void upload(finalDrafts)
   }
 
-  function handleThumbnailUpload(file: File | undefined) {
-    if (!file || !selected) return
-    const id = selected.id
-    void thumbnailPatchFromFile(selected.contents, file)
-      .then(patch => dispatch({ type: 'draftUpdated', id, patch }))
-      .catch((err: unknown) => {
-        showToast(
-          t(
-            err instanceof ThumbnailFormatError
-              ? 'thumbnail_modal.wrong_format'
-              : err instanceof ThumbnailTooBigError
-                ? 'thumbnail_modal.too_big'
-                : 'thumbnail_modal.capture_failed',
-            { size: toMB(MAX_THUMBNAIL_FILE_SIZE) }
-          ),
-          { type: 'error' }
-        )
-      })
-  }
-
   function handleVideoChange(video: File) {
     if (!selected) return
     dispatch({
@@ -329,7 +303,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
   }
 
   function requestClose() {
-    if (isUploading || isLeaveConfirmOpen || isThumbnailOpen || isVideoOpen) return
+    if (isUploading || isLeaveConfirmOpen || thumbnailEditor.isOpen || isVideoOpen) return
     // Nothing salvageable to lose: every file failed to import.
     if (drafts.every(draft => draft.status === 'failed')) {
       onClose()
@@ -385,7 +359,12 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
                 collectionItems={collectionItems}
                 onUpdate={(id, patch) => dispatch({ type: 'draftUpdated', id, patch })}
                 onOpenThumbnail={() =>
-                  isImageWearable(selected) ? thumbnailInputRef.current?.click() : setThumbnailOpen(true)
+                  thumbnailEditor.edit({
+                    kind: 'files',
+                    id: selected.id,
+                    type: selected.type,
+                    contents: selected.contents
+                  })
                 }
                 onOpenVideo={() => setVideoOpen(true)}
                 onVideoChange={handleVideoChange}
@@ -463,29 +442,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
         />
       )}
 
-      <input
-        ref={thumbnailInputRef}
-        type="file"
-        accept="image/png"
-        hidden
-        data-testid="thumbnail-file-input"
-        onChange={event => {
-          handleThumbnailUpload(event.target.files?.[0])
-          event.target.value = ''
-        }}
-      />
-
-      {isThumbnailOpen && selected && selected.status === 'ready' && (
-        <ThumbnailModal
-          type={selected.type}
-          contents={selected.contents}
-          onClose={() => setThumbnailOpen(false)}
-          onSave={(patch: ThumbnailPatch) => {
-            dispatch({ type: 'draftUpdated', id: selected.id, patch })
-            setThumbnailOpen(false)
-          }}
-        />
-      )}
+      {thumbnailEditor.modal}
 
       {isVideoOpen && selected && selected.status === 'ready' && (
         <VideoModal

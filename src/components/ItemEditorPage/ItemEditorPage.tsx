@@ -15,6 +15,7 @@ import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { allCollectionItemsKey, useAllCollectionItems, useCollection, useSaveCollection } from '~/hooks/useCollection'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useModelValidation } from '~/hooks/useModelValidation'
+import { useThumbnailValidation } from '~/hooks/useThumbnailValidation'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { useSaveItem } from '~/hooks/useSaveItem'
 import { useSpringBones } from '~/hooks/useSpringBones'
@@ -161,9 +162,19 @@ const ItemEditorPage = () => {
     [previewSelected, bodyShape]
   )
   const validation = useModelValidation(validationSource, validationCtx)
+  // An unsaved thumbnail is checked as picked; otherwise the stored one.
+  const thumbnailSource = useMemo(() => {
+    if (form.draft.thumbnail) return { kind: 'blob', blob: form.draft.thumbnail } as const
+    return selected?.contents[selected.thumbnail] ? ({ kind: 'item', item: selected } as const) : null
+  }, [form.draft.thumbnail, selected])
+  const thumbnailValidation = useThumbnailValidation(thumbnailSource)
+  const validationIssues = useMemo(
+    () => (validation.data ? [...validation.data.issues, ...(thumbnailValidation.data?.issues ?? [])] : undefined),
+    [validation.data, thumbnailValidation.data]
+  )
   const validationStatus = useMemo(
-    () => getValidationStatus(validation.data?.issues, validation.isLoading),
-    [validation.data?.issues, validation.isLoading]
+    () => getValidationStatus(validationIssues, validation.isLoading || thumbnailValidation.isLoading),
+    [validationIssues, validation.isLoading, thumbnailValidation.isLoading]
   )
 
   // Preview controller: spring bones are pushed on edits (debounced), on every load and on play.
@@ -353,7 +364,7 @@ const ItemEditorPage = () => {
           subjectEmoteId={subjectEmote?.id ?? null}
         />
         <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />
-        {selected && <ValidationBadge status={validationStatus} issues={validation.data?.issues ?? []} />}
+        {selected && <ValidationBadge status={validationStatus} issues={validationIssues ?? []} />}
       </AvatarPreview>
     )
 

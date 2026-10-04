@@ -3,7 +3,10 @@ import { BodyShape } from '@dcl/schemas'
 import { ItemType, type Item } from '../items'
 
 const validate = vi.fn()
-vi.mock('@dcl-regenesislabs/wearable-validator', () => ({ validate: (...args: unknown[]) => validate(...args) }))
+vi.mock('@dcl-regenesislabs/wearable-validator', () => ({
+  validate: (...args: unknown[]) => validate(...args),
+  manifest: { fileSize: { thumbnailRecommendedSize: 256 } }
+}))
 
 const { getValidator, setValidator } = await import('./index')
 const { localValidator } = await import('./localValidator')
@@ -119,5 +122,61 @@ describe('local validator', () => {
     await expect(
       getValidator().validate({ kind: 'item', item }, { type: ItemType.WEARABLE }, { signal: controller.signal })
     ).rejects.toThrow()
+  })
+})
+
+describe('thumbnail validation', () => {
+  const thumbnailFinding = (message: string, extra: Record<string, unknown> = {}) => ({
+    check: 'thumbnail',
+    severity: 'warning',
+    message,
+    where: 'thumbnail.png',
+    ...extra
+  })
+
+  it('reports the rule book thumbnail findings', async () => {
+    validate.mockResolvedValue({
+      findings: [thumbnailFinding('Thumbnail background does not look transparent — remove the background.')],
+      checks: []
+    })
+    const result = await getValidator().validateThumbnail({ kind: 'blob', blob: new Blob(['png']) })
+    const [input, options] = validate.mock.calls[0]
+    expect([...input.files.keys()]).toEqual(['thumbnail.png'])
+    expect(options.checks).toEqual(['thumbnail'])
+    expect(result.issues).toEqual([
+      {
+        code: 'thumbnail',
+        severity: 'warning',
+        message: 'Thumbnail background does not look transparent — remove the background.',
+        where: 'thumbnail.png'
+      }
+    ])
+  })
+
+  it('drops the recommended-size hint for a square thumbnail but keeps it for a non-square one', async () => {
+    validate.mockResolvedValue({
+      findings: [
+        thumbnailFinding('Thumbnail is 1024×1024 — a square 256×256 PNG is recommended.', {
+          measured: '1024×1024',
+          limit: '256×256'
+        }),
+        thumbnailFinding('Thumbnail is 800×600 — a square 256×256 PNG is recommended.', {
+          measured: '800×600',
+          limit: '256×256'
+        })
+      ],
+      checks: []
+    })
+    const result = await getValidator().validateThumbnail({ kind: 'blob', blob: new Blob(['png']) })
+    expect(result.issues.map(issue => issue.message)).toEqual([
+      'Thumbnail is 800×600 — a square 256×256 PNG is recommended.'
+    ])
+  })
+
+  it('loads a saved item thumbnail from storage', async () => {
+    validate.mockResolvedValue({ findings: [], checks: [] })
+    const result = await getValidator().validateThumbnail({ kind: 'item', item })
+    expect(fetchMock.mock.calls[0][0]).toBe('https://builder-api.decentraland.zone/v1/storage/contents/bafyThumb')
+    expect(result.issues).toEqual([])
   })
 })

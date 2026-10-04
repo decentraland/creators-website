@@ -246,8 +246,8 @@ export async function publishCollectionItems(
 }
 
 /** One stored file by hash, from public storage. */
-export async function fetchContent(hash: string): Promise<Blob> {
-  const response = await fetch(getContentsStorageUrl(hash))
+export async function fetchContent(hash: string, signal?: AbortSignal): Promise<Blob> {
+  const response = await fetch(getContentsStorageUrl(hash), { signal })
   if (!response.ok) {
     await response.body?.cancel()
     throw new BuilderServerError(`Could not download ${hash} (${response.status})`, response.status)

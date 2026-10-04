@@ -25,7 +25,7 @@ export function getValidationStatus(issues: ValidationIssue[] | undefined, isLoa
   return issues.length > 0 ? 'warnings' : 'pass'
 }
 
-/** Traffic light for the selected item's model checks; opens the issue list when there is one. */
+/** Traffic light for the selected item's checks; opens the issue list when there is one. */
 export function ValidationBadge({ status, issues, testId = 'validation-badge' }: Props) {
   const { t } = useTranslation()
   const [isOpen, setOpen] = useState(false)

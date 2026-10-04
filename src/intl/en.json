@@ -614,9 +614,6 @@
     "capture_failed": "We couldn't update the thumbnail. Please try again.",
     "load_failed": "We couldn't load the item. Please try again."
   },
-  "item_validation": {
-    "thumbnail_not_transparent": "The thumbnail background doesn't look transparent. Marketplaces show the item's rarity color behind the thumbnail, so a transparent background is required."
-  },
   "item_editor": {
     "pick_collection": "Pick a collection to start editing its items.",
     "mobile_hint": "Editing is available on desktop. Here you can preview the items.",
@@ -698,10 +695,10 @@
       "placeholder": "Play emote"
     },
     "validation": {
-      "loading": "Checking the model…",
-      "pass": "The model passes every check.",
-      "warnings": "The model has warnings. Click to see them.",
-      "errors": "The model has errors. Click to see them.",
+      "loading": "Checking the item…",
+      "pass": "The item passes every check.",
+      "warnings": "The item has warnings. Click to see them.",
+      "errors": "The item has errors. Click to see them.",
       "idle": "",
       "modal_title": "Validation results",
       "label": {

@@ -1,16 +1,16 @@
 // The in-browser backend: the shared Decentraland rule book (@dcl-regenesislabs/wearable-validator),
-// restricted to the model and emote groups the editor can act on.
+// restricted to the model and emote groups plus the thumbnail rule, the parts the editor can act on.
 import { type Finding, type Result } from '@dcl-regenesislabs/wearable-validator'
 import { BodyShape } from '@dcl/schemas'
-import { getContentsStorageUrl } from '../builder'
-import { isImageFile } from '../itemFiles'
+import { fetchContent } from '../builder'
+import { THUMBNAIL_PATH, isImageFile } from '../itemFiles'
 import { ItemType } from '../items'
 import {
   ValidationSeverity,
   type ItemValidator,
+  type ThumbnailSource,
   type ValidateOptions,
   type ValidationContext,
-  type ValidationEntry,
   type ValidationIssue,
   type ValidationResult,
   type ValidationSource
@@ -21,14 +21,9 @@ const AUDIO_LIKE = /\.(mp3|ogg|wav|aac|m4a|flac|opus|wma)$/i
 
 type Loaded = { mainFile: string; bodyShapes: string[]; files: Map<string, Uint8Array> }
 
-async function fetchContent(path: string, hash: string | undefined, signal?: AbortSignal): Promise<Uint8Array> {
+async function loadStored(path: string, hash: string | undefined, signal?: AbortSignal): Promise<Uint8Array> {
   if (!hash) throw new Error(`"${path}" has no stored content to validate`)
-  const response = await fetch(getContentsStorageUrl(hash), { signal })
-  if (!response.ok) {
-    await response.body?.cancel()
-    throw new Error(`Could not load "${path}" (${response.status})`)
-  }
-  return new Uint8Array(await response.arrayBuffer())
+  return new Uint8Array(await (await fetchContent(hash, signal)).arrayBuffer())
 }
 
 /** The main model plus any audio, or null for texture-only wearables (no geometry to inspect). */
@@ -49,7 +44,7 @@ async function load(source: ValidationSource, ctx: ValidationContext, signal?: A
   if (isImageFile(representation.mainFile)) return null
   const paths = Object.keys(item.contents).filter(path => path === representation.mainFile || AUDIO_LIKE.test(path))
   const entries = await Promise.all(
-    paths.map(async path => [path, await fetchContent(path, item.contents[path], signal)] as const)
+    paths.map(async path => [path, await loadStored(path, item.contents[path], signal)] as const)
   )
   return { mainFile: representation.mainFile, bodyShapes: representation.bodyShapes, files: new Map(entries) }
 }
@@ -105,15 +100,32 @@ async function validateOne(
   return { issues: toIssues(result) }
 }
 
-export const localValidator: ItemValidator = {
-  validate: validateOne,
-  async validateMany(entries: ValidationEntry[], opts?: ValidateOptions) {
-    const results: ValidationResult[] = []
-    for (const entry of entries) results.push(await validateOne(entry.source, entry.ctx, opts))
-    return results
-  }
+// The app always writes square 1024px thumbnails (legacy builder parity), so the 256px size hint is never actionable.
+const SQUARE_SIZE_HINT = /^(\d+)×\1$/
+
+async function validateThumbnail(source: ThumbnailSource, opts: ValidateOptions = {}): Promise<ValidationResult> {
+  opts.signal?.throwIfAborted()
+  const bytes =
+    source.kind === 'blob'
+      ? new Uint8Array(await source.blob.arrayBuffer())
+      : await loadStored(source.item.thumbnail, source.item.contents[source.item.thumbnail], opts.signal)
+  const { validate, manifest } = await import('@dcl-regenesislabs/wearable-validator')
+  const { thumbnailRecommendedSize } = manifest.fileSize
+  const result = await validate(
+    { files: new Map([[THUMBNAIL_PATH, bytes]]) },
+    { checks: ['thumbnail'], signal: opts.signal }
+  )
+  const findings = result.findings.filter(
+    finding =>
+      !(
+        finding.limit === `${thumbnailRecommendedSize}×${thumbnailRecommendedSize}` &&
+        SQUARE_SIZE_HINT.test(String(finding.measured))
+      )
+  )
+  return { issues: toIssues({ ...result, findings }) }
 }
 
-export function hasErrors(result: ValidationResult): boolean {
-  return result.issues.some(issue => issue.severity === ValidationSeverity.ERROR)
+export const localValidator: ItemValidator = {
+  validate: validateOne,
+  validateThumbnail
 }

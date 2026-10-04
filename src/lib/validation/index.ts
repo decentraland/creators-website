@@ -5,14 +5,13 @@ import { type ItemValidator } from './types'
 
 export type {
   ItemValidator,
+  ThumbnailSource,
   ValidateOptions,
   ValidationContext,
-  ValidationEntry,
   ValidationIssue,
   ValidationResult,
   ValidationSource
 } from './types'
-export { hasErrors } from './localValidator'
 export { ValidationSeverity } from './types'
 
 let validator: ItemValidator = localValidator

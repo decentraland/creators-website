@@ -19,6 +19,9 @@ export type ValidationIssue = {
 export type ValidationSource =
   { kind: 'blob'; contents: Record<string, Blob>; mainFile: string } | { kind: 'item'; item: Item }
 
+/** A thumbnail to check: an in-memory PNG (imports, unsaved edits) or a saved item's stored one. */
+export type ThumbnailSource = { kind: 'blob'; blob: Blob } | { kind: 'item'; item: Item }
+
 export type ValidationContext = {
   type: ItemType
   category?: string
@@ -29,11 +32,10 @@ export type ValidationContext = {
 
 export type ValidationResult = { issues: ValidationIssue[] }
 
-export type ValidationEntry = { source: ValidationSource; ctx: ValidationContext }
-
 export type ValidateOptions = { signal?: AbortSignal }
 
 export interface ItemValidator {
   validate(source: ValidationSource, ctx: ValidationContext, opts?: ValidateOptions): Promise<ValidationResult>
-  validateMany(entries: ValidationEntry[], opts?: ValidateOptions): Promise<ValidationResult[]>
+  /** The thumbnail rule alone: format, size and background transparency. */
+  validateThumbnail(source: ThumbnailSource, opts?: ValidateOptions): Promise<ValidationResult>
 }
