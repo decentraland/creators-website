@@ -18,7 +18,12 @@ export function PendingModal({ label, title, steps, onCancel, testId }: Props) {
   const { t } = useTranslation()
   return (
     <Modal title={title ?? label} onClose={() => undefined} closeDisabled hideTitle testId={testId}>
-      <S.Wrap role="status" aria-live="polite" data-with-steps={steps ? '' : undefined}>
+      <S.Wrap
+        role="status"
+        aria-live="polite"
+        data-with-steps={steps ? '' : undefined}
+        data-signature={title && !steps ? '' : undefined}
+      >
         {title && <S.Title>{title}</S.Title>}
         {steps && (
           <S.Stepper>

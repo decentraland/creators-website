@@ -12,6 +12,13 @@ export const Wrap = styled.div`
   &[data-with-steps] {
     padding-top: 24px;
   }
+
+  /* A single wallet prompt: a 400px dialog (minus its 32px padding) with the ask as plain body copy. */
+  &[data-signature] {
+    justify-content: center;
+    height: 336px;
+    padding: 0;
+  }
 `
 
 export const Title = styled.h3`
@@ -42,6 +49,12 @@ export const Label = styled.p`
   font-weight: 700;
   line-height: 1.3;
   color: ${theme.colors.white};
+
+  [data-signature] > & {
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.5;
+  }
 `
 
 export const CancelLink = styled.button`

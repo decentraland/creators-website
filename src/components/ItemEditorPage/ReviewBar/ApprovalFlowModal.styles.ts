@@ -36,6 +36,7 @@ const columns = `
 `
 
 export const Header = styled(Shared.TableHeader)`
+  padding: 12px 24px 12px 12px;
   ${columns}
 
   &[data-table='deploy'] > span:last-of-type,
@@ -48,7 +49,7 @@ export const Row = styled.div`
   display: grid;
   align-items: center;
   gap: 12px;
-  padding: 12px;
+  padding: 12px 24px 12px 12px;
   border-radius: ${theme.radius.btn};
   background: ${theme.colors.overlay};
   font-size: 14px;
