@@ -71,14 +71,17 @@ describe('Intercom', () => {
     )
   })
 
-  it('lifts the launcher in the item editor so it clears the Save button', async () => {
-    const { Intercom } = await import('./Intercom')
-    renderAt(<Intercom />, '/collections/editor')
+  it.each(['/collections/editor', '/live-preview'])(
+    'lifts the launcher on %s so it clears the bottom controls',
+    async path => {
+      const { Intercom } = await import('./Intercom')
+      renderAt(<Intercom />, path)
 
-    await waitFor(() =>
-      expect(intercom).toHaveBeenCalledWith('update', expect.objectContaining({ vertical_padding: 84 }))
-    )
-  })
+      await waitFor(() =>
+        expect(intercom).toHaveBeenCalledWith('update', expect.objectContaining({ vertical_padding: 84 }))
+      )
+    }
+  )
 
   it('tells support who the creator is and which visitor they are in the analytics', async () => {
     wallet.session = { address: '0xCreAtoR', providerType: 'injected' }

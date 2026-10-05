@@ -9,9 +9,10 @@ type IntercomWindow = Window & { Intercom?: IntercomFn }
 
 const WIDGET_URL = 'https://widget.intercom.io/widget'
 const DEFAULT_VERTICAL_PADDING = 20
-// Lifts the launcher above the item editor's sticky Revert/Save footer.
-const EDITOR_VERTICAL_PADDING = 84
-const EDITOR_PATH = '/collections/editor'
+// Lifts the launcher above the bottom controls of full-height pages: the item editor's Revert/Save footer
+// and the preview's playback bar / validation badge row.
+const RAISED_VERTICAL_PADDING = 84
+const RAISED_PATHS = ['/collections/editor', '/live-preview']
 
 function intercom(): IntercomFn | undefined {
   return typeof window === 'undefined' ? undefined : (window as IntercomWindow).Intercom
@@ -49,7 +50,8 @@ export const Intercom = () => {
   const address = session?.address
   const providerType = session?.providerType
   const [anonymousId, setAnonymousId] = useState<string>()
-  const isEditor = useLocation().pathname.startsWith(EDITOR_PATH)
+  const { pathname } = useLocation()
+  const isRaised = RAISED_PATHS.some(path => pathname.startsWith(path))
 
   useEffect(() => {
     // The id only exists once analytics.js has loaded; it never changes afterwards.
@@ -58,13 +60,13 @@ export const Intercom = () => {
 
   const data = useMemo(() => {
     const attributes: Record<string, unknown> = {
-      vertical_padding: isEditor ? EDITOR_VERTICAL_PADDING : DEFAULT_VERTICAL_PADDING
+      vertical_padding: isRaised ? RAISED_VERTICAL_PADDING : DEFAULT_VERTICAL_PADDING
     }
     if (address) attributes['Wallet'] = address.toLowerCase()
     if (providerType) attributes['Wallet type'] = providerType
     if (anonymousId) attributes['anon_id'] = anonymousId
     return attributes
-  }, [address, providerType, anonymousId, isEditor])
+  }, [address, providerType, anonymousId, isRaised])
 
   useEffect(() => {
     if (!appId) return
