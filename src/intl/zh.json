@@ -313,7 +313,7 @@
       "title": "确认并支付",
       "description": "您即将提交“{name}”中的 {count, plural, one {# 个物品} other {# 个物品}}进行审核。请选择支付方式来支付<fee>发布费</fee>并继续。",
       "fee_tooltip_title": "什么是发布费？",
-      "fee_tooltip_body": "提交物品审核时支付的一次性费用：每个物品 25 美元。Decentraland Foundation 限时承担其中 20 美元，因此您每个物品需支付 5 美元。",
+      "fee_tooltip_body": "提交物品审核时支付的一次性费用。",
       "columns": {
         "collection": "系列",
         "items": "物品",
