@@ -1313,7 +1313,7 @@
     "submit_self": "Assign to me",
     "submit_edit": "Save",
     "take_over_body": "This collection is assigned to {assignee}. You can still curate it, but it will be assigned to you. Let {assignee} know.",
-    "submit_continue": "Assign to me and continue"
+    "submit_continue": "Assign & continue"
   },
   "approval_flow": {
     "title": "Approve Collection",

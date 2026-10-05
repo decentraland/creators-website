@@ -50,9 +50,10 @@ export const Spinner = styled.span`
   animation: spin 0.8s linear infinite;
 `
 
-// Footer of a form/confirm dialog: hairline on top, actions sharing the width.
+// Footer of a form/confirm dialog: hairline on top, actions sharing the width, stacking when a label doesn't fit.
 export const ModalActions = styled.div`
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   width: 100%;
   padding-top: 24px;
@@ -63,8 +64,8 @@ export const ModalActions = styled.div`
   z-index: 1;
 
   & > button {
-    flex: 1;
-    min-width: 0;
+    flex: 1 1 0;
+    min-width: fit-content;
   }
 `
 

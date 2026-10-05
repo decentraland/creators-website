@@ -1313,7 +1313,7 @@
     "submit_self": "Asignármela",
     "submit_edit": "Guardar",
     "take_over_body": "Esta colección está asignada a {assignee}. Puedes curarla igual, pero quedará asignada a ti. Avísale a {assignee}.",
-    "submit_continue": "Asignármela y continuar"
+    "submit_continue": "Asignar y seguir"
   },
   "approval_flow": {
     "title": "Aprobar colección",
