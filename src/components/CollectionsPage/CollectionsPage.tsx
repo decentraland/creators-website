@@ -4,6 +4,7 @@ import {
   Add as AddIcon,
   FormatListBulleted as FormatListBulletedIcon,
   GridView as GridViewIcon,
+  Link as LinkIcon,
   PersonOutline as PersonOutlineIcon,
   Search as SearchIcon
 } from '@mui/icons-material'
@@ -11,9 +12,16 @@ import { useTranslation } from '~/intl'
 import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'
 import { pageRangeLabel } from '~/lib/pagination'
 import { useWallet } from '~/store/wallet'
-import { COLLECTIONS_PAGE_SIZE, useCollections } from '~/hooks/useCollections'
+import { COLLECTIONS_PAGE_SIZE, useCollections, useCollectionsSummary } from '~/hooks/useCollections'
 import { useSaveCollection } from '~/hooks/useCollection'
-import { CollectionSort, CollectionStatusFilter, isStatusFilterShown } from '~/lib/collections'
+import { track } from '~/lib/analytics'
+import {
+  CollectionSort,
+  CollectionStatusFilter,
+  LINKED_FILTER,
+  isStatusFilterShown,
+  type CollectionListFilter
+} from '~/lib/collections'
 import { buildNewCollection } from '~/lib/saveCollection'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { Pagination } from '~/components/Pagination'
@@ -30,7 +38,8 @@ const LEARN_MORE_URL =
 
 type ViewMode = 'grid' | 'list'
 
-function parseStatus(raw: string | null): CollectionStatusFilter {
+function parseStatus(raw: string | null): CollectionListFilter {
+  if (raw === LINKED_FILTER) return LINKED_FILTER
   return STATUS_FILTERS.includes(raw as CollectionStatusFilter)
     ? (raw as CollectionStatusFilter)
     : CollectionStatusFilter.ALL
@@ -70,8 +79,16 @@ const CollectionsPage = () => {
   useEffect(() => setSearchInput(search), [search])
   useEffect(() => () => clearTimeout(searchTimer.current), [])
 
-  const collections = useCollections(address, { page, search, status, sort: CollectionSort.LAST_ACTIVITY_DESC })
-  const counts = collections.data?.counts
+  const collections = useCollections(address, {
+    page,
+    search,
+    status,
+    sort: CollectionSort.LAST_ACTIVITY_DESC,
+    includeLinked: true
+  })
+  const summary = useCollectionsSummary(address, search)
+  const counts = summary.data?.counts
+  const linkedTotal = summary.data?.linkedTotal ?? 0
 
   const [isCreateOpen, setCreateOpen] = useState(false)
   const saveCollection = useSaveCollection(address)
@@ -108,7 +125,11 @@ const CollectionsPage = () => {
 
   // A chip whose last collection moved on disappears: fall back to All. While searching, the active
   // chip stays, showing (0) next to the no-results state.
-  const isActiveChipGone = !!counts && !collections.isPlaceholderData && !search && !isStatusFilterShown(status, counts)
+  const isActiveChipGone =
+    !!counts &&
+    !summary.isPlaceholderData &&
+    !search &&
+    (status === LINKED_FILTER ? linkedTotal === 0 : !isStatusFilterShown(status, counts))
   useEffect(() => {
     if (!isActiveChipGone) return
     setSearchParams(
@@ -144,7 +165,7 @@ const CollectionsPage = () => {
   const shown = data?.results.length ?? 0
   const hasActiveFilters = !!search || status !== CollectionStatusFilter.ALL
   const allCount = counts
-    ? counts.published + counts.draft + counts.under_review + counts.rejected + counts.disabled
+    ? counts.published + counts.draft + counts.under_review + counts.rejected + counts.disabled + linkedTotal
     : 0
   // Counts ignore the status filter but follow the search, so only an unsearched list proves there are no collections.
   const isEmpty = !!counts && !search && allCount === 0
@@ -195,6 +216,23 @@ const CollectionsPage = () => {
                 )}
               </S.Chip>
             ))}
+          {counts && (linkedTotal > 0 || status === LINKED_FILTER) && (
+            <>
+              <S.ChipDivider aria-hidden />
+              <S.Chip
+                type="button"
+                data-active={status === LINKED_FILTER || undefined}
+                data-testid={`status-filter-${LINKED_FILTER}`}
+                onClick={() => {
+                  track('Filter linked collections', { count: linkedTotal })
+                  changeParams({ status: LINKED_FILTER })
+                }}
+              >
+                <LinkIcon fontSize="small" />
+                {t('collections_page.filter.linked', { count: linkedTotal })}
+              </S.Chip>
+            </>
+          )}
         </S.Chips>
         <S.ViewToggle role="group" aria-label={t('collections_page.view_mode')}>
           <S.ViewButton

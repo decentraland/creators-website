@@ -93,4 +93,9 @@ describe('CollectionCard', () => {
     await userEvent.keyboard('{Enter}')
     expect(screen.getByTestId('detail-page')).toBeInTheDocument()
   })
+
+  it('marks a linked collection as Linked', () => {
+    renderCard({ urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats' })
+    expect(screen.getByTestId('collection-status')).toHaveAttribute('data-status', 'linked')
+  })
 })

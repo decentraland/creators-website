@@ -14,7 +14,8 @@
       "draft": "Borrador ({count})",
       "under_review": "En revisión ({count})",
       "rejected": "Rechazadas ({count})",
-      "disabled": "Deshabilitadas ({count})"
+      "disabled": "Deshabilitadas ({count})",
+      "linked": "Vinculadas ({count})"
     },
     "view_mode": "Modo de vista",
     "view_grid": "Vista de cuadrícula",
@@ -65,7 +66,8 @@
     "published": "Publicada",
     "rejected": "Rechazada",
     "disabled": "Deshabilitada",
-    "disabled_hint": "Tu colección fue deshabilitada por el equipo de curación. Ponte en contacto con tu curador asignado para revisarla."
+    "disabled_hint": "Tu colección fue deshabilitada por el equipo de curación. Ponte en contacto con tu curador asignado para revisarla.",
+    "linked": "Vinculada"
   },
   "pagination": {
     "previous": "Página anterior",
@@ -1184,6 +1186,46 @@
       "previous": "Diapositiva anterior",
       "next": "Siguiente diapositiva",
       "go_to": "Ir a la diapositiva {index}"
+    }
+  },
+  "linked_collection": {
+    "edit_in_builder": "Editar en el Builder",
+    "third_party": "Tercero",
+    "network": "Red",
+    "contract": "Contrato vinculado",
+    "copy_contract": "Copiar dirección del contrato",
+    "contract_copied": "Dirección del contrato copiada",
+    "networks": {
+      "mainnet": "Ethereum",
+      "matic": "Polygon",
+      "sepolia": "Sepolia",
+      "amoy": "Amoy",
+      "base_mainnet": "Base",
+      "base_sepolia": "Base Sepolia",
+      "monad_mainnet": "Monad",
+      "monad_testnet": "Monad Testnet",
+      "ape_mainnet": "ApeChain",
+      "ape_caldera": "ApeChain Curtis"
+    },
+    "no_items": "Los ítems de esta colección vinculada se agregan y editan en el Builder.",
+    "list": {
+      "status": "Estado",
+      "mapping": "Tokens vinculados"
+    },
+    "item_status": {
+      "published": "Publicado",
+      "under_review": "En revisión",
+      "rejected": "Rechazado",
+      "not_published": "Sin publicar",
+      "retry": "No se pudo cargar · Reintentar"
+    },
+    "mapping": {
+      "none": "Sin vincular",
+      "any": "Cualquier token",
+      "single": "Token #{id}",
+      "range": "Tokens #{from}–#{to}",
+      "multiple": "{count, plural, one {# token} other {# tokens}}",
+      "rules": "{count, plural, one {# regla} other {# reglas}}"
     }
   }
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { BodyShape, PreviewRenderer, type IPreviewController } from '@dcl/schemas'
 import { PersonOutline as PersonOutlineIcon } from '@mui/icons-material'
@@ -29,7 +29,13 @@ import { useSpringBones } from '~/hooks/useSpringBones'
 import { useTranslation } from '~/intl'
 import { type AvatarAttributes } from '~/lib/avatar'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS, getContentsStorageUrl } from '~/lib/builder'
-import { canManageCollectionItems, hasCollectionRole, isCollectionLocked, type Collection } from '~/lib/collections'
+import {
+  canManageCollectionItems,
+  hasCollectionRole,
+  isCollectionLocked,
+  isLinkedCollection,
+  type Collection
+} from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
 import { toPreviewItem, toSaveableItem } from '~/lib/itemDraft'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
@@ -415,6 +421,11 @@ const ItemEditorPage = () => {
         </S.StatePanel>
       </S.Workspace>
     )
+  }
+
+  // Linked collections are read-only here: their items are edited in the legacy builder.
+  if (collection && isLinkedCollection(collection)) {
+    return <Navigate to={`/collections/${collection.id}`} replace />
   }
 
   if (isNotFound) {
