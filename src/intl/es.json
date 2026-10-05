@@ -717,7 +717,7 @@
       "take_over": {
         "title_assign": "Asignar curaduría",
         "title_reassign": "Reasignar curaduría",
-        "body_unassigned": "Nadie está curando esta colección todavía. Se te asignará antes de continuar.",
+        "body_unassigned": "Esta colección se te asignará antes de continuar.",
         "body_other": "Esta colección está asignada a {assignee}. Puedes curarla igual, pero quedará asignada a ti. Avísale a {assignee}.",
         "confirm": "Asignármela y continuar"
       }
