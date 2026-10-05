@@ -13,10 +13,10 @@ export const Frame = styled.span`
   overflow: hidden;
 `
 
-// An 85% box in both axes with the artwork contained and centered inside it, whatever the frame's aspect.
+// A box in both axes with the artwork contained and centered inside it, whatever the frame's aspect.
 export const Img = styled.img`
-  width: 85%;
-  height: 85%;
+  width: 90%;
+  height: 90%;
   object-fit: contain;
   display: block;
   filter: drop-shadow(1px 4px 5px rgba(0, 0, 0, 0.1));

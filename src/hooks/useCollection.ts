@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { errorCode, track } from '~/lib/analytics'
 import { fetchAllCollectionItems, fetchCollection, saveCollection, deleteCollection } from '~/lib/builder'
 import { buildCollectionInitializeData } from '~/lib/saveCollection'
-import { type Collection } from '~/lib/collections'
+import { useCollectionCuration } from '~/hooks/useCuration'
+import { getCollectionDisplayStatus, type Collection, type CollectionDisplayStatus } from '~/lib/collections'
 
 export const ITEMS_PAGE_SIZE = 20
 
@@ -13,6 +14,19 @@ export function useCollection(address: string | undefined, collectionId: string 
     enabled: !!address && !!collectionId,
     staleTime: 30_000
   })
+}
+
+/** The collection's status, undefined until everything it depends on has loaded so the pill never flips. */
+export function useCollectionStatus(
+  address: string | undefined,
+  collection: Collection | undefined
+): CollectionDisplayStatus | undefined {
+  const curation = useCollectionCuration(address, collection)
+  if (!collection) return undefined
+  if (!collection.isPublished) return getCollectionDisplayStatus(collection, null)
+  // Without its curation the status could be wrong, so a failed request keeps the pill hidden.
+  if (!curation.isSuccess) return undefined
+  return getCollectionDisplayStatus(collection, curation.data?.status ?? null)
 }
 
 /** Every item of the collection: the detail page filters and pages them client-side. */

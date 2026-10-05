@@ -2,6 +2,8 @@ import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
 import { itemListColumns } from './ItemListRow/ItemListRow.styles'
 
+import { Spinner } from '~/styles/shared'
+
 export { FooterRow, Panel, PanelText, PanelTitle, ShowingCount } from '~/styles/shared'
 
 const mobile = theme.media.maxWidth('mobile')
@@ -113,6 +115,11 @@ export const RenameButton = styled.button`
     /* Mobile is a viewer: collections are managed from desktop. */
     display: none;
   }
+`
+
+export const ValidationSpinner = styled(Spinner)`
+  width: 20px;
+  height: 20px;
 `
 
 export const HeaderActions = styled.div`

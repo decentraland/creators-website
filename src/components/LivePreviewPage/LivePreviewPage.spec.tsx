@@ -42,7 +42,7 @@ vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
 const validate = vi.fn(async (_source: ValidationSource, _ctx: ValidationContext) => ({ issues: [] }))
 vi.mock('~/lib/validation', async () => {
   const actual = await vi.importActual<typeof import('~/lib/validation')>('~/lib/validation')
-  return { ...actual, getValidator: () => ({ validate, validateMany: vi.fn() }) }
+  return { ...actual, getValidator: () => ({ validate }) }
 })
 
 const addItemsProps: Array<Record<string, unknown>> = []

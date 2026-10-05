@@ -1,13 +1,26 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
+
+const validatorVersion = (
+  JSON.parse(
+    readFileSync(
+      fileURLToPath(new URL('./node_modules/@dcl-regenesislabs/wearable-validator/package.json', import.meta.url)),
+      'utf8'
+    )
+  ) as { version: string }
+).version
 
 // Separate from vite.config.ts: vitest bundles its own vite, so keeping plugin/type graphs apart
 // avoids dual-vite type conflicts. The react plugin is cast to bypass that nested-vite typing.
 export default defineConfig({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   plugins: [react() as any],
-  define: { __SENTRY_RELEASE__: JSON.stringify('creators-website@test') },
+  define: {
+    __SENTRY_RELEASE__: JSON.stringify('creators-website@test'),
+    __VALIDATOR_VERSION__: JSON.stringify(validatorVersion)
+  },
   resolve: {
     alias: {
       '~': fileURLToPath(new URL('./src', import.meta.url))

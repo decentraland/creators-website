@@ -122,13 +122,14 @@ describe('SellItemModal', () => {
     expect(submit()).toBeEnabled()
   })
 
-  it('refuses a MANA price above the catalog ceiling', async () => {
+  it('stops a MANA price at the catalog ceiling', async () => {
     renderModal()
     await userEvent.click(screen.getByTestId('sell-price-currency'))
     await userEvent.click(screen.getByTestId('sell-price-currency-option-mana'))
-    await userEvent.type(price(), '1000000000001')
+    await userEvent.type(price(), '1000000000000.01')
+    expect(price()).toHaveValue('1000000000000.0')
     expect(screen.getByTestId('sell-price-error')).toHaveTextContent(/at most 1,000,000,000,000 MANA/)
-    expect(submit()).toBeDisabled()
+    expect(submit()).toBeEnabled()
   })
 
   it('warns when the item has edits the committee has not approved yet', () => {
@@ -136,14 +137,20 @@ describe('SellItemModal', () => {
     expect(screen.getByTestId('sell-pending-changes')).toHaveTextContent(/last approved version/i)
   })
 
-  it('refuses a price the Shop would never list', async () => {
+  it('stops the price at the ceiling the Shop can list', async () => {
     renderModal()
-    await userEvent.type(price(), '10000000000001')
-    expect(screen.getByTestId('sell-price-error')).toHaveTextContent('10,000,000,000,000')
-    expect(submit()).toBeDisabled()
-    await userEvent.type(price(), '{backspace}')
-    expect(screen.queryByTestId('sell-price-error')).not.toBeInTheDocument()
+    await userEvent.type(price(), '10000000000009')
+    expect(price()).toHaveValue('1000000000000')
+    expect(screen.getByTestId('sell-price-error')).toHaveTextContent('1,000,000,000,000')
     expect(submit()).toBeEnabled()
+  })
+
+  it('drops a pasted price past the ceiling instead of truncating it', async () => {
+    renderModal()
+    await userEvent.click(price())
+    await userEvent.paste('1000000000000500')
+    expect(price()).toHaveValue('')
+    expect(screen.getByTestId('sell-price-error')).toHaveTextContent('1,000,000,000,000')
   })
 
   it('freezes the price at 0 for a giveaway and submits it as free', async () => {

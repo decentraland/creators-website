@@ -73,6 +73,8 @@ The spec for all of Decentraland's public APIs is available at https://docs.dece
 
 Every user-facing string — buttons, labels, headings, placeholders, statuses, errors, tooltips, empty states — goes through `t('a.b.c')` with a key added to **both** `en.json` and `es.json`. Never hardcode a display string in a component; this is part of "done" for any UI change. Spanish uses neutral (Latin American) **"tú"** forms, never "vos" ("Inicia sesión", not "Iniciá").
 
+One exception: item validation findings show the wearable-validator rule book's own English messages and check titles, so the editor says exactly what curation says. Copy the app adds around them (badge states, fallbacks when a check can't run) still goes through `t()`.
+
 ### Copy (relaxed web2-first)
 
 Prefer friendly copy and hide blockchain plumbing where possible. Wallet/MANA/transaction terms are allowed where the flow genuinely requires them (publishing, fees) — creators are a crypto-aware audience. Never surface a raw error to the user: report it to Sentry and show human-friendly copy.

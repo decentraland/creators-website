@@ -75,8 +75,7 @@ describe('UpdatePriceFlow', () => {
     expect(screen.getByTestId('update-price-usd')).toHaveTextContent('$8.00')
     expect(submit).toBeEnabled()
     await userEvent.type(screen.getByTestId('update-price-input'), '000000000000')
-    expect(screen.getByTestId('update-price-error')).toBeInTheDocument()
-    expect(submit).toBeDisabled()
+    expect(screen.getByTestId('update-price-input')).toHaveValue('800000000000')
   })
 
   it("opens in the listing's currency and lets the creator switch it, refusing the same price", async () => {

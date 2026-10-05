@@ -69,7 +69,8 @@ export function useCollectionCuration(address: string | undefined, collection: C
     queryKey: collectionCurationKey(address, collection?.id),
     queryFn: () => fetchCollectionCuration(address!, collection!.id),
     enabled: !!address && !!collection?.isPublished,
-    staleTime: 30_000
+    staleTime: 30_000,
+    retry: 1
   })
 }
 

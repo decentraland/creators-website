@@ -1,102 +1,159 @@
-// The in-browser backend: loads the model with Three.js and runs the lib/glbValidation suite.
-import { type WearableCategory } from '@dcl/schemas'
-import { getContentsStorageUrl } from '../builder'
-import { validateEmoteGLTF, validateWearableGLTF, ValidationSeverity } from '../glbValidation'
-import { PROP_ARMATURE_NAME } from '../glbValidation/constants'
-import { isImageFile } from '../itemFiles'
+// The in-browser backend: the shared Decentraland rule book (@dcl-regenesislabs/wearable-validator),
+// restricted to the model and emote groups plus the thumbnail rule, the parts the editor can act on.
+import { BodyShape } from '@dcl/schemas'
+import { englishMessage } from '~/intl'
+import { fetchContent } from '../builder'
+import { captureError } from '../monitoring'
+import { THUMBNAIL_PATH } from '../itemFiles'
 import { ItemType } from '../items'
-import { loadGltf } from '../models'
+import { AUDIO_LIKE, distinctModels, itemModels, type DistinctModel } from './models'
+import { limited } from './queue'
+import { type RuleBookOutput } from './ruleBook'
+import { runOffMainThread } from './runner'
 import {
+  ValidationSeverity,
   type ItemValidator,
+  type ThumbnailSource,
   type ValidateOptions,
   type ValidationContext,
-  type ValidationEntry,
+  type ValidationIssue,
   type ValidationResult,
   type ValidationSource
 } from './types'
 
-class AbortedError extends Error {
-  constructor() {
-    super('Validation aborted')
-    this.name = 'AbortError'
+const BOTH_SHAPES = [BodyShape.MALE, BodyShape.FEMALE]
+
+type Loaded = { mainFile: string; bodyShapes: string[]; files: Map<string, Uint8Array> }
+
+async function loadStored(path: string, hash: string | undefined, signal?: AbortSignal): Promise<Uint8Array> {
+  if (!hash) throw new Error(`"${path}" has no stored content to validate`)
+  return new Uint8Array(await (await fetchContent(hash, signal)).arrayBuffer())
+}
+
+/** The models to check: one per distinct main file, texture-only ones left out. */
+function modelsOf(source: ValidationSource): DistinctModel[] {
+  if (source.kind === 'item') {
+    if (source.item.data.representations.length === 0)
+      throw new Error(`Item "${source.item.id}" has no representation to validate`)
+    return itemModels(source.item)
   }
-}
-
-function throwIfAborted(signal?: AbortSignal) {
-  if (signal?.aborted) throw new AbortedError()
-}
-
-type Loadable = {
-  mainFile: string
-  /** Every file the loader may request, by path, as a fetchable URL. */
-  mappings: Record<string, string>
-  /** Content paths, for the checks that only need file names (audio formats). */
-  paths: string[]
-  release: () => void
-}
-
-function toLoadable(source: ValidationSource, ctx: ValidationContext): Loadable {
-  if (source.kind === 'blob') {
-    const mappings = Object.fromEntries(
-      Object.entries(source.contents).map(([path, blob]) => [path, URL.createObjectURL(blob)])
-    )
-    return {
-      mainFile: source.mainFile,
-      mappings,
-      paths: Object.keys(source.contents),
-      release: () => Object.values(mappings).forEach(url => URL.revokeObjectURL(url))
-    }
-  }
-  const { item } = source
-  const representation =
-    item.data.representations.find(candidate => ctx.bodyShape && candidate.bodyShapes.includes(ctx.bodyShape)) ??
-    item.data.representations[0]
-  if (!representation) throw new Error(`Item "${item.id}" has no representation to validate`)
-  // The full mapping set: a .gltf's textures and buffers resolve through it, or the loader fails.
-  const mappings = Object.fromEntries(
-    Object.entries(item.contents).map(([path, hash]) => [path, getContentsStorageUrl(hash)])
+  const allAudio = Object.keys(source.contents).filter(path => AUDIO_LIKE.test(path))
+  const representations = source.representations ?? [{ mainFile: source.mainFile, bodyShapes: BOTH_SHAPES }]
+  return distinctModels(
+    representations.map(model => ({ ...model, contents: model.contents ?? allAudio })),
+    path => source.contents[path]
   )
-  return { mainFile: representation.mainFile, mappings, paths: Object.keys(item.contents), release: () => undefined }
 }
 
-async function validateOne(
+async function load(source: ValidationSource, model: DistinctModel, signal?: AbortSignal): Promise<Loaded> {
+  const paths = [model.mainFile, ...model.audio]
+  const entries = await Promise.all(
+    paths.map(async path => {
+      const bytes =
+        source.kind === 'blob'
+          ? new Uint8Array(await source.contents[path].arrayBuffer())
+          : await loadStored(path, source.item.contents[path], signal)
+      return [path, bytes] as const
+    })
+  )
+  return { mainFile: model.mainFile, bodyShapes: model.bodyShapes, files: new Map(entries) }
+}
+
+/**
+ * The slice of entity metadata the model/emote checks read. The explicit representation names the model, so
+ * the validator never has to guess it from the file extension.
+ */
+function toMetadata(ctx: ValidationContext, { mainFile, bodyShapes, files }: Loaded) {
+  const representations = [{ bodyShapes, mainFile, contents: [...files.keys()] }]
+  return ctx.type === ItemType.EMOTE
+    ? { emoteDataADR74: { loop: ctx.loop, representations } }
+    : { data: { category: ctx.category, hides: ctx.hides ?? [], representations } }
+}
+
+function toIssues({ findings, checks, titles }: RuleBookOutput): ValidationIssue[] {
+  // Without a category its limits are unknown, which is not a problem with the model.
+  const issues: ValidationIssue[] = findings
+    .filter(finding => finding.reason !== 'category-unknown')
+    .map(finding => ({
+      code: finding.check,
+      severity: finding.severity === 'error' ? ValidationSeverity.ERROR : ValidationSeverity.WARNING,
+      message: finding.message,
+      title: titles[finding.check],
+      where: finding.where
+    }))
+  // A crashed check asserts nothing, so it always shows. An unparseable model (a damaged GLB, a .gltf)
+  // skips every check: shown only when nothing else was found, so the run never reads as a pass.
+  const errored = checks.filter(check => check.status === 'errored' && check.skipReason)
+  const skipped = checks.find(check => check.status === 'skipped' && check.skipReason)
+  const incomplete = errored.length > 0 ? errored : issues.length === 0 && skipped ? [skipped] : []
+  for (const check of incomplete) {
+    // A crash's reason is a raw exception message: report it, show friendly copy instead.
+    if (check.status === 'errored')
+      captureError(new Error(check.skipReason), { flow: 'validation', check: check.check })
+    // A crash says nothing about the model, so it never blocks publishing; an unparseable model does.
+    issues.push({
+      code: 'file-format',
+      severity: check.status === 'errored' ? ValidationSeverity.WARNING : ValidationSeverity.ERROR,
+      message:
+        check.status === 'errored' ? englishMessage('item_editor.validation.check_crashed') : (check.skipReason ?? ''),
+      title: titles[check.status === 'errored' ? check.check : 'file-format']
+    })
+  }
+  return issues
+}
+
+async function validateModel(
+  source: ValidationSource,
+  ctx: ValidationContext,
+  model: DistinctModel,
+  signal?: AbortSignal
+): Promise<ValidationIssue[]> {
+  return limited(async () => {
+    const loaded = await load(source, model, signal)
+    signal?.throwIfAborted()
+    const output = await runOffMainThread(
+      { kind: 'model', files: loaded.files, metadata: toMetadata(ctx, loaded), category: ctx.category },
+      signal
+    )
+    return toIssues(output)
+  }, signal)
+}
+
+async function validate(
   source: ValidationSource,
   ctx: ValidationContext,
   opts: ValidateOptions = {}
 ): Promise<ValidationResult> {
-  throwIfAborted(opts.signal)
-  const loadable = toLoadable(source, ctx)
-  // Texture-only wearables have no geometry to inspect.
-  if (isImageFile(loadable.mainFile)) {
-    loadable.release()
-    return { issues: [] }
-  }
-  try {
-    const gltf = await loadGltf(loadable.mappings[loadable.mainFile], loadable.mappings)
-    throwIfAborted(opts.signal)
-    if (ctx.type === ItemType.EMOTE) {
-      const hasProps = gltf.scene.children.some(child => child.name === PROP_ARMATURE_NAME)
-      // The audio check only reads file names.
-      const contents = Object.fromEntries(loadable.paths.map(path => [path, new Blob()]))
-      const result = await validateEmoteGLTF(gltf, hasProps, contents)
-      return { issues: result.issues }
-    }
-    const result = await validateWearableGLTF(gltf, ctx.category as WearableCategory | undefined, ctx.hides)
-    return { issues: result.issues }
-  } finally {
-    loadable.release()
+  opts.signal?.throwIfAborted()
+  const models = modelsOf(source)
+  const perModel = await Promise.all(models.map(model => validateModel(source, ctx, model, opts.signal)))
+  if (models.length < 2) return { issues: perModel[0] ?? [] }
+  // A separate model per body shape: say which one each issue was found in.
+  return {
+    issues: perModel.flatMap((issues, index) =>
+      issues.map(issue => ({ ...issue, bodyShapes: models[index].bodyShapes }))
+    )
   }
 }
 
-export const localValidator: ItemValidator = {
-  validate: validateOne,
-  async validateMany(entries: ValidationEntry[], opts?: ValidateOptions) {
-    const results: ValidationResult[] = []
-    for (const entry of entries) results.push(await validateOne(entry.source, entry.ctx, opts))
-    return results
-  }
+// The app always writes square 1024px thumbnails (legacy builder parity), so the 256px size hint is never actionable.
+const SQUARE_SIZE_HINT = /^(\d+)×\1$/
+
+async function validateThumbnail(source: ThumbnailSource, opts: ValidateOptions = {}): Promise<ValidationResult> {
+  opts.signal?.throwIfAborted()
+  return limited(async () => {
+    const bytes =
+      source.kind === 'blob'
+        ? new Uint8Array(await source.blob.arrayBuffer())
+        : await loadStored(source.item.thumbnail, source.item.contents[source.item.thumbnail], opts.signal)
+    opts.signal?.throwIfAborted()
+    const output = await runOffMainThread({ kind: 'thumbnail', path: THUMBNAIL_PATH, bytes }, opts.signal)
+    const size = output.thumbnailRecommendedSize
+    const findings = output.findings.filter(
+      finding => !(finding.limit === `${size}×${size}` && SQUARE_SIZE_HINT.test(String(finding.measured)))
+    )
+    return { issues: toIssues({ ...output, findings }) }
+  }, opts.signal)
 }
 
-export function hasErrors(result: ValidationResult): boolean {
-  return result.issues.some(issue => issue.severity === ValidationSeverity.ERROR)
-}
+export const localValidator: ItemValidator = { validate, validateThumbnail }

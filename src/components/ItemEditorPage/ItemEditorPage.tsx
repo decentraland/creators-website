@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { BodyShape, PreviewRenderer, type IPreviewController } from '@dcl/schemas'
 import { ArrowBackIosNew, PersonOutline as PersonOutlineIcon } from '@mui/icons-material'
@@ -14,17 +14,33 @@ import { ConfirmModal } from '~/components/ConfirmModal'
 import { ZoomControls } from '~/components/ZoomControls'
 import { useBaseWearables } from '~/hooks/useBaseWearables'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
+import {
+  allCollectionItemsKey,
+  useAllCollectionItems,
+  useCollection,
+  useCollectionStatus,
+  useSaveCollection
+} from '~/hooks/useCollection'
 import { useCollectionCuration, useCommittee } from '~/hooks/useCuration'
-import { allCollectionItemsKey, useAllCollectionItems, useCollection, useSaveCollection } from '~/hooks/useCollection'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
-import { useModelValidation } from '~/hooks/useModelValidation'
+import { track } from '~/lib/analytics'
+import { modelValidationKey, useModelValidation } from '~/hooks/useModelValidation'
+import { useRerunValidation } from '~/hooks/useRerunValidation'
+import { useObjectURL } from '~/hooks/useObjectURL'
+import { thumbnailValidationKey, useThumbnailValidation } from '~/hooks/useThumbnailValidation'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { useSaveItem } from '~/hooks/useSaveItem'
 import { useSpringBones } from '~/hooks/useSpringBones'
 import { useTranslation } from '~/intl'
 import { type AvatarAttributes } from '~/lib/avatar'
-import { BuilderServerError, COLLECTION_LOCKED_STATUS } from '~/lib/builder'
-import { canManageCollectionItems, hasCollectionRole, isCollectionLocked, type Collection } from '~/lib/collections'
+import { BuilderServerError, COLLECTION_LOCKED_STATUS, getContentsStorageUrl } from '~/lib/builder'
+import {
+  canManageCollectionItems,
+  hasCollectionRole,
+  isCollectionLocked,
+  isLinkedCollection,
+  type Collection
+} from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
 import { getCurationState, curationListUrl } from '~/lib/curation'
 import { toPreviewItem, toSaveableItem } from '~/lib/itemDraft'
@@ -45,7 +61,8 @@ import { MobilePreview } from './MobilePreview'
 import { PlaybackBar } from './PlaybackBar'
 import { PropertiesPanel, type SpringBonesFormProps } from './PropertiesPanel'
 import { ReviewBar } from './ReviewBar'
-import { ValidationBadge, getValidationStatus } from './ValidationBadge'
+import { ValidationBadge } from '~/components/ValidationBadge'
+import { distinctModels, getValidationStatus, itemValidationContext, type ValidationSource } from '~/lib/validation'
 import { useEditorLayout } from './useEditorLayout'
 import { useItemForm } from './useItemForm'
 import * as S from './ItemEditorPage.styles'
@@ -85,6 +102,7 @@ const ItemEditorPage = () => {
   const isMobile = useMediaQuery(theme.media.maxWidth('mobile'))
 
   const collectionQuery = useCollection(address, collectionId ?? undefined)
+  const collectionStatus = useCollectionStatus(address, collectionQuery.data)
   const itemsQuery = useAllCollectionItems(address, collectionId ?? undefined)
   const baseWearables = useBaseWearables()
   const pickedRenderer = usePreviewRenderer()
@@ -153,23 +171,75 @@ const ItemEditorPage = () => {
   const subjectEmote = useMemo(() => previewItems.find(item => item.type === ItemType.EMOTE) ?? null, [previewItems])
   const previewedWearables = useMemo(() => previewItems.filter(item => item.type === ItemType.WEARABLE), [previewItems])
 
-  const validationSource = useMemo(
-    () => (previewSelected ? ({ kind: 'item', item: previewSelected } as const) : null),
-    [previewSelected]
+  // An unsaved model's files exist only in memory: storage would 404 on their hashes. Phones validate nothing.
+  const fileUpdate = form.draft.fileUpdate
+  const validationSource = useMemo<ValidationSource | null>(() => {
+    if (!previewSelected || isMobile) return null
+    const representations = fileUpdate?.item.data.representations ?? []
+    if (!fileUpdate || representations.length === 0) return { kind: 'item', item: previewSelected }
+    const models = distinctModels(representations, path => fileUpdate.item.contents[path])
+    return {
+      kind: 'blob',
+      contents: fileUpdate.blobs,
+      mainFile: representations[0].mainFile,
+      representations: models.map(({ mainFile, bodyShapes, audio }) => ({ mainFile, bodyShapes, contents: audio }))
+    }
+  }, [previewSelected, fileUpdate, isMobile])
+  const fileUpdateId = useMemo(
+    () => (fileUpdate ? Object.values(fileUpdate.item.contents).sort().join() : undefined),
+    [fileUpdate]
   )
   const validationCtx = useMemo(
-    () => ({
-      type: previewSelected?.type ?? ItemType.WEARABLE,
-      category: previewSelected?.data.category,
-      hides: previewSelected?.data.hides,
-      bodyShape
-    }),
-    [previewSelected, bodyShape]
+    () => (previewSelected ? itemValidationContext(previewSelected) : { type: ItemType.WEARABLE }),
+    [previewSelected]
   )
-  const validation = useModelValidation(validationSource, validationCtx)
+  const validation = useModelValidation(validationSource, validationCtx, fileUpdateId)
+  // An unsaved thumbnail is checked as picked; otherwise the stored one.
+  const thumbnailSource = useMemo(() => {
+    if (isMobile) return null
+    if (form.draft.thumbnail) return { kind: 'blob', blob: form.draft.thumbnail } as const
+    return selected?.contents[selected.thumbnail] ? ({ kind: 'item', item: selected } as const) : null
+  }, [form.draft.thumbnail, selected, isMobile])
+  const thumbnailValidation = useThumbnailValidation(thumbnailSource)
+  const draftThumbnailUrl = useObjectURL(form.draft.thumbnail)
+  const validationSubject = useMemo(() => {
+    if (!previewSelected) return undefined
+    const storedThumbnail = previewSelected.contents[previewSelected.thumbnail]
+    return {
+      name: previewSelected.name,
+      type: previewSelected.type,
+      category: previewSelected.data.category,
+      rarity: previewSelected.rarity,
+      thumbnail: draftThumbnailUrl ?? (storedThumbnail ? getContentsStorageUrl(storedThumbnail) : null)
+    }
+  }, [previewSelected, draftThumbnailUrl])
+  const validationIssues = useMemo(
+    () =>
+      validation.data || thumbnailValidation.data
+        ? [...(validation.data?.issues ?? []), ...(thumbnailValidation.data?.issues ?? [])]
+        : undefined,
+    [validation.data, thumbnailValidation.data]
+  )
   const validationStatus = useMemo(
-    () => getValidationStatus(validation.data?.issues, validation.isLoading),
-    [validation.data?.issues, validation.isLoading]
+    () => getValidationStatus(validationIssues, validation.isLoading || thumbnailValidation.isLoading),
+    [validationIssues, validation.isLoading, thumbnailValidation.isLoading]
+  )
+  const rerunValidation = useRerunValidation()
+  const rerunSelectedValidation = useCallback(async () => {
+    const keys: (readonly unknown[])[] = []
+    if (validationSource) keys.push(modelValidationKey(validationSource, validationCtx, fileUpdateId))
+    if (thumbnailSource) keys.push(thumbnailValidationKey(thumbnailSource))
+    const issues = await rerunValidation(keys)
+    track('Item Validation Rerun', {
+      itemId: selectedId,
+      source: 'details',
+      previousStatus: validationStatus,
+      newStatus: getValidationStatus(issues, false)
+    })
+  }, [rerunValidation, validationSource, validationCtx, fileUpdateId, thumbnailSource, selectedId, validationStatus])
+  const onValidationOpen = useCallback(
+    () => track('Item Validation Details Opened', { itemId: selectedId, status: validationStatus, source: 'editor' }),
+    [selectedId, validationStatus]
   )
 
   // Preview controller: spring bones are pushed on edits (debounced), on every load and on play.
@@ -363,7 +433,15 @@ const ItemEditorPage = () => {
           subjectEmoteId={subjectEmote?.id ?? null}
         />
         <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />
-        {selected && <ValidationBadge status={validationStatus} issues={validation.data?.issues ?? []} />}
+        {selected && (
+          <ValidationBadge
+            status={validationStatus}
+            issues={validationIssues ?? []}
+            subject={validationSubject}
+            onRerun={rerunSelectedValidation}
+            onOpen={onValidationOpen}
+          />
+        )}
       </AvatarPreview>
     )
 
@@ -379,6 +457,11 @@ const ItemEditorPage = () => {
         </S.StatePanel>
       </S.Workspace>
     )
+  }
+
+  // Linked collections are read-only here: their items are edited in the legacy builder.
+  if (collection && isLinkedCollection(collection)) {
+    return <Navigate to={`/collections/${collection.id}`} replace />
   }
 
   if (isNotFound) {
@@ -510,6 +593,7 @@ const ItemEditorPage = () => {
   const sidebar = collection ? (
     <ItemsSidebar
       collection={collection}
+      collectionStatus={collectionStatus}
       items={items}
       isLoading={itemsQuery.isLoading}
       selectedId={selectedId}

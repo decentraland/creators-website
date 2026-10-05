@@ -1,6 +1,6 @@
 {
   "name": "@dcl/creators-site",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "Wearables & Emotes Creator Tools for Decentraland",
   "main": "index.js",
   "type": "module",
@@ -28,6 +28,7 @@
     "**/*.{js,mjs,cjs,ts,tsx,json,css,html,md,mdx}": "prettier --write --log-level=error"
   },
   "dependencies": {
+    "@dcl-regenesislabs/wearable-validator": "0.5.0",
     "@dcl/crypto": "^3.7.0",
     "@dcl/hashing": "^1.2.0",
     "@dcl/hooks": "^1.6.0",
@@ -44,6 +45,7 @@
     "decentraland-transactions": "^3.3.0",
     "decentraland-ui2": "3.23.2",
     "ethers": "^5.8.0",
+    "idb-keyval": "6.2.1",
     "isbot": "^5.2.2",
     "jszip": "^3.10.2",
     "lottie-react": "^2.4.2",
@@ -60,7 +62,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@sentry/vite-plugin": "^2.23.1",
-    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
     "@types/react": "^18.3.28",

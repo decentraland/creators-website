@@ -3,7 +3,7 @@ import { type ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TranslationProvider } from '~/intl'
-import { type Collection } from '~/lib/collections'
+import { CurationStatus, type Collection } from '~/lib/collections'
 import { CollectionStatusPill } from './CollectionStatusPill'
 
 const underReview: Collection = {
@@ -44,10 +44,7 @@ describe('CollectionStatusPill', () => {
   })
 
   it('reads Rejected from the latest review request', () => {
-    renderPill({
-      collection: underReview,
-      curation: { id: 'r1', collectionId: 'c1', status: 'rejected', assignee: null, createdAt: 1, updatedAt: 1 }
-    })
+    renderPill({ collection: { ...underReview, curationStatus: CurationStatus.REJECTED } })
     expect(screen.getByTestId('collection-status')).toHaveAttribute('data-status', 'rejected')
     expect(screen.getByTestId('collection-status')).toHaveTextContent(/rejected/i)
   })

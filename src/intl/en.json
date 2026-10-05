@@ -9,11 +9,13 @@
     "search_placeholder": "Search Collection",
     "new_collection": "New collection",
     "filter": {
-      "all": "All",
-      "published": "Published",
-      "draft": "Draft",
-      "under_review": "Under Review",
-      "rejected": "Rejected"
+      "all": "All ({count})",
+      "published": "Published ({count})",
+      "draft": "Draft ({count})",
+      "under_review": "Under review ({count})",
+      "rejected": "Rejected ({count})",
+      "disabled": "Disabled ({count})",
+      "linked": "Linked ({count})"
     },
     "view_mode": "View mode",
     "view_grid": "Grid view",
@@ -57,11 +59,15 @@
     "minter": "Sender"
   },
   "collection_status": {
-    "published": "Published",
-    "under_review": "Under review",
-    "under_review_hint": "Your collection is being reviewed for approval. This may take up to 5 minutes. We’ll notify you once the review is complete.",
     "draft": "Draft",
-    "rejected": "Rejected"
+    "publishing": "Publishing",
+    "under_review": "Under review",
+    "under_review_hint": "Your collection is being reviewed for approval. We’ll notify you once the review is complete.",
+    "published": "Published",
+    "rejected": "Rejected",
+    "disabled": "Disabled",
+    "disabled_hint": "Your collection was disabled by the curation team. Please get in touch with your assigned curator to review it.",
+    "linked": "Linked"
   },
   "pagination": {
     "previous": "Previous page",
@@ -98,6 +104,7 @@
     "preview": "Preview in Decentraland",
     "more_actions": "More actions",
     "actions": {
+      "preview_items": "Preview items",
       "copy_urn": "Copy URN",
       "copy_address": "Copy contract address",
       "collaborators": "Collaborators",
@@ -217,7 +224,8 @@
     "publish_blocker": {
       "no_items": "Add at least one item to publish your collection.",
       "too_many_items": "A collection can be published with up to {max} items.",
-      "missing_smart_wearable_video": "Every smart wearable needs a preview video before you can publish."
+      "missing_smart_wearable_video": "Every smart wearable needs a preview video before you can publish.",
+      "has_invalid_items": "Fix {count, plural, one {# item} other {# items}} marked in red to publish."
     },
     "price": {
       "credits": "{amount} credits",
@@ -634,36 +642,8 @@
     "wrong_format": "The thumbnail must be a PNG image.",
     "too_big": "The thumbnail is too big — the maximum size is {size}MB.",
     "capture_failed": "We couldn't update the thumbnail. Please try again.",
-    "load_failed": "We couldn't load the item. Please try again."
-  },
-  "item_validation": {
-    "triangle_count_exceeded": "Triangle count ({count}) exceeds the limit of {limit} for {category} wearables.",
-    "triangle_count_exceeded_with_hint": "Triangle count ({count}) exceeds the base limit of {limit} for {category} wearables. You can increase this limit by hiding other wearable slots in the Item Editor.",
-    "dimensions_exceeded": "Model dimensions ({width}m x {height}m x {depth}m) exceed the maximum allowed ({maxWidth}m x {maxHeight}m x {maxDepth}m).",
-    "materials_exceeded": "Material count ({count}) exceeds the limit of {limit}.",
-    "textures_exceeded": "Texture count ({count}) exceeds the limit of {limit}.",
-    "bone_influences_exceeded": "Some vertices have more than {limit} bone influences.",
-    "leaf_bones_found": "Leaf/end bones found: {bones}. Remove _end or _neutral suffixed bones before export.",
-    "non_deform_bones_found": "Found {count} non-deformation bones: {bones}. Enable \"Export Deformation Bones Only\" in your export settings to reduce file size and improve performance.",
-    "armature_bone_names": "Armature bone names do not match the Decentraland avatar skeleton ({bones}). Re-rig your wearable to the standard avatar armature before export.",
-    "unrigged_vertices": "Found {count} vertices with no skin weights (not bound to any bone). These vertices will not follow the avatar's movement. Check the rigging/skin weights before export.",
-    "cameras_found": "Cameras are not allowed in wearable/emote GLB files.",
-    "lights_found": "Lights are not allowed in wearable/emote GLB files.",
-    "animations_in_wearable": "Wearable GLB files must not contain animations. If this is an emote, animations are expected.",
-    "forbidden_material_name": "Material \"{name}\" uses a reserved naming pattern ({pattern}). This pattern is reserved for facial categories.",
-    "emote_frame_rate": "Animation frame rate ({fps} fps) differs from the expected {expected} fps.",
-    "emote_max_frames": "Animation has {frames} frames, exceeding the maximum of {limit}.",
-    "emote_max_clips": "File has {count} animation clips, exceeding the maximum of {limit}.",
-    "emote_missing_keyframes": "Some deform bones are missing keyframes at first/last frame: {bones}.",
-    "prop_triangle_count": "Prop triangle count ({count}) exceeds the limit of {limit}.",
-    "prop_materials": "Prop material count ({count}) exceeds the limit of {limit}.",
-    "prop_textures": "Prop texture count ({count}) exceeds the limit of {limit}.",
-    "prop_armature_bones": "Prop armature has {count} bones, exceeding the limit of {limit}.",
-    "armature_naming": "Unexpected armature names found: {names}. Avatar armature should be named 'Armature' and prop armature 'Armature_Prop'.",
-    "animation_naming": "Animation clips should end with '_Avatar' or '_Prop' when props are present. Invalid names: {names}.",
-    "audio_format": "Audio file \"{name}\" has an unsupported format. Only .mp3 and .ogg are allowed.",
-    "spring_bone_count_exceeded": "This model has {count} spring bones (maximum: {limit}). Reduce the number of spring bone nodes in your 3D editor and re-upload.",
-    "thumbnail_not_transparent": "The thumbnail background doesn't look transparent. Marketplaces show the item's rarity color behind the thumbnail, so a transparent background is required."
+    "load_failed": "We couldn't load the item. Please try again.",
+    "check_failed": "We couldn't check the thumbnail. Make sure it's a square PNG with a transparent background."
   },
   "item_editor": {
     "pick_collection": "Pick a collection to start editing its items.",
@@ -781,10 +761,10 @@
       "placeholder": "Play emote"
     },
     "validation": {
-      "loading": "Checking the model…",
-      "pass": "The model passes every check.",
-      "warnings": "The model has warnings. Click to see them.",
-      "errors": "The model has errors. Click to see them.",
+      "loading": "Checking the item…",
+      "pass": "The item passes every check.",
+      "warnings": "The item has warnings. Click to see them.",
+      "errors": "The item has errors. Click to see them.",
       "idle": "",
       "modal_title": "Validation results",
       "label": {
@@ -793,7 +773,10 @@
         "warnings": "{count, plural, one {# warning} other {# warnings}}",
         "errors": "{count, plural, one {# issue} other {# issues}}",
         "idle": ""
-      }
+      },
+      "previewed_item": "Previewed item",
+      "check_failed": "We couldn't check the model. Try again, or save the item and reopen it.",
+      "check_crashed": "This check couldn't run on the item. Try again later."
     },
     "details": {
       "title": "Details",
@@ -1371,6 +1354,77 @@
       "deploy": "We couldn't upload the items.",
       "approve": "We couldn't approve the collection.",
       "retry": "Try again"
+    }
+  },
+  "item_validation": {
+    "checking": "Checking your items…",
+    "rerun": "Check again",
+    "rerun_label": "Check this item again",
+    "rerunning": "Checking…",
+    "body_shape": {
+      "male": "Male",
+      "female": "Female"
+    },
+    "row": {
+      "errors_blocking": "This item needs some fixes before publishing.\nClick to see details.",
+      "errors": "This item has some issues worth fixing before publishing.\nClick to see details.",
+      "warnings": "This item can be improved.\nClick to see details."
+    },
+    "issues": {
+      "errors_blocking": {
+        "title": "Some items need your attention",
+        "intro": "We found a few issues that need to be resolved before you can publish your collection. Fix them and try publishing again."
+      },
+      "errors": {
+        "title": "Some items have issues",
+        "intro": "We found a few issues that could get your items rejected during curation review. We recommend fixing them first, but you can still continue publishing."
+      },
+      "warnings": {
+        "title": "A few things to review",
+        "intro": "We found a few suggestions that could help improve your items. You can review them now or continue publishing."
+      },
+      "back": "Back to collection",
+      "continue": "Continue anyway"
+    }
+  },
+  "linked_collection": {
+    "edit_in_builder": "Edit in Builder",
+    "third_party": "Third party",
+    "network": "Network",
+    "contract": "Linked contract",
+    "copy_contract": "Copy contract address",
+    "contract_copied": "Contract address copied",
+    "networks": {
+      "mainnet": "Ethereum",
+      "matic": "Polygon",
+      "sepolia": "Sepolia",
+      "amoy": "Amoy",
+      "base_mainnet": "Base",
+      "base_sepolia": "Base Sepolia",
+      "monad_mainnet": "Monad",
+      "monad_testnet": "Monad Testnet",
+      "ape_mainnet": "ApeChain",
+      "ape_caldera": "ApeChain Curtis"
+    },
+    "no_items": "Items for this linked collection are added and edited in the Builder.",
+    "list": {
+      "status": "Status",
+      "mapping": "Token mapping"
+    },
+    "item_status": {
+      "published": "Published",
+      "under_review": "Under review",
+      "rejected": "Rejected",
+      "not_published": "Not published",
+      "retry": "Couldn't load · Retry"
+    },
+    "mapping": {
+      "none": "No mapping",
+      "any": "Any token",
+      "single": "Token #{id}",
+      "range": "Tokens #{from}–#{to}",
+      "multiple": "{count, plural, one {# token} other {# tokens}}",
+      "rules": "{count, plural, one {# rule} other {# rules}}"
     }
   }
 }

@@ -45,6 +45,9 @@ const colors = {
   // Inline validation warnings on dark surfaces (Figma System/Warning).
   warningOverlay: 'rgba(255, 207, 137, 0.2)',
   warningText: '#ffe1b7',
+  // Inline validation errors on dark surfaces (Figma System/Error).
+  errorOverlay: 'rgba(233, 113, 119, 0.2)',
+  errorText: '#ffcdd4',
   white: '#ffffff',
   // Hairline on a translucent field over the purple (search box border).
   fieldBorder: '#c6bcd7',

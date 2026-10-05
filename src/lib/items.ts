@@ -129,6 +129,8 @@ export type Item = {
   isPublished: boolean
   isApproved: boolean
   inCatalyst: boolean
+  /** Linked items only: which tokens of the linked contract unlock the item (`@dcl/schemas` Mappings). */
+  mappings?: unknown
   type: ItemType
   data: ItemData
   metrics?: ItemMetrics
@@ -165,6 +167,7 @@ export function fromRemoteItem(remote: RemoteItem): Item {
   if (remote.blockchain_item_id) item.tokenId = remote.blockchain_item_id
   if (remote.local_content_hash) item.currentContentHash = remote.local_content_hash
   if (remote.content_hash) item.blockchainContentHash = remote.content_hash
+  if (remote.mappings) item.mappings = remote.mappings
   return item
 }
 

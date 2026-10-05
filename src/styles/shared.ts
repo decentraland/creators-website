@@ -57,6 +57,10 @@ export const ModalActions = styled.div`
   width: 100%;
   padding-top: 24px;
   border-top: 1px solid ${theme.colors.glassHover};
+  background-color: ${theme.colors.modalSurface};
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
 
   & > button {
     flex: 1;
@@ -173,25 +177,25 @@ export const Title = styled.h1`
   }
 `
 
+// Wraps on desktop so a long chip row never runs under the view toggle; scrolls sideways on mobile.
 export const Chips = styled.div`
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   min-width: 0;
 
   ${mobile} {
+    flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
     padding: 5px 0;
+    /* Only bites when the row actually reaches the edge, i.e. when it scrolls. */
+    mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
 
     &::-webkit-scrollbar {
       display: none;
     }
-  }
-
-  /* Chips only overflow below ~490px, a non-canonical width */
-  @media (max-width: 490px) {
-    mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
   }
 `
 

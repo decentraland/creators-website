@@ -9,11 +9,13 @@
     "search_placeholder": "Buscar colección",
     "new_collection": "Nueva colección",
     "filter": {
-      "all": "Todas",
-      "published": "Publicadas",
-      "draft": "Borrador",
-      "under_review": "En revisión",
-      "rejected": "Rechazadas"
+      "all": "Todas ({count})",
+      "published": "Publicadas ({count})",
+      "draft": "Borrador ({count})",
+      "under_review": "En revisión ({count})",
+      "rejected": "Rechazadas ({count})",
+      "disabled": "Deshabilitadas ({count})",
+      "linked": "Vinculadas ({count})"
     },
     "view_mode": "Modo de vista",
     "view_grid": "Vista de cuadrícula",
@@ -57,11 +59,15 @@
     "minter": "Emisor"
   },
   "collection_status": {
-    "published": "Publicada",
-    "under_review": "En revisión",
-    "under_review_hint": "Tu colección está siendo revisada para su aprobación. Esto puede tardar hasta 5 minutos. Te avisaremos cuando la revisión termine.",
     "draft": "Borrador",
-    "rejected": "Rechazada"
+    "publishing": "Publicando",
+    "under_review": "En revisión",
+    "under_review_hint": "Tu colección está siendo revisada para su aprobación. Te avisaremos cuando la revisión termine.",
+    "published": "Publicada",
+    "rejected": "Rechazada",
+    "disabled": "Deshabilitada",
+    "disabled_hint": "Tu colección fue deshabilitada por el equipo de curación. Ponte en contacto con tu curador asignado para revisarla.",
+    "linked": "Vinculada"
   },
   "pagination": {
     "previous": "Página anterior",
@@ -98,6 +104,7 @@
     "preview": "Vista previa en Decentraland",
     "more_actions": "Más acciones",
     "actions": {
+      "preview_items": "Previsualizar ítems",
       "copy_urn": "Copiar URN",
       "copy_address": "Copiar dirección del contrato",
       "collaborators": "Colaboradores",
@@ -217,7 +224,8 @@
     "publish_blocker": {
       "no_items": "Agrega al menos un ítem para publicar tu colección.",
       "too_many_items": "Una colección puede publicarse con hasta {max} ítems.",
-      "missing_smart_wearable_video": "Cada smart wearable necesita un video de vista previa antes de poder publicar."
+      "missing_smart_wearable_video": "Cada smart wearable necesita un video de vista previa antes de poder publicar.",
+      "has_invalid_items": "Corrige {count, plural, one {# ítem marcado} other {# ítems marcados}} en rojo para publicar."
     },
     "price": {
       "credits": "{amount} créditos",
@@ -634,36 +642,8 @@
     "wrong_format": "La miniatura debe ser una imagen PNG.",
     "too_big": "La miniatura es demasiado grande — el tamaño máximo es {size}MB.",
     "capture_failed": "No pudimos actualizar la miniatura. Inténtalo de nuevo.",
-    "load_failed": "No pudimos cargar el ítem. Inténtalo de nuevo."
-  },
-  "item_validation": {
-    "triangle_count_exceeded": "La cantidad de triángulos ({count}) supera el límite de {limit} para wearables de tipo {category}.",
-    "triangle_count_exceeded_with_hint": "La cantidad de triángulos ({count}) supera el límite base de {limit} para wearables de tipo {category}. Puedes aumentar este límite ocultando otras categorías de wearables en el Editor de Ítems.",
-    "dimensions_exceeded": "Las dimensiones del modelo ({width}m x {height}m x {depth}m) superan el máximo permitido ({maxWidth}m x {maxHeight}m x {maxDepth}m).",
-    "materials_exceeded": "La cantidad de materiales ({count}) supera el límite de {limit}.",
-    "textures_exceeded": "La cantidad de texturas ({count}) supera el límite de {limit}.",
-    "bone_influences_exceeded": "Algunos vértices tienen más de {limit} influencias de huesos.",
-    "leaf_bones_found": "Se encontraron huesos terminales: {bones}. Elimina los huesos con sufijo _end o _neutral antes de exportar.",
-    "non_deform_bones_found": "Se encontraron {count} huesos no deformantes: {bones}. Activa \"Exportar solo huesos de deformación\" en la configuración de exportación para reducir el tamaño del archivo y mejorar el rendimiento.",
-    "armature_bone_names": "Los nombres de los huesos de la armadura no coinciden con el esqueleto del avatar de Decentraland ({bones}). Vuelve a vincular tu wearable a la armadura estándar del avatar antes de exportar.",
-    "unrigged_vertices": "Se encontraron {count} vértices sin pesos de piel (no vinculados a ningún hueso). Estos vértices no seguirán el movimiento del avatar. Revisa el rigging y los pesos de piel antes de exportar.",
-    "cameras_found": "No se permiten cámaras en archivos GLB de wearables/emotes.",
-    "lights_found": "No se permiten luces en archivos GLB de wearables/emotes.",
-    "animations_in_wearable": "Los archivos GLB de wearables no deben contener animaciones. Si es un emote, las animaciones son esperadas.",
-    "forbidden_material_name": "El material \"{name}\" usa un patrón de nombre reservado ({pattern}). Este patrón está reservado para categorías faciales.",
-    "emote_frame_rate": "La tasa de fotogramas de la animación ({fps} fps) difiere de los {expected} fps esperados.",
-    "emote_max_frames": "La animación tiene {frames} fotogramas, superando el máximo de {limit}.",
-    "emote_max_clips": "El archivo tiene {count} clips de animación, superando el máximo de {limit}.",
-    "emote_missing_keyframes": "Algunos huesos de deformación no tienen keyframes en el primer/último fotograma: {bones}.",
-    "prop_triangle_count": "La cantidad de triángulos del prop ({count}) supera el límite de {limit}.",
-    "prop_materials": "La cantidad de materiales del prop ({count}) supera el límite de {limit}.",
-    "prop_textures": "La cantidad de texturas del prop ({count}) supera el límite de {limit}.",
-    "prop_armature_bones": "La armadura del prop tiene {count} huesos, superando el límite de {limit}.",
-    "armature_naming": "Se encontraron nombres de armadura inesperados: {names}. La armadura del avatar debe llamarse 'Armature' y la del prop 'Armature_Prop'.",
-    "animation_naming": "Los clips de animación deben terminar en '_Avatar' o '_Prop' cuando hay props. Nombres inválidos: {names}.",
-    "audio_format": "El archivo de audio \"{name}\" tiene un formato no soportado. Solo se permiten .mp3 y .ogg.",
-    "spring_bone_count_exceeded": "Este modelo tiene {count} spring bones (máximo: {limit}). Reduce la cantidad de nodos de spring bones en tu editor 3D y vuelve a subir el archivo.",
-    "thumbnail_not_transparent": "El fondo de la miniatura no parece transparente. Los mercados muestran el color de rareza del ítem detrás de la miniatura, por lo que se requiere un fondo transparente."
+    "load_failed": "No pudimos cargar el ítem. Inténtalo de nuevo.",
+    "check_failed": "No pudimos revisar la miniatura. Asegúrate de que sea un PNG cuadrado con fondo transparente."
   },
   "item_editor": {
     "pick_collection": "Elige una colección para empezar a editar sus ítems.",
@@ -781,10 +761,10 @@
       "placeholder": "Reproducir emote"
     },
     "validation": {
-      "loading": "Revisando el modelo…",
-      "pass": "El modelo pasa todas las verificaciones.",
-      "warnings": "El modelo tiene advertencias. Haz clic para verlas.",
-      "errors": "El modelo tiene errores. Haz clic para verlos.",
+      "loading": "Revisando el ítem…",
+      "pass": "El ítem pasa todas las verificaciones.",
+      "warnings": "El ítem tiene advertencias. Haz clic para verlas.",
+      "errors": "El ítem tiene errores. Haz clic para verlos.",
       "idle": "",
       "modal_title": "Resultados de la validación",
       "label": {
@@ -793,7 +773,10 @@
         "warnings": "{count, plural, one {# advertencia} other {# advertencias}}",
         "errors": "{count, plural, one {# problema} other {# problemas}}",
         "idle": ""
-      }
+      },
+      "previewed_item": "Ítem en vista previa",
+      "check_failed": "No pudimos revisar el modelo. Inténtalo de nuevo, o guarda el ítem y vuelve a abrirlo.",
+      "check_crashed": "Esta verificación no pudo ejecutarse en el ítem. Inténtalo de nuevo más tarde."
     },
     "details": {
       "title": "Detalles",
@@ -1371,6 +1354,77 @@
       "deploy": "No pudimos subir los ítems.",
       "approve": "No pudimos aprobar la colección.",
       "retry": "Reintentar"
+    }
+  },
+  "item_validation": {
+    "checking": "Revisando tus ítems…",
+    "rerun": "Revisar de nuevo",
+    "rerun_label": "Revisar este ítem de nuevo",
+    "rerunning": "Revisando…",
+    "body_shape": {
+      "male": "Masculino",
+      "female": "Femenino"
+    },
+    "row": {
+      "errors_blocking": "Este ítem necesita algunas correcciones antes de publicar.\nHaz clic para ver los detalles.",
+      "errors": "Este ítem tiene algunos problemas que conviene corregir antes de publicar.\nHaz clic para ver los detalles.",
+      "warnings": "Este ítem se puede mejorar.\nHaz clic para ver los detalles."
+    },
+    "issues": {
+      "errors_blocking": {
+        "title": "Algunos ítems necesitan tu atención",
+        "intro": "Encontramos algunos problemas que debes resolver antes de publicar tu colección. Corrígelos e intenta publicar de nuevo."
+      },
+      "errors": {
+        "title": "Algunos ítems tienen problemas",
+        "intro": "Encontramos algunos problemas que podrían hacer que tus ítems sean rechazados durante la revisión de curaduría. Te recomendamos corregirlos primero, pero aún puedes continuar con la publicación."
+      },
+      "warnings": {
+        "title": "Algunas cosas para revisar",
+        "intro": "Encontramos algunas sugerencias que podrían ayudarte a mejorar tus ítems. Puedes revisarlas ahora o continuar con la publicación."
+      },
+      "back": "Volver a la colección",
+      "continue": "Continuar de todos modos"
+    }
+  },
+  "linked_collection": {
+    "edit_in_builder": "Editar en el Builder",
+    "third_party": "Tercero",
+    "network": "Red",
+    "contract": "Contrato vinculado",
+    "copy_contract": "Copiar dirección del contrato",
+    "contract_copied": "Dirección del contrato copiada",
+    "networks": {
+      "mainnet": "Ethereum",
+      "matic": "Polygon",
+      "sepolia": "Sepolia",
+      "amoy": "Amoy",
+      "base_mainnet": "Base",
+      "base_sepolia": "Base Sepolia",
+      "monad_mainnet": "Monad",
+      "monad_testnet": "Monad Testnet",
+      "ape_mainnet": "ApeChain",
+      "ape_caldera": "ApeChain Curtis"
+    },
+    "no_items": "Los ítems de esta colección vinculada se agregan y editan en el Builder.",
+    "list": {
+      "status": "Estado",
+      "mapping": "Tokens vinculados"
+    },
+    "item_status": {
+      "published": "Publicado",
+      "under_review": "En revisión",
+      "rejected": "Rechazado",
+      "not_published": "Sin publicar",
+      "retry": "No se pudo cargar · Reintentar"
+    },
+    "mapping": {
+      "none": "Sin vincular",
+      "any": "Cualquier token",
+      "single": "Token #{id}",
+      "range": "Tokens #{from}–#{to}",
+      "multiple": "{count, plural, one {# token} other {# tokens}}",
+      "rules": "{count, plural, one {# regla} other {# reglas}}"
     }
   }
 }

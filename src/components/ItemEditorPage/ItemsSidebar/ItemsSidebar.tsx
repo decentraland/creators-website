@@ -21,7 +21,7 @@ import { useScrollFades } from '~/hooks/useScrollFades'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
 import { getContentsStorageUrl } from '~/lib/builder'
-import { type Collection } from '~/lib/collections'
+import { type Collection, type CollectionDisplayStatus } from '~/lib/collections'
 import { groupItemsByType, hasRepresentationFor, type EditorMode } from '~/lib/itemEditor'
 import { BodyShapeType, ItemType, getItemBodyShapeType, isSmartWearable, type Item } from '~/lib/items'
 import { EditorSection } from '../EditorSection'
@@ -29,6 +29,8 @@ import * as S from './ItemsSidebar.styles'
 
 type Props = {
   collection: Collection
+  /** Hidden until known, so the pill never flips once shown. */
+  collectionStatus?: CollectionDisplayStatus
   items: Item[]
   isLoading: boolean
   selectedId: string | null
@@ -55,6 +57,7 @@ type Props = {
 
 export function ItemsSidebar({
   collection,
+  collectionStatus,
   items,
   isLoading,
   selectedId,
@@ -236,7 +239,9 @@ export function ItemsSidebar({
                 )}
               </S.TitleGroup>
               {/* The review bar shows the curation state instead. */}
-              {mode === 'edit' && <CollectionStatusPill collection={collection} />}
+              {mode === 'edit' && collectionStatus && (
+                <CollectionStatusPill collection={collection} status={collectionStatus} />
+              )}
             </S.CollectionName>
           </S.HeaderRow>
           {showAddItems && (

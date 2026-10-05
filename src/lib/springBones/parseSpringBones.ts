@@ -1,6 +1,9 @@
 // Reads the node tree straight out of a GLB/glTF's JSON chunk (no Three.js): spring bones are named
 // `*springbone*` and the physics editor only needs names and parent/child links.
-import { isSpringBoneName } from '../glbValidation/constants'
+// Kept equal to the validator manifest's springBoneToken by springBones.spec.ts.
+export const SPRING_BONE_TOKEN = 'springbone'
+
+export const isSpringBoneName = (name: string) => name.toLowerCase().includes(SPRING_BONE_TOKEN)
 
 const GLB_MAGIC = 0x46546c67 // 'glTF'
 const JSON_CHUNK_TYPE = 0x4e4f534a // 'JSON'

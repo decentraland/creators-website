@@ -184,6 +184,14 @@ describe('CollectionActionsMenu', () => {
       expect(screen.queryByTestId('collection-actions')).not.toBeInTheDocument()
     })
 
+    it('offers Preview items on a small screen, even for a draft', async () => {
+      const onPreviewItems = vi.fn()
+      renderMenu(draft, OWNER, { onPreviewItems })
+      await openMenu()
+      await userEvent.click(screen.getByTestId('preview-items-action'))
+      expect(onPreviewItems).toHaveBeenCalled()
+    })
+
     it('carries Send Items on a small screen, where the header button is hidden', async () => {
       const onSendItems = vi.fn()
       renderMenu({ ...draft, isPublished: true }, OWNER, { onSendItems })
@@ -195,10 +203,33 @@ describe('CollectionActionsMenu', () => {
     })
   })
 
+  it('never shows Preview items on desktop, where the Open Editor button covers it', async () => {
+    stubViewport(false)
+    renderMenu({ ...draft, isPublished: true }, OWNER, { onPreviewItems: vi.fn() })
+    await openMenu()
+    expect(screen.queryByTestId('preview-items-action')).not.toBeInTheDocument()
+  })
+
   it('never shows Send Items on desktop, where the header button covers it', async () => {
     stubViewport(false)
     renderMenu({ ...draft, isPublished: true }, OWNER, { onSendItems: vi.fn() })
     await openMenu()
     expect(screen.queryByTestId('send-items-action')).not.toBeInTheDocument()
+  })
+
+  it('offers only Edit in Builder for a linked collection, opening it in the legacy builder', async () => {
+    renderMenu({ ...draft, urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats', isPublished: true })
+    await openMenu()
+    expect(screen.queryByTestId('copy-urn')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('delete-collection')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByTestId('edit-in-builder'))
+    expect(openExternal).toHaveBeenCalledWith(expect.stringMatching(/\/builder\/thirdPartyCollections\/c1$/))
+  })
+
+  it('offers nothing for a linked collection on small screens, since the builder is desktop-only', () => {
+    stubViewport(true)
+    renderMenu({ ...draft, urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats', isPublished: true })
+    expect(screen.queryByTestId('collection-actions')).not.toBeInTheDocument()
   })
 })

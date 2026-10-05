@@ -135,6 +135,15 @@ describe('getPublishBlocker', () => {
     smart.contents['video.mp4'] = 'video'
     expect(getPublishBlocker(collection, 1, [smart])).toBeNull()
   })
+
+  it('blocks publishing on invalid items only when nothing else blocks it first', () => {
+    const invalid = { hasInvalidItems: true }
+    expect(getPublishBlocker(collection, 3, [], invalid)).toBe('has_invalid_items')
+    expect(getPublishBlocker(collection, 3, [], { hasInvalidItems: false })).toBeNull()
+    expect(getPublishBlocker(collection, 0, [], invalid)).toBe('no_items')
+    expect(getPublishBlocker(collection, MAX_PUBLISH_ITEMS + 1, [], invalid)).toBe('too_many_items')
+    expect(getPublishBlocker({ ...collection, isPublished: true }, 3, [], invalid)).toBe('not_draft')
+  })
 })
 
 describe('payment methods', () => {
