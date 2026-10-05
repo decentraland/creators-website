@@ -216,4 +216,20 @@ describe('CollectionActionsMenu', () => {
     await openMenu()
     expect(screen.queryByTestId('send-items-action')).not.toBeInTheDocument()
   })
+
+  it('offers only Edit in Builder for a linked collection, opening it in the legacy builder', async () => {
+    renderMenu({ ...draft, urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats', isPublished: true })
+    await openMenu()
+    expect(screen.queryByTestId('copy-urn')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('delete-collection')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByTestId('edit-in-builder'))
+    expect(openExternal).toHaveBeenCalledWith(expect.stringMatching(/\/builder\/thirdPartyCollections\/c1$/))
+  })
+
+  it('offers nothing for a linked collection on small screens, since the builder is desktop-only', () => {
+    stubViewport(true)
+    renderMenu({ ...draft, urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats', isPublished: true })
+    expect(screen.queryByTestId('collection-actions')).not.toBeInTheDocument()
+  })
 })

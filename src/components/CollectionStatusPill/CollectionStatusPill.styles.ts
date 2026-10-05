@@ -41,4 +41,13 @@ export const Pill = styled.span`
     border-color: ${theme.colors.muted2};
     background: rgba(160, 155, 168, 0.2); /* muted2 @ 20% */
   }
+  &[data-status='linked'] {
+    color: ${theme.colors.rarityLegendaryLight};
+    border-color: ${theme.colors.rarityLegendaryLight};
+    background: rgba(165, 36, 179, 0.3); /* brandViolet @ 30% */
+
+    svg {
+      font-size: 16px;
+    }
+  }
 `

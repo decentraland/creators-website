@@ -10,11 +10,13 @@ import {
   type CollectionCuration,
   type CollectionStatusCounts,
   type CollectionsList,
+  type CurationStatus,
   type FetchCollectionsParams,
   type PaginatedResource,
   type RemoteCollection
 } from '~/lib/collections'
 import { VIDEO_PATH, fromRemoteItem, toRemoteItem, type Item, type RemoteItem } from '~/lib/items'
+import { type ThirdParty } from '~/lib/linkedCollections'
 import { type BlockchainRarity } from '~/lib/rarities'
 
 export type CollectionItemPreview = {
@@ -127,6 +129,22 @@ export async function fetchCollectionCuration(
     false
   )
   return curation ?? null
+}
+
+/** The latest curation of each item of a linked collection: GET /collections/{id}/itemCurations. */
+export async function fetchItemCurations(address: string, collectionId: string): Promise<Map<string, CurationStatus>> {
+  const curations = await request<{ item_id: string; status: CurationStatus }[]>(
+    address,
+    'GET',
+    `/collections/${collectionId}/itemCurations`
+  )
+  return new Map(curations.map(curation => [curation.item_id, curation.status]))
+}
+
+/** A third party's name and managers: GET /thirdParties/{id}. 404 for an unpublished one the signer doesn't manage. */
+export async function fetchThirdParty(address: string, thirdPartyId: string): Promise<ThirdParty> {
+  const thirdParty = await request<ThirdParty>(address, 'GET', `/thirdParties/${encodeURIComponent(thirdPartyId)}`)
+  return { name: thirdParty.name, managers: thirdParty.managers ?? [] }
 }
 
 /** Delete an unpublished collection and its items: DELETE /collections/{id} (409 published, 423 locked). */

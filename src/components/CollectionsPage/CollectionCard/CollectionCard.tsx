@@ -3,9 +3,10 @@ import { useLocation } from 'react-router-dom'
 import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
 import { formatTimeAgo } from '~/lib/time'
-import { type Collection } from '~/lib/collections'
+import { isLinkedCollection, type Collection } from '~/lib/collections'
 import { CollectionMosaic } from '../CollectionMosaic'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
+import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import * as S from './CollectionCard.styles'
 
 type Props = {
@@ -23,28 +24,40 @@ export function CollectionCard({ collection }: Props) {
   const { search } = useLocation()
 
   return (
-    <S.Card data-testid="collection-card" to={`/collections/${collection.id}`} state={{ listSearch: search }}>
-      <S.Media>
-        <CollectionMosaic collectionId={collection.id} itemCount={collection.itemCount} />
-        {address && <S.RoleBadge collection={collection} address={address} />}
-      </S.Media>
-      <S.Body>
-        <S.NameRow>
-          <S.Name title={collection.name}>{collection.name}</S.Name>
-          <CollectionStatusPill collection={collection} />
-        </S.NameRow>
-        <S.Meta data-testid="collection-card-items">
-          {t('collections_page.item_count', { count: collection.itemCount })}
-        </S.Meta>
-        <S.Meta data-testid="collection-card-updated">
-          {t('collections_page.updated_ago', {
-            timeAgo: formatTimeAgo(collection.lastActivityAt ?? collection.updatedAt, locale)
-          })}
-        </S.Meta>
-        <S.Manage data-testid="collection-card-manage" aria-hidden>
-          {t('collections_page.manage')}
-        </S.Manage>
-      </S.Body>
-    </S.Card>
+    <S.Frame>
+      <S.Card data-testid="collection-card" to={`/collections/${collection.id}`} state={{ listSearch: search }}>
+        <S.Media>
+          <CollectionMosaic collectionId={collection.id} itemCount={collection.itemCount} />
+          {address && <S.RoleBadge collection={collection} address={address} />}
+        </S.Media>
+        <S.Body>
+          <S.NameRow>
+            <S.Name title={collection.name}>{collection.name}</S.Name>
+            <CollectionStatusPill collection={collection} />
+          </S.NameRow>
+          <S.Meta data-testid="collection-card-items">
+            {t('collections_page.item_count', { count: collection.itemCount })}
+          </S.Meta>
+          <S.Meta data-testid="collection-card-updated">
+            {t('collections_page.updated_ago', {
+              timeAgo: formatTimeAgo(collection.lastActivityAt ?? collection.updatedAt, locale)
+            })}
+          </S.Meta>
+          <S.Manage data-testid="collection-card-manage" aria-hidden>
+            {t('collections_page.manage')}
+          </S.Manage>
+        </S.Body>
+      </S.Card>
+      {address && isLinkedCollection(collection) && (
+        <S.Menu>
+          <CollectionActionsMenu
+            collection={collection}
+            address={address}
+            variant="row"
+            label={t('collections_page.row_actions')}
+          />
+        </S.Menu>
+      )}
+    </S.Frame>
   )
 }
