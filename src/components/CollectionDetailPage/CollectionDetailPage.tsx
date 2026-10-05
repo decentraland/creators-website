@@ -23,7 +23,8 @@ import {
   canSellCollectionItems,
   hasBeenApproved,
   hasCollectionRole,
-  isCollectionLocked
+  isCollectionLocked,
+  isLinkedCollection
 } from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
 import { track } from '~/lib/analytics'
@@ -66,7 +67,10 @@ import { Pagination } from '~/components/Pagination'
 import { ValidationResultsModal } from '~/components/ValidationBadge'
 import addItemsArt from '~/assets/add-items.png'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
+import { useThirdParty } from '~/hooks/useLinkedCollection'
+import { getThirdPartyId, isThirdPartyManager } from '~/lib/linkedCollections'
 import { AddItemsModal } from './AddItemsModal'
+import { LinkedCollectionView } from './LinkedCollectionView'
 import { ItemActionsMenu } from './ItemActionsMenu'
 import { ItemListRow } from './ItemListRow'
 import { PublishCollectionModal, PublishSuccessModal, type PublishResume } from './PublishCollectionModal'
@@ -143,6 +147,10 @@ const CollectionDetailPage = () => {
   const compact = useMediaQuery(theme.media.noActions)
 
   const collection = collectionQuery.data
+  // Linked collections are read-only here: none of the publishing, sales or sync machinery runs for them.
+  const isLinked = !!collection && isLinkedCollection(collection)
+  const standardCollection = isLinked ? undefined : collection
+  const thirdParty = useThirdParty(address, isLinked ? collection : undefined)
   const allItems = itemsQuery.data
   const total = allItems?.length ?? 0
   const counts = useMemo(() => countItemsByType(allItems ?? []), [allItems])
@@ -156,11 +164,11 @@ const CollectionDetailPage = () => {
   )
   // Play Mode is an emote-only attribute; the column exists only while the visible page has emotes.
   const withPlayMode = useMemo(() => results.some(item => item.type === ItemType.EMOTE), [results])
-  useSyncPublishedItems(address, collection, allItems ?? [])
+  useSyncPublishedItems(address, standardCollection, allItems ?? [])
   // Price, Sales and Sale Status exist once the collection is published; the owner can put items on sale
   // once it has been approved at least once, even if it is under review again.
-  const withMarket = !!collection?.isPublished
-  const status = useCollectionStatus(address, collection)
+  const withMarket = !!standardCollection?.isPublished
+  const status = useCollectionStatus(address, standardCollection)
   const statusHint =
     status === CollectionDisplayStatus.UNDER_REVIEW
       ? t('collection_status.under_review_hint')
@@ -171,15 +179,18 @@ const CollectionDetailPage = () => {
   const canListItems = useFeatureFlag(FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS).enabled
   const isApprovedForSale = canListItems && !!collection && hasBeenApproved(collection)
   const isSeller = canListItems && !!collection && canSellCollectionItems(collection, address)
-  const canSend = useMemo(() => !!collection && canSendCollectionItems(collection, address), [collection, address])
+  const canSend = useMemo(
+    () => !!standardCollection && canSendCollectionItems(standardCollection, address),
+    [standardCollection, address]
+  )
   const [isSending, setSending] = useState(false)
   const [managingRoles, setManagingRoles] = useState<RoleKind | null>(null)
-  const listingsQuery = useCollectionListings(withMarket ? collection.contractAddress : undefined)
+  const listingsQuery = useCollectionListings(withMarket ? standardCollection.contractAddress : undefined)
   const listings = listingsQuery.data
   // `undefined` keeps the price cell blank while the catalog loads; a failed request shows no price rather than an error.
   const listingFor = (item: Item) =>
     listings ? (listings.get(item.tokenId ?? '') ?? null) : listingsQuery.isError ? null : undefined
-  const syncs = useItemSyncs(address, collection, allItems ?? [])
+  const syncs = useItemSyncs(address, standardCollection, allItems ?? [])
 
   // Drafts check every item; published collections only the items with changes waiting for approval.
   // Small screens are a viewer and check nothing, unless the publish modal is already open: crossing the
@@ -187,10 +198,10 @@ const CollectionDetailPage = () => {
   const validates = !compact || publishView === 'wizard'
   const validationItems = useMemo(
     () =>
-      !validates || !collection || !allItems
+      !validates || !standardCollection || !allItems
         ? NO_ITEMS
-        : allItems.filter(item => !collection.isPublished || hasPendingChanges(syncs.get(item.id)?.status)),
-    [validates, collection, allItems, syncs]
+        : allItems.filter(item => !standardCollection.isPublished || hasPendingChanges(syncs.get(item.id)?.status)),
+    [validates, standardCollection, allItems, syncs]
   )
   const validation = useCollectionValidation(validationItems, validates)
   const blockOnErrors = useFeatureFlag(FeatureFlag.BLOCK_PUBLISH_ON_VALIDATION_ERRORS).enabled
@@ -220,7 +231,12 @@ const CollectionDetailPage = () => {
     [validation.results]
   )
 
-  const isLoading = !restored || (!!address && (collectionQuery.isLoading || itemsQuery.isLoading))
+  const isLoading =
+    !restored || (!!address && (collectionQuery.isLoading || itemsQuery.isLoading || thirdParty.isLoading))
+  const isThirdPartyNotFound =
+    thirdParty.isError &&
+    thirdParty.error instanceof BuilderServerError &&
+    NOT_FOUND_STATUSES.includes(thirdParty.error.status)
   // builder-server serves published collections to any signer; addresses with no role on it get
   // the same "not found" as a rejected request, so strangers can't browse other creators' work.
   const isNotFound =
@@ -228,8 +244,13 @@ const CollectionDetailPage = () => {
     (collectionQuery.isError &&
       collectionQuery.error instanceof BuilderServerError &&
       NOT_FOUND_STATUSES.includes(collectionQuery.error.status)) ||
-    (!!collection && !hasCollectionRole(collection, address))
-  const isError = !isNotFound && (collectionQuery.isError || itemsQuery.isError)
+    (!!collection &&
+      (isLinked
+        ? !getThirdPartyId(collection) ||
+          isThirdPartyNotFound ||
+          (!!thirdParty.data && !isThirdPartyManager(thirdParty.data, address))
+        : !hasCollectionRole(collection, address)))
+  const isError = !isNotFound && (collectionQuery.isError || itemsQuery.isError || thirdParty.isError)
   const isEmpty = filteredTotal === 0
   const hasItems = total > 0
   const canRename = !!collection && !collection.isPublished && !isCollectionLocked(collection)
@@ -368,11 +389,22 @@ const CollectionDetailPage = () => {
             onClick={() => {
               void collectionQuery.refetch()
               void itemsQuery.refetch()
+              if (thirdParty.isError) void thirdParty.refetch()
             }}
           >
             {t('collection_detail_page.error.retry')}
           </Button>
         </S.Panel>
+      ) : isLinked && address ? (
+        <LinkedCollectionView
+          collection={collection}
+          thirdPartyName={thirdParty.data?.name}
+          items={allItems ?? []}
+          address={address}
+          page={page}
+          onBack={() => navigate({ pathname: '/collections', search: listState?.listSearch })}
+          onPageChange={goToPage}
+        />
       ) : (
         <>
           <S.Header>

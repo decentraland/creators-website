@@ -14,7 +14,8 @@
       "draft": "Draft ({count})",
       "under_review": "Under review ({count})",
       "rejected": "Rejected ({count})",
-      "disabled": "Disabled ({count})"
+      "disabled": "Disabled ({count})",
+      "linked": "Linked ({count})"
     },
     "view_mode": "View mode",
     "view_grid": "Grid view",
@@ -65,7 +66,8 @@
     "published": "Published",
     "rejected": "Rejected",
     "disabled": "Disabled",
-    "disabled_hint": "Your collection was disabled by the curation team. Please get in touch with your assigned curator to review it."
+    "disabled_hint": "Your collection was disabled by the curation team. Please get in touch with your assigned curator to review it.",
+    "linked": "Linked"
   },
   "pagination": {
     "previous": "Previous page",
@@ -1216,6 +1218,46 @@
       },
       "back": "Back to collection",
       "continue": "Continue anyway"
+    }
+  },
+  "linked_collection": {
+    "edit_in_builder": "Edit in Builder",
+    "third_party": "Third party",
+    "network": "Network",
+    "contract": "Linked contract",
+    "copy_contract": "Copy contract address",
+    "contract_copied": "Contract address copied",
+    "networks": {
+      "mainnet": "Ethereum",
+      "matic": "Polygon",
+      "sepolia": "Sepolia",
+      "amoy": "Amoy",
+      "base_mainnet": "Base",
+      "base_sepolia": "Base Sepolia",
+      "monad_mainnet": "Monad",
+      "monad_testnet": "Monad Testnet",
+      "ape_mainnet": "ApeChain",
+      "ape_caldera": "ApeChain Curtis"
+    },
+    "no_items": "Items for this linked collection are added and edited in the Builder.",
+    "list": {
+      "status": "Status",
+      "mapping": "Token mapping"
+    },
+    "item_status": {
+      "published": "Published",
+      "under_review": "Under review",
+      "rejected": "Rejected",
+      "not_published": "Not published",
+      "retry": "Couldn't load · Retry"
+    },
+    "mapping": {
+      "none": "No mapping",
+      "any": "Any token",
+      "single": "Token #{id}",
+      "range": "Tokens #{from}–#{to}",
+      "multiple": "{count, plural, one {# token} other {# tokens}}",
+      "rules": "{count, plural, one {# rule} other {# rules}}"
     }
   }
 }

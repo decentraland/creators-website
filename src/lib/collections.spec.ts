@@ -15,8 +15,11 @@ import {
   CollectionRole,
   hasBeenApproved,
   isCollectionLocked,
+  isLinkedCollection,
   isStatusFilterShown,
-  statusFilterToParams,
+  listFilterToParams,
+  summarizeCollections,
+  LINKED_FILTER,
   toCollectionsQueryString,
   toRemoteCollection,
   validateCollectionName,
@@ -114,11 +117,40 @@ describe('toCollectionsQueryString', () => {
   })
 })
 
-describe('statusFilterToParams', () => {
-  it('sends every chip but All as the status param', () => {
-    expect(statusFilterToParams(CollectionStatusFilter.ALL)).toEqual({})
-    expect(statusFilterToParams(CollectionStatusFilter.UNDER_REVIEW)).toEqual({ status: 'under_review' })
-    expect(toCollectionsQueryString(statusFilterToParams(CollectionStatusFilter.DISABLED))).toBe('?status=disabled')
+describe('listFilterToParams', () => {
+  it('lists standard and linked collections together under All', () => {
+    expect(toCollectionsQueryString(listFilterToParams(CollectionStatusFilter.ALL))).toBe('')
+  })
+
+  it('sends every status chip as the status param', () => {
+    expect(toCollectionsQueryString(listFilterToParams(CollectionStatusFilter.UNDER_REVIEW))).toBe(
+      '?status=under_review'
+    )
+    expect(toCollectionsQueryString(listFilterToParams(CollectionStatusFilter.DISABLED))).toBe('?status=disabled')
+  })
+
+  it('lists only linked collections under the Linked chip', () => {
+    expect(toCollectionsQueryString(listFilterToParams(LINKED_FILTER))).toBe('?type=third_party')
+  })
+})
+
+describe('summarizeCollections', () => {
+  const counts = { draft: 3, under_review: 1, published: 6, rejected: 0, disabled: 0 }
+
+  it('counts as linked the collections the status counts leave out', () => {
+    const list = { results: [], total: 12, limit: 1, page: 1, pages: 12, counts }
+    expect(summarizeCollections(list)).toEqual({ counts, linkedTotal: 2 })
+  })
+
+  it('has nothing to summarize without counts', () => {
+    expect(summarizeCollections({ results: [], total: 0, limit: 1, page: 1, pages: 0 })).toBeUndefined()
+  })
+})
+
+describe('isLinkedCollection', () => {
+  it('tells linked collections apart by their third-party URN', () => {
+    expect(isLinkedCollection({ urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats' })).toBe(true)
+    expect(isLinkedCollection({ urn: 'urn:decentraland:amoy:collections-v2:0xcontract' })).toBe(false)
   })
 })
 
@@ -145,6 +177,12 @@ describe('getCollectionDisplayStatus', () => {
 
   it.each([
     ['a draft', { ...base, isPublished: false }, null, CollectionDisplayStatus.DRAFT],
+    [
+      'a linked collection',
+      { ...published, urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats' },
+      CurationStatus.APPROVED,
+      CollectionDisplayStatus.LINKED
+    ],
     [
       'a draft whose publish is in flight',
       { ...base, isPublished: false, lock: now },

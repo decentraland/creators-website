@@ -1,4 +1,5 @@
 import styled from '@emotion/styled'
+import { EMPTY_MEDIA_BACKGROUND } from '~/lib/rarities'
 import { theme } from '~/styles/theme'
 
 // minmax(0, 1fr) tracks so object-fit can shrink images instead of the intrinsic size blowing the grid.
@@ -11,6 +12,9 @@ export const Mosaic = styled.div`
   background: ${theme.colors.media};
   overflow: hidden;
 
+  &[data-empty] {
+    background-image: ${EMPTY_MEDIA_BACKGROUND};
+  }
   &[data-count='1'] > * {
     grid-column: 1 / -1;
     grid-row: 1 / -1;

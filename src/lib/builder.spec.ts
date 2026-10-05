@@ -5,6 +5,8 @@ import {
   fetchCollectionItemPreviews,
   fetchCollections,
   fetchItemContents,
+  fetchItemCurations,
+  fetchThirdParty,
   getContentsStorageUrl,
   saveItem
 } from './builder'
@@ -307,5 +309,40 @@ describe('fetchCollectionCuration', () => {
   it('answers null for a collection that was never reviewed', async () => {
     signedFetchMock.mockResolvedValue(jsonResponse({ ok: true }))
     await expect(fetchCollectionCuration(ADDRESS, 'a1b2')).resolves.toBeNull()
+  })
+})
+
+describe('fetchItemCurations', () => {
+  it("answers each item's latest curation status by item id", async () => {
+    signedFetchMock.mockResolvedValue(
+      okResponse([
+        { id: 'ic1', item_id: 'i1', status: 'approved' },
+        { id: 'ic2', item_id: 'i2', status: 'pending' }
+      ])
+    )
+    const curations = await fetchItemCurations(ADDRESS, 'a1b2')
+    expect(curations.get('i1')).toBe('approved')
+    expect(curations.get('i2')).toBe('pending')
+    expect(curations.has('i3')).toBe(false)
+  })
+
+  it('answers no curations for a collection none of whose items was submitted yet', async () => {
+    signedFetchMock.mockResolvedValue(jsonResponse({ ok: false, error: 'Unpublished collection' }, false, 409))
+    await expect(fetchItemCurations(ADDRESS, 'a1b2')).resolves.toEqual(new Map())
+  })
+
+  it('still fails on any other error', async () => {
+    signedFetchMock.mockResolvedValue(jsonResponse({ ok: false, error: 'Unauthorized' }, false, 401))
+    await expect(fetchItemCurations(ADDRESS, 'a1b2')).rejects.toThrow('Unauthorized')
+  })
+})
+
+describe('fetchThirdParty', () => {
+  it("answers the third party's name and managers", async () => {
+    signedFetchMock.mockResolvedValue(okResponse({ id: 'urn:tp', name: 'Brand X', managers: [ADDRESS] }))
+    await expect(fetchThirdParty(ADDRESS, 'urn:decentraland:amoy:collections-thirdparty:brand')).resolves.toEqual({
+      name: 'Brand X',
+      managers: [ADDRESS]
+    })
   })
 })

@@ -87,7 +87,9 @@ export enum CollectionDisplayStatus {
   UNDER_REVIEW = 'under_review',
   PUBLISHED = 'published',
   REJECTED = 'rejected',
-  DISABLED = 'disabled'
+  DISABLED = 'disabled',
+  /** A linked (third-party) collection: read-only here, its items are curated one by one. */
+  LINKED = 'linked'
 }
 
 /** The page's status filter chips, in display order. Values double as the `status` URL and API param. */
@@ -175,9 +177,36 @@ export function toCollectionsQueryString(params: FetchCollectionsParams): string
   return s ? `?${s}` : ''
 }
 
-/** Extra fetch params each status filter chip translates to. */
-export function statusFilterToParams(filter: CollectionStatusFilter): Partial<FetchCollectionsParams> {
+/** The Linked chip: a type filter beside the status chips, sharing their `status` URL param. */
+export const LINKED_FILTER = 'linked'
+
+export type CollectionListFilter = CollectionStatusFilter | typeof LINKED_FILTER
+
+/**
+ * Extra fetch params each list chip translates to. All omits the type so standard and linked collections
+ * page together; builder-server gives linked collections no status, so status chips never match them.
+ */
+export function listFilterToParams(filter: CollectionListFilter): Partial<FetchCollectionsParams> {
+  if (filter === LINKED_FILTER) return { type: CollectionType.THIRD_PARTY }
   return filter === CollectionStatusFilter.ALL ? {} : { status: filter }
+}
+
+export type CollectionsSummary = { counts: CollectionStatusCounts; linkedTotal: number }
+
+/**
+ * The chip counts, from an unfiltered list: builder-server counts only standard collections by status
+ * (linked ones have none), so the linked ones are the rest of the total.
+ */
+export function summarizeCollections(list: CollectionsList): CollectionsSummary | undefined {
+  if (!list.counts) return undefined
+  const counts = list.counts
+  const standardTotal = counts.published + counts.draft + counts.under_review + counts.rejected + counts.disabled
+  return { counts, linkedTotal: Math.max(0, list.total - standardTotal) }
+}
+
+/** builder-server omits `third_party_id`, so the URN (`urn:decentraland:{network}:collections-thirdparty:…`) is the tell. */
+export function isLinkedCollection(collection: Pick<Collection, 'urn'>): boolean {
+  return collection.urn?.split(':')[3] === 'collections-thirdparty'
 }
 
 /** Mirrors builder-server's `/:address/collections` status filter, so a pill always matches its chip. */
@@ -185,6 +214,7 @@ export function getCollectionDisplayStatus(
   collection: Collection,
   curationStatus = collection.curationStatus
 ): CollectionDisplayStatus {
+  if (isLinkedCollection(collection)) return CollectionDisplayStatus.LINKED
   // A locked draft has its publish transaction in flight: the server just hasn't seen it yet, so it stays
   // under the Draft chip while its pill already says Publishing.
   if (!collection.isPublished) {
