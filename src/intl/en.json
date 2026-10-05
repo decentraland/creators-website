@@ -707,7 +707,7 @@
       },
       "disable": {
         "title": "Disable {collection}?",
-        "description": "New copies of its items can't be minted or sold anymore; items people already own aren't affected. You can enable it again later. Please confirm in your wallet.",
+        "description": "New copies of its items can't be minted or sold anymore; items people already own aren't affected. You can enable it again later.\nPlease confirm in your wallet.",
         "confirm": "Disable",
         "error": "We couldn't disable the collection. Please try again.",
         "success": "{collection} was disabled"

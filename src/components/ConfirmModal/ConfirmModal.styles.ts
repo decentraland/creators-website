@@ -55,6 +55,7 @@ export const Text = styled.p`
     font-size: 16px;
     line-height: 1.6;
   }
+  white-space: pre-line;
 `
 
 export { ModalActions as Actions } from '~/styles/shared'
