@@ -347,9 +347,15 @@ export async function publishCollectionItems(
 }
 
 /** One stored file by hash, from public storage. */
-/** A stored file's size in bytes, from a HEAD request so nothing downloads; 0 when storage doesn't say. */
+/**
+ * A stored file's size in bytes, or 0 when storage doesn't say. The bucket's CORS allows only GET, so this reads the
+ * headers of a GET and cancels it before the body downloads.
+ */
 export async function fetchContentSize(hash: string): Promise<number> {
-  const response = await fetch(getContentsStorageUrl(hash), { method: 'HEAD', cache: 'no-cache' })
+  const controller = new AbortController()
+  // no-cache for the same reason as fetchContent: a cached copy from an <img> has no CORS headers.
+  const response = await fetch(getContentsStorageUrl(hash), { cache: 'no-cache', signal: controller.signal })
+  controller.abort()
   if (!response.ok) throw new BuilderServerError(`Could not read ${hash} (${response.status})`, response.status)
   return Number(response.headers.get('content-length')) || 0
 }

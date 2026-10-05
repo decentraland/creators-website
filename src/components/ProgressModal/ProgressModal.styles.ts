@@ -2,6 +2,8 @@ import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
 
 const fill = `linear-gradient(90deg, ${theme.colors.dclRed} 0%, ${theme.colors.amber} 100%)`
+// A sweep across the empty track while work is in flight, so a bar waiting on its first unit never looks stuck.
+const shimmer = `linear-gradient(90deg, ${theme.colors.glassHover} 0%, ${theme.colors.glassLine} 50%, ${theme.colors.glassHover} 100%)`
 
 export const Wrap = styled.div`
   display: flex;
@@ -48,6 +50,28 @@ export const Bar = styled.progress`
 
   &::-webkit-progress-bar {
     background: ${theme.colors.glassHover};
+  }
+  &[data-active],
+  &[data-active]::-webkit-progress-bar {
+    background: ${shimmer};
+    background-size: 200% 100%;
+    animation: progress-shimmer 1.4s linear infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &[data-active],
+    &[data-active]::-webkit-progress-bar {
+      animation: none;
+    }
+  }
+
+  @keyframes progress-shimmer {
+    from {
+      background-position: 100% 0;
+    }
+    to {
+      background-position: -100% 0;
+    }
   }
   &::-webkit-progress-value {
     border-radius: ${theme.radius.pill};

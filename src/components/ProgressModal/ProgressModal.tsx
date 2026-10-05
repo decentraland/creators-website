@@ -29,7 +29,13 @@ export function ProgressModal({ title, heading, description, label, done, total,
         <S.Description>{description}</S.Description>
         <S.Label>{label}</S.Label>
         <S.Row>
-          <S.Bar value={done} max={total} aria-label={label} data-testid={`${testId}-bar`} />
+          <S.Bar
+            value={done}
+            max={total}
+            aria-label={label}
+            data-active={done < total || undefined}
+            data-testid={`${testId}-bar`}
+          />
           <S.Count data-testid={`${testId}-count`}>
             {done}/{total}
           </S.Count>
