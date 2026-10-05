@@ -16,9 +16,11 @@ vi.mock('~/lib/builder', () => ({
   getContentsStorageUrl: (hash: string) => `https://builder.example/storage/${hash}`
 }))
 vi.mock('~/lib/clipboard', () => ({ copyToClipboard: vi.fn().mockResolvedValue(true) }))
+vi.mock('~/lib/navigation', () => ({ openExternal: vi.fn() }))
 
 import { fetchItemCurations } from '~/lib/builder'
 import { copyToClipboard } from '~/lib/clipboard'
+import { openExternal } from '~/lib/navigation'
 
 const OWNER = '0xabc'
 const CONTRACT = '0x1d9fb685c257e74f869ba302e260c0b68f5ebb37'
@@ -95,15 +97,13 @@ describe('LinkedCollectionView', () => {
     ;(fetchItemCurations as Mock).mockResolvedValue(new Map([['i1', CurationStatus.APPROVED]]))
   })
 
-  it('shows the linked contract and links to the legacy builder for editing', () => {
+  it('shows the linked contract and links to the legacy builder for editing', async () => {
     renderView()
     expect(screen.getByTestId('linked-third-party')).toHaveTextContent('Brand X')
     expect(screen.getByTestId('linked-network')).toHaveTextContent('Amoy')
     expect(screen.getByTestId('linked-contract-address')).toHaveTextContent('0x1d9f…bb37')
-    expect(screen.getByTestId('edit-in-builder')).toHaveAttribute(
-      'href',
-      expect.stringMatching(/\/builder\/thirdPartyCollections\/c1$/)
-    )
+    await userEvent.click(screen.getByTestId('edit-in-builder'))
+    expect(openExternal).toHaveBeenCalledWith(expect.stringMatching(/\/builder\/thirdPartyCollections\/c1$/))
   })
 
   it('shows each item with its curation status and token mapping', async () => {

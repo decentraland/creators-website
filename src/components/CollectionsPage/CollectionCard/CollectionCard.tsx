@@ -4,6 +4,8 @@ import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
 import { formatTimeAgo } from '~/lib/time'
 import { isLinkedCollection, type Collection } from '~/lib/collections'
+import { useMediaQuery } from '~/hooks/useMediaQuery'
+import { theme } from '~/styles/theme'
 import { CollectionMosaic } from '../CollectionMosaic'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
@@ -22,6 +24,8 @@ export function CollectionCard({ collection }: Props) {
   const { locale } = useIntl()
   const address = useWallet(state => state.session?.address)
   const { search } = useLocation()
+  // Its only entry, Edit in Builder, is desktop-only.
+  const compact = useMediaQuery(theme.media.noActions)
 
   return (
     <S.Frame>
@@ -48,12 +52,13 @@ export function CollectionCard({ collection }: Props) {
           </S.Manage>
         </S.Body>
       </S.Card>
-      {address && isLinkedCollection(collection) && (
+      {address && !compact && isLinkedCollection(collection) && (
         <S.Menu>
           <CollectionActionsMenu
             collection={collection}
             address={address}
             variant="row"
+            source="card"
             label={t('collections_page.row_actions')}
           />
         </S.Menu>

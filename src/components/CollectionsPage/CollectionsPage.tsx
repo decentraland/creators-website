@@ -79,7 +79,13 @@ const CollectionsPage = () => {
   useEffect(() => setSearchInput(search), [search])
   useEffect(() => () => clearTimeout(searchTimer.current), [])
 
-  const collections = useCollections(address, { page, search, status, sort: CollectionSort.LAST_ACTIVITY_DESC })
+  const collections = useCollections(address, {
+    page,
+    search,
+    status,
+    sort: CollectionSort.LAST_ACTIVITY_DESC,
+    includeLinked: true
+  })
   const summary = useCollectionsSummary(address, search)
   const counts = summary.data?.counts
   const linkedTotal = summary.data?.linkedTotal ?? 0

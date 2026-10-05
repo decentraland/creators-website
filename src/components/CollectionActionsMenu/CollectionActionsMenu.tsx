@@ -23,6 +23,8 @@ type Props = {
   /** The owner-only role entries (collaborators / senders); off in list rows. */
   showRoles?: boolean
   label?: string
+  /** Where the menu sits, for analytics: a grid card or a list row. */
+  source?: 'card' | 'list'
   /** Opens the Send Items flow; the header button covers this on desktop, so the item shows only when compact. */
   onSendItems?: () => void
   /** Opens the items in the editor; the header button covers this on desktop, so the item shows only when compact. */
@@ -38,6 +40,7 @@ export function CollectionActionsMenu({
   variant = 'header',
   showRoles = true,
   label,
+  source,
   onSendItems,
   onPreviewItems,
   onManageRoles,
@@ -74,10 +77,7 @@ export function CollectionActionsMenu({
         <ActionsMenuItem
           testId="edit-in-builder"
           onClick={() => {
-            track('Edit linked collection in builder', {
-              collectionId: collection.id,
-              source: variant === 'row' ? 'card' : 'detail'
-            })
+            track('Edit linked collection in builder', { collectionId: collection.id, source })
             openExternal(builderLinkedCollectionUrl(collection.id))
           }}
         >

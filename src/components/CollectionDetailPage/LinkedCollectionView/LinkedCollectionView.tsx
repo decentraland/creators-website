@@ -24,6 +24,7 @@ import {
   summarizeMapping,
   type MappingSummary
 } from '~/lib/linkedCollections'
+import { openExternal } from '~/lib/navigation'
 import { useNotifications } from '~/lib/notifications'
 import { pageRangeLabel } from '~/lib/pagination'
 import { useItemCurations } from '~/hooks/useLinkedCollection'
@@ -128,16 +129,14 @@ export function LinkedCollectionView({
         </P.HeaderLeft>
         <P.HeaderActions>
           <Button
-            as="a"
+            type="button"
             variant="secondary"
-            href={builderLinkedCollectionUrl(collection.id)}
-            target="_blank"
-            rel="noopener noreferrer"
             data-desktop-only
             data-testid="edit-in-builder"
-            onClick={() =>
+            onClick={() => {
               track('Edit linked collection in builder', { collectionId: collection.id, source: 'detail' })
-            }
+              openExternal(builderLinkedCollectionUrl(collection.id))
+            }}
           >
             {t('linked_collection.edit_in_builder')}
             <OpenInNewIcon fontSize="small" aria-hidden />

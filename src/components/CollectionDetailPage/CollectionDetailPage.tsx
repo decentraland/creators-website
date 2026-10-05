@@ -66,7 +66,7 @@ import { Pagination } from '~/components/Pagination'
 import addItemsArt from '~/assets/add-items.png'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { useThirdParty } from '~/hooks/useLinkedCollection'
-import { isThirdPartyManager } from '~/lib/linkedCollections'
+import { getThirdPartyId, isThirdPartyManager } from '~/lib/linkedCollections'
 import { AddItemsModal } from './AddItemsModal'
 import { LinkedCollectionView } from './LinkedCollectionView'
 import { ItemActionsMenu } from './ItemActionsMenu'
@@ -204,7 +204,9 @@ const CollectionDetailPage = () => {
       NOT_FOUND_STATUSES.includes(collectionQuery.error.status)) ||
     (!!collection &&
       (isLinked
-        ? isThirdPartyNotFound || (!!thirdParty.data && !isThirdPartyManager(thirdParty.data, address))
+        ? !getThirdPartyId(collection) ||
+          isThirdPartyNotFound ||
+          (!!thirdParty.data && !isThirdPartyManager(thirdParty.data, address))
         : !hasCollectionRole(collection, address)))
   const isError = !isNotFound && (collectionQuery.isError || itemsQuery.isError || thirdParty.isError)
   const isEmpty = filteredTotal === 0

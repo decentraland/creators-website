@@ -16,11 +16,6 @@ export const Menu = styled.div`
   top: 8px;
   right: 8px;
   z-index: 1;
-
-  ${mobile} {
-    right: auto;
-    left: 96px;
-  }
 `
 
 export const Card = styled(Link)`

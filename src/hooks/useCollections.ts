@@ -17,21 +17,25 @@ export type CollectionsFilters = {
   status: CollectionListFilter
   sort?: CollectionSort
   limit?: number
+  /** List linked (third-party) collections too; off by default, since only My collections shows them. */
+  includeLinked?: boolean
 }
 
 export function useCollections(
   address: string | undefined,
-  { page, search, status, sort, limit = COLLECTIONS_PAGE_SIZE }: CollectionsFilters
+  { page, search, status, sort, limit = COLLECTIONS_PAGE_SIZE, includeLinked = false }: CollectionsFilters
 ) {
   return useQuery({
-    queryKey: ['collections', address, page, search, status, sort, limit],
+    queryKey: ['collections', address, page, search, status, sort, limit, includeLinked],
     queryFn: () =>
       fetchCollections(address!, {
         page,
         limit,
         q: search || undefined,
         sort,
-        ...listFilterToParams(status)
+        ...(includeLinked
+          ? listFilterToParams(status)
+          : { ...listFilterToParams(status), type: CollectionType.STANDARD })
       }),
     enabled: !!address,
     // Keeps the previous page rendered while the next one loads, like the legacy page.

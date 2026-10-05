@@ -51,6 +51,7 @@ export function CollectionListRow({ collection }: Props) {
             collection={collection}
             address={address}
             variant="row"
+            source="list"
             showRoles={false}
             label={t('collections_page.row_actions')}
           />

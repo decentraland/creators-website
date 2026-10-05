@@ -325,6 +325,16 @@ describe('fetchItemCurations', () => {
     expect(curations.get('i2')).toBe('pending')
     expect(curations.has('i3')).toBe(false)
   })
+
+  it('answers no curations for a collection none of whose items was submitted yet', async () => {
+    signedFetchMock.mockResolvedValue(jsonResponse({ ok: false, error: 'Unpublished collection' }, false, 409))
+    await expect(fetchItemCurations(ADDRESS, 'a1b2')).resolves.toEqual(new Map())
+  })
+
+  it('still fails on any other error', async () => {
+    signedFetchMock.mockResolvedValue(jsonResponse({ ok: false, error: 'Unauthorized' }, false, 401))
+    await expect(fetchItemCurations(ADDRESS, 'a1b2')).rejects.toThrow('Unauthorized')
+  })
 })
 
 describe('fetchThirdParty', () => {

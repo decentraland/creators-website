@@ -39,6 +39,8 @@ export class BuilderServerError extends Error {
 
 const baseUrl = () => config.get('BUILDER_SERVER_URL')
 
+const UNPUBLISHED_COLLECTION_STATUS = 409
+
 export const getContentsStorageUrl = (hash = '') => `${baseUrl()}/storage/contents/${hash}`
 
 async function request<T>(
@@ -133,12 +135,18 @@ export async function fetchCollectionCuration(
 
 /** The latest curation of each item of a linked collection: GET /collections/{id}/itemCurations. */
 export async function fetchItemCurations(address: string, collectionId: string): Promise<Map<string, CurationStatus>> {
-  const curations = await request<{ item_id: string; status: CurationStatus }[]>(
-    address,
-    'GET',
-    `/collections/${collectionId}/itemCurations`
-  )
-  return new Map(curations.map(curation => [curation.item_id, curation.status]))
+  try {
+    const curations = await request<{ item_id: string; status: CurationStatus }[]>(
+      address,
+      'GET',
+      `/collections/${collectionId}/itemCurations`
+    )
+    return new Map(curations.map(curation => [curation.item_id, curation.status]))
+  } catch (error) {
+    // builder-server answers 409 "Unpublished collection" until an item of the collection has been submitted.
+    if (error instanceof BuilderServerError && error.status === UNPUBLISHED_COLLECTION_STATUS) return new Map()
+    throw error
+  }
 }
 
 /** A third party's name and managers: GET /thirdParties/{id}. 404 for an unpublished one the signer doesn't manage. */
