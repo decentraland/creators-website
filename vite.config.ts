@@ -4,9 +4,12 @@ import react from '@vitejs/plugin-react'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
 import { defineConfig, loadEnv, type PluginOption } from 'vite'
 
-const pkg = JSON.parse(readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf8')) as {
-  version: string
-}
+const readJson = (path: string): unknown =>
+  JSON.parse(readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8'))
+const pkg = readJson('./package.json') as { version: string }
+const validatorVersion = (
+  readJson('./node_modules/@dcl-regenesislabs/wearable-validator/package.json') as { version: string }
+).version
 
 // Source maps are emitted and uploaded only when the deploy workflow passes a token. Local builds and
 // the CI build check keep producing no maps at all, so nothing extra can ever reach the CDN.
@@ -24,7 +27,12 @@ export default defineConfig(({ command, mode }) => {
   const envVariables = loadEnv(mode, process.cwd())
 
   return {
-    define: { __SENTRY_RELEASE__: JSON.stringify(sentryRelease) },
+    define: {
+      __SENTRY_RELEASE__: JSON.stringify(sentryRelease),
+      __VALIDATOR_VERSION__: JSON.stringify(validatorVersion)
+    },
+    // ES workers can code-split, so the validation worker loads the rule book as its own chunk.
+    worker: { format: 'es' },
     plugins: [
       react(),
       ...(sentryUpload

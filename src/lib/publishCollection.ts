@@ -23,14 +23,24 @@ export type PaymentMethod = 'credits' | 'mana'
 // larger ones, so publishing more would leave the collection impossible to approve.
 export const MAX_PUBLISH_ITEMS = 50
 
-export type PublishBlocker = 'not_draft' | 'no_items' | 'too_many_items' | 'missing_smart_wearable_video'
+export type PublishBlocker =
+  'not_draft' | 'no_items' | 'too_many_items' | 'missing_smart_wearable_video' | 'has_invalid_items'
 
-/** `items` are the collection's items; a smart wearable without its preview video blocks publishing. */
-export function getPublishBlocker(collection: Collection, itemCount: number, items: Item[]): PublishBlocker | null {
+/**
+ * `items` are the collection's items; a smart wearable without its preview video blocks publishing, and so do
+ * items with validation errors when the caller says they block (`hasInvalidItems`).
+ */
+export function getPublishBlocker(
+  collection: Collection,
+  itemCount: number,
+  items: Item[],
+  { hasInvalidItems = false }: { hasInvalidItems?: boolean } = {}
+): PublishBlocker | null {
   if (collection.isPublished || isCollectionLocked(collection)) return 'not_draft'
   if (itemCount === 0) return 'no_items'
   if (itemCount > MAX_PUBLISH_ITEMS) return 'too_many_items'
   if (items.some(isMissingSmartWearableVideo)) return 'missing_smart_wearable_video'
+  if (hasInvalidItems) return 'has_invalid_items'
   return null
 }
 

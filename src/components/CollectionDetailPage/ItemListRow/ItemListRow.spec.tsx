@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { TranslationProvider } from '~/intl'
 import { ItemType, type Item } from '~/lib/items'
 import { type ItemListing } from '~/lib/listings'
+import { ValidationSeverity } from '~/lib/validation'
 import { ItemListRow } from './ItemListRow'
 
 const item: Item = {
@@ -246,5 +247,44 @@ describe('ItemListRow', () => {
     expect(onRename).toHaveBeenCalledTimes(1)
     await waitFor(() => expect(screen.getByTestId('item-row-name-input')).toBeEnabled())
     expect(screen.getByTestId('item-row-name-input')).toHaveValue('Captain Hat')
+  })
+
+  describe('validation indicator', () => {
+    const error = { code: 'skeleton', severity: ValidationSeverity.ERROR, message: 'Wrong skeleton' }
+    const warning = { code: 'textures', severity: ValidationSeverity.WARNING, message: 'Large texture' }
+
+    it('flags an item with errors and opens its details on click', async () => {
+      const onShowValidation = vi.fn()
+      renderRow({}, { validation: { status: 'errors', issues: [error, warning] }, onShowValidation })
+      expect(screen.getByTestId('item-row')).toHaveAttribute('data-validation', 'errors')
+      expect(screen.getByTestId('item-row-validation')).toHaveAttribute('data-status', 'errors')
+      expect(screen.getByTestId('item-row-validation')).toHaveAccessibleName(
+        /This item has some issues worth fixing before publishing\.\s+Click to see details\./
+      )
+      await userEvent.click(screen.getByTestId('item-row-validation'))
+      expect(onShowValidation).toHaveBeenCalledWith(expect.objectContaining({ id: 'i1' }))
+    })
+
+    it('flags an item with only warnings', () => {
+      renderRow({}, { validation: { status: 'warnings', issues: [warning] } })
+      expect(screen.getByTestId('item-row')).toHaveAttribute('data-validation', 'warnings')
+      expect(screen.getByTestId('item-row-validation')).toHaveAttribute('data-status', 'warnings')
+      expect(screen.getByTestId('item-row-validation')).toHaveAccessibleName(
+        /This item can be improved\.\s+Click to see details\./
+      )
+    })
+
+    it('says the fixes are required when errors block publishing', () => {
+      renderRow({}, { validation: { status: 'errors', issues: [error] }, validationBlocks: true })
+      expect(screen.getByTestId('item-row-validation')).toHaveAccessibleName(
+        /This item needs some fixes before publishing\.\s+Click to see details\./
+      )
+    })
+
+    it.each(['pass', 'loading', 'idle'] as const)('shows nothing while the item is %s', status => {
+      renderRow({}, { validation: { status, issues: [] } })
+      expect(screen.getByTestId('item-row')).not.toHaveAttribute('data-validation')
+      expect(screen.queryByTestId('item-row-validation')).not.toBeInTheDocument()
+    })
   })
 })

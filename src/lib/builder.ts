@@ -277,7 +277,9 @@ export async function publishCollectionItems(
 
 /** One stored file by hash, from public storage. */
 export async function fetchContent(hash: string, signal?: AbortSignal): Promise<Blob> {
-  const response = await fetch(getContentsStorageUrl(hash), { signal })
+  // Storage omits `Vary: Origin`, so a file the page already showed in an <img> sits in the HTTP cache without
+  // CORS headers and a plain cached fetch of it fails. Revalidating gets a response with them.
+  const response = await fetch(getContentsStorageUrl(hash), { signal, cache: 'no-cache' })
   if (!response.ok) {
     await response.body?.cancel()
     throw new BuilderServerError(`Could not download ${hash} (${response.status})`, response.status)

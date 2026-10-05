@@ -38,6 +38,19 @@ describe('useModelValidation', () => {
     await waitFor(() => expect(result.current.data?.issues).toEqual([issue]))
   })
 
+  it('passes the emote loop setting on to the validator', async () => {
+    validate.mockResolvedValue({ issues: [] })
+    const client = new QueryClient()
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>
+        <TranslationProvider>{children}</TranslationProvider>
+      </QueryClientProvider>
+    )
+    renderHook(() => useModelValidation(source, { type: ItemType.EMOTE, loop: true }, 'emote-1'), { wrapper })
+    await waitFor(() => expect(validate).toHaveBeenCalled())
+    expect(validate.mock.calls[0][1]).toMatchObject({ loop: true })
+  })
+
   it('shows a model check that could not run as a warning, never a pass', async () => {
     validate.mockRejectedValue(new Error('404'))
     const { result } = renderValidation()

@@ -224,7 +224,8 @@
     "publish_blocker": {
       "no_items": "Agrega al menos un ítem para publicar tu colección.",
       "too_many_items": "Una colección puede publicarse con hasta {max} ítems.",
-      "missing_smart_wearable_video": "Cada smart wearable necesita un video de vista previa antes de poder publicar."
+      "missing_smart_wearable_video": "Cada smart wearable necesita un video de vista previa antes de poder publicar.",
+      "has_invalid_items": "Corrige {count, plural, one {# ítem marcado} other {# ítems marcados}} en rojo para publicar."
     },
     "price": {
       "credits": "{amount} créditos",
@@ -1186,6 +1187,37 @@
       "previous": "Diapositiva anterior",
       "next": "Siguiente diapositiva",
       "go_to": "Ir a la diapositiva {index}"
+    }
+  },
+  "item_validation": {
+    "checking": "Revisando tus ítems…",
+    "rerun": "Revisar de nuevo",
+    "rerun_label": "Revisar este ítem de nuevo",
+    "rerunning": "Revisando…",
+    "body_shape": {
+      "male": "Masculino",
+      "female": "Femenino"
+    },
+    "row": {
+      "errors_blocking": "Este ítem necesita algunas correcciones antes de publicar.\nHaz clic para ver los detalles.",
+      "errors": "Este ítem tiene algunos problemas que conviene corregir antes de publicar.\nHaz clic para ver los detalles.",
+      "warnings": "Este ítem se puede mejorar.\nHaz clic para ver los detalles."
+    },
+    "issues": {
+      "errors_blocking": {
+        "title": "Algunos ítems necesitan tu atención",
+        "intro": "Encontramos algunos problemas que debes resolver antes de publicar tu colección. Corrígelos e intenta publicar de nuevo."
+      },
+      "errors": {
+        "title": "Algunos ítems tienen problemas",
+        "intro": "Encontramos algunos problemas que podrían hacer que tus ítems sean rechazados durante la revisión de curaduría. Te recomendamos corregirlos primero, pero aún puedes continuar con la publicación."
+      },
+      "warnings": {
+        "title": "Algunas cosas para revisar",
+        "intro": "Encontramos algunas sugerencias que podrían ayudarte a mejorar tus ítems. Puedes revisarlas ahora o continuar con la publicación."
+      },
+      "back": "Volver a la colección",
+      "continue": "Continuar de todos modos"
     }
   },
   "linked_collection": {

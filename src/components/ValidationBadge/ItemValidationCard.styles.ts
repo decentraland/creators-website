@@ -2,48 +2,7 @@ import styled from '@emotion/styled'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { theme } from '~/styles/theme'
 
-export const Badge = styled.button`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 48px;
-  padding: 0 12px;
-  border: 1px solid ${theme.editor.line};
-  border-radius: ${theme.radius.btnSm};
-  background: ${theme.editor.surface};
-  color: ${theme.colors.white};
-  font: inherit;
-  font-size: 13px;
-
-  &:hover:not(:disabled) {
-    background: ${theme.editor.surfaceHover};
-  }
-
-  &:disabled {
-    cursor: default;
-  }
-
-  &[data-status='pass'] svg {
-    color: ${theme.colors.ok};
-  }
-  &[data-status='warnings'] svg {
-    color: ${theme.colors.amber};
-  }
-  &[data-status='errors'] svg {
-    color: ${theme.colors.errLight};
-  }
-`
-
-export const Spinner = styled.span`
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.25);
-  border-top-color: ${theme.colors.white};
-  animation: spin 0.8s linear infinite;
-`
-
-export const Results = styled.div`
+export const Card = styled.section`
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -52,7 +11,7 @@ export const Results = styled.div`
   background: ${theme.colors.overlay};
 `
 
-export const Subject = styled.div`
+export const Header = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
@@ -67,6 +26,7 @@ export const Thumbnail = styled(ItemThumbnail)`
 
 export const SubjectText = styled.div`
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
@@ -90,6 +50,35 @@ export const SubjectMeta = styled.span`
   font-size: 12px;
 `
 
+export const Rerun = styled.button`
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -6px -6px -6px 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: ${theme.colors.softWhite};
+  cursor: pointer;
+
+  &:hover:not([aria-disabled]),
+  &:focus-visible {
+    background: ${theme.colors.glassFaint};
+  }
+
+  &[aria-disabled] {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  &[data-running] svg {
+    animation: spin 0.8s linear infinite;
+  }
+`
+
 export const IssueList = styled.ul`
   display: flex;
   flex-direction: column;
@@ -111,7 +100,7 @@ export const Issue = styled.li`
   font-size: 12px;
   line-height: 1.334;
 
-  & svg {
+  & > svg {
     flex: none;
     color: ${theme.colors.amber};
   }
@@ -121,7 +110,7 @@ export const Issue = styled.li`
     background: ${theme.colors.errorOverlay};
     color: ${theme.colors.errorText};
   }
-  &[data-severity='error'] svg {
+  &[data-severity='error'] > svg {
     color: ${theme.colors.errLight};
   }
 `
@@ -131,10 +120,25 @@ export const IssueText = styled.span`
   flex-direction: column;
   min-width: 0;
   overflow-wrap: anywhere;
+`
+
+export const IssueTitle = styled.span`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
 
   & strong {
     font-weight: 700;
   }
+`
+
+export const ShapeLabel = styled.span`
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  border-radius: ${theme.radius.chip};
+  font-size: 11px;
+  line-height: 16px;
 `
 
 export const Empty = styled.p`

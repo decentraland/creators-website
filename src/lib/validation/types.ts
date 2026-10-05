@@ -15,11 +15,21 @@ export type ValidationIssue = {
   title?: string
   /** File, mesh or bone the issue points at. */
   where?: string
+  /** Set when the item has a separate model per body shape and only these shapes' model has the issue. */
+  bodyShapes?: BodyShape[]
 }
 
-/** What to validate: in-memory files (imports, live preview) or a saved item (storage URLs). */
+/** One model to check and the body shapes that wear it; `contents` scopes its audio files (default: all of them). */
+export type ModelFile = { mainFile: string; bodyShapes: BodyShape[]; contents?: string[] }
+
+/**
+ * What to validate: in-memory files (imports, live preview) or a saved item (storage URLs). Every distinct
+ * model is checked: a blob's `representations` when given (else `mainFile` for both body shapes), or all of
+ * a saved item's representations.
+ */
 export type ValidationSource =
-  { kind: 'blob'; contents: Record<string, Blob>; mainFile: string } | { kind: 'item'; item: Item }
+  | { kind: 'blob'; contents: Record<string, Blob>; mainFile: string; representations?: ModelFile[] }
+  | { kind: 'item'; item: Item }
 
 /** A thumbnail to check: an in-memory PNG (imports, unsaved edits) or a saved item's stored one. */
 export type ThumbnailSource = { kind: 'blob'; blob: Blob } | { kind: 'item'; item: Item }
@@ -28,8 +38,8 @@ export type ValidationContext = {
   type: ItemType
   category?: string
   hides?: string[]
-  /** Which representation of an `item` source to load; defaults to the first one. */
-  bodyShape?: BodyShape
+  /** Emotes: whether it plays in a loop, which the loop-seam check needs. */
+  loop?: boolean
 }
 
 export type ValidationResult = { issues: ValidationIssue[] }

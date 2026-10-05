@@ -16,7 +16,7 @@ import {
   useCollectionStatus,
   useSaveCollection
 } from '~/hooks/useCollection'
-import { BuilderServerError } from '~/lib/builder'
+import { BuilderServerError, getContentsStorageUrl } from '~/lib/builder'
 import { FeatureFlag } from '~/lib/featureFlags'
 import {
   CollectionDisplayStatus,
@@ -49,6 +49,7 @@ import { useCollectionListings } from '~/hooks/useCollectionListings'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
+import { useCollectionValidation, useRerunItemValidation } from '~/hooks/useCollectionValidation'
 import { hasPendingChanges } from '~/lib/itemSync'
 import { previewCollection } from '~/lib/explorer'
 import { pageRangeLabel } from '~/lib/pagination'
@@ -63,6 +64,7 @@ import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { CollectionRolePill } from '~/components/CollectionRolePill'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
 import { Pagination } from '~/components/Pagination'
+import { ValidationResultsModal } from '~/components/ValidationBadge'
 import addItemsArt from '~/assets/add-items.png'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { useThirdParty } from '~/hooks/useLinkedCollection'
@@ -78,6 +80,7 @@ import { SendItemsFlow } from './SendItemsFlow'
 import * as S from './CollectionDetailPage.styles'
 
 const NOT_FOUND_STATUSES = [401, 403, 404]
+const NO_ITEMS: Item[] = []
 
 const CollectionDetailPage = () => {
   const { t } = useTranslation()
@@ -189,6 +192,45 @@ const CollectionDetailPage = () => {
     listings ? (listings.get(item.tokenId ?? '') ?? null) : listingsQuery.isError ? null : undefined
   const syncs = useItemSyncs(address, standardCollection, allItems ?? [])
 
+  // Drafts check every item; published collections only the items with changes waiting for approval.
+  // Small screens are a viewer and check nothing, unless the publish modal is already open: crossing the
+  // breakpoint mid-check must not empty its results and let it through.
+  const validates = !compact || publishView === 'wizard'
+  const validationItems = useMemo(
+    () =>
+      !validates || !standardCollection || !allItems
+        ? NO_ITEMS
+        : allItems.filter(item => !standardCollection.isPublished || hasPendingChanges(syncs.get(item.id)?.status)),
+    [validates, standardCollection, allItems, syncs]
+  )
+  const validation = useCollectionValidation(validationItems, validates)
+  const blockOnErrors = useFeatureFlag(FeatureFlag.BLOCK_PUBLISH_ON_VALIDATION_ERRORS).enabled
+  const invalidCount = useMemo(
+    () => [...validation.results.values()].filter(result => result.status === 'errors').length,
+    [validation.results]
+  )
+  const publishValidation = useMemo(
+    () => ({
+      // A background refetch (back from saving in the editor) may bring new hashes the modal must wait for.
+      isValidating: itemsQuery.isFetching || validation.isValidating,
+      results: validationItems.map(item => ({ item, issues: validation.results.get(item.id)?.issues ?? [] }))
+    }),
+    [itemsQuery.isFetching, validation, validationItems]
+  )
+  const rerunItemValidation = useRerunItemValidation()
+  const [validationItem, setValidationItem] = useState<Item | null>(null)
+  const showValidation = useCallback(
+    (item: Item) => {
+      setValidationItem(item)
+      track('Item Validation Details Opened', {
+        itemId: item.id,
+        status: validation.results.get(item.id)?.status ?? 'idle',
+        source: 'row'
+      })
+    },
+    [validation.results]
+  )
+
   const isLoading =
     !restored || (!!address && (collectionQuery.isLoading || itemsQuery.isLoading || thirdParty.isLoading))
   const isThirdPartyNotFound =
@@ -213,7 +255,9 @@ const CollectionDetailPage = () => {
   const hasItems = total > 0
   const canRename = !!collection && !collection.isPublished && !isCollectionLocked(collection)
   const canAddItems = canRename
-  const publishBlocker = collection ? getPublishBlocker(collection, total, allItems ?? []) : 'not_draft'
+  const publishBlocker = collection
+    ? getPublishBlocker(collection, total, allItems ?? [], { hasInvalidItems: blockOnErrors && invalidCount > 0 })
+    : 'not_draft'
 
   function openFileBrowser() {
     filesInputRef.current?.click()
@@ -395,6 +439,17 @@ const CollectionDetailPage = () => {
               {address && <CollectionRolePill collection={collection} address={address} />}
             </S.HeaderLeft>
             <S.HeaderActions>
+              {validation.isValidating && (
+                <Tooltip content={t('item_validation.checking')} asChild testId="validation-spinner-tooltip">
+                  <S.ValidationSpinner
+                    role="status"
+                    aria-label={t('item_validation.checking')}
+                    tabIndex={0}
+                    data-desktop-only
+                    data-testid="validation-spinner"
+                  />
+                </Tooltip>
+              )}
               <Button
                 type="button"
                 variant="dark"
@@ -413,7 +468,10 @@ const CollectionDetailPage = () => {
                 <Tooltip
                   content={
                     publishBlocker
-                      ? t(`collection_detail_page.publish_blocker.${publishBlocker}`, { max: MAX_PUBLISH_ITEMS })
+                      ? t(`collection_detail_page.publish_blocker.${publishBlocker}`, {
+                          max: MAX_PUBLISH_ITEMS,
+                          count: invalidCount
+                        })
                       : null
                   }
                   placement="bottom"
@@ -577,6 +635,9 @@ const CollectionDetailPage = () => {
                     onRename={renameItem}
                     onEditThumbnail={item => thumbnailEditor.edit({ kind: 'item', item })}
                     contractAddress={collection.contractAddress}
+                    validation={validation.results.get(item.id)}
+                    validationBlocks={blockOnErrors}
+                    onShowValidation={showValidation}
                     actions={
                       address && (
                         <ItemActionsMenu
@@ -636,6 +697,8 @@ const CollectionDetailPage = () => {
               collection={collection}
               session={session}
               resume={publishResume}
+              validation={publishValidation}
+              blockOnErrors={blockOnErrors}
               onClose={() => setPublishView('closed')}
               onPublished={() => setPublishView('success')}
             />
@@ -655,6 +718,29 @@ const CollectionDetailPage = () => {
               kind={managingRoles}
               session={session}
               onClose={() => setManagingRoles(null)}
+            />
+          )}
+          {validationItem && (
+            <ValidationResultsModal
+              subject={{
+                name: validationItem.name,
+                type: validationItem.type,
+                category: validationItem.data.category,
+                rarity: validationItem.rarity,
+                thumbnail: validationItem.contents[validationItem.thumbnail]
+                  ? getContentsStorageUrl(validationItem.contents[validationItem.thumbnail])
+                  : null
+              }}
+              issues={validation.results.get(validationItem.id)?.issues ?? []}
+              onRerun={() =>
+                rerunItemValidation(
+                  validationItem,
+                  'details',
+                  validation.results.get(validationItem.id)?.status ?? 'idle'
+                )
+              }
+              onClose={() => setValidationItem(null)}
+              testId="item-validation"
             />
           )}
           {thumbnailEditor.modal}
