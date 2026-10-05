@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { ChevronRight as ChevronRightIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
@@ -89,6 +90,7 @@ export function AssignCuratorModal({ collection, curation, address, mode, onClos
           </Button>
           <Button type="submit" loading={assign.isPending} data-testid="assign-curator-submit">
             {t(onAssigned ? 'assign_curator_modal.submit_continue' : `assign_curator_modal.submit_${mode}`)}
+            {onAssigned && <ChevronRightIcon fontSize="small" />}
           </Button>
         </S.Actions>
       </S.Form>

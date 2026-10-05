@@ -141,6 +141,8 @@ export function ApprovalFlowModal({ session, collection, curation, mode, onClose
   const run = { rescue: flow.runRescue, deploy: flow.runDeploy, approve: flow.runApprove }[step]
   const count = step === 'rescue' ? plan.rescue.length : plan.deploy.length
   const single = plan.steps.length === 1
+  // Only a step with another one after it continues; the last one completes the approval.
+  const isLast = plan.steps.indexOf(step) === plan.steps.length - 1
 
   return (
     <Modal
@@ -164,7 +166,7 @@ export function ApprovalFlowModal({ session, collection, curation, mode, onClose
             </Button>
             <Button type="button" loading={busy} data-testid={`approval-${step}`} onClick={() => void run()}>
               {t(`approval_flow.${step}.action`)}
-              <ChevronRightIcon fontSize="small" />
+              {!isLast && <ChevronRightIcon fontSize="small" />}
             </Button>
           </S.Footer>
         </S.Step>
