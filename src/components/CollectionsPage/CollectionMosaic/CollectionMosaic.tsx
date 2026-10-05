@@ -21,6 +21,7 @@ export function CollectionMosaic({ collectionId, itemCount, className }: Props) 
     <ThumbnailMosaic
       thumbnails={thumbnails}
       loading={itemCount > 0 && isLoading}
+      empty={itemCount === 0}
       className={className}
       testId="collection-mosaic"
     />
