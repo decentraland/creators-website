@@ -1,7 +1,1 @@
-export {
-  ThumbnailFormatError,
-  ThumbnailModal,
-  ThumbnailTooBigError,
-  thumbnailPatchFromFile,
-  type ThumbnailPatch
-} from './ThumbnailModal'
+export { ThumbnailModal, getThumbnailErrorMessage, thumbnailPatchFromFile, type ThumbnailPatch } from './ThumbnailModal'
