@@ -7,7 +7,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TranslationProvider } from '~/intl'
 import { CurationStatus, type Collection } from '~/lib/collections'
 import { ItemType, type Item } from '~/lib/items'
-import { ItemTypeFilter } from '~/lib/itemFilters'
 import { useNotifications } from '~/lib/notifications'
 import { LinkedCollectionView } from './LinkedCollectionView'
 
@@ -82,9 +81,7 @@ function renderView() {
       items={items}
       address={OWNER}
       page={1}
-      typeFilter={ItemTypeFilter.ALL}
       onBack={vi.fn()}
-      onTypeFilterChange={vi.fn()}
       onPageChange={vi.fn()}
     />,
     { wrapper }
@@ -108,8 +105,9 @@ describe('LinkedCollectionView', () => {
 
   it('shows each item with its curation status and token mapping', async () => {
     renderView()
-    const rows = screen.getAllByTestId('linked-item-row')
-    expect(rows).toHaveLength(2)
+    expect(screen.getAllByTestId('linked-item-row')).toHaveLength(2)
+    expect(screen.getByTestId('linked-item-count')).toHaveTextContent('2 Items')
+    expect(screen.queryByTestId('type-filters')).not.toBeInTheDocument()
     await waitFor(() => expect(screen.getAllByTestId('linked-item-status')).toHaveLength(2))
     const [gold, silver] = screen.getAllByTestId('linked-item-status')
     expect(gold).toHaveAttribute('data-status', 'published')

@@ -47,38 +47,31 @@ export function getLinkedItemStatus(curationStatus: CurationStatus | undefined):
   }
 }
 
-export type MappingSummary =
-  | { kind: 'none' }
-  | { kind: 'any' }
-  | { kind: 'single'; id: string }
-  | { kind: 'range'; from: string; to: string }
-  | { kind: 'multiple'; count: number }
-  | { kind: 'rules'; count: number }
-
-/** How the item's tokens are mapped for the collection's linked contract, for a one-line label. */
-export function summarizeMapping(
+/** The item's token mapping for the collection's linked contract, as the message that labels it. */
+export function getMappingLabel(
   mappings: unknown,
   network: string | undefined,
   contractAddress: string | undefined
-): MappingSummary {
-  if (!mappings || typeof mappings !== 'object' || !network || !contractAddress) return { kind: 'none' }
+): { id: string; values?: Record<string, string | number> } {
+  const key = (name: string) => `linked_collection.mapping.${name}`
+  if (!mappings || typeof mappings !== 'object' || !network || !contractAddress) return { id: key('none') }
   const contracts = (mappings as Mappings)[network as ContractNetwork]
   const entries = contracts
     ? Object.entries(contracts).find(([address]) => address.toLowerCase() === contractAddress.toLowerCase())?.[1]
     : undefined
-  if (!Array.isArray(entries) || entries.length === 0) return { kind: 'none' }
-  if (entries.length > 1) return { kind: 'rules', count: entries.length }
+  if (!Array.isArray(entries) || entries.length === 0) return { id: key('none') }
+  if (entries.length > 1) return { id: key('rules'), values: { count: entries.length } }
   const [mapping] = entries
   switch (mapping.type) {
     case MappingType.ANY:
-      return { kind: 'any' }
+      return { id: key('any') }
     case MappingType.SINGLE:
-      return { kind: 'single', id: mapping.id }
+      return { id: key('single'), values: { id: mapping.id } }
     case MappingType.RANGE:
-      return { kind: 'range', from: mapping.from, to: mapping.to }
+      return { id: key('range'), values: { from: mapping.from, to: mapping.to } }
     case MappingType.MULTIPLE:
-      return { kind: 'multiple', count: mapping.ids.length }
+      return { id: key('multiple'), values: { count: mapping.ids.length } }
     default:
-      return { kind: 'none' }
+      return { id: key('none') }
   }
 }

@@ -6,7 +6,7 @@ import {
   getLinkedItemStatus,
   getThirdPartyId,
   isThirdPartyManager,
-  summarizeMapping
+  getMappingLabel
 } from './linkedCollections'
 
 const CONTRACT = '0x1d9fb685c257e74f869ba302e260c0b68f5ebb37'
@@ -53,25 +53,29 @@ describe('getLinkedItemStatus', () => {
   })
 })
 
-describe('summarizeMapping', () => {
+describe('getMappingLabel', () => {
   const mappingsFor = (...entries: unknown[]) => ({ amoy: { [CONTRACT]: entries } })
+  const label = (id: string, values?: Record<string, string | number>) => ({
+    id: `linked_collection.mapping.${id}`,
+    ...(values && { values })
+  })
 
   it.each([
-    ['any token', mappingsFor({ type: 'any' }), { kind: 'any' }],
-    ['a single token', mappingsFor({ type: 'single', id: '7' }), { kind: 'single', id: '7' }],
-    ['a range', mappingsFor({ type: 'range', from: '1', to: '50' }), { kind: 'range', from: '1', to: '50' }],
-    ['a list of tokens', mappingsFor({ type: 'multiple', ids: ['1', '4', '9'] }), { kind: 'multiple', count: 3 }],
-    ['several rules', mappingsFor({ type: 'single', id: '1' }, { type: 'any' }), { kind: 'rules', count: 2 }]
-  ])('summarizes %s', (_, mappings, expected) => {
-    expect(summarizeMapping(mappings, 'amoy', CONTRACT)).toEqual(expected)
+    ['any token', mappingsFor({ type: 'any' }), label('any')],
+    ['a single token', mappingsFor({ type: 'single', id: '7' }), label('single', { id: '7' })],
+    ['a range', mappingsFor({ type: 'range', from: '1', to: '50' }), label('range', { from: '1', to: '50' })],
+    ['a list of tokens', mappingsFor({ type: 'multiple', ids: ['1', '4', '9'] }), label('multiple', { count: 3 })],
+    ['several rules', mappingsFor({ type: 'single', id: '1' }, { type: 'any' }), label('rules', { count: 2 })]
+  ])('labels %s', (_, mappings, expected) => {
+    expect(getMappingLabel(mappings, 'amoy', CONTRACT)).toEqual(expected)
   })
 
   it('matches the contract address case-insensitively', () => {
-    expect(summarizeMapping(mappingsFor({ type: 'any' }), 'amoy', CONTRACT.toUpperCase())).toEqual({ kind: 'any' })
+    expect(getMappingLabel(mappingsFor({ type: 'any' }), 'amoy', CONTRACT.toUpperCase())).toEqual(label('any'))
   })
 
   it('has no mapping when the item maps another contract or nothing at all', () => {
-    expect(summarizeMapping(mappingsFor({ type: 'any' }), 'sepolia', CONTRACT)).toEqual({ kind: 'none' })
-    expect(summarizeMapping(null, 'amoy', CONTRACT)).toEqual({ kind: 'none' })
+    expect(getMappingLabel(mappingsFor({ type: 'any' }), 'sepolia', CONTRACT)).toEqual(label('none'))
+    expect(getMappingLabel(null, 'amoy', CONTRACT)).toEqual(label('none'))
   })
 })

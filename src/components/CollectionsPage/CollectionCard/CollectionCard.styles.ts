@@ -6,18 +6,6 @@ import { theme } from '~/styles/theme'
 const mobile = theme.media.maxWidth('mobile')
 const desktop = theme.media.minWidth('mobile')
 
-export const Frame = styled.div`
-  position: relative;
-`
-
-// Outside the card link: a menu button can't live inside an anchor.
-export const Menu = styled.div`
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 1;
-`
-
 export const Card = styled(Link)`
   position: relative;
   height: 318px;

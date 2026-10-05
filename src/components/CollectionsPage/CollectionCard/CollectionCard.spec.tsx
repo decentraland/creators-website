@@ -94,15 +94,8 @@ describe('CollectionCard', () => {
     expect(screen.getByTestId('detail-page')).toBeInTheDocument()
   })
 
-  it('marks a linked collection as Linked and offers Edit in Builder from its menu', async () => {
+  it('marks a linked collection as Linked', () => {
     renderCard({ urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats' })
     expect(screen.getByTestId('collection-status')).toHaveAttribute('data-status', 'linked')
-    await userEvent.click(screen.getByTestId('collection-actions'))
-    expect(screen.getByTestId('edit-in-builder')).toBeInTheDocument()
-  })
-
-  it('has no menu on a standard collection', () => {
-    renderCard()
-    expect(screen.queryByTestId('collection-actions')).not.toBeInTheDocument()
   })
 })

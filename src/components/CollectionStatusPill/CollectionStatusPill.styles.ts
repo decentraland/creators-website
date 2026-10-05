@@ -26,7 +26,8 @@ export const Pill = styled.span`
     background: rgba(244, 130, 33, 0.2); /* orangeStrong @ 20% */
   }
   &[data-status='draft'],
-  &[data-status='publishing'] {
+  &[data-status='publishing'],
+  &[data-status='not_published'] {
     color: ${theme.colors.infoLighter};
     border-color: ${theme.colors.infoLight};
     background: rgba(23, 100, 192, 0.4); /* info @ 40% */

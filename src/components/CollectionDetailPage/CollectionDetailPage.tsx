@@ -358,9 +358,7 @@ const CollectionDetailPage = () => {
           items={allItems ?? []}
           address={address}
           page={page}
-          typeFilter={typeFilter}
           onBack={() => navigate({ pathname: '/collections', search: listState?.listSearch })}
-          onTypeFilterChange={changeTypeFilter}
           onPageChange={goToPage}
         />
       ) : (

@@ -8,22 +8,12 @@ import {
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
 import { getContentsStorageUrl } from '~/lib/builder'
+import { shortenAddress } from '~/lib/address'
 import { copyToClipboard } from '~/lib/clipboard'
 import { type Collection } from '~/lib/collections'
-import {
-  ITEM_TYPE_FILTERS,
-  ItemTypeFilter,
-  countItemsByType,
-  filterItemsByType,
-  paginateItems
-} from '~/lib/itemFilters'
+import { paginateItems } from '~/lib/itemFilters'
 import { type Item } from '~/lib/items'
-import {
-  builderLinkedCollectionUrl,
-  getLinkedItemStatus,
-  summarizeMapping,
-  type MappingSummary
-} from '~/lib/linkedCollections'
+import { builderLinkedCollectionUrl, getLinkedItemStatus, getMappingLabel } from '~/lib/linkedCollections'
 import { openExternal } from '~/lib/navigation'
 import { useNotifications } from '~/lib/notifications'
 import { pageRangeLabel } from '~/lib/pagination'
@@ -31,17 +21,16 @@ import { useItemCurations } from '~/hooks/useLinkedCollection'
 import { ITEMS_PAGE_SIZE } from '~/hooks/useCollection'
 import { Button } from '~/components/Button'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
-import { EmoteIcon, WearableIcon } from '~/components/Icons'
 import { CategoryIcon } from '~/components/ItemIcons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { Pagination } from '~/components/Pagination'
+import { Pill } from '~/components/CollectionStatusPill/CollectionStatusPill.styles'
 import * as P from '../CollectionDetailPage.styles'
+import * as R from '../ItemListRow/ItemListRow.styles'
 import * as S from './LinkedCollectionView.styles'
 
 const EMPTY = '—'
 const NETWORKS: string[] = Object.values(ContractNetwork)
-
-const shortenAddress = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`
 
 type Props = {
   collection: Collection
@@ -49,9 +38,7 @@ type Props = {
   items: Item[]
   address: string
   page: number
-  typeFilter: ItemTypeFilter
   onBack: () => void
-  onTypeFilterChange: (filter: ItemTypeFilter) => void
   onPageChange: (page: number) => void
 }
 
@@ -62,20 +49,14 @@ export function LinkedCollectionView({
   items,
   address,
   page,
-  typeFilter,
   onBack,
-  onTypeFilterChange,
   onPageChange
 }: Props) {
   const { t } = useTranslation()
   const showToast = useNotifications(state => state.showToast)
   const curations = useItemCurations(address, collection)
 
-  const counts = useMemo(() => countItemsByType(items), [items])
-  const { results, total, pages } = useMemo(
-    () => paginateItems(filterItemsByType(items, typeFilter), page, ITEMS_PAGE_SIZE),
-    [items, typeFilter, page]
-  )
+  const { results, total, pages } = useMemo(() => paginateItems(items, page, ITEMS_PAGE_SIZE), [items, page])
   const network = collection.linkedContractNetwork
   const contractAddress = collection.linkedContractAddress
 
@@ -91,23 +72,6 @@ export function LinkedCollectionView({
     track('Copy linked contract address', { collectionId: collection.id, network })
     if (await copyToClipboard(contractAddress)) showToast(t('linked_collection.contract_copied'))
     else showToast(t('collection_detail_page.actions.copy_failed'), { type: 'error' })
-  }
-
-  function mappingLabel(summary: MappingSummary): string {
-    switch (summary.kind) {
-      case 'any':
-        return t('linked_collection.mapping.any')
-      case 'single':
-        return t('linked_collection.mapping.single', { id: summary.id })
-      case 'range':
-        return t('linked_collection.mapping.range', { from: summary.from, to: summary.to })
-      case 'multiple':
-        return t('linked_collection.mapping.multiple', { count: summary.count })
-      case 'rules':
-        return t('linked_collection.mapping.rules', { count: summary.count })
-      default:
-        return t('linked_collection.mapping.none')
-    }
   }
 
   return (
@@ -178,73 +142,63 @@ export function LinkedCollectionView({
       </S.ContractRow>
 
       <P.SubHeader>
-        <P.FilterChips data-testid="type-filters">
-          {ITEM_TYPE_FILTERS.map(filter => (
-            <P.FilterChip
-              key={filter}
-              type="button"
-              data-active={typeFilter === filter || undefined}
-              data-testid={`type-filter-${filter}`}
-              onClick={() => onTypeFilterChange(filter)}
-            >
-              {filter === ItemTypeFilter.WEARABLE && <WearableIcon />}
-              {filter === ItemTypeFilter.EMOTE && <EmoteIcon />}
-              {t(`collection_detail_page.filter.${filter}`, { count: counts[filter] })}
-            </P.FilterChip>
-          ))}
-        </P.FilterChips>
+        {/* Linked collections hold wearables only, so there is nothing to filter by type. */}
+        <S.ItemCount data-testid="linked-item-count">
+          {t('collections_page.item_count', { count: items.length })}
+        </S.ItemCount>
       </P.SubHeader>
 
       {total === 0 ? (
         <P.Panel data-testid="collection-no-items">
-          <P.PanelTitle>{t(`collection_detail_page.no_items.${typeFilter}`)}</P.PanelTitle>
+          <P.PanelTitle>{t('collection_detail_page.no_items.all')}</P.PanelTitle>
           <P.PanelText>{t('linked_collection.no_items')}</P.PanelText>
         </P.Panel>
       ) : (
         <>
-          <S.List data-testid="items-list">
-            <S.ListHeader>
+          <P.List data-testid="items-list">
+            <P.ListHeader>
               <span>{t('collection_detail_page.list.item')}</span>
               <span>{t('collection_detail_page.list.category')}</span>
               <span>{t('linked_collection.list.status')}</span>
               <span>{t('linked_collection.list.mapping')}</span>
-            </S.ListHeader>
+            </P.ListHeader>
             {results.map(item => {
               const thumbnailHash = item.contents[item.thumbnail]
               const category = item.data.category
               const status = curations.isSuccess ? getLinkedItemStatus(curations.data.get(item.id)) : undefined
+              const mapping = getMappingLabel(item.mappings, network, contractAddress)
               return (
-                <S.Row key={item.id} data-testid="linked-item-row">
-                  <S.Thumb>
+                <R.Row key={item.id} data-testid="linked-item-row">
+                  <R.Thumb>
                     <ItemThumbnail
                       src={thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null}
                       rarity={item.rarity}
                     />
-                  </S.Thumb>
-                  <S.Content>
-                    <S.Name data-testid="item-row-name" title={item.name}>
-                      {item.name}
-                    </S.Name>
-                    <S.Cell data-testid="item-row-category">
+                  </R.Thumb>
+                  <R.Content>
+                    <R.Name>
+                      <R.NameText data-testid="item-row-name" title={item.name}>
+                        {item.name}
+                      </R.NameText>
+                    </R.Name>
+                    <R.Cell data-testid="item-row-category">
                       {category ? <CategoryIcon category={category} withLabel /> : EMPTY}
-                    </S.Cell>
-                    <S.Cell data-testid="linked-item-status-cell">
+                    </R.Cell>
+                    <R.Cell data-testid="linked-item-status-cell">
                       {status ? (
-                        <S.ItemStatus data-testid="linked-item-status" data-status={status}>
+                        <Pill data-testid="linked-item-status" data-status={status}>
                           {t(`linked_collection.item_status.${status}`)}
-                        </S.ItemStatus>
+                        </Pill>
                       ) : (
                         EMPTY
                       )}
-                    </S.Cell>
-                    <S.Cell data-testid="linked-item-mapping">
-                      {mappingLabel(summarizeMapping(item.mappings, network, contractAddress))}
-                    </S.Cell>
-                  </S.Content>
-                </S.Row>
+                    </R.Cell>
+                    <R.Cell data-testid="linked-item-mapping">{t(mapping.id, mapping.values)}</R.Cell>
+                  </R.Content>
+                </R.Row>
               )
             })}
-          </S.List>
+          </P.List>
           <P.FooterRow>
             <P.ShowingCount data-testid="items-showing">
               {t('collection_detail_page.showing', {
