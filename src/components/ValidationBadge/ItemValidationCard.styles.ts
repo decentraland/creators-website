@@ -1,6 +1,5 @@
 import styled from '@emotion/styled'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
-import { Spinner } from '~/styles/shared'
 import { theme } from '~/styles/theme'
 
 export const Card = styled.section`
@@ -79,14 +78,6 @@ export const Rerun = styled.button`
     animation: spin 0.8s linear infinite;
   }
 `
-
-export const Running = styled.div`
-  display: flex;
-  justify-content: center;
-  padding: 16px 0;
-`
-
-export { Spinner }
 
 export const IssueList = styled.ul`
   display: flex;

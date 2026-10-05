@@ -258,6 +258,9 @@ describe('ItemListRow', () => {
       renderRow({}, { validation: { status: 'errors', issues: [error, warning] }, onShowValidation })
       expect(screen.getByTestId('item-row')).toHaveAttribute('data-validation', 'errors')
       expect(screen.getByTestId('item-row-validation')).toHaveAttribute('data-status', 'errors')
+      expect(screen.getByTestId('item-row-validation')).toHaveAccessibleName(
+        /This item has some issues worth fixing before publishing\.\s+Click to see details\./
+      )
       await userEvent.click(screen.getByTestId('item-row-validation'))
       expect(onShowValidation).toHaveBeenCalledWith(expect.objectContaining({ id: 'i1' }))
     })
@@ -266,6 +269,16 @@ describe('ItemListRow', () => {
       renderRow({}, { validation: { status: 'warnings', issues: [warning] } })
       expect(screen.getByTestId('item-row')).toHaveAttribute('data-validation', 'warnings')
       expect(screen.getByTestId('item-row-validation')).toHaveAttribute('data-status', 'warnings')
+      expect(screen.getByTestId('item-row-validation')).toHaveAccessibleName(
+        /This item can be improved\.\s+Click to see details\./
+      )
+    })
+
+    it('says the fixes are required when errors block publishing', () => {
+      renderRow({}, { validation: { status: 'errors', issues: [error] }, validationBlocks: true })
+      expect(screen.getByTestId('item-row-validation')).toHaveAccessibleName(
+        /This item needs some fixes before publishing\.\s+Click to see details\./
+      )
     })
 
     it.each(['pass', 'loading', 'idle'] as const)('shows nothing while the item is %s', status => {

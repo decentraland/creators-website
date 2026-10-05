@@ -18,6 +18,8 @@ export type ValidationSubject = {
   category?: string
   /** Omitted (not null) when there is no artwork tile at all, e.g. a live preview. */
   thumbnail?: string | null
+  /** Tints the artwork tile like everywhere else the item shows. */
+  rarity?: string | null
 }
 
 type Props = {
@@ -50,6 +52,7 @@ export function ItemValidationCard({ subject, issues, onRerun, testId = 'item-va
         type="button"
         aria-label={t('item_validation.rerun_label')}
         aria-disabled={isRunning || undefined}
+        aria-busy={isRunning || undefined}
         data-running={isRunning || undefined}
         data-testid={`${testId}-rerun`}
         onClick={rerun}
@@ -65,7 +68,7 @@ export function ItemValidationCard({ subject, issues, onRerun, testId = 'item-va
         <S.Header>
           {subject && (
             <>
-              {subject.thumbnail !== undefined && <S.Thumbnail src={subject.thumbnail} />}
+              {subject.thumbnail !== undefined && <S.Thumbnail src={subject.thumbnail} rarity={subject.rarity} />}
               <S.SubjectText data-testid={`${testId}-subject`}>
                 <S.SubjectName>{subject.name}</S.SubjectName>
                 <S.SubjectMeta>
@@ -78,11 +81,7 @@ export function ItemValidationCard({ subject, issues, onRerun, testId = 'item-va
           {rerunButton}
         </S.Header>
       )}
-      {isRunning ? (
-        <S.Running data-testid={`${testId}-running`}>
-          <S.Spinner aria-hidden />
-        </S.Running>
-      ) : issues.length > 0 ? (
+      {isRunning ? null : issues.length > 0 ? (
         <S.IssueList data-testid={`${testId}-issues`}>
           {issues.map((issue, index) => {
             const shape = shapeLabel(issue.bodyShapes)

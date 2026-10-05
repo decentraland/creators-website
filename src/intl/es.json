@@ -1199,9 +1199,9 @@
       "female": "Femenino"
     },
     "row": {
-      "errors_blocking": "{count, plural, one {# problema} other {# problemas}} por corregir antes de publicar. Haz clic para ver los detalles.",
-      "errors": "{count, plural, one {# problema} other {# problemas}} que conviene corregir antes de publicar. Haz clic para ver los detalles.",
-      "warnings": "Se puede mejorar: {count, plural, one {# sugerencia} other {# sugerencias}}. Haz clic para ver los detalles."
+      "errors_blocking": "Este ítem necesita algunas correcciones antes de publicar.\nHaz clic para ver los detalles.",
+      "errors": "Este ítem tiene algunos problemas que conviene corregir antes de publicar.\nHaz clic para ver los detalles.",
+      "warnings": "Este ítem se puede mejorar.\nHaz clic para ver los detalles."
     },
     "issues": {
       "errors_blocking": {
@@ -1209,8 +1209,8 @@
         "intro": "Encontramos algunos problemas que debes resolver antes de publicar tu colección. Corrígelos e intenta publicar de nuevo."
       },
       "errors": {
-        "title": "Vale la pena revisar algunos ítems",
-        "intro": "Encontramos algunos problemas que podrían causar inconvenientes durante la revisión de curaduría. Te recomendamos corregirlos primero, pero aún puedes continuar con la publicación."
+        "title": "Algunos ítems tienen problemas",
+        "intro": "Encontramos algunos problemas que podrían hacer que tus ítems sean rechazados durante la revisión de curaduría. Te recomendamos corregirlos primero, pero aún puedes continuar con la publicación."
       },
       "warnings": {
         "title": "Algunas cosas para revisar",

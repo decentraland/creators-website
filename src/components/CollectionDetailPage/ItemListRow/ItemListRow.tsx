@@ -1,4 +1,4 @@
-import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useState, type KeyboardEvent, type ReactNode } from 'react'
 import {
   Check as CheckIcon,
   Close as CloseIcon,
@@ -13,7 +13,6 @@ import { ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
 import { ItemType, getItemBodyShapeType, getItemSales, isSmartWearable, type Item } from '~/lib/items'
 import { EmotePlayMode } from '~/lib/itemFactory'
 import { type ItemListing } from '~/lib/listings'
-import { countIssues } from '~/lib/validation'
 import { type ItemValidation } from '~/hooks/useCollectionValidation'
 import { formatCredits, formatMana } from '~/lib/publishFee'
 import { shopItemUrl } from '~/lib/shop'
@@ -95,13 +94,11 @@ export function ItemListRow({
   const isEditingName = draftName !== null
   const draftValid = draftName !== null && isValidItemName(draftName)
   const flagged = validation?.status === 'errors' || validation?.status === 'warnings' ? validation : undefined
-  const validationCopy = useMemo(() => {
-    if (!flagged) return null
-    const { errors, warnings } = countIssues(flagged.issues)
-    return flagged.status === 'errors'
-      ? t(`item_validation.row.${validationBlocks ? 'errors_blocking' : 'errors'}`, { count: errors })
-      : t('item_validation.row.warnings', { count: warnings })
-  }, [flagged, validationBlocks, t])
+  const validationCopy = !flagged
+    ? null
+    : flagged.status === 'errors'
+      ? t(`item_validation.row.${validationBlocks ? 'errors_blocking' : 'errors'}`)
+      : t('item_validation.row.warnings')
 
   function startEditing() {
     setDraftName(item.name)

@@ -203,6 +203,7 @@ const ItemEditorPage = () => {
       name: previewSelected.name,
       type: previewSelected.type,
       category: previewSelected.data.category,
+      rarity: previewSelected.rarity,
       thumbnail: draftThumbnailUrl ?? (storedThumbnail ? getContentsStorageUrl(storedThumbnail) : null)
     }
   }, [previewSelected, draftThumbnailUrl])

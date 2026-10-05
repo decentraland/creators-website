@@ -726,6 +726,7 @@ const CollectionDetailPage = () => {
                 name: validationItem.name,
                 type: validationItem.type,
                 category: validationItem.data.category,
+                rarity: validationItem.rarity,
                 thumbnail: validationItem.contents[validationItem.thumbnail]
                   ? getContentsStorageUrl(validationItem.contents[validationItem.thumbnail])
                   : null

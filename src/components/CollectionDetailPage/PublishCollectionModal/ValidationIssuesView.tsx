@@ -59,6 +59,7 @@ export function ValidationIssuesView({ checks, blockOnErrors, onRerun, onBack, o
                   name: check.item.name,
                   type: check.item.type,
                   category: check.item.data.category,
+                  rarity: check.item.rarity,
                   thumbnail: thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null
                 }}
                 issues={check.issues}

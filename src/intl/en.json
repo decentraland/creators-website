@@ -1199,9 +1199,9 @@
       "female": "Female"
     },
     "row": {
-      "errors_blocking": "{count, plural, one {# issue} other {# issues}} to fix before publishing. Click for details.",
-      "errors": "{count, plural, one {# issue} other {# issues}} worth fixing before publishing. Click for details.",
-      "warnings": "Can be improved: {count, plural, one {# suggestion} other {# suggestions}}. Click for details."
+      "errors_blocking": "This item needs some fixes before publishing.\nClick to see details.",
+      "errors": "This item has some issues worth fixing before publishing.\nClick to see details.",
+      "warnings": "This item can be improved.\nClick to see details."
     },
     "issues": {
       "errors_blocking": {
@@ -1209,8 +1209,8 @@
         "intro": "We found a few issues that need to be resolved before you can publish your collection. Fix them and try publishing again."
       },
       "errors": {
-        "title": "Some items are worth a second look",
-        "intro": "We found a few issues that could cause problems during curation review. We recommend fixing them first, but you can still continue publishing."
+        "title": "Some items have issues",
+        "intro": "We found a few issues that could get your items rejected during curation review. We recommend fixing them first, but you can still continue publishing."
       },
       "warnings": {
         "title": "A few things to review",

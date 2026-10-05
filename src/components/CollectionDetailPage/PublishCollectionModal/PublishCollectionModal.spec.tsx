@@ -112,9 +112,7 @@ describe('PublishCollectionModal item checks', () => {
 
   it('lets the creator continue past errors when they do not block publishing', async () => {
     renderModal({ validation: { isValidating: false, results: [{ item: broken, issues: [error] }] } })
-    expect(screen.getByTestId('publish-validation-issues-title')).toHaveTextContent(
-      'Some items are worth a second look'
-    )
+    expect(screen.getByTestId('publish-validation-issues-title')).toHaveTextContent('Some items have issues')
     await userEvent.click(screen.getByTestId('publish-validation-continue'))
     expect(screen.getByTestId('confirm-name-step')).toBeInTheDocument()
   })
