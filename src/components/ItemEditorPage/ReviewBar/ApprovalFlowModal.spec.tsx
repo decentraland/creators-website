@@ -123,6 +123,7 @@ describe('ApprovalFlowModal', () => {
     view = { kind: 'step', step: 'deploy', phase: { kind: 'idle' } }
     renderModal()
     expect(screen.queryByTestId('approval-steps')).not.toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Upload files')
     expect(await screen.findByText('799.9KB')).toBeInTheDocument()
   })
 

@@ -187,21 +187,22 @@ export function ApprovalFlowModal({ session, collection, curation, mode, onClose
   const busy = phase.kind !== 'idle'
   const run = { rescue: flow.runRescue, deploy: flow.runDeploy, approve: flow.runApprove }[step]
   const count = step === 'rescue' ? plan.rescue.length : plan.deploy.length
+  const single = plan.steps.length === 1
 
   return (
     <Modal
-      title={t('approval_flow.title')}
+      title={t(single ? `approval_flow.${step}.title` : 'approval_flow.title')}
       onClose={onClose}
       closeDisabled={busy}
       size="large"
       testId="approval-flow-modal"
     >
-      <S.Main>
-        {plan.steps.length > 1 && (
+      <S.Main data-single={single || undefined}>
+        {!single && (
           <StepIndicator current={plan.steps.indexOf(step) + 1} total={plan.steps.length} testId="approval-steps" />
         )}
         <S.Step data-testid={`approval-step-${step}`}>
-          <S.Heading>{t(`approval_flow.${step}.title`)}</S.Heading>
+          {!single && <S.Heading>{t(`approval_flow.${step}.title`)}</S.Heading>}
           <S.Text>{t(`approval_flow.${step}.body`, { count })}</S.Text>
           <StepTable step={step} plan={plan} collection={collection} />
           <S.Footer>

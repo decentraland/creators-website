@@ -3,7 +3,6 @@ import { theme } from '~/styles/theme'
 import * as Shared from '~/components/CollectionDetailPage/PublishCollectionModal/PublishCollectionModal.styles'
 
 export {
-  Step,
   Heading,
   Text,
   TableBody,
@@ -16,6 +15,17 @@ const mobile = theme.media.maxWidth('mobile')
 // Each step is as tall as its table: a one-row Enable step shouldn't keep the publish modal's fixed height.
 export const Main = styled(Shared.Main)`
   min-height: 0;
+
+  &[data-single] {
+    margin-top: 0;
+  }
+`
+
+// A lone step's title is the modal title, so its body starts right under it.
+export const Step = styled(Shared.Step)`
+  [data-single] > & {
+    padding-top: 0;
+  }
 `
 
 export const Table = styled(Shared.Table)`
