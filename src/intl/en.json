@@ -325,7 +325,7 @@
       "title": "Confirm & Pay",
       "description": "You’re about to submit {count, plural, one {# item} other {# items}} from “{name}” for review. Choose a payment method to pay the <fee>publication fee</fee> and continue.",
       "fee_tooltip_title": "What is the publication fee?",
-      "fee_tooltip_body": "A one-time fee of 25 USD per item, paid when submitting your items for review. For a limited time, the Decentraland Foundation covers 20 USD, so you pay only 5 USD per item — in MANA or with Credits.",
+      "fee_tooltip_body": "A one-time fee paid when submitting your items for review: 25 USD per item. For a limited time, the Decentraland Foundation covers 20 USD, so you pay 5 USD per item.",
       "columns": {
         "collection": "Collection",
         "items": "Items",
