@@ -90,43 +90,6 @@ export const Footer = styled(Shared.Footer)`
   }
 `
 
-export const ProgressLabel = styled.p`
-  margin: 24px 0 0;
-  font-size: 16px;
-  color: ${theme.colors.white};
-`
-
-export const ProgressRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  font-size: 18px;
-  color: ${theme.colors.softWhite};
-`
-
-export const ProgressBar = styled.progress`
-  flex: 1;
-  height: 20px;
-  border: 0;
-  border-radius: ${theme.radius.pill};
-  overflow: hidden;
-  appearance: none;
-  background: ${theme.colors.glassHover};
-
-  &::-webkit-progress-bar {
-    background: ${theme.colors.glassHover};
-  }
-  &::-webkit-progress-value {
-    border-radius: ${theme.radius.pill};
-    background: ${theme.gradients.ember};
-    transition: width 0.3s ease;
-  }
-  &::-moz-progress-bar {
-    border-radius: ${theme.radius.pill};
-    background: ${theme.gradients.ember};
-  }
-`
-
 export const Detail = styled.div`
   display: flex;
   flex-direction: column;

@@ -18,8 +18,10 @@ import { RarityPill } from '~/components/RarityPill'
 import { StepIndicator } from '~/components/StepIndicator'
 import { SuccessModal } from '~/components/SuccessModal'
 import { Tooltip } from '~/components/Tooltip'
+import { ProgressModal } from '~/components/ProgressModal'
 import { PendingModal } from '~/components/CollectionDetailPage/SellItemFlow/PendingModal'
 import { useApprovalFlow, type ApprovalMode, type ApprovalPlan, type ApprovalStep } from '~/hooks/useApprovalFlow'
+import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { useAssignCurator } from '~/hooks/useCuration'
 import { useProfile } from '~/hooks/useProfile'
 import { track } from '~/lib/analytics'
@@ -63,6 +65,8 @@ export function ApprovalFlowModal({ session, collection, curation, mode, onClose
   const { data: assigneeProfile } = useProfile(assignedToOther ? curation.assignee! : undefined)
   const flow = useApprovalFlow(session, collection, curation, mode)
   const { view, plan, start, stop } = flow
+  // Reloading mid-transaction or mid-upload loses track of it; the flow would have to start over.
+  useBeforeUnloadGuard(view.kind === 'step' && view.phase.kind !== 'idle')
 
   // Runs once per confirmation: the collection and curation refetch mid-flow, which recreates `start`,
   // and re-running it would reopen the flow from its first step.
@@ -158,6 +162,19 @@ export function ApprovalFlowModal({ session, collection, curation, mode, onClose
       />
     )
   }
+  if (phase.kind === 'uploading') {
+    return (
+      <ProgressModal
+        title={t('approval_flow.title')}
+        heading={t('approval_flow.deploy.uploading_title')}
+        description={t('approval_flow.deploy.uploading_body')}
+        label={t('approval_flow.deploy.uploading')}
+        done={phase.done}
+        total={phase.total}
+        testId="approval-uploading"
+      />
+    )
+  }
   if (phase.kind === 'pending') {
     return (
       <PendingModal
@@ -184,34 +201,18 @@ export function ApprovalFlowModal({ session, collection, curation, mode, onClose
           <StepIndicator current={plan.steps.indexOf(step) + 1} total={plan.steps.length} testId="approval-steps" />
         )}
         <S.Step data-testid={`approval-step-${step}`}>
-          {phase.kind === 'uploading' ? (
-            <>
-              <S.Heading>{t('approval_flow.deploy.uploading_title')}</S.Heading>
-              <S.Text>{t('approval_flow.deploy.uploading_body')}</S.Text>
-              <S.ProgressLabel>{t('approval_flow.deploy.uploading')}</S.ProgressLabel>
-              <S.ProgressRow>
-                <S.ProgressBar value={phase.done} max={phase.total} data-testid="approval-upload-progress" />
-                <span>
-                  {phase.done}/{phase.total}
-                </span>
-              </S.ProgressRow>
-            </>
-          ) : (
-            <>
-              <S.Heading>{t(`approval_flow.${step}.title`)}</S.Heading>
-              <S.Text>{t(`approval_flow.${step}.body`, { count })}</S.Text>
-              <StepTable step={step} plan={plan} collection={collection} />
-              <S.Footer>
-                <Button type="button" variant="secondary" disabled={busy} onClick={onClose}>
-                  {t('approval_flow.cancel')}
-                </Button>
-                <Button type="button" loading={busy} data-testid={`approval-${step}`} onClick={() => void run()}>
-                  {t(`approval_flow.${step}.action`)}
-                  <ChevronRightIcon fontSize="small" />
-                </Button>
-              </S.Footer>
-            </>
-          )}
+          <S.Heading>{t(`approval_flow.${step}.title`)}</S.Heading>
+          <S.Text>{t(`approval_flow.${step}.body`, { count })}</S.Text>
+          <StepTable step={step} plan={plan} collection={collection} />
+          <S.Footer>
+            <Button type="button" variant="secondary" disabled={busy} onClick={onClose}>
+              {t('approval_flow.cancel')}
+            </Button>
+            <Button type="button" loading={busy} data-testid={`approval-${step}`} onClick={() => void run()}>
+              {t(`approval_flow.${step}.action`)}
+              <ChevronRightIcon fontSize="small" />
+            </Button>
+          </S.Footer>
         </S.Step>
       </S.Main>
     </Modal>

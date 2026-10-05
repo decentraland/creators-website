@@ -1345,9 +1345,9 @@
       "title": "Upload files",
       "body": "{count, plural, one {# item needs} other {# items need}} to be uploaded to appear in Decentraland.",
       "action": "Upload files",
-      "uploading_title": "Uploading your items",
-      "uploading_body": "Hang tight while the files reach Decentraland. Keep this window open.",
-      "uploading": "Uploading items…"
+      "uploading_title": "Uploading items",
+      "uploading_body": "Please keep this window open while the files upload.",
+      "uploading": "Uploading files…"
     },
     "approve": {
       "title": "Enable Collection",

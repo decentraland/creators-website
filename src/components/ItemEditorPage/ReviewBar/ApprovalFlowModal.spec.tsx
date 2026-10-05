@@ -126,12 +126,17 @@ describe('ApprovalFlowModal', () => {
     expect(await screen.findByText('799.9KB')).toBeInTheDocument()
   })
 
-  it('shows the upload progress', () => {
+  it('shows the upload progress with no way to close it, and guards the page while it runs', () => {
     plan = { steps: ['deploy'], rescue: [], deploy: [item] }
     view = { kind: 'step', step: 'deploy', phase: { kind: 'uploading', done: 1, total: 3 } }
     renderModal()
-    expect(screen.getByTestId('approval-upload-progress')).toHaveAttribute('value', '1')
-    expect(screen.getByText('1/3')).toBeInTheDocument()
+    expect(screen.getByTestId('approval-uploading-bar')).toHaveAttribute('value', '1')
+    expect(screen.getByTestId('approval-uploading-count')).toHaveTextContent('1/3')
+    expect(screen.queryByTestId('approval-uploading-close')).not.toBeInTheDocument()
+
+    const leaving = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(leaving)
+    expect(leaving.defaultPrevented).toBe(true)
   })
 
   it('waits on the wallet prompt with a way back to the step', () => {

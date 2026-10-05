@@ -1345,9 +1345,9 @@
       "title": "Subir archivos",
       "body": "{count, plural, one {# ítem debe subirse} other {# ítems deben subirse}} para aparecer en Decentraland.",
       "action": "Subir archivos",
-      "uploading_title": "Subiendo tus ítems",
-      "uploading_body": "Espera mientras los archivos llegan a Decentraland. Mantén esta ventana abierta.",
-      "uploading": "Subiendo ítems…"
+      "uploading_title": "Subiendo ítems",
+      "uploading_body": "Mantén esta ventana abierta mientras se suben los archivos.",
+      "uploading": "Subiendo archivos…"
     },
     "approve": {
       "title": "Habilitar colección",
