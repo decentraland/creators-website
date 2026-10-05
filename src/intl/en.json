@@ -112,6 +112,7 @@
       "copy_address": "Copy contract address",
       "collaborators": "Collaborators",
       "senders": "Senders",
+      "transfer_ownership": "Transfer ownership",
       "delete": "Delete collection",
       "copied_urn": "URN copied to clipboard",
       "copied_address": "Contract address copied to clipboard",
@@ -456,7 +457,9 @@
       "title_senders": "We couldn’t update the senders",
       "description_senders": "Something went wrong while saving the senders of this collection. Please try again.",
       "title_collaborators": "We couldn’t update the collaborators",
-      "description_collaborators": "Something went wrong while saving the collaborators of this collection. Please try again."
+      "description_collaborators": "Something went wrong while saving the collaborators of this collection. Please try again.",
+      "title_transfer": "We couldn’t transfer the ownership",
+      "description_transfer": "Something went wrong while transferring this collection. It is still yours. Please try again."
     },
     "remove": {
       "title": "Remove from sale?",
@@ -905,6 +908,26 @@
       "title": "Discard your changes?",
       "description": "If you leave now, the changes you made to this list won’t be saved.",
       "leave": "Discard changes",
+      "keep": "Keep editing"
+    }
+  },
+  "transfer_ownership_modal": {
+    "title": "Transfer ownership",
+    "description": "The new owner takes full control of “{name}”: editing its items, publishing changes, sales, and the senders and collaborators lists. If you also hold one of those roles you keep it.",
+    "warning": "You can’t undo this. Only the new owner could transfer the collection back to you.",
+    "new_owner": "New owner",
+    "placeholder": "Select or copy the new owner’s User ID",
+    "clear": "Clear new owner",
+    "self": "That’s your own address: you already own this collection.",
+    "confirm_label": "Type “{name}” to confirm",
+    "submit": "Transfer ownership",
+    "saving": "Transferring ownership...",
+    "success_title": "Ownership transferred!",
+    "success_description": "“{name}” now belongs to {owner}. It stays in your collections only if you’re one of its collaborators or senders.",
+    "discard": {
+      "title": "Discard this transfer?",
+      "description": "If you leave now, nothing changes and the collection stays yours.",
+      "leave": "Discard",
       "keep": "Keep editing"
     }
   },

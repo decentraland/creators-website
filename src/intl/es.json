@@ -112,6 +112,7 @@
       "copy_address": "Copiar dirección del contrato",
       "collaborators": "Colaboradores",
       "senders": "Emisores",
+      "transfer_ownership": "Transferir propiedad",
       "delete": "Eliminar colección",
       "copied_urn": "URN copiado al portapapeles",
       "copied_address": "Dirección del contrato copiada al portapapeles",
@@ -456,7 +457,9 @@
       "title_senders": "No pudimos actualizar los emisores",
       "description_senders": "Algo salió mal al guardar los emisores de esta colección. Por favor, inténtalo de nuevo.",
       "title_collaborators": "No pudimos actualizar los colaboradores",
-      "description_collaborators": "Algo salió mal al guardar los colaboradores de esta colección. Por favor, inténtalo de nuevo."
+      "description_collaborators": "Algo salió mal al guardar los colaboradores de esta colección. Por favor, inténtalo de nuevo.",
+      "title_transfer": "No pudimos transferir la propiedad",
+      "description_transfer": "Algo salió mal al transferir esta colección. Sigue siendo tuya. Por favor, inténtalo de nuevo."
     },
     "remove": {
       "title": "¿Quitar de la venta?",
@@ -905,6 +908,26 @@
       "title": "¿Descartar tus cambios?",
       "description": "Si sales ahora, los cambios que hiciste en esta lista no se guardarán.",
       "leave": "Descartar cambios",
+      "keep": "Seguir editando"
+    }
+  },
+  "transfer_ownership_modal": {
+    "title": "Transferir propiedad",
+    "description": "El nuevo dueño toma el control total de “{name}”: editar sus ítems, publicar cambios, las ventas y las listas de emisores y colaboradores. Si además tienes uno de esos roles, lo conservas.",
+    "warning": "Esto no se puede deshacer. Solo el nuevo dueño podría devolverte la colección.",
+    "new_owner": "Nuevo dueño",
+    "placeholder": "Selecciona o copia el User ID del nuevo dueño",
+    "clear": "Quitar nuevo dueño",
+    "self": "Esa es tu propia dirección: esta colección ya es tuya.",
+    "confirm_label": "Escribe “{name}” para confirmar",
+    "submit": "Transferir propiedad",
+    "saving": "Transfiriendo la propiedad...",
+    "success_title": "¡Propiedad transferida!",
+    "success_description": "“{name}” ahora pertenece a {owner}. Seguirá en tus colecciones solo si eres colaborador o emisor.",
+    "discard": {
+      "title": "¿Descartar esta transferencia?",
+      "description": "Si sales ahora, nada cambia y la colección sigue siendo tuya.",
+      "leave": "Descartar",
       "keep": "Seguir editando"
     }
   },

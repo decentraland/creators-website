@@ -63,6 +63,15 @@ export const Item = styled.button`
     opacity: 0.5;
     cursor: default;
   }
+  &[data-tone='danger'] {
+    color: ${theme.colors.errLight};
+
+    &:hover:not([aria-disabled]),
+    &:focus-visible {
+      background: ${theme.colors.errOverlay};
+      color: ${theme.colors.errLight};
+    }
+  }
 
   & svg {
     flex-shrink: 0;

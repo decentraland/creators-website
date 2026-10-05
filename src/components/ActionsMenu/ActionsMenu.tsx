@@ -116,10 +116,12 @@ type ItemProps = {
   /** Inert placeholder for a flow that has not shipped yet; `title` carries the "coming soon" hint. */
   disabled?: boolean
   title?: string
+  /** `danger` for a destructive entry (delete, transfer ownership). */
+  tone?: 'default' | 'danger'
   testId: string
 }
 
-export function ActionsMenuItem({ children, onClick, disabled = false, title, testId }: ItemProps) {
+export function ActionsMenuItem({ children, onClick, disabled = false, title, tone = 'default', testId }: ItemProps) {
   const { close } = useContext(MenuContext)
   return (
     <S.Item
@@ -127,6 +129,7 @@ export function ActionsMenuItem({ children, onClick, disabled = false, title, te
       role="menuitem"
       aria-disabled={disabled || undefined}
       title={title}
+      data-tone={tone === 'danger' ? tone : undefined}
       data-testid={testId}
       onClick={() => {
         if (disabled) return
