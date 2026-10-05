@@ -15,8 +15,7 @@ const state = vi.hoisted(() => ({
   refetch: vi.fn(),
   syncs: new Map<string, { status: string; entity?: object }>(),
   reject: vi.fn(),
-  disable: vi.fn(),
-  assign: vi.fn()
+  disable: vi.fn()
 }))
 vi.mock('~/hooks/useCuration', () => ({
   useCollectionCuration: () => ({
@@ -26,16 +25,19 @@ vi.mock('~/hooks/useCuration', () => ({
     refetch: state.refetch
   }),
   useRejectCuration: () => ({ mutate: state.reject, isPending: false, isError: false, reset: vi.fn() }),
-  useDisableCollection: () => ({ mutate: state.disable, isPending: false, isError: false, reset: vi.fn() }),
-  useAssignCurator: () => ({ mutate: state.assign, isPending: false, isError: false, reset: vi.fn() })
+  useDisableCollection: () => ({ mutate: state.disable, isPending: false, isError: false, reset: vi.fn() })
 }))
 vi.mock('~/hooks/useItemSync', () => ({ useItemSyncs: () => state.syncs }))
-vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: { name: 'Ana' } }) }))
+vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: undefined }) }))
 vi.mock('./ApprovalFlowModal', () => ({
   ApprovalFlowModal: ({ mode }: { mode: string }) => <div data-testid="approval-flow" data-mode={mode} />
 }))
 vi.mock('~/components/AssignCuratorModal', () => ({
-  AssignCuratorModal: ({ mode }: { mode: string }) => <div data-testid="assign-modal" data-mode={mode} />
+  AssignCuratorModal: ({ mode, onAssigned }: { mode: string; onAssigned?: () => void }) => (
+    <div data-testid="assign-modal" data-mode={mode}>
+      {onAssigned && <button type="button" data-testid="assign-continue" onClick={onAssigned} />}
+    </div>
+  )
 }))
 
 const session = { address: '0xme' } as Session
@@ -67,8 +69,6 @@ beforeEach(() => {
   state.syncs = new Map()
   state.reject.mockReset()
   state.disable.mockReset()
-  state.assign.mockReset()
-  state.assign.mockImplementation((_vars, { onSuccess }: { onSuccess: () => void }) => onSuccess())
 })
 
 describe('ReviewBar', () => {
@@ -76,11 +76,10 @@ describe('ReviewBar', () => {
     renderBar()
     expect(actions()).toEqual(['review-action-approve', 'review-action-reject'])
     fireEvent.click(screen.getByTestId('review-action-approve'))
-    expect(screen.getByTestId('review-take-over-title')).toHaveTextContent('Assign curation')
+    expect(screen.getByTestId('assign-modal')).toHaveAttribute('data-mode', 'self')
     expect(screen.queryByTestId('approval-flow')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByTestId('review-take-over-confirm'))
-    expect(state.assign).toHaveBeenCalledWith({ collection: base, curation: null, assignee: '0xme' }, expect.anything())
+    fireEvent.click(screen.getByTestId('assign-continue'))
     expect(screen.getByTestId('approval-flow')).toHaveAttribute('data-mode', 'approve')
   })
 
@@ -88,10 +87,7 @@ describe('ReviewBar', () => {
     state.curation = { status: 'pending', assignee: '0xother', createdAt: 1, updatedAt: 1 } as CollectionCuration
     renderBar()
     fireEvent.click(screen.getByTestId('review-action-reject'))
-    expect(screen.getByTestId('review-take-over-title')).toHaveTextContent('Reassign curation')
-    expect(screen.getByTestId('review-take-over-description')).toHaveTextContent('assigned to Ana')
-
-    fireEvent.click(screen.getByTestId('review-take-over-confirm'))
+    fireEvent.click(screen.getByTestId('assign-continue'))
     expect(screen.getByTestId('review-reject')).toBeInTheDocument()
   })
 
@@ -99,14 +95,14 @@ describe('ReviewBar', () => {
     state.curation = { status: 'pending', assignee: '0xme', createdAt: 1, updatedAt: 1 } as CollectionCuration
     renderBar()
     fireEvent.click(screen.getByTestId('review-action-approve'))
-    expect(state.assign).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('assign-modal')).not.toBeInTheDocument()
     expect(screen.getByTestId('approval-flow')).toBeInTheDocument()
   })
 
   it('rejects after confirming', () => {
     renderBar()
     fireEvent.click(screen.getByTestId('review-action-reject'))
-    fireEvent.click(screen.getByTestId('review-take-over-confirm'))
+    fireEvent.click(screen.getByTestId('assign-continue'))
     fireEvent.click(screen.getByTestId('review-reject-confirm'))
     expect(state.reject).toHaveBeenCalledWith({ collection: base, curation: null }, expect.anything())
   })

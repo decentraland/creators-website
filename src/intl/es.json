@@ -713,13 +713,6 @@
         "success": "{collection} fue deshabilitada",
         "signing": "Confirma en tu wallet para deshabilitar la colección.",
         "pending": "Deshabilitando colección…"
-      },
-      "take_over": {
-        "title_assign": "Asignar curaduría",
-        "title_reassign": "Reasignar curaduría",
-        "body_unassigned": "Esta colección se te asignará antes de continuar.",
-        "body_other": "Esta colección está asignada a {assignee}. Puedes curarla igual, pero quedará asignada a ti. Avísale a {assignee}.",
-        "confirm": "Asignármela y continuar"
       }
     },
     "discard": {
@@ -1318,7 +1311,9 @@
     "error": "No pudimos guardar la asignación. Inténtalo de nuevo.",
     "cancel": "Cancelar",
     "submit_self": "Asignármela",
-    "submit_edit": "Guardar"
+    "submit_edit": "Guardar",
+    "take_over_body": "Esta colección está asignada a {assignee}. Puedes curarla igual, pero quedará asignada a ti. Avísale a {assignee}.",
+    "submit_continue": "Asignármela y continuar"
   },
   "approval_flow": {
     "title": "Aprobar colección",

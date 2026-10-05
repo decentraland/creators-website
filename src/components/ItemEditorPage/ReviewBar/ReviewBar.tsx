@@ -7,8 +7,7 @@ import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { CurationStatePill } from '~/components/CurationStatePill'
 import { ProfileBadge } from '~/components/ProfileBadge'
-import { useAssignCurator, useCollectionCuration, useRejectCuration } from '~/hooks/useCuration'
-import { useProfile } from '~/hooks/useProfile'
+import { useCollectionCuration, useRejectCuration } from '~/hooks/useCuration'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { type ApprovalMode } from '~/hooks/useApprovalFlow'
 import { type Session } from '~/lib/auth'
@@ -18,7 +17,6 @@ import { ItemSyncStatus } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import { formatTimeAgo } from '~/lib/time'
-import { shortAddress } from '~/lib/ids'
 import { ApprovalFlowModal } from './ApprovalFlowModal'
 import { DisableCollectionFlow } from './DisableCollectionFlow'
 import * as S from './ReviewBar.styles'
@@ -47,7 +45,6 @@ export function ReviewBar({ session, collection, items }: Props) {
   const [approval, setApproval] = useState<ApprovalMode | null>(null)
   // The curator about to decide is assigned first, so the request always names who curated the collection.
   const [takeOver, setTakeOver] = useState<ReviewAction | null>(null)
-  const assign = useAssignCurator(address)
   const self = address.toLowerCase()
 
   const hasMissingEntities = useMemo(
@@ -57,8 +54,6 @@ export function ReviewBar({ session, collection, items }: Props) {
   const state = getCurationState(collection, curation)
   const actions = collection.isPublished ? getReviewActions(collection, curation, hasMissingEntities) : []
   const assignee = curation?.assignee ?? null
-  const { data: assigneeProfile } = useProfile(takeOver && assignee ? assignee : undefined)
-  const assigneeName = assignee ? assigneeProfile?.name || shortAddress(assignee) : ''
   // A first-review rejection opens the request itself, so its creation time only means something while pending.
   const [timeKey, time] = !curation
     ? ['created', collection.createdAt]
@@ -71,10 +66,7 @@ export function ReviewBar({ session, collection, items }: Props) {
   const isCurationError = collection.isPublished && curationQuery.isError && !curationQuery.data
 
   function onAction(action: ReviewAction) {
-    if (DECISIONS.includes(action) && curation?.assignee !== self) {
-      assign.reset()
-      return setTakeOver(action)
-    }
+    if (DECISIONS.includes(action) && curation?.assignee !== self) return setTakeOver(action)
     runAction(action)
   }
 
@@ -198,38 +190,16 @@ export function ReviewBar({ session, collection, items }: Props) {
         />
       )}
       {takeOver && (
-        <ConfirmModal
-          title={t(
-            assignee ? 'item_editor.review.take_over.title_reassign' : 'item_editor.review.take_over.title_assign'
-          )}
-          description={
-            assignee
-              ? t('item_editor.review.take_over.body_other', { assignee: assigneeName })
-              : t('item_editor.review.take_over.body_unassigned')
-          }
-          error={assign.isError ? t('assign_curator_modal.error') : null}
-          busy={assign.isPending}
+        <AssignCuratorModal
+          collection={collection}
+          curation={curation}
+          address={address}
+          mode="self"
           onClose={() => setTakeOver(null)}
-          cancel={{
-            label: t('item_editor.review.cancel'),
-            onClick: () => setTakeOver(null),
-            testId: 'review-take-over-cancel'
+          onAssigned={() => {
+            setTakeOver(null)
+            runAction(takeOver)
           }}
-          confirm={{
-            label: t('item_editor.review.take_over.confirm'),
-            testId: 'review-take-over-confirm',
-            onClick: () =>
-              assign.mutate(
-                { collection, curation, assignee: self },
-                {
-                  onSuccess: () => {
-                    setTakeOver(null)
-                    runAction(takeOver)
-                  }
-                }
-              )
-          }}
-          testId="review-take-over"
         />
       )}
       {dialog === 'disable' && (

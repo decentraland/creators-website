@@ -713,13 +713,6 @@
         "success": "{collection} was disabled",
         "signing": "Please confirm in your wallet to disable the collection.",
         "pending": "Disabling collection…"
-      },
-      "take_over": {
-        "title_assign": "Assign curation",
-        "title_reassign": "Reassign curation",
-        "body_unassigned": "This collection will be assigned to you before you continue.",
-        "body_other": "This collection is assigned to {assignee}. You can still curate it, but it will be assigned to you. Let {assignee} know.",
-        "confirm": "Assign to me and continue"
       }
     },
     "discard": {
@@ -1318,7 +1311,9 @@
     "error": "We couldn't save the assignment. Please try again.",
     "cancel": "Cancel",
     "submit_self": "Assign to me",
-    "submit_edit": "Save"
+    "submit_edit": "Save",
+    "take_over_body": "This collection is assigned to {assignee}. You can still curate it, but it will be assigned to you. Let {assignee} know.",
+    "submit_continue": "Assign to me and continue"
   },
   "approval_flow": {
     "title": "Approve Collection",

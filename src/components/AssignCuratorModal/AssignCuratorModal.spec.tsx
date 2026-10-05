@@ -60,4 +60,27 @@ describe('AssignCuratorModal', () => {
     expect(mutate).not.toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
   })
+
+  it('takes over another curator’s collection and continues into the decision', async () => {
+    const onAssigned = vi.fn()
+    mutate.mockImplementation((_vars: unknown, options?: { onSuccess?: () => void }) => options?.onSuccess?.())
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <TranslationProvider>
+          <AssignCuratorModal
+            collection={collection}
+            curation={curation}
+            address={ME}
+            mode="self"
+            onClose={vi.fn()}
+            onAssigned={onAssigned}
+          />
+        </TranslationProvider>
+      </QueryClientProvider>
+    )
+    expect(await screen.findByTestId('assign-curator-body')).toHaveTextContent(`assigned to ${OTHER}`)
+    expect(screen.getByTestId('assign-curator-submit')).toHaveTextContent(/continue/i)
+    fireEvent.click(screen.getByTestId('assign-curator-submit'))
+    expect(onAssigned).toHaveBeenCalled()
+  })
 })

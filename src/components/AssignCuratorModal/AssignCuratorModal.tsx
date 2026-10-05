@@ -18,9 +18,11 @@ type Props = {
   /** `self` confirms taking the collection; `edit` picks any curator or none. */
   mode: 'self' | 'edit'
   onClose: () => void
+  /** Taking the collection over right before deciding on it: continues into the decision instead of closing. */
+  onAssigned?: () => void
 }
 
-export function AssignCuratorModal({ collection, curation, address, mode, onClose }: Props) {
+export function AssignCuratorModal({ collection, curation, address, mode, onClose, onAssigned }: Props) {
   const { t } = useTranslation()
   const showToast = useNotifications(state => state.showToast)
   const assign = useAssignCurator(address)
@@ -47,11 +49,15 @@ export function AssignCuratorModal({ collection, curation, address, mode, onClos
               : t('assign_curator_modal.unassigned', { collection: collection.name }),
             { type: 'success' }
           )
-          onClose()
+          if (onAssigned) onAssigned()
+          else onClose()
         }
       }
     )
   }
+
+  const current = curation?.assignee && curation.assignee !== self ? curation.assignee : null
+  const currentName = current ? (options.find(option => option.value === current)?.label ?? current) : ''
 
   return (
     <Modal
@@ -62,7 +68,11 @@ export function AssignCuratorModal({ collection, curation, address, mode, onClos
     >
       <S.Form onSubmit={submit}>
         {mode === 'self' ? (
-          <S.Text>{t('assign_curator_modal.self_body')}</S.Text>
+          <S.Text data-testid="assign-curator-body">
+            {current
+              ? t('assign_curator_modal.take_over_body', { assignee: currentName })
+              : t('assign_curator_modal.self_body')}
+          </S.Text>
         ) : (
           <Select
             value={choice}
@@ -78,7 +88,7 @@ export function AssignCuratorModal({ collection, curation, address, mode, onClos
             {t('assign_curator_modal.cancel')}
           </Button>
           <Button type="submit" loading={assign.isPending} data-testid="assign-curator-submit">
-            {t(`assign_curator_modal.submit_${mode}`)}
+            {t(onAssigned ? 'assign_curator_modal.submit_continue' : `assign_curator_modal.submit_${mode}`)}
           </Button>
         </S.Actions>
       </S.Form>
