@@ -155,17 +155,6 @@ export function orderCurators(members: string[], address: string | undefined): s
   return self && lower.includes(self) ? [self, ...lower.filter(member => member !== self)] : lower
 }
 
-export type CreatorReviewNotice = 'rejected'
-
-/** What the creator is told about a published collection's latest review request, if anything. */
-export function getCreatorReviewNotice(
-  collection: Collection,
-  curation: CollectionCuration | null
-): CreatorReviewNotice | null {
-  if (!collection.isPublished || !curation) return null
-  return curation.status === 'rejected' ? 'rejected' : null
-}
-
 /**
  * Owners and collaborators may ask the committee for another look: an approved collection once its items
  * are unsynced, or a never-approved one after a rejected first review (its items always read as under

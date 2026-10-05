@@ -9,7 +9,6 @@ import {
   curationListUrl,
   rememberCurationSearch,
   fromRemoteCuration,
-  getCreatorReviewNotice,
   getCurationState,
   getReviewActions,
   isCommitteeMember,
@@ -206,17 +205,6 @@ describe('orderCurators', () => {
   it('puts the signed-in curator first', () => {
     expect(orderCurators(['0xa', '0xB', '0xc'], '0xb')).toEqual(['0xb', '0xa', '0xc'])
     expect(orderCurators(['0xa'], '0xz')).toEqual(['0xa'])
-  })
-})
-
-describe('getCreatorReviewNotice', () => {
-  it('tells the creator where the latest request stands', () => {
-    expect(getCreatorReviewNotice(collection(), null)).toBeNull()
-    expect(getCreatorReviewNotice(collection(), curation())).toBe('waiting')
-    expect(getCreatorReviewNotice(collection(), curation({ assignee: '0xc' }))).toBe('reviewing')
-    expect(getCreatorReviewNotice(collection(), curation({ status: 'rejected' }))).toBe('rejected')
-    expect(getCreatorReviewNotice(collection({ isApproved: true }), curation({ status: 'approved' }))).toBeNull()
-    expect(getCreatorReviewNotice(collection({ isPublished: false }), curation())).toBeNull()
   })
 })
 

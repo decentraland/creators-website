@@ -3,10 +3,9 @@
 import { calculateMultipleHashesADR32, calculateMultipleHashesADR32LegacyQmHash, hashV1 } from '@dcl/hashing'
 import { EntityType } from '@dcl/schemas'
 import { type Collection } from '~/lib/collections'
+import { THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { IMAGE_PATH, ItemType, VIDEO_PATH, type Item, type ItemRepresentation } from '~/lib/items'
-
-const THUMBNAIL_PATH = 'thumbnail.png'
-const EMPTY_CONTENT_HASH = 'bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku'
+import { getDeployableFiles } from '~/lib/itemSync'
 const EMPTY_ITEM_METRICS = { triangles: 0, materials: 0, textures: 0, meshes: 0, bodies: 0, entities: 1 }
 
 export type EntityContent = Record<string, string>
@@ -18,10 +17,9 @@ export type EntityContent = Record<string, string>
 export function getEntityContent(item: Item, imageHash?: string): EntityContent {
   const contents: EntityContent = { ...item.contents }
   if (!contents[IMAGE_PATH] && imageHash) contents[IMAGE_PATH] = imageHash
-  delete contents[VIDEO_PATH]
-  return Object.fromEntries(
-    Object.entries(contents).filter(([path, hash]) => !path.endsWith('/') && hash !== EMPTY_CONTENT_HASH)
-  )
+  const deployable = getDeployableFiles(contents)
+  deployable.delete(VIDEO_PATH)
+  return Object.fromEntries([...deployable].map(path => [path, contents[path]]))
 }
 
 function stripRepresentations(representations: ItemRepresentation[], content: EntityContent) {
