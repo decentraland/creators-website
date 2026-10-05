@@ -1216,7 +1216,8 @@
       "published": "Published",
       "under_review": "Under review",
       "rejected": "Rejected",
-      "not_published": "Not published"
+      "not_published": "Not published",
+      "retry": "Couldn't load · Retry"
     },
     "mapping": {
       "none": "No mapping",

@@ -189,6 +189,15 @@ export function LinkedCollectionView({
                         <Pill data-testid="linked-item-status" data-status={status}>
                           {t(`linked_collection.item_status.${status}`)}
                         </Pill>
+                      ) : curations.isError ? (
+                        <S.StatusRetry
+                          type="button"
+                          data-testid="linked-item-status-retry"
+                          disabled={curations.isFetching}
+                          onClick={() => void curations.refetch()}
+                        >
+                          {t('linked_collection.item_status.retry')}
+                        </S.StatusRetry>
                       ) : (
                         EMPTY
                       )}

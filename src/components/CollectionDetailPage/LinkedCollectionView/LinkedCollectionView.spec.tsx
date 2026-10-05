@@ -117,6 +117,14 @@ describe('LinkedCollectionView', () => {
     expect(silverMapping).toHaveTextContent('Tokens #1–#50')
   })
 
+  it('offers a retry when the item statuses fail to load', async () => {
+    ;(fetchItemCurations as Mock).mockRejectedValueOnce(new Error('boom'))
+    renderView()
+    const [retry] = await screen.findAllByTestId('linked-item-status-retry')
+    await userEvent.click(retry)
+    await waitFor(() => expect(screen.getAllByTestId('linked-item-status')).toHaveLength(2))
+  })
+
   it('offers no editing actions', () => {
     renderView()
     expect(screen.queryByTestId('rename-collection')).not.toBeInTheDocument()

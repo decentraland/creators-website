@@ -71,3 +71,20 @@ export const ItemCount = styled.h2`
   line-height: 1.4;
   color: ${theme.colors.softWhite};
 `
+
+// The statuses failed to load (unexpected: builder-server's "nothing submitted yet" already reads as Not published).
+export const StatusRetry = styled.button`
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: ${theme.colors.softWhite};
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: progress;
+  }
+`
