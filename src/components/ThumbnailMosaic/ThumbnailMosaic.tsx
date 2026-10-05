@@ -14,6 +14,8 @@ type Props = {
   loading?: boolean
   /** Nothing to show yet (an empty collection): a neutral wash with a "No items" label instead of the bare media field. */
   empty?: boolean
+  /** False for covers too small to fit the "No items" label next to the glyph. */
+  showEmptyLabel?: boolean
   className?: string
   testId?: string
 }
@@ -23,6 +25,7 @@ export function ThumbnailMosaic({
   thumbnails,
   loading = false,
   empty = false,
+  showEmptyLabel = true,
   className,
   testId = 'thumbnail-mosaic'
 }: Props) {
@@ -34,7 +37,7 @@ export function ThumbnailMosaic({
       {isEmpty ? (
         <S.Empty data-testid={`${testId}-empty`}>
           <SparklesIcon />
-          {t('thumbnail_mosaic.no_items')}
+          {showEmptyLabel && t('thumbnail_mosaic.no_items')}
         </S.Empty>
       ) : loading ? (
         <S.Loading className="skeleton" data-testid={`${testId}-loading`} aria-hidden />

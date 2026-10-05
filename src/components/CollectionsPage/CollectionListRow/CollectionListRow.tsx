@@ -26,7 +26,7 @@ export function CollectionListRow({ collection }: Props) {
     <S.Row data-testid="collection-row">
       <S.NameCell>
         <S.Thumb>
-          <CollectionMosaic collectionId={collection.id} itemCount={collection.itemCount} />
+          <CollectionMosaic collectionId={collection.id} itemCount={collection.itemCount} showEmptyLabel={false} />
         </S.Thumb>
         {/* Stretched over the whole row (see RowLink) so the row is one real link. */}
         <S.RowLink to={`/collections/${collection.id}`} state={{ listSearch: search }}>

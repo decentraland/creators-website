@@ -31,7 +31,14 @@ describe('ThumbnailMosaic', () => {
     expect(screen.queryByTestId('thumbnail-mosaic-empty')).not.toBeInTheDocument()
 
     rerender(<ThumbnailMosaic thumbnails={[]} />)
+    expect(screen.getByTestId('thumbnail-mosaic')).not.toHaveAttribute('data-empty')
     expect(screen.queryByTestId('thumbnail-mosaic-empty')).not.toBeInTheDocument()
+  })
+
+  it('keeps the empty glyph but drops the label where the cover is too small for it', () => {
+    render(<ThumbnailMosaic thumbnails={[]} empty showEmptyLabel={false} />)
+    expect(screen.getByTestId('thumbnail-mosaic-empty')).toBeInTheDocument()
+    expect(screen.getByTestId('thumbnail-mosaic-empty')).not.toHaveTextContent('No items')
   })
 
   it('shows a skeleton instead of cells while loading', () => {

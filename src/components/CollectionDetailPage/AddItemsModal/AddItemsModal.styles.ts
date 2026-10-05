@@ -257,7 +257,7 @@ export const ThumbnailBox = styled.button`
   overflow: hidden;
   cursor: pointer;
 
-  &:disabled {
+  &:not(button) {
     cursor: default;
   }
 
