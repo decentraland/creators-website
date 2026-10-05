@@ -186,17 +186,20 @@ export function usePushCuration(address: string | undefined) {
 }
 
 /** Disables an approved collection on chain (not mintable anymore) and waits until it is mined. */
+export type DisableVariables = { collection: Collection; onSigned?: () => void }
+
 export function useDisableCollection(session: Session | null) {
   const queryClient = useQueryClient()
   const chainId = getMaticChainId()
   return useMutation({
-    mutationFn: async (collection: Collection) => {
+    mutationFn: async ({ collection, onSigned }: DisableVariables) => {
       if (!session) throw new Error('Wallet disconnected')
       const txHash = await sendContractTransaction(session, buildSetApprovedCall(chainId, collection, false))
+      onSigned?.()
       if (!(await waitForTransaction(chainId, txHash))) throw new Error(`Disable ${txHash} reverted`)
       return txHash
     },
-    onSuccess: (txHash, collection) => {
+    onSuccess: (txHash, { collection }) => {
       // The legacy builder named the on-chain disable "Reject collection".
       track('Reject collection', { collectionId: collection.id, txHash })
       if (!session) return
@@ -205,7 +208,7 @@ export function useDisableCollection(session: Session | null) {
       )
       void queryClient.invalidateQueries({ queryKey: ['curation-collections'] })
     },
-    onError: (error, collection) => {
+    onError: (error, { collection }) => {
       track('Reject collection error', { collectionId: collection.id, error: errorCode(error) })
       if (!isWalletRejection(error)) {
         captureError(error, { flow: 'curation_disable', collectionId: collection.id })

@@ -89,7 +89,7 @@ describe('ReviewBar', () => {
     expect(actions()).toEqual(['review-action-disable', 'review-action-deploy_missing'])
     fireEvent.click(screen.getByTestId('review-action-disable'))
     fireEvent.click(screen.getByTestId('review-disable-confirm'))
-    expect(state.disable).toHaveBeenCalledWith(approved, expect.anything())
+    expect(state.disable).toHaveBeenCalledWith(expect.objectContaining({ collection: approved }), expect.anything())
   })
 
   it('offers only enable on a disabled collection', () => {

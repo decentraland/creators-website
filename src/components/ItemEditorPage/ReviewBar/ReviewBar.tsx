@@ -7,7 +7,7 @@ import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { CurationStatePill } from '~/components/CurationStatePill'
 import { ProfileBadge } from '~/components/ProfileBadge'
-import { useCollectionCuration, useDisableCollection, useRejectCuration } from '~/hooks/useCuration'
+import { useCollectionCuration, useRejectCuration } from '~/hooks/useCuration'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { type ApprovalMode } from '~/hooks/useApprovalFlow'
 import { type Session } from '~/lib/auth'
@@ -18,6 +18,7 @@ import { type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import { formatTimeAgo } from '~/lib/time'
 import { ApprovalFlowModal } from './ApprovalFlowModal'
+import { DisableCollectionFlow } from './DisableCollectionFlow'
 import * as S from './ReviewBar.styles'
 
 type Props = {
@@ -38,7 +39,6 @@ export function ReviewBar({ session, collection, items }: Props) {
   const curation = curationQuery.data ?? null
   const syncs = useItemSyncs(address, collection, items)
   const reject = useRejectCuration(address)
-  const disable = useDisableCollection(session)
   const [dialog, setDialog] = useState<Dialog>(null)
   const [approval, setApproval] = useState<ApprovalMode | null>(null)
 
@@ -70,7 +70,6 @@ export function ReviewBar({ session, collection, items }: Props) {
   const closeDialog = () => {
     setDialog(null)
     reject.reset()
-    disable.reset()
   }
 
   return (
@@ -181,26 +180,7 @@ export function ReviewBar({ session, collection, items }: Props) {
         />
       )}
       {dialog === 'disable' && (
-        <ConfirmModal
-          title={t('item_editor.review.disable.title', { collection: collection.name })}
-          description={t('item_editor.review.disable.description')}
-          error={disable.isError ? t('item_editor.review.disable.error') : null}
-          busy={disable.isPending}
-          onClose={closeDialog}
-          cancel={{ label: t('item_editor.review.cancel'), onClick: closeDialog, testId: 'review-disable-cancel' }}
-          confirm={{
-            label: t('item_editor.review.disable.confirm'),
-            testId: 'review-disable-confirm',
-            onClick: () =>
-              disable.mutate(collection, {
-                onSuccess: () => {
-                  showToast(t('item_editor.review.disable.success', { collection: collection.name }))
-                  closeDialog()
-                }
-              })
-          }}
-          testId="review-disable"
-        />
+        <DisableCollectionFlow session={session} collection={collection} onClose={closeDialog} />
       )}
       {approval && (
         <ApprovalFlowModal

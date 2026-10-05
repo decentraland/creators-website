@@ -707,10 +707,12 @@
       },
       "disable": {
         "title": "¿Deshabilitar {collection}?",
-        "description": "Ya no se podrán mintear ni vender nuevas copias de sus ítems; los ítems que otras personas ya tienen no se ven afectados. Puedes volver a habilitarla más adelante.\nConfirma en tu wallet.",
+        "description": "Ya no se podrán mintear ni vender nuevas copias de sus ítems; los ítems que otras personas ya tienen no se ven afectados. Puedes volver a habilitarla más adelante.",
         "confirm": "Deshabilitar",
         "error": "No pudimos deshabilitar la colección. Inténtalo de nuevo.",
-        "success": "{collection} fue deshabilitada"
+        "success": "{collection} fue deshabilitada",
+        "signing": "Confirma en tu wallet para deshabilitar la colección.",
+        "pending": "Deshabilitando colección…"
       }
     },
     "discard": {
