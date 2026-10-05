@@ -391,7 +391,7 @@
     },
     "success": {
       "title": "Collection sent for review",
-      "description": "Your collection is being reviewed for approval. This may take up to 5 minutes. We'll notify you once the review is complete.",
+      "description": "Your collection is being reviewed for approval. We'll notify you once the review is complete.",
       "done": "Done"
     },
     "error": {

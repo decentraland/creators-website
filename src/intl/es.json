@@ -391,7 +391,7 @@
     },
     "success": {
       "title": "Colección enviada a revisión",
-      "description": "Tu colección está siendo revisada para su aprobación. Esto puede tardar hasta 5 minutos. Te avisaremos cuando la revisión esté completa.",
+      "description": "Tu colección está siendo revisada para su aprobación. Te avisaremos cuando la revisión esté completa.",
       "done": "Listo"
     },
     "error": {

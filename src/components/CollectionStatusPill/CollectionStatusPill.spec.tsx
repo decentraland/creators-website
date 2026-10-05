@@ -30,11 +30,11 @@ function renderPill(props: Parameters<typeof CollectionStatusPill>[0]) {
 
 describe('CollectionStatusPill', () => {
   it('shows the hint as an (i) tooltip inside the pill', async () => {
-    renderPill({ collection: underReview, hint: 'Review takes up to 5 minutes' })
+    renderPill({ collection: underReview, hint: 'We’ll notify you once the review is complete' })
     expect(screen.getByTestId('collection-status')).toHaveAttribute('data-status', 'under_review')
 
     await userEvent.hover(screen.getByTestId('collection-status-hint-trigger'))
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(/up to 5 minutes/i)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(/notify you/i)
   })
 
   it('renders only the status when there is no hint', () => {
