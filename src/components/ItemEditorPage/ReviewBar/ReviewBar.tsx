@@ -7,7 +7,8 @@ import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { CurationStatePill } from '~/components/CurationStatePill'
 import { ProfileBadge } from '~/components/ProfileBadge'
-import { useCollectionCuration, useRejectCuration } from '~/hooks/useCuration'
+import { useAssignCurator, useCollectionCuration, useRejectCuration } from '~/hooks/useCuration'
+import { useProfile } from '~/hooks/useProfile'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { type ApprovalMode } from '~/hooks/useApprovalFlow'
 import { type Session } from '~/lib/auth'
@@ -17,6 +18,7 @@ import { ItemSyncStatus } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import { formatTimeAgo } from '~/lib/time'
+import { shortAddress } from '~/lib/ids'
 import { ApprovalFlowModal } from './ApprovalFlowModal'
 import { DisableCollectionFlow } from './DisableCollectionFlow'
 import * as S from './ReviewBar.styles'
@@ -28,6 +30,8 @@ type Props = {
 }
 
 type Dialog = 'assign' | 'reject' | 'disable' | null
+
+const DECISIONS = [ReviewAction.APPROVE, ReviewAction.ENABLE, ReviewAction.REJECT]
 
 /** The curator's toolbar over the read-only editor: the collection's review state and the committee's actions. */
 export function ReviewBar({ session, collection, items }: Props) {
@@ -41,6 +45,10 @@ export function ReviewBar({ session, collection, items }: Props) {
   const reject = useRejectCuration(address)
   const [dialog, setDialog] = useState<Dialog>(null)
   const [approval, setApproval] = useState<ApprovalMode | null>(null)
+  // The curator about to decide is assigned first, so the request always names who curated the collection.
+  const [takeOver, setTakeOver] = useState<ReviewAction | null>(null)
+  const assign = useAssignCurator(address)
+  const self = address.toLowerCase()
 
   const hasMissingEntities = useMemo(
     () => [...syncs.values()].some(sync => sync.status === ItemSyncStatus.UNSYNCED && !sync.entity),
@@ -49,6 +57,8 @@ export function ReviewBar({ session, collection, items }: Props) {
   const state = getCurationState(collection, curation)
   const actions = collection.isPublished ? getReviewActions(collection, curation, hasMissingEntities) : []
   const assignee = curation?.assignee ?? null
+  const { data: assigneeProfile } = useProfile(takeOver && assignee ? assignee : undefined)
+  const assigneeName = assignee ? assigneeProfile?.name || shortAddress(assignee) : ''
   // A first-review rejection opens the request itself, so its creation time only means something while pending.
   const [timeKey, time] = !curation
     ? ['created', collection.createdAt]
@@ -61,6 +71,14 @@ export function ReviewBar({ session, collection, items }: Props) {
   const isCurationError = collection.isPublished && curationQuery.isError && !curationQuery.data
 
   function onAction(action: ReviewAction) {
+    if (DECISIONS.includes(action) && curation?.assignee !== self) {
+      assign.reset()
+      return setTakeOver(action)
+    }
+    runAction(action)
+  }
+
+  function runAction(action: ReviewAction) {
     if (action === ReviewAction.APPROVE || action === ReviewAction.ENABLE) setApproval('approve')
     else if (action === ReviewAction.DEPLOY_MISSING) setApproval('deploy_missing')
     else if (action === ReviewAction.REJECT) setDialog('reject')
@@ -177,6 +195,41 @@ export function ReviewBar({ session, collection, items }: Props) {
               )
           }}
           testId="review-reject"
+        />
+      )}
+      {takeOver && (
+        <ConfirmModal
+          title={t(
+            assignee ? 'item_editor.review.take_over.title_reassign' : 'item_editor.review.take_over.title_assign'
+          )}
+          description={
+            assignee
+              ? t('item_editor.review.take_over.body_other', { assignee: assigneeName })
+              : t('item_editor.review.take_over.body_unassigned')
+          }
+          error={assign.isError ? t('assign_curator_modal.error') : null}
+          busy={assign.isPending}
+          onClose={() => setTakeOver(null)}
+          cancel={{
+            label: t('item_editor.review.cancel'),
+            onClick: () => setTakeOver(null),
+            testId: 'review-take-over-cancel'
+          }}
+          confirm={{
+            label: t('item_editor.review.take_over.confirm'),
+            testId: 'review-take-over-confirm',
+            onClick: () =>
+              assign.mutate(
+                { collection, curation, assignee: self },
+                {
+                  onSuccess: () => {
+                    setTakeOver(null)
+                    runAction(takeOver)
+                  }
+                }
+              )
+          }}
+          testId="review-take-over"
         />
       )}
       {dialog === 'disable' && (

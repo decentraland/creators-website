@@ -135,11 +135,11 @@ describe('useApprovalFlow', () => {
     expect(result.current.view).toEqual({ kind: 'success' })
   })
 
-  it('approves a rejected first review through a new request, so it stops reading as rejected', async () => {
+  it('approves a rejected first review through a new request in the approver’s name, so it stops reading as rejected', async () => {
     const { result } = renderFlow(collection, { status: 'rejected' } as CollectionCuration)
     await act(() => result.current.start())
     await act(() => result.current.runApprove())
-    expect(api.pushCollectionCuration).toHaveBeenCalledWith('0xme', 'c1')
+    expect(api.pushCollectionCuration).toHaveBeenCalledWith('0xme', 'c1', '0xme')
     expect(api.updateCollectionCuration).toHaveBeenCalledWith('0xme', 'c1', { status: 'approved' })
   })
 

@@ -15,7 +15,8 @@ const state = vi.hoisted(() => ({
   refetch: vi.fn(),
   syncs: new Map<string, { status: string; entity?: object }>(),
   reject: vi.fn(),
-  disable: vi.fn()
+  disable: vi.fn(),
+  assign: vi.fn()
 }))
 vi.mock('~/hooks/useCuration', () => ({
   useCollectionCuration: () => ({
@@ -25,10 +26,11 @@ vi.mock('~/hooks/useCuration', () => ({
     refetch: state.refetch
   }),
   useRejectCuration: () => ({ mutate: state.reject, isPending: false, isError: false, reset: vi.fn() }),
-  useDisableCollection: () => ({ mutate: state.disable, isPending: false, isError: false, reset: vi.fn() })
+  useDisableCollection: () => ({ mutate: state.disable, isPending: false, isError: false, reset: vi.fn() }),
+  useAssignCurator: () => ({ mutate: state.assign, isPending: false, isError: false, reset: vi.fn() })
 }))
 vi.mock('~/hooks/useItemSync', () => ({ useItemSyncs: () => state.syncs }))
-vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: undefined }) }))
+vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: { name: 'Ana' } }) }))
 vi.mock('./ApprovalFlowModal', () => ({
   ApprovalFlowModal: ({ mode }: { mode: string }) => <div data-testid="approval-flow" data-mode={mode} />
 }))
@@ -65,19 +67,46 @@ beforeEach(() => {
   state.syncs = new Map()
   state.reject.mockReset()
   state.disable.mockReset()
+  state.assign.mockReset()
+  state.assign.mockImplementation((_vars, { onSuccess }: { onSuccess: () => void }) => onSuccess())
 })
 
 describe('ReviewBar', () => {
-  it('offers approve and reject on a new collection and opens the approval flow', () => {
+  it('offers approve and reject on a new collection, assigning it to the curator before the approval flow', () => {
     renderBar()
     expect(actions()).toEqual(['review-action-approve', 'review-action-reject'])
     fireEvent.click(screen.getByTestId('review-action-approve'))
+    expect(screen.getByTestId('review-take-over-title')).toHaveTextContent('Assign curation')
+    expect(screen.queryByTestId('approval-flow')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('review-take-over-confirm'))
+    expect(state.assign).toHaveBeenCalledWith({ collection: base, curation: null, assignee: '0xme' }, expect.anything())
     expect(screen.getByTestId('approval-flow')).toHaveAttribute('data-mode', 'approve')
+  })
+
+  it('takes over another curator’s collection before deciding on it', () => {
+    state.curation = { status: 'pending', assignee: '0xother', createdAt: 1, updatedAt: 1 } as CollectionCuration
+    renderBar()
+    fireEvent.click(screen.getByTestId('review-action-reject'))
+    expect(screen.getByTestId('review-take-over-title')).toHaveTextContent('Reassign curation')
+    expect(screen.getByTestId('review-take-over-description')).toHaveTextContent('assigned to Ana')
+
+    fireEvent.click(screen.getByTestId('review-take-over-confirm'))
+    expect(screen.getByTestId('review-reject')).toBeInTheDocument()
+  })
+
+  it('goes straight to the decision when the collection is already the curator’s', () => {
+    state.curation = { status: 'pending', assignee: '0xme', createdAt: 1, updatedAt: 1 } as CollectionCuration
+    renderBar()
+    fireEvent.click(screen.getByTestId('review-action-approve'))
+    expect(state.assign).not.toHaveBeenCalled()
+    expect(screen.getByTestId('approval-flow')).toBeInTheDocument()
   })
 
   it('rejects after confirming', () => {
     renderBar()
     fireEvent.click(screen.getByTestId('review-action-reject'))
+    fireEvent.click(screen.getByTestId('review-take-over-confirm'))
     fireEvent.click(screen.getByTestId('review-reject-confirm'))
     expect(state.reject).toHaveBeenCalledWith({ collection: base, curation: null }, expect.anything())
   })

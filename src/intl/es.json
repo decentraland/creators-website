@@ -713,6 +713,13 @@
         "success": "{collection} fue deshabilitada",
         "signing": "Confirma en tu wallet para deshabilitar la colección.",
         "pending": "Deshabilitando colección…"
+      },
+      "take_over": {
+        "title_assign": "Asignar curaduría",
+        "title_reassign": "Reasignar curaduría",
+        "body_unassigned": "Nadie está curando esta colección todavía. Se te asignará antes de continuar.",
+        "body_other": "Esta colección está asignada a {assignee}. Puedes curarla igual, pero quedará asignada a ti. Avísale a {assignee}.",
+        "confirm": "Asignármela y continuar"
       }
     },
     "discard": {
@@ -1316,11 +1323,6 @@
   "approval_flow": {
     "title": "Aprobar colección",
     "cancel": "Cancelar",
-    "assigned_to_other": {
-      "title": "Aprobar {collection}",
-      "body": "Esta colección está asignada a {assignee}. Puedes aprobarla igual, pero quedará asignada a ti. Avísale a {assignee}.",
-      "action": "Asignármela y continuar"
-    },
     "loading": "Revisando los ítems de la colección…",
     "signature_title": "Firma requerida",
     "columns": {

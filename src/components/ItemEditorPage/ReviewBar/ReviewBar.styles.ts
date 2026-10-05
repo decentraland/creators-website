@@ -85,19 +85,3 @@ export const Actions = styled.div`
   gap: 8px;
   margin-left: auto;
 `
-
-export const FlowBody = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  margin-top: 16px;
-`
-
-export const FlowText = styled.p`
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.5;
-  color: ${theme.colors.softWhite};
-`
-
-export { ModalActions as FlowActions } from '~/styles/shared'

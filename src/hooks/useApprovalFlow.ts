@@ -134,7 +134,7 @@ export function useApprovalFlow(
         queryClient.getQueryData<CollectionCuration | null>(collectionCurationKey(address, collection.id)) ?? curation
       if (mode === 'approve' && (latest?.status === 'pending' || latest?.status === 'rejected')) {
         // A rejected first review gets a new request to approve, or it would keep reading as rejected once live.
-        if (latest.status === 'rejected') await pushCollectionCuration(address, collection.id)
+        if (latest.status === 'rejected') await pushCollectionCuration(address, collection.id, address.toLowerCase())
         await updateCollectionCuration(address, collection.id, { status: 'approved' })
         track('Approve curation', { collectionId: collection.id })
       }

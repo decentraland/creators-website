@@ -22,8 +22,6 @@ import { ProgressModal } from '~/components/ProgressModal'
 import { PendingModal } from '~/components/CollectionDetailPage/SellItemFlow/PendingModal'
 import { useApprovalFlow, type ApprovalMode, type ApprovalPlan, type ApprovalStep } from '~/hooks/useApprovalFlow'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
-import { useAssignCurator } from '~/hooks/useCuration'
-import { useProfile } from '~/hooks/useProfile'
 import { track } from '~/lib/analytics'
 import { measureItems } from '~/lib/approveCollection'
 import { isSocialLogin, type Session } from '~/lib/auth'
@@ -31,9 +29,7 @@ import { copyToClipboard } from '~/lib/clipboard'
 import { fetchContentSize, getContentsStorageUrl } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
-import { shortAddress } from '~/lib/ids'
 import { getItemBodyShapeType, type Item } from '~/lib/items'
-import * as F from './ReviewBar.styles'
 import * as S from './ApprovalFlowModal.styles'
 
 type Props = {
@@ -55,64 +51,21 @@ function formatSize(t: Translate, bytes: number): string {
 
 const shortHash = (hash: string) => `${hash.slice(0, 6)}...${hash.slice(-6)}`
 
-/** The committee's approval: confirm the assignment, then one stepper screen per transaction or upload. */
+/** The committee's approval: one stepper screen per transaction or upload. */
 export function ApprovalFlowModal({ session, collection, curation, mode, onClose }: Props) {
   const { t } = useTranslation()
-  const self = session.address.toLowerCase()
-  const assignedToOther = mode === 'approve' && !!curation?.assignee && curation.assignee !== self
-  const [confirmed, setConfirmed] = useState(!assignedToOther)
-  const assign = useAssignCurator(session.address)
-  const { data: assigneeProfile } = useProfile(assignedToOther ? curation.assignee! : undefined)
   const flow = useApprovalFlow(session, collection, curation, mode)
   const { view, plan, start, stop } = flow
   // Reloading mid-transaction or mid-upload loses track of it; the flow would have to start over.
   useBeforeUnloadGuard(view.kind === 'step' && view.phase.kind !== 'idle')
 
-  // Runs once per confirmation: the collection and curation refetch mid-flow, which recreates `start`,
-  // and re-running it would reopen the flow from its first step.
+  // Runs once: the collection and curation refetch mid-flow, which recreates `start`, and re-running it would
+  // reopen the flow from its first step.
   useEffect(() => {
-    if (!confirmed) return
     void start()
     return stop
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [confirmed])
-
-  if (!confirmed) {
-    const assignee = assigneeProfile?.name || shortAddress(curation!.assignee!)
-    return (
-      <Modal
-        title={t('approval_flow.assigned_to_other.title', { collection: collection.name })}
-        onClose={onClose}
-        closeDisabled={assign.isPending}
-        testId="approval-flow-modal"
-      >
-        <F.FlowBody data-view="assigned_to_other">
-          <F.FlowText>{t('approval_flow.assigned_to_other.body', { assignee })}</F.FlowText>
-          {assign.isError && (
-            <F.FlowText data-testid="approval-assign-error">{t('assign_curator_modal.error')}</F.FlowText>
-          )}
-          <F.FlowActions>
-            <Button type="button" variant="secondary" disabled={assign.isPending} onClick={onClose}>
-              {t('approval_flow.cancel')}
-            </Button>
-            <Button
-              type="button"
-              loading={assign.isPending}
-              data-testid="approval-assign-confirm"
-              onClick={() =>
-                assign.mutate(
-                  { collection, curation, assignee: self },
-                  { onSuccess: updated => setConfirmed(!!updated) }
-                )
-              }
-            >
-              {t('approval_flow.assigned_to_other.action')}
-            </Button>
-          </F.FlowActions>
-        </F.FlowBody>
-      </Modal>
-    )
-  }
+  }, [])
 
   switch (view.kind) {
     case 'loading':

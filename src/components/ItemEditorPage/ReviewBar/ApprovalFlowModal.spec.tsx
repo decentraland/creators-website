@@ -16,9 +16,7 @@ const state = vi.hoisted(() => ({
   start: vi.fn(),
   stop: vi.fn(),
   runRescue: vi.fn(),
-  cancelSigning: vi.fn(),
-  assign: vi.fn(),
-  assignError: false
+  cancelSigning: vi.fn()
 }))
 vi.mock('~/hooks/useApprovalFlow', () => ({
   useApprovalFlow: () => ({
@@ -32,10 +30,6 @@ vi.mock('~/hooks/useApprovalFlow', () => ({
     cancelSigning: state.cancelSigning
   })
 }))
-vi.mock('~/hooks/useCuration', () => ({
-  useAssignCurator: () => ({ mutate: state.assign, isPending: false, isError: state.assignError })
-}))
-vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: { name: 'Ana' } }) }))
 vi.mock('~/lib/approveCollection', () => ({ measureItems: vi.fn().mockResolvedValue(new Map([['i1', 819_100]])) }))
 vi.mock('~/components/CollectionMosaic', () => ({ CollectionMosaic: () => null }))
 vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
@@ -75,34 +69,13 @@ beforeEach(() => {
   vi.clearAllMocks()
   view = { kind: 'loading' }
   plan = { steps: [], rescue: [], deploy: [] }
-  state.assignError = false
 })
 
 describe('ApprovalFlowModal', () => {
-  it('starts right away when the collection is the curator’s or nobody’s', () => {
+  it('starts checking the collection right away', () => {
     renderModal()
     expect(state.start).toHaveBeenCalledTimes(1)
     expect(screen.getByTestId('approval-loading')).toBeInTheDocument()
-  })
-
-  it('takes over another curator’s collection before starting', () => {
-    state.assign.mockImplementation((_vars, { onSuccess }) => onSuccess(request('0xme')))
-    renderModal(request('0xother'))
-    expect(state.start).not.toHaveBeenCalled()
-    expect(screen.getByText(/assigned to Ana/)).toBeInTheDocument()
-
-    fireEvent.click(screen.getByTestId('approval-assign-confirm'))
-    expect(state.assign).toHaveBeenCalledWith(
-      { collection, curation: request('0xother'), assignee: '0xme' },
-      expect.anything()
-    )
-    expect(state.start).toHaveBeenCalledTimes(1)
-  })
-
-  it('tells the curator when taking over the collection failed', () => {
-    state.assignError = true
-    renderModal(request('0xother'))
-    expect(screen.getByTestId('approval-assign-error')).toBeInTheDocument()
   })
 
   it('lists the items to approve on chain, with a step per remaining transaction', () => {

@@ -713,6 +713,13 @@
         "success": "{collection} was disabled",
         "signing": "Please confirm in your wallet to disable the collection.",
         "pending": "Disabling collection…"
+      },
+      "take_over": {
+        "title_assign": "Assign curation",
+        "title_reassign": "Reassign curation",
+        "body_unassigned": "Nobody is curating this collection yet. It will be assigned to you before you continue.",
+        "body_other": "This collection is assigned to {assignee}. You can still curate it, but it will be assigned to you. Let {assignee} know.",
+        "confirm": "Assign to me and continue"
       }
     },
     "discard": {
@@ -1316,11 +1323,6 @@
   "approval_flow": {
     "title": "Approve Collection",
     "cancel": "Cancel",
-    "assigned_to_other": {
-      "title": "Approve {collection}",
-      "body": "This collection is assigned to {assignee}. You can still approve it, but it will be assigned to you. Let {assignee} know.",
-      "action": "Assign to me and continue"
-    },
     "loading": "Checking the collection's items…",
     "signature_title": "Signature required",
     "columns": {
