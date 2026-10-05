@@ -16,6 +16,17 @@ describe('ThumbnailMosaic', () => {
     expect(plain.style.backgroundImage).toBe('')
   })
 
+  it('marks an empty mosaic so it gets the neutral wash, but not one that is still loading or just has no thumbnails', () => {
+    const { rerender } = render(<ThumbnailMosaic thumbnails={[]} empty />)
+    expect(screen.getByTestId('thumbnail-mosaic')).toHaveAttribute('data-empty')
+
+    rerender(<ThumbnailMosaic thumbnails={[]} empty loading />)
+    expect(screen.getByTestId('thumbnail-mosaic')).not.toHaveAttribute('data-empty')
+
+    rerender(<ThumbnailMosaic thumbnails={[]} />)
+    expect(screen.getByTestId('thumbnail-mosaic')).not.toHaveAttribute('data-empty')
+  })
+
   it('shows a skeleton instead of cells while loading', () => {
     render(<ThumbnailMosaic thumbnails={[]} loading />)
     expect(screen.getByTestId('thumbnail-mosaic-loading')).toBeInTheDocument()

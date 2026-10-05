@@ -12,7 +12,7 @@ export const Mosaic = styled.div`
   background: ${theme.colors.media};
   overflow: hidden;
 
-  &[data-count='0'] {
+  &[data-empty] {
     background-image: ${EMPTY_MEDIA_BACKGROUND};
   }
   &[data-count='1'] > * {
