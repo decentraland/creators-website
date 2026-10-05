@@ -107,18 +107,25 @@ export function DraftForm({
     <S.Content data-testid="draft-form">
       <S.PreviewPane>
         <S.ThumbnailWrap>
-          <S.ThumbnailBox
-            type="button"
-            aria-label={t('add_items_modal.edit_thumbnail')}
-            data-testid="edit-thumbnail"
-            onClick={onOpenThumbnail}
-          >
-            <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId="draft-thumbnail">
-              <S.ThumbnailOverlay data-thumb-overlay>
-                <CameraIcon />
-              </S.ThumbnailOverlay>
-            </ItemThumbnail>
-          </S.ThumbnailBox>
+          {draft.isVariant ? (
+            // A variant is merged into its target, which keeps its own thumbnail: this one is only a preview.
+            <S.ThumbnailBox as="div">
+              <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId="draft-thumbnail" />
+            </S.ThumbnailBox>
+          ) : (
+            <S.ThumbnailBox
+              type="button"
+              aria-label={t('add_items_modal.edit_thumbnail')}
+              data-testid="edit-thumbnail"
+              onClick={onOpenThumbnail}
+            >
+              <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId="draft-thumbnail">
+                <S.ThumbnailOverlay data-thumb-overlay>
+                  <CameraIcon />
+                </S.ThumbnailOverlay>
+              </ItemThumbnail>
+            </S.ThumbnailBox>
+          )}
           {isWearable && hasFacialExpressions(draft.contents) && (
             <Tooltip content={t('add_items_modal.facial_expressions')} asChild>
               <S.ThumbnailBadge

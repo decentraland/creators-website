@@ -567,6 +567,7 @@ export function PropertiesPanel({
         </EditorSection>
       )}
 
+      <S.IntercomClearance aria-hidden />
       {editable && isDirty && (
         <S.Footer data-testid={`${testId}-footer`}>
           <Button
