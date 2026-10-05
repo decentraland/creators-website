@@ -3,17 +3,24 @@ import { theme } from '~/styles/theme'
 import * as Shared from '~/components/CollectionDetailPage/PublishCollectionModal/PublishCollectionModal.styles'
 
 export {
-  Main,
   Step,
   Heading,
   Text,
-  Table,
   TableBody,
   Thumb,
   MosaicFrame
 } from '~/components/CollectionDetailPage/PublishCollectionModal/PublishCollectionModal.styles'
 
 const mobile = theme.media.maxWidth('mobile')
+
+// Each step is as tall as its table: a one-row Enable step shouldn't keep the publish modal's fixed height.
+export const Main = styled(Shared.Main)`
+  min-height: 0;
+`
+
+export const Table = styled(Shared.Table)`
+  flex: none;
+`
 
 // Body type, category and hash give way on small screens; the item and its rarity or size stay.
 const columns = `
@@ -80,7 +87,7 @@ export const NameCell = styled.div`
 `
 
 export const Footer = styled(Shared.Footer)`
-  margin-top: auto;
+  margin-top: 16px;
 
   ${mobile} {
     & > button {
