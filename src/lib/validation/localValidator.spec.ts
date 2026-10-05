@@ -38,54 +38,101 @@ const item: Item = {
   updatedAt: 1
 }
 
+const single: Item = {
+  ...item,
+  data: { ...item.data, representations: [item.data.representations[0]] }
+}
+
 const finding = { check: 'triangle-count', severity: 'error', message: 'Too many triangles', where: 'female/hat.glb' }
 const fetchMock = vi.fn()
 
 beforeEach(() => {
   validate.mockReset().mockResolvedValue({ findings: [finding], checks: [] })
-  fetchMock.mockReset().mockResolvedValue(new Response(new Uint8Array([1, 2, 3])))
+  fetchMock.mockReset().mockImplementation(async () => new Response(new Uint8Array([1, 2, 3])))
   vi.stubGlobal('fetch', fetchMock)
   setValidator(localValidator)
 })
 
 describe('local validator', () => {
-  it('fetches the asked body shape from storage and validates it with category and hides', async () => {
+  it('checks each body shape model of a saved item and tags its issues with that shape', async () => {
+    validate.mockImplementation(async ({ files }: { files: Map<string, Uint8Array> }) =>
+      files.has('female/hat.glb') ? { findings: [finding], checks: [] } : { findings: [], checks: [] }
+    )
     const result = await getValidator().validate(
       { kind: 'item', item },
-      { type: ItemType.WEARABLE, category: 'hat', hides: ['hair'], bodyShape: BodyShape.FEMALE }
+      { type: ItemType.WEARABLE, category: 'hat', hides: ['hair'] }
     )
-    expect(fetchMock.mock.calls[0][0]).toBe('https://builder-api.decentraland.zone/v1/storage/contents/bafyF')
-    const [input, options] = validate.mock.calls[0]
-    expect([...input.files.keys()]).toEqual(['female/hat.glb'])
-    expect(input.metadata).toEqual({
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      'https://builder-api.decentraland.zone/v1/storage/contents/bafyM',
+      'https://builder-api.decentraland.zone/v1/storage/contents/bafyF'
+    ])
+    const female = validate.mock.calls.find(([input]) => input.files.has('female/hat.glb'))!
+    expect(female[0].metadata).toEqual({
       data: {
         category: 'hat',
         hides: ['hair'],
         representations: [{ bodyShapes: [BodyShape.FEMALE], mainFile: 'female/hat.glb', contents: ['female/hat.glb'] }]
       }
     })
-    expect(options.groups).toEqual(['model', 'emote'])
+    expect(female[1].groups).toEqual(['model', 'emote'])
     expect(result.issues).toEqual([
-      { code: 'triangle-count', severity: 'error', message: 'Too many triangles', where: 'female/hat.glb' }
+      {
+        code: 'triangle-count',
+        severity: 'error',
+        message: 'Too many triangles',
+        where: 'female/hat.glb',
+        bodyShapes: [BodyShape.FEMALE]
+      }
     ])
   })
 
-  it('hands an emote its audio and names the model explicitly, whatever its extension case', async () => {
+  it('checks a model shared by both body shapes once, without tagging its issues', async () => {
+    const unisex = {
+      ...item,
+      contents: { 'male/hat.glb': 'bafySame', 'female/hat.glb': 'bafySame', 'thumbnail.png': 'bafyThumb' }
+    }
+    const result = await getValidator().validate({ kind: 'item', item: unisex }, { type: ItemType.WEARABLE })
+    expect(validate).toHaveBeenCalledTimes(1)
+    expect(validate.mock.calls[0][0].metadata.data.representations[0].bodyShapes).toEqual([
+      BodyShape.MALE,
+      BodyShape.FEMALE
+    ])
+    expect(result.issues[0].bodyShapes).toBeUndefined()
+  })
+
+  it('checks every model of an unsaved file update', async () => {
+    await getValidator().validate(
+      {
+        kind: 'blob',
+        contents: { 'male/a.glb': new Blob(['m']), 'female/b.glb': new Blob(['f']) },
+        mainFile: 'male/a.glb',
+        representations: [
+          { mainFile: 'male/a.glb', bodyShapes: [BodyShape.MALE] },
+          { mainFile: 'female/b.glb', bodyShapes: [BodyShape.FEMALE] }
+        ]
+      },
+      { type: ItemType.WEARABLE }
+    )
+    expect(validate.mock.calls.map(([input]) => [...input.files.keys()])).toEqual([['male/a.glb'], ['female/b.glb']])
+  })
+
+  it('hands an emote its audio, its loop setting and names the model explicitly, whatever its extension case', async () => {
     await getValidator().validate(
       {
         kind: 'blob',
         contents: { 'Dance.GLB': new Blob(['x']), 'sound.wav': new Blob(['a']), 'thumbnail.png': new Blob(['t']) },
         mainFile: 'Dance.GLB'
       },
-      { type: ItemType.EMOTE }
+      { type: ItemType.EMOTE, loop: true }
     )
     expect(fetchMock).not.toHaveBeenCalled()
     const [input] = validate.mock.calls[0]
     expect([...input.files.keys()]).toEqual(['Dance.GLB', 'sound.wav'])
+    expect(input.metadata.emoteDataADR74.loop).toBe(true)
     expect(input.metadata.emoteDataADR74.representations[0]).toMatchObject({ mainFile: 'Dance.GLB' })
   })
 
-  it('loads only the chosen representation of a unisex emote, so its audio counts once', async () => {
+  it('loads a unisex emote once with its own audio, so the audio counts once', async () => {
     const emote = {
       ...item,
       type: ItemType.EMOTE,
@@ -99,10 +146,11 @@ describe('local validator', () => {
           }
         ]
       },
-      contents: { 'male/dance.glb': 'a', 'male/sound.mp3': 'b', 'female/dance.glb': 'c', 'female/sound.mp3': 'd' }
+      contents: { 'male/dance.glb': 'a', 'male/sound.mp3': 'b', 'female/dance.glb': 'a', 'female/sound.mp3': 'b' }
     } as Item
     fetchMock.mockImplementation(async () => new Response(new Uint8Array([1])))
-    await getValidator().validate({ kind: 'item', item: emote }, { type: ItemType.EMOTE, bodyShape: BodyShape.MALE })
+    await getValidator().validate({ kind: 'item', item: emote }, { type: ItemType.EMOTE })
+    expect(validate).toHaveBeenCalledTimes(1)
     expect([...validate.mock.calls[0][0].files.keys()]).toEqual(['male/dance.glb', 'male/sound.mp3'])
   })
 
@@ -111,7 +159,7 @@ describe('local validator', () => {
       findings: [{ ...finding, severity: 'warning' }],
       checks: [{ check: 'skeleton', status: 'errored', skipReason: 'boom' }]
     })
-    const result = await getValidator().validate({ kind: 'item', item }, { type: ItemType.WEARABLE })
+    const result = await getValidator().validate({ kind: 'item', item: single }, { type: ItemType.WEARABLE })
     expect(result.issues.map(issue => issue.message)).toEqual([
       'Too many triangles',
       englishMessage('item_editor.validation.check_crashed')
@@ -121,13 +169,15 @@ describe('local validator', () => {
   it('reports a failed download without leaving the body open', async () => {
     const cancel = vi.fn().mockResolvedValue(undefined)
     fetchMock.mockResolvedValue({ ok: false, status: 404, body: { cancel } })
-    await expect(getValidator().validate({ kind: 'item', item }, { type: ItemType.WEARABLE })).rejects.toThrow(/404/)
+    await expect(getValidator().validate({ kind: 'item', item: single }, { type: ItemType.WEARABLE })).rejects.toThrow(
+      /404/
+    )
     expect(cancel).toHaveBeenCalled()
   })
 
   it('reports a crashed check as an error rather than a pass', async () => {
     validate.mockResolvedValue({ findings: [], checks: [{ check: 'skeleton', status: 'errored', skipReason: 'boom' }] })
-    const result = await getValidator().validate({ kind: 'item', item }, { type: ItemType.WEARABLE })
+    const result = await getValidator().validate({ kind: 'item', item: single }, { type: ItemType.WEARABLE })
     expect(result.issues).toEqual([
       { code: 'file-format', severity: 'error', message: englishMessage('item_editor.validation.check_crashed') }
     ])
@@ -140,7 +190,7 @@ describe('local validator', () => {
       findings: [{ ...finding, severity: 'warning', data: { reason: 'category-unknown' } }],
       checks: [{ check: 'skeleton', status: 'skipped', skipReason: '"hat.glb" failed to parse' }]
     })
-    const result = await getValidator().validate({ kind: 'item', item }, { type: ItemType.WEARABLE })
+    const result = await getValidator().validate({ kind: 'item', item: single }, { type: ItemType.WEARABLE })
     expect(result.issues).toEqual([{ code: 'file-format', severity: 'error', message: '"hat.glb" failed to parse' }])
   })
 
@@ -161,7 +211,11 @@ describe('local validator', () => {
     const controller = new AbortController()
     controller.abort()
     await expect(
-      getValidator().validate({ kind: 'item', item }, { type: ItemType.WEARABLE }, { signal: controller.signal })
+      getValidator().validate(
+        { kind: 'item', item: single },
+        { type: ItemType.WEARABLE },
+        { signal: controller.signal }
+      )
     ).rejects.toThrow()
   })
 })

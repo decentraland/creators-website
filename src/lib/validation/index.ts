@@ -1,10 +1,11 @@
 // Single entry point for item validation (see README.md). The backend is swappable: today the local
-// GLTF validator, tomorrow a remote service behind the same interface.
+// rule book, tomorrow a remote service behind the same interface.
 import { localValidator } from './localValidator'
 import { type ItemValidator } from './types'
 
 export type {
   ItemValidator,
+  ModelFile,
   ThumbnailSource,
   ValidateOptions,
   ValidationContext,
@@ -13,6 +14,9 @@ export type {
   ValidationSource
 } from './types'
 export { ValidationSeverity } from './types'
+export { distinctModels, itemModels, itemValidationContext, type DistinctModel } from './models'
+export { cacheKey, cachedRun, deleteCached } from './cache'
+export { countIssues, getValidationStatus, type ValidationStatus } from './status'
 
 let validator: ItemValidator = localValidator
 

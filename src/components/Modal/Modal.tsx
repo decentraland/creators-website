@@ -61,6 +61,8 @@ type Props = {
   compact?: boolean
   /** Removes the dialog padding so children can draw edge-to-edge panes; the title bar keeps its own. */
   flush?: boolean
+  /** Fills the screen height on phones, for dialogs whose content is a long list. */
+  fullHeightOnMobile?: boolean
   testId?: string
 }
 
@@ -74,6 +76,7 @@ export function Modal({
   showClose = false,
   compact = false,
   flush = false,
+  fullHeightOnMobile = false,
   testId = 'modal'
 }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -160,6 +163,7 @@ export function Modal({
         data-size={size}
         data-compact={compact || undefined}
         data-flush={flush || undefined}
+        data-full-height={fullHeightOnMobile || undefined}
         onClick={event => event.stopPropagation()}
       >
         {!hideTitle && (

@@ -1,5 +1,11 @@
 import { useState, type KeyboardEvent, type ReactNode } from 'react'
-import { Check as CheckIcon, Close as CloseIcon, Edit as EditIcon } from '@mui/icons-material'
+import {
+  Check as CheckIcon,
+  Close as CloseIcon,
+  Edit as EditIcon,
+  ErrorOutline as WarningIcon,
+  ReportProblemOutlined as ErrorIcon
+} from '@mui/icons-material'
 import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'
@@ -7,6 +13,8 @@ import { ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
 import { ItemType, getItemBodyShapeType, getItemSales, isSmartWearable, type Item } from '~/lib/items'
 import { EmotePlayMode } from '~/lib/itemFactory'
 import { type ItemListing } from '~/lib/listings'
+import { countIssues } from '~/lib/validation'
+import { type ItemValidation } from '~/hooks/useCollectionValidation'
 import { formatCredits, formatMana } from '~/lib/publishFee'
 import { shopItemUrl } from '~/lib/shop'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
@@ -42,6 +50,11 @@ type Props = {
   contractAddress?: string
   /** The row's ⋯ menu; the page supplies it once the viewer is signed in. */
   actions?: ReactNode
+  /** The item's checks; only errors and warnings show. */
+  validation?: ItemValidation
+  /** Whether errors block publishing, which changes the indicator's copy. */
+  validationBlocks?: boolean
+  onShowValidation?: (item: Item) => void
 }
 
 export function ItemListRow({
@@ -56,7 +69,10 @@ export function ItemListRow({
   onRename,
   onEditThumbnail,
   contractAddress,
-  actions
+  actions,
+  validation,
+  validationBlocks = false,
+  onShowValidation
 }: Props) {
   const { t } = useTranslation()
   const intl = useIntl()
@@ -78,6 +94,8 @@ export function ItemListRow({
   const canEditThumbnail = editable && !!onEditThumbnail
   const isEditingName = draftName !== null
   const draftValid = draftName !== null && isValidItemName(draftName)
+  const flagged = validation?.status === 'errors' || validation?.status === 'warnings' ? validation : undefined
+  const counts = flagged ? countIssues(flagged.issues) : undefined
 
   function startEditing() {
     setDraftName(item.name)
@@ -158,11 +176,34 @@ export function ItemListRow({
     <ItemThumbnail src={thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null} rarity={item.rarity} />
   )
 
+  const validationChip = flagged && counts && (
+    <Tooltip
+      content={
+        flagged.status === 'errors'
+          ? t(`item_validation.row.${validationBlocks ? 'errors_blocking' : 'errors'}`, { count: counts.errors })
+          : t('item_validation.row.warnings', { count: counts.warnings })
+      }
+      asChild
+      testId="item-row-validation-tooltip"
+    >
+      <S.ValidationChip
+        type="button"
+        aria-label={t(`item_editor.validation.${flagged.status}`)}
+        data-status={flagged.status}
+        data-testid="item-row-validation"
+        onClick={() => onShowValidation?.(item)}
+      >
+        {flagged.status === 'errors' ? <ErrorIcon /> : <WarningIcon />}
+      </S.ValidationChip>
+    </Tooltip>
+  )
+
   return (
     <S.Row
       data-testid="item-row"
       data-with-play-mode={withPlayMode || undefined}
       data-with-market={withMarket || undefined}
+      data-validation={flagged?.status}
     >
       <S.Thumb>
         {canEditThumbnail ? (
@@ -245,6 +286,7 @@ export function ItemListRow({
                 </S.SmartBadge>
               </Tooltip>
             )}
+            {validationChip}
           </S.Name>
         )}
         <S.Cell data-testid="item-row-body-shape">

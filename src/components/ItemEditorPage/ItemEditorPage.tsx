@@ -20,9 +20,11 @@ import {
   useSaveCollection
 } from '~/hooks/useCollection'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
-import { useModelValidation } from '~/hooks/useModelValidation'
+import { track } from '~/lib/analytics'
+import { modelValidationKey, useModelValidation } from '~/hooks/useModelValidation'
+import { useRerunValidation } from '~/hooks/useRerunValidation'
 import { useObjectURL } from '~/hooks/useObjectURL'
-import { useThumbnailValidation } from '~/hooks/useThumbnailValidation'
+import { thumbnailValidationKey, useThumbnailValidation } from '~/hooks/useThumbnailValidation'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { useSaveItem } from '~/hooks/useSaveItem'
 import { useSpringBones } from '~/hooks/useSpringBones'
@@ -49,7 +51,8 @@ import { MobilePreview } from './MobilePreview'
 import { PlaybackBar } from './PlaybackBar'
 import { PropertiesPanel, type SpringBonesFormProps } from './PropertiesPanel'
 import { ReviewBar } from './ReviewBar'
-import { ValidationBadge, getValidationStatus } from './ValidationBadge'
+import { ValidationBadge } from '~/components/ValidationBadge'
+import { distinctModels, getValidationStatus, itemValidationContext, type ValidationSource } from '~/lib/validation'
 import { useEditorLayout } from './useEditorLayout'
 import { useItemForm } from './useItemForm'
 import * as S from './ItemEditorPage.styles'
@@ -156,36 +159,35 @@ const ItemEditorPage = () => {
   const subjectEmote = useMemo(() => previewItems.find(item => item.type === ItemType.EMOTE) ?? null, [previewItems])
   const previewedWearables = useMemo(() => previewItems.filter(item => item.type === ItemType.WEARABLE), [previewItems])
 
-  // An unsaved model's files exist only in memory: storage would 404 on their hashes.
+  // An unsaved model's files exist only in memory: storage would 404 on their hashes. Phones validate nothing.
   const fileUpdate = form.draft.fileUpdate
-  const validationSource = useMemo(() => {
-    if (!previewSelected) return null
+  const validationSource = useMemo<ValidationSource | null>(() => {
+    if (!previewSelected || isMobile) return null
     const representations = fileUpdate?.item.data.representations ?? []
-    const representation =
-      representations.find(candidate => candidate.bodyShapes.includes(bodyShape)) ?? representations[0]
-    return fileUpdate && representation
-      ? ({ kind: 'blob', contents: fileUpdate.blobs, mainFile: representation.mainFile } as const)
-      : ({ kind: 'item', item: previewSelected } as const)
-  }, [previewSelected, fileUpdate, bodyShape])
+    if (!fileUpdate || representations.length === 0) return { kind: 'item', item: previewSelected }
+    const models = distinctModels(representations, path => fileUpdate.item.contents[path])
+    return {
+      kind: 'blob',
+      contents: fileUpdate.blobs,
+      mainFile: representations[0].mainFile,
+      representations: models.map(({ mainFile, bodyShapes, audio }) => ({ mainFile, bodyShapes, contents: audio }))
+    }
+  }, [previewSelected, fileUpdate, isMobile])
   const fileUpdateId = useMemo(
     () => (fileUpdate ? Object.values(fileUpdate.item.contents).sort().join() : undefined),
     [fileUpdate]
   )
   const validationCtx = useMemo(
-    () => ({
-      type: previewSelected?.type ?? ItemType.WEARABLE,
-      category: previewSelected?.data.category,
-      hides: previewSelected?.data.hides,
-      bodyShape
-    }),
-    [previewSelected, bodyShape]
+    () => (previewSelected ? itemValidationContext(previewSelected) : { type: ItemType.WEARABLE }),
+    [previewSelected]
   )
   const validation = useModelValidation(validationSource, validationCtx, fileUpdateId)
   // An unsaved thumbnail is checked as picked; otherwise the stored one.
   const thumbnailSource = useMemo(() => {
+    if (isMobile) return null
     if (form.draft.thumbnail) return { kind: 'blob', blob: form.draft.thumbnail } as const
     return selected?.contents[selected.thumbnail] ? ({ kind: 'item', item: selected } as const) : null
-  }, [form.draft.thumbnail, selected])
+  }, [form.draft.thumbnail, selected, isMobile])
   const thumbnailValidation = useThumbnailValidation(thumbnailSource)
   const draftThumbnailUrl = useObjectURL(form.draft.thumbnail)
   const validationSubject = useMemo(() => {
@@ -208,6 +210,23 @@ const ItemEditorPage = () => {
   const validationStatus = useMemo(
     () => getValidationStatus(validationIssues, validation.isLoading || thumbnailValidation.isLoading),
     [validationIssues, validation.isLoading, thumbnailValidation.isLoading]
+  )
+  const rerunValidation = useRerunValidation()
+  const rerunSelectedValidation = useCallback(async () => {
+    const keys: (readonly unknown[])[] = []
+    if (validationSource) keys.push(modelValidationKey(validationSource, validationCtx, fileUpdateId))
+    if (thumbnailSource) keys.push(thumbnailValidationKey(thumbnailSource))
+    const issues = await rerunValidation(keys)
+    track('Item Validation Rerun', {
+      itemId: selectedId,
+      source: 'details',
+      previousStatus: validationStatus,
+      newStatus: getValidationStatus(issues, false)
+    })
+  }, [rerunValidation, validationSource, validationCtx, fileUpdateId, thumbnailSource, selectedId, validationStatus])
+  const onValidationOpen = useCallback(
+    () => track('Item Validation Details Opened', { itemId: selectedId, status: validationStatus, source: 'editor' }),
+    [selectedId, validationStatus]
   )
 
   // Preview controller: spring bones are pushed on edits (debounced), on every load and on play.
@@ -398,7 +417,13 @@ const ItemEditorPage = () => {
         />
         <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />
         {selected && (
-          <ValidationBadge status={validationStatus} issues={validationIssues ?? []} subject={validationSubject} />
+          <ValidationBadge
+            status={validationStatus}
+            issues={validationIssues ?? []}
+            subject={validationSubject}
+            onRerun={rerunSelectedValidation}
+            onOpen={onValidationOpen}
+          />
         )}
       </AvatarPreview>
     )
