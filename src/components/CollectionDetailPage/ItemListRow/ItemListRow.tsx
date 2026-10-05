@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
 import {
   Check as CheckIcon,
   Close as CloseIcon,
@@ -95,7 +95,13 @@ export function ItemListRow({
   const isEditingName = draftName !== null
   const draftValid = draftName !== null && isValidItemName(draftName)
   const flagged = validation?.status === 'errors' || validation?.status === 'warnings' ? validation : undefined
-  const counts = flagged ? countIssues(flagged.issues) : undefined
+  const validationCopy = useMemo(() => {
+    if (!flagged) return null
+    const { errors, warnings } = countIssues(flagged.issues)
+    return flagged.status === 'errors'
+      ? t(`item_validation.row.${validationBlocks ? 'errors_blocking' : 'errors'}`, { count: errors })
+      : t('item_validation.row.warnings', { count: warnings })
+  }, [flagged, validationBlocks, t])
 
   function startEditing() {
     setDraftName(item.name)
@@ -176,19 +182,11 @@ export function ItemListRow({
     <ItemThumbnail src={thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null} rarity={item.rarity} />
   )
 
-  const validationChip = flagged && counts && (
-    <Tooltip
-      content={
-        flagged.status === 'errors'
-          ? t(`item_validation.row.${validationBlocks ? 'errors_blocking' : 'errors'}`, { count: counts.errors })
-          : t('item_validation.row.warnings', { count: counts.warnings })
-      }
-      asChild
-      testId="item-row-validation-tooltip"
-    >
+  const validationChip = flagged && validationCopy && (
+    <Tooltip content={validationCopy} asChild testId="item-row-validation-tooltip">
       <S.ValidationChip
         type="button"
-        aria-label={t(`item_editor.validation.${flagged.status}`)}
+        aria-label={validationCopy}
         data-status={flagged.status}
         data-testid="item-row-validation"
         onClick={() => onShowValidation?.(item)}

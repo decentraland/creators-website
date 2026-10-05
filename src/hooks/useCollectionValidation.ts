@@ -43,32 +43,37 @@ export function itemValidationKeys(item: Item): (readonly unknown[])[] {
 export function useCollectionValidation(items: Item[], enabled: boolean): CollectionValidation {
   const { t } = useTranslation()
   const checked = enabled ? items : EMPTY
-  const queries = useMemo(
-    () =>
-      checked.flatMap(item => {
-        const { model, thumbnail } = sources(item)
-        return [modelValidationQuery(model, itemValidationContext(item), t), thumbnailValidationQuery(thumbnail, t)]
-      }),
-    [checked, t]
-  )
+  // Items without a thumbnail get no thumbnail query at all: a shared disabled key would be a duplicate query.
+  const plan = useMemo(() => {
+    const queries = []
+    const slots: { model: number; thumbnail: number | null }[] = []
+    for (const item of checked) {
+      const { model, thumbnail } = sources(item)
+      const modelSlot = queries.push(modelValidationQuery(model, itemValidationContext(item), t)) - 1
+      const thumbnailSlot = thumbnail ? queries.push(thumbnailValidationQuery(thumbnail, t)) - 1 : null
+      slots.push({ model: modelSlot, thumbnail: thumbnailSlot })
+    }
+    return { queries, slots }
+  }, [checked, t])
   const combine = useCallback(
     (results: UseQueryResult<ValidationResult>[]): CollectionValidation => {
       const byItem = new Map<string, ItemValidation>()
       checked.forEach((item, index) => {
-        const model = results[index * 2]
-        const thumbnail = results[index * 2 + 1]
-        if (!model || !thumbnail) return
-        const issues = model.data ? [...model.data.issues, ...(thumbnail.data?.issues ?? [])] : undefined
+        const slot = plan.slots[index]
+        const model = results[slot.model]
+        const thumbnail = slot.thumbnail === null ? undefined : results[slot.thumbnail]
+        if (!model) return
+        const issues = model.data ? [...model.data.issues, ...(thumbnail?.data?.issues ?? [])] : undefined
         byItem.set(item.id, {
-          status: getValidationStatus(issues, model.isLoading || thumbnail.isLoading),
+          status: getValidationStatus(issues, model.isLoading || !!thumbnail?.isLoading),
           issues: issues ?? []
         })
       })
       return { results: byItem, isValidating: results.some(result => result.isFetching) }
     },
-    [checked]
+    [checked, plan]
   )
-  return useQueries({ queries, combine })
+  return useQueries({ queries: plan.queries, combine })
 }
 
 const EMPTY: Item[] = []

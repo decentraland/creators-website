@@ -90,9 +90,10 @@ function toIssues({ findings, checks, titles }: RuleBookOutput): ValidationIssue
     // A crash's reason is a raw exception message: report it, show friendly copy instead.
     if (check.status === 'errored')
       captureError(new Error(check.skipReason), { flow: 'validation', check: check.check })
+    // A crash says nothing about the model, so it never blocks publishing; an unparseable model does.
     issues.push({
       code: 'file-format',
-      severity: ValidationSeverity.ERROR,
+      severity: check.status === 'errored' ? ValidationSeverity.WARNING : ValidationSeverity.ERROR,
       message:
         check.status === 'errored' ? englishMessage('item_editor.validation.check_crashed') : (check.skipReason ?? ''),
       title: titles[check.status === 'errored' ? check.check : 'file-format']

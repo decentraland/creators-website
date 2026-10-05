@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import {
   ChevronRight as ChevronRightIcon,
   ErrorOutline as WarningIcon,
@@ -6,7 +7,7 @@ import {
 import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'
 import { type Item } from '~/lib/items'
-import { ValidationSeverity, type ValidationIssue } from '~/lib/validation'
+import { hasErrors as anyErrors, type ValidationIssue } from '~/lib/validation'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { ItemValidationCard } from '~/components/ValidationBadge'
@@ -25,7 +26,7 @@ type Props = {
 /** The items whose checks found something, before the publish wizard; copy and footer follow the current results. */
 export function ValidationIssuesView({ checks, blockOnErrors, onRerun, onBack, onContinue }: Props) {
   const { t } = useTranslation()
-  const hasErrors = checks.some(check => check.issues.some(issue => issue.severity === ValidationSeverity.ERROR))
+  const hasErrors = useMemo(() => checks.some(check => anyErrors(check.issues)), [checks])
   const variant = hasErrors ? (blockOnErrors ? 'errors_blocking' : 'errors') : 'warnings'
   const canContinue = variant !== 'errors_blocking'
 

@@ -182,15 +182,17 @@ const CollectionDetailPage = () => {
   const syncs = useItemSyncs(address, collection, allItems ?? [])
 
   // Drafts check every item; published collections only the items with changes waiting for approval.
-  // Small screens are a viewer and check nothing.
+  // Small screens are a viewer and check nothing, unless the publish modal is already open: crossing the
+  // breakpoint mid-check must not empty its results and let it through.
+  const validates = !compact || publishView === 'wizard'
   const validationItems = useMemo(
     () =>
-      compact || !collection || !allItems
+      !validates || !collection || !allItems
         ? NO_ITEMS
         : allItems.filter(item => !collection.isPublished || hasPendingChanges(syncs.get(item.id)?.status)),
-    [compact, collection, allItems, syncs]
+    [validates, collection, allItems, syncs]
   )
-  const validation = useCollectionValidation(validationItems, !compact)
+  const validation = useCollectionValidation(validationItems, validates)
   const blockOnErrors = useFeatureFlag(FeatureFlag.BLOCK_PUBLISH_ON_VALIDATION_ERRORS).enabled
   const invalidCount = useMemo(
     () => [...validation.results.values()].filter(result => result.status === 'errors').length,
@@ -198,10 +200,11 @@ const CollectionDetailPage = () => {
   )
   const publishValidation = useMemo(
     () => ({
-      isValidating: itemsQuery.isLoading || validation.isValidating,
+      // A background refetch (back from saving in the editor) may bring new hashes the modal must wait for.
+      isValidating: itemsQuery.isFetching || validation.isValidating,
       results: validationItems.map(item => ({ item, issues: validation.results.get(item.id)?.issues ?? [] }))
     }),
-    [itemsQuery.isLoading, validation, validationItems]
+    [itemsQuery.isFetching, validation, validationItems]
   )
   const rerunItemValidation = useRerunItemValidation()
   const [validationItem, setValidationItem] = useState<Item | null>(null)

@@ -92,6 +92,14 @@ describe('useCollectionValidation', () => {
     expect(results.get('clean')).toEqual({ status: 'pass', issues: [] })
   })
 
+  it('checks an item without a thumbnail on its model alone', async () => {
+    const bare = { ...makeItem('bare', 'bafyMeh'), contents: { 'hat.glb': 'bafyMeh' } }
+    const { result } = renderValidation([bare, clean])
+    await waitFor(() => expect(result.current.validation.isValidating).toBe(false))
+    expect(result.current.validation.results.get('bare')).toEqual({ status: 'warnings', issues: [warning] })
+    expect(validateThumbnail).toHaveBeenCalledTimes(1)
+  })
+
   it('checks only the items it is given', async () => {
     const { result } = renderValidation([meh])
     await waitFor(() => expect(result.current.validation.isValidating).toBe(false))

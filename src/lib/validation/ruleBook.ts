@@ -27,7 +27,11 @@ const MODEL_GROUPS: Group[] = ['model', 'emote']
 let ruleBook: Promise<typeof import('@dcl-regenesislabs/wearable-validator')> | null = null
 
 export async function runRuleBook(job: RuleBookJob, signal?: AbortSignal): Promise<RuleBookOutput> {
-  ruleBook ??= import('@dcl-regenesislabs/wearable-validator')
+  // A failed chunk load is retried on the next run rather than failing every later check until reload.
+  ruleBook ??= import('@dcl-regenesislabs/wearable-validator').catch((error: unknown) => {
+    ruleBook = null
+    throw error
+  })
   const { validate, checks, manifest } = await ruleBook
   const result =
     job.kind === 'model'

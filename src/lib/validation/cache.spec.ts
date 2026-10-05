@@ -15,7 +15,7 @@ vi.mock('idb-keyval', () => ({
   clear: async (store: string) => stores.get(store)!.clear()
 }))
 
-const { CACHE_REVISION, cachedRun, deleteCached, resetCacheConnection } = await import('./cache')
+const { CACHE_REVISION, cacheKey, cachedRun, deleteCached, resetCacheConnection } = await import('./cache')
 
 const result: ValidationResult = {
   issues: [{ code: 'triangle-count', severity: ValidationSeverity.ERROR, message: 'Too many triangles' }]
@@ -55,9 +55,18 @@ describe('validation cache', () => {
 
   it('checks again once an entry is deleted', async () => {
     await cachedRun(key, async () => result)
-    await deleteCached([JSON.stringify(key)])
+    await deleteCached([cacheKey(key)])
     const run = vi.fn().mockResolvedValue({ issues: [] })
     await expect(cachedRun(key, run)).resolves.toEqual({ issues: [] })
+  })
+
+  it('never reads results written by a tab running another rule book version', async () => {
+    const run = vi.fn().mockResolvedValue(result)
+    await cachedRun(key, run)
+    // What a stale tab would have written under the same query key.
+    results().set(JSON.stringify([JSON.stringify([CACHE_REVISION, 'older']), key]), { issues: [] })
+    await expect(cachedRun(key, run)).resolves.toEqual(result)
+    expect(run).toHaveBeenCalledTimes(1)
   })
 
   it('works without IndexedDB, just unpersisted', async () => {

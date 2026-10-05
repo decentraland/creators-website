@@ -16,7 +16,7 @@ export type {
 export { ValidationSeverity } from './types'
 export { distinctModels, itemModels, itemValidationContext, type DistinctModel } from './models'
 export { cacheKey, cachedRun, deleteCached } from './cache'
-export { countIssues, getValidationStatus, type ValidationStatus } from './status'
+export { countIssues, getValidationStatus, hasErrors, type ValidationStatus } from './status'
 
 let validator: ItemValidator = localValidator
 

@@ -175,11 +175,11 @@ describe('local validator', () => {
     expect(cancel).toHaveBeenCalled()
   })
 
-  it('reports a crashed check as an error rather than a pass', async () => {
+  it('reports a crashed check as a warning rather than a pass, without blocking on it', async () => {
     validate.mockResolvedValue({ findings: [], checks: [{ check: 'skeleton', status: 'errored', skipReason: 'boom' }] })
     const result = await getValidator().validate({ kind: 'item', item: single }, { type: ItemType.WEARABLE })
     expect(result.issues).toEqual([
-      { code: 'file-format', severity: 'error', message: englishMessage('item_editor.validation.check_crashed') }
+      { code: 'file-format', severity: 'warning', message: englishMessage('item_editor.validation.check_crashed') }
     ])
     // The raw exception goes to Sentry, never to the creator.
     expect(captureError).toHaveBeenCalled()

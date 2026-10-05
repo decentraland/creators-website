@@ -25,7 +25,10 @@ export enum FeatureFlag {
   CREDITS_PRIMARY_LISTINGS = 'credits-primary-listings',
   /** Paying the collection publication fee with shop credits. */
   SHOP_CREDITS_FOR_COLLECTIONS_FEE = 'shop-credits-for-collections-fee',
-  /** Items with validation errors block publishing a collection; off, the errors are advisory. */
+  /**
+   * Items with validation errors block publishing a collection; off, the errors are advisory. A check that could
+   * not run (download, worker or rule book failure) is a warning either way: infrastructure never blocks publishing.
+   */
   BLOCK_PUBLISH_ON_VALIDATION_ERRORS = 'block-publish-on-validation-errors'
 }
 

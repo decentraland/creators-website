@@ -119,6 +119,15 @@ describe('PublishCollectionModal item checks', () => {
     expect(screen.getByTestId('confirm-name-step')).toBeInTheDocument()
   })
 
+  it('never blocks on a check that could not run, even when errors block publishing', () => {
+    const failed: ValidationIssue = { code: 'model', severity: ValidationSeverity.WARNING, message: 'Could not check' }
+    renderModal({
+      blockOnErrors: true,
+      validation: { isValidating: false, results: [{ item: meh, issues: [failed] }] }
+    })
+    expect(screen.getByTestId('publish-validation-continue')).toBeInTheDocument()
+  })
+
   it('lets the creator continue past warnings', async () => {
     renderModal({
       blockOnErrors: true,

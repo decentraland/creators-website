@@ -5,9 +5,10 @@ import { clear, createStore, del, get, set, type UseStore } from 'idb-keyval'
 import { type ValidationResult } from './types'
 
 /** Bump when the mapping from rule book findings to issues changes, so old entries are never read again. */
-export const CACHE_REVISION = 1
+export const CACHE_REVISION = 2
 
 const STAMP_KEY = 'stamp'
+const STAMP = JSON.stringify([CACHE_REVISION, __VALIDATOR_VERSION__])
 
 let ready: Promise<UseStore | null> | null = null
 
@@ -17,10 +18,9 @@ function open(): Promise<UseStore | null> {
     if (typeof indexedDB === 'undefined') return null
     try {
       const store = createStore('item-validation', 'results')
-      const stamp = JSON.stringify([CACHE_REVISION, __VALIDATOR_VERSION__])
-      if ((await get<string>(STAMP_KEY, store)) !== stamp) {
+      if ((await get<string>(STAMP_KEY, store)) !== STAMP) {
         await clear(store)
-        await set(STAMP_KEY, stamp, store)
+        await set(STAMP_KEY, STAMP, store)
       }
       return store
     } catch {
@@ -62,9 +62,12 @@ export function resetCacheConnection(): void {
   ready = null
 }
 
-/** The persisted entry's key for a react-query key. */
+/**
+ * The persisted entry's key for a react-query key. The stamp is part of it so a tab still running an older
+ * rule book never writes results a newer tab would read, even after that tab re-stamped the store.
+ */
 export function cacheKey(queryKey: readonly unknown[]): string {
-  return JSON.stringify(queryKey)
+  return JSON.stringify([STAMP, queryKey])
 }
 
 /**

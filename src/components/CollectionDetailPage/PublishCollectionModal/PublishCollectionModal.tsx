@@ -3,7 +3,7 @@ import { useTranslation } from '~/intl'
 import { useAllCollectionItems, useSaveCollection } from '~/hooks/useCollection'
 import { useRerunItemValidation } from '~/hooks/useCollectionValidation'
 import { track } from '~/lib/analytics'
-import { ValidationSeverity, countIssues, getValidationStatus } from '~/lib/validation'
+import { countIssues, getValidationStatus, hasErrors } from '~/lib/validation'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { type TopUpResume } from '~/lib/creditsTopUp'
@@ -98,10 +98,9 @@ export function PublishCollectionModal({
       setPhase('wizard')
       return
     }
-    const hasError = (check: ItemCheck) => check.issues.some(issue => issue.severity === ValidationSeverity.ERROR)
-    setFlaggedIds(
-      [...flagged.filter(hasError), ...flagged.filter(check => !hasError(check))].map(({ item }) => item.id)
-    )
+    const withErrors = flagged.filter(check => hasErrors(check.issues))
+    const withWarnings = flagged.filter(check => !hasErrors(check.issues))
+    setFlaggedIds([...withErrors, ...withWarnings].map(({ item }) => item.id))
     setPhase('issues')
   }, [phase, validation, blockOnErrors, collectionId])
 
