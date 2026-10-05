@@ -88,11 +88,12 @@ export type RescueDeps = {
   waitForTransaction: (txHash: string) => Promise<boolean>
   fetchItems: () => Promise<Item[]>
   sleep?: (ms: number) => Promise<void>
-  onChunkSent?: (index: number, total: number, txHash: string) => void
 }
 
 const INDEXER_POLL_MS = 2000
 const INDEXER_TIMEOUT_MS = 10 * 60_000
+/** How long the approval waits for builder-server to read the collection as approved before showing success anyway. */
+export const APPROVAL_INDEX_TIMEOUT_MS = 2 * 60_000
 
 const defaultSleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
 
@@ -109,22 +110,39 @@ export async function rescueItems(
     metadata: getItemMetadata(item)
   }))
   const calls = buildRescueItemsCalls(deps.chainId, collection, entries)
-  for (const [index, call] of calls.entries()) {
+  for (const call of calls) {
     const txHash = await deps.sendTransaction(call)
-    deps.onChunkSent?.(index, calls.length, txHash)
     if (!(await deps.waitForTransaction(txHash))) throw new ApprovalError('reverted', `Rescue ${txHash} reverted`)
   }
 
   const expected = new Map(targets.map(({ item, contentHash }) => [item.id, contentHash]))
-  const sleep = deps.sleep ?? defaultSleep
+  return waitForIndexer(
+    deps.fetchItems,
+    items => items.every(item => !expected.has(item.id) || item.blockchainContentHash === expected.get(item.id)),
+    timeoutMs,
+    deps.sleep
+  )
+}
+
+/**
+ * Polls `read` until builder-server reflects an on-chain change. A failed read counts as "not yet": a retry of
+ * the step would resend (and pay for) its transactions.
+ */
+export async function waitForIndexer<T>(
+  read: () => Promise<T>,
+  isDone: (value: T) => boolean,
+  timeoutMs: number,
+  sleep = defaultSleep
+): Promise<T> {
   for (let waited = 0; waited <= timeoutMs; waited += INDEXER_POLL_MS) {
-    // A transient read error must not fail the step: a retry would resend (and pay for) every chunk.
-    const items = await deps.fetchItems().catch(() => null)
-    const indexed = items?.every(item => !expected.has(item.id) || item.blockchainContentHash === expected.get(item.id))
-    if (items && indexed) return items
+    const value = await read().then(
+      result => ({ result }),
+      () => null
+    )
+    if (value && isDone(value.result)) return value.result
     await sleep(INDEXER_POLL_MS)
   }
-  throw new ApprovalError('not_indexed', 'The rescued hashes were not indexed in time')
+  throw new ApprovalError('not_indexed', 'The change was not indexed in time')
 }
 
 /** Published items whose Catalyst entity is missing or differs from the builder copy. */
@@ -163,7 +181,8 @@ async function deployItem(collection: Collection, item: Item, deps: DeployDeps):
   await deps.deployEntity(buildDeploymentForm(entity, authChain, files))
 }
 
-export type DeployResult = { deployed: Item[]; failed: Item[] }
+export type DeployFailure = { item: Item; message: string }
+export type DeployResult = { deployed: Item[]; failed: DeployFailure[] }
 
 /** Deploys every item's entity; one failure doesn't stop the rest, the caller retries the failed ones. */
 export async function deployItems(
@@ -179,8 +198,7 @@ export async function deployItems(
       result.deployed.push(item)
     } catch (error) {
       if (error instanceof ApprovalError && error.reason === 'no_identity') throw error
-      console.error(`Deploying ${item.id} failed:`, error)
-      result.failed.push(item)
+      result.failed.push({ item, message: error instanceof Error ? error.message : String(error) })
     }
     onProgress?.(result.deployed.length + result.failed.length, items.length)
   }
@@ -198,4 +216,27 @@ export async function approveOnChain(collection: Collection, deps: ApproveDeps):
   const txHash = await deps.sendTransaction(buildSetApprovedCall(deps.chainId, collection, true))
   if (!(await deps.waitForTransaction(txHash))) throw new ApprovalError('reverted', `Approval ${txHash} reverted`)
   return txHash
+}
+
+/** Bytes each item uploads, by item id. Files shared between items are measured once; unmeasurable ones count 0. */
+export async function measureItems(
+  items: Item[],
+  sizeOf: (hash: string) => Promise<number>
+): Promise<Map<string, number>> {
+  const sizes = new Map<string, Promise<number>>()
+  const measure = (hash: string) => {
+    if (!sizes.has(hash))
+      sizes.set(
+        hash,
+        sizeOf(hash).catch(() => 0)
+      )
+    return sizes.get(hash)!
+  }
+  const totals = await Promise.all(
+    items.map(async item => {
+      const bytes = await Promise.all(Object.values(getEntityContent(item)).map(measure))
+      return [item.id, bytes.reduce((sum, size) => sum + size, 0)] as const
+    })
+  )
+  return new Map(totals)
 }

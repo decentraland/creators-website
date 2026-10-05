@@ -100,12 +100,4 @@ export const FlowText = styled.p`
   color: ${theme.colors.softWhite};
 `
 
-export const FlowCenter = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  text-align: center;
-`
-
 export { ModalActions as FlowActions } from '~/styles/shared'

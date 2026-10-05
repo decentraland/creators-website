@@ -347,6 +347,13 @@ export async function publishCollectionItems(
 }
 
 /** One stored file by hash, from public storage. */
+/** A stored file's size in bytes, from a HEAD request so nothing downloads; 0 when storage doesn't say. */
+export async function fetchContentSize(hash: string): Promise<number> {
+  const response = await fetch(getContentsStorageUrl(hash), { method: 'HEAD', cache: 'no-cache' })
+  if (!response.ok) throw new BuilderServerError(`Could not read ${hash} (${response.status})`, response.status)
+  return Number(response.headers.get('content-length')) || 0
+}
+
 export async function fetchContent(hash: string, signal?: AbortSignal): Promise<Blob> {
   // Storage omits `Vary: Origin`, so a file the page already showed in an <img> sits in the HTTP cache without
   // CORS headers and a plain cached fetch of it fails. Revalidating gets a response with them.

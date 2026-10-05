@@ -1,55 +1,86 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TranslationProvider } from '~/intl'
+import { type ApprovalPlan, type ApprovalView } from '~/hooks/useApprovalFlow'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
+import { type Item } from '~/lib/items'
 import { ApprovalFlowModal } from './ApprovalFlowModal'
 
+// Read at render time, after the mock factory ran.
+let view: ApprovalView
+let plan: ApprovalPlan
 const state = vi.hoisted(() => ({
   start: vi.fn(),
   stop: vi.fn(),
+  runRescue: vi.fn(),
+  cancelSigning: vi.fn(),
   assign: vi.fn(),
   assignError: false
 }))
 vi.mock('~/hooks/useApprovalFlow', () => ({
-  useApprovalFlow: () => ({ view: { kind: 'approve', busy: false }, start: state.start, stop: state.stop })
+  useApprovalFlow: () => ({
+    view,
+    plan,
+    start: state.start,
+    stop: state.stop,
+    runRescue: state.runRescue,
+    runDeploy: vi.fn(),
+    runApprove: vi.fn(),
+    cancelSigning: state.cancelSigning
+  })
 }))
 vi.mock('~/hooks/useCuration', () => ({
   useAssignCurator: () => ({ mutate: state.assign, isPending: false, isError: state.assignError })
 }))
 vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: { name: 'Ana' } }) }))
+vi.mock('~/lib/approveCollection', () => ({ measureItems: vi.fn().mockResolvedValue(new Map([['i1', 819_100]])) }))
+vi.mock('~/components/CollectionMosaic', () => ({ CollectionMosaic: () => null }))
+vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
 
-const session = { address: '0xMe' } as Session
-const collection = { id: 'c1', name: 'Hats' } as Collection
+const web3 = { address: '0xMe', providerType: 'injected' } as Session
+const collection = { id: 'c1', name: 'Hats', itemCount: 6 } as Collection
+const item = {
+  id: 'i1',
+  name: 'Pirate Hat',
+  rarity: 'legendary',
+  thumbnail: 'thumbnail.png',
+  contents: {},
+  data: { category: 'hat', representations: [] }
+} as unknown as Item
 const request = (assignee: string | null) =>
   ({ id: 'r1', collectionId: 'c1', status: 'pending', assignee, createdAt: 1, updatedAt: 1 }) as CollectionCuration
 
-function renderModal(curation: CollectionCuration | null) {
+function renderModal(curation: CollectionCuration | null = request('0xme'), session: Session = web3) {
   render(
-    <TranslationProvider>
-      <ApprovalFlowModal
-        session={session}
-        collection={collection}
-        curation={curation}
-        mode="approve"
-        onClose={vi.fn()}
-      />
-    </TranslationProvider>
+    <QueryClientProvider client={new QueryClient()}>
+      <TranslationProvider>
+        <ApprovalFlowModal
+          session={session}
+          collection={collection}
+          curation={curation}
+          mode="approve"
+          onClose={vi.fn()}
+        />
+      </TranslationProvider>
+    </QueryClientProvider>
   )
 }
 
 beforeEach(() => {
-  state.start.mockReset()
-  state.assign.mockReset()
+  vi.clearAllMocks()
+  view = { kind: 'loading' }
+  plan = { steps: [], rescue: [], deploy: [] }
   state.assignError = false
 })
 
 describe('ApprovalFlowModal', () => {
   it('starts right away when the collection is the curator’s or nobody’s', () => {
-    renderModal(request('0xme'))
+    renderModal()
     expect(state.start).toHaveBeenCalledTimes(1)
-    expect(screen.getByTestId('approval-approve')).toBeInTheDocument()
+    expect(screen.getByTestId('approval-loading')).toBeInTheDocument()
   })
 
   it('takes over another curator’s collection before starting', () => {
@@ -70,5 +101,59 @@ describe('ApprovalFlowModal', () => {
     state.assignError = true
     renderModal(request('0xother'))
     expect(screen.getByTestId('approval-assign-error')).toBeInTheDocument()
+  })
+
+  it('lists the items to approve on chain, with a step per remaining transaction', () => {
+    plan = { steps: ['rescue', 'approve'], rescue: [{ item, contentHash: 'bafkreiabcdefxyz123456' }], deploy: [] }
+    view = { kind: 'step', step: 'rescue', phase: { kind: 'idle' } }
+    renderModal()
+    expect(screen.getByTestId('approval-steps-1')).toHaveAttribute('data-state', 'current')
+    expect(screen.getByTestId('approval-steps-2')).toHaveAttribute('data-state', 'todo')
+    expect(screen.getByTestId('approval-item-row')).toHaveTextContent('Pirate Hat')
+    expect(screen.getByTestId('approval-item-row')).toHaveTextContent('bafkre...123456')
+
+    fireEvent.click(screen.getByTestId('approval-rescue'))
+    expect(state.runRescue).toHaveBeenCalled()
+  })
+
+  it('hides the stepper when the run has a single step, and shows each upload’s size', async () => {
+    plan = { steps: ['deploy'], rescue: [], deploy: [item] }
+    view = { kind: 'step', step: 'deploy', phase: { kind: 'idle' } }
+    renderModal()
+    expect(screen.queryByTestId('approval-steps')).not.toBeInTheDocument()
+    expect(await screen.findByText('799.9KB')).toBeInTheDocument()
+  })
+
+  it('shows the upload progress', () => {
+    plan = { steps: ['deploy'], rescue: [], deploy: [item] }
+    view = { kind: 'step', step: 'deploy', phase: { kind: 'uploading', done: 1, total: 3 } }
+    renderModal()
+    expect(screen.getByTestId('approval-upload-progress')).toHaveAttribute('value', '1')
+    expect(screen.getByText('1/3')).toBeInTheDocument()
+  })
+
+  it('waits on the wallet prompt with a way back to the step', () => {
+    plan = { steps: ['approve'], rescue: [], deploy: [] }
+    view = { kind: 'step', step: 'approve', phase: { kind: 'signing', tx: 1, txs: 1 } }
+    renderModal()
+    fireEvent.click(screen.getByTestId('approval-signing-cancel'))
+    expect(state.cancelSigning).toHaveBeenCalled()
+  })
+
+  it('skips the wallet prompt screen for social logins, which sign without one', () => {
+    plan = { steps: ['approve'], rescue: [], deploy: [] }
+    view = { kind: 'step', step: 'approve', phase: { kind: 'signing', tx: 1, txs: 1 } }
+    renderModal(undefined, { address: '0xMe', providerType: 'magic' } as Session)
+    expect(screen.queryByTestId('approval-signing')).not.toBeInTheDocument()
+    expect(screen.getByTestId('approval-step-approve')).toBeInTheDocument()
+  })
+
+  it('shows the raw failure so the curator can copy it for support', () => {
+    view = { kind: 'error', step: 'deploy', detail: null, failed: [{ item, message: 'Catalyst said no' }] }
+    renderModal()
+    expect(screen.getByTestId('approval-error-detail')).toHaveTextContent('Pirate Hat: Catalyst said no')
+
+    fireEvent.click(screen.getByTestId('approval-retry'))
+    expect(state.start).toHaveBeenCalledTimes(2)
   })
 })

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Button } from '~/components/Button'
 import { Confetti } from '~/components/Confetti'
 import { WarningIcon } from '~/components/Icons'
@@ -17,6 +18,8 @@ type Props = {
   art?: { src: string }
   /** Failure copy shown under the description after a rejected confirm. */
   error?: string | null
+  /** Extra content under the description, e.g. an error's technical details. */
+  children?: ReactNode
   /** While the confirm action is in flight: blocks closing, disables cancel, spins the confirm button. */
   busy?: boolean
   showClose?: boolean
@@ -34,6 +37,7 @@ export function ConfirmModal({
   description,
   art,
   error,
+  children,
   busy = false,
   showClose = false,
   celebrate = false,
@@ -57,6 +61,7 @@ export function ConfirmModal({
         <S.Body>
           <S.Text data-testid={`${testId}-description`}>{description}</S.Text>
           {error && <S.Text data-testid={`${testId}-error`}>{error}</S.Text>}
+          {children}
         </S.Body>
         <S.Actions>
           {cancel && (

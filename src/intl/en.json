@@ -1312,34 +1312,49 @@
     "submit_edit": "Save"
   },
   "approval_flow": {
+    "title": "Approve Collection",
     "cancel": "Cancel",
     "assigned_to_other": {
       "title": "Approve {collection}",
       "body": "This collection is assigned to {assignee}. You can still approve it, but it will be assigned to you. Let {assignee} know.",
       "action": "Assign to me and continue"
     },
-    "loading": {
-      "title": "Approve {collection}",
-      "body": "Checking the collection's items…"
+    "loading": "Checking the collection's items…",
+    "signature_title": "Signature required",
+    "columns": {
+      "item": "Item",
+      "body_shape": "Body Type",
+      "category": "Category",
+      "rarity": "Rarity",
+      "hash": "Hash",
+      "size": "Size",
+      "collection": "Collection",
+      "items": "Items"
     },
+    "item_count": "{count, plural, one {# item} other {# items}}",
+    "size_kb": "{size}KB",
+    "size_mb": "{size}MB",
     "rescue": {
-      "title": "Record items on chain",
-      "body": "The content of {count, plural, one {# item} other {# items}} needs to be recorded on the collection contract. Confirm in your wallet to continue.",
-      "progress": "Transaction {sent} of {total} sent. Waiting for it to confirm…",
-      "action": "Record items"
+      "title": "Approve items",
+      "body": "{count, plural, one {# item needs} other {# items need}} to be approved on the collection contract. You'll need to confirm this action in your wallet.",
+      "action": "Confirm items",
+      "signing": "Please confirm the request in your wallet to continue.",
+      "pending": "{txs, plural, one {Approving items…} other {Approving items… ({tx} of {txs})}}"
     },
     "deploy": {
-      "title": "Upload items",
-      "body": "{count, plural, one {# item needs} other {# items need}} to be uploaded so it shows in Decentraland.",
-      "progress": "Uploading {done} of {total}…",
-      "failed": "{count, plural, one {# item} other {# items}} couldn't be uploaded.",
-      "action": "Upload",
-      "retry": "Try again"
+      "title": "Upload files",
+      "body": "{count, plural, one {# item needs} other {# items need}} to be uploaded to appear in Decentraland.",
+      "action": "Upload files",
+      "uploading_title": "Uploading your items",
+      "uploading_body": "Hang tight while the files reach Decentraland. Keep this window open.",
+      "uploading": "Uploading items…"
     },
     "approve": {
-      "title": "Enable the collection",
-      "body": "Last step: confirm in your wallet to make the collection mintable.",
-      "action": "Enable"
+      "title": "Enable Collection",
+      "body": "Enable the collection to complete the approval process and allow its items to be minted. Please confirm in your wallet.",
+      "action": "Enable collection",
+      "signing": "Please confirm in your wallet to enable the collection.",
+      "pending": "Enabling collection…"
     },
     "success": {
       "title_approve": "Collection approved!",
@@ -1348,11 +1363,15 @@
       "body_deploy_missing": "Every item of {collection} is uploaded."
     },
     "error": {
-      "title": "Something went wrong",
-      "prepare": "We couldn't prepare the collection for approval.",
-      "rescue": "We couldn't update the items on chain.",
-      "deploy": "We couldn't upload the items.",
-      "approve": "We couldn't approve the collection.",
+      "title_approve": "We couldn't approve the collection",
+      "title_deploy_missing": "We couldn't upload the items",
+      "prepare": "Something went wrong while preparing the collection for approval. Please try again later.",
+      "rescue": "Something went wrong while approving the items on the collection contract. Please try again later.",
+      "deploy": "Something went wrong while uploading the items. Please try again later.",
+      "approve": "Something went wrong while enabling the collection. Please try again later.",
+      "details": "Error details",
+      "copy": "Copy",
+      "copied": "Copied",
       "retry": "Try again"
     }
   },

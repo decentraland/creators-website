@@ -1312,34 +1312,49 @@
     "submit_edit": "Guardar"
   },
   "approval_flow": {
+    "title": "Aprobar colección",
     "cancel": "Cancelar",
     "assigned_to_other": {
       "title": "Aprobar {collection}",
       "body": "Esta colección está asignada a {assignee}. Puedes aprobarla igual, pero quedará asignada a ti. Avísale a {assignee}.",
       "action": "Asignármela y continuar"
     },
-    "loading": {
-      "title": "Aprobar {collection}",
-      "body": "Revisando los ítems de la colección…"
+    "loading": "Revisando los ítems de la colección…",
+    "signature_title": "Firma requerida",
+    "columns": {
+      "item": "Ítem",
+      "body_shape": "Tipo de cuerpo",
+      "category": "Categoría",
+      "rarity": "Rareza",
+      "hash": "Hash",
+      "size": "Tamaño",
+      "collection": "Colección",
+      "items": "Ítems"
     },
+    "item_count": "{count, plural, one {# ítem} other {# ítems}}",
+    "size_kb": "{size}KB",
+    "size_mb": "{size}MB",
     "rescue": {
-      "title": "Registrar ítems en la blockchain",
-      "body": "El contenido de {count, plural, one {# ítem} other {# ítems}} debe registrarse en el contrato de la colección. Confirma en tu wallet para continuar.",
-      "progress": "Transacción {sent} de {total} enviada. Esperando la confirmación…",
-      "action": "Registrar ítems"
+      "title": "Aprobar ítems",
+      "body": "{count, plural, one {# ítem debe aprobarse} other {# ítems deben aprobarse}} en el contrato de la colección. Tendrás que confirmar esta acción en tu wallet.",
+      "action": "Confirmar ítems",
+      "signing": "Confirma la solicitud en tu wallet para continuar.",
+      "pending": "{txs, plural, one {Aprobando ítems…} other {Aprobando ítems… ({tx} de {txs})}}"
     },
     "deploy": {
-      "title": "Subir ítems",
-      "body": "{count, plural, one {# ítem necesita} other {# ítems necesitan}} subirse para aparecer en Decentraland.",
-      "progress": "Subiendo {done} de {total}…",
-      "failed": "{count, plural, one {# ítem no se pudo subir} other {# ítems no se pudieron subir}}.",
-      "action": "Subir",
-      "retry": "Reintentar"
+      "title": "Subir archivos",
+      "body": "{count, plural, one {# ítem debe subirse} other {# ítems deben subirse}} para aparecer en Decentraland.",
+      "action": "Subir archivos",
+      "uploading_title": "Subiendo tus ítems",
+      "uploading_body": "Espera mientras los archivos llegan a Decentraland. Mantén esta ventana abierta.",
+      "uploading": "Subiendo ítems…"
     },
     "approve": {
-      "title": "Habilitar la colección",
-      "body": "Último paso: confirma en tu wallet para que la colección se pueda mintear.",
-      "action": "Habilitar"
+      "title": "Habilitar colección",
+      "body": "Habilita la colección para completar la aprobación y permitir que sus ítems se minteen. Confirma en tu wallet.",
+      "action": "Habilitar colección",
+      "signing": "Confirma en tu wallet para habilitar la colección.",
+      "pending": "Habilitando colección…"
     },
     "success": {
       "title_approve": "¡Colección aprobada!",
@@ -1348,11 +1363,15 @@
       "body_deploy_missing": "Todos los ítems de {collection} están subidos."
     },
     "error": {
-      "title": "Algo salió mal",
-      "prepare": "No pudimos preparar la colección para aprobarla.",
-      "rescue": "No pudimos actualizar los ítems en la blockchain.",
-      "deploy": "No pudimos subir los ítems.",
-      "approve": "No pudimos aprobar la colección.",
+      "title_approve": "No pudimos aprobar la colección",
+      "title_deploy_missing": "No pudimos subir los ítems",
+      "prepare": "Algo salió mal al preparar la colección para aprobarla. Inténtalo de nuevo más tarde.",
+      "rescue": "Algo salió mal al aprobar los ítems en el contrato de la colección. Inténtalo de nuevo más tarde.",
+      "deploy": "Algo salió mal al subir los ítems. Inténtalo de nuevo más tarde.",
+      "approve": "Algo salió mal al habilitar la colección. Inténtalo de nuevo más tarde.",
+      "details": "Detalles del error",
+      "copy": "Copiar",
+      "copied": "Copiado",
       "retry": "Reintentar"
     }
   },

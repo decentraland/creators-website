@@ -10,6 +10,8 @@ import {
   findItemsToDeploy,
   findItemsToRescue,
   rescueItems,
+  waitForIndexer,
+  measureItems,
   type DeployDeps
 } from './approveCollection'
 import { computeItemContentHash, getEntityContent } from './catalystEntity'
@@ -181,9 +183,8 @@ describe('deployItems', () => {
 
   it('keeps going past a failed item and returns it for a retry', async () => {
     const d = deps({ deployEntity: vi.fn().mockRejectedValueOnce(new Error('400')).mockResolvedValue(undefined) })
-    vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const result = await deployItems(collection, [item('1'), item('2')], d)
-    expect(result.failed.map(failed => failed.id)).toEqual(['1'])
+    expect(result.failed).toEqual([{ item: expect.objectContaining({ id: '1' }), message: '400' }])
     expect(result.deployed.map(deployed => deployed.id)).toEqual(['2'])
   })
 
@@ -202,5 +203,36 @@ describe('approveOnChain', () => {
     await expect(approveOnChain(collection, deps)).resolves.toBe('0xtx')
     deps.waitForTransaction.mockResolvedValue(false)
     await expect(approveOnChain(collection, deps)).rejects.toMatchObject({ reason: 'reverted' })
+  })
+})
+
+describe('waitForIndexer', () => {
+  const sleep = vi.fn().mockResolvedValue(undefined)
+
+  it('answers the first read that reflects the change, through read errors', async () => {
+    const read = vi.fn().mockRejectedValueOnce(new Error('503')).mockResolvedValueOnce(false).mockResolvedValue(true)
+    await expect(waitForIndexer(read, done => done === true, 10_000, sleep)).resolves.toBe(true)
+    expect(read).toHaveBeenCalledTimes(3)
+  })
+
+  it('gives up after the timeout', async () => {
+    await expect(
+      waitForIndexer(vi.fn().mockResolvedValue(false), done => done === true, 4000, sleep)
+    ).rejects.toMatchObject({
+      reason: 'not_indexed'
+    })
+  })
+})
+
+describe('measureItems', () => {
+  it('adds up each item’s files, measuring a shared file once and an unreadable one as 0', async () => {
+    const sizeOf = vi.fn(async (hash: string) => {
+      if (hash === 'bafimage') throw new Error('404')
+      return hash === 'bafthumb' ? 10 : 100
+    })
+    const sizes = await measureItems([item('1'), item('2')], sizeOf)
+    expect(sizes.get('1')).toBe(110)
+    expect(sizes.get('2')).toBe(110)
+    expect(sizeOf.mock.calls.filter(([hash]) => hash === 'bafthumb')).toHaveLength(1)
   })
 })
