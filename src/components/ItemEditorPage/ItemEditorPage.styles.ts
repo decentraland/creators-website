@@ -333,6 +333,11 @@ export const SegmentButton = styled.button`
   }
 `
 
+// Lets the last fields scroll clear of the Intercom launcher, which sits above the footer.
+export const IntercomClearance = styled.div`
+  flex: 0 0 72px;
+`
+
 export const Footer = styled.div`
   position: sticky;
   bottom: 0;

@@ -257,6 +257,10 @@ export const ThumbnailBox = styled.button`
   overflow: hidden;
   cursor: pointer;
 
+  &:disabled {
+    cursor: default;
+  }
+
   /* Styled components must not be used as selectors (Vitest); target the data hook instead. */
   &:hover [data-thumb-overlay],
   &:focus-visible [data-thumb-overlay] {
