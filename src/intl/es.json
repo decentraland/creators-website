@@ -325,7 +325,7 @@
       "title": "Confirmar y pagar",
       "description": "Estás por enviar {count, plural, one {# ítem} other {# ítems}} de “{name}” a revisión. Elige un método de pago para pagar la <fee>tarifa de publicación</fee> y continuar.",
       "fee_tooltip_title": "¿Qué es la tarifa de publicación?",
-      "fee_tooltip_body": "Una tarifa única de 25 USD por ítem que se paga al enviar tus ítems a revisión. Por tiempo limitado, la Decentraland Foundation cubre 20 USD, así que solo pagas 5 USD por ítem, en MANA o con Credits.",
+      "fee_tooltip_body": "Una tarifa única de 25 USD por ítem que se paga al enviar tus ítems a revisión. Por tiempo limitado, la Decentraland Foundation cubre 20 USD, así que solo pagas 5 USD por ítem, en MANA o con Créditos.",
       "columns": {
         "collection": "Colección",
         "items": "Ítems",
