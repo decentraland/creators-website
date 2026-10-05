@@ -36,7 +36,6 @@ export function ValidationIssuesView({ checks, blockOnErrors, onRerun, onBack, o
       size="large"
       hideTitle
       showClose
-      fullHeightOnMobile
       onClose={onBack}
       testId="publish-validation-issues"
     >

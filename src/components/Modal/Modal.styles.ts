@@ -44,12 +44,6 @@ export const Dialog = styled.div`
     max-height: 100%;
   }
 
-  ${mobile} {
-    &[data-full-height] {
-      height: 100%;
-    }
-  }
-
   &[data-compact] {
     padding: 12px 16px 16px;
   }
