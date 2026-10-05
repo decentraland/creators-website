@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronRight as ChevronRightIcon } from '@mui/icons-material'
+import {
+  Check as CheckIcon,
+  ChevronRight as ChevronRightIcon,
+  ContentCopy as ContentCopyIcon
+} from '@mui/icons-material'
 import approvedArt from '~/assets/send-success.png'
 import errorArt from '~/assets/modal-error.png'
 import { useTranslation, type Translate } from '~/intl'
@@ -13,6 +17,7 @@ import { Modal } from '~/components/Modal'
 import { RarityPill } from '~/components/RarityPill'
 import { StepIndicator } from '~/components/StepIndicator'
 import { SuccessModal } from '~/components/SuccessModal'
+import { Tooltip } from '~/components/Tooltip'
 import { PendingModal } from '~/components/CollectionDetailPage/SellItemFlow/PendingModal'
 import { useApprovalFlow, type ApprovalMode, type ApprovalPlan, type ApprovalStep } from '~/hooks/useApprovalFlow'
 import { useAssignCurator } from '~/hooks/useCuration'
@@ -20,6 +25,7 @@ import { useProfile } from '~/hooks/useProfile'
 import { track } from '~/lib/analytics'
 import { measureItems } from '~/lib/approveCollection'
 import { isSocialLogin, type Session } from '~/lib/auth'
+import { copyToClipboard } from '~/lib/clipboard'
 import { fetchContentSize, getContentsStorageUrl } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
@@ -37,6 +43,7 @@ type Props = {
 }
 
 const MB = 1024 * 1024
+const COPIED_FEEDBACK_MS = 1500
 
 function formatSize(t: Translate, bytes: number): string {
   return bytes >= MB
@@ -311,24 +318,35 @@ function StepTable({ step, plan, collection }: { step: ApprovalStep; plan: Appro
 /** The raw failure, which only curators see: support asks for it, so it can be copied whole. */
 function ErrorDetail({ text, collectionId }: { text: string; collectionId: string }) {
   const { t } = useTranslation()
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (copied === null) return
+    const reset = setTimeout(() => setCopied(null), COPIED_FEEDBACK_MS)
+    return () => clearTimeout(reset)
+  }, [copied])
   if (!text) return null
+  const label =
+    copied === null
+      ? t('approval_flow.error.copy')
+      : t(copied ? 'approval_flow.error.copied' : 'collection_detail_page.actions.copy_failed')
   return (
     <S.Detail>
       <S.DetailHeader>
         <span>{t('approval_flow.error.details')}</span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          data-testid="approval-error-copy"
-          onClick={() => {
-            void navigator.clipboard?.writeText(text).then(() => setCopied(true))
-            track('Approval error details copied', { collectionId })
-          }}
-        >
-          {t(copied ? 'approval_flow.error.copied' : 'approval_flow.error.copy')}
-        </Button>
+        <Tooltip content={label} asChild placement="top">
+          <S.CopyButton
+            type="button"
+            aria-label={label}
+            data-copied={copied || undefined}
+            data-testid="approval-error-copy"
+            onClick={() => {
+              void copyToClipboard(text).then(setCopied)
+              track('Approval error details copied', { collectionId })
+            }}
+          >
+            {copied ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+          </S.CopyButton>
+        </Tooltip>
       </S.DetailHeader>
       <S.DetailText data-testid="approval-error-detail">{text}</S.DetailText>
     </S.Detail>

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TranslationProvider } from '~/intl'
 import { type ApprovalPlan, type ApprovalView } from '~/hooks/useApprovalFlow'
@@ -39,6 +39,8 @@ vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: { name: 'Ana' 
 vi.mock('~/lib/approveCollection', () => ({ measureItems: vi.fn().mockResolvedValue(new Map([['i1', 819_100]])) }))
 vi.mock('~/components/CollectionMosaic', () => ({ CollectionMosaic: () => null }))
 vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
+const clipboard = vi.hoisted(() => ({ copyToClipboard: vi.fn() }))
+vi.mock('~/lib/clipboard', () => clipboard)
 
 const web3 = { address: '0xMe', providerType: 'injected' } as Session
 const collection = { id: 'c1', name: 'Hats', itemCount: 6 } as Collection
@@ -148,10 +150,15 @@ describe('ApprovalFlowModal', () => {
     expect(screen.getByTestId('approval-step-approve')).toBeInTheDocument()
   })
 
-  it('shows the raw failure so the curator can copy it for support', () => {
+  it('shows the raw failure so the curator can copy it for support', async () => {
     view = { kind: 'error', step: 'deploy', detail: null, failed: [{ item, message: 'Catalyst said no' }] }
     renderModal()
     expect(screen.getByTestId('approval-error-detail')).toHaveTextContent('Pirate Hat: Catalyst said no')
+
+    clipboard.copyToClipboard.mockResolvedValue(true)
+    fireEvent.click(screen.getByTestId('approval-error-copy'))
+    expect(clipboard.copyToClipboard).toHaveBeenCalledWith('Pirate Hat: Catalyst said no')
+    await waitFor(() => expect(screen.getByTestId('approval-error-copy')).toHaveAttribute('data-copied'))
 
     fireEvent.click(screen.getByTestId('approval-retry'))
     expect(state.start).toHaveBeenCalledTimes(2)

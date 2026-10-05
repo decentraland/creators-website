@@ -156,3 +156,35 @@ export const DetailText = styled.pre`
   word-break: break-word;
   color: ${theme.colors.softWhite};
 `
+
+export const CopyButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -10px -10px -10px 0;
+  border: 0;
+  border-radius: ${theme.radius.pill};
+  background: none;
+  color: ${theme.colors.softWhite};
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+
+  &:hover,
+  &:focus-visible {
+    background: ${theme.colors.glassFaint};
+  }
+  &[data-copied] {
+    color: ${theme.colors.successBorder};
+    animation: copied-pop 0.3s ease;
+  }
+
+  @keyframes copied-pop {
+    50% {
+      transform: scale(1.25);
+    }
+  }
+`
