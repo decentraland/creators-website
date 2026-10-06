@@ -17,15 +17,16 @@ export {
   Title
 } from '~/styles/shared'
 
-const card = theme.media.maxWidth('lg')
-const table = theme.media.minWidth('lg')
+// Below `tablet` the seven columns no longer fit, so rows become cards instead of scrolling sideways.
+const card = theme.media.maxWidth('tablet')
+const table = theme.media.minWidth('tablet')
 
 // Shared by the list header and every row so their columns stay aligned.
 export const curationColumns = `
   display: grid;
-  grid-template-columns: minmax(220px, 2fr) minmax(140px, 1.2fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(120px, 1fr) minmax(100px, 0.8fr) minmax(140px, 1fr);
+  grid-template-columns: minmax(180px, 2fr) minmax(110px, 1.2fr) minmax(90px, 1fr) minmax(80px, 1fr) minmax(110px, 1fr) minmax(80px, 0.8fr) minmax(130px, 1fr);
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 `
 
 export const FilterRow = styled.div`
@@ -94,7 +95,7 @@ export const List = styled.div`
     margin: -8px;
 
     & > * {
-      min-width: 960px;
+      min-width: min-content;
     }
   }
 `

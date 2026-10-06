@@ -509,6 +509,21 @@ const CollectionDetailPage = () => {
                 {t('collection_detail_page.preview')}
                 <JumpInIcon />
               </Button>
+              {showForumPost && (
+                <Button
+                  as="a"
+                  variant="dark"
+                  href={collection.forumLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-desktop-only
+                  data-testid="forum-post"
+                  onClick={() => track('Forum post opened', { collectionId: collection.id, surface: 'detail' })}
+                >
+                  <ForumIcon fontSize="small" />
+                  {t('collection_detail_page.forum_post')}
+                </Button>
+              )}
               {publishBlocker !== 'not_draft' && (
                 <Tooltip
                   content={
@@ -568,6 +583,7 @@ const CollectionDetailPage = () => {
                   address={address}
                   onSendItems={canSend ? () => setSending(true) : undefined}
                   onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
+                  forumLink={showForumPost ? collection.forumLink : undefined}
                   onManageRoles={setManagingRoles}
                   onDeleted={() => navigate('/collections', { replace: true })}
                 />
@@ -601,20 +617,6 @@ const CollectionDetailPage = () => {
                 <OpenEditorIcon />
                 {t('collection_detail_page.open_editor')}
               </Button>
-              {showForumPost && (
-                <Button
-                  as="a"
-                  variant="secondary"
-                  href={collection.forumLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  data-testid="forum-post"
-                  onClick={() => track('Forum post opened', { collectionId: collection.id, surface: 'detail' })}
-                >
-                  <ForumIcon fontSize="small" />
-                  {t('collection_detail_page.forum_post')}
-                </Button>
-              )}
               {canAddItems && (
                 <Button variant="secondary" type="button" data-testid="add-items" onClick={openFileBrowser}>
                   <AddIcon fontSize="small" />

@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom'
 import { theme } from '~/styles/theme'
 import { curationColumns } from '../CurationPage.styles'
 
-const card = theme.media.maxWidth('lg')
-const table = theme.media.minWidth('lg')
+const card = theme.media.maxWidth('tablet')
+const table = theme.media.minWidth('tablet')
 
 export const Row = styled.article`
   ${curationColumns};
