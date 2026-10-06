@@ -801,6 +801,7 @@
       "title": "Basics",
       "name": "Name",
       "description": "Description",
+      "invalid_description": "Descriptions can be up to 64 characters and can't include \":\".",
       "utility": "Utility",
       "utility_hint": "A short description of what this item does in-world, shown to collectors.",
       "category": "Category",

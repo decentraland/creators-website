@@ -1,12 +1,23 @@
 // The properties form's local draft: a pure reducer over the editable fields of an item plus the
 // blobs picked while editing, and the projection back into a saveable Item (legacy RightPanel state).
 import { type SpringBonesData, WearableCategory } from '@dcl/schemas'
-import { computeHashes, withThumbnail, type BuiltItem } from './itemFactory'
-import { VIDEO_PATH } from './itemFiles'
+import { computeHashes, withCatalystImageForRarity, withThumbnail, type BuiltItem } from './itemFactory'
+import { THUMBNAIL_PATH, VIDEO_PATH } from './itemFiles'
 import { ItemType, type Item } from './items'
 
 export const ITEM_DESCRIPTION_MAX_LENGTH = 64
 export const ITEM_UTILITY_MAX_LENGTH = 64
+
+// The description is part of the on-chain metadata string, where ':' is the field separator.
+export function isValidItemDescription(description: string): boolean {
+  const trimmed = description.trim()
+  return trimmed.length <= ITEM_DESCRIPTION_MAX_LENGTH && !trimmed.includes(':')
+}
+
+/** A manifest description made valid: separators dropped, cut at the cap. */
+export function sanitizeItemDescription(description: string): string {
+  return description.replace(/:/g, '').slice(0, ITEM_DESCRIPTION_MAX_LENGTH)
+}
 
 const UPPER_BODY = WearableCategory.UPPER_BODY as string
 const HANDS = 'hands'
@@ -204,14 +215,20 @@ export function toPreviewItem(item: Item, draft: ItemDraft): Item {
   })
 }
 
-/** The preview video may change until the item is approved; after that it is frozen with the deployment. */
-export function canUpdateVideo(item: Item): boolean {
+/**
+ * `item.video` is the hash curation last approved: a new upload replaces it directly until the item is approved,
+ * and only `contents['video.mp4']` afterwards, so the item reads as changed and goes through review (builder-server
+ * copies the hash over on approval).
+ */
+export function tracksVideoOnSave(item: Item): boolean {
   return !item.isPublished || !item.isApproved
 }
 
 export type SaveOptions = {
   /** Spring bone params to persist; `undefined` leaves the saved data untouched. */
   springBones?: SpringBonesData | null
+  /** Loads the stored thumbnail, needed to rebuild the catalyst image when only the rarity changed. */
+  fetchThumbnail?: (item: Item) => Promise<Blob>
 }
 
 /** The item to PUT plus the files to upload: fields applied, new thumbnail/video hashed, spring bones merged. */
@@ -223,10 +240,16 @@ export async function toSaveableItem(item: Item, draft: ItemDraft, options: Save
     const built = await withThumbnail(next, draft.thumbnail)
     next = built.item
     blobs = { ...blobs, ...built.blobs }
+  } else if (next.rarity !== item.rarity && options.fetchThumbnail) {
+    const thumbnail = blobs[THUMBNAIL_PATH] ?? (await options.fetchThumbnail(item))
+    const built = await withCatalystImageForRarity(next, thumbnail)
+    next = built.item
+    blobs = { ...blobs, ...built.blobs }
   }
-  if (draft.video && canUpdateVideo(item)) {
+  if (draft.video) {
     const { [VIDEO_PATH]: hash } = await computeHashes({ [VIDEO_PATH]: draft.video })
-    next = { ...next, video: hash, contents: { ...next.contents, [VIDEO_PATH]: hash } }
+    next = { ...next, contents: { ...next.contents, [VIDEO_PATH]: hash } }
+    if (tracksVideoOnSave(item)) next = { ...next, video: hash }
     blobs[VIDEO_PATH] = draft.video
   }
   if (options.springBones !== undefined && next.type === ItemType.WEARABLE) {

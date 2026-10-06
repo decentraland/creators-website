@@ -1,5 +1,9 @@
 // Image/blob helpers for the add-items flow, ported from the legacy builder's modules/media/utils.
 import { Rarity, WearableCategory } from '@dcl/schemas'
+import UPNG from 'upng-js'
+
+/** Palette size thumbnails and catalyst images are quantized to (legacy THUMBNAIL_PALETTE_COLORS). */
+export const THUMBNAIL_PALETTE_COLORS = 256
 
 export enum ImageType {
   PNG = 'png',
@@ -100,6 +104,24 @@ export async function resizeImage(blob: Blob, width = 256, height = 256): Promis
   return new Promise((resolve, reject) => {
     canvas.toBlob(result => (result ? resolve(result) : reject(new Error('Could not encode the image'))), 'image/png')
   })
+}
+
+/**
+ * Re-encodes a PNG with an indexed palette, keeping alpha. There is no perceptual floor, only a size one: the
+ * original blob is returned by reference when the result is not smaller, when decoding fails, or for non-PNGs.
+ */
+export async function compressPngBlob(blob: Blob, colors = THUMBNAIL_PALETTE_COLORS): Promise<Blob> {
+  if (blob.type && blob.type !== 'image/png') return blob
+  try {
+    const buffer = await blob.arrayBuffer()
+    const image = UPNG.decode(buffer)
+    const frames = UPNG.toRGBA8(image)
+    const encoded = UPNG.encode(frames, image.width, image.height, colors)
+    const compressed = new Blob([encoded], { type: 'image/png' })
+    return compressed.size > 0 && compressed.size < blob.size ? compressed : blob
+  } catch {
+    return blob
+  }
 }
 
 /**

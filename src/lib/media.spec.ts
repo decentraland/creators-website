@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { ImageType, dataURLToBlob, getImageType } from './media'
+import UPNG from 'upng-js'
+import { ImageType, compressPngBlob, dataURLToBlob, getImageType } from './media'
 
 // 1x1 transparent PNG
 const PNG_DATA_URL =
@@ -26,5 +27,33 @@ describe('getImageType', () => {
 
   it('reports unknown for arbitrary bytes', async () => {
     expect(await getImageType(new Blob([new Uint8Array([1, 2, 3, 4])]))).toBe(ImageType.UNKNOWN)
+  })
+})
+
+describe('compressPngBlob', () => {
+  function noisyPng(size = 64): Blob {
+    const rgba = new Uint8Array(size * size * 4)
+    let seed = 7
+    for (let i = 0; i < rgba.length; i++) {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff
+      rgba[i] = seed & 0xff
+    }
+    return new Blob([UPNG.encode([rgba.buffer], size, size, 0)], { type: 'image/png' })
+  }
+
+  it('shrinks a true-color PNG to an indexed one that still decodes', async () => {
+    const original = noisyPng()
+    const compressed = await compressPngBlob(original)
+    expect(compressed.size).toBeLessThan(original.size)
+    expect(compressed.type).toBe('image/png')
+    const decoded = UPNG.decode(await compressed.arrayBuffer())
+    expect([decoded.width, decoded.height]).toEqual([64, 64])
+  })
+
+  it('returns the input itself for non-PNGs and for bytes it cannot decode', async () => {
+    const jpeg = new Blob([new Uint8Array([0xff, 0xd8, 0xff])], { type: 'image/jpeg' })
+    expect(await compressPngBlob(jpeg)).toBe(jpeg)
+    const broken = new Blob(['not a png'], { type: 'image/png' })
+    expect(await compressPngBlob(broken)).toBe(broken)
   })
 })

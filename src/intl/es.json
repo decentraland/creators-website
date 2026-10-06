@@ -801,6 +801,7 @@
       "title": "Básicos",
       "name": "Nombre",
       "description": "Descripción",
+      "invalid_description": "Las descripciones pueden tener hasta 64 caracteres y no pueden incluir \":\".",
       "utility": "Utilidad",
       "utility_hint": "Una descripción corta de lo que hace este ítem en el mundo, visible para los coleccionistas.",
       "category": "Categoría",

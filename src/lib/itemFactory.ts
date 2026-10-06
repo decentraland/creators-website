@@ -26,7 +26,7 @@ import {
   isModelPath,
   toMB
 } from './itemFiles'
-import { generateCatalystImage } from './media'
+import { compressPngBlob, generateCatalystImage } from './media'
 import { mergeSpringBonesIntoItem, type SpringBoneParamsByName } from './springBones'
 
 export const ITEM_NAME_MAX_LENGTH = 32
@@ -347,11 +347,25 @@ export async function buildItem(draft: ItemDraftPayload): Promise<BuiltItem> {
   return { item, blobs }
 }
 
-/** Adds the catalyst image next to the thumbnail (legacy generateCatalystImage before every save). */
+/**
+ * Quantizes the thumbnail and adds the catalyst image next to it (legacy compressPngBlob + generateCatalystImage
+ * before every save). Quantizing first keeps the stored thumbnail under its cap more often.
+ */
 async function withCatalystImage(blobs: Record<string, Blob>, rarity: string): Promise<Record<string, Blob>> {
-  const thumbnail = blobs[THUMBNAIL_PATH]
-  if (!thumbnail) return blobs
-  return { ...blobs, [IMAGE_PATH]: await generateCatalystImage(thumbnail, rarity) }
+  if (!blobs[THUMBNAIL_PATH]) return blobs
+  const thumbnail = await compressPngBlob(blobs[THUMBNAIL_PATH])
+  const image = await compressPngBlob(await generateCatalystImage(thumbnail, rarity))
+  return { ...blobs, [THUMBNAIL_PATH]: thumbnail, [IMAGE_PATH]: image }
+}
+
+/**
+ * Rebuilds only the catalyst image from the stored thumbnail, for a rarity change that uploads no new thumbnail
+ * (legacy regenerated the image whenever the rarity changed).
+ */
+export async function withCatalystImageForRarity(item: Item, thumbnail: Blob): Promise<BuiltItem> {
+  const image = await compressPngBlob(await generateCatalystImage(thumbnail, item.rarity ?? ''))
+  const hashes = await computeHashes({ [IMAGE_PATH]: image })
+  return { item: { ...item, contents: { ...item.contents, ...hashes } }, blobs: { [IMAGE_PATH]: image } }
 }
 
 /**

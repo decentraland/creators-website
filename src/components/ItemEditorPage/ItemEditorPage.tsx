@@ -33,7 +33,7 @@ import { useSaveItem } from '~/hooks/useSaveItem'
 import { useSpringBones } from '~/hooks/useSpringBones'
 import { useTranslation } from '~/intl'
 import { type AvatarAttributes } from '~/lib/avatar'
-import { BuilderServerError, COLLECTION_LOCKED_STATUS, getContentsStorageUrl } from '~/lib/builder'
+import { BuilderServerError, COLLECTION_LOCKED_STATUS, fetchContent, getContentsStorageUrl } from '~/lib/builder'
 import {
   canManageCollectionItems,
   hasCollectionRole,
@@ -335,7 +335,8 @@ const ItemEditorPage = () => {
   async function persist(item: Item) {
     const hasSpringModels = springBones.models.length > 0
     const built = await toSaveableItem(item, form.draft, {
-      springBones: hasSpringModels ? (mergeSpringBonesIntoItem(form.springBoneParams) ?? null) : undefined
+      springBones: hasSpringModels ? (mergeSpringBonesIntoItem(form.springBoneParams) ?? null) : undefined,
+      fetchThumbnail: current => fetchContent(current.contents[current.thumbnail])
     })
     const saved = await saveItem.mutateAsync(built)
     queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collectionId ?? undefined), current =>

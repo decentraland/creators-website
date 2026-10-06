@@ -57,7 +57,11 @@ export function ConfirmItemsStep({ address, items, onBusyChange, onBack, onConfi
       return
     }
     updateItem.mutate(
-      { item: { ...item, ...changes }, thumbnail: thumbnailPatch?.contents[THUMBNAIL_PATH] },
+      {
+        item: { ...item, ...changes },
+        thumbnail: thumbnailPatch?.contents[THUMBNAIL_PATH],
+        imageStale: changes.rarity !== item.rarity
+      },
       { onSuccess: stopEditing }
     )
   }

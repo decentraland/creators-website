@@ -35,7 +35,7 @@ import { FeatureFlag } from '~/lib/featureFlags'
 import {
   ITEM_DESCRIPTION_MAX_LENGTH,
   ITEM_UTILITY_MAX_LENGTH,
-  canUpdateVideo,
+  isValidItemDescription,
   type ItemDraft,
   type ItemDraftAction
 } from '~/lib/itemDraft'
@@ -129,12 +129,13 @@ export function PropertiesPanel({
     [isWearable, isSmart, item]
   )
   const nameInvalid = draft.name.length > 0 && !isValidItemName(draft.name)
+  const descriptionInvalid = !isValidItemDescription(draft.description)
   const thumbnailUrl = useObjectURL(draft.thumbnail)
   const thumbnailHash = item.contents[item.thumbnail]
   const videoHash = item.contents[VIDEO_PATH]
   const draftVideoUrl = useObjectURL(draft.video)
   const videoUrl = draftVideoUrl ?? (videoHash ? getContentsStorageUrl(videoHash) : null)
-  const canEditVideo = editable && canUpdateVideo(item)
+  const canEditVideo = editable
   const videoName = draft.video instanceof File ? draft.video.name : VIDEO_PATH
   const [videoDuration, setVideoDuration] = useState<number | null>(null)
   // A new video must not flash the previous one's duration until its metadata loads.
@@ -418,9 +419,15 @@ export function PropertiesPanel({
             value={draft.description}
             maxLength={ITEM_DESCRIPTION_MAX_LENGTH}
             disabled={disabled}
+            data-invalid={descriptionInvalid || undefined}
             data-testid={`${testId}-description`}
             onChange={event => dispatch({ type: 'setText', field: 'description', value: event.target.value })}
           />
+          {descriptionInvalid && (
+            <S.ErrorText data-testid={`${testId}-description-error`}>
+              {t('item_editor.basics.invalid_description')}
+            </S.ErrorText>
+          )}
         </S.Field>
         {utilityFlag.enabled && (
           <S.Field>
@@ -589,7 +596,7 @@ export function PropertiesPanel({
             type="button"
             variant="primary"
             size="sm"
-            disabled={!isDirty || nameInvalid || draft.name.trim() === ''}
+            disabled={!isDirty || nameInvalid || descriptionInvalid || draft.name.trim() === ''}
             loading={isSaving}
             data-testid={`${testId}-save`}
             onClick={onSave}
