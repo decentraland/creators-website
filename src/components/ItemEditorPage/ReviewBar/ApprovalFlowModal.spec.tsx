@@ -12,6 +12,7 @@ import { ApprovalFlowModal } from './ApprovalFlowModal'
 // Read at render time, after the mock factory ran.
 let view: ApprovalView
 let plan: ApprovalPlan
+let running = false
 const state = vi.hoisted(() => ({
   start: vi.fn(),
   stop: vi.fn(),
@@ -23,7 +24,7 @@ vi.mock('~/hooks/useApprovalFlow', () => ({
   useApprovalFlow: () => ({
     view,
     plan,
-    running: false,
+    running,
     start: state.start,
     stop: state.stop,
     runRescue: state.runRescue,
@@ -76,6 +77,7 @@ function renderModal(
 beforeEach(() => {
   vi.clearAllMocks()
   view = { kind: 'loading' }
+  running = false
   plan = { steps: [], rescue: [], deploy: [] }
 })
 
@@ -158,5 +160,14 @@ describe('ApprovalFlowModal', () => {
     fireEvent.click(screen.getByTestId('approval-changed-review'))
     expect(state.reloadItems).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('can’t be closed while a request the curator backed out of is still open in the wallet', () => {
+    plan = { steps: ['approve'], rescue: [], deploy: [] }
+    view = { kind: 'step', step: 'approve', phase: { kind: 'idle' } }
+    running = true
+    renderModal()
+    expect(screen.getByTestId('approval-flow-modal-close')).toBeDisabled()
+    expect(screen.getByTestId('approval-approve')).toBeEnabled()
   })
 })

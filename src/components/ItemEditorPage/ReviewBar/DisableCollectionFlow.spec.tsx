@@ -11,10 +11,16 @@ type Variables = { collection: Collection; onSigned: () => void }
 const state = vi.hoisted(() => ({
   mutate: vi.fn(),
   showToast: vi.fn(),
-  isError: false
+  isError: false,
+  isPending: false
 }))
 vi.mock('~/hooks/useCuration', () => ({
-  useDisableCollection: () => ({ mutate: state.mutate, reset: vi.fn(), isPending: false, isError: state.isError })
+  useDisableCollection: () => ({
+    mutate: state.mutate,
+    reset: vi.fn(),
+    isPending: state.isPending,
+    isError: state.isError
+  })
 }))
 vi.mock('~/lib/notifications', () => ({
   useNotifications: (select: (s: { showToast: typeof state.showToast }) => unknown) =>
@@ -41,6 +47,7 @@ function lastCall(): [Variables, Callbacks] {
 beforeEach(() => {
   vi.clearAllMocks()
   state.isError = false
+  state.isPending = false
 })
 
 describe('DisableCollectionFlow', () => {
@@ -82,5 +89,18 @@ describe('DisableCollectionFlow', () => {
     fireEvent.click(screen.getByTestId('review-disable-confirm'))
     expect(screen.queryByTestId('review-disable-signing')).not.toBeInTheDocument()
     expect(screen.getByTestId('review-disable')).toBeInTheDocument()
+  })
+
+  it('keeps the request open after backing out: no closing, and Disable shows the wallet prompt again', () => {
+    const onClose = renderFlow()
+    fireEvent.click(screen.getByTestId('review-disable-confirm'))
+    state.isPending = true
+    fireEvent.click(screen.getByTestId('review-disable-signing-cancel'))
+    expect(screen.queryByTestId('review-disable-cancel')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('review-disable-confirm'))
+    expect(screen.getByTestId('review-disable-signing')).toBeInTheDocument()
+    expect(state.mutate).toHaveBeenCalledTimes(1)
+    expect(onClose).not.toHaveBeenCalled()
   })
 })

@@ -282,7 +282,7 @@ export function useApprovalFlow(
         fetchEntitiesByPointers(items.flatMap(item => (item.urn ? [item.urn] : [])))
       ])
       if (token !== run.current) return
-      const deploy = findItemsToDeploy(items, entities)
+      const deploy = findItemsToDeploy(items, entities, mode === 'deploy_missing')
       const steps: ApprovalStep[] = [
         ...(rescue.length > 0 ? ['rescue' as const] : []),
         ...(deploy.length > 0 ? ['deploy' as const] : []),
@@ -358,7 +358,7 @@ export function useApprovalFlow(
             sendTransaction: txSender(token, 'approve', 1),
             waitForTransaction: wait
           })
-          track('Approve collection', { collectionId: collection.id, txHash })
+          track(mode === 'enable' ? 'Enable collection' : 'Approve collection', { collectionId: collection.id, txHash })
           // Success waits for builder-server, which reads `is_approved` from a lagging subgraph, so a reload right
           // after it shows the collection approved. Past the timeout the cache carries the on-chain result instead.
           const indexed = await waitForIndexer(
@@ -369,11 +369,14 @@ export function useApprovalFlow(
           queryClient.setQueryData<Collection>(['collection', address, collection.id], indexed)
           await complete(token)
         } catch (error) {
-          track('Approve collection error', { collectionId: collection.id, error: errorCode(error) })
+          track(mode === 'enable' ? 'Enable collection error' : 'Approve collection error', {
+            collectionId: collection.id,
+            error: errorCode(error)
+          })
           fail(token, 'approve', error)
         }
       }),
-    [once, collection, address, chainId, txSender, wait, complete, fail, queryClient]
+    [once, collection, address, chainId, mode, txSender, wait, complete, fail, queryClient]
   )
 
   /**

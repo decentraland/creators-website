@@ -106,6 +106,14 @@ describe('ReviewBar', () => {
     expect(screen.getByTestId('approval-flow')).toHaveAttribute('data-mode', 'enable')
   })
 
+  it('asks to take over the request of a disabled collection before enabling it', () => {
+    state.curation = { status: 'approved', assignee: '0xother', createdAt: 1, updatedAt: 1 } as CollectionCuration
+    renderBar({ ...base, reviewedAt: 5 })
+    fireEvent.click(screen.getByTestId('review-action-enable'))
+    fireEvent.click(screen.getByTestId('assign-continue'))
+    expect(screen.getByTestId('approval-flow')).toHaveAttribute('data-mode', 'enable')
+  })
+
   it('rejects after confirming', () => {
     renderBar()
     fireEvent.click(screen.getByTestId('review-action-reject'))

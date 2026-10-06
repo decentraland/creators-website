@@ -157,6 +157,12 @@ describe('findItemsToDeploy', () => {
     const entities = [entityOf(synced), entityOf({ ...changed, name: 'Old name' })]
     expect(findItemsToDeploy([synced, changed, missing], entities)).toEqual([changed, missing])
   })
+
+  it('keeps only the items with no entity when deploying missing ones', () => {
+    const changed = item('2')
+    const missing = item('3')
+    expect(findItemsToDeploy([changed, missing], [entityOf({ ...changed, name: 'Old name' })], true)).toEqual([missing])
+  })
 })
 
 describe('deployItems', () => {

@@ -346,7 +346,6 @@ export async function publishCollectionItems(
   return { collection: fromRemoteCollection(result.collection), items: result.items.map(fromRemoteItem) }
 }
 
-/** One stored file by hash, from public storage. */
 /**
  * A stored file's size in bytes, or 0 when storage doesn't say. The bucket's CORS allows only GET, so this reads the
  * headers of a GET and cancels it before the body downloads.
@@ -360,6 +359,7 @@ export async function fetchContentSize(hash: string): Promise<number> {
   return Number(response.headers.get('content-length')) || 0
 }
 
+/** One stored file by hash, from public storage. */
 export async function fetchContent(hash: string, signal?: AbortSignal): Promise<Blob> {
   // Storage omits `Vary: Origin`, so a file the page already showed in an <img> sits in the HTTP cache without
   // CORS headers and a plain cached fetch of it fails. Revalidating gets a response with them.

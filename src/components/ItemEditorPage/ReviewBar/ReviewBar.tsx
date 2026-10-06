@@ -66,9 +66,10 @@ export function ReviewBar({ session, collection, items }: Props) {
   const isCurationError = collection.isPublished && curationQuery.isError && !curationQuery.data
 
   function onAction(action: ReviewAction) {
-    // Enable never opens a request (it only switches the collection back on), so with none there is nothing to take.
-    const opensRequest = action === ReviewAction.ENABLE && !curation
-    if (DECISIONS.includes(action) && curation?.assignee !== self && !opensRequest) return setTakeOver(action)
+    // Enable never opens a request (it only switches the collection back on): with none, there is nothing to take
+    // over; with one, taking it over only records who enabled it.
+    const nothingToTake = action === ReviewAction.ENABLE && !curation
+    if (DECISIONS.includes(action) && curation?.assignee !== self && !nothingToTake) return setTakeOver(action)
     runAction(action)
   }
 

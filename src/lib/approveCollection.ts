@@ -152,8 +152,11 @@ export async function waitForIndexer<T>(
   throw new ApprovalError('not_indexed', 'The change was not indexed in time')
 }
 
-/** Published items whose Catalyst entity is missing or differs from the builder copy. */
-export function findItemsToDeploy(items: Item[], entities: Entity[]): Item[] {
+/**
+ * Published items whose Catalyst entity is missing or differs from the builder copy. `missingOnly` leaves out edited
+ * items: the Catalyst rejects them until their new hash is approved on chain.
+ */
+export function findItemsToDeploy(items: Item[], entities: Entity[], missingOnly = false): Item[] {
   const byPointer = new Map<string, Entity>()
   for (const entity of entities) {
     for (const pointer of entity.pointers) byPointer.set(pointer.toLowerCase(), entity)
@@ -161,7 +164,7 @@ export function findItemsToDeploy(items: Item[], entities: Entity[]): Item[] {
   return items.filter(item => {
     if (!item.urn) return false
     const entity = byPointer.get(item.urn.toLowerCase())
-    return !entity || !isItemSynced(item, entity)
+    return !entity || (!missingOnly && !isItemSynced(item, entity))
   })
 }
 

@@ -125,6 +125,13 @@ describe('getCurationState', () => {
       collection(reviewedBefore),
       curation({ assignee: '0xc' }),
       CurationState.UNDER_REVIEW
+    ],
+    [
+      // An approved request is the proof, whatever reviewedAt says.
+      'an approved request on a collection no longer approved, reviewedAt untouched',
+      collection(),
+      curation({ status: 'approved' }),
+      CurationState.DISABLED
     ]
   ])('%s', (_, subject, request, expected) => {
     expect(getCurationState(subject, request)).toBe(expected)
@@ -169,6 +176,11 @@ describe('canEditAssignee', () => {
     expect(canEditAssignee(collection({ isApproved: true }), null)).toBe(false)
     expect(canEditAssignee(collection({ isApproved: true }), curation())).toBe(true)
     expect(canEditAssignee(collection(), curation({ status: 'approved' }))).toBe(true)
+  })
+
+  it('locks it on a disabled collection with no request, which Enable turns back on without opening one', () => {
+    expect(canEditAssignee(collection(reviewedBefore), null)).toBe(false)
+    expect(canEditAssignee(collection(), null)).toBe(true)
   })
 })
 

@@ -94,12 +94,13 @@ export function getReviewActions(
 }
 
 /**
- * The pencil on an assignee: gone once the collection is published, that is approved on chain with an approved
- * request or none at all (approved before requests existed). Assigning one would open a request and put it back
- * under review.
+ * The pencil on an assignee: gone once the collection is published (approved on chain with an approved request or
+ * none at all), and on a disabled collection with no request. Assigning there would open a request, putting it back
+ * under review, and Enable never opens one.
  */
 export function canEditAssignee(collection: Collection, curation: CollectionCuration | null): boolean {
-  return !(collection.isApproved && (!curation || curation.status === 'approved'))
+  if (!curation) return !collection.isApproved && !hasBeenApproved(collection)
+  return !(collection.isApproved && curation.status === 'approved')
 }
 
 export enum CurationStatusFilter {

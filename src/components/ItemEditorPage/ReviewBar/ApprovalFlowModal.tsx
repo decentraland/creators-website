@@ -68,7 +68,7 @@ export function ApprovalFlowModal({ session, collection, curation, mode, items, 
     [view]
   )
   // Reloading mid-transaction or mid-upload loses track of it; the flow would have to start over.
-  useBeforeUnloadGuard(view.kind === 'step' && view.phase.kind !== 'idle')
+  useBeforeUnloadGuard(view.kind === 'step' && (view.phase.kind !== 'idle' || flow.running))
 
   // Runs once: the collection and curation refetch mid-flow, which recreates `start`, and re-running it would
   // reopen the flow from its first step.
@@ -189,7 +189,13 @@ export function ApprovalFlowModal({ session, collection, curation, mode, items, 
             <Button type="button" variant="secondary" disabled={busy} onClick={onClose}>
               {t('approval_flow.cancel')}
             </Button>
-            <Button type="button" loading={busy} data-testid={`approval-${step}`} onClick={() => void run()}>
+            {/* Stays clickable after backing out of the wallet: it shows the request still open there. */}
+            <Button
+              type="button"
+              loading={phase.kind !== 'idle'}
+              data-testid={`approval-${step}`}
+              onClick={() => void run()}
+            >
               {t(`approval_flow.${step}.action`)}
               {!isLast && <ChevronRightIcon fontSize="small" />}
             </Button>
