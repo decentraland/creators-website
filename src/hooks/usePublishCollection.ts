@@ -33,7 +33,7 @@ import {
 import { type PublicationFee } from '~/lib/publishFee'
 import { buildCollectionInitializeData } from '~/lib/saveCollection'
 import { useTranslation } from '~/intl'
-import { postCollectionToForum } from '~/hooks/useForumPost'
+import { postToForum } from '~/hooks/useForumPost'
 
 export function useRarities(address: string | undefined) {
   return useQuery({
@@ -160,12 +160,10 @@ export function usePublishCollection(session: Session | null) {
       syncing.add(collection.id)
       consolidatePublishedCollection(collection.id, txHash, {
         waitForTransaction: hash => waitForTransaction(chainId, hash),
-        publishCollectionItems: collectionId => publishCollectionItems(address!, collectionId)
+        publishCollectionItems: collectionId => publishCollectionItems(address!, collectionId),
+        // Not awaited: the forum's retries must not hold the sync's cleanup below.
+        onSynced: () => void postToForum(queryClient, address!, collection, 'publish')
       })
-        .then(() => {
-          // Not awaited: the forum's retries must not hold the sync's cleanup below.
-          void postCollectionToForum(queryClient, address!, collection, 'publish')
-        })
         .catch((error: unknown) => {
           console.error('Collection consolidation failed', error)
           // The modal is long gone: a lasting toast is the only way the creator learns the publish did not land.

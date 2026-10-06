@@ -18,7 +18,7 @@ import { APPROVAL_INDEX_TIMEOUT_MS, waitForIndexer } from '~/lib/approveCollecti
 import { isCommitteeMember, orderCurators, type CollectionCuration, type CurationFilters } from '~/lib/curation'
 import { shortenAddress } from '~/lib/address'
 import { captureError } from '~/lib/monitoring'
-import { postAssigneeToForum } from '~/hooks/useForumPost'
+import { postAssignee } from '~/hooks/useForumPost'
 import { useProfiles } from '~/hooks/useProfile'
 import { getMaticChainId } from '~/lib/publishCollection'
 import { isWalletRejection } from '~/lib/walletErrors'
@@ -141,7 +141,7 @@ export function useAssignCurator(address: string | undefined) {
     onSuccess: (curation, { collection, assignee }) => {
       track(assignee ? 'Assign curator' : 'Unassign curator', { collectionId: collection.id, assignee })
       store(curation)
-      if (address) void postAssigneeToForum(queryClient, address, collection, assignee)
+      if (address) void postAssignee(queryClient, address, collection, assignee)
     },
     onError: (error, { collection }) => {
       track('Assign curator error', { collectionId: collection.id, error: errorCode(error) })

@@ -31,7 +31,7 @@ import {
 } from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
 import { track } from '~/lib/analytics'
-import { openExternal } from '~/lib/navigation'
+import { openForumPost } from '~/lib/forumPost'
 import { cancelCreditsOrder } from '~/lib/credits'
 import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'
 import { type RoleKind } from '~/lib/collectionRoles'
@@ -516,10 +516,7 @@ const CollectionDetailPage = () => {
                   variant="dark"
                   data-desktop-only
                   data-testid="forum-post"
-                  onClick={() => {
-                    track('Forum post opened', { collectionId: collection.id, surface: 'detail' })
-                    if (collection.forumLink) openExternal(collection.forumLink)
-                  }}
+                  onClick={() => openForumPost(collection, 'detail')}
                 >
                   <ForumIcon fontSize="small" />
                   {t('collection_detail_page.forum_post')}

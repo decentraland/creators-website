@@ -2,9 +2,8 @@ import { ForumOutlined as ForumIcon, OpenInNew as OpenInNewIcon } from '@mui/ico
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { useTranslation } from '~/intl'
-import { track } from '~/lib/analytics'
 import { type Collection } from '~/lib/collections'
-import { openExternal } from '~/lib/navigation'
+import { openForumPost } from '~/lib/forumPost'
 import * as S from './ForumVerdictModal.styles'
 
 type Props = {
@@ -31,10 +30,7 @@ export function ForumVerdictModal({ collection, onClose }: Props) {
           <Button
             type="button"
             data-testid="review-verdict-forum-link"
-            onClick={() => {
-              track('Forum post opened', { collectionId: collection.id, surface: 'review_verdict' })
-              openExternal(collection.forumLink)
-            }}
+            onClick={() => openForumPost(collection, 'review_verdict')}
           >
             {t('item_editor.review.verdict.open_forum')}
             <OpenInNewIcon fontSize="small" aria-hidden />

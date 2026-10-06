@@ -188,7 +188,7 @@ export function ReviewBar({ session, collection, items }: Props) {
                   onSuccess: () => {
                     showToast(t('item_editor.review.reject.success', { collection: collection.name }))
                     closeDialog()
-                    setVerdict(true)
+                    if (collection.forumLink) setVerdict(true)
                   }
                 }
               )
@@ -214,7 +214,9 @@ export function ReviewBar({ session, collection, items }: Props) {
           session={session}
           collection={collection}
           onClose={closeDialog}
-          onDisabled={() => setVerdict(true)}
+          onDisabled={() => {
+            if (collection.forumLink) setVerdict(true)
+          }}
         />
       )}
       {verdict && collection.forumLink && (

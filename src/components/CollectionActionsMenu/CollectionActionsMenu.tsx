@@ -8,6 +8,7 @@ import { track } from '~/lib/analytics'
 import { hasBeenApproved, isCollectionLocked, isLinkedCollection, type Collection } from '~/lib/collections'
 import { builderLinkedCollectionUrl } from '~/lib/linkedCollections'
 import { isCollectionOwner, type RoleKind } from '~/lib/collectionRoles'
+import { openForumPost } from '~/lib/forumPost'
 import { openExternal } from '~/lib/navigation'
 import { shopCollectionUrl } from '~/lib/shop'
 import { useNotifications } from '~/lib/notifications'
@@ -129,10 +130,7 @@ export function CollectionActionsMenu({
         {showForum && (
           <ActionsMenuItem
             testId="forum-post-action"
-            onClick={() => {
-              track('Forum post opened', { collectionId: collection.id, surface: 'detail' })
-              if (forumLink) openExternal(forumLink)
-            }}
+            onClick={() => openForumPost({ ...collection, forumLink }, 'detail_menu')}
           >
             {t('collection_detail_page.forum_post')}
             <OpenInNewIcon aria-hidden />

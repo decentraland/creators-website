@@ -156,25 +156,6 @@ export const DiscussionCell = styled.div`
   }
 `
 
-export const ForumLink = styled.button`
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  font-size: 14px;
-
-  ${card} {
-    min-height: 0;
-  }
-
-  color: ${theme.colors.white};
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-`
-
 export const CellLabel = styled.span`
   font-size: 12px;
   font-weight: 400;
@@ -247,5 +228,18 @@ export const TextAction = styled.button`
   ${table} {
     /* Flush with the column's right edge despite the button's own padding. */
     margin-right: -8px;
+  }
+`
+
+// Shares TextAction's look; on cards its tap area overhangs the line instead of making the row taller.
+export const ForumLink = styled(TextAction)`
+  ${table} {
+    margin-right: 0;
+  }
+
+  ${card} {
+    min-height: 0;
+    margin: -12px 0;
+    padding: 12px 0;
   }
 `
