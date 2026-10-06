@@ -5,7 +5,7 @@ import { hashV1 } from '@dcl/hashing'
 import { type Entity } from '@dcl/schemas'
 import { type ContractCall } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
-import { buildRescueItemsCalls, buildSetApprovedCall } from '~/lib/collectionApproval'
+import { RESCUE_CHUNK_SIZE, buildRescueItemsCalls, buildSetApprovedCall } from '~/lib/collectionApproval'
 import {
   buildDeploymentForm,
   buildItemEntity,
@@ -88,6 +88,10 @@ export type RescueDeps = {
   waitForTransaction: (txHash: string) => Promise<boolean>
   fetchItems: () => Promise<Item[]>
   sleep?: (ms: number) => Promise<void>
+  /** Called with each chunk's targets once its transaction is mined, so a retry can leave them out. */
+  onChunkMined?: (targets: RescueTarget[]) => void
+  /** Targets a previous attempt already mined: not sent again, but still waited on until indexed. */
+  alreadyMined?: RescueTarget[]
 }
 
 const INDEXER_POLL_MS = 2000
@@ -110,12 +114,15 @@ export async function rescueItems(
     metadata: getItemMetadata(item)
   }))
   const calls = buildRescueItemsCalls(deps.chainId, collection, entries)
-  for (const call of calls) {
+  for (const [index, call] of calls.entries()) {
     const txHash = await deps.sendTransaction(call)
     if (!(await deps.waitForTransaction(txHash))) throw new ApprovalError('reverted', `Rescue ${txHash} reverted`)
+    deps.onChunkMined?.(targets.slice(index * RESCUE_CHUNK_SIZE, (index + 1) * RESCUE_CHUNK_SIZE))
   }
 
-  const expected = new Map(targets.map(({ item, contentHash }) => [item.id, contentHash]))
+  const expected = new Map(
+    [...(deps.alreadyMined ?? []), ...targets].map(({ item, contentHash }) => [item.id, contentHash])
+  )
   return waitForIndexer(
     deps.fetchItems,
     items => items.every(item => !expected.has(item.id) || item.blockchainContentHash === expected.get(item.id)),

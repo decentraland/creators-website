@@ -8,7 +8,7 @@ import { type Item } from '~/lib/items'
 import { type ItemListing } from '~/lib/listings'
 import { toSellItemError, type SellFailureReason } from '~/lib/sales'
 import { ConfirmModal } from '~/components/ConfirmModal'
-import { PendingModal } from './PendingModal'
+import { PendingModal } from '~/components/PendingModal'
 import { SaleErrorModal } from './SaleErrorModal'
 import { SuccessModal } from '~/components/SuccessModal'
 

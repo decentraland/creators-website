@@ -38,8 +38,9 @@ export function useItemSyncs(
   const curationQuery = useCollectionCuration(address, collection)
 
   const entities = entitiesQuery.data
-  // A failed entities request settles too: an approved item then reads as unsynced rather than loading forever.
-  const entitiesLoaded = pointers.length === 0 || entitiesQuery.isFetched
+  // Only a successful answer settles it: during a Catalyst outage an approved item reads as loading, not as missing
+  // its entity (which would offer Deploy missing entities and Publish updates for nothing).
+  const entitiesLoaded = pointers.length === 0 || entitiesQuery.isSuccess
   const curationPending = curationQuery.data?.status === 'pending'
 
   return useMemo(() => {

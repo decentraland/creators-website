@@ -63,7 +63,7 @@ function renderFlow(
   curation: CollectionCuration | null = pending,
   mode: ApprovalMode = 'approve'
 ) {
-  return renderHook(() => useApprovalFlow(session, subject, curation, mode), { wrapper })
+  return renderHook(() => useApprovalFlow(session, subject, curation, mode, [item]), { wrapper })
 }
 
 beforeEach(() => {
@@ -232,7 +232,7 @@ describe('useApprovalFlow', () => {
     expect(result.current.view).toEqual({ kind: 'step', step: 'approve', phase: { kind: 'idle' } })
   })
 
-  it('mirrors the wallet prompt, and ignores it once the curator backs out', async () => {
+  it('backing out of the wallet prompt hides it, and confirming again shows it instead of sending twice', async () => {
     let sign: (txHash: string) => void = () => undefined
     auth.sendContractTransaction.mockReturnValue(new Promise<string>(resolve => (sign = resolve)))
     const { result } = renderFlow()
@@ -244,10 +244,91 @@ describe('useApprovalFlow', () => {
     expect(result.current.view).toMatchObject({ phase: { kind: 'signing', tx: 1, txs: 1 } })
 
     act(() => result.current.cancelSigning())
+    expect(result.current.view).toEqual({ kind: 'step', step: 'approve', phase: { kind: 'idle' } })
+    await act(() => result.current.runApprove())
+    expect(result.current.view).toMatchObject({ phase: { kind: 'signing' } })
+
     await act(async () => {
       sign('0xtx')
       await approving
     })
-    expect(result.current.view).toEqual({ kind: 'step', step: 'approve', phase: { kind: 'idle' } })
+    expect(auth.sendContractTransaction).toHaveBeenCalledTimes(1)
+    expect(result.current.view).toEqual({ kind: 'success' })
+  })
+
+  it('opens no further wallet prompts once the flow is closed', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>(resolve => (release = resolve))
+    flow.approveOnChain.mockImplementation(async (_collection: Collection, deps: Deps) => {
+      await gate
+      return deps.sendTransaction({} as ContractCall)
+    })
+    const { result } = renderFlow()
+    await act(() => result.current.start())
+    let approving: Promise<void> = Promise.resolve()
+    act(() => {
+      approving = result.current.runApprove()
+    })
+    result.current.stop()
+    await act(async () => {
+      release()
+      await approving
+    })
+    expect(auth.sendContractTransaction).not.toHaveBeenCalled()
+  })
+
+  it('leaves the rescue chunks already mined out of a retry, while still waiting for them to be indexed', async () => {
+    const first = { item, contentHash: 'h1' }
+    const second = { item: { ...item, id: 'i2' }, contentHash: 'h2' }
+    flow.findItemsToRescue.mockResolvedValue([first, second])
+    flow.rescueItems.mockImplementationOnce(
+      async (_c: Collection, _t: unknown, deps: { onChunkMined: (targets: unknown[]) => void }) => {
+        deps.onChunkMined([first])
+        throw Object.assign(new Error('User rejected the request'), { code: 4001 })
+      }
+    )
+    const { result } = renderFlow()
+    await act(() => result.current.start())
+    await act(() => result.current.runRescue())
+    expect(result.current.view).toMatchObject({ kind: 'step', step: 'rescue', phase: { kind: 'idle' } })
+
+    await act(() => result.current.runRescue())
+    expect(flow.rescueItems).toHaveBeenLastCalledWith(
+      collection,
+      [second],
+      expect.objectContaining({ alreadyMined: [first] })
+    )
+  })
+
+  it('reuses the request it reopened when approving it failed, instead of opening another', async () => {
+    api.pushCollectionCuration.mockResolvedValue(pending)
+    api.updateCollectionCuration
+      .mockRejectedValueOnce(new Error('503'))
+      .mockResolvedValue({ ...pending, status: 'approved' })
+    const rejected = { collectionId: 'c1', status: 'rejected' } as CollectionCuration
+    const { result } = renderFlow({ ...collection, isApproved: true }, rejected)
+    await act(() => result.current.start())
+    expect(result.current.view).toMatchObject({ kind: 'error' })
+
+    await act(() => result.current.start())
+    expect(result.current.view).toEqual({ kind: 'success' })
+    expect(api.pushCollectionCuration).toHaveBeenCalledTimes(1)
+  })
+
+  it('opens a request in the curator’s name when enabling a collection that has none', async () => {
+    api.pushCollectionCuration.mockResolvedValue(pending)
+    const { result } = renderFlow({ ...collection, reviewedAt: 5 }, null)
+    await act(() => result.current.start())
+    await act(() => result.current.runApprove())
+    expect(api.pushCollectionCuration).toHaveBeenCalledWith('0xme', 'c1', '0xme')
+    expect(api.updateCollectionCuration).toHaveBeenCalledWith('0xme', 'c1', { status: 'approved' })
+  })
+
+  it('stops when the creator saved changes after the curator opened the collection', async () => {
+    api.fetchAllCollectionItems.mockResolvedValue([{ ...item, updatedAt: 99 }])
+    const { result } = renderFlow()
+    await act(() => result.current.start())
+    expect(result.current.view).toMatchObject({ kind: 'error', step: 'changed' })
+    expect(flow.findItemsToRescue).not.toHaveBeenCalled()
   })
 })

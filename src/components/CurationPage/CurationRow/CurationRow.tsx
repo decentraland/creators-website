@@ -16,7 +16,7 @@ type Props = {
   onAssign: (collection: Collection, curation: CollectionCuration | null, mode: 'self' | 'edit') => void
 }
 
-export function reviewUrl(collection: Collection): string {
+function reviewUrl(collection: Collection): string {
   return `/collections/editor?collection=${collection.id}&reviewing=true`
 }
 

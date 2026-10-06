@@ -457,8 +457,7 @@
     "note_mana": "Tu ítem se publicará en la Tienda de Decentraland en MANA. Cuando se venda, recibirás el MANA directamente.",
     "success": {
       "title": "¡Tu ítem está en venta!",
-      "description": "Ya está disponible en la Tienda de Decentraland.",
-      "done": "Listo"
+      "description": "Ya está disponible en la Tienda de Decentraland."
     },
     "error": {
       "title_enable": "No pudimos habilitar las ventas",
@@ -1375,6 +1374,11 @@
       "copy": "Copiar",
       "copied": "Copiado",
       "retry": "Reintentar"
+    },
+    "changed": {
+      "title": "Algunos ítems cambiaron",
+      "description": "El creador guardó cambios en algunos ítems después de que abriste esta colección. Revisa la última versión antes de aprobarla.",
+      "confirm": "Revisar cambios"
     }
   },
   "item_validation": {
@@ -1447,5 +1451,8 @@
       "multiple": "{count, plural, one {# token} other {# tokens}}",
       "rules": "{count, plural, one {# regla} other {# reglas}}"
     }
+  },
+  "success_modal": {
+    "done": "Listo"
   }
 }

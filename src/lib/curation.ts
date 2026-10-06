@@ -47,14 +47,22 @@ export enum CurationState {
   DISABLED = 'disabled'
 }
 
+/**
+ * Disabled by the committee: approved once, not anymore. `reviewedAt` alone isn't proof, since the rescue step stamps
+ * it on a first approval too, so the request must show the approval (or be missing, as for collections approved
+ * before requests existed).
+ */
+function isDisabled(collection: Collection, curation: CollectionCuration | null): boolean {
+  return !collection.isApproved && hasBeenApproved(collection) && (!curation || curation.status === 'approved')
+}
+
 /** What the committee sees for a collection, from its on-chain approval and its latest review request. */
 export function getCurationState(collection: Collection, curation: CollectionCuration | null): CurationState {
   if (collection.isApproved) {
     if (!curation || curation.status === 'approved') return CurationState.APPROVED
     if (curation.status === 'rejected') return CurationState.REJECTED
   } else {
-    // Approving closes the pending request, so a disable leaves an approved, rejected or no request behind.
-    if (hasBeenApproved(collection) && curation?.status !== 'pending') return CurationState.DISABLED
+    if (isDisabled(collection, curation)) return CurationState.DISABLED
     if (curation?.status === 'rejected') return CurationState.REJECTED
   }
   if (curation?.status === 'pending' && curation.assignee) return CurationState.UNDER_REVIEW
@@ -79,7 +87,7 @@ export function getReviewActions(
   if (collection.isApproved) {
     return curation?.status === 'pending' ? [ReviewAction.APPROVE, ReviewAction.REJECT] : disable
   }
-  if (hasBeenApproved(collection)) return [ReviewAction.ENABLE]
+  if (isDisabled(collection, curation)) return [ReviewAction.ENABLE]
   // A rejected first review can still be approved later, like in the legacy builder.
   return curation?.status === 'rejected' ? [ReviewAction.APPROVE] : [ReviewAction.APPROVE, ReviewAction.REJECT]
 }

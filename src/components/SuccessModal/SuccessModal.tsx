@@ -12,17 +12,17 @@ type Props = {
   onDone: () => void
 }
 
-/** The celebratory close of a sale action: illustration, heading, one line, DONE. */
+/** The celebratory close of an action: illustration, heading, one line, DONE. */
 export function SuccessModal({ title, description, art = successArt, onDone }: Props) {
   const { t } = useTranslation()
   return (
-    <Modal title={title} onClose={onDone} hideTitle testId="sale-success-modal">
+    <Modal title={title} onClose={onDone} hideTitle testId="success-modal-modal">
       <S.Wrap>
         <S.Art src={art} alt="" />
-        <S.Heading data-testid="sale-success-title">{title}</S.Heading>
-        <S.Text data-testid="sale-success-description">{description}</S.Text>
-        <Button type="button" data-testid="sale-success-done" onClick={onDone}>
-          {t('sell_item_modal.success.done')}
+        <S.Heading data-testid="success-modal-title">{title}</S.Heading>
+        <S.Text data-testid="success-modal-description">{description}</S.Text>
+        <Button type="button" data-testid="success-modal-done" onClick={onDone}>
+          {t('success_modal.done')}
           <CheckIcon fontSize="small" />
         </Button>
       </S.Wrap>

@@ -4,6 +4,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { errorCode, track } from '~/lib/analytics'
 import { sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
 import {
+  fetchCollection,
   fetchCollectionCuration,
   fetchCommittee,
   fetchCurationCollections,
@@ -13,8 +14,9 @@ import {
 } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { buildSetApprovedCall } from '~/lib/collectionApproval'
+import { APPROVAL_INDEX_TIMEOUT_MS, waitForIndexer } from '~/lib/approveCollection'
 import { isCommitteeMember, orderCurators, type CollectionCuration, type CurationFilters } from '~/lib/curation'
-import { shortAddress } from '~/lib/ids'
+import { shortenAddress } from '~/lib/address'
 import { captureError } from '~/lib/monitoring'
 import { useProfiles } from '~/hooks/useProfile'
 import { getMaticChainId } from '~/lib/publishCollection'
@@ -24,11 +26,19 @@ import { isWalletRejection } from '~/lib/walletErrors'
 const COMMITTEE_STALE_MS = 60 * 60_000
 
 /** Whether the signed-in wallet sits on the curation committee. Fails closed: loading or errored is not a curator. */
+const NO_MEMBERS: string[] = []
+
 export function useCommittee(address: string | undefined) {
-  const query = useQuery({ queryKey: ['committee'], queryFn: fetchCommittee, staleTime: COMMITTEE_STALE_MS })
+  // Signed-out visitors can't be curators, so they never ask.
+  const query = useQuery({
+    queryKey: ['committee'],
+    queryFn: fetchCommittee,
+    staleTime: COMMITTEE_STALE_MS,
+    enabled: !!address
+  })
   const members = query.data
   return {
-    members: members ?? [],
+    members: members ?? NO_MEMBERS,
     isCurator: isCommitteeMember(members, address),
     isLoading: query.isLoading
   }
@@ -47,7 +57,7 @@ export function useCuratorOptions(address: string | undefined, leading: CuratorO
     () => [
       leading,
       ...curators.map((curator, index) => {
-        const name = profiles[index]?.name || shortAddress(curator)
+        const name = profiles[index]?.name || shortenAddress(curator)
         return {
           value: curator,
           label: curator === self ? t('curation_page.filter.you', { name }) : name,
@@ -197,15 +207,20 @@ export function useDisableCollection(session: Session | null) {
       const txHash = await sendContractTransaction(session, buildSetApprovedCall(chainId, collection, false))
       onSigned?.()
       if (!(await waitForTransaction(chainId, txHash))) throw new Error(`Disable ${txHash} reverted`)
-      return txHash
+      // Like the approval, done means builder-server's lagging subgraph reads it too, so a refetch can't bring back
+      // `is_approved: true`; past the timeout the cache carries the on-chain result.
+      const indexed = await waitForIndexer(
+        () => fetchCollection(session.address, collection.id),
+        fetched => !fetched.isApproved,
+        APPROVAL_INDEX_TIMEOUT_MS
+      ).catch(() => ({ ...collection, isApproved: false }))
+      return { txHash, indexed }
     },
-    onSuccess: (txHash, { collection }) => {
+    onSuccess: ({ txHash, indexed }, { collection }) => {
       // The legacy builder named the on-chain disable "Reject collection".
       track('Reject collection', { collectionId: collection.id, txHash })
       if (!session) return
-      queryClient.setQueryData<Collection>(['collection', session.address, collection.id], current =>
-        current ? { ...current, isApproved: false } : current
-      )
+      queryClient.setQueryData<Collection>(['collection', session.address, collection.id], indexed)
       void queryClient.invalidateQueries({ queryKey: ['curation-collections'] })
     },
     onError: (error, { collection }) => {

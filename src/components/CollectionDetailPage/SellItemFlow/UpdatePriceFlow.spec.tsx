@@ -113,8 +113,8 @@ describe('UpdatePriceFlow', () => {
     expect(screen.getByTestId('update-price-pending-label')).toHaveTextContent(/updating price/i)
 
     await act(async () => last(update.mutate)[1].onSuccess?.({}))
-    expect(screen.getByTestId('sale-success-description')).toHaveTextContent(/new price/i)
-    await userEvent.click(screen.getByTestId('sale-success-done'))
+    expect(screen.getByTestId('success-modal-description')).toHaveTextContent(/new price/i)
+    await userEvent.click(screen.getByTestId('success-modal-done'))
     expect(onClose).toHaveBeenCalled()
   })
 
@@ -141,7 +141,7 @@ describe('UpdatePriceFlow', () => {
     })
     expect(screen.getByTestId('update-price-signing-step-2')).toHaveAttribute('data-state', 'current')
     await act(async () => last(sell.mutate)[1].onSuccess?.({}))
-    expect(screen.getByTestId('sale-success-title')).toBeInTheDocument()
+    expect(screen.getByTestId('success-modal-title')).toBeInTheDocument()
   })
 
   it('shows only "Updating price" to a social-login creator', async () => {

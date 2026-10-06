@@ -18,8 +18,8 @@ import { RarityPill } from '~/components/RarityPill'
 import { StepIndicator } from '~/components/StepIndicator'
 import { SuccessModal } from '~/components/SuccessModal'
 import { Tooltip } from '~/components/Tooltip'
-import { ProgressModal } from '~/components/ProgressModal'
-import { PendingModal } from '~/components/CollectionDetailPage/SellItemFlow/PendingModal'
+import { ProgressModal } from './ProgressModal'
+import { PendingModal } from '~/components/PendingModal'
 import { useApprovalFlow, type ApprovalMode, type ApprovalPlan, type ApprovalStep } from '~/hooks/useApprovalFlow'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { track } from '~/lib/analytics'
@@ -37,6 +37,8 @@ type Props = {
   collection: Collection
   curation: CollectionCuration | null
   mode: ApprovalMode
+  /** The items as the curator reviewed them: approving stops if the creator saved changes since. */
+  items: Item[]
   onClose: () => void
 }
 
@@ -52,9 +54,9 @@ function formatSize(t: Translate, bytes: number): string {
 const shortHash = (hash: string) => `${hash.slice(0, 6)}...${hash.slice(-6)}`
 
 /** The committee's approval: one stepper screen per transaction or upload. */
-export function ApprovalFlowModal({ session, collection, curation, mode, onClose }: Props) {
+export function ApprovalFlowModal({ session, collection, curation, mode, items, onClose }: Props) {
   const { t } = useTranslation()
-  const flow = useApprovalFlow(session, collection, curation, mode)
+  const flow = useApprovalFlow(session, collection, curation, mode, items)
   const { view, plan, start, stop } = flow
   // Reloading mid-transaction or mid-upload loses track of it; the flow would have to start over.
   useBeforeUnloadGuard(view.kind === 'step' && view.phase.kind !== 'idle')
@@ -80,6 +82,25 @@ export function ApprovalFlowModal({ session, collection, curation, mode, onClose
         />
       )
     case 'error':
+      if (view.step === 'changed') {
+        return (
+          <ConfirmModal
+            title={t('approval_flow.changed.title')}
+            description={t('approval_flow.changed.description')}
+            onClose={onClose}
+            cancel={{ label: t('approval_flow.cancel'), onClick: onClose, testId: 'approval-changed-cancel' }}
+            confirm={{
+              label: t('approval_flow.changed.confirm'),
+              onClick: () => {
+                void flow.reloadItems()
+                onClose()
+              },
+              testId: 'approval-changed-review'
+            }}
+            testId="approval-changed"
+          />
+        )
+      }
       return (
         <ConfirmModal
           title={t(`approval_flow.error.title_${mode}`)}

@@ -211,15 +211,19 @@ const CollectionDetailPage = () => {
     pushCuration.reset()
   }
   // Until the request loads, a pending one looks like none and the push would duplicate it.
-  const showPushChanges =
-    !!standardCollection &&
-    curationQuery.isSuccess &&
-    canPushChanges(
-      standardCollection,
-      curation,
-      hasUnsyncedItems,
-      canManageCollectionItems(standardCollection, address)
-    )
+  const curationLoaded = curationQuery.isSuccess
+  const showPushChanges = useMemo(
+    () =>
+      !!standardCollection &&
+      curationLoaded &&
+      canPushChanges(
+        standardCollection,
+        curation,
+        hasUnsyncedItems,
+        canManageCollectionItems(standardCollection, address)
+      ),
+    [standardCollection, curationLoaded, curation, hasUnsyncedItems, address]
+  )
   // A never-approved collection asks for its first review again; an approved one sends an update.
   const pushCopy = collection?.isApproved ? 'push_changes' : 'request_review'
 

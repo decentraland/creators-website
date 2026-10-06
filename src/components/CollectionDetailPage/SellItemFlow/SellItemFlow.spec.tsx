@@ -122,8 +122,8 @@ describe('SellItemFlow', () => {
     expect(screen.queryByTestId('sell-item-pending-cancel')).not.toBeInTheDocument()
 
     await act(async () => callbacks.onSuccess?.({}))
-    expect(screen.getByTestId('sale-success-title')).toHaveTextContent(/on sale/i)
-    await userEvent.click(screen.getByTestId('sale-success-done'))
+    expect(screen.getByTestId('success-modal-title')).toHaveTextContent(/on sale/i)
+    await userEvent.click(screen.getByTestId('success-modal-done'))
     expect(onClose).toHaveBeenCalled()
   })
 

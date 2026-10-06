@@ -16,26 +16,26 @@ export const Pill = styled.span`
   &[data-state='approved'] {
     color: ${theme.colors.green};
     border-color: ${theme.colors.green};
-    background: rgba(48, 205, 0, 0.2); /* green @ 20% */
+    background: ${theme.colors.greenTint};
   }
   &[data-state='under_review'] {
     color: ${theme.colors.amber};
     border-color: ${theme.colors.amber};
-    background: rgba(244, 130, 33, 0.2); /* orangeStrong @ 20% */
+    background: ${theme.colors.orangeTint};
   }
   &[data-state='to_review'] {
     color: ${theme.colors.infoLighter};
     border-color: ${theme.colors.infoLight};
-    background: rgba(23, 100, 192, 0.4); /* info @ 40% */
+    background: ${theme.colors.infoTint};
   }
   &[data-state='rejected'] {
     color: ${theme.colors.redBright};
     border-color: ${theme.colors.redBright};
-    background: rgba(204, 29, 44, 0.2); /* redRejected @ 20% */
+    background: ${theme.colors.redTint};
   }
   &[data-state='disabled'] {
     color: ${theme.colors.gray4};
     border-color: ${theme.colors.muted2};
-    background: rgba(160, 155, 168, 0.2); /* muted2 @ 20% */
+    background: ${theme.colors.mutedTint};
   }
 `

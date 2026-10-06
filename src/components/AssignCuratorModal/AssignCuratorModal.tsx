@@ -58,7 +58,10 @@ export function AssignCuratorModal({ collection, curation, address, mode, onClos
   }
 
   const current = curation?.assignee && curation.assignee !== self ? curation.assignee : null
-  const currentName = current ? (options.find(option => option.value === current)?.label ?? current) : ''
+  const currentName = useMemo(
+    () => (current ? (options.find(option => option.value === current)?.label ?? current) : ''),
+    [options, current]
+  )
 
   return (
     <Modal

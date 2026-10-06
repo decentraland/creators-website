@@ -16,7 +16,8 @@ const state = vi.hoisted(() => ({
   start: vi.fn(),
   stop: vi.fn(),
   runRescue: vi.fn(),
-  cancelSigning: vi.fn()
+  cancelSigning: vi.fn(),
+  reloadItems: vi.fn()
 }))
 vi.mock('~/hooks/useApprovalFlow', () => ({
   useApprovalFlow: () => ({
@@ -27,7 +28,8 @@ vi.mock('~/hooks/useApprovalFlow', () => ({
     runRescue: state.runRescue,
     runDeploy: vi.fn(),
     runApprove: vi.fn(),
-    cancelSigning: state.cancelSigning
+    cancelSigning: state.cancelSigning,
+    reloadItems: state.reloadItems
   })
 }))
 vi.mock('~/lib/approveCollection', () => ({ measureItems: vi.fn().mockResolvedValue(new Map([['i1', 819_100]])) }))
@@ -49,7 +51,11 @@ const item = {
 const request = (assignee: string | null) =>
   ({ id: 'r1', collectionId: 'c1', status: 'pending', assignee, createdAt: 1, updatedAt: 1 }) as CollectionCuration
 
-function renderModal(curation: CollectionCuration | null = request('0xme'), session: Session = web3) {
+function renderModal(
+  curation: CollectionCuration | null = request('0xme'),
+  session: Session = web3,
+  onClose = vi.fn()
+) {
   render(
     <QueryClientProvider client={new QueryClient()}>
       <TranslationProvider>
@@ -58,7 +64,8 @@ function renderModal(curation: CollectionCuration | null = request('0xme'), sess
           collection={collection}
           curation={curation}
           mode="approve"
-          onClose={vi.fn()}
+          items={[]}
+          onClose={onClose}
         />
       </TranslationProvider>
     </QueryClientProvider>
@@ -141,5 +148,14 @@ describe('ApprovalFlowModal', () => {
 
     fireEvent.click(screen.getByTestId('approval-retry'))
     expect(state.start).toHaveBeenCalledTimes(2)
+  })
+
+  it('sends the curator back to the latest items when the creator changed them mid-review', () => {
+    view = { kind: 'error', step: 'changed', detail: null, failed: [] }
+    const onClose = vi.fn()
+    renderModal(undefined, undefined, onClose)
+    fireEvent.click(screen.getByTestId('approval-changed-review'))
+    expect(state.reloadItems).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalled()
   })
 })

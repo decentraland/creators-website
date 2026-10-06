@@ -1,6 +1,6 @@
 import { useProfile } from '~/hooks/useProfile'
 import { useTranslation } from '~/intl'
-import { shortAddress } from '~/lib/ids'
+import { shortenAddress } from '~/lib/address'
 import * as S from './ProfileBadge.styles'
 
 type Props = {
@@ -15,7 +15,7 @@ export function ProfileBadge({ address, self = false, testId = 'profile-badge' }
   const { t } = useTranslation()
   const { data: profile } = useProfile(address)
   const face = profile?.avatar?.snapshots?.face256
-  const name = profile?.name || shortAddress(address)
+  const name = profile?.name || shortenAddress(address)
   return (
     <S.Badge data-testid={testId} title={address}>
       {face ? <S.Face src={face} alt="" /> : <S.FaceFallback aria-hidden />}

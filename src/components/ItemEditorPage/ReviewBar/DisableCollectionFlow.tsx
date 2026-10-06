@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from '~/intl'
 import { ConfirmModal } from '~/components/ConfirmModal'
-import { PendingModal } from '~/components/CollectionDetailPage/SellItemFlow/PendingModal'
+import { PendingModal } from '~/components/PendingModal'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { useDisableCollection } from '~/hooks/useCuration'
 import { isSocialLogin, type Session } from '~/lib/auth'

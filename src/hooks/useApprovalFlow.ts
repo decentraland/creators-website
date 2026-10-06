@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { allCollectionItemsKey } from '~/hooks/useCollection'
 import { collectionCurationKey } from '~/hooks/useCuration'
@@ -48,15 +48,40 @@ export type StepPhase =
   | { kind: 'pending'; tx: number; txs: number }
   | { kind: 'uploading'; done: number; total: number }
 
+/** `changed`: the creator edited items after the curator opened them, so approving would ship unseen content. */
+export type ApprovalFailure = ApprovalStep | 'prepare' | 'changed'
+
 export type ApprovalView =
   | { kind: 'loading' }
   | { kind: 'step'; step: ApprovalStep; phase: StepPhase }
   | { kind: 'success' }
-  | { kind: 'error'; step: ApprovalStep | 'prepare'; detail: string | null; failed: DeployFailure[] }
+  | { kind: 'error'; step: ApprovalFailure; detail: string | null; failed: DeployFailure[] }
 
 export type ApprovalPlan = { steps: ApprovalStep[]; rescue: RescueTarget[]; deploy: Item[] }
 
 const IDLE: StepPhase = { kind: 'idle' }
+
+class ItemsChangedError extends Error {
+  constructor() {
+    super('Items changed since the review was opened')
+    this.name = 'ItemsChangedError'
+  }
+}
+
+class RunStoppedError extends Error {
+  constructor() {
+    super('The approval flow was closed')
+    this.name = 'RunStoppedError'
+  }
+}
+
+const rescueKey = ({ item, contentHash }: RescueTarget) => `${item.id}:${contentHash}`
+
+/** Whether the items still match what the curator reviewed: same set, none saved since. */
+function matchesReview(items: Item[], reviewed: Item[]): boolean {
+  const seen = new Map(reviewed.map(item => [item.id, item.updatedAt]))
+  return items.length === seen.size && items.every(item => seen.get(item.id) === item.updatedAt)
+}
 const imageDeps = { fetchContent, renderCatalystImage: generateCatalystImage }
 
 /** The raw failure, for curators to send to support: wallets and RPCs often throw plain objects. */
@@ -74,25 +99,35 @@ export function useApprovalFlow(
   session: Session,
   collection: Collection,
   curation: CollectionCuration | null,
-  mode: ApprovalMode
+  mode: ApprovalMode,
+  reviewed: Item[]
 ) {
   const queryClient = useQueryClient()
   const address = session.address
   const chainId = getMaticChainId()
   const [view, setView] = useState<ApprovalView>({ kind: 'loading' })
   const [plan, setPlan] = useState<ApprovalPlan>({ steps: [], rescue: [], deploy: [] })
-  // Bumped by stop() and by backing out of a wallet prompt: a run that settles afterwards must not touch the
-  // view or move on, but writes that follow an already-mined transaction still finish.
+  // Bumped by start() and stop(): a run that settles afterwards must not touch the view or move on, but writes that
+  // follow an already-mined transaction still finish.
   const run = useRef(0)
+  // The step whose transaction or upload is in flight, and where it is: backing out of the wallet prompt only hides
+  // it, and clicking the step again shows it instead of starting a second, duplicate run.
+  const inFlight = useRef<{ step: ApprovalStep; phase: StepPhase } | null>(null)
+  // Rescue chunks already mined in this session, so a retry after a rejected later chunk doesn't pay for them again.
+  const mined = useRef<RescueTarget[]>([])
+  const dismissed = useRef(false)
 
   const set = useCallback((token: number, next: ApprovalView) => {
     if (token === run.current) setView(next)
   }, [])
 
   const fail = useCallback(
-    (token: number, step: ApprovalStep | 'prepare', error: unknown, failed: DeployFailure[] = []) => {
-      if (token !== run.current) return
-      if (isWalletRejection(error) && step !== 'prepare') return setView({ kind: 'step', step, phase: IDLE })
+    (token: number, step: ApprovalFailure, error: unknown, failed: DeployFailure[] = []) => {
+      if (token !== run.current || error instanceof RunStoppedError) return
+      if (error instanceof ItemsChangedError) return setView({ kind: 'error', step: 'changed', detail: null, failed })
+      if (isWalletRejection(error) && step !== 'prepare' && step !== 'changed') {
+        return setView({ kind: 'step', step, phase: IDLE })
+      }
       captureError(error, { flow: 'curation_approve', step, collectionId: collection.id })
       track('Approval flow error', { collectionId: collection.id, step, error: errorCode(error) })
       setView({ kind: 'error', step, detail: errorDetail(error), failed })
@@ -103,19 +138,49 @@ export function useApprovalFlow(
   const wait = useCallback((txHash: string) => waitForTransaction(chainId, txHash), [chainId])
   const fetchItems = useCallback(() => fetchAllCollectionItems(address, collection.id), [address, collection.id])
 
-  /** Sends a transaction through the wallet, mirroring its prompt and its confirmation in the view. */
+  /** Moves the in-flight step to `phase` and shows it; a wallet prompt the curator backed out of stays hidden. */
+  const progress = useCallback(
+    (token: number, step: ApprovalStep, phase: StepPhase) => {
+      inFlight.current = { step, phase }
+      if (phase.kind === 'signing' && dismissed.current) return
+      dismissed.current = false
+      set(token, { kind: 'step', step, phase })
+    },
+    [set]
+  )
+
+  /**
+   * Sends a transaction through the wallet, mirroring its prompt and its confirmation in the view. A closed flow
+   * opens no further prompts: the next chunk of a multi-transaction step is never sent.
+   */
   const txSender = useCallback(
     (token: number, step: ApprovalStep, txs: number) => {
       let tx = 0
       return async (call: Parameters<typeof sendContractTransaction>[1]) => {
+        if (token !== run.current) throw new RunStoppedError()
         tx++
-        set(token, { kind: 'step', step, phase: { kind: 'signing', tx, txs } })
+        progress(token, step, { kind: 'signing', tx, txs })
         const txHash = await sendContractTransaction(session, call)
-        set(token, { kind: 'step', step, phase: { kind: 'pending', tx, txs } })
+        progress(token, step, { kind: 'pending', tx, txs })
         return txHash
       }
     },
-    [session, set]
+    [session, progress]
+  )
+
+  /** Runs a step once: while it is in flight, asking again shows where it is instead of sending it twice. */
+  const once = useCallback(
+    (step: ApprovalStep, body: (token: number) => Promise<void>) => async () => {
+      dismissed.current = false
+      if (inFlight.current) return setView({ kind: 'step', ...inFlight.current })
+      inFlight.current = { step, phase: IDLE }
+      try {
+        await body(run.current)
+      } finally {
+        inFlight.current = null
+      }
+    },
+    []
   )
 
   const refresh = useCallback(() => {
@@ -130,12 +195,23 @@ export function useApprovalFlow(
   // The request is read from the cache: assigning it mid-flow may have replaced the one the modal opened with.
   const complete = useCallback(
     async (token: number) => {
-      const latest =
-        queryClient.getQueryData<CollectionCuration | null>(collectionCurationKey(address, collection.id)) ?? curation
-      if (mode === 'approve' && (latest?.status === 'pending' || latest?.status === 'rejected')) {
-        // A rejected first review gets a new request to approve, or it would keep reading as rejected once live.
-        if (latest.status === 'rejected') await pushCollectionCuration(address, collection.id, address.toLowerCase())
-        await updateCollectionCuration(address, collection.id, { status: 'approved' })
+      const key = collectionCurationKey(address, collection.id)
+      const latest = queryClient.getQueryData<CollectionCuration | null>(key) ?? curation
+      // An approved request (Enable on a disabled collection) has nothing left to close.
+      if (mode === 'approve' && latest?.status !== 'approved') {
+        try {
+          // A rejected first review, or a collection enabled without any request, gets a request in the approver's
+          // name to approve; otherwise it would keep reading as rejected, or name nobody as its curator.
+          if (latest?.status !== 'pending') {
+            const opened = await pushCollectionCuration(address, collection.id, address.toLowerCase())
+            // A failed approval below must find this one on retry, not open another (builder-server answers 400).
+            queryClient.setQueryData(key, opened)
+          }
+          queryClient.setQueryData(key, await updateCollectionCuration(address, collection.id, { status: 'approved' }))
+        } catch (error) {
+          void queryClient.invalidateQueries({ queryKey: key })
+          throw error
+        }
         track('Approve curation', { collectionId: collection.id })
       }
       refresh()
@@ -163,7 +239,10 @@ export function useApprovalFlow(
     setView({ kind: 'loading' })
     track('Approval flow started', { collectionId: collection.id, mode })
     try {
-      const items = await ensureTokenIds(await fetchItems(), {
+      const fetched = await fetchItems()
+      // Before the token-id backfill, which saves the items again.
+      if (!matchesReview(fetched, reviewed)) throw new ItemsChangedError()
+      const items = await ensureTokenIds(fetched, {
         publishCollectionItems: () => publishCollectionItems(address, collection.id),
         fetchItems
       })
@@ -186,85 +265,108 @@ export function useApprovalFlow(
     } catch (error) {
       fail(token, 'prepare', error)
     }
-  }, [collection, mode, address, fetchItems, goTo, fail])
+  }, [collection, mode, address, reviewed, fetchItems, goTo, fail])
 
-  const runRescue = useCallback(async () => {
-    const token = run.current
-    const txs = Math.ceil(plan.rescue.length / RESCUE_CHUNK_SIZE)
-    try {
-      await rescueItems(collection, plan.rescue, {
-        chainId,
-        sendTransaction: txSender(token, 'rescue', txs),
-        waitForTransaction: wait,
-        fetchItems
-      })
-      track('Rescue items', { collectionId: collection.id, item_count: plan.rescue.length })
-      await goTo(token, plan.steps, 'rescue')
-    } catch (error) {
-      track('Rescue items error', { collectionId: collection.id, error: errorCode(error) })
-      fail(token, 'rescue', error)
-    }
-  }, [collection, plan, chainId, txSender, wait, fetchItems, goTo, fail])
+  const runRescue = useMemo(
+    () =>
+      once('rescue', async token => {
+        const done = new Set(mined.current.map(rescueKey))
+        const pending = plan.rescue.filter(target => !done.has(rescueKey(target)))
+        const txs = Math.ceil(pending.length / RESCUE_CHUNK_SIZE)
+        try {
+          await rescueItems(collection, pending, {
+            chainId,
+            sendTransaction: txSender(token, 'rescue', txs),
+            waitForTransaction: wait,
+            fetchItems,
+            onChunkMined: targets => mined.current.push(...targets),
+            alreadyMined: mined.current.filter(target =>
+              plan.rescue.some(planned => rescueKey(planned) === rescueKey(target))
+            )
+          })
+          track('Rescue items', { collectionId: collection.id, item_count: plan.rescue.length })
+          await goTo(token, plan.steps, 'rescue')
+        } catch (error) {
+          track('Rescue items error', { collectionId: collection.id, error: errorCode(error) })
+          fail(token, 'rescue', error)
+        }
+      }),
+    [once, collection, plan, chainId, txSender, wait, fetchItems, goTo, fail]
+  )
 
-  const runDeploy = useCallback(async () => {
-    const token = run.current
-    const items = plan.deploy
-    const uploading = (done: number) =>
-      set(token, { kind: 'step', step: 'deploy', phase: { kind: 'uploading', done, total: items.length } })
-    uploading(0)
-    const deps: DeployDeps = {
-      ...imageDeps,
-      sign: entityId => signWithIdentity(address, entityId),
-      fetchAvailableContent,
-      deployEntity
-    }
-    try {
-      const result = await deployItems(collection, items, deps, uploading)
-      if (result.failed.length > 0) {
-        track('Deploy entities failure', { collectionId: collection.id, item_count: result.failed.length })
-        return fail(token, 'deploy', new Error('Some entities failed to deploy'), result.failed)
-      }
-      track('Deploy entities', { collectionId: collection.id, item_count: items.length })
-      await goTo(token, plan.steps, 'deploy')
-    } catch (error) {
-      fail(token, 'deploy', error)
-    }
-  }, [collection, plan, address, goTo, fail, set])
+  const runDeploy = useMemo(
+    () =>
+      once('deploy', async token => {
+        const items = plan.deploy
+        const uploading = (done: number) => progress(token, 'deploy', { kind: 'uploading', done, total: items.length })
+        uploading(0)
+        const deps: DeployDeps = {
+          ...imageDeps,
+          sign: entityId => signWithIdentity(address, entityId),
+          fetchAvailableContent,
+          deployEntity
+        }
+        try {
+          const result = await deployItems(collection, items, deps, uploading)
+          if (result.failed.length > 0) {
+            track('Deploy entities failure', { collectionId: collection.id, item_count: result.failed.length })
+            return fail(token, 'deploy', new Error('Some entities failed to deploy'), result.failed)
+          }
+          track('Deploy entities', { collectionId: collection.id, item_count: items.length })
+          await goTo(token, plan.steps, 'deploy')
+        } catch (error) {
+          fail(token, 'deploy', error)
+        }
+      }),
+    [once, collection, plan, address, goTo, fail, progress]
+  )
 
-  const runApprove = useCallback(async () => {
-    const token = run.current
-    try {
-      const txHash = await approveOnChain(collection, {
-        chainId,
-        sendTransaction: txSender(token, 'approve', 1),
-        waitForTransaction: wait
-      })
-      track('Approve collection', { collectionId: collection.id, txHash })
-      // Success waits for builder-server, which reads `is_approved` from a lagging subgraph, so a reload right
-      // after it shows the collection approved. Past the timeout the cache carries the on-chain result instead.
-      const indexed = await waitForIndexer(
-        () => fetchCollection(address, collection.id),
-        fetched => fetched.isApproved,
-        APPROVAL_INDEX_TIMEOUT_MS
-      ).catch(() => ({ ...collection, isApproved: true }))
-      queryClient.setQueryData<Collection>(['collection', address, collection.id], indexed)
-      await complete(token)
-    } catch (error) {
-      track('Approve collection error', { collectionId: collection.id, error: errorCode(error) })
-      fail(token, 'approve', error)
-    }
-  }, [collection, address, chainId, txSender, wait, complete, fail, queryClient])
+  const runApprove = useMemo(
+    () =>
+      once('approve', async token => {
+        try {
+          const txHash = await approveOnChain(collection, {
+            chainId,
+            sendTransaction: txSender(token, 'approve', 1),
+            waitForTransaction: wait
+          })
+          track('Approve collection', { collectionId: collection.id, txHash })
+          // Success waits for builder-server, which reads `is_approved` from a lagging subgraph, so a reload right
+          // after it shows the collection approved. Past the timeout the cache carries the on-chain result instead.
+          const indexed = await waitForIndexer(
+            () => fetchCollection(address, collection.id),
+            fetched => fetched.isApproved,
+            APPROVAL_INDEX_TIMEOUT_MS
+          ).catch(() => ({ ...collection, isApproved: true }))
+          queryClient.setQueryData<Collection>(['collection', address, collection.id], indexed)
+          await complete(token)
+        } catch (error) {
+          track('Approve collection error', { collectionId: collection.id, error: errorCode(error) })
+          fail(token, 'approve', error)
+        }
+      }),
+    [once, collection, address, chainId, txSender, wait, complete, fail, queryClient]
+  )
 
-  /** Backs out of the wallet prompt: the step reopens, and whatever the wallet answers later is ignored. */
+  /**
+   * Backs out of the wallet prompt: the step screen comes back, but the request stays open in the wallet. Signing it
+   * anyway carries the step on; confirming the step again shows the open request instead of sending a second one.
+   */
   const cancelSigning = useCallback(() => {
     if (view.kind !== 'step') return
-    run.current++
+    dismissed.current = true
     setView({ kind: 'step', step: view.step, phase: IDLE })
   }, [view])
+
+  /** The creator's edits reach the editor, so the curator reviews them before approving. */
+  const reloadItems = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: allCollectionItemsKey(address, collection.id) }),
+    [queryClient, address, collection.id]
+  )
 
   const stop = useCallback(() => {
     run.current++
   }, [])
 
-  return { view, plan, start, runRescue, runDeploy, runApprove, cancelSigning, stop }
+  return { view, plan, start, runRescue, runDeploy, runApprove, cancelSigning, reloadItems, stop }
 }

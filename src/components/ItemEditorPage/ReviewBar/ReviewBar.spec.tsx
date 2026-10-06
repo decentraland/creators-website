@@ -99,6 +99,13 @@ describe('ReviewBar', () => {
     expect(screen.getByTestId('approval-flow')).toBeInTheDocument()
   })
 
+  it('enables a disabled collection without opening a request up front', () => {
+    renderBar({ ...base, reviewedAt: 5 })
+    fireEvent.click(screen.getByTestId('review-action-enable'))
+    expect(screen.queryByTestId('assign-modal')).not.toBeInTheDocument()
+    expect(screen.getByTestId('approval-flow')).toHaveAttribute('data-mode', 'approve')
+  })
+
   it('rejects after confirming', () => {
     renderBar()
     fireEvent.click(screen.getByTestId('review-action-reject'))

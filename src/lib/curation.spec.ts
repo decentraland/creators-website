@@ -108,10 +108,17 @@ describe('getCurationState', () => {
       CurationState.DISABLED
     ],
     [
-      'a collection disabled after its pushed changes were rejected',
+      // Only an approved (or missing) request proves a past approval: the rescue step stamps reviewedAt too.
+      'a collection disabled after its pushed changes were rejected, as the creator sees it',
       collection(reviewedBefore),
       curation({ status: 'rejected' }),
-      CurationState.DISABLED
+      CurationState.REJECTED
+    ],
+    [
+      'a first review stopped after the rescue step',
+      collection(reviewedBefore),
+      curation({ status: 'pending', assignee: '0xc' }),
+      CurationState.UNDER_REVIEW
     ],
     [
       'changes pushed on a disabled collection',

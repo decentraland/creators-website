@@ -457,8 +457,7 @@
     "note_mana": "Your item will be listed in the Decentraland Shop for MANA. When it sells, you’ll receive the MANA directly.",
     "success": {
       "title": "Your item is on sale!",
-      "description": "It’s now available in the Decentraland Shop.",
-      "done": "Done"
+      "description": "It’s now available in the Decentraland Shop."
     },
     "error": {
       "title_enable": "We couldn’t enable sales",
@@ -1375,6 +1374,11 @@
       "copy": "Copy",
       "copied": "Copied",
       "retry": "Try again"
+    },
+    "changed": {
+      "title": "Some items changed",
+      "description": "The creator saved changes to some items after you opened this collection. Review the latest version before approving it.",
+      "confirm": "Review changes"
     }
   },
   "item_validation": {
@@ -1447,5 +1451,8 @@
       "multiple": "{count, plural, one {# token} other {# tokens}}",
       "rules": "{count, plural, one {# rule} other {# rules}}"
     }
+  },
+  "success_modal": {
+    "done": "Done"
   }
 }

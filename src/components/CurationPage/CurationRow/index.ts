@@ -1,1 +1,1 @@
-export { CurationRow, reviewUrl } from './CurationRow'
+export { CurationRow } from './CurationRow'

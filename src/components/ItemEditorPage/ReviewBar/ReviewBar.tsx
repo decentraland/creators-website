@@ -66,7 +66,10 @@ export function ReviewBar({ session, collection, items }: Props) {
   const isCurationError = collection.isPublished && curationQuery.isError && !curationQuery.data
 
   function onAction(action: ReviewAction) {
-    if (DECISIONS.includes(action) && curation?.assignee !== self) return setTakeOver(action)
+    // Enabling a collection with no request opens none up front: backing out would leave it "Under review" for the
+    // creator. The approval opens one in the curator's name once the collection is enabled.
+    const opensRequest = action === ReviewAction.ENABLE && !curation
+    if (DECISIONS.includes(action) && curation?.assignee !== self && !opensRequest) return setTakeOver(action)
     runAction(action)
   }
 
@@ -211,6 +214,7 @@ export function ReviewBar({ session, collection, items }: Props) {
           collection={collection}
           curation={curation}
           mode={approval}
+          items={items}
           onClose={() => setApproval(null)}
         />
       )}
