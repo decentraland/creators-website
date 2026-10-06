@@ -34,7 +34,8 @@ type EnableSalesStep = {
  * The Enable Sales step a sale starts with while the current marketplace cannot mint the collection: one
  * transaction, with a whole-dialog "confirm in your wallet" status for web3 wallets that the creator can
  * back out of. A backed-out transaction can still be signed, so it is never sent twice: confirming again
- * picks the one in flight back up, or moves on if it already went through.
+ * picks the one in flight back up, or moves on if it already went through. Backing out of that resumed prompt
+ * while it is still unsigned gives up on it, so a wallet that never settles cannot block sending a new one.
  */
 export function useEnableSalesStep({ collection, session, reason, onClose, onFailed }: Options): EnableSalesStep {
   const { t } = useTranslation()
@@ -50,6 +51,8 @@ export function useEnableSalesStep({ collection, session, reason, onClose, onFai
   const inFlight = useRef<{ id: number; signed: boolean } | null>(null)
   // A transaction went through, even one the creator backed out of.
   const enabled = useRef(false)
+  // The status shown is a backed-out transaction picked back up.
+  const resumed = useRef(false)
 
   function start() {
     if (enabled.current) {
@@ -59,12 +62,14 @@ export function useEnableSalesStep({ collection, session, reason, onClose, onFai
     if (inFlight.current) {
       // Resume the backed-out transaction instead of sending a second one.
       attempt.current = inFlight.current.id
+      resumed.current = true
       setPhase(inFlight.current.signed ? 'pending' : 'confirm')
       if (!social) setStep('enabling')
       return
     }
     const sent = { id: ++attempt.current, signed: false }
     inFlight.current = sent
+    resumed.current = false
     setPhase('confirm')
     if (!social) setStep('enabling')
     enableSales.mutate(
@@ -77,12 +82,12 @@ export function useEnableSalesStep({ collection, session, reason, onClose, onFai
       },
       {
         onSuccess: () => {
-          inFlight.current = null
+          if (inFlight.current === sent) inFlight.current = null
           enabled.current = true
           if (attempt.current === sent.id) setStep('done')
         },
         onError: cause => {
-          inFlight.current = null
+          if (inFlight.current === sent) inFlight.current = null
           if (attempt.current !== sent.id) return
           setStep('enable')
           const failure = toSellItemError(cause).reason
@@ -95,6 +100,9 @@ export function useEnableSalesStep({ collection, session, reason, onClose, onFai
 
   function backOut() {
     attempt.current++
+    // Signing it later only repeats setMinters, which is redundant rather than harmful.
+    if (resumed.current && inFlight.current && !inFlight.current.signed) inFlight.current = null
+    resumed.current = false
     setStep('enable')
   }
 

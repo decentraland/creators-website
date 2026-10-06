@@ -144,6 +144,33 @@ describe('SellItemFlow', () => {
     })
   })
 
+  describe('when the creator backs out of a wallet prompt that never settles, twice', () => {
+    beforeEach(async () => {
+      renderFlow()
+      await userEvent.click(screen.getByTestId('enable-sales-confirm'))
+      await userEvent.click(screen.getByTestId('enable-sales-pending-cancel'))
+      await userEvent.click(screen.getByTestId('enable-sales-confirm'))
+      await userEvent.click(screen.getByTestId('enable-sales-pending-cancel'))
+      await userEvent.click(screen.getByTestId('enable-sales-confirm'))
+    })
+
+    it('should give up on that prompt and send a new transaction', () => {
+      expect(enable.mutate).toHaveBeenCalledTimes(2)
+    })
+
+    describe('and the abandoned prompt fails after the new one was sent', () => {
+      beforeEach(async () => {
+        await act(async () => enable.mutate.mock.calls[0][1].onError?.(new Error('closed')))
+        await userEvent.click(screen.getByTestId('enable-sales-pending-cancel'))
+        await userEvent.click(screen.getByTestId('enable-sales-confirm'))
+      })
+
+      it('should keep resuming the new transaction instead of sending a third one', () => {
+        expect(enable.mutate).toHaveBeenCalledTimes(2)
+      })
+    })
+  })
+
   describe('when the collection has never been on sale', () => {
     beforeEach(() => {
       renderFlow()
