@@ -49,7 +49,7 @@ type ApprovalMode = import('./useApprovalFlow').ApprovalMode
 type Deps = { sendTransaction: (call: ContractCall) => Promise<string> }
 
 const session = { address: '0xme' } as Session
-const item = { id: 'i1', name: 'Hat', urn: 'urn:1' } as Item
+const item = { id: 'i1', name: 'Hat', urn: 'urn:1', contents: {} } as Item
 const collection = { id: 'c1', isApproved: false } as Collection
 const pending = { collectionId: 'c1', status: 'pending' } as CollectionCuration
 
@@ -322,6 +322,20 @@ describe('useApprovalFlow', () => {
     await act(() => result.current.runApprove())
     expect(api.pushCollectionCuration).toHaveBeenCalledWith('0xme', 'c1', '0xme')
     expect(api.updateCollectionCuration).toHaveBeenCalledWith('0xme', 'c1', { status: 'approved' })
+  })
+
+  it('re-checks the items the token-id backfill saved again, on their content', async () => {
+    flow.ensureTokenIds.mockResolvedValue([{ ...item, updatedAt: 99, name: 'Edited meanwhile' }])
+    const { result } = renderFlow()
+    await act(() => result.current.start())
+    expect(result.current.view).toMatchObject({ kind: 'error', step: 'changed' })
+  })
+
+  it('accepts a backfill that only moved updatedAt', async () => {
+    flow.ensureTokenIds.mockResolvedValue([{ ...item, updatedAt: 99 }])
+    const { result } = renderFlow()
+    await act(() => result.current.start())
+    expect(result.current.view).toMatchObject({ kind: 'step', step: 'approve' })
   })
 
   it('stops when the creator saved changes after the curator opened the collection', async () => {

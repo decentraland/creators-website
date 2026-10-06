@@ -48,12 +48,13 @@ export enum CurationState {
 }
 
 /**
- * Disabled by the committee: approved once, not anymore. `reviewedAt` alone isn't proof, since the rescue step stamps
- * it on a first approval too, so the request must show the approval (or be missing, as for collections approved
- * before requests existed).
+ * Disabled by the committee, as builder-server's collection status reads it: not approved on chain, with an approved
+ * latest request, or with none but reviewed before (approved before requests existed). A rejected request wins, as it
+ * does for the creator; `reviewedAt` alone isn't proof, since the rescue step stamps it on a first approval too.
  */
 function isDisabled(collection: Collection, curation: CollectionCuration | null): boolean {
-  return !collection.isApproved && hasBeenApproved(collection) && (!curation || curation.status === 'approved')
+  if (collection.isApproved) return false
+  return curation ? curation.status === 'approved' : hasBeenApproved(collection)
 }
 
 /** What the committee sees for a collection, from its on-chain approval and its latest review request. */
@@ -92,9 +93,13 @@ export function getReviewActions(
   return curation?.status === 'rejected' ? [ReviewAction.APPROVE] : [ReviewAction.APPROVE, ReviewAction.REJECT]
 }
 
-/** The pencil on an assignee: gone once the collection and its latest request are both approved. */
+/**
+ * The pencil on an assignee: gone once the collection is published, that is approved on chain with an approved
+ * request or none at all (approved before requests existed). Assigning one would open a request and put it back
+ * under review.
+ */
 export function canEditAssignee(collection: Collection, curation: CollectionCuration | null): boolean {
-  return !(collection.isApproved && curation?.status === 'approved')
+  return !(collection.isApproved && (!curation || curation.status === 'approved'))
 }
 
 export enum CurationStatusFilter {
@@ -165,8 +170,9 @@ export function orderCurators(members: string[], address: string | undefined): s
 
 /**
  * Owners and collaborators may ask the committee for another look: an approved collection once its items
- * are unsynced, or a never-approved one after a rejected first review (its items always read as under
- * review, so there is no sync signal to wait for).
+ * are unsynced, or one that isn't approved on chain and reads as rejected (a rejected first review, or a
+ * collection disabled after its changes were rejected); its items always read as under review, so there is
+ * no sync signal to wait for.
  */
 export function canPushChanges(
   collection: Collection,

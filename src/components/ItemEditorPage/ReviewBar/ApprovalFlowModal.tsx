@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Check as CheckIcon,
@@ -58,6 +58,15 @@ export function ApprovalFlowModal({ session, collection, curation, mode, items, 
   const { t } = useTranslation()
   const flow = useApprovalFlow(session, collection, curation, mode, items)
   const { view, plan, start, stop } = flow
+  const errorText = useMemo(
+    () =>
+      view.kind !== 'error'
+        ? ''
+        : view.failed.length
+          ? view.failed.map(failure => `${failure.item.name}: ${failure.message}`).join('\n')
+          : (view.detail ?? ''),
+    [view]
+  )
   // Reloading mid-transaction or mid-upload loses track of it; the flow would have to start over.
   useBeforeUnloadGuard(view.kind === 'step' && view.phase.kind !== 'idle')
 
@@ -111,15 +120,7 @@ export function ApprovalFlowModal({ session, collection, curation, mode, items, 
           confirm={{ label: t('approval_flow.error.retry'), onClick: () => void start(), testId: 'approval-retry' }}
           testId="approval-error"
         >
-          <ErrorDetail
-            collectionId={collection.id}
-            text={[
-              ...view.failed.map(failure => `${failure.item.name}: ${failure.message}`),
-              ...(view.failed.length ? [] : [view.detail ?? ''])
-            ]
-              .filter(Boolean)
-              .join('\n')}
-          />
+          <ErrorDetail collectionId={collection.id} text={errorText} />
         </ConfirmModal>
       )
   }
@@ -158,7 +159,8 @@ export function ApprovalFlowModal({ session, collection, curation, mode, items, 
     )
   }
 
-  const busy = phase.kind !== 'idle'
+  // A request the curator backed out of is still open in the wallet: closing would lose track of it.
+  const busy = phase.kind !== 'idle' || flow.running
   const run = { rescue: flow.runRescue, deploy: flow.runDeploy, approve: flow.runApprove }[step]
   const count = step === 'rescue' ? plan.rescue.length : plan.deploy.length
   const single = plan.steps.length === 1
@@ -210,8 +212,9 @@ function ItemName({ item }: { item: Item }) {
 
 function StepTable({ step, plan, collection }: { step: ApprovalStep; plan: ApprovalPlan; collection: Collection }) {
   const { t } = useTranslation()
+  const deployIds = useMemo(() => plan.deploy.map(item => item.id), [plan.deploy])
   const sizes = useQuery({
-    queryKey: ['approval-item-sizes', plan.deploy.map(item => item.id)],
+    queryKey: ['approval-item-sizes', deployIds],
     queryFn: () => measureItems(plan.deploy, fetchContentSize),
     enabled: step === 'deploy',
     staleTime: Infinity

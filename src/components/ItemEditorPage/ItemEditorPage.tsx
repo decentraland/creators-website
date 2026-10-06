@@ -555,14 +555,12 @@ const ItemEditorPage = () => {
       <S.MobileCollectionName title={collection.name} data-testid="mobile-editor-collection">
         {collection.name}
       </S.MobileCollectionName>
-      {mode === 'review' ? (
-        !mobileCuration.isLoading &&
-        !mobileCuration.isError && (
-          <CurationStatePill state={getCurationState(collection, mobileCuration.data ?? null)} />
-        )
-      ) : (
-        <CollectionStatusPill collection={collection} />
-      )}
+      {mode === 'review'
+        ? !mobileCuration.isLoading &&
+          !mobileCuration.isError && (
+            <CurationStatePill state={getCurationState(collection, mobileCuration.data ?? null)} />
+          )
+        : collectionStatus && <CollectionStatusPill collection={collection} status={collectionStatus} />}
     </S.MobileEditorHeader>
   ) : null
 

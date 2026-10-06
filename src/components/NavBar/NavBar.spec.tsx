@@ -94,7 +94,7 @@ describe('NavBar', () => {
     committee.isCurator = true
     renderNavBar('/curation')
     expect(screen.getByRole('link', { name: 'Curation' })).toHaveAttribute('href', '/curation')
-    expect(screen.getByRole('link', { name: 'Curation' })).toHaveClass('active')
+    expect(screen.getByRole('link', { name: 'Curation' })).toHaveAttribute('aria-current', 'page')
   })
 
   it('keeps the Collections tab active on nested collection routes', () => {

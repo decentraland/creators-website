@@ -163,8 +163,10 @@ describe('getReviewActions', () => {
 })
 
 describe('canEditAssignee', () => {
-  it('locks the assignee only once both the collection and its request are approved', () => {
+  it('locks the assignee once the collection is published', () => {
     expect(canEditAssignee(collection({ isApproved: true }), curation({ status: 'approved' }))).toBe(false)
+    // Approved before review requests existed: assigning would put it back under review.
+    expect(canEditAssignee(collection({ isApproved: true }), null)).toBe(false)
     expect(canEditAssignee(collection({ isApproved: true }), curation())).toBe(true)
     expect(canEditAssignee(collection(), curation({ status: 'approved' }))).toBe(true)
   })

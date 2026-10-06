@@ -82,6 +82,21 @@ function matchesReview(items: Item[], reviewed: Item[]): boolean {
   const seen = new Map(reviewed.map(item => [item.id, item.updatedAt]))
   return items.length === seen.size && items.every(item => seen.get(item.id) === item.updatedAt)
 }
+
+const contentOf = (item: Item) =>
+  JSON.stringify([
+    Object.entries(item.contents).sort(([a], [b]) => a.localeCompare(b)),
+    item.data,
+    item.name,
+    item.description,
+    item.currentContentHash
+  ])
+
+/** The same check on what ships, for a list the token-id backfill saved again (so `updatedAt` moved anyway). */
+function matchesReviewedContent(items: Item[], reviewed: Item[]): boolean {
+  const seen = new Map(reviewed.map(item => [item.id, contentOf(item)]))
+  return items.length === seen.size && items.every(item => seen.get(item.id) === contentOf(item))
+}
 const imageDeps = { fetchContent, renderCatalystImage: generateCatalystImage }
 
 /** The raw failure, for curators to send to support: wallets and RPCs often throw plain objects. */
@@ -116,6 +131,8 @@ export function useApprovalFlow(
   // Rescue chunks already mined in this session, so a retry after a rejected later chunk doesn't pay for them again.
   const mined = useRef<RescueTarget[]>([])
   const dismissed = useRef(false)
+  // Mirrors `inFlight` for rendering: the modal can't close while a request is open in the wallet or a step runs.
+  const [running, setRunning] = useState(false)
 
   const set = useCallback((token: number, next: ApprovalView) => {
     if (token === run.current) setView(next)
@@ -174,10 +191,12 @@ export function useApprovalFlow(
       dismissed.current = false
       if (inFlight.current) return setView({ kind: 'step', ...inFlight.current })
       inFlight.current = { step, phase: IDLE }
+      setRunning(true)
       try {
         await body(run.current)
       } finally {
         inFlight.current = null
+        setRunning(false)
       }
     },
     []
@@ -246,6 +265,7 @@ export function useApprovalFlow(
         publishCollectionItems: () => publishCollectionItems(address, collection.id),
         fetchItems
       })
+      if (items !== fetched && !matchesReviewedContent(items, reviewed)) throw new ItemsChangedError()
       // Rescuing rewrites only on-chain hashes, so what to deploy is known before it runs.
       const [rescue, entities] = await Promise.all([
         mode === 'approve'
@@ -368,5 +388,5 @@ export function useApprovalFlow(
     run.current++
   }, [])
 
-  return { view, plan, start, runRescue, runDeploy, runApprove, cancelSigning, reloadItems, stop }
+  return { view, plan, running, start, runRescue, runDeploy, runApprove, cancelSigning, reloadItems, stop }
 }

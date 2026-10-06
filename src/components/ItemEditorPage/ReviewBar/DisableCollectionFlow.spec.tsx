@@ -57,14 +57,17 @@ describe('DisableCollectionFlow', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('goes back to the confirmation when the curator backs out of the wallet prompt', () => {
-    renderFlow()
+  it('hides the wallet prompt when the curator backs out, and still finishes if they sign it anyway', () => {
+    const onClose = renderFlow()
     fireEvent.click(screen.getByTestId('review-disable-confirm'))
     fireEvent.click(screen.getByTestId('review-disable-signing-cancel'))
     expect(screen.getByTestId('review-disable')).toBeInTheDocument()
 
     act(() => lastCall()[0].onSigned())
-    expect(screen.queryByTestId('review-disable-pending')).not.toBeInTheDocument()
+    expect(screen.getByTestId('review-disable-pending')).toBeInTheDocument()
+    act(() => lastCall()[1].onSuccess())
+    expect(onClose).toHaveBeenCalled()
+    expect(state.mutate).toHaveBeenCalledTimes(1)
   })
 
   it('goes back to the confirmation when the wallet rejects', () => {

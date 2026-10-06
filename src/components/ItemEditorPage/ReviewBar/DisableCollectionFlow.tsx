@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from '~/intl'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { PendingModal } from '~/components/PendingModal'
@@ -23,24 +23,20 @@ export function DisableCollectionFlow({ session, collection, onClose }: Props) {
   const showToast = useNotifications(state => state.showToast)
   const disable = useDisableCollection(session)
   const [phase, setPhase] = useState<Phase>('confirm')
-  // Bumped when the curator backs out of the wallet prompt, so that attempt's outcome is ignored.
-  const attempt = useRef(0)
   useBeforeUnloadGuard(phase !== 'confirm')
 
   function submit() {
-    const id = ++attempt.current
     disable.reset()
     // Custodial wallets sign without a prompt to wait on: the confirm button just spins.
     if (!isSocialLogin(session)) setPhase('signing')
     disable.mutate(
-      { collection, onSigned: () => attempt.current === id && setPhase('pending') },
+      { collection, onSigned: () => setPhase('pending') },
       {
         onSuccess: () => {
           showToast(t('item_editor.review.disable.success', { collection: collection.name }))
           onClose()
         },
         onError: error => {
-          if (attempt.current !== id) return
           setPhase('confirm')
           // Dismissing the wallet prompt is the curator changing their mind, not a failure.
           if (isWalletRejection(error)) disable.reset()
@@ -54,11 +50,8 @@ export function DisableCollectionFlow({ session, collection, onClose }: Props) {
       <PendingModal
         title={t('approval_flow.signature_title')}
         label={t('item_editor.review.disable.signing')}
-        onCancel={() => {
-          attempt.current++
-          disable.reset()
-          setPhase('confirm')
-        }}
+        // Only hides the prompt: the request stays open in the wallet, so the confirmation stays busy until it settles.
+        onCancel={() => setPhase('confirm')}
         testId="review-disable-signing"
       />
     )

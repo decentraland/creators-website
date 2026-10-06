@@ -23,6 +23,7 @@ vi.mock('~/hooks/useApprovalFlow', () => ({
   useApprovalFlow: () => ({
     view,
     plan,
+    running: false,
     start: state.start,
     stop: state.stop,
     runRescue: state.runRescue,
