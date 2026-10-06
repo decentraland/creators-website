@@ -120,7 +120,7 @@ describe('ManageRolesFlow', () => {
     await userEvent.click(screen.getByTestId('manage-roles-pending-cancel'))
     expect(screen.getByTestId('role-1-selected')).toHaveTextContent(short(FRIEND))
     await act(async () => callbacks.onSuccess?.(undefined))
-    expect(screen.queryByTestId('sale-success-modal')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('success-modal-modal')).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByTestId('role-save'))
     const [again, done] = last(save.mutate)
@@ -128,8 +128,8 @@ describe('ManageRolesFlow', () => {
     expect(screen.getByTestId('manage-roles-pending-label')).toHaveTextContent(/saving changes/i)
     expect(screen.queryByTestId('manage-roles-pending-cancel')).not.toBeInTheDocument()
     await act(async () => done.onSuccess?.(undefined))
-    expect(screen.getByTestId('sale-success-title')).toHaveTextContent(/senders updated/i)
-    await userEvent.click(screen.getByTestId('sale-success-done'))
+    expect(screen.getByTestId('success-modal-title')).toHaveTextContent(/senders updated/i)
+    await userEvent.click(screen.getByTestId('success-modal-done'))
     expect(onClose).toHaveBeenCalled()
   })
 

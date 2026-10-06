@@ -31,7 +31,13 @@ import { CollectionCard } from './CollectionCard'
 import { CollectionListRow } from './CollectionListRow'
 import * as S from './CollectionsPage.styles'
 
-const STATUS_FILTERS = Object.values(CollectionStatusFilter)
+const STATUS_FILTERS = [
+  CollectionStatusFilter.ALL,
+  CollectionStatusFilter.DRAFT,
+  CollectionStatusFilter.PUBLISHED,
+  CollectionStatusFilter.UNDER_REVIEW,
+  CollectionStatusFilter.REJECTED
+]
 const SEARCH_DEBOUNCE_MS = 500
 const LEARN_MORE_URL =
   'https://docs.decentraland.org/creator/wearables-and-emotes/manage-collections/creating-a-collection/'

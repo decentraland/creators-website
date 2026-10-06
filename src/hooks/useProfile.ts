@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import { config } from '~/config'
 
 // The subset of the Catalyst profile the ui2 Navbar `avatar` prop consumes.
@@ -25,11 +25,21 @@ async function fetchProfile(address: string): Promise<ProfileAvatar | undefined>
   return profile?.avatars?.[0]
 }
 
+const profileQuery = (address: string | undefined) => ({
+  queryKey: ['profile', address],
+  enabled: !!address,
+  staleTime: 5 * 60_000,
+  queryFn: (): Promise<ProfileAvatar | undefined> => fetchProfile(address!)
+})
+
 export function useProfile(address?: string) {
-  return useQuery({
-    queryKey: ['profile', address],
-    enabled: !!address,
-    staleTime: 5 * 60_000,
-    queryFn: (): Promise<ProfileAvatar | undefined> => fetchProfile(address!)
+  return useQuery(profileQuery(address))
+}
+
+/** Profiles of several wallets at once, in the same order; entries stay undefined until each one loads. */
+export function useProfiles(addresses: string[]): (ProfileAvatar | undefined)[] {
+  return useQueries({
+    queries: addresses.map(profileQuery),
+    combine: results => results.map(result => result.data)
   })
 }

@@ -7,10 +7,10 @@ import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
 import { type ItemListing } from '~/lib/listings'
 import { toSellItemError, type ListingTerms, type PricedSale, type SellFailureReason } from '~/lib/sales'
-import { PendingModal } from './PendingModal'
+import { PendingModal } from '~/components/PendingModal'
 import { type PriceFormValues } from './PriceField'
 import { SaleErrorModal } from './SaleErrorModal'
-import { SaleSuccessModal } from './SaleSuccessModal'
+import { SuccessModal } from '~/components/SuccessModal'
 import { UpdatePriceModal } from './UpdatePriceModal'
 
 type View = 'form' | 'signing' | 'storing' | 'success' | 'error'
@@ -136,7 +136,7 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
       return <PendingModal label={t('sell_item_modal.update_price.pending')} testId="update-price-pending" />
     case 'success':
       return (
-        <SaleSuccessModal
+        <SuccessModal
           title={t('sell_item_modal.update_price.success_title')}
           description={t('sell_item_modal.update_price.success_description')}
           onDone={onClose}

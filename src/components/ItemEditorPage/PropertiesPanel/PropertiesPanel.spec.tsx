@@ -147,6 +147,13 @@ describe('PropertiesPanel', () => {
     expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
   })
 
+  it('lists tags read-only without the field when not editable', () => {
+    render(<Harness editable={false} />, { wrapper: Providers })
+    expect(screen.getAllByTestId('tags-input-tag').map(tag => tag.textContent)).toEqual(['cool'])
+    expect(screen.queryByTestId('tags-input-field')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('tags-input-remove-cool')).not.toBeInTheDocument()
+  })
+
   it('adds and removes tags', async () => {
     render(<Harness />, { wrapper: Providers })
     await userEvent.type(screen.getByTestId('tags-input-field'), 'pirate{enter}')

@@ -51,7 +51,8 @@ export function mapEntitiesByItemId(items: Item[], entities: Entity[]): Map<stri
   return byItemId
 }
 
-function getDeployableFiles(contents: Record<string, string>): Set<string> {
+/** The paths an item deploys: directory entries and empty files never reach the Catalyst. */
+export function getDeployableFiles(contents: Record<string, string>): Set<string> {
   return new Set(Object.keys(contents).filter(path => !path.endsWith('/') && contents[path] !== EMPTY_CONTENT_HASH))
 }
 

@@ -1,5 +1,6 @@
 // Collection domain model + wire mapping for builder-server, ported from the legacy builder
 // (src/modules/collection + lib/api/builder.ts) so both apps read the same API identically.
+import type { CurationRequestStatus } from '~/lib/curation'
 
 export type RemoteCollection = {
   id: string
@@ -212,7 +213,7 @@ export function isLinkedCollection(collection: Pick<Collection, 'urn'>): boolean
 /** Mirrors builder-server's `/:address/collections` status filter, so a pill always matches its chip. */
 export function getCollectionDisplayStatus(
   collection: Collection,
-  curationStatus = collection.curationStatus
+  curationStatus: CurationStatus | CurationRequestStatus | null | undefined = collection.curationStatus
 ): CollectionDisplayStatus {
   if (isLinkedCollection(collection)) return CollectionDisplayStatus.LINKED
   // A locked draft has its publish transaction in flight: the server just hasn't seen it yet, so it stays
@@ -305,9 +306,6 @@ export function toRemoteCollection(
     reviewed_at: collection.reviewedAt ? new Date(collection.reviewedAt).toISOString() : null
   }
 }
-
-/** The latest curation request of a collection; only its status matters here. */
-export type CollectionCuration = { status: CurationStatus }
 
 /**
  * Whether this address is the owner, a collaborator or a minter of the collection. builder-server

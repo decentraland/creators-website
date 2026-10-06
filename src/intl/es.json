@@ -283,6 +283,27 @@
       "thumbnail_error": "No pudimos actualizar la miniatura de “{name}”. Inténtalo de nuevo.",
       "cancel_edit": "Cancelar",
       "save": "Guardar nombre"
+    },
+    "push_changes": {
+      "action": "Publicar cambios",
+      "title": "Publicar cambios",
+      "description": "El comité de curaduría revisará tus cambios. Hasta que se aprueben, los compradores reciben la última versión aprobada de tus ítems.",
+      "confirm": "Enviar a revisión",
+      "cancel": "Cancelar",
+      "error": "No pudimos enviar tus cambios a revisión. Inténtalo de nuevo.",
+      "success": "Tus cambios se enviaron a revisión"
+    },
+    "request_review": {
+      "action": "Solicitar revisión de nuevo",
+      "title": "Solicitar revisión de nuevo",
+      "description": "El comité de curaduría revisará tu colección de nuevo. Asegúrate de haber resuelto los motivos del rechazo antes.",
+      "confirm": "Solicitar revisión",
+      "cancel": "Cancelar",
+      "error": "No pudimos solicitar una nueva revisión. Inténtalo de nuevo.",
+      "success": "Tu colección se envió a revisión"
+    },
+    "review_notice": {
+      "rejected": "El comité de curaduría rechazó la última versión de esta colección. Actualiza tus ítems y envíalos a revisión de nuevo."
     }
   },
   "publish_collection_modal": {
@@ -373,7 +394,7 @@
     },
     "success": {
       "title": "Colección enviada a revisión",
-      "description": "Tu colección está siendo revisada para su aprobación. Esto puede tardar hasta 5 minutos. Te avisaremos cuando la revisión esté completa.",
+      "description": "Tu colección está siendo revisada para su aprobación. Te avisaremos cuando la revisión esté completa.",
       "done": "Listo"
     },
     "error": {
@@ -436,8 +457,7 @@
     "note_mana": "Tu ítem se publicará en la Tienda de Decentraland en MANA. Cuando se venda, recibirás el MANA directamente.",
     "success": {
       "title": "¡Tu ítem está en venta!",
-      "description": "Ya está disponible en la Tienda de Decentraland.",
-      "done": "Listo"
+      "description": "Ya está disponible en la Tienda de Decentraland."
     },
     "error": {
       "title_enable": "No pudimos habilitar las ventas",
@@ -647,7 +667,9 @@
       "empty": "Esta colección aún no tiene ítems.",
       "dress": "Mostrar {name} en el avatar",
       "undress": "Quitar {name} del avatar",
-      "no_representation": "Este ítem no tiene versión para la forma de cuerpo actual. Cambia la forma de cuerpo para previsualizarlo."
+      "no_representation": "Este ítem no tiene versión para la forma de cuerpo actual. Cambia la forma de cuerpo para previsualizarlo.",
+      "male_only": "Solo para la forma de cuerpo masculina",
+      "female_only": "Solo para la forma de cuerpo femenina"
     },
     "picker": {
       "title": "Colecciones",
@@ -658,7 +680,42 @@
       "error": "No pudimos cargar tus colecciones. Inténtalo de nuevo."
     },
     "review": {
-      "title": "Modo de revisión"
+      "title": "Modo de revisión",
+      "back": "Volver a curaduría",
+      "unpublished": "Esta colección todavía no está publicada",
+      "curation_error": "No pudimos cargar el estado de revisión de esta colección.",
+      "retry": "Reintentar",
+      "requested": "Revisión solicitada {time}",
+      "created": "Creada {time}",
+      "approved": "Aprobada {time}",
+      "rejected": "Rechazada {time}",
+      "change_assignee": "Cambiar el curador asignado",
+      "assign_to_me": "Asignármela",
+      "cancel": "Cancelar",
+      "action": {
+        "approve": "Aprobar",
+        "reject": "Rechazar",
+        "enable": "Habilitar",
+        "disable": "Deshabilitar",
+        "deploy_missing": "Subir ítems faltantes"
+      },
+      "reject": {
+        "title": "¿Rechazar {collection}?",
+        "first": "La colección no se podrá mintear. El creador la verá como rechazada.",
+        "changes": "La colección conserva su versión aprobada. El creador verá los cambios como rechazados.",
+        "confirm": "Rechazar",
+        "error": "No pudimos rechazar la colección. Inténtalo de nuevo.",
+        "success": "{collection} fue rechazada"
+      },
+      "disable": {
+        "title": "¿Deshabilitar {collection}?",
+        "description": "Ya no se podrán mintear ni vender nuevas copias de sus ítems; los ítems que otras personas ya tienen no se ven afectados. Puedes volver a habilitarla más adelante.",
+        "confirm": "Deshabilitar",
+        "error": "No pudimos deshabilitar la colección. Inténtalo de nuevo.",
+        "success": "{collection} fue deshabilitada",
+        "signing": "Confirma en tu wallet para deshabilitar la colección.",
+        "pending": "Deshabilitando colección…"
+      }
     },
     "discard": {
       "title": "¿Descartar tus cambios?",
@@ -790,6 +847,7 @@
       "title": "Etiquetas",
       "placeholder": "Escribe una etiqueta y presiona Enter",
       "remove": "Quitar etiqueta {tag}",
+      "empty": "Este ítem no tiene etiquetas.",
       "campaign_hint": "Agrega la etiqueta “{tag}” para participar con este ítem en {name}."
     },
     "options": {
@@ -811,7 +869,48 @@
     "out": "Alejar"
   },
   "curation_page": {
-    "title": "Curado"
+    "title": "Curaduría",
+    "sign_in": "Inicia sesión para revisar colecciones",
+    "search_placeholder": "Busca por nombre o dirección del dueño",
+    "filter": {
+      "all": "Todas",
+      "to_review": "Por revisar",
+      "under_review": "En revisión",
+      "approved": "Aprobadas",
+      "rejected": "Rechazadas",
+      "all_assignees": "Todos los curadores",
+      "you": "{name} (tú)",
+      "assignee": "Curador asignado",
+      "sort": "Ordenar por"
+    },
+    "sort": {
+      "MOST_RELEVANT": "Más relevantes",
+      "LAST_ACTIVITY_DESC": "Actividad reciente",
+      "CREATED_AT_DESC": "Colecciones más recientes",
+      "NAME_ASC": "Nombre A-Z",
+      "NAME_DESC": "Nombre Z-A"
+    },
+    "list": {
+      "collection": "Colección",
+      "owner": "Dueño",
+      "date": "Solicitada",
+      "last_update": "Última actualización",
+      "status": "Estado",
+      "assignee": "Curador",
+      "requested": "Revisión solicitada",
+      "created": "Creada",
+      "unassigned": "Sin asignar",
+      "assign_to_me": "Asignármela",
+      "edit_assignee": "Cambiar el curador asignado"
+    },
+    "error": {
+      "title": "No pudimos cargar las colecciones",
+      "description": "Revisa tu conexión e inténtalo de nuevo.",
+      "retry": "Reintentar"
+    },
+    "empty": "Todavía no hay colecciones para revisar.",
+    "no_results": "Ninguna colección coincide con estos filtros.",
+    "showing": "Mostrando {range} de {total} {total, plural, one {colección} other {colecciones}}"
   },
   "maintenance_page": {
     "title": "Volvemos enseguida",
@@ -825,7 +924,8 @@
     "overview": "Resumen",
     "collections": "Colecciones",
     "scenes": "Escenas",
-    "land": "Land/Mundos"
+    "land": "Land/Mundos",
+    "curation": "Curaduría"
   },
   "footer": {
     "newsletterTitle": "Recibe lo más destacado de la semana en tu correo",
@@ -1192,6 +1292,99 @@
       "go_to": "Ir a la diapositiva {index}"
     }
   },
+  "profile_badge": {
+    "you": "(tú)"
+  },
+  "curation_state": {
+    "to_review": "Por revisar",
+    "under_review": "En revisión",
+    "approved": "Aprobada",
+    "rejected": "Rechazada",
+    "disabled": "Deshabilitada"
+  },
+  "assign_curator_modal": {
+    "title_self": "Revisar {collection}",
+    "title_edit": "Curador asignado de {collection}",
+    "self_body": "Serás responsable de revisar esta colección. Puedes reasignarla a otro curador más adelante.",
+    "curator": "Curador",
+    "unassign": "Nadie (quitar asignación)",
+    "assigned": "{collection} ahora está asignada a {name}",
+    "unassigned": "{collection} ya no está asignada",
+    "error": "No pudimos guardar la asignación. Inténtalo de nuevo.",
+    "cancel": "Cancelar",
+    "submit_self": "Asignármela",
+    "submit_edit": "Guardar",
+    "take_over_body": "Esta colección está asignada a {assignee}. Puedes curarla igual, pero quedará asignada a ti. Avísale a {assignee}.",
+    "submit_continue": "Asignar y seguir"
+  },
+  "approval_flow": {
+    "title": "Aprobar colección",
+    "cancel": "Cancelar",
+    "loading": "Revisando los ítems de la colección…",
+    "signature_title": "Firma requerida",
+    "columns": {
+      "item": "Ítem",
+      "body_shape": "Tipo de cuerpo",
+      "category": "Categoría",
+      "rarity": "Rareza",
+      "hash": "Hash",
+      "size": "Tamaño",
+      "collection": "Colección",
+      "items": "Ítems"
+    },
+    "item_count": "{count, plural, one {# ítem} other {# ítems}}",
+    "size_kb": "{size}KB",
+    "size_mb": "{size}MB",
+    "rescue": {
+      "title": "Aprobar ítems",
+      "body": "{count, plural, one {# ítem debe aprobarse} other {# ítems deben aprobarse}} en el contrato de la colección. Tendrás que confirmar esta acción en tu wallet.",
+      "action": "Confirmar ítems",
+      "signing": "Confirma la solicitud en tu wallet para continuar.",
+      "pending": "{txs, plural, one {Aprobando ítems…} other {Aprobando ítems… ({tx} de {txs})}}"
+    },
+    "deploy": {
+      "title": "Subir archivos",
+      "body": "{count, plural, one {# ítem debe subirse} other {# ítems deben subirse}} para aparecer en Decentraland.",
+      "action": "Subir archivos",
+      "uploading_title": "Subiendo ítems",
+      "uploading_body": "Mantén esta ventana abierta mientras se suben los archivos.",
+      "uploading": "Subiendo archivos…"
+    },
+    "approve": {
+      "title": "Habilitar colección",
+      "body": "Habilita la colección para completar la aprobación y permitir que sus ítems se minteen. Confirma en tu wallet.",
+      "action": "Habilitar colección",
+      "signing": "Confirma en tu wallet para habilitar la colección.",
+      "pending": "Habilitando colección…"
+    },
+    "success": {
+      "title_approve": "¡Colección aprobada!",
+      "title_deploy_missing": "¡Ítems subidos!",
+      "body_approve": "{collection} está aprobada. ¡Gracias por revisarla!",
+      "body_deploy_missing": "Todos los ítems de {collection} están subidos.",
+      "title_enable": "¡Colección habilitada!",
+      "body_enable": "{collection} vuelve a estar disponible con su última versión aprobada."
+    },
+    "error": {
+      "title_approve": "No pudimos aprobar la colección",
+      "title_deploy_missing": "No pudimos subir los ítems",
+      "prepare": "Algo salió mal al preparar la colección para aprobarla. Inténtalo de nuevo más tarde.",
+      "rescue": "Algo salió mal al aprobar los ítems en el contrato de la colección. Inténtalo de nuevo más tarde.",
+      "deploy": "Algo salió mal al subir los ítems. Inténtalo de nuevo más tarde.",
+      "approve": "Algo salió mal al habilitar la colección. Inténtalo de nuevo más tarde.",
+      "details": "Detalles del error",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "retry": "Reintentar",
+      "title_enable": "No pudimos habilitar la colección"
+    },
+    "changed": {
+      "title": "Algunos ítems cambiaron",
+      "description": "El creador guardó cambios en algunos ítems después de que abriste esta colección. Revisa la última versión antes de aprobarla.",
+      "confirm": "Revisar cambios"
+    },
+    "enable_body": "Habilita la colección para que sus ítems se puedan mintear de nuevo, tal como se aprobaron por última vez. Los cambios que el creador no envió a revisión quedan afuera. Confirma en tu wallet."
+  },
   "item_validation": {
     "checking": "Revisando tus ítems…",
     "rerun": "Revisar de nuevo",
@@ -1262,5 +1455,8 @@
       "multiple": "{count, plural, one {# token} other {# tokens}}",
       "rules": "{count, plural, one {# regla} other {# reglas}}"
     }
+  },
+  "success_modal": {
+    "done": "Listo"
   }
 }

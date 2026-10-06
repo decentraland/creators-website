@@ -3,7 +3,7 @@
 // the wallet store plus the helpers exported here.
 import { ethers } from 'ethers'
 import { ChainId, ProviderType } from '@dcl/schemas'
-import { Authenticator, type AuthIdentity } from '@dcl/crypto'
+import { Authenticator, type AuthChain, type AuthIdentity } from '@dcl/crypto'
 import {
   localStorageClearIdentity,
   localStorageGetIdentity,
@@ -106,6 +106,12 @@ export async function logout(address?: string): Promise<void> {
 
 export function getIdentity(address: string): AuthIdentity | null {
   return localStorageGetIdentity(address.toLowerCase())
+}
+
+/** Signs `payload` (a Catalyst entity id) with the wallet's ephemeral identity; null when the session has none. */
+export function signWithIdentity(address: string, payload: string): AuthChain | null {
+  const identity = getIdentity(address)
+  return identity ? Authenticator.signPayload(identity, payload) : null
 }
 
 const AUTH_TIMESTAMP_HEADER = 'x-identity-timestamp'
