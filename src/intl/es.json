@@ -886,7 +886,7 @@
     },
     "sort": {
       "MOST_RELEVANT": "Más relevantes",
-      "CURATION_UPDATED_AT_DESC": "Actividad reciente",
+      "LAST_ACTIVITY_DESC": "Actividad reciente",
       "CREATED_AT_DESC": "Colecciones más recientes",
       "NAME_ASC": "Nombre A-Z",
       "NAME_DESC": "Nombre Z-A"

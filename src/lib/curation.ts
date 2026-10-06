@@ -97,10 +97,10 @@ export enum CurationStatusFilter {
   REJECTED = 'rejected'
 }
 
-// ponytail: CURATION_UPDATED_AT_DESC joins (as the default) once builder-server ships that sort; unknown sorts
-// there drop the ORDER BY and paginate at random.
+// Only sorts builder-server implements: an unknown one drops the ORDER BY and paginates at random.
 export const CURATION_SORTS = [
   CollectionSort.MOST_RELEVANT,
+  CollectionSort.LAST_ACTIVITY_DESC,
   CollectionSort.CREATED_AT_DESC,
   CollectionSort.NAME_ASC,
   CollectionSort.NAME_DESC
