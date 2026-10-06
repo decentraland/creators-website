@@ -153,18 +153,14 @@ export function minExpirationDate(now = Date.now()): Date {
   return new Date(now + ONE_DAY_MS)
 }
 
-// Either generation of the off-chain marketplace as a minter means sales are enabled.
-function getSaleMinterAddresses(chainId: number): string[] {
-  return [
-    getContract(ContractName.OffChainMarketplace, chainId).address,
-    getContract(ContractName.OffChainMarketplaceV2, chainId).address
-  ].map(address => address.toLowerCase())
-}
-
-/** Sales are enabled once the off-chain marketplace may mint the collection's items. */
+/**
+ * Sales are enabled once the marketplace new orders are signed on may mint the collection's items. An
+ * older marketplace as minter is not enough: its orders are no longer accepted, and a newer order it
+ * cannot mint would never settle, so such a collection goes through Enable Sales again.
+ */
 export function isSalesEnabled(collection: Collection, chainId: number): boolean {
-  const minters = new Set(collection.minters.map(address => address.toLowerCase()))
-  return getSaleMinterAddresses(chainId).some(address => minters.has(address))
+  const minter = getOffchainMarketplaceContract(chainId).address.toLowerCase()
+  return collection.minters.some(address => address.toLowerCase() === minter)
 }
 
 /** `setMinters([marketplace], [true])` on the collection contract itself. */

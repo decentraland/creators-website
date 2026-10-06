@@ -1,19 +1,20 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from '~/intl'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
-import { useSellItem, useUpdatePrice } from '~/hooks/useSales'
+import { useEnableSales, useSalesEnabled, useSellItem, useUpdatePrice } from '~/hooks/useSales'
 import { isSocialLogin, type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
 import { type ItemListing } from '~/lib/listings'
 import { toSellItemError, type ListingTerms, type PricedSale, type SellFailureReason } from '~/lib/sales'
+import { EnableSalesModal } from './EnableSalesModal'
 import { PendingModal } from './PendingModal'
 import { type PriceFormValues } from './PriceField'
-import { SaleErrorModal } from './SaleErrorModal'
+import { SaleErrorModal, type SaleStage } from './SaleErrorModal'
 import { SaleSuccessModal } from './SaleSuccessModal'
 import { UpdatePriceModal } from './UpdatePriceModal'
 
-type View = 'form' | 'signing' | 'storing' | 'success' | 'error'
+type View = 'enable' | 'enabling' | 'form' | 'signing' | 'storing' | 'success' | 'error'
 // The two wallet prompts of a price change, then the order being stored.
 type Step = 'cancel' | 'sign'
 
@@ -29,13 +30,18 @@ type Props = {
  * Change a listing's price or currency: the current order is cancelled on chain and a new one is signed
  * with the same beneficiary and expiration. Web3 wallets see the two signatures as steps; social login signs
  * silently and only sees "Updating price". Once the old order is gone, a retry re-lists directly.
+ * The new order is signed on the current marketplace, so if that one cannot mint the collection yet
+ * (the listing is on an older one), sales are enabled for it first.
  */
 export function UpdatePriceFlow({ item, collection, listing, session, onClose }: Props) {
   const { t } = useTranslation()
   const social = isSocialLogin(session)
+  const salesEnabled = useSalesEnabled(collection)
 
-  const [view, setView] = useState<View>('form')
+  const [view, setView] = useState<View>(salesEnabled ? 'form' : 'enable')
   const [step, setStep] = useState<Step>('cancel')
+  const [enablePhase, setEnablePhase] = useState<'confirm' | 'pending'>('confirm')
+  const [stage, setStage] = useState<SaleStage>('update')
   const [reason, setReason] = useState<SellFailureReason>('generic')
   const [values, setValues] = useState<PriceFormValues | undefined>()
   // Set once the old listing is cancelled: from then on only the new order is missing. A ref, because
@@ -43,9 +49,33 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
   const terms = useRef<ListingTerms | null>(null)
   const attempt = useRef(0)
 
+  const enableSales = useEnableSales(session)
   const update = useUpdatePrice(session)
   const sell = useSellItem(session)
-  useBeforeUnloadGuard(update.isPending || sell.isPending)
+  useBeforeUnloadGuard(enableSales.isPending || update.isPending || sell.isPending)
+
+  function startEnable() {
+    const id = ++attempt.current
+    setEnablePhase('confirm')
+    if (!social) setView('enabling')
+    enableSales.mutate(
+      { collection, onSigned: () => attempt.current === id && setEnablePhase('pending') },
+      {
+        onSuccess: () => attempt.current === id && setView('form'),
+        onError: cause => {
+          if (attempt.current !== id) return
+          const failure = toSellItemError(cause).reason
+          if (failure === 'rejected') {
+            setView('enable')
+            return
+          }
+          setStage('enable')
+          setReason(failure)
+          setView('error')
+        }
+      }
+    )
+  }
 
   function fail(cause: unknown) {
     const failure = toSellItemError(cause).reason
@@ -55,6 +85,7 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
       setView('form')
       return
     }
+    setStage('update')
     setReason(failure)
     setView('error')
   }
@@ -113,6 +144,27 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
   }
 
   switch (view) {
+    case 'enable':
+      return <EnableSalesModal busy={social && enableSales.isPending} onCancel={onClose} onConfirm={startEnable} />
+    case 'enabling':
+      return (
+        <PendingModal
+          label={
+            enablePhase === 'confirm'
+              ? t('sell_item_modal.confirm_in_wallet')
+              : t('sell_item_modal.enable_sales.pending')
+          }
+          onCancel={
+            enablePhase === 'confirm'
+              ? () => {
+                  attempt.current++
+                  setView('enable')
+                }
+              : undefined
+          }
+          testId="enable-sales-pending"
+        />
+      )
     case 'form':
       return (
         <UpdatePriceModal item={item} listing={listing} initialValues={values} onSubmit={submit} onClose={onClose} />
@@ -143,6 +195,13 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
         />
       )
     case 'error':
-      return <SaleErrorModal stage="update" reason={reason} onCancel={onClose} onRetry={() => setView('form')} />
+      return (
+        <SaleErrorModal
+          stage={stage}
+          reason={reason}
+          onCancel={onClose}
+          onRetry={() => setView(stage === 'enable' ? 'enable' : 'form')}
+        />
+      )
   }
 }

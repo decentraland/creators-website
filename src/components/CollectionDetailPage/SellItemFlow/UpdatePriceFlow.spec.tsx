@@ -26,7 +26,12 @@ type UpdateVariables = {
 type SellVariables = { onSigned?: () => void }
 const update = { mutate: vi.fn<(variables: UpdateVariables, callbacks: Callbacks) => void>(), isPending: false }
 const sell = { mutate: vi.fn<(variables: SellVariables, callbacks: Callbacks) => void>(), isPending: false }
+type EnableVariables = { onSigned?: () => void }
+const enable = { mutate: vi.fn<(variables: EnableVariables, callbacks: Callbacks) => void>(), isPending: false }
+let salesEnabled = true
 vi.mock('~/hooks/useSales', () => ({
+  useSalesEnabled: () => salesEnabled,
+  useEnableSales: () => enable,
   useUpdatePrice: () => update,
   useSellItem: () => sell,
   useManaUsdRate: () => ({ data: undefined })
@@ -60,6 +65,8 @@ async function submitPrice(credits: string) {
 beforeEach(() => {
   update.mutate.mockReset()
   sell.mutate.mockReset()
+  enable.mutate.mockReset()
+  salesEnabled = true
 })
 
 describe('UpdatePriceFlow', () => {
@@ -150,5 +157,31 @@ describe('UpdatePriceFlow', () => {
     expect(screen.getByTestId('update-price-pending-label')).toHaveTextContent(/updating price/i)
     expect(screen.queryByTestId('update-price-pending-cancel')).not.toBeInTheDocument()
     expect(screen.queryByTestId('update-price-signing')).not.toBeInTheDocument()
+  })
+
+  describe('when the newest marketplace cannot mint the collection yet', () => {
+    beforeEach(async () => {
+      salesEnabled = false
+      renderFlow()
+      await userEvent.click(screen.getByTestId('enable-sales-confirm'))
+    })
+
+    it('should ask to enable sales before showing the price form', () => {
+      expect(enable.mutate).toHaveBeenCalledTimes(1)
+    })
+
+    it('should not touch the current listing until sales are enabled', () => {
+      expect([update.mutate.mock.calls.length, screen.queryByTestId('update-price-input')]).toEqual([0, null])
+    })
+
+    describe('and the enable transaction succeeds', () => {
+      beforeEach(() => {
+        act(() => last(enable.mutate)[1].onSuccess?.(collection))
+      })
+
+      it('should show the price form', () => {
+        expect(screen.getByTestId('update-price-input')).toBeInTheDocument()
+      })
+    })
   })
 })

@@ -13,6 +13,8 @@ import { ItemSyncStatus } from '~/lib/itemSync'
 import { ItemType, type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import { useWallet } from '~/store/wallet'
+import { getMaticChainId } from '~/lib/publishCollection'
+import { getOffchainMarketplaceContract } from '~/lib/trades'
 import { type Session } from '~/lib/auth'
 import { ItemActionsMenu } from './ItemActionsMenu'
 
@@ -165,9 +167,11 @@ describe('ItemActionsMenu', () => {
   })
 
   it('copies the URN of a published item and offers the sale actions for a listed item', async () => {
+    // Listed, so the marketplace orders are signed on can already mint it and re-pricing skips Enable Sales.
+    const marketplace = getOffchainMarketplaceContract(getMaticChainId()).address
     renderMenu({
       item: publishedItem,
-      collection: published,
+      collection: { ...published, minters: [...published.minters, marketplace] },
       listing: { itemId: '0', tradeId: 'trade-1', currency: 'credits', credits: 5 }
     })
     const menu = await openMenu()
