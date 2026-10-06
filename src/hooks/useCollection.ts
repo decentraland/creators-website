@@ -1,13 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { errorCode, track } from '~/lib/analytics'
-import {
-  fetchAllCollectionItems,
-  fetchCollection,
-  fetchCollectionCuration,
-  saveCollection,
-  deleteCollection
-} from '~/lib/builder'
+import { fetchAllCollectionItems, fetchCollection, saveCollection, deleteCollection } from '~/lib/builder'
 import { buildCollectionInitializeData } from '~/lib/saveCollection'
+import { useCollectionCuration } from '~/hooks/useCuration'
 import { getCollectionDisplayStatus, type Collection, type CollectionDisplayStatus } from '~/lib/collections'
 
 export const ITEMS_PAGE_SIZE = 20
@@ -18,17 +13,6 @@ export function useCollection(address: string | undefined, collectionId: string 
     queryFn: () => fetchCollection(address!, collectionId!),
     enabled: !!address && !!collectionId,
     staleTime: 30_000
-  })
-}
-
-/** The collection's latest curation request. Drafts have none, so they cost no request. */
-export function useCollectionCuration(address: string | undefined, collection: Collection | undefined) {
-  return useQuery({
-    queryKey: ['collection-curation', address, collection?.id],
-    queryFn: () => fetchCollectionCuration(address!, collection!.id),
-    enabled: !!address && !!collection?.isPublished,
-    staleTime: 30_000,
-    retry: 1
   })
 }
 

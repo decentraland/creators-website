@@ -14,7 +14,10 @@ export async function fetchEntitiesByPointers(pointers: string[]): Promise<Entit
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ pointers })
   })
-  if (!response.ok) throw new Error(`catalyst request failed: entities/active (${response.status})`)
+  if (!response.ok) {
+    await response.body?.cancel()
+    throw new Error(`catalyst request failed: entities/active (${response.status})`)
+  }
   return (await response.json()) as Entity[]
 }
 
@@ -26,6 +29,29 @@ export async function fetchCatalystContent(hash: string): Promise<Blob> {
     throw new Error(`catalyst request failed: contents/${hash} (${response.status})`)
   }
   return response.blob()
+}
+
+/** The hashes among `hashes` the content server already stores, which a deployment doesn't need to upload. */
+export async function fetchAvailableContent(hashes: string[]): Promise<Set<string>> {
+  if (hashes.length === 0) return new Set()
+  const query = hashes.map(hash => `cid=${encodeURIComponent(hash)}`).join('&')
+  const response = await fetch(`${contentUrl()}/available-content?${query}`)
+  if (!response.ok) {
+    await response.body?.cancel()
+    throw new Error(`catalyst request failed: available-content (${response.status})`)
+  }
+  const results = (await response.json()) as { cid: string; available: boolean }[]
+  return new Set(results.filter(result => result.available).map(result => result.cid))
+}
+
+/** Deploys an entity: POST /content/entities with the multipart body of `buildDeploymentForm`. */
+export async function deployEntity(form: FormData): Promise<void> {
+  const response = await fetch(`${contentUrl()}/entities`, { method: 'POST', body: form })
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { errors?: string[] }
+    throw new Error(`catalyst deployment failed (${response.status}): ${(body.errors ?? []).join(' ')}`)
+  }
+  await response.body?.cancel()
 }
 
 const BASE_AVATARS_COLLECTION = 'urn:decentraland:off-chain:base-avatars'

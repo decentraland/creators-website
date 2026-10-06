@@ -96,6 +96,13 @@ describe('ItemsSidebar', () => {
     expect(screen.getByTestId('items-sidebar-row-hat')).not.toHaveAttribute('data-unavailable')
   })
 
+  it('flags wearables made for a single body shape', () => {
+    renderSidebar()
+    expect(screen.getByTestId('items-sidebar-shape-dress-trigger')).toBeInTheDocument()
+    expect(screen.queryByTestId('items-sidebar-shape-hat-trigger')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('items-sidebar-shape-dance-trigger')).not.toBeInTheDocument()
+  })
+
   it('toggles playback when the selected, dressed emote row is clicked again', async () => {
     const props = renderSidebar({ selectedId: 'dance', dressedIds: ['dance'], isPlaying: true })
     expect(screen.getByTestId('items-sidebar-playing-dance')).toBeInTheDocument()
@@ -119,11 +126,12 @@ describe('ItemsSidebar', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/collections/c1')
   })
 
-  it('hides the header actions in review mode and shows them to editors of a draft', () => {
+  it('hides the header actions and the back link in review mode, where the review bar has them', () => {
     renderSidebar({ mode: 'review', onRename: vi.fn() })
     expect(screen.queryByTestId('items-sidebar-add-items')).not.toBeInTheDocument()
     expect(screen.queryByTestId('items-sidebar-rename')).not.toBeInTheDocument()
-    expect(screen.getByTestId('items-sidebar-back')).toHaveAttribute('href', '/curation')
+    expect(screen.queryByTestId('items-sidebar-back')).not.toBeInTheDocument()
+    expect(screen.getByTestId('items-sidebar-collection')).toHaveTextContent('Pirate Hats')
   })
 
   it('offers renaming a draft collection from its title instead of linking away', async () => {

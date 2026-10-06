@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDropDown as ChevronIcon } from '@mui/icons-material'
+import { ArrowDropDown as ChevronIcon, ExpandMore as CompactChevronIcon } from '@mui/icons-material'
 import * as S from './Select.styles'
 import { useListbox } from './useListbox'
 
@@ -22,8 +22,8 @@ type Props<T extends string> = {
   options: SelectOption<T>[]
   onChange: (value: T) => void
   placeholder?: string
-  /** `glyph` is a compact trigger showing only the selected option's icon, for a select sitting inside another field. */
-  variant?: 'default' | 'glyph'
+  /** `glyph` is a compact trigger showing only the selected option's icon, for a select sitting inside another field; `compact` is a short uppercase trigger for toolbars. */
+  variant?: 'default' | 'glyph' | 'compact'
   /** `dark` sits the select on the editor's dark surfaces instead of the violet ones. */
   tone?: 'default' | 'dark'
   /** A label drawn inside the field, left of the value (the value then aligns right). */
@@ -33,7 +33,7 @@ type Props<T extends string> = {
   testId?: string
 }
 
-const LIST_MIN_WIDTH = { default: 230, glyph: 150 }
+const LIST_MIN_WIDTH = { default: 230, glyph: 150, compact: 230 }
 
 /** Custom listbox select: portaled to <body> so scroll containers never clip it, keyboard navigable. */
 export function Select<T extends string>({
@@ -84,7 +84,7 @@ export function Select<T extends string>({
             {selected?.trailing && !selected.triggerLabel && <S.Trailing>{selected.trailing}</S.Trailing>}
           </S.TriggerLabel>
         )}
-        <ChevronIcon />
+        {variant === 'compact' ? <CompactChevronIcon /> : <ChevronIcon />}
       </S.Trigger>
       {open &&
         createPortal(

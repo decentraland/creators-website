@@ -18,34 +18,34 @@ export const Pill = styled.span`
   &[data-status='published'] {
     color: ${theme.colors.green};
     border-color: ${theme.colors.green};
-    background: rgba(48, 205, 0, 0.2); /* green @ 20% */
+    background: ${theme.colors.greenTint};
   }
   &[data-status='under_review'] {
     color: ${theme.colors.amber};
     border-color: ${theme.colors.amber};
-    background: rgba(244, 130, 33, 0.2); /* orangeStrong @ 20% */
+    background: ${theme.colors.orangeTint};
   }
   &[data-status='draft'],
   &[data-status='publishing'],
   &[data-status='not_published'] {
     color: ${theme.colors.infoLighter};
     border-color: ${theme.colors.infoLight};
-    background: rgba(23, 100, 192, 0.4); /* info @ 40% */
+    background: ${theme.colors.infoTint};
   }
   &[data-status='rejected'] {
     color: ${theme.colors.redBright};
     border-color: ${theme.colors.redBright};
-    background: rgba(204, 29, 44, 0.2); /* redRejected @ 20% */
+    background: ${theme.colors.redTint};
   }
   &[data-status='disabled'] {
     color: ${theme.colors.gray4};
     border-color: ${theme.colors.muted2};
-    background: rgba(160, 155, 168, 0.2); /* muted2 @ 20% */
+    background: ${theme.colors.mutedTint};
   }
   &[data-status='linked'] {
     color: ${theme.colors.rarityLegendaryLight};
     border-color: ${theme.colors.rarityLegendaryLight};
-    background: rgba(165, 36, 179, 0.3); /* brandViolet @ 30% */
+    background: ${theme.colors.violetTint};
 
     svg {
       font-size: 16px;

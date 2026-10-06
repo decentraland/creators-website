@@ -181,8 +181,8 @@ describe('SendItemsFlow', () => {
     expect(screen.queryByTestId('send-items-pending-cancel')).not.toBeInTheDocument()
 
     await act(async () => callbacks.onSuccess?.(undefined))
-    expect(screen.getByTestId('sale-success-title')).toHaveTextContent(/items sent/i)
-    await userEvent.click(screen.getByTestId('sale-success-done'))
+    expect(screen.getByTestId('success-modal-title')).toHaveTextContent(/items sent/i)
+    await userEvent.click(screen.getByTestId('success-modal-done'))
     expect(onClose).toHaveBeenCalled()
   })
 
@@ -196,7 +196,7 @@ describe('SendItemsFlow', () => {
     await userEvent.click(screen.getByTestId('send-items-pending-cancel'))
     expect(screen.getByTestId('send-summary')).toBeInTheDocument()
     await act(async () => last(send.mutate)[1].onSuccess?.(undefined))
-    expect(screen.queryByTestId('sale-success-title')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('success-modal-title')).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByTestId('send-submit'))
     await act(async () => last(send.mutate)[1].onError?.({ code: 4001, message: 'User rejected' }))

@@ -4,7 +4,8 @@ import {
   Add as AddIcon,
   ArrowBackIosNew as ArrowBackIcon,
   Edit as EditIcon,
-  PersonOutline as PersonOutlineIcon
+  PersonOutline as PersonOutlineIcon,
+  Sync as SyncIcon
 } from '@mui/icons-material'
 import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
@@ -20,6 +21,7 @@ import { BuilderServerError, getContentsStorageUrl } from '~/lib/builder'
 import { FeatureFlag } from '~/lib/featureFlags'
 import {
   CollectionDisplayStatus,
+  canManageCollectionItems,
   canSellCollectionItems,
   hasBeenApproved,
   hasCollectionRole,
@@ -50,7 +52,9 @@ import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { useCollectionValidation, useRerunItemValidation } from '~/hooks/useCollectionValidation'
-import { hasPendingChanges } from '~/lib/itemSync'
+import { ItemSyncStatus, hasPendingChanges } from '~/lib/itemSync'
+import { canPushChanges } from '~/lib/curation'
+import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
 import { previewCollection } from '~/lib/explorer'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS, THUMBNAIL_PATH } from '~/lib/itemFiles'
@@ -58,6 +62,7 @@ import { type ItemListing } from '~/lib/listings'
 import { useNotifications } from '~/lib/notifications'
 import { theme } from '~/styles/theme'
 import { Button } from '~/components/Button'
+import { ConfirmModal } from '~/components/ConfirmModal'
 import { Tooltip } from '~/components/Tooltip'
 import { EmoteIcon, JumpInIcon, OpenEditorIcon, WearableIcon } from '~/components/Icons'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
@@ -170,11 +175,13 @@ const CollectionDetailPage = () => {
   const withMarket = !!standardCollection?.isPublished
   const status = useCollectionStatus(address, standardCollection)
   const statusHint =
-    status === CollectionDisplayStatus.UNDER_REVIEW
-      ? t('collection_status.under_review_hint')
-      : status === CollectionDisplayStatus.DISABLED
-        ? t('collection_status.disabled_hint')
-        : null
+    status === CollectionDisplayStatus.REJECTED
+      ? t('collection_detail_page.review_notice.rejected')
+      : status === CollectionDisplayStatus.UNDER_REVIEW
+        ? t('collection_status.under_review_hint')
+        : status === CollectionDisplayStatus.DISABLED
+          ? t('collection_status.disabled_hint')
+          : null
   // Sales here are off-chain public orders only: with the flag off there is no other way to list an item.
   const canListItems = useFeatureFlag(FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS).enabled
   const isApprovedForSale = canListItems && !!collection && hasBeenApproved(collection)
@@ -191,6 +198,34 @@ const CollectionDetailPage = () => {
   const listingFor = (item: Item) =>
     listings ? (listings.get(item.tokenId ?? '') ?? null) : listingsQuery.isError ? null : undefined
   const syncs = useItemSyncs(address, standardCollection, allItems ?? [])
+  const curationQuery = useCollectionCuration(address, standardCollection)
+  const curation = curationQuery.data ?? null
+  const pushCuration = usePushCuration(address)
+  const [isPushOpen, setPushOpen] = useState(false)
+  const hasUnsyncedItems = useMemo(
+    () => [...syncs.values()].some(sync => sync.status === ItemSyncStatus.UNSYNCED),
+    [syncs]
+  )
+  const closePush = () => {
+    setPushOpen(false)
+    pushCuration.reset()
+  }
+  // Until the request loads, a pending one looks like none and the push would duplicate it.
+  const curationLoaded = curationQuery.isSuccess
+  const showPushChanges = useMemo(
+    () =>
+      !!standardCollection &&
+      curationLoaded &&
+      canPushChanges(
+        standardCollection,
+        curation,
+        hasUnsyncedItems,
+        canManageCollectionItems(standardCollection, address)
+      ),
+    [standardCollection, curationLoaded, curation, hasUnsyncedItems, address]
+  )
+  // A never-approved collection asks for its first review again; an approved one sends an update.
+  const pushCopy = collection?.isApproved ? 'push_changes' : 'request_review'
 
   // Drafts check every item; published collections only the items with changes waiting for approval.
   // Small screens are a viewer and check nothing, unless the publish modal is already open: crossing the
@@ -506,6 +541,17 @@ const CollectionDetailPage = () => {
                   {t('collection_detail_page.send_items')}
                 </Button>
               )}
+              {showPushChanges && (
+                <Button
+                  type="button"
+                  variant="primary"
+                  data-desktop-only
+                  data-testid="push-changes"
+                  onClick={() => setPushOpen(true)}
+                >
+                  {t(`collection_detail_page.${pushCopy}.action`)}
+                </Button>
+              )}
               {address && (
                 <CollectionActionsMenu
                   collection={collection}
@@ -704,6 +750,33 @@ const CollectionDetailPage = () => {
             />
           )}
           {publishView === 'success' && <PublishSuccessModal onDone={() => setPublishView('closed')} />}
+          {isPushOpen && (
+            <ConfirmModal
+              icon={<SyncIcon />}
+              title={t(`collection_detail_page.${pushCopy}.title`)}
+              description={t(`collection_detail_page.${pushCopy}.description`)}
+              error={pushCuration.isError ? t(`collection_detail_page.${pushCopy}.error`) : null}
+              busy={pushCuration.isPending}
+              onClose={closePush}
+              cancel={{
+                label: t(`collection_detail_page.${pushCopy}.cancel`),
+                onClick: closePush,
+                testId: 'push-changes-cancel'
+              }}
+              confirm={{
+                label: t(`collection_detail_page.${pushCopy}.confirm`),
+                onClick: () =>
+                  pushCuration.mutate(collection, {
+                    onSuccess: () => {
+                      setPushOpen(false)
+                      showToast(t(`collection_detail_page.${pushCopy}.success`))
+                    }
+                  }),
+                testId: 'push-changes-confirm'
+              }}
+              testId="push-changes-modal"
+            />
+          )}
           {isSending && session && (
             <SendItemsFlow
               collection={collection}
