@@ -13,13 +13,11 @@ import { createAnonymousIdResolver } from './segmentAnonymousId.helpers'
 import { APP_VERSION, config, currentSearch } from '~/config'
 import { currentAddress } from '~/lib/currentAddress'
 import { postToSegment, type SegmentCall } from '~/lib/segmentHttp'
-import { captureError } from '~/lib/monitoring'
 import { isWalletRejection } from '~/lib/walletErrors'
 
 type Props = Record<string, unknown>
 
 type SegmentApi = {
-  VERSION?: string
   track: (event: string, props?: Props) => void
   identify: (id: string, traits?: Props) => void
   page: (name?: string, props?: Props) => void
@@ -267,21 +265,6 @@ function stampApp(analytics: Pick<SegmentApi, 'addSourceMiddleware'>): void {
 
 let initialized = false
 
-// CDN delivery is unpinned; surface a rollback that would restore LS-first identity.
-function checkSdkIdentityVersion(): void {
-  const version = segment()?.VERSION
-  const match = version?.match(/^(?:next-)?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/)
-  if (!match) return
-  const major = Number(match[1])
-  const minor = Number(match[2])
-  const patch = Number(match[3])
-  if (major > 1 || (major === 1 && (minor > 84 || (minor === 84 && patch >= 3)))) return
-  captureError(new Error('Analytics.js lacks shared anonymous identity reconciliation'), {
-    flow: 'analytics_identity',
-    analytics_sdk_version: version
-  })
-}
-
 /** Loads analytics.js. No-ops without a write key, and for bots. The first page view comes from the router. */
 export function initAnalytics(): void {
   if (initialized || IS_BOT || typeof window === 'undefined') return
@@ -294,7 +277,6 @@ export function initAnalytics(): void {
   const snippet = installSnippet()
   if (!snippet) return
   stampApp(snippet)
-  onAnalyticsReady(checkSdkIdentityVersion)
   const proxy = resolveAnalyticsUrl(config.get('SEGMENT_ANALYTICS_URL', ''))
   if (proxy) snippet._cdn = proxy.origin
   snippet._writeKey = writeKey
