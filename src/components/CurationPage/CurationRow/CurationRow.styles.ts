@@ -119,6 +119,7 @@ export const Cell = styled.div`
     &[data-cell='requested'] {
       grid-area: requested;
       flex-direction: row;
+      align-items: center;
       gap: 6px;
       font-weight: 400;
     }
@@ -159,6 +160,11 @@ export const ForumLink = styled.a`
   display: inline-flex;
   align-items: center;
   min-height: 44px;
+
+  ${card} {
+    min-height: 0;
+  }
+
   color: ${theme.colors.white};
   font-weight: 600;
   text-decoration: underline;
