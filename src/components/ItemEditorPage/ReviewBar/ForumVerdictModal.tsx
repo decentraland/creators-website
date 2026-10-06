@@ -4,6 +4,7 @@ import { Modal } from '~/components/Modal'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
 import { type Collection } from '~/lib/collections'
+import { openExternal } from '~/lib/navigation'
 import * as S from './ForumVerdictModal.styles'
 
 type Props = {
@@ -28,12 +29,12 @@ export function ForumVerdictModal({ collection, onClose }: Props) {
             {t('item_editor.review.verdict.done')}
           </Button>
           <Button
-            as="a"
-            href={collection.forumLink}
-            target="_blank"
-            rel="noopener noreferrer"
+            type="button"
             data-testid="review-verdict-forum-link"
-            onClick={() => track('Forum post opened', { collectionId: collection.id, surface: 'review_verdict' })}
+            onClick={() => {
+              track('Forum post opened', { collectionId: collection.id, surface: 'review_verdict' })
+              openExternal(collection.forumLink)
+            }}
           >
             {t('item_editor.review.verdict.open_forum')}
             <OpenInNewIcon fontSize="small" aria-hidden />

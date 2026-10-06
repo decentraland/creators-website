@@ -3,9 +3,11 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { TranslationProvider } from '~/intl'
 import { type Collection } from '~/lib/collections'
+import { openExternal } from '~/lib/navigation'
 import { type CollectionCuration } from '~/lib/curation'
 import { CurationRow } from './CurationRow'
 
+vi.mock('~/lib/navigation', () => ({ openExternal: vi.fn() }))
 vi.mock('~/components/CollectionMosaic', () => ({ CollectionMosaic: () => null }))
 vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: undefined }) }))
 
@@ -53,10 +55,8 @@ describe('CurationRow', () => {
 
   it('links the collection forum post', () => {
     renderRow(pending, { ...collection, forumLink: 'https://forum.decentraland.org/t/hats/77' })
-    expect(screen.getByTestId('curation-row-forum-link')).toHaveAttribute(
-      'href',
-      'https://forum.decentraland.org/t/hats/77'
-    )
+    fireEvent.click(screen.getByTestId('curation-row-forum-link'))
+    expect(openExternal).toHaveBeenCalledWith('https://forum.decentraland.org/t/hats/77')
   })
 
   it('says a collection without a forum post was not posted', () => {

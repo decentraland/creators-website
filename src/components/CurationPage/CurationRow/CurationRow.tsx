@@ -5,6 +5,7 @@ import { CollectionMosaic } from '~/components/CollectionMosaic'
 import { CurationStatePill } from '~/components/CurationStatePill'
 import { ProfileBadge } from '~/components/ProfileBadge'
 import { track } from '~/lib/analytics'
+import { openExternal } from '~/lib/navigation'
 import { type Collection } from '~/lib/collections'
 import { canEditAssignee, getCurationState, type CollectionCuration } from '~/lib/curation'
 import { formatTimeAgo } from '~/lib/time'
@@ -56,11 +57,12 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
         <S.CellLabel data-mobile-only>{t('curation_page.list.discussion')}</S.CellLabel>
         {collection.forumLink ? (
           <S.ForumLink
-            href={collection.forumLink}
-            target="_blank"
-            rel="noopener noreferrer"
+            type="button"
             data-testid="curation-row-forum-link"
-            onClick={() => track('Forum post opened', { collectionId: collection.id, surface: 'curation_list' })}
+            onClick={() => {
+              track('Forum post opened', { collectionId: collection.id, surface: 'curation_list' })
+              if (collection.forumLink) openExternal(collection.forumLink)
+            }}
           >
             {t('curation_page.list.forum_post')}
           </S.ForumLink>

@@ -156,10 +156,14 @@ export const DiscussionCell = styled.div`
   }
 `
 
-export const ForumLink = styled.a`
+export const ForumLink = styled.button`
   display: inline-flex;
   align-items: center;
   min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 14px;
 
   ${card} {
     min-height: 0;

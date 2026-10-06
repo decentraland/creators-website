@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { TranslationProvider } from '~/intl'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
+import { openExternal } from '~/lib/navigation'
 import { type CollectionCuration } from '~/lib/curation'
 import { ItemSyncStatus } from '~/lib/itemSync'
 import { ReviewBar } from './ReviewBar'
@@ -17,6 +18,7 @@ const state = vi.hoisted(() => ({
   reject: vi.fn(),
   disable: vi.fn()
 }))
+vi.mock('~/lib/navigation', () => ({ openExternal: vi.fn() }))
 vi.mock('~/hooks/useCuration', () => ({
   useCollectionCuration: () => ({
     data: state.curation,
@@ -128,10 +130,8 @@ describe('ReviewBar', () => {
     fireEvent.click(screen.getByTestId('review-action-reject'))
     fireEvent.click(screen.getByTestId('assign-continue'))
     fireEvent.click(screen.getByTestId('review-reject-confirm'))
-    expect(screen.getByTestId('review-verdict-forum-link')).toHaveAttribute(
-      'href',
-      'https://forum.decentraland.org/t/hats/77'
-    )
+    fireEvent.click(screen.getByTestId('review-verdict-forum-link'))
+    expect(openExternal).toHaveBeenCalledWith('https://forum.decentraland.org/t/hats/77')
   })
 
   it('just confirms a rejection when the collection has no forum post', () => {

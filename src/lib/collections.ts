@@ -81,9 +81,8 @@ export enum CurationStatus {
   DISABLED = 'disabled'
 }
 
-/** The status a collection pill displays. */
-// The link is rendered as an href, so anything but http(s) (e.g. `javascript:`) is dropped.
-function toSafeLink(url: string | null): string | undefined {
+/** A server-provided link, or undefined unless it is http(s): it is opened as a page, so `javascript:` must not pass. */
+export function toSafeLink(url: string | null): string | undefined {
   if (!url) return undefined
   try {
     return ['https:', 'http:'].includes(new URL(url).protocol) ? url : undefined
@@ -92,6 +91,7 @@ function toSafeLink(url: string | null): string | undefined {
   }
 }
 
+/** The status a collection pill displays. */
 export enum CollectionDisplayStatus {
   DRAFT = 'draft',
   PUBLISHING = 'publishing',

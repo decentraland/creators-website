@@ -208,20 +208,19 @@ export async function updateCollectionCuration(
   return fromRemoteCuration(remote)
 }
 
-/** Opens the collection's forum topic: POST /collections/{id}/post. Answers the topic link, also saved as `forum_link`. */
-export async function createCollectionForumPost(
-  address: string,
-  collectionId: string,
-  forumPost: { title: string; raw: string }
-): Promise<string> {
-  return request<string>(address, 'POST', `/collections/${collectionId}/post`, '', { forumPost })
+/**
+ * Opens the collection's forum topic: POST /collections/{id}/post. The server writes the post and saves the link as
+ * `forum_link`; 409 when the collection isn't published yet or already has a topic (its link in the error data).
+ */
+export async function createCollectionForumPost(address: string, collectionId: string): Promise<string> {
+  return request<string>(address, 'POST', `/collections/${collectionId}/post`)
 }
 
 /** Replies on the collection's forum topic (committee only): POST /collections/{id}/curation/post. */
 export async function createCurationForumReply(
   address: string,
   collectionId: string,
-  forumPost: { topic_id: number; raw: string }
+  forumPost: { raw: string }
 ): Promise<void> {
   await request(address, 'POST', `/collections/${collectionId}/curation/post`, '', { forumPost }, false)
 }

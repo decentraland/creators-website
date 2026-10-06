@@ -63,8 +63,7 @@ export const ModalActions = styled.div`
   bottom: 0;
   z-index: 1;
 
-  & > button,
-  & > a {
+  & > button {
     flex: 1 1 0;
     min-width: fit-content;
   }

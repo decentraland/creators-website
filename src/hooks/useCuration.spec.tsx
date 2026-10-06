@@ -100,7 +100,6 @@ describe('useAssignCurator', () => {
     await act(() => result.current.mutateAsync({ collection: posted, curation: pending, assignee: null }))
     await waitFor(() =>
       expect(api.createCurationForumReply).toHaveBeenCalledWith(ADDRESS, 'c1', {
-        topic_id: 77,
         raw: 'The collection has been unassigned.'
       })
     )

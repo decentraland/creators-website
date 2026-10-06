@@ -162,7 +162,10 @@ export function usePublishCollection(session: Session | null) {
         waitForTransaction: hash => waitForTransaction(chainId, hash),
         publishCollectionItems: collectionId => publishCollectionItems(address!, collectionId)
       })
-        .then(() => postCollectionToForum(queryClient, address!, collection, 'publish'))
+        .then(() => {
+          // Not awaited: the forum's retries must not hold the sync's cleanup below.
+          void postCollectionToForum(queryClient, address!, collection, 'publish')
+        })
         .catch((error: unknown) => {
           console.error('Collection consolidation failed', error)
           // The modal is long gone: a lasting toast is the only way the creator learns the publish did not land.
