@@ -4,7 +4,8 @@ import {
   Add as AddIcon,
   ArrowBackIosNew as ArrowBackIcon,
   Edit as EditIcon,
-  PersonOutline as PersonOutlineIcon
+  PersonOutline as PersonOutlineIcon,
+  Sync as SyncIcon
 } from '@mui/icons-material'
 import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
@@ -747,6 +748,7 @@ const CollectionDetailPage = () => {
           {publishView === 'success' && <PublishSuccessModal onDone={() => setPublishView('closed')} />}
           {isPushOpen && (
             <ConfirmModal
+              icon={<SyncIcon />}
               title={t(`collection_detail_page.${pushCopy}.title`)}
               description={t(`collection_detail_page.${pushCopy}.description`)}
               error={pushCuration.isError ? t(`collection_detail_page.${pushCopy}.error`) : null}

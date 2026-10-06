@@ -16,6 +16,8 @@ type Props = {
   description: string
   /** Illustration shown instead of the warning glyph. */
   art?: { src: string }
+  /** Glyph shown instead of the warning one, for confirmations that aren't warnings. */
+  icon?: ReactNode
   /** Failure copy shown under the description after a rejected confirm. */
   error?: string | null
   /** Extra content under the description, e.g. an error's technical details. */
@@ -36,6 +38,7 @@ export function ConfirmModal({
   title,
   description,
   art,
+  icon,
   error,
   children,
   busy = false,
@@ -50,13 +53,7 @@ export function ConfirmModal({
     <Modal title={title} onClose={onClose} closeDisabled={busy} hideTitle showClose={showClose} testId={testId}>
       {celebrate && <Confetti />}
       <S.Wrap data-art={art ? 'image' : 'icon'}>
-        {art ? (
-          <S.Art src={art.src} alt="" />
-        ) : (
-          <S.IconWrap aria-hidden>
-            <WarningIcon />
-          </S.IconWrap>
-        )}
+        {art ? <S.Art src={art.src} alt="" /> : <S.IconWrap aria-hidden>{icon ?? <WarningIcon />}</S.IconWrap>}
         <S.Heading data-testid={`${testId}-title`}>{title}</S.Heading>
         <S.Body>
           <S.Text data-testid={`${testId}-description`}>{description}</S.Text>
