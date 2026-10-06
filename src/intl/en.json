@@ -329,7 +329,7 @@
       "columns": {
         "collection": "Collection",
         "items": "Items",
-        "fee_per_item": "Fee per item",
+        "fee_per_item": "You pay per item",
         "total_fee": "Total Fee"
       },
       "items_count": "{count, plural, one {# Item} other {# Items}}",

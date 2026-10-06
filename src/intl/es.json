@@ -329,7 +329,7 @@
       "columns": {
         "collection": "Colección",
         "items": "Ítems",
-        "fee_per_item": "Tarifa por ítem",
+        "fee_per_item": "Pagas por ítem",
         "total_fee": "Tarifa total"
       },
       "items_count": "{count, plural, one {# ítem} other {# ítems}}",
