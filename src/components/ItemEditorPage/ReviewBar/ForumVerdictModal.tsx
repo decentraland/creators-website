@@ -1,4 +1,4 @@
-import { ForumOutlined as ForumIcon } from '@mui/icons-material'
+import { ForumOutlined as ForumIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { useTranslation } from '~/intl'
@@ -36,6 +36,7 @@ export function ForumVerdictModal({ collection, onClose }: Props) {
             onClick={() => track('Forum post opened', { collectionId: collection.id, surface: 'review_verdict' })}
           >
             {t('item_editor.review.verdict.open_forum')}
+            <OpenInNewIcon fontSize="small" aria-hidden />
           </Button>
         </S.Actions>
       </S.Wrap>
