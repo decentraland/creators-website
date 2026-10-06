@@ -5,7 +5,11 @@ import { type ReactNode } from 'react'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
 
-const api = vi.hoisted(() => ({ createCollectionForumPost: vi.fn(), createCurationForumReply: vi.fn() }))
+const api = vi.hoisted(() => ({
+  createCollectionForumPost: vi.fn(),
+  createCurationForumReply: vi.fn(),
+  fetchCollection: vi.fn()
+}))
 vi.mock('~/lib/builder', async importOriginal => ({ ...(await importOriginal<object>()), ...api }))
 vi.mock('~/lib/analytics', () => ({ track: vi.fn(), errorCode: () => 'unknown' }))
 vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
@@ -22,7 +26,7 @@ const collection = (id: string) =>
     isApproved: false,
     managers: [],
     minters: [],
-    updatedAt: Date.now() - 3 * 60 * 60_000
+    updatedAt: Date.now() - 8 * 60 * 60_000
   }) as unknown as Collection
 const synced = [{ id: 'i1', tokenId: '1' }] as Item[]
 
@@ -34,16 +38,19 @@ function wrapper({ children }: { children: ReactNode }) {
 beforeEach(() => {
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   api.createCollectionForumPost.mockReset().mockResolvedValue(LINK)
+  api.fetchCollection.mockReset().mockResolvedValue({ forumLink: undefined })
 })
 
 describe('postToForum', () => {
-  it('writes the new topic link into the cached collection', async () => {
+  it('writes the new topic link into the cached collection and refreshes the lists', async () => {
+    const invalidate = vi.spyOn(client, 'invalidateQueries')
     client.setQueryData(['collection', OWNER, 'h1'], collection('h1'))
 
     await postToForum(client, OWNER, collection('h1'), 'publish')
 
     expect(api.createCollectionForumPost).toHaveBeenCalledWith(OWNER, 'h1')
     expect(client.getQueryData<Collection>(['collection', OWNER, 'h1'])?.forumLink).toBe(LINK)
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['curation-collections'] })
   })
 })
 

@@ -1,14 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BuilderServerError } from './builder'
-import { type Collection } from './collections'
+import { CollectionDisplayStatus, type Collection } from './collections'
 import {
   buildAssigneeReply,
   createForumTopic,
+  isForumPostRelevant,
   markForumPostRecovered,
   openForumPost,
   postAssigneeToForum,
   postCollectionToForum,
-  shouldRecoverForumPost
+  shouldRecoverForumPost,
+  type PostCollectionDeps
 } from './forumPost'
 import { type Item } from './items'
 
@@ -33,15 +35,38 @@ const collection = (id: string, overrides: Partial<Collection> = {}) =>
     isApproved: false,
     managers: [],
     minters: [],
-    updatedAt: NOW - 3 * HOUR,
+    updatedAt: NOW - 8 * HOUR,
     ...overrides
   }) as unknown as Collection
 const synced = [{ id: 'i1', tokenId: '1' }] as Item[]
+const postDeps = (overrides: Partial<PostCollectionDeps> = {}): PostCollectionDeps => ({
+  createPost: vi.fn().mockResolvedValue(LINK),
+  fetchForumLink: vi.fn().mockResolvedValue(undefined),
+  exclusive: (_key, task) => task(),
+  onPosted: vi.fn(),
+  ...overrides
+})
 
 beforeEach(() => {
   analytics.track.mockReset()
   monitoring.captureError.mockReset()
   navigation.openExternal.mockReset()
+})
+
+describe('isForumPostRelevant', () => {
+  it('shows the topic while the collection or its changes are reviewed, rejected or disabled', () => {
+    const posted = collection('v1', { forumLink: LINK })
+    expect(isForumPostRelevant(posted, CollectionDisplayStatus.UNDER_REVIEW)).toBe(true)
+    expect(isForumPostRelevant({ ...posted, isApproved: true }, CollectionDisplayStatus.UNDER_REVIEW)).toBe(true)
+    expect(isForumPostRelevant({ ...posted, isApproved: true }, CollectionDisplayStatus.REJECTED)).toBe(true)
+  })
+
+  it('hides it once the collection is published and settled, or when there is no topic', () => {
+    const posted = collection('v2', { forumLink: LINK, isApproved: true })
+    expect(isForumPostRelevant(posted, CollectionDisplayStatus.PUBLISHED)).toBe(false)
+    expect(isForumPostRelevant(collection('v3'), CollectionDisplayStatus.UNDER_REVIEW)).toBe(false)
+    expect(isForumPostRelevant(collection('v4', { forumLink: LINK, isPublished: false }), undefined)).toBe(false)
+  })
 })
 
 describe('openForumPost', () => {
@@ -64,10 +89,14 @@ describe('buildAssigneeReply', () => {
 
 describe('createForumTopic', () => {
   it('answers the new topic link, dropping one that is not a web page', async () => {
-    await expect(createForumTopic('c1', vi.fn().mockResolvedValue(LINK), 0, 0)).resolves.toBe(LINK)
-    await expect(createForumTopic('c1', vi.fn().mockResolvedValue('javascript:alert(1)'), 0, 0)).resolves.toBe(
-      undefined
-    )
+    await expect(createForumTopic('c1', vi.fn().mockResolvedValue(LINK), 0, 0)).resolves.toEqual({
+      link: LINK,
+      existing: false
+    })
+    await expect(createForumTopic('c1', vi.fn().mockResolvedValue('javascript:alert(1)'), 0, 0)).resolves.toEqual({
+      link: undefined,
+      existing: false
+    })
   })
 
   it('answers the link of a topic that already existed', async () => {
@@ -75,14 +104,14 @@ describe('createForumTopic', () => {
       .fn()
       .mockRejectedValue(new BuilderServerError('Forum post already exists', 409, { id: 'c1', forum_link: LINK }))
 
-    await expect(createForumTopic('c1', createPost, 3, 0)).resolves.toBe(LINK)
+    await expect(createForumTopic('c1', createPost, 3, 0)).resolves.toEqual({ link: LINK, existing: true })
     expect(createPost).toHaveBeenCalledTimes(1)
   })
 
   it('retries while the server cannot see the publication yet, then gives up', async () => {
     const notPublished = new BuilderServerError('The collection is not published', 409, { id: 'c1' })
     const recovers = vi.fn().mockRejectedValueOnce(notPublished).mockResolvedValue(LINK)
-    await expect(createForumTopic('c1', recovers, 3, 0)).resolves.toBe(LINK)
+    await expect(createForumTopic('c1', recovers, 3, 0)).resolves.toEqual({ link: LINK, existing: false })
 
     const never = vi.fn().mockRejectedValue(notPublished)
     await expect(createForumTopic('c1', never, 2, 0)).rejects.toBe(notPublished)
@@ -100,28 +129,56 @@ describe('createForumTopic', () => {
 
 describe('postCollectionToForum', () => {
   it('opens the topic once and hands its link over', async () => {
-    const createPost = vi.fn().mockResolvedValue(LINK)
-    const onPosted = vi.fn()
+    const deps = postDeps()
 
     await Promise.all([
-      postCollectionToForum(collection('p1'), 'publish', { createPost, onPosted }),
-      postCollectionToForum(collection('p1'), 'recovery', { createPost, onPosted })
+      postCollectionToForum(collection('p1'), 'publish', deps),
+      postCollectionToForum(collection('p1'), 'recovery', deps)
     ])
 
-    expect(createPost).toHaveBeenCalledTimes(1)
-    expect(onPosted).toHaveBeenCalledWith(LINK)
-    expect(analytics.track).toHaveBeenCalledWith('Create forum post', { collectionId: 'p1', source: 'publish' })
+    expect(deps.createPost).toHaveBeenCalledTimes(1)
+    expect(deps.onPosted).toHaveBeenCalledWith(LINK)
+    expect(analytics.track).toHaveBeenCalledWith('Create forum post', {
+      collectionId: 'p1',
+      source: 'publish',
+      existing: false
+    })
+  })
+
+  it('posts under the shared lock and not at all when another tab already did', async () => {
+    const exclusive = vi.fn((_key: string, task: () => Promise<void>) => task())
+    const deps = postDeps({ exclusive, fetchForumLink: vi.fn().mockResolvedValue(LINK) })
+
+    await postCollectionToForum(collection('p2'), 'recovery', deps)
+
+    expect(exclusive).toHaveBeenCalledWith('forum-post:p2', expect.any(Function))
+    expect(deps.createPost).not.toHaveBeenCalled()
+    expect(deps.onPosted).toHaveBeenCalledWith(LINK)
+    expect(analytics.track).not.toHaveBeenCalled()
+  })
+
+  it('tells an existing topic apart in the event', async () => {
+    const createPost = vi
+      .fn()
+      .mockRejectedValue(new BuilderServerError('Forum post already exists', 409, { forum_link: LINK }))
+    await postCollectionToForum(collection('p3'), 'publish', postDeps({ createPost }))
+    expect(analytics.track).toHaveBeenCalledWith('Create forum post', {
+      collectionId: 'p3',
+      source: 'publish',
+      existing: true
+    })
   })
 
   it('skips a collection that already has a topic', async () => {
-    const createPost = vi.fn()
-    await postCollectionToForum(collection('p2', { forumLink: LINK }), 'publish', { createPost, onPosted: vi.fn() })
-    expect(createPost).not.toHaveBeenCalled()
+    const deps = postDeps()
+    await postCollectionToForum(collection('p4', { forumLink: LINK }), 'publish', deps)
+    expect(deps.fetchForumLink).not.toHaveBeenCalled()
+    expect(deps.createPost).not.toHaveBeenCalled()
   })
 
   it('reports a failure without throwing', async () => {
     const createPost = vi.fn().mockRejectedValue(new BuilderServerError('Error creating forum post', 500))
-    await postCollectionToForum(collection('p3'), 'publish', { createPost, onPosted: vi.fn() })
+    await postCollectionToForum(collection('p5'), 'publish', postDeps({ createPost }))
     expect(monitoring.captureError).toHaveBeenCalledWith(
       expect.any(BuilderServerError),
       expect.objectContaining({ flow: 'forum_post' })
@@ -137,8 +194,14 @@ describe('shouldRecoverForumPost', () => {
   })
 
   it('leaves the publishing tab its window, measured from when publishing started', () => {
-    expect(shouldRecoverForumPost(collection('r2', { lock: NOW - HOUR }), synced, OWNER, NOW)).toBe(false)
+    expect(shouldRecoverForumPost(collection('r2', { lock: NOW - 3 * HOUR }), synced, OWNER, NOW)).toBe(false)
     expect(shouldRecoverForumPost(collection('r3', { updatedAt: NOW - HOUR }), synced, OWNER, NOW)).toBe(false)
+  })
+
+  it('does not backfill collections published more than a month ago', () => {
+    expect(shouldRecoverForumPost(collection('r8', { updatedAt: NOW - 31 * 24 * HOUR }), synced, OWNER, NOW)).toBe(
+      false
+    )
   })
 
   it('leaves alone collections that have a topic, are approved, are not synced, or are someone else’s', () => {

@@ -31,7 +31,7 @@ import {
 } from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
 import { track } from '~/lib/analytics'
-import { openForumPost } from '~/lib/forumPost'
+import { isForumPostRelevant, openForumPost } from '~/lib/forumPost'
 import { cancelCreditsOrder } from '~/lib/credits'
 import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'
 import { type RoleKind } from '~/lib/collectionRoles'
@@ -178,13 +178,7 @@ const CollectionDetailPage = () => {
   // once it has been approved at least once, even if it is under review again.
   const withMarket = !!standardCollection?.isPublished
   const status = useCollectionStatus(address, standardCollection)
-  // Curators give their feedback on the topic while the collection, or a change to it, is being reviewed.
-  const showForumPost =
-    !!standardCollection?.forumLink &&
-    standardCollection.isPublished &&
-    (!standardCollection.isApproved ||
-      status === CollectionDisplayStatus.UNDER_REVIEW ||
-      status === CollectionDisplayStatus.REJECTED)
+  const showForumPost = !!standardCollection && isForumPostRelevant(standardCollection, status)
   const statusHint =
     status === CollectionDisplayStatus.REJECTED
       ? t('collection_detail_page.review_notice.rejected')

@@ -3,13 +3,23 @@
 import { config } from '~/config'
 import { errorCode, track } from '~/lib/analytics'
 import { BuilderServerError } from '~/lib/builder'
-import { canManageCollectionItems, toSafeLink, type Collection } from '~/lib/collections'
+import { CollectionDisplayStatus, canManageCollectionItems, toSafeLink, type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
 import { captureError } from '~/lib/monitoring'
 import { openExternal } from '~/lib/navigation'
 
 export type ForumPostSource = 'publish' | 'recovery'
 export type ForumPostSurface = 'detail' | 'detail_menu' | 'curation_list' | 'review_verdict'
+
+/** Curators give their feedback on the topic while the collection, or a change to it, is being reviewed. */
+export function isForumPostRelevant(collection: Collection, status: CollectionDisplayStatus | undefined): boolean {
+  if (!collection.forumLink || !collection.isPublished) return false
+  return (
+    !collection.isApproved ||
+    status === CollectionDisplayStatus.UNDER_REVIEW ||
+    status === CollectionDisplayStatus.REJECTED
+  )
+}
 
 /** Opens the collection's topic in a new tab. */
 export function openForumPost(collection: Collection, surface: ForumPostSurface): void {
@@ -42,19 +52,21 @@ const existingLink = (error: unknown) =>
 const RETRIES = 3
 const RETRY_DELAY_MS = 5000
 
-/** Asks builder-server to open the collection's topic and answers its link, including one that already existed. */
+export type ForumTopic = { link: string | undefined; existing: boolean }
+
+/** Asks builder-server to open the collection's topic; `existing` when it already had one. */
 export async function createForumTopic(
   collectionId: string,
   createPost: (collectionId: string) => Promise<string>,
   retries = RETRIES,
   retryDelayMs = RETRY_DELAY_MS
-): Promise<string | undefined> {
+): Promise<ForumTopic> {
   for (let attempt = 0; ; attempt++) {
     try {
-      return toSafeLink(await createPost(collectionId))
+      return { link: toSafeLink(await createPost(collectionId)), existing: false }
     } catch (error) {
       const link = existingLink(error)
-      if (link) return link
+      if (link) return { link, existing: true }
       if (!isNotPublishedYet(error) || attempt >= retries) throw error
       await new Promise(resolve => setTimeout(resolve, retryDelayMs * 2 ** attempt))
     }
@@ -63,11 +75,17 @@ export async function createForumTopic(
 
 export type PostCollectionDeps = {
   createPost: (collectionId: string) => Promise<string>
+  /** The collection's current link on the server, read again right before posting. */
+  fetchForumLink: (collectionId: string) => Promise<string | undefined>
+  /** Runs `task` while no other tab of this browser runs one under the same key. */
+  exclusive: (key: string, task: () => Promise<void>) => Promise<void>
   onPosted: (forumLink: string | undefined) => void
   retryDelayMs?: number
 }
 
-// Collections whose topic this tab is creating or already tried to recover, so it never posts twice.
+// Collections whose topic this tab is creating or already tried to recover, so it never posts twice. Other tabs
+// are kept out by `exclusive` plus the re-read; a collaborator in another browser can still race, which only
+// builder-server could prevent.
 const posting = new Set<string>()
 const recovered = new Set<string>()
 
@@ -80,9 +98,13 @@ export async function postCollectionToForum(
   if (collection.forumLink || posting.has(collection.id)) return
   posting.add(collection.id)
   try {
-    const forumLink = await createForumTopic(collection.id, deps.createPost, RETRIES, deps.retryDelayMs)
-    track('Create forum post', { collectionId: collection.id, source })
-    deps.onPosted(forumLink)
+    await deps.exclusive(`forum-post:${collection.id}`, async () => {
+      const current = await deps.fetchForumLink(collection.id)
+      if (current) return deps.onPosted(current)
+      const { link, existing } = await createForumTopic(collection.id, deps.createPost, RETRIES, deps.retryDelayMs)
+      track('Create forum post', { collectionId: collection.id, source, existing })
+      deps.onPosted(link)
+    })
   } catch (error) {
     track('Create forum post error', { collectionId: collection.id, source, error: errorCode(error) })
     captureError(error, { flow: 'forum_post', collectionId: collection.id, source })
@@ -91,13 +113,16 @@ export async function postCollectionToForum(
   }
 }
 
-// The publishing tab posts once the publish is synced, which it waits up to an hour for; recovering inside that
-// window could race it into a second topic, since builder-server's "already has a topic" check isn't atomic.
-const RECOVERY_GRACE_MS = 2 * 60 * 60_000
+// The publishing tab posts once the transaction is mined and the publish synced (up to an hour of polls); recovering
+// inside that window could race it into a second topic, since builder-server's "already has a topic" check isn't
+// atomic. Wide on purpose: a late topic costs little, a duplicate one is public.
+const RECOVERY_GRACE_MS = 6 * 60 * 60_000
+// Only recent publishes are recovered, so deploying this doesn't open topics for long-settled collections.
+const RECOVERY_MAX_AGE_MS = 30 * 24 * 60 * 60_000
 
 /**
  * Whether this tab should create a topic the publishing tab never did: a synced collection waiting for its first
- * approval, opened by its owner or a collaborator, well after publishing started, and only once per tab.
+ * approval, opened by its owner or a collaborator, well after publishing started but within a month, once per tab.
  */
 export function shouldRecoverForumPost(
   collection: Collection,
@@ -113,6 +138,7 @@ export function shouldRecoverForumPost(
     items.length > 0 &&
     items.every(item => item.tokenId) &&
     now - publishedAt > RECOVERY_GRACE_MS &&
+    now - publishedAt < RECOVERY_MAX_AGE_MS &&
     canManageCollectionItems(collection, address) &&
     !recovered.has(collection.id)
   )

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
-import { createCollectionForumPost, createCurationForumReply } from '~/lib/builder'
+import { createCollectionForumPost, createCurationForumReply, fetchCollection } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import {
   markForumPostRecovered,
@@ -22,9 +22,17 @@ export function postToForum(
   const key = ['collection', address, collection.id]
   return postCollectionToForum(collection, source, {
     createPost: id => createCollectionForumPost(address, id),
+    fetchForumLink: async id => (await fetchCollection(address, id)).forumLink,
+    exclusive: async (lockKey, task) => {
+      if (navigator.locks) await navigator.locks.request(lockKey, task)
+      else await task()
+    },
     onPosted: forumLink => {
       if (forumLink) queryClient.setQueryData<Collection>(key, current => current && { ...current, forumLink })
       else void queryClient.invalidateQueries({ queryKey: key })
+      // Lists show the link too (curation's Discussion column).
+      void queryClient.invalidateQueries({ queryKey: ['curation-collections'] })
+      void queryClient.invalidateQueries({ queryKey: ['collections'] })
     }
   })
 }
