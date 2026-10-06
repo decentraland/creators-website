@@ -103,7 +103,7 @@ describe('ReviewBar', () => {
     renderBar({ ...base, reviewedAt: 5 })
     fireEvent.click(screen.getByTestId('review-action-enable'))
     expect(screen.queryByTestId('assign-modal')).not.toBeInTheDocument()
-    expect(screen.getByTestId('approval-flow')).toHaveAttribute('data-mode', 'approve')
+    expect(screen.getByTestId('approval-flow')).toHaveAttribute('data-mode', 'enable')
   })
 
   it('rejects after confirming', () => {

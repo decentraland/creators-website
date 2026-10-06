@@ -66,15 +66,15 @@ export function ReviewBar({ session, collection, items }: Props) {
   const isCurationError = collection.isPublished && curationQuery.isError && !curationQuery.data
 
   function onAction(action: ReviewAction) {
-    // Enabling a collection with no request opens none up front: backing out would leave it "Under review" for the
-    // creator. The approval opens one in the curator's name once the collection is enabled.
+    // Enable never opens a request (it only switches the collection back on), so with none there is nothing to take.
     const opensRequest = action === ReviewAction.ENABLE && !curation
     if (DECISIONS.includes(action) && curation?.assignee !== self && !opensRequest) return setTakeOver(action)
     runAction(action)
   }
 
   function runAction(action: ReviewAction) {
-    if (action === ReviewAction.APPROVE || action === ReviewAction.ENABLE) setApproval('approve')
+    if (action === ReviewAction.APPROVE) setApproval('approve')
+    else if (action === ReviewAction.ENABLE) setApproval('enable')
     else if (action === ReviewAction.DEPLOY_MISSING) setApproval('deploy_missing')
     else if (action === ReviewAction.REJECT) setDialog('reject')
     else setDialog('disable')

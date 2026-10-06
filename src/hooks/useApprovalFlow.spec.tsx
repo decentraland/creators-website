@@ -315,13 +315,17 @@ describe('useApprovalFlow', () => {
     expect(api.pushCollectionCuration).toHaveBeenCalledTimes(1)
   })
 
-  it('opens a request in the curator’s name when enabling a collection that has none', async () => {
-    api.pushCollectionCuration.mockResolvedValue(pending)
-    const { result } = renderFlow({ ...collection, reviewedAt: 5 }, null)
+  it('enables a disabled collection as last approved, leaving its items and its request alone', async () => {
+    const { result } = renderFlow({ ...collection, reviewedAt: 5 }, null, 'enable')
     await act(() => result.current.start())
+    expect(result.current.plan.steps).toEqual(['approve'])
     await act(() => result.current.runApprove())
-    expect(api.pushCollectionCuration).toHaveBeenCalledWith('0xme', 'c1', '0xme')
-    expect(api.updateCollectionCuration).toHaveBeenCalledWith('0xme', 'c1', { status: 'approved' })
+    expect(result.current.view).toEqual({ kind: 'success' })
+    expect(flow.approveOnChain).toHaveBeenCalled()
+    expect(api.fetchAllCollectionItems).not.toHaveBeenCalled()
+    expect(flow.rescueItems).not.toHaveBeenCalled()
+    expect(api.pushCollectionCuration).not.toHaveBeenCalled()
+    expect(api.updateCollectionCuration).not.toHaveBeenCalled()
   })
 
   it('re-checks the items the token-id backfill saved again, on their content', async () => {

@@ -36,8 +36,11 @@ import { captureError } from '~/lib/monitoring'
 import { getMaticChainId } from '~/lib/publishCollection'
 import { isWalletRejection } from '~/lib/walletErrors'
 
-/** `approve` runs the whole flow (also Enable); `deploy_missing` only deploys the entities an approved collection lacks. */
-export type ApprovalMode = 'approve' | 'deploy_missing'
+/**
+ * `approve` runs the whole flow; `enable` only switches a disabled collection back on as last approved, so changes the
+ * creator never sent for review stay out; `deploy_missing` only deploys the entities an approved collection lacks.
+ */
+export type ApprovalMode = 'approve' | 'enable' | 'deploy_missing'
 
 export type ApprovalStep = 'rescue' | 'deploy' | 'approve'
 
@@ -216,11 +219,11 @@ export function useApprovalFlow(
     async (token: number) => {
       const key = collectionCurationKey(address, collection.id)
       const latest = queryClient.getQueryData<CollectionCuration | null>(key) ?? curation
-      // An approved request (Enable on a disabled collection) has nothing left to close.
+      // Enable leaves the request alone: approving one would also promote unsent smart-wearable videos.
       if (mode === 'approve' && latest?.status !== 'approved') {
         try {
-          // A rejected first review, or a collection enabled without any request, gets a request in the approver's
-          // name to approve; otherwise it would keep reading as rejected, or name nobody as its curator.
+          // A rejected first review gets a request in the approver's name to approve, or it would keep reading
+          // as rejected.
           if (latest?.status !== 'pending') {
             const opened = await pushCollectionCuration(address, collection.id, address.toLowerCase())
             // A failed approval below must find this one on retry, not open another (builder-server answers 400).
@@ -257,6 +260,11 @@ export function useApprovalFlow(
     const token = ++run.current
     setView({ kind: 'loading' })
     track('Approval flow started', { collectionId: collection.id, mode })
+    if (mode === 'enable') {
+      const steps: ApprovalStep[] = ['approve']
+      setPlan({ steps, rescue: [], deploy: [] })
+      return goTo(token, steps, null)
+    }
     try {
       const fetched = await fetchItems()
       // Before the token-id backfill, which saves the items again.

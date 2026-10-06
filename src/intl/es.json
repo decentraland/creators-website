@@ -1361,7 +1361,9 @@
       "title_approve": "¡Colección aprobada!",
       "title_deploy_missing": "¡Ítems subidos!",
       "body_approve": "{collection} está aprobada. ¡Gracias por revisarla!",
-      "body_deploy_missing": "Todos los ítems de {collection} están subidos."
+      "body_deploy_missing": "Todos los ítems de {collection} están subidos.",
+      "title_enable": "¡Colección habilitada!",
+      "body_enable": "{collection} vuelve a estar disponible con su última versión aprobada."
     },
     "error": {
       "title_approve": "No pudimos aprobar la colección",
@@ -1373,7 +1375,8 @@
       "details": "Detalles del error",
       "copy": "Copiar",
       "copied": "Copiado",
-      "retry": "Reintentar"
+      "retry": "Reintentar",
+      "title_enable": "No pudimos habilitar la colección"
     },
     "changed": {
       "title": "Algunos ítems cambiaron",

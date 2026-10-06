@@ -1361,7 +1361,9 @@
       "title_approve": "Collection approved!",
       "title_deploy_missing": "Items uploaded!",
       "body_approve": "{collection} is approved. Thanks for reviewing it!",
-      "body_deploy_missing": "Every item of {collection} is uploaded."
+      "body_deploy_missing": "Every item of {collection} is uploaded.",
+      "title_enable": "Collection enabled!",
+      "body_enable": "{collection} is live again with its last approved version."
     },
     "error": {
       "title_approve": "We couldn't approve the collection",
@@ -1373,7 +1375,8 @@
       "details": "Error details",
       "copy": "Copy",
       "copied": "Copied",
-      "retry": "Try again"
+      "retry": "Try again",
+      "title_enable": "We couldn't enable the collection"
     },
     "changed": {
       "title": "Some items changed",
