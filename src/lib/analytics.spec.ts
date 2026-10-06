@@ -14,6 +14,9 @@ vi.mock('~/config', () => ({
   APP_VERSION: '1.2.3'
 }))
 
+const reported = vi.hoisted(() => vi.fn())
+vi.mock('~/lib/monitoring', () => ({ captureError: reported }))
+
 const posted = vi.hoisted(() => vi.fn())
 vi.mock('~/lib/segmentHttp', () => ({ postToSegment: posted }))
 
@@ -50,6 +53,7 @@ beforeEach(() => {
   localStorage.clear()
   document.cookie = 'ajs_anonymous_id=; path=/; max-age=0'
   posted.mockClear()
+  reported.mockClear()
 })
 
 afterEach(() => vi.restoreAllMocks())
@@ -325,3 +329,44 @@ describe('errorCode', () => {
     expect(errorCode(new Error('something exploded'))).toBe('unknown')
   })
 })
+
+describe.each(['next-0.99.0', 'next-1.83.9', 'next-1.84.2'])(
+  'when the CDN loads an SDK without cookie reconciliation: %s',
+  version => {
+    beforeEach(() => {
+      ;(window as unknown as { analytics: unknown }).analytics = {
+        ...segmentStub(),
+        initialize: true,
+        VERSION: version
+      }
+    })
+    it('should report the incompatible version once when ready without blocking the page', async () => {
+      const { initAnalytics } = await loadAnalytics()
+      initAnalytics()
+      initAnalytics()
+      expect(reported).toHaveBeenCalledTimes(1)
+      expect(reported).toHaveBeenCalledWith(expect.any(Error), {
+        flow: 'analytics_identity',
+        analytics_sdk_version: version
+      })
+    })
+  }
+)
+
+describe.each(['next-1.84.3', 'next-1.85.0', 'next-2.0.0', 'unrecognized', undefined])(
+  'when the CDN SDK version is supported or unavailable: %s',
+  version => {
+    beforeEach(() => {
+      ;(window as unknown as { analytics: unknown }).analytics = {
+        ...segmentStub(),
+        initialize: true,
+        VERSION: version
+      }
+    })
+    it('should continue loading without reporting an old SDK', async () => {
+      const { initAnalytics } = await loadAnalytics()
+      initAnalytics()
+      expect(reported).not.toHaveBeenCalled()
+    })
+  }
+)
