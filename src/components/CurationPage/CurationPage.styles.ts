@@ -35,8 +35,9 @@ export const FilterRow = styled.div`
   justify-content: space-between;
   gap: 12px;
 
+  /* No wrap once stacked: a wrapping column sizes its line to the widest child, so nothing would shrink. */
   ${card} {
-    flex-direction: column;
+    flex-flow: column nowrap;
     align-items: stretch;
   }
 `
