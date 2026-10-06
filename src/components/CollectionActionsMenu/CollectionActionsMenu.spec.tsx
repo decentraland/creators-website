@@ -88,6 +88,7 @@ describe('CollectionActionsMenu', () => {
     expect(screen.getByTestId('delete-collection')).toBeInTheDocument()
     expect(screen.queryByTestId('copy-urn')).not.toBeInTheDocument()
     expect(screen.queryByTestId('manage-senders')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('transfer-ownership')).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByTestId('delete-collection'))
     expect(screen.getByTestId('delete-collection-modal-description')).toHaveTextContent('Pirate Hats')
@@ -154,12 +155,36 @@ describe('CollectionActionsMenu', () => {
     expect(onManageRoles).toHaveBeenCalledWith('senders')
   })
 
+  it('offers the owner of an on-chain collection to transfer it, as the last, destructive entry', async () => {
+    const onTransferOwnership = vi.fn()
+    renderMenu({ ...draft, isPublished: true }, OWNER, { onManageRoles: vi.fn(), onTransferOwnership })
+    const menu = await openMenu()
+    const items = Array.from(menu.querySelectorAll('[role="menuitem"]'))
+    const transfer = screen.getByTestId('transfer-ownership')
+    expect(items[items.length - 1]).toBe(transfer)
+    expect(transfer).toHaveAttribute('data-tone', 'danger')
+    await userEvent.click(transfer)
+    expect(onTransferOwnership).toHaveBeenCalledTimes(1)
+  })
+
+  it('never offers the transfer to a collaborator', async () => {
+    renderMenu({ ...draft, isPublished: true, managers: ['0xdef'] }, '0xdef', { onTransferOwnership: vi.fn() })
+    await openMenu()
+    expect(screen.getByTestId('copy-urn')).toBeInTheDocument()
+    expect(screen.queryByTestId('transfer-ownership')).not.toBeInTheDocument()
+  })
+
   it('hides the role entries when asked, even for the owner', async () => {
-    renderMenu({ ...draft, isPublished: true }, OWNER, { showRoles: false, onManageRoles: vi.fn() })
+    renderMenu({ ...draft, isPublished: true }, OWNER, {
+      showRoles: false,
+      onManageRoles: vi.fn(),
+      onTransferOwnership: vi.fn()
+    })
     await openMenu()
     expect(screen.getByTestId('copy-urn')).toBeInTheDocument()
     expect(screen.queryByTestId('manage-collaborators')).not.toBeInTheDocument()
     expect(screen.queryByTestId('manage-senders')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('transfer-ownership')).not.toBeInTheDocument()
   })
 
   it('closes with Escape', async () => {
