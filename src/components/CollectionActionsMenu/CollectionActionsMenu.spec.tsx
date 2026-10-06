@@ -201,6 +201,13 @@ describe('CollectionActionsMenu', () => {
       await userEvent.click(screen.getByTestId('send-items-action'))
       expect(onSendItems).toHaveBeenCalled()
     })
+
+    it('opens the forum post on a small screen, where the header button is hidden', async () => {
+      renderMenu({ ...draft, isPublished: true }, OWNER, { forumLink: 'https://forum.decentraland.org/t/hats/77' })
+      await openMenu()
+      await userEvent.click(screen.getByTestId('forum-post-action'))
+      expect(openExternal).toHaveBeenCalledWith('https://forum.decentraland.org/t/hats/77')
+    })
   })
 
   it('never shows Preview items on desktop, where the Open Editor button covers it', async () => {

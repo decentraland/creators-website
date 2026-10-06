@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { TranslationProvider } from '~/intl'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
+import { openExternal } from '~/lib/navigation'
 import { type CollectionCuration } from '~/lib/curation'
 import { ItemSyncStatus } from '~/lib/itemSync'
 import { ReviewBar } from './ReviewBar'
@@ -17,6 +18,7 @@ const state = vi.hoisted(() => ({
   reject: vi.fn(),
   disable: vi.fn()
 }))
+vi.mock('~/lib/navigation', () => ({ openExternal: vi.fn() }))
 vi.mock('~/hooks/useCuration', () => ({
   useCollectionCuration: () => ({
     data: state.curation,
@@ -120,6 +122,25 @@ describe('ReviewBar', () => {
     fireEvent.click(screen.getByTestId('assign-continue'))
     fireEvent.click(screen.getByTestId('review-reject-confirm'))
     expect(state.reject).toHaveBeenCalledWith({ collection: base, curation: null }, expect.anything())
+  })
+
+  it('points the curator to the forum post to explain a rejection', () => {
+    state.reject.mockImplementation((_vars: unknown, options: { onSuccess: () => void }) => options.onSuccess())
+    renderBar({ ...base, forumLink: 'https://forum.decentraland.org/t/hats/77' })
+    fireEvent.click(screen.getByTestId('review-action-reject'))
+    fireEvent.click(screen.getByTestId('assign-continue'))
+    fireEvent.click(screen.getByTestId('review-reject-confirm'))
+    fireEvent.click(screen.getByTestId('review-verdict-forum-link'))
+    expect(openExternal).toHaveBeenCalledWith('https://forum.decentraland.org/t/hats/77')
+  })
+
+  it('just confirms a rejection when the collection has no forum post', () => {
+    state.reject.mockImplementation((_vars: unknown, options: { onSuccess: () => void }) => options.onSuccess())
+    renderBar()
+    fireEvent.click(screen.getByTestId('review-action-reject'))
+    fireEvent.click(screen.getByTestId('assign-continue'))
+    fireEvent.click(screen.getByTestId('review-reject-confirm'))
+    expect(screen.queryByTestId('review-verdict')).not.toBeInTheDocument()
   })
 
   it('disables an approved collection after confirming, and offers the missing entities deploy', () => {

@@ -13,12 +13,13 @@ type Props = {
   session: Session
   collection: Collection
   onClose: () => void
+  onDisabled?: () => void
 }
 
 type Phase = 'confirm' | 'signing' | 'pending'
 
 /** Confirm, then the same wallet prompt and pending screens as the approval flow; success is a toast. */
-export function DisableCollectionFlow({ session, collection, onClose }: Props) {
+export function DisableCollectionFlow({ session, collection, onClose, onDisabled }: Props) {
   const { t } = useTranslation()
   const showToast = useNotifications(state => state.showToast)
   const disable = useDisableCollection(session)
@@ -37,6 +38,7 @@ export function DisableCollectionFlow({ session, collection, onClose }: Props) {
         onSuccess: () => {
           showToast(t('item_editor.review.disable.success', { collection: collection.name }))
           onClose()
+          onDisabled?.()
         },
         onError: error => {
           setPhase('confirm')

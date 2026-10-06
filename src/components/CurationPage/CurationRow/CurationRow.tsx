@@ -5,6 +5,7 @@ import { CollectionMosaic } from '~/components/CollectionMosaic'
 import { CurationStatePill } from '~/components/CurationStatePill'
 import { ProfileBadge } from '~/components/ProfileBadge'
 import { type Collection } from '~/lib/collections'
+import { openForumPost } from '~/lib/forumPost'
 import { canEditAssignee, getCurationState, type CollectionCuration } from '~/lib/curation'
 import { formatTimeAgo } from '~/lib/time'
 import * as S from './CurationRow.styles'
@@ -51,6 +52,20 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
       <S.Cell data-cell="state">
         <CurationStatePill state={state} />
       </S.Cell>
+      <S.DiscussionCell data-testid="curation-row-discussion">
+        <S.CellLabel data-mobile-only>{t('curation_page.list.discussion')}</S.CellLabel>
+        {collection.forumLink ? (
+          <S.ForumLink
+            type="button"
+            data-testid="curation-row-forum-link"
+            onClick={() => openForumPost(collection, 'curation_list')}
+          >
+            {t('curation_page.list.forum_post')}
+          </S.ForumLink>
+        ) : (
+          <S.Unassigned>{t('curation_page.list.not_posted')}</S.Unassigned>
+        )}
+      </S.DiscussionCell>
       <S.AssigneeCell data-testid="curation-row-assignee" data-unassigned={assignee ? undefined : ''}>
         {assignee ? (
           <>

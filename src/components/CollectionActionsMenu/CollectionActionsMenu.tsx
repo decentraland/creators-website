@@ -8,6 +8,7 @@ import { track } from '~/lib/analytics'
 import { hasBeenApproved, isCollectionLocked, isLinkedCollection, type Collection } from '~/lib/collections'
 import { builderLinkedCollectionUrl } from '~/lib/linkedCollections'
 import { isCollectionOwner, type RoleKind } from '~/lib/collectionRoles'
+import { openForumPost } from '~/lib/forumPost'
 import { openExternal } from '~/lib/navigation'
 import { shopCollectionUrl } from '~/lib/shop'
 import { useNotifications } from '~/lib/notifications'
@@ -27,6 +28,8 @@ type Props = {
   onSendItems?: () => void
   /** Opens the items in the editor; the header button covers this on desktop, so the item shows only when compact. */
   onPreviewItems?: () => void
+  /** The collection's forum post; the header button covers it on desktop, so the item shows only when compact. */
+  forumLink?: string
   /** Opens the collaborators / senders list; without it the owner-only entries are not rendered. */
   onManageRoles?: (kind: RoleKind) => void
   onDeleted?: () => void
@@ -40,6 +43,7 @@ export function CollectionActionsMenu({
   label,
   onSendItems,
   onPreviewItems,
+  forumLink,
   onManageRoles,
   onDeleted
 }: Props) {
@@ -61,6 +65,7 @@ export function CollectionActionsMenu({
   const showSend = compact && !!onSendItems
   // Same for the header's Open Editor button; on mobile the editor is a viewer, hence "Preview".
   const showPreview = compact && !!onPreviewItems
+  const showForum = compact && !!forumLink
 
   // Linked collections are edited in the legacy builder, which is desktop-only: on small screens there is nothing to offer.
   if (isLinkedCollection(collection)) {
@@ -86,7 +91,7 @@ export function CollectionActionsMenu({
     )
   }
 
-  if (!isOnChain && !canDelete && !showSend && !showPreview) return null
+  if (!isOnChain && !canDelete && !showSend && !showPreview && !showForum) return null
 
   async function copy(text: string | undefined, successKey: string) {
     const copied = !!text && (await copyToClipboard(text))
@@ -122,9 +127,18 @@ export function CollectionActionsMenu({
             {t('collection_detail_page.send_items')}
           </ActionsMenuItem>
         )}
+        {showForum && (
+          <ActionsMenuItem
+            testId="forum-post-action"
+            onClick={() => openForumPost({ ...collection, forumLink }, 'detail_menu')}
+          >
+            {t('collection_detail_page.forum_post')}
+            <OpenInNewIcon aria-hidden />
+          </ActionsMenuItem>
+        )}
         {isOnChain && (
           <>
-            {(showSend || showPreview) && <ActionsMenuDivider />}
+            {(showSend || showPreview || showForum) && <ActionsMenuDivider />}
             <ActionsMenuItem
               testId="copy-urn"
               onClick={() => void copy(collection.urn, 'collection_detail_page.actions.copied_urn')}

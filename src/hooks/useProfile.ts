@@ -25,7 +25,7 @@ async function fetchProfile(address: string): Promise<ProfileAvatar | undefined>
   return profile?.avatars?.[0]
 }
 
-const profileQuery = (address: string | undefined) => ({
+export const profileQuery = (address: string | undefined) => ({
   queryKey: ['profile', address],
   enabled: !!address,
   staleTime: 5 * 60_000,

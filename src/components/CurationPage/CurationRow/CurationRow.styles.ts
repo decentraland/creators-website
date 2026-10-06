@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom'
 import { theme } from '~/styles/theme'
 import { curationColumns } from '../CurationPage.styles'
 
-const card = theme.media.maxWidth('lg')
-const table = theme.media.minWidth('lg')
+const card = theme.media.maxWidth('tablet')
+const table = theme.media.minWidth('tablet')
 
 export const Row = styled.article`
   ${curationColumns};
@@ -30,6 +30,7 @@ export const Row = styled.article`
       'thumb name state'
       'thumb owner owner'
       'thumb requested requested'
+      'thumb discussion discussion'
       'assignee assignee assignee';
     gap: 8px 12px;
     padding: 12px;
@@ -118,6 +119,7 @@ export const Cell = styled.div`
     &[data-cell='requested'] {
       grid-area: requested;
       flex-direction: row;
+      align-items: center;
       gap: 6px;
       font-weight: 400;
     }
@@ -128,6 +130,29 @@ export const Cell = styled.div`
       grid-area: state;
       align-self: start;
     }
+  }
+`
+
+/* Sits above the row's stretched link so the forum link stays clickable. */
+export const DiscussionCell = styled.div`
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 14px;
+
+  ${table} {
+    justify-content: center;
+
+    & > [data-mobile-only] {
+      display: none;
+    }
+  }
+
+  ${card} {
+    grid-area: discussion;
   }
 `
 
@@ -203,5 +228,18 @@ export const TextAction = styled.button`
   ${table} {
     /* Flush with the column's right edge despite the button's own padding. */
     margin-right: -8px;
+  }
+`
+
+// Shares TextAction's look; on cards its tap area overhangs the line instead of making the row taller.
+export const ForumLink = styled(TextAction)`
+  ${table} {
+    margin-right: 0;
+  }
+
+  ${card} {
+    min-height: 0;
+    margin: -12px 0;
+    padding: 12px 0;
   }
 `
