@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useRef } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { ErrorBoundary } from '~/components/ErrorBoundary'
 import { Footer } from '~/components/Footer'
@@ -63,11 +63,15 @@ const App = () => {
     window.scrollTo({ top: 0 })
   }, [location.pathname])
 
-  // A view counts once the gate has answered, and a curtained visitor only ever views the overview (the
-  // not-found page they get elsewhere tracks itself).
+  // A view counts once the gate has answered, once per pathname (the gate re-deciding on the same page, as on
+  // sign-out, is not a new view), and a curtained visitor only ever views the overview: the not-found page they
+  // get elsewhere tracks itself.
+  const trackedPathname = useRef<string>()
   useEffect(() => {
     if (prelaunch === 'pending') return
-    if (prelaunch === 'hidden' && path && path !== '/overview') return
+    if (prelaunch === 'hidden' && path) return
+    if (trackedPathname.current === location.pathname) return
+    trackedPathname.current = location.pathname
     trackPageView(location.pathname)
   }, [location.pathname, path, prelaunch])
 

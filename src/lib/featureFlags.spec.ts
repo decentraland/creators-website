@@ -74,6 +74,21 @@ describe('getAddressListVariant', () => {
     expect(fetchMock.mock.calls[0][0]).toBe('https://feature-flags.decentraland.zone/builder.json')
   })
 
+  it('accepts one address per line, with or without commas', async () => {
+    fetchMock.mockResolvedValue(
+      flags(
+        variant(
+          '0x0000000000000000000000000000000000000001\r\n0x0000000000000000000000000000000000000002\n  0x0000000000000000000000000000000000000003  '
+        )
+      )
+    )
+    await expect(getAddressListVariant(FeatureFlag.CREATORS_PRELAUNCH)).resolves.toEqual([
+      '0x0000000000000000000000000000000000000001',
+      '0x0000000000000000000000000000000000000002',
+      '0x0000000000000000000000000000000000000003'
+    ])
+  })
+
   it('drops anything that is not an address rather than trusting it', async () => {
     fetchMock.mockResolvedValue(flags(variant('0x1234, not-an-address, 0x0000000000000000000000000000000000000003')))
     await expect(getAddressListVariant(FeatureFlag.CREATORS_PRELAUNCH)).resolves.toEqual([

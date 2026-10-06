@@ -143,13 +143,14 @@ function devVariantOverrideFor(flag: FeatureFlag): string | undefined {
   return undefined
 }
 
+// Any mix of commas, semicolons and whitespace separates addresses: a dashboard payload is as often
+// one address per line as a comma list.
 function parseAddressList(value: string): string[] {
   return Array.from(
     new Set(
       value
-        .replace(/\n/g, '')
-        .split(',')
-        .map(address => address.toLowerCase().trim())
+        .split(/[\s,;]+/)
+        .map(address => address.toLowerCase())
         .filter(address => /^0x[0-9a-f]{40}$/.test(address))
     )
   )
