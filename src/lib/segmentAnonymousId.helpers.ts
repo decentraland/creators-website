@@ -22,8 +22,11 @@ function safeParseStoredId(value: string): string | undefined {
 
 function readCookie(key: string): string | undefined {
   try {
+    // Decode valid percent runs like js-cookie; stray percent signs stay literal.
     const entry = document.cookie.split('; ').find(cookie => cookie.startsWith(`${key}=`))
-    return entry ? safeParseStoredId(decodeURIComponent(entry.slice(key.length + 1))) : undefined
+    return entry
+      ? safeParseStoredId(entry.slice(key.length + 1).replace(/(%[\dA-F]{2})+/gi, decodeURIComponent))
+      : undefined
   } catch {
     return undefined
   }

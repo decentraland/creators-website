@@ -141,12 +141,23 @@ describe('when resolving the browser anonymous identity', () => {
     it('should decode and reuse the existing id', () => expect(resolver.ensure()).toBe(COOKIE_ID))
   })
 
-  describe('and a malformed cookie cannot be decoded', () => {
+  describe.each([
+    ['%ZZ', '%ZZ'],
+    ['%41%ZZ', 'A%ZZ']
+  ])('and cookie percent escapes are only partly valid: %s', (raw, expected) => {
     beforeEach(() => {
-      document.cookie = 'ajs_anonymous_id=%ZZ; path=/'
+      document.cookie = `ajs_anonymous_id=${raw}; path=/`
       localStorage.setItem('ajs_anonymous_id', JSON.stringify(LOCAL_ID))
     })
-    it('should fall back to localStorage', () => expect(resolver.ensure()).toBe(LOCAL_ID))
+    it('should match js-cookie decoding and keep the cookie identity', () => expect(resolver.ensure()).toBe(expected))
+  })
+
+  describe('and a cookie has invalid UTF-8 escapes', () => {
+    beforeEach(() => {
+      document.cookie = 'ajs_anonymous_id=%FF; path=/'
+      localStorage.setItem('ajs_anonymous_id', JSON.stringify(LOCAL_ID))
+    })
+    it('should ignore the unreadable cookie like js-cookie', () => expect(resolver.ensure()).toBe(LOCAL_ID))
   })
 
   describe('and cookie access throws', () => {
