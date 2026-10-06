@@ -4,6 +4,9 @@
     "description": "This page couldn't load. It may be a connection hiccup or a new version of the app.",
     "retry": "Reload"
   },
+  "thumbnail_mosaic": {
+    "no_items": "No items"
+  },
   "collections_page": {
     "title": "My collections",
     "search_placeholder": "Search Collection",

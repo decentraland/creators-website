@@ -1,4 +1,6 @@
+import { SparklesIcon } from '~/components/Icons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
+import { useTranslation } from '~/intl'
 import * as S from './ThumbnailMosaic.styles'
 
 export type MosaicThumbnail = {
@@ -10,29 +12,34 @@ type Props = {
   /** Up to four thumbnails; extra entries are ignored. */
   thumbnails: MosaicThumbnail[]
   loading?: boolean
-  /** Nothing to show yet (an empty collection): a neutral wash instead of the bare media field. */
+  /** Nothing to show yet (an empty collection): a neutral wash with a "No items" label instead of the bare media field. */
   empty?: boolean
+  /** False for covers too small to fit the "No items" label next to the glyph. */
+  showEmptyLabel?: boolean
   className?: string
   testId?: string
 }
 
-/** 2x2 thumbnail grid: fewer than 4 images stretch to fill; `empty` paints a gray wash, otherwise zero images leave the bare media field. */
+/** 2x2 thumbnail grid: fewer than 4 images stretch to fill; `empty` shows a "No items" state, otherwise zero images leave the bare media field. */
 export function ThumbnailMosaic({
   thumbnails,
   loading = false,
   empty = false,
+  showEmptyLabel = true,
   className,
   testId = 'thumbnail-mosaic'
 }: Props) {
+  const { t } = useTranslation()
   const urls = thumbnails.slice(0, 4)
+  const isEmpty = empty && !loading
   return (
-    <S.Mosaic
-      className={className}
-      data-testid={testId}
-      data-count={urls.length}
-      data-empty={(empty && !loading) || undefined}
-    >
-      {loading ? (
+    <S.Mosaic className={className} data-testid={testId} data-count={urls.length} data-empty={isEmpty || undefined}>
+      {isEmpty ? (
+        <S.Empty data-testid={`${testId}-empty`}>
+          <SparklesIcon />
+          {showEmptyLabel && t('thumbnail_mosaic.no_items')}
+        </S.Empty>
+      ) : loading ? (
         <S.Loading className="skeleton" data-testid={`${testId}-loading`} aria-hidden />
       ) : (
         urls.map(({ url, rarity }, index) => (

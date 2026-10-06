@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { config } from '~/config'
 import { getAnonymousId, onAnalyticsReady } from '~/lib/analytics'
 import { useWallet } from '~/store/wallet'
@@ -7,6 +8,11 @@ type IntercomFn = (command: string, payload?: Record<string, unknown>) => void
 type IntercomWindow = Window & { Intercom?: IntercomFn }
 
 const WIDGET_URL = 'https://widget.intercom.io/widget'
+const DEFAULT_VERTICAL_PADDING = 20
+// Lifts the launcher above the bottom controls of full-height pages: the item editor's Revert/Save footer
+// and the preview's playback bar / validation badge row.
+const RAISED_VERTICAL_PADDING = 84
+const RAISED_PATHS = ['/collections/editor', '/live-preview']
 
 function intercom(): IntercomFn | undefined {
   return typeof window === 'undefined' ? undefined : (window as IntercomWindow).Intercom
@@ -44,6 +50,8 @@ export const Intercom = () => {
   const address = session?.address
   const providerType = session?.providerType
   const [anonymousId, setAnonymousId] = useState<string>()
+  const { pathname } = useLocation()
+  const isRaised = RAISED_PATHS.some(path => pathname.startsWith(path))
 
   useEffect(() => {
     // The id only exists once analytics.js has loaded; it never changes afterwards.
@@ -51,12 +59,14 @@ export const Intercom = () => {
   }, [])
 
   const data = useMemo(() => {
-    const attributes: Record<string, unknown> = {}
+    const attributes: Record<string, unknown> = {
+      vertical_padding: isRaised ? RAISED_VERTICAL_PADDING : DEFAULT_VERTICAL_PADDING
+    }
     if (address) attributes['Wallet'] = address.toLowerCase()
     if (providerType) attributes['Wallet type'] = providerType
     if (anonymousId) attributes['anon_id'] = anonymousId
     return attributes
-  }, [address, providerType, anonymousId])
+  }, [address, providerType, anonymousId, isRaised])
 
   useEffect(() => {
     if (!appId) return

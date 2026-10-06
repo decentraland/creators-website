@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render as rtlRender, screen } from '@testing-library/react'
+import type { ReactElement, ReactNode } from 'react'
+import { TranslationProvider } from '~/intl'
 import { ThumbnailMosaic } from './ThumbnailMosaic'
+
+const wrapper = ({ children }: { children: ReactNode }) => <TranslationProvider>{children}</TranslationProvider>
+const render = (ui: ReactElement) => rtlRender(ui, { wrapper })
 
 describe('ThumbnailMosaic', () => {
   it('renders one cell per thumbnail, capped at four, and exposes the count for the layout', () => {
@@ -16,15 +21,24 @@ describe('ThumbnailMosaic', () => {
     expect(plain.style.backgroundImage).toBe('')
   })
 
-  it('marks an empty mosaic so it gets the neutral wash, but not one that is still loading or just has no thumbnails', () => {
+  it('labels an empty collection, but not one that is still loading or just has no thumbnails', () => {
     const { rerender } = render(<ThumbnailMosaic thumbnails={[]} empty />)
     expect(screen.getByTestId('thumbnail-mosaic')).toHaveAttribute('data-empty')
+    expect(screen.getByTestId('thumbnail-mosaic-empty')).toHaveTextContent('No items')
 
     rerender(<ThumbnailMosaic thumbnails={[]} empty loading />)
     expect(screen.getByTestId('thumbnail-mosaic')).not.toHaveAttribute('data-empty')
+    expect(screen.queryByTestId('thumbnail-mosaic-empty')).not.toBeInTheDocument()
 
     rerender(<ThumbnailMosaic thumbnails={[]} />)
     expect(screen.getByTestId('thumbnail-mosaic')).not.toHaveAttribute('data-empty')
+    expect(screen.queryByTestId('thumbnail-mosaic-empty')).not.toBeInTheDocument()
+  })
+
+  it('keeps the empty glyph but drops the label where the cover is too small for it', () => {
+    render(<ThumbnailMosaic thumbnails={[]} empty showEmptyLabel={false} />)
+    expect(screen.getByTestId('thumbnail-mosaic-empty')).toBeInTheDocument()
+    expect(screen.getByTestId('thumbnail-mosaic-empty')).not.toHaveTextContent('No items')
   })
 
   it('shows a skeleton instead of cells while loading', () => {
