@@ -1382,7 +1382,8 @@
       "title": "Some items changed",
       "description": "The creator saved changes to some items after you opened this collection. Review the latest version before approving it.",
       "confirm": "Review changes"
-    }
+    },
+    "enable_body": "Enable the collection so its items can be minted again, as last approved. Changes the creator hasn't sent for review stay out. Please confirm in your wallet."
   },
   "item_validation": {
     "checking": "Checking your items…",

@@ -1382,7 +1382,8 @@
       "title": "Algunos ítems cambiaron",
       "description": "El creador guardó cambios en algunos ítems después de que abriste esta colección. Revisa la última versión antes de aprobarla.",
       "confirm": "Revisar cambios"
-    }
+    },
+    "enable_body": "Habilita la colección para que sus ítems se puedan mintear de nuevo, tal como se aprobaron por última vez. Los cambios que el creador no envió a revisión quedan afuera. Confirma en tu wallet."
   },
   "item_validation": {
     "checking": "Revisando tus ítems…",

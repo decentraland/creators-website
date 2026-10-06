@@ -181,7 +181,9 @@ export function ApprovalFlowModal({ session, collection, curation, mode, items, 
         )}
         <S.Step data-testid={`approval-step-${step}`}>
           {!single && <S.Heading>{t(`approval_flow.${step}.title`)}</S.Heading>}
-          <S.Text>{t(`approval_flow.${step}.body`, { count })}</S.Text>
+          <S.Text>
+            {t(mode === 'enable' ? 'approval_flow.enable_body' : `approval_flow.${step}.body`, { count })}
+          </S.Text>
           <StepTable step={step} plan={plan} collection={collection} />
           <S.Footer>
             <Button type="button" variant="secondary" disabled={busy} onClick={onClose}>
