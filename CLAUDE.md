@@ -91,7 +91,7 @@ Prefer friendly copy and hide blockchain plumbing where possible. Wallet/MANA/tr
 
 ### Feature flags
 
-Decentraland's flag service is read through `lib/featureFlags` (one `FeatureFlag` enum entry plus its owning application, `builder` or `dapps`) and consumed with `useFeatureFlag(flag)` → `{ enabled, isLoading }`. Reads fail closed: a flag still loading, absent, or unreachable is off. Add a flag by adding the enum entry and its `APPLICATION` row — never by fetching the service anywhere else. Locally, override with `VITE_FEATURE_FLAG_OVERRIDES=unity-wearable-preview:true`. In specs, mock `~/lib/featureFlags` onto `~/test/featureFlags` and declare the flags the subject runs with via `setFeatureFlags(...)`.
+Decentraland's flag service is read through `lib/featureFlags` (one `FeatureFlag` enum entry plus its owning application, `builder` or `dapps`) and consumed with `useFeatureFlag(flag)` → `{ enabled, isLoading }`. Reads fail closed: a flag still loading, absent, or unreachable is off. Add a flag by adding the enum entry and its `APPLICATION` row — never by fetching the service anywhere else. A flag's address-list variant (the pre-launch gate's allowlist) is read with `getAddressListVariant(flag)`, which reads `[]` for "no list". Locally, override with `VITE_FEATURE_FLAG_OVERRIDES=unity-wearable-preview:true` and `VITE_FEATURE_FLAG_VARIANT_OVERRIDES=creators-prelaunch:0x…,0x…`. In specs, mock `~/lib/featureFlags` onto `~/test/featureFlags` and declare the flags the subject runs with via `setFeatureFlags(...)` / `setAddressListVariant(...)`.
 
 ### Testing
 

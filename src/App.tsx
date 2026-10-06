@@ -11,6 +11,7 @@ import { TranslationProvider } from '~/intl'
 import { FeatureFlag } from '~/lib/featureFlags'
 import { trackPageView } from '~/lib/pageViews'
 import { useAccountWatcher } from '~/hooks/useAccountWatcher'
+import { useCreatorsPrelaunch } from '~/hooks/useCreatorsPrelaunch'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useWallet } from '~/store/wallet'
 
@@ -39,10 +40,15 @@ const App = () => {
   const location = useLocation()
   const maintenance = useFeatureFlag(FeatureFlag.MAINTENANCE)
   const livePreview = useFeatureFlag(FeatureFlag.BLENDER_LIVE_PREVIEW)
+  // Behind the pre-launch gate only the overview exists; see `useCreatorsPrelaunch`.
+  const prelaunch = useCreatorsPrelaunch()
   const path = location.pathname.replace(/\/+$/, '')
   // With its flag off the live preview route is a not-found page, which keeps the shell.
   const isFullscreen =
-    !maintenance.enabled && FULLSCREEN_PATHS.includes(path) && (path !== '/live-preview' || livePreview.enabled)
+    prelaunch === 'open' &&
+    !maintenance.enabled &&
+    FULLSCREEN_PATHS.includes(path) &&
+    (path !== '/live-preview' || livePreview.enabled)
 
   // Auth bootstrap lives at the app root so the silent session restore (and the return from /auth)
   // doesn't depend on any layout component staying mounted.
@@ -55,8 +61,15 @@ const App = () => {
   // Pagination and in-page filters update the query string only; a new pathname is a new page.
   useEffect(() => {
     window.scrollTo({ top: 0 })
-    trackPageView(location.pathname)
   }, [location.pathname])
+
+  // A view counts once the gate has answered, and a curtained visitor only ever views the overview (the
+  // not-found page they get elsewhere tracks itself).
+  useEffect(() => {
+    if (prelaunch === 'pending') return
+    if (prelaunch === 'hidden' && path && path !== '/overview') return
+    trackPageView(location.pathname)
+  }, [location.pathname, path, prelaunch])
 
   useEffect(() => {
     if (isFullscreen) document.body.dataset.fullscreen = ''
@@ -75,9 +88,18 @@ const App = () => {
     }
   }, [path])
 
+  // Behind the gate there is no sub-nav, so everything sized against it (hero, violet strip) collapses the gap.
+  useEffect(() => {
+    if (prelaunch === 'open') delete document.body.dataset.noSubnav
+    else document.body.dataset.noSubnav = ''
+    return () => {
+      delete document.body.dataset.noSubnav
+    }
+  }, [prelaunch])
+
   return (
     <TranslationProvider>
-      {!isFullscreen && <NavBar />}
+      {!isFullscreen && <NavBar subnav={prelaunch === 'open'} />}
       {/* The route is exposed so a page can opt out of shell-level CSS by path if it ever needs to. */}
       <main className="page" data-route={location.pathname} data-fullscreen={isFullscreen || undefined}>
         <ErrorBoundary>
@@ -88,23 +110,29 @@ const App = () => {
               <Routes>
                 <Route path="/" element={<OverviewPage />} />
                 <Route path="/overview" element={<Navigate to="/" replace />} />
-                <Route path="/collections" element={<CollectionsPage />} />
-                <Route path="/collections/editor" element={<ItemEditorPage />} />
-                <Route path="/collections/:collectionId" element={<CollectionDetailPage />} />
-                <Route path="/curation" element={<CurationPage />} />
-                <Route
-                  path="/live-preview"
-                  element={
-                    livePreview.enabled ? (
-                      <LivePreviewPage />
-                    ) : livePreview.isLoading ? (
-                      <PageFallback />
-                    ) : (
-                      <NotFoundPage />
-                    )
-                  }
-                />
-                <Route path="*" element={<NotFoundPage />} />
+                {prelaunch === 'open' ? (
+                  <>
+                    <Route path="/collections" element={<CollectionsPage />} />
+                    <Route path="/collections/editor" element={<ItemEditorPage />} />
+                    <Route path="/collections/:collectionId" element={<CollectionDetailPage />} />
+                    <Route path="/curation" element={<CurationPage />} />
+                    <Route
+                      path="/live-preview"
+                      element={
+                        livePreview.enabled ? (
+                          <LivePreviewPage />
+                        ) : livePreview.isLoading ? (
+                          <PageFallback />
+                        ) : (
+                          <NotFoundPage />
+                        )
+                      }
+                    />
+                    <Route path="*" element={<NotFoundPage />} />
+                  </>
+                ) : (
+                  <Route path="*" element={prelaunch === 'pending' ? <PageFallback /> : <NotFoundPage />} />
+                )}
               </Routes>
             </Suspense>
           )}

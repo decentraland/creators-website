@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { FeatureFlag, getIsFeatureEnabled, resetFeatureFlagsCache } from './featureFlags'
+import { FeatureFlag, getAddressListVariant, getIsFeatureEnabled, resetFeatureFlagsCache } from './featureFlags'
 
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
@@ -51,5 +51,44 @@ describe('getIsFeatureEnabled', () => {
     ])
     await getIsFeatureEnabled(FeatureFlag.UNITY_WEARABLE_PREVIEW)
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('getAddressListVariant', () => {
+  const variant = (value: string, enabled = true) => ({
+    variants: { 'builder-creators-prelaunch': { enabled, payload: { type: 'string', value } } }
+  })
+
+  it('reads the variant payload as a lowercased, de-duplicated address list', async () => {
+    fetchMock.mockResolvedValue(
+      flags(
+        variant(
+          '0xAbCdEf0123456789abcdef0123456789ABCDEF01, 0xabcdef0123456789abcdef0123456789abcdef01,\n0x0000000000000000000000000000000000000002'
+        )
+      )
+    )
+    await expect(getAddressListVariant(FeatureFlag.CREATORS_PRELAUNCH)).resolves.toEqual([
+      '0xabcdef0123456789abcdef0123456789abcdef01',
+      '0x0000000000000000000000000000000000000002'
+    ])
+    expect(fetchMock.mock.calls[0][0]).toBe('https://feature-flags.decentraland.zone/builder.json')
+  })
+
+  it('drops anything that is not an address rather than trusting it', async () => {
+    fetchMock.mockResolvedValue(flags(variant('0x1234, not-an-address, 0x0000000000000000000000000000000000000003')))
+    await expect(getAddressListVariant(FeatureFlag.CREATORS_PRELAUNCH)).resolves.toEqual([
+      '0x0000000000000000000000000000000000000003'
+    ])
+  })
+
+  it('reads no list for an absent variant, a disabled one or a failing service', async () => {
+    fetchMock.mockResolvedValueOnce(flags({ flags: { 'builder-creators-prelaunch': true } }))
+    await expect(getAddressListVariant(FeatureFlag.CREATORS_PRELAUNCH)).resolves.toEqual([])
+    resetFeatureFlagsCache()
+    fetchMock.mockResolvedValueOnce(flags(variant('0x0000000000000000000000000000000000000003', false)))
+    await expect(getAddressListVariant(FeatureFlag.CREATORS_PRELAUNCH)).resolves.toEqual([])
+    resetFeatureFlagsCache()
+    fetchMock.mockRejectedValueOnce(new Error('offline'))
+    await expect(getAddressListVariant(FeatureFlag.CREATORS_PRELAUNCH)).resolves.toEqual([])
   })
 })
