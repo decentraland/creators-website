@@ -9,6 +9,7 @@
 // Nothing here is user-facing, so the copy/i18n rules don't apply. Never emit PII or secrets; wallet
 // addresses are pseudonymous public ids and are allowed.
 import { isbot } from 'isbot'
+import { createAnonymousIdResolver } from './segmentAnonymousId.helpers'
 import { APP_VERSION, config, currentSearch } from '~/config'
 import { currentAddress } from '~/lib/currentAddress'
 import { postToSegment, type SegmentCall } from '~/lib/segmentHttp'
@@ -114,7 +115,6 @@ export function getAnonymousId(): string | undefined {
   return typeof user?.anonymousId === 'function' ? user.anonymousId() : undefined
 }
 
-const ANONYMOUS_ID_KEY = 'ajs_anonymous_id'
 const USER_ID_KEY = 'ajs_user_id'
 
 // analytics.js stores its ids JSON-encoded; a bare string is tolerated.
@@ -133,21 +133,10 @@ function readStoredId(key: string): string | undefined {
   }
 }
 
-/**
- * The visitor's Segment anonymous id for calls sent outside analytics.js, so they join the same visitor.
- * Before analytics.js has booted one is minted and stored the way analytics.js stores it, so it adopts it.
- */
-export function ensureAnonymousId(): string {
-  const existing = getAnonymousId() ?? readStoredId(ANONYMOUS_ID_KEY)
-  if (existing) return existing
-  const id = crypto.randomUUID()
-  try {
-    localStorage.setItem(ANONYMOUS_ID_KEY, JSON.stringify(id))
-  } catch {
-    // Storage blocked: the id still labels this call.
-  }
-  return id
-}
+const anonymousIdResolver = createAnonymousIdResolver(getAnonymousId)
+
+/** Uses the same browser identity for direct beacons and the loaded SDK. */
+export const ensureAnonymousId = anonymousIdResolver.ensure
 
 /**
  * Sends one call to the Segment source of `writeKey` over the HTTP API, with this app's common props and

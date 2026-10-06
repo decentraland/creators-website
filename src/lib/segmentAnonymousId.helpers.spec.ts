@@ -1,0 +1,171 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+// @vitest-environment-options {"url":"https://letsplay.decentraland.org/"}
+import { createAnonymousIdResolver, generateUuid, safeParseStoredId } from './segmentAnonymousId.helpers'
+
+const COOKIE_ID = '11111111-1111-4111-8111-111111111111'
+const LOCAL_ID = '22222222-2222-4222-8222-222222222222'
+
+describe('when resolving the browser anonymous identity', () => {
+  let originalRandomUUID: Crypto['randomUUID']
+  let resolver: ReturnType<typeof createAnonymousIdResolver>
+  let getSdkId: ReturnType<typeof vi.fn<() => string | undefined>>
+
+  beforeEach(() => {
+    originalRandomUUID = crypto.randomUUID
+    getSdkId = vi.fn(() => undefined)
+    resolver = createAnonymousIdResolver(getSdkId)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    Object.defineProperty(crypto, 'randomUUID', { value: originalRandomUUID, configurable: true })
+    localStorage.clear()
+    document.cookie = 'ajs_anonymous_id=; path=/; max-age=0'
+    document.cookie = 'ajs_anonymous_id=; domain=.decentraland.org; path=/; max-age=0'
+  })
+
+  describe('and only a parent cookie exists', () => {
+    beforeEach(() => {
+      document.cookie = `ajs_anonymous_id=${COOKIE_ID}; domain=.decentraland.org; path=/`
+    })
+
+    it('should reuse it before Segment boots and synchronize localStorage', () => {
+      expect(resolver.ensure()).toBe(COOKIE_ID)
+      expect(localStorage.getItem('ajs_anonymous_id')).toBe(JSON.stringify(COOKIE_ID))
+    })
+
+    describe('and localStorage disagrees', () => {
+      beforeEach(() => localStorage.setItem('ajs_anonymous_id', JSON.stringify(LOCAL_ID)))
+
+      it('should use the cookie for both read-only attribution and beacons', () => {
+        expect(resolver.read()).toBe(COOKIE_ID)
+        expect(resolver.ensure()).toBe(COOKIE_ID)
+        expect(localStorage.getItem('ajs_anonymous_id')).toBe(JSON.stringify(COOKIE_ID))
+      })
+    })
+
+    describe('and localStorage is blocked', () => {
+      beforeEach(() => {
+        vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+          throw new Error('blocked')
+        })
+        vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+          throw new Error('blocked')
+        })
+      })
+
+      it('should still use the cookie for every call', () => {
+        expect([resolver.ensure(), resolver.ensure()]).toEqual([COOKIE_ID, COOKIE_ID])
+      })
+    })
+
+    describe('and the SDK has a newly reset identity', () => {
+      beforeEach(() => {
+        getSdkId.mockReturnValue('custom-sdk-id')
+      })
+
+      it('should honor the loaded SDK and persist its identity in both stores', () => {
+        expect(resolver.ensure()).toBe('custom-sdk-id')
+        expect(document.cookie).toContain('ajs_anonymous_id=custom-sdk-id')
+        expect(localStorage.getItem('ajs_anonymous_id')).toBe('"custom-sdk-id"')
+      })
+    })
+
+    describe('and reading the SDK fails', () => {
+      beforeEach(() => {
+        getSdkId.mockImplementation(() => {
+          throw new Error('not ready')
+        })
+      })
+
+      it('should still resolve the cookie', () => expect(resolver.ensure()).toBe(COOKIE_ID))
+    })
+  })
+
+  describe.each([JSON.stringify(LOCAL_ID), LOCAL_ID, 'custom-storage-id'])('and only localStorage contains %s', raw => {
+    beforeEach(() => localStorage.setItem('ajs_anonymous_id', raw))
+
+    it('should adopt the stored identity and make it available to other subdomains', () => {
+      expect(resolver.ensure()).toBe(safeParseStoredId(raw))
+      expect(document.cookie).toContain(`ajs_anonymous_id=${encodeURIComponent(resolver.ensure())}`)
+    })
+  })
+
+  describe.each(['', '""', 'null', '123', '{}'])('and stores contain an absent or non-string id %s', raw => {
+    beforeEach(() => {
+      localStorage.setItem('ajs_anonymous_id', raw)
+      document.cookie = `ajs_anonymous_id=${encodeURIComponent(raw)}; path=/`
+    })
+
+    it('should not mint during a read-only attribution lookup', () => expect(resolver.read()).toBeUndefined())
+
+    it('should mint a UUID and persist raw cookie and JSON localStorage values', () => {
+      expect(resolver.ensure()).toMatch(/^[0-9a-f-]{36}$/i)
+      expect(localStorage.getItem('ajs_anonymous_id')).toBe(JSON.stringify(resolver.ensure()))
+      expect(document.cookie).toContain(`ajs_anonymous_id=${resolver.ensure()}`)
+    })
+  })
+
+  describe('and the cookie is JSON encoded', () => {
+    beforeEach(() => {
+      document.cookie = `ajs_anonymous_id=${encodeURIComponent(JSON.stringify(COOKIE_ID))}; path=/`
+    })
+    it('should decode and reuse the existing id', () => expect(resolver.ensure()).toBe(COOKIE_ID))
+  })
+
+  describe('and a malformed cookie cannot be decoded', () => {
+    beforeEach(() => {
+      document.cookie = 'ajs_anonymous_id=%ZZ; path=/'
+      localStorage.setItem('ajs_anonymous_id', JSON.stringify(LOCAL_ID))
+    })
+    it('should fall back to localStorage', () => expect(resolver.ensure()).toBe(LOCAL_ID))
+  })
+
+  describe('and cookie access throws', () => {
+    beforeEach(() => {
+      vi.spyOn(document, 'cookie', 'get').mockImplementation(() => {
+        throw new Error('sandboxed')
+      })
+      vi.spyOn(document, 'cookie', 'set').mockImplementation(() => {
+        throw new Error('sandboxed')
+      })
+      localStorage.setItem('ajs_anonymous_id', JSON.stringify(LOCAL_ID))
+    })
+    it('should retain the localStorage identity', () => expect(resolver.ensure()).toBe(LOCAL_ID))
+  })
+
+  describe('and previously persisted identity has been removed from both stores', () => {
+    beforeEach(() => {
+      localStorage.setItem('ajs_anonymous_id', JSON.stringify('removed-custom-id'))
+      resolver.ensure()
+      localStorage.clear()
+      document.cookie = 'ajs_anonymous_id=; domain=.decentraland.org; path=/; max-age=0'
+    })
+    it('should mint a new identity instead of reviving a deleted persisted identity', () => {
+      expect(resolver.ensure()).toMatch(/^[0-9a-f-]{36}$/i)
+    })
+  })
+
+  describe('and neither store is usable', () => {
+    beforeEach(() => {
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('blocked')
+      })
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new Error('blocked')
+      })
+      vi.spyOn(document, 'cookie', 'set').mockImplementation(() => undefined)
+    })
+    it('should keep one anonymous identity for every event in the page', () => {
+      expect(resolver.ensure()).toBe(resolver.ensure())
+    })
+  })
+
+  describe('and crypto.randomUUID is unavailable', () => {
+    beforeEach(() => {
+      Object.defineProperty(crypto, 'randomUUID', { value: undefined, configurable: true })
+    })
+    it('should generate a UUID v4', () =>
+      expect(generateUuid()).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i))
+  })
+})
