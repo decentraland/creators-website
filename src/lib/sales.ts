@@ -153,18 +153,24 @@ export function minExpirationDate(now = Date.now()): Date {
   return new Date(now + ONE_DAY_MS)
 }
 
-// Either generation of the off-chain marketplace as a minter means sales are enabled.
-function getSaleMinterAddresses(chainId: number): string[] {
-  return [
-    getContract(ContractName.OffChainMarketplace, chainId).address,
-    getContract(ContractName.OffChainMarketplaceV2, chainId).address
-  ].map(address => address.toLowerCase())
+/**
+ * Sales are enabled once the marketplace new orders are signed on may mint the collection's items. An
+ * older marketplace as minter is not enough: its orders are no longer accepted, and a newer order it
+ * cannot mint would never settle, so such a collection goes through Enable Sales again.
+ */
+export function isSalesEnabled(collection: Collection, chainId: number): boolean {
+  const minter = getOffchainMarketplaceContract(chainId).address.toLowerCase()
+  return collection.minters.some(address => address.toLowerCase() === minter)
 }
 
-/** Sales are enabled once the off-chain marketplace may mint the collection's items. */
-export function isSalesEnabled(collection: Collection, chainId: number): boolean {
-  const minters = new Set(collection.minters.map(address => address.toLowerCase()))
-  return getSaleMinterAddresses(chainId).some(address => minters.has(address))
+/** An older off-chain marketplace (V1 or V2) may mint the collection: it was already on sale before the upgrade. */
+export function isSellingOnOlderMarketplace(collection: Collection, chainId: number): boolean {
+  const older = new Set(
+    [ContractName.OffChainMarketplace, ContractName.OffChainMarketplaceV2].map(name =>
+      getContract(name, chainId).address.toLowerCase()
+    )
+  )
+  return collection.minters.some(address => older.has(address.toLowerCase()))
 }
 
 /** `setMinters([marketplace], [true])` on the collection contract itself. */

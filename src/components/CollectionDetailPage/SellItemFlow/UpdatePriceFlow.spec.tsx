@@ -26,7 +26,12 @@ type UpdateVariables = {
 type SellVariables = { onSigned?: () => void }
 const update = { mutate: vi.fn<(variables: UpdateVariables, callbacks: Callbacks) => void>(), isPending: false }
 const sell = { mutate: vi.fn<(variables: SellVariables, callbacks: Callbacks) => void>(), isPending: false }
+type EnableVariables = { onSigned?: () => void }
+const enable = { mutate: vi.fn<(variables: EnableVariables, callbacks: Callbacks) => void>(), isPending: false }
+let salesEnabled = true
 vi.mock('~/hooks/useSales', () => ({
+  useSalesEnabled: () => salesEnabled,
+  useEnableSales: () => enable,
   useUpdatePrice: () => update,
   useSellItem: () => sell,
   useManaUsdRate: () => ({ data: undefined })
@@ -60,6 +65,8 @@ async function submitPrice(credits: string) {
 beforeEach(() => {
   update.mutate.mockReset()
   sell.mutate.mockReset()
+  enable.mutate.mockReset()
+  salesEnabled = true
 })
 
 describe('UpdatePriceFlow', () => {
@@ -150,5 +157,131 @@ describe('UpdatePriceFlow', () => {
     expect(screen.getByTestId('update-price-pending-label')).toHaveTextContent(/updating price/i)
     expect(screen.queryByTestId('update-price-pending-cancel')).not.toBeInTheDocument()
     expect(screen.queryByTestId('update-price-signing')).not.toBeInTheDocument()
+  })
+
+  describe('when re-pricing a collection the newest marketplace cannot mint yet', () => {
+    beforeEach(() => {
+      salesEnabled = false
+      renderFlow()
+    })
+
+    it('should explain that the marketplace was upgraded', () => {
+      expect(screen.getByTestId('enable-sales-modal-description')).toHaveTextContent(/marketplace was upgraded/i)
+    })
+  })
+
+  describe('when the newest marketplace cannot mint the collection yet', () => {
+    beforeEach(async () => {
+      salesEnabled = false
+      renderFlow()
+      await userEvent.click(screen.getByTestId('enable-sales-confirm'))
+    })
+
+    it('should ask to enable sales before showing the price form', () => {
+      expect(enable.mutate).toHaveBeenCalledTimes(1)
+    })
+
+    it('should not touch the current listing until sales are enabled', () => {
+      expect([update.mutate.mock.calls.length, screen.queryByTestId('update-price-input')]).toEqual([0, null])
+    })
+
+    describe('and the enable transaction succeeds', () => {
+      beforeEach(() => {
+        act(() => last(enable.mutate)[1].onSuccess?.(collection))
+      })
+
+      it('should show the price form', () => {
+        expect(screen.getByTestId('update-price-input')).toBeInTheDocument()
+      })
+    })
+
+    describe('and the enable transaction fails', () => {
+      beforeEach(async () => {
+        await act(async () => last(enable.mutate)[1].onError?.(new Error('reverted')))
+      })
+
+      it('should report that sales could not be enabled', () => {
+        expect(screen.getByTestId('sale-error-modal-title')).toHaveTextContent(/enable sales/i)
+      })
+
+      describe('and the creator retries', () => {
+        beforeEach(async () => {
+          await userEvent.click(screen.getByTestId('sale-error-retry'))
+        })
+
+        it('should go back to the Enable Sales dialog instead of the price form', () => {
+          expect([screen.getByTestId('enable-sales-modal'), screen.queryByTestId('update-price-input')]).toEqual([
+            expect.anything(),
+            null
+          ])
+        })
+      })
+    })
+
+    describe('and the creator rejects the wallet prompt', () => {
+      beforeEach(async () => {
+        await act(async () => last(enable.mutate)[1].onError?.({ code: 4001, message: 'User rejected' }))
+      })
+
+      it('should go back to the Enable Sales dialog', () => {
+        expect(screen.getByTestId('enable-sales-modal')).toBeInTheDocument()
+      })
+    })
+
+    describe('and the creator backs out of the wallet prompt', () => {
+      beforeEach(async () => {
+        await userEvent.click(screen.getByTestId('enable-sales-pending-cancel'))
+      })
+
+      it('should go back to the Enable Sales dialog', () => {
+        expect(screen.getByTestId('enable-sales-modal')).toBeInTheDocument()
+      })
+
+      describe('and the abandoned transaction goes through later', () => {
+        beforeEach(async () => {
+          await act(async () => last(enable.mutate)[1].onSuccess?.(collection))
+        })
+
+        it('should ignore it and stay on the Enable Sales dialog', () => {
+          expect(screen.getByTestId('enable-sales-modal')).toBeInTheDocument()
+        })
+
+        describe('and the creator enables sales again', () => {
+          beforeEach(async () => {
+            await userEvent.click(screen.getByTestId('enable-sales-confirm'))
+          })
+
+          it('should show the price form without sending a second transaction', () => {
+            expect([enable.mutate.mock.calls.length, screen.queryByTestId('update-price-input')]).toEqual([
+              1,
+              expect.anything()
+            ])
+          })
+        })
+      })
+
+      describe('and the creator enables sales again while that transaction is still unsettled', () => {
+        beforeEach(async () => {
+          await userEvent.click(screen.getByTestId('enable-sales-confirm'))
+        })
+
+        it('should wait for the transaction already sent instead of sending a second one', () => {
+          expect([enable.mutate.mock.calls.length, screen.queryByTestId('enable-sales-pending')]).toEqual([
+            1,
+            expect.anything()
+          ])
+        })
+
+        describe('and that transaction goes through', () => {
+          beforeEach(async () => {
+            await act(async () => last(enable.mutate)[1].onSuccess?.(collection))
+          })
+
+          it('should show the price form', () => {
+            expect(screen.getByTestId('update-price-input')).toBeInTheDocument()
+          })
+        })
+      })
+    })
   })
 })

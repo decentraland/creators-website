@@ -4,6 +4,8 @@ import { setFeatureFlags } from '~/test/featureFlags'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ProviderType } from '@dcl/schemas'
+import { ContractName, getContract } from 'decentraland-transactions'
+import { getMaticChainId } from '~/lib/publishCollection'
 import { SellItemError } from '~/lib/sales'
 import { SellItemFlow } from './SellItemFlow'
 import { Providers, collection, item, makeSession } from './testUtils'
@@ -33,10 +35,10 @@ vi.mock('~/hooks/useSales', () => ({
 }))
 vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })))
 
-function renderFlow(providerType = ProviderType.INJECTED) {
+function renderFlow(providerType = ProviderType.INJECTED, current = collection) {
   const onClose = vi.fn()
   const view = render(
-    <SellItemFlow item={item} collection={collection} session={makeSession(providerType)} onClose={onClose} />,
+    <SellItemFlow item={item} collection={current} session={makeSession(providerType)} onClose={onClose} />,
     { wrapper: Providers }
   )
   return { onClose, view }
@@ -83,6 +85,111 @@ describe('SellItemFlow', () => {
 
     await act(async () => last(enable.mutate)[1].onSuccess?.(collection))
     expect(screen.getByTestId('enable-sales-modal')).toBeInTheDocument()
+  })
+
+  describe('when the creator backs out of the wallet prompt and signs the transaction anyway', () => {
+    beforeEach(async () => {
+      renderFlow()
+      await userEvent.click(screen.getByTestId('enable-sales-confirm'))
+      await userEvent.click(screen.getByTestId('enable-sales-pending-cancel'))
+      await act(async () => last(enable.mutate)[0].onSigned?.())
+    })
+
+    describe('and enables sales again before it is mined', () => {
+      beforeEach(async () => {
+        await userEvent.click(screen.getByTestId('enable-sales-confirm'))
+      })
+
+      it('should show the mining status of the transaction already sent instead of sending a second one', () => {
+        expect([enable.mutate.mock.calls.length, screen.getByTestId('enable-sales-pending-label')]).toEqual([
+          1,
+          expect.objectContaining({ textContent: expect.stringMatching(/enabling sales/i) })
+        ])
+      })
+
+      describe('and it is mined', () => {
+        beforeEach(async () => {
+          await act(async () => last(enable.mutate)[1].onSuccess?.(collection))
+        })
+
+        it('should open the form', () => {
+          expect(screen.getByTestId('sell-item-modal')).toBeInTheDocument()
+        })
+      })
+    })
+
+    describe('and it is mined before the creator enables sales again', () => {
+      beforeEach(async () => {
+        await act(async () => last(enable.mutate)[1].onSuccess?.(collection))
+        await userEvent.click(screen.getByTestId('enable-sales-confirm'))
+      })
+
+      it('should open the form without sending a second transaction', () => {
+        expect([enable.mutate.mock.calls.length, screen.queryByTestId('sell-item-modal')]).toEqual([
+          1,
+          expect.anything()
+        ])
+      })
+    })
+
+    describe('and it fails before the creator enables sales again', () => {
+      beforeEach(async () => {
+        await act(async () => last(enable.mutate)[1].onError?.(new Error('reverted')))
+        await userEvent.click(screen.getByTestId('enable-sales-confirm'))
+      })
+
+      it('should send a new transaction', () => {
+        expect(enable.mutate).toHaveBeenCalledTimes(2)
+      })
+    })
+  })
+
+  describe('when the creator backs out of a wallet prompt that never settles, twice', () => {
+    beforeEach(async () => {
+      renderFlow()
+      await userEvent.click(screen.getByTestId('enable-sales-confirm'))
+      await userEvent.click(screen.getByTestId('enable-sales-pending-cancel'))
+      await userEvent.click(screen.getByTestId('enable-sales-confirm'))
+      await userEvent.click(screen.getByTestId('enable-sales-pending-cancel'))
+      await userEvent.click(screen.getByTestId('enable-sales-confirm'))
+    })
+
+    it('should give up on that prompt and send a new transaction', () => {
+      expect(enable.mutate).toHaveBeenCalledTimes(2)
+    })
+
+    describe('and the abandoned prompt fails after the new one was sent', () => {
+      beforeEach(async () => {
+        await act(async () => enable.mutate.mock.calls[0][1].onError?.(new Error('closed')))
+        await userEvent.click(screen.getByTestId('enable-sales-pending-cancel'))
+        await userEvent.click(screen.getByTestId('enable-sales-confirm'))
+      })
+
+      it('should keep resuming the new transaction instead of sending a third one', () => {
+        expect(enable.mutate).toHaveBeenCalledTimes(2)
+      })
+    })
+  })
+
+  describe('when the collection has never been on sale', () => {
+    beforeEach(() => {
+      renderFlow()
+    })
+
+    it('should explain that its first sale needs sales enabled', () => {
+      expect(screen.getByTestId('enable-sales-modal-description')).toHaveTextContent(/first item/i)
+    })
+  })
+
+  describe('when the collection already sells on an older marketplace', () => {
+    beforeEach(() => {
+      const older = getContract(ContractName.OffChainMarketplaceV2, getMaticChainId()).address
+      renderFlow(ProviderType.INJECTED, { ...collection, minters: [older] })
+    })
+
+    it('should explain that the marketplace was upgraded', () => {
+      expect(screen.getByTestId('enable-sales-modal-description')).toHaveTextContent(/marketplace was upgraded/i)
+    })
   })
 
   it('keeps a social-login creator on the Enable Sales dialog with a spinning button', async () => {

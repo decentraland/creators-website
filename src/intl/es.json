@@ -423,6 +423,7 @@
     "enable_sales": {
       "title": "¿Habilitar ventas para esta colección?",
       "description": "Como es el primer ítem de esta colección que pones en venta, primero tienes que habilitar las ventas. Una vez habilitadas, podrás vender cualquier ítem de esta colección en la Tienda de Decentraland.",
+      "upgrade_description": "El marketplace de Decentraland se actualizó. Habilita las ventas en el nuevo marketplace para seguir vendiendo ítems de esta colección en la Tienda de Decentraland.",
       "confirm": "Habilitar ventas",
       "pending": "Habilitando ventas..."
     },
