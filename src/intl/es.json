@@ -103,6 +103,7 @@
     "rename": "Renombrar colección",
     "add_items": "Agregar ítems",
     "open_editor": "Abrir editor",
+    "forum_post": "Publicación en el foro",
     "publish": "Publicar colección",
     "preview": "Vista previa en Decentraland",
     "more_actions": "Más acciones",
@@ -394,7 +395,7 @@
     },
     "success": {
       "title": "Colección enviada a revisión",
-      "description": "Tu colección está siendo revisada para su aprobación. Te avisaremos cuando la revisión esté completa.",
+      "description": "Tu colección está siendo revisada para su aprobación. El comité de curación compartirá sus comentarios en la publicación de la colección en el foro, donde tú y la comunidad pueden comentar. La encontrarás en la página de la colección.",
       "done": "Listo"
     },
     "error": {
@@ -700,6 +701,12 @@
         "disable": "Deshabilitar",
         "deploy_missing": "Subir ítems faltantes"
       },
+      "verdict": {
+        "title": "Avísale al creador",
+        "body": "Explica tu decisión en la publicación de {collection} en el foro para que el creador sepa qué cambiar.",
+        "open_forum": "Abrir publicación en el foro",
+        "done": "Listo"
+      },
       "reject": {
         "title": "¿Rechazar {collection}?",
         "first": "La colección no se podrá mintear. El creador la verá como rechazada.",
@@ -902,7 +909,10 @@
       "created": "Creada",
       "unassigned": "Sin asignar",
       "assign_to_me": "Asignármela",
-      "edit_assignee": "Cambiar el curador asignado"
+      "edit_assignee": "Cambiar el curador asignado",
+      "discussion": "Discusión",
+      "forum_post": "Foro",
+      "not_posted": "Sin publicar"
     },
     "error": {
       "title": "No pudimos cargar las colecciones",

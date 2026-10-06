@@ -51,6 +51,20 @@ describe('CurationRow', () => {
     )
   })
 
+  it('links the collection forum post', () => {
+    renderRow(pending, { ...collection, forumLink: 'https://forum.decentraland.org/t/hats/77' })
+    expect(screen.getByTestId('curation-row-forum-link')).toHaveAttribute(
+      'href',
+      'https://forum.decentraland.org/t/hats/77'
+    )
+  })
+
+  it('says a collection without a forum post was not posted', () => {
+    renderRow(pending)
+    expect(screen.queryByTestId('curation-row-forum-link')).not.toBeInTheDocument()
+    expect(screen.getByTestId('curation-row-discussion')).toHaveTextContent('Not posted')
+  })
+
   it('offers "Assign to me" on an unassigned collection', () => {
     const onAssign = renderRow(null)
     expect(screen.getByTestId('curation-state')).toHaveAttribute('data-state', 'to_review')

@@ -4,6 +4,7 @@ import {
   Add as AddIcon,
   ArrowBackIosNew as ArrowBackIcon,
   Edit as EditIcon,
+  ForumOutlined as ForumIcon,
   PersonOutline as PersonOutlineIcon,
   Sync as SyncIcon
 } from '@mui/icons-material'
@@ -45,6 +46,7 @@ import {
 } from '~/lib/itemFilters'
 import { MAX_PUBLISH_ITEMS, getPublishBlocker } from '~/lib/publishCollection'
 import { useSaveItem } from '~/hooks/useSaveItem'
+import { useForumPostRecovery } from '~/hooks/useForumPost'
 import { useSyncPublishedItems } from '~/hooks/usePublishCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useCollectionListings } from '~/hooks/useCollectionListings'
@@ -170,10 +172,18 @@ const CollectionDetailPage = () => {
   // Play Mode is an emote-only attribute; the column exists only while the visible page has emotes.
   const withPlayMode = useMemo(() => results.some(item => item.type === ItemType.EMOTE), [results])
   useSyncPublishedItems(address, standardCollection, allItems ?? [])
+  useForumPostRecovery(address, standardCollection, allItems ?? [])
   // Price, Sales and Sale Status exist once the collection is published; the owner can put items on sale
   // once it has been approved at least once, even if it is under review again.
   const withMarket = !!standardCollection?.isPublished
   const status = useCollectionStatus(address, standardCollection)
+  // Curators give their feedback on the topic while the collection, or a change to it, is being reviewed.
+  const showForumPost =
+    !!standardCollection?.forumLink &&
+    standardCollection.isPublished &&
+    (!standardCollection.isApproved ||
+      status === CollectionDisplayStatus.UNDER_REVIEW ||
+      status === CollectionDisplayStatus.REJECTED)
   const statusHint =
     status === CollectionDisplayStatus.REJECTED
       ? t('collection_detail_page.review_notice.rejected')
@@ -591,6 +601,20 @@ const CollectionDetailPage = () => {
                 <OpenEditorIcon />
                 {t('collection_detail_page.open_editor')}
               </Button>
+              {showForumPost && (
+                <Button
+                  as="a"
+                  variant="secondary"
+                  href={collection.forumLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="forum-post"
+                  onClick={() => track('Forum post opened', { collectionId: collection.id, surface: 'detail' })}
+                >
+                  <ForumIcon fontSize="small" />
+                  {t('collection_detail_page.forum_post')}
+                </Button>
+              )}
               {canAddItems && (
                 <Button variant="secondary" type="button" data-testid="add-items" onClick={openFileBrowser}>
                   <AddIcon fontSize="small" />

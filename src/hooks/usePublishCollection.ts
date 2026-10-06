@@ -33,6 +33,7 @@ import {
 import { type PublicationFee } from '~/lib/publishFee'
 import { buildCollectionInitializeData } from '~/lib/saveCollection'
 import { useTranslation } from '~/intl'
+import { postCollectionToForum } from '~/hooks/useForumPost'
 
 export function useRarities(address: string | undefined) {
   return useQuery({
@@ -161,6 +162,7 @@ export function usePublishCollection(session: Session | null) {
         waitForTransaction: hash => waitForTransaction(chainId, hash),
         publishCollectionItems: collectionId => publishCollectionItems(address!, collectionId)
       })
+        .then(() => postCollectionToForum(queryClient, address!, collection, 'publish'))
         .catch((error: unknown) => {
           console.error('Collection consolidation failed', error)
           // The modal is long gone: a lasting toast is the only way the creator learns the publish did not land.

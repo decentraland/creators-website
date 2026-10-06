@@ -8,7 +8,8 @@ import { type CollectionCuration } from '~/lib/curation'
 const api = vi.hoisted(() => ({
   fetchCommittee: vi.fn(),
   pushCollectionCuration: vi.fn(),
-  updateCollectionCuration: vi.fn()
+  updateCollectionCuration: vi.fn(),
+  createCurationForumReply: vi.fn()
 }))
 vi.mock('~/lib/builder', () => ({
   ...api,
@@ -85,5 +86,34 @@ describe('useAssignCurator', () => {
 
     await act(() => result.current.mutateAsync({ collection, curation: null, assignee: '0xcurator' }))
     expect(api.pushCollectionCuration).toHaveBeenCalledWith(ADDRESS, 'c1', '0xcurator')
+  })
+
+  it('tells the collection forum post about the new assignee, when there is one', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })))
+    api.createCurationForumReply.mockResolvedValue(undefined)
+    const { result } = renderHook(() => useAssignCurator(ADDRESS), { wrapper })
+
+    await act(() => result.current.mutateAsync({ collection, curation: pending, assignee: '0xcurator' }))
+    expect(api.createCurationForumReply).not.toHaveBeenCalled()
+
+    const posted = { ...collection, forumLink: 'https://forum.decentraland.org/t/hats/77' }
+    await act(() => result.current.mutateAsync({ collection: posted, curation: pending, assignee: null }))
+    await waitFor(() =>
+      expect(api.createCurationForumReply).toHaveBeenCalledWith(ADDRESS, 'c1', {
+        topic_id: 77,
+        raw: 'The collection has been unassigned.'
+      })
+    )
+    vi.unstubAllGlobals()
+  })
+
+  it('keeps the assignment when the forum reply fails', async () => {
+    api.createCurationForumReply.mockRejectedValue(new Error('forum down'))
+    const posted = { ...collection, forumLink: 'https://forum.decentraland.org/t/hats/77' }
+    const { result } = renderHook(() => useAssignCurator(ADDRESS), { wrapper })
+
+    await act(() => result.current.mutateAsync({ collection: posted, curation: pending, assignee: null }))
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    await waitFor(() => expect(api.createCurationForumReply).toHaveBeenCalled())
   })
 })

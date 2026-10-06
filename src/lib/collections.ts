@@ -82,6 +82,16 @@ export enum CurationStatus {
 }
 
 /** The status a collection pill displays. */
+// The link is rendered as an href, so anything but http(s) (e.g. `javascript:`) is dropped.
+function toSafeLink(url: string | null): string | undefined {
+  if (!url) return undefined
+  try {
+    return ['https:', 'http:'].includes(new URL(url).protocol) ? url : undefined
+  } catch {
+    return undefined
+  }
+}
+
 export enum CollectionDisplayStatus {
   DRAFT = 'draft',
   PUBLISHING = 'publishing',
@@ -146,7 +156,7 @@ export function fromRemoteCollection(remote: RemoteCollection): Collection {
     itemCount: Number(remote.item_count ?? 0),
     minters: remote.minters || [],
     managers: remote.managers || [],
-    forumLink: remote.forum_link || undefined,
+    forumLink: toSafeLink(remote.forum_link),
     lock: remote.lock ? +new Date(remote.lock) : undefined,
     reviewedAt: remote.reviewed_at ? +new Date(remote.reviewed_at) : undefined,
     linkedContractAddress: remote.linked_contract_address || undefined,

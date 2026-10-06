@@ -232,6 +232,7 @@ const CurationPage = () => {
               <span>{t('curation_page.list.date')}</span>
               <span>{t('curation_page.list.last_update')}</span>
               <span>{t('curation_page.list.status')}</span>
+              <span>{t('curation_page.list.discussion')}</span>
               <span>{t('curation_page.list.assignee')}</span>
             </S.ListHeader>
             {data?.results.map(collection => (

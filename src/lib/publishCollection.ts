@@ -1,6 +1,6 @@
 // Everything the publish flow needs besides React: the createCollection arguments, the
 // CreditsManager external call, payment-method availability, and the publish sequence itself,
-// ported from the legacy builder's publish saga (minus the forum post, which no longer exists).
+// ported from the legacy builder's publish saga (the forum post lives in hooks/useForumPost).
 // Server and chain access is injected so the sequence is unit-testable end to end.
 import { ethers } from 'ethers'
 import { ContractName, getContract } from 'decentraland-transactions'

@@ -36,11 +36,14 @@ export type CollectionItemPreview = {
 /** Carries the HTTP status so callers can tell "no access / gone" from a transient failure. */
 export class BuilderServerError extends Error {
   status: number
+  /** The error envelope's `data`, when the server sent one. */
+  data?: unknown
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, data?: unknown) {
     super(message)
     this.name = 'BuilderServerError'
     this.status = status
+    this.data = data
   }
 }
 
@@ -77,7 +80,8 @@ async function request<T>(
   if (!response.ok || parsed.ok === false || (expectData && parsed.data === undefined)) {
     throw new BuilderServerError(
       parsed.error ?? `builder-server request failed: ${method} ${path} (${response.status})`,
-      response.status
+      response.status,
+      parsed.data
     )
   }
   return parsed.data as T
@@ -202,6 +206,24 @@ export async function updateCollectionCuration(
     }
   )
   return fromRemoteCuration(remote)
+}
+
+/** Opens the collection's forum topic: POST /collections/{id}/post. Answers the topic link, also saved as `forum_link`. */
+export async function createCollectionForumPost(
+  address: string,
+  collectionId: string,
+  forumPost: { title: string; raw: string }
+): Promise<string> {
+  return request<string>(address, 'POST', `/collections/${collectionId}/post`, '', { forumPost })
+}
+
+/** Replies on the collection's forum topic (committee only): POST /collections/{id}/curation/post. */
+export async function createCurationForumReply(
+  address: string,
+  collectionId: string,
+  forumPost: { topic_id: number; raw: string }
+): Promise<void> {
+  await request(address, 'POST', `/collections/${collectionId}/curation/post`, '', { forumPost }, false)
 }
 
 /** The latest curation of each item of a linked collection: GET /collections/{id}/itemCurations. */

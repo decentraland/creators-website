@@ -103,6 +103,7 @@
     "rename": "Rename collection",
     "add_items": "Add Items",
     "open_editor": "Open Editor",
+    "forum_post": "Forum post",
     "publish": "Publish Collection",
     "preview": "Preview in Decentraland",
     "more_actions": "More actions",
@@ -394,7 +395,7 @@
     },
     "success": {
       "title": "Collection sent for review",
-      "description": "Your collection is being reviewed for approval. We'll notify you once the review is complete.",
+      "description": "Your collection is being reviewed for approval. The curation committee will share its feedback in the collection's forum post, where you and the community can comment. You'll find it on the collection page.",
       "done": "Done"
     },
     "error": {
@@ -700,6 +701,12 @@
         "disable": "Disable",
         "deploy_missing": "Deploy missing items"
       },
+      "verdict": {
+        "title": "Let the creator know",
+        "body": "Explain your decision on {collection}'s forum post so the creator knows what to change.",
+        "open_forum": "Open forum post",
+        "done": "Done"
+      },
       "reject": {
         "title": "Reject {collection}?",
         "first": "The collection won't be mintable. The creator will see it as rejected.",
@@ -902,7 +909,10 @@
       "created": "Created",
       "unassigned": "Unassigned",
       "assign_to_me": "Assign to me",
-      "edit_assignee": "Change the assigned curator"
+      "edit_assignee": "Change the assigned curator",
+      "discussion": "Discussion",
+      "forum_post": "Forum post",
+      "not_posted": "Not posted"
     },
     "error": {
       "title": "We couldn't load the collections",

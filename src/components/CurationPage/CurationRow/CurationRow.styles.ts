@@ -30,6 +30,7 @@ export const Row = styled.article`
       'thumb name state'
       'thumb owner owner'
       'thumb requested requested'
+      'thumb discussion discussion'
       'assignee assignee assignee';
     gap: 8px 12px;
     padding: 12px;
@@ -129,6 +130,39 @@ export const Cell = styled.div`
       align-self: start;
     }
   }
+`
+
+/* Sits above the row's stretched link so the forum link stays clickable. */
+export const DiscussionCell = styled.div`
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 14px;
+
+  ${table} {
+    justify-content: center;
+
+    & > [data-mobile-only] {
+      display: none;
+    }
+  }
+
+  ${card} {
+    grid-area: discussion;
+  }
+`
+
+export const ForumLink = styled.a`
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: ${theme.colors.white};
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 `
 
 export const CellLabel = styled.span`
