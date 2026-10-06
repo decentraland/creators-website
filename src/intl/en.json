@@ -423,6 +423,7 @@
     "enable_sales": {
       "title": "Enable sales for this collection?",
       "description": "Since this is the first item you’re putting on sale from this collection, you’ll need to enable sales first. Once enabled, you’ll be able to sell any item from this collection in the Decentraland Shop.",
+      "upgrade_description": "Decentraland’s marketplace was upgraded. Enable sales on the new marketplace to keep selling items from this collection in the Decentraland Shop.",
       "confirm": "Enable sales",
       "pending": "Enabling Sales..."
     },

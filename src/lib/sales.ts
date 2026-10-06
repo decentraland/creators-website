@@ -163,6 +163,16 @@ export function isSalesEnabled(collection: Collection, chainId: number): boolean
   return collection.minters.some(address => address.toLowerCase() === minter)
 }
 
+/** An older off-chain marketplace (V1 or V2) may mint the collection: it was already on sale before the upgrade. */
+export function isSellingOnOlderMarketplace(collection: Collection, chainId: number): boolean {
+  const older = new Set(
+    [ContractName.OffChainMarketplace, ContractName.OffChainMarketplaceV2].map(name =>
+      getContract(name, chainId).address.toLowerCase()
+    )
+  )
+  return collection.minters.some(address => older.has(address.toLowerCase()))
+}
+
 /** `setMinters([marketplace], [true])` on the collection contract itself. */
 export function buildEnableSalesCall(collection: Collection, chainId: number): ContractCall {
   if (!collection.contractAddress) throw new SellItemError('not_published', 'The collection has no contract yet')

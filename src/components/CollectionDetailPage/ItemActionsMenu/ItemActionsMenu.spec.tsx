@@ -167,7 +167,7 @@ describe('ItemActionsMenu', () => {
   })
 
   it('copies the URN of a published item and offers the sale actions for a listed item', async () => {
-    // Listed, so the marketplace orders are signed on can already mint it and re-pricing skips Enable Sales.
+    // V3 is already a minter, so re-pricing skips Enable Sales.
     const marketplace = getOffchainMarketplaceContract(getMaticChainId()).address
     renderMenu({
       item: publishedItem,

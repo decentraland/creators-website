@@ -32,6 +32,7 @@ import {
   toPricedSale,
   formatDateValue,
   isSalesEnabled,
+  isSellingOnOlderMarketplace,
   isValidAddress,
   minExpirationDate,
   parseExpirationDate,
@@ -181,6 +182,26 @@ describe('enabling sales', () => {
     expect(isSalesEnabled({ ...collection, minters: ['0x00000000000000000000000000000000000000dd'] }, CHAIN_ID)).toBe(
       false
     )
+  })
+
+  it('knows a collection already sells on an older marketplace, whatever the casing', () => {
+    expect(isSellingOnOlderMarketplace({ ...collection, minters: [MARKETPLACE_V1] }, CHAIN_ID)).toBe(true)
+    expect(
+      isSellingOnOlderMarketplace(
+        { ...collection, minters: [MARKETPLACE_V2.toUpperCase().replace('0X', '0x')] },
+        CHAIN_ID
+      )
+    ).toBe(true)
+  })
+
+  it('does not count the current marketplace or any other minter as an older marketplace', () => {
+    expect(isSellingOnOlderMarketplace(collection, CHAIN_ID)).toBe(false)
+    expect(
+      isSellingOnOlderMarketplace(
+        { ...collection, minters: [MARKETPLACE_V3, '0x00000000000000000000000000000000000000dd'] },
+        CHAIN_ID
+      )
+    ).toBe(false)
   })
 
   it('builds setMinters([marketplace], [true]) on the collection contract', () => {
