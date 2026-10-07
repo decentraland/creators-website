@@ -919,6 +919,7 @@
   },
   "not_found_page": {
     "title": "Página no encontrada",
+    "description": "Puede que el enlace esté roto o que la página se haya movido.",
     "go_home": "Volver al inicio"
   },
   "nav": {

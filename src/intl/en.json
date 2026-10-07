@@ -919,6 +919,7 @@
   },
   "not_found_page": {
     "title": "Page not found",
+    "description": "The link may be broken or the page may have moved.",
     "go_home": "Go back home"
   },
   "nav": {
