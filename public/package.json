@@ -1,6 +1,6 @@
 {
   "name": "@dcl/creators-site",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "Wearables & Emotes Creator Tools for Decentraland",
   "main": "index.js",
   "scripts": {
