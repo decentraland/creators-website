@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { PreviewProjection } from '@dcl/schemas'
 import { WearablePreview } from 'decentraland-ui2'
-import { dataURLToBlob, isPngBackgroundTransparent } from '~/lib/media'
+import { dataURLToBlob } from '~/lib/media'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { ItemType, type ItemMetrics } from '~/lib/items'
 import { toEmoteWithBlobs, toWearableWithBlobs } from '~/lib/preview'
@@ -85,10 +85,7 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
           patch.thumbnail = thumbnail
           patch.isAutoThumbnail = true
           patch.autoThumbnailCategory = draft.category
-          if (thumbnailBlob) {
-            patch.contents = { ...draft.contents, [THUMBNAIL_PATH]: thumbnailBlob }
-            patch.thumbnailNotTransparent = !(await isPngBackgroundTransparent(thumbnailBlob))
-          }
+          if (thumbnailBlob) patch.contents = { ...draft.contents, [THUMBNAIL_PATH]: thumbnailBlob }
         }
 
         if (run.runKey !== runKey) return

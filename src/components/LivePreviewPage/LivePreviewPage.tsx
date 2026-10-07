@@ -20,7 +20,7 @@ import { EditorSection } from '~/components/ItemEditorPage/EditorSection'
 import { HidesEditor } from '~/components/ItemEditorPage/HidesEditor'
 import { PlaybackBar } from '~/components/ItemEditorPage/PlaybackBar'
 import { SpringBonesEditor } from '~/components/ItemEditorPage/SpringBonesEditor'
-import { ValidationBadge, getValidationStatus } from '~/components/ItemEditorPage/ValidationBadge'
+import { ValidationBadge, getValidationStatus } from '~/components/ValidationBadge'
 import { Switch } from '~/components/Switch'
 import { ZoomControls } from '~/components/ZoomControls'
 import { useBaseWearables } from '~/hooks/useBaseWearables'
@@ -339,7 +339,15 @@ const LivePreviewPage = () => {
           subjectEmoteId={isEmote ? definitionId : null}
         />
         <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />
-        <ValidationBadge status={validationStatus} issues={validation.data?.issues ?? []} />
+        <ValidationBadge
+          status={validationStatus}
+          issues={validation.data?.issues ?? []}
+          subject={{
+            name: t('item_editor.validation.previewed_item'),
+            type: validationCtx.type,
+            category: validationCtx.category
+          }}
+        />
       </AvatarPreview>
     )
 

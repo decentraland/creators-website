@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PreviewProjection, type IPreviewController } from '@dcl/schemas'
 import { WearablePreview } from 'decentraland-ui2'
 import { VerticalPosition } from 'decentraland-ui2/dist/components/WearablePreview/TranslationControls'
@@ -9,14 +9,7 @@ import { ZoomControls } from '~/components/ZoomControls'
 import { useTranslation } from '~/intl'
 import { MAX_THUMBNAIL_FILE_SIZE, THUMBNAIL_PATH, toMB } from '~/lib/itemFiles'
 import { ItemType } from '~/lib/items'
-import {
-  ImageType,
-  dataURLToBlob,
-  getImageType,
-  isPngBackgroundTransparent,
-  resizeImage,
-  blobToDataURL
-} from '~/lib/media'
+import { ImageType, dataURLToBlob, getImageType, resizeImage, blobToDataURL } from '~/lib/media'
 import { toEmoteWithBlobs, toWearableWithBlobs } from '~/lib/preview'
 import * as S from './ThumbnailModal.styles'
 
@@ -26,25 +19,29 @@ const THUMBNAIL_SIZE = 1024
 export type ThumbnailPatch = {
   /** Data URL of the new thumbnail; also stored as contents[THUMBNAIL_PATH]. */
   thumbnail: string
+  /** The item files plus the new thumbnail; only the thumbnail when it was uploaded before the files loaded. */
   contents: Record<string, Blob>
-  thumbnailNotTransparent: boolean
   isAutoThumbnail: boolean
 }
 
 export class ThumbnailFormatError extends Error {}
 export class ThumbnailTooBigError extends Error {}
 
-export async function thumbnailPatchFromDataURL(
-  contents: Record<string, Blob>,
-  thumbnail: string
-): Promise<ThumbnailPatch> {
+/** The i18n key (with params) for a failed capture or upload. */
+export function getThumbnailErrorMessage(err: unknown): { key: string; params?: Record<string, string | number> } {
+  if (err instanceof ThumbnailFormatError) return { key: 'thumbnail_modal.wrong_format' }
+  if (err instanceof ThumbnailTooBigError)
+    return { key: 'thumbnail_modal.too_big', params: { size: toMB(MAX_THUMBNAIL_FILE_SIZE) } }
+  return { key: 'thumbnail_modal.capture_failed' }
+}
+
+export function thumbnailPatchFromDataURL(contents: Record<string, Blob>, thumbnail: string): ThumbnailPatch {
   const thumbnailBlob = dataURLToBlob(thumbnail)
   if (!thumbnailBlob) throw new Error('Could not decode the thumbnail')
   if (thumbnailBlob.size > MAX_THUMBNAIL_FILE_SIZE) throw new ThumbnailTooBigError()
   return {
     thumbnail,
     contents: { ...contents, [THUMBNAIL_PATH]: thumbnailBlob },
-    thumbnailNotTransparent: !(await isPngBackgroundTransparent(thumbnailBlob)),
     isAutoThumbnail: false
   }
 }
@@ -74,7 +71,8 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [controller, setController] = useState<IPreviewController | null>(null)
-  const isReady = controller !== null
+  const [isLoaded, setLoaded] = useState(false)
+  const isReady = controller !== null && isLoaded
   const [isSaving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -85,11 +83,19 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
     [isEmote, contents]
   )
 
-  function thumbnailErrorMessage(err: unknown): string {
-    if (err instanceof ThumbnailFormatError) return t('thumbnail_modal.wrong_format')
-    if (err instanceof ThumbnailTooBigError)
-      return t('thumbnail_modal.too_big', { size: toMB(MAX_THUMBNAIL_FILE_SIZE) })
-    return t('thumbnail_modal.capture_failed')
+  // One controller, created as soon as the iframe exists and shared with the ui2 controls: every
+  // createController call drops the requests in flight, and a late one (in onLoad, or a control
+  // mounting after it) swallows the length EmoteControls asks for on the autoplay PLAY, leaving its
+  // play/pause stuck until the emote ends.
+  const hasBlob = blob !== null
+  useEffect(() => {
+    setController(hasBlob ? WearablePreview.createController(PREVIEW_ID) : null)
+    if (!hasBlob) setLoaded(false)
+  }, [hasBlob])
+
+  function errorText(err: unknown): string {
+    const { key, params } = getThumbnailErrorMessage(err)
+    return t(key, params)
   }
 
   function handleCapture() {
@@ -100,9 +106,9 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
       try {
         if (isEmote) await controller.emote.pause()
         const screenshot = await controller.scene.getScreenshot(THUMBNAIL_SIZE, THUMBNAIL_SIZE)
-        onSave(await thumbnailPatchFromDataURL(contents!, screenshot))
+        onSave(thumbnailPatchFromDataURL(contents!, screenshot))
       } catch (err) {
-        setError(thumbnailErrorMessage(err))
+        setError(errorText(err))
         setSaving(false)
       }
     })()
@@ -115,9 +121,10 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
     setError(null)
     void (async () => {
       try {
-        onSave(await thumbnailPatchFromFile(contents!, file))
+        // A picked file needs neither the item files nor the preview.
+        onSave(await thumbnailPatchFromFile(contents ?? {}, file))
       } catch (err) {
-        setError(thumbnailErrorMessage(err))
+        setError(errorText(err))
         setSaving(false)
       }
     })()
@@ -155,7 +162,7 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
                     skin: '000000'
                   }
                 : {})}
-              onLoad={() => setController(WearablePreview.createController(PREVIEW_ID))}
+              onLoad={() => setLoaded(true)}
             />
           )}
           <S.Frame aria-hidden data-testid="thumbnail-frame" />
@@ -167,15 +174,19 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
                 vertical
                 verticalPosition={VerticalPosition.LEFT}
                 wearablePreviewId={PREVIEW_ID}
+                wearablePreviewController={controller}
               />
             </>
           )}
         </S.PreviewArea>
-        {/* Mount together with the preview iframe (not after it loads) so the PLAY event fired at load
-            time is delivered. Mounting earlier throws: the controls look the iframe up by id. */}
-        {isEmote && blob && (
+        {/* Mounted before the iframe loads so the PLAY event fired at load time is delivered. */}
+        {isEmote && controller && (
           <S.EmoteBar data-testid="thumbnail-emote-controls" data-ready={isReady}>
-            <EmoteControls className="emote-controls" wearablePreviewId={PREVIEW_ID} />
+            <EmoteControls
+              className="emote-controls"
+              wearablePreviewId={PREVIEW_ID}
+              wearablePreviewController={controller}
+            />
           </S.EmoteBar>
         )}
         {error && <S.ErrorText data-testid="thumbnail-error">{error}</S.ErrorText>}
@@ -197,7 +208,7 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
                 type="button"
                 variant="secondary"
                 data-testid="thumbnail-upload"
-                disabled={isSaving || !contents}
+                disabled={isSaving}
                 onClick={() => fileInputRef.current?.click()}
               >
                 {t('thumbnail_modal.upload_picture')}

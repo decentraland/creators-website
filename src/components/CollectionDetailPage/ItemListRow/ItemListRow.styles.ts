@@ -34,6 +34,17 @@ export const Row = styled.article`
   border-radius: ${theme.radius.card};
   background: ${theme.colors.overlay};
 
+  /* Inset shadows, not borders, so flagged rows stay aligned with the header's columns. */
+  &[data-validation='errors'] {
+    box-shadow: inset 0 0 0 1px ${theme.colors.errLight};
+    background:
+      linear-gradient(90deg, ${theme.colors.errorOverlay}, ${theme.colors.errOverlay}), ${theme.colors.overlay};
+  }
+
+  &[data-validation='warnings'] {
+    box-shadow: inset 3px 0 0 ${theme.colors.amber};
+  }
+
   ${card} {
     display: flex;
     align-items: center;
@@ -79,6 +90,11 @@ export const Name = styled.span`
   color: ${theme.colors.softWhite};
   display: inline-flex;
   align-items: center;
+
+  /* On desktop the rename button's padding spaces the badge; the card shows plain text. */
+  ${card} {
+    gap: 8px;
+  }
 `
 
 export const NameText = styled.span`
@@ -174,6 +190,7 @@ export const EditorButton = styled.button`
   flex: none;
   width: 32px;
   height: 32px;
+  margin-left: 8px;
   padding: 0;
   border: 0;
   border-radius: ${theme.radius.btnSm};
@@ -264,6 +281,32 @@ export const SmartBadge = styled.span`
   svg {
     width: 18px;
     height: 18px;
+  }
+`
+
+export const ValidationChip = styled.button`
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-left: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  background: ${theme.colors.warningOverlay};
+  color: ${theme.colors.amber};
+
+  &[data-status='errors'] {
+    background: ${theme.colors.errorOverlay};
+    color: ${theme.colors.errLight};
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
   }
 `
 

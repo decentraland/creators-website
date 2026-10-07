@@ -24,7 +24,18 @@ export enum FeatureFlag {
   /** Credits as a listing currency; with it off, an item can only be priced in MANA. */
   CREDITS_PRIMARY_LISTINGS = 'credits-primary-listings',
   /** Paying the collection publication fee with shop credits. */
-  SHOP_CREDITS_FOR_COLLECTIONS_FEE = 'shop-credits-for-collections-fee'
+  SHOP_CREDITS_FOR_COLLECTIONS_FEE = 'shop-credits-for-collections-fee',
+  /**
+   * Items with validation errors block publishing a collection; off, the errors are advisory. A check that could
+   * not run (download, worker or rule book failure) is a warning either way: infrastructure never blocks publishing.
+   */
+  BLOCK_PUBLISH_ON_VALIDATION_ERRORS = 'block-publish-on-validation-errors',
+  /**
+   * Pre-launch gate. On, the site is live but unannounced: only the wallets in the flag's address-list
+   * VARIANT get the full app, everyone else gets the overview alone. Off (or unreachable) means launched.
+   * A curtain, not a lock: the bundle is static and builder-server is public, see `useCreatorsPrelaunch`.
+   */
+  CREATORS_PRELAUNCH = 'creators-prelaunch'
 }
 
 /** Each flag lives under the application that owns it, and is fetched from that application's file. */
@@ -37,13 +48,15 @@ const APPLICATION: Record<FeatureFlag, string> = {
   [FeatureFlag.BLENDER_LIVE_PREVIEW]: 'builder',
   [FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS]: 'dapps',
   [FeatureFlag.CREDITS_PRIMARY_LISTINGS]: 'builder',
-  [FeatureFlag.SHOP_CREDITS_FOR_COLLECTIONS_FEE]: 'builder'
+  [FeatureFlag.SHOP_CREDITS_FOR_COLLECTIONS_FEE]: 'builder',
+  [FeatureFlag.BLOCK_PUBLISH_ON_VALIDATION_ERRORS]: 'builder',
+  [FeatureFlag.CREATORS_PRELAUNCH]: 'builder'
 }
 
 const TTL_MS = 60_000
 const TIMEOUT_MS = 3_000
 
-type Snapshot = { flags: Record<string, boolean>; fetchedAt: number }
+type Snapshot = { flags: Record<string, boolean>; variants: Record<string, string>; fetchedAt: number }
 
 const snapshots = new Map<string, Snapshot>()
 const inFlight = new Map<string, Promise<Snapshot>>()
@@ -59,8 +72,17 @@ async function fetchSnapshot(application: string): Promise<Snapshot> {
       await response.body?.cancel()
       throw new Error(`feature flags request failed with ${response.status}`)
     }
-    const body = (await response.json()) as { flags?: Record<string, boolean> }
-    return { flags: body.flags ?? {}, fetchedAt: Date.now() }
+    // Only a variant's string payload is kept (an address list, for one): holding the service's envelope
+    // would invite code that depends on its shape.
+    const body = (await response.json()) as {
+      flags?: Record<string, boolean>
+      variants?: Record<string, { enabled?: boolean; payload?: { value?: string } }>
+    }
+    const variants: Record<string, string> = {}
+    for (const [key, variant] of Object.entries(body.variants ?? {})) {
+      if (variant?.enabled && typeof variant.payload?.value === 'string') variants[key] = variant.payload.value
+    }
+    return { flags: body.flags ?? {}, variants, fetchedAt: Date.now() }
   } finally {
     clearTimeout(timer)
   }
@@ -102,6 +124,60 @@ function devOverrideFor(flag: FeatureFlag): boolean | undefined {
     if (value === 'false') return false
   }
   return undefined
+}
+
+/**
+ * Local override for a flag's VARIANT payload, dev builds only. Entries are `;`-separated because a payload is
+ * itself a comma-separated list: `VITE_FEATURE_FLAG_VARIANT_OVERRIDES=creators-prelaunch:0xabc…,0xdef…;other:…`.
+ */
+function devVariantOverrideFor(flag: FeatureFlag): string | undefined {
+  if (!import.meta.env.DEV) return undefined
+  const raw = import.meta.env.VITE_FEATURE_FLAG_VARIANT_OVERRIDES
+  if (typeof raw !== 'string' || raw.length === 0) return undefined
+  for (const entry of raw.split(';')) {
+    const separator = entry.indexOf(':')
+    if (separator === -1) continue
+    if (entry.slice(0, separator).trim() !== String(flag)) continue
+    return entry.slice(separator + 1).trim()
+  }
+  return undefined
+}
+
+// Any mix of commas, semicolons and whitespace separates addresses: a dashboard payload is as often
+// one address per line as a comma list.
+function parseAddressList(value: string): string[] {
+  return Array.from(
+    new Set(
+      value
+        .split(/[\s,;]+/)
+        .map(address => address.toLowerCase())
+        .filter(address => /^0x[0-9a-f]{40}$/.test(address))
+    )
+  )
+}
+
+export type AddressListGate = { enabled: boolean; allowed: string[] }
+
+/**
+ * A flag and its address-list variant read from ONE snapshot, so the pair can never disagree (two reads could
+ * straddle a cache expiry and pair a live flag with a failed, empty list). An unreachable service reads
+ * `enabled: false`, and `allowed` is `[]` whenever the flag is off.
+ */
+export async function getAddressListGate(flag: FeatureFlag): Promise<AddressListGate> {
+  const flagOverride = devOverrideFor(flag)
+  const variantOverride = devVariantOverrideFor(flag)
+  const application = APPLICATION[flag]
+  let snapshot: Snapshot | undefined
+  if (flagOverride === undefined || variantOverride === undefined) {
+    try {
+      snapshot = await getSnapshot(application)
+    } catch {
+      snapshot = undefined
+    }
+  }
+  const enabled = flagOverride ?? snapshot?.flags[`${application}-${flag}`] === true
+  const value = variantOverride ?? snapshot?.variants[`${application}-${flag}`]
+  return { enabled, allowed: enabled && value ? parseAddressList(value) : [] }
 }
 
 /** Whether a flag is on. Fails closed: an unreachable service, a malformed body or an absent flag read `false`. */

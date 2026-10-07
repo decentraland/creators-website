@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { ImageType, dataURLToBlob, getImageType, isRgbaBackgroundTransparent } from './media'
+import UPNG from 'upng-js'
+import { ImageType, compressPngBlob, dataURLToBlob, getImageType, readPngDimensions } from './media'
 
 // 1x1 transparent PNG
 const PNG_DATA_URL =
@@ -29,28 +30,39 @@ describe('getImageType', () => {
   })
 })
 
-describe('isRgbaBackgroundTransparent', () => {
-  function image(width: number, height: number, alpha: (x: number, y: number) => number): Uint8Array {
-    const rgba = new Uint8Array(width * height * 4)
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        rgba[(y * width + x) * 4 + 3] = alpha(x, y)
-      }
+describe('compressPngBlob', () => {
+  function noisyPng(size = 64): Blob {
+    const rgba = new Uint8Array(size * size * 4)
+    let seed = 7
+    for (let i = 0; i < rgba.length; i++) {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff
+      rgba[i] = seed & 0xff
     }
-    return rgba
+    return new Blob([UPNG.encode([rgba.buffer], size, size, 0)], { type: 'image/png' })
   }
 
-  it('accepts an image with a fully transparent border', () => {
-    const rgba = image(10, 10, (x, y) => (x === 0 || y === 0 || x === 9 || y === 9 ? 0 : 255))
-    expect(isRgbaBackgroundTransparent(rgba, 10, 10)).toBe(true)
+  it('shrinks a true-color PNG to an indexed one that still decodes', async () => {
+    const original = noisyPng()
+    const compressed = await compressPngBlob(original)
+    expect(compressed.size).toBeLessThan(original.size)
+    expect(compressed.type).toBe('image/png')
+    const decoded = UPNG.decode(await compressed.arrayBuffer())
+    expect([decoded.width, decoded.height]).toEqual([64, 64])
   })
 
-  it('rejects an image with an opaque border', () => {
-    const rgba = image(10, 10, () => 255)
-    expect(isRgbaBackgroundTransparent(rgba, 10, 10)).toBe(false)
+  it('leaves a PNG whose header claims a huge canvas untouched instead of decoding it', async () => {
+    const header = new Uint8Array(await noisyPng(8).arrayBuffer())
+    new DataView(header.buffer).setUint32(16, 30000)
+    new DataView(header.buffer).setUint32(20, 30000)
+    const huge = new Blob([header], { type: 'image/png' })
+    expect(readPngDimensions(header.buffer)).toEqual({ width: 30000, height: 30000 })
+    expect(await compressPngBlob(huge)).toBe(huge)
   })
 
-  it('treats undecodable/too-small input as transparent (never block on no signal)', () => {
-    expect(isRgbaBackgroundTransparent(new Uint8Array(0), 10, 10)).toBe(true)
+  it('returns the input itself for non-PNGs and for bytes it cannot decode', async () => {
+    const jpeg = new Blob([new Uint8Array([0xff, 0xd8, 0xff])], { type: 'image/jpeg' })
+    expect(await compressPngBlob(jpeg)).toBe(jpeg)
+    const broken = new Blob(['not a png'], { type: 'image/png' })
+    expect(await compressPngBlob(broken)).toBe(broken)
   })
 })

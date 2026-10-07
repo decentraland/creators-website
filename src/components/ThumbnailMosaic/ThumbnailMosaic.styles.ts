@@ -1,4 +1,5 @@
 import styled from '@emotion/styled'
+import { EMPTY_MEDIA_BACKGROUND } from '~/lib/rarities'
 import { theme } from '~/styles/theme'
 
 // minmax(0, 1fr) tracks so object-fit can shrink images instead of the intrinsic size blowing the grid.
@@ -11,6 +12,9 @@ export const Mosaic = styled.div`
   background: ${theme.colors.media};
   overflow: hidden;
 
+  &[data-empty] {
+    background-image: ${EMPTY_MEDIA_BACKGROUND};
+  }
   &[data-count='1'] > * {
     grid-column: 1 / -1;
     grid-row: 1 / -1;
@@ -33,4 +37,24 @@ export const Loading = styled.div`
   grid-column: 1 / -1;
   grid-row: 1 / -1;
   border-radius: 0;
+`
+
+export const Empty = styled.div`
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: ${theme.colors.muted};
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+
+  svg {
+    width: min(54px, 25%);
+    height: auto;
+  }
 `

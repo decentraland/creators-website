@@ -51,18 +51,22 @@ vi.mock('~/hooks/useBalances', () => ({
 
 vi.mock('~/lib/navigation', () => ({ openExternal: vi.fn() }))
 
+const committee = vi.hoisted(() => ({ isCurator: false }))
+vi.mock('~/hooks/useCuration', () => ({ useCommittee: () => ({ isCurator: committee.isCurator }) }))
+
 beforeEach(() => {
+  committee.isCurator = false
   wallet.session = undefined
   balances.credits = undefined
   balances.manaWei = undefined
   vi.mocked(openExternal).mockReset()
 })
 
-function renderNavBar(path = '/collections') {
+function renderNavBar(path = '/collections', props: { subnav?: boolean } = {}) {
   return render(
     <TranslationProvider>
       <MemoryRouter initialEntries={[path]}>
-        <NavBar />
+        <NavBar {...props} />
       </MemoryRouter>
     </TranslationProvider>
   )
@@ -81,6 +85,23 @@ describe('NavBar', () => {
       'href',
       'https://decentraland.zone/builder/land'
     )
+  })
+
+  it('keeps the top bar but drops the whole sub-nav while the pre-launch gate hides the app', () => {
+    renderNavBar('/', { subnav: false })
+    expect(screen.getByTestId('topnav')).toBeInTheDocument()
+    expect(screen.queryByTestId('subnav')).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Collections' })).toBeNull()
+  })
+
+  it('shows the Curation tab to committee members only', () => {
+    renderNavBar()
+    expect(screen.queryByRole('link', { name: 'Curation' })).toBeNull()
+
+    committee.isCurator = true
+    renderNavBar('/curation')
+    expect(screen.getByRole('link', { name: 'Curation' })).toHaveAttribute('href', '/curation')
+    expect(screen.getByRole('link', { name: 'Curation' })).toHaveAttribute('aria-current', 'page')
   })
 
   it('keeps the Collections tab active on nested collection routes', () => {

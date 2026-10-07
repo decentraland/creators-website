@@ -1,3 +1,4 @@
+import { shortenAddress } from '~/lib/address'
 import { useId, useMemo, useState, type KeyboardEvent } from 'react'
 import { Close as CloseIcon, ExpandMore as ChevronIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
@@ -23,8 +24,6 @@ type Props = {
   variant?: 'field' | 'compact'
   testId?: string
 }
-
-export const shorten = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`
 
 /**
  * Pick a payout address: a friend from the list, or any wallet address pasted in. A valid address is
@@ -111,9 +110,11 @@ export function BeneficiaryInput({
     return (
       <S.Box data-testid={`${testId}-selected`} data-variant={variant} data-disabled={disabled || undefined}>
         {avatar ? <S.Avatar src={avatar} alt="" /> : <S.AvatarFallback aria-hidden />}
-        <S.ChipName data-testid={`${testId}-name`}>{known ?? shorten(value)}</S.ChipName>
+        <S.ChipName data-testid={`${testId}-name`}>{known ?? shortenAddress(value)}</S.ChipName>
         {/* Without a name the compact pill would repeat the shortened address, so it shows it once. */}
-        {(known || !compact) && <S.ChipAddress title={value}>({compact ? shorten(value) : value})</S.ChipAddress>}
+        {(known || !compact) && (
+          <S.ChipAddress title={value}>({compact ? shortenAddress(value) : value})</S.ChipAddress>
+        )}
         <S.ChipClear
           type="button"
           aria-label={clearLabel ?? t('sell_item_modal.beneficiary.clear')}
@@ -190,7 +191,7 @@ export function BeneficiaryInput({
                 >
                   {friend.avatarUrl ? <S.Avatar src={friend.avatarUrl} alt="" /> : <S.AvatarFallback aria-hidden />}
                   <span>{friend.name}</span>
-                  <S.OptionAddress>{shorten(friend.address)}</S.OptionAddress>
+                  <S.OptionAddress>{shortenAddress(friend.address)}</S.OptionAddress>
                 </S.Option>
               ))
             )}

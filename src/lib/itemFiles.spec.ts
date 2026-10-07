@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import JSZip from 'jszip'
+import { manifest } from '@dcl-regenesislabs/wearable-validator'
 import { BodyShapeType } from './items'
 import {
   ItemFileError,
+  MAX_THUMBNAIL_FILE_SIZE,
   cleanAssetName,
   cleanContentModelKeys,
   findOrphanedAuxiliaryFiles,
@@ -499,5 +501,11 @@ describe('validateVideoFile', () => {
     } catch (error) {
       expect((error as ItemFileError).messageKey).toBe('video_too_big')
     }
+  })
+})
+
+describe('rule book parity', () => {
+  it('blocks thumbnails at the validator manifest size cap', () => {
+    expect(MAX_THUMBNAIL_FILE_SIZE).toBe(manifest.fileSize.thumbnailBytes)
   })
 })

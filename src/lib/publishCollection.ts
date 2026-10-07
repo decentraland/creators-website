@@ -1,6 +1,6 @@
 // Everything the publish flow needs besides React: the createCollection arguments, the
 // CreditsManager external call, payment-method availability, and the publish sequence itself,
-// ported from the legacy builder's publish saga (minus the forum post, which no longer exists).
+// ported from the legacy builder's publish saga (the forum post lives in hooks/useForumPost).
 // Server and chain access is injected so the sequence is unit-testable end to end.
 import { ethers } from 'ethers'
 import { ContractName, getContract } from 'decentraland-transactions'
@@ -23,14 +23,24 @@ export type PaymentMethod = 'credits' | 'mana'
 // larger ones, so publishing more would leave the collection impossible to approve.
 export const MAX_PUBLISH_ITEMS = 50
 
-export type PublishBlocker = 'not_draft' | 'no_items' | 'too_many_items' | 'missing_smart_wearable_video'
+export type PublishBlocker =
+  'not_draft' | 'no_items' | 'too_many_items' | 'missing_smart_wearable_video' | 'has_invalid_items'
 
-/** `items` are the collection's items; a smart wearable without its preview video blocks publishing. */
-export function getPublishBlocker(collection: Collection, itemCount: number, items: Item[]): PublishBlocker | null {
+/**
+ * `items` are the collection's items; a smart wearable without its preview video blocks publishing, and so do
+ * items with validation errors when the caller says they block (`hasInvalidItems`).
+ */
+export function getPublishBlocker(
+  collection: Collection,
+  itemCount: number,
+  items: Item[],
+  { hasInvalidItems = false }: { hasInvalidItems?: boolean } = {}
+): PublishBlocker | null {
   if (collection.isPublished || isCollectionLocked(collection)) return 'not_draft'
   if (itemCount === 0) return 'no_items'
   if (itemCount > MAX_PUBLISH_ITEMS) return 'too_many_items'
   if (items.some(isMissingSmartWearableVideo)) return 'missing_smart_wearable_video'
+  if (hasInvalidItems) return 'has_invalid_items'
   return null
 }
 
@@ -279,6 +289,8 @@ export type SyncDeps = {
 
 export type ConsolidateDeps = SyncDeps & {
   waitForTransaction: (txHash: string) => Promise<boolean>
+  /** Runs once the server holds the published items, e.g. to open the collection's forum topic. */
+  onSynced?: () => void
 }
 
 // One hour of 5s polls: the subgraph can lag well past a couple of minutes on a busy Polygon day.
@@ -318,7 +330,7 @@ export class PublishTransactionRevertedError extends Error {
   }
 }
 
-/** Waits for the publish transaction to be mined, then runs the server sync. */
+/** Waits for the publish transaction to be mined, then runs the server sync and `onSynced`. */
 export async function consolidatePublishedCollection(
   collectionId: string,
   txHash: string,
@@ -329,4 +341,5 @@ export async function consolidatePublishedCollection(
   const mined = await deps.waitForTransaction(txHash)
   if (!mined) throw new PublishTransactionRevertedError(txHash)
   await syncPublishedItems(collectionId, deps, retries, retryDelayMs)
+  deps.onSynced?.()
 }

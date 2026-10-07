@@ -127,6 +127,13 @@ describe('PropertiesPanel', () => {
     expect(screen.getByTestId('properties-panel-save')).toBeDisabled()
   })
 
+  it('keeps a description with a colon from being saved', async () => {
+    render(<Harness />, { wrapper: Providers })
+    await userEvent.type(screen.getByTestId('properties-panel-description'), ': red')
+    expect(screen.getByTestId('properties-panel-description-error')).toBeInTheDocument()
+    expect(screen.getByTestId('properties-panel-save')).toBeDisabled()
+  })
+
   it('locks every control and hides the footer when not editable', () => {
     render(<Harness editable={false} />, { wrapper: Providers })
     expect(screen.getByTestId('properties-panel-readonly')).toBeInTheDocument()
@@ -145,6 +152,13 @@ describe('PropertiesPanel', () => {
     await userEvent.type(await screen.findByTestId('properties-panel-utility'), 'greets')
     expect(screen.getByTestId('properties-panel-utility')).toHaveValue('greets')
     expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
+  })
+
+  it('lists tags read-only without the field when not editable', () => {
+    render(<Harness editable={false} />, { wrapper: Providers })
+    expect(screen.getAllByTestId('tags-input-tag').map(tag => tag.textContent)).toEqual(['cool'])
+    expect(screen.queryByTestId('tags-input-field')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('tags-input-remove-cool')).not.toBeInTheDocument()
   })
 
   it('adds and removes tags', async () => {

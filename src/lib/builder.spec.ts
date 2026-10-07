@@ -2,9 +2,16 @@ import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest'
 import {
   deleteCollection,
   fetchCollectionCuration,
+  fetchCommittee,
+  fetchCurationCollections,
+  fetchCurations,
+  pushCollectionCuration,
+  updateCollectionCuration,
   fetchCollectionItemPreviews,
   fetchCollections,
   fetchItemContents,
+  fetchItemCurations,
+  fetchThirdParty,
   getContentsStorageUrl,
   saveItem
 } from './builder'
@@ -226,6 +233,82 @@ describe('saveItem', () => {
     expect(body.item.contents['video.mp4']).toBeUndefined()
   })
 
+  it('points an approved item back at its approved video when the new upload fails', async () => {
+    signedFetchMock
+      .mockResolvedValueOnce(okResponse(remoteItem))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+      .mockResolvedValueOnce(jsonResponse({ ok: false, error: 'too large' }, false, 413))
+      .mockResolvedValueOnce(okResponse(remoteItem))
+
+    // `video` is the curation-approved hash; `contents` already carries the new one the PUT stored.
+    const approved = {
+      ...item,
+      isPublished: true,
+      isApproved: true,
+      video: 'QmApproved',
+      contents: { ...item.contents, 'video.mp4': 'QmNewVideo' }
+    }
+    await expect(
+      saveItem(ADDRESS, approved, { 'male/model.glb': new Blob(['model']), 'video.mp4': new Blob(['video']) })
+    ).rejects.toMatchObject({ status: 413 })
+
+    const [, , path, init] = signedFetchMock.mock.calls[3] as [string, string, string, RequestInit]
+    expect(path).toBe('/items/item-1')
+    const body = JSON.parse(init.body as string) as { item: { video?: string; contents: Record<string, string> } }
+    expect(body.item.video).toBe('QmApproved')
+    expect(body.item.contents['video.mp4']).toBe('QmApproved')
+  })
+
+  it('restores the video an unapproved item had when the caller passes it and the new upload fails', async () => {
+    signedFetchMock
+      .mockResolvedValueOnce(okResponse(remoteItem))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+      .mockResolvedValueOnce(jsonResponse({ ok: false, error: 'too large' }, false, 413))
+      .mockResolvedValueOnce(okResponse(remoteItem))
+
+    // Not approved: the save already moved `video` to the new hash, so only the caller knows the old one.
+    const smartItem = { ...item, video: 'QmNewVideo', contents: { ...item.contents, 'video.mp4': 'QmNewVideo' } }
+    await expect(
+      saveItem(
+        ADDRESS,
+        smartItem,
+        { 'male/model.glb': new Blob(['model']), 'video.mp4': new Blob(['video']) },
+        {
+          previousVideo: 'QmOldVideo'
+        }
+      )
+    ).rejects.toMatchObject({ status: 413 })
+
+    const [, , , init] = signedFetchMock.mock.calls[3] as [string, string, string, RequestInit]
+    const body = JSON.parse(init.body as string) as { item: { video?: string; contents: Record<string, string> } }
+    expect(body.item.video).toBe('QmOldVideo')
+    expect(body.item.contents['video.mp4']).toBe('QmOldVideo')
+  })
+
+  it('keeps the approved video when the creator re-picks that same file and the upload fails', async () => {
+    signedFetchMock
+      .mockResolvedValueOnce(okResponse(remoteItem))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+      .mockResolvedValueOnce(jsonResponse({ ok: false, error: 'too large' }, false, 413))
+      .mockResolvedValueOnce(okResponse(remoteItem))
+
+    const approved = {
+      ...item,
+      isPublished: true,
+      isApproved: true,
+      video: 'QmApproved',
+      contents: { ...item.contents, 'video.mp4': 'QmApproved' }
+    }
+    await expect(
+      saveItem(ADDRESS, approved, { 'male/model.glb': new Blob(['model']), 'video.mp4': new Blob(['video']) })
+    ).rejects.toMatchObject({ status: 413 })
+
+    const [, , , init] = signedFetchMock.mock.calls[3] as [string, string, string, RequestInit]
+    const body = JSON.parse(init.body as string) as { item: { video?: string; contents: Record<string, string> } }
+    expect(body.item.video).toBe('QmApproved')
+    expect(body.item.contents['video.mp4']).toBe('QmApproved')
+  })
+
   it('still reports the video upload error when the rollback PUT fails too', async () => {
     signedFetchMock
       .mockResolvedValueOnce(okResponse(remoteItem))
@@ -283,7 +366,7 @@ describe('fetchItemContents', () => {
     const contents = await fetchItemContents(item)
     expect(Object.keys(contents).sort()).toEqual(['male/model.glb', 'thumbnail.png'])
     expect(await contents['male/model.glb'].text()).toBe('model')
-    expect(fetchMock).toHaveBeenCalledWith(getContentsStorageUrl('QmThumb'))
+    expect(fetchMock.mock.calls.map(([url]) => url)).toContain(getContentsStorageUrl('QmThumb'))
     vi.unstubAllGlobals()
   })
 
@@ -297,15 +380,119 @@ describe('fetchItemContents', () => {
   })
 })
 
+const remoteCuration = {
+  id: 'cu1',
+  collection_id: 'a1b2',
+  status: 'pending',
+  assignee: '0xCURATOR',
+  created_at: '2026-05-01T00:00:00Z',
+  updated_at: '2026-05-02T00:00:00Z'
+}
+
 describe('fetchCollectionCuration', () => {
   it('answers the latest curation request of the collection', async () => {
-    signedFetchMock.mockResolvedValue(okResponse({ id: 'cu1', status: 'pending' }))
-    await expect(fetchCollectionCuration(ADDRESS, 'a1b2')).resolves.toMatchObject({ status: 'pending' })
+    signedFetchMock.mockResolvedValue(okResponse(remoteCuration))
+    await expect(fetchCollectionCuration(ADDRESS, 'a1b2')).resolves.toMatchObject({
+      status: 'pending',
+      assignee: '0xcurator'
+    })
     expect(signedFetchMock.mock.calls[0][2]).toBe('/collections/a1b2/curation')
   })
 
   it('answers null for a collection that was never reviewed', async () => {
     signedFetchMock.mockResolvedValue(jsonResponse({ ok: true }))
     await expect(fetchCollectionCuration(ADDRESS, 'a1b2')).resolves.toBeNull()
+  })
+})
+
+describe('fetchCommittee', () => {
+  it('answers the committee addresses, lowercased', async () => {
+    signedFetchMock.mockResolvedValue(okResponse([{ id: '1', address: '0xABC' }]))
+    await expect(fetchCommittee()).resolves.toEqual(['0xabc'])
+    expect(signedFetchMock.mock.calls[0][2]).toBe('/committee')
+  })
+})
+
+describe('fetchCurationCollections', () => {
+  it('lists published standard collections for the committee', async () => {
+    signedFetchMock.mockResolvedValue(
+      okResponse({ results: [{ ...remoteCollection, is_published: true }], total: 1, page: 1, pages: 1, limit: 12 })
+    )
+    const result = await fetchCurationCollections(ADDRESS, {
+      page: 1,
+      search: '',
+      status: 'all' as never,
+      assignee: 'all',
+      sort: 'MOST_RELEVANT' as never,
+      tag: null
+    })
+    expect(result.results[0]).toMatchObject({ id: 'a1b2', isPublished: true })
+    const path = signedFetchMock.mock.calls[0][2] as string
+    expect(path.startsWith('/collections?is_published=true')).toBe(true)
+    expect(path).toContain('type=standard')
+  })
+})
+
+describe('curation requests', () => {
+  it('lists every latest request', async () => {
+    signedFetchMock.mockResolvedValue(okResponse([remoteCuration]))
+    await expect(fetchCurations(ADDRESS)).resolves.toMatchObject([{ collectionId: 'a1b2' }])
+  })
+
+  it('opens a request, with an assignee when given one', async () => {
+    signedFetchMock.mockResolvedValue(okResponse(remoteCuration))
+    await pushCollectionCuration(ADDRESS, 'a1b2', '0xcurator')
+    const [, , path, init] = signedFetchMock.mock.calls[0]
+    expect(path).toBe('/collections/a1b2/curation')
+    expect(init).toMatchObject({ method: 'POST', body: JSON.stringify({ curation: { assignee: '0xcurator' } }) })
+
+    await pushCollectionCuration(ADDRESS, 'a1b2')
+    expect(signedFetchMock.mock.calls[1][3].body).toBeUndefined()
+  })
+
+  it('patches the status or the assignee of the latest request', async () => {
+    signedFetchMock.mockResolvedValue(okResponse({ ...remoteCuration, status: 'rejected' }))
+    await expect(updateCollectionCuration(ADDRESS, 'a1b2', { status: 'rejected' })).resolves.toMatchObject({
+      status: 'rejected'
+    })
+    expect(signedFetchMock.mock.calls[0][3]).toMatchObject({
+      method: 'PATCH',
+      body: JSON.stringify({ curation: { status: 'rejected' } })
+    })
+  })
+})
+
+describe('fetchItemCurations', () => {
+  it("answers each item's latest curation status by item id", async () => {
+    signedFetchMock.mockResolvedValue(
+      okResponse([
+        { id: 'ic1', item_id: 'i1', status: 'approved' },
+        { id: 'ic2', item_id: 'i2', status: 'pending' }
+      ])
+    )
+    const curations = await fetchItemCurations(ADDRESS, 'a1b2')
+    expect(curations.get('i1')).toBe('approved')
+    expect(curations.get('i2')).toBe('pending')
+    expect(curations.has('i3')).toBe(false)
+  })
+
+  it('answers no curations for a collection none of whose items was submitted yet', async () => {
+    signedFetchMock.mockResolvedValue(jsonResponse({ ok: false, error: 'Unpublished collection' }, false, 409))
+    await expect(fetchItemCurations(ADDRESS, 'a1b2')).resolves.toEqual(new Map())
+  })
+
+  it('still fails on any other error', async () => {
+    signedFetchMock.mockResolvedValue(jsonResponse({ ok: false, error: 'Unauthorized' }, false, 401))
+    await expect(fetchItemCurations(ADDRESS, 'a1b2')).rejects.toThrow('Unauthorized')
+  })
+})
+
+describe('fetchThirdParty', () => {
+  it("answers the third party's name and managers", async () => {
+    signedFetchMock.mockResolvedValue(okResponse({ id: 'urn:tp', name: 'Brand X', managers: [ADDRESS] }))
+    await expect(fetchThirdParty(ADDRESS, 'urn:decentraland:amoy:collections-thirdparty:brand')).resolves.toEqual({
+      name: 'Brand X',
+      managers: [ADDRESS]
+    })
   })
 })

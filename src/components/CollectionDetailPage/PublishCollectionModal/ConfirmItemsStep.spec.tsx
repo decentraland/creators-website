@@ -4,7 +4,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TranslationProvider } from '~/intl'
-import { deleteItem, fetchItemContents, saveItem } from '~/lib/builder'
+import { deleteItem, fetchContent, fetchItemContents, saveItem } from '~/lib/builder'
 import { type ThumbnailPatch } from '~/components/ThumbnailModal'
 import { ItemType, type Item, BODY_SHAPE_MALE } from '~/lib/items'
 import { ConfirmItemsStep } from './ConfirmItemsStep'
@@ -13,6 +13,7 @@ vi.mock('~/lib/builder', async importOriginal => ({
   ...(await importOriginal<typeof import('~/lib/builder')>()),
   saveItem: vi.fn(),
   deleteItem: vi.fn(),
+  fetchContent: vi.fn(),
   fetchItemContents: vi.fn()
 }))
 
@@ -35,7 +36,6 @@ vi.mock('~/components/ThumbnailModal', () => ({
           onSave({
             thumbnail: 'data:image/png;base64,bmV3',
             contents: { ...contents, 'thumbnail.png': NEW_THUMBNAIL },
-            thumbnailNotTransparent: false,
             isAutoThumbnail: false
           })
         }
@@ -64,7 +64,7 @@ function makeItem(id: string, name: string): Item {
       category: 'upper_body',
       representations: [{ bodyShapes: [BODY_SHAPE_MALE], mainFile: 'm.glb', contents: ['m.glb'] }]
     },
-    contents: { 'thumbnail.png': 'Qmthumb' },
+    contents: { 'm.glb': 'Qmmodel', 'thumbnail.png': 'Qmthumb' },
     createdAt: 1,
     updatedAt: 1
   }
@@ -92,6 +92,7 @@ beforeEach(() => {
   vi.mocked(saveItem).mockReset()
   vi.mocked(deleteItem).mockReset()
   vi.mocked(fetchItemContents).mockReset()
+  vi.mocked(fetchContent).mockReset()
 })
 
 describe('ConfirmItemsStep', () => {
@@ -112,6 +113,7 @@ describe('ConfirmItemsStep', () => {
 
   it('saves an edited name and rarity as soon as the check button is clicked', async () => {
     vi.mocked(saveItem).mockImplementation(async (_address, item) => item)
+    vi.mocked(fetchContent).mockResolvedValue(new Blob(['png'], { type: 'image/png' }))
     renderStep()
     const row = screen.getAllByTestId('publish-item-row')[0]
     await userEvent.click(within(row).getByTestId('publish-item-edit'))
@@ -124,8 +126,11 @@ describe('ConfirmItemsStep', () => {
     await userEvent.click(within(row).getByTestId('publish-item-save'))
 
     await waitFor(() => expect(saveItem).toHaveBeenCalledTimes(1))
-    const saved = vi.mocked(saveItem).mock.calls[0][1]
+    const [, saved, blobs] = vi.mocked(saveItem).mock.calls[0]
     expect(saved).toMatchObject({ id: 'a', name: 'Captain Hat', rarity: 'epic' })
+    // A new rarity means a new catalyst image, rebuilt from the stored thumbnail.
+    expect(fetchContent).toHaveBeenCalledWith('Qmthumb')
+    expect(Object.keys(blobs ?? {})).toEqual(['image.png'])
     await waitFor(() => expect(within(row).queryByTestId('publish-item-name-input')).not.toBeInTheDocument())
   })
 

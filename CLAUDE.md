@@ -47,6 +47,8 @@ This SPA is the creator surface of decentraland.org: it is served **by path** at
 
 Item editor (`/collections/editor`, spec `design/ITEM_EDITOR_SPEC.md`): the shared `~/components/AvatarPreview` mounts ui2's `WearablePreview` once with a frozen URL snapshot and pushes every later change through `lib/previewBridge` (postMessage UPDATE), so avatar/item changes never reload the iframe. The renderer is decided per mount by `lib/pickRenderer` (`unity-wearable-preview` flag via `lib/featureFlags`, `?unity=false` override resolved in `src/config`). Model checks go through the swappable `lib/validation` module (README inside); spring bone physics through `lib/springBones`.
 
+Curation (`/curation`, spec `design/CURATION_SPEC.md`): committee members, per `useCommittee` (`GET /committee`, fails closed), get the Curation tab and review collections in the item editor with `?reviewing=true`: a read-only review mode that only committee members get (anyone else sees the regular editor under their own permissions). Committee chain writes go through `lib/collectionApproval` (`Committee.manageCollection`); the approval flow lives in `lib/approveCollection` and Catalyst entities in `lib/catalystEntity`, whose metadata key order is part of the content hash.
+
 Entry: `index.html` → `src/main.tsx` (creates the `BrowserRouter`, the single router call site — see `CONVENTIONS.md` — with `basename` from `~/config`) → `src/App.tsx` (declares the routes: `React.lazy` pages + `<Routes>`). Page components live in `src/components/` (`components/CollectionsPage`, …), one per route. Component organization is semantic — see "Component organization" in `CONVENTIONS.md`. Zustand stores in `src/store/`; business logic (API clients, flows, encoding) in `src/lib/` — heavily unit-tested, never in components; react-query hooks in `src/hooks/`; i18n provider and messages in `src/intl/`.
 
 ### Environment configuration (`@dcl/ui-env`)
@@ -71,6 +73,8 @@ The spec for all of Decentraland's public APIs is available at https://docs.dece
 
 Every user-facing string — buttons, labels, headings, placeholders, statuses, errors, tooltips, empty states — goes through `t('a.b.c')` with a key added to **every** locale file: `en.json`, `es.json` and `zh.json`. Never hardcode a display string in a component; this is part of "done" for any UI change. Spanish uses neutral (Latin American) **"tú"** forms, never "vos" ("Inicia sesión", not "Iniciá"). Chinese is Simplified, follows the sites repo's `zh.json` style (您, full-width punctuation, a space between Chinese and Latin text) and keeps its fixed terms: 系列 (collection), 可穿戴物品 (wearable), 表情动作 (emote), 物品 (item), 积分 (credits); brand names (Decentraland, MANA, Marketplace, Creator Hub) stay in English.
 
+One exception: item validation findings show the wearable-validator rule book's own English messages and check titles, so the editor says exactly what curation says. Copy the app adds around them (badge states, fallbacks when a check can't run) still goes through `t()`.
+
 ### Copy (relaxed web2-first)
 
 Prefer friendly copy and hide blockchain plumbing where possible. Wallet/MANA/transaction terms are allowed where the flow genuinely requires them (publishing, fees) — creators are a crypto-aware audience. Never surface a raw error to the user: report it to Sentry and show human-friendly copy.
@@ -87,7 +91,7 @@ Prefer friendly copy and hide blockchain plumbing where possible. Wallet/MANA/tr
 
 ### Feature flags
 
-Decentraland's flag service is read through `lib/featureFlags` (one `FeatureFlag` enum entry plus its owning application, `builder` or `dapps`) and consumed with `useFeatureFlag(flag)` → `{ enabled, isLoading }`. Reads fail closed: a flag still loading, absent, or unreachable is off. Add a flag by adding the enum entry and its `APPLICATION` row — never by fetching the service anywhere else. Locally, override with `VITE_FEATURE_FLAG_OVERRIDES=unity-wearable-preview:true`. In specs, mock `~/lib/featureFlags` onto `~/test/featureFlags` and declare the flags the subject runs with via `setFeatureFlags(...)`.
+Decentraland's flag service is read through `lib/featureFlags` (one `FeatureFlag` enum entry plus its owning application, `builder` or `dapps`) and consumed with `useFeatureFlag(flag)` → `{ enabled, isLoading }`. Reads fail closed: a flag still loading, absent, or unreachable is off. Add a flag by adding the enum entry and its `APPLICATION` row — never by fetching the service anywhere else. A flag paired with its address-list variant (the pre-launch gate's allowlist) is read with `getAddressListGate(flag)` → `{ enabled, allowed }`, both from one snapshot. Locally, override with `VITE_FEATURE_FLAG_OVERRIDES=unity-wearable-preview:true` and `VITE_FEATURE_FLAG_VARIANT_OVERRIDES=creators-prelaunch:0x…,0x…`. In specs, mock `~/lib/featureFlags` onto `~/test/featureFlags` and declare the flags the subject runs with via `setFeatureFlags(...)` / `setAddressListVariant(...)`.
 
 ### Testing
 

@@ -100,6 +100,7 @@ export type RemoteItem = {
   metrics?: ItemMetrics
   contents: Record<string, string>
   content_hash?: string | null
+  local_content_hash?: string | null
   created_at: string
   updated_at: string
 }
@@ -121,9 +122,15 @@ export type Item = {
   totalSupply?: number
   /** On-chain item id (`blockchain_item_id`), assigned once the collection is published. */
   tokenId?: string
+  /** Content hash of the builder copy, computed by builder-server once the item is published. */
+  currentContentHash?: string
+  /** Content hash the collection contract holds for the item. */
+  blockchainContentHash?: string
   isPublished: boolean
   isApproved: boolean
   inCatalyst: boolean
+  /** Linked items only: which tokens of the linked contract unlock the item (`@dcl/schemas` Mappings). */
+  mappings?: unknown
   type: ItemType
   data: ItemData
   metrics?: ItemMetrics
@@ -158,6 +165,9 @@ export function fromRemoteItem(remote: RemoteItem): Item {
   if (remote.utility) item.utility = remote.utility
   if (remote.total_supply !== undefined && remote.total_supply !== null) item.totalSupply = remote.total_supply
   if (remote.blockchain_item_id) item.tokenId = remote.blockchain_item_id
+  if (remote.local_content_hash) item.currentContentHash = remote.local_content_hash
+  if (remote.content_hash) item.blockchainContentHash = remote.content_hash
+  if (remote.mappings) item.mappings = remote.mappings
   return item
 }
 
@@ -330,4 +340,13 @@ export function canEditItemPrice(
   if (!canSellCollectionItems(collection, address)) return false
   const sales = getItemSales(item)
   return !(sales && sales.minted >= sales.maxSupply)
+}
+
+/**
+ * `item.video` is the hash curation last approved. A save replaces it directly until the item is approved; after
+ * that only `contents['video.mp4']` moves, so the item reads as changed and goes through review (builder-server
+ * copies the hash over on approval).
+ */
+export function tracksVideoOnSave(item: Item): boolean {
+  return !item.isPublished || !item.isApproved
 }

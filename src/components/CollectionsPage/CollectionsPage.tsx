@@ -4,6 +4,7 @@ import {
   Add as AddIcon,
   FormatListBulleted as FormatListBulletedIcon,
   GridView as GridViewIcon,
+  Link as LinkIcon,
   PersonOutline as PersonOutlineIcon,
   Search as SearchIcon
 } from '@mui/icons-material'
@@ -11,9 +12,16 @@ import { useTranslation } from '~/intl'
 import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'
 import { pageRangeLabel } from '~/lib/pagination'
 import { useWallet } from '~/store/wallet'
-import { COLLECTIONS_PAGE_SIZE, useCollections, useRejectedCollectionsCount } from '~/hooks/useCollections'
+import { COLLECTIONS_PAGE_SIZE, useCollections, useCollectionsSummary } from '~/hooks/useCollections'
 import { useSaveCollection } from '~/hooks/useCollection'
-import { CollectionStatusFilter } from '~/lib/collections'
+import { track } from '~/lib/analytics'
+import {
+  CollectionSort,
+  CollectionStatusFilter,
+  LINKED_FILTER,
+  isStatusFilterShown,
+  type CollectionListFilter
+} from '~/lib/collections'
 import { buildNewCollection } from '~/lib/saveCollection'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { Pagination } from '~/components/Pagination'
@@ -23,14 +31,21 @@ import { CollectionCard } from './CollectionCard'
 import { CollectionListRow } from './CollectionListRow'
 import * as S from './CollectionsPage.styles'
 
-const STATUS_FILTERS = Object.values(CollectionStatusFilter)
+const STATUS_FILTERS = [
+  CollectionStatusFilter.ALL,
+  CollectionStatusFilter.DRAFT,
+  CollectionStatusFilter.PUBLISHED,
+  CollectionStatusFilter.UNDER_REVIEW,
+  CollectionStatusFilter.REJECTED
+]
 const SEARCH_DEBOUNCE_MS = 500
 const LEARN_MORE_URL =
   'https://docs.decentraland.org/creator/wearables-and-emotes/manage-collections/creating-a-collection/'
 
 type ViewMode = 'grid' | 'list'
 
-function parseStatus(raw: string | null): CollectionStatusFilter {
+function parseStatus(raw: string | null): CollectionListFilter {
+  if (raw === LINKED_FILTER) return LINKED_FILTER
   return STATUS_FILTERS.includes(raw as CollectionStatusFilter)
     ? (raw as CollectionStatusFilter)
     : CollectionStatusFilter.ALL
@@ -70,8 +85,16 @@ const CollectionsPage = () => {
   useEffect(() => setSearchInput(search), [search])
   useEffect(() => () => clearTimeout(searchTimer.current), [])
 
-  const collections = useCollections(address, { page, search, status })
-  const { data: rejectedCount } = useRejectedCollectionsCount(address)
+  const collections = useCollections(address, {
+    page,
+    search,
+    status,
+    sort: CollectionSort.LAST_ACTIVITY_DESC,
+    includeLinked: true
+  })
+  const summary = useCollectionsSummary(address, search)
+  const counts = summary.data?.counts
+  const linkedTotal = summary.data?.linkedTotal ?? 0
 
   const [isCreateOpen, setCreateOpen] = useState(false)
   const saveCollection = useSaveCollection(address)
@@ -106,6 +129,26 @@ const CollectionsPage = () => {
     )
   }
 
+  // A chip whose last collection moved on disappears: fall back to All. While searching, the active
+  // chip stays, showing (0) next to the no-results state.
+  const isActiveChipGone =
+    !!counts &&
+    !summary.isPlaceholderData &&
+    !search &&
+    (status === LINKED_FILTER ? linkedTotal === 0 : !isStatusFilterShown(status, counts))
+  useEffect(() => {
+    if (!isActiveChipGone) return
+    setSearchParams(
+      prev => {
+        const next = new URLSearchParams(prev)
+        next.delete('status')
+        next.delete('page')
+        return next
+      },
+      { replace: true }
+    )
+  }, [isActiveChipGone, setSearchParams])
+
   function onSearchChange(value: string) {
     setSearchInput(value)
     if (searchTimer.current) clearTimeout(searchTimer.current)
@@ -127,8 +170,12 @@ const CollectionsPage = () => {
   const pages = data?.pages ?? 0
   const shown = data?.results.length ?? 0
   const hasActiveFilters = !!search || status !== CollectionStatusFilter.ALL
-  const isEmpty = !!data && total === 0 && !hasActiveFilters
-  const noResults = !!data && total === 0 && hasActiveFilters
+  const allCount = counts
+    ? counts.published + counts.draft + counts.under_review + counts.rejected + counts.disabled + linkedTotal
+    : 0
+  // Counts ignore the status filter but follow the search, so only an unsearched list proves there are no collections.
+  const isEmpty = !!counts && !search && allCount === 0
+  const noResults = !!data && total === 0 && hasActiveFilters && !isEmpty
   const isLoading = !restored || (!!address && (collections.isLoading || (collections.isFetching && !data)))
   // Debounce window (input ahead of the URL) or a refetch with a search applied.
   const isSearching = searchInput.trim() !== search || (!!search && collections.isFetching)
@@ -158,20 +205,40 @@ const CollectionsPage = () => {
 
       <S.FilterRow>
         <S.Chips data-testid="status-filters">
-          {STATUS_FILTERS.map(filter => (
-            <S.Chip
-              key={filter}
-              type="button"
-              data-active={status === filter || undefined}
-              data-testid={`status-filter-${filter}`}
-              onClick={() => changeParams({ status: filter === CollectionStatusFilter.ALL ? null : filter })}
-            >
-              {t(`collections_page.filter.${filter}`)}
-              {filter === CollectionStatusFilter.REJECTED && !!rejectedCount && (
-                <S.ChipBadge data-testid="rejected-count">{rejectedCount}</S.ChipBadge>
-              )}
-            </S.Chip>
-          ))}
+          {counts &&
+            STATUS_FILTERS.filter(filter => filter === status || isStatusFilterShown(filter, counts)).map(filter => (
+              <S.Chip
+                key={filter}
+                type="button"
+                data-active={status === filter || undefined}
+                data-testid={`status-filter-${filter}`}
+                onClick={() => changeParams({ status: filter === CollectionStatusFilter.ALL ? null : filter })}
+              >
+                {t(`collections_page.filter.${filter}`, {
+                  count: filter === CollectionStatusFilter.ALL ? allCount : counts[filter]
+                })}
+                {filter === CollectionStatusFilter.REJECTED && !!counts.rejected && (
+                  <S.ChipDot data-testid="rejected-dot" aria-hidden />
+                )}
+              </S.Chip>
+            ))}
+          {counts && (linkedTotal > 0 || status === LINKED_FILTER) && (
+            <>
+              <S.ChipDivider aria-hidden />
+              <S.Chip
+                type="button"
+                data-active={status === LINKED_FILTER || undefined}
+                data-testid={`status-filter-${LINKED_FILTER}`}
+                onClick={() => {
+                  track('Filter linked collections', { count: linkedTotal })
+                  changeParams({ status: LINKED_FILTER })
+                }}
+              >
+                <LinkIcon fontSize="small" />
+                {t('collections_page.filter.linked', { count: linkedTotal })}
+              </S.Chip>
+            </>
+          )}
         </S.Chips>
         <S.ViewToggle role="group" aria-label={t('collections_page.view_mode')}>
           <S.ViewButton

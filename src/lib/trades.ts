@@ -1,4 +1,4 @@
-// Off-chain marketplace (OffChainMarketplaceV2) orders: the EIP-712 encoding a creator signs and the
+// Off-chain marketplace orders: the EIP-712 encoding a creator signs and the
 // marketplace-server endpoint that stores the signed order. Ported from the legacy builder's
 // lib/trades + TradeService; the shop reads these orders back through its unified catalog.
 import { ethers } from 'ethers'
@@ -49,8 +49,12 @@ export const OFFCHAIN_MARKETPLACE_TYPES: Record<string, ethers.TypedDataField[]>
 // Signed requests to marketplace-server must declare who signs and why.
 const TRADE_AUTH_METADATA = { signer: 'dcl:builder', intent: 'dcl:create-trade' }
 
+/**
+ * The marketplace new orders are signed on, and the one that must be able to mint the collection.
+ * marketplace-server only accepts new orders on it; older orders are still cancelled on their own contract.
+ */
 export function getOffchainMarketplaceContract(chainId: number) {
-  return getContract(ContractName.OffChainMarketplaceV2, chainId)
+  return getContract(ContractName.OffChainMarketplaceV3, chainId)
 }
 
 /** The marketplace's EIP-712 domain: the chain id travels in `salt`, Decentraland's meta-tx convention. */
@@ -116,7 +120,8 @@ export function toTradeTypedValues(trade: UnsignedTrade): Record<string, unknown
 
 const MARKETPLACE_CONTRACTS = new Set<ContractName>([
   ContractName.OffChainMarketplace,
-  ContractName.OffChainMarketplaceV2
+  ContractName.OffChainMarketplaceV2,
+  ContractName.OffChainMarketplaceV3
 ])
 
 /** The stored order's marketplace names a contract this client does not know. */
@@ -128,7 +133,7 @@ export class UnknownTradeContractError extends Error {
 }
 
 /**
- * The marketplace generation a stored trade belongs to (older listings sit on the V1 contract), always
+ * The marketplace generation a stored trade belongs to (older listings sit on the V1 or V2 contract), always
  * resolved to the canonical address for that generation. The server's `contract` is only a lookup key:
  * a transaction is never sent to an address the client cannot vouch for, nor to another chain.
  */

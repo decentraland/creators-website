@@ -13,6 +13,8 @@ import { ItemSyncStatus } from '~/lib/itemSync'
 import { ItemType, type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import { useWallet } from '~/store/wallet'
+import { getMaticChainId } from '~/lib/publishCollection'
+import { getOffchainMarketplaceContract } from '~/lib/trades'
 import { type Session } from '~/lib/auth'
 import { ItemActionsMenu } from './ItemActionsMenu'
 
@@ -165,9 +167,11 @@ describe('ItemActionsMenu', () => {
   })
 
   it('copies the URN of a published item and offers the sale actions for a listed item', async () => {
+    // V3 is already a minter, so re-pricing skips Enable Sales.
+    const marketplace = getOffchainMarketplaceContract(getMaticChainId()).address
     renderMenu({
       item: publishedItem,
-      collection: published,
+      collection: { ...published, minters: [...published.minters, marketplace] },
       listing: { itemId: '0', tradeId: 'trade-1', currency: 'credits', credits: 5 }
     })
     const menu = await openMenu()
@@ -306,6 +310,44 @@ describe('ItemActionsMenu', () => {
     expect(useNotifications.getState().toasts[0]?.message).toMatch(/reset/i)
   })
 
+  it('resets a smart wearable with a pending video without asking the catalyst for the video', async () => {
+    const smart = {
+      ...publishedItem,
+      video: 'Qmapprovedvideo',
+      data: { ...publishedItem.data, requiredPermissions: ['USE_FETCH'] },
+      contents: { ...publishedItem.contents, 'game.js': 'Qmjs', 'video.mp4': 'Qmpendingvideo' }
+    }
+    const smartEntity = {
+      ...entity,
+      content: [...entity.content, { file: 'game.js', hash: 'Qmjs' }],
+      metadata: { ...entity.metadata, data: publishedItem.data }
+    }
+    vi.mocked(fetchCatalystContent).mockImplementation(async hash => new Blob([hash]))
+    vi.mocked(saveItem).mockImplementation(async (_address, saved) => saved)
+    renderMenu({ item: smart, collection: published, sync: { status: ItemSyncStatus.UNSYNCED, entity: smartEntity } })
+    await openMenu()
+    await userEvent.click(screen.getByTestId('item-reset'))
+    await userEvent.click(screen.getByTestId('reset-item-confirm'))
+
+    await waitFor(() => expect(screen.queryByTestId('reset-item-modal')).not.toBeInTheDocument())
+    const [, saved, blobs] = vi.mocked(saveItem).mock.calls[0]
+    expect(saved.contents['video.mp4']).toBe('Qmapprovedvideo')
+    expect(saved.data.requiredPermissions).toEqual(['USE_FETCH'])
+    expect(Object.keys(blobs).sort()).toEqual(['game.js', 'hat.glb', 'thumbnail.png'])
+    expect(fetchCatalystContent).not.toHaveBeenCalledWith('Qmapprovedvideo')
+    expect(fetchCatalystContent).not.toHaveBeenCalledWith('Qmpendingvideo')
+  })
+
+  it('reports a failed reset in an error toast and keeps the dialog open', async () => {
+    vi.mocked(fetchCatalystContent).mockRejectedValue(new Error('catalyst request failed'))
+    renderMenu({ item: publishedItem, collection: published, sync: { status: ItemSyncStatus.UNSYNCED, entity } })
+    await openMenu()
+    await userEvent.click(screen.getByTestId('item-reset'))
+    await userEvent.click(screen.getByTestId('reset-item-confirm'))
+    await waitFor(() => expect(useNotifications.getState().toasts[0]?.type).toBe('error'))
+    expect(screen.getByTestId('reset-item-modal')).toBeInTheDocument()
+  })
+
   it('offers no reset while the item is synced or under review', async () => {
     renderMenu({ item: publishedItem, collection: published, sync: { status: ItemSyncStatus.SYNCED, entity } })
     expect(ids(await openMenu())).not.toContain('item-reset')
@@ -330,14 +372,15 @@ describe('ItemActionsMenu', () => {
     expect(useNotifications.getState().toasts[0]?.message).toMatch(/deleted/i)
   })
 
-  it('keeps the delete dialog open and shows the failure when the server refuses', async () => {
+  it('keeps the delete dialog open and reports the failure in an error toast when the server refuses', async () => {
     vi.mocked(deleteItem).mockRejectedValue(new Error('locked'))
     renderMenu()
     await openMenu()
     await userEvent.click(screen.getByTestId('item-delete'))
     await userEvent.click(screen.getByTestId('delete-item-confirm'))
-    expect(await screen.findByTestId('delete-item-modal-error')).toBeInTheDocument()
+    await waitFor(() => expect(useNotifications.getState().toasts[0]?.type).toBe('error'))
     expect(screen.getByTestId('delete-item-modal')).toBeInTheDocument()
+    expect(screen.queryByTestId('delete-item-modal-error')).not.toBeInTheDocument()
   })
 
   describe('on a small screen', () => {

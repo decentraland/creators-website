@@ -22,50 +22,39 @@ import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { RaritySelect } from '~/components/RaritySelect'
 import { RequiredPermissions } from '~/components/RequiredPermissions'
 import { Switch } from '~/components/Switch'
-import { ThumbnailModal } from '~/components/ThumbnailModal'
 import { InfoTooltip, Tooltip } from '~/components/Tooltip'
 import { VideoDropzone, VideoModal } from '~/components/VideoModal'
 import { useCampaign } from '~/hooks/useCampaign'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useObjectURL } from '~/hooks/useObjectURL'
-import { useDeleteItem, useItemContents } from '~/hooks/usePublishCollection'
+import { useDeleteItem } from '~/hooks/usePublishCollection'
+import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useTranslation } from '~/intl'
 import { fetchContent, fetchItemContents, getContentsStorageUrl } from '~/lib/builder'
 import { FeatureFlag } from '~/lib/featureFlags'
 import {
   ITEM_DESCRIPTION_MAX_LENGTH,
   ITEM_UTILITY_MAX_LENGTH,
-  canUpdateVideo,
+  isValidItemDescription,
   type ItemDraft,
   type ItemDraftAction
 } from '~/lib/itemDraft'
 import { buildItemZip, getItemZipName } from '~/lib/itemDownload'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
-import {
-  ITEM_EXTENSIONS,
-  ItemFileError,
-  hasFacialExpressions,
-  MAX_THUMBNAIL_FILE_SIZE,
-  THUMBNAIL_PATH,
-  VIDEO_PATH,
-  toMB
-} from '~/lib/itemFiles'
+import { ITEM_EXTENSIONS, ItemFileError, hasFacialExpressions, THUMBNAIL_PATH, VIDEO_PATH, toMB } from '~/lib/itemFiles'
 import { pickFile } from '~/lib/filePicker'
 import { importItemModel, type ModelImportKind } from '~/lib/itemModelImport'
 import { ItemType, getMissingBodyShapeType, isMissingSmartWearableVideo, isSmartWearable, type Item } from '~/lib/items'
-import { ImageType, getImageType, resizeImage } from '~/lib/media'
 import { downloadBlob } from '~/lib/navigation'
 import { useNotifications } from '~/lib/notifications'
 import { type SpringBoneParamsByName } from '~/lib/springBones'
-import { getEmoteCategoryOptions, getWearableCategoryOptions, isImageWearableContents } from '~/lib/wearableCategories'
+import { getEmoteCategoryOptions, getWearableCategoryOptions } from '~/lib/wearableCategories'
 import { DeleteItemModal } from '~/components/CollectionDetailPage/DeleteItemModal'
 import { EditorSection } from '../EditorSection'
 import { HidesEditor } from '../HidesEditor'
 import { SpringBonesEditor, type SpringBonesModel } from '../SpringBonesEditor'
 import { TagsInput } from './TagsInput'
 import * as S from '../ItemEditorPage.styles'
-
-const THUMBNAIL_SIZE = 1024
 
 export type SpringBonesFormProps = {
   models: SpringBonesModel[]
@@ -80,6 +69,8 @@ type Props = {
   address: string
   /** False in review mode, for viewers without edit rights, and while the collection is publish-locked. */
   editable: boolean
+  /** Review mode hides the read-only note: curators know the editor is locked. */
+  showReadOnlyNote?: boolean
   /** Owner of a draft collection: the only one who may delete items here. */
   canDelete: boolean
   draft: ItemDraft
@@ -97,6 +88,7 @@ export function PropertiesPanel({
   item,
   address,
   editable,
+  showReadOnlyNote = true,
   canDelete,
   draft,
   dispatch,
@@ -112,7 +104,6 @@ export function PropertiesPanel({
   const showToast = useNotifications(state => state.showToast)
   const [isImporting, setImporting] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
-  const [isThumbnailOpen, setThumbnailOpen] = useState(false)
   const [isVideoOpen, setVideoOpen] = useState(false)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
   const [isDownloading, setDownloading] = useState(false)
@@ -120,7 +111,9 @@ export function PropertiesPanel({
   const campaign = useCampaign()
   const utilityFlag = useFeatureFlag(FeatureFlag.WEARABLE_UTILITY)
   const vrmFlag = useFeatureFlag(FeatureFlag.VRM_OPTOUT)
-  const itemContents = useItemContents(isThumbnailOpen ? item : null)
+  const thumbnailEditor = useThumbnailEditor(patch =>
+    dispatch({ type: 'setThumbnail', thumbnail: patch.contents[THUMBNAIL_PATH] })
+  )
 
   const isEmote = item.type === ItemType.EMOTE
   const isWearable = item.type === ItemType.WEARABLE
@@ -131,19 +124,18 @@ export function PropertiesPanel({
     () => (isEmote ? getEmoteCategoryOptions() : getWearableCategoryOptions(contents)),
     [isEmote, contents]
   )
-  // Texture-only wearables have nothing to pose in the thumbnail modal: they take a PNG straight from disk.
-  const isImageWearable = isWearable && isImageWearableContents(item.contents)
   const missingShape = useMemo(
     () => (isWearable && !isSmart ? getMissingBodyShapeType(item) : null),
     [isWearable, isSmart, item]
   )
   const nameInvalid = draft.name.length > 0 && !isValidItemName(draft.name)
+  const descriptionInvalid = !isValidItemDescription(draft.description)
   const thumbnailUrl = useObjectURL(draft.thumbnail)
   const thumbnailHash = item.contents[item.thumbnail]
   const videoHash = item.contents[VIDEO_PATH]
   const draftVideoUrl = useObjectURL(draft.video)
   const videoUrl = draftVideoUrl ?? (videoHash ? getContentsStorageUrl(videoHash) : null)
-  const canEditVideo = editable && canUpdateVideo(item)
+  const canEditVideo = editable
   const videoName = draft.video instanceof File ? draft.video.name : VIDEO_PATH
   const [videoDuration, setVideoDuration] = useState<number | null>(null)
   // A new video must not flash the previous one's duration until its metadata loads.
@@ -155,23 +147,6 @@ export function PropertiesPanel({
     staleTime: Infinity
   })
   const metrics = draft.fileUpdate?.item.metrics ?? item.metrics
-
-  async function pickThumbnail() {
-    const file = await pickFile({ accept: 'image/png' })
-    if (!file) return
-    try {
-      if ((await getImageType(file)) !== ImageType.PNG) throw new Error('format')
-      const resized = await resizeImage(file, THUMBNAIL_SIZE, THUMBNAIL_SIZE)
-      if (resized.size > MAX_THUMBNAIL_FILE_SIZE) throw new Error('size')
-      dispatch({ type: 'setThumbnail', thumbnail: resized })
-    } catch (error) {
-      const key =
-        error instanceof Error && error.message === 'format'
-          ? 'thumbnail_modal.wrong_format'
-          : 'thumbnail_modal.too_big'
-      showToast(t(key, { size: toMB(MAX_THUMBNAIL_FILE_SIZE) }), { type: 'error' })
-    }
-  }
 
   async function importModel(kind: ModelImportKind) {
     const file = await pickFile({ accept: ITEM_EXTENSIONS.join(',') })
@@ -207,7 +182,8 @@ export function PropertiesPanel({
         setDeleteOpen(false)
         showToast(t('collection_detail_page.item_actions.deleted', { name: item.name }))
         onDeleted()
-      }
+      },
+      onError: () => showToast(t('collection_detail_page.delete_item.error'), { type: 'error' })
     })
   }
 
@@ -269,7 +245,9 @@ export function PropertiesPanel({
           )}
         </ActionsMenu>
       </S.PanelHeader>
-      {!editable && <S.ReadOnlyNote data-testid={`${testId}-readonly`}>{t('item_editor.read_only')}</S.ReadOnlyNote>}
+      {!editable && showReadOnlyNote && (
+        <S.ReadOnlyNote data-testid={`${testId}-readonly`}>{t('item_editor.read_only')}</S.ReadOnlyNote>
+      )}
 
       <EditorSection title={t('item_editor.details.title')} testId={`${testId}-details`}>
         <S.DetailsRow>
@@ -278,7 +256,7 @@ export function PropertiesPanel({
             aria-label={t('item_editor.details.edit_thumbnail')}
             disabled={disabled}
             data-testid={`${testId}-thumbnail`}
-            onClick={() => (isImageWearable ? void pickThumbnail() : setThumbnailOpen(true))}
+            onClick={() => thumbnailEditor.edit({ kind: 'item', item })}
           >
             <ItemThumbnail
               src={thumbnailUrl ?? (thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null)}
@@ -442,9 +420,15 @@ export function PropertiesPanel({
             value={draft.description}
             maxLength={ITEM_DESCRIPTION_MAX_LENGTH}
             disabled={disabled}
+            data-invalid={descriptionInvalid || undefined}
             data-testid={`${testId}-description`}
             onChange={event => dispatch({ type: 'setText', field: 'description', value: event.target.value })}
           />
+          {descriptionInvalid && (
+            <S.ErrorText data-testid={`${testId}-description-error`}>
+              {t('item_editor.basics.invalid_description')}
+            </S.ErrorText>
+          )}
         </S.Field>
         {utilityFlag.enabled && (
           <S.Field>
@@ -596,6 +580,7 @@ export function PropertiesPanel({
         </EditorSection>
       )}
 
+      <S.IntercomClearance aria-hidden />
       {editable && isDirty && (
         <S.Footer data-testid={`${testId}-footer`}>
           <Button
@@ -612,7 +597,7 @@ export function PropertiesPanel({
             type="button"
             variant="primary"
             size="sm"
-            disabled={!isDirty || nameInvalid || draft.name.trim() === ''}
+            disabled={!isDirty || nameInvalid || descriptionInvalid || draft.name.trim() === ''}
             loading={isSaving}
             data-testid={`${testId}-save`}
             onClick={onSave}
@@ -622,18 +607,7 @@ export function PropertiesPanel({
         </S.Footer>
       )}
 
-      {isThumbnailOpen && (
-        <ThumbnailModal
-          type={item.type}
-          contents={itemContents.data ?? null}
-          loadError={itemContents.isError}
-          onClose={() => setThumbnailOpen(false)}
-          onSave={patch => {
-            dispatch({ type: 'setThumbnail', thumbnail: patch.contents[THUMBNAIL_PATH] })
-            setThumbnailOpen(false)
-          }}
-        />
-      )}
+      {thumbnailEditor.modal}
       {isVideoOpen && (
         <VideoModal
           video={draft.video ?? storedVideo.data ?? null}
@@ -659,7 +633,6 @@ export function PropertiesPanel({
         <DeleteItemModal
           item={item}
           isDeleting={deleteItem.isPending}
-          error={deleteItem.isError}
           onCancel={() => {
             setDeleteOpen(false)
             deleteItem.reset()

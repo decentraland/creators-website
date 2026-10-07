@@ -23,9 +23,10 @@ import { RequiredPermissions } from '~/components/RequiredPermissions'
 import { InfoTooltip, Tooltip } from '~/components/Tooltip'
 import { VideoDropzone } from '~/components/VideoModal'
 import { useObjectURL } from '~/hooks/useObjectURL'
+import { useThumbnailValidation } from '~/hooks/useThumbnailValidation'
 import { useTranslation } from '~/intl'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
-import { hasFacialExpressions, toMB } from '~/lib/itemFiles'
+import { THUMBNAIL_PATH, hasFacialExpressions, toMB } from '~/lib/itemFiles'
 import { BodyShapeType, ItemType, VIDEO_PATH, type Item } from '~/lib/items'
 import { getCategoryOptions, getVariantTargets, type ItemDraft } from './AddItemsModal.state'
 import * as S from './AddItemsModal.styles'
@@ -87,33 +88,44 @@ export function DraftForm({
   // A new video (or draft) must not flash the previous one's duration until its metadata loads.
   useEffect(() => setVideoDuration(null), [videoUrl])
 
-  const warnings = useMemo(() => {
-    const list = draft.validationIssues.map(issue => ({
-      key: issue.code,
-      text: t(`${issue.messageKey}`, issue.messageParams)
-    }))
-    if (draft.thumbnailNotTransparent) {
-      list.push({ key: 'THUMBNAIL_NOT_TRANSPARENT', text: t('item_validation.thumbnail_not_transparent') })
-    }
-    return list
-  }, [draft.validationIssues, draft.thumbnailNotTransparent, t])
+  const thumbnailBlob = draft.contents[THUMBNAIL_PATH]
+  const thumbnailSource = useMemo(
+    () => (thumbnailBlob ? ({ kind: 'blob', blob: thumbnailBlob } as const) : null),
+    [thumbnailBlob]
+  )
+  const { data: thumbnailValidation } = useThumbnailValidation(thumbnailSource)
+  const warnings = useMemo(
+    () =>
+      [...draft.validationIssues, ...(thumbnailValidation?.issues ?? [])].map(issue => ({
+        key: `${issue.code}-${issue.where ?? ''}-${issue.message}`,
+        text: issue.message
+      })),
+    [draft.validationIssues, thumbnailValidation]
+  )
 
   return (
     <S.Content data-testid="draft-form">
       <S.PreviewPane>
         <S.ThumbnailWrap>
-          <S.ThumbnailBox
-            type="button"
-            aria-label={t('add_items_modal.edit_thumbnail')}
-            data-testid="edit-thumbnail"
-            onClick={onOpenThumbnail}
-          >
-            <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId="draft-thumbnail">
-              <S.ThumbnailOverlay data-thumb-overlay>
-                <CameraIcon />
-              </S.ThumbnailOverlay>
-            </ItemThumbnail>
-          </S.ThumbnailBox>
+          {draft.isVariant ? (
+            // A variant is merged into its target, which keeps its own thumbnail: this one is only a preview.
+            <S.ThumbnailBox as="div">
+              <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId="draft-thumbnail" />
+            </S.ThumbnailBox>
+          ) : (
+            <S.ThumbnailBox
+              type="button"
+              aria-label={t('add_items_modal.edit_thumbnail')}
+              data-testid="edit-thumbnail"
+              onClick={onOpenThumbnail}
+            >
+              <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId="draft-thumbnail">
+                <S.ThumbnailOverlay data-thumb-overlay>
+                  <CameraIcon />
+                </S.ThumbnailOverlay>
+              </ItemThumbnail>
+            </S.ThumbnailBox>
+          )}
           {isWearable && hasFacialExpressions(draft.contents) && (
             <Tooltip content={t('add_items_modal.facial_expressions')} asChild>
               <S.ThumbnailBadge

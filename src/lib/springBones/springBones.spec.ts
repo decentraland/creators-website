@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { manifest } from '@dcl-regenesislabs/wearable-validator'
+import { PROP_ARMATURE_NAME } from '../models'
+import { SPRING_BONE_TOKEN } from './parseSpringBones'
 import {
+  MAX_SPRING_BONES,
+  SPRING_BONE_RANGES,
   buildBoneTree,
   buildSubtreeSizes,
   getChainRoots,
@@ -170,5 +175,14 @@ describe('sameSpringBoneParams', () => {
     expect(sameSpringBoneParams(base, { m: { Tail_springbone: { ...chain(), center: 'Hips' } } })).toBe(false)
     expect(sameSpringBoneParams(base, { m: { Tail_springbone: chain(), Hair_springbone: chain() } })).toBe(false)
     expect(sameSpringBoneParams(base, {})).toBe(false)
+  })
+})
+
+describe('rule book parity', () => {
+  it('matches the validator manifest', () => {
+    expect(MAX_SPRING_BONES).toBe(manifest.skeleton.maxSpringBones)
+    expect(SPRING_BONE_TOKEN).toBe(manifest.skeleton.springBoneToken)
+    expect(SPRING_BONE_RANGES).toEqual(manifest.skeleton.springBone)
+    expect(PROP_ARMATURE_NAME).toBe(manifest.skeleton.propArmatureName)
   })
 })

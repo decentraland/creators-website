@@ -45,6 +45,9 @@ const colors = {
   // Inline validation warnings on dark surfaces (Figma System/Warning).
   warningOverlay: 'rgba(255, 207, 137, 0.2)',
   warningText: '#ffe1b7',
+  // Inline validation errors on dark surfaces (Figma System/Error).
+  errorOverlay: 'rgba(233, 113, 119, 0.2)',
+  errorText: '#ffcdd4',
   white: '#ffffff',
   // Hairline on a translucent field over the purple (search box border).
   fieldBorder: '#c6bcd7',
@@ -83,7 +86,14 @@ const colors = {
   dclRedLine: 'rgba(255, 45, 85, 0.5)', // MUI outlined-primary border (light button)
   glassHint: 'rgba(255, 255, 255, 0.08)', // MUI dark action.hover (ghost button)
   glassGlow: 'rgba(255, 255, 255, 0.15)', // active carousel slide halo
-  glassStrong: 'rgba(255, 255, 255, 0.4)' // idle carousel dot
+  glassStrong: 'rgba(255, 255, 255, 0.4)', // idle carousel dot
+  // Status pill fills: the pill's own color at low opacity.
+  greenTint: 'rgba(48, 205, 0, 0.2)',
+  orangeTint: 'rgba(244, 130, 33, 0.2)',
+  infoTint: 'rgba(23, 100, 192, 0.4)',
+  redTint: 'rgba(204, 29, 44, 0.2)',
+  mutedTint: 'rgba(160, 155, 168, 0.2)',
+  violetTint: 'rgba(165, 36, 179, 0.3)'
 } as const
 
 // Per-rarity design colors (Figma "Rarities/*", shop's palette). Distinct from @dcl/schemas' Rarity.getColor:

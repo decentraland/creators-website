@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
-import { useDeleteItem, useItemContents } from '~/hooks/usePublishCollection'
+import { useDeleteItem } from '~/hooks/usePublishCollection'
+import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useSaveItem } from '~/hooks/useSaveItem'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { type Item } from '~/lib/items'
+import { useNotifications } from '~/lib/notifications'
 import { Button } from '~/components/Button'
-import { ThumbnailModal, type ThumbnailPatch } from '~/components/ThumbnailModal'
+import { type ThumbnailPatch } from '~/components/ThumbnailModal'
 import { Checkbox } from '~/components/Checkbox'
 import { DeleteItemModal } from '../DeleteItemModal'
 import { PublishItemRow } from './PublishItemRow'
@@ -24,17 +26,19 @@ type Props = {
 /** Step 2: review every item; names and rarities are editable in place, items can be removed. */
 export function ConfirmItemsStep({ address, items, onBusyChange, onBack, onConfirm }: Props) {
   const { t } = useTranslation()
+  const showToast = useNotifications(state => state.showToast)
   const [accepted, setAccepted] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<Item | null>(null)
   // Thumbnail edits stay local until the row is saved, so cancelling the row discards them too.
   const [thumbnailPatch, setThumbnailPatch] = useState<ThumbnailPatch | null>(null)
-  const [isThumbnailOpen, setThumbnailOpen] = useState(false)
 
   const updateItem = useSaveItem(address)
   const deleteItem = useDeleteItem(address)
-  const editingItem = items.find(item => item.id === editingId) ?? null
-  const itemContents = useItemContents(isThumbnailOpen ? editingItem : null)
+  const thumbnailEditor = useThumbnailEditor((patch, subject) => {
+    // A pick that finishes after the user moved to another row belongs to the row it started on.
+    if (subject.kind === 'item' && subject.item.id === editingId) setThumbnailPatch(patch)
+  })
 
   const canContinue = accepted && items.length > 0 && editingId === null
 
@@ -55,14 +59,21 @@ export function ConfirmItemsStep({ address, items, onBusyChange, onBack, onConfi
       return
     }
     updateItem.mutate(
-      { item: { ...item, ...changes }, thumbnail: thumbnailPatch?.contents[THUMBNAIL_PATH] },
+      {
+        item: { ...item, ...changes },
+        thumbnail: thumbnailPatch?.contents[THUMBNAIL_PATH],
+        imageStale: changes.rarity !== item.rarity
+      },
       { onSuccess: stopEditing }
     )
   }
 
   function confirmDelete() {
     if (!deleting) return
-    deleteItem.mutate(deleting, { onSuccess: () => setDeleting(null) })
+    deleteItem.mutate(deleting, {
+      onSuccess: () => setDeleting(null),
+      onError: () => showToast(t('collection_detail_page.delete_item.error'), { type: 'error' })
+    })
   }
 
   return (
@@ -101,7 +112,7 @@ export function ConfirmItemsStep({ address, items, onBusyChange, onBack, onConfi
                   setEditingId(item.id)
                 }}
                 onCancelEdit={stopEditing}
-                onEditThumbnail={() => setThumbnailOpen(true)}
+                onEditThumbnail={() => thumbnailEditor.edit({ kind: 'item', item })}
                 onSave={changes => saveRow(item, changes)}
                 onDelete={() => {
                   deleteItem.reset()
@@ -126,24 +137,12 @@ export function ConfirmItemsStep({ address, items, onBusyChange, onBack, onConfi
         </Button>
       </S.Footer>
 
-      {isThumbnailOpen && editingItem && (
-        <ThumbnailModal
-          type={editingItem.type}
-          contents={itemContents.data ?? null}
-          loadError={itemContents.isError}
-          onClose={() => setThumbnailOpen(false)}
-          onSave={patch => {
-            setThumbnailPatch(patch)
-            setThumbnailOpen(false)
-          }}
-        />
-      )}
+      {thumbnailEditor.modal}
 
       {deleting && (
         <DeleteItemModal
           item={deleting}
           isDeleting={deleteItem.isPending}
-          error={deleteItem.isError}
           onCancel={() => setDeleting(null)}
           onConfirm={confirmDelete}
         />

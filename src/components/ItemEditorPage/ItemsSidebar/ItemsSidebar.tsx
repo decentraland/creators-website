@@ -7,6 +7,8 @@ import {
   KeyboardDoubleArrowLeft as CollapseIcon,
   KeyboardDoubleArrowRight as ExpandIcon,
   Edit as EditIcon,
+  Female as FemaleIcon,
+  Male as MaleIcon,
   Visibility as DressedIcon,
   VisibilityOff as UndressedIcon
 } from '@mui/icons-material'
@@ -19,14 +21,16 @@ import { useScrollFades } from '~/hooks/useScrollFades'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
 import { getContentsStorageUrl } from '~/lib/builder'
-import { type Collection } from '~/lib/collections'
+import { type Collection, type CollectionDisplayStatus } from '~/lib/collections'
 import { groupItemsByType, hasRepresentationFor, type EditorMode } from '~/lib/itemEditor'
-import { ItemType, type Item } from '~/lib/items'
+import { BodyShapeType, ItemType, getItemBodyShapeType, isSmartWearable, type Item } from '~/lib/items'
 import { EditorSection } from '../EditorSection'
 import * as S from './ItemsSidebar.styles'
 
 type Props = {
   collection: Collection
+  /** Hidden until known, so the pill never flips once shown. */
+  collectionStatus?: CollectionDisplayStatus
   items: Item[]
   isLoading: boolean
   selectedId: string | null
@@ -53,6 +57,7 @@ type Props = {
 
 export function ItemsSidebar({
   collection,
+  collectionStatus,
   items,
   isLoading,
   selectedId,
@@ -82,7 +87,8 @@ export function ItemsSidebar({
   }, [selectedId, testId])
   const groups = useMemo(() => groupItemsByType(items), [items])
   const grouped = groups.wearables.length > 0 && groups.emotes.length > 0
-  const backTo = mode === 'review' ? '/curation' : `/collections/${collection.id}`
+  const backTo = `/collections/${collection.id}`
+  const showBack = mode === 'edit'
   const showAddItems = mode === 'edit' && canAddItems
 
   function onRowClick(item: Item) {
@@ -102,11 +108,20 @@ export function ItemsSidebar({
     onSelect(item)
   }
 
+  /** Wearables made for one body shape only; emotes and smart wearables fit every avatar. */
+  function singleBodyShape(item: Item): BodyShapeType.MALE | BodyShapeType.FEMALE | null {
+    if (item.type !== ItemType.WEARABLE || isSmartWearable(item)) return null
+    const type = getItemBodyShapeType(item)
+    return type === BodyShapeType.MALE || type === BodyShapeType.FEMALE ? type : null
+  }
+
   function renderRow(item: Item) {
     const available = hasRepresentationFor(item, bodyShape)
     const dressed = dressedIds.includes(item.id)
     const thumbnail = item.contents[item.thumbnail]
     const playing = item.type === ItemType.EMOTE && dressed && isPlaying
+    const shape = singleBodyShape(item)
+    const shapeLabel = shape ? t(`item_editor.sidebar.${shape}_only`) : null
     const row = (
       <S.Row
         key={item.id}
@@ -132,6 +147,11 @@ export function ItemsSidebar({
             </S.RowGlyph>
           )}
         </S.RowButton>
+        {shape && (
+          <Tooltip content={shapeLabel} testId={`${testId}-shape-${item.id}`}>
+            <S.RowGlyph data-shape={shape}>{shape === BodyShapeType.MALE ? <MaleIcon /> : <FemaleIcon />}</S.RowGlyph>
+          </Tooltip>
+        )}
         <S.DressButton
           type="button"
           aria-pressed={dressed}
@@ -144,9 +164,9 @@ export function ItemsSidebar({
         </S.DressButton>
       </S.Row>
     )
-    // Collapsed rows have no visible name, so the tooltip carries it (and the body-shape note when relevant).
+    // Collapsed rows have no visible name or glyph, so the tooltip carries them (and the body-shape note when relevant).
     const note = available ? null : t('item_editor.sidebar.no_representation')
-    const content = collapsed ? (note ? `${item.name} · ${note}` : item.name) : note
+    const content = collapsed ? [item.name, shapeLabel, note].filter(Boolean).join(' · ') : note
     if (content === null) return row
     return (
       <Tooltip
@@ -180,25 +200,28 @@ export function ItemsSidebar({
     <S.Shell>
       <S.Wrap data-testid={testId} data-collapsed={collapsed || undefined}>
         <S.Header>
+          {/* The review bar carries its own back link, so the review sidebar only names the collection. */}
           <S.HeaderRow>
-            <Tooltip
-              content={t('item_editor.sidebar.back')}
-              placement="right"
-              asChild
-              testId={`${testId}-back-tooltip`}
-            >
-              <S.IconLink
-                to={backTo}
-                aria-label={t('item_editor.sidebar.back')}
-                data-testid={`${testId}-back`}
-                // A router link never reaches the unload guard, so leaving is asked about here.
-                onClick={event => {
-                  if (onLeave && !onLeave(backTo)) event.preventDefault()
-                }}
+            {showBack && (
+              <Tooltip
+                content={t('item_editor.sidebar.back')}
+                placement="right"
+                asChild
+                testId={`${testId}-back-tooltip`}
               >
-                <BackIcon fontSize="small" />
-              </S.IconLink>
-            </Tooltip>
+                <S.IconLink
+                  to={backTo}
+                  aria-label={t('item_editor.sidebar.back')}
+                  data-testid={`${testId}-back`}
+                  // A router link never reaches the unload guard, so leaving is asked about here.
+                  onClick={event => {
+                    if (onLeave && !onLeave(backTo)) event.preventDefault()
+                  }}
+                >
+                  <BackIcon fontSize="small" />
+                </S.IconLink>
+              </Tooltip>
+            )}
             <S.CollectionName>
               <S.TitleGroup>
                 <S.CollectionTitle title={collection.name} data-testid={`${testId}-collection`}>
@@ -215,7 +238,10 @@ export function ItemsSidebar({
                   </S.RenameButton>
                 )}
               </S.TitleGroup>
-              <CollectionStatusPill collection={collection} />
+              {/* The review bar shows the curation state instead. */}
+              {mode === 'edit' && collectionStatus && (
+                <CollectionStatusPill collection={collection} status={collectionStatus} />
+              )}
             </S.CollectionName>
           </S.HeaderRow>
           {showAddItems && (
@@ -242,7 +268,7 @@ export function ItemsSidebar({
                 <Button
                   type="button"
                   variant="secondary"
-                  size="sm"
+                  size="md"
                   data-testid={`${testId}-add-items`}
                   onClick={onAddItems}
                 >

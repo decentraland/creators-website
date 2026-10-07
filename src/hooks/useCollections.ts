@@ -1,6 +1,12 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { fetchCollectionItemPreviews, fetchCollections } from '~/lib/builder'
-import { CollectionStatusFilter, CollectionType, statusFilterToParams, type CollectionSort } from '~/lib/collections'
+import {
+  CollectionType,
+  listFilterToParams,
+  summarizeCollections,
+  type CollectionListFilter,
+  type CollectionSort
+} from '~/lib/collections'
 
 // Same page size as the legacy builder's collections page.
 export const COLLECTIONS_PAGE_SIZE = 8
@@ -8,25 +14,28 @@ export const COLLECTIONS_PAGE_SIZE = 8
 export type CollectionsFilters = {
   page: number
   search: string
-  status: CollectionStatusFilter
+  status: CollectionListFilter
   sort?: CollectionSort
   limit?: number
+  /** List linked (third-party) collections too; off by default, since only My collections shows them. */
+  includeLinked?: boolean
 }
 
 export function useCollections(
   address: string | undefined,
-  { page, search, status, sort, limit = COLLECTIONS_PAGE_SIZE }: CollectionsFilters
+  { page, search, status, sort, limit = COLLECTIONS_PAGE_SIZE, includeLinked = false }: CollectionsFilters
 ) {
   return useQuery({
-    queryKey: ['collections', address, page, search, status, sort, limit],
+    queryKey: ['collections', address, page, search, status, sort, limit, includeLinked],
     queryFn: () =>
       fetchCollections(address!, {
         page,
         limit,
         q: search || undefined,
-        type: CollectionType.STANDARD,
         sort,
-        ...statusFilterToParams(status)
+        ...(includeLinked
+          ? listFilterToParams(status)
+          : { ...listFilterToParams(status), type: CollectionType.STANDARD })
       }),
     enabled: !!address,
     // Keeps the previous page rendered while the next one loads, like the legacy page.
@@ -35,20 +44,18 @@ export function useCollections(
   })
 }
 
-/** Total rejected collections, for the badge on the Rejected filter chip. */
-export function useRejectedCollectionsCount(address: string | undefined) {
+/**
+ * Every chip's count for the search, whichever chip is active: an unfiltered one-row page, since a filtered
+ * list (the Linked chip's type filter) would count only what it lists.
+ */
+export function useCollectionsSummary(address: string | undefined, search: string) {
   return useQuery({
-    queryKey: ['collections-rejected-count', address],
-    queryFn: () =>
-      fetchCollections(address!, {
-        page: 1,
-        limit: 1,
-        type: CollectionType.STANDARD,
-        ...statusFilterToParams(CollectionStatusFilter.REJECTED)
-      }),
+    queryKey: ['collections', address, 'summary', search],
+    queryFn: () => fetchCollections(address!, { page: 1, limit: 1, q: search || undefined }),
     enabled: !!address,
+    placeholderData: keepPreviousData,
     staleTime: 30_000,
-    select: data => data.total
+    select: summarizeCollections
   })
 }
 

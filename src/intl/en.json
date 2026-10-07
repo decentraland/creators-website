@@ -4,16 +4,21 @@
     "description": "This page couldn't load. It may be a connection hiccup or a new version of the app.",
     "retry": "Reload"
   },
+  "thumbnail_mosaic": {
+    "no_items": "No items"
+  },
   "collections_page": {
     "title": "My collections",
     "search_placeholder": "Search Collection",
     "new_collection": "New collection",
     "filter": {
-      "all": "All",
-      "published": "Published",
-      "submitted": "Submitted",
-      "draft": "Draft",
-      "rejected": "Rejected"
+      "all": "All ({count})",
+      "published": "Published ({count})",
+      "draft": "Draft ({count})",
+      "under_review": "Under review ({count})",
+      "rejected": "Rejected ({count})",
+      "disabled": "Paused ({count})",
+      "linked": "Linked ({count})"
     },
     "view_mode": "View mode",
     "view_grid": "Grid view",
@@ -57,10 +62,15 @@
     "minter": "Sender"
   },
   "collection_status": {
-    "published": "Published",
+    "draft": "Draft",
+    "publishing": "Publishing",
     "under_review": "Under review",
-    "under_review_hint": "Your collection is being reviewed for approval. This may take up to 5 minutes. We’ll notify you once the review is complete.",
-    "draft": "Draft"
+    "under_review_hint": "Your collection is being reviewed for approval. We’ll notify you once the review is complete.",
+    "published": "Published",
+    "rejected": "Rejected",
+    "disabled": "Paused",
+    "disabled_hint": "Your collection was paused by the curation team. Please get in touch with your assigned curator to review it.",
+    "linked": "Linked"
   },
   "pagination": {
     "previous": "Previous page",
@@ -93,10 +103,12 @@
     "rename": "Rename collection",
     "add_items": "Add Items",
     "open_editor": "Open Editor",
+    "forum_post": "Forum post",
     "publish": "Publish Collection",
     "preview": "Preview in Decentraland",
     "more_actions": "More actions",
     "actions": {
+      "preview_items": "Preview items",
       "copy_urn": "Copy URN",
       "copy_address": "Copy contract address",
       "collaborators": "Collaborators",
@@ -216,7 +228,8 @@
     "publish_blocker": {
       "no_items": "Add at least one item to publish your collection.",
       "too_many_items": "A collection can be published with up to {max} items.",
-      "missing_smart_wearable_video": "Every smart wearable needs a preview video before you can publish."
+      "missing_smart_wearable_video": "Every smart wearable needs a preview video before you can publish.",
+      "has_invalid_items": "Fix {count, plural, one {# item} other {# items}} marked in red to publish."
     },
     "price": {
       "credits": "{amount} credits",
@@ -271,6 +284,27 @@
       "thumbnail_error": "We couldn't update the thumbnail of “{name}”. Please try again.",
       "cancel_edit": "Cancel",
       "save": "Save name"
+    },
+    "push_changes": {
+      "action": "Publish updates",
+      "title": "Publish updates",
+      "description": "Your changes will be reviewed by the curation committee. Until they're approved, buyers get the last approved version of your items.",
+      "confirm": "Send for review",
+      "cancel": "Cancel",
+      "error": "We couldn't send your changes for review. Please try again.",
+      "success": "Your changes were sent for review"
+    },
+    "request_review": {
+      "action": "Request review again",
+      "title": "Request review again",
+      "description": "The curation committee will review your collection again. Make sure you've addressed the reasons for the rejection first.",
+      "confirm": "Request review",
+      "cancel": "Cancel",
+      "error": "We couldn't request a new review. Please try again.",
+      "success": "Your collection was sent for review"
+    },
+    "review_notice": {
+      "rejected": "The curation committee rejected the latest version of this collection. Update your items and send them for review again."
     }
   },
   "publish_collection_modal": {
@@ -317,7 +351,7 @@
       "columns": {
         "collection": "Collection",
         "items": "Items",
-        "fee_per_item": "Fee per item",
+        "fee_per_item": "You pay per item",
         "total_fee": "Total Fee"
       },
       "items_count": "{count, plural, one {# Item} other {# Items}}",
@@ -361,7 +395,7 @@
     },
     "success": {
       "title": "Collection sent for review",
-      "description": "Your collection is being reviewed for approval. This may take up to 5 minutes. We'll notify you once the review is complete.",
+      "description": "Your collection is being reviewed for approval. The curation committee will share its feedback in the collection's forum post, where you and the community can comment. You'll find it on the collection page.",
       "done": "Done"
     },
     "error": {
@@ -390,6 +424,7 @@
     "enable_sales": {
       "title": "Enable sales for this collection?",
       "description": "Since this is the first item you’re putting on sale from this collection, you’ll need to enable sales first. Once enabled, you’ll be able to sell any item from this collection in the Decentraland Shop.",
+      "upgrade_description": "Decentraland’s marketplace was upgraded. Enable sales on the new marketplace to keep selling items from this collection in the Decentraland Shop.",
       "confirm": "Enable sales",
       "pending": "Enabling Sales..."
     },
@@ -424,8 +459,7 @@
     "note_mana": "Your item will be listed in the Decentraland Shop for MANA. When it sells, you’ll receive the MANA directly.",
     "success": {
       "title": "Your item is on sale!",
-      "description": "It’s now available in the Decentraland Shop.",
-      "done": "Done"
+      "description": "It’s now available in the Decentraland Shop."
     },
     "error": {
       "title_enable": "We couldn’t enable sales",
@@ -612,36 +646,8 @@
     "wrong_format": "The thumbnail must be a PNG image.",
     "too_big": "The thumbnail is too big — the maximum size is {size}MB.",
     "capture_failed": "We couldn't update the thumbnail. Please try again.",
-    "load_failed": "We couldn't load the item. Please try again."
-  },
-  "item_validation": {
-    "triangle_count_exceeded": "Triangle count ({count}) exceeds the limit of {limit} for {category} wearables.",
-    "triangle_count_exceeded_with_hint": "Triangle count ({count}) exceeds the base limit of {limit} for {category} wearables. You can increase this limit by hiding other wearable slots in the Item Editor.",
-    "dimensions_exceeded": "Model dimensions ({width}m x {height}m x {depth}m) exceed the maximum allowed ({maxWidth}m x {maxHeight}m x {maxDepth}m).",
-    "materials_exceeded": "Material count ({count}) exceeds the limit of {limit}.",
-    "textures_exceeded": "Texture count ({count}) exceeds the limit of {limit}.",
-    "bone_influences_exceeded": "Some vertices have more than {limit} bone influences.",
-    "leaf_bones_found": "Leaf/end bones found: {bones}. Remove _end or _neutral suffixed bones before export.",
-    "non_deform_bones_found": "Found {count} non-deformation bones: {bones}. Enable \"Export Deformation Bones Only\" in your export settings to reduce file size and improve performance.",
-    "armature_bone_names": "Armature bone names do not match the Decentraland avatar skeleton ({bones}). Re-rig your wearable to the standard avatar armature before export.",
-    "unrigged_vertices": "Found {count} vertices with no skin weights (not bound to any bone). These vertices will not follow the avatar's movement. Check the rigging/skin weights before export.",
-    "cameras_found": "Cameras are not allowed in wearable/emote GLB files.",
-    "lights_found": "Lights are not allowed in wearable/emote GLB files.",
-    "animations_in_wearable": "Wearable GLB files must not contain animations. If this is an emote, animations are expected.",
-    "forbidden_material_name": "Material \"{name}\" uses a reserved naming pattern ({pattern}). This pattern is reserved for facial categories.",
-    "emote_frame_rate": "Animation frame rate ({fps} fps) differs from the expected {expected} fps.",
-    "emote_max_frames": "Animation has {frames} frames, exceeding the maximum of {limit}.",
-    "emote_max_clips": "File has {count} animation clips, exceeding the maximum of {limit}.",
-    "emote_missing_keyframes": "Some deform bones are missing keyframes at first/last frame: {bones}.",
-    "prop_triangle_count": "Prop triangle count ({count}) exceeds the limit of {limit}.",
-    "prop_materials": "Prop material count ({count}) exceeds the limit of {limit}.",
-    "prop_textures": "Prop texture count ({count}) exceeds the limit of {limit}.",
-    "prop_armature_bones": "Prop armature has {count} bones, exceeding the limit of {limit}.",
-    "armature_naming": "Unexpected armature names found: {names}. Avatar armature should be named 'Armature' and prop armature 'Armature_Prop'.",
-    "animation_naming": "Animation clips should end with '_Avatar' or '_Prop' when props are present. Invalid names: {names}.",
-    "audio_format": "Audio file \"{name}\" has an unsupported format. Only .mp3 and .ogg are allowed.",
-    "spring_bone_count_exceeded": "This model has {count} spring bones (maximum: {limit}). Reduce the number of spring bone nodes in your 3D editor and re-upload.",
-    "thumbnail_not_transparent": "The thumbnail background doesn't look transparent. Marketplaces show the item's rarity color behind the thumbnail, so a transparent background is required."
+    "load_failed": "We couldn't load the item. Please try again.",
+    "check_failed": "We couldn't check the thumbnail. Make sure it's a square PNG with a transparent background."
   },
   "item_editor": {
     "pick_collection": "Pick a collection to start editing its items.",
@@ -652,6 +658,7 @@
     "save_success": "“{name}” was saved.",
     "save_error": "We couldn't save the item. Please try again.",
     "save_error_locked": "The collection is being published and can't be edited right now.",
+    "image_refresh_skipped": "Your rarity change was saved, but the item image couldn't be refreshed. Upload the thumbnail again to update it.",
     "sidebar": {
       "items": "Items",
       "back": "Back to collection",
@@ -663,7 +670,9 @@
       "empty": "This collection has no items yet.",
       "dress": "Show {name} on the avatar",
       "undress": "Remove {name} from the avatar",
-      "no_representation": "This item has no version for the current body shape. Switch the body shape to preview it."
+      "no_representation": "This item has no version for the current body shape. Switch the body shape to preview it.",
+      "male_only": "Made for the male body shape only",
+      "female_only": "Made for the female body shape only"
     },
     "picker": {
       "title": "Collections",
@@ -674,7 +683,48 @@
       "error": "We couldn't load your collections. Please try again."
     },
     "review": {
-      "title": "Review mode"
+      "title": "Review mode",
+      "back": "Back to curation",
+      "unpublished": "This collection isn't published yet",
+      "curation_error": "We couldn't load this collection's review status.",
+      "retry": "Try again",
+      "requested": "Review requested {time}",
+      "created": "Created {time}",
+      "approved": "Approved {time}",
+      "rejected": "Rejected {time}",
+      "change_assignee": "Change the assigned curator",
+      "assign_to_me": "Assign to me",
+      "cancel": "Cancel",
+      "action": {
+        "approve": "Approve",
+        "reject": "Reject",
+        "enable": "Enable",
+        "disable": "Disable",
+        "deploy_missing": "Deploy missing items"
+      },
+      "verdict": {
+        "title": "Let the creator know",
+        "body": "Explain your decision on {collection}'s forum post so the creator knows what to change.",
+        "open_forum": "Open forum post",
+        "done": "Done"
+      },
+      "reject": {
+        "title": "Reject {collection}?",
+        "first": "The collection won't be mintable. The creator will see it as rejected.",
+        "changes": "The collection keeps its approved version. The creator will see the changes as rejected.",
+        "confirm": "Reject",
+        "error": "We couldn't reject the collection. Please try again.",
+        "success": "{collection} was rejected"
+      },
+      "disable": {
+        "title": "Disable {collection}?",
+        "description": "New copies of its items can't be minted or sold anymore; items people already own aren't affected. You can enable it again later.",
+        "confirm": "Disable",
+        "error": "We couldn't disable the collection. Please try again.",
+        "success": "{collection} was disabled",
+        "signing": "Please confirm in your wallet to disable the collection.",
+        "pending": "Disabling collection…"
+      }
     },
     "discard": {
       "title": "Discard your changes?",
@@ -724,10 +774,10 @@
       "placeholder": "Play emote"
     },
     "validation": {
-      "loading": "Checking the model…",
-      "pass": "The model passes every check.",
-      "warnings": "The model has warnings. Click to see them.",
-      "errors": "The model has errors. Click to see them.",
+      "loading": "Checking the item…",
+      "pass": "The item passes every check.",
+      "warnings": "The item has warnings. Click to see them.",
+      "errors": "The item has errors. Click to see them.",
       "idle": "",
       "modal_title": "Validation results",
       "label": {
@@ -736,7 +786,10 @@
         "warnings": "{count, plural, one {# warning} other {# warnings}}",
         "errors": "{count, plural, one {# issue} other {# issues}}",
         "idle": ""
-      }
+      },
+      "previewed_item": "Previewed item",
+      "check_failed": "We couldn't check the model. Try again, or save the item and reopen it.",
+      "check_crashed": "This check couldn't run on the item. Try again later."
     },
     "details": {
       "title": "Details",
@@ -756,6 +809,7 @@
       "title": "Basics",
       "name": "Name",
       "description": "Description",
+      "invalid_description": "Descriptions can be up to 64 characters and can't include \":\".",
       "utility": "Utility",
       "utility_hint": "A short description of what this item does in-world, shown to collectors.",
       "category": "Category",
@@ -803,6 +857,7 @@
       "title": "Tags",
       "placeholder": "Add a tag and press Enter",
       "remove": "Remove tag {tag}",
+      "empty": "This item has no tags.",
       "campaign_hint": "Add the “{tag}” tag to enter this item in {name}."
     },
     "options": {
@@ -824,7 +879,51 @@
     "out": "Zoom out"
   },
   "curation_page": {
-    "title": "Curation"
+    "title": "Curation",
+    "sign_in": "Sign in to review collections",
+    "search_placeholder": "Search by name or owner address",
+    "filter": {
+      "all": "All",
+      "to_review": "To review",
+      "under_review": "Under review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "all_assignees": "All assignees",
+      "you": "{name} (you)",
+      "assignee": "Assignee",
+      "sort": "Sort by"
+    },
+    "sort": {
+      "MOST_RELEVANT": "Most relevant",
+      "LAST_ACTIVITY_DESC": "Latest activity",
+      "CREATED_AT_DESC": "Newest collections",
+      "NAME_ASC": "Name A-Z",
+      "NAME_DESC": "Name Z-A"
+    },
+    "list": {
+      "collection": "Collection",
+      "owner": "Owner",
+      "date": "Requested",
+      "last_update": "Last update",
+      "status": "Status",
+      "assignee": "Assignee",
+      "requested": "Review requested",
+      "created": "Created",
+      "unassigned": "Unassigned",
+      "assign_to_me": "Assign to me",
+      "edit_assignee": "Change the assigned curator",
+      "discussion": "Discussion",
+      "forum_post": "Forum post",
+      "not_posted": "Not posted"
+    },
+    "error": {
+      "title": "We couldn't load the collections",
+      "description": "Check your connection and try again.",
+      "retry": "Try again"
+    },
+    "empty": "There are no collections to review yet.",
+    "no_results": "No collections match these filters.",
+    "showing": "Showing {range} of {total} {total, plural, one {collection} other {collections}}"
   },
   "maintenance_page": {
     "title": "We'll be right back",
@@ -832,13 +931,15 @@
   },
   "not_found_page": {
     "title": "Page not found",
+    "description": "The link may be broken or the page may have moved.",
     "go_home": "Go back home"
   },
   "nav": {
     "overview": "Overview",
     "collections": "Collections",
     "scenes": "Scenes",
-    "land": "Land/World"
+    "land": "Land/World",
+    "curation": "Curation"
   },
   "footer": {
     "newsletterTitle": "Get the weekly highlights in your inbox",
@@ -1184,11 +1285,11 @@
         },
         "become_creator": {
           "question": "How do I become a Decentraland creator?",
-          "answer": "Anyone can be a Decentraland creator, all it takes is a little knowhow and endless creative ideas! Depending on what you want to create, the knowledge you need to know differs. If you just want to create cool virtual scenes for yourself or to host events, and learning programming and 3D modeling isn't in your plans, then you can get started creating scenes right away by downloading Decentraland's Creator Hub.\n\nFor those familiar with or willing to learn 3D modeling and/or programming, all the technical specs and procedures you need to know to create in Decentraland can be found on the Creator Docs page, and there are many tutorials available online for creating Wearables, Emotes, and experiences.\nWearables & Emotes\nThe process of creating Wearables & Emotes involves asset creation in a 3D modeling program like Blender, submission to the Curation Committee who ensure that your creation is technically sound and complies with Decentraland's content policy (this includes paying the $100 USD publication fee which goes to the DAO to fund community grants). Finally, once your creation is approved, it is officially published in the Marketplace! You'll receive 97.5% of all primary sales and earn 2.5% royalties on any secondary sales.\nExperiences\nIf you're interested in designing experiences, download Decentraland's Creator Hub and you can start creating immersive scenes and games which you can then publish to Worlds or LAND in Decentraland's open-world Genesis City. You retain all control over your content, can edit or remove it whenever you wish, and keep all proceeds of any funds you may generate through your experiences."
+          "answer": "Anyone can be a Decentraland creator, all it takes is a little knowhow and endless creative ideas! Depending on what you want to create, the knowledge you need to know differs. If you just want to create cool virtual scenes for yourself or to host events, and learning programming and 3D modeling isn't in your plans, then you can get started creating scenes right away by downloading Decentraland's Creator Hub.\n\nFor those familiar with or willing to learn 3D modeling and/or programming, all the technical specs and procedures you need to know to create in Decentraland can be found on the Creator Docs page, and there are many tutorials available online for creating Wearables, Emotes, and experiences.\nWearables & Emotes\nThe process of creating Wearables & Emotes involves asset creation in a 3D modeling program like Blender, submission to the Curation Committee who ensure that your creation is technically sound and complies with Decentraland's content policy (this includes the publication fee of 25 USD per item, which goes to the DAO to fund community grants; for a limited time, the Decentraland Foundation covers 20 USD, so you pay only 5 USD per item). Finally, once your creation is approved, it is officially published in the Marketplace! You'll receive 97.5% of all primary sales and earn 2.5% royalties on any secondary sales.\nExperiences\nIf you're interested in designing experiences, download Decentraland's Creator Hub and you can start creating immersive scenes and games which you can then publish to Worlds or LAND in Decentraland's open-world Genesis City. You retain all control over your content, can edit or remove it whenever you wish, and keep all proceeds of any funds you may generate through your experiences."
         },
         "monetize": {
           "question": "Is it possible to monetize my creations?",
-          "answer": "Yes, of course! Decentraland creators are able to monetize their skills in many ways.\n\nWearable and Emote creators publish their creations in the Marketplace, paying a $100 USD publication fee which goes to the DAO to fund community grants, and as a result earn 97.5% of the profits on all primary sales and 2.5% royalties on any secondary sales.\nSome scene creators monetize their experiences, the revenue of which they are able to keep fully for themselves."
+          "answer": "Yes, of course! Decentraland creators are able to monetize their skills in many ways.\n\nWearable and Emote creators publish their creations in the Marketplace with a publication fee of 25 USD per item, which goes to the DAO to fund community grants (for a limited time, the Decentraland Foundation covers 20 USD, so creators pay only 5 USD per item), and as a result earn 97.5% of the profits on all primary sales and 2.5% royalties on any secondary sales.\nSome scene creators monetize their experiences, the revenue of which they are able to keep fully for themselves."
         },
         "need_land": {
           "question": "Do I need to own LAND to create experiences in Decentraland?",
@@ -1205,5 +1306,172 @@
       "next": "Next slide",
       "go_to": "Go to slide {index}"
     }
+  },
+  "profile_badge": {
+    "you": "(you)"
+  },
+  "curation_state": {
+    "to_review": "To review",
+    "under_review": "Under review",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "disabled": "Disabled"
+  },
+  "assign_curator_modal": {
+    "title_self": "Review {collection}",
+    "title_edit": "Assigned curator of {collection}",
+    "self_body": "You'll be responsible for reviewing this collection. You can reassign it to another curator later.",
+    "curator": "Curator",
+    "unassign": "Nobody (unassign)",
+    "assigned": "{collection} is now assigned to {name}",
+    "unassigned": "{collection} is no longer assigned",
+    "error": "We couldn't save the assignment. Please try again.",
+    "cancel": "Cancel",
+    "submit_self": "Assign to me",
+    "submit_edit": "Save",
+    "take_over_body": "This collection is assigned to {assignee}. You can still curate it, but it will be assigned to you. Let {assignee} know.",
+    "submit_continue": "Assign & continue"
+  },
+  "approval_flow": {
+    "title": "Approve Collection",
+    "cancel": "Cancel",
+    "loading": "Checking the collection's items…",
+    "signature_title": "Signature required",
+    "columns": {
+      "item": "Item",
+      "body_shape": "Body Type",
+      "category": "Category",
+      "rarity": "Rarity",
+      "hash": "Hash",
+      "size": "Size",
+      "collection": "Collection",
+      "items": "Items"
+    },
+    "item_count": "{count, plural, one {# item} other {# items}}",
+    "size_kb": "{size}KB",
+    "size_mb": "{size}MB",
+    "rescue": {
+      "title": "Approve items",
+      "body": "{count, plural, one {# item needs} other {# items need}} to be approved on the collection contract. You'll need to confirm this action in your wallet.",
+      "action": "Confirm items",
+      "signing": "Please confirm the request in your wallet to continue.",
+      "pending": "{txs, plural, one {Approving items…} other {Approving items… ({tx} of {txs})}}"
+    },
+    "deploy": {
+      "title": "Upload files",
+      "body": "{count, plural, one {# item needs} other {# items need}} to be uploaded to appear in Decentraland.",
+      "action": "Upload files",
+      "uploading_title": "Uploading items",
+      "uploading_body": "Please keep this window open while the files upload.",
+      "uploading": "Uploading files…"
+    },
+    "approve": {
+      "title": "Enable Collection",
+      "body": "Enable the collection to complete the approval process and allow its items to be minted. Please confirm in your wallet.",
+      "action": "Enable collection",
+      "signing": "Please confirm in your wallet to enable the collection.",
+      "pending": "Enabling collection…"
+    },
+    "success": {
+      "title_approve": "Collection approved!",
+      "title_deploy_missing": "Items uploaded!",
+      "body_approve": "{collection} is approved. Thanks for reviewing it!",
+      "body_deploy_missing": "Every item of {collection} is uploaded.",
+      "title_enable": "Collection enabled!",
+      "body_enable": "{collection} is live again with its last approved version."
+    },
+    "error": {
+      "title_approve": "We couldn't approve the collection",
+      "title_deploy_missing": "We couldn't upload the items",
+      "prepare": "Something went wrong while preparing the collection for approval. Please try again later.",
+      "rescue": "Something went wrong while approving the items on the collection contract. Please try again later.",
+      "deploy": "Something went wrong while uploading the items. Please try again later.",
+      "approve": "Something went wrong while enabling the collection. Please try again later.",
+      "details": "Error details",
+      "copy": "Copy",
+      "copied": "Copied",
+      "retry": "Try again",
+      "title_enable": "We couldn't enable the collection"
+    },
+    "changed": {
+      "title": "Some items changed",
+      "description": "The creator saved changes to some items after you opened this collection. Review the latest version before approving it.",
+      "confirm": "Review changes"
+    },
+    "enable_body": "Enable the collection so its items can be minted again, as last approved. Changes the creator hasn't sent for review stay out. Please confirm in your wallet."
+  },
+  "item_validation": {
+    "checking": "Checking your items…",
+    "rerun": "Check again",
+    "rerun_label": "Check this item again",
+    "rerunning": "Checking…",
+    "body_shape": {
+      "male": "Male",
+      "female": "Female"
+    },
+    "row": {
+      "errors_blocking": "This item needs some fixes before publishing.\nClick to see details.",
+      "errors": "This item has some issues worth fixing before publishing.\nClick to see details.",
+      "warnings": "This item can be improved.\nClick to see details."
+    },
+    "issues": {
+      "errors_blocking": {
+        "title": "Some items need your attention",
+        "intro": "We found a few issues that need to be resolved before you can publish your collection. Fix them and try publishing again."
+      },
+      "errors": {
+        "title": "Some items have issues",
+        "intro": "We found a few issues that could get your items rejected during curation review. We recommend fixing them first, but you can still continue publishing."
+      },
+      "warnings": {
+        "title": "A few things to review",
+        "intro": "We found a few suggestions that could help improve your items. You can review them now or continue publishing."
+      },
+      "back": "Back to collection",
+      "continue": "Continue anyway"
+    }
+  },
+  "linked_collection": {
+    "edit_in_builder": "Edit in Builder",
+    "third_party": "Third party",
+    "network": "Network",
+    "contract": "Linked contract",
+    "copy_contract": "Copy contract address",
+    "contract_copied": "Contract address copied",
+    "networks": {
+      "mainnet": "Ethereum",
+      "matic": "Polygon",
+      "sepolia": "Sepolia",
+      "amoy": "Amoy",
+      "base_mainnet": "Base",
+      "base_sepolia": "Base Sepolia",
+      "monad_mainnet": "Monad",
+      "monad_testnet": "Monad Testnet",
+      "ape_mainnet": "ApeChain",
+      "ape_caldera": "ApeChain Curtis"
+    },
+    "no_items": "Items for this linked collection are added and edited in the Builder.",
+    "list": {
+      "status": "Status",
+      "mapping": "Token mapping"
+    },
+    "item_status": {
+      "published": "Published",
+      "under_review": "Under review",
+      "rejected": "Rejected",
+      "not_published": "Not published",
+      "retry": "Couldn't load · Retry"
+    },
+    "mapping": {
+      "none": "No mapping",
+      "any": "Any token",
+      "single": "Token #{id}",
+      "range": "Tokens #{from}–#{to}",
+      "multiple": "{count, plural, one {# token} other {# tokens}}",
+      "rules": "{count, plural, one {# rule} other {# rules}}"
+    }
+  },
+  "success_modal": {
+    "done": "Done"
   }
 }

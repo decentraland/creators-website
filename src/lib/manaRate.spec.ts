@@ -29,7 +29,7 @@ describe('fetchManaUsdRate', () => {
   it('reads the aggregator the marketplace settles with and scales its answer to USD wei per MANA', async () => {
     const read = makeRead({ answer: 30_000_000 })
     await expect(fetchManaUsdRate(CHAIN_ID, read, NOW)).resolves.toBe(300_000_000_000_000_000n)
-    expect(read.mock.calls[0][0].address).toBe(getContract(ContractName.OffChainMarketplaceV2, CHAIN_ID).address)
+    expect(read.mock.calls[0][0].address).toBe(getContract(ContractName.OffChainMarketplaceV3, CHAIN_ID).address)
     expect(read.mock.calls[1][0].address).toBe(AGGREGATOR)
   })
 

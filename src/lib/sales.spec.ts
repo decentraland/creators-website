@@ -32,6 +32,7 @@ import {
   toPricedSale,
   formatDateValue,
   isSalesEnabled,
+  isSellingOnOlderMarketplace,
   isValidAddress,
   minExpirationDate,
   parseExpirationDate,
@@ -46,6 +47,7 @@ const CHAIN_ID = 80002
 const ADDRESS = '0x00000000000000000000000000000000000000aa'
 const BENEFICIARY = '0x00000000000000000000000000000000000000bb'
 const CONTRACT = '0x00000000000000000000000000000000000000cc'
+const MARKETPLACE_V3 = getContract(ContractName.OffChainMarketplaceV3, CHAIN_ID).address
 const MARKETPLACE_V2 = getContract(ContractName.OffChainMarketplaceV2, CHAIN_ID).address
 const MARKETPLACE_V1 = getContract(ContractName.OffChainMarketplace, CHAIN_ID).address
 const MANA = getContract(ContractName.MANAToken, CHAIN_ID).address
@@ -107,7 +109,7 @@ describe('price and date helpers', () => {
   })
 
   it('accepts whole credits from 1 up to the catalog ceiling', () => {
-    expect(MAX_SALE_CREDITS).toBe(10_000_000_000_000n)
+    expect(MAX_SALE_CREDITS).toBe(1_000_000_000_000n)
     expect(isValidCredits(1)).toBe(true)
     expect(isValidCredits(Number(MAX_SALE_CREDITS))).toBe(true)
     expect(isValidCredits(Number(MAX_SALE_CREDITS) + 1)).toBe(false)
@@ -168,15 +170,38 @@ describe('price and date helpers', () => {
 })
 
 describe('enabling sales', () => {
-  it('is enabled once either off-chain marketplace is a minter, whatever the casing', () => {
+  it('is enabled once the marketplace new orders are signed on is a minter, whatever the casing', () => {
     expect(isSalesEnabled(collection, CHAIN_ID)).toBe(false)
     expect(
-      isSalesEnabled({ ...collection, minters: [MARKETPLACE_V2.toUpperCase().replace('0X', '0x')] }, CHAIN_ID)
+      isSalesEnabled({ ...collection, minters: [MARKETPLACE_V3.toUpperCase().replace('0X', '0x')] }, CHAIN_ID)
     ).toBe(true)
-    expect(isSalesEnabled({ ...collection, minters: [MARKETPLACE_V1] }, CHAIN_ID)).toBe(true)
+  })
+
+  it('is not enabled when only an older marketplace is a minter, so sales are enabled again for the new one', () => {
+    expect(isSalesEnabled({ ...collection, minters: [MARKETPLACE_V2, MARKETPLACE_V1] }, CHAIN_ID)).toBe(false)
     expect(isSalesEnabled({ ...collection, minters: ['0x00000000000000000000000000000000000000dd'] }, CHAIN_ID)).toBe(
       false
     )
+  })
+
+  it('knows a collection already sells on an older marketplace, whatever the casing', () => {
+    expect(isSellingOnOlderMarketplace({ ...collection, minters: [MARKETPLACE_V1] }, CHAIN_ID)).toBe(true)
+    expect(
+      isSellingOnOlderMarketplace(
+        { ...collection, minters: [MARKETPLACE_V2.toUpperCase().replace('0X', '0x')] },
+        CHAIN_ID
+      )
+    ).toBe(true)
+  })
+
+  it('does not count the current marketplace or any other minter as an older marketplace', () => {
+    expect(isSellingOnOlderMarketplace(collection, CHAIN_ID)).toBe(false)
+    expect(
+      isSellingOnOlderMarketplace(
+        { ...collection, minters: [MARKETPLACE_V3, '0x00000000000000000000000000000000000000dd'] },
+        CHAIN_ID
+      )
+    ).toBe(false)
   })
 
   it('builds setMinters([marketplace], [true]) on the collection contract', () => {
@@ -184,7 +209,7 @@ describe('enabling sales', () => {
     expect(call.contract.address).toBe(CONTRACT)
     const iface = new ethers.utils.Interface(call.contract.abi)
     const decoded = iface.decodeFunctionData('setMinters', encodeContractCall(call))
-    expect((decoded[0] as string[]).map(a => a.toLowerCase())).toEqual([MARKETPLACE_V2.toLowerCase()])
+    expect((decoded[0] as string[]).map(a => a.toLowerCase())).toEqual([MARKETPLACE_V3.toLowerCase()])
     expect(decoded[1]).toEqual([true])
   })
 

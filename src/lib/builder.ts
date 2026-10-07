@@ -7,12 +7,23 @@ import {
   toCollectionsQueryString,
   toRemoteCollection,
   type Collection,
-  type CollectionCuration,
+  type CollectionStatusCounts,
+  type CollectionsList,
+  type CurationStatus,
   type FetchCollectionsParams,
   type PaginatedResource,
   type RemoteCollection
 } from '~/lib/collections'
-import { VIDEO_PATH, fromRemoteItem, toRemoteItem, type Item, type RemoteItem } from '~/lib/items'
+import {
+  fromRemoteCuration,
+  toCurationQueryString,
+  type CollectionCuration,
+  type CurationFilters,
+  type CurationRequestStatus,
+  type RemoteCollectionCuration
+} from '~/lib/curation'
+import { VIDEO_PATH, fromRemoteItem, toRemoteItem, tracksVideoOnSave, type Item, type RemoteItem } from '~/lib/items'
+import { type ThirdParty } from '~/lib/linkedCollections'
 import { type BlockchainRarity } from '~/lib/rarities'
 
 export type CollectionItemPreview = {
@@ -25,15 +36,20 @@ export type CollectionItemPreview = {
 /** Carries the HTTP status so callers can tell "no access / gone" from a transient failure. */
 export class BuilderServerError extends Error {
   status: number
+  /** The error envelope's `data`, when the server sent one. */
+  data?: unknown
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, data?: unknown) {
     super(message)
     this.name = 'BuilderServerError'
     this.status = status
+    this.data = data
   }
 }
 
 const baseUrl = () => config.get('BUILDER_SERVER_URL')
+
+const UNPUBLISHED_COLLECTION_STATUS = 409
 
 export const getContentsStorageUrl = (hash = '') => `${baseUrl()}/storage/contents/${hash}`
 
@@ -64,7 +80,8 @@ async function request<T>(
   if (!response.ok || parsed.ok === false || (expectData && parsed.data === undefined)) {
     throw new BuilderServerError(
       parsed.error ?? `builder-server request failed: ${method} ${path} (${response.status})`,
-      response.status
+      response.status,
+      parsed.data
     )
   }
   return parsed.data as T
@@ -74,14 +91,16 @@ async function request<T>(
  * The creator's collections: GET /{address}/collections. Always sends page+limit — without both,
  * builder-server answers with a bare array instead of the paginated envelope.
  */
-export async function fetchCollections(
-  address: string,
-  params: FetchCollectionsParams
-): Promise<PaginatedResource<Collection>> {
+export async function fetchCollections(address: string, params: FetchCollectionsParams): Promise<CollectionsList> {
   const page = params.page ?? 1
   const limit = params.limit ?? 20
   const query = toCollectionsQueryString({ ...params, page, limit })
-  const remote = await request<PaginatedResource<RemoteCollection>>(address, 'GET', `/${address}/collections`, query)
+  const remote = await request<PaginatedResource<RemoteCollection> & { counts?: CollectionStatusCounts }>(
+    address,
+    'GET',
+    `/${address}/collections`,
+    query
+  )
   return { ...remote, results: remote.results.map(fromRemoteCollection) }
 }
 
@@ -114,7 +133,7 @@ export async function fetchCollectionCuration(
   address: string,
   collectionId: string
 ): Promise<CollectionCuration | null> {
-  const curation = await request<CollectionCuration | null | undefined>(
+  const curation = await request<RemoteCollectionCuration | null | undefined>(
     address,
     'GET',
     `/collections/${collectionId}/curation`,
@@ -122,7 +141,110 @@ export async function fetchCollectionCuration(
     undefined,
     false
   )
-  return curation ?? null
+  return curation ? fromRemoteCuration(curation) : null
+}
+
+/** The committee's address list: GET /committee (public). */
+export async function fetchCommittee(): Promise<string[]> {
+  const accounts = await request<{ address: string }[]>(undefined, 'GET', '/committee')
+  return accounts.map(account => account.address.toLowerCase())
+}
+
+/** Every published standard collection the committee reviews: GET /collections (committee only). */
+export async function fetchCurationCollections(
+  address: string,
+  filters: CurationFilters
+): Promise<PaginatedResource<Collection>> {
+  const remote = await request<PaginatedResource<RemoteCollection>>(
+    address,
+    'GET',
+    '/collections',
+    toCurationQueryString(filters)
+  )
+  return { ...remote, results: remote.results.map(fromRemoteCollection) }
+}
+
+/** The latest curation request of every collection the signer may see (all of them for the committee). */
+export async function fetchCurations(address: string): Promise<CollectionCuration[]> {
+  const remote = await request<RemoteCollectionCuration[]>(address, 'GET', '/curations')
+  return remote.map(fromRemoteCuration)
+}
+
+/**
+ * Opens a new review request: POST /collections/{id}/curation. Creators use it to push changes of an
+ * approved collection; the committee to assign a collection that was never requested. 400 while one is pending.
+ */
+export async function pushCollectionCuration(
+  address: string,
+  collectionId: string,
+  assignee?: string | null
+): Promise<CollectionCuration> {
+  const body = assignee === undefined ? undefined : { curation: { assignee } }
+  const remote = await request<RemoteCollectionCuration>(
+    address,
+    'POST',
+    `/collections/${collectionId}/curation`,
+    '',
+    body
+  )
+  return fromRemoteCuration(remote)
+}
+
+/** Updates the latest request: PATCH /collections/{id}/curation. Status changes and assignees are committee-only. */
+export async function updateCollectionCuration(
+  address: string,
+  collectionId: string,
+  curation: { status?: CurationRequestStatus; assignee?: string | null }
+): Promise<CollectionCuration> {
+  const remote = await request<RemoteCollectionCuration>(
+    address,
+    'PATCH',
+    `/collections/${collectionId}/curation`,
+    '',
+    {
+      curation
+    }
+  )
+  return fromRemoteCuration(remote)
+}
+
+/**
+ * Opens the collection's forum topic: POST /collections/{id}/post. The server writes the post and saves the link as
+ * `forum_link`; 409 when the collection isn't published yet or already has a topic (its link in the error data).
+ */
+export async function createCollectionForumPost(address: string, collectionId: string): Promise<string> {
+  return request<string>(address, 'POST', `/collections/${collectionId}/post`)
+}
+
+/** Replies on the collection's forum topic (committee only): POST /collections/{id}/curation/post. */
+export async function createCurationForumReply(
+  address: string,
+  collectionId: string,
+  forumPost: { raw: string }
+): Promise<void> {
+  await request(address, 'POST', `/collections/${collectionId}/curation/post`, '', { forumPost }, false)
+}
+
+/** The latest curation of each item of a linked collection: GET /collections/{id}/itemCurations. */
+export async function fetchItemCurations(address: string, collectionId: string): Promise<Map<string, CurationStatus>> {
+  try {
+    const curations = await request<{ item_id: string; status: CurationStatus }[]>(
+      address,
+      'GET',
+      `/collections/${collectionId}/itemCurations`
+    )
+    return new Map(curations.map(curation => [curation.item_id, curation.status]))
+  } catch (error) {
+    // builder-server answers 409 "Unpublished collection" until an item of the collection has been submitted.
+    if (error instanceof BuilderServerError && error.status === UNPUBLISHED_COLLECTION_STATUS) return new Map()
+    throw error
+  }
+}
+
+/** A third party's name and managers: GET /thirdParties/{id}. 404 for an unpublished one the signer doesn't manage. */
+export async function fetchThirdParty(address: string, thirdPartyId: string): Promise<ThirdParty> {
+  const thirdParty = await request<ThirdParty>(address, 'GET', `/thirdParties/${encodeURIComponent(thirdPartyId)}`)
+  return { name: thirdParty.name, managers: thirdParty.managers ?? [] }
 }
 
 /** Delete an unpublished collection and its items: DELETE /collections/{id} (409 published, 423 locked). */
@@ -140,7 +262,17 @@ export const ALREADY_PUBLISHED_STATUS = 409
  * same two-step save the legacy builder performs. A smart wearable's preview video goes to
  * POST /items/{id}/videos instead (field name = path), which has its own 250MB cap.
  */
-export async function saveItem(address: string, item: Item, blobs: Record<string, Blob>): Promise<Item> {
+export type SaveItemOptions = {
+  /** The video hash the item had before this save, restored if the new video fails to upload. */
+  previousVideo?: string
+}
+
+export async function saveItem(
+  address: string,
+  item: Item,
+  blobs: Record<string, Blob>,
+  { previousVideo }: SaveItemOptions = {}
+): Promise<Item> {
   const remote = await request<RemoteItem>(address, 'PUT', `/items/${item.id}`, '', { item: toRemoteItem(item) })
   const { [VIDEO_PATH]: video, ...fileBlobs } = blobs
   if (Object.keys(fileBlobs).length > 0) {
@@ -154,13 +286,17 @@ export async function saveItem(address: string, item: Item, blobs: Record<string
     try {
       await request<unknown>(address, 'POST', `/items/${item.id}/videos`, '', videos, false)
     } catch (error) {
-      // The PUT already stored the video reference; drop it so the item never points at a file
-      // that was not uploaded (it would look complete and pass the publish gate). Best effort:
-      // the caller gets the upload error either way.
+      // The PUT already stored the new video hash; point the item back at the video it had so it never
+      // references a file that was not uploaded. Callers that know the previous hash pass it; otherwise an
+      // approved item keeps its curation-approved video (`item.video`, which the save leaves alone) and an
+      // unapproved one, whose `video` already moved to the new hash, drops it. Best effort: the caller gets
+      // the upload error either way.
+      const previous = previousVideo ?? (tracksVideoOnSave(item) ? undefined : item.video)
       const contents = { ...item.contents }
-      delete contents[VIDEO_PATH]
+      if (previous) contents[VIDEO_PATH] = previous
+      else delete contents[VIDEO_PATH]
       await request<RemoteItem>(address, 'PUT', `/items/${item.id}`, '', {
-        item: toRemoteItem({ ...item, video: undefined, contents })
+        item: toRemoteItem({ ...item, video: previous, contents })
       }).catch(() => undefined)
       throw error
     }
@@ -245,9 +381,24 @@ export async function publishCollectionItems(
   return { collection: fromRemoteCollection(result.collection), items: result.items.map(fromRemoteItem) }
 }
 
+/**
+ * A stored file's size in bytes, or 0 when storage doesn't say. The bucket's CORS allows only GET, so this reads the
+ * headers of a GET and cancels it before the body downloads.
+ */
+export async function fetchContentSize(hash: string): Promise<number> {
+  const controller = new AbortController()
+  // no-cache for the same reason as fetchContent: a cached copy from an <img> has no CORS headers.
+  const response = await fetch(getContentsStorageUrl(hash), { cache: 'no-cache', signal: controller.signal })
+  controller.abort()
+  if (!response.ok) throw new BuilderServerError(`Could not read ${hash} (${response.status})`, response.status)
+  return Number(response.headers.get('content-length')) || 0
+}
+
 /** One stored file by hash, from public storage. */
-export async function fetchContent(hash: string): Promise<Blob> {
-  const response = await fetch(getContentsStorageUrl(hash))
+export async function fetchContent(hash: string, signal?: AbortSignal): Promise<Blob> {
+  // Storage omits `Vary: Origin`, so a file the page already showed in an <img> sits in the HTTP cache without
+  // CORS headers and a plain cached fetch of it fails. Revalidating gets a response with them.
+  const response = await fetch(getContentsStorageUrl(hash), { signal, cache: 'no-cache' })
   if (!response.ok) {
     await response.body?.cancel()
     throw new BuilderServerError(`Could not download ${hash} (${response.status})`, response.status)

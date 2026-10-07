@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { type Entity } from '@dcl/schemas'
-import { fetchCollectionCuration } from '~/lib/builder'
 import { fetchEntitiesByPointers } from '~/lib/catalyst'
-import { CurationStatus, type Collection } from '~/lib/collections'
+import { useCollectionCuration } from '~/hooks/useCuration'
+import { type Collection } from '~/lib/collections'
 import { getItemSyncStatus, mapEntitiesByItemId, type ItemSyncStatus } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
 
@@ -35,17 +35,13 @@ export function useItemSyncs(
     enabled: pointers.length > 0,
     staleTime: 30_000
   })
-  const curationQuery = useQuery({
-    queryKey: ['collection-curation', address, collectionId],
-    queryFn: () => fetchCollectionCuration(address!, collectionId!),
-    enabled: !!address && !!collectionId && isPublished,
-    staleTime: 30_000
-  })
+  const curationQuery = useCollectionCuration(address, collection)
 
   const entities = entitiesQuery.data
-  // A failed entities request settles too: an approved item then reads as unsynced rather than loading forever.
-  const entitiesLoaded = pointers.length === 0 || entitiesQuery.isFetched
-  const curationPending = curationQuery.data?.status === CurationStatus.PENDING
+  // Only a successful answer settles it: during a Catalyst outage an approved item reads as loading, not as missing
+  // its entity (which would offer Deploy missing entities and Publish updates for nothing).
+  const entitiesLoaded = pointers.length === 0 || entitiesQuery.isSuccess
+  const curationPending = curationQuery.data?.status === 'pending'
 
   return useMemo(() => {
     const byItemId = mapEntitiesByItemId(items, entities ?? [])

@@ -25,7 +25,9 @@ const TranslationProvider = ({ children }: { children: ReactNode }) => {
   )
 }
 
-const useTranslation = () => {
+type Translate = (id: string, values?: Record<string, string | number>) => string
+
+const useTranslation = (): { t: Translate } => {
   const intl = useIntl()
   // Stable across renders so `t` can sit in hook dependency arrays without defeating them.
   const t = useCallback(
@@ -38,4 +40,4 @@ const useTranslation = () => {
 /** The English copy of a message, for analytics values that must not change with the visitor's language. */
 const englishMessage = (id: string): string => messages.en[id] ?? id
 
-export { TranslationProvider, englishMessage, useTranslation }
+export { TranslationProvider, englishMessage, useTranslation, type Translate }

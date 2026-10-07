@@ -32,11 +32,11 @@ export type PricedSale = { kind: 'credits'; credits: number } | { kind: 'mana'; 
 export type SalePrice = PricedSale | { kind: 'free' }
 export type PriceCurrency = PricedSale['kind']
 
-// marketplace-server drops catalog rows above 1e30 wei (its bigint cast guard), so a dearer listing is
-// stored but never shown in the Shop. Also keeps a credits price well inside Number's exact-integer range.
-const MAX_SALE_WEI = 10n ** 30n
-export const MAX_SALE_CREDITS = MAX_SALE_WEI / USD_WEI_PER_CREDIT
-export const MAX_SALE_MANA_WEI = MAX_SALE_WEI
+// The same ceiling in either currency. At 1e30 wei a MANA price also stays inside marketplace-server's
+// catalog guard (dearer rows are stored but never shown in the Shop), and credits stay exact in a Number.
+const MAX_SALE_PRICE = 1_000_000_000_000n
+export const MAX_SALE_CREDITS = MAX_SALE_PRICE
+export const MAX_SALE_MANA_WEI = MAX_SALE_PRICE * 10n ** 18n
 // Below 1 MANA the buyer would have to cover the meta-transaction gas themselves, so the legacy builder
 // warned about it; here it is the floor.
 export const MIN_SALE_MANA_WEI = 10n ** 18n
@@ -153,18 +153,24 @@ export function minExpirationDate(now = Date.now()): Date {
   return new Date(now + ONE_DAY_MS)
 }
 
-// Either generation of the off-chain marketplace as a minter means sales are enabled.
-function getSaleMinterAddresses(chainId: number): string[] {
-  return [
-    getContract(ContractName.OffChainMarketplace, chainId).address,
-    getContract(ContractName.OffChainMarketplaceV2, chainId).address
-  ].map(address => address.toLowerCase())
+/**
+ * Sales are enabled once the marketplace new orders are signed on may mint the collection's items. An
+ * older marketplace as minter is not enough: its orders are no longer accepted, and a newer order it
+ * cannot mint would never settle, so such a collection goes through Enable Sales again.
+ */
+export function isSalesEnabled(collection: Collection, chainId: number): boolean {
+  const minter = getOffchainMarketplaceContract(chainId).address.toLowerCase()
+  return collection.minters.some(address => address.toLowerCase() === minter)
 }
 
-/** Sales are enabled once the off-chain marketplace may mint the collection's items. */
-export function isSalesEnabled(collection: Collection, chainId: number): boolean {
-  const minters = new Set(collection.minters.map(address => address.toLowerCase()))
-  return getSaleMinterAddresses(chainId).some(address => minters.has(address))
+/** An older off-chain marketplace (V1 or V2) may mint the collection: it was already on sale before the upgrade. */
+export function isSellingOnOlderMarketplace(collection: Collection, chainId: number): boolean {
+  const older = new Set(
+    [ContractName.OffChainMarketplace, ContractName.OffChainMarketplaceV2].map(name =>
+      getContract(name, chainId).address.toLowerCase()
+    )
+  )
+  return collection.minters.some(address => older.has(address.toLowerCase()))
 }
 
 /** `setMinters([marketplace], [true])` on the collection contract itself. */

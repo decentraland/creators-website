@@ -1,27 +1,37 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Add as AddIcon,
   ArrowBackIosNew as ArrowBackIcon,
   Edit as EditIcon,
-  PersonOutline as PersonOutlineIcon
+  ForumOutlined as ForumIcon,
+  PersonOutline as PersonOutlineIcon,
+  Sync as SyncIcon
 } from '@mui/icons-material'
 import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
-import { ITEMS_PAGE_SIZE, useAllCollectionItems, useCollection, useSaveCollection } from '~/hooks/useCollection'
-import { BuilderServerError } from '~/lib/builder'
+import {
+  ITEMS_PAGE_SIZE,
+  useAllCollectionItems,
+  useCollection,
+  useCollectionStatus,
+  useSaveCollection
+} from '~/hooks/useCollection'
+import { BuilderServerError, getContentsStorageUrl } from '~/lib/builder'
 import { FeatureFlag } from '~/lib/featureFlags'
 import {
   CollectionDisplayStatus,
+  canManageCollectionItems,
   canSellCollectionItems,
-  getCollectionDisplayStatus,
   hasBeenApproved,
   hasCollectionRole,
-  isCollectionLocked
+  isCollectionLocked,
+  isLinkedCollection
 } from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
 import { track } from '~/lib/analytics'
+import { isForumPostRelevant, openForumPost } from '~/lib/forumPost'
 import { cancelCreditsOrder } from '~/lib/credits'
 import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'
 import { type RoleKind } from '~/lib/collectionRoles'
@@ -37,12 +47,17 @@ import {
 } from '~/lib/itemFilters'
 import { MAX_PUBLISH_ITEMS, getPublishBlocker } from '~/lib/publishCollection'
 import { useSaveItem } from '~/hooks/useSaveItem'
-import { useItemContents, useSyncPublishedItems } from '~/hooks/usePublishCollection'
+import { useForumPostRecovery } from '~/hooks/useForumPost'
+import { useSyncPublishedItems } from '~/hooks/usePublishCollection'
+import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useCollectionListings } from '~/hooks/useCollectionListings'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
-import { hasPendingChanges } from '~/lib/itemSync'
+import { useCollectionValidation, useRerunItemValidation } from '~/hooks/useCollectionValidation'
+import { ItemSyncStatus, hasPendingChanges } from '~/lib/itemSync'
+import { canPushChanges } from '~/lib/curation'
+import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
 import { previewCollection } from '~/lib/explorer'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS, THUMBNAIL_PATH } from '~/lib/itemFiles'
@@ -50,16 +65,20 @@ import { type ItemListing } from '~/lib/listings'
 import { useNotifications } from '~/lib/notifications'
 import { theme } from '~/styles/theme'
 import { Button } from '~/components/Button'
+import { ConfirmModal } from '~/components/ConfirmModal'
 import { Tooltip } from '~/components/Tooltip'
 import { EmoteIcon, JumpInIcon, OpenEditorIcon, WearableIcon } from '~/components/Icons'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { CollectionRolePill } from '~/components/CollectionRolePill'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
 import { Pagination } from '~/components/Pagination'
-import { ThumbnailModal } from '~/components/ThumbnailModal'
+import { ValidationResultsModal } from '~/components/ValidationBadge'
 import addItemsArt from '~/assets/add-items.png'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
+import { useThirdParty } from '~/hooks/useLinkedCollection'
+import { getThirdPartyId, isThirdPartyManager } from '~/lib/linkedCollections'
 import { AddItemsModal } from './AddItemsModal'
+import { LinkedCollectionView } from './LinkedCollectionView'
 import { ItemActionsMenu } from './ItemActionsMenu'
 import { ItemListRow } from './ItemListRow'
 import { PublishCollectionModal, PublishSuccessModal, type PublishResume } from './PublishCollectionModal'
@@ -69,11 +88,14 @@ import { SendItemsFlow } from './SendItemsFlow'
 import * as S from './CollectionDetailPage.styles'
 
 const NOT_FOUND_STATUSES = [401, 403, 404]
+const NO_ITEMS: Item[] = []
 
 const CollectionDetailPage = () => {
   const { t } = useTranslation()
   const intl = useIntl()
   const navigate = useNavigate()
+  const location = useLocation()
+  const listState = location.state as { listSearch?: string } | null
   const { collectionId: collectionIdParam } = useParams()
   const collectionId = parseUuidParam(collectionIdParam)
   const { session, restored, signIn } = useWallet()
@@ -91,7 +113,6 @@ const CollectionDetailPage = () => {
   const [isDragging, setDragging] = useState(false)
   const [isPreviewLaunching, setPreviewLaunching] = useState(false)
   const [sellingItem, setSellingItem] = useState<Item | null>(null)
-  const [thumbnailItem, setThumbnailItem] = useState<Item | null>(null)
   // The price dialog keeps the listing it opened with: the flow rewrites the listings cache itself.
   const [priceEdit, setPriceEdit] = useState<{ item: Item; listing: ItemListing & { tradeId: string } } | null>(null)
   const filesInputRef = useRef<HTMLInputElement>(null)
@@ -120,12 +141,24 @@ const CollectionDetailPage = () => {
   const itemsQuery = useAllCollectionItems(address, collectionId)
   const saveCollection = useSaveCollection(address)
   const updateItem = useSaveItem(address)
-  const itemContents = useItemContents(thumbnailItem)
   const showToast = useNotifications(state => state.showToast)
+  const thumbnailEditor = useThumbnailEditor(async (patch, subject) => {
+    if (subject.kind !== 'item') return
+    const { item } = subject
+    await updateItem
+      .mutateAsync({ item, thumbnail: patch.contents[THUMBNAIL_PATH] })
+      .catch(() =>
+        showToast(t('collection_detail_page.item_row.thumbnail_error', { name: item.name }), { type: 'error' })
+      )
+  })
   // Small screens are a viewer: the in-row edit shortcuts are desktop-only, like the menu's edit actions.
   const compact = useMediaQuery(theme.media.noActions)
 
   const collection = collectionQuery.data
+  // Linked collections are read-only here: none of the publishing, sales or sync machinery runs for them.
+  const isLinked = !!collection && isLinkedCollection(collection)
+  const standardCollection = isLinked ? undefined : collection
+  const thirdParty = useThirdParty(address, isLinked ? collection : undefined)
   const allItems = itemsQuery.data
   const total = allItems?.length ?? 0
   const counts = useMemo(() => countItemsByType(allItems ?? []), [allItems])
@@ -139,29 +172,111 @@ const CollectionDetailPage = () => {
   )
   // Play Mode is an emote-only attribute; the column exists only while the visible page has emotes.
   const withPlayMode = useMemo(() => results.some(item => item.type === ItemType.EMOTE), [results])
-  useSyncPublishedItems(address, collection, allItems ?? [])
+  useSyncPublishedItems(address, standardCollection, allItems ?? [])
+  useForumPostRecovery(address, standardCollection, allItems ?? [])
   // Price, Sales and Sale Status exist once the collection is published; the owner can put items on sale
   // once it has been approved at least once, even if it is under review again.
-  const withMarket = !!collection?.isPublished
+  const withMarket = !!standardCollection?.isPublished
+  const status = useCollectionStatus(address, standardCollection)
+  const showForumPost = !!standardCollection && isForumPostRelevant(standardCollection, status)
   const statusHint =
-    collection && getCollectionDisplayStatus(collection) === CollectionDisplayStatus.UNDER_REVIEW
-      ? t('collection_status.under_review_hint')
-      : null
+    status === CollectionDisplayStatus.REJECTED
+      ? t('collection_detail_page.review_notice.rejected')
+      : status === CollectionDisplayStatus.UNDER_REVIEW
+        ? t('collection_status.under_review_hint')
+        : status === CollectionDisplayStatus.DISABLED
+          ? t('collection_status.disabled_hint')
+          : null
   // Sales here are off-chain public orders only: with the flag off there is no other way to list an item.
   const canListItems = useFeatureFlag(FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS).enabled
   const isApprovedForSale = canListItems && !!collection && hasBeenApproved(collection)
   const isSeller = canListItems && !!collection && canSellCollectionItems(collection, address)
-  const canSend = useMemo(() => !!collection && canSendCollectionItems(collection, address), [collection, address])
+  const canSend = useMemo(
+    () => !!standardCollection && canSendCollectionItems(standardCollection, address),
+    [standardCollection, address]
+  )
   const [isSending, setSending] = useState(false)
   const [managingRoles, setManagingRoles] = useState<RoleKind | null>(null)
-  const listingsQuery = useCollectionListings(withMarket ? collection.contractAddress : undefined)
+  const listingsQuery = useCollectionListings(withMarket ? standardCollection.contractAddress : undefined)
   const listings = listingsQuery.data
   // `undefined` keeps the price cell blank while the catalog loads; a failed request shows no price rather than an error.
   const listingFor = (item: Item) =>
     listings ? (listings.get(item.tokenId ?? '') ?? null) : listingsQuery.isError ? null : undefined
-  const syncs = useItemSyncs(address, collection, allItems ?? [])
+  const syncs = useItemSyncs(address, standardCollection, allItems ?? [])
+  const curationQuery = useCollectionCuration(address, standardCollection)
+  const curation = curationQuery.data ?? null
+  const pushCuration = usePushCuration(address)
+  const [isPushOpen, setPushOpen] = useState(false)
+  const hasUnsyncedItems = useMemo(
+    () => [...syncs.values()].some(sync => sync.status === ItemSyncStatus.UNSYNCED),
+    [syncs]
+  )
+  const closePush = () => {
+    setPushOpen(false)
+    pushCuration.reset()
+  }
+  // Until the request loads, a pending one looks like none and the push would duplicate it.
+  const curationLoaded = curationQuery.isSuccess
+  const showPushChanges = useMemo(
+    () =>
+      !!standardCollection &&
+      curationLoaded &&
+      canPushChanges(
+        standardCollection,
+        curation,
+        hasUnsyncedItems,
+        canManageCollectionItems(standardCollection, address)
+      ),
+    [standardCollection, curationLoaded, curation, hasUnsyncedItems, address]
+  )
+  // A never-approved collection asks for its first review again; an approved one sends an update.
+  const pushCopy = collection?.isApproved ? 'push_changes' : 'request_review'
 
-  const isLoading = !restored || (!!address && (collectionQuery.isLoading || itemsQuery.isLoading))
+  // Drafts check every item; published collections only the items with changes waiting for approval.
+  // Small screens are a viewer and check nothing, unless the publish modal is already open: crossing the
+  // breakpoint mid-check must not empty its results and let it through.
+  const validates = !compact || publishView === 'wizard'
+  const validationItems = useMemo(
+    () =>
+      !validates || !standardCollection || !allItems
+        ? NO_ITEMS
+        : allItems.filter(item => !standardCollection.isPublished || hasPendingChanges(syncs.get(item.id)?.status)),
+    [validates, standardCollection, allItems, syncs]
+  )
+  const validation = useCollectionValidation(validationItems, validates)
+  const blockOnErrors = useFeatureFlag(FeatureFlag.BLOCK_PUBLISH_ON_VALIDATION_ERRORS).enabled
+  const invalidCount = useMemo(
+    () => [...validation.results.values()].filter(result => result.status === 'errors').length,
+    [validation.results]
+  )
+  const publishValidation = useMemo(
+    () => ({
+      // A background refetch (back from saving in the editor) may bring new hashes the modal must wait for.
+      isValidating: itemsQuery.isFetching || validation.isValidating,
+      results: validationItems.map(item => ({ item, issues: validation.results.get(item.id)?.issues ?? [] }))
+    }),
+    [itemsQuery.isFetching, validation, validationItems]
+  )
+  const rerunItemValidation = useRerunItemValidation()
+  const [validationItem, setValidationItem] = useState<Item | null>(null)
+  const showValidation = useCallback(
+    (item: Item) => {
+      setValidationItem(item)
+      track('Item Validation Details Opened', {
+        itemId: item.id,
+        status: validation.results.get(item.id)?.status ?? 'idle',
+        source: 'row'
+      })
+    },
+    [validation.results]
+  )
+
+  const isLoading =
+    !restored || (!!address && (collectionQuery.isLoading || itemsQuery.isLoading || thirdParty.isLoading))
+  const isThirdPartyNotFound =
+    thirdParty.isError &&
+    thirdParty.error instanceof BuilderServerError &&
+    NOT_FOUND_STATUSES.includes(thirdParty.error.status)
   // builder-server serves published collections to any signer; addresses with no role on it get
   // the same "not found" as a rejected request, so strangers can't browse other creators' work.
   const isNotFound =
@@ -169,13 +284,20 @@ const CollectionDetailPage = () => {
     (collectionQuery.isError &&
       collectionQuery.error instanceof BuilderServerError &&
       NOT_FOUND_STATUSES.includes(collectionQuery.error.status)) ||
-    (!!collection && !hasCollectionRole(collection, address))
-  const isError = !isNotFound && (collectionQuery.isError || itemsQuery.isError)
+    (!!collection &&
+      (isLinked
+        ? !getThirdPartyId(collection) ||
+          isThirdPartyNotFound ||
+          (!!thirdParty.data && !isThirdPartyManager(thirdParty.data, address))
+        : !hasCollectionRole(collection, address)))
+  const isError = !isNotFound && (collectionQuery.isError || itemsQuery.isError || thirdParty.isError)
   const isEmpty = filteredTotal === 0
   const hasItems = total > 0
   const canRename = !!collection && !collection.isPublished && !isCollectionLocked(collection)
   const canAddItems = canRename
-  const publishBlocker = collection ? getPublishBlocker(collection, total, allItems ?? []) : 'not_draft'
+  const publishBlocker = collection
+    ? getPublishBlocker(collection, total, allItems ?? [], { hasInvalidItems: blockOnErrors && invalidCount > 0 })
+    : 'not_draft'
 
   function openFileBrowser() {
     filesInputRef.current?.click()
@@ -202,7 +324,8 @@ const CollectionDetailPage = () => {
         else params.delete('page')
         return params
       },
-      { replace: true }
+      // Keeps the list's query that the back arrow returns to.
+      { replace: true, state: listState }
     )
     window.scrollTo({ top: 0 })
   }
@@ -216,7 +339,7 @@ const CollectionDetailPage = () => {
         params.delete('page')
         return params
       },
-      { replace: true }
+      { replace: true, state: listState }
     )
   }
 
@@ -306,11 +429,22 @@ const CollectionDetailPage = () => {
             onClick={() => {
               void collectionQuery.refetch()
               void itemsQuery.refetch()
+              if (thirdParty.isError) void thirdParty.refetch()
             }}
           >
             {t('collection_detail_page.error.retry')}
           </Button>
         </S.Panel>
+      ) : isLinked && address ? (
+        <LinkedCollectionView
+          collection={collection}
+          thirdPartyName={thirdParty.data?.name}
+          items={allItems ?? []}
+          address={address}
+          page={page}
+          onBack={() => navigate({ pathname: '/collections', search: listState?.listSearch })}
+          onPageChange={goToPage}
+        />
       ) : (
         <>
           <S.Header>
@@ -319,7 +453,12 @@ const CollectionDetailPage = () => {
                 type="button"
                 aria-label={t('collection_detail_page.back')}
                 data-testid="back-to-collections"
-                onClick={() => navigate('/collections')}
+                onClick={() =>
+                  navigate({
+                    pathname: '/collections',
+                    search: listState?.listSearch
+                  })
+                }
               >
                 <ArrowBackIcon />
               </S.BackLink>
@@ -336,10 +475,21 @@ const CollectionDetailPage = () => {
                   </S.RenameButton>
                 )}
               </S.TitleGroup>
-              <CollectionStatusPill collection={collection} hint={statusHint} />
+              {status && <CollectionStatusPill collection={collection} status={status} hint={statusHint} />}
               {address && <CollectionRolePill collection={collection} address={address} />}
             </S.HeaderLeft>
             <S.HeaderActions>
+              {validation.isValidating && (
+                <Tooltip content={t('item_validation.checking')} asChild testId="validation-spinner-tooltip">
+                  <S.ValidationSpinner
+                    role="status"
+                    aria-label={t('item_validation.checking')}
+                    tabIndex={0}
+                    data-desktop-only
+                    data-testid="validation-spinner"
+                  />
+                </Tooltip>
+              )}
               <Button
                 type="button"
                 variant="dark"
@@ -354,11 +504,26 @@ const CollectionDetailPage = () => {
                 {t('collection_detail_page.preview')}
                 <JumpInIcon />
               </Button>
+              {showForumPost && (
+                <Button
+                  type="button"
+                  variant="dark"
+                  data-desktop-only
+                  data-testid="forum-post"
+                  onClick={() => openForumPost(collection, 'detail')}
+                >
+                  <ForumIcon fontSize="small" />
+                  {t('collection_detail_page.forum_post')}
+                </Button>
+              )}
               {publishBlocker !== 'not_draft' && (
                 <Tooltip
                   content={
                     publishBlocker
-                      ? t(`collection_detail_page.publish_blocker.${publishBlocker}`, { max: MAX_PUBLISH_ITEMS })
+                      ? t(`collection_detail_page.publish_blocker.${publishBlocker}`, {
+                          max: MAX_PUBLISH_ITEMS,
+                          count: invalidCount
+                        })
                       : null
                   }
                   placement="bottom"
@@ -393,11 +558,24 @@ const CollectionDetailPage = () => {
                   {t('collection_detail_page.send_items')}
                 </Button>
               )}
+              {showPushChanges && (
+                <Button
+                  type="button"
+                  variant="primary"
+                  data-desktop-only
+                  data-testid="push-changes"
+                  onClick={() => setPushOpen(true)}
+                >
+                  {t(`collection_detail_page.${pushCopy}.action`)}
+                </Button>
+              )}
               {address && (
                 <CollectionActionsMenu
                   collection={collection}
                   address={address}
                   onSendItems={canSend ? () => setSending(true) : undefined}
+                  onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
+                  forumLink={showForumPost ? collection.forumLink : undefined}
                   onManageRoles={setManagingRoles}
                   onDeleted={() => navigate('/collections', { replace: true })}
                 />
@@ -519,8 +697,11 @@ const CollectionDetailPage = () => {
                     }
                     editable={!compact && canEditItemDetails(collection, item, address)}
                     onRename={renameItem}
-                    onEditThumbnail={setThumbnailItem}
+                    onEditThumbnail={item => thumbnailEditor.edit({ kind: 'item', item })}
                     contractAddress={collection.contractAddress}
+                    validation={validation.results.get(item.id)}
+                    validationBlocks={blockOnErrors}
+                    onShowValidation={showValidation}
                     actions={
                       address && (
                         <ItemActionsMenu
@@ -580,11 +761,40 @@ const CollectionDetailPage = () => {
               collection={collection}
               session={session}
               resume={publishResume}
+              validation={publishValidation}
+              blockOnErrors={blockOnErrors}
               onClose={() => setPublishView('closed')}
               onPublished={() => setPublishView('success')}
             />
           )}
           {publishView === 'success' && <PublishSuccessModal onDone={() => setPublishView('closed')} />}
+          {isPushOpen && (
+            <ConfirmModal
+              icon={<SyncIcon />}
+              title={t(`collection_detail_page.${pushCopy}.title`)}
+              description={t(`collection_detail_page.${pushCopy}.description`)}
+              error={pushCuration.isError ? t(`collection_detail_page.${pushCopy}.error`) : null}
+              busy={pushCuration.isPending}
+              onClose={closePush}
+              cancel={{
+                label: t(`collection_detail_page.${pushCopy}.cancel`),
+                onClick: closePush,
+                testId: 'push-changes-cancel'
+              }}
+              confirm={{
+                label: t(`collection_detail_page.${pushCopy}.confirm`),
+                onClick: () =>
+                  pushCuration.mutate(collection, {
+                    onSuccess: () => {
+                      setPushOpen(false)
+                      showToast(t(`collection_detail_page.${pushCopy}.success`))
+                    }
+                  }),
+                testId: 'push-changes-confirm'
+              }}
+              testId="push-changes-modal"
+            />
+          )}
           {isSending && session && (
             <SendItemsFlow
               collection={collection}
@@ -601,27 +811,30 @@ const CollectionDetailPage = () => {
               onClose={() => setManagingRoles(null)}
             />
           )}
-          {thumbnailItem && (
-            <ThumbnailModal
-              type={thumbnailItem.type}
-              contents={itemContents.data ?? null}
-              loadError={itemContents.isError}
-              onClose={() => setThumbnailItem(null)}
-              onSave={patch => {
-                const item = thumbnailItem
-                updateItem.mutate(
-                  { item, thumbnail: patch.contents[THUMBNAIL_PATH] },
-                  {
-                    onSettled: () => setThumbnailItem(null),
-                    onError: () =>
-                      showToast(t('collection_detail_page.item_row.thumbnail_error', { name: item.name }), {
-                        type: 'error'
-                      })
-                  }
-                )
+          {validationItem && (
+            <ValidationResultsModal
+              subject={{
+                name: validationItem.name,
+                type: validationItem.type,
+                category: validationItem.data.category,
+                rarity: validationItem.rarity,
+                thumbnail: validationItem.contents[validationItem.thumbnail]
+                  ? getContentsStorageUrl(validationItem.contents[validationItem.thumbnail])
+                  : null
               }}
+              issues={validation.results.get(validationItem.id)?.issues ?? []}
+              onRerun={() =>
+                rerunItemValidation(
+                  validationItem,
+                  'details',
+                  validation.results.get(validationItem.id)?.status ?? 'idle'
+                )
+              }
+              onClose={() => setValidationItem(null)}
+              testId="item-validation"
             />
           )}
+          {thumbnailEditor.modal}
           {priceEdit && session && (
             <UpdatePriceFlow
               item={priceEdit.item}

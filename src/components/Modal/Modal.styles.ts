@@ -104,11 +104,12 @@ export const FloatingClose = styled.div`
 `
 
 export const Body = styled.div`
-  /* The body owns the dialog's remaining height so tall content can scroll instead of clipping the footer;
-     inner panes manage their own scroll. Short modals stay content-height (flex:1 is a no-op at max-content). */
+  /* Owns the dialog's remaining height: panes that shrink (min-height: 0) scroll themselves, anything taller
+     (a form on a short window) scrolls the body so the footer stays reachable. */
   display: flex;
   flex: 1;
   min-height: 0;
   flex-direction: column;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 `

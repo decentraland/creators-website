@@ -4,21 +4,12 @@ import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/A
 import { Select } from '~/components/Select'
 import { useTranslation } from '~/intl'
 import {
-  MAX_SPRING_BONES,
-  SPRING_BONE_DRAG_MAX,
-  SPRING_BONE_DRAG_MIN,
-  SPRING_BONE_GRAVITY_DIR_MAX,
-  SPRING_BONE_GRAVITY_DIR_MIN,
-  SPRING_BONE_GRAVITY_POWER_MAX,
-  SPRING_BONE_GRAVITY_POWER_MIN,
-  SPRING_BONE_STIFFNESS_MAX,
-  SPRING_BONE_STIFFNESS_MIN
-} from '~/lib/glbValidation/constants'
-import {
   buildBoneTree,
   buildSubtreeSizes,
   getChainRoots,
   getDefaultSpringBoneParams,
+  MAX_SPRING_BONES,
+  SPRING_BONE_RANGES as RANGES,
   pickTunableSpringBoneParams,
   sortByHierarchy,
   sumConfiguredBones,
@@ -48,9 +39,9 @@ type Props = {
 type NumericParam = 'stiffness' | 'gravityPower' | 'drag'
 
 const SLIDERS: Array<{ field: NumericParam; min: number; max: number }> = [
-  { field: 'stiffness', min: SPRING_BONE_STIFFNESS_MIN, max: SPRING_BONE_STIFFNESS_MAX },
-  { field: 'gravityPower', min: SPRING_BONE_GRAVITY_POWER_MIN, max: SPRING_BONE_GRAVITY_POWER_MAX },
-  { field: 'drag', min: SPRING_BONE_DRAG_MIN, max: SPRING_BONE_DRAG_MAX }
+  { field: 'stiffness', min: RANGES.stiffness[0], max: RANGES.stiffness[1] },
+  { field: 'gravityPower', min: RANGES.gravityPower[0], max: RANGES.gravityPower[1] },
+  { field: 'drag', min: RANGES.drag[0], max: RANGES.drag[1] }
 ]
 
 const AXES = ['x', 'y', 'z'] as const
@@ -204,8 +195,8 @@ export function SpringBonesEditor({
                     {axis.toUpperCase()}
                     <S.NumberInput
                       type="number"
-                      min={SPRING_BONE_GRAVITY_DIR_MIN}
-                      max={SPRING_BONE_GRAVITY_DIR_MAX}
+                      min={RANGES.gravityDir[0]}
+                      max={RANGES.gravityDir[1]}
                       step={0.1}
                       value={bone.gravityDir[index]}
                       disabled={disabled}
@@ -213,11 +204,7 @@ export function SpringBonesEditor({
                       data-testid={`${testId}-${name}-gravity-${axis}`}
                       onChange={event => {
                         const next = [...bone.gravityDir] as [number, number, number]
-                        next[index] = clamp(
-                          Number(event.target.value) || 0,
-                          SPRING_BONE_GRAVITY_DIR_MIN,
-                          SPRING_BONE_GRAVITY_DIR_MAX
-                        )
+                        next[index] = clamp(Number(event.target.value) || 0, RANGES.gravityDir[0], RANGES.gravityDir[1])
                         update(name, { gravityDir: next })
                       }}
                     />

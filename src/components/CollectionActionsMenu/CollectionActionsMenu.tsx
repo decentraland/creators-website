@@ -4,8 +4,11 @@ import { useTranslation } from '~/intl'
 import { useDeleteCollection } from '~/hooks/useCollection'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { copyToClipboard } from '~/lib/clipboard'
-import { hasBeenApproved, isCollectionLocked, type Collection } from '~/lib/collections'
+import { track } from '~/lib/analytics'
+import { hasBeenApproved, isCollectionLocked, isLinkedCollection, type Collection } from '~/lib/collections'
+import { builderLinkedCollectionUrl } from '~/lib/linkedCollections'
 import { isCollectionOwner, type RoleKind } from '~/lib/collectionRoles'
+import { openForumPost } from '~/lib/forumPost'
 import { openExternal } from '~/lib/navigation'
 import { shopCollectionUrl } from '~/lib/shop'
 import { useNotifications } from '~/lib/notifications'
@@ -23,6 +26,10 @@ type Props = {
   label?: string
   /** Opens the Send Items flow; the header button covers this on desktop, so the item shows only when compact. */
   onSendItems?: () => void
+  /** Opens the items in the editor; the header button covers this on desktop, so the item shows only when compact. */
+  onPreviewItems?: () => void
+  /** The collection's forum post; the header button covers it on desktop, so the item shows only when compact. */
+  forumLink?: string
   /** Opens the collaborators / senders list; without it the owner-only entries are not rendered. */
   onManageRoles?: (kind: RoleKind) => void
   onDeleted?: () => void
@@ -35,6 +42,8 @@ export function CollectionActionsMenu({
   showRoles = true,
   label,
   onSendItems,
+  onPreviewItems,
+  forumLink,
   onManageRoles,
   onDeleted
 }: Props) {
@@ -54,8 +63,35 @@ export function CollectionActionsMenu({
   const canDelete = !compact && !isOnChain && !isCollectionLocked(collection)
   // The header's Send Items button is desktop-only, so the menu carries the action on small screens.
   const showSend = compact && !!onSendItems
+  // Same for the header's Open Editor button; on mobile the editor is a viewer, hence "Preview".
+  const showPreview = compact && !!onPreviewItems
+  const showForum = compact && !!forumLink
 
-  if (!isOnChain && !canDelete && !showSend) return null
+  // Linked collections are edited in the legacy builder, which is desktop-only: on small screens there is nothing to offer.
+  if (isLinkedCollection(collection)) {
+    if (compact) return null
+    return (
+      <ActionsMenu
+        label={label ?? t('collection_detail_page.more_actions')}
+        variant={variant}
+        testId="collection-actions"
+      >
+        <ActionsMenuItem
+          testId="edit-in-builder"
+          onClick={() => {
+            // The linked detail page has its own button, so only list rows reach this menu.
+            track('Edit linked collection in builder', { collectionId: collection.id, source: 'list' })
+            openExternal(builderLinkedCollectionUrl(collection.id))
+          }}
+        >
+          {t('linked_collection.edit_in_builder')}
+          <OpenInNewIcon aria-hidden />
+        </ActionsMenuItem>
+      </ActionsMenu>
+    )
+  }
+
+  if (!isOnChain && !canDelete && !showSend && !showPreview && !showForum) return null
 
   async function copy(text: string | undefined, successKey: string) {
     const copied = !!text && (await copyToClipboard(text))
@@ -81,14 +117,28 @@ export function CollectionActionsMenu({
         variant={variant}
         testId="collection-actions"
       >
+        {showPreview && (
+          <ActionsMenuItem testId="preview-items-action" onClick={onPreviewItems}>
+            {t('collection_detail_page.actions.preview_items')}
+          </ActionsMenuItem>
+        )}
         {showSend && (
           <ActionsMenuItem testId="send-items-action" onClick={onSendItems}>
             {t('collection_detail_page.send_items')}
           </ActionsMenuItem>
         )}
+        {showForum && (
+          <ActionsMenuItem
+            testId="forum-post-action"
+            onClick={() => openForumPost({ ...collection, forumLink }, 'detail_menu')}
+          >
+            {t('collection_detail_page.forum_post')}
+            <OpenInNewIcon aria-hidden />
+          </ActionsMenuItem>
+        )}
         {isOnChain && (
           <>
-            {showSend && <ActionsMenuDivider />}
+            {(showSend || showPreview || showForum) && <ActionsMenuDivider />}
             <ActionsMenuItem
               testId="copy-urn"
               onClick={() => void copy(collection.urn, 'collection_detail_page.actions.copied_urn')}

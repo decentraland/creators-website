@@ -55,6 +55,23 @@ export const Trigger = styled.button`
     }
   }
 
+  &[data-variant='compact'] {
+    height: 40px;
+    padding: 0 12px 0 16px;
+    border-color: ${theme.colors.glassLine};
+    border-radius: ${theme.radius.btnSm};
+    background: ${theme.colors.subnavOverlayScrolled};
+    color: ${theme.colors.white};
+    font-size: 14px;
+    letter-spacing: 0.46px;
+    text-transform: uppercase;
+
+    > svg {
+      width: 20px;
+      height: 20px;
+    }
+  }
+
   /* A square glyph box; it widens to fit the chevron on hover, focus or while open. */
   &[data-variant='glyph'] {
     display: flex;

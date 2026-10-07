@@ -117,6 +117,11 @@ export const CollectionName = styled.div`
   min-width: 0;
   padding: 4px 0;
 
+  /* Without the back link the title needs its own inset. */
+  &:first-child {
+    padding-left: 8px;
+  }
+
   & [data-testid='collection-status'] {
     flex: none;
   }
@@ -194,11 +199,7 @@ export const HeaderMeta = styled.div`
   }
 
   & > button {
-    margin: 5px 0;
-  }
-
-  [data-collapsed] & > button {
-    margin: 0;
+    width: 100%;
   }
 `
 

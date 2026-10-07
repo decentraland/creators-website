@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { BodyShape } from '@dcl/schemas'
 import {
   applyDraftToItem,
   toPreviewItem,
-  canUpdateVideo,
+  isValidItemDescription,
+  sanitizeItemDescription,
+  tracksVideoOnSave,
   computeRemovesDefaultHiding,
   createItemDraft,
   isItemDraftDirty,
@@ -137,12 +139,48 @@ describe('item draft', () => {
     expect(saved.data.springBones).toEqual(springBones)
   })
 
-  it('freezes the video once the item is approved', async () => {
-    const approved = { ...item, isPublished: true, isApproved: true }
-    expect(canUpdateVideo(approved)).toBe(false)
+  it('uploads a new video for an approved item but keeps the approved hash until curation copies it', async () => {
+    const approved = { ...item, isPublished: true, isApproved: true, video: 'bafyvideo' }
+    expect(tracksVideoOnSave(approved)).toBe(false)
     const draft = itemDraftReducer(createItemDraft(approved), { type: 'setVideo', video: new Blob(['mp4']) })
     const { item: saved, blobs } = await toSaveableItem(approved, draft)
-    expect(blobs['video.mp4']).toBeUndefined()
-    expect(saved.contents['video.mp4']).toBe('bafyvideo')
+    expect(blobs['video.mp4']).toBeDefined()
+    expect(saved.contents['video.mp4']).not.toBe('bafyvideo')
+    expect(saved.video).toBe('bafyvideo')
+  })
+
+  it('rebuilds the catalyst image from the stored thumbnail when only the rarity changes', async () => {
+    const draft = itemDraftReducer(createItemDraft(item), { type: 'setRarity', rarity: 'legendary' })
+    const fetchThumbnail = vi.fn().mockResolvedValue(new Blob(['png'], { type: 'image/png' }))
+    const { item: saved, blobs } = await toSaveableItem(item, draft, { fetchThumbnail })
+    expect(fetchThumbnail).toHaveBeenCalledWith(item)
+    expect(Object.keys(blobs)).toEqual(['image.png'])
+    expect(saved.rarity).toBe('legendary')
+    expect(saved.contents['image.png']).toBeDefined()
+    expect(saved.contents['thumbnail.png']).toBe('bafythumb')
+  })
+
+  it('saves the rarity change without an image when the stored thumbnail cannot be loaded', async () => {
+    const draft = itemDraftReducer(createItemDraft(item), { type: 'setRarity', rarity: 'legendary' })
+    const { item: saved, blobs } = await toSaveableItem(item, draft, { fetchThumbnail: async () => null })
+    expect(saved.rarity).toBe('legendary')
+    expect(blobs).toEqual({})
+  })
+
+  it('leaves the catalyst image alone when the rarity is unchanged', async () => {
+    const draft = itemDraftReducer(createItemDraft(item), { type: 'setText', field: 'name', value: 'Cap' })
+    const fetchThumbnail = vi.fn()
+    const { blobs } = await toSaveableItem(item, draft, { fetchThumbnail })
+    expect(fetchThumbnail).not.toHaveBeenCalled()
+    expect(blobs).toEqual({})
+  })
+
+  it('rejects descriptions that would break the on-chain metadata', () => {
+    expect(isValidItemDescription('')).toBe(true)
+    expect(isValidItemDescription('A hat')).toBe(true)
+    expect(isValidItemDescription('Note: red')).toBe(false)
+    expect(isValidItemDescription('x'.repeat(65))).toBe(false)
+    expect(sanitizeItemDescription('Note: ' + 'x'.repeat(70))).toBe('Note ' + 'x'.repeat(59))
+    expect(sanitizeItemDescription('  A hat  ')).toBe('A hat')
   })
 })
