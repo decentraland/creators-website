@@ -23,12 +23,12 @@ const { useCreatorsPrelaunch } = await import('./useCreatorsPrelaunch')
 
 const ALLOWED = '0xAbCdEf0123456789abcdef0123456789ABCDEF01'
 
-function wrapper({ children }: { children: ReactNode }) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>
-}
-
+// One client per render so a `rerender` keeps the cached flag read, as the app does.
 function renderGate() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  )
   return renderHook(() => useCreatorsPrelaunch(), { wrapper })
 }
 
@@ -77,6 +77,20 @@ describe('useCreatorsPrelaunch', () => {
     wallet.address = ALLOWED
     const { result } = renderGate()
     await waitFor(() => expect(result.current).toBe('hidden'))
+  })
+
+  it('does not count a sign-out as a new curtained visitor', async () => {
+    setFeatureFlags(FeatureFlag.CREATORS_PRELAUNCH)
+    setAddressListVariant(FeatureFlag.CREATORS_PRELAUNCH, [ALLOWED])
+    wallet.address = ALLOWED
+    const { result, rerender } = renderGate()
+    await waitFor(() => expect(result.current).toBe('open'))
+
+    wallet.address = undefined
+    rerender()
+    await waitFor(() => expect(result.current).toBe('hidden'))
+    expect(track).toHaveBeenCalledTimes(1)
+    expect(track).toHaveBeenCalledWith('Prelaunch gate', { outcome: 'open' })
   })
 
   it('withholds the answer until the wallet restore settles when the gate is armed', async () => {

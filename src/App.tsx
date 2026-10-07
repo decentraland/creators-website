@@ -135,7 +135,17 @@ const App = () => {
                     <Route path="*" element={<NotFoundPage />} />
                   </>
                 ) : (
-                  <Route path="*" element={prelaunch === 'pending' ? <PageFallback /> : <Navigate to="/" replace />} />
+                  <Route
+                    path="*"
+                    element={
+                      prelaunch === 'pending' ? (
+                        <PageFallback />
+                      ) : (
+                        // The query string survives so campaign parameters reach the overview's page view.
+                        <Navigate to={{ pathname: '/', search: location.search }} replace />
+                      )
+                    }
+                  />
                 )}
               </Routes>
             </Suspense>

@@ -17,7 +17,10 @@ vi.mock('~/components/NavBar', () => ({
 vi.mock('~/components/Footer', () => ({ Footer: () => <footer data-testid="footer" /> }))
 vi.mock('~/components/Intercom', () => ({ Intercom: () => null }))
 vi.mock('~/components/Toasts', () => ({ Toasts: () => null }))
-vi.mock('~/components/OverviewPage', () => ({ OverviewPage: () => <div data-testid="overview" /> }))
+vi.mock('~/components/OverviewPage', async () => {
+  const { useLocation } = await import('react-router-dom')
+  return { OverviewPage: () => <div data-testid="overview" data-search={useLocation().search} /> }
+})
 vi.mock('~/components/CollectionsPage', () => ({ CollectionsPage: () => <div data-testid="collections" /> }))
 vi.mock('~/components/ItemEditorPage', () => ({ ItemEditorPage: () => <div data-testid="editor" /> }))
 vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
@@ -48,6 +51,21 @@ describe('App behind the pre-launch gate', () => {
     expect(document.body).toHaveAttribute('data-no-subnav')
     expect(trackPageView).toHaveBeenCalledTimes(1)
     expect(trackPageView).toHaveBeenCalledWith('/')
+  })
+
+  it('keeps the query string when sending a curtained visitor to the overview', async () => {
+    gate.decision = 'hidden'
+    renderApp('/collections?utm_source=newsletter')
+    expect(await screen.findByTestId('overview')).toHaveAttribute('data-search', '?utm_source=newsletter')
+  })
+
+  it('keeps the not-found page for unknown routes, and for the live preview with its flag off, once open', async () => {
+    renderApp('/nope')
+    expect(await screen.findByTestId('not-found-page')).toBeInTheDocument()
+    expect(screen.getByTestId('navbar')).toHaveAttribute('data-subnav', 'true')
+
+    renderApp('/live-preview')
+    await waitFor(() => expect(screen.getAllByTestId('not-found-page')).toHaveLength(2))
   })
 
   it('still counts the overview view for a curtained visitor', () => {

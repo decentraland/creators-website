@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { FeatureFlag, getAddressListVariant, getIsFeatureEnabled, resetFeatureFlagsCache } from './featureFlags'
+import {
+  FeatureFlag,
+  getAddressListGate,
+  getAddressListVariant,
+  getIsFeatureEnabled,
+  resetFeatureFlagsCache
+} from './featureFlags'
 
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
@@ -105,5 +111,44 @@ describe('getAddressListVariant', () => {
     resetFeatureFlagsCache()
     fetchMock.mockRejectedValueOnce(new Error('offline'))
     await expect(getAddressListVariant(FeatureFlag.CREATORS_PRELAUNCH)).resolves.toEqual([])
+  })
+})
+
+describe('getAddressListGate', () => {
+  it('reads the flag and its list from one fetch', async () => {
+    fetchMock.mockResolvedValue(
+      flags({
+        flags: { 'builder-creators-prelaunch': true },
+        variants: {
+          'builder-creators-prelaunch': {
+            enabled: true,
+            payload: { type: 'string', value: '0x0000000000000000000000000000000000000001' }
+          }
+        }
+      })
+    )
+    await expect(getAddressListGate(FeatureFlag.CREATORS_PRELAUNCH)).resolves.toEqual({
+      enabled: true,
+      allowed: ['0x0000000000000000000000000000000000000001']
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('is off with no list when the flag is off or the service fails, whatever the variant says', async () => {
+    fetchMock.mockResolvedValueOnce(
+      flags({
+        flags: {},
+        variants: {
+          'builder-creators-prelaunch': {
+            enabled: true,
+            payload: { type: 'string', value: '0x0000000000000000000000000000000000000001' }
+          }
+        }
+      })
+    )
+    await expect(getAddressListGate(FeatureFlag.CREATORS_PRELAUNCH)).resolves.toEqual({ enabled: false, allowed: [] })
+    resetFeatureFlagsCache()
+    fetchMock.mockRejectedValueOnce(new Error('offline'))
+    await expect(getAddressListGate(FeatureFlag.CREATORS_PRELAUNCH)).resolves.toEqual({ enabled: false, allowed: [] })
   })
 })

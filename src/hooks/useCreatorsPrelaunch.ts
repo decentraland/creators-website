@@ -1,7 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { track } from '~/lib/analytics'
-import { FeatureFlag, getAddressListVariant, getIsFeatureEnabled } from '~/lib/featureFlags'
+import { type AddressListGate, FeatureFlag, getAddressListGate } from '~/lib/featureFlags'
 import { useWallet } from '~/store/wallet'
 
 export type PrelaunchDecision =
@@ -9,7 +9,7 @@ export type PrelaunchDecision =
   | 'pending'
   /** The full app. */
   | 'open'
-  /** The overview alone; every other route is not found. */
+  /** The overview alone; every other route redirects to it. */
   | 'hidden'
 
 /**
@@ -29,10 +29,7 @@ export function useCreatorsPrelaunch(): PrelaunchDecision {
 
   const { data, isPending } = useQuery({
     queryKey: ['feature-flag', FeatureFlag.CREATORS_PRELAUNCH, 'gate'],
-    queryFn: async () => {
-      const armed = await getIsFeatureEnabled(FeatureFlag.CREATORS_PRELAUNCH)
-      return { armed, allowed: armed ? await getAddressListVariant(FeatureFlag.CREATORS_PRELAUNCH) : [] }
-    },
+    queryFn: () => getAddressListGate(FeatureFlag.CREATORS_PRELAUNCH),
     // Matches the lib's cache TTL so the two don't compete.
     staleTime: 60_000,
     refetchOnWindowFocus: true
@@ -40,15 +37,22 @@ export function useCreatorsPrelaunch(): PrelaunchDecision {
 
   const decision = decide(data, isPending, restored, address)
 
+  // One event per wallet per page load while the gate is armed. Signing out after a tracked visit is not a new
+  // visitor (and would land on a fresh anonymous id after the analytics reset), so it is not counted.
+  const tracked = useRef(new Set<string>())
   useEffect(() => {
-    if (data?.armed && decision !== 'pending') track('Prelaunch gate', { outcome: decision })
-  }, [data?.armed, decision])
+    if (!data?.enabled || decision === 'pending') return
+    const key = address?.toLowerCase() ?? ''
+    if (tracked.current.has(key) || (!address && tracked.current.size > 0)) return
+    tracked.current.add(key)
+    track('Prelaunch gate', { outcome: decision })
+  }, [address, data?.enabled, decision])
 
   return decision
 }
 
 function decide(
-  data: { armed: boolean; allowed: string[] } | undefined,
+  data: AddressListGate | undefined,
   isPending: boolean,
   restored: boolean,
   address: string | undefined
@@ -56,7 +60,7 @@ function decide(
   if (isPending) return 'pending'
   // A settled query with no data failed; the lib swallows its own errors so this is unreachable today, but
   // the fail-open contract must not rest on that.
-  if (!data || !data.armed) return 'open'
+  if (!data || !data.enabled) return 'open'
   if (!restored) return 'pending'
   // An empty list means nobody has been let in yet, the same as not being on it.
   if (!address) return 'hidden'

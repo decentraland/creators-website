@@ -32,3 +32,8 @@ export function setAddressListVariant(flag: FeatureFlag, addresses: string[]): v
 export function getAddressListVariant(flag: FeatureFlag): Promise<string[]> {
   return Promise.resolve(variants.get(flag) ?? [])
 }
+
+export function getAddressListGate(flag: FeatureFlag): Promise<{ enabled: boolean; allowed: string[] }> {
+  const on = enabled.has(flag)
+  return Promise.resolve({ enabled: on, allowed: on ? (variants.get(flag) ?? []) : [] })
+}

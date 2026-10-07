@@ -173,6 +173,30 @@ export async function getAddressListVariant(flag: FeatureFlag): Promise<string[]
   }
 }
 
+export type AddressListGate = { enabled: boolean; allowed: string[] }
+
+/**
+ * A flag and its address-list variant read from ONE snapshot, so the pair can never disagree (two reads could
+ * straddle a cache expiry and pair a live flag with a failed, empty list). An unreachable service reads
+ * `enabled: false`, and `allowed` is `[]` whenever the flag is off.
+ */
+export async function getAddressListGate(flag: FeatureFlag): Promise<AddressListGate> {
+  const flagOverride = devOverrideFor(flag)
+  const variantOverride = devVariantOverrideFor(flag)
+  const application = APPLICATION[flag]
+  let snapshot: Snapshot | undefined
+  if (flagOverride === undefined || variantOverride === undefined) {
+    try {
+      snapshot = await getSnapshot(application)
+    } catch {
+      snapshot = undefined
+    }
+  }
+  const enabled = flagOverride ?? snapshot?.flags[`${application}-${flag}`] === true
+  const value = variantOverride ?? snapshot?.variants[`${application}-${flag}`]
+  return { enabled, allowed: enabled && value ? parseAddressList(value) : [] }
+}
+
 /** Whether a flag is on. Fails closed: an unreachable service, a malformed body or an absent flag read `false`. */
 export async function getIsFeatureEnabled(flag: FeatureFlag): Promise<boolean> {
   const override = devOverrideFor(flag)
