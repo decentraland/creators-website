@@ -216,9 +216,7 @@ describe('buildResetItem', () => {
       video: 'Qmvideo',
       contents: { ...wearable.contents, 'game.js': 'Qmjs', 'video.mp4': 'Qmpending' }
     }
-    const deployedContents = Object.fromEntries(
-      Object.entries({ ...smart.contents, 'video.mp4': 'Qmvideo' }).filter(([path]) => path !== 'video.mp4')
-    )
+    const deployedContents = { ...wearable.contents, 'game.js': 'Qmjs' }
     const entity = entityFor(smart, {}, deployedContents)
     const reset = buildResetItem(smart, entity)
     expect(reset.contents['video.mp4']).toBe('Qmvideo')

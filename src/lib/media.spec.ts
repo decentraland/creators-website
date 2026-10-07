@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import UPNG from 'upng-js'
-import { ImageType, compressPngBlob, dataURLToBlob, getImageType } from './media'
+import { ImageType, compressPngBlob, dataURLToBlob, getImageType, readPngDimensions } from './media'
 
 // 1x1 transparent PNG
 const PNG_DATA_URL =
@@ -48,6 +48,15 @@ describe('compressPngBlob', () => {
     expect(compressed.type).toBe('image/png')
     const decoded = UPNG.decode(await compressed.arrayBuffer())
     expect([decoded.width, decoded.height]).toEqual([64, 64])
+  })
+
+  it('leaves a PNG whose header claims a huge canvas untouched instead of decoding it', async () => {
+    const header = new Uint8Array(await noisyPng(8).arrayBuffer())
+    new DataView(header.buffer).setUint32(16, 30000)
+    new DataView(header.buffer).setUint32(20, 30000)
+    const huge = new Blob([header], { type: 'image/png' })
+    expect(readPngDimensions(header.buffer)).toEqual({ width: 30000, height: 30000 })
+    expect(await compressPngBlob(huge)).toBe(huge)
   })
 
   it('returns the input itself for non-PNGs and for bytes it cannot decode', async () => {

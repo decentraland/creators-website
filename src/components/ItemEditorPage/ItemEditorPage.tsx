@@ -46,7 +46,7 @@ import { getCurationState, curationListUrl } from '~/lib/curation'
 import { toPreviewItem, toSaveableItem } from '~/lib/itemDraft'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
 import { pickFiles } from '~/lib/filePicker'
-import { ITEM_EXTENSIONS } from '~/lib/itemFiles'
+import { IMAGE_PATH, ITEM_EXTENSIONS } from '~/lib/itemFiles'
 import { ItemType, canEditItemDetails, isSocialEmote, type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import { type AvatarPreviewSource } from '~/lib/preview'
@@ -338,7 +338,10 @@ const ItemEditorPage = () => {
       springBones: hasSpringModels ? (mergeSpringBonesIntoItem(form.springBoneParams) ?? null) : undefined,
       fetchThumbnail: fetchStoredThumbnail
     })
-    const saved = await saveItem.mutateAsync(built)
+    if (form.draft.rarity !== item.rarity && !form.draft.thumbnail && !built.blobs[IMAGE_PATH]) {
+      showToast(t('item_editor.image_refresh_skipped'), { type: 'warn' })
+    }
+    const saved = await saveItem.mutateAsync({ ...built, previousVideo: item.video })
     queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collectionId ?? undefined), current =>
       current?.map(candidate => (candidate.id === saved.id ? saved : candidate))
     )

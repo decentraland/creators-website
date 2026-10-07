@@ -323,7 +323,7 @@ export async function buildItem(draft: ItemDraftPayload): Promise<BuiltItem> {
   const item: Item = {
     id: draft.id,
     name: draft.name,
-    description: draft.description ?? '',
+    description: (draft.description ?? '').trim(),
     thumbnail: THUMBNAIL_PATH,
     ...(contents[VIDEO_PATH] ? { video: contents[VIDEO_PATH] } : {}),
     owner: draft.owner,

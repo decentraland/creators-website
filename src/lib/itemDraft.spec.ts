@@ -181,5 +181,6 @@ describe('item draft', () => {
     expect(isValidItemDescription('Note: red')).toBe(false)
     expect(isValidItemDescription('x'.repeat(65))).toBe(false)
     expect(sanitizeItemDescription('Note: ' + 'x'.repeat(70))).toBe('Note ' + 'x'.repeat(59))
+    expect(sanitizeItemDescription('  A hat  ')).toBe('A hat')
   })
 })

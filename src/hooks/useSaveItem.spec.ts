@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fetchContent } from '~/lib/builder'
 import { captureError } from '~/lib/monitoring'
 import { ItemType, type Item } from '~/lib/items'
-import { buildSaveItem, fetchStoredThumbnail } from './useSaveItem'
+import { buildSaveItem, fetchStoredThumbnail, wasImageRefreshSkipped } from './useSaveItem'
 
 vi.mock('~/lib/builder', () => ({ fetchContent: vi.fn(), saveItem: vi.fn() }))
 vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
@@ -63,7 +63,17 @@ describe('fetchStoredThumbnail', () => {
     vi.mocked(fetchContent).mockRejectedValue(new Error('storage down'))
     expect(await fetchStoredThumbnail(item)).toBeNull()
     expect(captureError).toHaveBeenCalledWith(expect.any(Error), { flow: 'save-item', itemId: 'w1' })
-    const { blobs } = await buildSaveItem({ item, imageStale: true })
-    expect(blobs).toEqual({})
+    const variables = { item, imageStale: true }
+    const built = await buildSaveItem(variables)
+    expect(built.blobs).toEqual({})
+    expect(wasImageRefreshSkipped(variables, built)).toBe(true)
+  })
+
+  it('does not count a save with a new thumbnail, or one with the image rebuilt, as skipped', async () => {
+    vi.mocked(fetchContent).mockResolvedValue(png())
+    const stale = { item, imageStale: true }
+    expect(wasImageRefreshSkipped(stale, await buildSaveItem(stale))).toBe(false)
+    const fresh = { item, thumbnail: png(), imageStale: true }
+    expect(wasImageRefreshSkipped(fresh, await buildSaveItem(fresh))).toBe(false)
   })
 })

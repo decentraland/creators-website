@@ -657,6 +657,7 @@
     "save_success": "“{name}” was saved.",
     "save_error": "We couldn't save the item. Please try again.",
     "save_error_locked": "The collection is being published and can't be edited right now.",
+    "image_refresh_skipped": "Your rarity change was saved, but the item image couldn't be refreshed. Upload the thumbnail again to update it.",
     "sidebar": {
       "items": "Items",
       "back": "Back to collection",

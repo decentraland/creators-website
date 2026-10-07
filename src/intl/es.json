@@ -657,6 +657,7 @@
     "save_success": "Se guardó “{name}”.",
     "save_error": "No pudimos guardar el ítem. Inténtalo de nuevo.",
     "save_error_locked": "La colección se está publicando y no se puede editar ahora.",
+    "image_refresh_skipped": "El cambio de rareza se guardó, pero no se pudo actualizar la imagen del ítem. Vuelve a subir la miniatura para actualizarla.",
     "sidebar": {
       "items": "Ítems",
       "back": "Volver a la colección",

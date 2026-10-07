@@ -3,7 +3,9 @@
 import { type SpringBonesData, WearableCategory } from '@dcl/schemas'
 import { computeHashes, withCatalystImageForRarity, withThumbnail, type BuiltItem } from './itemFactory'
 import { THUMBNAIL_PATH, VIDEO_PATH } from './itemFiles'
-import { ItemType, type Item } from './items'
+import { ItemType, tracksVideoOnSave, type Item } from './items'
+
+export { tracksVideoOnSave }
 
 export const ITEM_DESCRIPTION_MAX_LENGTH = 64
 export const ITEM_UTILITY_MAX_LENGTH = 64
@@ -14,9 +16,9 @@ export function isValidItemDescription(description: string): boolean {
   return trimmed.length <= ITEM_DESCRIPTION_MAX_LENGTH && !trimmed.includes(':')
 }
 
-/** A manifest description made valid: separators dropped, cut at the cap. */
+/** A manifest description made valid: separators dropped, trimmed, cut at the cap. */
 export function sanitizeItemDescription(description: string): string {
-  return description.replace(/:/g, '').slice(0, ITEM_DESCRIPTION_MAX_LENGTH)
+  return description.replace(/:/g, '').trim().slice(0, ITEM_DESCRIPTION_MAX_LENGTH).trim()
 }
 
 const UPPER_BODY = WearableCategory.UPPER_BODY as string
@@ -213,15 +215,6 @@ export function toPreviewItem(item: Item, draft: ItemDraft): Item {
     utility: item.utility ?? '',
     tags: item.data.tags ?? []
   })
-}
-
-/**
- * `item.video` is the hash curation last approved: a new upload replaces it directly until the item is approved,
- * and only `contents['video.mp4']` afterwards, so the item reads as changed and goes through review (builder-server
- * copies the hash over on approval).
- */
-export function tracksVideoOnSave(item: Item): boolean {
-  return !item.isPublished || !item.isApproved
 }
 
 export type SaveOptions = {

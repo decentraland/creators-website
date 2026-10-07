@@ -3,7 +3,10 @@ import { errorCode, track } from '~/lib/analytics'
 import { captureError } from '~/lib/monitoring'
 import { fetchContent, saveItem } from '~/lib/builder'
 import { withCatalystImageForRarity, withThumbnail, type BuiltItem } from '~/lib/itemFactory'
+import { IMAGE_PATH } from '~/lib/itemFiles'
 import { type Item } from '~/lib/items'
+import { useNotifications } from '~/lib/notifications'
+import { useTranslation } from '~/intl'
 import { invalidateCollectionItems } from './usePublishCollection'
 
 export type SaveItemVariables = Partial<BuiltItem> & {
@@ -12,6 +15,13 @@ export type SaveItemVariables = Partial<BuiltItem> & {
   thumbnail?: Blob
   /** The rarity changed without a new thumbnail: the catalyst image is rebuilt from the stored one. */
   imageStale?: boolean
+  /** The video hash before the edit, so a failed upload of a new video can restore it. */
+  previousVideo?: string
+}
+
+/** A rarity change that could not refresh the catalyst image, because the stored thumbnail could not be loaded. */
+export function wasImageRefreshSkipped(variables: SaveItemVariables, built: BuiltItem): boolean {
+  return !!variables.imageStale && !variables.thumbnail && !built.blobs[IMAGE_PATH]
 }
 
 /**
@@ -40,11 +50,14 @@ export async function buildSaveItem({ item, blobs, thumbnail, imageStale }: Save
 /** Saves an item together with any files the edit produced (thumbnail, video, replaced model). */
 export function useSaveItem(address: string | undefined) {
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
+  const showToast = useNotifications(state => state.showToast)
   return useMutation({
     mutationFn: async (variables: SaveItemVariables) => {
       if (!address) throw new Error('Wallet disconnected')
       const built = await buildSaveItem(variables)
-      return saveItem(address, built.item, built.blobs)
+      if (wasImageRefreshSkipped(variables, built)) showToast(t('item_editor.image_refresh_skipped'), { type: 'warn' })
+      return saveItem(address, built.item, built.blobs, { previousVideo: variables.previousVideo })
     },
     onSuccess: item => {
       track('Save item', { itemId: item.id })
