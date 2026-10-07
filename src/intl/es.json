@@ -17,7 +17,7 @@
       "draft": "Borrador ({count})",
       "under_review": "En revisión ({count})",
       "rejected": "Rechazadas ({count})",
-      "disabled": "Deshabilitadas ({count})",
+      "disabled": "Pausadas ({count})",
       "linked": "Vinculadas ({count})"
     },
     "view_mode": "Modo de vista",
@@ -68,8 +68,8 @@
     "under_review_hint": "Tu colección está siendo revisada para su aprobación. Te avisaremos cuando la revisión termine.",
     "published": "Publicada",
     "rejected": "Rechazada",
-    "disabled": "Deshabilitada",
-    "disabled_hint": "Tu colección fue deshabilitada por el equipo de curación. Ponte en contacto con tu curador asignado para revisarla.",
+    "disabled": "Pausada",
+    "disabled_hint": "Tu colección fue pausada por el equipo de curación. Ponte en contacto con tu curador asignado para revisarla.",
     "linked": "Vinculada"
   },
   "pagination": {
