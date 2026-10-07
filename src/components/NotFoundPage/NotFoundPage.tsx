@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
-import { Box, Link, Typography } from 'decentraland-ui2'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import { Button } from '~/components/Button'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
+import * as S from './NotFoundPage.styles'
 
 const NotFoundPage = () => {
   const { t } = useTranslation()
@@ -10,12 +11,13 @@ const NotFoundPage = () => {
     track('Not found page')
   }, [])
   return (
-    <Box data-testid="not-found-page">
-      <Typography variant="h4">{t('not_found_page.title')}</Typography>
-      <Link component={RouterLink} to="/">
+    <S.Panel data-testid="not-found-page">
+      <S.Title>{t('not_found_page.title')}</S.Title>
+      <S.Text>{t('not_found_page.description')}</S.Text>
+      <Button as={Link} to="/" data-testid="not-found-home">
         {t('not_found_page.go_home')}
-      </Link>
-    </Box>
+      </Button>
+    </S.Panel>
   )
 }
 

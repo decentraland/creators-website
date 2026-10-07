@@ -22,7 +22,7 @@ import {
   type CurationRequestStatus,
   type RemoteCollectionCuration
 } from '~/lib/curation'
-import { VIDEO_PATH, fromRemoteItem, toRemoteItem, type Item, type RemoteItem } from '~/lib/items'
+import { VIDEO_PATH, fromRemoteItem, toRemoteItem, tracksVideoOnSave, type Item, type RemoteItem } from '~/lib/items'
 import { type ThirdParty } from '~/lib/linkedCollections'
 import { type BlockchainRarity } from '~/lib/rarities'
 
@@ -36,11 +36,14 @@ export type CollectionItemPreview = {
 /** Carries the HTTP status so callers can tell "no access / gone" from a transient failure. */
 export class BuilderServerError extends Error {
   status: number
+  /** The error envelope's `data`, when the server sent one. */
+  data?: unknown
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, data?: unknown) {
     super(message)
     this.name = 'BuilderServerError'
     this.status = status
+    this.data = data
   }
 }
 
@@ -77,7 +80,8 @@ async function request<T>(
   if (!response.ok || parsed.ok === false || (expectData && parsed.data === undefined)) {
     throw new BuilderServerError(
       parsed.error ?? `builder-server request failed: ${method} ${path} (${response.status})`,
-      response.status
+      response.status,
+      parsed.data
     )
   }
   return parsed.data as T
@@ -204,6 +208,23 @@ export async function updateCollectionCuration(
   return fromRemoteCuration(remote)
 }
 
+/**
+ * Opens the collection's forum topic: POST /collections/{id}/post. The server writes the post and saves the link as
+ * `forum_link`; 409 when the collection isn't published yet or already has a topic (its link in the error data).
+ */
+export async function createCollectionForumPost(address: string, collectionId: string): Promise<string> {
+  return request<string>(address, 'POST', `/collections/${collectionId}/post`)
+}
+
+/** Replies on the collection's forum topic (committee only): POST /collections/{id}/curation/post. */
+export async function createCurationForumReply(
+  address: string,
+  collectionId: string,
+  forumPost: { raw: string }
+): Promise<void> {
+  await request(address, 'POST', `/collections/${collectionId}/curation/post`, '', { forumPost }, false)
+}
+
 /** The latest curation of each item of a linked collection: GET /collections/{id}/itemCurations. */
 export async function fetchItemCurations(address: string, collectionId: string): Promise<Map<string, CurationStatus>> {
   try {
@@ -241,7 +262,17 @@ export const ALREADY_PUBLISHED_STATUS = 409
  * same two-step save the legacy builder performs. A smart wearable's preview video goes to
  * POST /items/{id}/videos instead (field name = path), which has its own 250MB cap.
  */
-export async function saveItem(address: string, item: Item, blobs: Record<string, Blob>): Promise<Item> {
+export type SaveItemOptions = {
+  /** The video hash the item had before this save, restored if the new video fails to upload. */
+  previousVideo?: string
+}
+
+export async function saveItem(
+  address: string,
+  item: Item,
+  blobs: Record<string, Blob>,
+  { previousVideo }: SaveItemOptions = {}
+): Promise<Item> {
   const remote = await request<RemoteItem>(address, 'PUT', `/items/${item.id}`, '', { item: toRemoteItem(item) })
   const { [VIDEO_PATH]: video, ...fileBlobs } = blobs
   if (Object.keys(fileBlobs).length > 0) {
@@ -255,13 +286,17 @@ export async function saveItem(address: string, item: Item, blobs: Record<string
     try {
       await request<unknown>(address, 'POST', `/items/${item.id}/videos`, '', videos, false)
     } catch (error) {
-      // The PUT already stored the video reference; drop it so the item never points at a file
-      // that was not uploaded (it would look complete and pass the publish gate). Best effort:
-      // the caller gets the upload error either way.
+      // The PUT already stored the new video hash; point the item back at the video it had so it never
+      // references a file that was not uploaded. Callers that know the previous hash pass it; otherwise an
+      // approved item keeps its curation-approved video (`item.video`, which the save leaves alone) and an
+      // unapproved one, whose `video` already moved to the new hash, drops it. Best effort: the caller gets
+      // the upload error either way.
+      const previous = previousVideo ?? (tracksVideoOnSave(item) ? undefined : item.video)
       const contents = { ...item.contents }
-      delete contents[VIDEO_PATH]
+      if (previous) contents[VIDEO_PATH] = previous
+      else delete contents[VIDEO_PATH]
       await request<RemoteItem>(address, 'PUT', `/items/${item.id}`, '', {
-        item: toRemoteItem({ ...item, video: undefined, contents })
+        item: toRemoteItem({ ...item, video: previous, contents })
       }).catch(() => undefined)
       throw error
     }

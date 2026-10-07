@@ -19,6 +19,7 @@ import { useNotifications } from '~/lib/notifications'
 import { formatTimeAgo } from '~/lib/time'
 import { ApprovalFlowModal } from './ApprovalFlowModal'
 import { DisableCollectionFlow } from './DisableCollectionFlow'
+import { ForumVerdictModal } from './ForumVerdictModal'
 import * as S from './ReviewBar.styles'
 
 type Props = {
@@ -45,6 +46,7 @@ export function ReviewBar({ session, collection, items }: Props) {
   const [approval, setApproval] = useState<ApprovalMode | null>(null)
   // The curator about to decide is assigned first, so the request always names who curated the collection.
   const [takeOver, setTakeOver] = useState<ReviewAction | null>(null)
+  const [verdict, setVerdict] = useState(false)
   const self = address.toLowerCase()
 
   const hasMissingEntities = useMemo(
@@ -186,6 +188,7 @@ export function ReviewBar({ session, collection, items }: Props) {
                   onSuccess: () => {
                     showToast(t('item_editor.review.reject.success', { collection: collection.name }))
                     closeDialog()
+                    if (collection.forumLink) setVerdict(true)
                   }
                 }
               )
@@ -207,7 +210,20 @@ export function ReviewBar({ session, collection, items }: Props) {
         />
       )}
       {dialog === 'disable' && (
-        <DisableCollectionFlow session={session} collection={collection} onClose={closeDialog} />
+        <DisableCollectionFlow
+          session={session}
+          collection={collection}
+          onClose={closeDialog}
+          onDisabled={() => {
+            if (collection.forumLink) setVerdict(true)
+          }}
+        />
+      )}
+      {verdict && collection.forumLink && (
+        <ForumVerdictModal
+          collection={{ ...collection, forumLink: collection.forumLink }}
+          onClose={() => setVerdict(false)}
+        />
       )}
       {approval && (
         <ApprovalFlowModal

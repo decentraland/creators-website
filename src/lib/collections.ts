@@ -81,6 +81,16 @@ export enum CurationStatus {
   DISABLED = 'disabled'
 }
 
+/** A server-provided link, or undefined unless it is http(s): it is opened as a page, so `javascript:` must not pass. */
+export function toSafeLink(url: string | null): string | undefined {
+  if (!url) return undefined
+  try {
+    return ['https:', 'http:'].includes(new URL(url).protocol) ? url : undefined
+  } catch {
+    return undefined
+  }
+}
+
 /** The status a collection pill displays. */
 export enum CollectionDisplayStatus {
   DRAFT = 'draft',
@@ -146,7 +156,7 @@ export function fromRemoteCollection(remote: RemoteCollection): Collection {
     itemCount: Number(remote.item_count ?? 0),
     minters: remote.minters || [],
     managers: remote.managers || [],
-    forumLink: remote.forum_link || undefined,
+    forumLink: toSafeLink(remote.forum_link),
     lock: remote.lock ? +new Date(remote.lock) : undefined,
     reviewedAt: remote.reviewed_at ? +new Date(remote.reviewed_at) : undefined,
     linkedContractAddress: remote.linked_contract_address || undefined,

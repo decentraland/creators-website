@@ -4,6 +4,7 @@ import {
   Add as AddIcon,
   ArrowBackIosNew as ArrowBackIcon,
   Edit as EditIcon,
+  ForumOutlined as ForumIcon,
   PersonOutline as PersonOutlineIcon,
   Sync as SyncIcon
 } from '@mui/icons-material'
@@ -30,6 +31,7 @@ import {
 } from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
 import { track } from '~/lib/analytics'
+import { isForumPostRelevant, openForumPost } from '~/lib/forumPost'
 import { cancelCreditsOrder } from '~/lib/credits'
 import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'
 import { type RoleKind } from '~/lib/collectionRoles'
@@ -45,6 +47,7 @@ import {
 } from '~/lib/itemFilters'
 import { MAX_PUBLISH_ITEMS, getPublishBlocker } from '~/lib/publishCollection'
 import { useSaveItem } from '~/hooks/useSaveItem'
+import { useForumPostRecovery } from '~/hooks/useForumPost'
 import { useSyncPublishedItems } from '~/hooks/usePublishCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useCollectionListings } from '~/hooks/useCollectionListings'
@@ -170,10 +173,12 @@ const CollectionDetailPage = () => {
   // Play Mode is an emote-only attribute; the column exists only while the visible page has emotes.
   const withPlayMode = useMemo(() => results.some(item => item.type === ItemType.EMOTE), [results])
   useSyncPublishedItems(address, standardCollection, allItems ?? [])
+  useForumPostRecovery(address, standardCollection, allItems ?? [])
   // Price, Sales and Sale Status exist once the collection is published; the owner can put items on sale
   // once it has been approved at least once, even if it is under review again.
   const withMarket = !!standardCollection?.isPublished
   const status = useCollectionStatus(address, standardCollection)
+  const showForumPost = !!standardCollection && isForumPostRelevant(standardCollection, status)
   const statusHint =
     status === CollectionDisplayStatus.REJECTED
       ? t('collection_detail_page.review_notice.rejected')
@@ -499,6 +504,18 @@ const CollectionDetailPage = () => {
                 {t('collection_detail_page.preview')}
                 <JumpInIcon />
               </Button>
+              {showForumPost && (
+                <Button
+                  type="button"
+                  variant="dark"
+                  data-desktop-only
+                  data-testid="forum-post"
+                  onClick={() => openForumPost(collection, 'detail')}
+                >
+                  <ForumIcon fontSize="small" />
+                  {t('collection_detail_page.forum_post')}
+                </Button>
+              )}
               {publishBlocker !== 'not_draft' && (
                 <Tooltip
                   content={
@@ -558,6 +575,7 @@ const CollectionDetailPage = () => {
                   address={address}
                   onSendItems={canSend ? () => setSending(true) : undefined}
                   onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
+                  forumLink={showForumPost ? collection.forumLink : undefined}
                   onManageRoles={setManagingRoles}
                   onDeleted={() => navigate('/collections', { replace: true })}
                 />

@@ -3,6 +3,7 @@
 // thumbnails) is filled afterwards by DraftProcessor.
 import { WearableCategory } from '@dcl/schemas'
 import { blobToDataURL, convertImageIntoWearableThumbnail, dataURLToBlob, loadVideoMetadata } from '~/lib/media'
+import { sanitizeItemDescription } from '~/lib/itemDraft'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH } from '~/lib/itemFactory'
 import { ItemFileError, THUMBNAIL_PATH, VIDEO_PATH, isImageFile, loadItemFile } from '~/lib/itemFiles'
 import { BodyShapeType, ItemType, type ItemMetrics } from '~/lib/items'
@@ -83,7 +84,7 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
     if (loaded.wearable.data.category) patch.category = loaded.wearable.data.category
     const rarity = sanitizeRarity(loaded.wearable.rarity)
     if (rarity) patch.rarity = rarity
-    patch.description = loaded.wearable.description ?? ''
+    patch.description = sanitizeItemDescription(loaded.wearable.description ?? '')
     patch.tags = loaded.wearable.data.tags ?? []
     patch.blockVrmExport = loaded.wearable.data.blockVrmExport ?? false
   } else if (loaded.emote) {
@@ -91,7 +92,7 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
     if (loaded.emote.category) patch.category = loaded.emote.category
     const rarity = sanitizeRarity(loaded.emote.rarity)
     if (rarity) patch.rarity = rarity
-    patch.description = loaded.emote.description ?? ''
+    patch.description = sanitizeItemDescription(loaded.emote.description ?? '')
     patch.tags = loaded.emote.tags ?? []
     const playMode = sanitizePlayMode(loaded.emote.play_mode)
     if (playMode) patch.playMode = playMode

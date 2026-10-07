@@ -355,6 +355,43 @@ describe('syncPublishedItems', () => {
 })
 
 describe('consolidatePublishedCollection', () => {
+  it('runs onSynced only once the server holds the published items', async () => {
+    const onSynced = vi.fn()
+    await consolidatePublishedCollection(
+      'col-1',
+      '0xtx',
+      { waitForTransaction: async () => true, publishCollectionItems: vi.fn().mockResolvedValue({}), onSynced },
+      0,
+      0
+    )
+    expect(onSynced).toHaveBeenCalledTimes(1)
+
+    const notSynced = vi.fn()
+    await expect(
+      consolidatePublishedCollection(
+        'col-1',
+        '0xtx',
+        { waitForTransaction: async () => false, publishCollectionItems: vi.fn(), onSynced: notSynced },
+        0,
+        0
+      )
+    ).rejects.toBeInstanceOf(PublishTransactionRevertedError)
+    await expect(
+      consolidatePublishedCollection(
+        'col-1',
+        '0xtx',
+        {
+          waitForTransaction: async () => true,
+          publishCollectionItems: async () => Promise.reject(new BuilderServerError('x', 500)),
+          onSynced: notSynced
+        },
+        0,
+        0
+      )
+    ).rejects.toBeInstanceOf(BuilderServerError)
+    expect(notSynced).not.toHaveBeenCalled()
+  })
+
   it('waits for the transaction, then retries the server sync while the graph lags', async () => {
     const publish = vi.fn().mockRejectedValueOnce(new BuilderServerError('not yet', 401)).mockResolvedValueOnce({})
     await consolidatePublishedCollection(

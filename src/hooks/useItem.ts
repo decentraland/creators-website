@@ -36,8 +36,10 @@ export function useResetItem(address: string | undefined) {
     mutationFn: async ({ item, entity }: { item: Item; entity: Entity }) => {
       if (!address) throw new Error('Wallet disconnected')
       const reset = buildResetItem(item, entity)
+      // Re-upload the deployed files only: the video and anything else the Catalyst never received is
+      // already in builder storage under its hash.
       const entries = await Promise.all(
-        Object.entries(reset.contents).map(async ([path, hash]) => [path, await fetchCatalystContent(hash)] as const)
+        (entity.content ?? []).map(async ({ file, hash }) => [file, await fetchCatalystContent(hash)] as const)
       )
       return saveItem(address, reset, Object.fromEntries(entries))
     },

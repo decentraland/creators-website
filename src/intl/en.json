@@ -103,6 +103,7 @@
     "rename": "Rename collection",
     "add_items": "Add Items",
     "open_editor": "Open Editor",
+    "forum_post": "Forum post",
     "publish": "Publish Collection",
     "preview": "Preview in Decentraland",
     "more_actions": "More actions",
@@ -394,7 +395,7 @@
     },
     "success": {
       "title": "Collection sent for review",
-      "description": "Your collection is being reviewed for approval. We'll notify you once the review is complete.",
+      "description": "Your collection is being reviewed for approval. The curation committee will share its feedback in the collection's forum post, where you and the community can comment. You'll find it on the collection page.",
       "done": "Done"
     },
     "error": {
@@ -657,6 +658,7 @@
     "save_success": "“{name}” was saved.",
     "save_error": "We couldn't save the item. Please try again.",
     "save_error_locked": "The collection is being published and can't be edited right now.",
+    "image_refresh_skipped": "Your rarity change was saved, but the item image couldn't be refreshed. Upload the thumbnail again to update it.",
     "sidebar": {
       "items": "Items",
       "back": "Back to collection",
@@ -699,6 +701,12 @@
         "enable": "Enable",
         "disable": "Disable",
         "deploy_missing": "Deploy missing items"
+      },
+      "verdict": {
+        "title": "Let the creator know",
+        "body": "Explain your decision on {collection}'s forum post so the creator knows what to change.",
+        "open_forum": "Open forum post",
+        "done": "Done"
       },
       "reject": {
         "title": "Reject {collection}?",
@@ -801,6 +809,7 @@
       "title": "Basics",
       "name": "Name",
       "description": "Description",
+      "invalid_description": "Descriptions can be up to 64 characters and can't include \":\".",
       "utility": "Utility",
       "utility_hint": "A short description of what this item does in-world, shown to collectors.",
       "category": "Category",
@@ -902,7 +911,10 @@
       "created": "Created",
       "unassigned": "Unassigned",
       "assign_to_me": "Assign to me",
-      "edit_assignee": "Change the assigned curator"
+      "edit_assignee": "Change the assigned curator",
+      "discussion": "Discussion",
+      "forum_post": "Forum post",
+      "not_posted": "Not posted"
     },
     "error": {
       "title": "We couldn't load the collections",
@@ -919,6 +931,7 @@
   },
   "not_found_page": {
     "title": "Page not found",
+    "description": "The link may be broken or the page may have moved.",
     "go_home": "Go back home"
   },
   "nav": {

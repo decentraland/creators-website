@@ -32,12 +32,6 @@ export const Field = styled.label`
   color: ${theme.colors.softWhite};
 `
 
-export const Error = styled.p`
-  margin: 0;
-  font-size: 14px;
-  color: ${theme.colors.errLight};
-`
-
 export const Loading = styled.div`
   display: flex;
   align-items: center;

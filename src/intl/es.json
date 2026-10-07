@@ -103,6 +103,7 @@
     "rename": "Renombrar colección",
     "add_items": "Agregar ítems",
     "open_editor": "Abrir editor",
+    "forum_post": "Publicación en el foro",
     "publish": "Publicar colección",
     "preview": "Vista previa en Decentraland",
     "more_actions": "Más acciones",
@@ -394,7 +395,7 @@
     },
     "success": {
       "title": "Colección enviada a revisión",
-      "description": "Tu colección está siendo revisada para su aprobación. Te avisaremos cuando la revisión esté completa.",
+      "description": "Tu colección está siendo revisada para su aprobación. El comité de curación compartirá sus comentarios en la publicación de la colección en el foro, donde tú y la comunidad pueden comentar. La encontrarás en la página de la colección.",
       "done": "Listo"
     },
     "error": {
@@ -657,6 +658,7 @@
     "save_success": "Se guardó “{name}”.",
     "save_error": "No pudimos guardar el ítem. Inténtalo de nuevo.",
     "save_error_locked": "La colección se está publicando y no se puede editar ahora.",
+    "image_refresh_skipped": "El cambio de rareza se guardó, pero no se pudo actualizar la imagen del ítem. Vuelve a subir la miniatura para actualizarla.",
     "sidebar": {
       "items": "Ítems",
       "back": "Volver a la colección",
@@ -699,6 +701,12 @@
         "enable": "Habilitar",
         "disable": "Deshabilitar",
         "deploy_missing": "Subir ítems faltantes"
+      },
+      "verdict": {
+        "title": "Avísale al creador",
+        "body": "Explica tu decisión en la publicación de {collection} en el foro para que el creador sepa qué cambiar.",
+        "open_forum": "Abrir publicación en el foro",
+        "done": "Listo"
       },
       "reject": {
         "title": "¿Rechazar {collection}?",
@@ -801,6 +809,7 @@
       "title": "Básicos",
       "name": "Nombre",
       "description": "Descripción",
+      "invalid_description": "Las descripciones pueden tener hasta 64 caracteres y no pueden incluir \":\".",
       "utility": "Utilidad",
       "utility_hint": "Una descripción corta de lo que hace este ítem en el mundo, visible para los coleccionistas.",
       "category": "Categoría",
@@ -902,7 +911,10 @@
       "created": "Creada",
       "unassigned": "Sin asignar",
       "assign_to_me": "Asignármela",
-      "edit_assignee": "Cambiar el curador asignado"
+      "edit_assignee": "Cambiar el curador asignado",
+      "discussion": "Discusión",
+      "forum_post": "Foro",
+      "not_posted": "Sin publicar"
     },
     "error": {
       "title": "No pudimos cargar las colecciones",
@@ -919,6 +931,7 @@
   },
   "not_found_page": {
     "title": "Página no encontrada",
+    "description": "Puede que el enlace esté roto o que la página se haya movido.",
     "go_home": "Volver al inicio"
   },
   "nav": {

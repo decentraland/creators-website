@@ -1,6 +1,9 @@
 // Image/blob helpers for the add-items flow, ported from the legacy builder's modules/media/utils.
 import { Rarity, WearableCategory } from '@dcl/schemas'
 
+/** Palette size thumbnails and catalyst images are quantized to (legacy THUMBNAIL_PALETTE_COLORS). */
+export const THUMBNAIL_PALETTE_COLORS = 256
+
 export enum ImageType {
   PNG = 'png',
   GIF = 'gif',
@@ -100,6 +103,50 @@ export async function resizeImage(blob: Blob, width = 256, height = 256): Promis
   return new Promise((resolve, reject) => {
     canvas.toBlob(result => (result ? resolve(result) : reject(new Error('Could not encode the image'))), 'image/png')
   })
+}
+
+/** Largest side quantized in the page; the PNG decoder allocates width × height × 4 bytes up front. */
+export const MAX_QUANTIZE_DIMENSION = 2048
+
+let upng: Promise<typeof import('upng-js')> | null = null
+
+/** upng-js (and the pako it bundles) load lazily, on the first compression. */
+function loadUPNG(): Promise<typeof import('upng-js')> {
+  upng ??= import('upng-js').then(module => module.default)
+  return upng
+}
+
+/** Width and height from the IHDR chunk, which every PNG starts with, or null when the bytes are not a PNG. */
+export function readPngDimensions(buffer: ArrayBuffer): { width: number; height: number } | null {
+  if (buffer.byteLength < 24) return null
+  const view = new DataView(buffer)
+  const isPng = view.getUint32(0) === 0x89504e47 && view.getUint32(4) === 0x0d0a1a0a
+  const isIhdr = view.getUint32(12) === 0x49484452
+  if (!isPng || !isIhdr) return null
+  return { width: view.getUint32(16), height: view.getUint32(20) }
+}
+
+/**
+ * Re-encodes a PNG with an indexed palette, keeping alpha. There is no perceptual floor, only a size one: the
+ * original blob is returned by reference when the result is not smaller, when decoding fails, for non-PNGs and
+ * for images too large to decode in the page.
+ */
+export async function compressPngBlob(blob: Blob, colors = THUMBNAIL_PALETTE_COLORS): Promise<Blob> {
+  if (blob.type && blob.type !== 'image/png') return blob
+  try {
+    const buffer = await blob.arrayBuffer()
+    // Decoding is unbounded: a tiny file whose header claims a huge canvas would hang the tab.
+    const size = readPngDimensions(buffer)
+    if (!size || size.width > MAX_QUANTIZE_DIMENSION || size.height > MAX_QUANTIZE_DIMENSION) return blob
+    const UPNG = await loadUPNG()
+    const image = UPNG.decode(buffer)
+    const frames = UPNG.toRGBA8(image)
+    const encoded = UPNG.encode(frames, image.width, image.height, colors)
+    const compressed = new Blob([encoded], { type: 'image/png' })
+    return compressed.size > 0 && compressed.size < blob.size ? compressed : blob
+  } catch {
+    return blob
+  }
 }
 
 /**

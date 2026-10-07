@@ -233,6 +233,82 @@ describe('saveItem', () => {
     expect(body.item.contents['video.mp4']).toBeUndefined()
   })
 
+  it('points an approved item back at its approved video when the new upload fails', async () => {
+    signedFetchMock
+      .mockResolvedValueOnce(okResponse(remoteItem))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+      .mockResolvedValueOnce(jsonResponse({ ok: false, error: 'too large' }, false, 413))
+      .mockResolvedValueOnce(okResponse(remoteItem))
+
+    // `video` is the curation-approved hash; `contents` already carries the new one the PUT stored.
+    const approved = {
+      ...item,
+      isPublished: true,
+      isApproved: true,
+      video: 'QmApproved',
+      contents: { ...item.contents, 'video.mp4': 'QmNewVideo' }
+    }
+    await expect(
+      saveItem(ADDRESS, approved, { 'male/model.glb': new Blob(['model']), 'video.mp4': new Blob(['video']) })
+    ).rejects.toMatchObject({ status: 413 })
+
+    const [, , path, init] = signedFetchMock.mock.calls[3] as [string, string, string, RequestInit]
+    expect(path).toBe('/items/item-1')
+    const body = JSON.parse(init.body as string) as { item: { video?: string; contents: Record<string, string> } }
+    expect(body.item.video).toBe('QmApproved')
+    expect(body.item.contents['video.mp4']).toBe('QmApproved')
+  })
+
+  it('restores the video an unapproved item had when the caller passes it and the new upload fails', async () => {
+    signedFetchMock
+      .mockResolvedValueOnce(okResponse(remoteItem))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+      .mockResolvedValueOnce(jsonResponse({ ok: false, error: 'too large' }, false, 413))
+      .mockResolvedValueOnce(okResponse(remoteItem))
+
+    // Not approved: the save already moved `video` to the new hash, so only the caller knows the old one.
+    const smartItem = { ...item, video: 'QmNewVideo', contents: { ...item.contents, 'video.mp4': 'QmNewVideo' } }
+    await expect(
+      saveItem(
+        ADDRESS,
+        smartItem,
+        { 'male/model.glb': new Blob(['model']), 'video.mp4': new Blob(['video']) },
+        {
+          previousVideo: 'QmOldVideo'
+        }
+      )
+    ).rejects.toMatchObject({ status: 413 })
+
+    const [, , , init] = signedFetchMock.mock.calls[3] as [string, string, string, RequestInit]
+    const body = JSON.parse(init.body as string) as { item: { video?: string; contents: Record<string, string> } }
+    expect(body.item.video).toBe('QmOldVideo')
+    expect(body.item.contents['video.mp4']).toBe('QmOldVideo')
+  })
+
+  it('keeps the approved video when the creator re-picks that same file and the upload fails', async () => {
+    signedFetchMock
+      .mockResolvedValueOnce(okResponse(remoteItem))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+      .mockResolvedValueOnce(jsonResponse({ ok: false, error: 'too large' }, false, 413))
+      .mockResolvedValueOnce(okResponse(remoteItem))
+
+    const approved = {
+      ...item,
+      isPublished: true,
+      isApproved: true,
+      video: 'QmApproved',
+      contents: { ...item.contents, 'video.mp4': 'QmApproved' }
+    }
+    await expect(
+      saveItem(ADDRESS, approved, { 'male/model.glb': new Blob(['model']), 'video.mp4': new Blob(['video']) })
+    ).rejects.toMatchObject({ status: 413 })
+
+    const [, , , init] = signedFetchMock.mock.calls[3] as [string, string, string, RequestInit]
+    const body = JSON.parse(init.body as string) as { item: { video?: string; contents: Record<string, string> } }
+    expect(body.item.video).toBe('QmApproved')
+    expect(body.item.contents['video.mp4']).toBe('QmApproved')
+  })
+
   it('still reports the video upload error when the rollback PUT fails too', async () => {
     signedFetchMock
       .mockResolvedValueOnce(okResponse(remoteItem))
