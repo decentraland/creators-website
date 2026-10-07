@@ -208,6 +208,21 @@ describe('buildResetItem', () => {
     expect(isItemSynced(reset, entity)).toBe(true)
   })
 
+  it('discards a video uploaded after approval, going back to the approved one', () => {
+    const smart: Item = {
+      ...wearable,
+      isPublished: true,
+      isApproved: true,
+      video: 'Qmvideo',
+      contents: { ...wearable.contents, 'game.js': 'Qmjs', 'video.mp4': 'Qmpending' }
+    }
+    const deployedContents = { ...wearable.contents, 'game.js': 'Qmjs' }
+    const entity = entityFor(smart, {}, deployedContents)
+    const reset = buildResetItem(smart, entity)
+    expect(reset.contents['video.mp4']).toBe('Qmvideo')
+    expect(isItemSynced(reset, entity)).toBe(true)
+  })
+
   it('takes the ADR-74 data for an emote', () => {
     const reset = buildResetItem({ ...emote, data: { ...emote.data, loop: false } }, entityFor(emote))
     expect(reset.data.loop).toBe(true)

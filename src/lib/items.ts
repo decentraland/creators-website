@@ -341,3 +341,12 @@ export function canEditItemPrice(
   const sales = getItemSales(item)
   return !(sales && sales.minted >= sales.maxSupply)
 }
+
+/**
+ * `item.video` is the hash curation last approved. A save replaces it directly until the item is approved; after
+ * that only `contents['video.mp4']` moves, so the item reads as changed and goes through review (builder-server
+ * copies the hash over on approval).
+ */
+export function tracksVideoOnSave(item: Item): boolean {
+  return !item.isPublished || !item.isApproved
+}

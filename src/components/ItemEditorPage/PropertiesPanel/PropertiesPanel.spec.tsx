@@ -127,6 +127,13 @@ describe('PropertiesPanel', () => {
     expect(screen.getByTestId('properties-panel-save')).toBeDisabled()
   })
 
+  it('keeps a description with a colon from being saved', async () => {
+    render(<Harness />, { wrapper: Providers })
+    await userEvent.type(screen.getByTestId('properties-panel-description'), ': red')
+    expect(screen.getByTestId('properties-panel-description-error')).toBeInTheDocument()
+    expect(screen.getByTestId('properties-panel-save')).toBeDisabled()
+  })
+
   it('locks every control and hides the footer when not editable', () => {
     render(<Harness editable={false} />, { wrapper: Providers })
     expect(screen.getByTestId('properties-panel-readonly')).toBeInTheDocument()

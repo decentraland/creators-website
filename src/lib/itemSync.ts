@@ -155,8 +155,10 @@ export function buildResetItem(item: Item, entity: Entity): Item {
   const deployed = getEntityItemData(entity)
   if (!deployed || !entity.content) throw new Error(`Entity ${entity.id} has no item data or content`)
   const contents = Object.fromEntries(entity.content.map(({ file, hash }) => [file, hash]))
-  // The preview video and the permission list never reach the Catalyst; keep the builder's.
-  if (item.contents[VIDEO_PATH]) contents[VIDEO_PATH] = item.contents[VIDEO_PATH]
+  // The preview video and the permission list never reach the Catalyst; keep the builder's. `item.video` is
+  // the approved hash, so a video uploaded after approval (pending in `contents`) is discarded with the reset.
+  const video = item.video ?? item.contents[VIDEO_PATH]
+  if (video) contents[VIDEO_PATH] = video
   const data = item.data.requiredPermissions
     ? { ...deployed, requiredPermissions: item.data.requiredPermissions }
     : deployed
