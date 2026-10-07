@@ -156,23 +156,6 @@ function parseAddressList(value: string): string[] {
   )
 }
 
-/**
- * The addresses in a flag's variant payload, lowercased and de-duplicated. An absent flag, a disabled
- * variant, an unreachable service or an unparseable payload all read `[]`: "no list", never "a list that
- * excludes everyone", so a caller deciding who to exclude checks that the FLAG is on separately.
- */
-export async function getAddressListVariant(flag: FeatureFlag): Promise<string[]> {
-  const override = devVariantOverrideFor(flag)
-  if (override !== undefined) return parseAddressList(override)
-  const application = APPLICATION[flag]
-  try {
-    const value = (await getSnapshot(application)).variants[`${application}-${flag}`]
-    return value ? parseAddressList(value) : []
-  } catch {
-    return []
-  }
-}
-
 export type AddressListGate = { enabled: boolean; allowed: string[] }
 
 /**
