@@ -63,15 +63,15 @@ const App = () => {
     window.scrollTo({ top: 0 })
   }, [location.pathname])
 
-  // A view counts once the gate has answered, once per pathname (the gate re-deciding on the same page, as on
-  // sign-out, is not a new view), and a curtained visitor only ever views the overview: the not-found page they
-  // get elsewhere tracks itself.
-  const trackedPathname = useRef<string>()
+  // One view per pathname (the gate re-deciding on the same page, as on sign-out, is not a new view). The overview
+  // renders whatever the gate says, so it counts at once; any other page counts once the gate has let it render.
+  // A curtained visitor is sent to the overview, which counts there.
+  const seenPathname = useRef<string>()
   useEffect(() => {
-    if (prelaunch === 'pending') return
-    if (prelaunch === 'hidden' && path) return
-    if (trackedPathname.current === location.pathname) return
-    trackedPathname.current = location.pathname
+    const isOverview = !path
+    if (!isOverview && prelaunch !== 'open') return
+    if (seenPathname.current === location.pathname) return
+    seenPathname.current = location.pathname
     trackPageView(location.pathname)
   }, [location.pathname, path, prelaunch])
 
@@ -135,7 +135,7 @@ const App = () => {
                     <Route path="*" element={<NotFoundPage />} />
                   </>
                 ) : (
-                  <Route path="*" element={prelaunch === 'pending' ? <PageFallback /> : <NotFoundPage />} />
+                  <Route path="*" element={prelaunch === 'pending' ? <PageFallback /> : <Navigate to="/" replace />} />
                 )}
               </Routes>
             </Suspense>

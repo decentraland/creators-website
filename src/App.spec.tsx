@@ -20,7 +20,6 @@ vi.mock('~/components/Toasts', () => ({ Toasts: () => null }))
 vi.mock('~/components/OverviewPage', () => ({ OverviewPage: () => <div data-testid="overview" /> }))
 vi.mock('~/components/CollectionsPage', () => ({ CollectionsPage: () => <div data-testid="collections" /> }))
 vi.mock('~/components/ItemEditorPage', () => ({ ItemEditorPage: () => <div data-testid="editor" /> }))
-vi.mock('~/components/NotFoundPage', () => ({ NotFoundPage: () => <div data-testid="not-found-page" /> }))
 vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
 const trackPageView = vi.hoisted(() => vi.fn())
 vi.mock('~/lib/pageViews', () => ({ trackPageView }))
@@ -35,21 +34,20 @@ function renderApp(path: string) {
   )
 }
 
-const notFound = () => screen.findByTestId('not-found-page')
-
 beforeEach(() => {
   gate.decision = 'open'
   trackPageView.mockReset()
 })
 
 describe('App behind the pre-launch gate', () => {
-  it('serves the overview with the top bar only and makes every other route not found', async () => {
+  it('serves the overview with the top bar only and sends every other route back to it', async () => {
     gate.decision = 'hidden'
     renderApp('/collections')
-    await notFound()
+    await screen.findByTestId('overview')
     expect(screen.getByTestId('navbar')).toHaveAttribute('data-subnav', 'false')
     expect(document.body).toHaveAttribute('data-no-subnav')
-    expect(trackPageView).not.toHaveBeenCalled()
+    expect(trackPageView).toHaveBeenCalledTimes(1)
+    expect(trackPageView).toHaveBeenCalledWith('/')
   })
 
   it('still counts the overview view for a curtained visitor', () => {
@@ -60,7 +58,14 @@ describe('App behind the pre-launch gate', () => {
     expect(trackPageView).toHaveBeenCalledWith('/')
   })
 
-  it('withholds routes and views while the gate is undecided, then opens up', async () => {
+  it('renders and counts the overview at once while the gate is still undecided', () => {
+    gate.decision = 'pending'
+    renderApp('/')
+    expect(screen.getByTestId('overview')).toBeInTheDocument()
+    expect(trackPageView).toHaveBeenCalledWith('/')
+  })
+
+  it('withholds other routes and their views while the gate is undecided, then opens up', async () => {
     gate.decision = 'pending'
     const { rerender } = renderApp('/collections')
     expect(document.querySelector('[aria-busy="true"]')).not.toBeNull()
@@ -81,9 +86,8 @@ describe('App behind the pre-launch gate', () => {
   })
 
   it('keeps a fullscreen workspace in the shell until the gate opens it', async () => {
-    gate.decision = 'hidden'
+    gate.decision = 'pending'
     const { rerender } = renderApp('/collections/editor')
-    await notFound()
     expect(screen.getByTestId('navbar')).toBeInTheDocument()
     expect(document.body).not.toHaveAttribute('data-fullscreen')
 

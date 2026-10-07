@@ -35,8 +35,7 @@ export function useCreatorsPrelaunch(): PrelaunchDecision {
     },
     // Matches the lib's cache TTL so the two don't compete.
     staleTime: 60_000,
-    refetchOnWindowFocus: true,
-    retry: 1
+    refetchOnWindowFocus: true
   })
 
   const decision = decide(data, isPending, restored, address)
