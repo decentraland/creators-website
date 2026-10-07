@@ -17,7 +17,7 @@
       "draft": "Draft ({count})",
       "under_review": "Under review ({count})",
       "rejected": "Rejected ({count})",
-      "disabled": "Disabled ({count})",
+      "disabled": "Paused ({count})",
       "linked": "Linked ({count})"
     },
     "view_mode": "View mode",
@@ -68,8 +68,8 @@
     "under_review_hint": "Your collection is being reviewed for approval. We’ll notify you once the review is complete.",
     "published": "Published",
     "rejected": "Rejected",
-    "disabled": "Disabled",
-    "disabled_hint": "Your collection was disabled by the curation team. Please get in touch with your assigned curator to review it.",
+    "disabled": "Paused",
+    "disabled_hint": "Your collection was paused by the curation team. Please get in touch with your assigned curator to review it.",
     "linked": "Linked"
   },
   "pagination": {
