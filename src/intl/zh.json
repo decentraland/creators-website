@@ -4,16 +4,21 @@
     "description": "此页面无法加载。可能是网络连接不稳定，或应用有了新版本。",
     "retry": "重新加载"
   },
+  "thumbnail_mosaic": {
+    "no_items": "没有物品"
+  },
   "collections_page": {
     "title": "我的系列",
     "search_placeholder": "搜索系列",
     "new_collection": "新建系列",
     "filter": {
-      "all": "全部",
-      "published": "已发布",
-      "submitted": "已提交",
-      "draft": "草稿",
-      "rejected": "已拒绝"
+      "all": "全部（{count}）",
+      "published": "已发布（{count}）",
+      "draft": "草稿（{count}）",
+      "under_review": "审核中（{count}）",
+      "rejected": "已拒绝（{count}）",
+      "disabled": "已暂停（{count}）",
+      "linked": "已关联（{count}）"
     },
     "view_mode": "视图模式",
     "view_grid": "网格视图",
@@ -57,10 +62,15 @@
     "minter": "发送者"
   },
   "collection_status": {
-    "published": "已发布",
+    "draft": "草稿",
+    "publishing": "发布中",
     "under_review": "审核中",
-    "under_review_hint": "您的系列正在审核中，最多可能需要 5 分钟。审核完成后我们会通知您。",
-    "draft": "草稿"
+    "under_review_hint": "您的系列正在审核中。审核完成后我们会通知您。",
+    "published": "已发布",
+    "rejected": "已拒绝",
+    "disabled": "已暂停",
+    "disabled_hint": "您的系列已被审核团队暂停。请联系为您指派的审核员进行复查。",
+    "linked": "已关联"
   },
   "pagination": {
     "previous": "上一页",
@@ -93,10 +103,12 @@
     "rename": "重命名系列",
     "add_items": "添加物品",
     "open_editor": "打开编辑器",
+    "forum_post": "论坛帖子",
     "publish": "发布系列",
     "preview": "在 Decentraland 中预览",
     "more_actions": "更多操作",
     "actions": {
+      "preview_items": "预览物品",
       "copy_urn": "复制 URN",
       "copy_address": "复制合约地址",
       "collaborators": "协作者",
@@ -216,7 +228,8 @@
     "publish_blocker": {
       "no_items": "请至少添加一个物品才能发布您的系列。",
       "too_many_items": "一个系列最多可包含 {max} 个物品进行发布。",
-      "missing_smart_wearable_video": "每个智能可穿戴物品都需要预览视频才能发布。"
+      "missing_smart_wearable_video": "每个智能可穿戴物品都需要预览视频才能发布。",
+      "has_invalid_items": "请先修复标为红色的 {count, plural, one {# 个物品} other {# 个物品}}才能发布。"
     },
     "price": {
       "credits": "{amount} 积分",
@@ -271,6 +284,27 @@
       "thumbnail_error": "我们无法更新“{name}”的缩略图，请重试。",
       "cancel_edit": "取消",
       "save": "保存名称"
+    },
+    "push_changes": {
+      "action": "发布更新",
+      "title": "发布更新",
+      "description": "您的更改将由审核委员会审核。在获得批准之前，买家看到的仍是您物品的上一个已批准版本。",
+      "confirm": "提交审核",
+      "cancel": "取消",
+      "error": "我们无法提交您的更改进行审核，请重试。",
+      "success": "您的更改已提交审核"
+    },
+    "request_review": {
+      "action": "再次申请审核",
+      "title": "再次申请审核",
+      "description": "审核委员会将再次审核您的系列。请先确保您已解决被拒绝的原因。",
+      "confirm": "申请审核",
+      "cancel": "取消",
+      "error": "我们无法申请新的审核，请重试。",
+      "success": "您的系列已提交审核"
+    },
+    "review_notice": {
+      "rejected": "审核委员会拒绝了此系列的最新版本。请更新您的物品并重新提交审核。"
     }
   },
   "publish_collection_modal": {
@@ -361,7 +395,7 @@
     },
     "success": {
       "title": "系列已提交审核",
-      "description": "您的系列正在审核中，最多可能需要 5 分钟。审核完成后我们会通知您。",
+      "description": "您的系列正在审核中。审核委员会将在该系列的论坛帖子中分享反馈，您和社区都可以在那里评论。您可以在系列页面找到它。",
       "done": "完成"
     },
     "error": {
@@ -390,6 +424,7 @@
     "enable_sales": {
       "title": "要为此系列启用销售吗？",
       "description": "这是您在此系列中上架的第一个物品，因此需要先启用销售。启用后，您就可以在 Decentraland Shop 中出售此系列的任何物品。",
+      "upgrade_description": "Decentraland 的 Marketplace 已升级。请在新的 Marketplace 上启用销售，以继续在 Decentraland Shop 中出售此系列的物品。",
       "confirm": "启用销售",
       "pending": "正在启用销售……"
     },
@@ -424,8 +459,7 @@
     "note_mana": "您的物品将在 Decentraland Shop 中以 MANA 标价出售。售出后，您将直接收到 MANA。",
     "success": {
       "title": "您的物品已上架！",
-      "description": "现在可以在 Decentraland Shop 中购买了。",
-      "done": "完成"
+      "description": "现在可以在 Decentraland Shop 中购买了。"
     },
     "error": {
       "title_enable": "无法启用销售",
@@ -612,36 +646,8 @@
     "wrong_format": "缩略图必须是 PNG 图片。",
     "too_big": "缩略图过大，最大为 {size}MB。",
     "capture_failed": "我们无法更新缩略图，请重试。",
-    "load_failed": "我们无法加载该物品，请重试。"
-  },
-  "item_validation": {
-    "triangle_count_exceeded": "三角形数量（{count}）超过了 {category} 可穿戴物品的限制 {limit}。",
-    "triangle_count_exceeded_with_hint": "三角形数量（{count}）超过了 {category} 可穿戴物品的基础限制 {limit}。您可以在物品编辑器中隐藏其他可穿戴物品栏位来提高此限制。",
-    "dimensions_exceeded": "模型尺寸（{width}m x {height}m x {depth}m）超过了允许的最大值（{maxWidth}m x {maxHeight}m x {maxDepth}m）。",
-    "materials_exceeded": "材质数量（{count}）超过了限制 {limit}。",
-    "textures_exceeded": "贴图数量（{count}）超过了限制 {limit}。",
-    "bone_influences_exceeded": "部分顶点的骨骼影响超过了 {limit} 个。",
-    "leaf_bones_found": "发现末端骨骼：{bones}。请在导出前删除带有 _end 或 _neutral 后缀的骨骼。",
-    "non_deform_bones_found": "发现 {count} 个非变形骨骼：{bones}。请在导出设置中启用“Export Deformation Bones Only”（仅导出变形骨骼），以减小文件大小并提升性能。",
-    "armature_bone_names": "骨架的骨骼名称与 Decentraland 虚拟形象骨架不匹配（{bones}）。请在导出前将可穿戴物品重新绑定到标准虚拟形象骨架。",
-    "unrigged_vertices": "发现 {count} 个没有蒙皮权重的顶点（未绑定到任何骨骼）。这些顶点不会跟随虚拟形象移动。请在导出前检查绑定和蒙皮权重。",
-    "cameras_found": "可穿戴物品/表情动作的 GLB 文件中不允许包含摄像机。",
-    "lights_found": "可穿戴物品/表情动作的 GLB 文件中不允许包含灯光。",
-    "animations_in_wearable": "可穿戴物品的 GLB 文件不能包含动画。如果这是表情动作，则应包含动画。",
-    "forbidden_material_name": "材质“{name}”使用了保留的命名模式（{pattern}）。此模式仅供面部类别使用。",
-    "emote_frame_rate": "动画帧率（{fps} fps）与预期的 {expected} fps 不同。",
-    "emote_max_frames": "动画有 {frames} 帧，超过了最大值 {limit}。",
-    "emote_max_clips": "文件有 {count} 个动画片段，超过了最大值 {limit}。",
-    "emote_missing_keyframes": "部分变形骨骼在第一帧/最后一帧缺少关键帧：{bones}。",
-    "prop_triangle_count": "道具三角形数量（{count}）超过了限制 {limit}。",
-    "prop_materials": "道具材质数量（{count}）超过了限制 {limit}。",
-    "prop_textures": "道具贴图数量（{count}）超过了限制 {limit}。",
-    "prop_armature_bones": "道具骨架有 {count} 个骨骼，超过了限制 {limit}。",
-    "armature_naming": "发现意外的骨架名称：{names}。虚拟形象骨架应命名为“Armature”，道具骨架应命名为“Armature_Prop”。",
-    "animation_naming": "存在道具时，动画片段应以“_Avatar”或“_Prop”结尾。无效名称：{names}。",
-    "audio_format": "音频文件“{name}”的格式不受支持。仅允许 .mp3 和 .ogg 格式。",
-    "spring_bone_count_exceeded": "此模型有 {count} 个弹簧骨骼（最大值：{limit}）。请在 3D 编辑器中减少弹簧骨骼节点的数量，然后重新上传。",
-    "thumbnail_not_transparent": "缩略图背景看起来不是透明的。Marketplace 会在缩略图后方显示物品的稀有度颜色，因此背景必须透明。"
+    "load_failed": "我们无法加载该物品，请重试。",
+    "check_failed": "我们无法检查缩略图。请确保它是背景透明的正方形 PNG 图片。"
   },
   "item_editor": {
     "pick_collection": "选择一个系列，开始编辑其中的物品。",
@@ -652,6 +658,7 @@
     "save_success": "“{name}”已保存。",
     "save_error": "无法保存该物品，请重试。",
     "save_error_locked": "该系列正在发布中，暂时无法编辑。",
+    "image_refresh_skipped": "您的稀有度更改已保存，但物品图片无法刷新。请重新上传缩略图以更新它。",
     "sidebar": {
       "items": "物品",
       "back": "返回系列",
@@ -663,7 +670,9 @@
       "empty": "此系列中还没有物品。",
       "dress": "在虚拟形象上显示 {name}",
       "undress": "从虚拟形象上移除 {name}",
-      "no_representation": "此物品没有适用于当前体型的版本。切换体型即可预览。"
+      "no_representation": "此物品没有适用于当前体型的版本。切换体型即可预览。",
+      "male_only": "仅适用于男性体型",
+      "female_only": "仅适用于女性体型"
     },
     "picker": {
       "title": "系列",
@@ -674,7 +683,48 @@
       "error": "无法加载您的系列，请重试。"
     },
     "review": {
-      "title": "审核模式"
+      "title": "审核模式",
+      "back": "返回审核",
+      "unpublished": "此系列尚未发布",
+      "curation_error": "我们无法加载此系列的审核状态。",
+      "retry": "重试",
+      "requested": "{time}申请审核",
+      "created": "{time}创建",
+      "approved": "{time}批准",
+      "rejected": "{time}拒绝",
+      "change_assignee": "更改指派的审核员",
+      "assign_to_me": "指派给我",
+      "cancel": "取消",
+      "action": {
+        "approve": "批准",
+        "reject": "拒绝",
+        "enable": "启用",
+        "disable": "禁用",
+        "deploy_missing": "上传缺失的物品"
+      },
+      "verdict": {
+        "title": "告知创作者",
+        "body": "请在 {collection} 的论坛帖子中说明您的决定，让创作者知道需要修改什么。",
+        "open_forum": "打开论坛帖子",
+        "done": "完成"
+      },
+      "reject": {
+        "title": "要拒绝 {collection} 吗？",
+        "first": "该系列将无法铸造。创作者会看到它被拒绝。",
+        "changes": "该系列将保留其已批准的版本。创作者会看到更改被拒绝。",
+        "confirm": "拒绝",
+        "error": "我们无法拒绝该系列，请重试。",
+        "success": "{collection} 已被拒绝"
+      },
+      "disable": {
+        "title": "要禁用 {collection} 吗？",
+        "description": "其物品将无法再铸造或出售新副本；他人已拥有的物品不受影响。您之后可以再次启用。",
+        "confirm": "禁用",
+        "error": "我们无法禁用该系列，请重试。",
+        "success": "{collection} 已被禁用",
+        "signing": "请在钱包中确认以禁用该系列。",
+        "pending": "正在禁用系列……"
+      }
     },
     "discard": {
       "title": "放弃您的更改？",
@@ -724,10 +774,10 @@
       "placeholder": "播放表情动作"
     },
     "validation": {
-      "loading": "正在检查模型……",
-      "pass": "模型通过了所有检查。",
-      "warnings": "模型存在警告。点击查看。",
-      "errors": "模型存在错误。点击查看。",
+      "loading": "正在检查物品……",
+      "pass": "物品通过了所有检查。",
+      "warnings": "物品存在警告。点击查看。",
+      "errors": "物品存在错误。点击查看。",
       "idle": "",
       "modal_title": "验证结果",
       "label": {
@@ -736,7 +786,10 @@
         "warnings": "{count, plural, one {# 个警告} other {# 个警告}}",
         "errors": "{count, plural, one {# 个问题} other {# 个问题}}",
         "idle": ""
-      }
+      },
+      "previewed_item": "预览中的物品",
+      "check_failed": "我们无法检查该模型。请重试，或保存物品后重新打开。",
+      "check_crashed": "此检查无法在该物品上运行。请稍后重试。"
     },
     "details": {
       "title": "详情",
@@ -756,6 +809,7 @@
       "title": "基本信息",
       "name": "名称",
       "description": "描述",
+      "invalid_description": "描述最多 64 个字符，且不能包含“:”。",
       "utility": "用途",
       "utility_hint": "简要说明此物品在世界中的作用，将向收藏者展示。",
       "category": "类别",
@@ -803,6 +857,7 @@
       "title": "标签",
       "placeholder": "输入标签后按 Enter 添加",
       "remove": "移除标签 {tag}",
+      "empty": "此物品没有标签。",
       "campaign_hint": "添加“{tag}”标签，即可让此物品参加 {name}。"
     },
     "options": {
@@ -824,7 +879,51 @@
     "out": "缩小"
   },
   "curation_page": {
-    "title": "审核"
+    "title": "审核",
+    "sign_in": "登录以审核系列",
+    "search_placeholder": "按名称或所有者地址搜索",
+    "filter": {
+      "all": "全部",
+      "to_review": "待审核",
+      "under_review": "审核中",
+      "approved": "已批准",
+      "rejected": "已拒绝",
+      "all_assignees": "所有审核员",
+      "you": "{name}（您）",
+      "assignee": "指派的审核员",
+      "sort": "排序方式"
+    },
+    "sort": {
+      "MOST_RELEVANT": "最相关",
+      "LAST_ACTIVITY_DESC": "最近活动",
+      "CREATED_AT_DESC": "最新系列",
+      "NAME_ASC": "名称 A-Z",
+      "NAME_DESC": "名称 Z-A"
+    },
+    "list": {
+      "collection": "系列",
+      "owner": "所有者",
+      "date": "申请时间",
+      "last_update": "最后更新",
+      "status": "状态",
+      "assignee": "审核员",
+      "requested": "已申请审核",
+      "created": "创建时间",
+      "unassigned": "未指派",
+      "assign_to_me": "指派给我",
+      "edit_assignee": "更改指派的审核员",
+      "discussion": "讨论",
+      "forum_post": "论坛帖子",
+      "not_posted": "未发帖"
+    },
+    "error": {
+      "title": "我们无法加载系列",
+      "description": "请检查您的网络连接后重试。",
+      "retry": "重试"
+    },
+    "empty": "目前还没有待审核的系列。",
+    "no_results": "没有符合这些筛选条件的系列。",
+    "showing": "显示第 {range} 个，共 {total} 个{total, plural, one {系列} other {系列}}"
   },
   "maintenance_page": {
     "title": "我们马上回来",
@@ -832,13 +931,15 @@
   },
   "not_found_page": {
     "title": "页面未找到",
+    "description": "链接可能已失效，或页面已被移动。",
     "go_home": "返回首页"
   },
   "nav": {
     "overview": "概览",
     "collections": "系列",
     "scenes": "场景",
-    "land": "土地/世界"
+    "land": "土地/世界",
+    "curation": "审核"
   },
   "footer": {
     "newsletterTitle": "每周精选资讯，直达您的邮箱",
@@ -1205,5 +1306,172 @@
       "next": "下一张",
       "go_to": "前往第 {index} 张"
     }
+  },
+  "profile_badge": {
+    "you": "（您）"
+  },
+  "curation_state": {
+    "to_review": "待审核",
+    "under_review": "审核中",
+    "approved": "已批准",
+    "rejected": "已拒绝",
+    "disabled": "已禁用"
+  },
+  "assign_curator_modal": {
+    "title_self": "审核 {collection}",
+    "title_edit": "{collection} 的指派审核员",
+    "self_body": "您将负责审核此系列。之后可以将其重新指派给其他审核员。",
+    "curator": "审核员",
+    "unassign": "无（取消指派）",
+    "assigned": "{collection} 现已指派给 {name}",
+    "unassigned": "{collection} 已取消指派",
+    "error": "我们无法保存指派，请重试。",
+    "cancel": "取消",
+    "submit_self": "指派给我",
+    "submit_edit": "保存",
+    "take_over_body": "此系列已指派给 {assignee}。您仍然可以审核它，但它将被指派给您。请告知 {assignee}。",
+    "submit_continue": "指派并继续"
+  },
+  "approval_flow": {
+    "title": "批准系列",
+    "cancel": "取消",
+    "loading": "正在检查系列的物品……",
+    "signature_title": "需要签名",
+    "columns": {
+      "item": "物品",
+      "body_shape": "体型",
+      "category": "类别",
+      "rarity": "稀有度",
+      "hash": "哈希",
+      "size": "大小",
+      "collection": "系列",
+      "items": "物品"
+    },
+    "item_count": "{count, plural, one {# 个物品} other {# 个物品}}",
+    "size_kb": "{size}KB",
+    "size_mb": "{size}MB",
+    "rescue": {
+      "title": "批准物品",
+      "body": "{count, plural, one {# 个物品} other {# 个物品}}需要在系列合约上获得批准。您需要在钱包中确认此操作。",
+      "action": "确认物品",
+      "signing": "请在钱包中确认请求以继续。",
+      "pending": "{txs, plural, one {正在批准物品……} other {正在批准物品……（第 {tx} 个，共 {txs} 个）}}"
+    },
+    "deploy": {
+      "title": "上传文件",
+      "body": "{count, plural, one {# 个物品} other {# 个物品}}需要上传后才能在 Decentraland 中显示。",
+      "action": "上传文件",
+      "uploading_title": "正在上传物品",
+      "uploading_body": "文件上传期间请保持此窗口打开。",
+      "uploading": "正在上传文件……"
+    },
+    "approve": {
+      "title": "启用系列",
+      "body": "启用该系列以完成批准流程，并允许铸造其物品。请在钱包中确认。",
+      "action": "启用系列",
+      "signing": "请在钱包中确认以启用该系列。",
+      "pending": "正在启用系列……"
+    },
+    "success": {
+      "title_approve": "系列已批准！",
+      "title_deploy_missing": "物品已上传！",
+      "body_approve": "{collection} 已获批准。感谢您的审核！",
+      "body_deploy_missing": "{collection} 的所有物品均已上传。",
+      "title_enable": "系列已启用！",
+      "body_enable": "{collection} 已以其上一个已批准版本重新上线。"
+    },
+    "error": {
+      "title_approve": "我们无法批准该系列",
+      "title_deploy_missing": "我们无法上传这些物品",
+      "prepare": "准备批准该系列时出错了，请稍后重试。",
+      "rescue": "在系列合约上批准物品时出错了，请稍后重试。",
+      "deploy": "上传物品时出错了，请稍后重试。",
+      "approve": "启用该系列时出错了，请稍后重试。",
+      "details": "错误详情",
+      "copy": "复制",
+      "copied": "已复制",
+      "retry": "重试",
+      "title_enable": "我们无法启用该系列"
+    },
+    "changed": {
+      "title": "部分物品已更改",
+      "description": "在您打开此系列后，创作者保存了部分物品的更改。请在批准前查看最新版本。",
+      "confirm": "查看更改"
+    },
+    "enable_body": "启用该系列，使其物品可以按上一个已批准版本重新铸造。创作者尚未提交审核的更改不会包含在内。请在钱包中确认。"
+  },
+  "item_validation": {
+    "checking": "正在检查您的物品……",
+    "rerun": "重新检查",
+    "rerun_label": "重新检查此物品",
+    "rerunning": "正在检查……",
+    "body_shape": {
+      "male": "男性",
+      "female": "女性"
+    },
+    "row": {
+      "errors_blocking": "此物品需要修复一些问题才能发布。\n点击查看详情。",
+      "errors": "此物品存在一些问题，建议在发布前修复。\n点击查看详情。",
+      "warnings": "此物品还可以改进。\n点击查看详情。"
+    },
+    "issues": {
+      "errors_blocking": {
+        "title": "部分物品需要您的关注",
+        "intro": "我们发现了一些问题，需要先解决才能发布您的系列。请修复后再次尝试发布。"
+      },
+      "errors": {
+        "title": "部分物品存在问题",
+        "intro": "我们发现了一些可能导致您的物品在审核中被拒绝的问题。建议先修复它们，但您也可以继续发布。"
+      },
+      "warnings": {
+        "title": "有几点需要查看",
+        "intro": "我们发现了一些可以帮助改进您物品的建议。您可以现在查看，也可以继续发布。"
+      },
+      "back": "返回系列",
+      "continue": "仍然继续"
+    }
+  },
+  "linked_collection": {
+    "edit_in_builder": "在 Builder 中编辑",
+    "third_party": "第三方",
+    "network": "网络",
+    "contract": "关联合约",
+    "copy_contract": "复制合约地址",
+    "contract_copied": "合约地址已复制",
+    "networks": {
+      "mainnet": "Ethereum",
+      "matic": "Polygon",
+      "sepolia": "Sepolia",
+      "amoy": "Amoy",
+      "base_mainnet": "Base",
+      "base_sepolia": "Base Sepolia",
+      "monad_mainnet": "Monad",
+      "monad_testnet": "Monad Testnet",
+      "ape_mainnet": "ApeChain",
+      "ape_caldera": "ApeChain Curtis"
+    },
+    "no_items": "此关联系列的物品需在 Builder 中添加和编辑。",
+    "list": {
+      "status": "状态",
+      "mapping": "代币映射"
+    },
+    "item_status": {
+      "published": "已发布",
+      "under_review": "审核中",
+      "rejected": "已拒绝",
+      "not_published": "未发布",
+      "retry": "无法加载 · 重试"
+    },
+    "mapping": {
+      "none": "无映射",
+      "any": "任意代币",
+      "single": "代币 #{id}",
+      "range": "代币 #{from}–#{to}",
+      "multiple": "{count, plural, one {# 个代币} other {# 个代币}}",
+      "rules": "{count, plural, one {# 条规则} other {# 条规则}}"
+    }
+  },
+  "success_modal": {
+    "done": "完成"
   }
 }
