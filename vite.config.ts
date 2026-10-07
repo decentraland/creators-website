@@ -55,9 +55,6 @@ export default defineConfig(({ command, mode }) => {
       alias: [
         { find: '~', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
         // Its `browser` field is a UMD bundle whose default export Vite can't interop; use the ESM build.
-        // Exact match only: the package's CSS import must keep resolving from the package root.
-        { find: /^react-datepicker$/, replacement: 'react-datepicker/dist/es/index.js' },
-        // Same UMD `browser` field problem: its default export arrives as a namespace object.
         { find: /^lottie-react$/, replacement: 'lottie-react/build/index.es.js' }
       ],
       // decentraland-ui2 nests its own @emotion/styled; two emotion copies means two ThemeContexts,

@@ -198,7 +198,7 @@ export function SellItemModal({
                 <CalendarIcon aria-hidden />
                 <DatePicker
                   selected={expirationDate}
-                  onChange={date => update({ expirationDate: date ? formatDateValue(date) : '' })}
+                  onChange={(date: Date | null) => update({ expirationDate: date ? formatDateValue(date) : '' })}
                   minDate={minDate}
                   dateFormat="MM/dd/yyyy"
                   placeholderText="MM/DD/YYYY"
