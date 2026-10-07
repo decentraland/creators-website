@@ -17,7 +17,12 @@ const builderUrl = config.get('BUILDER_URL')
 const shopCreditsUrl = `${config.get('SHOP_URL')}/credits`
 const accountUrl = config.get('ACCOUNT_URL')
 
-const NavBar = () => {
+type Props = {
+  /** Off behind the pre-launch gate: only the ui2 top bar renders, like sites' creator landing. */
+  subnav?: boolean
+}
+
+const NavBar = ({ subnav = true }: Props) => {
   const { t } = useTranslation()
   const { session, connecting, signIn, disconnect } = useWallet()
   const address = session?.address
@@ -72,23 +77,25 @@ const NavBar = () => {
         onClickSignOut={() => void disconnect()}
       />
 
-      <S.Subnav data-testid="subnav" data-scrolled={scrolled || undefined}>
-        <S.Tabs data-testid="subnav-tabs">
-          <NavLink to="/" end>
-            {t('nav.overview')}
-          </NavLink>
-          <NavLink to="/collections" className={() => (collectionsActive ? 'active' : '')}>
-            {t('nav.collections')}
-          </NavLink>
-          {isCurator && (
-            <NavLink to="/curation" data-testid="nav-curation">
-              {t('nav.curation')}
+      {subnav && (
+        <S.Subnav data-testid="subnav" data-scrolled={scrolled || undefined}>
+          <S.Tabs data-testid="subnav-tabs">
+            <NavLink to="/" end>
+              {t('nav.overview')}
             </NavLink>
-          )}
-          <a href={`${builderUrl}/scenes`}>{t('nav.scenes')}</a>
-          <a href={`${builderUrl}/land`}>{t('nav.land')}</a>
-        </S.Tabs>
-      </S.Subnav>
+            <NavLink to="/collections" className={() => (collectionsActive ? 'active' : '')}>
+              {t('nav.collections')}
+            </NavLink>
+            {isCurator && (
+              <NavLink to="/curation" data-testid="nav-curation">
+                {t('nav.curation')}
+              </NavLink>
+            )}
+            <a href={`${builderUrl}/scenes`}>{t('nav.scenes')}</a>
+            <a href={`${builderUrl}/land`}>{t('nav.land')}</a>
+          </S.Tabs>
+        </S.Subnav>
+      )}
     </>
   )
 }

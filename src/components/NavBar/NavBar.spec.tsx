@@ -62,11 +62,11 @@ beforeEach(() => {
   vi.mocked(openExternal).mockReset()
 })
 
-function renderNavBar(path = '/collections') {
+function renderNavBar(path = '/collections', props: { subnav?: boolean } = {}) {
   return render(
     <TranslationProvider>
       <MemoryRouter initialEntries={[path]}>
-        <NavBar />
+        <NavBar {...props} />
       </MemoryRouter>
     </TranslationProvider>
   )
@@ -85,6 +85,13 @@ describe('NavBar', () => {
       'href',
       'https://decentraland.zone/builder/land'
     )
+  })
+
+  it('keeps the top bar but drops the whole sub-nav while the pre-launch gate hides the app', () => {
+    renderNavBar('/', { subnav: false })
+    expect(screen.getByTestId('topnav')).toBeInTheDocument()
+    expect(screen.queryByTestId('subnav')).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Collections' })).toBeNull()
   })
 
   it('shows the Curation tab to committee members only', () => {
