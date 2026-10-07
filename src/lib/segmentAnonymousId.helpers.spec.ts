@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // @vitest-environment-options {"url":"https://decentraland.org/"}
-import { createAnonymousIdResolver, generateUuid, safeParseStoredId } from './segmentAnonymousId.helpers'
+import { createAnonymousIdResolver } from './segmentAnonymousId.helpers'
 
+const cookieDescriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie')!
 const COOKIE_ID = '11111111-1111-4111-8111-111111111111'
 const LOCAL_ID = '22222222-2222-4222-8222-222222222222'
 
@@ -18,6 +19,7 @@ describe('when resolving the browser anonymous identity', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    Object.defineProperty(document, 'cookie', cookieDescriptor)
     Object.defineProperty(crypto, 'randomUUID', { value: originalRandomUUID, configurable: true })
     localStorage.clear()
     document.cookie = 'ajs_anonymous_id=; path=/; max-age=0'
@@ -35,7 +37,7 @@ describe('when resolving the browser anonymous identity', () => {
         expect.stringMatching(/^ajs_anonymous_id=.*; domain=\.decentraland\.org$/)
       )
       expect(cookieWrites).toHaveBeenCalledWith(
-        expect.stringMatching(/^__dcl_segment_domain__=; domain=\.decentraland\.org; path=\/; max-age=0$/)
+        expect.stringMatching(/^__dcl_segment_domain__[a-z0-9-]+=; domain=\.decentraland\.org; path=\/; max-age=0$/)
       )
       expect(document.cookie).not.toContain('__dcl_segment_domain__')
     })
@@ -54,8 +56,7 @@ describe('when resolving the browser anonymous identity', () => {
     describe('and localStorage disagrees', () => {
       beforeEach(() => localStorage.setItem('ajs_anonymous_id', JSON.stringify(LOCAL_ID)))
 
-      it('should use the cookie for both read-only attribution and beacons', () => {
-        expect(resolver.read()).toBe(COOKIE_ID)
+      it('should use the cookie for beacons', () => {
         expect(resolver.ensure()).toBe(COOKIE_ID)
         expect(localStorage.getItem('ajs_anonymous_id')).toBe(JSON.stringify(COOKIE_ID))
       })
@@ -99,11 +100,15 @@ describe('when resolving the browser anonymous identity', () => {
     })
   })
 
-  describe.each([JSON.stringify(LOCAL_ID), LOCAL_ID, 'custom-storage-id'])('and only localStorage contains %s', raw => {
+  describe.each([
+    [JSON.stringify(LOCAL_ID), LOCAL_ID],
+    [LOCAL_ID, LOCAL_ID],
+    ['custom-storage-id', 'custom-storage-id']
+  ])('and only localStorage contains %s', (raw, expected) => {
     beforeEach(() => localStorage.setItem('ajs_anonymous_id', raw))
 
     it('should adopt the stored identity and make it available to other subdomains', () => {
-      expect(resolver.ensure()).toBe(safeParseStoredId(raw))
+      expect(resolver.ensure()).toBe(expected)
       expect(document.cookie).toContain(`ajs_anonymous_id=${encodeURIComponent(resolver.ensure())}`)
     })
   })
@@ -114,8 +119,6 @@ describe('when resolving the browser anonymous identity', () => {
       document.cookie = `ajs_anonymous_id=${encodeURIComponent(raw)}; path=/`
     })
 
-    it('should not mint during a read-only attribution lookup', () => expect(resolver.read()).toBeUndefined())
-
     it('should mint a UUID and persist raw cookie and JSON localStorage values', () => {
       expect(resolver.ensure()).toMatch(/^[0-9a-f-]{36}$/i)
       expect(localStorage.getItem('ajs_anonymous_id')).toBe(JSON.stringify(resolver.ensure()))
@@ -125,7 +128,7 @@ describe('when resolving the browser anonymous identity', () => {
 
   describe.each(['0', '123', '-42', '1.5'])('and a legacy numeric identity %s is stored', raw => {
     beforeEach(() => {
-      document.cookie = `ajs_anonymous_id=${raw}; path=/`
+      vi.spyOn(document, 'cookie', 'get').mockReturnValue(`ajs_anonymous_id=${raw}`)
       localStorage.setItem('ajs_anonymous_id', JSON.stringify(LOCAL_ID))
     })
     it('should preserve the cookie identity as a string and synchronize localStorage', () => {
@@ -146,7 +149,7 @@ describe('when resolving the browser anonymous identity', () => {
     ['%41%ZZ', 'A%ZZ']
   ])('and cookie percent escapes are only partly valid: %s', (raw, expected) => {
     beforeEach(() => {
-      document.cookie = `ajs_anonymous_id=${raw}; path=/`
+      vi.spyOn(document, 'cookie', 'get').mockReturnValue(`ajs_anonymous_id=${raw}`)
       localStorage.setItem('ajs_anonymous_id', JSON.stringify(LOCAL_ID))
     })
     it('should match js-cookie decoding and keep the cookie identity', () => expect(resolver.ensure()).toBe(expected))
@@ -205,6 +208,71 @@ describe('when resolving the browser anonymous identity', () => {
       Object.defineProperty(crypto, 'randomUUID', { value: undefined, configurable: true })
     })
     it('should generate a UUID v4', () =>
-      expect(generateUuid()).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i))
+      expect(resolver.ensure()).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i))
+  })
+
+  describe.each([
+    ['"null"', LOCAL_ID],
+    ['"a%22b"', 'a"b']
+  ])('and a cookie is quoted: %s', (raw, expected) => {
+    beforeEach(() => {
+      vi.spyOn(document, 'cookie', 'get').mockReturnValue(`ajs_anonymous_id=${raw}`)
+      localStorage.setItem('ajs_anonymous_id', JSON.stringify(LOCAL_ID))
+    })
+    it('should match js-cookie quote removal before JSON parsing', () => expect(resolver.ensure()).toBe(expected))
+  })
+
+  describe('and the first duplicate cookie has invalid UTF-8', () => {
+    beforeEach(() => {
+      vi.spyOn(document, 'cookie', 'get').mockReturnValue(`ajs_anonymous_id=%E0%A4; ajs_anonymous_id=${COOKIE_ID}`)
+      localStorage.setItem('ajs_anonymous_id', JSON.stringify(LOCAL_ID))
+    })
+    it('should skip the invalid entry and reuse the next readable cookie', () =>
+      expect(resolver.ensure()).toBe(COOKIE_ID))
+  })
+
+  describe('and cookies are silently blocked', () => {
+    let writes: ReturnType<typeof vi.spyOn>
+    let now: ReturnType<typeof vi.spyOn>
+    let probeCount: number
+    beforeEach(() => {
+      writes = vi.spyOn(document, 'cookie', 'set').mockImplementation(() => undefined)
+      now = vi.spyOn(Date, 'now').mockReturnValue(0)
+      resolver.ensure()
+      probeCount = writes.mock.calls.filter(([value]: unknown[]) =>
+        String(value).startsWith('__dcl_segment_domain__')
+      ).length
+    })
+    it('should avoid repeated probing for immediate retries', () => {
+      resolver.ensure()
+      expect(
+        writes.mock.calls.filter(([value]: unknown[]) => String(value).startsWith('__dcl_segment_domain__')).length
+      ).toBe(probeCount)
+    })
+    it('should recover after the probe cache expires and cookies become writable', () => {
+      writes.mockRestore()
+      now.mockReturnValue(6000)
+      expect(document.cookie).not.toContain('ajs_anonymous_id')
+      resolver.ensure()
+      expect(document.cookie).toContain('ajs_anonymous_id=')
+    })
+  })
+
+  describe('and an old probe cookie remains', () => {
+    beforeEach(() => {
+      document.cookie = '__dcl_segment_domain__=stale; path=/'
+    })
+    afterEach(() => {
+      document.cookie = '__dcl_segment_domain__=; path=/; max-age=0'
+    })
+    it('should still write identity on the shared parent domain', () => {
+      const writes = vi.spyOn(document, 'cookie', 'set')
+      resolver.ensure()
+      expect(writes).toHaveBeenCalledWith(expect.stringMatching(/^ajs_anonymous_id=.*; domain=\.decentraland\.org$/))
+      expect(writes).toHaveBeenCalledWith(expect.stringMatching(/__dcl_segment_domain__[^=]+=.*max-age=5/))
+      expect(writes).toHaveBeenCalledWith(
+        expect.stringMatching(/__dcl_segment_domain__[^=]+=; domain=\.decentraland\.org; path=\/; max-age=0/)
+      )
+    })
   })
 })

@@ -9,7 +9,7 @@
 // Nothing here is user-facing, so the copy/i18n rules don't apply. Never emit PII or secrets; wallet
 // addresses are pseudonymous public ids and are allowed.
 import { isbot } from 'isbot'
-import { createAnonymousIdResolver } from './segmentAnonymousId.helpers'
+import { createAnonymousIdResolver, readStoredId } from '~/lib/segmentAnonymousId.helpers'
 import { APP_VERSION, config, currentSearch } from '~/config'
 import { currentAddress } from '~/lib/currentAddress'
 import { postToSegment, type SegmentCall } from '~/lib/segmentHttp'
@@ -116,22 +116,6 @@ export function getAnonymousId(): string | undefined {
 }
 
 const USER_ID_KEY = 'ajs_user_id'
-
-// analytics.js stores its ids JSON-encoded; a bare string is tolerated.
-function readStoredId(key: string): string | undefined {
-  try {
-    const raw = localStorage.getItem(key)
-    if (!raw) return undefined
-    try {
-      const parsed: unknown = JSON.parse(raw)
-      return typeof parsed === 'string' && parsed !== '' ? parsed : undefined
-    } catch {
-      return raw
-    }
-  } catch {
-    return undefined
-  }
-}
 
 const anonymousIdResolver = createAnonymousIdResolver(getAnonymousId)
 

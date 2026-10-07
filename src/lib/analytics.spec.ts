@@ -325,3 +325,31 @@ describe('errorCode', () => {
     expect(errorCode(new Error('something exploded'))).toBe('unknown')
   })
 })
+
+describe('when a direct event reads legacy identified-user storage', () => {
+  beforeEach(() => {
+    localStorage.setItem('ajs_user_id', '123')
+  })
+  it('should use the common id parser and preserve the numeric user id', async () => {
+    const { sendDirect } = await loadAnalytics()
+    sendDirect('test-key', { type: 'track', event: 'Click' })
+    expect(posted).toHaveBeenLastCalledWith(expect.objectContaining({ userId: '123' }))
+  })
+})
+
+describe('when a wallet reset is queued before the SDK boots', () => {
+  beforeEach(() => {
+    document.cookie = 'ajs_anonymous_id=pre-boot-id; path=/'
+    localStorage.setItem('ajs_user_id', JSON.stringify('pre-boot-user'))
+  })
+  it('should document the unchanged queued-reset limitation until SDK replay', async () => {
+    const { initAnalytics, reset, sendDirect } = await loadAnalytics()
+    initAnalytics()
+    reset()
+    sendDirect('test-key', { type: 'track', event: 'Click' })
+    expect((window as unknown as { analytics: unknown[] }).analytics).toContainEqual(['reset'])
+    expect(posted).toHaveBeenLastCalledWith(
+      expect.objectContaining({ anonymousId: 'pre-boot-id', userId: 'pre-boot-user' })
+    )
+  })
+})
