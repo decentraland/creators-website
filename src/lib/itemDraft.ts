@@ -227,8 +227,8 @@ export function tracksVideoOnSave(item: Item): boolean {
 export type SaveOptions = {
   /** Spring bone params to persist; `undefined` leaves the saved data untouched. */
   springBones?: SpringBonesData | null
-  /** Loads the stored thumbnail, needed to rebuild the catalyst image when only the rarity changed. */
-  fetchThumbnail?: (item: Item) => Promise<Blob>
+  /** Loads the stored thumbnail to rebuild the catalyst image when only the rarity changed; null skips the rebuild. */
+  fetchThumbnail?: (item: Item) => Promise<Blob | null>
 }
 
 /** The item to PUT plus the files to upload: fields applied, new thumbnail/video hashed, spring bones merged. */
@@ -242,9 +242,11 @@ export async function toSaveableItem(item: Item, draft: ItemDraft, options: Save
     blobs = { ...blobs, ...built.blobs }
   } else if (next.rarity !== item.rarity && options.fetchThumbnail) {
     const thumbnail = blobs[THUMBNAIL_PATH] ?? (await options.fetchThumbnail(item))
-    const built = await withCatalystImageForRarity(next, thumbnail)
-    next = built.item
-    blobs = { ...blobs, ...built.blobs }
+    if (thumbnail) {
+      const built = await withCatalystImageForRarity(next, thumbnail)
+      next = built.item
+      blobs = { ...blobs, ...built.blobs }
+    }
   }
   if (draft.video) {
     const { [VIDEO_PATH]: hash } = await computeHashes({ [VIDEO_PATH]: draft.video })

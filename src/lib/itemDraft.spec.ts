@@ -160,6 +160,13 @@ describe('item draft', () => {
     expect(saved.contents['thumbnail.png']).toBe('bafythumb')
   })
 
+  it('saves the rarity change without an image when the stored thumbnail cannot be loaded', async () => {
+    const draft = itemDraftReducer(createItemDraft(item), { type: 'setRarity', rarity: 'legendary' })
+    const { item: saved, blobs } = await toSaveableItem(item, draft, { fetchThumbnail: async () => null })
+    expect(saved.rarity).toBe('legendary')
+    expect(blobs).toEqual({})
+  })
+
   it('leaves the catalyst image alone when the rarity is unchanged', async () => {
     const draft = itemDraftReducer(createItemDraft(item), { type: 'setText', field: 'name', value: 'Cap' })
     const fetchThumbnail = vi.fn()

@@ -255,13 +255,16 @@ export async function saveItem(address: string, item: Item, blobs: Record<string
     try {
       await request<unknown>(address, 'POST', `/items/${item.id}/videos`, '', videos, false)
     } catch (error) {
-      // The PUT already stored the video reference; drop it so the item never points at a file
-      // that was not uploaded (it would look complete and pass the publish gate). Best effort:
-      // the caller gets the upload error either way.
+      // The PUT already stored the new video hash; point the item back at the video it had so it never
+      // references a file that was not uploaded. An approved item keeps its curation-approved video
+      // (`item.video`, left alone by the save); anything else had none and drops it. Best effort: the
+      // caller gets the upload error either way.
+      const previous = item.video !== item.contents[VIDEO_PATH] ? item.video : undefined
       const contents = { ...item.contents }
-      delete contents[VIDEO_PATH]
+      if (previous) contents[VIDEO_PATH] = previous
+      else delete contents[VIDEO_PATH]
       await request<RemoteItem>(address, 'PUT', `/items/${item.id}`, '', {
-        item: toRemoteItem({ ...item, video: undefined, contents })
+        item: toRemoteItem({ ...item, video: previous, contents })
       }).catch(() => undefined)
       throw error
     }
