@@ -5,19 +5,17 @@ import { type Item } from '~/lib/items'
 type Props = {
   item: Item
   isResetting: boolean
-  error: boolean
   onConfirm: () => void
   onClose: () => void
 }
 
 /** "Reset changes?" — restores the version of the item the committee approved. */
-export function ResetItemModal({ item, isResetting, error, onConfirm, onClose }: Props) {
+export function ResetItemModal({ item, isResetting, onConfirm, onClose }: Props) {
   const { t } = useTranslation()
   return (
     <ConfirmModal
       title={t('collection_detail_page.item_actions.reset_modal.title')}
       description={t('collection_detail_page.item_actions.reset_modal.description', { name: item.name })}
-      error={error ? t('collection_detail_page.item_actions.reset_modal.error') : null}
       busy={isResetting}
       onClose={onClose}
       cancel={{

@@ -182,7 +182,8 @@ export function PropertiesPanel({
         setDeleteOpen(false)
         showToast(t('collection_detail_page.item_actions.deleted', { name: item.name }))
         onDeleted()
-      }
+      },
+      onError: () => showToast(t('collection_detail_page.delete_item.error'), { type: 'error' })
     })
   }
 
@@ -632,7 +633,6 @@ export function PropertiesPanel({
         <DeleteItemModal
           item={item}
           isDeleting={deleteItem.isPending}
-          error={deleteItem.isError}
           onCancel={() => {
             setDeleteOpen(false)
             deleteItem.reset()

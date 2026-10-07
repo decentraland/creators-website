@@ -112,7 +112,8 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
           showToast(
             t('collection_detail_page.item_actions.move_modal.moved', { item: item.name, collection: target.name })
           )
-        }
+        },
+        onError: () => showToast(t('collection_detail_page.item_actions.move_modal.error'), { type: 'error' })
       }
     )
   }
@@ -125,7 +126,8 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
         onSuccess: () => {
           closeDialog()
           showToast(t('collection_detail_page.item_actions.reset_modal.done', { name: item.name }))
-        }
+        },
+        onError: () => showToast(t('collection_detail_page.item_actions.reset_modal.error'), { type: 'error' })
       }
     )
   }
@@ -135,7 +137,8 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
       onSuccess: () => {
         closeDialog()
         showToast(t('collection_detail_page.item_actions.deleted', { name: item.name }))
-      }
+      },
+      onError: () => showToast(t('collection_detail_page.delete_item.error'), { type: 'error' })
     })
   }
 
@@ -190,19 +193,12 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
           collections={drafts.data}
           isLoading={drafts.isFetching}
           isMoving={moveItem.isPending}
-          error={moveItem.isError}
           onConfirm={confirmMove}
           onClose={closeDialog}
         />
       )}
       {dialog === 'reset' && (
-        <ResetItemModal
-          item={item}
-          isResetting={resetItem.isPending}
-          error={resetItem.isError}
-          onConfirm={confirmReset}
-          onClose={closeDialog}
-        />
+        <ResetItemModal item={item} isResetting={resetItem.isPending} onConfirm={confirmReset} onClose={closeDialog} />
       )}
       {typeof dialog === 'object' && dialog?.kind === 'update-price' && (
         <UpdatePriceFlow
@@ -226,7 +222,6 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
         <DeleteItemModal
           item={item}
           isDeleting={deleteItem.isPending}
-          error={deleteItem.isError}
           onCancel={closeDialog}
           onConfirm={confirmDelete}
         />
