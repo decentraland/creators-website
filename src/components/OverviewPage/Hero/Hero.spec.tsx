@@ -16,7 +16,7 @@ vi.mock('~/hooks/useMediaQuery', () => ({
 
 const release = vi.hoisted(() => ({ download: undefined as CreatorHubDownload | undefined }))
 vi.mock('~/hooks/useCreatorHubDownload', () => ({ useCreatorHubDownload: () => release.download }))
-vi.mock('~/lib/creatorHubDownload', () => ({ startCreatorHubDownload: vi.fn() }))
+vi.mock('~/lib/creatorHubDownload', () => ({ startCreatorHubDownload: vi.fn(), cancelCreatorHubRedirect: vi.fn() }))
 
 beforeEach(() => {
   viewport.mobile = false
@@ -63,6 +63,13 @@ describe('Hero', () => {
       event: 'Download',
       download_target: 'creator_hub'
     })
+  })
+
+  it('leaves a modifier click (new tab) to the browser', () => {
+    release.download = { os: 'Windows', arch: 'amd64', href: 'https://example.com/creator-hub-win-x64.exe' }
+    renderHero()
+    fireEvent.click(screen.getByTestId('overview-hero-cta'), { metaKey: true })
+    expect(startCreatorHubDownload).not.toHaveBeenCalled()
   })
 
   it('sends phones to the creator docs instead of the desktop-only download', () => {

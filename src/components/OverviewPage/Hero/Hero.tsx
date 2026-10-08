@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '~/components/Button'
 import { ChevronDownIcon } from '~/components/Icons'
 import { useAfterLoadIdle } from '~/hooks/useAfterLoadIdle'
@@ -6,7 +6,7 @@ import { useCreatorHubDownload } from '~/hooks/useCreatorHubDownload'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useTypingListEffect } from '~/hooks/useTypingListEffect'
 import { useTranslation } from '~/intl'
-import { startCreatorHubDownload } from '~/lib/creatorHubDownload'
+import { cancelCreatorHubRedirect, startCreatorHubDownload } from '~/lib/creatorHubDownload'
 import {
   CREATOR_HUB_TARGET,
   DOWNLOAD_CLICK,
@@ -49,7 +49,9 @@ const Hero = () => {
   const mobile = useMediaQuery(OVERVIEW_MOBILE_QUERY)
   const words = useMemo(() => heroData.words.map(word => t(`overview.hero.words.${word}`)), [t])
   const currentWord = useTypingListEffect(words)
-  const download = useCreatorHubDownload()
+  // Phones get the docs, so they don't spend the GitHub API's per-IP rate limit.
+  const download = useCreatorHubDownload(!mobile)
+  useEffect(() => cancelCreatorHubRedirect, [])
   const { poster } = heroData
   const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY)
   const idle = useAfterLoadIdle()
@@ -101,7 +103,9 @@ const Hero = () => {
               href={download?.href ?? CREATOR_HUB_DOWNLOAD_URL}
               onClick={event => {
                 trackClick(event)
-                if (download) startCreatorHubDownload(download)
+                // A modifier click opens the installer elsewhere, so this tab stays put.
+                const modified = event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
+                if (download && !modified) startCreatorHubDownload(download)
               }}
               data-testid="overview-hero-cta"
               data-place={OverviewSection.HERO}
