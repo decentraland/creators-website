@@ -26,6 +26,18 @@ export const itemListColumns = `
   &[data-with-play-mode][data-with-market] {
     ${columns(8)}
   }
+  &[data-with-status] {
+    ${columns(5)}
+  }
+  &[data-with-play-mode][data-with-status] {
+    ${columns(6)}
+  }
+  &[data-with-market][data-with-status] {
+    ${columns(8)}
+  }
+  &[data-with-play-mode][data-with-market][data-with-status] {
+    ${columns(9)}
+  }
 `
 
 export const Row = styled.article`

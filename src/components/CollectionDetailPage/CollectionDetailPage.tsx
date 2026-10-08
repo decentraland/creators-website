@@ -55,7 +55,7 @@ import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { useCollectionValidation, useRerunItemValidation } from '~/hooks/useCollectionValidation'
-import { ItemSyncStatus, hasPendingChanges } from '~/lib/itemSync'
+import { ItemSyncPill, ItemSyncStatus, getItemSyncPill, hasPendingChanges } from '~/lib/itemSync'
 import { canPushChanges } from '~/lib/curation'
 import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
 import { previewCollection } from '~/lib/explorer'
@@ -231,6 +231,31 @@ const CollectionDetailPage = () => {
   )
   // A never-approved collection asks for its first review again; an approved one sends an update.
   const pushCopy = collection?.isApproved ? 'push_changes' : 'request_review'
+  // The Status column exists on collections approved at least once, while some row on the page says more than
+  // "published": before the first approval the collection pill already tells the whole story.
+  const curationPending = curation?.status === 'pending'
+  const syncPills = useMemo(
+    () => new Map(results.map(item => [item.id, getItemSyncPill(syncs.get(item.id), curationPending)])),
+    [results, syncs, curationPending]
+  )
+  const withStatus = useMemo(
+    () =>
+      !!standardCollection &&
+      hasBeenApproved(standardCollection) &&
+      [...syncPills.values()].some(pill => pill !== null && pill !== ItemSyncPill.PUBLISHED),
+    [standardCollection, syncPills]
+  )
+  const publishChangesFromPill = useCallback(
+    (item: Item) => {
+      track('Item status pill clicked', {
+        collectionId: item.collectionId,
+        itemId: item.id,
+        status: syncPills.get(item.id)
+      })
+      setPushOpen(true)
+    },
+    [syncPills]
+  )
 
   // Drafts check every item; published collections only the items with changes waiting for approval.
   // Small screens are a viewer and check nothing, unless the publish modal is already open: crossing the
@@ -661,6 +686,7 @@ const CollectionDetailPage = () => {
                 <S.ListHeader
                   data-with-play-mode={withPlayMode || undefined}
                   data-with-market={withMarket || undefined}
+                  data-with-status={withStatus || undefined}
                 >
                   <span>{t('collection_detail_page.list.item')}</span>
                   <span>{t('collection_detail_page.list.body_shape')}</span>
@@ -669,6 +695,9 @@ const CollectionDetailPage = () => {
                     <span data-testid="list-header-play-mode">{t('collection_detail_page.list.play_mode')}</span>
                   )}
                   <span>{t('collection_detail_page.list.rarity')}</span>
+                  {withStatus && (
+                    <span data-testid="list-header-status">{t('collection_detail_page.list.status')}</span>
+                  )}
                   {withMarket && (
                     <>
                       <span data-testid="list-header-price">{t('collection_detail_page.list.price')}</span>
@@ -685,6 +714,9 @@ const CollectionDetailPage = () => {
                     withPlayMode={withPlayMode}
                     withMarket={withMarket}
                     listing={withMarket ? listingFor(item) : undefined}
+                    withStatus={withStatus}
+                    syncStatus={syncPills.get(item.id)}
+                    onPublishChanges={showPushChanges ? publishChangesFromPill : undefined}
                     canSell={isApprovedForSale && item.isPublished && !!item.tokenId}
                     onPutOnSale={isSeller ? setSellingItem : undefined}
                     onEditPrice={

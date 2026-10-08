@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { type Entity, EntityType } from '@dcl/schemas'
 import { ItemType, type Item } from './items'
-import { ItemSyncStatus, buildResetItem, getItemSyncStatus, isItemSynced, mapEntitiesByItemId } from './itemSync'
+import {
+  ItemSyncPill,
+  ItemSyncStatus,
+  buildResetItem,
+  getItemSyncPill,
+  getItemSyncStatus,
+  isItemSynced,
+  mapEntitiesByItemId
+} from './itemSync'
 
 const MALE = 'urn:decentraland:off-chain:base-avatars:BaseMale'
 const URN = 'urn:decentraland:amoy:collections-v2:0xc0ffee:0'
@@ -167,6 +175,27 @@ describe('getItemSyncStatus', () => {
   it('is unsynced when an approved item has no entity, but loading until the entities arrive', () => {
     expect(getItemSyncStatus(wearable, undefined, loaded)).toBe(ItemSyncStatus.UNSYNCED)
     expect(getItemSyncStatus(wearable, undefined, { ...loaded, entitiesLoaded: false })).toBe(ItemSyncStatus.LOADING)
+  })
+})
+
+describe('getItemSyncPill', () => {
+  const entity = entityFor(wearable)
+
+  it('names the sync state the creator can act on', () => {
+    expect(getItemSyncPill({ status: ItemSyncStatus.SYNCED, entity }, false)).toBe(ItemSyncPill.PUBLISHED)
+    expect(getItemSyncPill({ status: ItemSyncStatus.UNSYNCED, entity }, false)).toBe(ItemSyncPill.MODIFIED)
+    expect(getItemSyncPill({ status: ItemSyncStatus.UNDER_REVIEW, entity }, true)).toBe(ItemSyncPill.UNDER_REVIEW)
+  })
+
+  it('flags an approved item with no entity as missing, or under review while its redeploy is being reviewed', () => {
+    expect(getItemSyncPill({ status: ItemSyncStatus.UNSYNCED }, false)).toBe(ItemSyncPill.MISSING)
+    expect(getItemSyncPill({ status: ItemSyncStatus.UNSYNCED }, true)).toBe(ItemSyncPill.UNDER_REVIEW)
+  })
+
+  it('says nothing while the sync is unknown or the item is not published', () => {
+    expect(getItemSyncPill(undefined, false)).toBeNull()
+    expect(getItemSyncPill({ status: ItemSyncStatus.LOADING }, false)).toBeNull()
+    expect(getItemSyncPill({ status: ItemSyncStatus.UNPUBLISHED }, false)).toBeNull()
   })
 })
 

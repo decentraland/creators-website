@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { TranslationProvider } from '~/intl'
 import { ItemType, type Item } from '~/lib/items'
 import { type ItemListing } from '~/lib/listings'
+import { ItemSyncPill } from '~/lib/itemSync'
 import { ValidationSeverity } from '~/lib/validation'
 import { ItemListRow } from './ItemListRow'
 
@@ -52,6 +53,44 @@ const emote: Partial<Item> = {
 }
 
 describe('ItemListRow', () => {
+  it('has no Status column until the page asks for it', () => {
+    renderRow({}, { syncStatus: ItemSyncPill.MODIFIED })
+    expect(screen.queryByTestId('item-row-status')).not.toBeInTheDocument()
+  })
+
+  it('explains a modified item in a tooltip and opens Publish changes on click', async () => {
+    const onPublishChanges = vi.fn()
+    renderRow({}, { withStatus: true, syncStatus: ItemSyncPill.MODIFIED, onPublishChanges })
+    const pill = screen.getByTestId('item-sync-status')
+    expect(pill).toHaveAttribute('data-status', 'modified')
+    expect(pill).toHaveTextContent('Modified')
+
+    await userEvent.hover(pill)
+    expect(await screen.findByTestId('item-sync-status-tooltip')).toHaveTextContent(/Publish changes/)
+
+    await userEvent.click(pill)
+    expect(onPublishChanges).toHaveBeenCalledWith(expect.objectContaining({ id: 'i1' }))
+  })
+
+  it('flags a missing item for anyone, clickable only when the viewer may publish changes', async () => {
+    renderRow({}, { withStatus: true, syncStatus: ItemSyncPill.MISSING })
+    const pill = screen.getByTestId('item-sync-status')
+    expect(pill).toHaveAttribute('data-status', 'missing')
+    expect(pill.tagName).toBe('SPAN')
+    await userEvent.hover(pill)
+    expect(await screen.findByTestId('item-sync-status-tooltip')).toHaveTextContent(/may not work in-world/)
+  })
+
+  it('shows a plain published pill with nothing to explain, and leaves the cell blank while the sync is unknown', () => {
+    const { unmount } = renderRow({}, { withStatus: true, syncStatus: ItemSyncPill.PUBLISHED })
+    expect(screen.getByTestId('item-sync-status')).toHaveTextContent('Published')
+    unmount()
+
+    renderRow({}, { withStatus: true, syncStatus: null })
+    expect(screen.getByTestId('item-row-status')).toHaveAttribute('data-empty', 'true')
+    expect(screen.queryByTestId('item-sync-status')).not.toBeInTheDocument()
+  })
+
   it('shows name, body shape, category and rarity with its supply', () => {
     renderRow()
     expect(screen.getByText('Pirate Hat')).toBeInTheDocument()

@@ -144,10 +144,20 @@
       "category": "类别",
       "play_mode": "播放模式",
       "rarity": "稀有度",
+      "status": "状态",
       "price": "价格",
       "sales": "销量",
       "sale_status": "销售状态",
       "actions": "操作"
+    },
+    "item_status": {
+      "published": "已发布",
+      "modified": "已修改",
+      "under_review": "审核中",
+      "missing": "缺失",
+      "modified_hint": "更改已保存但尚未提交审核。请使用“发布更改”提交。",
+      "under_review_hint": "更改已提交审核。在获得批准之前，买家看到的仍是上一个已批准版本。",
+      "missing_hint": "此物品的文件未上线，可能无法在世界中正常使用。请使用“发布更改”，由审核团队重新部署。"
     },
     "row_actions": "物品操作",
     "sale_status": {

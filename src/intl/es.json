@@ -144,10 +144,20 @@
       "category": "Categoría",
       "play_mode": "Modo de reproducción",
       "rarity": "Rareza",
+      "status": "Estado",
       "price": "Precio",
       "sales": "Ventas",
       "sale_status": "Estado de venta",
       "actions": "Acciones"
+    },
+    "item_status": {
+      "published": "Publicado",
+      "modified": "Modificado",
+      "under_review": "En revisión",
+      "missing": "Faltante",
+      "modified_hint": "Cambios guardados pero aún no enviados a revisión. Usa Publicar cambios para enviarlos.",
+      "under_review_hint": "Cambios enviados a revisión. Los compradores reciben la última versión aprobada hasta que se aprueben.",
+      "missing_hint": "Los archivos de este ítem no están publicados, por lo que puede no funcionar en el mundo. Usa Publicar cambios para que el equipo de curaduría lo vuelva a desplegar."
     },
     "row_actions": "Acciones del ítem",
     "sale_status": {

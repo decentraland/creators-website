@@ -13,6 +13,7 @@ import { ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
 import { ItemType, getItemBodyShapeType, getItemSales, isSmartWearable, type Item } from '~/lib/items'
 import { EmotePlayMode } from '~/lib/itemFactory'
 import { type ItemListing } from '~/lib/listings'
+import { type ItemSyncPill as ItemSyncPillStatus } from '~/lib/itemSync'
 import { type ItemValidation } from '~/hooks/useCollectionValidation'
 import { formatCredits, formatMana } from '~/lib/publishFee'
 import { shopItemUrl } from '~/lib/shop'
@@ -23,6 +24,7 @@ import { BodyShapeIcon, CategoryIcon, PlayModeIcon } from '~/components/ItemIcon
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { RarityPill } from '~/components/RarityPill'
 import { ItemSaleStatus } from '../ItemSaleStatus'
+import { ItemSyncPill } from '../ItemSyncPill'
 import * as S from './ItemListRow.styles'
 
 const EMPTY = '—'
@@ -35,6 +37,12 @@ type Props = {
   withMarket?: boolean
   /** The item's primary listing: `null` when it has none, `undefined` while listings are still loading. */
   listing?: ItemListing | null
+  /** Lay out the Status column; the list shows it only when some row on the page is not plain published. */
+  withStatus?: boolean
+  /** The row's Status pill; `null` while the sync is still unknown. */
+  syncStatus?: ItemSyncPillStatus | null
+  /** Offered on the statuses Publish changes fixes, when the viewer may publish them. */
+  onPublishChanges?: (item: Item) => void
   /** Whether the collection has been approved at least once, so its items can be put on sale. */
   canSell?: boolean
   onPutOnSale?: (item: Item) => void
@@ -61,6 +69,9 @@ export function ItemListRow({
   withPlayMode = false,
   withMarket = false,
   listing,
+  withStatus = false,
+  syncStatus = null,
+  onPublishChanges,
   canSell = false,
   onPutOnSale,
   onEditPrice,
@@ -198,6 +209,7 @@ export function ItemListRow({
       data-testid="item-row"
       data-with-play-mode={withPlayMode || undefined}
       data-with-market={withMarket || undefined}
+      data-with-status={withStatus || undefined}
       data-validation={flagged?.status}
     >
       <S.Thumb>
@@ -300,6 +312,13 @@ export function ItemListRow({
           </S.Cell>
         )}
         <S.Cell data-testid="item-row-rarity">{item.rarity && <RarityPill rarity={item.rarity} />}</S.Cell>
+        {withStatus && (
+          <S.Cell data-testid="item-row-status" data-empty={!syncStatus || undefined}>
+            {syncStatus && (
+              <ItemSyncPill status={syncStatus} onPublishChanges={onPublishChanges && (() => onPublishChanges(item))} />
+            )}
+          </S.Cell>
+        )}
         {withMarket && (
           <>
             <S.Cell

@@ -1,17 +1,12 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { type Entity } from '@dcl/schemas'
 import { fetchEntitiesByPointers } from '~/lib/catalyst'
 import { useCollectionCuration } from '~/hooks/useCuration'
 import { type Collection } from '~/lib/collections'
-import { getItemSyncStatus, mapEntitiesByItemId, type ItemSyncStatus } from '~/lib/itemSync'
+import { getItemSyncStatus, mapEntitiesByItemId, type ItemSync } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
 
-export type ItemSync = {
-  status: ItemSyncStatus
-  /** The deployed entity, when there is one — what "Reset item" restores. */
-  entity?: Entity
-}
+export type { ItemSync }
 
 /**
  * Each item's Catalyst sync status. Only published items have anything deployed, so drafts cost no

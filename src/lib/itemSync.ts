@@ -146,6 +146,38 @@ export function getItemSyncStatus(item: Item, entity: Entity | undefined, contex
   return context.entitiesLoaded ? ItemSyncStatus.UNSYNCED : ItemSyncStatus.LOADING
 }
 
+export type ItemSync = {
+  status: ItemSyncStatus
+  /** The deployed entity, when there is one: what "Reset item" restores. */
+  entity?: Entity
+}
+
+/** What the item row's Status pill says on a collection approved at least once. */
+export enum ItemSyncPill {
+  PUBLISHED = 'published',
+  MODIFIED = 'modified',
+  UNDER_REVIEW = 'under_review',
+  MISSING = 'missing'
+}
+
+/**
+ * Null while the sync is unknown. An approved item with no entity is "missing" (its files never reached the
+ * Catalyst, so it may not work in-world) unless its collection is under review, which is the way it gets redeployed.
+ */
+export function getItemSyncPill(sync: ItemSync | undefined, isCurationPending: boolean): ItemSyncPill | null {
+  switch (sync?.status) {
+    case ItemSyncStatus.SYNCED:
+      return ItemSyncPill.PUBLISHED
+    case ItemSyncStatus.UNDER_REVIEW:
+      return ItemSyncPill.UNDER_REVIEW
+    case ItemSyncStatus.UNSYNCED:
+      if (sync.entity) return ItemSyncPill.MODIFIED
+      return isCurationPending ? ItemSyncPill.UNDER_REVIEW : ItemSyncPill.MISSING
+    default:
+      return null
+  }
+}
+
 /**
  * The item as deployed: name, description, item data and file hashes taken from the entity, so saving it
  * (with the entity's files re-uploaded) puts the builder copy back in sync.
