@@ -267,7 +267,7 @@ const CollectionDetailPage = () => {
       track('Item Validation Details Opened', {
         itemId: item.id,
         status: validation.results.get(item.id)?.status ?? 'idle',
-        source: 'row'
+        trigger: 'row'
       })
     },
     [validation.results]
