@@ -152,7 +152,7 @@ describe('isItemSynced', () => {
 })
 
 describe('getItemSyncStatus', () => {
-  const loaded = { isCurationPending: false, entitiesLoaded: true }
+  const loaded = { isCurationPending: false, curationLoaded: true, entitiesLoaded: true }
 
   it('is synced or unsynced by comparing with the entity', () => {
     expect(getItemSyncStatus(wearable, entityFor(wearable), loaded)).toBe(ItemSyncStatus.SYNCED)
@@ -170,6 +170,13 @@ describe('getItemSyncStatus', () => {
   it('follows the publication flags when nothing is deployed', () => {
     expect(getItemSyncStatus({ ...wearable, isPublished: false }, undefined, loaded)).toBe(ItemSyncStatus.UNPUBLISHED)
     expect(getItemSyncStatus({ ...wearable, isApproved: false }, undefined, loaded)).toBe(ItemSyncStatus.UNDER_REVIEW)
+  })
+
+  it('is loading until the curation request settles, so an edited item never flashes as unsynced first', () => {
+    const context = { ...loaded, curationLoaded: false }
+    expect(getItemSyncStatus({ ...wearable, name: 'x' }, entityFor(wearable), context)).toBe(ItemSyncStatus.LOADING)
+    expect(getItemSyncStatus(wearable, undefined, context)).toBe(ItemSyncStatus.LOADING)
+    expect(getItemSyncStatus({ ...wearable, isPublished: false }, undefined, context)).toBe(ItemSyncStatus.UNPUBLISHED)
   })
 
   it('is unsynced when an approved item has no entity, but loading until the entities arrive', () => {

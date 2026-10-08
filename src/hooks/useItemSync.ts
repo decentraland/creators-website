@@ -37,15 +37,21 @@ export function useItemSyncs(
   // its entity (which would offer Deploy missing entities and Publish changes for nothing).
   const entitiesLoaded = pointers.length === 0 || entitiesQuery.isSuccess
   const curationPending = curationQuery.data?.status === 'pending'
+  // A failed request settles too: the statuses then read as if nothing were pending rather than never resolving.
+  const curationLoaded = !isPublished || curationQuery.isSuccess || curationQuery.isError
 
   return useMemo(() => {
     const byItemId = mapEntitiesByItemId(items, entities ?? [])
     const syncs = new Map<string, ItemSync>()
     for (const item of items) {
       const entity = byItemId.get(item.id)
-      const status = getItemSyncStatus(item, entity, { isCurationPending: curationPending, entitiesLoaded })
+      const status = getItemSyncStatus(item, entity, {
+        isCurationPending: curationPending,
+        curationLoaded,
+        entitiesLoaded
+      })
       syncs.set(item.id, entity ? { status, entity } : { status })
     }
     return syncs
-  }, [items, entities, curationPending, entitiesLoaded])
+  }, [items, entities, curationPending, curationLoaded, entitiesLoaded])
 }

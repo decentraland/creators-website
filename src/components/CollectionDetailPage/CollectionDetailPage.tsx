@@ -245,17 +245,6 @@ const CollectionDetailPage = () => {
       [...syncPills.values()].some(pill => pill !== null && pill !== ItemSyncPill.PUBLISHED),
     [standardCollection, syncPills]
   )
-  const publishChangesFromPill = useCallback(
-    (item: Item) => {
-      track('Item status pill clicked', {
-        collectionId: item.collectionId,
-        itemId: item.id,
-        status: syncPills.get(item.id)
-      })
-      setPushOpen(true)
-    },
-    [syncPills]
-  )
 
   // Drafts check every item; published collections only the items with changes waiting for approval.
   // Small screens are a viewer and check nothing, unless the publish modal is already open: crossing the
@@ -716,7 +705,6 @@ const CollectionDetailPage = () => {
                     listing={withMarket ? listingFor(item) : undefined}
                     withStatus={withStatus}
                     syncStatus={syncPills.get(item.id)}
-                    onPublishChanges={showPushChanges ? publishChangesFromPill : undefined}
                     canSell={isApprovedForSale && item.isPublished && !!item.tokenId}
                     onPutOnSale={isSeller ? setSellingItem : undefined}
                     onEditPrice={

@@ -41,8 +41,6 @@ type Props = {
   withStatus?: boolean
   /** The row's Status pill; `null` while the sync is still unknown. */
   syncStatus?: ItemSyncPillStatus | null
-  /** Offered on the statuses Publish changes fixes, when the viewer may publish them. */
-  onPublishChanges?: (item: Item) => void
   /** Whether the collection has been approved at least once, so its items can be put on sale. */
   canSell?: boolean
   onPutOnSale?: (item: Item) => void
@@ -71,7 +69,6 @@ export function ItemListRow({
   listing,
   withStatus = false,
   syncStatus = null,
-  onPublishChanges,
   canSell = false,
   onPutOnSale,
   onEditPrice,
@@ -337,9 +334,7 @@ export function ItemListRow({
         )}
         {withStatus && (
           <S.Cell data-testid="item-row-status" data-empty={!syncStatus || undefined}>
-            {syncStatus && (
-              <ItemSyncPill status={syncStatus} onPublishChanges={onPublishChanges && (() => onPublishChanges(item))} />
-            )}
+            {syncStatus && <ItemSyncPill status={syncStatus} />}
           </S.Cell>
         )}
       </S.Content>

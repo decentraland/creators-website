@@ -132,16 +132,19 @@ export function isItemSynced(item: Item, entity: Entity): boolean {
 type SyncContext = {
   /** The collection has a curation request the committee has not answered yet. */
   isCurationPending: boolean
+  /** The curation request has settled; until then an edited item can't tell "unsynced" from "under review". */
+  curationLoaded: boolean
   /** The entities request has settled, so a missing entity is really missing rather than still loading. */
   entitiesLoaded: boolean
 }
 
 export function getItemSyncStatus(item: Item, entity: Entity | undefined, context: SyncContext): ItemSyncStatus {
+  if (!item.isPublished) return ItemSyncStatus.UNPUBLISHED
+  if (!context.curationLoaded) return ItemSyncStatus.LOADING
   if (entity) {
     if (isItemSynced(item, entity)) return ItemSyncStatus.SYNCED
     return context.isCurationPending ? ItemSyncStatus.UNDER_REVIEW : ItemSyncStatus.UNSYNCED
   }
-  if (!item.isPublished) return ItemSyncStatus.UNPUBLISHED
   if (!item.isApproved) return ItemSyncStatus.UNDER_REVIEW
   return context.entitiesLoaded ? ItemSyncStatus.UNSYNCED : ItemSyncStatus.LOADING
 }
