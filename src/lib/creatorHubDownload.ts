@@ -76,7 +76,7 @@ let cachedMacArch: MacArch | undefined
 
 /**
  * The Mac's chip from its GPU: the user agent says "Intel" on every Mac and Safari ships no client hints,
- * but Apple Silicon always has an Apple GPU and Intel Macs never do.
+ * but the WebGL renderer names the GPU in Chrome and Firefox.
  */
 export function detectMacArch(): MacArch {
   cachedMacArch ??= readMacArch()
@@ -90,13 +90,21 @@ function readMacArch(): MacArch {
     const renderer = info ? String(gl?.getParameter(info.UNMASKED_RENDERER_WEBGL)) : ''
     // Some browsers cap live WebGL contexts.
     gl?.getExtension('WEBGL_lose_context')?.loseContext()
-    if (/apple/i.test(renderer)) return 'apple_silicon'
-    // NVIDIA and AMD shipped only in Intel-era Macs.
-    if (/intel|amd|radeon|nvidia|geforce|quadro/i.test(renderer)) return 'intel'
-    return 'unknown'
+    return macArchFromRenderer(renderer)
   } catch {
     return 'unknown'
   }
+}
+
+/**
+ * Intel GPUs first: Chrome prefixes every Mac renderer with "ANGLE (Apple, ANGLE Metal Renderer: …)". Only a
+ * named M-series chip proves Apple Silicon; Safari masks every Mac as plain "Apple GPU", which stays unknown.
+ */
+export function macArchFromRenderer(renderer: string): MacArch {
+  // NVIDIA and AMD shipped only in Intel-era Macs.
+  if (/intel|amd|radeon|nvidia|geforce|quadro/i.test(renderer)) return 'intel'
+  if (/\bApple M\d/.test(renderer)) return 'apple_silicon'
+  return 'unknown'
 }
 
 /** The Mac's chip, or null off a Mac (iPads included). */
@@ -106,9 +114,12 @@ export function macArchHint(): MacArch | null {
 
 let pendingRedirect: ReturnType<typeof setTimeout> | undefined
 
-/** Reports `download_started`, then hands the visitor to sites' success page, joined on `anon_user_id`. */
-export function startCreatorHubDownload({ os, arch, href }: CreatorHubDownload): void {
-  if (pendingRedirect) return
+/**
+ * Reports `download_started`, then hands the visitor to sites' success page, joined on `anon_user_id`.
+ * Returns false while an earlier start is still redirecting, so the caller can drop the repeat download.
+ */
+export function startCreatorHubDownload({ os, arch, href }: CreatorHubDownload): boolean {
+  if (pendingRedirect) return false
   const anonUserId = ensureAnonymousId()
   sendOverviewTrack('download_started', {
     download_target: 'creator_hub',
@@ -127,6 +138,7 @@ export function startCreatorHubDownload({ os, arch, href }: CreatorHubDownload):
     pendingRedirect = undefined
     redirectExternal(success.toString())
   }, SUCCESS_REDIRECT_DELAY_MS)
+  return true
 }
 
 /** Drops a pending success redirect, for when the visitor leaves the page first. */

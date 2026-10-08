@@ -127,6 +127,27 @@ describe('overview sender', () => {
     )
   })
 
+  it('stops waiting for analytics.js after a timeout, or when the page is hidden', async () => {
+    vi.useFakeTimers({ now: AT })
+    const { sendOverviewTrack } = await loadSender()
+    sendOverviewTrack('Click', { place: 'Creators Hero' })
+
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' })
+    document.dispatchEvent(new Event('visibilitychange'))
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
+    expect(analytics.sendDirect).toHaveBeenCalledTimes(1)
+
+    idle.run?.()
+    sendOverviewTrack('Section Viewed', { section_viewed: 'Creators Why' })
+    expect(analytics.sendDirect).toHaveBeenCalledTimes(1)
+    vi.advanceTimersByTime(10_000)
+    expect(analytics.sendDirect).toHaveBeenLastCalledWith(
+      SITES_KEY,
+      { type: 'track', event: 'Section Viewed' },
+      expect.objectContaining({ track_deferred: true })
+    )
+  })
+
   it('falls back to the HTTP API for good when analytics.js cannot load', async () => {
     const { sendOverviewPage, sendOverviewTrack } = await loadSender()
     sendOverviewPage('/create')

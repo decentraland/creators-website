@@ -73,6 +73,15 @@ describe('Hero', () => {
     })
   })
 
+  it('drops a repeat click while the first download is still redirecting', () => {
+    release.download = { os: 'Windows', arch: 'amd64', href: 'https://example.com/creator-hub-win-x64.exe' }
+    vi.mocked(startCreatorHubDownload).mockReturnValueOnce(true).mockReturnValueOnce(false)
+    renderHero()
+    const cta = screen.getByTestId('overview-hero-cta')
+    expect(fireEvent.click(cta)).toBe(true)
+    expect(fireEvent.click(cta)).toBe(false)
+  })
+
   it('leaves a modifier click (new tab) to the browser', () => {
     release.download = { os: 'Windows', arch: 'amd64', href: 'https://example.com/creator-hub-win-x64.exe' }
     renderHero()

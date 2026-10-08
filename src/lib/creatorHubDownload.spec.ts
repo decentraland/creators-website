@@ -4,6 +4,7 @@ import { HttpError } from '~/lib/http'
 import {
   cancelCreatorHubRedirect,
   fetchCreatorHubAssets,
+  macArchFromRenderer,
   pickCreatorHubDownload,
   startCreatorHubDownload,
   SUCCESS_REDIRECT_DELAY_MS,
@@ -104,6 +105,27 @@ describe('pickCreatorHubDownload', () => {
   })
 })
 
+describe('macArchFromRenderer', () => {
+  it('names the chip from the renderer string each browser reports', () => {
+    // Chrome prefixes every Mac renderer with "Apple", Intel ones included.
+    expect(
+      macArchFromRenderer('ANGLE (Apple, ANGLE Metal Renderer: Intel(R) Iris(TM) Plus Graphics, Unspecified Version)')
+    ).toBe('intel')
+    expect(macArchFromRenderer('ANGLE (Apple, ANGLE Metal Renderer: AMD Radeon Pro 5500M, Unspecified Version)')).toBe(
+      'intel'
+    )
+    expect(macArchFromRenderer('ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)')).toBe(
+      'apple_silicon'
+    )
+    expect(macArchFromRenderer('Apple M2')).toBe('apple_silicon')
+  })
+
+  it("leaves Safari's masked renderer and an empty one unknown", () => {
+    expect(macArchFromRenderer('Apple GPU')).toBe('unknown')
+    expect(macArchFromRenderer('')).toBe('unknown')
+  })
+})
+
 describe('startCreatorHubDownload', () => {
   const assign = vi.fn()
   beforeEach(() => {
@@ -144,8 +166,8 @@ describe('startCreatorHubDownload', () => {
 
   it('starts one download per pending redirect, so a double click counts once', () => {
     const download = { os: 'Windows', arch: 'amd64', href: 'https://example.com/creator-hub-win-x64.exe' } as const
-    startCreatorHubDownload(download)
-    startCreatorHubDownload(download)
+    expect(startCreatorHubDownload(download)).toBe(true)
+    expect(startCreatorHubDownload(download)).toBe(false)
     vi.advanceTimersByTime(SUCCESS_REDIRECT_DELAY_MS)
     expect(sendOverviewTrack).toHaveBeenCalledTimes(1)
     expect(assign).toHaveBeenCalledTimes(1)

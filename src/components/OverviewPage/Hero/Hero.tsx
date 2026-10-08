@@ -109,7 +109,7 @@ const Hero = () => {
                 trackClick(event)
                 // A modifier click opens the installer elsewhere, so this tab stays put.
                 const modified = event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
-                if (download && !modified) startCreatorHubDownload(download)
+                if (download && !modified && !startCreatorHubDownload(download)) event.preventDefault()
               }}
               data-testid="overview-hero-cta"
               data-place={OverviewSection.HERO}

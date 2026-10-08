@@ -17,6 +17,9 @@ let sites: Analytics | undefined
 let state: 'idle' | 'loading' | 'ready' | 'failed' = 'idle'
 let queue: Queued[] = []
 
+// analytics-next's settings fetch has no timeout; past this, the queue stops waiting for it.
+const LOAD_TIMEOUT_MS = 10_000
+
 // `track_*` mirror sites' observability fields: `track_deferred` marks a call that did not go through
 // analytics.js the moment it was made.
 function deliver({ call, props, calledAt }: Queued, deferred: boolean): void {
@@ -30,6 +33,11 @@ function deliver({ call, props, calledAt }: Queued, deferred: boolean): void {
   else sendDirect(writeKey(), call, fields)
 }
 
+// `pagehide` is unreliable on mobile, where a backgrounded tab is often killed without it.
+function flushIfHidden(): void {
+  if (document.visibilityState === 'hidden') flush()
+}
+
 function flush(): void {
   const pending = queue
   queue = []
@@ -40,7 +48,13 @@ function load(): void {
   state = 'loading'
   // A visitor who leaves before analytics.js is ready still gets counted, over the unload-safe transport.
   window.addEventListener('pagehide', flush)
+  document.addEventListener('visibilitychange', flushIfHidden)
   afterLoadIdle(() => {
+    const timeout = setTimeout(() => {
+      if (state !== 'loading') return
+      state = 'failed'
+      flush()
+    }, LOAD_TIMEOUT_MS)
     void import('@segment/analytics-next')
       .then(({ AnalyticsBrowser }) => {
         const cdnURL = resolveAnalyticsUrl(config.get('SEGMENT_ANALYTICS_URL', ''))?.origin
@@ -58,14 +72,17 @@ function load(): void {
         return browser
       })
       .then(([analytics]) => {
+        // Also after a timeout: a late instance still serves every later call.
         sites = analytics
         state = 'ready'
       })
       .catch(() => {
-        state = 'failed'
+        if (state === 'loading') state = 'failed'
       })
       .finally(() => {
+        clearTimeout(timeout)
         window.removeEventListener('pagehide', flush)
+        document.removeEventListener('visibilitychange', flushIfHidden)
         flush()
       })
   })
