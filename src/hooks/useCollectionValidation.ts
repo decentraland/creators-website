@@ -82,11 +82,11 @@ const EMPTY: Item[] = []
 export function useRerunItemValidation() {
   const rerun = useRerunValidation()
   return useCallback(
-    async (item: Item, source: 'details' | 'publish', previousStatus: ValidationStatus) => {
+    async (item: Item, trigger: 'details' | 'publish' | 'push_changes', previousStatus: ValidationStatus) => {
       const issues = await rerun(itemValidationKeys(item))
       track('Item Validation Rerun', {
         itemId: item.id,
-        source,
+        trigger,
         previousStatus,
         newStatus: getValidationStatus(issues, false)
       })

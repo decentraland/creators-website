@@ -144,6 +144,12 @@ describe('Hero', () => {
     expect(screen.queryByTestId('overview-hero-video')).not.toBeInTheDocument()
   })
 
+  it('hides the poster instead of a broken image when it fails to load', () => {
+    renderHero()
+    fireEvent.error(screen.getByTestId('overview-hero-poster'))
+    expect(screen.queryByTestId('overview-hero-poster')).not.toBeInTheDocument()
+  })
+
   it('keeps visitors who prefer reduced motion on the static poster', async () => {
     viewport.reducedMotion = true
     renderHero()

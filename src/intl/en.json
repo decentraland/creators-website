@@ -305,6 +305,9 @@
     },
     "review_notice": {
       "rejected": "The curation committee rejected the latest version of this collection. Update your items and send them for review again."
+    },
+    "push_blocker": {
+      "has_invalid_items": "Fix {count, plural, one {# item} other {# items}} marked in red before sending for review."
     }
   },
   "publish_collection_modal": {
@@ -1412,15 +1415,18 @@
     "issues": {
       "errors_blocking": {
         "title": "Some items need your attention",
-        "intro": "We found a few issues that need to be resolved before you can publish your collection. Fix them and try publishing again."
+        "intro": "We found a few issues that need to be resolved before you can publish your collection. Fix them and try publishing again.",
+        "intro_push_changes": "We found a few issues that need to be resolved before you can send your collection for review. Fix them and try again."
       },
       "errors": {
         "title": "Some items have issues",
-        "intro": "We found a few issues that could get your items rejected during curation review. We recommend fixing them first, but you can still continue publishing."
+        "intro": "We found a few issues that could get your items rejected during curation review. We recommend fixing them first, but you can still continue publishing.",
+        "intro_push_changes": "We found a few issues that could get your items rejected during curation review. We recommend fixing them first, but you can still send them for review."
       },
       "warnings": {
         "title": "A few things to review",
-        "intro": "We found a few suggestions that could help improve your items. You can review them now or continue publishing."
+        "intro": "We found a few suggestions that could help improve your items. You can review them now or continue publishing.",
+        "intro_push_changes": "We found a few suggestions that could help improve your items. You can review them now or send them for review."
       },
       "back": "Back to collection",
       "continue": "Continue anyway"

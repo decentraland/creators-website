@@ -11,12 +11,14 @@ import { hasErrors as anyErrors, type ValidationIssue } from '~/lib/validation'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { ItemValidationCard } from '~/components/ValidationBadge'
+import { type ValidationFlow } from './ValidationGate'
 import * as S from './ValidationIssuesView.styles'
 
 export type ItemCheck = { item: Item; issues: ValidationIssue[] }
 
 type Props = {
   checks: ItemCheck[]
+  flow: ValidationFlow
   blockOnErrors: boolean
   onRerun: (check: ItemCheck) => Promise<unknown>
   onBack: () => void
@@ -24,7 +26,7 @@ type Props = {
 }
 
 /** The items whose checks found something, before the publish wizard; copy and footer follow the current results. */
-export function ValidationIssuesView({ checks, blockOnErrors, onRerun, onBack, onContinue }: Props) {
+export function ValidationIssuesView({ checks, flow, blockOnErrors, onRerun, onBack, onContinue }: Props) {
   const { t } = useTranslation()
   const hasErrors = useMemo(() => checks.some(check => anyErrors(check.issues)), [checks])
   const variant = hasErrors ? (blockOnErrors ? 'errors_blocking' : 'errors') : 'warnings'
@@ -48,7 +50,9 @@ export function ValidationIssuesView({ checks, blockOnErrors, onRerun, onBack, o
             {t(`item_validation.issues.${variant}.title`)}
           </S.Title>
         </S.Header>
-        <S.Intro>{t(`item_validation.issues.${variant}.intro`)}</S.Intro>
+        <S.Intro>
+          {t(`item_validation.issues.${variant}.${flow === 'push_changes' ? 'intro_push_changes' : 'intro'}`)}
+        </S.Intro>
         <S.List>
           {checks.map(check => {
             const thumbnailHash = check.item.contents[check.item.thumbnail]
