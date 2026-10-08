@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { config } from '~/config'
+import { useAfterLoadIdle } from '~/hooks/useAfterLoadIdle'
 import { getAnonymousId, onAnalyticsReady } from '~/lib/analytics'
 import { useWallet } from '~/store/wallet'
 
@@ -52,6 +53,8 @@ export const Intercom = () => {
   const [anonymousId, setAnonymousId] = useState<string>()
   const { pathname } = useLocation()
   const isRaised = RAISED_PATHS.some(path => pathname.startsWith(path))
+  // The widget is ~300KB of third-party script nobody needs during the first paint.
+  const idle = useAfterLoadIdle()
 
   useEffect(() => {
     // The id only exists once analytics.js has loaded; it never changes afterwards.
@@ -69,7 +72,7 @@ export const Intercom = () => {
   }, [address, providerType, anonymousId, isRaised])
 
   useEffect(() => {
-    if (!appId) return
+    if (!appId || !idle) return
     let cancelled = false
     void injectWidget(appId)
       .then(() => {
@@ -82,7 +85,7 @@ export const Intercom = () => {
     return () => {
       cancelled = true
     }
-  }, [appId, data])
+  }, [appId, data, idle])
 
   useEffect(() => {
     return () => {

@@ -2,6 +2,7 @@ import { ChevronRight as ChevronRightIcon } from '@mui/icons-material'
 import { useLatestBlogPosts } from '~/hooks/useLatestBlogPosts'
 import { useTranslation } from '~/intl'
 import { blogUrl } from '~/lib/blog'
+import { contentfulImage } from '~/lib/contentfulImage'
 import { OverviewSection, trackClick } from '~/lib/overviewAnalytics'
 import { formatLongDate } from '~/lib/time'
 import { useLocale } from '~/store/locale'
@@ -31,7 +32,9 @@ const FromTheBlog = () => {
               data-title={post.title}
               onClick={trackClick}
             >
-              <S.PostImage>{post.imageUrl && <img src={post.imageUrl} alt="" loading="lazy" />}</S.PostImage>
+              <S.PostImage>
+                {post.imageUrl && <img src={contentfulImage(post.imageUrl, { width: 380 })} alt="" loading="lazy" />}
+              </S.PostImage>
               <S.PostInfo>
                 <S.PostMeta>
                   {post.categoryTitle && <S.PostCategory>{post.categoryTitle}</S.PostCategory>}

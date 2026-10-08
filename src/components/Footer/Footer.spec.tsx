@@ -1,9 +1,12 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TranslationProvider } from '~/intl'
 import { useLocale } from '~/store/locale'
 import { Footer } from './Footer'
+
+const viewport = vi.hoisted(() => ({ near: true }))
+vi.mock('react-intersection-observer', () => ({ useInView: () => ({ ref: vi.fn(), inView: viewport.near }) }))
 
 function renderFooter() {
   return render(
@@ -14,6 +17,7 @@ function renderFooter() {
 }
 
 beforeEach(() => {
+  viewport.near = true
   localStorage.clear()
   useLocale.setState({ locale: 'en' })
 })
@@ -64,5 +68,20 @@ describe('Footer', () => {
     const frame = screen.getByTestId('footer-newsletter-frame')
     expect(frame).toHaveAttribute('sandbox')
     expect(frame.getAttribute('sandbox')).not.toContain('allow-top-navigation')
+  })
+
+  it('loads the newsletter embed only once the visitor nears the footer', async () => {
+    viewport.near = false
+    const { rerender } = renderFooter()
+    const frame = screen.getByTestId('footer-newsletter-frame')
+    expect(frame).not.toHaveAttribute('src')
+
+    viewport.near = true
+    rerender(
+      <TranslationProvider>
+        <Footer />
+      </TranslationProvider>
+    )
+    await waitFor(() => expect(frame).toHaveAttribute('src', expect.stringContaining('embeds.beehiiv.com')))
   })
 })

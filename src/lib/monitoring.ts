@@ -8,6 +8,7 @@
 import * as Sentry from '@sentry/react'
 import { config } from '~/config'
 import { currentAddress } from '~/lib/currentAddress'
+import { afterLoadIdle } from '~/lib/idle'
 
 export type ErrorContext = Record<string, unknown>
 
@@ -166,6 +167,23 @@ export function sentryForwarder(error: unknown, context: ErrorContext): void {
 
 let initialized = false
 
+// Replays draw on the quota of the shared project, so the rates match the legacy builder's: 1% of sessions
+// recorded, 1% buffered in case of an error. Only that 2% downloads the replay bundle at all, so inside it the
+// SDK's own rates are scaled back up to land on the same overall shares.
+const REPLAY_SESSION_RATE = 0.01
+const REPLAY_ON_ERROR_RATE = 0.01
+const REPLAY_LOAD_RATE = REPLAY_SESSION_RATE + REPLAY_ON_ERROR_RATE
+
+/** Fetches replay from Sentry's CDN once the page is idle, so it never weighs on the first load. */
+function loadReplay(): void {
+  afterLoadIdle(() => {
+    Sentry.lazyLoadIntegration('replayIntegration')
+      .then(replayIntegration => Sentry.addIntegration(replayIntegration()))
+      // A blocked CDN only costs the recording; it is not an app failure worth reporting.
+      .catch(() => undefined)
+  })
+}
+
 /** Local hosts share dev.json's config, so without this guard local runs would report to the dev DSN. */
 export function isLocalhost(hostname: string = typeof location !== 'undefined' ? location.hostname : ''): boolean {
   return (
@@ -197,13 +215,10 @@ export function initSentry(): void {
     // Baked in by vite.config, which uploads the source maps under this exact string — a release name
     // that doesn't match byte for byte means no map is ever applied and every stack stays minified.
     release: __SENTRY_RELEASE__,
-    // Replay defaults mask every text node and block all media, so a recording never carries what
-    // the creator typed or uploaded — only the layout and the clicks that led to the failure.
-    integrations: [Sentry.browserTracingIntegration(), Sentry.replayIntegration()],
+    integrations: [Sentry.browserTracingIntegration()],
     tracesSampleRate: 0.01,
-    // Replays draw on the quota of the shared project, so the rates match the legacy builder's.
-    replaysSessionSampleRate: 0.01,
-    replaysOnErrorSampleRate: 0.01,
+    replaysSessionSampleRate: REPLAY_SESSION_RATE / REPLAY_LOAD_RATE,
+    replaysOnErrorSampleRate: 1,
     sendDefaultPii: false,
     // Expected user actions, not bugs.
     ignoreErrors: [/user rejected/i, /user denied/i, 'ResizeObserver loop limit exceeded'],
@@ -213,6 +228,9 @@ export function initSentry(): void {
   })
   setMonitoringUser(safeAddress())
   setErrorForwarder(sentryForwarder)
+  // Replay defaults mask every text node and block all media, so a recording never carries what
+  // the creator typed or uploaded — only the layout and the clicks that led to the failure.
+  if (Math.random() < REPLAY_LOAD_RATE) loadReplay()
 }
 
 /** Attach/detach the wallet as the Sentry user (the address is public). Call on sign-in / disconnect. */

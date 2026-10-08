@@ -24,7 +24,11 @@ type Media = { url: string; width: number; height: number }
 export const heroData = {
   words: ['wearables', 'emotes', 'worlds', 'experiences', 'scenes', 'games'] as const,
   landscape: {
-    poster: { url: `${CONTENTFUL_IMAGES}/3fZB29mbYNJdp7sv1y2SJ2/108e55d6d3e23cd11e7d75563d81caf5/hero.webp` },
+    poster: {
+      url: `${CONTENTFUL_IMAGES}/3fZB29mbYNJdp7sv1y2SJ2/108e55d6d3e23cd11e7d75563d81caf5/hero.webp`,
+      width: 960,
+      height: 540
+    } satisfies Media,
     video: {
       url: `${CONTENTFUL_VIDEOS}/5ELJfyKfvgJMlWi3QXzyt7/28d4d5202e965c08eabc3f9efcf329ea/hero-desktop.mp4`,
       width: 960,
@@ -32,9 +36,8 @@ export const heroData = {
     } satisfies Media
   },
   portrait: {
-    poster: { url: `${CONTENTFUL_IMAGES}/1nUkaxckVENfmyQduvC9Rm/9304ddbd82bba15c44ea698be0fadfa8/hero-mobile.webp` },
-    video: {
-      url: `${CONTENTFUL_VIDEOS}/35QAhVRDvfhcDjRbCquYKT/459f381b4445fb5b44b140b2fc4ff80a/hero_mobile.mp4`,
+    poster: {
+      url: `${CONTENTFUL_IMAGES}/1nUkaxckVENfmyQduvC9Rm/9304ddbd82bba15c44ea698be0fadfa8/hero-mobile.webp`,
       width: 195,
       height: 330
     } satisfies Media
@@ -43,7 +46,7 @@ export const heroData = {
 
 export type WhyCard = {
   id: 'join' | 'create' | 'benefit'
-  image: string
+  image: Media
   url: string
   gradient: 'orchid' | 'apricot' | 'raspberry'
 }
@@ -51,19 +54,31 @@ export type WhyCard = {
 export const whyCards: WhyCard[] = [
   {
     id: 'join',
-    image: `${CONTENTFUL_IMAGES}/2l0VUCaHXFG7NwltyZ1nWA/a6e18252e09a9916e8d735f098ef452a/Image_1.png`,
+    image: {
+      url: `${CONTENTFUL_IMAGES}/2l0VUCaHXFG7NwltyZ1nWA/a6e18252e09a9916e8d735f098ef452a/Image_1.png`,
+      width: 880,
+      height: 466
+    },
     url: discordUrl,
     gradient: 'orchid'
   },
   {
     id: 'create',
-    image: `${CONTENTFUL_IMAGES}/77yzgLkg2oQ7GAZLPtEAwY/64a8d2741a6e3f1f90b15636c4d37638/Image_2.png`,
+    image: {
+      url: `${CONTENTFUL_IMAGES}/77yzgLkg2oQ7GAZLPtEAwY/64a8d2741a6e3f1f90b15636c4d37638/Image_2.png`,
+      width: 880,
+      height: 466
+    },
     url: CREATOR_DOCS_URL,
     gradient: 'apricot'
   },
   {
     id: 'benefit',
-    image: `${CONTENTFUL_IMAGES}/3iCBvRrzEtgD7LT8PYxMZn/2f5fba37f044d426d24e25ce33dc1f9c/Image_3.png`,
+    image: {
+      url: `${CONTENTFUL_IMAGES}/3iCBvRrzEtgD7LT8PYxMZn/2f5fba37f044d426d24e25ce33dc1f9c/Image_3.png`,
+      width: 880,
+      height: 476
+    },
     url: `${docsUrl}/creator/wearables-and-emotes/wearables/creating-wearables`,
     gradient: 'raspberry'
   }
