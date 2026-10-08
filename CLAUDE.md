@@ -110,3 +110,14 @@ Every feature plan and spec includes an analytics section before implementation 
 ### Responsive (standing requirement)
 
 Every feature or edit must work on mobile as well as desktop — responsive behavior is part of "done" for any UI change. Verify at a narrow viewport (≤ 768px, the primary mobile breakpoint) as well as desktop; keep touch targets ~44px; hover-only affordances need a tap/focus equivalent; anchored overlays must not spill off-screen on narrow widths.
+
+### Performance and SEO (standing requirement)
+
+The overview at `/` is the public, indexed landing page (`decentraland.org/create`) and must stay fast on mobile; its targets, and how the current setup meets them, are in `design/OVERVIEW_SPEC.md` "Performance and SEO" (mobile and desktop performance ≥ 0.85, CLS < 0.1, SEO ≥ 0.92 on `.org`). Any change that touches the overview, the shell (navbar, footer, `App.tsx`, `main.tsx`) or `index.html` keeps them:
+
+- **Keep the first load lean.** Code reachable from `main.tsx` without a `React.lazy` boundary ships to every visitor of the landing page. Don't add editor, publishing, chain or zip code (`ethers`, `decentraland-transactions`, `jszip`, `@dcl/schemas`, …) to that graph; put it behind a lazy route or a dynamic `import()`. The navbar still pulls some in today; moving it out is the open follow-up, so never add more.
+- **Defer what isn't the first paint.** Third-party widgets, embeds, extra monitoring and decorative media load through `lib/idle` (`afterLoadIdle` / `useAfterLoadIdle`) or on approach (`useInView`), never at startup.
+- **Images:** Contentful images go through `lib/contentfulImage` (resized WebP); every `<img>` whose box depends on the image gets `width`/`height`; below-the-fold images are `loading="lazy"`. The LCP image is preloaded in `index.html` for its route only, kept in sync with the code by a spec.
+- **No layout shift:** reserve space for anything that appears late (images, async rails, gated UI), and keep `"Inter Fallback"` in the font stack.
+- **SEO:** keep the static title, description, canonical, Open Graph/Twitter tags and JSON-LD in `index.html`; `lib/seo` points canonical/`og:url` at the production URL per route. Link text is descriptive (never a bare "See more"), images that convey content get `alt`, and structured data that mirrors copy is built from `t()`.
+- **Measure, don't guess.** For a change that can affect load, compare Lighthouse (mobile and desktop) of `main` vs the branch, both served locally with `npm run build` + `npx vite preview`. Don't judge from `.zone` (served with `noindex`, which caps SEO) or from Vercel previews (behind Vercel auth, so Lighthouse scores the login page).
