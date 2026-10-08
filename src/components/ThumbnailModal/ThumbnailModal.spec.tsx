@@ -42,4 +42,19 @@ describe('ThumbnailModal', () => {
     expect(patch.thumbnail).toBe(PNG_DATA_URL)
     expect(patch.contents[THUMBNAIL_PATH]).toBeInstanceOf(Blob)
   })
+
+  it('shows a spinner on the upload button and keeps the modal inert until the save settles', async () => {
+    const { onSave } = renderModal()
+
+    await userEvent.upload(
+      screen.getByTestId('thumbnail-file-input'),
+      new File(['png'], 'thumb.png', { type: 'image/png' })
+    )
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled())
+    const upload = screen.getByTestId('thumbnail-upload')
+    expect(upload).toHaveAttribute('aria-busy', 'true')
+    expect(upload).toBeDisabled()
+    expect(screen.getByTestId('thumbnail-capture')).toBeDisabled()
+  })
 })

@@ -73,7 +73,9 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
   const [controller, setController] = useState<IPreviewController | null>(null)
   const [isLoaded, setLoaded] = useState(false)
   const isReady = controller !== null && isLoaded
-  const [isSaving, setSaving] = useState(false)
+  // Which button started the save, so its spinner shows while the caller's save settles.
+  const [saving, setSaving] = useState<'capture' | 'upload' | null>(null)
+  const isSaving = saving !== null
   const [error, setError] = useState<string | null>(null)
 
   const isEmote = type === ItemType.EMOTE
@@ -100,7 +102,7 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
 
   function handleCapture() {
     if (!controller) return
-    setSaving(true)
+    setSaving('capture')
     setError(null)
     void (async () => {
       try {
@@ -109,7 +111,7 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
         onSave(thumbnailPatchFromDataURL(contents!, screenshot))
       } catch (err) {
         setError(errorText(err))
-        setSaving(false)
+        setSaving(null)
       }
     })()
   }
@@ -117,7 +119,7 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
   function handleUpload(files: FileList | null) {
     const file = files?.[0]
     if (!file) return
-    setSaving(true)
+    setSaving('upload')
     setError(null)
     void (async () => {
       try {
@@ -125,7 +127,7 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
         onSave(await thumbnailPatchFromFile(contents ?? {}, file))
       } catch (err) {
         setError(errorText(err))
-        setSaving(false)
+        setSaving(null)
       }
     })()
   }
@@ -209,6 +211,7 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
                 variant="secondary"
                 data-testid="thumbnail-upload"
                 disabled={isSaving}
+                loading={saving === 'upload'}
                 onClick={() => fileInputRef.current?.click()}
               >
                 {t('thumbnail_modal.upload_picture')}
@@ -220,6 +223,7 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
             variant="primary"
             data-testid="thumbnail-capture"
             disabled={!isReady || isSaving}
+            loading={saving === 'capture'}
             onClick={handleCapture}
           >
             {t('thumbnail_modal.capture')}
