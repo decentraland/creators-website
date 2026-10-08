@@ -6,37 +6,48 @@ export { Spinner }
 
 const card = theme.media.noActions
 
-// Shared by the header and the rows so they stay aligned; the header's "Item" spans the first two columns.
-// The name gets twice the room of the other fields.
-const columns = (count: number) =>
-  `grid-template-columns: 74px minmax(0, 1.5fr) repeat(${count - 1}, minmax(0, 1fr)) minmax(56px, auto);`
+// Shared by the header and the rows so they stay aligned: every track depends on the row width alone, never on
+// its content, so each row resolves the same widths. The name gets twice the room of the other fields; the pill
+// columns keep a floor so their nowrap pills never spill into the next cell.
+const FIELD = 'minmax(0, 1fr)'
+const SALE_STATUS = 'minmax(124px, 1fr)'
+const STATUS = 'minmax(136px, 1fr)'
+const columns = ({ playMode = false, market = false, status = false } = {}) =>
+  `grid-template-columns: 74px minmax(0, 1.5fr) ${[
+    FIELD,
+    FIELD,
+    ...(playMode ? [FIELD] : []),
+    FIELD,
+    ...(market ? [FIELD, FIELD, SALE_STATUS] : []),
+    ...(status ? [STATUS] : [])
+  ].join(' ')} minmax(56px, auto);`
 
 export const itemListColumns = `
   display: grid;
-  ${columns(4)}
+  ${columns()}
   align-items: center;
   gap: 16px;
 
   &[data-with-play-mode] {
-    ${columns(5)}
+    ${columns({ playMode: true })}
   }
   &[data-with-market] {
-    ${columns(7)}
+    ${columns({ market: true })}
   }
   &[data-with-play-mode][data-with-market] {
-    ${columns(8)}
+    ${columns({ playMode: true, market: true })}
   }
   &[data-with-status] {
-    ${columns(5)}
+    ${columns({ status: true })}
   }
   &[data-with-play-mode][data-with-status] {
-    ${columns(6)}
+    ${columns({ playMode: true, status: true })}
   }
   &[data-with-market][data-with-status] {
-    ${columns(8)}
+    ${columns({ market: true, status: true })}
   }
   &[data-with-play-mode][data-with-market][data-with-status] {
-    ${columns(9)}
+    ${columns({ playMode: true, market: true, status: true })}
   }
 `
 
