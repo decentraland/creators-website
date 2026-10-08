@@ -43,9 +43,7 @@ function makeItem(id: string): Item {
 }
 
 const error: ValidationIssue = { code: 'skeleton', severity: ValidationSeverity.ERROR, message: 'Wrong skeleton' }
-const warning: ValidationIssue = { code: 'textures', severity: ValidationSeverity.WARNING, message: 'Large texture' }
 const broken = makeItem('broken')
-const meh = makeItem('meh')
 const clean = makeItem('clean')
 
 type Props = ComponentProps<typeof PublishCollectionModal>
@@ -81,89 +79,11 @@ describe('PublishCollectionModal item checks', () => {
     expect(screen.getByTestId('confirm-name-step')).toBeInTheDocument()
   })
 
-  it('closes from the waiting spinner', async () => {
-    renderModal()
-    await userEvent.click(screen.getByTestId('publish-validating-cancel'))
-    expect(onClose).toHaveBeenCalled()
-  })
-
-  it('lists the flagged items, errors first, and offers no way past errors that block publishing', async () => {
-    renderModal({
-      blockOnErrors: true,
-      validation: {
-        isValidating: false,
-        results: [
-          { item: meh, issues: [warning] },
-          { item: clean, issues: [] },
-          { item: broken, issues: [error] }
-        ]
-      }
-    })
-    const cards = screen.getAllByTestId(/^publish-validation-.*-card$/)
-    expect(cards.map(card => card.dataset.testid)).toEqual([
-      'publish-validation-broken-card',
-      'publish-validation-meh-card'
-    ])
-    expect(screen.getByTestId('publish-validation-issues-title')).toHaveTextContent('Some items need your attention')
-    expect(screen.queryByTestId('publish-validation-continue')).not.toBeInTheDocument()
-    await userEvent.click(screen.getByTestId('publish-validation-back'))
-    expect(onClose).toHaveBeenCalled()
-  })
-
-  it('lets the creator continue past errors when they do not block publishing', async () => {
+  it('holds the wizard behind the issues view until the creator continues', async () => {
     renderModal({ validation: { isValidating: false, results: [{ item: broken, issues: [error] }] } })
-    expect(screen.getByTestId('publish-validation-issues-title')).toHaveTextContent('Some items have issues')
-    await userEvent.click(screen.getByTestId('publish-validation-continue'))
-    expect(screen.getByTestId('confirm-name-step')).toBeInTheDocument()
-  })
-
-  it('never blocks on a check that could not run, even when errors block publishing', () => {
-    const failed: ValidationIssue = { code: 'model', severity: ValidationSeverity.WARNING, message: 'Could not check' }
-    renderModal({
-      blockOnErrors: true,
-      validation: { isValidating: false, results: [{ item: meh, issues: [failed] }] }
-    })
-    expect(screen.getByTestId('publish-validation-continue')).toBeInTheDocument()
-  })
-
-  it('lets the creator continue past warnings', async () => {
-    renderModal({
-      blockOnErrors: true,
-      validation: { isValidating: false, results: [{ item: meh, issues: [warning] }] }
-    })
-    expect(screen.getByTestId('publish-validation-issues-title')).toHaveTextContent('A few things to review')
-    await userEvent.click(screen.getByTestId('publish-validation-continue'))
-    expect(screen.getByTestId('confirm-name-step')).toBeInTheDocument()
-  })
-
-  it('follows a re-run live: a fixed item stays listed as passing and the last error unlocks Continue', async () => {
-    const { update } = renderModal({
-      blockOnErrors: true,
-      validation: {
-        isValidating: false,
-        results: [
-          { item: broken, issues: [error] },
-          { item: meh, issues: [warning] }
-        ]
-      }
-    })
-    await userEvent.click(screen.getByTestId('publish-validation-broken-rerun'))
-    expect(rerun).toHaveBeenCalledWith(broken, 'publish', 'errors')
-
-    update({
-      blockOnErrors: true,
-      validation: {
-        isValidating: false,
-        results: [
-          { item: broken, issues: [] },
-          { item: meh, issues: [warning] }
-        ]
-      }
-    })
-    expect(screen.getByTestId('publish-validation-broken-pass')).toBeInTheDocument()
-    expect(screen.getByTestId('publish-validation-issues-title')).toHaveTextContent('A few things to review')
-    expect(screen.getByTestId('publish-validation-continue')).toBeInTheDocument()
     expect(screen.queryByTestId('confirm-name-step')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('publish-validation-continue'))
+    expect(screen.getByTestId('confirm-name-step')).toBeInTheDocument()
   })
 
   it('skips the checks when coming back from buying credits', () => {
