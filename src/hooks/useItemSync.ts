@@ -6,8 +6,6 @@ import { type Collection } from '~/lib/collections'
 import { getItemSyncStatus, mapEntitiesByItemId, type ItemSync } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
 
-export type { ItemSync }
-
 /**
  * Each item's Catalyst sync status. Only published items have anything deployed, so drafts cost no
  * request; the collection's pending curation turns "unsynced" into "under review".

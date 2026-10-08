@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { TranslationProvider } from '~/intl'
 import { ItemType, type Item } from '~/lib/items'
 import { type ItemListing } from '~/lib/listings'
-import { ItemSyncPill } from '~/lib/itemSync'
+import { ItemRowStatus } from '~/lib/itemSync'
 import { ValidationSeverity } from '~/lib/validation'
 import { ItemListRow } from './ItemListRow'
 
@@ -54,22 +54,22 @@ const emote: Partial<Item> = {
 
 describe('ItemListRow', () => {
   it('has no Status column until the page asks for it', () => {
-    renderRow({}, { syncStatus: ItemSyncPill.MODIFIED })
+    renderRow({}, { syncStatus: ItemRowStatus.MODIFIED })
     expect(screen.queryByTestId('item-row-status')).not.toBeInTheDocument()
   })
 
   it('explains a modified item in an (i) tooltip inside the pill', async () => {
-    renderRow({}, { withStatus: true, syncStatus: ItemSyncPill.MODIFIED })
+    renderRow({}, { withStatus: true, syncStatus: ItemRowStatus.MODIFIED })
     const pill = screen.getByTestId('item-sync-status')
     expect(pill).toHaveAttribute('data-status', 'modified')
     expect(pill).toHaveTextContent('Modified')
 
     await userEvent.hover(screen.getByTestId('item-sync-status-hint-trigger'))
-    expect(await screen.findByTestId('item-sync-status-hint')).toHaveTextContent(/Publish changes/)
+    expect(await screen.findByTestId('item-sync-status-hint')).toHaveTextContent(/send them for review/i)
   })
 
   it('flags an item whose files are not live, with the in-world warning in its tooltip', async () => {
-    renderRow({}, { withStatus: true, syncStatus: ItemSyncPill.MISSING })
+    renderRow({}, { withStatus: true, syncStatus: ItemRowStatus.MISSING })
     const pill = screen.getByTestId('item-sync-status')
     expect(pill).toHaveAttribute('data-status', 'missing')
     expect(pill).toHaveTextContent('Not live')
@@ -78,7 +78,7 @@ describe('ItemListRow', () => {
   })
 
   it('shows a plain published pill with nothing to explain, and leaves the cell blank while the sync is unknown', () => {
-    const { unmount } = renderRow({}, { withStatus: true, syncStatus: ItemSyncPill.PUBLISHED })
+    const { unmount } = renderRow({}, { withStatus: true, syncStatus: ItemRowStatus.PUBLISHED })
     expect(screen.getByTestId('item-sync-status')).toHaveTextContent('Published')
     expect(screen.queryByTestId('item-sync-status-hint-trigger')).not.toBeInTheDocument()
     unmount()

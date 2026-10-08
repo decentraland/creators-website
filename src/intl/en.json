@@ -155,9 +155,9 @@
       "modified": "Modified",
       "under_review": "Under review",
       "missing": "Not live",
-      "modified_hint": "Changes saved but not sent to the curation committee yet. Use Publish changes to send them for review.",
+      "modified_hint": "Changes saved but not sent to the curation committee yet. Send them for review to publish them.",
       "under_review_hint": "Changes sent to the curation committee. Buyers get the last approved version until they’re approved.",
-      "missing_hint": "This item’s files aren’t live, so it may not work in-world. Use Publish changes to have the curation committee redeploy it."
+      "missing_hint": "This item’s files aren’t live, so it may not work in-world. Send the collection for review so the curation committee can redeploy it, or get in touch with a curator."
     },
     "row_actions": "Item actions",
     "sale_status": {

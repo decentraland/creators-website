@@ -13,7 +13,7 @@ import { ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
 import { ItemType, getItemBodyShapeType, getItemSales, isSmartWearable, type Item } from '~/lib/items'
 import { EmotePlayMode } from '~/lib/itemFactory'
 import { type ItemListing } from '~/lib/listings'
-import { type ItemSyncPill as ItemSyncPillStatus } from '~/lib/itemSync'
+import { type ItemRowStatus } from '~/lib/itemSync'
 import { type ItemValidation } from '~/hooks/useCollectionValidation'
 import { formatCredits, formatMana } from '~/lib/publishFee'
 import { shopItemUrl } from '~/lib/shop'
@@ -40,7 +40,7 @@ type Props = {
   /** Lay out the Status column; the list shows it only when some row on the page is not plain published. */
   withStatus?: boolean
   /** The row's Status pill; `null` while the sync is still unknown. */
-  syncStatus?: ItemSyncPillStatus | null
+  syncStatus?: ItemRowStatus | null
   /** Whether the collection has been approved at least once, so its items can be put on sale. */
   canSell?: boolean
   onPutOnSale?: (item: Item) => void

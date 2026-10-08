@@ -6,7 +6,6 @@ import { useDraftCollections } from '~/hooks/useCollections'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useMoveItem, useResetItem } from '~/hooks/useItem'
-import { type ItemSync } from '~/hooks/useItemSync'
 import { useDeleteItem } from '~/hooks/usePublishCollection'
 import { copyToClipboard } from '~/lib/clipboard'
 import { FeatureFlag } from '~/lib/featureFlags'
@@ -17,7 +16,7 @@ import {
   isCollectionLocked,
   type Collection
 } from '~/lib/collections'
-import { ItemSyncStatus } from '~/lib/itemSync'
+import { ItemSyncStatus, type ItemSync } from '~/lib/itemSync'
 import { canDeleteItem, canEditItemPrice, canManageItem, type Item } from '~/lib/items'
 import { type Session } from '~/lib/auth'
 import { type ItemListing } from '~/lib/listings'

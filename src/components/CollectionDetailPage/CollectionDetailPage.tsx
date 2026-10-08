@@ -55,7 +55,7 @@ import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { useCollectionValidation, useRerunItemValidation } from '~/hooks/useCollectionValidation'
-import { ItemSyncPill, ItemSyncStatus, getItemSyncPill, hasPendingChanges } from '~/lib/itemSync'
+import { ItemRowStatus, ItemSyncStatus, getItemRowStatus, hasPendingChanges } from '~/lib/itemSync'
 import { canPushChanges } from '~/lib/curation'
 import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
 import { previewCollection } from '~/lib/explorer'
@@ -236,16 +236,16 @@ const CollectionDetailPage = () => {
   // The Status column exists on collections approved at least once, while some row on the page says more than
   // "published": before the first approval the collection pill already tells the whole story.
   const curationPending = curation?.status === 'pending'
-  const syncPills = useMemo(
-    () => new Map(results.map(item => [item.id, getItemSyncPill(syncs.get(item.id), curationPending)])),
+  const rowStatuses = useMemo(
+    () => new Map(results.map(item => [item.id, getItemRowStatus(syncs.get(item.id), curationPending)])),
     [results, syncs, curationPending]
   )
   const withStatus = useMemo(
     () =>
       !!standardCollection &&
       hasBeenApproved(standardCollection) &&
-      [...syncPills.values()].some(pill => pill !== null && pill !== ItemSyncPill.PUBLISHED),
-    [standardCollection, syncPills]
+      [...rowStatuses.values()].some(status => status !== null && status !== ItemRowStatus.PUBLISHED),
+    [standardCollection, rowStatuses]
   )
 
   // Drafts check every item; published collections only the items with changes waiting for approval.
@@ -722,7 +722,7 @@ const CollectionDetailPage = () => {
                     withMarket={withMarket}
                     listing={withMarket ? listingFor(item) : undefined}
                     withStatus={withStatus}
-                    syncStatus={syncPills.get(item.id)}
+                    syncStatus={rowStatuses.get(item.id)}
                     canSell={isApprovedForSale && item.isPublished && !!item.tokenId}
                     onPutOnSale={isSeller ? setSellingItem : undefined}
                     onEditPrice={

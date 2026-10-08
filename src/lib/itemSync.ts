@@ -156,7 +156,7 @@ export type ItemSync = {
 }
 
 /** What the item row's Status pill says on a collection approved at least once. */
-export enum ItemSyncPill {
+export enum ItemRowStatus {
   PUBLISHED = 'published',
   MODIFIED = 'modified',
   UNDER_REVIEW = 'under_review',
@@ -167,15 +167,15 @@ export enum ItemSyncPill {
  * Null while the sync is unknown. An approved item with no entity is "missing" (its files never reached the
  * Catalyst, so it may not work in-world) unless its collection is under review, which is the way it gets redeployed.
  */
-export function getItemSyncPill(sync: ItemSync | undefined, isCurationPending: boolean): ItemSyncPill | null {
+export function getItemRowStatus(sync: ItemSync | undefined, isCurationPending: boolean): ItemRowStatus | null {
   switch (sync?.status) {
     case ItemSyncStatus.SYNCED:
-      return ItemSyncPill.PUBLISHED
+      return ItemRowStatus.PUBLISHED
     case ItemSyncStatus.UNDER_REVIEW:
-      return ItemSyncPill.UNDER_REVIEW
+      return ItemRowStatus.UNDER_REVIEW
     case ItemSyncStatus.UNSYNCED:
-      if (sync.entity) return ItemSyncPill.MODIFIED
-      return isCurationPending ? ItemSyncPill.UNDER_REVIEW : ItemSyncPill.MISSING
+      if (sync.entity) return ItemRowStatus.MODIFIED
+      return isCurationPending ? ItemRowStatus.UNDER_REVIEW : ItemRowStatus.MISSING
     default:
       return null
   }

@@ -326,10 +326,7 @@ export function canEditItemDetails(collection: Collection, item: Item, address: 
   return canManageItem(collection, item, address) && !isCollectionLocked(collection)
 }
 
-/**
- * Only the collection owner may delete an item, and only while the collection is a draft outside the publish
- * lock. Collaborators come from the contract, so a draft has none and the item's creator is the owner too.
- */
+/** Only the collection owner may delete an item, and only while the collection is a draft outside the publish lock. */
 export function canDeleteItem(collection: Collection, address: string | undefined): boolean {
   if (!address || collection.isPublished || isCollectionLocked(collection)) return false
   return collection.owner.toLowerCase() === address.toLowerCase()
