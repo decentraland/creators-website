@@ -619,6 +619,7 @@
       "scene_main_not_code": "scene.json 的 main 指向 {fileName}，但它必须是 JavaScript 包。",
       "emote_duration_too_long": "表情动作最长 {seconds} 秒。",
       "emote_with_mesh": "此表情动作包含虚拟形象网格。请仅导出骨架和动画。",
+      "emote_social_unsupported": "目前不支持社交表情动作。",
       "emote_animations_out_of_sync": "虚拟形象和道具的动画时长必须相同。",
       "missing_external_resources": "模型引用了未包含的文件：{fileNames}。",
       "invalid_model_file": "我们无法加载此 3D 模型。请检查文件后重试。",
@@ -1267,7 +1268,7 @@
       "subtitle": "了解更多关于 Decentraland",
       "title": "常见\n问题",
       "aria_label": "常见问题",
-      "cta": "查看更多",
+      "cta": "查看全部常见问题",
       "items": {
         "what_is": {
           "question": "什么是 Decentraland？",

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { useInView } from 'react-intersection-observer'
+import { useAfterLoadIdle } from '~/hooks/useAfterLoadIdle'
 import { useLocale, LOCALES, type Locale } from '~/store/locale'
 import { useTranslation } from '~/intl'
 import * as S from './Footer.styles'
@@ -69,6 +71,15 @@ const Footer = () => {
   const langRef = useRef<HTMLDivElement>(null)
   const langBtnRef = useRef<HTMLButtonElement>(null)
   const current = LANGUAGE_LABELS[locale] ?? LANGUAGE_LABELS.en
+  // The embed pulls in its own scripts, fonts and bot checks: it only loads when a visitor nears the footer.
+  // Watching starts once the page has settled, since the footer sits by the fold until the sections stream in.
+  const idle = useAfterLoadIdle()
+  const { ref: newsRef, inView: newsNear } = useInView({
+    skip: !idle,
+    triggerOnce: true,
+    rootMargin: '400px 0px',
+    fallbackInView: true
+  })
 
   useEffect(() => {
     if (!langOpen) return
@@ -97,17 +108,16 @@ const Footer = () => {
         <S.Left>
           <S.Wordmark>Decentraland</S.Wordmark>
 
-          <S.News>
+          <S.News ref={newsRef}>
             <S.NewsTitle>{t('footer.newsletterTitle')}</S.NewsTitle>
             <S.NewsFrame
-              src={BEEHIIV_EMBED_URL}
+              src={newsNear ? BEEHIIV_EMBED_URL : undefined}
               // Cross-origin embed: it may run and submit its form, never navigate this page or open unscoped windows.
               sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
               data-testid="footer-newsletter-frame"
               height="65"
               frameBorder="0"
               scrolling="no"
-              loading="lazy"
               title={t('footer.newsletterFrameTitle')}
             />
           </S.News>

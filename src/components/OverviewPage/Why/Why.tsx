@@ -1,4 +1,5 @@
 import { englishMessage, useTranslation } from '~/intl'
+import { contentfulImage } from '~/lib/contentfulImage'
 import { OverviewSection, trackClick } from '~/lib/overviewAnalytics'
 import { AnimatedSection } from '../AnimatedSection'
 import { whyCards } from '../data'
@@ -28,7 +29,13 @@ const Why = () => {
               >
                 <S.CardInner>
                   <S.CardImage>
-                    <img src={card.image} alt="" loading="lazy" />
+                    <img
+                      src={contentfulImage(card.image.url, { width: card.image.width / 2 })}
+                      alt=""
+                      width={card.image.width}
+                      height={card.image.height}
+                      loading="lazy"
+                    />
                   </S.CardImage>
                   <S.CardText>
                     <S.CardTitle>{t(titleKey)}</S.CardTitle>

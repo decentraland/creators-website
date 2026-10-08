@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useTranslation } from '~/intl'
+import { contentfulImage } from '~/lib/contentfulImage'
 import { OverviewSection, trackClick } from '~/lib/overviewAnalytics'
 import discordIcon from '~/assets/overview/discord.svg'
 import { AnimatedSection } from '../AnimatedSection'
@@ -27,7 +28,7 @@ const Connect = () => {
       >
         <S.Quote>&ldquo;{t(`overview.connect.cards.${card.id}`)}&rdquo;</S.Quote>
         <S.Author>
-          <img src={card.image} alt="" loading="lazy" />
+          <img src={contentfulImage(card.image, { width: 40 })} alt="" width={40} height={40} loading="lazy" />
           <S.AuthorName>{card.name}</S.AuthorName>
         </S.Author>
       </S.Card>
