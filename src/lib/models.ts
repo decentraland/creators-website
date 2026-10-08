@@ -68,7 +68,7 @@ export async function loadGltf(url: string, mappings: Record<string, string>): P
   })
 }
 
-function getEmoteMetrics(gltf: GLTF): AnimationMetrics {
+export function getEmoteMetrics(gltf: Pick<GLTF, 'scene' | 'animations'>): AnimationMetrics {
   const { scene, animations } = gltf
   const armatures = scene.children.filter(({ name }) => name.startsWith(ARMATURE_PREFIX))
   const animation = animations[0]
@@ -83,8 +83,12 @@ function getEmoteMetrics(gltf: GLTF): AnimationMetrics {
     throw new ItemFileError('emote_with_mesh')
   }
 
-  const additionalArmatures = armatures.some(({ name }) => name === ARMATURE_OTHER) ? 1 : 0
-  if (!additionalArmatures && propsAnimation && propsAnimation.duration !== animation.duration) {
+  // Social emotes (a second avatar rig) can't be authored here yet: without startAnimation/outcomes
+  // metadata they would publish as broken plain emotes, so they are refused at import.
+  if (armatures.some(({ name }) => name === ARMATURE_OTHER)) {
+    throw new ItemFileError('emote_social_unsupported')
+  }
+  if (propsAnimation && propsAnimation.duration !== animation.duration) {
     throw new ItemFileError('emote_animations_out_of_sync')
   }
 
@@ -99,7 +103,7 @@ function getEmoteMetrics(gltf: GLTF): AnimationMetrics {
     frames,
     fps: animation.duration > 0 ? frames / animation.duration : 0,
     props: armatures.some(({ name }) => name === PROP_ARMATURE_NAME) ? 1 : 0,
-    additionalArmatures
+    additionalArmatures: 0
   }
 }
 

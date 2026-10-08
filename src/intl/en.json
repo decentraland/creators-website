@@ -619,6 +619,7 @@
       "scene_main_not_code": "scene.json points main at {fileName}, but it must be the JavaScript bundle.",
       "emote_duration_too_long": "Emotes can last up to {seconds} seconds.",
       "emote_with_mesh": "This emote includes an avatar mesh. Export only the armature and animation.",
+      "emote_social_unsupported": "Social emotes aren't supported here yet. Use the legacy Builder for this one.",
       "emote_animations_out_of_sync": "The avatar and prop animations must have the same duration.",
       "missing_external_resources": "The model references files that aren't included: {fileNames}.",
       "invalid_model_file": "We couldn't load this 3D model. Check the file and try again.",
