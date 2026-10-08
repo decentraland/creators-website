@@ -113,7 +113,7 @@ Every feature or edit must work on mobile as well as desktop — responsive beha
 
 ### Performance and SEO (standing requirement)
 
-The overview at `/` is the public, indexed landing page (`decentraland.org/create`) and must stay fast on mobile; its targets, and how the current setup meets them, are in `design/OVERVIEW_SPEC.md` "Performance and SEO" (mobile and desktop performance ≥ 0.85, CLS < 0.1, SEO ≥ 0.92 on `.org`). Any change that touches the overview, the shell (navbar, footer, `App.tsx`, `main.tsx`) or `index.html` keeps them:
+The overview at `/` is the public, indexed landing page (`decentraland.org/create`) and must stay fast on mobile. Lighthouse targets: mobile and desktop performance ≥ 0.85, CLS < 0.1, SEO ≥ 0.92 on `.org`. Any change that touches the overview, the shell (navbar, footer, `App.tsx`, `main.tsx`) or `index.html` keeps them:
 
 - **Keep the first load lean.** Code reachable from `main.tsx` without a `React.lazy` boundary ships to every visitor of the landing page. Don't add editor, publishing, chain or zip code (`ethers`, `decentraland-transactions`, `jszip`, `@dcl/schemas`, …) to that graph; put it behind a lazy route or a dynamic `import()`. The navbar still pulls some in today; moving it out is the open follow-up, so never add more.
 - **Defer what isn't the first paint.** Third-party widgets, embeds, extra monitoring and decorative media load through `lib/idle` (`afterLoadIdle` / `useAfterLoadIdle`) or on approach (`useInView`), never at startup.
