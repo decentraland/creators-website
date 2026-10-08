@@ -154,7 +154,7 @@
       "published": "Published",
       "modified": "Modified",
       "under_review": "Under review",
-      "missing": "Missing",
+      "missing": "Not live",
       "modified_hint": "Changes saved but not sent for review yet. Use Publish changes to send them.",
       "under_review_hint": "Changes sent for review. Buyers get the last approved version until they’re approved.",
       "missing_hint": "This item’s files aren’t live, so it may not work in-world. Use Publish changes to have the curation team redeploy it."

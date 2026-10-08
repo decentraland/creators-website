@@ -76,6 +76,7 @@ describe('ItemListRow', () => {
     renderRow({}, { withStatus: true, syncStatus: ItemSyncPill.MISSING })
     const pill = screen.getByTestId('item-sync-status')
     expect(pill).toHaveAttribute('data-status', 'missing')
+    expect(pill).toHaveTextContent('Not live')
     expect(pill.tagName).toBe('SPAN')
     await userEvent.hover(pill)
     expect(await screen.findByTestId('item-sync-status-tooltip')).toHaveTextContent(/may not work in-world/)

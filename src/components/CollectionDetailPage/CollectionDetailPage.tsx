@@ -695,15 +695,15 @@ const CollectionDetailPage = () => {
                     <span data-testid="list-header-play-mode">{t('collection_detail_page.list.play_mode')}</span>
                   )}
                   <span>{t('collection_detail_page.list.rarity')}</span>
-                  {withStatus && (
-                    <span data-testid="list-header-status">{t('collection_detail_page.list.status')}</span>
-                  )}
                   {withMarket && (
                     <>
                       <span data-testid="list-header-price">{t('collection_detail_page.list.price')}</span>
                       <span data-testid="list-header-sales">{t('collection_detail_page.list.sales')}</span>
                       <span data-testid="list-header-sale-status">{t('collection_detail_page.list.sale_status')}</span>
                     </>
+                  )}
+                  {withStatus && (
+                    <span data-testid="list-header-status">{t('collection_detail_page.list.status')}</span>
                   )}
                   <S.ListHeaderActions>{t('collection_detail_page.list.actions')}</S.ListHeaderActions>
                 </S.ListHeader>

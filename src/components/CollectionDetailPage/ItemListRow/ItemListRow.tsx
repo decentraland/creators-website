@@ -312,13 +312,6 @@ export function ItemListRow({
           </S.Cell>
         )}
         <S.Cell data-testid="item-row-rarity">{item.rarity && <RarityPill rarity={item.rarity} />}</S.Cell>
-        {withStatus && (
-          <S.Cell data-testid="item-row-status" data-empty={!syncStatus || undefined}>
-            {syncStatus && (
-              <ItemSyncPill status={syncStatus} onPublishChanges={onPublishChanges && (() => onPublishChanges(item))} />
-            )}
-          </S.Cell>
-        )}
         {withMarket && (
           <>
             <S.Cell
@@ -341,6 +334,13 @@ export function ItemListRow({
               />
             </S.Cell>
           </>
+        )}
+        {withStatus && (
+          <S.Cell data-testid="item-row-status" data-empty={!syncStatus || undefined}>
+            {syncStatus && (
+              <ItemSyncPill status={syncStatus} onPublishChanges={onPublishChanges && (() => onPublishChanges(item))} />
+            )}
+          </S.Cell>
         )}
       </S.Content>
       <S.ActionsCell>{actions}</S.ActionsCell>

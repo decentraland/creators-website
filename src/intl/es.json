@@ -154,7 +154,7 @@
       "published": "Publicado",
       "modified": "Modificado",
       "under_review": "En revisión",
-      "missing": "Faltante",
+      "missing": "No activo",
       "modified_hint": "Cambios guardados pero aún no enviados a revisión. Usa Publicar cambios para enviarlos.",
       "under_review_hint": "Cambios enviados a revisión. Los compradores reciben la última versión aprobada hasta que se aprueben.",
       "missing_hint": "Los archivos de este ítem no están publicados, por lo que puede no funcionar en el mundo. Usa Publicar cambios para que el equipo de curaduría lo vuelva a desplegar."

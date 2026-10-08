@@ -154,7 +154,7 @@
       "published": "已发布",
       "modified": "已修改",
       "under_review": "审核中",
-      "missing": "缺失",
+      "missing": "未上线",
       "modified_hint": "更改已保存但尚未提交审核。请使用“发布更改”提交。",
       "under_review_hint": "更改已提交审核。在获得批准之前，买家看到的仍是上一个已批准版本。",
       "missing_hint": "此物品的文件未上线，可能无法在世界中正常使用。请使用“发布更改”，由审核团队重新部署。"
