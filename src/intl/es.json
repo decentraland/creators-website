@@ -1110,6 +1110,8 @@
       },
       "subtitle": "Descarga el Creator Hub para empezar a construir escenas inmersivas y experiencias interactivas en Decentraland.",
       "download_cta": "Descargar Creator Hub",
+      "also_available": "También disponible en",
+      "download_for": "Descargar para {os}",
       "mobile_docs_cta": "Explora la documentación para creadores",
       "scroll_label": "Ir a la siguiente sección"
     },

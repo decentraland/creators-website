@@ -47,7 +47,8 @@ const CLICK_DIMENSIONS = [
   ['tab', 'tab'],
   ['event', 'event'],
   ['download-target', 'download_target'],
-  ['download-mode', 'download_mode']
+  ['download-mode', 'download_mode'],
+  ['os', 'os']
 ] as const
 
 /** The `Click` payload: the URL's campaign params, then the element's whitelisted `data-*` values. */

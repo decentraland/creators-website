@@ -49,27 +49,37 @@ const isReleaseAsset = (url: string) => {
   }
 }
 
+const findAsset = (assets: Asset[], platform: string) =>
+  assets.find(
+    asset =>
+      asset.name.includes(platform) && /\.(exe|dmg)$/.test(asset.name) && isReleaseAsset(asset.browser_download_url)
+  )?.browser_download_url
+
+function windowsDownload(assets: Asset[]): CreatorHubDownload | null {
+  const href = findAsset(assets, 'win-x64')
+  return href ? { os: 'Windows', arch: 'amd64', href } : null
+}
+
+// An unknown chip gets the Apple Silicon build, as sites does: nearly every Mac sold since 2021.
+function macDownload(assets: Asset[], macArch?: MacArch): CreatorHubDownload | null {
+  const arm = findAsset(assets, 'mac-arm64')
+  const intel = findAsset(assets, 'mac-x64')
+  if (macArch !== 'intel' && arm) return { os: 'macOS', arch: 'arm64', href: arm, ...(macArch ? { macArch } : {}) }
+  return intel ? { os: 'macOS', arch: 'amd64', href: intel, ...(macArch ? { macArch } : {}) } : null
+}
+
 /** The installer for this device, or null where none ships (Linux, iPad, a release missing the asset). */
 export function pickCreatorHubDownload(assets: Asset[], device: Device): CreatorHubDownload | null {
-  const find = (platform: string) =>
-    assets.find(
-      asset =>
-        asset.name.includes(platform) && /\.(exe|dmg)$/.test(asset.name) && isReleaseAsset(asset.browser_download_url)
-    )?.browser_download_url
-  if (device.userAgent.includes('Windows')) {
-    const href = find('win-x64')
-    return href ? { os: 'Windows', arch: 'amd64', href } : null
-  }
+  if (device.userAgent.includes('Windows')) return windowsDownload(assets)
   // iPadOS Safari sends a Mac user agent; only the touch points tell it apart.
-  if (device.userAgent.includes('Macintosh') && device.maxTouchPoints <= 1) {
-    const macArch = device.macArch()
-    const arm = find('mac-arm64')
-    const intel = find('mac-x64')
-    // An unknown chip gets the Apple Silicon build, as sites does: nearly every Mac sold since 2021.
-    if (macArch !== 'intel' && arm) return { os: 'macOS', arch: 'arm64', href: arm, macArch }
-    return intel ? { os: 'macOS', arch: 'amd64', href: intel, macArch } : null
-  }
+  if (device.userAgent.includes('Macintosh') && device.maxTouchPoints <= 1) return macDownload(assets, device.macArch())
   return null
+}
+
+/** The installers for the other desktop OS, offered next to the visitor's own. */
+export function otherCreatorHubDownloads(assets: Asset[], primary: CreatorHubDownload): CreatorHubDownload[] {
+  const other = primary.os === 'Windows' ? macDownload(assets) : windowsDownload(assets)
+  return other ? [other] : []
 }
 
 let cachedMacArch: MacArch | undefined

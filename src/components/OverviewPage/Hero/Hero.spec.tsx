@@ -14,9 +14,13 @@ vi.mock('~/hooks/useMediaQuery', () => ({
   useMediaQuery: (query: string) => (query.includes('reduced-motion') ? viewport.reducedMotion : viewport.mobile)
 }))
 
-const release = vi.hoisted(() => ({ download: undefined as CreatorHubDownload | undefined }))
+const release = vi.hoisted(() => ({
+  download: undefined as CreatorHubDownload | undefined,
+  others: [] as CreatorHubDownload[]
+}))
 vi.mock('~/hooks/useCreatorHubDownload', () => ({
-  useCreatorHubDownload: () => (release.download ? { download: release.download } : { fallback: 'loading' })
+  useCreatorHubDownload: () =>
+    release.download ? { download: release.download, others: release.others } : { fallback: 'loading' }
 }))
 vi.mock('~/lib/creatorHubDownload', () => ({
   startCreatorHubDownload: vi.fn(),
@@ -28,6 +32,7 @@ beforeEach(() => {
   viewport.mobile = false
   viewport.reducedMotion = false
   release.download = undefined
+  release.others = []
   vi.mocked(startCreatorHubDownload).mockClear()
   vi.mocked(track).mockClear()
 })
@@ -71,6 +76,33 @@ describe('Hero', () => {
       download_target: 'creator_hub',
       download_mode: 'direct'
     })
+  })
+
+  it("shows the installer's OS and offers the other OS's installer, in one click too", () => {
+    release.download = { os: 'macOS', arch: 'arm64', href: 'https://example.com/creator-hub-mac-arm64.dmg' }
+    const windows = { os: 'Windows', arch: 'amd64', href: 'https://example.com/creator-hub-win-x64.exe' } as const
+    release.others = [windows]
+    renderHero()
+    expect(screen.getByTestId('overview-hero-os-icon')).toHaveAttribute('data-os', 'macOS')
+    expect(screen.getByTestId('overview-hero-also-available')).toHaveTextContent('Also available on')
+
+    const alt = screen.getByRole('link', { name: 'Download for Windows' })
+    expect(alt).toHaveAttribute('href', windows.href)
+    fireEvent.click(alt)
+    expect(startCreatorHubDownload).toHaveBeenCalledWith(windows)
+    expect(track).toHaveBeenCalledWith('Click', {
+      place: 'Creators Hero',
+      event: 'Download',
+      os: 'Windows',
+      download_target: 'creator_hub',
+      download_mode: 'direct'
+    })
+  })
+
+  it('offers no other OS until an installer is known', () => {
+    renderHero()
+    expect(screen.queryByTestId('overview-hero-os-icon')).toBeNull()
+    expect(screen.queryByTestId('overview-hero-also-available')).toBeNull()
   })
 
   it('drops a repeat click while the first download is still redirecting', () => {

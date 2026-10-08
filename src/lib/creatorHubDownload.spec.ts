@@ -5,6 +5,7 @@ import {
   cancelCreatorHubRedirect,
   fetchCreatorHubAssets,
   macArchFromRenderer,
+  otherCreatorHubDownloads,
   pickCreatorHubDownload,
   startCreatorHubDownload,
   SUCCESS_REDIRECT_DELAY_MS,
@@ -102,6 +103,20 @@ describe('pickCreatorHubDownload', () => {
     const tampered = { name: 'creator-hub-win-x64.exe', browser_download_url: 'javascript:alert(1)' }
     const elsewhere = { name: 'creator-hub-win-x64.exe', browser_download_url: 'https://evil.example/x.exe' }
     expect(pickCreatorHubDownload([tampered, elsewhere], device(WINDOWS_UA))).toBeNull()
+  })
+})
+
+describe('otherCreatorHubDownloads', () => {
+  it('offers Windows to a Mac and the Apple Silicon build to Windows', () => {
+    const mac = pickCreatorHubDownload(assets, device(MAC_UA, 'apple_silicon'))!
+    expect(otherCreatorHubDownloads(assets, mac)).toEqual([
+      { os: 'Windows', arch: 'amd64', href: `${URL_BASE}/creator-hub-win-x64.exe` }
+    ])
+    const windows = pickCreatorHubDownload(assets, device(WINDOWS_UA))!
+    expect(otherCreatorHubDownloads(assets, windows)).toEqual([
+      { os: 'macOS', arch: 'arm64', href: `${URL_BASE}/creator-hub-mac-arm64.dmg` }
+    ])
+    expect(otherCreatorHubDownloads([asset('creator-hub-win-x64.exe')], windows)).toEqual([])
   })
 })
 
