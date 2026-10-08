@@ -16,7 +16,11 @@ vi.mock('~/hooks/useMediaQuery', () => ({
 
 const release = vi.hoisted(() => ({ download: undefined as CreatorHubDownload | undefined }))
 vi.mock('~/hooks/useCreatorHubDownload', () => ({ useCreatorHubDownload: () => release.download }))
-vi.mock('~/lib/creatorHubDownload', () => ({ startCreatorHubDownload: vi.fn(), cancelCreatorHubRedirect: vi.fn() }))
+vi.mock('~/lib/creatorHubDownload', () => ({
+  startCreatorHubDownload: vi.fn(),
+  cancelCreatorHubRedirect: vi.fn(),
+  macArchHint: () => null
+}))
 
 beforeEach(() => {
   viewport.mobile = false

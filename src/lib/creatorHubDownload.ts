@@ -72,11 +72,18 @@ export function pickCreatorHubDownload(assets: Asset[], device: Device): Creator
   return null
 }
 
+let cachedMacArch: MacArch | undefined
+
 /**
  * The Mac's chip from its GPU: the user agent says "Intel" on every Mac and Safari ships no client hints,
  * but Apple Silicon always has an Apple GPU and Intel Macs never do.
  */
 export function detectMacArch(): MacArch {
+  cachedMacArch ??= readMacArch()
+  return cachedMacArch
+}
+
+function readMacArch(): MacArch {
   try {
     const gl = document.createElement('canvas').getContext('webgl')
     const info = gl?.getExtension('WEBGL_debug_renderer_info')
@@ -90,6 +97,11 @@ export function detectMacArch(): MacArch {
   } catch {
     return 'unknown'
   }
+}
+
+/** The Mac's chip, or null off a Mac (iPads included). */
+export function macArchHint(): MacArch | null {
+  return navigator.userAgent.includes('Macintosh') && navigator.maxTouchPoints <= 1 ? detectMacArch() : null
 }
 
 let pendingRedirect: ReturnType<typeof setTimeout> | undefined

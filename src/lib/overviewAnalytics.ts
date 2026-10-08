@@ -3,6 +3,7 @@
 import type { SyntheticEvent } from 'react'
 import { SITE_PATH } from '~/config'
 import { collectCampaignParams } from '~/lib/campaignParams'
+import { macArchHint } from '~/lib/creatorHubDownload'
 import { sendOverviewPage, sendOverviewTrack } from '~/lib/overviewSegment'
 
 /** `section_viewed` values, one per section of the overview page. */
@@ -45,8 +46,7 @@ const CLICK_DIMENSIONS = [
   ['card', 'card'],
   ['tab', 'tab'],
   ['event', 'event'],
-  ['download-target', 'download_target'],
-  ['mac-arch', 'mac_arch']
+  ['download-target', 'download_target']
 ] as const
 
 /** The `Click` payload: the URL's campaign params, then the element's whitelisted `data-*` values. */
@@ -58,12 +58,33 @@ export function clickPayload(element: Element): Record<string, string> {
   }
   // sites drops an `event` that would only repeat the event name.
   if (payload.event === CLICK_EVENT) delete payload.event
+  // sites' Intel-Mac cohort: every download CTA click carries the Mac's chip, read at click time.
+  const macArch = payload.download_target ? macArchHint() : null
+  if (macArch) payload.mac_arch = macArch
   return payload
 }
 
 /** Tracks a click on an element that describes itself through `data-place` / `data-title` / … */
 export function trackClick(event: SyntheticEvent<Element>): void {
   sendOverviewTrack(CLICK_EVENT, clickPayload(event.currentTarget))
+}
+
+/** `place` of sites' shared navbar and footer clicks. */
+export const LandingPlace = {
+  NAVBAR: 'Landing Navbar',
+  FOOTER_LINK: 'Landing Footer Link',
+  FOOTER_SOCIAL: 'Landing Footer Social'
+} as const
+
+/** The overview route, the only page whose navbar and footer clicks feed sites' landing tables. */
+export const isOverviewPath = (pathname: string) => pathname === '/'
+
+/** A navbar / footer click, in sites' shape: `{ place, event: 'click', action | link | platform }`. */
+export function trackLandingClick(
+  place: (typeof LandingPlace)[keyof typeof LandingPlace],
+  extra: Record<string, string>
+) {
+  sendOverviewTrack(CLICK_EVENT, { place, event: 'click', ...extra })
 }
 
 /** The overview page view, under the full pathname sites sent. */

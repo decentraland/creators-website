@@ -8,6 +8,7 @@ import { useCreditsBalance, useManaBalance } from '~/hooks/useBalances'
 import { useCommittee } from '~/hooks/useCuration'
 import { useProfile } from '~/hooks/useProfile'
 import { openExternal } from '~/lib/navigation'
+import { isOverviewPath, LandingPlace, trackLandingClick } from '~/lib/overviewAnalytics'
 import { useTranslation } from '~/intl'
 import { config } from '~/config'
 import * as S from './NavBar.styles'
@@ -73,7 +74,10 @@ const NavBar = ({ subnav = true }: Props) => {
         manaBalances={manaBalances}
         showManaBalancesInNavbar
         onClickBalance={() => openExternal(accountUrl)}
-        onClickSignIn={() => signIn()}
+        onClickSignIn={() => {
+          if (isOverviewPath(pathname)) trackLandingClick(LandingPlace.NAVBAR, { action: 'sign_in' })
+          signIn()
+        }}
         onClickSignOut={() => void disconnect()}
       />
 

@@ -111,7 +111,6 @@ const Hero = () => {
               data-place={OverviewSection.HERO}
               data-event={DOWNLOAD_CLICK}
               data-download-target={CREATOR_HUB_TARGET}
-              data-mac-arch={download?.macArch}
             >
               {t('overview.hero.download_cta')}
             </Button>
