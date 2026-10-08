@@ -151,10 +151,14 @@ export const AltDownload = styled.a`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
+  gap: 4px;
+  min-width: 44px;
   height: 44px;
-  border-radius: 50%;
+  padding: 0 10px;
+  border-radius: 22px;
+  font-size: 14px;
   color: ${colors.white};
+  text-decoration: none;
 
   & svg {
     width: 20px;

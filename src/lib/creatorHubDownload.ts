@@ -60,12 +60,16 @@ function windowsDownload(assets: Asset[]): CreatorHubDownload | null {
   return href ? { os: 'Windows', arch: 'amd64', href } : null
 }
 
+function macBuild(assets: Asset[], arch: 'arm64' | 'amd64', macArch?: MacArch): CreatorHubDownload | null {
+  const href = findAsset(assets, arch === 'arm64' ? 'mac-arm64' : 'mac-x64')
+  return href ? { os: 'macOS', arch, href, ...(macArch ? { macArch } : {}) } : null
+}
+
 // An unknown chip gets the Apple Silicon build, as sites does: nearly every Mac sold since 2021.
-function macDownload(assets: Asset[], macArch?: MacArch): CreatorHubDownload | null {
-  const arm = findAsset(assets, 'mac-arm64')
-  const intel = findAsset(assets, 'mac-x64')
-  if (macArch !== 'intel' && arm) return { os: 'macOS', arch: 'arm64', href: arm, ...(macArch ? { macArch } : {}) }
-  return intel ? { os: 'macOS', arch: 'amd64', href: intel, ...(macArch ? { macArch } : {}) } : null
+function macDownload(assets: Asset[], macArch: MacArch): CreatorHubDownload | null {
+  // An Intel Mac can't run the Apple Silicon build; Apple Silicon runs the Intel one under Rosetta.
+  if (macArch === 'intel') return macBuild(assets, 'amd64', macArch)
+  return macBuild(assets, 'arm64', macArch) ?? macBuild(assets, 'amd64', macArch)
 }
 
 /** The installer for this device, or null where none ships (Linux, iPad, a release missing the asset). */
@@ -76,10 +80,22 @@ export function pickCreatorHubDownload(assets: Asset[], device: Device): Creator
   return null
 }
 
-/** The installers for the other desktop OS, offered next to the visitor's own. */
+/**
+ * Every other installer of the release, Windows first: a Mac's chip can't always be told (Safari masks it),
+ * so both Mac builds stay one click away.
+ */
 export function otherCreatorHubDownloads(assets: Asset[], primary: CreatorHubDownload): CreatorHubDownload[] {
-  const other = primary.os === 'Windows' ? macDownload(assets) : windowsDownload(assets)
-  return other ? [other] : []
+  const all = [windowsDownload(assets), macBuild(assets, 'arm64'), macBuild(assets, 'amd64')]
+  return all.filter(
+    (download): download is CreatorHubDownload =>
+      !!download && !(download.os === primary.os && download.arch === primary.arch)
+  )
+}
+
+/** The i18n key suffix naming a build: `windows`, `mac_apple_silicon` or `mac_intel`. */
+export function buildName({ os, arch }: Pick<CreatorHubDownload, 'os' | 'arch'>): string {
+  if (os === 'Windows') return 'windows'
+  return arch === 'arm64' ? 'mac_apple_silicon' : 'mac_intel'
 }
 
 let cachedMacArch: MacArch | undefined

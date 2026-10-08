@@ -107,14 +107,16 @@ describe('pickCreatorHubDownload', () => {
 })
 
 describe('otherCreatorHubDownloads', () => {
-  it('offers Windows to a Mac and the Apple Silicon build to Windows', () => {
-    const mac = pickCreatorHubDownload(assets, device(MAC_UA, 'apple_silicon'))!
-    expect(otherCreatorHubDownloads(assets, mac)).toEqual([
-      { os: 'Windows', arch: 'amd64', href: `${URL_BASE}/creator-hub-win-x64.exe` }
+  it("offers every other build, Windows first, so a Mac's chip is never a guess", () => {
+    const appleSilicon = pickCreatorHubDownload(assets, device(MAC_UA, 'apple_silicon'))!
+    expect(otherCreatorHubDownloads(assets, appleSilicon).map(({ os, arch }) => `${os}/${arch}`)).toEqual([
+      'Windows/amd64',
+      'macOS/amd64'
     ])
     const windows = pickCreatorHubDownload(assets, device(WINDOWS_UA))!
-    expect(otherCreatorHubDownloads(assets, windows)).toEqual([
-      { os: 'macOS', arch: 'arm64', href: `${URL_BASE}/creator-hub-mac-arm64.dmg` }
+    expect(otherCreatorHubDownloads(assets, windows).map(({ os, arch }) => `${os}/${arch}`)).toEqual([
+      'macOS/arm64',
+      'macOS/amd64'
     ])
     expect(otherCreatorHubDownloads([asset('creator-hub-win-x64.exe')], windows)).toEqual([])
   })

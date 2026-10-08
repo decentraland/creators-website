@@ -22,7 +22,8 @@ vi.mock('~/hooks/useCreatorHubDownload', () => ({
   useCreatorHubDownload: () =>
     release.download ? { download: release.download, others: release.others } : { fallback: 'loading' }
 }))
-vi.mock('~/lib/creatorHubDownload', () => ({
+vi.mock('~/lib/creatorHubDownload', async importOriginal => ({
+  ...(await importOriginal<typeof import('~/lib/creatorHubDownload')>()),
   startCreatorHubDownload: vi.fn(),
   cancelCreatorHubRedirect: vi.fn(),
   macArchHint: () => null
@@ -81,10 +82,12 @@ describe('Hero', () => {
   it("shows the installer's OS and offers the other OS's installer, in one click too", () => {
     release.download = { os: 'macOS', arch: 'arm64', href: 'https://example.com/creator-hub-mac-arm64.dmg' }
     const windows = { os: 'Windows', arch: 'amd64', href: 'https://example.com/creator-hub-win-x64.exe' } as const
-    release.others = [windows]
+    const intel = { os: 'macOS', arch: 'amd64', href: 'https://example.com/creator-hub-mac-x64.dmg' } as const
+    release.others = [windows, intel]
     renderHero()
     expect(screen.getByTestId('overview-hero-os-icon')).toHaveAttribute('data-os', 'macOS')
     expect(screen.getByTestId('overview-hero-also-available')).toHaveTextContent('Also available on')
+    expect(screen.getByRole('link', { name: 'Download for Intel-based Mac' })).toHaveTextContent('Intel')
 
     const alt = screen.getByRole('link', { name: 'Download for Windows' })
     expect(alt).toHaveAttribute('href', windows.href)
@@ -94,9 +97,19 @@ describe('Hero', () => {
       place: 'Creators Hero',
       event: 'Download',
       os: 'Windows',
+      arch: 'amd64',
       download_target: 'creator_hub',
       download_mode: 'direct'
     })
+  })
+
+  it('names the build the button downloads on hover', async () => {
+    release.download = { os: 'macOS', arch: 'arm64', href: 'https://example.com/creator-hub-mac-arm64.dmg' }
+    renderHero()
+    fireEvent.mouseOver(screen.getByTestId('overview-hero-cta'))
+    expect(await screen.findByTestId('overview-hero-cta-tooltip')).toHaveTextContent(
+      'Download for Mac with Apple silicon'
+    )
   })
 
   it('offers no other OS until an installer is known', () => {

@@ -1111,7 +1111,15 @@
       "subtitle": "下载 Creator Hub，开始在 Decentraland 中构建沉浸式场景和互动体验。",
       "download_cta": "下载 Creator Hub",
       "also_available": "同时支持",
-      "download_for": "下载 {os} 版",
+      "download_for": {
+        "windows": "下载 Windows 版",
+        "mac_apple_silicon": "下载 Apple silicon Mac 版",
+        "mac_intel": "下载 Intel Mac 版"
+      },
+      "build_label": {
+        "mac_apple_silicon": "Apple silicon",
+        "mac_intel": "Intel"
+      },
       "mobile_docs_cta": "浏览创作者文档",
       "scroll_label": "滚动到下一部分"
     },

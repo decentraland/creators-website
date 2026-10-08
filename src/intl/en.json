@@ -1111,7 +1111,15 @@
       "subtitle": "Download the Creator Hub to start building immersive scenes and interactive experiences in Decentraland.",
       "download_cta": "Download Creator Hub",
       "also_available": "Also available on",
-      "download_for": "Download for {os}",
+      "download_for": {
+        "windows": "Download for Windows",
+        "mac_apple_silicon": "Download for Mac with Apple silicon",
+        "mac_intel": "Download for Intel-based Mac"
+      },
+      "build_label": {
+        "mac_apple_silicon": "Apple silicon",
+        "mac_intel": "Intel"
+      },
       "mobile_docs_cta": "Explore the Creator Docs",
       "scroll_label": "Scroll to the next section"
     },

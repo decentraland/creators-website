@@ -1,13 +1,19 @@
 import { type MouseEvent, useEffect, useMemo, useState } from 'react'
 import { Apple as AppleIcon, Microsoft as MicrosoftIcon } from '@mui/icons-material'
 import { Button } from '~/components/Button'
+import { Tooltip } from '~/components/Tooltip'
 import { ChevronDownIcon } from '~/components/Icons'
 import { useAfterLoadIdle } from '~/hooks/useAfterLoadIdle'
 import { useCreatorHubDownload } from '~/hooks/useCreatorHubDownload'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useTypingListEffect } from '~/hooks/useTypingListEffect'
 import { useTranslation } from '~/intl'
-import { cancelCreatorHubRedirect, type CreatorHubDownload, startCreatorHubDownload } from '~/lib/creatorHubDownload'
+import {
+  buildName,
+  cancelCreatorHubRedirect,
+  type CreatorHubDownload,
+  startCreatorHubDownload
+} from '~/lib/creatorHubDownload'
 import {
   CREATOR_HUB_TARGET,
   DOWNLOAD_CLICK,
@@ -117,44 +123,56 @@ const Hero = () => {
             </Button>
           ) : (
             <>
-              <Button
-                as="a"
-                size="hero"
-                // Until the release resolves, or when no installer fits this OS, the download page offers them all.
-                href={download?.href ?? CREATOR_HUB_DOWNLOAD_URL}
-                onClick={(event: MouseEvent<HTMLAnchorElement>) => onDownloadClick(event, download)}
-                data-testid="overview-hero-cta"
-                data-place={OverviewSection.HERO}
-                data-event={DOWNLOAD_CLICK}
-                data-download-target={CREATOR_HUB_TARGET}
-                data-download-mode={download ? 'direct' : fallback}
+              <Tooltip
+                content={download ? t(`overview.hero.download_for.${buildName(download)}`) : null}
+                asChild
+                testId="overview-hero-cta-tooltip"
               >
-                {t('overview.hero.download_cta')}
-                {download && (
-                  <S.OsIcon data-testid="overview-hero-os-icon" data-os={download.os}>
-                    <DownloadOsIcon os={download.os} />
-                  </S.OsIcon>
-                )}
-              </Button>
+                <Button
+                  as="a"
+                  size="hero"
+                  // Until the release resolves, or when no installer fits this OS, the download page offers them all.
+                  href={download?.href ?? CREATOR_HUB_DOWNLOAD_URL}
+                  onClick={(event: MouseEvent<HTMLAnchorElement>) => onDownloadClick(event, download)}
+                  data-testid="overview-hero-cta"
+                  data-place={OverviewSection.HERO}
+                  data-event={DOWNLOAD_CLICK}
+                  data-download-target={CREATOR_HUB_TARGET}
+                  data-download-mode={download ? 'direct' : fallback}
+                >
+                  {t('overview.hero.download_cta')}
+                  {download && (
+                    <S.OsIcon data-testid="overview-hero-os-icon" data-os={download.os}>
+                      <DownloadOsIcon os={download.os} />
+                    </S.OsIcon>
+                  )}
+                </Button>
+              </Tooltip>
               {others.length > 0 && (
                 <S.AlsoAvailable data-testid="overview-hero-also-available">
                   {t('overview.hero.also_available')}
-                  {others.map(other => (
-                    <S.AltDownload
-                      key={other.os}
-                      href={other.href}
-                      aria-label={t('overview.hero.download_for', { os: other.os })}
-                      onClick={event => onDownloadClick(event, other)}
-                      data-testid="overview-hero-alt-download"
-                      data-place={OverviewSection.HERO}
-                      data-event={DOWNLOAD_CLICK}
-                      data-os={other.os}
-                      data-download-target={CREATOR_HUB_TARGET}
-                      data-download-mode="direct"
-                    >
-                      <DownloadOsIcon os={other.os} />
-                    </S.AltDownload>
-                  ))}
+                  {others.map(other => {
+                    const name = buildName(other)
+                    return (
+                      <Tooltip key={name} content={t(`overview.hero.download_for.${name}`)} asChild>
+                        <S.AltDownload
+                          href={other.href}
+                          aria-label={t(`overview.hero.download_for.${name}`)}
+                          onClick={event => onDownloadClick(event, other)}
+                          data-testid="overview-hero-alt-download"
+                          data-place={OverviewSection.HERO}
+                          data-event={DOWNLOAD_CLICK}
+                          data-os={other.os}
+                          data-arch={other.arch}
+                          data-download-target={CREATOR_HUB_TARGET}
+                          data-download-mode="direct"
+                        >
+                          <DownloadOsIcon os={other.os} />
+                          {other.os === 'macOS' && <span>{t(`overview.hero.build_label.${name}`)}</span>}
+                        </S.AltDownload>
+                      </Tooltip>
+                    )
+                  })}
                 </S.AlsoAvailable>
               )}
             </>
