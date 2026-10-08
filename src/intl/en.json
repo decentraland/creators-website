@@ -286,8 +286,8 @@
       "save": "Save name"
     },
     "push_changes": {
-      "action": "Publish updates",
-      "title": "Publish updates",
+      "action": "Publish changes",
+      "title": "Publish changes",
       "description": "Your changes will be reviewed by the curation committee. Until they're approved, buyers get the last approved version of your items.",
       "confirm": "Send for review",
       "cancel": "Cancel",

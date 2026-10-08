@@ -39,7 +39,7 @@ export function useItemSyncs(
 
   const entities = entitiesQuery.data
   // Only a successful answer settles it: during a Catalyst outage an approved item reads as loading, not as missing
-  // its entity (which would offer Deploy missing entities and Publish updates for nothing).
+  // its entity (which would offer Deploy missing entities and Publish changes for nothing).
   const entitiesLoaded = pointers.length === 0 || entitiesQuery.isSuccess
   const curationPending = curationQuery.data?.status === 'pending'
 
