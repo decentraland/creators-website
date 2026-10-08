@@ -6,13 +6,16 @@ import {
   fetchCreatorHubAssets,
   pickCreatorHubDownload,
   startCreatorHubDownload,
-  SUCCESS_REDIRECT_DELAY_MS
+  SUCCESS_REDIRECT_DELAY_MS,
+  type Device,
+  type MacArch
 } from './creatorHubDownload'
 
 vi.mock('~/lib/overviewSegment', () => ({ sendOverviewTrack: vi.fn() }))
 vi.mock('~/lib/analytics', () => ({ ensureAnonymousId: () => 'anon-1' }))
 
-const asset = (name: string) => ({ name, browser_download_url: `https://example.com/${name}` })
+const URL_BASE = 'https://github.com/decentraland/creator-hub/releases/download/0.50.0'
+const asset = (name: string) => ({ name, browser_download_url: `${URL_BASE}/${name}` })
 const assets = [
   asset('creator-hub-win-x64.exe'),
   asset('creator-hub-win-x64.exe.blockmap'),
@@ -21,6 +24,11 @@ const assets = [
 ]
 const WINDOWS_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
 const MAC_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+const device = (userAgent: string, macArch: MacArch = 'unknown', maxTouchPoints = 0): Device => ({
+  userAgent,
+  maxTouchPoints,
+  macArch: () => macArch
+})
 
 describe('fetchCreatorHubAssets', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -40,9 +48,16 @@ describe('fetchCreatorHubAssets', () => {
     await expect(fetchCreatorHubAssets()).resolves.toEqual([])
   })
 
-  it('fails on a non-ok response, releasing its body', async () => {
+  it('treats the rate limit as no installers, so the CTA falls back without an error', async () => {
     const cancel = vi.fn().mockResolvedValue(undefined)
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 403, body: { cancel } }))
+    await expect(fetchCreatorHubAssets()).resolves.toEqual([])
+    expect(cancel).toHaveBeenCalled()
+  })
+
+  it('fails on a non-ok response, releasing its body', async () => {
+    const cancel = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500, body: { cancel } }))
     await expect(fetchCreatorHubAssets()).rejects.toBeInstanceOf(HttpError)
     expect(cancel).toHaveBeenCalled()
   })
@@ -50,27 +65,42 @@ describe('fetchCreatorHubAssets', () => {
 
 describe('pickCreatorHubDownload', () => {
   it('picks the Windows installer on Windows', () => {
-    expect(pickCreatorHubDownload(assets, WINDOWS_UA, 0)).toEqual({
+    expect(pickCreatorHubDownload(assets, device(WINDOWS_UA))).toEqual({
       os: 'Windows',
       arch: 'amd64',
-      href: 'https://example.com/creator-hub-win-x64.exe'
+      href: `${URL_BASE}/creator-hub-win-x64.exe`
     })
   })
 
-  it('picks the Apple Silicon build on a Mac, and the Intel one when that is all the release has', () => {
-    expect(pickCreatorHubDownload(assets, MAC_UA, 0)?.href).toBe('https://example.com/creator-hub-mac-arm64.dmg')
-    expect(pickCreatorHubDownload([asset('creator-hub-mac-x64.dmg')], MAC_UA, 0)).toEqual({
+  it("picks the Mac build that matches the Mac's chip, Apple Silicon when it is unknown", () => {
+    expect(pickCreatorHubDownload(assets, device(MAC_UA, 'apple_silicon'))).toEqual({
+      os: 'macOS',
+      arch: 'arm64',
+      href: `${URL_BASE}/creator-hub-mac-arm64.dmg`,
+      macArch: 'apple_silicon'
+    })
+    expect(pickCreatorHubDownload(assets, device(MAC_UA, 'intel'))).toEqual({
       os: 'macOS',
       arch: 'amd64',
-      href: 'https://example.com/creator-hub-mac-x64.dmg'
+      href: `${URL_BASE}/creator-hub-mac-x64.dmg`,
+      macArch: 'intel'
     })
+    expect(pickCreatorHubDownload(assets, device(MAC_UA))?.arch).toBe('arm64')
+    expect(pickCreatorHubDownload([asset('creator-hub-mac-x64.dmg')], device(MAC_UA))?.arch).toBe('amd64')
   })
 
   it('offers nothing where no installer ships', () => {
-    expect(pickCreatorHubDownload(assets, 'Mozilla/5.0 (X11; Linux x86_64)', 0)).toBeNull()
-    expect(pickCreatorHubDownload([], WINDOWS_UA, 0)).toBeNull()
+    expect(pickCreatorHubDownload(assets, device('Mozilla/5.0 (X11; Linux x86_64)'))).toBeNull()
+    expect(pickCreatorHubDownload([], device(WINDOWS_UA))).toBeNull()
+    expect(pickCreatorHubDownload([asset('creator-hub-mac-arm64.dmg')], device(MAC_UA, 'intel'))).toBeNull()
     // iPadOS Safari: a Mac user agent on a touch screen.
-    expect(pickCreatorHubDownload(assets, MAC_UA, 5)).toBeNull()
+    expect(pickCreatorHubDownload(assets, device(MAC_UA, 'apple_silicon', 5))).toBeNull()
+  })
+
+  it('ignores an asset served from anywhere but the Creator Hub releases', () => {
+    const tampered = { name: 'creator-hub-win-x64.exe', browser_download_url: 'javascript:alert(1)' }
+    const elsewhere = { name: 'creator-hub-win-x64.exe', browser_download_url: 'https://evil.example/x.exe' }
+    expect(pickCreatorHubDownload([tampered, elsewhere], device(WINDOWS_UA))).toBeNull()
   })
 })
 
@@ -89,7 +119,7 @@ describe('startCreatorHubDownload', () => {
   })
 
   it("reports the start with sites' funnel props, then opens sites' success page", () => {
-    const href = 'https://example.com/creator-hub-mac-arm64.dmg'
+    const href = 'https://github.com/decentraland/creator-hub/releases/download/0.50.0/creator-hub-mac-arm64.dmg'
     startCreatorHubDownload({ os: 'macOS', arch: 'arm64', href })
 
     expect(sendOverviewTrack).toHaveBeenCalledWith(

@@ -45,7 +45,8 @@ const CLICK_DIMENSIONS = [
   ['card', 'card'],
   ['tab', 'tab'],
   ['event', 'event'],
-  ['download-target', 'download_target']
+  ['download-target', 'download_target'],
+  ['mac-arch', 'mac_arch']
 ] as const
 
 /** The `Click` payload: the URL's campaign params, then the element's whitelisted `data-*` values. */
