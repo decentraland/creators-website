@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { TranslationProvider } from '~/intl'
+import { type CreatorHubDownload, startCreatorHubDownload } from '~/lib/creatorHubDownload'
 import { sendOverviewTrack as track } from '~/lib/overviewSegment'
 import { Hero } from './Hero'
 
@@ -9,8 +10,14 @@ vi.mock('~/lib/overviewSegment', () => ({ sendOverviewTrack: vi.fn(), sendOvervi
 const viewport = vi.hoisted(() => ({ mobile: false }))
 vi.mock('~/hooks/useMediaQuery', () => ({ useMediaQuery: () => viewport.mobile }))
 
+const release = vi.hoisted(() => ({ download: undefined as CreatorHubDownload | undefined }))
+vi.mock('~/hooks/useCreatorHubDownload', () => ({ useCreatorHubDownload: () => release.download }))
+vi.mock('~/lib/creatorHubDownload', () => ({ startCreatorHubDownload: vi.fn() }))
+
 beforeEach(() => {
   viewport.mobile = false
+  release.download = undefined
+  vi.mocked(startCreatorHubDownload).mockClear()
   vi.mocked(track).mockClear()
 })
 
@@ -22,7 +29,7 @@ const renderHero = () =>
   )
 
 describe('Hero', () => {
-  it('sends desktop visitors to the Creator Hub download page and tracks the click', () => {
+  it('sends desktop visitors to the download page until an installer is known', () => {
     renderHero()
     const cta = screen.getByTestId('overview-hero-cta')
     expect(cta).toHaveTextContent('Download Creator Hub')
@@ -30,6 +37,22 @@ describe('Hero', () => {
     expect(cta).not.toHaveAttribute('target')
 
     fireEvent.click(cta)
+    expect(startCreatorHubDownload).not.toHaveBeenCalled()
+    expect(track).toHaveBeenCalledWith('Click', {
+      place: 'Creators Hero',
+      event: 'Download',
+      download_target: 'creator_hub'
+    })
+  })
+
+  it('downloads the installer for the visitor OS in one click', () => {
+    release.download = { os: 'macOS', arch: 'arm64', href: 'https://example.com/creator-hub-mac-arm64.dmg' }
+    renderHero()
+    const cta = screen.getByTestId('overview-hero-cta')
+    expect(cta).toHaveAttribute('href', 'https://example.com/creator-hub-mac-arm64.dmg')
+
+    fireEvent.click(cta)
+    expect(startCreatorHubDownload).toHaveBeenCalledWith(release.download)
     expect(track).toHaveBeenCalledWith('Click', {
       place: 'Creators Hero',
       event: 'Download',

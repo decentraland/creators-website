@@ -1,9 +1,11 @@
 import { useMemo } from 'react'
 import { Button } from '~/components/Button'
 import { ChevronDownIcon } from '~/components/Icons'
+import { useCreatorHubDownload } from '~/hooks/useCreatorHubDownload'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useTypingListEffect } from '~/hooks/useTypingListEffect'
 import { useTranslation } from '~/intl'
+import { startCreatorHubDownload } from '~/lib/creatorHubDownload'
 import {
   CREATOR_HUB_TARGET,
   DOWNLOAD_CLICK,
@@ -19,6 +21,7 @@ const Hero = () => {
   const mobile = useMediaQuery(OVERVIEW_MOBILE_QUERY)
   const words = useMemo(() => heroData.words.map(word => t(`overview.hero.words.${word}`)), [t])
   const currentWord = useTypingListEffect(words)
+  const download = useCreatorHubDownload()
   const media = mobile ? heroData.portrait : heroData.landscape
 
   return (
@@ -65,8 +68,12 @@ const Hero = () => {
             <Button
               as="a"
               size="hero"
-              href={CREATOR_HUB_DOWNLOAD_URL}
-              onClick={trackClick}
+              // Until the release resolves, or when no installer fits this OS, the download page offers them all.
+              href={download?.href ?? CREATOR_HUB_DOWNLOAD_URL}
+              onClick={event => {
+                trackClick(event)
+                if (download) startCreatorHubDownload(download)
+              }}
               data-testid="overview-hero-cta"
               data-place={OverviewSection.HERO}
               data-event={DOWNLOAD_CLICK}
