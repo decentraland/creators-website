@@ -115,6 +115,9 @@ describe('Hero', () => {
 
   it('preloads the same poster from index.html', () => {
     const html = readFileSync(`${process.cwd()}/index.html`, 'utf8')
-    expect(html).toContain(heroData.poster.url)
+    // Vite fills %BASE_URL% with the same base the bundle reads from import.meta.env.BASE_URL.
+    const base = import.meta.env.BASE_URL
+    const candidates = heroData.poster.srcSet.split(', ').map(candidate => `%BASE_URL%${candidate.slice(base.length)}`)
+    expect(html).toContain(candidates.join(', '))
   })
 })

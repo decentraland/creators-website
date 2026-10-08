@@ -23,16 +23,17 @@ type Media = { url: string; width: number; height: number }
 
 export const heroData = {
   words: ['wearables', 'emotes', 'worlds', 'experiences', 'scenes', 'games'] as const,
-  // Phones crop this same poster to fill the hero: the portrait upload is too small to stay sharp.
+  /** First frame of the video, so the fade-in lines up; phones crop it to fill the hero. Served with the app. */
   poster: {
-    url: `${CONTENTFUL_IMAGES}/3fZB29mbYNJdp7sv1y2SJ2/108e55d6d3e23cd11e7d75563d81caf5/hero.webp`,
-    width: 960,
-    height: 540
-  } satisfies Media,
+    url: `${import.meta.env.BASE_URL}overview/hero-1920.webp`,
+    srcSet: `${import.meta.env.BASE_URL}overview/hero-1280.webp 1280w, ${import.meta.env.BASE_URL}overview/hero-1920.webp 1920w`,
+    width: 1920,
+    height: 1080
+  },
   video: {
     url: `${CONTENTFUL_VIDEOS}/5ELJfyKfvgJMlWi3QXzyt7/28d4d5202e965c08eabc3f9efcf329ea/hero-desktop.mp4`,
-    width: 960,
-    height: 540
+    width: 1920,
+    height: 1080
   } satisfies Media
 }
 

@@ -14,7 +14,7 @@
     <link rel="preload" href="/src/assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
     <script>
       // The hero poster is the overview's first paint; fetch it with the bundle instead of after it. Other
-      // routes never show it. The URL mirrors heroData.poster (Hero.spec checks).
+      // routes never show it. The candidates mirror heroData.poster (Hero.spec checks).
       ;(function () {
         var path = location.pathname.replace(/\/+$/, "")
         if (path !== "" && path !== "/create") return
@@ -22,8 +22,12 @@
         link.rel = "preload"
         link.as = "image"
         link.setAttribute("fetchpriority", "high")
-        link.href =
-          "https://images.ctfassets.net/ea2ybdmmn1kv/3fZB29mbYNJdp7sv1y2SJ2/108e55d6d3e23cd11e7d75563d81caf5/hero.webp"
+        link.href = "%BASE_URL%overview/hero-1920.webp"
+        link.setAttribute(
+          "imagesrcset",
+          "%BASE_URL%overview/hero-1280.webp 1280w, %BASE_URL%overview/hero-1920.webp 1920w"
+        )
+        link.setAttribute("imagesizes", "100vw")
         document.head.appendChild(link)
       })()
     </script>

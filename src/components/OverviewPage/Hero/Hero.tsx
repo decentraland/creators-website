@@ -58,7 +58,15 @@ const Hero = () => {
     <>
       <S.Hero data-testid="overview-hero">
         <S.Background>
-          <img src={poster.url} alt="" width={poster.width} height={poster.height} data-testid="overview-hero-poster" />
+          <img
+            src={poster.url}
+            srcSet={poster.srcSet}
+            sizes="100vw"
+            alt=""
+            width={poster.width}
+            height={poster.height}
+            data-testid="overview-hero-poster"
+          />
           {showVideo && <HeroVideo />}
         </S.Background>
         <S.Content>
