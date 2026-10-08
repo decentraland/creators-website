@@ -5,6 +5,7 @@ import discordIcon from '~/assets/overview/discord.svg'
 import { AnimatedSection } from '../AnimatedSection'
 import { Carousel } from '../Carousel'
 import { DISCORD_URL, testimonials, type Testimonial } from '../data'
+import { highlight, plainText } from '../highlight'
 import * as S from './Connect.styles'
 
 const AUTOPLAY_MS = 5000
@@ -12,7 +13,7 @@ const AUTOPLAY_MS = 5000
 const keyExtractor = (card: Testimonial) => card.id
 
 const Connect = () => {
-  const { t } = useTranslation()
+  const { t, rich } = useTranslation()
   const renderCard = useCallback(
     (card: Testimonial) => (
       <S.Card
@@ -37,16 +38,12 @@ const Connect = () => {
   return (
     <AnimatedSection section={OverviewSection.CONNECT}>
       <S.Section data-testid="overview-connect">
-        <S.Title>
-          <span>{t('overview.connect.title_highlight')}</span>
-          {t('overview.title_separator')}
-          {t('overview.connect.title')}
-        </S.Title>
+        <S.Title>{rich('overview.connect.title', highlight)}</S.Title>
         <Carousel
           items={testimonials}
           renderItem={renderCard}
           keyExtractor={keyExtractor}
-          label={t('overview.connect.title')}
+          label={t('overview.connect.title', plainText)}
           slideWidth={500}
           autoplayMs={AUTOPLAY_MS}
           alignItems="center"

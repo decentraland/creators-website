@@ -7,10 +7,11 @@ import { OverviewSection, trackClick } from '~/lib/overviewAnalytics'
 import { useLocale } from '~/store/locale'
 import { AnimatedSection } from '../AnimatedSection'
 import { SUBMIT_TUTORIAL_URL, YOUTUBE_CHANNEL_URL, learnCards, learnVideo } from '../data'
+import { highlight } from '../highlight'
 import * as S from './Learn.styles'
 
 const Learn = () => {
-  const { t } = useTranslation()
+  const { t, rich } = useTranslation()
   const locale = useLocale(s => s.locale)
   const cards = useMemo(
     () =>
@@ -27,11 +28,7 @@ const Learn = () => {
   return (
     <AnimatedSection section={OverviewSection.LEARN}>
       <S.Section data-testid="overview-learn">
-        <S.Title>
-          <span>{t('overview.learn.title_highlight')}</span>
-          {t('overview.title_separator')}
-          {t('overview.learn.title')}
-        </S.Title>
+        <S.Title>{rich('overview.learn.title', highlight)}</S.Title>
         <S.Rail>
           {cards.map(card => (
             <S.VideoCard

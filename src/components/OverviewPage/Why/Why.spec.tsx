@@ -27,6 +27,9 @@ describe('Why', () => {
       'https://docs.decentraland.org/creator/wearables-and-emotes/wearables/creating-wearables'
     ])
     expect(cards[0]).toHaveTextContent('Join the Discord')
+    const heading = screen.getByRole('heading', { level: 2 })
+    expect(heading).toHaveTextContent(/^Why creators choose Decentraland$/)
+    expect(heading.querySelector('span')).toHaveTextContent(/^Why$/)
     expect(track).toHaveBeenCalledWith('Section Viewed', { section_viewed: 'Creators Why', mobile: false })
   })
 
@@ -53,7 +56,7 @@ describe('Why', () => {
     expect(track).toHaveBeenCalledWith('Click', { place: 'Creators Why', title: 'Join a Community of Creators' })
   })
 
-  it('joins the Chinese heading without a separator and marks the page as zh-Hans', () => {
+  it('renders the Chinese heading with no space after the highlight and marks the page as zh-Hans', () => {
     useLocale.setState({ locale: 'zh' })
     render(
       <TranslationProvider>

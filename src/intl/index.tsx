@@ -25,19 +25,20 @@ const TranslationProvider = ({ children }: { children: ReactNode }) => {
   )
 }
 
-type Translate = (id: string, values?: Record<string, string | number>) => string
+type PlainValues = Record<string, string | number | ((chunks: string[]) => string)>
+type RichValues = Record<string, string | number | ((chunks: ReactNode[]) => ReactNode)>
+type Translate = (id: string, values?: PlainValues) => string
+type TranslateRich = (id: string, values: RichValues) => ReactNode
 
-const useTranslation = (): { t: Translate } => {
+const useTranslation = (): { t: Translate; rich: TranslateRich } => {
   const intl = useIntl()
   // Stable across renders so `t` can sit in hook dependency arrays without defeating them.
-  const t = useCallback(
-    (id: string, values?: Record<string, string | number>) => intl.formatMessage({ id }, values),
-    [intl]
-  )
-  return { t }
+  const t = useCallback((id: string, values?: PlainValues) => intl.formatMessage({ id }, values), [intl])
+  const rich = useCallback((id: string, values: RichValues) => intl.formatMessage({ id }, values), [intl])
+  return { t, rich }
 }
 
 /** The English copy of a message, for analytics values that must not change with the visitor's language. */
 const englishMessage = (id: string): string => messages.en[id] ?? id
 
-export { TranslationProvider, englishMessage, useTranslation, type Translate }
+export { TranslationProvider, englishMessage, useTranslation, type Translate, type TranslateRich }

@@ -2,18 +2,15 @@ import { englishMessage, useTranslation } from '~/intl'
 import { OverviewSection, trackClick } from '~/lib/overviewAnalytics'
 import { AnimatedSection } from '../AnimatedSection'
 import { whyCards } from '../data'
+import { highlight } from '../highlight'
 import * as S from './Why.styles'
 
 const Why = () => {
-  const { t } = useTranslation()
+  const { t, rich } = useTranslation()
   return (
     <AnimatedSection section={OverviewSection.WHY}>
       <S.Section data-testid="overview-why">
-        <S.Title>
-          <span>{t('overview.why.title_highlight')}</span>
-          {t('overview.title_separator')}
-          {t('overview.why.title')}
-        </S.Title>
+        <S.Title>{rich('overview.why.title', highlight)}</S.Title>
         <S.Grid>
           {whyCards.map(card => {
             const titleKey = `overview.why.cards.${card.id}.title`

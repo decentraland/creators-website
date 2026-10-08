@@ -1093,7 +1093,6 @@
     }
   },
   "overview": {
-    "title_separator": " ",
     "hero": {
       "title_first_line": "Crea tus propios",
       "title_last_line": "en Decentraland",
@@ -1111,8 +1110,7 @@
       "scroll_label": "Ir a la siguiente sección"
     },
     "why": {
-      "title_highlight": "Por qué",
-      "title": "los creadores eligen Decentraland",
+      "title": "<hl>Por qué</hl> los creadores eligen Decentraland",
       "cards": {
         "join": {
           "title": "Únete a una comunidad de creadores",
@@ -1132,9 +1130,7 @@
       }
     },
     "create": {
-      "title": "Explora las posibilidades ",
-      "title_highlight": "creativas",
-      "title_second_part": "",
+      "title": "Explora las posibilidades <hl>creativas</hl>",
       "required_skills": "Habilidades necesarias",
       "useful_links": "Enlaces útiles",
       "skills": {
@@ -1234,14 +1230,12 @@
       }
     },
     "live_scenes": {
-      "title_highlight": "Explora",
-      "title": "lo que los creadores están construyendo ahora mismo",
+      "title": "<hl>Explora</hl> lo que los creadores están construyendo ahora mismo",
       "online": "{count} en línea",
       "view_all": "Ver todas las escenas en vivo"
     },
     "connect": {
-      "title_highlight": "Qué",
-      "title": "dicen los creadores de Decentraland",
+      "title": "<hl>Qué</hl> dicen los creadores de Decentraland",
       "join_the_community": "Únete a la comunidad",
       "cards": {
         "mrdhingia": "Me encanta ser creador en DCL porque me permite crear espacios 3D increíbles con total libertad. Es genial trabajar con otros, aprender cosas nuevas y monetizar mi contenido llegando a personas de todo el mundo.",
@@ -1252,8 +1246,7 @@
       }
     },
     "learn": {
-      "title_highlight": "Aprende",
-      "title": "con tutoriales de la comunidad",
+      "title": "<hl>Aprende</hl> con tutoriales de la comunidad",
       "watch_more": "¿Quieres ver más?",
       "watch_more_button": "Visita nuestro canal de YouTube",
       "your_tutorial": "¿Crees que tu tutorial debería aparecer aquí?",
@@ -1267,8 +1260,7 @@
       }
     },
     "blog": {
-      "title_highlight": "Lo último",
-      "title": "del blog",
+      "title": "<hl>Lo último</hl> del blog",
       "view_all": "Leer el blog"
     },
     "faqs": {
