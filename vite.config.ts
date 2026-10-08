@@ -61,7 +61,9 @@ export default defineConfig(({ command, mode }) => {
       // so MUI's theme provider never reaches ui2's styled components.
       dedupe: ['@emotion/react', '@emotion/styled']
     },
-    ...(command === 'build' ? { base: envVariables.VITE_BASE_URL } : undefined),
+    // Vite only appends the trailing slash to relative bases; the CDN URL is absolute, so without it
+    // `${BASE_URL}overview/…` glues onto the version segment.
+    ...(command === 'build' ? { base: envVariables.VITE_BASE_URL?.replace(/([^/])$/, '$1/') } : undefined),
     // 'hidden': the maps are written for the upload but no `sourceMappingURL` comment is emitted, so
     // the shipped bundles don't point the CDN at files that were deleted right after they went up.
     build: { sourcemap: sentryUpload ? 'hidden' : false },

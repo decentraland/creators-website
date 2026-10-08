@@ -22,11 +22,21 @@ export const Background = styled.div`
   inset: 0;
   z-index: 0;
 
+  & img,
   & video {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
     object-position: center;
+  }
+  & video {
+    opacity: 0;
+    transition: opacity 0.6s ease-in;
+  }
+  & video[data-playing] {
+    opacity: 1;
   }
 `
 

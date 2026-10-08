@@ -10,6 +10,7 @@ import { Toasts } from '~/components/Toasts'
 import { TranslationProvider } from '~/intl'
 import { FeatureFlag } from '~/lib/featureFlags'
 import { trackPageView } from '~/lib/pageViews'
+import { setCanonical } from '~/lib/seo'
 import { useAccountWatcher } from '~/hooks/useAccountWatcher'
 import { useCreatorsPrelaunch } from '~/hooks/useCreatorsPrelaunch'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
@@ -83,6 +84,10 @@ const App = () => {
       delete document.body.dataset.fullscreen
     }
   }, [isFullscreen])
+
+  useEffect(() => {
+    setCanonical(path)
+  }, [path])
 
   // Mirrored on <body> so shell-level CSS (the page field behind the fixed navbar) can vary per route.
   useEffect(() => {

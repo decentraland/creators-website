@@ -315,6 +315,9 @@
     },
     "review_notice": {
       "rejected": "El comité de curaduría rechazó la última versión de esta colección. Actualiza tus ítems y envíalos a revisión de nuevo."
+    },
+    "push_blocker": {
+      "has_invalid_items": "Corrige {count, plural, one {# ítem marcado} other {# ítems marcados}} en rojo antes de enviar a revisión."
     }
   },
   "publish_collection_modal": {
@@ -1278,7 +1281,7 @@
       "subtitle": "Conoce más sobre Decentraland",
       "title": "Preguntas\nfrecuentes",
       "aria_label": "Preguntas frecuentes",
-      "cta": "Ver más",
+      "cta": "Ver todas las preguntas frecuentes",
       "items": {
         "what_is": {
           "question": "¿Qué es Decentraland?",
@@ -1422,15 +1425,18 @@
     "issues": {
       "errors_blocking": {
         "title": "Algunos ítems necesitan tu atención",
-        "intro": "Encontramos algunos problemas que debes resolver antes de publicar tu colección. Corrígelos e intenta publicar de nuevo."
+        "intro": "Encontramos algunos problemas que debes resolver antes de publicar tu colección. Corrígelos e intenta publicar de nuevo.",
+        "intro_push_changes": "Encontramos algunos problemas que debes resolver antes de enviar tu colección a revisión. Corrígelos e inténtalo de nuevo."
       },
       "errors": {
         "title": "Algunos ítems tienen problemas",
-        "intro": "Encontramos algunos problemas que podrían hacer que tus ítems sean rechazados durante la revisión de curaduría. Te recomendamos corregirlos primero, pero aún puedes continuar con la publicación."
+        "intro": "Encontramos algunos problemas que podrían hacer que tus ítems sean rechazados durante la revisión de curaduría. Te recomendamos corregirlos primero, pero aún puedes continuar con la publicación.",
+        "intro_push_changes": "Encontramos algunos problemas que podrían hacer que tus ítems sean rechazados durante la revisión de curaduría. Te recomendamos corregirlos primero, pero aún puedes enviarlos a revisión."
       },
       "warnings": {
         "title": "Algunas cosas para revisar",
-        "intro": "Encontramos algunas sugerencias que podrían ayudarte a mejorar tus ítems. Puedes revisarlas ahora o continuar con la publicación."
+        "intro": "Encontramos algunas sugerencias que podrían ayudarte a mejorar tus ítems. Puedes revisarlas ahora o continuar con la publicación.",
+        "intro_push_changes": "Encontramos algunas sugerencias que podrían ayudarte a mejorar tus ítems. Puedes revisarlas ahora o enviarlos a revisión."
       },
       "back": "Volver a la colección",
       "continue": "Continuar de todos modos"

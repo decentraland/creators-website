@@ -82,6 +82,7 @@ import { LinkedCollectionView } from './LinkedCollectionView'
 import { ItemActionsMenu } from './ItemActionsMenu'
 import { ItemListRow } from './ItemListRow'
 import { PublishCollectionModal, PublishSuccessModal, type PublishResume } from './PublishCollectionModal'
+import { ValidationGate } from './PublishCollectionModal/ValidationGate'
 import { SellItemFlow, UpdatePriceFlow } from './SellItemFlow'
 import { ManageRolesFlow } from './ManageRolesFlow'
 import { SendItemsFlow } from './SendItemsFlow'
@@ -206,13 +207,14 @@ const CollectionDetailPage = () => {
   const curationQuery = useCollectionCuration(address, standardCollection)
   const curation = curationQuery.data ?? null
   const pushCuration = usePushCuration(address)
-  const [isPushOpen, setPushOpen] = useState(false)
+  // Sending changes for review runs the same item checks as publishing before its confirm modal.
+  const [pushView, setPushView] = useState<'closed' | 'gate' | 'confirm'>('closed')
   const hasUnsyncedItems = useMemo(
     () => [...syncs.values()].some(sync => sync.status === ItemSyncStatus.UNSYNCED),
     [syncs]
   )
   const closePush = () => {
-    setPushOpen(false)
+    setPushView('closed')
     pushCuration.reset()
   }
   // Until the request loads, a pending one looks like none and the push would duplicate it.
@@ -229,8 +231,8 @@ const CollectionDetailPage = () => {
       ),
     [standardCollection, curationLoaded, curation, hasUnsyncedItems, address]
   )
-  // A never-approved collection asks for its first review again; an approved one sends an update.
-  const pushCopy = collection?.isApproved ? 'push_changes' : 'request_review'
+  // After a rejection the creator asks for a review again, whether it was the first one or a pushed update.
+  const pushCopy = curation?.status === 'rejected' ? 'request_review' : 'push_changes'
   // The Status column exists on collections approved at least once, while some row on the page says more than
   // "published": before the first approval the collection pill already tells the whole story.
   const curationPending = curation?.status === 'pending'
@@ -247,9 +249,9 @@ const CollectionDetailPage = () => {
   )
 
   // Drafts check every item; published collections only the items with changes waiting for approval.
-  // Small screens are a viewer and check nothing, unless the publish modal is already open: crossing the
+  // Small screens are a viewer and check nothing, unless a gated modal is already open: crossing the
   // breakpoint mid-check must not empty its results and let it through.
-  const validates = !compact || publishView === 'wizard'
+  const validates = !compact || publishView === 'wizard' || pushView !== 'closed'
   const validationItems = useMemo(
     () =>
       !validates || !standardCollection || !allItems
@@ -279,7 +281,7 @@ const CollectionDetailPage = () => {
       track('Item Validation Details Opened', {
         itemId: item.id,
         status: validation.results.get(item.id)?.status ?? 'idle',
-        source: 'row'
+        trigger: 'row'
       })
     },
     [validation.results]
@@ -309,9 +311,11 @@ const CollectionDetailPage = () => {
   const hasItems = total > 0
   const canRename = !!collection && !collection.isPublished && !isCollectionLocked(collection)
   const canAddItems = canRename
+  const hasInvalidItems = blockOnErrors && invalidCount > 0
   const publishBlocker = collection
-    ? getPublishBlocker(collection, total, allItems ?? [], { hasInvalidItems: blockOnErrors && invalidCount > 0 })
+    ? getPublishBlocker(collection, total, allItems ?? [], { hasInvalidItems })
     : 'not_draft'
+  const pushBlocked = hasInvalidItems
 
   function openFileBrowser() {
     filesInputRef.current?.click()
@@ -573,15 +577,29 @@ const CollectionDetailPage = () => {
                 </Button>
               )}
               {showPushChanges && (
-                <Button
-                  type="button"
-                  variant="primary"
-                  data-desktop-only
-                  data-testid="push-changes"
-                  onClick={() => setPushOpen(true)}
+                <Tooltip
+                  content={
+                    pushBlocked
+                      ? t('collection_detail_page.push_blocker.has_invalid_items', { count: invalidCount })
+                      : null
+                  }
+                  placement="bottom"
+                  asChild
+                  testId="push-changes-blocker"
                 >
-                  {t(`collection_detail_page.${pushCopy}.action`)}
-                </Button>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    data-desktop-only
+                    data-testid="push-changes"
+                    aria-disabled={pushBlocked || undefined}
+                    onClick={() => {
+                      if (!pushBlocked) setPushView('gate')
+                    }}
+                  >
+                    {t(`collection_detail_page.${pushCopy}.action`)}
+                  </Button>
+                </Tooltip>
               )}
               {address && (
                 <CollectionActionsMenu
@@ -788,7 +806,17 @@ const CollectionDetailPage = () => {
             />
           )}
           {publishView === 'success' && <PublishSuccessModal onDone={() => setPublishView('closed')} />}
-          {isPushOpen && (
+          {pushView === 'gate' && (
+            <ValidationGate
+              collectionId={collection.id}
+              flow="push_changes"
+              validation={publishValidation}
+              blockOnErrors={blockOnErrors}
+              onPass={() => setPushView('confirm')}
+              onClose={closePush}
+            />
+          )}
+          {pushView === 'confirm' && (
             <ConfirmModal
               icon={<SyncIcon />}
               title={t(`collection_detail_page.${pushCopy}.title`)}
@@ -806,7 +834,7 @@ const CollectionDetailPage = () => {
                 onClick: () =>
                   pushCuration.mutate(collection, {
                     onSuccess: () => {
-                      setPushOpen(false)
+                      setPushView('closed')
                       showToast(t(`collection_detail_page.${pushCopy}.success`))
                     }
                   }),

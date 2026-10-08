@@ -1,9 +1,17 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, describe, it, expect, beforeEach, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TranslationProvider } from '~/intl'
 import { useLocale } from '~/store/locale'
 import { Footer } from './Footer'
+
+const viewport = vi.hoisted(() => ({ near: true }))
+vi.mock('react-intersection-observer', () => ({
+  useInView: ({ skip }: { skip?: boolean }) => ({ ref: vi.fn(), inView: !skip && viewport.near })
+}))
+
+const setReadyState = (state: DocumentReadyState) =>
+  Object.defineProperty(document, 'readyState', { configurable: true, get: () => state })
 
 function renderFooter() {
   return render(
@@ -13,7 +21,12 @@ function renderFooter() {
   )
 }
 
+afterEach(() => {
+  setReadyState('complete')
+})
+
 beforeEach(() => {
+  viewport.near = true
   localStorage.clear()
   useLocale.setState({ locale: 'en' })
 })
@@ -64,5 +77,31 @@ describe('Footer', () => {
     const frame = screen.getByTestId('footer-newsletter-frame')
     expect(frame).toHaveAttribute('sandbox')
     expect(frame.getAttribute('sandbox')).not.toContain('allow-top-navigation')
+  })
+
+  it('loads the newsletter embed only once the visitor nears the footer', async () => {
+    viewport.near = false
+    const { rerender } = renderFooter()
+    const frame = screen.getByTestId('footer-newsletter-frame')
+    expect(frame).not.toHaveAttribute('src')
+
+    viewport.near = true
+    rerender(
+      <TranslationProvider>
+        <Footer />
+      </TranslationProvider>
+    )
+    await waitFor(() => expect(frame).toHaveAttribute('src', expect.stringContaining('embeds.beehiiv.com')))
+  })
+
+  it('holds the newsletter embed back until the page has finished loading', async () => {
+    setReadyState('loading')
+    renderFooter()
+    const frame = screen.getByTestId('footer-newsletter-frame')
+    await new Promise(resolve => setTimeout(resolve, 10))
+    expect(frame).not.toHaveAttribute('src')
+
+    window.dispatchEvent(new Event('load'))
+    await waitFor(() => expect(frame).toHaveAttribute('src', expect.stringContaining('embeds.beehiiv.com')))
   })
 })

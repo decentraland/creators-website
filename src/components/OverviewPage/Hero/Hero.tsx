@@ -1,6 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Button } from '~/components/Button'
 import { ChevronDownIcon } from '~/components/Icons'
+import { useAfterLoadIdle } from '~/hooks/useAfterLoadIdle'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useTypingListEffect } from '~/hooks/useTypingListEffect'
 import { useTranslation } from '~/intl'
@@ -14,31 +15,63 @@ import {
 import { CREATOR_DOCS_URL, CREATOR_HUB_DOWNLOAD_URL, heroData } from '../data'
 import * as S from './Hero.styles'
 
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
+
+const prefersSavingData = () =>
+  (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true
+
+/** Its own component so the fade-in state starts over on every mount. */
+const HeroVideo = () => {
+  const [playing, setPlaying] = useState(false)
+  const { url, width, height } = heroData.video
+  return (
+    <video
+      autoPlay
+      loop
+      muted
+      playsInline
+      width={width}
+      height={height}
+      aria-hidden
+      data-testid="overview-hero-video"
+      data-playing={playing || undefined}
+      onPlaying={() => setPlaying(true)}
+    >
+      <source src={url} type="video/mp4" />
+    </video>
+  )
+}
+
 const Hero = () => {
   const { t } = useTranslation()
   const mobile = useMediaQuery(OVERVIEW_MOBILE_QUERY)
   const words = useMemo(() => heroData.words.map(word => t(`overview.hero.words.${word}`)), [t])
   const currentWord = useTypingListEffect(words)
-  const media = mobile ? heroData.portrait : heroData.landscape
+  const { poster } = heroData
+  const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY)
+  const idle = useAfterLoadIdle()
+  const [posterFailed, setPosterFailed] = useState(false)
+  // The poster is the first paint and the LCP; the video only joins once the page is idle, and only on
+  // desktop, where its weight is affordable.
+  const showVideo = !mobile && idle && !reducedMotion && !prefersSavingData()
 
   return (
     <>
       <S.Hero data-testid="overview-hero">
         <S.Background>
-          {/* Keyed so the orientation switch swaps the element instead of re-sourcing a playing video. */}
-          <video
-            key={mobile ? 'portrait' : 'landscape'}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="metadata"
-            poster={media.poster.url}
-            width={media.video.width}
-            height={media.video.height}
-          >
-            <source src={media.video.url} type="video/mp4" />
-          </video>
+          {!posterFailed && (
+            <img
+              src={poster.url}
+              srcSet={poster.srcSet}
+              sizes="100vw"
+              alt=""
+              width={poster.width}
+              height={poster.height}
+              data-testid="overview-hero-poster"
+              onError={() => setPosterFailed(true)}
+            />
+          )}
+          {showVideo && <HeroVideo />}
         </S.Background>
         <S.Content>
           <S.Title>
