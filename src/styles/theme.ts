@@ -148,7 +148,7 @@ const radius = {
 } as const
 
 const font = {
-  sans: '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  sans: '"Inter", "Inter Fallback", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   // MUI Typography's body tracking; the overview page carries it on every text block sites set in Typography.
   tracking: '0.00938em'
 } as const

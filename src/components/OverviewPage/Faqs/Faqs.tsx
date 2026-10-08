@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent, type SyntheticEvent } from 'react'
+import { useMemo, useState, type KeyboardEvent, type SyntheticEvent } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { Button } from '~/components/Button'
 import { CircleAndArrowIcon } from '~/components/Icons'
@@ -56,9 +56,25 @@ const Faqs = () => {
   // No reveal animation here, so the section observes the viewport itself for `Section Viewed`.
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 })
   useSectionViewed(OverviewSection.FAQS, inView)
+  const structuredData = useMemo(
+    () =>
+      JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: faqIds.map(id => ({
+          '@type': 'Question',
+          name: t(`overview.faqs.items.${id}.question`),
+          acceptedAnswer: { '@type': 'Answer', text: t(`overview.faqs.items.${id}.answer`) }
+        }))
+      }),
+    [t]
+  )
 
   return (
     <S.Section ref={ref} aria-label={t('overview.faqs.aria_label')} data-testid="overview-faqs">
+      <script type="application/ld+json" data-testid="overview-faqs-structured-data">
+        {structuredData}
+      </script>
       <S.Frame>
         <S.Container>
           <S.Subtitle>{t('overview.faqs.subtitle')}</S.Subtitle>

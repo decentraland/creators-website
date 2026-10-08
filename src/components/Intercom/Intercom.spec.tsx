@@ -56,7 +56,11 @@ beforeEach(() => {
   observer = autoLoadScript()
 })
 
+const setReadyState = (state: DocumentReadyState) =>
+  Object.defineProperty(document, 'readyState', { configurable: true, get: () => state })
+
 afterEach(() => {
+  setReadyState('complete')
   observer.disconnect()
   vi.resetModules()
 })
@@ -120,13 +124,29 @@ describe('Intercom', () => {
     )
   })
 
+  it('waits for the page to finish loading before fetching the widget', async () => {
+    setReadyState('loading')
+    const { Intercom } = await import('./Intercom')
+    renderAt(<Intercom />)
+
+    await new Promise(resolve => setTimeout(resolve, 10))
+    expect(document.head.querySelector('script[src*="widget.intercom.io"]')).toBeNull()
+
+    window.dispatchEvent(new Event('load'))
+    await waitFor(() =>
+      expect(intercom).toHaveBeenCalledWith('update', expect.objectContaining({ app_id: 'app-id-test' }))
+    )
+  })
+
   it('stays out of the page entirely when no app id is configured', async () => {
     settings.appId = ''
 
     const { Intercom } = await import('./Intercom')
     renderAt(<Intercom />)
 
-    await waitFor(() => expect(document.head.querySelector('script')).toBeNull())
+    // Past the point where the widget would have been fetched.
+    await new Promise(resolve => setTimeout(resolve, 10))
+    expect(document.head.querySelector('script')).toBeNull()
     expect(intercom).not.toHaveBeenCalled()
   })
 })
