@@ -8,15 +8,15 @@ type Props = Record<string, unknown>
 const writeKey = () => config.get('SITES_SEGMENT_API_KEY', '')
 
 /**
- * Sends an overview event. `track_*` mirror sites' deferred-track observability fields; this transport
- * never queues, so the call is delivered the moment it is made.
+ * Sends an overview event. `track_*` mirror sites' observability fields: `track_deferred` is true because,
+ * in sites' terms, a call that bypasses analytics.js (sites' beacon path) counts as deferred.
  */
 export function sendOverviewTrack(event: string, props: Props): void {
   const now = Date.now()
   sendDirect(
     writeKey(),
     { type: 'track', event },
-    { ...props, track_called_at: now, track_delivered_at: now, track_deferred: false }
+    { ...props, track_called_at: now, track_delivered_at: now, track_deferred: true }
   )
 }
 

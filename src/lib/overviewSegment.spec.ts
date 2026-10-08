@@ -29,7 +29,7 @@ describe('sendOverviewTrack', () => {
     expect(sendDirect).toHaveBeenCalledWith(
       SITES_KEY,
       { type: 'track', event: 'Click' },
-      { place: 'Creators Hero', track_called_at: at, track_delivered_at: at, track_deferred: false }
+      { place: 'Creators Hero', track_called_at: at, track_delivered_at: at, track_deferred: true }
     )
   })
 })
