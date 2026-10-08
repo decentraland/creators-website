@@ -50,6 +50,7 @@ const Hero = () => {
   const { poster } = heroData
   const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY)
   const idle = useAfterLoadIdle()
+  const [posterFailed, setPosterFailed] = useState(false)
   // The poster is the first paint and the LCP; the video only joins once the page is idle, and only on
   // desktop, where its weight is affordable.
   const showVideo = !mobile && idle && !reducedMotion && !prefersSavingData()
@@ -58,15 +59,18 @@ const Hero = () => {
     <>
       <S.Hero data-testid="overview-hero">
         <S.Background>
-          <img
-            src={poster.url}
-            srcSet={poster.srcSet}
-            sizes="100vw"
-            alt=""
-            width={poster.width}
-            height={poster.height}
-            data-testid="overview-hero-poster"
-          />
+          {!posterFailed && (
+            <img
+              src={poster.url}
+              srcSet={poster.srcSet}
+              sizes="100vw"
+              alt=""
+              width={poster.width}
+              height={poster.height}
+              data-testid="overview-hero-poster"
+              onError={() => setPosterFailed(true)}
+            />
+          )}
           {showVideo && <HeroVideo />}
         </S.Background>
         <S.Content>
