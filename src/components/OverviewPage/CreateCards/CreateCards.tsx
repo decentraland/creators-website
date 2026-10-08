@@ -5,6 +5,7 @@ import { OVERVIEW_MOBILE_QUERY, OverviewSection, trackClick } from '~/lib/overvi
 import { AnimatedSection } from '../AnimatedSection'
 import { Carousel } from '../Carousel'
 import { createCards, type CreateCard as CreateCardData, type CreateTab } from '../data'
+import { highlight, plainText } from '../highlight'
 import * as S from './CreateCards.styles'
 
 // The carousel renders every card three times, so DOM ids carry the slide they belong to.
@@ -110,21 +111,17 @@ const CreateCard = ({ card, slide }: { card: CreateCardData; slide: number }) =>
 const keyExtractor = (card: CreateCardData) => card.id
 
 const CreateCards = () => {
-  const { t } = useTranslation()
+  const { t, rich } = useTranslation()
   const renderCard = useCallback((card: CreateCardData, slide: number) => <CreateCard card={card} slide={slide} />, [])
   return (
     <AnimatedSection section={OverviewSection.CREATE}>
       <S.Section data-testid="overview-create">
-        <S.Title>
-          {t('overview.create.title')}
-          <span>{t('overview.create.title_highlight')}</span>
-          {t('overview.create.title_second_part')}
-        </S.Title>
+        <S.Title>{rich('overview.create.title', highlight)}</S.Title>
         <Carousel
           items={createCards}
           renderItem={renderCard}
           keyExtractor={keyExtractor}
-          label={t('overview.create.title_highlight')}
+          label={t('overview.create.title', plainText)}
           slideWidth={1200}
         />
       </S.Section>

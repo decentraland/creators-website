@@ -5,9 +5,11 @@ import {
   WarningAmberOutlined as WarningIcon
 } from '@mui/icons-material'
 import DatePicker from 'react-datepicker'
+import { enUS, es, zhCN, type Locale as DateLocale } from 'date-fns/locale'
 import { useIntl } from 'react-intl'
 import 'react-datepicker/dist/react-datepicker.css'
 import { useTranslation } from '~/intl'
+import { type Locale } from '~/store/locale'
 import { useFriends } from '~/hooks/useSales'
 import { type Session } from '~/lib/auth'
 import { type Item } from '~/lib/items'
@@ -29,6 +31,8 @@ import { DEFAULT_PRICE_VALUES, PriceField, type PriceFormValues } from './PriceF
 import { SellItemCard } from './SellItemCard'
 import { Switch } from '~/components/Switch'
 import * as S from './SellItemModal.styles'
+
+const DATE_LOCALES: Record<Locale, DateLocale> = { en: enUS, es, zh: zhCN }
 
 export type SellFormValues = {
   selfBeneficiary: boolean
@@ -200,8 +204,9 @@ export function SellItemModal({
                   selected={expirationDate}
                   onChange={(date: Date | null) => update({ expirationDate: date ? formatDateValue(date) : '' })}
                   minDate={minDate}
-                  dateFormat="MM/dd/yyyy"
-                  placeholderText="MM/DD/YYYY"
+                  locale={DATE_LOCALES[intl.locale as Locale] ?? enUS}
+                  dateFormat={t('sell_item_modal.expiration.date_format')}
+                  placeholderText={t('sell_item_modal.expiration.date_placeholder')}
                   disabled={busy}
                   showPopperArrow={false}
                   popperProps={{ strategy: 'fixed' }}

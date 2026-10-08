@@ -15,7 +15,7 @@ Ported from shop's config:
 - **Core:** Vite + React 18 + TypeScript strict, React Router v6, `~` → `src/` path alias.
 - **State:** `@tanstack/react-query` for server state (builder-server data), `zustand` for client/session state. No redux.
 - **Styling:** Emotion `styled` + a `src/styles/theme.ts` token file (shop's palette), `decentraland-ui2` (MUI-based) where it fits. The item editor's resizable columns use `react-resizable-panels` (creator-hub inspector's choice).
-- **i18n:** `react-intl` with `en.json` / `es.json`.
+- **i18n:** `react-intl` with `en.json` / `es.json` / `zh.json`.
 - **Auth:** `decentraland-connect` + `@dcl/single-sign-on-client` + a zustand wallet store; builder-server requests signed with `@dcl/crypto` AuthChain.
 - **Monitoring:** Sentry (`@sentry/react`).
 - **Tests:** Vitest + Testing Library for unit tests (`vitest.config.ts`, jsdom); Puppeteer + Vitest for e2e (e2e setup pending).
@@ -71,7 +71,7 @@ The spec for all of Decentraland's public APIs is available at https://docs.dece
 
 ### i18n (hard rule)
 
-Every user-facing string — buttons, labels, headings, placeholders, statuses, errors, tooltips, empty states — goes through `t('a.b.c')` with a key added to **both** `en.json` and `es.json`. Never hardcode a display string in a component; this is part of "done" for any UI change. Spanish uses neutral (Latin American) **"tú"** forms, never "vos" ("Inicia sesión", not "Iniciá").
+Every user-facing string — buttons, labels, headings, placeholders, statuses, errors, tooltips, empty states — goes through `t('a.b.c')` with a key added to **every** locale file: `en.json`, `es.json` and `zh.json`. Never hardcode a display string in a component; this is part of "done" for any UI change. Spanish uses neutral (Latin American) **"tú"** forms, never "vos" ("Inicia sesión", not "Iniciá"). Chinese is Simplified, follows the sites repo's `zh.json` style (您, full-width punctuation, a space between Chinese and Latin text) and keeps its fixed terms: 系列 (collection), 可穿戴物品 (wearable), 表情动作 (emote), 物品 (item), 积分 (credits); brand names (Decentraland, MANA, Marketplace, Shop, Builder, Creator Hub) stay in English.
 
 One exception: item validation findings show the wearable-validator rule book's own English messages and check titles, so the editor says exactly what curation says. Copy the app adds around them (badge states, fallbacks when a check can't run) still goes through `t()`.
 
