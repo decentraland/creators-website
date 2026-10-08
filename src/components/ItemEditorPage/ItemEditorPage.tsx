@@ -232,13 +232,13 @@ const ItemEditorPage = () => {
     const issues = await rerunValidation(keys)
     track('Item Validation Rerun', {
       itemId: selectedId,
-      source: 'details',
+      trigger: 'details',
       previousStatus: validationStatus,
       newStatus: getValidationStatus(issues, false)
     })
   }, [rerunValidation, validationSource, validationCtx, fileUpdateId, thumbnailSource, selectedId, validationStatus])
   const onValidationOpen = useCallback(
-    () => track('Item Validation Details Opened', { itemId: selectedId, status: validationStatus, source: 'editor' }),
+    () => track('Item Validation Details Opened', { itemId: selectedId, status: validationStatus, trigger: 'editor' }),
     [selectedId, validationStatus]
   )
 
