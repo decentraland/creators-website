@@ -161,6 +161,17 @@ describe('ValidationGate', () => {
     expect(onPass).not.toHaveBeenCalled()
   })
 
+  it('speaks of sending for review rather than publishing in the push flow', () => {
+    renderGate({
+      flow: 'push_changes',
+      blockOnErrors: true,
+      validation: { isValidating: false, results: [{ item: broken, issues: [error] }] }
+    })
+    const content = screen.getByTestId('publish-validation-issues-content')
+    expect(content).toHaveTextContent('before you can send your collection for review')
+    expect(content).not.toHaveTextContent('publish')
+  })
+
   it('tags every event with the flow it ran for', async () => {
     renderGate({
       flow: 'push_changes',

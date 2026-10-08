@@ -566,7 +566,7 @@ const CollectionDetailPage = () => {
                 <Tooltip
                   content={
                     pushBlocked
-                      ? t('collection_detail_page.publish_blocker.has_invalid_items', { count: invalidCount })
+                      ? t('collection_detail_page.push_blocker.has_invalid_items', { count: invalidCount })
                       : null
                   }
                   placement="bottom"

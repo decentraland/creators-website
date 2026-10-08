@@ -86,6 +86,7 @@ export function ValidationGate({ collectionId, flow, validation, blockOnErrors, 
   return (
     <ValidationIssuesView
       checks={flaggedChecks}
+      flow={flow}
       blockOnErrors={blockOnErrors}
       onRerun={rerun}
       onBack={() => resolveIssues('back')}
