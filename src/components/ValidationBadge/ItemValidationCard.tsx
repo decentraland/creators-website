@@ -27,6 +27,8 @@ type Props = {
   issues: ValidationIssue[]
   /** Checks the item again; the card shows a spinner until it settles. */
   onRerun?: () => Promise<unknown>
+  /** Makes the subject a button, e.g. to open the item. */
+  onSelect?: () => void
   testId?: string
 }
 
@@ -36,7 +38,7 @@ function shapeLabel(shapes: BodyShape[] | undefined): 'male' | 'female' | null {
 }
 
 /** One item's validation results: what it is, its issues (or that it passes) and a way to check it again. */
-export function ItemValidationCard({ subject, issues, onRerun, testId = 'item-validation' }: Props) {
+export function ItemValidationCard({ subject, issues, onRerun, onSelect, testId = 'item-validation' }: Props) {
   const { t } = useTranslation()
   const [isRunning, setRunning] = useState(false)
 
@@ -45,6 +47,8 @@ export function ItemValidationCard({ subject, issues, onRerun, testId = 'item-va
     setRunning(true)
     void onRerun().finally(() => setRunning(false))
   }
+
+  const Subject = onSelect ? S.SubjectButton : S.Subject
 
   const rerunButton = onRerun && (
     <Tooltip content={t(isRunning ? 'item_validation.rerunning' : 'item_validation.rerun')} asChild>
@@ -67,7 +71,9 @@ export function ItemValidationCard({ subject, issues, onRerun, testId = 'item-va
       {(subject || rerunButton) && (
         <S.Header>
           {subject && (
-            <>
+            <Subject
+              {...(onSelect && { type: 'button' as const, 'data-testid': `${testId}-select`, onClick: onSelect })}
+            >
               {subject.thumbnail !== undefined && <S.Thumbnail src={subject.thumbnail} rarity={subject.rarity} />}
               <S.SubjectText data-testid={`${testId}-subject`}>
                 <S.SubjectName>{subject.name}</S.SubjectName>
@@ -76,7 +82,7 @@ export function ItemValidationCard({ subject, issues, onRerun, testId = 'item-va
                   {subject.category && <span>{t(`collection_detail_page.category.${subject.category}`)}</span>}
                 </S.SubjectMeta>
               </S.SubjectText>
-            </>
+            </Subject>
           )}
           {rerunButton}
         </S.Header>

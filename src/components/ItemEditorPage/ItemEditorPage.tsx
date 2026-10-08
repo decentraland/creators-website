@@ -515,7 +515,7 @@ const ItemEditorPage = () => {
 
   const reviewBar =
     mode === 'review' && collection && session ? (
-      <ReviewBar session={session} collection={collection} items={items} />
+      <ReviewBar session={session} collection={collection} items={items} onSelectItem={selectItem} />
     ) : null
   const properties =
     collection && selected ? (

@@ -4,7 +4,9 @@ import { MemoryRouter } from 'react-router-dom'
 import { TranslationProvider } from '~/intl'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
+import { type Item } from '~/lib/items'
 import { openExternal } from '~/lib/navigation'
+import { ValidationSeverity, type ValidationIssue } from '~/lib/validation'
 import { type CollectionCuration } from '~/lib/curation'
 import { ItemSyncStatus } from '~/lib/itemSync'
 import { ReviewBar } from './ReviewBar'
@@ -16,7 +18,10 @@ const state = vi.hoisted(() => ({
   refetch: vi.fn(),
   syncs: new Map<string, { status: string; entity?: object }>(),
   reject: vi.fn(),
-  disable: vi.fn()
+  disable: vi.fn(),
+  issues: new Map<string, ValidationIssue[]>(),
+  isValidating: false,
+  selectItem: vi.fn()
 }))
 vi.mock('~/lib/navigation', () => ({ openExternal: vi.fn() }))
 vi.mock('~/hooks/useCuration', () => ({
@@ -30,6 +35,15 @@ vi.mock('~/hooks/useCuration', () => ({
   useDisableCollection: () => ({ mutate: state.disable, isPending: false, isError: false, reset: vi.fn() })
 }))
 vi.mock('~/hooks/useItemSync', () => ({ useItemSyncs: () => state.syncs }))
+// Checks exactly the items it is handed, like the real hook, with canned results.
+vi.mock('~/hooks/useCollectionValidation', () => ({
+  useCollectionValidation: (items: Item[], enabled: boolean) => ({
+    results: new Map(
+      (enabled ? items : []).map(item => [item.id, { status: 'pass', issues: state.issues.get(item.id) ?? [] }])
+    ),
+    isValidating: enabled && state.isValidating
+  })
+}))
 vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: undefined }) }))
 vi.mock('./ApprovalFlowModal', () => ({
   ApprovalFlowModal: ({ mode }: { mode: string }) => <div data-testid="approval-flow" data-mode={mode} />
@@ -52,11 +66,24 @@ const base = {
   createdAt: 1
 } as Collection
 
+const item = (id: string) =>
+  ({
+    id,
+    name: `Item ${id}`,
+    type: 'wearable',
+    contents: {},
+    thumbnail: '',
+    data: { category: 'hat' }
+  }) as unknown as Item
+const items = [item('i1'), item('i2'), item('i3')]
+const error = (message: string): ValidationIssue => ({ code: 'c', severity: ValidationSeverity.ERROR, message })
+const warning = (message: string): ValidationIssue => ({ code: 'c', severity: ValidationSeverity.WARNING, message })
+
 function renderBar(collection: Collection = base) {
   render(
     <TranslationProvider>
       <MemoryRouter>
-        <ReviewBar session={session} collection={collection} items={[]} />
+        <ReviewBar session={session} collection={collection} items={items} onSelectItem={state.selectItem} />
       </MemoryRouter>
     </TranslationProvider>
   )
@@ -71,6 +98,9 @@ beforeEach(() => {
   state.syncs = new Map()
   state.reject.mockReset()
   state.disable.mockReset()
+  state.issues = new Map()
+  state.isValidating = false
+  state.selectItem.mockReset()
 })
 
 describe('ReviewBar', () => {
@@ -197,5 +227,84 @@ describe('ReviewBar', () => {
     expect(actions()).toEqual([])
     expect(screen.queryByTestId('review-assign-me')).toBeNull()
     expect(screen.queryByTestId('review-assignee')).toBeNull()
+  })
+
+  describe('collection validation', () => {
+    const pending = (...ids: string[]) =>
+      new Map(ids.map(id => [id, { status: ItemSyncStatus.UNDER_REVIEW }] as [string, { status: string }]))
+
+    it('lists every item with issues in one modal and opens the one picked', () => {
+      state.syncs = pending('i1', 'i2', 'i3')
+      state.issues = new Map([
+        ['i1', [error('Too many triangles')]],
+        ['i3', [warning('Big texture'), error('No skeleton')]]
+      ])
+      renderBar()
+      const badge = screen.getByTestId('review-validation')
+      expect(badge).toHaveAttribute('data-status', 'errors')
+      expect(badge).toHaveTextContent('3 issues')
+
+      fireEvent.click(badge)
+      expect(screen.getByTestId('review-validation-i1-card')).toHaveTextContent('Too many triangles')
+      expect(screen.getByTestId('review-validation-i3-card')).toHaveTextContent('No skeleton')
+      expect(screen.queryByTestId('review-validation-i2-card')).toBeNull()
+
+      fireEvent.click(screen.getByTestId('review-validation-i3-select'))
+      expect(state.selectItem).toHaveBeenCalledWith(items[2])
+    })
+
+    it('shows a spinner while any item is being checked', () => {
+      state.syncs = pending('i1')
+      state.isValidating = true
+      renderBar()
+      expect(screen.getByTestId('review-validation')).toHaveAttribute('data-status', 'loading')
+    })
+
+    it('turns green with no modal when every item passes', () => {
+      state.syncs = pending('i1', 'i2')
+      renderBar()
+      const badge = screen.getByTestId('review-validation')
+      expect(badge).toHaveAttribute('data-status', 'pass')
+      fireEvent.click(badge)
+      expect(screen.queryByTestId('review-validation-modal')).toBeNull()
+    })
+
+    it('opens warnings-only results too', () => {
+      state.syncs = pending('i1')
+      state.issues = new Map([['i1', [warning('Big texture')]]])
+      renderBar()
+      expect(screen.getByTestId('review-validation')).toHaveAttribute('data-status', 'warnings')
+      fireEvent.click(screen.getByTestId('review-validation'))
+      expect(screen.getByTestId('review-validation-i1-card')).toBeInTheDocument()
+    })
+
+    it('checks only the items with changes waiting for approval', () => {
+      state.curation = { status: 'pending', assignee: null, createdAt: 1, updatedAt: 1 } as CollectionCuration
+      state.syncs = new Map([
+        ['i1', { status: ItemSyncStatus.SYNCED }],
+        ['i2', { status: ItemSyncStatus.UNDER_REVIEW }]
+      ])
+      state.issues = new Map([['i1', [error('Old problem')]]])
+      renderBar({ ...base, isApproved: true })
+      expect(screen.getByTestId('review-validation')).toHaveAttribute('data-status', 'pass')
+    })
+
+    it.each([
+      ['approved', { ...base, isApproved: true }],
+      ['disabled', { ...base, reviewedAt: 5 }],
+      ['unpublished', { ...base, isPublished: false }]
+    ])('checks nothing on an %s collection', (_, collection) => {
+      state.syncs = pending('i1')
+      state.issues = new Map([['i1', [error('Too many triangles')]]])
+      renderBar(collection)
+      expect(screen.queryByTestId('review-validation')).toBeNull()
+    })
+
+    it('checks nothing on a rejected collection', () => {
+      state.curation = { status: 'rejected', assignee: null, createdAt: 1, updatedAt: 1 } as CollectionCuration
+      state.syncs = pending('i1')
+      renderBar()
+      expect(screen.queryByTestId('review-validation')).toBeNull()
+    })
   })
 })
