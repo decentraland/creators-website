@@ -619,7 +619,7 @@
       "scene_main_not_code": "scene.json apunta main a {fileName}, pero debe ser el bundle de JavaScript.",
       "emote_duration_too_long": "Los emotes pueden durar hasta {seconds} segundos.",
       "emote_with_mesh": "Este emote incluye la malla del avatar. Exporta solo el esqueleto y la animación.",
-      "emote_social_unsupported": "Los emotes sociales todavía no están soportados aquí. Usa el Builder clásico para este.",
+      "emote_social_unsupported": "Los emotes sociales no están soportados actualmente.",
       "emote_animations_out_of_sync": "Las animaciones del avatar y del prop deben tener la misma duración.",
       "missing_external_resources": "El modelo referencia archivos que no están incluidos: {fileNames}.",
       "invalid_model_file": "No pudimos cargar este modelo 3D. Revisa el archivo e inténtalo de nuevo.",
