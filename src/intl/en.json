@@ -452,7 +452,9 @@
       "too_low_mana": "The price must be at least {min} MANA."
     },
     "expiration": {
-      "label": "Expiration Date"
+      "label": "Expiration Date",
+      "date_format": "MM/dd/yyyy",
+      "date_placeholder": "MM/DD/YYYY"
     },
     "note": "Your item will be listed in the Decentraland Shop for Credits. When it sells, you’ll receive the <b>equivalent value in MANA.</b>",
     "note_tooltip": "Credits are pegged to the US dollar. The MANA you receive is calculated with the exchange rate at the moment of each sale.",

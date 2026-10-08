@@ -452,7 +452,9 @@
       "too_low_mana": "El precio debe ser de al menos {min} MANA."
     },
     "expiration": {
-      "label": "Fecha de vencimiento"
+      "label": "Fecha de vencimiento",
+      "date_format": "dd/MM/yyyy",
+      "date_placeholder": "DD/MM/AAAA"
     },
     "note": "Tu ítem se publicará en la Tienda de Decentraland en Créditos. Cuando se venda, recibirás el <b>valor equivalente en MANA.</b>",
     "note_tooltip": "Los Créditos están atados al dólar estadounidense. El MANA que recibes se calcula con el tipo de cambio del momento de cada venta.",

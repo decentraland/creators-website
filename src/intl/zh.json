@@ -452,7 +452,9 @@
       "too_low_mana": "价格至少为 {min} MANA。"
     },
     "expiration": {
-      "label": "到期日期"
+      "label": "到期日期",
+      "date_format": "yyyy/MM/dd",
+      "date_placeholder": "YYYY/MM/DD"
     },
     "note": "您的物品将在 Decentraland Shop 中以积分标价出售。售出后，您将收到<b>等值的 MANA。</b>",
     "note_tooltip": "积分与美元挂钩。您收到的 MANA 按每次售出时的汇率计算。",
