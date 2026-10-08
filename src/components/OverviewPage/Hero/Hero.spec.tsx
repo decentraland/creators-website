@@ -15,7 +15,9 @@ vi.mock('~/hooks/useMediaQuery', () => ({
 }))
 
 const release = vi.hoisted(() => ({ download: undefined as CreatorHubDownload | undefined }))
-vi.mock('~/hooks/useCreatorHubDownload', () => ({ useCreatorHubDownload: () => release.download }))
+vi.mock('~/hooks/useCreatorHubDownload', () => ({
+  useCreatorHubDownload: () => (release.download ? { download: release.download } : { fallback: 'loading' })
+}))
 vi.mock('~/lib/creatorHubDownload', () => ({
   startCreatorHubDownload: vi.fn(),
   cancelCreatorHubRedirect: vi.fn(),
@@ -50,7 +52,8 @@ describe('Hero', () => {
     expect(track).toHaveBeenCalledWith('Click', {
       place: 'Creators Hero',
       event: 'Download',
-      download_target: 'creator_hub'
+      download_target: 'creator_hub',
+      download_mode: 'loading'
     })
   })
 
@@ -65,7 +68,8 @@ describe('Hero', () => {
     expect(track).toHaveBeenCalledWith('Click', {
       place: 'Creators Hero',
       event: 'Download',
-      download_target: 'creator_hub'
+      download_target: 'creator_hub',
+      download_mode: 'direct'
     })
   })
 

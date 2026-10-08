@@ -53,7 +53,7 @@ const Hero = () => {
   const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY)
   const idle = useAfterLoadIdle()
   // After the first paint, and never on phones: they get the docs, and the GitHub API is rate limited per IP.
-  const download = useCreatorHubDownload(!mobile && idle)
+  const { download, fallback } = useCreatorHubDownload(!mobile && idle)
   useEffect(() => cancelCreatorHubRedirect, [])
   // The poster is the first paint and the LCP; the video only joins once the page is idle, and only on
   // desktop, where its weight is affordable.
@@ -111,6 +111,7 @@ const Hero = () => {
               data-place={OverviewSection.HERO}
               data-event={DOWNLOAD_CLICK}
               data-download-target={CREATOR_HUB_TARGET}
+              data-download-mode={download ? 'direct' : fallback}
             >
               {t('overview.hero.download_cta')}
             </Button>
