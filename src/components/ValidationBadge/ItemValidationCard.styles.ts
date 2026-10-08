@@ -54,7 +54,7 @@ export const Thumbnail = styled(ItemThumbnail)`
   border-radius: ${theme.radius.chip};
 `
 
-export const SubjectText = styled.div`
+export const SubjectText = styled.span`
   display: flex;
   flex: 1;
   flex-direction: column;

@@ -66,7 +66,17 @@ export function ValidationBadge({
         <ValidationResultsModal
           subject={subject}
           issues={issues}
-          results={results}
+          results={results?.map(result =>
+            result.onSelect
+              ? {
+                  ...result,
+                  onSelect: () => {
+                    setOpen(false)
+                    result.onSelect?.()
+                  }
+                }
+              : result
+          )}
           onRerun={onRerun}
           onClose={() => setOpen(false)}
           testId={testId}

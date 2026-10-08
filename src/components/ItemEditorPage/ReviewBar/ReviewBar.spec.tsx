@@ -21,9 +21,11 @@ const state = vi.hoisted(() => ({
   disable: vi.fn(),
   issues: new Map<string, ValidationIssue[]>(),
   isValidating: false,
-  selectItem: vi.fn()
+  selectItem: vi.fn(),
+  track: vi.fn()
 }))
 vi.mock('~/lib/navigation', () => ({ openExternal: vi.fn() }))
+vi.mock('~/lib/analytics', () => ({ track: state.track }))
 vi.mock('~/hooks/useCuration', () => ({
   useCollectionCuration: () => ({
     data: state.curation,
@@ -101,6 +103,7 @@ beforeEach(() => {
   state.issues = new Map()
   state.isValidating = false
   state.selectItem.mockReset()
+  state.track.mockReset()
 })
 
 describe('ReviewBar', () => {
@@ -251,6 +254,30 @@ describe('ReviewBar', () => {
 
       fireEvent.click(screen.getByTestId('review-validation-i3-select'))
       expect(state.selectItem).toHaveBeenCalledWith(items[2])
+      expect(screen.queryByTestId('review-validation-modal')).toBeNull()
+    })
+
+    it('keeps checking until it knows which approved items changed', () => {
+      state.curation = { status: 'pending', assignee: null, createdAt: 1, updatedAt: 1 } as CollectionCuration
+      state.syncs = new Map([
+        ['i1', { status: ItemSyncStatus.LOADING }],
+        ['i2', { status: ItemSyncStatus.UNDER_REVIEW }]
+      ])
+      renderBar({ ...base, isApproved: true })
+      expect(screen.getByTestId('review-validation')).toHaveAttribute('data-status', 'loading')
+    })
+
+    it('reports the result once per collection, even when every check was cached', () => {
+      state.syncs = pending('i1', 'i2')
+      state.issues = new Map([['i1', [error('Too many triangles'), warning('Big texture')]]])
+      renderBar()
+      const results = state.track.mock.calls.filter(([event]) => event === 'Review Validation Result')
+      expect(results).toEqual([
+        [
+          'Review Validation Result',
+          expect.objectContaining({ collectionId: 'c1', itemCount: 2, errors: 1, warnings: 1, itemsWithIssues: 1 })
+        ]
+      ])
     })
 
     it('shows a spinner while any item is being checked', () => {

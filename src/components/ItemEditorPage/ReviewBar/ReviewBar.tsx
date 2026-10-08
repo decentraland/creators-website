@@ -113,23 +113,28 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
     [validationItems, validation.results, onSelectItem]
   )
   const validationIssues = useMemo(() => validationResults.flatMap(result => result.issues), [validationResults])
-  const validationStatus = getValidationStatus(
-    validationItems.length > 0 ? validationIssues : undefined,
-    validation.isValidating
+  // Approved items read as loading until the Catalyst answers: which of them changed isn't known yet.
+  const isResolvingItems = useMemo(
+    () => validates && items.some(item => syncs.get(item.id)?.status === ItemSyncStatus.LOADING),
+    [validates, items, syncs]
   )
-  const startedAt = useRef<number | null>(null)
+  const validationStatus = getValidationStatus(
+    validationItems.length > 0 || isResolvingItems ? validationIssues : undefined,
+    validation.isValidating || isResolvingItems
+  )
+  // One result per collection opened, cached checks included.
+  const startedAt = useRef(Date.now())
+  const reported = useRef<string | null>(null)
   useEffect(() => {
-    if (validationStatus === 'loading') startedAt.current ??= Date.now()
-    else if (validationStatus !== 'idle' && startedAt.current !== null) {
-      track('Review Validation Result', {
-        collectionId: collection.id,
-        itemCount: validationItems.length,
-        ...countIssues(validationIssues),
-        itemsWithIssues: validationResults.length,
-        durationMs: Date.now() - startedAt.current
-      })
-      startedAt.current = null
-    }
+    if (validationStatus === 'loading' || validationStatus === 'idle' || reported.current === collection.id) return
+    reported.current = collection.id
+    track('Review Validation Result', {
+      collectionId: collection.id,
+      itemCount: validationItems.length,
+      ...countIssues(validationIssues),
+      itemsWithIssues: validationResults.length,
+      durationMs: Date.now() - startedAt.current
+    })
   }, [validationStatus, collection.id, validationItems.length, validationIssues, validationResults.length])
 
   function onAction(action: ReviewAction) {
