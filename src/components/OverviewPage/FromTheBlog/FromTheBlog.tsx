@@ -6,10 +6,11 @@ import { OverviewSection, trackClick } from '~/lib/overviewAnalytics'
 import { formatLongDate } from '~/lib/time'
 import { useLocale } from '~/store/locale'
 import { AnimatedSection } from '../AnimatedSection'
+import { highlight } from '../highlight'
 import * as S from './FromTheBlog.styles'
 
 const FromTheBlog = () => {
-  const { t } = useTranslation()
+  const { t, rich } = useTranslation()
   const locale = useLocale(s => s.locale)
   const { data: posts } = useLatestBlogPosts()
 
@@ -19,9 +20,7 @@ const FromTheBlog = () => {
   return (
     <AnimatedSection section={OverviewSection.BLOG}>
       <S.Section data-testid="overview-blog">
-        <S.Title>
-          <span>{t('overview.blog.title_highlight')}</span> {t('overview.blog.title')}
-        </S.Title>
+        <S.Title>{rich('overview.blog.title', highlight)}</S.Title>
         <S.Posts>
           {posts.map(post => (
             <S.PostCard

@@ -5,10 +5,11 @@ import { useTranslation } from '~/intl'
 import { placeUrl, placesUrl, sceneCoordinates, selectLiveScenes } from '~/lib/hotScenes'
 import { OverviewSection, trackClick } from '~/lib/overviewAnalytics'
 import { AnimatedSection } from '../AnimatedSection'
+import { highlight } from '../highlight'
 import * as S from './LiveScenes.styles'
 
 const LiveScenes = () => {
-  const { t } = useTranslation()
+  const { t, rich } = useTranslation()
   const { data } = useHotScenes()
   const scenes = useMemo(() => selectLiveScenes(data ?? []), [data])
 
@@ -18,9 +19,7 @@ const LiveScenes = () => {
   return (
     <AnimatedSection section={OverviewSection.LIVE_SCENES}>
       <S.Section data-testid="overview-live-scenes">
-        <S.Title>
-          <span>{t('overview.live_scenes.title_highlight')}</span> {t('overview.live_scenes.title')}
-        </S.Title>
+        <S.Title>{rich('overview.live_scenes.title', highlight)}</S.Title>
         <S.Rail>
           {scenes.map(scene => (
             <S.SceneCard

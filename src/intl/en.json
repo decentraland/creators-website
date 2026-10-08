@@ -455,7 +455,9 @@
       "too_low_mana": "The price must be at least {min} MANA."
     },
     "expiration": {
-      "label": "Expiration Date"
+      "label": "Expiration Date",
+      "date_format": "MM/dd/yyyy",
+      "date_placeholder": "MM/DD/YYYY"
     },
     "note": "Your item will be listed in the Decentraland Shop for Credits. When it sells, you’ll receive the <b>equivalent value in MANA.</b>",
     "note_tooltip": "Credits are pegged to the US dollar. The MANA you receive is calculated with the exchange rate at the moment of each sale.",
@@ -635,7 +637,7 @@
     "title": "Preview Video",
     "description": "Upload a video that showcases the smart wearable's functionality.",
     "loading": "Loading the video…",
-    "drop_cta": "Drag and drop your video here, or",
+    "drop_cta": "Drag and drop your video here, or ",
     "browse": "Browse files",
     "hint": "{extensions} · up to {size}MB",
     "replace": "Replace",
@@ -1111,8 +1113,7 @@
       "scroll_label": "Scroll to the next section"
     },
     "why": {
-      "title_highlight": "Why",
-      "title": "creators choose Decentraland",
+      "title": "<hl>Why</hl> creators choose Decentraland",
       "cards": {
         "join": {
           "title": "Join a Community of Creators",
@@ -1132,9 +1133,7 @@
       }
     },
     "create": {
-      "title": "Explore the ",
-      "title_highlight": "creative",
-      "title_second_part": " possibilities",
+      "title": "Explore the <hl>creative</hl> possibilities",
       "required_skills": "Required Skills",
       "useful_links": "Useful Links",
       "skills": {
@@ -1234,14 +1233,12 @@
       }
     },
     "live_scenes": {
-      "title_highlight": "Explore",
-      "title": "what creators are building right now",
+      "title": "<hl>Explore</hl> what creators are building right now",
       "online": "{count} online",
       "view_all": "See all live scenes"
     },
     "connect": {
-      "title_highlight": "What",
-      "title": "Decentraland creators say",
+      "title": "<hl>What</hl> Decentraland creators say",
       "join_the_community": "Join the Community",
       "cards": {
         "mrdhingia": "I love being a DCL creator because it lets me freely create cool 3D spaces. It's great to work with others, learn new things, and monetize my content, reaching people worldwide.",
@@ -1252,8 +1249,7 @@
       }
     },
     "learn": {
-      "title_highlight": "Learn",
-      "title": "from Community Tutorials",
+      "title": "<hl>Learn</hl> from Community Tutorials",
       "watch_more": "Want to see more?",
       "watch_more_button": "Visit our YouTube channel",
       "your_tutorial": "Think your tutorial should be featured here?",
@@ -1267,8 +1263,7 @@
       }
     },
     "blog": {
-      "title_highlight": "Fresh",
-      "title": "from the blog",
+      "title": "<hl>Fresh</hl> from the blog",
       "view_all": "Read the blog"
     },
     "faqs": {
