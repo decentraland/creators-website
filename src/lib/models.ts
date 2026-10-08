@@ -2,7 +2,7 @@
 // validation suite. Ported from the legacy builder's lib/getModelData; rendering (metrics +
 // thumbnails) is NOT done here — that comes from the WearablePreview iframe controller.
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import { WearableCategory } from '@dcl/schemas'
+import { ArmatureId, WearableCategory } from '@dcl/schemas'
 import { ItemType, type ItemMetrics } from './items'
 import { ItemFileError, MAX_EMOTE_DURATION, isImageFile } from './itemFiles'
 import { suggestWearableCategory } from './suggestWearableCategory'
@@ -12,7 +12,6 @@ import { getValidator, type ValidationContext, type ValidationIssue, type Valida
 const ARMATURE_PREFIX = 'Armature'
 // Kept equal to the validator manifest's propArmatureName by springBones.spec.ts's rule book parity test.
 export const PROP_ARMATURE_NAME = 'Armature_Prop'
-const ARMATURE_OTHER = 'Armature_Other'
 
 export type AnimationMetrics = {
   sequences: number
@@ -79,14 +78,14 @@ export function getEmoteMetrics(gltf: Pick<GLTF, 'scene' | 'animations'>): Anima
       item => item.name.toLowerCase().includes('basemesh') || item.name.toLowerCase().includes('avatar_mesh')
     )
   )
+  // Social emotes (a second avatar rig) can't be authored here yet: without startAnimation/outcomes
+  // metadata they would publish as broken plain emotes, so they are refused at import. Checked first so
+  // a creator isn't asked to fix the mesh of a file that is unsupported anyway.
+  if (armatures.some(({ name }) => name === (ArmatureId.Armature_Other as string))) {
+    throw new ItemFileError('emote_social_unsupported')
+  }
   if (hasBaseMesh) {
     throw new ItemFileError('emote_with_mesh')
-  }
-
-  // Social emotes (a second avatar rig) can't be authored here yet: without startAnimation/outcomes
-  // metadata they would publish as broken plain emotes, so they are refused at import.
-  if (armatures.some(({ name }) => name === ARMATURE_OTHER)) {
-    throw new ItemFileError('emote_social_unsupported')
   }
   if (propsAnimation && propsAnimation.duration !== animation.duration) {
     throw new ItemFileError('emote_animations_out_of_sync')

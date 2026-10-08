@@ -3,7 +3,7 @@
 import { type WearableCategory } from '@dcl/schemas'
 import { addRepresentationToItem, getSizeError, withReplacedModel, type BuiltItem } from './itemFactory'
 import { ItemFileError, THUMBNAIL_PATH, getBodyShapeTypeFromContents, loadItemFile } from './itemFiles'
-import { BodyShapeType, ItemType, getItemBodyShapeType, type Item, type ItemMetrics } from './items'
+import { BodyShapeType, ItemType, getItemBodyShapeType, isSocialEmote, type Item, type ItemMetrics } from './items'
 import { analyzeModel, getModelMetrics, loadGltf } from './models'
 
 export type ModelImportKind = { kind: 'replace' } | { kind: 'add-representation'; bodyShape: BodyShapeType }
@@ -22,6 +22,8 @@ async function readWearableMetrics(model: string, contents: Record<string, Blob>
  * rejected; a single representation can't come from a zip with both body-shape folders.
  */
 export async function importItemModel(file: File, item: Item, kind: ModelImportKind): Promise<BuiltItem> {
+  // A legacy social emote's startAnimation/outcomes point at clips of its current file and can't be edited here.
+  if (isSocialEmote(item)) throw new ItemFileError('emote_social_unsupported')
   const loaded = await loadItemFile(file)
   // The thumbnail never travels with a model change: the item keeps its own.
   const contents = { ...loaded.contents }

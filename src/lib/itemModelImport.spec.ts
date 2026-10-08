@@ -53,6 +53,14 @@ beforeEach(() => {
 })
 
 describe('importItemModel', () => {
+  it('refuses to change the model of a legacy social emote', async () => {
+    const socialEmote = { ...item, type: ItemType.EMOTE, metrics: { additionalArmatures: 1 } }
+    await expect(importItemModel(file, socialEmote, { kind: 'replace' })).rejects.toMatchObject({
+      messageKey: 'emote_social_unsupported'
+    })
+    expect(loadItemFile).not.toHaveBeenCalled()
+  })
+
   it('rejects a file of the other item type', async () => {
     analyzeModel.mockResolvedValue({
       type: ItemType.EMOTE,
