@@ -19,8 +19,23 @@ describe('afterLoadIdle', () => {
     const callback = vi.fn()
     afterLoadIdle(callback)
 
-    vi.runAllTimers()
+    vi.advanceTimersByTime(5_000)
     expect(callback).not.toHaveBeenCalled()
+
+    window.dispatchEvent(new Event('load'))
+    vi.runAllTimers()
+    expect(callback).toHaveBeenCalledOnce()
+  })
+
+  it('stops waiting for a load that never comes', () => {
+    setReadyState('loading')
+    const callback = vi.fn()
+    afterLoadIdle(callback, { loadTimeout: 10_000 })
+
+    vi.advanceTimersByTime(9_000)
+    expect(callback).not.toHaveBeenCalled()
+    vi.runAllTimers()
+    expect(callback).toHaveBeenCalledOnce()
 
     window.dispatchEvent(new Event('load'))
     vi.runAllTimers()

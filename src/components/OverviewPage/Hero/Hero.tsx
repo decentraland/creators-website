@@ -20,6 +20,28 @@ const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
 const prefersSavingData = () =>
   (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true
 
+/** Its own component so the fade-in state starts over on every mount. */
+const HeroVideo = () => {
+  const [playing, setPlaying] = useState(false)
+  const { url, width, height } = heroData.landscape.video
+  return (
+    <video
+      autoPlay
+      loop
+      muted
+      playsInline
+      width={width}
+      height={height}
+      aria-hidden
+      data-testid="overview-hero-video"
+      data-playing={playing || undefined}
+      onPlaying={() => setPlaying(true)}
+    >
+      <source src={url} type="video/mp4" />
+    </video>
+  )
+}
+
 const Hero = () => {
   const { t } = useTranslation()
   const mobile = useMediaQuery(OVERVIEW_MOBILE_QUERY)
@@ -28,7 +50,6 @@ const Hero = () => {
   const poster = mobile ? heroData.portrait.poster : heroData.landscape.poster
   const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY)
   const idle = useAfterLoadIdle()
-  const [videoPlaying, setVideoPlaying] = useState(false)
   // The poster is the first paint and the LCP; the video only joins once the page is idle, and only on
   // desktop, where its weight is affordable.
   const showVideo = !mobile && idle && !reducedMotion && !prefersSavingData()
@@ -45,22 +66,7 @@ const Hero = () => {
             height={poster.height}
             data-testid="overview-hero-poster"
           />
-          {showVideo && (
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              width={heroData.landscape.video.width}
-              height={heroData.landscape.video.height}
-              aria-hidden
-              data-testid="overview-hero-video"
-              data-playing={videoPlaying || undefined}
-              onPlaying={() => setVideoPlaying(true)}
-            >
-              <source src={heroData.landscape.video.url} type="video/mp4" />
-            </video>
-          )}
+          {showVideo && <HeroVideo />}
         </S.Background>
         <S.Content>
           <S.Title>

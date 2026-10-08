@@ -174,12 +174,12 @@ const REPLAY_SESSION_RATE = 0.01
 const REPLAY_ON_ERROR_RATE = 0.01
 const REPLAY_LOAD_RATE = REPLAY_SESSION_RATE + REPLAY_ON_ERROR_RATE
 
-/** Fetches replay from Sentry's CDN once the page is idle, so it never weighs on the first load. */
+/** Loads the replay recorder, a separate chunk, once the page is idle, so it never weighs on the first load. */
 function loadReplay(): void {
   afterLoadIdle(() => {
-    Sentry.lazyLoadIntegration('replayIntegration')
-      .then(replayIntegration => Sentry.addIntegration(replayIntegration()))
-      // A blocked CDN only costs the recording; it is not an app failure worth reporting.
+    import('~/lib/sentryReplay')
+      .then(({ replayIntegration }) => Sentry.addIntegration(replayIntegration()))
+      // A failed chunk load only costs the recording; it is not an app failure worth reporting.
       .catch(() => undefined)
   })
 }

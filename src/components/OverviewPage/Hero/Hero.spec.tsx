@@ -78,6 +78,27 @@ describe('Hero', () => {
     expect(video).toHaveAttribute('data-playing')
   })
 
+  it('fades the video in again after it was dropped for a phone width', async () => {
+    const { rerender } = renderHero()
+    fireEvent.playing(await screen.findByTestId('overview-hero-video'))
+
+    viewport.mobile = true
+    rerender(
+      <TranslationProvider>
+        <Hero />
+      </TranslationProvider>
+    )
+    expect(screen.queryByTestId('overview-hero-video')).not.toBeInTheDocument()
+
+    viewport.mobile = false
+    rerender(
+      <TranslationProvider>
+        <Hero />
+      </TranslationProvider>
+    )
+    expect(await screen.findByTestId('overview-hero-video')).not.toHaveAttribute('data-playing')
+  })
+
   it('keeps phones on the static poster', async () => {
     viewport.mobile = true
     renderHero()
@@ -97,6 +118,6 @@ describe('Hero', () => {
     const html = readFileSync(`${process.cwd()}/index.html`, 'utf8')
     expect(html).toContain(heroData.landscape.poster.url)
     expect(html).toContain(heroData.portrait.poster.url)
-    expect(html).toContain(`matchMedia('${OVERVIEW_MOBILE_QUERY}')`)
+    expect(html).toContain(`matchMedia("${OVERVIEW_MOBILE_QUERY}")`)
   })
 })
