@@ -327,6 +327,15 @@ export function canEditItemDetails(collection: Collection, item: Item, address: 
 }
 
 /**
+ * Only the collection owner may delete an item, and only while the collection is a draft outside the publish
+ * lock. Collaborators come from the contract, so a draft has none and the item's creator is the owner too.
+ */
+export function canDeleteItem(collection: Collection, address: string | undefined): boolean {
+  if (!address || collection.isPublished || isCollectionLocked(collection)) return false
+  return collection.owner.toLowerCase() === address.toLowerCase()
+}
+
+/**
  * Only an off-chain order can be re-priced, by whoever may sell (the owner), and only while some
  * supply is left to sell. A legacy CollectionStore price has no `tradeId` and can only be removed.
  */

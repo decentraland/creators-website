@@ -18,7 +18,7 @@ import {
   type Collection
 } from '~/lib/collections'
 import { ItemSyncStatus } from '~/lib/itemSync'
-import { canEditItemPrice, canManageItem, type Item } from '~/lib/items'
+import { canDeleteItem, canEditItemPrice, canManageItem, type Item } from '~/lib/items'
 import { type Session } from '~/lib/auth'
 import { type ItemListing } from '~/lib/listings'
 import { useNotifications } from '~/lib/notifications'
@@ -67,6 +67,7 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
   const canManage = canManageItem(collection, item, address)
   const canCopyUrn = !!item.urn
   const canEditDraft = !compact && canManage && !collection.isPublished && !isCollectionLocked(collection)
+  const canDelete = !compact && canDeleteItem(collection, address)
   const onMarket = hasBeenApproved(collection) && !!listing && !!session
   const canListItems = useFeatureFlag(FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS).enabled
   // An off-chain order is cancelled by whoever may sell (the owner, who signed it); a legacy store
@@ -142,7 +143,7 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
     })
   }
 
-  if (!canCopyUrn && !canPreview && !canEditDraft && !canRemove) return null
+  if (!canCopyUrn && !canPreview && !canEditDraft && !canRemove && !canDelete) return null
 
   return (
     <>
@@ -177,7 +178,7 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
             {t('collection_detail_page.item_actions.reset')}
           </ActionsMenuItem>
         )}
-        {canEditDraft && (
+        {canDelete && (
           <>
             <ActionsMenuDivider />
             <ActionsMenuItem testId="item-delete" onClick={() => setDialog('delete')}>
