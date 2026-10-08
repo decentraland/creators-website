@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { TranslationProvider } from '~/intl'
 import { sendOverviewTrack as track } from '~/lib/overviewSegment'
-import { OVERVIEW_MOBILE_QUERY } from '~/lib/overviewAnalytics'
 import { heroData } from '../data'
 import { Hero } from './Hero'
 
@@ -70,7 +69,7 @@ describe('Hero', () => {
 
   it('paints the poster first and fades the video in on desktop once the page is idle', async () => {
     renderHero()
-    expect(screen.getByTestId('overview-hero-poster')).toHaveAttribute('src', heroData.landscape.poster.url)
+    expect(screen.getByTestId('overview-hero-poster')).toHaveAttribute('src', heroData.poster.url)
 
     const video = await screen.findByTestId('overview-hero-video')
     expect(video).not.toHaveAttribute('data-playing')
@@ -102,7 +101,7 @@ describe('Hero', () => {
   it('keeps phones on the static poster', async () => {
     viewport.mobile = true
     renderHero()
-    expect(screen.getByTestId('overview-hero-poster')).toHaveAttribute('src', heroData.portrait.poster.url)
+    expect(screen.getByTestId('overview-hero-poster')).toHaveAttribute('src', heroData.poster.url)
     await new Promise(resolve => setTimeout(resolve, 10))
     expect(screen.queryByTestId('overview-hero-video')).not.toBeInTheDocument()
   })
@@ -114,10 +113,8 @@ describe('Hero', () => {
     expect(screen.queryByTestId('overview-hero-video')).not.toBeInTheDocument()
   })
 
-  it('preloads the same posters, at the same breakpoint, from index.html', () => {
+  it('preloads the same poster from index.html', () => {
     const html = readFileSync(`${process.cwd()}/index.html`, 'utf8')
-    expect(html).toContain(heroData.landscape.poster.url)
-    expect(html).toContain(heroData.portrait.poster.url)
-    expect(html).toContain(`matchMedia("${OVERVIEW_MOBILE_QUERY}")`)
+    expect(html).toContain(heroData.poster.url)
   })
 })

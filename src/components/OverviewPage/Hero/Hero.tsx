@@ -23,7 +23,7 @@ const prefersSavingData = () =>
 /** Its own component so the fade-in state starts over on every mount. */
 const HeroVideo = () => {
   const [playing, setPlaying] = useState(false)
-  const { url, width, height } = heroData.landscape.video
+  const { url, width, height } = heroData.video
   return (
     <video
       autoPlay
@@ -47,7 +47,7 @@ const Hero = () => {
   const mobile = useMediaQuery(OVERVIEW_MOBILE_QUERY)
   const words = useMemo(() => heroData.words.map(word => t(`overview.hero.words.${word}`)), [t])
   const currentWord = useTypingListEffect(words)
-  const poster = mobile ? heroData.portrait.poster : heroData.landscape.poster
+  const { poster } = heroData
   const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY)
   const idle = useAfterLoadIdle()
   // The poster is the first paint and the LCP; the video only joins once the page is idle, and only on
@@ -58,14 +58,7 @@ const Hero = () => {
     <>
       <S.Hero data-testid="overview-hero">
         <S.Background>
-          <img
-            key={poster.url}
-            src={poster.url}
-            alt=""
-            width={poster.width}
-            height={poster.height}
-            data-testid="overview-hero-poster"
-          />
+          <img src={poster.url} alt="" width={poster.width} height={poster.height} data-testid="overview-hero-poster" />
           {showVideo && <HeroVideo />}
         </S.Background>
         <S.Content>
