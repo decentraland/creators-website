@@ -144,10 +144,22 @@
       "category": "Category",
       "play_mode": "Play Mode",
       "rarity": "Rarity",
+      "status": "Status",
       "price": "Price",
       "sales": "Sales",
       "sale_status": "Sale Status",
       "actions": "Actions"
+    },
+    "item_status": {
+      "published": "Published",
+      "modified": "Modified",
+      "rejected": "Rejected",
+      "under_review": "Under review",
+      "missing": "Incomplete",
+      "modified_hint": "Changes saved but not sent to the curation committee yet. Send them for review to publish them.",
+      "rejected_hint": "The curation committee rejected the latest changes. Buyers get the last approved version until updated changes are approved.",
+      "under_review_hint": "Changes sent to the curation committee. Buyers get the last approved version until the changes are approved.",
+      "missing_hint": "This item’s files aren’t live, so it may not work in-world. Send the collection for review or get in touch with a curator to get it redeployed."
     },
     "row_actions": "Item actions",
     "sale_status": {
@@ -286,9 +298,9 @@
       "save": "Save name"
     },
     "push_changes": {
-      "action": "Publish updates",
-      "title": "Publish updates",
-      "description": "Your changes will be reviewed by the curation committee. Until they're approved, buyers get the last approved version of your items.",
+      "action": "Publish changes",
+      "title": "Publish changes",
+      "description": "Your changes will be reviewed by the curation committee. Until the changes are approved, buyers get the last approved version of your items.",
       "confirm": "Send for review",
       "cancel": "Cancel",
       "error": "We couldn't send your changes for review. Please try again.",

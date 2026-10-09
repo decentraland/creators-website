@@ -47,7 +47,7 @@ import { toPreviewItem, toSaveableItem } from '~/lib/itemDraft'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
 import { pickFiles } from '~/lib/filePicker'
 import { IMAGE_PATH, ITEM_EXTENSIONS } from '~/lib/itemFiles'
-import { ItemType, canEditItemDetails, isSocialEmote, type Item } from '~/lib/items'
+import { ItemType, canDeleteItem, canEditItemDetails, isSocialEmote, type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import { type AvatarPreviewSource } from '~/lib/preview'
 import { getShapesMissingSpringBones, mergeSpringBonesIntoItem, type SpringBoneParamsByName } from '~/lib/springBones'
@@ -329,8 +329,7 @@ const ItemEditorPage = () => {
   const isDraftCollection = !!collection && !collection.isPublished && !isCollectionLocked(collection)
   const editable =
     mode === 'edit' && !!collection && !!selected && !!address && canEditItemDetails(collection, selected, address)
-  const canDelete =
-    editable && isDraftCollection && !!collection && collection.owner.toLowerCase() === address?.toLowerCase()
+  const canDelete = editable && !!collection && canDeleteItem(collection, address)
 
   async function persist(item: Item) {
     const hasSpringModels = springBones.models.length > 0

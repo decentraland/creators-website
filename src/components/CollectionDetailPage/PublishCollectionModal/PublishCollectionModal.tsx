@@ -161,6 +161,7 @@ export function PublishCollectionModal({
           ) : (
             <ConfirmItemsStep
               address={address}
+              collection={collection}
               items={items}
               onBusyChange={setStepBusy}
               onBack={() => setStep(Step.Name)}

@@ -144,10 +144,22 @@
       "category": "Categoría",
       "play_mode": "Modo de reproducción",
       "rarity": "Rareza",
+      "status": "Estado",
       "price": "Precio",
       "sales": "Ventas",
       "sale_status": "Estado de venta",
       "actions": "Acciones"
+    },
+    "item_status": {
+      "published": "Publicado",
+      "modified": "Modificado",
+      "rejected": "Rechazado",
+      "under_review": "En revisión",
+      "missing": "Incompleto",
+      "modified_hint": "Cambios guardados pero aún no enviados al comité de curaduría. Envíalos a revisión para publicarlos.",
+      "rejected_hint": "El comité de curaduría rechazó los últimos cambios. Los compradores reciben la última versión aprobada hasta que se aprueben los cambios actualizados.",
+      "under_review_hint": "Cambios enviados al comité de curaduría. Los compradores reciben la última versión aprobada hasta que los cambios se aprueben.",
+      "missing_hint": "Los archivos de este ítem no están publicados, por lo que puede no funcionar en el mundo. Envía la colección a revisión o ponte en contacto con un curador para que lo vuelvan a desplegar."
     },
     "row_actions": "Acciones del ítem",
     "sale_status": {
@@ -288,7 +300,7 @@
     "push_changes": {
       "action": "Publicar cambios",
       "title": "Publicar cambios",
-      "description": "El comité de curaduría revisará tus cambios. Hasta que se aprueben, los compradores reciben la última versión aprobada de tus ítems.",
+      "description": "El comité de curaduría revisará tus cambios. Hasta que los cambios se aprueben, los compradores reciben la última versión aprobada de tus ítems.",
       "confirm": "Enviar a revisión",
       "cancel": "Cancelar",
       "error": "No pudimos enviar tus cambios a revisión. Inténtalo de nuevo.",

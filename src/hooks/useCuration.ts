@@ -179,7 +179,7 @@ export function useRejectCuration(address: string | undefined) {
   })
 }
 
-/** The creator's "Publish updates": asks the committee to review the collection's changes again. */
+/** The creator's "Publish changes": asks the committee to review the collection's changes again. */
 export function usePushCuration(address: string | undefined) {
   const store = useStoreCuration(address)
   return useMutation({

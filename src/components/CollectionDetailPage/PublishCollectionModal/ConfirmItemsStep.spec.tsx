@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TranslationProvider } from '~/intl'
 import { deleteItem, fetchContent, fetchItemContents, saveItem } from '~/lib/builder'
 import { type ThumbnailPatch } from '~/components/ThumbnailModal'
+import { type Collection } from '~/lib/collections'
 import { ItemType, type Item, BODY_SHAPE_MALE } from '~/lib/items'
 import { ConfirmItemsStep } from './ConfirmItemsStep'
 
@@ -71,8 +72,21 @@ function makeItem(id: string, name: string): Item {
 }
 
 const items = [makeItem('a', 'Pirate Hat'), makeItem('b', 'Ghost Cape')]
+const collection: Collection = {
+  id: 'col-1',
+  name: 'Pirate Hats',
+  owner: ADDRESS,
+  urn: 'urn:decentraland:amoy:collections-v2:0xc0ffee',
+  isPublished: false,
+  isApproved: false,
+  itemCount: 2,
+  minters: [],
+  managers: ['0xmanager'],
+  createdAt: 1,
+  updatedAt: 1
+}
 
-function renderStep(list = items) {
+function renderStep(list = items, address = ADDRESS) {
   const onConfirm = vi.fn()
   const onBack = vi.fn()
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -82,7 +96,14 @@ function renderStep(list = items) {
     </QueryClientProvider>
   )
   render(
-    <ConfirmItemsStep address={ADDRESS} items={list} onBusyChange={vi.fn()} onBack={onBack} onConfirm={onConfirm} />,
+    <ConfirmItemsStep
+      address={address}
+      collection={collection}
+      items={list}
+      onBusyChange={vi.fn()}
+      onBack={onBack}
+      onConfirm={onConfirm}
+    />,
     { wrapper }
   )
   return { onConfirm, onBack }
@@ -147,6 +168,11 @@ describe('ConfirmItemsStep', () => {
     await userEvent.click(within(row).getByTestId('publish-item-cancel'))
     expect(within(row).getByTestId('publish-item-name')).toHaveTextContent('Ghost Cape')
     expect(saveItem).not.toHaveBeenCalled()
+  })
+
+  it('offers delete to the collection owner only', () => {
+    renderStep(items, '0xmanager')
+    expect(screen.queryByTestId('publish-item-delete')).not.toBeInTheDocument()
   })
 
   it('deletes an item after confirmation', async () => {
