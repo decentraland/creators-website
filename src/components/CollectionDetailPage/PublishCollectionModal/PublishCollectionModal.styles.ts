@@ -80,8 +80,46 @@ export const FeeTerm = styled.span`
 `
 
 export const InputWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
   padding-bottom: 32px;
   margin: 32px 0;
+`
+
+export const EmailField = styled.label`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: ${theme.colors.gray4};
+`
+
+export const EmailInput = styled.input`
+  height: 54px;
+  padding: 0 16px;
+  border: 1px solid ${theme.colors.muted};
+  border-radius: 8px;
+  outline: 0;
+  background: rgba(255, 255, 255, 0.05);
+  font: inherit;
+  font-size: 18px;
+  color: ${theme.colors.white};
+
+  &::placeholder {
+    color: ${theme.colors.muted2};
+  }
+
+  &:focus {
+    border: 1.5px solid ${theme.colors.white};
+    padding: 0 15.5px;
+  }
+
+  &[data-invalid] {
+    background: ${theme.colors.errOverlay};
+    border-color: ${theme.colors.errLight};
+  }
 `
 
 export const ErrorText = styled.p`

@@ -198,8 +198,8 @@ export type PublishParams = {
   items: Item[]
   paymentMethod: PaymentMethod
   fee: PublicationFee
-  /** Recorded with the Terms of Service acceptance; null skips the record (no profile email). */
-  email: string | null
+  /** The contact email from step 1, recorded with the Terms of Service acceptance. */
+  email: string
   chainId: number
 }
 
@@ -252,7 +252,7 @@ export async function publishCollection(params: PublishParams, deps: PublishDeps
     items = rehashed
 
     // Recorded before the transaction so a ToS failure never leaves the collection locked.
-    if (email) await retry(3, 500, () => deps.saveTOS(collection, email))
+    await retry(3, 500, () => deps.saveTOS(collection, email))
 
     const args = buildCreateCollectionArgs(collection, items, address, chainId)
     let txHash: string

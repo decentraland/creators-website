@@ -315,14 +315,17 @@
     "cancel": "Cancelar",
     "back": "Atrás",
     "name_step": {
-      "title": "Confirma el nombre de tu colección",
-      "description": "El nombre de la colección no se puede modificar después de enviarla a revisión.",
-      "description_2": "Asegúrate de que no tenga errores de tipeo y de que no contenga propiedad intelectual que no te pertenezca (por ejemplo: Star Wars, Sailor Moon, etc.)",
+      "title": "Confirma los datos de tu colección",
+      "description": "El nombre de tu colección no se puede cambiar después de publicarla. Asegúrate de que sea correcto y de que no infrinja derechos de propiedad intelectual de terceros (por ejemplo: Star Wars, Sailor Moon, etc.).",
+      "description_2": "También necesitarás indicar un correo electrónico para recibir avisos importantes sobre la revisión y aprobación de tu colección.",
       "invalid_name": "Los nombres pueden tener hasta 32 caracteres y no pueden incluir \":\".",
       "name_taken": "Ese nombre ya está en uso. Prueba con otro.",
       "save_error": "No pudimos guardar el nuevo nombre. Inténtalo de nuevo.",
+      "email_label": "Tu correo electrónico",
+      "email_placeholder": "nombre@ejemplo.com",
+      "invalid_email": "Ingresa un correo electrónico válido, como nombre@ejemplo.com.",
       "checkbox": "Entiendo que una vez publicada no podré cambiar el nombre de la colección y confirmo que \"{name}\" no infringe derechos de propiedad intelectual de terceros.",
-      "confirm": "Confirmar nombre"
+      "confirm": "Confirmar datos"
     },
     "items_step": {
       "title": "Confirma tus ítems antes de publicar",
@@ -370,7 +373,7 @@
       "fee_error": "No pudimos cargar la tarifa de publicación.",
       "retry": "Intentar de nuevo",
       "approve_error": "La aprobación de MANA no se completó. Inténtalo de nuevo.",
-      "checkbox": "Acepto los <terms>Términos de uso</terms> y la <policy>Política de contenido</policy>. Entiendo que mi colección puede ser rechazada si no cumple con ellos y que la tarifa de publicación no es reembolsable.",
+      "checkbox": "Garantizo que los ítems enviados cumplen plenamente con los <terms>Términos de uso</terms> y la <policy>Política de contenido</policy>, que reconozco y acepto. Reconozco que la DAO puede negarse a aprobarlos si infringen alguno de ellos y que la tarifa de publicación no se reembolsará si son rechazados, ya que compensa a los curadores por su tiempo y trabajo.",
       "submit": "Publicar y pagar"
     },
     "buy_credits": {

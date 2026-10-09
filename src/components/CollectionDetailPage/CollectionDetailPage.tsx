@@ -133,6 +133,7 @@ const CollectionDetailPage = () => {
     setPublishResume({
       paymentMethod: resume.paymentMethod,
       termsAccepted: resume.termsAccepted,
+      email: resume.email,
       orderId: topUpReturn.canceled ? null : topUpReturn.orderId
     })
     setPublishView('wizard')

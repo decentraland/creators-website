@@ -292,11 +292,18 @@ describe('publishCollection', () => {
     expect(send.mock.calls[0][0].contract.address).toBe(getContract(ContractName.CollectionManager, CHAIN_ID).address)
   })
 
-  it('skips the re-save while the collection is locked and the ToS without an email', async () => {
+  it('skips the re-save while the collection is locked', async () => {
     const deps = makeDeps()
-    await publishCollection({ ...params, collection: { ...collection, lock: Date.now() }, email: null }, deps)
+    await publishCollection({ ...params, collection: { ...collection, lock: Date.now() } }, deps)
     expect(deps.calls).not.toContain('saveCollection')
-    expect(deps.calls).not.toContain('saveTOS')
+    expect(deps.calls).toContain('saveTOS')
+  })
+
+  it('never pays when the ToS acceptance cannot be recorded', async () => {
+    const deps = makeDeps({ saveTOS: async () => Promise.reject(new Error('warehouse down')) })
+    await expect(publishCollection(params, deps)).rejects.toThrow()
+    expect(deps.calls).not.toContain('sendTransaction')
+    expect(deps.calls).not.toContain('lockCollection')
   })
 
   it('re-saves items still carrying legacy hashes before the ToS and the payment', async () => {

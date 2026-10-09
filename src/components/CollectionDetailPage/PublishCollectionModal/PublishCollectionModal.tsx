@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react'
 import { useTranslation } from '~/intl'
 import { useAllCollectionItems, useSaveCollection } from '~/hooks/useCollection'
+import { useProfile } from '~/hooks/useProfile'
+import { track } from '~/lib/analytics'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { type TopUpResume } from '~/lib/creditsTopUp'
@@ -25,7 +27,7 @@ enum Step {
 const TOTAL_STEPS = 3
 
 /** Where a creator back from buying credits picks the wizard up: the payment step, with the order to settle. */
-export type PublishResume = Pick<TopUpResume, 'paymentMethod' | 'termsAccepted'> & {
+export type PublishResume = Pick<TopUpResume, 'paymentMethod' | 'termsAccepted' | 'email'> & {
   /** Null when the checkout was cancelled: nothing to wait for. */
   orderId: string | null
 }
@@ -62,7 +64,9 @@ export function PublishCollectionModal({
   // Before the wizard: wait for the item checks and show what they found. Resuming skips them.
   const [gated, setGated] = useState(!resume)
 
-  const [step, setStep] = useState<Step>(resume ? Step.Payment : Step.Name)
+  // A record from before step 1 asked for the email can't publish: send the creator back for it.
+  const [step, setStep] = useState<Step>(resume?.email ? Step.Payment : Step.Name)
+  const [email, setEmail] = useState(resume?.email ?? '')
   const [error, setError] = useState<PublishCollectionError | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(resume?.paymentMethod ?? null)
   const [termsAccepted, setTermsAccepted] = useState(resume?.termsAccepted ?? false)
@@ -73,8 +77,17 @@ export function PublishCollectionModal({
   const itemsQuery = useAllCollectionItems(address, collection.id)
   const items = itemsQuery.data ?? []
   const saveCollection = useSaveCollection(address)
+  const profile = useProfile(address)
+  const profileEmail = profile.data?.email?.trim() ?? ''
 
-  function confirmName(name: string) {
+  function confirmDetails(details: { name: string; email: string }) {
+    const { name } = details
+    setEmail(details.email)
+    track('Publish details confirmed', {
+      collectionId: collection.id,
+      nameChanged: name !== collection.name,
+      emailSource: !profileEmail ? 'typed' : details.email === profileEmail ? 'profile' : 'edited'
+    })
     if (name === collection.name) {
       setStep(Step.Items)
       return
@@ -120,15 +133,21 @@ export function PublishCollectionModal({
     >
       <S.Main>
         <StepIndicator current={step} total={TOTAL_STEPS} testId="publish-steps" />
-        {step === Step.Name && (
-          <ConfirmNameStep
-            initialName={collection.name}
-            isSaving={saveCollection.isPending}
-            saveError={saveCollection.error?.message ?? null}
-            onCancel={onClose}
-            onConfirm={confirmName}
-          />
-        )}
+        {step === Step.Name &&
+          (profile.isLoading ? (
+            <S.InlineNote data-testid="publish-name-loading">
+              <S.Spinner aria-hidden />
+            </S.InlineNote>
+          ) : (
+            <ConfirmNameStep
+              initialName={collection.name}
+              initialEmail={email || profileEmail}
+              isSaving={saveCollection.isPending}
+              saveError={saveCollection.error?.message ?? null}
+              onCancel={onClose}
+              onConfirm={confirmDetails}
+            />
+          ))}
         {step === Step.Items &&
           (itemsQuery.isLoading ? (
             <S.InlineNote data-testid="publish-items-loading">
@@ -150,6 +169,7 @@ export function PublishCollectionModal({
             session={session}
             paymentMethod={paymentMethod}
             onPaymentMethodChange={setPaymentMethod}
+            email={email}
             accepted={termsAccepted}
             onAcceptedChange={setTermsAccepted}
             onBusyChange={setStepBusy}

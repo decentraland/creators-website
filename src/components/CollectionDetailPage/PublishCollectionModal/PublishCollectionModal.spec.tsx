@@ -14,6 +14,7 @@ vi.mock('~/hooks/useCollection', () => ({
   useAllCollectionItems: () => ({ data: [], isLoading: false }),
   useSaveCollection: () => ({ mutate: vi.fn(), isPending: false, error: null })
 }))
+vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: undefined, isLoading: false }) }))
 vi.mock('~/hooks/useCollectionValidation', () => ({ useRerunItemValidation: () => rerun }))
 vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
 vi.mock('./ConfirmNameStep', () => ({ ConfirmNameStep: () => <div data-testid="confirm-name-step" /> }))
@@ -87,8 +88,16 @@ describe('PublishCollectionModal item checks', () => {
   })
 
   it('skips the checks when coming back from buying credits', () => {
-    renderModal({ resume: { paymentMethod: 'credits', termsAccepted: true, orderId: null } })
+    renderModal({
+      resume: { paymentMethod: 'credits', termsAccepted: true, email: 'jane.doe@example.com', orderId: null }
+    })
     expect(screen.queryByTestId('publish-validating')).not.toBeInTheDocument()
     expect(screen.getByTestId('payment-step')).toBeInTheDocument()
+  })
+
+  it('asks for the email again when the credits purchase was started without one', () => {
+    renderModal({ resume: { paymentMethod: 'credits', termsAccepted: true, email: null, orderId: null } })
+    expect(screen.queryByTestId('payment-step')).not.toBeInTheDocument()
+    expect(screen.getByTestId('confirm-name-step')).toBeInTheDocument()
   })
 })

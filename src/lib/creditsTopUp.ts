@@ -8,6 +8,8 @@ export type TopUpResume = {
   orderId: string
   paymentMethod: PaymentMethod | null
   termsAccepted: boolean
+  /** The contact email typed in step 1; null on records written before step 1 asked for it. */
+  email: string | null
 }
 
 export type TopUpReturn = {
@@ -51,7 +53,8 @@ export function readTopUpResume(): TopUpResume | null {
       orderId: parsed.orderId,
       paymentMethod:
         parsed.paymentMethod === 'credits' || parsed.paymentMethod === 'mana' ? parsed.paymentMethod : null,
-      termsAccepted: parsed.termsAccepted === true
+      termsAccepted: parsed.termsAccepted === true,
+      email: typeof parsed.email === 'string' && parsed.email ? parsed.email : null
     }
   } catch {
     return null

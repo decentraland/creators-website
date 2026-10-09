@@ -107,7 +107,7 @@ export type PublishVariables = {
   items: Item[]
   paymentMethod: PaymentMethod
   fee: PublicationFee
-  email: string | null
+  email: string
 }
 
 /**
