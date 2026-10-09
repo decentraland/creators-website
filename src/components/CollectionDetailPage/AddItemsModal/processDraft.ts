@@ -52,7 +52,7 @@ export async function processDraftFile(file: File, prefillHides?: string[]): Pro
   const analysis = await analyzeModel(
     loaded.model,
     loaded.contents,
-    loaded.wearable?.data.category as WearableCategory | undefined,
+    manifest?.category as WearableCategory | undefined,
     hides
   )
 

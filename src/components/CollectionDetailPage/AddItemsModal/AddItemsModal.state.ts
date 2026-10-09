@@ -173,8 +173,14 @@ export function addItemsReducer(state: AddItemsState, action: AddItemsAction): A
       return { ...state, drafts, selectedId }
     }
     case 'draftUpdated':
-      // Any edit invalidates a previous review: the draft must be saved (checked) again.
-      return updateDraft(state, action.id, draft => ({ ...draft, ...action.patch, checked: false }))
+      // Any edit invalidates a previous review: the draft must be saved (checked) again. A skin covers the
+      // whole body, so picking it leaves nothing to hide.
+      return updateDraft(state, action.id, draft => ({
+        ...draft,
+        ...action.patch,
+        ...(action.patch.category === (WearableCategory.SKIN as string) ? { hides: [] } : {}),
+        checked: false
+      }))
     case 'draftChecked': {
       const checkedState = updateDraft(state, action.id, draft => ({ ...draft, checked: true }))
       // SAVE & NEXT advances to the next unchecked draft, wrapping around.
