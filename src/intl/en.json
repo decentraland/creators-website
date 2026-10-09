@@ -401,7 +401,7 @@
     },
     "success": {
       "title": "Collection sent for review",
-      "description": "Your collection is being reviewed for approval. The curation committee will share its feedback in the collection's forum post, where you and the community can comment. You'll find it on the collection page.",
+      "description": "Your collection is now under review. The curation committee will share its feedback in the collection's forum post.",
       "done": "Done"
     },
     "error": {

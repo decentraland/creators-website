@@ -401,7 +401,7 @@
     },
     "success": {
       "title": "Colección enviada a revisión",
-      "description": "Tu colección está siendo revisada para su aprobación. El comité de curación compartirá sus comentarios en la publicación de la colección en el foro, donde tú y la comunidad pueden comentar. La encontrarás en la página de la colección.",
+      "description": "Tu colección ya está en revisión. El comité de curación compartirá sus comentarios en la publicación de la colección en el foro.",
       "done": "Listo"
     },
     "error": {
