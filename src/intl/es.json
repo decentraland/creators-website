@@ -373,7 +373,7 @@
       "fee_error": "No pudimos cargar la tarifa de publicación.",
       "retry": "Intentar de nuevo",
       "approve_error": "La aprobación de MANA no se completó. Inténtalo de nuevo.",
-      "checkbox": "Garantizo que los ítems enviados cumplen plenamente con los <terms>Términos de uso</terms> y la <policy>Política de contenido</policy>, que reconozco y acepto. Reconozco que la DAO puede negarse a aprobarlos si infringen alguno de ellos y que la tarifa de publicación no se reembolsará si son rechazados, ya que compensa a los curadores por su tiempo y trabajo.",
+      "checkbox": "Garantizo que los ítems enviados cumplen plenamente con los <terms>Términos de uso</terms> y la <policy>Política de contenido</policy>, que reconozco y acepto. Reconozco que la DAO puede negarse a aprobarlos si infringen alguno de ellos y que la tarifa de publicación no se reembolsará si son rechazados.",
       "submit": "Publicar y pagar"
     },
     "buy_credits": {

@@ -373,7 +373,7 @@
       "fee_error": "We couldn't load the publication fee.",
       "retry": "Try again",
       "approve_error": "The MANA approval didn't go through. Please try again.",
-      "checkbox": "I warrant that the submitted items fully comply with the <terms>Terms of Use</terms> and <policy>Content Policy</policy>, which I acknowledge and accept. I acknowledge that the DAO may refuse to approve them if they infringe either, and that the publication fee won't be refunded if they're rejected, since it compensates curators for their time and work.",
+      "checkbox": "I warrant that the submitted items fully comply with the <terms>Terms of Use</terms> and <policy>Content Policy</policy>, which I acknowledge and accept. I acknowledge that the DAO may refuse to approve them if they infringe either, and that the publication fee won't be refunded if they're rejected.",
       "submit": "Publish & Pay"
     },
     "buy_credits": {
