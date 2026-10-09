@@ -40,7 +40,7 @@ export type ItemDraft = {
   description: string
   tags: string[]
   blockVrmExport: boolean
-  /** Wearables only: the live preview's hides, else the manifest's. Saved and used by every triangle check. */
+  /** Wearables only: the live preview's hides, else the manifest's hides and replaces. Saved and used by every triangle check. */
   hides: string[]
   playMode: EmotePlayMode
   /** Data URL of the current thumbnail; also stored as contents['thumbnail.png'] once final. */

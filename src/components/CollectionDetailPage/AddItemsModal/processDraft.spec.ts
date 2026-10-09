@@ -44,7 +44,7 @@ describe('pickPreviewDraft', () => {
 })
 
 describe('processDraftFile', () => {
-  async function hatZip(hides: string[]): Promise<File> {
+  async function hatZip(hides: string[], replaces: string[] = []): Promise<File> {
     const zip = new JSZip()
     zip.file(
       'wearable.json',
@@ -52,7 +52,7 @@ describe('processDraftFile', () => {
         name: 'Hat',
         data: {
           category: 'hat',
-          replaces: [],
+          replaces,
           hides,
           tags: [],
           representations: [
@@ -72,5 +72,9 @@ describe('processDraftFile', () => {
   it("keeps the hides a zip's wearable.json declares, unless the live preview set its own", async () => {
     expect((await processDraftFile(await hatZip(['hair']))).hides).toEqual(['hair'])
     expect((await processDraftFile(await hatZip(['hair']), ['head'])).hides).toEqual(['head'])
+  })
+
+  it("adds the slots a zip's wearable.json replaces to the hides", async () => {
+    expect((await processDraftFile(await hatZip(['hair'], ['hair', 'earring']))).hides).toEqual(['hair', 'earring'])
   })
 })

@@ -3,7 +3,7 @@
 // thumbnails) is filled afterwards by DraftProcessor.
 import { WearableCategory } from '@dcl/schemas'
 import { blobToDataURL, convertImageIntoWearableThumbnail, dataURLToBlob, loadVideoMetadata } from '~/lib/media'
-import { sanitizeItemDescription } from '~/lib/itemDraft'
+import { sanitizeItemDescription, unique } from '~/lib/itemDraft'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH } from '~/lib/itemFactory'
 import { ItemFileError, THUMBNAIL_PATH, VIDEO_PATH, isImageFile, loadItemFile } from '~/lib/itemFiles'
 import { BodyShapeType, ItemType, type ItemMetrics } from '~/lib/items'
@@ -45,9 +45,10 @@ export async function processDraftFile(file: File, prefillHides?: string[]): Pro
       throw new ItemFileError('invalid_video')
     })
   }
-  // The manifest's category and hides drive the category-dependent limits (triangle budget, skin caps). A live
-  // preview prefill never ships a manifest, so the two sources never compete.
-  const hides = prefillHides ?? loaded.wearable?.data.hides ?? []
+  // The manifest's category and hides drive the category-dependent limits (triangle budget, skin caps). Its
+  // `replaces` joins the hides, as the editor does on load. A live preview prefill never ships a manifest.
+  const manifest = loaded.wearable?.data
+  const hides = prefillHides ?? unique([...(manifest?.hides ?? []), ...(manifest?.replaces ?? [])])
   const analysis = await analyzeModel(
     loaded.model,
     loaded.contents,
