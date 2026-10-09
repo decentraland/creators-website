@@ -138,7 +138,10 @@ describe('PropertiesPanel', () => {
     render(<Harness editable={false} />, { wrapper: Providers })
     expect(screen.getByTestId('properties-panel-readonly')).toBeInTheDocument()
     expect(screen.getByTestId('properties-panel-name')).toBeDisabled()
-    expect(screen.getByTestId('properties-panel-hides-categories')).toBeDisabled()
+    expect(screen.getAllByTestId('properties-panel-hides-categories-pill').map(pill => pill.textContent)).toEqual([
+      'Hair',
+      'Helmet'
+    ])
     expect(screen.queryByTestId('properties-panel-footer')).not.toBeInTheDocument()
   })
 

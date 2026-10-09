@@ -850,7 +850,8 @@
       "categories": "隐藏的可穿戴物品类别",
       "categories_hint": "同时穿戴时此物品会隐藏的其他可穿戴物品槽位，例如头盔隐藏头发。",
       "none_available": "此物品没有可隐藏的内容。",
-      "none_selected": "无"
+      "none_selected": "无",
+      "none_hidden": "未隐藏任何内容"
     },
     "body_part": {
       "head": "头部",

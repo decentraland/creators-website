@@ -850,7 +850,8 @@
       "categories": "Hidden wearable categories",
       "categories_hint": "Other wearable slots this item hides when worn together, for example a helmet hiding hair.",
       "none_available": "Nothing to hide for this item.",
-      "none_selected": "None"
+      "none_selected": "None",
+      "none_hidden": "Nothing hidden"
     },
     "body_part": {
       "head": "Head",
