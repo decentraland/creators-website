@@ -242,11 +242,13 @@ describe('showsItemStatusColumn', () => {
     expect(showsItemStatusColumn(collection, [null, ItemRowStatus.PUBLISHED])).toBe(false)
   })
 
-  it('never shows it before the first approval, where the collection pill tells the whole story', () => {
+  it('never shows it until the collection is approved on chain, where the collection pill tells the whole story', () => {
     const underFirstReview = { ...collection, isApproved: false }
     expect(showsItemStatusColumn(underFirstReview, [ItemRowStatus.UNDER_REVIEW])).toBe(false)
-    const approvedOnce = { ...underFirstReview, createdAt: 1, reviewedAt: 2 }
-    expect(showsItemStatusColumn(approvedOnce, [ItemRowStatus.MODIFIED])).toBe(true)
+    // The rescue step of a first approval stamps reviewedAt before the deploy and the on-chain approval.
+    const rescued = { ...underFirstReview, createdAt: 1, reviewedAt: 2 }
+    expect(showsItemStatusColumn(rescued, [ItemRowStatus.UNDER_REVIEW])).toBe(false)
+    expect(showsItemStatusColumn({ ...rescued, isApproved: true }, [ItemRowStatus.MODIFIED])).toBe(true)
   })
 })
 

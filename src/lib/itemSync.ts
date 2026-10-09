@@ -2,7 +2,7 @@
 // and the marketplace show. Ported from the legacy builder (modules/item/utils areSynced + the
 // getStatusForStandard selector) so both apps judge the same item the same way.
 import { type Entity } from '@dcl/schemas'
-import { hasBeenApproved, type Collection } from './collections'
+import { type Collection } from './collections'
 import { type CurationRequestStatus } from './curation'
 import { ItemType, VIDEO_PATH, type Item, type ItemData, type ItemRepresentation } from './items'
 
@@ -191,11 +191,12 @@ export function getItemRowStatus(
 }
 
 /**
- * The Status column exists on collections approved at least once, while some row on the page says more than
- * "published": before the first approval the collection pill already tells the whole story.
+ * The Status column exists on collections approved on chain, while some row on the page says more than
+ * "published": until then the collection pill already tells the whole story. Approved on chain, not merely
+ * reviewed: the rescue step of a first approval already stamps `reviewedAt`, with the deploy still to come.
  */
 export function showsItemStatusColumn(collection: Collection, statuses: Iterable<ItemRowStatus | null>): boolean {
-  if (!hasBeenApproved(collection)) return false
+  if (!collection.isApproved) return false
   for (const status of statuses) if (status !== null && status !== ItemRowStatus.PUBLISHED) return true
   return false
 }
