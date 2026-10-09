@@ -7,14 +7,13 @@ import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { CurationStatePill } from '~/components/CurationStatePill'
 import { ProfileBadge } from '~/components/ProfileBadge'
-import { ValidationBadge, type ItemResult } from '~/components/ValidationBadge'
+import { ValidationBadge, toValidationSubject, type ItemResult } from '~/components/ValidationBadge'
 import { useCollectionValidation } from '~/hooks/useCollectionValidation'
 import { useCollectionCuration, useRejectCuration } from '~/hooks/useCuration'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { type ApprovalMode } from '~/hooks/useApprovalFlow'
 import { track } from '~/lib/analytics'
 import { type Session } from '~/lib/auth'
-import { getContentsStorageUrl } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import {
   CurationState,
@@ -84,8 +83,15 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
   const isCurationError = collection.isPublished && curationQuery.isError && !curationQuery.data
 
   const validates = collection.isPublished && !isLoading && !isCurationError && VALIDATED_STATES.includes(state)
+  // An item the Catalyst couldn't compare is checked anyway rather than left out.
   const validationItems = useMemo(
-    () => (validates ? items.filter(item => hasPendingChanges(syncs.get(item.id)?.status)) : NO_ITEMS),
+    () =>
+      validates
+        ? items.filter(item => {
+            const sync = syncs.get(item.id)
+            return hasPendingChanges(sync?.status) || !!sync?.lookupFailed
+          })
+        : NO_ITEMS,
     [validates, items, syncs]
   )
   const validation = useCollectionValidation(validationItems, validates)
@@ -94,17 +100,10 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
       validationItems.flatMap(item => {
         const issues = validation.results.get(item.id)?.issues ?? []
         if (issues.length === 0) return []
-        const thumbnail = item.contents[item.thumbnail]
         return [
           {
             id: item.id,
-            subject: {
-              name: item.name,
-              type: item.type,
-              category: item.data.category,
-              rarity: item.rarity,
-              thumbnail: thumbnail ? getContentsStorageUrl(thumbnail) : null
-            },
+            subject: toValidationSubject(item),
             issues,
             onSelect: () => onSelectItem(item)
           }
@@ -115,19 +114,24 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
   const validationIssues = useMemo(() => validationResults.flatMap(result => result.issues), [validationResults])
   // Approved items read as loading until the Catalyst answers: which of them changed isn't known yet.
   const isResolvingItems = useMemo(
-    () => validates && items.some(item => syncs.get(item.id)?.status === ItemSyncStatus.LOADING),
+    () =>
+      validates &&
+      items.some(item => {
+        const sync = syncs.get(item.id)
+        return sync?.status === ItemSyncStatus.LOADING && !sync.lookupFailed
+      }),
     [validates, items, syncs]
   )
   const validationStatus = getValidationStatus(
     validationItems.length > 0 || isResolvingItems ? validationIssues : undefined,
     validation.isValidating || isResolvingItems
   )
-  // One result per collection opened, cached checks included.
+  // One result per collection opened (the bar is keyed by collection), cached checks included.
   const startedAt = useRef(Date.now())
-  const reported = useRef<string | null>(null)
+  const reported = useRef(false)
   useEffect(() => {
-    if (validationStatus === 'loading' || validationStatus === 'idle' || reported.current === collection.id) return
-    reported.current = collection.id
+    if (validationStatus === 'loading' || validationStatus === 'idle' || reported.current) return
+    reported.current = true
     track('Review Validation Result', {
       collectionId: collection.id,
       itemCount: validationItems.length,
@@ -168,9 +172,8 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
         {!isLoading && !isCurationError && <CurationStatePill state={state} />}
         <ValidationBadge
           status={validationStatus}
-          issues={validationIssues}
           results={validationResults}
-          tooltipKey="item_editor.review.validation"
+          scope="collection"
           onOpen={() => track('Review Validation Opened', { collectionId: collection.id, status: validationStatus })}
           testId="review-validation"
         />

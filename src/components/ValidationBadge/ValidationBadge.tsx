@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   CheckCircleOutline as PassIcon,
   ErrorOutline as WarningIcon,
@@ -13,17 +13,20 @@ import * as S from './ValidationBadge.styles'
 
 type Props = {
   status: ValidationStatus
-  issues: ValidationIssue[]
+  /** One item's issues; with `results`, they're taken from there. */
+  issues?: ValidationIssue[]
   subject?: ValidationSubject
   /** Several items' results, listed in the modal instead of `subject`'s. */
   results?: ItemResult[]
-  /** Where the tooltip copy lives, per status. */
-  tooltipKey?: string
+  /** Whose checks the tooltip talks about. */
+  scope?: 'item' | 'collection'
   onRerun?: () => Promise<unknown>
   /** Called when the results open, e.g. for analytics. */
   onOpen?: () => void
   testId?: string
 }
+
+const TOOLTIP_KEYS = { item: 'item_editor.validation', collection: 'item_editor.review.validation' } as const
 
 /** Traffic light for the selected item's checks; opens the issue list when there is one. */
 export function ValidationBadge({
@@ -31,23 +34,25 @@ export function ValidationBadge({
   issues,
   subject,
   results,
-  tooltipKey = 'item_editor.validation',
+  scope = 'item',
   onRerun,
   onOpen,
   testId = 'validation-badge'
 }: Props) {
   const { t } = useTranslation()
   const [isOpen, setOpen] = useState(false)
+  const shownIssues = useMemo(() => results?.flatMap(result => result.issues) ?? issues ?? [], [results, issues])
   if (status === 'idle') return null
-  const hasIssues = issues.length > 0
+  const hasIssues = shownIssues.length > 0
+  const tooltip = t(`${TOOLTIP_KEYS[scope]}.${status}`)
   return (
     <>
-      <Tooltip content={t(`${tooltipKey}.${status}`)} asChild testId={`${testId}-tooltip`}>
+      <Tooltip content={tooltip} asChild testId={`${testId}-tooltip`}>
         <S.Badge
           type="button"
           data-status={status}
           data-testid={testId}
-          aria-label={t(`${tooltipKey}.${status}`)}
+          aria-label={tooltip}
           disabled={!hasIssues}
           onClick={() => {
             if (!hasIssues) return
@@ -59,13 +64,13 @@ export function ValidationBadge({
           {status === 'pass' && <PassIcon fontSize="small" />}
           {status === 'warnings' && <WarningIcon fontSize="small" />}
           {status === 'errors' && <ErrorIcon fontSize="small" />}
-          {t(`item_editor.validation.label.${status}`, { count: issues.length })}
+          {t(`item_editor.validation.label.${status}`, { count: shownIssues.length })}
         </S.Badge>
       </Tooltip>
       {isOpen && (
         <ValidationResultsModal
           subject={subject}
-          issues={issues}
+          issues={shownIssues}
           results={results?.map(result =>
             result.onSelect
               ? {

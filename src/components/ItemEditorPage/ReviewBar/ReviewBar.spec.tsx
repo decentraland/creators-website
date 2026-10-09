@@ -16,7 +16,7 @@ const state = vi.hoisted(() => ({
   curationError: false,
   curationLoading: false,
   refetch: vi.fn(),
-  syncs: new Map<string, { status: string; entity?: object }>(),
+  syncs: new Map<string, { status: string; entity?: object; lookupFailed?: true }>(),
   reject: vi.fn(),
   disable: vi.fn(),
   issues: new Map<string, ValidationIssue[]>(),
@@ -265,6 +265,17 @@ describe('ReviewBar', () => {
       ])
       renderBar({ ...base, isApproved: true })
       expect(screen.getByTestId('review-validation')).toHaveAttribute('data-status', 'loading')
+    })
+
+    it('checks the items the Catalyst could not compare instead of spinning forever', () => {
+      state.curation = { status: 'pending', assignee: null, createdAt: 1, updatedAt: 1 } as CollectionCuration
+      state.syncs = new Map([
+        ['i1', { status: ItemSyncStatus.LOADING, lookupFailed: true }],
+        ['i2', { status: ItemSyncStatus.UNDER_REVIEW }]
+      ])
+      state.issues = new Map([['i1', [error('Too many triangles')]]])
+      renderBar({ ...base, isApproved: true })
+      expect(screen.getByTestId('review-validation')).toHaveAttribute('data-status', 'errors')
     })
 
     it('reports the result once per collection, even when every check was cached', () => {

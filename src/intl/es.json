@@ -739,8 +739,7 @@
         "loading": "Revisando los ítems de la colección…",
         "pass": "Todos los ítems pasan todas las verificaciones.",
         "warnings": "Algunos ítems tienen advertencias. Haz clic para verlas.",
-        "errors": "Algunos ítems tienen errores. Haz clic para verlos.",
-        "idle": ""
+        "errors": "Algunos ítems tienen errores. Haz clic para verlos."
       }
     },
     "discard": {

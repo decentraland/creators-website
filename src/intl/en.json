@@ -739,8 +739,7 @@
         "loading": "Checking the collection's items…",
         "pass": "Every item passes every check.",
         "warnings": "Some items have warnings. Click to see them.",
-        "errors": "Some items have errors. Click to see them.",
-        "idle": ""
+        "errors": "Some items have errors. Click to see them."
       }
     },
     "discard": {

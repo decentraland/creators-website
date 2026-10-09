@@ -18,7 +18,7 @@ import {
   useCollectionStatus,
   useSaveCollection
 } from '~/hooks/useCollection'
-import { BuilderServerError, getContentsStorageUrl } from '~/lib/builder'
+import { BuilderServerError } from '~/lib/builder'
 import { FeatureFlag } from '~/lib/featureFlags'
 import {
   CollectionDisplayStatus,
@@ -72,7 +72,7 @@ import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { CollectionRolePill } from '~/components/CollectionRolePill'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
 import { Pagination } from '~/components/Pagination'
-import { ValidationResultsModal } from '~/components/ValidationBadge'
+import { ValidationResultsModal, toValidationSubject } from '~/components/ValidationBadge'
 import addItemsArt from '~/assets/add-items.png'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { useThirdParty } from '~/hooks/useLinkedCollection'
@@ -842,15 +842,7 @@ const CollectionDetailPage = () => {
           )}
           {validationItem && (
             <ValidationResultsModal
-              subject={{
-                name: validationItem.name,
-                type: validationItem.type,
-                category: validationItem.data.category,
-                rarity: validationItem.rarity,
-                thumbnail: validationItem.contents[validationItem.thumbnail]
-                  ? getContentsStorageUrl(validationItem.contents[validationItem.thumbnail])
-                  : null
-              }}
+              subject={toValidationSubject(validationItem)}
               issues={validation.results.get(validationItem.id)?.issues ?? []}
               onRerun={() =>
                 rerunItemValidation(
