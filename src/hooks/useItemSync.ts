@@ -1,19 +1,10 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { type Entity } from '@dcl/schemas'
 import { fetchEntitiesByPointers } from '~/lib/catalyst'
 import { useCollectionCuration } from '~/hooks/useCuration'
 import { type Collection } from '~/lib/collections'
-import { ItemSyncStatus, getItemSyncStatus, mapEntitiesByItemId } from '~/lib/itemSync'
+import { ItemSyncStatus, getItemSyncStatus, mapEntitiesByItemId, type ItemSync } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
-
-export type ItemSync = {
-  status: ItemSyncStatus
-  /** The deployed entity, when there is one — what "Reset item" restores. */
-  entity?: Entity
-  /** Set on a still-loading item once the Catalyst lookup has failed: whether it changed can't be known. */
-  lookupFailed?: true
-}
 
 /**
  * Each item's Catalyst sync status. Only published items have anything deployed, so drafts cost no
@@ -41,9 +32,12 @@ export function useItemSyncs(
 
   const entities = entitiesQuery.data
   // Only a successful answer settles it: during a Catalyst outage an approved item reads as loading, not as missing
-  // its entity (which would offer Deploy missing entities and Publish updates for nothing).
+  // its entity (which would offer Deploy missing entities and Publish changes for nothing).
   const entitiesLoaded = pointers.length === 0 || entitiesQuery.isSuccess
   const curationPending = curationQuery.data?.status === 'pending'
+  // A failed request settles too, read as "nothing pending": edited rows then say Modified where Under review
+  // would be right, which beats never resolving. Publish changes stays hidden, since the page gates it on success.
+  const curationLoaded = !isPublished || curationQuery.isSuccess || curationQuery.isError
   const lookupFailed = pointers.length > 0 && entitiesQuery.isError
 
   return useMemo(() => {
@@ -51,11 +45,15 @@ export function useItemSyncs(
     const syncs = new Map<string, ItemSync>()
     for (const item of items) {
       const entity = byItemId.get(item.id)
-      const status = getItemSyncStatus(item, entity, { isCurationPending: curationPending, entitiesLoaded })
+      const status = getItemSyncStatus(item, entity, {
+        isCurationPending: curationPending,
+        curationLoaded,
+        entitiesLoaded
+      })
       if (entity) syncs.set(item.id, { status, entity })
       else if (lookupFailed && status === ItemSyncStatus.LOADING) syncs.set(item.id, { status, lookupFailed })
       else syncs.set(item.id, { status })
     }
     return syncs
-  }, [items, entities, curationPending, entitiesLoaded, lookupFailed])
+  }, [items, entities, curationPending, curationLoaded, entitiesLoaded, lookupFailed])
 }

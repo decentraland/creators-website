@@ -216,6 +216,10 @@ export const List = styled.div`
     & > * {
       min-width: 1000px;
     }
+    /* One more column than the floor was sized for; the list scrolls sideways sooner instead of squeezing pills. */
+    & > [data-with-status] {
+      min-width: 1200px;
+    }
   }
 `
 

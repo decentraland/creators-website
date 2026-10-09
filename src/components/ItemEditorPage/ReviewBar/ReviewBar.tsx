@@ -43,6 +43,8 @@ type Props = {
 type Dialog = 'assign' | 'reject' | 'disable' | null
 
 const DECISIONS = [ReviewAction.APPROVE, ReviewAction.ENABLE, ReviewAction.REJECT]
+// The constructive actions, as in the legacy panel; Reject and Disable stay dark.
+const PRIMARY = new Set([ReviewAction.APPROVE, ReviewAction.ENABLE, ReviewAction.DEPLOY_MISSING])
 // Only a pending request has content waiting on the committee's decision.
 const VALIDATED_STATES = [CurationState.TO_REVIEW, CurationState.UNDER_REVIEW]
 const NO_ITEMS: Item[] = []
@@ -230,7 +232,7 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
               key={action}
               type="button"
               size="sm"
-              variant={action === ReviewAction.APPROVE || action === ReviewAction.ENABLE ? 'primary' : 'dark'}
+              variant={PRIMARY.has(action) ? 'primary' : 'dark'}
               data-testid={`review-action-${action}`}
               onClick={() => onAction(action)}
             >

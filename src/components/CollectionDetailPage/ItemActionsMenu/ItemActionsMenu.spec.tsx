@@ -148,9 +148,9 @@ describe('ItemActionsMenu', () => {
     expect(ids(await openMenu())).toEqual(['item-preview', 'item-move', 'item-delete'])
   })
 
-  it('lets a collaborator manage the items but a minter only preview them', async () => {
+  it('lets a collaborator move the items but not delete them, and a minter only preview them', async () => {
     renderMenu({ address: MANAGER })
-    expect(ids(await openMenu())).toEqual(['item-preview', 'item-move', 'item-delete'])
+    expect(ids(await openMenu())).toEqual(['item-preview', 'item-move'])
     await userEvent.keyboard('{Escape}')
 
     renderMenu({ address: MINTER })

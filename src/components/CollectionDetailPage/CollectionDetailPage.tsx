@@ -55,7 +55,7 @@ import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { useCollectionValidation, useRerunItemValidation } from '~/hooks/useCollectionValidation'
-import { ItemSyncStatus, hasPendingChanges } from '~/lib/itemSync'
+import { ItemSyncStatus, getItemRowStatus, hasPendingChanges, showsItemStatusColumn } from '~/lib/itemSync'
 import { canPushChanges } from '~/lib/curation'
 import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
 import { previewCollection } from '~/lib/explorer'
@@ -234,6 +234,14 @@ const CollectionDetailPage = () => {
   )
   // After a rejection the creator asks for a review again, whether it was the first one or a pushed update.
   const pushCopy = curation?.status === 'rejected' ? 'request_review' : 'push_changes'
+  const rowStatuses = useMemo(
+    () => new Map(results.map(item => [item.id, getItemRowStatus(item, syncs.get(item.id), curation)])),
+    [results, syncs, curation]
+  )
+  const withStatus = useMemo(
+    () => !!standardCollection && showsItemStatusColumn(standardCollection, rowStatuses.values()),
+    [standardCollection, rowStatuses]
+  )
 
   // Drafts check every item; published collections only the items with changes waiting for approval.
   // Small screens are a viewer and check nothing, unless a gated modal is already open: crossing the
@@ -680,6 +688,7 @@ const CollectionDetailPage = () => {
                 <S.ListHeader
                   data-with-play-mode={withPlayMode || undefined}
                   data-with-market={withMarket || undefined}
+                  data-with-status={withStatus || undefined}
                 >
                   <span>{t('collection_detail_page.list.item')}</span>
                   <span>{t('collection_detail_page.list.body_shape')}</span>
@@ -695,6 +704,9 @@ const CollectionDetailPage = () => {
                       <span data-testid="list-header-sale-status">{t('collection_detail_page.list.sale_status')}</span>
                     </>
                   )}
+                  {withStatus && (
+                    <span data-testid="list-header-status">{t('collection_detail_page.list.status')}</span>
+                  )}
                   <S.ListHeaderActions>{t('collection_detail_page.list.actions')}</S.ListHeaderActions>
                 </S.ListHeader>
                 {results.map(item => (
@@ -704,6 +716,8 @@ const CollectionDetailPage = () => {
                     withPlayMode={withPlayMode}
                     withMarket={withMarket}
                     listing={withMarket ? listingFor(item) : undefined}
+                    withStatus={withStatus}
+                    syncStatus={rowStatuses.get(item.id)}
                     canSell={isApprovedForSale && item.isPublished && !!item.tokenId}
                     onPutOnSale={isSeller ? setSellingItem : undefined}
                     onEditPrice={

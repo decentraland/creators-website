@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { type Entity, EntityType } from '@dcl/schemas'
+import { type Collection } from './collections'
 import { ItemType, type Item } from './items'
-import { ItemSyncStatus, buildResetItem, getItemSyncStatus, isItemSynced, mapEntitiesByItemId } from './itemSync'
+import {
+  ItemRowStatus,
+  ItemSyncStatus,
+  buildResetItem,
+  getItemRowStatus,
+  showsItemStatusColumn,
+  getItemSyncStatus,
+  isItemSynced,
+  mapEntitiesByItemId
+} from './itemSync'
 
 const MALE = 'urn:decentraland:off-chain:base-avatars:BaseMale'
 const URN = 'urn:decentraland:amoy:collections-v2:0xc0ffee:0'
@@ -144,7 +154,7 @@ describe('isItemSynced', () => {
 })
 
 describe('getItemSyncStatus', () => {
-  const loaded = { isCurationPending: false, entitiesLoaded: true }
+  const loaded = { isCurationPending: false, curationLoaded: true, entitiesLoaded: true }
 
   it('is synced or unsynced by comparing with the entity', () => {
     expect(getItemSyncStatus(wearable, entityFor(wearable), loaded)).toBe(ItemSyncStatus.SYNCED)
@@ -164,9 +174,87 @@ describe('getItemSyncStatus', () => {
     expect(getItemSyncStatus({ ...wearable, isApproved: false }, undefined, loaded)).toBe(ItemSyncStatus.UNDER_REVIEW)
   })
 
+  it('is loading until the curation request settles, so an edited item never flashes as unsynced first', () => {
+    const context = { ...loaded, curationLoaded: false }
+    expect(getItemSyncStatus({ ...wearable, name: 'x' }, entityFor(wearable), context)).toBe(ItemSyncStatus.LOADING)
+    expect(getItemSyncStatus(wearable, undefined, context)).toBe(ItemSyncStatus.LOADING)
+    expect(getItemSyncStatus({ ...wearable, isPublished: false }, undefined, context)).toBe(ItemSyncStatus.UNPUBLISHED)
+  })
+
   it('is unsynced when an approved item has no entity, but loading until the entities arrive', () => {
     expect(getItemSyncStatus(wearable, undefined, loaded)).toBe(ItemSyncStatus.UNSYNCED)
     expect(getItemSyncStatus(wearable, undefined, { ...loaded, entitiesLoaded: false })).toBe(ItemSyncStatus.LOADING)
+  })
+})
+
+describe('getItemRowStatus', () => {
+  const entity = entityFor(wearable)
+  const rejected = { status: 'rejected' as const, updatedAt: 2000 }
+  const pending = { status: 'pending' as const, updatedAt: 2000 }
+  const status = (sync: Parameters<typeof getItemRowStatus>[1], curation: Parameters<typeof getItemRowStatus>[2]) =>
+    getItemRowStatus(wearable, sync, curation)
+
+  it('names the sync state the creator can act on', () => {
+    expect(status({ status: ItemSyncStatus.SYNCED, entity }, null)).toBe(ItemRowStatus.PUBLISHED)
+    expect(status({ status: ItemSyncStatus.UNSYNCED, entity }, null)).toBe(ItemRowStatus.MODIFIED)
+    expect(status({ status: ItemSyncStatus.UNSYNCED, entity }, { status: 'approved', updatedAt: 1 })).toBe(
+      ItemRowStatus.MODIFIED
+    )
+    expect(status({ status: ItemSyncStatus.UNDER_REVIEW, entity }, pending)).toBe(ItemRowStatus.UNDER_REVIEW)
+  })
+
+  it('reads rejected only for edits the committee saw: a later edit is modified again', () => {
+    const unsynced = { status: ItemSyncStatus.UNSYNCED, entity }
+    expect(status(unsynced, rejected)).toBe(ItemRowStatus.REJECTED)
+    expect(getItemRowStatus({ updatedAt: 3000 }, unsynced, rejected)).toBe(ItemRowStatus.MODIFIED)
+  })
+
+  it('flags an approved item with no entity as missing, or under review while its redeploy is being reviewed', () => {
+    expect(status({ status: ItemSyncStatus.UNSYNCED }, null)).toBe(ItemRowStatus.MISSING)
+    expect(status({ status: ItemSyncStatus.UNSYNCED }, rejected)).toBe(ItemRowStatus.MISSING)
+    expect(status({ status: ItemSyncStatus.UNSYNCED }, pending)).toBe(ItemRowStatus.UNDER_REVIEW)
+  })
+
+  it('leaves an unapproved item alone outside a review: the collection pill says rejected or disabled', () => {
+    expect(status({ status: ItemSyncStatus.UNDER_REVIEW }, rejected)).toBeNull()
+    expect(status({ status: ItemSyncStatus.UNDER_REVIEW }, null)).toBeNull()
+  })
+
+  it('says nothing while the sync is unknown or the item is not published', () => {
+    expect(status(undefined, null)).toBeNull()
+    expect(status({ status: ItemSyncStatus.LOADING }, null)).toBeNull()
+    expect(status({ status: ItemSyncStatus.UNPUBLISHED }, null)).toBeNull()
+  })
+})
+
+describe('showsItemStatusColumn', () => {
+  const collection: Collection = {
+    id: 'c1',
+    name: 'Hats',
+    owner: '0xowner',
+    urn: 'urn',
+    isPublished: true,
+    isApproved: true,
+    itemCount: 1,
+    minters: [],
+    managers: [],
+    createdAt: 1,
+    updatedAt: 1
+  }
+
+  it('shows the column only when some row says more than published', () => {
+    expect(showsItemStatusColumn(collection, [ItemRowStatus.PUBLISHED, ItemRowStatus.MODIFIED])).toBe(true)
+    expect(showsItemStatusColumn(collection, [ItemRowStatus.PUBLISHED, ItemRowStatus.PUBLISHED])).toBe(false)
+    expect(showsItemStatusColumn(collection, [null, ItemRowStatus.PUBLISHED])).toBe(false)
+  })
+
+  it('never shows it until the collection is approved on chain, where the collection pill tells the whole story', () => {
+    const underFirstReview = { ...collection, isApproved: false }
+    expect(showsItemStatusColumn(underFirstReview, [ItemRowStatus.UNDER_REVIEW])).toBe(false)
+    // The rescue step of a first approval stamps reviewedAt before the deploy and the on-chain approval.
+    const rescued = { ...underFirstReview, createdAt: 1, reviewedAt: 2 }
+    expect(showsItemStatusColumn(rescued, [ItemRowStatus.UNDER_REVIEW])).toBe(false)
+    expect(showsItemStatusColumn({ ...rescued, isApproved: true }, [ItemRowStatus.MODIFIED])).toBe(true)
   })
 })
 

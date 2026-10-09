@@ -2,6 +2,8 @@
 // and the marketplace show. Ported from the legacy builder (modules/item/utils areSynced + the
 // getStatusForStandard selector) so both apps judge the same item the same way.
 import { type Entity } from '@dcl/schemas'
+import { type Collection } from './collections'
+import { type CollectionCuration } from './curation'
 import { ItemType, VIDEO_PATH, type Item, type ItemData, type ItemRepresentation } from './items'
 
 /** Edited after approval (submitted for review or not): the Shop and the world still serve the approved version. */
@@ -132,18 +134,79 @@ export function isItemSynced(item: Item, entity: Entity): boolean {
 type SyncContext = {
   /** The collection has a curation request the committee has not answered yet. */
   isCurationPending: boolean
+  /** The curation request has settled; until then an edited item can't tell "unsynced" from "under review". */
+  curationLoaded: boolean
   /** The entities request has settled, so a missing entity is really missing rather than still loading. */
   entitiesLoaded: boolean
 }
 
 export function getItemSyncStatus(item: Item, entity: Entity | undefined, context: SyncContext): ItemSyncStatus {
+  if (!item.isPublished) return ItemSyncStatus.UNPUBLISHED
+  if (!context.curationLoaded) return ItemSyncStatus.LOADING
   if (entity) {
     if (isItemSynced(item, entity)) return ItemSyncStatus.SYNCED
     return context.isCurationPending ? ItemSyncStatus.UNDER_REVIEW : ItemSyncStatus.UNSYNCED
   }
-  if (!item.isPublished) return ItemSyncStatus.UNPUBLISHED
   if (!item.isApproved) return ItemSyncStatus.UNDER_REVIEW
   return context.entitiesLoaded ? ItemSyncStatus.UNSYNCED : ItemSyncStatus.LOADING
+}
+
+export type ItemSync = {
+  status: ItemSyncStatus
+  /** The deployed entity, when there is one: what "Reset item" restores. */
+  entity?: Entity
+  /** Set on a still-loading item once the Catalyst lookup has failed: whether it changed can't be known. */
+  lookupFailed?: true
+}
+
+/** What the item row's Status pill says on a collection approved at least once. */
+export enum ItemRowStatus {
+  PUBLISHED = 'published',
+  MODIFIED = 'modified',
+  REJECTED = 'rejected',
+  UNDER_REVIEW = 'under_review',
+  MISSING = 'missing'
+}
+
+/** What the row status needs from the collection's latest review request. */
+export type RowStatusCuration = Pick<CollectionCuration, 'status' | 'updatedAt'>
+
+/**
+ * Null while the sync is unknown, and for an unapproved item outside a review: the collection pill tells that
+ * story. An edited item reads "rejected" when the committee turned the changes down, which only covers edits
+ * made before the rejection: a later edit is something the committee never saw. An approved item with no entity
+ * is "missing" (its files never reached the Catalyst, so it may not work in-world) unless its collection is under
+ * review, which is the way it gets redeployed.
+ */
+export function getItemRowStatus(
+  item: Pick<Item, 'updatedAt'>,
+  sync: ItemSync | undefined,
+  curation: RowStatusCuration | null | undefined
+): ItemRowStatus | null {
+  const pending = curation?.status === 'pending'
+  const rejected = curation?.status === 'rejected' && item.updatedAt <= curation.updatedAt
+  switch (sync?.status) {
+    case ItemSyncStatus.SYNCED:
+      return ItemRowStatus.PUBLISHED
+    case ItemSyncStatus.UNDER_REVIEW:
+      return pending ? ItemRowStatus.UNDER_REVIEW : null
+    case ItemSyncStatus.UNSYNCED:
+      if (sync.entity) return rejected ? ItemRowStatus.REJECTED : ItemRowStatus.MODIFIED
+      return pending ? ItemRowStatus.UNDER_REVIEW : ItemRowStatus.MISSING
+    default:
+      return null
+  }
+}
+
+/**
+ * The Status column exists on collections approved on chain, while some row on the page says more than
+ * "published": until then the collection pill already tells the whole story. Approved on chain, not merely
+ * reviewed: the rescue step of a first approval already stamps `reviewedAt`, with the deploy still to come.
+ */
+export function showsItemStatusColumn(collection: Collection, statuses: Iterable<ItemRowStatus | null>): boolean {
+  if (!collection.isApproved) return false
+  for (const status of statuses) if (status !== null && status !== ItemRowStatus.PUBLISHED) return true
+  return false
 }
 
 /**

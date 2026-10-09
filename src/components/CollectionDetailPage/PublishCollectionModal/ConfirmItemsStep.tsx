@@ -5,7 +5,8 @@ import { useDeleteItem } from '~/hooks/usePublishCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useSaveItem } from '~/hooks/useSaveItem'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
-import { type Item } from '~/lib/items'
+import { type Collection } from '~/lib/collections'
+import { canDeleteItem, type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import { Button } from '~/components/Button'
 import { type ThumbnailPatch } from '~/components/ThumbnailModal'
@@ -17,6 +18,7 @@ import * as S from './PublishCollectionModal.styles'
 
 type Props = {
   address: string
+  collection: Collection
   items: Item[]
   onBusyChange: (busy: boolean) => void
   onBack: () => void
@@ -24,7 +26,7 @@ type Props = {
 }
 
 /** Step 2: review every item; names and rarities are editable in place, items can be removed. */
-export function ConfirmItemsStep({ address, items, onBusyChange, onBack, onConfirm }: Props) {
+export function ConfirmItemsStep({ address, collection, items, onBusyChange, onBack, onConfirm }: Props) {
   const { t } = useTranslation()
   const showToast = useNotifications(state => state.showToast)
   const [accepted, setAccepted] = useState(false)
@@ -104,7 +106,7 @@ export function ConfirmItemsStep({ address, items, onBusyChange, onBack, onConfi
                 isEditing={editingId === item.id}
                 isSaving={editingId === item.id && updateItem.isPending}
                 saveError={editingId === item.id && updateItem.isError}
-                canDelete={items.length > 1}
+                canDelete={items.length > 1 && canDeleteItem(collection, address)}
                 locked={editingId !== null && editingId !== item.id}
                 pendingThumbnail={editingId === item.id ? (thumbnailPatch?.thumbnail ?? null) : null}
                 onEdit={() => {
