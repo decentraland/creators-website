@@ -99,7 +99,7 @@ export const EmailField = styled.label`
 export const EmailInput = styled.input`
   height: 54px;
   padding: 0 16px;
-  border: 1px solid ${theme.colors.muted};
+  border: 1px solid ${theme.colors.glassLine};
   border-radius: 8px;
   outline: 0;
   background: rgba(255, 255, 255, 0.05);
