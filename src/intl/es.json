@@ -155,7 +155,7 @@
       "modified": "Modificado",
       "rejected": "Rechazado",
       "under_review": "En revisión",
-      "missing": "No activo",
+      "missing": "Archivos faltantes",
       "modified_hint": "Cambios guardados pero aún no enviados al comité de curaduría. Envíalos a revisión para publicarlos.",
       "rejected_hint": "El comité de curaduría rechazó los últimos cambios. Los compradores reciben la última versión aprobada hasta que se aprueben los cambios actualizados.",
       "under_review_hint": "Cambios enviados al comité de curaduría. Los compradores reciben la última versión aprobada hasta que los cambios se aprueben.",
