@@ -1,4 +1,5 @@
 export { ValidationBadge } from './ValidationBadge'
 export { ItemValidationCard, type ValidationSubject } from './ItemValidationCard'
-export { ValidationResultsModal } from './ValidationResultsModal'
+export { ValidationResultsModal, type ItemResult } from './ValidationResultsModal'
+export { toValidationSubject } from './subject'
 export { getValidationStatus, type ValidationStatus } from '~/lib/validation'

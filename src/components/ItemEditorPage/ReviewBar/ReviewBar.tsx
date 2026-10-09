@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useIntl } from 'react-intl'
 import { ArrowBack as ArrowBackIcon, Edit as EditIcon, PersonAddAlt as AssignIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
@@ -7,16 +7,27 @@ import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { CurationStatePill } from '~/components/CurationStatePill'
 import { ProfileBadge } from '~/components/ProfileBadge'
+import { ValidationBadge, toValidationSubject, type ItemResult } from '~/components/ValidationBadge'
+import { useCollectionValidation } from '~/hooks/useCollectionValidation'
 import { useCollectionCuration, useRejectCuration } from '~/hooks/useCuration'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { type ApprovalMode } from '~/hooks/useApprovalFlow'
+import { track } from '~/lib/analytics'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
-import { ReviewAction, canEditAssignee, curationListUrl, getCurationState, getReviewActions } from '~/lib/curation'
-import { ItemSyncStatus } from '~/lib/itemSync'
+import {
+  CurationState,
+  ReviewAction,
+  canEditAssignee,
+  curationListUrl,
+  getCurationState,
+  getReviewActions
+} from '~/lib/curation'
+import { ItemSyncStatus, hasPendingChanges } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import { formatTimeAgo } from '~/lib/time'
+import { countIssues, getValidationStatus } from '~/lib/validation'
 import { ApprovalFlowModal } from './ApprovalFlowModal'
 import { DisableCollectionFlow } from './DisableCollectionFlow'
 import { ForumVerdictModal } from './ForumVerdictModal'
@@ -26,6 +37,7 @@ type Props = {
   session: Session
   collection: Collection
   items: Item[]
+  onSelectItem: (item: Item) => void
 }
 
 type Dialog = 'assign' | 'reject' | 'disable' | null
@@ -33,9 +45,12 @@ type Dialog = 'assign' | 'reject' | 'disable' | null
 const DECISIONS = [ReviewAction.APPROVE, ReviewAction.ENABLE, ReviewAction.REJECT]
 // The constructive actions, as in the legacy panel; Reject and Disable stay dark.
 const PRIMARY = new Set([ReviewAction.APPROVE, ReviewAction.ENABLE, ReviewAction.DEPLOY_MISSING])
+// Only a pending request has content waiting on the committee's decision.
+const VALIDATED_STATES = [CurationState.TO_REVIEW, CurationState.UNDER_REVIEW]
+const NO_ITEMS: Item[] = []
 
 /** The curator's toolbar over the read-only editor: the collection's review state and the committee's actions. */
-export function ReviewBar({ session, collection, items }: Props) {
+export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
   const { t } = useTranslation()
   const intl = useIntl()
   const address = session.address
@@ -69,6 +84,65 @@ export function ReviewBar({ session, collection, items }: Props) {
   // Without the request, Reject and Assign would open a new one instead of updating it.
   const isCurationError = collection.isPublished && curationQuery.isError && !curationQuery.data
 
+  const validates = collection.isPublished && !isLoading && !isCurationError && VALIDATED_STATES.includes(state)
+  // An item the Catalyst couldn't compare is checked anyway rather than left out.
+  const validationItems = useMemo(
+    () =>
+      validates
+        ? items.filter(item => {
+            const sync = syncs.get(item.id)
+            return hasPendingChanges(sync?.status) || !!sync?.lookupFailed
+          })
+        : NO_ITEMS,
+    [validates, items, syncs]
+  )
+  const validation = useCollectionValidation(validationItems, validates)
+  const validationResults = useMemo<ItemResult[]>(
+    () =>
+      validationItems.flatMap(item => {
+        const issues = validation.results.get(item.id)?.issues ?? []
+        if (issues.length === 0) return []
+        return [
+          {
+            id: item.id,
+            subject: toValidationSubject(item),
+            issues,
+            onSelect: () => onSelectItem(item)
+          }
+        ]
+      }),
+    [validationItems, validation.results, onSelectItem]
+  )
+  const validationIssues = useMemo(() => validationResults.flatMap(result => result.issues), [validationResults])
+  // Approved items read as loading until the Catalyst answers: which of them changed isn't known yet.
+  const isResolvingItems = useMemo(
+    () =>
+      validates &&
+      items.some(item => {
+        const sync = syncs.get(item.id)
+        return sync?.status === ItemSyncStatus.LOADING && !sync.lookupFailed
+      }),
+    [validates, items, syncs]
+  )
+  const validationStatus = getValidationStatus(
+    validationItems.length > 0 || isResolvingItems ? validationIssues : undefined,
+    validation.isValidating || isResolvingItems
+  )
+  // One result per collection opened (the bar is keyed by collection), cached checks included.
+  const startedAt = useRef(Date.now())
+  const reported = useRef(false)
+  useEffect(() => {
+    if (validationStatus === 'loading' || validationStatus === 'idle' || reported.current) return
+    reported.current = true
+    track('Review Validation Result', {
+      collectionId: collection.id,
+      itemCount: validationItems.length,
+      ...countIssues(validationIssues),
+      itemsWithIssues: validationResults.length,
+      durationMs: Date.now() - startedAt.current
+    })
+  }, [validationStatus, collection.id, validationItems.length, validationIssues, validationResults.length])
+
   function onAction(action: ReviewAction) {
     // Enable never opens a request (it only switches the collection back on): with none, there is nothing to take
     // over; with one, taking it over only records who enabled it.
@@ -98,6 +172,13 @@ export function ReviewBar({ session, collection, items }: Props) {
         </S.BackLink>
         <S.Name title={collection.name}>{collection.name}</S.Name>
         {!isLoading && !isCurationError && <CurationStatePill state={state} />}
+        <ValidationBadge
+          status={validationStatus}
+          results={validationResults}
+          scope="collection"
+          onOpen={() => track('Review Validation Opened', { collectionId: collection.id, status: validationStatus })}
+          testId="review-validation"
+        />
       </S.Identity>
 
       <S.Meta>

@@ -746,6 +746,12 @@
         "success": "{collection} 已被禁用",
         "signing": "请在钱包中确认以禁用该系列。",
         "pending": "正在禁用系列……"
+      },
+      "validation": {
+        "loading": "正在检查系列中的物品……",
+        "pass": "所有物品都通过了所有检查。",
+        "warnings": "部分物品存在警告。点击查看。",
+        "errors": "部分物品存在错误。点击查看。"
       }
     },
     "discard": {

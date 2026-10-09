@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchEntitiesByPointers } from '~/lib/catalyst'
 import { useCollectionCuration } from '~/hooks/useCuration'
 import { type Collection } from '~/lib/collections'
-import { getItemSyncStatus, mapEntitiesByItemId, type ItemSync } from '~/lib/itemSync'
+import { ItemSyncStatus, getItemSyncStatus, mapEntitiesByItemId, type ItemSync } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
 
 /**
@@ -38,6 +38,7 @@ export function useItemSyncs(
   // A failed request settles too, read as "nothing pending": edited rows then say Modified where Under review
   // would be right, which beats never resolving. Publish changes stays hidden, since the page gates it on success.
   const curationLoaded = !isPublished || curationQuery.isSuccess || curationQuery.isError
+  const lookupFailed = pointers.length > 0 && entitiesQuery.isError
 
   return useMemo(() => {
     const byItemId = mapEntitiesByItemId(items, entities ?? [])
@@ -49,8 +50,10 @@ export function useItemSyncs(
         curationLoaded,
         entitiesLoaded
       })
-      syncs.set(item.id, entity ? { status, entity } : { status })
+      if (entity) syncs.set(item.id, { status, entity })
+      else if (lookupFailed && status === ItemSyncStatus.LOADING) syncs.set(item.id, { status, lookupFailed })
+      else syncs.set(item.id, { status })
     }
     return syncs
-  }, [items, entities, curationPending, curationLoaded, entitiesLoaded])
+  }, [items, entities, curationPending, curationLoaded, entitiesLoaded, lookupFailed])
 }

@@ -155,6 +155,8 @@ export type ItemSync = {
   status: ItemSyncStatus
   /** The deployed entity, when there is one: what "Reset item" restores. */
   entity?: Entity
+  /** Set on a still-loading item once the Catalyst lookup has failed: whether it changed can't be known. */
+  lookupFailed?: true
 }
 
 /** What the item row's Status pill says on a collection approved at least once. */
