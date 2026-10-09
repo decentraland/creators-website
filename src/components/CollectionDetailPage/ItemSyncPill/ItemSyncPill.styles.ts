@@ -29,6 +29,7 @@ export const Pill = styled.span`
     border-color: ${theme.colors.amber};
     background: ${theme.colors.orangeTint};
   }
+  &[data-status='rejected'],
   &[data-status='missing'] {
     color: ${theme.colors.redBright};
     border-color: ${theme.colors.redBright};

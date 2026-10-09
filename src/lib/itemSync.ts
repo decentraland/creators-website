@@ -2,6 +2,8 @@
 // and the marketplace show. Ported from the legacy builder (modules/item/utils areSynced + the
 // getStatusForStandard selector) so both apps judge the same item the same way.
 import { type Entity } from '@dcl/schemas'
+import { hasBeenApproved, type Collection } from './collections'
+import { type CurationRequestStatus } from './curation'
 import { ItemType, VIDEO_PATH, type Item, type ItemData, type ItemRepresentation } from './items'
 
 /** Edited after approval (submitted for review or not): the Shop and the world still serve the approved version. */
@@ -159,26 +161,43 @@ export type ItemSync = {
 export enum ItemRowStatus {
   PUBLISHED = 'published',
   MODIFIED = 'modified',
+  REJECTED = 'rejected',
   UNDER_REVIEW = 'under_review',
   MISSING = 'missing'
 }
 
 /**
- * Null while the sync is unknown. An approved item with no entity is "missing" (its files never reached the
- * Catalyst, so it may not work in-world) unless its collection is under review, which is the way it gets redeployed.
+ * Null while the sync is unknown, and for an unapproved item outside a review: the collection pill tells that
+ * story. Edited items read "rejected" once the committee turned the changes down. An approved item with no entity
+ * is "missing" (its files never reached the Catalyst, so it may not work in-world) unless its collection is under
+ * review, which is the way it gets redeployed.
  */
-export function getItemRowStatus(sync: ItemSync | undefined, isCurationPending: boolean): ItemRowStatus | null {
+export function getItemRowStatus(
+  sync: ItemSync | undefined,
+  curationStatus: CurationRequestStatus | null | undefined
+): ItemRowStatus | null {
+  const pending = curationStatus === 'pending'
   switch (sync?.status) {
     case ItemSyncStatus.SYNCED:
       return ItemRowStatus.PUBLISHED
     case ItemSyncStatus.UNDER_REVIEW:
-      return ItemRowStatus.UNDER_REVIEW
+      return pending ? ItemRowStatus.UNDER_REVIEW : null
     case ItemSyncStatus.UNSYNCED:
-      if (sync.entity) return ItemRowStatus.MODIFIED
-      return isCurationPending ? ItemRowStatus.UNDER_REVIEW : ItemRowStatus.MISSING
+      if (sync.entity) return curationStatus === 'rejected' ? ItemRowStatus.REJECTED : ItemRowStatus.MODIFIED
+      return pending ? ItemRowStatus.UNDER_REVIEW : ItemRowStatus.MISSING
     default:
       return null
   }
+}
+
+/**
+ * The Status column exists on collections approved at least once, while some row on the page says more than
+ * "published": before the first approval the collection pill already tells the whole story.
+ */
+export function showsItemStatusColumn(collection: Collection, statuses: Iterable<ItemRowStatus | null>): boolean {
+  if (!hasBeenApproved(collection)) return false
+  for (const status of statuses) if (status !== null && status !== ItemRowStatus.PUBLISHED) return true
+  return false
 }
 
 /**

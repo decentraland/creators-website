@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { type Entity, EntityType } from '@dcl/schemas'
+import { type Collection } from './collections'
 import { ItemType, type Item } from './items'
 import {
   ItemRowStatus,
   ItemSyncStatus,
   buildResetItem,
   getItemRowStatus,
+  showsItemStatusColumn,
   getItemSyncStatus,
   isItemSynced,
   mapEntitiesByItemId
@@ -189,20 +191,62 @@ describe('getItemRowStatus', () => {
   const entity = entityFor(wearable)
 
   it('names the sync state the creator can act on', () => {
-    expect(getItemRowStatus({ status: ItemSyncStatus.SYNCED, entity }, false)).toBe(ItemRowStatus.PUBLISHED)
-    expect(getItemRowStatus({ status: ItemSyncStatus.UNSYNCED, entity }, false)).toBe(ItemRowStatus.MODIFIED)
-    expect(getItemRowStatus({ status: ItemSyncStatus.UNDER_REVIEW, entity }, true)).toBe(ItemRowStatus.UNDER_REVIEW)
+    expect(getItemRowStatus({ status: ItemSyncStatus.SYNCED, entity }, null)).toBe(ItemRowStatus.PUBLISHED)
+    expect(getItemRowStatus({ status: ItemSyncStatus.UNSYNCED, entity }, null)).toBe(ItemRowStatus.MODIFIED)
+    expect(getItemRowStatus({ status: ItemSyncStatus.UNSYNCED, entity }, 'approved')).toBe(ItemRowStatus.MODIFIED)
+    expect(getItemRowStatus({ status: ItemSyncStatus.UNDER_REVIEW, entity }, 'pending')).toBe(
+      ItemRowStatus.UNDER_REVIEW
+    )
+  })
+
+  it('reads rejected, not modified, once the committee turned the changes down', () => {
+    expect(getItemRowStatus({ status: ItemSyncStatus.UNSYNCED, entity }, 'rejected')).toBe(ItemRowStatus.REJECTED)
   })
 
   it('flags an approved item with no entity as missing, or under review while its redeploy is being reviewed', () => {
-    expect(getItemRowStatus({ status: ItemSyncStatus.UNSYNCED }, false)).toBe(ItemRowStatus.MISSING)
-    expect(getItemRowStatus({ status: ItemSyncStatus.UNSYNCED }, true)).toBe(ItemRowStatus.UNDER_REVIEW)
+    expect(getItemRowStatus({ status: ItemSyncStatus.UNSYNCED }, null)).toBe(ItemRowStatus.MISSING)
+    expect(getItemRowStatus({ status: ItemSyncStatus.UNSYNCED }, 'rejected')).toBe(ItemRowStatus.MISSING)
+    expect(getItemRowStatus({ status: ItemSyncStatus.UNSYNCED }, 'pending')).toBe(ItemRowStatus.UNDER_REVIEW)
+  })
+
+  it('leaves an unapproved item alone outside a review: the collection pill says rejected or disabled', () => {
+    expect(getItemRowStatus({ status: ItemSyncStatus.UNDER_REVIEW }, 'rejected')).toBeNull()
+    expect(getItemRowStatus({ status: ItemSyncStatus.UNDER_REVIEW }, null)).toBeNull()
   })
 
   it('says nothing while the sync is unknown or the item is not published', () => {
-    expect(getItemRowStatus(undefined, false)).toBeNull()
-    expect(getItemRowStatus({ status: ItemSyncStatus.LOADING }, false)).toBeNull()
-    expect(getItemRowStatus({ status: ItemSyncStatus.UNPUBLISHED }, false)).toBeNull()
+    expect(getItemRowStatus(undefined, null)).toBeNull()
+    expect(getItemRowStatus({ status: ItemSyncStatus.LOADING }, null)).toBeNull()
+    expect(getItemRowStatus({ status: ItemSyncStatus.UNPUBLISHED }, null)).toBeNull()
+  })
+})
+
+describe('showsItemStatusColumn', () => {
+  const collection: Collection = {
+    id: 'c1',
+    name: 'Hats',
+    owner: '0xowner',
+    urn: 'urn',
+    isPublished: true,
+    isApproved: true,
+    itemCount: 1,
+    minters: [],
+    managers: [],
+    createdAt: 1,
+    updatedAt: 1
+  }
+
+  it('shows the column only when some row says more than published', () => {
+    expect(showsItemStatusColumn(collection, [ItemRowStatus.PUBLISHED, ItemRowStatus.MODIFIED])).toBe(true)
+    expect(showsItemStatusColumn(collection, [ItemRowStatus.PUBLISHED, ItemRowStatus.PUBLISHED])).toBe(false)
+    expect(showsItemStatusColumn(collection, [null, ItemRowStatus.PUBLISHED])).toBe(false)
+  })
+
+  it('never shows it before the first approval, where the collection pill tells the whole story', () => {
+    const underFirstReview = { ...collection, isApproved: false }
+    expect(showsItemStatusColumn(underFirstReview, [ItemRowStatus.UNDER_REVIEW])).toBe(false)
+    const approvedOnce = { ...underFirstReview, createdAt: 1, reviewedAt: 2 }
+    expect(showsItemStatusColumn(approvedOnce, [ItemRowStatus.MODIFIED])).toBe(true)
   })
 })
 

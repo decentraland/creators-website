@@ -55,7 +55,7 @@ import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { useCollectionValidation, useRerunItemValidation } from '~/hooks/useCollectionValidation'
-import { ItemRowStatus, ItemSyncStatus, getItemRowStatus, hasPendingChanges } from '~/lib/itemSync'
+import { ItemSyncStatus, getItemRowStatus, hasPendingChanges, showsItemStatusColumn } from '~/lib/itemSync'
 import { canPushChanges } from '~/lib/curation'
 import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
 import { previewCollection } from '~/lib/explorer'
@@ -233,18 +233,13 @@ const CollectionDetailPage = () => {
   )
   // After a rejection the creator asks for a review again, whether it was the first one or a pushed update.
   const pushCopy = curation?.status === 'rejected' ? 'request_review' : 'push_changes'
-  // The Status column exists on collections approved at least once, while some row on the page says more than
-  // "published": before the first approval the collection pill already tells the whole story.
-  const curationPending = curation?.status === 'pending'
+  const curationStatus = curation?.status ?? null
   const rowStatuses = useMemo(
-    () => new Map(results.map(item => [item.id, getItemRowStatus(syncs.get(item.id), curationPending)])),
-    [results, syncs, curationPending]
+    () => new Map(results.map(item => [item.id, getItemRowStatus(syncs.get(item.id), curationStatus)])),
+    [results, syncs, curationStatus]
   )
   const withStatus = useMemo(
-    () =>
-      !!standardCollection &&
-      hasBeenApproved(standardCollection) &&
-      [...rowStatuses.values()].some(status => status !== null && status !== ItemRowStatus.PUBLISHED),
+    () => !!standardCollection && showsItemStatusColumn(standardCollection, rowStatuses.values()),
     [standardCollection, rowStatuses]
   )
 
