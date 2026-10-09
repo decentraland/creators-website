@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useInView } from 'react-intersection-observer'
+import { useLocation } from 'react-router-dom'
 import { useAfterLoadIdle } from '~/hooks/useAfterLoadIdle'
 import { useLocale, LOCALES, type Locale } from '~/store/locale'
-import { useTranslation } from '~/intl'
+import { englishMessage, useTranslation } from '~/intl'
+import { isOverviewPath, LandingPlace, trackLandingClick } from '~/lib/overviewAnalytics'
 import * as S from './Footer.styles'
 
 // The full Decentraland footer — the large purple footer with newsletter, MENU columns, social links
@@ -50,11 +52,19 @@ const LANGUAGE_LABELS: Record<Locale, { label: string; flag: string }> = {
   zh: { label: '中文', flag: '🇨🇳' }
 }
 
-const SocialRow = () => {
+const SocialRow = ({ onTrack }: { onTrack: (platform: string) => void }) => {
   return (
     <S.Social>
       {socialLinks.map(({ name, url, icon: Icon }) => (
-        <a key={name} href={url} target="_blank" rel="noopener noreferrer" aria-label={name}>
+        <a
+          key={name}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={name}
+          data-testid="footer-social-link"
+          onClick={() => onTrack(name)}
+        >
           <Icon />
         </a>
       ))}
@@ -64,6 +74,14 @@ const SocialRow = () => {
 
 const Footer = () => {
   const { t } = useTranslation()
+  // Only the overview stands in for sites' /create; its labels go out in English whatever the locale.
+  const onOverview = isOverviewPath(useLocation().pathname)
+  const trackLink = (labelKey: string) => {
+    if (onOverview) trackLandingClick(LandingPlace.FOOTER_LINK, { link: englishMessage(labelKey) })
+  }
+  const trackSocial = (platform: string) => {
+    if (onOverview) trackLandingClick(LandingPlace.FOOTER_SOCIAL, { platform })
+  }
   const locale = useLocale(s => s.locale)
   const setLocale = useLocale(s => s.setLocale)
   const [openSection, setOpenSection] = useState<string | null>(null)
@@ -124,7 +142,7 @@ const Footer = () => {
 
           <S.Connect data-variant="desktop">
             <S.Label>{t('footer.connect')}</S.Label>
-            <SocialRow />
+            <SocialRow onTrack={trackSocial} />
           </S.Connect>
         </S.Left>
 
@@ -132,7 +150,14 @@ const Footer = () => {
           <S.Col>
             <S.Label>{t('footer.gettingStarted')}</S.Label>
             {gettingStartedLinks.map(l => (
-              <S.FootLink key={l.label} href={l.url} target="_blank" rel="noopener noreferrer">
+              <S.FootLink
+                key={l.label}
+                href={l.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="footer-link"
+                onClick={() => trackLink(l.label)}
+              >
                 {t(l.label)}
               </S.FootLink>
             ))}
@@ -140,7 +165,14 @@ const Footer = () => {
           <S.Col>
             <S.Label>{t('footer.resources')}</S.Label>
             {resourceLinks.map(l => (
-              <S.FootLink key={l.label} href={l.url} target="_blank" rel="noopener noreferrer">
+              <S.FootLink
+                key={l.label}
+                href={l.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="footer-link"
+                onClick={() => trackLink(l.label)}
+              >
                 {t(l.label)}
               </S.FootLink>
             ))}
@@ -169,7 +201,13 @@ const Footer = () => {
               </S.Dropdown>
               <S.DropContent id={`footer-section-${section.key}`} data-open={openSection === section.key || undefined}>
                 {section.links.map(l => (
-                  <S.MLink key={l.label} href={l.url} target="_blank" rel="noopener noreferrer">
+                  <S.MLink
+                    key={l.label}
+                    href={l.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => trackLink(l.label)}
+                  >
                     {t(l.label)}
                   </S.MLink>
                 ))}
@@ -180,7 +218,7 @@ const Footer = () => {
 
         <S.Connect data-variant="mobile">
           <S.Label>{t('footer.connect')}</S.Label>
-          <SocialRow />
+          <SocialRow onTrack={trackSocial} />
         </S.Connect>
       </S.Main>
 

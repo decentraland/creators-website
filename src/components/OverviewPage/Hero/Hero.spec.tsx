@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { TranslationProvider } from '~/intl'
+import { type CreatorHubDownload, startCreatorHubDownload } from '~/lib/creatorHubDownload'
 import { sendOverviewTrack as track } from '~/lib/overviewSegment'
 import { heroData } from '../data'
 import { Hero } from './Hero'
@@ -13,9 +14,27 @@ vi.mock('~/hooks/useMediaQuery', () => ({
   useMediaQuery: (query: string) => (query.includes('reduced-motion') ? viewport.reducedMotion : viewport.mobile)
 }))
 
+const release = vi.hoisted(() => ({
+  download: undefined as CreatorHubDownload | undefined,
+  others: [] as CreatorHubDownload[]
+}))
+vi.mock('~/hooks/useCreatorHubDownload', () => ({
+  useCreatorHubDownload: () =>
+    release.download ? { download: release.download, others: release.others } : { fallback: 'loading' }
+}))
+vi.mock('~/lib/creatorHubDownload', async importOriginal => ({
+  ...(await importOriginal<typeof import('~/lib/creatorHubDownload')>()),
+  startCreatorHubDownload: vi.fn(),
+  cancelCreatorHubRedirect: vi.fn(),
+  macArchHint: () => null
+}))
+
 beforeEach(() => {
   viewport.mobile = false
   viewport.reducedMotion = false
+  release.download = undefined
+  release.others = []
+  vi.mocked(startCreatorHubDownload).mockClear()
   vi.mocked(track).mockClear()
 })
 
@@ -27,7 +46,7 @@ const renderHero = () =>
   )
 
 describe('Hero', () => {
-  it('sends desktop visitors to the Creator Hub download page and tracks the click', () => {
+  it('sends desktop visitors to the download page until an installer is known', () => {
     renderHero()
     const cta = screen.getByTestId('overview-hero-cta')
     expect(cta).toHaveTextContent('Download Creator Hub')
@@ -35,11 +54,107 @@ describe('Hero', () => {
     expect(cta).not.toHaveAttribute('target')
 
     fireEvent.click(cta)
+    expect(startCreatorHubDownload).not.toHaveBeenCalled()
     expect(track).toHaveBeenCalledWith('Click', {
       place: 'Creators Hero',
       event: 'Download',
-      download_target: 'creator_hub'
+      download_target: 'creator_hub',
+      download_mode: 'loading',
+      download_option: 'primary'
     })
+  })
+
+  it('downloads the installer for the visitor OS in one click', () => {
+    release.download = { os: 'macOS', arch: 'arm64', href: 'https://example.com/creator-hub-mac-arm64.dmg' }
+    renderHero()
+    const cta = screen.getByTestId('overview-hero-cta')
+    expect(cta).toHaveAttribute('href', 'https://example.com/creator-hub-mac-arm64.dmg')
+
+    fireEvent.click(cta)
+    expect(startCreatorHubDownload).toHaveBeenCalledWith(release.download, 'primary')
+    expect(track).toHaveBeenCalledWith('Click', {
+      place: 'Creators Hero',
+      event: 'Download',
+      os: 'macOS',
+      arch: 'arm64',
+      download_target: 'creator_hub',
+      download_mode: 'direct',
+      download_option: 'primary'
+    })
+  })
+
+  it("shows the installer's OS and offers the other OS's installer, in one click too", () => {
+    release.download = { os: 'macOS', arch: 'arm64', href: 'https://example.com/creator-hub-mac-arm64.dmg' }
+    const windows = { os: 'Windows', arch: 'amd64', href: 'https://example.com/creator-hub-win-x64.exe' } as const
+    const intel = { os: 'macOS', arch: 'amd64', href: 'https://example.com/creator-hub-mac-x64.dmg' } as const
+    release.others = [windows, intel]
+    renderHero()
+    expect(screen.getByTestId('overview-hero-os-icon')).toHaveAttribute('data-os', 'macOS')
+    expect(screen.getByTestId('overview-hero-also-available')).toHaveTextContent('Also available on')
+    expect(screen.getByRole('link', { name: 'Download for Intel-based Mac' })).toHaveTextContent('Intel')
+
+    const alt = screen.getByRole('link', { name: 'Download for Windows' })
+    expect(alt).toHaveAttribute('href', windows.href)
+    fireEvent.click(alt)
+    expect(startCreatorHubDownload).toHaveBeenCalledWith(windows, 'alternative')
+    expect(track).toHaveBeenCalledWith('Click', {
+      place: 'Creators Hero',
+      event: 'Download',
+      os: 'Windows',
+      arch: 'amd64',
+      download_target: 'creator_hub',
+      download_mode: 'direct',
+      download_option: 'alternative'
+    })
+  })
+
+  it('keeps the button, and its focus, when the release resolves', () => {
+    const { rerender } = renderHero()
+    const cta = screen.getByTestId('overview-hero-cta')
+    cta.focus()
+    release.download = { os: 'Windows', arch: 'amd64', href: 'https://example.com/creator-hub-win-x64.exe' }
+    rerender(
+      <TranslationProvider>
+        <Hero />
+      </TranslationProvider>
+    )
+    expect(screen.getByTestId('overview-hero-cta')).toBe(cta)
+    expect(cta).toHaveFocus()
+  })
+
+  it('names the build the button downloads on hover', async () => {
+    release.download = { os: 'macOS', arch: 'arm64', href: 'https://example.com/creator-hub-mac-arm64.dmg' }
+    renderHero()
+    fireEvent.mouseOver(screen.getByTestId('overview-hero-cta'))
+    expect(await screen.findByTestId('overview-hero-cta-tooltip')).toHaveTextContent(
+      'Download for Mac with Apple silicon'
+    )
+    // The tooltip describes the button; its own label stays its name.
+    expect(screen.getByRole('link', { name: 'Download Creator Hub' })).toHaveAccessibleDescription(
+      'Download for Mac with Apple silicon'
+    )
+  })
+
+  it('offers no other OS until an installer is known', () => {
+    renderHero()
+    expect(screen.queryByTestId('overview-hero-os-icon')).toBeNull()
+    expect(screen.queryByTestId('overview-hero-also-available')).toBeNull()
+  })
+
+  it('drops a repeat click while the first download is still redirecting', () => {
+    release.download = { os: 'Windows', arch: 'amd64', href: 'https://example.com/creator-hub-win-x64.exe' }
+    vi.mocked(startCreatorHubDownload).mockReturnValueOnce(true).mockReturnValueOnce(false)
+    renderHero()
+    const cta = screen.getByTestId('overview-hero-cta')
+    expect(fireEvent.click(cta)).toBe(true)
+    expect(fireEvent.click(cta)).toBe(false)
+  })
+
+  it('leaves a modifier click (new tab) to the browser', () => {
+    release.download = { os: 'Windows', arch: 'amd64', href: 'https://example.com/creator-hub-win-x64.exe' }
+    renderHero()
+    fireEvent.click(screen.getByTestId('overview-hero-cta'), { metaKey: true })
+    expect(startCreatorHubDownload).not.toHaveBeenCalled()
   })
 
   it('sends phones to the creator docs instead of the desktop-only download', () => {

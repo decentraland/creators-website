@@ -12,6 +12,8 @@ type Props = {
   /** Use the child as the trigger instead of wrapping it: it must be a single element that forwards its ref. */
   asChild?: boolean
   placement?: UiTooltipProps['placement']
+  /** The tooltip describes the trigger instead of naming it, so its visible label stays its accessible name. */
+  describeChild?: boolean
   testId?: string
 }
 
@@ -42,12 +44,23 @@ const Popper = styled(({ className, ...props }: UiTooltipProps) => (
   }
 `
 
-export function Tooltip({ content, children, asChild = false, testId = 'tooltip', placement = 'top' }: Props) {
-  if (content === null || content === undefined || content === false) return <>{children}</>
+export function Tooltip({
+  content,
+  children,
+  asChild = false,
+  describeChild = false,
+  testId = 'tooltip',
+  placement = 'top'
+}: Props) {
+  const empty = content === null || content === undefined || content === false
+  // A trigger of its own keeps its wrapper while there is nothing to say, so content arriving later does not
+  // remount it (and drop its focus); MUI renders no tooltip for an empty title.
+  if (empty && !asChild) return <>{children}</>
   return (
     <Popper
       arrow
-      title={<S.Content data-testid={testId}>{content}</S.Content>}
+      describeChild={describeChild}
+      title={empty ? '' : <S.Content data-testid={testId}>{content}</S.Content>}
       enterDelay={0}
       enterTouchDelay={0}
       leaveTouchDelay={4000}

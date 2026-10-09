@@ -38,7 +38,7 @@ const SESSION_ID =
   typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `s-${String(performance.now())}`
 
 // Crawlers would otherwise inflate every funnel metric. Evaluated once: the user agent can't change.
-const IS_BOT = typeof navigator !== 'undefined' && isbot(navigator.userAgent)
+export const IS_BOT = typeof navigator !== 'undefined' && isbot(navigator.userAgent)
 
 function segment(): SegmentApi | undefined {
   if (IS_BOT || typeof window === 'undefined') return undefined
@@ -216,7 +216,7 @@ function installSnippet(): Snippet | undefined {
  * at a first party proxy — and `_cdn` has to point there too, because analytics.js fetches its SETTINGS
  * separately and would otherwise still hit (and lose them to) Segment's CDN.
  */
-function resolveAnalyticsUrl(url: string): URL | undefined {
+export function resolveAnalyticsUrl(url: string): URL | undefined {
   if (!url) return undefined
   try {
     const resolved = new URL(url, window.location.href)
@@ -234,7 +234,7 @@ function resolveAnalyticsUrl(url: string): URL | undefined {
  * `context_app_name` / `context_app_version` columns, which no caller prop can collide with; the
  * `source` and `version` props stay as the cross-app filter the legacy builder's queries already use.
  */
-function stampApp(analytics: Pick<SegmentApi, 'addSourceMiddleware'>): void {
+export function stampApp(analytics: Pick<SegmentApi, 'addSourceMiddleware'>): void {
   analytics.addSourceMiddleware?.(({ payload, next }) => {
     // `next` in a finally: a middleware that throws (or one handed an unexpected payload shape by a
     // future analytics.js) would otherwise swallow the call, and every event with it.

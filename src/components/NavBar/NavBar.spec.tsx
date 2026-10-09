@@ -5,12 +5,16 @@ import type { NavbarProps } from 'decentraland-ui2'
 import { TranslationProvider } from '~/intl'
 import { config } from '~/config'
 import { openExternal } from '~/lib/navigation'
+import { sendOverviewTrack } from '~/lib/overviewSegment'
 import { NavBar } from './NavBar'
 
 // Stands in for the ui2 navbar: surfaces the balance chips the real one renders from these props.
 vi.mock('~/components/TopNav', () => ({
-  TopNav: ({ shopCreditsBalance, onClickShopCredits, manaBalances, onClickBalance }: NavbarProps) => (
+  TopNav: ({ shopCreditsBalance, onClickShopCredits, manaBalances, onClickBalance, onClickSignIn }: NavbarProps) => (
     <div data-testid="topnav">
+      <button data-testid="topnav-sign-in" onClick={onClickSignIn}>
+        sign in
+      </button>
       {shopCreditsBalance !== undefined && (
         <button data-testid="topnav-credits" onClick={onClickShopCredits}>
           {shopCreditsBalance}
@@ -25,12 +29,12 @@ vi.mock('~/components/TopNav', () => ({
   )
 }))
 
-const wallet = vi.hoisted(() => ({ session: undefined as { address: string } | undefined }))
+const wallet = vi.hoisted(() => ({ session: undefined as { address: string } | undefined, signIn: vi.fn() }))
 vi.mock('~/store/wallet', () => ({
   useWallet: () => ({
     session: wallet.session,
     connecting: false,
-    signIn: vi.fn(),
+    signIn: wallet.signIn,
     disconnect: vi.fn(),
     restore: vi.fn()
   })
@@ -50,6 +54,7 @@ vi.mock('~/hooks/useBalances', () => ({
 }))
 
 vi.mock('~/lib/navigation', () => ({ openExternal: vi.fn() }))
+vi.mock('~/lib/overviewSegment', () => ({ sendOverviewTrack: vi.fn(), sendOverviewPage: vi.fn() }))
 
 const committee = vi.hoisted(() => ({ isCurator: false }))
 vi.mock('~/hooks/useCuration', () => ({ useCommittee: () => ({ isCurator: committee.isCurator }) }))
@@ -60,6 +65,8 @@ beforeEach(() => {
   balances.credits = undefined
   balances.manaWei = undefined
   vi.mocked(openExternal).mockReset()
+  vi.mocked(sendOverviewTrack).mockClear()
+  wallet.signIn.mockClear()
 })
 
 function renderNavBar(path = '/collections', props: { subnav?: boolean } = {}) {
@@ -73,6 +80,24 @@ function renderNavBar(path = '/collections', props: { subnav?: boolean } = {}) {
 }
 
 describe('NavBar', () => {
+  it("reports a sign-in from the overview the way sites' landing navbar did", () => {
+    renderNavBar('/')
+    fireEvent.click(screen.getByTestId('topnav-sign-in'))
+    expect(wallet.signIn).toHaveBeenCalled()
+    expect(sendOverviewTrack).toHaveBeenCalledWith('Click', {
+      place: 'Landing Navbar',
+      event: 'click',
+      action: 'sign_in'
+    })
+  })
+
+  it('signs in without reporting it to the landing tables elsewhere', () => {
+    renderNavBar('/collections')
+    fireEvent.click(screen.getByTestId('topnav-sign-in'))
+    expect(wallet.signIn).toHaveBeenCalled()
+    expect(sendOverviewTrack).not.toHaveBeenCalled()
+  })
+
   it('shows the section tabs, keeping Overview and Collections in-app and sending Scenes and Land to the legacy builder', () => {
     renderNavBar()
     expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('href', '/')

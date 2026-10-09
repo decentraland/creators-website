@@ -1110,6 +1110,16 @@
       },
       "subtitle": "Descarga el Creator Hub para empezar a construir escenas inmersivas y experiencias interactivas en Decentraland.",
       "download_cta": "Descargar Creator Hub",
+      "also_available": "También disponible en",
+      "download_for": {
+        "windows": "Descargar para Windows",
+        "mac_apple_silicon": "Descargar para Mac con Apple silicon",
+        "mac_intel": "Descargar para Mac con Intel"
+      },
+      "build_label": {
+        "mac_apple_silicon": "Apple silicon",
+        "mac_intel": "Intel"
+      },
       "mobile_docs_cta": "Explora la documentación para creadores",
       "scroll_label": "Ir a la siguiente sección"
     },
