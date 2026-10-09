@@ -12,6 +12,7 @@ import {
   buildName,
   cancelCreatorHubRedirect,
   type CreatorHubDownload,
+  type DownloadOption,
   startCreatorHubDownload
 } from '~/lib/creatorHubDownload'
 import {
@@ -60,10 +61,14 @@ const DownloadOsIcon = ({ os }: { os: CreatorHubDownload['os'] }) => {
 
 // A modifier click opens the installer elsewhere, so this tab stays put; a repeat click within the redirect
 // window would download it twice.
-function onDownloadClick(event: MouseEvent<HTMLAnchorElement>, target?: CreatorHubDownload) {
+function onDownloadClick(
+  event: MouseEvent<HTMLAnchorElement>,
+  target: CreatorHubDownload | undefined,
+  option: DownloadOption
+) {
   trackClick(event)
   const modified = event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
-  if (target && !modified && !startCreatorHubDownload(target)) event.preventDefault()
+  if (target && !modified && !startCreatorHubDownload(target, option)) event.preventDefault()
 }
 
 const Hero = () => {
@@ -126,6 +131,7 @@ const Hero = () => {
               <Tooltip
                 content={download ? t(`overview.hero.download_for.${buildName(download)}`) : null}
                 asChild
+                describeChild
                 testId="overview-hero-cta-tooltip"
               >
                 <Button
@@ -133,12 +139,15 @@ const Hero = () => {
                   size="hero"
                   // Until the release resolves, or when no installer fits this OS, the download page offers them all.
                   href={download?.href ?? CREATOR_HUB_DOWNLOAD_URL}
-                  onClick={(event: MouseEvent<HTMLAnchorElement>) => onDownloadClick(event, download)}
+                  onClick={(event: MouseEvent<HTMLAnchorElement>) => onDownloadClick(event, download, 'primary')}
                   data-testid="overview-hero-cta"
                   data-place={OverviewSection.HERO}
                   data-event={DOWNLOAD_CLICK}
+                  data-os={download?.os}
+                  data-arch={download?.arch}
                   data-download-target={CREATOR_HUB_TARGET}
                   data-download-mode={download ? 'direct' : fallback}
+                  data-download-option="primary"
                 >
                   {t('overview.hero.download_cta')}
                   {download && (
@@ -158,7 +167,7 @@ const Hero = () => {
                         <S.AltDownload
                           href={other.href}
                           aria-label={t(`overview.hero.download_for.${name}`)}
-                          onClick={event => onDownloadClick(event, other)}
+                          onClick={event => onDownloadClick(event, other, 'alternative')}
                           data-testid="overview-hero-alt-download"
                           data-place={OverviewSection.HERO}
                           data-event={DOWNLOAD_CLICK}
@@ -166,6 +175,7 @@ const Hero = () => {
                           data-arch={other.arch}
                           data-download-target={CREATOR_HUB_TARGET}
                           data-download-mode="direct"
+                          data-download-option="alternative"
                         >
                           <DownloadOsIcon os={other.os} />
                           {other.os === 'macOS' && <span>{t(`overview.hero.build_label.${name}`)}</span>}

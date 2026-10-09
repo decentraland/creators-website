@@ -138,17 +138,26 @@ export function macArchHint(): MacArch | null {
   return navigator.userAgent.includes('Macintosh') && navigator.maxTouchPoints <= 1 ? detectMacArch() : null
 }
 
-let pendingRedirect: ReturnType<typeof setTimeout> | undefined
+let pendingRedirect: { timer: ReturnType<typeof setTimeout>; href: string } | undefined
+
+/** The hero's own pick for the device, or one of the "Also available on" builds. */
+export type DownloadOption = 'primary' | 'alternative'
 
 /**
  * Reports `download_started`, then hands the visitor to sites' success page, joined on `anon_user_id`.
- * Returns false while an earlier start is still redirecting, so the caller can drop the repeat download.
+ * Returns false for a repeat of the build already redirecting, so the caller can drop the duplicate
+ * download; another build restarts the redirect, so the success page names the build last chosen.
  */
-export function startCreatorHubDownload({ os, arch, href }: CreatorHubDownload): boolean {
-  if (pendingRedirect) return false
+export function startCreatorHubDownload(
+  { os, arch, href }: CreatorHubDownload,
+  option: DownloadOption = 'primary'
+): boolean {
+  if (pendingRedirect?.href === href) return false
+  cancelCreatorHubRedirect()
   const anonUserId = ensureAnonymousId()
   sendOverviewTrack('download_started', {
     download_target: 'creator_hub',
+    download_option: option,
     href,
     os,
     arch,
@@ -160,15 +169,16 @@ export function startCreatorHubDownload({ os, arch, href }: CreatorHubDownload):
   })
   const success = new URL('/download/creator-hub-success', config.get('SITES_URL'))
   success.search = new URLSearchParams({ os, arch, anon_user_id: anonUserId }).toString()
-  pendingRedirect = setTimeout(() => {
+  const timer = setTimeout(() => {
     pendingRedirect = undefined
     redirectExternal(success.toString())
   }, SUCCESS_REDIRECT_DELAY_MS)
+  pendingRedirect = { timer, href }
   return true
 }
 
 /** Drops a pending success redirect, for when the visitor leaves the page first. */
 export function cancelCreatorHubRedirect(): void {
-  clearTimeout(pendingRedirect)
+  clearTimeout(pendingRedirect?.timer)
   pendingRedirect = undefined
 }

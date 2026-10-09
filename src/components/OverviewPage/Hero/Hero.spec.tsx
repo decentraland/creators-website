@@ -59,7 +59,8 @@ describe('Hero', () => {
       place: 'Creators Hero',
       event: 'Download',
       download_target: 'creator_hub',
-      download_mode: 'loading'
+      download_mode: 'loading',
+      download_option: 'primary'
     })
   })
 
@@ -70,12 +71,15 @@ describe('Hero', () => {
     expect(cta).toHaveAttribute('href', 'https://example.com/creator-hub-mac-arm64.dmg')
 
     fireEvent.click(cta)
-    expect(startCreatorHubDownload).toHaveBeenCalledWith(release.download)
+    expect(startCreatorHubDownload).toHaveBeenCalledWith(release.download, 'primary')
     expect(track).toHaveBeenCalledWith('Click', {
       place: 'Creators Hero',
       event: 'Download',
+      os: 'macOS',
+      arch: 'arm64',
       download_target: 'creator_hub',
-      download_mode: 'direct'
+      download_mode: 'direct',
+      download_option: 'primary'
     })
   })
 
@@ -92,15 +96,30 @@ describe('Hero', () => {
     const alt = screen.getByRole('link', { name: 'Download for Windows' })
     expect(alt).toHaveAttribute('href', windows.href)
     fireEvent.click(alt)
-    expect(startCreatorHubDownload).toHaveBeenCalledWith(windows)
+    expect(startCreatorHubDownload).toHaveBeenCalledWith(windows, 'alternative')
     expect(track).toHaveBeenCalledWith('Click', {
       place: 'Creators Hero',
       event: 'Download',
       os: 'Windows',
       arch: 'amd64',
       download_target: 'creator_hub',
-      download_mode: 'direct'
+      download_mode: 'direct',
+      download_option: 'alternative'
     })
+  })
+
+  it('keeps the button, and its focus, when the release resolves', () => {
+    const { rerender } = renderHero()
+    const cta = screen.getByTestId('overview-hero-cta')
+    cta.focus()
+    release.download = { os: 'Windows', arch: 'amd64', href: 'https://example.com/creator-hub-win-x64.exe' }
+    rerender(
+      <TranslationProvider>
+        <Hero />
+      </TranslationProvider>
+    )
+    expect(screen.getByTestId('overview-hero-cta')).toBe(cta)
+    expect(cta).toHaveFocus()
   })
 
   it('names the build the button downloads on hover', async () => {
@@ -108,6 +127,10 @@ describe('Hero', () => {
     renderHero()
     fireEvent.mouseOver(screen.getByTestId('overview-hero-cta'))
     expect(await screen.findByTestId('overview-hero-cta-tooltip')).toHaveTextContent(
+      'Download for Mac with Apple silicon'
+    )
+    // The tooltip describes the button; its own label stays its name.
+    expect(screen.getByRole('link', { name: 'Download Creator Hub' })).toHaveAccessibleDescription(
       'Download for Mac with Apple silicon'
     )
   })

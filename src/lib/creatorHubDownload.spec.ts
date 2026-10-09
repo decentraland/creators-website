@@ -165,6 +165,7 @@ describe('startCreatorHubDownload', () => {
       'download_started',
       expect.objectContaining({
         download_target: 'creator_hub',
+        download_option: 'primary',
         place: 'creators-hero',
         href,
         os: 'macOS',
@@ -179,6 +180,20 @@ describe('startCreatorHubDownload', () => {
     expect(assign).toHaveBeenCalledWith(
       'https://decentraland.zone/download/creator-hub-success?os=macOS&arch=arm64&anon_user_id=anon-1'
     )
+  })
+
+  it('restarts the redirect for another build, so the success page names the last one chosen', () => {
+    const apple = { os: 'macOS', arch: 'arm64', href: `${URL_BASE}/creator-hub-mac-arm64.dmg` } as const
+    const intel = { os: 'macOS', arch: 'amd64', href: `${URL_BASE}/creator-hub-mac-x64.dmg` } as const
+    expect(startCreatorHubDownload(apple)).toBe(true)
+    expect(startCreatorHubDownload(intel, 'alternative')).toBe(true)
+    expect(sendOverviewTrack).toHaveBeenLastCalledWith(
+      'download_started',
+      expect.objectContaining({ arch: 'amd64', download_option: 'alternative' })
+    )
+    vi.advanceTimersByTime(SUCCESS_REDIRECT_DELAY_MS)
+    expect(assign).toHaveBeenCalledTimes(1)
+    expect(assign).toHaveBeenCalledWith(expect.stringContaining('arch=amd64'))
   })
 
   it('starts one download per pending redirect, so a double click counts once', () => {

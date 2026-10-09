@@ -148,6 +148,24 @@ describe('overview sender', () => {
     )
   })
 
+  it('sends later calls through analytics.js when it loads after the timeout', async () => {
+    vi.useFakeTimers({ now: AT })
+    const { sendOverviewPage, sendOverviewTrack } = await loadSender()
+    sendOverviewPage('/create')
+    idle.run?.()
+    await vi.waitFor(() => expect(segment.load).toHaveBeenCalled())
+    vi.advanceTimersByTime(10_000)
+    // The page view already left over the HTTP API; GA4 counts its own page view when it loads.
+    expect(analytics.sendDirect).toHaveBeenCalledWith(SITES_KEY, { type: 'page', name: '/create' })
+
+    segment.settle?.(true)
+    await vi.waitFor(() => {
+      sendOverviewTrack('Click', { place: 'Creators Hero' })
+      expect(segment.instance.track).toHaveBeenCalled()
+    })
+    expect(segment.instance.page).not.toHaveBeenCalled()
+  })
+
   it('falls back to the HTTP API for good when analytics.js cannot load', async () => {
     const { sendOverviewPage, sendOverviewTrack } = await loadSender()
     sendOverviewPage('/create')
