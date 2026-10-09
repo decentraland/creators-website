@@ -157,7 +157,7 @@
       "under_review": "Under review",
       "missing": "Not live",
       "modified_hint": "Changes saved but not sent to the curation committee yet. Send them for review to publish them.",
-      "rejected_hint": "The curation committee rejected these changes. Fix them and request a review again.",
+      "rejected_hint": "The curation committee rejected the latest changes. Buyers get the last approved version until updated changes are approved.",
       "under_review_hint": "Changes sent to the curation committee. Buyers get the last approved version until the changes are approved.",
       "missing_hint": "This item’s files aren’t live, so it may not work in-world. Send the collection for review so the curation committee can redeploy it, or get in touch with a curator."
     },
