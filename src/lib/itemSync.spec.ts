@@ -189,35 +189,41 @@ describe('getItemSyncStatus', () => {
 
 describe('getItemRowStatus', () => {
   const entity = entityFor(wearable)
+  const rejected = { status: 'rejected' as const, updatedAt: 2000 }
+  const pending = { status: 'pending' as const, updatedAt: 2000 }
+  const status = (sync: Parameters<typeof getItemRowStatus>[1], curation: Parameters<typeof getItemRowStatus>[2]) =>
+    getItemRowStatus(wearable, sync, curation)
 
   it('names the sync state the creator can act on', () => {
-    expect(getItemRowStatus({ status: ItemSyncStatus.SYNCED, entity }, null)).toBe(ItemRowStatus.PUBLISHED)
-    expect(getItemRowStatus({ status: ItemSyncStatus.UNSYNCED, entity }, null)).toBe(ItemRowStatus.MODIFIED)
-    expect(getItemRowStatus({ status: ItemSyncStatus.UNSYNCED, entity }, 'approved')).toBe(ItemRowStatus.MODIFIED)
-    expect(getItemRowStatus({ status: ItemSyncStatus.UNDER_REVIEW, entity }, 'pending')).toBe(
-      ItemRowStatus.UNDER_REVIEW
+    expect(status({ status: ItemSyncStatus.SYNCED, entity }, null)).toBe(ItemRowStatus.PUBLISHED)
+    expect(status({ status: ItemSyncStatus.UNSYNCED, entity }, null)).toBe(ItemRowStatus.MODIFIED)
+    expect(status({ status: ItemSyncStatus.UNSYNCED, entity }, { status: 'approved', updatedAt: 1 })).toBe(
+      ItemRowStatus.MODIFIED
     )
+    expect(status({ status: ItemSyncStatus.UNDER_REVIEW, entity }, pending)).toBe(ItemRowStatus.UNDER_REVIEW)
   })
 
-  it('reads rejected, not modified, once the committee turned the changes down', () => {
-    expect(getItemRowStatus({ status: ItemSyncStatus.UNSYNCED, entity }, 'rejected')).toBe(ItemRowStatus.REJECTED)
+  it('reads rejected only for edits the committee saw: a later edit is modified again', () => {
+    const unsynced = { status: ItemSyncStatus.UNSYNCED, entity }
+    expect(status(unsynced, rejected)).toBe(ItemRowStatus.REJECTED)
+    expect(getItemRowStatus({ updatedAt: 3000 }, unsynced, rejected)).toBe(ItemRowStatus.MODIFIED)
   })
 
   it('flags an approved item with no entity as missing, or under review while its redeploy is being reviewed', () => {
-    expect(getItemRowStatus({ status: ItemSyncStatus.UNSYNCED }, null)).toBe(ItemRowStatus.MISSING)
-    expect(getItemRowStatus({ status: ItemSyncStatus.UNSYNCED }, 'rejected')).toBe(ItemRowStatus.MISSING)
-    expect(getItemRowStatus({ status: ItemSyncStatus.UNSYNCED }, 'pending')).toBe(ItemRowStatus.UNDER_REVIEW)
+    expect(status({ status: ItemSyncStatus.UNSYNCED }, null)).toBe(ItemRowStatus.MISSING)
+    expect(status({ status: ItemSyncStatus.UNSYNCED }, rejected)).toBe(ItemRowStatus.MISSING)
+    expect(status({ status: ItemSyncStatus.UNSYNCED }, pending)).toBe(ItemRowStatus.UNDER_REVIEW)
   })
 
   it('leaves an unapproved item alone outside a review: the collection pill says rejected or disabled', () => {
-    expect(getItemRowStatus({ status: ItemSyncStatus.UNDER_REVIEW }, 'rejected')).toBeNull()
-    expect(getItemRowStatus({ status: ItemSyncStatus.UNDER_REVIEW }, null)).toBeNull()
+    expect(status({ status: ItemSyncStatus.UNDER_REVIEW }, rejected)).toBeNull()
+    expect(status({ status: ItemSyncStatus.UNDER_REVIEW }, null)).toBeNull()
   })
 
   it('says nothing while the sync is unknown or the item is not published', () => {
-    expect(getItemRowStatus(undefined, null)).toBeNull()
-    expect(getItemRowStatus({ status: ItemSyncStatus.LOADING }, null)).toBeNull()
-    expect(getItemRowStatus({ status: ItemSyncStatus.UNPUBLISHED }, null)).toBeNull()
+    expect(status(undefined, null)).toBeNull()
+    expect(status({ status: ItemSyncStatus.LOADING }, null)).toBeNull()
+    expect(status({ status: ItemSyncStatus.UNPUBLISHED }, null)).toBeNull()
   })
 })
 

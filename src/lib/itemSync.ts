@@ -3,7 +3,7 @@
 // getStatusForStandard selector) so both apps judge the same item the same way.
 import { type Entity } from '@dcl/schemas'
 import { type Collection } from './collections'
-import { type CurationRequestStatus } from './curation'
+import { type CollectionCuration } from './curation'
 import { ItemType, VIDEO_PATH, type Item, type ItemData, type ItemRepresentation } from './items'
 
 /** Edited after approval (submitted for review or not): the Shop and the world still serve the approved version. */
@@ -166,24 +166,30 @@ export enum ItemRowStatus {
   MISSING = 'missing'
 }
 
+/** What the row status needs from the collection's latest review request. */
+export type RowStatusCuration = Pick<CollectionCuration, 'status' | 'updatedAt'>
+
 /**
  * Null while the sync is unknown, and for an unapproved item outside a review: the collection pill tells that
- * story. Edited items read "rejected" once the committee turned the changes down. An approved item with no entity
+ * story. An edited item reads "rejected" when the committee turned the changes down, which only covers edits
+ * made before the rejection: a later edit is something the committee never saw. An approved item with no entity
  * is "missing" (its files never reached the Catalyst, so it may not work in-world) unless its collection is under
  * review, which is the way it gets redeployed.
  */
 export function getItemRowStatus(
+  item: Pick<Item, 'updatedAt'>,
   sync: ItemSync | undefined,
-  curationStatus: CurationRequestStatus | null | undefined
+  curation: RowStatusCuration | null | undefined
 ): ItemRowStatus | null {
-  const pending = curationStatus === 'pending'
+  const pending = curation?.status === 'pending'
+  const rejected = curation?.status === 'rejected' && item.updatedAt <= curation.updatedAt
   switch (sync?.status) {
     case ItemSyncStatus.SYNCED:
       return ItemRowStatus.PUBLISHED
     case ItemSyncStatus.UNDER_REVIEW:
       return pending ? ItemRowStatus.UNDER_REVIEW : null
     case ItemSyncStatus.UNSYNCED:
-      if (sync.entity) return curationStatus === 'rejected' ? ItemRowStatus.REJECTED : ItemRowStatus.MODIFIED
+      if (sync.entity) return rejected ? ItemRowStatus.REJECTED : ItemRowStatus.MODIFIED
       return pending ? ItemRowStatus.UNDER_REVIEW : ItemRowStatus.MISSING
     default:
       return null

@@ -233,10 +233,9 @@ const CollectionDetailPage = () => {
   )
   // After a rejection the creator asks for a review again, whether it was the first one or a pushed update.
   const pushCopy = curation?.status === 'rejected' ? 'request_review' : 'push_changes'
-  const curationStatus = curation?.status ?? null
   const rowStatuses = useMemo(
-    () => new Map(results.map(item => [item.id, getItemRowStatus(syncs.get(item.id), curationStatus)])),
-    [results, syncs, curationStatus]
+    () => new Map(results.map(item => [item.id, getItemRowStatus(item, syncs.get(item.id), curation)])),
+    [results, syncs, curation]
   )
   const withStatus = useMemo(
     () => !!standardCollection && showsItemStatusColumn(standardCollection, rowStatuses.values()),
