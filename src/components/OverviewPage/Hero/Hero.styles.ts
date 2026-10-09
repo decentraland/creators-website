@@ -127,3 +127,50 @@ export const ScrollButton = styled.button`
     }
   }
 `
+
+export const OsIcon = styled.span`
+  display: inline-flex;
+
+  & svg {
+    width: 20px;
+    height: 20px;
+  }
+`
+
+export const AlsoAvailable = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 14px;
+  color: ${colors.offWhiteMuted};
+`
+
+export const AltDownload = styled.a`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 10px;
+  border-radius: 22px;
+  font-size: 14px;
+  color: ${colors.white};
+  text-decoration: none;
+
+  & svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  &:hover {
+    background: ${colors.glassFaint};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${colors.softWhite};
+    outline-offset: -4px;
+  }
+`

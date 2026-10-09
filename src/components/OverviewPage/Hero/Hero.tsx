@@ -1,10 +1,20 @@
-import { useMemo, useState } from 'react'
+import { type MouseEvent, useEffect, useMemo, useState } from 'react'
+import { Apple as AppleIcon, Microsoft as MicrosoftIcon } from '@mui/icons-material'
 import { Button } from '~/components/Button'
+import { Tooltip } from '~/components/Tooltip'
 import { ChevronDownIcon } from '~/components/Icons'
 import { useAfterLoadIdle } from '~/hooks/useAfterLoadIdle'
+import { useCreatorHubDownload } from '~/hooks/useCreatorHubDownload'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useTypingListEffect } from '~/hooks/useTypingListEffect'
 import { useTranslation } from '~/intl'
+import {
+  buildName,
+  cancelCreatorHubRedirect,
+  type CreatorHubDownload,
+  type DownloadOption,
+  startCreatorHubDownload
+} from '~/lib/creatorHubDownload'
 import {
   CREATOR_HUB_TARGET,
   DOWNLOAD_CLICK,
@@ -42,6 +52,25 @@ const HeroVideo = () => {
   )
 }
 
+const osIcons = { Windows: MicrosoftIcon, macOS: AppleIcon }
+
+const DownloadOsIcon = ({ os }: { os: CreatorHubDownload['os'] }) => {
+  const Icon = osIcons[os]
+  return <Icon aria-hidden />
+}
+
+// A modifier click opens the installer elsewhere, so this tab stays put; a repeat click within the redirect
+// window would download it twice.
+function onDownloadClick(
+  event: MouseEvent<HTMLAnchorElement>,
+  target: CreatorHubDownload | undefined,
+  option: DownloadOption
+) {
+  trackClick(event)
+  const modified = event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
+  if (target && !modified && !startCreatorHubDownload(target, option)) event.preventDefault()
+}
+
 const Hero = () => {
   const { t } = useTranslation()
   const mobile = useMediaQuery(OVERVIEW_MOBILE_QUERY)
@@ -50,6 +79,10 @@ const Hero = () => {
   const { poster } = heroData
   const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY)
   const idle = useAfterLoadIdle()
+  // After the first paint, and never on phones: they get the docs, and the GitHub API is rate limited per IP.
+  const { download, others = [], fallback } = useCreatorHubDownload(!mobile && idle)
+  useEffect(() => cancelCreatorHubRedirect, [])
+  const [posterFailed, setPosterFailed] = useState(false)
   // The poster is the first paint and the LCP; the video only joins once the page is idle, and only on
   // desktop, where its weight is affordable.
   const showVideo = !mobile && idle && !reducedMotion && !prefersSavingData()
@@ -58,15 +91,18 @@ const Hero = () => {
     <>
       <S.Hero data-testid="overview-hero">
         <S.Background>
-          <img
-            src={poster.url}
-            srcSet={poster.srcSet}
-            sizes="100vw"
-            alt=""
-            width={poster.width}
-            height={poster.height}
-            data-testid="overview-hero-poster"
-          />
+          {!posterFailed && (
+            <img
+              src={poster.url}
+              srcSet={poster.srcSet}
+              sizes="100vw"
+              alt=""
+              width={poster.width}
+              height={poster.height}
+              data-testid="overview-hero-poster"
+              onError={() => setPosterFailed(true)}
+            />
+          )}
           {showVideo && <HeroVideo />}
         </S.Background>
         <S.Content>
@@ -91,18 +127,65 @@ const Hero = () => {
               {t('overview.hero.mobile_docs_cta')}
             </Button>
           ) : (
-            <Button
-              as="a"
-              size="hero"
-              href={CREATOR_HUB_DOWNLOAD_URL}
-              onClick={trackClick}
-              data-testid="overview-hero-cta"
-              data-place={OverviewSection.HERO}
-              data-event={DOWNLOAD_CLICK}
-              data-download-target={CREATOR_HUB_TARGET}
-            >
-              {t('overview.hero.download_cta')}
-            </Button>
+            <>
+              <Tooltip
+                content={download ? t(`overview.hero.download_for.${buildName(download)}`) : null}
+                asChild
+                describeChild
+                testId="overview-hero-cta-tooltip"
+              >
+                <Button
+                  as="a"
+                  size="hero"
+                  // Until the release resolves, or when no installer fits this OS, the download page offers them all.
+                  href={download?.href ?? CREATOR_HUB_DOWNLOAD_URL}
+                  onClick={(event: MouseEvent<HTMLAnchorElement>) => onDownloadClick(event, download, 'primary')}
+                  data-testid="overview-hero-cta"
+                  data-place={OverviewSection.HERO}
+                  data-event={DOWNLOAD_CLICK}
+                  data-os={download?.os}
+                  data-arch={download?.arch}
+                  data-download-target={CREATOR_HUB_TARGET}
+                  data-download-mode={download ? 'direct' : fallback}
+                  data-download-option="primary"
+                >
+                  {t('overview.hero.download_cta')}
+                  {download && (
+                    <S.OsIcon data-testid="overview-hero-os-icon" data-os={download.os}>
+                      <DownloadOsIcon os={download.os} />
+                    </S.OsIcon>
+                  )}
+                </Button>
+              </Tooltip>
+              {others.length > 0 && (
+                <S.AlsoAvailable data-testid="overview-hero-also-available">
+                  {t('overview.hero.also_available')}
+                  {others.map(other => {
+                    const name = buildName(other)
+                    return (
+                      <Tooltip key={name} content={t(`overview.hero.download_for.${name}`)} asChild>
+                        <S.AltDownload
+                          href={other.href}
+                          aria-label={t(`overview.hero.download_for.${name}`)}
+                          onClick={event => onDownloadClick(event, other, 'alternative')}
+                          data-testid="overview-hero-alt-download"
+                          data-place={OverviewSection.HERO}
+                          data-event={DOWNLOAD_CLICK}
+                          data-os={other.os}
+                          data-arch={other.arch}
+                          data-download-target={CREATOR_HUB_TARGET}
+                          data-download-mode="direct"
+                          data-download-option="alternative"
+                        >
+                          <DownloadOsIcon os={other.os} />
+                          {other.os === 'macOS' && <span>{t(`overview.hero.build_label.${name}`)}</span>}
+                        </S.AltDownload>
+                      </Tooltip>
+                    )
+                  })}
+                </S.AlsoAvailable>
+              )}
+            </>
           )}
         </S.Content>
       </S.Hero>

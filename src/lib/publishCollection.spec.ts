@@ -292,11 +292,26 @@ describe('publishCollection', () => {
     expect(send.mock.calls[0][0].contract.address).toBe(getContract(ContractName.CollectionManager, CHAIN_ID).address)
   })
 
-  it('skips the re-save while the collection is locked and the ToS without an email', async () => {
+  it('skips the re-save while the collection is locked', async () => {
     const deps = makeDeps()
-    await publishCollection({ ...params, collection: { ...collection, lock: Date.now() }, email: null }, deps)
+    await publishCollection({ ...params, collection: { ...collection, lock: Date.now() } }, deps)
     expect(deps.calls).not.toContain('saveCollection')
-    expect(deps.calls).not.toContain('saveTOS')
+    expect(deps.calls).toContain('saveTOS')
+  })
+
+  it('never pays when the ToS acceptance cannot be recorded, after retrying a server failure', async () => {
+    const saveTOS = vi.fn().mockRejectedValue(new BuilderServerError('warehouse down', 500))
+    const deps = makeDeps({ saveTOS })
+    await expect(publishCollection(params, deps)).rejects.toMatchObject({ reason: 'tos_failed' })
+    expect(saveTOS).toHaveBeenCalledTimes(3)
+    expect(deps.calls).not.toContain('sendTransaction')
+    expect(deps.calls).not.toContain('lockCollection')
+  })
+
+  it('does not retry a ToS record the server rejected', async () => {
+    const saveTOS = vi.fn().mockRejectedValue(new BuilderServerError('invalid email', 400))
+    await expect(publishCollection(params, makeDeps({ saveTOS }))).rejects.toMatchObject({ reason: 'tos_failed' })
+    expect(saveTOS).toHaveBeenCalledTimes(1)
   })
 
   it('re-saves items still carrying legacy hashes before the ToS and the payment', async () => {
