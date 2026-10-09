@@ -1,6 +1,7 @@
 // The properties form's local draft: a pure reducer over the editable fields of an item plus the
 // blobs picked while editing, and the projection back into a saveable Item (legacy RightPanel state).
 import { type SpringBonesData, WearableCategory } from '@dcl/schemas'
+import { hidesForCategory } from './wearableCategories'
 import { computeHashes, withCatalystImageForRarity, withThumbnail, type BuiltItem } from './itemFactory'
 import { THUMBNAIL_PATH, VIDEO_PATH } from './itemFiles'
 import { ItemType, tracksVideoOnSave, type Item } from './items'
@@ -91,12 +92,7 @@ export function itemDraftReducer(draft: ItemDraft, action: ItemDraftAction): Ite
     case 'setText':
       return { ...draft, [action.field]: action.value }
     case 'setCategory':
-      // A skin covers the whole body: nothing is left to hide.
-      return {
-        ...draft,
-        category: action.category,
-        hides: action.category === (WearableCategory.SKIN as string) ? [] : draft.hides
-      }
+      return { ...draft, category: action.category, hides: hidesForCategory(action.category, draft.hides) }
     case 'setRarity':
       return { ...draft, rarity: action.rarity }
     case 'setHides':
