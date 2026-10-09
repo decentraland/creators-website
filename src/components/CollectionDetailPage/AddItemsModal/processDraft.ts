@@ -10,6 +10,7 @@ import { BodyShapeType, ItemType, type ItemMetrics } from '~/lib/items'
 import { analyzeModel } from '~/lib/models'
 import { isRarity } from '~/lib/rarities'
 import { isAutoThumbnailStale } from '~/lib/thumbnailPose'
+import { getEmoteCategoryOptions, getWearableCategoryOptions } from '~/lib/wearableCategories'
 import { type ItemDraft } from './AddItemsModal.state'
 
 const IMAGE_WEARABLE_METRICS: ItemMetrics = {
@@ -45,11 +46,22 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
       throw new ItemFileError('invalid_video')
     })
   }
+  // A manifest category the file can't take (a 3D model as eyes) is ignored, so the picker, the checks and
+  // the saved item all fall back to the suggestion instead of disagreeing.
+  const manifestCategory = loaded.wearable?.data.category
+  const wearableCategory =
+    manifestCategory && getWearableCategoryOptions(loaded.contents).includes(manifestCategory)
+      ? manifestCategory
+      : undefined
+  const emoteCategory =
+    loaded.emote?.category && getEmoteCategoryOptions().includes(loaded.emote.category)
+      ? loaded.emote.category
+      : undefined
   // The manifest's category and hides drive the category-dependent limits (triangle budget, skin caps).
   const analysis = await analyzeModel(
     loaded.model,
     loaded.contents,
-    loaded.wearable?.data.category as WearableCategory | undefined,
+    wearableCategory as WearableCategory | undefined,
     loaded.wearable?.data.hides
   )
 
@@ -61,7 +73,7 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
     model: loaded.model,
     type: analysis.type,
     validationIssues: analysis.validationIssues,
-    validatedCategory: loaded.wearable?.data.category ?? analysis.suggestedCategory,
+    validatedCategory: wearableCategory ?? analysis.suggestedCategory,
     emoteMetrics: analysis.emoteMetrics ?? null,
     bodyShape: isUnisex ? BodyShapeType.BOTH : (loaded.bodyShape ?? BodyShapeType.BOTH),
     bodyShapeLocked: isUnisex,
@@ -81,7 +93,7 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
 
   if (loaded.wearable) {
     patch.name = loaded.wearable.name.slice(0, ITEM_NAME_MAX_LENGTH)
-    if (loaded.wearable.data.category) patch.category = loaded.wearable.data.category
+    if (wearableCategory) patch.category = wearableCategory
     const rarity = sanitizeRarity(loaded.wearable.rarity)
     if (rarity) patch.rarity = rarity
     patch.description = sanitizeItemDescription(loaded.wearable.description ?? '')
@@ -89,7 +101,7 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
     patch.blockVrmExport = loaded.wearable.data.blockVrmExport ?? false
   } else if (loaded.emote) {
     if (loaded.emote.name) patch.name = loaded.emote.name.slice(0, ITEM_NAME_MAX_LENGTH)
-    if (loaded.emote.category) patch.category = loaded.emote.category
+    if (emoteCategory) patch.category = emoteCategory
     const rarity = sanitizeRarity(loaded.emote.rarity)
     if (rarity) patch.rarity = rarity
     patch.description = sanitizeItemDescription(loaded.emote.description ?? '')

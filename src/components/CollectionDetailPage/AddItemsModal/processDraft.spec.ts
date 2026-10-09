@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import JSZip from 'jszip'
 import { ItemType } from '~/lib/items'
 import { createDraft, type ItemDraft } from './AddItemsModal.state'
-import { pickPreviewDraft } from './processDraft'
+import { pickPreviewDraft, processDraftFile } from './processDraft'
 
 function draft(overrides: Partial<ItemDraft> = {}): ItemDraft {
   return {
@@ -35,5 +36,44 @@ describe('pickPreviewDraft', () => {
   it('skips drafts still being analyzed and returns null when everything is done', () => {
     const drafts = [draft({ status: 'processing', type: null }), draft(done)]
     expect(pickPreviewDraft(drafts, drafts[0].id, null)).toBeNull()
+  })
+})
+
+vi.mock('~/lib/models', () => ({
+  analyzeModel: () => Promise.resolve({ type: 'wearable', validationIssues: [], suggestedCategory: 'upper_body' })
+}))
+
+describe('processDraftFile', () => {
+  async function modelZip(category: string): Promise<File> {
+    const zip = new JSZip()
+    zip.file(
+      'wearable.json',
+      JSON.stringify({
+        name: 'Jacket',
+        data: {
+          category,
+          replaces: [],
+          hides: [],
+          tags: [],
+          representations: [
+            {
+              bodyShapes: ['urn:decentraland:off-chain:base-avatars:BaseMale'],
+              mainFile: 'model.glb',
+              contents: ['model.glb']
+            }
+          ]
+        }
+      })
+    )
+    zip.file('model.glb', 'glb')
+    return new File([await zip.generateAsync({ type: 'arraybuffer' })], 'jacket.zip')
+  }
+
+  it("keeps a manifest category the model can take and falls back to the suggestion when it can't", async () => {
+    expect(await processDraftFile(await modelZip('hat'))).toMatchObject({ category: 'hat', validatedCategory: 'hat' })
+    expect(await processDraftFile(await modelZip('eyes'))).toMatchObject({
+      category: 'upper_body',
+      validatedCategory: 'upper_body'
+    })
   })
 })
