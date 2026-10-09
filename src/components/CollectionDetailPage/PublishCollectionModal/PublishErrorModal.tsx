@@ -10,11 +10,17 @@ type Props = {
 }
 
 // Reasons with dedicated copy; the rest share the generic message.
-const DESCRIBED_REASONS: PublishFailureReason[] = ['insufficient_credits', 'locked', 'unsynced', 'fee_mismatch']
+const DESCRIBED_REASONS: PublishFailureReason[] = [
+  'insufficient_credits',
+  'locked',
+  'unsynced',
+  'fee_mismatch',
+  'tos_failed'
+]
 // Retrying can never succeed once the collection is locked or its items drifted.
 const UNRETRIABLE_REASONS: PublishFailureReason[] = ['locked', 'unsynced']
 
-/** "We couldn't publish your collection" — TRY AGAIN returns to the payment step with everything kept. */
+/** "We couldn't publish your collection" — TRY AGAIN returns to the wizard with everything kept. */
 export function PublishErrorModal({ reason, onCancel, onRetry }: Props) {
   const { t } = useTranslation()
   const descriptionKey = DESCRIBED_REASONS.includes(reason) ? reason : 'generic'

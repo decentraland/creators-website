@@ -315,14 +315,17 @@
     "cancel": "Cancel",
     "back": "Back",
     "name_step": {
-      "title": "Confirm your collection name",
-      "description": "The name of the collection can't be modified after sending it for review.",
-      "description_2": "Make sure it doesn't have any typos, and it doesn't contain any Intellectual Property you don't own (E.g: Star Wars, Sailor Moon, etc)",
+      "title": "Confirm your collection details",
+      "description": "Your collection name can't be changed after publishing. Make sure it's correct and doesn't infringe any third-party intellectual property rights (E.g: Star Wars, Sailor Moon, etc).",
+      "description_2": "You'll also need to provide an email address to receive important updates about your collection's review and approval.",
       "invalid_name": "Names can be up to 32 characters and can't include \":\".",
       "name_taken": "That name is already in use. Try a different one.",
       "save_error": "We couldn't save the new name. Please try again.",
+      "email_label": "Your Email",
+      "email_placeholder": "name@example.com",
+      "invalid_email": "Enter a valid email address, like name@example.com.",
       "checkbox": "I understand that once published, I won't be able to change the collection name and I confirm that \"{name}\" doesn't infringe any third-party intellectual property rights.",
-      "confirm": "Confirm Name"
+      "confirm": "Confirm Details"
     },
     "items_step": {
       "title": "Confirm your Items before publishing",
@@ -370,7 +373,7 @@
       "fee_error": "We couldn't load the publication fee.",
       "retry": "Try again",
       "approve_error": "The MANA approval didn't go through. Please try again.",
-      "checkbox": "I agree to the <terms>Terms of Use</terms> and <policy>Content Policy</policy>. I understand that my collection may be rejected if it doesn't comply, and that the publication fee is non-refundable.",
+      "checkbox": "I warrant that the submitted items fully comply with the <terms>Terms of Use</terms> and <policy>Content Policy</policy>, which I acknowledge and accept. I acknowledge that the DAO may refuse to approve them if they infringe either, and that the publication fee won't be refunded if they're rejected.",
       "submit": "Publish & Pay"
     },
     "buy_credits": {
@@ -398,7 +401,7 @@
     },
     "success": {
       "title": "Collection sent for review",
-      "description": "Your collection is being reviewed for approval. The curation committee will share its feedback in the collection's forum post, where you and the community can comment. You'll find it on the collection page.",
+      "description": "Your collection is now under review. The curation committee will share its feedback in the collection's forum post.",
       "done": "Done"
     },
     "error": {
@@ -408,6 +411,7 @@
       "description_locked": "This collection is already being published. Give it a few minutes and refresh the page.",
       "description_unsynced": "The items in this collection changed while you were publishing. Close this dialog and start again.",
       "description_fee_mismatch": "The publication fee changed while you were confirming. We've refreshed it — review the new amount and try again.",
+      "description_tos_failed": "We couldn't record your acceptance of the terms, so nothing was charged. Check that your email address is correct and try again.",
       "cancel": "Cancel",
       "try_again": "Try again"
     },

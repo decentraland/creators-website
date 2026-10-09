@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ContractName, getContract } from 'decentraland-transactions'
 import { errorCode, track } from '~/lib/analytics'
+import { captureError } from '~/lib/monitoring'
 import {
   deleteItem,
   fetchAllCollectionItems,
@@ -22,6 +23,7 @@ import { type Item } from '~/lib/items'
 import { buildManaApproveCall, fetchManaAllowance } from '~/lib/mana'
 import { useNotifications } from '~/lib/notifications'
 import {
+  PublishCollectionError,
   PublishTransactionRevertedError,
   consolidatePublishedCollection,
   getMaticChainId,
@@ -107,7 +109,7 @@ export type PublishVariables = {
   items: Item[]
   paymentMethod: PaymentMethod
   fee: PublicationFee
-  email: string | null
+  email: string
 }
 
 /**
@@ -181,13 +183,18 @@ export function usePublishCollection(session: Session | null) {
           invalidateCollectionItems(queryClient, collection.id)
         })
     },
-    onError: (error, { collection, paymentMethod }) =>
+    onError: (error, { collection, paymentMethod }) => {
       track('Publish collection error', {
         collectionId: collection.id,
         isFiat: false,
         usedCredits: paymentMethod === 'credits',
         error: errorCode(error)
       })
+      // Every publish needs the ToS record, so a failure to write it blocks creators until someone looks.
+      if (error instanceof PublishCollectionError && error.reason === 'tos_failed') {
+        captureError(error.cause ?? error, { flow: 'publish', step: 'tos', collectionId: collection.id })
+      }
+    }
   })
 }
 
