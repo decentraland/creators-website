@@ -72,7 +72,7 @@ describe('ItemListRow', () => {
     renderRow({}, { withStatus: true, syncStatus: ItemRowStatus.MISSING })
     const pill = screen.getByTestId('item-sync-status')
     expect(pill).toHaveAttribute('data-status', 'missing')
-    expect(pill).toHaveTextContent('Missing files')
+    expect(pill).toHaveTextContent('Incomplete')
     await userEvent.hover(screen.getByTestId('item-sync-status-hint-trigger'))
     expect(await screen.findByTestId('item-sync-status-hint')).toHaveTextContent(/may not work in-world/)
   })

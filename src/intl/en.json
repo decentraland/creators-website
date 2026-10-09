@@ -155,7 +155,7 @@
       "modified": "Modified",
       "rejected": "Rejected",
       "under_review": "Under review",
-      "missing": "Missing files",
+      "missing": "Incomplete",
       "modified_hint": "Changes saved but not sent to the curation committee yet. Send them for review to publish them.",
       "rejected_hint": "The curation committee rejected the latest changes. Buyers get the last approved version until updated changes are approved.",
       "under_review_hint": "Changes sent to the curation committee. Buyers get the last approved version until the changes are approved.",
