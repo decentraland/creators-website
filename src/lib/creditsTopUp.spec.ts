@@ -49,6 +49,11 @@ describe('the top-up hand-off record', () => {
     )
     expect(readTopUpResume()).toEqual({ ...resume, paymentMethod: null, termsAccepted: false, email: null })
   })
+
+  it('drops a malformed email so the wizard asks for it again', () => {
+    sessionStorage.setItem('wemotes-builder.credits-top-up', JSON.stringify({ ...resume, email: 'jane.doe@' }))
+    expect(readTopUpResume()?.email).toBeNull()
+  })
 })
 
 describe('the Stripe return query', () => {

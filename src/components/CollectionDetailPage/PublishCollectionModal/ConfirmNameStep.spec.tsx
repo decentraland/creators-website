@@ -80,7 +80,7 @@ describe('ConfirmNameStep', () => {
     await userEvent.type(input, 'sam@example')
     expect(screen.queryByTestId('publish-email-error')).not.toBeInTheDocument()
     await userEvent.click(screen.getByTestId('publish-name-accept'))
-    expect(screen.getByTestId('publish-email-error')).toBeInTheDocument()
+    expect(input).toHaveAccessibleDescription(screen.getByTestId('publish-email-error').textContent ?? '')
     expect(screen.getByTestId('publish-name-confirm')).toBeDisabled()
     expect(onConfirm).not.toHaveBeenCalled()
   })

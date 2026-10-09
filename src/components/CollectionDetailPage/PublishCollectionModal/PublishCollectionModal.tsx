@@ -83,16 +83,20 @@ export function PublishCollectionModal({
   function confirmDetails(details: { name: string; email: string }) {
     const { name } = details
     setEmail(details.email)
-    track('Publish details confirmed', {
-      collectionId: collection.id,
-      nameChanged: name !== collection.name,
-      emailSource: !profileEmail ? 'typed' : details.email === profileEmail ? 'profile' : 'edited'
-    })
-    if (name === collection.name) {
+    // Tracked once the step is actually left, so a failed rename retried N times counts once.
+    const advance = () => {
+      track('Publish details confirmed', {
+        collectionId: collection.id,
+        nameChanged: name !== collection.name,
+        emailSource: !profileEmail ? 'typed' : details.email === profileEmail ? 'profile' : 'edited'
+      })
       setStep(Step.Items)
+    }
+    if (name === collection.name) {
+      advance()
       return
     }
-    saveCollection.mutate({ ...collection, name }, { onSuccess: () => setStep(Step.Items) })
+    saveCollection.mutate({ ...collection, name }, { onSuccess: advance })
   }
 
   if (gated) {
@@ -115,7 +119,8 @@ export function PublishCollectionModal({
         onCancel={onClose}
         onRetry={() => {
           setError(null)
-          setStep(Step.Payment)
+          // The server refusing the ToS record most likely means the email: send the creator back to it.
+          setStep(error.reason === 'tos_failed' ? Step.Name : Step.Payment)
         }}
       />
     )

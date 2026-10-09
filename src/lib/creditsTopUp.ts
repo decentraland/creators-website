@@ -1,6 +1,7 @@
 // The hand-off across the Stripe redirect. Buying credits leaves the app for Stripe's hosted page,
 // which wipes the publish wizard's state; this record is written just before leaving and read once
 // on the way back, so the creator lands on the payment step they left, not on a fresh wizard.
+import { isValidEmail } from './email'
 import { type PaymentMethod } from './publishCollection'
 
 export type TopUpResume = {
@@ -8,7 +9,7 @@ export type TopUpResume = {
   orderId: string
   paymentMethod: PaymentMethod | null
   termsAccepted: boolean
-  /** The contact email typed in step 1; null on records written before step 1 asked for it. */
+  /** The contact email typed in step 1; null when missing or malformed, which sends the creator back to step 1. */
   email: string | null
 }
 
@@ -54,7 +55,7 @@ export function readTopUpResume(): TopUpResume | null {
       paymentMethod:
         parsed.paymentMethod === 'credits' || parsed.paymentMethod === 'mana' ? parsed.paymentMethod : null,
       termsAccepted: parsed.termsAccepted === true,
-      email: typeof parsed.email === 'string' && parsed.email ? parsed.email : null
+      email: typeof parsed.email === 'string' && isValidEmail(parsed.email) ? parsed.email.trim() : null
     }
   } catch {
     return null

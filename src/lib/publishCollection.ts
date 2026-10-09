@@ -152,15 +152,25 @@ export function buildUseCreditsCall(
 }
 
 export type PublishFailureReason =
-  'missing_salt' | 'unsynced' | 'locked' | 'insufficient_credits' | 'fee_mismatch' | 'rejected' | 'generic'
+  | 'missing_salt'
+  | 'unsynced'
+  | 'locked'
+  | 'insufficient_credits'
+  | 'fee_mismatch'
+  | 'tos_failed'
+  | 'rejected'
+  | 'generic'
 
 export class PublishCollectionError extends Error {
   reason: PublishFailureReason
+  /** The underlying failure, when this one wraps it. */
+  cause?: unknown
 
-  constructor(reason: PublishFailureReason, message: string = reason) {
+  constructor(reason: PublishFailureReason, message: string = reason, cause?: unknown) {
     super(message)
     this.name = 'PublishCollectionError'
     this.reason = reason
+    this.cause = cause
   }
 }
 
@@ -179,17 +189,28 @@ export function toPublishError(error: unknown): PublishCollectionError {
   return new PublishCollectionError('generic', message)
 }
 
-async function retry<T>(times: number, delayMs: number, fn: () => Promise<T>): Promise<T> {
+async function retry<T>(
+  times: number,
+  delayMs: number,
+  fn: () => Promise<T>,
+  shouldRetry: (error: unknown) => boolean = () => true
+): Promise<T> {
   let lastError: unknown
   for (let attempt = 0; attempt < times; attempt++) {
     try {
       return await fn()
     } catch (error) {
       lastError = error
+      if (!shouldRetry(error)) break
       if (attempt < times - 1) await new Promise(resolve => setTimeout(resolve, delayMs))
     }
   }
   throw lastError
+}
+
+// A 4xx is the server rejecting what was sent (e.g. the email): the same request will fail again.
+function isTransientFailure(error: unknown): boolean {
+  return !(error instanceof BuilderServerError && error.status >= 400 && error.status < 500)
 }
 
 export type PublishParams = {
@@ -252,7 +273,11 @@ export async function publishCollection(params: PublishParams, deps: PublishDeps
     items = rehashed
 
     // Recorded before the transaction so a ToS failure never leaves the collection locked.
-    await retry(3, 500, () => deps.saveTOS(collection, email))
+    try {
+      await retry(3, 500, () => deps.saveTOS(collection, email), isTransientFailure)
+    } catch (error) {
+      throw new PublishCollectionError('tos_failed', error instanceof Error ? error.message : String(error), error)
+    }
 
     const args = buildCreateCollectionArgs(collection, items, address, chainId)
     let txHash: string

@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { ChevronRight as ChevronRightIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { NAME_ALREADY_IN_USE_ERROR, validateCollectionName } from '~/lib/collections'
-import { isValidEmail } from '~/lib/email'
+import { EMAIL_MAX_LENGTH, isValidEmail } from '~/lib/email'
 import { Button } from '~/components/Button'
 import { CollectionNameInput } from '~/components/CollectionNameInput'
 import { Checkbox } from '~/components/Checkbox'
@@ -22,6 +22,7 @@ type Props = {
 /** Step 1: the creator fixes typos in the name, leaves a contact email and acknowledges the name is final. */
 export function ConfirmNameStep({ initialName, initialEmail, isSaving, saveError, onCancel, onConfirm }: Props) {
   const { t } = useTranslation()
+  const emailErrorId = useId()
   const [name, setName] = useState(initialName)
   const [email, setEmail] = useState(initialEmail)
   const [emailBlurred, setEmailBlurred] = useState(false)
@@ -77,10 +78,13 @@ export function ConfirmNameStep({ initialName, initialEmail, isSaving, saveError
             inputMode="email"
             spellCheck={false}
             autoComplete="email"
+            maxLength={EMAIL_MAX_LENGTH}
+            aria-required
             value={email}
             placeholder={t('publish_collection_modal.name_step.email_placeholder')}
             disabled={isSaving}
             aria-invalid={showEmailError}
+            aria-describedby={showEmailError ? emailErrorId : undefined}
             data-invalid={showEmailError ? true : undefined}
             data-testid="publish-email-input"
             onChange={event => setEmail(event.target.value)}
@@ -88,7 +92,7 @@ export function ConfirmNameStep({ initialName, initialEmail, isSaving, saveError
             onBlur={() => setEmailBlurred(true)}
           />
           {showEmailError && (
-            <S.ErrorText data-testid="publish-email-error">
+            <S.ErrorText id={emailErrorId} role="alert" data-testid="publish-email-error">
               {t('publish_collection_modal.name_step.invalid_email')}
             </S.ErrorText>
           )}

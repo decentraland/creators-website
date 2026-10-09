@@ -411,6 +411,7 @@
       "description_locked": "Esta colección ya se está publicando. Espera unos minutos y actualiza la página.",
       "description_unsynced": "Los ítems de esta colección cambiaron mientras publicabas. Cierra este diálogo y vuelve a empezar.",
       "description_fee_mismatch": "La tarifa de publicación cambió mientras confirmabas. Ya la actualizamos: revisa el nuevo importe e inténtalo de nuevo.",
+      "description_tos_failed": "No pudimos registrar tu aceptación de los términos, así que no se te cobró nada. Revisa que tu correo electrónico sea correcto e inténtalo de nuevo.",
       "cancel": "Cancelar",
       "try_again": "Intentar de nuevo"
     },

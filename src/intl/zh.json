@@ -411,6 +411,7 @@
       "description_locked": "此系列正在发布中。请稍等几分钟后刷新页面。",
       "description_unsynced": "您发布期间，此系列中的物品发生了变化。请关闭此对话框并重新开始。",
       "description_fee_mismatch": "您确认期间发布费发生了变化。我们已刷新费用，请查看新金额后重试。",
+      "description_tos_failed": "我们无法记录您对条款的接受，因此未收取任何费用。请检查您的电子邮件地址是否正确，然后重试。",
       "cancel": "取消",
       "try_again": "重试"
     },
