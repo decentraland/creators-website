@@ -9,7 +9,7 @@ import { BodyShapeType, ItemType, getMissingBodyShapeType, type Item, type ItemM
 import { type UploadFailureReason } from '~/lib/uploadItems'
 import { type AnimationMetrics } from '~/lib/models'
 import { DEFAULT_RARITY } from '~/lib/rarities'
-import { IMAGE_WEARABLE_CATEGORIES } from '~/lib/wearableCategories'
+import { IMAGE_WEARABLE_CATEGORIES, hidesForCategory } from '~/lib/wearableCategories'
 
 export type DraftStatus = 'processing' | 'ready' | 'failed'
 
@@ -41,6 +41,8 @@ export type ItemDraft = {
   utility: string
   tags: string[]
   blockVrmExport: boolean
+  /** Wearables only: the live preview's hides, else the manifest's hides and replaces. Saved and used by every triangle check. */
+  hides: string[]
   playMode: EmotePlayMode
   /** Data URL of the current thumbnail; also stored as contents['thumbnail.png'] once final. */
   thumbnail: string | null
@@ -88,6 +90,7 @@ export function createDraft(file: File, { nameFromFile = true } = {}): ItemDraft
     utility: '',
     tags: [],
     blockVrmExport: false,
+    hides: [],
     playMode: EmotePlayMode.SIMPLE,
     thumbnail: null,
     isAutoThumbnail: false,
@@ -173,7 +176,12 @@ export function addItemsReducer(state: AddItemsState, action: AddItemsAction): A
     }
     case 'draftUpdated':
       // Any edit invalidates a previous review: the draft must be saved (checked) again.
-      return updateDraft(state, action.id, draft => ({ ...draft, ...action.patch, checked: false }))
+      return updateDraft(state, action.id, draft => ({
+        ...draft,
+        ...action.patch,
+        ...(action.patch.category !== undefined ? { hides: hidesForCategory(action.patch.category, draft.hides) } : {}),
+        checked: false
+      }))
     case 'draftChecked': {
       const checkedState = updateDraft(state, action.id, draft => ({ ...draft, checked: true }))
       // SAVE & NEXT advances to the next unchecked draft, wrapping around.

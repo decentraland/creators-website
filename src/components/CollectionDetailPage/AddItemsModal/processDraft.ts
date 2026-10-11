@@ -3,14 +3,14 @@
 // thumbnails) is filled afterwards by DraftProcessor.
 import { WearableCategory } from '@dcl/schemas'
 import { blobToDataURL, convertImageIntoWearableThumbnail, dataURLToBlob, loadVideoMetadata } from '~/lib/media'
-import { sanitizeItemDescription } from '~/lib/itemDraft'
+import { sanitizeItemDescription, unique } from '~/lib/itemDraft'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH } from '~/lib/itemFactory'
 import { ItemFileError, THUMBNAIL_PATH, VIDEO_PATH, isImageFile, loadItemFile } from '~/lib/itemFiles'
 import { BodyShapeType, ItemType, type ItemMetrics } from '~/lib/items'
 import { analyzeModel } from '~/lib/models'
 import { isRarity } from '~/lib/rarities'
 import { isAutoThumbnailStale } from '~/lib/thumbnailPose'
-import { getEmoteCategoryOptions, getWearableCategoryOptions } from '~/lib/wearableCategories'
+import { getEmoteCategoryOptions, getWearableCategoryOptions, hidesForCategory } from '~/lib/wearableCategories'
 import { type ItemDraft } from './AddItemsModal.state'
 
 const IMAGE_WEARABLE_METRICS: ItemMetrics = {
@@ -38,7 +38,7 @@ function sanitizePlayMode(playMode: string | undefined): EmotePlayMode | null {
  * import problems. The returned patch may still lack metrics/thumbnail — DraftProcessor fills
  * those through the WearablePreview iframe.
  */
-export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> {
+export async function processDraftFile(file: File, prefillHides?: string[]): Promise<Partial<ItemDraft>> {
   const loaded = await loadItemFile(file)
   // A video shipped in the zip gets the same decode check as one picked in the form.
   if (loaded.contents[VIDEO_PATH]) {
@@ -48,21 +48,25 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
   }
   // A manifest category the file can't take (a 3D model as eyes) is ignored, so the picker, the checks and
   // the saved item all fall back to the suggestion instead of disagreeing.
-  const manifestCategory = loaded.wearable?.data.category
+  const manifest = loaded.wearable?.data
   const wearableCategory =
-    manifestCategory && getWearableCategoryOptions(loaded.contents).includes(manifestCategory)
-      ? manifestCategory
+    manifest?.category && getWearableCategoryOptions(loaded.contents).includes(manifest.category)
+      ? manifest.category
       : undefined
   const emoteCategory =
     loaded.emote?.category && getEmoteCategoryOptions().includes(loaded.emote.category)
       ? loaded.emote.category
       : undefined
-  // The manifest's category and hides drive the category-dependent limits (triangle budget, skin caps).
+  // The manifest's category and hides drive the category-dependent limits (triangle budget, skin caps). Its
+  // `replaces` joins the hides, as the editor does on load. A live preview prefill never ships a manifest.
+  const hides =
+    prefillHides ??
+    hidesForCategory(wearableCategory, unique([...(manifest?.hides ?? []), ...(manifest?.replaces ?? [])]))
   const analysis = await analyzeModel(
     loaded.model,
     loaded.contents,
     wearableCategory as WearableCategory | undefined,
-    loaded.wearable?.data.hides
+    hides
   )
 
   const isSmart = !!loaded.scene
@@ -78,7 +82,8 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
     bodyShape: isUnisex ? BodyShapeType.BOTH : (loaded.bodyShape ?? BodyShapeType.BOTH),
     bodyShapeLocked: isUnisex,
     isSmart,
-    requiredPermissions: loaded.scene?.requiredPermissions ?? []
+    requiredPermissions: loaded.scene?.requiredPermissions ?? [],
+    hides
   }
 
   if (analysis.suggestedCategory) {
