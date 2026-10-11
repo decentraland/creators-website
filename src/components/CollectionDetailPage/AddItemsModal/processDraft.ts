@@ -3,7 +3,7 @@
 // thumbnails) is filled afterwards by DraftProcessor.
 import { WearableCategory } from '@dcl/schemas'
 import { blobToDataURL, convertImageIntoWearableThumbnail, dataURLToBlob, loadVideoMetadata } from '~/lib/media'
-import { sanitizeItemDescription } from '~/lib/itemDraft'
+import { sanitizeItemDescription, unique } from '~/lib/itemDraft'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH } from '~/lib/itemFactory'
 import { ItemFileError, THUMBNAIL_PATH, VIDEO_PATH, isImageFile, loadItemFile } from '~/lib/itemFiles'
 import { BodyShapeType, ItemType, type ItemMetrics } from '~/lib/items'
@@ -37,7 +37,7 @@ function sanitizePlayMode(playMode: string | undefined): EmotePlayMode | null {
  * import problems. The returned patch may still lack metrics/thumbnail — DraftProcessor fills
  * those through the WearablePreview iframe.
  */
-export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> {
+export async function processDraftFile(file: File, prefillHides?: string[]): Promise<Partial<ItemDraft>> {
   const loaded = await loadItemFile(file)
   // A video shipped in the zip gets the same decode check as one picked in the form.
   if (loaded.contents[VIDEO_PATH]) {
@@ -45,12 +45,15 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
       throw new ItemFileError('invalid_video')
     })
   }
-  // The manifest's category and hides drive the category-dependent limits (triangle budget, skin caps).
+  // The manifest's category and hides drive the category-dependent limits (triangle budget, skin caps). Its
+  // `replaces` joins the hides, as the editor does on load. A live preview prefill never ships a manifest.
+  const manifest = loaded.wearable?.data
+  const hides = prefillHides ?? unique([...(manifest?.hides ?? []), ...(manifest?.replaces ?? [])])
   const analysis = await analyzeModel(
     loaded.model,
     loaded.contents,
-    loaded.wearable?.data.category as WearableCategory | undefined,
-    loaded.wearable?.data.hides
+    manifest?.category as WearableCategory | undefined,
+    hides
   )
 
   const isSmart = !!loaded.scene
@@ -66,7 +69,8 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
     bodyShape: isUnisex ? BodyShapeType.BOTH : (loaded.bodyShape ?? BodyShapeType.BOTH),
     bodyShapeLocked: isUnisex,
     isSmart,
-    requiredPermissions: loaded.scene?.requiredPermissions ?? []
+    requiredPermissions: loaded.scene?.requiredPermissions ?? [],
+    hides
   }
 
   if (analysis.suggestedCategory) {
