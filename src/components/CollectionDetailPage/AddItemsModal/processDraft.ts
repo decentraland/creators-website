@@ -10,6 +10,7 @@ import { BodyShapeType, ItemType, type ItemMetrics } from '~/lib/items'
 import { analyzeModel } from '~/lib/models'
 import { isRarity } from '~/lib/rarities'
 import { isAutoThumbnailStale } from '~/lib/thumbnailPose'
+import { getWearableCategoryOptions, hidesForCategory } from '~/lib/wearableCategories'
 import { type ItemDraft } from './AddItemsModal.state'
 
 const IMAGE_WEARABLE_METRICS: ItemMetrics = {
@@ -45,14 +46,22 @@ export async function processDraftFile(file: File, prefillHides?: string[]): Pro
       throw new ItemFileError('invalid_video')
     })
   }
+  // A wearable manifest category the file can't take (a 3D model as eyes) is ignored, so the picker, the checks and
+  // the saved item all fall back to the suggestion instead of disagreeing.
+  const manifest = loaded.wearable?.data
+  const wearableCategory =
+    manifest?.category && getWearableCategoryOptions(loaded.contents).includes(manifest.category)
+      ? manifest.category
+      : undefined
   // The manifest's category and hides drive the category-dependent limits (triangle budget, skin caps). Its
   // `replaces` joins the hides, as the editor does on load. A live preview prefill never ships a manifest.
-  const manifest = loaded.wearable?.data
-  const hides = prefillHides ?? unique([...(manifest?.hides ?? []), ...(manifest?.replaces ?? [])])
+  const hides =
+    prefillHides ??
+    hidesForCategory(wearableCategory, unique([...(manifest?.hides ?? []), ...(manifest?.replaces ?? [])]))
   const analysis = await analyzeModel(
     loaded.model,
     loaded.contents,
-    manifest?.category as WearableCategory | undefined,
+    wearableCategory as WearableCategory | undefined,
     hides
   )
 
@@ -64,7 +73,7 @@ export async function processDraftFile(file: File, prefillHides?: string[]): Pro
     model: loaded.model,
     type: analysis.type,
     validationIssues: analysis.validationIssues,
-    validatedCategory: loaded.wearable?.data.category ?? analysis.suggestedCategory,
+    validatedCategory: wearableCategory ?? analysis.suggestedCategory,
     emoteMetrics: analysis.emoteMetrics ?? null,
     bodyShape: isUnisex ? BodyShapeType.BOTH : (loaded.bodyShape ?? BodyShapeType.BOTH),
     bodyShapeLocked: isUnisex,
@@ -85,10 +94,11 @@ export async function processDraftFile(file: File, prefillHides?: string[]): Pro
 
   if (loaded.wearable) {
     patch.name = loaded.wearable.name.slice(0, ITEM_NAME_MAX_LENGTH)
-    if (loaded.wearable.data.category) patch.category = loaded.wearable.data.category
+    if (wearableCategory) patch.category = wearableCategory
     const rarity = sanitizeRarity(loaded.wearable.rarity)
     if (rarity) patch.rarity = rarity
     patch.description = sanitizeItemDescription(loaded.wearable.description ?? '')
+    patch.utility = (loaded.wearable.utility ?? '').trim()
     patch.tags = loaded.wearable.data.tags ?? []
     patch.blockVrmExport = loaded.wearable.data.blockVrmExport ?? false
   } else if (loaded.emote) {
@@ -97,10 +107,14 @@ export async function processDraftFile(file: File, prefillHides?: string[]): Pro
     const rarity = sanitizeRarity(loaded.emote.rarity)
     if (rarity) patch.rarity = rarity
     patch.description = sanitizeItemDescription(loaded.emote.description ?? '')
+    patch.utility = (loaded.emote.utility ?? '').trim()
     patch.tags = loaded.emote.tags ?? []
     const playMode = sanitizePlayMode(loaded.emote.play_mode)
     if (playMode) patch.playMode = playMode
   }
+
+  // The suggestion may stand in for an unusable manifest category, so self-hides are dropped against the final one.
+  if (patch.hides && patch.category) patch.hides = hidesForCategory(patch.category, patch.hides)
 
   if (isImageFile(loaded.model)) {
     // Image wearables need no 3D render: fixed metrics + canvas-padded thumbnail.

@@ -90,14 +90,12 @@ describe('review flow', () => {
     expect(state.drafts[0].checked).toBe(false)
   })
 
-  it('switching a wearable to skin clears its hides', () => {
-    const draft = readyDraft({ hides: ['hair'] })
-    const state = addItemsReducer(stateWith([draft]), {
-      type: 'draftUpdated',
-      id: draft.id,
-      patch: { category: 'skin' }
-    })
-    expect(state.drafts[0].hides).toEqual([])
+  it('drops the hides a new category makes meaningless', () => {
+    const draft = readyDraft({ hides: ['hair', 'eyewear'] })
+    const switchTo = (category: string) =>
+      addItemsReducer(stateWith([draft]), { type: 'draftUpdated', id: draft.id, patch: { category } }).drafts[0].hides
+    expect(switchTo('eyewear')).toEqual(['hair'])
+    expect(switchTo('skin')).toEqual([])
   })
 
   it('marks a wearable for re-validation when its category changes', () => {

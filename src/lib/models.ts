@@ -8,6 +8,7 @@ import { ItemFileError, MAX_EMOTE_DURATION, isImageFile } from './itemFiles'
 import { suggestWearableCategory } from './suggestWearableCategory'
 import { captureError } from './monitoring'
 import { getValidator, type ValidationContext, type ValidationIssue, type ValidationSource } from './validation'
+import { hidesForCategory } from './wearableCategories'
 
 const ARMATURE_PREFIX = 'Armature'
 // Kept equal to the validator manifest's propArmatureName by springBones.spec.ts's rule book parity test.
@@ -155,11 +156,13 @@ export async function analyzeModel(
     } catch {
       suggestedCategory = null
     }
-    // Validated for the category the draft will start with, so the modal doesn't re-run it right away.
+    // Validated for the category the draft will start with, so the modal doesn't re-run it right away. A hide
+    // on that category itself would pool its triangle budget although renderers ignore it.
+    const startCategory = category ?? suggestedCategory ?? undefined
     const issues = await validateAdvisory(source, {
       type: ItemType.WEARABLE,
-      category: category ?? suggestedCategory ?? undefined,
-      hides
+      category: startCategory,
+      hides: hides && hidesForCategory(startCategory, hides)
     })
     return { type: ItemType.WEARABLE, validationIssues: issues, suggestedCategory }
   } finally {

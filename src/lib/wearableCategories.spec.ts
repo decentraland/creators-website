@@ -27,6 +27,11 @@ describe('wearable categories', () => {
     expect(getHideableWearableCategories(model, 'hat', ['body_shape'])).toContain('body_shape')
   })
 
+  it("never offers a wearable's own category anew but keeps it while already hidden", () => {
+    expect(getHideableWearableCategories(model, 'hat')).not.toContain('hat')
+    expect(getHideableWearableCategories(model, 'hat', ['hat'])).toContain('hat')
+  })
+
   it('stops a skin from hiding what it already covers', () => {
     const hideable = getHideableWearableCategories(model, 'skin')
     expect(hideable).not.toContain('upper_body')

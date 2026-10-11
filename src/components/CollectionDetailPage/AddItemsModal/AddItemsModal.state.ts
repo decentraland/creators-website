@@ -9,7 +9,7 @@ import { BodyShapeType, ItemType, getMissingBodyShapeType, type Item, type ItemM
 import { type UploadFailureReason } from '~/lib/uploadItems'
 import { type AnimationMetrics } from '~/lib/models'
 import { DEFAULT_RARITY } from '~/lib/rarities'
-import { IMAGE_WEARABLE_CATEGORIES } from '~/lib/wearableCategories'
+import { IMAGE_WEARABLE_CATEGORIES, hidesForCategory } from '~/lib/wearableCategories'
 
 export type DraftStatus = 'processing' | 'ready' | 'failed'
 
@@ -38,6 +38,7 @@ export type ItemDraft = {
   rarity: string
   /** From wearable.json / emote.json when the zip ships one. */
   description: string
+  utility: string
   tags: string[]
   blockVrmExport: boolean
   /** Wearables only: the live preview's hides, else the manifest's hides and replaces. Saved and used by every triangle check. */
@@ -86,6 +87,7 @@ export function createDraft(file: File, { nameFromFile = true } = {}): ItemDraft
     suggestedCategory: null,
     rarity: DEFAULT_RARITY,
     description: '',
+    utility: '',
     tags: [],
     blockVrmExport: false,
     hides: [],
@@ -173,12 +175,11 @@ export function addItemsReducer(state: AddItemsState, action: AddItemsAction): A
       return { ...state, drafts, selectedId }
     }
     case 'draftUpdated':
-      // Any edit invalidates a previous review: the draft must be saved (checked) again. A skin covers the
-      // whole body, so picking it leaves nothing to hide.
+      // Any edit invalidates a previous review: the draft must be saved (checked) again.
       return updateDraft(state, action.id, draft => ({
         ...draft,
         ...action.patch,
-        ...(action.patch.category === (WearableCategory.SKIN as string) ? { hides: [] } : {}),
+        ...(action.patch.category !== undefined ? { hides: hidesForCategory(action.patch.category, draft.hides) } : {}),
         checked: false
       }))
     case 'draftChecked': {

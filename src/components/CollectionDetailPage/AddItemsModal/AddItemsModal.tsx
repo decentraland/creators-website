@@ -11,6 +11,9 @@ import { ItemFileError, VIDEO_PATH } from '~/lib/itemFiles'
 import { type EmotePlayMode, type ItemDraftPayload } from '~/lib/itemFactory'
 import { type Collection } from '~/lib/collections'
 import { ItemType } from '~/lib/items'
+import { FeatureFlag } from '~/lib/featureFlags'
+import { useFeatureFlag } from '~/hooks/useFeatureFlag'
+import { hidesForCategory } from '~/lib/wearableCategories'
 import { getValidator } from '~/lib/validation'
 import { useNotifications } from '~/lib/notifications'
 import { type SpringBoneParamsByName } from '~/lib/springBones'
@@ -50,7 +53,8 @@ export type AddItemsPrefill = {
 function applyPrefill(patch: Partial<ItemDraft>, prefill: AddItemsPrefill | undefined): Partial<ItemDraft> {
   if (!prefill) return patch
   if (patch.type === ItemType.WEARABLE && prefill.category) {
-    return { ...patch, category: prefill.category, suggestedCategory: null }
+    const hides = patch.hides && hidesForCategory(prefill.category, patch.hides)
+    return { ...patch, category: prefill.category, suggestedCategory: null, ...(hides ? { hides } : {}) }
   }
   if (patch.type === ItemType.EMOTE && prefill.playMode) return { ...patch, playMode: prefill.playMode }
   return patch
@@ -68,6 +72,8 @@ type Props = {
 export function AddItemsModal({ collection, address, files, prefill, onClose }: Props) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  // The editor only shows utility behind this flag, so an import must not save one the creator can't see.
+  const utilityFlag = useFeatureFlag(FeatureFlag.WEARABLE_UTILITY)
   const showToast = useNotifications(state => state.showToast)
 
   const initialDraftsRef = useRef<Array<{ draft: ItemDraft; file: File }> | null>(null)
@@ -211,6 +217,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
       playMode: draft.playMode,
       requiredPermissions: draft.isSmart ? draft.requiredPermissions : undefined,
       description: draft.description,
+      utility: utilityFlag.enabled ? draft.utility : undefined,
       tags: draft.tags,
       blockVrmExport: draft.blockVrmExport,
       hides: draft.type === ItemType.WEARABLE ? draft.hides : undefined,

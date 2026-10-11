@@ -65,10 +65,7 @@ describe('item draft', () => {
   it('clears the hides when the wearable becomes a skin', () => {
     const draft = itemDraftReducer(createItemDraft(item), { type: 'setCategory', category: 'skin' })
     expect(draft.hides).toEqual([])
-    expect(itemDraftReducer(createItemDraft(item), { type: 'setCategory', category: 'helmet' }).hides).toEqual([
-      'hair',
-      'helmet'
-    ])
+    expect(itemDraftReducer(createItemDraft(item), { type: 'setCategory', category: 'helmet' }).hides).toEqual(['hair'])
   })
 
   it('projects the draft onto the item with mirrored overrides and default hiding', () => {

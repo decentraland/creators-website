@@ -4,9 +4,13 @@ import { ItemType } from '~/lib/items'
 import { createDraft, type ItemDraft } from './AddItemsModal.state'
 import { pickPreviewDraft, processDraftFile } from './processDraft'
 
-vi.mock('~/lib/models', () => ({
-  analyzeModel: () => Promise.resolve({ type: 'wearable', validationIssues: [], suggestedCategory: null })
-}))
+const { analyzeModel } = vi.hoisted(() => ({ analyzeModel: vi.fn() }))
+vi.mock('~/lib/models', () => ({ analyzeModel }))
+
+function suggest(suggestedCategory: string | null) {
+  analyzeModel.mockResolvedValue({ type: 'wearable', validationIssues: [], suggestedCategory })
+}
+suggest('upper_body')
 
 function draft(overrides: Partial<ItemDraft> = {}): ItemDraft {
   return {
@@ -44,14 +48,20 @@ describe('pickPreviewDraft', () => {
 })
 
 describe('processDraftFile', () => {
-  async function hatZip(hides: string[], replaces: string[] = []): Promise<File> {
+  async function manifestZip({
+    category = 'hat',
+    hides = [],
+    replaces = [],
+    ...extra
+  }: { category?: string; hides?: string[]; replaces?: string[]; utility?: string } = {}): Promise<File> {
     const zip = new JSZip()
     zip.file(
       'wearable.json',
       JSON.stringify({
         name: 'Hat',
+        ...extra,
         data: {
-          category: 'hat',
+          category,
           replaces,
           hides,
           tags: [],
@@ -70,11 +80,35 @@ describe('processDraftFile', () => {
   }
 
   it("keeps the hides a zip's wearable.json declares, unless the live preview set its own", async () => {
-    expect((await processDraftFile(await hatZip(['hair']))).hides).toEqual(['hair'])
-    expect((await processDraftFile(await hatZip(['hair']), ['head'])).hides).toEqual(['head'])
+    expect((await processDraftFile(await manifestZip({ hides: ['hair'] }))).hides).toEqual(['hair'])
+    expect((await processDraftFile(await manifestZip({ hides: ['hair'] }), ['head'])).hides).toEqual(['head'])
   })
 
-  it("adds the slots a zip's wearable.json replaces to the hides", async () => {
-    expect((await processDraftFile(await hatZip(['hair'], ['hair', 'earring']))).hides).toEqual(['hair', 'earring'])
+  it("adds the slots a zip's wearable.json replaces to the hides, minus the item's own category", async () => {
+    const draft = await processDraftFile(await manifestZip({ hides: ['hair', 'hat'], replaces: ['hair', 'earring'] }))
+    expect(draft.hides).toEqual(['hair', 'earring'])
+  })
+
+  it("keeps a manifest category the model can take and falls back to the suggestion when it can't", async () => {
+    expect(await processDraftFile(await manifestZip())).toMatchObject({ category: 'hat', validatedCategory: 'hat' })
+    expect(
+      await processDraftFile(await manifestZip({ category: 'eyes', hides: ['hair', 'upper_body'] }))
+    ).toMatchObject({
+      category: 'upper_body',
+      validatedCategory: 'upper_body',
+      hides: ['hair']
+    })
+  })
+
+  it('leaves the category empty when the manifest category does not fit and nothing is suggested', async () => {
+    suggest(null)
+    const draft = await processDraftFile(await manifestZip({ category: 'eyes' }))
+    suggest('upper_body')
+    expect(draft.category).toBeUndefined()
+    expect(draft.validatedCategory).toBeNull()
+  })
+
+  it("prefills the manifest's utility", async () => {
+    expect((await processDraftFile(await manifestZip({ utility: ' Keeps you warm ' }))).utility).toBe('Keeps you warm')
   })
 })

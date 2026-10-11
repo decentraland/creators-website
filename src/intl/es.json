@@ -850,7 +850,8 @@
       "categories": "Categorías de wearables ocultas",
       "categories_hint": "Otras ranuras de wearables que este ítem oculta al usarse junto a ellas, por ejemplo un casco que oculta el cabello.",
       "none_available": "No hay nada que ocultar para este ítem.",
-      "none_selected": "Ninguna"
+      "none_selected": "Ninguna",
+      "none_hidden": "Nada oculto"
     },
     "body_part": {
       "head": "Cabeza",
