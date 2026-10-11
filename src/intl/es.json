@@ -710,6 +710,7 @@
       "unpublished": "Esta colección todavía no está publicada",
       "curation_error": "No pudimos cargar el estado de revisión de esta colección.",
       "retry": "Reintentar",
+      "preview": "Vista previa en Decentraland",
       "requested": "Revisión solicitada {time}",
       "created": "Creada {time}",
       "approved": "Aprobada {time}",

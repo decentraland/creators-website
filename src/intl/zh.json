@@ -710,6 +710,7 @@
       "unpublished": "此系列尚未发布",
       "curation_error": "我们无法加载此系列的审核状态。",
       "retry": "重试",
+      "preview": "在 Decentraland 中预览",
       "requested": "{time}申请审核",
       "created": "{time}创建",
       "approved": "{time}批准",

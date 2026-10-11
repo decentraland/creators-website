@@ -22,10 +22,12 @@ const state = vi.hoisted(() => ({
   issues: new Map<string, ValidationIssue[]>(),
   isValidating: false,
   selectItem: vi.fn(),
-  track: vi.fn()
+  track: vi.fn(),
+  previewCollection: vi.fn()
 }))
 vi.mock('~/lib/navigation', () => ({ openExternal: vi.fn() }))
 vi.mock('~/lib/analytics', () => ({ track: state.track }))
+vi.mock('~/lib/explorer', () => ({ previewCollection: state.previewCollection }))
 vi.mock('~/hooks/useCuration', () => ({
   useCollectionCuration: () => ({
     data: state.curation,
@@ -104,6 +106,7 @@ beforeEach(() => {
   state.isValidating = false
   state.selectItem.mockReset()
   state.track.mockReset()
+  state.previewCollection.mockReset().mockResolvedValue(undefined)
 })
 
 describe('ReviewBar', () => {
@@ -195,6 +198,12 @@ describe('ReviewBar', () => {
     renderBar({ ...base, isPublished: false })
     expect(actions()).toEqual([])
     expect(screen.getByTestId('review-unpublished')).toBeInTheDocument()
+  })
+
+  it('opens the collection in Decentraland, published or not', () => {
+    renderBar({ ...base, isPublished: false })
+    fireEvent.click(screen.getByTestId('review-preview'))
+    expect(state.previewCollection).toHaveBeenCalledWith('c1')
   })
 
   it('assigns the collection from the bar', () => {

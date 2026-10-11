@@ -710,6 +710,7 @@
       "unpublished": "This collection isn't published yet",
       "curation_error": "We couldn't load this collection's review status.",
       "retry": "Try again",
+      "preview": "Preview in Decentraland",
       "requested": "Review requested {time}",
       "created": "Created {time}",
       "approved": "Approved {time}",
