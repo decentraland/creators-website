@@ -87,9 +87,12 @@ describe('processDraftFile', () => {
 
   it("keeps a manifest category the model can take and falls back to the suggestion when it can't", async () => {
     expect(await processDraftFile(await manifestZip())).toMatchObject({ category: 'hat', validatedCategory: 'hat' })
-    expect(await processDraftFile(await manifestZip({ category: 'eyes' }))).toMatchObject({
+    expect(
+      await processDraftFile(await manifestZip({ category: 'eyes', hides: ['hair', 'upper_body'] }))
+    ).toMatchObject({
       category: 'upper_body',
-      validatedCategory: 'upper_body'
+      validatedCategory: 'upper_body',
+      hides: ['hair']
     })
   })
 

@@ -117,6 +117,9 @@ export async function processDraftFile(file: File, prefillHides?: string[]): Pro
     if (playMode) patch.playMode = playMode
   }
 
+  // The suggestion may stand in for an unusable manifest category, so self-hides are dropped against the final one.
+  if (patch.hides && patch.category) patch.hides = hidesForCategory(patch.category, patch.hides)
+
   if (isImageFile(loaded.model)) {
     // Image wearables need no 3D render: fixed metrics + canvas-padded thumbnail.
     patch.metrics = IMAGE_WEARABLE_METRICS
