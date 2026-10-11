@@ -286,6 +286,8 @@ export function cleanContentModelKeys(
 export type WearableManifest = {
   name: string
   description?: string
+  /** Not in the legacy format: this app's addition, saved as the item's utility. */
+  utility?: string
   rarity?: string
   data: {
     category?: string
@@ -307,6 +309,7 @@ export type WearableManifest = {
 export type EmoteManifest = {
   name?: string
   description?: string
+  utility?: string
   rarity?: string
   category?: string
   play_mode?: string
@@ -354,6 +357,7 @@ const validateWearableManifest = generateLazyValidator<WearableManifest>({
   properties: {
     id: { type: 'string', nullable: true },
     description: { type: 'string', nullable: true, maxLength: 64 },
+    utility: { type: 'string', nullable: true, maxLength: 64 },
     rarity: { ...Rarity.schema, nullable: true },
     name: { type: 'string' },
     data: {
@@ -380,6 +384,7 @@ const validateEmoteManifest = generateLazyValidator<EmoteManifest>({
   properties: {
     name: { type: 'string', nullable: true },
     description: { type: 'string', nullable: true, maxLength: 64 },
+    utility: { type: 'string', nullable: true, maxLength: 64 },
     rarity: { ...Rarity.schema, nullable: true },
     category: { ...EmoteCategory.schema, nullable: true },
     play_mode: { ...EmotePlayMode.schema, nullable: true },

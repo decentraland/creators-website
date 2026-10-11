@@ -65,6 +65,7 @@ export type ItemDraftPayload = {
   requiredPermissions?: string[]
   /** From wearable.json / emote.json when the zip ships one. */
   description?: string
+  utility?: string
   tags?: string[]
   blockVrmExport?: boolean
   /** Wearables only: slots and body parts the item hides (the Blender live preview hands these over). */
@@ -324,6 +325,7 @@ export async function buildItem(draft: ItemDraftPayload): Promise<BuiltItem> {
     id: draft.id,
     name: draft.name,
     description: (draft.description ?? '').trim(),
+    ...(draft.utility?.trim() ? { utility: draft.utility.trim() } : {}),
     thumbnail: THUMBNAIL_PATH,
     ...(contents[VIDEO_PATH] ? { video: contents[VIDEO_PATH] } : {}),
     owner: draft.owner,

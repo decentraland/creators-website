@@ -211,6 +211,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
       playMode: draft.playMode,
       requiredPermissions: draft.isSmart ? draft.requiredPermissions : undefined,
       description: draft.description,
+      utility: draft.utility,
       tags: draft.tags,
       blockVrmExport: draft.blockVrmExport,
       hides: draft.type === ItemType.WEARABLE ? prefill?.hides : undefined,

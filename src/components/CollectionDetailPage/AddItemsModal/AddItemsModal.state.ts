@@ -38,6 +38,7 @@ export type ItemDraft = {
   rarity: string
   /** From wearable.json / emote.json when the zip ships one. */
   description: string
+  utility: string
   tags: string[]
   blockVrmExport: boolean
   playMode: EmotePlayMode
@@ -84,6 +85,7 @@ export function createDraft(file: File, { nameFromFile = true } = {}): ItemDraft
     suggestedCategory: null,
     rarity: DEFAULT_RARITY,
     description: '',
+    utility: '',
     tags: [],
     blockVrmExport: false,
     playMode: EmotePlayMode.SIMPLE,

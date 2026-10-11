@@ -44,12 +44,13 @@ vi.mock('~/lib/models', () => ({
 }))
 
 describe('processDraftFile', () => {
-  async function modelZip(category: string): Promise<File> {
+  async function modelZip(category: string, extra: Record<string, unknown> = {}): Promise<File> {
     const zip = new JSZip()
     zip.file(
       'wearable.json',
       JSON.stringify({
         name: 'Jacket',
+        ...extra,
         data: {
           category,
           replaces: [],
@@ -75,5 +76,10 @@ describe('processDraftFile', () => {
       category: 'upper_body',
       validatedCategory: 'upper_body'
     })
+  })
+  it("prefills the manifest's utility", async () => {
+    expect((await processDraftFile(await modelZip('hat', { utility: ' Keeps you warm ' }))).utility).toBe(
+      'Keeps you warm'
+    )
   })
 })

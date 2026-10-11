@@ -97,6 +97,7 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
     const rarity = sanitizeRarity(loaded.wearable.rarity)
     if (rarity) patch.rarity = rarity
     patch.description = sanitizeItemDescription(loaded.wearable.description ?? '')
+    patch.utility = (loaded.wearable.utility ?? '').trim()
     patch.tags = loaded.wearable.data.tags ?? []
     patch.blockVrmExport = loaded.wearable.data.blockVrmExport ?? false
   } else if (loaded.emote) {
@@ -105,6 +106,7 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
     const rarity = sanitizeRarity(loaded.emote.rarity)
     if (rarity) patch.rarity = rarity
     patch.description = sanitizeItemDescription(loaded.emote.description ?? '')
+    patch.utility = (loaded.emote.utility ?? '').trim()
     patch.tags = loaded.emote.tags ?? []
     const playMode = sanitizePlayMode(loaded.emote.play_mode)
     if (playMode) patch.playMode = playMode
