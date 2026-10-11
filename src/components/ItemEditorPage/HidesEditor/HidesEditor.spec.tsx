@@ -34,6 +34,19 @@ describe('HidesEditor', () => {
     expect(screen.queryByTestId('hides-editor-body-parts')).not.toBeInTheDocument()
   })
 
+  it('names hides the current category no longer offers', () => {
+    render(
+      <HidesEditor contents={contents} category="skin" hides={['hair', 'upper_body']} disabled onChange={vi.fn()} />,
+      {
+        wrapper: TranslationProvider
+      }
+    )
+    expect(screen.getAllByTestId('hides-editor-categories-pill').map(pill => pill.textContent)).toEqual([
+      'Hair',
+      'Upper Body'
+    ])
+  })
+
   it('lists hidden slots as pills when read-only, or says nothing is hidden', () => {
     const { rerender } = render(
       <HidesEditor

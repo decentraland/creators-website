@@ -4,9 +4,13 @@ import { ItemType } from '~/lib/items'
 import { createDraft, type ItemDraft } from './AddItemsModal.state'
 import { pickPreviewDraft, processDraftFile } from './processDraft'
 
-vi.mock('~/lib/models', () => ({
-  analyzeModel: () => Promise.resolve({ type: 'wearable', validationIssues: [], suggestedCategory: 'upper_body' })
-}))
+const { analyzeModel } = vi.hoisted(() => ({ analyzeModel: vi.fn() }))
+vi.mock('~/lib/models', () => ({ analyzeModel }))
+
+function suggest(suggestedCategory: string | null) {
+  analyzeModel.mockResolvedValue({ type: 'wearable', validationIssues: [], suggestedCategory })
+}
+suggest('upper_body')
 
 function draft(overrides: Partial<ItemDraft> = {}): ItemDraft {
   return {
@@ -94,6 +98,14 @@ describe('processDraftFile', () => {
       validatedCategory: 'upper_body',
       hides: ['hair']
     })
+  })
+
+  it('leaves the category empty when the manifest category does not fit and nothing is suggested', async () => {
+    suggest(null)
+    const draft = await processDraftFile(await manifestZip({ category: 'eyes' }))
+    suggest('upper_body')
+    expect(draft.category).toBeUndefined()
+    expect(draft.validatedCategory).toBeNull()
   })
 
   it("prefills the manifest's utility", async () => {

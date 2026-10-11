@@ -10,7 +10,7 @@ import { BodyShapeType, ItemType, type ItemMetrics } from '~/lib/items'
 import { analyzeModel } from '~/lib/models'
 import { isRarity } from '~/lib/rarities'
 import { isAutoThumbnailStale } from '~/lib/thumbnailPose'
-import { getEmoteCategoryOptions, getWearableCategoryOptions, hidesForCategory } from '~/lib/wearableCategories'
+import { getWearableCategoryOptions, hidesForCategory } from '~/lib/wearableCategories'
 import { type ItemDraft } from './AddItemsModal.state'
 
 const IMAGE_WEARABLE_METRICS: ItemMetrics = {
@@ -46,16 +46,12 @@ export async function processDraftFile(file: File, prefillHides?: string[]): Pro
       throw new ItemFileError('invalid_video')
     })
   }
-  // A manifest category the file can't take (a 3D model as eyes) is ignored, so the picker, the checks and
+  // A wearable manifest category the file can't take (a 3D model as eyes) is ignored, so the picker, the checks and
   // the saved item all fall back to the suggestion instead of disagreeing.
   const manifest = loaded.wearable?.data
   const wearableCategory =
     manifest?.category && getWearableCategoryOptions(loaded.contents).includes(manifest.category)
       ? manifest.category
-      : undefined
-  const emoteCategory =
-    loaded.emote?.category && getEmoteCategoryOptions().includes(loaded.emote.category)
-      ? loaded.emote.category
       : undefined
   // The manifest's category and hides drive the category-dependent limits (triangle budget, skin caps). Its
   // `replaces` joins the hides, as the editor does on load. A live preview prefill never ships a manifest.
@@ -107,7 +103,7 @@ export async function processDraftFile(file: File, prefillHides?: string[]): Pro
     patch.blockVrmExport = loaded.wearable.data.blockVrmExport ?? false
   } else if (loaded.emote) {
     if (loaded.emote.name) patch.name = loaded.emote.name.slice(0, ITEM_NAME_MAX_LENGTH)
-    if (emoteCategory) patch.category = emoteCategory
+    if (loaded.emote.category) patch.category = loaded.emote.category
     const rarity = sanitizeRarity(loaded.emote.rarity)
     if (rarity) patch.rarity = rarity
     patch.description = sanitizeItemDescription(loaded.emote.description ?? '')

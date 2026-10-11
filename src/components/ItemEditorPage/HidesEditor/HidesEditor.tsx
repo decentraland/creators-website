@@ -39,14 +39,14 @@ export function HidesEditor({ contents, category, hides, disabled = false, onCha
   const setCategories = (values: string[]) => onChange([...hiddenBodyParts, ...values])
 
   // Read-only (curators, locked items) lists every hidden slot as a pill: a disabled select truncates long lists.
-  function renderReadOnly(options: { value: string; label: string }[], values: string[], fieldTestId: string) {
+  function renderReadOnly(label: (value: string) => string, values: string[], fieldTestId: string) {
     if (values.length === 0)
       return <S.Empty data-testid={`${fieldTestId}-empty`}>{t('item_editor.overrides.none_hidden')}</S.Empty>
     return (
       <EditorS.Chips data-testid={fieldTestId}>
         {values.map(value => (
           <EditorS.TagChip key={value} data-readonly data-testid={`${fieldTestId}-pill`}>
-            {options.find(option => option.value === value)?.label ?? value}
+            {label(value)}
           </EditorS.TagChip>
         ))}
       </EditorS.Chips>
@@ -61,7 +61,7 @@ export function HidesEditor({ contents, category, hides, disabled = false, onCha
           <InfoTooltip content={t('item_editor.overrides.body_parts_hint')} testId={`${testId}-body-parts-hint`} />
         </S.Label>
         {disabled && bodyPartOptions.length > 0 ? (
-          renderReadOnly(bodyPartOptions, hiddenBodyParts, `${testId}-body-parts`)
+          renderReadOnly(value => t(`item_editor.body_part.${value}`), hiddenBodyParts, `${testId}-body-parts`)
         ) : bodyPartOptions.length === 0 ? (
           <S.Empty>{t('item_editor.overrides.none_available')}</S.Empty>
         ) : (
@@ -83,7 +83,11 @@ export function HidesEditor({ contents, category, hides, disabled = false, onCha
           <InfoTooltip content={t('item_editor.overrides.categories_hint')} testId={`${testId}-categories-hint`} />
         </S.Label>
         {disabled && categoryOptions.length > 0 ? (
-          renderReadOnly(categoryOptions, hiddenCategories, `${testId}-categories`)
+          renderReadOnly(
+            value => t(`collection_detail_page.category.${value}`),
+            hiddenCategories,
+            `${testId}-categories`
+          )
         ) : categoryOptions.length === 0 ? (
           <S.Empty>{t('item_editor.overrides.none_available')}</S.Empty>
         ) : (
