@@ -83,8 +83,7 @@ export const InputWrapper = styled.div`
   display: flex;
   flex-direction: column;
   gap: 32px;
-  padding-bottom: 32px;
-  margin: 32px 0;
+  margin: 16px 0 32px;
 `
 
 export const EmailField = styled.label`
