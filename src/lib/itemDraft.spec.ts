@@ -68,6 +68,28 @@ describe('item draft', () => {
     expect(itemDraftReducer(createItemDraft(item), { type: 'setCategory', category: 'helmet' }).hides).toEqual(['hair'])
   })
 
+  it('asks for a new category when a new file only fits other categories', () => {
+    const withFile = (contents: Record<string, string>) => ({ item: { ...item, contents }, blobs: {} })
+    const toImage = itemDraftReducer(createItemDraft(item), {
+      type: 'setFileUpdate',
+      update: withFile({ 'male/eyes.png': 'bafyeyes' })
+    })
+    expect(toImage.category).toBeNull()
+    expect(toImage.hides).toEqual([])
+    const toModel = itemDraftReducer(createItemDraft(item), {
+      type: 'setFileUpdate',
+      update: withFile({ 'male/cap.glb': 'bafycap' })
+    })
+    expect(toModel.category).toBe('hat')
+    expect(toModel.hides).toEqual(['hair', 'helmet'])
+    const backToModel = itemDraftReducer(toImage, {
+      type: 'setFileUpdate',
+      update: withFile({ 'male/cap.glb': 'bafycap' })
+    })
+    expect(backToModel.category).toBe('hat')
+    expect(backToModel.hides).toEqual(['hair', 'helmet'])
+  })
+
   it('projects the draft onto the item with mirrored overrides and default hiding', () => {
     let draft = createItemDraft(item)
     draft = itemDraftReducer(draft, { type: 'setCategory', category: 'upper_body' })

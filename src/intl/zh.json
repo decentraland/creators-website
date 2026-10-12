@@ -642,6 +642,7 @@
       "missing_external_resources": "模型引用了未包含的文件：{fileNames}。",
       "invalid_model_file": "我们无法加载此 3D 模型。请检查文件后重试。",
       "invalid_representation": "此文件不能用作该物品的体型变体。",
+      "representation_category_mismatch": "此文件与该物品的类别不符。请使用与另一体型相同类型的文件：3D 模型，或用于眼睛、眉毛或嘴巴的贴图。",
       "multiple_videos": "ZIP 中包含多个视频。请仅保留预览视频。",
       "video_too_big": "视频过大，最大为 {size}MB。",
       "video_wrong_format": "视频必须是 MP4 文件。",
@@ -840,6 +841,7 @@
       "utility": "用途",
       "utility_hint": "简要说明此物品在世界中的作用，将向收藏者展示。",
       "category": "类别",
+      "category_required": "请为新文件选择类别。",
       "rarity": "稀有度"
     },
     "overrides": {

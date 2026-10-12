@@ -145,9 +145,70 @@ export function definitionToBase64(definition: WearableDefinition | EmoteDefinit
   return btoa(JSON.stringify(definition).replace(/[^\x20-\x7F]/g, ''))
 }
 
-/** What the avatar preview shows: saved items (storage URLs) or one in-memory definition (blobs). */
+/** An item's model files picked in the editor but not uploaded yet, by content path. */
+export type UnsavedFiles = { itemId: string; blobs: Record<string, Blob> }
+
+/**
+ * What the avatar preview shows: saved items (storage URLs), optionally one of them with unsaved
+ * model files, or one in-memory definition (blobs).
+ */
 export type AvatarPreviewSource =
-  { kind: 'items'; items: Item[] } | { kind: 'definition'; definition: WearableWithBlobs | EmoteWithBlobs }
+  | { kind: 'items'; items: Item[]; unsaved?: UnsavedFiles }
+  | { kind: 'definition'; definition: WearableWithBlobs | EmoteWithBlobs }
+
+/**
+ * An item with unsaved model files as the iframe can load it. Storage 404s on the new files' hashes, so
+ * the representation the avatar wears goes as blobs; one still on storage (adding the other body shape's
+ * representation) goes as a plain definition with only the stored representations.
+ */
+export function unsavedItemPreview(
+  item: Item,
+  blobs: Record<string, Blob>,
+  bodyShape: BodyShape
+): { blob: WearableWithBlobs | EmoteWithBlobs } | { item: Item } | null {
+  const isLocal = (representation: Item['data']['representations'][number]) =>
+    representation.contents.every(path => path in blobs)
+  const local = item.data.representations.filter(isLocal)
+  if (!local.some(representation => representation.bodyShapes.includes(bodyShape))) {
+    const stored = item.data.representations.filter(representation => !isLocal(representation))
+    return stored.length > 0 ? { item: { ...item, data: { ...item.data, representations: stored } } } : null
+  }
+  const definition = itemToDefinition({ ...item, data: { ...item.data, representations: local } })
+  const toBlobs = (contents: { key: string }[]) => contents.map(({ key }) => ({ key, blob: blobs[key] }))
+  // The bridge and the iframe compare options as JSON, where every Blob is `{}`: the content hashes in
+  // the id are what tell two picked files apart.
+  const hashes = local.flatMap(representation => representation.contents.map(path => item.contents[path]))
+  const id = `${item.id}:${hashes.join(',')}`
+  if ('emoteDataADR74' in definition) {
+    const { emoteDataADR74 } = definition
+    return {
+      blob: {
+        ...definition,
+        id,
+        emoteDataADR74: {
+          ...emoteDataADR74,
+          representations: emoteDataADR74.representations.map(representation => ({
+            ...representation,
+            contents: toBlobs(representation.contents)
+          }))
+        }
+      }
+    }
+  }
+  return {
+    blob: {
+      ...definition,
+      id,
+      data: {
+        ...definition.data,
+        representations: definition.data.representations.map(representation => ({
+          ...representation,
+          contents: toBlobs(representation.contents)
+        }))
+      }
+    }
+  }
+}
 
 /** Whether the preview is showing an emote item, which then owns the animation. */
 export function isEmoteSubject(source: AvatarPreviewSource): boolean {
@@ -198,7 +259,14 @@ export function buildPreviewOptions(
     disableDefaultEmotes: emoteSubject
   }
   if (source.kind === 'items') {
-    options.base64s = source.items.map(item => definitionToBase64(itemToDefinition(item)))
+    const unsavedItem = source.unsaved && source.items.find(item => item.id === source.unsaved?.itemId)
+    const unsaved =
+      unsavedItem && source.unsaved ? unsavedItemPreview(unsavedItem, source.unsaved.blobs, avatar.bodyShape) : null
+    options.base64s = source.items.flatMap(item => {
+      if (item !== unsavedItem) return [definitionToBase64(itemToDefinition(item))]
+      return unsaved && 'item' in unsaved ? [definitionToBase64(itemToDefinition(unsaved.item))] : []
+    })
+    if (unsaved && 'blob' in unsaved) options.blob = unsaved.blob
   } else {
     options.blob = source.definition
   }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { BodyShape, PreviewEmote } from '@dcl/schemas'
-import { buildPreviewOptions, definitionToBase64, getPreviewZoom, itemToDefinition } from './preview'
+import { BodyShape, PreviewEmote, type EmoteWithBlobs, type WearableWithBlobs } from '@dcl/schemas'
+import { buildPreviewOptions, definitionToBase64, getPreviewZoom, itemToDefinition, type UnsavedFiles } from './preview'
 import { ItemType, type Item } from './items'
 import { type AvatarAttributes } from './avatar'
 
@@ -89,5 +89,81 @@ describe('buildPreviewOptions', () => {
     const dance = buildPreviewOptions({ kind: 'items', items: [] }, avatar, PreviewEmote.DANCE).zoom!
     // A lower zoom is a larger camera radius: the jump has to fit in frame.
     expect(jump).toBeLessThan(dance)
+  })
+
+  describe('with a model picked but not saved yet', () => {
+    const replaced: Item = {
+      ...wearable,
+      data: {
+        ...wearable.data,
+        representations: [
+          { bodyShapes: [BodyShape.MALE, BodyShape.FEMALE], mainFile: 'male/cap.glb', contents: ['male/cap.glb'] }
+        ]
+      },
+      contents: { 'male/cap.glb': 'bafycap', 'thumbnail.png': 'bafythumb' }
+    }
+    const blobs = { 'male/cap.glb': new Blob(['cap']) }
+
+    it('sends the new model as blobs, with the item data, instead of storage URLs that would 404', () => {
+      const options = buildPreviewOptions(
+        { kind: 'items', items: [replaced, emote], unsaved: { itemId: replaced.id, blobs } },
+        avatar,
+        PreviewEmote.DANCE
+      )
+      expect(options.base64s).toEqual([definitionToBase64(itemToDefinition(emote))])
+      const blob = options.blob as WearableWithBlobs
+      expect(blob.data.category).toBe('hat')
+      expect(blob.data.representations[0].contents).toEqual([{ key: 'male/cap.glb', blob: blobs['male/cap.glb'] }])
+    })
+
+    it('tells two picked files apart, and the saved item apart from both', () => {
+      const send = (item: Item, unsaved?: UnsavedFiles) =>
+        JSON.stringify(buildPreviewOptions({ kind: 'items', items: [item], unsaved }, avatar, PreviewEmote.IDLE))
+      const other: Item = { ...replaced, contents: { ...replaced.contents, 'male/cap.glb': 'bafyother' } }
+      const first = send(replaced, { itemId: replaced.id, blobs })
+      const second = send(other, { itemId: other.id, blobs: { 'male/cap.glb': new Blob(['other']) } })
+      expect(first).not.toBe(second)
+      expect(send(other)).not.toBe(second)
+    })
+
+    it('sends an unsaved emote as blobs too', () => {
+      const dance = { 'male/dance.glb': new Blob(['dance']) }
+      const options = buildPreviewOptions(
+        { kind: 'items', items: [emote], unsaved: { itemId: emote.id, blobs: dance } },
+        avatar,
+        PreviewEmote.IDLE
+      )
+      expect(options.base64s).toEqual([])
+      const blob = options.blob as EmoteWithBlobs
+      expect(blob.emoteDataADR74.loop).toBe(true)
+      expect(blob.emoteDataADR74.representations[0].contents).toEqual([
+        { key: 'male/dance.glb', blob: dance['male/dance.glb'] }
+      ])
+    })
+
+    it('keeps showing the stored representation when the new one is for the other body shape', () => {
+      const withFemale: Item = {
+        ...wearable,
+        data: {
+          ...wearable.data,
+          representations: [
+            ...wearable.data.representations,
+            { bodyShapes: [BodyShape.FEMALE], mainFile: 'female/hat.glb', contents: ['female/hat.glb'] }
+          ]
+        },
+        contents: { ...wearable.contents, 'female/hat.glb': 'bafyfemale' }
+      }
+      const unsaved = { itemId: wearable.id, blobs: { 'female/hat.glb': new Blob(['hat']) } }
+      const male = buildPreviewOptions(
+        { kind: 'items', items: [withFemale], unsaved },
+        { ...avatar, bodyShape: BodyShape.MALE },
+        PreviewEmote.IDLE
+      )
+      expect(male.blob).toBeUndefined()
+      expect(male.base64s).toEqual([definitionToBase64(itemToDefinition(wearable))])
+      const female = buildPreviewOptions({ kind: 'items', items: [withFemale], unsaved }, avatar, PreviewEmote.IDLE)
+      expect(female.base64s).toEqual([])
+      expect((female.blob as WearableWithBlobs).data.representations[0].mainFile).toBe('female/hat.glb')
+    })
   })
 })

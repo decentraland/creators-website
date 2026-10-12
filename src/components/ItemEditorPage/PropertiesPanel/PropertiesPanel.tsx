@@ -128,6 +128,11 @@ export function PropertiesPanel({
     () => (isWearable && !isSmart ? getMissingBodyShapeType(item) : null),
     [isWearable, isSmart, item]
   )
+  // Only a new file can leave the category without a valid value; stored items keep saving as they are.
+  const categoryMissing = useMemo(
+    () => isWearable && draft.fileUpdate !== null && !categories.includes(draft.category ?? ''),
+    [isWearable, draft.fileUpdate, draft.category, categories]
+  )
   const nameInvalid = draft.name.length > 0 && !isValidItemName(draft.name)
   const descriptionInvalid = !isValidItemDescription(draft.description)
   const thumbnailUrl = useObjectURL(draft.thumbnail)
@@ -460,6 +465,11 @@ export function PropertiesPanel({
             testId={`${testId}-category`}
             onChange={category => dispatch({ type: 'setCategory', category })}
           />
+          {categoryMissing && editable && (
+            <S.ErrorText data-testid={`${testId}-category-error`}>
+              {t('item_editor.basics.category_required')}
+            </S.ErrorText>
+          )}
         </S.Field>
         <S.Field as="div">
           <S.FieldLabel>
@@ -597,7 +607,7 @@ export function PropertiesPanel({
             type="button"
             variant="primary"
             size="sm"
-            disabled={!isDirty || nameInvalid || descriptionInvalid || draft.name.trim() === ''}
+            disabled={!isDirty || nameInvalid || descriptionInvalid || categoryMissing || draft.name.trim() === ''}
             loading={isSaving}
             data-testid={`${testId}-save`}
             onClick={onSave}

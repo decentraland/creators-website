@@ -1,7 +1,7 @@
 // The properties form's local draft: a pure reducer over the editable fields of an item plus the
 // blobs picked while editing, and the projection back into a saveable Item (legacy RightPanel state).
 import { type SpringBonesData, WearableCategory } from '@dcl/schemas'
-import { hidesForCategory } from './wearableCategories'
+import { getWearableCategoryOptions, hidesForCategory } from './wearableCategories'
 import { computeHashes, withCatalystImageForRarity, withThumbnail, type BuiltItem } from './itemFactory'
 import { THUMBNAIL_PATH, VIDEO_PATH } from './itemFiles'
 import { ItemType, tracksVideoOnSave, type Item } from './items'
@@ -107,8 +107,23 @@ export function itemDraftReducer(draft: ItemDraft, action: ItemDraftAction): Ite
       return { ...draft, thumbnail: action.thumbnail }
     case 'setVideo':
       return { ...draft, video: action.video }
-    case 'setFileUpdate':
-      return { ...draft, fileUpdate: action.update }
+    case 'setFileUpdate': {
+      const update = action.update
+      if (!update || update.item.type !== ItemType.WEARABLE) return { ...draft, fileUpdate: update }
+      // Image and model wearables take disjoint categories: switching kinds leaves the old one invalid.
+      const categories = getWearableCategoryOptions(update.item.contents)
+      if (draft.category === null) {
+        // Switching back to the stored kind (model → image → model) brings the stored category back.
+        const stored = createItemDraft(update.item)
+        const fits = stored.category !== null && categories.includes(stored.category)
+        return fits
+          ? { ...draft, fileUpdate: update, category: stored.category, hides: stored.hides }
+          : { ...draft, fileUpdate: update }
+      }
+      if (categories.includes(draft.category)) return { ...draft, fileUpdate: update }
+      // Image wearables hide nothing, so a switch either way leaves no hide that still applies.
+      return { ...draft, fileUpdate: update, category: null, hides: [] }
+    }
   }
 }
 
