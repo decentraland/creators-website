@@ -173,6 +173,15 @@ export function fromRemoteCollection(remote: RemoteCollection): Collection {
   return collection
 }
 
+const CONTRACT_ADDRESS = /^0x[0-9a-fA-F]{40}$/
+
+/** The collection deployed at `contractAddress`, whatever the casing of either side. */
+export function findCollectionByContract(collections: Collection[], contractAddress: string): Collection | undefined {
+  if (!CONTRACT_ADDRESS.test(contractAddress)) return undefined
+  const wanted = contractAddress.toLowerCase()
+  return collections.find(collection => collection.contractAddress?.toLowerCase() === wanted)
+}
+
 // Snake_case query params, falsy values dropped — matches the legacy builder's serializer, so
 // builder-server receives byte-identical requests.
 export function toCollectionsQueryString(params: FetchCollectionsParams): string {

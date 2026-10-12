@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  findCollectionByContract,
   COLLECTION_NAME_MAX_LENGTH,
   CollectionDisplayStatus,
   canManageCollectionItems,
@@ -373,5 +374,22 @@ describe('canSellCollectionItems', () => {
     expect(canSellCollectionItems(roleCollection, '0xminter')).toBe(false)
     expect(canSellCollectionItems(roleCollection, '0xstranger')).toBe(false)
     expect(canSellCollectionItems(roleCollection, undefined)).toBe(false)
+  })
+})
+
+describe('findCollectionByContract', () => {
+  const CONTRACT = '0x1d9fB685c257E74F869BA302e260C0B68f5eBb37'
+  const collections = [{ id: 'draft' }, { id: 'published', contractAddress: CONTRACT.toLowerCase() }] as Collection[]
+
+  it('finds the collection deployed at the address, whatever its casing', () => {
+    expect(findCollectionByContract(collections, CONTRACT)?.id).toBe('published')
+  })
+
+  it('finds nothing for an address none of the collections is deployed at', () => {
+    expect(findCollectionByContract(collections, '0x' + '0'.repeat(40))).toBeUndefined()
+  })
+
+  it('finds nothing for a value that is not a contract address', () => {
+    expect(findCollectionByContract(collections, 'undefined')).toBeUndefined()
   })
 })
