@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BodyShape, PreviewEmote, type WearableWithBlobs } from '@dcl/schemas'
+import { BodyShape, PreviewEmote, type EmoteWithBlobs, type WearableWithBlobs } from '@dcl/schemas'
 import { buildPreviewOptions, definitionToBase64, getPreviewZoom, itemToDefinition, type UnsavedFiles } from './preview'
 import { ItemType, type Item } from './items'
 import { type AvatarAttributes } from './avatar'
@@ -124,6 +124,21 @@ describe('buildPreviewOptions', () => {
       const second = send(other, { itemId: other.id, blobs: { 'male/cap.glb': new Blob(['other']) } })
       expect(first).not.toBe(second)
       expect(send(other)).not.toBe(second)
+    })
+
+    it('sends an unsaved emote as blobs too', () => {
+      const dance = { 'male/dance.glb': new Blob(['dance']) }
+      const options = buildPreviewOptions(
+        { kind: 'items', items: [emote], unsaved: { itemId: emote.id, blobs: dance } },
+        avatar,
+        PreviewEmote.IDLE
+      )
+      expect(options.base64s).toEqual([])
+      const blob = options.blob as EmoteWithBlobs
+      expect(blob.emoteDataADR74.loop).toBe(true)
+      expect(blob.emoteDataADR74.representations[0].contents).toEqual([
+        { key: 'male/dance.glb', blob: dance['male/dance.glb'] }
+      ])
     })
 
     it('keeps showing the stored representation when the new one is for the other body shape', () => {

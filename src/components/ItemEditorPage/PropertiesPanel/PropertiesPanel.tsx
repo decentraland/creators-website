@@ -128,7 +128,11 @@ export function PropertiesPanel({
     () => (isWearable && !isSmart ? getMissingBodyShapeType(item) : null),
     [isWearable, isSmart, item]
   )
-  const categoryMissing = isWearable && !categories.includes(draft.category ?? '')
+  // Only a new file can leave the category without a valid value; stored items keep saving as they are.
+  const categoryMissing = useMemo(
+    () => isWearable && draft.fileUpdate !== null && !categories.includes(draft.category ?? ''),
+    [isWearable, draft.fileUpdate, draft.category, categories]
+  )
   const nameInvalid = draft.name.length > 0 && !isValidItemName(draft.name)
   const descriptionInvalid = !isValidItemDescription(draft.description)
   const thumbnailUrl = useObjectURL(draft.thumbnail)

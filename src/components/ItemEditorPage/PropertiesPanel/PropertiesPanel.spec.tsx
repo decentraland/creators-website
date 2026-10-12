@@ -9,6 +9,11 @@ import { ItemType, type Item } from '~/lib/items'
 import { useItemForm } from '../useItemForm'
 import { PropertiesPanel } from './PropertiesPanel'
 
+const pickFile = vi.fn()
+const importItemModel = vi.fn()
+vi.mock('~/lib/filePicker', () => ({ pickFile: (...args: unknown[]) => pickFile(...args) }))
+vi.mock('~/lib/itemModelImport', () => ({ importItemModel: (...args: unknown[]) => importItemModel(...args) }))
+
 vi.mock('~/lib/featureFlags', async () => {
   const actual = await vi.importActual<typeof import('~/lib/featureFlags')>('~/lib/featureFlags')
   const mock = await import('~/test/featureFlags')
@@ -125,6 +130,27 @@ describe('PropertiesPanel', () => {
     await userEvent.type(screen.getByTestId('properties-panel-name'), 'a:b')
     expect(screen.getByTestId('properties-panel-name-error')).toBeInTheDocument()
     expect(screen.getByTestId('properties-panel-save')).toBeDisabled()
+  })
+
+  it('asks for a category when a new file does not fit the current one', async () => {
+    pickFile.mockResolvedValue(new File(['png'], 'eyes.png'))
+    importItemModel.mockResolvedValue({ item: { ...item, contents: { 'male/eyes.png': 'bafyeyes' } }, blobs: {} })
+    render(<Harness />, { wrapper: Providers })
+    await userEvent.click(screen.getByTestId('properties-panel-actions'))
+    await userEvent.click(screen.getByTestId('properties-panel-change-file'))
+    expect(await screen.findByTestId('properties-panel-category-error')).toBeInTheDocument()
+    expect(screen.getByTestId('properties-panel-save')).toBeDisabled()
+    await userEvent.click(screen.getByTestId('properties-panel-category'))
+    await userEvent.click(screen.getByTestId('properties-panel-category-option-eyes'))
+    expect(screen.queryByTestId('properties-panel-category-error')).not.toBeInTheDocument()
+    expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
+  })
+
+  it('keeps saving a stored item whose category the editor does not offer', async () => {
+    render(<Harness subject={{ ...item, data: { ...item.data, category: 'body_shape' } }} />, { wrapper: Providers })
+    await userEvent.type(screen.getByTestId('properties-panel-name'), ' 2')
+    expect(screen.queryByTestId('properties-panel-category-error')).not.toBeInTheDocument()
+    expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
   })
 
   it('keeps a description with a colon from being saved', async () => {

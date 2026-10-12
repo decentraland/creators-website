@@ -108,16 +108,21 @@ export function itemDraftReducer(draft: ItemDraft, action: ItemDraftAction): Ite
     case 'setVideo':
       return { ...draft, video: action.video }
     case 'setFileUpdate': {
-      const contents = action.update?.item.contents
+      const update = action.update
+      if (!update || update.item.type !== ItemType.WEARABLE) return { ...draft, fileUpdate: update }
       // Image and model wearables take disjoint categories: switching kinds leaves the old one invalid.
-      const keepsCategory =
-        !contents ||
-        action.update?.item.type !== ItemType.WEARABLE ||
-        draft.category === null ||
-        getWearableCategoryOptions(contents).includes(draft.category)
-      if (keepsCategory) return { ...draft, fileUpdate: action.update }
+      const categories = getWearableCategoryOptions(update.item.contents)
+      if (draft.category === null) {
+        // Switching back to the stored kind (model → image → model) brings the stored category back.
+        const stored = createItemDraft(update.item)
+        const fits = stored.category !== null && categories.includes(stored.category)
+        return fits
+          ? { ...draft, fileUpdate: update, category: stored.category, hides: stored.hides }
+          : { ...draft, fileUpdate: update }
+      }
+      if (categories.includes(draft.category)) return { ...draft, fileUpdate: update }
       // Image wearables hide nothing, so a switch either way leaves no hide that still applies.
-      return { ...draft, fileUpdate: action.update, category: null, hides: [] }
+      return { ...draft, fileUpdate: update, category: null, hides: [] }
     }
   }
 }
