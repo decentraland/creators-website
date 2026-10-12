@@ -41,9 +41,9 @@ jobs:
     # build of main. `today` needs an environment claim, and GitHub issues one only to a job
     # that declares an environment; `zone` needs none, so this one declaration covers both.
     #
-    # GitHub evaluates this before the job starts. `today` carries no protection rules and no
-    # deployment branch policy, so nothing waits -- but adding required reviewers to it would
-    # make every push to main queue for approval.
+    # GitHub evaluates this before the job starts. `today` only restricts which refs may deploy
+    # (`main` and `*.*.*` tags) and has no required reviewers, so nothing waits -- but adding
+    # reviewers to it would make every push to main queue for approval.
     environment: today
     env:
       # Job level, not step level: the build runs inside a composite action, and composite
