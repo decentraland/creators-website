@@ -161,11 +161,16 @@ const ItemEditorPage = () => {
 
   const previewSelected = useMemo(() => (selected ? toPreviewItem(selected, form.draft) : null), [selected, form.draft])
   const previewItems = useMemo(() => {
+    // A wearable whose new file dropped its category has no slot to render in until one is picked.
+    const unplaceable = previewSelected?.type === ItemType.WEARABLE && form.draft.category === null
     const withDraft = previewSelected
-      ? items.map(item => (item.id === previewSelected.id ? previewSelected : item))
+      ? items.flatMap(item => {
+          if (item.id !== previewSelected.id) return [item]
+          return unplaceable ? [] : [previewSelected]
+        })
       : items
     return pickDressedItems(withDraft, dressedItemIds, bodyShape)
-  }, [items, previewSelected, dressedItemIds, bodyShape])
+  }, [items, previewSelected, form.draft.category, dressedItemIds, bodyShape])
   const fileUpdate = form.draft.fileUpdate
   const source = useMemo<AvatarPreviewSource>(
     () => ({

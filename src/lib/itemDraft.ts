@@ -115,7 +115,9 @@ export function itemDraftReducer(draft: ItemDraft, action: ItemDraftAction): Ite
         action.update?.item.type !== ItemType.WEARABLE ||
         draft.category === null ||
         getWearableCategoryOptions(contents).includes(draft.category)
-      return { ...draft, fileUpdate: action.update, category: keepsCategory ? draft.category : null }
+      if (keepsCategory) return { ...draft, fileUpdate: action.update }
+      // Image wearables hide nothing, so a switch either way leaves no hide that still applies.
+      return { ...draft, fileUpdate: action.update, category: null, hides: [] }
     }
   }
 }

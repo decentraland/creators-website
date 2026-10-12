@@ -75,11 +75,13 @@ describe('item draft', () => {
       update: withFile({ 'male/eyes.png': 'bafyeyes' })
     })
     expect(toImage.category).toBeNull()
+    expect(toImage.hides).toEqual([])
     const toModel = itemDraftReducer(createItemDraft(item), {
       type: 'setFileUpdate',
       update: withFile({ 'male/cap.glb': 'bafycap' })
     })
     expect(toModel.category).toBe('hat')
+    expect(toModel.hides).toEqual(['hair', 'helmet'])
   })
 
   it('projects the draft onto the item with mirrored overrides and default hiding', () => {
