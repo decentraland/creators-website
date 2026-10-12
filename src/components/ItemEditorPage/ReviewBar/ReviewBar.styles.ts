@@ -85,13 +85,6 @@ export const Actions = styled.div`
   display: flex;
   gap: 8px;
   margin-left: auto;
-
-  /* With the preview hidden, an empty container would still take a gap in the wrapping row. */
-  ${theme.media.noActions} {
-    &:not([data-has-actions]) {
-      display: none;
-    }
-  }
 `
 
 // The explorer is desktop-only, so phones would only be sent to the download page.

@@ -225,9 +225,6 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
             )}
           </>
         )}
-      </S.Meta>
-
-      <S.Actions data-has-actions={showActions || undefined}>
         <S.PreviewButton
           collectionId={collection.id}
           size="sm"
@@ -237,8 +234,11 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
             track('Review Preview In World', { collectionId: collection.id, itemCount: items.length, launched })
           }
         />
-        {showActions &&
-          actions.map(action => (
+      </S.Meta>
+
+      {showActions && (
+        <S.Actions>
+          {actions.map(action => (
             <Button
               key={action}
               type="button"
@@ -250,7 +250,8 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
               {t(`item_editor.review.action.${action}`)}
             </Button>
           ))}
-      </S.Actions>
+        </S.Actions>
+      )}
 
       {dialog === 'assign' && (
         <AssignCuratorModal
