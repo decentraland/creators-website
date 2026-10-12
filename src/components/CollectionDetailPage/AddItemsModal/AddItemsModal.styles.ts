@@ -341,6 +341,7 @@ export const WarningCard = styled.div`
   color: ${theme.colors.warningText};
   font-size: 12px;
   line-height: 1.334;
+  overflow-wrap: anywhere;
 
   svg {
     flex-shrink: 0;
