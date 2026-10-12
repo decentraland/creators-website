@@ -14,6 +14,7 @@ import { pageRangeLabel } from '~/lib/pagination'
 import { useWallet } from '~/store/wallet'
 import { COLLECTIONS_PAGE_SIZE, useCollections, useCollectionsSummary } from '~/hooks/useCollections'
 import { useSaveCollection } from '~/hooks/useCollection'
+import { CONTRACT_PARAM, useCollectionByContractLink } from '~/hooks/useCollectionByContractLink'
 import { track } from '~/lib/analytics'
 import {
   CollectionSort,
@@ -62,6 +63,7 @@ const CollectionsPage = () => {
   const search = searchParams.get('q') ?? ''
   const status = parseStatus(searchParams.get('status'))
   const [view, setView] = useState<ViewMode>('grid')
+  const contractLink = useCollectionByContractLink(address)
 
   // Stripe returns every credits purchase to this route; the hand-off record says which collection's
   // publish wizard it belongs to. Without one there is nothing to resume, so the params are dropped.
@@ -136,8 +138,10 @@ const CollectionsPage = () => {
     !summary.isPlaceholderData &&
     !search &&
     (status === LINKED_FILTER ? linkedTotal === 0 : !isStatusFilterShown(status, counts))
+  // A contract link rewrites the URL itself; writing back from this render's params could revive it.
+  const hasContractLink = searchParams.has(CONTRACT_PARAM)
   useEffect(() => {
-    if (!isActiveChipGone) return
+    if (!isActiveChipGone || hasContractLink) return
     setSearchParams(
       prev => {
         const next = new URLSearchParams(prev)
@@ -147,7 +151,7 @@ const CollectionsPage = () => {
       },
       { replace: true }
     )
-  }, [isActiveChipGone, setSearchParams])
+  }, [isActiveChipGone, hasContractLink, setSearchParams])
 
   function onSearchChange(value: string) {
     setSearchInput(value)
@@ -176,7 +180,8 @@ const CollectionsPage = () => {
   // Counts ignore the status filter but follow the search, so only an unsearched list proves there are no collections.
   const isEmpty = !!counts && !search && allCount === 0
   const noResults = !!data && total === 0 && hasActiveFilters && !isEmpty
-  const isLoading = !restored || (!!address && (collections.isLoading || (collections.isFetching && !data)))
+  const isLoading =
+    !restored || contractLink.isResolving || (!!address && (collections.isLoading || (collections.isFetching && !data)))
   // Debounce window (input ahead of the URL) or a refetch with a search applied.
   const isSearching = searchInput.trim() !== search || (!!search && collections.isFetching)
 
