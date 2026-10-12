@@ -840,6 +840,7 @@
       "utility": "用途",
       "utility_hint": "简要说明此物品在世界中的作用，将向收藏者展示。",
       "category": "类别",
+      "category_required": "请为新文件选择类别。",
       "rarity": "稀有度"
     },
     "overrides": {

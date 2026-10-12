@@ -1,7 +1,7 @@
 // The properties form's local draft: a pure reducer over the editable fields of an item plus the
 // blobs picked while editing, and the projection back into a saveable Item (legacy RightPanel state).
 import { type SpringBonesData, WearableCategory } from '@dcl/schemas'
-import { hidesForCategory } from './wearableCategories'
+import { getWearableCategoryOptions, hidesForCategory } from './wearableCategories'
 import { computeHashes, withCatalystImageForRarity, withThumbnail, type BuiltItem } from './itemFactory'
 import { THUMBNAIL_PATH, VIDEO_PATH } from './itemFiles'
 import { ItemType, tracksVideoOnSave, type Item } from './items'
@@ -107,8 +107,16 @@ export function itemDraftReducer(draft: ItemDraft, action: ItemDraftAction): Ite
       return { ...draft, thumbnail: action.thumbnail }
     case 'setVideo':
       return { ...draft, video: action.video }
-    case 'setFileUpdate':
-      return { ...draft, fileUpdate: action.update }
+    case 'setFileUpdate': {
+      const contents = action.update?.item.contents
+      // Image and model wearables take disjoint categories: switching kinds leaves the old one invalid.
+      const keepsCategory =
+        !contents ||
+        action.update?.item.type !== ItemType.WEARABLE ||
+        draft.category === null ||
+        getWearableCategoryOptions(contents).includes(draft.category)
+      return { ...draft, fileUpdate: action.update, category: keepsCategory ? draft.category : null }
+    }
   }
 }
 

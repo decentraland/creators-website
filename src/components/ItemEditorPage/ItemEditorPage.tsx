@@ -166,13 +166,20 @@ const ItemEditorPage = () => {
       : items
     return pickDressedItems(withDraft, dressedItemIds, bodyShape)
   }, [items, previewSelected, dressedItemIds, bodyShape])
-  const source = useMemo<AvatarPreviewSource>(() => ({ kind: 'items', items: previewItems }), [previewItems])
+  const fileUpdate = form.draft.fileUpdate
+  const source = useMemo<AvatarPreviewSource>(
+    () => ({
+      kind: 'items',
+      items: previewItems,
+      unsaved: fileUpdate && selectedId ? { itemId: selectedId, blobs: fileUpdate.blobs } : undefined
+    }),
+    [previewItems, fileUpdate, selectedId]
+  )
   const collectionEmotes = useMemo(() => items.filter(item => item.type === ItemType.EMOTE), [items])
   const subjectEmote = useMemo(() => previewItems.find(item => item.type === ItemType.EMOTE) ?? null, [previewItems])
   const previewedWearables = useMemo(() => previewItems.filter(item => item.type === ItemType.WEARABLE), [previewItems])
 
   // An unsaved model's files exist only in memory: storage would 404 on their hashes. Phones validate nothing.
-  const fileUpdate = form.draft.fileUpdate
   const validationSource = useMemo<ValidationSource | null>(() => {
     if (!previewSelected || isMobile) return null
     const representations = fileUpdate?.item.data.representations ?? []
