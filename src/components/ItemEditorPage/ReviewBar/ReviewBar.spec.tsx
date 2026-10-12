@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { TranslationProvider } from '~/intl'
 import { type Session } from '~/lib/auth'
@@ -83,11 +83,11 @@ const items = [item('i1'), item('i2'), item('i3')]
 const error = (message: string): ValidationIssue => ({ code: 'c', severity: ValidationSeverity.ERROR, message })
 const warning = (message: string): ValidationIssue => ({ code: 'c', severity: ValidationSeverity.WARNING, message })
 
-function renderBar(collection: Collection = base) {
+function renderBar(collection: Collection = base, barItems: Item[] = items) {
   render(
     <TranslationProvider>
       <MemoryRouter>
-        <ReviewBar session={session} collection={collection} items={items} onSelectItem={state.selectItem} />
+        <ReviewBar session={session} collection={collection} items={barItems} onSelectItem={state.selectItem} />
       </MemoryRouter>
     </TranslationProvider>
   )
@@ -106,7 +106,7 @@ beforeEach(() => {
   state.isValidating = false
   state.selectItem.mockReset()
   state.track.mockReset()
-  state.previewCollection.mockReset().mockResolvedValue(undefined)
+  state.previewCollection.mockReset().mockResolvedValue(true)
 })
 
 describe('ReviewBar', () => {
@@ -200,10 +200,29 @@ describe('ReviewBar', () => {
     expect(screen.getByTestId('review-unpublished')).toBeInTheDocument()
   })
 
-  it('opens the collection in Decentraland, published or not', () => {
+  it('opens an unpublished collection in Decentraland and tracks whether the explorer opened', async () => {
     renderBar({ ...base, isPublished: false })
     fireEvent.click(screen.getByTestId('review-preview'))
     expect(state.previewCollection).toHaveBeenCalledWith('c1')
+    await waitFor(() =>
+      expect(state.track).toHaveBeenCalledWith('Review Preview In World', {
+        collectionId: 'c1',
+        itemCount: 3,
+        launched: true
+      })
+    )
+  })
+
+  it('keeps the preview available while the review request loads or fails', () => {
+    state.curationLoading = true
+    renderBar()
+    expect(screen.getByTestId('review-preview')).toBeEnabled()
+  })
+
+  it('has nothing to preview in a collection without items', () => {
+    state.curationError = true
+    renderBar(base, [])
+    expect(screen.getByTestId('review-preview')).toBeDisabled()
   })
 
   it('assigns the collection from the bar', () => {

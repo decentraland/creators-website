@@ -1,6 +1,6 @@
 import styled from '@emotion/styled'
 import { Link } from 'react-router-dom'
-import { Button } from '~/components/Button'
+import { PreviewCollectionButton } from '~/components/PreviewCollectionButton'
 import { theme } from '~/styles/theme'
 
 export const ReviewBar = styled.div`
@@ -85,10 +85,17 @@ export const Actions = styled.div`
   display: flex;
   gap: 8px;
   margin-left: auto;
+
+  /* With the preview hidden, an empty container would still take a gap in the wrapping row. */
+  ${theme.media.noActions} {
+    &:not([data-has-actions]) {
+      display: none;
+    }
+  }
 `
 
 // The explorer is desktop-only, so phones would only be sent to the download page.
-export const PreviewButton = styled(Button)`
+export const PreviewButton = styled(PreviewCollectionButton)`
   ${theme.media.noActions} {
     display: none;
   }

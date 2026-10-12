@@ -105,7 +105,6 @@
     "open_editor": "打开编辑器",
     "forum_post": "论坛帖子",
     "publish": "发布系列",
-    "preview": "在 Decentraland 中预览",
     "more_actions": "更多操作",
     "actions": {
       "preview_items": "预览物品",
@@ -710,7 +709,6 @@
       "unpublished": "此系列尚未发布",
       "curation_error": "我们无法加载此系列的审核状态。",
       "retry": "重试",
-      "preview": "在 Decentraland 中预览",
       "requested": "{time}申请审核",
       "created": "{time}创建",
       "approved": "{time}批准",
@@ -1508,5 +1506,8 @@
   },
   "success_modal": {
     "done": "完成"
+  },
+  "preview_collection_button": {
+    "label": "在 Decentraland 中预览"
   }
 }

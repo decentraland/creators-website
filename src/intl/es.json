@@ -105,7 +105,6 @@
     "open_editor": "Abrir editor",
     "forum_post": "Publicación en el foro",
     "publish": "Publicar colección",
-    "preview": "Vista previa en Decentraland",
     "more_actions": "Más acciones",
     "actions": {
       "preview_items": "Previsualizar ítems",
@@ -710,7 +709,6 @@
       "unpublished": "Esta colección todavía no está publicada",
       "curation_error": "No pudimos cargar el estado de revisión de esta colección.",
       "retry": "Reintentar",
-      "preview": "Vista previa en Decentraland",
       "requested": "Revisión solicitada {time}",
       "created": "Creada {time}",
       "approved": "Aprobada {time}",
@@ -1508,5 +1506,8 @@
   },
   "success_modal": {
     "done": "Listo"
+  },
+  "preview_collection_button": {
+    "label": "Vista previa en Decentraland"
   }
 }

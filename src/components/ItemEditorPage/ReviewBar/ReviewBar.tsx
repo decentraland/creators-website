@@ -5,7 +5,6 @@ import { useTranslation } from '~/intl'
 import { AssignCuratorModal } from '~/components/AssignCuratorModal'
 import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
-import { JumpInIcon } from '~/components/Icons'
 import { CurationStatePill } from '~/components/CurationStatePill'
 import { ProfileBadge } from '~/components/ProfileBadge'
 import { ValidationBadge, toValidationSubject, type ItemResult } from '~/components/ValidationBadge'
@@ -16,7 +15,6 @@ import { type ApprovalMode } from '~/hooks/useApprovalFlow'
 import { track } from '~/lib/analytics'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
-import { previewCollection } from '~/lib/explorer'
 import {
   CurationState,
   ReviewAction,
@@ -66,7 +64,6 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
   // The curator about to decide is assigned first, so the request always names who curated the collection.
   const [takeOver, setTakeOver] = useState<ReviewAction | null>(null)
   const [verdict, setVerdict] = useState(false)
-  const [isPreviewLaunching, setPreviewLaunching] = useState(false)
   const self = address.toLowerCase()
 
   const hasMissingEntities = useMemo(
@@ -86,6 +83,8 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
   const isLoading = collection.isPublished && curationQuery.isLoading
   // Without the request, Reject and Assign would open a new one instead of updating it.
   const isCurationError = collection.isPublished && curationQuery.isError && !curationQuery.data
+
+  const showActions = !isLoading && !isCurationError && actions.length > 0
 
   const validates = collection.isPublished && !isLoading && !isCurationError && VALIDATED_STATES.includes(state)
   // An item the Catalyst couldn't compare is checked anyway rather than left out.
@@ -228,24 +227,17 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
         )}
       </S.Meta>
 
-      <S.Actions>
+      <S.Actions data-has-actions={showActions || undefined}>
         <S.PreviewButton
-          type="button"
+          collectionId={collection.id}
           size="sm"
-          variant="dark"
-          disabled={items.length === 0 || isPreviewLaunching}
+          disabled={items.length === 0}
           data-testid="review-preview"
-          onClick={() => {
-            track('Review Preview In World', { collectionId: collection.id, itemCount: items.length })
-            setPreviewLaunching(true)
-            void previewCollection(collection.id).finally(() => setPreviewLaunching(false))
-          }}
-        >
-          {t('item_editor.review.preview')}
-          <JumpInIcon />
-        </S.PreviewButton>
-        {!isLoading &&
-          !isCurationError &&
+          onLaunch={launched =>
+            track('Review Preview In World', { collectionId: collection.id, itemCount: items.length, launched })
+          }
+        />
+        {showActions &&
           actions.map(action => (
             <Button
               key={action}

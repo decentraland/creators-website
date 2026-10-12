@@ -105,7 +105,6 @@
     "open_editor": "Open Editor",
     "forum_post": "Forum post",
     "publish": "Publish Collection",
-    "preview": "Preview in Decentraland",
     "more_actions": "More actions",
     "actions": {
       "preview_items": "Preview items",
@@ -710,7 +709,6 @@
       "unpublished": "This collection isn't published yet",
       "curation_error": "We couldn't load this collection's review status.",
       "retry": "Try again",
-      "preview": "Preview in Decentraland",
       "requested": "Review requested {time}",
       "created": "Created {time}",
       "approved": "Approved {time}",
@@ -1508,5 +1506,8 @@
   },
   "success_modal": {
     "done": "Done"
+  },
+  "preview_collection_button": {
+    "label": "Preview in Decentraland"
   }
 }
