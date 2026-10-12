@@ -175,9 +175,13 @@ export function fromRemoteCollection(remote: RemoteCollection): Collection {
 
 const CONTRACT_ADDRESS = /^0x[0-9a-fA-F]{40}$/
 
+export function isContractAddress(value: string): boolean {
+  return CONTRACT_ADDRESS.test(value)
+}
+
 /** The collection deployed at `contractAddress`, whatever the casing of either side. */
 export function findCollectionByContract(collections: Collection[], contractAddress: string): Collection | undefined {
-  if (!CONTRACT_ADDRESS.test(contractAddress)) return undefined
+  if (!isContractAddress(contractAddress)) return undefined
   const wanted = contractAddress.toLowerCase()
   return collections.find(collection => collection.contractAddress?.toLowerCase() === wanted)
 }

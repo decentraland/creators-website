@@ -3,30 +3,38 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { track } from '~/lib/analytics'
 import { fetchAllCollections } from '~/lib/builder'
-import { findCollectionByContract } from '~/lib/collections'
+import { findCollectionByContract, isContractAddress } from '~/lib/collections'
 
 export const CONTRACT_PARAM = 'contract'
 
+type Outcome = 'found' | 'not_found' | 'invalid' | 'error'
+
 /**
  * Opens the collection named by `?contract=<address>`, the link other apps (marketplace) have only a contract
- * address for. A signed-out visitor keeps the param through sign-in; no match drops it and stays on the list.
+ * address for. A signed-out visitor keeps the param through sign-in; any other outcome drops it and stays on the list.
  */
 export function useCollectionByContractLink(address: string | undefined): { isResolving: boolean } {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const contract = searchParams.get(CONTRACT_PARAM)
+  const isValid = !!contract && isContractAddress(contract)
 
-  // Only an unpaginated read can match a contract address: builder-server searches by name only.
+  // Only an unpaginated read can match a contract address: builder-server searches by name only. Always
+  // refetched on mount, since a cached list may predate the collection's deployment.
   const collections = useQuery({
     queryKey: ['collections', address, 'all'],
     queryFn: () => fetchAllCollections(address!),
-    enabled: !!address && !!contract
+    enabled: !!address && isValid,
+    refetchOnMount: 'always',
+    retry: 1
   })
+  const isSettled = !collections.isPending && !collections.isFetching
 
   useEffect(() => {
-    if (!contract || !address || collections.isPending) return
-    const match = collections.data ? findCollectionByContract(collections.data, contract) : undefined
-    track('Open collection by contract', { found: !!match, ...(match && { collectionId: match.id }) })
+    if (!contract || !address || (isValid && !isSettled)) return
+    const match = isValid && collections.data ? findCollectionByContract(collections.data, contract) : undefined
+    const outcome: Outcome = match ? 'found' : !isValid ? 'invalid' : collections.isError ? 'error' : 'not_found'
+    track('Open collection by contract', { outcome, ...(match && { collectionId: match.id }) })
     if (match) {
       navigate(`/collections/${match.id}`, { replace: true })
       return
@@ -39,7 +47,7 @@ export function useCollectionByContractLink(address: string | undefined): { isRe
       },
       { replace: true }
     )
-  }, [contract, address, collections.isPending, collections.data, navigate, setSearchParams])
+  }, [contract, address, isValid, isSettled, collections.isError, collections.data, navigate, setSearchParams])
 
-  return { isResolving: !!contract && !!address && collections.isPending }
+  return { isResolving: !!address && isValid && !isSettled }
 }

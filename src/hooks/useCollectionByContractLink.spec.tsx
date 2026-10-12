@@ -16,8 +16,11 @@ const OWNER = '0x00000000000000000000000000000000000000aa'
 const CONTRACT = '0x1d9fB685c257E74F869BA302e260C0B68f5eBb37'
 const collections = [{ id: 'draft-1' }, { id: 'hats-1', contractAddress: CONTRACT.toLowerCase() }] as Collection[]
 
-function renderLink(address: string | undefined, url = `/collections?contract=${CONTRACT}`) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+function renderLink(
+  address: string | undefined,
+  url = `/collections?contract=${CONTRACT}`,
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+) {
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[url]}>{children}</MemoryRouter>
@@ -44,7 +47,7 @@ describe('when a signed-in creator opens a contract link', () => {
     expect(result.current.isResolving).toBe(true)
 
     await waitFor(() => expect(result.current.url).toBe('/collections/hats-1'))
-    expect(track).toHaveBeenCalledWith('Open collection by contract', { found: true, collectionId: 'hats-1' })
+    expect(track).toHaveBeenCalledWith('Open collection by contract', { outcome: 'found', collectionId: 'hats-1' })
   })
 
   it('stays on the list, keeping the other params, when none of their collections is at that address', async () => {
@@ -53,14 +56,32 @@ describe('when a signed-in creator opens a contract link', () => {
 
     await waitFor(() => expect(result.current.url).toBe('/collections?status=draft'))
     expect(result.current.isResolving).toBe(false)
-    expect(track).toHaveBeenCalledWith('Open collection by contract', { found: false })
+    expect(track).toHaveBeenCalledWith('Open collection by contract', { outcome: 'not_found' })
   })
 
   it('stays on the list when their collections cannot be read', async () => {
     api.fetchAllCollections.mockRejectedValue(new Error('boom'))
     const { result } = renderLink(OWNER)
 
-    await waitFor(() => expect(result.current.url).toBe('/collections'))
+    await waitFor(() => expect(result.current.url).toBe('/collections'), { timeout: 3000 })
+    expect(track).toHaveBeenCalledWith('Open collection by contract', { outcome: 'error' })
+  })
+
+  it('drops a value that is not a contract address without reading their collections', async () => {
+    const { result } = renderLink(OWNER, '/collections?status=draft&contract=undefined')
+
+    await waitFor(() => expect(result.current.url).toBe('/collections?status=draft'))
+    expect(result.current.isResolving).toBe(false)
+    expect(api.fetchAllCollections).not.toHaveBeenCalled()
+    expect(track).toHaveBeenCalledWith('Open collection by contract', { outcome: 'invalid' })
+  })
+
+  it('matches against a fresh list when an older one, read before the collection was deployed, is cached', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    client.setQueryData(['collections', OWNER, 'all'], [collections[0]])
+    const { result } = renderLink(OWNER, undefined, client)
+
+    await waitFor(() => expect(result.current.url).toBe('/collections/hats-1'))
   })
 })
 

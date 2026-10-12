@@ -14,7 +14,7 @@ import { pageRangeLabel } from '~/lib/pagination'
 import { useWallet } from '~/store/wallet'
 import { COLLECTIONS_PAGE_SIZE, useCollections, useCollectionsSummary } from '~/hooks/useCollections'
 import { useSaveCollection } from '~/hooks/useCollection'
-import { useCollectionByContractLink } from '~/hooks/useCollectionByContractLink'
+import { CONTRACT_PARAM, useCollectionByContractLink } from '~/hooks/useCollectionByContractLink'
 import { track } from '~/lib/analytics'
 import {
   CollectionSort,
@@ -138,8 +138,10 @@ const CollectionsPage = () => {
     !summary.isPlaceholderData &&
     !search &&
     (status === LINKED_FILTER ? linkedTotal === 0 : !isStatusFilterShown(status, counts))
+  // A contract link rewrites the URL itself; writing back from this render's params could revive it.
+  const hasContractLink = searchParams.has(CONTRACT_PARAM)
   useEffect(() => {
-    if (!isActiveChipGone) return
+    if (!isActiveChipGone || hasContractLink) return
     setSearchParams(
       prev => {
         const next = new URLSearchParams(prev)
@@ -149,7 +151,7 @@ const CollectionsPage = () => {
       },
       { replace: true }
     )
-  }, [isActiveChipGone, setSearchParams])
+  }, [isActiveChipGone, hasContractLink, setSearchParams])
 
   function onSearchChange(value: string) {
     setSearchInput(value)
