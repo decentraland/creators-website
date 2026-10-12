@@ -12,13 +12,12 @@ on:
         description: 'Environment to promote to'
         required: true
         default: 'today'
-        # zone and today only. definitions gives @dcl/creators-site those two domains, and the
-        # broker refuses a rollout to an environment outside a package's domain-derived set —
-        # offering org here would produce a job that always fails. Add org alongside the .org
-        # launch, when definitions gains the domain and the repository gains the environment.
-        options: [zone, today]
+        # org needs definitions to grant @dcl/creators-site the .org domain and the repository
+        # to have an `org` environment: the broker refuses a rollout outside a package's
+        # domain-derived set, and only a job declaring the environment gets its claim.
+        options: [zone, today, org]
       version:
-        description: 'Version to put live, e.g. 0.0.3-36712345678.commit-1509d74 — copy it from the deploy run you want.'
+        description: 'Version to put live, e.g. 0.0.3-36712345678.commit-1509d74 — copy it from the deploy run you want. For org, use a release tag (e.g. 1.0.0).'
         required: true
       percentage:
         description: 'Rollout percentage'
