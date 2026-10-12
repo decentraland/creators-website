@@ -54,7 +54,7 @@ describe('launchCollectionPreview', () => {
   it('sends the user to the download page when no desktop client picks up the link', async () => {
     const done = previewCollection('col-1')
     await vi.runAllTimersAsync()
-    await done
+    await expect(done).resolves.toBe(false)
     expect(openExternal).toHaveBeenCalledWith(config.get('DOWNLOAD_URL'))
   })
 
@@ -62,7 +62,7 @@ describe('launchCollectionPreview', () => {
     const done = previewCollection('col-1')
     window.dispatchEvent(new Event('blur'))
     await vi.runAllTimersAsync()
-    await done
+    await expect(done).resolves.toBe(true)
     expect(openExternal).not.toHaveBeenCalled()
   })
 })

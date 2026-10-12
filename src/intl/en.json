@@ -105,7 +105,6 @@
     "open_editor": "Open Editor",
     "forum_post": "Forum post",
     "publish": "Publish Collection",
-    "preview": "Preview in Decentraland",
     "more_actions": "More actions",
     "actions": {
       "preview_items": "Preview items",
@@ -1507,5 +1506,8 @@
   },
   "success_modal": {
     "done": "Done"
+  },
+  "preview_collection_button": {
+    "label": "Preview in Decentraland"
   }
 }

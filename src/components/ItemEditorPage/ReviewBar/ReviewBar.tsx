@@ -84,6 +84,8 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
   // Without the request, Reject and Assign would open a new one instead of updating it.
   const isCurationError = collection.isPublished && curationQuery.isError && !curationQuery.data
 
+  const showActions = !isLoading && !isCurationError && actions.length > 0
+
   const validates = collection.isPublished && !isLoading && !isCurationError && VALIDATED_STATES.includes(state)
   // An item the Catalyst couldn't compare is checked anyway rather than left out.
   const validationItems = useMemo(
@@ -223,9 +225,18 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
             )}
           </>
         )}
+        <S.PreviewButton
+          collectionId={collection.id}
+          size="sm"
+          disabled={items.length === 0}
+          data-testid="review-preview"
+          onLaunch={launched =>
+            track('Review Preview In World', { collectionId: collection.id, itemCount: items.length, launched })
+          }
+        />
       </S.Meta>
 
-      {!isLoading && !isCurationError && actions.length > 0 && (
+      {showActions && (
         <S.Actions>
           {actions.map(action => (
             <Button

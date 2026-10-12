@@ -105,7 +105,6 @@
     "open_editor": "打开编辑器",
     "forum_post": "论坛帖子",
     "publish": "发布系列",
-    "preview": "在 Decentraland 中预览",
     "more_actions": "更多操作",
     "actions": {
       "preview_items": "预览物品",
@@ -1507,5 +1506,8 @@
   },
   "success_modal": {
     "done": "完成"
+  },
+  "preview_collection_button": {
+    "label": "在 Decentraland 中预览"
   }
 }

@@ -58,7 +58,6 @@ import { useCollectionValidation, useRerunItemValidation } from '~/hooks/useColl
 import { ItemSyncStatus, getItemRowStatus, hasPendingChanges, showsItemStatusColumn } from '~/lib/itemSync'
 import { canPushChanges } from '~/lib/curation'
 import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
-import { previewCollection } from '~/lib/explorer'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS, THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { type ItemListing } from '~/lib/listings'
@@ -67,7 +66,8 @@ import { theme } from '~/styles/theme'
 import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { Tooltip } from '~/components/Tooltip'
-import { EmoteIcon, JumpInIcon, OpenEditorIcon, WearableIcon } from '~/components/Icons'
+import { EmoteIcon, OpenEditorIcon, WearableIcon } from '~/components/Icons'
+import { PreviewCollectionButton } from '~/components/PreviewCollectionButton'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { CollectionRolePill } from '~/components/CollectionRolePill'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
@@ -112,7 +112,6 @@ const CollectionDetailPage = () => {
   const topUpReturn = useMemo(() => parseTopUpReturn(searchParams), [searchParams])
   const [addItemsFiles, setAddItemsFiles] = useState<File[] | null>(null)
   const [isDragging, setDragging] = useState(false)
-  const [isPreviewLaunching, setPreviewLaunching] = useState(false)
   const [sellingItem, setSellingItem] = useState<Item | null>(null)
   // The price dialog keeps the listing it opened with: the flow rewrites the listings cache itself.
   const [priceEdit, setPriceEdit] = useState<{ item: Item; listing: ItemListing & { tradeId: string } } | null>(null)
@@ -503,20 +502,12 @@ const CollectionDetailPage = () => {
                   />
                 </Tooltip>
               )}
-              <Button
-                type="button"
-                variant="dark"
-                disabled={!hasItems || isPreviewLaunching}
+              <PreviewCollectionButton
+                collectionId={collection.id}
+                disabled={!hasItems}
                 data-desktop-only
                 data-testid="preview-collection"
-                onClick={() => {
-                  setPreviewLaunching(true)
-                  void previewCollection(collection.id).finally(() => setPreviewLaunching(false))
-                }}
-              >
-                {t('collection_detail_page.preview')}
-                <JumpInIcon />
-              </Button>
+              />
               {showForumPost && (
                 <Button
                   type="button"
