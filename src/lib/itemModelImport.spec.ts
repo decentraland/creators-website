@@ -114,4 +114,12 @@ describe('importItemModel', () => {
       importItemModel(file, item, { kind: 'add-representation', bodyShape: BodyShapeType.FEMALE })
     ).rejects.toMatchObject({ messageKey: 'invalid_representation' })
   })
+
+  it('refuses a representation whose file does not fit the item category', async () => {
+    loadItemFile.mockResolvedValue({ contents: { 'eyes.png': new Blob(['png']) }, model: 'eyes.png', bodyShape: null })
+    const upperBody = { ...item, data: { ...item.data, category: 'upper_body' } }
+    await expect(
+      importItemModel(file, upperBody, { kind: 'add-representation', bodyShape: BodyShapeType.FEMALE })
+    ).rejects.toMatchObject({ messageKey: 'representation_category_mismatch' })
+  })
 })

@@ -642,6 +642,7 @@
       "missing_external_resources": "The model references files that aren't included: {fileNames}.",
       "invalid_model_file": "We couldn't load this 3D model. Check the file and try again.",
       "invalid_representation": "This file can't be used as a body shape variant of that item.",
+      "representation_category_mismatch": "This file doesn't fit the item's category. Use the same kind of file as the other body shape: a 3D model, or a texture for eyes, eyebrows or mouth.",
       "multiple_videos": "The ZIP includes more than one video. Keep only the preview video.",
       "video_too_big": "The video is too big — the maximum size is {size}MB.",
       "video_wrong_format": "The video must be an MP4 file.",

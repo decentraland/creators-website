@@ -5,6 +5,7 @@ import { addRepresentationToItem, getSizeError, withReplacedModel, type BuiltIte
 import { ItemFileError, THUMBNAIL_PATH, getBodyShapeTypeFromContents, loadItemFile } from './itemFiles'
 import { BodyShapeType, ItemType, getItemBodyShapeType, isSocialEmote, type Item, type ItemMetrics } from './items'
 import { analyzeModel, getModelMetrics, loadGltf } from './models'
+import { getWearableCategoryOptions } from './wearableCategories'
 
 export type ModelImportKind = { kind: 'replace' } | { kind: 'add-representation'; bodyShape: BodyShapeType }
 
@@ -49,6 +50,11 @@ export async function importItemModel(file: File, item: Item, kind: ModelImportK
     built = await withReplacedModel(item, { contents, model: loaded.model, bodyShape, metrics })
   } else {
     if (getBodyShapeTypeFromContents(contents) === BodyShapeType.BOTH) throw new ItemFileError('invalid_representation')
+    // Both body shapes share the item's category, and image and model wearables take disjoint ones.
+    const category = item.data.category
+    if (item.type === ItemType.WEARABLE && category && !getWearableCategoryOptions(contents).includes(category)) {
+      throw new ItemFileError('representation_category_mismatch')
+    }
     built = await addRepresentationToItem(
       { item },
       {
