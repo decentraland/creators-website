@@ -134,6 +134,7 @@ export type FetchCollectionsParams = {
   page?: number
   limit?: number
   q?: string
+  contractAddress?: string
   type?: CollectionType
   sort?: CollectionSort
   status?: Exclude<CollectionStatusFilter, CollectionStatusFilter.ALL>
@@ -195,6 +196,7 @@ export function toCollectionsQueryString(params: FetchCollectionsParams): string
   if (params.type) query.append('type', params.type)
   if (params.sort) query.append('sort', params.sort)
   if (params.q) query.append('q', params.q)
+  if (params.contractAddress) query.append('contract_address', params.contractAddress)
   if (params.page) query.append('page', String(params.page))
   if (params.limit) query.append('limit', String(params.limit))
   const s = query.toString()

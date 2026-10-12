@@ -5,7 +5,7 @@ import { type ReactNode } from 'react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { type Collection } from '~/lib/collections'
 
-const api = vi.hoisted(() => ({ fetchAllCollections: vi.fn() }))
+const api = vi.hoisted(() => ({ fetchCollections: vi.fn() }))
 vi.mock('~/lib/builder', async importOriginal => ({ ...(await importOriginal<object>()), ...api }))
 const track = vi.hoisted(() => vi.fn())
 vi.mock('~/lib/analytics', () => ({ track }))
@@ -14,7 +14,12 @@ const { useCollectionByContractLink } = await import('./useCollectionByContractL
 
 const OWNER = '0x00000000000000000000000000000000000000aa'
 const CONTRACT = '0x1d9fB685c257E74F869BA302e260C0B68f5eBb37'
-const collections = [{ id: 'draft-1' }, { id: 'hats-1', contractAddress: CONTRACT.toLowerCase() }] as Collection[]
+const draft = { id: 'draft-1' } as Collection
+const hats = { id: 'hats-1', contractAddress: CONTRACT.toLowerCase() } as Collection
+
+function page(results: Collection[]) {
+  return { results, total: results.length, page: 1, pages: 1, limit: 1 }
+}
 
 function renderLink(
   address: string | undefined,
@@ -37,7 +42,7 @@ function renderLink(
 }
 
 beforeEach(() => {
-  api.fetchAllCollections.mockReset().mockResolvedValue(collections)
+  api.fetchCollections.mockReset().mockResolvedValue(page([hats]))
   track.mockReset()
 })
 
@@ -47,11 +52,12 @@ describe('when a signed-in creator opens a contract link', () => {
     expect(result.current.isResolving).toBe(true)
 
     await waitFor(() => expect(result.current.url).toBe('/collections/hats-1'))
+    expect(api.fetchCollections).toHaveBeenCalledWith(OWNER, { contractAddress: CONTRACT, page: 1, limit: 1 })
     expect(track).toHaveBeenCalledWith('Open collection by contract', { outcome: 'found', collectionId: 'hats-1' })
   })
 
   it('stays on the list, keeping the other params, when none of their collections is at that address', async () => {
-    api.fetchAllCollections.mockResolvedValue([collections[0]])
+    api.fetchCollections.mockResolvedValue(page([]))
     const { result } = renderLink(OWNER, `/collections?status=draft&contract=${CONTRACT}`)
 
     await waitFor(() => expect(result.current.url).toBe('/collections?status=draft'))
@@ -59,8 +65,16 @@ describe('when a signed-in creator opens a contract link', () => {
     expect(track).toHaveBeenCalledWith('Open collection by contract', { outcome: 'not_found' })
   })
 
+  it('does not open another collection when builder-server ignores the contract filter', async () => {
+    api.fetchCollections.mockResolvedValue(page([draft]))
+    const { result } = renderLink(OWNER)
+
+    await waitFor(() => expect(result.current.url).toBe('/collections'))
+    expect(track).toHaveBeenCalledWith('Open collection by contract', { outcome: 'not_found' })
+  })
+
   it('stays on the list when their collections cannot be read', async () => {
-    api.fetchAllCollections.mockRejectedValue(new Error('boom'))
+    api.fetchCollections.mockRejectedValue(new Error('boom'))
     const { result } = renderLink(OWNER)
 
     await waitFor(() => expect(result.current.url).toBe('/collections'), { timeout: 3000 })
@@ -72,13 +86,13 @@ describe('when a signed-in creator opens a contract link', () => {
 
     await waitFor(() => expect(result.current.url).toBe('/collections?status=draft'))
     expect(result.current.isResolving).toBe(false)
-    expect(api.fetchAllCollections).not.toHaveBeenCalled()
+    expect(api.fetchCollections).not.toHaveBeenCalled()
     expect(track).toHaveBeenCalledWith('Open collection by contract', { outcome: 'invalid' })
   })
 
-  it('matches against a fresh list when an older one, read before the collection was deployed, is cached', async () => {
+  it('looks the contract up again when an older answer, read before the collection was deployed, is cached', async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    client.setQueryData(['collections', OWNER, 'all'], [collections[0]])
+    client.setQueryData(['collections', OWNER, 'contract', CONTRACT.toLowerCase()], [])
     const { result } = renderLink(OWNER, undefined, client)
 
     await waitFor(() => expect(result.current.url).toBe('/collections/hats-1'))
@@ -91,7 +105,7 @@ describe('when a signed-out visitor opens a contract link', () => {
 
     expect(result.current.url).toBe(`/collections?contract=${CONTRACT}`)
     expect(result.current.isResolving).toBe(false)
-    expect(api.fetchAllCollections).not.toHaveBeenCalled()
+    expect(api.fetchCollections).not.toHaveBeenCalled()
   })
 })
 
@@ -99,6 +113,6 @@ describe('when the list is opened without a contract link', () => {
   it('reads nothing extra', () => {
     renderLink(OWNER, '/collections')
 
-    expect(api.fetchAllCollections).not.toHaveBeenCalled()
+    expect(api.fetchCollections).not.toHaveBeenCalled()
   })
 })

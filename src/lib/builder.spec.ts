@@ -8,7 +8,6 @@ import {
   pushCollectionCuration,
   updateCollectionCuration,
   fetchCollectionItemPreviews,
-  fetchAllCollections,
   fetchCollections,
   fetchItemContents,
   fetchItemCurations,
@@ -60,18 +59,6 @@ function okResponse(data: unknown) {
 
 beforeEach(() => {
   signedFetchMock.mockReset()
-})
-
-describe('fetchAllCollections', () => {
-  it("returns every collection of the creator from builder-server's unpaginated list", async () => {
-    signedFetchMock.mockResolvedValue(okResponse([remoteCollection, { ...remoteCollection, id: 'c3d4' }]))
-
-    const result = await fetchAllCollections(ADDRESS)
-
-    const [, , path] = signedFetchMock.mock.calls[0] as [string, string, string]
-    expect(path).toBe(`/${ADDRESS}/collections`)
-    expect(result.map(collection => collection.id)).toEqual(['a1b2', 'c3d4'])
-  })
 })
 
 describe('fetchCollections', () => {

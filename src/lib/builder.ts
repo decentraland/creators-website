@@ -104,12 +104,6 @@ export async function fetchCollections(address: string, params: FetchCollections
   return { ...remote, results: remote.results.map(fromRemoteCollection) }
 }
 
-/** Every collection the creator can see, unpaginated: GET /{address}/collections without page+limit. */
-export async function fetchAllCollections(address: string): Promise<Collection[]> {
-  const remote = await request<RemoteCollection[]>(address, 'GET', `/${address}/collections`)
-  return remote.map(fromRemoteCollection)
-}
-
 /** A single collection: GET /collections/{id}. 401/404 when the signer can't see it. */
 export async function fetchCollection(address: string, collectionId: string): Promise<Collection> {
   const remote = await request<RemoteCollection>(address, 'GET', `/collections/${collectionId}`)

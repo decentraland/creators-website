@@ -112,6 +112,12 @@ describe('toCollectionsQueryString', () => {
     ).toBe('?is_published=true&type=standard&sort=LAST_ACTIVITY_DESC&q=hat&page=2&limit=20')
   })
 
+  it('sends a contract address as contract_address', () => {
+    expect(toCollectionsQueryString({ contractAddress: '0xabc', page: 1, limit: 1 })).toBe(
+      '?contract_address=0xabc&page=1&limit=1'
+    )
+  })
+
   it('serializes is_published=false and returns an empty string with no params', () => {
     expect(toCollectionsQueryString({ isPublished: false })).toBe('?is_published=false')
     expect(toCollectionsQueryString({})).toBe('')
