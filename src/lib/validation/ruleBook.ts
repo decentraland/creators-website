@@ -17,8 +17,6 @@ export type RuleBookOutput = {
   checks: RuleBookCheck[]
   /** Every check's title, keyed by check name. */
   titles: Record<string, string>
-  /** `manifest.fileSize.thumbnailRecommendedSize`, for thumbnail runs. */
-  thumbnailRecommendedSize?: number
 }
 
 const MODEL_GROUPS: Group[] = ['model', 'emote']
@@ -32,7 +30,7 @@ export async function runRuleBook(job: RuleBookJob, signal?: AbortSignal): Promi
     ruleBook = null
     throw error
   })
-  const { validate, checks, manifest } = await ruleBook
+  const { validate, checks } = await ruleBook
   const result =
     job.kind === 'model'
       ? await validate(
@@ -55,7 +53,6 @@ export async function runRuleBook(job: RuleBookJob, signal?: AbortSignal): Promi
       reason: typeof data?.reason === 'string' ? data.reason : undefined
     })),
     checks: result.checks.map(({ check, status, skipReason }) => ({ check, status, skipReason })),
-    titles,
-    thumbnailRecommendedSize: job.kind === 'thumbnail' ? manifest.fileSize.thumbnailRecommendedSize : undefined
+    titles
   }
 }
