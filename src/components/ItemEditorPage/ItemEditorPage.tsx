@@ -102,7 +102,10 @@ const ItemEditorPage = () => {
   const isMobile = useMediaQuery(theme.media.maxWidth('mobile'))
 
   const collectionQuery = useCollection(address, collectionId ?? undefined)
-  const collectionStatus = useCollectionStatus(address, collectionQuery.data)
+  // builder-server serves a collection's curation to its owner, collaborators and the committee only.
+  const canReadCuration =
+    !!collectionQuery.data && (canManageCollectionItems(collectionQuery.data, address) || committee.isCurator)
+  const collectionStatus = useCollectionStatus(canReadCuration ? address : undefined, collectionQuery.data)
   const itemsQuery = useAllCollectionItems(address, collectionId ?? undefined)
   const baseWearables = useBaseWearables()
   const pickedRenderer = usePreviewRenderer()
@@ -422,7 +425,8 @@ const ItemEditorPage = () => {
       ((collectionQuery.isError &&
         collectionQuery.error instanceof BuilderServerError &&
         NOT_FOUND_STATUSES.includes(collectionQuery.error.status)) ||
-        // Curators review collections they hold no role in.
+        // Drafts are private to their roles; published collections open read-only to any signer
+        // (curators review through mode === 'review', which skips the gate).
         (!!collection && mode === 'edit' && !canViewCollection(collection, address))))
   const isError = !isNotFound && !!collectionId && (collectionQuery.isError || itemsQuery.isError)
 
@@ -542,7 +546,7 @@ const ItemEditorPage = () => {
         address={address}
         editable={editable}
         showReadOnlyNote={mode !== 'review'}
-        readOnlyReason={canManageCollectionItems(collection, address) ? 'lock' : 'role'}
+        readOnlyReason={isCollectionLocked(collection) ? 'lock' : 'role'}
         canDelete={canDelete}
         draft={form.draft}
         dispatch={form.dispatch}

@@ -49,10 +49,12 @@ const noSpringBones = { isLoading: false, models: [], initialParams: {}, bonesBy
 
 function Harness({
   editable = true,
+  readOnlyReason,
   onSave = vi.fn(),
   subject = item
 }: {
   editable?: boolean
+  readOnlyReason?: 'role' | 'lock'
   onSave?: () => void
   subject?: Item
 }) {
@@ -62,6 +64,7 @@ function Harness({
       item={subject}
       address="0xabc"
       editable={editable}
+      readOnlyReason={readOnlyReason}
       canDelete={editable}
       draft={form.draft}
       dispatch={form.dispatch}
@@ -181,6 +184,16 @@ describe('PropertiesPanel', () => {
     await userEvent.type(await screen.findByTestId('properties-panel-utility'), 'greets')
     expect(screen.getByTestId('properties-panel-utility')).toHaveValue('greets')
     expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
+  })
+
+  it('tells a locked collection apart from missing edit rights in the read-only note', () => {
+    const { unmount } = render(<Harness editable={false} />, { wrapper: Providers })
+    expect(screen.getByTestId('properties-panel-readonly')).toHaveTextContent(
+      'only the collection owner and collaborators'
+    )
+    unmount()
+    render(<Harness editable={false} readOnlyReason="lock" />, { wrapper: Providers })
+    expect(screen.getByTestId('properties-panel-readonly')).toHaveTextContent('while the collection is being published')
   })
 
   it('lists tags read-only without the field when not editable', () => {

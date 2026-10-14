@@ -274,13 +274,13 @@ describe('canManageItem', () => {
   }
   const item = fromRemoteItem({ ...remote, eth_address: '0xCreator' })
 
-  it('lets the item creator, the collection owner and its collaborators manage the item', () => {
-    expect(canManageItem(collection, item, '0xcreator')).toBe(true)
+  it('lets the collection owner and its collaborators manage the item', () => {
     expect(canManageItem(collection, item, '0xowner')).toBe(true)
     expect(canManageItem(collection, item, '0xmanager')).toBe(true)
   })
 
-  it('keeps minters and strangers out', () => {
+  it('keeps minters, strangers and a creator with no role on the collection out', () => {
+    expect(canManageItem(collection, item, '0xcreator')).toBe(false)
     expect(canManageItem(collection, item, '0xminter')).toBe(false)
     expect(canManageItem(collection, item, '0xother')).toBe(false)
     expect(canManageItem(collection, item, undefined)).toBe(false)
@@ -332,7 +332,7 @@ describe('canEditItemDetails', () => {
   const item = fromRemoteItem({ ...remote, eth_address: '0xCreator' })
 
   it('lets whoever manages the item edit it, before and after publishing', () => {
-    expect(canEditItemDetails(collection, item, '0xcreator')).toBe(true)
+    expect(canEditItemDetails(collection, item, '0xowner')).toBe(true)
     expect(canEditItemDetails({ ...collection, isPublished: true, isApproved: true }, item, '0xmanager')).toBe(true)
     expect(canEditItemDetails(collection, item, '0xminter')).toBe(false)
     expect(canEditItemDetails(collection, item, undefined)).toBe(false)
