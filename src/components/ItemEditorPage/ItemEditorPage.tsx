@@ -36,7 +36,7 @@ import { type AvatarAttributes } from '~/lib/avatar'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS, getContentsStorageUrl } from '~/lib/builder'
 import {
   canManageCollectionItems,
-  hasCollectionRole,
+  canViewCollection,
   isCollectionLocked,
   isLinkedCollection,
   type Collection
@@ -423,7 +423,7 @@ const ItemEditorPage = () => {
         collectionQuery.error instanceof BuilderServerError &&
         NOT_FOUND_STATUSES.includes(collectionQuery.error.status)) ||
         // Curators review collections they hold no role in.
-        (!!collection && mode === 'edit' && !hasCollectionRole(collection, address))))
+        (!!collection && mode === 'edit' && !canViewCollection(collection, address))))
   const isError = !isNotFound && !!collectionId && (collectionQuery.isError || itemsQuery.isError)
 
   const preview =

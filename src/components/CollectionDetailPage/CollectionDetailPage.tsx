@@ -25,7 +25,7 @@ import {
   canManageCollectionItems,
   canSellCollectionItems,
   hasBeenApproved,
-  hasCollectionRole,
+  canViewCollection,
   isCollectionLocked,
   isLinkedCollection
 } from '~/lib/collections'
@@ -173,7 +173,8 @@ const CollectionDetailPage = () => {
   )
   // Play Mode is an emote-only attribute; the column exists only while the visible page has emotes.
   const withPlayMode = useMemo(() => results.some(item => item.type === ItemType.EMOTE), [results])
-  useSyncPublishedItems(address, standardCollection, allItems ?? [])
+  const canManage = !!standardCollection && canManageCollectionItems(standardCollection, address)
+  useSyncPublishedItems(canManage ? address : undefined, standardCollection, allItems ?? [])
   useForumPostRecovery(address, standardCollection, allItems ?? [])
   // Price, Sales and Sale Status exist once the collection is published; the owner can put items on sale
   // once it has been approved at least once, even if it is under review again.
@@ -223,13 +224,8 @@ const CollectionDetailPage = () => {
     () =>
       !!standardCollection &&
       curationLoaded &&
-      canPushChanges(
-        standardCollection,
-        curation,
-        hasUnsyncedItems,
-        canManageCollectionItems(standardCollection, address)
-      ),
-    [standardCollection, curationLoaded, curation, hasUnsyncedItems, address]
+      canPushChanges(standardCollection, curation, hasUnsyncedItems, canManage),
+    [standardCollection, curationLoaded, curation, hasUnsyncedItems, canManage]
   )
   // After a rejection the creator asks for a review again, whether it was the first one or a pushed update.
   const pushCopy = curation?.status === 'rejected' ? 'request_review' : 'push_changes'
@@ -287,8 +283,7 @@ const CollectionDetailPage = () => {
     thirdParty.isError &&
     thirdParty.error instanceof BuilderServerError &&
     NOT_FOUND_STATUSES.includes(thirdParty.error.status)
-  // builder-server serves published collections to any signer; addresses with no role on it get
-  // the same "not found" as a rejected request, so strangers can't browse other creators' work.
+  // A draft is private: addresses with no role on it get the same "not found" as a rejected request.
   const isNotFound =
     !collectionId ||
     (collectionQuery.isError &&
@@ -299,7 +294,7 @@ const CollectionDetailPage = () => {
         ? !getThirdPartyId(collection) ||
           isThirdPartyNotFound ||
           (!!thirdParty.data && !isThirdPartyManager(thirdParty.data, address))
-        : !hasCollectionRole(collection, address)))
+        : !canViewCollection(collection, address)))
   const isError = !isNotFound && (collectionQuery.isError || itemsQuery.isError || thirdParty.isError)
   const isEmpty = filteredTotal === 0
   const hasItems = total > 0
@@ -625,7 +620,7 @@ const CollectionDetailPage = () => {
                 onClick={() => navigate(`/collections/editor?collection=${collection.id}`)}
               >
                 <OpenEditorIcon />
-                {t('collection_detail_page.open_editor')}
+                {t(canManage ? 'collection_detail_page.open_editor' : 'collection_detail_page.open_preview')}
               </Button>
               {canAddItems && (
                 <Button variant="secondary" type="button" data-testid="add-items" onClick={openFileBrowser}>
