@@ -71,6 +71,8 @@ type Props = {
   editable: boolean
   /** Review mode hides the read-only note: curators know the editor is locked. */
   showReadOnlyNote?: boolean
+  /** Why the viewer cannot edit: no manage role, or the collection's publish lock. */
+  readOnlyReason?: 'role' | 'lock'
   /** Owner of a draft collection: the only one who may delete items here. */
   canDelete: boolean
   draft: ItemDraft
@@ -89,6 +91,7 @@ export function PropertiesPanel({
   address,
   editable,
   showReadOnlyNote = true,
+  readOnlyReason = 'role',
   canDelete,
   draft,
   dispatch,
@@ -251,7 +254,9 @@ export function PropertiesPanel({
         </ActionsMenu>
       </S.PanelHeader>
       {!editable && showReadOnlyNote && (
-        <S.ReadOnlyNote data-testid={`${testId}-readonly`}>{t('item_editor.read_only')}</S.ReadOnlyNote>
+        <S.ReadOnlyNote data-testid={`${testId}-readonly`}>
+          {t(readOnlyReason === 'lock' ? 'item_editor.read_only_locked' : 'item_editor.read_only')}
+        </S.ReadOnlyNote>
       )}
 
       <EditorSection title={t('item_editor.details.title')} testId={`${testId}-details`}>

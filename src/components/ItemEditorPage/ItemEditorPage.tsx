@@ -542,6 +542,7 @@ const ItemEditorPage = () => {
         address={address}
         editable={editable}
         showReadOnlyNote={mode !== 'review'}
+        readOnlyReason={canManageCollectionItems(collection, address) ? 'lock' : 'role'}
         canDelete={canDelete}
         draft={form.draft}
         dispatch={form.dispatch}
