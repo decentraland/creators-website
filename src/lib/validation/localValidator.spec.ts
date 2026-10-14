@@ -8,7 +8,6 @@ const validate = vi.fn()
 vi.mock('../monitoring', () => ({ captureError: vi.fn() }))
 vi.mock('@dcl-regenesislabs/wearable-validator', () => ({
   validate: (...args: unknown[]) => validate(...args),
-  manifest: { fileSize: { thumbnailRecommendedSize: 256 } },
   checks: {}
 }))
 
@@ -245,26 +244,6 @@ describe('thumbnail validation', () => {
         message: 'Thumbnail background does not look transparent — remove the background.',
         where: 'thumbnail.png'
       }
-    ])
-  })
-
-  it('drops the recommended-size hint for a square thumbnail but keeps it for a non-square one', async () => {
-    validate.mockResolvedValue({
-      findings: [
-        thumbnailFinding('Thumbnail is 1024×1024 — a square 256×256 PNG is recommended.', {
-          measured: '1024×1024',
-          limit: '256×256'
-        }),
-        thumbnailFinding('Thumbnail is 800×600 — a square 256×256 PNG is recommended.', {
-          measured: '800×600',
-          limit: '256×256'
-        })
-      ],
-      checks: []
-    })
-    const result = await getValidator().validateThumbnail({ kind: 'blob', blob: new Blob(['png']) })
-    expect(result.issues.map(issue => issue.message)).toEqual([
-      'Thumbnail is 800×600 — a square 256×256 PNG is recommended.'
     ])
   })
 

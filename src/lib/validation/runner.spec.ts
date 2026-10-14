@@ -6,7 +6,6 @@ const validate = vi.fn().mockResolvedValue({
 })
 vi.mock('@dcl-regenesislabs/wearable-validator', () => ({
   validate: (...args: unknown[]) => validate(...args),
-  manifest: { fileSize: { thumbnailRecommendedSize: 256 } },
   checks: { thumbnail: { title: 'Thumbnail' } }
 }))
 vi.mock('./ruleBook.worker?worker&url', () => ({ default: '/ruleBook.worker.js' }))
@@ -44,8 +43,7 @@ describe('validation runner', () => {
     expect(validate).toHaveBeenCalled()
     expect(output).toMatchObject({
       findings: [{ check: 'thumbnail', message: 'Not transparent' }],
-      titles: { thumbnail: 'Thumbnail' },
-      thumbnailRecommendedSize: 256
+      titles: { thumbnail: 'Thumbnail' }
     })
   })
 
