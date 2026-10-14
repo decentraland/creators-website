@@ -21,6 +21,12 @@ import {
   type CurationRequestStatus,
   type RemoteCollectionCuration
 } from '~/lib/curation'
+import {
+  fromRemoteEvent,
+  type CollectionEventsPage,
+  type RejectReasonCode,
+  type RemoteCollectionEvent
+} from '~/lib/events'
 import { VIDEO_PATH, fromRemoteItem, toRemoteItem, tracksVideoOnSave, type Item, type RemoteItem } from '~/lib/items'
 import {
   fromRemoteItemCuration,
@@ -203,11 +209,19 @@ export async function pushCollectionCuration(
   return fromRemoteCuration(remote)
 }
 
+export type CurationUpdate = {
+  status?: CurationRequestStatus
+  assignee?: string | null
+  /** Required together with `status: 'rejected'`: the codes and the message the creator reads. */
+  rejectionReasons?: RejectReasonCode[]
+  rejectionMessage?: string
+}
+
 /** Updates the latest request: PATCH /collections/{id}/curation. Status changes and assignees are committee-only. */
 export async function updateCollectionCuration(
   address: string,
   collectionId: string,
-  curation: { status?: CurationRequestStatus; assignee?: string | null }
+  curation: CurationUpdate
 ): Promise<CollectionCuration> {
   const remote = await request<RemoteCollectionCuration>(
     address,
@@ -285,6 +299,44 @@ export async function fetchItemCuration(address: string, itemId: string): Promis
     return remote ? fromRemoteItemCuration(remote) : null
   } catch (error) {
     if (error instanceof BuilderServerError && error.status === UNPUBLISHED_COLLECTION_STATUS) return null
+    throw error
+  }
+}
+
+export const VALIDATION_RUNNING_STATUS = 409
+export const VALIDATION_LIMIT_STATUS = 429
+
+/** The daily allowance is spent: builder-server says when the next automatic review may start. */
+export class ValidationLimitError extends BuilderServerError {
+  retryAt: number | null
+
+  constructor(error: BuilderServerError) {
+    super(error.message, error.status, error.data)
+    this.name = 'ValidationLimitError'
+    this.retryAt = readRetryAt(error.data)
+  }
+}
+
+function readRetryAt(data: unknown): number | null {
+  if (!data || typeof data !== 'object') return null
+  const record = data as { retryAt?: unknown; data?: { retryAt?: unknown } }
+  const value = record.retryAt ?? record.data?.retryAt
+  if (typeof value !== 'string' && typeof value !== 'number') return null
+  const time = +new Date(value)
+  return Number.isNaN(time) ? null : time
+}
+
+/**
+ * Asks for another automatic review: POST /collections/{id}/validations. 409 while one is running,
+ * 429 (`ValidationLimitError`) once today's three verdicts are spent.
+ */
+export async function requestCollectionValidation(address: string, collectionId: string): Promise<void> {
+  try {
+    await request<unknown>(address, 'POST', `/collections/${collectionId}/validations`, '', undefined, false)
+  } catch (error) {
+    if (error instanceof BuilderServerError && error.status === VALIDATION_LIMIT_STATUS) {
+      throw new ValidationLimitError(error)
+    }
     throw error
   }
 }
@@ -485,6 +537,29 @@ export async function fetchLinkedApprovalData(address: string, collectionId: str
     contentHashes: remote.content_hashes,
     chequeWasConsumed: remote.chequeWasConsumed
   }
+}
+
+/** Escalates a rejection to a human curator: POST /collections/{id}/curation/appeal. 409 while an appeal is open. */
+export async function appealCollectionCuration(address: string, collectionId: string, note: string): Promise<void> {
+  await request<unknown>(address, 'POST', `/collections/${collectionId}/curation/appeal`, '', { note }, false)
+}
+
+/**
+ * The collection's timeline, newest first: GET /collections/{id}/events. Committee members see every
+ * collection. The server offsets by `limit * (page - 1)`, so callers page with one constant `limit`.
+ */
+export async function fetchCollectionEvents(
+  address: string,
+  collectionId: string,
+  { page, limit }: { page: number; limit: number }
+): Promise<CollectionEventsPage> {
+  const remote = await request<{ results: RemoteCollectionEvent[]; total: number; page: number; limit: number }>(
+    address,
+    'GET',
+    `/collections/${collectionId}/events`,
+    `?page=${page}&limit=${limit}`
+  )
+  return { ...remote, results: remote.results.map(fromRemoteEvent) }
 }
 
 /** Delete an unpublished collection and its items: DELETE /collections/{id} (409 published, 423 locked). */

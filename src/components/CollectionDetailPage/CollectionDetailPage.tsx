@@ -72,8 +72,9 @@ import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { useCollectionValidation, useRerunItemValidation } from '~/hooks/useCollectionValidation'
 import { ItemSyncStatus, getItemRowStatus, hasPendingChanges, showsItemStatusColumn } from '~/lib/itemSync'
-import { canPushChanges } from '~/lib/curation'
+import { canPushChanges, getReviewStage, isRejectedStage } from '~/lib/curation'
 import { useCollectionCuration, useCommittee, usePushCuration } from '~/hooks/useCuration'
+import { useCollectionEvents } from '~/hooks/useCollectionEvents'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS, THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { type ItemListing } from '~/lib/listings'
@@ -94,6 +95,7 @@ import { useThirdParty } from '~/hooks/useLinkedCollection'
 import { canViewLinkedCollection, getThirdPartyId, isThirdPartyManager } from '~/lib/thirdParty'
 import { AddItemsModal } from './AddItemsModal'
 import { LinkedCollectionView } from './LinkedCollectionView'
+import { ReviewPanel } from './ReviewPanel'
 import { ItemActionsMenu } from './ItemActionsMenu'
 import { ItemListRow } from './ItemListRow'
 import { PublishCollectionModal, PublishSuccessModal, type PublishResume } from './PublishCollectionModal'
@@ -292,6 +294,7 @@ const CollectionDetailPage = () => {
   const syncs = useItemSyncs(curationAddress, standardCollection, allItems ?? [])
   const curationQuery = useCollectionCuration(curationAddress, standardCollection)
   const curation = curationQuery.data ?? null
+  const { events } = useCollectionEvents(address, standardCollection)
   const pushCuration = usePushCuration(address)
   // Sending changes for review runs the same item checks as publishing before its confirm modal.
   const [pushView, setPushView] = useState<'closed' | 'gate' | 'confirm'>('closed')
@@ -303,14 +306,20 @@ const CollectionDetailPage = () => {
     setPushView('closed')
     pushCuration.reset()
   }
-  // Until the request loads, a pending one looks like none and the push would duplicate it.
+  const stage = useMemo(
+    () => (standardCollection ? getReviewStage(standardCollection, curation, events) : null),
+    [standardCollection, curation, events]
+  )
+  // Until the request loads, a pending one looks like none and the push would duplicate it. A rejection the
+  // automatic review tracks is resubmitted from the review panel (validate again / appeal), never from here.
   const curationLoaded = curationQuery.isSuccess
   const showPushChanges = useMemo(
     () =>
       !!standardCollection &&
       curationLoaded &&
+      !(isRejectedStage(stage) && !standardCollection.isApproved) &&
       canPushChanges(standardCollection, curation, hasUnsyncedItems, canManage),
-    [standardCollection, curationLoaded, curation, hasUnsyncedItems, canManage]
+    [standardCollection, curationLoaded, stage, curation, hasUnsyncedItems, canManage]
   )
   // After a rejection the creator asks for a review again, whether it was the first one or a pushed update.
   const pushCopy = curation?.status === 'rejected' ? 'request_review' : 'push_changes'
@@ -685,6 +694,7 @@ const CollectionDetailPage = () => {
                   onPreviewInWorld={
                     !isReader && hasItems ? () => previewCollectionFromDetail(collection.id, total) : undefined
                   }
+                  items={allItems}
                   onSendItems={canSend ? () => setSending(true) : undefined}
                   onCreateDiscount={canCreateDiscount ? () => openDiscount('menu') : undefined}
                   onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
@@ -701,6 +711,17 @@ const CollectionDetailPage = () => {
               discounts={openDiscounts}
               now={discountsNow}
               onEnd={session && !isSocialLogin(session) ? setEndingDiscount : undefined}
+            />
+          )}
+
+          {address && standardCollection && (
+            <ReviewPanel
+              collection={standardCollection}
+              address={address}
+              curation={curation}
+              events={events}
+              items={allItems ?? []}
+              canManage={canManage}
             />
           )}
 
