@@ -26,6 +26,7 @@ import {
   canSellCollectionItems,
   hasBeenApproved,
   canViewCollection,
+  hasCollectionRole,
   isCollectionLocked,
   isLinkedCollection
 } from '~/lib/collections'
@@ -174,6 +175,8 @@ const CollectionDetailPage = () => {
   // Play Mode is an emote-only attribute; the column exists only while the visible page has emotes.
   const withPlayMode = useMemo(() => results.some(item => item.type === ItemType.EMOTE), [results])
   const canManage = !!standardCollection && canManageCollectionItems(standardCollection, address)
+  // A reader holds no role: they reached a published collection by link and only browse it.
+  const isReader = !!collection && !hasCollectionRole(collection, address)
   useSyncPublishedItems(canManage ? address : undefined, standardCollection, allItems ?? [])
   useForumPostRecovery(address, standardCollection, allItems ?? [])
   // Price, Sales and Sale Status exist once the collection is published; the owner can put items on sale
@@ -234,8 +237,8 @@ const CollectionDetailPage = () => {
     [results, syncs, curation]
   )
   const withStatus = useMemo(
-    () => !!standardCollection && showsItemStatusColumn(standardCollection, rowStatuses.values()),
-    [standardCollection, rowStatuses]
+    () => !!standardCollection && !isReader && showsItemStatusColumn(standardCollection, rowStatuses.values()),
+    [standardCollection, isReader, rowStatuses]
   )
 
   // Drafts check every item; published collections only the items with changes waiting for approval.
@@ -456,19 +459,21 @@ const CollectionDetailPage = () => {
         <>
           <S.Header>
             <S.HeaderLeft>
-              <S.BackLink
-                type="button"
-                aria-label={t('collection_detail_page.back')}
-                data-testid="back-to-collections"
-                onClick={() =>
-                  navigate({
-                    pathname: '/collections',
-                    search: listState?.listSearch
-                  })
-                }
-              >
-                <ArrowBackIcon />
-              </S.BackLink>
+              {!isReader && (
+                <S.BackLink
+                  type="button"
+                  aria-label={t('collection_detail_page.back')}
+                  data-testid="back-to-collections"
+                  onClick={() =>
+                    navigate({
+                      pathname: '/collections',
+                      search: listState?.listSearch
+                    })
+                  }
+                >
+                  <ArrowBackIcon />
+                </S.BackLink>
+              )}
               <S.TitleGroup>
                 <S.Title title={collection.name}>{collection.name}</S.Title>
                 {canRename && (
@@ -497,12 +502,14 @@ const CollectionDetailPage = () => {
                   />
                 </Tooltip>
               )}
-              <PreviewCollectionButton
-                collectionId={collection.id}
-                disabled={!hasItems}
-                data-desktop-only
-                data-testid="preview-collection"
-              />
+              {!isReader && (
+                <PreviewCollectionButton
+                  collectionId={collection.id}
+                  disabled={!hasItems}
+                  data-desktop-only
+                  data-testid="preview-collection"
+                />
+              )}
               {showForumPost && (
                 <Button
                   type="button"
