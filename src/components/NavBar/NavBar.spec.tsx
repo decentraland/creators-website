@@ -141,18 +141,24 @@ describe('NavBar', () => {
     expect(screen.getByRole('link', { name: 'Collections' })).not.toHaveAttribute('aria-current')
   })
 
-  it('deepens the sub-nav once the page scrolls', () => {
-    renderNavBar()
-    const subnav = screen.getByTestId('subnav')
-    expect(subnav).not.toHaveAttribute('data-scrolled')
+  it('flags a scrolled page on <body> so the top bar deepens, and clears it on unmount', () => {
+    const scrollTo = (y: number) => {
+      Object.defineProperty(window, 'scrollY', { value: y, writable: true, configurable: true })
+      fireEvent.scroll(window)
+    }
+    const { unmount } = renderNavBar()
+    expect(document.body).not.toHaveAttribute('data-scrolled')
 
-    Object.defineProperty(window, 'scrollY', { value: 20, writable: true, configurable: true })
-    fireEvent.scroll(window)
-    expect(subnav).toHaveAttribute('data-scrolled')
+    scrollTo(20)
+    expect(document.body).toHaveAttribute('data-scrolled')
 
-    Object.defineProperty(window, 'scrollY', { value: 0, writable: true, configurable: true })
-    fireEvent.scroll(window)
-    expect(subnav).not.toHaveAttribute('data-scrolled')
+    scrollTo(0)
+    expect(document.body).not.toHaveAttribute('data-scrolled')
+
+    scrollTo(20)
+    unmount()
+    expect(document.body).not.toHaveAttribute('data-scrolled')
+    scrollTo(0)
   })
 
   it('shows the credits and MANA balances in the top bar, linking out to buy more', () => {

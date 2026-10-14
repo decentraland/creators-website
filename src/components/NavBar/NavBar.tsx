@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { Network } from '@dcl/schemas'
 import { ethers } from 'ethers'
@@ -41,16 +41,11 @@ const NavBar = ({ subnav = true }: Props) => {
   // Collections stays active across the collection detail / item detail / editor pages too, not just
   // the /collections list — a NavLink to /collections alone wouldn't light up on the nested routes.
   const collectionsActive = /^\/collections(\/|$)/.test(pathname)
-  // The translucent band washes out over light content, so it deepens once the page scrolls.
-  const [scrolled, setScrolled] = useState(false)
-
+  // The top bar's translucent fill washes out over light content, so it deepens once the page scrolls.
+  // Set on <body> because the ui2 navbar is styled from TopNav via ancestor selectors.
   useEffect(() => {
     const onScroll = () => {
-      const v = window.scrollY > 8
-      setScrolled(v)
-      // Mirrored on <body> so the global ui2 navbar (styled from TopNav via ancestor selectors,
-      // outside this component) can deepen in step with the sub-nav.
-      document.body.toggleAttribute('data-scrolled', v)
+      document.body.toggleAttribute('data-scrolled', window.scrollY > 8)
     }
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
@@ -82,7 +77,7 @@ const NavBar = ({ subnav = true }: Props) => {
       />
 
       {subnav && (
-        <S.Subnav data-testid="subnav" data-scrolled={scrolled || undefined}>
+        <S.Subnav data-testid="subnav">
           <S.Tabs data-testid="subnav-tabs">
             <NavLink to="/" end>
               {t('nav.overview')}
