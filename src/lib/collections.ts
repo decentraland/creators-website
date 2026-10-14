@@ -332,14 +332,18 @@ export function toRemoteCollection(
   }
 }
 
-/**
- * Whether this address is the owner, a collaborator or a minter of the collection. builder-server
- * serves published collections to anyone, so this is the app's own gate: the detail page (and later
- * the editor) shows "not found" to addresses with no role instead of a read-only view.
- */
+/** Whether this address is the owner, a collaborator or a minter of the collection. */
 export function hasCollectionRole(collection: Collection, address: string | undefined): boolean {
   if (!address) return false
   return collection.owner.toLowerCase() === address.toLowerCase() || getCollectionRole(collection, address) !== null
+}
+
+/**
+ * Published collections are public: any signer may view them read-only, as builder-server serves them.
+ * Drafts stay private to the addresses with a role, so the detail page and editor show "not found" otherwise.
+ */
+export function canViewCollection(collection: Collection, address: string | undefined): boolean {
+  return !!address && (collection.isPublished || hasCollectionRole(collection, address))
 }
 
 /** Owners and collaborators (managers) may change a collection's items; minters only sell them. */

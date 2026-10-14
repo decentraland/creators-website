@@ -103,6 +103,7 @@
     "rename": "重命名系列",
     "add_items": "添加物品",
     "open_editor": "打开编辑器",
+    "open_preview": "打开预览",
     "forum_post": "论坛帖子",
     "publish": "发布系列",
     "more_actions": "更多操作",
@@ -674,7 +675,8 @@
   "item_editor": {
     "pick_collection": "选择一个系列，开始编辑其中的物品。",
     "mobile_hint": "编辑功能仅在桌面端可用。您可以在这里预览物品。",
-    "read_only": "此物品为只读：在系列未处于发布过程中时，只有系列所有者和协作者可以编辑。",
+    "read_only": "此物品为只读：只有系列所有者和协作者可以编辑。",
+    "read_only_locked": "系列发布期间，此物品为只读。",
     "save": "保存",
     "revert": "撤销",
     "save_success": "“{name}”已保存。",

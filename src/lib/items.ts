@@ -315,10 +315,12 @@ function getEmoteOutcomeType(item: Item): string {
   return randomizeOutcomes ? 'ro' : 'mo'
 }
 
-/** The item's creator, or anyone who manages its collection, may edit, move, reset or delete it. */
-export function canManageItem(collection: Collection, item: Item, address: string | undefined): boolean {
-  if (!address) return false
-  return item.owner.toLowerCase() === address.toLowerCase() || canManageCollectionItems(collection, address)
+/**
+ * Whoever manages the collection may edit, move, reset or delete its items. Having created the item grants
+ * nothing on its own: builder-server rejects edits from a creator who no longer holds a role on the collection.
+ */
+export function canManageItem(collection: Collection, _item: Item, address: string | undefined): boolean {
+  return canManageCollectionItems(collection, address)
 }
 
 /** Name and thumbnail stay editable after publishing (edits go through curation), but not during the publish lock. */

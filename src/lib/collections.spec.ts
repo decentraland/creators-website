@@ -13,6 +13,7 @@ import {
   getCollectionDisplayStatus,
   getCollectionRole,
   hasCollectionRole,
+  canViewCollection,
   CollectionRole,
   hasBeenApproved,
   isCollectionLocked,
@@ -361,6 +362,15 @@ describe('hasCollectionRole', () => {
     expect(hasCollectionRole(roleCollection, '0xminter')).toBe(true)
     expect(hasCollectionRole(roleCollection, '0xstranger')).toBe(false)
     expect(hasCollectionRole(roleCollection, undefined)).toBe(false)
+  })
+})
+
+describe('canViewCollection', () => {
+  it('opens published collections to anyone signed in, drafts only to addresses with a role', () => {
+    expect(canViewCollection({ ...roleCollection, isPublished: true }, '0xstranger')).toBe(true)
+    expect(canViewCollection({ ...roleCollection, isPublished: true }, undefined)).toBe(false)
+    expect(canViewCollection({ ...roleCollection, isPublished: false }, '0xstranger')).toBe(false)
+    expect(canViewCollection({ ...roleCollection, isPublished: false }, '0xminter')).toBe(true)
   })
 })
 

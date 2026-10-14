@@ -25,6 +25,7 @@ import {
   canManageCollectionItems,
   canSellCollectionItems,
   hasBeenApproved,
+  canViewCollection,
   hasCollectionRole,
   isCollectionLocked,
   isLinkedCollection
@@ -57,7 +58,7 @@ import { useItemSyncs } from '~/hooks/useItemSync'
 import { useCollectionValidation, useRerunItemValidation } from '~/hooks/useCollectionValidation'
 import { ItemSyncStatus, getItemRowStatus, hasPendingChanges, showsItemStatusColumn } from '~/lib/itemSync'
 import { canPushChanges } from '~/lib/curation'
-import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
+import { useCollectionCuration, useCommittee, usePushCuration } from '~/hooks/useCuration'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS, THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { type ItemListing } from '~/lib/listings'
@@ -173,12 +174,18 @@ const CollectionDetailPage = () => {
   )
   // Play Mode is an emote-only attribute; the column exists only while the visible page has emotes.
   const withPlayMode = useMemo(() => results.some(item => item.type === ItemType.EMOTE), [results])
-  useSyncPublishedItems(address, standardCollection, allItems ?? [])
+  const canManage = !!standardCollection && canManageCollectionItems(standardCollection, address)
+  // A reader holds no role: they reached a published collection by link and only browse it.
+  const isReader = !!collection && !hasCollectionRole(collection, address)
+  // builder-server serves a collection's curation to its owner, collaborators and the committee only.
+  const committee = useCommittee(address)
+  const curationAddress = canManage || committee.isCurator ? address : undefined
+  useSyncPublishedItems(canManage ? address : undefined, standardCollection, allItems ?? [])
   useForumPostRecovery(address, standardCollection, allItems ?? [])
   // Price, Sales and Sale Status exist once the collection is published; the owner can put items on sale
   // once it has been approved at least once, even if it is under review again.
   const withMarket = !!standardCollection?.isPublished
-  const status = useCollectionStatus(address, standardCollection)
+  const status = useCollectionStatus(curationAddress, standardCollection)
   const showForumPost = !!standardCollection && isForumPostRelevant(standardCollection, status)
   const statusHint =
     status === CollectionDisplayStatus.REJECTED
@@ -203,8 +210,8 @@ const CollectionDetailPage = () => {
   // `undefined` keeps the price cell blank while the catalog loads; a failed request shows no price rather than an error.
   const listingFor = (item: Item) =>
     listings ? (listings.get(item.tokenId ?? '') ?? null) : listingsQuery.isError ? null : undefined
-  const syncs = useItemSyncs(address, standardCollection, allItems ?? [])
-  const curationQuery = useCollectionCuration(address, standardCollection)
+  const syncs = useItemSyncs(curationAddress, standardCollection, allItems ?? [])
+  const curationQuery = useCollectionCuration(curationAddress, standardCollection)
   const curation = curationQuery.data ?? null
   const pushCuration = usePushCuration(address)
   // Sending changes for review runs the same item checks as publishing before its confirm modal.
@@ -223,13 +230,8 @@ const CollectionDetailPage = () => {
     () =>
       !!standardCollection &&
       curationLoaded &&
-      canPushChanges(
-        standardCollection,
-        curation,
-        hasUnsyncedItems,
-        canManageCollectionItems(standardCollection, address)
-      ),
-    [standardCollection, curationLoaded, curation, hasUnsyncedItems, address]
+      canPushChanges(standardCollection, curation, hasUnsyncedItems, canManage),
+    [standardCollection, curationLoaded, curation, hasUnsyncedItems, canManage]
   )
   // After a rejection the creator asks for a review again, whether it was the first one or a pushed update.
   const pushCopy = curation?.status === 'rejected' ? 'request_review' : 'push_changes'
@@ -238,14 +240,14 @@ const CollectionDetailPage = () => {
     [results, syncs, curation]
   )
   const withStatus = useMemo(
-    () => !!standardCollection && showsItemStatusColumn(standardCollection, rowStatuses.values()),
-    [standardCollection, rowStatuses]
+    () => !!standardCollection && !isReader && showsItemStatusColumn(standardCollection, rowStatuses.values()),
+    [standardCollection, isReader, rowStatuses]
   )
 
   // Drafts check every item; published collections only the items with changes waiting for approval.
-  // Small screens are a viewer and check nothing, unless a gated modal is already open: crossing the
-  // breakpoint mid-check must not empty its results and let it through.
-  const validates = !compact || publishView === 'wizard' || pushView !== 'closed'
+  // Only who can fix the findings checks. Small screens are a viewer and check nothing, unless a gated
+  // modal is already open: crossing the breakpoint mid-check must not empty its results and let it through.
+  const validates = canManage && (!compact || publishView === 'wizard' || pushView !== 'closed')
   const validationItems = useMemo(
     () =>
       !validates || !standardCollection || !allItems
@@ -287,8 +289,7 @@ const CollectionDetailPage = () => {
     thirdParty.isError &&
     thirdParty.error instanceof BuilderServerError &&
     NOT_FOUND_STATUSES.includes(thirdParty.error.status)
-  // builder-server serves published collections to any signer; addresses with no role on it get
-  // the same "not found" as a rejected request, so strangers can't browse other creators' work.
+  // A draft is private: addresses with no role on it get the same "not found" as a rejected request.
   const isNotFound =
     !collectionId ||
     (collectionQuery.isError &&
@@ -299,7 +300,7 @@ const CollectionDetailPage = () => {
         ? !getThirdPartyId(collection) ||
           isThirdPartyNotFound ||
           (!!thirdParty.data && !isThirdPartyManager(thirdParty.data, address))
-        : !hasCollectionRole(collection, address)))
+        : !canViewCollection(collection, address)))
   const isError = !isNotFound && (collectionQuery.isError || itemsQuery.isError || thirdParty.isError)
   const isEmpty = filteredTotal === 0
   const hasItems = total > 0
@@ -461,19 +462,21 @@ const CollectionDetailPage = () => {
         <>
           <S.Header>
             <S.HeaderLeft>
-              <S.BackLink
-                type="button"
-                aria-label={t('collection_detail_page.back')}
-                data-testid="back-to-collections"
-                onClick={() =>
-                  navigate({
-                    pathname: '/collections',
-                    search: listState?.listSearch
-                  })
-                }
-              >
-                <ArrowBackIcon />
-              </S.BackLink>
+              {!isReader && (
+                <S.BackLink
+                  type="button"
+                  aria-label={t('collection_detail_page.back')}
+                  data-testid="back-to-collections"
+                  onClick={() =>
+                    navigate({
+                      pathname: '/collections',
+                      search: listState?.listSearch
+                    })
+                  }
+                >
+                  <ArrowBackIcon />
+                </S.BackLink>
+              )}
               <S.TitleGroup>
                 <S.Title title={collection.name}>{collection.name}</S.Title>
                 {canRename && (
@@ -502,12 +505,14 @@ const CollectionDetailPage = () => {
                   />
                 </Tooltip>
               )}
-              <PreviewCollectionButton
-                collectionId={collection.id}
-                disabled={!hasItems}
-                data-desktop-only
-                data-testid="preview-collection"
-              />
+              {!isReader && (
+                <PreviewCollectionButton
+                  collectionId={collection.id}
+                  disabled={!hasItems}
+                  data-desktop-only
+                  data-testid="preview-collection"
+                />
+              )}
               {showForumPost && (
                 <Button
                   type="button"
@@ -625,7 +630,7 @@ const CollectionDetailPage = () => {
                 onClick={() => navigate(`/collections/editor?collection=${collection.id}`)}
               >
                 <OpenEditorIcon />
-                {t('collection_detail_page.open_editor')}
+                {t(canManage ? 'collection_detail_page.open_editor' : 'collection_detail_page.open_preview')}
               </Button>
               {canAddItems && (
                 <Button variant="secondary" type="button" data-testid="add-items" onClick={openFileBrowser}>

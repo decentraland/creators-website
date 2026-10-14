@@ -35,9 +35,9 @@ export function useItemSyncs(
   // its entity (which would offer Deploy missing entities and Publish changes for nothing).
   const entitiesLoaded = pointers.length === 0 || entitiesQuery.isSuccess
   const curationPending = curationQuery.data?.status === 'pending'
-  // A failed request settles too, read as "nothing pending": edited rows then say Modified where Under review
-  // would be right, which beats never resolving. Publish changes stays hidden, since the page gates it on success.
-  const curationLoaded = !isPublished || curationQuery.isSuccess || curationQuery.isError
+  // A failed or skipped request settles too, read as "nothing pending": edited rows then say Modified where Under
+  // review would be right, which beats never resolving. Publish changes stays hidden, since the page gates it on success.
+  const curationLoaded = !isPublished || !address || curationQuery.isSuccess || curationQuery.isError
   const lookupFailed = pointers.length > 0 && entitiesQuery.isError
 
   return useMemo(() => {
