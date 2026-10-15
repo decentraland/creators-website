@@ -41,6 +41,8 @@
     --nav-h: 64px;
   }
 }
+/* 1024px is breakpoints.laptop in src/styles/theme.ts, where the sub-nav (NavBar.styles.ts) grows to 64px.
+   CSS can't import that constant, so change both together. */
 @media (min-width: 1024px) {
   :root {
     --sub-nav-h: 64px;

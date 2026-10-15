@@ -158,6 +158,9 @@ describe('NavBar', () => {
     scrollTo(20)
     unmount()
     expect(document.body).not.toHaveAttribute('data-scrolled')
+
+    scrollTo(20)
+    expect(document.body).not.toHaveAttribute('data-scrolled')
     scrollTo(0)
   })
 
