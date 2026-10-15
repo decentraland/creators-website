@@ -31,12 +31,11 @@ export const NavbarViolet = styled.div`
 
   /* Bar background: translucent near-black (#161518 at 40%, per the designer) over the page field. It
      deepens to 80% once the page scrolls (body[data-scrolled], set by NavBar) so it doesn't wash out
-     over light content passing underneath. */
+     over light content passing underneath. ui2's own drop shadow is kept, as on sites' navbar. */
   & nav::before {
     background: rgba(22, 21, 24, 0.4);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    box-shadow: none;
     transition: background 0.25s ease;
   }
   body[data-scrolled] & nav::before {

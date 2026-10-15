@@ -32,12 +32,20 @@
   /* Height of the ui2 navbar everything offsets against (body top padding, sub-nav sticky top,
      viewport-filling min-heights). 991px is UI2'S OWN Navbar breakpoint, not one of ours. */
   --nav-h: 92px;
-  --sub-nav-h: 64px;
+  /* Height of the sub-nav band (NavBar.styles.ts): 56px, 64px from ui2's md breakpoint. */
+  --sub-nav-h: 56px;
   --sans: "Inter", "Inter Fallback", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 @media (max-width: 991px) {
   :root {
     --nav-h: 64px;
+  }
+}
+/* 1024px is breakpoints.laptop in src/styles/theme.ts, where the sub-nav (NavBar.styles.ts) grows to 64px.
+   CSS can't import that constant, so change both together. */
+@media (min-width: 1024px) {
+  :root {
+    --sub-nav-h: 64px;
   }
 }
 body[data-no-subnav] {

@@ -65,8 +65,9 @@ const colors = {
   info: '#1764c0',
   infoLight: '#63b4f6',
   infoLighter: '#bbdefb',
-  // Sub-nav band: translucent deep purple (#401458, shop's designer value), deepening on scroll.
-  subnavOverlay: 'rgba(64, 20, 88, 0.2)',
+  // Sub-nav band: translucent deep purple, the same as sites' sub-tab bar.
+  subnavOverlay: 'rgba(39, 5, 55, 0.6)',
+  // Deeper fill for dropdowns over the page (Select).
   subnavOverlayScrolled: 'rgba(64, 20, 88, 0.8)',
   // Translucent white fills for controls on dark surfaces (filter pills, search bars, buttons).
   glass: 'rgba(255, 255, 255, 0.2)',
