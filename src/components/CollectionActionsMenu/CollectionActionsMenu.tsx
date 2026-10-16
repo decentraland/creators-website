@@ -28,6 +28,8 @@ type Props = {
   onSendItems?: () => void
   /** Opens the items in the editor; the header button covers this on desktop, so the item shows only when compact. */
   onPreviewItems?: () => void
+  /** Opens the Create Discount flow; the header button covers this on desktop, so the item shows only when compact. */
+  onCreateDiscount?: () => void
   /** The collection's forum post; the header button covers it on desktop, so the item shows only when compact. */
   forumLink?: string
   /** Opens the collaborators / senders list; without it the owner-only entries are not rendered. */
@@ -43,6 +45,7 @@ export function CollectionActionsMenu({
   label,
   onSendItems,
   onPreviewItems,
+  onCreateDiscount,
   forumLink,
   onManageRoles,
   onDeleted
@@ -66,6 +69,7 @@ export function CollectionActionsMenu({
   // Same for the header's Open Editor button; on mobile the editor is a viewer, hence "Preview".
   const showPreview = compact && !!onPreviewItems
   const showForum = compact && !!forumLink
+  const showDiscount = compact && !!onCreateDiscount
 
   // Linked collections are edited in the legacy builder, which is desktop-only: on small screens there is nothing to offer.
   if (isLinkedCollection(collection)) {
@@ -91,7 +95,7 @@ export function CollectionActionsMenu({
     )
   }
 
-  if (!isOnChain && !canDelete && !showSend && !showPreview && !showForum) return null
+  if (!isOnChain && !canDelete && !showSend && !showPreview && !showForum && !showDiscount) return null
 
   async function copy(text: string | undefined, successKey: string) {
     const copied = !!text && (await copyToClipboard(text))
@@ -125,6 +129,11 @@ export function CollectionActionsMenu({
         {showSend && (
           <ActionsMenuItem testId="send-items-action" onClick={onSendItems}>
             {t('collection_detail_page.send_items')}
+          </ActionsMenuItem>
+        )}
+        {showDiscount && (
+          <ActionsMenuItem testId="create-discount-action" onClick={onCreateDiscount}>
+            {t('collection_discount.create')}
           </ActionsMenuItem>
         )}
         {showForum && (

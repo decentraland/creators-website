@@ -4,13 +4,22 @@
 import { ethers } from 'ethers'
 import { config } from '~/config'
 
-/** `tradeId` identifies the off-chain order behind the listing; a legacy CollectionStore price has none. */
-export type ItemListing = { itemId: string; tradeId?: string } & (
+/**
+ * `tradeId` identifies the off-chain order behind the listing and `tradeContract` the marketplace it was signed for
+ * (lower-cased); a legacy CollectionStore price has neither.
+ */
+export type ItemListing = { itemId: string; tradeId?: string; tradeContract?: string } & (
   { currency: 'credits'; credits: number } | { currency: 'mana'; manaWei: bigint }
 )
 
 type CatalogRow = { itemId: string | null; priceCredits: number; source: 'native' | 'legacy' }
-type ItemRow = { itemId: string; price: string; isOnSale: boolean; tradeId?: string }
+type ItemRow = {
+  itemId: string
+  price: string
+  isOnSale: boolean
+  tradeId?: string | null
+  tradeContractAddress?: string | null
+}
 
 // A collection has at most a few dozen items; the catalog caps `first` at 1000.
 const FIRST = '1000'
@@ -46,14 +55,17 @@ export async function fetchCollectionListings(contractAddress: string): Promise<
     if (row.source === 'native' && row.itemId !== null) credits.set(row.itemId, row.priceCredits)
   }
   const listings = new Map<string, ItemListing>()
-  for (const { itemId, price, isOnSale, tradeId } of items.data ?? []) {
+  for (const { itemId, price, isOnSale, tradeId, tradeContractAddress } of items.data ?? []) {
     if (!isOnSale || price === NO_PRICE || !WEI.test(price)) continue
     const inCredits = credits.get(itemId)
+    const order = tradeId
+      ? { tradeId, ...(tradeContractAddress ? { tradeContract: tradeContractAddress.toLowerCase() } : {}) }
+      : {}
     listings.set(
       itemId,
       inCredits === undefined
-        ? { itemId, tradeId, currency: 'mana', manaWei: BigInt(price) }
-        : { itemId, tradeId, currency: 'credits', credits: inCredits }
+        ? { itemId, ...order, currency: 'mana', manaWei: BigInt(price) }
+        : { itemId, ...order, currency: 'credits', credits: inCredits }
     )
   }
   return listings

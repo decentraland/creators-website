@@ -1513,5 +1513,67 @@
   },
   "preview_collection_button": {
     "label": "在 Decentraland 中预览"
+  },
+  "collection_discount": {
+    "create": "创建折扣",
+    "title": "创建折扣",
+    "subtitle": "让 {name} 在 Shop 中限时促销。",
+    "pct": {
+      "label": "折扣",
+      "value": "{pct}%",
+      "range": "请选择 {min}% 到 {max}% 之间的折扣。"
+    },
+    "ends": {
+      "label": "结束日期",
+      "hint": "折扣最长可持续 {days} 天，创建后立即生效。"
+    },
+    "limit": {
+      "label": "限制折扣购买次数",
+      "placeholder": "购买次数"
+    },
+    "summary": {
+      "discounted": "{count, plural, other {# 个在售物品}}将享受 {pct}% 折扣。",
+      "unchanged": "{count, plural, other {# 个物品}}保持原价：其上架无法打折。更新价格即可纳入。",
+      "unchanged_mana_off": "{count, plural, other {# 个物品}}保持原价：折扣仅适用于以积分定价的物品。将其余物品的价格改为积分即可纳入。"
+    },
+    "nothing": "此系列没有可打折的上架物品。更新物品价格即可纳入。",
+    "nothing_mana_off": "折扣仅适用于以积分定价的物品，而此系列中没有。将物品价格改为积分即可打折。",
+    "note": "创建折扣只需签名：无需费用，也没有交易。在折扣结束前，买家会在 Shop 中看到优惠价。",
+    "cancel": "取消",
+    "submit": "创建折扣",
+    "confirm_in_wallet": "请在您的钱包中确认",
+    "saving": "正在创建您的折扣…",
+    "success": {
+      "title": "您的折扣已生效",
+      "description": "买家现在可以在 Shop 中看到优惠价。您可以随时在此页面结束折扣。"
+    },
+    "error": {
+      "title": "无法创建您的折扣",
+      "description": "保存时出现问题，未产生任何费用，请重试。",
+      "try_again": "重试"
+    },
+    "list_label": "折扣",
+    "chip": {
+      "off": "{pct}% 折扣",
+      "ends": "{date} 结束",
+      "starts": "{date} 开始",
+      "uses": "已用 {used}/{total}",
+      "others": "{count, plural, other {也适用于另外 # 个系列}}"
+    },
+    "end": {
+      "action": "结束",
+      "title": "结束此折扣？",
+      "description": "您的物品将恢复原价。结束 {pct}% 折扣是从您的钱包发起的 Polygon 交易，需要少量 POL 支付 gas。",
+      "confirm": "结束折扣",
+      "pending": "正在结束您的折扣…",
+      "success_title": "折扣已结束",
+      "success_description": "您的物品已恢复原价，Shop 中可能需要一分钟才会更新。",
+      "error_title": "无法结束您的折扣",
+      "error_description": "交易未完成。请确认您的钱包在 Polygon 上有 POL，然后重试。",
+      "description_multi": "此 {pct}% 折扣还适用于另外 {others, plural, other {# 个系列}}，结束后这些系列也会一并结束。结束折扣是从您的钱包发起的 Polygon 交易，需要少量 POL 支付 gas。",
+      "social_description": "提前结束折扣需要从钱包支付一笔 Polygon 交易，而社交账号登录无法发送。折扣将在结束日期自动结束；如需提前结束，请使用 MetaMask 等钱包登录。",
+      "close": "关闭"
+    },
+    "note_social": "创建折扣只需签名，无需费用。在折扣结束前，买家会在 Shop 中看到优惠价。您使用社交账号登录，无法提前结束折扣，请谨慎选择结束日期。"
   }
 }

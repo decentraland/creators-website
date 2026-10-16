@@ -5,6 +5,7 @@ import {
   ArrowBackIosNew as ArrowBackIcon,
   Edit as EditIcon,
   ForumOutlined as ForumIcon,
+  LocalOfferOutlined as DiscountIcon,
   PersonOutline as PersonOutlineIcon,
   Sync as SyncIcon
 } from '@mui/icons-material'
@@ -35,7 +36,10 @@ import { track } from '~/lib/analytics'
 import { isForumPostRelevant, openForumPost } from '~/lib/forumPost'
 import { cancelCreditsOrder } from '~/lib/credits'
 import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'
-import { type RoleKind } from '~/lib/collectionRoles'
+import { isCollectionOwner, type RoleKind } from '~/lib/collectionRoles'
+import { discountReach } from '~/lib/collectionDiscount'
+import { type CollectionDiscount } from '~/lib/coupons'
+import { getMaticChainId } from '~/lib/publishCollection'
 import { canSendCollectionItems } from '~/lib/mint'
 import { ItemType, canEditItemDetails, canEditItemPrice, type Item } from '~/lib/items'
 import {
@@ -52,6 +56,7 @@ import { useForumPostRecovery } from '~/hooks/useForumPost'
 import { useSyncPublishedItems } from '~/hooks/usePublishCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useCollectionListings } from '~/hooks/useCollectionListings'
+import { useCollectionDiscounts, useDiscountFlags } from '~/hooks/useCollectionDiscounts'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
@@ -87,6 +92,7 @@ import { ValidationGate } from './PublishCollectionModal/ValidationGate'
 import { SellItemFlow, UpdatePriceFlow } from './SellItemFlow'
 import { ManageRolesFlow } from './ManageRolesFlow'
 import { SendItemsFlow } from './SendItemsFlow'
+import { CollectionDiscounts, DiscountFlow, EndDiscountFlow } from './DiscountFlow'
 import * as S from './CollectionDetailPage.styles'
 
 const NOT_FOUND_STATUSES = [401, 403, 404]
@@ -210,6 +216,34 @@ const CollectionDetailPage = () => {
   // `undefined` keeps the price cell blank while the catalog loads; a failed request shows no price rather than an error.
   const listingFor = (item: Item) =>
     listings ? (listings.get(item.tokenId ?? '') ?? null) : listingsQuery.isError ? null : undefined
+  const discountFlags = useDiscountFlags()
+  // Only the collection's creator can sign a discount over it: marketplace-server checks the on-chain creator.
+  // Running discounts stay listed and endable whatever the flags say: turning creation off must not strand them.
+  const canManageDiscounts =
+    isApprovedForSale && !!standardCollection?.contractAddress && isCollectionOwner(standardCollection, address)
+  // Offered once something is listed, even if none of it can take a discount: the modal explains what to change.
+  const canCreateDiscount =
+    canManageDiscounts && discountFlags.enabled && discountFlags.manaListings !== undefined && !!listings?.size
+  const { discounts: openDiscounts } = useCollectionDiscounts(
+    canManageDiscounts ? address : undefined,
+    standardCollection?.contractAddress
+  )
+  const reach = useMemo(
+    () =>
+      listings
+        ? discountReach(listings.values(), { chainId: getMaticChainId(), manaListings: !!discountFlags.manaListings })
+        : null,
+    [listings, discountFlags.manaListings]
+  )
+  const [discountOpen, setDiscountOpen] = useState(false)
+  const [endingDiscount, setEndingDiscount] = useState<CollectionDiscount | null>(null)
+  const openDiscount = useCallback(
+    (source: 'header' | 'menu') => {
+      if (collection) track('Open create collection discount', { collectionId: collection.id, source })
+      setDiscountOpen(true)
+    },
+    [collection]
+  )
   const syncs = useItemSyncs(curationAddress, standardCollection, allItems ?? [])
   const curationQuery = useCollectionCuration(curationAddress, standardCollection)
   const curation = curationQuery.data ?? null
@@ -592,11 +626,24 @@ const CollectionDetailPage = () => {
                   </Button>
                 </Tooltip>
               )}
+              {canCreateDiscount && (
+                <Button
+                  type="button"
+                  variant="dark"
+                  data-desktop-only
+                  data-testid="create-discount"
+                  onClick={() => openDiscount('header')}
+                >
+                  <DiscountIcon fontSize="small" />
+                  {t('collection_discount.create')}
+                </Button>
+              )}
               {address && (
                 <CollectionActionsMenu
                   collection={collection}
                   address={address}
                   onSendItems={canSend ? () => setSending(true) : undefined}
+                  onCreateDiscount={canCreateDiscount ? () => openDiscount('menu') : undefined}
                   onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
                   forumLink={showForumPost ? collection.forumLink : undefined}
                   onManageRoles={setManagingRoles}
@@ -605,6 +652,9 @@ const CollectionDetailPage = () => {
               )}
             </S.HeaderActions>
           </S.Header>
+          {canManageDiscounts && openDiscounts && (
+            <CollectionDiscounts discounts={openDiscounts} onEnd={setEndingDiscount} />
+          )}
 
           <S.SubHeader>
             <S.FilterChips data-testid="type-filters">
@@ -873,6 +923,23 @@ const CollectionDetailPage = () => {
               listing={priceEdit.listing}
               session={session}
               onClose={() => setPriceEdit(null)}
+            />
+          )}
+          {discountOpen && session && reach && (
+            <DiscountFlow
+              collection={collection}
+              session={session}
+              reach={reach}
+              manaListings={!!discountFlags.manaListings}
+              onClose={() => setDiscountOpen(false)}
+            />
+          )}
+          {endingDiscount && session && (
+            <EndDiscountFlow
+              discount={endingDiscount}
+              collection={collection}
+              session={session}
+              onClose={() => setEndingDiscount(null)}
             />
           )}
           {sellingItem && session && (

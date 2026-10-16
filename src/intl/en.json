@@ -1513,5 +1513,67 @@
   },
   "preview_collection_button": {
     "label": "Preview in Decentraland"
+  },
+  "collection_discount": {
+    "create": "Create discount",
+    "title": "Create a discount",
+    "subtitle": "Put {name} on sale in the Shop for a limited time.",
+    "pct": {
+      "label": "Discount",
+      "value": "{pct}%",
+      "range": "Choose a discount between {min}% and {max}%."
+    },
+    "ends": {
+      "label": "Ends on",
+      "hint": "A discount can run for up to {days} days. It starts as soon as you create it."
+    },
+    "limit": {
+      "label": "Limit discounted purchases",
+      "placeholder": "Number of purchases"
+    },
+    "summary": {
+      "discounted": "{count, plural, one {# item on sale} other {# items on sale}} will be {pct}% off.",
+      "unchanged": "{count, plural, one {# item keeps its price} other {# items keep their price}}: its listing can't take a discount. Update the price to include it.",
+      "unchanged_mana_off": "{count, plural, one {# item keeps its price} other {# items keep their price}}: discounts apply to items priced in Credits. Update the price of the rest to Credits to include them."
+    },
+    "nothing": "None of this collection's listings can take a discount. Update an item's price to include it.",
+    "nothing_mana_off": "Discounts apply to items priced in Credits, and none of this collection's are. Update an item's price to Credits to discount it.",
+    "note": "Creating a discount only takes a signature: there's no fee and no transaction. Buyers see the reduced price in the Shop until it ends.",
+    "cancel": "Cancel",
+    "submit": "Create discount",
+    "confirm_in_wallet": "Confirm in your wallet",
+    "saving": "Creating your discount…",
+    "success": {
+      "title": "Your discount is live",
+      "description": "Buyers now see the reduced price in the Shop. You can end it any time from this page."
+    },
+    "error": {
+      "title": "We couldn't create your discount",
+      "description": "Something went wrong while saving it. Nothing was charged; please try again.",
+      "try_again": "Try again"
+    },
+    "list_label": "Discounts",
+    "chip": {
+      "off": "{pct}% off",
+      "ends": "Ends {date}",
+      "starts": "Starts {date}",
+      "uses": "{used} of {total} used",
+      "others": "{count, plural, one {Also on # other collection} other {Also on # other collections}}"
+    },
+    "end": {
+      "action": "End",
+      "title": "End this discount?",
+      "description": "Your items go back to their regular price. Ending the {pct}% discount is a Polygon transaction sent from your wallet, so it needs a little POL for gas.",
+      "confirm": "End discount",
+      "pending": "Ending your discount…",
+      "success_title": "Discount ended",
+      "success_description": "Your items are back at their regular price. It can take a minute to show in the Shop.",
+      "error_title": "We couldn't end your discount",
+      "error_description": "The transaction didn't go through. Check that your wallet has POL on Polygon and try again.",
+      "description_multi": "This {pct}% discount also covers {others, plural, one {# other collection} other {# other collections}}, and ending it ends it there too. Ending it is a Polygon transaction sent from your wallet, so it needs a little POL for gas.",
+      "social_description": "Ending a discount early is a Polygon transaction paid from a wallet, which accounts signed in with a social login can't send. It ends on its date; to end it sooner, sign in with a wallet such as MetaMask.",
+      "close": "Close"
+    },
+    "note_social": "Creating a discount only takes a signature: there's no fee. Buyers see the reduced price in the Shop until it ends. Signed in with a social account, you can't end it early, so pick the end date carefully."
   }
 }

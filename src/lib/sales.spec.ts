@@ -316,14 +316,32 @@ describe('sellItem', () => {
     expect(signed.checks.salt).toMatch(/^0x[0-9a-f]{64}$/)
     expect(deps.onSigned).toHaveBeenCalledTimes(1)
     expect(deps.createTrade).toHaveBeenCalledWith({ ...signed, signature: '0xsignature' })
-    expect(result).toEqual({ itemId: '3', tradeId: 'trade-1', currency: 'credits', credits: 50 })
+    expect(result).toEqual({
+      itemId: '3',
+      tradeId: 'trade-1',
+      tradeContract: MARKETPLACE_V3.toLowerCase(),
+      currency: 'credits',
+      credits: 50
+    })
   })
 
   it('answers a free listing for a giveaway and a MANA listing for a MANA price', async () => {
     const free = await sellItem({ ...params, price: { kind: 'free' } }, makeDeps())
-    expect(free).toEqual({ itemId: '3', tradeId: 'trade-1', currency: 'mana', manaWei: 0n })
+    expect(free).toEqual({
+      itemId: '3',
+      tradeId: 'trade-1',
+      tradeContract: MARKETPLACE_V3.toLowerCase(),
+      currency: 'mana',
+      manaWei: 0n
+    })
     const mana = await sellItem({ ...params, price: { kind: 'mana', manaWei: 10n ** 18n } }, makeDeps())
-    expect(mana).toEqual({ itemId: '3', tradeId: 'trade-1', currency: 'mana', manaWei: 10n ** 18n })
+    expect(mana).toEqual({
+      itemId: '3',
+      tradeId: 'trade-1',
+      tradeContract: MARKETPLACE_V3.toLowerCase(),
+      currency: 'mana',
+      manaWei: 10n ** 18n
+    })
   })
 
   it('maps a dismissed wallet prompt to a rejection without storing anything', async () => {
@@ -447,7 +465,13 @@ describe('updating the price', () => {
     const signed = deps.signTrade.mock.calls[0][0]
     expect(signed.received[0]).toMatchObject({ amount: creditsToUsdWei(80), beneficiary: BENEFICIARY })
     expect(signed.checks.expiration).toBe(NO_EXPIRATION)
-    expect(listing).toEqual({ itemId: '3', tradeId: 'trade-2', currency: 'credits', credits: 80 })
+    expect(listing).toEqual({
+      itemId: '3',
+      tradeId: 'trade-2',
+      tradeContract: MARKETPLACE_V3.toLowerCase(),
+      currency: 'credits',
+      credits: 80
+    })
   })
 
   it('can switch the listing to MANA, keeping the same terms', async () => {
@@ -476,7 +500,13 @@ describe('updating the price', () => {
       amount: '1000000000000000000',
       beneficiary: BENEFICIARY
     })
-    expect(listing).toEqual({ itemId: '3', tradeId: 'trade-2', currency: 'mana', manaWei: 10n ** 18n })
+    expect(listing).toEqual({
+      itemId: '3',
+      tradeId: 'trade-2',
+      tradeContract: MARKETPLACE_V3.toLowerCase(),
+      currency: 'mana',
+      manaWei: 10n ** 18n
+    })
   })
 
   it('refuses a sold-out item before cancelling its order', async () => {

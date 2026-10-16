@@ -59,6 +59,78 @@ export async function sendContractTransaction(session: Session, call: ContractCa
   )
 }
 
+// Wallets that don't know the chain yet (EIP-3085) answer a switch with 4902 and need it added first.
+const ADD_CHAIN_PARAMS: Record<number, object> = {
+  137: {
+    chainId: '0x89',
+    chainName: 'Polygon',
+    nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
+    rpcUrls: ['https://polygon-rpc.com'],
+    blockExplorerUrls: ['https://polygonscan.com']
+  },
+  80002: {
+    chainId: '0x13882',
+    chainName: 'Polygon Amoy',
+    nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
+    rpcUrls: ['https://rpc-amoy.polygon.technology'],
+    blockExplorerUrls: ['https://amoy.polygonscan.com']
+  }
+}
+
+// MetaMask mobile wraps the 4902 in an internal error.
+function isUnknownChain(error: unknown): boolean {
+  const { code, data } = (error ?? {}) as { code?: number; data?: { originalError?: { code?: number } } }
+  return code === 4902 || data?.originalError?.code === 4902
+}
+
+async function switchWalletChain(session: Session, chainId: number): Promise<void> {
+  try {
+    await session.web3Provider.send('wallet_switchEthereumChain', [{ chainId: ethers.utils.hexValue(chainId) }])
+  } catch (error) {
+    const add = ADD_CHAIN_PARAMS[chainId]
+    if (!isUnknownChain(error) || !add) throw error
+    await session.web3Provider.send('wallet_addEthereumChain', [add])
+  }
+}
+
+/** The wallet is still on another chain after being asked to switch: nothing was sent. */
+export class WrongChainError extends Error {
+  constructor(
+    public expected: number,
+    public actual: number
+  ) {
+    super(`The wallet is on chain ${actual}, not ${expected}`)
+    this.name = 'WrongChainError'
+  }
+}
+
+// Amoy enforces a ~25 gwei minimum tip and wallets often propose less, so the RPC rejects the transaction.
+function gasOverrides(chainId: number): ethers.providers.TransactionRequest {
+  if (chainId !== 80002) return {}
+  const tip = ethers.utils.parseUnits('30', 'gwei')
+  return { maxPriorityFeePerGas: tip, maxFeePerGas: tip.add(ethers.utils.parseUnits('50', 'gwei')) }
+}
+
+/**
+ * Sends the call from the wallet itself, moving it to the contract's chain first, for contracts that take no
+ * meta-transactions: the wallet pays the gas. Call it from a click, since wallets refuse unprompted chain switches.
+ * The network is read again after the switch: some providers (Magic) answer it without moving the wallet.
+ */
+export async function sendWalletTransaction(session: Session, call: ContractCall): Promise<string> {
+  const chainId = Number(call.contract.chainId)
+  if ((await session.web3Provider.getNetwork()).chainId !== chainId) {
+    await switchWalletChain(session, chainId)
+    const current = (await session.web3Provider.getNetwork()).chainId
+    if (current !== chainId) throw new WrongChainError(chainId, current)
+  }
+  const tx = await session.signer.sendTransaction({
+    to: call.contract.address,
+    data: encodeContractCall(call),
+    ...gasOverrides(chainId)
+  })
+  return tx.hash
+}
+
 /** EIP-712 signature of `value` by the connected wallet (an off-chain order, not a transaction). */
 export async function signTypedData(
   session: Session,

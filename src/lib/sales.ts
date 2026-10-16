@@ -330,7 +330,8 @@ export async function sellItem(params: SellItemParams, deps: SellItemDeps): Prom
     deps.onSigned?.()
     const tradeId = await deps.createTrade({ ...trade, signature })
     // The trade id is what lets the row's menu re-price or cancel the listing without a refetch.
-    return toListing(params.item.tokenId!, tradeId, params.price)
+    const tradeContract = getOffchainMarketplaceContract(params.chainId).address.toLowerCase()
+    return { ...toListing(params.item.tokenId!, tradeId, params.price), tradeContract }
   } catch (error) {
     throw toSellItemError(error)
   }

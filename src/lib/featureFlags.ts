@@ -35,7 +35,13 @@ export enum FeatureFlag {
    * VARIANT get the full app, everyone else gets the overview alone. Off (or unreachable) means launched.
    * A curtain, not a lock: the bundle is static and builder-server is public, see `useCreatorsPrelaunch`.
    */
-  CREATORS_PRELAUNCH = 'creators-prelaunch'
+  CREATORS_PRELAUNCH = 'creators-prelaunch',
+  /** Creating and ending collection discounts from the collection page. Off unless the Shop applies them too. */
+  COLLECTION_DISCOUNTS = 'collection-discounts',
+  /** The Shop applies creator discounts for buyers: the one switch that takes every discount away. */
+  SHOP_CREATOR_SALES = 'shop-creator-sales',
+  /** The Shop also discounts MANA listings, so a discount reaches them and not only credits listings. */
+  SHOP_LEGACY_COUPONS = 'shop-legacy-coupons'
 }
 
 /** Each flag lives under the application that owns it, and is fetched from that application's file. */
@@ -50,7 +56,10 @@ const APPLICATION: Record<FeatureFlag, string> = {
   [FeatureFlag.CREDITS_PRIMARY_LISTINGS]: 'builder',
   [FeatureFlag.SHOP_CREDITS_FOR_COLLECTIONS_FEE]: 'builder',
   [FeatureFlag.BLOCK_PUBLISH_ON_VALIDATION_ERRORS]: 'builder',
-  [FeatureFlag.CREATORS_PRELAUNCH]: 'builder'
+  [FeatureFlag.CREATORS_PRELAUNCH]: 'builder',
+  [FeatureFlag.COLLECTION_DISCOUNTS]: 'builder',
+  [FeatureFlag.SHOP_CREATOR_SALES]: 'dapps',
+  [FeatureFlag.SHOP_LEGACY_COUPONS]: 'dapps'
 }
 
 const TTL_MS = 60_000
