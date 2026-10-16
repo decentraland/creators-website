@@ -14,7 +14,9 @@ import {
   UNCAPPED_USES,
   buildEndDiscountCall,
   collectionsRoot,
+  couponTypedValues,
   createDiscount,
+  encodeCouponData,
   endDiscount,
   fetchCreatorDiscounts,
   getCouponContracts,
@@ -244,8 +246,14 @@ describe("when reading a discount's status", () => {
 })
 
 describe("when picking a collection's open discounts", () => {
-  const discount = (id: string, collections: string[], effective: number, expiration: number, status = 'active') =>
-    ({ id, collections, status, checks: { effective, expiration } }) as unknown as CollectionDiscount
+  const discount = (
+    id: string,
+    collections: string[],
+    effective: number,
+    expiration: number,
+    status = 'active',
+    discountType = 1
+  ) => ({ id, collections, status, discountType, checks: { effective, expiration } }) as unknown as CollectionDiscount
 
   it('should keep the running and scheduled ones over that collection, soonest-ending first', () => {
     const open = openDiscountsFor(
@@ -261,6 +269,12 @@ describe("when picking a collection's open discounts", () => {
     )
     expect(open.map(d => d.id)).toEqual(['scheduled', 'later'])
   })
+
+  // A flat-amount coupon signed elsewhere has no percentage to show or rebuild here.
+  it('should leave out discounts that are not a percentage', () => {
+    const flat = discount('flat', [COLLECTION.toLowerCase()], NOW - DAY, NOW + DAY, 'active', 2)
+    expect(openDiscountsFor([flat], COLLECTION, NOW)).toEqual([])
+  })
 })
 
 describe('when ending a discount', () => {
@@ -272,7 +286,23 @@ describe('when ending a discount', () => {
   // Cancelling on any other manager succeeds on chain and leaves the coupon redeemable.
   it('should cancel it on the manager it was signed against', async () => {
     expect(buildEndDiscountCall(await signedDiscount()).contract.address).toBe(V3_MANAGER)
-    const older = await signedDiscount({ couponManager: V2_MANAGER.toLowerCase() })
+    const v3 = await signedDiscount()
+    const v2 = getCouponManager(ContractName.OffChainMarketplaceV2, CHAIN_ID)
+    const v2Domain = {
+      name: v2.name,
+      version: v2.version,
+      salt: ethers.utils.hexZeroPad(ethers.utils.hexlify(CHAIN_ID), 32),
+      verifyingContract: v2.address
+    }
+    const older = {
+      ...v3,
+      couponManager: V2_MANAGER.toLowerCase(),
+      signature: await wallet._signTypedData(
+        v2Domain,
+        COUPON_TYPES,
+        couponTypedValues(v3.checks, v3.couponAddress, encodeCouponData(v3.discount, v3.root))
+      )
+    }
     expect(buildEndDiscountCall(older).contract.address).toBe(V2_MANAGER)
   })
 
@@ -306,6 +336,12 @@ describe('when ending a discount', () => {
     expect(ethers.utils.verifyTypedData(domain, COUPON_TYPES, value, coupon.signature)).toBe(wallet.address)
   })
 
+  // The manager records any digest it is handed, so a payload that is not the signed coupon ends nothing.
+  it('should refuse to send a cancellation that does not rebuild to the signed coupon', async () => {
+    const tampered = { ...(await signedDiscount()), discount: 500_000 }
+    expect(() => buildEndDiscountCall(tampered)).toThrow('does not rebuild')
+  })
+
   it('should refuse to send anything to a manager this build does not know', async () => {
     const discount = await signedDiscount({ couponManager: '0x00000000000000000000000000000000000000ee' })
     expect(() => buildEndDiscountCall(discount)).toThrow('Unknown coupon manager')
@@ -322,6 +358,17 @@ describe('when ending a discount', () => {
       })
     ).rejects.toMatchObject({ reason: 'generic' })
     expect(onSigned).toHaveBeenCalledTimes(1)
+  })
+
+  // It may still mine, so it must not read as a failure the creator retries (and pays for) again.
+  it('should report a cancellation that is taking too long as still pending', async () => {
+    const discount = await signedDiscount()
+    await expect(
+      endDiscount(discount, {
+        sendTransaction: vi.fn().mockResolvedValue('0xhash'),
+        waitForTransaction: vi.fn().mockRejectedValue(Object.assign(new Error('timeout exceeded'), { code: 'TIMEOUT' }))
+      })
+    ).rejects.toMatchObject({ reason: 'pending' })
   })
 
   it('should read a dismissed wallet prompt as the creator backing out', async () => {

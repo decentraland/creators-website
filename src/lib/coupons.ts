@@ -126,8 +126,8 @@ export function collectionsRoot(collections: string[]): string {
 }
 
 /** `abi.encode(CollectionDiscountCouponData)`: what the creator signs and the contract decodes. */
-export function encodeCouponData(discountPpm: number, root: string): string {
-  return ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256', 'bytes32'], [DISCOUNT_TYPE_RATE, discountPpm, root])
+export function encodeCouponData(discount: number, root: string, discountType = DISCOUNT_TYPE_RATE): string {
+  return ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256', 'bytes32'], [discountType, discount, root])
 }
 
 export const COUPON_TYPES: Record<string, ethers.TypedDataField[]> = {
@@ -160,7 +160,7 @@ function onChainChecks(checks: TradeChecks) {
     contractSignatureIndex: checks.contractSignatureIndex,
     signerSignatureIndex: checks.signerSignatureIndex,
     allowedRoot: ethers.utils.hexZeroPad(checks.allowedRoot || '0x', 32),
-    externalChecks: []
+    externalChecks: checks.externalChecks ?? []
   }
 }
 
@@ -220,7 +220,8 @@ export function validateDiscountTerms(terms: DiscountTerms, now = Date.now()): v
     throw new DiscountInputError('uses')
 }
 
-export type DiscountFailureReason = 'rejected' | 'generic'
+/** `pending`: the cancellation was sent but not seen mined in time; it may still go through, so never resend it. */
+export type DiscountFailureReason = 'rejected' | 'pending' | 'generic'
 
 export class DiscountError extends Error {
   constructor(
@@ -373,13 +374,17 @@ export function openDiscountsFor(
   now = Date.now()
 ): CollectionDiscount[] {
   const collection = contractAddress.toLowerCase()
-  return discounts
-    .filter(discount => discount.collections.some(c => c.toLowerCase() === collection))
-    .filter(discount => {
-      const status = liveDiscountStatus(discount, now)
-      return status === 'active' || status === 'scheduled'
-    })
-    .sort((a, b) => a.checks.expiration - b.checks.expiration)
+  return (
+    discounts
+      // Only percentage discounts, the kind this app signs and can describe.
+      .filter(discount => discount.discountType === DISCOUNT_TYPE_RATE)
+      .filter(discount => discount.collections.some(c => c.toLowerCase() === collection))
+      .filter(discount => {
+        const status = liveDiscountStatus(discount, now)
+        return status === 'active' || status === 'scheduled'
+      })
+      .sort((a, b) => a.checks.expiration - b.checks.expiration)
+  )
 }
 
 /** Whether the creator limited how many discounted purchases it allows. */
@@ -402,6 +407,26 @@ export function buildEndDiscountCall(discount: CollectionDiscount): ContractCall
   if (!manager) {
     throw new DiscountError('generic', `Unknown coupon manager ${discount.couponManager} on chain ${discount.chainId}`)
   }
+  // The manager records `keccak256(caller, digest)` without checking the signature, so a coupon rebuilt with any
+  // field off mines fine and cancels nothing. Rebuilt from the row's own fields, and sent only if it is provably
+  // the coupon its signer signed.
+  const checks = onChainChecks(discount.checks)
+  const data = encodeCouponData(discount.discount, discount.root, discount.discountType)
+  const domain = couponDomain(discount.chainId, { couponManager: manager, coupon: discount.couponAddress })
+  let recovered: string
+  try {
+    recovered = ethers.utils.verifyTypedData(
+      domain,
+      COUPON_TYPES,
+      { checks, couponAddress: discount.couponAddress, data },
+      discount.signature
+    )
+  } catch {
+    recovered = ''
+  }
+  if (recovered.toLowerCase() !== discount.signer.toLowerCase()) {
+    throw new DiscountError('generic', `Discount ${discount.id} does not rebuild to the coupon its signer signed`)
+  }
   return {
     contract: manager,
     method: 'cancelSignature',
@@ -409,9 +434,9 @@ export function buildEndDiscountCall(discount: CollectionDiscount): ContractCall
       [
         {
           signature: discount.signature,
-          checks: { ...onChainChecks(discount.checks), allowedProof: [] },
+          checks: { ...checks, allowedProof: [] },
           couponAddress: discount.couponAddress,
-          data: encodeCouponData(discount.discount, discount.root),
+          data,
           callerData: '0x'
         }
       ]
@@ -431,9 +456,16 @@ export async function endDiscount(discount: CollectionDiscount, deps: EndDiscoun
   try {
     const txHash = await deps.sendTransaction(buildEndDiscountCall(discount))
     deps.onSigned?.()
-    if (!(await deps.waitForTransaction(txHash))) {
-      throw new DiscountError('generic', 'The end discount transaction reverted')
+    let mined: boolean
+    try {
+      mined = await deps.waitForTransaction(txHash)
+    } catch (error) {
+      if ((error as { code?: string }).code === 'TIMEOUT') {
+        throw new DiscountError('pending', `The end discount transaction ${txHash} is still pending`)
+      }
+      throw error
     }
+    if (!mined) throw new DiscountError('generic', 'The end discount transaction reverted')
   } catch (error) {
     throw toDiscountError(error)
   }

@@ -218,9 +218,12 @@ const CollectionDetailPage = () => {
     listings ? (listings.get(item.tokenId ?? '') ?? null) : listingsQuery.isError ? null : undefined
   const discountFlags = useDiscountFlags()
   // Only the collection's creator can sign a discount over it: marketplace-server checks the on-chain creator.
-  // Running discounts stay listed and endable whatever the flags say: turning creation off must not strand them.
+  // While the Shop applies discounts, running ones stay listed and endable even with creation off here.
   const canManageDiscounts =
-    isApprovedForSale && !!standardCollection?.contractAddress && isCollectionOwner(standardCollection, address)
+    isApprovedForSale &&
+    discountFlags.shopApplies &&
+    !!standardCollection?.contractAddress &&
+    isCollectionOwner(standardCollection, address)
   // Offered once something is listed, even if none of it can take a discount: the modal explains what to change.
   const canCreateDiscount =
     canManageDiscounts && discountFlags.enabled && discountFlags.manaListings !== undefined && !!listings?.size

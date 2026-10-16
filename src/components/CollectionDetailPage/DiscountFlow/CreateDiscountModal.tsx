@@ -76,6 +76,8 @@ type Props = {
   busy: boolean
   /** Ending a discount is a wallet transaction a social login can't send, so it runs until its date. */
   canEndEarly: boolean
+  /** Nothing closes the dialog: the signature is in flight with no prompt to back out of. */
+  closeLocked: boolean
   onSubmit: (values: DiscountFormValues, submission: DiscountSubmission) => void
   onClose: () => void
 }
@@ -88,6 +90,7 @@ export function CreateDiscountModal({
   initialValues,
   busy,
   canEndEarly,
+  closeLocked,
   onSubmit,
   onClose
 }: Props) {
@@ -121,7 +124,12 @@ export function CreateDiscountModal({
   }
 
   return (
-    <Modal title={t('collection_discount.title')} onClose={onClose} closeDisabled={busy} testId="create-discount-modal">
+    <Modal
+      title={t('collection_discount.title')}
+      onClose={onClose}
+      closeDisabled={closeLocked}
+      testId="create-discount-modal"
+    >
       <S.Divider />
       <S.Form onSubmit={handleSubmit} data-testid="create-discount-form">
         <S.Fields data-busy={busy || undefined} aria-busy={busy || undefined} {...(busy ? { inert: '' } : {})}>
@@ -261,7 +269,13 @@ export function CreateDiscountModal({
         </S.Fields>
 
         <S.Footer>
-          <Button type="button" variant="secondary" disabled={busy} data-testid="discount-cancel" onClick={onClose}>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={closeLocked}
+            data-testid="discount-cancel"
+            onClick={onClose}
+          >
             {t('collection_discount.cancel')}
           </Button>
           <Button type="submit" loading={busy} disabled={!canSubmit} data-testid="discount-submit">

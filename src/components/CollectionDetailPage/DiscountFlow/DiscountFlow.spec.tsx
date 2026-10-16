@@ -3,7 +3,7 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ProviderType } from '@dcl/schemas'
 import { type DiscountReach } from '~/lib/collectionDiscount'
-import { type CollectionDiscount } from '~/lib/coupons'
+import { DiscountError, type CollectionDiscount } from '~/lib/coupons'
 import { Providers, collection, makeSession } from '../SellItemFlow/testUtils'
 import { CollectionDiscounts } from './CollectionDiscounts'
 import { toDiscountSubmission } from './CreateDiscountModal'
@@ -88,6 +88,23 @@ describe('when a creator creates a discount', () => {
     expect(screen.getByTestId('success-modal-title')).toHaveTextContent(/your discount is live/i)
     await userEvent.click(screen.getByTestId('success-modal-done'))
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('should not promise a social-login creator they can end it early', async () => {
+    render(
+      <DiscountFlow
+        collection={collection}
+        session={makeSession(ProviderType.MAGIC)}
+        reach={reach}
+        manaListings={false}
+        onClose={vi.fn()}
+      />,
+      { wrapper: Providers }
+    )
+    expect(screen.getByTestId('create-discount-form')).toHaveTextContent(/can't end it early/i)
+    await userEvent.click(screen.getByTestId('discount-submit'))
+    await act(async () => lastCreate()[1].onSuccess?.())
+    expect(screen.getByTestId('success-modal-description')).not.toHaveTextContent(/end it any time/i)
   })
 
   it('should explain why and not offer to sign when none of the listings can take it', () => {
@@ -184,6 +201,14 @@ describe('when a creator ends a discount', () => {
     expect(screen.getByTestId('end-discount-pending-label')).toHaveTextContent(/ending your discount/i)
     await act(async () => lastEnd()[1].onSuccess?.())
     expect(screen.getByTestId('success-modal-title')).toHaveTextContent(/discount ended/i)
+  })
+
+  it('should not offer a second paid cancellation while the first one is still mining', async () => {
+    renderEnd()
+    await userEvent.click(screen.getByTestId('end-discount-confirm'))
+    await act(async () => lastEnd()[1].onError?.(new DiscountError('pending')))
+    expect(screen.getByTestId('end-discount-slow-modal-description')).toHaveTextContent(/don't send it again/i)
+    expect(screen.queryByTestId('end-discount-error-retry')).not.toBeInTheDocument()
   })
 
   it('should return to the confirmation on a dismissed wallet and offer a retry on a failure', async () => {

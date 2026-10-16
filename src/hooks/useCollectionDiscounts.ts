@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
-import { sendWalletTransaction, signTypedData, waitForTransaction, type Session } from '~/lib/auth'
+import { requireAccount, sendWalletTransaction, signTypedData, waitForTransaction, type Session } from '~/lib/auth'
 import { errorCode, track } from '~/lib/analytics'
 import {
   DiscountError,
@@ -10,6 +10,7 @@ import {
   openDiscountsFor,
   postCoupon,
   readCouponIndexes,
+  toDiscountError,
   type CollectionDiscount,
   type DiscountTerms
 } from '~/lib/coupons'
@@ -33,7 +34,9 @@ const END_TIMEOUT_MS = 5 * 60_000
 const discountsKey = (address: string | undefined) => ['collection-discounts', address?.toLowerCase()]
 
 export type DiscountFlags = {
-  /** Creators may create and end discounts here, and the Shop applies them for buyers. */
+  /** The Shop applies creator discounts for buyers, so running ones matter and can be ended here. */
+  shopApplies: boolean
+  /** Creators may also create discounts here. */
   enabled: boolean
   /** The Shop discounts MANA listings too. `undefined` while that is still being read. */
   manaListings: boolean | undefined
@@ -41,11 +44,11 @@ export type DiscountFlags = {
 
 /** Both switches a discount needs (this app's and the Shop's), plus whether it reaches MANA listings. */
 export function useDiscountFlags(): DiscountFlags {
-  const own = useFeatureFlag(FeatureFlag.COLLECTION_DISCOUNTS)
-  const shop = useFeatureFlag(FeatureFlag.SHOP_CREATOR_SALES, { enabled: own.enabled })
+  const shop = useFeatureFlag(FeatureFlag.SHOP_CREATOR_SALES)
+  const own = useFeatureFlag(FeatureFlag.COLLECTION_DISCOUNTS, { enabled: shop.enabled })
   const enabled = own.enabled && shop.enabled
   const mana = useFeatureFlag(FeatureFlag.SHOP_LEGACY_COUPONS, { enabled })
-  return { enabled, manaListings: mana.isLoading ? undefined : mana.enabled }
+  return { shopApplies: shop.enabled, enabled, manaListings: mana.isLoading ? undefined : mana.enabled }
 }
 
 /** The collection's running and scheduled discounts, signed by `address`. Off without either. */
@@ -56,12 +59,18 @@ export function useCollectionDiscounts(address: string | undefined, contractAddr
     enabled: !!address && !!contractAddress,
     staleTime: 30_000
   })
+  // Re-evaluated every minute, so a discount that ran out loses its End button without a refetch.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(timer)
+  }, [])
   const discounts = useMemo(
     () =>
       query.data && contractAddress
-        ? openDiscountsFor(query.data, contractAddress).filter(discount => !endedInSession.has(discount.id))
+        ? openDiscountsFor(query.data, contractAddress, now).filter(discount => !endedInSession.has(discount.id))
         : undefined,
-    [query.data, contractAddress]
+    [query.data, contractAddress, now]
   )
   return { ...query, discounts }
 }
@@ -71,7 +80,13 @@ function updateDiscounts(
   address: string,
   update: (discounts: CollectionDiscount[]) => CollectionDiscount[]
 ) {
-  queryClient.setQueryData<CollectionDiscount[]>(discountsKey(address), current => update(current ?? []))
+  const key = discountsKey(address)
+  // A list that never loaded is refetched rather than seeded: seeding it would hide every other discount.
+  if (queryClient.getQueryData<CollectionDiscount[]>(key)) {
+    queryClient.setQueryData<CollectionDiscount[]>(key, current => update(current!))
+  } else {
+    void queryClient.invalidateQueries({ queryKey: key })
+  }
 }
 
 export type CreateDiscountVariables = Omit<DiscountTerms, 'collections'> & {
@@ -111,7 +126,11 @@ export function useCreateDiscount(session: Session | null) {
         },
         {
           readIndexes: readCouponIndexes,
-          signTypedData: (domain, types, value) => signTypedData(session, domain, types, value),
+          // The coupon is posted as `session.address`: signed by another account, the server would refuse it.
+          signTypedData: async (domain, types, value) => {
+            await requireAccount(session)
+            return signTypedData(session, domain, types, value)
+          },
           postCoupon: payload => postCoupon(session.address, payload),
           onSigned
         }
@@ -161,11 +180,14 @@ export function useEndDiscount(session: Session | null) {
         )
       }
     },
-    onError: (error, { discount, collection }) =>
+    onError: (error, { discount, collection }) => {
+      // Sent but not seen mined: it may still go through, so End must not be offered for it again in this tab.
+      if (toDiscountError(error).reason === 'pending') endedInSession.add(discount.id)
       track(DISCOUNT_END_FAILED_EVENT, {
         collectionId: collection.id,
         discountId: discount.id,
         error: errorCode(error)
       })
+    }
   })
 }

@@ -10,6 +10,7 @@ export {
 export {
   encodeContractCall,
   readContract,
+  requireAccount,
   sendContractTransaction,
   sendWalletTransaction,
   signTypedData,

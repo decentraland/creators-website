@@ -82,6 +82,8 @@ export function DiscountFlow({ collection, session, reach, manaListings, onClose
           initialValues={values}
           // Also while a prompt the creator backed out of is still open, so it can't be signed twice.
           busy={create.isPending}
+          // A social login signs without a prompt to back out of; anyone else can close while a stale one is open.
+          closeLocked={social && create.isPending}
           canEndEarly={!social}
           onSubmit={submit}
           onClose={onClose}
@@ -106,7 +108,9 @@ export function DiscountFlow({ collection, session, reach, manaListings, onClose
       return (
         <SuccessModal
           title={t('collection_discount.success.title')}
-          description={t('collection_discount.success.description')}
+          description={t(
+            social ? 'collection_discount.success.description_social' : 'collection_discount.success.description'
+          )}
           onDone={onClose}
         />
       )

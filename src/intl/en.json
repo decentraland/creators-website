@@ -1545,7 +1545,8 @@
     "saving": "Creating your discount…",
     "success": {
       "title": "Your discount is live",
-      "description": "Buyers now see the reduced price in the Shop. You can end it any time from this page."
+      "description": "Buyers now see the reduced price in the Shop. You can end it any time from this page.",
+      "description_social": "Buyers now see the reduced price in the Shop until the date you picked."
     },
     "error": {
       "title": "We couldn't create your discount",
@@ -1572,7 +1573,9 @@
       "error_description": "The transaction didn't go through. Check that your wallet has POL on Polygon and try again.",
       "description_multi": "This {pct}% discount also covers {others, plural, one {# other collection} other {# other collections}}, and ending it ends it there too. Ending it is a Polygon transaction sent from your wallet, so it needs a little POL for gas.",
       "social_description": "Ending a discount early is a Polygon transaction paid from a wallet, which accounts signed in with a social login can't send. It ends on its date; to end it sooner, sign in with a wallet such as MetaMask.",
-      "close": "Close"
+      "close": "Close",
+      "slow_title": "Still ending your discount",
+      "slow_description": "Your transaction was sent but is taking longer than usual. It can still go through: check back in a few minutes. Don't send it again, or you'll pay the gas twice."
     },
     "note_social": "Creating a discount only takes a signature: there's no fee. Buyers see the reduced price in the Shop until it ends. Signed in with a social account, you can't end it early, so pick the end date carefully."
   }

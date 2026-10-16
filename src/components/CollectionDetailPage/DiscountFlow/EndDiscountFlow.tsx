@@ -11,7 +11,7 @@ import { ConfirmModal } from '~/components/ConfirmModal'
 import { PendingModal } from '~/components/PendingModal'
 import { SuccessModal } from '~/components/SuccessModal'
 
-type View = 'confirm' | 'pending' | 'success' | 'error'
+type View = 'confirm' | 'pending' | 'success' | 'error' | 'slow'
 
 type Props = {
   discount: CollectionDiscount
@@ -31,6 +31,8 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
   useBeforeUnloadGuard(end.isPending)
 
   function start() {
+    // A prompt the creator backed out of may still be open: a second one would be a second paid cancellation.
+    if (end.isPending) return
     const id = ++attempt.current
     setPhase('confirm')
     setView('pending')
@@ -40,8 +42,14 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
         onSuccess: () => setView('success'),
         onError: cause => {
           if (attempt.current !== id) return
-          if (toDiscountError(cause).reason === 'rejected') {
+          const reason = toDiscountError(cause).reason
+          if (reason === 'rejected') {
             setView('confirm')
+            return
+          }
+          // Sent, just not mined yet: offering a retry would pay for a second cancellation.
+          if (reason === 'pending') {
+            setView('slow')
             return
           }
           captureError(cause, { flow: 'end_collection_discount', collectionId: collection.id, discountId: discount.id })
@@ -75,7 +83,6 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
               : 'collection_discount.end.description',
             { pct: discountPct(discount), others: discount.collections.length - 1 }
           )}
-          busy={end.isPending}
           onClose={onClose}
           cancel={{ label: t('collection_discount.cancel'), onClick: onClose, testId: 'end-discount-cancel' }}
           confirm={{ label: t('collection_discount.end.confirm'), onClick: start, testId: 'end-discount-confirm' }}
@@ -103,6 +110,16 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
           title={t('collection_discount.end.success_title')}
           description={t('collection_discount.end.success_description')}
           onDone={onClose}
+        />
+      )
+    case 'slow':
+      return (
+        <ConfirmModal
+          title={t('collection_discount.end.slow_title')}
+          description={t('collection_discount.end.slow_description')}
+          onClose={onClose}
+          cancel={{ label: t('collection_discount.end.close'), onClick: onClose, testId: 'end-discount-slow-close' }}
+          testId="end-discount-slow-modal"
         />
       )
     case 'error':

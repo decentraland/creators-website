@@ -65,7 +65,7 @@ const ADD_CHAIN_PARAMS: Record<number, object> = {
     chainId: '0x89',
     chainName: 'Polygon',
     nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
-    rpcUrls: ['https://polygon-rpc.com'],
+    rpcUrls: ['https://rpc.decentraland.org/polygon'],
     blockExplorerUrls: ['https://polygonscan.com']
   },
   80002: {
@@ -115,7 +115,8 @@ export class WrongAccountError extends Error {
   }
 }
 
-async function requireAccount(session: Session): Promise<void> {
+/** Throws `WrongAccountError` unless the wallet's active account is the session's. */
+export async function requireAccount(session: Session): Promise<void> {
   const accounts = (await session.web3Provider.send('eth_accounts', [])) as string[]
   const active = (accounts[0] ?? '').toLowerCase()
   if (active !== session.address.toLowerCase()) throw new WrongAccountError(session.address, active)
