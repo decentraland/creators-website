@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { render, renderHook, screen, waitFor } from '@testing-library/react'
+import { act, render, renderHook, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TranslationProvider } from '~/intl'
@@ -28,7 +28,7 @@ import { createDiscount, endDiscount, fetchCreatorDiscounts, storeSignedDiscount
 import { savePendingEnd, saveUnconfirmedCreate, type PendingEnd } from '~/lib/discountAttempts'
 import { DiscountFlow } from '~/components/CollectionDetailPage/DiscountFlow/DiscountFlow'
 import { EndDiscountFlow } from '~/components/CollectionDetailPage/DiscountFlow/EndDiscountFlow'
-import { resetDiscountSession, useCollectionDiscounts } from './useCollectionDiscounts'
+import { resetDiscountSession, useCollectionDiscounts, useEndDiscount } from './useCollectionDiscounts'
 
 const DAY = 24 * 60 * 60 * 1000
 const session = makeSession()
@@ -155,6 +155,39 @@ describe('when a recorded cancellation has no receipt for a long time', () => {
 })
 
 describe('when a cancellation mined but the server still reports the discount running', () => {
+  // The app's own display patch must not read as the server catching up.
+  it('should keep End away after a real End, a reconcile and a reload, while the server still says running', async () => {
+    vi.mocked(fetchCreatorDiscounts).mockResolvedValue([running])
+    vi.mocked(endDiscount).mockImplementation(async (_, deps) => {
+      deps.onBroadcast?.('0xhash', 4)
+    })
+    const wrapper = freshPage()
+    const page = renderHook(
+      () => ({
+        list: useCollectionDiscounts(session.address, collection.contractAddress),
+        end: useEndDiscount(session)
+      }),
+      { wrapper }
+    )
+    await waitFor(() => expect(page.result.current.list.discounts).toHaveLength(1))
+
+    await act(async () => {
+      await page.result.current.end.mutateAsync({ discount: running, collection })
+    })
+    await waitFor(() => expect(page.result.current.list.discounts).toEqual([]))
+    await new Promise(resolve => setTimeout(resolve, 50))
+    page.unmount()
+
+    vi.resetModules()
+    const reloaded = await import('./useCollectionDiscounts')
+    const after = renderHook(() => reloaded.useCollectionDiscounts(session.address, collection.contractAddress), {
+      wrapper: freshPage()
+    })
+    await waitFor(() => expect(after.result.current.isSuccess).toBe(true))
+    expect(after.result.current.discounts).toEqual([])
+    expect(reloaded.endOutcome(session.address, 'running')).toBe('ended')
+  })
+
   // The server reads coupon state on its own schedule; a reload in between must not offer End again.
   it('should keep it ended across a reload, with nothing but the browser storage left', async () => {
     sendEnd({ minedAt: Date.now() })

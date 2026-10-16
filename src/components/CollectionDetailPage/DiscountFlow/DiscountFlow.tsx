@@ -8,7 +8,7 @@ import { isSocialLogin, type Session } from '~/lib/auth'
 import { type DiscountReach } from '~/lib/collectionDiscount'
 import { type Collection } from '~/lib/collections'
 import { discountPct, isDiscountCapped, toDiscountError, type DiscountFailureReason } from '~/lib/coupons'
-import { clearUnconfirmedCreate, unconfirmedCreateOf } from '~/lib/discountAttempts'
+import { acknowledgeUnconfirmedCreate, unconfirmedCreateOf } from '~/lib/discountAttempts'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { PendingModal } from '~/components/PendingModal'
 import { SuccessModal } from '~/components/SuccessModal'
@@ -124,10 +124,10 @@ export function DiscountFlow({ collection, session, reach, manaListings, onClose
     )
   }
 
-  /** Signs a new one on the creator's word: if the unconfirmed one was stored, it shows in the list to end there. */
+  /** Lets the creator sign a new one on their word: the unconfirmed one stays recorded and may still be on sale. */
   function discardUnconfirmed() {
     const pending = unconfirmedCreateOf(session.address, collection.id)
-    if (pending) clearUnconfirmedCreate(session.address, pending.payload.signature)
+    if (pending) acknowledgeUnconfirmedCreate(session.address, pending.payload.signature)
     setView(unconfirmedCreateOf(session.address, collection.id) ? 'unconfirmed' : 'form')
   }
 
@@ -211,7 +211,11 @@ export function DiscountFlow({ collection, session, reach, manaListings, onClose
                 <S.TextButton type="button" data-testid="discount-unconfirmed-discard" onClick={discardUnconfirmed}>
                   {t('collection_discount.unconfirmed.discard')}
                 </S.TextButton>{' '}
-                {t('collection_discount.unconfirmed.discard_hint')}
+                {t(
+                  social
+                    ? 'collection_discount.unconfirmed.discard_hint_social'
+                    : 'collection_discount.unconfirmed.discard_hint'
+                )}
               </p>
             </S.Note>
           )}

@@ -1587,8 +1587,9 @@
       "description": "It may already be live. Check again to save the discount you already signed: it won't ask for a new signature or create a second discount.",
       "check": "Check again",
       "terms": "Signed: {pct}% off until {date}.",
-      "discard": "Discard it and sign a new one.",
-      "discard_hint": "If it was saved, it will show in this collection's discounts and you can end it there."
+      "discard": "Sign a new one anyway.",
+      "discard_hint": "This does not cancel it: if it was saved, it stays on sale and the new one overlaps it. It would show in this collection's discounts, where you can end it.",
+      "discard_hint_social": "This does not cancel it: if it was saved, it stays on sale until its end date and the new one overlaps it. Accounts signed in with a social login can't end a discount early."
     },
     "close": "Close"
   }

@@ -58,6 +58,7 @@ export function useAnyDiscountInFlight(): boolean {
 /** Forgets this tab's outcomes; for specs, which share the module between cases. */
 export function resetDiscountSession(): void {
   createdFor.clear()
+  serverReads.clear()
   resetDiscountAttempts()
 }
 
@@ -147,6 +148,16 @@ export function useDiscountInFlight({ collectionId, discountId }: { collectionId
 
 const discountsKey = (address: string | undefined) => ['collection-discounts', address?.toLowerCase()]
 
+// What the server itself last answered, per account, apart from the query cache this app patches for display:
+// only a real server read may settle a recorded cancellation.
+const serverReads = new Map<string, { rows: CollectionDiscount[]; at: number }>()
+
+async function readFromServer(address: string): Promise<CollectionDiscount[]> {
+  const rows = await fetchCreatorDiscounts(address)
+  serverReads.set(address.toLowerCase(), { rows, at: Date.now() })
+  return rows
+}
+
 export type DiscountFlags = {
   /** The Shop applies creator discounts for buyers, so running ones matter and can be ended here. */
   shopApplies: boolean
@@ -170,7 +181,7 @@ export function useCollectionDiscounts(address: string | undefined, contractAddr
   const [now, setNow] = useState(() => Date.now())
   const query = useQuery({
     queryKey: discountsKey(address),
-    queryFn: () => fetchCreatorDiscounts(address!),
+    queryFn: () => readFromServer(address!),
     enabled: !!address && !!contractAddress,
     staleTime: 30_000,
     // While a cancellation is recorded, re-read the server until it reports the discount ended.
@@ -184,7 +195,7 @@ export function useCollectionDiscounts(address: string | undefined, contractAddr
   // Polled while any cancellation is unsettled, including one sent before a reload; re-run on every server read.
   const reconcile = useQuery({
     queryKey: ['collection-discount-ends', address?.toLowerCase(), query.dataUpdatedAt],
-    queryFn: () => reconcilePendingEnds(address!, query.data),
+    queryFn: () => reconcilePendingEnds(address!, serverReads.get(address!.toLowerCase())?.rows),
     enabled: !!address && !!contractAddress && query.isSuccess,
     refetchInterval: current => ((current.state.data?.ending.length ?? 0) > 0 ? 30_000 : false)
   })
@@ -375,9 +386,8 @@ export function useEndDiscount(session: Session | null) {
             expiresAt: discount.checks.expiration
           })
         }
-        updateDiscounts(queryClient, session.address, current =>
-          current.map(entry => (entry.id === discount.id ? { ...entry, status: 'cancelled' as const } : entry))
-        )
+        // A re-render only: the row is hidden by its mined record, and the server's own row stays as it answered.
+        updateDiscounts(queryClient, session.address, current => [...current])
       }
     },
     onError: (error, { discount, collection }) => {

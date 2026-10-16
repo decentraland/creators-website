@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { type CouponCreation } from '~/lib/coupons'
 import {
+  acknowledgeUnconfirmedCreate,
   clearPendingEnd,
   clearUnconfirmedCreate,
   pendingEndOf,
@@ -93,5 +94,45 @@ describe('when the stored attempts are not what this build writes', () => {
     )
     expect(pendingEndOf(ADDRESS, 'd1')).toBeUndefined()
     expect(unconfirmedCreateOf(ADDRESS, 'c1', NOW)).toBeUndefined()
+  })
+})
+
+describe('when the browser reads storage but cannot write it (a full quota)', () => {
+  const failWrites = () =>
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('full', 'QuotaExceededError')
+    })
+  const create = { collectionId: 'c1', payload: payloadEnding(Date.now() + 86_400_000, '0xnew') }
+
+  it('should still hold a new cancellation and coupon for this tab when nothing was stored before', () => {
+    failWrites()
+    savePendingEnd(ADDRESS, end)
+    saveUnconfirmedCreate(ADDRESS, create)
+    expect(pendingEndOf(ADDRESS, 'd1')).toEqual(end)
+    expect(unconfirmedCreateOf(ADDRESS, 'c1')).toEqual(create)
+  })
+
+  // Reading the older stored copy back would drop the guard the write just tried to add.
+  it('should prefer this tab copy over an older stored one', () => {
+    localStorage.setItem(
+      `collection-discount-attempts:${ADDRESS.toLowerCase()}`,
+      JSON.stringify({ ends: [], creates: [] })
+    )
+    failWrites()
+    savePendingEnd(ADDRESS, end)
+    saveUnconfirmedCreate(ADDRESS, create)
+    expect(pendingEndOf(ADDRESS, 'd1')).toEqual(end)
+    expect(unconfirmedCreateOf(ADDRESS, 'c1')).toEqual(create)
+  })
+})
+
+describe('when the creator chooses to sign a new coupon next to an unconfirmed one', () => {
+  it('should stop blocking the form but keep the first on record', () => {
+    const first = { collectionId: 'c1', payload: payloadEnding(Date.now() + 86_400_000, '0xfirst') }
+    saveUnconfirmedCreate(ADDRESS, first)
+    acknowledgeUnconfirmedCreate(ADDRESS, '0xfirst')
+    expect(unconfirmedCreateOf(ADDRESS, 'c1')).toBeUndefined()
+    const stored = JSON.parse(localStorage.getItem(`collection-discount-attempts:${ADDRESS.toLowerCase()}`)!)
+    expect(stored.creates).toEqual([{ ...first, acknowledged: true }])
   })
 })

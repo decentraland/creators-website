@@ -18,12 +18,19 @@ export type PendingEnd = {
   /** When the discount stops applying anyway; the record is useless past it. */
   expiresAt: number
 }
-export type UnconfirmedCreate = { collectionId: string; payload: CouponCreation }
+export type UnconfirmedCreate = {
+  collectionId: string
+  payload: CouponCreation
+  /** The creator chose to sign a new one anyway: kept on record, but no longer holding the form back. */
+  acknowledged?: boolean
+}
 type Attempts = { ends: PendingEnd[]; creates: UnconfirmedCreate[] }
 
 const STORAGE_PREFIX = 'collection-discount-attempts:'
-// Used only where the browser keeps no site data (private mode, blocked storage): there, it is all this tab has.
-const memory = new Map<string, Attempts>()
+// Attempts this tab could not persist (private mode, blocked storage, a full quota). While a key has one it is the
+// truth for this tab, whatever storage holds, until a later write persists it; another tab's changes to that key are
+// not seen meanwhile. It does not survive a reload: only persisted attempts do.
+const unpersisted = new Map<string, Attempts>()
 
 const keyOf = (address: string) => `${STORAGE_PREFIX}${address.toLowerCase()}`
 const isNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)
@@ -59,11 +66,13 @@ function isUnconfirmedCreate(value: unknown): value is UnconfirmedCreate {
 
 function read(address: string): Attempts {
   const key = keyOf(address)
+  const local = unpersisted.get(key)
+  if (local) return local
   let raw: string | null
   try {
     raw = localStorage.getItem(key)
   } catch {
-    return memory.get(key) ?? { ends: [], creates: [] }
+    return { ends: [], creates: [] }
   }
   if (!raw) return { ends: [], creates: [] }
   try {
@@ -83,9 +92,9 @@ function write(address: string, attempts: Attempts): void {
   try {
     if (attempts.ends.length === 0 && attempts.creates.length === 0) localStorage.removeItem(key)
     else localStorage.setItem(key, JSON.stringify(attempts))
-    memory.delete(key)
+    unpersisted.delete(key)
   } catch {
-    memory.set(key, attempts)
+    unpersisted.set(key, attempts)
   }
 }
 
@@ -127,7 +136,19 @@ export function unconfirmedCreateOf(
   const attempts = read(address)
   const live = attempts.creates.filter(create => create.payload.checks.expiration > now)
   if (live.length !== attempts.creates.length) write(address, { ...attempts, creates: live })
-  return live.find(create => create.collectionId === collectionId)
+  return live.find(create => create.collectionId === collectionId && !create.acknowledged)
+}
+
+/** Lets the creator sign a new coupon next to this one, which may still be on sale: kept, but no longer blocking. */
+export function acknowledgeUnconfirmedCreate(address: string, signature: string): void {
+  const attempts = read(address)
+  const wanted = signature.toLowerCase()
+  write(address, {
+    ...attempts,
+    creates: attempts.creates.map(create =>
+      create.payload.signature.toLowerCase() === wanted ? { ...create, acknowledged: true } : create
+    )
+  })
 }
 
 /** Adds it next to any other unconfirmed coupon: each one may be on sale, so none may be forgotten. */
@@ -150,7 +171,7 @@ export function clearUnconfirmedCreate(address: string, signature: string): void
 
 /** Forgets everything; for specs. */
 export function resetDiscountAttempts(): void {
-  memory.clear()
+  unpersisted.clear()
   try {
     for (const key of Object.keys(localStorage)) if (key.startsWith(STORAGE_PREFIX)) localStorage.removeItem(key)
   } catch {

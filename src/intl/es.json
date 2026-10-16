@@ -1587,8 +1587,9 @@
       "description": "Puede que ya esté activo. Vuelve a revisar para guardar el descuento que ya firmaste: no te pedirá una nueva firma ni creará un segundo descuento.",
       "check": "Volver a revisar",
       "terms": "Firmado: {pct}% de descuento hasta el {date}.",
-      "discard": "Descártalo y firma uno nuevo.",
-      "discard_hint": "Si se guardó, aparecerá en los descuentos de esta colección y podrás terminarlo ahí."
+      "discard": "Firmar uno nuevo de todos modos.",
+      "discard_hint": "Esto no lo cancela: si se guardó, sigue en venta y el nuevo se superpone. Aparecería en los descuentos de esta colección, donde puedes terminarlo.",
+      "discard_hint_social": "Esto no lo cancela: si se guardó, sigue en venta hasta su fecha de fin y el nuevo se superpone. Las cuentas con inicio de sesión social no pueden terminar un descuento antes."
     },
     "close": "Cerrar"
   }
