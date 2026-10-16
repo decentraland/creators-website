@@ -28,7 +28,13 @@ import { createDiscount, endDiscount, fetchCreatorDiscounts, storeSignedDiscount
 import { savePendingEnd, saveUnconfirmedCreate, type PendingEnd } from '~/lib/discountAttempts'
 import { DiscountFlow } from '~/components/CollectionDetailPage/DiscountFlow/DiscountFlow'
 import { EndDiscountFlow } from '~/components/CollectionDetailPage/DiscountFlow/EndDiscountFlow'
-import { resetDiscountSession, useCollectionDiscounts, useEndDiscount } from './useCollectionDiscounts'
+import {
+  reconcilePendingEnds,
+  resetDiscountSession,
+  useCollectionDiscounts,
+  useCreateDiscount,
+  useEndDiscount
+} from './useCollectionDiscounts'
 
 const DAY = 24 * 60 * 60 * 1000
 const session = makeSession()
@@ -151,6 +157,57 @@ describe('when a recorded cancellation has no receipt for a long time', () => {
     vi.mocked(fetchCreatorDiscounts).mockResolvedValue([readAt(supersededAt + 1)])
     const after = listFor()
     await waitFor(() => expect(after.result.current.discounts?.[0]?.ending).toBeUndefined())
+  })
+})
+
+describe('when a discount is ended before the server lists it', () => {
+  // Create, then End straight away: the last server list predates the coupon, which proves nothing about it.
+  it('should keep End away after a reload once the server does list it, still running', async () => {
+    vi.mocked(fetchCreatorDiscounts).mockResolvedValue([])
+    vi.mocked(createDiscount).mockResolvedValue(running)
+    vi.mocked(endDiscount).mockImplementation(async (_, deps) => {
+      deps.onBroadcast?.('0xhash', 4)
+    })
+    const page = renderHook(
+      () => ({
+        list: useCollectionDiscounts(session.address, collection.contractAddress),
+        create: useCreateDiscount(session),
+        end: useEndDiscount(session)
+      }),
+      { wrapper: freshPage() }
+    )
+    await waitFor(() => expect(page.result.current.list.discounts).toEqual([]))
+
+    await act(async () => {
+      await page.result.current.create.mutateAsync({
+        collection,
+        discountPct: 30,
+        endsAtMs: Date.now() + DAY,
+        discountedCount: 1
+      })
+    })
+    await act(async () => {
+      await page.result.current.end.mutateAsync({ discount: running, collection })
+    })
+    await new Promise(resolve => setTimeout(resolve, 50))
+    page.unmount()
+
+    vi.resetModules()
+    const reloaded = await import('./useCollectionDiscounts')
+    vi.mocked(fetchCreatorDiscounts).mockResolvedValue([running])
+    const after = renderHook(() => reloaded.useCollectionDiscounts(session.address, collection.contractAddress), {
+      wrapper: freshPage()
+    })
+    await waitFor(() => expect(after.result.current.isSuccess).toBe(true))
+    expect(after.result.current.discounts).toEqual([])
+    expect(reloaded.endOutcome(session.address, 'running')).toBe('ended')
+  })
+
+  it('should keep a cancellation recorded when the discount is missing from the list it is checked against', async () => {
+    sendEnd()
+    vi.mocked(readTransactionOutcome).mockResolvedValue('unknown')
+    await expect(reconcilePendingEnds(session.address, [])).resolves.toEqual({ ending: ['running'], ended: [] })
+    expect(readTransactionOutcome).toHaveBeenCalled()
   })
 })
 

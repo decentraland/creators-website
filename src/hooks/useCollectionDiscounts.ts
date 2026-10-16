@@ -78,20 +78,21 @@ const isRunning = (discount: CollectionDiscount, now: number) =>
 /**
  * Settles each recorded cancellation against the chain and the server's view of its discount. A record is only
  * dropped on evidence that no second cancellation is needed or that the first can no longer execute:
- * - the server no longer reports the discount running (cancelled, ended, gone);
+ * - the server reports that discount ended (cancelled, exhausted, revoked or past its end). A discount missing from
+ *   a list proves nothing: the list may predate it or not reach it;
  * - the receipt says it reverted;
  * - its nonce went to another transaction AND the server read the coupon since and still reports it running.
  * A receipt that says it mined keeps the record (as ended) until the server catches up. No receipt and an unused
  * nonce, or a failed read, keep it pending, however old.
  */
-async function reconcilePendingEnds(
+export async function reconcilePendingEnds(
   address: string,
   rows: CollectionDiscount[] | undefined,
   now = Date.now()
 ): Promise<{ ending: string[]; ended: string[] }> {
   for (const end of pendingEnds(address, now)) {
     const row = rows?.find(discount => discount.id === end.discountId)
-    if (rows && (!row || !isRunning(row, now))) {
+    if (row && !isRunning(row, now)) {
       clearPendingEnd(address, end.discountId)
       continue
     }
