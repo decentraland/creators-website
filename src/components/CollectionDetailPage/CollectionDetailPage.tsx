@@ -56,7 +56,13 @@ import { useForumPostRecovery } from '~/hooks/useForumPost'
 import { useSyncPublishedItems } from '~/hooks/usePublishCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useCollectionListings } from '~/hooks/useCollectionListings'
-import { DISCOUNT_OPENED_EVENT, useCollectionDiscounts, useDiscountFlags } from '~/hooks/useCollectionDiscounts'
+import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
+import {
+  DISCOUNT_OPENED_EVENT,
+  useAnyDiscountInFlight,
+  useCollectionDiscounts,
+  useDiscountFlags
+} from '~/hooks/useCollectionDiscounts'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
@@ -239,6 +245,8 @@ const CollectionDetailPage = () => {
     [listings, discountFlags.manaListings]
   )
   const [discountOpen, setDiscountOpen] = useState(false)
+  // Also once its dialog is closed: a reload loses this tab's record of a cancellation that is still mining.
+  useBeforeUnloadGuard(useAnyDiscountInFlight())
   const [endingDiscount, setEndingDiscount] = useState<CollectionDiscount | null>(null)
   const openDiscount = useCallback(
     (source: 'header' | 'menu') => {

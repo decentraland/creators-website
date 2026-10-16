@@ -33,6 +33,17 @@ const endOutcomes = new Map<string, 'ended' | 'pending'>()
 // The last discount this tab created per collection, so a dialog reopened during a create can tell it went through.
 const createdFor = new Map<string, string>()
 
+/** Whether any discount is being created or ended in this tab, dialog open or not, for the leave-page guard. */
+export function useAnyDiscountInFlight(): boolean {
+  return useIsMutating({ mutationKey: CREATE_KEY }) + useIsMutating({ mutationKey: END_KEY }) > 0
+}
+
+/** Forgets this tab's outcomes; for specs, which share the module between cases. */
+export function resetDiscountSession(): void {
+  endOutcomes.clear()
+  createdFor.clear()
+}
+
 /** Whether this tab already ended (or sent the cancellation of) a discount. */
 export function endOutcome(discountId: string): 'ended' | 'pending' | undefined {
   return endOutcomes.get(discountId)

@@ -465,20 +465,23 @@ export type EndDiscountDeps = {
 
 /** Ends a discount early and waits for the receipt; the Shop stops applying it on the server's next state read. */
 export async function endDiscount(discount: CollectionDiscount, deps: EndDiscountDeps): Promise<void> {
+  // Once the cancellation is broadcast, only a confirmed revert is a failure: a timeout, an RPC error while
+  // polling or a wallet that throws after broadcasting all leave it possibly mining, and a retry would pay twice.
+  const call = buildEndDiscountCall(discount)
+  let txHash: string
   try {
-    const txHash = await deps.sendTransaction(buildEndDiscountCall(discount))
-    deps.onSigned?.()
-    let mined: boolean
-    try {
-      mined = await deps.waitForTransaction(txHash)
-    } catch (error) {
-      if ((error as { code?: string }).code === 'TIMEOUT') {
-        throw new DiscountError('pending', `The end discount transaction ${txHash} is still pending`)
-      }
-      throw error
-    }
-    if (!mined) throw new DiscountError('generic', 'The end discount transaction reverted')
+    txHash = await deps.sendTransaction(call)
   } catch (error) {
+    const broadcast = (error as { transactionHash?: string } | null)?.transactionHash
+    if (broadcast) throw new DiscountError('pending', `The end discount transaction ${broadcast} may still mine`)
     throw toDiscountError(error)
   }
+  deps.onSigned?.()
+  let mined: boolean
+  try {
+    mined = await deps.waitForTransaction(txHash)
+  } catch {
+    throw new DiscountError('pending', `The end discount transaction ${txHash} was not seen mined`)
+  }
+  if (!mined) throw new DiscountError('generic', 'The end discount transaction reverted')
 }

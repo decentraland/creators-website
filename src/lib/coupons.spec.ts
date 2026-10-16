@@ -380,6 +380,27 @@ describe('when ending a discount', () => {
     ).rejects.toMatchObject({ reason: 'pending' })
   })
 
+  it.each([
+    ['an RPC error while polling for the receipt', { waitForTransaction: vi.fn().mockRejectedValue(new Error('429')) }],
+    [
+      'a wallet that throws after broadcasting',
+      {
+        sendTransaction: vi
+          .fn()
+          .mockRejectedValue(Object.assign(new Error('poll failed'), { transactionHash: '0xhash' })),
+        waitForTransaction: vi.fn()
+      }
+    ]
+  ])('should treat %s as still pending, never as a failure to retry', async (_, deps) => {
+    const discount = await signedDiscount()
+    await expect(
+      endDiscount(
+        discount,
+        Object.assign({ sendTransaction: vi.fn().mockResolvedValue('0xhash'), waitForTransaction: vi.fn() }, deps)
+      )
+    ).rejects.toMatchObject({ reason: 'pending' })
+  })
+
   it('should read a dismissed wallet prompt as the creator backing out', async () => {
     const discount = await signedDiscount()
     await expect(
