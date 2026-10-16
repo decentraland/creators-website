@@ -202,7 +202,21 @@ describe('when listing a creator discounts', () => {
   it('should ask for the lower-cased signer and answer its discounts', async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ ok: true, data: [{ id: 'c1' }] })))
     await expect(fetchCreatorDiscounts('0xAB')).resolves.toEqual([{ id: 'c1' }])
-    expect(fetchMock.mock.calls[0][0]).toBe('https://marketplace-api.decentraland.zone/v1/coupons?signer=0xab')
+    expect(new URL(fetchMock.mock.calls[0][0] as string).searchParams.get('signer')).toBe('0xab')
+  })
+
+  // The server orders a creator's discounts across all collections, so a running one can sit on a later page.
+  it('should read every page, so an older running discount is not lost behind newer ones', async () => {
+    const page = (ids: string[]) => new Response(JSON.stringify({ ok: true, data: ids.map(id => ({ id })) }))
+    const full = Array.from({ length: 100 }, (_, i) => `newer-${i}`)
+    fetchMock.mockResolvedValueOnce(page(full)).mockResolvedValueOnce(page(['older-running']))
+
+    const discounts = await fetchCreatorDiscounts('0xab')
+
+    expect(discounts).toHaveLength(101)
+    expect(discounts[100].id).toBe('older-running')
+    const offsets = fetchMock.mock.calls.map(([url]) => new URL(url as string).searchParams.get('offset'))
+    expect(offsets).toEqual(['0', '100'])
   })
 
   it('should fail on a server error', async () => {

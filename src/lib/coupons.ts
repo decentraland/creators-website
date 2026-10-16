@@ -324,17 +324,33 @@ export async function postCoupon(address: string, payload: CouponCreation): Prom
   return json.data
 }
 
-/** A creator's discounts, newest first, with their last known state. Public: coupons are public signatures. */
+const DISCOUNTS_PAGE = 100
+// Bounds the walk for a creator with an implausible number of discounts.
+const MAX_DISCOUNT_PAGES = 50
+
+/**
+ * A creator's discounts, newest first, with their last known state, read page by page up to
+ * `MAX_DISCOUNT_PAGES`: the server orders them across every collection, so an older one still running can sit past
+ * the first page. Public: coupons are public signatures.
+ */
 export async function fetchCreatorDiscounts(address: string): Promise<CollectionDiscount[]> {
-  const response = await fetch(
-    `${config.get('MARKETPLACE_SERVER_URL')}/v1/coupons?${new URLSearchParams({ signer: address.toLowerCase() })}`
-  )
-  if (!response.ok) {
-    await response.body?.cancel()
-    throw new Error(`marketplace-server request failed: /v1/coupons (${response.status})`)
+  const discounts: CollectionDiscount[] = []
+  for (let page = 0; page < MAX_DISCOUNT_PAGES; page++) {
+    const query = new URLSearchParams({
+      signer: address.toLowerCase(),
+      limit: String(DISCOUNTS_PAGE),
+      offset: String(page * DISCOUNTS_PAGE)
+    })
+    const response = await fetch(`${config.get('MARKETPLACE_SERVER_URL')}/v1/coupons?${query}`)
+    if (!response.ok) {
+      await response.body?.cancel()
+      throw new Error(`marketplace-server request failed: /v1/coupons (${response.status})`)
+    }
+    const rows = ((await response.json()) as { data?: CollectionDiscount[] }).data ?? []
+    discounts.push(...rows)
+    if (rows.length < DISCOUNTS_PAGE) break
   }
-  const json = (await response.json()) as { data?: CollectionDiscount[] }
-  return json.data ?? []
+  return discounts
 }
 
 /** The server's status, refreshed against the clock: a discount it called active may have ended since. */

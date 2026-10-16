@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tansta
 import { sendWalletTransaction, signTypedData, waitForTransaction, type Session } from '~/lib/auth'
 import { errorCode, track } from '~/lib/analytics'
 import {
+  DiscountError,
   createDiscount,
   endDiscount,
   fetchCreatorDiscounts,
@@ -138,6 +139,13 @@ export function useEndDiscount(session: Session | null) {
   return useMutation({
     mutationFn: ({ discount, onSigned }: EndDiscountVariables) => {
       if (!session) throw new Error('Wallet disconnected')
+      // Cancellations are keyed by the caller: only the signer's own cancellation ends the coupon.
+      if (session.address.toLowerCase() !== discount.signer.toLowerCase()) {
+        throw new DiscountError(
+          'generic',
+          `Discount ${discount.id} was signed by ${discount.signer}, not ${session.address}`
+        )
+      }
       return endDiscount(discount, {
         sendTransaction: call => sendWalletTransaction(session, call),
         waitForTransaction: hash => waitForTransaction(discount.chainId, hash, END_TIMEOUT_MS),

@@ -14,6 +14,7 @@ export {
   sendWalletTransaction,
   signTypedData,
   waitForTransaction,
+  WrongAccountError,
   WrongChainError,
   type ContractCall,
   type ContractData

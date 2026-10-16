@@ -104,6 +104,23 @@ export class WrongChainError extends Error {
   }
 }
 
+/** The wallet's active account is not the session's: sending would act as somebody else. Nothing was sent. */
+export class WrongAccountError extends Error {
+  constructor(
+    public expected: string,
+    public actual: string
+  ) {
+    super(`The wallet's active account is ${actual}, not ${expected}`)
+    this.name = 'WrongAccountError'
+  }
+}
+
+async function requireAccount(session: Session): Promise<void> {
+  const accounts = (await session.web3Provider.send('eth_accounts', [])) as string[]
+  const active = (accounts[0] ?? '').toLowerCase()
+  if (active !== session.address.toLowerCase()) throw new WrongAccountError(session.address, active)
+}
+
 // Amoy enforces a ~25 gwei minimum tip and wallets often propose less, so the RPC rejects the transaction.
 function gasOverrides(chainId: number): ethers.providers.TransactionRequest {
   if (chainId !== 80002) return {}
@@ -114,16 +131,22 @@ function gasOverrides(chainId: number): ethers.providers.TransactionRequest {
 /**
  * Sends the call from the wallet itself, moving it to the contract's chain first, for contracts that take no
  * meta-transactions: the wallet pays the gas. Call it from a click, since wallets refuse unprompted chain switches.
- * The network is read again after the switch: some providers (Magic) answer it without moving the wallet.
+ * The network is read again after the switch: some providers (Magic) answer it without moving the wallet. It is
+ * sent from the session's account only: a call keyed by its caller, like a cancellation, does nothing from another.
  */
 export async function sendWalletTransaction(session: Session, call: ContractCall): Promise<string> {
   const chainId = Number(call.contract.chainId)
+  await requireAccount(session)
   if ((await session.web3Provider.getNetwork()).chainId !== chainId) {
     await switchWalletChain(session, chainId)
     const current = (await session.web3Provider.getNetwork()).chainId
     if (current !== chainId) throw new WrongChainError(chainId, current)
+    // Switching hands control to the wallet, where the account can change too.
+    await requireAccount(session)
   }
-  const tx = await session.signer.sendTransaction({
+  // Bound to the session's address, so the wallet refuses to send it from any other account.
+  const tx = await session.web3Provider.getSigner(session.address).sendTransaction({
+    from: session.address,
     to: call.contract.address,
     data: encodeContractCall(call),
     ...gasOverrides(chainId)
