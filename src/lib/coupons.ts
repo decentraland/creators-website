@@ -7,7 +7,14 @@ import { Network, type TradeChecks } from '@dcl/schemas'
 import { ContractName, getContract, getContractName, getCouponManager } from 'decentraland-transactions'
 import { StandardMerkleTree } from '@openzeppelin/merkle-tree'
 import { config } from '~/config'
-import { readContract, signedFetch, type ContractCall, type ContractData } from '~/lib/auth'
+import {
+  WrongAccountError,
+  WrongChainError,
+  readContract,
+  signedFetch,
+  type ContractCall,
+  type ContractData
+} from '~/lib/auth'
 import { OFFCHAIN_MARKETPLACE_TYPES, getOffchainMarketplaceContract } from '~/lib/trades'
 import { isWalletRejection } from '~/lib/walletErrors'
 
@@ -221,7 +228,8 @@ export function validateDiscountTerms(terms: DiscountTerms, now = Date.now()): v
 }
 
 /** `pending`: the cancellation was sent but not seen mined in time; it may still go through, so never resend it. */
-export type DiscountFailureReason = 'rejected' | 'pending' | 'generic'
+/** `wallet`: the wallet is on another account or chain, which the creator can fix themselves. */
+export type DiscountFailureReason = 'rejected' | 'pending' | 'wallet' | 'generic'
 
 export class DiscountError extends Error {
   constructor(
@@ -236,7 +244,10 @@ export class DiscountError extends Error {
 export function toDiscountError(error: unknown): DiscountError {
   if (error instanceof DiscountError) return error
   const message = error instanceof Error ? error.message : String(error)
-  return new DiscountError(isWalletRejection(error) ? 'rejected' : 'generic', message)
+  if (isWalletRejection(error)) return new DiscountError('rejected', message)
+  if (error instanceof WrongAccountError || error instanceof WrongChainError)
+    return new DiscountError('wallet', message)
+  return new DiscountError('generic', message)
 }
 
 export type CreateDiscountDeps = {
@@ -351,7 +362,8 @@ export async function fetchCreatorDiscounts(address: string): Promise<Collection
     discounts.push(...rows)
     if (rows.length < DISCOUNTS_PAGE) break
   }
-  return discounts
+  // A discount created mid-walk shifts the offsets and can repeat a row across two pages.
+  return [...new Map(discounts.map(discount => [discount.id, discount])).values()]
 }
 
 /** The server's status, refreshed against the clock: a discount it called active may have ended since. */

@@ -221,6 +221,15 @@ describe('when listing a creator discounts', () => {
     expect(offsets).toEqual(['0', '100'])
   })
 
+  it('should not list a discount twice when one created mid-walk shifts the pages', async () => {
+    const page = (ids: string[]) => new Response(JSON.stringify({ ok: true, data: ids.map(id => ({ id })) }))
+    const full = Array.from({ length: 100 }, (_, i) => `c-${i}`)
+    fetchMock.mockResolvedValueOnce(page(full)).mockResolvedValueOnce(page(['c-99', 'c-100']))
+    const discounts = await fetchCreatorDiscounts('0xab')
+    expect(discounts.map(d => d.id).filter(id => id === 'c-99')).toHaveLength(1)
+    expect(discounts).toHaveLength(101)
+  })
+
   it('should fail on a server error', async () => {
     fetchMock.mockResolvedValue(new Response('boom', { status: 500 }))
     await expect(fetchCreatorDiscounts('0xab')).rejects.toThrow('500')

@@ -6,11 +6,13 @@ import * as S from './DiscountFlow.styles'
 
 type Props = {
   discounts: CollectionDiscount[]
+  /** The same clock the list was filtered with, so a discount's status and its presence agree. */
+  now: number
   onEnd: (discount: CollectionDiscount) => void
 }
 
 /** The collection's running and scheduled discounts, each with a way to end it early. */
-export function CollectionDiscounts({ discounts, onEnd }: Props) {
+export function CollectionDiscounts({ discounts, now, onEnd }: Props) {
   const { t } = useTranslation()
   const intl = useIntl()
   if (discounts.length === 0) return null
@@ -18,7 +20,7 @@ export function CollectionDiscounts({ discounts, onEnd }: Props) {
   return (
     <S.Discounts aria-label={t('collection_discount.list_label')} data-testid="collection-discounts">
       {discounts.map(discount => {
-        const scheduled = liveDiscountStatus(discount) === 'scheduled'
+        const scheduled = liveDiscountStatus(discount, now) === 'scheduled'
         return (
           <S.DiscountChip
             key={discount.id}

@@ -14,7 +14,11 @@ type Callbacks = { onSuccess?: () => void; onError?: (error: unknown) => void }
 type Variables = { onSigned?: () => void; discountPct?: number; uses?: number; endsAtMs?: number }
 const create = { mutate: vi.fn<(variables: Variables, callbacks: Callbacks) => void>(), isPending: false }
 const end = { mutate: vi.fn<(variables: Variables, callbacks: Callbacks) => void>(), isPending: false }
-vi.mock('~/hooks/useCollectionDiscounts', () => ({ useCreateDiscount: () => create, useEndDiscount: () => end }))
+vi.mock('~/hooks/useCollectionDiscounts', () => ({
+  useCreateDiscount: () => create,
+  useEndDiscount: () => end,
+  useDiscountInFlight: () => ({ creating: create.isPending, ending: end.isPending })
+}))
 vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
 
 const DAY = 24 * 60 * 60 * 1000
@@ -157,7 +161,9 @@ describe("when a creator looks at the collection's discounts", () => {
       checks: { effective: Date.now() + DAY, expiration: Date.now() + 5 * DAY, uses: 40 },
       state: { uses: 0 }
     } as unknown as CollectionDiscount
-    render(<CollectionDiscounts discounts={[running, scheduled]} onEnd={onEnd} />, { wrapper: Providers })
+    render(<CollectionDiscounts discounts={[running, scheduled]} now={Date.now()} onEnd={onEnd} />, {
+      wrapper: Providers
+    })
 
     const chips = screen.getAllByTestId('collection-discount')
     expect(chips[0]).toHaveTextContent('30% off')

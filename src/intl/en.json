@@ -1551,7 +1551,8 @@
     "error": {
       "title": "We couldn't create your discount",
       "description": "Something went wrong while saving it. Nothing was charged; please try again.",
-      "try_again": "Try again"
+      "try_again": "Try again",
+      "description_wallet": "Your wallet switched to another account or network. Switch it back to the account you signed in with and try again."
     },
     "list_label": "Discounts",
     "chip": {
@@ -1575,7 +1576,8 @@
       "social_description": "Ending a discount early is a Polygon transaction paid from a wallet, which accounts signed in with a social login can't send. It ends on its date; to end it sooner, sign in with a wallet such as MetaMask.",
       "close": "Close",
       "slow_title": "Still ending your discount",
-      "slow_description": "Your transaction was sent but is taking longer than usual. It can still go through: check back in a few minutes. Don't send it again, or you'll pay the gas twice."
+      "slow_description": "Your transaction was sent but is taking longer than usual. It can still go through: check back in a few minutes. Don't send it again, or you'll pay the gas twice.",
+      "error_description_wallet": "Your wallet is on another account or network. Switch it to the account you signed in with, on Polygon, and try again."
     },
     "note_social": "Creating a discount only takes a signature: there's no fee. Buyers see the reduced price in the Shop until it ends. Signed in with a social account, you can't end it early, so pick the end date carefully."
   }

@@ -2,12 +2,11 @@ import { useRef, useState } from 'react'
 import errorArt from '~/assets/modal-error.png'
 import { useTranslation } from '~/intl'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
-import { useCreateDiscount } from '~/hooks/useCollectionDiscounts'
+import { useCreateDiscount, useDiscountInFlight } from '~/hooks/useCollectionDiscounts'
 import { isSocialLogin, type Session } from '~/lib/auth'
 import { type DiscountReach } from '~/lib/collectionDiscount'
 import { type Collection } from '~/lib/collections'
-import { toDiscountError } from '~/lib/coupons'
-import { captureError } from '~/lib/monitoring'
+import { toDiscountError, type DiscountFailureReason } from '~/lib/coupons'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { PendingModal } from '~/components/PendingModal'
 import { SuccessModal } from '~/components/SuccessModal'
@@ -36,8 +35,10 @@ export function DiscountFlow({ collection, session, reach, manaListings, onClose
   const { t } = useTranslation()
   const social = isSocialLogin(session)
   const create = useCreateDiscount(session)
+  const { creating } = useDiscountInFlight({ collectionId: collection.id })
   const [view, setView] = useState<View>('form')
   const [phase, setPhase] = useState<'confirm' | 'pending'>('confirm')
+  const [failure, setFailure] = useState<DiscountFailureReason>('generic')
   const [values, setValues] = useState<DiscountFormValues>(() => defaultDiscountValues())
   // Bumped when the creator backs out of the wallet prompt, so that attempt's outcome is ignored.
   const attempt = useRef(0)
@@ -65,7 +66,7 @@ export function DiscountFlow({ collection, session, reach, manaListings, onClose
             setView('form')
             return
           }
-          captureError(cause, { flow: 'create_collection_discount', collectionId: collection.id })
+          setFailure(toDiscountError(cause).reason)
           setView('error')
         }
       }
@@ -81,9 +82,9 @@ export function DiscountFlow({ collection, session, reach, manaListings, onClose
           manaListings={manaListings}
           initialValues={values}
           // Also while a prompt the creator backed out of is still open, so it can't be signed twice.
-          busy={create.isPending}
+          busy={creating}
           // A social login signs without a prompt to back out of; anyone else can close while a stale one is open.
-          closeLocked={social && create.isPending}
+          closeLocked={social && creating}
           canEndEarly={!social}
           onSubmit={submit}
           onClose={onClose}
@@ -118,7 +119,11 @@ export function DiscountFlow({ collection, session, reach, manaListings, onClose
       return (
         <ConfirmModal
           title={t('collection_discount.error.title')}
-          description={t('collection_discount.error.description')}
+          description={t(
+            failure === 'wallet'
+              ? 'collection_discount.error.description_wallet'
+              : 'collection_discount.error.description'
+          )}
           art={{ src: errorArt }}
           onClose={onClose}
           cancel={{ label: t('collection_discount.cancel'), onClick: onClose, testId: 'discount-error-cancel' }}

@@ -227,7 +227,7 @@ const CollectionDetailPage = () => {
   // Offered once something is listed, even if none of it can take a discount: the modal explains what to change.
   const canCreateDiscount =
     canManageDiscounts && discountFlags.enabled && discountFlags.manaListings !== undefined && !!listings?.size
-  const { discounts: openDiscounts } = useCollectionDiscounts(
+  const { discounts: openDiscounts, now: discountsNow } = useCollectionDiscounts(
     canManageDiscounts ? address : undefined,
     standardCollection?.contractAddress
   )
@@ -656,7 +656,7 @@ const CollectionDetailPage = () => {
             </S.HeaderActions>
           </S.Header>
           {canManageDiscounts && openDiscounts && (
-            <CollectionDiscounts discounts={openDiscounts} onEnd={setEndingDiscount} />
+            <CollectionDiscounts discounts={openDiscounts} now={discountsNow} onEnd={setEndingDiscount} />
           )}
 
           <S.SubHeader>

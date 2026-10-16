@@ -2,11 +2,10 @@ import { useRef, useState } from 'react'
 import errorArt from '~/assets/modal-error.png'
 import { useTranslation } from '~/intl'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
-import { useEndDiscount } from '~/hooks/useCollectionDiscounts'
+import { useDiscountInFlight, useEndDiscount } from '~/hooks/useCollectionDiscounts'
 import { isSocialLogin, type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
-import { discountPct, toDiscountError, type CollectionDiscount } from '~/lib/coupons'
-import { captureError } from '~/lib/monitoring'
+import { discountPct, toDiscountError, type CollectionDiscount, type DiscountFailureReason } from '~/lib/coupons'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { PendingModal } from '~/components/PendingModal'
 import { SuccessModal } from '~/components/SuccessModal'
@@ -25,6 +24,8 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
   const { t } = useTranslation()
   const social = isSocialLogin(session)
   const end = useEndDiscount(session)
+  const { ending } = useDiscountInFlight({ discountId: discount.id })
+  const [failure, setFailure] = useState<DiscountFailureReason>('generic')
   const [view, setView] = useState<View>('confirm')
   const [phase, setPhase] = useState<'confirm' | 'mining'>('confirm')
   const attempt = useRef(0)
@@ -32,7 +33,7 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
 
   function start() {
     // A prompt the creator backed out of may still be open: a second one would be a second paid cancellation.
-    if (end.isPending) return
+    if (ending) return
     const id = ++attempt.current
     setPhase('confirm')
     setView('pending')
@@ -52,7 +53,7 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
             setView('slow')
             return
           }
-          captureError(cause, { flow: 'end_collection_discount', collectionId: collection.id, discountId: discount.id })
+          setFailure(reason)
           setView('error')
         }
       }
@@ -126,7 +127,11 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
       return (
         <ConfirmModal
           title={t('collection_discount.end.error_title')}
-          description={t('collection_discount.end.error_description')}
+          description={t(
+            failure === 'wallet'
+              ? 'collection_discount.end.error_description_wallet'
+              : 'collection_discount.end.error_description'
+          )}
           art={{ src: errorArt }}
           onClose={onClose}
           cancel={{ label: t('collection_discount.cancel'), onClick: onClose, testId: 'end-discount-error-cancel' }}

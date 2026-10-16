@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { useIsMutating, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { requireAccount, sendWalletTransaction, signTypedData, waitForTransaction, type Session } from '~/lib/auth'
 import { errorCode, track } from '~/lib/analytics'
 import {
@@ -18,6 +18,7 @@ import { type Collection } from '~/lib/collections'
 import { FeatureFlag } from '~/lib/featureFlags'
 import { getMaticChainId } from '~/lib/publishCollection'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
+import { captureError } from '~/lib/monitoring'
 
 export const DISCOUNT_CREATED_EVENT = 'Create collection discount'
 export const DISCOUNT_FAILED_EVENT = 'Create collection discount error'
@@ -30,6 +31,31 @@ const endedInSession = new Set<string>()
 
 // A sped-up or replaced transaction gets a new hash this one never sees mined, so the wait gives up.
 const END_TIMEOUT_MS = 5 * 60_000
+
+const CREATE_KEY = ['create-collection-discount']
+const END_KEY = ['end-collection-discount']
+
+// Expected states the creator resolves themselves are tracked as events, not reported as errors.
+const isReportable = (error: unknown) => !['rejected', 'wallet', 'pending'].includes(toDiscountError(error).reason)
+
+/**
+ * Whether a discount is still being created for the collection, or ended, in this tab. Read from the mutation
+ * cache, so it survives closing and reopening the dialog while a wallet prompt is still open.
+ */
+export function useDiscountInFlight({ collectionId, discountId }: { collectionId?: string; discountId?: string }) {
+  const creating = useIsMutating({
+    mutationKey: CREATE_KEY,
+    predicate: mutation =>
+      !!collectionId &&
+      (mutation.state.variables as CreateDiscountVariables | undefined)?.collection.id === collectionId
+  })
+  const ending = useIsMutating({
+    mutationKey: END_KEY,
+    predicate: mutation =>
+      !!discountId && (mutation.state.variables as EndDiscountVariables | undefined)?.discount.id === discountId
+  })
+  return { creating: creating > 0, ending: ending > 0 }
+}
 
 const discountsKey = (address: string | undefined) => ['collection-discounts', address?.toLowerCase()]
 
@@ -72,7 +98,7 @@ export function useCollectionDiscounts(address: string | undefined, contractAddr
         : undefined,
     [query.data, contractAddress, now]
   )
-  return { ...query, discounts }
+  return { ...query, discounts, now }
 }
 
 function updateDiscounts(
@@ -112,6 +138,7 @@ export function useCreateDiscount(session: Session | null) {
   const queryClient = useQueryClient()
   const chainId = getMaticChainId()
   return useMutation({
+    mutationKey: CREATE_KEY,
     mutationFn: ({ collection, discountPct, startsAtMs, endsAtMs, uses, onSigned }: CreateDiscountVariables) => {
       if (!session) throw new Error('Wallet disconnected')
       return createDiscount(
@@ -138,10 +165,20 @@ export function useCreateDiscount(session: Session | null) {
     },
     onSuccess: (discount, variables) => {
       track(DISCOUNT_CREATED_EVENT, { ...discountProps(variables), discountId: discount.id })
-      if (session) updateDiscounts(queryClient, session.address, current => [discount, ...current])
+      if (session) {
+        updateDiscounts(queryClient, session.address, current => [
+          discount,
+          ...current.filter(entry => entry.id !== discount.id)
+        ])
+      }
     },
-    onError: (error, variables) =>
+    // Here rather than in the dialog: a prompt the creator backed out of, or closed the dialog on, still fails.
+    onError: (error, variables) => {
       track(DISCOUNT_FAILED_EVENT, { ...discountProps(variables), error: errorCode(error) })
+      if (isReportable(error)) {
+        captureError(error, { flow: 'create_collection_discount', collectionId: variables.collection.id })
+      }
+    }
   })
 }
 
@@ -156,6 +193,7 @@ export type EndDiscountVariables = {
 export function useEndDiscount(session: Session | null) {
   const queryClient = useQueryClient()
   return useMutation({
+    mutationKey: END_KEY,
     mutationFn: ({ discount, onSigned }: EndDiscountVariables) => {
       if (!session) throw new Error('Wallet disconnected')
       // Cancellations are keyed by the caller: only the signer's own cancellation ends the coupon.
@@ -182,7 +220,13 @@ export function useEndDiscount(session: Session | null) {
     },
     onError: (error, { discount, collection }) => {
       // Sent but not seen mined: it may still go through, so End must not be offered for it again in this tab.
-      if (toDiscountError(error).reason === 'pending') endedInSession.add(discount.id)
+      if (toDiscountError(error).reason === 'pending' && session) {
+        endedInSession.add(discount.id)
+        updateDiscounts(queryClient, session.address, current => [...current])
+      }
+      if (isReportable(error)) {
+        captureError(error, { flow: 'end_collection_discount', collectionId: collection.id, discountId: discount.id })
+      }
       track(DISCOUNT_END_FAILED_EVENT, {
         collectionId: collection.id,
         discountId: discount.id,
