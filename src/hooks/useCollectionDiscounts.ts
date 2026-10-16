@@ -20,14 +20,28 @@ import { getMaticChainId } from '~/lib/publishCollection'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { captureError } from '~/lib/monitoring'
 
-export const DISCOUNT_CREATED_EVENT = 'Create collection discount'
-export const DISCOUNT_FAILED_EVENT = 'Create collection discount error'
-export const DISCOUNT_ENDED_EVENT = 'End collection discount'
-export const DISCOUNT_END_FAILED_EVENT = 'End collection discount error'
+export const DISCOUNT_OPENED_EVENT = 'Open create collection discount'
+const DISCOUNT_CREATED_EVENT = 'Create collection discount'
+const DISCOUNT_FAILED_EVENT = 'Create collection discount error'
+const DISCOUNT_ENDED_EVENT = 'End collection discount'
+const DISCOUNT_END_FAILED_EVENT = 'End collection discount error'
 
-// Discounts this tab ended: the server reads a coupon's state on its own schedule, so a refetch right after the
-// cancellation is mined can still report it running, and the End button must not come back for it.
-const endedInSession = new Set<string>()
+// How each discount this tab ended came out. The server reads a coupon's state on its own schedule, so a refetch
+// right after the cancellation mined can still report it running; and one still mining may yet go through. Either
+// way End must not come back for it, including in a dialog reopened while the first attempt was in flight.
+const endOutcomes = new Map<string, 'ended' | 'pending'>()
+// The last discount this tab created per collection, so a dialog reopened during a create can tell it went through.
+const createdFor = new Map<string, string>()
+
+/** Whether this tab already ended (or sent the cancellation of) a discount. */
+export function endOutcome(discountId: string): 'ended' | 'pending' | undefined {
+  return endOutcomes.get(discountId)
+}
+
+/** The id of the last discount this tab created for the collection. */
+export function lastCreatedDiscount(collectionId: string): string | undefined {
+  return createdFor.get(collectionId)
+}
 
 // A sped-up or replaced transaction gets a new hash this one never sees mined, so the wait gives up.
 const END_TIMEOUT_MS = 5 * 60_000
@@ -94,7 +108,7 @@ export function useCollectionDiscounts(address: string | undefined, contractAddr
   const discounts = useMemo(
     () =>
       query.data && contractAddress
-        ? openDiscountsFor(query.data, contractAddress, now).filter(discount => !endedInSession.has(discount.id))
+        ? openDiscountsFor(query.data, contractAddress, now).filter(discount => !endOutcomes.has(discount.id))
         : undefined,
     [query.data, contractAddress, now]
   )
@@ -165,6 +179,7 @@ export function useCreateDiscount(session: Session | null) {
     },
     onSuccess: (discount, variables) => {
       track(DISCOUNT_CREATED_EVENT, { ...discountProps(variables), discountId: discount.id })
+      createdFor.set(variables.collection.id, discount.id)
       if (session) {
         updateDiscounts(queryClient, session.address, current => [
           discount,
@@ -211,7 +226,7 @@ export function useEndDiscount(session: Session | null) {
     },
     onSuccess: (_, { discount, collection }) => {
       track(DISCOUNT_ENDED_EVENT, { collectionId: collection.id, discountId: discount.id })
-      endedInSession.add(discount.id)
+      endOutcomes.set(discount.id, 'ended')
       if (session) {
         updateDiscounts(queryClient, session.address, current =>
           current.map(entry => (entry.id === discount.id ? { ...entry, status: 'cancelled' as const } : entry))
@@ -221,7 +236,7 @@ export function useEndDiscount(session: Session | null) {
     onError: (error, { discount, collection }) => {
       // Sent but not seen mined: it may still go through, so End must not be offered for it again in this tab.
       if (toDiscountError(error).reason === 'pending' && session) {
-        endedInSession.add(discount.id)
+        endOutcomes.set(discount.id, 'pending')
         updateDiscounts(queryClient, session.address, current => [...current])
       }
       if (isReportable(error)) {

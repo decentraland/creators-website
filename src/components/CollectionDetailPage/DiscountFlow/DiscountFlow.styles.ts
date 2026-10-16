@@ -40,7 +40,7 @@ export const Preset = styled.button`
   }
   &[data-selected] {
     border-color: ${theme.colors.white};
-    background: rgba(255, 255, 255, 0.1);
+    background: ${theme.colors.glassFaint};
   }
   &:disabled {
     opacity: 0.5;

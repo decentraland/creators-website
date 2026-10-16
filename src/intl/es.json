@@ -1577,7 +1577,8 @@
       "close": "Cerrar",
       "slow_title": "Seguimos terminando tu descuento",
       "slow_description": "Tu transacción se envió, pero está tardando más de lo normal. Todavía puede completarse: vuelve a revisar en unos minutos. No la envíes de nuevo o pagarás el gas dos veces.",
-      "error_description_wallet": "Tu wallet está en otra cuenta o red. Cámbiala a la cuenta con la que iniciaste sesión, en Polygon, e inténtalo de nuevo."
+      "error_description_wallet": "Tu wallet está en otra cuenta o red. Cámbiala a la cuenta con la que iniciaste sesión, en Polygon, e inténtalo de nuevo.",
+      "in_flight": "Todavía hay una solicitud anterior para terminar este descuento abierta en tu wallet. Confírmala o recházala ahí."
     },
     "note_social": "Crear un descuento solo requiere una firma: no tiene costo. Los compradores ven el precio rebajado en la Shop hasta que termine. Como iniciaste sesión con una cuenta social, no podrás terminarlo antes, así que elige bien la fecha de fin."
   }

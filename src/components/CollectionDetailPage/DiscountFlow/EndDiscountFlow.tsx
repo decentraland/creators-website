@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import errorArt from '~/assets/modal-error.png'
 import { useTranslation } from '~/intl'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
-import { useDiscountInFlight, useEndDiscount } from '~/hooks/useCollectionDiscounts'
+import { endOutcome, useDiscountInFlight, useEndDiscount } from '~/hooks/useCollectionDiscounts'
 import { isSocialLogin, type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { discountPct, toDiscountError, type CollectionDiscount, type DiscountFailureReason } from '~/lib/coupons'
@@ -29,11 +29,13 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
   const [view, setView] = useState<View>('confirm')
   const [phase, setPhase] = useState<'confirm' | 'mining'>('confirm')
   const attempt = useRef(0)
-  useBeforeUnloadGuard(end.isPending)
+  // An attempt from a dialog the creator closed counts too: it may still be mining, or have already settled.
+  const outcome = endOutcome(discount.id)
+  useBeforeUnloadGuard(ending)
 
   function start() {
     // A prompt the creator backed out of may still be open: a second one would be a second paid cancellation.
-    if (ending) return
+    if (ending || outcome) return
     const id = ++attempt.current
     setPhase('confirm')
     setView('pending')
@@ -73,7 +75,27 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
     )
   }
 
-  switch (view) {
+  // Never offer End again for a discount whose cancellation is already sent or done, whichever dialog sent it.
+  const shown: View | 'in_flight' =
+    view !== 'confirm'
+      ? view
+      : outcome === 'ended'
+        ? 'success'
+        : outcome === 'pending'
+          ? 'slow'
+          : ending
+            ? 'in_flight'
+            : view
+
+  switch (shown) {
+    case 'in_flight':
+      return (
+        <PendingModal
+          label={t('collection_discount.end.in_flight')}
+          onCancel={onClose}
+          testId="end-discount-in-flight"
+        />
+      )
     case 'confirm':
       return (
         <ConfirmModal

@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import errorArt from '~/assets/modal-error.png'
 import { useTranslation } from '~/intl'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
-import { useCreateDiscount, useDiscountInFlight } from '~/hooks/useCollectionDiscounts'
+import { lastCreatedDiscount, useCreateDiscount, useDiscountInFlight } from '~/hooks/useCollectionDiscounts'
 import { isSocialLogin, type Session } from '~/lib/auth'
 import { type DiscountReach } from '~/lib/collectionDiscount'
 import { type Collection } from '~/lib/collections'
@@ -42,7 +42,10 @@ export function DiscountFlow({ collection, session, reach, manaListings, onClose
   const [values, setValues] = useState<DiscountFormValues>(() => defaultDiscountValues())
   // Bumped when the creator backs out of the wallet prompt, so that attempt's outcome is ignored.
   const attempt = useRef(0)
-  useBeforeUnloadGuard(create.isPending)
+  // A create from a dialog the creator closed counts too: while it posts, and once it went through.
+  useBeforeUnloadGuard(creating)
+  const createdAtOpen = useRef(lastCreatedDiscount(collection.id))
+  const createdMeanwhile = lastCreatedDiscount(collection.id) !== createdAtOpen.current
 
   function submit(formValues: DiscountFormValues, submission: DiscountSubmission) {
     setValues(formValues)
@@ -73,7 +76,7 @@ export function DiscountFlow({ collection, session, reach, manaListings, onClose
     )
   }
 
-  switch (view) {
+  switch (view === 'form' && createdMeanwhile ? 'success' : view) {
     case 'form':
       return (
         <CreateDiscountModal

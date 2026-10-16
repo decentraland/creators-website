@@ -1577,7 +1577,8 @@
       "close": "Close",
       "slow_title": "Still ending your discount",
       "slow_description": "Your transaction was sent but is taking longer than usual. It can still go through: check back in a few minutes. Don't send it again, or you'll pay the gas twice.",
-      "error_description_wallet": "Your wallet is on another account or network. Switch it to the account you signed in with, on Polygon, and try again."
+      "error_description_wallet": "Your wallet is on another account or network. Switch it to the account you signed in with, on Polygon, and try again.",
+      "in_flight": "A previous request to end this discount is still open in your wallet. Confirm or reject it there."
     },
     "note_social": "Creating a discount only takes a signature: there's no fee. Buyers see the reduced price in the Shop until it ends. Signed in with a social account, you can't end it early, so pick the end date carefully."
   }

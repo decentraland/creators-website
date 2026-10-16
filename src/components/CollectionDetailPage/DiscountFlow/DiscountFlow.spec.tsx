@@ -17,7 +17,9 @@ const end = { mutate: vi.fn<(variables: Variables, callbacks: Callbacks) => void
 vi.mock('~/hooks/useCollectionDiscounts', () => ({
   useCreateDiscount: () => create,
   useEndDiscount: () => end,
-  useDiscountInFlight: () => ({ creating: create.isPending, ending: end.isPending })
+  useDiscountInFlight: () => ({ creating: create.isPending, ending: end.isPending }),
+  endOutcome: () => undefined,
+  lastCreatedDiscount: () => undefined
 }))
 vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
 

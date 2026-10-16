@@ -56,7 +56,7 @@ import { useForumPostRecovery } from '~/hooks/useForumPost'
 import { useSyncPublishedItems } from '~/hooks/usePublishCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useCollectionListings } from '~/hooks/useCollectionListings'
-import { useCollectionDiscounts, useDiscountFlags } from '~/hooks/useCollectionDiscounts'
+import { DISCOUNT_OPENED_EVENT, useCollectionDiscounts, useDiscountFlags } from '~/hooks/useCollectionDiscounts'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
@@ -242,7 +242,7 @@ const CollectionDetailPage = () => {
   const [endingDiscount, setEndingDiscount] = useState<CollectionDiscount | null>(null)
   const openDiscount = useCallback(
     (source: 'header' | 'menu') => {
-      if (collection) track('Open create collection discount', { collectionId: collection.id, source })
+      if (collection) track(DISCOUNT_OPENED_EVENT, { collectionId: collection.id, source })
       setDiscountOpen(true)
     },
     [collection]
