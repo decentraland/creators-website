@@ -25,7 +25,7 @@ vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
 
 import { readTransactionOutcome } from '~/lib/auth'
 import { createDiscount, endDiscount, fetchCreatorDiscounts, storeSignedDiscount } from '~/lib/coupons'
-import { savePendingEnd, saveUnconfirmedCreate } from '~/lib/discountAttempts'
+import { savePendingEnd, saveUnconfirmedCreate, type PendingEnd } from '~/lib/discountAttempts'
 import { DiscountFlow } from '~/components/CollectionDetailPage/DiscountFlow/DiscountFlow'
 import { EndDiscountFlow } from '~/components/CollectionDetailPage/DiscountFlow/EndDiscountFlow'
 import { resetDiscountSession, useCollectionDiscounts } from './useCollectionDiscounts'
@@ -63,8 +63,19 @@ afterEach(() => {
   vi.mocked(storeSignedDiscount).mockReset()
 })
 
-const sendEnd = () =>
-  savePendingEnd(session.address, { discountId: 'running', txHash: '0xhash', chainId: 80002, sentAt: Date.now() })
+const sendEnd = (patch: Partial<PendingEnd> = {}) =>
+  savePendingEnd(session.address, {
+    discountId: 'running',
+    txHash: '0xhash',
+    nonce: 4,
+    chainId: 80002,
+    sentAt: Date.now(),
+    expiresAt: Date.now() + DAY,
+    ...patch
+  })
+
+const listFor = () =>
+  renderHook(() => useCollectionDiscounts(session.address, collection.contractAddress), { wrapper: freshPage() })
 
 describe('when a cancellation was sent but not seen mined before a reload', () => {
   it('should not offer End again after the reload, sending nothing', () => {
@@ -84,9 +95,7 @@ describe('when a cancellation was sent but not seen mined before a reload', () =
     vi.mocked(fetchCreatorDiscounts).mockResolvedValue([running])
     vi.mocked(readTransactionOutcome).mockResolvedValue('unknown')
 
-    const { result } = renderHook(() => useCollectionDiscounts(session.address, collection.contractAddress), {
-      wrapper: freshPage()
-    })
+    const { result } = listFor()
 
     await waitFor(() =>
       expect(result.current.discounts).toEqual([expect.objectContaining({ id: 'running', ending: true })])
@@ -98,9 +107,7 @@ describe('when a cancellation was sent but not seen mined before a reload', () =
     vi.mocked(fetchCreatorDiscounts).mockResolvedValue([running])
     vi.mocked(readTransactionOutcome).mockResolvedValue('reverted')
 
-    const { result } = renderHook(() => useCollectionDiscounts(session.address, collection.contractAddress), {
-      wrapper: freshPage()
-    })
+    const { result } = listFor()
 
     await waitFor(() => expect(readTransactionOutcome).toHaveBeenCalled())
     await waitFor(() => expect(result.current.discounts?.[0]?.ending).toBeUndefined())
@@ -111,11 +118,57 @@ describe('when a cancellation was sent but not seen mined before a reload', () =
     vi.mocked(fetchCreatorDiscounts).mockResolvedValue([running])
     vi.mocked(readTransactionOutcome).mockResolvedValue('mined')
 
-    const { result } = renderHook(() => useCollectionDiscounts(session.address, collection.contractAddress), {
+    const { result } = listFor()
+
+    await waitFor(() => expect(result.current.discounts).toEqual([]))
+  })
+})
+
+describe('when a recorded cancellation has no receipt for a long time', () => {
+  // A low-fee or nonce-blocked transaction can still mine; age alone proves nothing.
+  it('should keep End disabled however old it is, while its nonce is unused', async () => {
+    sendEnd({ sentAt: Date.now() - 7 * DAY })
+    vi.mocked(fetchCreatorDiscounts).mockResolvedValue([running])
+    vi.mocked(readTransactionOutcome).mockResolvedValue('unknown')
+    const { result } = listFor()
+    await waitFor(() => expect(readTransactionOutcome).toHaveBeenCalled())
+    expect(result.current.discounts).toEqual([expect.objectContaining({ ending: true })])
+  })
+
+  it('should bring End back only once the server read the coupon after its nonce went elsewhere', async () => {
+    const supersededAt = Date.now() - 60_000
+    sendEnd({ supersededAt })
+    const readAt = (checkedAt: number) => ({
+      ...running,
+      state: { uses: 0, cancelled: false, revoked: false, checkedAt }
+    })
+
+    vi.mocked(fetchCreatorDiscounts).mockResolvedValue([readAt(supersededAt - 1)])
+    const before = listFor()
+    await waitFor(() => expect(before.result.current.discounts).toEqual([expect.objectContaining({ ending: true })]))
+    before.unmount()
+
+    vi.mocked(fetchCreatorDiscounts).mockResolvedValue([readAt(supersededAt + 1)])
+    const after = listFor()
+    await waitFor(() => expect(after.result.current.discounts?.[0]?.ending).toBeUndefined())
+  })
+})
+
+describe('when a cancellation mined but the server still reports the discount running', () => {
+  // The server reads coupon state on its own schedule; a reload in between must not offer End again.
+  it('should keep it ended across a reload, with nothing but the browser storage left', async () => {
+    sendEnd({ minedAt: Date.now() })
+    vi.resetModules()
+    const reloaded = await import('./useCollectionDiscounts')
+    vi.mocked(fetchCreatorDiscounts).mockResolvedValue([running])
+
+    const { result } = renderHook(() => reloaded.useCollectionDiscounts(session.address, collection.contractAddress), {
       wrapper: freshPage()
     })
 
     await waitFor(() => expect(result.current.discounts).toEqual([]))
+    expect(reloaded.endOutcome(session.address, 'running')).toBe('ended')
+    expect(readTransactionOutcome).not.toHaveBeenCalled()
   })
 })
 
@@ -131,7 +184,7 @@ describe('when a signed discount was posted with no readable answer before a rel
 
   // A second signature would put a second, independently redeemable coupon on sale.
   it('should settle that same coupon instead of asking for a new signature', async () => {
-    saveUnconfirmedCreate(session.address, { collectionId: collection.id, payload, signedAt: Date.now() })
+    saveUnconfirmedCreate(session.address, { collectionId: collection.id, payload })
     vi.mocked(storeSignedDiscount).mockResolvedValue({ ...running, id: 'stored' })
     const reach = { discounted: 1, unchanged: 0, example: { credits: 100 } }
 

@@ -81,10 +81,10 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
       ? view
       : outcome === 'ended'
         ? 'success'
-        : outcome === 'pending'
-          ? 'slow'
-          : ending
-            ? 'in_flight'
+        : ending
+          ? 'in_flight'
+          : outcome === 'pending'
+            ? 'slow'
             : view
 
   switch (shown) {

@@ -1585,7 +1585,11 @@
     "unconfirmed": {
       "title": "No pudimos confirmar que tu descuento se guardó",
       "description": "Puede que ya esté activo. Vuelve a revisar para guardar el descuento que ya firmaste: no te pedirá una nueva firma ni creará un segundo descuento.",
-      "check": "Volver a revisar"
-    }
+      "check": "Volver a revisar",
+      "terms": "Firmado: {pct}% de descuento hasta el {date}.",
+      "discard": "Descártalo y firma uno nuevo.",
+      "discard_hint": "Si se guardó, aparecerá en los descuentos de esta colección y podrás terminarlo ahí."
+    },
+    "close": "Cerrar"
   }
 }

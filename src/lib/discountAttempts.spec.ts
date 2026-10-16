@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { type CouponCreation } from '~/lib/coupons'
 import {
   clearPendingEnd,
+  clearUnconfirmedCreate,
   pendingEndOf,
   resetDiscountAttempts,
   savePendingEnd,
@@ -11,8 +12,16 @@ import {
 
 const ADDRESS = '0x00000000000000000000000000000000000000AA'
 const NOW = Date.UTC(2026, 9, 16)
-const end = { discountId: 'd1', txHash: '0xhash', chainId: 80002, sentAt: NOW }
-const payloadEnding = (expiration: number) => ({ checks: { expiration } }) as unknown as CouponCreation
+const end = { discountId: 'd1', txHash: '0xhash', chainId: 80002, sentAt: NOW, expiresAt: Date.now() + 86_400_000 }
+const payloadEnding = (expiration: number, signature = '0xsigned') =>
+  ({
+    signer: ADDRESS,
+    signature,
+    chainId: 80002,
+    discount: 300_000,
+    collections: ['0xcc'],
+    checks: { expiration }
+  }) as unknown as CouponCreation
 
 afterEach(() => {
   resetDiscountAttempts()
@@ -44,19 +53,45 @@ describe('when recording a cancellation that was sent', () => {
     savePendingEnd(ADDRESS, end)
     expect(pendingEndOf(ADDRESS, 'd1')).toEqual(end)
   })
+
+  it('should forget a cancellation once its discount has ended anyway', () => {
+    savePendingEnd(ADDRESS, { ...end, expiresAt: Date.now() - 1 })
+    expect(pendingEndOf(ADDRESS, 'd1')).toBeUndefined()
+  })
 })
 
 describe('when recording a coupon whose storing is unconfirmed', () => {
   it('should hand it back for a retry while its window is open', () => {
-    const create = { collectionId: 'c1', payload: payloadEnding(NOW + 1000), signedAt: NOW }
+    const create = { collectionId: 'c1', payload: payloadEnding(NOW + 1000) }
     saveUnconfirmedCreate(ADDRESS, create)
     expect(unconfirmedCreateOf(ADDRESS, 'c1', NOW)).toEqual(create)
   })
 
   // Past its window it can apply nowhere, so there is nothing left to settle.
   it('should drop it once its window closed', () => {
-    saveUnconfirmedCreate(ADDRESS, { collectionId: 'c1', payload: payloadEnding(NOW), signedAt: NOW - 1000 })
+    saveUnconfirmedCreate(ADDRESS, { collectionId: 'c1', payload: payloadEnding(NOW) })
     expect(unconfirmedCreateOf(ADDRESS, 'c1', NOW)).toBeUndefined()
     expect(unconfirmedCreateOf(ADDRESS, 'c1', NOW - 5000)).toBeUndefined()
+  })
+})
+
+describe('when more than one signed coupon is unconfirmed for a collection', () => {
+  // Each one may be on sale: recording a second must never forget the first.
+  it('should keep both and forget only the one settled', () => {
+    saveUnconfirmedCreate(ADDRESS, { collectionId: 'c1', payload: payloadEnding(NOW + 1000, '0xa') })
+    saveUnconfirmedCreate(ADDRESS, { collectionId: 'c1', payload: payloadEnding(NOW + 1000, '0xb') })
+    clearUnconfirmedCreate(ADDRESS, '0xa')
+    expect(unconfirmedCreateOf(ADDRESS, 'c1', NOW)?.payload.signature).toBe('0xb')
+  })
+})
+
+describe('when the stored attempts are not what this build writes', () => {
+  it('should drop the malformed entries instead of trusting them', () => {
+    localStorage.setItem(
+      `collection-discount-attempts:${ADDRESS.toLowerCase()}`,
+      JSON.stringify({ ends: [{ discountId: 'd1' }], creates: [{ collectionId: 'c1', payload: {} }] })
+    )
+    expect(pendingEndOf(ADDRESS, 'd1')).toBeUndefined()
+    expect(unconfirmedCreateOf(ADDRESS, 'c1', NOW)).toBeUndefined()
   })
 })

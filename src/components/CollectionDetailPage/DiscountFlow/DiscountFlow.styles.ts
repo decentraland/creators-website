@@ -120,3 +120,13 @@ export const DiscountTerms = styled.div`
   align-items: baseline;
   gap: 4px 10px;
 `
+
+export const TextButton = styled.button`
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: ${theme.colors.softWhite};
+  text-decoration: underline;
+  cursor: pointer;
+`

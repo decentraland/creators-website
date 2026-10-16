@@ -15,7 +15,7 @@ const OTHER = '0x00000000000000000000000000000000000000bb'
 function walletOn(chainId: number, behavior: Behavior = 'switches', account = ACCOUNT) {
   let current = chainId
   let active = account
-  const sendTransaction = vi.fn().mockResolvedValue({ hash: '0xhash' })
+  const sendTransaction = vi.fn().mockResolvedValue({ hash: '0xhash', nonce: 7 })
   const send = vi.fn(async (method: string, params: { chainId: string }[]) => {
     if (method === 'eth_accounts') return [active]
     const target = Number(params[0].chainId)
@@ -41,7 +41,7 @@ function walletOn(chainId: number, behavior: Behavior = 'switches', account = AC
 describe('when sending a transaction from the wallet itself', () => {
   it('should send it straight away when the wallet is already on the contract chain', async () => {
     const { session, provider, sendTransaction } = walletOn(80002)
-    await expect(sendWalletTransaction(session, call)).resolves.toBe('0xhash')
+    await expect(sendWalletTransaction(session, call)).resolves.toEqual({ hash: '0xhash', nonce: 7 })
     expect(provider.send).not.toHaveBeenCalledWith('wallet_switchEthereumChain', expect.anything())
     expect(sendTransaction).toHaveBeenCalledWith(expect.objectContaining({ from: ACCOUNT, to: manager.address }))
     expect(provider.getSigner).toHaveBeenCalledWith(ACCOUNT)

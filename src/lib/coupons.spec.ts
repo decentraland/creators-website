@@ -190,12 +190,33 @@ describe('when creating a discount', () => {
     expect(onSignedPayload).toHaveBeenCalledWith(vi.mocked(deps.postCoupon).mock.calls[0][0])
   })
 
-  it('should not go looking for a coupon the server refused', async () => {
+  it('should take a refusal as final only once a lookup confirms the coupon is not stored', async () => {
     const deps = makeDeps({ postCoupon: vi.fn().mockRejectedValue(new DiscountError('refused', 'expired')) })
     await expect(createDiscount({ ...terms, signer: wallet.address, chainId: CHAIN_ID }, deps)).rejects.toMatchObject({
       reason: 'refused'
     })
-    expect(deps.findStored).not.toHaveBeenCalled()
+    expect(deps.findStored).toHaveBeenCalled()
+  })
+
+  // An earlier POST may have stored it with its answer lost; a later refusal proves nothing without the lookup.
+  it('should keep a refused retry unconfirmed when the lookup cannot answer', async () => {
+    const postCoupon = vi.fn().mockRejectedValue(new DiscountError('refused', 'invalid'))
+    const findStored = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    await expect(
+      storeSignedDiscount({ signature: '0xa' } as CouponCreation, { postCoupon, findStored })
+    ).rejects.toMatchObject({
+      reason: 'unconfirmed'
+    })
+  })
+
+  it('should find a coupon stored earlier even when its retry is refused', async () => {
+    const postCoupon = vi.fn().mockRejectedValue(new DiscountError('refused', 'invalid'))
+    const findStored = vi.fn().mockResolvedValue({ id: 'stored-before' })
+    await expect(
+      storeSignedDiscount({ signature: '0xa' } as CouponCreation, { postCoupon, findStored })
+    ).resolves.toEqual({
+      id: 'stored-before'
+    })
   })
 
   it('should retry an unconfirmed coupon by storing that same one again, a repost of a stored one included', async () => {
@@ -227,6 +248,12 @@ describe('when storing a signed discount', () => {
       expect.objectContaining({ method: 'POST', body: JSON.stringify(payload) }),
       { signer: 'dcl:builder', intent: 'dcl:create-coupon' }
     )
+  })
+
+  // These are about the request, not the coupon: an earlier POST of it may still have been stored.
+  it.each([401, 403, 408, 409, 429, 500])('should leave a %s unconfirmed', async status => {
+    vi.mocked(signedFetch).mockResolvedValue(new Response(JSON.stringify({ ok: false }), { status }))
+    await expect(postCoupon('0xaa', payload)).rejects.toMatchObject({ reason: 'unconfirmed' })
   })
 
   it("should fail with the server's message when it refuses", async () => {
@@ -398,7 +425,7 @@ describe('when ending a discount', () => {
     const onSigned = vi.fn()
     await expect(
       endDiscount(discount, {
-        sendTransaction: vi.fn().mockResolvedValue('0xhash'),
+        sendTransaction: vi.fn().mockResolvedValue({ hash: '0xhash' }),
         waitForTransaction: vi.fn().mockResolvedValue(false),
         onSigned
       })
@@ -411,7 +438,7 @@ describe('when ending a discount', () => {
     const discount = await signedDiscount()
     await expect(
       endDiscount(discount, {
-        sendTransaction: vi.fn().mockResolvedValue('0xhash'),
+        sendTransaction: vi.fn().mockResolvedValue({ hash: '0xhash' }),
         waitForTransaction: vi.fn().mockRejectedValue(Object.assign(new Error('timeout exceeded'), { code: 'TIMEOUT' }))
       })
     ).rejects.toMatchObject({ reason: 'pending' })
@@ -433,7 +460,10 @@ describe('when ending a discount', () => {
     await expect(
       endDiscount(
         discount,
-        Object.assign({ sendTransaction: vi.fn().mockResolvedValue('0xhash'), waitForTransaction: vi.fn() }, deps)
+        Object.assign(
+          { sendTransaction: vi.fn().mockResolvedValue({ hash: '0xhash' }), waitForTransaction: vi.fn() },
+          deps
+        )
       )
     ).rejects.toMatchObject({ reason: 'pending' })
   })

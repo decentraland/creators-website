@@ -55,6 +55,7 @@ describe('when the creator closes the End dialog with the wallet prompt still op
     vi.mocked(endDiscount).mockImplementation(
       (_, deps) =>
         new Promise<void>(resolve => {
+          deps.onBroadcast?.('0xhash', 3)
           mine = () => {
             deps.onSigned?.()
             resolve()
@@ -135,10 +136,49 @@ describe('when the creator closes the Create dialog mid-signature and opens it a
     await userEvent.click(screen.getByTestId('create-discount-pending-cancel'))
     first.unmount()
     render(flow(), { wrapper })
-    expect(screen.getByTestId('discount-submit')).toBeDisabled()
+    expect(screen.getByTestId('create-discount-in-flight')).toBeInTheDocument()
+    expect(screen.queryByTestId('discount-submit')).not.toBeInTheDocument()
 
     await act(async () => store())
     expect(await screen.findByTestId('success-modal-title')).toHaveTextContent(/your discount is live/i)
+    expect(createDiscount).toHaveBeenCalledTimes(1)
+  })
+
+  // Jarvis' path: the creator backs out of the prompt, approves it anyway, and its POST gets no answer.
+  it('should not let a second coupon be signed next to one backed out of and left unconfirmed', async () => {
+    const { wrapper, session } = setup()
+    let fail: () => void = () => {}
+    vi.mocked(createDiscount).mockImplementation(
+      (_, deps) =>
+        new Promise((_, reject) => {
+          fail = () => {
+            deps.onSignedPayload?.({
+              signer: session.address,
+              chainId: 80002,
+              signature: '0xfirst',
+              discount: 300_000,
+              collections: [collection.contractAddress!],
+              checks: { effective: Date.now(), expiration: Date.now() + DAY, uses: 1_000_000 }
+            } as never)
+            reject(new DiscountError('unconfirmed', 'no answer'))
+          }
+        })
+    )
+    const reach = { discounted: 2, unchanged: 0, example: { credits: 100 } }
+    render(
+      <DiscountFlow collection={collection} session={session} reach={reach} manaListings={false} onClose={vi.fn()} />,
+      {
+        wrapper
+      }
+    )
+
+    await userEvent.click(screen.getByTestId('discount-submit'))
+    await userEvent.click(screen.getByTestId('create-discount-pending-cancel'))
+    await act(async () => fail())
+
+    expect(await screen.findByTestId('discount-unconfirmed-modal')).toBeInTheDocument()
+    expect(screen.getByTestId('discount-unconfirmed-terms')).toHaveTextContent('30%')
+    expect(screen.queryByTestId('discount-submit')).not.toBeInTheDocument()
     expect(createDiscount).toHaveBeenCalledTimes(1)
   })
 })

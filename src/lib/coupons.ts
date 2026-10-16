@@ -340,15 +340,18 @@ export async function storeSignedDiscount(
   try {
     return await deps.postCoupon(payload)
   } catch (error) {
-    if (error instanceof DiscountError && error.reason === 'refused') throw error
+    const message = error instanceof Error ? error.message : String(error)
+    // An earlier POST of this coupon may have been stored with its answer lost, so this request's refusal alone
+    // proves nothing: only a lookup that answers, and does not find it, shows it never was.
     let stored: CollectionDiscount | undefined
     try {
       stored = await deps.findStored(payload)
     } catch {
-      stored = undefined
+      throw new DiscountError('unconfirmed', message)
     }
     if (stored) return stored
-    throw new DiscountError('unconfirmed', error instanceof Error ? error.message : String(error))
+    if (error instanceof DiscountError && error.reason === 'refused') throw error
+    throw new DiscountError('unconfirmed', message)
   }
 }
 
@@ -368,8 +371,10 @@ export async function postCoupon(address: string, payload: CouponCreation): Prom
   }
   if (response.ok && json.ok && json.data) return json.data
   const message = json.message ?? `marketplace-server did not store the discount (${response.status})`
-  // A 409 is this same coupon already stored; other 4xx refuse it outright; a 5xx or an unreadable 2xx says nothing.
-  const refused = response.status >= 400 && response.status < 500 && response.status !== 409
+  // Only a validation refusal says no to this coupon. A 409 is it already stored; 401/403/408/429 are about the
+  // request (an expired identity, a gateway, a rate limit); a 5xx or an unreadable 2xx says nothing.
+  const refused =
+    response.status >= 400 && response.status < 500 && ![401, 403, 408, 409, 429].includes(response.status)
   throw new DiscountError(refused ? 'refused' : 'unconfirmed', message)
 }
 
@@ -403,10 +408,13 @@ export async function fetchCreatorDiscounts(address: string): Promise<Collection
   return [...new Map(discounts.map(discount => [discount.id, discount])).values()]
 }
 
-/** The creator's stored discount with this payload's signature, if any. */
-export async function findStoredDiscount(payload: CouponCreation): Promise<CollectionDiscount | undefined> {
+/** The account's stored discount with this payload's signature, if any. */
+export async function findStoredDiscount(
+  address: string,
+  payload: CouponCreation
+): Promise<CollectionDiscount | undefined> {
   const signature = payload.signature.toLowerCase()
-  return (await fetchCreatorDiscounts(payload.signer)).find(d => d.signature.toLowerCase() === signature)
+  return (await fetchCreatorDiscounts(address)).find(d => d.signature.toLowerCase() === signature)
 }
 
 /** The server's status, refreshed against the clock: a discount it called active may have ended since. */
@@ -500,12 +508,12 @@ export function buildEndDiscountCall(discount: CollectionDiscount): ContractCall
 }
 
 export type EndDiscountDeps = {
-  sendTransaction: (call: ContractCall) => Promise<string>
+  sendTransaction: (call: ContractCall) => Promise<{ hash: string; nonce?: number }>
   waitForTransaction: (txHash: string) => Promise<boolean>
   /** The wallet prompt is over; the cancellation is mining. */
   onSigned?: () => void
   /** The cancellation is on its way under this hash: record it before waiting, so no reload can offer a second. */
-  onBroadcast?: (txHash: string) => void
+  onBroadcast?: (txHash: string, nonce?: number) => void
 }
 
 /** Ends a discount early and waits for the receipt; the Shop stops applying it on the server's next state read. */
@@ -514,8 +522,9 @@ export async function endDiscount(discount: CollectionDiscount, deps: EndDiscoun
   // polling or a wallet that throws after broadcasting all leave it possibly mining, and a retry would pay twice.
   const call = buildEndDiscountCall(discount)
   let txHash: string
+  let nonce: number | undefined
   try {
-    txHash = await deps.sendTransaction(call)
+    ;({ hash: txHash, nonce } = await deps.sendTransaction(call))
   } catch (error) {
     const broadcast = (error as { transactionHash?: string } | null)?.transactionHash
     if (broadcast) {
@@ -524,7 +533,7 @@ export async function endDiscount(discount: CollectionDiscount, deps: EndDiscoun
     }
     throw toDiscountError(error)
   }
-  deps.onBroadcast?.(txHash)
+  deps.onBroadcast?.(txHash, nonce)
   deps.onSigned?.()
   let mined: boolean
   try {

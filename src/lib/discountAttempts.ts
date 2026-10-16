@@ -4,47 +4,100 @@
 // cancellation or put a second, independently redeemable coupon on sale.
 import { type CouponCreation } from '~/lib/coupons'
 
-export type PendingEnd = { discountId: string; txHash: string; chainId: number; sentAt: number }
-export type UnconfirmedCreate = { collectionId: string; payload: CouponCreation; signedAt: number }
+export type PendingEnd = {
+  discountId: string
+  txHash: string
+  /** The sender's nonce, which is what proves a cancellation with no receipt can never execute. */
+  nonce?: number
+  chainId: number
+  sentAt: number
+  /** The receipt says it mined: kept until the server stops reporting the discount running. */
+  minedAt?: number
+  /** Its nonce went to another transaction (dropped, sped up or replaced): kept until the server's next read. */
+  supersededAt?: number
+  /** When the discount stops applying anyway; the record is useless past it. */
+  expiresAt: number
+}
+export type UnconfirmedCreate = { collectionId: string; payload: CouponCreation }
 type Attempts = { ends: PendingEnd[]; creates: UnconfirmedCreate[] }
 
 const STORAGE_PREFIX = 'collection-discount-attempts:'
-// Without storage (private mode, blocked site data) the attempts still hold for this tab.
+// Used only where the browser keeps no site data (private mode, blocked storage): there, it is all this tab has.
 const memory = new Map<string, Attempts>()
 
 const keyOf = (address: string) => `${STORAGE_PREFIX}${address.toLowerCase()}`
+const isNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)
+
+function isPendingEnd(value: unknown): value is PendingEnd {
+  const end = value as Partial<PendingEnd> | null
+  return (
+    !!end &&
+    typeof end.discountId === 'string' &&
+    typeof end.txHash === 'string' &&
+    isNumber(end.chainId) &&
+    isNumber(end.sentAt) &&
+    isNumber(end.expiresAt)
+  )
+}
+
+function isUnconfirmedCreate(value: unknown): value is UnconfirmedCreate {
+  const create = value as Partial<UnconfirmedCreate> | null
+  const payload = create?.payload as Partial<CouponCreation> | undefined
+  return (
+    !!create &&
+    typeof create.collectionId === 'string' &&
+    !!payload &&
+    typeof payload.signature === 'string' &&
+    typeof payload.signer === 'string' &&
+    Array.isArray(payload.collections) &&
+    isNumber(payload.chainId) &&
+    isNumber(payload.discount) &&
+    !!payload.checks &&
+    isNumber(payload.checks.expiration)
+  )
+}
 
 function read(address: string): Attempts {
   const key = keyOf(address)
+  let raw: string | null
   try {
-    const raw = localStorage.getItem(key)
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<Attempts>
-      return { ends: parsed.ends ?? [], creates: parsed.creates ?? [] }
+    raw = localStorage.getItem(key)
+  } catch {
+    return memory.get(key) ?? { ends: [], creates: [] }
+  }
+  if (!raw) return { ends: [], creates: [] }
+  try {
+    const parsed = JSON.parse(raw) as { ends?: unknown; creates?: unknown }
+    // Entries that don't have the shape this build writes are dropped rather than trusted.
+    return {
+      ends: Array.isArray(parsed.ends) ? parsed.ends.filter(isPendingEnd) : [],
+      creates: Array.isArray(parsed.creates) ? parsed.creates.filter(isUnconfirmedCreate) : []
     }
   } catch {
-    // Unreadable storage falls back to this tab's copy.
+    return { ends: [], creates: [] }
   }
-  return memory.get(key) ?? { ends: [], creates: [] }
 }
 
 function write(address: string, attempts: Attempts): void {
   const key = keyOf(address)
-  memory.set(key, attempts)
   try {
     if (attempts.ends.length === 0 && attempts.creates.length === 0) localStorage.removeItem(key)
     else localStorage.setItem(key, JSON.stringify(attempts))
+    memory.delete(key)
   } catch {
-    // The in-memory copy still covers this tab.
+    memory.set(key, attempts)
   }
 }
 
-export function pendingEnds(address: string): PendingEnd[] {
-  return read(address).ends
+export function pendingEnds(address: string, now = Date.now()): PendingEnd[] {
+  const attempts = read(address)
+  const live = attempts.ends.filter(end => end.expiresAt > now)
+  if (live.length !== attempts.ends.length) write(address, { ...attempts, ends: live })
+  return live
 }
 
 export function pendingEndOf(address: string, discountId: string): PendingEnd | undefined {
-  return read(address).ends.find(end => end.discountId === discountId)
+  return pendingEnds(address).find(end => end.discountId === discountId)
 }
 
 export function savePendingEnd(address: string, end: PendingEnd): void {
@@ -52,36 +105,47 @@ export function savePendingEnd(address: string, end: PendingEnd): void {
   write(address, { ...attempts, ends: [...attempts.ends.filter(e => e.discountId !== end.discountId), end] })
 }
 
+export function updatePendingEnd(address: string, discountId: string, patch: Partial<PendingEnd>): void {
+  const attempts = read(address)
+  write(address, {
+    ...attempts,
+    ends: attempts.ends.map(end => (end.discountId === discountId ? { ...end, ...patch } : end))
+  })
+}
+
 export function clearPendingEnd(address: string, discountId: string): void {
   const attempts = read(address)
   write(address, { ...attempts, ends: attempts.ends.filter(end => end.discountId !== discountId) })
 }
 
-/** The coupon signed for the collection whose storing is unconfirmed, unless its window already closed. */
+/** The oldest coupon signed for the collection whose storing is unconfirmed, unless its window already closed. */
 export function unconfirmedCreateOf(
   address: string,
   collectionId: string,
   now = Date.now()
 ): UnconfirmedCreate | undefined {
-  const create = read(address).creates.find(entry => entry.collectionId === collectionId)
-  if (create && create.payload.checks.expiration <= now) {
-    clearUnconfirmedCreate(address, collectionId)
-    return undefined
-  }
-  return create
+  const attempts = read(address)
+  const live = attempts.creates.filter(create => create.payload.checks.expiration > now)
+  if (live.length !== attempts.creates.length) write(address, { ...attempts, creates: live })
+  return live.find(create => create.collectionId === collectionId)
 }
 
+/** Adds it next to any other unconfirmed coupon: each one may be on sale, so none may be forgotten. */
 export function saveUnconfirmedCreate(address: string, create: UnconfirmedCreate): void {
   const attempts = read(address)
-  write(address, {
-    ...attempts,
-    creates: [...attempts.creates.filter(c => c.collectionId !== create.collectionId), create]
-  })
+  const signature = create.payload.signature.toLowerCase()
+  if (attempts.creates.some(entry => entry.payload.signature.toLowerCase() === signature)) return
+  write(address, { ...attempts, creates: [...attempts.creates, create] })
 }
 
-export function clearUnconfirmedCreate(address: string, collectionId: string): void {
+/** Forgets one signed coupon, by its signature, once it is known stored or known refused. */
+export function clearUnconfirmedCreate(address: string, signature: string): void {
   const attempts = read(address)
-  write(address, { ...attempts, creates: attempts.creates.filter(create => create.collectionId !== collectionId) })
+  const wanted = signature.toLowerCase()
+  write(address, {
+    ...attempts,
+    creates: attempts.creates.filter(create => create.payload.signature.toLowerCase() !== wanted)
+  })
 }
 
 /** Forgets everything; for specs. */

@@ -1,13 +1,14 @@
 import { useRef, useState } from 'react'
 import errorArt from '~/assets/modal-error.png'
+import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { lastCreatedDiscount, useCreateDiscount, useDiscountInFlight } from '~/hooks/useCollectionDiscounts'
 import { isSocialLogin, type Session } from '~/lib/auth'
 import { type DiscountReach } from '~/lib/collectionDiscount'
 import { type Collection } from '~/lib/collections'
-import { UNCAPPED_USES, toDiscountError, type DiscountFailureReason } from '~/lib/coupons'
-import { unconfirmedCreateOf } from '~/lib/discountAttempts'
+import { discountPct, isDiscountCapped, toDiscountError, type DiscountFailureReason } from '~/lib/coupons'
+import { clearUnconfirmedCreate, unconfirmedCreateOf } from '~/lib/discountAttempts'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { PendingModal } from '~/components/PendingModal'
 import { SuccessModal } from '~/components/SuccessModal'
@@ -17,6 +18,7 @@ import {
   type DiscountFormValues,
   type DiscountSubmission
 } from './CreateDiscountModal'
+import * as S from './DiscountFlow.styles'
 
 type View = 'form' | 'signing' | 'success' | 'error' | 'unconfirmed'
 
@@ -34,6 +36,7 @@ type Props = {
  */
 export function DiscountFlow({ collection, session, reach, manaListings, onClose }: Props) {
   const { t } = useTranslation()
+  const intl = useIntl()
   const social = isSocialLogin(session)
   const create = useCreateDiscount(session)
   const { creating } = useDiscountInFlight({ collectionId: collection.id })
@@ -56,16 +59,17 @@ export function DiscountFlow({ collection, session, reach, manaListings, onClose
       // Even an attempt the creator backed out of is live once stored: say so rather than offer a second one.
       onSuccess: () => setView('success'),
       onError: (cause: unknown) => {
-        if (attempt.current !== id) return
         const reason = toDiscountError(cause).reason
+        // Even for an attempt the creator backed out of: a coupon signed anyway may be on sale, and the form must
+        // not let a second one be signed next to it.
+        if (reason === 'unconfirmed') {
+          setView('unconfirmed')
+          return
+        }
+        if (attempt.current !== id) return
         // Dismissing the wallet prompt is the creator changing their mind, not a failure.
         if (reason === 'rejected') {
           setView('form')
-          return
-        }
-        // Signed, but the server may have it: only that same coupon can be retried.
-        if (reason === 'unconfirmed') {
-          setView('unconfirmed')
           return
         }
         setFailure(reason)
@@ -76,6 +80,11 @@ export function DiscountFlow({ collection, session, reach, manaListings, onClose
 
   function submit(formValues: DiscountFormValues, submission: DiscountSubmission) {
     setValues(formValues)
+    // Another tab, or an attempt backed out of, may have left a signed coupon unconfirmed since this opened.
+    if (unconfirmedCreateOf(session.address, collection.id)) {
+      setView('unconfirmed')
+      return
+    }
     const id = ++attempt.current
     setPhase('confirm')
     if (!social) setView('signing')
@@ -105,17 +114,37 @@ export function DiscountFlow({ collection, session, reach, manaListings, onClose
       {
         collection,
         resume: payload,
-        discountPct: Math.round(payload.discount / 10_000),
+        discountPct: discountPct(payload),
         startsAtMs: payload.checks.effective,
         endsAtMs: payload.checks.expiration,
-        uses: payload.checks.uses < UNCAPPED_USES ? payload.checks.uses : undefined,
+        uses: isDiscountCapped(payload) ? payload.checks.uses : undefined,
         discountedCount: reach.discounted
       },
       settle(id)
     )
   }
 
-  switch (view === 'form' && createdMeanwhile ? 'success' : view) {
+  /** Signs a new one on the creator's word: if the unconfirmed one was stored, it shows in the list to end there. */
+  function discardUnconfirmed() {
+    const pending = unconfirmedCreateOf(session.address, collection.id)
+    if (pending) clearUnconfirmedCreate(session.address, pending.payload.signature)
+    setView(unconfirmedCreateOf(session.address, collection.id) ? 'unconfirmed' : 'form')
+  }
+
+  const unconfirmed = view === 'unconfirmed' ? unconfirmedCreateOf(session.address, collection.id) : undefined
+  // A create from a dialog the creator closed is still posting: wait on it, then show how it went.
+  const shown: View | 'in_flight' =
+    (view === 'form' || view === 'unconfirmed') && createdMeanwhile
+      ? 'success'
+      : (view === 'form' || view === 'unconfirmed') && creating
+        ? 'in_flight'
+        : view
+
+  switch (shown) {
+    case 'in_flight':
+      return (
+        <PendingModal label={t('collection_discount.saving')} onCancel={onClose} testId="create-discount-in-flight" />
+      )
     case 'form':
       return (
         <CreateDiscountModal
@@ -164,14 +193,29 @@ export function DiscountFlow({ collection, session, reach, manaListings, onClose
           description={t('collection_discount.unconfirmed.description')}
           art={{ src: errorArt }}
           onClose={onClose}
-          cancel={{ label: t('collection_discount.end.close'), onClick: onClose, testId: 'discount-unconfirmed-close' }}
+          cancel={{ label: t('collection_discount.close'), onClick: onClose, testId: 'discount-unconfirmed-close' }}
           confirm={{
             label: t('collection_discount.unconfirmed.check'),
             onClick: retryUnconfirmed,
             testId: 'discount-unconfirmed-retry'
           }}
           testId="discount-unconfirmed-modal"
-        />
+        >
+          {unconfirmed && (
+            <S.Note data-testid="discount-unconfirmed-terms">
+              <p>
+                {t('collection_discount.unconfirmed.terms', {
+                  pct: discountPct(unconfirmed.payload),
+                  date: intl.formatDate(unconfirmed.payload.checks.expiration, { month: 'short', day: 'numeric' })
+                })}{' '}
+                <S.TextButton type="button" data-testid="discount-unconfirmed-discard" onClick={discardUnconfirmed}>
+                  {t('collection_discount.unconfirmed.discard')}
+                </S.TextButton>{' '}
+                {t('collection_discount.unconfirmed.discard_hint')}
+              </p>
+            </S.Note>
+          )}
+        </ConfirmModal>
       )
     case 'error':
       return (

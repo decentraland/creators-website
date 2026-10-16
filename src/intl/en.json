@@ -1585,7 +1585,11 @@
     "unconfirmed": {
       "title": "We couldn't confirm your discount was saved",
       "description": "It may already be live. Check again to save the discount you already signed: it won't ask for a new signature or create a second discount.",
-      "check": "Check again"
-    }
+      "check": "Check again",
+      "terms": "Signed: {pct}% off until {date}.",
+      "discard": "Discard it and sign a new one.",
+      "discard_hint": "If it was saved, it will show in this collection's discounts and you can end it there."
+    },
+    "close": "Close"
   }
 }

@@ -135,7 +135,10 @@ function gasOverrides(chainId: number): ethers.providers.TransactionRequest {
  * The network is read again after the switch: some providers (Magic) answer it without moving the wallet. It is
  * sent from the session's account only: a call keyed by its caller, like a cancellation, does nothing from another.
  */
-export async function sendWalletTransaction(session: Session, call: ContractCall): Promise<string> {
+export async function sendWalletTransaction(
+  session: Session,
+  call: ContractCall
+): Promise<{ hash: string; nonce: number }> {
   const chainId = Number(call.contract.chainId)
   await requireAccount(session)
   if ((await session.web3Provider.getNetwork()).chainId !== chainId) {
@@ -152,7 +155,7 @@ export async function sendWalletTransaction(session: Session, call: ContractCall
     data: encodeContractCall(call),
     ...gasOverrides(chainId)
   })
-  return tx.hash
+  return { hash: tx.hash, nonce: tx.nonce }
 }
 
 /** EIP-712 signature of `value` by the connected wallet (an off-chain order, not a transaction). */
@@ -165,14 +168,27 @@ export async function signTypedData(
   return session.signer._signTypedData(domain, types, value)
 }
 
-/** A transaction's outcome as the chain knows it now: `mined`, `reverted`, or `unknown` when there is no receipt yet. */
+/**
+ * What the chain says about a transaction now: `mined` or `reverted` once it has a receipt; `superseded` when it has
+ * none but its sender has already used its nonce, so it can never execute; `unknown` otherwise (still pending, or
+ * the read failed).
+ */
 export async function readTransactionOutcome(
   chainId: number,
-  txHash: string
-): Promise<'mined' | 'reverted' | 'unknown'> {
-  const receipt = await (await getReadProvider(chainId)).getTransactionReceipt(txHash)
-  if (!receipt) return 'unknown'
-  return receipt.status === 1 ? 'mined' : 'reverted'
+  txHash: string,
+  from: string,
+  nonce?: number
+): Promise<'mined' | 'reverted' | 'superseded' | 'unknown'> {
+  try {
+    const provider = await getReadProvider(chainId)
+    const receipt = await provider.getTransactionReceipt(txHash)
+    if (receipt) return receipt.status === 1 ? 'mined' : 'reverted'
+    const known = nonce ?? (await provider.getTransaction(txHash))?.nonce
+    if (known === undefined) return 'unknown'
+    return (await provider.getTransactionCount(from, 'latest')) > known ? 'superseded' : 'unknown'
+  } catch {
+    return 'unknown'
+  }
 }
 
 /** Resolves true when the transaction is mined successfully, false when it reverted. */
