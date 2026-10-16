@@ -39,6 +39,7 @@ export function CollectionDiscounts({ discounts, now, onEnd }: Props) {
                   {t('collection_discount.chip.uses', { used: discount.state?.uses ?? 0, total: discount.checks.uses })}
                 </span>
               )}
+              {discount.ending && <span data-testid="discount-ending">{t('collection_discount.chip.ending')}</span>}
               {discount.collections.length > 1 && (
                 <span data-testid="discount-other-collections">
                   {t('collection_discount.chip.others', { count: discount.collections.length - 1 })}
@@ -50,6 +51,8 @@ export function CollectionDiscounts({ discounts, now, onEnd }: Props) {
               variant="secondary"
               size="sm"
               data-testid="end-discount"
+              // Its cancellation is already on its way: a second one would only cost gas.
+              disabled={discount.ending}
               onClick={() => onEnd(discount)}
             >
               {t('collection_discount.end.action')}

@@ -6,7 +6,8 @@ import { lastCreatedDiscount, useCreateDiscount, useDiscountInFlight } from '~/h
 import { isSocialLogin, type Session } from '~/lib/auth'
 import { type DiscountReach } from '~/lib/collectionDiscount'
 import { type Collection } from '~/lib/collections'
-import { toDiscountError, type DiscountFailureReason } from '~/lib/coupons'
+import { UNCAPPED_USES, toDiscountError, type DiscountFailureReason } from '~/lib/coupons'
+import { unconfirmedCreateOf } from '~/lib/discountAttempts'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { PendingModal } from '~/components/PendingModal'
 import { SuccessModal } from '~/components/SuccessModal'
@@ -17,7 +18,7 @@ import {
   type DiscountSubmission
 } from './CreateDiscountModal'
 
-type View = 'form' | 'signing' | 'success' | 'error'
+type View = 'form' | 'signing' | 'success' | 'error' | 'unconfirmed'
 
 type Props = {
   collection: Collection
@@ -36,7 +37,10 @@ export function DiscountFlow({ collection, session, reach, manaListings, onClose
   const social = isSocialLogin(session)
   const create = useCreateDiscount(session)
   const { creating } = useDiscountInFlight({ collectionId: collection.id })
-  const [view, setView] = useState<View>('form')
+  // A coupon signed earlier, here or before a reload, whose storing was never confirmed: settle it before the form.
+  const [view, setView] = useState<View>(() =>
+    unconfirmedCreateOf(session.address, collection.id) ? 'unconfirmed' : 'form'
+  )
   const [phase, setPhase] = useState<'confirm' | 'pending'>('confirm')
   const [failure, setFailure] = useState<DiscountFailureReason>('generic')
   const [values, setValues] = useState<DiscountFormValues>(() => defaultDiscountValues())
@@ -46,6 +50,29 @@ export function DiscountFlow({ collection, session, reach, manaListings, onClose
   useBeforeUnloadGuard(creating)
   const createdAtOpen = useRef(lastCreatedDiscount(collection.id))
   const createdMeanwhile = lastCreatedDiscount(collection.id) !== createdAtOpen.current
+
+  function settle(id: number) {
+    return {
+      // Even an attempt the creator backed out of is live once stored: say so rather than offer a second one.
+      onSuccess: () => setView('success'),
+      onError: (cause: unknown) => {
+        if (attempt.current !== id) return
+        const reason = toDiscountError(cause).reason
+        // Dismissing the wallet prompt is the creator changing their mind, not a failure.
+        if (reason === 'rejected') {
+          setView('form')
+          return
+        }
+        // Signed, but the server may have it: only that same coupon can be retried.
+        if (reason === 'unconfirmed') {
+          setView('unconfirmed')
+          return
+        }
+        setFailure(reason)
+        setView('error')
+      }
+    }
+  }
 
   function submit(formValues: DiscountFormValues, submission: DiscountSubmission) {
     setValues(formValues)
@@ -59,20 +86,32 @@ export function DiscountFlow({ collection, session, reach, manaListings, onClose
         discountedCount: reach.discounted,
         onSigned: () => attempt.current === id && setPhase('pending')
       },
+      settle(id)
+    )
+  }
+
+  /** Stores the coupon already signed (or finds it stored); never asks for a new signature. */
+  function retryUnconfirmed() {
+    const pending = unconfirmedCreateOf(session.address, collection.id)
+    if (!pending) {
+      setView('form')
+      return
+    }
+    const { payload } = pending
+    const id = ++attempt.current
+    setPhase('pending')
+    setView('signing')
+    create.mutate(
       {
-        // Even an attempt the creator backed out of is live once signed: say so rather than offer a second one.
-        onSuccess: () => setView('success'),
-        onError: cause => {
-          if (attempt.current !== id) return
-          // Dismissing the wallet prompt is the creator changing their mind, not a failure.
-          if (toDiscountError(cause).reason === 'rejected') {
-            setView('form')
-            return
-          }
-          setFailure(toDiscountError(cause).reason)
-          setView('error')
-        }
-      }
+        collection,
+        resume: payload,
+        discountPct: Math.round(payload.discount / 10_000),
+        startsAtMs: payload.checks.effective,
+        endsAtMs: payload.checks.expiration,
+        uses: payload.checks.uses < UNCAPPED_USES ? payload.checks.uses : undefined,
+        discountedCount: reach.discounted
+      },
+      settle(id)
     )
   }
 
@@ -116,6 +155,22 @@ export function DiscountFlow({ collection, session, reach, manaListings, onClose
             social ? 'collection_discount.success.description_social' : 'collection_discount.success.description'
           )}
           onDone={onClose}
+        />
+      )
+    case 'unconfirmed':
+      return (
+        <ConfirmModal
+          title={t('collection_discount.unconfirmed.title')}
+          description={t('collection_discount.unconfirmed.description')}
+          art={{ src: errorArt }}
+          onClose={onClose}
+          cancel={{ label: t('collection_discount.end.close'), onClick: onClose, testId: 'discount-unconfirmed-close' }}
+          confirm={{
+            label: t('collection_discount.unconfirmed.check'),
+            onClick: retryUnconfirmed,
+            testId: 'discount-unconfirmed-retry'
+          }}
+          testId="discount-unconfirmed-modal"
         />
       )
     case 'error':

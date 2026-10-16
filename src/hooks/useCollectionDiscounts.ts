@@ -1,20 +1,39 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useIsMutating, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
-import { requireAccount, sendWalletTransaction, signTypedData, waitForTransaction, type Session } from '~/lib/auth'
+import {
+  readTransactionOutcome,
+  requireAccount,
+  sendWalletTransaction,
+  signTypedData,
+  waitForTransaction,
+  type Session
+} from '~/lib/auth'
 import { errorCode, track } from '~/lib/analytics'
 import {
   DiscountError,
   createDiscount,
   endDiscount,
   fetchCreatorDiscounts,
+  findStoredDiscount,
   openDiscountsFor,
   postCoupon,
   readCouponIndexes,
+  storeSignedDiscount,
   toDiscountError,
   type CollectionDiscount,
+  type CouponCreation,
   type DiscountTerms
 } from '~/lib/coupons'
 import { type Collection } from '~/lib/collections'
+import {
+  clearPendingEnd,
+  clearUnconfirmedCreate,
+  pendingEndOf,
+  pendingEnds,
+  resetDiscountAttempts,
+  savePendingEnd,
+  saveUnconfirmedCreate
+} from '~/lib/discountAttempts'
 import { FeatureFlag } from '~/lib/featureFlags'
 import { getMaticChainId } from '~/lib/publishCollection'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
@@ -26,10 +45,10 @@ const DISCOUNT_FAILED_EVENT = 'Create collection discount error'
 const DISCOUNT_ENDED_EVENT = 'End collection discount'
 const DISCOUNT_END_FAILED_EVENT = 'End collection discount error'
 
-// How each discount this tab ended came out. The server reads a coupon's state on its own schedule, so a refetch
-// right after the cancellation mined can still report it running; and one still mining may yet go through. Either
-// way End must not come back for it, including in a dialog reopened while the first attempt was in flight.
-const endOutcomes = new Map<string, 'ended' | 'pending'>()
+// Discounts whose cancellation this tab saw mined. The server reads a coupon's state on its own schedule, so a refetch
+// right after can still report it running, and End must not come back for it. Cancellations sent but not seen
+// mined are kept in `lib/discountAttempts`, which survives a reload.
+const endedInSession = new Set<string>()
 // The last discount this tab created per collection, so a dialog reopened during a create can tell it went through.
 const createdFor = new Map<string, string>()
 
@@ -40,13 +59,32 @@ export function useAnyDiscountInFlight(): boolean {
 
 /** Forgets this tab's outcomes; for specs, which share the module between cases. */
 export function resetDiscountSession(): void {
-  endOutcomes.clear()
+  endedInSession.clear()
   createdFor.clear()
+  resetDiscountAttempts()
 }
 
-/** Whether this tab already ended (or sent the cancellation of) a discount. */
-export function endOutcome(discountId: string): 'ended' | 'pending' | undefined {
-  return endOutcomes.get(discountId)
+/** Whether a discount's cancellation was seen mined, or sent and not yet settled, here or before a reload. */
+export function endOutcome(address: string, discountId: string): 'ended' | 'pending' | undefined {
+  if (endedInSession.has(discountId)) return 'ended'
+  return pendingEndOf(address, discountId) ? 'pending' : undefined
+}
+
+// A cancellation with no receipt this long after it was sent was dropped or replaced: End may be offered again,
+// and if a replacement did mine, the server reports the discount cancelled on its next read.
+const PENDING_END_MAX_AGE_MS = 30 * 60_000
+
+/**
+ * Settles the cancellations sent but not seen mined against the chain: mined ends the discount, reverted or dropped
+ * brings End back. Answers the discounts whose cancellation is still unsettled.
+ */
+async function reconcilePendingEnds(address: string, now = Date.now()): Promise<string[]> {
+  for (const end of pendingEnds(address)) {
+    const outcome = await readTransactionOutcome(end.chainId, end.txHash).catch(() => 'unknown' as const)
+    if (outcome === 'mined') endedInSession.add(end.discountId)
+    if (outcome !== 'unknown' || now - end.sentAt > PENDING_END_MAX_AGE_MS) clearPendingEnd(address, end.discountId)
+  }
+  return pendingEnds(address).map(end => end.discountId)
 }
 
 /** The id of the last discount this tab created for the collection. */
@@ -116,12 +154,26 @@ export function useCollectionDiscounts(address: string | undefined, contractAddr
     const timer = setInterval(() => setNow(Date.now()), 60_000)
     return () => clearInterval(timer)
   }, [])
+  // Polled while any cancellation is unsettled, including one sent before a reload.
+  const reconcile = useQuery({
+    queryKey: ['collection-discount-ends', address?.toLowerCase()],
+    queryFn: () => reconcilePendingEnds(address!),
+    enabled: !!address && !!contractAddress,
+    refetchInterval: query => ((query.state.data?.length ?? 0) > 0 ? 30_000 : false)
+  })
   const discounts = useMemo(
     () =>
-      query.data && contractAddress
-        ? openDiscountsFor(query.data, contractAddress, now).filter(discount => !endOutcomes.has(discount.id))
+      query.data && contractAddress && address
+        ? openDiscountsFor(query.data, contractAddress, now)
+            .filter(discount => !endedInSession.has(discount.id))
+            // Still listed while its cancellation is unsettled: it keeps applying until that mines.
+            .map(discount =>
+              reconcile.data?.includes(discount.id) || pendingEndOf(address, discount.id)
+                ? { ...discount, ending: true }
+                : discount
+            )
         : undefined,
-    [query.data, contractAddress, now]
+    [query.data, contractAddress, address, now, reconcile.data]
   )
   return { ...query, discounts, now }
 }
@@ -142,6 +194,8 @@ function updateDiscounts(
 
 export type CreateDiscountVariables = Omit<DiscountTerms, 'collections'> & {
   collection: Collection
+  /** A coupon already signed whose storing is unconfirmed: it is stored again (or found stored), never re-signed. */
+  resume?: CouponCreation
   /** Listings the discount re-prices, for the event. */
   discountedCount: number
   /** The wallet prompt is over; the discount is being stored. */
@@ -164,8 +218,21 @@ export function useCreateDiscount(session: Session | null) {
   const chainId = getMaticChainId()
   return useMutation({
     mutationKey: CREATE_KEY,
-    mutationFn: ({ collection, discountPct, startsAtMs, endsAtMs, uses, onSigned }: CreateDiscountVariables) => {
+    mutationFn: ({
+      collection,
+      discountPct,
+      startsAtMs,
+      endsAtMs,
+      uses,
+      onSigned,
+      resume
+    }: CreateDiscountVariables) => {
       if (!session) throw new Error('Wallet disconnected')
+      const store = {
+        postCoupon: (payload: CouponCreation) => postCoupon(session.address, payload),
+        findStored: findStoredDiscount
+      }
+      if (resume) return storeSignedDiscount(resume, store)
       return createDiscount(
         {
           signer: session.address,
@@ -183,14 +250,17 @@ export function useCreateDiscount(session: Session | null) {
             await requireAccount(session)
             return signTypedData(session, domain, types, value)
           },
-          postCoupon: payload => postCoupon(session.address, payload),
-          onSigned
+          ...store,
+          onSigned,
+          onSignedPayload: payload =>
+            saveUnconfirmedCreate(session.address, { collectionId: collection.id, payload, signedAt: Date.now() })
         }
       )
     },
     onSuccess: (discount, variables) => {
       track(DISCOUNT_CREATED_EVENT, { ...discountProps(variables), discountId: discount.id })
       createdFor.set(variables.collection.id, discount.id)
+      if (session) clearUnconfirmedCreate(session.address, variables.collection.id)
       if (session) {
         updateDiscounts(queryClient, session.address, current => [
           discount,
@@ -201,6 +271,10 @@ export function useCreateDiscount(session: Session | null) {
     // Here rather than in the dialog: a prompt the creator backed out of, or closed the dialog on, still fails.
     onError: (error, variables) => {
       track(DISCOUNT_FAILED_EVENT, { ...discountProps(variables), error: errorCode(error) })
+      // Refused outright, so never stored: the creator may sign a new one. Unconfirmed keeps it for a retry.
+      if (session && toDiscountError(error).reason === 'refused') {
+        clearUnconfirmedCreate(session.address, variables.collection.id)
+      }
       if (isReportable(error)) {
         captureError(error, { flow: 'create_collection_discount', collectionId: variables.collection.id })
       }
@@ -232,23 +306,33 @@ export function useEndDiscount(session: Session | null) {
       return endDiscount(discount, {
         sendTransaction: call => sendWalletTransaction(session, call),
         waitForTransaction: hash => waitForTransaction(discount.chainId, hash, END_TIMEOUT_MS),
-        onSigned
+        onSigned,
+        onBroadcast: txHash =>
+          savePendingEnd(session.address, {
+            discountId: discount.id,
+            txHash,
+            chainId: discount.chainId,
+            sentAt: Date.now()
+          })
       })
     },
     onSuccess: (_, { discount, collection }) => {
       track(DISCOUNT_ENDED_EVENT, { collectionId: collection.id, discountId: discount.id })
-      endOutcomes.set(discount.id, 'ended')
+      endedInSession.add(discount.id)
       if (session) {
+        clearPendingEnd(session.address, discount.id)
         updateDiscounts(queryClient, session.address, current =>
           current.map(entry => (entry.id === discount.id ? { ...entry, status: 'cancelled' as const } : entry))
         )
       }
     },
     onError: (error, { discount, collection }) => {
-      // Sent but not seen mined: it may still go through, so End must not be offered for it again in this tab.
-      if (toDiscountError(error).reason === 'pending' && session) {
-        endOutcomes.set(discount.id, 'pending')
+      // Pending stays recorded (it was saved at broadcast) until reconciled against the chain; a confirmed revert
+      // ended nothing, so End comes back.
+      if (session) {
+        if (toDiscountError(error).reason !== 'pending') clearPendingEnd(session.address, discount.id)
         updateDiscounts(queryClient, session.address, current => [...current])
+        void queryClient.invalidateQueries({ queryKey: ['collection-discount-ends', session.address.toLowerCase()] })
       }
       if (isReportable(error)) {
         captureError(error, { flow: 'end_collection_discount', collectionId: collection.id, discountId: discount.id })

@@ -92,7 +92,13 @@ describe('when the creator closes the End dialog with the wallet prompt still op
   it('should show the cancellation is still mining once the first attempt ran out of time, sending nothing else', async () => {
     const { wrapper, session } = setup()
     let settle: (error: unknown) => void = () => {}
-    vi.mocked(endDiscount).mockImplementation(() => new Promise<void>((_, reject) => (settle = reject)))
+    vi.mocked(endDiscount).mockImplementation(
+      (_, deps) =>
+        new Promise<void>((_, reject) => {
+          deps.onBroadcast?.('0xhash')
+          settle = reject
+        })
+    )
     const discount = discountOf('slow', session.address)
     const flow = () => (
       <EndDiscountFlow discount={discount} collection={collection} session={session} onClose={vi.fn()} />

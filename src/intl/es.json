@@ -1560,7 +1560,8 @@
       "ends": "Termina el {date}",
       "starts": "Empieza el {date}",
       "uses": "{used} de {total} usados",
-      "others": "{count, plural, one {También en # colección más} other {También en # colecciones más}}"
+      "others": "{count, plural, one {También en # colección más} other {También en # colecciones más}}",
+      "ending": "Terminando…"
     },
     "end": {
       "action": "Terminar",
@@ -1580,6 +1581,11 @@
       "error_description_wallet": "Tu wallet está en otra cuenta o red. Cámbiala a la cuenta con la que iniciaste sesión, en Polygon, e inténtalo de nuevo.",
       "in_flight": "Una solicitud anterior para terminar este descuento sigue en curso. Esto se actualiza en cuanto termine."
     },
-    "note_social": "Crear un descuento solo requiere una firma: no tiene costo. Los compradores ven el precio rebajado en la Shop hasta que termine. Como iniciaste sesión con una cuenta social, no podrás terminarlo antes, así que elige bien la fecha de fin."
+    "note_social": "Crear un descuento solo requiere una firma: no tiene costo. Los compradores ven el precio rebajado en la Shop hasta que termine. Como iniciaste sesión con una cuenta social, no podrás terminarlo antes, así que elige bien la fecha de fin.",
+    "unconfirmed": {
+      "title": "No pudimos confirmar que tu descuento se guardó",
+      "description": "Puede que ya esté activo. Vuelve a revisar para guardar el descuento que ya firmaste: no te pedirá una nueva firma ni creará un segundo descuento.",
+      "check": "Volver a revisar"
+    }
   }
 }

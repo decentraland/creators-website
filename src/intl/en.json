@@ -1560,7 +1560,8 @@
       "ends": "Ends {date}",
       "starts": "Starts {date}",
       "uses": "{used} of {total} used",
-      "others": "{count, plural, one {Also on # other collection} other {Also on # other collections}}"
+      "others": "{count, plural, one {Also on # other collection} other {Also on # other collections}}",
+      "ending": "Ending…"
     },
     "end": {
       "action": "End",
@@ -1580,6 +1581,11 @@
       "error_description_wallet": "Your wallet is on another account or network. Switch it to the account you signed in with, on Polygon, and try again.",
       "in_flight": "A previous request to end this discount is still in progress. This updates as soon as it finishes."
     },
-    "note_social": "Creating a discount only takes a signature: there's no fee. Buyers see the reduced price in the Shop until it ends. Signed in with a social account, you can't end it early, so pick the end date carefully."
+    "note_social": "Creating a discount only takes a signature: there's no fee. Buyers see the reduced price in the Shop until it ends. Signed in with a social account, you can't end it early, so pick the end date carefully.",
+    "unconfirmed": {
+      "title": "We couldn't confirm your discount was saved",
+      "description": "It may already be live. Check again to save the discount you already signed: it won't ask for a new signature or create a second discount.",
+      "check": "Check again"
+    }
   }
 }

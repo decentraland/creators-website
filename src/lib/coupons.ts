@@ -47,6 +47,8 @@ export type CollectionDiscount = {
   createdAt: number
   state: { uses: number; cancelled: boolean; revoked: boolean; checkedAt: number } | null
   status: DiscountStatus
+  /** Set by this app while its cancellation is sent but not yet settled. */
+  ending?: boolean
 }
 
 /** What `POST /v1/coupons` takes: the signed fields plus the collections the root was built from. */
@@ -229,7 +231,11 @@ export function validateDiscountTerms(terms: DiscountTerms, now = Date.now()): v
 
 /** `pending`: the cancellation was sent but not seen mined in time; it may still go through, so never resend it. */
 /** `wallet`: the wallet is on another account or chain, which the creator can fix themselves. */
-export type DiscountFailureReason = 'rejected' | 'pending' | 'wallet' | 'generic'
+/**
+ * `unconfirmed`: a signed coupon was posted with no readable answer, so it may be stored; only that same coupon may
+ * be retried. `refused`: the server answered no to it, so it is not stored and can be dropped.
+ */
+export type DiscountFailureReason = 'rejected' | 'pending' | 'wallet' | 'unconfirmed' | 'refused' | 'generic'
 
 export class DiscountError extends Error {
   constructor(
@@ -262,8 +268,12 @@ export type CreateDiscountDeps = {
     value: Record<string, unknown>
   ) => Promise<string>
   postCoupon: (payload: CouponCreation) => Promise<CollectionDiscount>
+  /** The stored discount with this signature, if the server has it: what settles an unanswered POST. */
+  findStored: (payload: CouponCreation) => Promise<CollectionDiscount | undefined>
   /** The wallet prompt is over; the discount is being stored. */
   onSigned?: () => void
+  /** The coupon is signed: until it is confirmed stored, a retry must resend this one, never sign another. */
+  onSignedPayload?: (payload: CouponCreation) => void
   now?: () => number
   randomSalt?: () => string
 }
@@ -300,7 +310,7 @@ export async function createDiscount(
       couponTypedValues(checks, contracts.coupon, data)
     )
     deps.onSigned?.()
-    return await deps.postCoupon({
+    const payload: CouponCreation = {
       signer,
       chainId: params.chainId,
       network: Network.MATIC,
@@ -310,9 +320,35 @@ export async function createDiscount(
       discount,
       collections,
       signature
-    })
+    }
+    deps.onSignedPayload?.(payload)
+    return await storeSignedDiscount(payload, deps)
   } catch (error) {
     throw toDiscountError(error)
+  }
+}
+
+/**
+ * Stores an already signed coupon, settling an earlier POST that got no answer: a coupon the server already has is
+ * the answer (a repost of it is a 409), a refusal means it was never stored, and anything else stays unconfirmed so
+ * the creator retries this same coupon rather than signing a second one.
+ */
+export async function storeSignedDiscount(
+  payload: CouponCreation,
+  deps: Pick<CreateDiscountDeps, 'postCoupon' | 'findStored'>
+): Promise<CollectionDiscount> {
+  try {
+    return await deps.postCoupon(payload)
+  } catch (error) {
+    if (error instanceof DiscountError && error.reason === 'refused') throw error
+    let stored: CollectionDiscount | undefined
+    try {
+      stored = await deps.findStored(payload)
+    } catch {
+      stored = undefined
+    }
+    if (stored) return stored
+    throw new DiscountError('unconfirmed', error instanceof Error ? error.message : String(error))
   }
 }
 
@@ -330,10 +366,11 @@ export async function postCoupon(address: string, payload: CouponCreation): Prom
     data?: CollectionDiscount
     message?: string
   }
-  if (!response.ok || !json.ok || !json.data) {
-    throw new DiscountError('generic', json.message ?? `marketplace-server rejected the discount (${response.status})`)
-  }
-  return json.data
+  if (response.ok && json.ok && json.data) return json.data
+  const message = json.message ?? `marketplace-server did not store the discount (${response.status})`
+  // A 409 is this same coupon already stored; other 4xx refuse it outright; a 5xx or an unreadable 2xx says nothing.
+  const refused = response.status >= 400 && response.status < 500 && response.status !== 409
+  throw new DiscountError(refused ? 'refused' : 'unconfirmed', message)
 }
 
 const DISCOUNTS_PAGE = 100
@@ -364,6 +401,12 @@ export async function fetchCreatorDiscounts(address: string): Promise<Collection
   }
   // A discount created mid-walk shifts the offsets and can repeat a row across two pages.
   return [...new Map(discounts.map(discount => [discount.id, discount])).values()]
+}
+
+/** The creator's stored discount with this payload's signature, if any. */
+export async function findStoredDiscount(payload: CouponCreation): Promise<CollectionDiscount | undefined> {
+  const signature = payload.signature.toLowerCase()
+  return (await fetchCreatorDiscounts(payload.signer)).find(d => d.signature.toLowerCase() === signature)
 }
 
 /** The server's status, refreshed against the clock: a discount it called active may have ended since. */
@@ -461,6 +504,8 @@ export type EndDiscountDeps = {
   waitForTransaction: (txHash: string) => Promise<boolean>
   /** The wallet prompt is over; the cancellation is mining. */
   onSigned?: () => void
+  /** The cancellation is on its way under this hash: record it before waiting, so no reload can offer a second. */
+  onBroadcast?: (txHash: string) => void
 }
 
 /** Ends a discount early and waits for the receipt; the Shop stops applying it on the server's next state read. */
@@ -473,9 +518,13 @@ export async function endDiscount(discount: CollectionDiscount, deps: EndDiscoun
     txHash = await deps.sendTransaction(call)
   } catch (error) {
     const broadcast = (error as { transactionHash?: string } | null)?.transactionHash
-    if (broadcast) throw new DiscountError('pending', `The end discount transaction ${broadcast} may still mine`)
+    if (broadcast) {
+      deps.onBroadcast?.(broadcast)
+      throw new DiscountError('pending', `The end discount transaction ${broadcast} may still mine`)
+    }
     throw toDiscountError(error)
   }
+  deps.onBroadcast?.(txHash)
   deps.onSigned?.()
   let mined: boolean
   try {

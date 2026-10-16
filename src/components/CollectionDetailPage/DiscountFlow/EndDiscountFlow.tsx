@@ -30,7 +30,7 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
   const [phase, setPhase] = useState<'confirm' | 'mining'>('confirm')
   const attempt = useRef(0)
   // An attempt from a dialog the creator closed counts too: it may still be mining, or have already settled.
-  const outcome = endOutcome(discount.id)
+  const outcome = endOutcome(session.address, discount.id)
   useBeforeUnloadGuard(ending)
 
   function start() {

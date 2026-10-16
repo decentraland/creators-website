@@ -10,6 +10,7 @@ vi.mock('~/lib/auth', async () => {
 import { signedFetch } from '~/lib/auth'
 import {
   COUPON_TYPES,
+  DiscountError,
   DiscountInputError,
   UNCAPPED_USES,
   buildEndDiscountCall,
@@ -23,6 +24,7 @@ import {
   liveDiscountStatus,
   openDiscountsFor,
   postCoupon,
+  storeSignedDiscount,
   validateDiscountTerms,
   type CollectionDiscount,
   type CouponCreation,
@@ -62,6 +64,7 @@ function makeDeps(overrides: Partial<CreateDiscountDeps> = {}): CreateDiscountDe
     readIndexes: vi.fn().mockResolvedValue({ contractSignatureIndex: 2, signerSignatureIndex: 5 }),
     signTypedData: vi.fn((domain, types, value) => wallet._signTypedData(domain, types, value)),
     postCoupon: vi.fn(payload => Promise.resolve(stored(payload))),
+    findStored: vi.fn().mockResolvedValue(undefined),
     onSigned: vi.fn(),
     now: () => NOW,
     ...overrides
@@ -167,11 +170,45 @@ describe('when creating a discount', () => {
     expect(deps.postCoupon).not.toHaveBeenCalled()
   })
 
-  it('should fail generically when the server rejects it', async () => {
-    const deps = makeDeps({ postCoupon: vi.fn().mockRejectedValue(new Error('invalid signature')) })
-    await expect(createDiscount({ ...terms, signer: wallet.address, chainId: CHAIN_ID }, deps)).rejects.toMatchObject({
-      reason: 'generic'
+  // The POST may have been committed with its answer lost: retrying it must never sign a second coupon.
+  it('should find the coupon stored when its POST went unanswered', async () => {
+    const deps = makeDeps({
+      postCoupon: vi.fn().mockRejectedValue(new TypeError('Failed to fetch')),
+      findStored: vi.fn(payload => Promise.resolve(stored(payload, { id: 'found' })))
     })
+    await expect(createDiscount({ ...terms, signer: wallet.address, chainId: CHAIN_ID }, deps)).resolves.toMatchObject({
+      id: 'found'
+    })
+  })
+
+  it('should keep the signed coupon unconfirmed when the server neither stored nor refused it', async () => {
+    const onSignedPayload = vi.fn()
+    const deps = makeDeps({ postCoupon: vi.fn().mockRejectedValue(new TypeError('Failed to fetch')), onSignedPayload })
+    await expect(createDiscount({ ...terms, signer: wallet.address, chainId: CHAIN_ID }, deps)).rejects.toMatchObject({
+      reason: 'unconfirmed'
+    })
+    expect(onSignedPayload).toHaveBeenCalledWith(vi.mocked(deps.postCoupon).mock.calls[0][0])
+  })
+
+  it('should not go looking for a coupon the server refused', async () => {
+    const deps = makeDeps({ postCoupon: vi.fn().mockRejectedValue(new DiscountError('refused', 'expired')) })
+    await expect(createDiscount({ ...terms, signer: wallet.address, chainId: CHAIN_ID }, deps)).rejects.toMatchObject({
+      reason: 'refused'
+    })
+    expect(deps.findStored).not.toHaveBeenCalled()
+  })
+
+  it('should retry an unconfirmed coupon by storing that same one again, a repost of a stored one included', async () => {
+    const first = makeDeps({ postCoupon: vi.fn().mockRejectedValue(new TypeError('Failed to fetch')) })
+    await createDiscount({ ...terms, signer: wallet.address, chainId: CHAIN_ID }, first).catch(() => undefined)
+    const signed = vi.mocked(first.postCoupon).mock.calls[0][0]
+    const postCoupon = vi.fn().mockRejectedValue(new DiscountError('unconfirmed', 'conflict'))
+    const findStored = vi.fn(payload => Promise.resolve(stored(payload)))
+
+    await expect(storeSignedDiscount(signed, { postCoupon, findStored })).resolves.toMatchObject({
+      signature: signed.signature
+    })
+    expect(postCoupon).toHaveBeenCalledWith(signed)
   })
 })
 

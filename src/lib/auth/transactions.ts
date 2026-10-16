@@ -165,6 +165,16 @@ export async function signTypedData(
   return session.signer._signTypedData(domain, types, value)
 }
 
+/** A transaction's outcome as the chain knows it now: `mined`, `reverted`, or `unknown` when there is no receipt yet. */
+export async function readTransactionOutcome(
+  chainId: number,
+  txHash: string
+): Promise<'mined' | 'reverted' | 'unknown'> {
+  const receipt = await (await getReadProvider(chainId)).getTransactionReceipt(txHash)
+  if (!receipt) return 'unknown'
+  return receipt.status === 1 ? 'mined' : 'reverted'
+}
+
 /** Resolves true when the transaction is mined successfully, false when it reverted. */
 export async function waitForTransaction(chainId: number, txHash: string, timeoutMs?: number): Promise<boolean> {
   const provider = await getReadProvider(chainId)
