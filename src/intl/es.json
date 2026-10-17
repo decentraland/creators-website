@@ -1513,5 +1513,84 @@
   },
   "preview_collection_button": {
     "label": "Ver en Decentraland"
+  },
+  "collection_discount": {
+    "create": "Crear descuento",
+    "title": "Crea un descuento",
+    "subtitle": "Pon {name} en oferta en la Shop por tiempo limitado.",
+    "pct": {
+      "label": "Descuento",
+      "value": "{pct}%",
+      "range": "Elige un descuento entre {min}% y {max}%."
+    },
+    "ends": {
+      "label": "Termina el",
+      "hint": "Un descuento puede durar hasta {days} días. Empieza en cuanto lo creas."
+    },
+    "limit": {
+      "label": "Limitar las compras con descuento",
+      "placeholder": "Cantidad de compras"
+    },
+    "summary": {
+      "discounted": "{count, plural, one {# ítem en venta tendrá} other {# ítems en venta tendrán}} un {pct}% de descuento.",
+      "unchanged": "{count, plural, one {# ítem mantiene su precio} other {# ítems mantienen su precio}}: su publicación no puede tener descuento. Actualiza el precio para incluirlo.",
+      "unchanged_mana_off": "{count, plural, one {# ítem mantiene su precio} other {# ítems mantienen su precio}}: los descuentos se aplican a ítems con precio en Credits. Cambia el precio del resto a Credits para incluirlos."
+    },
+    "nothing": "Ninguna publicación de esta colección puede tener descuento. Actualiza el precio de un ítem para incluirlo.",
+    "nothing_mana_off": "Los descuentos se aplican a ítems con precio en Credits, y ninguno de esta colección lo tiene. Cambia el precio de un ítem a Credits para descontarlo.",
+    "note": "Crear un descuento solo requiere una firma: no tiene costo ni transacción. Los compradores ven el precio rebajado en la Shop hasta que termine.",
+    "cancel": "Cancelar",
+    "submit": "Crear descuento",
+    "confirm_in_wallet": "Confirma en tu wallet",
+    "saving": "Creando tu descuento…",
+    "success": {
+      "title": "Tu descuento está activo",
+      "description": "Los compradores ya ven el precio rebajado en la Shop. Puedes terminarlo cuando quieras desde esta página.",
+      "description_social": "Los compradores ya ven el precio rebajado en la Shop hasta la fecha que elegiste."
+    },
+    "error": {
+      "title": "No pudimos crear tu descuento",
+      "description": "Algo salió mal al guardarlo. No se cobró nada; inténtalo de nuevo.",
+      "try_again": "Intentar de nuevo",
+      "description_wallet": "Tu wallet cambió a otra cuenta o red. Vuelve a la cuenta con la que iniciaste sesión e inténtalo de nuevo."
+    },
+    "list_label": "Descuentos",
+    "chip": {
+      "off": "{pct}% de descuento",
+      "ends": "Termina el {date}",
+      "starts": "Empieza el {date}",
+      "uses": "{used} de {total} usados",
+      "others": "{count, plural, one {También en # colección más} other {También en # colecciones más}}",
+      "ending": "Terminando…"
+    },
+    "end": {
+      "action": "Terminar",
+      "title": "¿Terminar este descuento?",
+      "description": "Tus ítems vuelven a su precio normal. Terminar el descuento del {pct}% es una transacción en Polygon desde tu wallet, así que necesita un poco de POL para el gas.",
+      "confirm": "Terminar descuento",
+      "pending": "Terminando tu descuento…",
+      "success_title": "Descuento terminado",
+      "success_description": "Tus ítems volvieron a su precio normal. Puede tardar un minuto en verse en la Shop.",
+      "error_title": "No pudimos terminar tu descuento",
+      "error_description": "La transacción no se completó. Revisa que tu wallet tenga POL en Polygon e inténtalo de nuevo.",
+      "description_multi": "Este descuento del {pct}% también cubre {others, plural, one {# colección más} other {# colecciones más}}, y terminarlo lo termina también ahí. Terminarlo es una transacción en Polygon desde tu wallet, así que necesita un poco de POL para el gas.",
+      "social_description": "Terminar un descuento antes es una transacción en Polygon pagada desde una wallet, y las cuentas con inicio de sesión social no pueden enviarla. Termina en su fecha; para terminarlo antes, inicia sesión con una wallet como MetaMask.",
+      "close": "Cerrar",
+      "slow_title": "Seguimos terminando tu descuento",
+      "slow_description": "Tu transacción se envió, pero está tardando más de lo normal. Todavía puede completarse: vuelve a revisar en unos minutos. No la envíes de nuevo o pagarás el gas dos veces.",
+      "error_description_wallet": "Tu wallet está en otra cuenta o red. Cámbiala a la cuenta con la que iniciaste sesión, en Polygon, e inténtalo de nuevo.",
+      "in_flight": "Una solicitud anterior para terminar este descuento sigue en curso. Esto se actualiza en cuanto termine."
+    },
+    "note_social": "Crear un descuento solo requiere una firma: no tiene costo. Los compradores ven el precio rebajado en la Shop hasta que termine. Como iniciaste sesión con una cuenta social, no podrás terminarlo antes, así que elige bien la fecha de fin.",
+    "unconfirmed": {
+      "title": "No pudimos confirmar que tu descuento se guardó",
+      "description": "Puede que ya esté activo. Vuelve a revisar para guardar el descuento que ya firmaste: no te pedirá una nueva firma ni creará un segundo descuento.",
+      "check": "Volver a revisar",
+      "terms": "Firmado: {pct}% de descuento hasta el {date}.",
+      "discard": "Firmar uno nuevo de todos modos.",
+      "discard_hint": "Esto no lo cancela: si se guardó, sigue en venta y el nuevo se superpone. Aparecería en los descuentos de esta colección, donde puedes terminarlo.",
+      "discard_hint_social": "Esto no lo cancela: si se guardó, sigue en venta hasta su fecha de fin y el nuevo se superpone. Las cuentas con inicio de sesión social no pueden terminar un descuento antes."
+    },
+    "close": "Cerrar"
   }
 }

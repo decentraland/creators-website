@@ -202,6 +202,14 @@ describe('CollectionActionsMenu', () => {
       expect(onSendItems).toHaveBeenCalled()
     })
 
+    it('carries Create discount on a small screen, where the header button is hidden', async () => {
+      const onCreateDiscount = vi.fn()
+      renderMenu({ ...draft, isPublished: true }, OWNER, { onCreateDiscount })
+      await openMenu()
+      await userEvent.click(screen.getByTestId('create-discount-action'))
+      expect(onCreateDiscount).toHaveBeenCalled()
+    })
+
     it('opens the forum post on a small screen, where the header button is hidden', async () => {
       renderMenu({ ...draft, isPublished: true }, OWNER, { forumLink: 'https://forum.decentraland.org/t/hats/77' })
       await openMenu()
@@ -215,6 +223,13 @@ describe('CollectionActionsMenu', () => {
     renderMenu({ ...draft, isPublished: true }, OWNER, { onPreviewItems: vi.fn() })
     await openMenu()
     expect(screen.queryByTestId('preview-items-action')).not.toBeInTheDocument()
+  })
+
+  it('never shows Create discount on desktop, where the header button covers it', async () => {
+    stubViewport(false)
+    renderMenu({ ...draft, isPublished: true }, OWNER, { onCreateDiscount: vi.fn() })
+    await openMenu()
+    expect(screen.queryByTestId('create-discount-action')).not.toBeInTheDocument()
   })
 
   it('never shows Send Items on desktop, where the header button covers it', async () => {

@@ -59,6 +59,105 @@ export async function sendContractTransaction(session: Session, call: ContractCa
   )
 }
 
+// Wallets that don't know the chain yet (EIP-3085) answer a switch with 4902 and need it added first.
+const ADD_CHAIN_PARAMS: Record<number, object> = {
+  137: {
+    chainId: '0x89',
+    chainName: 'Polygon',
+    nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
+    rpcUrls: ['https://rpc.decentraland.org/polygon'],
+    blockExplorerUrls: ['https://polygonscan.com']
+  },
+  80002: {
+    chainId: '0x13882',
+    chainName: 'Polygon Amoy',
+    nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
+    rpcUrls: ['https://rpc-amoy.polygon.technology'],
+    blockExplorerUrls: ['https://amoy.polygonscan.com']
+  }
+}
+
+// MetaMask mobile wraps the 4902 in an internal error.
+function isUnknownChain(error: unknown): boolean {
+  const { code, data } = (error ?? {}) as { code?: number; data?: { originalError?: { code?: number } } }
+  return code === 4902 || data?.originalError?.code === 4902
+}
+
+async function switchWalletChain(session: Session, chainId: number): Promise<void> {
+  try {
+    await session.web3Provider.send('wallet_switchEthereumChain', [{ chainId: ethers.utils.hexValue(chainId) }])
+  } catch (error) {
+    const add = ADD_CHAIN_PARAMS[chainId]
+    if (!isUnknownChain(error) || !add) throw error
+    await session.web3Provider.send('wallet_addEthereumChain', [add])
+  }
+}
+
+/** The wallet is still on another chain after being asked to switch: nothing was sent. */
+export class WrongChainError extends Error {
+  constructor(
+    public expected: number,
+    public actual: number
+  ) {
+    super(`The wallet is on chain ${actual}, not ${expected}`)
+    this.name = 'WrongChainError'
+  }
+}
+
+/** The wallet's active account is not the session's: sending would act as somebody else. Nothing was sent. */
+export class WrongAccountError extends Error {
+  constructor(
+    public expected: string,
+    public actual: string
+  ) {
+    super(`The wallet's active account is ${actual}, not ${expected}`)
+    this.name = 'WrongAccountError'
+  }
+}
+
+/** Throws `WrongAccountError` unless the wallet's active account is the session's. */
+export async function requireAccount(session: Session): Promise<void> {
+  const accounts = (await session.web3Provider.send('eth_accounts', [])) as string[]
+  const active = (accounts[0] ?? '').toLowerCase()
+  if (active !== session.address.toLowerCase()) throw new WrongAccountError(session.address, active)
+}
+
+// Amoy enforces a ~25 gwei minimum tip and wallets often propose less, so the RPC rejects the transaction.
+function gasOverrides(chainId: number): ethers.providers.TransactionRequest {
+  if (chainId !== 80002) return {}
+  const tip = ethers.utils.parseUnits('30', 'gwei')
+  return { maxPriorityFeePerGas: tip, maxFeePerGas: tip.add(ethers.utils.parseUnits('50', 'gwei')) }
+}
+
+/**
+ * Sends the call from the wallet itself, moving it to the contract's chain first, for contracts that take no
+ * meta-transactions: the wallet pays the gas. Call it from a click, since wallets refuse unprompted chain switches.
+ * The network is read again after the switch: some providers (Magic) answer it without moving the wallet. It is
+ * sent from the session's account only: a call keyed by its caller, like a cancellation, does nothing from another.
+ */
+export async function sendWalletTransaction(
+  session: Session,
+  call: ContractCall
+): Promise<{ hash: string; nonce: number }> {
+  const chainId = Number(call.contract.chainId)
+  await requireAccount(session)
+  if ((await session.web3Provider.getNetwork()).chainId !== chainId) {
+    await switchWalletChain(session, chainId)
+    const current = (await session.web3Provider.getNetwork()).chainId
+    if (current !== chainId) throw new WrongChainError(chainId, current)
+    // Switching hands control to the wallet, where the account can change too.
+    await requireAccount(session)
+  }
+  // Bound to the session's address, so the wallet refuses to send it from any other account.
+  const tx = await session.web3Provider.getSigner(session.address).sendTransaction({
+    from: session.address,
+    to: call.contract.address,
+    data: encodeContractCall(call),
+    ...gasOverrides(chainId)
+  })
+  return { hash: tx.hash, nonce: tx.nonce }
+}
+
 /** EIP-712 signature of `value` by the connected wallet (an off-chain order, not a transaction). */
 export async function signTypedData(
   session: Session,
@@ -67,6 +166,29 @@ export async function signTypedData(
   value: Record<string, unknown>
 ): Promise<string> {
   return session.signer._signTypedData(domain, types, value)
+}
+
+/**
+ * What the chain says about a transaction now: `mined` or `reverted` once it has a receipt; `superseded` when it has
+ * none but its sender has already used its nonce, so it can never execute; `unknown` otherwise (still pending, or
+ * the read failed).
+ */
+export async function readTransactionOutcome(
+  chainId: number,
+  txHash: string,
+  from: string,
+  nonce?: number
+): Promise<'mined' | 'reverted' | 'superseded' | 'unknown'> {
+  try {
+    const provider = await getReadProvider(chainId)
+    const receipt = await provider.getTransactionReceipt(txHash)
+    if (receipt) return receipt.status === 1 ? 'mined' : 'reverted'
+    const known = nonce ?? (await provider.getTransaction(txHash))?.nonce
+    if (known === undefined) return 'unknown'
+    return (await provider.getTransactionCount(from, 'latest')) > known ? 'superseded' : 'unknown'
+  } catch {
+    return 'unknown'
+  }
 }
 
 /** Resolves true when the transaction is mined successfully, false when it reverted. */

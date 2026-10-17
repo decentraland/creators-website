@@ -10,9 +10,14 @@ export {
 export {
   encodeContractCall,
   readContract,
+  readTransactionOutcome,
+  requireAccount,
   sendContractTransaction,
+  sendWalletTransaction,
   signTypedData,
   waitForTransaction,
+  WrongAccountError,
+  WrongChainError,
   type ContractCall,
   type ContractData
 } from './transactions'
