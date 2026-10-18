@@ -155,6 +155,19 @@ describe('ItemListRow', () => {
     expect(screen.getByTestId('item-row-sale-status')).toHaveTextContent(/on sale/i)
   })
 
+  it('shows the discounted price, the percent off and the struck-through original while a discount reaches it', () => {
+    renderRow({ tokenId: '3' }, { withMarket: true, listing: creditsListing, discountPct: 30 })
+    const price = screen.getByTestId('item-row-discounted-price')
+    expect(price).toHaveTextContent('30% off')
+    expect(price).toHaveTextContent('350')
+    expect(price.querySelector('s')).toHaveTextContent('500')
+  })
+
+  it('shows the plain price when no running discount reaches the listing', () => {
+    renderRow({ tokenId: '3' }, { withMarket: true, listing: creditsListing })
+    expect(screen.queryByTestId('item-row-discounted-price')).not.toBeInTheDocument()
+  })
+
   it('shows a MANA price for a listing made from the legacy marketplace', () => {
     renderRow({ tokenId: '3' }, { withMarket: true, listing: manaListing })
     const price = screen.getByTestId('item-row-price')

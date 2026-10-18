@@ -246,7 +246,9 @@
     "price": {
       "credits": "{amount} 积分",
       "mana": "{amount} MANA",
-      "free": "免费"
+      "free": "免费",
+      "off": "{pct}% 折扣",
+      "discounted": "{amount}，系列折扣期间比 {original} 优惠 {pct}%"
     },
     "delete_item": {
       "title": "删除此物品？",

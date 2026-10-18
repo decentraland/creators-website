@@ -359,6 +359,20 @@ export const Amount = styled.span`
   white-space: nowrap;
 `
 
+export const DiscountBadge = styled.span`
+  padding: 1px 6px;
+  border-radius: ${theme.radius.chip};
+  background: ${theme.colors.dclRed};
+  font-size: 11px;
+  font-weight: 700;
+  color: ${theme.colors.white};
+`
+
+export const OriginalPrice = styled.s`
+  font-size: 12px;
+  color: ${theme.colors.gray4};
+`
+
 export const ActionsCell = styled.div`
   display: flex;
   justify-content: flex-end;

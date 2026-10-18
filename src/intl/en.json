@@ -246,7 +246,9 @@
     "price": {
       "credits": "{amount} credits",
       "mana": "{amount} MANA",
-      "free": "Free"
+      "free": "Free",
+      "off": "{pct}% off",
+      "discounted": "{amount}, {pct}% off {original} while the collection discount runs"
     },
     "delete_item": {
       "title": "Delete this item?",

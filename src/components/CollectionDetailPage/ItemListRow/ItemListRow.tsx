@@ -15,6 +15,7 @@ import { EmotePlayMode } from '~/lib/itemFactory'
 import { type ItemListing } from '~/lib/listings'
 import { type ItemRowStatus } from '~/lib/itemSync'
 import { type ItemValidation } from '~/hooks/useCollectionValidation'
+import { discountedCredits, discountedManaWei } from '~/lib/collectionDiscount'
 import { formatCredits, formatMana } from '~/lib/publishFee'
 import { shopItemUrl } from '~/lib/shop'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
@@ -37,6 +38,8 @@ type Props = {
   withMarket?: boolean
   /** The item's primary listing: `null` when it has none, `undefined` while listings are still loading. */
   listing?: ItemListing | null
+  /** Percent off a running collection discount takes from this listing in the Shop, when one does. */
+  discountPct?: number
   /** Lay out the Status column; the list shows it only when some row on the page is not plain published. */
   withStatus?: boolean
   /** The row's Status pill; `null` while the sync is still unknown. */
@@ -67,6 +70,7 @@ export function ItemListRow({
   withPlayMode = false,
   withMarket = false,
   listing,
+  discountPct,
   withStatus = false,
   syncStatus = null,
   canSell = false,
@@ -146,20 +150,34 @@ export function ItemListRow({
   }
 
   function renderAmount(listing: ItemListing) {
-    if (listing.currency === 'mana') {
-      if (listing.manaWei === 0n) return t('collection_detail_page.price.free')
-      const amount = formatMana(listing.manaWei)
+    const isFree = listing.currency === 'mana' ? listing.manaWei === 0n : listing.credits === 0
+    if (isFree) return t('collection_detail_page.price.free')
+    const currency = listing.currency
+    const amount = listing.currency === 'mana' ? formatMana(listing.manaWei) : formatCredits(listing.credits)
+    const title =
+      currency === 'mana'
+        ? t('collection_detail_page.price.mana', { amount })
+        : t('collection_detail_page.price.credits', { amount })
+    if (!discountPct) {
       return (
-        <S.Amount title={t('collection_detail_page.price.mana', { amount })}>
-          <CurrencyAmount currency="mana">{amount}</CurrencyAmount>
+        <S.Amount title={title}>
+          <CurrencyAmount currency={currency}>{amount}</CurrencyAmount>
         </S.Amount>
       )
     }
-    if (listing.credits === 0) return t('collection_detail_page.price.free')
-    const amount = formatCredits(listing.credits)
+    const sale =
+      listing.currency === 'mana'
+        ? formatMana(discountedManaWei(listing.manaWei, discountPct))
+        : formatCredits(discountedCredits(listing.credits, discountPct))
     return (
-      <S.Amount title={t('collection_detail_page.price.credits', { amount })}>
-        <CurrencyAmount currency="credits">{amount}</CurrencyAmount>
+      <S.Amount
+        title={t('collection_detail_page.price.discounted', { amount: sale, original: amount, pct: discountPct })}
+        data-discounted
+        data-testid="item-row-discounted-price"
+      >
+        <S.DiscountBadge>{t('collection_detail_page.price.off', { pct: discountPct })}</S.DiscountBadge>
+        <CurrencyAmount currency={currency}>{sale}</CurrencyAmount>
+        <S.OriginalPrice>{amount}</S.OriginalPrice>
       </S.Amount>
     )
   }
