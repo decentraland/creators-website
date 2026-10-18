@@ -228,16 +228,13 @@ export function withoutCollection<T>(data: T, collectionId: string): T {
   if (!isCollectionsPage(data)) return data
   const results = data.results.filter(collection => collection.id !== collectionId)
   if (results.length === data.results.length) return data
-  return { ...data, results, total: Math.max(0, data.total - 1) }
+  // `total` and `counts` are left as they were: the refetch corrects both, and adjusting only one of them would
+  // throw off the linked count `summarizeCollections` derives from the pair.
+  return { ...data, results }
 }
 
 function isCollectionsPage(data: unknown): data is PaginatedResource<Collection> {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    Array.isArray((data as { results?: unknown }).results) &&
-    typeof (data as { total?: unknown }).total === 'number'
-  )
+  return typeof data === 'object' && data !== null && Array.isArray((data as { results?: unknown }).results)
 }
 
 /**

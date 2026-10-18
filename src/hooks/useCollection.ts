@@ -81,12 +81,14 @@ export function useDeleteCollection(address: string | undefined) {
       await deleteCollection(address, collectionId)
       return collectionId
     },
-    onSuccess: collectionId => {
+    onSuccess: async collectionId => {
       track('Delete collection', { collectionId })
       queryClient.removeQueries({ queryKey: ['collection', address, collectionId] })
       queryClient.removeQueries({ queryKey: ['collection-preview', address, collectionId] })
       // The lists keep their previous data on screen while they refetch: drop the deleted collection from them
       // first, or its row mounts again and its cover requests previews of a collection that is gone (a 404).
+      // A list fetch that started before the delete would write the old page back, so cancel it first.
+      await queryClient.cancelQueries({ queryKey: ['collections', address] })
       queryClient.setQueriesData({ queryKey: ['collections', address] }, (data: unknown) =>
         withoutCollection(data, collectionId)
       )

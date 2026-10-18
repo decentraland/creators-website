@@ -416,17 +416,18 @@ describe('withoutCollection', () => {
   const deleted = { id: 'deleted' } as Collection
   const page = { results: [kept, deleted], total: 9, limit: 8, page: 1, pages: 2 }
 
-  it('drops the deleted collection from a cached page and counts one less', () => {
-    expect(withoutCollection(page, 'deleted')).toStrictEqual({ ...page, results: [kept], total: 8 })
+  it('drops the deleted collection from a cached page, leaving the totals to the refetch', () => {
+    expect(withoutCollection(page, 'deleted')).toStrictEqual({ ...page, results: [kept] })
   })
 
+  // The same object, not an equal copy, so react-query sees no change and re-renders nothing.
   it('returns the same page when it does not hold that collection', () => {
     expect(withoutCollection(page, 'other')).toBe(page)
   })
 
   it('leaves anything that is not a page untouched', () => {
     expect(withoutCollection(undefined, 'deleted')).toBeUndefined()
-    const notAPage = { id: 'deleted' }
-    expect(withoutCollection(notAPage, 'deleted')).toBe(notAPage)
+    const contractLinkResults = [{ id: 'deleted' }]
+    expect(withoutCollection(contractLinkResults, 'deleted')).toBe(contractLinkResults)
   })
 })
