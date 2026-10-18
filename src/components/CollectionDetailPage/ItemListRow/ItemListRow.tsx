@@ -15,7 +15,7 @@ import { EmotePlayMode } from '~/lib/itemFactory'
 import { type ItemListing } from '~/lib/listings'
 import { type ItemRowStatus } from '~/lib/itemSync'
 import { type ItemValidation } from '~/hooks/useCollectionValidation'
-import { discountedCredits, discountedManaWei } from '~/lib/collectionDiscount'
+import { discountedCreditsPpm, discountedManaWeiPpm } from '~/lib/collectionDiscount'
 import { formatCredits, formatMana } from '~/lib/publishFee'
 import { shopItemUrl } from '~/lib/shop'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
@@ -38,8 +38,8 @@ type Props = {
   withMarket?: boolean
   /** The item's primary listing: `null` when it has none, `undefined` while listings are still loading. */
   listing?: ItemListing | null
-  /** Percent off a running collection discount takes from this listing in the Shop, when one does. */
-  discountPct?: number
+  /** Parts per million a running collection discount takes off this listing in the Shop, when one does. */
+  discountPpm?: number
   /** Lay out the Status column; the list shows it only when some row on the page is not plain published. */
   withStatus?: boolean
   /** The row's Status pill; `null` while the sync is still unknown. */
@@ -70,7 +70,7 @@ export function ItemListRow({
   withPlayMode = false,
   withMarket = false,
   listing,
-  discountPct,
+  discountPpm,
   withStatus = false,
   syncStatus = null,
   canSell = false,
@@ -158,17 +158,20 @@ export function ItemListRow({
       currency === 'mana'
         ? t('collection_detail_page.price.mana', { amount })
         : t('collection_detail_page.price.credits', { amount })
-    if (!discountPct) {
+    const sale = !discountPpm
+      ? amount
+      : listing.currency === 'mana'
+        ? formatMana(discountedManaWeiPpm(listing.manaWei, discountPpm))
+        : formatCredits(discountedCreditsPpm(listing.credits, discountPpm))
+    // A cheap item can round a discount away; then there is nothing to show but its price.
+    if (sale === amount) {
       return (
         <S.Amount title={title}>
           <CurrencyAmount currency={currency}>{amount}</CurrencyAmount>
         </S.Amount>
       )
     }
-    const sale =
-      listing.currency === 'mana'
-        ? formatMana(discountedManaWei(listing.manaWei, discountPct))
-        : formatCredits(discountedCredits(listing.credits, discountPct))
+    const discountPct = intl.formatNumber(discountPpm! / 10_000, { maximumFractionDigits: 2 })
     return (
       <S.Amount
         title={t('collection_detail_page.price.discounted', { amount: sale, original: amount, pct: discountPct })}

@@ -156,11 +156,24 @@ describe('ItemListRow', () => {
   })
 
   it('shows the discounted price, the percent off and the struck-through original while a discount reaches it', () => {
-    renderRow({ tokenId: '3' }, { withMarket: true, listing: creditsListing, discountPct: 30 })
+    renderRow({ tokenId: '3' }, { withMarket: true, listing: creditsListing, discountPpm: 300_000 })
     const price = screen.getByTestId('item-row-discounted-price')
     expect(price).toHaveTextContent('30% off')
     expect(price).toHaveTextContent('350')
     expect(price.querySelector('s')).toHaveTextContent('500')
+  })
+
+  it('shows a MANA price discounted the way the contract charges it', () => {
+    renderRow({ tokenId: '3' }, { withMarket: true, listing: manaListing, discountPpm: 125_000 })
+    const price = screen.getByTestId('item-row-discounted-price')
+    expect(price).toHaveTextContent('12.5% off')
+    expect(price).toHaveTextContent('4.38')
+  })
+
+  // A cheap item can round the discount away: a badge over an unchanged price would read as a broken sale.
+  it('shows no discount when it does not change the price', () => {
+    renderRow({ tokenId: '3' }, { withMarket: true, listing: { ...creditsListing, credits: 1 }, discountPpm: 300_000 })
+    expect(screen.queryByTestId('item-row-discounted-price')).not.toBeInTheDocument()
   })
 
   it('shows the plain price when no running discount reaches the listing', () => {

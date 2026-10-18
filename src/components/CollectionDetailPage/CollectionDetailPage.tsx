@@ -37,8 +37,8 @@ import { isForumPostRelevant, openForumPost } from '~/lib/forumPost'
 import { cancelCreditsOrder } from '~/lib/credits'
 import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'
 import { isCollectionOwner, type RoleKind } from '~/lib/collectionRoles'
-import { discountReach, takesDiscount } from '~/lib/collectionDiscount'
-import { discountPct, liveDiscountStatus, type CollectionDiscount } from '~/lib/coupons'
+import { discountReach, runningDiscountPpm } from '~/lib/collectionDiscount'
+import { type CollectionDiscount } from '~/lib/coupons'
 import { getMaticChainId } from '~/lib/publishCollection'
 import { canSendCollectionItems } from '~/lib/mint'
 import { ItemType, canEditItemDetails, canEditItemPrice, type Item } from '~/lib/items'
@@ -241,13 +241,10 @@ const CollectionDetailPage = () => {
     () => ({ chainId: getMaticChainId(), manaListings: !!discountFlags.manaListings }),
     [discountFlags.manaListings]
   )
-  // The deepest running discount is what a buyer gets on each listing it reaches; a scheduled one isn't on yet.
-  const runningDiscountPct = useMemo(() => {
-    const running = (openDiscounts ?? []).filter(discount => liveDiscountStatus(discount, discountsNow) === 'active')
-    return running.length > 0 ? Math.max(...running.map(discountPct)) : undefined
-  }, [openDiscounts, discountsNow])
-  const discountPctFor = (listing: ItemListing | null | undefined) =>
-    runningDiscountPct && listing && takesDiscount(listing, discountReachOptions) ? runningDiscountPct : undefined
+  const discountPpmFor = (listing: ItemListing | null | undefined) =>
+    listing && openDiscounts
+      ? runningDiscountPpm(listing, openDiscounts, discountReachOptions, discountsNow)
+      : undefined
   const reach = useMemo(
     () => (listings ? discountReach(listings.values(), discountReachOptions) : null),
     [listings, discountReachOptions]
@@ -781,7 +778,7 @@ const CollectionDetailPage = () => {
                     withPlayMode={withPlayMode}
                     withMarket={withMarket}
                     listing={withMarket ? listingFor(item) : undefined}
-                    discountPct={withMarket ? discountPctFor(listingFor(item)) : undefined}
+                    discountPpm={withMarket ? discountPpmFor(listingFor(item)) : undefined}
                     withStatus={withStatus}
                     syncStatus={rowStatuses.get(item.id)}
                     canSell={isApprovedForSale && item.isPublished && !!item.tokenId}
