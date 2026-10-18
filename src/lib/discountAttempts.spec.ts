@@ -90,7 +90,13 @@ describe('when the stored attempts are not what this build writes', () => {
   it('should drop the malformed entries instead of trusting them', () => {
     localStorage.setItem(
       `collection-discount-attempts:${ADDRESS.toLowerCase()}`,
-      JSON.stringify({ ends: [{ discountId: 'd1' }], creates: [{ collectionId: 'c1', payload: {} }] })
+      JSON.stringify({
+        ends: [{ discountId: 'd1' }],
+        creates: [
+          { collectionId: 'c1', payload: {} },
+          { collectionId: 'c1', payload: { ...payloadEnding(NOW + 1000), collections: [42] } }
+        ]
+      })
     )
     expect(pendingEndOf(ADDRESS, 'd1')).toBeUndefined()
     expect(unconfirmedCreateOf(ADDRESS, 'c1', NOW)).toBeUndefined()

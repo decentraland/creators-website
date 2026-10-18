@@ -1591,6 +1591,7 @@
       "discard_hint": "This does not cancel it: if it was saved, it stays on sale and the new one overlaps it. It would show in this collection's discounts, where you can end it.",
       "discard_hint_social": "This does not cancel it: if it was saved, it stays on sale until its end date and the new one overlaps it. Accounts signed in with a social login can't end a discount early."
     },
-    "close": "Close"
+    "close": "Close",
+    "in_flight": "A previous request for this collection is still in progress. This updates as soon as it finishes."
   }
 }

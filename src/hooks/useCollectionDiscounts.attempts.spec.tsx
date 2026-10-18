@@ -29,6 +29,7 @@ import { savePendingEnd, saveUnconfirmedCreate, type PendingEnd } from '~/lib/di
 import { DiscountFlow } from '~/components/CollectionDetailPage/DiscountFlow/DiscountFlow'
 import { EndDiscountFlow } from '~/components/CollectionDetailPage/DiscountFlow/EndDiscountFlow'
 import {
+  pollEvery,
   reconcilePendingEnds,
   resetDiscountSession,
   useCollectionDiscounts,
@@ -290,5 +291,17 @@ describe('when a signed discount was posted with no readable answer before a rel
     expect(await screen.findByTestId('success-modal-title')).toHaveTextContent(/your discount is live/i)
     expect(storeSignedDiscount).toHaveBeenCalledWith(payload, expect.anything())
     expect(createDiscount).not.toHaveBeenCalled()
+  })
+})
+
+describe('when deciding how often to re-check recorded cancellations', () => {
+  const end = (sentAt: number) => ({ discountId: 'd', txHash: '0x', chainId: 80002, sentAt, expiresAt: sentAt + DAY })
+  const now = Date.now()
+
+  it('should check often while one is fresh, back off once all are old, and stop with none', () => {
+    expect(pollEvery([end(now - 60_000)], now)).toBe(30_000)
+    expect(pollEvery([end(now - 60 * 60_000)], now)).toBe(5 * 60_000)
+    expect(pollEvery([end(now - 60 * 60_000), end(now - 60_000)], now)).toBe(30_000)
+    expect(pollEvery([], now)).toBe(false)
   })
 })

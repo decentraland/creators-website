@@ -18,7 +18,6 @@ import {
   findStoredDiscount,
   openDiscountsFor,
   postCoupon,
-  readCouponIndexes,
   storeSignedDiscount,
   toDiscountError,
   type CollectionDiscount,
@@ -34,10 +33,12 @@ import {
   resetDiscountAttempts,
   savePendingEnd,
   saveUnconfirmedCreate,
-  updatePendingEnd
+  updatePendingEnd,
+  type PendingEnd
 } from '~/lib/discountAttempts'
 import { FeatureFlag } from '~/lib/featureFlags'
 import { getMaticChainId } from '~/lib/publishCollection'
+import { readSignatureIndexes } from '~/lib/trades'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { captureError } from '~/lib/monitoring'
 
@@ -70,6 +71,16 @@ export function endOutcome(address: string, discountId: string): 'ended' | 'pend
   const end = pendingEndOf(address, discountId)
   if (!end) return undefined
   return end.minedAt ? 'ended' : 'pending'
+}
+
+// A cancellation usually settles within minutes: poll often while it is fresh, then back off, since one whose
+// discount never shows up again in a list keeps its record until it expires.
+const FRESH_END_MS = 10 * 60_000
+
+/** How often to re-check recorded cancellations, or false when there are none. */
+export function pollEvery(ends: PendingEnd[], now = Date.now()): number | false {
+  if (ends.length === 0) return false
+  return ends.some(end => now - end.sentAt < FRESH_END_MS) ? 30_000 : 5 * 60_000
 }
 
 const isRunning = (discount: CollectionDiscount, now: number) =>
@@ -186,7 +197,7 @@ export function useCollectionDiscounts(address: string | undefined, contractAddr
     enabled: !!address && !!contractAddress,
     staleTime: 30_000,
     // While a cancellation is recorded, re-read the server until it reports the discount ended.
-    refetchInterval: () => (address && pendingEnds(address).length > 0 ? 60_000 : false)
+    refetchInterval: () => (address ? pollEvery(pendingEnds(address)) : false)
   })
   // Re-evaluated every minute, so a discount that ran out loses its End button without a refetch.
   useEffect(() => {
@@ -198,7 +209,7 @@ export function useCollectionDiscounts(address: string | undefined, contractAddr
     queryKey: ['collection-discount-ends', address?.toLowerCase(), query.dataUpdatedAt],
     queryFn: () => reconcilePendingEnds(address!, serverReads.get(address!.toLowerCase())?.rows),
     enabled: !!address && !!contractAddress && query.isSuccess,
-    refetchInterval: current => ((current.state.data?.ending.length ?? 0) > 0 ? 30_000 : false)
+    refetchInterval: () => (address ? pollEvery(pendingEnds(address).filter(end => !end.minedAt)) : false)
   })
   const discounts = useMemo(() => {
     if (!query.data || !contractAddress || !address) return undefined
@@ -292,7 +303,7 @@ export function useCreateDiscount(session: Session | null) {
               uses
             },
             {
-              readIndexes: readCouponIndexes,
+              readIndexes: readSignatureIndexes,
               // The coupon is posted as `session.address`: signed by another account, the server would refuse it.
               signTypedData: async (domain, types, value) => {
                 await requireAccount(session)

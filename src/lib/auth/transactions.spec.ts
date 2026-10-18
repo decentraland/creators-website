@@ -58,7 +58,7 @@ describe('when sending a transaction from the wallet itself', () => {
     const { session, provider, sendTransaction } = walletOn(1, 'needs-add')
     await sendWalletTransaction(session, call)
     expect(provider.send).toHaveBeenCalledWith('wallet_addEthereumChain', [
-      expect.objectContaining({ chainId: '0x13882' })
+      expect.objectContaining({ chainId: '0x13882', rpcUrls: ['https://rpc-amoy.polygon.technology'] })
     ])
     expect(sendTransaction).toHaveBeenCalled()
   })
@@ -86,5 +86,12 @@ describe('when sending a transaction from the wallet itself', () => {
     const { session, sendTransaction } = walletOn(1, 'changes-account')
     await expect(sendWalletTransaction(session, call)).rejects.toBeInstanceOf(WrongAccountError)
     expect(sendTransaction).not.toHaveBeenCalled()
+  })
+
+  // Amoy rejects tips under its floor, which wallets often propose.
+  it("should floor the tip where the environment's network asks for it", async () => {
+    const { session, sendTransaction } = walletOn(80002)
+    await sendWalletTransaction(session, call)
+    expect(sendTransaction.mock.calls[0][0].maxPriorityFeePerGas.toString()).toBe('30000000000')
   })
 })

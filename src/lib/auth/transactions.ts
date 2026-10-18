@@ -59,21 +59,16 @@ export async function sendContractTransaction(session: Session, call: ContractCa
   )
 }
 
-// Wallets that don't know the chain yet (EIP-3085) answer a switch with 4902 and need it added first.
-const ADD_CHAIN_PARAMS: Record<number, object> = {
-  137: {
-    chainId: '0x89',
-    chainName: 'Polygon',
+// Wallets that don't know the chain yet (EIP-3085) answer a switch with 4902 and need it added first. Only this
+// environment's Polygon is ever added; its details live in the env config.
+function addChainParams(chainId: number): object | undefined {
+  if (chainId !== Number(config.get('MATIC_CHAIN_ID'))) return undefined
+  return {
+    chainId: ethers.utils.hexValue(chainId),
+    chainName: config.get('MATIC_CHAIN_NAME'),
     nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
-    rpcUrls: ['https://rpc.decentraland.org/polygon'],
-    blockExplorerUrls: ['https://polygonscan.com']
-  },
-  80002: {
-    chainId: '0x13882',
-    chainName: 'Polygon Amoy',
-    nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
-    rpcUrls: ['https://rpc-amoy.polygon.technology'],
-    blockExplorerUrls: ['https://amoy.polygonscan.com']
+    rpcUrls: [config.get('MATIC_RPC_URL')],
+    blockExplorerUrls: [config.get('MATIC_EXPLORER_URL')]
   }
 }
 
@@ -87,7 +82,7 @@ async function switchWalletChain(session: Session, chainId: number): Promise<voi
   try {
     await session.web3Provider.send('wallet_switchEthereumChain', [{ chainId: ethers.utils.hexValue(chainId) }])
   } catch (error) {
-    const add = ADD_CHAIN_PARAMS[chainId]
+    const add = addChainParams(chainId)
     if (!isUnknownChain(error) || !add) throw error
     await session.web3Provider.send('wallet_addEthereumChain', [add])
   }
@@ -122,10 +117,12 @@ export async function requireAccount(session: Session): Promise<void> {
   if (active !== session.address.toLowerCase()) throw new WrongAccountError(session.address, active)
 }
 
-// Amoy enforces a ~25 gwei minimum tip and wallets often propose less, so the RPC rejects the transaction.
+// Some networks (Amoy) enforce a minimum tip above what wallets propose, so the RPC rejects the transaction. The
+// floor, when there is one, comes from the env config.
 function gasOverrides(chainId: number): ethers.providers.TransactionRequest {
-  if (chainId !== 80002) return {}
-  const tip = ethers.utils.parseUnits('30', 'gwei')
+  const minTip = config.get('MATIC_MIN_TIP_GWEI')
+  if (!minTip || chainId !== Number(config.get('MATIC_CHAIN_ID'))) return {}
+  const tip = ethers.utils.parseUnits(minTip, 'gwei')
   return { maxPriorityFeePerGas: tip, maxFeePerGas: tip.add(ethers.utils.parseUnits('50', 'gwei')) }
 }
 
