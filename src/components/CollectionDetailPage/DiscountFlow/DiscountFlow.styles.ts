@@ -99,10 +99,6 @@ export const DiscountChip = styled.li`
   font-size: 14px;
   color: ${theme.colors.softWhite};
 
-  & b {
-    color: ${theme.colors.dclRed};
-    font-weight: 700;
-  }
   & span {
     color: ${theme.colors.gray4};
     font-size: 13px;

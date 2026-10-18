@@ -359,18 +359,20 @@ export const Amount = styled.span`
   white-space: nowrap;
 `
 
-export const DiscountBadge = styled.span`
-  padding: 1px 6px;
-  border-radius: ${theme.radius.chip};
-  background: ${theme.colors.dclRed};
-  font-size: 11px;
+// The price a buyer pays and the one it replaces, as the Shop's cards draw them: the price in plain ink (the tag
+// already says "on sale" in red), the old one struck through in grey.
+export const SalePrice = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: ${theme.colors.softWhite};
   font-weight: 700;
-  color: ${theme.colors.white};
 `
 
 export const OriginalPrice = styled.s`
+  color: ${theme.colors.muted2};
   font-size: 12px;
-  color: ${theme.colors.gray4};
+  font-weight: 600;
 `
 
 export const ActionsCell = styled.div`

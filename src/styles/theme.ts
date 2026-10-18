@@ -26,6 +26,9 @@ const colors = {
   magenta: '#c640cd',
   brandViolet: '#a524b3',
   softWhite: '#fcfcfc',
+  // The Shop's discount tag: pink fill, red ink. Same values as the Shop, so a discount reads the same in both.
+  saleTag: '#ffc9d5',
+  saleTagInk: '#ec303a',
   dclRed: '#ff2d55',
   dclRedHover: '#ff4269',
   ok: '#1ea672',

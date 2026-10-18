@@ -247,7 +247,7 @@
       "credits": "{amount} 积分",
       "mana": "{amount} MANA",
       "free": "免费",
-      "off": "减 {pct}%",
+      "off": "-{pct}%",
       "discounted": "{amount}，系列折扣期间比原价 {original} 减 {pct}%"
     },
     "delete_item": {
@@ -1558,7 +1558,6 @@
     },
     "list_label": "折扣",
     "chip": {
-      "off": "{pct}% 折扣",
       "ends": "{date} 结束",
       "starts": "{date} 开始",
       "uses": "已用 {used}/{total}",

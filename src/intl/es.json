@@ -1558,7 +1558,6 @@
     },
     "list_label": "Descuentos",
     "chip": {
-      "off": "{pct}% de descuento",
       "ends": "Termina el {date}",
       "starts": "Empieza el {date}",
       "uses": "{used} de {total} usados",

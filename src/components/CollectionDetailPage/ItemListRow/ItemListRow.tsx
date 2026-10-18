@@ -26,6 +26,7 @@ import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { RarityPill } from '~/components/RarityPill'
 import { ItemSaleStatus } from '../ItemSaleStatus'
 import { ItemSyncPill } from '../ItemSyncPill'
+import { SaleTag } from '../SaleTag'
 import * as S from './ItemListRow.styles'
 
 const EMPTY = '—'
@@ -178,8 +179,10 @@ export function ItemListRow({
         data-discounted
         data-testid="item-row-discounted-price"
       >
-        <S.DiscountBadge>{t('collection_detail_page.price.off', { pct: discountPct })}</S.DiscountBadge>
-        <CurrencyAmount currency={currency}>{sale}</CurrencyAmount>
+        <SaleTag pct={discountPct} />
+        <S.SalePrice>
+          <CurrencyAmount currency={currency}>{sale}</CurrencyAmount>
+        </S.SalePrice>
         <S.OriginalPrice>{amount}</S.OriginalPrice>
       </S.Amount>
     )
