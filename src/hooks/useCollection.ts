@@ -3,7 +3,12 @@ import { errorCode, track } from '~/lib/analytics'
 import { fetchAllCollectionItems, fetchCollection, saveCollection, deleteCollection } from '~/lib/builder'
 import { buildCollectionInitializeData } from '~/lib/saveCollection'
 import { useCollectionCuration } from '~/hooks/useCuration'
-import { getCollectionDisplayStatus, type Collection, type CollectionDisplayStatus } from '~/lib/collections'
+import {
+  getCollectionDisplayStatus,
+  withoutCollection,
+  type Collection,
+  type CollectionDisplayStatus
+} from '~/lib/collections'
 
 export const ITEMS_PAGE_SIZE = 20
 
@@ -79,6 +84,12 @@ export function useDeleteCollection(address: string | undefined) {
     onSuccess: collectionId => {
       track('Delete collection', { collectionId })
       queryClient.removeQueries({ queryKey: ['collection', address, collectionId] })
+      queryClient.removeQueries({ queryKey: ['collection-preview', address, collectionId] })
+      // The lists keep their previous data on screen while they refetch: drop the deleted collection from them
+      // first, or its row mounts again and its cover requests previews of a collection that is gone (a 404).
+      queryClient.setQueriesData({ queryKey: ['collections', address] }, (data: unknown) =>
+        withoutCollection(data, collectionId)
+      )
       void queryClient.invalidateQueries({ queryKey: ['collections'] })
     },
     onError: (error, collectionId) => track('Delete collection error', { collectionId, error: errorCode(error) })

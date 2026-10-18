@@ -220,6 +220,27 @@ export function listFilterToParams(filter: CollectionListFilter): Partial<FetchC
 export type CollectionsSummary = { counts: CollectionStatusCounts; linkedTotal: number }
 
 /**
+ * A cached collections page without the collection just deleted, so the list stops rendering it (and its cover
+ * stops asking builder-server for the previews of a collection that no longer exists) while the refetch is in
+ * flight. Anything that is not a page holding that collection comes back as it was.
+ */
+export function withoutCollection<T>(data: T, collectionId: string): T {
+  if (!isCollectionsPage(data)) return data
+  const results = data.results.filter(collection => collection.id !== collectionId)
+  if (results.length === data.results.length) return data
+  return { ...data, results, total: Math.max(0, data.total - 1) }
+}
+
+function isCollectionsPage(data: unknown): data is PaginatedResource<Collection> {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    Array.isArray((data as { results?: unknown }).results) &&
+    typeof (data as { total?: unknown }).total === 'number'
+  )
+}
+
+/**
  * The chip counts, from an unfiltered list: builder-server counts only standard collections by status
  * (linked ones have none), so the linked ones are the rest of the total.
  */
