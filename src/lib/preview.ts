@@ -224,6 +224,10 @@ export function isEmoteSubject(source: AvatarPreviewSource): boolean {
  */
 export const PREVIEW_ZOOM_SCALE = 3
 export const PREVIEW_WHEEL_ZOOM = 5
+// TEMPORARY, DO NOT MERGE: the wearable-preview PR preview that serves the Unity renderer parity build
+// (decentraland/wearable-preview#219), until it ships.
+export const PREVIEW_BASE_URL = 'https://wearable-preview-git-temp-unity-parity-dev-decentraland1.vercel.app'
+
 export const PREVIEW_WHEEL_START = 50
 /** wearable-preview's own default multiplier; restated because the scale has to start from a known value. */
 const BASE_ZOOM = 1.75

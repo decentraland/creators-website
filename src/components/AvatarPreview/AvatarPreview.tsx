@@ -11,6 +11,7 @@ import { WearablePreview } from 'decentraland-ui2'
 import { config } from '~/config'
 import { type AvatarAttributes } from '~/lib/avatar'
 import {
+  PREVIEW_BASE_URL,
   PREVIEW_WHEEL_START,
   PREVIEW_WHEEL_ZOOM,
   buildPreviewOptions,
@@ -128,6 +129,7 @@ export function AvatarPreview({
         unity={snapshot.unity}
         unityMode={PreviewUnityMode.BUILDER}
         dev={config.is(Env.DEVELOPMENT)}
+        baseUrl={PREVIEW_BASE_URL}
         onLoad={renderer => {
           setLoading(false)
           onLoadRef.current?.(renderer)
