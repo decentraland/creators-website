@@ -233,4 +233,26 @@ describe('when a creator discounts a collection from the builder', () => {
     await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
     expect(screen.getByTestId('creator-sale-success')).toBeInTheDocument()
   })
+
+  // With reduced motion (or a long press) the calendar is already folded when the click lands on the backdrop.
+  it('should only fold the calendar on a backdrop click that started with it open', async () => {
+    const matchMedia = window.matchMedia
+    window.matchMedia = (query: string) =>
+      ({
+        matches: query.includes('prefers-reduced-motion'),
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {}
+      }) as unknown as MediaQueryList
+    const { onClose } = open()
+    fireEvent.click(screen.getByTestId('creator-sale-when'))
+    const scrim = screen.getByTestId('creator-sale-modal').parentElement!
+    await act(async () => {
+      fireEvent.pointerDown(scrim)
+      fireEvent.mouseDown(scrim)
+    })
+    fireEvent.click(scrim)
+    expect(onClose).not.toHaveBeenCalled()
+    window.matchMedia = matchMedia
+  })
 })
