@@ -90,7 +90,7 @@ import { ValidationResultsModal, toValidationSubject } from '~/components/Valida
 import addItemsArt from '~/assets/add-items.png'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { useThirdParty } from '~/hooks/useLinkedCollection'
-import { getThirdPartyId, isThirdPartyManager } from '~/lib/linkedCollections'
+import { getThirdPartyId, isThirdPartyManager } from '~/lib/thirdParty'
 import { AddItemsModal } from './AddItemsModal'
 import { LinkedCollectionView } from './LinkedCollectionView'
 import { ItemActionsMenu } from './ItemActionsMenu'

@@ -4,9 +4,7 @@ import { useTranslation } from '~/intl'
 import { useDeleteCollection } from '~/hooks/useCollection'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { copyToClipboard } from '~/lib/clipboard'
-import { track } from '~/lib/analytics'
-import { hasBeenApproved, isCollectionLocked, isLinkedCollection, type Collection } from '~/lib/collections'
-import { builderLinkedCollectionUrl } from '~/lib/linkedCollections'
+import { hasBeenApproved, isCollectionLocked, type Collection } from '~/lib/collections'
 import { isCollectionOwner, type RoleKind } from '~/lib/collectionRoles'
 import { openForumPost } from '~/lib/forumPost'
 import { openExternal } from '~/lib/navigation'
@@ -70,30 +68,6 @@ export function CollectionActionsMenu({
   const showPreview = compact && !!onPreviewItems
   const showForum = compact && !!forumLink
   const showDiscount = compact && !!onCreateDiscount
-
-  // Linked collections are edited in the legacy builder, which is desktop-only: on small screens there is nothing to offer.
-  if (isLinkedCollection(collection)) {
-    if (compact) return null
-    return (
-      <ActionsMenu
-        label={label ?? t('collection_detail_page.more_actions')}
-        variant={variant}
-        testId="collection-actions"
-      >
-        <ActionsMenuItem
-          testId="edit-in-builder"
-          onClick={() => {
-            // The linked detail page has its own button, so only list rows reach this menu.
-            track('Edit linked collection in builder', { collectionId: collection.id, source: 'list' })
-            openExternal(builderLinkedCollectionUrl(collection.id))
-          }}
-        >
-          {t('linked_collection.edit_in_builder')}
-          <OpenInNewIcon aria-hidden />
-        </ActionsMenuItem>
-      </ActionsMenu>
-    )
-  }
 
   if (!isOnChain && !canDelete && !showSend && !showPreview && !showForum && !showDiscount) return null
 

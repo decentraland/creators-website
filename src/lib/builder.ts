@@ -9,7 +9,6 @@ import {
   type Collection,
   type CollectionStatusCounts,
   type CollectionsList,
-  type CurationStatus,
   type FetchCollectionsParams,
   type PaginatedResource,
   type RemoteCollection
@@ -23,7 +22,13 @@ import {
   type RemoteCollectionCuration
 } from '~/lib/curation'
 import { VIDEO_PATH, fromRemoteItem, toRemoteItem, tracksVideoOnSave, type Item, type RemoteItem } from '~/lib/items'
-import { type ThirdParty } from '~/lib/linkedCollections'
+import {
+  fromRemoteItemCuration,
+  type ItemCuration,
+  type LinkedItemsQuery,
+  type RemoteItemCuration
+} from '~/lib/linkedItemStatus'
+import { fromRemoteThirdParty, type RemoteThirdParty, type ThirdParty } from '~/lib/thirdParty'
 import { type BlockchainRarity } from '~/lib/rarities'
 
 export type CollectionItemPreview = {
@@ -225,15 +230,24 @@ export async function createCurationForumReply(
   await request(address, 'POST', `/collections/${collectionId}/curation/post`, '', { forumPost }, false)
 }
 
-/** The latest curation of each item of a linked collection: GET /collections/{id}/itemCurations. */
-export async function fetchItemCurations(address: string, collectionId: string): Promise<Map<string, CurationStatus>> {
+/**
+ * The latest curation of each item of a linked collection: GET /collections/{id}/itemCurations, optionally only
+ * for some items (`itemIds[]`, sent in chunks like the legacy builder does).
+ */
+export async function fetchItemCurations(
+  address: string,
+  collectionId: string,
+  itemIds?: string[]
+): Promise<Map<string, ItemCuration>> {
   try {
-    const curations = await request<{ item_id: string; status: CurationStatus }[]>(
-      address,
-      'GET',
-      `/collections/${collectionId}/itemCurations`
+    const chunks = itemIds ? chunk(itemIds, ITEM_CURATIONS_CHUNK) : [undefined]
+    const pages = await Promise.all(
+      chunks.map(ids => {
+        const query = ids ? `?${new URLSearchParams(ids.map(id => ['itemIds[]', id])).toString()}` : ''
+        return request<RemoteItemCuration[]>(address, 'GET', `/collections/${collectionId}/itemCurations`, query)
+      })
     )
-    return new Map(curations.map(curation => [curation.item_id, curation.status]))
+    return new Map(pages.flat().map(remote => [remote.item_id, fromRemoteItemCuration(remote)]))
   } catch (error) {
     // builder-server answers 409 "Unpublished collection" until an item of the collection has been submitted.
     if (error instanceof BuilderServerError && error.status === UNPUBLISHED_COLLECTION_STATUS) return new Map()
@@ -241,10 +255,207 @@ export async function fetchItemCurations(address: string, collectionId: string):
   }
 }
 
-/** A third party's name and managers: GET /thirdParties/{id}. 404 for an unpublished one the signer doesn't manage. */
+const ITEM_CURATIONS_CHUNK = 30
+
+function chunk<T>(list: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let start = 0; start < list.length; start += size) chunks.push(list.slice(start, start + size))
+  return chunks.length > 0 ? chunks : [[]]
+}
+
+/** The latest curation of one linked item: GET /items/{id}/curation (null before its first publish). */
+export async function fetchItemCuration(address: string, itemId: string): Promise<ItemCuration | null> {
+  try {
+    const remote = await request<RemoteItemCuration | null>(
+      address,
+      'GET',
+      `/items/${itemId}/curation`,
+      '',
+      undefined,
+      false
+    )
+    return remote ? fromRemoteItemCuration(remote) : null
+  } catch (error) {
+    if (error instanceof BuilderServerError && error.status === UNPUBLISHED_COLLECTION_STATUS) return null
+    throw error
+  }
+}
+
+/** Sends an already-curated linked item's changes for review again: POST /items/{id}/curation (no cheque). */
+export async function pushItemCuration(address: string, itemId: string): Promise<ItemCuration> {
+  const remote = await request<RemoteItemCuration>(address, 'POST', `/items/${itemId}/curation`)
+  return fromRemoteItemCuration(remote)
+}
+
+/**
+ * Sets a linked item curation's status: PATCH /items/{id}/curation. Creators send `pending` to refresh a pending
+ * request with the item's current hash; committee members approve or reject.
+ */
+export async function updateItemCuration(
+  address: string,
+  itemId: string,
+  status: CurationRequestStatus
+): Promise<ItemCuration> {
+  const remote = await request<RemoteItemCuration>(address, 'PATCH', `/items/${itemId}/curation`, '', {
+    curation: { status }
+  })
+  return fromRemoteItemCuration(remote)
+}
+
+/** A third party: GET /thirdParties/{id}. 404 for an unpublished one the signer doesn't manage. */
 export async function fetchThirdParty(address: string, thirdPartyId: string): Promise<ThirdParty> {
-  const thirdParty = await request<ThirdParty>(address, 'GET', `/thirdParties/${encodeURIComponent(thirdPartyId)}`)
-  return { name: thirdParty.name, managers: thirdParty.managers ?? [] }
+  const remote = await request<RemoteThirdParty>(address, 'GET', `/thirdParties/${encodeURIComponent(thirdPartyId)}`)
+  return fromRemoteThirdParty(remote)
+}
+
+/** Every third party the signer manages (on chain or virtual): GET /thirdParties. */
+export async function fetchThirdParties(address: string): Promise<ThirdParty[]> {
+  const remote = await request<RemoteThirdParty[]>(address, 'GET', '/thirdParties')
+  return remote.map(fromRemoteThirdParty)
+}
+
+/**
+ * Item slots the third party still has: GET /thirdParties/{id}/slots (bought slots minus items ever submitted).
+ * builder-server answers 0 on any internal failure, so 0 is also "unknown".
+ */
+export async function fetchThirdPartySlots(address: string, thirdPartyId: string): Promise<number> {
+  const slots = await request<number>(address, 'GET', `/thirdParties/${encodeURIComponent(thirdPartyId)}/slots`)
+  return Number(slots) || 0
+}
+
+/** Picks the third party's kind before its first publish: PATCH /thirdParties/{id} (virtual ones only). */
+export async function setThirdPartyKind(address: string, thirdPartyId: string, isProgrammatic: boolean): Promise<void> {
+  await request<unknown>(
+    address,
+    'PATCH',
+    `/thirdParties/${encodeURIComponent(thirdPartyId)}`,
+    '',
+    { isProgrammatic },
+    false
+  )
+}
+
+/**
+ * Drops the virtual third party once it exists on chain: DELETE /thirdParties/{id}. builder-server answers 400 until
+ * the subgraph has indexed the registration, so callers retry on that status.
+ */
+export async function deleteVirtualThirdParty(address: string, thirdPartyId: string): Promise<void> {
+  await request<unknown>(address, 'DELETE', `/thirdParties/${encodeURIComponent(thirdPartyId)}`, '', undefined, false)
+}
+
+export type LinkedItemsPage = PaginatedResource<Item>
+
+/**
+ * One page of a linked collection's items, server-filtered: GET /collections/{id}/items?page&limit&synced&mappingStatus.
+ * Linked collections can hold thousands of items, so they are never fetched whole.
+ */
+export async function fetchLinkedCollectionItems(
+  address: string,
+  collectionId: string,
+  page: number,
+  limit: number,
+  filter: LinkedItemsQuery = {}
+): Promise<LinkedItemsPage> {
+  const query = new URLSearchParams({ page: String(page), limit: String(limit) })
+  if (filter.synced !== undefined) query.set('synced', String(filter.synced))
+  if (filter.mappingStatus) query.set('mappingStatus', filter.mappingStatus)
+  const remote = await request<PaginatedResource<RemoteItem>>(
+    address,
+    'GET',
+    `/collections/${collectionId}/items`,
+    `?${query.toString()}`
+  )
+  return { ...remote, results: remote.results.map(fromRemoteItem) }
+}
+
+/** The linked items waiting for review, every page of them: GET /collections/{id}/items?status=pending. */
+export async function fetchPendingLinkedItems(address: string, collectionId: string, limit = 50): Promise<Item[]> {
+  const items: Item[] = []
+  for (let page = 1; ; page++) {
+    const query = `?${new URLSearchParams({ page: String(page), limit: String(limit), status: 'pending' }).toString()}`
+    const remote = await request<PaginatedResource<RemoteItem>>(
+      address,
+      'GET',
+      `/collections/${collectionId}/items`,
+      query
+    )
+    items.push(...remote.results.map(fromRemoteItem))
+    if (page >= remote.pages || remote.results.length === 0) break
+  }
+  return items
+}
+
+/** The EIP-712 "ConsumeSlots" cheque the creator signs for a publish, as builder-server stores it. */
+export type SlotsCheque = { signature: string; qty: number; salt: string }
+
+export type PublishLinkedItemsResult = { collection: Collection; items: Item[]; itemCurations: ItemCuration[] }
+
+/**
+ * Submits linked items for review: POST /collections/{id}/publish with the item ids and the signed cheque. One
+ * pending item curation per item; 409 when slots are short or a review is already pending.
+ */
+export async function publishLinkedItems(
+  address: string,
+  collectionId: string,
+  itemIds: string[],
+  cheque: SlotsCheque
+): Promise<PublishLinkedItemsResult> {
+  const result = await request<{
+    collection: RemoteCollection
+    items: RemoteItem[]
+    itemCurations: RemoteItemCuration[]
+  }>(address, 'POST', `/collections/${collectionId}/publish`, '', { itemIds, cheque })
+  return {
+    collection: fromRemoteCollection(result.collection),
+    items: result.items.map(fromRemoteItem),
+    itemCurations: result.itemCurations.map(fromRemoteItemCuration)
+  }
+}
+
+const PUBLISH_LINKED_ITEMS_TOS_EVENT = 'publish_third_party_items_tos'
+
+/** Records the creator's Terms of Service acceptance for a linked publish, with the submitted content hashes. */
+export async function saveLinkedItemsTOS(
+  address: string,
+  collection: Collection,
+  email: string,
+  hashes: string[]
+): Promise<void> {
+  await request<unknown>(
+    address,
+    'POST',
+    `/collections/${collection.id}/tos`,
+    '',
+    { event: PUBLISH_LINKED_ITEMS_TOS_EVENT, email, collection_address: collection.id, hashes },
+    false
+  )
+}
+
+/** What the committee needs to approve a linked collection's pending items (committee only). */
+export type LinkedApprovalData = {
+  cheque: SlotsCheque
+  /** The third party's current Merkle root on chain, null before its first approval. */
+  root: string | null
+  /** The latest curated content hash of every item ever submitted, by item id: the whole tree's leaves. */
+  contentHashes: Record<string, string>
+  /** Whether the cheque's slots were already consumed on chain (a retry, or a push with no new slots). */
+  chequeWasConsumed: boolean
+}
+
+/** GET /collections/{id}/approvalData. */
+export async function fetchLinkedApprovalData(address: string, collectionId: string): Promise<LinkedApprovalData> {
+  const remote = await request<{
+    cheque: SlotsCheque
+    root: string | null
+    content_hashes: Record<string, string>
+    chequeWasConsumed: boolean
+  }>(address, 'GET', `/collections/${collectionId}/approvalData`)
+  return {
+    cheque: remote.cheque,
+    root: remote.root,
+    contentHashes: remote.content_hashes,
+    chequeWasConsumed: remote.chequeWasConsumed
+  }
 }
 
 /** Delete an unpublished collection and its items: DELETE /collections/{id} (409 published, 423 locked). */

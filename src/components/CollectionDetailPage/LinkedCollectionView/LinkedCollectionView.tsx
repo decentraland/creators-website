@@ -13,8 +13,8 @@ import { copyToClipboard } from '~/lib/clipboard'
 import { type Collection } from '~/lib/collections'
 import { paginateItems } from '~/lib/itemFilters'
 import { type Item } from '~/lib/items'
-import { builderLinkedCollectionUrl, getLinkedItemStatus, getMappingLabel } from '~/lib/linkedCollections'
-import { openExternal } from '~/lib/navigation'
+import { getLinkedItemStatus } from '~/lib/linkedItemStatus'
+import { getMappingLabel } from '~/lib/mappings'
 import { useNotifications } from '~/lib/notifications'
 import { pageRangeLabel } from '~/lib/pagination'
 import { useItemCurations } from '~/hooks/useLinkedCollection'
@@ -99,7 +99,6 @@ export function LinkedCollectionView({
             data-testid="edit-in-builder"
             onClick={() => {
               track('Edit linked collection in builder', { collectionId: collection.id, source: 'detail' })
-              openExternal(builderLinkedCollectionUrl(collection.id))
             }}
           >
             {t('linked_collection.edit_in_builder')}
@@ -165,7 +164,7 @@ export function LinkedCollectionView({
             {results.map(item => {
               const thumbnailHash = item.contents[item.thumbnail]
               const category = item.data.category
-              const status = curations.isSuccess ? getLinkedItemStatus(curations.data.get(item.id)) : undefined
+              const status = curations.isSuccess ? getLinkedItemStatus(item, curations.data.get(item.id)) : undefined
               const mapping = getMappingLabel(item.mappings, network, contractAddress)
               return (
                 <R.Row key={item.id} data-testid="linked-item-row">

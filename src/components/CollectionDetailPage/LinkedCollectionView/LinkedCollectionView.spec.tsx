@@ -51,7 +51,7 @@ function item(id: string, name: string, mappings: unknown): Item {
     isPublished: false,
     isApproved: false,
     inCatalyst: false,
-    mappings,
+    mappings: mappings as Item['mappings'],
     type: ItemType.WEARABLE,
     data: { category: 'hat', representations: [], replaces: [], hides: [], tags: [] },
     contents: { 'thumbnail.png': 'Qmthumb' },

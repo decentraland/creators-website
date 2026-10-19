@@ -471,8 +471,8 @@ describe('fetchItemCurations', () => {
       ])
     )
     const curations = await fetchItemCurations(ADDRESS, 'a1b2')
-    expect(curations.get('i1')).toBe('approved')
-    expect(curations.get('i2')).toBe('pending')
+    expect(curations.get('i1')).toMatchObject({ itemId: 'i1', status: 'approved' })
+    expect(curations.get('i2')).toMatchObject({ itemId: 'i2', status: 'pending' })
     expect(curations.has('i3')).toBe(false)
   })
 
@@ -488,11 +488,10 @@ describe('fetchItemCurations', () => {
 })
 
 describe('fetchThirdParty', () => {
-  it("answers the third party's name and managers", async () => {
+  it('answers the third party, with safe defaults for what a virtual one lacks', async () => {
     signedFetchMock.mockResolvedValue(okResponse({ id: 'urn:tp', name: 'Brand X', managers: [ADDRESS] }))
-    await expect(fetchThirdParty(ADDRESS, 'urn:decentraland:amoy:collections-thirdparty:brand')).resolves.toEqual({
-      name: 'Brand X',
-      managers: [ADDRESS]
-    })
+    await expect(fetchThirdParty(ADDRESS, 'urn:decentraland:amoy:collections-thirdparty:brand')).resolves.toMatchObject(
+      { id: 'urn:tp', name: 'Brand X', managers: [ADDRESS], published: false, maxItems: '0', contracts: [] }
+    )
   })
 })
