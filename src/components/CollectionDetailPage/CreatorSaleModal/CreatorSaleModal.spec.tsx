@@ -192,4 +192,32 @@ describe('when a creator discounts a collection from the builder', () => {
     fireEvent.click(screen.getByTestId('creator-sale-continue'))
     expect(track.mock.calls.filter(([event]) => event === 'Review collection discount')).toHaveLength(1)
   })
+
+  it('should take keyboard focus, keep Tab inside it and hand focus back when it closes', () => {
+    const opener = document.createElement('button')
+    document.body.appendChild(opener)
+    opener.focus()
+    const { onClose } = open()
+    const dialog = screen.getByTestId('creator-sale-modal')
+    expect(dialog).toHaveFocus()
+
+    const continueButton = screen.getByTestId('creator-sale-continue')
+    continueButton.focus()
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(dialog.contains(document.activeElement)).toBe(true)
+    expect(document.activeElement).not.toBe(opener)
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalled()
+    opener.remove()
+  })
+
+  // The discount may still be created once the open prompt is signed: closing then is not a drop-off.
+  it('should not count closing with the wallet prompt open as leaving without a discount', async () => {
+    open()
+    fireEvent.click(screen.getByTestId('creator-sale-continue'))
+    await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    fireEvent.click(screen.getByLabelText('Cancel'))
+    expect(track.mock.calls.filter(([event]) => event === 'Abandon collection discount')).toHaveLength(0)
+  })
 })

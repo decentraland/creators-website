@@ -264,8 +264,10 @@ const CollectionDetailPage = () => {
   )
   // Offered when something can take a discount, or is listed at a price the modal explains how to change. Listings
   // of sold-out items alone leave nothing a discount could reach.
-  const canCreateDiscount =
-    canCreateDiscountHere && !!sale?.items.some(item => item.state === 'discounted' || item.state === 'classic')
+  const canCreateDiscount = useMemo(
+    () => canCreateDiscountHere && !!sale?.items.some(item => item.state === 'discounted' || item.state === 'classic'),
+    [canCreateDiscountHere, sale]
+  )
   // Also once its dialog is closed: a reload loses this tab's record of a cancellation that is still mining.
   useBeforeUnloadGuard(useAnyDiscountInFlight())
   const [endingDiscount, setEndingDiscount] = useState<CollectionDiscount | null>(null)

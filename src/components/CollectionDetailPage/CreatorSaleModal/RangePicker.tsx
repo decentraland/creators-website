@@ -80,7 +80,7 @@ export function RangePicker({
 }) {
   const { t } = useTranslation()
   const { locale } = useIntl()
-  const label = labelProp ?? t('creatorSale.rangePeriod')
+  const label = labelProp ?? t('creator_sale.range_period')
   const [start, setStart] = useState<Date | null>(from != null ? new Date(from) : null)
   const [end, setEnd] = useState<Date | null>(to != null ? new Date(to) : null)
   const ref = useRef<HTMLDivElement>(null)
@@ -145,9 +145,9 @@ export function RangePicker({
   const format = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric' })
   const summary = start
     ? end
-      ? `${format.format(start)} – ${format.format(end)}`
-      : t('creatorSale.rangePickEnd', { from: format.format(start) })
-    : t('creatorSale.rangePickStart')
+      ? t('creator_sale.when_range', { from: format.format(start), to: format.format(end) })
+      : t('creator_sale.range_pick_end', { from: format.format(start) })
+    : t('creator_sale.range_pick_start')
 
   return (
     <S.Root
@@ -161,7 +161,7 @@ export function RangePicker({
     >
       <S.Body>
         {presets?.length ? (
-          <S.Presets role="group" aria-label={t('creatorSale.rangePresets')}>
+          <S.Presets role="group" aria-label={t('creator_sale.range_presets')}>
             {presets.map(preset => (
               <S.Preset
                 key={preset.key}
@@ -197,7 +197,7 @@ export function RangePicker({
         <span data-testid={`${testId}-summary`}>{summary}</span>
         <S.Actions>
           <S.Btn type="button" onClick={close}>
-            {t('creatorSale.rangeCancel')}
+            {t('creator_sale.range_cancel')}
           </S.Btn>
           <S.Btn
             type="button"
@@ -206,7 +206,7 @@ export function RangePicker({
             onClick={() => start && end && leave(() => onApply(start.getTime(), end.getTime()))}
             data-testid={`${testId}-apply`}
           >
-            {t('creatorSale.rangeApply')}
+            {t('creator_sale.range_apply')}
           </S.Btn>
         </S.Actions>
       </S.Foot>

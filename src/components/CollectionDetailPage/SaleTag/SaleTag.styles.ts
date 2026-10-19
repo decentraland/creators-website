@@ -19,11 +19,6 @@ export const Root = styled.span`
   font-weight: 400;
   line-height: 12px;
   white-space: nowrap;
-
-  &[data-size='lg'] {
-    font-size: 20px;
-    line-height: 20px;
-  }
 `
 
 export const Pct = styled.b`

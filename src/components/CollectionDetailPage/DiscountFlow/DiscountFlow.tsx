@@ -102,15 +102,19 @@ export function DiscountFlow({ collection, session, sale, onClose }: Props) {
     setView(unconfirmedCreateOf(session.address, collection.id) ? 'unconfirmed' : 'form')
   }
 
-  const unconfirmed = view === 'unconfirmed' ? unconfirmedCreateOf(session.address, collection.id) : undefined
+  const unconfirmed = unconfirmedCreateOf(session.address, collection.id)
   // A create from a dialog the creator closed is still posting: wait on it, then show how it went. This dialog's
   // own create is shown by the modal itself.
+  // And once a closed dialog's create ends with its storing unconfirmed, settle that coupon rather than show the form.
+  const unconfirmedNow = view === 'form' && !creating && !!unconfirmedCreateOf(session.address, collection.id)
   const shown: View | 'in_flight' =
     (view === 'form' || view === 'unconfirmed') && createdMeanwhile && !create.isSuccess
       ? 'success'
       : (view === 'form' || view === 'unconfirmed') && creating && !create.isPending
         ? 'in_flight'
-        : view
+        : unconfirmedNow
+          ? 'unconfirmed'
+          : view
 
   switch (shown) {
     case 'in_flight':

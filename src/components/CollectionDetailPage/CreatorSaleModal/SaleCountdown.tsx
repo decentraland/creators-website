@@ -41,10 +41,10 @@ export function SaleCountdown({
   }, [until])
 
   const label = formatCountdown(left, {
-    days: t('creatorSale.unitDays'),
-    hours: t('creatorSale.unitHours'),
-    minutes: t('creatorSale.unitMinutes'),
-    seconds: t('creatorSale.unitSeconds')
+    days: t('creator_sale.unit_days'),
+    hours: t('creator_sale.unit_hours'),
+    minutes: t('creator_sale.unit_minutes'),
+    seconds: t('creator_sale.unit_seconds')
   })
   if (!label) return null
   return (

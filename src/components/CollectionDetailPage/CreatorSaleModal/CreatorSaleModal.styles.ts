@@ -47,6 +47,11 @@ export const Card = styled.div`
   color: ${colors.softWhite};
   font-family: ${font.sans};
 
+  /* It takes focus as a dialog does; the ring belongs to the controls inside it. */
+  &:focus {
+    outline: none;
+  }
+
   /* The credits mark is pinned near-black for white cards (Icon.css); on this one it has to be light. */
   .ccy-mark,
   .ccy {
@@ -167,8 +172,6 @@ export const RowText = styled.span`
   gap: 2px;
   min-width: 0;
 `
-
-export const RowInfo = RowText
 
 export const RowName = styled.span`
   font-weight: 600;
@@ -333,6 +336,11 @@ export const WhenTrigger = styled.button`
   background: transparent;
   color: ${colors.softWhite};
   font-family: ${font.sans};
+
+  /* It takes focus as a dialog does; the ring belongs to the controls inside it. */
+  &:focus {
+    outline: none;
+  }
   font-size: 16px;
   font-weight: 600;
   line-height: 24px;

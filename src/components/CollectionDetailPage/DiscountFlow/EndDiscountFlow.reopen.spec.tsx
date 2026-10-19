@@ -152,6 +152,39 @@ describe('when the create dialog goes away mid-signature and opens again', () =>
     expect(createDiscount).toHaveBeenCalledTimes(1)
   })
 
+  it('should settle the coupon a closed dialog signed when its storing ends unconfirmed', async () => {
+    const { wrapper, session } = setup()
+    let fail: () => void = () => {}
+    vi.mocked(createDiscount).mockImplementation(
+      (_, deps) =>
+        new Promise((_, reject) => {
+          fail = () => {
+            deps.onSignedPayload?.({
+              signer: session.address,
+              chainId: 80002,
+              signature: '0xlate',
+              discount: 200_000,
+              collections: [collection.contractAddress!],
+              checks: { effective: Date.now(), expiration: Date.now() + DAY, uses: 1_000_000 }
+            } as never)
+            reject(new DiscountError('unconfirmed', 'no answer'))
+          }
+        })
+    )
+    const flow = () => <DiscountFlow collection={collection} session={session} sale={sale} onClose={vi.fn()} />
+
+    const first = render(flow(), { wrapper })
+    await userEvent.click(screen.getByTestId('creator-sale-continue'))
+    await userEvent.click(screen.getByTestId('creator-sale-submit'))
+    first.unmount()
+    render(flow(), { wrapper })
+    expect(screen.getByTestId('create-discount-in-flight')).toBeInTheDocument()
+
+    await act(async () => fail())
+    expect(await screen.findByTestId('discount-unconfirmed-modal')).toBeInTheDocument()
+    expect(screen.queryByTestId('creator-sale-modal')).not.toBeInTheDocument()
+  })
+
   // The coupon was signed and its POST got no answer: only that coupon may be retried, never a new one.
   it('should go to settling the signed coupon, with its terms, and not offer a new signature', async () => {
     const { wrapper, session } = setup()
