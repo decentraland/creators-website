@@ -81,6 +81,13 @@ describe('buildPreviewOptions', () => {
     expect(options.zoom).toBe(getPreviewZoom(PreviewEmote.DANCE))
   })
 
+  it('draws the scene boundaries only when asked, so a toggle reaches the mounted iframe', () => {
+    expect(buildPreviewOptions({ kind: 'items', items: [] }, avatar, PreviewEmote.IDLE).showSceneBoundaries).toBe(false)
+    expect(buildPreviewOptions({ kind: 'items', items: [] }, avatar, PreviewEmote.IDLE, true).showSceneBoundaries).toBe(
+      true
+    )
+  })
+
   it('lets an emote item own the animation and frames the jump further out', () => {
     const withEmote = buildPreviewOptions({ kind: 'items', items: [wearable, emote] }, avatar, PreviewEmote.DANCE)
     expect(withEmote.disableDefaultEmotes).toBe(true)

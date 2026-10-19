@@ -765,6 +765,10 @@
       "stay": "Seguir editando",
       "confirm": "Descartar"
     },
+    "scene_boundaries": {
+      "show": "Mostrar límites de la escena",
+      "hide": "Ocultar límites de la escena"
+    },
     "customizer": {
       "title": "Avatar",
       "body_shape": "Forma de cuerpo",

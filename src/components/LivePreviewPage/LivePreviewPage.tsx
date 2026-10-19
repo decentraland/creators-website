@@ -19,6 +19,7 @@ import { AvatarCustomizerDrawer, AvatarCustomizerToggle } from '~/components/Ite
 import { EditorSection } from '~/components/ItemEditorPage/EditorSection'
 import { HidesEditor } from '~/components/ItemEditorPage/HidesEditor'
 import { PlaybackBar } from '~/components/ItemEditorPage/PlaybackBar'
+import { SceneBoundariesToggle } from '~/components/ItemEditorPage/SceneBoundariesToggle'
 import { SpringBonesEditor } from '~/components/ItemEditorPage/SpringBonesEditor'
 import { ValidationBadge, getValidationStatus } from '~/components/ValidationBadge'
 import { Switch } from '~/components/Switch'
@@ -339,6 +340,7 @@ const LivePreviewPage = () => {
           subjectEmoteId={isEmote ? definitionId : null}
         />
         <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />
+        <SceneBoundariesToggle />
         <ValidationBadge
           status={validationStatus}
           issues={validation.data?.issues ?? []}

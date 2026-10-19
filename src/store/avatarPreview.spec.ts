@@ -22,6 +22,7 @@ beforeEach(() => {
     dressedKinds: {},
     emote: PreviewEmote.IDLE,
     isPlaying: false,
+    showSceneBoundaries: false,
     bodyShape: BodyShape.MALE
   })
 })
@@ -89,5 +90,13 @@ describe('avatar preview store', () => {
     const after = useAvatarPreview.getState()
     expect(after.baseWearables?.[after.bodyShape].upper_body).toBe('urn:shirt')
     expect(after.skin).toMatch(/^[0-9a-f]{6}$/)
+  })
+
+  it('toggles the scene boundaries', () => {
+    const state = useAvatarPreview.getState()
+    state.toggleSceneBoundaries()
+    expect(useAvatarPreview.getState().showSceneBoundaries).toBe(true)
+    state.toggleSceneBoundaries()
+    expect(useAvatarPreview.getState().showSceneBoundaries).toBe(false)
   })
 })

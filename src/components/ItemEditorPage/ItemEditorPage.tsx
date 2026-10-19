@@ -47,7 +47,7 @@ import { toPreviewItem, toSaveableItem } from '~/lib/itemDraft'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
 import { pickFiles } from '~/lib/filePicker'
 import { IMAGE_PATH, ITEM_EXTENSIONS } from '~/lib/itemFiles'
-import { ItemType, canDeleteItem, canEditItemDetails, isSocialEmote, type Item } from '~/lib/items'
+import { ItemType, canDeleteItem, canEditItemDetails, type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import { type AvatarPreviewSource } from '~/lib/preview'
 import { getShapesMissingSpringBones, mergeSpringBonesIntoItem, type SpringBoneParamsByName } from '~/lib/springBones'
@@ -58,6 +58,7 @@ import { AvatarCustomizerDrawer, AvatarCustomizerToggle } from './AvatarCustomiz
 import { CollectionPicker } from './CollectionPicker'
 import { ItemsSidebar } from './ItemsSidebar'
 import { MobilePreview } from './MobilePreview'
+import { SceneBoundariesToggle } from './SceneBoundariesToggle'
 import { PlaybackBar } from './PlaybackBar'
 import { PropertiesPanel, type SpringBonesFormProps } from './PropertiesPanel'
 import { ReviewBar } from './ReviewBar'
@@ -108,7 +109,7 @@ const ItemEditorPage = () => {
   const collectionStatus = useCollectionStatus(canReadCuration ? address : undefined, collectionQuery.data)
   const itemsQuery = useAllCollectionItems(address, collectionId ?? undefined)
   const baseWearables = useBaseWearables()
-  const pickedRenderer = usePreviewRenderer()
+  const renderer = usePreviewRenderer()
   const saveItem = useSaveItem(address)
   const saveCollection = useSaveCollection(address)
   const [isRenameOpen, setRenameOpen] = useState(false)
@@ -117,8 +118,6 @@ const ItemEditorPage = () => {
   const mobileCuration = useCollectionCuration(mode === 'review' ? address : undefined, collection)
   const items = itemsQuery.data ?? EMPTY_ITEMS
   const selected = useMemo(() => resolveSelectedItem(items, itemParam), [items, itemParam])
-  // Unity cannot play a social emote's extra armatures: those items always preview in Babylon.
-  const renderer = selected && isSocialEmote(selected) ? PreviewRenderer.BABYLON : pickedRenderer
 
   // Avatar state (session-only store).
   const bodyShape = useAvatarPreview(state => state.bodyShape)
@@ -452,6 +451,7 @@ const ItemEditorPage = () => {
           subjectEmoteId={subjectEmote?.id ?? null}
         />
         <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />
+        <SceneBoundariesToggle />
         {selected && (
           <ValidationBadge
             status={validationStatus}

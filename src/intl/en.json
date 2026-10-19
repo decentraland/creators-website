@@ -765,6 +765,10 @@
       "stay": "Keep editing",
       "confirm": "Discard"
     },
+    "scene_boundaries": {
+      "show": "Show scene boundaries",
+      "hide": "Hide scene boundaries"
+    },
     "customizer": {
       "title": "Avatar",
       "body_shape": "Body shape",

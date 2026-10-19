@@ -247,7 +247,8 @@ export function getPreviewZoom(emote: PreviewEmote | undefined): number {
 export function buildPreviewOptions(
   source: AvatarPreviewSource,
   avatar: AvatarAttributes,
-  emote: PreviewEmote
+  emote: PreviewEmote,
+  showSceneBoundaries = false
 ): PreviewOptions {
   const emoteSubject = isEmoteSubject(source)
   const options: PreviewOptions = {
@@ -256,7 +257,8 @@ export function buildPreviewOptions(
     eyes: avatar.eyes,
     hair: avatar.hair,
     urns: avatar.baseWearableUrns,
-    disableDefaultEmotes: emoteSubject
+    disableDefaultEmotes: emoteSubject,
+    showSceneBoundaries
   }
   if (source.kind === 'items') {
     const unsavedItem = source.unsaved && source.items.find(item => item.id === source.unsaved?.itemId)

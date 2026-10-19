@@ -765,6 +765,10 @@
       "stay": "继续编辑",
       "confirm": "放弃"
     },
+    "scene_boundaries": {
+      "show": "显示场景边界",
+      "hide": "隐藏场景边界"
+    },
     "customizer": {
       "title": "虚拟形象",
       "body_shape": "体型",

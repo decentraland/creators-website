@@ -60,7 +60,11 @@ export function AvatarPreview({
   const [snapshot] = useState(() => ({ ...avatar, emote, unity, emoteSubject: isEmoteSubject(source) }))
   const [isLoading, setLoading] = useState(true)
   const bridgeRef = useRef<PreviewBridge | null>(null)
-  const options = useMemo(() => buildPreviewOptions(source, avatar, emote), [source, avatar, emote])
+  const showSceneBoundaries = useAvatarPreview(state => state.showSceneBoundaries)
+  const options = useMemo(
+    () => buildPreviewOptions(source, avatar, emote, showSceneBoundaries),
+    [source, avatar, emote, showSceneBoundaries]
+  )
   const optionsRef = useRef(options)
   optionsRef.current = options
   const onLoadRef = useRef(onLoad)
