@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useIntl } from 'react-intl'
 import { useTranslation, type Translate } from '~/intl'
 import { isSocialLogin, type Session } from '~/lib/auth'
-import { discountedCredits, discountedManaWei } from '~/lib/collectionDiscount'
+import { discountedManaWei } from '~/lib/collectionDiscount'
 import {
   DiscountInputError,
   MAX_DISCOUNT_PCT,
@@ -16,7 +16,7 @@ import {
 import { track } from '~/lib/analytics'
 import { openExternal } from '~/lib/navigation'
 import { formatCredits, formatMana } from '~/lib/publishFee'
-import { type SaleableCollection } from '~/lib/saleableCollection'
+import { discountedPriceCredits, type SaleableCollection } from '~/lib/saleableCollection'
 import { startOfDay, windowOf, type SaleWhen } from '~/lib/saleWindow'
 import { shopCreatorUrl } from '~/lib/shop'
 import { useNotifications } from '~/lib/notifications'
@@ -388,7 +388,9 @@ export function CreatorSaleModal({
   const previewPct = terms.problem === 'pct' ? 0 : pct
   // Whether any price shown rounds away from the exact cut: Credits are whole, so the badge and the price can disagree.
   const rounded = useMemo(
-    () => previewPct > 0 && previewItems.some(i => ((i.priceCredits as number) * (100 - previewPct)) % 100 !== 0),
+    // A MANA price is converted at a live rate, so its credits are always rounded.
+    () =>
+      previewPct > 0 && previewItems.some(i => i.mana || ((i.priceCredits as number) * (100 - previewPct)) % 100 !== 0),
     [previewPct, previewItems]
   )
   const durationPresets = useMemo(
@@ -550,7 +552,7 @@ export function CreatorSaleModal({
                       </S.ReviewWas>
                       <S.ReviewNow data-testid="review-now">
                         <CurrencyIcon size={16} />
-                        {formatCredits(discountedCredits(i.priceCredits as number, pct))}
+                        {formatCredits(discountedPriceCredits(i, pct, current.manaRate) as number)}
                       </S.ReviewNow>
                     </S.ReviewPrices>
                   )}
@@ -929,7 +931,7 @@ export function CreatorSaleModal({
             <S.PreviewStrip ref={strip} onScroll={measureStrip} data-testid="creator-sale-preview">
               {previewItems.map(item => {
                 const price = item.priceCredits as number
-                const sale = discountedCredits(price, previewPct)
+                const sale = discountedPriceCredits(item, previewPct, current.manaRate) as number
                 return (
                   <S.PreviewCard key={item.key} data-testid="creator-sale-preview-item">
                     <S.PreviewMedia>
