@@ -55,6 +55,12 @@
       "title": "出现错误",
       "description": "我们无法加载您的系列，请重试。",
       "retry": "重试"
+    },
+    "new_linked_collection": "新建关联系列",
+    "linked_empty": {
+      "title": "关联您的第一个 NFT 系列",
+      "description": "关联系列可将您管理的 NFT 合约中的代币转换为可穿戴物品，持有者可在 Decentraland 中使用。",
+      "create_first": "创建关联系列"
     }
   },
   "collection_role": {
@@ -287,7 +293,8 @@
         "cancel": "保留更改",
         "confirm": "重置物品",
         "done": "“{name}”已重置为已批准的版本"
-      }
+      },
+      "open_in_editor": "在编辑器中打开"
     },
     "send_items": "发送物品",
     "smart_wearable": "智能可穿戴物品",
@@ -608,7 +615,9 @@
       "description_locked": "系列审核期间无法添加物品。您的文件未保存，审核完成后即可添加。",
       "description_published": "已发布的系列无法添加新物品。您的文件未保存，请创建一个新系列来添加它们。",
       "try_again": "重试",
-      "got_it": "知道了"
+      "got_it": "知道了",
+      "title_urn_taken": "物品 URN 已被使用",
+      "description_urn_taken": "其他物品已使用其中一个 URN。请修改 wearable.json 中的标识符，或使用现有 URN 重新上传该物品以进行更新。"
     },
     "leave": {
       "save_title": "离开前要保存吗？",
@@ -651,8 +660,13 @@
       "video_too_big": "视频过大，最大为 {size}MB。",
       "video_wrong_format": "视频必须是 MP4 文件。",
       "invalid_video": "您的视频似乎无效或已损坏。请检查文件后重试。",
-      "invalid_model_file_type": "此文件属于不同的物品类型。可穿戴物品只能替换为可穿戴物品，表情动作只能替换为表情动作。"
-    }
+      "invalid_model_file_type": "此文件属于不同的物品类型。可穿戴物品只能替换为可穿戴物品，表情动作只能替换为表情动作。",
+      "linked_emote": "关联系列只能包含可穿戴物品，不能包含表情动作。",
+      "linked_smart_wearable": "关联系列不能包含智能可穿戴物品。",
+      "linked_urn_mismatch": "wearable.json 中的 URN 不属于此系列。",
+      "linked_mapping_invalid": "wearable.json 中的映射无效。请检查其类型和代币 ID。"
+    },
+    "mapping_hint": "关联合约中哪些代币可解锁此可穿戴物品。"
   },
   "video_modal": {
     "title": "预览视频",
@@ -907,6 +921,33 @@
     },
     "actions": {
       "label": "物品操作"
+    },
+    "linked_review": {
+      "nothing_pending": "没有待审核的物品",
+      "reviewed": "已审核 {count}/{threshold} 个物品",
+      "review_next": "审核下一个",
+      "approve_blocked": "批准前请至少打开 {threshold} 个待审核物品。",
+      "reject_description": "{count, plural, other {# 个待审核物品}}将被标记为已拒绝；创作者可以修改后重新发布。请在论坛帖子中告知原因。",
+      "disable_third_party": "停用第三方",
+      "enable_third_party": "启用第三方",
+      "disable": {
+        "title": "停用 {name}？",
+        "description": "此第三方及其所有系列将在 Decentraland 中不再可用。您之后可以重新启用。",
+        "confirm": "停用",
+        "error": "无法停用该第三方，请重试。",
+        "success": "{name} 已停用",
+        "signing": "请在钱包中确认以停用该第三方。",
+        "pending": "正在停用第三方…"
+      },
+      "enable": {
+        "title": "启用 {name}？",
+        "description": "此第三方及其已批准的物品将在 Decentraland 中重新可用。",
+        "confirm": "启用",
+        "error": "无法启用该第三方，请重试。",
+        "success": "{name} 已启用",
+        "signing": "请在钱包中确认以启用该第三方。",
+        "pending": "正在启用第三方…"
+      }
     }
   },
   "zoom_controls": {
@@ -949,7 +990,8 @@
       "edit_assignee": "更改指派的审核员",
       "discussion": "讨论",
       "forum_post": "论坛帖子",
-      "not_posted": "未发帖"
+      "not_posted": "未发帖",
+      "third_party": "第三方"
     },
     "error": {
       "title": "我们无法加载系列",
@@ -958,7 +1000,13 @@
     },
     "empty": "目前还没有待审核的系列。",
     "no_results": "没有符合这些筛选条件的系列。",
-    "showing": "显示第 {range} 个，共 {total} 个{total, plural, one {系列} other {系列}}"
+    "showing": "显示第 {range} 个，共 {total} 个{total, plural, one {系列} other {系列}}",
+    "type": {
+      "label": "类型",
+      "all": "所有类型",
+      "standard": "标准",
+      "linked": "关联"
+    }
   },
   "maintenance_page": {
     "title": "我们马上回来",
@@ -1472,7 +1520,6 @@
     }
   },
   "linked_collection": {
-    "edit_in_builder": "在 Builder 中编辑",
     "third_party": "第三方",
     "network": "网络",
     "contract": "关联合约",
@@ -1490,16 +1537,18 @@
       "ape_mainnet": "ApeChain",
       "ape_caldera": "ApeChain Curtis"
     },
-    "no_items": "此关联系列的物品需在 Builder 中添加和编辑。",
     "list": {
       "status": "状态",
       "mapping": "代币映射"
     },
     "item_status": {
-      "published": "已发布",
+      "ready_to_publish": "可发布",
       "under_review": "审核中",
       "rejected": "已拒绝",
-      "not_published": "未发布",
+      "published": "已发布",
+      "ready_to_push": "可推送更改",
+      "pending_mapping": "待映射",
+      "pending_migration": "待迁移",
       "retry": "无法加载 · 重试"
     },
     "mapping": {
@@ -1509,6 +1558,48 @@
       "range": "代币 #{from}–#{to}",
       "multiple": "{count, plural, one {# 个代币} other {# 个代币}}",
       "rules": "{count, plural, one {# 条规则} other {# 条规则}}"
+    },
+    "kind": {
+      "standard": "标准",
+      "programmatic": "程序化"
+    },
+    "filter": {
+      "all": "所有物品",
+      "published": "已发布",
+      "ready_to_push": "可推送更改",
+      "pending_mapping": "待映射",
+      "pending_migration": "待迁移"
+    },
+    "migration_banner": "此系列中有一个或多个物品是在代币映射推出之前发布的。请为每个物品添加映射并发布更改。",
+    "publish_action": {
+      "publish": "发布",
+      "push": "推送更改",
+      "publish_and_push": "发布并推送更改"
+    },
+    "publish_blocker": {
+      "no_selection": "请选择要发布或推送的物品。",
+      "under_review": "此系列仍在审核中。审核结束后您可以发布更多物品。"
+    },
+    "empty": {
+      "title": "开始向您的关联系列添加物品",
+      "description": "将可穿戴物品拖放到此处。物品发布后将无法移除。"
+    },
+    "no_results": {
+      "title": "没有符合此筛选条件的物品",
+      "description": "请尝试其他筛选条件。"
+    },
+    "selected": "{count, plural, other {已选择 # 个物品}}",
+    "clear_selection": "清除选择",
+    "select_all": "选择此页面所有可发布的物品",
+    "select_item": "选择 {name}",
+    "urn_saved": "URN 已更新",
+    "urn_error": "无法更新 URN。它可能已被使用，或该物品已发布。",
+    "mapping_error": "无法保存 {name} 的映射，请重试。",
+    "actions": {
+      "edit_urn": "编辑 URN"
+    },
+    "item_actions": {
+      "edit_urn": "编辑 URN"
     }
   },
   "success_modal": {
@@ -1646,5 +1737,176 @@
     "unit_minutes": "分",
     "unit_seconds": "秒",
     "when_aria": "{label}：{value}"
+  },
+  "create_linked_collection_modal": {
+    "title": "新建关联系列",
+    "heading": "关联 NFT 系列",
+    "subtitle": "此系列中的可穿戴物品通过外部 NFT 合约的代币解锁。",
+    "learn_more": "了解更多",
+    "name_placeholder": "例如：Bored Hats",
+    "network": "网络",
+    "network_placeholder": "选择 NFT 合约所在的网络",
+    "contract": "智能合约地址",
+    "contract_hint": "其代币可解锁可穿戴物品的 ERC-721 或 ERC-1155 合约。每个合约只能关联一个系列。",
+    "error_not_nft": "此合约不是 ERC-721 或 ERC-1155 代币。请检查网络和地址。",
+    "error_contract_check": "无法验证此合约。请检查网络和地址后重试。",
+    "error_contract_in_use": "此合约已关联到另一个系列。每个合约只能关联一个系列。",
+    "error_generic": "无法创建您的关联系列，请重试。",
+    "submit": "创建"
+  },
+  "edit_urn_modal": {
+    "title": {
+      "collection": "编辑系列 URN",
+      "item": "编辑物品 URN"
+    },
+    "heading": {
+      "collection": "选择系列标识符",
+      "item": "选择物品标识符"
+    },
+    "subtitle": {
+      "collection": "系列 URN 的最后一部分。物品发布后将无法更改。",
+      "item": "物品 URN 的最后一部分。物品发布后将无法更改。"
+    },
+    "label": "标识符",
+    "error_invalid": "标识符不能包含空格或“:”字符。",
+    "submit": "保存"
+  },
+  "mapping_editor": {
+    "label": "关联至",
+    "type": {
+      "any": "所有 NFT",
+      "single": "单个",
+      "multiple": "多个",
+      "range": "范围"
+    },
+    "any_value": "任意代币 ID",
+    "single_placeholder": "代币 ID，例如 123456",
+    "multiple_placeholder": "以逗号分隔的代币 ID，例如 1, 2, 3",
+    "from": "从",
+    "to": "至",
+    "invalid": "请输入有效的代币 ID：仅限数字、不可重复，范围须从小到大。",
+    "help": {
+      "title": "将 NFT 关联到此可穿戴物品",
+      "any": "NFT 系列中的所有代币。",
+      "single": "一个特定的代币 ID，例如 123456。",
+      "multiple": "以逗号分隔的多个代币 ID，例如 123456, 123457。",
+      "range": "两个数字之间的所有代币 ID，例如 1 到 1000。"
+    }
+  },
+  "publish_linked_modal": {
+    "title": "发布关联物品",
+    "items_step": {
+      "title": "确认要提交的物品",
+      "description": "物品发布后无法从系列中移除。名称、描述、类别和映射仍可编辑，修改后需重新审核。",
+      "columns": {
+        "item": "{count, plural, other {# 个待发布物品}}",
+        "changed": "{count, plural, other {# 个已修改物品}}",
+        "linked_to": "关联至"
+      },
+      "checkbox": "我了解这些物品发布后将无法从系列中移除。",
+      "sign": "签名并继续",
+      "sign_error": "钱包未签署该请求。准备好后请重试。"
+    },
+    "kind_step": {
+      "title": "选择发布方式",
+      "description": "此选择适用于该第三方的所有系列，之后无法更改。",
+      "standard_description": "手工制作的可穿戴物品。每发布一个可穿戴物品需支付一次提交费用。",
+      "programmatic_description": "批量生成的可穿戴物品。为整个系列支付一次费用，即可发布任意数量的可穿戴物品。",
+      "standard_price": "每个可穿戴物品 {price}",
+      "programmatic_price": "一次性 {price}（含 {slots} 个名额）",
+      "confirm": "继续"
+    },
+    "payment_step": {
+      "title": "确认并支付",
+      "description": "您即将提交“{name}”中的{count, plural, =0 {0 个新物品} other {# 个物品}}进行审核{pushed, plural, =0 {} other {，并推送 # 个已修改物品}}。",
+      "columns": {
+        "slots": "需购买名额"
+      },
+      "free": "免费",
+      "standard_note": "每个新物品需要一个 {price} 的名额。您还有 {available, plural, other {# 个空闲名额}}。",
+      "programmatic_first": "程序化第三方一次性购买 {slots} 个名额，之后可免费发布。",
+      "programmatic_published": "您的程序化第三方已支付费用：这些物品可免费发布。",
+      "price_error": "无法加载发布费用。",
+      "checkbox": "我保证所提交的物品完全符合<terms>使用条款</terms>和<policy>内容政策</policy>，我拥有基于此 NFT 系列创建可穿戴物品的知识产权，并知悉 DAO 可能拒绝批准，且被拒绝时费用不予退还。",
+      "submit": "发布并支付",
+      "submit_free": "发布"
+    },
+    "running": {
+      "title": "正在发布您的物品",
+      "tos": "正在记录您对条款的同意…",
+      "kind": "正在保存发布方式…",
+      "allowance": "请在钱包中确认 MANA 授权…",
+      "register": "请在钱包中确认注册…",
+      "buy_slots": "请在钱包中确认购买名额…",
+      "wait_tx": "正在等待交易确认…",
+      "delete_virtual": "正在等待网络索引您的第三方…",
+      "publish": "正在提交物品进行审核…",
+      "push": "正在推送更改进行审核…",
+      "short": {
+        "tos": "条款",
+        "kind": "方式",
+        "allowance": "授权",
+        "register": "注册",
+        "buy_slots": "支付",
+        "wait_tx": "确认",
+        "delete_virtual": "索引",
+        "publish": "提交",
+        "push": "推送"
+      }
+    },
+    "error": {
+      "title": "无法发布您的物品",
+      "rejected": "请求已在钱包中取消，未发送任何内容。",
+      "reverted": "交易在链上失败，未产生任何费用。请重试。",
+      "insufficient_slots": "您的第三方名额少于所选物品数量。请重试以购买缺少的名额。",
+      "pending_review": "此系列已有物品正在审核中。请等待审核结束后再发布更多物品。",
+      "tos_failed": "无法记录您对条款的同意。请检查您的邮箱地址后重试。",
+      "generic": "发布物品时出错，请重试。"
+    }
+  },
+  "push_linked_modal": {
+    "title": "推送更改",
+    "description": "自上次批准以来，{count, plural, other {# 个物品}}已发生更改。要在世界中显示这些更改，必须重新审核并批准。是否提交审核？",
+    "terms": {
+      "title": "确认您的信息",
+      "description": "我们将通过邮件告知您更改的审核情况。"
+    },
+    "submit": "提交审核",
+    "running": {
+      "heading": "正在推送您的更改",
+      "description": "每个物品都会创建新的审核请求。",
+      "label": "已推送物品…"
+    },
+    "success": "{count, plural, other {已提交 # 个物品}}进行审核",
+    "partial": "{count, plural, other {# 个物品}}无法提交审核。请针对这些物品重试。",
+    "error": "无法推送您的更改，请重试。"
+  },
+  "linked_approval_flow": {
+    "root": {
+      "title": "批准物品",
+      "body": "批准会将每个已审核物品的指纹写入链上，并消耗创作者的{slots, plural, =0 {凭证} other {# 个名额}}。当前有 {count, plural, other {# 个物品}}待处理。",
+      "action": "链上批准",
+      "signing": "请在钱包中确认批准。",
+      "pending": "正在等待批准确认…"
+    },
+    "deploy": {
+      "title": "上传文件",
+      "body": "将{count, plural, other {# 个已批准物品}}上传到内容服务器，使其在 Decentraland 中显示。",
+      "action": "上传",
+      "uploading_body": "每个物品上传后，其审核将标记为已批准。"
+    },
+    "columns": {
+      "urn": "标识符"
+    },
+    "more_items": "以及其他 {count, plural, other {# 个物品}}",
+    "success": {
+      "title": "物品已批准！",
+      "body": "{collection} 中已审核的物品现已在 Decentraland 上线。"
+    },
+    "error": {
+      "prepare": "无法准备批准。请确认该系列有待审核的物品后重试。",
+      "root": "无法在链上完成批准。未上传任何内容，请重试。",
+      "deploy": "部分物品无法上传或批准。请重试失败的物品。"
+    }
   }
 }

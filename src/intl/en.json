@@ -1537,7 +1537,6 @@
       "ape_mainnet": "ApeChain",
       "ape_caldera": "ApeChain Curtis"
     },
-    "no_items": "Add wearables to this linked collection and map them to the tokens that unlock them.",
     "list": {
       "status": "Status",
       "mapping": "Token mapping"
