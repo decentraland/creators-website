@@ -21,7 +21,7 @@ import { useScrollFades } from '~/hooks/useScrollFades'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
 import { getContentsStorageUrl } from '~/lib/builder'
-import { type Collection, type CollectionDisplayStatus } from '~/lib/collections'
+import { isLinkedCollection, type Collection, type CollectionDisplayStatus } from '~/lib/collections'
 import { groupItemsByType, hasRepresentationFor, type EditorMode } from '~/lib/itemEditor'
 import { BodyShapeType, ItemType, getItemBodyShapeType, isSmartWearable, type Item } from '~/lib/items'
 import { EditorSection } from '../EditorSection'
@@ -98,7 +98,7 @@ export function ItemsSidebar({
         ITEM_ID: item.tokenId ?? null,
         ITEM_TYPE: item.type,
         ITEM_NAME: item.name,
-        ITEM_IS_THIRD_PARTY: false
+        ITEM_IS_THIRD_PARTY: isLinkedCollection(collection)
       })
     }
     if (item.type === ItemType.EMOTE && item.id === selectedId && dressedIds.includes(item.id)) {

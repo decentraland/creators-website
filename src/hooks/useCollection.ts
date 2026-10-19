@@ -26,9 +26,12 @@ export function useCollectionStatus(
   address: string | undefined,
   collection: Collection | undefined
 ): CollectionDisplayStatus | undefined {
-  const curation = useCollectionCuration(address, collection)
+  const curation = useCollectionCuration(
+    address,
+    collection && !isLinkedCollection(collection) ? collection : undefined
+  )
   if (!collection) return undefined
-  if (!collection.isPublished) return getCollectionDisplayStatus(collection, null)
+  if (!collection.isPublished || isLinkedCollection(collection)) return getCollectionDisplayStatus(collection, null)
   // Without its curation the status could be wrong, so a failed request keeps the pill hidden.
   if (!curation.isSuccess) return undefined
   return getCollectionDisplayStatus(collection, curation.data?.status ?? null)

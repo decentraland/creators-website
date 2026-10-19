@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { BodyShape, PreviewRenderer, type IPreviewController } from '@dcl/schemas'
 import { ArrowBackIosNew, PersonOutline as PersonOutlineIcon } from '@mui/icons-material'
@@ -48,6 +48,10 @@ import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/item
 import { pickFiles } from '~/lib/filePicker'
 import { IMAGE_PATH, ITEM_EXTENSIONS } from '~/lib/itemFiles'
 import { ItemType, canDeleteItem, canEditItemDetails, isSocialEmote, type Item } from '~/lib/items'
+import { isLinkedItemPublished } from '~/lib/linkedItemStatus'
+import { LINKED_COLLECTION_NAME_MAX_LENGTH, isThirdPartyManager, type LinkedContract } from '~/lib/thirdParty'
+import { useItemCurations, useThirdParty } from '~/hooks/useLinkedCollection'
+import { type ContractNetwork } from '@dcl/schemas'
 import { useNotifications } from '~/lib/notifications'
 import { type AvatarPreviewSource } from '~/lib/preview'
 import { getShapesMissingSpringBones, mergeSpringBonesIntoItem, type SpringBoneParamsByName } from '~/lib/springBones'
@@ -102,9 +106,22 @@ const ItemEditorPage = () => {
   const isMobile = useMediaQuery(theme.media.maxWidth('mobile'))
 
   const collectionQuery = useCollection(address, collectionId ?? undefined)
+  // Linked collections belong to a third party: its managers, not the collection's roles, may edit them.
+  const isLinked = !!collectionQuery.data && isLinkedCollection(collectionQuery.data)
+  const thirdParty = useThirdParty(address, isLinked ? collectionQuery.data : undefined)
+  const isManager = isLinked && !!thirdParty.data && isThirdPartyManager(thirdParty.data, address)
+  const linkedCurations = useItemCurations(address, isLinked ? collectionQuery.data : undefined)
+  const linkedContract = useMemo<LinkedContract | null>(() => {
+    const target = collectionQuery.data
+    return target?.linkedContractNetwork && target.linkedContractAddress
+      ? { network: target.linkedContractNetwork as ContractNetwork, address: target.linkedContractAddress }
+      : null
+  }, [collectionQuery.data])
   // builder-server serves a collection's curation to its owner, collaborators and the committee only.
   const canReadCuration =
-    !!collectionQuery.data && (canManageCollectionItems(collectionQuery.data, address) || committee.isCurator)
+    !!collectionQuery.data &&
+    !isLinked &&
+    (canManageCollectionItems(collectionQuery.data, address) || committee.isCurator)
   const collectionStatus = useCollectionStatus(canReadCuration ? address : undefined, collectionQuery.data)
   const itemsQuery = useAllCollectionItems(address, collectionId ?? undefined)
   const baseWearables = useBaseWearables()
@@ -342,9 +359,21 @@ const ItemEditorPage = () => {
   // Save / revert.
   const [springWarning, setSpringWarning] = useState(false)
   const isDraftCollection = !!collection && !collection.isPublished && !isCollectionLocked(collection)
+  // A linked collection keeps taking items after publishing; only its name and URN freeze.
+  const canGrow = isLinked ? isManager && !!collection && !isCollectionLocked(collection) : isDraftCollection
+  const canRename = isLinked ? canGrow && !collection?.isPublished : isDraftCollection
   const editable =
-    mode === 'edit' && !!collection && !!selected && !!address && canEditItemDetails(collection, selected, address)
-  const canDelete = editable && !!collection && canDeleteItem(collection, address)
+    mode === 'edit' &&
+    !!collection &&
+    !!selected &&
+    !!address &&
+    (isLinked ? isManager && !isCollectionLocked(collection) : canEditItemDetails(collection, selected, address))
+  const canDelete =
+    editable &&
+    !!collection &&
+    (isLinked
+      ? linkedCurations.isSuccess && !isLinkedItemPublished(selected, linkedCurations.data.get(selected.id) ?? null)
+      : canDeleteItem(collection, address))
 
   async function persist(item: Item) {
     const hasSpringModels = springBones.models.length > 0
@@ -418,7 +447,11 @@ const ItemEditorPage = () => {
   const isLoading =
     !restored ||
     isResolvingReviewer ||
-    (!!address && !!collectionId && (collectionQuery.isLoading || itemsQuery.isLoading))
+    (!!address && !!collectionId && (collectionQuery.isLoading || itemsQuery.isLoading || thirdParty.isLoading))
+  const isThirdPartyNotFound =
+    thirdParty.isError &&
+    thirdParty.error instanceof BuilderServerError &&
+    NOT_FOUND_STATUSES.includes(thirdParty.error.status)
   const isNotFound =
     (!!collectionParam && !collectionId) ||
     (!!collectionId &&
@@ -427,8 +460,15 @@ const ItemEditorPage = () => {
         NOT_FOUND_STATUSES.includes(collectionQuery.error.status)) ||
         // Drafts are private to their roles; published collections open read-only to any signer
         // (curators review through mode === 'review', which skips the gate).
-        (!!collection && mode === 'edit' && !canViewCollection(collection, address))))
-  const isError = !isNotFound && !!collectionId && (collectionQuery.isError || itemsQuery.isError)
+        (!!collection &&
+          mode === 'edit' &&
+          (isLinked
+            ? isThirdPartyNotFound || (!!thirdParty.data && !isManager)
+            : !canViewCollection(collection, address)))))
+  const isError =
+    !isNotFound &&
+    !!collectionId &&
+    (collectionQuery.isError || itemsQuery.isError || (thirdParty.isError && !isThirdPartyNotFound))
 
   const preview =
     renderer === undefined ? null : (
@@ -476,11 +516,6 @@ const ItemEditorPage = () => {
         </S.StatePanel>
       </S.Workspace>
     )
-  }
-
-  // Linked collections are read-only here: their items are edited in the legacy builder.
-  if (collection && isLinkedCollection(collection)) {
-    return <Navigate to={`/collections/${collection.id}`} replace />
   }
 
   if (isNotFound) {
@@ -553,6 +588,7 @@ const ItemEditorPage = () => {
         isDirty={form.isDirty}
         isSaving={saveItem.isPending}
         springBones={springBonesForm}
+        linkedContract={isLinked ? linkedContract : undefined}
         onSave={save}
         onRevert={() => form.reset(selected)}
         onDeleted={() => navigateToItem(null)}
@@ -627,9 +663,11 @@ const ItemEditorPage = () => {
       mode={mode}
       collapsed={sidebarCollapsed}
       onToggleCollapsed={toggleSidebar}
-      canAddItems={isDraftCollection && canManageCollectionItems(collection, address)}
+      canAddItems={isLinked ? canGrow : isDraftCollection && canManageCollectionItems(collection, address)}
       onRename={
-        isDraftCollection && canManageCollectionItems(collection, address) ? () => setRenameOpen(true) : undefined
+        (isLinked ? canRename : isDraftCollection && canManageCollectionItems(collection, address))
+          ? () => setRenameOpen(true)
+          : undefined
       }
       onAddItems={() => {
         addItems().catch((error: unknown) => console.error('Add items failed:', error))
@@ -698,6 +736,7 @@ const ItemEditorPage = () => {
         <CollectionNameModal
           variant="rename"
           initialName={collection.name}
+          nameMaxLength={isLinked ? LINKED_COLLECTION_NAME_MAX_LENGTH : undefined}
           isPending={saveCollection.isPending}
           error={saveCollection.error?.message ?? null}
           onSubmit={name => {
