@@ -37,7 +37,7 @@ import { isForumPostRelevant, openForumPost } from '~/lib/forumPost'
 import { cancelCreditsOrder } from '~/lib/credits'
 import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'
 import { isCollectionOwner, type RoleKind } from '~/lib/collectionRoles'
-import { discountReach } from '~/lib/collectionDiscount'
+import { discountReach, runningDiscountPpm } from '~/lib/collectionDiscount'
 import { type CollectionDiscount } from '~/lib/coupons'
 import { getMaticChainId } from '~/lib/publishCollection'
 import { canSendCollectionItems } from '~/lib/mint'
@@ -237,12 +237,17 @@ const CollectionDetailPage = () => {
     canManageDiscounts ? address : undefined,
     standardCollection?.contractAddress
   )
+  const discountReachOptions = useMemo(
+    () => ({ chainId: getMaticChainId(), manaListings: !!discountFlags.manaListings }),
+    [discountFlags.manaListings]
+  )
+  const discountPpmFor = (listing: ItemListing | null | undefined) =>
+    listing && openDiscounts
+      ? runningDiscountPpm(listing, openDiscounts, discountReachOptions, discountsNow)
+      : undefined
   const reach = useMemo(
-    () =>
-      listings
-        ? discountReach(listings.values(), { chainId: getMaticChainId(), manaListings: !!discountFlags.manaListings })
-        : null,
-    [listings, discountFlags.manaListings]
+    () => (listings ? discountReach(listings.values(), discountReachOptions) : null),
+    [listings, discountReachOptions]
   )
   const [discountOpen, setDiscountOpen] = useState(false)
   // Also once its dialog is closed: a reload loses this tab's record of a cancellation that is still mining.
@@ -773,6 +778,7 @@ const CollectionDetailPage = () => {
                     withPlayMode={withPlayMode}
                     withMarket={withMarket}
                     listing={withMarket ? listingFor(item) : undefined}
+                    discountPpm={withMarket ? discountPpmFor(listingFor(item)) : undefined}
                     withStatus={withStatus}
                     syncStatus={rowStatuses.get(item.id)}
                     canSell={isApprovedForSale && item.isPublished && !!item.tokenId}

@@ -168,7 +168,7 @@ describe("when a creator looks at the collection's discounts", () => {
     })
 
     const chips = screen.getAllByTestId('collection-discount')
-    expect(chips[0]).toHaveTextContent('30% off')
+    expect(chips[0]).toHaveTextContent('-30%')
     expect(chips[0]).toHaveTextContent(/Ends/)
     expect(chips[1]).toHaveAttribute('data-status', 'scheduled')
     expect(chips[1]).toHaveTextContent('0 of 40 used')

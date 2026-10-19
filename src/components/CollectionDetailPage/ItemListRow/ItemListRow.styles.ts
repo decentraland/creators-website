@@ -359,6 +359,22 @@ export const Amount = styled.span`
   white-space: nowrap;
 `
 
+// The price a buyer pays and the one it replaces, as the Shop's cards draw them: the price in plain ink (the tag
+// already says "on sale" in red), the old one struck through in grey.
+export const SalePrice = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: ${theme.colors.softWhite};
+  font-weight: 700;
+`
+
+export const OriginalPrice = styled.s`
+  color: ${theme.colors.muted2};
+  font-size: 12px;
+  font-weight: 600;
+`
+
 export const ActionsCell = styled.div`
   display: flex;
   justify-content: flex-end;

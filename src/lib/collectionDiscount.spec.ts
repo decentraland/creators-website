@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { ContractName, getContract } from 'decentraland-transactions'
-import { discountReach, discountedCredits, discountedManaWei, takesDiscount } from './collectionDiscount'
+import {
+  discountReach,
+  discountedCredits,
+  discountedManaWei,
+  runningDiscountPpm,
+  takesDiscount
+} from './collectionDiscount'
+import { getCouponManager } from 'decentraland-transactions'
+import { type CollectionDiscount } from './coupons'
 import { type ItemListing } from './listings'
 
 const CHAIN_ID = 80002
@@ -76,5 +84,46 @@ describe('when pricing the example line', () => {
   it('should price MANA the way the contract does: price minus the floored cut', () => {
     expect(discountedManaWei(100n * MANA, 30)).toBe(70n * MANA)
     expect(discountedManaWei(7n, 30)).toBe(5n)
+  })
+})
+
+describe('when picking the running discount a buyer gets on a listing', () => {
+  const NOW = Date.UTC(2026, 9, 19)
+  const DAY = 86_400_000
+  const managerOf = (name: ContractName) => getCouponManager(name, CHAIN_ID).address.toLowerCase()
+  const discount = (ppm: number, overrides: Partial<CollectionDiscount> = {}) =>
+    ({
+      id: `d-${ppm}`,
+      discountType: 1,
+      discount: ppm,
+      couponManager: managerOf(ContractName.OffChainMarketplaceV3),
+      status: 'active',
+      checks: { effective: NOW - DAY, expiration: NOW + DAY },
+      ...overrides
+    }) as unknown as CollectionDiscount
+
+  it('should take the deepest one that has started', () => {
+    const running = [
+      discount(100_000),
+      discount(300_000),
+      discount(500_000, { checks: { effective: NOW + DAY, expiration: NOW + 2 * DAY } as never })
+    ]
+    expect(runningDiscountPpm(credits('0', 50), running, off, NOW)).toBe(300_000)
+  })
+
+  // Each marketplace redeems only its own manager's coupons, whatever a new discount would be signed against.
+  it("should only count discounts signed with the manager the listing's marketplace trusts", () => {
+    const onV2 = discount(400_000, { couponManager: managerOf(ContractName.OffChainMarketplaceV2) })
+    expect(runningDiscountPpm(credits('0', 50), [onV2], off, NOW)).toBeUndefined()
+    expect(runningDiscountPpm(credits('0', 50, V2), [onV2], off, NOW)).toBe(400_000)
+  })
+
+  it('should leave MANA listings alone while the Shop does not discount them', () => {
+    expect(runningDiscountPpm(manaTrade('0', 10n * MANA), [discount(300_000)], off, NOW)).toBeUndefined()
+    expect(runningDiscountPpm(manaTrade('0', 10n * MANA), [discount(300_000)], on, NOW)).toBe(300_000)
+  })
+
+  it('should leave a collection-store price alone', () => {
+    expect(runningDiscountPpm(storePrice('0'), [discount(300_000)], on, NOW)).toBeUndefined()
   })
 })

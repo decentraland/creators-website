@@ -2,6 +2,7 @@ import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
 import { discountPct, isDiscountCapped, liveDiscountStatus, type CollectionDiscount } from '~/lib/coupons'
 import { Button } from '~/components/Button'
+import { SaleTag } from '../SaleTag'
 import * as S from './DiscountFlow.styles'
 
 type Props = {
@@ -28,7 +29,7 @@ export function CollectionDiscounts({ discounts, now, onEnd }: Props) {
             data-testid="collection-discount"
           >
             <S.DiscountTerms>
-              <b>{t('collection_discount.chip.off', { pct: discountPct(discount) })}</b>
+              <SaleTag pct={intl.formatNumber(discountPct(discount))} testId="discount-sale-tag" />
               <span>
                 {scheduled
                   ? t('collection_discount.chip.starts', { date: date(discount.checks.effective) })

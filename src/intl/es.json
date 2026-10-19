@@ -246,7 +246,9 @@
     "price": {
       "credits": "{amount} créditos",
       "mana": "{amount} MANA",
-      "free": "Gratis"
+      "free": "Gratis",
+      "off": "-{pct}%",
+      "discounted": "{amount}, {pct}% menos que {original} mientras dure el descuento de la colección"
     },
     "delete_item": {
       "title": "¿Eliminar este ítem?",
@@ -1556,7 +1558,6 @@
     },
     "list_label": "Descuentos",
     "chip": {
-      "off": "{pct}% de descuento",
       "ends": "Termina el {date}",
       "starts": "Empieza el {date}",
       "uses": "{used} de {total} usados",
