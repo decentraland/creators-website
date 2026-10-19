@@ -921,6 +921,33 @@
     },
     "actions": {
       "label": "Item actions"
+    },
+    "linked_review": {
+      "nothing_pending": "No items waiting for review",
+      "reviewed": "Reviewed {count}/{threshold} items",
+      "review_next": "Review next",
+      "approve_blocked": "Open at least {threshold} of the pending items before approving.",
+      "reject_description": "{count, plural, one {The pending item} other {The # pending items}} will be marked as rejected; the creator can fix and publish them again. Let them know why on the forum post.",
+      "disable_third_party": "Disable third party",
+      "enable_third_party": "Enable third party",
+      "disable": {
+        "title": "Disable {name}?",
+        "description": "This third party and every collection under it will stop being available in Decentraland. You can enable it again later.",
+        "confirm": "Disable",
+        "error": "We couldn't disable the third party. Please try again.",
+        "success": "{name} was disabled",
+        "signing": "Please confirm in your wallet to disable the third party.",
+        "pending": "Disabling third party…"
+      },
+      "enable": {
+        "title": "Enable {name}?",
+        "description": "This third party and its approved items will be available in Decentraland again.",
+        "confirm": "Enable",
+        "error": "We couldn't enable the third party. Please try again.",
+        "success": "{name} was enabled",
+        "signing": "Please confirm in your wallet to enable the third party.",
+        "pending": "Enabling third party…"
+      }
     }
   },
   "zoom_controls": {
@@ -963,7 +990,8 @@
       "edit_assignee": "Change the assigned curator",
       "discussion": "Discussion",
       "forum_post": "Forum post",
-      "not_posted": "Not posted"
+      "not_posted": "Not posted",
+      "third_party": "Third party"
     },
     "error": {
       "title": "We couldn't load the collections",
@@ -972,7 +1000,13 @@
     },
     "empty": "There are no collections to review yet.",
     "no_results": "No collections match these filters.",
-    "showing": "Showing {range} of {total} {total, plural, one {collection} other {collections}}"
+    "showing": "Showing {range} of {total} {total, plural, one {collection} other {collections}}",
+    "type": {
+      "label": "Type",
+      "all": "All types",
+      "standard": "Standard",
+      "linked": "Linked"
+    }
   },
   "maintenance_page": {
     "title": "We'll be right back",
@@ -1847,5 +1881,33 @@
     "success": "{count, plural, one {# item sent} other {# items sent}} for review",
     "partial": "{count, plural, one {# item couldn't be sent} other {# items couldn't be sent}} for review. Try again for those.",
     "error": "We couldn't send your changes. Please try again."
+  },
+  "linked_approval_flow": {
+    "root": {
+      "title": "Approve items",
+      "body": "Approving puts the fingerprint of every reviewed item on chain and consumes the creator's {slots, plural, =0 {cheque} one {# slot} other {# slots}}. {count, plural, one {# item is} other {# items are}} waiting.",
+      "action": "Approve on chain",
+      "signing": "Please confirm the approval in your wallet.",
+      "pending": "Waiting for the approval to be confirmed…"
+    },
+    "deploy": {
+      "title": "Upload files",
+      "body": "Upload the {count, plural, one {approved item} other {# approved items}} to the content servers so they show up in Decentraland.",
+      "action": "Upload",
+      "uploading_body": "Each item is uploaded and its review marked as approved."
+    },
+    "columns": {
+      "urn": "Identifier"
+    },
+    "more_items": "And {count, plural, one {# more item} other {# more items}}",
+    "success": {
+      "title": "Items approved!",
+      "body": "The reviewed items of {collection} are now live in Decentraland."
+    },
+    "error": {
+      "prepare": "We couldn't prepare the approval. Check that the collection has items waiting for review and try again.",
+      "root": "The approval could not be put on chain. Nothing was uploaded; try again.",
+      "deploy": "Some items could not be uploaded or approved. Try again to retry the ones that failed."
+    }
   }
 }

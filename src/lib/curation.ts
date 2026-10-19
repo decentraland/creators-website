@@ -124,6 +124,12 @@ export type CurationSort = (typeof CURATION_SORTS)[number]
 export const ALL_ASSIGNEES = 'all'
 export const CURATION_PAGE_SIZE = 12
 
+export enum CurationTypeFilter {
+  ALL = 'all',
+  STANDARD = 'standard',
+  LINKED = 'linked'
+}
+
 export type CurationFilters = {
   page: number
   search: string
@@ -131,29 +137,33 @@ export type CurationFilters = {
   assignee: string
   sort: CurationSort
   tag: string | null
+  type: CurationTypeFilter
 }
 
 /** The page's filters as they live in the URL; unknown values fall back to the defaults. */
 export function parseCurationFilters(params: URLSearchParams): CurationFilters {
   const status = params.get('status') as CurationStatusFilter
   const sort = params.get('sort') as CurationSort
+  const type = params.get('type') as CurationTypeFilter
   return {
     page: Math.max(1, Number(params.get('page')) || 1),
     search: params.get('q') ?? '',
     status: Object.values(CurationStatusFilter).includes(status) ? status : CurationStatusFilter.ALL,
     assignee: params.get('assignee')?.toLowerCase() || ALL_ASSIGNEES,
     sort: CURATION_SORTS.includes(sort) ? sort : CollectionSort.MOST_RELEVANT,
-    tag: params.get('tag') || null
+    tag: params.get('tag') || null,
+    type: Object.values(CurationTypeFilter).includes(type) ? type : CurationTypeFilter.ALL
   }
 }
 
-/** GET /collections query string for the curation list; always published standard collections. */
+/** GET /collections query string for the curation list: published collections, standard and linked. */
 export function toCurationQueryString(filters: CurationFilters, limit = CURATION_PAGE_SIZE): string {
   const query = new URLSearchParams()
   query.append('is_published', 'true')
   if (filters.assignee !== ALL_ASSIGNEES) query.append('assignee', filters.assignee)
   if (filters.status !== CurationStatusFilter.ALL) query.append('status', filters.status)
-  query.append('type', CollectionType.STANDARD)
+  if (filters.type === CurationTypeFilter.STANDARD) query.append('type', CollectionType.STANDARD)
+  if (filters.type === CurationTypeFilter.LINKED) query.append('type', CollectionType.THIRD_PARTY)
   query.append('sort', filters.sort)
   if (filters.search) query.append('q', filters.search)
   if (filters.tag) query.append('tag', filters.tag.toLowerCase())

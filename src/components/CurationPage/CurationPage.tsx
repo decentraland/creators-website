@@ -17,6 +17,7 @@ import {
   CURATION_PAGE_SIZE,
   CURATION_SORTS,
   CurationStatusFilter,
+  CurationTypeFilter,
   parseCurationFilters,
   rememberCurationSearch,
   type CollectionCuration
@@ -58,6 +59,10 @@ const CurationPage = () => {
   const assigneeOptions = useCuratorOptions(address, allAssignees)
   const sortOptions = useMemo<SelectOption<string>[]>(
     () => CURATION_SORTS.map(sort => ({ value: sort, label: t(`curation_page.sort.${sort}`) })),
+    [t]
+  )
+  const typeOptions = useMemo<SelectOption<CurationTypeFilter>[]>(
+    () => Object.values(CurationTypeFilter).map(type => ({ value: type, label: t(`curation_page.type.${type}`) })),
     [t]
   )
 
@@ -126,6 +131,7 @@ const CurationPage = () => {
     !!filters.search ||
     filters.status !== CurationStatusFilter.ALL ||
     filters.assignee !== ALL_ASSIGNEES ||
+    filters.type !== CurationTypeFilter.ALL ||
     !!filters.tag
   // Rows can't tell "never requested" from "not loaded yet": without the curations their actions would open new requests.
   const isLoading = collections.isLoading || (collections.isFetching && !data) || curations.isLoading
@@ -177,6 +183,14 @@ const CurationPage = () => {
             </S.CampaignToggle>
           )}
           <S.Selects>
+            <Select
+              value={filters.type}
+              options={typeOptions}
+              onChange={value => changeFilter('type', value === CurationTypeFilter.ALL ? null : value)}
+              ariaLabel={t('curation_page.type.label')}
+              variant="compact"
+              testId="curation-type-filter"
+            />
             <Select
               value={filters.assignee}
               options={assigneeOptions}

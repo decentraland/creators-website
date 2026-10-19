@@ -3,6 +3,7 @@ import { CollectionSort, type Collection } from './collections'
 import {
   CurationState,
   CurationStatusFilter,
+  CurationTypeFilter,
   ReviewAction,
   canEditAssignee,
   canPushChanges,
@@ -192,13 +193,14 @@ describe('curation filters', () => {
       status: CurationStatusFilter.ALL,
       assignee: 'all',
       sort: CollectionSort.MOST_RELEVANT,
-      tag: null
+      tag: null,
+      type: CurationTypeFilter.ALL
     })
   })
 
-  it('builds the committee list query for published standard collections', () => {
+  it('builds the committee list query for the picked kind of published collections', () => {
     const filters = parseCurationFilters(
-      new URLSearchParams('status=under_review&assignee=0xABC&q=hat&sort=NAME_ASC&page=2&tag=Summer')
+      new URLSearchParams('status=under_review&assignee=0xABC&q=hat&sort=NAME_ASC&page=2&tag=Summer&type=standard')
     )
     const query = new URLSearchParams(toCurationQueryString(filters))
     expect(Object.fromEntries(query)).toEqual({
@@ -214,11 +216,17 @@ describe('curation filters', () => {
     })
   })
 
-  it('leaves the "all" filters out of the query', () => {
+  it('leaves the "all" filters out of the query, so standard and linked collections list together', () => {
     const query = new URLSearchParams(toCurationQueryString(parseCurationFilters(new URLSearchParams())))
     expect(query.has('status')).toBe(false)
     expect(query.has('assignee')).toBe(false)
     expect(query.has('tag')).toBe(false)
+    expect(query.has('type')).toBe(false)
+  })
+
+  it('asks for third-party collections under the Linked type', () => {
+    const query = new URLSearchParams(toCurationQueryString(parseCurationFilters(new URLSearchParams('type=linked'))))
+    expect(query.get('type')).toBe('third_party')
   })
 })
 

@@ -4,7 +4,7 @@ import { useTranslation } from '~/intl'
 import { CollectionMosaic } from '~/components/CollectionMosaic'
 import { CurationStatePill } from '~/components/CurationStatePill'
 import { ProfileBadge } from '~/components/ProfileBadge'
-import { type Collection } from '~/lib/collections'
+import { isLinkedCollection, type Collection } from '~/lib/collections'
 import { openForumPost } from '~/lib/forumPost'
 import { canEditAssignee, getCurationState, type CollectionCuration } from '~/lib/curation'
 import { formatTimeAgo } from '~/lib/time'
@@ -36,11 +36,19 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
         </S.Thumb>
         <S.RowLink to={reviewUrl(collection)} data-testid="curation-row-link">
           <S.Name title={collection.name}>{collection.name}</S.Name>
-          <S.Sub>{t('collections_page.item_count', { count: collection.itemCount })}</S.Sub>
+          <S.Sub>
+            {t('collections_page.item_count', { count: collection.itemCount })}
+            {isLinkedCollection(collection) && ` · ${t('collection_status.linked')}`}
+          </S.Sub>
         </S.RowLink>
       </S.NameCell>
       <S.Cell data-cell="owner">
-        <ProfileBadge address={collection.owner} testId="curation-row-owner" />
+        {collection.owner ? (
+          <ProfileBadge address={collection.owner} testId="curation-row-owner" />
+        ) : (
+          // Linked collections belong to a third party, not a wallet.
+          <S.Unassigned data-testid="curation-row-owner">{t('curation_page.list.third_party')}</S.Unassigned>
+        )}
       </S.Cell>
       <S.Cell data-cell="requested" data-testid="curation-row-requested">
         <S.CellLabel>{t(curation ? 'curation_page.list.requested' : 'curation_page.list.created')}</S.CellLabel>

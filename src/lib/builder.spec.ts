@@ -424,12 +424,13 @@ describe('fetchCurationCollections', () => {
       status: 'all' as never,
       assignee: 'all',
       sort: 'MOST_RELEVANT' as never,
-      tag: null
+      tag: null,
+      type: 'all' as never
     })
     expect(result.results[0]).toMatchObject({ id: 'a1b2', isPublished: true })
     const path = signedFetchMock.mock.calls[0][2] as string
     expect(path.startsWith('/collections?is_published=true')).toBe(true)
-    expect(path).toContain('type=standard')
+    expect(path).not.toContain('type=')
   })
 })
 

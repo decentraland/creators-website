@@ -65,6 +65,7 @@ import { MobilePreview } from './MobilePreview'
 import { PlaybackBar } from './PlaybackBar'
 import { PropertiesPanel, type SpringBonesFormProps } from './PropertiesPanel'
 import { ReviewBar } from './ReviewBar'
+import { LinkedReviewBar } from './ReviewBar/LinkedReviewBar'
 import { ValidationBadge } from '~/components/ValidationBadge'
 import { distinctModels, getValidationStatus, itemValidationContext, type ValidationSource } from '~/lib/validation'
 import { useEditorLayout } from './useEditorLayout'
@@ -565,13 +566,26 @@ const ItemEditorPage = () => {
 
   const reviewBar =
     mode === 'review' && collection && session ? (
-      <ReviewBar
-        key={collection.id}
-        session={session}
-        collection={collection}
-        items={items}
-        onSelectItem={selectItem}
-      />
+      isLinked ? (
+        thirdParty.data && (
+          <LinkedReviewBar
+            key={collection.id}
+            session={session}
+            collection={collection}
+            thirdParty={thirdParty.data}
+            selectedId={selectedId}
+            onSelectItem={selectItem}
+          />
+        )
+      ) : (
+        <ReviewBar
+          key={collection.id}
+          session={session}
+          collection={collection}
+          items={items}
+          onSelectItem={selectItem}
+        />
+      )
     ) : null
   const properties =
     collection && selected ? (
