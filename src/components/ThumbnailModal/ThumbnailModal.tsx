@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { PreviewProjection, type IPreviewController } from '@dcl/schemas'
+import { PreviewProjection, PreviewRenderer, type IPreviewController } from '@dcl/schemas'
 import { WearablePreview } from 'decentraland-ui2'
 import { VerticalPosition } from 'decentraland-ui2/dist/components/WearablePreview/TranslationControls'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { EmoteControls, TranslationControls } from '~/components/PreviewControls'
 import { ZoomControls } from '~/components/ZoomControls'
+import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { useTranslation } from '~/intl'
 import { MAX_THUMBNAIL_FILE_SIZE, THUMBNAIL_PATH, toMB } from '~/lib/itemFiles'
 import { ItemType } from '~/lib/items'
@@ -78,6 +79,7 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
   const isSaving = saving !== null
   const [error, setError] = useState<string | null>(null)
 
+  const renderer = usePreviewRenderer()
   const isEmote = type === ItemType.EMOTE
   // A new blob reference remounts the preview iframe, so keep it stable across local state changes.
   const blob = useMemo(
@@ -89,11 +91,11 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
   // createController call drops the requests in flight, and a late one (in onLoad, or a control
   // mounting after it) swallows the length EmoteControls asks for on the autoplay PLAY, leaving its
   // play/pause stuck until the emote ends.
-  const hasBlob = blob !== null
+  const isMounted = blob !== null && renderer !== undefined
   useEffect(() => {
-    setController(hasBlob ? WearablePreview.createController(PREVIEW_ID) : null)
-    if (!hasBlob) setLoaded(false)
-  }, [hasBlob])
+    setController(isMounted ? WearablePreview.createController(PREVIEW_ID) : null)
+    if (!isMounted) setLoaded(false)
+  }, [isMounted])
 
   function errorText(err: unknown): string {
     const { key, params } = getThumbnailErrorMessage(err)
@@ -142,14 +144,15 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
     >
       <S.Wrap>
         <S.PreviewArea data-testid="thumbnail-preview">
-          {!blob && !loadError && <S.Spinner aria-hidden data-testid="thumbnail-loading" />}
+          {!isMounted && !loadError && <S.Spinner aria-hidden data-testid="thumbnail-loading" />}
           {loadError && (
             <S.LoadError data-testid="thumbnail-load-error">{t('thumbnail_modal.load_failed')}</S.LoadError>
           )}
-          {blob && (
+          {isMounted && (
             <WearablePreview
               id={PREVIEW_ID}
               blob={blob}
+              unity={renderer === PreviewRenderer.UNITY}
               disableBackground
               disableAutoRotate
               projection={PreviewProjection.PERSPECTIVE}

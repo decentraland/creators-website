@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
-import { BodyShape, PreviewRenderer, type IPreviewController } from '@dcl/schemas'
+import { BodyShape, type IPreviewController } from '@dcl/schemas'
 import {
   Check as CheckIcon,
   Close as CloseIcon,
@@ -28,7 +28,6 @@ import { useBaseWearables } from '~/hooks/useBaseWearables'
 import { useLiveBridge } from '~/hooks/useLiveBridge'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useModelValidation } from '~/hooks/useModelValidation'
-import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { type SpringBonesModel } from '~/hooks/useSpringBones'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
@@ -175,7 +174,6 @@ const LivePreviewPage = () => {
     () => selectAvatarAttributes({ bodyShape, skin, eyes, hair, baseWearables: baseSelection }),
     [bodyShape, skin, eyes, hair, baseSelection]
   )
-  const renderer = usePreviewRenderer()
 
   const definition = useMemo(
     () => (state && glb ? buildDefinition(state, glb, { category: categoryOverride, hides, loop }) : null),
@@ -319,43 +317,40 @@ const LivePreviewPage = () => {
   const categories = useMemo(() => getWearableCategoryOptions(contents), [contents])
   const permission = bridge.permission === 'prompt' || bridge.permission === 'denied' ? bridge.permission : null
 
-  const preview =
-    renderer === undefined || !source ? null : (
-      <AvatarPreview
-        key={renderer}
-        id={PREVIEW_ID}
-        source={source}
-        avatar={avatar}
-        emote={emote}
-        unity={renderer === PreviewRenderer.UNITY}
-        onLoad={onPreviewLoad}
-        onError={onPreviewError}
-        onController={setController}
-      >
-        <PlaybackBar
-          previewId={PREVIEW_ID}
-          controller={controller}
-          collectionEmotes={[]}
-          previewedWearables={[]}
-          subjectEmoteId={isEmote ? definitionId : null}
-        />
-        <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />
-        <SceneBoundariesToggle />
-        <ValidationBadge
-          status={validationStatus}
-          issues={validation.data?.issues ?? []}
-          subject={{
-            name: t('item_editor.validation.previewed_item'),
-            type: validationCtx.type,
-            category: validationCtx.category
-          }}
-        />
-      </AvatarPreview>
-    )
+  const preview = !source ? null : (
+    <AvatarPreview
+      id={PREVIEW_ID}
+      source={source}
+      avatar={avatar}
+      emote={emote}
+      onLoad={onPreviewLoad}
+      onError={onPreviewError}
+      onController={setController}
+    >
+      <PlaybackBar
+        previewId={PREVIEW_ID}
+        controller={controller}
+        collectionEmotes={[]}
+        previewedWearables={[]}
+        subjectEmoteId={isEmote ? definitionId : null}
+      />
+      <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />
+      <SceneBoundariesToggle />
+      <ValidationBadge
+        status={validationStatus}
+        issues={validation.data?.issues ?? []}
+        subject={{
+          name: t('item_editor.validation.previewed_item'),
+          type: validationCtx.type,
+          category: validationCtx.category
+        }}
+      />
+    </AvatarPreview>
+  )
 
   const placeholder = permission ? (
     <PermissionCard state={permission} onRetry={bridge.connect} />
-  ) : bridge.status === 'connecting' || (source && renderer === undefined) ? (
+  ) : bridge.status === 'connecting' ? (
     <span className="spinner" aria-hidden />
   ) : (
     <span data-testid="live-preview-waiting">{t('live_preview.waiting')}</span>
@@ -365,10 +360,7 @@ const LivePreviewPage = () => {
     <>
       <S.PreviewArea>
         {preview ?? <S.PreviewEmpty data-testid="live-preview-empty">{placeholder}</S.PreviewEmpty>}
-        {/* Babylon only: Unity has no live zoom over the bridge (see ZoomControls). */}
-        {preview && loadCount > 0 && controller && renderer === PreviewRenderer.BABYLON && (
-          <ZoomControls controller={controller} />
-        )}
+        {preview && loadCount > 0 && controller && <ZoomControls controller={controller} />}
       </S.PreviewArea>
       {isCustomizerOpen && <AvatarCustomizerDrawer catalog={baseWearables.data} onClose={closeCustomizer} />}
     </>

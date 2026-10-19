@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { PreviewProjection } from '@dcl/schemas'
+import { PreviewProjection, PreviewRenderer } from '@dcl/schemas'
 import { WearablePreview } from 'decentraland-ui2'
+import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { dataURLToBlob } from '~/lib/media'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { ItemType, type ItemMetrics } from '~/lib/items'
@@ -32,6 +33,7 @@ type LoadPhase = 'idle' | 'update-sent' | 'loaded'
  * when the category change alters the pose.
  */
 export function DraftProcessor({ draft, onResult, onError }: Props) {
+  const renderer = usePreviewRenderer()
   // A controller call can still fail mid-flight when the scene is being replaced, so attempts are
   // retried until one round-trip completes against a live scene.
   const pose = draft.type === ItemType.WEARABLE ? getThumbnailPose(draft.category) : null
@@ -122,35 +124,38 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
   return (
     <S.HiddenPreview aria-hidden data-testid="draft-processor">
       {/* Emote-only options are URL params, so a type switch is the one case that needs a fresh iframe. */}
-      <WearablePreview
-        key={isEmote ? 'emote' : 'wearable'}
-        id={PREVIEW_ID}
-        blob={blob}
-        disableBackground
-        disableAutoRotate
-        projection={PreviewProjection.ORTHOGRAPHIC}
-        {...(isEmote ? { profile: 'default', disableFace: true, disableDefaultWearables: true, skin: '000000' } : {})}
-        onUpdate={() => {
-          if (loadRef.current.phase === 'idle') loadRef.current.phase = 'update-sent'
-        }}
-        onLoad={() => {
-          if (loadRef.current.phase === 'idle') return
-          loadRef.current.phase = 'loaded'
-          attempt()
-        }}
-        onError={() => {
-          // Iframe-level errors also count as attempts so a broken preview can't hang forever.
-          const run = runRef.current
-          if (run.runKey !== runKey || run.done || run.busy) return
-          run.attempts++
-          if (run.attempts >= MAX_ATTEMPTS) {
-            onError(draft.id)
-          } else {
-            window.clearTimeout(run.retryTimer)
-            run.retryTimer = window.setTimeout(attempt, RETRY_DELAY_MS)
-          }
-        }}
-      />
+      {renderer !== undefined && (
+        <WearablePreview
+          key={isEmote ? 'emote' : 'wearable'}
+          id={PREVIEW_ID}
+          blob={blob}
+          unity={renderer === PreviewRenderer.UNITY}
+          disableBackground
+          disableAutoRotate
+          projection={PreviewProjection.ORTHOGRAPHIC}
+          {...(isEmote ? { profile: 'default', disableFace: true, disableDefaultWearables: true, skin: '000000' } : {})}
+          onUpdate={() => {
+            if (loadRef.current.phase === 'idle') loadRef.current.phase = 'update-sent'
+          }}
+          onLoad={() => {
+            if (loadRef.current.phase === 'idle') return
+            loadRef.current.phase = 'loaded'
+            attempt()
+          }}
+          onError={() => {
+            // Iframe-level errors also count as attempts so a broken preview can't hang forever.
+            const run = runRef.current
+            if (run.runKey !== runKey || run.done || run.busy) return
+            run.attempts++
+            if (run.attempts >= MAX_ATTEMPTS) {
+              onError(draft.id)
+            } else {
+              window.clearTimeout(run.retryTimer)
+              run.retryTimer = window.setTimeout(attempt, RETRY_DELAY_MS)
+            }
+          }}
+        />
+      )}
     </S.HiddenPreview>
   )
 }

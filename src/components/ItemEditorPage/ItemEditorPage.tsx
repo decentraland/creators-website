@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { BodyShape, PreviewRenderer, type IPreviewController } from '@dcl/schemas'
+import { BodyShape, type IPreviewController } from '@dcl/schemas'
 import { ArrowBackIosNew, PersonOutline as PersonOutlineIcon } from '@mui/icons-material'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { AvatarPreview } from '~/components/AvatarPreview'
@@ -28,7 +28,6 @@ import { modelValidationKey, useModelValidation } from '~/hooks/useModelValidati
 import { useRerunValidation } from '~/hooks/useRerunValidation'
 import { useObjectURL } from '~/hooks/useObjectURL'
 import { thumbnailValidationKey, useThumbnailValidation } from '~/hooks/useThumbnailValidation'
-import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { fetchStoredThumbnail, useSaveItem } from '~/hooks/useSaveItem'
 import { useSpringBones } from '~/hooks/useSpringBones'
 import { useTranslation } from '~/intl'
@@ -109,7 +108,6 @@ const ItemEditorPage = () => {
   const collectionStatus = useCollectionStatus(canReadCuration ? address : undefined, collectionQuery.data)
   const itemsQuery = useAllCollectionItems(address, collectionId ?? undefined)
   const baseWearables = useBaseWearables()
-  const renderer = usePreviewRenderer()
   const saveItem = useSaveItem(address)
   const saveCollection = useSaveCollection(address)
   const [isRenameOpen, setRenameOpen] = useState(false)
@@ -429,40 +427,36 @@ const ItemEditorPage = () => {
         (!!collection && mode === 'edit' && !canViewCollection(collection, address))))
   const isError = !isNotFound && !!collectionId && (collectionQuery.isError || itemsQuery.isError)
 
-  const preview =
-    renderer === undefined ? null : (
-      <AvatarPreview
-        // The renderer is baked into the iframe URL at mount, so a switch has to remount the preview.
-        key={renderer}
-        id={PREVIEW_ID}
-        source={source}
-        avatar={avatar}
-        emote={emote}
-        unity={renderer === PreviewRenderer.UNITY}
-        onLoad={onPreviewLoad}
-        onError={onPreviewError}
-        onController={setController}
-      >
-        <PlaybackBar
-          previewId={PREVIEW_ID}
-          controller={controller}
-          collectionEmotes={collectionEmotes}
-          previewedWearables={previewedWearables}
-          subjectEmoteId={subjectEmote?.id ?? null}
+  const preview = (
+    <AvatarPreview
+      id={PREVIEW_ID}
+      source={source}
+      avatar={avatar}
+      emote={emote}
+      onLoad={onPreviewLoad}
+      onError={onPreviewError}
+      onController={setController}
+    >
+      <PlaybackBar
+        previewId={PREVIEW_ID}
+        controller={controller}
+        collectionEmotes={collectionEmotes}
+        previewedWearables={previewedWearables}
+        subjectEmoteId={subjectEmote?.id ?? null}
+      />
+      <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />
+      <SceneBoundariesToggle />
+      {selected && (
+        <ValidationBadge
+          status={validationStatus}
+          issues={validationIssues ?? []}
+          subject={validationSubject}
+          onRerun={rerunSelectedValidation}
+          onOpen={onValidationOpen}
         />
-        <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />
-        <SceneBoundariesToggle />
-        {selected && (
-          <ValidationBadge
-            status={validationStatus}
-            issues={validationIssues ?? []}
-            subject={validationSubject}
-            onRerun={rerunSelectedValidation}
-            onOpen={onValidationOpen}
-          />
-        )}
-      </AvatarPreview>
-    )
+      )}
+    </AvatarPreview>
+  )
 
   if (restored && !session) {
     return (
@@ -664,10 +658,7 @@ const ItemEditorPage = () => {
                 <>
                   <S.PreviewArea>
                     {preview}
-                    {/* Babylon only: Unity has no live zoom over the bridge (see ZoomControls). */}
-                    {loadCount > 0 && controller && renderer === PreviewRenderer.BABYLON && (
-                      <ZoomControls controller={controller} />
-                    )}
+                    {loadCount > 0 && controller && <ZoomControls controller={controller} />}
                   </S.PreviewArea>
                   {isCustomizerOpen && (
                     <AvatarCustomizerDrawer catalog={baseWearables.data} onClose={closeCustomizer} />

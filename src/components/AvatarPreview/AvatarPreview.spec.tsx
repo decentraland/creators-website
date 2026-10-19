@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
-import { BodyShape, PreviewEmote, PreviewEmoteEventType, PreviewMessageType } from '@dcl/schemas'
+import { BodyShape, PreviewEmote, PreviewEmoteEventType, PreviewMessageType, PreviewRenderer } from '@dcl/schemas'
 import mitt from 'mitt'
 import { type AvatarAttributes } from '~/lib/avatar'
 import { useAvatarPreview } from '~/store/avatarPreview'
@@ -22,6 +22,9 @@ vi.mock('decentraland-ui2', () => {
   WearablePreview.createController = vi.fn(() => controller)
   return { WearablePreview }
 })
+
+let renderer: PreviewRenderer | undefined = PreviewRenderer.UNITY
+vi.mock('~/hooks/usePreviewRenderer', () => ({ usePreviewRenderer: () => renderer }))
 
 const { AvatarPreview } = await import('./AvatarPreview')
 
@@ -54,6 +57,7 @@ function ready() {
 beforeEach(() => {
   vi.useFakeTimers()
   previewProps.length = 0
+  renderer = PreviewRenderer.UNITY
 })
 afterEach(() => {
   vi.useRealTimers()
@@ -63,7 +67,7 @@ afterEach(() => {
 describe('AvatarPreview', () => {
   it('mounts the iframe once with the avatar snapshot and pushes later changes as UPDATE messages', () => {
     const { rerender } = render(
-      <AvatarPreview id="preview" source={source} avatar={avatar} emote={PreviewEmote.WAVE} unity />
+      <AvatarPreview id="preview" source={source} avatar={avatar} emote={PreviewEmote.WAVE} />
     )
     const postMessage = vi.fn()
     Object.defineProperty(iframe(), 'contentWindow', { value: { postMessage }, configurable: true })
@@ -80,13 +84,7 @@ describe('AvatarPreview', () => {
     })
 
     rerender(
-      <AvatarPreview
-        id="preview"
-        source={source}
-        avatar={{ ...avatar, skin: '123456' }}
-        emote={PreviewEmote.WAVE}
-        unity
-      />
+      <AvatarPreview id="preview" source={source} avatar={{ ...avatar, skin: '123456' }} emote={PreviewEmote.WAVE} />
     )
     act(() => {
       vi.advanceTimersByTime(300)
@@ -95,6 +93,17 @@ describe('AvatarPreview', () => {
     expect(postMessage.mock.calls[1][0].payload.options.skin).toBe('123456')
     // The URL-bound props never change, so ui2 has no reason to reload the iframe.
     expect(previewProps[previewProps.length - 1].skin).toBe('aaaaaa')
+  })
+
+  it('waits for the renderer decision before mounting the iframe, then mounts it with that renderer', () => {
+    renderer = undefined
+    const { rerender } = render(<AvatarPreview id="preview" source={source} avatar={avatar} />)
+    expect(screen.getByTestId('avatar-preview-loading')).toBeInTheDocument()
+    expect(previewProps).toHaveLength(0)
+
+    renderer = PreviewRenderer.BABYLON
+    rerender(<AvatarPreview id="preview" source={source} avatar={avatar} />)
+    expect(previewProps[0]).toMatchObject({ unity: false })
   })
 
   it('reports loads and the controller and mirrors emote playback into the store', () => {

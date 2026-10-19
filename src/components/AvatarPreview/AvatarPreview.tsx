@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   PreviewEmote,
   PreviewEmoteEventType,
+  PreviewRenderer,
   PreviewUnityMode,
-  type IPreviewController,
-  type PreviewRenderer
+  type IPreviewController
 } from '@dcl/schemas'
 import { Env } from '@dcl/ui-env'
 import { WearablePreview } from 'decentraland-ui2'
 import { config } from '~/config'
+import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { type AvatarAttributes } from '~/lib/avatar'
 import {
   PREVIEW_BASE_URL,
@@ -31,8 +32,6 @@ type Props = {
   avatar: AvatarAttributes
   /** Ignored while an emote item is the subject: the item owns the animation then. */
   emote?: PreviewEmote
-  /** Renderer request; the caller decides through `lib/pickRenderer`. */
-  unity?: boolean
   onLoad?: (renderer?: PreviewRenderer) => void
   onError?: (error: Error) => void
   onController?: (controller: IPreviewController) => void
@@ -42,22 +41,37 @@ type Props = {
 }
 
 /**
- * The shared avatar preview. Mounts ui2's WearablePreview once with a frozen snapshot of the
- * URL-bound options and pushes every later change through `lib/previewBridge`, so avatar and item
- * changes never reload the iframe.
+ * The shared avatar preview. Picks the renderer once (`usePreviewRenderer`), then mounts ui2's
+ * WearablePreview once with a frozen snapshot of the URL-bound options and pushes every later change
+ * through `lib/previewBridge`, so avatar and item changes never reload the iframe.
  */
-export function AvatarPreview({
+export function AvatarPreview(props: Props) {
+  const renderer = usePreviewRenderer()
+  const testId = props.testId ?? 'avatar-preview'
+  if (renderer === undefined) {
+    return (
+      <S.Wrap data-testid={testId} data-loading>
+        <S.Loader aria-busy="true" data-testid={`${testId}-loading`}>
+          <span className="spinner" aria-hidden />
+        </S.Loader>
+      </S.Wrap>
+    )
+  }
+  return <MountedPreview {...props} unity={renderer === PreviewRenderer.UNITY} />
+}
+
+function MountedPreview({
   id,
   source,
   avatar,
   emote = PreviewEmote.IDLE,
-  unity = false,
+  unity,
   onLoad,
   onError,
   onController,
   children,
   testId = 'avatar-preview'
-}: Props) {
+}: Props & { unity: boolean }) {
   const [snapshot] = useState(() => ({ ...avatar, emote, unity, emoteSubject: isEmoteSubject(source) }))
   const [isLoading, setLoading] = useState(true)
   const bridgeRef = useRef<PreviewBridge | null>(null)
