@@ -21,7 +21,10 @@ export type PendingEnd = {
 export type UnconfirmedCreate = {
   collectionId: string
   payload: CouponCreation
-  /** The creator chose to sign a new one anyway: kept on record, but no longer holding the form back. */
+  /**
+   * The creator chose to sign a new one anyway: no longer holding the form back, but kept until it expires as the
+   * record that a coupon of theirs may be on sale without this app having seen it stored.
+   */
   acknowledged?: boolean
 }
 type Attempts = { ends: PendingEnd[]; creates: UnconfirmedCreate[] }
@@ -57,6 +60,8 @@ function isUnconfirmedCreate(value: unknown): value is UnconfirmedCreate {
     typeof payload.signature === 'string' &&
     typeof payload.signer === 'string' &&
     Array.isArray(payload.collections) &&
+    payload.collections.every(collection => typeof collection === 'string') &&
+    (create.acknowledged === undefined || typeof create.acknowledged === 'boolean') &&
     isNumber(payload.chainId) &&
     isNumber(payload.discount) &&
     !!payload.checks &&

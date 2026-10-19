@@ -1591,6 +1591,7 @@
       "discard_hint": "Esto no lo cancela: si se guardó, sigue en venta y el nuevo se superpone. Aparecería en los descuentos de esta colección, donde puedes terminarlo.",
       "discard_hint_social": "Esto no lo cancela: si se guardó, sigue en venta hasta su fecha de fin y el nuevo se superpone. Las cuentas con inicio de sesión social no pueden terminar un descuento antes."
     },
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "in_flight": "Una solicitud anterior para esta colección sigue en curso. Esto se actualiza en cuanto termine."
   }
 }

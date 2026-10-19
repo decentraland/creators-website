@@ -143,7 +143,11 @@ export function DiscountFlow({ collection, session, reach, manaListings, onClose
   switch (shown) {
     case 'in_flight':
       return (
-        <PendingModal label={t('collection_discount.saving')} onCancel={onClose} testId="create-discount-in-flight" />
+        <PendingModal
+          label={t('collection_discount.in_flight')}
+          onCancel={onClose}
+          testId="create-discount-in-flight"
+        />
       )
     case 'form':
       return (

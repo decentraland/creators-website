@@ -7,15 +7,8 @@ import { Network, type TradeChecks } from '@dcl/schemas'
 import { ContractName, getContract, getContractName, getCouponManager } from 'decentraland-transactions'
 import { StandardMerkleTree } from '@openzeppelin/merkle-tree'
 import { config } from '~/config'
-import {
-  WrongAccountError,
-  WrongChainError,
-  readContract,
-  signedFetch,
-  type ContractCall,
-  type ContractData
-} from '~/lib/auth'
-import { OFFCHAIN_MARKETPLACE_TYPES, getOffchainMarketplaceContract } from '~/lib/trades'
+import { WrongAccountError, WrongChainError, signedFetch, type ContractCall, type ContractData } from '~/lib/auth'
+import { OFFCHAIN_MARKETPLACE_TYPES, getOffchainMarketplaceContract, toTypedChecks } from '~/lib/trades'
 import { isWalletRejection } from '~/lib/walletErrors'
 
 /** Percentage discount, in parts per million on-chain: 30% is 300_000. The only type this app signs. */
@@ -149,8 +142,6 @@ export const COUPON_TYPES: Record<string, ethers.TypedDataField[]> = {
   ExternalCheck: OFFCHAIN_MARKETPLACE_TYPES.ExternalCheck
 }
 
-const toSeconds = (ms: number) => Math.floor(ms / 1000)
-
 export function couponDomain(chainId: number, contracts: CouponContracts): ethers.TypedDataDomain {
   return {
     name: contracts.couponManager.name,
@@ -160,34 +151,9 @@ export function couponDomain(chainId: number, contracts: CouponContracts): ether
   }
 }
 
-function onChainChecks(checks: TradeChecks) {
-  return {
-    uses: checks.uses,
-    expiration: toSeconds(checks.expiration),
-    effective: toSeconds(checks.effective),
-    salt: ethers.utils.hexZeroPad(checks.salt, 32),
-    contractSignatureIndex: checks.contractSignatureIndex,
-    signerSignatureIndex: checks.signerSignatureIndex,
-    allowedRoot: ethers.utils.hexZeroPad(checks.allowedRoot || '0x', 32),
-    externalChecks: checks.externalChecks ?? []
-  }
-}
-
 /** The EIP-712 values for a coupon: `checks` in seconds, the way the contract reads them. */
 export function couponTypedValues(checks: TradeChecks, couponAddress: string, data: string) {
-  return { checks: onChainChecks(checks), couponAddress, data }
-}
-
-/** The manager's current signature indexes for `signer`: a coupon signed below them is already revoked. */
-export async function readCouponIndexes(
-  manager: ContractData,
-  signer: string
-): Promise<{ contractSignatureIndex: number; signerSignatureIndex: number }> {
-  const [contractIndex, signerIndex] = await Promise.all([
-    readContract<ethers.BigNumber>(manager, 'contractSignatureIndex'),
-    readContract<ethers.BigNumber>(manager, 'signerSignatureIndex', [signer])
-  ])
-  return { contractSignatureIndex: contractIndex.toNumber(), signerSignatureIndex: signerIndex.toNumber() }
+  return { checks: toTypedChecks(checks), couponAddress, data }
 }
 
 export type DiscountInputProblem = 'collections' | 'pct' | 'window' | 'duration' | 'uses'
@@ -473,7 +439,7 @@ export function buildEndDiscountCall(discount: CollectionDiscount): ContractCall
   // The manager records `keccak256(caller, digest)` without checking the signature, so a coupon rebuilt with any
   // field off mines fine and cancels nothing. Rebuilt from the row's own fields, and sent only if it is provably
   // the coupon its signer signed.
-  const checks = onChainChecks(discount.checks)
+  const checks = toTypedChecks(discount.checks)
   const data = encodeCouponData(discount.discount, discount.root, discount.discountType)
   const domain = couponDomain(discount.chainId, { couponManager: manager, coupon: discount.couponAddress })
   let recovered: string
