@@ -1,7 +1,12 @@
 // A collection as the discount modal reads it, ported from the Shop's lib/saleableCollections: every item it has,
 // split into what a new discount re-prices, what stays at a price it can't change, and what isn't for sale.
 import { getContentsStorageUrl } from '~/lib/builder'
-import { takesDiscount, type DiscountReachOptions } from '~/lib/collectionDiscount'
+import {
+  discountedCredits,
+  discountedManaWei,
+  takesDiscount,
+  type DiscountReachOptions
+} from '~/lib/collectionDiscount'
 import { type Collection } from '~/lib/collections'
 import { getItemSales, type Item } from '~/lib/items'
 import { creditsForUsdWei } from '~/lib/publishFee'
@@ -29,6 +34,8 @@ export type SaleableCollection = {
   name: string
   /** Listings a new discount re-prices. */
   listedCount: number
+  /** USD wei per MANA its MANA prices were quoted in credits at, so a discounted one is quoted the same way. */
+  manaRate?: bigint
   items: SaleItem[]
 }
 
@@ -79,6 +86,17 @@ export function toSaleableCollection(
     itemCount: collection.itemCount,
     name: collection.name,
     listedCount: saleItems.filter(item => item.state === 'discounted').length,
+    manaRate: options.manaRate,
     items: saleItems
   }
+}
+
+/**
+ * What a discounted item sells for in credits, the way a buyer will see it. A MANA listing is discounted in MANA
+ * first, as the contract does, and that sale amount converted at the same rate: discounting its already rounded
+ * credits price can quote a credit more than the coupon yields. Null when it has no credits price to quote.
+ */
+export function discountedPriceCredits(item: SaleItem, pct: number, manaRate: bigint | undefined): number | null {
+  if (item.manaWei !== undefined && manaRate) return manaToCredits(discountedManaWei(item.manaWei, pct), manaRate)
+  return item.priceCredits === null ? null : discountedCredits(item.priceCredits, pct)
 }

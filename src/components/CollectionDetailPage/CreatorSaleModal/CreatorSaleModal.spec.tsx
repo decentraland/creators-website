@@ -255,4 +255,31 @@ describe('when a creator discounts a collection from the builder', () => {
     expect(onClose).not.toHaveBeenCalled()
     window.matchMedia = matchMedia
   })
+
+  // What the creator reviews must be what the coupon yields: 30% off 1 MANA at $0.11 sells for 1 credit, not 2.
+  it('should quote a discounted MANA item at what its MANA sale amount converts to', () => {
+    const mana: SaleableCollection = {
+      ...collection,
+      listedCount: 1,
+      manaRate: 11n * 10n ** 16n,
+      items: [
+        {
+          key: 'm1',
+          name: 'MANA Hat',
+          thumbnail: '',
+          priceCredits: 2,
+          manaWei: 10n ** 18n,
+          state: 'discounted',
+          mana: true,
+          remainingSupply: 1
+        }
+      ]
+    }
+    open({ of: mana })
+    fireEvent.click(screen.getByTestId('creator-sale-pct-30'))
+    expect(screen.getByTestId('creator-sale-preview-now')).toHaveTextContent('1')
+    expect(screen.getByTestId('creator-sale-preview-was')).toHaveTextContent('2')
+    fireEvent.click(screen.getByTestId('creator-sale-continue'))
+    expect(screen.getByTestId('review-now')).toHaveTextContent('1')
+  })
 })
