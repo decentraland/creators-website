@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react'
-import DatePicker, { type ReactDatePickerCustomHeaderProps } from 'react-datepicker'
+import DatePicker from 'react-datepicker'
+import { enUS, es, zhCN, type Locale as DateLocale } from 'date-fns/locale'
 import 'react-datepicker/dist/react-datepicker.css'
 import { useMorphFrom } from '~/hooks/useMorphFrom'
 import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
 import { breakpoints } from '~/styles/theme'
 import * as S from './RangePicker.styles'
+
+// The calendar's weekday and month names in the viewer's language.
+const DATE_LOCALES: Record<string, DateLocale> = { en: enUS, es, zh: zhCN }
 
 // One px past `sm`, so the two-month calendar and the phone's stacked presets never both apply.
 const WIDE = `(min-width: ${breakpoints.sm + 1}px)`
@@ -31,108 +35,6 @@ function openOn(date: Date, twoMonths: boolean): Date {
   return new Date(date.getFullYear(), date.getMonth() - 1, 1)
 }
 
-const monthIndex = (date: Date) => date.getFullYear() * 12 + date.getMonth()
-
-/**
- * A month's header with month and year selects on the first column, and arrows on the outer ones.
- *
- * The library's own selects read its internal date, which is the RIGHT column after a day there is clicked,
- * so they named the wrong month. These read the column's `monthDate`, and a pick moves the calendar by the
- * difference instead of setting the month outright, which keeps whichever column the library anchors on.
- */
-function MonthYearHeader({
-  monthDate,
-  date,
-  customHeaderCount,
-  monthsShown,
-  min,
-  max,
-  changeMonth,
-  changeYear,
-  decreaseMonth,
-  increaseMonth,
-  prevMonthButtonDisabled,
-  nextMonthButtonDisabled
-}: ReactDatePickerCustomHeaderProps & { monthsShown: number; min: Date; max: Date }) {
-  const { t } = useTranslation()
-  const { locale } = useIntl()
-  const first = customHeaderCount === 0
-  const last = customHeaderCount === monthsShown - 1
-  const go = (year: number, month: number) => {
-    const target = monthIndex(date) + (year * 12 + month - monthIndex(monthDate))
-    changeYear(Math.floor(target / 12))
-    changeMonth(target % 12)
-  }
-  const monthName = new Intl.DateTimeFormat(locale, { month: 'long' })
-  const title = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' })
-  const year = monthDate.getFullYear()
-  const years = Array.from({ length: max.getFullYear() - min.getFullYear() + 1 }, (_, i) => min.getFullYear() + i)
-  // A month counts when any of its days can be picked, so the first and last months of the range stay on offer.
-  const outOfRange = (y: number, m: number) => y * 12 + m < monthIndex(min) || y * 12 + m > monthIndex(max)
-  return (
-    <>
-      {first && !prevMonthButtonDisabled ? (
-        <button
-          type="button"
-          className="react-datepicker__navigation react-datepicker__navigation--previous"
-          aria-label={t('creatorSale.rangePrevMonth')}
-          onClick={decreaseMonth}
-        >
-          <span className="react-datepicker__navigation-icon react-datepicker__navigation-icon--previous" />
-        </button>
-      ) : null}
-      {first ? (
-        <S.HeaderRow>
-          <select
-            aria-label={t('creatorSale.rangeMonth')}
-            value={monthDate.getMonth()}
-            onChange={event => go(year, Number(event.target.value))}
-            data-testid="range-month"
-          >
-            {Array.from({ length: 12 }, (_, m) => (
-              <option key={m} value={m} disabled={outOfRange(year, m)}>
-                {monthName.format(new Date(2000, m, 1))}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label={t('creatorSale.rangeYear')}
-            value={year}
-            onChange={event => {
-              const next = Number(event.target.value)
-              // Keeps the month, unless that month of the new year is out of range: then the nearest one in it.
-              const month = Math.min(
-                Math.max(monthDate.getMonth(), next === min.getFullYear() ? min.getMonth() : 0),
-                next === max.getFullYear() ? max.getMonth() : 11
-              )
-              go(next, month)
-            }}
-            data-testid="range-year"
-          >
-            {years.map(y => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-        </S.HeaderRow>
-      ) : (
-        <S.HeaderRow className="react-datepicker__current-month">{title.format(monthDate)}</S.HeaderRow>
-      )}
-      {last && !nextMonthButtonDisabled ? (
-        <button
-          type="button"
-          className="react-datepicker__navigation react-datepicker__navigation--next"
-          aria-label={t('creatorSale.rangeNextMonth')}
-          onClick={increaseMonth}
-        >
-          <span className="react-datepicker__navigation-icon react-datepicker__navigation-icon--next" />
-        </button>
-      ) : null}
-    </>
-  )
-}
-
 /** Lets the trigger fold the picker away through the same animation as every other way out. */
 export type RangePickerHandle = { close: () => void }
 
@@ -150,7 +52,6 @@ export function RangePicker({
   presets,
   handle,
   stretch = false,
-  monthYearSelects = false,
   label: labelProp,
   triggerSelector = '[data-range-trigger]',
   testId = 'store-range',
@@ -174,17 +75,9 @@ export function RangePicker({
   handle?: Ref<RangePickerHandle>
   onApply: (from: number, to: number) => void
   onClose: () => void
-} & (
-  | {
-      /**
-       * Month and year selects in the calendar's header, for a range that can start years back: stepping a
-       * month at a time to 2022 took over a hundred clicks. The year list ends at `max`, so it is required.
-       */
-      monthYearSelects: true
-      max: number
-    }
-  | { monthYearSelects?: false; max?: number }
-)) {
+  /** The last day that can be picked; without it the calendar runs into the future. */
+  max?: number
+}) {
   const { t } = useTranslation()
   const { locale } = useIntl()
   const label = labelProp ?? t('creatorSale.rangePeriod')
@@ -264,7 +157,6 @@ export function RangePicker({
       aria-label={label}
       tabIndex={-1}
       data-stretch={stretch ? '' : undefined}
-      data-selects={monthYearSelects ? '' : undefined}
       data-testid={`${testId}-picker`}
     >
       <S.Body>
@@ -298,18 +190,7 @@ export function RangePicker({
           monthsShown={twoMonths ? 2 : 1}
           openToDate={openOn(end ?? start ?? new Date(max ?? Date.now()), twoMonths)}
           calendarStartDay={1}
-          renderCustomHeader={
-            monthYearSelects && max != null
-              ? header => (
-                  <MonthYearHeader
-                    {...header}
-                    monthsShown={twoMonths ? 2 : 1}
-                    min={new Date(min)}
-                    max={new Date(max)}
-                  />
-                )
-              : undefined
-          }
+          locale={DATE_LOCALES[locale] ?? enUS}
         />
       </S.Body>
       <S.Foot>

@@ -21,6 +21,12 @@ describe('when counting down to the end of a discount', () => {
     expect(formatCountdown(0)).toBe('')
   })
 
+  it('should show the unit marks it is given, in the viewer language', () => {
+    expect(formatCountdown(2 * DAY + 4 * HOUR, { days: '天', hours: '小时', minutes: '分', seconds: '秒' })).toBe(
+      '2天 4小时'
+    )
+  })
+
   it('should repaint every second only in the last hour', () => {
     expect(countdownTickMs(30 * MIN)).toBe(1000)
     expect(countdownTickMs(2 * HOUR)).toBe(60_000)

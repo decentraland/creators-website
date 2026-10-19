@@ -14,7 +14,7 @@ export const Root = styled.button`
   padding: 12px 22px;
   font-weight: 700;
   font-size: 15px;
-  background: ${theme.colors.blackBtn};
+  background: ${theme.colors.text2};
   color: ${theme.colors.white};
   text-decoration: none; /* so an as=Link / as=a element renders without an underline; no-op on button */
   transition:
@@ -64,31 +64,6 @@ export const Root = styled.button`
     opacity: 1;
   }
 
-  /* Outlined primary (Figma outlined variant): magenta border + purple label; fills solid purple on
-     hover/press. */
-  &[data-variant='outline'] {
-    background: ${theme.colors.white};
-    border: 2px solid ${theme.colors.magenta};
-    color: ${theme.colors.accent};
-    text-transform: uppercase;
-    letter-spacing: 0.046em;
-    font-size: 13px;
-    font-weight: 600;
-  }
-  &[data-variant='outline']:hover:not(:disabled),
-  &[data-variant='outline']:active:not(:disabled) {
-    background: ${theme.colors.accent};
-    border-color: ${theme.colors.accent};
-    color: ${theme.colors.softWhite};
-  }
-  &[data-variant='outline']:active:not(:disabled) {
-    transform: translateY(1px);
-  }
-  /* Figma outlined disabled: the whole control at 30% opacity. */
-  &[data-variant='outline']:disabled {
-    opacity: 0.3;
-  }
-
   /* Primary red — the flat Primary fill, for a CTA that is already the one thing to do on the surface it
      sits on (the migration dock). The orange→red gradient treatment stays with GET / BUY CREDITS, which
      have to stand out from OTHER ctas around them. */
@@ -121,16 +96,5 @@ export const Root = styled.button`
   &[data-variant='white']:active:not(:disabled) {
     background: ${theme.colors.panel};
     transform: translateY(1px);
-  }
-
-  &[data-variant='ghost'] {
-    background: ${theme.colors.white};
-    border: 1px solid ${theme.colors.lineStrong};
-    color: ${theme.colors.text};
-  }
-
-  &[data-size='sm'] {
-    padding: 8px 12px;
-    font-size: 13px;
   }
 `

@@ -1637,13 +1637,13 @@
     "rangePresets": "Rangos rápidos",
     "rangeApply": "Aplicar",
     "rangeCancel": "Cancelar",
-    "rangeMonth": "Mes",
-    "rangeNextMonth": "Mes siguiente",
     "rangePickEnd": "{from} – elige el último día",
     "rangePickStart": "Elige el primer día",
-    "rangePrevMonth": "Mes anterior",
-    "rangeYear": "Año",
     "errorWallet": "Tu wallet cambió a otra cuenta o red. Vuelve a la cuenta con la que iniciaste sesión e inténtalo de nuevo.",
-    "socialNote": "Como iniciaste sesión con una cuenta social, no podrás terminar este descuento antes: dura hasta su fecha de fin."
+    "socialNote": "Como iniciaste sesión con una cuenta social, no podrás terminar este descuento antes: dura hasta su fecha de fin.",
+    "unitDays": "d",
+    "unitHours": "h",
+    "unitMinutes": "m",
+    "unitSeconds": "s"
   }
 }

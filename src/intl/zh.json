@@ -1637,13 +1637,13 @@
     "rangePresets": "快速范围",
     "rangeApply": "应用",
     "rangeCancel": "取消",
-    "rangeMonth": "月份",
-    "rangeNextMonth": "下个月",
     "rangePickEnd": "{from} – 选择最后一天",
     "rangePickStart": "选择第一天",
-    "rangePrevMonth": "上个月",
-    "rangeYear": "年份",
     "errorWallet": "您的钱包切换到了其他账户或网络。请切换回您登录时使用的账户，然后重试。",
-    "socialNote": "您使用社交账号登录，无法提前结束此折扣：它将持续到结束日期。"
+    "socialNote": "您使用社交账号登录，无法提前结束此折扣：它将持续到结束日期。",
+    "unitDays": "天",
+    "unitHours": "小时",
+    "unitMinutes": "分",
+    "unitSeconds": "秒"
   }
 }

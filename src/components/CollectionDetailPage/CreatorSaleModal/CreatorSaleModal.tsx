@@ -17,6 +17,7 @@ import { track } from '~/lib/analytics'
 import { openExternal } from '~/lib/navigation'
 import { formatCredits, formatMana } from '~/lib/publishFee'
 import { type SaleableCollection } from '~/lib/saleableCollection'
+import { startOfDay, windowOf, type SaleWhen } from '~/lib/saleWindow'
 import { shopCreatorUrl } from '~/lib/shop'
 import { useNotifications } from '~/lib/notifications'
 import { CollectionMosaic } from '~/components/CollectionMosaic'
@@ -47,31 +48,7 @@ const DISCOUNT_ABANDONED_EVENT = 'Abandon collection discount'
 const CALENDAR_ROOM = 460
 
 /** When the sale runs: a length from now, or two calendar days picked on the Shop's calendar. */
-type When =
-  | { kind: 'preset'; key: (typeof DURATION_PRESETS)[number]['key']; hours: number }
-  | { kind: 'range'; from: number; to: number }
-
-function startOfDay(ms: number): number {
-  const d = new Date(ms)
-  d.setHours(0, 0, 0, 0)
-  return d.getTime()
-}
-
-function endOfDay(ms: number): number {
-  const d = new Date(ms)
-  d.setHours(23, 59, 59, 999)
-  return d.getTime()
-}
-
-/**
- * The window the terms carry. A range starting today starts now, not at a midnight already gone; one starting
- * later starts at its first day's midnight, and every range runs to the end of its last day.
- */
-function windowOf(when: When, now: number): { startsAtMs: number | undefined; endsAtMs: number } {
-  if (when.kind === 'preset') return { startsAtMs: undefined, endsAtMs: now + when.hours * HOUR_MS }
-  const start = startOfDay(when.from)
-  return { startsAtMs: start > now ? start : undefined, endsAtMs: endOfDay(when.to) }
-}
+type When = SaleWhen<(typeof DURATION_PRESETS)[number]['key']>
 
 function durationLabel(t: Translate, hours: number): string {
   return hours % 24 === 0 && hours >= 48
@@ -132,7 +109,14 @@ export function CreatorSaleModal({
   const [when, setWhen] = useState<When>({ kind: 'preset', key: '3d', hours: 72 })
   const [whenOpen, setWhenOpen] = useState(false)
   // The window as the review showed it, fixed on the way in so the signature is exactly what was read.
-  const [reviewed, setReviewed] = useState<{ startsAtMs: number | undefined; endsAtMs: number } | null>(null)
+  // The window and cap as the review showed them, fixed on the way in so the signature is exactly what was read.
+  const [reviewed, setReviewed] = useState<{
+    startsAtMs: number | undefined
+    endsAtMs: number
+    uses: number | undefined
+  } | null>(null)
+  // The review step was reached at least once this opening: the funnel counts it once, not on every Continue.
+  const reviewTracked = useRef(false)
   const strip = useRef<HTMLDivElement>(null)
   const [stripEdges, setStripEdges] = useState({ start: true, end: true })
   const whenPicker = useRef<RangePickerHandle>(null)
@@ -200,6 +184,10 @@ export function CreatorSaleModal({
   const capOn = cap !== ''
   const [touched, setTouched] = useState(false)
   const [busy, setBusy] = useState(false)
+  // A wallet prompt is open and nothing is signed yet: the creator may still walk away (a dropped WalletConnect
+  // session never answers). A result that lands after closing is picked up by the flow around this modal.
+  const [awaitingWallet, setAwaitingWallet] = useState(false)
+  const locked = busy && !awaitingWallet
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [created, setCreated] = useState<CollectionDiscount | null>(null)
@@ -233,6 +221,25 @@ export function CreatorSaleModal({
     }
     return { ...candidate, problem }
   }, [selected, pct, when, capOn, cap, review.supply])
+
+  // The page under the scrim stays put while the modal is open, as under every other dialog here.
+  useEffect(() => {
+    const root = document.documentElement
+    const previous = root.style.overflow
+    root.style.overflow = 'hidden'
+    return () => {
+      root.style.overflow = previous
+    }
+  }, [])
+
+  useEffect(() => {
+    if (locked || whenOpen) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  })
 
   /** Every way out goes through here: leaving without a discount is the funnel's drop-off, and from which step. */
   function leave(reason: 'closed' | 'update_prices') {
@@ -280,7 +287,7 @@ export function CreatorSaleModal({
       setError(problemCopy(t, terms.problem))
       return
     }
-    const signedWindow = reviewed ?? windowOf(when, Date.now())
+    const signedWindow = reviewed ?? { ...windowOf(when, Date.now()), uses: terms.uses }
     const signedAt = Date.now()
     // A start the review promised that has since gone by would sign a live sale under a "Schedule" button.
     if (signedWindow.startsAtMs !== undefined && signedWindow.startsAtMs <= signedAt) {
@@ -296,9 +303,11 @@ export function CreatorSaleModal({
     setBusy(true)
     try {
       setStatus(isManaged ? t('creatorSale.starting') : t('creatorSale.confirm'))
-      const sale = await onSubmit({ discountPct: terms.discountPct, uses: terms.uses, ...signedWindow }, () =>
+      setAwaitingWallet(!isManaged)
+      const sale = await onSubmit({ discountPct: terms.discountPct, ...signedWindow }, () => {
+        setAwaitingWallet(false)
         setStatus(t('creatorSale.finishing'))
-      )
+      })
       setStatus(null)
       setCreated(sale)
       showToast(sale.status === 'scheduled' ? t('creatorSale.toastScheduled') : t('creatorSale.toastLive'))
@@ -314,6 +323,7 @@ export function CreatorSaleModal({
       }
     } finally {
       setBusy(false)
+      setAwaitingWallet(false)
     }
   }
 
@@ -389,14 +399,14 @@ export function CreatorSaleModal({
 
   /** How many copies the sale price can cover: the cap when set, otherwise the listed items' own supply. */
   const capCopy =
-    terms.uses !== undefined
-      ? tNode('creatorSale.reviewCap', { b: bold, count: terms.uses })
+    (reviewed ?? terms).uses !== undefined
+      ? tNode('creatorSale.reviewCap', { b: bold, count: (reviewed ?? terms).uses as number })
       : tNode('creatorSale.reviewNoCap', { b: bold, count: review.supply })
 
   if (step === 'review') {
     const shown = reviewed ?? terms
     return (
-      <S.Scrim onClick={busy ? undefined : onClose} role="presentation">
+      <S.Scrim onClick={locked ? undefined : onClose} role="presentation">
         <S.Card
           data-testid="creator-sale-review"
           onClick={e => e.stopPropagation()}
@@ -406,7 +416,7 @@ export function CreatorSaleModal({
         >
           <S.Head>
             <S.Title>{t('creatorSale.reviewTitle')}</S.Title>
-            <S.Close onClick={onClose} disabled={busy} aria-label={t('creatorSale.cancel')}>
+            <S.Close onClick={onClose} disabled={locked} aria-label={t('creatorSale.cancel')}>
               <Icon name="close" className="ico" />
             </S.Close>
           </S.Head>
@@ -610,7 +620,7 @@ export function CreatorSaleModal({
   }
 
   return (
-    <S.Scrim onClick={busy ? undefined : onClose} role="presentation">
+    <S.Scrim onClick={locked ? undefined : onClose} role="presentation">
       <S.Card
         ref={card}
         data-testid="creator-sale-modal"
@@ -621,7 +631,7 @@ export function CreatorSaleModal({
       >
         <S.Head>
           <S.Title>{t('creatorSale.title')}</S.Title>
-          <S.Close onClick={onClose} disabled={busy} aria-label={t('creatorSale.cancel')}>
+          <S.Close onClick={onClose} disabled={locked} aria-label={t('creatorSale.cancel')}>
             <Icon name="close" className="ico" />
           </S.Close>
         </S.Head>
@@ -882,19 +892,34 @@ export function CreatorSaleModal({
             data-testid="creator-sale-continue"
             onClick={() => {
               setTouched(true)
-              if (terms.problem) setError(problemCopy(t, terms.problem))
+              // Measured from this click, not from when the form last rendered: a same-day range left open past
+              // midnight would otherwise reach the review with an end that has already gone by.
+              const now = Date.now()
+              const window = { ...windowOf(when, now), uses: terms.uses }
+              let problem = terms.problem
+              if (!problem) {
+                try {
+                  validateDiscountTerms({ ...terms, ...window }, now)
+                } catch (e) {
+                  problem = e instanceof DiscountInputError ? e.problem : 'window'
+                }
+              }
+              if (problem) setError(problemCopy(t, problem))
               else {
                 setError(null)
-                setReviewed(windowOf(when, Date.now()))
+                setReviewed(window)
                 setStep('review')
-                track(DISCOUNT_REVIEWED_EVENT, {
-                  collectionId: current.collectionId,
-                  discountPct: terms.discountPct,
-                  durationDays: Math.round((terms.endsAtMs - (terms.startsAtMs ?? Date.now())) / DAY_MS),
-                  scheduled: terms.startsAtMs !== undefined,
-                  capped: terms.uses !== undefined,
-                  manaItems: review.listed.filter(i => i.mana).length
-                })
+                if (!reviewTracked.current) {
+                  reviewTracked.current = true
+                  track(DISCOUNT_REVIEWED_EVENT, {
+                    collectionId: current.collectionId,
+                    discountPct: terms.discountPct,
+                    durationDays: Math.round((window.endsAtMs - (window.startsAtMs ?? now)) / DAY_MS),
+                    scheduled: window.startsAtMs !== undefined,
+                    capped: window.uses !== undefined,
+                    manaItems: review.listed.filter(i => i.mana).length
+                  })
+                }
               }
             }}
             disabled={busy || (touched && !!terms.problem)}

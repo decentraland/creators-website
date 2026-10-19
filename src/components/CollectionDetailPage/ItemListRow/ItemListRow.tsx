@@ -175,7 +175,11 @@ export function ItemListRow({
     const discountPct = discountPpm! / 10_000
     return (
       <S.Amount
-        title={t('collection_detail_page.price.discounted', { amount: sale, original: amount, pct: discountPct })}
+        title={t('collection_detail_page.price.discounted', {
+          amount: sale,
+          original: amount,
+          pct: intl.formatNumber(discountPct, { maximumFractionDigits: 2 })
+        })}
         data-discounted
         data-testid="item-row-discounted-price"
       >

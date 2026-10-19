@@ -4,6 +4,7 @@ import { getContentsStorageUrl } from '~/lib/builder'
 import { takesDiscount, type DiscountReachOptions } from '~/lib/collectionDiscount'
 import { type Collection } from '~/lib/collections'
 import { getItemSales, type Item } from '~/lib/items'
+import { creditsForUsdWei } from '~/lib/publishFee'
 import { type ItemListing } from '~/lib/listings'
 
 export type SaleItem = {
@@ -33,9 +34,7 @@ export type SaleableCollection = {
 
 /** Credits for a MANA amount at `rate` USD wei per MANA, rounded up to a whole credit (1 credit = $0.10) like the Shop. */
 export function manaToCredits(manaWei: bigint, rate: bigint): number {
-  const usdWei = (manaWei * rate) / 10n ** 18n
-  const perCredit = 10n ** 17n
-  return Math.max(1, Number((usdWei + perCredit - 1n) / perCredit))
+  return Math.max(1, creditsForUsdWei((manaWei * rate) / 10n ** 18n))
 }
 
 export type SaleableOptions = DiscountReachOptions & {

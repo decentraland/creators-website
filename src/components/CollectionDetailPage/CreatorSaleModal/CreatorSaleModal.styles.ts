@@ -161,77 +161,6 @@ export const RowThumb = styled.span`
   background: ${colors.media};
 `
 
-export const Search = styled.label`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 44px;
-  padding: 0 14px;
-  border: 1px solid ${hairline};
-  border-radius: ${radius.card};
-  background: ${raised};
-  color: ${colors.gray4};
-
-  &:focus-within {
-    border-color: rgba(255, 255, 255, 0.4);
-  }
-  input {
-    flex: 1;
-    min-width: 0;
-    border: 0;
-    outline: none;
-    background: transparent;
-    font-family: ${font.sans};
-    font-size: 15px;
-    color: ${colors.white};
-
-    &::placeholder {
-      color: ${colors.gray4};
-    }
-  }
-`
-
-/** The choose-a-collection step: the same row, made clickable. */
-export const PickList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 360px;
-  overflow-y: auto;
-`
-
-export const PickRow = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 64px;
-  padding: 10px 12px;
-  border: 1px solid ${hairline};
-  border-radius: ${radius.card};
-  background: ${raised};
-  color: inherit;
-  cursor: pointer;
-  text-align: left;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease;
-
-  &:hover {
-    border-color: rgba(255, 255, 255, 0.32);
-    background: rgba(255, 255, 255, 0.1);
-  }
-  &:focus-visible {
-    outline: 2px solid ${colors.softWhite};
-    outline-offset: 2px;
-  }
-  .ico {
-    margin-left: auto;
-    transform: rotate(-90deg);
-    color: ${colors.gray4};
-  }
-`
-
 export const RowText = styled.span`
   display: flex;
   flex-direction: column;
@@ -471,13 +400,13 @@ export const CapInput = styled.div`
     outline: 0;
   }
   input::placeholder {
-    color: ${colors.gray5};
+    color: ${colors.media};
     opacity: 1;
   }
   > span {
     flex: none;
     font-size: 14px;
-    color: ${colors.gray5};
+    color: ${colors.media};
     font-variant-numeric: tabular-nums;
   }
   &[data-disabled] {
@@ -629,29 +558,11 @@ export const Marked = styled.b`
   }
 `
 
-/** The MANA mark, sized and seated like the credits one so both currencies read the same in a sentence. */
-export const ManaMark = styled.img`
-  width: 1em;
-  height: 1em;
-  vertical-align: -0.125em;
-  /* Drawn dark for white cards; this card is dark. */
-  filter: brightness(0) invert(1);
-`
-
 export const Status = styled.p`
   margin: 0;
   font-size: 14px;
   color: ${colors.gray4};
   text-align: center;
-`
-
-export const PrimaryBtn = styled(Button)`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  min-height: 48px;
 `
 
 /**

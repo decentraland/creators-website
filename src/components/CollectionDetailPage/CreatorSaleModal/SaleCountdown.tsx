@@ -1,4 +1,5 @@
 import { useEffect, useState, type ComponentPropsWithoutRef } from 'react'
+import { useTranslation } from '~/intl'
 import { saleTimeLeft, formatCountdown, countdownTickMs } from '~/lib/saleCountdown'
 import { SaleIcon } from './SaleIcon'
 import * as S from './SaleCountdown.styles'
@@ -21,6 +22,7 @@ export function SaleCountdown({
   // Forwarded so a wrapper can describe it — a Tooltip hands its trigger `aria-describedby`, and a
   // component that swallows unknown props silently breaks that link.
 } & ComponentPropsWithoutRef<'span'>) {
+  const { t } = useTranslation()
   const [left, setLeft] = useState(() => saleTimeLeft(until))
 
   useEffect(() => {
@@ -38,7 +40,12 @@ export function SaleCountdown({
     return () => clearTimeout(timer)
   }, [until])
 
-  const label = formatCountdown(left)
+  const label = formatCountdown(left, {
+    days: t('creatorSale.unitDays'),
+    hours: t('creatorSale.unitHours'),
+    minutes: t('creatorSale.unitMinutes'),
+    seconds: t('creatorSale.unitSeconds')
+  })
   if (!label) return null
   return (
     <S.Root className={className} data-testid={testId} {...rest}>

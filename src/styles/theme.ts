@@ -30,9 +30,7 @@ const colors = {
   saleTag: '#ffc9d5',
   saleTagInk: '#ec303a',
   // Shop tokens the collection discount modal is drawn with, kept at the Shop's values so it matches it exactly.
-  blackBtn: '#242129',
   fieldBottomWashed: '#3c1556',
-  gray5: '#ecebed',
   rarityBg: 'rgba(161, 75, 243, 0.3)',
   dclRed: '#ff2d55',
   dclRedHover: '#ff4269',

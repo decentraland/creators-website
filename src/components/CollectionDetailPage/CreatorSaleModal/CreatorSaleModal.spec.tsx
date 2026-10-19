@@ -161,4 +161,35 @@ describe('when a creator discounts a collection from the builder', () => {
     })
     expect(onClose).toHaveBeenCalled()
   })
+
+  // A dropped WalletConnect session never answers: the creator has to be able to walk away from it.
+  it('should let a wallet creator close while the wallet prompt is still open', async () => {
+    const { onClose } = open()
+    fireEvent.click(screen.getByTestId('creator-sale-continue'))
+    await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    expect(screen.getByLabelText('Cancel')).toBeEnabled()
+    fireEvent.click(screen.getByLabelText('Cancel'))
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('should hold a social-login creator in place while their signature is stored', async () => {
+    open({ social: true })
+    fireEvent.click(screen.getByTestId('creator-sale-continue'))
+    await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    expect(screen.getByLabelText('Cancel')).toBeDisabled()
+  })
+
+  it('should close on Escape', () => {
+    const { onClose } = open()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('should count reaching the review once, however often the creator goes back', () => {
+    open()
+    fireEvent.click(screen.getByTestId('creator-sale-continue'))
+    fireEvent.click(screen.getByTestId('creator-sale-back'))
+    fireEvent.click(screen.getByTestId('creator-sale-continue'))
+    expect(track.mock.calls.filter(([event]) => event === 'Review collection discount')).toHaveLength(1)
+  })
 })
