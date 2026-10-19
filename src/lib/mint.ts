@@ -4,8 +4,9 @@ import { hasBeenApproved, type Collection } from '~/lib/collections'
 import { getItemSales, type Item } from '~/lib/items'
 import { SellItemError } from '~/lib/sales'
 
-// issueTokens costs ~132k gas per copy on Polygon (measured on Amoy, 2026-10), so the 30M block limit
-// lands around 200 copies; 100 keeps a send under half a block. The legacy builder still caps at 50.
+// Bor caps a transaction at 2^25 gas (EIP-7825 as of the Madhugiri fork, live on Polygon and Amoy).
+// issueTokens costs ~157k gas per copy to never-held recipients (estimated on Amoy, 2026-10): 100 copies
+// is ~15.7M, under half the cap even with a wallet padding the estimate. The legacy builder caps at 50.
 export const MAX_ITEMS_PER_SEND = 100
 
 /** One bundle: every recipient gets `amounts[itemId]` copies of each item. */

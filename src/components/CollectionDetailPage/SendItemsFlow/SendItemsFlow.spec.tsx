@@ -111,8 +111,14 @@ describe('SendItemsFlow', () => {
   it('caps a send at 100 copies across transfers and explains why', async () => {
     renderFlow(ProviderType.INJECTED, [{ ...item, rarity: 'epic' }])
     await addRecipient(1, FRIEND)
-    await userEvent.type(screen.getByTestId('transfer-1-item-i1-amount'), '101')
-    expect(screen.getByTestId('transfer-1-item-i1-amount')).toHaveValue('101')
+    const amount = screen.getByTestId('transfer-1-item-i1-amount')
+    await userEvent.type(amount, '100')
+    expect(screen.getByTestId('send-total')).toHaveTextContent('100 / 100 items')
+    expect(screen.getByTestId('send-total')).not.toHaveAttribute('data-over')
+    expect(screen.getByTestId('send-continue')).toBeEnabled()
+
+    await userEvent.type(amount, '{backspace}{backspace}{backspace}101')
+    expect(amount).toHaveValue('101')
     expect(screen.getByTestId('send-total')).toHaveAttribute('data-over')
     expect(screen.getByTestId('send-total')).toHaveTextContent(/up to 100/i)
     expect(screen.getByTestId('send-continue')).toBeDisabled()

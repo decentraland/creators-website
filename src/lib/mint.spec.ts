@@ -135,8 +135,11 @@ describe('flattenTransfers / buildIssueTokensCall', () => {
   })
 
   it('refuses more copies than one transaction can mint', () => {
-    const transfers: Transfer[] = [{ recipients: ['0xa'], amounts: { hat: MAX_ITEMS_PER_SEND + 1 } }]
-    expect(() => flattenTransfers(transfers, [hat])).toThrow(/more than/)
+    const atCap: Transfer[] = [{ recipients: ['0xa'], amounts: { hat: MAX_ITEMS_PER_SEND } }]
+    expect(flattenTransfers(atCap, [hat]).beneficiaries).toHaveLength(MAX_ITEMS_PER_SEND)
+
+    const overCap: Transfer[] = [{ recipients: ['0xa'], amounts: { hat: MAX_ITEMS_PER_SEND + 1 } }]
+    expect(() => flattenTransfers(overCap, [hat])).toThrow(/more than/)
   })
 
   it('encodes issueTokens on the collection contract and refuses a collection without one', () => {
