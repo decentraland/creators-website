@@ -37,7 +37,9 @@ import { isForumPostRelevant, openForumPost } from '~/lib/forumPost'
 import { cancelCreditsOrder } from '~/lib/credits'
 import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'
 import { isCollectionOwner, type RoleKind } from '~/lib/collectionRoles'
-import { discountReach, runningDiscountPpm } from '~/lib/collectionDiscount'
+import { runningDiscountPpm } from '~/lib/collectionDiscount'
+import { toSaleableCollection } from '~/lib/saleableCollection'
+import { useManaUsdRate } from '~/hooks/useSales'
 import { type CollectionDiscount } from '~/lib/coupons'
 import { getMaticChainId } from '~/lib/publishCollection'
 import { canSendCollectionItems } from '~/lib/mint'
@@ -231,7 +233,7 @@ const CollectionDetailPage = () => {
     !!standardCollection?.contractAddress &&
     isCollectionOwner(standardCollection, address)
   // Offered once something is listed, even if none of it can take a discount: the modal explains what to change.
-  const canCreateDiscount =
+  const canCreateDiscountHere =
     canManageDiscounts && discountFlags.enabled && discountFlags.manaListings !== undefined && !!listings?.size
   const { discounts: openDiscounts, now: discountsNow } = useCollectionDiscounts(
     canManageDiscounts ? address : undefined,
@@ -245,11 +247,27 @@ const CollectionDetailPage = () => {
     listing && openDiscounts
       ? runningDiscountPpm(listing, openDiscounts, discountReachOptions, discountsNow)
       : undefined
-  const reach = useMemo(
-    () => (listings ? discountReach(listings.values(), discountReachOptions) : null),
-    [listings, discountReachOptions]
-  )
   const [discountOpen, setDiscountOpen] = useState(false)
+  // A MANA listing the discount reaches is previewed in credits, at the live rate.
+  const reachesMana = useMemo(
+    () => !!discountFlags.manaListings && [...(listings?.values() ?? [])].some(listing => listing.currency === 'mana'),
+    [listings, discountFlags.manaListings]
+  )
+  // Only once the modal is open: the rate is three contract reads, and only its preview needs it.
+  const manaRate = useManaUsdRate(discountOpen && reachesMana).data
+  const sale = useMemo(
+    () =>
+      listings && standardCollection && allItems
+        ? toSaleableCollection(standardCollection, allItems, listings, { ...discountReachOptions, manaRate })
+        : null,
+    [listings, standardCollection, allItems, discountReachOptions, manaRate]
+  )
+  // Offered when something can take a discount, or is listed at a price the modal explains how to change. Listings
+  // of sold-out items alone leave nothing a discount could reach.
+  const canCreateDiscount = useMemo(
+    () => canCreateDiscountHere && !!sale?.items.some(item => item.state === 'discounted' || item.state === 'classic'),
+    [canCreateDiscountHere, sale]
+  )
   // Also once its dialog is closed: a reload loses this tab's record of a cancellation that is still mining.
   useBeforeUnloadGuard(useAnyDiscountInFlight())
   const [endingDiscount, setEndingDiscount] = useState<CollectionDiscount | null>(null)
@@ -942,12 +960,11 @@ const CollectionDetailPage = () => {
               onClose={() => setPriceEdit(null)}
             />
           )}
-          {discountOpen && session && reach && (
+          {discountOpen && session && sale && (
             <DiscountFlow
               collection={collection}
               session={session}
-              reach={reach}
-              manaListings={!!discountFlags.manaListings}
+              sale={sale}
               onClose={() => setDiscountOpen(false)}
             />
           )}

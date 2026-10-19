@@ -2,17 +2,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ProviderType } from '@dcl/schemas'
-import { type DiscountReach } from '~/lib/collectionDiscount'
+import { type SaleableCollection } from '~/lib/saleableCollection'
 import { DiscountError, type CollectionDiscount } from '~/lib/coupons'
 import { Providers, collection, makeSession } from '../SellItemFlow/testUtils'
 import { CollectionDiscounts } from './CollectionDiscounts'
-import { toDiscountSubmission } from './CreateDiscountModal'
 import { DiscountFlow } from './DiscountFlow'
 import { EndDiscountFlow } from './EndDiscountFlow'
 
 type Callbacks = { onSuccess?: () => void; onError?: (error: unknown) => void }
 type Variables = { onSigned?: () => void; discountPct?: number; uses?: number; endsAtMs?: number }
-const create = { mutate: vi.fn<(variables: Variables, callbacks: Callbacks) => void>(), isPending: false }
+const create = {
+  mutate: vi.fn<(variables: Variables, callbacks: Callbacks) => void>(),
+  mutateAsync: vi.fn(),
+  isPending: false,
+  isSuccess: false
+}
 const end = { mutate: vi.fn<(variables: Variables, callbacks: Callbacks) => void>(), isPending: false }
 vi.mock('~/hooks/useCollectionDiscounts', () => ({
   useCreateDiscount: () => create,
@@ -22,126 +26,60 @@ vi.mock('~/hooks/useCollectionDiscounts', () => ({
   lastCreatedDiscount: () => undefined
 }))
 vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
+vi.mock('~/components/CollectionMosaic', () => ({ CollectionMosaic: () => null }))
 
 const DAY = 24 * 60 * 60 * 1000
-const lastCreate = () => create.mutate.mock.calls[create.mutate.mock.calls.length - 1]
-const lastEnd = () => end.mutate.mock.calls[end.mutate.mock.calls.length - 1]
-
-const reach: DiscountReach = { discounted: 3, unchanged: 1, example: { credits: 100 } }
-
-function renderCreate(overrides: Partial<{ reach: DiscountReach; manaListings: boolean }> = {}) {
-  const onClose = vi.fn()
-  render(
-    <DiscountFlow
-      collection={collection}
-      session={makeSession()}
-      reach={overrides.reach ?? reach}
-      manaListings={overrides.manaListings ?? false}
-      onClose={onClose}
-    />,
-    { wrapper: Providers }
-  )
-  return { onClose }
-}
 
 beforeEach(() => {
   create.mutate.mockReset()
+  create.mutateAsync.mockReset()
   end.mutate.mockReset()
 })
+const lastEnd = () => end.mutate.mock.calls[end.mutate.mock.calls.length - 1]
 
-describe('when resolving the discount form', () => {
-  const now = new Date(2026, 9, 16, 12).getTime()
-  const values = { pct: '30', endDate: '2026-10-23', limited: false, uses: '' }
+const sale: SaleableCollection = {
+  contractAddress: '0xcc',
+  collectionId: collection.id,
+  itemCount: 1,
+  name: collection.name,
+  listedCount: 1,
+  items: [{ key: 'k1', name: 'Pirate Hat', thumbnail: '', priceCredits: 100, state: 'discounted', remainingSupply: 9 }]
+}
 
-  it('should run until the end of the chosen day, with no limit unless one is set', () => {
-    expect(toDiscountSubmission(values, now)).toEqual({
-      discountPct: 30,
-      endsAtMs: new Date(2026, 9, 23, 23, 59, 59, 999).getTime()
-    })
-    expect(toDiscountSubmission({ ...values, limited: true, uses: '40' }, now)).toMatchObject({ uses: 40 })
+function renderCreate() {
+  const onClose = vi.fn()
+  render(<DiscountFlow collection={collection} session={makeSession()} sale={sale} onClose={onClose} />, {
+    wrapper: Providers
   })
-
-  it.each([
-    ['a discount out of range', { pct: '80' }],
-    ['no discount', { pct: '' }],
-    ['an end more than 30 days away', { endDate: '2026-11-30' }],
-    ['a limit switched on without a number', { limited: true, uses: '' }],
-    ['a zero limit', { limited: true, uses: '0' }]
-  ])('should hold back %s', (_, patch) => {
-    expect(toDiscountSubmission({ ...values, ...patch }, now)).toBeNull()
-  })
-})
+  return { onClose }
+}
 
 describe('when a creator creates a discount', () => {
-  it('should say what it re-prices, sign it and celebrate', async () => {
-    const { onClose } = renderCreate()
-    expect(screen.getByTestId('discount-summary')).toHaveTextContent('3 items on sale will be 20% off')
-    expect(screen.getByTestId('discount-unchanged')).toHaveTextContent('1 item keeps its price')
-
-    await userEvent.click(screen.getByTestId('discount-preset-30'))
-    expect(screen.getByTestId('discount-example')).toHaveTextContent('100 → 70')
-    await userEvent.click(screen.getByTestId('discount-limit-toggle'))
-    await userEvent.type(screen.getByTestId('discount-limit'), '25')
-    await userEvent.click(screen.getByTestId('discount-submit'))
-
-    expect(lastCreate()[0]).toMatchObject({ collection, discountPct: 30, uses: 25, discountedCount: 3 })
-    expect(lastCreate()[0].endsAtMs).toBeGreaterThan(Date.now() + 6 * DAY)
-    expect(screen.getByTestId('create-discount-pending-label')).toHaveTextContent(/confirm in your wallet/i)
-    await act(async () => lastCreate()[0].onSigned?.())
-    expect(screen.getByTestId('create-discount-pending-label')).toHaveTextContent(/creating your discount/i)
-
-    await act(async () => lastCreate()[1].onSuccess?.())
-    expect(screen.getByTestId('success-modal-title')).toHaveTextContent(/your discount is live/i)
-    await userEvent.click(screen.getByTestId('success-modal-done'))
-    expect(onClose).toHaveBeenCalled()
-  })
-
-  it('should not promise a social-login creator they can end it early', async () => {
-    render(
-      <DiscountFlow
-        collection={collection}
-        session={makeSession(ProviderType.MAGIC)}
-        reach={reach}
-        manaListings={false}
-        onClose={vi.fn()}
-      />,
-      { wrapper: Providers }
+  it("should open the Shop's discount modal for the collection and sign through the create flow", async () => {
+    create.mutateAsync.mockResolvedValue({
+      id: 'd1',
+      status: 'active',
+      discount: 200_000,
+      collections: ['0xcc'],
+      checks: { effective: Date.now(), expiration: Date.now() + 3 * DAY }
+    })
+    renderCreate()
+    expect(screen.getByTestId('creator-sale-modal')).toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('creator-sale-continue'))
+    await userEvent.click(screen.getByTestId('creator-sale-submit'))
+    expect(create.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ collection, discountPct: 20, discountedCount: 1 })
     )
-    expect(screen.getByTestId('create-discount-form')).toHaveTextContent(/can't end it early/i)
-    await userEvent.click(screen.getByTestId('discount-submit'))
-    await act(async () => lastCreate()[1].onSuccess?.())
-    expect(screen.getByTestId('success-modal-description')).not.toHaveTextContent(/end it any time/i)
+    expect(await screen.findByTestId('creator-sale-success')).toBeInTheDocument()
   })
 
-  it('should explain why and not offer to sign when none of the listings can take it', () => {
-    renderCreate({ reach: { discounted: 0, unchanged: 2, example: null } })
-    expect(screen.getByTestId('discount-nothing')).toHaveTextContent(/priced in credits/i)
-    expect(screen.getByTestId('discount-submit')).toBeDisabled()
-  })
-
-  it('should flag a discount out of range and not let it through', async () => {
+  // Signed, but whether it was stored is unknown: the flow settles that coupon instead of offering a new one.
+  it('should switch to settling the signed coupon when storing it got no answer', async () => {
+    create.mutateAsync.mockRejectedValue(new DiscountError('unconfirmed'))
     renderCreate()
-    await userEvent.clear(screen.getByTestId('discount-pct'))
-    await userEvent.type(screen.getByTestId('discount-pct'), '90')
-    expect(screen.getByTestId('discount-pct-error')).toHaveTextContent('between 5% and 70%')
-    expect(screen.getByTestId('discount-submit')).toBeDisabled()
-  })
-
-  it('should go back to the form, values kept, when the creator dismisses the wallet', async () => {
-    renderCreate()
-    await userEvent.click(screen.getByTestId('discount-preset-50'))
-    await userEvent.click(screen.getByTestId('discount-submit'))
-    await act(async () => lastCreate()[1].onError?.({ code: 4001, message: 'User rejected' }))
-    expect(screen.getByTestId('discount-preset-50')).toHaveAttribute('data-selected')
-  })
-
-  it('should offer a retry when storing it fails', async () => {
-    renderCreate()
-    await userEvent.click(screen.getByTestId('discount-submit'))
-    await act(async () => lastCreate()[1].onError?.(new Error('server down')))
-    expect(screen.getByTestId('discount-error-modal-title')).toHaveTextContent(/couldn't create/i)
-    await userEvent.click(screen.getByTestId('discount-error-retry'))
-    expect(screen.getByTestId('create-discount-modal')).toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('creator-sale-continue'))
+    await userEvent.click(screen.getByTestId('creator-sale-submit'))
+    expect(await screen.findByTestId('discount-unconfirmed-modal')).toBeInTheDocument()
   })
 })
 

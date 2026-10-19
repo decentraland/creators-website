@@ -29,6 +29,9 @@ const colors = {
   // The Shop's discount tag: pink fill, red ink. Same values as the Shop, so a discount reads the same in both.
   saleTag: '#ffc9d5',
   saleTagInk: '#ec303a',
+  // Shop tokens the collection discount modal is drawn with, kept at the Shop's values so it matches it exactly.
+  fieldBottomWashed: '#3c1556',
+  rarityBg: 'rgba(161, 75, 243, 0.3)',
   dclRed: '#ff2d55',
   dclRedHover: '#ff4269',
   ok: '#1ea672',

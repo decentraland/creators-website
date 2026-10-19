@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ContractName, getContract } from 'decentraland-transactions'
-import {
-  discountReach,
-  discountedCredits,
-  discountedManaWei,
-  runningDiscountPpm,
-  takesDiscount
-} from './collectionDiscount'
+import { discountedCredits, discountedManaWei, runningDiscountPpm, takesDiscount } from './collectionDiscount'
 import { getCouponManager } from 'decentraland-transactions'
 import { type CollectionDiscount } from './coupons'
 import { type ItemListing } from './listings'
@@ -55,22 +49,6 @@ describe('when deciding whether a new discount re-prices a listing', () => {
   it('should never discount a collection-store price or a giveaway', () => {
     expect(takesDiscount(storePrice('0'), on)).toBe(false)
     expect(takesDiscount(manaTrade('0', 0n), on)).toBe(false)
-  })
-})
-
-describe("when summing up what a discount does to a collection's listings", () => {
-  it('should count what it re-prices and what keeps its price', () => {
-    const reach = discountReach([credits('0', 50), credits('1', 120), manaTrade('2', 30n * MANA), storePrice('3')], off)
-    expect(reach).toEqual({ discounted: 2, unchanged: 2, example: { credits: 120 } })
-  })
-
-  it('should fall back to a MANA example when no credits listing takes it', () => {
-    const reach = discountReach([manaTrade('0', 5n * MANA), manaTrade('1', 30n * MANA), storePrice('2')], on)
-    expect(reach).toEqual({ discounted: 2, unchanged: 1, example: { manaWei: 30n * MANA } })
-  })
-
-  it('should have no example when nothing takes it', () => {
-    expect(discountReach([storePrice('0')], on)).toEqual({ discounted: 0, unchanged: 1, example: null })
   })
 })
 

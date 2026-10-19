@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TranslationProvider } from '~/intl'
 import { type CollectionDiscount } from '~/lib/coupons'
+import { type SaleableCollection } from '~/lib/saleableCollection'
 import { collection, makeSession } from '../SellItemFlow/testUtils'
 
 vi.mock('~/lib/coupons', async () => {
@@ -12,6 +13,7 @@ vi.mock('~/lib/coupons', async () => {
   return { ...actual, endDiscount: vi.fn(), createDiscount: vi.fn() }
 })
 vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
+vi.mock('~/components/CollectionMosaic', () => ({ CollectionMosaic: () => null }))
 
 import { DiscountError, createDiscount, endDiscount } from '~/lib/coupons'
 import { resetDiscountSession } from '~/hooks/useCollectionDiscounts'
@@ -118,34 +120,39 @@ describe('when the creator closes the End dialog with the wallet prompt still op
   })
 })
 
-describe('when the creator closes the Create dialog mid-signature and opens it again', () => {
+const sale: SaleableCollection = {
+  contractAddress: collection.contractAddress!,
+  collectionId: collection.id,
+  itemCount: 1,
+  name: collection.name,
+  listedCount: 1,
+  items: [{ key: 'k1', name: 'Pirate Hat', thumbnail: '', priceCredits: 100, state: 'discounted', remainingSupply: 9 }]
+}
+
+describe('when the create dialog goes away mid-signature and opens again', () => {
   // Otherwise the reopened form would let them sign an overlapping second discount without knowing.
-  it('should show the first discount went through once it does', async () => {
+  it('should wait on the first create and show it went through once it does', async () => {
     const { wrapper, session } = setup()
     let store: () => void = () => {}
     vi.mocked(createDiscount).mockImplementation(
       () => new Promise(resolve => (store = () => resolve(discountOf('created', session.address))))
     )
-    const reach = { discounted: 2, unchanged: 0, example: { credits: 100 } }
-    const flow = () => (
-      <DiscountFlow collection={collection} session={session} reach={reach} manaListings={false} onClose={vi.fn()} />
-    )
+    const flow = () => <DiscountFlow collection={collection} session={session} sale={sale} onClose={vi.fn()} />
 
     const first = render(flow(), { wrapper })
-    await userEvent.click(screen.getByTestId('discount-submit'))
-    await userEvent.click(screen.getByTestId('create-discount-pending-cancel'))
+    await userEvent.click(screen.getByTestId('creator-sale-continue'))
+    await userEvent.click(screen.getByTestId('creator-sale-submit'))
     first.unmount()
     render(flow(), { wrapper })
     expect(screen.getByTestId('create-discount-in-flight')).toBeInTheDocument()
-    expect(screen.queryByTestId('discount-submit')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('creator-sale-modal')).not.toBeInTheDocument()
 
     await act(async () => store())
     expect(await screen.findByTestId('success-modal-title')).toHaveTextContent(/your discount is live/i)
     expect(createDiscount).toHaveBeenCalledTimes(1)
   })
 
-  // Jarvis' path: the creator backs out of the prompt, approves it anyway, and its POST gets no answer.
-  it('should not let a second coupon be signed next to one backed out of and left unconfirmed', async () => {
+  it('should settle the coupon a closed dialog signed when its storing ends unconfirmed', async () => {
     const { wrapper, session } = setup()
     let fail: () => void = () => {}
     vi.mocked(createDiscount).mockImplementation(
@@ -155,8 +162,8 @@ describe('when the creator closes the Create dialog mid-signature and opens it a
             deps.onSignedPayload?.({
               signer: session.address,
               chainId: 80002,
-              signature: '0xfirst',
-              discount: 300_000,
+              signature: '0xlate',
+              discount: 200_000,
               collections: [collection.contractAddress!],
               checks: { effective: Date.now(), expiration: Date.now() + DAY, uses: 1_000_000 }
             } as never)
@@ -164,21 +171,59 @@ describe('when the creator closes the Create dialog mid-signature and opens it a
           }
         })
     )
-    const reach = { discounted: 2, unchanged: 0, example: { credits: 100 } }
-    render(
-      <DiscountFlow collection={collection} session={session} reach={reach} manaListings={false} onClose={vi.fn()} />,
-      {
-        wrapper
-      }
-    )
+    const flow = () => <DiscountFlow collection={collection} session={session} sale={sale} onClose={vi.fn()} />
 
-    await userEvent.click(screen.getByTestId('discount-submit'))
-    await userEvent.click(screen.getByTestId('create-discount-pending-cancel'))
+    const first = render(flow(), { wrapper })
+    await userEvent.click(screen.getByTestId('creator-sale-continue'))
+    await userEvent.click(screen.getByTestId('creator-sale-submit'))
+    first.unmount()
+    render(flow(), { wrapper })
+    expect(screen.getByTestId('create-discount-in-flight')).toBeInTheDocument()
+
     await act(async () => fail())
+    expect(await screen.findByTestId('discount-unconfirmed-modal')).toBeInTheDocument()
+    expect(screen.queryByTestId('creator-sale-modal')).not.toBeInTheDocument()
+  })
+
+  // The coupon was signed and its POST got no answer: only that coupon may be retried, never a new one.
+  it('should go to settling the signed coupon, with its terms, and not offer a new signature', async () => {
+    const { wrapper, session } = setup()
+    vi.mocked(createDiscount).mockImplementation(async (_, deps) => {
+      deps.onSignedPayload?.({
+        signer: session.address,
+        chainId: 80002,
+        signature: '0xfirst',
+        discount: 300_000,
+        collections: [collection.contractAddress!],
+        checks: { effective: Date.now(), expiration: Date.now() + DAY, uses: 1_000_000 }
+      } as never)
+      throw new DiscountError('unconfirmed', 'no answer')
+    })
+    render(<DiscountFlow collection={collection} session={session} sale={sale} onClose={vi.fn()} />, { wrapper })
+
+    await userEvent.click(screen.getByTestId('creator-sale-pct-30'))
+    await userEvent.click(screen.getByTestId('creator-sale-continue'))
+    await userEvent.click(screen.getByTestId('creator-sale-submit'))
 
     expect(await screen.findByTestId('discount-unconfirmed-modal')).toBeInTheDocument()
     expect(screen.getByTestId('discount-unconfirmed-terms')).toHaveTextContent('30%')
-    expect(screen.queryByTestId('discount-submit')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('creator-sale-modal')).not.toBeInTheDocument()
+    expect(createDiscount).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('when the creator creates a discount while the page watches the discounts list', () => {
+  // The flow's own create must end on the modal's success, never on a fresh form a second signature could follow.
+  it("should land on the modal's success view", async () => {
+    const { wrapper, session } = setup()
+    vi.mocked(createDiscount).mockResolvedValue(discountOf('created', session.address))
+    render(<DiscountFlow collection={collection} session={session} sale={sale} onClose={vi.fn()} />, { wrapper })
+
+    await userEvent.click(screen.getByTestId('creator-sale-continue'))
+    await userEvent.click(screen.getByTestId('creator-sale-submit'))
+
+    expect(await screen.findByTestId('creator-sale-success')).toBeInTheDocument()
+    expect(screen.queryByTestId('creator-sale-modal')).not.toBeInTheDocument()
     expect(createDiscount).toHaveBeenCalledTimes(1)
   })
 })

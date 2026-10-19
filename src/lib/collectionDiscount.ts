@@ -26,36 +26,6 @@ export function takesDiscount(listing: ItemListing, { chainId, manaListings }: D
   return manager !== null && manager === signing
 }
 
-export type DiscountReach = {
-  /** Listings the discount re-prices. */
-  discounted: number
-  /** Listings it leaves at their price: a collection-store price, an older marketplace, or MANA while that is off. */
-  unchanged: number
-  /**
-   * The highest discounted price, for the review's example line: the highest because a 1-credit item rounds any
-   * discount away. Credits when any credits listing takes it, else MANA wei; null when nothing does.
-   */
-  example: { credits: number } | { manaWei: bigint } | null
-}
-
-export function discountReach(listings: Iterable<ItemListing>, options: DiscountReachOptions): DiscountReach {
-  let discounted = 0
-  let unchanged = 0
-  let credits: number | null = null
-  let manaWei: bigint | null = null
-  for (const listing of listings) {
-    if (!takesDiscount(listing, options)) {
-      unchanged++
-      continue
-    }
-    discounted++
-    if (listing.currency === 'credits') credits = Math.max(credits ?? 0, listing.credits)
-    else if (manaWei === null || listing.manaWei > manaWei) manaWei = listing.manaWei
-  }
-  const example = credits !== null ? { credits } : manaWei !== null ? { manaWei } : null
-  return { discounted, unchanged, example }
-}
-
 const PPM = 1_000_000
 
 /** What a credits price rings up at with a discount of `ppm`, rounded up to a whole credit the way checkout does. */
