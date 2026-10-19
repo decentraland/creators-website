@@ -34,7 +34,8 @@ export async function buildMissingImage(item: Item, deps: ImageDeps): Promise<Mi
 }
 
 export class ApprovalError extends Error {
-  reason: 'reverted' | 'not_indexed' | 'no_identity' | 'deploy_failed'
+  reason:
+    'reverted' | 'not_indexed' | 'no_identity' | 'deploy_failed' | 'nothing_pending' | 'missing_hash' | 'invalid_cheque'
 
   constructor(reason: ApprovalError['reason'], message: string) {
     super(message)
@@ -95,7 +96,7 @@ export type RescueDeps = {
 }
 
 const INDEXER_POLL_MS = 2000
-const INDEXER_TIMEOUT_MS = 10 * 60_000
+export const INDEXER_TIMEOUT_MS = 10 * 60_000
 /** How long the approval waits for builder-server to read the collection as approved before showing success anyway. */
 export const APPROVAL_INDEX_TIMEOUT_MS = 2 * 60_000
 

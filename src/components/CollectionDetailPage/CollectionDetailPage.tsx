@@ -154,7 +154,12 @@ const CollectionDetailPage = () => {
   }, [topUpReturn, restored, session, collectionId, setSearchParams])
 
   const collectionQuery = useCollection(address, collectionId)
-  const itemsQuery = useAllCollectionItems(address, collectionId)
+  // Linked collections page their items server-side (they can hold thousands), so the whole-list query waits for
+  // the collection and stays off for them.
+  const itemsQuery = useAllCollectionItems(
+    address,
+    collectionQuery.data && !isLinkedCollection(collectionQuery.data) ? collectionId : undefined
+  )
   const saveCollection = useSaveCollection(address)
   const updateItem = useSaveItem(address)
   const showToast = useNotifications(state => state.showToast)
@@ -352,7 +357,9 @@ const CollectionDetailPage = () => {
   )
 
   const isLoading =
-    !restored || (!!address && (collectionQuery.isLoading || itemsQuery.isLoading || thirdParty.isLoading))
+    !restored ||
+    (!!address &&
+      (collectionQuery.isLoading || (!isLinked && !!collection && itemsQuery.isLoading) || thirdParty.isLoading))
   const isThirdPartyNotFound =
     thirdParty.isError &&
     thirdParty.error instanceof BuilderServerError &&
@@ -516,12 +523,11 @@ const CollectionDetailPage = () => {
             {t('collection_detail_page.error.retry')}
           </Button>
         </S.Panel>
-      ) : isLinked && address ? (
+      ) : isLinked && session ? (
         <LinkedCollectionView
           collection={collection}
-          thirdPartyName={thirdParty.data?.name}
-          items={allItems ?? []}
-          address={address}
+          thirdParty={thirdParty.data}
+          session={session}
           page={page}
           onBack={() => navigate({ pathname: '/collections', search: listState?.listSearch })}
           onPageChange={goToPage}

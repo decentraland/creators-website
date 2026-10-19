@@ -15,12 +15,25 @@ type Props = {
   isSaving: boolean
   /** Raw error message from a failed rename, mapped to friendly copy here. */
   saveError: string | null
+  /** Linked collections take builder-server's 42-character cap and no uniqueness hint. */
+  nameMaxLength?: number
+  /** A published linked collection can't be renamed: the field only confirms the name. */
+  nameDisabled?: boolean
   onCancel: () => void
   onConfirm: (details: { name: string; email: string }) => void
 }
 
 /** Step 1: the creator fixes typos in the name, leaves a contact email and acknowledges the name is final. */
-export function ConfirmNameStep({ initialName, initialEmail, isSaving, saveError, onCancel, onConfirm }: Props) {
+export function ConfirmNameStep({
+  initialName,
+  initialEmail,
+  isSaving,
+  saveError,
+  nameMaxLength,
+  nameDisabled = false,
+  onCancel,
+  onConfirm
+}: Props) {
   const { t } = useTranslation()
   const emailErrorId = useId()
   const [name, setName] = useState(initialName)
@@ -30,7 +43,13 @@ export function ConfirmNameStep({ initialName, initialEmail, isSaving, saveError
   const [editedSinceSubmit, setEditedSinceSubmit] = useState(false)
 
   const trimmed = name.trim()
-  const validation = validateCollectionName(trimmed)
+  const validation = nameMaxLength
+    ? !trimmed
+      ? 'empty'
+      : trimmed.includes(':')
+        ? 'invalid_character'
+        : null
+    : validateCollectionName(trimmed)
   const localError = trimmed && validation ? t('publish_collection_modal.name_step.invalid_name') : null
   const serverError =
     saveError && !editedSinceSubmit
@@ -64,7 +83,9 @@ export function ConfirmNameStep({ initialName, initialEmail, isSaving, saveError
         <CollectionNameInput
           value={name}
           error={shownError}
-          disabled={isSaving}
+          disabled={isSaving || nameDisabled}
+          maxLength={nameMaxLength}
+          hideHint={!!nameMaxLength}
           testId="publish-name"
           onChange={value => {
             setName(value)

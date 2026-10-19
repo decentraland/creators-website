@@ -10,6 +10,8 @@ import * as S from './CollectionNameModal.styles'
 type Props = {
   variant: 'create' | 'rename'
   initialName?: string
+  /** Linked collections take builder-server's 42-character cap and need no uniqueness hint. */
+  nameMaxLength?: number
   isPending: boolean
   /** Raw error message from the failed save, mapped to friendly copy here. */
   error: string | null
@@ -18,7 +20,15 @@ type Props = {
 }
 
 /** The New Collection / Rename Collection dialog: one validated name field. */
-export function CollectionNameModal({ variant, initialName = '', isPending, error, onSubmit, onClose }: Props) {
+export function CollectionNameModal({
+  variant,
+  initialName = '',
+  nameMaxLength,
+  isPending,
+  error,
+  onSubmit,
+  onClose
+}: Props) {
   const { t } = useTranslation()
   const [name, setName] = useState(initialName)
   const [localError, setLocalError] = useState<string | null>(null)
@@ -30,7 +40,7 @@ export function CollectionNameModal({ variant, initialName = '', isPending, erro
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
     if (!trimmed || isPending) return
-    if (validateCollectionName(trimmed)) {
+    if (nameMaxLength ? trimmed.includes(':') : validateCollectionName(trimmed)) {
       // Only invalid_character can survive here: empty is blocked above, length by maxLength.
       setLocalError(t('collection_name_modal.error_invalid_character'))
       return
@@ -64,6 +74,8 @@ export function CollectionNameModal({ variant, initialName = '', isPending, erro
           value={name}
           error={shownError}
           placeholder={t('collection_name_modal.name_placeholder')}
+          maxLength={nameMaxLength}
+          hideHint={!!nameMaxLength}
           autoFocus
           testId="collection-name"
           onChange={value => {

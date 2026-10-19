@@ -3,7 +3,12 @@ import { errorCode, track } from '~/lib/analytics'
 import { fetchAllCollectionItems, fetchCollection, saveCollection, deleteCollection } from '~/lib/builder'
 import { buildCollectionInitializeData } from '~/lib/saveCollection'
 import { useCollectionCuration } from '~/hooks/useCuration'
-import { getCollectionDisplayStatus, type Collection, type CollectionDisplayStatus } from '~/lib/collections'
+import {
+  getCollectionDisplayStatus,
+  isLinkedCollection,
+  type Collection,
+  type CollectionDisplayStatus
+} from '~/lib/collections'
 
 export const ITEMS_PAGE_SIZE = 20
 
@@ -54,6 +59,8 @@ export function useSaveCollection(address: string | undefined) {
   return useMutation({
     mutationFn: async (collection: Collection) => {
       if (!address) throw new Error('Wallet disconnected')
+      // A linked collection never goes on chain as a contract: the server takes it without initialize data.
+      if (isLinkedCollection(collection)) return saveCollection(address, collection, '')
       const items = collection.itemCount > 0 ? await fetchAllCollectionItems(address, collection.id) : []
       const data = buildCollectionInitializeData(collection, items, address)
       return saveCollection(address, collection, data)

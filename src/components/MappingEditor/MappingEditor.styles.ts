@@ -1,0 +1,112 @@
+import styled from '@emotion/styled'
+import { theme } from '~/styles/theme'
+
+export const Editor = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+
+  &[data-compact] {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+`
+
+export const TypeCell = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`
+
+export const Value = styled.span`
+  font-size: 14px;
+  line-height: 1.57;
+  color: ${theme.colors.softWhite};
+
+  &[data-muted] {
+    color: ${theme.colors.offWhiteMuted};
+  }
+`
+
+export const Input = styled.input`
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid ${theme.colors.glassLine};
+  border-radius: 8px;
+  background: ${theme.colors.glassFaint};
+  font: inherit;
+  font-size: 14px;
+  color: ${theme.colors.white};
+  resize: vertical;
+
+  &::placeholder {
+    color: ${theme.colors.offWhiteMuted};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.white};
+    outline-offset: -1px;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &[data-invalid] {
+    border-color: ${theme.colors.errLight};
+    background: ${theme.colors.errOverlay};
+  }
+
+  [data-compact] > & {
+    flex: 1 1 140px;
+    min-height: 36px;
+    padding: 6px 10px;
+  }
+
+  [data-tone='dark'] & {
+    background: ${theme.colors.chipDark};
+    border-color: ${theme.colors.gray0};
+  }
+`
+
+export const RangeRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+
+  [data-compact] > & {
+    flex: 1 1 200px;
+  }
+`
+
+export const RangeDash = styled.span`
+  flex: none;
+  color: ${theme.colors.offWhiteMuted};
+`
+
+export const ErrorText = styled.p`
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: ${theme.colors.errLight};
+`
+
+export const Help = styled.span`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: left;
+
+  strong {
+    margin-bottom: 4px;
+  }
+`

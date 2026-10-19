@@ -55,6 +55,12 @@
       "title": "Something went wrong",
       "description": "We couldn't load your collections. Please try again.",
       "retry": "Try again"
+    },
+    "new_linked_collection": "New linked collection",
+    "linked_empty": {
+      "title": "Link your first NFT collection",
+      "description": "Linked collections turn the tokens of an NFT contract you manage into wearables their holders can use in Decentraland.",
+      "create_first": "Create linked collection"
     }
   },
   "collection_role": {
@@ -287,7 +293,8 @@
         "cancel": "Keep changes",
         "confirm": "Reset item",
         "done": "“{name}” was reset to its approved version"
-      }
+      },
+      "open_in_editor": "Open in editor"
     },
     "send_items": "Send items",
     "smart_wearable": "Smart Wearable",
@@ -1472,7 +1479,6 @@
     }
   },
   "linked_collection": {
-    "edit_in_builder": "Edit in Builder",
     "third_party": "Third party",
     "network": "Network",
     "contract": "Linked contract",
@@ -1490,16 +1496,19 @@
       "ape_mainnet": "ApeChain",
       "ape_caldera": "ApeChain Curtis"
     },
-    "no_items": "Items for this linked collection are added and edited in the Builder.",
+    "no_items": "Add wearables to this linked collection and map them to the tokens that unlock them.",
     "list": {
       "status": "Status",
       "mapping": "Token mapping"
     },
     "item_status": {
-      "published": "Published",
+      "ready_to_publish": "Ready to publish",
       "under_review": "Under review",
       "rejected": "Rejected",
-      "not_published": "Not published",
+      "published": "Published",
+      "ready_to_push": "Ready to push changes",
+      "pending_mapping": "Pending mapping",
+      "pending_migration": "Pending migration",
       "retry": "Couldn't load · Retry"
     },
     "mapping": {
@@ -1509,6 +1518,48 @@
       "range": "Tokens #{from}–#{to}",
       "multiple": "{count, plural, one {# token} other {# tokens}}",
       "rules": "{count, plural, one {# rule} other {# rules}}"
+    },
+    "kind": {
+      "standard": "Standard",
+      "programmatic": "Programmatic"
+    },
+    "filter": {
+      "all": "All items",
+      "published": "Published",
+      "ready_to_push": "Ready to push changes",
+      "pending_mapping": "Pending mapping",
+      "pending_migration": "Pending migration"
+    },
+    "migration_banner": "One or more items in this collection were published before token mappings existed. Add a mapping to each and publish the changes.",
+    "publish_action": {
+      "publish": "Publish",
+      "push": "Push changes",
+      "publish_and_push": "Publish & push changes"
+    },
+    "publish_blocker": {
+      "no_selection": "Select the items to publish or push.",
+      "under_review": "This collection is still under review. Once that review ends you can publish more items."
+    },
+    "empty": {
+      "title": "Start adding items to your linked collection",
+      "description": "Drop wearables here. You won't be able to remove items after publishing them."
+    },
+    "no_results": {
+      "title": "No items match this filter",
+      "description": "Try another filter to find what you are looking for."
+    },
+    "selected": "{count, plural, one {# item selected} other {# items selected}}",
+    "clear_selection": "Clear selection",
+    "select_all": "Select every publishable item on this page",
+    "select_item": "Select {name}",
+    "urn_saved": "URN updated",
+    "urn_error": "We couldn't update the URN. It may already be in use, or the item may be published.",
+    "mapping_error": "We couldn't save the mapping of {name}. Please try again.",
+    "actions": {
+      "edit_urn": "Edit URN"
+    },
+    "item_actions": {
+      "edit_urn": "Edit URN"
     }
   },
   "success_modal": {
@@ -1646,5 +1697,148 @@
     "unit_minutes": "m",
     "unit_seconds": "s",
     "when_aria": "{label}: {value}"
+  },
+  "create_linked_collection_modal": {
+    "title": "New Linked Collection",
+    "heading": "Link an NFT collection",
+    "subtitle": "Wearables in this collection are unlocked by the tokens of an external NFT contract.",
+    "learn_more": "Learn more",
+    "name_placeholder": "e.g. Bored Hats",
+    "network": "Network",
+    "network_placeholder": "Choose the network of the NFT contract",
+    "contract": "Smart contract address",
+    "contract_hint": "The ERC-721 or ERC-1155 contract whose tokens unlock the wearables. One collection per contract.",
+    "error_not_nft": "This contract is not an ERC-721 or ERC-1155 token. Check the network and the address.",
+    "error_contract_check": "We couldn't check this contract. Check the network and the address, then try again.",
+    "error_contract_in_use": "This contract is already linked to another collection. Only one collection can be linked to a contract.",
+    "error_generic": "We couldn't create your linked collection. Please try again.",
+    "submit": "Create"
+  },
+  "edit_urn_modal": {
+    "title": {
+      "collection": "Edit collection URN",
+      "item": "Edit item URN"
+    },
+    "heading": {
+      "collection": "Choose the collection identifier",
+      "item": "Choose the item identifier"
+    },
+    "subtitle": {
+      "collection": "The last part of the collection's URN. It can't be changed once an item is published.",
+      "item": "The last part of the item's URN. It can't be changed once the item is published."
+    },
+    "label": "Identifier",
+    "error_invalid": "Identifiers can't contain spaces or the \":\" character.",
+    "submit": "Save"
+  },
+  "mapping_editor": {
+    "label": "Linked to",
+    "type": {
+      "any": "All NFTs",
+      "single": "Single",
+      "multiple": "Multiple",
+      "range": "Range"
+    },
+    "any_value": "Any token ID",
+    "single_placeholder": "Token ID, e.g. 123456",
+    "multiple_placeholder": "Token IDs separated by commas, e.g. 1, 2, 3",
+    "from": "From",
+    "to": "To",
+    "invalid": "Enter valid token IDs: digits only, no repeats, and a range from low to high.",
+    "help": {
+      "title": "Link NFTs to this wearable",
+      "any": "every token of the NFT collection.",
+      "single": "one specific token ID, e.g. 123456.",
+      "multiple": "several token IDs separated by commas, e.g. 123456, 123457.",
+      "range": "every token ID between two numbers, e.g. 1 to 1000."
+    }
+  },
+  "publish_linked_modal": {
+    "title": "Publish linked items",
+    "items_step": {
+      "title": "Confirm the items to submit",
+      "description": "Items can't be removed from the collection once published. Name, description, category and mapping stay editable: changes go through review again.",
+      "columns": {
+        "item": "{count, plural, one {# item to publish} other {# items to publish}}",
+        "changed": "{count, plural, one {# changed item} other {# changed items}}",
+        "linked_to": "Linked to"
+      },
+      "checkbox": "I understand that once published I won't be able to remove these items from the collection.",
+      "sign": "Sign & continue",
+      "sign_error": "The wallet didn't sign the request. Try again when you're ready."
+    },
+    "kind_step": {
+      "title": "Choose how you publish",
+      "description": "This choice applies to every collection of this third party and can't be changed later.",
+      "standard_description": "Hand-made wearables. You pay a submission fee for each wearable you publish.",
+      "programmatic_description": "Generated wearables in bulk. You pay a single fee for the whole collection and publish as many wearables as you need.",
+      "standard_price": "{price} per wearable",
+      "programmatic_price": "{price} once ({slots} slots included)",
+      "confirm": "Continue"
+    },
+    "payment_step": {
+      "title": "Confirm & Pay",
+      "description": "You're about to submit {count, plural, =0 {no new items} one {# item} other {# items}} from “{name}” for review{pushed, plural, =0 {} one { and push # changed item} other { and push # changed items}}.",
+      "columns": {
+        "slots": "Slots to buy"
+      },
+      "free": "No fee",
+      "standard_note": "Each new item needs a slot at {price}. You still have {available, plural, one {# free slot} other {# free slots}}.",
+      "programmatic_first": "Programmatic third parties buy {slots} slots in one go and publish freely after that.",
+      "programmatic_published": "Your programmatic third party already paid its fee: these items publish for free.",
+      "price_error": "We couldn't load the publishing fee.",
+      "checkbox": "I warrant that the submitted items fully comply with the <terms>Terms of Use</terms> and <policy>Content Policy</policy>, that I hold the IP rights to create wearables based on this NFT collection, and I acknowledge that the DAO may refuse to approve them and that the fee won't be refunded if they are rejected.",
+      "submit": "Publish & Pay",
+      "submit_free": "Publish"
+    },
+    "running": {
+      "title": "Publishing your items",
+      "tos": "Recording your acceptance of the terms…",
+      "kind": "Saving how you publish…",
+      "allowance": "Confirm the MANA approval in your wallet…",
+      "register": "Confirm the registration in your wallet…",
+      "buy_slots": "Confirm the slot purchase in your wallet…",
+      "wait_tx": "Waiting for the transaction to be confirmed…",
+      "delete_virtual": "Waiting for the network to index your third party…",
+      "publish": "Submitting your items for review…",
+      "push": "Sending your changes for review…",
+      "short": {
+        "tos": "Terms",
+        "kind": "Kind",
+        "allowance": "Approve",
+        "register": "Register",
+        "buy_slots": "Pay",
+        "wait_tx": "Confirm",
+        "delete_virtual": "Index",
+        "publish": "Submit",
+        "push": "Push"
+      }
+    },
+    "error": {
+      "title": "We couldn't publish your items",
+      "rejected": "The request was cancelled in your wallet. Nothing was sent.",
+      "reverted": "The transaction failed on chain and nothing was charged. Please try again.",
+      "insufficient_slots": "Your third party has fewer slots than the items you selected. Try again to buy the missing ones.",
+      "pending_review": "Items of this collection are already under review. Wait for that review to end before publishing more.",
+      "tos_failed": "We couldn't record your acceptance of the terms. Check your email address and try again.",
+      "generic": "Something went wrong while publishing your items. Please try again."
+    }
+  },
+  "push_linked_modal": {
+    "title": "Push changes",
+    "description": "{count, plural, one {# item has} other {# items have}} changed since curation last approved them. To show the changes in world, they must be reviewed and approved again. Push them for review?",
+    "terms": {
+      "title": "Confirm your details",
+      "description": "We'll email you about the review of your changes."
+    },
+    "submit": "Push for review",
+    "running": {
+      "heading": "Sending your changes",
+      "description": "Each item opens a new review request.",
+      "label": "Items sent…"
+    },
+    "success": "{count, plural, one {# item sent} other {# items sent}} for review",
+    "partial": "{count, plural, one {# item couldn't be sent} other {# items couldn't be sent}} for review. Try again for those.",
+    "error": "We couldn't send your changes. Please try again."
   }
 }

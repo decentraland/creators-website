@@ -1,10 +1,16 @@
-// Catalyst entities of published standard items, ported from the legacy builder (modules/item/export.ts)
-// so a curator here deploys byte-identical entities and computes the same content hashes the chain holds.
-import { calculateMultipleHashesADR32, calculateMultipleHashesADR32LegacyQmHash, hashV1 } from '@dcl/hashing'
+// Catalyst entities of published items, ported from the legacy builder (modules/item/export.ts) so a curator
+// here deploys byte-identical entities and computes the same content hashes the chain (or, for linked items,
+// builder-server's Merkle tree) holds.
+import {
+  calculateMultipleHashesADR32,
+  calculateMultipleHashesADR32LegacyQmHash,
+  hashV1,
+  keccak256Hash
+} from '@dcl/hashing'
 import { EntityType } from '@dcl/schemas'
 import { type Collection } from '~/lib/collections'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
-import { IMAGE_PATH, ItemType, VIDEO_PATH, type Item, type ItemRepresentation } from '~/lib/items'
+import { IMAGE_PATH, ItemType, VIDEO_PATH, type Item, type ItemData, type ItemRepresentation } from '~/lib/items'
 import { getDeployableFiles } from '~/lib/itemSync'
 const EMPTY_ITEM_METRICS = { triangles: 0, materials: 0, textures: 0, meshes: 0, bodies: 0, entities: 1 }
 
@@ -27,6 +33,21 @@ function stripRepresentations(representations: ItemRepresentation[], content: En
     ...representation,
     contents: representation.contents.filter(path => path in content)
   }))
+}
+
+/** The wearable `data` block; its key order is part of the content hash and must never change. */
+function buildWearableData(data: ItemData, content: EntityContent) {
+  return {
+    replaces: data.replaces,
+    hides: data.hides,
+    ...('removesDefaultHiding' in data ? { removesDefaultHiding: data.removesDefaultHiding } : {}),
+    tags: data.tags,
+    category: data.category,
+    representations: stripRepresentations(data.representations, content),
+    ...('blockVrmExport' in data ? { blockVrmExport: data.blockVrmExport } : {}),
+    ...('outlineCompatible' in data ? { outlineCompatible: data.outlineCompatible } : {}),
+    ...(data.springBones ? { springBones: data.springBones } : {})
+  }
 }
 
 /** The entity metadata. Key order is part of the content hash and must never change. */
@@ -65,20 +86,65 @@ export function buildItemEntityMetadata(collection: Collection, item: Item, cont
     collectionAddress: collection.contractAddress,
     rarity: item.rarity,
     i18n: [{ code: 'en', text: item.name }],
-    data: {
-      replaces: data.replaces,
-      hides: data.hides,
-      ...('removesDefaultHiding' in data ? { removesDefaultHiding: data.removesDefaultHiding } : {}),
-      tags: data.tags,
-      category: data.category,
-      representations,
-      ...('blockVrmExport' in data ? { blockVrmExport: data.blockVrmExport } : {}),
-      ...('outlineCompatible' in data ? { outlineCompatible: data.outlineCompatible } : {}),
-      ...(data.springBones ? { springBones: data.springBones } : {})
-    },
+    data: buildWearableData(data, content),
     image: IMAGE_PATH,
     thumbnail: THUMBNAIL_PATH,
     metrics: item.metrics
+  }
+}
+
+/** The leaf of the third party's Merkle tree for one item, as `@dcl/content-hash-tree` computes it. */
+export type LinkedMerkleProof = { index: number; proof: string[]; entityHash: string }
+
+/**
+ * Linked items hash their stored contents (minus directory entries and empty files) into the metadata, so the
+ * preview video stays in it even though the entity never deploys the video.
+ */
+function getLinkedMetadataContent(item: Item): EntityContent {
+  return Object.fromEntries([...getDeployableFiles(item.contents)].map(path => [path, item.contents[path]]))
+}
+
+/**
+ * The metadata builder-server hashes for a linked item (its `buildTPWearableEntityMetadata`); the legacy
+ * builder's `buildTPItemEntityMetadata` has the same key order. Linked collections hold wearables only.
+ */
+function buildLinkedItemBaseMetadata(collection: Collection, item: Item) {
+  if (!item.urn || !item.urn.startsWith(`${collection.urn}:`)) {
+    throw new Error(`Item ${item.id} is not a published item of collection ${collection.id}`)
+  }
+  if (item.type !== ItemType.WEARABLE) throw new Error(`Item ${item.id} is not a wearable`)
+  const content = getLinkedMetadataContent(item)
+  return {
+    id: item.urn,
+    name: item.name,
+    description: item.description,
+    i18n: [{ code: 'en', text: item.name }],
+    data: buildWearableData(item.data, content),
+    image: IMAGE_PATH,
+    thumbnail: THUMBNAIL_PATH,
+    metrics: item.metrics,
+    content,
+    ...(item.mappings ? { mappings: item.mappings } : {})
+  }
+}
+
+/** The keccak hash builder-server stores as the item curation's `content_hash`: the tree leaf the proof is for. */
+export function computeLinkedItemContentHash(collection: Collection, item: Item): string {
+  const metadata = buildLinkedItemBaseMetadata(collection, item)
+  return keccak256Hash(metadata, Object.keys(metadata))
+}
+
+/** The linked item's entity metadata: the hashed fields plus the Merkle proof the Catalyst checks them against. */
+export function buildLinkedItemEntityMetadata(collection: Collection, item: Item, merkleProof: LinkedMerkleProof) {
+  const base = buildLinkedItemBaseMetadata(collection, item)
+  return {
+    ...base,
+    merkleProof: {
+      index: merkleProof.index,
+      proof: merkleProof.proof,
+      hashingKeys: Object.keys(base),
+      entityHash: merkleProof.entityHash
+    }
   }
 }
 
@@ -101,23 +167,37 @@ export async function computeItemContentHash(
 export type BuiltEntity = { entityId: string; entityFile: Uint8Array<ArrayBuffer> }
 
 /** The entity file and its id, exactly as dcl-catalyst-client's buildEntity produces them. */
-export async function buildItemEntity(
+async function encodeEntity(
+  type: EntityType,
+  content: EntityContent,
+  metadata: { id: string },
+  timestamp: number
+): Promise<BuiltEntity> {
+  const entity = { version: 'v3', type, pointers: [metadata.id], timestamp, content: toContentList(content), metadata }
+  const entityFile = new TextEncoder().encode(JSON.stringify(entity))
+  return { entityId: await hashV1(entityFile), entityFile }
+}
+
+export function buildItemEntity(
   collection: Collection,
   item: Item,
   content: EntityContent,
   timestamp = Date.now()
 ): Promise<BuiltEntity> {
-  const metadata = buildItemEntityMetadata(collection, item, content)
-  const entity = {
-    version: 'v3',
-    type: item.type === ItemType.EMOTE ? EntityType.EMOTE : EntityType.WEARABLE,
-    pointers: [metadata.id],
-    timestamp,
-    content: toContentList(content),
-    metadata
-  }
-  const entityFile = new TextEncoder().encode(JSON.stringify(entity))
-  return { entityId: await hashV1(entityFile), entityFile }
+  const type = item.type === ItemType.EMOTE ? EntityType.EMOTE : EntityType.WEARABLE
+  return encodeEntity(type, content, buildItemEntityMetadata(collection, item, content), timestamp)
+}
+
+/** A linked item's entity: `content` is what it deploys (video out, generated image in), the metadata hashes its own. */
+export function buildLinkedItemEntity(
+  collection: Collection,
+  item: Item,
+  content: EntityContent,
+  merkleProof: LinkedMerkleProof,
+  timestamp = Date.now()
+): Promise<BuiltEntity> {
+  const metadata = buildLinkedItemEntityMetadata(collection, item, merkleProof)
+  return encodeEntity(EntityType.WEARABLE, content, metadata, timestamp)
 }
 
 export type AuthLink = { type: string; payload: string; signature?: string }
