@@ -302,8 +302,12 @@ export const RecipientCard = styled.div`
   display: flex;
   flex-direction: column;
   padding: 12px;
-  border: 1px solid ${theme.colors.glassLine};
+  border: 1px solid ${theme.colors.glassHover};
   border-radius: ${theme.radius.card};
+
+  & > ul > li:first-child {
+    border-top: 0;
+  }
 `
 
 export const RecipientLine = styled.div`
