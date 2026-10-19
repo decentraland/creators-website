@@ -31,7 +31,7 @@ export type UploadOperation = {
   isExistingItemUpdate: boolean
 }
 
-export type UploadFailureReason = 'locked' | 'published' | 'too_big' | 'generic'
+export type UploadFailureReason = 'locked' | 'published' | 'urn_taken' | 'too_big' | 'generic'
 
 export type UploadResult = {
   savedDraftIds: string[]
@@ -48,10 +48,15 @@ export async function planUpload(drafts: UploadDraft[], existingItems: Item[]): 
   const builtByDraftId = new Map<string, UploadOperation>()
 
   for (const draft of drafts.filter(candidate => !candidate.variantTargetId)) {
+    const built = await buildItem(draft)
+    // A linked item re-uploaded under its own URN replaces the existing item (legacy "edit in bulk").
+    const existing = draft.urn ? existingItems.find(item => item.urn === draft.urn) : undefined
     const operation: UploadOperation = {
-      built: await buildItem(draft),
+      built: existing
+        ? { ...built, item: { ...built.item, id: existing.id, owner: existing.owner, createdAt: existing.createdAt } }
+        : built,
       draftIds: [draft.id],
-      isExistingItemUpdate: false
+      isExistingItemUpdate: !!existing
     }
     operations.push(operation)
     builtByDraftId.set(draft.id, operation)
@@ -82,7 +87,8 @@ export async function planUpload(drafts: UploadDraft[], existingItems: Item[]): 
 function toFailureReason(error: unknown): UploadFailureReason {
   if (error instanceof BuilderServerError) {
     if (error.status === COLLECTION_LOCKED_STATUS) return 'locked'
-    if (error.status === ALREADY_PUBLISHED_STATUS) return 'published'
+    // builder-server refuses a linked item whose URN another item already has with the same status as a published collection.
+    if (error.status === ALREADY_PUBLISHED_STATUS) return /urn/i.test(error.message) ? 'urn_taken' : 'published'
   }
   if (error instanceof ItemFileError) return 'too_big'
   return 'generic'

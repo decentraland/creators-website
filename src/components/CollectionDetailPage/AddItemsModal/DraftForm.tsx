@@ -28,6 +28,9 @@ import { useTranslation } from '~/intl'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
 import { THUMBNAIL_PATH, hasFacialExpressions, toMB } from '~/lib/itemFiles'
 import { BodyShapeType, ItemType, VIDEO_PATH, type Item } from '~/lib/items'
+import { type Mapping } from '~/lib/mappings'
+import { type LinkedContract } from '~/lib/thirdParty'
+import { MappingEditor } from '~/components/MappingEditor'
 import { getCategoryOptions, getVariantTargets, type ItemDraft } from './AddItemsModal.state'
 import * as S from './AddItemsModal.styles'
 
@@ -41,6 +44,8 @@ type Props = {
   onOpenVideo: () => void
   /** Smart wearables only: a picked file replaces the preview video. */
   onVideoChange: (video: File) => void
+  /** Linked collections: no rarity, and the mapping field when the collection has a linked contract. */
+  linked?: { contract: LinkedContract | null }
 }
 
 const BODY_SHAPES: Array<{ value: BodyShapeType; icon: ReactNode }> = [
@@ -56,9 +61,11 @@ export function DraftForm({
   onUpdate,
   onOpenThumbnail,
   onOpenVideo,
-  onVideoChange
+  onVideoChange,
+  linked
 }: Props) {
   const { t } = useTranslation()
+  const [mappingInvalid, setMappingInvalid] = useState(false)
 
   const isEmote = draft.type === ItemType.EMOTE
   const isWearable = draft.type === ItemType.WEARABLE
@@ -361,18 +368,41 @@ export function DraftForm({
                 </S.FieldHint>
               )}
             </S.Field>
-            <S.Field>
-              <S.FieldLabelRow>
-                {t('add_items_modal.rarity')}
-                <InfoTooltip content={t('add_items_modal.rarity_tooltip')} testId="rarity-tooltip" />
-              </S.FieldLabelRow>
-              <RaritySelect
-                value={draft.rarity}
-                testId="item-rarity"
-                onChange={rarity => onUpdate(draft.id, { rarity })}
-              />
-            </S.Field>
+            {!linked && (
+              <S.Field>
+                <S.FieldLabelRow>
+                  {t('add_items_modal.rarity')}
+                  <InfoTooltip content={t('add_items_modal.rarity_tooltip')} testId="rarity-tooltip" />
+                </S.FieldLabelRow>
+                <RaritySelect
+                  value={draft.rarity}
+                  testId="item-rarity"
+                  onChange={rarity => onUpdate(draft.id, { rarity })}
+                />
+              </S.Field>
+            )}
           </S.FieldRow>
+        )}
+
+        {showItemFields && linked?.contract && (
+          <S.Field as="div" data-testid="draft-mapping-field">
+            <S.FieldLabel>
+              {t('mapping_editor.label')}
+              <S.FieldHint>{t('add_items_modal.mapping_hint')}</S.FieldHint>
+            </S.FieldLabel>
+            <MappingEditor
+              key={draft.id}
+              value={draft.mapping}
+              testId="draft-mapping"
+              onChange={(mapping: Mapping | null) => {
+                setMappingInvalid(mapping === null)
+                onUpdate(draft.id, { mapping })
+              }}
+            />
+            {mappingInvalid && (
+              <S.ErrorText data-testid="draft-mapping-error">{t('mapping_editor.invalid')}</S.ErrorText>
+            )}
+          </S.Field>
         )}
 
         {isSmart && (

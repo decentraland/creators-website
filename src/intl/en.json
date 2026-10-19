@@ -615,7 +615,9 @@
       "description_locked": "Items can't be added while the collection is being reviewed. Your files weren't saved — you can add them once the review is done.",
       "description_published": "Published collections can't receive new items. Your files weren't saved — create a new collection to add them.",
       "try_again": "Try again",
-      "got_it": "Got it"
+      "got_it": "Got it",
+      "title_urn_taken": "An item URN is already in use",
+      "description_urn_taken": "Another item already uses one of these URNs. Change the identifier in wearable.json, or re-upload the item with its existing URN to update it."
     },
     "leave": {
       "save_title": "Save before leaving?",
@@ -658,8 +660,13 @@
       "video_too_big": "The video is too big — the maximum size is {size}MB.",
       "video_wrong_format": "The video must be an MP4 file.",
       "invalid_video": "Your video seems to be invalid or broken. Check the file and try again.",
-      "invalid_model_file_type": "The file is a different item type. A wearable can only be replaced with a wearable, and an emote with an emote."
-    }
+      "invalid_model_file_type": "The file is a different item type. A wearable can only be replaced with a wearable, and an emote with an emote.",
+      "linked_emote": "Linked collections can only hold wearables, not emotes.",
+      "linked_smart_wearable": "Linked collections can't hold smart wearables.",
+      "linked_urn_mismatch": "The wearable.json URN doesn't belong to this collection.",
+      "linked_mapping_invalid": "The wearable.json mapping is invalid. Check its type and token IDs."
+    },
+    "mapping_hint": "Which tokens of the linked contract unlock this wearable."
   },
   "video_modal": {
     "title": "Preview Video",

@@ -9,7 +9,10 @@ import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { installBackGuard } from '~/lib/backGuard'
 import { ItemFileError, VIDEO_PATH } from '~/lib/itemFiles'
 import { type EmotePlayMode, type ItemDraftPayload } from '~/lib/itemFactory'
-import { type Collection } from '~/lib/collections'
+import { isLinkedCollection, type Collection } from '~/lib/collections'
+import { buildItemMappings } from '~/lib/mappings'
+import { buildLinkedItemUrn, getDefaultUrnSuffix, type LinkedContract } from '~/lib/thirdParty'
+import { type ContractNetwork } from '@dcl/schemas'
 import { ItemType } from '~/lib/items'
 import { FeatureFlag } from '~/lib/featureFlags'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
@@ -28,7 +31,13 @@ import {
   isValidationStale,
   type ItemDraft
 } from './AddItemsModal.state'
-import { imageThumbnailPatch, isImageThumbnailStale, processDraftFile, pickPreviewDraft } from './processDraft'
+import {
+  imageThumbnailPatch,
+  isImageThumbnailStale,
+  processDraftFile,
+  pickPreviewDraft,
+  type LinkedDraftTarget
+} from './processDraft'
 import { DraftList } from './DraftList'
 import { DraftForm } from './DraftForm'
 import { DraftProcessor } from './DraftProcessor'
@@ -76,6 +85,24 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
   const utilityFlag = useFeatureFlag(FeatureFlag.WEARABLE_UTILITY)
   const showToast = useNotifications(state => state.showToast)
 
+  // Linked collections take plain wearables only, with no rarity and a token mapping per item.
+  const isLinked = isLinkedCollection(collection)
+  const linkedContract = useMemo<LinkedContract | null>(
+    () =>
+      collection.linkedContractNetwork && collection.linkedContractAddress
+        ? { network: collection.linkedContractNetwork as ContractNetwork, address: collection.linkedContractAddress }
+        : null,
+    [collection.linkedContractNetwork, collection.linkedContractAddress]
+  )
+  const linkedTarget = useMemo<LinkedDraftTarget | undefined>(
+    () => (isLinked ? { collectionUrn: collection.urn, contract: linkedContract } : undefined),
+    [isLinked, collection.urn, linkedContract]
+  )
+  const draftRules = useMemo(
+    () => ({ linked: isLinked, requiresMapping: isLinked && linkedContract !== null }),
+    [isLinked, linkedContract]
+  )
+
   const initialDraftsRef = useRef<Array<{ draft: ItemDraft; file: File }> | null>(null)
   if (initialDraftsRef.current === null) {
     // The live preview streams a placeholder file name, not one worth suggesting as the item name.
@@ -99,9 +126,10 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
 
   // Load + analyze each dropped file once. The prefill is what it was when the modal opened.
   const prefillRef = useRef(prefill)
+  const linkedTargetRef = useRef(linkedTarget)
   useEffect(() => {
     for (const { draft, file } of initialDraftsRef.current ?? []) {
-      void processDraftFile(file, prefillRef.current?.hides)
+      void processDraftFile(file, prefillRef.current?.hides, linkedTargetRef.current)
         .then(patch =>
           dispatch({
             type: 'draftAnalyzed',
@@ -182,8 +210,8 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
   }, [drafts])
 
   const isSelectedComplete = useMemo(
-    () => !!selected && isDraftComplete(selected, drafts, collectionItems),
-    [selected, drafts, collectionItems]
+    () => !!selected && isDraftComplete(selected, drafts, collectionItems, draftRules),
+    [selected, drafts, collectionItems, draftRules]
   )
   const othersChecked = useMemo(
     () => !!selected && drafts.every(draft => draft.id === selected.id || draft.checked),
@@ -213,7 +241,8 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
       type: draft.type ?? ItemType.WEARABLE,
       bodyShape: draft.bodyShape,
       category: draft.category ?? '',
-      rarity: draft.rarity,
+      // Linked items are never minted: the legacy builder fixes their rarity to unique.
+      rarity: isLinked ? 'unique' : draft.rarity,
       playMode: draft.playMode,
       requiredPermissions: draft.isSmart ? draft.requiredPermissions : undefined,
       description: draft.description,
@@ -227,6 +256,12 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
       metrics: draft.metrics ?? {},
       owner: address,
       collectionId: collection.id,
+      ...(isLinked
+        ? {
+            urn: buildLinkedItemUrn(collection.urn, draft.urnSuffix ?? getDefaultUrnSuffix(draft.name.trim())),
+            mappings: linkedContract && draft.mapping ? buildItemMappings(draft.mapping, linkedContract) : undefined
+          }
+        : {}),
       variantTargetId: draft.isVariant && draft.variantTargetId ? draft.variantTargetId : undefined
     } satisfies ItemDraftPayload & { variantTargetId?: string }
   }
@@ -381,6 +416,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
                 }
                 onOpenVideo={() => setVideoOpen(true)}
                 onVideoChange={handleVideoChange}
+                linked={isLinked ? { contract: linkedContract } : undefined}
               />
             ) : (
               <S.ProcessingPane data-testid="draft-processing">

@@ -3,6 +3,7 @@
 // feeds results in through actions, so this reducer stays fully unit-testable.
 import { EmoteCategory, WearableCategory } from '@dcl/schemas'
 import { type ValidationIssue } from '~/lib/validation'
+import { type Mapping } from '~/lib/mappings'
 import { VIDEO_PATH, cleanAssetName, isImageFile, isModelFile } from '~/lib/itemFiles'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
 import { BodyShapeType, ItemType, getMissingBodyShapeType, type Item, type ItemMetrics } from '~/lib/items'
@@ -55,6 +56,10 @@ export type ItemDraft = {
   validationIssues: ValidationIssue[]
   /** Category the validation issues were computed for; a different pick re-runs the validator. */
   validatedCategory: string | null
+  /** Linked collections only: which tokens of the linked contract unlock the item. */
+  mapping: Mapping | null
+  /** Linked collections only: the URN suffix a zip's wearable.json fixed; generated from the name otherwise. */
+  urnSuffix: string | null
   checked: boolean
 }
 
@@ -99,6 +104,8 @@ export function createDraft(file: File, { nameFromFile = true } = {}): ItemDraft
     emoteMetrics: null,
     validationIssues: [],
     validatedCategory: null,
+    mapping: null,
+    urnSuffix: null,
     checked: false
   }
 }
@@ -276,8 +283,19 @@ export function getCategoryOptions(draft: ItemDraft): string[] {
   )
 }
 
+export type DraftRules = {
+  /** Linked collections: no rarity, and a token mapping is required when the collection has a linked contract. */
+  linked?: boolean
+  requiresMapping?: boolean
+}
+
 /** Whether the draft satisfies every requirement to be saved (mirrors legacy validateItemDraft). */
-export function isDraftComplete(draft: ItemDraft, drafts: ItemDraft[], collectionItems: Item[]): boolean {
+export function isDraftComplete(
+  draft: ItemDraft,
+  drafts: ItemDraft[],
+  collectionItems: Item[],
+  rules: DraftRules = {}
+): boolean {
   if (draft.status !== 'ready' || !draft.type || !draft.thumbnail || !draft.metrics) return false
   if (
     draft.type === ItemType.WEARABLE &&
@@ -294,6 +312,7 @@ export function isDraftComplete(draft: ItemDraft, drafts: ItemDraft[], collectio
   }
 
   if (!isValidItemName(draft.name)) return false
-  if (!draft.category || !draft.rarity) return false
-  return true
+  if (!draft.category) return false
+  if (rules.linked) return !rules.requiresMapping || draft.mapping !== null
+  return !!draft.rarity
 }
