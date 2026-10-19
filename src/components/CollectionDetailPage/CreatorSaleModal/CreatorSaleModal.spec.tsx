@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -38,23 +39,27 @@ function open(
     onUnconfirmed?: () => void
     onClose?: () => void
     social?: boolean
+    strict?: boolean
   } = {}
 ) {
   const onSubmit = props.onSubmit ?? vi.fn(() => new Promise<CollectionDiscount>(() => {}))
   const onClose = props.onClose ?? vi.fn()
   const onUnconfirmed = props.onUnconfirmed ?? vi.fn()
+  const Wrap = props.strict ? StrictMode : 'div'
   render(
-    <QueryClientProvider client={new QueryClient()}>
-      <TranslationProvider>
-        <CreatorSaleModal
-          session={makeSession(props.social ? ProviderType.MAGIC : ProviderType.INJECTED)}
-          collection={props.of ?? collection}
-          onSubmit={onSubmit}
-          onUnconfirmed={onUnconfirmed}
-          onClose={onClose}
-        />
-      </TranslationProvider>
-    </QueryClientProvider>
+    <Wrap>
+      <QueryClientProvider client={new QueryClient()}>
+        <TranslationProvider>
+          <CreatorSaleModal
+            session={makeSession(props.social ? ProviderType.MAGIC : ProviderType.INJECTED)}
+            collection={props.of ?? collection}
+            onSubmit={onSubmit}
+            onUnconfirmed={onUnconfirmed}
+            onClose={onClose}
+          />
+        </TranslationProvider>
+      </QueryClientProvider>
+    </Wrap>
   )
   return { onSubmit, onClose, onUnconfirmed }
 }
@@ -219,5 +224,13 @@ describe('when a creator discounts a collection from the builder', () => {
     await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
     fireEvent.click(screen.getByLabelText('Cancel'))
     expect(track.mock.calls.filter(([event]) => event === 'Abandon collection discount')).toHaveLength(0)
+  })
+
+  // StrictMode mounts twice in development: the success has to show there too, not leave the review signable.
+  it('should reach the success view under StrictMode', async () => {
+    open({ strict: true, onSubmit: vi.fn().mockResolvedValue(live) })
+    fireEvent.click(screen.getByTestId('creator-sale-continue'))
+    await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    expect(screen.getByTestId('creator-sale-success')).toBeInTheDocument()
   })
 })
