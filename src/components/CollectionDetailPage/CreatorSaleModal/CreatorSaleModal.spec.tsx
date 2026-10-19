@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -38,23 +39,27 @@ function open(
     onUnconfirmed?: () => void
     onClose?: () => void
     social?: boolean
+    strict?: boolean
   } = {}
 ) {
   const onSubmit = props.onSubmit ?? vi.fn(() => new Promise<CollectionDiscount>(() => {}))
   const onClose = props.onClose ?? vi.fn()
   const onUnconfirmed = props.onUnconfirmed ?? vi.fn()
+  const Wrap = props.strict ? StrictMode : 'div'
   render(
-    <QueryClientProvider client={new QueryClient()}>
-      <TranslationProvider>
-        <CreatorSaleModal
-          session={makeSession(props.social ? ProviderType.MAGIC : ProviderType.INJECTED)}
-          collection={props.of ?? collection}
-          onSubmit={onSubmit}
-          onUnconfirmed={onUnconfirmed}
-          onClose={onClose}
-        />
-      </TranslationProvider>
-    </QueryClientProvider>
+    <Wrap>
+      <QueryClientProvider client={new QueryClient()}>
+        <TranslationProvider>
+          <CreatorSaleModal
+            session={makeSession(props.social ? ProviderType.MAGIC : ProviderType.INJECTED)}
+            collection={props.of ?? collection}
+            onSubmit={onSubmit}
+            onUnconfirmed={onUnconfirmed}
+            onClose={onClose}
+          />
+        </TranslationProvider>
+      </QueryClientProvider>
+    </Wrap>
   )
   return { onSubmit, onClose, onUnconfirmed }
 }
@@ -219,5 +224,62 @@ describe('when a creator discounts a collection from the builder', () => {
     await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
     fireEvent.click(screen.getByLabelText('Cancel'))
     expect(track.mock.calls.filter(([event]) => event === 'Abandon collection discount')).toHaveLength(0)
+  })
+
+  // StrictMode mounts twice in development: the success has to show there too, not leave the review signable.
+  it('should reach the success view under StrictMode', async () => {
+    open({ strict: true, onSubmit: vi.fn().mockResolvedValue(live) })
+    fireEvent.click(screen.getByTestId('creator-sale-continue'))
+    await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    expect(screen.getByTestId('creator-sale-success')).toBeInTheDocument()
+  })
+
+  // With reduced motion (or a long press) the calendar is already folded when the click lands on the backdrop.
+  it('should only fold the calendar on a backdrop click that started with it open', async () => {
+    const matchMedia = window.matchMedia
+    window.matchMedia = (query: string) =>
+      ({
+        matches: query.includes('prefers-reduced-motion'),
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {}
+      }) as unknown as MediaQueryList
+    const { onClose } = open()
+    fireEvent.click(screen.getByTestId('creator-sale-when'))
+    const scrim = screen.getByTestId('creator-sale-modal').parentElement!
+    await act(async () => {
+      fireEvent.pointerDown(scrim)
+      fireEvent.mouseDown(scrim)
+    })
+    fireEvent.click(scrim)
+    expect(onClose).not.toHaveBeenCalled()
+    window.matchMedia = matchMedia
+  })
+
+  // What the creator reviews must be what the coupon yields: 30% off 1 MANA at $0.11 sells for 1 credit, not 2.
+  it('should quote a discounted MANA item at what its MANA sale amount converts to', () => {
+    const mana: SaleableCollection = {
+      ...collection,
+      listedCount: 1,
+      manaRate: 11n * 10n ** 16n,
+      items: [
+        {
+          key: 'm1',
+          name: 'MANA Hat',
+          thumbnail: '',
+          priceCredits: 2,
+          manaWei: 10n ** 18n,
+          state: 'discounted',
+          mana: true,
+          remainingSupply: 1
+        }
+      ]
+    }
+    open({ of: mana })
+    fireEvent.click(screen.getByTestId('creator-sale-pct-30'))
+    expect(screen.getByTestId('creator-sale-preview-now')).toHaveTextContent('1')
+    expect(screen.getByTestId('creator-sale-preview-was')).toHaveTextContent('2')
+    fireEvent.click(screen.getByTestId('creator-sale-continue'))
+    expect(screen.getByTestId('review-now')).toHaveTextContent('1')
   })
 })

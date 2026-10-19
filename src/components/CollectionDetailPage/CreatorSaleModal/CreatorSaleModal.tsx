@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useIntl } from 'react-intl'
 import { useTranslation, type Translate } from '~/intl'
 import { isSocialLogin, type Session } from '~/lib/auth'
-import { discountedCredits, discountedManaWei } from '~/lib/collectionDiscount'
+import { discountedManaWei } from '~/lib/collectionDiscount'
 import {
   DiscountInputError,
   MAX_DISCOUNT_PCT,
@@ -16,7 +16,7 @@ import {
 import { track } from '~/lib/analytics'
 import { openExternal } from '~/lib/navigation'
 import { formatCredits, formatMana } from '~/lib/publishFee'
-import { type SaleableCollection } from '~/lib/saleableCollection'
+import { discountedPriceCredits, type SaleableCollection } from '~/lib/saleableCollection'
 import { startOfDay, windowOf, type SaleWhen } from '~/lib/saleWindow'
 import { shopCreatorUrl } from '~/lib/shop'
 import { useNotifications } from '~/lib/notifications'
@@ -108,7 +108,8 @@ export function CreatorSaleModal({
   const [customPct, setCustomPct] = useState('15')
   const [when, setWhen] = useState<When>({ kind: 'preset', key: '3d', hours: 72 })
   const [whenOpen, setWhenOpen] = useState(false)
-  // The window as the review showed it, fixed on the way in so the signature is exactly what was read.
+  // Whether the calendar was open when the current backdrop press began.
+  const calendarOpenOnPress = useRef(false)
   // The window and cap as the review showed them, fixed on the way in so the signature is exactly what was read.
   const [reviewed, setReviewed] = useState<{
     startsAtMs: number | undefined
@@ -195,12 +196,13 @@ export function CreatorSaleModal({
   const [awaitingWallet, setAwaitingWallet] = useState(false)
   // Closed while the wallet prompt was open: a late result is the flow's to show, not this unmounted dialog's.
   const mounted = useRef(true)
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    // Set again on every mount: StrictMode unmounts and remounts once in development.
+    mounted.current = true
+    return () => {
       mounted.current = false
-    },
-    []
-  )
+    }
+  }, [])
   const locked = busy && !awaitingWallet
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -386,7 +388,9 @@ export function CreatorSaleModal({
   const previewPct = terms.problem === 'pct' ? 0 : pct
   // Whether any price shown rounds away from the exact cut: Credits are whole, so the badge and the price can disagree.
   const rounded = useMemo(
-    () => previewPct > 0 && previewItems.some(i => ((i.priceCredits as number) * (100 - previewPct)) % 100 !== 0),
+    // A MANA price is converted at a live rate, so its credits are always rounded.
+    () =>
+      previewPct > 0 && previewItems.some(i => i.mana || ((i.priceCredits as number) * (100 - previewPct)) % 100 !== 0),
     [previewPct, previewItems]
   )
   const durationPresets = useMemo(
@@ -548,7 +552,7 @@ export function CreatorSaleModal({
                       </S.ReviewWas>
                       <S.ReviewNow data-testid="review-now">
                         <CurrencyIcon size={16} />
-                        {formatCredits(discountedCredits(i.priceCredits as number, pct))}
+                        {formatCredits(discountedPriceCredits(i, pct, current.manaRate) as number)}
                       </S.ReviewNow>
                     </S.ReviewPrices>
                   )}
@@ -693,7 +697,19 @@ export function CreatorSaleModal({
   }
 
   return (
-    <S.Scrim onClick={locked ? undefined : onClose} role="presentation">
+    <S.Scrim
+      // The calendar folds on the press, before this click lands (at once with reduced motion, or on a long press):
+      // a click that started with it open only ever folds it, never the whole modal.
+      onPointerDown={() => {
+        calendarOpenOnPress.current = whenOpen
+      }}
+      onClick={() => {
+        const foldedCalendar = calendarOpenOnPress.current || whenOpen
+        calendarOpenOnPress.current = false
+        if (!locked && !foldedCalendar) onClose()
+      }}
+      role="presentation"
+    >
       <S.Card
         ref={card}
         tabIndex={-1}
@@ -915,7 +931,7 @@ export function CreatorSaleModal({
             <S.PreviewStrip ref={strip} onScroll={measureStrip} data-testid="creator-sale-preview">
               {previewItems.map(item => {
                 const price = item.priceCredits as number
-                const sale = discountedCredits(price, previewPct)
+                const sale = discountedPriceCredits(item, previewPct, current.manaRate) as number
                 return (
                   <S.PreviewCard key={item.key} data-testid="creator-sale-preview-item">
                     <S.PreviewMedia>
