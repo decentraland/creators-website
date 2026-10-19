@@ -4,8 +4,9 @@ import { hasBeenApproved, type Collection } from '~/lib/collections'
 import { getItemSales, type Item } from '~/lib/items'
 import { SellItemError } from '~/lib/sales'
 
-// Same cap as the legacy builder's MAX_NFTS_PER_MINT: issueTokens runs out of gas past it.
-export const MAX_ITEMS_PER_SEND = 50
+// issueTokens costs ~132k gas per copy on Polygon (measured on Amoy, 2026-10), so the 30M block limit
+// lands around 200 copies; 100 keeps a send under half a block. The legacy builder still caps at 50.
+export const MAX_ITEMS_PER_SEND = 100
 
 /** One bundle: every recipient gets `amounts[itemId]` copies of each item. */
 export type Transfer = {

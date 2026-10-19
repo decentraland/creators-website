@@ -25,10 +25,10 @@ const soldOut: Item = { ...item, id: 'i3', name: 'Gone', tokenId: '5', totalSupp
 const draft: Item = { ...item, id: 'i4', name: 'Draft', tokenId: undefined, isPublished: false }
 const items = [item, scarce, soldOut, draft]
 
-function renderFlow(providerType = ProviderType.INJECTED) {
+function renderFlow(providerType = ProviderType.INJECTED, list = items) {
   const onClose = vi.fn()
   const view = render(
-    <SendItemsFlow collection={collection} items={items} session={makeSession(providerType)} onClose={onClose} />,
+    <SendItemsFlow collection={collection} items={list} session={makeSession(providerType)} onClose={onClose} />,
     { wrapper: Providers }
   )
   return { onClose, view }
@@ -61,7 +61,7 @@ describe('SendItemsFlow', () => {
     await addRecipient(1, FRIEND)
     expect(screen.getByTestId('transfer-1-recipient-selected')).toBeInTheDocument()
     expect(screen.getByTestId('send-continue')).toBeEnabled()
-    expect(screen.getByTestId('send-total')).toHaveTextContent('1 / 50 items')
+    expect(screen.getByTestId('send-total')).toHaveTextContent('1 / 100 items')
   })
 
   it('steps the copies within the live stock, unchecking at zero, and blocks a repeated recipient', async () => {
@@ -90,7 +90,7 @@ describe('SendItemsFlow', () => {
     await addRecipient(1, OTHER)
     expect(screen.getAllByTestId('transfer-1-recipient-selected')).toHaveLength(2)
     expect(screen.getByTestId('transfer-1-item-i2-amount')).toHaveValue('1')
-    expect(screen.getByTestId('send-total')).toHaveTextContent('2 / 50 items')
+    expect(screen.getByTestId('send-total')).toHaveTextContent('2 / 100 items')
   })
 
   it('takes a typed count, digits only and clamped to the stock, and unchecks an emptied one', async () => {
@@ -108,13 +108,13 @@ describe('SendItemsFlow', () => {
     expect(screen.getByTestId('transfer-1-item-i2-check')).not.toBeChecked()
   })
 
-  it('caps a send at 50 copies across transfers and explains why', async () => {
-    renderFlow()
+  it('caps a send at 100 copies across transfers and explains why', async () => {
+    renderFlow(ProviderType.INJECTED, [{ ...item, rarity: 'epic' }])
     await addRecipient(1, FRIEND)
-    await userEvent.type(screen.getByTestId('transfer-1-item-i1-amount'), '51')
-    expect(screen.getByTestId('transfer-1-item-i1-amount')).toHaveValue('51')
+    await userEvent.type(screen.getByTestId('transfer-1-item-i1-amount'), '101')
+    expect(screen.getByTestId('transfer-1-item-i1-amount')).toHaveValue('101')
     expect(screen.getByTestId('send-total')).toHaveAttribute('data-over')
-    expect(screen.getByTestId('send-total')).toHaveTextContent(/up to 50/i)
+    expect(screen.getByTestId('send-total')).toHaveTextContent(/up to 100/i)
     expect(screen.getByTestId('send-continue')).toBeDisabled()
   })
 
@@ -137,7 +137,7 @@ describe('SendItemsFlow', () => {
     )
     expect(screen.getByTestId('transfer-2-item-i1-amount')).toHaveValue('1')
     expect(screen.queryByTestId('transfer-2-recipient-input')).not.toBeInTheDocument()
-    expect(screen.getByTestId('send-total')).toHaveTextContent('1 / 50 items')
+    expect(screen.getByTestId('send-total')).toHaveTextContent('1 / 100 items')
   })
 
   it('reviews what each wallet receives across transfers, walks a web3 wallet through the prompt and celebrates the send', async () => {
