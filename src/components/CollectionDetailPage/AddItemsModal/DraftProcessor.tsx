@@ -5,7 +5,7 @@ import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { dataURLToBlob } from '~/lib/media'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { ItemType, type ItemMetrics } from '~/lib/items'
-import { toEmoteWithBlobs, toWearableWithBlobs } from '~/lib/preview'
+import { PREVIEW_BASE_URL, toEmoteWithBlobs, toWearableWithBlobs } from '~/lib/preview'
 import { renderPosedThumbnail } from '~/lib/renderPosedThumbnail'
 import { getThumbnailPose, isAutoThumbnailStale } from '~/lib/thumbnailPose'
 import { type ItemDraft } from './AddItemsModal.state'
@@ -130,6 +130,7 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
           id={PREVIEW_ID}
           blob={blob}
           unity={renderer === PreviewRenderer.UNITY}
+          baseUrl={PREVIEW_BASE_URL}
           disableBackground
           disableAutoRotate
           projection={PreviewProjection.ORTHOGRAPHIC}
