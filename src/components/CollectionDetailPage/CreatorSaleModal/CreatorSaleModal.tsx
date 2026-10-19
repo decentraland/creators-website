@@ -108,7 +108,8 @@ export function CreatorSaleModal({
   const [customPct, setCustomPct] = useState('15')
   const [when, setWhen] = useState<When>({ kind: 'preset', key: '3d', hours: 72 })
   const [whenOpen, setWhenOpen] = useState(false)
-  // The window as the review showed it, fixed on the way in so the signature is exactly what was read.
+  // Whether the calendar was open when the current backdrop press began.
+  const calendarOpenOnPress = useRef(false)
   // The window and cap as the review showed them, fixed on the way in so the signature is exactly what was read.
   const [reviewed, setReviewed] = useState<{
     startsAtMs: number | undefined
@@ -195,12 +196,13 @@ export function CreatorSaleModal({
   const [awaitingWallet, setAwaitingWallet] = useState(false)
   // Closed while the wallet prompt was open: a late result is the flow's to show, not this unmounted dialog's.
   const mounted = useRef(true)
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    // Set again on every mount: StrictMode unmounts and remounts once in development.
+    mounted.current = true
+    return () => {
       mounted.current = false
-    },
-    []
-  )
+    }
+  }, [])
   const locked = busy && !awaitingWallet
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -693,7 +695,19 @@ export function CreatorSaleModal({
   }
 
   return (
-    <S.Scrim onClick={locked ? undefined : onClose} role="presentation">
+    <S.Scrim
+      // The calendar folds on the press, before this click lands (at once with reduced motion, or on a long press):
+      // a click that started with it open only ever folds it, never the whole modal.
+      onPointerDown={() => {
+        calendarOpenOnPress.current = whenOpen
+      }}
+      onClick={() => {
+        const foldedCalendar = calendarOpenOnPress.current || whenOpen
+        calendarOpenOnPress.current = false
+        if (!locked && !foldedCalendar) onClose()
+      }}
+      role="presentation"
+    >
       <S.Card
         ref={card}
         tabIndex={-1}
