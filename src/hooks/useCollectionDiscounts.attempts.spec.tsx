@@ -22,6 +22,7 @@ vi.mock('~/lib/coupons', async () => {
   }
 })
 vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
+vi.mock('~/components/CollectionMosaic', () => ({ CollectionMosaic: () => null }))
 
 import { readTransactionOutcome } from '~/lib/auth'
 import { createDiscount, endDiscount, fetchCreatorDiscounts, storeSignedDiscount } from '~/lib/coupons'
@@ -277,15 +278,19 @@ describe('when a signed discount was posted with no readable answer before a rel
   it('should settle that same coupon instead of asking for a new signature', async () => {
     saveUnconfirmedCreate(session.address, { collectionId: collection.id, payload })
     vi.mocked(storeSignedDiscount).mockResolvedValue({ ...running, id: 'stored' })
-    const reach = { discounted: 1, unchanged: 0, example: { credits: 100 } }
+    const sale = {
+      contractAddress: '0xcc',
+      collectionId: collection.id,
+      itemCount: 1,
+      name: 'x',
+      listedCount: 1,
+      items: []
+    }
 
-    render(
-      <DiscountFlow collection={collection} session={session} reach={reach} manaListings={false} onClose={vi.fn()} />,
-      {
-        wrapper: freshPage()
-      }
-    )
-    expect(screen.queryByTestId('create-discount-form')).not.toBeInTheDocument()
+    render(<DiscountFlow collection={collection} session={session} sale={sale} onClose={vi.fn()} />, {
+      wrapper: freshPage()
+    })
+    expect(screen.queryByTestId('creator-sale-modal')).not.toBeInTheDocument()
     await userEvent.click(screen.getByTestId('discount-unconfirmed-retry'))
 
     expect(await screen.findByTestId('success-modal-title')).toHaveTextContent(/your discount is live/i)

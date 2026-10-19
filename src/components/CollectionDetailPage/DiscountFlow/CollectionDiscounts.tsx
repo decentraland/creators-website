@@ -29,7 +29,7 @@ export function CollectionDiscounts({ discounts, now, onEnd }: Props) {
             data-testid="collection-discount"
           >
             <S.DiscountTerms>
-              <SaleTag pct={intl.formatNumber(discountPct(discount))} testId="discount-sale-tag" />
+              <SaleTag pct={discountPct(discount)} testId="discount-sale-tag" />
               <span>
                 {scheduled
                   ? t('collection_discount.chip.starts', { date: date(discount.checks.effective) })
