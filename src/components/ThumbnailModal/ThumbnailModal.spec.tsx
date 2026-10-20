@@ -7,6 +7,8 @@ import { THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { ItemType } from '~/lib/items'
 import { ThumbnailModal } from './ThumbnailModal'
 
+vi.mock('~/hooks/usePreviewRenderer', () => ({ usePreviewRenderer: () => undefined }))
+
 // jsdom has no canvas: resizing hands back a fixed PNG data URL.
 const PNG_DATA_URL = 'data:image/png;base64,iVBORw0KGgo='
 vi.mock('~/lib/media', async importOriginal => ({

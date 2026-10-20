@@ -17,9 +17,8 @@ type Props = {
 }
 
 /**
- * Zoom in / out over a Babylon preview (`scene.changeZoom` is a relative camera nudge there). Unity
- * only reads a zoom level when it frames the camera at load and draws its own buttons in the canvas,
- * so callers must not mount these for it.
+ * Zoom in / out over the preview: `scene.changeZoom` is a relative camera nudge on both renderers, and
+ * Unity hides its own in-canvas buttons when the page frames the camera (`zoom` / `wheelZoom`).
  */
 export function ZoomControls({ controller, className, testId = 'zoom-controls' }: Props) {
   const { t } = useTranslation()

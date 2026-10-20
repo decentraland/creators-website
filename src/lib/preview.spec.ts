@@ -1,6 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { BodyShape, PreviewEmote, type EmoteWithBlobs, type WearableWithBlobs } from '@dcl/schemas'
-import { buildPreviewOptions, definitionToBase64, getPreviewZoom, itemToDefinition, type UnsavedFiles } from './preview'
+import {
+  buildPreviewOptions,
+  definitionToBase64,
+  getPreviewZoom,
+  itemToDefinition,
+  retryWhilePreviewReloads,
+  type UnsavedFiles
+} from './preview'
 import { ItemType, type Item } from './items'
 import { type AvatarAttributes } from './avatar'
 
@@ -79,6 +86,13 @@ describe('buildPreviewOptions', () => {
     })
     expect(options.base64s).toHaveLength(1)
     expect(options.zoom).toBe(getPreviewZoom(PreviewEmote.DANCE))
+  })
+
+  it('draws the scene boundaries only when asked, so a toggle reaches the mounted iframe', () => {
+    expect(buildPreviewOptions({ kind: 'items', items: [] }, avatar, PreviewEmote.IDLE).showSceneBoundaries).toBe(false)
+    expect(buildPreviewOptions({ kind: 'items', items: [] }, avatar, PreviewEmote.IDLE, true).showSceneBoundaries).toBe(
+      true
+    )
   })
 
   it('lets an emote item own the animation and frames the jump further out', () => {
@@ -165,5 +179,28 @@ describe('buildPreviewOptions', () => {
       expect(female.base64s).toEqual([])
       expect((female.blob as WearableWithBlobs).data.representations[0].mainFile).toBe('female/hat.glb')
     })
+  })
+})
+
+describe('retryWhilePreviewReloads', () => {
+  const reloading = () => new Error('The preview is reloading')
+
+  it('asks again until the renderer has finished reloading', async () => {
+    const query = vi.fn().mockRejectedValueOnce(reloading()).mockRejectedValueOnce(reloading()).mockResolvedValue(42)
+    await expect(retryWhilePreviewReloads(query, { delayMs: 1 })).resolves.toBe(42)
+    expect(query).toHaveBeenCalledTimes(3)
+  })
+
+  it('fails right away on any other error', async () => {
+    const query = vi.fn().mockRejectedValue(new Error('The scene was disposed'))
+    await expect(retryWhilePreviewReloads(query, { delayMs: 1 })).rejects.toThrow('The scene was disposed')
+    expect(query).toHaveBeenCalledTimes(1)
+  })
+
+  it('gives up once the renderer has been reloading for too long', async () => {
+    const query = vi.fn().mockRejectedValue(reloading())
+    await expect(retryWhilePreviewReloads(query, { delayMs: 5, maxWaitMs: 20 })).rejects.toThrow(
+      'The preview is reloading'
+    )
   })
 })

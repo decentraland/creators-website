@@ -224,6 +224,10 @@ export function isEmoteSubject(source: AvatarPreviewSource): boolean {
  */
 export const PREVIEW_ZOOM_SCALE = 3
 export const PREVIEW_WHEEL_ZOOM = 5
+// TEMPORARY, DO NOT MERGE: the wearable-preview PR preview that serves the Unity renderer parity build
+// (decentraland/wearable-preview#219), until it ships.
+export const PREVIEW_BASE_URL = 'https://wearable-preview-git-temp-unity-parity-dev-decentraland1.vercel.app'
+
 export const PREVIEW_WHEEL_START = 50
 /** wearable-preview's own default multiplier; restated because the scale has to start from a known value. */
 const BASE_ZOOM = 1.75
@@ -247,7 +251,8 @@ export function getPreviewZoom(emote: PreviewEmote | undefined): number {
 export function buildPreviewOptions(
   source: AvatarPreviewSource,
   avatar: AvatarAttributes,
-  emote: PreviewEmote
+  emote: PreviewEmote,
+  showSceneBoundaries = false
 ): PreviewOptions {
   const emoteSubject = isEmoteSubject(source)
   const options: PreviewOptions = {
@@ -256,7 +261,8 @@ export function buildPreviewOptions(
     eyes: avatar.eyes,
     hair: avatar.hair,
     urns: avatar.baseWearableUrns,
-    disableDefaultEmotes: emoteSubject
+    disableDefaultEmotes: emoteSubject,
+    showSceneBoundaries
   }
   if (source.kind === 'items') {
     const unsavedItem = source.unsaved && source.items.find(item => item.id === source.unsaved?.itemId)
@@ -275,4 +281,28 @@ export function buildPreviewOptions(
   options.zoomScale = PREVIEW_ZOOM_SCALE
   if (!emoteSubject) options.emote = emote
   return options
+}
+
+// The Unity renderer refuses scene queries (screenshot, metrics) while a reload is in flight, and its
+// first LOAD can belong to the scene it booted with, before the item sent by UPDATE was applied.
+const PREVIEW_RELOADING_REASON = 'The preview is reloading'
+
+export function isPreviewReloading(error: unknown): boolean {
+  return error instanceof Error && error.message === PREVIEW_RELOADING_REASON
+}
+
+/** Runs a preview query, asking again while the renderer is still reloading, up to `maxWaitMs`. */
+export async function retryWhilePreviewReloads<T>(
+  query: () => Promise<T>,
+  { delayMs = 500, maxWaitMs = 30_000 }: { delayMs?: number; maxWaitMs?: number } = {}
+): Promise<T> {
+  const deadline = Date.now() + maxWaitMs
+  for (;;) {
+    try {
+      return await query()
+    } catch (error) {
+      if (!isPreviewReloading(error) || Date.now() + delayMs > deadline) throw error
+      await new Promise(resolve => setTimeout(resolve, delayMs))
+    }
+  }
 }
