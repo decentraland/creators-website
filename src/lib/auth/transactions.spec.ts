@@ -117,10 +117,13 @@ describe('when the navbar asks where the wallet is', () => {
   it('should read the live chain, however the wallet encodes it', async () => {
     await expect(readWalletChainId(sessionAnswering('0x13882'))).resolves.toBe(80002)
     await expect(readWalletChainId(sessionAnswering(137))).resolves.toBe(137)
+    await expect(readWalletChainId(sessionAnswering('137'))).resolves.toBe(137)
   })
 
   it('should throw rather than guess on an unusable answer', async () => {
     await expect(readWalletChainId(sessionAnswering('not-a-chain'))).rejects.toThrow(/unusable/)
+    await expect(readWalletChainId(sessionAnswering(null))).rejects.toThrow(/unusable/)
+    await expect(readWalletChainId(sessionAnswering('0x0'))).rejects.toThrow(/unusable/)
   })
 
   it('should follow chain and account changes until unsubscribed', () => {

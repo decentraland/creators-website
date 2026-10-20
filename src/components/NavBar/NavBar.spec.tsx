@@ -22,16 +22,17 @@ vi.mock('~/components/TopNav', () => ({
     onSelectChain
   }: NavbarProps) => (
     <div data-testid="topnav">
-      {chains?.map(chain => (
-        <button
-          key={chain}
-          data-testid={`topnav-chain-${chain}`}
-          data-selected={chain === selectedChain}
-          onClick={() => onSelectChain?.(chain)}
-        >
-          {chain}
-        </button>
-      ))}
+      {selectedChain !== undefined &&
+        chains?.map(chain => (
+          <button
+            key={chain}
+            data-testid={`topnav-chain-${chain}`}
+            data-selected={chain === selectedChain}
+            onClick={() => onSelectChain?.(chain)}
+          >
+            {chain}
+          </button>
+        ))}
       <button data-testid="topnav-sign-in" onClick={onClickSignIn}>
         sign in
       </button>
@@ -234,15 +235,15 @@ describe('NavBar', () => {
     expect(track).toHaveBeenCalledWith('Change Network', { from_chain_id: 80002, to_chain_id: 11155111 })
   })
 
-  it('offers no network to a social login, which has none to choose', () => {
+  it('shows no network pill to a social login, which has none to choose', () => {
     wallet.session = { address: '0xabc', providerType: 'magic' }
     renderNavBar()
-    expect(walletChain.hook).toHaveBeenCalledWith(null)
+    expect(screen.queryByTestId(/^topnav-chain-/)).toBeNull()
   })
 
-  it('offers no network while signed out', () => {
+  it('shows no network pill while signed out', () => {
     renderNavBar()
-    expect(walletChain.hook).toHaveBeenCalledWith(null)
+    expect(screen.queryByTestId(/^topnav-chain-/)).toBeNull()
   })
 
   it('shows no balance chips until each balance has loaded', () => {

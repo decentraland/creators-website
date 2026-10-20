@@ -129,7 +129,7 @@ describe('useWalletChain', () => {
     const held = new Promise<void>(resolve => {
       release = resolve
     })
-    const { session, send } = makeSession(async method => {
+    const { session, send, listeners } = makeSession(async method => {
       if (method === 'eth_chainId') return '0x13882'
       if (method === 'wallet_switchEthereumChain') await held
       return null
@@ -141,6 +141,10 @@ describe('useWalletChain', () => {
     await act(async () => {
       first = result.current.switchTo(11155111)
     })
+    expect(result.current.pendingChainId).toBe(11155111)
+
+    // MetaMask announces the new chain before the switch request resolves: still one request in flight.
+    act(() => listeners.chainChanged.forEach(cb => cb('0xaa36a7')))
     expect(result.current.pendingChainId).toBe(11155111)
 
     await act(async () => {

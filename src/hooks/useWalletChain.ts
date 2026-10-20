@@ -1,13 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 // @dcl/schemas' root barrel doesn't re-export `getNetwork` / `getNetworkMapping`.
 import { ChainId, getNetwork, getNetworkMapping } from '@dcl/schemas/dist/dapps/chain-id'
 import { Network } from '@dcl/schemas/dist/dapps/network'
 import { readWalletChainId, subscribeWalletChain, switchWalletChain, type Session } from '~/lib/auth'
 import { captureError } from '~/lib/monitoring'
+import { isWalletRejection } from '~/lib/walletErrors'
 import { config } from '~/config'
-
-/** The wallet declined the request: an answer, not an error. */
-const USER_REJECTED = 4001
 
 const KNOWN_CHAINS = Object.values(ChainId).filter((id): id is ChainId => typeof id === 'number')
 
@@ -48,6 +46,9 @@ export function useWalletChain(session: Session | null): WalletChain {
   const [chainId, setChainId] = useState<number | undefined>(session?.chainId)
   const [pendingChainId, setPendingChainId] = useState<number | undefined>()
   const chains = useMemo(() => supportedChains(), [])
+  // The session a switch was asked of, so one answered after a sign-out writes nothing.
+  const current = useRef(session)
+  current.current = session
 
   // First read, then the wallet's own events. A failed read keeps the last known value: a wallet that
   // won't answer is not evidence of a different chain.
@@ -65,10 +66,9 @@ export function useWalletChain(session: Session | null): WalletChain {
         .catch((error: unknown) => captureError(error, { flow: 'network-selector', step: 'read-chain' }))
     }
     refresh()
-    const unsubscribe = subscribeWalletChain(session, () => {
-      setPendingChainId(undefined)
-      refresh()
-    })
+    // Only a refresh: MetaMask emits `chainChanged` before the switch request resolves, so clearing the
+    // in-flight guard here would let a quick second pick send a request the wallet answers with -32002.
+    const unsubscribe = subscribeWalletChain(session, refresh)
     return () => {
       live = false
       unsubscribe()
@@ -82,14 +82,19 @@ export function useWalletChain(session: Session | null): WalletChain {
       setPendingChainId(target)
       try {
         await switchWalletChain(session, target)
-        // Some wallets emit no `chainChanged` for a switch they consider a no-op, so confirm once.
-        setChainId(await readWalletChainId(session))
       } catch (error) {
-        if ((error as { code?: number }).code !== USER_REJECTED) {
-          captureError(error, { flow: 'network-selector', step: 'switch-chain', target })
-        }
+        if (!isWalletRejection(error)) captureError(error, { flow: 'network-selector', step: 'switch-chain', target })
       } finally {
         setPendingChainId(undefined)
+      }
+      if (current.current !== session) return
+      // Some wallets emit no `chainChanged` for a switch they consider a no-op, so confirm once. A read
+      // that fails here leaves the label to the wallet's own events.
+      try {
+        const settled = await readWalletChainId(session)
+        if (current.current === session) setChainId(settled)
+      } catch (error) {
+        captureError(error, { flow: 'network-selector', step: 'read-chain' })
       }
     },
     [session, chainId, pendingChainId]

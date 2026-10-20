@@ -98,13 +98,19 @@ export async function switchWalletChain(session: Session, chainId: number): Prom
 }
 
 /**
- * The chain the wallet is on right now. Asked over `eth_chainId` rather than ethers' `getNetwork()`, which
- * answers from the network it first detected.
+ * The chain the wallet is on right now, asked over `eth_chainId` so the answer is the wallet's and not a
+ * network ethers detected earlier. Throws on anything that is not a positive chain id (a wallet answering
+ * null would otherwise read as chain 0).
  */
 export async function readWalletChainId(session: Session): Promise<number> {
-  const raw = (await session.web3Provider.send('eth_chainId', [])) as string | number
-  const parsed = typeof raw === 'string' ? parseInt(raw, 16) : Number(raw)
-  if (!Number.isFinite(parsed)) throw new Error(`Wallet answered eth_chainId with an unusable value: ${String(raw)}`)
+  const raw: unknown = await session.web3Provider.send('eth_chainId', [])
+  let parsed: number
+  try {
+    parsed = ethers.BigNumber.from(raw).toNumber()
+  } catch {
+    parsed = 0
+  }
+  if (parsed <= 0) throw new Error(`Wallet answered eth_chainId with an unusable value: ${String(raw)}`)
   return parsed
 }
 
