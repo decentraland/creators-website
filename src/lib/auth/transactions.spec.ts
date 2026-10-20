@@ -1,7 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ContractName, getCouponManager } from 'decentraland-transactions'
 import { type Session } from './auth'
-import { WrongAccountError, WrongChainError, sendContractTransaction, sendWalletTransaction } from './transactions'
+import {
+  WrongAccountError,
+  WrongChainError,
+  readWalletChainId,
+  sendContractTransaction,
+  sendWalletTransaction,
+  subscribeWalletChain,
+  switchWalletChain
+} from './transactions'
 
 const manager = { ...getCouponManager(ContractName.OffChainMarketplaceV3, 80002), chainId: 80002 }
 const call = { contract: manager, method: 'increaseSignerSignatureIndex', args: [] }
@@ -99,5 +107,42 @@ describe('when sending a transaction from the wallet itself', () => {
     const { session, sendTransaction } = walletOn(80002)
     await sendContractTransaction({ ...session, signer: { sendTransaction } } as unknown as Session, call)
     expect(sendTransaction.mock.calls[0][0].maxPriorityFeePerGas.toString()).toBe('30000000000')
+  })
+})
+
+describe('when the navbar asks where the wallet is', () => {
+  const sessionAnswering = (answer: unknown) =>
+    ({ web3Provider: { send: vi.fn(async () => answer) } }) as unknown as Session
+
+  it('should read the live chain, however the wallet encodes it', async () => {
+    await expect(readWalletChainId(sessionAnswering('0x13882'))).resolves.toBe(80002)
+    await expect(readWalletChainId(sessionAnswering(137))).resolves.toBe(137)
+  })
+
+  it('should throw rather than guess on an unusable answer', async () => {
+    await expect(readWalletChainId(sessionAnswering('not-a-chain'))).rejects.toThrow(/unusable/)
+  })
+
+  it('should follow chain and account changes until unsubscribed', () => {
+    const on = vi.fn()
+    const removeListener = vi.fn()
+    const session = { web3Provider: { provider: { on, removeListener } } } as unknown as Session
+    const onChange = vi.fn()
+    const unsubscribe = subscribeWalletChain(session, onChange)
+    expect(on).toHaveBeenCalledWith('chainChanged', onChange)
+    expect(on).toHaveBeenCalledWith('accountsChanged', onChange)
+    unsubscribe()
+    expect(removeListener).toHaveBeenCalledWith('chainChanged', onChange)
+    expect(removeListener).toHaveBeenCalledWith('accountsChanged', onChange)
+  })
+
+  it('should subscribe to nothing on a provider without events', () => {
+    const session = { web3Provider: { provider: {} } } as unknown as Session
+    expect(() => subscribeWalletChain(session, vi.fn())()).not.toThrow()
+  })
+
+  it('should let a refusal through when switching on request', async () => {
+    const { session } = walletOn(1, 'refuses')
+    await expect(switchWalletChain(session, 80002)).rejects.toMatchObject({ code: 4001 })
   })
 })

@@ -82,13 +82,50 @@ function isUnknownChain(error: unknown): boolean {
   return code === 4902 || data?.originalError?.code === 4902
 }
 
-async function switchWalletChain(session: Session, chainId: number): Promise<void> {
+/**
+ * Asks the wallet to move to `chainId`, adding this environment's Polygon first when the wallet doesn't know it.
+ * Call it from a click: wallets refuse `wallet_*` requests they can't attribute to a user action. A refusal
+ * (code 4001) propagates: the user answered, nothing moved.
+ */
+export async function switchWalletChain(session: Session, chainId: number): Promise<void> {
   try {
     await session.web3Provider.send('wallet_switchEthereumChain', [{ chainId: ethers.utils.hexValue(chainId) }])
   } catch (error) {
     const add = addChainParams(chainId)
     if (!isUnknownChain(error) || !add) throw error
     await session.web3Provider.send('wallet_addEthereumChain', [add])
+  }
+}
+
+/**
+ * The chain the wallet is on right now. Asked over `eth_chainId` rather than ethers' `getNetwork()`, which
+ * answers from the network it first detected.
+ */
+export async function readWalletChainId(session: Session): Promise<number> {
+  const raw = (await session.web3Provider.send('eth_chainId', [])) as string | number
+  const parsed = typeof raw === 'string' ? parseInt(raw, 16) : Number(raw)
+  if (!Number.isFinite(parsed)) throw new Error(`Wallet answered eth_chainId with an unusable value: ${String(raw)}`)
+  return parsed
+}
+
+type Eip1193Events = {
+  on?: (event: string, cb: (...args: unknown[]) => void) => void
+  removeListener?: (event: string, cb: (...args: unknown[]) => void) => void
+}
+
+/**
+ * Runs `onChange` whenever the wallet announces a chain change, and on an account change too, since another
+ * account can sit on another chain without the wallet re-announcing it. Returns the unsubscribe; a provider
+ * without events (Magic) subscribes to nothing.
+ */
+export function subscribeWalletChain(session: Session, onChange: () => void): () => void {
+  const wallet = session.web3Provider.provider as Eip1193Events | undefined
+  if (!wallet?.on || !wallet.removeListener) return () => undefined
+  wallet.on('chainChanged', onChange)
+  wallet.on('accountsChanged', onChange)
+  return () => {
+    wallet.removeListener?.('chainChanged', onChange)
+    wallet.removeListener?.('accountsChanged', onChange)
   }
 }
 
