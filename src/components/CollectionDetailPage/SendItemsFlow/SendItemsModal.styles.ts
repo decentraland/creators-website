@@ -110,6 +110,7 @@ export const Index = styled.span`
 export const RecipientActions = styled.div`
   display: flex;
   flex-wrap: wrap;
+  justify-content: space-between;
   gap: 0 24px;
   margin-left: 32px;
 `
