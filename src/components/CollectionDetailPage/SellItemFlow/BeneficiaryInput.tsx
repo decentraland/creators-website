@@ -195,7 +195,7 @@ export function BeneficiaryInput({
         {withFriends && (
           <S.ComboToggle
             type="button"
-            aria-label={t(self ? 'sell_item_modal.beneficiary.open_with_self' : 'sell_item_modal.beneficiary.open')}
+            aria-label={t('sell_item_modal.beneficiary.open')}
             aria-expanded={open}
             aria-controls={listId}
             disabled={disabled}
