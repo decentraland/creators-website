@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ContractName, getCouponManager } from 'decentraland-transactions'
 import { type Session } from './auth'
-import { WrongAccountError, WrongChainError, sendWalletTransaction } from './transactions'
+import { WrongAccountError, WrongChainError, sendContractTransaction, sendWalletTransaction } from './transactions'
 
 const manager = { ...getCouponManager(ContractName.OffChainMarketplaceV3, 80002), chainId: 80002 }
 const call = { contract: manager, method: 'increaseSignerSignatureIndex', args: [] }
@@ -92,6 +92,12 @@ describe('when sending a transaction from the wallet itself', () => {
   it("should floor the tip where the environment's network asks for it", async () => {
     const { session, sendTransaction } = walletOn(80002)
     await sendWalletTransaction(session, call)
+    expect(sendTransaction.mock.calls[0][0].maxPriorityFeePerGas.toString()).toBe('30000000000')
+  })
+
+  it('should floor the tip on the regular path too, when the wallet is already on the contract chain', async () => {
+    const { session, sendTransaction } = walletOn(80002)
+    await sendContractTransaction({ ...session, signer: { sendTransaction } } as unknown as Session, call)
     expect(sendTransaction.mock.calls[0][0].maxPriorityFeePerGas.toString()).toBe('30000000000')
   })
 })

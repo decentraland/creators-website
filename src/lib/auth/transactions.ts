@@ -46,7 +46,11 @@ export async function sendContractTransaction(session: Session, call: ContractCa
   const data = encodeContractCall(call)
   const network = await session.web3Provider.getNetwork()
   if (network.chainId === Number(call.contract.chainId)) {
-    const tx = await session.signer.sendTransaction({ to: call.contract.address, data })
+    const tx = await session.signer.sendTransaction({
+      to: call.contract.address,
+      data,
+      ...gasOverrides(network.chainId)
+    })
     return tx.hash
   }
   const targetProvider = await getReadProvider(call.contract.chainId)
