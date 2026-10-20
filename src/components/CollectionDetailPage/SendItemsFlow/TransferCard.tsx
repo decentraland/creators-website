@@ -5,6 +5,7 @@ import { getContentsStorageUrl } from '~/lib/builder'
 import { type Friend } from '~/lib/friends'
 import { type Item } from '~/lib/items'
 import { allocatedElsewhere, getStock, maxAmount, type Transfer } from '~/lib/mint'
+import { useNotifications } from '~/lib/notifications'
 import { Checkbox } from '~/components/Checkbox'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { BeneficiaryInput } from '../SellItemFlow/BeneficiaryInput'
@@ -16,13 +17,16 @@ type Props = {
   items: Item[]
   friends: Friend[] | undefined
   isLoadingFriends: boolean
+  /** The signed-in wallet, offered first in the recipient list. */
+  self: string
   onChange: (transfer: Transfer) => void
   onRemove?: () => void
 }
 
 /** One transfer: its recipients, and how many copies of each item every one of them gets. */
-export function TransferCard({ index, transfers, items, friends, isLoadingFriends, onChange, onRemove }: Props) {
+export function TransferCard({ index, transfers, items, friends, isLoadingFriends, self, onChange, onRemove }: Props) {
   const { t } = useTranslation()
+  const showToast = useNotifications(state => state.showToast)
   const transfer = transfers[index]
   const [adding, setAdding] = useState(false)
   const showInput = transfer.recipients.length === 0 || adding
@@ -72,6 +76,7 @@ export function TransferCard({ index, transfers, items, friends, isLoadingFriend
               onChange={() => setRecipients(transfer.recipients.filter(other => other !== address))}
               friends={friends}
               isLoadingFriends={isLoadingFriends}
+              self={self}
               variant="compact"
               testId={`${testId}-recipient`}
             />
@@ -89,9 +94,9 @@ export function TransferCard({ index, transfers, items, friends, isLoadingFriend
               friends={friends}
               isLoadingFriends={isLoadingFriends}
               placeholder={t('send_items_modal.recipient_placeholder')}
-              duplicateError={address =>
-                transfer.recipients.includes(address) ? t('send_items_modal.duplicate_recipient') : null
-              }
+              self={self}
+              exclude={transfer.recipients}
+              onExcluded={() => showToast(t('send_items_modal.duplicate_recipient'), { type: 'info' })}
               testId={`${testId}-recipient`}
             />
           </S.Recipient>

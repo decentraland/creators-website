@@ -5,6 +5,7 @@ import { ProviderType } from '@dcl/schemas'
 import { type Item } from '~/lib/items'
 import { type Transfer } from '~/lib/mint'
 import { SendItemsFlow } from './SendItemsFlow'
+import { useNotifications } from '~/lib/notifications'
 import { FRIEND, Providers, collection, item, makeSession } from '../SellItemFlow/testUtils'
 
 type Callbacks = { onSuccess?: (result: unknown) => void; onError?: (error: unknown) => void }
@@ -43,6 +44,7 @@ async function addRecipient(transfer: number, address: string) {
 beforeEach(() => {
   send.mutate.mockReset()
   send.isPending = false
+  useNotifications.setState({ toasts: [] })
 })
 
 describe('SendItemsFlow', () => {
@@ -64,7 +66,7 @@ describe('SendItemsFlow', () => {
     expect(screen.getByTestId('send-total')).toHaveTextContent('1 / 100 items')
   })
 
-  it('steps the copies within the live stock, unchecking at zero, and blocks a repeated recipient', async () => {
+  it('steps the copies within the live stock, unchecking at zero, and skips a repeated recipient with a note', async () => {
     renderFlow()
     await addRecipient(1, FRIEND)
     await userEvent.click(screen.getByTestId('transfer-1-item-i2-plus'))
@@ -83,14 +85,32 @@ describe('SendItemsFlow', () => {
     await userEvent.click(screen.getByTestId('transfer-1-item-i2-plus'))
     await userEvent.click(screen.getByTestId('transfer-1-add-recipient'))
     await addRecipient(1, FRIEND)
-    expect(screen.getByTestId('transfer-1-recipient-error')).toHaveTextContent(/already/i)
     expect(screen.getAllByTestId('transfer-1-recipient-selected')).toHaveLength(1)
+    expect(screen.queryByTestId('transfer-1-recipient-error')).not.toBeInTheDocument()
+    expect(screen.getByTestId('transfer-1-recipient-input')).toHaveValue('')
+    expect(useNotifications.getState().toasts).toEqual([
+      expect.objectContaining({ type: 'info', message: expect.stringMatching(/already/i) })
+    ])
 
-    await userEvent.clear(screen.getByTestId('transfer-1-recipient-input'))
     await addRecipient(1, OTHER)
     expect(screen.getAllByTestId('transfer-1-recipient-selected')).toHaveLength(2)
     expect(screen.getByTestId('transfer-1-item-i2-amount')).toHaveValue('1')
     expect(screen.getByTestId('send-total')).toHaveTextContent('2 / 100 items')
+  })
+
+  it('offers the creator their own wallet first and takes it out of the list once chosen', async () => {
+    renderFlow()
+    await userEvent.click(screen.getByTestId('transfer-1-recipient-toggle'))
+    const options = screen.getAllByTestId('transfer-1-recipient-option')
+    expect(options).toHaveLength(1)
+    expect(options[0]).toHaveTextContent('You')
+    await userEvent.click(options[0])
+    expect(screen.getByTestId('transfer-1-recipient-you')).toBeInTheDocument()
+    expect(screen.getByTestId('transfer-1-recipient-selected')).toHaveTextContent('0x0000…00aa')
+
+    // With no friends and "You" already in, nobody is left to pick: the next field is a plain input.
+    await userEvent.click(screen.getByTestId('transfer-1-add-recipient'))
+    expect(screen.queryByTestId('transfer-1-recipient-toggle')).not.toBeInTheDocument()
   })
 
   it('takes a typed count, digits only and clamped to the stock, and unchecks an emptied one', async () => {
