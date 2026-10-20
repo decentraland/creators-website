@@ -13,6 +13,7 @@ import {
   getStock,
   isSendableItem,
   maxAmount,
+  sendBatchSize,
   totalCopies,
   type Transfer
 } from './mint'
@@ -95,6 +96,11 @@ describe('allocation math', () => {
   it('counts copies as recipients × amounts across transfers', () => {
     expect(totalCopies(transfers)).toBe(2 * 4 + 2)
     expect(copiesPerItem(transfers)).toEqual({ hat: 8, cap: 2 })
+    expect(sendBatchSize([...transfers, { recipients: ['0xA'], amounts: { hat: 0 } }])).toEqual({
+      item_count: 2,
+      copies: 10,
+      recipient_count: 3
+    })
   })
 
   it('merges what every wallet receives across transfers, skipping empty ones', () => {
@@ -135,8 +141,11 @@ describe('flattenTransfers / buildIssueTokensCall', () => {
   })
 
   it('refuses more copies than one transaction can mint', () => {
-    const transfers: Transfer[] = [{ recipients: ['0xa'], amounts: { hat: MAX_ITEMS_PER_SEND + 1 } }]
-    expect(() => flattenTransfers(transfers, [hat])).toThrow(/more than/)
+    const atCap: Transfer[] = [{ recipients: ['0xa'], amounts: { hat: MAX_ITEMS_PER_SEND } }]
+    expect(flattenTransfers(atCap, [hat]).beneficiaries).toHaveLength(MAX_ITEMS_PER_SEND)
+
+    const overCap: Transfer[] = [{ recipients: ['0xa'], amounts: { hat: MAX_ITEMS_PER_SEND + 1 } }]
+    expect(() => flattenTransfers(overCap, [hat])).toThrow(/more than/)
   })
 
   it('encodes issueTokens on the collection contract and refuses a collection without one', () => {

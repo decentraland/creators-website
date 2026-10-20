@@ -4,8 +4,10 @@ import { hasBeenApproved, type Collection } from '~/lib/collections'
 import { getItemSales, type Item } from '~/lib/items'
 import { SellItemError } from '~/lib/sales'
 
-// Same cap as the legacy builder's MAX_NFTS_PER_MINT: issueTokens runs out of gas past it.
-export const MAX_ITEMS_PER_SEND = 50
+// Bor caps a transaction at 2^25 gas (EIP-7825 as of the Madhugiri fork, live on Polygon and Amoy).
+// issueTokens costs ~157k gas per copy to never-held recipients (estimated on Amoy, 2026-10): 100 copies
+// is ~15.7M, under half the cap even with a wallet padding the estimate. The legacy builder caps at 50.
+export const MAX_ITEMS_PER_SEND = 100
 
 /** One bundle: every recipient gets `amounts[itemId]` copies of each item. */
 export type Transfer = {
@@ -132,4 +134,14 @@ export function copiesPerItem(transfers: Transfer[]): Record<string, number> {
     }
   }
   return copies
+}
+
+/** The size of a send, as the analytics events report it: distinct items, total copies and distinct wallets. */
+export function sendBatchSize(transfers: Transfer[]): { item_count: number; copies: number; recipient_count: number } {
+  const copies = copiesPerItem(transfers)
+  return {
+    item_count: Object.values(copies).filter(amount => amount > 0).length,
+    copies: Object.values(copies).reduce((total, amount) => total + amount, 0),
+    recipient_count: new Set(transfers.flatMap(transfer => transfer.recipients.map(to => to.toLowerCase()))).size
+  }
 }
