@@ -37,6 +37,18 @@ function renderFlow(providerType = ProviderType.INJECTED, list = items) {
 
 const last = <T,>(mock: { mock: { calls: T[] } }) => mock.mock.calls[mock.mock.calls.length - 1]
 
+function pressBack() {
+  act(() => {
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  })
+}
+
+function fireBeforeUnload() {
+  const event = new Event('beforeunload', { cancelable: true })
+  window.dispatchEvent(event)
+  return event.defaultPrevented
+}
+
 async function addRecipient(transfer: number, address: string) {
   await userEvent.type(screen.getByTestId(`transfer-${transfer}-recipient-input`), address)
 }
@@ -142,6 +154,58 @@ describe('SendItemsFlow', () => {
     expect(screen.getByTestId('send-total')).toHaveAttribute('data-over')
     expect(screen.getByTestId('send-total')).toHaveTextContent(/up to 100/i)
     expect(screen.getByTestId('send-continue')).toBeDisabled()
+  })
+
+  it('closes straight away with nothing entered, but asks before discarding a recipient or a copy', async () => {
+    const { onClose } = renderFlow()
+    await userEvent.click(screen.getByTestId('send-cancel'))
+    expect(onClose).toHaveBeenCalledTimes(1)
+
+    await addRecipient(1, OTHER)
+    await userEvent.keyboard('{Escape}')
+    expect(screen.getByTestId('discard-send-modal-title')).toHaveTextContent(/discard/i)
+    await userEvent.click(screen.getByTestId('discard-send-keep'))
+    expect(screen.queryByTestId('discard-send-modal')).not.toBeInTheDocument()
+    expect(screen.getByTestId('transfer-1-recipient-selected')).toBeInTheDocument()
+    expect(onClose).toHaveBeenCalledTimes(1)
+
+    pressBack()
+    await userEvent.click(screen.getByTestId('discard-send-keep'))
+    expect(fireBeforeUnload()).toBe(true)
+
+    await userEvent.click(screen.getByTestId('send-items-modal-close'))
+    await userEvent.click(screen.getByTestId('discard-send-leave'))
+    expect(onClose).toHaveBeenCalledTimes(2)
+  })
+
+  it('swallows back while the wallet prompt is up, closes on back once sent or failed, and never asks later', async () => {
+    const { onClose } = renderFlow()
+    await addRecipient(1, FRIEND)
+    await userEvent.click(screen.getByTestId('transfer-1-item-i1-check'))
+    await userEvent.click(screen.getByTestId('send-continue'))
+    await userEvent.click(screen.getByTestId('send-submit'))
+
+    pressBack()
+    expect(screen.getByTestId('send-items-pending-label')).toBeInTheDocument()
+    await act(async () => last(send.mutate)[1].onError?.({ code: 4001, message: 'User rejected' }))
+    expect(screen.getByTestId('send-summary')).toBeInTheDocument()
+    expect(screen.queryByTestId('discard-send-modal')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByTestId('send-submit'))
+    await act(async () => last(send.mutate)[1].onError?.(new Error('reverted')))
+    // The draft is kept for TRY AGAIN, so a reload still warns; back closes like the error dialog's Cancel.
+    expect(fireBeforeUnload()).toBe(true)
+    pressBack()
+    expect(onClose).toHaveBeenCalledTimes(1)
+    await userEvent.click(screen.getByTestId('sale-error-retry'))
+    expect(screen.queryByTestId('discard-send-modal')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByTestId('send-submit'))
+    await act(async () => last(send.mutate)[1].onSuccess?.(undefined))
+    expect(screen.getByTestId('success-modal-title')).toBeInTheDocument()
+    expect(fireBeforeUnload()).toBe(false)
+    pressBack()
+    expect(onClose).toHaveBeenCalledTimes(2)
   })
 
   it('removes a middle transfer without disturbing the ones after it', async () => {
