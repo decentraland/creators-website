@@ -39,7 +39,7 @@ describe('useDiscardGuard', () => {
     unmount()
   })
 
-  it('ignores closes while busy, closes freely once done, and never carries a hidden request back to editing', () => {
+  it('ignores closes while busy, closes freely once failed or done, and never carries a hidden request back to editing', () => {
     const { result, rerender, onClose, unmount } = renderGuard({ state: 'busy', dirty: true })
     act(() => result.current.requestClose())
     pressBack()
@@ -49,15 +49,19 @@ describe('useDiscardGuard', () => {
     rerender({ state: 'editing', dirty: true })
     expect(result.current.isDiscardOpen).toBe(false)
 
-    rerender({ state: 'done', dirty: true })
+    rerender({ state: 'failed', dirty: true })
     pressBack()
     expect(onClose).toHaveBeenCalledTimes(1)
-    act(() => result.current.requestClose())
+
+    rerender({ state: 'done', dirty: true })
+    pressBack()
     expect(onClose).toHaveBeenCalledTimes(2)
+    act(() => result.current.requestClose())
+    expect(onClose).toHaveBeenCalledTimes(3)
     unmount()
   })
 
-  it('warns before unload while a dirty draft is edited or a submit is in flight, not once done', () => {
+  it('warns before unload while a dirty draft is edited, kept for a retry or being submitted, not once done', () => {
     const { rerender, unmount } = renderGuard({ state: 'editing', dirty: false })
     expect(fireBeforeUnload()).toBe(false)
     rerender({ state: 'editing', dirty: true })
@@ -66,6 +70,10 @@ describe('useDiscardGuard', () => {
     expect(fireBeforeUnload()).toBe(true)
     rerender({ state: 'editing', dirty: true, pending: true })
     expect(fireBeforeUnload()).toBe(true)
+    rerender({ state: 'failed', dirty: true })
+    expect(fireBeforeUnload()).toBe(true)
+    rerender({ state: 'failed', dirty: false })
+    expect(fireBeforeUnload()).toBe(false)
     rerender({ state: 'done', dirty: true })
     expect(fireBeforeUnload()).toBe(false)
     unmount()

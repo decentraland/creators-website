@@ -47,7 +47,16 @@ export function SendItemsFlow({ collection, items, session, onClose }: Props) {
   const dirty = useMemo(() => hasSendDraft(transfers), [transfers])
   const busy = social && send.isPending
   const { isDiscardOpen, requestClose, keepEditing } = useDiscardGuard({
-    state: view === 'form' ? (busy ? 'busy' : 'editing') : view === 'sending' ? 'busy' : 'done',
+    state:
+      view === 'form'
+        ? busy
+          ? 'busy'
+          : 'editing'
+        : view === 'sending'
+          ? 'busy'
+          : view === 'error'
+            ? 'failed'
+            : 'done',
     dirty,
     pending: send.isPending,
     onClose

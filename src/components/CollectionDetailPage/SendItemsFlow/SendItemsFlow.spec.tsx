@@ -193,6 +193,8 @@ describe('SendItemsFlow', () => {
 
     await userEvent.click(screen.getByTestId('send-submit'))
     await act(async () => last(send.mutate)[1].onError?.(new Error('reverted')))
+    // The draft is kept for TRY AGAIN, so a reload still warns; back closes like the error dialog's Cancel.
+    expect(fireBeforeUnload()).toBe(true)
     pressBack()
     expect(onClose).toHaveBeenCalledTimes(1)
     await userEvent.click(screen.getByTestId('sale-error-retry'))

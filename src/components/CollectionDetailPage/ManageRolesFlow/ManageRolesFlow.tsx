@@ -46,7 +46,8 @@ export function ManageRolesFlow({ collection, kind, session, onClose }: Props) {
   const dirty = useMemo(() => diffRoles(current, addresses).addresses.length > 0, [current, addresses])
   const busy = social && save.isPending
   const { isDiscardOpen, requestClose, keepEditing } = useDiscardGuard({
-    state: view === 'form' ? (busy ? 'busy' : 'editing') : view === 'saving' ? 'busy' : 'done',
+    state:
+      view === 'form' ? (busy ? 'busy' : 'editing') : view === 'saving' ? 'busy' : view === 'error' ? 'failed' : 'done',
     dirty,
     pending: save.isPending,
     onClose
