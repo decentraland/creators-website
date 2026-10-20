@@ -1019,7 +1019,6 @@
     "add_transfer": "添加其他转移",
     "total": "{count} / {max} 个物品",
     "limit_reached": "您一次最多可以发送 {max} 个物品。请移除部分份数后继续。",
-    "recipients_limit": "您一次最多可以发送 {max} 个物品。",
     "paste_added": "已添加 {count} 位收件人。",
     "paste_skipped": "已添加 {count} 位收件人，跳过 {skipped} 位：无效或已添加。",
     "paste_cut": "已添加 {count} 位收件人。您一次最多可以发送 {max} 个物品。",

@@ -183,7 +183,7 @@ describe('SendItemsFlow', () => {
     expect(screen.getByTestId('transfer-1-item-i2-check')).toBeEnabled()
   })
 
-  it('drops a pasted list of repeats like a typed one, keeps an invalid one with the reason, and stops a list at the send cap', async () => {
+  it('drops a pasted list of repeats like a typed one, keeps an invalid one with the reason, and closes a transfer at the send cap', async () => {
     renderFlow()
     await addRecipient(1, FRIEND)
     await userEvent.click(screen.getByTestId('transfer-1-add-recipient'))
@@ -206,10 +206,14 @@ describe('SendItemsFlow', () => {
       '99 recipients added. You can send up to 100 items at a time.'
     )
 
-    await userEvent.click(screen.getByTestId('transfer-1-add-recipient'))
-    await paste(1, wallets(2, 500).join(' '))
-    expect(screen.getByTestId('transfer-1-recipient-error')).toHaveTextContent(/up to 100 items/i)
-    expect(screen.getAllByTestId('transfer-1-recipient-selected')).toHaveLength(100)
+    // A full transfer takes no more recipients, and another transfer could send nothing.
+    expect(screen.queryByTestId('transfer-1-add-recipient')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('transfer-1-recipient-input')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('send-add-transfer')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByTestId('transfer-1-clear-recipients'))
+    expect(screen.getByTestId('transfer-1-recipient-input')).toBeInTheDocument()
+    expect(screen.getByTestId('send-add-transfer')).toBeInTheDocument()
   })
 
   it('removes a middle transfer without disturbing the ones after it', async () => {

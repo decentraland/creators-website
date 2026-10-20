@@ -1019,7 +1019,6 @@
     "add_transfer": "Add another transfer",
     "total": "{count} / {max} items",
     "limit_reached": "You can send up to {max} items at a time. Remove some copies to continue.",
-    "recipients_limit": "You can send up to {max} items at a time.",
     "paste_added": "{count, plural, one {# recipient} other {# recipients}} added.",
     "paste_skipped": "{count, plural, one {# recipient} other {# recipients}} added, {skipped} skipped: invalid or already added.",
     "paste_cut": "{count, plural, one {# recipient} other {# recipients}} added. You can send up to {max} items at a time.",

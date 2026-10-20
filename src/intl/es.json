@@ -1019,7 +1019,6 @@
     "add_transfer": "Agregar otro envío",
     "total": "{count} / {max} ítems",
     "limit_reached": "Puedes enviar hasta {max} ítems a la vez. Quita algunas copias para continuar.",
-    "recipients_limit": "Puedes enviar hasta {max} ítems a la vez.",
     "paste_added": "{count, plural, one {# destinatario agregado} other {# destinatarios agregados}}.",
     "paste_skipped": "{count, plural, one {# destinatario agregado} other {# destinatarios agregados}}, {skipped} omitidos: inválidos o ya agregados.",
     "paste_cut": "{count, plural, one {# destinatario agregado} other {# destinatarios agregados}}. Puedes enviar hasta {max} ítems a la vez.",

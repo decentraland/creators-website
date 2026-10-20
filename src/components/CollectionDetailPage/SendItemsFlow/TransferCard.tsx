@@ -48,7 +48,9 @@ export function TransferCard({
   const showToast = useNotifications(state => state.showToast)
   const transfer = transfers[index]
   const [adding, setAdding] = useState(false)
-  const showInput = transfer.recipients.length === 0 || adding
+  // Every recipient gets at least one copy, so a transfer at the send cap takes no more.
+  const full = transfer.recipients.length >= MAX_ITEMS_PER_SEND
+  const showInput = !full && (transfer.recipients.length === 0 || adding)
   const testId = `transfer-${index + 1}`
 
   function setRecipients(recipients: string[]) {
@@ -68,7 +70,6 @@ export function TransferCard({
     const { added, invalid, repeated, cut } = parseRecipientList(text, transfer.recipients)
     track('Paste recipients', { collectionId, added: added.length, invalid, repeated, cut })
     if (added.length === 0) {
-      if (cut > 0) return t('send_items_modal.recipients_limit', { max: MAX_ITEMS_PER_SEND })
       if (invalid > 0) return t('sell_item_modal.beneficiary.invalid')
       // Only repeats, dropped like a typed one: the field clears and a toast says why.
       showToast(t('send_items_modal.duplicate_recipient'), { type: 'info' })
@@ -144,15 +145,17 @@ export function TransferCard({
         )}
       </S.Recipients>
       <S.RecipientActions>
-        <S.LinkButton
-          type="button"
-          disabled={showInput}
-          data-testid={`${testId}-add-recipient`}
-          onClick={() => setAdding(true)}
-        >
-          <AddIcon />
-          {t('send_items_modal.add_recipient')}
-        </S.LinkButton>
+        {!full && (
+          <S.LinkButton
+            type="button"
+            disabled={showInput}
+            data-testid={`${testId}-add-recipient`}
+            onClick={() => setAdding(true)}
+          >
+            <AddIcon />
+            {t('send_items_modal.add_recipient')}
+          </S.LinkButton>
+        )}
         {transfer.recipients.length > 1 && (
           <S.LinkButton
             type="button"
