@@ -33,6 +33,7 @@ import * as S from './SendItemsModal.styles'
 export type SendStep = 'select' | 'confirm'
 
 type Props = {
+  collectionId: string
   items: Item[]
   session: Session
   step: SendStep
@@ -47,6 +48,7 @@ type Props = {
 
 /** Two steps: pick recipients and copies per transfer, then review what each wallet ends up with before sending. */
 export function SendItemsModal({
+  collectionId,
   items,
   session,
   step,
@@ -85,6 +87,7 @@ export function SendItemsModal({
             {transfers.map((transfer, index) => (
               <TransferCard
                 key={transfer.key}
+                collectionId={collectionId}
                 index={index}
                 transfers={transfers}
                 items={items}

@@ -4,6 +4,9 @@ import userEvent from '@testing-library/user-event'
 import { ProviderType } from '@dcl/schemas'
 import { type Item } from '~/lib/items'
 import { type Transfer } from '~/lib/mint'
+import { useNotifications } from '~/lib/notifications'
+import { track } from '~/lib/analytics'
+import { Toasts } from '~/components/Toasts'
 import { SendItemsFlow } from './SendItemsFlow'
 import { FRIEND, Providers, collection, item, makeSession } from '../SellItemFlow/testUtils'
 
@@ -15,6 +18,7 @@ vi.mock('~/hooks/useSales', () => ({
   useSendItems: () => send,
   useFriends: () => ({ data: [], isLoading: false })
 }))
+vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
 vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })))
 
 const OTHER = '0x00000000000000000000000000000000000000dd'
@@ -28,7 +32,10 @@ const items = [item, scarce, soldOut, draft]
 function renderFlow(providerType = ProviderType.INJECTED, list = items) {
   const onClose = vi.fn()
   const view = render(
-    <SendItemsFlow collection={collection} items={list} session={makeSession(providerType)} onClose={onClose} />,
+    <>
+      <SendItemsFlow collection={collection} items={list} session={makeSession(providerType)} onClose={onClose} />
+      <Toasts />
+    </>,
     { wrapper: Providers }
   )
   return { onClose, view }
@@ -40,9 +47,18 @@ async function addRecipient(transfer: number, address: string) {
   await userEvent.type(screen.getByTestId(`transfer-${transfer}-recipient-input`), address)
 }
 
+async function paste(transfer: number, text: string) {
+  await userEvent.click(screen.getByTestId(`transfer-${transfer}-recipient-input`))
+  await userEvent.paste(text)
+}
+
+const wallets = (count: number, from = 1) =>
+  Array.from({ length: count }, (_, i) => `0x${String(from + i).padStart(40, '0')}`)
+
 beforeEach(() => {
   send.mutate.mockReset()
   send.isPending = false
+  useNotifications.setState({ toasts: [] })
 })
 
 describe('SendItemsFlow', () => {
@@ -122,6 +138,54 @@ describe('SendItemsFlow', () => {
     expect(screen.getByTestId('send-total')).toHaveAttribute('data-over')
     expect(screen.getByTestId('send-total')).toHaveTextContent(/up to 100/i)
     expect(screen.getByTestId('send-continue')).toBeDisabled()
+  })
+
+  it('takes a pasted sheet column as recipients, says how many joined, and clears them all at once', async () => {
+    renderFlow()
+    await addRecipient(1, FRIEND)
+    await userEvent.click(screen.getByTestId('transfer-1-add-recipient'))
+    await paste(1, `wallet\tname\n${OTHER}\tOne\n${THIRD}\tTwo\n${FRIEND}\tAgain\nnot-an-address\n`)
+    expect(screen.getAllByTestId('transfer-1-recipient-selected')).toHaveLength(3)
+    expect(screen.queryByTestId('transfer-1-recipient-input')).not.toBeInTheDocument()
+    expect(screen.getByTestId('toast')).toHaveTextContent('2 recipients added, 1 skipped: invalid or already added.')
+    expect(vi.mocked(track)).toHaveBeenCalledWith('Paste recipients', {
+      collectionId: collection.id,
+      added: 2,
+      skipped: 1,
+      cut: 0
+    })
+
+    // Three recipients share the scarce item's 2 copies: none can get one.
+    expect(screen.getByTestId('transfer-1-item-i2-check')).toBeDisabled()
+    await userEvent.click(screen.getByTestId('transfer-1-clear-recipients'))
+    expect(screen.queryByTestId('transfer-1-recipient-selected')).not.toBeInTheDocument()
+    expect(screen.getByTestId('transfer-1-recipient-input')).toBeInTheDocument()
+    expect(screen.queryByTestId('transfer-1-clear-recipients')).not.toBeInTheDocument()
+    expect(screen.getByTestId('transfer-1-item-i2-check')).toBeEnabled()
+  })
+
+  it('keeps a pasted list that adds nobody in the field with the reason, and stops a list at the send cap', async () => {
+    renderFlow()
+    await addRecipient(1, FRIEND)
+    await userEvent.click(screen.getByTestId('transfer-1-add-recipient'))
+    await paste(1, `${FRIEND}, ${FRIEND.toUpperCase().replace('0X', '0x')}`)
+    expect(screen.getByTestId('transfer-1-recipient-input')).toHaveValue(
+      `${FRIEND}, ${FRIEND.toUpperCase().replace('0X', '0x')}`
+    )
+    expect(screen.getByTestId('transfer-1-recipient-error')).toHaveTextContent(/already in this transfer/i)
+    expect(screen.queryByTestId('toast')).not.toBeInTheDocument()
+
+    await userEvent.clear(screen.getByTestId('transfer-1-recipient-input'))
+    await paste(1, wallets(120).join('\n'))
+    expect(screen.getAllByTestId('transfer-1-recipient-selected')).toHaveLength(100)
+    expect(screen.getByTestId('toast')).toHaveTextContent(
+      '99 recipients added. You can send up to 100 items at a time.'
+    )
+
+    await userEvent.click(screen.getByTestId('transfer-1-add-recipient'))
+    await paste(1, wallets(2, 500).join(' '))
+    expect(screen.getByTestId('transfer-1-recipient-error')).toHaveTextContent(/up to 100 items/i)
+    expect(screen.getAllByTestId('transfer-1-recipient-selected')).toHaveLength(100)
   })
 
   it('removes a middle transfer without disturbing the ones after it', async () => {

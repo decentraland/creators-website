@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { type Friend } from '~/lib/friends'
 import { BeneficiaryInput } from './BeneficiaryInput'
@@ -65,6 +65,33 @@ describe('BeneficiaryInput', () => {
     renderInput({ friends: undefined, isLoadingFriends: true })
     await userEvent.click(screen.getByTestId('beneficiary-toggle'))
     expect(screen.getByTestId('beneficiary-options')).toHaveTextContent(/loading/i)
+  })
+
+  it('rejects a pasted list unless the field takes lists, which then clear it or keep it with their error', async () => {
+    const list = `${FRIEND}\n0x00000000000000000000000000000000000000dd`
+    const { onChange } = renderInput()
+    await userEvent.click(screen.getByTestId('beneficiary-input'))
+    await userEvent.paste(list)
+    await userEvent.tab()
+    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.getByTestId('beneficiary-error')).toHaveTextContent(/valid wallet address/i)
+    cleanup()
+
+    const onChangeMany = vi
+      .fn<(text: string) => string | null>()
+      .mockReturnValueOnce('Nobody new')
+      .mockReturnValue(null)
+    renderInput({ onChangeMany })
+    await userEvent.click(screen.getByTestId('beneficiary-input'))
+    await userEvent.paste(list)
+    expect(onChangeMany).toHaveBeenLastCalledWith(list)
+    expect(screen.getByTestId('beneficiary-input')).toHaveValue(list.replace('\n', ' '))
+    expect(screen.getByTestId('beneficiary-error')).toHaveTextContent('Nobody new')
+
+    await userEvent.clear(screen.getByTestId('beneficiary-input'))
+    await userEvent.paste(list)
+    expect(screen.getByTestId('beneficiary-input')).toHaveValue('')
+    expect(screen.queryByTestId('beneficiary-error')).not.toBeInTheDocument()
   })
 
   it('shows a chosen friend with their name and avatar, and a pasted address with its profile name', async () => {

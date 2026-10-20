@@ -107,13 +107,19 @@ export const Index = styled.span`
   color: ${theme.colors.white};
 `
 
+export const RecipientActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 24px;
+  margin-left: 32px;
+`
+
 export const LinkButton = styled.button`
   display: inline-flex;
   align-items: center;
   gap: 4px;
   align-self: flex-start;
   min-height: 44px;
-  margin-left: 32px;
   padding: 0;
   border: 0;
   background: none;
