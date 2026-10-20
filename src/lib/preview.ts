@@ -282,3 +282,27 @@ export function buildPreviewOptions(
   if (!emoteSubject) options.emote = emote
   return options
 }
+
+// The Unity renderer refuses scene queries (screenshot, metrics) while a reload is in flight, and its
+// first LOAD can belong to the scene it booted with, before the item sent by UPDATE was applied.
+const PREVIEW_RELOADING_REASON = 'The preview is reloading'
+
+export function isPreviewReloading(error: unknown): boolean {
+  return error instanceof Error && error.message === PREVIEW_RELOADING_REASON
+}
+
+/** Runs a preview query, asking again while the renderer is still reloading, up to `maxWaitMs`. */
+export async function retryWhilePreviewReloads<T>(
+  query: () => Promise<T>,
+  { delayMs = 500, maxWaitMs = 30_000 }: { delayMs?: number; maxWaitMs?: number } = {}
+): Promise<T> {
+  const deadline = Date.now() + maxWaitMs
+  for (;;) {
+    try {
+      return await query()
+    } catch (error) {
+      if (!isPreviewReloading(error) || Date.now() + delayMs > deadline) throw error
+      await new Promise(resolve => setTimeout(resolve, delayMs))
+    }
+  }
+}

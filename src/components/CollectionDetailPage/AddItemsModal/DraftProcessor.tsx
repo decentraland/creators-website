@@ -5,7 +5,7 @@ import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { dataURLToBlob } from '~/lib/media'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { ItemType, type ItemMetrics } from '~/lib/items'
-import { PREVIEW_BASE_URL, toEmoteWithBlobs, toWearableWithBlobs } from '~/lib/preview'
+import { PREVIEW_BASE_URL, retryWhilePreviewReloads, toEmoteWithBlobs, toWearableWithBlobs } from '~/lib/preview'
 import { renderPosedThumbnail } from '~/lib/renderPosedThumbnail'
 import { getThumbnailPose, isAutoThumbnailStale } from '~/lib/thumbnailPose'
 import { type ItemDraft } from './AddItemsModal.state'
@@ -72,17 +72,22 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
           }
         }
 
+        // Waiting out a Unity reload is not a failed attempt: the item is still on its way into the scene.
+        const screenshot = () =>
+          retryWhilePreviewReloads(() => controller.scene.getScreenshot(THUMBNAIL_SIZE, THUMBNAIL_SIZE))
         const metrics: ItemMetrics =
-          draft.type === ItemType.WEARABLE ? await controller.scene.getMetrics() : (draft.metrics ?? {})
+          draft.type === ItemType.WEARABLE
+            ? await retryWhilePreviewReloads(() => controller.scene.getMetrics())
+            : (draft.metrics ?? {})
 
         const patch: Partial<ItemDraft> = { metrics }
         if (!draft.thumbnail || isAutoThumbnailStale(draft)) {
           const thumbnail = pose
             ? await renderPosedThumbnail(draft.contents, draft.model, pose).catch((error: unknown) => {
                 console.warn('Posed thumbnail render failed, falling back to preview screenshot', error)
-                return controller.scene.getScreenshot(THUMBNAIL_SIZE, THUMBNAIL_SIZE)
+                return screenshot()
               })
-            : await controller.scene.getScreenshot(THUMBNAIL_SIZE, THUMBNAIL_SIZE)
+            : await screenshot()
           const thumbnailBlob = dataURLToBlob(thumbnail)
           patch.thumbnail = thumbnail
           patch.isAutoThumbnail = true

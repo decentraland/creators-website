@@ -11,7 +11,7 @@ import { useTranslation } from '~/intl'
 import { MAX_THUMBNAIL_FILE_SIZE, THUMBNAIL_PATH, toMB } from '~/lib/itemFiles'
 import { ItemType } from '~/lib/items'
 import { ImageType, dataURLToBlob, getImageType, resizeImage, blobToDataURL } from '~/lib/media'
-import { PREVIEW_BASE_URL, toEmoteWithBlobs, toWearableWithBlobs } from '~/lib/preview'
+import { PREVIEW_BASE_URL, retryWhilePreviewReloads, toEmoteWithBlobs, toWearableWithBlobs } from '~/lib/preview'
 import * as S from './ThumbnailModal.styles'
 
 const PREVIEW_ID = 'thumbnail-editor'
@@ -109,7 +109,9 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
     void (async () => {
       try {
         if (isEmote) await controller.emote.pause()
-        const screenshot = await controller.scene.getScreenshot(THUMBNAIL_SIZE, THUMBNAIL_SIZE)
+        const screenshot = await retryWhilePreviewReloads(() =>
+          controller.scene.getScreenshot(THUMBNAIL_SIZE, THUMBNAIL_SIZE)
+        )
         onSave(thumbnailPatchFromDataURL(contents!, screenshot))
       } catch (err) {
         setError(errorText(err))
