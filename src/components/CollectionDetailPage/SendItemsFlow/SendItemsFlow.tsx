@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from '~/intl'
 import sentArt from '~/assets/send-success.png'
-import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
+import { useDiscardGuard } from '~/hooks/useDiscardGuard'
 import { useSendItems } from '~/hooks/useSales'
 import { isSocialLogin, type Session } from '~/lib/auth'
-import { installBackGuard } from '~/lib/backGuard'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
 import { createTransfer, hasSendDraft, isSendableItem, type TransferDraft } from '~/lib/mint'
@@ -40,7 +39,6 @@ export function SendItemsFlow({ collection, items, session, onClose }: Props) {
   const [phase, setPhase] = useState<Phase>('confirm')
   const [step, setStep] = useState<SendStep>('select')
   const [transfers, setTransfers] = useState<TransferDraft[]>(() => [createTransfer()])
-  const [isDiscardOpen, setDiscardOpen] = useState(false)
   const [reason, setReason] = useState<SellFailureReason | null>(null)
   // Bumped when the creator backs out of a wallet prompt, so that attempt's outcome is ignored.
   const attempt = useRef(0)
@@ -48,18 +46,12 @@ export function SendItemsFlow({ collection, items, session, onClose }: Props) {
   const send = useSendItems(session)
   const dirty = useMemo(() => hasSendDraft(transfers), [transfers])
   const busy = social && send.isPending
-  useBeforeUnloadGuard(dirty || send.isPending)
-
-  function requestClose() {
-    if (busy || isDiscardOpen) return
-    if (dirty) setDiscardOpen(true)
-    else onClose()
-  }
-
-  // Browser back would silently unmount the dialog; the guard absorbs it and asks about unsaved changes instead.
-  const requestCloseRef = useRef(requestClose)
-  requestCloseRef.current = requestClose
-  useEffect(() => installBackGuard(() => requestCloseRef.current()), [])
+  const { isDiscardOpen, requestClose, keepEditing } = useDiscardGuard({
+    state: view === 'form' ? (busy ? 'busy' : 'editing') : view === 'sending' ? 'busy' : 'done',
+    dirty,
+    pending: send.isPending,
+    onClose
+  })
 
   function submit() {
     const id = ++attempt.current
@@ -100,13 +92,9 @@ export function SendItemsFlow({ collection, items, session, onClose }: Props) {
             <ConfirmModal
               title={t('send_items_modal.discard.title')}
               description={t('send_items_modal.discard.description')}
-              onClose={() => setDiscardOpen(false)}
+              onClose={keepEditing}
               cancel={{ label: t('send_items_modal.discard.leave'), onClick: onClose, testId: 'discard-send-leave' }}
-              confirm={{
-                label: t('send_items_modal.discard.keep'),
-                onClick: () => setDiscardOpen(false),
-                testId: 'discard-send-keep'
-              }}
+              confirm={{ label: t('send_items_modal.discard.keep'), onClick: keepEditing, testId: 'discard-send-keep' }}
               testId="discard-send-modal"
             />
           )}

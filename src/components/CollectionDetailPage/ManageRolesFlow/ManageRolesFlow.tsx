@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from '~/intl'
-import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
+import { useDiscardGuard } from '~/hooks/useDiscardGuard'
 import { useRoleAddresses, useSetCollectionRoles } from '~/hooks/useCollectionRoles'
 import { useFriends } from '~/hooks/useSales'
 import { isSocialLogin, type Session } from '~/lib/auth'
-import { installBackGuard } from '~/lib/backGuard'
 import { type Collection } from '~/lib/collections'
 import { diffRoles, type RoleKind } from '~/lib/collectionRoles'
 import { toSellItemError, type SellFailureReason } from '~/lib/sales'
@@ -39,7 +38,6 @@ export function ManageRolesFlow({ collection, kind, session, onClose }: Props) {
   const [view, setView] = useState<View>('form')
   const [phase, setPhase] = useState<Phase>('confirm')
   const [addresses, setAddresses] = useState(current)
-  const [isDiscardOpen, setDiscardOpen] = useState(false)
   const [reason, setReason] = useState<SellFailureReason | null>(null)
   // Bumped when the creator backs out of a wallet prompt, so that attempt's outcome is ignored.
   const attempt = useRef(0)
@@ -47,18 +45,12 @@ export function ManageRolesFlow({ collection, kind, session, onClose }: Props) {
   const save = useSetCollectionRoles(session)
   const dirty = useMemo(() => diffRoles(current, addresses).addresses.length > 0, [current, addresses])
   const busy = social && save.isPending
-  useBeforeUnloadGuard(dirty || save.isPending)
-
-  function requestClose() {
-    if (busy || isDiscardOpen) return
-    if (dirty) setDiscardOpen(true)
-    else onClose()
-  }
-
-  // Browser back would silently unmount the dialog; the guard absorbs it and asks about unsaved changes instead.
-  const requestCloseRef = useRef(requestClose)
-  requestCloseRef.current = requestClose
-  useEffect(() => installBackGuard(() => requestCloseRef.current()), [])
+  const { isDiscardOpen, requestClose, keepEditing } = useDiscardGuard({
+    state: view === 'form' ? (busy ? 'busy' : 'editing') : view === 'saving' ? 'busy' : 'done',
+    dirty,
+    pending: save.isPending,
+    onClose
+  })
 
   function submit() {
     const id = ++attempt.current
@@ -101,11 +93,11 @@ export function ManageRolesFlow({ collection, kind, session, onClose }: Props) {
             <ConfirmModal
               title={t('manage_roles_modal.discard.title')}
               description={t('manage_roles_modal.discard.description')}
-              onClose={() => setDiscardOpen(false)}
+              onClose={keepEditing}
               cancel={{ label: t('manage_roles_modal.discard.leave'), onClick: onClose, testId: 'discard-roles-leave' }}
               confirm={{
                 label: t('manage_roles_modal.discard.keep'),
-                onClick: () => setDiscardOpen(false),
+                onClick: keepEditing,
                 testId: 'discard-roles-keep'
               }}
               testId="discard-roles-modal"
