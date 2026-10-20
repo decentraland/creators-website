@@ -6,12 +6,33 @@ import { TranslationProvider } from '~/intl'
 import { config } from '~/config'
 import { openExternal } from '~/lib/navigation'
 import { sendOverviewTrack } from '~/lib/overviewSegment'
+import { track } from '~/lib/analytics'
 import { NavBar } from './NavBar'
 
 // Stands in for the ui2 navbar: surfaces the balance chips the real one renders from these props.
 vi.mock('~/components/TopNav', () => ({
-  TopNav: ({ shopCreditsBalance, onClickShopCredits, manaBalances, onClickBalance, onClickSignIn }: NavbarProps) => (
+  TopNav: ({
+    shopCreditsBalance,
+    onClickShopCredits,
+    manaBalances,
+    onClickBalance,
+    onClickSignIn,
+    selectedChain,
+    chains,
+    onSelectChain
+  }: NavbarProps) => (
     <div data-testid="topnav">
+      {selectedChain !== undefined &&
+        chains?.map(chain => (
+          <button
+            key={chain}
+            data-testid={`topnav-chain-${chain}`}
+            data-selected={chain === selectedChain}
+            onClick={() => onSelectChain?.(chain)}
+          >
+            {chain}
+          </button>
+        ))}
       <button data-testid="topnav-sign-in" onClick={onClickSignIn}>
         sign in
       </button>
@@ -29,7 +50,10 @@ vi.mock('~/components/TopNav', () => ({
   )
 }))
 
-const wallet = vi.hoisted(() => ({ session: undefined as { address: string } | undefined, signIn: vi.fn() }))
+const wallet = vi.hoisted(() => ({
+  session: undefined as { address: string; providerType?: string } | undefined,
+  signIn: vi.fn()
+}))
 vi.mock('~/store/wallet', () => ({
   useWallet: () => ({
     session: wallet.session,
@@ -54,6 +78,23 @@ vi.mock('~/hooks/useBalances', () => ({
 }))
 
 vi.mock('~/lib/navigation', () => ({ openExternal: vi.fn() }))
+vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
+vi.mock('~/lib/auth', () => ({
+  isSocialLogin: (session: { providerType?: string }) => session.providerType === 'magic'
+}))
+
+const walletChain = vi.hoisted(() => ({
+  hook: vi.fn(),
+  switchTo: vi.fn()
+}))
+vi.mock('~/hooks/useWalletChain', () => ({
+  useWalletChain: (session: unknown) => {
+    walletChain.hook(session)
+    return session
+      ? { chainId: 80002, chains: [80002, 11155111], switchTo: walletChain.switchTo }
+      : { chainId: undefined, chains: [80002, 11155111], switchTo: walletChain.switchTo }
+  }
+}))
 vi.mock('~/lib/overviewSegment', () => ({ sendOverviewTrack: vi.fn(), sendOverviewPage: vi.fn() }))
 
 const committee = vi.hoisted(() => ({ isCurator: false }))
@@ -67,6 +108,9 @@ beforeEach(() => {
   vi.mocked(openExternal).mockReset()
   vi.mocked(sendOverviewTrack).mockClear()
   wallet.signIn.mockClear()
+  walletChain.hook.mockClear()
+  walletChain.switchTo.mockClear()
+  vi.mocked(track).mockClear()
 })
 
 function renderNavBar(path = '/collections', props: { subnav?: boolean } = {}) {
@@ -177,6 +221,29 @@ describe('NavBar', () => {
     expect(openExternal).toHaveBeenCalledWith(`${config.get('SHOP_URL')}/credits`)
     fireEvent.click(screen.getByTestId('topnav-mana'))
     expect(openExternal).toHaveBeenCalledWith(config.get('ACCOUNT_URL'))
+  })
+
+  it('lets a creator with a wallet see and change the network from the profile panel', () => {
+    wallet.session = { address: '0xabc', providerType: 'injected' }
+    renderNavBar()
+    expect(walletChain.hook).toHaveBeenCalledWith(expect.objectContaining({ address: '0xabc' }))
+    expect(screen.getByTestId('topnav-chain-80002')).toHaveAttribute('data-selected', 'true')
+    expect(screen.getByTestId('topnav-chain-11155111')).toHaveAttribute('data-selected', 'false')
+
+    fireEvent.click(screen.getByTestId('topnav-chain-11155111'))
+    expect(walletChain.switchTo).toHaveBeenCalledWith(11155111)
+    expect(track).toHaveBeenCalledWith('Change Network', { from_chain_id: 80002, to_chain_id: 11155111 })
+  })
+
+  it('shows no network pill to a social login, which has none to choose', () => {
+    wallet.session = { address: '0xabc', providerType: 'magic' }
+    renderNavBar()
+    expect(screen.queryByTestId(/^topnav-chain-/)).toBeNull()
+  })
+
+  it('shows no network pill while signed out', () => {
+    renderNavBar()
+    expect(screen.queryByTestId(/^topnav-chain-/)).toBeNull()
   })
 
   it('shows no balance chips until each balance has loaded', () => {
