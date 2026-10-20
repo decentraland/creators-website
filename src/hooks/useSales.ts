@@ -264,7 +264,7 @@ export function useSendItems(session: Session | null) {
     },
     onSuccess: (_, { collection, transfers }) => {
       const copies = copiesPerItem(transfers)
-      track('Mint items', { collectionId: collection.id, ...sendBatchSize(transfers) })
+      track('Mint items', { collectionId: collection.id, ...sendBatchSize(transfers, session?.address) })
       queryClient.setQueryData<Item[]>(allCollectionItemsKey(session?.address, collection.id), current =>
         current?.map(item =>
           copies[item.id] ? { ...item, totalSupply: (item.totalSupply ?? 0) + copies[item.id] } : item
@@ -272,7 +272,7 @@ export function useSendItems(session: Session | null) {
       )
     },
     onError: (error, { collection, transfers }) => {
-      const size = sendBatchSize(transfers)
+      const size = sendBatchSize(transfers, session?.address)
       const code = errorCode(error)
       track('Mint items error', { collectionId: collection.id, error: code, ...size })
       // A wallet cancel is the creator's choice; anything else (revert, relayer refusal, RPC) is ours to see.

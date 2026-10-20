@@ -1,16 +1,22 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { type Friend } from '~/lib/friends'
 import { BeneficiaryInput } from './BeneficiaryInput'
-import { FRIEND, Providers } from './testUtils'
+import { ADDRESS, FRIEND, Providers } from './testUtils'
 
+// A fresh Response per call: a body can only be read once.
 vi.stubGlobal(
   'fetch',
-  vi.fn().mockResolvedValue(
-    new Response(JSON.stringify({ avatars: [{ name: 'Resolved', avatar: { snapshots: { face256: 'face.png' } } }] }), {
-      status: 200
-    })
+  vi.fn(() =>
+    Promise.resolve(
+      new Response(
+        JSON.stringify({ avatars: [{ name: 'Resolved', avatar: { snapshots: { face256: 'face.png' } } }] }),
+        {
+          status: 200
+        }
+      )
+    )
   )
 )
 
@@ -65,6 +71,40 @@ describe('BeneficiaryInput', () => {
     renderInput({ friends: undefined, isLoadingFriends: true })
     await userEvent.click(screen.getByTestId('beneficiary-toggle'))
     expect(screen.getByTestId('beneficiary-options')).toHaveTextContent(/loading/i)
+  })
+
+  it('offers the signed-in wallet first as "You", even without friends, and drops it once chosen', async () => {
+    const { onChange } = renderInput({ self: ADDRESS, friends: [] })
+    await userEvent.click(screen.getByTestId('beneficiary-toggle'))
+    const options = screen.getAllByTestId('beneficiary-option')
+    expect(options).toHaveLength(1)
+    expect(options[0]).toHaveTextContent('You')
+    expect(await screen.findByText('Resolved')).toBeInTheDocument()
+
+    await userEvent.type(screen.getByTestId('beneficiary-input'), 'yo')
+    expect(screen.getAllByTestId('beneficiary-option')).toHaveLength(1)
+    await userEvent.click(screen.getByTestId('beneficiary-option'))
+    expect(onChange).toHaveBeenCalledWith(ADDRESS)
+
+    cleanup()
+    renderInput({ self: ADDRESS, exclude: [ADDRESS] })
+    await userEvent.click(screen.getByTestId('beneficiary-toggle'))
+    const rest = screen.getAllByTestId('beneficiary-option')
+    expect(rest).toHaveLength(2)
+    expect(rest[0]).toHaveTextContent('Blackbeard')
+  })
+
+  it('leaves excluded addresses out of the list and drops one typed in without an error', async () => {
+    const onExcluded = vi.fn()
+    const { onChange } = renderInput({ exclude: [FRIEND], onExcluded })
+    await userEvent.click(screen.getByTestId('beneficiary-toggle'))
+    expect(screen.getAllByTestId('beneficiary-option')).toHaveLength(1)
+
+    await userEvent.type(screen.getByTestId('beneficiary-input'), FRIEND.toUpperCase().replace('0X', '0x'))
+    expect(onExcluded).toHaveBeenCalledWith(FRIEND)
+    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('beneficiary-error')).not.toBeInTheDocument()
+    expect(screen.getByTestId('beneficiary-input')).toHaveValue('')
   })
 
   it('shows a chosen friend with their name and avatar, and a pasted address with its profile name', async () => {

@@ -18,6 +18,11 @@ type Props = {
   placeholder?: string
   /** Rejects an address already used, with this copy under the field. */
   duplicateError?: (address: string) => string | null
+  /** The signed-in wallet (lowercased): listed first as "You". */
+  self?: string
+  /** Addresses already chosen (lowercased): left out of the list; one typed in is dropped through `onExcluded`. */
+  exclude?: string[]
+  onExcluded?: (address: string) => void
   /** Accessible name of the chip's ✕; "Clear beneficiary" unless the chip stands for something else. */
   clearLabel?: string
   /** `compact`: the chosen address as a dark pill with a shortened address (address lists), not a form field. */
@@ -37,6 +42,9 @@ export function BeneficiaryInput({
   disabled,
   placeholder,
   duplicateError,
+  self,
+  exclude,
+  onExcluded,
   clearLabel,
   variant = 'field',
   testId = 'beneficiary'
@@ -48,29 +56,58 @@ export function BeneficiaryInput({
   const [active, setActive] = useState(0)
   const [touched, setTouched] = useState(false)
 
-  const selectedFriend = useMemo(() => friends?.find(friend => friend.address === value), [friends, value])
+  const selfProfile = useProfile(self)
+  const youLabel = t('sell_item_modal.beneficiary.you')
+  const entries = useMemo<Friend[]>(() => {
+    const list = friends ?? []
+    if (!self) return list
+    const me: Friend = {
+      address: self,
+      name: selfProfile.data?.name ?? shortenAddress(self),
+      hasClaimedName: selfProfile.data?.hasClaimedName ?? false,
+      avatarUrl: selfProfile.data?.avatar?.snapshots?.face256 ?? ''
+    }
+    return [me, ...list.filter(friend => friend.address !== self)]
+  }, [friends, self, selfProfile.data])
+
+  const selectedFriend = useMemo(() => entries.find(friend => friend.address === value), [entries, value])
   // A pasted address that isn't a friend still gets a name and avatar from its profile, when it has one.
   const profile = useProfile(value && !selectedFriend ? value : undefined)
 
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    const list = friends ?? []
+    const list = exclude?.length ? entries.filter(friend => !exclude.includes(friend.address)) : entries
     if (!needle) return list
-    return list.filter(friend => friend.name.toLowerCase().includes(needle) || friend.address.includes(needle))
-  }, [friends, query])
+    return list.filter(
+      friend =>
+        friend.name.toLowerCase().includes(needle) ||
+        friend.address.includes(needle) ||
+        (friend.address === self && youLabel.toLowerCase().includes(needle))
+    )
+  }, [entries, exclude, query, self, youLabel])
 
   const trimmed = query.trim()
   const duplicate = isValidAddress(trimmed) ? duplicateError?.(trimmed.toLowerCase()) : null
   const invalid = touched && trimmed !== '' && !isValidAddress(trimmed)
-  // Without friends to pick from the field is a plain address input.
-  const withFriends = isLoadingFriends || (friends?.length ?? 0) > 0
+  // Without anyone to pick from the field is a plain address input.
+  const withFriends = isLoadingFriends || entries.length > 0
 
-  function commit(address: string) {
-    if (duplicateError?.(address.toLowerCase())) return
-    onChange(address.toLowerCase())
+  function reset() {
     setQuery('')
     setOpen(false)
     setTouched(false)
+  }
+
+  function commit(address: string) {
+    const normalized = address.toLowerCase()
+    if (exclude?.includes(normalized)) {
+      onExcluded?.(normalized)
+      reset()
+      return
+    }
+    if (duplicateError?.(normalized)) return
+    onChange(normalized)
+    reset()
   }
 
   function handleInput(next: string) {
@@ -111,6 +148,7 @@ export function BeneficiaryInput({
       <S.Box data-testid={`${testId}-selected`} data-variant={variant} data-disabled={disabled || undefined}>
         {avatar ? <S.Avatar src={avatar} alt="" /> : <S.AvatarFallback aria-hidden />}
         <S.ChipName data-testid={`${testId}-name`}>{known ?? shortenAddress(value)}</S.ChipName>
+        {value === self && <S.YouTag data-testid={`${testId}-you`}>{youLabel}</S.YouTag>}
         {/* Without a name the compact pill would repeat the shortened address, so it shows it once. */}
         {(known || !compact) && (
           <S.ChipAddress title={value}>({compact ? shortenAddress(value) : value})</S.ChipAddress>
@@ -191,6 +229,7 @@ export function BeneficiaryInput({
                 >
                   {friend.avatarUrl ? <S.Avatar src={friend.avatarUrl} alt="" /> : <S.AvatarFallback aria-hidden />}
                   <span>{friend.name}</span>
+                  {friend.address === self && <S.YouTag>{youLabel}</S.YouTag>}
                   <S.OptionAddress>{shortenAddress(friend.address)}</S.OptionAddress>
                 </S.Option>
               ))
