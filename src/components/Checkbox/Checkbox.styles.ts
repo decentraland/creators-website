@@ -2,6 +2,7 @@ import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
 
 export const CheckboxRow = styled.label`
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -10,7 +11,8 @@ export const CheckboxRow = styled.label`
   color: ${theme.colors.softWhite};
   cursor: pointer;
 
-  /* Visually hidden but still the real, clickable control (no pointer-events: none). */
+  /* Visually hidden but still the real, focusable control (no pointer-events: none). Contained by the
+     label above: unpositioned, it would escape a scrolling parent and focus would scroll the dialog instead. */
   & input {
     position: absolute;
     width: 1px;
