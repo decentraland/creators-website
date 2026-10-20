@@ -456,6 +456,7 @@
       "placeholder": "Pega o selecciona el ID de usuario del beneficiario",
       "open": "Mostrar amigos",
       "clear": "Quitar beneficiario",
+      "you": "Tú",
       "friends_loading": "Cargando tus amigos…",
       "no_matches": "Ningún amigo coincide. Pega una dirección de wallet (0x…) en su lugar.",
       "invalid": "Ingresa una dirección de wallet válida (0x…)."

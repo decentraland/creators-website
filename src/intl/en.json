@@ -456,6 +456,7 @@
       "placeholder": "Copy or select beneficiary User ID",
       "open": "Show friends",
       "clear": "Clear beneficiary",
+      "you": "You",
       "friends_loading": "Loading your friends…",
       "no_matches": "No friends match. Paste a wallet address (0x…) instead.",
       "invalid": "Enter a valid wallet address (0x…)."

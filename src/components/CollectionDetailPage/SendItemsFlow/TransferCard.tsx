@@ -26,6 +26,8 @@ type Props = {
   items: Item[]
   friends: Friend[] | undefined
   isLoadingFriends: boolean
+  /** The signed-in wallet, offered first in the recipient list. */
+  self: string
   onChange: (transfer: Transfer) => void
   onRemove?: () => void
 }
@@ -38,6 +40,7 @@ export function TransferCard({
   items,
   friends,
   isLoadingFriends,
+  self,
   onChange,
   onRemove
 }: Props) {
@@ -62,15 +65,19 @@ export function TransferCard({
 
   /** A pasted list: every new address joins the transfer, and a toast says how many did (or why none could). */
   function addRecipients(text: string): string | null {
-    const { added, skipped, cut } = parseRecipientList(text, transfer.recipients)
-    track('Paste recipients', { collectionId, added: added.length, skipped, cut })
+    const { added, invalid, repeated, cut } = parseRecipientList(text, transfer.recipients)
+    track('Paste recipients', { collectionId, added: added.length, invalid, repeated, cut })
     if (added.length === 0) {
       if (cut > 0) return t('send_items_modal.recipients_limit', { max: MAX_ITEMS_PER_SEND })
-      return t(skipped > 0 ? 'send_items_modal.duplicate_recipient' : 'sell_item_modal.beneficiary.invalid')
+      if (invalid > 0) return t('sell_item_modal.beneficiary.invalid')
+      // Only repeats, dropped like a typed one: the field clears and a toast says why.
+      showToast(t('send_items_modal.duplicate_recipient'), { type: 'info' })
+      return null
     }
     setRecipients([...transfer.recipients, ...added])
     setAdding(false)
     const count = added.length
+    const skipped = invalid + repeated
     if (cut > 0) showToast(t('send_items_modal.paste_cut', { count, max: MAX_ITEMS_PER_SEND }), { type: 'warn' })
     else if (skipped > 0) showToast(t('send_items_modal.paste_skipped', { count, skipped }), { type: 'warn' })
     else showToast(t('send_items_modal.paste_added', { count }))
@@ -109,6 +116,7 @@ export function TransferCard({
               onChange={() => setRecipients(transfer.recipients.filter(other => other !== address))}
               friends={friends}
               isLoadingFriends={isLoadingFriends}
+              self={self}
               variant="compact"
               testId={`${testId}-recipient`}
             />
@@ -126,9 +134,9 @@ export function TransferCard({
               friends={friends}
               isLoadingFriends={isLoadingFriends}
               placeholder={t('send_items_modal.recipient_placeholder')}
-              duplicateError={address =>
-                transfer.recipients.includes(address) ? t('send_items_modal.duplicate_recipient') : null
-              }
+              self={self}
+              exclude={transfer.recipients}
+              onExcluded={() => showToast(t('send_items_modal.duplicate_recipient'), { type: 'info' })}
               onChangeMany={addRecipients}
               testId={`${testId}-recipient`}
             />

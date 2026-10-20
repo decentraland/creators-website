@@ -31,7 +31,7 @@ export function canSendCollectionItems(collection: Collection, address: string |
   return collection.owner.toLowerCase() === target || collection.minters.some(m => m.toLowerCase() === target)
 }
 
-export type RecipientList = { added: string[]; skipped: number; cut: number }
+export type RecipientList = { added: string[]; invalid: number; repeated: number; cut: number }
 
 // An address on its own: a longer hex run (a transaction hash) is not forty characters of one.
 const ADDRESS_TOKEN = /(?<![0-9a-zA-Z])0x[0-9a-fA-F]{40}(?![0-9a-zA-Z])/g
@@ -43,25 +43,26 @@ export function holdsAddresses(text: string): boolean {
 
 /**
  * The wallets in a pasted list (a spreadsheet column, comma or line separated, whatever else is around them):
- * every address token, lowercased and deduped. `skipped` counts the invalid ones (a wrong checksum) and the
- * repeats, including those already in `existing`; `cut` the valid ones left out to keep `existing` plus
- * `added` within `max`.
+ * every address token, lowercased and deduped. `invalid` counts the tokens with a wrong checksum, `repeated`
+ * the repeats, including those already in `existing`, and `cut` the valid ones left out to keep `existing`
+ * plus `added` within `max`.
  */
 export function parseRecipientList(text: string, existing: string[] = [], max = MAX_ITEMS_PER_SEND): RecipientList {
   const seen = new Set(existing.map(address => address.toLowerCase()))
   const added: string[] = []
-  let skipped = 0
+  let invalid = 0
+  let repeated = 0
   for (const token of text.match(ADDRESS_TOKEN) ?? []) {
     const address = token.toLowerCase()
-    if (!isValidAddress(token) || seen.has(address)) {
-      skipped++
-      continue
+    if (!isValidAddress(token)) invalid++
+    else if (seen.has(address)) repeated++
+    else {
+      seen.add(address)
+      added.push(address)
     }
-    seen.add(address)
-    added.push(address)
   }
   const room = Math.max(0, max - existing.length)
-  return { added: added.slice(0, room), skipped, cut: Math.max(0, added.length - room) }
+  return { added: added.slice(0, room), invalid, repeated, cut: Math.max(0, added.length - room) }
 }
 
 /** Published and approved on chain: sold-out items are listed disabled, so they stay sendable here. */

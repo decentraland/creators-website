@@ -456,6 +456,7 @@
       "placeholder": "复制或选择收款人的用户 ID",
       "open": "显示好友",
       "clear": "清除收款人",
+      "you": "您",
       "friends_loading": "正在加载您的好友……",
       "no_matches": "没有匹配的好友。您也可以粘贴钱包地址（0x……）。",
       "invalid": "请输入有效的钱包地址（0x……）。"

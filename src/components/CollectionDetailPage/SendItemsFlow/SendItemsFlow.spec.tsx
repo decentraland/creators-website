@@ -80,7 +80,7 @@ describe('SendItemsFlow', () => {
     expect(screen.getByTestId('send-total')).toHaveTextContent('1 / 100 items')
   })
 
-  it('steps the copies within the live stock, unchecking at zero, and blocks a repeated recipient', async () => {
+  it('steps the copies within the live stock, unchecking at zero, and skips a repeated recipient with a note', async () => {
     renderFlow()
     await addRecipient(1, FRIEND)
     await userEvent.click(screen.getByTestId('transfer-1-item-i2-plus'))
@@ -99,14 +99,32 @@ describe('SendItemsFlow', () => {
     await userEvent.click(screen.getByTestId('transfer-1-item-i2-plus'))
     await userEvent.click(screen.getByTestId('transfer-1-add-recipient'))
     await addRecipient(1, FRIEND)
-    expect(screen.getByTestId('transfer-1-recipient-error')).toHaveTextContent(/already/i)
     expect(screen.getAllByTestId('transfer-1-recipient-selected')).toHaveLength(1)
+    expect(screen.queryByTestId('transfer-1-recipient-error')).not.toBeInTheDocument()
+    expect(screen.getByTestId('transfer-1-recipient-input')).toHaveValue('')
+    expect(useNotifications.getState().toasts).toEqual([
+      expect.objectContaining({ type: 'info', message: expect.stringMatching(/already/i) })
+    ])
 
-    await userEvent.clear(screen.getByTestId('transfer-1-recipient-input'))
     await addRecipient(1, OTHER)
     expect(screen.getAllByTestId('transfer-1-recipient-selected')).toHaveLength(2)
     expect(screen.getByTestId('transfer-1-item-i2-amount')).toHaveValue('1')
     expect(screen.getByTestId('send-total')).toHaveTextContent('2 / 100 items')
+  })
+
+  it('offers the creator their own wallet first and takes it out of the list once chosen', async () => {
+    renderFlow()
+    await userEvent.click(screen.getByTestId('transfer-1-recipient-toggle'))
+    const options = screen.getAllByTestId('transfer-1-recipient-option')
+    expect(options).toHaveLength(1)
+    expect(options[0]).toHaveTextContent('You')
+    await userEvent.click(options[0])
+    expect(screen.getByTestId('transfer-1-recipient-you')).toBeInTheDocument()
+    expect(screen.getByTestId('transfer-1-recipient-selected')).toHaveTextContent('0x0000…00aa')
+
+    // With no friends and "You" already in, nobody is left to pick: the next field is a plain input.
+    await userEvent.click(screen.getByTestId('transfer-1-add-recipient'))
+    expect(screen.queryByTestId('transfer-1-recipient-toggle')).not.toBeInTheDocument()
   })
 
   it('takes a typed count, digits only and clamped to the stock, and unchecks an emptied one', async () => {
@@ -151,7 +169,8 @@ describe('SendItemsFlow', () => {
     expect(vi.mocked(track)).toHaveBeenCalledWith('Paste recipients', {
       collectionId: collection.id,
       added: 2,
-      skipped: 1,
+      invalid: 0,
+      repeated: 1,
       cut: 0
     })
 
@@ -164,21 +183,26 @@ describe('SendItemsFlow', () => {
     expect(screen.getByTestId('transfer-1-item-i2-check')).toBeEnabled()
   })
 
-  it('keeps a pasted list that adds nobody in the field with the reason, and stops a list at the send cap', async () => {
+  it('drops a pasted list of repeats like a typed one, keeps an invalid one with the reason, and stops a list at the send cap', async () => {
     renderFlow()
     await addRecipient(1, FRIEND)
     await userEvent.click(screen.getByTestId('transfer-1-add-recipient'))
+    // Only repeats: dropped like a typed one, with the info toast.
     await paste(1, `${FRIEND}, ${FRIEND.toUpperCase().replace('0X', '0x')}`)
-    expect(screen.getByTestId('transfer-1-recipient-input')).toHaveValue(
-      `${FRIEND}, ${FRIEND.toUpperCase().replace('0X', '0x')}`
-    )
-    expect(screen.getByTestId('transfer-1-recipient-error')).toHaveTextContent(/already in this transfer/i)
-    expect(screen.queryByTestId('toast')).not.toBeInTheDocument()
+    expect(screen.getByTestId('transfer-1-recipient-input')).toHaveValue('')
+    expect(screen.getByTestId('toast')).toHaveAttribute('data-type', 'info')
+    expect(screen.getByTestId('toast')).toHaveTextContent(/already in this transfer/i)
+    expect(screen.getAllByTestId('transfer-1-recipient-selected')).toHaveLength(1)
+
+    // A bad checksum among them is an invalid address, kept in the field.
+    await paste(1, `0xD8dA6bf26964af9d7eed9e03e53415d37aa96045 ${FRIEND}`)
+    expect(screen.getByTestId('transfer-1-recipient-error')).toHaveTextContent(/valid wallet address/i)
+    expect(screen.getAllByTestId('transfer-1-recipient-selected')).toHaveLength(1)
 
     await userEvent.clear(screen.getByTestId('transfer-1-recipient-input'))
     await paste(1, wallets(120).join('\n'))
     expect(screen.getAllByTestId('transfer-1-recipient-selected')).toHaveLength(100)
-    expect(screen.getByTestId('toast')).toHaveTextContent(
+    expect(screen.getAllByTestId('toast').slice(-1)[0]).toHaveTextContent(
       '99 recipients added. You can send up to 100 items at a time.'
     )
 

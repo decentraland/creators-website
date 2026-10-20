@@ -93,6 +93,7 @@ export function SendItemsModal({
                 items={items}
                 friends={friends.data}
                 isLoadingFriends={friends.isLoading}
+                self={session.address.toLowerCase()}
                 onChange={transfer => replace(index, transfer)}
                 onRemove={transfers.length > 1 ? () => onTransfers(transfers.filter((_, i) => i !== index)) : undefined}
               />
