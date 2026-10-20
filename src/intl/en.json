@@ -1000,6 +1000,12 @@
     "linkEthics": "Code of Ethics"
   },
   "send_items_modal": {
+    "discard": {
+      "title": "Discard this send?",
+      "description": "If you leave now, the recipients and copies you entered won’t be kept.",
+      "leave": "Discard",
+      "keep": "Keep editing"
+    },
     "title": "Send Items",
     "step_select": "Select Items",
     "step_confirm": "Confirm Items",

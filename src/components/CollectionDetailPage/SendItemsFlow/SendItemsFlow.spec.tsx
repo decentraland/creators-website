@@ -144,6 +144,24 @@ describe('SendItemsFlow', () => {
     expect(screen.getByTestId('send-continue')).toBeDisabled()
   })
 
+  it('closes straight away with nothing entered, but asks before discarding a recipient or a copy', async () => {
+    const { onClose } = renderFlow()
+    await userEvent.click(screen.getByTestId('send-cancel'))
+    expect(onClose).toHaveBeenCalledTimes(1)
+
+    await addRecipient(1, OTHER)
+    await userEvent.keyboard('{Escape}')
+    expect(screen.getByTestId('discard-send-modal-title')).toHaveTextContent(/discard/i)
+    await userEvent.click(screen.getByTestId('discard-send-keep'))
+    expect(screen.queryByTestId('discard-send-modal')).not.toBeInTheDocument()
+    expect(screen.getByTestId('transfer-1-recipient-selected')).toBeInTheDocument()
+    expect(onClose).toHaveBeenCalledTimes(1)
+
+    await userEvent.click(screen.getByTestId('send-items-modal-close'))
+    await userEvent.click(screen.getByTestId('discard-send-leave'))
+    expect(onClose).toHaveBeenCalledTimes(2)
+  })
+
   it('removes a middle transfer without disturbing the ones after it', async () => {
     renderFlow()
     await addRecipient(1, FRIEND)

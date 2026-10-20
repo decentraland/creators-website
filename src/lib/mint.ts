@@ -46,6 +46,13 @@ export function getStock(item: Item): { available: number; total: number } {
   return { available: sales.maxSupply - sales.minted, total: sales.maxSupply }
 }
 
+/** Something was entered: a recipient or a copy in any transfer. Closing the dialog then asks first. */
+export function hasSendDraft(transfers: Transfer[]): boolean {
+  return transfers.some(
+    ({ recipients, amounts }) => recipients.length > 0 || Object.values(amounts).some(amount => amount > 0)
+  )
+}
+
 export function totalCopies(transfers: Transfer[]): number {
   return transfers.reduce(
     (sum, { recipients, amounts }) => sum + recipients.length * Object.values(amounts).reduce((a, b) => a + b, 0),
