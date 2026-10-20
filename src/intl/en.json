@@ -455,6 +455,7 @@
       "self": "I’m the beneficiary",
       "placeholder": "Copy or select beneficiary User ID",
       "open": "Show friends",
+      "open_with_self": "Show you and your friends",
       "clear": "Clear beneficiary",
       "you": "You",
       "friends_loading": "Loading your friends…",

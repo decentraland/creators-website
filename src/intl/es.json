@@ -455,6 +455,7 @@
       "self": "Yo soy el beneficiario",
       "placeholder": "Pega o selecciona el ID de usuario del beneficiario",
       "open": "Mostrar amigos",
+      "open_with_self": "Mostrarte a ti y a tus amigos",
       "clear": "Quitar beneficiario",
       "you": "Tú",
       "friends_loading": "Cargando tus amigos…",

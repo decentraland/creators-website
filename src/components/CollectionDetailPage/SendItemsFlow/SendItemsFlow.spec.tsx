@@ -98,7 +98,7 @@ describe('SendItemsFlow', () => {
     expect(screen.getByTestId('send-total')).toHaveTextContent('2 / 100 items')
   })
 
-  it('offers the creator their own wallet first and reports a send to themselves', async () => {
+  it('offers the creator their own wallet first and takes it out of the list once chosen', async () => {
     renderFlow()
     await userEvent.click(screen.getByTestId('transfer-1-recipient-toggle'))
     const options = screen.getAllByTestId('transfer-1-recipient-option')
@@ -108,9 +108,9 @@ describe('SendItemsFlow', () => {
     expect(screen.getByTestId('transfer-1-recipient-you')).toBeInTheDocument()
     expect(screen.getByTestId('transfer-1-recipient-selected')).toHaveTextContent('0x0000…00aa')
 
+    // With no friends and "You" already in, nobody is left to pick: the next field is a plain input.
     await userEvent.click(screen.getByTestId('transfer-1-add-recipient'))
-    await userEvent.click(screen.getByTestId('transfer-1-recipient-toggle'))
-    expect(screen.queryByTestId('transfer-1-recipient-option')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('transfer-1-recipient-toggle')).not.toBeInTheDocument()
   })
 
   it('takes a typed count, digits only and clamped to the stock, and unchecks an emptied one', async () => {

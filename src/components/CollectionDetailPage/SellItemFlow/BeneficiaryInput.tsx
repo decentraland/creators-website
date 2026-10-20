@@ -20,9 +20,9 @@ type Props = {
   duplicateError?: (address: string) => string | null
   /** The signed-in wallet (lowercased): listed first as "You". */
   self?: string
-  /** Addresses already chosen (lowercased): left out of the list; one typed in is dropped through `onExcluded`. */
+  /** Addresses already chosen (lowercased): left out of the list; one typed in is dropped and `onExcluded` told. */
   exclude?: string[]
-  onExcluded?: (address: string) => void
+  onExcluded?: () => void
   /** Accessible name of the chip's ✕; "Clear beneficiary" unless the chip stands for something else. */
   clearLabel?: string
   /** `compact`: the chosen address as a dark pill with a shortened address (address lists), not a form field. */
@@ -63,7 +63,8 @@ export function BeneficiaryInput({
     if (!self) return list
     const me: Friend = {
       address: self,
-      name: selfProfile.data?.name ?? shortenAddress(self),
+      // No name: the "You" tag and the address identify the row, so the address isn't repeated as a name.
+      name: selfProfile.data?.name ?? '',
       hasClaimedName: selfProfile.data?.hasClaimedName ?? false,
       avatarUrl: selfProfile.data?.avatar?.snapshots?.face256 ?? ''
     }
@@ -74,23 +75,26 @@ export function BeneficiaryInput({
   // A pasted address that isn't a friend still gets a name and avatar from its profile, when it has one.
   const profile = useProfile(value && !selectedFriend ? value : undefined)
 
+  const available = useMemo(
+    () => (exclude?.length ? entries.filter(friend => !exclude.includes(friend.address)) : entries),
+    [entries, exclude]
+  )
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    const list = exclude?.length ? entries.filter(friend => !exclude.includes(friend.address)) : entries
-    if (!needle) return list
-    return list.filter(
+    if (!needle) return available
+    return available.filter(
       friend =>
         friend.name.toLowerCase().includes(needle) ||
         friend.address.includes(needle) ||
         (friend.address === self && youLabel.toLowerCase().includes(needle))
     )
-  }, [entries, exclude, query, self, youLabel])
+  }, [available, query, self, youLabel])
 
   const trimmed = query.trim()
   const duplicate = isValidAddress(trimmed) ? duplicateError?.(trimmed.toLowerCase()) : null
   const invalid = touched && trimmed !== '' && !isValidAddress(trimmed)
-  // Without anyone to pick from the field is a plain address input.
-  const withFriends = isLoadingFriends || entries.length > 0
+  // Without anyone left to pick from the field is a plain address input.
+  const withFriends = isLoadingFriends || available.length > 0
 
   function reset() {
     setQuery('')
@@ -101,7 +105,7 @@ export function BeneficiaryInput({
   function commit(address: string) {
     const normalized = address.toLowerCase()
     if (exclude?.includes(normalized)) {
-      onExcluded?.(normalized)
+      onExcluded?.()
       reset()
       return
     }
@@ -141,7 +145,7 @@ export function BeneficiaryInput({
   }
 
   if (value) {
-    const known = selectedFriend?.name ?? profile.data?.name
+    const known = selectedFriend?.name || profile.data?.name
     const avatar = selectedFriend?.avatarUrl ?? profile.data?.avatar?.snapshots?.face256
     const compact = variant === 'compact'
     return (
@@ -191,7 +195,7 @@ export function BeneficiaryInput({
         {withFriends && (
           <S.ComboToggle
             type="button"
-            aria-label={t('sell_item_modal.beneficiary.open')}
+            aria-label={t(self ? 'sell_item_modal.beneficiary.open_with_self' : 'sell_item_modal.beneficiary.open')}
             aria-expanded={open}
             aria-controls={listId}
             disabled={disabled}
@@ -206,12 +210,7 @@ export function BeneficiaryInput({
         )}
         {withFriends && open && (
           <S.Options role="listbox" id={listId} data-testid={`${testId}-options`}>
-            {isLoadingFriends ? (
-              <S.OptionNote>
-                <S.Spinner aria-hidden />
-                {t('sell_item_modal.beneficiary.friends_loading')}
-              </S.OptionNote>
-            ) : matches.length === 0 ? (
+            {matches.length === 0 && !isLoadingFriends ? (
               <S.OptionNote data-testid={`${testId}-no-matches`}>
                 {t('sell_item_modal.beneficiary.no_matches')}
               </S.OptionNote>
@@ -228,11 +227,18 @@ export function BeneficiaryInput({
                   onClick={() => commit(friend.address)}
                 >
                   {friend.avatarUrl ? <S.Avatar src={friend.avatarUrl} alt="" /> : <S.AvatarFallback aria-hidden />}
-                  <span>{friend.name}</span>
+                  {friend.name && <span>{friend.name}</span>}
                   {friend.address === self && <S.YouTag>{youLabel}</S.YouTag>}
                   <S.OptionAddress>{shortenAddress(friend.address)}</S.OptionAddress>
                 </S.Option>
               ))
+            )}
+            {/* Self is known at once; the friends join the list under the note when they arrive. */}
+            {isLoadingFriends && (
+              <S.OptionNote>
+                <S.Spinner aria-hidden />
+                {t('sell_item_modal.beneficiary.friends_loading')}
+              </S.OptionNote>
             )}
           </S.Options>
         )}

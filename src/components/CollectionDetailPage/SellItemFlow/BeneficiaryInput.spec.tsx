@@ -73,7 +73,7 @@ describe('BeneficiaryInput', () => {
     expect(screen.getByTestId('beneficiary-options')).toHaveTextContent(/loading/i)
   })
 
-  it('offers the signed-in wallet first as "You", even without friends, and drops it once chosen', async () => {
+  it('offers the signed-in wallet first as "You", even without friends, and finds it by typing "you"', async () => {
     const { onChange } = renderInput({ self: ADDRESS, friends: [] })
     await userEvent.click(screen.getByTestId('beneficiary-toggle'))
     const options = screen.getAllByTestId('beneficiary-option')
@@ -85,13 +85,39 @@ describe('BeneficiaryInput', () => {
     expect(screen.getAllByTestId('beneficiary-option')).toHaveLength(1)
     await userEvent.click(screen.getByTestId('beneficiary-option'))
     expect(onChange).toHaveBeenCalledWith(ADDRESS)
+  })
 
-    cleanup()
+  it('drops "You" from the list once chosen, and the chevron with it when nobody else is left', async () => {
     renderInput({ self: ADDRESS, exclude: [ADDRESS] })
     await userEvent.click(screen.getByTestId('beneficiary-toggle'))
     const rest = screen.getAllByTestId('beneficiary-option')
     expect(rest).toHaveLength(2)
     expect(rest[0]).toHaveTextContent('Blackbeard')
+
+    cleanup()
+    renderInput({ self: ADDRESS, friends: [], exclude: [ADDRESS] })
+    expect(screen.queryByTestId('beneficiary-toggle')).not.toBeInTheDocument()
+    expect(screen.getByTestId('beneficiary-input')).not.toHaveAttribute('role')
+  })
+
+  it('shows "You" at once while friends load, and once without a profile name', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 404 }))
+    const { rerender } = render(
+      <BeneficiaryInput value="" onChange={vi.fn()} friends={undefined} isLoadingFriends self={ADDRESS} />,
+      { wrapper: Providers }
+    )
+    await userEvent.click(screen.getByTestId('beneficiary-toggle'))
+    const options = screen.getByTestId('beneficiary-options')
+    expect(screen.getAllByTestId('beneficiary-option')).toHaveLength(1)
+    expect(options).toHaveTextContent(/loading/i)
+    expect(options.textContent?.match(/0x0000…00aa/g)).toHaveLength(1)
+
+    rerender(
+      <BeneficiaryInput value={ADDRESS} onChange={vi.fn()} friends={[]} isLoadingFriends={false} self={ADDRESS} />
+    )
+    const chip = screen.getByTestId('beneficiary-selected')
+    expect(chip).toHaveTextContent('You')
+    expect(chip.textContent?.match(/0x0000…00aa/g)).toHaveLength(1)
   })
 
   it('leaves excluded addresses out of the list and drops one typed in without an error', async () => {
@@ -101,7 +127,7 @@ describe('BeneficiaryInput', () => {
     expect(screen.getAllByTestId('beneficiary-option')).toHaveLength(1)
 
     await userEvent.type(screen.getByTestId('beneficiary-input'), FRIEND.toUpperCase().replace('0X', '0x'))
-    expect(onExcluded).toHaveBeenCalledWith(FRIEND)
+    expect(onExcluded).toHaveBeenCalledTimes(1)
     expect(onChange).not.toHaveBeenCalled()
     expect(screen.queryByTestId('beneficiary-error')).not.toBeInTheDocument()
     expect(screen.getByTestId('beneficiary-input')).toHaveValue('')

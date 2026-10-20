@@ -455,6 +455,7 @@
       "self": "我是收款人",
       "placeholder": "复制或选择收款人的用户 ID",
       "open": "显示好友",
+      "open_with_self": "显示您和您的好友",
       "clear": "清除收款人",
       "you": "您",
       "friends_loading": "正在加载您的好友……",
