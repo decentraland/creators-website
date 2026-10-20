@@ -136,17 +136,12 @@ export function copiesPerItem(transfers: Transfer[]): Record<string, number> {
   return copies
 }
 
-/** The size of a send, as the analytics events report it: distinct items, total copies, distinct wallets and whether the sender is one of them. */
-export function sendBatchSize(
-  transfers: Transfer[],
-  sender?: string
-): { item_count: number; copies: number; recipient_count: number; self_recipient: boolean } {
+/** The size of a send, as the analytics events report it: distinct items, total copies and distinct wallets. */
+export function sendBatchSize(transfers: Transfer[]): { item_count: number; copies: number; recipient_count: number } {
   const copies = copiesPerItem(transfers)
-  const recipients = new Set(transfers.flatMap(transfer => transfer.recipients.map(to => to.toLowerCase())))
   return {
     item_count: Object.values(copies).filter(amount => amount > 0).length,
     copies: Object.values(copies).reduce((total, amount) => total + amount, 0),
-    recipient_count: recipients.size,
-    self_recipient: !!sender && recipients.has(sender.toLowerCase())
+    recipient_count: new Set(transfers.flatMap(transfer => transfer.recipients.map(to => to.toLowerCase()))).size
   }
 }

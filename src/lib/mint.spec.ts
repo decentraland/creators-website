@@ -96,10 +96,11 @@ describe('allocation math', () => {
   it('counts copies as recipients × amounts across transfers', () => {
     expect(totalCopies(transfers)).toBe(2 * 4 + 2)
     expect(copiesPerItem(transfers)).toEqual({ hat: 8, cap: 2 })
-    const padded = [...transfers, { recipients: ['0xA'], amounts: { hat: 0 } }]
-    expect(sendBatchSize(padded)).toEqual({ item_count: 2, copies: 10, recipient_count: 3, self_recipient: false })
-    expect(sendBatchSize(padded, '0xA').self_recipient).toBe(true)
-    expect(sendBatchSize(padded, '0xz').self_recipient).toBe(false)
+    expect(sendBatchSize([...transfers, { recipients: ['0xA'], amounts: { hat: 0 } }])).toEqual({
+      item_count: 2,
+      copies: 10,
+      recipient_count: 3
+    })
   })
 
   it('merges what every wallet receives across transfers, skipping empty ones', () => {
