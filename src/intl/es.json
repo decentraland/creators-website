@@ -894,7 +894,8 @@
       "placeholder": "Escribe una etiqueta y presiona Enter",
       "remove": "Quitar etiqueta {tag}",
       "empty": "Este ítem no tiene etiquetas.",
-      "campaign_hint": "Agrega la etiqueta “{tag}” para participar con este ítem en {name}."
+      "campaign_hint": "Agrega la etiqueta <hl>{tag}</hl> para participar con este ítem en {name}.",
+      "campaign_add": "Haz clic para agregar"
     },
     "options": {
       "title": "Opciones",

@@ -103,7 +103,7 @@ export function PropertiesPanel({
   onDeleted,
   testId = 'properties-panel'
 }: Props) {
-  const { t } = useTranslation()
+  const { t, rich } = useTranslation()
   const showToast = useNotifications(state => state.showToast)
   const [isImporting, setImporting] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
@@ -557,7 +557,24 @@ export function PropertiesPanel({
         <TagsInput tags={draft.tags} disabled={disabled} onChange={tags => dispatch({ type: 'setTags', tags })} />
         {editable && campaign && (
           <S.SectionNote data-testid={`${testId}-campaign-hint`}>
-            {t('item_editor.tags.campaign_hint', { tag: campaign.mainTag, name: campaign.name })}
+            {rich('item_editor.tags.campaign_hint', {
+              tag: campaign.mainTag,
+              name: campaign.name,
+              hl: chunks =>
+                draft.tags.includes(campaign.mainTag) ? (
+                  <strong>{chunks}</strong>
+                ) : (
+                  <Tooltip content={t('item_editor.tags.campaign_add')} asChild describeChild>
+                    <S.CampaignTag
+                      type="button"
+                      data-testid={`${testId}-campaign-tag`}
+                      onClick={() => dispatch({ type: 'setTags', tags: [...draft.tags, campaign.mainTag] })}
+                    >
+                      {chunks}
+                    </S.CampaignTag>
+                  </Tooltip>
+                )
+            })}
           </S.SectionNote>
         )}
       </EditorSection>

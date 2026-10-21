@@ -894,7 +894,8 @@
       "placeholder": "输入标签后按 Enter 添加",
       "remove": "移除标签 {tag}",
       "empty": "此物品没有标签。",
-      "campaign_hint": "添加“{tag}”标签，即可让此物品参加 {name}。"
+      "campaign_hint": "添加 <hl>{tag}</hl> 标签，即可让此物品参加 {name}。",
+      "campaign_add": "点击添加"
     },
     "options": {
       "title": "选项",
