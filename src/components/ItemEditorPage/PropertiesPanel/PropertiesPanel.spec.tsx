@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FeatureFlag } from '~/lib/featureFlags'
 import { setFeatureFlags } from '~/test/featureFlags'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BodyShape } from '@dcl/schemas'
 import { Providers } from '~/components/CollectionDetailPage/SellItemFlow/testUtils'
@@ -222,10 +222,15 @@ describe('PropertiesPanel', () => {
     render(<Harness />, { wrapper: Providers })
     const hint = screen.getByTestId('properties-panel-campaign-hint')
     expect(hint).toHaveTextContent('Add the summer tag to enter this item in Summer Fest.')
-    await userEvent.click(screen.getByTestId('properties-panel-campaign-tag'))
+    const tagButton = screen.getByTestId('properties-panel-campaign-tag')
+    await userEvent.hover(tagButton)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Click to add')
+    await userEvent.click(tagButton)
     expect(screen.getAllByTestId('tags-input-tag').map(tag => tag.textContent)).toEqual(['cool', 'summer'])
     expect(screen.queryByTestId('properties-panel-campaign-tag')).not.toBeInTheDocument()
-    expect(hint).toHaveTextContent('summer')
+    expect(hint).toHaveTextContent('Add the summer tag to enter this item in Summer Fest.')
+    expect(within(hint).getByText('summer').tagName).toBe('STRONG')
+    expect(screen.getByTestId('tags-input-field')).toHaveFocus()
     expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
   })
 

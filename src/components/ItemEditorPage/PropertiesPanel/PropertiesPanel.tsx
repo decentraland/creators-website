@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type Dispatch } from 'react'
+import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   CameraAlt as CameraIcon,
@@ -110,6 +110,7 @@ export function PropertiesPanel({
   const [isVideoOpen, setVideoOpen] = useState(false)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
   const [isDownloading, setDownloading] = useState(false)
+  const tagsFieldRef = useRef<HTMLInputElement>(null)
   const deleteItem = useDeleteItem(address)
   const campaign = useCampaign()
   const utilityFlag = useFeatureFlag(FeatureFlag.WEARABLE_UTILITY)
@@ -554,7 +555,12 @@ export function PropertiesPanel({
       )}
 
       <EditorSection title={t('item_editor.tags.title')} testId={`${testId}-tags`}>
-        <TagsInput tags={draft.tags} disabled={disabled} onChange={tags => dispatch({ type: 'setTags', tags })} />
+        <TagsInput
+          tags={draft.tags}
+          disabled={disabled}
+          inputRef={tagsFieldRef}
+          onChange={tags => dispatch({ type: 'setTags', tags })}
+        />
         {editable && campaign && (
           <S.SectionNote data-testid={`${testId}-campaign-hint`}>
             {rich('item_editor.tags.campaign_hint', {
@@ -568,7 +574,11 @@ export function PropertiesPanel({
                     <S.CampaignTag
                       type="button"
                       data-testid={`${testId}-campaign-tag`}
-                      onClick={() => dispatch({ type: 'setTags', tags: [...draft.tags, campaign.mainTag] })}
+                      onClick={() => {
+                        dispatch({ type: 'setTags', tags: [...draft.tags, campaign.mainTag] })
+                        // The button unmounts once the tag is on the draft, so keyboard focus would fall to the body.
+                        tagsFieldRef.current?.focus()
+                      }}
                     >
                       {chunks}
                     </S.CampaignTag>
