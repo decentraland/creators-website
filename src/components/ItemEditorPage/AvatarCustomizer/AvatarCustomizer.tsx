@@ -135,13 +135,16 @@ export function AvatarCustomizerDrawer({ catalog, onClose, testId = 'avatar-cust
       Object.fromEntries(
         BASE_WEARABLE_CATEGORIES.map(category => [
           category,
-          filterBaseWearables(catalog ?? [], category, bodyShape).map(wearable => ({
-            value: wearable.urn,
-            label: wearable.name
-          }))
+          [
+            { value: NONE, label: t('item_editor.customizer.none') },
+            ...filterBaseWearables(catalog ?? [], category, bodyShape).map(wearable => ({
+              value: wearable.urn,
+              label: wearable.name
+            }))
+          ]
         ])
       ) as Record<BaseWearableCategory, Array<{ value: string; label: string }>>,
-    [catalog, bodyShape]
+    [catalog, bodyShape, t]
   )
   const selection = baseWearables?.[bodyShape]
 
@@ -186,7 +189,7 @@ export function AvatarCustomizerDrawer({ catalog, onClose, testId = 'avatar-cust
         </S.FieldBox>
       )
     }
-    const options = [{ value: NONE, label: t('item_editor.customizer.none') }, ...optionsByCategory[slot.category]]
+    const options = optionsByCategory[slot.category]
     // "Hair" alone would clash with the hair color swatches above it.
     const label =
       slot.category === WearableCategory.HAIR

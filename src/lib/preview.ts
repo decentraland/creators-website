@@ -257,7 +257,7 @@ export function buildPreviewOptions(
     hair: avatar.hair,
     urns: avatar.baseWearableUrns,
     // An emptied slot stays empty instead of wearable-preview filling it with its default outfit.
-    disableDefaultWearables: true,
+    disableDefaultWearables: avatar.hasOutfit,
     disableDefaultEmotes: emoteSubject
   }
   if (source.kind === 'items') {

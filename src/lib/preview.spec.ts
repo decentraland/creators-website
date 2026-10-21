@@ -43,7 +43,8 @@ const avatar: AvatarAttributes = {
   skin: 'ffe4c6',
   eyes: '362626',
   hair: '1c1c1c',
-  baseWearableUrns: ['urn:hair']
+  baseWearableUrns: ['urn:hair'],
+  hasOutfit: true
 }
 
 describe('itemToDefinition', () => {
@@ -90,6 +91,14 @@ describe('buildPreviewOptions', () => {
     const dance = buildPreviewOptions({ kind: 'items', items: [] }, avatar, PreviewEmote.DANCE).zoom!
     // A lower zoom is a larger camera radius: the jump has to fit in frame.
     expect(jump).toBeLessThan(dance)
+  })
+
+  it('keeps the default outfit until one is picked, then leaves emptied slots empty', () => {
+    const items = { kind: 'items' as const, items: [] }
+    expect(buildPreviewOptions(items, { ...avatar, hasOutfit: false }, PreviewEmote.IDLE).disableDefaultWearables).toBe(
+      false
+    )
+    expect(buildPreviewOptions(items, avatar, PreviewEmote.IDLE).disableDefaultWearables).toBe(true)
   })
 
   describe('with a model picked but not saved yet', () => {

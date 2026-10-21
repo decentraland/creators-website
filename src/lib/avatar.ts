@@ -85,6 +85,8 @@ export type AvatarColors = { skin: string; eyes: string; hair: string }
 export type AvatarAttributes = AvatarColors & {
   bodyShape: BodyShape
   baseWearableUrns: string[]
+  /** False until an outfit is picked, so the preview can dress the mannequin in its defaults meanwhile. */
+  hasOutfit: boolean
 }
 
 export function pickRandom<T>(items: readonly T[], random: () => number = Math.random): T | undefined {

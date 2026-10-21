@@ -113,7 +113,7 @@ export function AvatarPreview({
         eyes={snapshot.eyes}
         hair={snapshot.hair}
         urns={snapshot.baseWearableUrns}
-        disableDefaultWearables
+        disableDefaultWearables={snapshot.hasOutfit}
         emote={snapshot.emoteSubject ? undefined : snapshot.emote}
         disableDefaultEmotes={snapshot.emoteSubject || undefined}
         disableAutoRotate
