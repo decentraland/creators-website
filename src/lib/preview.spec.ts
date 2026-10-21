@@ -75,6 +75,7 @@ describe('buildPreviewOptions', () => {
       skin: 'ffe4c6',
       urns: ['urn:hair'],
       emote: PreviewEmote.DANCE,
+      disableDefaultWearables: true,
       disableDefaultEmotes: false
     })
     expect(options.base64s).toHaveLength(1)

@@ -195,7 +195,7 @@ export function AvatarCustomizerDrawer({ catalog, onClose, testId = 'avatar-cust
     return (
       <S.Field key={slot.category} data-select>
         <Select
-          value={selection?.[slot.category] ?? NONE}
+          value={selection ? (selection[slot.category] ?? NONE) : null}
           options={options}
           disabled={!catalog}
           tone="dark"
