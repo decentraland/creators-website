@@ -1000,6 +1000,12 @@
     "linkEthics": "Código de ética"
   },
   "send_items_modal": {
+    "discard": {
+      "title": "¿Descartar este envío?",
+      "description": "Si sales ahora, los destinatarios y las copias que ingresaste no se conservarán.",
+      "leave": "Descartar",
+      "keep": "Seguir editando"
+    },
     "title": "Enviar ítems",
     "step_select": "Seleccionar ítems",
     "step_confirm": "Confirmar ítems",

@@ -11,6 +11,7 @@ import {
   copiesPerRecipient,
   flattenTransfers,
   getStock,
+  hasSendDraft,
   isSendableItem,
   holdsAddresses,
   maxAmount,
@@ -94,6 +95,18 @@ describe('allocation math', () => {
     { recipients: ['0xa', '0xb'], amounts: { hat: 3, cap: 1 } },
     { recipients: ['0xc'], amounts: { hat: 2 } }
   ]
+
+  it('has a draft once any transfer names a recipient or sets a copy', () => {
+    expect(hasSendDraft([{ recipients: [], amounts: {} }])).toBe(false)
+    expect(hasSendDraft([{ recipients: [], amounts: { a: 0 } }])).toBe(false)
+    expect(
+      hasSendDraft([
+        { recipients: [], amounts: {} },
+        { recipients: [MINTER], amounts: {} }
+      ])
+    ).toBe(true)
+    expect(hasSendDraft([{ recipients: [], amounts: { a: 1 } }])).toBe(true)
+  })
 
   it('counts copies as recipients × amounts across transfers', () => {
     expect(totalCopies(transfers)).toBe(2 * 4 + 2)

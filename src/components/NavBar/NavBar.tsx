@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { Network } from '@dcl/schemas'
 import { ethers } from 'ethers'
@@ -7,6 +7,9 @@ import { useWallet } from '~/store/wallet'
 import { useCreditsBalance, useManaBalance } from '~/hooks/useBalances'
 import { useCommittee } from '~/hooks/useCuration'
 import { useProfile } from '~/hooks/useProfile'
+import { useWalletChain } from '~/hooks/useWalletChain'
+import { track } from '~/lib/analytics'
+import { isSocialLogin } from '~/lib/auth'
 import { openExternal } from '~/lib/navigation'
 import { isOverviewPath, LandingPlace, trackLandingClick } from '~/lib/overviewAnalytics'
 import { useTranslation } from '~/intl'
@@ -31,6 +34,16 @@ const NavBar = ({ subnav = true }: Props) => {
   const { data: credits } = useCreditsBalance(address)
   const { data: manaWei } = useManaBalance(address)
   const { isCurator } = useCommittee(address)
+  // A social login has no network to choose (every write of theirs is relayed), so it is handed no session
+  // and ui2 hides the chain pill inside the profile panel. The event is the legacy builder's.
+  const { chainId, chains, switchTo } = useWalletChain(session && !isSocialLogin(session) ? session : null)
+  const selectChain = useCallback(
+    (chain: number) => {
+      track('Change Network', { from_chain_id: chainId, to_chain_id: chain })
+      void switchTo(chain)
+    },
+    [chainId, switchTo]
+  )
   // Polygon only: it's the network publishing pays on. Like the legacy builder, an empty wallet shows
   // no MANA chip at all; ui2 renders whole units.
   const manaBalances = useMemo(
@@ -69,6 +82,9 @@ const NavBar = ({ subnav = true }: Props) => {
         manaBalances={manaBalances}
         showManaBalancesInNavbar
         onClickBalance={() => openExternal(accountUrl)}
+        selectedChain={chainId}
+        chains={chains}
+        onSelectChain={selectChain}
         onClickSignIn={() => {
           if (isOverviewPath(pathname)) trackLandingClick(LandingPlace.NAVBAR, { action: 'sign_in' })
           signIn()

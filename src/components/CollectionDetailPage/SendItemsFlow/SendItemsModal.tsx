@@ -86,7 +86,8 @@ export function SendItemsModal({
           testId="send-steps"
         />
       </S.Steps>
-      <S.Body data-busy={busy || undefined} aria-busy={busy || undefined} {...(busy ? { inert: '' } : {})}>
+      {/* Keyed by step so the body remounts and the confirm step opens at the top, not where the list was scrolled. */}
+      <S.Body key={step} data-busy={busy || undefined} aria-busy={busy || undefined} {...(busy ? { inert: '' } : {})}>
         {step === 'select' ? (
           <>
             {transfers.map((transfer, index) => (
