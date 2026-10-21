@@ -30,7 +30,8 @@ const avatar: AvatarAttributes = {
   skin: 'aaaaaa',
   eyes: 'bbbbbb',
   hair: 'cccccc',
-  baseWearableUrns: ['urn:a']
+  baseWearableUrns: ['urn:a'],
+  hasOutfit: true
 }
 const source = { kind: 'items' as const, items: [] }
 

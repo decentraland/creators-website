@@ -108,12 +108,12 @@ export function AvatarPreview({
     <S.Wrap data-testid={testId} data-loading={isLoading || undefined}>
       <WearablePreview
         id={id}
-        profile="default"
         bodyShape={snapshot.bodyShape}
         skin={snapshot.skin}
         eyes={snapshot.eyes}
         hair={snapshot.hair}
         urns={snapshot.baseWearableUrns}
+        disableDefaultWearables={snapshot.hasOutfit}
         emote={snapshot.emoteSubject ? undefined : snapshot.emote}
         disableDefaultEmotes={snapshot.emoteSubject || undefined}
         disableAutoRotate
