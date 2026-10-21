@@ -7,8 +7,9 @@ import { ItemSyncStatus, getItemSyncStatus, mapEntitiesByItemId, type ItemSync }
 import { type Item } from '~/lib/items'
 
 /**
- * Each item's Catalyst sync status. Only published items have anything deployed, so drafts cost no
- * request; the collection's pending curation turns "unsynced" into "under review".
+ * Each item's Catalyst sync status, as every view shows it: tags are left out, since a tag edit is live
+ * without a review (the approval's deploy plan still compares them). Only published items have anything
+ * deployed, so drafts cost no request; the collection's pending curation turns "unsynced" into "under review".
  */
 export function useItemSyncs(
   address: string | undefined,
@@ -48,7 +49,8 @@ export function useItemSyncs(
       const status = getItemSyncStatus(item, entity, {
         isCurationPending: curationPending,
         curationLoaded,
-        entitiesLoaded
+        entitiesLoaded,
+        ignoreTags: true
       })
       if (entity) syncs.set(item.id, { status, entity })
       else if (lookupFailed && status === ItemSyncStatus.LOADING) syncs.set(item.id, { status, lookupFailed })
