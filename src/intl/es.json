@@ -1026,7 +1026,7 @@
     "total": "{count} / {max} ítems",
     "limit_reached": "Puedes enviar hasta {max} ítems a la vez. Quita algunas copias para continuar.",
     "paste_added": "{count, plural, one {# destinatario agregado} other {# destinatarios agregados}}.",
-    "paste_skipped": "{count, plural, one {# destinatario agregado} other {# destinatarios agregados}}, {skipped} omitidos: inválidos o ya agregados.",
+    "paste_skipped": "{count, plural, one {# destinatario agregado} other {# destinatarios agregados}}, {skipped, plural, one {# omitido: inválido o ya agregado} other {# omitidos: inválidos o ya agregados}}.",
     "paste_cut": "{count, plural, one {# destinatario agregado} other {# destinatarios agregados}}. Puedes enviar hasta {max} ítems a la vez.",
     "continue": "Continuar",
     "back": "Atrás",

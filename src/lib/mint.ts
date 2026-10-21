@@ -33,26 +33,31 @@ export function canSendCollectionItems(collection: Collection, address: string |
 
 export type RecipientList = { added: string[]; invalid: number; repeated: number; cut: number }
 
-// An address on its own: a longer hex run (a transaction hash) is not forty characters of one.
-const ADDRESS_TOKEN = /(?<![0-9a-zA-Z])0x[0-9a-fA-F]{40}(?![0-9a-zA-Z])/g
+// A `0x` hex run on its own, whatever its length: a mistyped address still counts as one that didn't make it.
+// (No lookbehind: Safari before 16.4 can't parse one, and a regex it can't parse breaks the whole module.)
+const HEX_TOKEN = /(?:^|[^0-9a-zA-Z])(0x[0-9a-fA-F]+)(?![0-9a-zA-Z])/g
+
+function hexTokens(text: string): string[] {
+  return [...text.matchAll(HEX_TOKEN)].map(match => match[1])
+}
 
 /** Whether the text carries at least one address, as a pasted list does. */
 export function holdsAddresses(text: string): boolean {
-  return new RegExp(ADDRESS_TOKEN.source).test(text)
+  return hexTokens(text).some(token => token.length === 42)
 }
 
 /**
  * The wallets in a pasted list (a spreadsheet column, comma or line separated, whatever else is around them):
- * every address token, lowercased and deduped. `invalid` counts the tokens with a wrong checksum, `repeated`
- * the repeats, including those already in `existing`, and `cut` the valid ones left out to keep `existing`
- * plus `added` within `max`.
+ * every address token, lowercased and deduped. `invalid` counts the `0x` tokens that aren't an address (wrong
+ * length or checksum), `repeated` the repeats, including those already in `existing`, and `cut` the valid
+ * ones left out to keep `existing` plus `added` within `max`.
  */
 export function parseRecipientList(text: string, existing: string[] = [], max = MAX_ITEMS_PER_SEND): RecipientList {
   const seen = new Set(existing.map(address => address.toLowerCase()))
   const added: string[] = []
   let invalid = 0
   let repeated = 0
-  for (const token of text.match(ADDRESS_TOKEN) ?? []) {
+  for (const token of hexTokens(text)) {
     const address = token.toLowerCase()
     if (!isValidAddress(token)) invalid++
     else if (seen.has(address)) repeated++

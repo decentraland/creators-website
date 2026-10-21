@@ -184,12 +184,13 @@ describe('parseRecipientList', () => {
     expect(parseRecipientList(sheet)).toEqual({ added: [A, B, C], invalid: 0, repeated: 2, cut: 0 })
   })
 
-  it('skips repeats of the transfer, wrong checksums and hashes that merely start like an address', () => {
+  it('counts repeats of the transfer apart from wrong checksums and mistyped or overlong hex runs', () => {
     const badChecksum = '0xd8da6bf26964af9d7eed9e03e53415d37aa96045'.replace('d8da', 'D8dA')
+    const short = A.slice(0, -1)
     const hash = `0x${'ab'.repeat(32)}`
-    expect(parseRecipientList(`${A}\n${badChecksum}\n${hash}\n${B}`, [A])).toEqual({
+    expect(parseRecipientList(`${A}\n${badChecksum}\n${short}, ${hash}\n${B}`, [A])).toEqual({
       added: [B],
-      invalid: 1,
+      invalid: 3,
       repeated: 1,
       cut: 0
     })
@@ -209,6 +210,7 @@ describe('parseRecipientList', () => {
 
   it('tells text that carries an address from text that does not', () => {
     expect(holdsAddresses(`name, ${A}`)).toBe(true)
+    expect(holdsAddresses(`${A}${B}`)).toBe(false)
     expect(holdsAddresses('0x1234')).toBe(false)
     expect(holdsAddresses(`0x${'ab'.repeat(32)}`)).toBe(false)
   })
