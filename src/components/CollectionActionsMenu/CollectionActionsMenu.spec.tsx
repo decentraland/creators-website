@@ -257,6 +257,7 @@ describe('CollectionActionsMenu', () => {
     })
     await openMenu()
     expect(screen.getByTestId('copy-urn')).toBeInTheDocument()
+    expect(screen.queryByTestId('copy-address')).not.toBeInTheDocument()
     expect(screen.queryByTestId('edit-collection-urn')).not.toBeInTheDocument()
     expect(screen.queryByTestId('delete-collection')).not.toBeInTheDocument()
   })

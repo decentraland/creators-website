@@ -142,7 +142,8 @@ export function CollectionActionsMenu({
                 {t('linked_collection.actions.edit_urn')}
               </ActionsMenuItem>
             )}
-            {isOnChain && (
+            {/* Linked collections have no contract of their own: their items live under the third party. */}
+            {isOnChain && !isLinked && (
               <ActionsMenuItem
                 testId="copy-address"
                 onClick={() => void copy(collection.contractAddress, 'collection_detail_page.actions.copied_address')}

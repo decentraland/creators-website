@@ -48,6 +48,7 @@ import { CollectionStatusPill } from '~/components/CollectionStatusPill'
 import { EditUrnModal } from '~/components/EditUrnModal'
 import { OpenEditorIcon } from '~/components/Icons'
 import { Pagination } from '~/components/Pagination'
+import { PreviewCollectionButton } from '~/components/PreviewCollectionButton'
 import { Tooltip } from '~/components/Tooltip'
 import addItemsArt from '~/assets/add-items.png'
 import { AddItemsModal } from '../AddItemsModal'
@@ -266,6 +267,12 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
           )}
         </P.HeaderLeft>
         <P.HeaderActions>
+          <PreviewCollectionButton
+            collectionId={collection.id}
+            disabled={total === 0}
+            data-desktop-only
+            data-testid="preview-collection"
+          />
           <Tooltip
             content={publishBlocker ? t(`linked_collection.publish_blocker.${publishBlocker}`) : null}
             placement="bottom"
