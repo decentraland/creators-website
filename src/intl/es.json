@@ -1573,9 +1573,9 @@
     },
     "migration_banner": "Uno o más ítems de esta colección se publicaron antes de que existiera el mapeo de tokens. Agrega un mapeo a cada uno y publica los cambios.",
     "publish_action": {
-      "publish": "Publicar",
-      "push": "Enviar cambios",
-      "publish_and_push": "Publicar y enviar cambios"
+      "publish": "{count, plural, =0 {Publicar} other {Publicar (#)}}",
+      "push": "{count, plural, =0 {Enviar cambios} other {Enviar cambios (#)}}",
+      "publish_and_push": "{count, plural, =0 {Publicar y enviar cambios} other {Publicar y enviar cambios (#)}}"
     },
     "publish_blocker": {
       "no_selection": "Selecciona los ítems para publicar o enviar.",
@@ -1590,8 +1590,11 @@
       "description": "Prueba otro filtro para encontrar lo que buscas."
     },
     "selected": "{count, plural, one {# ítem seleccionado} other {# ítems seleccionados}}",
+    "selected_all": "{count, plural, one {Está seleccionado el único ítem publicable} other {Están seleccionados los # ítems publicables}}",
     "clear_selection": "Limpiar selección",
     "select_all": "Seleccionar todos los ítems publicables de esta página",
+    "select_across": "Seleccionar los {total} ítems",
+    "select_all_error": "No pudimos seleccionar todos los ítems. Inténtalo de nuevo.",
     "select_item": "Seleccionar {name}",
     "urn_saved": "URN actualizada",
     "urn_error": "No pudimos actualizar la URN. Puede que ya esté en uso o que el ítem esté publicado.",

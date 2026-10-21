@@ -82,30 +82,6 @@ export const Banner = styled.div`
   }
 `
 
-export const SelectionBar = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 12px;
-  font-size: 14px;
-  color: ${theme.colors.softWhite};
-
-  ${card} {
-    display: none;
-  }
-`
-
-export const SelectionLink = styled.button`
-  min-height: 44px;
-  padding: 0 8px;
-  border: 0;
-  background: none;
-  color: ${theme.colors.softWhite};
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
-`
-
 // Checkbox · thumbnail · name · category · status · linked to · actions. The mapping editor gets the widest track
 // since it holds a select and an input side by side.
 const columns = `
@@ -152,9 +128,37 @@ export const ListHeader = styled.div`
     text-align: right;
   }
 
+  /* With items selected the row reads as a toolbar for them, in place of the column labels. */
+  &[data-selecting] {
+    box-shadow: inset 0 0 0 1px ${theme.colors.glassLine};
+  }
+
   ${card} {
     display: none;
   }
+`
+
+export const SelectionSummary = styled.div`
+  grid-column: 2 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+`
+
+export const SelectionCount = styled.span`
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: ${theme.colors.softWhite};
+  white-space: nowrap;
+`
+
+export const SelectionActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
 `
 
 export const HeaderSelect = styled.span`

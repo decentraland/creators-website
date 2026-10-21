@@ -116,20 +116,16 @@ describe('splitLinkedSelection / getLinkedPublishAction', () => {
   ])
 
   it('sorts the selection into publishes and pushes, leaving unselectable items out', () => {
-    const selection = splitLinkedSelection(
-      [fresh, changed, pending],
-      curations,
-      new Set(['fresh', 'changed', 'pending'])
-    )
+    const selection = splitLinkedSelection([fresh, changed, pending], curations)
     expect(selection.toPublish.map(item => item.id)).toEqual(['fresh'])
     expect(selection.toPush.map(item => item.id)).toEqual(['changed'])
     expect(getLinkedPublishAction(selection)).toBe('publish_and_push')
   })
 
   it('names the action after what was selected', () => {
-    expect(getLinkedPublishAction(splitLinkedSelection([fresh], curations, new Set(['fresh'])))).toBe('publish')
-    expect(getLinkedPublishAction(splitLinkedSelection([changed], curations, new Set(['changed'])))).toBe('push')
-    expect(getLinkedPublishAction(splitLinkedSelection([pending], curations, new Set(['pending'])))).toBeNull()
+    expect(getLinkedPublishAction(splitLinkedSelection([fresh], curations))).toBe('publish')
+    expect(getLinkedPublishAction(splitLinkedSelection([changed], curations))).toBe('push')
+    expect(getLinkedPublishAction(splitLinkedSelection([pending], curations))).toBeNull()
   })
 })
 

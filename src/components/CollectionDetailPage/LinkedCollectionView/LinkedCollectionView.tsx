@@ -10,6 +10,8 @@ import {
 import { ContractNetwork } from '@dcl/schemas'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
+import { fetchAllLinkedCollectionItems } from '~/lib/builder'
+import { captureError } from '~/lib/monitoring'
 import { type Session } from '~/lib/auth'
 import { shortenAddress } from '~/lib/address'
 import { copyToClipboard } from '~/lib/clipboard'
@@ -21,6 +23,7 @@ import {
   getLinkedItemStatus,
   getLinkedPublishAction,
   isLinkedItemSelectable,
+  linkedItemFilterToQuery,
   parseLinkedItemFilter,
   splitLinkedSelection,
   type ItemCuration
@@ -94,7 +97,10 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   const [isRenameOpen, setRenameOpen] = useState(false)
   const [isUrnOpen, setUrnOpen] = useState(false)
   const [addItemsFiles, setAddItemsFiles] = useState<File[] | null>(null)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
+  // Selected items by id, kept across pages: "Select all" can reach items that are not on screen.
+  const [selected, setSelected] = useState<Map<string, Item>>(() => new Map())
+  const [isSelectingAll, setSelectingAll] = useState(false)
+  const [allAcrossSelected, setAllAcrossSelected] = useState(false)
   const [publishView, setPublishView] = useState<'closed' | 'publish' | 'push'>('closed')
 
   const network = collection.linkedContractNetwork
@@ -116,8 +122,11 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     track('View linked collection', { collectionId: collection.id, item_count: itemsPage.data.total, network })
   }, [collection.id, itemsPage.data, network])
 
-  // A page or filter change shows other rows: the selection belongs to the rows on screen.
-  useEffect(() => setSelectedIds(new Set()), [page, filter])
+  // A filter shows another set of items: a selection made under the previous one would publish things off screen.
+  useEffect(() => {
+    setSelected(new Map())
+    setAllAcrossSelected(false)
+  }, [filter])
 
   const statuses = useMemo(
     () => new Map(items.map(item => [item.id, getLinkedItemStatus(item, curations.data?.get(item.id) ?? null)])),
@@ -131,10 +140,8 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
         : [],
     [items, curations.data, curationMap]
   )
-  const selection = useMemo(
-    () => splitLinkedSelection(items, curationMap, selectedIds),
-    [items, curationMap, selectedIds]
-  )
+  const selection = useMemo(() => splitLinkedSelection(selected.values(), curationMap), [selected, curationMap])
+  const selectedCount = selection.toPublish.length + selection.toPush.length
   const publishAction = getLinkedPublishAction(selection)
   const hasPendingReview = useMemo(
     () => [...(curations.data?.values() ?? [])].some(curation => curation.status === CurationStatus.PENDING),
@@ -145,7 +152,13 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     : publishAction !== 'push' && hasPendingReview
       ? 'under_review'
       : null
-  const allSelected = selectableIds.length > 0 && selectableIds.every(id => selectedIds.has(id))
+  const pageSelected = useMemo(() => selectableIds.filter(id => selected.has(id)).length, [selectableIds, selected])
+  const allPageSelected = selectableIds.length > 0 && pageSelected === selectableIds.length
+  const headerCheckbox = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (headerCheckbox.current) headerCheckbox.current.indeterminate = pageSelected > 0 && !allPageSelected
+  }, [pageSelected, allPageSelected])
+  const canSelectAcross = allPageSelected && !allAcrossSelected && pages > 1
 
   const filters = collection.isMappingComplete === false ? [...BASE_FILTERS, ...MIGRATION_FILTERS] : BASE_FILTERS
 
@@ -162,13 +175,48 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     )
   }
 
-  function toggleSelected(id: string, selected: boolean) {
-    setSelectedIds(current => {
-      const next = new Set(current)
-      if (selected) next.add(id)
-      else next.delete(id)
+  function toggleSelected(item: Item, isSelected: boolean) {
+    setAllAcrossSelected(false)
+    setSelected(current => {
+      const next = new Map(current)
+      if (isSelected) next.set(item.id, item)
+      else next.delete(item.id)
       return next
     })
+  }
+
+  function togglePage(isSelected: boolean) {
+    setAllAcrossSelected(false)
+    setSelected(current => {
+      const next = new Map(current)
+      for (const item of items) {
+        if (!selectableIds.includes(item.id)) continue
+        if (isSelected) next.set(item.id, item)
+        else next.delete(item.id)
+      }
+      return next
+    })
+  }
+
+  function clearSelection() {
+    setAllAcrossSelected(false)
+    setSelected(new Map())
+  }
+
+  async function selectAllAcross() {
+    setSelectingAll(true)
+    try {
+      const all = await fetchAllLinkedCollectionItems(address, collection.id, linkedItemFilterToQuery(filter))
+      const selectable = all.filter(item => isLinkedItemSelectable(item, curationMap.get(item.id) ?? null))
+      setSelected(new Map(selectable.map(item => [item.id, item])))
+      setAllAcrossSelected(true)
+      track('Select all linked items', { collectionId: collection.id, filter, count: selectable.length })
+    } catch (error) {
+      captureError(error, { flow: 'linked_select_all', collectionId: collection.id })
+      showToast(t('linked_collection.select_all_error'), { type: 'error' })
+    } finally {
+      setSelectingAll(false)
+    }
   }
 
   async function copyContract() {
@@ -224,7 +272,8 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
 
   const closePublish = useCallback(() => setPublishView('closed'), [])
   const onPublished = useCallback(() => {
-    setSelectedIds(new Set())
+    setSelected(new Map())
+    setAllAcrossSelected(false)
     void curations.refetch()
     void itemsPage.refetch()
   }, [curations, itemsPage])
@@ -282,7 +331,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
                 setPublishView(publishAction === 'push' ? 'push' : 'publish')
               }}
             >
-              {t(`linked_collection.publish_action.${publishAction ?? 'publish'}`)}
+              {t(`linked_collection.publish_action.${publishAction ?? 'publish'}`, { count: selectedCount })}
             </Button>
           </Tooltip>
           <CollectionActionsMenu
@@ -407,47 +456,72 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
         </P.Panel>
       ) : (
         <>
-          {selectedIds.size > 0 && (
-            <S.SelectionBar data-testid="linked-selection">
-              {t('linked_collection.selected', { count: selectedIds.size })}
-              <S.SelectionLink
-                type="button"
-                data-testid="linked-clear-selection"
-                onClick={() => setSelectedIds(new Set())}
-              >
-                {t('linked_collection.clear_selection')}
-              </S.SelectionLink>
-            </S.SelectionBar>
-          )}
           <S.List data-testid="items-list" aria-busy={itemsPage.isFetching || undefined}>
-            <S.ListHeader>
+            <S.ListHeader data-selecting={selectedCount > 0 || undefined}>
               <S.HeaderSelect>
                 <input
+                  ref={headerCheckbox}
                   type="checkbox"
-                  checked={allSelected}
-                  disabled={selectableIds.length === 0}
+                  checked={allPageSelected}
+                  disabled={selectableIds.length === 0 || isSelectingAll}
                   aria-label={t('linked_collection.select_all')}
                   data-testid="linked-select-all"
-                  onChange={event => setSelectedIds(event.target.checked ? new Set(selectableIds) : new Set())}
+                  onChange={event => togglePage(event.target.checked)}
                 />
               </S.HeaderSelect>
-              <span data-name>{t('collection_detail_page.list.item')}</span>
-              <span>{t('collection_detail_page.list.category')}</span>
-              <span>
-                {t('linked_collection.list.status')}
-                {curations.isError && (
-                  <S.StatusRetry
-                    type="button"
-                    data-testid="linked-item-status-retry"
-                    disabled={curations.isFetching}
-                    onClick={() => void curations.refetch()}
-                  >
-                    {t('linked_collection.item_status.retry')}
-                  </S.StatusRetry>
-                )}
-              </span>
-              <span>{t('linked_collection.list.mapping')}</span>
-              <span>{t('collection_detail_page.list.actions')}</span>
+              {selectedCount > 0 ? (
+                <S.SelectionSummary data-testid="linked-selection">
+                  <S.SelectionCount data-testid="linked-selection-count">
+                    {t(allAcrossSelected ? 'linked_collection.selected_all' : 'linked_collection.selected', {
+                      count: selectedCount
+                    })}
+                  </S.SelectionCount>
+                  <S.SelectionActions>
+                    {canSelectAcross && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        loading={isSelectingAll}
+                        data-testid="linked-select-across"
+                        onClick={() => void selectAllAcross()}
+                      >
+                        {t('linked_collection.select_across', { total })}
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="dark"
+                      disabled={isSelectingAll}
+                      data-testid="linked-clear-selection"
+                      onClick={clearSelection}
+                    >
+                      {t('linked_collection.clear_selection')}
+                    </Button>
+                  </S.SelectionActions>
+                </S.SelectionSummary>
+              ) : (
+                <>
+                  <span data-name>{t('collection_detail_page.list.item')}</span>
+                  <span>{t('collection_detail_page.list.category')}</span>
+                  <span>
+                    {t('linked_collection.list.status')}
+                    {curations.isError && (
+                      <S.StatusRetry
+                        type="button"
+                        data-testid="linked-item-status-retry"
+                        disabled={curations.isFetching}
+                        onClick={() => void curations.refetch()}
+                      >
+                        {t('linked_collection.item_status.retry')}
+                      </S.StatusRetry>
+                    )}
+                  </span>
+                  <span>{t('linked_collection.list.mapping')}</span>
+                  <span>{t('collection_detail_page.list.actions')}</span>
+                </>
+              )}
             </S.ListHeader>
             {items.map(item => (
               <LinkedItemRow
@@ -456,8 +530,8 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
                 contract={contract}
                 status={curations.isSuccess ? statuses.get(item.id) : undefined}
                 selectable={selectableIds.includes(item.id)}
-                selected={selectedIds.has(item.id)}
-                onSelectedChange={selected => toggleSelected(item.id, selected)}
+                selected={selected.has(item.id)}
+                onSelectedChange={isSelected => toggleSelected(item, isSelected)}
                 editable={canEdit}
                 onSaveMappings={saveMappings}
                 actions={

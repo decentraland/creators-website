@@ -1573,9 +1573,9 @@
     },
     "migration_banner": "One or more items in this collection were published before token mappings existed. Add a mapping to each and publish the changes.",
     "publish_action": {
-      "publish": "Publish",
-      "push": "Push changes",
-      "publish_and_push": "Publish & push changes"
+      "publish": "{count, plural, =0 {Publish} other {Publish (#)}}",
+      "push": "{count, plural, =0 {Push changes} other {Push changes (#)}}",
+      "publish_and_push": "{count, plural, =0 {Publish & push changes} other {Publish & push changes (#)}}"
     },
     "publish_blocker": {
       "no_selection": "Select the items to publish or push.",
@@ -1590,8 +1590,11 @@
       "description": "Try another filter to find what you are looking for."
     },
     "selected": "{count, plural, one {# item selected} other {# items selected}}",
+    "selected_all": "{count, plural, one {The only publishable item is selected} other {All # publishable items are selected}}",
     "clear_selection": "Clear selection",
     "select_all": "Select every publishable item on this page",
+    "select_across": "Select all {total} items",
+    "select_all_error": "We couldn't select every item. Please try again.",
     "select_item": "Select {name}",
     "urn_saved": "URN updated",
     "urn_error": "We couldn't update the URN. It may already be in use, or the item may be published.",

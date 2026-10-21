@@ -368,6 +368,21 @@ export async function fetchLinkedCollectionItems(
   return { ...remote, results: remote.results.map(fromRemoteItem) }
 }
 
+/** Every item of a linked collection under a filter, page by page: what "Select all" picks across pages. */
+export async function fetchAllLinkedCollectionItems(
+  address: string,
+  collectionId: string,
+  filter: LinkedItemsQuery = {},
+  limit = 500
+): Promise<Item[]> {
+  const items: Item[] = []
+  for (let page = 1; ; page++) {
+    const result = await fetchLinkedCollectionItems(address, collectionId, page, limit, filter)
+    items.push(...result.results)
+    if (page >= result.pages || result.results.length === 0) return items
+  }
+}
+
 /** The linked items waiting for review, every page of them: GET /collections/{id}/items?status=pending. */
 export async function fetchPendingLinkedItems(address: string, collectionId: string, limit = 50): Promise<Item[]> {
   const items: Item[] = []

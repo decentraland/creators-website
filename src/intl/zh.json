@@ -1573,9 +1573,9 @@
     },
     "migration_banner": "此系列中有一个或多个物品是在代币映射推出之前发布的。请为每个物品添加映射并发布更改。",
     "publish_action": {
-      "publish": "发布",
-      "push": "推送更改",
-      "publish_and_push": "发布并推送更改"
+      "publish": "{count, plural, =0 {发布} other {发布（#）}}",
+      "push": "{count, plural, =0 {推送更改} other {推送更改（#）}}",
+      "publish_and_push": "{count, plural, =0 {发布并推送更改} other {发布并推送更改（#）}}"
     },
     "publish_blocker": {
       "no_selection": "请选择要发布或推送的物品。",
@@ -1590,8 +1590,11 @@
       "description": "请尝试其他筛选条件。"
     },
     "selected": "{count, plural, other {已选择 # 个物品}}",
+    "selected_all": "{count, plural, other {已选择全部 # 个可发布物品}}",
     "clear_selection": "清除选择",
     "select_all": "选择此页面所有可发布的物品",
+    "select_across": "选择全部 {total} 个物品",
+    "select_all_error": "无法选择所有物品，请重试。",
     "select_item": "选择 {name}",
     "urn_saved": "URN 已更新",
     "urn_error": "无法更新 URN。它可能已被使用，或该物品已发布。",

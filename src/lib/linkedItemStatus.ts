@@ -93,15 +93,10 @@ export type LinkedPublishAction = 'publish' | 'push' | 'publish_and_push'
 export type LinkedSelection = { toPublish: Item[]; toPush: Item[] }
 
 /** Splits the selected items into the ones to publish and the ones to push, as the legacy publish button does. */
-export function splitLinkedSelection(
-  items: Item[],
-  curations: Map<string, ItemCuration>,
-  selectedIds: Set<string>
-): LinkedSelection {
+export function splitLinkedSelection(selected: Iterable<Item>, curations: Map<string, ItemCuration>): LinkedSelection {
   const toPublish: Item[] = []
   const toPush: Item[] = []
-  for (const item of items) {
-    if (!selectedIds.has(item.id)) continue
+  for (const item of selected) {
     const curation = curations.get(item.id) ?? null
     if (canPublishLinkedItem(getLinkedItemStatus(item, curation))) toPublish.push(item)
     else if (canPushLinkedItem(item, curation)) toPush.push(item)
