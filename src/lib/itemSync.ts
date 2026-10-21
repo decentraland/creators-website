@@ -85,10 +85,12 @@ function sameRepresentations(a: ItemRepresentation[], b: ItemRepresentation[]): 
   })
 }
 
+// Tags are deployed with the entity but the marketplace and the Shop read them from the builder, so a tag
+// edit is live without a review and never counts as a pending change; the next reviewed push carries it.
 function sameMetadata(item: Item, metadata: CatalystItemMetadata, deployed: ItemData): boolean {
   if (item.name !== metadata.name || item.description !== metadata.description) return false
   const data = item.data
-  if (data.category !== deployed.category || !sameList(data.tags, deployed.tags)) return false
+  if (data.category !== deployed.category) return false
   if (item.type === ItemType.EMOTE) {
     if (data.loop !== deployed.loop) return false
     if (data.outcomes && data.outcomes.length > 0) {
@@ -218,12 +220,12 @@ export function buildResetItem(item: Item, entity: Entity): Item {
   const deployed = getEntityItemData(entity)
   if (!deployed || !entity.content) throw new Error(`Entity ${entity.id} has no item data or content`)
   const contents = Object.fromEntries(entity.content.map(({ file, hash }) => [file, hash]))
-  // The preview video and the permission list never reach the Catalyst; keep the builder's. `item.video` is
-  // the approved hash, so a video uploaded after approval (pending in `contents`) is discarded with the reset.
+  // The preview video and the permission list never reach the Catalyst, and tags are live from the builder;
+  // keep the builder's. `item.video` is the approved hash, so a video uploaded after approval (pending in
+  // `contents`) is discarded with the reset.
   const video = item.video ?? item.contents[VIDEO_PATH]
   if (video) contents[VIDEO_PATH] = video
-  const data = item.data.requiredPermissions
-    ? { ...deployed, requiredPermissions: item.data.requiredPermissions }
-    : deployed
+  const data: ItemData = { ...deployed, tags: item.data.tags }
+  if (item.data.requiredPermissions) data.requiredPermissions = item.data.requiredPermissions
   return { ...item, name: metadata.name, description: metadata.description, data, contents }
 }

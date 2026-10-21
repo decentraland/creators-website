@@ -105,7 +105,12 @@ describe('isItemSynced', () => {
     const entity = entityFor(wearable)
     expect(isItemSynced({ ...wearable, data: { ...wearable.data, category: 'helmet' } }, entity)).toBe(false)
     expect(isItemSynced({ ...wearable, data: { ...wearable.data, replaces: [] } }, entity)).toBe(false)
-    expect(isItemSynced({ ...wearable, data: { ...wearable.data, tags: ['pirate', 'hat'] } }, entity)).toBe(false)
+  })
+
+  it('stays in sync after editing the tags, which go live without a review', () => {
+    const entity = entityFor(wearable)
+    expect(isItemSynced({ ...wearable, data: { ...wearable.data, tags: ['pirate', 'hat'] } }, entity)).toBe(true)
+    expect(isItemSynced({ ...wearable, data: { ...wearable.data, tags: [] } }, entity)).toBe(true)
   })
 
   it('is out of sync when an emote changes its play mode', () => {
@@ -136,15 +141,6 @@ describe('isItemSynced', () => {
     expect(isItemSynced(withOverrides, entityFor(wearable))).toBe(false)
     expect(isItemSynced(wearable, entityFor(withOverrides))).toBe(false)
     expect(isItemSynced(withOverrides, entityFor(withOverrides))).toBe(true)
-  })
-
-  it('does not confuse a tag containing a comma with two tags', () => {
-    expect(
-      isItemSynced(
-        { ...wearable, data: { ...wearable.data, tags: ['pirate,hat'] } },
-        entityFor({ ...wearable, data: { ...wearable.data, tags: ['pirate', 'hat'] } })
-      )
-    ).toBe(false)
   })
 
   it('treats an emote deployed before ADR-74 as out of sync', () => {
@@ -279,6 +275,12 @@ describe('buildResetItem', () => {
     expect(reset).toMatchObject({ id: 'i1', name: 'Pirate Hat', description: 'Yarr', rarity: 'legendary' })
     expect(reset.data.category).toBe('hat')
     expect(reset.contents).toEqual({ 'hat.glb': 'Qmglb', 'thumbnail.png': 'Qmthumb', 'image.png': 'Qmimage' })
+  })
+
+  it('keeps the tags edited in the builder, which are live without a review', () => {
+    const edited: Item = { ...wearable, data: { ...wearable.data, category: 'helmet', tags: ['pirate', 'hat'] } }
+    const reset = buildResetItem(edited, entityFor(wearable))
+    expect(reset.data.tags).toEqual(['pirate', 'hat'])
   })
 
   it('keeps the smart wearable video and permissions the Catalyst never receives, so the reset item is synced', () => {
