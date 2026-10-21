@@ -76,7 +76,7 @@ export type BaseWearable = {
   name: string
 }
 
-/** The URN picked per slot; `null` leaves the slot empty (facial hair is nullable). */
+/** The URN picked per slot; `null` leaves the slot empty. */
 export type BaseWearableSelection = Record<BaseWearableCategory, string | null>
 
 export type AvatarColors = { skin: string; eyes: string; hair: string }

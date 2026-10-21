@@ -91,7 +91,7 @@ const NONE = '__none__'
 type Slot =
   | { kind: 'shape' }
   | { kind: 'color'; slot: keyof AvatarColors; colors: string[] }
-  | { kind: 'wearable'; category: BaseWearableCategory; nullable: boolean }
+  | { kind: 'wearable'; category: BaseWearableCategory }
 
 // Two columns, read left to right then top to bottom.
 const SLOTS: Slot[] = [
@@ -99,10 +99,10 @@ const SLOTS: Slot[] = [
   { kind: 'color', slot: 'skin', colors: SKIN_COLORS },
   { kind: 'color', slot: 'hair', colors: HAIR_COLORS },
   { kind: 'color', slot: 'eyes', colors: EYE_COLORS },
-  { kind: 'wearable', category: WearableCategory.HAIR, nullable: false },
-  { kind: 'wearable', category: WearableCategory.UPPER_BODY, nullable: false },
-  { kind: 'wearable', category: WearableCategory.FACIAL_HAIR, nullable: true },
-  { kind: 'wearable', category: WearableCategory.LOWER_BODY, nullable: false }
+  { kind: 'wearable', category: WearableCategory.HAIR },
+  { kind: 'wearable', category: WearableCategory.UPPER_BODY },
+  { kind: 'wearable', category: WearableCategory.FACIAL_HAIR },
+  { kind: 'wearable', category: WearableCategory.LOWER_BODY }
 ]
 
 /**
@@ -186,9 +186,7 @@ export function AvatarCustomizerDrawer({ catalog, onClose, testId = 'avatar-cust
         </S.FieldBox>
       )
     }
-    const options = slot.nullable
-      ? [{ value: NONE, label: t('item_editor.customizer.none') }, ...optionsByCategory[slot.category]]
-      : optionsByCategory[slot.category]
+    const options = [{ value: NONE, label: t('item_editor.customizer.none') }, ...optionsByCategory[slot.category]]
     // "Hair" alone would clash with the hair color swatches above it.
     const label =
       slot.category === WearableCategory.HAIR
@@ -197,7 +195,7 @@ export function AvatarCustomizerDrawer({ catalog, onClose, testId = 'avatar-cust
     return (
       <S.Field key={slot.category} data-select>
         <Select
-          value={selection?.[slot.category] ?? (slot.nullable ? NONE : null)}
+          value={selection?.[slot.category] ?? NONE}
           options={options}
           disabled={!catalog}
           tone="dark"
