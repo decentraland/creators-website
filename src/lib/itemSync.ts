@@ -1,6 +1,8 @@
 // Whether a published item still matches the entity deployed to the Catalyst — the version the world
 // and the marketplace show. Ported from the legacy builder (modules/item/utils areSynced + the
-// getStatusForStandard selector) so both apps judge the same item the same way.
+// getStatusForStandard selector). The one deliberate divergence is `ignoreTags`: the creator's view
+// leaves tags out of the comparison, so an item the legacy builder reads as unsynced may read as
+// published here.
 import { type Entity } from '@dcl/schemas'
 import { type Collection } from './collections'
 import { type CollectionCuration } from './curation'
@@ -85,12 +87,11 @@ function sameRepresentations(a: ItemRepresentation[], b: ItemRepresentation[]): 
   })
 }
 
-// Tags are deployed with the entity but the marketplace and the Shop read them from the builder, so a tag
-// edit is live without a review and never counts as a pending change; the next reviewed push carries it.
-function sameMetadata(item: Item, metadata: CatalystItemMetadata, deployed: ItemData): boolean {
+function sameMetadata(item: Item, metadata: CatalystItemMetadata, deployed: ItemData, options: SyncOptions): boolean {
   if (item.name !== metadata.name || item.description !== metadata.description) return false
   const data = item.data
   if (data.category !== deployed.category) return false
+  if (!options.ignoreTags && !sameList(data.tags, deployed.tags)) return false
   if (item.type === ItemType.EMOTE) {
     if (data.loop !== deployed.loop) return false
     if (data.outcomes && data.outcomes.length > 0) {
@@ -107,13 +108,22 @@ function sameMetadata(item: Item, metadata: CatalystItemMetadata, deployed: Item
   )
 }
 
+export type SyncOptions = {
+  /**
+   * Leave tags out: the marketplace and the Shop read them from the builder, so a tag edit is live without a
+   * review. Only for what the creator sees; what to deploy is still decided on the full entity, so the edit
+   * reaches the Catalyst with the collection's next approval.
+   */
+  ignoreTags?: boolean
+}
+
 /** Whether the builder item and its deployed entity carry the same metadata, representations and files. */
-export function isItemSynced(item: Item, entity: Entity): boolean {
+export function isItemSynced(item: Item, entity: Entity, options: SyncOptions = {}): boolean {
   const metadata = entity.metadata as CatalystItemMetadata
   const deployed = getEntityItemData(entity)
   // A pre-ADR-74 emote has to be redeployed no matter what.
   if (!deployed || (item.type === ItemType.EMOTE && !metadata.emoteDataADR74)) return false
-  if (!sameMetadata(item, metadata, deployed)) return false
+  if (!sameMetadata(item, metadata, deployed, options)) return false
 
   const deployable = getDeployableFiles(item.contents)
   const representations = item.data.representations.map(rep => ({
@@ -133,7 +143,7 @@ export function isItemSynced(item: Item, entity: Entity): boolean {
   return true
 }
 
-type SyncContext = {
+type SyncContext = SyncOptions & {
   /** The collection has a curation request the committee has not answered yet. */
   isCurationPending: boolean
   /** The curation request has settled; until then an edited item can't tell "unsynced" from "under review". */
@@ -146,7 +156,7 @@ export function getItemSyncStatus(item: Item, entity: Entity | undefined, contex
   if (!item.isPublished) return ItemSyncStatus.UNPUBLISHED
   if (!context.curationLoaded) return ItemSyncStatus.LOADING
   if (entity) {
-    if (isItemSynced(item, entity)) return ItemSyncStatus.SYNCED
+    if (isItemSynced(item, entity, { ignoreTags: context.ignoreTags })) return ItemSyncStatus.SYNCED
     return context.isCurationPending ? ItemSyncStatus.UNDER_REVIEW : ItemSyncStatus.UNSYNCED
   }
   if (!item.isApproved) return ItemSyncStatus.UNDER_REVIEW
@@ -225,7 +235,7 @@ export function buildResetItem(item: Item, entity: Entity): Item {
   // `contents`) is discarded with the reset.
   const video = item.video ?? item.contents[VIDEO_PATH]
   if (video) contents[VIDEO_PATH] = video
-  const data: ItemData = { ...deployed, tags: item.data.tags }
+  const data: ItemData = { ...deployed, tags: item.data.tags ?? deployed.tags }
   if (item.data.requiredPermissions) data.requiredPermissions = item.data.requiredPermissions
   return { ...item, name: metadata.name, description: metadata.description, data, contents }
 }

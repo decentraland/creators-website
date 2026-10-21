@@ -163,6 +163,16 @@ describe('findItemsToDeploy', () => {
     const missing = item('3')
     expect(findItemsToDeploy([changed, missing], [entityOf({ ...changed, name: 'Old name' })], true)).toEqual([missing])
   })
+
+  it('deploys a tag-only edit together with its rescue, so the Catalyst never lags the chain', async () => {
+    const approved = item('1')
+    const content = getEntityContent(approved)
+    const approvedHash = await computeItemContentHash(collection, approved, content, 'v1')
+    const retagged = { ...approved, data: { ...approved.data, tags: ['pirate'] }, blockchainContentHash: approvedHash }
+    const rescue = await findItemsToRescue(collection, [retagged], async () => null)
+    expect(rescue.map(target => target.item)).toEqual([retagged])
+    expect(findItemsToDeploy([retagged], [entityOf(approved)])).toEqual([retagged])
+  })
 })
 
 describe('deployItems', () => {

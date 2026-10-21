@@ -107,10 +107,29 @@ describe('isItemSynced', () => {
     expect(isItemSynced({ ...wearable, data: { ...wearable.data, replaces: [] } }, entity)).toBe(false)
   })
 
-  it('stays in sync after editing the tags, which go live without a review', () => {
+  it('is out of sync after editing the tags, unless asked to ignore them', () => {
     const entity = entityFor(wearable)
-    expect(isItemSynced({ ...wearable, data: { ...wearable.data, tags: ['pirate', 'hat'] } }, entity)).toBe(true)
-    expect(isItemSynced({ ...wearable, data: { ...wearable.data, tags: [] } }, entity)).toBe(true)
+    const retagged = { ...wearable, data: { ...wearable.data, tags: ['pirate', 'hat'] } }
+    const untagged = { ...wearable, data: { ...wearable.data, tags: [] } }
+    expect(isItemSynced(retagged, entity)).toBe(false)
+    expect(isItemSynced(untagged, entity)).toBe(false)
+    expect(isItemSynced(retagged, entity, { ignoreTags: true })).toBe(true)
+    expect(isItemSynced(untagged, entity, { ignoreTags: true })).toBe(true)
+  })
+
+  it('does not confuse a tag containing a comma with two tags', () => {
+    expect(
+      isItemSynced(
+        { ...wearable, data: { ...wearable.data, tags: ['pirate,hat'] } },
+        entityFor({ ...wearable, data: { ...wearable.data, tags: ['pirate', 'hat'] } })
+      )
+    ).toBe(false)
+  })
+
+  it('still catches any other change while ignoring the tags', () => {
+    const entity = entityFor(wearable)
+    const edited = { ...wearable, name: 'Corsair Hat', data: { ...wearable.data, tags: ['pirate', 'hat'] } }
+    expect(isItemSynced(edited, entity, { ignoreTags: true })).toBe(false)
   })
 
   it('is out of sync when an emote changes its play mode', () => {
@@ -155,6 +174,14 @@ describe('getItemSyncStatus', () => {
   it('is synced or unsynced by comparing with the entity', () => {
     expect(getItemSyncStatus(wearable, entityFor(wearable), loaded)).toBe(ItemSyncStatus.SYNCED)
     expect(getItemSyncStatus({ ...wearable, name: 'x' }, entityFor(wearable), loaded)).toBe(ItemSyncStatus.UNSYNCED)
+  })
+
+  it('reads a tag-only edit as synced for the creator, and as unsynced by default', () => {
+    const retagged = { ...wearable, data: { ...wearable.data, tags: ['pirate', 'hat'] } }
+    expect(getItemSyncStatus(retagged, entityFor(wearable), loaded)).toBe(ItemSyncStatus.UNSYNCED)
+    expect(getItemSyncStatus(retagged, entityFor(wearable), { ...loaded, ignoreTags: true })).toBe(
+      ItemSyncStatus.SYNCED
+    )
   })
 
   it('is under review, not unsynced, while the committee has a pending request for the collection', () => {
@@ -281,6 +308,13 @@ describe('buildResetItem', () => {
     const edited: Item = { ...wearable, data: { ...wearable.data, category: 'helmet', tags: ['pirate', 'hat'] } }
     const reset = buildResetItem(edited, entityFor(wearable))
     expect(reset.data.tags).toEqual(['pirate', 'hat'])
+  })
+
+  it('falls back to the deployed tags when the builder item has none', () => {
+    const data = { ...wearable.data }
+    delete data.tags
+    const reset = buildResetItem({ ...wearable, data }, entityFor(wearable))
+    expect(reset.data.tags).toEqual(wearable.data.tags)
   })
 
   it('keeps the smart wearable video and permissions the Catalyst never receives, so the reset item is synced', () => {
