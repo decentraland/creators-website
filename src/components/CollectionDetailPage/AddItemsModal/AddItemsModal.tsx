@@ -4,6 +4,7 @@ import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { useTranslation } from '~/intl'
 import { allCollectionItemsKey, useAllCollectionItems } from '~/hooks/useCollection'
+import { itemCurationsKey, linkedItemsKey } from '~/hooks/useLinkedCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { installBackGuard } from '~/lib/backGuard'
@@ -289,7 +290,10 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
           queryClient.invalidateQueries({ queryKey: allCollectionItemsKey(address, collection.id) }),
           queryClient.invalidateQueries({ queryKey: ['collection', address, collection.id] }),
           queryClient.invalidateQueries({ queryKey: ['collection-preview', address, collection.id] }),
-          queryClient.invalidateQueries({ queryKey: ['collections'] })
+          queryClient.invalidateQueries({ queryKey: ['collections'] }),
+          // Linked collections page their items and curations server-side under their own keys.
+          queryClient.invalidateQueries({ queryKey: linkedItemsKey(address, collection.id) }),
+          queryClient.invalidateQueries({ queryKey: itemCurationsKey(address, collection.id) })
         ])
       }
 
