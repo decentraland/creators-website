@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { type SpringBoneParams } from '@dcl/schemas'
 import { manifest } from '@dcl-regenesislabs/wearable-validator'
 import { PROP_ARMATURE_NAME } from '../models'
 import { SPRING_BONE_TOKEN } from './parseSpringBones'
@@ -7,6 +8,7 @@ import {
   SPRING_BONE_RANGES,
   buildBoneTree,
   buildSubtreeSizes,
+  carrySpringBoneParams,
   getChainRoots,
   getDefaultSpringBoneParams,
   getDefaultSpringBoneRoots,
@@ -18,7 +20,8 @@ import {
   sameSpringBoneParams,
   sortByHierarchy,
   sumConfiguredBones,
-  type BoneNode
+  type BoneNode,
+  type SpringBoneParamsByHash
 } from './index'
 import { ItemType, type Item } from '../items'
 
@@ -157,6 +160,137 @@ describe('spring bones', () => {
     expect(getShapesMissingSpringBones({ bafyA: params, bafyB: {} }, { bafyA: bones, bafyB: bones })).toEqual(['bafyB'])
     expect(getShapesMissingSpringBones({ bafyA: params, bafyB: params }, { bafyA: bones, bafyB: bones })).toEqual([])
     expect(getShapesMissingSpringBones({ bafyA: params }, { bafyA: bones })).toEqual([])
+  })
+})
+
+describe('carrySpringBoneParams', () => {
+  const MALE = 'urn:decentraland:off-chain:base-avatars:BaseMale'
+  const FEMALE = 'urn:decentraland:off-chain:base-avatars:BaseFemale'
+  const tuned: SpringBoneParams = { stiffness: 3, gravityPower: 1, gravityDir: [0, -1, 0], drag: 0.1, isRoot: true }
+
+  function wearable(models: Record<string, string>, springBones?: SpringBoneParamsByHash): Item {
+    return {
+      id: 'w1',
+      name: 'Tail',
+      description: '',
+      thumbnail: 'thumbnail.png',
+      owner: '0xabc',
+      isPublished: false,
+      isApproved: false,
+      inCatalyst: false,
+      type: ItemType.WEARABLE,
+      data: {
+        category: 'top_head',
+        representations: Object.keys(models).map(bodyShape => ({
+          bodyShapes: [bodyShape],
+          mainFile: `${bodyShape}.glb`,
+          contents: []
+        })),
+        springBones: springBones && { version: 1, models: springBones }
+      },
+      contents: Object.fromEntries(Object.entries(models).map(([bodyShape, hash]) => [`${bodyShape}.glb`, hash])),
+      createdAt: 1,
+      updatedAt: 1
+    }
+  }
+
+  function fromSaved(item: Item) {
+    return { item, params: item.data.springBones?.models ?? {} }
+  }
+
+  // The tail is tuned and the hair chain was removed by the creator.
+  const oldBones = parseSpringBones(glb({ nodes }))
+  // Re-exported with a new ear chain.
+  const newBones = parseSpringBones(glb({ nodes: [...nodes, { name: 'Ear_springbone' }] }))
+
+  it('keeps a re-exported model\u2019s chains by bone name, defaulting only the new roots', () => {
+    const saved = wearable(
+      { [MALE]: 'bafyOld', [FEMALE]: 'bafyF' },
+      {
+        bafyOld: { Tail_springbone_1: tuned },
+        bafyF: { Hair_springbone: tuned }
+      }
+    )
+    const next = wearable({ [MALE]: 'bafyNew', [FEMALE]: 'bafyF' })
+    const params = carrySpringBoneParams(fromSaved(saved), next, {
+      bafyOld: oldBones,
+      bafyNew: newBones,
+      bafyF: oldBones
+    })
+    expect(Object.keys(params).sort()).toEqual(['bafyF', 'bafyNew'])
+    expect(params.bafyNew).toEqual({ Tail_springbone_1: tuned, Ear_springbone: getDefaultSpringBoneParams() })
+    expect(params.bafyF).toEqual({ Hair_springbone: tuned })
+  })
+
+  it('drops chains whose bone left the model', () => {
+    const saved = wearable({ [MALE]: 'bafyOld' }, { bafyOld: { Tail_springbone_1: tuned, Hair_springbone: tuned } })
+    const withoutHair = parseSpringBones(glb({ nodes: [{ name: 'Avatar_Hips', children: [1] }, ...nodes.slice(1, 3)] }))
+    const params = carrySpringBoneParams(fromSaved(saved), wearable({ [MALE]: 'bafyNew' }), {
+      bafyOld: oldBones,
+      bafyNew: withoutHair
+    })
+    expect(params.bafyNew).toEqual({ Tail_springbone_1: tuned })
+  })
+
+  it('gives both models of a split the shared model\u2019s chains', () => {
+    const saved = wearable({ [MALE]: 'bafyOld', [FEMALE]: 'bafyOld' }, { bafyOld: { Tail_springbone_1: tuned } })
+    const next = wearable({ [MALE]: 'bafyM', [FEMALE]: 'bafyF' })
+    const params = carrySpringBoneParams(fromSaved(saved), next, {
+      bafyOld: oldBones,
+      bafyM: oldBones,
+      bafyF: oldBones
+    })
+    expect(params).toEqual({ bafyM: { Tail_springbone_1: tuned }, bafyF: { Tail_springbone_1: tuned } })
+  })
+
+  it('takes the first body shape\u2019s chains when two models become one', () => {
+    const female = { ...tuned, stiffness: 1 }
+    const saved = wearable(
+      { [MALE]: 'bafyM', [FEMALE]: 'bafyF' },
+      {
+        bafyM: { Tail_springbone_1: tuned },
+        bafyF: { Tail_springbone_1: female }
+      }
+    )
+    const next = wearable({ [MALE]: 'bafyNew', [FEMALE]: 'bafyNew' })
+    const params = carrySpringBoneParams(fromSaved(saved), next, {
+      bafyM: oldBones,
+      bafyF: oldBones,
+      bafyNew: oldBones
+    })
+    expect(params).toEqual({ bafyNew: { Tail_springbone_1: tuned } })
+  })
+
+  it('defaults a bone that only became a chain root in the new model', () => {
+    const saved = wearable({ [MALE]: 'bafyOld' }, { bafyOld: { Tail_springbone_1: tuned } })
+    // The tail's first bone is gone, so its second bone now starts the chain.
+    const promoted = parseSpringBones(
+      glb({ nodes: [{ name: 'Avatar_Hips', children: [1] }, { name: 'Tail_springbone_2' }] })
+    )
+    const params = carrySpringBoneParams(fromSaved(saved), wearable({ [MALE]: 'bafyNew' }), {
+      bafyOld: oldBones,
+      bafyNew: promoted
+    })
+    expect(params.bafyNew).toEqual({ Tail_springbone_2: getDefaultSpringBoneParams() })
+  })
+
+  it('carries the chains as they stand, not only as saved', () => {
+    const saved = wearable({ [MALE]: 'bafyOld' }, { bafyOld: { Tail_springbone_1: tuned } })
+    const unsaved = { ...tuned, drag: 0.9 }
+    const params = carrySpringBoneParams(
+      { item: saved, params: { bafyOld: { Tail_springbone_1: unsaved } } },
+      wearable({ [MALE]: 'bafyNew' }),
+      { bafyOld: oldBones, bafyNew: oldBones }
+    )
+    expect(params.bafyNew).toEqual({ Tail_springbone_1: unsaved })
+  })
+
+  it('seeds defaults when the replaced model had no chains saved', () => {
+    const params = carrySpringBoneParams(fromSaved(wearable({ [MALE]: 'bafyOld' })), wearable({ [MALE]: 'bafyNew' }), {
+      bafyOld: oldBones,
+      bafyNew: newBones
+    })
+    expect(params.bafyNew).toEqual(getDefaultSpringBoneRoots(newBones))
   })
 })
 
