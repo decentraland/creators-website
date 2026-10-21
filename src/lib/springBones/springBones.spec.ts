@@ -194,6 +194,10 @@ describe('carrySpringBoneParams', () => {
     }
   }
 
+  function fromSaved(item: Item) {
+    return { item, params: item.data.springBones?.models ?? {} }
+  }
+
   // The tail is tuned and the hair chain was removed by the creator.
   const oldBones = parseSpringBones(glb({ nodes }))
   // Re-exported with a new ear chain.
@@ -208,7 +212,11 @@ describe('carrySpringBoneParams', () => {
       }
     )
     const next = wearable({ [MALE]: 'bafyNew', [FEMALE]: 'bafyF' })
-    const params = carrySpringBoneParams(saved, next, { bafyOld: oldBones, bafyNew: newBones, bafyF: oldBones })
+    const params = carrySpringBoneParams(fromSaved(saved), next, {
+      bafyOld: oldBones,
+      bafyNew: newBones,
+      bafyF: oldBones
+    })
     expect(Object.keys(params).sort()).toEqual(['bafyF', 'bafyNew'])
     expect(params.bafyNew).toEqual({ Tail_springbone_1: tuned, Ear_springbone: getDefaultSpringBoneParams() })
     expect(params.bafyF).toEqual({ Hair_springbone: tuned })
@@ -217,7 +225,7 @@ describe('carrySpringBoneParams', () => {
   it('drops chains whose bone left the model', () => {
     const saved = wearable({ [MALE]: 'bafyOld' }, { bafyOld: { Tail_springbone_1: tuned, Hair_springbone: tuned } })
     const withoutHair = parseSpringBones(glb({ nodes: [{ name: 'Avatar_Hips', children: [1] }, ...nodes.slice(1, 3)] }))
-    const params = carrySpringBoneParams(saved, wearable({ [MALE]: 'bafyNew' }), {
+    const params = carrySpringBoneParams(fromSaved(saved), wearable({ [MALE]: 'bafyNew' }), {
       bafyOld: oldBones,
       bafyNew: withoutHair
     })
@@ -227,7 +235,11 @@ describe('carrySpringBoneParams', () => {
   it('gives both models of a split the shared model\u2019s chains', () => {
     const saved = wearable({ [MALE]: 'bafyOld', [FEMALE]: 'bafyOld' }, { bafyOld: { Tail_springbone_1: tuned } })
     const next = wearable({ [MALE]: 'bafyM', [FEMALE]: 'bafyF' })
-    const params = carrySpringBoneParams(saved, next, { bafyOld: oldBones, bafyM: oldBones, bafyF: oldBones })
+    const params = carrySpringBoneParams(fromSaved(saved), next, {
+      bafyOld: oldBones,
+      bafyM: oldBones,
+      bafyF: oldBones
+    })
     expect(params).toEqual({ bafyM: { Tail_springbone_1: tuned }, bafyF: { Tail_springbone_1: tuned } })
   })
 
@@ -241,12 +253,40 @@ describe('carrySpringBoneParams', () => {
       }
     )
     const next = wearable({ [MALE]: 'bafyNew', [FEMALE]: 'bafyNew' })
-    const params = carrySpringBoneParams(saved, next, { bafyM: oldBones, bafyF: oldBones, bafyNew: oldBones })
+    const params = carrySpringBoneParams(fromSaved(saved), next, {
+      bafyM: oldBones,
+      bafyF: oldBones,
+      bafyNew: oldBones
+    })
     expect(params).toEqual({ bafyNew: { Tail_springbone_1: tuned } })
   })
 
+  it('defaults a bone that only became a chain root in the new model', () => {
+    const saved = wearable({ [MALE]: 'bafyOld' }, { bafyOld: { Tail_springbone_1: tuned } })
+    // The tail's first bone is gone, so its second bone now starts the chain.
+    const promoted = parseSpringBones(
+      glb({ nodes: [{ name: 'Avatar_Hips', children: [1] }, { name: 'Tail_springbone_2' }] })
+    )
+    const params = carrySpringBoneParams(fromSaved(saved), wearable({ [MALE]: 'bafyNew' }), {
+      bafyOld: oldBones,
+      bafyNew: promoted
+    })
+    expect(params.bafyNew).toEqual({ Tail_springbone_2: getDefaultSpringBoneParams() })
+  })
+
+  it('carries the chains as they stand, not only as saved', () => {
+    const saved = wearable({ [MALE]: 'bafyOld' }, { bafyOld: { Tail_springbone_1: tuned } })
+    const unsaved = { ...tuned, drag: 0.9 }
+    const params = carrySpringBoneParams(
+      { item: saved, params: { bafyOld: { Tail_springbone_1: unsaved } } },
+      wearable({ [MALE]: 'bafyNew' }),
+      { bafyOld: oldBones, bafyNew: oldBones }
+    )
+    expect(params.bafyNew).toEqual({ Tail_springbone_1: unsaved })
+  })
+
   it('seeds defaults when the replaced model had no chains saved', () => {
-    const params = carrySpringBoneParams(wearable({ [MALE]: 'bafyOld' }), wearable({ [MALE]: 'bafyNew' }), {
+    const params = carrySpringBoneParams(fromSaved(wearable({ [MALE]: 'bafyOld' })), wearable({ [MALE]: 'bafyNew' }), {
       bafyOld: oldBones,
       bafyNew: newBones
     })

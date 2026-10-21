@@ -189,41 +189,42 @@ export function getInitialSpringBoneParams(item: Item, hash: string, bones: Bone
   return getDefaultSpringBoneRoots(bones)
 }
 
+/** What a model change carries spring bones from: the item as it stood and its params per model hash. */
+export type SpringBonesCarrySource = { item: Item; params: SpringBoneParamsByHash }
+
 /**
  * Params for a model change, carried over per body shape: a new model inherits the chains of the
  * model that served its first body shape, kept by bone name, and defaults only for roots that are
  * new to the model. Unchanged models keep their params as they are.
  */
 export function carrySpringBoneParams(
-  saved: Item,
+  source: SpringBonesCarrySource,
   next: Item,
   bonesByHash: Record<string, BoneNode[]>
 ): SpringBoneParamsByHash {
-  const savedHashes = getRepresentationModelHashes(saved)
+  const sourceHashes = getRepresentationModelHashes(source.item)
   const params: SpringBoneParamsByHash = {}
   for (const hash of getRepresentationModelHashes(next)) {
     const bones = bonesByHash[hash]
     if (!bones || !hasSpringBones(bones)) continue
-    if (savedHashes.includes(hash)) {
-      params[hash] = getInitialSpringBoneParams(saved, hash, bones)
-      continue
-    }
-    const sourceHash = getSourceModelHash(saved, next, hash)
-    const source = sourceHash ? saved.data.springBones?.models[sourceHash] : undefined
+    const sourceHash = sourceHashes.includes(hash) ? hash : getSourceModelHash(source.item, next, hash)
+    const sourceParams = sourceHash ? source.params[sourceHash] : undefined
     params[hash] =
-      sourceHash && source ? carryModelParams(source, bonesByHash[sourceHash], bones) : getDefaultSpringBoneRoots(bones)
+      sourceHash && sourceParams
+        ? carryModelParams(sourceParams, bonesByHash[sourceHash], bones)
+        : getDefaultSpringBoneRoots(bones)
   }
   return params
 }
 
-/** The saved model hash that served the first body shape of the new model. */
-function getSourceModelHash(saved: Item, next: Item, hash: string): string | undefined {
+/** The source model hash that served the first body shape of the new model. */
+function getSourceModelHash(source: Item, next: Item, hash: string): string | undefined {
   const bodyShapes = next.data.representations
     .filter(representation => next.contents[representation.mainFile] === hash)
     .flatMap(representation => representation.bodyShapes)
   for (const bodyShape of bodyShapes) {
-    const representation = saved.data.representations.find(candidate => candidate.bodyShapes.includes(bodyShape))
-    const sourceHash = representation && saved.contents[representation.mainFile]
+    const representation = source.data.representations.find(candidate => candidate.bodyShapes.includes(bodyShape))
+    const sourceHash = representation && source.contents[representation.mainFile]
     if (sourceHash) return sourceHash
   }
   return undefined
@@ -236,8 +237,8 @@ function carryModelParams(
 ): SpringBoneParamsByName {
   const names = new Set(getSpringBones(bones).map(bone => bone.name))
   const carried: SpringBoneParamsByName = Object.fromEntries(Object.entries(source).filter(([name]) => names.has(name)))
-  // A root the old model already had but left unconfigured was removed on purpose; only new ones get defaults.
-  const known = new Set(sourceBones ? sourceBones.map(bone => bone.name) : Object.keys(source))
+  // A root the old model already had but left unconfigured was removed on purpose; only new roots get defaults.
+  const known = new Set(sourceBones ? getChainRoots(sourceBones).map(bone => bone.name) : Object.keys(source))
   const subtreeSizes = buildSubtreeSizes(bones)
   let total = sumConfiguredBones(subtreeSizes, carried)
   for (const root of getChainRoots(bones)) {

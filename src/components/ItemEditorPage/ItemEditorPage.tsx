@@ -348,7 +348,7 @@ const ItemEditorPage = () => {
   async function persist(item: Item) {
     const hasSpringModels = springBones.models.length > 0
     // A new model without spring bones drops the replaced model's params instead of leaving them orphaned.
-    const dropsSpringBones = !!form.draft.fileUpdate && !springBones.isLoading
+    const dropsSpringBones = !!form.draft.fileUpdate && !springBones.isLoading && !springBones.isError
     const built = await toSaveableItem(item, form.draft, {
       springBones: hasSpringModels
         ? (mergeSpringBonesIntoItem(form.springBoneParams) ?? null)
@@ -370,8 +370,11 @@ const ItemEditorPage = () => {
     showToast(t('item_editor.save_success', { name: saved.name }))
   }
 
+  // Until the new model's chains are carried over, a save would store them under the replaced model.
+  const isCarryingSpringBones = !!form.draft.fileUpdate && springBones.isLoading
+
   function save() {
-    if (!selected) return
+    if (!selected || isCarryingSpringBones) return
     const missing = getShapesMissingSpringBones(form.springBoneParams, springBones.bonesByHash)
     if (missing.length > 0 && !springWarning) {
       setSpringWarning(true)
@@ -556,7 +559,7 @@ const ItemEditorPage = () => {
         draft={form.draft}
         dispatch={form.dispatch}
         isDirty={form.isDirty}
-        isSaving={saveItem.isPending}
+        isSaving={saveItem.isPending || isCarryingSpringBones}
         springBones={springBonesForm}
         onSave={save}
         onRevert={() => form.reset(selected)}
