@@ -1559,6 +1559,7 @@
       "multiple": "{count, plural, one {# token} other {# tokens}}",
       "rules": "{count, plural, one {# rule} other {# rules}}"
     },
+    "kind_label": "Third party type",
     "kind": {
       "standard": "Standard",
       "programmatic": "Programmatic"

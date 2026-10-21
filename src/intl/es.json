@@ -1559,6 +1559,7 @@
       "multiple": "{count, plural, one {# token} other {# tokens}}",
       "rules": "{count, plural, one {# regla} other {# reglas}}"
     },
+    "kind_label": "Tipo de tercero",
     "kind": {
       "standard": "Estándar",
       "programmatic": "Programático"

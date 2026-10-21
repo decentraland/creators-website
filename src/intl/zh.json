@@ -1559,6 +1559,7 @@
       "multiple": "{count, plural, one {# 个代币} other {# 个代币}}",
       "rules": "{count, plural, one {# 条规则} other {# 条规则}}"
     },
+    "kind_label": "第三方类型",
     "kind": {
       "standard": "标准",
       "programmatic": "程序化"

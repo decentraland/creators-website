@@ -257,14 +257,6 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
             )}
           </P.TitleGroup>
           <CollectionStatusPill collection={collection} />
-          {thirdParty && (thirdParty.published || thirdParty.isProgrammatic) && (
-            <S.KindPill
-              data-testid="third-party-kind"
-              data-kind={thirdParty.isProgrammatic ? 'programmatic' : 'standard'}
-            >
-              {t(`linked_collection.kind.${thirdParty.isProgrammatic ? 'programmatic' : 'standard'}`)}
-            </S.KindPill>
-          )}
         </P.HeaderLeft>
         <P.HeaderActions>
           <PreviewCollectionButton
@@ -309,6 +301,15 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
           <S.ContractField>
             <S.ContractLabel>{t('linked_collection.third_party')}</S.ContractLabel>
             <S.ContractValue data-testid="linked-third-party">{thirdParty.name}</S.ContractValue>
+          </S.ContractField>
+        )}
+        {/* A virtual third party has no kind yet: it is chosen in its first publish. */}
+        {thirdParty && (thirdParty.published || thirdParty.isProgrammatic) && (
+          <S.ContractField>
+            <S.ContractLabel>{t('linked_collection.kind_label')}</S.ContractLabel>
+            <S.ContractValue data-testid="third-party-kind">
+              {t(`linked_collection.kind.${thirdParty.isProgrammatic ? 'programmatic' : 'standard'}`)}
+            </S.ContractValue>
           </S.ContractField>
         )}
         {network && (

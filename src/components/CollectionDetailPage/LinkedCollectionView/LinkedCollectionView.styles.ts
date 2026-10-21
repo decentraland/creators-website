@@ -65,21 +65,6 @@ export const CopyButton = styled.button`
   }
 `
 
-export const KindPill = styled.span`
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: ${theme.radius.pill};
-  border: 0.8px solid ${theme.colors.muted2};
-  background: ${theme.colors.mutedTint};
-  color: ${theme.colors.gray4};
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 18px;
-  text-transform: uppercase;
-  white-space: nowrap;
-`
-
 export const Banner = styled.div`
   display: flex;
   align-items: center;
