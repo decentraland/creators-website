@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from 'react'
+import { useState, type KeyboardEvent, type RefObject } from 'react'
 import { Close as RemoveIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import * as S from '../ItemEditorPage.styles'
@@ -7,6 +7,8 @@ type Props = {
   tags: string[]
   disabled?: boolean
   onChange: (tags: string[]) => void
+  /** The text field, for callers that add a tag from elsewhere and want focus to land here afterwards. */
+  inputRef?: RefObject<HTMLInputElement>
   testId?: string
 }
 
@@ -14,7 +16,7 @@ type Props = {
  * Chip list plus a text field: Enter or comma adds a tag, Backspace on an empty field removes the last.
  * Disabled, it is a plain read-only list.
  */
-export function TagsInput({ tags, disabled = false, onChange, testId = 'tags-input' }: Props) {
+export function TagsInput({ tags, disabled = false, onChange, inputRef, testId = 'tags-input' }: Props) {
   const { t } = useTranslation()
   const [value, setValue] = useState('')
 
@@ -57,6 +59,7 @@ export function TagsInput({ tags, disabled = false, onChange, testId = 'tags-inp
       )}
       {!disabled && (
         <S.TextInput
+          ref={inputRef}
           value={value}
           placeholder={t('item_editor.tags.placeholder')}
           maxLength={32}

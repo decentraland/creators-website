@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FeatureFlag } from '~/lib/featureFlags'
 import { setFeatureFlags } from '~/test/featureFlags'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BodyShape } from '@dcl/schemas'
 import { Providers } from '~/components/CollectionDetailPage/SellItemFlow/testUtils'
@@ -14,13 +14,19 @@ const importItemModel = vi.fn()
 vi.mock('~/lib/filePicker', () => ({ pickFile: (...args: unknown[]) => pickFile(...args) }))
 vi.mock('~/lib/itemModelImport', () => ({ importItemModel: (...args: unknown[]) => importItemModel(...args) }))
 
+const campaign = vi.hoisted(() => ({ current: null as { name: string; mainTag: string } | null }))
+vi.mock('~/hooks/useCampaign', () => ({ useCampaign: () => campaign.current }))
+
 vi.mock('~/lib/featureFlags', async () => {
   const actual = await vi.importActual<typeof import('~/lib/featureFlags')>('~/lib/featureFlags')
   const mock = await import('~/test/featureFlags')
   return { ...actual, getIsFeatureEnabled: mock.getIsFeatureEnabled }
 })
 
-beforeEach(() => setFeatureFlags(FeatureFlag.WEARABLE_UTILITY, FeatureFlag.VRM_OPTOUT))
+beforeEach(() => {
+  setFeatureFlags(FeatureFlag.WEARABLE_UTILITY, FeatureFlag.VRM_OPTOUT)
+  campaign.current = null
+})
 
 const item: Item = {
   id: 'w1',
@@ -209,5 +215,28 @@ describe('PropertiesPanel', () => {
     expect(screen.getAllByTestId('tags-input-tag').map(tag => tag.textContent)).toEqual(['cool', 'pirate'])
     await userEvent.click(screen.getByTestId('tags-input-remove-cool'))
     expect(screen.getAllByTestId('tags-input-tag')).toHaveLength(1)
+  })
+
+  it('adds the campaign tag from the hint and stops offering it once present', async () => {
+    campaign.current = { name: 'Summer Fest', mainTag: 'summer' }
+    render(<Harness />, { wrapper: Providers })
+    const hint = screen.getByTestId('properties-panel-campaign-hint')
+    expect(hint).toHaveTextContent('Add the summer tag to enter this item in Summer Fest.')
+    const tagButton = screen.getByTestId('properties-panel-campaign-tag')
+    await userEvent.hover(tagButton)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Click to add')
+    await userEvent.click(tagButton)
+    expect(screen.getAllByTestId('tags-input-tag').map(tag => tag.textContent)).toEqual(['cool', 'summer'])
+    expect(screen.queryByTestId('properties-panel-campaign-tag')).not.toBeInTheDocument()
+    expect(hint).toHaveTextContent('Add the summer tag to enter this item in Summer Fest.')
+    expect(within(hint).getByText('summer').tagName).toBe('STRONG')
+    expect(screen.getByTestId('tags-input-field')).toHaveFocus()
+    expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
+  })
+
+  it('keeps the campaign hint out of the read-only panel', () => {
+    campaign.current = { name: 'Summer Fest', mainTag: 'summer' }
+    render(<Harness editable={false} />, { wrapper: Providers })
+    expect(screen.queryByTestId('properties-panel-campaign-hint')).not.toBeInTheDocument()
   })
 })

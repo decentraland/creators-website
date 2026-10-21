@@ -894,7 +894,8 @@
       "placeholder": "Add a tag and press Enter",
       "remove": "Remove tag {tag}",
       "empty": "This item has no tags.",
-      "campaign_hint": "Add the “{tag}” tag to enter this item in {name}."
+      "campaign_hint": "Add the <hl>{tag}</hl> tag to enter this item in {name}.",
+      "campaign_add": "Click to add"
     },
     "options": {
       "title": "Options",

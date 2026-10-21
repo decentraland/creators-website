@@ -610,6 +610,27 @@ export const SectionNote = styled.p`
   }
 `
 
+export const CampaignTag = styled.button`
+  padding: 0;
+  border: 0;
+  background: none;
+  color: ${theme.colors.white};
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.white};
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+`
+
 export const MobileWorkspace = styled.div`
   position: relative;
   display: flex;

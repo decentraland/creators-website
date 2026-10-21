@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type Dispatch } from 'react'
+import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   CameraAlt as CameraIcon,
@@ -103,13 +103,14 @@ export function PropertiesPanel({
   onDeleted,
   testId = 'properties-panel'
 }: Props) {
-  const { t } = useTranslation()
+  const { t, rich } = useTranslation()
   const showToast = useNotifications(state => state.showToast)
   const [isImporting, setImporting] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const [isVideoOpen, setVideoOpen] = useState(false)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
   const [isDownloading, setDownloading] = useState(false)
+  const tagsFieldRef = useRef<HTMLInputElement>(null)
   const deleteItem = useDeleteItem(address)
   const campaign = useCampaign()
   const utilityFlag = useFeatureFlag(FeatureFlag.WEARABLE_UTILITY)
@@ -554,10 +555,36 @@ export function PropertiesPanel({
       )}
 
       <EditorSection title={t('item_editor.tags.title')} testId={`${testId}-tags`}>
-        <TagsInput tags={draft.tags} disabled={disabled} onChange={tags => dispatch({ type: 'setTags', tags })} />
+        <TagsInput
+          tags={draft.tags}
+          disabled={disabled}
+          inputRef={tagsFieldRef}
+          onChange={tags => dispatch({ type: 'setTags', tags })}
+        />
         {editable && campaign && (
           <S.SectionNote data-testid={`${testId}-campaign-hint`}>
-            {t('item_editor.tags.campaign_hint', { tag: campaign.mainTag, name: campaign.name })}
+            {rich('item_editor.tags.campaign_hint', {
+              tag: campaign.mainTag,
+              name: campaign.name,
+              hl: chunks =>
+                draft.tags.includes(campaign.mainTag) ? (
+                  <strong>{chunks}</strong>
+                ) : (
+                  <Tooltip content={t('item_editor.tags.campaign_add')} asChild describeChild>
+                    <S.CampaignTag
+                      type="button"
+                      data-testid={`${testId}-campaign-tag`}
+                      onClick={() => {
+                        dispatch({ type: 'setTags', tags: [...draft.tags, campaign.mainTag] })
+                        // The button unmounts once the tag is on the draft, so keyboard focus would fall to the body.
+                        tagsFieldRef.current?.focus()
+                      }}
+                    >
+                      {chunks}
+                    </S.CampaignTag>
+                  </Tooltip>
+                )
+            })}
           </S.SectionNote>
         )}
       </EditorSection>
