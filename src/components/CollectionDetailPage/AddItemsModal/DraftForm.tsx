@@ -65,7 +65,6 @@ export function DraftForm({
   linked
 }: Props) {
   const { t } = useTranslation()
-  const [mappingInvalid, setMappingInvalid] = useState(false)
 
   const isEmote = draft.type === ItemType.EMOTE
   const isWearable = draft.type === ItemType.WEARABLE
@@ -394,14 +393,8 @@ export function DraftForm({
               key={draft.id}
               value={draft.mapping}
               testId="draft-mapping"
-              onChange={(mapping: Mapping | null) => {
-                setMappingInvalid(mapping === null)
-                onUpdate(draft.id, { mapping })
-              }}
+              onChange={(mapping: Mapping | null) => onUpdate(draft.id, { mapping })}
             />
-            {mappingInvalid && (
-              <S.ErrorText data-testid="draft-mapping-error">{t('mapping_editor.invalid')}</S.ErrorText>
-            )}
           </S.Field>
         )}
 
