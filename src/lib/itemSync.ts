@@ -1,8 +1,7 @@
 // Whether a published item still matches the entity deployed to the Catalyst — the version the world
 // and the marketplace show. Ported from the legacy builder (modules/item/utils areSynced + the
-// getStatusForStandard selector). The one deliberate divergence is `ignoreTags`: the creator's view
-// leaves tags out of the comparison, so an item the legacy builder reads as unsynced may read as
-// published here.
+// getStatusForStandard selector). The one deliberate divergence is `ignoreTags`: every view here leaves
+// tags out of the comparison, so an item the legacy builder reads as unsynced may read as published here.
 import { type Entity } from '@dcl/schemas'
 import { type Collection } from './collections'
 import { type CollectionCuration } from './curation'
@@ -111,8 +110,8 @@ function sameMetadata(item: Item, metadata: CatalystItemMetadata, deployed: Item
 export type SyncOptions = {
   /**
    * Leave tags out: the marketplace and the Shop read them from the builder, so a tag edit is live without a
-   * review. Only for what the creator sees; what to deploy is still decided on the full entity, so the edit
-   * reaches the Catalyst with the collection's next approval.
+   * review. For what the UI shows; what to deploy is still decided on the full entity, so the edit reaches
+   * the Catalyst with the collection's next approval.
    */
   ignoreTags?: boolean
 }

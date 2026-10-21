@@ -176,10 +176,12 @@ describe('getItemSyncStatus', () => {
     expect(getItemSyncStatus({ ...wearable, name: 'x' }, entityFor(wearable), loaded)).toBe(ItemSyncStatus.UNSYNCED)
   })
 
-  it('reads a tag-only edit as synced for the creator, and as unsynced by default', () => {
+  it('reads a tag-only edit as synced when asked to ignore tags, whatever the curation says', () => {
     const retagged = { ...wearable, data: { ...wearable.data, tags: ['pirate', 'hat'] } }
     expect(getItemSyncStatus(retagged, entityFor(wearable), loaded)).toBe(ItemSyncStatus.UNSYNCED)
-    expect(getItemSyncStatus(retagged, entityFor(wearable), { ...loaded, ignoreTags: true })).toBe(
+    const ignoring = { ...loaded, ignoreTags: true }
+    expect(getItemSyncStatus(retagged, entityFor(wearable), ignoring)).toBe(ItemSyncStatus.SYNCED)
+    expect(getItemSyncStatus(retagged, entityFor(wearable), { ...ignoring, isCurationPending: true })).toBe(
       ItemSyncStatus.SYNCED
     )
   })

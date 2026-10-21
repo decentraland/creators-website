@@ -3,19 +3,18 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchEntitiesByPointers } from '~/lib/catalyst'
 import { useCollectionCuration } from '~/hooks/useCuration'
 import { type Collection } from '~/lib/collections'
-import { ItemSyncStatus, getItemSyncStatus, mapEntitiesByItemId, type ItemSync, type SyncOptions } from '~/lib/itemSync'
+import { ItemSyncStatus, getItemSyncStatus, mapEntitiesByItemId, type ItemSync } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
 
 /**
- * Each item's Catalyst sync status. Only published items have anything deployed, so drafts cost no
- * request; the collection's pending curation turns "unsynced" into "under review". The creator's view
- * passes `ignoreTags`; curators keep the strict comparison, which is what the approval deploys.
+ * Each item's Catalyst sync status, as every view shows it: tags are left out, since a tag edit is live
+ * without a review (the approval's deploy plan still compares them). Only published items have anything
+ * deployed, so drafts cost no request; the collection's pending curation turns "unsynced" into "under review".
  */
 export function useItemSyncs(
   address: string | undefined,
   collection: Collection | undefined,
-  items: Item[],
-  options: SyncOptions = {}
+  items: Item[]
 ): Map<string, ItemSync> {
   const collectionId = collection?.id
   const isPublished = !!collection?.isPublished
@@ -41,7 +40,6 @@ export function useItemSyncs(
   // review would be right, which beats never resolving. Publish changes stays hidden, since the page gates it on success.
   const curationLoaded = !isPublished || !address || curationQuery.isSuccess || curationQuery.isError
   const lookupFailed = pointers.length > 0 && entitiesQuery.isError
-  const ignoreTags = !!options.ignoreTags
 
   return useMemo(() => {
     const byItemId = mapEntitiesByItemId(items, entities ?? [])
@@ -52,12 +50,12 @@ export function useItemSyncs(
         isCurationPending: curationPending,
         curationLoaded,
         entitiesLoaded,
-        ignoreTags
+        ignoreTags: true
       })
       if (entity) syncs.set(item.id, { status, entity })
       else if (lookupFailed && status === ItemSyncStatus.LOADING) syncs.set(item.id, { status, lookupFailed })
       else syncs.set(item.id, { status })
     }
     return syncs
-  }, [items, entities, curationPending, curationLoaded, entitiesLoaded, lookupFailed, ignoreTags])
+  }, [items, entities, curationPending, curationLoaded, entitiesLoaded, lookupFailed])
 }

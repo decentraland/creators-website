@@ -105,8 +105,6 @@ import * as S from './CollectionDetailPage.styles'
 
 const NOT_FOUND_STATUSES = [401, 403, 404]
 const NO_ITEMS: Item[] = []
-// A tag edit is live in the marketplace without a review, so the creator never sees it as a change.
-const IGNORE_TAGS = { ignoreTags: true }
 
 const CollectionDetailPage = () => {
   const { t } = useTranslation()
@@ -280,7 +278,7 @@ const CollectionDetailPage = () => {
     },
     [collection]
   )
-  const syncs = useItemSyncs(curationAddress, standardCollection, allItems ?? [], IGNORE_TAGS)
+  const syncs = useItemSyncs(curationAddress, standardCollection, allItems ?? [])
   const curationQuery = useCollectionCuration(curationAddress, standardCollection)
   const curation = curationQuery.data ?? null
   const pushCuration = usePushCuration(address)
