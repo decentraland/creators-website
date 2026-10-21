@@ -30,7 +30,6 @@ import { useObjectURL } from '~/hooks/useObjectURL'
 import { thumbnailValidationKey, useThumbnailValidation } from '~/hooks/useThumbnailValidation'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { fetchStoredThumbnail, useSaveItem } from '~/hooks/useSaveItem'
-import { useSpringBones } from '~/hooks/useSpringBones'
 import { useTranslation } from '~/intl'
 import { type AvatarAttributes } from '~/lib/avatar'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS, getContentsStorageUrl } from '~/lib/builder'
@@ -157,8 +156,8 @@ const ItemEditorPage = () => {
   }, [selectedId, selectedType, selectedCategory, dress])
 
   // Form state.
-  const springBones = useSpringBones(selected)
-  const form = useItemForm(selected, springBones)
+  const form = useItemForm(selected)
+  const { springBones } = form
   const [activeSpringHash, setActiveSpringHash] = useState<string | null>(null)
   useBeforeUnloadGuard(form.isDirty)
 
@@ -348,8 +347,14 @@ const ItemEditorPage = () => {
 
   async function persist(item: Item) {
     const hasSpringModels = springBones.models.length > 0
+    // A new model without spring bones drops the replaced model's params instead of leaving them orphaned.
+    const dropsSpringBones = !!form.draft.fileUpdate && !springBones.isLoading
     const built = await toSaveableItem(item, form.draft, {
-      springBones: hasSpringModels ? (mergeSpringBonesIntoItem(form.springBoneParams) ?? null) : undefined,
+      springBones: hasSpringModels
+        ? (mergeSpringBonesIntoItem(form.springBoneParams) ?? null)
+        : dropsSpringBones
+          ? null
+          : undefined,
       fetchThumbnail: fetchStoredThumbnail
     })
     if (form.draft.rarity !== item.rarity && !form.draft.thumbnail && !built.blobs[IMAGE_PATH]) {

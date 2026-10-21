@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
-import { type SpringBonesData } from '~/hooks/useSpringBones'
+import { useSpringBones } from '~/hooks/useSpringBones'
 import { createItemDraft, isItemDraftDirty, itemDraftReducer, type ItemDraft } from '~/lib/itemDraft'
 import { type Item } from '~/lib/items'
 import { sameSpringBoneParams, type SpringBoneParamsByHash } from '~/lib/springBones'
@@ -21,10 +21,11 @@ const EMPTY_DRAFT: ItemDraft = {
 }
 
 /** The properties form state for the selected item: field draft plus spring bone params, reset on selection. */
-export function useItemForm(item: Item | null, springBones: SpringBonesData) {
+export function useItemForm(item: Item | null) {
   const [draft, dispatch] = useReducer(itemDraftReducer, item, initial =>
     initial ? createItemDraft(initial) : EMPTY_DRAFT
   )
+  const springBones = useSpringBones(item, draft.fileUpdate)
   const [springBoneParams, setSpringBoneParams] = useState<SpringBoneParamsByHash>({})
   const itemId = item?.id ?? null
 
@@ -54,6 +55,7 @@ export function useItemForm(item: Item | null, springBones: SpringBonesData) {
 
   return {
     draft,
+    springBones,
     dispatch,
     springBoneParams,
     setSpringBoneParams,

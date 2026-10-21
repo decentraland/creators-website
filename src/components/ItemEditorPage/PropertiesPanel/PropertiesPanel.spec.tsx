@@ -13,6 +13,10 @@ const pickFile = vi.fn()
 const importItemModel = vi.fn()
 vi.mock('~/lib/filePicker', () => ({ pickFile: (...args: unknown[]) => pickFile(...args) }))
 vi.mock('~/lib/itemModelImport', () => ({ importItemModel: (...args: unknown[]) => importItemModel(...args) }))
+vi.mock('~/lib/builder', async () => ({
+  ...(await vi.importActual<typeof import('~/lib/builder')>('~/lib/builder')),
+  fetchContent: () => Promise.resolve(new Blob())
+}))
 
 const campaign = vi.hoisted(() => ({ current: null as { name: string; mainTag: string } | null }))
 vi.mock('~/hooks/useCampaign', () => ({ useCampaign: () => campaign.current }))
@@ -51,7 +55,6 @@ const item: Item = {
   createdAt: 1,
   updatedAt: 1
 }
-const noSpringBones = { isLoading: false, models: [], initialParams: {}, bonesByHash: {} }
 
 function Harness({
   editable = true,
@@ -64,7 +67,7 @@ function Harness({
   onSave?: () => void
   subject?: Item
 }) {
-  const form = useItemForm(subject, noSpringBones)
+  const form = useItemForm(subject)
   return (
     <PropertiesPanel
       item={subject}
