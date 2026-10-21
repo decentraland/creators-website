@@ -87,6 +87,7 @@ export function SendItemsFlow({ collection, items, session, onClose }: Props) {
       return (
         <>
           <SendItemsModal
+            collectionId={collection.id}
             items={sendable}
             session={session}
             step={step}
