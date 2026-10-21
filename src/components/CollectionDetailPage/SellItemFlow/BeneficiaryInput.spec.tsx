@@ -73,6 +73,33 @@ describe('BeneficiaryInput', () => {
     expect(screen.getByTestId('beneficiary-options')).toHaveTextContent(/loading/i)
   })
 
+  it('rejects a pasted list unless the field takes lists, which then clear it or keep it with their error', async () => {
+    const list = `${FRIEND}\n0x00000000000000000000000000000000000000dd`
+    const { onChange } = renderInput()
+    await userEvent.click(screen.getByTestId('beneficiary-input'))
+    await userEvent.paste(list)
+    await userEvent.tab()
+    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.getByTestId('beneficiary-error')).toHaveTextContent(/valid wallet address/i)
+    cleanup()
+
+    const onChangeMany = vi
+      .fn<(text: string) => string | null>()
+      .mockReturnValueOnce('Nobody new')
+      .mockReturnValue(null)
+    renderInput({ onChangeMany })
+    await userEvent.click(screen.getByTestId('beneficiary-input'))
+    await userEvent.paste(list)
+    expect(onChangeMany).toHaveBeenLastCalledWith(list)
+    expect(screen.getByTestId('beneficiary-input')).toHaveValue(list.replace('\n', ' '))
+    expect(screen.getByTestId('beneficiary-error')).toHaveTextContent('Nobody new')
+
+    await userEvent.clear(screen.getByTestId('beneficiary-input'))
+    await userEvent.paste(list)
+    expect(screen.getByTestId('beneficiary-input')).toHaveValue('')
+    expect(screen.queryByTestId('beneficiary-error')).not.toBeInTheDocument()
+  })
+
   it('offers the signed-in wallet first as "You", even without friends, and finds it by typing "you"', async () => {
     const { onChange } = renderInput({ self: ADDRESS, friends: [] })
     await userEvent.click(screen.getByTestId('beneficiary-toggle'))

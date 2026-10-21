@@ -1,10 +1,11 @@
 import { shortenAddress } from '~/lib/address'
-import { useId, useMemo, useState, type KeyboardEvent } from 'react'
+import { useId, useMemo, useState, type ClipboardEvent, type KeyboardEvent } from 'react'
 import { Close as CloseIcon, ExpandMore as ChevronIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { useProfile } from '~/hooks/useProfile'
 import { type Friend } from '~/lib/friends'
 import { isValidAddress } from '~/lib/sales'
+import { holdsAddresses } from '~/lib/mint'
 import * as S from './SellItemModal.styles'
 
 type Props = {
@@ -18,6 +19,11 @@ type Props = {
   placeholder?: string
   /** Rejects an address already used, with this copy under the field. */
   duplicateError?: (address: string) => string | null
+  /**
+   * Takes a pasted list of addresses (the text holds addresses but is not one): the field clears when it
+   * returns null, or keeps the text and shows the returned error under it.
+   */
+  onChangeMany?: (text: string) => string | null
   /** The signed-in wallet (lowercased): listed first as "You". */
   self?: string
   /** Addresses already chosen (lowercased): left out of the list; one typed in is dropped and `onExcluded` told. */
@@ -42,6 +48,7 @@ export function BeneficiaryInput({
   disabled,
   placeholder,
   duplicateError,
+  onChangeMany,
   self,
   exclude,
   onExcluded,
@@ -55,6 +62,7 @@ export function BeneficiaryInput({
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
   const [touched, setTouched] = useState(false)
+  const [listError, setListError] = useState<string | null>(null)
 
   const selfProfile = useProfile(self)
   const youLabel = t('sell_item_modal.beneficiary.you')
@@ -100,6 +108,7 @@ export function BeneficiaryInput({
     setQuery('')
     setOpen(false)
     setTouched(false)
+    setListError(null)
   }
 
   function commit(address: string) {
@@ -118,7 +127,24 @@ export function BeneficiaryInput({
     setQuery(next)
     setActive(0)
     setOpen(true)
+    setListError(null)
     if (isValidAddress(next.trim())) commit(next.trim())
+  }
+
+  // Read from the clipboard: the input itself would drop the line breaks between the addresses.
+  function handlePaste(event: ClipboardEvent<HTMLInputElement>) {
+    if (!onChangeMany) return
+    const text = event.clipboardData.getData('text').trim()
+    if (isValidAddress(text) || !holdsAddresses(text)) return
+    event.preventDefault()
+    const error = onChangeMany(text)
+    if (error === null) {
+      reset()
+      return
+    }
+    setQuery(text.replace(/\s+/g, ' '))
+    setOpen(false)
+    setListError(error)
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -187,6 +213,7 @@ export function BeneficiaryInput({
           data-testid={`${testId}-input`}
           onChange={event => handleInput(event.target.value)}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           onBlur={() => {
             setOpen(false)
             setTouched(true)
@@ -243,8 +270,13 @@ export function BeneficiaryInput({
           </S.Options>
         )}
       </S.Box>
-      {invalid && <S.ErrorText data-testid={`${testId}-error`}>{t('sell_item_modal.beneficiary.invalid')}</S.ErrorText>}
-      {duplicate && <S.ErrorText data-testid={`${testId}-error`}>{duplicate}</S.ErrorText>}
+      {listError ? (
+        <S.ErrorText data-testid={`${testId}-error`}>{listError}</S.ErrorText>
+      ) : invalid ? (
+        <S.ErrorText data-testid={`${testId}-error`}>{t('sell_item_modal.beneficiary.invalid')}</S.ErrorText>
+      ) : (
+        duplicate && <S.ErrorText data-testid={`${testId}-error`}>{duplicate}</S.ErrorText>
+      )}
     </S.Combo>
   )
 }

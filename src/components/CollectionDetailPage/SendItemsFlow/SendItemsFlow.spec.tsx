@@ -4,8 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { ProviderType } from '@dcl/schemas'
 import { type Item } from '~/lib/items'
 import { type Transfer } from '~/lib/mint'
-import { SendItemsFlow } from './SendItemsFlow'
 import { useNotifications } from '~/lib/notifications'
+import { track } from '~/lib/analytics'
+import { Toasts } from '~/components/Toasts'
+import { SendItemsFlow } from './SendItemsFlow'
 import { FRIEND, Providers, collection, item, makeSession } from '../SellItemFlow/testUtils'
 
 type Callbacks = { onSuccess?: (result: unknown) => void; onError?: (error: unknown) => void }
@@ -16,6 +18,7 @@ vi.mock('~/hooks/useSales', () => ({
   useSendItems: () => send,
   useFriends: () => ({ data: [], isLoading: false })
 }))
+vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
 vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })))
 
 const OTHER = '0x00000000000000000000000000000000000000dd'
@@ -29,7 +32,10 @@ const items = [item, scarce, soldOut, draft]
 function renderFlow(providerType = ProviderType.INJECTED, list = items) {
   const onClose = vi.fn()
   const view = render(
-    <SendItemsFlow collection={collection} items={list} session={makeSession(providerType)} onClose={onClose} />,
+    <>
+      <SendItemsFlow collection={collection} items={list} session={makeSession(providerType)} onClose={onClose} />
+      <Toasts />
+    </>,
     { wrapper: Providers }
   )
   return { onClose, view }
@@ -52,6 +58,14 @@ function fireBeforeUnload() {
 async function addRecipient(transfer: number, address: string) {
   await userEvent.type(screen.getByTestId(`transfer-${transfer}-recipient-input`), address)
 }
+
+async function paste(transfer: number, text: string) {
+  await userEvent.click(screen.getByTestId(`transfer-${transfer}-recipient-input`))
+  await userEvent.paste(text)
+}
+
+const wallets = (count: number, from = 1) =>
+  Array.from({ length: count }, (_, i) => `0x${String(from + i).padStart(40, '0')}`)
 
 beforeEach(() => {
   send.mutate.mockReset()
@@ -154,6 +168,64 @@ describe('SendItemsFlow', () => {
     expect(screen.getByTestId('send-total')).toHaveAttribute('data-over')
     expect(screen.getByTestId('send-total')).toHaveTextContent(/up to 100/i)
     expect(screen.getByTestId('send-continue')).toBeDisabled()
+  })
+
+  it('takes a pasted sheet column as recipients, says how many joined, and clears them all at once', async () => {
+    renderFlow()
+    await addRecipient(1, FRIEND)
+    await userEvent.click(screen.getByTestId('transfer-1-add-recipient'))
+    await paste(1, `wallet\tname\n${OTHER}\tOne\n${THIRD}\tTwo\n${FRIEND}\tAgain\nnot-an-address\n`)
+    expect(screen.getAllByTestId('transfer-1-recipient-selected')).toHaveLength(3)
+    expect(screen.queryByTestId('transfer-1-recipient-input')).not.toBeInTheDocument()
+    expect(screen.getByTestId('toast')).toHaveTextContent('2 recipients added, 1 skipped: invalid or already added.')
+    expect(vi.mocked(track)).toHaveBeenCalledWith('Paste recipients', {
+      collectionId: collection.id,
+      added: 2,
+      invalid: 0,
+      repeated: 1,
+      cut: 0
+    })
+
+    // Three recipients share the scarce item's 2 copies: none can get one.
+    expect(screen.getByTestId('transfer-1-item-i2-check')).toBeDisabled()
+    await userEvent.click(screen.getByTestId('transfer-1-clear-recipients'))
+    expect(screen.queryByTestId('transfer-1-recipient-selected')).not.toBeInTheDocument()
+    expect(screen.getByTestId('transfer-1-recipient-input')).toBeInTheDocument()
+    expect(screen.queryByTestId('transfer-1-clear-recipients')).not.toBeInTheDocument()
+    expect(screen.getByTestId('transfer-1-item-i2-check')).toBeEnabled()
+  })
+
+  it('drops a pasted list of repeats like a typed one, keeps an invalid one with the reason, and closes a transfer at the send cap', async () => {
+    renderFlow()
+    await addRecipient(1, FRIEND)
+    await userEvent.click(screen.getByTestId('transfer-1-add-recipient'))
+    // Only repeats: dropped like a typed one, with the info toast.
+    await paste(1, `${FRIEND}, ${FRIEND.toUpperCase().replace('0X', '0x')}`)
+    expect(screen.getByTestId('transfer-1-recipient-input')).toHaveValue('')
+    expect(screen.getByTestId('toast')).toHaveAttribute('data-type', 'info')
+    expect(screen.getByTestId('toast')).toHaveTextContent(/already in this transfer/i)
+    expect(screen.getAllByTestId('transfer-1-recipient-selected')).toHaveLength(1)
+
+    // A bad checksum among them is an invalid address, kept in the field.
+    await paste(1, `0xD8dA6bf26964af9d7eed9e03e53415d37aa96045 ${FRIEND}`)
+    expect(screen.getByTestId('transfer-1-recipient-error')).toHaveTextContent(/valid wallet address/i)
+    expect(screen.getAllByTestId('transfer-1-recipient-selected')).toHaveLength(1)
+
+    await userEvent.clear(screen.getByTestId('transfer-1-recipient-input'))
+    await paste(1, wallets(120).join('\n'))
+    expect(screen.getAllByTestId('transfer-1-recipient-selected')).toHaveLength(100)
+    expect(screen.getAllByTestId('toast').slice(-1)[0]).toHaveTextContent(
+      '99 recipients added. You can send up to 100 items at a time.'
+    )
+
+    // A full transfer takes no more recipients, and another transfer could send nothing.
+    expect(screen.queryByTestId('transfer-1-add-recipient')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('transfer-1-recipient-input')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('send-add-transfer')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByTestId('transfer-1-clear-recipients'))
+    expect(screen.getByTestId('transfer-1-recipient-input')).toBeInTheDocument()
+    expect(screen.getByTestId('send-add-transfer')).toBeInTheDocument()
   })
 
   it('closes straight away with nothing entered, but asks before discarding a recipient or a copy', async () => {
