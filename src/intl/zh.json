@@ -938,10 +938,9 @@
       }
     },
     "sort": {
-      "MOST_RELEVANT": "最相关",
-      "LAST_ACTIVITY_DESC": "最近活动",
-      "REQUESTED_AT_ASC": "等待最久",
       "REQUESTED_AT_DESC": "最新申请",
+      "REQUESTED_AT_ASC": "最早申请",
+      "MOST_RELEVANT": "最相关",
       "CREATED_AT_DESC": "最新系列",
       "NAME_ASC": "名称 A-Z",
       "NAME_DESC": "名称 Z-A"

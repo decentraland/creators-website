@@ -938,10 +938,9 @@
       }
     },
     "sort": {
-      "MOST_RELEVANT": "Most relevant",
-      "LAST_ACTIVITY_DESC": "Latest activity",
-      "REQUESTED_AT_ASC": "Longest waiting",
       "REQUESTED_AT_DESC": "Newest requests",
+      "REQUESTED_AT_ASC": "Oldest requests",
+      "MOST_RELEVANT": "Most relevant",
       "CREATED_AT_DESC": "Newest collections",
       "NAME_ASC": "Name A-Z",
       "NAME_DESC": "Name Z-A"

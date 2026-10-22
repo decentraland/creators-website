@@ -424,7 +424,7 @@ describe('fetchCurationCollections', () => {
       statuses: [],
       assignees: [],
       reviewType: null,
-      sort: 'LAST_ACTIVITY_DESC' as never,
+      sort: 'REQUESTED_AT_DESC' as never,
       tag: null
     })
     expect(result.results[0]).toMatchObject({ id: 'a1b2', isPublished: true })

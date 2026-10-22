@@ -191,14 +191,14 @@ describe('canEditAssignee', () => {
 describe('curation filters', () => {
   const ME = '0xME'
 
-  it('opens on to review, unassigned and the signed-in curator, by latest activity', () => {
+  it('opens on to review, unassigned and the signed-in curator, newest requests first', () => {
     expect(parseCurationFilters(new URLSearchParams('status=bogus&sort=nope&page=-3'), ME)).toEqual({
       page: 1,
       search: '',
       statuses: [CurationStatusFilter.TO_REVIEW],
       assignees: [UNASSIGNED, '0xme'],
       reviewType: null,
-      sort: CollectionSort.LAST_ACTIVITY_DESC,
+      sort: CollectionSort.REQUESTED_AT_DESC,
       tag: null
     })
   })

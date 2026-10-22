@@ -938,10 +938,9 @@
       }
     },
     "sort": {
+      "REQUESTED_AT_DESC": "Solicitudes más recientes",
+      "REQUESTED_AT_ASC": "Solicitudes más antiguas",
       "MOST_RELEVANT": "Más relevantes",
-      "LAST_ACTIVITY_DESC": "Actividad reciente",
-      "REQUESTED_AT_ASC": "Más tiempo esperando",
-      "REQUESTED_AT_DESC": "Solicitudes recientes",
       "CREATED_AT_DESC": "Colecciones más recientes",
       "NAME_ASC": "Nombre A-Z",
       "NAME_DESC": "Nombre Z-A"

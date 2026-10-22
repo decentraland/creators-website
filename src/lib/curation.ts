@@ -137,9 +137,8 @@ export const UNASSIGNED = 'unassigned'
 
 // Only sorts builder-server implements: an unknown one drops the ORDER BY and paginates at random.
 export const CURATION_SORTS = [
-  CollectionSort.LAST_ACTIVITY_DESC,
-  CollectionSort.REQUESTED_AT_ASC,
   CollectionSort.REQUESTED_AT_DESC,
+  CollectionSort.REQUESTED_AT_ASC,
   CollectionSort.MOST_RELEVANT,
   CollectionSort.CREATED_AT_DESC,
   CollectionSort.NAME_ASC,
@@ -181,7 +180,7 @@ export function parseCurationFilters(params: URLSearchParams, address?: string):
       value === UNASSIGNED ? value : value.toLowerCase()
     ),
     reviewType: Object.values(ReviewType).includes(reviewType) ? reviewType : null,
-    sort: CURATION_SORTS.includes(sort) ? sort : CollectionSort.LAST_ACTIVITY_DESC,
+    sort: CURATION_SORTS.includes(sort) ? sort : CollectionSort.REQUESTED_AT_DESC,
     tag: params.get('tag') || null
   }
 }
