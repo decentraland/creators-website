@@ -123,9 +123,6 @@ export const Cell = styled.div`
       gap: 6px;
       font-weight: 400;
     }
-    &[data-cell='updated'] {
-      display: none;
-    }
   }
 `
 

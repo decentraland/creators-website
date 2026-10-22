@@ -130,8 +130,10 @@ export const UNASSIGNED = 'unassigned'
 
 // Only sorts builder-server implements: an unknown one drops the ORDER BY and paginates at random.
 export const CURATION_SORTS = [
-  CollectionSort.MOST_RELEVANT,
   CollectionSort.LAST_ACTIVITY_DESC,
+  CollectionSort.REQUESTED_AT_ASC,
+  CollectionSort.REQUESTED_AT_DESC,
+  CollectionSort.MOST_RELEVANT,
   CollectionSort.CREATED_AT_DESC,
   CollectionSort.NAME_ASC,
   CollectionSort.NAME_DESC

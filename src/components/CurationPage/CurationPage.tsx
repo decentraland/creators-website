@@ -258,7 +258,6 @@ const CurationPage = () => {
               <span>{t('curation_page.list.collection')}</span>
               <span>{t('curation_page.list.owner')}</span>
               <span>{t('curation_page.list.date')}</span>
-              <span>{t('curation_page.list.last_update')}</span>
               <span>{t('curation_page.list.type')}</span>
               <span>{t('curation_page.list.status')}</span>
               <span>{t('curation_page.list.discussion')}</span>

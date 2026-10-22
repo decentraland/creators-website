@@ -47,9 +47,6 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
         <S.CellLabel>{t(curation ? 'curation_page.list.requested' : 'curation_page.list.created')}</S.CellLabel>
         {formatTimeAgo(curation?.createdAt ?? collection.createdAt, intl.locale)}
       </S.Cell>
-      <S.Cell data-cell="updated" data-testid="curation-row-updated">
-        {curation ? formatTimeAgo(curation.updatedAt, intl.locale) : '—'}
-      </S.Cell>
       <S.Pills>
         <S.Cell data-cell="type">
           <ReviewTypePill type={getReviewType(collection)} />
