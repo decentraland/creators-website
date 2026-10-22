@@ -584,7 +584,7 @@ const CollectionDetailPage = () => {
                       collectionId: collection.id,
                       itemCount: total,
                       launched,
-                      source: 'detail'
+                      trigger: 'detail'
                     })
                   }
                 />

@@ -480,7 +480,7 @@ const ItemEditorPage = () => {
                 collectionId: collection.id,
                 itemCount: items.length,
                 launched,
-                source: 'editor'
+                trigger: 'editor'
               })
             }
           />
