@@ -11,12 +11,11 @@ import { Tooltip } from '~/components/Tooltip'
 import { useCollectionCuration } from '~/hooks/useCuration'
 import { useItemCurations } from '~/hooks/useLinkedCollection'
 import { usePendingLinkedItems, useRejectLinkedItems, useReviewedItems } from '~/hooks/useLinkedReview'
-import { getReviewThreshold } from '~/lib/approveLinkedCollection'
+import { getReviewThreshold, type ReviewedContent } from '~/lib/approveLinkedCollection'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { curationListUrl } from '~/lib/curation'
 import { type Item } from '~/lib/items'
-import { type ItemCuration } from '~/lib/linkedItemStatus'
 import { useNotifications } from '~/lib/notifications'
 import { type ThirdParty } from '~/lib/thirdParty'
 import { formatTimeAgo } from '~/lib/time'
@@ -51,6 +50,8 @@ export function LinkedReviewBar({ session, collection, thirdParty, selectedId, o
   const reject = useRejectLinkedItems(address, collection)
   const [dialog, setDialog] = useState<Dialog>(null)
   const [verdict, setVerdict] = useState(false)
+  // What the curator had seen when they clicked Approve: later refetches must not widen what gets signed.
+  const [approvalReview, setApprovalReview] = useState<ReviewedContent | null>(null)
 
   const pendingItems = pending.data ?? []
   const { reviewedCount, nextToReview, review } = useReviewedItems(pendingItems, selectedId)
@@ -136,7 +137,11 @@ export function LinkedReviewBar({ session, collection, thirdParty, selectedId, o
                 variant="primary"
                 aria-disabled={!canApprove || undefined}
                 data-testid="review-action-approve"
-                onClick={() => canApprove && setDialog('approve')}
+                onClick={() => {
+                  if (!canApprove) return
+                  setApprovalReview(review)
+                  setDialog('approve')
+                }}
               >
                 {t('item_editor.review.action.approve')}
               </Button>
@@ -198,7 +203,7 @@ export function LinkedReviewBar({ session, collection, thirdParty, selectedId, o
             testId: 'review-reject-confirm',
             onClick: () =>
               reject.mutate(
-                { items: pendingItems, curations: curations.data ?? new Map<string, ItemCuration>() },
+                { items: pendingItems },
                 {
                   onSuccess: () => {
                     showToast(t('item_editor.review.reject.success', { collection: collection.name }))
@@ -228,12 +233,12 @@ export function LinkedReviewBar({ session, collection, thirdParty, selectedId, o
           onClose={() => setVerdict(false)}
         />
       )}
-      {dialog === 'approve' && (
+      {dialog === 'approve' && approvalReview && (
         <LinkedApprovalFlowModal
           session={session}
           collection={collection}
           thirdParty={thirdParty}
-          review={review}
+          review={approvalReview}
           onClose={closeDialog}
         />
       )}

@@ -139,6 +139,8 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
   const canProcess = !updateOnly || collectionItemsQuery.isSuccess
   // A linked item re-uploaded under its URN updates the existing one: uploading before the items load would miss it.
   const canUpload = !isLinked || collectionItemsQuery.isSuccess
+  // Without them neither of the above can go on: say so and offer a retry instead of waiting forever.
+  const itemsFailed = (isLinked || updateOnly) && collectionItemsQuery.isError && !collectionItemsQuery.data
 
   // Load + analyze each dropped file once. The prefill is what it was when the modal opened.
   const prefillRef = useRef(prefill)
@@ -363,6 +365,11 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
   }
 
   function handleSaveChanges() {
+    if (!canUpload) {
+      setLeaveConfirmOpen(false)
+      showToast(t('add_items_modal.items_error'), { type: 'error' })
+      return
+    }
     const checked = drafts.filter(draft => draft.checked)
     // A checked variant whose base draft is still unreviewed can't be saved on its own: point the
     // creator at that base draft instead of silently dropping the variant.
@@ -469,6 +476,20 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
                   </>
                 )}
               </S.ProcessingPane>
+            )}
+            {itemsFailed && (
+              <S.ItemsError role="alert" data-testid="add-items-items-error">
+                <S.ErrorText>{t('add_items_modal.items_error')}</S.ErrorText>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  data-testid="add-items-items-retry"
+                  onClick={() => void collectionItemsQuery.refetch()}
+                >
+                  {t('add_items_modal.error.try_again')}
+                </Button>
+              </S.ItemsError>
             )}
             <S.Footer>
               <Button

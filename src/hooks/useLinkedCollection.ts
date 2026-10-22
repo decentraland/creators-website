@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
+  fetchAllLinkedCollectionItems,
   fetchItemCurations,
   fetchLinkedCollectionItems,
   fetchThirdParty,
@@ -21,7 +22,7 @@ export function itemCurationsKey(address: string | undefined, collectionId: stri
 
 /** The latest curation of each item of a linked collection, keyed by item id. */
 export function useItemCurations(address: string | undefined, collection: Collection | undefined, items?: Item[]) {
-  const itemIds = items?.map(item => item.id)
+  const itemIds = useMemo(() => items?.map(item => item.id), [items])
   return useQuery({
     queryKey: [...itemCurationsKey(address, collection?.id), itemIds],
     queryFn: () => fetchItemCurations(address!, collection!.id, itemIds),
@@ -103,14 +104,27 @@ export function useHasLinkedWork(
   curations: Map<string, ItemCuration> | undefined
 ): boolean | undefined {
   const unsynced = useLinkedItemCount(address, collection, LinkedItemFilter.READY_TO_PUSH)
-  const missingMapping = useLinkedItemCount(address, collection, LinkedItemFilter.PENDING_MAPPING)
+  // Usually a handful (items waiting for a mapping), so they're listed whole to tell curated ones apart.
+  const missingMapping = useQuery({
+    queryKey: [...linkedItemsKey(address, collection?.id), 'ids', LinkedItemFilter.PENDING_MAPPING],
+    queryFn: async () =>
+      (
+        await fetchAllLinkedCollectionItems(
+          address!,
+          collection!.id,
+          linkedItemFilterToQuery(LinkedItemFilter.PENDING_MAPPING)
+        )
+      ).map(item => item.id),
+    enabled: !!address && !!collection,
+    staleTime: 30_000
+  })
   return useMemo(() => {
     if (!collection || !curations || unsynced.data === undefined || missingMapping.data === undefined) return undefined
     return hasLinkedWork({
       itemCount: collection.itemCount,
       curations,
       unsynced: unsynced.data,
-      missingMapping: missingMapping.data
+      missingMappingIds: missingMapping.data
     })
   }, [collection, curations, unsynced.data, missingMapping.data])
 }

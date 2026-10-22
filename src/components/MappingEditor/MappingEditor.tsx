@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AllInclusive as AnyIcon,
   FormatListNumbered as MultipleIcon,
@@ -54,10 +54,17 @@ export function MappingEditor({
 }: Props) {
   const { t } = useTranslation()
   const [draft, setDraft] = useState<MappingDraft>(() => toMappingDraft(value))
-  // A saved value coming back from the server replaces the draft only when it says something new.
+  // A value coming back from the server replaces the draft only while the draft still shows the previous value: what
+  // the user typed while a save was in flight wins over that save's refetch.
   const valueKey = JSON.stringify(value)
+  const previousKey = useRef(valueKey)
   useEffect(() => {
-    setDraft(current => (JSON.stringify(fromMappingDraft(current)) === valueKey ? current : toMappingDraft(value)))
+    const previous = previousKey.current
+    previousKey.current = valueKey
+    setDraft(current => {
+      const draftKey = JSON.stringify(fromMappingDraft(current))
+      return draftKey === previous && draftKey !== valueKey ? toMappingDraft(value) : current
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [valueKey])
 

@@ -176,29 +176,46 @@ describe('hasLinkedWork', () => {
 
   it('finds items never submitted, as long as they have a mapping', () => {
     expect(
-      hasLinkedWork({ itemCount: 2, curations: curated(CurationStatus.APPROVED), unsynced: 0, missingMapping: 0 })
+      hasLinkedWork({ itemCount: 2, curations: curated(CurationStatus.APPROVED), unsynced: 0, missingMappingIds: [] })
     ).toBe(true)
     expect(
-      hasLinkedWork({ itemCount: 2, curations: curated(CurationStatus.APPROVED), unsynced: 0, missingMapping: 1 })
+      hasLinkedWork({
+        itemCount: 2,
+        curations: curated(CurationStatus.APPROVED),
+        unsynced: 0,
+        missingMappingIds: ['new']
+      })
     ).toBe(false)
+  })
+
+  it('does not count curated items without a mapping against the new ones', () => {
+    // i1 was approved before mappings existed; one new mapped item is waiting.
+    expect(
+      hasLinkedWork({
+        itemCount: 2,
+        curations: curated(CurationStatus.APPROVED),
+        unsynced: 0,
+        missingMappingIds: ['i1']
+      })
+    ).toBe(true)
   })
 
   it('finds rejected items and approved items with changes', () => {
     expect(
-      hasLinkedWork({ itemCount: 1, curations: curated(CurationStatus.REJECTED), unsynced: 0, missingMapping: 0 })
+      hasLinkedWork({ itemCount: 1, curations: curated(CurationStatus.REJECTED), unsynced: 0, missingMappingIds: [] })
     ).toBe(true)
     expect(
-      hasLinkedWork({ itemCount: 1, curations: curated(CurationStatus.APPROVED), unsynced: 1, missingMapping: 0 })
+      hasLinkedWork({ itemCount: 1, curations: curated(CurationStatus.APPROVED), unsynced: 1, missingMappingIds: [] })
     ).toBe(true)
   })
 
   it('has nothing to do when every item is published, under review, or the collection is empty', () => {
     expect(
-      hasLinkedWork({ itemCount: 1, curations: curated(CurationStatus.APPROVED), unsynced: 0, missingMapping: 0 })
+      hasLinkedWork({ itemCount: 1, curations: curated(CurationStatus.APPROVED), unsynced: 0, missingMappingIds: [] })
     ).toBe(false)
     expect(
-      hasLinkedWork({ itemCount: 1, curations: curated(CurationStatus.PENDING), unsynced: 0, missingMapping: 0 })
+      hasLinkedWork({ itemCount: 1, curations: curated(CurationStatus.PENDING), unsynced: 0, missingMappingIds: [] })
     ).toBe(false)
-    expect(hasLinkedWork({ itemCount: 0, curations: new Map(), unsynced: 0, missingMapping: 0 })).toBe(false)
+    expect(hasLinkedWork({ itemCount: 0, curations: new Map(), unsynced: 0, missingMappingIds: [] })).toBe(false)
   })
 })

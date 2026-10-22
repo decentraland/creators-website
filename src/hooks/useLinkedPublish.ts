@@ -122,11 +122,21 @@ export function usePublishLinkedItems(session: Session, collection: Collection) 
   })
 }
 
-function pushChanges(address: string, items: Item[], curations: Map<string, ItemCuration>): Promise<PushLinkedResult> {
-  return pushLinkedChanges(items, curations, {
-    pushItemCuration: itemId => pushItemCuration(address, itemId),
-    updateItemCuration: (itemId, status) => updateItemCuration(address, itemId, status)
-  })
+function pushChanges(
+  address: string,
+  items: Item[],
+  curations: Map<string, ItemCuration>,
+  onProgress?: (done: number, total: number) => void
+): Promise<PushLinkedResult> {
+  return pushLinkedChanges(
+    items,
+    curations,
+    {
+      pushItemCuration: itemId => pushItemCuration(address, itemId),
+      updateItemCuration: (itemId, status) => updateItemCuration(address, itemId, status)
+    },
+    onProgress
+  )
 }
 
 export type PushLinkedVariables = {
@@ -148,15 +158,7 @@ export function usePushLinkedChanges(session: Session, collection: Collection) {
         email,
         items.flatMap(item => (item.currentContentHash ? [item.currentContentHash] : []))
       )
-      return pushLinkedChanges(
-        items,
-        curations,
-        {
-          pushItemCuration: itemId => pushItemCuration(address, itemId),
-          updateItemCuration: (itemId, status) => updateItemCuration(address, itemId, status)
-        },
-        onProgress
-      )
+      return pushChanges(address, items, curations, onProgress)
     },
     onSuccess: (result, { items }) => {
       track('Push TP Changes', { collectionId: collection.id, items: items.length, failed: result.failed.length })

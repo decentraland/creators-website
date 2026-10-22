@@ -16,7 +16,7 @@ import { isSocialLogin, type Session } from '~/lib/auth'
 import { getContentsStorageUrl } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
-import { type ThirdParty } from '~/lib/thirdParty'
+import { decodeLinkedUrn, type ThirdParty } from '~/lib/thirdParty'
 import { type ReviewedContent } from '~/lib/approveLinkedCollection'
 import { ProgressModal } from '~/components/ProgressModal'
 import * as S from './ApprovalFlowModal.styles'
@@ -161,7 +161,7 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, revie
               {items.slice(0, SHOWN_ITEMS).map(item => (
                 <S.Row key={item.id} data-table="deploy" data-testid="approval-item-row">
                   <ItemName item={item} />
-                  <span title={item.urn}>{item.urn?.split(':').pop()}</span>
+                  <span title={item.urn}>{decodeLinkedUrn(item.urn)?.itemSuffix ?? item.urn}</span>
                 </S.Row>
               ))}
               {items.length > SHOWN_ITEMS && (

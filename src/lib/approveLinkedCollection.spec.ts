@@ -13,7 +13,7 @@ import {
   type LinkedDeployDeps
 } from './approveLinkedCollection'
 import { type LinkedApprovalData } from './builder'
-import { type Collection } from './collections'
+import { CurationStatus, type Collection } from './collections'
 import { ItemType, type Item } from './items'
 import { type ThirdParty } from './thirdParty'
 
@@ -23,7 +23,7 @@ const collection = { id: 'lc1', urn: `${THIRD_PARTY_ID}:lc1`, isPublished: true 
 const SIGNATURE = `0x${'11'.repeat(32)}${'22'.repeat(32)}1b`
 
 function item(id: string, overrides: Partial<Item> = {}): Item {
-  return {
+  const built: Item = {
     id,
     name: `Item ${id}`,
     description: '',
@@ -56,6 +56,11 @@ function item(id: string, overrides: Partial<Item> = {}): Item {
     updatedAt: 0,
     ...overrides
   }
+  // As builder-server stores it: the item's own content hash, unless the case says otherwise.
+  if (!('currentContentHash' in overrides) && built.urn) {
+    built.currentContentHash = computeLinkedItemContentHash(collection, built)
+  }
+  return built
 }
 
 const hashOf = (id: string) => `${'0'.repeat(60)}${id.padStart(4, '0')}`
@@ -64,15 +69,42 @@ function approvalData(overrides: Partial<LinkedApprovalData> = {}): LinkedApprov
   return {
     cheque: { signature: SIGNATURE, qty: 2, salt: '0xsalt' },
     root: null,
-    // Items 1 and 2 are pending; 9 was approved in an earlier publish and still sits in the tree.
-    contentHashes: { '1': hashOf('1'), '2': hashOf('2'), '9': hashOf('9') },
+    // Items 1 and 2 are pending; 9 was approved in an earlier publish and 8 was rejected.
+    contentHashes: {
+      '1': item('1').currentContentHash!,
+      '2': item('2').currentContentHash!,
+      '9': hashOf('9'),
+      '8': hashOf('8')
+    },
     chequeWasConsumed: false,
     ...overrides
   }
 }
 
+function curationOf(id: string, status: CurationStatus) {
+  return { id: `ic${id}`, itemId: id, status, contentHash: '', isMappingComplete: true, createdAt: 0, updatedAt: 0 }
+}
+
 function prepareDeps(items: Item[], data: LinkedApprovalData) {
-  return { fetchPendingItems: vi.fn().mockResolvedValue(items), fetchApprovalData: vi.fn().mockResolvedValue(data) }
+  const curations = new Map([
+    ['1', curationOf('1', CurationStatus.PENDING)],
+    ['2', curationOf('2', CurationStatus.PENDING)],
+    ['9', curationOf('9', CurationStatus.APPROVED)],
+    ['8', curationOf('8', CurationStatus.REJECTED)]
+  ])
+  return {
+    fetchPendingItems: vi.fn().mockResolvedValue(items),
+    fetchApprovalData: vi.fn().mockResolvedValue(data),
+    fetchItemCurations: vi.fn().mockResolvedValue(curations)
+  }
+}
+
+// The tree the approval must build: approved and pending content only.
+function expectedRoot(data: LinkedApprovalData, pending: string[]) {
+  const leaves = Object.entries(data.contentHashes)
+    .filter(([id]) => pending.includes(id) || id === '9')
+    .map(([, hash]) => hash)
+  return generateTree(leaves).merkleRoot
 }
 
 describe('getReviewThreshold', () => {
@@ -94,24 +126,33 @@ describe('getReviewThreshold', () => {
 })
 
 describe('prepareLinkedApproval', () => {
-  it('builds the tree over every curated hash and proves each pending item against its root', async () => {
+  it('builds the tree over approved and pending content, leaving rejected content out, and proves each pending item', async () => {
     const data = approvalData()
     const plan = await prepareLinkedApproval(collection, prepareDeps([item('1'), item('2')], data))
-    expect(plan.merkleRoot).toBe(generateTree(Object.values(data.contentHashes)).merkleRoot)
+    expect(plan.merkleRoot).toBe(expectedRoot(data, ['1', '2']))
+    expect(plan.merkleRoot).not.toBe(generateTree(Object.values(data.contentHashes)).merkleRoot)
     expect(plan.needsRoot).toBe(true)
     expect(plan.pendingItems.map(pending => pending.id)).toEqual(['1', '2'])
     for (const id of ['1', '2']) {
       const { index, proof, entityHash } = plan.proofOf(id)
-      expect(entityHash).toBe(hashOf(id))
+      expect(entityHash).toBe(data.contentHashes[id])
       const buffers = proof.map(node => Buffer.from(node.slice(2), 'hex'))
       expect(verifyProof(index, entityHash, buffers, Buffer.from(plan.merkleRoot.slice(2), 'hex'))).toBe(true)
     }
   })
 
+  it('fails closed before any root when a pending item is not the curated content', async () => {
+    // Edited after publishing without pushing: the curation still holds the old content.
+    const edited = item('1', { name: 'Edited later' })
+    await expect(
+      prepareLinkedApproval(collection, prepareDeps([edited, item('2')], approvalData()))
+    ).rejects.toMatchObject({ reason: 'changed' })
+  })
+
   it('fails closed when the pending items are not the ones the curator reviewed', async () => {
-    const pending = [item('1', { currentContentHash: 'h1' }), item('2', { currentContentHash: 'h2' })]
+    const pending = [item('1'), item('2')]
     const deps = prepareDeps(pending, approvalData())
-    const reviewed = new Map([['1', 'h1']])
+    const reviewed = new Map([['1', pending[0].currentContentHash]])
 
     await expect(
       prepareLinkedApproval(collection, deps, { pendingIds: new Set(['1', '2']), reviewedHashes: reviewed })
@@ -142,7 +183,7 @@ describe('prepareLinkedApproval', () => {
 
   it('skips the root transaction when the chain already holds this root', async () => {
     const data = approvalData()
-    const root = generateTree(Object.values(data.contentHashes)).merkleRoot
+    const root = expectedRoot(data, ['1'])
     const plan = await prepareLinkedApproval(
       collection,
       prepareDeps([item('1')], { ...data, root: root.toUpperCase() })
@@ -301,12 +342,13 @@ describe('deployLinkedItems', () => {
     expect(progress).toHaveBeenCalledTimes(4)
   })
 
-  it('refuses to sign an item whose content is not the curated one', async () => {
+  it('stops before signing when an item is not the curated content, so the curator reviews again', async () => {
     const plan = planFor([item('1')])
     const edited = { ...item('1'), name: 'Edited after curation' }
     const deps = deployDeps()
-    const result = await deployLinkedItems(collection, { ...plan, pendingItems: [edited] }, deps)
-    expect(result.failed.map(({ stage }) => stage)).toEqual(['build'])
+    await expect(deployLinkedItems(collection, { ...plan, pendingItems: [edited] }, deps)).rejects.toMatchObject({
+      reason: 'changed'
+    })
     expect(deps.sign).not.toHaveBeenCalled()
     expect(deps.deployEntity).not.toHaveBeenCalled()
   })

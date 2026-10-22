@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from '~/intl'
 import { useSaveCollection } from '~/hooks/useCollection'
 import { useThirdPartySlots } from '~/hooks/useLinkedCollection'
@@ -11,10 +11,12 @@ import { type SlotsCheque } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
 import { type ItemCuration } from '~/lib/linkedItemStatus'
+import { loadPendingPayment, savePendingPayment } from '~/lib/pendingLinkedPayment'
 import {
   LinkedPublishError,
-  getResumableTxHash,
   mayHavePublished,
+  nextResumablePayment,
+  type LinkedPayment,
   type LinkedPublishStep
 } from '~/lib/publishLinkedItems'
 import { LINKED_COLLECTION_NAME_MAX_LENGTH, type ThirdParty } from '~/lib/thirdParty'
@@ -83,9 +85,13 @@ export function PublishLinkedItemsModal({
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [runningStep, setRunningStep] = useState<LinkedPublishStep | null>(null)
   const [outcome, setOutcome] = useState<'success' | LinkedPublishError | null>(null)
-  // What earlier attempts left behind: a payment a retry must resume from, and a publish request that may have landed.
-  const [paidTxHash, setPaidTxHash] = useState<string | undefined>(undefined)
+  // What earlier attempts left behind: a payment a retry must resume from (kept across reopenings of the wizard), and
+  // a publish request that may have landed.
+  const [paidTx, setPaidTx] = useState<LinkedPayment | undefined>(() => loadPendingPayment(collection.id))
   const [publishMayHaveLanded, setPublishMayHaveLanded] = useState(false)
+  // Set synchronously on Submit: a second click during the slots re-read must not start a second, paying run.
+  const submitting = useRef(false)
+  const [slotsError, setSlotsError] = useState(false)
 
   const profile = useProfile(address)
   const profileEmail = profile.data?.email?.trim() ?? ''
@@ -94,7 +100,7 @@ export function PublishLinkedItemsModal({
   const price = useThirdPartyPrice()
   const slots = useThirdPartySlots(address, thirdParty.id)
   const publish = usePublishLinkedItems(session, collection)
-  const isRunning = publish.isPending
+  const isRunning = publish.isPending || runningStep !== null
   const runningLabels = useMemo(
     () => RUNNING_STEP_ORDER.map(name => t(`publish_linked_modal.running.short.${name}`)),
     [t]
@@ -138,11 +144,17 @@ export function PublishLinkedItemsModal({
   }
 
   async function submit() {
-    if (!price.data) return
+    if (!price.data || submitting.current) return
+    submitting.current = true
+    setSlotsError(false)
     setRunningStep('tos')
-    // Read again right before paying: the slots an earlier attempt bought must not be bought twice.
-    const fresh = paidTxHash ? slots.data : (await slots.refetch()).data
+    // Read again right before paying: the slots an earlier attempt bought must not be bought twice. A failed read
+    // hands back the stale count, so it stops here instead.
+    const read = paidTx ? null : await slots.refetch()
+    const fresh = read ? (read.isError ? undefined : read.data) : slots.data
     if (fresh === undefined) {
+      submitting.current = false
+      setSlotsError(true)
       setRunningStep(null)
       return
     }
@@ -157,24 +169,31 @@ export function PublishLinkedItemsModal({
         isProgrammatic,
         availableSlots: fresh,
         price: price.data,
-        paidTxHash,
+        paidTx,
         publishMayHaveLanded,
         curations,
         onStep: setRunningStep
       },
       {
         onSuccess: () => {
+          setPaidTx(undefined)
+          savePendingPayment(collection.id, undefined)
           setOutcome('success')
           onPublished()
         },
         onError: error => {
           const failure =
             error instanceof LinkedPublishError ? error : new LinkedPublishError('publish', 'generic', String(error))
-          setPaidTxHash(current => getResumableTxHash(failure) ?? current)
+          const next = nextResumablePayment(paidTx, failure)
+          setPaidTx(next)
+          savePendingPayment(collection.id, next)
           setPublishMayHaveLanded(current => current || mayHavePublished(failure))
           setOutcome(failure)
         },
-        onSettled: () => setRunningStep(null)
+        onSettled: () => {
+          submitting.current = false
+          setRunningStep(null)
+        }
       }
     )
   }
@@ -183,7 +202,6 @@ export function PublishLinkedItemsModal({
     return (
       <LinkedPublishOutcomeModal
         outcome={outcome}
-        collection={collection}
         onClose={onClose}
         onRetry={() => {
           setOutcome(null)
@@ -194,7 +212,7 @@ export function PublishLinkedItemsModal({
     )
   }
 
-  if (isRunning && runningStep) {
+  if (runningStep) {
     return (
       <PendingModal
         title={t('publish_linked_modal.running.title')}
@@ -271,8 +289,13 @@ export function PublishLinkedItemsModal({
             priceError={price.isError}
             onRetryPrice={() => void price.refetch()}
             availableSlots={slots.data}
-            slotsError={slots.isError}
-            onRetrySlots={() => void slots.refetch()}
+            slotsError={slots.isError || slotsError}
+            onRetrySlots={() => {
+              setSlotsError(false)
+              void slots.refetch()
+            }}
+            resuming={!!paidTx}
+            busy={isRunning}
             accepted={termsAccepted}
             onAcceptedChange={setTermsAccepted}
             onBack={back}

@@ -133,6 +133,8 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   }, [collection.id, itemsPage.data, network])
 
   // A filter shows another set of items: a selection made under the previous one would publish things off screen.
+  const filterRef = useRef(filter)
+  filterRef.current = filter
   useEffect(() => {
     setSelected(new Map())
     setAllAcrossSelected(false)
@@ -151,6 +153,23 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     [items, curations.data, curationMap]
   )
   const selectableSet = useMemo(() => new Set(selectableIds), [selectableIds])
+  // Selected items are kept as copies: refresh the ones on this page, so an edit since selecting is what publishes,
+  // and drop the ones that can no longer be published or pushed.
+  useEffect(() => {
+    if (!curations.data) return
+    setSelected(current => {
+      let changed = false
+      const next = new Map(current)
+      for (const item of items) {
+        if (!next.has(item.id)) continue
+        if (!selectableSet.has(item.id)) next.delete(item.id)
+        else if (next.get(item.id) !== item) next.set(item.id, item)
+        else continue
+        changed = true
+      }
+      return changed ? next : current
+    })
+  }, [items, selectableSet, curations.data])
   const selection = useMemo(() => splitLinkedSelection(selected.values(), curationMap), [selected, curationMap])
   const selectedCount = selection.toPublish.length + selection.toPush.length
   const publishAction = getLinkedPublishAction(selection)
@@ -217,9 +236,12 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   }
 
   async function selectAllAcross() {
+    const startedWith = filter
     setSelectingAll(true)
     try {
       const all = await fetchAllLinkedCollectionItems(address, collection.id, linkedItemFilterToQuery(filter))
+      // The filter changed while this loaded: these items belong to the previous one.
+      if (filterRef.current !== startedWith) return
       const selectable = all.filter(item => isLinkedItemSelectable(item, curationMap.get(item.id) ?? null))
       setSelected(new Map(selectable.map(item => [item.id, item])))
       setAllAcrossSelected(true)
@@ -554,6 +576,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
                 onSaveMappings={saveMappings}
                 actions={
                   <LinkedItemActionsMenu
+                    onDeleted={() => toggleSelected(item, false)}
                     item={item}
                     collection={collection}
                     address={address}

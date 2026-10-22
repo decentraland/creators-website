@@ -22,12 +22,13 @@ type Props = {
   address: string
   /** The item's latest curation; null when it has none, undefined while unknown. */
   curation: ItemCuration | null | undefined
+  onDeleted?: () => void
 }
 
 type Dialog = 'urn' | 'delete' | null
 
 /** The ⋯ menu of a linked item row: open in the editor, copy or edit its URN, delete it while unpublished. */
-export function LinkedItemActionsMenu({ item, collection, address, curation }: Props) {
+export function LinkedItemActionsMenu({ item, collection, address, curation, onDeleted }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const showToast = useNotifications(state => state.showToast)
@@ -73,6 +74,7 @@ export function LinkedItemActionsMenu({ item, collection, address, curation }: P
     deleteItem.mutate(item, {
       onSuccess: () => {
         closeDialog()
+        onDeleted?.()
         showToast(t('collection_detail_page.item_actions.deleted', { name: item.name }))
       },
       onError: () => showToast(t('collection_detail_page.delete_item.error'), { type: 'error' })

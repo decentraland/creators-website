@@ -26,6 +26,13 @@ export type LinkedPublishStep =
 export type LinkedPublishFailureReason =
   'rejected' | 'reverted' | 'insufficient_slots' | 'pending_review' | 'tos_failed' | 'generic'
 
+/** A registration or slot purchase this run sent. */
+export type LinkedPayment = {
+  txHash: string
+  /** `addThirdParties`: the virtual third party must still be removed once the chain has it. */
+  registration: boolean
+}
+
 export class LinkedPublishError extends Error {
   step: LinkedPublishStep
   reason: LinkedPublishFailureReason
@@ -36,6 +43,8 @@ export class LinkedPublishError extends Error {
    * may already be on chain, which a retry must resume from instead of paying again.
    */
   txHash?: string
+  /** The payment this run sent, when it got that far: a retry resumes from it instead of paying again. */
+  payment?: LinkedPayment
 
   constructor(
     step: LinkedPublishStep,
@@ -76,11 +85,21 @@ export function isPendingReviewError(error: unknown): boolean {
 }
 
 /** Maps any failure of the sequence to the reason the UI shows copy for, keeping the step it happened at. */
-export function toLinkedPublishError(error: unknown, step: LinkedPublishStep, txHash?: string): LinkedPublishError {
-  if (error instanceof LinkedPublishError) {
-    if (!error.txHash && txHash) error.txHash = txHash
-    return error
+export function toLinkedPublishError(
+  error: unknown,
+  step: LinkedPublishStep,
+  payment?: LinkedPayment
+): LinkedPublishError {
+  const wrapped = wrapLinkedPublishError(error, step, payment?.txHash)
+  if (payment) {
+    wrapped.payment ??= payment
+    wrapped.txHash ??= payment.txHash
   }
+  return wrapped
+}
+
+function wrapLinkedPublishError(error: unknown, step: LinkedPublishStep, txHash?: string): LinkedPublishError {
+  if (error instanceof LinkedPublishError) return error
   const message = error instanceof Error ? error.message : String(error)
   if (step === 'tos') return new LinkedPublishError(step, 'tos_failed', message, error, txHash)
   if (isWalletRejection(error)) return new LinkedPublishError(step, 'rejected', message, error, txHash)
@@ -93,8 +112,20 @@ export function toLinkedPublishError(error: unknown, step: LinkedPublishStep, tx
  * The payment a retry must resume from: a registration or slot purchase that was sent and did not revert. Paying
  * again would charge the creator twice (or revert, for a registration).
  */
-export function getResumableTxHash(error: LinkedPublishError): string | undefined {
-  return error.reason === 'reverted' ? undefined : error.txHash
+export function getResumablePayment(error: LinkedPublishError): LinkedPayment | undefined {
+  return error.reason === 'reverted' ? undefined : error.payment
+}
+
+/**
+ * The payment the next attempt should resume from, given the one it resumed (if any) and how it failed: a payment
+ * that turned out to revert is dropped, so the next attempt pays again instead of waiting on it forever.
+ */
+export function nextResumablePayment(
+  current: LinkedPayment | undefined,
+  failure: LinkedPublishError
+): LinkedPayment | undefined {
+  if (failure.reason === 'reverted') return undefined
+  return failure.payment ?? current
 }
 
 /** A publish request that failed on the server may still have written the item curations (see publishWithRetry). */
@@ -234,7 +265,7 @@ export type PublishLinkedParams = {
    * A registration or slot purchase an earlier attempt already sent (LinkedPublishError.txHash): the run waits for it
    * again and resumes after it instead of paying a second time.
    */
-  paidTxHash?: string
+  paidTx?: LinkedPayment
   /** An earlier attempt's publish request may have gone through (see publishWithRetry): a pending review then means it did. */
   publishMayHaveLanded?: boolean
 }
@@ -354,7 +385,7 @@ export async function publishLinkedItems(
   }
 
   // Kept outside the try so any later failure carries it: a retry must resume from this payment, not repeat it.
-  let paymentTx: string | undefined = params.paidTxHash
+  let payment: LinkedPayment | undefined = params.paidTx
 
   try {
     if (itemsToPublish.length > 0 && !cheque) {
@@ -374,13 +405,13 @@ export async function publishLinkedItems(
     )
 
     let thirdParty = params.thirdParty
-    let txHash: string | null = params.paidTxHash ?? null
+    let txHash: string | null = params.paidTx?.txHash ?? null
     let published: PublishLinkedItemsResult | null = null
 
     if (itemsToPublish.length > 0 && cheque) {
       const isVirtual = !thirdParty.published
       // The kind is only chosen before the first publish; the registry fixes it on registration.
-      if (!params.paidTxHash && isVirtual && isProgrammatic !== thirdParty.isProgrammatic) {
+      if (!params.paidTx && isVirtual && isProgrammatic !== thirdParty.isProgrammatic) {
         step('kind')
         await deps.setThirdPartyKind(thirdParty.id, isProgrammatic)
         thirdParty = { ...thirdParty, isProgrammatic }
@@ -394,9 +425,9 @@ export async function publishLinkedItems(
         programmaticMinSlots: params.price.programmaticMinSlots
       })
 
-      if (params.paidTxHash) {
+      if (params.paidTx) {
         step('wait_tx')
-        await assertMined(params.paidTxHash)
+        await assertMined(params.paidTx.txHash)
       } else if (slotsToBuy > 0) {
         const fee = getLinkedPublishFee(slotsToBuy, params.price, {
           isProgrammatic: thirdParty.isProgrammatic,
@@ -415,17 +446,18 @@ export async function publishLinkedItems(
         if (isVirtual) {
           step('register')
           txHash = await deps.sendTransaction(buildAddThirdPartyCall(chainId, thirdParty, slotsToBuy, fee.maxManaWei))
-          paymentTx = txHash
+          payment = { txHash, registration: true }
         } else {
           step('buy_slots')
           txHash = await deps.sendTransaction(buildBuyItemSlotsCall(chainId, thirdParty.id, slotsToBuy, fee.maxManaWei))
-          paymentTx = txHash
+          payment = { txHash, registration: false }
         }
         step('wait_tx')
         await assertMined(txHash)
       }
 
-      if (isVirtual && txHash) {
+      // A resumed registration still owes the delete, even once the refreshed third party reads as published.
+      if ((isVirtual && txHash) || params.paidTx?.registration) {
         step('delete_virtual')
         try {
           await retry(
@@ -459,6 +491,6 @@ export async function publishLinkedItems(
       txHash
     }
   } catch (error) {
-    throw toLinkedPublishError(error, current, paymentTx)
+    throw toLinkedPublishError(error, current, payment)
   }
 }

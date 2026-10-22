@@ -19,7 +19,8 @@ import {
   getEntityContent,
   type LinkedMerkleProof
 } from '~/lib/catalystEntity'
-import { type Collection } from '~/lib/collections'
+import { CurationStatus, type Collection } from '~/lib/collections'
+import { type ItemCuration } from '~/lib/linkedItemStatus'
 import { type Item } from '~/lib/items'
 import { type ThirdParty } from '~/lib/thirdParty'
 import { buildReviewThirdPartyWithRootCall, toChequeSlot, type ChequeSlot } from '~/lib/thirdPartyRegistry'
@@ -50,6 +51,8 @@ export type LinkedApprovalPlan = {
 export type PrepareDeps = {
   fetchPendingItems: (collectionId: string) => Promise<Item[]>
   fetchApprovalData: (collectionId: string) => Promise<LinkedApprovalData>
+  /** The latest curation of every item, to keep rejected or superseded content out of the root. */
+  fetchItemCurations: (collectionId: string) => Promise<Map<string, ItemCuration>>
 }
 
 /** What the curator saw: the pending items when they decided, and the content of each item they opened. */
@@ -89,9 +92,10 @@ export async function prepareLinkedApproval(
   deps: PrepareDeps,
   review?: ReviewedContent
 ): Promise<LinkedApprovalPlan> {
-  const [pendingItems, approvalData] = await Promise.all([
+  const [pendingItems, approvalData, curations] = await Promise.all([
     deps.fetchPendingItems(collection.id),
-    deps.fetchApprovalData(collection.id)
+    deps.fetchApprovalData(collection.id),
+    deps.fetchItemCurations(collection.id)
   ])
   if (pendingItems.length === 0) throw new ApprovalError('nothing_pending', 'The collection has no items to approve')
   if (review && !matchesReviewedContent(pendingItems, review)) {
@@ -99,13 +103,26 @@ export async function prepareLinkedApproval(
   }
   const unhashed = pendingItems.find(item => !approvalData.contentHashes[item.id])
   if (unhashed) throw new ApprovalError('missing_hash', `Item ${unhashed.id} has no curated content hash`)
+  // The root goes on chain before anything is deployed, so every pending leaf must be the content the curator has on
+  // screen: the hash the curation recorded, the item's current hash and the hash of the item itself must all agree.
+  const drifted = pendingItems.find(item => {
+    const curated = approvalData.contentHashes[item.id]
+    return curated !== item.currentContentHash || curated !== computeLinkedItemContentHash(collection, item)
+  })
+  if (drifted) throw new ApprovalError('changed', `Item ${drifted.id} changed since it was curated`)
 
   const newItems = pendingItems.filter(item => !item.isApproved).length
   if (!approvalData.chequeWasConsumed && approvalData.cheque.qty < newItems) {
     throw new ApprovalError('invalid_cheque', `The cheque covers ${approvalData.cheque.qty} items, ${newItems} are new`)
   }
 
-  const tree = await generateTree(Object.values(approvalData.contentHashes))
+  // Only approved content and the pending content verified above may be provable: a rejected or superseded hash in
+  // the root would let content nobody approved reach the Catalyst.
+  const pendingIds = new Set(pendingItems.map(item => item.id))
+  const leaves = Object.entries(approvalData.contentHashes)
+    .filter(([id]) => pendingIds.has(id) || curations.get(id)?.status === CurationStatus.APPROVED)
+    .map(([, hash]) => hash)
+  const tree = await generateTree(leaves)
   return {
     pendingItems,
     approvalData,
@@ -174,7 +191,7 @@ async function atStage<T>(stage: LinkedDeployStage, run: () => Promise<T>): Prom
   try {
     return await run()
   } catch (error) {
-    if (error instanceof ApprovalError && error.reason === 'no_identity') throw error
+    if (error instanceof ApprovalError && (error.reason === 'no_identity' || error.reason === 'changed')) throw error
     throw new StageError(stage, error)
   }
 }

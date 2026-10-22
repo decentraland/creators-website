@@ -1,1 +1,1 @@
-export { CreateLinkedCollectionModal, isContractInUseError } from './CreateLinkedCollectionModal'
+export { CreateLinkedCollectionModal } from './CreateLinkedCollectionModal'

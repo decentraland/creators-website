@@ -1,13 +1,11 @@
 import errorArt from '~/assets/modal-error.png'
 import { useTranslation } from '~/intl'
-import { type Collection } from '~/lib/collections'
 import { type LinkedPublishError, type LinkedPublishFailureReason } from '~/lib/publishLinkedItems'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { PublishSuccessModal } from '../../PublishCollectionModal/PublishSuccessModal'
 
 type Props = {
   outcome: 'success' | LinkedPublishError
-  collection: Collection
   onClose: () => void
   onRetry: () => void
 }

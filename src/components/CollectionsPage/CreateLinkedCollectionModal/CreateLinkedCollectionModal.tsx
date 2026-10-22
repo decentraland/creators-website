@@ -3,17 +3,17 @@ import { ChevronRight as ChevronRightIcon, InfoOutlined as InfoOutlinedIcon } fr
 import { type ContractNetwork } from '@dcl/schemas'
 import { config } from '~/config'
 import { useTranslation } from '~/intl'
-import { BuilderServerError } from '~/lib/builder'
 import { openExternal } from '~/lib/navigation'
 import {
   checkLinkedContract,
   isAddressBeingTyped,
   isContractAddress,
+  isContractInUseError,
   type LinkedContractCheck
 } from '~/lib/linkedContract'
 import {
   LINKED_COLLECTION_NAME_MAX_LENGTH,
-  LINKED_CONTRACT_IN_USE_ERROR,
+  LINKED_WEARABLES_DOCS_PATH,
   getLinkedContractNetworks,
   validateLinkedCollectionName,
   type LinkedContract
@@ -26,7 +26,6 @@ import * as N from '~/components/CollectionNameInput/CollectionNameInput.styles'
 import * as S from './CreateLinkedCollectionModal.styles'
 
 const CONTRACT_CHECK_DEBOUNCE_MS = 1000
-const LEARN_MORE_PATH = '/creator/wearables/linked-wearables/'
 
 type Props = {
   isPending: boolean
@@ -34,13 +33,6 @@ type Props = {
   error: unknown
   onSubmit: (name: string, contract: LinkedContract) => void
   onClose: () => void
-}
-
-/** Whether the failed save was builder-server refusing a contract another collection already links. */
-export function isContractInUseError(error: unknown): boolean {
-  if (!(error instanceof BuilderServerError)) return false
-  const text = `${error.message} ${typeof error.data === 'string' ? error.data : JSON.stringify(error.data ?? '')}`
-  return text.includes(LINKED_CONTRACT_IN_USE_ERROR)
 }
 
 /** The New Linked Collection dialog: a name, the NFT contract's network and address, checked on chain as typed. */
@@ -56,7 +48,7 @@ export function CreateLinkedCollectionModal({ isPending, error, onSubmit, onClos
   const checkRun = useRef(0)
 
   const isProduction = config.get('ENVIRONMENT') === 'production'
-  const learnMoreUrl = `${config.get('DOCS_URL')}${LEARN_MORE_PATH}`
+  const learnMoreUrl = `${config.get('DOCS_URL')}${LINKED_WEARABLES_DOCS_PATH}`
   const networks = useMemo(() => getLinkedContractNetworks(isProduction), [isProduction])
   const networkOptions = useMemo(
     () => networks.map(value => ({ value, label: t(`linked_collection.networks.${value}`) })),
@@ -169,7 +161,7 @@ export function CreateLinkedCollectionModal({ isPending, error, onSubmit, onClos
               <N.Box data-invalid={contractError ? true : undefined}>
                 <input
                   value={address}
-                  placeholder="0x…"
+                  placeholder={t('create_linked_collection_modal.contract_placeholder')}
                   spellCheck={false}
                   autoComplete="off"
                   data-testid="linked-contract-address-input"

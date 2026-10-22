@@ -159,13 +159,15 @@ export type LinkedWorkCounts = {
   curations: Map<string, ItemCuration>
   /** Approved items whose content changed since (the server's `synced=false`). */
   unsynced: number
-  /** Items with no token mapping, which can't be published yet. */
-  missingMapping: number
+  /** Ids of the items with no token mapping, which can't be published yet. */
+  missingMappingIds: string[]
 }
 
 /** Whether anything in the collection, on any page, can be published or pushed. */
-export function hasLinkedWork({ itemCount, curations, unsynced, missingMapping }: LinkedWorkCounts): boolean {
+export function hasLinkedWork({ itemCount, curations, unsynced, missingMappingIds }: LinkedWorkCounts): boolean {
   if (unsynced > 0) return true
   const rejected = [...curations.values()].filter(curation => curation.status === CurationStatus.REJECTED).length
-  return rejected > 0 || itemCount - curations.size - missingMapping > 0
+  // Items published before mappings existed are curated already: only the never-submitted ones count here.
+  const unsubmittedWithoutMapping = missingMappingIds.filter(id => !curations.has(id)).length
+  return rejected > 0 || itemCount - curations.size - unsubmittedWithoutMapping > 0
 }

@@ -675,7 +675,8 @@
       "form_heading": "Actualización del ítem",
       "hint": "Cada ZIP actualiza el ítem cuya URN figura en su wearable.json. Reemplaza los archivos y datos del ítem; su mapeo se mantiene salvo que el ZIP defina uno.",
       "success_toast": "{count, plural, one {# ítem actualizado} other {# ítems actualizados}}"
-    }
+    },
+    "items_error": "No pudimos cargar los ítems de esta colección, que hacen falta para asociar cada archivo con su ítem. Inténtalo de nuevo."
   },
   "video_modal": {
     "title": "Video de vista previa",
@@ -1777,7 +1778,8 @@
     "error_contract_check": "No pudimos verificar este contrato. Revisa la red y la dirección e inténtalo de nuevo.",
     "error_contract_in_use": "Este contrato ya está vinculado a otra colección. Solo se puede vincular una colección por contrato.",
     "error_generic": "No pudimos crear tu colección vinculada. Inténtalo de nuevo.",
-    "submit": "Crear"
+    "submit": "Crear",
+    "contract_placeholder": "Dirección del contrato 0x…"
   },
   "edit_urn_modal": {
     "title": {
@@ -1854,7 +1856,9 @@
       "price_error": "No pudimos cargar la tarifa de publicación.",
       "checkbox": "Garantizo que los ítems enviados cumplen plenamente los <terms>Términos de uso</terms> y la <policy>Política de contenido</policy>, que tengo los derechos de propiedad intelectual para crear wearables basados en esta colección NFT, y reconozco que la DAO puede rechazar su aprobación y que la tarifa no se reembolsará si se rechazan.",
       "submit": "Publicar y pagar",
-      "submit_free": "Publicar"
+      "submit_free": "Publicar",
+      "resuming": "Tu pago anterior ya se procesó. No hay nada más que pagar: termina la publicación para enviar tus ítems a revisión.",
+      "submit_resume": "Terminar publicación"
     },
     "running": {
       "title": "Publicando tus ítems",

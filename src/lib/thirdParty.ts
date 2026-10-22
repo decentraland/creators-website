@@ -7,6 +7,9 @@ import { type Collection } from './collections'
 
 export const THIRD_PARTY_URN_TYPE = 'collections-thirdparty'
 
+/** The linked wearables guide, under DOCS_URL. */
+export const LINKED_WEARABLES_DOCS_PATH = '/creator/wearables/linked-wearables/'
+
 export type LinkedContract = { network: ContractNetwork; address: string }
 
 /** builder-server's third party: the on-chain registry record, or the "virtual" row kept until the first publish. */

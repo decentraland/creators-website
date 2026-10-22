@@ -1,0 +1,138 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { type ReactNode } from 'react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { TranslationProvider } from '~/intl'
+import { type Session } from '~/lib/auth'
+import { type Collection } from '~/lib/collections'
+import { ItemType, type Item } from '~/lib/items'
+import { type ThirdParty } from '~/lib/thirdParty'
+import { type ThirdPartyPrice } from '~/lib/thirdPartyRegistry'
+import { PublishLinkedItemsModal } from './PublishLinkedItemsModal'
+
+const publishMutate = vi.fn()
+const slotsRefetch = vi.fn()
+
+vi.mock('~/hooks/useLinkedPublish', () => ({
+  usePublishLinkedItems: () => ({ mutate: publishMutate, isPending: false }),
+  useSignSlotsCheque: () => ({
+    isPending: false,
+    isError: false,
+    mutate: (_variables: unknown, options: { onSuccess: (cheque: unknown) => void }) =>
+      options.onSuccess({ signature: '0xsig', qty: 1, salt: '0xsalt' })
+  }),
+  useThirdPartyPrice: () => ({ data: price, isError: false, refetch: vi.fn() })
+}))
+vi.mock('~/hooks/useLinkedCollection', () => ({
+  useThirdPartySlots: () => ({ data: 5, isError: false, refetch: slotsRefetch })
+}))
+vi.mock('~/hooks/useCollection', () => ({
+  useSaveCollection: () => ({ mutate: vi.fn(), isPending: false, error: null, reset: vi.fn() })
+}))
+vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: { email: 'jane.doe@example.com' } }) }))
+vi.mock('~/hooks/useBalances', () => ({ useManaBalance: () => ({ data: 10n ** 24n, isSuccess: true }) }))
+
+const ETHER = 10n ** 18n
+const price: ThirdPartyPrice = {
+  itemSlotUsdWei: 100n * ETHER,
+  itemSlotManaWei: 200n * ETHER,
+  programmaticMinSlots: 200,
+  usdPerManaWei: ETHER / 2n
+}
+
+const collection = {
+  id: 'c-double-submit',
+  name: 'Brand Hats',
+  urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats',
+  isPublished: false,
+  linkedContractAddress: '0x1d9fb685c257e74f869ba302e260c0b68f5ebb37',
+  linkedContractNetwork: 'amoy'
+} as Collection
+
+const thirdParty = {
+  id: 'urn:decentraland:amoy:collections-thirdparty:brand',
+  name: 'Brand',
+  managers: [],
+  published: true,
+  isProgrammatic: false
+} as unknown as ThirdParty
+
+const item = {
+  id: 'i1',
+  name: 'Gold Hat',
+  thumbnail: 'thumbnail.png',
+  contents: {},
+  type: ItemType.WEARABLE,
+  data: { category: 'hat', representations: [] }
+} as unknown as Item
+
+const wrapper = ({ children }: { children: ReactNode }) => <TranslationProvider>{children}</TranslationProvider>
+
+async function goToPayment() {
+  render(
+    <PublishLinkedItemsModal
+      collection={collection}
+      thirdParty={thirdParty}
+      session={{ address: '0xabc' } as unknown as Session}
+      itemsToPublish={[item]}
+      itemsToPush={[]}
+      curations={new Map()}
+      onClose={vi.fn()}
+      onPublished={vi.fn()}
+    />,
+    { wrapper }
+  )
+  await userEvent.click(screen.getByTestId('publish-name-accept'))
+  await userEvent.click(screen.getByTestId('publish-name-confirm'))
+  await userEvent.click(screen.getByTestId('publish-linked-items-accept'))
+  await userEvent.click(screen.getByTestId('publish-linked-items-confirm'))
+  await userEvent.click(screen.getByTestId('publish-linked-terms-accept'))
+}
+
+describe('PublishLinkedItemsModal', () => {
+  beforeEach(() => {
+    publishMutate.mockReset()
+    slotsRefetch.mockReset()
+    localStorage.clear()
+  })
+
+  it('starts one paying run however many times Submit is clicked while the slots are re-read', async () => {
+    let finishRead: (value: { data: number; isError: boolean }) => void = () => undefined
+    slotsRefetch.mockReturnValue(new Promise(resolve => (finishRead = resolve)))
+    await goToPayment()
+
+    const submit = screen.getByTestId('publish-linked-submit')
+    await userEvent.click(submit)
+    await userEvent.click(submit)
+    expect(await screen.findByTestId('publish-linked-running')).toBeInTheDocument()
+
+    finishRead({ data: 0, isError: false })
+    await waitFor(() => expect(publishMutate).toHaveBeenCalledTimes(1))
+    expect(publishMutate.mock.calls[0][0]).toMatchObject({ availableSlots: 0 })
+  })
+
+  it('does not pay on a stale slot count when the re-read fails', async () => {
+    slotsRefetch.mockResolvedValue({ data: 5, isError: true })
+    await goToPayment()
+
+    await userEvent.click(screen.getByTestId('publish-linked-submit'))
+
+    expect(await screen.findByTestId('publish-linked-fee-error')).toBeInTheDocument()
+    expect(publishMutate).not.toHaveBeenCalled()
+  })
+
+  it('resumes an unfinished payment remembered from an earlier attempt instead of paying again', async () => {
+    localStorage.setItem(
+      `linked-publish.pending-payment.${collection.id}`,
+      JSON.stringify({ txHash: '0xabc123', registration: false })
+    )
+    await goToPayment()
+
+    expect(screen.getByTestId('publish-linked-resuming')).toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('publish-linked-submit'))
+
+    await waitFor(() => expect(publishMutate).toHaveBeenCalledTimes(1))
+    expect(slotsRefetch).not.toHaveBeenCalled()
+    expect(publishMutate.mock.calls[0][0]).toMatchObject({ paidTx: { txHash: '0xabc123', registration: false } })
+  })
+})

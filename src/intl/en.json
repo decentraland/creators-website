@@ -675,7 +675,8 @@
       "form_heading": "Item update",
       "hint": "Each ZIP updates the item whose URN is in its wearable.json. It replaces the item's files and details; its mapping stays unless the ZIP sets one.",
       "success_toast": "{count, plural, one {# item updated} other {# items updated}}"
-    }
+    },
+    "items_error": "We couldn't load this collection's items, which are needed to match each file to its item. Try again."
   },
   "video_modal": {
     "title": "Preview Video",
@@ -1777,7 +1778,8 @@
     "error_contract_check": "We couldn't check this contract. Check the network and the address, then try again.",
     "error_contract_in_use": "This contract is already linked to another collection. Only one collection can be linked to a contract.",
     "error_generic": "We couldn't create your linked collection. Please try again.",
-    "submit": "Create"
+    "submit": "Create",
+    "contract_placeholder": "0x… contract address"
   },
   "edit_urn_modal": {
     "title": {
@@ -1854,7 +1856,9 @@
       "price_error": "We couldn't load the publishing fee.",
       "checkbox": "I warrant that the submitted items fully comply with the <terms>Terms of Use</terms> and <policy>Content Policy</policy>, that I hold the IP rights to create wearables based on this NFT collection, and I acknowledge that the DAO may refuse to approve them and that the fee won't be refunded if they are rejected.",
       "submit": "Publish & Pay",
-      "submit_free": "Publish"
+      "submit_free": "Publish",
+      "resuming": "Your earlier payment already went through. Nothing more to pay: finish publishing to submit your items for review.",
+      "submit_resume": "Finish publishing"
     },
     "running": {
       "title": "Publishing your items",

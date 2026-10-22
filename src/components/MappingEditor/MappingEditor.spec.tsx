@@ -49,6 +49,20 @@ describe('MappingEditor', () => {
     expect(lastMapping()).toEqual({ type: MappingType.MULTIPLE, ids: ['1', '2', '3'] })
   })
 
+  it('follows a new saved value, but never over what the user is typing', async () => {
+    const onChange = vi.fn()
+    const { rerender } = render(<MappingEditor value={{ type: MappingType.SINGLE, id: '1' }} onChange={onChange} />, {
+      wrapper
+    })
+    rerender(<MappingEditor value={{ type: MappingType.SINGLE, id: '2' }} onChange={onChange} />)
+    expect(screen.getByTestId('mapping-editor-id')).toHaveValue('2')
+
+    await userEvent.type(screen.getByTestId('mapping-editor-id'), '5')
+    // The save of "2" comes back while the user has moved on to "25".
+    rerender(<MappingEditor value={{ type: MappingType.SINGLE, id: '3' }} onChange={onChange} />)
+    expect(screen.getByTestId('mapping-editor-id')).toHaveValue('25')
+  })
+
   it('starts from the saved mapping', () => {
     renderEditor({ type: MappingType.SINGLE, id: '42' })
     expect(screen.getByTestId('mapping-editor-id')).toHaveValue('42')

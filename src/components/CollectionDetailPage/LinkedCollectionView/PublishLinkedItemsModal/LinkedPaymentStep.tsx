@@ -33,6 +33,10 @@ type Props = {
   availableSlots: number | undefined
   slotsError: boolean
   onRetrySlots: () => void
+  /** An earlier attempt's payment went through: there is nothing to pay, only the publish to finish. */
+  resuming: boolean
+  /** A run is starting or running: Submit must not start a second one. */
+  busy: boolean
   accepted: boolean
   onAcceptedChange: (accepted: boolean) => void
   onBack: () => void
@@ -53,6 +57,8 @@ export function LinkedPaymentStep({
   availableSlots,
   slotsError,
   onRetrySlots,
+  resuming,
+  busy,
   accepted,
   onAcceptedChange,
   onBack,
@@ -85,7 +91,7 @@ export function LinkedPaymentStep({
   const balance = mana.data ?? 0n
   const hasEnough = !!fee && balance >= fee.maxManaWei
   const isFree = !!fee && fee.manaWei === 0n
-  const canSubmit = !!fee && accepted && (isFree || (hasEnough && mana.isSuccess))
+  const canSubmit = !busy && accepted && (resuming || (!!fee && (isFree || (hasEnough && mana.isSuccess))))
   const usd = (wei: bigint) => intl.formatNumber(weiToUsdCents(wei) / 100, { style: 'currency', currency: 'USD' })
   const loadError = priceError || slotsError
 
@@ -108,7 +114,11 @@ export function LinkedPaymentStep({
           </S.Text>
         </div>
 
-        {loadError ? (
+        {resuming ? (
+          <S.InlineNote data-testid="publish-linked-resuming">
+            {t('publish_linked_modal.payment_step.resuming')}
+          </S.InlineNote>
+        ) : loadError ? (
           <S.InlineNote data-testid="publish-linked-fee-error">
             {t('publish_linked_modal.payment_step.price_error')}
             <Button
@@ -210,7 +220,13 @@ export function LinkedPaymentStep({
           {t('publish_collection_modal.back')}
         </Button>
         <Button type="button" disabled={!canSubmit} data-testid="publish-linked-submit" onClick={onSubmit}>
-          {t(isFree ? 'publish_linked_modal.payment_step.submit_free' : 'publish_linked_modal.payment_step.submit')}
+          {t(
+            resuming
+              ? 'publish_linked_modal.payment_step.submit_resume'
+              : isFree
+                ? 'publish_linked_modal.payment_step.submit_free'
+                : 'publish_linked_modal.payment_step.submit'
+          )}
         </Button>
       </S.Footer>
     </S.Step>

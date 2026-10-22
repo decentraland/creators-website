@@ -2,7 +2,8 @@
 // the legacy create modal ran, fixed to probe the ERC-721 interface id (legacy probed ERC-165's own id).
 import { type ContractNetwork } from '@dcl/schemas'
 import { readContract } from '~/lib/auth'
-import { LINKED_CONTRACT_CHAIN_IDS } from './thirdParty'
+import { BuilderServerError } from '~/lib/builder'
+import { LINKED_CONTRACT_CHAIN_IDS, LINKED_CONTRACT_IN_USE_ERROR } from './thirdParty'
 
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/
 const ADDRESS_PREFIX = /^(0|0x|0x[0-9a-fA-F]{0,40})$/
@@ -58,4 +59,11 @@ export async function checkLinkedContract(
   } catch {
     return 'error'
   }
+}
+
+/** Whether a failed save was builder-server refusing a contract another collection of the third party already links. */
+export function isContractInUseError(error: unknown): boolean {
+  if (!(error instanceof BuilderServerError)) return false
+  const text = `${error.message} ${typeof error.data === 'string' ? error.data : JSON.stringify(error.data ?? '')}`
+  return text.includes(LINKED_CONTRACT_IN_USE_ERROR)
 }

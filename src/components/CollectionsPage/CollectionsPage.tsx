@@ -25,7 +25,12 @@ import {
   type CollectionListFilter
 } from '~/lib/collections'
 import { buildNewCollection } from '~/lib/saveCollection'
-import { buildNewLinkedCollection, getThirdPartyId, type LinkedContract } from '~/lib/thirdParty'
+import {
+  LINKED_WEARABLES_DOCS_PATH,
+  buildNewLinkedCollection,
+  getThirdPartyId,
+  type LinkedContract
+} from '~/lib/thirdParty'
 import { config } from '~/config'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { CreateLinkedCollectionModal } from './CreateLinkedCollectionModal'
@@ -46,7 +51,6 @@ const STATUS_FILTERS = [
 const SEARCH_DEBOUNCE_MS = 500
 const LEARN_MORE_URL =
   'https://docs.decentraland.org/creator/wearables-and-emotes/manage-collections/creating-a-collection/'
-const LINKED_LEARN_MORE_PATH = '/creator/wearables/linked-wearables/'
 
 type ViewMode = 'grid' | 'list'
 
@@ -353,10 +357,10 @@ const CollectionsPage = () => {
             <Button
               as="a"
               variant="secondary"
-              href={`${config.get('DOCS_URL')}${LINKED_LEARN_MORE_PATH}`}
+              href={`${config.get('DOCS_URL')}${LINKED_WEARABLES_DOCS_PATH}`}
               onClick={(event: React.MouseEvent) => {
                 event.preventDefault()
-                openExternal(`${config.get('DOCS_URL')}${LINKED_LEARN_MORE_PATH}`)
+                openExternal(`${config.get('DOCS_URL')}${LINKED_WEARABLES_DOCS_PATH}`)
               }}
             >
               {t('collections_page.empty.learn_more')}

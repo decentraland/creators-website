@@ -13,15 +13,15 @@ import { ApprovalError, waitForIndexer, APPROVAL_INDEX_TIMEOUT_MS } from '~/lib/
 import { sendContractTransaction, signWithIdentity, waitForTransaction, type Session } from '~/lib/auth'
 import {
   fetchContent,
+  fetchItemCurations,
   fetchLinkedApprovalData,
   fetchPendingLinkedItems,
   fetchThirdParty,
   updateItemCuration
 } from '~/lib/builder'
 import { deployEntity, fetchAvailableContent } from '~/lib/catalyst'
-import { CurationStatus, type Collection } from '~/lib/collections'
+import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
-import { type ItemCuration } from '~/lib/linkedItemStatus'
 import { generateCatalystImage } from '~/lib/media'
 import { captureError } from '~/lib/monitoring'
 import { getMaticChainId } from '~/lib/publishCollection'
@@ -123,7 +123,8 @@ export function useLinkedApprovalFlow(
         collection,
         {
           fetchPendingItems: collectionId => fetchPendingLinkedItems(address, collectionId),
-          fetchApprovalData: collectionId => fetchLinkedApprovalData(address, collectionId)
+          fetchApprovalData: collectionId => fetchLinkedApprovalData(address, collectionId),
+          fetchItemCurations: collectionId => fetchItemCurations(address, collectionId)
         },
         review
       )
@@ -218,7 +219,7 @@ export function useLinkedApprovalFlow(
   return { view, plan, steps, running, start, runRoot, runDeploy, stop }
 }
 
-export type RejectLinkedVariables = { items: Item[]; curations: Map<string, ItemCuration> }
+export type RejectLinkedVariables = { items: Item[] }
 
 /**
  * Rejects the pending review of each item (the committee's verdict goes to the forum post). The collection's own
@@ -227,11 +228,12 @@ export type RejectLinkedVariables = { items: Item[]; curations: Map<string, Item
 export function useRejectLinkedItems(address: string | undefined, collection: Collection) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ items, curations }: RejectLinkedVariables) => {
+    mutationFn: async ({ items }: RejectLinkedVariables) => {
       if (!address) throw new Error('Wallet disconnected')
-      const pending = items.filter(item => curations.get(item.id)?.status === CurationStatus.PENDING)
-      for (const item of pending) await updateItemCuration(address, item.id, 'rejected')
-      return pending.length
+      if (items.length === 0) throw new Error('No pending items to reject')
+      // The items come from the pending query: every one of them has a pending curation to reject.
+      for (const item of items) await updateItemCuration(address, item.id, 'rejected')
+      return items.length
     },
     onSuccess: count => {
       track('Reject TP Collection', { collectionId: collection.id, items: count })

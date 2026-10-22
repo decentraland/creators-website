@@ -4,7 +4,7 @@ import { getContentsStorageUrl } from '~/lib/builder'
 import { type Item } from '~/lib/items'
 import { type LinkedItemStatus } from '~/lib/linkedItemStatus'
 import { areMappingsEqual, buildItemMappings, getItemMapping, type Mapping, type Mappings } from '~/lib/mappings'
-import { type LinkedContract } from '~/lib/thirdParty'
+import { decodeLinkedUrn, type LinkedContract } from '~/lib/thirdParty'
 import { CategoryIcon } from '~/components/ItemIcons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { MappingEditor } from '~/components/MappingEditor'
@@ -107,7 +107,7 @@ export function LinkedItemRow({
         </R.NameText>
         {item.urn && (
           <S.Urn title={item.urn} data-testid="linked-item-urn">
-            {item.urn.split(':').pop()}
+            {decodeLinkedUrn(item.urn)?.itemSuffix ?? item.urn}
           </S.Urn>
         )}
       </S.NameCell>

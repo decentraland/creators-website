@@ -11,7 +11,8 @@ import {
   buildChequeTypedData,
   createChequeSalt,
   getLinkedPublishFee,
-  getResumableTxHash,
+  getResumablePayment,
+  nextResumablePayment,
   getSlotsToBuy,
   mayHavePublished,
   publishLinkedItems,
@@ -564,17 +565,40 @@ describe('publishLinkedItems', () => {
 
     expect(error.step).toBe('publish')
     expect(error.txHash).toBe('0xtx1')
-    expect(getResumableTxHash(error)).toBe('0xtx1')
+    expect(getResumablePayment(error)).toEqual({ txHash: '0xtx1', registration: false })
   })
 
-  it('never offers a reverted payment to resume from', () => {
-    expect(getResumableTxHash(new LinkedPublishError('wait_tx', 'reverted', 'x', undefined, '0xtx1'))).toBeUndefined()
+  it('never offers a reverted payment to resume from, and forgets one that turned out to revert', () => {
+    const reverted = new LinkedPublishError('wait_tx', 'reverted', 'x', undefined, '0xtx1')
+    reverted.payment = { txHash: '0xtx1', registration: false }
+    expect(getResumablePayment(reverted)).toBeUndefined()
+    expect(nextResumablePayment({ txHash: '0xtx1', registration: false }, reverted)).toBeUndefined()
+    const later = new LinkedPublishError('publish', 'generic')
+    expect(nextResumablePayment({ txHash: '0xtx1', registration: true }, later)).toEqual({
+      txHash: '0xtx1',
+      registration: true
+    })
+  })
+
+  it('still removes the virtual third party when resuming a registration it now reads as published', async () => {
+    const deps = makeDeps()
+    await publishLinkedItems(
+      makeParams({
+        thirdParty: { ...thirdParty, published: true },
+        paidTx: { txHash: '0xpaid', registration: true }
+      }),
+      deps
+    )
+    expect(deps.deleteVirtualThirdParty).toHaveBeenCalledWith(THIRD_PARTY_ID)
   })
 
   it('resumes after a payment an earlier attempt sent, without paying again', async () => {
     const deps = makeDeps({ fetchManaAllowance: vi.fn(async () => 0n) })
 
-    const result = await publishLinkedItems(makeParams({ paidTxHash: '0xpaid', isProgrammatic: true }), deps)
+    const result = await publishLinkedItems(
+      makeParams({ paidTx: { txHash: '0xpaid', registration: true }, isProgrammatic: true }),
+      deps
+    )
 
     expect(deps.waitForTransaction).toHaveBeenCalledWith('0xpaid')
     expect(deps.sendTransaction).not.toHaveBeenCalled()
