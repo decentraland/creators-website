@@ -664,9 +664,17 @@
       "linked_emote": "Las colecciones vinculadas solo pueden tener wearables, no emotes.",
       "linked_smart_wearable": "Las colecciones vinculadas no pueden tener smart wearables.",
       "linked_urn_mismatch": "La URN de wearable.json no pertenece a esta colección.",
-      "linked_mapping_invalid": "El mapeo de wearable.json no es válido. Revisa su tipo y los IDs de token."
+      "linked_mapping_invalid": "El mapeo de wearable.json no es válido. Revisa su tipo y los IDs de token.",
+      "bulk_edit_missing_urn": "Agrega la URN del ítem como \"id\" en wearable.json para actualizarlo.",
+      "bulk_edit_no_match": "Ningún ítem de esta colección tiene la URN de este wearable.json."
     },
-    "mapping_hint": "Qué tokens del contrato vinculado desbloquean este wearable."
+    "mapping_hint": "Qué tokens del contrato vinculado desbloquean este wearable.",
+    "bulk_edit": {
+      "title": "{count, plural, one {Actualizar # ítem} other {Actualizar # ítems}}",
+      "form_heading": "Actualización del ítem",
+      "hint": "Cada ZIP actualiza el ítem cuya URN figura en su wearable.json. Reemplaza los archivos y datos del ítem; su mapeo se mantiene salvo que el ZIP defina uno.",
+      "success_toast": "{count, plural, one {# ítem actualizado} other {# ítems actualizados}}"
+    }
   },
   "video_modal": {
     "title": "Video de vista previa",
@@ -1600,7 +1608,8 @@
     "urn_error": "No pudimos actualizar la URN. Puede que ya esté en uso o que el ítem esté publicado.",
     "mapping_error": "No pudimos guardar el mapeo de {name}. Inténtalo de nuevo.",
     "actions": {
-      "edit_urn": "Editar URN"
+      "edit_urn": "Editar URN",
+      "edit_in_bulk": "Editar en bloque"
     },
     "item_actions": {
       "edit_urn": "Editar URN"

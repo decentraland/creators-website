@@ -45,7 +45,7 @@ type Props = {
   /** Smart wearables only: a picked file replaces the preview video. */
   onVideoChange: (video: File) => void
   /** Linked collections: no rarity, and the mapping field when the collection has a linked contract. */
-  linked?: { contract: LinkedContract | null }
+  linked?: { contract: LinkedContract | null; updating?: boolean }
 }
 
 const BODY_SHAPES: Array<{ value: BodyShapeType; icon: ReactNode }> = [
@@ -195,7 +195,15 @@ export function DraftForm({
       </S.PreviewPane>
 
       <S.FormPane>
-        <S.FormHeading>{t('add_items_modal.form_heading')}</S.FormHeading>
+        <S.FormHeading>
+          {t(linked?.updating ? 'add_items_modal.bulk_edit.form_heading' : 'add_items_modal.form_heading')}
+        </S.FormHeading>
+        {linked?.updating && (
+          <S.FieldHint data-testid="bulk-edit-hint">
+            <InfoIcon />
+            {t('add_items_modal.bulk_edit.hint')}
+          </S.FieldHint>
+        )}
 
         {showItemFields && (
           <S.Field>

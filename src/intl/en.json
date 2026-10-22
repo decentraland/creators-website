@@ -664,9 +664,17 @@
       "linked_emote": "Linked collections can only hold wearables, not emotes.",
       "linked_smart_wearable": "Linked collections can't hold smart wearables.",
       "linked_urn_mismatch": "The wearable.json URN doesn't belong to this collection.",
-      "linked_mapping_invalid": "The wearable.json mapping is invalid. Check its type and token IDs."
+      "linked_mapping_invalid": "The wearable.json mapping is invalid. Check its type and token IDs.",
+      "bulk_edit_missing_urn": "Add the item's URN as \"id\" in wearable.json to update it.",
+      "bulk_edit_no_match": "No item in this collection has the URN in this wearable.json."
     },
-    "mapping_hint": "Which tokens of the linked contract unlock this wearable."
+    "mapping_hint": "Which tokens of the linked contract unlock this wearable.",
+    "bulk_edit": {
+      "title": "{count, plural, one {Update # item} other {Update # items}}",
+      "form_heading": "Item update",
+      "hint": "Each ZIP updates the item whose URN is in its wearable.json. It replaces the item's files and details; its mapping stays unless the ZIP sets one.",
+      "success_toast": "{count, plural, one {# item updated} other {# items updated}}"
+    }
   },
   "video_modal": {
     "title": "Preview Video",
@@ -1600,7 +1608,8 @@
     "urn_error": "We couldn't update the URN. It may already be in use, or the item may be published.",
     "mapping_error": "We couldn't save the mapping of {name}. Please try again.",
     "actions": {
-      "edit_urn": "Edit URN"
+      "edit_urn": "Edit URN",
+      "edit_in_bulk": "Edit in bulk"
     },
     "item_actions": {
       "edit_urn": "Edit URN"

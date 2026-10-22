@@ -102,6 +102,8 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   const [isRenameOpen, setRenameOpen] = useState(false)
   const [isUrnOpen, setUrnOpen] = useState(false)
   const [addItemsFiles, setAddItemsFiles] = useState<File[] | null>(null)
+  const [bulkEditFiles, setBulkEditFiles] = useState<File[] | null>(null)
+  const bulkInputRef = useRef<HTMLInputElement>(null)
   // Selected items by id, kept across pages: "Select all" can reach items that are not on screen.
   const [selected, setSelected] = useState<Map<string, Item>>(() => new Map())
   const [isSelectingAll, setSelectingAll] = useState(false)
@@ -349,6 +351,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
             showRoles={false}
             onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
             onEditUrn={canEditCollection ? () => setUrnOpen(true) : undefined}
+            onEditInBulk={canEdit && total > 0 ? () => bulkInputRef.current?.click() : undefined}
             onDeleted={() => navigate('/collections', { replace: true })}
           />
         </P.HeaderActions>
@@ -579,6 +582,28 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
         }}
       />
 
+      <input
+        ref={bulkInputRef}
+        type="file"
+        multiple
+        accept=".zip"
+        hidden
+        data-testid="edit-in-bulk-input"
+        onChange={event => {
+          const list = event.target.files ? Array.from(event.target.files) : []
+          if (list.length > 0) setBulkEditFiles(list)
+          event.target.value = ''
+        }}
+      />
+      {bulkEditFiles && (
+        <AddItemsModal
+          collection={collection}
+          address={address}
+          files={bulkEditFiles}
+          updateOnly
+          onClose={() => setBulkEditFiles(null)}
+        />
+      )}
       {addItemsFiles && (
         <AddItemsModal
           collection={collection}

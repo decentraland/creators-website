@@ -76,10 +76,12 @@ type Props = {
   /** The files picked or dropped on the collection page; processing starts immediately. */
   files: File[]
   prefill?: AddItemsPrefill
+  /** Linked collections only: every file must update an existing item, matched by the URN in its wearable.json. */
+  updateOnly?: boolean
   onClose: () => void
 }
 
-export function AddItemsModal({ collection, address, files, prefill, onClose }: Props) {
+export function AddItemsModal({ collection, address, files, prefill, onClose, updateOnly = false }: Props) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   // The editor only shows utility behind this flag, so an import must not save one the creator can't see.
@@ -94,10 +96,6 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
         ? { network: collection.linkedContractNetwork as ContractNetwork, address: collection.linkedContractAddress }
         : null,
     [collection.linkedContractNetwork, collection.linkedContractAddress]
-  )
-  const linkedTarget = useMemo<LinkedDraftTarget | undefined>(
-    () => (isLinked ? { collectionUrn: collection.urn, contract: linkedContract } : undefined),
-    [isLinked, collection.urn, linkedContract]
   )
   const draftRules = useMemo(
     () => ({ linked: isLinked, requiresMapping: isLinked && linkedContract !== null }),
@@ -124,11 +122,30 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
   // Variant targets need every unpublished wearable of the collection, not just the loaded page.
   const collectionItemsQuery = useAllCollectionItems(address, collection.id)
   const collectionItems = useMemo(() => collectionItemsQuery.data ?? [], [collectionItemsQuery.data])
+  const linkedTarget = useMemo<LinkedDraftTarget | undefined>(
+    () =>
+      isLinked
+        ? {
+            collectionUrn: collection.urn,
+            contract: linkedContract,
+            ...(updateOnly
+              ? { updating: new Map(collectionItems.flatMap(item => (item.urn ? [[item.urn, item] as const] : []))) }
+              : {})
+          }
+        : undefined,
+    [isLinked, collection.urn, linkedContract, updateOnly, collectionItems]
+  )
+  // Matching a zip to the item it updates needs the collection's items first.
+  const canProcess = !updateOnly || collectionItemsQuery.isSuccess
 
   // Load + analyze each dropped file once. The prefill is what it was when the modal opened.
   const prefillRef = useRef(prefill)
   const linkedTargetRef = useRef(linkedTarget)
+  linkedTargetRef.current = linkedTarget
+  const processed = useRef(false)
   useEffect(() => {
+    if (!canProcess || processed.current) return
+    processed.current = true
     for (const { draft, file } of initialDraftsRef.current ?? []) {
       void processDraftFile(file, prefillRef.current?.hides, linkedTargetRef.current)
         .then(patch =>
@@ -152,7 +169,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
           }
         })
     }
-  }, [])
+  }, [canProcess])
 
   const { drafts, selectedId, view, failureReason, isUploading } = state
   const selected = useMemo(
@@ -276,16 +293,28 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
 
       // One event per upload rather than per item: the legacy builder's per-item `Save item` on creation
       // reads here as `item_count` (see design/TRACKING_SPEC.md).
-      track('Add items', {
-        collectionId: collection.id,
-        origin: prefill ? 'live_preview' : 'collection',
-        item_count: result.savedDraftIds.length,
-        failed_count: result.failedDraftIds.length,
-        error: result.failedDraftIds.length > 0 ? (result.failureReason ?? 'generic') : undefined
-      })
+      if (updateOnly) {
+        // Legacy event name, so bulk edits line up with the old builder's.
+        track('Edit TP Items', {
+          collectionId: collection.id,
+          item_count: result.savedDraftIds.length,
+          failed_count: result.failedDraftIds.length
+        })
+      } else
+        track('Add items', {
+          collectionId: collection.id,
+          origin: prefill ? 'live_preview' : 'collection',
+          item_count: result.savedDraftIds.length,
+          failed_count: result.failedDraftIds.length,
+          error: result.failedDraftIds.length > 0 ? (result.failureReason ?? 'generic') : undefined
+        })
 
       if (result.savedDraftIds.length > 0) {
-        showToast(t('add_items_modal.success_toast', { count: result.savedDraftIds.length }))
+        showToast(
+          t(updateOnly ? 'add_items_modal.bulk_edit.success_toast' : 'add_items_modal.success_toast', {
+            count: result.savedDraftIds.length
+          })
+        )
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: allCollectionItemsKey(address, collection.id) }),
           queryClient.invalidateQueries({ queryKey: ['collection', address, collection.id] }),
@@ -380,7 +409,11 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
   return (
     <>
       <Modal
-        title={t('add_items_modal.title', { count: drafts.length })}
+        title={
+          updateOnly
+            ? t('add_items_modal.bulk_edit.title', { count: drafts.length })
+            : t('add_items_modal.title', { count: drafts.length })
+        }
         onClose={requestClose}
         size="wide"
         flush={!isSingle}
@@ -420,7 +453,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
                 }
                 onOpenVideo={() => setVideoOpen(true)}
                 onVideoChange={handleVideoChange}
-                linked={isLinked ? { contract: linkedContract } : undefined}
+                linked={isLinked ? { contract: linkedContract, updating: updateOnly } : undefined}
               />
             ) : (
               <S.ProcessingPane data-testid="draft-processing">

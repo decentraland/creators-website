@@ -34,6 +34,8 @@ type Props = {
   onManageRoles?: (kind: RoleKind) => void
   /** Linked collections only: opens the URN dialog while the collection is unpublished. */
   onEditUrn?: () => void
+  /** Linked collections only: re-uploads zips over the items they name. */
+  onEditInBulk?: () => void
   onDeleted?: () => void
 }
 
@@ -49,6 +51,7 @@ export function CollectionActionsMenu({
   forumLink,
   onManageRoles,
   onEditUrn,
+  onEditInBulk,
   onDeleted
 }: Props) {
   const { t } = useTranslation()
@@ -73,10 +76,20 @@ export function CollectionActionsMenu({
   const showForum = compact && !!forumLink
   const showDiscount = compact && !!onCreateDiscount
   const showEditUrn = !compact && isLinked && !isOnChain && !!onEditUrn
+  const showEditInBulk = !compact && isLinked && !!onEditInBulk
   // A linked collection's URN is meaningful from day one (it names its third party); a standard one's only on chain.
   const showCopyUrn = isOnChain || isLinked
 
-  if (!showCopyUrn && !canDelete && !showSend && !showPreview && !showForum && !showDiscount && !showEditUrn) {
+  if (
+    !showCopyUrn &&
+    !canDelete &&
+    !showSend &&
+    !showPreview &&
+    !showForum &&
+    !showDiscount &&
+    !showEditUrn &&
+    !showEditInBulk
+  ) {
     return null
   }
 
@@ -140,6 +153,11 @@ export function CollectionActionsMenu({
             {showEditUrn && (
               <ActionsMenuItem testId="edit-collection-urn" onClick={onEditUrn}>
                 {t('linked_collection.actions.edit_urn')}
+              </ActionsMenuItem>
+            )}
+            {showEditInBulk && (
+              <ActionsMenuItem testId="edit-in-bulk" onClick={onEditInBulk}>
+                {t('linked_collection.actions.edit_in_bulk')}
               </ActionsMenuItem>
             )}
             {/* Linked collections have no contract of their own: their items live under the third party. */}

@@ -664,9 +664,17 @@
       "linked_emote": "关联系列只能包含可穿戴物品，不能包含表情动作。",
       "linked_smart_wearable": "关联系列不能包含智能可穿戴物品。",
       "linked_urn_mismatch": "wearable.json 中的 URN 不属于此系列。",
-      "linked_mapping_invalid": "wearable.json 中的映射无效。请检查其类型和代币 ID。"
+      "linked_mapping_invalid": "wearable.json 中的映射无效。请检查其类型和代币 ID。",
+      "bulk_edit_missing_urn": "请在 wearable.json 中将物品的 URN 设为“id”以更新该物品。",
+      "bulk_edit_no_match": "此系列中没有物品使用此 wearable.json 中的 URN。"
     },
-    "mapping_hint": "关联合约中哪些代币可解锁此可穿戴物品。"
+    "mapping_hint": "关联合约中哪些代币可解锁此可穿戴物品。",
+    "bulk_edit": {
+      "title": "{count, plural, other {更新 # 个物品}}",
+      "form_heading": "物品更新",
+      "hint": "每个 ZIP 会更新其 wearable.json 中 URN 对应的物品，替换该物品的文件和信息；若 ZIP 未设置映射，则保留原有映射。",
+      "success_toast": "{count, plural, other {已更新 # 个物品}}"
+    }
   },
   "video_modal": {
     "title": "预览视频",
@@ -1600,7 +1608,8 @@
     "urn_error": "无法更新 URN。它可能已被使用，或该物品已发布。",
     "mapping_error": "无法保存 {name} 的映射，请重试。",
     "actions": {
-      "edit_urn": "编辑 URN"
+      "edit_urn": "编辑 URN",
+      "edit_in_bulk": "批量编辑"
     },
     "item_actions": {
       "edit_urn": "编辑 URN"
