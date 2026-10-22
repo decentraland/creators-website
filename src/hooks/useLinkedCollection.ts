@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
   fetchItemCurations,
@@ -8,7 +9,7 @@ import {
 } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
-import { linkedItemFilterToQuery, type LinkedItemFilter } from '~/lib/linkedItemStatus'
+import { LinkedItemFilter, hasLinkedWork, linkedItemFilterToQuery, type ItemCuration } from '~/lib/linkedItemStatus'
 import { getThirdPartyId } from '~/lib/thirdParty'
 
 // Same page size as the legacy third-party collection page.
@@ -79,4 +80,37 @@ export function useLinkedCollectionItems(
     placeholderData: keepPreviousData,
     staleTime: 30_000
   })
+}
+
+/** How many items the server counts under a filter, from a one-row page. */
+function useLinkedItemCount(address: string | undefined, collection: Collection | undefined, filter: LinkedItemFilter) {
+  return useQuery({
+    queryKey: [...linkedItemsKey(address, collection?.id), 'count', filter],
+    queryFn: async () =>
+      (await fetchLinkedCollectionItems(address!, collection!.id, 1, 1, linkedItemFilterToQuery(filter))).total,
+    enabled: !!address && !!collection,
+    staleTime: 30_000
+  })
+}
+
+/**
+ * Whether the collection holds anything to publish or push, across every page: never-submitted items with a mapping,
+ * rejected ones, and approved ones whose content changed. Undefined until known.
+ */
+export function useHasLinkedWork(
+  address: string | undefined,
+  collection: Collection | undefined,
+  curations: Map<string, ItemCuration> | undefined
+): boolean | undefined {
+  const unsynced = useLinkedItemCount(address, collection, LinkedItemFilter.READY_TO_PUSH)
+  const missingMapping = useLinkedItemCount(address, collection, LinkedItemFilter.PENDING_MAPPING)
+  return useMemo(() => {
+    if (!collection || !curations || unsynced.data === undefined || missingMapping.data === undefined) return undefined
+    return hasLinkedWork({
+      itemCount: collection.itemCount,
+      curations,
+      unsynced: unsynced.data,
+      missingMapping: missingMapping.data
+    })
+  }, [collection, curations, unsynced.data, missingMapping.data])
 }

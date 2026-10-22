@@ -9,6 +9,7 @@ import {
   fromRemoteItemCuration,
   getLinkedItemStatus,
   getLinkedPublishAction,
+  hasLinkedWork,
   isLinkedItemPublished,
   linkedItemFilterToQuery,
   parseLinkedItemFilter,
@@ -167,5 +168,37 @@ describe('fromRemoteItemCuration', () => {
       createdAt: +new Date('2026-01-01T00:00:00Z'),
       updatedAt: +new Date('2026-01-02T00:00:00Z')
     })
+  })
+})
+
+describe('hasLinkedWork', () => {
+  const curated = (status: CurationStatus) => new Map([['i1', { ...curation(status), itemId: 'i1' }]])
+
+  it('finds items never submitted, as long as they have a mapping', () => {
+    expect(
+      hasLinkedWork({ itemCount: 2, curations: curated(CurationStatus.APPROVED), unsynced: 0, missingMapping: 0 })
+    ).toBe(true)
+    expect(
+      hasLinkedWork({ itemCount: 2, curations: curated(CurationStatus.APPROVED), unsynced: 0, missingMapping: 1 })
+    ).toBe(false)
+  })
+
+  it('finds rejected items and approved items with changes', () => {
+    expect(
+      hasLinkedWork({ itemCount: 1, curations: curated(CurationStatus.REJECTED), unsynced: 0, missingMapping: 0 })
+    ).toBe(true)
+    expect(
+      hasLinkedWork({ itemCount: 1, curations: curated(CurationStatus.APPROVED), unsynced: 1, missingMapping: 0 })
+    ).toBe(true)
+  })
+
+  it('has nothing to do when every item is published, under review, or the collection is empty', () => {
+    expect(
+      hasLinkedWork({ itemCount: 1, curations: curated(CurationStatus.APPROVED), unsynced: 0, missingMapping: 0 })
+    ).toBe(false)
+    expect(
+      hasLinkedWork({ itemCount: 1, curations: curated(CurationStatus.PENDING), unsynced: 0, missingMapping: 0 })
+    ).toBe(false)
+    expect(hasLinkedWork({ itemCount: 0, curations: new Map(), unsynced: 0, missingMapping: 0 })).toBe(false)
   })
 })

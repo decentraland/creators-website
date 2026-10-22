@@ -40,7 +40,12 @@ import {
   type ThirdParty
 } from '~/lib/thirdParty'
 import { useSaveCollection } from '~/hooks/useCollection'
-import { LINKED_ITEMS_PAGE_SIZE, useItemCurations, useLinkedCollectionItems } from '~/hooks/useLinkedCollection'
+import {
+  LINKED_ITEMS_PAGE_SIZE,
+  useHasLinkedWork,
+  useItemCurations,
+  useLinkedCollectionItems
+} from '~/hooks/useLinkedCollection'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useSaveItem } from '~/hooks/useSaveItem'
 import { theme } from '~/styles/theme'
@@ -143,6 +148,8 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   const selection = useMemo(() => splitLinkedSelection(selected.values(), curationMap), [selected, curationMap])
   const selectedCount = selection.toPublish.length + selection.toPush.length
   const publishAction = getLinkedPublishAction(selection)
+  // Nothing anywhere to publish or push: the button would only ever be disabled, so it isn't shown.
+  const hasWork = useHasLinkedWork(address, collection, curations.data)
   const hasPendingReview = useMemo(
     () => [...(curations.data?.values() ?? [])].some(curation => curation.status === CurationStatus.PENDING),
     [curations.data]
@@ -314,26 +321,28 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
             data-desktop-only
             data-testid="preview-collection"
           />
-          <Tooltip
-            content={publishBlocker ? t(`linked_collection.publish_blocker.${publishBlocker}`) : null}
-            placement="bottom"
-            asChild
-            testId="linked-publish-blocker"
-          >
-            <Button
-              type="button"
-              variant="primary"
-              data-desktop-only
-              data-testid="publish-linked-items"
-              aria-disabled={publishBlocker ? true : undefined}
-              onClick={() => {
-                if (publishBlocker || !publishAction) return
-                setPublishView(publishAction === 'push' ? 'push' : 'publish')
-              }}
+          {hasWork && (
+            <Tooltip
+              content={publishBlocker ? t(`linked_collection.publish_blocker.${publishBlocker}`) : null}
+              placement="bottom"
+              asChild
+              testId="linked-publish-blocker"
             >
-              {t(`linked_collection.publish_action.${publishAction ?? 'publish'}`, { count: selectedCount })}
-            </Button>
-          </Tooltip>
+              <Button
+                type="button"
+                variant="primary"
+                data-desktop-only
+                data-testid="publish-linked-items"
+                aria-disabled={publishBlocker ? true : undefined}
+                onClick={() => {
+                  if (publishBlocker || !publishAction) return
+                  setPublishView(publishAction === 'push' ? 'push' : 'publish')
+                }}
+              >
+                {t(`linked_collection.publish_action.${publishAction ?? 'publish'}`, { count: selectedCount })}
+              </Button>
+            </Tooltip>
+          )}
           <CollectionActionsMenu
             collection={collection}
             address={address}
