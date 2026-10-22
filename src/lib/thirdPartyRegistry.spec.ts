@@ -163,7 +163,7 @@ describe('fetchThirdPartyPrice', () => {
       itemSlotUsdWei: 100n * ETHER,
       itemSlotManaWei: 200n * ETHER,
       programmaticMinSlots: 200,
-      manaPerUsdWei: ETHER / 2n
+      usdPerManaWei: ETHER / 2n
     })
   })
 })

@@ -11,7 +11,9 @@ import {
   buildChequeTypedData,
   createChequeSalt,
   getLinkedPublishFee,
+  getResumableTxHash,
   getSlotsToBuy,
+  mayHavePublished,
   publishLinkedItems,
   signSlotsCheque,
   toLinkedPublishError,
@@ -62,7 +64,7 @@ const price: ThirdPartyPrice = {
   itemSlotUsdWei: 100n * ETHER,
   itemSlotManaWei: 200n * ETHER,
   programmaticMinSlots: 200,
-  manaPerUsdWei: ETHER / 2n
+  usdPerManaWei: ETHER / 2n
 }
 
 const cheque: SlotsCheque = { signature: '0x' + 'ab'.repeat(65), qty: 3, salt: '0x' + '11'.repeat(32) }
@@ -238,9 +240,12 @@ describe('getSlotsToBuy', () => {
     expect(getSlotsToBuy({ ...base, isProgrammatic: true, itemsToPublish: 250, availableSlots: 0 })).toBe(250)
   })
 
-  it('buys nothing for a programmatic third party already on chain', () => {
+  it('still buys the missing slots for a programmatic third party already on chain', () => {
     expect(
-      getSlotsToBuy({ ...base, isProgrammatic: true, isPublished: true, itemsToPublish: 500, availableSlots: 0 })
+      getSlotsToBuy({ ...base, isProgrammatic: true, isPublished: true, itemsToPublish: 500, availableSlots: 20 })
+    ).toBe(480)
+    expect(
+      getSlotsToBuy({ ...base, isProgrammatic: true, isPublished: true, itemsToPublish: 5, availableSlots: 20 })
     ).toBe(0)
   })
 })
@@ -251,6 +256,17 @@ describe('getLinkedPublishFee', () => {
       usdWei: 300n * ETHER,
       manaWei: 600n * ETHER,
       maxManaWei: 603n * ETHER
+    })
+  })
+
+  it('charges a programmatic registration the base pack only, and nothing once it is on chain', () => {
+    expect(getLinkedPublishFee(250, price, { isProgrammatic: true, isPublished: false })).toEqual(
+      getLinkedPublishFee(200, price)
+    )
+    expect(getLinkedPublishFee(30, price, { isProgrammatic: true, isPublished: true })).toEqual({
+      usdWei: 0n,
+      manaWei: 0n,
+      maxManaWei: 0n
     })
   })
 
@@ -517,6 +533,73 @@ describe('publishLinkedItems', () => {
     expect(error.reason).toBe('reverted')
     expect(error.txHash).toBe('0xtx1')
     expect(deps.publishLinkedItems).not.toHaveBeenCalled()
+  })
+
+  it('buys the missing slots of a programmatic third party on chain for free, without a MANA approval', async () => {
+    const deps = makeDeps()
+
+    await publishLinkedItems(
+      makeParams({ thirdParty: { ...thirdParty, published: true, isProgrammatic: true }, isProgrammatic: true }),
+      deps
+    )
+
+    expect(deps.fetchManaAllowance).not.toHaveBeenCalled()
+    expect(sentMethods(deps)).toEqual(['buyItemSlots'])
+    const buy = decodeSent(deps, 0)
+    expect(buy[1].toString()).toBe('3')
+    expect(buy[2].toString()).toBe('0')
+  })
+
+  it('carries a sent payment on any later failure, so a retry resumes from it', async () => {
+    const deps = makeDeps({
+      fetchManaAllowance: vi.fn(async () => 10n ** 30n),
+      publishLinkedItems: vi.fn(async () => {
+        throw serverError(400, 'Bad request')
+      })
+    })
+
+    const error = await failure(
+      publishLinkedItems(makeParams({ thirdParty: { ...thirdParty, published: true } }), deps)
+    )
+
+    expect(error.step).toBe('publish')
+    expect(error.txHash).toBe('0xtx1')
+    expect(getResumableTxHash(error)).toBe('0xtx1')
+  })
+
+  it('never offers a reverted payment to resume from', () => {
+    expect(getResumableTxHash(new LinkedPublishError('wait_tx', 'reverted', 'x', undefined, '0xtx1'))).toBeUndefined()
+  })
+
+  it('resumes after a payment an earlier attempt sent, without paying again', async () => {
+    const deps = makeDeps({ fetchManaAllowance: vi.fn(async () => 0n) })
+
+    const result = await publishLinkedItems(makeParams({ paidTxHash: '0xpaid', isProgrammatic: true }), deps)
+
+    expect(deps.waitForTransaction).toHaveBeenCalledWith('0xpaid')
+    expect(deps.sendTransaction).not.toHaveBeenCalled()
+    expect(deps.fetchManaAllowance).not.toHaveBeenCalled()
+    expect(deps.setThirdPartyKind).not.toHaveBeenCalled()
+    expect(deps.deleteVirtualThirdParty).toHaveBeenCalledWith(THIRD_PARTY_ID)
+    expect(result.txHash).toBe('0xpaid')
+    expect(steps(deps)).toEqual(['tos', 'wait_tx', 'delete_virtual', 'publish'])
+  })
+
+  it('counts a pending review on a retry after a failed publish request as the earlier publish having landed', async () => {
+    const deps = makeDeps({
+      publishLinkedItems: vi.fn(async () => {
+        throw PENDING_REVIEW
+      })
+    })
+
+    const result = await publishLinkedItems(
+      makeParams({ thirdParty: { ...thirdParty, published: true }, availableSlots: 3, publishMayHaveLanded: true }),
+      deps
+    )
+
+    expect(result.itemCurations).toEqual([])
+    expect(mayHavePublished(new LinkedPublishError('publish', 'generic'))).toBe(true)
+    expect(mayHavePublished(new LinkedPublishError('publish', 'pending_review'))).toBe(false)
   })
 
   it('does not retry a rejected ToS and reports it as tos_failed', async () => {

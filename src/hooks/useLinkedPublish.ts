@@ -99,8 +99,14 @@ export function usePublishLinkedItems(session: Session, collection: Collection) 
     onError: (error, variables) => {
       const step = error instanceof LinkedPublishError ? error.step : 'unknown'
       track('Publish TP Items error', { collectionId: collection.id, step, error: errorCode(error) })
-      // Past the chain step the creator has paid: a failure there needs someone to look.
-      if (error instanceof LinkedPublishError && ['delete_virtual', 'publish', 'push'].includes(error.step)) {
+      // From the payment on, the creator may have paid: a failure there needs someone to look. A rejected wallet
+      // prompt or a reverted transaction charged nothing.
+      if (
+        error instanceof LinkedPublishError &&
+        ['wait_tx', 'delete_virtual', 'publish', 'push'].includes(error.step) &&
+        error.reason !== 'rejected' &&
+        error.reason !== 'reverted'
+      ) {
         captureError(error.cause ?? error, {
           flow: 'linked_publish',
           step: error.step,
@@ -111,6 +117,7 @@ export function usePublishLinkedItems(session: Session, collection: Collection) 
       // Reads what the server managed to write before failing.
       invalidateCollectionItems(queryClient, collection.id)
       void queryClient.invalidateQueries({ queryKey: thirdPartyKey(address, variables.thirdParty.id) })
+      void queryClient.invalidateQueries({ queryKey: thirdPartySlotsKey(address, variables.thirdParty.id) })
     }
   })
 }
@@ -153,9 +160,19 @@ export function usePushLinkedChanges(session: Session, collection: Collection) {
     },
     onSuccess: (result, { items }) => {
       track('Push TP Changes', { collectionId: collection.id, items: items.length, failed: result.failed.length })
+      if (result.failed.length > 0) {
+        captureError(new Error(`${result.failed.length} linked items could not be pushed`), {
+          flow: 'linked_push',
+          collectionId: collection.id,
+          failures: result.failed.map(failure => `${failure.item.id}: ${failure.message}`)
+        })
+      }
       invalidateCollectionItems(queryClient, collection.id)
     },
-    onError: (error, { items }) =>
+    onError: (error, { items }) => {
       track('Push TP Changes error', { collectionId: collection.id, items: items.length, error: errorCode(error) })
+      captureError(error, { flow: 'linked_push', collectionId: collection.id })
+      invalidateCollectionItems(queryClient, collection.id)
+    }
   })
 }

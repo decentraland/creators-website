@@ -1882,7 +1882,8 @@
     "description": "{count, plural, one {# item has} other {# items have}} changed since curation last approved them. To show the changes in world, they must be reviewed and approved again. Push them for review?",
     "terms": {
       "title": "Confirm your details",
-      "description": "We'll email you about the review of your changes."
+      "description": "We'll email you about the review of your changes.",
+      "checkbox": "I warrant that the changed items fully comply with the <terms>Terms of Use</terms> and <policy>Content Policy</policy>, that I hold the IP rights to create wearables based on this NFT collection, and I acknowledge that the DAO may refuse to approve the changes."
     },
     "submit": "Push for review",
     "running": {
@@ -1920,6 +1921,13 @@
       "prepare": "We couldn't prepare the approval. Check that the collection has items waiting for review and try again.",
       "root": "The approval could not be put on chain. Nothing was uploaded; try again.",
       "deploy": "Some items could not be uploaded or approved. Try again to retry the ones that failed."
+    },
+    "changed": "The pending items changed since you opened them: items were added or edited. Review them again before approving.",
+    "failed_items": "Items that could not finish",
+    "stage": {
+      "build": "its content changed or could not be prepared",
+      "deploy": "the upload to the content servers failed",
+      "curation": "it was uploaded, but marking it approved failed"
     }
   }
 }

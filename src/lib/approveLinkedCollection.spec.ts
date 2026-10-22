@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { generateTree, verifyProof } from '@dcl/content-hash-tree'
 import { MappingType } from '@dcl/schemas'
 import { ApprovalError } from './approveCollection'
+import { computeLinkedItemContentHash } from './catalystEntity'
 import {
   deployLinkedItems,
   getReviewThreshold,
@@ -107,6 +108,27 @@ describe('prepareLinkedApproval', () => {
     }
   })
 
+  it('fails closed when the pending items are not the ones the curator reviewed', async () => {
+    const pending = [item('1', { currentContentHash: 'h1' }), item('2', { currentContentHash: 'h2' })]
+    const deps = prepareDeps(pending, approvalData())
+    const reviewed = new Map([['1', 'h1']])
+
+    await expect(
+      prepareLinkedApproval(collection, deps, { pendingIds: new Set(['1', '2']), reviewedHashes: reviewed })
+    ).resolves.toBeDefined()
+    // Another item was published after the curator looked.
+    await expect(
+      prepareLinkedApproval(collection, deps, { pendingIds: new Set(['1']), reviewedHashes: reviewed })
+    ).rejects.toMatchObject({ reason: 'changed' })
+    // An opened item was edited since.
+    await expect(
+      prepareLinkedApproval(collection, deps, {
+        pendingIds: new Set(['1', '2']),
+        reviewedHashes: new Map([['1', 'h0']])
+      })
+    ).rejects.toMatchObject({ reason: 'changed' })
+  })
+
   it('consumes the cheque with the root, unless it was consumed already', async () => {
     const fresh = await prepareLinkedApproval(collection, prepareDeps([item('1')], approvalData()))
     expect(fresh.slots).toEqual([['2', '0xsalt', `0x${'11'.repeat(32)}`, `0x${'22'.repeat(32)}`, 27]])
@@ -152,10 +174,18 @@ describe('prepareLinkedApproval', () => {
   })
 })
 
+// The curated hash of an item is the one builder-server computes from it; items that can't be hashed get a stand-in.
+function curatedHash(target: Item): string {
+  try {
+    return computeLinkedItemContentHash(collection, target)
+  } catch {
+    return hashOf(target.id)
+  }
+}
+
 function planFor(items: Item[], overrides: Partial<LinkedApprovalPlan> = {}): LinkedApprovalPlan {
-  const data = approvalData({
-    contentHashes: Object.fromEntries([...items.map(({ id }) => id), '9'].map(id => [id, hashOf(id)]))
-  })
+  const hashes = new Map([...items.map(target => [target.id, curatedHash(target)] as const), ['9', hashOf('9')]])
+  const data = approvalData({ contentHashes: Object.fromEntries(hashes) })
   const tree = generateTree(Object.values(data.contentHashes))
   return {
     pendingItems: items,
@@ -163,7 +193,7 @@ function planFor(items: Item[], overrides: Partial<LinkedApprovalPlan> = {}): Li
     merkleRoot: tree.merkleRoot,
     needsRoot: true,
     slots: [],
-    proofOf: id => ({ ...tree.proofs[hashOf(id)], entityHash: hashOf(id) }),
+    proofOf: id => ({ ...tree.proofs[hashes.get(id)!], entityHash: hashes.get(id)! }),
     ...overrides
   }
 }
@@ -269,6 +299,16 @@ describe('deployLinkedItems', () => {
     )
     expect(progress).toHaveBeenLastCalledWith(4, 4)
     expect(progress).toHaveBeenCalledTimes(4)
+  })
+
+  it('refuses to sign an item whose content is not the curated one', async () => {
+    const plan = planFor([item('1')])
+    const edited = { ...item('1'), name: 'Edited after curation' }
+    const deps = deployDeps()
+    const result = await deployLinkedItems(collection, { ...plan, pendingItems: [edited] }, deps)
+    expect(result.failed.map(({ stage }) => stage)).toEqual(['build'])
+    expect(deps.sign).not.toHaveBeenCalled()
+    expect(deps.deployEntity).not.toHaveBeenCalled()
   })
 
   it('stops at once when the session cannot sign', async () => {

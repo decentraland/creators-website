@@ -15,6 +15,7 @@ import {
 import {
   buildDeploymentForm,
   buildLinkedItemEntity,
+  computeLinkedItemContentHash,
   getEntityContent,
   type LinkedMerkleProof
 } from '~/lib/catalystEntity'
@@ -51,6 +52,24 @@ export type PrepareDeps = {
   fetchApprovalData: (collectionId: string) => Promise<LinkedApprovalData>
 }
 
+/** What the curator saw: the pending items when they decided, and the content of each item they opened. */
+export type ReviewedContent = {
+  pendingIds: Set<string>
+  /** Content hash of each opened item, by id, as it was when opened. */
+  reviewedHashes: Map<string, string | undefined>
+}
+
+/**
+ * Whether the server's pending items are still the ones the curator reviewed: the same set, and every opened item
+ * with the content it had. Otherwise the committee would sign a root over content nobody looked at.
+ */
+export function matchesReviewedContent(pendingItems: Item[], review: ReviewedContent): boolean {
+  if (pendingItems.length !== review.pendingIds.size) return false
+  const byId = new Map(pendingItems.map(item => [item.id, item]))
+  if ([...review.pendingIds].some(id => !byId.has(id))) return false
+  return [...review.reviewedHashes].every(([id, hash]) => byId.get(id)?.currentContentHash === hash)
+}
+
 const sameRoot = (a: string | null, b: string) => a?.toLowerCase() === b.toLowerCase()
 
 /** Only reached from the approval flow: the tree package and the Node Buffer it expects stay out of the first load. */
@@ -65,12 +84,19 @@ async function generateTree(hashes: string[]) {
  * What the approval needs: the pending items, their proofs and whether the root transaction is due. The cheque
  * must cover the items the Catalyst doesn't hold yet, since items pushed again don't take a slot.
  */
-export async function prepareLinkedApproval(collection: Collection, deps: PrepareDeps): Promise<LinkedApprovalPlan> {
+export async function prepareLinkedApproval(
+  collection: Collection,
+  deps: PrepareDeps,
+  review?: ReviewedContent
+): Promise<LinkedApprovalPlan> {
   const [pendingItems, approvalData] = await Promise.all([
     deps.fetchPendingItems(collection.id),
     deps.fetchApprovalData(collection.id)
   ])
   if (pendingItems.length === 0) throw new ApprovalError('nothing_pending', 'The collection has no items to approve')
+  if (review && !matchesReviewedContent(pendingItems, review)) {
+    throw new ApprovalError('changed', 'The pending items changed since they were reviewed')
+  }
   const unhashed = pendingItems.find(item => !approvalData.contentHashes[item.id])
   if (unhashed) throw new ApprovalError('missing_hash', `Item ${unhashed.id} has no curated content hash`)
 
@@ -162,7 +188,12 @@ async function deployLinkedItem(
   const { entity, authChain, content, image } = await atStage('build', async () => {
     const image = await buildMissingImage(item, deps)
     const content = getEntityContent(item, image?.hash)
-    const entity = await buildLinkedItemEntity(collection, item, content, plan.proofOf(item.id))
+    const proof = plan.proofOf(item.id)
+    // Never sign an entity whose content isn't the one curated into the root.
+    if (computeLinkedItemContentHash(collection, item) !== proof.entityHash) {
+      throw new ApprovalError('changed', `Item ${item.id} changed since it was curated`)
+    }
+    const entity = await buildLinkedItemEntity(collection, item, content, proof)
     const authChain = deps.sign(entity.entityId)
     if (!authChain) throw new ApprovalError('no_identity', 'The session has no signing identity')
     return { entity, authChain, content, image }
@@ -182,8 +213,17 @@ async function deployLinkedItem(
 
 async function runPool<T>(items: T[], concurrency: number, work: (item: T) => Promise<void>): Promise<void> {
   let next = 0
+  // One lane failing for good (no signing identity) stops the others from taking more items.
+  let stopped = false
   const lanes = Array.from({ length: Math.max(1, Math.min(concurrency, items.length)) }, async () => {
-    while (next < items.length) await work(items[next++])
+    while (!stopped && next < items.length) {
+      try {
+        await work(items[next++])
+      } catch (error) {
+        stopped = true
+        throw error
+      }
+    }
   })
   await Promise.all(lanes)
 }

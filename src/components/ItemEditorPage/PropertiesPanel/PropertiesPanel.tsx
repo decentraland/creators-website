@@ -112,6 +112,8 @@ export function PropertiesPanel({
   const { t } = useTranslation()
   const isLinked = linkedContract !== undefined
   const [mappingInvalid, setMappingInvalid] = useState(false)
+  // Bumped by Revert: the mapping editor keeps a half-typed draft of its own, which only a remount discards.
+  const [revision, setRevision] = useState(0)
   const showToast = useNotifications(state => state.showToast)
   const [isImporting, setImporting] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
@@ -506,7 +508,7 @@ export function PropertiesPanel({
       {isLinked && linkedContract && (
         <EditorSection title={t('mapping_editor.label')} testId={`${testId}-mapping`}>
           <MappingEditor
-            key={item.id}
+            key={`${item.id}:${revision}`}
             value={getItemMapping(draft.mappings, linkedContract)}
             disabled={disabled}
             tone="dark"
@@ -631,7 +633,11 @@ export function PropertiesPanel({
             size="sm"
             disabled={!isDirty || isSaving}
             data-testid={`${testId}-revert`}
-            onClick={onRevert}
+            onClick={() => {
+              setMappingInvalid(false)
+              setRevision(current => current + 1)
+              onRevert()
+            }}
           >
             {t('item_editor.revert')}
           </Button>

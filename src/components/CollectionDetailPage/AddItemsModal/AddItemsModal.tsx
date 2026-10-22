@@ -137,6 +137,8 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
   )
   // Matching a zip to the item it updates needs the collection's items first.
   const canProcess = !updateOnly || collectionItemsQuery.isSuccess
+  // A linked item re-uploaded under its URN updates the existing one: uploading before the items load would miss it.
+  const canUpload = !isLinked || collectionItemsQuery.isSuccess
 
   // Load + analyze each dropped file once. The prefill is what it was when the modal opened.
   const prefillRef = useRef(prefill)
@@ -285,6 +287,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
   }
 
   async function upload(draftsToUpload: ItemDraft[]) {
+    if (!canUpload) return
     dispatch({ type: 'uploadStarted' })
     const allIds = draftsToUpload.map(draft => draft.id)
     try {
@@ -497,7 +500,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
                     type="button"
                     variant="primary"
                     data-testid="add-items-finish"
-                    disabled={!isSelectedComplete}
+                    disabled={!isSelectedComplete || !canUpload}
                     loading={isUploading}
                     onClick={handleFinish}
                   >

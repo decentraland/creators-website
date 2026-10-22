@@ -31,7 +31,10 @@ export class LinkedPublishError extends Error {
   reason: LinkedPublishFailureReason
   /** The underlying failure, when this one wraps it. */
   cause?: unknown
-  /** The transaction that reverted, for 'reverted'. */
+  /**
+   * The registration or slot purchase this run sent: the one that reverted for 'reverted', otherwise a payment that
+   * may already be on chain, which a retry must resume from instead of paying again.
+   */
   txHash?: string
 
   constructor(
@@ -73,14 +76,30 @@ export function isPendingReviewError(error: unknown): boolean {
 }
 
 /** Maps any failure of the sequence to the reason the UI shows copy for, keeping the step it happened at. */
-export function toLinkedPublishError(error: unknown, step: LinkedPublishStep): LinkedPublishError {
-  if (error instanceof LinkedPublishError) return error
+export function toLinkedPublishError(error: unknown, step: LinkedPublishStep, txHash?: string): LinkedPublishError {
+  if (error instanceof LinkedPublishError) {
+    if (!error.txHash && txHash) error.txHash = txHash
+    return error
+  }
   const message = error instanceof Error ? error.message : String(error)
-  if (step === 'tos') return new LinkedPublishError(step, 'tos_failed', message, error)
-  if (isWalletRejection(error)) return new LinkedPublishError(step, 'rejected', message, error)
-  if (isInsufficientSlotsError(error)) return new LinkedPublishError(step, 'insufficient_slots', message, error)
-  if (isPendingReviewError(error)) return new LinkedPublishError(step, 'pending_review', message, error)
-  return new LinkedPublishError(step, 'generic', message, error)
+  if (step === 'tos') return new LinkedPublishError(step, 'tos_failed', message, error, txHash)
+  if (isWalletRejection(error)) return new LinkedPublishError(step, 'rejected', message, error, txHash)
+  if (isInsufficientSlotsError(error)) return new LinkedPublishError(step, 'insufficient_slots', message, error, txHash)
+  if (isPendingReviewError(error)) return new LinkedPublishError(step, 'pending_review', message, error, txHash)
+  return new LinkedPublishError(step, 'generic', message, error, txHash)
+}
+
+/**
+ * The payment a retry must resume from: a registration or slot purchase that was sent and did not revert. Paying
+ * again would charge the creator twice (or revert, for a registration).
+ */
+export function getResumableTxHash(error: LinkedPublishError): string | undefined {
+  return error.reason === 'reverted' ? undefined : error.txHash
+}
+
+/** A publish request that failed on the server may still have written the item curations (see publishWithRetry). */
+export function mayHavePublished(error: LinkedPublishError): boolean {
+  return error.step === 'publish' && error.reason === 'generic'
 }
 
 export type ChequeTypedData = {
@@ -154,13 +173,14 @@ export type SlotsToBuyParams = {
 }
 
 /**
- * Slots to buy for this publish. A programmatic third party pays once, on registration, for at least the
- * registry's base pack and never again; a standard one buys whatever its items exceed its free slots by.
+ * Slots to buy for this publish: whatever the items exceed the free slots by. A programmatic third party registers
+ * with at least the registry's base pack; after that it still buys its missing slots, which the registry gives it
+ * for free (builder-server refuses any publish beyond the available slots).
  */
 export function getSlotsToBuy(params: SlotsToBuyParams): number {
   const missing = Math.max(0, params.itemsToPublish - params.availableSlots)
-  if (!params.isProgrammatic) return missing
-  return params.isPublished ? 0 : Math.max(missing, params.programmaticMinSlots)
+  if (!params.isProgrammatic || params.isPublished) return missing
+  return Math.max(missing, params.programmaticMinSlots)
 }
 
 export type LinkedPublishFee = {
@@ -173,8 +193,24 @@ export type LinkedPublishFee = {
 const MAX_PRICE_PAD_NUMERATOR = 1005n
 const MAX_PRICE_PAD_DENOMINATOR = 1000n
 
-export function getLinkedPublishFee(slotsToBuy: number, price: ThirdPartyPrice): LinkedPublishFee {
-  const slots = BigInt(Math.max(0, slotsToBuy))
+export type LinkedFeeKind = {
+  isProgrammatic: boolean
+  /** Whether the third party is already on chain. */
+  isPublished: boolean
+}
+
+/**
+ * What the registry charges for `slotsToBuy`: every slot for a standard third party; only the base pack when a
+ * programmatic one registers, whatever extra slots it registers with; nothing once a programmatic one is on chain.
+ */
+export function getLinkedPublishFee(
+  slotsToBuy: number,
+  price: ThirdPartyPrice,
+  kind: LinkedFeeKind = { isProgrammatic: false, isPublished: false }
+): LinkedPublishFee {
+  const charged =
+    slotsToBuy <= 0 || !kind.isProgrammatic ? slotsToBuy : kind.isPublished ? 0 : price.programmaticMinSlots
+  const slots = BigInt(Math.max(0, charged))
   const manaWei = price.itemSlotManaWei * slots
   const padded = manaWei * MAX_PRICE_PAD_NUMERATOR
   const maxManaWei = (padded + MAX_PRICE_PAD_DENOMINATOR - 1n) / MAX_PRICE_PAD_DENOMINATOR
@@ -194,6 +230,13 @@ export type PublishLinkedParams = {
   isProgrammatic: boolean
   availableSlots: number
   price: ThirdPartyPrice
+  /**
+   * A registration or slot purchase an earlier attempt already sent (LinkedPublishError.txHash): the run waits for it
+   * again and resumes after it instead of paying a second time.
+   */
+  paidTxHash?: string
+  /** An earlier attempt's publish request may have gone through (see publishWithRetry): a pending review then means it did. */
+  publishMayHaveLanded?: boolean
 }
 
 /** The server and chain calls the sequence needs, so it can run against fakes in tests. */
@@ -273,7 +316,7 @@ async function publishWithRetry(
   sleep: (ms: number) => Promise<void>
 ): Promise<PublishLinkedItemsResult | null> {
   const itemIds = params.itemsToPublish.map(item => item.id)
-  let serverFailed = false
+  let serverFailed = !!params.publishMayHaveLanded
   for (let attempt = 0; ; attempt++) {
     try {
       return await deps.publishLinkedItems(params.collection.id, itemIds, cheque)
@@ -310,6 +353,9 @@ export async function publishLinkedItems(
     }
   }
 
+  // Kept outside the try so any later failure carries it: a retry must resume from this payment, not repeat it.
+  let paymentTx: string | undefined = params.paidTxHash
+
   try {
     if (itemsToPublish.length > 0 && !cheque) {
       throw new LinkedPublishError('publish', 'generic', 'A signed cheque is required to publish items')
@@ -328,13 +374,13 @@ export async function publishLinkedItems(
     )
 
     let thirdParty = params.thirdParty
-    let txHash: string | null = null
+    let txHash: string | null = params.paidTxHash ?? null
     let published: PublishLinkedItemsResult | null = null
 
     if (itemsToPublish.length > 0 && cheque) {
       const isVirtual = !thirdParty.published
       // The kind is only chosen before the first publish; the registry fixes it on registration.
-      if (isVirtual && isProgrammatic !== thirdParty.isProgrammatic) {
+      if (!params.paidTxHash && isVirtual && isProgrammatic !== thirdParty.isProgrammatic) {
         step('kind')
         await deps.setThirdPartyKind(thirdParty.id, isProgrammatic)
         thirdParty = { ...thirdParty, isProgrammatic }
@@ -348,20 +394,32 @@ export async function publishLinkedItems(
         programmaticMinSlots: params.price.programmaticMinSlots
       })
 
-      if (slotsToBuy > 0) {
-        const fee = getLinkedPublishFee(slotsToBuy, params.price)
+      if (params.paidTxHash) {
+        step('wait_tx')
+        await assertMined(params.paidTxHash)
+      } else if (slotsToBuy > 0) {
+        const fee = getLinkedPublishFee(slotsToBuy, params.price, {
+          isProgrammatic: thirdParty.isProgrammatic,
+          isPublished: thirdParty.published
+        })
         const registry = getThirdPartyRegistry(chainId)
-        step('allowance')
-        const allowance = await deps.fetchManaAllowance(address, registry.address)
-        if (allowance < fee.maxManaWei) {
-          await assertMined(await deps.sendTransaction(buildManaApproveCall(chainId, registry.address, fee.maxManaWei)))
+        if (fee.maxManaWei > 0n) {
+          step('allowance')
+          const allowance = await deps.fetchManaAllowance(address, registry.address)
+          if (allowance < fee.maxManaWei) {
+            await assertMined(
+              await deps.sendTransaction(buildManaApproveCall(chainId, registry.address, fee.maxManaWei))
+            )
+          }
         }
         if (isVirtual) {
           step('register')
           txHash = await deps.sendTransaction(buildAddThirdPartyCall(chainId, thirdParty, slotsToBuy, fee.maxManaWei))
+          paymentTx = txHash
         } else {
           step('buy_slots')
           txHash = await deps.sendTransaction(buildBuyItemSlotsCall(chainId, thirdParty.id, slotsToBuy, fee.maxManaWei))
+          paymentTx = txHash
         }
         step('wait_tx')
         await assertMined(txHash)
@@ -401,6 +459,6 @@ export async function publishLinkedItems(
       txHash
     }
   } catch (error) {
-    throw toLinkedPublishError(error, current)
+    throw toLinkedPublishError(error, current, paymentTx)
   }
 }

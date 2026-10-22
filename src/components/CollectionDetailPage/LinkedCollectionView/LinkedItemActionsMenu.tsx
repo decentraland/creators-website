@@ -13,7 +13,7 @@ import { useNotifications } from '~/lib/notifications'
 import { buildLinkedItemUrn, decodeLinkedUrn } from '~/lib/thirdParty'
 import { theme } from '~/styles/theme'
 import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
-import { EditUrnModal } from '~/components/EditUrnModal'
+import { EditUrnModal } from './EditUrnModal'
 import { DeleteItemModal } from '../DeleteItemModal'
 
 type Props = {

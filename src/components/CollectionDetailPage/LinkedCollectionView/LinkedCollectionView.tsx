@@ -55,7 +55,7 @@ import { Button } from '~/components/Button'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
-import { EditUrnModal } from '~/components/EditUrnModal'
+import { EditUrnModal } from './EditUrnModal'
 import { OpenEditorIcon } from '~/components/Icons'
 import { Pagination } from '~/components/Pagination'
 import { PreviewCollectionButton } from '~/components/PreviewCollectionButton'
@@ -150,6 +150,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
         : [],
     [items, curations.data, curationMap]
   )
+  const selectableSet = useMemo(() => new Set(selectableIds), [selectableIds])
   const selection = useMemo(() => splitLinkedSelection(selected.values(), curationMap), [selected, curationMap])
   const selectedCount = selection.toPublish.length + selection.toPush.length
   const publishAction = getLinkedPublishAction(selection)
@@ -202,7 +203,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     setSelected(current => {
       const next = new Map(current)
       for (const item of items) {
-        if (!selectableIds.includes(item.id)) continue
+        if (!selectableSet.has(item.id)) continue
         if (isSelected) next.set(item.id, item)
         else next.delete(item.id)
       }
@@ -546,7 +547,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
                 item={item}
                 contract={contract}
                 status={curations.isSuccess ? statuses.get(item.id) : undefined}
-                selectable={selectableIds.includes(item.id)}
+                selectable={selectableSet.has(item.id)}
                 selected={selected.has(item.id)}
                 onSelectedChange={isSelected => toggleSelected(item, isSelected)}
                 editable={canEdit}

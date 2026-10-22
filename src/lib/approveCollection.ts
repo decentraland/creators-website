@@ -35,7 +35,14 @@ export async function buildMissingImage(item: Item, deps: ImageDeps): Promise<Mi
 
 export class ApprovalError extends Error {
   reason:
-    'reverted' | 'not_indexed' | 'no_identity' | 'deploy_failed' | 'nothing_pending' | 'missing_hash' | 'invalid_cheque'
+    | 'reverted'
+    | 'not_indexed'
+    | 'no_identity'
+    | 'deploy_failed'
+    | 'nothing_pending'
+    | 'missing_hash'
+    | 'invalid_cheque'
+    | 'changed'
 
   constructor(reason: ApprovalError['reason'], message: string) {
     super(message)

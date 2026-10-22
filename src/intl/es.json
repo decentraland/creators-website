@@ -1882,7 +1882,8 @@
     "description": "{count, plural, one {# ítem cambió} other {# ítems cambiaron}} desde la última aprobación. Para verlos en el mundo, deben revisarse y aprobarse de nuevo. ¿Los envías a revisión?",
     "terms": {
       "title": "Confirma tus datos",
-      "description": "Te escribiremos por correo sobre la revisión de tus cambios."
+      "description": "Te escribiremos por correo sobre la revisión de tus cambios.",
+      "checkbox": "Garantizo que los ítems modificados cumplen plenamente los <terms>Términos de uso</terms> y la <policy>Política de contenido</policy>, que tengo los derechos de propiedad intelectual para crear wearables basados en esta colección NFT, y reconozco que la DAO puede rechazar la aprobación de los cambios."
     },
     "submit": "Enviar a revisión",
     "running": {
@@ -1920,6 +1921,13 @@
       "prepare": "No pudimos preparar la aprobación. Revisa que la colección tenga ítems esperando revisión e inténtalo de nuevo.",
       "root": "No se pudo registrar la aprobación en la blockchain. No se subió nada; inténtalo de nuevo.",
       "deploy": "Algunos ítems no se pudieron subir o aprobar. Inténtalo de nuevo para reintentar los que fallaron."
+    },
+    "changed": "Los ítems pendientes cambiaron desde que los abriste: se agregaron o editaron ítems. Revísalos de nuevo antes de aprobar.",
+    "failed_items": "Ítems que no se pudieron completar",
+    "stage": {
+      "build": "su contenido cambió o no se pudo preparar",
+      "deploy": "falló la subida a los servidores de contenido",
+      "curation": "se subió, pero no se pudo marcar como aprobado"
     }
   }
 }

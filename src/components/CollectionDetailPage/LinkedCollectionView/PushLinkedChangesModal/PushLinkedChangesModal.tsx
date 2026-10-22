@@ -16,7 +16,7 @@ import { Button } from '~/components/Button'
 import { Checkbox } from '~/components/Checkbox'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { Modal } from '~/components/Modal'
-import { ProgressModal } from '~/components/ItemEditorPage/ReviewBar/ProgressModal'
+import { ProgressModal } from '~/components/ProgressModal'
 import * as S from '../../PublishCollectionModal/PublishCollectionModal.styles'
 
 type Props = {
@@ -139,7 +139,7 @@ export function PushLinkedChangesModal({ collection, session, items, curations, 
           </S.InputWrapper>
           <Checkbox checked={accepted} onChange={setAccepted} testId="push-linked-terms-accept">
             {intl.formatMessage(
-              { id: 'publish_linked_modal.payment_step.checkbox' },
+              { id: 'push_linked_modal.terms.checkbox' },
               {
                 terms: chunks => (
                   <a href={config.get('TERMS_OF_USE_URL')} onClick={openLink(config.get('TERMS_OF_USE_URL'))}>

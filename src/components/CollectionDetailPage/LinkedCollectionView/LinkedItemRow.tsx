@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'
 import { type Item } from '~/lib/items'
@@ -49,20 +49,41 @@ export function LinkedItemRow({
   const mapping = getItemMapping(item.mappings, contract)
   const [isSaving, setSaving] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout>>()
-  useEffect(() => () => clearTimeout(timer.current), [])
+  // The edit waiting for the pause, so leaving the row (page, filter, editor) saves it instead of dropping it.
+  const pending = useRef<Mappings | null>(null)
+  const latest = useRef({ item, onSaveMappings })
+  latest.current = { item, onSaveMappings }
+
+  const flush = useCallback(() => {
+    clearTimeout(timer.current)
+    const mappings = pending.current
+    pending.current = null
+    if (!mappings) return
+    setSaving(true)
+    latest.current
+      .onSaveMappings(latest.current.item, mappings)
+      .catch(() => undefined)
+      .finally(() => setSaving(false))
+  }, [])
+
+  useEffect(
+    () => () => {
+      clearTimeout(timer.current)
+      const mappings = pending.current
+      if (mappings) void latest.current.onSaveMappings(latest.current.item, mappings).catch(() => undefined)
+    },
+    []
+  )
 
   // A valid change saves itself after a pause, like the legacy row: no save button per mapping.
   function onMappingChange(next: Mapping | null) {
     clearTimeout(timer.current)
+    pending.current = null
     if (!next || !contract) return
     const mappings = buildItemMappings(next, contract)
     if (areMappingsEqual(mappings, item.mappings)) return
-    timer.current = setTimeout(() => {
-      setSaving(true)
-      onSaveMappings(item, mappings)
-        .catch(() => undefined)
-        .finally(() => setSaving(false))
-    }, MAPPING_SAVE_DEBOUNCE_MS)
+    pending.current = mappings
+    timer.current = setTimeout(flush, MAPPING_SAVE_DEBOUNCE_MS)
   }
 
   return (
@@ -105,11 +126,10 @@ export function LinkedItemRow({
       <S.MappingCell data-testid="linked-item-mapping" data-saving={isSaving || undefined}>
         {contract ? (
           <MappingEditor
-            key={item.updatedAt}
             value={mapping}
             compact
             withHelp={false}
-            disabled={!editable || isSaving}
+            disabled={!editable}
             testId="linked-item-mapping-editor"
             onChange={onMappingChange}
           />

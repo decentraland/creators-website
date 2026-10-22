@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ChevronRight as ChevronRightIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { NAME_ALREADY_IN_USE_ERROR, validateCollectionName } from '~/lib/collections'
+import { validateLinkedCollectionName } from '~/lib/thirdParty'
 import { Modal } from '~/components/Modal'
 import { Button } from '~/components/Button'
 import { CollectionNameInput } from '~/components/CollectionNameInput'
@@ -40,7 +41,7 @@ export function CollectionNameModal({
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
     if (!trimmed || isPending) return
-    if (nameMaxLength ? trimmed.includes(':') : validateCollectionName(trimmed)) {
+    if (nameMaxLength ? validateLinkedCollectionName(trimmed) : validateCollectionName(trimmed)) {
       // Only invalid_character can survive here: empty is blocked above, length by maxLength.
       setLocalError(t('collection_name_modal.error_invalid_character'))
       return

@@ -53,7 +53,7 @@ export function LinkedReviewBar({ session, collection, thirdParty, selectedId, o
   const [verdict, setVerdict] = useState(false)
 
   const pendingItems = pending.data ?? []
-  const { reviewedCount, nextToReview } = useReviewedItems(pendingItems, selectedId)
+  const { reviewedCount, nextToReview, review } = useReviewedItems(pendingItems, selectedId)
   const threshold = getReviewThreshold(pendingItems.length)
   const canApprove = pendingItems.length > 0 && reviewedCount >= threshold
   const assignee = curation?.assignee ?? null
@@ -233,6 +233,7 @@ export function LinkedReviewBar({ session, collection, thirdParty, selectedId, o
           session={session}
           collection={collection}
           thirdParty={thirdParty}
+          review={review}
           onClose={closeDialog}
         />
       )}

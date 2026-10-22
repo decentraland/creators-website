@@ -76,8 +76,11 @@ export function LinkedPaymentStep({
     [price, availableSlots, itemsToPublish.length, isProgrammatic, thirdParty.published]
   )
   const fee = useMemo(
-    () => (price && slotsToBuy !== null ? getLinkedPublishFee(slotsToBuy, price) : null),
-    [price, slotsToBuy]
+    () =>
+      price && slotsToBuy !== null
+        ? getLinkedPublishFee(slotsToBuy, price, { isProgrammatic, isPublished: thirdParty.published })
+        : null,
+    [price, slotsToBuy, isProgrammatic, thirdParty.published]
   )
   const balance = mana.data ?? 0n
   const hasEnough = !!fee && balance >= fee.maxManaWei

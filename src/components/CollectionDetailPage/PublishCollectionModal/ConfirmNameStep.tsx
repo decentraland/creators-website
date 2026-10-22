@@ -2,6 +2,7 @@ import { useId, useState } from 'react'
 import { ChevronRight as ChevronRightIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { NAME_ALREADY_IN_USE_ERROR, validateCollectionName } from '~/lib/collections'
+import { validateLinkedCollectionName } from '~/lib/thirdParty'
 import { EMAIL_MAX_LENGTH, isValidEmail } from '~/lib/email'
 import { Button } from '~/components/Button'
 import { CollectionNameInput } from '~/components/CollectionNameInput'
@@ -43,13 +44,7 @@ export function ConfirmNameStep({
   const [editedSinceSubmit, setEditedSinceSubmit] = useState(false)
 
   const trimmed = name.trim()
-  const validation = nameMaxLength
-    ? !trimmed
-      ? 'empty'
-      : trimmed.includes(':')
-        ? 'invalid_character'
-        : null
-    : validateCollectionName(trimmed)
+  const validation = nameMaxLength ? validateLinkedCollectionName(trimmed) : validateCollectionName(trimmed)
   const localError = trimmed && validation ? t('publish_collection_modal.name_step.invalid_name') : null
   const serverError =
     saveError && !editedSinceSubmit

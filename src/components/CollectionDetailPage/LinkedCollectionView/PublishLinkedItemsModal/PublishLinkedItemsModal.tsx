@@ -11,7 +11,12 @@ import { type SlotsCheque } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
 import { type ItemCuration } from '~/lib/linkedItemStatus'
-import { LinkedPublishError, type LinkedPublishStep } from '~/lib/publishLinkedItems'
+import {
+  LinkedPublishError,
+  getResumableTxHash,
+  mayHavePublished,
+  type LinkedPublishStep
+} from '~/lib/publishLinkedItems'
 import { LINKED_COLLECTION_NAME_MAX_LENGTH, type ThirdParty } from '~/lib/thirdParty'
 import { Modal } from '~/components/Modal'
 import { PendingModal } from '~/components/PendingModal'
@@ -78,6 +83,9 @@ export function PublishLinkedItemsModal({
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [runningStep, setRunningStep] = useState<LinkedPublishStep | null>(null)
   const [outcome, setOutcome] = useState<'success' | LinkedPublishError | null>(null)
+  // What earlier attempts left behind: a payment a retry must resume from, and a publish request that may have landed.
+  const [paidTxHash, setPaidTxHash] = useState<string | undefined>(undefined)
+  const [publishMayHaveLanded, setPublishMayHaveLanded] = useState(false)
 
   const profile = useProfile(address)
   const profileEmail = profile.data?.email?.trim() ?? ''
@@ -87,6 +95,10 @@ export function PublishLinkedItemsModal({
   const slots = useThirdPartySlots(address, thirdParty.id)
   const publish = usePublishLinkedItems(session, collection)
   const isRunning = publish.isPending
+  const runningLabels = useMemo(
+    () => RUNNING_STEP_ORDER.map(name => t(`publish_linked_modal.running.short.${name}`)),
+    [t]
+  )
   useBeforeUnloadGuard(isRunning)
 
   useEffect(() => {
@@ -125,9 +137,15 @@ export function PublishLinkedItemsModal({
     )
   }
 
-  function submit() {
-    if (!price.data || slots.data === undefined) return
+  async function submit() {
+    if (!price.data) return
     setRunningStep('tos')
+    // Read again right before paying: the slots an earlier attempt bought must not be bought twice.
+    const fresh = paidTxHash ? slots.data : (await slots.refetch()).data
+    if (fresh === undefined) {
+      setRunningStep(null)
+      return
+    }
     publish.mutate(
       {
         collection,
@@ -137,8 +155,10 @@ export function PublishLinkedItemsModal({
         cheque,
         email,
         isProgrammatic,
-        availableSlots: slots.data,
+        availableSlots: fresh,
         price: price.data,
+        paidTxHash,
+        publishMayHaveLanded,
         curations,
         onStep: setRunningStep
       },
@@ -148,9 +168,11 @@ export function PublishLinkedItemsModal({
           onPublished()
         },
         onError: error => {
-          setOutcome(
+          const failure =
             error instanceof LinkedPublishError ? error : new LinkedPublishError('publish', 'generic', String(error))
-          )
+          setPaidTxHash(current => getResumableTxHash(failure) ?? current)
+          setPublishMayHaveLanded(current => current || mayHavePublished(failure))
+          setOutcome(failure)
         },
         onSettled: () => setRunningStep(null)
       }
@@ -178,7 +200,7 @@ export function PublishLinkedItemsModal({
         title={t('publish_linked_modal.running.title')}
         label={t(`publish_linked_modal.running.${runningStep}`)}
         steps={{
-          labels: RUNNING_STEP_ORDER.map(name => t(`publish_linked_modal.running.short.${name}`)),
+          labels: runningLabels,
           current: RUNNING_STEP_ORDER.indexOf(runningStep) + 1
         }}
         testId="publish-linked-running"
@@ -254,7 +276,7 @@ export function PublishLinkedItemsModal({
             accepted={termsAccepted}
             onAcceptedChange={setTermsAccepted}
             onBack={back}
-            onSubmit={submit}
+            onSubmit={() => void submit()}
           />
         )}
       </S.Main>

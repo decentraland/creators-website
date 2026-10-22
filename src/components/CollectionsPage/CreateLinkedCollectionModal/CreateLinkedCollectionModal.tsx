@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronRight as ChevronRightIcon, InfoOutlined as InfoOutlinedIcon } from '@mui/icons-material'
 import { type ContractNetwork } from '@dcl/schemas'
 import { config } from '~/config'
 import { useTranslation } from '~/intl'
 import { BuilderServerError } from '~/lib/builder'
+import { openExternal } from '~/lib/navigation'
 import {
   checkLinkedContract,
   isAddressBeingTyped,
@@ -55,8 +56,12 @@ export function CreateLinkedCollectionModal({ isPending, error, onSubmit, onClos
   const checkRun = useRef(0)
 
   const isProduction = config.get('ENVIRONMENT') === 'production'
-  const networks = getLinkedContractNetworks(isProduction)
-  const networkOptions = networks.map(value => ({ value, label: t(`linked_collection.networks.${value}`) }))
+  const learnMoreUrl = `${config.get('DOCS_URL')}${LEARN_MORE_PATH}`
+  const networks = useMemo(() => getLinkedContractNetworks(isProduction), [isProduction])
+  const networkOptions = useMemo(
+    () => networks.map(value => ({ value, label: t(`linked_collection.networks.${value}`) })),
+    [networks, t]
+  )
 
   // A full address on a picked network is checked on chain after a pause in typing, like the legacy modal.
   useEffect(() => {
@@ -116,10 +121,12 @@ export function CreateLinkedCollectionModal({ isPending, error, onSubmit, onClos
           <S.Subtitle>
             {t('create_linked_collection_modal.subtitle')}{' '}
             <S.LearnMore
-              href={`${config.get('DOCS_URL')}${LEARN_MORE_PATH}`}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={learnMoreUrl}
               data-testid="linked-learn-more"
+              onClick={event => {
+                event.preventDefault()
+                openExternal(learnMoreUrl)
+              }}
             >
               {t('create_linked_collection_modal.learn_more')}
             </S.LearnMore>

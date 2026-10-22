@@ -99,8 +99,8 @@ export type ThirdPartyPrice = {
   itemSlotManaWei: bigint
   /** Slots a programmatic third party buys in one go, on its first publish. */
   programmaticMinSlots: number
-  /** MANA per USD, 18 decimals. */
-  manaPerUsdWei: bigint
+  /** USD per MANA, 18 decimals: the ChainlinkOracle rate (the registry charges `price * 1e18 / rate`). */
+  usdPerManaWei: bigint
 }
 
 /** The registry's slot price and the programmatic pack size, with the oracle's MANA rate (legacy getThirdPartyPrice). */
@@ -113,19 +113,19 @@ export async function fetchThirdPartyPrice(chainId: number): Promise<ThirdPartyP
     readContract<ethers.BigNumber>(oracle, 'getRate')
   ])
   const itemSlotUsdWei = BigInt(slotPrice.toString())
-  const manaPerUsdWei = BigInt(rate.toString())
+  const usdPerManaWei = BigInt(rate.toString())
   return {
     itemSlotUsdWei,
-    itemSlotManaWei: usdToMana(itemSlotUsdWei, manaPerUsdWei),
+    itemSlotManaWei: usdToMana(itemSlotUsdWei, usdPerManaWei),
     programmaticMinSlots: Number(minSlots.toString()),
-    manaPerUsdWei
+    usdPerManaWei
   }
 }
 
 const ONE = 10n ** 18n
 
-/** USD (18 decimals) to MANA wei at `manaPerUsdWei`, the oracle's rate: MANA = USD / (USD per MANA). */
-export function usdToMana(usdWei: bigint, manaPerUsdWei: bigint): bigint {
-  if (manaPerUsdWei === 0n) return 0n
-  return (usdWei * ONE) / manaPerUsdWei
+/** USD (18 decimals) to MANA wei at `usdPerManaWei`, the oracle's rate: MANA = USD / (USD per MANA). */
+export function usdToMana(usdWei: bigint, usdPerManaWei: bigint): bigint {
+  if (usdPerManaWei === 0n) return 0n
+  return (usdWei * ONE) / usdPerManaWei
 }

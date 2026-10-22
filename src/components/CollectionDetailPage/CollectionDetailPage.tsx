@@ -154,11 +154,11 @@ const CollectionDetailPage = () => {
   }, [topUpReturn, restored, session, collectionId, setSearchParams])
 
   const collectionQuery = useCollection(address, collectionId)
-  // Linked collections page their items server-side (they can hold thousands), so the whole-list query waits for
-  // the collection and stays off for them.
+  // Linked collections page their items server-side (they can hold thousands): the whole-list query starts with the
+  // collection's, so standard pages load both in parallel, and stops once the collection turns out to be linked.
   const itemsQuery = useAllCollectionItems(
     address,
-    collectionQuery.data && !isLinkedCollection(collectionQuery.data) ? collectionId : undefined
+    collectionQuery.data && isLinkedCollection(collectionQuery.data) ? undefined : collectionId
   )
   const saveCollection = useSaveCollection(address)
   const updateItem = useSaveItem(address)
@@ -376,7 +376,7 @@ const CollectionDetailPage = () => {
           isThirdPartyNotFound ||
           (!!thirdParty.data && !isThirdPartyManager(thirdParty.data, address))
         : !canViewCollection(collection, address)))
-  const isError = !isNotFound && (collectionQuery.isError || itemsQuery.isError || thirdParty.isError)
+  const isError = !isNotFound && (collectionQuery.isError || (!isLinked && itemsQuery.isError) || thirdParty.isError)
   const isEmpty = filteredTotal === 0
   const hasItems = total > 0
   const canRename = !!collection && !collection.isPublished && !isCollectionLocked(collection)

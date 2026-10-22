@@ -6,22 +6,16 @@ import { blobToDataURL, convertImageIntoWearableThumbnail, dataURLToBlob, loadVi
 import { sanitizeItemDescription, unique } from '~/lib/itemDraft'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH } from '~/lib/itemFactory'
 import { ItemFileError, THUMBNAIL_PATH, VIDEO_PATH, isImageFile, loadItemFile } from '~/lib/itemFiles'
-import { BodyShapeType, ItemType, type Item, type ItemMetrics } from '~/lib/items'
+import { BodyShapeType, ItemType, type ItemMetrics } from '~/lib/items'
 import { analyzeModel } from '~/lib/models'
 import { isRarity } from '~/lib/rarities'
 import { isAutoThumbnailStale } from '~/lib/thumbnailPose'
 import { getWearableCategoryOptions, hidesForCategory } from '~/lib/wearableCategories'
-import { DEFAULT_MAPPING, getItemMapping, mappingsFromManifest } from '~/lib/mappings'
-import { decodeLinkedUrn, type LinkedContract } from '~/lib/thirdParty'
+import { resolveLinkedManifest, type LinkedManifestTarget } from '~/lib/linkedManifest'
 import { type ItemDraft } from './AddItemsModal.state'
 
 /** The linked collection a draft is for: what its items may be and where their URN and mapping come from. */
-export type LinkedDraftTarget = {
-  collectionUrn: string
-  contract: LinkedContract | null
-  /** Edit in bulk: the collection's items by URN. Each zip must name one of them, and keeps its mapping if it sets none. */
-  updating?: Map<string, Item>
-}
+export type LinkedDraftTarget = LinkedManifestTarget
 
 const IMAGE_WEARABLE_METRICS: ItemMetrics = {
   triangles: 100,
@@ -111,26 +105,7 @@ export async function processDraftFile(
 
   if (linked) {
     // A zip's wearable.json may fix the URN and the mapping; anything else gets the default "any token" mapping.
-    const manifestUrn = loaded.wearable?.id ? decodeLinkedUrn(loaded.wearable.id) : null
-    if (
-      loaded.wearable?.id &&
-      (!manifestUrn?.itemSuffix || !loaded.wearable.id.startsWith(`${linked.collectionUrn}:`))
-    ) {
-      throw new ItemFileError('linked_urn_mismatch')
-    }
-    const existing = linked.updating && loaded.wearable?.id ? linked.updating.get(loaded.wearable.id) : undefined
-    if (linked.updating) {
-      if (!loaded.wearable?.id) throw new ItemFileError('bulk_edit_missing_urn')
-      if (!existing) throw new ItemFileError('bulk_edit_no_match')
-    }
-    patch.urnSuffix = manifestUrn?.itemSuffix ?? null
-    if (loaded.wearable?.mapping !== undefined && loaded.wearable.mapping !== null) {
-      const mappings = mappingsFromManifest(loaded.wearable.mapping, linked.contract)
-      if (!mappings) throw new ItemFileError('linked_mapping_invalid')
-      patch.mapping = getItemMapping(mappings, linked.contract)
-    } else {
-      patch.mapping = getItemMapping(existing?.mappings, linked.contract) ?? DEFAULT_MAPPING
-    }
+    Object.assign(patch, resolveLinkedManifest(loaded.wearable, linked))
   }
 
   if (loaded.wearable) {

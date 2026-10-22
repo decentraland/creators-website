@@ -10,6 +10,7 @@ import {
 } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'
+import { openExternal } from '~/lib/navigation'
 import { pageRangeLabel } from '~/lib/pagination'
 import { useWallet } from '~/store/wallet'
 import { COLLECTIONS_PAGE_SIZE, useCollections, useCollectionsSummary } from '~/hooks/useCollections'
@@ -24,10 +25,10 @@ import {
   type CollectionListFilter
 } from '~/lib/collections'
 import { buildNewCollection } from '~/lib/saveCollection'
-import { buildNewLinkedCollection, type LinkedContract } from '~/lib/thirdParty'
+import { buildNewLinkedCollection, getThirdPartyId, type LinkedContract } from '~/lib/thirdParty'
 import { config } from '~/config'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
-import { CreateLinkedCollectionModal } from '~/components/CreateLinkedCollectionModal'
+import { CreateLinkedCollectionModal } from './CreateLinkedCollectionModal'
 import { Pagination } from '~/components/Pagination'
 import emptyCollectionsArt from '~/assets/empty-collections.png'
 import { Button } from '~/components/Button'
@@ -127,7 +128,7 @@ const CollectionsPage = () => {
         // Legacy event and prop names, so the funnel lines up with the old builder's.
         track('Create TP Collection', {
           collectionId: saved.id,
-          thirdPartyId: saved.urn.split(':').slice(0, 5).join(':'),
+          thirdPartyId: getThirdPartyId(saved),
           linkedContractAddress: contract.address.toLowerCase(),
           linkedContractNetwork: contract.network,
           collectionName: name
@@ -353,8 +354,10 @@ const CollectionsPage = () => {
               as="a"
               variant="secondary"
               href={`${config.get('DOCS_URL')}${LINKED_LEARN_MORE_PATH}`}
-              target="_blank"
-              rel="noopener noreferrer"
+              onClick={(event: React.MouseEvent) => {
+                event.preventDefault()
+                openExternal(`${config.get('DOCS_URL')}${LINKED_LEARN_MORE_PATH}`)
+              }}
             >
               {t('collections_page.empty.learn_more')}
             </Button>

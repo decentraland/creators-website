@@ -6,9 +6,10 @@ import {
   prepareLinkedApproval,
   setLinkedMerkleRoot,
   type LinkedApprovalPlan,
-  type LinkedDeployFailure
+  type LinkedDeployFailure,
+  type ReviewedContent
 } from '~/lib/approveLinkedCollection'
-import { waitForIndexer, APPROVAL_INDEX_TIMEOUT_MS } from '~/lib/approveCollection'
+import { ApprovalError, waitForIndexer, APPROVAL_INDEX_TIMEOUT_MS } from '~/lib/approveCollection'
 import { sendContractTransaction, signWithIdentity, waitForTransaction, type Session } from '~/lib/auth'
 import {
   fetchContent,
@@ -53,7 +54,7 @@ export type LinkedApprovalView =
   | { kind: 'loading' }
   | { kind: 'step'; step: LinkedApprovalStep; phase: LinkedStepPhase }
   | { kind: 'success' }
-  | { kind: 'error'; step: LinkedApprovalStep | 'prepare'; detail: string | null; failed: LinkedDeployFailure[] }
+  | { kind: 'error'; step: LinkedApprovalStep | 'prepare' | 'changed'; failed: LinkedDeployFailure[] }
 
 const IDLE: LinkedStepPhase = { kind: 'idle' }
 
@@ -64,22 +65,17 @@ class RunStoppedError extends Error {
   }
 }
 
-function errorDetail(error: unknown): string | null {
-  if (error instanceof Error) return error.message || null
-  if (typeof error === 'string') return error || null
-  try {
-    return JSON.stringify(error) ?? null
-  } catch {
-    return null
-  }
-}
-
 /**
  * The committee's approval of a linked collection's pending items: put the Merkle root of every curated item on
  * chain (consuming the creator's cheque), then deploy each pending item's entity to the Catalyst and approve its
  * curation. Each step is idempotent, so a closed or failed run resumes where it stopped.
  */
-export function useLinkedApprovalFlow(session: Session, collection: Collection, thirdParty: ThirdParty) {
+export function useLinkedApprovalFlow(
+  session: Session,
+  collection: Collection,
+  thirdParty: ThirdParty,
+  review: ReviewedContent
+) {
   const queryClient = useQueryClient()
   const address = session.address
   const chainId = getMaticChainId()
@@ -106,9 +102,14 @@ export function useLinkedApprovalFlow(session: Session, collection: Collection, 
     (token: number, step: LinkedApprovalStep | 'prepare', error: unknown, failed: LinkedDeployFailure[] = []) => {
       if (token !== run.current || error instanceof RunStoppedError) return
       if (isWalletRejection(error) && step !== 'prepare') return setView({ kind: 'step', step, phase: IDLE })
+      // The creator changing items mid-review is expected, not a failure to report: the curator reviews again.
+      if (error instanceof ApprovalError && error.reason === 'changed') {
+        track('Approve TP Collection error', { collectionId: collection.id, step: 'changed' })
+        return setView({ kind: 'error', step: 'changed', failed })
+      }
       captureError(error, { flow: 'linked_curation_approve', step, collectionId: collection.id })
       track('Approve TP Collection error', { collectionId: collection.id, step, error: errorCode(error) })
-      setView({ kind: 'error', step, detail: errorDetail(error), failed })
+      setView({ kind: 'error', step, failed })
     },
     [collection.id]
   )
@@ -118,10 +119,14 @@ export function useLinkedApprovalFlow(session: Session, collection: Collection, 
     setView({ kind: 'loading' })
     track('Approve TP Collection started', { collectionId: collection.id, thirdPartyId: thirdParty.id })
     try {
-      const prepared = await prepareLinkedApproval(collection, {
-        fetchPendingItems: collectionId => fetchPendingLinkedItems(address, collectionId),
-        fetchApprovalData: collectionId => fetchLinkedApprovalData(address, collectionId)
-      })
+      const prepared = await prepareLinkedApproval(
+        collection,
+        {
+          fetchPendingItems: collectionId => fetchPendingLinkedItems(address, collectionId),
+          fetchApprovalData: collectionId => fetchLinkedApprovalData(address, collectionId)
+        },
+        review
+      )
       if (token !== run.current) return
       const next: LinkedApprovalStep[] = [...(prepared.needsRoot ? (['root'] as const) : []), 'deploy']
       setPlan(prepared)
@@ -130,7 +135,7 @@ export function useLinkedApprovalFlow(session: Session, collection: Collection, 
     } catch (error) {
       fail(token, 'prepare', error)
     }
-  }, [address, collection, thirdParty.id, set, fail])
+  }, [address, collection, thirdParty.id, review, set, fail])
 
   const runRoot = useCallback(async () => {
     if (!plan) return
@@ -183,7 +188,18 @@ export function useLinkedApprovalFlow(session: Session, collection: Collection, 
       )
       refresh()
       if (result.failed.length > 0) {
-        return fail(token, 'deploy', new Error('Some items failed to deploy'), result.failed)
+        captureError(new Error(`${result.failed.length} linked items failed to deploy`), {
+          flow: 'linked_curation_approve',
+          step: 'deploy',
+          collectionId: collection.id,
+          failures: result.failed.map(failure => `${failure.item.id} (${failure.stage}): ${failure.message}`)
+        })
+        track('Approve TP Collection error', {
+          collectionId: collection.id,
+          step: 'deploy',
+          items: result.failed.length
+        })
+        return set(token, { kind: 'error', step: 'deploy', failed: result.failed })
       }
       track('Approve TP Collection', { collectionId: collection.id, thirdPartyId: thirdParty.id, items: total })
       set(token, { kind: 'success' })
@@ -268,17 +284,28 @@ export function useReviewThirdParty(session: Session | null) {
   })
 }
 
-/** Which pending items the curator has opened, towards the review threshold. */
+/**
+ * Which pending items the curator has opened, towards the review threshold, with the content each had when opened:
+ * the approval refuses to go on if the pending set or any of that content changed since.
+ */
 export function useReviewedItems(pendingItems: Item[], selectedId: string | null) {
-  const [reviewedIds, setReviewedIds] = useState<Set<string>>(() => new Set())
-  const pendingIds = useMemo(() => new Set(pendingItems.map(item => item.id)), [pendingItems])
-  if (selectedId && pendingIds.has(selectedId) && !reviewedIds.has(selectedId)) {
-    setReviewedIds(current => new Set(current).add(selectedId))
+  const [reviewedHashes, setReviewedHashes] = useState<Map<string, string | undefined>>(() => new Map())
+  const pendingById = useMemo(() => new Map(pendingItems.map(item => [item.id, item])), [pendingItems])
+  const opened = selectedId ? pendingById.get(selectedId) : undefined
+  if (opened && !reviewedHashes.has(opened.id)) {
+    setReviewedHashes(current => new Map(current).set(opened.id, opened.currentContentHash))
   }
   const nextToReview = useCallback(() => {
-    const unreviewed = pendingItems.filter(item => !reviewedIds.has(item.id))
+    const unreviewed = pendingItems.filter(item => !reviewedHashes.has(item.id))
     if (unreviewed.length === 0) return null
     return unreviewed[Math.floor(Math.random() * unreviewed.length)]
-  }, [pendingItems, reviewedIds])
-  return { reviewedCount: [...reviewedIds].filter(id => pendingIds.has(id)).length, nextToReview }
+  }, [pendingItems, reviewedHashes])
+  const review = useMemo<ReviewedContent>(
+    () => ({
+      pendingIds: new Set(pendingById.keys()),
+      reviewedHashes: new Map([...reviewedHashes].filter(([id]) => pendingById.has(id)))
+    }),
+    [pendingById, reviewedHashes]
+  )
+  return { reviewedCount: review.reviewedHashes.size, nextToReview, review }
 }

@@ -17,31 +17,35 @@ import { getContentsStorageUrl } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
 import { type ThirdParty } from '~/lib/thirdParty'
-import { ProgressModal } from './ProgressModal'
+import { type ReviewedContent } from '~/lib/approveLinkedCollection'
+import { ProgressModal } from '~/components/ProgressModal'
 import * as S from './ApprovalFlowModal.styles'
 
 type Props = {
   session: Session
   collection: Collection
   thirdParty: ThirdParty
+  /** What the curator reviewed: approving stops if the pending items changed since. */
+  review: ReviewedContent
   onClose: () => void
 }
 
 const SHOWN_ITEMS = 50
 
 /** The committee's approval of a linked collection: the Merkle root transaction, then the Catalyst uploads. */
-export function LinkedApprovalFlowModal({ session, collection, thirdParty, onClose }: Props) {
+export function LinkedApprovalFlowModal({ session, collection, thirdParty, review, onClose }: Props) {
   const { t } = useTranslation()
-  const flow = useLinkedApprovalFlow(session, collection, thirdParty)
+  const flow = useLinkedApprovalFlow(session, collection, thirdParty, review)
   const { view, plan, steps, start, stop } = flow
-  const errorText = useMemo(
+  // Each failed item with the step it stopped at, in plain words; the raw errors go to Sentry, not to the screen.
+  const failedText = useMemo(
     () =>
-      view.kind !== 'error'
-        ? ''
-        : view.failed.length
-          ? view.failed.map(failure => `${failure.item.name}: ${failure.message}`).join('\n')
-          : (view.detail ?? ''),
-    [view]
+      view.kind === 'error'
+        ? view.failed
+            .map(failure => `${failure.item.name}: ${t(`linked_approval_flow.stage.${failure.stage}`)}`)
+            .join('\n')
+        : '',
+    [view, t]
   )
   useBeforeUnloadGuard(view.kind === 'step' && (view.phase.kind !== 'idle' || flow.running))
 
@@ -65,6 +69,17 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, onClo
         />
       )
     case 'error':
+      if (view.step === 'changed') {
+        return (
+          <ConfirmModal
+            title={t('approval_flow.changed.title')}
+            description={t('linked_approval_flow.changed')}
+            onClose={onClose}
+            confirm={{ label: t('approval_flow.changed.confirm'), onClick: onClose, testId: 'approval-changed-review' }}
+            testId="approval-changed"
+          />
+        )
+      }
       return (
         <ConfirmModal
           title={t('approval_flow.error.title_approve')}
@@ -75,12 +90,12 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, onClo
           confirm={{ label: t('approval_flow.error.retry'), onClick: () => void start(), testId: 'approval-retry' }}
           testId="approval-error"
         >
-          {errorText && (
+          {failedText && (
             <S.Detail>
               <S.DetailHeader>
-                <span>{t('approval_flow.error.details')}</span>
+                <span>{t('linked_approval_flow.failed_items')}</span>
               </S.DetailHeader>
-              <S.DetailText data-testid="approval-error-detail">{errorText}</S.DetailText>
+              <S.DetailText data-testid="approval-error-detail">{failedText}</S.DetailText>
             </S.Detail>
           )}
         </ConfirmModal>
