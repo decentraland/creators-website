@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { allCollectionItemsKey } from '~/hooks/useCollection'
 import { collectionCurationKey } from '~/hooks/useCuration'
+import { itemEntitiesKey } from '~/hooks/useItemSync'
 import { errorCode, track } from '~/lib/analytics'
 import {
   APPROVAL_INDEX_TIMEOUT_MS,
@@ -267,8 +268,13 @@ export function useApprovalFlow(
     try {
       // Only `updatedAt` is read from this fetch: the plan is built from the items the curator reviewed, as the legacy
       // builder does. builder-server answers 200 with the on-chain fields blank when its subgraph query fails, which
-      // would read here as unpublished items or as every item needing a rescue.
-      if (!matchesReview(await fetchItems(), reviewed)) throw new ItemsChangedError()
+      // would read here as unpublished items or as every item needing a rescue. A fetch that fails outright doesn't
+      // block the approval either: the check is an extra over legacy, which approves what it loaded.
+      const fetched = await fetchItems().catch((error: unknown) => {
+        captureError(error, { flow: 'curation_approve', step: 'changed_check', collectionId: collection.id })
+        return null
+      })
+      if (fetched && !matchesReview(fetched, reviewed)) throw new ItemsChangedError()
       let items = reviewed
       // Items of a collection whose creator left before the publish finished have no token id; the server backfills
       // them and answers with the items saved again.
@@ -281,12 +287,17 @@ export function useApprovalFlow(
       if (items.some(item => !item.urn || !item.isPublished)) {
         throw new Error('The items were loaded without their on-chain data; reload the collection and try again')
       }
-      // Rescuing rewrites only on-chain hashes, so what to deploy is known before it runs.
+      // Rescuing rewrites only on-chain hashes, so what to deploy is known before it runs. The entities are the ones
+      // the review bar already looked up (the same key), fetched only when it has none.
+      const pointers = items.flatMap(item => (item.urn ? [item.urn] : []))
       const [rescue, entities] = await Promise.all([
         mode === 'approve'
           ? findItemsToRescue(collection, items, item => buildMissingImage(item, imageDeps))
           : Promise.resolve([]),
-        fetchEntitiesByPointers(items.flatMap(item => (item.urn ? [item.urn] : [])))
+        queryClient.ensureQueryData({
+          queryKey: itemEntitiesKey(collection.id, pointers),
+          queryFn: () => fetchEntitiesByPointers(pointers)
+        })
       ])
       if (token !== run.current) return
       const deploy = findItemsToDeploy(items, entities, mode === 'deploy_missing')
@@ -300,7 +311,7 @@ export function useApprovalFlow(
     } catch (error) {
       fail(token, 'prepare', error)
     }
-  }, [collection, mode, address, reviewed, fetchItems, goTo, fail])
+  }, [collection, mode, address, reviewed, fetchItems, goTo, fail, queryClient])
 
   const runRescue = useMemo(
     () =>
