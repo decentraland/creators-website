@@ -39,7 +39,9 @@ import {
   type LinkedContract,
   type ThirdParty
 } from '~/lib/thirdParty'
+import { useQueryClient } from '@tanstack/react-query'
 import { useSaveCollection } from '~/hooks/useCollection'
+import { invalidateCollectionItems } from '~/hooks/usePublishCollection'
 import {
   LINKED_ITEMS_PAGE_SIZE,
   useHasLinkedWork,
@@ -97,6 +99,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   // Every item's latest curation: the rows read theirs, and a pending one anywhere blocks publishing.
   const curations = useItemCurations(address, collection)
   const saveCollection = useSaveCollection(address)
+  const queryClient = useQueryClient()
   const saveItem = useSaveItem(address)
 
   const [isRenameOpen, setRenameOpen] = useState(false)
@@ -250,6 +253,8 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     saveCollection.mutate(next, {
       onSuccess: () => {
         track('Change TP Collection URN', { oldURN: collection.urn, newURN: next.urn })
+        // builder-server rebuilds every item URN from the collection's, so the cached items carry the old one.
+        invalidateCollectionItems(queryClient, collection.id)
         closeUrn()
         showToast(t('linked_collection.urn_saved'))
       }
