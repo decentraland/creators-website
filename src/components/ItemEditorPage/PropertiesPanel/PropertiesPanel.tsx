@@ -16,7 +16,6 @@ import {
 import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
 import { Button } from '~/components/Button'
 import { CategorySelect } from '~/components/CategorySelect'
-import { ConfirmModal } from '~/components/ConfirmModal'
 import { ClockIcon, ImageIcon, LoopIcon, PlayOnceIcon, SmartIcon } from '~/components/Icons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { RaritySelect } from '~/components/RaritySelect'
@@ -41,15 +40,21 @@ import {
 } from '~/lib/itemDraft'
 import { buildItemZip, getItemZipName } from '~/lib/itemDownload'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
-import { ITEM_EXTENSIONS, ItemFileError, hasFacialExpressions, THUMBNAIL_PATH, VIDEO_PATH, toMB } from '~/lib/itemFiles'
-import { pickFile } from '~/lib/filePicker'
-import { importItemModel, type ModelImportKind } from '~/lib/itemModelImport'
-import { ItemType, getMissingBodyShapeType, isMissingSmartWearableVideo, isSmartWearable, type Item } from '~/lib/items'
+import { hasFacialExpressions, THUMBNAIL_PATH, VIDEO_PATH, toMB } from '~/lib/itemFiles'
+import {
+  BodyShapeType,
+  ItemType,
+  getMissingBodyShapeType,
+  isMissingSmartWearableVideo,
+  isSmartWearable,
+  type Item
+} from '~/lib/items'
 import { downloadBlob } from '~/lib/navigation'
 import { useNotifications } from '~/lib/notifications'
 import { type SpringBoneParamsByName } from '~/lib/springBones'
 import { getEmoteCategoryOptions, getWearableCategoryOptions } from '~/lib/wearableCategories'
 import { DeleteItemModal } from '~/components/CollectionDetailPage/DeleteItemModal'
+import { ChangeFileModal, type ChangeFileResult } from '../ChangeFileModal'
 import { EditorSection } from '../EditorSection'
 import { HidesEditor } from '../HidesEditor'
 import { SpringBonesEditor, type SpringBonesModel } from '../SpringBonesEditor'
@@ -105,8 +110,9 @@ export function PropertiesPanel({
 }: Props) {
   const { t, rich } = useTranslation()
   const showToast = useNotifications(state => state.showToast)
-  const [isImporting, setImporting] = useState(false)
-  const [importError, setImportError] = useState<string | null>(null)
+  const [changeFile, setChangeFile] = useState<{ lockedBodyShape?: BodyShapeType.MALE | BodyShapeType.FEMALE } | null>(
+    null
+  )
   const [isVideoOpen, setVideoOpen] = useState(false)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
   const [isDownloading, setDownloading] = useState(false)
@@ -157,20 +163,12 @@ export function PropertiesPanel({
   })
   const metrics = draft.fileUpdate?.item.metrics ?? item.metrics
 
-  async function importModel(kind: ModelImportKind) {
-    const file = await pickFile({ accept: ITEM_EXTENSIONS.join(',') })
-    if (!file) return
-    setImporting(true)
-    try {
-      dispatch({ type: 'setFileUpdate', update: await importItemModel(file, item, kind) })
-    } catch (error) {
-      const key = error instanceof ItemFileError ? error.messageKey : 'invalid_model_file'
-      const params = error instanceof ItemFileError ? error.messageParams : undefined
-      if (!(error instanceof ItemFileError)) console.error('Model import failed:', error)
-      setImportError(t(`add_items_modal.file_error.${key}`, params))
-    } finally {
-      setImporting(false)
-    }
+  function applyFileChange(result: ChangeFileResult) {
+    // The file update may clear a category the new file can't keep; the one picked in the modal follows it.
+    dispatch({ type: 'setFileUpdate', update: result.update })
+    if (result.thumbnail) dispatch({ type: 'setThumbnail', thumbnail: result.thumbnail })
+    if (result.category) dispatch({ type: 'setCategory', category: result.category })
+    setChangeFile(null)
   }
 
   async function download() {
@@ -225,19 +223,14 @@ export function PropertiesPanel({
             {t('item_editor.details.download')}
           </ActionsMenuItem>
           {editable && (
-            <ActionsMenuItem
-              testId={`${testId}-change-file`}
-              disabled={isImporting}
-              onClick={() => void importModel({ kind: 'replace' })}
-            >
+            <ActionsMenuItem testId={`${testId}-change-file`} onClick={() => setChangeFile({})}>
               {t('item_editor.details.change_file')}
             </ActionsMenuItem>
           )}
           {editable && missingShape && (
             <ActionsMenuItem
               testId={`${testId}-add-representation`}
-              disabled={isImporting}
-              onClick={() => void importModel({ kind: 'add-representation', bodyShape: missingShape })}
+              onClick={() => setChangeFile({ lockedBodyShape: missingShape })}
             >
               {t('item_editor.details.add_representation', {
                 shape: t(`add_items_modal.body_shape_option.${missingShape}`)
@@ -658,17 +651,12 @@ export function PropertiesPanel({
           onClose={() => setVideoOpen(false)}
         />
       )}
-      {importError && (
-        <ConfirmModal
-          title={t('item_editor.details.import_error_title')}
-          description={importError}
-          onClose={() => setImportError(null)}
-          confirm={{
-            label: t('item_editor.details.import_error_close'),
-            onClick: () => setImportError(null),
-            testId: `${testId}-import-error-close`
-          }}
-          testId={`${testId}-import-error`}
+      {changeFile && (
+        <ChangeFileModal
+          item={item}
+          lockedBodyShape={changeFile.lockedBodyShape}
+          onApply={applyFileChange}
+          onClose={() => setChangeFile(null)}
         />
       )}
       {isDeleteOpen && (

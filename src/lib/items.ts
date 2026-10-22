@@ -223,7 +223,7 @@ export function getItemBodyShapeType(item: Item): BodyShapeType | null {
 }
 
 /** The body shape an item is still missing (male/female), or null when it's already unisex. */
-export function getMissingBodyShapeType(item: Item): BodyShapeType | null {
+export function getMissingBodyShapeType(item: Item): BodyShapeType.MALE | BodyShapeType.FEMALE | null {
   const bodyShapeType = getItemBodyShapeType(item)
   if (bodyShapeType === BodyShapeType.MALE) return BodyShapeType.FEMALE
   if (bodyShapeType === BodyShapeType.FEMALE) return BodyShapeType.MALE

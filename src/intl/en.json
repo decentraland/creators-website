@@ -833,8 +833,6 @@
       "change_file": "Change file",
       "add_representation": "Add {shape} representation",
       "file_update_pending": "A new model is ready. Save to upload it.",
-      "import_error_title": "We couldn't use that file",
-      "import_error_close": "OK",
       "download_error": "We couldn't download the item. Please try again.",
       "video_required": "A preview video is required to publish a smart wearable.",
       "video_hint": "A short video showcasing what the smart wearable does in-world."
@@ -909,6 +907,24 @@
     },
     "actions": {
       "label": "Item actions"
+    },
+    "change_file": {
+      "heading": "New file",
+      "drop_title": "Drop the new file here",
+      "drop_description": "Drag and drop your file here, or <browse>browse your device</browse>.",
+      "drop_formats": "(Supported formats: GLB, GLTF, PNG, ZIP · Max 3MB per item, 8MB for skins)",
+      "effect": {
+        "replace_all": "Replaces the model for both body shapes.",
+        "replace_shape": "Replaces the {shape} model only. The other body shape keeps its current model.",
+        "add_representation": "Adds a {shape} model. The item will then fit both body shapes."
+      },
+      "locked_hint": "This representation is fixed for this change.",
+      "use_thumbnail": "Use this render as the item thumbnail",
+      "category_hint": "The new file doesn't fit the item's current category. Pick one.",
+      "apply": "Apply",
+      "discard_title": "Discard the new file?",
+      "discard_description": "The file you loaded won't be applied to the item.",
+      "discard": "Discard"
     }
   },
   "zoom_controls": {

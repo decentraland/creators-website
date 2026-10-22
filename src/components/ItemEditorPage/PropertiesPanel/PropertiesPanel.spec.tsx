@@ -5,14 +5,22 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BodyShape } from '@dcl/schemas'
 import { Providers } from '~/components/CollectionDetailPage/SellItemFlow/testUtils'
-import { ItemType, type Item } from '~/lib/items'
+import { BodyShapeType, ItemType, type Item } from '~/lib/items'
 import { useItemForm } from '../useItemForm'
+import { type ChangeFileResult } from '../ChangeFileModal'
 import { PropertiesPanel } from './PropertiesPanel'
 
-const pickFile = vi.fn()
-const importItemModel = vi.fn()
-vi.mock('~/lib/filePicker', () => ({ pickFile: (...args: unknown[]) => pickFile(...args) }))
-vi.mock('~/lib/itemModelImport', () => ({ importItemModel: (...args: unknown[]) => importItemModel(...args) }))
+// The change-file modal has its own spec; here it hands back whatever result the test prepared.
+const fileChange = vi.hoisted<{ result: ChangeFileResult | null }>(() => ({ result: null }))
+vi.mock('../ChangeFileModal', () => ({
+  ChangeFileModal: ({ onApply }: { onApply: (result: ChangeFileResult) => void }) => (
+    <button
+      type="button"
+      data-testid="mock-change-file-apply"
+      onClick={() => fileChange.result && onApply(fileChange.result)}
+    />
+  )
+}))
 vi.mock('~/lib/builder', async () => ({
   ...(await vi.importActual<typeof import('~/lib/builder')>('~/lib/builder')),
   fetchContent: () => Promise.resolve(new Blob())
@@ -30,6 +38,9 @@ vi.mock('~/lib/featureFlags', async () => {
 beforeEach(() => {
   setFeatureFlags(FeatureFlag.WEARABLE_UTILITY, FeatureFlag.VRM_OPTOUT)
   campaign.current = null
+  // jsdom's createObjectURL only accepts its own Blob class.
+  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:thumbnail')
+  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
 })
 
 const item: Item = {
@@ -145,16 +156,39 @@ describe('PropertiesPanel', () => {
   })
 
   it('asks for a category when a new file does not fit the current one', async () => {
-    pickFile.mockResolvedValue(new File(['png'], 'eyes.png'))
-    importItemModel.mockResolvedValue({ item: { ...item, contents: { 'male/eyes.png': 'bafyeyes' } }, blobs: {} })
+    fileChange.result = {
+      update: { item: { ...item, contents: { 'male/eyes.png': 'bafyeyes' } }, blobs: {} },
+      thumbnail: null,
+      category: null,
+      bodyShape: BodyShapeType.MALE,
+      mode: 'replace_shape'
+    }
     render(<Harness />, { wrapper: Providers })
     await userEvent.click(screen.getByTestId('properties-panel-actions'))
     await userEvent.click(screen.getByTestId('properties-panel-change-file'))
+    await userEvent.click(screen.getByTestId('mock-change-file-apply'))
     expect(await screen.findByTestId('properties-panel-category-error')).toBeInTheDocument()
     expect(screen.getByTestId('properties-panel-save')).toBeDisabled()
     await userEvent.click(screen.getByTestId('properties-panel-category'))
     await userEvent.click(screen.getByTestId('properties-panel-category-option-eyes'))
     expect(screen.queryByTestId('properties-panel-category-error')).not.toBeInTheDocument()
+    expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
+  })
+
+  it('takes the category and thumbnail picked in the change-file modal into the draft', async () => {
+    fileChange.result = {
+      update: { item: { ...item, contents: { 'male/eyes.png': 'bafyeyes' } }, blobs: {} },
+      thumbnail: new Blob(['render']),
+      category: 'eyes',
+      bodyShape: BodyShapeType.MALE,
+      mode: 'replace_shape'
+    }
+    render(<Harness />, { wrapper: Providers })
+    await userEvent.click(screen.getByTestId('properties-panel-actions'))
+    await userEvent.click(screen.getByTestId('properties-panel-change-file'))
+    await userEvent.click(screen.getByTestId('mock-change-file-apply'))
+    expect(screen.queryByTestId('properties-panel-category-error')).not.toBeInTheDocument()
+    expect(screen.getByTestId('properties-panel-category')).toHaveTextContent('Eyes')
     expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
   })
 

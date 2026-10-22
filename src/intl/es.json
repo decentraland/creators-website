@@ -833,8 +833,6 @@
       "change_file": "Cambiar archivo",
       "add_representation": "Agregar representación {shape}",
       "file_update_pending": "Hay un modelo nuevo listo. Guarda para subirlo.",
-      "import_error_title": "No pudimos usar ese archivo",
-      "import_error_close": "OK",
       "download_error": "No pudimos descargar el ítem. Inténtalo de nuevo.",
       "video_required": "Se necesita un video de vista previa para publicar un smart wearable.",
       "video_hint": "Un video corto que muestra lo que hace el smart wearable en el mundo."
@@ -909,6 +907,24 @@
     },
     "actions": {
       "label": "Acciones del ítem"
+    },
+    "change_file": {
+      "heading": "Nuevo archivo",
+      "drop_title": "Suelta el nuevo archivo aquí",
+      "drop_description": "Arrastra y suelta tu archivo aquí, o <browse>explora tu dispositivo</browse>.",
+      "drop_formats": "(Formatos compatibles: GLB, GLTF, PNG, ZIP · Máx. 3MB por ítem, 8MB para skins)",
+      "effect": {
+        "replace_all": "Reemplaza el modelo para ambos tipos de cuerpo.",
+        "replace_shape": "Reemplaza solo el modelo {shape}. El otro tipo de cuerpo conserva su modelo actual.",
+        "add_representation": "Agrega un modelo {shape}. El ítem quedará disponible para ambos tipos de cuerpo."
+      },
+      "locked_hint": "Esta representación está fijada para este cambio.",
+      "use_thumbnail": "Usar esta imagen como miniatura del ítem",
+      "category_hint": "El nuevo archivo no encaja en la categoría actual del ítem. Elige una.",
+      "apply": "Aplicar",
+      "discard_title": "¿Descartar el nuevo archivo?",
+      "discard_description": "El archivo que cargaste no se aplicará al ítem.",
+      "discard": "Descartar"
     }
   },
   "zoom_controls": {

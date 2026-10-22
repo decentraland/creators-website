@@ -12,6 +12,7 @@ import {
   sortContent,
   sortContentZipBothBodyShape,
   withRehashedContents,
+  withReplacedRepresentation,
   withThumbnail,
   type ItemDraftPayload
 } from './itemFactory'
@@ -256,6 +257,44 @@ describe('addRepresentationToItem', () => {
     const base = await buildBase()
     const variant = { ...baseDraft, id: 'draft-2', bodyShape: BodyShapeType.MALE }
     await expect(addRepresentationToItem({ item: base }, variant)).rejects.toThrow()
+  })
+
+  it('takes the picked folder from a zip that ships both body shapes', async () => {
+    const base = await buildBase()
+    const variant: ItemDraftPayload = {
+      ...baseDraft,
+      id: 'draft-2',
+      bodyShape: BodyShapeType.FEMALE,
+      contents: { 'male/m.glb': blob('m'), 'female/f.glb': blob('f'), 'shared.png': blob('s') },
+      model: 'male/m.glb'
+    }
+    const { item, blobs } = await addRepresentationToItem({ item: base }, variant)
+    expect(item.data.representations[1].mainFile).toBe('female/f.glb')
+    expect(Object.keys(blobs).sort()).toEqual(['female/f.glb', 'female/shared.png'])
+  })
+})
+
+describe('withReplacedRepresentation', () => {
+  it('swaps one shape model and drops only that shape files', async () => {
+    const { item: base } = await buildItem(baseDraft)
+    const built = await withReplacedRepresentation(base, BodyShapeType.FEMALE, {
+      contents: { 'new.glb': blob('new') },
+      model: 'new.glb',
+      metrics: { triangles: 5 }
+    })
+    expect(built.item.data.representations[0]).toEqual(base.data.representations[0])
+    expect(built.item.data.representations[1].mainFile).toBe('female/new.glb')
+    expect(built.item.contents['male/model.glb']).toBe(base.contents['male/model.glb'])
+    expect(built.item.contents).not.toHaveProperty('female/model.glb')
+    expect(built.item.contents['thumbnail.png']).toBe(base.contents['thumbnail.png'])
+    expect(Object.keys(built.blobs)).toEqual(['female/new.glb'])
+  })
+
+  it('refuses a shape the item does not have', async () => {
+    const { item: base } = await buildItem({ ...baseDraft, bodyShape: BodyShapeType.MALE })
+    await expect(
+      withReplacedRepresentation(base, BodyShapeType.FEMALE, { contents: {}, model: 'x.glb', metrics: {} })
+    ).rejects.toThrow()
   })
 })
 
