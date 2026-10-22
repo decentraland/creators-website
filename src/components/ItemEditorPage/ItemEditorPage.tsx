@@ -36,6 +36,7 @@ import { BuilderServerError, COLLECTION_LOCKED_STATUS, getContentsStorageUrl } f
 import {
   canManageCollectionItems,
   canViewCollection,
+  hasCollectionRole,
   isCollectionLocked,
   isLinkedCollection,
   type Collection
@@ -467,6 +468,21 @@ const ItemEditorPage = () => {
             subject={validationSubject}
             onRerun={rerunSelectedValidation}
             onOpen={onValidationOpen}
+          />
+        )}
+        {mode === 'edit' && collection && hasCollectionRole(collection, address) && (
+          <S.PreviewLaunch
+            collectionId={collection.id}
+            disabled={items.length === 0}
+            data-testid="editor-preview"
+            onLaunch={launched =>
+              track('Preview In World', {
+                collectionId: collection.id,
+                itemCount: items.length,
+                launched,
+                trigger: 'editor'
+              })
+            }
           />
         )}
       </AvatarPreview>
