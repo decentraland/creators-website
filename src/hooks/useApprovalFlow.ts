@@ -276,6 +276,11 @@ export function useApprovalFlow(
         items = (await publishCollectionItems(address, collection.id)).items
         if (!matchesReviewedContent(items, reviewed)) throw new ItemsChangedError()
       }
+      // The same blank answer may have been what the editor loaded: fail here with a clear cause rather than deploying
+      // nothing or hashing an item without its urn.
+      if (items.some(item => !item.urn || !item.isPublished)) {
+        throw new Error('The items were loaded without their on-chain data; reload the collection and try again')
+      }
       // Rescuing rewrites only on-chain hashes, so what to deploy is known before it runs.
       const [rescue, entities] = await Promise.all([
         mode === 'approve'
@@ -304,7 +309,7 @@ export function useApprovalFlow(
         const pending = plan.rescue.filter(target => !done.has(rescueKey(target)))
         const txs = Math.ceil(pending.length / RESCUE_CHUNK_SIZE)
         try {
-          await rescueItems(collection, pending, {
+          const indexed = await rescueItems(collection, pending, {
             chainId,
             sendTransaction: txSender(token, 'rescue', txs),
             waitForTransaction: wait,
@@ -314,6 +319,12 @@ export function useApprovalFlow(
               plan.rescue.some(planned => rescueKey(planned) === rescueKey(target))
             )
           })
+          // A rescue moves no `updatedAt`, so the reviewed items keep reading as stale: a flow reopened after a later
+          // step failed would plan (and pay for) the same rescue again. Only the hash is written back.
+          const hashes = new Map(indexed.map(item => [item.id, item.blockchainContentHash]))
+          queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collection.id), current =>
+            current?.map(item => (hashes.has(item.id) ? { ...item, blockchainContentHash: hashes.get(item.id) } : item))
+          )
           track('Rescue items', { collectionId: collection.id, item_count: plan.rescue.length })
           await goTo(token, plan.steps, 'rescue')
         } catch (error) {
@@ -321,7 +332,7 @@ export function useApprovalFlow(
           fail(token, 'rescue', error)
         }
       }),
-    [once, collection, plan, chainId, txSender, wait, fetchItems, goTo, fail]
+    [once, collection, plan, chainId, txSender, wait, fetchItems, goTo, fail, queryClient, address]
   )
 
   const runDeploy = useMemo(
