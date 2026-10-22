@@ -463,6 +463,7 @@
       "placeholder": "复制或选择收款人的用户 ID",
       "open": "显示好友",
       "clear": "清除收款人",
+      "you": "您",
       "friends_loading": "正在加载您的好友……",
       "no_matches": "没有匹配的好友。您也可以粘贴钱包地址（0x……）。",
       "invalid": "请输入有效的钱包地址（0x……）。"
@@ -915,7 +916,8 @@
       "placeholder": "输入标签后按 Enter 添加",
       "remove": "移除标签 {tag}",
       "empty": "此物品没有标签。",
-      "campaign_hint": "添加“{tag}”标签，即可让此物品参加 {name}。"
+      "campaign_hint": "添加 <hl>{tag}</hl> 标签，即可让此物品参加 {name}。",
+      "campaign_add": "点击添加"
     },
     "options": {
       "title": "选项",
@@ -1055,13 +1057,20 @@
     "linkEthics": "道德准则"
   },
   "send_items_modal": {
+    "discard": {
+      "title": "放弃此次发送？",
+      "description": "如果现在离开，您输入的收件人和份数将不会保留。",
+      "leave": "放弃",
+      "keep": "继续编辑"
+    },
     "title": "发送物品",
     "step_select": "选择物品",
     "step_confirm": "确认物品",
     "transfer": "第 {n} 笔转移",
     "remove_transfer": "移除转移",
-    "recipient_placeholder": "选择或粘贴收件人的用户 ID",
+    "recipient_placeholder": "选择或粘贴一个或多个收件人的用户 ID",
     "add_recipient": "添加其他收件人",
+    "clear_recipients": "全部清除",
     "duplicate_recipient": "此收件人已在本次转移中。",
     "items_for_recipient": "发给此收件人的物品",
     "available": "可用 {available} / {total}",
@@ -1073,6 +1082,9 @@
     "add_transfer": "添加其他转移",
     "total": "{count} / {max} 个物品",
     "limit_reached": "您一次最多可以发送 {max} 个物品。请移除部分份数后继续。",
+    "paste_added": "已添加 {count} 位收件人。",
+    "paste_skipped": "已添加 {count} 位收件人，跳过 {skipped} 位：无效或已添加。",
+    "paste_cut": "已添加 {count} 位收件人。您一次最多可以发送 {max} 个物品。",
     "continue": "继续",
     "back": "返回",
     "submit": "发送物品",

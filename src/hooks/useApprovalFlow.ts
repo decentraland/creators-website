@@ -1,14 +1,15 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { type Entity } from '@dcl/schemas'
 import { allCollectionItemsKey } from '~/hooks/useCollection'
 import { collectionCurationKey } from '~/hooks/useCuration'
+import { itemEntitiesKey } from '~/hooks/useItemSync'
 import { errorCode, track } from '~/lib/analytics'
 import {
   APPROVAL_INDEX_TIMEOUT_MS,
   approveOnChain,
   buildMissingImage,
   deployItems,
-  ensureTokenIds,
   findItemsToDeploy,
   findItemsToRescue,
   rescueItems,
@@ -266,20 +267,40 @@ export function useApprovalFlow(
       return goTo(token, steps, null)
     }
     try {
-      const fetched = await fetchItems()
-      // Before the token-id backfill, which saves the items again.
-      if (!matchesReview(fetched, reviewed)) throw new ItemsChangedError()
-      const items = await ensureTokenIds(fetched, {
-        publishCollectionItems: () => publishCollectionItems(address, collection.id),
-        fetchItems
+      // Only `updatedAt` is read from this fetch: the plan is built from the items the curator reviewed, as the legacy
+      // builder does. builder-server answers 200 with the on-chain fields blank when its subgraph query fails, which
+      // would read here as unpublished items or as every item needing a rescue. A fetch that fails outright doesn't
+      // block the approval either: the check is an extra over legacy, which approves what it loaded.
+      const fetched = await fetchItems().catch((error: unknown) => {
+        captureError(error, { flow: 'curation_approve', step: 'changed_check', collectionId: collection.id })
+        return null
       })
-      if (items !== fetched && !matchesReviewedContent(items, reviewed)) throw new ItemsChangedError()
-      // Rescuing rewrites only on-chain hashes, so what to deploy is known before it runs.
+      if (fetched && !matchesReview(fetched, reviewed)) throw new ItemsChangedError()
+      let items = reviewed
+      // Items of a collection whose creator left before the publish finished have no token id; the server backfills
+      // them and answers with the items saved again.
+      if (!items.every(item => item.tokenId)) {
+        items = (await publishCollectionItems(address, collection.id)).items
+        if (!matchesReviewedContent(items, reviewed)) throw new ItemsChangedError()
+      }
+      // The same blank answer may have been what the editor loaded: fail here with a clear cause rather than deploying
+      // nothing or hashing an item without its urn.
+      if (items.some(item => !item.urn || !item.isPublished)) {
+        throw new Error('The items were loaded without their on-chain data; reload the collection and try again')
+      }
+      // Rescuing rewrites only on-chain hashes, so what to deploy is known before it runs. When the Catalyst can't be
+      // reached, the entities the review bar already looked up (the same key) stand in, as legacy plans from its own.
+      const pointers = items.flatMap(item => (item.urn ? [item.urn] : []))
       const [rescue, entities] = await Promise.all([
         mode === 'approve'
           ? findItemsToRescue(collection, items, item => buildMissingImage(item, imageDeps))
           : Promise.resolve([]),
-        fetchEntitiesByPointers(items.flatMap(item => (item.urn ? [item.urn] : [])))
+        fetchEntitiesByPointers(pointers).catch((error: unknown) => {
+          const cached = queryClient.getQueryData<Entity[]>(itemEntitiesKey(collection.id, pointers))
+          if (!cached) throw error
+          captureError(error, { flow: 'curation_approve', step: 'entities', collectionId: collection.id })
+          return cached
+        })
       ])
       if (token !== run.current) return
       const deploy = findItemsToDeploy(items, entities, mode === 'deploy_missing')
@@ -293,7 +314,7 @@ export function useApprovalFlow(
     } catch (error) {
       fail(token, 'prepare', error)
     }
-  }, [collection, mode, address, reviewed, fetchItems, goTo, fail])
+  }, [collection, mode, address, reviewed, fetchItems, goTo, fail, queryClient])
 
   const runRescue = useMemo(
     () =>
@@ -302,7 +323,7 @@ export function useApprovalFlow(
         const pending = plan.rescue.filter(target => !done.has(rescueKey(target)))
         const txs = Math.ceil(pending.length / RESCUE_CHUNK_SIZE)
         try {
-          await rescueItems(collection, pending, {
+          const indexed = await rescueItems(collection, pending, {
             chainId,
             sendTransaction: txSender(token, 'rescue', txs),
             waitForTransaction: wait,
@@ -312,6 +333,15 @@ export function useApprovalFlow(
               plan.rescue.some(planned => rescueKey(planned) === rescueKey(target))
             )
           })
+          // A rescue moves no `updatedAt`, so the reviewed items keep reading as stale: a flow reopened after a later
+          // step failed would plan (and pay for) the same rescue again. Only the hash is written back.
+          const rescued = new Set(plan.rescue.map(target => target.item.id))
+          const hashes = new Map(
+            indexed.filter(item => rescued.has(item.id)).map(item => [item.id, item.blockchainContentHash])
+          )
+          queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collection.id), current =>
+            current?.map(item => (hashes.has(item.id) ? { ...item, blockchainContentHash: hashes.get(item.id) } : item))
+          )
           track('Rescue items', { collectionId: collection.id, item_count: plan.rescue.length })
           await goTo(token, plan.steps, 'rescue')
         } catch (error) {
@@ -319,7 +349,7 @@ export function useApprovalFlow(
           fail(token, 'rescue', error)
         }
       }),
-    [once, collection, plan, chainId, txSender, wait, fetchItems, goTo, fail]
+    [once, collection, plan, chainId, txSender, wait, fetchItems, goTo, fail, queryClient, address]
   )
 
   const runDeploy = useMemo(

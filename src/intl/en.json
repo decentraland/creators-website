@@ -463,6 +463,7 @@
       "placeholder": "Copy or select beneficiary User ID",
       "open": "Show friends",
       "clear": "Clear beneficiary",
+      "you": "You",
       "friends_loading": "Loading your friends…",
       "no_matches": "No friends match. Paste a wallet address (0x…) instead.",
       "invalid": "Enter a valid wallet address (0x…)."
@@ -915,7 +916,8 @@
       "placeholder": "Add a tag and press Enter",
       "remove": "Remove tag {tag}",
       "empty": "This item has no tags.",
-      "campaign_hint": "Add the “{tag}” tag to enter this item in {name}."
+      "campaign_hint": "Add the <hl>{tag}</hl> tag to enter this item in {name}.",
+      "campaign_add": "Click to add"
     },
     "options": {
       "title": "Options",
@@ -1055,13 +1057,20 @@
     "linkEthics": "Code of Ethics"
   },
   "send_items_modal": {
+    "discard": {
+      "title": "Discard this send?",
+      "description": "If you leave now, the recipients and copies you entered won’t be kept.",
+      "leave": "Discard",
+      "keep": "Keep editing"
+    },
     "title": "Send Items",
     "step_select": "Select Items",
     "step_confirm": "Confirm Items",
     "transfer": "Transfer {n}",
     "remove_transfer": "Remove transfer",
-    "recipient_placeholder": "Select or copy recipient User ID",
+    "recipient_placeholder": "Select or paste one or more recipient User IDs",
     "add_recipient": "Add another recipient",
+    "clear_recipients": "Clear all",
     "duplicate_recipient": "This recipient is already in this transfer.",
     "items_for_recipient": "Items for this recipient",
     "available": "{available} / {total} available",
@@ -1073,6 +1082,9 @@
     "add_transfer": "Add another transfer",
     "total": "{count} / {max} items",
     "limit_reached": "You can send up to {max} items at a time. Remove some copies to continue.",
+    "paste_added": "{count, plural, one {# recipient} other {# recipients}} added.",
+    "paste_skipped": "{count, plural, one {# recipient} other {# recipients}} added, {skipped} skipped: invalid or already added.",
+    "paste_cut": "{count, plural, one {# recipient} other {# recipients}} added. You can send up to {max} items at a time.",
     "continue": "Continue",
     "back": "Back",
     "submit": "Send items",

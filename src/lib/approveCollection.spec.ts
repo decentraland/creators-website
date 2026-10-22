@@ -6,7 +6,6 @@ import {
   ApprovalError,
   approveOnChain,
   deployItems,
-  ensureTokenIds,
   findItemsToDeploy,
   findItemsToRescue,
   rescueItems,
@@ -68,17 +67,6 @@ function entityOf(subject: Item): Entity {
     metadata: { name: subject.name, description: subject.description, data: subject.data }
   } as Entity
 }
-
-describe('ensureTokenIds', () => {
-  it('leaves complete items alone and asks the server to backfill missing token ids', async () => {
-    const deps = { publishCollectionItems: vi.fn(), fetchItems: vi.fn().mockResolvedValue([item('1')]) }
-    await ensureTokenIds([item('1')], deps)
-    expect(deps.publishCollectionItems).not.toHaveBeenCalled()
-
-    await expect(ensureTokenIds([item('1', { tokenId: undefined })], deps)).resolves.toEqual([item('1')])
-    expect(deps.publishCollectionItems).toHaveBeenCalled()
-  })
-})
 
 describe('findItemsToRescue', () => {
   const noImage = async () => null
@@ -162,6 +150,16 @@ describe('findItemsToDeploy', () => {
     const changed = item('2')
     const missing = item('3')
     expect(findItemsToDeploy([changed, missing], [entityOf({ ...changed, name: 'Old name' })], true)).toEqual([missing])
+  })
+
+  it('deploys a tag-only edit together with its rescue, so the Catalyst never lags the chain', async () => {
+    const approved = item('1')
+    const content = getEntityContent(approved)
+    const approvedHash = await computeItemContentHash(collection, approved, content, 'v1')
+    const retagged = { ...approved, data: { ...approved.data, tags: ['pirate'] }, blockchainContentHash: approvedHash }
+    const rescue = await findItemsToRescue(collection, [retagged], async () => null)
+    expect(rescue.map(target => target.item)).toEqual([retagged])
+    expect(findItemsToDeploy([retagged], [entityOf(approved)])).toEqual([retagged])
   })
 })
 

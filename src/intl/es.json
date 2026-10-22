@@ -463,6 +463,7 @@
       "placeholder": "Pega o selecciona el ID de usuario del beneficiario",
       "open": "Mostrar amigos",
       "clear": "Quitar beneficiario",
+      "you": "Tú",
       "friends_loading": "Cargando tus amigos…",
       "no_matches": "Ningún amigo coincide. Pega una dirección de wallet (0x…) en su lugar.",
       "invalid": "Ingresa una dirección de wallet válida (0x…)."
@@ -915,7 +916,8 @@
       "placeholder": "Escribe una etiqueta y presiona Enter",
       "remove": "Quitar etiqueta {tag}",
       "empty": "Este ítem no tiene etiquetas.",
-      "campaign_hint": "Agrega la etiqueta “{tag}” para participar con este ítem en {name}."
+      "campaign_hint": "Agrega la etiqueta <hl>{tag}</hl> para participar con este ítem en {name}.",
+      "campaign_add": "Haz clic para agregar"
     },
     "options": {
       "title": "Opciones",
@@ -1055,13 +1057,20 @@
     "linkEthics": "Código de ética"
   },
   "send_items_modal": {
+    "discard": {
+      "title": "¿Descartar este envío?",
+      "description": "Si sales ahora, los destinatarios y las copias que ingresaste no se conservarán.",
+      "leave": "Descartar",
+      "keep": "Seguir editando"
+    },
     "title": "Enviar ítems",
     "step_select": "Seleccionar ítems",
     "step_confirm": "Confirmar ítems",
     "transfer": "Envío {n}",
     "remove_transfer": "Quitar envío",
-    "recipient_placeholder": "Selecciona o pega el User ID del destinatario",
+    "recipient_placeholder": "Selecciona o pega uno o más User IDs de destinatarios",
     "add_recipient": "Agregar otro destinatario",
+    "clear_recipients": "Quitar todos",
     "duplicate_recipient": "Este destinatario ya está en este envío.",
     "items_for_recipient": "Ítems para este destinatario",
     "available": "{available} / {total} disponibles",
@@ -1073,6 +1082,9 @@
     "add_transfer": "Agregar otro envío",
     "total": "{count} / {max} ítems",
     "limit_reached": "Puedes enviar hasta {max} ítems a la vez. Quita algunas copias para continuar.",
+    "paste_added": "{count, plural, one {# destinatario agregado} other {# destinatarios agregados}}.",
+    "paste_skipped": "{count, plural, one {# destinatario agregado} other {# destinatarios agregados}}, {skipped, plural, one {# omitido: inválido o ya agregado} other {# omitidos: inválidos o ya agregados}}.",
+    "paste_cut": "{count, plural, one {# destinatario agregado} other {# destinatarios agregados}}. Puedes enviar hasta {max} ítems a la vez.",
     "continue": "Continuar",
     "back": "Atrás",
     "submit": "Enviar ítems",

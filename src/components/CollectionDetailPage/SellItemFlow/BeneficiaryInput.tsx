@@ -1,10 +1,11 @@
 import { shortenAddress } from '~/lib/address'
-import { useId, useMemo, useState, type KeyboardEvent } from 'react'
+import { useId, useMemo, useState, type ClipboardEvent, type KeyboardEvent } from 'react'
 import { Close as CloseIcon, ExpandMore as ChevronIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { useProfile } from '~/hooks/useProfile'
 import { type Friend } from '~/lib/friends'
 import { isValidAddress } from '~/lib/sales'
+import { holdsAddresses } from '~/lib/mint'
 import * as S from './SellItemModal.styles'
 
 type Props = {
@@ -18,6 +19,16 @@ type Props = {
   placeholder?: string
   /** Rejects an address already used, with this copy under the field. */
   duplicateError?: (address: string) => string | null
+  /**
+   * Takes a pasted list of addresses (the text holds addresses but is not one): the field clears when it
+   * returns null, or keeps the text and shows the returned error under it.
+   */
+  onChangeMany?: (text: string) => string | null
+  /** The signed-in wallet (lowercased): listed first as "You". */
+  self?: string
+  /** Addresses already chosen (lowercased): left out of the list; one typed in is dropped and `onExcluded` told. */
+  exclude?: string[]
+  onExcluded?: () => void
   /** Accessible name of the chip's ✕; "Clear beneficiary" unless the chip stands for something else. */
   clearLabel?: string
   /** `compact`: the chosen address as a dark pill with a shortened address (address lists), not a form field. */
@@ -37,6 +48,10 @@ export function BeneficiaryInput({
   disabled,
   placeholder,
   duplicateError,
+  onChangeMany,
+  self,
+  exclude,
+  onExcluded,
   clearLabel,
   variant = 'field',
   testId = 'beneficiary'
@@ -47,37 +62,89 @@ export function BeneficiaryInput({
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
   const [touched, setTouched] = useState(false)
+  const [listError, setListError] = useState<string | null>(null)
 
-  const selectedFriend = useMemo(() => friends?.find(friend => friend.address === value), [friends, value])
+  const selfProfile = useProfile(self)
+  const youLabel = t('sell_item_modal.beneficiary.you')
+  const entries = useMemo<Friend[]>(() => {
+    const list = friends ?? []
+    if (!self) return list
+    const me: Friend = {
+      address: self,
+      // No name: the "You" tag and the address identify the row, so the address isn't repeated as a name.
+      name: selfProfile.data?.name ?? '',
+      hasClaimedName: selfProfile.data?.hasClaimedName ?? false,
+      avatarUrl: selfProfile.data?.avatar?.snapshots?.face256 ?? ''
+    }
+    return [me, ...list.filter(friend => friend.address !== self)]
+  }, [friends, self, selfProfile.data])
+
+  const selectedFriend = useMemo(() => entries.find(friend => friend.address === value), [entries, value])
   // A pasted address that isn't a friend still gets a name and avatar from its profile, when it has one.
   const profile = useProfile(value && !selectedFriend ? value : undefined)
 
+  const available = useMemo(
+    () => (exclude?.length ? entries.filter(friend => !exclude.includes(friend.address)) : entries),
+    [entries, exclude]
+  )
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    const list = friends ?? []
-    if (!needle) return list
-    return list.filter(friend => friend.name.toLowerCase().includes(needle) || friend.address.includes(needle))
-  }, [friends, query])
+    if (!needle) return available
+    return available.filter(
+      friend =>
+        friend.name.toLowerCase().includes(needle) ||
+        friend.address.includes(needle) ||
+        (friend.address === self && youLabel.toLowerCase().includes(needle))
+    )
+  }, [available, query, self, youLabel])
 
   const trimmed = query.trim()
   const duplicate = isValidAddress(trimmed) ? duplicateError?.(trimmed.toLowerCase()) : null
   const invalid = touched && trimmed !== '' && !isValidAddress(trimmed)
-  // Without friends to pick from the field is a plain address input.
-  const withFriends = isLoadingFriends || (friends?.length ?? 0) > 0
+  // Without anyone left to pick from the field is a plain address input.
+  const withFriends = isLoadingFriends || available.length > 0
 
-  function commit(address: string) {
-    if (duplicateError?.(address.toLowerCase())) return
-    onChange(address.toLowerCase())
+  function reset() {
     setQuery('')
     setOpen(false)
     setTouched(false)
+    setListError(null)
+  }
+
+  function commit(address: string) {
+    const normalized = address.toLowerCase()
+    if (exclude?.includes(normalized)) {
+      onExcluded?.()
+      reset()
+      return
+    }
+    if (duplicateError?.(normalized)) return
+    onChange(normalized)
+    reset()
   }
 
   function handleInput(next: string) {
     setQuery(next)
     setActive(0)
     setOpen(true)
+    setListError(null)
     if (isValidAddress(next.trim())) commit(next.trim())
+  }
+
+  // Read from the clipboard: the input itself would drop the line breaks between the addresses.
+  function handlePaste(event: ClipboardEvent<HTMLInputElement>) {
+    if (!onChangeMany) return
+    const text = event.clipboardData.getData('text').trim()
+    if (isValidAddress(text) || !holdsAddresses(text)) return
+    event.preventDefault()
+    const error = onChangeMany(text)
+    if (error === null) {
+      reset()
+      return
+    }
+    setQuery(text.replace(/\s+/g, ' '))
+    setOpen(false)
+    setListError(error)
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -104,13 +171,14 @@ export function BeneficiaryInput({
   }
 
   if (value) {
-    const known = selectedFriend?.name ?? profile.data?.name
+    const known = selectedFriend?.name || profile.data?.name
     const avatar = selectedFriend?.avatarUrl ?? profile.data?.avatar?.snapshots?.face256
     const compact = variant === 'compact'
     return (
       <S.Box data-testid={`${testId}-selected`} data-variant={variant} data-disabled={disabled || undefined}>
         {avatar ? <S.Avatar src={avatar} alt="" /> : <S.AvatarFallback aria-hidden />}
         <S.ChipName data-testid={`${testId}-name`}>{known ?? shortenAddress(value)}</S.ChipName>
+        {value === self && <S.YouTag data-testid={`${testId}-you`}>{youLabel}</S.YouTag>}
         {/* Without a name the compact pill would repeat the shortened address, so it shows it once. */}
         {(known || !compact) && (
           <S.ChipAddress title={value}>({compact ? shortenAddress(value) : value})</S.ChipAddress>
@@ -145,6 +213,7 @@ export function BeneficiaryInput({
           data-testid={`${testId}-input`}
           onChange={event => handleInput(event.target.value)}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           onBlur={() => {
             setOpen(false)
             setTouched(true)
@@ -168,12 +237,7 @@ export function BeneficiaryInput({
         )}
         {withFriends && open && (
           <S.Options role="listbox" id={listId} data-testid={`${testId}-options`}>
-            {isLoadingFriends ? (
-              <S.OptionNote>
-                <S.Spinner aria-hidden />
-                {t('sell_item_modal.beneficiary.friends_loading')}
-              </S.OptionNote>
-            ) : matches.length === 0 ? (
+            {matches.length === 0 && !isLoadingFriends ? (
               <S.OptionNote data-testid={`${testId}-no-matches`}>
                 {t('sell_item_modal.beneficiary.no_matches')}
               </S.OptionNote>
@@ -190,16 +254,29 @@ export function BeneficiaryInput({
                   onClick={() => commit(friend.address)}
                 >
                   {friend.avatarUrl ? <S.Avatar src={friend.avatarUrl} alt="" /> : <S.AvatarFallback aria-hidden />}
-                  <span>{friend.name}</span>
+                  {friend.name && <span>{friend.name}</span>}
+                  {friend.address === self && <S.YouTag>{youLabel}</S.YouTag>}
                   <S.OptionAddress>{shortenAddress(friend.address)}</S.OptionAddress>
                 </S.Option>
               ))
             )}
+            {/* Self is known at once; the friends join the list under the note when they arrive. */}
+            {isLoadingFriends && (
+              <S.OptionNote>
+                <S.Spinner aria-hidden />
+                {t('sell_item_modal.beneficiary.friends_loading')}
+              </S.OptionNote>
+            )}
           </S.Options>
         )}
       </S.Box>
-      {invalid && <S.ErrorText data-testid={`${testId}-error`}>{t('sell_item_modal.beneficiary.invalid')}</S.ErrorText>}
-      {duplicate && <S.ErrorText data-testid={`${testId}-error`}>{duplicate}</S.ErrorText>}
+      {listError ? (
+        <S.ErrorText data-testid={`${testId}-error`}>{listError}</S.ErrorText>
+      ) : invalid ? (
+        <S.ErrorText data-testid={`${testId}-error`}>{t('sell_item_modal.beneficiary.invalid')}</S.ErrorText>
+      ) : (
+        duplicate && <S.ErrorText data-testid={`${testId}-error`}>{duplicate}</S.ErrorText>
+      )}
     </S.Combo>
   )
 }

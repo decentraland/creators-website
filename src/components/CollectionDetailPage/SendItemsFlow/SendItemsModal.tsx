@@ -33,6 +33,7 @@ import * as S from './SendItemsModal.styles'
 export type SendStep = 'select' | 'confirm'
 
 type Props = {
+  collectionId: string
   items: Item[]
   session: Session
   step: SendStep
@@ -47,6 +48,7 @@ type Props = {
 
 /** Two steps: pick recipients and copies per transfer, then review what each wallet ends up with before sending. */
 export function SendItemsModal({
+  collectionId,
   items,
   session,
   step,
@@ -61,6 +63,11 @@ export function SendItemsModal({
   const friends = useFriends(session, true)
   const total = useMemo(() => totalCopies(transfers), [transfers])
   const over = total > MAX_ITEMS_PER_SEND
+  // Every recipient gets at least one copy: at the cap, another transfer could send nothing.
+  const recipientsFull = useMemo(
+    () => transfers.reduce((sum, transfer) => sum + transfer.recipients.length, 0) >= MAX_ITEMS_PER_SEND,
+    [transfers]
+  )
   const bundles = useMemo(() => copiesPerRecipient(transfers), [transfers])
   const itemCount = useMemo(() => new Set(bundles.flatMap(bundle => Object.keys(bundle.amounts))).size, [bundles])
 
@@ -79,30 +86,35 @@ export function SendItemsModal({
           testId="send-steps"
         />
       </S.Steps>
-      <S.Body data-busy={busy || undefined} aria-busy={busy || undefined} {...(busy ? { inert: '' } : {})}>
+      {/* Keyed by step so the body remounts and the confirm step opens at the top, not where the list was scrolled. */}
+      <S.Body key={step} data-busy={busy || undefined} aria-busy={busy || undefined} {...(busy ? { inert: '' } : {})}>
         {step === 'select' ? (
           <>
             {transfers.map((transfer, index) => (
               <TransferCard
                 key={transfer.key}
+                collectionId={collectionId}
                 index={index}
                 transfers={transfers}
                 items={items}
                 friends={friends.data}
                 isLoadingFriends={friends.isLoading}
+                self={session.address.toLowerCase()}
                 onChange={transfer => replace(index, transfer)}
                 onRemove={transfers.length > 1 ? () => onTransfers(transfers.filter((_, i) => i !== index)) : undefined}
               />
             ))}
-            <S.AddTransfer
-              type="button"
-              variant="secondary"
-              data-testid="send-add-transfer"
-              onClick={() => onTransfers([...transfers, createTransfer()])}
-            >
-              <AddIcon fontSize="small" />
-              {t('send_items_modal.add_transfer')}
-            </S.AddTransfer>
+            {!recipientsFull && (
+              <S.AddTransfer
+                type="button"
+                variant="secondary"
+                data-testid="send-add-transfer"
+                onClick={() => onTransfers([...transfers, createTransfer()])}
+              >
+                <AddIcon fontSize="small" />
+                {t('send_items_modal.add_transfer')}
+              </S.AddTransfer>
+            )}
             <S.Total data-over={over || undefined} data-testid="send-total">
               <span>{t('send_items_modal.total', { count: total, max: MAX_ITEMS_PER_SEND })}</span>
               {over && <span>{t('send_items_modal.limit_reached', { max: MAX_ITEMS_PER_SEND })}</span>}
