@@ -6,7 +6,6 @@ import {
   ApprovalError,
   approveOnChain,
   deployItems,
-  ensureTokenIds,
   findItemsToDeploy,
   findItemsToRescue,
   rescueItems,
@@ -68,17 +67,6 @@ function entityOf(subject: Item): Entity {
     metadata: { name: subject.name, description: subject.description, data: subject.data }
   } as Entity
 }
-
-describe('ensureTokenIds', () => {
-  it('leaves complete items alone and asks the server to backfill missing token ids', async () => {
-    const deps = { publishCollectionItems: vi.fn(), fetchItems: vi.fn().mockResolvedValue([item('1')]) }
-    await ensureTokenIds([item('1')], deps)
-    expect(deps.publishCollectionItems).not.toHaveBeenCalled()
-
-    await expect(ensureTokenIds([item('1', { tokenId: undefined })], deps)).resolves.toEqual([item('1')])
-    expect(deps.publishCollectionItems).toHaveBeenCalled()
-  })
-})
 
 describe('findItemsToRescue', () => {
   const noImage = async () => null

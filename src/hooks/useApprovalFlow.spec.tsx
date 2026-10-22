@@ -6,10 +6,10 @@ import { type ContractCall, type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
 import { type Item } from '~/lib/items'
+import { allCollectionItemsKey } from '~/hooks/useCollection'
 
 const flow = vi.hoisted(() => ({
   APPROVAL_INDEX_TIMEOUT_MS: 1000,
-  ensureTokenIds: vi.fn(),
   findItemsToRescue: vi.fn(),
   rescueItems: vi.fn(),
   findItemsToDeploy: vi.fn(),
@@ -49,7 +49,7 @@ type ApprovalMode = import('./useApprovalFlow').ApprovalMode
 type Deps = { sendTransaction: (call: ContractCall) => Promise<string> }
 
 const session = { address: '0xme' } as Session
-const item = { id: 'i1', name: 'Hat', urn: 'urn:1', contents: {} } as Item
+const item = { id: 'i1', name: 'Hat', urn: 'urn:1', tokenId: '0', isPublished: true, contents: {} } as Item
 const collection = { id: 'c1', isApproved: false } as Collection
 const pending = { collectionId: 'c1', status: 'pending' } as CollectionCuration
 
@@ -73,7 +73,6 @@ beforeEach(() => {
   Object.values(auth).forEach(fn => fn.mockReset())
   api.fetchAllCollectionItems.mockResolvedValue([item])
   api.fetchCollection.mockResolvedValue({ ...collection, isApproved: true })
-  flow.ensureTokenIds.mockImplementation(async (items: Item[]) => items)
   flow.findItemsToRescue.mockResolvedValue([])
   flow.findItemsToDeploy.mockReturnValue([])
   flow.rescueItems.mockResolvedValue([item])
@@ -328,18 +327,84 @@ describe('useApprovalFlow', () => {
     expect(api.updateCollectionCuration).not.toHaveBeenCalled()
   })
 
-  it('re-checks the items the token-id backfill saved again, on their content', async () => {
-    flow.ensureTokenIds.mockResolvedValue([{ ...item, updatedAt: 99, name: 'Edited meanwhile' }])
-    const { result } = renderFlow()
+  it('fails before any step when the reviewed items were loaded without their on-chain data', async () => {
+    const blank = { ...item, urn: undefined, isPublished: false }
+    const { result } = renderHook(() => useApprovalFlow(session, collection, pending, 'approve', [blank]), { wrapper })
     await act(() => result.current.start())
-    expect(result.current.view).toMatchObject({ kind: 'error', step: 'changed' })
+    expect(result.current.view).toMatchObject({
+      kind: 'error',
+      step: 'prepare',
+      detail: expect.stringContaining('reload')
+    })
+    expect(flow.findItemsToRescue).not.toHaveBeenCalled()
+
+    const missing = renderHook(() => useApprovalFlow(session, collection, pending, 'deploy_missing', [blank]), {
+      wrapper
+    })
+    await act(() => missing.result.current.start())
+    expect(missing.result.current.view).toMatchObject({ kind: 'error', step: 'prepare' })
+    expect(flow.findItemsToDeploy).not.toHaveBeenCalled()
   })
 
-  it('accepts a backfill that only moved updatedAt', async () => {
-    flow.ensureTokenIds.mockResolvedValue([{ ...item, updatedAt: 99 }])
+  it('carries the rescued hashes into the reviewed items, so a reopened flow does not rescue them again', async () => {
+    const stale = { ...item, blockchainContentHash: 'old' }
+    flow.findItemsToRescue.mockResolvedValue([{ item: stale, contentHash: 'new' }])
+    const other = { ...item, id: 'i2', blockchainContentHash: 'untouched' }
+    queryClient.setQueryData(allCollectionItemsKey('0xme', 'c1'), [stale, other])
+    api.fetchAllCollectionItems.mockResolvedValue([stale, other])
+    flow.rescueItems.mockResolvedValue([
+      { ...stale, blockchainContentHash: 'new' },
+      { ...other, blockchainContentHash: 'drifted' }
+    ])
+    flow.findItemsToDeploy.mockReturnValue([stale])
+    flow.deployItems.mockResolvedValue({ deployed: [], failed: [{ item: stale, message: 'boom' }] })
+    const reviewed = () => queryClient.getQueryData<Item[]>(allCollectionItemsKey('0xme', 'c1'))!
+    const first = renderHook(() => useApprovalFlow(session, collection, pending, 'approve', [stale, other]), {
+      wrapper
+    })
+    await act(() => first.result.current.start())
+    await act(() => first.result.current.runRescue())
+    await act(() => first.result.current.runDeploy())
+    expect(first.result.current.view).toMatchObject({ kind: 'error', step: 'deploy' })
+    expect(reviewed()).toEqual([{ ...stale, blockchainContentHash: 'new' }, other])
+    first.unmount()
+
+    flow.findItemsToRescue.mockResolvedValue([])
+    const second = renderHook(() => useApprovalFlow(session, collection, pending, 'approve', reviewed()), { wrapper })
+    await act(() => second.result.current.start())
+    expect(flow.findItemsToRescue).toHaveBeenLastCalledWith(
+      collection,
+      [{ ...stale, blockchainContentHash: 'new' }, other],
+      expect.any(Function)
+    )
+    expect(second.result.current.plan.steps).not.toContain('rescue')
+  })
+
+  it('plans from the items the curator reviewed, not from the fresh fetch', async () => {
+    // builder-server answers with blank on-chain fields when its subgraph query fails.
+    api.fetchAllCollectionItems.mockResolvedValue([{ ...item, urn: undefined, isPublished: false }])
     const { result } = renderFlow()
     await act(() => result.current.start())
     expect(result.current.view).toMatchObject({ kind: 'step', step: 'approve' })
+    expect(flow.findItemsToRescue).toHaveBeenCalledWith(collection, [item], expect.any(Function))
+    expect(api.publishCollectionItems).not.toHaveBeenCalled()
+  })
+
+  it('backfills missing token ids and re-checks the items the server saved again, on their content', async () => {
+    const unpublished = { ...item, tokenId: undefined }
+    api.publishCollectionItems.mockResolvedValue({ collection, items: [{ ...item, updatedAt: 99 }] })
+    const { result } = renderHook(() => useApprovalFlow(session, collection, pending, 'approve', [unpublished]), {
+      wrapper
+    })
+    await act(() => result.current.start())
+    expect(result.current.view).toMatchObject({ kind: 'step', step: 'approve' })
+
+    api.publishCollectionItems.mockResolvedValue({
+      collection,
+      items: [{ ...item, updatedAt: 99, name: 'Edited meanwhile' }]
+    })
+    await act(() => result.current.start())
+    expect(result.current.view).toMatchObject({ kind: 'error', step: 'changed' })
   })
 
   it('stops when the creator saved changes after the curator opened the collection', async () => {
