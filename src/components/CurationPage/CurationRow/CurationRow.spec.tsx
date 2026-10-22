@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { TranslationProvider } from '~/intl'
 import { type Collection } from '~/lib/collections'
@@ -51,6 +51,14 @@ describe('CurationRow', () => {
       'href',
       '/collections/editor?collection=c1&reviewing=true'
     )
+  })
+
+  it('tells a first review from an update to an approved collection', () => {
+    renderRow(pending)
+    expect(screen.getByTestId('review-type')).toHaveAttribute('data-type', 'new')
+    cleanup()
+    renderRow(pending, { ...collection, isApproved: true })
+    expect(screen.getByTestId('review-type')).toHaveAttribute('data-type', 'updates')
   })
 
   it('links the collection forum post', () => {

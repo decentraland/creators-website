@@ -920,15 +920,23 @@
     "sign_in": "Inicia sesión para revisar colecciones",
     "search_placeholder": "Busca por nombre o dirección del dueño",
     "filter": {
-      "all": "Todas",
       "to_review": "Por revisar",
       "under_review": "En revisión",
       "approved": "Aprobadas",
       "rejected": "Rechazadas",
+      "disabled": "Deshabilitadas",
       "all_assignees": "Todos los curadores",
       "you": "{name} (tú)",
       "assignee": "Curador asignado",
-      "sort": "Ordenar por"
+      "sort": "Ordenar por",
+      "all_statuses": "Todos los estados",
+      "status": "Estado",
+      "unassigned": "Sin asignar",
+      "review_type": {
+        "all": "Todas",
+        "new": "Nuevas",
+        "updates": "Cambios"
+      }
     },
     "sort": {
       "MOST_RELEVANT": "Más relevantes",
@@ -942,6 +950,7 @@
       "owner": "Dueño",
       "date": "Solicitada",
       "last_update": "Última actualización",
+      "type": "Tipo",
       "status": "Estado",
       "assignee": "Curador",
       "requested": "Revisión solicitada",
@@ -1365,6 +1374,10 @@
     "approved": "Aprobada",
     "rejected": "Rechazada",
     "disabled": "Deshabilitada"
+  },
+  "review_type": {
+    "new": "Nueva",
+    "updates": "Cambios"
   },
   "assign_curator_modal": {
     "title_self": "Revisar {collection}",

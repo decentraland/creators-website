@@ -6,6 +6,7 @@ import { Button } from '~/components/Button'
 import { AssignCuratorModal } from '~/components/AssignCuratorModal'
 import { NotFoundPage } from '~/components/NotFoundPage'
 import { Pagination } from '~/components/Pagination'
+import { MultiSelect } from '~/components/MultiSelect'
 import { Select, type SelectOption } from '~/components/Select'
 import { Switch } from '~/components/Switch'
 import { useCampaign } from '~/hooks/useCampaign'
@@ -13,20 +14,25 @@ import { useCommittee, useCurationCollections, useCurationsByCollection, useCura
 import { track } from '~/lib/analytics'
 import { type Collection } from '~/lib/collections'
 import {
-  ALL_ASSIGNEES,
   CURATION_PAGE_SIZE,
   CURATION_SORTS,
-  CurationStatusFilter,
+  DEFAULT_STATUS_FILTERS,
+  ReviewType,
+  STATUS_FILTERS,
+  UNASSIGNED,
   parseCurationFilters,
   rememberCurationSearch,
-  type CollectionCuration
+  toMultiParam,
+  type CollectionCuration,
+  type CurationStatusFilter
 } from '~/lib/curation'
 import { pageRangeLabel } from '~/lib/pagination'
 import { useWallet } from '~/store/wallet'
 import { CurationRow } from './CurationRow'
 import * as S from './CurationPage.styles'
 
-const STATUS_FILTERS = Object.values(CurationStatusFilter)
+const ALL_REVIEW_TYPES = 'all'
+const REVIEW_TYPE_FILTERS = [ALL_REVIEW_TYPES, ReviewType.NEW, ReviewType.UPDATES] as const
 const SEARCH_DEBOUNCE_MS = 500
 
 type Assigning = { collection: Collection; curation: CollectionCuration | null; mode: 'self' | 'edit' }
@@ -39,7 +45,7 @@ const CurationPage = () => {
   const campaign = useCampaign()
 
   const [searchParams, setSearchParams] = useSearchParams()
-  const filters = useMemo(() => parseCurationFilters(searchParams), [searchParams])
+  const filters = useMemo(() => parseCurationFilters(searchParams, address), [searchParams, address])
   const collections = useCurationCollections(address, filters, committee.isCurator)
   const curations = useCurationsByCollection(address, committee.isCurator)
   const [assigning, setAssigning] = useState<Assigning | null>(null)
@@ -54,22 +60,27 @@ const CurationPage = () => {
   useEffect(() => rememberCurationSearch(searchParams.size > 0 ? `?${searchParams}` : ''), [searchParams])
   useEffect(() => () => clearTimeout(searchTimer.current), [])
 
-  const allAssignees = useMemo(() => ({ value: ALL_ASSIGNEES, label: t('curation_page.filter.all_assignees') }), [t])
-  const assigneeOptions = useCuratorOptions(address, allAssignees)
+  const unassigned = useMemo(() => ({ value: UNASSIGNED, label: t('curation_page.filter.unassigned') }), [t])
+  const assigneeOptions = useCuratorOptions(address, unassigned)
+  const statusOptions = useMemo(
+    () => STATUS_FILTERS.map(status => ({ value: status, label: t(`curation_page.filter.${status}`) })),
+    [t]
+  )
   const sortOptions = useMemo<SelectOption<string>[]>(
     () => CURATION_SORTS.map(sort => ({ value: sort, label: t(`curation_page.sort.${sort}`) })),
     [t]
   )
 
   // Filters live in the URL so a review link can be shared and Back restores the list.
-  function changeParams(changes: Record<string, string | null>) {
+  function changeParams(changes: Record<string, string | string[] | null>) {
     setSearchParams(
       prev => {
         const next = new URLSearchParams(prev)
         next.delete('page')
         for (const [key, value] of Object.entries(changes)) {
-          if (value) next.set(key, value)
-          else next.delete(key)
+          next.delete(key)
+          if (Array.isArray(value)) value.forEach(entry => next.append(key, entry))
+          else if (value) next.set(key, value)
         }
         return next
       },
@@ -78,8 +89,14 @@ const CurationPage = () => {
   }
 
   function changeFilter(filter: string, value: string | null) {
-    track('Curation filter changed', { filter, value: value ?? 'all' })
+    track('Curation filter changed', { filter, value: value ?? ALL_REVIEW_TYPES })
     changeParams({ [filter]: value })
+  }
+
+  // The defaults are left out of the URL, so a plain /curation link always opens the standard view.
+  function changeMultiFilter(filter: 'status' | 'assignee', values: string[], defaults: string[]) {
+    track('Curation filter changed', { filter, value: values.join(',') || ALL_REVIEW_TYPES })
+    changeParams({ [filter]: toMultiParam(values, defaults) })
   }
 
   function onSearchChange(value: string) {
@@ -124,8 +141,9 @@ const CurationPage = () => {
   const shown = data?.results.length ?? 0
   const hasActiveFilters =
     !!filters.search ||
-    filters.status !== CurationStatusFilter.ALL ||
-    filters.assignee !== ALL_ASSIGNEES ||
+    filters.statuses.length > 0 ||
+    filters.assignees.length > 0 ||
+    !!filters.reviewType ||
     !!filters.tag
   // Rows can't tell "never requested" from "not loaded yet": without the curations their actions would open new requests.
   const isLoading = collections.isLoading || (collections.isFetching && !data) || curations.isLoading
@@ -151,16 +169,16 @@ const CurationPage = () => {
       </S.Header>
 
       <S.FilterRow>
-        <S.Chips data-testid="curation-status-filters">
-          {STATUS_FILTERS.map(status => (
+        <S.Chips data-testid="curation-review-type-filters">
+          {REVIEW_TYPE_FILTERS.map(type => (
             <S.Chip
-              key={status}
+              key={type}
               type="button"
-              data-active={filters.status === status || undefined}
-              data-testid={`curation-status-${status}`}
-              onClick={() => changeFilter('status', status === CurationStatusFilter.ALL ? null : status)}
+              data-active={(filters.reviewType ?? ALL_REVIEW_TYPES) === type || undefined}
+              data-testid={`curation-review-type-${type}`}
+              onClick={() => changeFilter('review_type', type === ALL_REVIEW_TYPES ? null : type)}
             >
-              {t(`curation_page.filter.${status}`)}
+              {t(`curation_page.filter.review_type.${type}`)}
             </S.Chip>
           ))}
         </S.Chips>
@@ -177,10 +195,20 @@ const CurationPage = () => {
             </S.CampaignToggle>
           )}
           <S.Selects>
-            <Select
-              value={filters.assignee}
+            <MultiSelect<CurationStatusFilter>
+              values={filters.statuses}
+              options={statusOptions}
+              onChange={values => changeMultiFilter('status', values, DEFAULT_STATUS_FILTERS)}
+              placeholder={t('curation_page.filter.all_statuses')}
+              ariaLabel={t('curation_page.filter.status')}
+              variant="compact"
+              testId="curation-status-filter"
+            />
+            <MultiSelect
+              values={filters.assignees}
               options={assigneeOptions}
-              onChange={value => changeFilter('assignee', value === ALL_ASSIGNEES ? null : value)}
+              onChange={values => changeMultiFilter('assignee', values, [UNASSIGNED, session.address.toLowerCase()])}
+              placeholder={t('curation_page.filter.all_assignees')}
               ariaLabel={t('curation_page.filter.assignee')}
               variant="compact"
               testId="curation-assignee-filter"
@@ -231,6 +259,7 @@ const CurationPage = () => {
               <span>{t('curation_page.list.owner')}</span>
               <span>{t('curation_page.list.date')}</span>
               <span>{t('curation_page.list.last_update')}</span>
+              <span>{t('curation_page.list.type')}</span>
               <span>{t('curation_page.list.status')}</span>
               <span>{t('curation_page.list.discussion')}</span>
               <span>{t('curation_page.list.assignee')}</span>

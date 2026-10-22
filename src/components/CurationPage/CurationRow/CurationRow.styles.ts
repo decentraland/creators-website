@@ -27,7 +27,7 @@ export const Row = styled.article`
     display: grid;
     grid-template-columns: 88px 1fr auto;
     grid-template-areas:
-      'thumb name state'
+      'thumb name pills'
       'thumb owner owner'
       'thumb requested requested'
       'thumb discussion discussion'
@@ -126,10 +126,22 @@ export const Cell = styled.div`
     &[data-cell='updated'] {
       display: none;
     }
-    &[data-cell='state'] {
-      grid-area: state;
-      align-self: start;
-    }
+  }
+`
+
+/* The two pills: separate columns in the table, stacked top-right on cards. */
+export const Pills = styled.div`
+  ${table} {
+    display: contents;
+  }
+
+  ${card} {
+    grid-area: pills;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    align-self: start;
+    gap: 4px;
   }
 `
 

@@ -4,6 +4,8 @@ import {
   CurationState,
   CurationStatusFilter,
   ReviewAction,
+  ReviewType,
+  UNASSIGNED,
   canEditAssignee,
   canPushChanges,
   curationListUrl,
@@ -11,10 +13,12 @@ import {
   fromRemoteCuration,
   getCurationState,
   getReviewActions,
+  getReviewType,
   isCommitteeMember,
   orderCurators,
   parseCurationFilters,
   toCurationQueryString,
+  toMultiParam,
   type CollectionCuration
 } from './curation'
 
@@ -185,26 +189,58 @@ describe('canEditAssignee', () => {
 })
 
 describe('curation filters', () => {
-  it('reads the URL with defaults for missing or unknown values', () => {
-    expect(parseCurationFilters(new URLSearchParams('status=bogus&sort=nope&page=-3'))).toEqual({
+  const ME = '0xME'
+
+  it('opens on to review and under review, unassigned and the signed-in curator, by latest activity', () => {
+    expect(parseCurationFilters(new URLSearchParams('status=bogus&sort=nope&page=-3'), ME)).toEqual({
       page: 1,
       search: '',
-      status: CurationStatusFilter.ALL,
-      assignee: 'all',
-      sort: CollectionSort.MOST_RELEVANT,
+      statuses: [CurationStatusFilter.TO_REVIEW, CurationStatusFilter.UNDER_REVIEW],
+      assignees: [UNASSIGNED, '0xme'],
+      reviewType: null,
+      sort: CollectionSort.LAST_ACTIVITY_DESC,
       tag: null
     })
   })
 
+  it('reads several statuses and assignees, and the review type', () => {
+    const filters = parseCurationFilters(
+      new URLSearchParams(
+        'status=approved&status=rejected&status=nope&assignee=0xABC&assignee=unassigned&review_type=new'
+      ),
+      ME
+    )
+    expect(filters.statuses).toEqual([CurationStatusFilter.APPROVED, CurationStatusFilter.REJECTED])
+    expect(filters.assignees).toEqual(['0xabc', UNASSIGNED])
+    expect(filters.reviewType).toBe(ReviewType.NEW)
+  })
+
+  it('takes "all" as a cleared filter rather than the defaults', () => {
+    const filters = parseCurationFilters(new URLSearchParams('status=all&assignee=all'), ME)
+    expect(filters.statuses).toEqual([])
+    expect(filters.assignees).toEqual([])
+  })
+
+  it('writes a picked set to the URL, "all" for none and nothing for the defaults', () => {
+    const defaults = [CurationStatusFilter.TO_REVIEW, CurationStatusFilter.UNDER_REVIEW]
+    expect(toMultiParam([CurationStatusFilter.UNDER_REVIEW, CurationStatusFilter.TO_REVIEW], defaults)).toBeNull()
+    expect(toMultiParam([], defaults)).toEqual(['all'])
+    expect(toMultiParam([CurationStatusFilter.REJECTED], defaults)).toEqual([CurationStatusFilter.REJECTED])
+  })
+
   it('builds the committee list query for published standard collections', () => {
     const filters = parseCurationFilters(
-      new URLSearchParams('status=under_review&assignee=0xABC&q=hat&sort=NAME_ASC&page=2&tag=Summer')
+      new URLSearchParams(
+        'status=under_review&status=to_review&assignee=0xABC&assignee=unassigned&review_type=updates&q=hat&sort=NAME_ASC&page=2&tag=Summer'
+      ),
+      ME
     )
     const query = new URLSearchParams(toCurationQueryString(filters))
-    expect(Object.fromEntries(query)).toEqual({
+    expect(query.getAll('status')).toEqual(['under_review', 'to_review'])
+    expect(query.getAll('assignee')).toEqual(['0xabc', 'unassigned'])
+    expect(Object.fromEntries(query)).toMatchObject({
       is_published: 'true',
-      assignee: '0xabc',
-      status: 'under_review',
+      review_type: 'updates',
       type: 'standard',
       sort: 'NAME_ASC',
       q: 'hat',
@@ -214,11 +250,25 @@ describe('curation filters', () => {
     })
   })
 
-  it('leaves the "all" filters out of the query', () => {
-    const query = new URLSearchParams(toCurationQueryString(parseCurationFilters(new URLSearchParams())))
+  it('leaves cleared filters out of the query', () => {
+    const query = new URLSearchParams(
+      toCurationQueryString(parseCurationFilters(new URLSearchParams('status=all&assignee=all'), ME))
+    )
     expect(query.has('status')).toBe(false)
     expect(query.has('assignee')).toBe(false)
+    expect(query.has('review_type')).toBe(false)
     expect(query.has('tag')).toBe(false)
+  })
+})
+
+describe('getReviewType', () => {
+  it('reads a collection approved on chain, or disabled after an approval, as updates', () => {
+    expect(getReviewType(collection({ isApproved: true }))).toBe(ReviewType.UPDATES)
+    expect(getReviewType(collection({ isApproved: false, createdAt: 1, reviewedAt: 2 }))).toBe(ReviewType.UPDATES)
+  })
+
+  it('reads a collection never approved as new', () => {
+    expect(getReviewType(collection({ isApproved: false, createdAt: 1, reviewedAt: 1 }))).toBe(ReviewType.NEW)
   })
 })
 

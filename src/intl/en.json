@@ -920,15 +920,23 @@
     "sign_in": "Sign in to review collections",
     "search_placeholder": "Search by name or owner address",
     "filter": {
-      "all": "All",
       "to_review": "To review",
       "under_review": "Under review",
       "approved": "Approved",
       "rejected": "Rejected",
+      "disabled": "Disabled",
       "all_assignees": "All assignees",
       "you": "{name} (you)",
       "assignee": "Assignee",
-      "sort": "Sort by"
+      "sort": "Sort by",
+      "all_statuses": "All statuses",
+      "status": "Status",
+      "unassigned": "Unassigned",
+      "review_type": {
+        "all": "All",
+        "new": "New",
+        "updates": "Updates"
+      }
     },
     "sort": {
       "MOST_RELEVANT": "Most relevant",
@@ -942,6 +950,7 @@
       "owner": "Owner",
       "date": "Requested",
       "last_update": "Last update",
+      "type": "Type",
       "status": "Status",
       "assignee": "Assignee",
       "requested": "Review requested",
@@ -1365,6 +1374,10 @@
     "approved": "Approved",
     "rejected": "Rejected",
     "disabled": "Disabled"
+  },
+  "review_type": {
+    "new": "New",
+    "updates": "Updates"
   },
   "assign_curator_modal": {
     "title_self": "Review {collection}",

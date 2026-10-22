@@ -3,10 +3,11 @@ import { Edit as EditIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { CollectionMosaic } from '~/components/CollectionMosaic'
 import { CurationStatePill } from '~/components/CurationStatePill'
+import { ReviewTypePill } from '~/components/ReviewTypePill'
 import { ProfileBadge } from '~/components/ProfileBadge'
 import { type Collection } from '~/lib/collections'
 import { openForumPost } from '~/lib/forumPost'
-import { canEditAssignee, getCurationState, type CollectionCuration } from '~/lib/curation'
+import { canEditAssignee, getCurationState, getReviewType, type CollectionCuration } from '~/lib/curation'
 import { formatTimeAgo } from '~/lib/time'
 import * as S from './CurationRow.styles'
 
@@ -49,9 +50,14 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
       <S.Cell data-cell="updated" data-testid="curation-row-updated">
         {curation ? formatTimeAgo(curation.updatedAt, intl.locale) : '—'}
       </S.Cell>
-      <S.Cell data-cell="state">
-        <CurationStatePill state={state} />
-      </S.Cell>
+      <S.Pills>
+        <S.Cell data-cell="type">
+          <ReviewTypePill type={getReviewType(collection)} />
+        </S.Cell>
+        <S.Cell data-cell="state">
+          <CurationStatePill state={state} />
+        </S.Cell>
+      </S.Pills>
       <S.DiscussionCell data-testid="curation-row-discussion">
         <S.CellLabel data-mobile-only>{t('curation_page.list.discussion')}</S.CellLabel>
         {collection.forumLink ? (
