@@ -337,22 +337,36 @@ describe('useApprovalFlow', () => {
       detail: expect.stringContaining('reload')
     })
     expect(flow.findItemsToRescue).not.toHaveBeenCalled()
+
+    const missing = renderHook(() => useApprovalFlow(session, collection, pending, 'deploy_missing', [blank]), {
+      wrapper
+    })
+    await act(() => missing.result.current.start())
+    expect(missing.result.current.view).toMatchObject({ kind: 'error', step: 'prepare' })
+    expect(flow.findItemsToDeploy).not.toHaveBeenCalled()
   })
 
   it('carries the rescued hashes into the reviewed items, so a reopened flow does not rescue them again', async () => {
     const stale = { ...item, blockchainContentHash: 'old' }
-    queryClient.setQueryData(allCollectionItemsKey('0xme', 'c1'), [stale])
     flow.findItemsToRescue.mockResolvedValue([{ item: stale, contentHash: 'new' }])
-    flow.rescueItems.mockResolvedValue([{ ...stale, blockchainContentHash: 'new' }])
+    const other = { ...item, id: 'i2', blockchainContentHash: 'untouched' }
+    queryClient.setQueryData(allCollectionItemsKey('0xme', 'c1'), [stale, other])
+    api.fetchAllCollectionItems.mockResolvedValue([stale, other])
+    flow.rescueItems.mockResolvedValue([
+      { ...stale, blockchainContentHash: 'new' },
+      { ...other, blockchainContentHash: 'drifted' }
+    ])
     flow.findItemsToDeploy.mockReturnValue([stale])
     flow.deployItems.mockResolvedValue({ deployed: [], failed: [{ item: stale, message: 'boom' }] })
     const reviewed = () => queryClient.getQueryData<Item[]>(allCollectionItemsKey('0xme', 'c1'))!
-    const first = renderHook(() => useApprovalFlow(session, collection, pending, 'approve', [stale]), { wrapper })
+    const first = renderHook(() => useApprovalFlow(session, collection, pending, 'approve', [stale, other]), {
+      wrapper
+    })
     await act(() => first.result.current.start())
     await act(() => first.result.current.runRescue())
     await act(() => first.result.current.runDeploy())
     expect(first.result.current.view).toMatchObject({ kind: 'error', step: 'deploy' })
-    expect(reviewed()).toEqual([{ ...stale, blockchainContentHash: 'new' }])
+    expect(reviewed()).toEqual([{ ...stale, blockchainContentHash: 'new' }, other])
     first.unmount()
 
     flow.findItemsToRescue.mockResolvedValue([])
@@ -360,7 +374,7 @@ describe('useApprovalFlow', () => {
     await act(() => second.result.current.start())
     expect(flow.findItemsToRescue).toHaveBeenLastCalledWith(
       collection,
-      [{ ...stale, blockchainContentHash: 'new' }],
+      [{ ...stale, blockchainContentHash: 'new' }, other],
       expect.any(Function)
     )
     expect(second.result.current.plan.steps).not.toContain('rescue')

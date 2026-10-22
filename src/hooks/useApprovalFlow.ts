@@ -321,7 +321,10 @@ export function useApprovalFlow(
           })
           // A rescue moves no `updatedAt`, so the reviewed items keep reading as stale: a flow reopened after a later
           // step failed would plan (and pay for) the same rescue again. Only the hash is written back.
-          const hashes = new Map(indexed.map(item => [item.id, item.blockchainContentHash]))
+          const rescued = new Set(plan.rescue.map(target => target.item.id))
+          const hashes = new Map(
+            indexed.filter(item => rescued.has(item.id)).map(item => [item.id, item.blockchainContentHash])
+          )
           queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collection.id), current =>
             current?.map(item => (hashes.has(item.id) ? { ...item, blockchainContentHash: hashes.get(item.id) } : item))
           )
