@@ -8,7 +8,6 @@ import {
   approveOnChain,
   buildMissingImage,
   deployItems,
-  ensureTokenIds,
   findItemsToDeploy,
   findItemsToRescue,
   rescueItems,
@@ -266,14 +265,17 @@ export function useApprovalFlow(
       return goTo(token, steps, null)
     }
     try {
-      const fetched = await fetchItems()
-      // Before the token-id backfill, which saves the items again.
-      if (!matchesReview(fetched, reviewed)) throw new ItemsChangedError()
-      const items = await ensureTokenIds(fetched, {
-        publishCollectionItems: () => publishCollectionItems(address, collection.id),
-        fetchItems
-      })
-      if (items !== fetched && !matchesReviewedContent(items, reviewed)) throw new ItemsChangedError()
+      // Only `updatedAt` is read from this fetch: the plan is built from the items the curator reviewed, as the legacy
+      // builder does. builder-server answers 200 with the on-chain fields blank when its subgraph query fails, which
+      // would read here as unpublished items or as every item needing a rescue.
+      if (!matchesReview(await fetchItems(), reviewed)) throw new ItemsChangedError()
+      let items = reviewed
+      // Items of a collection whose creator left before the publish finished have no token id; the server backfills
+      // them and answers with the items saved again.
+      if (!items.every(item => item.tokenId)) {
+        items = (await publishCollectionItems(address, collection.id)).items
+        if (!matchesReviewedContent(items, reviewed)) throw new ItemsChangedError()
+      }
       // Rescuing rewrites only on-chain hashes, so what to deploy is known before it runs.
       const [rescue, entities] = await Promise.all([
         mode === 'approve'

@@ -43,18 +43,6 @@ export class ApprovalError extends Error {
   }
 }
 
-export type TokenIdDeps = {
-  publishCollectionItems: () => Promise<unknown>
-  fetchItems: () => Promise<Item[]>
-}
-
-/** Items of a collection whose creator left before the publish finished have no token id; the server backfills them. */
-export async function ensureTokenIds(items: Item[], deps: TokenIdDeps): Promise<Item[]> {
-  if (items.every(item => item.tokenId)) return items
-  await deps.publishCollectionItems()
-  return deps.fetchItems()
-}
-
 /**
  * Published items whose on-chain content hash no longer matches the builder copy. Emotes and items with
  * no server-computed hash are hashed here, in both formats, since older items may carry the Qm one.
