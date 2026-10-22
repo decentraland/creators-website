@@ -1605,7 +1605,7 @@
     "publish_blocker": {
       "no_selection": "Selecciona los ítems para publicar o enviar.",
       "under_review": "Esta colección sigue en revisión. Cuando termine podrás publicar más ítems.",
-      "saving_mappings": "Guardando los cambios de mapeo…"
+      "saving_mappings": "Algunos cambios de mapeo aún no se guardaron. Corrígelos o termínalos antes de publicar."
     },
     "empty": {
       "title": "Empieza a agregar ítems a tu colección vinculada",
@@ -1886,8 +1886,10 @@
         "wait_tx": "Confirmar",
         "delete_virtual": "Indexar",
         "publish": "Enviar",
-        "push": "Cambios"
-      }
+        "push": "Cambios",
+        "check": "Revisión"
+      },
+      "check": "Revisando tus ítems…"
     },
     "error": {
       "title": "No pudimos publicar tus ítems",
@@ -1898,7 +1900,8 @@
       "tos_failed": "No pudimos registrar tu aceptación de los términos. Revisa tu correo y vuelve a intentarlo.",
       "generic": "Algo salió mal al publicar tus ítems. Inténtalo de nuevo.",
       "payment_pending": "Tu pago aún no se confirmó. Vuelve a intentarlo en unos minutos: lo retomaremos sin volver a cobrarte.",
-      "fee_changed": "La tarifa subió desde que la confirmaste, así que no se cobró nada. Vuelve a intentarlo para revisar la nueva tarifa."
+      "fee_changed": "La tarifa subió desde que la confirmaste, así que no se cobró nada. Vuelve a intentarlo para revisar la nueva tarifa.",
+      "push_failed": "Algunos cambios no se pudieron enviar a revisión. Lo que publicaste se envió correctamente. Inténtalo de nuevo para reenviar el resto."
     }
   },
   "push_linked_modal": {

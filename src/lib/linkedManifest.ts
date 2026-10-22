@@ -1,8 +1,8 @@
 // How a zip's wearable.json lands in a linked collection: which item it is (its URN) and which tokens unlock it.
 import { type Item } from './items'
 import { ItemFileError } from './itemFiles'
-import { DEFAULT_MAPPING, getItemMapping, mappingsFromManifest, type Mapping } from './mappings'
-import { decodeLinkedUrn, type LinkedContract } from './thirdParty'
+import { DEFAULT_MAPPING, getItemMapping, mappingsFromManifest, type Mapping, type Mappings } from './mappings'
+import { decodeLinkedUrn, isValidUrnSuffix, type LinkedContract } from './thirdParty'
 
 /** The linked collection a zip is imported into. */
 export type LinkedManifestTarget = {
@@ -17,7 +17,13 @@ export type LinkedManifestTarget = {
 export type LinkedManifestFields = {
   /** The item URN's own segment, when the manifest fixed it; generated from the name otherwise. */
   urnSuffix: string | null
+  /**
+   * The mapping the form shows. A zip without one gets "any token", shown in the form before anything is uploaded (the
+   * legacy builder refused such zips instead).
+   */
   mapping: Mapping
+  /** Edit in bulk without a manifest mapping: every rule the item has, kept whole while the form's mapping is untouched. */
+  keptMappings: Mappings | null
 }
 
 /**
@@ -31,7 +37,10 @@ export function resolveLinkedManifest(
 ): LinkedManifestFields {
   const id = manifest?.id ?? undefined
   const decoded = id ? decodeLinkedUrn(id) : null
-  if (id && (!decoded?.itemSuffix || !id.startsWith(`${target.collectionUrn}:`))) {
+  if (
+    id &&
+    (!decoded?.itemSuffix || !isValidUrnSuffix(decoded.itemSuffix) || !id.startsWith(`${target.collectionUrn}:`))
+  ) {
     throw new ItemFileError('linked_urn_mismatch')
   }
   const existing = target.updating && id ? target.updating.get(id) : undefined
@@ -41,14 +50,18 @@ export function resolveLinkedManifest(
   } else if (id && target.takenUrns?.has(id)) {
     throw new ItemFileError('linked_urn_in_use')
   }
-  let mapping: Mapping
-  if (manifest?.mapping !== undefined && manifest.mapping !== null) {
+  const urnSuffix = decoded?.itemSuffix ?? null
+  // Without a linked contract there is nothing to map to: like the legacy builder, a manifest mapping is ignored.
+  if (target.contract && manifest?.mapping !== undefined && manifest.mapping !== null) {
     const mappings = mappingsFromManifest(manifest.mapping, target.contract)
     const parsed = getItemMapping(mappings, target.contract)
     if (!parsed) throw new ItemFileError('linked_mapping_invalid')
-    mapping = parsed
-  } else {
-    mapping = getItemMapping(existing?.mappings, target.contract) ?? DEFAULT_MAPPING
+    return { urnSuffix, mapping: parsed, keptMappings: null }
   }
-  return { urnSuffix: decoded?.itemSuffix ?? null, mapping }
+  const kept = getItemMapping(existing?.mappings, target.contract)
+  return {
+    urnSuffix,
+    mapping: kept ?? DEFAULT_MAPPING,
+    keptMappings: kept && existing?.mappings ? existing.mappings : null
+  }
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from '~/intl'
 import { isValidUrnSuffix } from '~/lib/thirdParty'
 import { Button } from '~/components/Button'
@@ -35,6 +35,7 @@ export function EditUrnModal({ kind, urnPrefix, initialSuffix, isPending, error,
     onSubmit(trimmed)
   }
 
+  const errorId = useId()
   const shownError = trimmed && !isValid ? t('edit_urn_modal.error_invalid') : !edited && error ? error : null
 
   return (
@@ -58,6 +59,8 @@ export function EditUrnModal({ kind, urnPrefix, initialSuffix, isPending, error,
                 autoFocus
                 spellCheck={false}
                 autoComplete="off"
+                aria-invalid={shownError ? true : undefined}
+                aria-describedby={shownError ? errorId : undefined}
                 data-testid="urn-suffix-input"
                 onChange={event => {
                   setSuffix(event.target.value)
@@ -67,7 +70,9 @@ export function EditUrnModal({ kind, urnPrefix, initialSuffix, isPending, error,
             </N.Box>
           </N.Label>
           {shownError ? (
-            <N.ErrorText data-testid="urn-suffix-error">{shownError}</N.ErrorText>
+            <N.ErrorText id={errorId} data-testid="urn-suffix-error">
+              {shownError}
+            </N.ErrorText>
           ) : (
             <S.Preview data-testid="urn-preview" title={`${urnPrefix}:${trimmed}`}>
               {urnPrefix}:<strong>{trimmed || '…'}</strong>

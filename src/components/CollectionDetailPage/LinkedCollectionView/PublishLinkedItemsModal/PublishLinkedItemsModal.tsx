@@ -12,13 +12,7 @@ import { type Item } from '~/lib/items'
 import { type ItemCuration } from '~/lib/linkedItemStatus'
 import { loadPendingPublish, savePendingPublish, type PendingPublish } from '~/lib/pendingLinkedPayment'
 import { getMaticChainId } from '~/lib/publishCollection'
-import {
-  LinkedPublishError,
-  getLinkedPublishQuote,
-  mayHavePublished,
-  type LinkedPublishStep,
-  type LinkedSlots
-} from '~/lib/publishLinkedItems'
+import { LinkedPublishError, readFreshLinkedQuote, type LinkedPublishStep } from '~/lib/publishLinkedItems'
 import { LINKED_COLLECTION_NAME_MAX_LENGTH, type ThirdParty } from '~/lib/thirdParty'
 import { Modal } from '~/components/Modal'
 import { PendingModal } from '~/components/PendingModal'
@@ -45,6 +39,7 @@ type Props = {
 
 // Steps whose work the creator pays for or that the server already recorded: closing mid-way would strand it.
 const RUNNING_STEP_ORDER: LinkedPublishStep[] = [
+  'check',
   'tos',
   'kind',
   'allowance',
@@ -85,8 +80,7 @@ export function PublishLinkedItemsModal({
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [runningStep, setRunningStep] = useState<LinkedPublishStep | null>(null)
   const [outcome, setOutcome] = useState<'success' | LinkedPublishError | null>(null)
-  // What earlier attempts left behind: a payment a retry must resume from (kept across reopenings of the wizard), and
-  // a publish request that may have landed.
+  // A payment an earlier attempt sent, which a retry must resume from (kept across reopenings of the wizard).
   const pendingScope = useMemo(
     () => ({ chainId: getMaticChainId(), address, collectionId: collection.id }),
     [address, collection.id]
@@ -159,37 +153,34 @@ export function PublishLinkedItemsModal({
     )
   }
 
-  const quoteFor = (read: LinkedSlots) =>
-    getLinkedPublishQuote(itemsToPublish.length, read, price.data!, {
-      isProgrammatic,
-      published: thirdParty.published
-    })
-
   async function submit() {
     if (!price.data || !slots.data || submitting.current) return
     submitting.current = true
-    const shown = quoteFor(slots.data)
     setSlotsError(false)
     setFeeChanged(false)
-    setRunningStep('tos')
-    // Read again right before paying: the slots an earlier attempt bought must not be bought twice. A failed read
-    // hands back the stale count, so it stops here instead; and since the server also answers 0 when it fails, a 0 is
-    // confirmed with a second read before it can lead to buying every slot again.
-    let read = await slots.refetch()
-    if (!read.isError && read.data?.available === 0) read = await slots.refetch()
-    const fresh = read.isError ? undefined : read.data
-    const stop = () => {
+    setRunningStep('check')
+    // A failed read hands back the stale value, so it counts as no read at all.
+    const fresh = await readFreshLinkedQuote(
+      itemsToPublish.length,
+      { isProgrammatic, published: thirdParty.published },
+      { slots: slots.data, price: price.data },
+      {
+        readSlots: async () => {
+          const read = await slots.refetch()
+          return read.isError ? undefined : read.data
+        },
+        readPrice: async () => {
+          const read = await price.refetch()
+          return read.isError ? undefined : read.data
+        }
+      }
+    )
+    if (fresh.kind !== 'ready') {
+      if (fresh.kind === 'read_failed') setSlotsError(true)
+      else setFeeChanged(true)
       submitting.current = false
       setRunningStep(null)
-    }
-    if (!fresh) {
-      setSlotsError(true)
-      return stop()
-    }
-    // Someone else used slots meanwhile: the creator confirms the higher fee first.
-    if (quoteFor(fresh).fee.maxManaWei > shown.fee.maxManaWei) {
-      setFeeChanged(true)
-      return stop()
+      return
     }
     publish.mutate(
       {
@@ -200,26 +191,24 @@ export function PublishLinkedItemsModal({
         cheque,
         email,
         isProgrammatic,
-        slots: fresh,
-        maxFeeManaWei: shown.fee.maxManaWei,
-        price: price.data,
+        slots: fresh.slots,
+        maxFeeManaWei: fresh.maxFeeManaWei,
+        price: fresh.price,
         paidTx,
-        publishMayHaveLanded: !!pending.publishMayHaveLanded,
         curations,
         onStep: setRunningStep,
         onPayment: payment => updatePending({ payment })
       },
       {
         onSuccess: () => {
-          updatePending({ payment: undefined, publishMayHaveLanded: false })
+          updatePending({ payment: undefined })
           setOutcome('success')
           onPublished()
         },
         onError: error => {
-          const failure =
+          setOutcome(
             error instanceof LinkedPublishError ? error : new LinkedPublishError('publish', 'generic', String(error))
-          if (mayHavePublished(failure)) updatePending({ publishMayHaveLanded: true })
-          setOutcome(failure)
+          )
         },
         onSettled: () => {
           submitting.current = false

@@ -22,7 +22,9 @@ export const EMPTY_MAPPING_DRAFT: MappingDraft = { type: MappingType.ANY, id: ''
 
 export const DEFAULT_MAPPING: Mapping = { type: MappingType.ANY }
 
-const TOKEN_ID = /^\d+$/
+// No leading zeros: the schema matches single and multiple ids as exact strings, so `007` would never match token 7.
+const TOKEN_ID = /^(0|[1-9]\d*)$/
+const MAX_TOKEN_ID = 2n ** 256n - 1n
 // uint256 fits in 78 decimal digits.
 export const TOKEN_ID_MAX_LENGTH = 78
 
@@ -83,7 +85,7 @@ export function fromMappingDraft(draft: MappingDraft): Mapping | null {
   return isMappingValid(mapping) ? mapping : null
 }
 
-/** Whether a single mapping is well formed: digits only, unique ids, `from <= to`. */
+/** Whether a single mapping is well formed: uint256 token ids without leading zeros, unique ids, `from <= to`. */
 export function isMappingValid(mapping: Mapping): boolean {
   switch (mapping.type) {
     case MappingType.ANY:
@@ -100,7 +102,12 @@ export function isMappingValid(mapping: Mapping): boolean {
 }
 
 function isTokenId(value: string): boolean {
-  return typeof value === 'string' && value.length <= TOKEN_ID_MAX_LENGTH && TOKEN_ID.test(value)
+  return (
+    typeof value === 'string' &&
+    value.length <= TOKEN_ID_MAX_LENGTH &&
+    TOKEN_ID.test(value) &&
+    BigInt(value) <= MAX_TOKEN_ID
+  )
 }
 
 /** The schema's own check over the whole payload (legacy areMappingsValid), for what came from a zip or the server. */

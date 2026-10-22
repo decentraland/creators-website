@@ -22,7 +22,11 @@ vi.mock('~/hooks/useLinkedPublish', () => ({
     mutate: (_variables: unknown, options: { onSuccess: (cheque: unknown) => void }) =>
       options.onSuccess({ signature: '0xsig', qty: 1, salt: '0xsalt' })
   }),
-  useThirdPartyPrice: () => ({ data: price, isError: false, refetch: vi.fn() }),
+  useThirdPartyPrice: () => ({
+    data: price,
+    isError: false,
+    refetch: () => Promise.resolve({ data: price, isError: false })
+  }),
   useLinkedSlots: () => ({ data: slotsData, isError: false, refetch: slotsRefetch })
 }))
 vi.mock('~/hooks/useCollection', () => ({

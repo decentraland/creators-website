@@ -21,12 +21,16 @@ function errorKey(run: () => unknown): string | undefined {
 describe('resolveLinkedManifest', () => {
   it('takes the URN suffix and the mapping the manifest sets', () => {
     expect(resolveLinkedManifest({ id: `${collectionUrn}:cap`, mapping: { type: 'single', id: '7' } }, target)).toEqual(
-      { urnSuffix: 'cap', mapping: { type: MappingType.SINGLE, id: '7' } }
+      { urnSuffix: 'cap', mapping: { type: MappingType.SINGLE, id: '7' }, keptMappings: null }
     )
   })
 
   it('defaults to every token and a generated URN when the manifest sets neither', () => {
-    expect(resolveLinkedManifest(undefined, target)).toEqual({ urnSuffix: null, mapping: { type: MappingType.ANY } })
+    expect(resolveLinkedManifest(undefined, target)).toEqual({
+      urnSuffix: null,
+      mapping: { type: MappingType.ANY },
+      keptMappings: null
+    })
   })
 
   it("refuses another collection's URN and an invalid mapping", () => {
@@ -56,5 +60,37 @@ describe('resolveLinkedManifest when adding items', () => {
     const adding = { ...target, takenUrns: new Set([`${collectionUrn}:cap`]) }
     expect(errorKey(() => resolveLinkedManifest({ id: `${collectionUrn}:cap` }, adding))).toBe('linked_urn_in_use')
     expect(resolveLinkedManifest({ id: `${collectionUrn}:boots` }, adding).urnSuffix).toBe('boots')
+  })
+})
+
+describe('resolveLinkedManifest edge cases', () => {
+  it('keeps every mapping rule of a bulk-edited item when the zip sets none', () => {
+    const mappings = {
+      amoy: {
+        [contract.address]: [
+          { type: 'single', id: '3' },
+          { type: 'range', from: '10', to: '20' }
+        ]
+      }
+    }
+    const existing = { urn: `${collectionUrn}:cap`, mappings } as unknown as Item
+    const resolved = resolveLinkedManifest(
+      { id: existing.urn },
+      { ...target, updating: new Map([[existing.urn!, existing]]) }
+    )
+    expect(resolved.keptMappings).toBe(mappings)
+  })
+
+  it('ignores a manifest mapping when the collection has no linked contract', () => {
+    expect(
+      resolveLinkedManifest({ mapping: { type: 'range', from: '9', to: '1' } }, { collectionUrn, contract: null })
+        .mapping
+    ).toEqual({ type: MappingType.ANY })
+  })
+
+  it('refuses a URN whose own segment the server would refuse', () => {
+    expect(errorKey(() => resolveLinkedManifest({ id: `${collectionUrn}:bad suffix` }, target))).toBe(
+      'linked_urn_mismatch'
+    )
   })
 })

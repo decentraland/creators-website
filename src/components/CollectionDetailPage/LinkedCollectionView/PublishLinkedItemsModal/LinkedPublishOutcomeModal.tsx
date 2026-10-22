@@ -18,7 +18,8 @@ const DESCRIBED: LinkedPublishFailureReason[] = [
   'fee_changed',
   'insufficient_slots',
   'pending_review',
-  'tos_failed'
+  'tos_failed',
+  'push_failed'
 ]
 // Once a review is pending there is nothing to retry; a reverted transaction charged nothing and can be sent again.
 const UNRETRIABLE: LinkedPublishFailureReason[] = ['pending_review']

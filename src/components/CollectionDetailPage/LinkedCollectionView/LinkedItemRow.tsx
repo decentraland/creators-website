@@ -54,15 +54,36 @@ export function LinkedItemRow({
   const timer = useRef<ReturnType<typeof setTimeout>>()
   // The edit waiting for the pause, so leaving the row (page, filter, editor) saves it instead of dropping it.
   const pending = useRef<Mappings | null>(null)
+  // What the editor holds (null while invalid) and what the server last confirmed, which the item lags after a save.
+  const draft = useRef<Mappings | null | undefined>(undefined)
+  const saved = useRef(item.mappings)
+  const inFlight = useRef(0)
+  const mounted = useRef(true)
   const latest = useRef({ item, onSaveMappings, onMappingDirtyChange })
   latest.current = { item, onSaveMappings, onMappingDirtyChange }
   const setDirty = (dirty: boolean) => latest.current.onMappingDirtyChange?.(latest.current.item.id, dirty)
 
-  const save = useCallback((mappings: Mappings) => {
-    const { item: current, onSaveMappings: persist, onMappingDirtyChange: report } = latest.current
-    return persist(current, mappings)
-      .catch(() => undefined)
-      .finally(() => report?.(current.id, false))
+  useEffect(() => {
+    saved.current = item.mappings
+  }, [item.mappings])
+
+  // Clean only once the server holds what the editor shows: a failed save, an invalid draft or a newer edit keep the
+  // row unsaved, so publishing can't go out with another mapping than the one on screen.
+  const save = useCallback(async (mappings: Mappings): Promise<void> => {
+    inFlight.current++
+    try {
+      await latest.current.onSaveMappings(latest.current.item, mappings)
+      saved.current = mappings
+    } catch {
+      return
+    } finally {
+      inFlight.current--
+    }
+    if (!mounted.current || pending.current || inFlight.current > 0 || draft.current === null) return
+    if (!draft.current || areMappingsEqual(draft.current, mappings)) return setDirty(false)
+    // The editor moved on while this was saving: save what it shows now.
+    pending.current = draft.current
+    flushRef.current()
   }, [])
 
   const flush = useCallback(() => {
@@ -71,14 +92,22 @@ export function LinkedItemRow({
     pending.current = null
     if (!mappings) return
     setSaving(true)
-    void save(mappings).finally(() => setSaving(false))
+    void save(mappings).finally(() => {
+      if (mounted.current) setSaving(false)
+    })
   }, [save])
+  const flushRef = useRef(flush)
+  flushRef.current = flush
 
   useEffect(
     () => () => {
+      mounted.current = false
       clearTimeout(timer.current)
       const mappings = pending.current
-      if (mappings) void save(mappings)
+      const report = () => latest.current.onMappingDirtyChange?.(latest.current.item.id, false)
+      // The row is gone: a failure still shows its toast, and nothing left on screen can be saved.
+      if (mappings) void save(mappings).finally(report)
+      else report()
     },
     [save]
   )
@@ -86,12 +115,11 @@ export function LinkedItemRow({
   // A valid change saves itself after a pause, like the legacy row: no save button per mapping.
   function onMappingChange(next: Mapping | null) {
     clearTimeout(timer.current)
-    pending.current = null
     const mappings = next && contract ? buildItemMappings(next, contract) : null
-    if (!mappings || areMappingsEqual(mappings, item.mappings)) {
-      if (!isSaving) setDirty(false)
-      return
-    }
+    draft.current = mappings
+    pending.current = null
+    if (!mappings) return setDirty(true)
+    if (inFlight.current === 0 && areMappingsEqual(mappings, saved.current)) return setDirty(false)
     pending.current = mappings
     setDirty(true)
     timer.current = setTimeout(flush, MAPPING_SAVE_DEBOUNCE_MS)

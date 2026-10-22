@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { ChevronRight as ChevronRightIcon, InfoOutlined as InfoOutlinedIcon } from '@mui/icons-material'
 import { type ContractNetwork } from '@dcl/schemas'
 import { config } from '~/config'
@@ -93,6 +93,7 @@ export function CreateLinkedCollectionModal({ isPending, error, onSubmit, onClos
         ? t('create_linked_collection_modal.error_contract_in_use')
         : t('create_linked_collection_modal.error_generic')
       : null
+  const contractErrorId = useId()
   const contractError =
     check === 'not_nft'
       ? t('create_linked_collection_modal.error_not_nft')
@@ -164,6 +165,8 @@ export function CreateLinkedCollectionModal({ isPending, error, onSubmit, onClos
                   placeholder={t('create_linked_collection_modal.contract_placeholder')}
                   spellCheck={false}
                   autoComplete="off"
+                  aria-invalid={contractError ? true : undefined}
+                  aria-describedby={contractError ? contractErrorId : undefined}
                   data-testid="linked-contract-address-input"
                   onChange={event => {
                     const value = event.target.value.trim()
@@ -176,7 +179,9 @@ export function CreateLinkedCollectionModal({ isPending, error, onSubmit, onClos
               </N.Box>
             </N.Label>
             {contractError ? (
-              <N.ErrorText data-testid="linked-contract-error">{contractError}</N.ErrorText>
+              <N.ErrorText id={contractErrorId} data-testid="linked-contract-error">
+                {contractError}
+              </N.ErrorText>
             ) : (
               <N.HintText data-testid="linked-contract-hint">
                 <InfoOutlinedIcon fontSize="inherit" aria-hidden />

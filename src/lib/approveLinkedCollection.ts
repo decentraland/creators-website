@@ -2,7 +2,7 @@
 // handleInitiateTPItemsApprovalFlow and its batched deploy: the pending items' curated hashes form the third
 // party's Merkle tree; its root goes on chain (consuming the creator's slots cheque), then each item's entity is
 // deployed with its proof and its curation approved. Every step is idempotent, so a failed run can be resumed.
-import { type ContractCall } from '~/lib/auth'
+import { type ContractCall, type TransactionSettlement } from '~/lib/auth'
 import { type LinkedApprovalData } from '~/lib/builder'
 import {
   ApprovalError,
@@ -154,7 +154,7 @@ export async function prepareLinkedApproval(
 export type RootDeps = {
   chainId: number
   sendTransaction: (call: ContractCall) => Promise<string>
-  waitForTransaction: (txHash: string) => Promise<boolean>
+  settleTransaction: (txHash: string) => Promise<TransactionSettlement>
   fetchThirdParty: (thirdPartyId: string) => Promise<ThirdParty>
   sleep?: (ms: number) => Promise<void>
 }
@@ -168,7 +168,10 @@ export async function setLinkedMerkleRoot(
 ): Promise<string> {
   const call = buildReviewThirdPartyWithRootCall(deps.chainId, thirdPartyId, plan.merkleRoot, plan.slots)
   const txHash = await deps.sendTransaction(call)
-  if (!(await deps.waitForTransaction(txHash))) throw new ApprovalError('reverted', `Merkle root ${txHash} reverted`)
+  const outcome = await deps.settleTransaction(txHash)
+  if (outcome === 'reverted') throw new ApprovalError('reverted', `Merkle root ${txHash} reverted`)
+  if (outcome === 'pending') throw new ApprovalError('not_indexed', `Merkle root ${txHash} is still pending`)
+  // A dropped transaction may have been sped up under another hash: the root then shows up all the same.
   await waitForIndexer(
     () => deps.fetchThirdParty(thirdPartyId),
     thirdParty => sameRoot(thirdParty.root, plan.merkleRoot),
@@ -256,21 +259,27 @@ async function deployLinkedItem(
   await atStage('curation', () => deps.approveItem(item.id))
 }
 
-async function runPool<T>(items: T[], concurrency: number, work: (item: T) => Promise<void>): Promise<void> {
+async function runPool<T>(
+  items: T[],
+  concurrency: number,
+  work: (item: T, isStopped: () => boolean) => Promise<void>
+): Promise<void> {
   let next = 0
-  // One lane failing for good (no signing identity) stops the others from taking more items.
-  let stopped = false
+  // One lane failing for good (no signing identity) stops the others from taking more items; the error is rethrown
+  // only once every lane is idle, so a retry never overlaps work still running.
+  let failure: { error: unknown } | null = null
+  const isStopped = () => failure !== null
   const lanes = Array.from({ length: Math.max(1, Math.min(concurrency, items.length)) }, async () => {
-    while (!stopped && next < items.length) {
+    while (!failure && next < items.length) {
       try {
-        await work(items[next++])
+        await work(items[next++], isStopped)
       } catch (error) {
-        stopped = true
-        throw error
+        failure ??= { error }
       }
     }
   })
   await Promise.all(lanes)
+  if (failure) throw (failure as { error: unknown }).error
 }
 
 /**
@@ -285,7 +294,7 @@ export async function deployLinkedItems(
 ): Promise<LinkedDeployResult> {
   const items = plan.pendingItems
   const result: LinkedDeployResult = { deployed: [], failed: [] }
-  await runPool(items, deps.concurrency ?? DEPLOY_CONCURRENCY, async item => {
+  await runPool(items, deps.concurrency ?? DEPLOY_CONCURRENCY, async (item, isStopped) => {
     try {
       await deployLinkedItem(collection, item, plan, deps)
       result.deployed.push(item)
@@ -293,7 +302,8 @@ export async function deployLinkedItems(
       if (!(error instanceof StageError)) throw error
       result.failed.push({ item, stage: error.stage, message: error.message })
     }
-    onProgress?.(result.deployed.length + result.failed.length, items.length)
+    // After a fatal error the caller shows it: progress from lanes still finishing must not replace it.
+    if (!isStopped()) onProgress?.(result.deployed.length + result.failed.length, items.length)
   })
   return result
 }

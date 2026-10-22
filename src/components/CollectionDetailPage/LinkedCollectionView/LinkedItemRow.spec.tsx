@@ -29,8 +29,7 @@ const item: Item = {
 
 const wrapper = ({ children }: { children: ReactNode }) => <TranslationProvider>{children}</TranslationProvider>
 
-function renderRow() {
-  const onSaveMappings = vi.fn().mockResolvedValue(item)
+function renderRow(onSaveMappings = vi.fn().mockResolvedValue(item)) {
   const onMappingDirtyChange = vi.fn()
   const view = render(
     <LinkedItemRow
@@ -89,6 +88,18 @@ describe('LinkedItemRow', () => {
     await act(async () => void vi.advanceTimersByTime(1000))
 
     expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', false)
+  })
+
+  it('keeps an edit unsaved when its save fails or the draft is invalid', async () => {
+    vi.useFakeTimers()
+    const { onMappingDirtyChange, input } = renderRow(vi.fn().mockRejectedValue(new Error('offline')))
+
+    fireEvent.change(input, { target: { value: '12' } })
+    await act(async () => void vi.advanceTimersByTime(1000))
+    expect(onMappingDirtyChange).not.toHaveBeenCalledWith('i1', false)
+
+    fireEvent.change(input, { target: { value: '' } })
+    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', true)
   })
 
   it('does not save an invalid or unchanged mapping', () => {

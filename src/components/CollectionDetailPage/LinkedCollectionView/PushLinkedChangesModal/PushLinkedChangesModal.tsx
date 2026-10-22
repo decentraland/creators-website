@@ -52,6 +52,8 @@ export function PushLinkedChangesModal({ collection, session, items, curations, 
   }
 
   function submit() {
+    // A retry after a partial failure counts from zero again.
+    setProgress({ done: 0, total: items.length })
     push.mutate(
       { items, curations, email: currentEmail, onProgress: (done, total) => setProgress({ done, total }) },
       {

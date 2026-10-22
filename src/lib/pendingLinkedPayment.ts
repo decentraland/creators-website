@@ -1,4 +1,4 @@
-// What an unfinished linked publish left behind, remembered per chain, wallet and collection so that closing the
+// The payment an unfinished linked publish sent, remembered per chain, wallet and collection so that closing the
 // wizard (or reloading) and coming back resumes it instead of paying a second time.
 import { type LinkedPayment } from './publishLinkedItems'
 
@@ -9,8 +9,6 @@ export type PendingPublishScope = { chainId: number; address: string; collection
 export type PendingPublish = {
   /** A registration or slot purchase sent and not yet known to be consumed. */
   payment?: LinkedPayment
-  /** An earlier publish request failed on the server and may still have gone through. */
-  publishMayHaveLanded?: boolean
 }
 
 const KEY_PREFIX = 'linked-publish.pending.'
@@ -41,10 +39,7 @@ export function loadPendingPublish(scope: PendingPublishScope, store = storage()
     const parsed = raw ? (JSON.parse(raw) as Record<string, unknown>) : undefined
     if (!parsed || typeof parsed !== 'object') return {}
     const payment = toPayment(parsed.payment)
-    return {
-      ...(payment ? { payment } : {}),
-      ...(parsed.publishMayHaveLanded === true ? { publishMayHaveLanded: true } : {})
-    }
+    return payment ? { payment } : {}
   } catch {
     return {}
   }
@@ -53,7 +48,7 @@ export function loadPendingPublish(scope: PendingPublishScope, store = storage()
 /** Stores what is left to resume, or forgets it once nothing is. */
 export function savePendingPublish(scope: PendingPublishScope, pending: PendingPublish, store = storage()): void {
   try {
-    if (pending.payment || pending.publishMayHaveLanded) store?.setItem(keyOf(scope), JSON.stringify(pending))
+    if (pending.payment) store?.setItem(keyOf(scope), JSON.stringify(pending))
     else store?.removeItem(keyOf(scope))
   } catch {
     // Storage blocked: the resume only lives as long as the wizard.

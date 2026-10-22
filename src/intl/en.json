@@ -1605,7 +1605,7 @@
     "publish_blocker": {
       "no_selection": "Select the items to publish or push.",
       "under_review": "This collection is still under review. Once that review ends you can publish more items.",
-      "saving_mappings": "Saving your mapping changes…"
+      "saving_mappings": "Some mapping changes aren't saved yet. Fix or finish them before publishing."
     },
     "empty": {
       "title": "Start adding items to your linked collection",
@@ -1886,8 +1886,10 @@
         "wait_tx": "Confirm",
         "delete_virtual": "Index",
         "publish": "Submit",
-        "push": "Push"
-      }
+        "push": "Push",
+        "check": "Check"
+      },
+      "check": "Checking your items…"
     },
     "error": {
       "title": "We couldn't publish your items",
@@ -1898,7 +1900,8 @@
       "tos_failed": "We couldn't record your acceptance of the terms. Check your email address and try again.",
       "generic": "Something went wrong while publishing your items. Please try again.",
       "payment_pending": "Your payment hasn't been confirmed yet. Try again in a few minutes: we'll pick it up without charging you again.",
-      "fee_changed": "The fee went up since you confirmed it, so nothing was charged. Try again to review the new fee."
+      "fee_changed": "The fee went up since you confirmed it, so nothing was charged. Try again to review the new fee.",
+      "push_failed": "Some changes couldn't be sent for review. Anything you published went through. Try again to resend the rest."
     }
   },
   "push_linked_modal": {

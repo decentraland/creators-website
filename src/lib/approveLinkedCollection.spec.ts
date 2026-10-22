@@ -283,7 +283,7 @@ describe('setLinkedMerkleRoot', () => {
     const deps = {
       chainId: CHAIN_ID,
       sendTransaction: vi.fn().mockResolvedValue('0xtx'),
-      waitForTransaction: vi.fn().mockResolvedValue(true),
+      settleTransaction: vi.fn().mockResolvedValue('mined'),
       fetchThirdParty: vi
         .fn()
         .mockResolvedValueOnce(thirdParty(''))
@@ -301,18 +301,22 @@ describe('setLinkedMerkleRoot', () => {
     expect(deps.fetchThirdParty).toHaveBeenCalledTimes(3)
   })
 
-  it('fails on a reverted transaction and when the root is never indexed', async () => {
+  it('fails on a reverted or still pending transaction, and when the root is never indexed', async () => {
     const plan = planFor([item('1')])
     const deps = {
       chainId: CHAIN_ID,
       sendTransaction: vi.fn().mockResolvedValue('0xtx'),
-      waitForTransaction: vi.fn().mockResolvedValue(false),
+      settleTransaction: vi.fn().mockResolvedValue('reverted'),
       fetchThirdParty: vi.fn().mockResolvedValue(thirdParty('0xold')),
       sleep: vi.fn().mockResolvedValue(undefined)
     }
     await expect(setLinkedMerkleRoot(THIRD_PARTY_ID, plan, deps)).rejects.toMatchObject({ reason: 'reverted' })
 
-    deps.waitForTransaction.mockResolvedValue(true)
+    deps.settleTransaction.mockResolvedValue('pending')
+    await expect(setLinkedMerkleRoot(THIRD_PARTY_ID, plan, deps)).rejects.toMatchObject({ reason: 'not_indexed' })
+    expect(deps.fetchThirdParty).not.toHaveBeenCalled()
+
+    deps.settleTransaction.mockResolvedValue('mined')
     await expect(setLinkedMerkleRoot(THIRD_PARTY_ID, plan, deps, 0)).rejects.toMatchObject({ reason: 'not_indexed' })
   })
 })
@@ -401,6 +405,25 @@ describe('deployLinkedItems', () => {
     expect(result.deployed.map(deployed => deployed.id)).toEqual(['1'])
     expect(result.failed.map(({ item, stage }) => [item.id, stage])).toEqual([['2', 'changed']])
     expect(deps.approveItem).not.toHaveBeenCalledWith('2')
+  })
+
+  it('stops reporting progress after a fatal error, and only throws once every lane is idle', async () => {
+    let signs = 0
+    let finished = 0
+    const deps = deployDeps({
+      concurrency: 2,
+      sign: vi.fn(() => (++signs === 1 ? null : [{ type: 'SIGNER', payload: '0xme' }])),
+      deployEntity: vi.fn(async () => {
+        await new Promise(resolve => setTimeout(resolve, 5))
+        finished++
+      })
+    })
+    const progress = vi.fn()
+    await expect(
+      deployLinkedItems(collection, planFor(['1', '2', '3'].map(id => item(id))), deps, progress)
+    ).rejects.toMatchObject({ reason: 'no_identity' })
+    expect(finished).toBe(1)
+    expect(progress).not.toHaveBeenCalled()
   })
 
   it('stops at once when the session cannot sign', async () => {

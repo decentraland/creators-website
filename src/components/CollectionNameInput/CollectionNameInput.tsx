@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { InfoOutlined as InfoOutlinedIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { COLLECTION_NAME_MAX_LENGTH } from '~/lib/collections'
@@ -32,6 +33,7 @@ export function CollectionNameInput({
   testId
 }: Props) {
   const { t } = useTranslation()
+  const errorId = useId()
   return (
     <S.Field>
       <S.Label>
@@ -43,6 +45,8 @@ export function CollectionNameInput({
             maxLength={maxLength}
             disabled={disabled}
             autoFocus={autoFocus}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? errorId : undefined}
             data-testid={`${testId}-input`}
             onChange={event => onChange(event.target.value)}
           />
@@ -52,7 +56,9 @@ export function CollectionNameInput({
         </S.Box>
       </S.Label>
       {error ? (
-        <S.ErrorText data-testid={`${testId}-error`}>{error}</S.ErrorText>
+        <S.ErrorText id={errorId} data-testid={`${testId}-error`}>
+          {error}
+        </S.ErrorText>
       ) : hideHint ? null : (
         <S.HintText data-testid={`${testId}-hint`}>
           <InfoOutlinedIcon fontSize="inherit" aria-hidden />

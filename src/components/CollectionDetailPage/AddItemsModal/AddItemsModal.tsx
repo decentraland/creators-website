@@ -11,7 +11,7 @@ import { installBackGuard } from '~/lib/backGuard'
 import { ItemFileError, VIDEO_PATH } from '~/lib/itemFiles'
 import { type EmotePlayMode, type ItemDraftPayload } from '~/lib/itemFactory'
 import { isLinkedCollection, type Collection } from '~/lib/collections'
-import { buildItemMappings } from '~/lib/mappings'
+import { areMappingsEqual, buildItemMappings, getItemMapping, type Mappings } from '~/lib/mappings'
 import { buildLinkedItemUrn, getDefaultUrnSuffix, type LinkedContract } from '~/lib/thirdParty'
 import { type ContractNetwork } from '@dcl/schemas'
 import { ItemType } from '~/lib/items'
@@ -256,6 +256,17 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
   // leave confirmation instead.
   useEffect(() => installBackGuard(() => setLeaveConfirmOpen(true)), [])
 
+  function toItemMappings(draft: ItemDraft): Mappings | undefined {
+    if (!linkedContract || !draft.mapping) return undefined
+    const mappings = buildItemMappings(draft.mapping, linkedContract)
+    const kept = draft.keptMappings ? getItemMapping(draft.keptMappings, linkedContract) : null
+    // Untouched in the form: the item keeps every rule it had, not just the one the form can show.
+    if (draft.keptMappings && kept && areMappingsEqual(mappings, buildItemMappings(kept, linkedContract))) {
+      return draft.keptMappings
+    }
+    return mappings
+  }
+
   function toPayload(draft: ItemDraft): UploadDraft {
     return {
       id: draft.id,
@@ -281,7 +292,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
       ...(isLinked
         ? {
             urn: buildLinkedItemUrn(collection.urn, draft.urnSuffix ?? getDefaultUrnSuffix(draft.name.trim())),
-            mappings: linkedContract && draft.mapping ? buildItemMappings(draft.mapping, linkedContract) : undefined
+            mappings: toItemMappings(draft)
           }
         : {}),
       variantTargetId: draft.isVariant && draft.variantTargetId ? draft.variantTargetId : undefined

@@ -52,6 +52,8 @@ export function LinkedReviewBar({ session, collection, thirdParty, selectedId, o
   const [verdict, setVerdict] = useState(false)
   // What the curator had seen when they clicked Approve: later refetches must not widen what gets signed.
   const [approvalReview, setApprovalReview] = useState<ReviewedContent | null>(null)
+  // Likewise for Reject: items submitted after the dialog opened were never looked at.
+  const [rejecting, setRejecting] = useState<Item[]>([])
 
   const pendingItems = pending.data ?? []
   const { reviewedCount, nextToReview, review } = useReviewedItems(pendingItems, selectedId)
@@ -151,7 +153,10 @@ export function LinkedReviewBar({ session, collection, thirdParty, selectedId, o
               size="sm"
               variant="dark"
               data-testid="review-action-reject"
-              onClick={() => setDialog('reject')}
+              onClick={() => {
+                setRejecting(pendingItems)
+                setDialog('reject')
+              }}
             >
               {t('item_editor.review.action.reject')}
             </Button>
@@ -193,7 +198,7 @@ export function LinkedReviewBar({ session, collection, thirdParty, selectedId, o
       {dialog === 'reject' && (
         <ConfirmModal
           title={t('item_editor.review.reject.title', { collection: collection.name })}
-          description={t('item_editor.linked_review.reject_description', { count: pendingItems.length })}
+          description={t('item_editor.linked_review.reject_description', { count: rejecting.length })}
           error={reject.isError ? t('item_editor.review.reject.error') : null}
           busy={reject.isPending}
           onClose={closeDialog}
@@ -203,7 +208,7 @@ export function LinkedReviewBar({ session, collection, thirdParty, selectedId, o
             testId: 'review-reject-confirm',
             onClick: () =>
               reject.mutate(
-                { items: pendingItems },
+                { items: rejecting },
                 {
                   onSuccess: () => {
                     showToast(t('item_editor.review.reject.success', { collection: collection.name }))

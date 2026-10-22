@@ -196,9 +196,9 @@ describe('when watching a transaction until it settles', () => {
     expect(clock.sleep).toHaveBeenCalledTimes(10)
   })
 
-  it('should answer dropped when the node never knew it, and pending when it could not be read', async () => {
+  it('should never call a transaction the node never saw dropped, nor one it could not read', async () => {
     const unknown = chain({})
-    await expect(watchTransaction(unknown.reader, HASH, { ...options, ...unknown.clock })).resolves.toBe('dropped')
+    await expect(watchTransaction(unknown.reader, HASH, { ...options, ...unknown.clock })).resolves.toBe('pending')
     const down = chain({ fail: true })
     await expect(watchTransaction(down.reader, HASH, { ...options, ...down.clock })).resolves.toBe('pending')
   })

@@ -652,13 +652,14 @@ export function PropertiesPanel({
       )}
 
       <S.IntercomClearance aria-hidden />
-      {editable && isDirty && (
+      {/* An invalid mapping draft never reaches the item, so it doesn't make it dirty: Revert must still undo it. */}
+      {editable && (isDirty || mappingInvalid) && (
         <S.Footer data-testid={`${testId}-footer`}>
           <Button
             type="button"
             variant="secondary"
             size="sm"
-            disabled={!isDirty || isSaving}
+            disabled={!(isDirty || mappingInvalid) || isSaving}
             data-testid={`${testId}-revert`}
             onClick={() => {
               setMappingInvalid(false)

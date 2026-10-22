@@ -14,7 +14,9 @@ import { LinkedReviewBar } from './LinkedReviewBar'
 const rejectMutate = vi.fn()
 const approvalProps = vi.fn()
 
-const pending = ['1', '2', '3'].map(id => ({ id, name: `Hat ${id}`, currentContentHash: `hash-${id}` }) as Item)
+const hat = (id: string) => ({ id, name: `Hat ${id}`, currentContentHash: `hash-${id}` }) as Item
+const pending = ['1', '2', '3'].map(hat)
+let served = pending
 
 vi.mock('~/hooks/useCuration', () => ({
   useCollectionCuration: () => ({ data: null, isLoading: false })
@@ -24,7 +26,7 @@ vi.mock('~/hooks/useLinkedCollection', () => ({
 }))
 vi.mock('~/hooks/useLinkedReview', async importOriginal => ({
   ...(await importOriginal<typeof import('~/hooks/useLinkedReview')>()),
-  usePendingLinkedItems: () => ({ data: pending, isLoading: false }),
+  usePendingLinkedItems: () => ({ data: served, isLoading: false }),
   useRejectLinkedItems: () => ({ mutate: rejectMutate, isPending: false, isError: false, reset: vi.fn() })
 }))
 vi.mock('./LinkedApprovalFlowModal', () => ({
@@ -58,6 +60,7 @@ describe('LinkedReviewBar', () => {
   beforeEach(() => {
     rejectMutate.mockReset()
     approvalProps.mockReset()
+    served = pending
   })
 
   it('blocks Approve until enough pending items were opened, then approves what was reviewed', async () => {
@@ -79,6 +82,15 @@ describe('LinkedReviewBar', () => {
   it('rejects the pending items', async () => {
     render(renderBar(null), { wrapper })
     await userEvent.click(screen.getByTestId('review-action-reject'))
+    await userEvent.click(screen.getByTestId('review-reject-confirm'))
+    expect(rejectMutate).toHaveBeenCalledWith({ items: pending }, expect.anything())
+  })
+
+  it('rejects only the items pending when the dialog opened, not ones submitted after', async () => {
+    const { rerender } = render(renderBar(null), { wrapper })
+    await userEvent.click(screen.getByTestId('review-action-reject'))
+    served = [...pending, hat('4')]
+    rerender(renderBar(null))
     await userEvent.click(screen.getByTestId('review-reject-confirm'))
     expect(rejectMutate).toHaveBeenCalledWith({ items: pending }, expect.anything())
   })

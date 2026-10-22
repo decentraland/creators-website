@@ -68,6 +68,12 @@ describe('isMappingValid / areMappingsValid', () => {
     expect(isMappingValid({ type: MappingType.RANGE, from: '1', to: '1' })).toBe(true)
     expect(isMappingValid({ type: MappingType.MULTIPLE, ids: [] })).toBe(false)
     expect(isMappingValid({ type: MappingType.SINGLE, id: '1'.repeat(79) })).toBe(false)
+    // Leading zeros would never match the token, and nothing above uint256 exists.
+    expect(isMappingValid({ type: MappingType.SINGLE, id: '007' })).toBe(false)
+    expect(isMappingValid({ type: MappingType.MULTIPLE, ids: ['7', '07'] })).toBe(false)
+    expect(isMappingValid({ type: MappingType.SINGLE, id: '0' })).toBe(true)
+    expect(isMappingValid({ type: MappingType.SINGLE, id: (2n ** 256n - 1n).toString() })).toBe(true)
+    expect(isMappingValid({ type: MappingType.SINGLE, id: (2n ** 256n).toString() })).toBe(false)
   })
 
   it('validates the whole payload with the schema', () => {

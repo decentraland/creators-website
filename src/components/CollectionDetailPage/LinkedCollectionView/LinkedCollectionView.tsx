@@ -111,7 +111,12 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   const [selected, setSelected] = useState<Map<string, Item>>(() => new Map())
   const [isSelectingAll, setSelectingAll] = useState(false)
   const [allAcrossSelected, setAllAcrossSelected] = useState(false)
-  const [publishView, setPublishView] = useState<'closed' | 'publish' | 'push'>('closed')
+  // What the wizard opened with: the live selection shifts as a partial failure refreshes the list, while the cheque
+  // was signed for this set.
+  const [publishView, setPublishView] = useState<
+    | { kind: 'closed' }
+    | { kind: 'publish' | 'push'; toPublish: Item[]; toPush: Item[]; curations: Map<string, ItemCuration> }
+  >({ kind: 'closed' })
   // Rows with a mapping edit not saved yet: publishing now would send the old mapping.
   const [unsavedMappings, setUnsavedMappings] = useState<ReadonlySet<string>>(() => new Set())
   const onMappingDirtyChange = useCallback((itemId: string, dirty: boolean) => {
@@ -320,7 +325,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     if (list.length > 0) setAddItemsFiles(list)
   }
 
-  const closePublish = useCallback(() => setPublishView('closed'), [])
+  const closePublish = useCallback(() => setPublishView({ kind: 'closed' }), [])
   const onPublished = useCallback(() => {
     setSelected(new Map())
     setAllAcrossSelected(false)
@@ -379,7 +384,12 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
                 aria-disabled={publishBlocker ? true : undefined}
                 onClick={() => {
                   if (publishBlocker || !publishAction) return
-                  setPublishView(publishAction === 'push' ? 'push' : 'publish')
+                  setPublishView({
+                    kind: publishAction === 'push' ? 'push' : 'publish',
+                    toPublish: selection.toPublish,
+                    toPush: selection.toPush,
+                    curations: curationMap
+                  })
                 }}
               >
                 {t(`linked_collection.publish_action.${publishAction ?? 'publish'}`, { count: selectedCount })}
@@ -681,24 +691,24 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
           onClose={closeUrn}
         />
       )}
-      {publishView === 'publish' && thirdParty && (
+      {publishView.kind === 'publish' && thirdParty && (
         <PublishLinkedItemsModal
           collection={collection}
           thirdParty={thirdParty}
           session={session}
-          itemsToPublish={selection.toPublish}
-          itemsToPush={selection.toPush}
-          curations={curationMap}
+          itemsToPublish={publishView.toPublish}
+          itemsToPush={publishView.toPush}
+          curations={publishView.curations}
           onClose={closePublish}
           onPublished={onPublished}
         />
       )}
-      {publishView === 'push' && (
+      {publishView.kind === 'push' && (
         <PushLinkedChangesModal
           collection={collection}
           session={session}
-          items={selection.toPush}
-          curations={curationMap}
+          items={publishView.toPush}
+          curations={publishView.curations}
           onClose={closePublish}
           onPushed={onPublished}
         />

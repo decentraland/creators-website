@@ -247,8 +247,9 @@ type WatchOptions = { timeoutMs: number; pollMs: number; sleep?: (ms: number) =>
 const defaultSleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
 
 /**
- * Polls a transaction until it settles or `timeoutMs` passes: `dropped` when its nonce was used by another
- * transaction (a wallet speed-up or cancel) or the node never knew it; `pending` when it is still waiting by then.
+ * Polls a transaction until it settles or `timeoutMs` passes: `dropped` only once it was seen and another transaction
+ * used its nonce (a wallet speed-up or cancel); `pending` when it is still waiting by then, or was never seen, since
+ * the read node may simply not have it (another broadcast RPC, congestion).
  */
 export async function watchTransaction(
   reader: TransactionReader,
@@ -257,14 +258,12 @@ export async function watchTransaction(
 ): Promise<TransactionSettlement> {
   const deadline = now() + timeoutMs
   const fromReceipt = (receipt: ethers.providers.TransactionReceipt) => (receipt.status === 1 ? 'mined' : 'reverted')
-  let neverSeen = true
   for (;;) {
     try {
       const receipt = await reader.getTransactionReceipt(txHash)
       if (receipt) return fromReceipt(receipt)
       const tx = await reader.getTransaction(txHash)
       if (tx) {
-        neverSeen = false
         if ((await reader.getTransactionCount(tx.from, 'latest')) > tx.nonce) {
           // It may have been mined between the two reads.
           const late = await reader.getTransactionReceipt(txHash)
@@ -273,9 +272,8 @@ export async function watchTransaction(
       }
     } catch {
       // A failed read says nothing about the transaction.
-      neverSeen = false
     }
-    if (now() >= deadline) return neverSeen ? 'dropped' : 'pending'
+    if (now() >= deadline) return 'pending'
     await sleep(pollMs)
   }
 }

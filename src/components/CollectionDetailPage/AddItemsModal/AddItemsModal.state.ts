@@ -3,7 +3,7 @@
 // feeds results in through actions, so this reducer stays fully unit-testable.
 import { EmoteCategory, WearableCategory } from '@dcl/schemas'
 import { type ValidationIssue } from '~/lib/validation'
-import { type Mapping } from '~/lib/mappings'
+import { type Mapping, type Mappings } from '~/lib/mappings'
 import { VIDEO_PATH, cleanAssetName, isImageFile, isModelFile } from '~/lib/itemFiles'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
 import { BodyShapeType, ItemType, getMissingBodyShapeType, type Item, type ItemMetrics } from '~/lib/items'
@@ -58,6 +58,8 @@ export type ItemDraft = {
   validatedCategory: string | null
   /** Linked collections only: which tokens of the linked contract unlock the item. */
   mapping: Mapping | null
+  /** Edit in bulk: the item's whole mappings, saved as they are while `mapping` is left untouched. */
+  keptMappings: Mappings | null
   /** Linked collections only: the URN suffix a zip's wearable.json fixed; generated from the name otherwise. */
   urnSuffix: string | null
   checked: boolean
@@ -105,6 +107,7 @@ export function createDraft(file: File, { nameFromFile = true } = {}): ItemDraft
     validationIssues: [],
     validatedCategory: null,
     mapping: null,
+    keptMappings: null,
     urnSuffix: null,
     checked: false
   }

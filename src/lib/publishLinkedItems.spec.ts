@@ -14,7 +14,7 @@ import {
   getLinkedSlots,
   getResumablePayment,
   getSlotsToBuy,
-  mayHavePublished,
+  readFreshLinkedQuote,
   publishLinkedItems,
   signSlotsCheque,
   toLinkedPublishError,
@@ -134,6 +134,7 @@ type Deps = { [K in keyof Required<PublishLinkedDeps>]: ReturnType<typeof vi.fn>
 function makeDeps(overrides: Partial<PublishLinkedDeps> = {}): Deps {
   let txCount = 0
   return {
+    fetchCurations: vi.fn(async () => new Map<string, ItemCuration>()),
     saveTOS: vi.fn(async () => {}),
     setThirdPartyKind: vi.fn(async () => {}),
     fetchManaAllowance: vi.fn(async () => 0n),
@@ -311,7 +312,7 @@ describe('publishLinkedItems', () => {
       pushed: null,
       txHash: '0xtx2'
     })
-    expect(steps(deps)).toEqual(['tos', 'allowance', 'register', 'wait_tx', 'delete_virtual', 'publish'])
+    expect(steps(deps)).toEqual(['check', 'tos', 'allowance', 'register', 'wait_tx', 'delete_virtual', 'publish'])
   })
 
   it('sets the programmatic kind first and registers with the base pack', async () => {
@@ -325,7 +326,16 @@ describe('publishLinkedItems', () => {
     expect(add[0][0][5].toString()).toBe('200')
     expect(add[1]).toEqual([true])
     expect(BigInt(add[2][0].toString())).toBe(getLinkedPublishFee(200, price).maxManaWei)
-    expect(steps(deps)).toEqual(['tos', 'kind', 'allowance', 'register', 'wait_tx', 'delete_virtual', 'publish'])
+    expect(steps(deps)).toEqual([
+      'check',
+      'tos',
+      'kind',
+      'allowance',
+      'register',
+      'wait_tx',
+      'delete_virtual',
+      'publish'
+    ])
   })
 
   it('buys only the missing slots for a third party already on chain, without approving when allowed', async () => {
@@ -345,7 +355,7 @@ describe('publishLinkedItems', () => {
     expect(deps.setThirdPartyKind).not.toHaveBeenCalled()
     expect(deps.deleteVirtualThirdParty).not.toHaveBeenCalled()
     expect(result.txHash).toBe('0xtx1')
-    expect(steps(deps)).toEqual(['tos', 'allowance', 'buy_slots', 'wait_tx', 'publish'])
+    expect(steps(deps)).toEqual(['check', 'tos', 'allowance', 'buy_slots', 'wait_tx', 'publish'])
   })
 
   it('sends no transaction when the free slots cover the items', async () => {
@@ -361,7 +371,7 @@ describe('publishLinkedItems', () => {
     expect(deps.deleteVirtualThirdParty).not.toHaveBeenCalled()
     expect(deps.publishLinkedItems).toHaveBeenCalledWith(collection.id, ['a', 'b', 'c'], cheque)
     expect(result.txHash).toBeNull()
-    expect(steps(deps)).toEqual(['tos', 'publish'])
+    expect(steps(deps)).toEqual(['check', 'tos', 'publish'])
   })
 
   it('only pushes changes when there is nothing to publish', async () => {
@@ -774,28 +784,61 @@ describe('publishLinkedItems', () => {
     expect(deps.setThirdPartyKind).not.toHaveBeenCalled()
     expect(deps.deleteVirtualThirdParty).toHaveBeenCalledWith(THIRD_PARTY_ID)
     expect(result.txHash).toBe('0xpaid')
-    expect(steps(deps)).toEqual(['tos', 'wait_tx', 'delete_virtual', 'publish'])
+    expect(steps(deps)).toEqual(['check', 'tos', 'wait_tx', 'delete_virtual', 'publish'])
   })
 
-  it('counts a pending review on a retry after a failed publish request as the earlier publish having landed', async () => {
+  it('neither pays nor publishes again when an earlier request already published the items, and still pushes', async () => {
+    const onPayment = vi.fn()
     const deps = makeDeps({
-      publishLinkedItems: vi.fn(async () => {
-        throw PENDING_REVIEW
-      })
+      fetchCurations: vi.fn(async () => new Map(itemsToPublish.map(item => [item.id, pendingCuration(item)]))),
+      onPayment
     })
 
     const result = await publishLinkedItems(
-      makeParams({
-        thirdParty: { ...thirdParty, published: true },
-        slots: { available: 3, registered: true },
-        publishMayHaveLanded: true
-      }),
+      makeParams({ itemsToPush, paidTx: { txHash: '0xpaid', registration: false } }),
       deps
     )
 
+    expect(deps.sendTransaction).not.toHaveBeenCalled()
+    expect(deps.publishLinkedItems).not.toHaveBeenCalled()
+    expect(deps.pushChanges).toHaveBeenCalledWith(itemsToPush)
+    expect(onPayment).toHaveBeenCalledWith(undefined)
     expect(result.itemCurations).toEqual([])
-    expect(mayHavePublished(new LinkedPublishError('publish', 'generic'))).toBe(true)
-    expect(mayHavePublished(new LinkedPublishError('publish', 'pending_review'))).toBe(false)
+  })
+
+  it('stops before paying while another review of the collection is pending', async () => {
+    const deps = makeDeps({
+      fetchCurations: vi.fn(async () => new Map([['other', { ...pendingCuration(makeItem('other')) }]]))
+    })
+
+    const error = await failure(publishLinkedItems(makeParams(), deps))
+
+    expect(error.reason).toBe('pending_review')
+    expect(deps.saveTOS).not.toHaveBeenCalled()
+    expect(deps.sendTransaction).not.toHaveBeenCalled()
+  })
+
+  it('reports changes that could not be pushed after the items were published', async () => {
+    const deps = makeDeps({
+      pushChanges: vi.fn(async (items: Item[]) => ({
+        pushed: [],
+        failed: items.map(item => ({ item, message: 'boom' }))
+      }))
+    })
+
+    const error = await failure(
+      publishLinkedItems(
+        makeParams({
+          thirdParty: { ...thirdParty, published: true },
+          slots: { available: 3, registered: true },
+          itemsToPush
+        }),
+        deps
+      )
+    )
+
+    expect(error.reason).toBe('push_failed')
+    expect(deps.publishLinkedItems).toHaveBeenCalled()
   })
 
   it('does not retry a rejected ToS and reports it as tos_failed', async () => {
@@ -865,5 +908,52 @@ describe('getLinkedSlots', () => {
     expect(getLinkedSlots(2, 5, { registered: true, maxItems: 5 })).toEqual({ available: 2, registered: true })
     // A registration the server still reads as virtual.
     expect(getLinkedSlots(0, 0, { registered: true, maxItems: 3 })).toEqual({ available: 3, registered: true })
+  })
+})
+
+describe('readFreshLinkedQuote', () => {
+  const kind = { isProgrammatic: false, published: true }
+  const confirmed = { slots: { available: 2, registered: true }, price }
+
+  it('goes on with the fresh reads, capped at the fee the creator confirmed', async () => {
+    const fresh = await readFreshLinkedQuote(3, kind, confirmed, {
+      readSlots: async () => ({ available: 3, registered: true }),
+      readPrice: async () => price
+    })
+    expect(fresh).toEqual({
+      kind: 'ready',
+      slots: { available: 3, registered: true },
+      price,
+      maxFeeManaWei: getLinkedPublishFee(1, price).maxManaWei
+    })
+  })
+
+  it('asks again when fewer free slots or a higher price would cost more than confirmed', async () => {
+    const fewer = await readFreshLinkedQuote(3, kind, confirmed, {
+      readSlots: async () => ({ available: 1, registered: true }),
+      readPrice: async () => price
+    })
+    expect(fewer.kind).toBe('fee_changed')
+    const pricier = await readFreshLinkedQuote(3, kind, confirmed, {
+      readSlots: async () => confirmed.slots,
+      readPrice: async () => ({ ...price, itemSlotManaWei: price.itemSlotManaWei * 2n })
+    })
+    expect(pricier.kind).toBe('fee_changed')
+  })
+
+  it('confirms a read of zero free slots, and stops on a failed read', async () => {
+    const readSlots = vi
+      .fn()
+      .mockResolvedValueOnce({ available: 0, registered: true })
+      .mockResolvedValueOnce({ available: 2, registered: true })
+    const fresh = await readFreshLinkedQuote(3, kind, confirmed, { readSlots, readPrice: async () => price })
+    expect(readSlots).toHaveBeenCalledTimes(2)
+    expect(fresh).toMatchObject({ kind: 'ready', slots: { available: 2 } })
+
+    const failed = await readFreshLinkedQuote(3, kind, confirmed, {
+      readSlots: async () => undefined,
+      readPrice: async () => price
+    })
+    expect(failed.kind).toBe('read_failed')
   })
 })

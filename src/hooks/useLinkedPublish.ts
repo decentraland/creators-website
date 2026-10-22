@@ -3,6 +3,7 @@ import { errorCode, track } from '~/lib/analytics'
 import { sendContractTransaction, settleTransaction, signTypedData, type Session } from '~/lib/auth'
 import {
   deleteVirtualThirdParty,
+  fetchItemCurations,
   fetchThirdParty,
   fetchThirdPartySlots,
   publishLinkedItems as postLinkedItems,
@@ -95,6 +96,7 @@ export function usePublishLinkedItems(session: Session, collection: Collection) 
       publishLinkedItems(
         { ...params, address, chainId },
         {
+          fetchCurations: () => fetchItemCurations(address, collection.id),
           saveTOS: (target, email, hashes) => saveLinkedItemsTOS(address, target, email, hashes),
           setThirdPartyKind: (thirdPartyId, isProgrammatic) => setThirdPartyKind(address, thirdPartyId, isProgrammatic),
           fetchManaAllowance: (owner, spender) => fetchManaAllowance(owner, spender, chainId),

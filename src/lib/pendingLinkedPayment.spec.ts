@@ -17,9 +17,9 @@ const payment = { txHash: '0xabc', registration: true }
 describe('pending linked publish', () => {
   it('remembers what is left per chain, wallet and collection, and forgets it once settled', () => {
     const store = memoryStore()
-    savePendingPublish(scope, { payment, publishMayHaveLanded: true }, store)
+    savePendingPublish(scope, { payment }, store)
 
-    expect(loadPendingPublish({ ...scope, address: '0xabc' }, store)).toEqual({ payment, publishMayHaveLanded: true })
+    expect(loadPendingPublish({ ...scope, address: '0xabc' }, store)).toEqual({ payment })
     expect(loadPendingPublish({ ...scope, address: '0xdef' }, store)).toEqual({})
     expect(loadPendingPublish({ ...scope, chainId: 137 }, store)).toEqual({})
     expect(loadPendingPublish({ ...scope, collectionId: 'c2' }, store)).toEqual({})

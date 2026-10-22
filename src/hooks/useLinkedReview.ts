@@ -10,7 +10,7 @@ import {
   type ReviewedContent
 } from '~/lib/approveLinkedCollection'
 import { ApprovalError, waitForIndexer, APPROVAL_INDEX_TIMEOUT_MS } from '~/lib/approveCollection'
-import { sendContractTransaction, signWithIdentity, waitForTransaction, type Session } from '~/lib/auth'
+import { sendContractTransaction, settleTransaction, signWithIdentity, type Session } from '~/lib/auth'
 import {
   fetchContent,
   fetchItem,
@@ -161,7 +161,7 @@ export function useLinkedApprovalFlow(
           set(token, { kind: 'step', step: 'root', phase: { kind: 'pending' } })
           return hash
         },
-        waitForTransaction: hash => waitForTransaction(chainId, hash),
+        settleTransaction: hash => settleTransaction(chainId, hash),
         fetchThirdParty: id => fetchThirdParty(address, id)
       })
       track('Set TP Merkle root', { collectionId: collection.id, thirdPartyId: thirdParty.id, txHash })
@@ -274,12 +274,17 @@ export function useReviewThirdParty(session: Session | null) {
       if (!session) throw new Error('Wallet disconnected')
       const txHash = await sendContractTransaction(session, buildReviewThirdPartyCall(chainId, thirdParty.id, approved))
       onSigned?.()
-      if (!(await waitForTransaction(chainId, txHash))) throw new Error(`Third party review ${txHash} reverted`)
-      const indexed = await waitForIndexer(
+      const outcome = await settleTransaction(chainId, txHash)
+      if (outcome === 'reverted' || outcome === 'pending') throw new Error(`Third party review ${txHash} is ${outcome}`)
+      const indexing = waitForIndexer(
         () => fetchThirdParty(session.address, thirdParty.id),
         fetched => fetched.isApproved === approved,
         APPROVAL_INDEX_TIMEOUT_MS
-      ).catch(() => ({ ...thirdParty, isApproved: approved }))
+      )
+      // A mined review only lags the indexer; a dropped one (sped up under another hash, or cancelled) must show up.
+      const indexed = await (outcome === 'mined'
+        ? indexing.catch(() => ({ ...thirdParty, isApproved: approved }))
+        : indexing)
       return { txHash, indexed }
     },
     onSuccess: ({ txHash, indexed }, { thirdParty, approved }) => {

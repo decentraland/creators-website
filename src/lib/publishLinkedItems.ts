@@ -6,7 +6,7 @@
 import { ethers } from 'ethers'
 import { type ContractCall, type TransactionSettlement } from '~/lib/auth'
 import { BuilderServerError, type PublishLinkedItemsResult, type SlotsCheque } from '~/lib/builder'
-import { type Collection } from '~/lib/collections'
+import { CurationStatus, type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
 import { type ItemCuration } from '~/lib/linkedItemStatus'
 import { buildManaApproveCall } from '~/lib/mana'
@@ -22,7 +22,7 @@ import {
 import { isWalletRejection } from '~/lib/walletErrors'
 
 export type LinkedPublishStep =
-  'tos' | 'kind' | 'allowance' | 'register' | 'buy_slots' | 'wait_tx' | 'delete_virtual' | 'publish' | 'push'
+  'check' | 'tos' | 'kind' | 'allowance' | 'register' | 'buy_slots' | 'wait_tx' | 'delete_virtual' | 'publish' | 'push'
 
 export type LinkedPublishFailureReason =
   | 'rejected'
@@ -32,6 +32,7 @@ export type LinkedPublishFailureReason =
   | 'insufficient_slots'
   | 'pending_review'
   | 'tos_failed'
+  | 'push_failed'
   | 'generic'
 
 /** A registration or slot purchase this run sent. */
@@ -146,9 +147,22 @@ export function getLinkedSlots(
   }
 }
 
-/** A publish request that failed on the server may still have written the item curations (see publishWithRetry). */
-export function mayHavePublished(error: LinkedPublishError): boolean {
-  return error.step === 'publish' && error.reason === 'generic'
+/**
+ * builder-server refuses a publish while any item of the collection has a pending curation. When every item to publish
+ * is among them, an earlier request already published them (it can answer 500 after writing them): there is nothing
+ * left to buy or publish. Any other pending curation is a review in progress.
+ */
+export function getPublishState(
+  itemsToPublish: Item[],
+  curations: Map<string, ItemCuration>
+): 'ready' | 'already_published' | 'pending_review' {
+  const pending = new Set(
+    [...curations.values()]
+      .filter(curation => curation.status === CurationStatus.PENDING)
+      .map(curation => curation.itemId)
+  )
+  if (pending.size === 0) return 'ready'
+  return itemsToPublish.every(item => pending.has(item.id)) ? 'already_published' : 'pending_review'
 }
 
 export type ChequeTypedData = {
@@ -289,6 +303,38 @@ export function getLinkedPublishQuote(
   }
 }
 
+export type FreshLinkedQuote =
+  | { kind: 'ready'; slots: LinkedSlots; price: ThirdPartyPrice; maxFeeManaWei: bigint }
+  | { kind: 'fee_changed' }
+  | { kind: 'read_failed' }
+
+/**
+ * Reads the slots and the price again right before paying, against the quote the creator confirmed. The slots an
+ * earlier attempt bought must not be bought twice, and builder-server also answers 0 slots when it fails, so a 0 is
+ * confirmed with a second read; a price or slot change that costs more than the confirmed fee stops for a new
+ * confirmation. The confirmed fee caps what the run may pay.
+ */
+export async function readFreshLinkedQuote(
+  itemCount: number,
+  thirdParty: { isProgrammatic: boolean; published: boolean },
+  confirmed: { slots: LinkedSlots; price: ThirdPartyPrice },
+  reads: {
+    readSlots: () => Promise<LinkedSlots | undefined>
+    readPrice: () => Promise<ThirdPartyPrice | undefined>
+  }
+): Promise<FreshLinkedQuote> {
+  const readSlots = async () => {
+    const first = await reads.readSlots()
+    return first?.available === 0 ? reads.readSlots() : first
+  }
+  const [slots, price] = await Promise.all([readSlots(), reads.readPrice()])
+  if (!slots || !price) return { kind: 'read_failed' }
+  const shown = getLinkedPublishQuote(itemCount, confirmed.slots, confirmed.price, thirdParty)
+  const fresh = getLinkedPublishQuote(itemCount, slots, price, thirdParty)
+  if (fresh.fee.maxManaWei > shown.fee.maxManaWei) return { kind: 'fee_changed' }
+  return { kind: 'ready', slots, price, maxFeeManaWei: shown.fee.maxManaWei }
+}
+
 export type PublishLinkedParams = {
   address: string
   chainId: number
@@ -309,12 +355,12 @@ export type PublishLinkedParams = {
    * slots again, so only what is still missing is bought.
    */
   paidTx?: LinkedPayment
-  /** An earlier attempt's publish request may have gone through (see publishWithRetry): a pending review then means it did. */
-  publishMayHaveLanded?: boolean
 }
 
 /** The server and chain calls the sequence needs, so it can run against fakes in tests. */
 export type PublishLinkedDeps = {
+  /** The latest curation of every item of the collection, as builder-server holds them now. */
+  fetchCurations: () => Promise<Map<string, ItemCuration>>
   saveTOS: (collection: Collection, email: string, hashes: string[]) => Promise<void>
   setThirdPartyKind: (thirdPartyId: string, isProgrammatic: boolean) => Promise<void>
   fetchManaAllowance: (owner: string, spender: string) => Promise<bigint>
@@ -384,9 +430,8 @@ function isTransientFailure(error: unknown): boolean {
  * POST /collections/:id/publish, retried while the subgraph has not caught up with the slots just bought (409
  * "exceeds the available slots", or 401 while the registration is unknown to it). The server also creates the
  * collection's forum post inside that request: a Discourse outage makes it answer 500 after the item curations
- * were already written, so a retry then gets 409 "already has published items". That 409 only means the earlier
- * attempt went through, so it counts as success and the caller re-reads the collection; a 409 on the first
- * attempt is a real pending review and still fails.
+ * were already written, so a retry then gets 409 "already has published items". That 409 only means this run's
+ * earlier attempt went through, so it counts as success; a 409 on the first attempt is a real pending review.
  */
 async function publishWithRetry(
   params: PublishLinkedParams,
@@ -395,7 +440,7 @@ async function publishWithRetry(
   sleep: (ms: number) => Promise<void>
 ): Promise<PublishLinkedItemsResult | null> {
   const itemIds = params.itemsToPublish.map(item => item.id)
-  let serverFailed = !!params.publishMayHaveLanded
+  let serverFailed = false
   for (let attempt = 0; ; attempt++) {
     try {
       return await deps.publishLinkedItems(params.collection.id, itemIds, cheque)
@@ -421,7 +466,7 @@ export async function publishLinkedItems(
 ): Promise<PublishLinkedResult> {
   const { address, chainId, collection, itemsToPublish, itemsToPush, cheque, email, isProgrammatic } = params
   const sleep = deps.sleep ?? defaultSleep
-  let current: LinkedPublishStep = 'tos'
+  let current: LinkedPublishStep = 'check'
   const step = (next: LinkedPublishStep) => {
     current = next
     deps.onStep?.(next)
@@ -456,6 +501,16 @@ export async function publishLinkedItems(
       throw new LinkedPublishError('publish', 'generic', 'A signed cheque is required to publish items')
     }
 
+    // Read before anything is paid: an earlier attempt may have published these items already.
+    let alreadyPublished = false
+    if (itemsToPublish.length > 0) {
+      step('check')
+      const state = getPublishState(itemsToPublish, await deps.fetchCurations())
+      if (state === 'pending_review') throw new LinkedPublishError('check', 'pending_review')
+      alreadyPublished = state === 'already_published'
+      if (alreadyPublished && payment) setPayment(undefined)
+    }
+
     step('tos')
     const hashes = [...itemsToPublish, ...itemsToPush]
       .map(item => item.currentContentHash)
@@ -472,7 +527,7 @@ export async function publishLinkedItems(
     let txHash: string | null = params.paidTx?.txHash ?? null
     let published: PublishLinkedItemsResult | null = null
 
-    if (itemsToPublish.length > 0 && cheque) {
+    if (itemsToPublish.length > 0 && cheque && !alreadyPublished) {
       let slots = params.slots
       if (params.paidTx) {
         step('wait_tx')
@@ -575,13 +630,22 @@ export async function publishLinkedItems(
       published = await publishWithRetry(params, cheque, deps, sleep)
     }
 
+    // The publish consumed the payment: nothing a later failure could resume from.
+    if (payment) setPayment(undefined)
+
     let pushed: PushLinkedResult | null = null
     if (itemsToPush.length > 0) {
       step('push')
       pushed = await deps.pushChanges(itemsToPush)
+      if (pushed.failed.length > 0) {
+        throw new LinkedPublishError(
+          'push',
+          'push_failed',
+          pushed.failed.map(failure => `${failure.item.id}: ${failure.message}`).join('; ')
+        )
+      }
     }
 
-    if (payment) deps.onPayment?.(undefined)
     return {
       collection: published?.collection,
       items: published?.items ?? [],
