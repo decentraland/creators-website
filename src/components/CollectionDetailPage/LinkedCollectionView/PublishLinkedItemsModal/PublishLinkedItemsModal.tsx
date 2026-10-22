@@ -11,12 +11,12 @@ import { type SlotsCheque } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
 import { type ItemCuration } from '~/lib/linkedItemStatus'
-import { loadPendingPayment, savePendingPayment } from '~/lib/pendingLinkedPayment'
+import { loadPendingPublish, savePendingPublish, type PendingPublish } from '~/lib/pendingLinkedPayment'
+import { getMaticChainId } from '~/lib/publishCollection'
 import {
   LinkedPublishError,
   mayHavePublished,
-  nextResumablePayment,
-  type LinkedPayment,
+  shouldResumePayment,
   type LinkedPublishStep
 } from '~/lib/publishLinkedItems'
 import { LINKED_COLLECTION_NAME_MAX_LENGTH, type ThirdParty } from '~/lib/thirdParty'
@@ -87,8 +87,23 @@ export function PublishLinkedItemsModal({
   const [outcome, setOutcome] = useState<'success' | LinkedPublishError | null>(null)
   // What earlier attempts left behind: a payment a retry must resume from (kept across reopenings of the wizard), and
   // a publish request that may have landed.
-  const [paidTx, setPaidTx] = useState<LinkedPayment | undefined>(() => loadPendingPayment(collection.id))
-  const [publishMayHaveLanded, setPublishMayHaveLanded] = useState(false)
+  const pendingScope = useMemo(
+    () => ({ chainId: getMaticChainId(), address, collectionId: collection.id }),
+    [address, collection.id]
+  )
+  const [pending, setPending] = useState<PendingPublish>(() => loadPendingPublish(pendingScope))
+  const pendingRef = useRef(pending)
+  // Written to storage right away, not in a render: the run reports its payment even if the wizard is gone by then.
+  const updatePending = useCallback(
+    (patch: PendingPublish) => {
+      const next = { ...pendingRef.current, ...patch }
+      pendingRef.current = next
+      savePendingPublish(pendingScope, next)
+      setPending(next)
+    },
+    [pendingScope]
+  )
+  const paidTx = pending.payment
   // Set synchronously on Submit: a second click during the slots re-read must not start a second, paying run.
   const submitting = useRef(false)
   const [slotsError, setSlotsError] = useState(false)
@@ -149,9 +164,11 @@ export function PublishLinkedItemsModal({
     setSlotsError(false)
     setRunningStep('tos')
     // Read again right before paying: the slots an earlier attempt bought must not be bought twice. A failed read
-    // hands back the stale count, so it stops here instead.
-    const read = paidTx ? null : await slots.refetch()
-    const fresh = read ? (read.isError ? undefined : read.data) : slots.data
+    // hands back the stale count, so it stops here instead; and since the server also answers 0 when it fails, a 0 is
+    // confirmed with a second read before it can lead to buying every slot again.
+    let read = await slots.refetch()
+    if (!read.isError && read.data === 0) read = await slots.refetch()
+    const fresh = read.isError ? undefined : read.data
     if (fresh === undefined) {
       submitting.current = false
       setSlotsError(true)
@@ -170,24 +187,21 @@ export function PublishLinkedItemsModal({
         availableSlots: fresh,
         price: price.data,
         paidTx,
-        publishMayHaveLanded,
+        publishMayHaveLanded: !!pending.publishMayHaveLanded,
         curations,
-        onStep: setRunningStep
+        onStep: setRunningStep,
+        onPayment: payment => updatePending({ payment })
       },
       {
         onSuccess: () => {
-          setPaidTx(undefined)
-          savePendingPayment(collection.id, undefined)
+          updatePending({ payment: undefined, publishMayHaveLanded: false })
           setOutcome('success')
           onPublished()
         },
         onError: error => {
           const failure =
             error instanceof LinkedPublishError ? error : new LinkedPublishError('publish', 'generic', String(error))
-          const next = nextResumablePayment(paidTx, failure)
-          setPaidTx(next)
-          savePendingPayment(collection.id, next)
-          setPublishMayHaveLanded(current => current || mayHavePublished(failure))
+          if (mayHavePublished(failure)) updatePending({ publishMayHaveLanded: true })
           setOutcome(failure)
         },
         onSettled: () => {
@@ -294,7 +308,7 @@ export function PublishLinkedItemsModal({
               setSlotsError(false)
               void slots.refetch()
             }}
-            resuming={!!paidTx}
+            resuming={slots.data !== undefined && shouldResumePayment(paidTx, itemsToPublish.length, slots.data)}
             busy={isRunning}
             accepted={termsAccepted}
             onAcceptedChange={setTermsAccepted}

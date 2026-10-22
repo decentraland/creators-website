@@ -55,16 +55,14 @@ export function MappingEditor({
   const { t } = useTranslation()
   const [draft, setDraft] = useState<MappingDraft>(() => toMappingDraft(value))
   // A value coming back from the server replaces the draft only while the draft still shows the previous value: what
-  // the user typed while a save was in flight wins over that save's refetch.
+  // the user typed while a save was in flight wins over that save's refetch. Drafts are compared, not mappings, so an
+  // item without one (the empty draft) also follows a mapping saved elsewhere.
   const valueKey = JSON.stringify(value)
-  const previousKey = useRef(valueKey)
+  const previousValue = useRef(value)
   useEffect(() => {
-    const previous = previousKey.current
-    previousKey.current = valueKey
-    setDraft(current => {
-      const draftKey = JSON.stringify(fromMappingDraft(current))
-      return draftKey === previous && draftKey !== valueKey ? toMappingDraft(value) : current
-    })
+    const untouchedDraft = JSON.stringify(toMappingDraft(previousValue.current))
+    previousValue.current = value
+    setDraft(current => (JSON.stringify(current) === untouchedDraft ? toMappingDraft(value) : current))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [valueKey])
 

@@ -105,13 +105,15 @@ export function useLinkedApprovalFlow(
       // The creator changing items mid-review is expected, not a failure to report: the curator reviews again.
       if (error instanceof ApprovalError && error.reason === 'changed') {
         track('Approve TP Collection error', { collectionId: collection.id, step: 'changed' })
+        // Bring the new content to the editor, so reviewing it again is what unblocks the approval.
+        refresh()
         return setView({ kind: 'error', step: 'changed', failed })
       }
       captureError(error, { flow: 'linked_curation_approve', step, collectionId: collection.id })
       track('Approve TP Collection error', { collectionId: collection.id, step, error: errorCode(error) })
       setView({ kind: 'error', step, failed })
     },
-    [collection.id]
+    [collection.id, refresh]
   )
 
   const start = useCallback(async () => {
@@ -230,10 +232,13 @@ export function useRejectLinkedItems(address: string | undefined, collection: Co
   return useMutation({
     mutationFn: async ({ items }: RejectLinkedVariables) => {
       if (!address) throw new Error('Wallet disconnected')
-      if (items.length === 0) throw new Error('No pending items to reject')
-      // The items come from the pending query: every one of them has a pending curation to reject.
-      for (const item of items) await updateItemCuration(address, item.id, 'rejected')
-      return items.length
+      // The list on screen can be stale, and builder-server rejects any curation it is told to: only the items still
+      // pending right now are rejected, so another curator's fresh approvals stay approved.
+      const stillPending = new Set((await fetchPendingLinkedItems(address, collection.id)).map(item => item.id))
+      const toReject = items.filter(item => stillPending.has(item.id))
+      if (toReject.length === 0) throw new Error('No pending items to reject')
+      for (const item of toReject) await updateItemCuration(address, item.id, 'rejected')
+      return toReject.length
     },
     onSuccess: count => {
       track('Reject TP Collection', { collectionId: collection.id, items: count })
@@ -294,7 +299,8 @@ export function useReviewedItems(pendingItems: Item[], selectedId: string | null
   const [reviewedHashes, setReviewedHashes] = useState<Map<string, string | undefined>>(() => new Map())
   const pendingById = useMemo(() => new Map(pendingItems.map(item => [item.id, item])), [pendingItems])
   const opened = selectedId ? pendingById.get(selectedId) : undefined
-  if (opened && !reviewedHashes.has(opened.id)) {
+  // The content on screen is what was reviewed: an item opened again after the creator changed it records the new one.
+  if (opened && (!reviewedHashes.has(opened.id) || reviewedHashes.get(opened.id) !== opened.currentContentHash)) {
     setReviewedHashes(current => new Map(current).set(opened.id, opened.currentContentHash))
   }
   const nextToReview = useCallback(() => {

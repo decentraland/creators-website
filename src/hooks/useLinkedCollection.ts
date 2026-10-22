@@ -83,6 +83,8 @@ export function useLinkedCollectionItems(
   })
 }
 
+const NO_IDS: string[] = []
+
 /** How many items the server counts under a filter, from a one-row page. */
 function useLinkedItemCount(address: string | undefined, collection: Collection | undefined, filter: LinkedItemFilter) {
   return useQuery({
@@ -104,7 +106,9 @@ export function useHasLinkedWork(
   curations: Map<string, ItemCuration> | undefined
 ): boolean | undefined {
   const unsynced = useLinkedItemCount(address, collection, LinkedItemFilter.READY_TO_PUSH)
-  // Usually a handful (items waiting for a mapping), so they're listed whole to tell curated ones apart.
+  // Counted first: only collections from before mappings existed have any, and only those pay for listing them whole
+  // (to tell the curated ones apart).
+  const missingCount = useLinkedItemCount(address, collection, LinkedItemFilter.PENDING_MAPPING)
   const missingMapping = useQuery({
     queryKey: [...linkedItemsKey(address, collection?.id), 'ids', LinkedItemFilter.PENDING_MAPPING],
     queryFn: async () =>
@@ -115,16 +119,17 @@ export function useHasLinkedWork(
           linkedItemFilterToQuery(LinkedItemFilter.PENDING_MAPPING)
         )
       ).map(item => item.id),
-    enabled: !!address && !!collection,
+    enabled: !!address && !!collection && (missingCount.data ?? 0) > 0,
     staleTime: 30_000
   })
+  const missingMappingIds = missingCount.data === 0 ? NO_IDS : missingMapping.data
   return useMemo(() => {
-    if (!collection || !curations || unsynced.data === undefined || missingMapping.data === undefined) return undefined
+    if (!collection || !curations || unsynced.data === undefined || missingMappingIds === undefined) return undefined
     return hasLinkedWork({
       itemCount: collection.itemCount,
       curations,
       unsynced: unsynced.data,
-      missingMappingIds: missingMapping.data
+      missingMappingIds
     })
-  }, [collection, curations, unsynced.data, missingMapping.data])
+  }, [collection, curations, unsynced.data, missingMappingIds])
 }

@@ -676,7 +676,8 @@
       "hint": "每个 ZIP 会更新其 wearable.json 中 URN 对应的物品，替换该物品的文件和信息；若 ZIP 未设置映射，则保留原有映射。",
       "success_toast": "{count, plural, other {已更新 # 个物品}}"
     },
-    "items_error": "无法加载此系列的物品，而将每个文件匹配到对应物品需要这些数据。请重试。"
+    "items_error": "无法加载此系列的物品，而将每个文件匹配到对应物品需要这些数据。请重试。",
+    "items_loading": "此系列的物品仍在加载中，请稍后再保存。"
   },
   "video_modal": {
     "title": "预览视频",
@@ -1857,7 +1858,7 @@
       "checkbox": "我保证所提交的物品完全符合<terms>使用条款</terms>和<policy>内容政策</policy>，我拥有基于此 NFT 系列创建可穿戴物品的知识产权，并知悉 DAO 可能拒绝批准，且被拒绝时费用不予退还。",
       "submit": "发布并支付",
       "submit_free": "发布",
-      "resuming": "您之前的付款已完成，无需再次支付。请完成发布，提交物品进行审核。",
+      "resuming": "您之前的付款已发送。请完成发布：我们将等待其确认，然后提交您的物品，不会重复收费。",
       "submit_resume": "完成发布"
     },
     "running": {

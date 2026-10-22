@@ -136,11 +136,12 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
     [isLinked, collection.urn, linkedContract, updateOnly, collectionItems]
   )
   // Matching a zip to the item it updates needs the collection's items first.
-  const canProcess = !updateOnly || collectionItemsQuery.isSuccess
+  const itemsLoaded = collectionItemsQuery.data !== undefined
+  const canProcess = !updateOnly || itemsLoaded
   // A linked item re-uploaded under its URN updates the existing one: uploading before the items load would miss it.
-  const canUpload = !isLinked || collectionItemsQuery.isSuccess
+  const canUpload = !isLinked || itemsLoaded
   // Without them neither of the above can go on: say so and offer a retry instead of waiting forever.
-  const itemsFailed = (isLinked || updateOnly) && collectionItemsQuery.isError && !collectionItemsQuery.data
+  const itemsFailed = (isLinked || updateOnly) && collectionItemsQuery.isError && !itemsLoaded
 
   // Load + analyze each dropped file once. The prefill is what it was when the modal opened.
   const prefillRef = useRef(prefill)
@@ -367,7 +368,9 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
   function handleSaveChanges() {
     if (!canUpload) {
       setLeaveConfirmOpen(false)
-      showToast(t('add_items_modal.items_error'), { type: 'error' })
+      showToast(t(itemsFailed ? 'add_items_modal.items_error' : 'add_items_modal.items_loading'), {
+        type: itemsFailed ? 'error' : 'warn'
+      })
       return
     }
     const checked = drafts.filter(draft => draft.checked)

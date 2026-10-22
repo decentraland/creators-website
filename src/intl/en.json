@@ -676,7 +676,8 @@
       "hint": "Each ZIP updates the item whose URN is in its wearable.json. It replaces the item's files and details; its mapping stays unless the ZIP sets one.",
       "success_toast": "{count, plural, one {# item updated} other {# items updated}}"
     },
-    "items_error": "We couldn't load this collection's items, which are needed to match each file to its item. Try again."
+    "items_error": "We couldn't load this collection's items, which are needed to match each file to its item. Try again.",
+    "items_loading": "This collection's items are still loading. Try saving again in a moment."
   },
   "video_modal": {
     "title": "Preview Video",
@@ -1857,7 +1858,7 @@
       "checkbox": "I warrant that the submitted items fully comply with the <terms>Terms of Use</terms> and <policy>Content Policy</policy>, that I hold the IP rights to create wearables based on this NFT collection, and I acknowledge that the DAO may refuse to approve them and that the fee won't be refunded if they are rejected.",
       "submit": "Publish & Pay",
       "submit_free": "Publish",
-      "resuming": "Your earlier payment already went through. Nothing more to pay: finish publishing to submit your items for review.",
+      "resuming": "Your earlier payment was sent. Finish publishing: we'll wait for it to be confirmed and then submit your items, without paying again.",
       "submit_resume": "Finish publishing"
     },
     "running": {

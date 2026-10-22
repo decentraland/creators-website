@@ -29,6 +29,8 @@ export type LinkedPublishFailureReason =
 /** A registration or slot purchase this run sent. */
 export type LinkedPayment = {
   txHash: string
+  /** Slots it bought: a selection needing more than these can't resume from it. */
+  slots: number
   /** `addThirdParties`: the virtual third party must still be removed once the chain has it. */
   registration: boolean
 }
@@ -117,15 +119,18 @@ export function getResumablePayment(error: LinkedPublishError): LinkedPayment | 
 }
 
 /**
- * The payment the next attempt should resume from, given the one it resumed (if any) and how it failed: a payment
- * that turned out to revert is dropped, so the next attempt pays again instead of waiting on it forever.
+ * Whether an earlier attempt's payment should be resumed for this publish, given the free slots read right now. Once
+ * the read covers the items, the slots are indexed and the payment has nothing left to give; when the items need more
+ * than it bought, it can't cover them, and the missing slots are bought instead.
  */
-export function nextResumablePayment(
-  current: LinkedPayment | undefined,
-  failure: LinkedPublishError
-): LinkedPayment | undefined {
-  if (failure.reason === 'reverted') return undefined
-  return failure.payment ?? current
+export function shouldResumePayment(
+  payment: LinkedPayment | undefined,
+  itemsToPublish: number,
+  availableSlots: number
+): payment is LinkedPayment {
+  if (!payment) return false
+  const missing = itemsToPublish - availableSlots
+  return missing > 0 && missing <= payment.slots
 }
 
 /** A publish request that failed on the server may still have written the item curations (see publishWithRetry). */
@@ -286,6 +291,11 @@ export type PublishLinkedDeps = {
   ) => Promise<PublishLinkedItemsResult>
   pushChanges: (items: Item[]) => Promise<PushLinkedResult>
   onStep?: (step: LinkedPublishStep) => void
+  /**
+   * The payment to resume if this run stops, as soon as it changes: set the moment a purchase is sent, cleared once it
+   * reverts or is no longer needed. Persisting it here survives a reload mid-run, which a caller's error handler can't.
+   */
+  onPayment?: (payment: LinkedPayment | undefined) => void
   /** Injected so specs run the retry loops instantly. */
   sleep?: (ms: number) => Promise<void>
 }
@@ -384,8 +394,16 @@ export async function publishLinkedItems(
     }
   }
 
+  const resumed = shouldResumePayment(params.paidTx, itemsToPublish.length, params.availableSlots)
+    ? params.paidTx
+    : undefined
   // Kept outside the try so any later failure carries it: a retry must resume from this payment, not repeat it.
-  let payment: LinkedPayment | undefined = params.paidTx
+  let payment: LinkedPayment | undefined = resumed
+  const setPayment = (next: LinkedPayment | undefined) => {
+    payment = next
+    deps.onPayment?.(next)
+  }
+  if (params.paidTx && !resumed) setPayment(undefined)
 
   try {
     if (itemsToPublish.length > 0 && !cheque) {
@@ -405,13 +423,13 @@ export async function publishLinkedItems(
     )
 
     let thirdParty = params.thirdParty
-    let txHash: string | null = params.paidTx?.txHash ?? null
+    let txHash: string | null = resumed?.txHash ?? null
     let published: PublishLinkedItemsResult | null = null
 
     if (itemsToPublish.length > 0 && cheque) {
       const isVirtual = !thirdParty.published
       // The kind is only chosen before the first publish; the registry fixes it on registration.
-      if (!params.paidTx && isVirtual && isProgrammatic !== thirdParty.isProgrammatic) {
+      if (!resumed && isVirtual && isProgrammatic !== thirdParty.isProgrammatic) {
         step('kind')
         await deps.setThirdPartyKind(thirdParty.id, isProgrammatic)
         thirdParty = { ...thirdParty, isProgrammatic }
@@ -425,9 +443,9 @@ export async function publishLinkedItems(
         programmaticMinSlots: params.price.programmaticMinSlots
       })
 
-      if (params.paidTx) {
+      if (resumed) {
         step('wait_tx')
-        await assertMined(params.paidTx.txHash)
+        await assertMined(resumed.txHash)
       } else if (slotsToBuy > 0) {
         const fee = getLinkedPublishFee(slotsToBuy, params.price, {
           isProgrammatic: thirdParty.isProgrammatic,
@@ -446,11 +464,11 @@ export async function publishLinkedItems(
         if (isVirtual) {
           step('register')
           txHash = await deps.sendTransaction(buildAddThirdPartyCall(chainId, thirdParty, slotsToBuy, fee.maxManaWei))
-          payment = { txHash, registration: true }
+          setPayment({ txHash, registration: true, slots: slotsToBuy })
         } else {
           step('buy_slots')
           txHash = await deps.sendTransaction(buildBuyItemSlotsCall(chainId, thirdParty.id, slotsToBuy, fee.maxManaWei))
-          payment = { txHash, registration: false }
+          setPayment({ txHash, registration: false, slots: slotsToBuy })
         }
         step('wait_tx')
         await assertMined(txHash)
@@ -483,6 +501,7 @@ export async function publishLinkedItems(
       pushed = await deps.pushChanges(itemsToPush)
     }
 
+    if (payment || params.paidTx) deps.onPayment?.(undefined)
     return {
       collection: published?.collection,
       items: published?.items ?? [],
@@ -491,6 +510,10 @@ export async function publishLinkedItems(
       txHash
     }
   } catch (error) {
-    throw toLinkedPublishError(error, current, payment)
+    const failure = toLinkedPublishError(error, current, payment)
+    // A reverted payment charged nothing, and a pending review means the items went through or can't for now: either
+    // way there is nothing left to resume from.
+    if (failure.reason === 'reverted' || failure.reason === 'pending_review') deps.onPayment?.(undefined)
+    throw failure
   }
 }

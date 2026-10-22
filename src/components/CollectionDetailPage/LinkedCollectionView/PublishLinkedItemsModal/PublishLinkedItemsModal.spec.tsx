@@ -12,6 +12,7 @@ import { PublishLinkedItemsModal } from './PublishLinkedItemsModal'
 
 const publishMutate = vi.fn()
 const slotsRefetch = vi.fn()
+let slotsData = 5
 
 vi.mock('~/hooks/useLinkedPublish', () => ({
   usePublishLinkedItems: () => ({ mutate: publishMutate, isPending: false }),
@@ -24,7 +25,7 @@ vi.mock('~/hooks/useLinkedPublish', () => ({
   useThirdPartyPrice: () => ({ data: price, isError: false, refetch: vi.fn() })
 }))
 vi.mock('~/hooks/useLinkedCollection', () => ({
-  useThirdPartySlots: () => ({ data: 5, isError: false, refetch: slotsRefetch })
+  useThirdPartySlots: () => ({ data: slotsData, isError: false, refetch: slotsRefetch })
 }))
 vi.mock('~/hooks/useCollection', () => ({
   useSaveCollection: () => ({ mutate: vi.fn(), isPending: false, error: null, reset: vi.fn() })
@@ -93,6 +94,7 @@ describe('PublishLinkedItemsModal', () => {
   beforeEach(() => {
     publishMutate.mockReset()
     slotsRefetch.mockReset()
+    slotsData = 5
     localStorage.clear()
   })
 
@@ -122,17 +124,31 @@ describe('PublishLinkedItemsModal', () => {
   })
 
   it('resumes an unfinished payment remembered from an earlier attempt instead of paying again', async () => {
-    localStorage.setItem(
-      `linked-publish.pending-payment.${collection.id}`,
-      JSON.stringify({ txHash: '0xabc123', registration: false })
-    )
+    const payment = { txHash: '0xabc123', registration: false, slots: 1 }
+    localStorage.setItem(`linked-publish.pending.80002.0xabc.${collection.id}`, JSON.stringify({ payment }))
+    // The slots it bought aren't indexed yet.
+    slotsData = 0
+    slotsRefetch.mockResolvedValue({ data: 0, isError: false })
     await goToPayment()
 
     expect(screen.getByTestId('publish-linked-resuming')).toBeInTheDocument()
     await userEvent.click(screen.getByTestId('publish-linked-submit'))
 
     await waitFor(() => expect(publishMutate).toHaveBeenCalledTimes(1))
-    expect(slotsRefetch).not.toHaveBeenCalled()
-    expect(publishMutate.mock.calls[0][0]).toMatchObject({ paidTx: { txHash: '0xabc123', registration: false } })
+    expect(publishMutate.mock.calls[0][0]).toMatchObject({ paidTx: payment, availableSlots: 0 })
+  })
+
+  it('stores a payment the moment the run reports it, before the run ends', async () => {
+    slotsRefetch.mockResolvedValue({ data: 0, isError: false })
+    await goToPayment()
+    await userEvent.click(screen.getByTestId('publish-linked-submit'))
+    await waitFor(() => expect(publishMutate).toHaveBeenCalledTimes(1))
+
+    const payment = { txHash: '0xdef456', registration: true, slots: 1 }
+    publishMutate.mock.calls[0][0].onPayment(payment)
+
+    expect(JSON.parse(localStorage.getItem(`linked-publish.pending.80002.0xabc.${collection.id}`)!)).toEqual({
+      payment
+    })
   })
 })

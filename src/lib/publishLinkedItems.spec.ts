@@ -12,7 +12,7 @@ import {
   createChequeSalt,
   getLinkedPublishFee,
   getResumablePayment,
-  nextResumablePayment,
+  shouldResumePayment,
   getSlotsToBuy,
   mayHavePublished,
   publishLinkedItems,
@@ -565,19 +565,97 @@ describe('publishLinkedItems', () => {
 
     expect(error.step).toBe('publish')
     expect(error.txHash).toBe('0xtx1')
-    expect(getResumablePayment(error)).toEqual({ txHash: '0xtx1', registration: false })
+    expect(getResumablePayment(error)).toEqual({ txHash: '0xtx1', registration: false, slots: 3 })
   })
 
-  it('never offers a reverted payment to resume from, and forgets one that turned out to revert', () => {
+  it('never offers a reverted payment to resume from', () => {
     const reverted = new LinkedPublishError('wait_tx', 'reverted', 'x', undefined, '0xtx1')
-    reverted.payment = { txHash: '0xtx1', registration: false }
+    reverted.payment = { txHash: '0xtx1', registration: false, slots: 3 }
     expect(getResumablePayment(reverted)).toBeUndefined()
-    expect(nextResumablePayment({ txHash: '0xtx1', registration: false }, reverted)).toBeUndefined()
-    const later = new LinkedPublishError('publish', 'generic')
-    expect(nextResumablePayment({ txHash: '0xtx1', registration: true }, later)).toEqual({
-      txHash: '0xtx1',
-      registration: true
+  })
+
+  it('resumes a payment only while the slots it bought are still missing and cover the selection', () => {
+    const payment = { txHash: '0xtx1', registration: false, slots: 3 }
+    expect(shouldResumePayment(payment, 3, 0)).toBe(true)
+    // Indexed: the free slots now cover the items.
+    expect(shouldResumePayment(payment, 3, 3)).toBe(false)
+    // A bigger selection than the payment bought for.
+    expect(shouldResumePayment(payment, 8, 0)).toBe(false)
+    expect(shouldResumePayment(undefined, 3, 0)).toBe(false)
+  })
+
+  it('reports a purchase the moment it is sent and clears it once the publish succeeds', async () => {
+    const onPayment = vi.fn()
+    const deps = makeDeps({ fetchManaAllowance: vi.fn(async () => 10n ** 30n), onPayment })
+
+    await publishLinkedItems(makeParams({ thirdParty: { ...thirdParty, published: true } }), deps)
+
+    expect(onPayment.mock.calls).toEqual([[{ txHash: '0xtx1', registration: false, slots: 3 }], [undefined]])
+  })
+
+  it('drops a resumed payment that cannot cover a bigger selection, and buys what is missing', async () => {
+    const onPayment = vi.fn()
+    const deps = makeDeps({ fetchManaAllowance: vi.fn(async () => 10n ** 30n), onPayment })
+
+    await publishLinkedItems(
+      makeParams({
+        thirdParty: { ...thirdParty, published: true },
+        paidTx: { txHash: '0xold', registration: false, slots: 1 }
+      }),
+      deps
+    )
+
+    expect(onPayment.mock.calls[0]).toEqual([undefined])
+    expect(sentMethods(deps)).toEqual(['buyItemSlots'])
+    expect(deps.waitForTransaction).not.toHaveBeenCalledWith('0xold')
+  })
+
+  it('forgets the payment when a resumed publish fails because a review is pending', async () => {
+    const onPayment = vi.fn()
+    const deps = makeDeps({
+      onPayment,
+      publishLinkedItems: vi.fn(async () => {
+        throw PENDING_REVIEW
+      })
     })
+
+    const error = await failure(
+      publishLinkedItems(
+        makeParams({
+          thirdParty: { ...thirdParty, published: true },
+          paidTx: { txHash: '0xpaid', registration: false, slots: 3 }
+        }),
+        deps
+      )
+    )
+
+    expect(error.reason).toBe('pending_review')
+    expect(onPayment).toHaveBeenLastCalledWith(undefined)
+  })
+
+  it('resumes, then still reports insufficient slots without dropping the payment it waits on', async () => {
+    const onPayment = vi.fn()
+    const deps = makeDeps({
+      onPayment,
+      publishLinkedItems: vi.fn(async () => {
+        throw INSUFFICIENT_SLOTS
+      })
+    })
+
+    const error = await failure(
+      publishLinkedItems(
+        makeParams({
+          thirdParty: { ...thirdParty, published: true },
+          paidTx: { txHash: '0xpaid', registration: false, slots: 3 }
+        }),
+        deps
+      )
+    )
+
+    expect(error.reason).toBe('insufficient_slots')
+    expect(getResumablePayment(error)).toEqual({ txHash: '0xpaid', registration: false, slots: 3 })
+    expect(onPayment).not.toHaveBeenCalledWith(undefined)
+    expect(deps.sendTransaction).not.toHaveBeenCalled()
   })
 
   it('still removes the virtual third party when resuming a registration it now reads as published', async () => {
@@ -585,7 +663,7 @@ describe('publishLinkedItems', () => {
     await publishLinkedItems(
       makeParams({
         thirdParty: { ...thirdParty, published: true },
-        paidTx: { txHash: '0xpaid', registration: true }
+        paidTx: { txHash: '0xpaid', registration: true, slots: 3 }
       }),
       deps
     )
@@ -596,7 +674,7 @@ describe('publishLinkedItems', () => {
     const deps = makeDeps({ fetchManaAllowance: vi.fn(async () => 0n) })
 
     const result = await publishLinkedItems(
-      makeParams({ paidTx: { txHash: '0xpaid', registration: true }, isProgrammatic: true }),
+      makeParams({ paidTx: { txHash: '0xpaid', registration: true, slots: 3 }, isProgrammatic: true }),
       deps
     )
 

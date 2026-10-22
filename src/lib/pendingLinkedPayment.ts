@@ -1,10 +1,22 @@
-// A linked publish whose payment went out but whose run didn't finish, remembered per collection so that closing the
+// What an unfinished linked publish left behind, remembered per chain, wallet and collection so that closing the
 // wizard (or reloading) and coming back resumes it instead of paying a second time.
 import { type LinkedPayment } from './publishLinkedItems'
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 
-const KEY_PREFIX = 'linked-publish.pending-payment.'
+export type PendingPublishScope = { chainId: number; address: string; collectionId: string }
+
+export type PendingPublish = {
+  /** A registration or slot purchase sent and not yet known to be consumed. */
+  payment?: LinkedPayment
+  /** An earlier publish request failed on the server and may still have gone through. */
+  publishMayHaveLanded?: boolean
+}
+
+const KEY_PREFIX = 'linked-publish.pending.'
+
+const keyOf = ({ chainId, address, collectionId }: PendingPublishScope) =>
+  `${KEY_PREFIX}${chainId}.${address.toLowerCase()}.${collectionId}`
 
 function storage(): StorageLike | null {
   try {
@@ -14,27 +26,36 @@ function storage(): StorageLike | null {
   }
 }
 
-function isPayment(value: unknown): value is LinkedPayment {
-  if (!value || typeof value !== 'object') return false
-  const { txHash, registration } = value as Record<string, unknown>
-  return typeof txHash === 'string' && /^0x[0-9a-fA-F]+$/.test(txHash) && typeof registration === 'boolean'
+function toPayment(value: unknown): LinkedPayment | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const { txHash, registration, slots } = value as Record<string, unknown>
+  if (typeof txHash !== 'string' || !/^0x[0-9a-fA-F]+$/.test(txHash)) return undefined
+  if (typeof registration !== 'boolean' || typeof slots !== 'number' || !Number.isInteger(slots) || slots < 1) {
+    return undefined
+  }
+  return { txHash, registration, slots }
 }
 
-export function loadPendingPayment(collectionId: string, store = storage()): LinkedPayment | undefined {
+export function loadPendingPublish(scope: PendingPublishScope, store = storage()): PendingPublish {
   try {
-    const raw = store?.getItem(KEY_PREFIX + collectionId)
-    const parsed: unknown = raw ? JSON.parse(raw) : undefined
-    return isPayment(parsed) ? { txHash: parsed.txHash, registration: parsed.registration } : undefined
+    const raw = store?.getItem(keyOf(scope))
+    const parsed = raw ? (JSON.parse(raw) as Record<string, unknown>) : undefined
+    if (!parsed || typeof parsed !== 'object') return {}
+    const payment = toPayment(parsed.payment)
+    return {
+      ...(payment ? { payment } : {}),
+      ...(parsed.publishMayHaveLanded === true ? { publishMayHaveLanded: true } : {})
+    }
   } catch {
-    return undefined
+    return {}
   }
 }
 
-/** Stores the payment to resume, or forgets it when there is none left (a finished or reverted one). */
-export function savePendingPayment(collectionId: string, payment: LinkedPayment | undefined, store = storage()): void {
+/** Stores what is left to resume, or forgets it once nothing is. */
+export function savePendingPublish(scope: PendingPublishScope, pending: PendingPublish, store = storage()): void {
   try {
-    if (payment) store?.setItem(KEY_PREFIX + collectionId, JSON.stringify(payment))
-    else store?.removeItem(KEY_PREFIX + collectionId)
+    if (pending.payment || pending.publishMayHaveLanded) store?.setItem(keyOf(scope), JSON.stringify(pending))
+    else store?.removeItem(keyOf(scope))
   } catch {
     // Storage blocked: the resume only lives as long as the wizard.
   }

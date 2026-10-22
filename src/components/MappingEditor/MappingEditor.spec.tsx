@@ -63,6 +63,13 @@ describe('MappingEditor', () => {
     expect(screen.getByTestId('mapping-editor-id')).toHaveValue('25')
   })
 
+  it('shows a mapping saved elsewhere for an item that had none', () => {
+    const onChange = vi.fn()
+    const { rerender } = render(<MappingEditor value={null} onChange={onChange} />, { wrapper })
+    rerender(<MappingEditor value={{ type: MappingType.SINGLE, id: '7' }} onChange={onChange} />)
+    expect(screen.getByTestId('mapping-editor-id')).toHaveValue('7')
+  })
+
   it('starts from the saved mapping', () => {
     renderEditor({ type: MappingType.SINGLE, id: '42' })
     expect(screen.getByTestId('mapping-editor-id')).toHaveValue('42')

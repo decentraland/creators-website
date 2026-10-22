@@ -676,7 +676,8 @@
       "hint": "Cada ZIP actualiza el ítem cuya URN figura en su wearable.json. Reemplaza los archivos y datos del ítem; su mapeo se mantiene salvo que el ZIP defina uno.",
       "success_toast": "{count, plural, one {# ítem actualizado} other {# ítems actualizados}}"
     },
-    "items_error": "No pudimos cargar los ítems de esta colección, que hacen falta para asociar cada archivo con su ítem. Inténtalo de nuevo."
+    "items_error": "No pudimos cargar los ítems de esta colección, que hacen falta para asociar cada archivo con su ítem. Inténtalo de nuevo.",
+    "items_loading": "Los ítems de esta colección todavía se están cargando. Intenta guardar de nuevo en un momento."
   },
   "video_modal": {
     "title": "Video de vista previa",
@@ -1857,7 +1858,7 @@
       "checkbox": "Garantizo que los ítems enviados cumplen plenamente los <terms>Términos de uso</terms> y la <policy>Política de contenido</policy>, que tengo los derechos de propiedad intelectual para crear wearables basados en esta colección NFT, y reconozco que la DAO puede rechazar su aprobación y que la tarifa no se reembolsará si se rechazan.",
       "submit": "Publicar y pagar",
       "submit_free": "Publicar",
-      "resuming": "Tu pago anterior ya se procesó. No hay nada más que pagar: termina la publicación para enviar tus ítems a revisión.",
+      "resuming": "Tu pago anterior ya se envió. Termina la publicación: esperaremos a que se confirme y luego enviaremos tus ítems, sin volver a cobrar.",
       "submit_resume": "Terminar publicación"
     },
     "running": {

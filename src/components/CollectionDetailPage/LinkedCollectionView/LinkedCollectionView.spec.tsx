@@ -201,7 +201,11 @@ describe('LinkedCollectionView', () => {
     setup({ page: [published], curations: new Map([['1', approved('1')]]) })
     renderView({ itemCount: 1 })
     await rows()
-    await waitFor(() => expect(fetchAllLinkedCollectionItems).toHaveBeenCalled())
+    // Both counts behind the button have answered (unpushed changes, items without a mapping).
+    await waitFor(() =>
+      expect(vi.mocked(fetchLinkedCollectionItems).mock.calls.filter(call => call[3] === 1).length).toBe(2)
+    )
+    await new Promise(resolve => setTimeout(resolve, 0))
     expect(screen.queryByTestId('publish-linked-items')).not.toBeInTheDocument()
   })
 

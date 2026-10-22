@@ -20,6 +20,7 @@ import {
   LinkedPublishError,
   publishLinkedItems,
   signSlotsCheque,
+  type LinkedPayment,
   type LinkedPublishStep,
   type PublishLinkedParams
 } from '~/lib/publishLinkedItems'
@@ -57,6 +58,7 @@ export type PublishLinkedVariables = Omit<PublishLinkedParams, 'address' | 'chai
   /** The latest curation of every item, so pushed items refresh a pending request instead of opening another. */
   curations: Map<string, ItemCuration>
   onStep?: (step: LinkedPublishStep) => void
+  onPayment?: (payment: LinkedPayment | undefined) => void
 }
 
 /** Runs the whole linked publish for the connected wallet: ToS, kind, fee on chain, server publish, pushes. */
@@ -65,7 +67,7 @@ export function usePublishLinkedItems(session: Session, collection: Collection) 
   const chainId = getMaticChainId()
   const { address } = session
   return useMutation({
-    mutationFn: ({ onStep, curations, ...params }: PublishLinkedVariables) =>
+    mutationFn: ({ onStep, onPayment, curations, ...params }: PublishLinkedVariables) =>
       publishLinkedItems(
         { ...params, address, chainId },
         {
@@ -78,7 +80,8 @@ export function usePublishLinkedItems(session: Session, collection: Collection) 
           publishLinkedItems: (collectionId, itemIds, cheque: SlotsCheque) =>
             postLinkedItems(address, collectionId, itemIds, cheque),
           pushChanges: items => pushChanges(address, items, curations),
-          onStep
+          onStep,
+          onPayment
         }
       ),
     onSuccess: (result, variables) => {

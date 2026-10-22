@@ -91,9 +91,10 @@ export function LinkedPaymentStep({
   const balance = mana.data ?? 0n
   const hasEnough = !!fee && balance >= fee.maxManaWei
   const isFree = !!fee && fee.manaWei === 0n
-  const canSubmit = !busy && accepted && (resuming || (!!fee && (isFree || (hasEnough && mana.isSuccess))))
   const usd = (wei: bigint) => intl.formatNumber(weiToUsdCents(wei) / 100, { style: 'currency', currency: 'USD' })
   const loadError = priceError || slotsError
+  const canSubmit =
+    !busy && accepted && !loadError && !!price && (resuming || (!!fee && (isFree || (hasEnough && mana.isSuccess))))
 
   const openLink = (url: string) => (event: React.MouseEvent) => {
     event.preventDefault()
@@ -114,11 +115,7 @@ export function LinkedPaymentStep({
           </S.Text>
         </div>
 
-        {resuming ? (
-          <S.InlineNote data-testid="publish-linked-resuming">
-            {t('publish_linked_modal.payment_step.resuming')}
-          </S.InlineNote>
-        ) : loadError ? (
+        {loadError ? (
           <S.InlineNote data-testid="publish-linked-fee-error">
             {t('publish_linked_modal.payment_step.price_error')}
             <Button
@@ -132,6 +129,10 @@ export function LinkedPaymentStep({
             >
               {t('publish_collection_modal.payment_step.retry')}
             </Button>
+          </S.InlineNote>
+        ) : resuming ? (
+          <S.InlineNote data-testid="publish-linked-resuming">
+            {t('publish_linked_modal.payment_step.resuming')}
           </S.InlineNote>
         ) : !fee || slotsToBuy === null ? (
           <S.InlineNote data-testid="publish-linked-fee-loading">

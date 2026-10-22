@@ -1,32 +1,39 @@
 import { describe, it, expect } from 'vitest'
-import { loadPendingPayment, savePendingPayment } from './pendingLinkedPayment'
+import { loadPendingPublish, savePendingPublish } from './pendingLinkedPayment'
 
 function memoryStore() {
   const values = new Map<string, string>()
   return {
+    values,
     getItem: (key: string) => values.get(key) ?? null,
     setItem: (key: string, value: string) => void values.set(key, value),
     removeItem: (key: string) => void values.delete(key)
   }
 }
 
-describe('pending linked payment', () => {
-  it('remembers an unfinished payment per collection and forgets it once settled', () => {
-    const store = memoryStore()
-    savePendingPayment('c1', { txHash: '0xabc', registration: true }, store)
-    expect(loadPendingPayment('c1', store)).toEqual({ txHash: '0xabc', registration: true })
-    expect(loadPendingPayment('c2', store)).toBeUndefined()
+const scope = { chainId: 80002, address: '0xAbC', collectionId: 'c1' }
+const payment = { txHash: '0xabc', registration: true, slots: 3 }
 
-    savePendingPayment('c1', undefined, store)
-    expect(loadPendingPayment('c1', store)).toBeUndefined()
+describe('pending linked publish', () => {
+  it('remembers what is left per chain, wallet and collection, and forgets it once settled', () => {
+    const store = memoryStore()
+    savePendingPublish(scope, { payment, publishMayHaveLanded: true }, store)
+
+    expect(loadPendingPublish({ ...scope, address: '0xabc' }, store)).toEqual({ payment, publishMayHaveLanded: true })
+    expect(loadPendingPublish({ ...scope, address: '0xdef' }, store)).toEqual({})
+    expect(loadPendingPublish({ ...scope, chainId: 137 }, store)).toEqual({})
+    expect(loadPendingPublish({ ...scope, collectionId: 'c2' }, store)).toEqual({})
+
+    savePendingPublish(scope, {}, store)
+    expect(store.values.size).toBe(0)
   })
 
   it('ignores anything stored that is not a payment', () => {
     const store = memoryStore()
-    store.setItem('linked-publish.pending-payment.c1', '{"txHash":"nope","registration":true}')
-    expect(loadPendingPayment('c1', store)).toBeUndefined()
-    store.setItem('linked-publish.pending-payment.c1', 'not json')
-    expect(loadPendingPayment('c1', store)).toBeUndefined()
+    savePendingPublish(scope, { payment: { ...payment, txHash: 'nope' } }, store)
+    expect(loadPendingPublish(scope, store)).toEqual({})
+    store.setItem([...store.values.keys()][0] ?? 'x', 'not json')
+    expect(loadPendingPublish(scope, store)).toEqual({})
   })
 
   it('survives blocked storage', () => {
@@ -41,7 +48,7 @@ describe('pending linked payment', () => {
         throw new Error('blocked')
       }
     }
-    expect(loadPendingPayment('c1', blocked)).toBeUndefined()
-    expect(() => savePendingPayment('c1', { txHash: '0x1', registration: false }, blocked)).not.toThrow()
+    expect(loadPendingPublish(scope, blocked)).toEqual({})
+    expect(() => savePendingPublish(scope, { payment }, blocked)).not.toThrow()
   })
 })
