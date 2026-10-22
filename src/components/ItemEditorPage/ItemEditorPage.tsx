@@ -189,7 +189,10 @@ const ItemEditorPage = () => {
   // An unsaved model's files exist only in memory: storage would 404 on their hashes. Phones validate nothing.
   const validationSource = useMemo<ValidationSource | null>(() => {
     if (!previewSelected || isMobile) return null
-    const representations = fileUpdate?.item.data.representations ?? []
+    // A one-shape change ships that shape's files only; the kept shape was validated as stored.
+    const representations = (fileUpdate?.item.data.representations ?? []).filter(representation =>
+      representation.contents.every(path => path in (fileUpdate?.blobs ?? {}))
+    )
     if (!fileUpdate || representations.length === 0) return { kind: 'item', item: previewSelected }
     const models = distinctModels(representations, path => fileUpdate.item.contents[path])
     return {

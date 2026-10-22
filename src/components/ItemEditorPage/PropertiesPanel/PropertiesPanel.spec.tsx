@@ -18,6 +18,7 @@ vi.mock('../ChangeFileModal', () => ({
       type="button"
       data-testid="mock-change-file-apply"
       data-shapes={item.data.representations.length}
+      data-category={item.data.category}
       onClick={() => fileChange.result && void onSave(fileChange.result)}
     />
   )
@@ -205,6 +206,10 @@ describe('PropertiesPanel', () => {
     expect(screen.queryByTestId('properties-panel-category-error')).not.toBeInTheDocument()
     expect(screen.getByTestId('properties-panel-category')).toHaveTextContent('Eyes')
     expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
+    // A further change is checked against the category as picked, not the stored one.
+    await userEvent.click(screen.getByTestId('properties-panel-actions'))
+    await userEvent.click(screen.getByTestId('properties-panel-change-file'))
+    expect(screen.getByTestId('mock-change-file-apply')).toHaveAttribute('data-category', 'eyes')
   })
 
   it('builds a second file change on the pending one', async () => {

@@ -534,6 +534,8 @@ export async function withReplacedRepresentation(
   const hashes = await computeHashes(blobs)
   const replaced = item.data.representations[index]
   const kept = new Set(getKeptRepresentationPaths(item, wearableBodyShape))
+  // A kept representation listing a path under this shape's folder would silently point at the new file.
+  if (Object.keys(hashes).some(path => kept.has(path))) throw new ItemFileError('invalid_representation')
   const contents: Record<string, string> = {}
   for (const [path, hash] of Object.entries(item.contents)) {
     if (!replaced.contents.includes(path) || kept.has(path)) contents[path] = hash

@@ -1,15 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react'
-import {
-  ErrorOutline as HintIcon,
-  Female as FemaleIcon,
-  Male as MaleIcon,
-  Transgender as BothIcon,
-  UploadFileOutlined as UploadIcon
-} from '@mui/icons-material'
+import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
+import { ErrorOutline as HintIcon, UploadFileOutlined as UploadIcon } from '@mui/icons-material'
 import { Button } from '~/components/Button'
 import { CategorySelect } from '~/components/CategorySelect'
 import { Checkbox } from '~/components/Checkbox'
 import {
+  BODY_SHAPE_OPTIONS,
   DraftPreviewPane,
   DraftProcessor,
   createDraft,
@@ -25,7 +20,14 @@ import { useTranslation } from '~/intl'
 import { errorCode, track } from '~/lib/analytics'
 import { pickFile } from '~/lib/filePicker'
 import { type BuiltItem } from '~/lib/itemFactory'
-import { ITEM_EXTENSIONS, ItemFileError, THUMBNAIL_PATH, getExtension, isImageFile } from '~/lib/itemFiles'
+import {
+  ITEM_EXTENSIONS,
+  ItemFileError,
+  THUMBNAIL_PATH,
+  getBodyShapeTypeFromContents,
+  getExtension,
+  isImageFile
+} from '~/lib/itemFiles'
 import {
   buildModelUpdate,
   getDefaultBodyShape,
@@ -37,7 +39,7 @@ import {
   needsNewCategory,
   type LoadedItemModel
 } from '~/lib/itemModelImport'
-import { BodyShapeType, ItemType, isSmartWearable, type Item } from '~/lib/items'
+import { BodyShapeType, IMAGE_WEARABLE_METRICS, ItemType, isSmartWearable, type Item } from '~/lib/items'
 import { captureError } from '~/lib/monitoring'
 import { getWearableCategoryOptions } from '~/lib/wearableCategories'
 import * as S from './ChangeFileModal.styles'
@@ -59,11 +61,35 @@ type Props = {
   onClose: () => void
 }
 
-const BODY_SHAPES: Array<{ value: BodyShapeType; icon: ReactNode }> = [
-  { value: BodyShapeType.BOTH, icon: <BothIcon /> },
-  { value: BodyShapeType.FEMALE, icon: <FemaleIcon /> },
-  { value: BodyShapeType.MALE, icon: <MaleIcon /> }
-]
+/**
+ * What the preview measures and renders for a pick: one folder of a two-folder zip. A texture needs no
+ * preview run, so its fixed metrics and padded thumbnail are filled here; a 3D model leaves them to the
+ * DraftProcessor, under an id of its own so a run still going for another folder can't land on it.
+ */
+async function previewPatch(
+  baseId: string,
+  loaded: LoadedItemModel,
+  shape: BodyShapeType,
+  category: string | null
+): Promise<Partial<ItemDraft>> {
+  const preview = getPreviewModel(loaded, shape)
+  const patch: Partial<ItemDraft> = {
+    id: `${baseId}:${shape}`,
+    ...preview,
+    metrics: loaded.metrics,
+    thumbnail: null,
+    isAutoThumbnail: false,
+    autoThumbnailCategory: null
+  }
+  if (!isImageFile(preview.model)) return patch
+  return {
+    ...patch,
+    ...(await imageThumbnailPatch(preview.contents, preview.model, category)),
+    metrics: IMAGE_WEARABLE_METRICS,
+    isAutoThumbnail: true,
+    autoThumbnailCategory: category
+  }
+}
 
 /**
  * Loads a new model for a saved item and lets the creator pick which body shape it goes to; Save
@@ -82,8 +108,10 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
   const [category, setCategory] = useState<string | null>(null)
   const [isSaving, setSaving] = useState(false)
   const [isDiscardOpen, setDiscardOpen] = useState(false)
-  // A file picked after the modal closed must not land in state.
+  // A file picked after the modal closed must not land in state; a preview patch for a pick that was
+  // changed again while it was being prepared must not either.
   const mountedRef = useRef(true)
+  const pickRef = useRef(0)
   useEffect(() => {
     mountedRef.current = true
     return () => {
@@ -133,28 +161,23 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
       if (!mountedRef.current) return
       const base = createDraft(picked, { nameFromFile: false })
       const shape = lockedBodyShape ?? getDefaultBodyShape(item, next)
-      let patch: Partial<ItemDraft> = {
+      const category = item.data.category ?? null
+      const patch: Partial<ItemDraft> = {
         status: 'ready',
         type: next.type,
-        // The preview measures and renders what the pick will use: one folder of a two-folder zip.
-        ...getPreviewModel(next, shape),
         bodyShape: shape,
         bodyShapeLocked: isBodyShapeLocked(item, next),
         isSmart: next.isSmart,
         requiredPermissions: next.requiredPermissions,
-        category: item.data.category ?? null,
+        category,
         rarity: item.rarity ?? base.rarity,
         hides: item.data.hides ?? [],
-        metrics: next.metrics,
         validationIssues: next.validationIssues,
-        validatedCategory: item.data.category ?? null
-      }
-      if (isImageFile(next.model)) {
-        patch = { ...patch, ...(await imageThumbnailPatch(next.contents, next.model, item.data.category ?? null)) }
-        patch.isAutoThumbnail = true
-        patch.autoThumbnailCategory = item.data.category ?? null
+        validatedCategory: category,
+        ...(await previewPatch(base.id, next, shape, category))
       }
       if (!mountedRef.current) return
+      pickRef.current++
       setFile(picked)
       setLoaded(next)
       setDraft({ ...base, ...patch })
@@ -168,14 +191,20 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
   }
 
   function pickShape(value: BodyShapeType) {
-    if (locked || !loaded || value === bodyShape) return
+    if (locked || !loaded || !draft || value === bodyShape) return
     setBodyShape(value)
-    const preview = getPreviewModel(loaded, value)
-    // A different folder is a different model: its metrics and render come from the preview again.
-    setDraft(current => {
-      if (!current || current.model === preview.model) return current
-      return { ...current, ...preview, metrics: null, thumbnail: null, isAutoThumbnail: false }
-    })
+    // Another folder of a two-folder zip is another model: its metrics and render come from the preview again.
+    if (getBodyShapeTypeFromContents(loaded.contents) !== BodyShapeType.BOTH) return
+    const pick = ++pickRef.current
+    const baseId = draft.id.split(':')[0]
+    previewPatch(baseId, loaded, value, item.data.category ?? null)
+      .then(patch => {
+        if (!mountedRef.current || pickRef.current !== pick) return
+        setDraft(current => current && { ...current, ...patch })
+      })
+      .catch((err: unknown) => {
+        if (mountedRef.current && pickRef.current === pick) reportError(err)
+      })
   }
 
   function handleDrop(event: DragEvent) {
@@ -255,7 +284,7 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
                       </S.FieldHint>
                     </S.FieldLabel>
                     <S.Segmented role="radiogroup" aria-label={t('add_items_modal.body_shape')}>
-                      {BODY_SHAPES.map(({ value, icon }) => {
+                      {BODY_SHAPE_OPTIONS.map(({ value, icon }) => {
                         const selected = bodyShape === value
                         return (
                           <Tooltip

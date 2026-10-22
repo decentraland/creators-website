@@ -137,8 +137,16 @@ export function PropertiesPanel({
     () => (isEmote ? getEmoteCategoryOptions() : getWearableCategoryOptions(contents)),
     [isEmote, contents]
   )
-  // A second file change builds on the pending one, so the shapes on offer follow the draft.
-  const fileBase = draft.fileUpdate?.item ?? item
+  // A file change builds on the pending one with the category and hides as edited, so a second change
+  // (after a failed save) is checked and padded against what the creator picked.
+  const pendingItem = draft.fileUpdate?.item ?? item
+  const fileBase = useMemo(
+    () => ({
+      ...pendingItem,
+      data: { ...pendingItem.data, category: draft.category ?? undefined, hides: draft.hides }
+    }),
+    [pendingItem, draft.category, draft.hides]
+  )
   const missingShape = useMemo(
     () => (isWearable && !isSmart ? getMissingBodyShapeType(fileBase) : null),
     [isWearable, isSmart, fileBase]

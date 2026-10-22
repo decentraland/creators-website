@@ -17,9 +17,13 @@ vi.mock('~/lib/itemFiles', async importOriginal => ({
 }))
 vi.mock('~/lib/models', () => ({ analyzeModel: (...args: unknown[]) => analyzeModel(...args) }))
 vi.mock('~/hooks/useThumbnailValidation', () => ({ useThumbnailValidation: () => ({ data: undefined }) }))
-// The preview iframe is what fills metrics and the auto thumbnail; here it answers at once and records
-// which model it was handed.
-const processed = vi.hoisted(() => ({ models: [] as string[] }))
+// The preview iframe is what fills metrics and the auto thumbnail; here it answers at once (or when the
+// test releases it) and records which draft it was handed.
+const processed = vi.hoisted(() => ({
+  runs: [] as Array<{ id: string; model: string; files: string }>,
+  defer: false,
+  pending: [] as Array<() => void>
+}))
 vi.mock('~/components/CollectionDetailPage/AddItemsModal', async importOriginal => ({
   ...(await importOriginal<typeof import('~/components/CollectionDetailPage/AddItemsModal')>()),
   DraftProcessor: ({
@@ -30,13 +34,17 @@ vi.mock('~/components/CollectionDetailPage/AddItemsModal', async importOriginal 
     onResult: (id: string, patch: unknown) => void
   }) => {
     useEffect(() => {
-      processed.models.push(draft.model)
-      onResult(draft.id, {
-        metrics: { triangles: draft.model.length },
-        thumbnail: 'data:image/png;base64,AAAA',
-        contents: { ...draft.contents, 'thumbnail.png': new Blob(['render']) }
-      })
-    }, [])
+      processed.runs.push({ id: draft.id, model: draft.model, files: Object.keys(draft.contents).sort().join() })
+      const deliver = () =>
+        onResult(draft.id, {
+          metrics: { triangles: draft.id.length },
+          thumbnail: 'data:image/png;base64,AAAA',
+          contents: { ...draft.contents, 'thumbnail.png': new Blob(['render']) }
+        })
+      if (processed.defer) processed.pending.push(deliver)
+      else deliver()
+      // The real processor starts a new run for every draft id it is handed.
+    }, [draft.id])
     return null
   },
   imageThumbnailPatch: (contents: Record<string, Blob>) =>
@@ -94,6 +102,9 @@ async function loadFile() {
 }
 
 beforeEach(() => {
+  processed.runs.length = 0
+  processed.pending.length = 0
+  processed.defer = false
   vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:x')
   vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
   pickFile.mockReset().mockResolvedValue(new File(['glb'], 'new.glb'))
@@ -173,23 +184,60 @@ describe('ChangeFileModal', () => {
     expect(Object.keys(update.blobs)).toEqual(['female/a.glb'])
   })
 
-  it('measures and renders the picked folder of a zip with both body shapes', async () => {
-    processed.models.length = 0
+  it('measures and renders the picked folder of a zip with both body shapes, same file names included', async () => {
     loadItemFile.mockResolvedValue({
-      contents: { 'male/m.glb': new Blob(['m']), 'female/f.glb': new Blob(['f']), 'shared.png': new Blob(['s']) },
-      model: 'male/m.glb',
+      contents: {
+        'male/model.glb': new Blob(['m']),
+        'female/model.glb': new Blob(['f']),
+        'shared.png': new Blob(['s'])
+      },
+      model: 'male/model.glb',
       bodyShape: BodyShapeType.BOTH
     })
     const { onApply } = renderModal(unisex)
     await loadFile()
     await userEvent.click(screen.getByTestId('body-shape-female'))
-    await waitFor(() => expect(processed.models[processed.models.length - 1]).toBe('f.glb'))
+    await waitFor(() => expect(processed.runs).toHaveLength(2))
+    expect(processed.runs[1]).toMatchObject({ model: 'model.glb', files: 'model.glb,shared.png' })
+    expect(processed.runs[1].id).not.toBe(processed.runs[0].id)
     await waitFor(() => expect(screen.getByTestId('change-file-save')).toBeEnabled())
     await userEvent.click(screen.getByTestId('change-file-save'))
     await waitFor(() => expect(onApply).toHaveBeenCalled())
     const { update } = onApply.mock.calls[0][0]
-    expect(update.item.metrics).toEqual({ triangles: 'f.glb'.length })
-    expect(update.item.data.representations[1].mainFile).toBe('female/f.glb')
+    expect(update.item.metrics).toEqual({ triangles: processed.runs[1].id.length })
+    expect(update.item.data.representations[1].mainFile).toBe('female/model.glb')
+  })
+
+  it('drops the result of a run still measuring the previous folder', async () => {
+    processed.defer = true
+    loadItemFile.mockResolvedValue({
+      contents: { 'male/model.glb': new Blob(['m']), 'female/model.glb': new Blob(['f']) },
+      model: 'male/model.glb',
+      bodyShape: BodyShapeType.BOTH
+    })
+    renderModal(unisex)
+    await loadFile()
+    await userEvent.click(screen.getByTestId('body-shape-female'))
+    await waitFor(() => expect(processed.pending).toHaveLength(2))
+    // The male run lands late: the female pick must still be waiting for its own.
+    processed.pending[0]()
+    expect(screen.getByTestId('change-file-save')).toBeDisabled()
+    processed.pending[1]()
+    await waitFor(() => expect(screen.getByTestId('change-file-save')).toBeEnabled())
+  })
+
+  it('refuses a smart zip for a single representation', async () => {
+    loadItemFile.mockResolvedValue({
+      contents: { 'sw.glb': new Blob(['g']), 'scene.json': new Blob(['{}']) },
+      model: 'sw.glb',
+      bodyShape: BodyShapeType.BOTH,
+      scene: { requiredPermissions: [] }
+    })
+    renderModal(maleOnly, BodyShapeType.FEMALE)
+    await loadFile()
+    expect(screen.getByTestId('change-file-pick-error')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByTestId('draft-thumbnail')).toBeInTheDocument())
+    expect(screen.getByTestId('change-file-save')).toBeDisabled()
   })
 
   it('keeps the item thumbnail when the creator unticks the render', async () => {

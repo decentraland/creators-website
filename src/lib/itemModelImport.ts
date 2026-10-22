@@ -136,16 +136,19 @@ export function getPreviewModel(
 }
 
 /**
- * Why a pick can't go through, if anything: both shapes share the item's category, and image and model
- * wearables take disjoint ones, so a shape kept next to the new file must be of the same kind.
+ * Why a pick can't go through, if anything: a smart zip only replaces the whole item; both shapes share
+ * the item's category, and image and model wearables take disjoint ones, so a shape kept next to the new
+ * file must be of the same kind.
  */
 export function getModelUpdateError(
   loaded: LoadedItemModel,
   item: Item,
   bodyShape: BodyShapeType
-): 'representation_category_mismatch' | null {
+): 'representation_category_mismatch' | 'invalid_representation' | null {
   if (item.type !== ItemType.WEARABLE) return null
   const mode = getModelUpdateMode(item, bodyShape)
+  // A smart wearable is unisex: its scene can't live under one shape's folder.
+  if (loaded.isSmart && mode !== 'replace_all') return 'invalid_representation'
   if (mode === 'add_representation') {
     const category = item.data.category
     return category && !getWearableCategoryOptions(loaded.contents).includes(category)

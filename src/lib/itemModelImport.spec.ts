@@ -326,4 +326,21 @@ describe('buildModelUpdate', () => {
     expect(needsNewCategory(texture, maleOnly, BodyShapeType.FEMALE)).toBe(false)
     expect(needsNewCategory(newFile(), maleOnly, BodyShapeType.MALE)).toBe(false)
   })
+
+  it('only takes a smart zip for a full replace', async () => {
+    const smartZip = {
+      ...newFile(),
+      contents: { 'sw.glb': new Blob(['g']), 'scene.json': new Blob(['{}']) },
+      model: 'sw.glb',
+      isSmart: true
+    }
+    await expect(buildModelUpdate(smartZip, maleOnly, BodyShapeType.FEMALE, metrics)).rejects.toMatchObject({
+      messageKey: 'invalid_representation'
+    })
+    await expect(buildModelUpdate(smartZip, unisex, BodyShapeType.MALE, metrics)).rejects.toMatchObject({
+      messageKey: 'invalid_representation'
+    })
+    const replaced = await buildModelUpdate(smartZip, maleOnly, BodyShapeType.BOTH, metrics)
+    expect(shapesOf(replaced.item)).toEqual([BodyShape.MALE, BodyShape.FEMALE])
+  })
 })

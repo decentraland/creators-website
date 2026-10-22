@@ -34,7 +34,7 @@ type Props = {
   onVideoChange: (video: File) => void
 }
 
-const BODY_SHAPES: Array<{ value: BodyShapeType; icon: ReactNode }> = [
+export const BODY_SHAPE_OPTIONS: Array<{ value: BodyShapeType; icon: ReactNode }> = [
   { value: BodyShapeType.BOTH, icon: <BothIcon /> },
   { value: BodyShapeType.FEMALE, icon: <FemaleIcon /> },
   { value: BodyShapeType.MALE, icon: <MaleIcon /> }
@@ -120,7 +120,7 @@ export function DraftForm({
               t('add_items_modal.body_shape')
             )}
             <S.Segmented role="radiogroup" aria-label={t('add_items_modal.body_shape')}>
-              {BODY_SHAPES.map(({ value, icon }) => {
+              {BODY_SHAPE_OPTIONS.map(({ value, icon }) => {
                 const selected = draft.bodyShape === value
                 const locked = draft.bodyShapeLocked
                 return (
