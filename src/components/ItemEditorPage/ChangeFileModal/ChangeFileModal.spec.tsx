@@ -17,19 +17,22 @@ vi.mock('~/lib/itemFiles', async importOriginal => ({
 }))
 vi.mock('~/lib/models', () => ({ analyzeModel: (...args: unknown[]) => analyzeModel(...args) }))
 vi.mock('~/hooks/useThumbnailValidation', () => ({ useThumbnailValidation: () => ({ data: undefined }) }))
-// The preview iframe is what fills metrics and the auto thumbnail; here it answers at once.
+// The preview iframe is what fills metrics and the auto thumbnail; here it answers at once and records
+// which model it was handed.
+const processed = vi.hoisted(() => ({ models: [] as string[] }))
 vi.mock('~/components/CollectionDetailPage/AddItemsModal', async importOriginal => ({
   ...(await importOriginal<typeof import('~/components/CollectionDetailPage/AddItemsModal')>()),
   DraftProcessor: ({
     draft,
     onResult
   }: {
-    draft: { id: string; contents: Record<string, Blob> }
+    draft: { id: string; model: string; contents: Record<string, Blob> }
     onResult: (id: string, patch: unknown) => void
   }) => {
     useEffect(() => {
+      processed.models.push(draft.model)
       onResult(draft.id, {
-        metrics: { triangles: 7 },
+        metrics: { triangles: draft.model.length },
         thumbnail: 'data:image/png;base64,AAAA',
         contents: { ...draft.contents, 'thumbnail.png': new Blob(['render']) }
       })
@@ -110,7 +113,6 @@ describe('ChangeFileModal', () => {
     await userEvent.click(screen.getByTestId('change-file-apply'))
     await waitFor(() => expect(onApply).toHaveBeenCalled())
     const result = onApply.mock.calls[0][0]
-    expect(result.mode).toBe('replace_shape')
     expect(result.update.item.data.representations.map(representation => representation.mainFile)).toEqual([
       'male/new.glb'
     ])
@@ -150,13 +152,31 @@ describe('ChangeFileModal', () => {
     await waitFor(() => expect(screen.getByTestId('change-file-apply')).toBeEnabled())
     await userEvent.click(screen.getByTestId('change-file-apply'))
     await waitFor(() => expect(onApply).toHaveBeenCalled())
-    const { update, mode } = onApply.mock.calls[0][0]
-    expect(mode).toBe('add_representation')
+    const { update } = onApply.mock.calls[0][0]
     expect(update.item.data.representations.map(representation => representation.mainFile)).toEqual([
       'male/hat.glb',
       'female/a.glb'
     ])
     expect(Object.keys(update.blobs)).toEqual(['female/a.glb'])
+  })
+
+  it('measures and renders the picked folder of a zip with both body shapes', async () => {
+    processed.models.length = 0
+    loadItemFile.mockResolvedValue({
+      contents: { 'male/m.glb': new Blob(['m']), 'female/f.glb': new Blob(['f']), 'shared.png': new Blob(['s']) },
+      model: 'male/m.glb',
+      bodyShape: BodyShapeType.BOTH
+    })
+    const { onApply } = renderModal(unisex)
+    await loadFile()
+    await userEvent.click(screen.getByTestId('body-shape-female'))
+    await waitFor(() => expect(processed.models[processed.models.length - 1]).toBe('f.glb'))
+    await waitFor(() => expect(screen.getByTestId('change-file-apply')).toBeEnabled())
+    await userEvent.click(screen.getByTestId('change-file-apply'))
+    await waitFor(() => expect(onApply).toHaveBeenCalled())
+    const { update } = onApply.mock.calls[0][0]
+    expect(update.item.metrics).toEqual({ triangles: 'f.glb'.length })
+    expect(update.item.data.representations[1].mainFile).toBe('female/f.glb')
   })
 
   it('keeps the item thumbnail when the creator unticks the render', async () => {

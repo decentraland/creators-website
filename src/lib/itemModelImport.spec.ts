@@ -12,8 +12,14 @@ vi.mock('./models', () => ({
   analyzeModel: (...args: unknown[]) => analyzeModel(...args)
 }))
 
-const { buildModelUpdate, getDefaultBodyShape, getModelUpdateMode, loadModelForItem, needsNewCategory } =
-  await import('./itemModelImport')
+const {
+  buildModelUpdate,
+  getDefaultBodyShape,
+  getModelUpdateMode,
+  getPreviewModel,
+  loadModelForItem,
+  needsNewCategory
+} = await import('./itemModelImport')
 
 const maleOnly: Item = {
   id: 'w1',
@@ -114,7 +120,7 @@ describe('loadModelForItem', () => {
     expect(loaded).toMatchObject({ metrics: null, validationIssues: [issue], fileBodyShape: null, isSmart: false })
   })
 
-  it('takes emote metrics from the analysis and keeps a texture wearable metrics', async () => {
+  it('takes emote metrics from the analysis and fixed metrics for a texture', async () => {
     analyzeModel.mockResolvedValue({
       type: ItemType.EMOTE,
       validationIssues: [],
@@ -127,7 +133,24 @@ describe('loadModelForItem', () => {
     analyzeModel.mockResolvedValue({ type: ItemType.WEARABLE, validationIssues: [], suggestedCategory: null })
     loadItemFile.mockResolvedValue({ contents: { 'eyes.png': new Blob(['p']) }, model: 'eyes.png', bodyShape: null })
     const texture = await loadModelForItem(file, maleOnly)
-    expect(texture.metrics).toEqual({ triangles: 10 })
+    expect(texture.metrics).toMatchObject({ triangles: 100, materials: 1 })
+  })
+
+  it('reads a smart zip permissions and video', async () => {
+    const video = new Blob(['mp4'])
+    loadItemFile.mockResolvedValue({
+      contents: { 'sw.glb': new Blob(['g']), 'scene.json': new Blob(['{}']), 'video.mp4': video },
+      model: 'sw.glb',
+      bodyShape: BodyShapeType.BOTH,
+      scene: { requiredPermissions: ['USE_WEB3_API'] }
+    })
+    const loaded = await loadModelForItem(file, maleOnly)
+    expect(loaded).toMatchObject({
+      isSmart: true,
+      requiredPermissions: ['USE_WEB3_API'],
+      fileBodyShape: BodyShapeType.BOTH
+    })
+    expect(loaded.contents['video.mp4']).toBe(video)
   })
 })
 
@@ -152,6 +175,18 @@ describe('getModelUpdateMode / getDefaultBodyShape', () => {
   })
 })
 
+describe('getPreviewModel', () => {
+  it('shows the picked folder of a two-folder zip, unprefixed, with the shared files', () => {
+    const zip = { ...bothZip(), contents: { ...bothZip().contents, 'shared.png': new Blob(['s']) } }
+    expect(getPreviewModel(zip, BodyShapeType.BOTH)).toEqual({ contents: zip.contents, model: 'male/a.glb' })
+    const female = getPreviewModel(zip, BodyShapeType.FEMALE)
+    expect(Object.keys(female.contents).sort()).toEqual(['a.glb', 'shared.png'])
+    expect(female.contents['a.glb']).toBe(zip.contents['female/a.glb'])
+    expect(female.model).toBe('a.glb')
+    expect(getPreviewModel(newFile(), BodyShapeType.MALE).model).toBe('new.glb')
+  })
+})
+
 describe('buildModelUpdate', () => {
   it('replaces every representation on "both", keeping thumbnail and catalyst image', async () => {
     const built = await buildModelUpdate(newFile(), maleOnly, BodyShapeType.BOTH, metrics)
@@ -161,6 +196,39 @@ describe('buildModelUpdate', () => {
     expect(built.item.contents['male/hat.glb']).toBeUndefined()
     expect(built.item.metrics).toEqual(metrics)
     expect(Object.keys(built.blobs).sort()).toEqual(['female/new.glb', 'male/new.glb'])
+  })
+
+  it('writes a smart zip permissions and video on a full replace, and clears them for a plain file', async () => {
+    const smart: Item = {
+      ...maleOnly,
+      data: { ...maleOnly.data, requiredPermissions: ['OLD'] },
+      contents: { ...maleOnly.contents, 'video.mp4': 'bafyOldVideo' },
+      video: 'bafyOldVideo'
+    }
+    const video = new Blob(['mp4'])
+    const zip = {
+      ...newFile(),
+      contents: { 'sw.glb': new Blob(['g']), 'scene.json': new Blob(['{}']), 'video.mp4': video },
+      model: 'sw.glb',
+      isSmart: true,
+      requiredPermissions: ['USE_WEB3_API']
+    }
+    const replaced = await buildModelUpdate(zip, smart, BodyShapeType.BOTH, metrics)
+    expect(replaced.item.data.requiredPermissions).toEqual(['USE_WEB3_API'])
+    expect(replaced.item.contents['video.mp4']).not.toBe('bafyOldVideo')
+    expect(replaced.item.video).toBe(replaced.item.contents['video.mp4'])
+    expect(replaced.blobs['video.mp4']).toBe(video)
+    expect(replaced.item.contents['male/scene.json']).toBeDefined()
+
+    const plain = await buildModelUpdate(newFile(), smart, BodyShapeType.BOTH, metrics)
+    expect(plain.item.data).not.toHaveProperty('requiredPermissions')
+    expect(plain.item.contents).not.toHaveProperty('video.mp4')
+    expect(plain.item).not.toHaveProperty('video')
+
+    // A smart zip without a video keeps the one the item has.
+    const noVideo = { ...zip, contents: { 'sw.glb': new Blob(['g']), 'scene.json': new Blob(['{}']) } }
+    const kept = await buildModelUpdate(noVideo, smart, BodyShapeType.BOTH, metrics)
+    expect(kept.item.contents['video.mp4']).toBe('bafyOldVideo')
   })
 
   it('replaces only the picked shape of a two-model item and keeps the other', async () => {
@@ -234,6 +302,23 @@ describe('buildModelUpdate', () => {
     await expect(buildModelUpdate(texture, unisex, BodyShapeType.FEMALE, metrics)).rejects.toMatchObject({
       messageKey: 'representation_category_mismatch'
     })
+    // A representation serving both shapes keeps the other shape too, so the same rule applies.
+    const combined: Item = {
+      ...unisex,
+      data: {
+        category: 'hat',
+        representations: [
+          { bodyShapes: [BodyShape.MALE, BodyShape.FEMALE], mainFile: 'hat.glb', contents: ['hat.glb'] }
+        ]
+      },
+      contents: { 'hat.glb': 'bafyShared', 'thumbnail.png': 'bafyThumb' }
+    }
+    await expect(buildModelUpdate(texture, combined, BodyShapeType.FEMALE, metrics)).rejects.toMatchObject({
+      messageKey: 'representation_category_mismatch'
+    })
+    const split = await buildModelUpdate(newFile(), combined, BodyShapeType.MALE, metrics)
+    expect(shapesOf(split.item)).toEqual([BodyShape.MALE, BodyShape.FEMALE])
+    expect(split.item.contents['hat.glb']).toBe('bafyShared')
     // Replacing the only representation may switch kinds: the editor then asks for a category.
     const switched = await buildModelUpdate(texture, maleOnly, BodyShapeType.MALE, metrics)
     expect(switched.item.data.representations[0].mainFile).toBe('male/eyes.png')

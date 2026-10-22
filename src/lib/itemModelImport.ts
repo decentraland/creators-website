@@ -3,16 +3,26 @@
 import { type WearableCategory } from '@dcl/schemas'
 import {
   addRepresentationToItem,
+  getKeptRepresentationPaths,
   getSizeError,
   withReplacedModel,
   withReplacedRepresentation,
   type BuiltItem
 } from './itemFactory'
-import { ItemFileError, THUMBNAIL_PATH, isImageFile, loadItemFile } from './itemFiles'
+import {
+  ItemFileError,
+  THUMBNAIL_PATH,
+  VIDEO_PATH,
+  getBodyShapeTypeFromContents,
+  isImageFile,
+  isModelPath,
+  loadItemFile
+} from './itemFiles'
 import {
   BODY_SHAPE_FEMALE,
   BODY_SHAPE_MALE,
   BodyShapeType,
+  IMAGE_WEARABLE_METRICS,
   ItemType,
   getItemBodyShapeType,
   isSmartWearable,
@@ -40,15 +50,6 @@ export type LoadedItemModel = {
 }
 
 export type ModelUpdateMode = 'replace_all' | 'replace_shape' | 'add_representation'
-
-const IMAGE_WEARABLE_METRICS: ItemMetrics = {
-  triangles: 100,
-  materials: 1,
-  textures: 1,
-  meshes: 1,
-  bodies: 1,
-  entities: 1
-}
 
 /** Emotes and smart wearables are unisex by nature: the pick is fixed to both shapes. */
 export function isBodyShapeLocked(item: Item, loaded: LoadedItemModel | null = null): boolean {
@@ -93,7 +94,7 @@ export async function loadModelForItem(file: File, item: Item): Promise<LoadedIt
     item.type === ItemType.EMOTE
       ? { ...analysis.emoteMetrics }
       : isImageFile(loaded.model)
-        ? (item.metrics ?? IMAGE_WEARABLE_METRICS)
+        ? IMAGE_WEARABLE_METRICS
         : null
 
   return {
@@ -109,10 +110,29 @@ export async function loadModelForItem(file: File, item: Item): Promise<LoadedIt
 }
 
 function keptRepresentationPaths(item: Item, bodyShape: BodyShapeType): string[] {
-  const replaced = bodyShape === BodyShapeType.MALE ? BODY_SHAPE_MALE : BODY_SHAPE_FEMALE
-  return item.data.representations
-    .filter(representation => !representation.bodyShapes.includes(replaced))
-    .flatMap(representation => representation.contents)
+  return getKeptRepresentationPaths(item, bodyShape === BodyShapeType.MALE ? BODY_SHAPE_MALE : BODY_SHAPE_FEMALE)
+}
+
+/**
+ * The files the preview should measure and render for a pick: a zip with both body-shape folders shows
+ * the picked folder only (its files unprefixed, shared files alongside); anything else shows as loaded.
+ */
+export function getPreviewModel(
+  loaded: LoadedItemModel,
+  bodyShape: BodyShapeType
+): { contents: Record<string, Blob>; model: string } {
+  if (bodyShape === BodyShapeType.BOTH || getBodyShapeTypeFromContents(loaded.contents) !== BodyShapeType.BOTH) {
+    return { contents: loaded.contents, model: loaded.model }
+  }
+  const folder = `${bodyShape}/`
+  const other = `${bodyShape === BodyShapeType.MALE ? BodyShapeType.FEMALE : BodyShapeType.MALE}/`
+  const contents: Record<string, Blob> = {}
+  for (const [path, blob] of Object.entries(loaded.contents)) {
+    if (path.startsWith(other)) continue
+    contents[path.startsWith(folder) ? path.slice(folder.length) : path] = blob
+  }
+  const model = Object.keys(contents).find(isModelPath) ?? loaded.model
+  return { contents, model }
 }
 
 /**
@@ -165,7 +185,14 @@ export async function buildModelUpdate(
   const { contents, model } = loaded
   let built: BuiltItem
   if (mode === 'replace_all') {
-    built = await withReplacedModel(item, { contents, model, bodyShape: BodyShapeType.BOTH, metrics })
+    // A new smart zip brings its own scene permissions and preview video; a plain file clears both.
+    const video = contents[VIDEO_PATH] ?? (loaded.isSmart ? undefined : null)
+    built = await withReplacedModel(item, { contents, model, bodyShape: BodyShapeType.BOTH, metrics, video })
+    if (item.type === ItemType.WEARABLE) {
+      const data = { ...built.item.data }
+      delete data.requiredPermissions
+      built.item.data = loaded.isSmart ? { ...data, requiredPermissions: loaded.requiredPermissions } : data
+    }
   } else if (mode === 'replace_shape' && bodyShape !== BodyShapeType.BOTH) {
     built = await withReplacedRepresentation(item, bodyShape, { contents, model, metrics })
   } else {

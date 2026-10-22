@@ -25,17 +25,17 @@ import { useTranslation } from '~/intl'
 import { errorCode, track } from '~/lib/analytics'
 import { pickFile } from '~/lib/filePicker'
 import { type BuiltItem } from '~/lib/itemFactory'
-import { ITEM_EXTENSIONS, ItemFileError, THUMBNAIL_PATH, isImageFile } from '~/lib/itemFiles'
+import { ITEM_EXTENSIONS, ItemFileError, THUMBNAIL_PATH, getExtension, isImageFile } from '~/lib/itemFiles'
 import {
   buildModelUpdate,
   getDefaultBodyShape,
   getModelUpdateError,
   getModelUpdateMode,
+  getPreviewModel,
   isBodyShapeLocked,
   loadModelForItem,
   needsNewCategory,
-  type LoadedItemModel,
-  type ModelUpdateMode
+  type LoadedItemModel
 } from '~/lib/itemModelImport'
 import { BodyShapeType, ItemType, isSmartWearable, type Item } from '~/lib/items'
 import { captureError } from '~/lib/monitoring'
@@ -48,8 +48,6 @@ export type ChangeFileResult = {
   thumbnail: Blob | null
   /** Picked here only when the new file can't keep the item's category. */
   category: string | null
-  bodyShape: BodyShapeType
-  mode: ModelUpdateMode
 }
 
 type Props = {
@@ -65,10 +63,6 @@ const BODY_SHAPES: Array<{ value: BodyShapeType; icon: ReactNode }> = [
   { value: BodyShapeType.FEMALE, icon: <FemaleIcon /> },
   { value: BodyShapeType.MALE, icon: <MaleIcon /> }
 ]
-
-function fileKind(name: string): string {
-  return name.slice(name.lastIndexOf('.') + 1).toLowerCase()
-}
 
 /**
  * Loads a new model for a saved item and lets the creator pick which body shape it goes to; the result
@@ -109,9 +103,12 @@ export function ChangeFileModal({ item, lockedBodyShape, onApply, onClose }: Pro
       : isSmartWearable(item) || loaded?.isSmart
         ? t('add_items_modal.body_shape_smart_hint')
         : null
-  const mode = getModelUpdateMode(item, bodyShape)
-  const pickError = loaded ? getModelUpdateError(loaded, item, bodyShape) : null
-  const needsCategory = !!loaded && needsNewCategory(loaded, item, bodyShape)
+  const mode = useMemo(() => getModelUpdateMode(item, bodyShape), [item, bodyShape])
+  const pickError = useMemo(
+    () => (loaded ? getModelUpdateError(loaded, item, bodyShape) : null),
+    [loaded, item, bodyShape]
+  )
+  const needsCategory = useMemo(() => !!loaded && needsNewCategory(loaded, item, bodyShape), [loaded, item, bodyShape])
   const categories = useMemo(() => (loaded ? getWearableCategoryOptions(loaded.contents) : []), [loaded])
   const shapeLabel = t(`add_items_modal.body_shape_option.${bodyShape}`)
   const isReady = !!draft && !!draft.metrics && !!draft.thumbnail
@@ -134,12 +131,13 @@ export function ChangeFileModal({ item, lockedBodyShape, onApply, onClose }: Pro
       const next = await loadModelForItem(picked, item)
       if (!mountedRef.current) return
       const base = createDraft(picked, { nameFromFile: false })
+      const shape = lockedBodyShape ?? getDefaultBodyShape(item, next)
       let patch: Partial<ItemDraft> = {
         status: 'ready',
         type: next.type,
-        contents: next.contents,
-        model: next.model,
-        bodyShape: getDefaultBodyShape(item, next),
+        // The preview measures and renders what the pick will use: one folder of a two-folder zip.
+        ...getPreviewModel(next, shape),
+        bodyShape: shape,
         bodyShapeLocked: isBodyShapeLocked(item, next),
         isSmart: next.isSmart,
         requiredPermissions: next.requiredPermissions,
@@ -159,13 +157,24 @@ export function ChangeFileModal({ item, lockedBodyShape, onApply, onClose }: Pro
       setFile(picked)
       setLoaded(next)
       setDraft({ ...base, ...patch })
-      setBodyShape(lockedBodyShape ?? getDefaultBodyShape(item, next))
+      setBodyShape(shape)
       setCategory(null)
     } catch (err) {
       if (mountedRef.current) reportError(err)
     } finally {
       if (mountedRef.current) setLoading(false)
     }
+  }
+
+  function pickShape(value: BodyShapeType) {
+    if (locked || !loaded || value === bodyShape) return
+    setBodyShape(value)
+    const preview = getPreviewModel(loaded, value)
+    // A different folder is a different model: its metrics and render come from the preview again.
+    setDraft(current => {
+      if (!current || current.model === preview.model) return current
+      return { ...current, ...preview, metrics: null, thumbnail: null, isAutoThumbnail: false }
+    })
   }
 
   function handleDrop(event: DragEvent) {
@@ -187,10 +196,10 @@ export function ChangeFileModal({ item, lockedBodyShape, onApply, onClose }: Pro
         itemId: item.id,
         bodyShape,
         mode,
-        fileKind: file ? fileKind(file.name) : 'unknown',
+        fileKind: (file && getExtension(file.name)?.slice(1)) ?? 'unknown',
         thumbnailRegenerated: thumbnail !== null
       })
-      onApply({ update, thumbnail, category: needsCategory ? category : null, bodyShape, mode })
+      onApply({ update, thumbnail, category: needsCategory ? category : null })
     } catch (err) {
       reportError(err)
     } finally {
@@ -261,9 +270,7 @@ export function ChangeFileModal({ item, lockedBodyShape, onApply, onClose }: Pro
                               aria-checked={selected}
                               data-selected={selected || undefined}
                               data-testid={`body-shape-${value}`}
-                              onClick={() => {
-                                if (!locked) setBodyShape(value)
-                              }}
+                              onClick={() => pickShape(value)}
                             >
                               {icon}
                               {t(`add_items_modal.body_shape_option.${value}`)}
@@ -322,7 +329,7 @@ export function ChangeFileModal({ item, lockedBodyShape, onApply, onClose }: Pro
                     )
                   })}
                 </S.DropText>
-                <S.DropFormats>{t('item_editor.change_file.drop_formats')}</S.DropFormats>
+                <S.DropFormats>{t('collection_detail_page.empty.formats')}</S.DropFormats>
                 {error && <S.DropError data-testid="change-file-error">{error}</S.DropError>}
               </S.Dropzone>
             )}

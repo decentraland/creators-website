@@ -912,7 +912,6 @@
       "heading": "新文件",
       "drop_title": "将新文件拖放到此处",
       "drop_description": "将文件拖放到此处，或 <browse>浏览您的设备</browse>。",
-      "drop_formats": "（支持的格式：GLB、GLTF、PNG、ZIP · 每个物品最大 3MB，皮肤最大 8MB）",
       "effect": {
         "replace_all": "替换两种体型的模型。",
         "replace_shape": "仅替换{shape}模型。另一种体型保留当前模型。",

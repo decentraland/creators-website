@@ -912,7 +912,6 @@
       "heading": "Nuevo archivo",
       "drop_title": "Suelta el nuevo archivo aquí",
       "drop_description": "Arrastra y suelta tu archivo aquí, o <browse>explora tu dispositivo</browse>.",
-      "drop_formats": "(Formatos compatibles: GLB, GLTF, PNG, ZIP · Máx. 3MB por ítem, 8MB para skins)",
       "effect": {
         "replace_all": "Reemplaza el modelo para ambos tipos de cuerpo.",
         "replace_shape": "Reemplaza solo el modelo {shape}. El otro tipo de cuerpo conserva su modelo actual.",

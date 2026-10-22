@@ -290,6 +290,30 @@ describe('withReplacedRepresentation', () => {
     expect(Object.keys(built.blobs)).toEqual(['female/new.glb'])
   })
 
+  it('splits a representation serving both shapes, the other shape keeping the current files', async () => {
+    const { item: built } = await buildItem(baseDraft)
+    const combined: Item = {
+      ...built,
+      data: {
+        ...built.data,
+        representations: [
+          { bodyShapes: [BODY_SHAPE_MALE, BODY_SHAPE_FEMALE], mainFile: 'model.glb', contents: ['model.glb'] }
+        ]
+      },
+      contents: { 'model.glb': 'bafyshared', 'thumbnail.png': built.contents['thumbnail.png'] }
+    }
+    const next = await withReplacedRepresentation(combined, BodyShapeType.MALE, {
+      contents: { 'new.glb': blob('new') },
+      model: 'new.glb',
+      metrics: {}
+    })
+    expect(next.item.data.representations).toHaveLength(2)
+    expect(next.item.data.representations[0]).toMatchObject({ bodyShapes: [BODY_SHAPE_MALE], mainFile: 'male/new.glb' })
+    expect(next.item.data.representations[1]).toMatchObject({ bodyShapes: [BODY_SHAPE_FEMALE], mainFile: 'model.glb' })
+    expect(next.item.contents['model.glb']).toBe('bafyshared')
+    expect(Object.keys(next.blobs)).toEqual(['male/new.glb'])
+  })
+
   it('refuses a shape the item does not have', async () => {
     const { item: base } = await buildItem({ ...baseDraft, bodyShape: BodyShapeType.MALE })
     await expect(

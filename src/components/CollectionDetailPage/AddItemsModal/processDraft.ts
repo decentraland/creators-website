@@ -6,21 +6,12 @@ import { blobToDataURL, convertImageIntoWearableThumbnail, dataURLToBlob, loadVi
 import { sanitizeItemDescription, unique } from '~/lib/itemDraft'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH } from '~/lib/itemFactory'
 import { ItemFileError, THUMBNAIL_PATH, VIDEO_PATH, isImageFile, loadItemFile } from '~/lib/itemFiles'
-import { BodyShapeType, ItemType, type ItemMetrics } from '~/lib/items'
+import { BodyShapeType, IMAGE_WEARABLE_METRICS, ItemType } from '~/lib/items'
 import { analyzeModel } from '~/lib/models'
 import { isRarity } from '~/lib/rarities'
 import { isAutoThumbnailStale } from '~/lib/thumbnailPose'
 import { getWearableCategoryOptions, hidesForCategory } from '~/lib/wearableCategories'
 import { type ItemDraft } from './AddItemsModal.state'
-
-const IMAGE_WEARABLE_METRICS: ItemMetrics = {
-  triangles: 100,
-  materials: 1,
-  textures: 1,
-  meshes: 1,
-  bodies: 1,
-  entities: 1
-}
 
 function sanitizeRarity(rarity: string | undefined): string | null {
   const value = rarity?.toLowerCase()

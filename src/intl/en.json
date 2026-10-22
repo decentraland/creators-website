@@ -912,7 +912,6 @@
       "heading": "New file",
       "drop_title": "Drop the new file here",
       "drop_description": "Drag and drop your file here, or <browse>browse your device</browse>.",
-      "drop_formats": "(Supported formats: GLB, GLTF, PNG, ZIP · Max 3MB per item, 8MB for skins)",
       "effect": {
         "replace_all": "Replaces the model for both body shapes.",
         "replace_shape": "Replaces the {shape} model only. The other body shape keeps its current model.",

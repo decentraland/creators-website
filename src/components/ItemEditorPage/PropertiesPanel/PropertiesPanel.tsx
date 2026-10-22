@@ -134,9 +134,11 @@ export function PropertiesPanel({
     () => (isEmote ? getEmoteCategoryOptions() : getWearableCategoryOptions(contents)),
     [isEmote, contents]
   )
+  // A second file change builds on the pending one, so the shapes on offer follow the draft.
+  const fileBase = draft.fileUpdate?.item ?? item
   const missingShape = useMemo(
-    () => (isWearable && !isSmart ? getMissingBodyShapeType(item) : null),
-    [isWearable, isSmart, item]
+    () => (isWearable && !isSmart ? getMissingBodyShapeType(fileBase) : null),
+    [isWearable, isSmart, fileBase]
   )
   // Only a new file can leave the category without a valid value; stored items keep saving as they are.
   const categoryMissing = useMemo(
@@ -653,7 +655,7 @@ export function PropertiesPanel({
       )}
       {changeFile && (
         <ChangeFileModal
-          item={item}
+          item={fileBase}
           lockedBodyShape={changeFile.lockedBodyShape}
           onApply={applyFileChange}
           onClose={() => setChangeFile(null)}

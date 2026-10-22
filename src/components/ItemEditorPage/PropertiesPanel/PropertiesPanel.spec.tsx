@@ -5,7 +5,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BodyShape } from '@dcl/schemas'
 import { Providers } from '~/components/CollectionDetailPage/SellItemFlow/testUtils'
-import { BodyShapeType, ItemType, type Item } from '~/lib/items'
+import { ItemType, type Item } from '~/lib/items'
 import { useItemForm } from '../useItemForm'
 import { type ChangeFileResult } from '../ChangeFileModal'
 import { PropertiesPanel } from './PropertiesPanel'
@@ -13,10 +13,11 @@ import { PropertiesPanel } from './PropertiesPanel'
 // The change-file modal has its own spec; here it hands back whatever result the test prepared.
 const fileChange = vi.hoisted<{ result: ChangeFileResult | null }>(() => ({ result: null }))
 vi.mock('../ChangeFileModal', () => ({
-  ChangeFileModal: ({ onApply }: { onApply: (result: ChangeFileResult) => void }) => (
+  ChangeFileModal: ({ item, onApply }: { item: Item; onApply: (result: ChangeFileResult) => void }) => (
     <button
       type="button"
       data-testid="mock-change-file-apply"
+      data-shapes={item.data.representations.length}
       onClick={() => fileChange.result && onApply(fileChange.result)}
     />
   )
@@ -159,9 +160,7 @@ describe('PropertiesPanel', () => {
     fileChange.result = {
       update: { item: { ...item, contents: { 'male/eyes.png': 'bafyeyes' } }, blobs: {} },
       thumbnail: null,
-      category: null,
-      bodyShape: BodyShapeType.MALE,
-      mode: 'replace_shape'
+      category: null
     }
     render(<Harness />, { wrapper: Providers })
     await userEvent.click(screen.getByTestId('properties-panel-actions'))
@@ -179,9 +178,7 @@ describe('PropertiesPanel', () => {
     fileChange.result = {
       update: { item: { ...item, contents: { 'male/eyes.png': 'bafyeyes' } }, blobs: {} },
       thumbnail: new Blob(['render']),
-      category: 'eyes',
-      bodyShape: BodyShapeType.MALE,
-      mode: 'replace_shape'
+      category: 'eyes'
     }
     render(<Harness />, { wrapper: Providers })
     await userEvent.click(screen.getByTestId('properties-panel-actions'))
@@ -190,6 +187,32 @@ describe('PropertiesPanel', () => {
     expect(screen.queryByTestId('properties-panel-category-error')).not.toBeInTheDocument()
     expect(screen.getByTestId('properties-panel-category')).toHaveTextContent('Eyes')
     expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
+  })
+
+  it('builds a second file change on the pending one', async () => {
+    const female = { bodyShapes: [BodyShape.FEMALE], mainFile: 'female/hat.glb', contents: ['female/hat.glb'] }
+    fileChange.result = {
+      update: {
+        item: {
+          ...item,
+          data: { ...item.data, representations: [...item.data.representations, female] },
+          contents: { ...item.contents, 'female/hat.glb': 'bafyfemale' }
+        },
+        blobs: { 'female/hat.glb': new Blob(['f']) }
+      },
+      thumbnail: null,
+      category: null
+    }
+    render(<Harness />, { wrapper: Providers })
+    await userEvent.click(screen.getByTestId('properties-panel-actions'))
+    await userEvent.click(screen.getByTestId('properties-panel-add-representation'))
+    expect(screen.getByTestId('mock-change-file-apply')).toHaveAttribute('data-shapes', '1')
+    await userEvent.click(screen.getByTestId('mock-change-file-apply'))
+    // The shape was added in the draft: the menu stops offering it and the next change starts from both shapes.
+    await userEvent.click(screen.getByTestId('properties-panel-actions'))
+    expect(screen.queryByTestId('properties-panel-add-representation')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('properties-panel-change-file'))
+    expect(screen.getByTestId('mock-change-file-apply')).toHaveAttribute('data-shapes', '2')
   })
 
   it('keeps saving a stored item whose category the editor does not offer', async () => {
