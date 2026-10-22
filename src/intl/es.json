@@ -918,7 +918,7 @@
   "curation_page": {
     "title": "Curaduría",
     "sign_in": "Inicia sesión para revisar colecciones",
-    "search_placeholder": "Busca por nombre o dirección del dueño",
+    "search_placeholder": "Buscar por nombre",
     "filter": {
       "to_review": "Por revisar",
       "under_review": "En revisión",

@@ -918,7 +918,7 @@
   "curation_page": {
     "title": "Curation",
     "sign_in": "Sign in to review collections",
-    "search_placeholder": "Search by name or owner address",
+    "search_placeholder": "Search by name",
     "filter": {
       "to_review": "To review",
       "under_review": "Under review",
