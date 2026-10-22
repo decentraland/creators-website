@@ -103,9 +103,9 @@ export function canEditAssignee(collection: Collection, curation: CollectionCura
   return !(collection.isApproved && curation.status === 'approved')
 }
 
+/** The status picker's options: one "to review" covers a pending request whether or not a curator has it. */
 export enum CurationStatusFilter {
   TO_REVIEW = 'to_review',
-  UNDER_REVIEW = 'under_review',
   APPROVED = 'approved',
   REJECTED = 'rejected',
   DISABLED = 'disabled'
@@ -113,7 +113,15 @@ export enum CurationStatusFilter {
 
 /** The status picker's options, in display order; nothing picked means every status. */
 export const STATUS_FILTERS = Object.values(CurationStatusFilter)
-export const DEFAULT_STATUS_FILTERS = [CurationStatusFilter.TO_REVIEW, CurationStatusFilter.UNDER_REVIEW]
+export const DEFAULT_STATUS_FILTERS = [CurationStatusFilter.TO_REVIEW]
+
+// builder-server splits a pending request by assignee; the picker doesn't, since the assignee filter already does.
+const SERVER_STATUSES: Record<CurationStatusFilter, string[]> = {
+  [CurationStatusFilter.TO_REVIEW]: ['to_review', 'under_review'],
+  [CurationStatusFilter.APPROVED]: ['approved'],
+  [CurationStatusFilter.REJECTED]: ['rejected'],
+  [CurationStatusFilter.DISABLED]: ['disabled']
+}
 
 /** What a review is for: a collection never approved on chain, or changes to one that was (or is). */
 export enum ReviewType {
@@ -202,7 +210,7 @@ export function toCurationQueryString(filters: CurationFilters, limit = CURATION
   const query = new URLSearchParams()
   query.append('is_published', 'true')
   for (const assignee of filters.assignees) query.append('assignee', assignee)
-  for (const status of filters.statuses) query.append('status', status)
+  for (const status of filters.statuses.flatMap(status => SERVER_STATUSES[status])) query.append('status', status)
   if (filters.reviewType) query.append('review_type', filters.reviewType)
   query.append('type', CollectionType.STANDARD)
   query.append('sort', filters.sort)

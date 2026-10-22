@@ -191,11 +191,11 @@ describe('canEditAssignee', () => {
 describe('curation filters', () => {
   const ME = '0xME'
 
-  it('opens on to review and under review, unassigned and the signed-in curator, by latest activity', () => {
+  it('opens on to review, unassigned and the signed-in curator, by latest activity', () => {
     expect(parseCurationFilters(new URLSearchParams('status=bogus&sort=nope&page=-3'), ME)).toEqual({
       page: 1,
       search: '',
-      statuses: [CurationStatusFilter.TO_REVIEW, CurationStatusFilter.UNDER_REVIEW],
+      statuses: [CurationStatusFilter.TO_REVIEW],
       assignees: [UNASSIGNED, '0xme'],
       reviewType: null,
       sort: CollectionSort.LAST_ACTIVITY_DESC,
@@ -222,8 +222,8 @@ describe('curation filters', () => {
   })
 
   it('writes a picked set to the URL, "all" for none and nothing for the defaults', () => {
-    const defaults = [CurationStatusFilter.TO_REVIEW, CurationStatusFilter.UNDER_REVIEW]
-    expect(toMultiParam([CurationStatusFilter.UNDER_REVIEW, CurationStatusFilter.TO_REVIEW], defaults)).toBeNull()
+    const defaults = [CurationStatusFilter.TO_REVIEW, CurationStatusFilter.REJECTED]
+    expect(toMultiParam([CurationStatusFilter.REJECTED, CurationStatusFilter.TO_REVIEW], defaults)).toBeNull()
     expect(toMultiParam([], defaults)).toEqual(['all'])
     expect(toMultiParam([CurationStatusFilter.REJECTED], defaults)).toEqual([CurationStatusFilter.REJECTED])
   })
@@ -231,12 +231,13 @@ describe('curation filters', () => {
   it('builds the committee list query for published standard collections', () => {
     const filters = parseCurationFilters(
       new URLSearchParams(
-        'status=under_review&status=to_review&assignee=0xABC&assignee=unassigned&review_type=updates&q=hat&sort=NAME_ASC&page=2&tag=Summer'
+        'status=approved&status=to_review&assignee=0xABC&assignee=unassigned&review_type=updates&q=hat&sort=NAME_ASC&page=2&tag=Summer'
       ),
       ME
     )
     const query = new URLSearchParams(toCurationQueryString(filters))
-    expect(query.getAll('status')).toEqual(['under_review', 'to_review'])
+    // To review covers a pending request with or without a curator, which builder-server keeps apart.
+    expect(query.getAll('status')).toEqual(['approved', 'to_review', 'under_review'])
     expect(query.getAll('assignee')).toEqual(['0xabc', 'unassigned'])
     expect(Object.fromEntries(query)).toMatchObject({
       is_published: 'true',

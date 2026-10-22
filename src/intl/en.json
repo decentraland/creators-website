@@ -921,7 +921,6 @@
     "search_placeholder": "Search by name",
     "filter": {
       "to_review": "To review",
-      "under_review": "Under review",
       "approved": "Approved",
       "rejected": "Rejected",
       "disabled": "Disabled",
