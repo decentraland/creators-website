@@ -13,12 +13,12 @@ import { PropertiesPanel } from './PropertiesPanel'
 // The change-file modal has its own spec; here it hands back whatever result the test prepared.
 const fileChange = vi.hoisted<{ result: ChangeFileResult | null }>(() => ({ result: null }))
 vi.mock('../ChangeFileModal', () => ({
-  ChangeFileModal: ({ item, onApply }: { item: Item; onApply: (result: ChangeFileResult) => void }) => (
+  ChangeFileModal: ({ item, onSave }: { item: Item; onSave: (result: ChangeFileResult) => Promise<void> }) => (
     <button
       type="button"
       data-testid="mock-change-file-apply"
       data-shapes={item.data.representations.length}
-      onClick={() => fileChange.result && onApply(fileChange.result)}
+      onClick={() => fileChange.result && void onSave(fileChange.result)}
     />
   )
 }))
@@ -72,11 +72,13 @@ function Harness({
   editable = true,
   readOnlyReason,
   onSave = vi.fn(),
+  onSaveFile = () => Promise.resolve(),
   subject = item
 }: {
   editable?: boolean
   readOnlyReason?: 'role' | 'lock'
   onSave?: () => void
+  onSaveFile?: () => Promise<void>
   subject?: Item
 }) {
   const form = useItemForm(subject)
@@ -93,6 +95,7 @@ function Harness({
       isSaving={false}
       springBones={null}
       onSave={onSave}
+      onSaveFile={onSaveFile}
       onRevert={() => form.reset(subject)}
       onDeleted={vi.fn()}
     />
@@ -154,6 +157,21 @@ describe('PropertiesPanel', () => {
     await userEvent.type(screen.getByTestId('properties-panel-name'), 'a:b')
     expect(screen.getByTestId('properties-panel-name-error')).toBeInTheDocument()
     expect(screen.getByTestId('properties-panel-save')).toBeDisabled()
+  })
+
+  it('saves right after a file change is dispatched into the draft', async () => {
+    fileChange.result = {
+      update: { item: { ...item, contents: { 'male/cap.glb': 'bafycap' } }, blobs: {} },
+      thumbnail: null,
+      category: null
+    }
+    const onSaveFile = vi.fn().mockResolvedValue(undefined)
+    render(<Harness onSaveFile={onSaveFile} />, { wrapper: Providers })
+    await userEvent.click(screen.getByTestId('properties-panel-actions'))
+    await userEvent.click(screen.getByTestId('properties-panel-change-file'))
+    await userEvent.click(screen.getByTestId('mock-change-file-apply'))
+    expect(onSaveFile).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
   })
 
   it('asks for a category when a new file does not fit the current one', async () => {

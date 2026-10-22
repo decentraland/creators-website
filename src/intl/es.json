@@ -920,7 +920,6 @@
       "locked_hint": "Esta representación está fijada para este cambio.",
       "use_thumbnail": "Usar esta imagen como miniatura del ítem",
       "category_hint": "El nuevo archivo no encaja en la categoría actual del ítem. Elige una.",
-      "apply": "Aplicar",
       "discard_title": "¿Descartar el nuevo archivo?",
       "discard_description": "El archivo que cargaste no se aplicará al ítem.",
       "discard": "Descartar"

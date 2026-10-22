@@ -86,6 +86,8 @@ type Props = {
   isSaving: boolean
   springBones: SpringBonesFormProps | null
   onSave: () => void
+  /** Persists the draft right after a file change was dispatched into it; rejects when the save fails. */
+  onSaveFile: () => Promise<void>
   onRevert: () => void
   onDeleted: () => void
   testId?: string
@@ -104,6 +106,7 @@ export function PropertiesPanel({
   isSaving,
   springBones,
   onSave,
+  onSaveFile,
   onRevert,
   onDeleted,
   testId = 'properties-panel'
@@ -165,12 +168,12 @@ export function PropertiesPanel({
   })
   const metrics = draft.fileUpdate?.item.metrics ?? item.metrics
 
-  function applyFileChange(result: ChangeFileResult) {
+  function saveFileChange(result: ChangeFileResult): Promise<void> {
     // The file update may clear a category the new file can't keep; the one picked in the modal follows it.
     dispatch({ type: 'setFileUpdate', update: result.update })
     if (result.thumbnail) dispatch({ type: 'setThumbnail', thumbnail: result.thumbnail })
     if (result.category) dispatch({ type: 'setCategory', category: result.category })
-    setChangeFile(null)
+    return onSaveFile()
   }
 
   async function download() {
@@ -657,7 +660,7 @@ export function PropertiesPanel({
         <ChangeFileModal
           item={fileBase}
           lockedBodyShape={changeFile.lockedBodyShape}
-          onApply={applyFileChange}
+          onSave={saveFileChange}
           onClose={() => setChangeFile(null)}
         />
       )}

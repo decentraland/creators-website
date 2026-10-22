@@ -373,6 +373,34 @@ const ItemEditorPage = () => {
   // Until the new model's chains are carried over, a save would store them under the replaced model.
   const isCarryingSpringBones = !!form.draft.fileUpdate && springBones.isLoading
 
+  function reportSaveError(error: unknown) {
+    console.error('Item save failed:', error)
+    const locked = error instanceof BuilderServerError && error.status === COLLECTION_LOCKED_STATUS
+    showToast(t(locked ? 'item_editor.save_error_locked' : 'item_editor.save_error'), { type: 'error' })
+  }
+
+  // The change-file modal saves on confirm, like the legacy builder: the update is dispatched into the
+  // draft and persisted once the new model's spring bones are carried over, pending edits included.
+  const fileSaveRef = useRef<{ resolve: () => void; reject: (error: unknown) => void } | null>(null)
+  const [fileSaveTick, setFileSaveTick] = useState(0)
+  function saveFileChange(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      fileSaveRef.current = { resolve, reject }
+      setFileSaveTick(tick => tick + 1)
+    })
+  }
+  useEffect(() => {
+    const request = fileSaveRef.current
+    if (!request || !selected || !form.draft.fileUpdate || springBones.isLoading) return
+    fileSaveRef.current = null
+    persist(selected).then(request.resolve, (error: unknown) => {
+      reportSaveError(error)
+      request.reject(error)
+    })
+    // Runs when the file update lands or the carry-over finishes; `persist` reads the form of that render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fileSaveTick, form.draft.fileUpdate, springBones.isLoading, selected])
+
   function save() {
     if (!selected || isCarryingSpringBones) return
     const missing = getShapesMissingSpringBones(form.springBoneParams, springBones.bonesByHash)
@@ -381,11 +409,7 @@ const ItemEditorPage = () => {
       return
     }
     setSpringWarning(false)
-    persist(selected).catch((error: unknown) => {
-      console.error('Item save failed:', error)
-      const locked = error instanceof BuilderServerError && error.status === COLLECTION_LOCKED_STATUS
-      showToast(t(locked ? 'item_editor.save_error_locked' : 'item_editor.save_error'), { type: 'error' })
-    })
+    persist(selected).catch(reportSaveError)
   }
 
   // Read off `form` before the memo: `form` itself is a fresh object every render, so depending on it
@@ -562,6 +586,7 @@ const ItemEditorPage = () => {
         isSaving={saveItem.isPending || isCarryingSpringBones}
         springBones={springBonesForm}
         onSave={save}
+        onSaveFile={saveFileChange}
         onRevert={() => form.reset(selected)}
         onDeleted={() => navigateToItem(null)}
       />

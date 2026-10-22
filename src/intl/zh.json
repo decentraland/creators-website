@@ -920,7 +920,6 @@
       "locked_hint": "本次更改的体型已固定。",
       "use_thumbnail": "将此渲染图用作物品缩略图",
       "category_hint": "新文件不符合物品当前的类别。请选择一个类别。",
-      "apply": "应用",
       "discard_title": "放弃新文件？",
       "discard_description": "您加载的文件不会应用到该物品。",
       "discard": "放弃"

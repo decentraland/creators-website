@@ -80,9 +80,9 @@ const unisex: Item = {
 }
 
 function renderModal(item: Item, lockedBodyShape?: BodyShapeType.MALE | BodyShapeType.FEMALE) {
-  const onApply = vi.fn<(result: ChangeFileResult) => void>()
+  const onApply = vi.fn<(result: ChangeFileResult) => Promise<void>>().mockResolvedValue(undefined)
   const onClose = vi.fn()
-  render(<ChangeFileModal item={item} lockedBodyShape={lockedBodyShape} onApply={onApply} onClose={onClose} />, {
+  render(<ChangeFileModal item={item} lockedBodyShape={lockedBodyShape} onSave={onApply} onClose={onClose} />, {
     wrapper: Providers
   })
   return { onApply, onClose }
@@ -104,13 +104,13 @@ beforeEach(() => {
 })
 
 describe('ChangeFileModal', () => {
-  it('loads the file, starts from the item shapes and applies the new model with its render as thumbnail', async () => {
-    const { onApply } = renderModal(maleOnly)
+  it('loads the file, starts from the item shapes and saves the new model with its render as thumbnail', async () => {
+    const { onApply, onClose } = renderModal(maleOnly)
     await loadFile()
     expect(screen.getByTestId('body-shape-male')).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByTestId('change-file-effect')).toHaveTextContent('Replaces the Male model only')
-    await waitFor(() => expect(screen.getByTestId('change-file-apply')).toBeEnabled())
-    await userEvent.click(screen.getByTestId('change-file-apply'))
+    await waitFor(() => expect(screen.getByTestId('change-file-save')).toBeEnabled())
+    await userEvent.click(screen.getByTestId('change-file-save'))
     await waitFor(() => expect(onApply).toHaveBeenCalled())
     const result = onApply.mock.calls[0][0]
     expect(result.update.item.data.representations.map(representation => representation.mainFile)).toEqual([
@@ -119,6 +119,19 @@ describe('ChangeFileModal', () => {
     expect(Object.keys(result.update.blobs)).toEqual(['male/new.glb'])
     expect(result.thumbnail).toBeInstanceOf(Blob)
     expect(result.category).toBeNull()
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+  })
+
+  it('stays open for another try when the save fails', async () => {
+    const { onApply, onClose } = renderModal(maleOnly)
+    onApply.mockRejectedValueOnce(new Error('server down'))
+    await loadFile()
+    await waitFor(() => expect(screen.getByTestId('change-file-save')).toBeEnabled())
+    await userEvent.click(screen.getByTestId('change-file-save'))
+    await waitFor(() => expect(onApply).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByTestId('change-file-save')).toBeEnabled())
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByTestId('change-file-form')).toBeInTheDocument()
   })
 
   it('lets a unisex item take the new model for one shape only, keeping the other', async () => {
@@ -127,8 +140,8 @@ describe('ChangeFileModal', () => {
     expect(screen.getByTestId('body-shape-both')).toHaveAttribute('aria-checked', 'true')
     await userEvent.click(screen.getByTestId('body-shape-female'))
     expect(screen.getByTestId('change-file-effect')).toHaveTextContent('Replaces the Female model only')
-    await waitFor(() => expect(screen.getByTestId('change-file-apply')).toBeEnabled())
-    await userEvent.click(screen.getByTestId('change-file-apply'))
+    await waitFor(() => expect(screen.getByTestId('change-file-save')).toBeEnabled())
+    await userEvent.click(screen.getByTestId('change-file-save'))
     await waitFor(() => expect(onApply).toHaveBeenCalled())
     const { update } = onApply.mock.calls[0][0]
     expect(update.item.data.representations[0]).toEqual(unisex.data.representations[0])
@@ -149,8 +162,8 @@ describe('ChangeFileModal', () => {
     expect(screen.getByTestId('change-file-effect')).toHaveTextContent('Adds a Female model')
     await userEvent.click(screen.getByTestId('body-shape-both'))
     expect(screen.getByTestId('body-shape-female')).toHaveAttribute('aria-checked', 'true')
-    await waitFor(() => expect(screen.getByTestId('change-file-apply')).toBeEnabled())
-    await userEvent.click(screen.getByTestId('change-file-apply'))
+    await waitFor(() => expect(screen.getByTestId('change-file-save')).toBeEnabled())
+    await userEvent.click(screen.getByTestId('change-file-save'))
     await waitFor(() => expect(onApply).toHaveBeenCalled())
     const { update } = onApply.mock.calls[0][0]
     expect(update.item.data.representations.map(representation => representation.mainFile)).toEqual([
@@ -171,8 +184,8 @@ describe('ChangeFileModal', () => {
     await loadFile()
     await userEvent.click(screen.getByTestId('body-shape-female'))
     await waitFor(() => expect(processed.models[processed.models.length - 1]).toBe('f.glb'))
-    await waitFor(() => expect(screen.getByTestId('change-file-apply')).toBeEnabled())
-    await userEvent.click(screen.getByTestId('change-file-apply'))
+    await waitFor(() => expect(screen.getByTestId('change-file-save')).toBeEnabled())
+    await userEvent.click(screen.getByTestId('change-file-save'))
     await waitFor(() => expect(onApply).toHaveBeenCalled())
     const { update } = onApply.mock.calls[0][0]
     expect(update.item.metrics).toEqual({ triangles: 'f.glb'.length })
@@ -183,8 +196,8 @@ describe('ChangeFileModal', () => {
     const { onApply } = renderModal(maleOnly)
     await loadFile()
     await userEvent.click(screen.getByTestId('change-file-keep-thumbnail'))
-    await waitFor(() => expect(screen.getByTestId('change-file-apply')).toBeEnabled())
-    await userEvent.click(screen.getByTestId('change-file-apply'))
+    await waitFor(() => expect(screen.getByTestId('change-file-save')).toBeEnabled())
+    await userEvent.click(screen.getByTestId('change-file-save'))
     await waitFor(() => expect(onApply).toHaveBeenCalled())
     expect(onApply.mock.calls[0][0].thumbnail).toBeNull()
   })
@@ -195,18 +208,18 @@ describe('ChangeFileModal', () => {
     await loadFile()
     expect(screen.getByTestId('change-file-category')).toBeInTheDocument()
     await waitFor(() => expect(screen.getByTestId('draft-thumbnail')).toBeInTheDocument())
-    expect(screen.getByTestId('change-file-apply')).toBeDisabled()
+    expect(screen.getByTestId('change-file-save')).toBeDisabled()
     await userEvent.click(screen.getByTestId('change-file-category'))
     await userEvent.click(screen.getByTestId('change-file-category-option-eyes'))
-    await waitFor(() => expect(screen.getByTestId('change-file-apply')).toBeEnabled())
+    await waitFor(() => expect(screen.getByTestId('change-file-save')).toBeEnabled())
 
     // A texture can't sit next to the kept male model.
     await userEvent.click(screen.getByTestId('body-shape-female'))
     expect(screen.getByTestId('change-file-pick-error')).toBeInTheDocument()
-    expect(screen.getByTestId('change-file-apply')).toBeDisabled()
+    expect(screen.getByTestId('change-file-save')).toBeDisabled()
 
     await userEvent.click(screen.getByTestId('body-shape-male'))
-    await userEvent.click(screen.getByTestId('change-file-apply'))
+    await userEvent.click(screen.getByTestId('change-file-save'))
     await waitFor(() => expect(onApply).toHaveBeenCalled())
     expect(onApply.mock.calls[0][0].category).toBe('eyes')
   })

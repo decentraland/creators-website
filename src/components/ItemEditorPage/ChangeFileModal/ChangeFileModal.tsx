@@ -54,7 +54,8 @@ type Props = {
   item: Item
   /** "Add {shape} representation": the pick is fixed to the shape the item lacks. */
   lockedBodyShape?: BodyShapeType.MALE | BodyShapeType.FEMALE
-  onApply: (result: ChangeFileResult) => void
+  /** Persists the change; the modal closes when it resolves and stays open when it rejects. */
+  onSave: (result: ChangeFileResult) => Promise<void>
   onClose: () => void
 }
 
@@ -65,10 +66,10 @@ const BODY_SHAPES: Array<{ value: BodyShapeType; icon: ReactNode }> = [
 ]
 
 /**
- * Loads a new model for a saved item and lets the creator pick which body shape it goes to; the result
- * lands in the editor draft, the editor's Save uploads it.
+ * Loads a new model for a saved item and lets the creator pick which body shape it goes to; Save
+ * persists the item at once, as the legacy builder's modal did.
  */
-export function ChangeFileModal({ item, lockedBodyShape, onApply, onClose }: Props) {
+export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Props) {
   const { t, rich } = useTranslation()
   const [file, setFile] = useState<File | null>(null)
   const [loaded, setLoaded] = useState<LoadedItemModel | null>(null)
@@ -79,7 +80,7 @@ export function ChangeFileModal({ item, lockedBodyShape, onApply, onClose }: Pro
   const [bodyShape, setBodyShape] = useState<BodyShapeType>(lockedBodyShape ?? BodyShapeType.BOTH)
   const [keepThumbnail, setKeepThumbnail] = useState(true)
   const [category, setCategory] = useState<string | null>(null)
-  const [isApplying, setApplying] = useState(false)
+  const [isSaving, setSaving] = useState(false)
   const [isDiscardOpen, setDiscardOpen] = useState(false)
   // A file picked after the modal closed must not land in state.
   const mountedRef = useRef(true)
@@ -112,7 +113,7 @@ export function ChangeFileModal({ item, lockedBodyShape, onApply, onClose }: Pro
   const categories = useMemo(() => (loaded ? getWearableCategoryOptions(loaded.contents) : []), [loaded])
   const shapeLabel = t(`add_items_modal.body_shape_option.${bodyShape}`)
   const isReady = !!draft && !!draft.metrics && !!draft.thumbnail
-  const canApply = isReady && !pickError && (!needsCategory || category !== null) && !isApplying
+  const canSave = isReady && !pickError && (!needsCategory || category !== null) && !isSaving
 
   function reportError(err: unknown) {
     const key = err instanceof ItemFileError ? err.messageKey : 'invalid_model_file'
@@ -186,12 +187,13 @@ export function ChangeFileModal({ item, lockedBodyShape, onApply, onClose }: Pro
     await handleFile(await pickFile({ accept: ITEM_EXTENSIONS.join(',') }))
   }
 
-  async function apply() {
-    if (!loaded || !draft || !canApply) return
-    setApplying(true)
+  async function save() {
+    if (!loaded || !draft || !canSave) return
+    setSaving(true)
     try {
       const update = await buildModelUpdate(loaded, item, bodyShape, draft.metrics ?? loaded.metrics ?? {})
       const thumbnail = keepThumbnail ? (draft.contents[THUMBNAIL_PATH] ?? null) : null
+      await onSave({ update, thumbnail, category: needsCategory ? category : null })
       track('Change item file', {
         itemId: item.id,
         bodyShape,
@@ -199,16 +201,17 @@ export function ChangeFileModal({ item, lockedBodyShape, onApply, onClose }: Pro
         fileKind: (file && getExtension(file.name)?.slice(1)) ?? 'unknown',
         thumbnailRegenerated: thumbnail !== null
       })
-      onApply({ update, thumbnail, category: needsCategory ? category : null })
+      onClose()
     } catch (err) {
-      reportError(err)
+      // A failed save already toasted: the modal stays open for another try.
+      if (err instanceof ItemFileError || !(err instanceof Error)) reportError(err)
     } finally {
-      if (mountedRef.current) setApplying(false)
+      if (mountedRef.current) setSaving(false)
     }
   }
 
   function requestClose() {
-    if (isApplying || thumbnailEditor.isOpen) return
+    if (isSaving || thumbnailEditor.isOpen) return
     if (draft) setDiscardOpen(true)
     else onClose()
   }
@@ -219,7 +222,7 @@ export function ChangeFileModal({ item, lockedBodyShape, onApply, onClose }: Pro
 
   return (
     <>
-      <Modal title={title} onClose={requestClose} size="wide" closeDisabled={isApplying} testId="change-file-modal">
+      <Modal title={title} onClose={requestClose} size="wide" closeDisabled={isSaving} testId="change-file-modal">
         <S.Layout>
           <S.Main>
             {isLoading ? (
@@ -338,7 +341,7 @@ export function ChangeFileModal({ item, lockedBodyShape, onApply, onClose }: Pro
                 type="button"
                 variant="secondary"
                 data-testid="change-file-cancel"
-                disabled={isApplying}
+                disabled={isSaving}
                 onClick={requestClose}
               >
                 {t('add_items_modal.cancel')}
@@ -347,12 +350,12 @@ export function ChangeFileModal({ item, lockedBodyShape, onApply, onClose }: Pro
                 <Button
                   type="button"
                   variant="primary"
-                  data-testid="change-file-apply"
-                  disabled={!canApply}
-                  loading={isApplying}
-                  onClick={() => void apply()}
+                  data-testid="change-file-save"
+                  disabled={!canSave}
+                  loading={isSaving}
+                  onClick={() => void save()}
                 >
-                  {t('item_editor.change_file.apply')}
+                  {t('add_items_modal.save')}
                 </Button>
               </S.FooterRight>
             </S.Footer>

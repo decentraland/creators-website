@@ -920,7 +920,6 @@
       "locked_hint": "This representation is fixed for this change.",
       "use_thumbnail": "Use this render as the item thumbnail",
       "category_hint": "The new file doesn't fit the item's current category. Pick one.",
-      "apply": "Apply",
       "discard_title": "Discard the new file?",
       "discard_description": "The file you loaded won't be applied to the item.",
       "discard": "Discard"
