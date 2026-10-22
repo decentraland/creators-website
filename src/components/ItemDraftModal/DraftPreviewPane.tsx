@@ -16,11 +16,11 @@ import { useThumbnailValidation } from '~/hooks/useThumbnailValidation'
 import { useTranslation } from '~/intl'
 import { THUMBNAIL_PATH, hasFacialExpressions } from '~/lib/itemFiles'
 import { ItemType } from '~/lib/items'
-import { type ItemDraft } from './AddItemsModal.state'
-import * as S from './AddItemsModal.styles'
+import { type PreviewDraft } from '~/lib/draftPreview'
+import * as S from './ItemDraftModal.styles'
 
 type Props = {
-  draft: ItemDraft
+  draft: PreviewDraft
   /** Shows the thumbnail as a plain preview, not an edit control (a variant's target keeps its own). */
   thumbnailLocked?: boolean
   onOpenThumbnail: () => void

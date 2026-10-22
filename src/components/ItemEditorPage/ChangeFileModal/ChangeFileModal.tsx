@@ -3,22 +3,15 @@ import { ErrorOutline as HintIcon, UploadFileOutlined as UploadIcon } from '@mui
 import { Button } from '~/components/Button'
 import { CategorySelect } from '~/components/CategorySelect'
 import { Checkbox } from '~/components/Checkbox'
-import {
-  BODY_SHAPE_OPTIONS,
-  DraftPreviewPane,
-  DraftProcessor,
-  createDraft,
-  imageThumbnailPatch,
-  needsPreviewData,
-  type ItemDraft
-} from '~/components/CollectionDetailPage/AddItemsModal'
 import { ConfirmModal } from '~/components/ConfirmModal'
+import { BodyShapePicker, DraftPreviewPane, DraftProcessor } from '~/components/ItemDraftModal'
 import { Modal } from '~/components/Modal'
-import { Tooltip } from '~/components/Tooltip'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useTranslation } from '~/intl'
 import { errorCode, track } from '~/lib/analytics'
+import { imageThumbnailPatch, needsPreviewData, type PreviewDraft } from '~/lib/draftPreview'
 import { pickFile } from '~/lib/filePicker'
+import { type ItemFileChange } from '~/lib/itemDraft'
 import { type BuiltItem } from '~/lib/itemFactory'
 import {
   ITEM_EXTENSIONS,
@@ -41,51 +34,43 @@ import {
 } from '~/lib/itemModelImport'
 import { BodyShapeType, IMAGE_WEARABLE_METRICS, ItemType, isSmartWearable, type Item } from '~/lib/items'
 import { captureError } from '~/lib/monitoring'
+import { DEFAULT_RARITY } from '~/lib/rarities'
 import { getWearableCategoryOptions } from '~/lib/wearableCategories'
 import * as S from './ChangeFileModal.styles'
-
-export type ChangeFileResult = {
-  update: BuiltItem
-  /** The new render, when the creator kept it as the item's thumbnail. */
-  thumbnail: Blob | null
-  /** Picked here only when the new file can't keep the item's category. */
-  category: string | null
-}
 
 type Props = {
   item: Item
   /** "Add {shape} representation": the pick is fixed to the shape the item lacks. */
   lockedBodyShape?: BodyShapeType.MALE | BodyShapeType.FEMALE
-  /** Persists the change; the modal closes when it resolves and stays open when it rejects. */
-  onSave: (result: ChangeFileResult) => Promise<void>
+  /** Persists the change; the modal closes when it resolves and stays open when it rejects (already reported). */
+  onSave: (change: ItemFileChange) => Promise<void>
   onClose: () => void
 }
 
 /**
- * What the preview measures and renders for a pick: one folder of a two-folder zip. A texture needs no
- * preview run, so its fixed metrics and padded thumbnail are filled here; a 3D model leaves them to the
- * DraftProcessor, under an id of its own so a run still going for another folder can't land on it.
+ * What the preview measures and renders for a pick: one folder of a two-folder zip, under an id of its
+ * own so a run still going for another folder can't land on it. A 3D model leaves metrics and the render
+ * to the DraftProcessor; a texture takes its fixed metrics here and its padded thumbnail from `textureThumbnail`.
  */
-async function previewPatch(
-  baseId: string,
-  loaded: LoadedItemModel,
-  shape: BodyShapeType,
-  category: string | null
-): Promise<Partial<ItemDraft>> {
+function previewFor(baseId: string, loaded: LoadedItemModel, shape: BodyShapeType): Partial<PreviewDraft> {
   const preview = getPreviewModel(loaded, shape)
-  const patch: Partial<ItemDraft> = {
+  return {
     id: `${baseId}:${shape}`,
     ...preview,
-    metrics: loaded.metrics,
+    metrics: isImageFile(preview.model) ? IMAGE_WEARABLE_METRICS : loaded.metrics,
     thumbnail: null,
     isAutoThumbnail: false,
     autoThumbnailCategory: null
   }
-  if (!isImageFile(preview.model)) return patch
+}
+
+async function textureThumbnail(
+  preview: Partial<PreviewDraft>,
+  category: string | null
+): Promise<Partial<PreviewDraft>> {
+  if (!preview.model || !preview.contents || !isImageFile(preview.model)) return {}
   return {
-    ...patch,
     ...(await imageThumbnailPatch(preview.contents, preview.model, category)),
-    metrics: IMAGE_WEARABLE_METRICS,
     isAutoThumbnail: true,
     autoThumbnailCategory: category
   }
@@ -99,7 +84,7 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
   const { t, rich } = useTranslation()
   const [file, setFile] = useState<File | null>(null)
   const [loaded, setLoaded] = useState<LoadedItemModel | null>(null)
-  const [draft, setDraft] = useState<ItemDraft | null>(null)
+  const [draft, setDraft] = useState<PreviewDraft | null>(null)
   const [isLoading, setLoading] = useState(false)
   const [isDragging, setDragging] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -108,8 +93,8 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
   const [category, setCategory] = useState<string | null>(null)
   const [isSaving, setSaving] = useState(false)
   const [isDiscardOpen, setDiscardOpen] = useState(false)
-  // A file picked after the modal closed must not land in state; a preview patch for a pick that was
-  // changed again while it was being prepared must not either.
+  // A file picked after the modal closed must not land in state; a texture thumbnail padded for a pick
+  // that was changed again meanwhile must not either.
   const mountedRef = useRef(true)
   const pickRef = useRef(0)
   useEffect(() => {
@@ -158,29 +143,32 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
     setLoading(true)
     try {
       const next = await loadModelForItem(picked, item)
-      if (!mountedRef.current) return
-      const base = createDraft(picked, { nameFromFile: false })
       const shape = lockedBodyShape ?? getDefaultBodyShape(item, next)
-      const category = item.data.category ?? null
-      const patch: Partial<ItemDraft> = {
-        status: 'ready',
+      const itemCategory = item.data.category ?? null
+      const baseId = crypto.randomUUID()
+      const preview = previewFor(baseId, next, shape)
+      const base: PreviewDraft = {
+        id: baseId,
         type: next.type,
-        bodyShape: shape,
-        bodyShapeLocked: isBodyShapeLocked(item, next),
+        contents: {},
+        model: '',
+        category: itemCategory,
+        rarity: item.rarity ?? DEFAULT_RARITY,
         isSmart: next.isSmart,
         requiredPermissions: next.requiredPermissions,
-        category,
-        rarity: item.rarity ?? base.rarity,
-        hides: item.data.hides ?? [],
+        metrics: null,
+        thumbnail: null,
+        isAutoThumbnail: false,
+        autoThumbnailCategory: null,
         validationIssues: next.validationIssues,
-        validatedCategory: category,
-        ...(await previewPatch(base.id, next, shape, category))
+        ...preview,
+        ...(await textureThumbnail(preview, itemCategory))
       }
       if (!mountedRef.current) return
       pickRef.current++
       setFile(picked)
       setLoaded(next)
-      setDraft({ ...base, ...patch })
+      setDraft(base)
       setBodyShape(shape)
       setCategory(null)
     } catch (err) {
@@ -193,14 +181,15 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
   function pickShape(value: BodyShapeType) {
     if (locked || !loaded || !draft || value === bodyShape) return
     setBodyShape(value)
-    // Another folder of a two-folder zip is another model: its metrics and render come from the preview again.
+    // Another folder of a two-folder zip is another model: its metrics and render are redone, and the
+    // previous folder's are dropped right away so they can't be saved meanwhile.
     if (getBodyShapeTypeFromContents(loaded.contents) !== BodyShapeType.BOTH) return
     const pick = ++pickRef.current
-    const baseId = draft.id.split(':')[0]
-    previewPatch(baseId, loaded, value, item.data.category ?? null)
+    const preview = previewFor(draft.id.split(':')[0], loaded, value)
+    setDraft(current => current && { ...current, ...preview })
+    textureThumbnail(preview, item.data.category ?? null)
       .then(patch => {
-        if (!mountedRef.current || pickRef.current !== pick) return
-        setDraft(current => current && { ...current, ...patch })
+        if (mountedRef.current && pickRef.current === pick) setDraft(current => current && { ...current, ...patch })
       })
       .catch((err: unknown) => {
         if (mountedRef.current && pickRef.current === pick) reportError(err)
@@ -219,24 +208,30 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
   async function save() {
     if (!loaded || !draft || !canSave) return
     setSaving(true)
+    let update: BuiltItem
     try {
-      const update = await buildModelUpdate(loaded, item, bodyShape, draft.metrics ?? loaded.metrics ?? {})
-      const thumbnail = keepThumbnail ? (draft.contents[THUMBNAIL_PATH] ?? null) : null
-      await onSave({ update, thumbnail, category: needsCategory ? category : null })
-      track('Change item file', {
-        itemId: item.id,
-        bodyShape,
-        mode,
-        fileKind: (file && getExtension(file.name)?.slice(1)) ?? 'unknown',
-        thumbnailRegenerated: thumbnail !== null
-      })
-      onClose()
+      update = await buildModelUpdate(loaded, item, bodyShape, draft.metrics ?? loaded.metrics ?? {})
     } catch (err) {
-      // A failed save already toasted: the modal stays open for another try.
-      if (err instanceof ItemFileError || !(err instanceof Error)) reportError(err)
-    } finally {
-      if (mountedRef.current) setSaving(false)
+      reportError(err)
+      setSaving(false)
+      return
     }
+    const thumbnail = keepThumbnail ? (draft.contents[THUMBNAIL_PATH] ?? null) : null
+    try {
+      await onSave({ update, thumbnail, category: needsCategory ? category : null })
+    } catch {
+      // The editor reported the failed save; the loaded file stays for another try.
+      if (mountedRef.current) setSaving(false)
+      return
+    }
+    track('Change item file', {
+      itemId: item.id,
+      bodyShape,
+      mode,
+      fileKind: (file && getExtension(file.name)?.slice(1)) ?? 'unknown',
+      thumbnailRegenerated: thumbnail !== null
+    })
+    onClose()
   }
 
   function requestClose() {
@@ -283,34 +278,12 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
                         {lockHint ?? t(`item_editor.change_file.effect.${mode}`, { shape: shapeLabel })}
                       </S.FieldHint>
                     </S.FieldLabel>
-                    <S.Segmented role="radiogroup" aria-label={t('add_items_modal.body_shape')}>
-                      {BODY_SHAPE_OPTIONS.map(({ value, icon }) => {
-                        const selected = bodyShape === value
-                        return (
-                          <Tooltip
-                            key={value}
-                            content={
-                              locked && !selected ? (lockHint ?? t('item_editor.change_file.locked_hint')) : null
-                            }
-                            asChild
-                            testId={`body-shape-${value}-tooltip`}
-                          >
-                            <S.SegmentButton
-                              type="button"
-                              role="radio"
-                              aria-disabled={locked || undefined}
-                              aria-checked={selected}
-                              data-selected={selected || undefined}
-                              data-testid={`body-shape-${value}`}
-                              onClick={() => pickShape(value)}
-                            >
-                              {icon}
-                              {t(`add_items_modal.body_shape_option.${value}`)}
-                            </S.SegmentButton>
-                          </Tooltip>
-                        )
-                      })}
-                    </S.Segmented>
+                    <BodyShapePicker
+                      value={bodyShape}
+                      locked={locked}
+                      lockedHint={lockHint ?? t('item_editor.change_file.locked_hint')}
+                      onChange={pickShape}
+                    />
                     {pickError && (
                       <S.ErrorText data-testid="change-file-pick-error">
                         {t(`add_items_modal.file_error.${pickError}`)}

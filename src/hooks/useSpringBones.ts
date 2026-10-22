@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useQueries } from '@tanstack/react-query'
+import { useQueries, type QueryClient } from '@tanstack/react-query'
 import { fetchContent } from '~/lib/builder'
 import { type BuiltItem } from '~/lib/itemFactory'
 import { type Item } from '~/lib/items'
@@ -9,6 +9,7 @@ import {
   getRepresentationModelHashes,
   hasSpringBones,
   isSpringBoneItem,
+  mergeSpringBonesIntoItem,
   parseSpringBones,
   type BoneNode,
   type SpringBoneParamsByHash,
@@ -35,6 +36,57 @@ export type SpringBonesData = {
 
 const EMPTY: SpringBonesData = { isLoading: false, isError: false, models: [], initialParams: {}, bonesByHash: {} }
 
+function springBonesQuery(hash: string, blob?: Blob) {
+  return {
+    queryKey: ['spring-bones', hash],
+    queryFn: async () => parseSpringBones(await (blob ?? (await fetchContent(hash))).arrayBuffer()),
+    staleTime: Infinity
+  }
+}
+
+/** The new model's files by hash: they exist only in memory, storage would 404 on them. */
+function pendingBlobsByHash(pending: BuiltItem): Record<string, Blob> {
+  const blobs: Record<string, Blob> = {}
+  for (const [path, blob] of Object.entries(pending.blobs)) {
+    const hash = pending.item.contents[path]
+    if (hash) blobs[hash] = blob
+  }
+  return blobs
+}
+
+/**
+ * The spring bones to store with a model change saved on its own: the saved params carried onto the new
+ * models by bone name (legacy seedSpringBonesForUpdate), defaults for roots new to them. `null` when no
+ * new model has spring bones (the replaced model's params go), `undefined` for items without models.
+ */
+export async function carrySpringBonesForSave(
+  queryClient: QueryClient,
+  item: Item,
+  pending: BuiltItem
+): Promise<NonNullable<ReturnType<typeof mergeSpringBonesIntoItem>> | null | undefined> {
+  const next = pending.item
+  if (!isSpringBoneItem(next)) return undefined
+  const hashes = getRepresentationModelHashes(next)
+  if (hashes.length === 0) return undefined
+  const source: SpringBonesCarrySource = { item, params: item.data.springBones?.models ?? {} }
+  const sourceHashes = isSpringBoneItem(item) ? getRepresentationModelHashes(item) : []
+  const blobsByHash = pendingBlobsByHash(pending)
+  const parsed: Record<string, BoneNode[]> = {}
+  await Promise.all(
+    [...new Set([...hashes, ...sourceHashes])].map(async hash => {
+      parsed[hash] = await queryClient.fetchQuery(springBonesQuery(hash, blobsByHash[hash]))
+    })
+  )
+  const carried = carrySpringBoneParams(source, next, parsed)
+  const params: SpringBoneParamsByHash = {}
+  for (const hash of hashes) {
+    const bones = parsed[hash]
+    if (!bones || !hasSpringBones(bones)) continue
+    params[hash] = carried[hash] ?? getInitialSpringBoneParams(item, hash, bones)
+  }
+  return mergeSpringBonesIntoItem(params) ?? null
+}
+
 /**
  * Parses each representation GLB of a wearable for spring bones and merges the item's saved params.
  * With a pending model change, the models are the new ones and their params carry over from `carryFrom`
@@ -59,23 +111,8 @@ export function useSpringBones(
     [source]
   )
   const parsed = useMemo(() => [...new Set([...hashes, ...sourceHashes])], [hashes, sourceHashes])
-  // An unsaved model exists only in memory: storage would 404 on its hash.
-  const blobsByHash = useMemo(() => {
-    if (!pending) return {}
-    const blobs: Record<string, Blob> = {}
-    for (const [path, blob] of Object.entries(pending.blobs)) {
-      const hash = pending.item.contents[path]
-      if (hash) blobs[hash] = blob
-    }
-    return blobs
-  }, [pending])
-  const queries = useQueries({
-    queries: parsed.map(hash => ({
-      queryKey: ['spring-bones', hash],
-      queryFn: async () => parseSpringBones(await (blobsByHash[hash] ?? (await fetchContent(hash))).arrayBuffer()),
-      staleTime: Infinity
-    }))
-  })
+  const blobsByHash = useMemo(() => (pending ? pendingBlobsByHash(pending) : {}), [pending])
+  const queries = useQueries({ queries: parsed.map(hash => springBonesQuery(hash, blobsByHash[hash])) })
   const isLoading = queries.some(query => query.isLoading)
   const isError = queries.some(query => query.isError)
   // One scalar stands in for the per-query results: a dependency array must keep its length. Not

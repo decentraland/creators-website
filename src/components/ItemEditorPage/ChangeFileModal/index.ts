@@ -1,1 +1,1 @@
-export { ChangeFileModal, type ChangeFileResult } from './ChangeFileModal'
+export { ChangeFileModal } from './ChangeFileModal'

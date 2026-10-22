@@ -652,7 +652,8 @@
       "video_too_big": "El video es demasiado grande — el tamaño máximo es {size}MB.",
       "video_wrong_format": "El video debe ser un archivo MP4.",
       "invalid_video": "Tu video parece estar dañado o no es válido. Revisa el archivo e inténtalo de nuevo.",
-      "invalid_model_file_type": "El archivo es de otro tipo de ítem. Un wearable solo puede reemplazarse por un wearable y un emote por un emote."
+      "invalid_model_file_type": "El archivo es de otro tipo de ítem. Un wearable solo puede reemplazarse por un wearable y un emote por un emote.",
+      "representation_path_collision": "El otro tipo de cuerpo ya usa un archivo con este nombre. Cambia el nombre del archivo e inténtalo de nuevo."
     }
   },
   "video_modal": {
@@ -832,7 +833,6 @@
       "watch_video": "Ver video de vista previa",
       "change_file": "Cambiar archivo",
       "add_representation": "Agregar representación {shape}",
-      "file_update_pending": "Hay un modelo nuevo listo. Guarda para subirlo.",
       "download_error": "No pudimos descargar el ítem. Inténtalo de nuevo.",
       "video_required": "Se necesita un video de vista previa para publicar un smart wearable.",
       "video_hint": "Un video corto que muestra lo que hace el smart wearable en el mundo."

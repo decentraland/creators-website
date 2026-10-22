@@ -5,7 +5,8 @@ import userEvent from '@testing-library/user-event'
 import { BodyShape } from '@dcl/schemas'
 import { Providers } from '~/components/CollectionDetailPage/SellItemFlow/testUtils'
 import { BodyShapeType, ItemType, type Item } from '~/lib/items'
-import { ChangeFileModal, type ChangeFileResult } from './ChangeFileModal'
+import { type ItemFileChange } from '~/lib/itemDraft'
+import { ChangeFileModal } from './ChangeFileModal'
 
 const pickFile = vi.fn()
 const loadItemFile = vi.fn()
@@ -24,8 +25,16 @@ const processed = vi.hoisted(() => ({
   defer: false,
   pending: [] as Array<() => void>
 }))
-vi.mock('~/components/CollectionDetailPage/AddItemsModal', async importOriginal => ({
-  ...(await importOriginal<typeof import('~/components/CollectionDetailPage/AddItemsModal')>()),
+vi.mock('~/lib/draftPreview', async importOriginal => ({
+  ...(await importOriginal<typeof import('~/lib/draftPreview')>()),
+  imageThumbnailPatch: (contents: Record<string, Blob>) =>
+    Promise.resolve({
+      thumbnail: 'data:image/png;base64,BBBB',
+      contents: { ...contents, 'thumbnail.png': new Blob(['pad']) }
+    })
+}))
+vi.mock('~/components/ItemDraftModal', async importOriginal => ({
+  ...(await importOriginal<typeof import('~/components/ItemDraftModal')>()),
   DraftProcessor: ({
     draft,
     onResult
@@ -46,12 +55,7 @@ vi.mock('~/components/CollectionDetailPage/AddItemsModal', async importOriginal 
       // The real processor starts a new run for every draft id it is handed.
     }, [draft.id])
     return null
-  },
-  imageThumbnailPatch: (contents: Record<string, Blob>) =>
-    Promise.resolve({
-      thumbnail: 'data:image/png;base64,BBBB',
-      contents: { ...contents, 'thumbnail.png': new Blob(['pad']) }
-    })
+  }
 }))
 
 const maleOnly: Item = {
@@ -88,7 +92,7 @@ const unisex: Item = {
 }
 
 function renderModal(item: Item, lockedBodyShape?: BodyShapeType.MALE | BodyShapeType.FEMALE) {
-  const onApply = vi.fn<(result: ChangeFileResult) => Promise<void>>().mockResolvedValue(undefined)
+  const onApply = vi.fn<(result: ItemFileChange) => Promise<void>>().mockResolvedValue(undefined)
   const onClose = vi.fn()
   render(<ChangeFileModal item={item} lockedBodyShape={lockedBodyShape} onSave={onApply} onClose={onClose} />, {
     wrapper: Providers
@@ -124,16 +128,16 @@ describe('ChangeFileModal', () => {
     await userEvent.click(screen.getByTestId('change-file-save'))
     await waitFor(() => expect(onApply).toHaveBeenCalled())
     const result = onApply.mock.calls[0][0]
-    expect(result.update.item.data.representations.map(representation => representation.mainFile)).toEqual([
-      'male/new.glb'
-    ])
+    expect(
+      result.update.item.data.representations.map((representation: { mainFile: string }) => representation.mainFile)
+    ).toEqual(['male/new.glb'])
     expect(Object.keys(result.update.blobs)).toEqual(['male/new.glb'])
     expect(result.thumbnail).toBeInstanceOf(Blob)
     expect(result.category).toBeNull()
     await waitFor(() => expect(onClose).toHaveBeenCalled())
   })
 
-  it('stays open for another try when the save fails', async () => {
+  it('stays open for another try when the save fails, and discards cleanly after it', async () => {
     const { onApply, onClose } = renderModal(maleOnly)
     onApply.mockRejectedValueOnce(new Error('server down'))
     await loadFile()
@@ -143,6 +147,21 @@ describe('ChangeFileModal', () => {
     await waitFor(() => expect(screen.getByTestId('change-file-save')).toBeEnabled())
     expect(onClose).not.toHaveBeenCalled()
     expect(screen.getByTestId('change-file-form')).toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('change-file-cancel'))
+    await userEvent.click(screen.getByTestId('change-file-discard'))
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(onApply).toHaveBeenCalledTimes(1)
+  })
+
+  it('moves the body shape with the arrow keys', async () => {
+    renderModal(unisex)
+    await loadFile()
+    screen.getByTestId('body-shape-both').focus()
+    await userEvent.keyboard('{ArrowRight}')
+    expect(screen.getByTestId('body-shape-female')).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByTestId('body-shape-female')).toHaveFocus()
+    await userEvent.keyboard('{End}')
+    expect(screen.getByTestId('body-shape-male')).toHaveAttribute('aria-checked', 'true')
   })
 
   it('lets a unisex item take the new model for one shape only, keeping the other', async () => {
@@ -177,10 +196,9 @@ describe('ChangeFileModal', () => {
     await userEvent.click(screen.getByTestId('change-file-save'))
     await waitFor(() => expect(onApply).toHaveBeenCalled())
     const { update } = onApply.mock.calls[0][0]
-    expect(update.item.data.representations.map(representation => representation.mainFile)).toEqual([
-      'male/hat.glb',
-      'female/a.glb'
-    ])
+    expect(
+      update.item.data.representations.map((representation: { mainFile: string }) => representation.mainFile)
+    ).toEqual(['male/hat.glb', 'female/a.glb'])
     expect(Object.keys(update.blobs)).toEqual(['female/a.glb'])
   })
 

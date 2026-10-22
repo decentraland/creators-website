@@ -652,7 +652,8 @@
       "video_too_big": "视频过大，最大为 {size}MB。",
       "video_wrong_format": "视频必须是 MP4 文件。",
       "invalid_video": "您的视频似乎无效或已损坏。请检查文件后重试。",
-      "invalid_model_file_type": "此文件属于不同的物品类型。可穿戴物品只能替换为可穿戴物品，表情动作只能替换为表情动作。"
+      "invalid_model_file_type": "此文件属于不同的物品类型。可穿戴物品只能替换为可穿戴物品，表情动作只能替换为表情动作。",
+      "representation_path_collision": "另一种体型已使用同名文件。请重命名文件后重试。"
     }
   },
   "video_modal": {
@@ -832,7 +833,6 @@
       "watch_video": "观看预览视频",
       "change_file": "更换文件",
       "add_representation": "添加{shape}版本",
-      "file_update_pending": "新模型已就绪。保存即可上传。",
       "download_error": "无法下载该物品，请重试。",
       "video_required": "发布智能可穿戴物品需要提供预览视频。",
       "video_hint": "一段简短的视频，展示该智能可穿戴物品在世界中的效果。"

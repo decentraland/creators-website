@@ -652,7 +652,8 @@
       "video_too_big": "The video is too big — the maximum size is {size}MB.",
       "video_wrong_format": "The video must be an MP4 file.",
       "invalid_video": "Your video seems to be invalid or broken. Check the file and try again.",
-      "invalid_model_file_type": "The file is a different item type. A wearable can only be replaced with a wearable, and an emote with an emote."
+      "invalid_model_file_type": "The file is a different item type. A wearable can only be replaced with a wearable, and an emote with an emote.",
+      "representation_path_collision": "The other body shape already uses a file with this name. Rename the file and try again."
     }
   },
   "video_modal": {
@@ -832,7 +833,6 @@
       "watch_video": "Watch preview video",
       "change_file": "Change file",
       "add_representation": "Add {shape} representation",
-      "file_update_pending": "A new model is ready. Save to upload it.",
       "download_error": "We couldn't download the item. Please try again.",
       "video_required": "A preview video is required to publish a smart wearable.",
       "video_hint": "A short video showcasing what the smart wearable does in-world."

@@ -30,6 +30,7 @@ import { useObjectURL } from '~/hooks/useObjectURL'
 import { thumbnailValidationKey, useThumbnailValidation } from '~/hooks/useThumbnailValidation'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { fetchStoredThumbnail, useSaveItem } from '~/hooks/useSaveItem'
+import { carrySpringBonesForSave } from '~/hooks/useSpringBones'
 import { useTranslation } from '~/intl'
 import { type AvatarAttributes } from '~/lib/avatar'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS, getContentsStorageUrl } from '~/lib/builder'
@@ -42,7 +43,7 @@ import {
 } from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
 import { getCurationState, curationListUrl } from '~/lib/curation'
-import { toPreviewItem, toSaveableItem } from '~/lib/itemDraft'
+import { toFileChangeSaveable, toPreviewItem, toSaveableItem, type ItemFileChange } from '~/lib/itemDraft'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
 import { pickFiles } from '~/lib/filePicker'
 import { IMAGE_PATH, ITEM_EXTENSIONS } from '~/lib/itemFiles'
@@ -382,27 +383,35 @@ const ItemEditorPage = () => {
     showToast(t(locked ? 'item_editor.save_error_locked' : 'item_editor.save_error'), { type: 'error' })
   }
 
-  // The change-file modal saves on confirm, like the legacy builder: the update is dispatched into the
-  // draft and persisted once the new model's spring bones are carried over, pending edits included.
-  const fileSaveRef = useRef<{ resolve: () => void; reject: (error: unknown) => void } | null>(null)
-  const [fileSaveTick, setFileSaveTick] = useState(0)
-  function saveFileChange(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      fileSaveRef.current = { resolve, reject }
-      setFileSaveTick(tick => tick + 1)
-    })
-  }
-  useEffect(() => {
-    const request = fileSaveRef.current
-    if (!request || !selected || !form.draft.fileUpdate || springBones.isLoading) return
-    fileSaveRef.current = null
-    persist(selected).then(request.resolve, (error: unknown) => {
+  // The change-file modal saves on confirm, like the legacy builder's: the file change alone, built
+  // from the saved item with its spring-bone params carried onto the new model. Whatever the panel
+  // holds unsaved stays there, except what the file change decided (category, thumbnail).
+  async function saveFileChange(change: ItemFileChange): Promise<void> {
+    if (!selected) return
+    const base = selected
+    try {
+      const springBonesData = await carrySpringBonesForSave(queryClient, base, change.update)
+      const built = await toFileChangeSaveable(base, change, {
+        springBones: springBonesData,
+        fetchThumbnail: fetchStoredThumbnail
+      })
+      const saved = await saveItem.mutateAsync({ ...built, previousVideo: base.video })
+      queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collectionId ?? undefined), current =>
+        current?.map(candidate => (candidate.id === saved.id ? saved : candidate))
+      )
+      if (selectedIdRef.current === saved.id) {
+        if (change.category) {
+          form.dispatch({ type: 'setCategory', category: change.category })
+          form.dispatch({ type: 'setHides', hides: saved.data.hides ?? [] })
+        }
+        if (change.thumbnail) form.dispatch({ type: 'setThumbnail', thumbnail: null })
+      }
+      showToast(t('item_editor.save_success', { name: saved.name }))
+    } catch (error) {
       reportSaveError(error)
-      request.reject(error)
-    })
-    // Runs when the file update lands or the carry-over finishes; `persist` reads the form of that render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fileSaveTick, form.draft.fileUpdate, springBones.isLoading, selected])
+      throw error
+    }
+  }
 
   function save() {
     if (!selected || isCarryingSpringBones) return

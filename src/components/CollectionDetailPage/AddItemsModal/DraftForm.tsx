@@ -1,12 +1,9 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ErrorOutline as HintIcon,
-  Female as FemaleIcon,
   InfoOutlined as InfoIcon,
-  Male as MaleIcon,
   PlayArrow as PlayIcon,
-  VideocamOutlined as VideoIcon,
-  Transgender as BothIcon
+  VideocamOutlined as VideoIcon
 } from '@mui/icons-material'
 import { CategorySelect } from '~/components/CategorySelect'
 import { LoopIcon, PlayOnceIcon } from '~/components/Icons'
@@ -19,7 +16,7 @@ import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } fr
 import { toMB } from '~/lib/itemFiles'
 import { BodyShapeType, ItemType, VIDEO_PATH, type Item } from '~/lib/items'
 import { getCategoryOptions, getVariantTargets, type ItemDraft } from './AddItemsModal.state'
-import { DraftPreviewPane } from './DraftPreviewPane'
+import { BodyShapePicker, DraftPreviewPane } from '~/components/ItemDraftModal'
 import * as S from './AddItemsModal.styles'
 
 type Props = {
@@ -33,12 +30,6 @@ type Props = {
   /** Smart wearables only: a picked file replaces the preview video. */
   onVideoChange: (video: File) => void
 }
-
-export const BODY_SHAPE_OPTIONS: Array<{ value: BodyShapeType; icon: ReactNode }> = [
-  { value: BodyShapeType.BOTH, icon: <BothIcon /> },
-  { value: BodyShapeType.FEMALE, icon: <FemaleIcon /> },
-  { value: BodyShapeType.MALE, icon: <MaleIcon /> }
-]
 
 export function DraftForm({
   draft,
@@ -119,42 +110,20 @@ export function DraftForm({
             ) : (
               t('add_items_modal.body_shape')
             )}
-            <S.Segmented role="radiogroup" aria-label={t('add_items_modal.body_shape')}>
-              {BODY_SHAPE_OPTIONS.map(({ value, icon }) => {
-                const selected = draft.bodyShape === value
-                const locked = draft.bodyShapeLocked
-                return (
-                  <Tooltip
-                    key={value}
-                    content={locked && !selected && bodyShapeHint ? t(bodyShapeHint) : null}
-                    asChild
-                    testId={`body-shape-${value}-tooltip`}
-                  >
-                    <S.SegmentButton
-                      type="button"
-                      role="radio"
-                      aria-disabled={locked || undefined}
-                      aria-checked={selected}
-                      data-selected={selected || undefined}
-                      data-testid={`body-shape-${value}`}
-                      onClick={() => {
-                        if (locked) return
-                        onUpdate(draft.id, {
-                          bodyShape: value,
-                          // Going back to BOTH clears the variant answer entirely.
-                          ...(value === BodyShapeType.BOTH
-                            ? { isVariant: false, variantTargetId: null }
-                            : { variantTargetId: null })
-                        })
-                      }}
-                    >
-                      {icon}
-                      {t(`add_items_modal.body_shape_option.${value}`)}
-                    </S.SegmentButton>
-                  </Tooltip>
-                )
-              })}
-            </S.Segmented>
+            <BodyShapePicker
+              value={draft.bodyShape}
+              locked={draft.bodyShapeLocked}
+              lockedHint={bodyShapeHint ? t(bodyShapeHint) : null}
+              onChange={value =>
+                onUpdate(draft.id, {
+                  bodyShape: value,
+                  // Going back to BOTH clears the variant answer entirely.
+                  ...(value === BodyShapeType.BOTH
+                    ? { isVariant: false, variantTargetId: null }
+                    : { variantTargetId: null })
+                })
+              }
+            />
           </S.Field>
         )}
 

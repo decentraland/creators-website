@@ -9,7 +9,6 @@ import {
   SentimentSatisfiedAlt as SmileIcon,
   Storage as SizeIcon,
   VideocamOutlined as VideoIcon,
-  SwapHorizOutlined as ChangeFileIcon,
   Texture as TextureIcon,
   ThirtyFpsSelect as FpsIcon
 } from '@mui/icons-material'
@@ -36,7 +35,8 @@ import {
   ITEM_UTILITY_MAX_LENGTH,
   isValidItemDescription,
   type ItemDraft,
-  type ItemDraftAction
+  type ItemDraftAction,
+  type ItemFileChange
 } from '~/lib/itemDraft'
 import { buildItemZip, getItemZipName } from '~/lib/itemDownload'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
@@ -54,7 +54,7 @@ import { useNotifications } from '~/lib/notifications'
 import { type SpringBoneParamsByName } from '~/lib/springBones'
 import { getEmoteCategoryOptions, getWearableCategoryOptions } from '~/lib/wearableCategories'
 import { DeleteItemModal } from '~/components/CollectionDetailPage/DeleteItemModal'
-import { ChangeFileModal, type ChangeFileResult } from '../ChangeFileModal'
+import { ChangeFileModal } from '../ChangeFileModal'
 import { EditorSection } from '../EditorSection'
 import { HidesEditor } from '../HidesEditor'
 import { SpringBonesEditor, type SpringBonesModel } from '../SpringBonesEditor'
@@ -86,8 +86,8 @@ type Props = {
   isSaving: boolean
   springBones: SpringBonesFormProps | null
   onSave: () => void
-  /** Persists the draft right after a file change was dispatched into it; rejects when the save fails. */
-  onSaveFile: () => Promise<void>
+  /** Persists a file change from the modal on its own; rejects when the save fails. */
+  onSaveFile: (change: ItemFileChange) => Promise<void>
   onRevert: () => void
   onDeleted: () => void
   testId?: string
@@ -132,29 +132,14 @@ export function PropertiesPanel({
   const isWearable = item.type === ItemType.WEARABLE
   const isSmart = isSmartWearable(item)
   const disabled = !editable
-  const contents = draft.fileUpdate?.item.contents ?? item.contents
+  const contents = item.contents
   const categories = useMemo(
     () => (isEmote ? getEmoteCategoryOptions() : getWearableCategoryOptions(contents)),
     [isEmote, contents]
   )
-  // A file change builds on the pending one with the category and hides as edited, so a second change
-  // (after a failed save) is checked and padded against what the creator picked.
-  const pendingItem = draft.fileUpdate?.item ?? item
-  const fileBase = useMemo(
-    () => ({
-      ...pendingItem,
-      data: { ...pendingItem.data, category: draft.category ?? undefined, hides: draft.hides }
-    }),
-    [pendingItem, draft.category, draft.hides]
-  )
   const missingShape = useMemo(
-    () => (isWearable && !isSmart ? getMissingBodyShapeType(fileBase) : null),
-    [isWearable, isSmart, fileBase]
-  )
-  // Only a new file can leave the category without a valid value; stored items keep saving as they are.
-  const categoryMissing = useMemo(
-    () => isWearable && draft.fileUpdate !== null && !categories.includes(draft.category ?? ''),
-    [isWearable, draft.fileUpdate, draft.category, categories]
+    () => (isWearable && !isSmart ? getMissingBodyShapeType(item) : null),
+    [isWearable, isSmart, item]
   )
   const nameInvalid = draft.name.length > 0 && !isValidItemName(draft.name)
   const descriptionInvalid = !isValidItemDescription(draft.description)
@@ -174,15 +159,7 @@ export function PropertiesPanel({
     enabled: isVideoOpen && !draft.video && !!videoHash,
     staleTime: Infinity
   })
-  const metrics = draft.fileUpdate?.item.metrics ?? item.metrics
-
-  function saveFileChange(result: ChangeFileResult): Promise<void> {
-    // The file update may clear a category the new file can't keep; the one picked in the modal follows it.
-    dispatch({ type: 'setFileUpdate', update: result.update })
-    if (result.thumbnail) dispatch({ type: 'setThumbnail', thumbnail: result.thumbnail })
-    if (result.category) dispatch({ type: 'setCategory', category: result.category })
-    return onSaveFile()
-  }
+  const metrics = item.metrics
 
   async function download() {
     setDownloading(true)
@@ -321,12 +298,6 @@ export function PropertiesPanel({
             </S.Metrics>
           )}
         </S.DetailsRow>
-        {draft.fileUpdate && (
-          <S.Warning data-testid={`${testId}-file-update`}>
-            <ChangeFileIcon fontSize="small" />
-            {t('item_editor.details.file_update_pending')}
-          </S.Warning>
-        )}
         {isSmart && (
           <S.VideoPane data-testid={`${testId}-video`}>
             <S.FieldLabel>
@@ -477,11 +448,6 @@ export function PropertiesPanel({
             testId={`${testId}-category`}
             onChange={category => dispatch({ type: 'setCategory', category })}
           />
-          {categoryMissing && editable && (
-            <S.ErrorText data-testid={`${testId}-category-error`}>
-              {t('item_editor.basics.category_required')}
-            </S.ErrorText>
-          )}
         </S.Field>
         <S.Field as="div">
           <S.FieldLabel>
@@ -645,7 +611,7 @@ export function PropertiesPanel({
             type="button"
             variant="primary"
             size="sm"
-            disabled={!isDirty || nameInvalid || descriptionInvalid || categoryMissing || draft.name.trim() === ''}
+            disabled={!isDirty || nameInvalid || descriptionInvalid || draft.name.trim() === ''}
             loading={isSaving}
             data-testid={`${testId}-save`}
             onClick={onSave}
@@ -666,9 +632,9 @@ export function PropertiesPanel({
       )}
       {changeFile && (
         <ChangeFileModal
-          item={fileBase}
+          item={item}
           lockedBodyShape={changeFile.lockedBodyShape}
-          onSave={saveFileChange}
+          onSave={onSaveFile}
           onClose={() => setChangeFile(null)}
         />
       )}

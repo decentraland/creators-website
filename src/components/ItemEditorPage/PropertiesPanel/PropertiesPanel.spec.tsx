@@ -7,18 +7,17 @@ import { BodyShape } from '@dcl/schemas'
 import { Providers } from '~/components/CollectionDetailPage/SellItemFlow/testUtils'
 import { ItemType, type Item } from '~/lib/items'
 import { useItemForm } from '../useItemForm'
-import { type ChangeFileResult } from '../ChangeFileModal'
+import { type ItemFileChange } from '~/lib/itemDraft'
 import { PropertiesPanel } from './PropertiesPanel'
 
 // The change-file modal has its own spec; here it hands back whatever result the test prepared.
-const fileChange = vi.hoisted<{ result: ChangeFileResult | null }>(() => ({ result: null }))
+const fileChange = vi.hoisted<{ result: ItemFileChange | null }>(() => ({ result: null }))
 vi.mock('../ChangeFileModal', () => ({
-  ChangeFileModal: ({ item, onSave }: { item: Item; onSave: (result: ChangeFileResult) => Promise<void> }) => (
+  ChangeFileModal: ({ item, onSave }: { item: Item; onSave: (result: ItemFileChange) => Promise<void> }) => (
     <button
       type="button"
       data-testid="mock-change-file-apply"
       data-shapes={item.data.representations.length}
-      data-category={item.data.category}
       onClick={() => fileChange.result && void onSave(fileChange.result)}
     />
   )
@@ -160,7 +159,7 @@ describe('PropertiesPanel', () => {
     expect(screen.getByTestId('properties-panel-save')).toBeDisabled()
   })
 
-  it('saves right after a file change is dispatched into the draft', async () => {
+  it('hands a file change to the editor to save on its own, from the saved item', async () => {
     fileChange.result = {
       update: { item: { ...item, contents: { 'male/cap.glb': 'bafycap' } }, blobs: {} },
       thumbnail: null,
@@ -168,74 +167,15 @@ describe('PropertiesPanel', () => {
     }
     const onSaveFile = vi.fn().mockResolvedValue(undefined)
     render(<Harness onSaveFile={onSaveFile} />, { wrapper: Providers })
+    // Unsaved panel edits are not part of what the modal saves.
+    await userEvent.type(screen.getByTestId('properties-panel-name'), ' 2')
     await userEvent.click(screen.getByTestId('properties-panel-actions'))
     await userEvent.click(screen.getByTestId('properties-panel-change-file'))
-    await userEvent.click(screen.getByTestId('mock-change-file-apply'))
-    expect(onSaveFile).toHaveBeenCalledTimes(1)
-    expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
-  })
-
-  it('asks for a category when a new file does not fit the current one', async () => {
-    fileChange.result = {
-      update: { item: { ...item, contents: { 'male/eyes.png': 'bafyeyes' } }, blobs: {} },
-      thumbnail: null,
-      category: null
-    }
-    render(<Harness />, { wrapper: Providers })
-    await userEvent.click(screen.getByTestId('properties-panel-actions'))
-    await userEvent.click(screen.getByTestId('properties-panel-change-file'))
-    await userEvent.click(screen.getByTestId('mock-change-file-apply'))
-    expect(await screen.findByTestId('properties-panel-category-error')).toBeInTheDocument()
-    expect(screen.getByTestId('properties-panel-save')).toBeDisabled()
-    await userEvent.click(screen.getByTestId('properties-panel-category'))
-    await userEvent.click(screen.getByTestId('properties-panel-category-option-eyes'))
-    expect(screen.queryByTestId('properties-panel-category-error')).not.toBeInTheDocument()
-    expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
-  })
-
-  it('takes the category and thumbnail picked in the change-file modal into the draft', async () => {
-    fileChange.result = {
-      update: { item: { ...item, contents: { 'male/eyes.png': 'bafyeyes' } }, blobs: {} },
-      thumbnail: new Blob(['render']),
-      category: 'eyes'
-    }
-    render(<Harness />, { wrapper: Providers })
-    await userEvent.click(screen.getByTestId('properties-panel-actions'))
-    await userEvent.click(screen.getByTestId('properties-panel-change-file'))
-    await userEvent.click(screen.getByTestId('mock-change-file-apply'))
-    expect(screen.queryByTestId('properties-panel-category-error')).not.toBeInTheDocument()
-    expect(screen.getByTestId('properties-panel-category')).toHaveTextContent('Eyes')
-    expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
-    // A further change is checked against the category as picked, not the stored one.
-    await userEvent.click(screen.getByTestId('properties-panel-actions'))
-    await userEvent.click(screen.getByTestId('properties-panel-change-file'))
-    expect(screen.getByTestId('mock-change-file-apply')).toHaveAttribute('data-category', 'eyes')
-  })
-
-  it('builds a second file change on the pending one', async () => {
-    const female = { bodyShapes: [BodyShape.FEMALE], mainFile: 'female/hat.glb', contents: ['female/hat.glb'] }
-    fileChange.result = {
-      update: {
-        item: {
-          ...item,
-          data: { ...item.data, representations: [...item.data.representations, female] },
-          contents: { ...item.contents, 'female/hat.glb': 'bafyfemale' }
-        },
-        blobs: { 'female/hat.glb': new Blob(['f']) }
-      },
-      thumbnail: null,
-      category: null
-    }
-    render(<Harness />, { wrapper: Providers })
-    await userEvent.click(screen.getByTestId('properties-panel-actions'))
-    await userEvent.click(screen.getByTestId('properties-panel-add-representation'))
     expect(screen.getByTestId('mock-change-file-apply')).toHaveAttribute('data-shapes', '1')
     await userEvent.click(screen.getByTestId('mock-change-file-apply'))
-    // The shape was added in the draft: the menu stops offering it and the next change starts from both shapes.
-    await userEvent.click(screen.getByTestId('properties-panel-actions'))
-    expect(screen.queryByTestId('properties-panel-add-representation')).not.toBeInTheDocument()
-    await userEvent.click(screen.getByTestId('properties-panel-change-file'))
-    expect(screen.getByTestId('mock-change-file-apply')).toHaveAttribute('data-shapes', '2')
+    expect(onSaveFile).toHaveBeenCalledWith(fileChange.result)
+    expect(screen.getByTestId('properties-panel-name')).toHaveValue('Hat 2')
+    expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
   })
 
   it('keeps saving a stored item whose category the editor does not offer', async () => {

@@ -31,7 +31,7 @@ import {
 import { imageThumbnailPatch, isImageThumbnailStale, processDraftFile, pickPreviewDraft } from './processDraft'
 import { DraftList } from './DraftList'
 import { DraftForm } from './DraftForm'
-import { DraftProcessor } from './DraftProcessor'
+import { DraftProcessor } from '~/components/ItemDraftModal'
 import { VideoModal } from '~/components/VideoModal'
 import { LeaveConfirmModal } from './LeaveConfirmModal'
 import { UploadErrorModal } from './UploadErrorModal'

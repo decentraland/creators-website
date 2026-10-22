@@ -14,10 +14,8 @@ export {
   Layout,
   Main,
   ProcessingPane,
-  ProcessingSpinner,
-  SegmentButton,
-  Segmented
-} from '~/components/CollectionDetailPage/AddItemsModal/AddItemsModal.styles'
+  ProcessingSpinner
+} from '~/components/ItemDraftModal/ItemDraftModal.styles'
 
 export const Dropzone = styled.div`
   display: flex;
