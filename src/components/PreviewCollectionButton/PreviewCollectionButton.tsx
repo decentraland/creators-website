@@ -1,4 +1,4 @@
-import { forwardRef, useState } from 'react'
+import { useState } from 'react'
 import { Button, type ButtonSize } from '~/components/Button'
 import { JumpInIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
@@ -15,22 +15,15 @@ type Props = {
   'data-desktop-only'?: boolean
 }
 
-/** Opens the collection in the desktop explorer's preview world. Forwards its ref so a tooltip can anchor to it. */
-export const PreviewCollectionButton = forwardRef<Element, Props>(function PreviewCollectionButton(
-  { collectionId, disabled, size, onLaunch, ...rest },
-  ref
-) {
+/** Opens the collection in the desktop explorer's preview world. */
+export function PreviewCollectionButton({ collectionId, disabled, onLaunch, ...rest }: Props) {
   const { t } = useTranslation()
   const [isLaunching, setLaunching] = useState(false)
-  const label = t('preview_collection_button.label')
 
   return (
     <Button
-      {...rest}
-      ref={ref}
       type="button"
       variant="dark"
-      size={size}
       disabled={disabled}
       loading={isLaunching}
       onClick={() => {
@@ -39,9 +32,10 @@ export const PreviewCollectionButton = forwardRef<Element, Props>(function Previ
           .then(launched => onLaunch?.(launched))
           .finally(() => setLaunching(false))
       }}
+      {...rest}
     >
-      {label}
+      {t('preview_collection_button.label')}
       <JumpInIcon />
     </Button>
   )
-})
+}
