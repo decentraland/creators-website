@@ -9,7 +9,7 @@ import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
 import { openExternal } from '~/lib/navigation'
 import { formatMana, weiToUsdCents } from '~/lib/publishFee'
-import { getLinkedPublishFee, getSlotsToBuy } from '~/lib/publishLinkedItems'
+import { getLinkedPublishQuote, type LinkedSlots } from '~/lib/publishLinkedItems'
 import { type ThirdPartyPrice } from '~/lib/thirdPartyRegistry'
 import { type ThirdParty } from '~/lib/thirdParty'
 import { Button } from '~/components/Button'
@@ -30,10 +30,12 @@ type Props = {
   price: ThirdPartyPrice | undefined
   priceError: boolean
   onRetryPrice: () => void
-  availableSlots: number | undefined
+  slots: LinkedSlots | undefined
   slotsError: boolean
+  /** The fee went up since it was shown: Submit now confirms the new one. */
+  feeChanged: boolean
   onRetrySlots: () => void
-  /** An earlier attempt's payment went through: there is nothing to pay, only the publish to finish. */
+  /** An earlier attempt sent a payment: it is confirmed first, and only what is still missing is charged. */
   resuming: boolean
   /** A run is starting or running: Submit must not start a second one. */
   busy: boolean
@@ -54,8 +56,9 @@ export function LinkedPaymentStep({
   price,
   priceError,
   onRetryPrice,
-  availableSlots,
+  slots,
   slotsError,
+  feeChanged,
   onRetrySlots,
   resuming,
   busy,
@@ -68,33 +71,25 @@ export function LinkedPaymentStep({
   const intl = useIntl()
   const mana = useManaBalance(session.address)
 
-  const slotsToBuy = useMemo(
+  const quote = useMemo(
     () =>
-      price && availableSlots !== undefined
-        ? getSlotsToBuy({
-            itemsToPublish: itemsToPublish.length,
-            availableSlots,
+      price && slots
+        ? getLinkedPublishQuote(itemsToPublish.length, slots, price, {
             isProgrammatic,
-            isPublished: thirdParty.published,
-            programmaticMinSlots: price.programmaticMinSlots
+            published: thirdParty.published
           })
         : null,
-    [price, availableSlots, itemsToPublish.length, isProgrammatic, thirdParty.published]
+    [price, slots, itemsToPublish.length, isProgrammatic, thirdParty.published]
   )
-  const fee = useMemo(
-    () =>
-      price && slotsToBuy !== null
-        ? getLinkedPublishFee(slotsToBuy, price, { isProgrammatic, isPublished: thirdParty.published })
-        : null,
-    [price, slotsToBuy, isProgrammatic, thirdParty.published]
-  )
+  const slotsToBuy = quote?.slotsToBuy ?? null
+  const fee = quote?.fee ?? null
+  const isRegistered = thirdParty.published || !!slots?.registered
   const balance = mana.data ?? 0n
   const hasEnough = !!fee && balance >= fee.maxManaWei
   const isFree = !!fee && fee.manaWei === 0n
   const usd = (wei: bigint) => intl.formatNumber(weiToUsdCents(wei) / 100, { style: 'currency', currency: 'USD' })
   const loadError = priceError || slotsError
-  const canSubmit =
-    !busy && accepted && !loadError && !!price && (resuming || (!!fee && (isFree || (hasEnough && mana.isSuccess))))
+  const canSubmit = !busy && accepted && !loadError && !!fee && (isFree || resuming || (hasEnough && mana.isSuccess))
 
   const openLink = (url: string) => (event: React.MouseEvent) => {
     event.preventDefault()
@@ -130,10 +125,6 @@ export function LinkedPaymentStep({
               {t('publish_collection_modal.payment_step.retry')}
             </Button>
           </S.InlineNote>
-        ) : resuming ? (
-          <S.InlineNote data-testid="publish-linked-resuming">
-            {t('publish_linked_modal.payment_step.resuming')}
-          </S.InlineNote>
         ) : !fee || slotsToBuy === null ? (
           <S.InlineNote data-testid="publish-linked-fee-loading">
             <S.Spinner aria-hidden />
@@ -167,14 +158,24 @@ export function LinkedPaymentStep({
                 </S.SummaryTotal>
               </S.SummaryRow>
             </S.SummaryTable>
+            {resuming && (
+              <S.InlineNote data-testid="publish-linked-resuming">
+                {t('publish_linked_modal.payment_step.resuming')}
+              </S.InlineNote>
+            )}
+            {feeChanged && (
+              <S.InlineNote data-testid="publish-linked-fee-changed">
+                {t('publish_linked_modal.payment_step.fee_changed')}
+              </S.InlineNote>
+            )}
             <S.Text data-testid="publish-linked-fee-note">
               {isProgrammatic
-                ? thirdParty.published
+                ? isRegistered
                   ? t('publish_linked_modal.payment_step.programmatic_published')
                   : t('publish_linked_modal.payment_step.programmatic_first', { slots: price!.programmaticMinSlots })
                 : t('publish_linked_modal.payment_step.standard_note', {
                     price: usd(price!.itemSlotUsdWei),
-                    available: availableSlots ?? 0
+                    available: slots?.available ?? 0
                   })}
             </S.Text>
             {!isFree && (

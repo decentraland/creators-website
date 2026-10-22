@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { errorCode, track } from '~/lib/analytics'
-import { sendContractTransaction, signTypedData, waitForTransaction, type Session } from '~/lib/auth'
+import { sendContractTransaction, settleTransaction, signTypedData, type Session } from '~/lib/auth'
 import {
   deleteVirtualThirdParty,
+  fetchThirdParty,
+  fetchThirdPartySlots,
   publishLinkedItems as postLinkedItems,
   pushItemCuration,
   saveLinkedItemsTOS,
@@ -18,14 +20,16 @@ import { captureError } from '~/lib/monitoring'
 import { getMaticChainId } from '~/lib/publishCollection'
 import {
   LinkedPublishError,
+  getLinkedSlots,
   publishLinkedItems,
   signSlotsCheque,
   type LinkedPayment,
   type LinkedPublishStep,
+  type LinkedSlots,
   type PublishLinkedParams
 } from '~/lib/publishLinkedItems'
 import { pushLinkedChanges, type PushLinkedResult } from '~/lib/pushLinkedChanges'
-import { fetchThirdPartyPrice } from '~/lib/thirdPartyRegistry'
+import { fetchRegisteredThirdParty, fetchThirdPartyPrice } from '~/lib/thirdPartyRegistry'
 import { invalidateCollectionItems } from './usePublishCollection'
 import { thirdPartyKey, thirdPartySlotsKey } from './useLinkedCollection'
 
@@ -37,6 +41,26 @@ export function useThirdPartyPrice(enabled = true) {
     queryFn: () => fetchThirdPartyPrice(chainId),
     enabled,
     staleTime: 60_000
+  })
+}
+
+async function fetchLinkedSlots(address: string, chainId: number, thirdPartyId: string): Promise<LinkedSlots> {
+  const [available, indexed, registry] = await Promise.all([
+    fetchThirdPartySlots(address, thirdPartyId),
+    fetchThirdParty(address, thirdPartyId),
+    fetchRegisteredThirdParty(chainId, thirdPartyId)
+  ])
+  return getLinkedSlots(available, Number(indexed.maxItems) || 0, registry)
+}
+
+/** The item slots the third party has free for the publish fee, read against the registry as well. */
+export function useLinkedSlots(address: string | undefined, thirdPartyId: string | undefined) {
+  const chainId = getMaticChainId()
+  return useQuery({
+    queryKey: thirdPartySlotsKey(address, thirdPartyId),
+    queryFn: () => fetchLinkedSlots(address!, chainId, thirdPartyId!),
+    enabled: !!address && !!thirdPartyId,
+    staleTime: 30_000
   })
 }
 
@@ -75,7 +99,8 @@ export function usePublishLinkedItems(session: Session, collection: Collection) 
           setThirdPartyKind: (thirdPartyId, isProgrammatic) => setThirdPartyKind(address, thirdPartyId, isProgrammatic),
           fetchManaAllowance: (owner, spender) => fetchManaAllowance(owner, spender, chainId),
           sendTransaction: call => sendContractTransaction(session, call),
-          waitForTransaction: txHash => waitForTransaction(chainId, txHash),
+          settleTransaction: txHash => settleTransaction(chainId, txHash),
+          fetchSlots: () => fetchLinkedSlots(address, chainId, params.thirdParty.id),
           deleteVirtualThirdParty: thirdPartyId => deleteVirtualThirdParty(address, thirdPartyId),
           publishLinkedItems: (collectionId, itemIds, cheque: SlotsCheque) =>
             postLinkedItems(address, collectionId, itemIds, cheque),
@@ -103,12 +128,13 @@ export function usePublishLinkedItems(session: Session, collection: Collection) 
       const step = error instanceof LinkedPublishError ? error.step : 'unknown'
       track('Publish TP Items error', { collectionId: collection.id, step, error: errorCode(error) })
       // From the payment on, the creator may have paid: a failure there needs someone to look. A rejected wallet
-      // prompt or a reverted transaction charged nothing.
+      // prompt or a reverted transaction charged nothing, and a payment still pending is picked up by the retry.
       if (
         error instanceof LinkedPublishError &&
         ['wait_tx', 'delete_virtual', 'publish', 'push'].includes(error.step) &&
         error.reason !== 'rejected' &&
-        error.reason !== 'reverted'
+        error.reason !== 'reverted' &&
+        error.reason !== 'payment_pending'
       ) {
         captureError(error.cause ?? error, {
           flow: 'linked_publish',

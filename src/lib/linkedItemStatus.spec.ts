@@ -97,6 +97,11 @@ describe('canPushLinkedItem', () => {
   it('also allows refreshing a pending request opened for an older hash', () => {
     expect(canPushLinkedItem(approved, curation(CurationStatus.PENDING, 'hash-0'))).toBe(true)
     expect(canPushLinkedItem(makeItem(), null)).toBe(false)
+  })
+
+  it('does not send again changes already waiting for review', () => {
+    const edited = { ...approved, currentContentHash: 'hash-2' }
+    expect(canPushLinkedItem(edited, curation(CurationStatus.PENDING, 'hash-2'))).toBe(false)
     expect(canPushLinkedItem({ ...approved, currentContentHash: 'x' }, curation(CurationStatus.REJECTED))).toBe(false)
   })
 })

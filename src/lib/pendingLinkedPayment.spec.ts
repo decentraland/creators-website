@@ -12,7 +12,7 @@ function memoryStore() {
 }
 
 const scope = { chainId: 80002, address: '0xAbC', collectionId: 'c1' }
-const payment = { txHash: '0xabc', registration: true, slots: 3 }
+const payment = { txHash: '0xabc', registration: true }
 
 describe('pending linked publish', () => {
   it('remembers what is left per chain, wallet and collection, and forgets it once settled', () => {

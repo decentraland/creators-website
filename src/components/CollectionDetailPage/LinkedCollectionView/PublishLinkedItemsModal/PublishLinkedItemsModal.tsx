@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from '~/intl'
 import { useSaveCollection } from '~/hooks/useCollection'
-import { useThirdPartySlots } from '~/hooks/useLinkedCollection'
-import { usePublishLinkedItems, useSignSlotsCheque, useThirdPartyPrice } from '~/hooks/useLinkedPublish'
+import { useLinkedSlots, usePublishLinkedItems, useSignSlotsCheque, useThirdPartyPrice } from '~/hooks/useLinkedPublish'
 import { useProfile } from '~/hooks/useProfile'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { track } from '~/lib/analytics'
@@ -15,9 +14,10 @@ import { loadPendingPublish, savePendingPublish, type PendingPublish } from '~/l
 import { getMaticChainId } from '~/lib/publishCollection'
 import {
   LinkedPublishError,
+  getLinkedPublishQuote,
   mayHavePublished,
-  shouldResumePayment,
-  type LinkedPublishStep
+  type LinkedPublishStep,
+  type LinkedSlots
 } from '~/lib/publishLinkedItems'
 import { LINKED_COLLECTION_NAME_MAX_LENGTH, type ThirdParty } from '~/lib/thirdParty'
 import { Modal } from '~/components/Modal'
@@ -107,13 +107,14 @@ export function PublishLinkedItemsModal({
   // Set synchronously on Submit: a second click during the slots re-read must not start a second, paying run.
   const submitting = useRef(false)
   const [slotsError, setSlotsError] = useState(false)
+  const [feeChanged, setFeeChanged] = useState(false)
 
   const profile = useProfile(address)
   const profileEmail = profile.data?.email?.trim() ?? ''
   const saveCollection = useSaveCollection(address)
   const signCheque = useSignSlotsCheque(session)
   const price = useThirdPartyPrice()
-  const slots = useThirdPartySlots(address, thirdParty.id)
+  const slots = useLinkedSlots(address, thirdParty.id)
   const publish = usePublishLinkedItems(session, collection)
   const isRunning = publish.isPending || runningStep !== null
   const runningLabels = useMemo(
@@ -158,22 +159,37 @@ export function PublishLinkedItemsModal({
     )
   }
 
+  const quoteFor = (read: LinkedSlots) =>
+    getLinkedPublishQuote(itemsToPublish.length, read, price.data!, {
+      isProgrammatic,
+      published: thirdParty.published
+    })
+
   async function submit() {
-    if (!price.data || submitting.current) return
+    if (!price.data || !slots.data || submitting.current) return
     submitting.current = true
+    const shown = quoteFor(slots.data)
     setSlotsError(false)
+    setFeeChanged(false)
     setRunningStep('tos')
     // Read again right before paying: the slots an earlier attempt bought must not be bought twice. A failed read
     // hands back the stale count, so it stops here instead; and since the server also answers 0 when it fails, a 0 is
     // confirmed with a second read before it can lead to buying every slot again.
     let read = await slots.refetch()
-    if (!read.isError && read.data === 0) read = await slots.refetch()
+    if (!read.isError && read.data?.available === 0) read = await slots.refetch()
     const fresh = read.isError ? undefined : read.data
-    if (fresh === undefined) {
+    const stop = () => {
       submitting.current = false
-      setSlotsError(true)
       setRunningStep(null)
-      return
+    }
+    if (!fresh) {
+      setSlotsError(true)
+      return stop()
+    }
+    // Someone else used slots meanwhile: the creator confirms the higher fee first.
+    if (quoteFor(fresh).fee.maxManaWei > shown.fee.maxManaWei) {
+      setFeeChanged(true)
+      return stop()
     }
     publish.mutate(
       {
@@ -184,7 +200,8 @@ export function PublishLinkedItemsModal({
         cheque,
         email,
         isProgrammatic,
-        availableSlots: fresh,
+        slots: fresh,
+        maxFeeManaWei: shown.fee.maxManaWei,
         price: price.data,
         paidTx,
         publishMayHaveLanded: !!pending.publishMayHaveLanded,
@@ -302,13 +319,14 @@ export function PublishLinkedItemsModal({
             price={price.data}
             priceError={price.isError}
             onRetryPrice={() => void price.refetch()}
-            availableSlots={slots.data}
+            slots={slots.data}
             slotsError={slots.isError || slotsError}
+            feeChanged={feeChanged}
             onRetrySlots={() => {
               setSlotsError(false)
               void slots.refetch()
             }}
-            resuming={slots.data !== undefined && shouldResumePayment(paidTx, itemsToPublish.length, slots.data)}
+            resuming={!!paidTx}
             busy={isRunning}
             accepted={termsAccepted}
             onAcceptedChange={setTermsAccepted}

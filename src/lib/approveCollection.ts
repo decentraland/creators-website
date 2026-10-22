@@ -43,6 +43,7 @@ export class ApprovalError extends Error {
     | 'missing_hash'
     | 'invalid_cheque'
     | 'changed'
+    | 'unsubmitted'
 
   constructor(reason: ApprovalError['reason'], message: string) {
     super(message)

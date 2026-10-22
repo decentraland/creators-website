@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { ChevronRight as ChevronRightIcon } from '@mui/icons-material'
+import { ChevronRight as ChevronRightIcon, WarningAmberOutlined as WarningIcon } from '@mui/icons-material'
 import approvedArt from '~/assets/send-success.png'
 import errorArt from '~/assets/modal-error.png'
 import { useTranslation } from '~/intl'
@@ -80,6 +80,17 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, revie
           />
         )
       }
+      if (view.step === 'unsubmitted') {
+        return (
+          <ConfirmModal
+            title={t('approval_flow.changed.title')}
+            description={t('linked_approval_flow.unsubmitted')}
+            onClose={onClose}
+            confirm={{ label: t('approval_flow.cancel'), onClick: onClose, testId: 'approval-unsubmitted-close' }}
+            testId="approval-unsubmitted"
+          />
+        )
+      }
       return (
         <ConfirmModal
           title={t('approval_flow.error.title_approve')}
@@ -152,6 +163,12 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, revie
               slots: plan?.slots.length ? plan.approvalData.cheque.qty : 0
             })}
           </S.Text>
+          {step === 'root' && !thirdParty.isApproved && (
+            <S.Warning data-testid="approval-reenables-third-party">
+              <WarningIcon aria-hidden />
+              <p>{t('linked_approval_flow.root.reenables')}</p>
+            </S.Warning>
+          )}
           <S.Table>
             <S.Header data-table="deploy">
               <span>{t('approval_flow.columns.item')}</span>

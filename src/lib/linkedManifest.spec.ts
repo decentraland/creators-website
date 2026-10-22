@@ -50,3 +50,11 @@ describe('resolveLinkedManifest', () => {
     expect(resolveLinkedManifest({ id: existing.urn }, updating).mapping).toEqual({ type: MappingType.SINGLE, id: '3' })
   })
 })
+
+describe('resolveLinkedManifest when adding items', () => {
+  it('refuses a URN an item of the collection already has, so adding never overwrites it', () => {
+    const adding = { ...target, takenUrns: new Set([`${collectionUrn}:cap`]) }
+    expect(errorKey(() => resolveLinkedManifest({ id: `${collectionUrn}:cap` }, adding))).toBe('linked_urn_in_use')
+    expect(resolveLinkedManifest({ id: `${collectionUrn}:boots` }, adding).urnSuffix).toBe('boots')
+  })
+})

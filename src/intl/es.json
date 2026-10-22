@@ -618,7 +618,9 @@
       "try_again": "Intentar de nuevo",
       "got_it": "Entendido",
       "title_urn_taken": "Una URN ya está en uso",
-      "description_urn_taken": "Otro ítem ya usa una de estas URN. Cambia el identificador en wearable.json o vuelve a subir el ítem con su URN actual para actualizarlo."
+      "description_urn_taken": "Otro ítem ya usa una de estas URN. Cambia el \"id\" del wearable.json o el nombre del ítem, o usa Editar en bloque para actualizar el ítem existente.",
+      "title_duplicate_urn": "Algunos ítems comparten una URN",
+      "description_duplicate_urn": "Dos o más ítems de esta carga tienen la misma URN, por el \"id\" del wearable.json o por el mismo nombre. No se subió nada: quita o renombra los duplicados y vuelve a intentarlo."
     },
     "leave": {
       "save_title": "¿Guardar antes de salir?",
@@ -667,7 +669,8 @@
       "linked_urn_mismatch": "La URN de wearable.json no pertenece a esta colección.",
       "linked_mapping_invalid": "El mapeo de wearable.json no es válido. Revisa su tipo y los IDs de token.",
       "bulk_edit_missing_urn": "Agrega la URN del ítem como \"id\" en wearable.json para actualizarlo.",
-      "bulk_edit_no_match": "Ningún ítem de esta colección tiene la URN de este wearable.json."
+      "bulk_edit_no_match": "Ningún ítem de esta colección tiene la URN de este wearable.json.",
+      "linked_urn_in_use": "Un ítem de esta colección ya tiene la URN de este wearable.json. Usa Editar en bloque para actualizarlo, o quita el \"id\" para agregar un ítem nuevo."
     },
     "mapping_hint": "Qué tokens del contrato vinculado desbloquean este wearable.",
     "bulk_edit": {
@@ -1601,7 +1604,8 @@
     },
     "publish_blocker": {
       "no_selection": "Selecciona los ítems para publicar o enviar.",
-      "under_review": "Esta colección sigue en revisión. Cuando termine podrás publicar más ítems."
+      "under_review": "Esta colección sigue en revisión. Cuando termine podrás publicar más ítems.",
+      "saving_mappings": "Guardando los cambios de mapeo…"
     },
     "empty": {
       "title": "Empieza a agregar ítems a tu colección vinculada",
@@ -1858,8 +1862,9 @@
       "checkbox": "Garantizo que los ítems enviados cumplen plenamente los <terms>Términos de uso</terms> y la <policy>Política de contenido</policy>, que tengo los derechos de propiedad intelectual para crear wearables basados en esta colección NFT, y reconozco que la DAO puede rechazar su aprobación y que la tarifa no se reembolsará si se rechazan.",
       "submit": "Publicar y pagar",
       "submit_free": "Publicar",
-      "resuming": "Tu pago anterior ya se envió. Termina la publicación: esperaremos a que se confirme y luego enviaremos tus ítems, sin volver a cobrar.",
-      "submit_resume": "Terminar publicación"
+      "resuming": "Ya enviaste un pago anterior. Primero lo confirmaremos y solo cobraremos los cupos que aún falten.",
+      "submit_resume": "Terminar publicación",
+      "fee_changed": "La tarifa cambió porque cambiaron los cupos libres de tu tercero. Revísala y vuelve a enviar."
     },
     "running": {
       "title": "Publicando tus ítems",
@@ -1887,11 +1892,13 @@
     "error": {
       "title": "No pudimos publicar tus ítems",
       "rejected": "Se canceló la solicitud en tu wallet. No se envió nada.",
-      "reverted": "La transacción falló en la blockchain y no se cobró nada. Inténtalo de nuevo.",
+      "reverted": "La transacción falló o se canceló, y no se cobró nada. Inténtalo de nuevo.",
       "insufficient_slots": "Tu tercero tiene menos cupos que los ítems seleccionados. Inténtalo de nuevo para comprar los que faltan.",
       "pending_review": "Hay ítems de esta colección en revisión. Espera a que termine antes de publicar más.",
       "tos_failed": "No pudimos registrar tu aceptación de los términos. Revisa tu correo y vuelve a intentarlo.",
-      "generic": "Algo salió mal al publicar tus ítems. Inténtalo de nuevo."
+      "generic": "Algo salió mal al publicar tus ítems. Inténtalo de nuevo.",
+      "payment_pending": "Tu pago aún no se confirmó. Vuelve a intentarlo en unos minutos: lo retomaremos sin volver a cobrarte.",
+      "fee_changed": "La tarifa subió desde que la confirmaste, así que no se cobró nada. Vuelve a intentarlo para revisar la nueva tarifa."
     }
   },
   "push_linked_modal": {
@@ -1918,7 +1925,8 @@
       "body": "Aprobar registra en la blockchain la huella de cada ítem revisado y consume {slots, plural, =0 {el cheque del creador} one {# cupo del creador} other {# cupos del creador}}. {count, plural, one {Hay # ítem esperando} other {Hay # ítems esperando}}.",
       "action": "Aprobar en la blockchain",
       "signing": "Confirma la aprobación en tu wallet.",
-      "pending": "Esperando que se confirme la aprobación…"
+      "pending": "Esperando que se confirme la aprobación…",
+      "reenables": "Este tercero está deshabilitado. Aprobar estos ítems lo vuelve a habilitar, junto con todas sus colecciones."
     },
     "deploy": {
       "title": "Subir archivos",
@@ -1944,7 +1952,9 @@
     "stage": {
       "build": "su contenido cambió o no se pudo preparar",
       "deploy": "falló la subida a los servidores de contenido",
-      "curation": "se subió, pero no se pudo marcar como aprobado"
-    }
+      "curation": "se subió, pero no se pudo marcar como aprobado",
+      "changed": "el creador lo editó durante la aprobación, así que queda pendiente de otra revisión"
+    },
+    "unsubmitted": "El creador guardó cambios en ítems después de enviarlos y no envió esos cambios a revisión. Debe volver a enviarlos antes de que estos ítems se puedan aprobar."
   }
 }

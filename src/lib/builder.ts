@@ -383,6 +383,11 @@ export async function fetchAllLinkedCollectionItems(
   }
 }
 
+/** One item as builder-server holds it right now: GET /items/{id}. */
+export async function fetchItem(address: string, itemId: string): Promise<Item> {
+  return fromRemoteItem(await request<RemoteItem>(address, 'GET', `/items/${itemId}`))
+}
+
 /** The linked items waiting for review, every page of them: GET /collections/{id}/items?status=pending. */
 export async function fetchPendingLinkedItems(address: string, collectionId: string, limit = 50): Promise<Item[]> {
   const items: Item[] = []

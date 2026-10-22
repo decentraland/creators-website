@@ -53,6 +53,8 @@ export type PrepareDeps = {
   fetchApprovalData: (collectionId: string) => Promise<LinkedApprovalData>
   /** The latest curation of every item, to keep rejected or superseded content out of the root. */
   fetchItemCurations: (collectionId: string) => Promise<Map<string, ItemCuration>>
+  /** The root the registry holds now: builder-server's copy lags it right after a root transaction. */
+  fetchRegistryRoot: () => Promise<string>
 }
 
 /** What the curator saw: the pending items when they decided, and the content of each item they opened. */
@@ -63,13 +65,19 @@ export type ReviewedContent = {
 }
 
 /**
- * Whether the server's pending items are still the ones the curator reviewed: the same set, and every opened item
- * with the content it had. Otherwise the committee would sign a root over content nobody looked at.
+ * Whether the server's pending items are still the ones the curator reviewed: the same set, less any approved since
+ * (a retry after some deployed), and every opened item with the content it had. Otherwise the committee would sign a
+ * root over content nobody looked at.
  */
-export function matchesReviewedContent(pendingItems: Item[], review: ReviewedContent): boolean {
-  if (pendingItems.length !== review.pendingIds.size) return false
+export function matchesReviewedContent(
+  pendingItems: Item[],
+  review: ReviewedContent,
+  curations: Map<string, ItemCuration> = new Map()
+): boolean {
+  const expected = [...review.pendingIds].filter(id => curations.get(id)?.status !== CurationStatus.APPROVED)
+  if (pendingItems.length !== expected.length) return false
   const byId = new Map(pendingItems.map(item => [item.id, item]))
-  if ([...review.pendingIds].some(id => !byId.has(id))) return false
+  if (expected.some(id => !byId.has(id))) return false
   return [...review.reviewedHashes].every(([id, hash]) => byId.get(id)?.currentContentHash === hash)
 }
 
@@ -92,29 +100,29 @@ export async function prepareLinkedApproval(
   deps: PrepareDeps,
   review?: ReviewedContent
 ): Promise<LinkedApprovalPlan> {
-  const [pendingItems, approvalData, curations] = await Promise.all([
+  const [pendingItems, approvalData, curations, registryRoot] = await Promise.all([
     deps.fetchPendingItems(collection.id),
     deps.fetchApprovalData(collection.id),
-    deps.fetchItemCurations(collection.id)
+    deps.fetchItemCurations(collection.id),
+    deps.fetchRegistryRoot()
   ])
   if (pendingItems.length === 0) throw new ApprovalError('nothing_pending', 'The collection has no items to approve')
-  if (review && !matchesReviewedContent(pendingItems, review)) {
+  if (review && !matchesReviewedContent(pendingItems, review, curations)) {
     throw new ApprovalError('changed', 'The pending items changed since they were reviewed')
   }
   const unhashed = pendingItems.find(item => !approvalData.contentHashes[item.id])
   if (unhashed) throw new ApprovalError('missing_hash', `Item ${unhashed.id} has no curated content hash`)
   // The root goes on chain before anything is deployed, so every pending leaf must be the content the curator has on
   // screen: the hash the curation recorded, the item's current hash and the hash of the item itself must all agree.
-  const drifted = pendingItems.find(item => {
-    const curated = approvalData.contentHashes[item.id]
-    return curated !== item.currentContentHash || curated !== computeLinkedItemContentHash(collection, item)
-  })
+  // An item saved after it was submitted can't be approved until the creator submits it again: reviewing won't help.
+  const unsubmitted = pendingItems.find(item => approvalData.contentHashes[item.id] !== item.currentContentHash)
+  if (unsubmitted) throw new ApprovalError('unsubmitted', `Item ${unsubmitted.id} has changes that were not submitted`)
+  const drifted = pendingItems.find(
+    item => approvalData.contentHashes[item.id] !== computeLinkedItemContentHash(collection, item)
+  )
   if (drifted) throw new ApprovalError('changed', `Item ${drifted.id} changed since it was curated`)
 
   const newItems = pendingItems.filter(item => !item.isApproved).length
-  if (!approvalData.chequeWasConsumed && approvalData.cheque.qty < newItems) {
-    throw new ApprovalError('invalid_cheque', `The cheque covers ${approvalData.cheque.qty} items, ${newItems} are new`)
-  }
 
   // Only approved content and the pending content verified above may be provable: a rejected or superseded hash in
   // the root would let content nobody approved reach the Catalyst.
@@ -123,12 +131,17 @@ export async function prepareLinkedApproval(
     .filter(([id]) => pendingIds.has(id) || curations.get(id)?.status === CurationStatus.APPROVED)
     .map(([, hash]) => hash)
   const tree = await generateTree(leaves)
+  // A root the registry already holds was set by an earlier attempt, which consumed the cheque with it.
+  const needsRoot = !sameRoot(registryRoot || approvalData.root, tree.merkleRoot)
+  if (needsRoot && !approvalData.chequeWasConsumed && approvalData.cheque.qty < newItems) {
+    throw new ApprovalError('invalid_cheque', `The cheque covers ${approvalData.cheque.qty} items, ${newItems} are new`)
+  }
   return {
     pendingItems,
     approvalData,
     merkleRoot: tree.merkleRoot,
-    needsRoot: !sameRoot(approvalData.root, tree.merkleRoot),
-    slots: approvalData.chequeWasConsumed ? [] : [toChequeSlot(approvalData.cheque)],
+    needsRoot,
+    slots: approvalData.chequeWasConsumed || !needsRoot ? [] : [toChequeSlot(approvalData.cheque)],
     proofOf: itemId => {
       const entityHash = approvalData.contentHashes[itemId]
       const leaf = tree.proofs[entityHash]
@@ -165,12 +178,17 @@ export async function setLinkedMerkleRoot(
   return txHash
 }
 
-/** Where an item's deployment failed: building its entity, the Catalyst upload, or approving its curation. */
-export type LinkedDeployStage = 'build' | 'deploy' | 'curation'
+/**
+ * Where an item's deployment failed: building its entity, the Catalyst upload, or approving its curation; `changed`
+ * when the creator saved it during the approval, which leaves it pending for another review.
+ */
+export type LinkedDeployStage = 'build' | 'deploy' | 'curation' | 'changed'
 export type LinkedDeployFailure = DeployFailure & { stage: LinkedDeployStage }
 export type LinkedDeployResult = { deployed: Item[]; failed: LinkedDeployFailure[] }
 
 export type LinkedDeployDeps = DeployDeps & {
+  /** The item as the server holds it now, to catch an edit the creator saves while the approval runs. */
+  fetchItem: (itemId: string) => Promise<Item>
   approveItem: (itemId: string) => Promise<unknown>
   concurrency?: number
 }
@@ -202,10 +220,18 @@ async function deployLinkedItem(
   plan: LinkedApprovalPlan,
   deps: LinkedDeployDeps
 ): Promise<void> {
+  const proof = await atStage('build', () => Promise.resolve().then(() => plan.proofOf(item.id)))
+  // builder-server approves whatever content the item has when asked, so an edit saved mid-run must stop it here.
+  const assertUnchanged = () =>
+    atStage('changed', async () => {
+      const current = await deps.fetchItem(item.id)
+      if (current.currentContentHash !== proof.entityHash) {
+        throw new Error(`Item ${item.id} changed during the approval`)
+      }
+    })
   const { entity, authChain, content, image } = await atStage('build', async () => {
     const image = await buildMissingImage(item, deps)
     const content = getEntityContent(item, image?.hash)
-    const proof = plan.proofOf(item.id)
     // Never sign an entity whose content isn't the one curated into the root.
     if (computeLinkedItemContentHash(collection, item) !== proof.entityHash) {
       throw new ApprovalError('changed', `Item ${item.id} changed since it was curated`)
@@ -215,6 +241,7 @@ async function deployLinkedItem(
     if (!authChain) throw new ApprovalError('no_identity', 'The session has no signing identity')
     return { entity, authChain, content, image }
   })
+  await assertUnchanged()
   await atStage('deploy', async () => {
     const hashes = [...new Set(Object.values(content))]
     const available = await deps.fetchAvailableContent(hashes)
@@ -225,6 +252,7 @@ async function deployLinkedItem(
     }
     await deps.deployEntity(buildDeploymentForm(entity, authChain, files))
   })
+  await assertUnchanged()
   await atStage('curation', () => deps.approveItem(item.id))
 }
 

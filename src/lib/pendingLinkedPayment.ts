@@ -28,12 +28,11 @@ function storage(): StorageLike | null {
 
 function toPayment(value: unknown): LinkedPayment | undefined {
   if (!value || typeof value !== 'object') return undefined
-  const { txHash, registration, slots } = value as Record<string, unknown>
-  if (typeof txHash !== 'string' || !/^0x[0-9a-fA-F]+$/.test(txHash)) return undefined
-  if (typeof registration !== 'boolean' || typeof slots !== 'number' || !Number.isInteger(slots) || slots < 1) {
+  const { txHash, registration } = value as Record<string, unknown>
+  if (typeof txHash !== 'string' || !/^0x[0-9a-fA-F]+$/.test(txHash) || typeof registration !== 'boolean') {
     return undefined
   }
-  return { txHash, registration, slots }
+  return { txHash, registration }
 }
 
 export function loadPendingPublish(scope: PendingPublishScope, store = storage()): PendingPublish {

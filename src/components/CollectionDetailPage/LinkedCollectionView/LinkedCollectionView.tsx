@@ -112,6 +112,17 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   const [isSelectingAll, setSelectingAll] = useState(false)
   const [allAcrossSelected, setAllAcrossSelected] = useState(false)
   const [publishView, setPublishView] = useState<'closed' | 'publish' | 'push'>('closed')
+  // Rows with a mapping edit not saved yet: publishing now would send the old mapping.
+  const [unsavedMappings, setUnsavedMappings] = useState<ReadonlySet<string>>(() => new Set())
+  const onMappingDirtyChange = useCallback((itemId: string, dirty: boolean) => {
+    setUnsavedMappings(current => {
+      if (current.has(itemId) === dirty) return current
+      const next = new Set(current)
+      if (dirty) next.add(itemId)
+      else next.delete(itemId)
+      return next
+    })
+  }, [])
 
   const network = collection.linkedContractNetwork
   const contractAddress = collection.linkedContractAddress
@@ -183,7 +194,9 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     ? 'no_selection'
     : publishAction !== 'push' && hasPendingReview
       ? 'under_review'
-      : null
+      : unsavedMappings.size > 0
+        ? 'saving_mappings'
+        : null
   const pageSelected = useMemo(() => selectableIds.filter(id => selected.has(id)).length, [selectableIds, selected])
   const allPageSelected = selectableIds.length > 0 && pageSelected === selectableIds.length
   const headerCheckbox = useRef<HTMLInputElement>(null)
@@ -291,7 +304,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
         .then(saved => {
           track('Edit Item Mapping', {
             itemId: item.id,
-            mappingType: Object.values(mappings)[0]?.[contractAddress ?? '']?.[0]?.type
+            mappingType: Object.values(mappings)[0]?.[contractAddress?.toLowerCase() ?? '']?.[0]?.type
           })
           return saved
         })
@@ -574,6 +587,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
                 onSelectedChange={isSelected => toggleSelected(item, isSelected)}
                 editable={canEdit}
                 onSaveMappings={saveMappings}
+                onMappingDirtyChange={onMappingDirtyChange}
                 actions={
                   <LinkedItemActionsMenu
                     onDeleted={() => toggleSelected(item, false)}
@@ -581,6 +595,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
                     collection={collection}
                     address={address}
                     curation={curations.isSuccess ? (curations.data.get(item.id) ?? null) : undefined}
+                    canEdit={canEdit}
                   />
                 }
               />

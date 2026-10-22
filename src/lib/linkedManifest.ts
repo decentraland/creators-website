@@ -10,6 +10,8 @@ export type LinkedManifestTarget = {
   contract: LinkedContract | null
   /** Edit in bulk: the collection's items by URN. Each zip must name one of them, and keeps its mapping if it sets none. */
   updating?: Map<string, Item>
+  /** Adding items: the URNs the collection's items already have, which a new item can't take. */
+  takenUrns?: Set<string>
 }
 
 export type LinkedManifestFields = {
@@ -20,7 +22,8 @@ export type LinkedManifestFields = {
 
 /**
  * Reads the `id` and `mapping` of a wearable.json for a linked collection. Throws ItemFileError when the URN belongs
- * to another collection, the mapping is invalid, or (editing in bulk) the zip names no item of this collection.
+ * to another collection, the mapping is invalid, (adding items) an item already has it, or (editing in bulk) the zip
+ * names no item of this collection.
  */
 export function resolveLinkedManifest(
   manifest: { id?: string | null; mapping?: unknown } | undefined,
@@ -35,6 +38,8 @@ export function resolveLinkedManifest(
   if (target.updating) {
     if (!id) throw new ItemFileError('bulk_edit_missing_urn')
     if (!existing) throw new ItemFileError('bulk_edit_no_match')
+  } else if (id && target.takenUrns?.has(id)) {
+    throw new ItemFileError('linked_urn_in_use')
   }
   let mapping: Mapping
   if (manifest?.mapping !== undefined && manifest.mapping !== null) {

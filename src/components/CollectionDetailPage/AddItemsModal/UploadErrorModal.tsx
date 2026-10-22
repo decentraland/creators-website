@@ -14,7 +14,8 @@ export function UploadErrorModal({ reason, onCancel, onRetry }: Props) {
   const { t } = useTranslation()
   // Locked/published collections can never be retried: they get a reason-specific title and a single acknowledge action.
   // A taken URN comes from the zip's wearable.json, which the form can't change: retrying would fail the same way.
-  const canRetry = reason === 'generic' || reason === 'too_big'
+  // Duplicates within the batch are fixed in the form, by removing or renaming one.
+  const canRetry = reason === 'generic' || reason === 'too_big' || reason === 'duplicate_urn'
 
   return (
     <ConfirmModal

@@ -13,6 +13,7 @@ import { ApprovalError, waitForIndexer, APPROVAL_INDEX_TIMEOUT_MS } from '~/lib/
 import { sendContractTransaction, signWithIdentity, waitForTransaction, type Session } from '~/lib/auth'
 import {
   fetchContent,
+  fetchItem,
   fetchItemCurations,
   fetchLinkedApprovalData,
   fetchPendingLinkedItems,
@@ -25,7 +26,7 @@ import { type Item } from '~/lib/items'
 import { generateCatalystImage } from '~/lib/media'
 import { captureError } from '~/lib/monitoring'
 import { getMaticChainId } from '~/lib/publishCollection'
-import { buildReviewThirdPartyCall } from '~/lib/thirdPartyRegistry'
+import { buildReviewThirdPartyCall, fetchRegisteredThirdParty } from '~/lib/thirdPartyRegistry'
 import { type ThirdParty } from '~/lib/thirdParty'
 import { isWalletRejection } from '~/lib/walletErrors'
 import { itemCurationsKey, thirdPartyKey } from './useLinkedCollection'
@@ -54,7 +55,7 @@ export type LinkedApprovalView =
   | { kind: 'loading' }
   | { kind: 'step'; step: LinkedApprovalStep; phase: LinkedStepPhase }
   | { kind: 'success' }
-  | { kind: 'error'; step: LinkedApprovalStep | 'prepare' | 'changed'; failed: LinkedDeployFailure[] }
+  | { kind: 'error'; step: LinkedApprovalStep | 'prepare' | 'changed' | 'unsubmitted'; failed: LinkedDeployFailure[] }
 
 const IDLE: LinkedStepPhase = { kind: 'idle' }
 
@@ -109,6 +110,11 @@ export function useLinkedApprovalFlow(
         refresh()
         return setView({ kind: 'error', step: 'changed', failed })
       }
+      // Only the creator can fix it, by submitting the edit again.
+      if (error instanceof ApprovalError && error.reason === 'unsubmitted') {
+        track('Approve TP Collection error', { collectionId: collection.id, step: 'unsubmitted' })
+        return setView({ kind: 'error', step: 'unsubmitted', failed })
+      }
       captureError(error, { flow: 'linked_curation_approve', step, collectionId: collection.id })
       track('Approve TP Collection error', { collectionId: collection.id, step, error: errorCode(error) })
       setView({ kind: 'error', step, failed })
@@ -126,7 +132,8 @@ export function useLinkedApprovalFlow(
         {
           fetchPendingItems: collectionId => fetchPendingLinkedItems(address, collectionId),
           fetchApprovalData: collectionId => fetchLinkedApprovalData(address, collectionId),
-          fetchItemCurations: collectionId => fetchItemCurations(address, collectionId)
+          fetchItemCurations: collectionId => fetchItemCurations(address, collectionId),
+          fetchRegistryRoot: async () => (await fetchRegisteredThirdParty(chainId, thirdParty.id)).root
         },
         review
       )
@@ -138,7 +145,7 @@ export function useLinkedApprovalFlow(
     } catch (error) {
       fail(token, 'prepare', error)
     }
-  }, [address, collection, thirdParty.id, review, set, fail])
+  }, [address, chainId, collection, thirdParty.id, review, set, fail])
 
   const runRoot = useCallback(async () => {
     if (!plan) return
@@ -185,6 +192,7 @@ export function useLinkedApprovalFlow(
           sign: entityId => signWithIdentity(address, entityId),
           fetchAvailableContent,
           deployEntity,
+          fetchItem: itemId => fetchItem(address, itemId),
           approveItem: itemId => updateItemCuration(address, itemId, 'approved')
         },
         uploading

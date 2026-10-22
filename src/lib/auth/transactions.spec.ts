@@ -8,7 +8,8 @@ import {
   sendContractTransaction,
   sendWalletTransaction,
   subscribeWalletChain,
-  switchWalletChain
+  switchWalletChain,
+  watchTransaction
 } from './transactions'
 
 const manager = { ...getCouponManager(ContractName.OffChainMarketplaceV3, 80002), chainId: 80002 }
@@ -147,5 +148,58 @@ describe('when the navbar asks where the wallet is', () => {
   it('should let a refusal through when switching on request', async () => {
     const { session } = walletOn(1, 'refuses')
     await expect(switchWalletChain(session, 80002)).rejects.toMatchObject({ code: 4001 })
+  })
+})
+
+describe('when watching a transaction until it settles', () => {
+  const HASH = '0xpaid'
+  const options = { timeoutMs: 10_000, pollMs: 1_000 }
+
+  function chain(state: {
+    receipt?: { status: number } | null
+    tx?: { from: string; nonce: number } | null
+    count?: number
+    fail?: boolean
+  }) {
+    let time = 0
+    const read = <T>(value: T) => (state.fail ? Promise.reject(new Error('rpc down')) : Promise.resolve(value))
+    return {
+      reader: {
+        getTransactionReceipt: vi.fn(() => read(state.receipt ?? null)),
+        getTransaction: vi.fn(() => read(state.tx ?? null)),
+        getTransactionCount: vi.fn(() => read(state.count ?? 0))
+      } as never,
+      clock: {
+        now: () => time,
+        sleep: vi.fn(async (ms: number) => {
+          time += ms
+        })
+      }
+    }
+  }
+
+  it('should answer how a mined transaction ended', async () => {
+    const { reader, clock } = chain({ receipt: { status: 1 } })
+    await expect(watchTransaction(reader, HASH, { ...options, ...clock })).resolves.toBe('mined')
+    const reverted = chain({ receipt: { status: 0 } })
+    await expect(watchTransaction(reverted.reader, HASH, { ...options, ...reverted.clock })).resolves.toBe('reverted')
+  })
+
+  it('should answer dropped once another transaction used its nonce, as a wallet speed-up or cancel does', async () => {
+    const { reader, clock } = chain({ tx: { from: ACCOUNT, nonce: 4 }, count: 5 })
+    await expect(watchTransaction(reader, HASH, { ...options, ...clock })).resolves.toBe('dropped')
+  })
+
+  it('should stop waiting at the timeout, as pending while the node still holds it', async () => {
+    const { reader, clock } = chain({ tx: { from: ACCOUNT, nonce: 4 }, count: 4 })
+    await expect(watchTransaction(reader, HASH, { ...options, ...clock })).resolves.toBe('pending')
+    expect(clock.sleep).toHaveBeenCalledTimes(10)
+  })
+
+  it('should answer dropped when the node never knew it, and pending when it could not be read', async () => {
+    const unknown = chain({})
+    await expect(watchTransaction(unknown.reader, HASH, { ...options, ...unknown.clock })).resolves.toBe('dropped')
+    const down = chain({ fail: true })
+    await expect(watchTransaction(down.reader, HASH, { ...options, ...down.clock })).resolves.toBe('pending')
   })
 })

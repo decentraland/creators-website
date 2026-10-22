@@ -14,6 +14,8 @@ type Props = {
 const DESCRIBED: LinkedPublishFailureReason[] = [
   'rejected',
   'reverted',
+  'payment_pending',
+  'fee_changed',
   'insufficient_slots',
   'pending_review',
   'tos_failed'

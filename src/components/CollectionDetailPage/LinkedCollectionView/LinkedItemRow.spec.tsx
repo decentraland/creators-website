@@ -31,6 +31,7 @@ const wrapper = ({ children }: { children: ReactNode }) => <TranslationProvider>
 
 function renderRow() {
   const onSaveMappings = vi.fn().mockResolvedValue(item)
+  const onMappingDirtyChange = vi.fn()
   const view = render(
     <LinkedItemRow
       item={item}
@@ -41,11 +42,12 @@ function renderRow() {
       onSelectedChange={vi.fn()}
       editable
       onSaveMappings={onSaveMappings}
+      onMappingDirtyChange={onMappingDirtyChange}
     />,
     { wrapper }
   )
   const input = within(screen.getByTestId('linked-item-mapping')).getByTestId('linked-item-mapping-editor-id')
-  return { ...view, onSaveMappings, input }
+  return { ...view, onSaveMappings, onMappingDirtyChange, input }
 }
 
 const expected = (id: string) => ({ amoy: { [CONTRACT.address]: [{ type: 'single', id }] } })
@@ -76,6 +78,17 @@ describe('LinkedItemRow', () => {
     unmount()
 
     expect(onSaveMappings).toHaveBeenCalledWith(item, expected('7'))
+  })
+
+  it('reports an edit as unsaved from the change until its save settles, so publishing can wait for it', async () => {
+    vi.useFakeTimers()
+    const { onMappingDirtyChange, input } = renderRow()
+
+    fireEvent.change(input, { target: { value: '12' } })
+    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', true)
+    await act(async () => void vi.advanceTimersByTime(1000))
+
+    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', false)
   })
 
   it('does not save an invalid or unchanged mapping', () => {

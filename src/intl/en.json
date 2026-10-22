@@ -618,7 +618,9 @@
       "try_again": "Try again",
       "got_it": "Got it",
       "title_urn_taken": "An item URN is already in use",
-      "description_urn_taken": "Another item already uses one of these URNs. Change the identifier in wearable.json, or re-upload the item with its existing URN to update it."
+      "description_urn_taken": "Another item already uses one of these URNs. Change the \"id\" in wearable.json or the item's name, or use Edit in bulk to update the existing item.",
+      "title_duplicate_urn": "Some items share a URN",
+      "description_duplicate_urn": "Two or more items in this upload have the same URN, from the \"id\" in wearable.json or the same name. Nothing was uploaded: remove or rename the duplicates and try again."
     },
     "leave": {
       "save_title": "Save before leaving?",
@@ -667,7 +669,8 @@
       "linked_urn_mismatch": "The wearable.json URN doesn't belong to this collection.",
       "linked_mapping_invalid": "The wearable.json mapping is invalid. Check its type and token IDs.",
       "bulk_edit_missing_urn": "Add the item's URN as \"id\" in wearable.json to update it.",
-      "bulk_edit_no_match": "No item in this collection has the URN in this wearable.json."
+      "bulk_edit_no_match": "No item in this collection has the URN in this wearable.json.",
+      "linked_urn_in_use": "An item of this collection already has the URN in this wearable.json. Use Edit in bulk to update it, or remove the \"id\" to add a new item."
     },
     "mapping_hint": "Which tokens of the linked contract unlock this wearable.",
     "bulk_edit": {
@@ -1601,7 +1604,8 @@
     },
     "publish_blocker": {
       "no_selection": "Select the items to publish or push.",
-      "under_review": "This collection is still under review. Once that review ends you can publish more items."
+      "under_review": "This collection is still under review. Once that review ends you can publish more items.",
+      "saving_mappings": "Saving your mapping changes…"
     },
     "empty": {
       "title": "Start adding items to your linked collection",
@@ -1858,8 +1862,9 @@
       "checkbox": "I warrant that the submitted items fully comply with the <terms>Terms of Use</terms> and <policy>Content Policy</policy>, that I hold the IP rights to create wearables based on this NFT collection, and I acknowledge that the DAO may refuse to approve them and that the fee won't be refunded if they are rejected.",
       "submit": "Publish & Pay",
       "submit_free": "Publish",
-      "resuming": "Your earlier payment was sent. Finish publishing: we'll wait for it to be confirmed and then submit your items, without paying again.",
-      "submit_resume": "Finish publishing"
+      "resuming": "An earlier payment of yours was sent. We'll confirm it first and only charge for slots that are still missing.",
+      "submit_resume": "Finish publishing",
+      "fee_changed": "The fee changed because your third party's free slots changed. Review it and submit again."
     },
     "running": {
       "title": "Publishing your items",
@@ -1887,11 +1892,13 @@
     "error": {
       "title": "We couldn't publish your items",
       "rejected": "The request was cancelled in your wallet. Nothing was sent.",
-      "reverted": "The transaction failed on chain and nothing was charged. Please try again.",
+      "reverted": "The transaction failed or was cancelled, and nothing was charged. Please try again.",
       "insufficient_slots": "Your third party has fewer slots than the items you selected. Try again to buy the missing ones.",
       "pending_review": "Items of this collection are already under review. Wait for that review to end before publishing more.",
       "tos_failed": "We couldn't record your acceptance of the terms. Check your email address and try again.",
-      "generic": "Something went wrong while publishing your items. Please try again."
+      "generic": "Something went wrong while publishing your items. Please try again.",
+      "payment_pending": "Your payment hasn't been confirmed yet. Try again in a few minutes: we'll pick it up without charging you again.",
+      "fee_changed": "The fee went up since you confirmed it, so nothing was charged. Try again to review the new fee."
     }
   },
   "push_linked_modal": {
@@ -1918,7 +1925,8 @@
       "body": "Approving puts the fingerprint of every reviewed item on chain and consumes the creator's {slots, plural, =0 {cheque} one {# slot} other {# slots}}. {count, plural, one {# item is} other {# items are}} waiting.",
       "action": "Approve on chain",
       "signing": "Please confirm the approval in your wallet.",
-      "pending": "Waiting for the approval to be confirmed…"
+      "pending": "Waiting for the approval to be confirmed…",
+      "reenables": "This third party is disabled. Approving these items enables it again, along with all of its collections."
     },
     "deploy": {
       "title": "Upload files",
@@ -1944,7 +1952,9 @@
     "stage": {
       "build": "its content changed or could not be prepared",
       "deploy": "the upload to the content servers failed",
-      "curation": "it was uploaded, but marking it approved failed"
-    }
+      "curation": "it was uploaded, but marking it approved failed",
+      "changed": "the creator edited it during the approval, so it stays pending for another review"
+    },
+    "unsubmitted": "The creator saved changes to items after submitting them, and hasn't submitted those changes for review. They need to submit them again before these items can be approved."
   }
 }

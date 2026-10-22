@@ -5,7 +5,6 @@ import {
   fetchItemCurations,
   fetchLinkedCollectionItems,
   fetchThirdParty,
-  fetchThirdPartySlots,
   type LinkedItemsPage
 } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
@@ -50,16 +49,6 @@ export function useThirdParty(address: string | undefined, collection: Collectio
 
 export function thirdPartySlotsKey(address: string | undefined, thirdPartyId: string | undefined) {
   return ['third-party-slots', address, thirdPartyId] as const
-}
-
-/** Item slots the third party still has, for the publish fee. */
-export function useThirdPartySlots(address: string | undefined, thirdPartyId: string | undefined, enabled = true) {
-  return useQuery({
-    queryKey: thirdPartySlotsKey(address, thirdPartyId),
-    queryFn: () => fetchThirdPartySlots(address!, thirdPartyId!),
-    enabled: !!address && !!thirdPartyId && enabled,
-    staleTime: 30_000
-  })
 }
 
 export function linkedItemsKey(address: string | undefined, collectionId: string | undefined) {

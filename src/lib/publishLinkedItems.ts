@@ -4,7 +4,7 @@
 // cheque to builder-server, which opens one item curation per item, and finally push changes of already-reviewed
 // items. Server and chain access is injected so the sequence runs against fakes in tests.
 import { ethers } from 'ethers'
-import { type ContractCall } from '~/lib/auth'
+import { type ContractCall, type TransactionSettlement } from '~/lib/auth'
 import { BuilderServerError, type PublishLinkedItemsResult, type SlotsCheque } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
@@ -16,6 +16,7 @@ import {
   buildAddThirdPartyCall,
   buildBuyItemSlotsCall,
   getThirdPartyRegistry,
+  type RegisteredThirdParty,
   type ThirdPartyPrice
 } from '~/lib/thirdPartyRegistry'
 import { isWalletRejection } from '~/lib/walletErrors'
@@ -24,13 +25,18 @@ export type LinkedPublishStep =
   'tos' | 'kind' | 'allowance' | 'register' | 'buy_slots' | 'wait_tx' | 'delete_virtual' | 'publish' | 'push'
 
 export type LinkedPublishFailureReason =
-  'rejected' | 'reverted' | 'insufficient_slots' | 'pending_review' | 'tos_failed' | 'generic'
+  | 'rejected'
+  | 'reverted'
+  | 'payment_pending'
+  | 'fee_changed'
+  | 'insufficient_slots'
+  | 'pending_review'
+  | 'tos_failed'
+  | 'generic'
 
 /** A registration or slot purchase this run sent. */
 export type LinkedPayment = {
   txHash: string
-  /** Slots it bought: a selection needing more than these can't resume from it. */
-  slots: number
   /** `addThirdParties`: the virtual third party must still be removed once the chain has it. */
   registration: boolean
 }
@@ -118,19 +124,26 @@ export function getResumablePayment(error: LinkedPublishError): LinkedPayment | 
   return error.reason === 'reverted' ? undefined : error.payment
 }
 
+export type LinkedSlots = {
+  /** Free slots, counting any the registry sold that builder-server hasn't indexed yet. */
+  available: number
+  /** Whether the registry has the third party, even if builder-server still reads it as virtual. */
+  registered: boolean
+}
+
 /**
- * Whether an earlier attempt's payment should be resumed for this publish, given the free slots read right now. Once
- * the read covers the items, the slots are indexed and the payment has nothing left to give; when the items need more
- * than it bought, it can't cover them, and the missing slots are bought instead.
+ * builder-server counts free slots against its indexed `maxItems`, which lags the registry after a purchase; adding
+ * the difference tells a purchase still being indexed apart from one that never happened, so it is never bought twice.
  */
-export function shouldResumePayment(
-  payment: LinkedPayment | undefined,
-  itemsToPublish: number,
-  availableSlots: number
-): payment is LinkedPayment {
-  if (!payment) return false
-  const missing = itemsToPublish - availableSlots
-  return missing > 0 && missing <= payment.slots
+export function getLinkedSlots(
+  serverAvailable: number,
+  indexedMaxItems: number,
+  registry: Pick<RegisteredThirdParty, 'registered' | 'maxItems'>
+): LinkedSlots {
+  return {
+    available: serverAvailable + Math.max(0, registry.maxItems - indexedMaxItems),
+    registered: registry.registered
+  }
 }
 
 /** A publish request that failed on the server may still have written the item curations (see publishWithRetry). */
@@ -253,6 +266,29 @@ export function getLinkedPublishFee(
   return { usdWei: price.itemSlotUsdWei * slots, manaWei, maxManaWei }
 }
 
+export type LinkedPublishQuote = { slotsToBuy: number; fee: LinkedPublishFee }
+
+/** The slots a publish of `itemCount` items buys given `slots`, and what they cost. */
+export function getLinkedPublishQuote(
+  itemCount: number,
+  slots: LinkedSlots,
+  price: ThirdPartyPrice,
+  thirdParty: { isProgrammatic: boolean; published: boolean }
+): LinkedPublishQuote {
+  const isPublished = slots.registered || thirdParty.published
+  const slotsToBuy = getSlotsToBuy({
+    itemsToPublish: itemCount,
+    availableSlots: slots.available,
+    isProgrammatic: thirdParty.isProgrammatic,
+    isPublished,
+    programmaticMinSlots: price.programmaticMinSlots
+  })
+  return {
+    slotsToBuy,
+    fee: getLinkedPublishFee(slotsToBuy, price, { isProgrammatic: thirdParty.isProgrammatic, isPublished })
+  }
+}
+
 export type PublishLinkedParams = {
   address: string
   chainId: number
@@ -264,11 +300,13 @@ export type PublishLinkedParams = {
   cheque: SlotsCheque | null
   email: string
   isProgrammatic: boolean
-  availableSlots: number
+  slots: LinkedSlots
   price: ThirdPartyPrice
+  /** The most the creator agreed to pay: a purchase that would cost more stops with `fee_changed` instead. */
+  maxFeeManaWei?: bigint
   /**
-   * A registration or slot purchase an earlier attempt already sent (LinkedPublishError.txHash): the run waits for it
-   * again and resumes after it instead of paying a second time.
+   * A registration or slot purchase an earlier attempt already sent: the run waits for it to settle and reads the
+   * slots again, so only what is still missing is bought.
    */
   paidTx?: LinkedPayment
   /** An earlier attempt's publish request may have gone through (see publishWithRetry): a pending review then means it did. */
@@ -281,8 +319,8 @@ export type PublishLinkedDeps = {
   setThirdPartyKind: (thirdPartyId: string, isProgrammatic: boolean) => Promise<void>
   fetchManaAllowance: (owner: string, spender: string) => Promise<bigint>
   sendTransaction: (call: ContractCall) => Promise<string>
-  /** Resolves true when mined, false when reverted. */
-  waitForTransaction: (txHash: string) => Promise<boolean>
+  settleTransaction: (txHash: string) => Promise<TransactionSettlement>
+  fetchSlots: () => Promise<LinkedSlots>
   deleteVirtualThirdParty: (thirdPartyId: string) => Promise<void>
   publishLinkedItems: (
     collectionId: string,
@@ -388,22 +426,30 @@ export async function publishLinkedItems(
     current = next
     deps.onStep?.(next)
   }
-  const assertMined = async (txHash: string) => {
-    if (!(await deps.waitForTransaction(txHash))) {
+  // A dropped transaction was replaced: by a speed-up that may have bought the same slots, or by a cancel.
+  const settle = async (txHash: string): Promise<'mined' | 'dropped'> => {
+    const outcome = await deps.settleTransaction(txHash)
+    if (outcome === 'reverted') {
       throw new LinkedPublishError(current, 'reverted', `Transaction ${txHash} reverted`, undefined, txHash)
     }
+    if (outcome === 'pending') {
+      throw new LinkedPublishError(
+        current,
+        'payment_pending',
+        `Transaction ${txHash} is still pending`,
+        undefined,
+        txHash
+      )
+    }
+    return outcome
   }
 
-  const resumed = shouldResumePayment(params.paidTx, itemsToPublish.length, params.availableSlots)
-    ? params.paidTx
-    : undefined
   // Kept outside the try so any later failure carries it: a retry must resume from this payment, not repeat it.
-  let payment: LinkedPayment | undefined = resumed
+  let payment: LinkedPayment | undefined = params.paidTx
   const setPayment = (next: LinkedPayment | undefined) => {
     payment = next
     deps.onPayment?.(next)
   }
-  if (params.paidTx && !resumed) setPayment(undefined)
 
   try {
     if (itemsToPublish.length > 0 && !cheque) {
@@ -423,59 +469,93 @@ export async function publishLinkedItems(
     )
 
     let thirdParty = params.thirdParty
-    let txHash: string | null = resumed?.txHash ?? null
+    let txHash: string | null = params.paidTx?.txHash ?? null
     let published: PublishLinkedItemsResult | null = null
 
     if (itemsToPublish.length > 0 && cheque) {
-      const isVirtual = !thirdParty.published
+      let slots = params.slots
+      if (params.paidTx) {
+        step('wait_tx')
+        try {
+          await settle(params.paidTx.txHash)
+        } catch (error) {
+          // It charged nothing: whatever is still missing is bought below, as on a first attempt.
+          if (!(error instanceof LinkedPublishError && error.reason === 'reverted')) throw error
+          setPayment(undefined)
+          txHash = null
+        }
+        slots = await deps.fetchSlots()
+      }
+      let registered = slots.registered || thirdParty.published
+
       // The kind is only chosen before the first publish; the registry fixes it on registration.
-      if (!resumed && isVirtual && isProgrammatic !== thirdParty.isProgrammatic) {
+      if (!registered && isProgrammatic !== thirdParty.isProgrammatic) {
         step('kind')
         await deps.setThirdPartyKind(thirdParty.id, isProgrammatic)
         thirdParty = { ...thirdParty, isProgrammatic }
       }
 
-      const slotsToBuy = getSlotsToBuy({
-        itemsToPublish: itemsToPublish.length,
-        availableSlots: params.availableSlots,
-        isProgrammatic: thirdParty.isProgrammatic,
-        isPublished: thirdParty.published,
-        programmaticMinSlots: params.price.programmaticMinSlots
-      })
+      const slotsToBuyFor = (read: LinkedSlots) =>
+        getSlotsToBuy({
+          itemsToPublish: itemsToPublish.length,
+          availableSlots: read.available,
+          isProgrammatic: thirdParty.isProgrammatic,
+          isPublished: read.registered || thirdParty.published,
+          programmaticMinSlots: params.price.programmaticMinSlots
+        })
+      const slotsToBuy = slotsToBuyFor(slots)
 
-      if (resumed) {
-        step('wait_tx')
-        await assertMined(resumed.txHash)
-      } else if (slotsToBuy > 0) {
+      if (slotsToBuy > 0) {
         const fee = getLinkedPublishFee(slotsToBuy, params.price, {
           isProgrammatic: thirdParty.isProgrammatic,
-          isPublished: thirdParty.published
+          isPublished: registered
         })
+        if (params.maxFeeManaWei !== undefined && fee.maxManaWei > params.maxFeeManaWei) {
+          throw new LinkedPublishError('buy_slots', 'fee_changed')
+        }
         const registry = getThirdPartyRegistry(chainId)
         if (fee.maxManaWei > 0n) {
           step('allowance')
           const allowance = await deps.fetchManaAllowance(address, registry.address)
           if (allowance < fee.maxManaWei) {
-            await assertMined(
-              await deps.sendTransaction(buildManaApproveCall(chainId, registry.address, fee.maxManaWei))
+            const approveTx = await deps.sendTransaction(
+              buildManaApproveCall(chainId, registry.address, fee.maxManaWei)
             )
+            if (
+              (await settle(approveTx)) === 'dropped' &&
+              (await deps.fetchManaAllowance(address, registry.address)) < fee.maxManaWei
+            ) {
+              throw new LinkedPublishError(
+                current,
+                'reverted',
+                `Transaction ${approveTx} was replaced`,
+                undefined,
+                approveTx
+              )
+            }
           }
         }
-        if (isVirtual) {
+        if (!registered) {
           step('register')
           txHash = await deps.sendTransaction(buildAddThirdPartyCall(chainId, thirdParty, slotsToBuy, fee.maxManaWei))
-          setPayment({ txHash, registration: true, slots: slotsToBuy })
+          setPayment({ txHash, registration: true })
         } else {
           step('buy_slots')
           txHash = await deps.sendTransaction(buildBuyItemSlotsCall(chainId, thirdParty.id, slotsToBuy, fee.maxManaWei))
-          setPayment({ txHash, registration: false, slots: slotsToBuy })
+          setPayment({ txHash, registration: false })
         }
         step('wait_tx')
-        await assertMined(txHash)
+        if ((await settle(txHash)) === 'dropped') {
+          const after = await deps.fetchSlots()
+          if (slotsToBuyFor(after) > 0) {
+            throw new LinkedPublishError(current, 'reverted', `Transaction ${txHash} was replaced`, undefined, txHash)
+          }
+        }
+        registered = true
       }
 
       // A resumed registration still owes the delete, even once the refreshed third party reads as published.
-      if ((isVirtual && txHash) || params.paidTx?.registration) {
+      if ((registered && !params.thirdParty.published) || params.paidTx?.registration) {
         step('delete_virtual')
         try {
           await retry(
@@ -501,7 +581,7 @@ export async function publishLinkedItems(
       pushed = await deps.pushChanges(itemsToPush)
     }
 
-    if (payment || params.paidTx) deps.onPayment?.(undefined)
+    if (payment) deps.onPayment?.(undefined)
     return {
       collection: published?.collection,
       items: published?.items ?? [],

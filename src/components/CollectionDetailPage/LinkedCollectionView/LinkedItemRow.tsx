@@ -28,6 +28,8 @@ type Props = {
   editable: boolean
   /** Saves a new mapping; a rejected promise keeps the row's draft so the creator can retry. */
   onSaveMappings: (item: Item, mappings: Mappings) => Promise<unknown>
+  /** Whether a mapping edit is waiting for the pause or still saving. */
+  onMappingDirtyChange?: (itemId: string, dirty: boolean) => void
   actions?: ReactNode
 }
 
@@ -41,6 +43,7 @@ export function LinkedItemRow({
   onSelectedChange,
   editable,
   onSaveMappings,
+  onMappingDirtyChange,
   actions
 }: Props) {
   const { t } = useTranslation()
@@ -51,8 +54,16 @@ export function LinkedItemRow({
   const timer = useRef<ReturnType<typeof setTimeout>>()
   // The edit waiting for the pause, so leaving the row (page, filter, editor) saves it instead of dropping it.
   const pending = useRef<Mappings | null>(null)
-  const latest = useRef({ item, onSaveMappings })
-  latest.current = { item, onSaveMappings }
+  const latest = useRef({ item, onSaveMappings, onMappingDirtyChange })
+  latest.current = { item, onSaveMappings, onMappingDirtyChange }
+  const setDirty = (dirty: boolean) => latest.current.onMappingDirtyChange?.(latest.current.item.id, dirty)
+
+  const save = useCallback((mappings: Mappings) => {
+    const { item: current, onSaveMappings: persist, onMappingDirtyChange: report } = latest.current
+    return persist(current, mappings)
+      .catch(() => undefined)
+      .finally(() => report?.(current.id, false))
+  }, [])
 
   const flush = useCallback(() => {
     clearTimeout(timer.current)
@@ -60,29 +71,29 @@ export function LinkedItemRow({
     pending.current = null
     if (!mappings) return
     setSaving(true)
-    latest.current
-      .onSaveMappings(latest.current.item, mappings)
-      .catch(() => undefined)
-      .finally(() => setSaving(false))
-  }, [])
+    void save(mappings).finally(() => setSaving(false))
+  }, [save])
 
   useEffect(
     () => () => {
       clearTimeout(timer.current)
       const mappings = pending.current
-      if (mappings) void latest.current.onSaveMappings(latest.current.item, mappings).catch(() => undefined)
+      if (mappings) void save(mappings)
     },
-    []
+    [save]
   )
 
   // A valid change saves itself after a pause, like the legacy row: no save button per mapping.
   function onMappingChange(next: Mapping | null) {
     clearTimeout(timer.current)
     pending.current = null
-    if (!next || !contract) return
-    const mappings = buildItemMappings(next, contract)
-    if (areMappingsEqual(mappings, item.mappings)) return
+    const mappings = next && contract ? buildItemMappings(next, contract) : null
+    if (!mappings || areMappingsEqual(mappings, item.mappings)) {
+      if (!isSaving) setDirty(false)
+      return
+    }
     pending.current = mappings
+    setDirty(true)
     timer.current = setTimeout(flush, MAPPING_SAVE_DEBOUNCE_MS)
   }
 

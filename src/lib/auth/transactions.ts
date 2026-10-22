@@ -235,6 +235,61 @@ export async function readTransactionOutcome(
   }
 }
 
+export type TransactionSettlement = 'mined' | 'reverted' | 'dropped' | 'pending'
+
+type TransactionReader = Pick<
+  ethers.providers.Provider,
+  'getTransactionReceipt' | 'getTransaction' | 'getTransactionCount'
+>
+
+type WatchOptions = { timeoutMs: number; pollMs: number; sleep?: (ms: number) => Promise<void>; now?: () => number }
+
+const defaultSleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
+
+/**
+ * Polls a transaction until it settles or `timeoutMs` passes: `dropped` when its nonce was used by another
+ * transaction (a wallet speed-up or cancel) or the node never knew it; `pending` when it is still waiting by then.
+ */
+export async function watchTransaction(
+  reader: TransactionReader,
+  txHash: string,
+  { timeoutMs, pollMs, sleep = defaultSleep, now = Date.now }: WatchOptions
+): Promise<TransactionSettlement> {
+  const deadline = now() + timeoutMs
+  const fromReceipt = (receipt: ethers.providers.TransactionReceipt) => (receipt.status === 1 ? 'mined' : 'reverted')
+  let neverSeen = true
+  for (;;) {
+    try {
+      const receipt = await reader.getTransactionReceipt(txHash)
+      if (receipt) return fromReceipt(receipt)
+      const tx = await reader.getTransaction(txHash)
+      if (tx) {
+        neverSeen = false
+        if ((await reader.getTransactionCount(tx.from, 'latest')) > tx.nonce) {
+          // It may have been mined between the two reads.
+          const late = await reader.getTransactionReceipt(txHash)
+          return late ? fromReceipt(late) : 'dropped'
+        }
+      }
+    } catch {
+      // A failed read says nothing about the transaction.
+      neverSeen = false
+    }
+    if (now() >= deadline) return neverSeen ? 'dropped' : 'pending'
+    await sleep(pollMs)
+  }
+}
+
+const SETTLE_TIMEOUT_MS = 5 * 60_000
+const SETTLE_POLL_MS = 4_000
+
+export async function settleTransaction(chainId: number, txHash: string): Promise<TransactionSettlement> {
+  return watchTransaction(await getReadProvider(chainId), txHash, {
+    timeoutMs: SETTLE_TIMEOUT_MS,
+    pollMs: SETTLE_POLL_MS
+  })
+}
+
 /** Resolves true when the transaction is mined successfully, false when it reverted. */
 export async function waitForTransaction(chainId: number, txHash: string, timeoutMs?: number): Promise<boolean> {
   const provider = await getReadProvider(chainId)

@@ -92,6 +92,29 @@ export function buildReviewThirdPartyCall(chainId: number, thirdPartyId: string,
   }
 }
 
+/** What the registry itself holds for a third party, ahead of whatever builder-server has indexed. */
+export type RegisteredThirdParty = {
+  registered: boolean
+  maxItems: number
+  /** The Merkle root of its approved items, empty when none was set. */
+  root: string
+}
+
+const EMPTY_ROOT = ethers.constants.HashZero
+
+export async function fetchRegisteredThirdParty(chainId: number, thirdPartyId: string): Promise<RegisteredThirdParty> {
+  const record = await readContract<{ registered: ethers.BigNumber; maxItems: ethers.BigNumber; root: string }>(
+    getThirdPartyRegistry(chainId),
+    'thirdParties',
+    [thirdPartyId]
+  )
+  return {
+    registered: !record.registered.isZero(),
+    maxItems: Number(record.maxItems.toString()),
+    root: record.root === EMPTY_ROOT ? '' : record.root
+  }
+}
+
 export type ThirdPartyPrice = {
   /** USD per item slot, in wei-like 18 decimals as the registry stores it. */
   itemSlotUsdWei: bigint

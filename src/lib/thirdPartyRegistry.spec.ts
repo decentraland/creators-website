@@ -10,6 +10,7 @@ import {
   buildBuyItemSlotsCall,
   buildReviewThirdPartyCall,
   buildReviewThirdPartyWithRootCall,
+  fetchRegisteredThirdParty,
   fetchThirdPartyPrice,
   getThirdPartyRegistry,
   toChequeSlot,
@@ -164,6 +165,35 @@ describe('fetchThirdPartyPrice', () => {
       itemSlotManaWei: 200n * ETHER,
       programmaticMinSlots: 200,
       usdPerManaWei: ETHER / 2n
+    })
+  })
+})
+
+describe('fetchRegisteredThirdParty', () => {
+  it("reads the registry's own record of the third party", async () => {
+    const root = '0x' + 'ab'.repeat(32)
+    vi.mocked(readContract).mockImplementation(async (_contract, method, args) => {
+      expect(method).toBe('thirdParties')
+      expect(args).toEqual([THIRD_PARTY_ID])
+      return { registered: ethers.BigNumber.from(1), maxItems: ethers.BigNumber.from(12), root }
+    })
+    await expect(fetchRegisteredThirdParty(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual({
+      registered: true,
+      maxItems: 12,
+      root
+    })
+  })
+
+  it('reads an unknown third party as unregistered, with no slots and no root', async () => {
+    vi.mocked(readContract).mockResolvedValue({
+      registered: ethers.BigNumber.from(0),
+      maxItems: ethers.BigNumber.from(0),
+      root: ethers.constants.HashZero
+    })
+    await expect(fetchRegisteredThirdParty(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual({
+      registered: false,
+      maxItems: 0,
+      root: ''
     })
   })
 })

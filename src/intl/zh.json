@@ -618,7 +618,9 @@
       "try_again": "重试",
       "got_it": "知道了",
       "title_urn_taken": "物品 URN 已被使用",
-      "description_urn_taken": "其他物品已使用其中一个 URN。请修改 wearable.json 中的标识符，或使用现有 URN 重新上传该物品以进行更新。"
+      "description_urn_taken": "已有其他物品使用了其中某个 URN。请修改 wearable.json 中的 \"id\" 或物品名称，或使用批量编辑来更新现有物品。",
+      "title_duplicate_urn": "部分物品使用了相同的 URN",
+      "description_duplicate_urn": "本次上传中有两个或更多物品的 URN 相同（来自 wearable.json 中的 \"id\" 或相同的名称）。未上传任何内容：请删除或重命名重复项后重试。"
     },
     "leave": {
       "save_title": "离开前要保存吗？",
@@ -667,7 +669,8 @@
       "linked_urn_mismatch": "wearable.json 中的 URN 不属于此系列。",
       "linked_mapping_invalid": "wearable.json 中的映射无效。请检查其类型和代币 ID。",
       "bulk_edit_missing_urn": "请在 wearable.json 中将物品的 URN 设为“id”以更新该物品。",
-      "bulk_edit_no_match": "此系列中没有物品使用此 wearable.json 中的 URN。"
+      "bulk_edit_no_match": "此系列中没有物品使用此 wearable.json 中的 URN。",
+      "linked_urn_in_use": "此系列中已有物品使用该 wearable.json 中的 URN。请使用批量编辑来更新它，或删除 \"id\" 以添加新物品。"
     },
     "mapping_hint": "关联合约中哪些代币可解锁此可穿戴物品。",
     "bulk_edit": {
@@ -1601,7 +1604,8 @@
     },
     "publish_blocker": {
       "no_selection": "请选择要发布或推送的物品。",
-      "under_review": "此系列仍在审核中。审核结束后您可以发布更多物品。"
+      "under_review": "此系列仍在审核中。审核结束后您可以发布更多物品。",
+      "saving_mappings": "正在保存映射更改…"
     },
     "empty": {
       "title": "开始向您的关联系列添加物品",
@@ -1858,8 +1862,9 @@
       "checkbox": "我保证所提交的物品完全符合<terms>使用条款</terms>和<policy>内容政策</policy>，我拥有基于此 NFT 系列创建可穿戴物品的知识产权，并知悉 DAO 可能拒绝批准，且被拒绝时费用不予退还。",
       "submit": "发布并支付",
       "submit_free": "发布",
-      "resuming": "您之前的付款已发送。请完成发布：我们将等待其确认，然后提交您的物品，不会重复收费。",
-      "submit_resume": "完成发布"
+      "resuming": "您之前已发送一笔付款。我们会先确认该付款，只对仍缺少的名额收费。",
+      "submit_resume": "完成发布",
+      "fee_changed": "由于您第三方的可用名额发生变化，费用已更新。请查看后重新提交。"
     },
     "running": {
       "title": "正在发布您的物品",
@@ -1887,11 +1892,13 @@
     "error": {
       "title": "无法发布您的物品",
       "rejected": "请求已在钱包中取消，未发送任何内容。",
-      "reverted": "交易在链上失败，未产生任何费用。请重试。",
+      "reverted": "交易失败或已取消，未产生任何费用。请重试。",
       "insufficient_slots": "您的第三方名额少于所选物品数量。请重试以购买缺少的名额。",
       "pending_review": "此系列已有物品正在审核中。请等待审核结束后再发布更多物品。",
       "tos_failed": "无法记录您对条款的同意。请检查您的邮箱地址后重试。",
-      "generic": "发布物品时出错，请重试。"
+      "generic": "发布物品时出错，请重试。",
+      "payment_pending": "您的付款尚未确认。请几分钟后重试：我们会继续处理，不会重复收费。",
+      "fee_changed": "自您确认后费用已上涨，因此未收取任何费用。请重试以查看新费用。"
     }
   },
   "push_linked_modal": {
@@ -1918,7 +1925,8 @@
       "body": "批准会将每个已审核物品的指纹写入链上，并消耗创作者的{slots, plural, =0 {凭证} other {# 个名额}}。当前有 {count, plural, other {# 个物品}}待处理。",
       "action": "链上批准",
       "signing": "请在钱包中确认批准。",
-      "pending": "正在等待批准确认…"
+      "pending": "正在等待批准确认…",
+      "reenables": "此第三方已被停用。批准这些物品会重新启用它及其所有系列。"
     },
     "deploy": {
       "title": "上传文件",
@@ -1944,7 +1952,9 @@
     "stage": {
       "build": "其内容已更改或无法准备",
       "deploy": "上传到内容服务器失败",
-      "curation": "已上传，但无法标记为已批准"
-    }
+      "curation": "已上传，但无法标记为已批准",
+      "changed": "创作者在批准过程中编辑了它，因此它将保持待审核状态以便再次审核"
+    },
+    "unsubmitted": "创作者在提交物品后又保存了修改，但尚未将这些修改提交审核。创作者需要重新提交后，这些物品才能被批准。"
   }
 }

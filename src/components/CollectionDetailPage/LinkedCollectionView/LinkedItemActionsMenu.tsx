@@ -22,13 +22,15 @@ type Props = {
   address: string
   /** The item's latest curation; null when it has none, undefined while unknown. */
   curation: ItemCuration | null | undefined
+  /** Whether the collection takes edits: a locked one refuses URN changes and deletes. */
+  canEdit: boolean
   onDeleted?: () => void
 }
 
 type Dialog = 'urn' | 'delete' | null
 
 /** The ⋯ menu of a linked item row: open in the editor, copy or edit its URN, delete it while unpublished. */
-export function LinkedItemActionsMenu({ item, collection, address, curation, onDeleted }: Props) {
+export function LinkedItemActionsMenu({ item, collection, address, curation, canEdit, onDeleted }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const showToast = useNotifications(state => state.showToast)
@@ -41,8 +43,8 @@ export function LinkedItemActionsMenu({ item, collection, address, curation, onD
   // Until its curation is known the item is treated as published: a locked action is better than a 409.
   const isPublished = curation === undefined || isLinkedItemPublished(item, curation)
   const decoded = decodeLinkedUrn(item.urn)
-  const canEditUrn = !compact && !isPublished && !!decoded?.itemSuffix
-  const canDelete = !compact && !isPublished
+  const canEditUrn = canEdit && !compact && !isPublished && !!decoded?.itemSuffix
+  const canDelete = canEdit && !compact && !isPublished
 
   async function copyUrn() {
     const copied = !!item.urn && (await copyToClipboard(item.urn))

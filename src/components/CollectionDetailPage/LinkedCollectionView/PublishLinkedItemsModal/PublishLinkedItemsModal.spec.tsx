@@ -12,7 +12,7 @@ import { PublishLinkedItemsModal } from './PublishLinkedItemsModal'
 
 const publishMutate = vi.fn()
 const slotsRefetch = vi.fn()
-let slotsData = 5
+let slotsData = { available: 5, registered: true }
 
 vi.mock('~/hooks/useLinkedPublish', () => ({
   usePublishLinkedItems: () => ({ mutate: publishMutate, isPending: false }),
@@ -22,10 +22,8 @@ vi.mock('~/hooks/useLinkedPublish', () => ({
     mutate: (_variables: unknown, options: { onSuccess: (cheque: unknown) => void }) =>
       options.onSuccess({ signature: '0xsig', qty: 1, salt: '0xsalt' })
   }),
-  useThirdPartyPrice: () => ({ data: price, isError: false, refetch: vi.fn() })
-}))
-vi.mock('~/hooks/useLinkedCollection', () => ({
-  useThirdPartySlots: () => ({ data: slotsData, isError: false, refetch: slotsRefetch })
+  useThirdPartyPrice: () => ({ data: price, isError: false, refetch: vi.fn() }),
+  useLinkedSlots: () => ({ data: slotsData, isError: false, refetch: slotsRefetch })
 }))
 vi.mock('~/hooks/useCollection', () => ({
   useSaveCollection: () => ({ mutate: vi.fn(), isPending: false, error: null, reset: vi.fn() })
@@ -94,12 +92,12 @@ describe('PublishLinkedItemsModal', () => {
   beforeEach(() => {
     publishMutate.mockReset()
     slotsRefetch.mockReset()
-    slotsData = 5
+    slotsData = { available: 5, registered: true }
     localStorage.clear()
   })
 
   it('starts one paying run however many times Submit is clicked while the slots are re-read', async () => {
-    let finishRead: (value: { data: number; isError: boolean }) => void = () => undefined
+    let finishRead: (value: { data: typeof slotsData; isError: boolean }) => void = () => undefined
     slotsRefetch.mockReturnValue(new Promise(resolve => (finishRead = resolve)))
     await goToPayment()
 
@@ -108,13 +106,24 @@ describe('PublishLinkedItemsModal', () => {
     await userEvent.click(submit)
     expect(await screen.findByTestId('publish-linked-running')).toBeInTheDocument()
 
-    finishRead({ data: 0, isError: false })
+    finishRead({ data: { available: 5, registered: true }, isError: false })
     await waitFor(() => expect(publishMutate).toHaveBeenCalledTimes(1))
-    expect(publishMutate.mock.calls[0][0]).toMatchObject({ availableSlots: 0 })
+    expect(publishMutate.mock.calls[0][0]).toMatchObject({ slots: { available: 5 } })
+  })
+
+  it('stops and shows the new fee when the re-read slots would cost more than the fee shown', async () => {
+    slotsRefetch.mockResolvedValue({ data: { available: 0, registered: true }, isError: false })
+    await goToPayment()
+    expect(screen.getByTestId('publish-linked-summary-total')).toHaveTextContent('No fee')
+
+    await userEvent.click(screen.getByTestId('publish-linked-submit'))
+
+    expect(await screen.findByTestId('publish-linked-fee-changed')).toBeInTheDocument()
+    expect(publishMutate).not.toHaveBeenCalled()
   })
 
   it('does not pay on a stale slot count when the re-read fails', async () => {
-    slotsRefetch.mockResolvedValue({ data: 5, isError: true })
+    slotsRefetch.mockResolvedValue({ data: slotsData, isError: true })
     await goToPayment()
 
     await userEvent.click(screen.getByTestId('publish-linked-submit'))
@@ -124,27 +133,27 @@ describe('PublishLinkedItemsModal', () => {
   })
 
   it('resumes an unfinished payment remembered from an earlier attempt instead of paying again', async () => {
-    const payment = { txHash: '0xabc123', registration: false, slots: 1 }
+    const payment = { txHash: '0xabc123', registration: false }
     localStorage.setItem(`linked-publish.pending.80002.0xabc.${collection.id}`, JSON.stringify({ payment }))
-    // The slots it bought aren't indexed yet.
-    slotsData = 0
-    slotsRefetch.mockResolvedValue({ data: 0, isError: false })
+    // Still pending, so the fee reads as if it were never sent: the run confirms it before buying anything.
+    slotsData = { available: 0, registered: true }
+    slotsRefetch.mockResolvedValue({ data: slotsData, isError: false })
     await goToPayment()
 
     expect(screen.getByTestId('publish-linked-resuming')).toBeInTheDocument()
     await userEvent.click(screen.getByTestId('publish-linked-submit'))
 
     await waitFor(() => expect(publishMutate).toHaveBeenCalledTimes(1))
-    expect(publishMutate.mock.calls[0][0]).toMatchObject({ paidTx: payment, availableSlots: 0 })
+    expect(publishMutate.mock.calls[0][0]).toMatchObject({ paidTx: payment })
   })
 
   it('stores a payment the moment the run reports it, before the run ends', async () => {
-    slotsRefetch.mockResolvedValue({ data: 0, isError: false })
+    slotsRefetch.mockResolvedValue({ data: slotsData, isError: false })
     await goToPayment()
     await userEvent.click(screen.getByTestId('publish-linked-submit'))
     await waitFor(() => expect(publishMutate).toHaveBeenCalledTimes(1))
 
-    const payment = { txHash: '0xdef456', registration: true, slots: 1 }
+    const payment = { txHash: '0xdef456', registration: true }
     publishMutate.mock.calls[0][0].onPayment(payment)
 
     expect(JSON.parse(localStorage.getItem(`linked-publish.pending.80002.0xabc.${collection.id}`)!)).toEqual({

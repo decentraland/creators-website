@@ -95,7 +95,8 @@ function prepareDeps(items: Item[], data: LinkedApprovalData) {
   return {
     fetchPendingItems: vi.fn().mockResolvedValue(items),
     fetchApprovalData: vi.fn().mockResolvedValue(data),
-    fetchItemCurations: vi.fn().mockResolvedValue(curations)
+    fetchItemCurations: vi.fn().mockResolvedValue(curations),
+    fetchRegistryRoot: vi.fn().mockResolvedValue('')
   }
 }
 
@@ -142,11 +143,33 @@ describe('prepareLinkedApproval', () => {
   })
 
   it('fails closed before any root when a pending item is not the curated content', async () => {
-    // Edited after publishing without pushing: the curation still holds the old content.
+    // Edited after publishing without pushing: only the creator submitting it again can unblock it.
     const edited = item('1', { name: 'Edited later' })
     await expect(
       prepareLinkedApproval(collection, prepareDeps([edited, item('2')], approvalData()))
+    ).rejects.toMatchObject({ reason: 'unsubmitted' })
+    // The server's hash still matches, but the content on screen does not.
+    const drifted = item('1', { name: 'Drifted', currentContentHash: item('1').currentContentHash })
+    await expect(
+      prepareLinkedApproval(collection, prepareDeps([drifted, item('2')], approvalData()))
     ).rejects.toMatchObject({ reason: 'changed' })
+  })
+
+  it('accepts a retry once some reviewed items were approved by an earlier attempt', async () => {
+    const deps = prepareDeps([item('2')], approvalData())
+    deps.fetchItemCurations.mockResolvedValue(
+      new Map([
+        ['1', curationOf('1', CurationStatus.APPROVED)],
+        ['2', curationOf('2', CurationStatus.PENDING)],
+        ['9', curationOf('9', CurationStatus.APPROVED)]
+      ])
+    )
+    await expect(
+      prepareLinkedApproval(collection, deps, {
+        pendingIds: new Set(['1', '2']),
+        reviewedHashes: new Map([['2', item('2').currentContentHash]])
+      })
+    ).resolves.toMatchObject({ pendingItems: [expect.objectContaining({ id: '2' })] })
   })
 
   it('fails closed when the pending items are not the ones the curator reviewed', async () => {
@@ -191,6 +214,15 @@ describe('prepareLinkedApproval', () => {
     expect(plan.needsRoot).toBe(false)
   })
 
+  it('reads the root from the registry, so a retry after a slow indexer does not resend a consumed cheque', async () => {
+    const data = approvalData()
+    const deps = prepareDeps([item('1')], data)
+    deps.fetchRegistryRoot.mockResolvedValue(expectedRoot(data, ['1']))
+    const plan = await prepareLinkedApproval(collection, deps)
+    expect(plan.needsRoot).toBe(false)
+    expect(plan.slots).toEqual([])
+  })
+
   it('refuses a cheque that covers fewer new items than are pending', async () => {
     const data = approvalData({ cheque: { signature: SIGNATURE, qty: 1, salt: '0xsalt' } })
     await expect(prepareLinkedApproval(collection, prepareDeps([item('1'), item('2')], data))).rejects.toMatchObject({
@@ -224,7 +256,11 @@ function curatedHash(target: Item): string {
   }
 }
 
+// What the server answers for an item while deploying: the items of the latest plan, as they were planned.
+let served: Item[] = []
+
 function planFor(items: Item[], overrides: Partial<LinkedApprovalPlan> = {}): LinkedApprovalPlan {
+  served = items
   const hashes = new Map([...items.map(target => [target.id, curatedHash(target)] as const), ['9', hashOf('9')]])
   const data = approvalData({ contentHashes: Object.fromEntries(hashes) })
   const tree = generateTree(Object.values(data.contentHashes))
@@ -288,6 +324,7 @@ function deployDeps(overrides: Partial<LinkedDeployDeps> = {}): LinkedDeployDeps
     sign: vi.fn(() => [{ type: 'SIGNER', payload: '0xme' }]),
     fetchAvailableContent: vi.fn(async () => new Set<string>()),
     deployEntity: vi.fn(async () => undefined),
+    fetchItem: vi.fn(async (id: string) => served.find(target => target.id === id)!),
     approveItem: vi.fn(async () => undefined),
     ...overrides
   }
@@ -351,6 +388,19 @@ describe('deployLinkedItems', () => {
     })
     expect(deps.sign).not.toHaveBeenCalled()
     expect(deps.deployEntity).not.toHaveBeenCalled()
+  })
+
+  it('leaves an item the creator saves mid-run pending instead of approving the new content', async () => {
+    const plan = planFor([item('1'), item('2')])
+    const editedLater = { ...item('2'), currentContentHash: 'new-hash' }
+    let reads = 0
+    const deps = deployDeps({
+      fetchItem: vi.fn(async (id: string) => (id === '2' && ++reads > 1 ? editedLater : served.find(t => t.id === id)!))
+    })
+    const result = await deployLinkedItems(collection, plan, deps)
+    expect(result.deployed.map(deployed => deployed.id)).toEqual(['1'])
+    expect(result.failed.map(({ item, stage }) => [item.id, stage])).toEqual([['2', 'changed']])
+    expect(deps.approveItem).not.toHaveBeenCalledWith('2')
   })
 
   it('stops at once when the session cannot sign', async () => {

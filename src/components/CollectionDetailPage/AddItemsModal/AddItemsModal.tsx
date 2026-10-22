@@ -23,7 +23,7 @@ import { useNotifications } from '~/lib/notifications'
 import { type SpringBoneParamsByName } from '~/lib/springBones'
 import { errorCode, track } from '~/lib/analytics'
 import { captureError } from '~/lib/monitoring'
-import { executeUpload, planUpload, type UploadDraft } from '~/lib/uploadItems'
+import { executeUpload, findDuplicateUrns, planUpload, type UploadDraft } from '~/lib/uploadItems'
 import {
   addItemsReducer,
   createDraft,
@@ -130,15 +130,14 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
             contract: linkedContract,
             ...(updateOnly
               ? { updating: new Map(collectionItems.flatMap(item => (item.urn ? [[item.urn, item] as const] : []))) }
-              : {})
+              : { takenUrns: new Set(collectionItems.flatMap(item => (item.urn ? [item.urn] : []))) })
           }
         : undefined,
     [isLinked, collection.urn, linkedContract, updateOnly, collectionItems]
   )
-  // Matching a zip to the item it updates needs the collection's items first.
+  // Matching a zip to the item it updates, or refusing a URN an item already has, needs the collection's items first.
   const itemsLoaded = collectionItemsQuery.data !== undefined
-  const canProcess = !updateOnly || itemsLoaded
-  // A linked item re-uploaded under its URN updates the existing one: uploading before the items load would miss it.
+  const canProcess = !(updateOnly || isLinked) || itemsLoaded
   const canUpload = !isLinked || itemsLoaded
   // Without them neither of the above can go on: say so and offer a retry instead of waiting forever.
   const itemsFailed = (isLinked || updateOnly) && collectionItemsQuery.isError && !itemsLoaded
@@ -293,8 +292,13 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
     if (!canUpload) return
     dispatch({ type: 'uploadStarted' })
     const allIds = draftsToUpload.map(draft => draft.id)
+    const payloads = draftsToUpload.map(toPayload)
+    if (findDuplicateUrns(payloads).length > 0) {
+      track('Add items error', { collectionId: collection.id, item_count: allIds.length, error: 'duplicate_urn' })
+      return dispatch({ type: 'uploadFailed', failureReason: 'duplicate_urn', failedDraftIds: allIds })
+    }
     try {
-      const operations = await planUpload(draftsToUpload.map(toPayload), collectionItems)
+      const operations = await planUpload(payloads, collectionItems, { replaceByUrn: updateOnly })
       const result = await executeUpload(address, operations)
 
       // One event per upload rather than per item: the legacy builder's per-item `Save item` on creation

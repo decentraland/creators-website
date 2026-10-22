@@ -84,6 +84,8 @@ export function canPublishLinkedItem(status: LinkedItemStatus): boolean {
 export function canPushLinkedItem(item: Item, curation: ItemCuration | null | undefined): boolean {
   if (!item.isApproved || !curation) return false
   if (curation.status === CurationStatus.REJECTED) return false
+  // Already sent: the pending request holds this very content.
+  if (curation.status === CurationStatus.PENDING && curation.contentHash === item.currentContentHash) return false
   if (item.currentContentHash !== item.catalystContentHash) return true
   return curation.contentHash !== item.currentContentHash
 }
