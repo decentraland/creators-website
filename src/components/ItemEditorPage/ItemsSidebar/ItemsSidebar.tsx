@@ -44,6 +44,8 @@ type Props = {
   /** Draft collections only; opens the add-items file picker. */
   canAddItems: boolean
   onAddItems: () => void
+  /** Collections the viewer has a role on: a button launches the desktop explorer on the collection. */
+  canPreview: boolean
   /** Draft collections the viewer manages: a pencil next to the name opens the rename dialog. */
   onRename?: () => void
   onSelect: (item: Item) => void
@@ -69,6 +71,7 @@ export function ItemsSidebar({
   onToggleCollapsed,
   canAddItems,
   onAddItems,
+  canPreview,
   onRename,
   onSelect,
   onLeave,
@@ -90,6 +93,11 @@ export function ItemsSidebar({
   const backTo = `/collections/${collection.id}`
   const showBack = mode === 'edit'
   const showAddItems = mode === 'edit' && canAddItems
+  const showPreview = mode === 'edit' && canPreview
+
+  function onPreviewLaunch(launched: boolean) {
+    track('Preview In World', { collectionId: collection.id, itemCount: items.length, launched, source: 'editor' })
+  }
 
   function onRowClick(item: Item) {
     if (item.id !== selectedId) {
@@ -244,37 +252,56 @@ export function ItemsSidebar({
               )}
             </S.CollectionName>
           </S.HeaderRow>
-          {showAddItems && (
+          {(showAddItems || showPreview) && (
             <S.HeaderMeta>
-              {collapsed ? (
-                <Tooltip
-                  content={t('item_editor.sidebar.add_items')}
-                  placement="right"
-                  asChild
-                  testId={`${testId}-add-items-tooltip`}
-                >
+              {showAddItems &&
+                (collapsed ? (
+                  <Tooltip
+                    content={t('item_editor.sidebar.add_items')}
+                    placement="right"
+                    asChild
+                    testId={`${testId}-add-items-tooltip`}
+                  >
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="icon"
+                      aria-label={t('item_editor.sidebar.add_items')}
+                      data-testid={`${testId}-add-items`}
+                      onClick={onAddItems}
+                    >
+                      <AddIcon fontSize="small" />
+                    </Button>
+                  </Tooltip>
+                ) : (
                   <Button
                     type="button"
                     variant="secondary"
-                    size="icon"
-                    aria-label={t('item_editor.sidebar.add_items')}
+                    size="md"
                     data-testid={`${testId}-add-items`}
                     onClick={onAddItems}
                   >
                     <AddIcon fontSize="small" />
+                    {t('item_editor.sidebar.add_items')}
                   </Button>
-                </Tooltip>
-              ) : (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="md"
-                  data-testid={`${testId}-add-items`}
-                  onClick={onAddItems}
+                ))}
+              {showPreview && (
+                <Tooltip
+                  content={t('preview_collection_button.label')}
+                  placement={collapsed ? 'right' : 'bottom'}
+                  asChild
+                  testId={`${testId}-preview-tooltip`}
                 >
-                  <AddIcon fontSize="small" />
-                  {t('item_editor.sidebar.add_items')}
-                </Button>
+                  <S.PreviewButton
+                    collectionId={collection.id}
+                    size="md"
+                    iconOnly={collapsed}
+                    label={t('item_editor.sidebar.preview')}
+                    disabled={items.length === 0}
+                    data-testid={`${testId}-preview`}
+                    onLaunch={onPreviewLaunch}
+                  />
+                </Tooltip>
               )}
             </S.HeaderMeta>
           )}

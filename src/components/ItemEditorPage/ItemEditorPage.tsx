@@ -36,6 +36,7 @@ import { BuilderServerError, COLLECTION_LOCKED_STATUS, getContentsStorageUrl } f
 import {
   canManageCollectionItems,
   canViewCollection,
+  hasCollectionRole,
   isCollectionLocked,
   isLinkedCollection,
   type Collection
@@ -636,6 +637,7 @@ const ItemEditorPage = () => {
       collapsed={sidebarCollapsed}
       onToggleCollapsed={toggleSidebar}
       canAddItems={isDraftCollection && canManageCollectionItems(collection, address)}
+      canPreview={hasCollectionRole(collection, address)}
       onRename={
         isDraftCollection && canManageCollectionItems(collection, address) ? () => setRenameOpen(true) : undefined
       }

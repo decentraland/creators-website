@@ -1,5 +1,6 @@
 import styled from '@emotion/styled'
 import { Link } from 'react-router-dom'
+import { PreviewCollectionButton } from '~/components/PreviewCollectionButton'
 import { theme } from '~/styles/theme'
 
 export const EXPANDED_WIDTH = 314
@@ -189,17 +190,31 @@ export const RenameButton = styled.button`
 export const HeaderMeta = styled.div`
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 8px;
   padding: 0 4px;
 
   [data-collapsed] & {
-    justify-content: center;
+    flex-direction: column;
     padding: 0;
   }
 
   & > button {
+    flex: 1;
+    min-width: 0;
+  }
+
+  [data-collapsed] & > button {
     width: 100%;
+  }
+`
+
+// The explorer is desktop-only, so narrow screens would only be sent to the download page.
+export const PreviewButton = styled(PreviewCollectionButton)`
+  // The dark button sits on the dark sidebar; a faint line keeps it readable.
+  border: 1px solid ${theme.colors.glass};
+
+  ${theme.media.noActions} {
+    display: none;
   }
 `
 
