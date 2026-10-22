@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { type Entity } from '@dcl/schemas'
 import { allCollectionItemsKey } from '~/hooks/useCollection'
 import { collectionCurationKey } from '~/hooks/useCuration'
 import { itemEntitiesKey } from '~/hooks/useItemSync'
@@ -287,16 +288,18 @@ export function useApprovalFlow(
       if (items.some(item => !item.urn || !item.isPublished)) {
         throw new Error('The items were loaded without their on-chain data; reload the collection and try again')
       }
-      // Rescuing rewrites only on-chain hashes, so what to deploy is known before it runs. The entities are the ones
-      // the review bar already looked up (the same key), fetched only when it has none.
+      // Rescuing rewrites only on-chain hashes, so what to deploy is known before it runs. When the Catalyst can't be
+      // reached, the entities the review bar already looked up (the same key) stand in, as legacy plans from its own.
       const pointers = items.flatMap(item => (item.urn ? [item.urn] : []))
       const [rescue, entities] = await Promise.all([
         mode === 'approve'
           ? findItemsToRescue(collection, items, item => buildMissingImage(item, imageDeps))
           : Promise.resolve([]),
-        queryClient.ensureQueryData({
-          queryKey: itemEntitiesKey(collection.id, pointers),
-          queryFn: () => fetchEntitiesByPointers(pointers)
+        fetchEntitiesByPointers(pointers).catch((error: unknown) => {
+          const cached = queryClient.getQueryData<Entity[]>(itemEntitiesKey(collection.id, pointers))
+          if (!cached) throw error
+          captureError(error, { flow: 'curation_approve', step: 'entities', collectionId: collection.id })
+          return cached
         })
       ])
       if (token !== run.current) return

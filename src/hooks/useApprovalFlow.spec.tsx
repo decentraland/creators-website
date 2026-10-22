@@ -392,20 +392,26 @@ describe('useApprovalFlow', () => {
     expect(flow.findItemsToRescue).toHaveBeenCalledWith(collection, [item], expect.any(Function))
   })
 
-  it('plans the deploy from the entities the review bar already looked up, fetching only without them', async () => {
-    const entity = { id: 'e1', pointers: ['urn:1'] }
-    queryClient.setQueryData(itemEntitiesKey('c1', ['urn:1']), [entity])
+  it('plans the deploy from fresh entities, or from the ones the review bar looked up when the Catalyst fails', async () => {
+    const stale = { id: 'e0', pointers: ['urn:1'] }
+    const fresh = { id: 'e1', pointers: ['urn:1'] }
+    queryClient.setQueryData(itemEntitiesKey('c1', ['urn:1']), [stale])
+    catalyst.fetchEntitiesByPointers.mockResolvedValue([fresh])
     const { result } = renderFlow()
     await act(() => result.current.start())
-    expect(flow.findItemsToDeploy).toHaveBeenCalledWith([item], [entity], false)
-    expect(catalyst.fetchEntitiesByPointers).not.toHaveBeenCalled()
+    expect(catalyst.fetchEntitiesByPointers).toHaveBeenCalledWith(['urn:1'])
+    expect(flow.findItemsToDeploy).toHaveBeenCalledWith([item], [fresh], false)
+
+    catalyst.fetchEntitiesByPointers.mockRejectedValue(new TypeError('Failed to fetch'))
+    const offline = renderFlow()
+    await act(() => offline.result.current.start())
+    expect(offline.result.current.view).toMatchObject({ kind: 'step', step: 'approve' })
+    expect(flow.findItemsToDeploy).toHaveBeenLastCalledWith([item], [stale], false)
 
     queryClient.clear()
-    catalyst.fetchEntitiesByPointers.mockResolvedValue([entity])
-    const fresh = renderFlow()
-    await act(() => fresh.result.current.start())
-    expect(catalyst.fetchEntitiesByPointers).toHaveBeenCalledWith(['urn:1'])
-    expect(flow.findItemsToDeploy).toHaveBeenLastCalledWith([item], [entity], false)
+    const nothing = renderFlow()
+    await act(() => nothing.result.current.start())
+    expect(nothing.result.current.view).toMatchObject({ kind: 'error', step: 'prepare', detail: 'Failed to fetch' })
   })
 
   it('plans from the items the curator reviewed, not from the fresh fetch', async () => {
