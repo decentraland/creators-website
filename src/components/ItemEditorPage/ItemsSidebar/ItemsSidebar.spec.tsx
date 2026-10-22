@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { BodyShape } from '@dcl/schemas'
@@ -8,11 +8,6 @@ import { type Collection } from '~/lib/collections'
 import { ItemType, type Item } from '~/lib/items'
 import { ItemsSidebar } from './ItemsSidebar'
 import { type ComponentProps, type ReactNode } from 'react'
-
-const previewCollection = vi.hoisted(() => vi.fn())
-vi.mock('~/lib/explorer', () => ({ previewCollection }))
-const track = vi.hoisted(() => vi.fn())
-vi.mock('~/lib/analytics', () => ({ track }))
 
 const collection: Collection = {
   id: 'c1',
@@ -73,7 +68,6 @@ function renderSidebar(overrides: Partial<ComponentProps<typeof ItemsSidebar>> =
     onToggleCollapsed: vi.fn(),
     canAddItems: true,
     onAddItems: vi.fn(),
-    canPreview: true,
     onSelect: vi.fn(),
     onToggleDressed: vi.fn(),
     onToggleEmotePlay: vi.fn(),
@@ -135,7 +129,6 @@ describe('ItemsSidebar', () => {
   it('hides the header actions and the back link in review mode, where the review bar has them', () => {
     renderSidebar({ mode: 'review', onRename: vi.fn() })
     expect(screen.queryByTestId('items-sidebar-add-items')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('items-sidebar-preview')).not.toBeInTheDocument()
     expect(screen.queryByTestId('items-sidebar-rename')).not.toBeInTheDocument()
     expect(screen.queryByTestId('items-sidebar-back')).not.toBeInTheDocument()
     expect(screen.getByTestId('items-sidebar-collection')).toHaveTextContent('Pirate Hats')
@@ -155,40 +148,11 @@ describe('ItemsSidebar', () => {
     // Name and status leave; the back link, the toggle, a square add button and the rows stay.
     expect(screen.getByTestId('items-sidebar-back')).toBeInTheDocument()
     expect(screen.getByTestId('items-sidebar-add-items')).toHaveAttribute('aria-label', 'Add items')
-    expect(screen.getByTestId('items-sidebar-preview')).toHaveAttribute('aria-label', 'Preview in Decentraland')
     expect(screen.getByTestId('items-sidebar-wearables-toggle')).toHaveAttribute('aria-label', 'Wearables')
     await userEvent.click(screen.getByTestId('items-sidebar-select-dance'))
     expect(props.onSelect).toHaveBeenCalledWith(dance)
     await userEvent.click(screen.getByTestId('items-sidebar-toggle'))
     expect(props.onToggleCollapsed).toHaveBeenCalled()
-  })
-
-  it('launches the collection in the explorer from the header and reports how it went', async () => {
-    previewCollection.mockResolvedValue(true)
-    renderSidebar()
-    await userEvent.click(screen.getByTestId('items-sidebar-preview'))
-    expect(previewCollection).toHaveBeenCalledWith('c1')
-    await waitFor(() =>
-      expect(track).toHaveBeenCalledWith('Preview In World', {
-        collectionId: 'c1',
-        itemCount: 3,
-        launched: true,
-        source: 'editor'
-      })
-    )
-  })
-
-  it('keeps the explorer preview for collections the viewer has a role on, with items to show', () => {
-    renderSidebar({ canPreview: false })
-    expect(screen.queryByTestId('items-sidebar-preview')).not.toBeInTheDocument()
-    renderSidebar({ items: [], canAddItems: false })
-    expect(screen.getByTestId('items-sidebar-preview')).toBeDisabled()
-  })
-
-  it('shows a short Preview label while naming the destination for assistive tech', () => {
-    renderSidebar()
-    expect(screen.getByTestId('items-sidebar-preview')).toHaveTextContent(/^Preview$/)
-    expect(screen.getByTestId('items-sidebar-preview')).toHaveAttribute('aria-label', 'Preview in Decentraland')
   })
 
   it('shows the empty copy for a collection without items', () => {

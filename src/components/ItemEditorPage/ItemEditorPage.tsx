@@ -470,6 +470,21 @@ const ItemEditorPage = () => {
             onOpen={onValidationOpen}
           />
         )}
+        {mode === 'edit' && collection && hasCollectionRole(collection, address) && (
+          <S.PreviewLaunch
+            collectionId={collection.id}
+            disabled={items.length === 0}
+            data-testid="editor-preview"
+            onLaunch={launched =>
+              track('Preview In World', {
+                collectionId: collection.id,
+                itemCount: items.length,
+                launched,
+                source: 'editor'
+              })
+            }
+          />
+        )}
       </AvatarPreview>
     )
 
@@ -637,7 +652,6 @@ const ItemEditorPage = () => {
       collapsed={sidebarCollapsed}
       onToggleCollapsed={toggleSidebar}
       canAddItems={isDraftCollection && canManageCollectionItems(collection, address)}
-      canPreview={hasCollectionRole(collection, address)}
       onRename={
         isDraftCollection && canManageCollectionItems(collection, address) ? () => setRenameOpen(true) : undefined
       }
