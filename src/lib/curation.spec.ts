@@ -83,7 +83,7 @@ describe('getCurationState', () => {
   it.each([
     ['a new collection nobody picked up', collection(), null, CurationState.TO_REVIEW],
     ['a pending request without a curator', collection(), curation(), CurationState.TO_REVIEW],
-    ['a pending request with a curator', collection(), curation({ assignee: '0xc' }), CurationState.UNDER_REVIEW],
+    ['a pending request with a curator', collection(), curation({ assignee: '0xc' }), CurationState.TO_REVIEW],
     ['a rejected first review', collection(), curation({ status: 'rejected' }), CurationState.REJECTED],
     ['an approved collection', collection({ isApproved: true }), null, CurationState.APPROVED],
     [
@@ -99,10 +99,10 @@ describe('getCurationState', () => {
       CurationState.REJECTED
     ],
     [
-      'pushed changes under review',
+      'pushed changes waiting for review',
       collection({ isApproved: true }),
       curation({ assignee: '0xc' }),
-      CurationState.UNDER_REVIEW
+      CurationState.TO_REVIEW
     ],
     ['a disabled collection', collection(reviewedBefore), null, CurationState.DISABLED],
     [
@@ -122,13 +122,13 @@ describe('getCurationState', () => {
       'a first review stopped after the rescue step',
       collection(reviewedBefore),
       curation({ status: 'pending', assignee: '0xc' }),
-      CurationState.UNDER_REVIEW
+      CurationState.TO_REVIEW
     ],
     [
       'changes pushed on a disabled collection',
       collection(reviewedBefore),
       curation({ assignee: '0xc' }),
-      CurationState.UNDER_REVIEW
+      CurationState.TO_REVIEW
     ],
     [
       // An approved request is the proof, whatever reviewedAt says.

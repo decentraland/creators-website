@@ -39,9 +39,9 @@ export function isCommitteeMember(members: string[] | undefined, address: string
   return members.some(member => member.toLowerCase() === target)
 }
 
+/** A pending request is "to review" whether or not a curator has it: the assignee says who, the state doesn't. */
 export enum CurationState {
   TO_REVIEW = 'to_review',
-  UNDER_REVIEW = 'under_review',
   APPROVED = 'approved',
   REJECTED = 'rejected',
   DISABLED = 'disabled'
@@ -66,7 +66,6 @@ export function getCurationState(collection: Collection, curation: CollectionCur
     if (isDisabled(collection, curation)) return CurationState.DISABLED
     if (curation?.status === 'rejected') return CurationState.REJECTED
   }
-  if (curation?.status === 'pending' && curation.assignee) return CurationState.UNDER_REVIEW
   return CurationState.TO_REVIEW
 }
 

@@ -83,7 +83,7 @@ describe('CurationRow', () => {
   it('shows the assigned curator, marked when it is the signed-in one, with an edit button', () => {
     const assigned = { ...pending, assignee: ME }
     const onAssign = renderRow(assigned)
-    expect(screen.getByTestId('curation-state')).toHaveAttribute('data-state', 'under_review')
+    expect(screen.getByTestId('curation-state')).toHaveAttribute('data-state', 'to_review')
     expect(screen.getByTestId('curation-row-curator')).toHaveTextContent('(you)')
     fireEvent.click(screen.getByTestId('curation-row-edit-assignee'))
     expect(onAssign).toHaveBeenCalledWith(collection, assigned, 'edit')
