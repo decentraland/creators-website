@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowDropDown as ChevronIcon, Check as CheckIcon, ExpandMore as CompactChevronIcon } from '@mui/icons-material'
+import { useTranslation } from '~/intl'
 import * as Base from '~/components/Select/Select.styles'
 import { useListbox } from '~/components/Select/useListbox'
 import * as S from './MultiSelect.styles'
@@ -34,6 +35,7 @@ export function MultiSelect<T extends string>({
   ariaLabel,
   testId = 'multi-select'
 }: Props<T>) {
+  const { t } = useTranslation()
   const { open, active, setActive, wrapRef, listRef, listStyle, listId, toggle, pick, onKeyDown } = useListbox({
     options,
     current: values[0] ?? null,
@@ -47,8 +49,8 @@ export function MultiSelect<T extends string>({
   const summary =
     selected.length === 0
       ? placeholder
-      : variant === 'compact'
-        ? `${selected[0].label}${selected.length > 1 ? ` +${selected.length - 1}` : ''}`
+      : variant === 'compact' && selected.length > 1
+        ? t('multi_select.summary', { first: selected[0].label, count: selected.length - 1 })
         : selected.map(option => option.label).join(', ')
 
   return (
@@ -59,7 +61,7 @@ export function MultiSelect<T extends string>({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
-        aria-label={ariaLabel}
+        aria-label={ariaLabel && summary ? `${ariaLabel}: ${summary}` : ariaLabel}
         disabled={disabled}
         data-testid={testId}
         data-tone={tone}

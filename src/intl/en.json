@@ -1377,6 +1377,9 @@
     "new": "New",
     "updates": "Updates"
   },
+  "multi_select": {
+    "summary": "{first} +{count}"
+  },
   "assign_curator_modal": {
     "title_self": "Review {collection}",
     "title_edit": "Assigned curator of {collection}",

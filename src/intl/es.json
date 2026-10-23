@@ -1377,6 +1377,9 @@
     "new": "Nueva",
     "updates": "Cambios"
   },
+  "multi_select": {
+    "summary": "{first} +{count}"
+  },
   "assign_curator_modal": {
     "title_self": "Revisar {collection}",
     "title_edit": "Curador asignado de {collection}",

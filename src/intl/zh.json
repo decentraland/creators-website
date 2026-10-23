@@ -1377,6 +1377,9 @@
     "new": "新系列",
     "updates": "更新"
   },
+  "multi_select": {
+    "summary": "{first} +{count}"
+  },
   "assign_curator_modal": {
     "title_self": "审核 {collection}",
     "title_edit": "{collection} 的指派审核员",

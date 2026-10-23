@@ -11,6 +11,7 @@ import { Select, type SelectOption } from '~/components/Select'
 import { Switch } from '~/components/Switch'
 import { useCampaign } from '~/hooks/useCampaign'
 import { useCommittee, useCurationCollections, useCurationsByCollection, useCuratorOptions } from '~/hooks/useCuration'
+import { shortenAddress } from '~/lib/address'
 import { track } from '~/lib/analytics'
 import { type Collection } from '~/lib/collections'
 import {
@@ -64,7 +65,16 @@ const CurationPage = () => {
   useEffect(() => () => clearTimeout(searchTimer.current), [])
 
   const unassigned = useMemo(() => ({ value: UNASSIGNED, label: t('curation_page.filter.unassigned') }), [t])
-  const assigneeOptions = useCuratorOptions(address, unassigned)
+  const curatorOptions = useCuratorOptions(address, unassigned)
+  // A shared link may name a curator who left the committee, or the committee may still be loading: the picked
+  // address stays listed so the trigger counts it and it can be unticked.
+  const assigneeOptions = useMemo(() => {
+    const known = new Set(curatorOptions.map(option => option.value))
+    const extra = filters.assignees.filter(value => !known.has(value))
+    return extra.length
+      ? [...curatorOptions, ...extra.map(value => ({ value, label: shortenAddress(value) }))]
+      : curatorOptions
+  }, [curatorOptions, filters.assignees])
   const statusOptions = useMemo(
     () => STATUS_FILTERS.map(status => ({ value: status, label: t(`curation_page.filter.${status}`) })),
     [t]
@@ -178,6 +188,7 @@ const CurationPage = () => {
             <S.Chip
               key={type}
               type="button"
+              aria-pressed={(filters.reviewType ?? ALL) === type}
               data-active={(filters.reviewType ?? ALL) === type || undefined}
               data-testid={`curation-review-type-${type}`}
               onClick={() => changeFilter('review_type', type === ALL ? null : type)}

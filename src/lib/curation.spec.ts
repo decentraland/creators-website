@@ -207,19 +207,30 @@ describe('curation filters', () => {
   it('reads several statuses and assignees, and the review type', () => {
     const filters = parseCurationFilters(
       new URLSearchParams(
-        'status=approved&status=rejected&status=nope&assignee=0xABC&assignee=unassigned&review_type=new'
+        'status=approved&status=rejected&status=nope&assignee=0xABCDEF0123456789ABCDEF0123456789ABCDEF01&assignee=unassigned&review_type=new'
       ),
       ME
     )
     expect(filters.statuses).toEqual([CurationStatusFilter.APPROVED, CurationStatusFilter.REJECTED])
-    expect(filters.assignees).toEqual(['0xabc', UNASSIGNED])
+    expect(filters.assignees).toEqual(['0xabcdef0123456789abcdef0123456789abcdef01', UNASSIGNED])
     expect(filters.reviewType).toBe(ReviewType.NEW)
   })
 
-  it('takes "all" as a cleared filter rather than the defaults', () => {
-    const filters = parseCurationFilters(new URLSearchParams('status=all&assignee=all'), ME)
+  it('takes "all" as a cleared filter rather than the defaults, even next to a picked value', () => {
+    const filters = parseCurationFilters(new URLSearchParams('status=all&status=approved&assignee=all'), ME)
     expect(filters.statuses).toEqual([])
     expect(filters.assignees).toEqual([])
+  })
+
+  it('keeps only well-formed addresses and "unassigned" as assignees, falling back to the defaults', () => {
+    const valid = '0x' + 'a'.repeat(40)
+    expect(
+      parseCurationFilters(new URLSearchParams(`assignee=garbage&assignee=${valid.toUpperCase()}`), ME).assignees
+    ).toEqual([valid])
+    expect(parseCurationFilters(new URLSearchParams('assignee=garbage&assignee='), ME).assignees).toEqual([
+      UNASSIGNED,
+      '0xme'
+    ])
   })
 
   it('writes a picked set to the URL, "all" for none and nothing for the defaults', () => {
@@ -227,19 +238,20 @@ describe('curation filters', () => {
     expect(toMultiParam([CurationStatusFilter.REJECTED, CurationStatusFilter.TO_REVIEW], defaults)).toBeNull()
     expect(toMultiParam([], defaults)).toEqual(['all'])
     expect(toMultiParam([CurationStatusFilter.REJECTED], defaults)).toEqual([CurationStatusFilter.REJECTED])
+    expect(toMultiParam(['0xme', UNASSIGNED], defaultAssignees('0xME'))).toBeNull()
   })
 
   it('builds the committee list query for published standard collections', () => {
     const filters = parseCurationFilters(
       new URLSearchParams(
-        'status=approved&status=to_review&assignee=0xABC&assignee=unassigned&review_type=updates&q=hat&sort=NAME_ASC&page=2&tag=Summer'
+        'status=approved&status=to_review&assignee=0xABCDEF0123456789ABCDEF0123456789ABCDEF01&assignee=unassigned&review_type=updates&q=hat&sort=NAME_ASC&page=2&tag=Summer'
       ),
       ME
     )
     const query = new URLSearchParams(toCurationQueryString(filters))
     // To review covers a pending request with or without a curator, which builder-server keeps apart.
     expect(query.getAll('status')).toEqual(['approved', 'to_review', 'under_review'])
-    expect(query.getAll('assignee')).toEqual(['0xabc', 'unassigned'])
+    expect(query.getAll('assignee')).toEqual(['0xabcdef0123456789abcdef0123456789abcdef01', 'unassigned'])
     expect(Object.fromEntries(query)).toMatchObject({
       is_published: 'true',
       review_type: 'updates',

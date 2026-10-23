@@ -155,6 +155,7 @@ export type CurationSort = (typeof CURATION_SORTS)[number]
 
 /** URL value that clears a filter with defaults, as opposed to leaving it out. */
 const NONE = 'all'
+const ADDRESS = /^0x[0-9a-f]{40}$/i
 export const CURATION_PAGE_SIZE = 12
 
 export type CurationFilters = {
@@ -184,7 +185,7 @@ export function parseCurationFilters(params: URLSearchParams, address?: string):
       STATUS_FILTERS.includes(value as CurationStatusFilter) ? (value as CurationStatusFilter) : null
     ),
     assignees: parseMulti(params, 'assignee', defaultAssignees(address), value =>
-      value === UNASSIGNED ? value : value.toLowerCase()
+      value === UNASSIGNED ? value : ADDRESS.test(value) ? value.toLowerCase() : null
     ),
     reviewType: Object.values(ReviewType).includes(reviewType) ? reviewType : null,
     sort: CURATION_SORTS.includes(sort) ? sort : CollectionSort.REQUESTED_AT_DESC,
