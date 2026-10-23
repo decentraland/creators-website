@@ -4,12 +4,16 @@ import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { useTranslation } from '~/intl'
 import { allCollectionItemsKey, useAllCollectionItems } from '~/hooks/useCollection'
+import { itemCurationsKey, linkedItemsKey } from '~/hooks/useLinkedCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { installBackGuard } from '~/lib/backGuard'
 import { ItemFileError, VIDEO_PATH } from '~/lib/itemFiles'
 import { type EmotePlayMode, type ItemDraftPayload } from '~/lib/itemFactory'
-import { type Collection } from '~/lib/collections'
+import { isLinkedCollection, type Collection } from '~/lib/collections'
+import { areMappingsEqual, buildItemMappings, getItemMapping, type Mappings } from '~/lib/mappings'
+import { buildLinkedItemUrn, getDefaultUrnSuffix, type LinkedContract } from '~/lib/thirdParty'
+import { type ContractNetwork } from '@dcl/schemas'
 import { ItemType } from '~/lib/items'
 import { FeatureFlag } from '~/lib/featureFlags'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
@@ -19,7 +23,7 @@ import { useNotifications } from '~/lib/notifications'
 import { type SpringBoneParamsByName } from '~/lib/springBones'
 import { errorCode, track } from '~/lib/analytics'
 import { captureError } from '~/lib/monitoring'
-import { executeUpload, planUpload, type UploadDraft } from '~/lib/uploadItems'
+import { executeUpload, findDuplicateUrns, planUpload, type UploadDraft } from '~/lib/uploadItems'
 import {
   addItemsReducer,
   createDraft,
@@ -28,7 +32,13 @@ import {
   isValidationStale,
   type ItemDraft
 } from './AddItemsModal.state'
-import { imageThumbnailPatch, isImageThumbnailStale, processDraftFile, pickPreviewDraft } from './processDraft'
+import {
+  imageThumbnailPatch,
+  isImageThumbnailStale,
+  processDraftFile,
+  pickPreviewDraft,
+  type LinkedDraftTarget
+} from './processDraft'
 import { DraftList } from './DraftList'
 import { DraftForm } from './DraftForm'
 import { DraftProcessor } from './DraftProcessor'
@@ -66,15 +76,31 @@ type Props = {
   /** The files picked or dropped on the collection page; processing starts immediately. */
   files: File[]
   prefill?: AddItemsPrefill
+  /** Linked collections only: every file must update an existing item, matched by the URN in its wearable.json. */
+  updateOnly?: boolean
   onClose: () => void
 }
 
-export function AddItemsModal({ collection, address, files, prefill, onClose }: Props) {
+export function AddItemsModal({ collection, address, files, prefill, onClose, updateOnly = false }: Props) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   // The editor only shows utility behind this flag, so an import must not save one the creator can't see.
   const utilityFlag = useFeatureFlag(FeatureFlag.WEARABLE_UTILITY)
   const showToast = useNotifications(state => state.showToast)
+
+  // Linked collections take plain wearables only, with no rarity and a token mapping per item.
+  const isLinked = isLinkedCollection(collection)
+  const linkedContract = useMemo<LinkedContract | null>(
+    () =>
+      collection.linkedContractNetwork && collection.linkedContractAddress
+        ? { network: collection.linkedContractNetwork as ContractNetwork, address: collection.linkedContractAddress }
+        : null,
+    [collection.linkedContractNetwork, collection.linkedContractAddress]
+  )
+  const draftRules = useMemo(
+    () => ({ linked: isLinked, requiresMapping: isLinked && linkedContract !== null }),
+    [isLinked, linkedContract]
+  )
 
   const initialDraftsRef = useRef<Array<{ draft: ItemDraft; file: File }> | null>(null)
   if (initialDraftsRef.current === null) {
@@ -96,12 +122,37 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
   // Variant targets need every unpublished wearable of the collection, not just the loaded page.
   const collectionItemsQuery = useAllCollectionItems(address, collection.id)
   const collectionItems = useMemo(() => collectionItemsQuery.data ?? [], [collectionItemsQuery.data])
+  const linkedTarget = useMemo<LinkedDraftTarget | undefined>(
+    () =>
+      isLinked
+        ? {
+            collectionUrn: collection.urn,
+            contract: linkedContract,
+            ...(updateOnly
+              ? { updating: new Map(collectionItems.flatMap(item => (item.urn ? [[item.urn, item] as const] : []))) }
+              : {})
+          }
+        : undefined,
+    [isLinked, collection.urn, linkedContract, updateOnly, collectionItems]
+  )
+  // Matching a zip to the item it updates needs the collection's items first. Adding never waits for them (a linked
+  // collection can be large): a URN another item has is refused by builder-server on upload.
+  const itemsLoaded = collectionItemsQuery.data !== undefined
+  const canProcess = !updateOnly || itemsLoaded
+  const canUpload = !updateOnly || itemsLoaded
+  // Without them neither of the above can go on: say so and offer a retry instead of waiting forever.
+  const itemsFailed = updateOnly && collectionItemsQuery.isError && !itemsLoaded
 
   // Load + analyze each dropped file once. The prefill is what it was when the modal opened.
   const prefillRef = useRef(prefill)
+  const linkedTargetRef = useRef(linkedTarget)
+  linkedTargetRef.current = linkedTarget
+  const processed = useRef(false)
   useEffect(() => {
+    if (!canProcess || processed.current) return
+    processed.current = true
     for (const { draft, file } of initialDraftsRef.current ?? []) {
-      void processDraftFile(file, prefillRef.current?.hides)
+      void processDraftFile(file, prefillRef.current?.hides, linkedTargetRef.current)
         .then(patch =>
           dispatch({
             type: 'draftAnalyzed',
@@ -123,7 +174,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
           }
         })
     }
-  }, [])
+  }, [canProcess])
 
   const { drafts, selectedId, view, failureReason, isUploading } = state
   const selected = useMemo(
@@ -182,8 +233,8 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
   }, [drafts])
 
   const isSelectedComplete = useMemo(
-    () => !!selected && isDraftComplete(selected, drafts, collectionItems),
-    [selected, drafts, collectionItems]
+    () => !!selected && isDraftComplete(selected, drafts, collectionItems, draftRules),
+    [selected, drafts, collectionItems, draftRules]
   )
   const othersChecked = useMemo(
     () => !!selected && drafts.every(draft => draft.id === selected.id || draft.checked),
@@ -206,6 +257,17 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
   // leave confirmation instead.
   useEffect(() => installBackGuard(() => setLeaveConfirmOpen(true)), [])
 
+  function toItemMappings(draft: ItemDraft): Mappings | undefined {
+    if (!linkedContract || !draft.mapping) return undefined
+    const mappings = buildItemMappings(draft.mapping, linkedContract)
+    const kept = draft.keptMappings ? getItemMapping(draft.keptMappings, linkedContract) : null
+    // Untouched in the form: the item keeps every rule it had, not just the one the form can show.
+    if (draft.keptMappings && kept && areMappingsEqual(mappings, buildItemMappings(kept, linkedContract))) {
+      return draft.keptMappings
+    }
+    return mappings
+  }
+
   function toPayload(draft: ItemDraft): UploadDraft {
     return {
       id: draft.id,
@@ -213,7 +275,8 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
       type: draft.type ?? ItemType.WEARABLE,
       bodyShape: draft.bodyShape,
       category: draft.category ?? '',
-      rarity: draft.rarity,
+      // Linked items are never minted: the legacy builder fixes their rarity to unique.
+      rarity: isLinked ? 'unique' : draft.rarity,
       playMode: draft.playMode,
       requiredPermissions: draft.isSmart ? draft.requiredPermissions : undefined,
       description: draft.description,
@@ -227,34 +290,61 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
       metrics: draft.metrics ?? {},
       owner: address,
       collectionId: collection.id,
+      ...(isLinked
+        ? {
+            urn: buildLinkedItemUrn(collection.urn, draft.urnSuffix ?? getDefaultUrnSuffix(draft.name.trim())),
+            mappings: toItemMappings(draft)
+          }
+        : {}),
       variantTargetId: draft.isVariant && draft.variantTargetId ? draft.variantTargetId : undefined
     } satisfies ItemDraftPayload & { variantTargetId?: string }
   }
 
   async function upload(draftsToUpload: ItemDraft[]) {
+    if (!canUpload) return
     dispatch({ type: 'uploadStarted' })
     const allIds = draftsToUpload.map(draft => draft.id)
+    const payloads = draftsToUpload.map(toPayload)
+    if (findDuplicateUrns(payloads).length > 0) {
+      track('Add items error', { collectionId: collection.id, item_count: allIds.length, error: 'duplicate_urn' })
+      return dispatch({ type: 'uploadFailed', failureReason: 'duplicate_urn', failedDraftIds: allIds })
+    }
     try {
-      const operations = await planUpload(draftsToUpload.map(toPayload), collectionItems)
+      const operations = await planUpload(payloads, collectionItems, { replaceByUrn: updateOnly })
       const result = await executeUpload(address, operations)
 
       // One event per upload rather than per item: the legacy builder's per-item `Save item` on creation
       // reads here as `item_count` (see design/TRACKING_SPEC.md).
-      track('Add items', {
-        collectionId: collection.id,
-        origin: prefill ? 'live_preview' : 'collection',
-        item_count: result.savedDraftIds.length,
-        failed_count: result.failedDraftIds.length,
-        error: result.failedDraftIds.length > 0 ? (result.failureReason ?? 'generic') : undefined
-      })
+      if (updateOnly) {
+        // Legacy event name, so bulk edits line up with the old builder's.
+        track('Edit TP Items', {
+          collectionId: collection.id,
+          item_count: result.savedDraftIds.length,
+          failed_count: result.failedDraftIds.length
+        })
+      } else
+        track('Add items', {
+          collectionId: collection.id,
+          origin: prefill ? 'live_preview' : 'collection',
+          item_count: result.savedDraftIds.length,
+          failed_count: result.failedDraftIds.length,
+          error: result.failedDraftIds.length > 0 ? (result.failureReason ?? 'generic') : undefined
+        })
 
       if (result.savedDraftIds.length > 0) {
-        showToast(t('add_items_modal.success_toast', { count: result.savedDraftIds.length }))
+        showToast(
+          t(updateOnly ? 'add_items_modal.bulk_edit.success_toast' : 'add_items_modal.success_toast', {
+            count: result.savedDraftIds.length
+          })
+        )
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: allCollectionItemsKey(address, collection.id) }),
           queryClient.invalidateQueries({ queryKey: ['collection', address, collection.id] }),
           queryClient.invalidateQueries({ queryKey: ['collection-preview', address, collection.id] }),
-          queryClient.invalidateQueries({ queryKey: ['collections'] })
+          queryClient.invalidateQueries({ queryKey: ['collections'] }),
+          // Linked collections page their items and curations server-side under their own keys.
+          queryClient.invalidateQueries({ queryKey: linkedItemsKey(address, collection.id) }),
+          queryClient.invalidateQueries({ queryKey: itemCurationsKey(address, collection.id) })
         ])
       }
 
@@ -292,6 +382,13 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
   }
 
   function handleSaveChanges() {
+    if (!canUpload) {
+      setLeaveConfirmOpen(false)
+      showToast(t(itemsFailed ? 'add_items_modal.items_error' : 'add_items_modal.items_loading'), {
+        type: itemsFailed ? 'error' : 'warn'
+      })
+      return
+    }
     const checked = drafts.filter(draft => draft.checked)
     // A checked variant whose base draft is still unreviewed can't be saved on its own: point the
     // creator at that base draft instead of silently dropping the variant.
@@ -341,7 +438,11 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
   return (
     <>
       <Modal
-        title={t('add_items_modal.title', { count: drafts.length })}
+        title={
+          updateOnly
+            ? t('add_items_modal.bulk_edit.title', { count: drafts.length })
+            : t('add_items_modal.title', { count: drafts.length })
+        }
         onClose={requestClose}
         size="wide"
         flush={!isSingle}
@@ -381,6 +482,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
                 }
                 onOpenVideo={() => setVideoOpen(true)}
                 onVideoChange={handleVideoChange}
+                linked={isLinked ? { contract: linkedContract, updating: updateOnly } : undefined}
               />
             ) : (
               <S.ProcessingPane data-testid="draft-processing">
@@ -393,6 +495,20 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
                   </>
                 )}
               </S.ProcessingPane>
+            )}
+            {itemsFailed && (
+              <S.ItemsError role="alert" data-testid="add-items-items-error">
+                <S.ErrorText>{t('add_items_modal.items_error')}</S.ErrorText>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  data-testid="add-items-items-retry"
+                  onClick={() => void collectionItemsQuery.refetch()}
+                >
+                  {t('add_items_modal.error.try_again')}
+                </Button>
+              </S.ItemsError>
             )}
             <S.Footer>
               <Button
@@ -424,7 +540,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose }: 
                     type="button"
                     variant="primary"
                     data-testid="add-items-finish"
-                    disabled={!isSelectedComplete}
+                    disabled={!isSelectedComplete || !canUpload}
                     loading={isUploading}
                     onClick={handleFinish}
                   >

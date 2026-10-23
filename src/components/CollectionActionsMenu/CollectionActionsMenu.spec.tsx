@@ -239,19 +239,26 @@ describe('CollectionActionsMenu', () => {
     expect(screen.queryByTestId('send-items-action')).not.toBeInTheDocument()
   })
 
-  it('offers only Edit in Builder for a linked collection, opening it in the legacy builder', async () => {
-    renderMenu({ ...draft, urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats', isPublished: true })
+  it('lets a manager copy or edit the URN of a draft linked collection and delete it', async () => {
+    const onEditUrn = vi.fn()
+    renderMenu({ ...draft, urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats' }, OWNER, { onEditUrn })
     await openMenu()
-    expect(screen.queryByTestId('copy-urn')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('delete-collection')).not.toBeInTheDocument()
+    expect(screen.getByTestId('copy-urn')).toBeInTheDocument()
+    expect(screen.getByTestId('delete-collection')).toBeInTheDocument()
+    expect(screen.queryByTestId('copy-address')).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByTestId('edit-in-builder'))
-    expect(openExternal).toHaveBeenCalledWith(expect.stringMatching(/\/builder\/thirdPartyCollections\/c1$/))
+    await userEvent.click(screen.getByTestId('edit-collection-urn'))
+    expect(onEditUrn).toHaveBeenCalled()
   })
 
-  it('offers nothing for a linked collection on small screens, since the builder is desktop-only', () => {
-    stubViewport(true)
-    renderMenu({ ...draft, urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats', isPublished: true })
-    expect(screen.queryByTestId('collection-actions')).not.toBeInTheDocument()
+  it('locks the URN and the delete once the linked collection has published items', async () => {
+    renderMenu({ ...draft, urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats', isPublished: true }, OWNER, {
+      onEditUrn: vi.fn()
+    })
+    await openMenu()
+    expect(screen.getByTestId('copy-urn')).toBeInTheDocument()
+    expect(screen.queryByTestId('copy-address')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('edit-collection-urn')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('delete-collection')).not.toBeInTheDocument()
   })
 })

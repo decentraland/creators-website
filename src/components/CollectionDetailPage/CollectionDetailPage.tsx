@@ -90,7 +90,7 @@ import { ValidationResultsModal, toValidationSubject } from '~/components/Valida
 import addItemsArt from '~/assets/add-items.png'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { useThirdParty } from '~/hooks/useLinkedCollection'
-import { getThirdPartyId, isThirdPartyManager } from '~/lib/linkedCollections'
+import { getThirdPartyId, isThirdPartyManager } from '~/lib/thirdParty'
 import { AddItemsModal } from './AddItemsModal'
 import { LinkedCollectionView } from './LinkedCollectionView'
 import { ItemActionsMenu } from './ItemActionsMenu'
@@ -154,7 +154,12 @@ const CollectionDetailPage = () => {
   }, [topUpReturn, restored, session, collectionId, setSearchParams])
 
   const collectionQuery = useCollection(address, collectionId)
-  const itemsQuery = useAllCollectionItems(address, collectionId)
+  // Linked collections page their items server-side (they can hold thousands): the whole-list query starts with the
+  // collection's, so standard pages load both in parallel, and stops once the collection turns out to be linked.
+  const itemsQuery = useAllCollectionItems(
+    address,
+    collectionQuery.data && isLinkedCollection(collectionQuery.data) ? undefined : collectionId
+  )
   const saveCollection = useSaveCollection(address)
   const updateItem = useSaveItem(address)
   const showToast = useNotifications(state => state.showToast)
@@ -352,7 +357,9 @@ const CollectionDetailPage = () => {
   )
 
   const isLoading =
-    !restored || (!!address && (collectionQuery.isLoading || itemsQuery.isLoading || thirdParty.isLoading))
+    !restored ||
+    (!!address &&
+      (collectionQuery.isLoading || (!isLinked && !!collection && itemsQuery.isLoading) || thirdParty.isLoading))
   const isThirdPartyNotFound =
     thirdParty.isError &&
     thirdParty.error instanceof BuilderServerError &&
@@ -369,7 +376,7 @@ const CollectionDetailPage = () => {
           isThirdPartyNotFound ||
           (!!thirdParty.data && !isThirdPartyManager(thirdParty.data, address))
         : !canViewCollection(collection, address)))
-  const isError = !isNotFound && (collectionQuery.isError || itemsQuery.isError || thirdParty.isError)
+  const isError = !isNotFound && (collectionQuery.isError || (!isLinked && itemsQuery.isError) || thirdParty.isError)
   const isEmpty = filteredTotal === 0
   const hasItems = total > 0
   const canRename = !!collection && !collection.isPublished && !isCollectionLocked(collection)
@@ -516,12 +523,11 @@ const CollectionDetailPage = () => {
             {t('collection_detail_page.error.retry')}
           </Button>
         </S.Panel>
-      ) : isLinked && address ? (
+      ) : isLinked && session ? (
         <LinkedCollectionView
           collection={collection}
-          thirdPartyName={thirdParty.data?.name}
-          items={allItems ?? []}
-          address={address}
+          thirdParty={thirdParty.data}
+          session={session}
           page={page}
           onBack={() => navigate({ pathname: '/collections', search: listState?.listSearch })}
           onPageChange={goToPage}

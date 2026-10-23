@@ -4,9 +4,7 @@ import { useTranslation } from '~/intl'
 import { useDeleteCollection } from '~/hooks/useCollection'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { copyToClipboard } from '~/lib/clipboard'
-import { track } from '~/lib/analytics'
 import { hasBeenApproved, isCollectionLocked, isLinkedCollection, type Collection } from '~/lib/collections'
-import { builderLinkedCollectionUrl } from '~/lib/linkedCollections'
 import { isCollectionOwner, type RoleKind } from '~/lib/collectionRoles'
 import { openForumPost } from '~/lib/forumPost'
 import { openExternal } from '~/lib/navigation'
@@ -34,6 +32,10 @@ type Props = {
   forumLink?: string
   /** Opens the collaborators / senders list; without it the owner-only entries are not rendered. */
   onManageRoles?: (kind: RoleKind) => void
+  /** Linked collections only: opens the URN dialog while the collection is unpublished. */
+  onEditUrn?: () => void
+  /** Linked collections only: re-uploads zips over the items they name. */
+  onEditInBulk?: () => void
   onDeleted?: () => void
 }
 
@@ -48,6 +50,8 @@ export function CollectionActionsMenu({
   onCreateDiscount,
   forumLink,
   onManageRoles,
+  onEditUrn,
+  onEditInBulk,
   onDeleted
 }: Props) {
   const { t } = useTranslation()
@@ -59,6 +63,7 @@ export function CollectionActionsMenu({
   const compact = useMediaQuery(theme.media.noActions)
 
   const isOnChain = collection.isPublished
+  const isLinked = isLinkedCollection(collection)
   const isOwner = isCollectionOwner(collection, address)
   const shopUrl =
     hasBeenApproved(collection) && collection.contractAddress ? shopCollectionUrl(collection.contractAddress) : null
@@ -70,32 +75,23 @@ export function CollectionActionsMenu({
   const showPreview = compact && !!onPreviewItems
   const showForum = compact && !!forumLink
   const showDiscount = compact && !!onCreateDiscount
+  const showEditUrn = !compact && isLinked && !isOnChain && !!onEditUrn
+  const showEditInBulk = !compact && isLinked && !!onEditInBulk
+  // A linked collection's URN is meaningful from day one (it names its third party); a standard one's only on chain.
+  const showCopyUrn = isOnChain || isLinked
 
-  // Linked collections are edited in the legacy builder, which is desktop-only: on small screens there is nothing to offer.
-  if (isLinkedCollection(collection)) {
-    if (compact) return null
-    return (
-      <ActionsMenu
-        label={label ?? t('collection_detail_page.more_actions')}
-        variant={variant}
-        testId="collection-actions"
-      >
-        <ActionsMenuItem
-          testId="edit-in-builder"
-          onClick={() => {
-            // The linked detail page has its own button, so only list rows reach this menu.
-            track('Edit linked collection in builder', { collectionId: collection.id, source: 'list' })
-            openExternal(builderLinkedCollectionUrl(collection.id))
-          }}
-        >
-          {t('linked_collection.edit_in_builder')}
-          <OpenInNewIcon aria-hidden />
-        </ActionsMenuItem>
-      </ActionsMenu>
-    )
+  if (
+    !showCopyUrn &&
+    !canDelete &&
+    !showSend &&
+    !showPreview &&
+    !showForum &&
+    !showDiscount &&
+    !showEditUrn &&
+    !showEditInBulk
+  ) {
+    return null
   }
-
-  if (!isOnChain && !canDelete && !showSend && !showPreview && !showForum && !showDiscount) return null
 
   async function copy(text: string | undefined, successKey: string) {
     const copied = !!text && (await copyToClipboard(text))
@@ -145,7 +141,7 @@ export function CollectionActionsMenu({
             <OpenInNewIcon aria-hidden />
           </ActionsMenuItem>
         )}
-        {isOnChain && (
+        {showCopyUrn && (
           <>
             {(showSend || showPreview || showForum) && <ActionsMenuDivider />}
             <ActionsMenuItem
@@ -154,12 +150,25 @@ export function CollectionActionsMenu({
             >
               {t('collection_detail_page.actions.copy_urn')}
             </ActionsMenuItem>
-            <ActionsMenuItem
-              testId="copy-address"
-              onClick={() => void copy(collection.contractAddress, 'collection_detail_page.actions.copied_address')}
-            >
-              {t('collection_detail_page.actions.copy_address')}
-            </ActionsMenuItem>
+            {showEditUrn && (
+              <ActionsMenuItem testId="edit-collection-urn" onClick={onEditUrn}>
+                {t('linked_collection.actions.edit_urn')}
+              </ActionsMenuItem>
+            )}
+            {showEditInBulk && (
+              <ActionsMenuItem testId="edit-in-bulk" onClick={onEditInBulk}>
+                {t('linked_collection.actions.edit_in_bulk')}
+              </ActionsMenuItem>
+            )}
+            {/* Linked collections have no contract of their own: their items live under the third party. */}
+            {isOnChain && !isLinked && (
+              <ActionsMenuItem
+                testId="copy-address"
+                onClick={() => void copy(collection.contractAddress, 'collection_detail_page.actions.copied_address')}
+              >
+                {t('collection_detail_page.actions.copy_address')}
+              </ActionsMenuItem>
+            )}
             {shopUrl && (
               <ActionsMenuItem testId="view-in-shop" onClick={() => openExternal(shopUrl)}>
                 {t('collection_detail_page.actions.view_in_shop')}

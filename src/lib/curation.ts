@@ -158,6 +158,12 @@ const NONE = 'all'
 const ADDRESS = /^0x[0-9a-f]{40}$/i
 export const CURATION_PAGE_SIZE = 12
 
+export enum CurationTypeFilter {
+  ALL = 'all',
+  STANDARD = 'standard',
+  LINKED = 'linked'
+}
+
 export type CurationFilters = {
   page: number
   search: string
@@ -168,6 +174,7 @@ export type CurationFilters = {
   reviewType: ReviewType | null
   sort: CurationSort
   tag: string | null
+  type: CurationTypeFilter
 }
 
 /**
@@ -178,6 +185,7 @@ export type CurationFilters = {
 export function parseCurationFilters(params: URLSearchParams, address?: string): CurationFilters {
   const sort = params.get('sort') as CurationSort
   const reviewType = params.get('review_type') as ReviewType
+  const type = params.get('type') as CurationTypeFilter
   return {
     page: Math.max(1, Number(params.get('page')) || 1),
     search: params.get('q') ?? '',
@@ -189,7 +197,8 @@ export function parseCurationFilters(params: URLSearchParams, address?: string):
     ),
     reviewType: Object.values(ReviewType).includes(reviewType) ? reviewType : null,
     sort: CURATION_SORTS.includes(sort) ? sort : CollectionSort.REQUESTED_AT_DESC,
-    tag: params.get('tag') || null
+    tag: params.get('tag') || null,
+    type: Object.values(CurationTypeFilter).includes(type) ? type : CurationTypeFilter.ALL
   }
 }
 
@@ -211,14 +220,15 @@ export function toMultiParam(values: string[], defaults: string[]): string[] | n
   return values.length ? values : [NONE]
 }
 
-/** GET /collections query string for the curation list; always published standard collections. */
+/** GET /collections query string for the curation list: published collections, standard and linked. */
 export function toCurationQueryString(filters: CurationFilters, limit = CURATION_PAGE_SIZE): string {
   const query = new URLSearchParams()
   query.append('is_published', 'true')
   for (const assignee of filters.assignees) query.append('assignee', assignee)
   for (const status of filters.statuses.flatMap(status => SERVER_STATUSES[status])) query.append('status', status)
   if (filters.reviewType) query.append('review_type', filters.reviewType)
-  query.append('type', CollectionType.STANDARD)
+  if (filters.type === CurationTypeFilter.STANDARD) query.append('type', CollectionType.STANDARD)
+  if (filters.type === CurationTypeFilter.LINKED) query.append('type', CollectionType.THIRD_PARTY)
   query.append('sort', filters.sort)
   if (filters.search) query.append('q', filters.search)
   if (filters.tag) query.append('tag', filters.tag.toLowerCase())

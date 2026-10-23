@@ -20,14 +20,16 @@ export const Pill = styled.span`
     border-color: ${theme.colors.green};
     background: ${theme.colors.greenTint};
   }
-  &[data-status='under_review'] {
+  &[data-status='under_review'],
+  &[data-status='ready_to_push'] {
     color: ${theme.colors.amber};
     border-color: ${theme.colors.amber};
     background: ${theme.colors.orangeTint};
   }
   &[data-status='draft'],
   &[data-status='publishing'],
-  &[data-status='not_published'] {
+  &[data-status='not_published'],
+  &[data-status='ready_to_publish'] {
     color: ${theme.colors.infoLighter};
     border-color: ${theme.colors.infoLight};
     background: ${theme.colors.infoTint};
@@ -36,6 +38,12 @@ export const Pill = styled.span`
     color: ${theme.colors.redBright};
     border-color: ${theme.colors.redBright};
     background: ${theme.colors.redTint};
+  }
+  &[data-status='pending_mapping'],
+  &[data-status='pending_migration'] {
+    color: ${theme.colors.warningText};
+    border-color: ${theme.colors.amber};
+    background: ${theme.colors.warningOverlay};
   }
   &[data-status='disabled'] {
     color: ${theme.colors.gray4};

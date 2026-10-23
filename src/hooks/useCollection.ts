@@ -5,6 +5,7 @@ import { buildCollectionInitializeData } from '~/lib/saveCollection'
 import { useCollectionCuration } from '~/hooks/useCuration'
 import {
   getCollectionDisplayStatus,
+  isLinkedCollection,
   withoutCollection,
   type Collection,
   type CollectionDisplayStatus
@@ -26,9 +27,12 @@ export function useCollectionStatus(
   address: string | undefined,
   collection: Collection | undefined
 ): CollectionDisplayStatus | undefined {
-  const curation = useCollectionCuration(address, collection)
+  const curation = useCollectionCuration(
+    address,
+    collection && !isLinkedCollection(collection) ? collection : undefined
+  )
   if (!collection) return undefined
-  if (!collection.isPublished) return getCollectionDisplayStatus(collection, null)
+  if (!collection.isPublished || isLinkedCollection(collection)) return getCollectionDisplayStatus(collection, null)
   // Without its curation the status could be wrong, so a failed request keeps the pill hidden.
   if (!curation.isSuccess) return undefined
   return getCollectionDisplayStatus(collection, curation.data?.status ?? null)
@@ -59,6 +63,8 @@ export function useSaveCollection(address: string | undefined) {
   return useMutation({
     mutationFn: async (collection: Collection) => {
       if (!address) throw new Error('Wallet disconnected')
+      // A linked collection never goes on chain as a contract: the server takes it without initialize data.
+      if (isLinkedCollection(collection)) return saveCollection(address, collection, '')
       const items = collection.itemCount > 0 ? await fetchAllCollectionItems(address, collection.id) : []
       const data = buildCollectionInitializeData(collection, items, address)
       return saveCollection(address, collection, data)

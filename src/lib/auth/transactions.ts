@@ -235,6 +235,98 @@ export async function readTransactionOutcome(
   }
 }
 
+export type TransactionSettlement = 'mined' | 'reverted' | 'dropped' | 'pending'
+
+type TransactionReader = Pick<
+  ethers.providers.Provider,
+  'getTransactionReceipt' | 'getTransaction' | 'getTransactionCount'
+>
+
+/** Who sent a transaction and with which nonce: once the nonce is used, the transaction can never run. */
+export type TransactionSender = { from: string; nonce: number }
+
+type WatchOptions = {
+  timeoutMs: number
+  pollMs: number
+  /** Known from when it was sent: nodes usually forget a replaced transaction, so its own lookup can't tell. */
+  sender?: TransactionSender
+  /** The sender and nonce, the first time the node returns the transaction: worth keeping for a later watch. */
+  onSeen?: (sender: TransactionSender) => void
+  sleep?: (ms: number) => Promise<void>
+  now?: () => number
+}
+
+const defaultSleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
+
+/**
+ * Polls a transaction until it settles or `timeoutMs` passes: `dropped` only once its nonce was used by another
+ * transaction (a wallet speed-up or cancel), read from the transaction or the `sender` recorded when it was sent;
+ * `pending` when it is still waiting by then, or nothing tells, since the read node may simply not have it.
+ */
+export async function watchTransaction(
+  reader: TransactionReader,
+  txHash: string,
+  { timeoutMs, pollMs, sender, onSeen, sleep = defaultSleep, now = Date.now }: WatchOptions
+): Promise<TransactionSettlement> {
+  const deadline = now() + timeoutMs
+  const fromReceipt = (receipt: ethers.providers.TransactionReceipt) => (receipt.status === 1 ? 'mined' : 'reverted')
+  let seen = false
+  for (;;) {
+    try {
+      const receipt = await reader.getTransactionReceipt(txHash)
+      if (receipt) return fromReceipt(receipt)
+      const tx = await reader.getTransaction(txHash)
+      if (tx && !sender && !seen) {
+        seen = true
+        onSeen?.({ from: tx.from, nonce: tx.nonce })
+      }
+      const known = tx ? { from: tx.from, nonce: tx.nonce } : sender
+      if (known) {
+        if ((await reader.getTransactionCount(known.from, 'latest')) > known.nonce) {
+          // It may have been mined between the two reads.
+          const late = await reader.getTransactionReceipt(txHash)
+          return late ? fromReceipt(late) : 'dropped'
+        }
+      }
+    } catch {
+      // A failed read says nothing about the transaction.
+    }
+    if (now() >= deadline) return 'pending'
+    await sleep(pollMs)
+  }
+}
+
+const SETTLE_TIMEOUT_MS = 5 * 60_000
+const SETTLE_POLL_MS = 4_000
+
+export async function settleTransaction(
+  chainId: number,
+  txHash: string,
+  sender?: TransactionSender,
+  onSeen?: (sender: TransactionSender) => void
+): Promise<TransactionSettlement> {
+  return watchTransaction(await getReadProvider(chainId), txHash, {
+    timeoutMs: SETTLE_TIMEOUT_MS,
+    pollMs: SETTLE_POLL_MS,
+    sender,
+    onSeen
+  })
+}
+
+const SENDER_READS = 5
+const SENDER_READ_DELAY_MS = 2_000
+
+/** The sender and nonce of a transaction just sent, once the read node has it; undefined if it never shows up. */
+export async function readTransactionSender(chainId: number, txHash: string): Promise<TransactionSender | undefined> {
+  const provider = await getReadProvider(chainId)
+  for (let read = 0; read < SENDER_READS; read++) {
+    if (read > 0) await defaultSleep(SENDER_READ_DELAY_MS)
+    const tx = await provider.getTransaction(txHash).catch(() => null)
+    if (tx) return { from: tx.from, nonce: tx.nonce }
+  }
+  return undefined
+}
+
 /** Resolves true when the transaction is mined successfully, false when it reverted. */
 export async function waitForTransaction(chainId: number, txHash: string, timeoutMs?: number): Promise<boolean> {
   const provider = await getReadProvider(chainId)

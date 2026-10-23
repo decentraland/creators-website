@@ -11,7 +11,11 @@ import { analyzeModel } from '~/lib/models'
 import { isRarity } from '~/lib/rarities'
 import { isAutoThumbnailStale } from '~/lib/thumbnailPose'
 import { getWearableCategoryOptions, hidesForCategory } from '~/lib/wearableCategories'
+import { resolveLinkedManifest, type LinkedManifestTarget } from '~/lib/linkedManifest'
 import { type ItemDraft } from './AddItemsModal.state'
+
+/** The linked collection a draft is for: what its items may be and where their URN and mapping come from. */
+export type LinkedDraftTarget = LinkedManifestTarget
 
 const IMAGE_WEARABLE_METRICS: ItemMetrics = {
   triangles: 100,
@@ -38,8 +42,14 @@ function sanitizePlayMode(playMode: string | undefined): EmotePlayMode | null {
  * import problems. The returned patch may still lack metrics/thumbnail — DraftProcessor fills
  * those through the WearablePreview iframe.
  */
-export async function processDraftFile(file: File, prefillHides?: string[]): Promise<Partial<ItemDraft>> {
+export async function processDraftFile(
+  file: File,
+  prefillHides?: string[],
+  linked?: LinkedDraftTarget
+): Promise<Partial<ItemDraft>> {
   const loaded = await loadItemFile(file)
+  // Linked collections hold plain wearables only (legacy: "This item type is not allowed in Linked Wearables Collections").
+  if (linked && loaded.scene) throw new ItemFileError('linked_smart_wearable')
   // A video shipped in the zip gets the same decode check as one picked in the form.
   if (loaded.contents[VIDEO_PATH]) {
     await loadVideoMetadata(loaded.contents[VIDEO_PATH]).catch(() => {
@@ -65,6 +75,7 @@ export async function processDraftFile(file: File, prefillHides?: string[]): Pro
     hides
   )
 
+  if (linked && analysis.type === ItemType.EMOTE) throw new ItemFileError('linked_emote')
   const isSmart = !!loaded.scene
   // Emotes and smart wearables are always unisex.
   const isUnisex = analysis.type === ItemType.EMOTE || isSmart
@@ -90,6 +101,11 @@ export async function processDraftFile(file: File, prefillHides?: string[]): Pro
   if (analysis.type === ItemType.EMOTE && analysis.emoteMetrics) {
     const { sequences, duration, frames, fps, props, additionalArmatures } = analysis.emoteMetrics
     patch.metrics = { sequences, duration, frames, fps, props, additionalArmatures }
+  }
+
+  if (linked) {
+    // A zip's wearable.json may fix the URN and the mapping; anything else gets the default "any token" mapping.
+    Object.assign(patch, resolveLinkedManifest(loaded.wearable, linked))
   }
 
   if (loaded.wearable) {

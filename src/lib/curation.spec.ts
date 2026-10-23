@@ -3,6 +3,7 @@ import { CollectionSort, type Collection } from './collections'
 import {
   CurationState,
   CurationStatusFilter,
+  CurationTypeFilter,
   ReviewAction,
   ReviewType,
   UNASSIGNED,
@@ -200,7 +201,8 @@ describe('curation filters', () => {
       assignees: [UNASSIGNED, '0xme'],
       reviewType: null,
       sort: CollectionSort.REQUESTED_AT_DESC,
-      tag: null
+      tag: null,
+      type: CurationTypeFilter.ALL
     })
   })
 
@@ -241,10 +243,10 @@ describe('curation filters', () => {
     expect(toMultiParam(['0xme', UNASSIGNED], defaultAssignees('0xME'))).toBeNull()
   })
 
-  it('builds the committee list query for published standard collections', () => {
+  it('builds the committee list query for the picked kind of published collections', () => {
     const filters = parseCurationFilters(
       new URLSearchParams(
-        'status=approved&status=to_review&assignee=0xABCDEF0123456789ABCDEF0123456789ABCDEF01&assignee=unassigned&review_type=updates&q=hat&sort=NAME_ASC&page=2&tag=Summer'
+        'status=approved&status=to_review&assignee=0xABCDEF0123456789ABCDEF0123456789ABCDEF01&assignee=unassigned&review_type=updates&q=hat&sort=NAME_ASC&page=2&tag=Summer&type=standard'
       ),
       ME
     )
@@ -264,7 +266,7 @@ describe('curation filters', () => {
     })
   })
 
-  it('leaves cleared filters out of the query', () => {
+  it('leaves cleared filters out of the query, so standard and linked collections list together', () => {
     const query = new URLSearchParams(
       toCurationQueryString(parseCurationFilters(new URLSearchParams('status=all&assignee=all'), ME))
     )
@@ -272,6 +274,12 @@ describe('curation filters', () => {
     expect(query.has('assignee')).toBe(false)
     expect(query.has('review_type')).toBe(false)
     expect(query.has('tag')).toBe(false)
+    expect(query.has('type')).toBe(false)
+  })
+
+  it('asks for third-party collections under the Linked type', () => {
+    const query = new URLSearchParams(toCurationQueryString(parseCurationFilters(new URLSearchParams('type=linked'))))
+    expect(query.get('type')).toBe('third_party')
   })
 })
 

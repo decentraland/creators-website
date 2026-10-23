@@ -1,0 +1,156 @@
+import { describe, it, expect } from 'vitest'
+import { type ContractNetwork } from '@dcl/schemas'
+import {
+  buildLinkedItemUrn,
+  buildNewLinkedCollection,
+  decodeLinkedUrn,
+  fromRemoteThirdParty,
+  getDefaultUrnSuffix,
+  getLinkedContractNetworks,
+  getThirdPartyId,
+  isThirdPartyManager,
+  isValidUrnSuffix,
+  slugify,
+  toRawMetadata,
+  validateLinkedCollectionName,
+  withCollectionUrnSuffix
+} from './thirdParty'
+
+const CONTRACT = { network: 'amoy' as ContractNetwork, address: '0x1D9FB685C257E74F869BA302E260C0B68F5EBB37' }
+
+describe('slugify / getDefaultUrnSuffix', () => {
+  it('lowercases, strips accents and joins words with dashes', () => {
+    expect(slugify('Pirate Hats – Édition 2')).toBe('pirate-hats-edition-2')
+  })
+
+  it('suffixes the slug with four hex characters, falling back to "default" for an empty name', () => {
+    expect(getDefaultUrnSuffix('Pirate Hats')).toMatch(/^pirate-hats-[0-9a-f]{4}$/)
+    expect(getDefaultUrnSuffix('   ')).toMatch(/^default-[0-9a-f]{4}$/)
+  })
+})
+
+describe('decodeLinkedUrn', () => {
+  it('splits a collection URN into its third party and collection suffix', () => {
+    expect(decodeLinkedUrn('urn:decentraland:amoy:collections-thirdparty:brand:hats')).toEqual({
+      thirdPartyId: 'urn:decentraland:amoy:collections-thirdparty:brand',
+      collectionSuffix: 'hats'
+    })
+  })
+
+  it('also reads the item suffix of an item URN', () => {
+    expect(decodeLinkedUrn('urn:decentraland:amoy:collections-thirdparty:brand:hats:cap-1')?.itemSuffix).toBe('cap-1')
+  })
+
+  it('is null for standard URNs and malformed ones', () => {
+    expect(decodeLinkedUrn('urn:decentraland:amoy:collections-v2:0xcontract')).toBeNull()
+    expect(decodeLinkedUrn('urn:decentraland:amoy:collections-thirdparty:brand')).toBeNull()
+    expect(decodeLinkedUrn('urn:decentraland:amoy:collections-thirdparty:brand::x')).toBeNull()
+    expect(decodeLinkedUrn(undefined)).toBeNull()
+  })
+})
+
+describe('getThirdPartyId', () => {
+  it('is the collection URN without its collection suffix', () => {
+    expect(getThirdPartyId({ urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats' })).toBe(
+      'urn:decentraland:amoy:collections-thirdparty:brand'
+    )
+  })
+
+  it('is absent for standard collections', () => {
+    expect(getThirdPartyId({ urn: 'urn:decentraland:amoy:collections-v2:0xcontract' })).toBeUndefined()
+  })
+})
+
+describe('isThirdPartyManager', () => {
+  const thirdParty = { managers: ['0xAbC0000000000000000000000000000000000001'] }
+
+  it("lets the third party's managers in, whatever the address casing", () => {
+    expect(isThirdPartyManager(thirdParty, '0xabc0000000000000000000000000000000000001')).toBe(true)
+  })
+
+  it('keeps everyone else out', () => {
+    expect(isThirdPartyManager(thirdParty, '0xdef0000000000000000000000000000000000002')).toBe(false)
+    expect(isThirdPartyManager(thirdParty, undefined)).toBe(false)
+  })
+})
+
+describe('buildNewLinkedCollection', () => {
+  it('gives the collection its own third party and links the contract, address lowercased', () => {
+    const collection = buildNewLinkedCollection('Pirate Hats', '0xowner', CONTRACT, 'pirate-hats-ab12')
+    expect(collection.urn).toBe(`urn:decentraland:amoy:collections-thirdparty:pirate-hats-ab12:${collection.id}`)
+    expect(collection.linkedContractAddress).toBe(CONTRACT.address.toLowerCase())
+    expect(collection.linkedContractNetwork).toBe('amoy')
+    expect(collection).toMatchObject({ owner: '0xowner', isPublished: false, minters: [], managers: [] })
+  })
+})
+
+describe('withCollectionUrnSuffix / buildLinkedItemUrn', () => {
+  const collection = buildNewLinkedCollection('Hats', '0xowner', CONTRACT, 'brand')
+
+  it('replaces only the collection suffix', () => {
+    expect(withCollectionUrnSuffix(collection, 'summer-hats').urn).toBe(
+      'urn:decentraland:amoy:collections-thirdparty:brand:summer-hats'
+    )
+  })
+
+  it('appends the item suffix to the collection URN', () => {
+    expect(buildLinkedItemUrn(collection.urn, 'cap-01')).toBe(`${collection.urn}:cap-01`)
+  })
+
+  it('refuses a standard collection', () => {
+    expect(() =>
+      withCollectionUrnSuffix({ ...collection, urn: 'urn:decentraland:amoy:collections-v2:0x1' }, 'x')
+    ).toThrow()
+  })
+})
+
+describe('isValidUrnSuffix', () => {
+  it('accepts anything without colons or whitespace', () => {
+    expect(isValidUrnSuffix('summer-hats_2')).toBe(true)
+    expect(isValidUrnSuffix('summer hats')).toBe(false)
+    expect(isValidUrnSuffix('a:b')).toBe(false)
+    expect(isValidUrnSuffix('')).toBe(false)
+  })
+})
+
+describe('validateLinkedCollectionName', () => {
+  it('allows up to 42 characters without colons', () => {
+    expect(validateLinkedCollectionName('x'.repeat(42))).toBeNull()
+    expect(validateLinkedCollectionName('x'.repeat(43))).toBe('too_long')
+    expect(validateLinkedCollectionName('a:b')).toBe('invalid_character')
+    expect(validateLinkedCollectionName('  ')).toBe('empty')
+  })
+})
+
+describe('toRawMetadata', () => {
+  it('encodes the third party as the registry stores it', () => {
+    expect(toRawMetadata({ name: 'Brand', description: '', contracts: [CONTRACT] })).toBe(
+      `tp:1:Brand::amoy-${CONTRACT.address}`
+    )
+    expect(toRawMetadata({ name: 'Brand', description: 'desc', contracts: [] })).toBe('tp:1:Brand:desc')
+  })
+})
+
+describe('getLinkedContractNetworks', () => {
+  it('hides the testnets in production', () => {
+    expect(getLinkedContractNetworks(false)).toEqual(['mainnet', 'matic', 'sepolia', 'amoy'])
+    expect(getLinkedContractNetworks(true)).toEqual(['mainnet', 'matic'])
+  })
+})
+
+describe('fromRemoteThirdParty', () => {
+  it('fills what a virtual third party lacks', () => {
+    expect(fromRemoteThirdParty({ id: 'urn:tp', name: 'Brand', managers: ['0x1'] })).toEqual({
+      id: 'urn:tp',
+      root: '',
+      managers: ['0x1'],
+      name: 'Brand',
+      description: '',
+      isApproved: false,
+      isProgrammatic: false,
+      maxItems: '0',
+      contracts: [],
+      published: false
+    })
+  })
+})
