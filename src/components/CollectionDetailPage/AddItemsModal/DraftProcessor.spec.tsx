@@ -66,7 +66,7 @@ describe('DraftProcessor', () => {
     expect(onResult.mock.calls[0][1]).toMatchObject({ metrics: REAL_METRICS, isAutoThumbnail: true })
   })
 
-  it('ignores a LOAD announced for the empty scene and reads the metrics again once the model is in', async () => {
+  it('ignores a LOAD announced for the empty scene and reads the metrics off the render that follows', async () => {
     getMetrics.mockResolvedValueOnce(EMPTY_SCENE_METRICS).mockResolvedValue(REAL_METRICS)
     const onResult = vi.fn()
     const onError = vi.fn()
@@ -75,12 +75,43 @@ describe('DraftProcessor', () => {
     await iframeLoads()
     expect(onResult).not.toHaveBeenCalled()
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000)
-    })
-
+    await iframeLoads()
     expect(onError).not.toHaveBeenCalled()
     expect(onResult).toHaveBeenCalledTimes(1)
     expect(onResult.mock.calls[0][1].metrics).toEqual(REAL_METRICS)
+  })
+
+  it('does not give up on a model that takes a while to show up in the preview', async () => {
+    getMetrics.mockResolvedValueOnce(EMPTY_SCENE_METRICS).mockResolvedValue(REAL_METRICS)
+    const onResult = vi.fn()
+    const onError = vi.fn()
+    render(<DraftProcessor draft={wearableDraft()} onResult={onResult} onError={onError} />)
+
+    await iframeLoads()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000)
+    })
+    expect(onError).not.toHaveBeenCalled()
+
+    await iframeLoads()
+    expect(onResult.mock.calls[0][1].metrics).toEqual(REAL_METRICS)
+  })
+
+  it('fails the draft once when the preview never gets the model in, and ignores anything after that', async () => {
+    getMetrics.mockResolvedValue(EMPTY_SCENE_METRICS)
+    const onResult = vi.fn()
+    const onError = vi.fn()
+    render(<DraftProcessor draft={wearableDraft()} onResult={onResult} onError={onError} />)
+
+    await iframeLoads()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000)
+    })
+    expect(onError).toHaveBeenCalledTimes(1)
+
+    getMetrics.mockResolvedValue(REAL_METRICS)
+    await iframeLoads()
+    expect(onResult).not.toHaveBeenCalled()
+    expect(onError).toHaveBeenCalledTimes(1)
   })
 })

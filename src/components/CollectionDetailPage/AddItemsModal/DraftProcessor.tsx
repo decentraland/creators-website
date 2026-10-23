@@ -16,6 +16,8 @@ const THUMBNAIL_SIZE = 1024
 // has replaced it"); a few attempts absorb that without hiding a genuinely broken file.
 const MAX_ATTEMPTS = 4
 const RETRY_DELAY_MS = 750
+// A preview that never answers would otherwise hold the whole queue: drafts are processed one at a time.
+const PROCESSING_TIMEOUT_MS = 30_000
 
 type Props = {
   draft: ItemDraft
@@ -54,9 +56,8 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
 
   const attempt = () => {
     const run = runRef.current
-    if (run.runKey !== runKey || run.done || run.busy) return
+    if (run.done || run.busy) return
     run.busy = true
-    run.attempts++
 
     void (async () => {
       try {
@@ -73,10 +74,9 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
         const metrics: ItemMetrics =
           draft.type === ItemType.WEARABLE ? await controller.scene.getMetrics() : (draft.metrics ?? {})
         // The iframe also announces its initial, model-less render, and that LOAD can land after the UPDATE
-        // was sent: metrics read against that empty scene are all zeros. A wearable always has a mesh.
-        if (draft.type === ItemType.WEARABLE && !metrics.meshes) {
-          throw new Error('The preview scene has no model yet')
-        }
+        // was sent: metrics read against that empty scene are all zeros. Not a failure, the model just isn't
+        // in yet; the real render's own LOAD starts the next read.
+        if (draft.type === ItemType.WEARABLE && !metrics.meshes) return
 
         const patch: Partial<ItemDraft> = { metrics }
         if (!draft.thumbnail || isAutoThumbnailStale(draft)) {
@@ -93,14 +93,15 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
           if (thumbnailBlob) patch.contents = { ...draft.contents, [THUMBNAIL_PATH]: thumbnailBlob }
         }
 
-        if (run.runKey !== runKey) return
+        if (runRef.current !== run) return
         run.done = true
         onResult(draft.id, patch)
       } catch (error) {
-        run.busy = false
-        if (run.runKey !== runKey || run.done) return
+        if (runRef.current !== run || run.done) return
+        run.attempts++
         if (run.attempts >= MAX_ATTEMPTS) {
           console.error('Preview processing failed:', error)
+          run.done = true
           onError(draft.id)
           return
         }
@@ -113,7 +114,17 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
 
   // The iframe's onLoad only fires once per draft: a later pose change has to kick off its run here.
   useEffect(() => {
+    const run = runRef.current
     if (loadRef.current.phase === 'loaded') attempt()
+    const watchdog = window.setTimeout(() => {
+      if (run.done) return
+      run.done = true
+      onError(draft.id)
+    }, PROCESSING_TIMEOUT_MS)
+    return () => {
+      window.clearTimeout(watchdog)
+      window.clearTimeout(run.retryTimer)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runKey])
 
@@ -146,9 +157,10 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
         onError={() => {
           // Iframe-level errors also count as attempts so a broken preview can't hang forever.
           const run = runRef.current
-          if (run.runKey !== runKey || run.done || run.busy) return
+          if (run.done || run.busy) return
           run.attempts++
           if (run.attempts >= MAX_ATTEMPTS) {
+            run.done = true
             onError(draft.id)
           } else {
             window.clearTimeout(run.retryTimer)
