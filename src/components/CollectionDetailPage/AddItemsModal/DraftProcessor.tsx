@@ -72,6 +72,11 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
 
         const metrics: ItemMetrics =
           draft.type === ItemType.WEARABLE ? await controller.scene.getMetrics() : (draft.metrics ?? {})
+        // The iframe also announces its initial, model-less render, and that LOAD can land after the UPDATE
+        // was sent: metrics read against that empty scene are all zeros. A wearable always has a mesh.
+        if (draft.type === ItemType.WEARABLE && !metrics.meshes) {
+          throw new Error('The preview scene has no model yet')
+        }
 
         const patch: Partial<ItemDraft> = { metrics }
         if (!draft.thumbnail || isAutoThumbnailStale(draft)) {
