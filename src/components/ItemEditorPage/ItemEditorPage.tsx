@@ -519,7 +519,8 @@ const ItemEditorPage = () => {
             onOpen={onValidationOpen}
           />
         )}
-        {mode === 'edit' && collection && hasCollectionRole(collection, address) && (
+        {/* Linked collections have no owner: their third party's managers are who works on them. */}
+        {mode === 'edit' && collection && (isLinked ? isManager : hasCollectionRole(collection, address)) && (
           <S.PreviewLaunch
             collectionId={collection.id}
             disabled={items.length === 0}
