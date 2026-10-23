@@ -39,9 +39,9 @@ export function isCommitteeMember(members: string[] | undefined, address: string
   return members.some(member => member.toLowerCase() === target)
 }
 
+/** A pending request is "to review" whether or not a curator has it: the assignee says who, the state doesn't. */
 export enum CurationState {
   TO_REVIEW = 'to_review',
-  UNDER_REVIEW = 'under_review',
   APPROVED = 'approved',
   REJECTED = 'rejected',
   DISABLED = 'disabled'
@@ -66,7 +66,6 @@ export function getCurationState(collection: Collection, curation: CollectionCur
     if (isDisabled(collection, curation)) return CurationState.DISABLED
     if (curation?.status === 'rejected') return CurationState.REJECTED
   }
-  if (curation?.status === 'pending' && curation.assignee) return CurationState.UNDER_REVIEW
   return CurationState.TO_REVIEW
 }
 
@@ -103,56 +102,122 @@ export function canEditAssignee(collection: Collection, curation: CollectionCura
   return !(collection.isApproved && curation.status === 'approved')
 }
 
+/** The status picker's options: one "to review" covers a pending request whether or not a curator has it. */
 export enum CurationStatusFilter {
-  ALL = 'all',
   TO_REVIEW = 'to_review',
-  UNDER_REVIEW = 'under_review',
   APPROVED = 'approved',
-  REJECTED = 'rejected'
+  REJECTED = 'rejected',
+  DISABLED = 'disabled'
+}
+
+/** The status picker's options, in display order; nothing picked means every status. */
+export const STATUS_FILTERS = Object.values(CurationStatusFilter)
+export const DEFAULT_STATUS_FILTERS = [CurationStatusFilter.TO_REVIEW]
+
+// builder-server splits a pending request by assignee; the picker doesn't, since the assignee filter already does.
+const SERVER_STATUSES: Record<CurationStatusFilter, string[]> = {
+  [CurationStatusFilter.TO_REVIEW]: ['to_review', 'under_review'],
+  [CurationStatusFilter.APPROVED]: ['approved'],
+  [CurationStatusFilter.REJECTED]: ['rejected'],
+  [CurationStatusFilter.DISABLED]: ['disabled']
+}
+
+/** What a review is for: a collection never approved on chain, or changes to one that was (or is). */
+export enum ReviewType {
+  NEW = 'new',
+  UPDATES = 'updates'
+}
+
+export function getReviewType(collection: Collection): ReviewType {
+  // Same rule as builder-server's review_type filter, so the pill and the chips agree. It reads a first approval
+  // stalled after the rescue step (reviewedAt moved, never approved) as updates, on both sides.
+  return hasBeenApproved(collection) ? ReviewType.UPDATES : ReviewType.NEW
+}
+
+/** Assignee picker value for the collections without a curator; builder-server takes it as is. */
+export const UNASSIGNED = 'unassigned'
+
+/** What the assignee picker opens on: no curator, plus the signed-in one. */
+export function defaultAssignees(address?: string): string[] {
+  return address ? [UNASSIGNED, address.toLowerCase()] : [UNASSIGNED]
 }
 
 // Only sorts builder-server implements: an unknown one drops the ORDER BY and paginates at random.
 export const CURATION_SORTS = [
+  CollectionSort.REQUESTED_AT_DESC,
+  CollectionSort.REQUESTED_AT_ASC,
   CollectionSort.MOST_RELEVANT,
-  CollectionSort.LAST_ACTIVITY_DESC,
   CollectionSort.CREATED_AT_DESC,
   CollectionSort.NAME_ASC,
   CollectionSort.NAME_DESC
 ] as const
 export type CurationSort = (typeof CURATION_SORTS)[number]
 
-export const ALL_ASSIGNEES = 'all'
+/** URL value that clears a filter with defaults, as opposed to leaving it out. */
+const NONE = 'all'
+const ADDRESS = /^0x[0-9a-f]{40}$/i
 export const CURATION_PAGE_SIZE = 12
 
 export type CurationFilters = {
   page: number
   search: string
-  status: CurationStatusFilter
-  assignee: string
+  /** Any of them matches; empty means every status. */
+  statuses: CurationStatusFilter[]
+  /** Curator addresses and/or `UNASSIGNED`; empty means everyone. */
+  assignees: string[]
+  reviewType: ReviewType | null
   sort: CurationSort
   tag: string | null
 }
 
-/** The page's filters as they live in the URL; unknown values fall back to the defaults. */
-export function parseCurationFilters(params: URLSearchParams): CurationFilters {
-  const status = params.get('status') as CurationStatusFilter
+/**
+ * The page's filters as they live in the URL; unknown values fall back to the defaults. A missing `status` or
+ * `assignee` means the defaults (to review, unassigned and the signed-in curator), while `all` means the filter
+ * was cleared on purpose.
+ */
+export function parseCurationFilters(params: URLSearchParams, address?: string): CurationFilters {
   const sort = params.get('sort') as CurationSort
+  const reviewType = params.get('review_type') as ReviewType
   return {
     page: Math.max(1, Number(params.get('page')) || 1),
     search: params.get('q') ?? '',
-    status: Object.values(CurationStatusFilter).includes(status) ? status : CurationStatusFilter.ALL,
-    assignee: params.get('assignee')?.toLowerCase() || ALL_ASSIGNEES,
-    sort: CURATION_SORTS.includes(sort) ? sort : CollectionSort.MOST_RELEVANT,
+    statuses: parseMulti(params, 'status', DEFAULT_STATUS_FILTERS, value =>
+      STATUS_FILTERS.includes(value as CurationStatusFilter) ? (value as CurationStatusFilter) : null
+    ),
+    assignees: parseMulti(params, 'assignee', defaultAssignees(address), value =>
+      value === UNASSIGNED ? value : ADDRESS.test(value) ? value.toLowerCase() : null
+    ),
+    reviewType: Object.values(ReviewType).includes(reviewType) ? reviewType : null,
+    sort: CURATION_SORTS.includes(sort) ? sort : CollectionSort.REQUESTED_AT_DESC,
     tag: params.get('tag') || null
   }
+}
+
+function parseMulti<T extends string>(
+  params: URLSearchParams,
+  key: string,
+  defaults: T[],
+  parse: (value: string) => T | null
+): T[] {
+  const values = params.getAll(key)
+  if (values.includes(NONE)) return []
+  const known = Array.from(new Set(values.map(parse).filter((value): value is T => value !== null)))
+  return known.length ? known : defaults
+}
+
+/** The URL params for a multi-value filter: each value, `all` for an empty one, or nothing for the defaults. */
+export function toMultiParam(values: string[], defaults: string[]): string[] | null {
+  if (values.length === defaults.length && values.every(value => defaults.includes(value))) return null
+  return values.length ? values : [NONE]
 }
 
 /** GET /collections query string for the curation list; always published standard collections. */
 export function toCurationQueryString(filters: CurationFilters, limit = CURATION_PAGE_SIZE): string {
   const query = new URLSearchParams()
   query.append('is_published', 'true')
-  if (filters.assignee !== ALL_ASSIGNEES) query.append('assignee', filters.assignee)
-  if (filters.status !== CurationStatusFilter.ALL) query.append('status', filters.status)
+  for (const assignee of filters.assignees) query.append('assignee', assignee)
+  for (const status of filters.statuses.flatMap(status => SERVER_STATUSES[status])) query.append('status', status)
+  if (filters.reviewType) query.append('review_type', filters.reviewType)
   query.append('type', CollectionType.STANDARD)
   query.append('sort', filters.sort)
   if (filters.search) query.append('q', filters.search)

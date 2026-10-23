@@ -918,21 +918,29 @@
   "curation_page": {
     "title": "Curaduría",
     "sign_in": "Inicia sesión para revisar colecciones",
-    "search_placeholder": "Busca por nombre o dirección del dueño",
+    "search_placeholder": "Buscar por nombre",
     "filter": {
-      "all": "Todas",
       "to_review": "Por revisar",
-      "under_review": "En revisión",
       "approved": "Aprobadas",
       "rejected": "Rechazadas",
+      "disabled": "Deshabilitadas",
       "all_assignees": "Todos los curadores",
       "you": "{name} (tú)",
       "assignee": "Curador asignado",
-      "sort": "Ordenar por"
+      "sort": "Ordenar por",
+      "all_statuses": "Todos los estados",
+      "status": "Estado",
+      "unassigned": "Sin asignar",
+      "review_type": {
+        "all": "Todas",
+        "new": "Nuevas",
+        "updates": "Cambios"
+      }
     },
     "sort": {
+      "REQUESTED_AT_DESC": "Solicitudes más recientes",
+      "REQUESTED_AT_ASC": "Solicitudes más antiguas",
       "MOST_RELEVANT": "Más relevantes",
-      "LAST_ACTIVITY_DESC": "Actividad reciente",
       "CREATED_AT_DESC": "Colecciones más recientes",
       "NAME_ASC": "Nombre A-Z",
       "NAME_DESC": "Nombre Z-A"
@@ -941,7 +949,7 @@
       "collection": "Colección",
       "owner": "Dueño",
       "date": "Solicitada",
-      "last_update": "Última actualización",
+      "type": "Tipo",
       "status": "Estado",
       "assignee": "Curador",
       "requested": "Revisión solicitada",
@@ -1361,10 +1369,16 @@
   },
   "curation_state": {
     "to_review": "Por revisar",
-    "under_review": "En revisión",
     "approved": "Aprobada",
     "rejected": "Rechazada",
     "disabled": "Deshabilitada"
+  },
+  "review_type": {
+    "new": "Nueva",
+    "updates": "Cambios"
+  },
+  "multi_select": {
+    "summary": "{first} +{count}"
   },
   "assign_curator_modal": {
     "title_self": "Revisar {collection}",

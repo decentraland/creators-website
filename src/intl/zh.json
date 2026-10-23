@@ -918,21 +918,29 @@
   "curation_page": {
     "title": "审核",
     "sign_in": "登录以审核系列",
-    "search_placeholder": "按名称或所有者地址搜索",
+    "search_placeholder": "按名称搜索",
     "filter": {
-      "all": "全部",
       "to_review": "待审核",
-      "under_review": "审核中",
       "approved": "已批准",
       "rejected": "已拒绝",
+      "disabled": "已禁用",
       "all_assignees": "所有审核员",
       "you": "{name}（您）",
       "assignee": "指派的审核员",
-      "sort": "排序方式"
+      "sort": "排序方式",
+      "all_statuses": "所有状态",
+      "status": "状态",
+      "unassigned": "未指派",
+      "review_type": {
+        "all": "全部",
+        "new": "新系列",
+        "updates": "更新"
+      }
     },
     "sort": {
+      "REQUESTED_AT_DESC": "最新申请",
+      "REQUESTED_AT_ASC": "最早申请",
       "MOST_RELEVANT": "最相关",
-      "LAST_ACTIVITY_DESC": "最近活动",
       "CREATED_AT_DESC": "最新系列",
       "NAME_ASC": "名称 A-Z",
       "NAME_DESC": "名称 Z-A"
@@ -941,7 +949,7 @@
       "collection": "系列",
       "owner": "所有者",
       "date": "申请时间",
-      "last_update": "最后更新",
+      "type": "类型",
       "status": "状态",
       "assignee": "审核员",
       "requested": "已申请审核",
@@ -1361,10 +1369,16 @@
   },
   "curation_state": {
     "to_review": "待审核",
-    "under_review": "审核中",
     "approved": "已批准",
     "rejected": "已拒绝",
     "disabled": "已禁用"
+  },
+  "review_type": {
+    "new": "新系列",
+    "updates": "更新"
+  },
+  "multi_select": {
+    "summary": "{first} +{count}"
   },
   "assign_curator_modal": {
     "title_self": "审核 {collection}",
