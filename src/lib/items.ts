@@ -76,6 +76,16 @@ export type ItemMetrics = {
   additionalArmatures?: number
 }
 
+/** Texture wearables have no mesh to measure: fixed metrics, as the legacy builder stored them. */
+export const IMAGE_WEARABLE_METRICS: ItemMetrics = {
+  triangles: 100,
+  materials: 1,
+  textures: 1,
+  meshes: 1,
+  bodies: 1,
+  entities: 1
+}
+
 export type RemoteItem = {
   id: string
   name: string
@@ -223,7 +233,7 @@ export function getItemBodyShapeType(item: Item): BodyShapeType | null {
 }
 
 /** The body shape an item is still missing (male/female), or null when it's already unisex. */
-export function getMissingBodyShapeType(item: Item): BodyShapeType | null {
+export function getMissingBodyShapeType(item: Item): BodyShapeType.MALE | BodyShapeType.FEMALE | null {
   const bodyShapeType = getItemBodyShapeType(item)
   if (bodyShapeType === BodyShapeType.MALE) return BodyShapeType.FEMALE
   if (bodyShapeType === BodyShapeType.FEMALE) return BodyShapeType.MALE

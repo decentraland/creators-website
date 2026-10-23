@@ -7,12 +7,21 @@ import { BodyShape } from '@dcl/schemas'
 import { Providers } from '~/components/CollectionDetailPage/SellItemFlow/testUtils'
 import { ItemType, type Item } from '~/lib/items'
 import { useItemForm } from '../useItemForm'
+import { type ItemFileChange } from '~/lib/itemDraft'
 import { PropertiesPanel } from './PropertiesPanel'
 
-const pickFile = vi.fn()
-const importItemModel = vi.fn()
-vi.mock('~/lib/filePicker', () => ({ pickFile: (...args: unknown[]) => pickFile(...args) }))
-vi.mock('~/lib/itemModelImport', () => ({ importItemModel: (...args: unknown[]) => importItemModel(...args) }))
+// The change-file modal has its own spec; here it hands back whatever result the test prepared.
+const fileChange = vi.hoisted<{ result: ItemFileChange | null }>(() => ({ result: null }))
+vi.mock('../ChangeFileModal', () => ({
+  ChangeFileModal: ({ item, onSave }: { item: Item; onSave: (result: ItemFileChange) => Promise<void> }) => (
+    <button
+      type="button"
+      data-testid="mock-change-file-apply"
+      data-shapes={item.data.representations.length}
+      onClick={() => fileChange.result && void onSave(fileChange.result)}
+    />
+  )
+}))
 vi.mock('~/lib/builder', async () => ({
   ...(await vi.importActual<typeof import('~/lib/builder')>('~/lib/builder')),
   fetchContent: () => Promise.resolve(new Blob())
@@ -30,6 +39,9 @@ vi.mock('~/lib/featureFlags', async () => {
 beforeEach(() => {
   setFeatureFlags(FeatureFlag.WEARABLE_UTILITY, FeatureFlag.VRM_OPTOUT)
   campaign.current = null
+  // jsdom's createObjectURL only accepts its own Blob class.
+  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:thumbnail')
+  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
 })
 
 const item: Item = {
@@ -60,11 +72,15 @@ function Harness({
   editable = true,
   readOnlyReason,
   onSave = vi.fn(),
+  onSaveFile = () => Promise.resolve(),
+  isSaving = false,
   subject = item
 }: {
   editable?: boolean
   readOnlyReason?: 'role' | 'lock'
   onSave?: () => void
+  onSaveFile?: (change: ItemFileChange) => Promise<void>
+  isSaving?: boolean
   subject?: Item
 }) {
   const form = useItemForm(subject)
@@ -78,9 +94,10 @@ function Harness({
       draft={form.draft}
       dispatch={form.dispatch}
       isDirty={form.isDirty}
-      isSaving={false}
+      isSaving={isSaving}
       springBones={null}
       onSave={onSave}
+      onSaveFile={onSaveFile}
       onRevert={() => form.reset(subject)}
       onDeleted={vi.fn()}
     />
@@ -144,18 +161,30 @@ describe('PropertiesPanel', () => {
     expect(screen.getByTestId('properties-panel-save')).toBeDisabled()
   })
 
-  it('asks for a category when a new file does not fit the current one', async () => {
-    pickFile.mockResolvedValue(new File(['png'], 'eyes.png'))
-    importItemModel.mockResolvedValue({ item: { ...item, contents: { 'male/eyes.png': 'bafyeyes' } }, blobs: {} })
-    render(<Harness />, { wrapper: Providers })
+  it('hands a file change to the editor to save on its own, from the saved item', async () => {
+    fileChange.result = {
+      update: { item: { ...item, contents: { 'male/cap.glb': 'bafycap' } }, blobs: {} },
+      thumbnail: null,
+      category: null
+    }
+    const onSaveFile = vi.fn().mockResolvedValue(undefined)
+    render(<Harness onSaveFile={onSaveFile} />, { wrapper: Providers })
+    // Unsaved panel edits are not part of what the modal saves.
+    await userEvent.type(screen.getByTestId('properties-panel-name'), ' 2')
     await userEvent.click(screen.getByTestId('properties-panel-actions'))
     await userEvent.click(screen.getByTestId('properties-panel-change-file'))
-    expect(await screen.findByTestId('properties-panel-category-error')).toBeInTheDocument()
-    expect(screen.getByTestId('properties-panel-save')).toBeDisabled()
-    await userEvent.click(screen.getByTestId('properties-panel-category'))
-    await userEvent.click(screen.getByTestId('properties-panel-category-option-eyes'))
-    expect(screen.queryByTestId('properties-panel-category-error')).not.toBeInTheDocument()
+    expect(screen.getByTestId('mock-change-file-apply')).toHaveAttribute('data-shapes', '1')
+    await userEvent.click(screen.getByTestId('mock-change-file-apply'))
+    expect(onSaveFile).toHaveBeenCalledWith(fileChange.result)
+    expect(screen.getByTestId('properties-panel-name')).toHaveValue('Hat 2')
     expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
+  })
+
+  it('keeps the file actions out of reach while a save is in flight', async () => {
+    render(<Harness isSaving />, { wrapper: Providers })
+    await userEvent.click(screen.getByTestId('properties-panel-actions'))
+    expect(screen.getByTestId('properties-panel-change-file')).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByTestId('properties-panel-add-representation')).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('keeps saving a stored item whose category the editor does not offer', async () => {

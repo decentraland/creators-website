@@ -9,14 +9,12 @@ import {
   SentimentSatisfiedAlt as SmileIcon,
   Storage as SizeIcon,
   VideocamOutlined as VideoIcon,
-  SwapHorizOutlined as ChangeFileIcon,
   Texture as TextureIcon,
   ThirtyFpsSelect as FpsIcon
 } from '@mui/icons-material'
 import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
 import { Button } from '~/components/Button'
 import { CategorySelect } from '~/components/CategorySelect'
-import { ConfirmModal } from '~/components/ConfirmModal'
 import { ClockIcon, ImageIcon, LoopIcon, PlayOnceIcon, SmartIcon } from '~/components/Icons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { RaritySelect } from '~/components/RaritySelect'
@@ -37,19 +35,26 @@ import {
   ITEM_UTILITY_MAX_LENGTH,
   isValidItemDescription,
   type ItemDraft,
-  type ItemDraftAction
+  type ItemDraftAction,
+  type ItemFileChange
 } from '~/lib/itemDraft'
 import { buildItemZip, getItemZipName } from '~/lib/itemDownload'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
-import { ITEM_EXTENSIONS, ItemFileError, hasFacialExpressions, THUMBNAIL_PATH, VIDEO_PATH, toMB } from '~/lib/itemFiles'
-import { pickFile } from '~/lib/filePicker'
-import { importItemModel, type ModelImportKind } from '~/lib/itemModelImport'
-import { ItemType, getMissingBodyShapeType, isMissingSmartWearableVideo, isSmartWearable, type Item } from '~/lib/items'
+import { hasFacialExpressions, THUMBNAIL_PATH, VIDEO_PATH, toMB } from '~/lib/itemFiles'
+import {
+  BodyShapeType,
+  ItemType,
+  getMissingBodyShapeType,
+  isMissingSmartWearableVideo,
+  isSmartWearable,
+  type Item
+} from '~/lib/items'
 import { downloadBlob } from '~/lib/navigation'
 import { useNotifications } from '~/lib/notifications'
 import { type SpringBoneParamsByName } from '~/lib/springBones'
 import { getEmoteCategoryOptions, getWearableCategoryOptions } from '~/lib/wearableCategories'
 import { DeleteItemModal } from '~/components/CollectionDetailPage/DeleteItemModal'
+import { ChangeFileModal } from '../ChangeFileModal'
 import { EditorSection } from '../EditorSection'
 import { HidesEditor } from '../HidesEditor'
 import { SpringBonesEditor, type SpringBonesModel } from '../SpringBonesEditor'
@@ -81,6 +86,8 @@ type Props = {
   isSaving: boolean
   springBones: SpringBonesFormProps | null
   onSave: () => void
+  /** Persists a file change from the modal on its own; rejects when the save fails. */
+  onSaveFile: (change: ItemFileChange) => Promise<void>
   onRevert: () => void
   onDeleted: () => void
   testId?: string
@@ -99,14 +106,16 @@ export function PropertiesPanel({
   isSaving,
   springBones,
   onSave,
+  onSaveFile,
   onRevert,
   onDeleted,
   testId = 'properties-panel'
 }: Props) {
   const { t, rich } = useTranslation()
   const showToast = useNotifications(state => state.showToast)
-  const [isImporting, setImporting] = useState(false)
-  const [importError, setImportError] = useState<string | null>(null)
+  const [changeFile, setChangeFile] = useState<{ lockedBodyShape?: BodyShapeType.MALE | BodyShapeType.FEMALE } | null>(
+    null
+  )
   const [isVideoOpen, setVideoOpen] = useState(false)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
   const [isDownloading, setDownloading] = useState(false)
@@ -123,7 +132,7 @@ export function PropertiesPanel({
   const isWearable = item.type === ItemType.WEARABLE
   const isSmart = isSmartWearable(item)
   const disabled = !editable
-  const contents = draft.fileUpdate?.item.contents ?? item.contents
+  const contents = item.contents
   const categories = useMemo(
     () => (isEmote ? getEmoteCategoryOptions() : getWearableCategoryOptions(contents)),
     [isEmote, contents]
@@ -131,11 +140,6 @@ export function PropertiesPanel({
   const missingShape = useMemo(
     () => (isWearable && !isSmart ? getMissingBodyShapeType(item) : null),
     [isWearable, isSmart, item]
-  )
-  // Only a new file can leave the category without a valid value; stored items keep saving as they are.
-  const categoryMissing = useMemo(
-    () => isWearable && draft.fileUpdate !== null && !categories.includes(draft.category ?? ''),
-    [isWearable, draft.fileUpdate, draft.category, categories]
   )
   const nameInvalid = draft.name.length > 0 && !isValidItemName(draft.name)
   const descriptionInvalid = !isValidItemDescription(draft.description)
@@ -155,23 +159,7 @@ export function PropertiesPanel({
     enabled: isVideoOpen && !draft.video && !!videoHash,
     staleTime: Infinity
   })
-  const metrics = draft.fileUpdate?.item.metrics ?? item.metrics
-
-  async function importModel(kind: ModelImportKind) {
-    const file = await pickFile({ accept: ITEM_EXTENSIONS.join(',') })
-    if (!file) return
-    setImporting(true)
-    try {
-      dispatch({ type: 'setFileUpdate', update: await importItemModel(file, item, kind) })
-    } catch (error) {
-      const key = error instanceof ItemFileError ? error.messageKey : 'invalid_model_file'
-      const params = error instanceof ItemFileError ? error.messageParams : undefined
-      if (!(error instanceof ItemFileError)) console.error('Model import failed:', error)
-      setImportError(t(`add_items_modal.file_error.${key}`, params))
-    } finally {
-      setImporting(false)
-    }
-  }
+  const metrics = item.metrics
 
   async function download() {
     setDownloading(true)
@@ -225,19 +213,15 @@ export function PropertiesPanel({
             {t('item_editor.details.download')}
           </ActionsMenuItem>
           {editable && (
-            <ActionsMenuItem
-              testId={`${testId}-change-file`}
-              disabled={isImporting}
-              onClick={() => void importModel({ kind: 'replace' })}
-            >
+            <ActionsMenuItem testId={`${testId}-change-file`} disabled={isSaving} onClick={() => setChangeFile({})}>
               {t('item_editor.details.change_file')}
             </ActionsMenuItem>
           )}
           {editable && missingShape && (
             <ActionsMenuItem
               testId={`${testId}-add-representation`}
-              disabled={isImporting}
-              onClick={() => void importModel({ kind: 'add-representation', bodyShape: missingShape })}
+              disabled={isSaving}
+              onClick={() => setChangeFile({ lockedBodyShape: missingShape })}
             >
               {t('item_editor.details.add_representation', {
                 shape: t(`add_items_modal.body_shape_option.${missingShape}`)
@@ -315,12 +299,6 @@ export function PropertiesPanel({
             </S.Metrics>
           )}
         </S.DetailsRow>
-        {draft.fileUpdate && (
-          <S.Warning data-testid={`${testId}-file-update`}>
-            <ChangeFileIcon fontSize="small" />
-            {t('item_editor.details.file_update_pending')}
-          </S.Warning>
-        )}
         {isSmart && (
           <S.VideoPane data-testid={`${testId}-video`}>
             <S.FieldLabel>
@@ -471,11 +449,6 @@ export function PropertiesPanel({
             testId={`${testId}-category`}
             onChange={category => dispatch({ type: 'setCategory', category })}
           />
-          {categoryMissing && editable && (
-            <S.ErrorText data-testid={`${testId}-category-error`}>
-              {t('item_editor.basics.category_required')}
-            </S.ErrorText>
-          )}
         </S.Field>
         <S.Field as="div">
           <S.FieldLabel>
@@ -639,7 +612,7 @@ export function PropertiesPanel({
             type="button"
             variant="primary"
             size="sm"
-            disabled={!isDirty || nameInvalid || descriptionInvalid || categoryMissing || draft.name.trim() === ''}
+            disabled={!isDirty || nameInvalid || descriptionInvalid || draft.name.trim() === ''}
             loading={isSaving}
             data-testid={`${testId}-save`}
             onClick={onSave}
@@ -658,17 +631,12 @@ export function PropertiesPanel({
           onClose={() => setVideoOpen(false)}
         />
       )}
-      {importError && (
-        <ConfirmModal
-          title={t('item_editor.details.import_error_title')}
-          description={importError}
-          onClose={() => setImportError(null)}
-          confirm={{
-            label: t('item_editor.details.import_error_close'),
-            onClick: () => setImportError(null),
-            testId: `${testId}-import-error-close`
-          }}
-          testId={`${testId}-import-error`}
+      {changeFile && (
+        <ChangeFileModal
+          item={item}
+          lockedBodyShape={changeFile.lockedBodyShape}
+          onSave={onSaveFile}
+          onClose={() => setChangeFile(null)}
         />
       )}
       {isDeleteOpen && (

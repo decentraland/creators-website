@@ -7,8 +7,8 @@ import { ItemType, type ItemMetrics } from '~/lib/items'
 import { toEmoteWithBlobs, toWearableWithBlobs } from '~/lib/preview'
 import { renderPosedThumbnail } from '~/lib/renderPosedThumbnail'
 import { getThumbnailPose, isAutoThumbnailStale } from '~/lib/thumbnailPose'
-import { type ItemDraft } from './AddItemsModal.state'
-import * as S from './AddItemsModal.styles'
+import { type PreviewDraft } from '~/lib/draftPreview'
+import * as S from './ItemDraftModal.styles'
 
 const PREVIEW_ID = 'draft-processor'
 const THUMBNAIL_SIZE = 1024
@@ -18,8 +18,8 @@ const MAX_ATTEMPTS = 4
 const RETRY_DELAY_MS = 750
 
 type Props = {
-  draft: ItemDraft
-  onResult: (id: string, patch: Partial<ItemDraft>) => void
+  draft: PreviewDraft
+  onResult: (id: string, patch: Partial<PreviewDraft>) => void
   onError: (id: string) => void
 }
 
@@ -73,7 +73,7 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
         const metrics: ItemMetrics =
           draft.type === ItemType.WEARABLE ? await controller.scene.getMetrics() : (draft.metrics ?? {})
 
-        const patch: Partial<ItemDraft> = { metrics }
+        const patch: Partial<PreviewDraft> = { metrics }
         if (!draft.thumbnail || isAutoThumbnailStale(draft)) {
           const thumbnail = pose
             ? await renderPosedThumbnail(draft.contents, draft.model, pose).catch((error: unknown) => {

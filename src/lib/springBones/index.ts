@@ -1,6 +1,7 @@
 // Spring bone physics for wearables, ported from the legacy builder's lib/springBones: default
 // params, chain roots, subtree sizes (the MAX_SPRING_BONES cap counts every bone a chain drives) and
 // the merge back into `item.data.springBones`, keyed by representation model hash.
+import { type BuiltItem } from '../itemFactory'
 import { type SpringBoneParams, type SpringBonesData } from '@dcl/schemas'
 import { ItemType, type Item } from '../items'
 import { type BoneNode } from './parseSpringBones'
@@ -277,4 +278,52 @@ export function getShapesMissingSpringBones(
   const configured = hashes.filter(hash => Object.keys(paramsByHash[hash] ?? {}).length > 0)
   if (configured.length === 0 || configured.length === hashes.length) return []
   return hashes.filter(hash => !configured.includes(hash))
+}
+
+/** The new model's files by hash: they exist only in memory, storage would 404 on them. */
+export function pendingBlobsByHash(pending: BuiltItem): Record<string, Blob> {
+  const blobs: Record<string, Blob> = {}
+  for (const [path, blob] of Object.entries(pending.blobs)) {
+    const hash = pending.item.contents[path]
+    if (hash) blobs[hash] = blob
+  }
+  return blobs
+}
+
+/**
+ * The spring bones to store with a model change saved on its own: the params as they stand (the form's,
+ * unsaved tuning included, else the saved ones) carried onto the new models by bone name, defaults for
+ * roots new to them. `null` when no new model has spring bones (the replaced model's params go),
+ * `undefined` for items without models.
+ */
+export async function carrySpringBonesForSave(
+  fetchBones: (hash: string, blob?: Blob) => Promise<BoneNode[]>,
+  item: Item,
+  pending: BuiltItem,
+  params?: SpringBoneParamsByHash
+): Promise<SpringBonesData | null | undefined> {
+  const next = pending.item
+  if (!isSpringBoneItem(next)) return undefined
+  const hashes = getRepresentationModelHashes(next)
+  if (hashes.length === 0) return undefined
+  const source: SpringBonesCarrySource = {
+    item,
+    params: params && Object.keys(params).length > 0 ? params : (item.data.springBones?.models ?? {})
+  }
+  const sourceHashes = isSpringBoneItem(item) ? getRepresentationModelHashes(item) : []
+  const blobsByHash = pendingBlobsByHash(pending)
+  const parsed: Record<string, BoneNode[]> = {}
+  await Promise.all(
+    [...new Set([...hashes, ...sourceHashes])].map(async hash => {
+      parsed[hash] = await fetchBones(hash, blobsByHash[hash])
+    })
+  )
+  const carried = carrySpringBoneParams(source, next, parsed)
+  const result: SpringBoneParamsByHash = {}
+  for (const hash of hashes) {
+    const bones = parsed[hash]
+    if (!bones || !hasSpringBones(bones)) continue
+    result[hash] = carried[hash] ?? getInitialSpringBoneParams(item, hash, bones)
+  }
+  return mergeSpringBonesIntoItem(result) ?? null
 }
