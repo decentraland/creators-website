@@ -106,14 +106,23 @@ export function LinkedItemRow({
   useEffect(() => {
     // Set here, not only at creation: StrictMode runs this cleanup once and mounts again.
     mounted.current = true
+    // A row shows the server's mapping when it (re)appears: nothing of it is unsaved yet.
+    latest.current.onMappingDirtyChange?.(latest.current.item.id, false)
     return () => {
       mounted.current = false
       clearTimeout(timer.current)
       const mappings = pending.current
-      const report = () => latest.current.onMappingDirtyChange?.(latest.current.item.id, false)
-      // The row is gone: a failure still shows its toast, and nothing left on screen can be saved.
-      if (mappings) void save(mappings).finally(report)
-      else report()
+      const { item: current, onSaveMappings: persist, onMappingDirtyChange: report } = latest.current
+      // An edit still waiting is saved on the way out; only once it lands is the row clean. A failure keeps Publish
+      // blocked (its toast names the item) until the row is shown again with the server's mapping.
+      if (mappings) {
+        void persist(current, mappings).then(
+          () => report?.(current.id, false),
+          () => undefined
+        )
+      } else if (draft.current === null) {
+        report?.(current.id, false)
+      }
     }
   }, [save])
 
@@ -174,6 +183,7 @@ export function LinkedItemRow({
             value={mapping}
             compact
             withHelp={false}
+            groupLabel={t('linked_collection.mapping_for', { name: item.name })}
             disabled={!editable}
             testId="linked-item-mapping-editor"
             onChange={onMappingChange}
@@ -185,6 +195,7 @@ export function LinkedItemRow({
         {failedSave && !isSaving && (
           <S.StatusRetry
             type="button"
+            aria-label={t('linked_collection.mapping_retry_for', { name: item.name })}
             data-testid="linked-item-mapping-retry"
             onClick={() => {
               pending.current = failedSave

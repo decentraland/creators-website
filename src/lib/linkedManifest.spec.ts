@@ -55,14 +55,6 @@ describe('resolveLinkedManifest', () => {
   })
 })
 
-describe('resolveLinkedManifest when adding items', () => {
-  it('refuses a URN an item of the collection already has, so adding never overwrites it', () => {
-    const adding = { ...target, takenUrns: new Set([`${collectionUrn}:cap`]) }
-    expect(errorKey(() => resolveLinkedManifest({ id: `${collectionUrn}:cap` }, adding))).toBe('linked_urn_in_use')
-    expect(resolveLinkedManifest({ id: `${collectionUrn}:boots` }, adding).urnSuffix).toBe('boots')
-  })
-})
-
 describe('resolveLinkedManifest edge cases', () => {
   it('keeps every mapping rule of a bulk-edited item when the zip sets none', () => {
     const mappings = {

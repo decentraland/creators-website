@@ -7,7 +7,6 @@ import { type LinkedApprovalData } from '~/lib/builder'
 import {
   ApprovalError,
   INDEXER_TIMEOUT_MS,
-  buildMissingImage,
   waitForIndexer,
   type DeployDeps,
   type DeployFailure
@@ -16,12 +15,12 @@ import {
   buildDeploymentForm,
   buildLinkedItemEntity,
   computeLinkedItemContentHash,
-  getEntityContent,
+  getLinkedEntityContent,
   type LinkedMerkleProof
 } from '~/lib/catalystEntity'
 import { CurationStatus, type Collection } from '~/lib/collections'
 import { type ItemCuration } from '~/lib/linkedItemStatus'
-import { type Item } from '~/lib/items'
+import { VIDEO_PATH, type Item } from '~/lib/items'
 import { type ThirdParty } from '~/lib/thirdParty'
 import { buildReviewThirdPartyWithRootCall, toChequeSlot, type ChequeSlot } from '~/lib/thirdPartyRegistry'
 
@@ -120,6 +119,12 @@ export async function prepareLinkedApproval(
   // An item saved after it was submitted can't be approved until the creator submits it again: reviewing won't help.
   const unsubmitted = pendingItems.find(item => approvalData.contentHashes[item.id] !== item.currentContentHash)
   if (unsubmitted) throw new ApprovalError('unsubmitted', `Item ${unsubmitted.id} has changes that were not submitted`)
+  // The Catalyst takes no preview video in a linked item, yet the curated hash includes it: approving would spend the
+  // cheque on a root whose items can never deploy. The creator has to upload them again without it.
+  const withVideo = pendingItems.filter(item => VIDEO_PATH in item.contents)
+  if (withVideo.length > 0) {
+    throw new ApprovalError('has_video', `${withVideo.length} items have a preview video`, withVideo)
+  }
   const drifted = pendingItems.find(
     item => approvalData.contentHashes[item.id] !== computeLinkedItemContentHash(collection, item)
   )
@@ -159,6 +164,11 @@ export type RootDeps = {
   sendTransaction: (call: ContractCall) => Promise<string>
   settleTransaction: (txHash: string) => Promise<TransactionSettlement>
   fetchThirdParty: (thirdPartyId: string) => Promise<ThirdParty>
+  /**
+   * A root transaction an earlier attempt sent and never saw settle: waited on first, since sending another with the
+   * same cheque would revert once either lands.
+   */
+  previousTx?: string
   sleep?: (ms: number) => Promise<void>
 }
 
@@ -169,9 +179,14 @@ export async function setLinkedMerkleRoot(
   deps: RootDeps,
   timeoutMs = INDEXER_TIMEOUT_MS
 ): Promise<string> {
-  const call = buildReviewThirdPartyWithRootCall(deps.chainId, thirdPartyId, plan.merkleRoot, plan.slots)
-  const txHash = await deps.sendTransaction(call)
-  const outcome = await deps.settleTransaction(txHash)
+  let txHash = deps.previousTx
+  let outcome = txHash ? await deps.settleTransaction(txHash) : undefined
+  // Only one that can never land (reverted, or replaced without setting the root) makes way for a new one.
+  if (!txHash || outcome === 'reverted' || outcome === 'dropped') {
+    const call = buildReviewThirdPartyWithRootCall(deps.chainId, thirdPartyId, plan.merkleRoot, plan.slots)
+    txHash = await deps.sendTransaction(call)
+    outcome = await deps.settleTransaction(txHash)
+  }
   if (outcome === 'reverted') throw new ApprovalError('reverted', `Merkle root ${txHash} reverted`)
   if (outcome === 'pending') throw new ApprovalError('not_indexed', `Merkle root ${txHash} is still pending`)
   // A dropped transaction may have been sped up under another hash: the root then shows up all the same.
@@ -195,7 +210,8 @@ export type LinkedDeployResult = { deployed: Item[]; failed: LinkedDeployFailure
 export type LinkedDeployDeps = DeployDeps & {
   /** The item as the server holds it now, to catch an edit the creator saves while the approval runs. */
   fetchItem: (itemId: string) => Promise<Item>
-  approveItem: (itemId: string) => Promise<unknown>
+  /** Resolves with the curation as approved, whose hash tells which content got approved. */
+  approveItem: (itemId: string) => Promise<Pick<ItemCuration, 'contentHash'>>
   concurrency?: number
 }
 
@@ -235,9 +251,8 @@ async function deployLinkedItem(
         throw new Error(`Item ${item.id} changed during the approval`)
       }
     })
-  const { entity, authChain, content, image } = await atStage('build', async () => {
-    const image = await buildMissingImage(item, deps)
-    const content = getEntityContent(item, image?.hash)
+  const { entity, authChain, content } = await atStage('build', async () => {
+    const content = getLinkedEntityContent(item)
     // Never sign an entity whose content isn't the one curated into the root.
     if (computeLinkedItemContentHash(collection, item) !== proof.entityHash) {
       throw new ApprovalError('changed', `Item ${item.id} changed since it was curated`)
@@ -245,7 +260,7 @@ async function deployLinkedItem(
     const entity = await buildLinkedItemEntity(collection, item, content, proof)
     const authChain = deps.sign(entity.entityId)
     if (!authChain) throw new ApprovalError('no_identity', 'The session has no signing identity')
-    return { entity, authChain, content, image }
+    return { entity, authChain, content }
   })
   await assertUnchanged()
   await atStage('deploy', async () => {
@@ -254,12 +269,16 @@ async function deployLinkedItem(
     const files = new Map<string, Blob>()
     for (const hash of hashes) {
       if (available.has(hash)) continue
-      files.set(hash, image && hash === image.hash ? image.blob : await deps.fetchContent(hash))
+      files.set(hash, await deps.fetchContent(hash))
     }
     await deps.deployEntity(buildDeploymentForm(entity, authChain, files))
   })
   await assertUnchanged()
-  await atStage('curation', () => deps.approveItem(item.id))
+  const curation = await atStage('curation', () => deps.approveItem(item.id))
+  // builder-server approves the hash the item has at that moment: a save landing just before still gets through.
+  if (curation.contentHash !== proof.entityHash) {
+    throw new StageError('changed', new Error(`Item ${item.id} was approved with content saved during the approval`))
+  }
 }
 
 async function runPool<T>(

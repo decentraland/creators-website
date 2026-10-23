@@ -15,6 +15,7 @@ export {
   requireAccount,
   sendContractTransaction,
   sendWalletTransaction,
+  readTransactionSender,
   settleTransaction,
   signTypedData,
   subscribeWalletChain,
@@ -23,6 +24,7 @@ export {
   WrongAccountError,
   WrongChainError,
   type ContractCall,
+  type TransactionSender,
   type TransactionSettlement,
   type ContractData
 } from './transactions'

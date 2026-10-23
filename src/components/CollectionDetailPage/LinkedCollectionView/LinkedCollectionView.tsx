@@ -10,7 +10,7 @@ import {
 import { ContractNetwork } from '@dcl/schemas'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
-import { fetchAllLinkedCollectionItems } from '~/lib/builder'
+import { fetchAllLinkedCollectionItems, isUnexpectedFailure } from '~/lib/builder'
 import { captureError } from '~/lib/monitoring'
 import { type Session } from '~/lib/auth'
 import { shortenAddress } from '~/lib/address'
@@ -49,6 +49,7 @@ import {
   useLinkedCollectionItems
 } from '~/hooks/useLinkedCollection'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
+import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { useSaveItem } from '~/hooks/useSaveItem'
 import { createItemSaveQueue } from '~/lib/itemSaveQueue'
 import { theme } from '~/styles/theme'
@@ -106,9 +107,9 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   saveItemRef.current = saveItem
   const saveItemPatch = useMemo(
     () => createItemSaveQueue(item => saveItemRef.current.mutateAsync({ item })),
-    // One queue per collection: every save of an item goes through it.
+    // One queue per collection URN: a URN change rebuilds every item's URN, which the queue's copies would undo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [collection.id]
+    [collection.id, collection.urn]
   )
 
   const [isRenameOpen, setRenameOpen] = useState(false)
@@ -127,6 +128,8 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   >({ kind: 'closed' })
   // Rows with a mapping edit not saved yet: publishing now would send the old mapping.
   const [unsavedMappings, setUnsavedMappings] = useState<ReadonlySet<string>>(() => new Set())
+  // Leaving the page within a mapping's save delay would drop the edit.
+  useBeforeUnloadGuard(unsavedMappings.size > 0)
   const onMappingDirtyChange = useCallback((itemId: string, dirty: boolean) => {
     setUnsavedMappings(current => {
       if (current.has(itemId) === dirty) return current
@@ -306,6 +309,10 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
         invalidateCollectionItems(queryClient, collection.id)
         closeUrn()
         showToast(t('linked_collection.urn_saved'))
+      },
+      onError: error => {
+        if (isUnexpectedFailure(error))
+          captureError(error, { flow: 'linked_collection_urn', collectionId: collection.id })
       }
     })
   }

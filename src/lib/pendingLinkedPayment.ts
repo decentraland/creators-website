@@ -26,11 +26,14 @@ function storage(): StorageLike | null {
 
 function toPayment(value: unknown): LinkedPayment | undefined {
   if (!value || typeof value !== 'object') return undefined
-  const { txHash, registration } = value as Record<string, unknown>
+  const { txHash, registration, sender } = value as Record<string, unknown>
   if (typeof txHash !== 'string' || !/^0x[0-9a-fA-F]+$/.test(txHash) || typeof registration !== 'boolean') {
     return undefined
   }
-  return { txHash, registration }
+  const { from, nonce } = (sender ?? {}) as Record<string, unknown>
+  const validSender =
+    typeof from === 'string' && /^0x[0-9a-fA-F]{40}$/.test(from) && typeof nonce === 'number' && Number.isInteger(nonce)
+  return { txHash, registration, ...(validSender ? { sender: { from, nonce } } : {}) }
 }
 
 export function loadPendingPublish(scope: PendingPublishScope, store = storage()): PendingPublish {

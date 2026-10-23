@@ -130,17 +130,18 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
             contract: linkedContract,
             ...(updateOnly
               ? { updating: new Map(collectionItems.flatMap(item => (item.urn ? [[item.urn, item] as const] : []))) }
-              : { takenUrns: new Set(collectionItems.flatMap(item => (item.urn ? [item.urn] : []))) })
+              : {})
           }
         : undefined,
     [isLinked, collection.urn, linkedContract, updateOnly, collectionItems]
   )
-  // Matching a zip to the item it updates, or refusing a URN an item already has, needs the collection's items first.
+  // Matching a zip to the item it updates needs the collection's items first. Adding never waits for them (a linked
+  // collection can be large): a URN another item has is refused by builder-server on upload.
   const itemsLoaded = collectionItemsQuery.data !== undefined
-  const canProcess = !(updateOnly || isLinked) || itemsLoaded
-  const canUpload = !isLinked || itemsLoaded
+  const canProcess = !updateOnly || itemsLoaded
+  const canUpload = !updateOnly || itemsLoaded
   // Without them neither of the above can go on: say so and offer a retry instead of waiting forever.
-  const itemsFailed = (isLinked || updateOnly) && collectionItemsQuery.isError && !itemsLoaded
+  const itemsFailed = updateOnly && collectionItemsQuery.isError && !itemsLoaded
 
   // Load + analyze each dropped file once. The prefill is what it was when the modal opened.
   const prefillRef = useRef(prefill)

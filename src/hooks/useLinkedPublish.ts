@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { errorCode, track } from '~/lib/analytics'
-import { sendContractTransaction, settleTransaction, signTypedData, type Session } from '~/lib/auth'
+import {
+  readTransactionSender,
+  sendContractTransaction,
+  settleTransaction,
+  signTypedData,
+  type Session
+} from '~/lib/auth'
 import {
   deleteVirtualThirdParty,
   fetchItemCurations,
@@ -31,6 +37,7 @@ import {
 } from '~/lib/publishLinkedItems'
 import { pushLinkedChanges, type PushLinkedResult } from '~/lib/pushLinkedChanges'
 import { fetchRegisteredThirdParty, fetchThirdPartyPrice } from '~/lib/thirdPartyRegistry'
+import { isWalletRejection } from '~/lib/walletErrors'
 import { invalidateCollectionItems } from './usePublishCollection'
 import { thirdPartyKey, thirdPartySlotsKey } from './useLinkedCollection'
 
@@ -69,6 +76,10 @@ export function useLinkedSlots(address: string | undefined, thirdPartyId: string
 export function useSignSlotsCheque(session: Session) {
   const chainId = getMaticChainId()
   return useMutation({
+    // Dismissing the wallet prompt is the creator's choice; anything else blocks publishing.
+    onError: error => {
+      if (!isWalletRejection(error)) captureError(error, { flow: 'linked_publish', step: 'sign_cheque' })
+    },
     mutationFn: ({ thirdPartyId, qty }: { thirdPartyId: string; qty: number }) =>
       signSlotsCheque(
         { signTypedData: (domain, types, value) => signTypedData(session, domain, types, value) },
@@ -113,7 +124,8 @@ export function usePublishLinkedItems(session: Session, collection: Collection) 
           setThirdPartyKind: (thirdPartyId, isProgrammatic) => setThirdPartyKind(address, thirdPartyId, isProgrammatic),
           fetchManaAllowance: (owner, spender) => fetchManaAllowance(owner, spender, chainId),
           sendTransaction: call => sendContractTransaction(session, call),
-          settleTransaction: txHash => settleTransaction(chainId, txHash),
+          settleTransaction: (txHash, sender) => settleTransaction(chainId, txHash, sender),
+          readSender: txHash => readTransactionSender(chainId, txHash),
           fetchSlots: () => fetchLinkedSlots(address, chainId, params.thirdParty.id),
           deleteVirtualThirdParty: thirdPartyId => deleteVirtualThirdParty(address, thirdPartyId),
           publishLinkedItems: (collectionId, itemIds, cheque: SlotsCheque) =>
@@ -130,14 +142,13 @@ export function usePublishLinkedItems(session: Session, collection: Collection) 
     onError: (error, variables) => {
       const step = error instanceof LinkedPublishError ? error.step : 'unknown'
       track('Publish TP Items error', { collectionId: collection.id, step, error: errorCode(error) })
-      // From the payment on, the creator may have paid: a failure there needs someone to look. A rejected wallet
-      // prompt or a reverted transaction charged nothing, and a payment still pending is picked up by the retry.
+      // From the payment on, the creator may have paid: a failure there needs someone to look, a payment that never
+      // confirms included. A rejected wallet prompt or a reverted transaction charged nothing.
       if (
         error instanceof LinkedPublishError &&
         ['wait_tx', 'delete_virtual', 'publish', 'push'].includes(error.step) &&
         error.reason !== 'rejected' &&
-        error.reason !== 'reverted' &&
-        error.reason !== 'payment_pending'
+        error.reason !== 'reverted'
       ) {
         captureError(error.cause ?? error, {
           flow: 'linked_publish',

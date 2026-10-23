@@ -80,6 +80,19 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, revie
           />
         )
       }
+      if (view.step === 'has_video') {
+        return (
+          <ConfirmModal
+            title={t('linked_approval_flow.has_video.title')}
+            description={t('linked_approval_flow.has_video.description', {
+              items: (view.items ?? []).map(item => item.name).join(', ')
+            })}
+            onClose={onClose}
+            confirm={{ label: t('approval_flow.cancel'), onClick: onClose, testId: 'approval-has-video-close' }}
+            testId="approval-has-video"
+          />
+        )
+      }
       if (view.step === 'unsubmitted') {
         return (
           <ConfirmModal

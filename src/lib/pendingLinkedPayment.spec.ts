@@ -28,6 +28,15 @@ describe('pending linked publish', () => {
     expect(store.values.size).toBe(0)
   })
 
+  it('keeps the sender recorded with a payment, and drops a malformed one', () => {
+    const store = memoryStore()
+    const sender = { from: '0x' + 'ab'.repeat(20), nonce: 4 }
+    savePendingPublish(scope, { payment: { ...payment, sender } }, store)
+    expect(loadPendingPublish(scope, store)).toEqual({ payment: { ...payment, sender } })
+    savePendingPublish(scope, { payment: { ...payment, sender: { from: 'nope', nonce: 4 } } }, store)
+    expect(loadPendingPublish(scope, store)).toEqual({ payment })
+  })
+
   it('ignores anything stored that is not a payment', () => {
     const store = memoryStore()
     savePendingPublish(scope, { payment: { ...payment, txHash: 'nope' } }, store)

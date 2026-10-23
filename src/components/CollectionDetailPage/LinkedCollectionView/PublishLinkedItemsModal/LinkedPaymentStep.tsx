@@ -14,7 +14,6 @@ import { type ThirdPartyPrice } from '~/lib/thirdPartyRegistry'
 import { type ThirdParty } from '~/lib/thirdParty'
 import { Button } from '~/components/Button'
 import { Checkbox } from '~/components/Checkbox'
-import { CurrencyAmount } from '~/components/CurrencyAmount'
 import { PaymentMethodCard } from '../../PublishCollectionModal/PaymentMethodCard'
 import * as S from '../../PublishCollectionModal/PublishCollectionModal.styles'
 
@@ -147,14 +146,8 @@ export function LinkedPaymentStep({
                 </span>
                 <span data-testid="publish-linked-summary-slots">{slotsToBuy}</span>
                 <S.SummaryTotal data-testid="publish-linked-summary-total">
-                  {isFree ? (
-                    t('publish_linked_modal.payment_step.free')
-                  ) : (
-                    <>
-                      <CurrencyAmount currency="mana">{formatMana(fee.manaWei)}</CurrencyAmount>
-                      <S.FeeTerm as="span"> · {usd(fee.usdWei)}</S.FeeTerm>
-                    </>
-                  )}
+                  {/* USD only, like the standard publish: the MANA it is paid in shows in the payment method below. */}
+                  {isFree ? t('publish_linked_modal.payment_step.free') : usd(fee.usdWei)}
                 </S.SummaryTotal>
               </S.SummaryRow>
             </S.SummaryTable>

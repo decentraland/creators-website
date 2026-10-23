@@ -670,8 +670,8 @@
       "linked_mapping_invalid": "The wearable.json mapping is invalid. Check its type and token IDs.",
       "bulk_edit_missing_urn": "Add the item's URN as \"id\" in wearable.json to update it.",
       "bulk_edit_no_match": "No item in this collection has the URN in this wearable.json.",
-      "linked_urn_in_use": "An item of this collection already has the URN in this wearable.json. Use Edit in bulk to update it, or remove the \"id\" to add a new item.",
-      "linked_urn_invalid": "The item identifier at the end of the wearable.json URN is invalid: it can't contain spaces, \":\" or \"|\"."
+      "linked_urn_invalid": "The item identifier at the end of the wearable.json URN is invalid: it can't contain spaces, \":\" or \"|\".",
+      "linked_video": "Linked collections can't hold a preview video. Remove video.mp4 from the ZIP."
     },
     "mapping_hint": "Which tokens of the linked contract unlock this wearable.",
     "bulk_edit": {
@@ -1637,7 +1637,9 @@
       "description": "Check your connection and try again.",
       "retry": "Try again"
     },
-    "mapping_retry": "Not saved · Retry"
+    "mapping_retry": "Not saved · Retry",
+    "mapping_for": "Token mapping of {name}",
+    "mapping_retry_for": "Retry saving the token mapping of {name}"
   },
   "success_modal": {
     "done": "Done"
@@ -1963,6 +1965,10 @@
       "curation": "it was uploaded, but marking it approved failed",
       "changed": "the creator edited it during the approval, so it stays pending for another review"
     },
-    "unsubmitted": "The creator saved changes to items after submitting them, and hasn't submitted those changes for review. They need to submit them again before these items can be approved."
+    "unsubmitted": "The creator saved changes to items after submitting them, and hasn't submitted those changes for review. They need to submit them again before these items can be approved.",
+    "has_video": {
+      "title": "These items can't be approved yet",
+      "description": "{items} include a preview video, which the content servers don't accept for linked items. Nothing was put on chain. The creator needs to upload them again without the video."
+    }
   }
 }

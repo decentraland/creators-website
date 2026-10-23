@@ -622,7 +622,7 @@ describe('publishLinkedItems', () => {
       deps
     )
 
-    expect(deps.settleTransaction).toHaveBeenCalledWith('0xold')
+    expect(deps.settleTransaction).toHaveBeenCalledWith('0xold', undefined)
     expect(sentMethods(deps)).toEqual(['buyItemSlots'])
     expect(decodeSent(deps, 0)[1].toString()).toBe('1')
   })
@@ -677,6 +677,36 @@ describe('publishLinkedItems', () => {
     expect(getResumablePayment(error)).toEqual({ txHash: '0xold', registration: false })
     expect(onPayment).not.toHaveBeenCalled()
     expect(deps.sendTransaction).not.toHaveBeenCalled()
+  })
+
+  it('goes on past a payment that never confirms once the registry holds its slots', async () => {
+    const deps = makeDeps({
+      settleTransaction: vi.fn(async () => 'pending' as const),
+      fetchSlots: vi.fn(async () => ({ available: 3, registered: true }))
+    })
+
+    await publishLinkedItems(
+      makeParams({ thirdParty: { ...thirdParty, published: true }, paidTx: { txHash: '0xold', registration: false } }),
+      deps
+    )
+
+    expect(deps.sendTransaction).not.toHaveBeenCalled()
+    expect(deps.publishLinkedItems).toHaveBeenCalled()
+  })
+
+  it('records who sent a purchase, and watches it by that sender and nonce', async () => {
+    const onPayment = vi.fn()
+    const sender = { from: ADDRESS, nonce: 9 }
+    const deps = makeDeps({
+      fetchManaAllowance: vi.fn(async () => 10n ** 30n),
+      readSender: vi.fn(async () => sender),
+      onPayment
+    })
+
+    await publishLinkedItems(makeParams({ thirdParty: { ...thirdParty, published: true } }), deps)
+
+    expect(onPayment).toHaveBeenCalledWith({ txHash: '0xtx1', registration: false, sender })
+    expect(deps.settleTransaction).toHaveBeenCalledWith('0xtx1', sender)
   })
 
   it('reports a purchase replaced by a cancel as charging nothing', async () => {
@@ -784,7 +814,7 @@ describe('publishLinkedItems', () => {
       deps
     )
 
-    expect(deps.settleTransaction).toHaveBeenCalledWith('0xpaid')
+    expect(deps.settleTransaction).toHaveBeenCalledWith('0xpaid', undefined)
     expect(deps.sendTransaction).not.toHaveBeenCalled()
     expect(deps.fetchManaAllowance).not.toHaveBeenCalled()
     expect(deps.setThirdPartyKind).not.toHaveBeenCalled()

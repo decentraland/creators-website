@@ -11,6 +11,8 @@ import { type SaveItemPatch } from '~/lib/itemSaveQueue'
 import { isLinkedItemPublished, type ItemCuration } from '~/lib/linkedItemStatus'
 import { useNotifications } from '~/lib/notifications'
 import { buildLinkedItemUrn, decodeLinkedUrn } from '~/lib/thirdParty'
+import { isUnexpectedFailure } from '~/lib/builder'
+import { captureError } from '~/lib/monitoring'
 import { theme } from '~/styles/theme'
 import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
 import { EditUrnModal } from './EditUrnModal'
@@ -77,7 +79,10 @@ export function LinkedItemActionsMenu({
         closeDialog()
         showToast(t('linked_collection.urn_saved'))
       },
-      () => setUrnSave('failed')
+      error => {
+        if (isUnexpectedFailure(error)) captureError(error, { flow: 'linked_item_urn', itemId: item.id })
+        setUrnSave('failed')
+      }
     )
   }
 

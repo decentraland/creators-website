@@ -55,7 +55,13 @@ export type LinkedApprovalView =
   | { kind: 'loading' }
   | { kind: 'step'; step: LinkedApprovalStep; phase: LinkedStepPhase }
   | { kind: 'success' }
-  | { kind: 'error'; step: LinkedApprovalStep | 'prepare' | 'changed' | 'unsubmitted'; failed: LinkedDeployFailure[] }
+  | {
+      kind: 'error'
+      step: LinkedApprovalStep | 'prepare' | 'changed' | 'unsubmitted' | 'has_video'
+      failed: LinkedDeployFailure[]
+      /** The items an expected stop is about, named to the curator. */
+      items?: Item[]
+    }
 
 const IDLE: LinkedStepPhase = { kind: 'idle' }
 
@@ -110,10 +116,10 @@ export function useLinkedApprovalFlow(
         refresh()
         return setView({ kind: 'error', step: 'changed', failed })
       }
-      // Only the creator can fix it, by submitting the edit again.
-      if (error instanceof ApprovalError && error.reason === 'unsubmitted') {
-        track('Approve TP Collection error', { collectionId: collection.id, step: 'unsubmitted' })
-        return setView({ kind: 'error', step: 'unsubmitted', failed })
+      // Only the creator can fix these: by submitting the edit again, or uploading the items without their video.
+      if (error instanceof ApprovalError && (error.reason === 'unsubmitted' || error.reason === 'has_video')) {
+        track('Approve TP Collection error', { collectionId: collection.id, step: error.reason })
+        return setView({ kind: 'error', step: error.reason, failed, items: error.items })
       }
       captureError(error, { flow: 'linked_curation_approve', step, collectionId: collection.id })
       track('Approve TP Collection error', { collectionId: collection.id, step, error: errorCode(error) })
@@ -147,27 +153,36 @@ export function useLinkedApprovalFlow(
     }
   }, [address, chainId, collection, thirdParty.id, review, set, fail])
 
+  // The root transaction a failed attempt sent and never saw settle, waited on by the next one.
+  const rootTx = useRef<string | null>(null)
+
   const runRoot = useCallback(async () => {
     if (!plan) return
     const token = run.current
     setRunning(true)
     try {
-      set(token, { kind: 'step', step: 'root', phase: { kind: 'signing' } })
+      set(token, { kind: 'step', step: 'root', phase: { kind: rootTx.current ? 'pending' : 'signing' } })
       const txHash = await setLinkedMerkleRoot(thirdParty.id, plan, {
         chainId,
+        previousTx: rootTx.current ?? undefined,
         sendTransaction: async call => {
           if (token !== run.current) throw new RunStoppedError()
+          set(token, { kind: 'step', step: 'root', phase: { kind: 'signing' } })
           const hash = await sendContractTransaction(session, call)
+          rootTx.current = hash
           set(token, { kind: 'step', step: 'root', phase: { kind: 'pending' } })
           return hash
         },
         settleTransaction: hash => settleTransaction(chainId, hash),
         fetchThirdParty: id => fetchThirdParty(address, id)
       })
+      rootTx.current = null
       track('Set TP Merkle root', { collectionId: collection.id, thirdPartyId: thirdParty.id, txHash })
       void queryClient.invalidateQueries({ queryKey: thirdPartyKey(address, thirdParty.id) })
       set(token, { kind: 'step', step: 'deploy', phase: IDLE })
     } catch (error) {
+      // A root that reverted can't land: the next attempt sends a new one. Any other failure keeps it to wait on.
+      if (error instanceof ApprovalError && error.reason === 'reverted') rootTx.current = null
       fail(token, 'root', error)
     } finally {
       setRunning(false)

@@ -41,9 +41,9 @@ type Props = {
   onPublished: () => void
 }
 
-// Steps whose work the creator pays for or that the server already recorded: closing mid-way would strand it.
 const NOTHING: Item[] = []
 
+// Steps whose work the creator pays for or that the server already recorded: closing mid-way would strand it.
 const RUNNING_STEP_ORDER: LinkedPublishStep[] = [
   'check',
   'tos',

@@ -127,6 +127,12 @@ describe('PublishLinkedItemsModal', () => {
     expect(publishMutate).not.toHaveBeenCalled()
   })
 
+  it('shows the fee in USD only, like the standard publish', async () => {
+    slotsData = { available: 0, registered: true }
+    await goToPayment()
+    expect(screen.getByTestId('publish-linked-summary-total')).toHaveTextContent(/^\$100\.00$/)
+  })
+
   it('does not pay on a stale slot count when the re-read fails', async () => {
     slotsRefetch.mockResolvedValue({ data: slotsData, isError: true })
     await goToPayment()

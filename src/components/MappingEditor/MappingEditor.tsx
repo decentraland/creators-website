@@ -29,6 +29,8 @@ type Props = {
   compact?: boolean
   /** Shows the "what is this" tooltip next to the type select. */
   withHelp?: boolean
+  /** Names the controls as a group, so several editors on one screen (one per row) can be told apart. */
+  groupLabel?: string
   testId?: string
 }
 
@@ -50,6 +52,7 @@ export function MappingEditor({
   tone = 'default',
   compact = false,
   withHelp = true,
+  groupLabel,
   testId = 'mapping-editor'
 }: Props) {
   const { t } = useTranslation()
@@ -79,7 +82,13 @@ export function MappingEditor({
   }
 
   return (
-    <S.Editor data-compact={compact || undefined} data-tone={tone} data-testid={testId}>
+    <S.Editor
+      role={groupLabel ? 'group' : undefined}
+      aria-label={groupLabel}
+      data-compact={compact || undefined}
+      data-tone={tone}
+      data-testid={testId}
+    >
       <S.TypeCell>
         <Select
           value={draft.type}

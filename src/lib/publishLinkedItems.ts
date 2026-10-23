@@ -4,7 +4,7 @@
 // cheque to builder-server, which opens one item curation per item, and finally push changes of already-reviewed
 // items. Server and chain access is injected so the sequence runs against fakes in tests.
 import { ethers } from 'ethers'
-import { type ContractCall, type TransactionSettlement } from '~/lib/auth'
+import { type ContractCall, type TransactionSender, type TransactionSettlement } from '~/lib/auth'
 import { BuilderServerError, type PublishLinkedItemsResult, type SlotsCheque } from '~/lib/builder'
 import { CurationStatus, type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
@@ -38,6 +38,8 @@ export type LinkedPublishFailureReason =
 /** A registration or slot purchase this run sent. */
 export type LinkedPayment = {
   txHash: string
+  /** Who sent it and with which nonce, when known: tells a replaced payment apart once the node forgets it. */
+  sender?: TransactionSender
   /** `addThirdParties`: the virtual third party must still be removed once the chain has it. */
   registration: boolean
 }
@@ -365,7 +367,9 @@ export type PublishLinkedDeps = {
   setThirdPartyKind: (thirdPartyId: string, isProgrammatic: boolean) => Promise<void>
   fetchManaAllowance: (owner: string, spender: string) => Promise<bigint>
   sendTransaction: (call: ContractCall) => Promise<string>
-  settleTransaction: (txHash: string) => Promise<TransactionSettlement>
+  settleTransaction: (txHash: string, sender?: TransactionSender) => Promise<TransactionSettlement>
+  /** The sender and nonce of a transaction just sent, recorded with the payment. */
+  readSender?: (txHash: string) => Promise<TransactionSender | undefined>
   fetchSlots: () => Promise<LinkedSlots>
   deleteVirtualThirdParty: (thirdPartyId: string) => Promise<void>
   publishLinkedItems: (
@@ -489,8 +493,8 @@ export async function publishLinkedItems(
     deps.onStep?.(next)
   }
   // A dropped transaction was replaced: by a speed-up that may have bought the same slots, or by a cancel.
-  const settle = async (txHash: string): Promise<'mined' | 'dropped'> => {
-    const outcome = await deps.settleTransaction(txHash)
+  const settle = async (txHash: string, sender?: TransactionSender): Promise<'mined' | 'dropped'> => {
+    const outcome = await deps.settleTransaction(txHash, sender)
     if (outcome === 'reverted') {
       throw new LinkedPublishError(current, 'reverted', `Transaction ${txHash} reverted`, undefined, txHash)
     }
@@ -548,19 +552,43 @@ export async function publishLinkedItems(
 
     if (itemsToPublish.length > 0 && cheque && !alreadyPublished) {
       let slots = params.slots
+      const slotsToBuyFor = (read: LinkedSlots) =>
+        getSlotsToBuy({
+          itemsToPublish: itemsToPublish.length,
+          availableSlots: read.available,
+          isProgrammatic: thirdParty.isProgrammatic,
+          isPublished: read.registered || thirdParty.published,
+          programmaticMinSlots: params.price.programmaticMinSlots
+        })
       if (params.paidTx) {
         step('wait_tx')
+        let stillPending = false
         try {
-          await settle(params.paidTx.txHash)
+          await settle(params.paidTx.txHash, params.paidTx.sender)
           paidTxSettled = true
         } catch (error) {
-          // It charged nothing: whatever is still missing is bought below, as on a first attempt.
-          if (!(error instanceof LinkedPublishError && error.reason === 'reverted')) throw error
-          paidTxSettled = true
-          setPayment(undefined)
-          txHash = null
+          if (error instanceof LinkedPublishError && error.reason === 'payment_pending') {
+            stillPending = true
+          } else {
+            // It charged nothing: whatever is still missing is bought below, as on a first attempt.
+            if (!(error instanceof LinkedPublishError && error.reason === 'reverted')) throw error
+            paidTxSettled = true
+            setPayment(undefined)
+            txHash = null
+          }
         }
         slots = await deps.fetchSlots()
+        // A payment that never confirms still goes on once the registry holds the slots (bought under another
+        // hash); otherwise its record stays, so nothing is bought twice while it may still land.
+        if (stillPending && slotsToBuyFor(slots) > 0) {
+          throw new LinkedPublishError(
+            'wait_tx',
+            'payment_pending',
+            `Transaction ${params.paidTx.txHash} is still pending`,
+            undefined,
+            params.paidTx.txHash
+          )
+        }
       }
       let registered = slots.registered || thirdParty.published
 
@@ -571,16 +599,7 @@ export async function publishLinkedItems(
         thirdParty = { ...thirdParty, isProgrammatic }
       }
 
-      const slotsToBuyFor = (read: LinkedSlots) =>
-        getSlotsToBuy({
-          itemsToPublish: itemsToPublish.length,
-          availableSlots: read.available,
-          isProgrammatic: thirdParty.isProgrammatic,
-          isPublished: read.registered || thirdParty.published,
-          programmaticMinSlots: params.price.programmaticMinSlots
-        })
       const slotsToBuy = slotsToBuyFor(slots)
-
       if (slotsToBuy > 0) {
         const fee = getLinkedPublishFee(slotsToBuy, params.price, {
           isProgrammatic: thirdParty.isProgrammatic,
@@ -612,16 +631,21 @@ export async function publishLinkedItems(
           }
         }
         if (!registered) {
+          // Each payment is recorded at once (a reload must not lose it), then again with its sender once the node has it.
           step('register')
           txHash = await deps.sendTransaction(buildAddThirdPartyCall(chainId, thirdParty, slotsToBuy, fee.maxManaWei))
           setPayment({ txHash, registration: true })
+          const sender = await deps.readSender?.(txHash)
+          if (sender) setPayment({ txHash, registration: true, sender })
         } else {
           step('buy_slots')
           txHash = await deps.sendTransaction(buildBuyItemSlotsCall(chainId, thirdParty.id, slotsToBuy, fee.maxManaWei))
           setPayment({ txHash, registration: false })
+          const sender = await deps.readSender?.(txHash)
+          if (sender) setPayment({ txHash, registration: false, sender })
         }
         step('wait_tx')
-        if ((await settle(txHash)) === 'dropped') {
+        if ((await settle(txHash, payment?.sender)) === 'dropped') {
           // A speed-up bought the slots under another hash; the registry may take a moment to show them.
           let covered = false
           for (let read = 0; read < REPLACED_PURCHASE_READS && !covered; read++) {

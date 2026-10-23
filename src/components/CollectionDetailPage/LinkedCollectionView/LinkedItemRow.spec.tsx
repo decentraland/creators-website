@@ -110,9 +110,20 @@ describe('LinkedItemRow', () => {
 
     fireEvent.change(input, { target: { value: '12' } })
     await act(async () => void vi.advanceTimersByTime(1000))
-    expect(onMappingDirtyChange).not.toHaveBeenCalledWith('i1', false)
+    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', true)
 
     fireEvent.change(input, { target: { value: '' } })
+    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', true)
+  })
+
+  it('keeps the row unsaved when its last edit fails to save on the way out', async () => {
+    vi.useFakeTimers()
+    const { onMappingDirtyChange, input, unmount } = renderRow(vi.fn().mockRejectedValue(new Error('offline')))
+
+    fireEvent.change(input, { target: { value: '12' } })
+    unmount()
+    await act(async () => void (await Promise.resolve()))
+
     expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', true)
   })
 

@@ -11,7 +11,8 @@ import {
   buildLinkedItemEntityMetadata,
   computeItemContentHash,
   computeLinkedItemContentHash,
-  getEntityContent
+  getEntityContent,
+  getLinkedEntityContent
 } from './catalystEntity'
 import { ItemType, type Item } from './items'
 
@@ -258,18 +259,15 @@ describe('computeLinkedItemContentHash', () => {
 })
 
 describe('buildLinkedItemEntity', () => {
-  it('deploys the given content as a wearable pointed at the item urn, with the proof in its metadata', async () => {
-    const content = getEntityContent(linked)
-    const entity = await buildLinkedItemEntity(linkedCollection, linked, content, proof, 123)
+  it('deploys a wearable pointed at the item urn whose files are exactly the content its metadata declares', async () => {
+    const entity = await buildLinkedItemEntity(linkedCollection, linked, getLinkedEntityContent(linked), proof, 123)
     expect(entity.entityId).toBe(await hashV1(entity.entityFile))
     const parsed = JSON.parse(new TextDecoder().decode(entity.entityFile))
     expect(parsed).toMatchObject({ version: 'v3', type: 'wearable', pointers: [linked.urn], timestamp: 123 })
-    expect(parsed.content.map((entry: { file: string }) => entry.file).sort()).toEqual([
-      'image.png',
-      'model.glb',
-      'thumbnail.png'
-    ])
     expect(parsed.metadata.merkleProof.entityHash).toBe('deadbeef')
-    expect(parsed.metadata.content['video.mp4']).toBe('bafvideo')
+    // The Catalyst's third-party validator refuses any difference, in either direction.
+    expect(
+      Object.fromEntries(parsed.content.map((entry: { file: string; hash: string }) => [entry.file, entry.hash]))
+    ).toEqual(parsed.metadata.content)
   })
 })

@@ -97,10 +97,11 @@ export function buildItemEntityMetadata(collection: Collection, item: Item, cont
 export type LinkedMerkleProof = { index: number; proof: string[]; entityHash: string }
 
 /**
- * Linked items hash their stored contents (minus directory entries and empty files) into the metadata, so the
- * preview video stays in it even though the entity never deploys the video.
+ * What a linked item hashes into its metadata and deploys: its stored contents, minus directory entries and empty
+ * files. The Catalyst requires the uploaded files to match this exactly, so nothing is added (no generated image)
+ * nor left out.
  */
-function getLinkedMetadataContent(item: Item): EntityContent {
+export function getLinkedEntityContent(item: Item): EntityContent {
   return Object.fromEntries([...getDeployableFiles(item.contents)].map(path => [path, item.contents[path]]))
 }
 
@@ -113,7 +114,7 @@ function buildLinkedItemBaseMetadata(collection: Collection, item: Item) {
     throw new Error(`Item ${item.id} is not a published item of collection ${collection.id}`)
   }
   if (item.type !== ItemType.WEARABLE) throw new Error(`Item ${item.id} is not a wearable`)
-  const content = getLinkedMetadataContent(item)
+  const content = getLinkedEntityContent(item)
   return {
     id: item.urn,
     name: item.name,

@@ -190,6 +190,13 @@ describe('when watching a transaction until it settles', () => {
     await expect(watchTransaction(reader, HASH, { ...options, ...clock })).resolves.toBe('dropped')
   })
 
+  it('should answer dropped from the sender recorded at send time once the node forgot the transaction', async () => {
+    const forgotten = chain({ count: 5 })
+    await expect(
+      watchTransaction(forgotten.reader, HASH, { ...options, ...forgotten.clock, sender: { from: ACCOUNT, nonce: 4 } })
+    ).resolves.toBe('dropped')
+  })
+
   it('should stop waiting at the timeout, as pending while the node still holds it', async () => {
     const { reader, clock } = chain({ tx: { from: ACCOUNT, nonce: 4 }, count: 4 })
     await expect(watchTransaction(reader, HASH, { ...options, ...clock })).resolves.toBe('pending')

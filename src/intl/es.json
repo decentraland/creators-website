@@ -670,8 +670,8 @@
       "linked_mapping_invalid": "El mapeo de wearable.json no es válido. Revisa su tipo y los IDs de token.",
       "bulk_edit_missing_urn": "Agrega la URN del ítem como \"id\" en wearable.json para actualizarlo.",
       "bulk_edit_no_match": "Ningún ítem de esta colección tiene la URN de este wearable.json.",
-      "linked_urn_in_use": "Un ítem de esta colección ya tiene la URN de este wearable.json. Usa Editar en bloque para actualizarlo, o quita el \"id\" para agregar un ítem nuevo.",
-      "linked_urn_invalid": "El identificador del ítem al final de la URN del wearable.json no es válido: no puede contener espacios, \":\" ni \"|\"."
+      "linked_urn_invalid": "El identificador del ítem al final de la URN del wearable.json no es válido: no puede contener espacios, \":\" ni \"|\".",
+      "linked_video": "Las colecciones vinculadas no admiten video de vista previa. Quita video.mp4 del ZIP."
     },
     "mapping_hint": "Qué tokens del contrato vinculado desbloquean este wearable.",
     "bulk_edit": {
@@ -1637,7 +1637,9 @@
       "description": "Revisa tu conexión e inténtalo de nuevo.",
       "retry": "Reintentar"
     },
-    "mapping_retry": "No se guardó · Reintentar"
+    "mapping_retry": "No se guardó · Reintentar",
+    "mapping_for": "Mapeo de tokens de {name}",
+    "mapping_retry_for": "Reintentar guardar el mapeo de tokens de {name}"
   },
   "success_modal": {
     "done": "Listo"
@@ -1963,6 +1965,10 @@
       "curation": "se subió, pero no se pudo marcar como aprobado",
       "changed": "el creador lo editó durante la aprobación, así que queda pendiente de otra revisión"
     },
-    "unsubmitted": "El creador guardó cambios en ítems después de enviarlos y no envió esos cambios a revisión. Debe volver a enviarlos antes de que estos ítems se puedan aprobar."
+    "unsubmitted": "El creador guardó cambios en ítems después de enviarlos y no envió esos cambios a revisión. Debe volver a enviarlos antes de que estos ítems se puedan aprobar.",
+    "has_video": {
+      "title": "Estos ítems aún no se pueden aprobar",
+      "description": "{items} incluyen un video de vista previa, que los servidores de contenido no aceptan en ítems vinculados. No se registró nada en la blockchain. El creador debe volver a subirlos sin el video."
+    }
   }
 }

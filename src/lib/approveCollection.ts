@@ -44,11 +44,15 @@ export class ApprovalError extends Error {
     | 'invalid_cheque'
     | 'changed'
     | 'unsubmitted'
+    | 'has_video'
+  /** The items the error is about, when the curator must be told which. */
+  items?: Item[]
 
-  constructor(reason: ApprovalError['reason'], message: string) {
+  constructor(reason: ApprovalError['reason'], message: string, items?: Item[]) {
     super(message)
     this.name = 'ApprovalError'
     this.reason = reason
+    this.items = items
   }
 }
 
