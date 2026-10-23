@@ -421,9 +421,10 @@ describe('fetchCurationCollections', () => {
     const result = await fetchCurationCollections(ADDRESS, {
       page: 1,
       search: '',
-      status: 'all' as never,
-      assignee: 'all',
-      sort: 'MOST_RELEVANT' as never,
+      statuses: [],
+      assignees: [],
+      reviewType: null,
+      sort: 'REQUESTED_AT_DESC' as never,
       tag: null
     })
     expect(result.results[0]).toMatchObject({ id: 'a1b2', isPublished: true })

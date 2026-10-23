@@ -7,6 +7,7 @@ import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
 import { type Item } from '~/lib/items'
 import { allCollectionItemsKey } from '~/hooks/useCollection'
+import { itemEntitiesKey } from '~/hooks/useItemSync'
 
 const flow = vi.hoisted(() => ({
   APPROVAL_INDEX_TIMEOUT_MS: 1000,
@@ -34,11 +35,12 @@ const auth = vi.hoisted(() => ({
 vi.mock('~/lib/approveCollection', () => flow)
 vi.mock('~/lib/builder', () => api)
 vi.mock('~/lib/auth', () => auth)
-vi.mock('~/lib/catalyst', () => ({
-  fetchEntitiesByPointers: vi.fn().mockResolvedValue([]),
+const catalyst = vi.hoisted(() => ({
+  fetchEntitiesByPointers: vi.fn(),
   fetchAvailableContent: vi.fn(),
   deployEntity: vi.fn()
 }))
+vi.mock('~/lib/catalyst', () => catalyst)
 vi.mock('~/lib/analytics', () => ({ track: vi.fn(), errorCode: () => 'unknown' }))
 vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
 vi.mock('~/lib/media', () => ({ generateCatalystImage: vi.fn() }))
@@ -72,6 +74,8 @@ beforeEach(() => {
   Object.values(api).forEach(fn => fn.mockReset())
   Object.values(auth).forEach(fn => fn.mockReset())
   api.fetchAllCollectionItems.mockResolvedValue([item])
+  Object.values(catalyst).forEach(fn => fn.mockReset())
+  catalyst.fetchEntitiesByPointers.mockResolvedValue([])
   api.fetchCollection.mockResolvedValue({ ...collection, isApproved: true })
   flow.findItemsToRescue.mockResolvedValue([])
   flow.findItemsToDeploy.mockReturnValue([])
@@ -378,6 +382,36 @@ describe('useApprovalFlow', () => {
       expect.any(Function)
     )
     expect(second.result.current.plan.steps).not.toContain('rescue')
+  })
+
+  it('still approves when the items cannot be fetched for the changed check', async () => {
+    api.fetchAllCollectionItems.mockRejectedValue(new TypeError('Failed to fetch'))
+    const { result } = renderFlow()
+    await act(() => result.current.start())
+    expect(result.current.view).toMatchObject({ kind: 'step', step: 'approve' })
+    expect(flow.findItemsToRescue).toHaveBeenCalledWith(collection, [item], expect.any(Function))
+  })
+
+  it('plans the deploy from fresh entities, or from the ones the review bar looked up when the Catalyst fails', async () => {
+    const stale = { id: 'e0', pointers: ['urn:1'] }
+    const fresh = { id: 'e1', pointers: ['urn:1'] }
+    queryClient.setQueryData(itemEntitiesKey('c1', ['urn:1']), [stale])
+    catalyst.fetchEntitiesByPointers.mockResolvedValue([fresh])
+    const { result } = renderFlow()
+    await act(() => result.current.start())
+    expect(catalyst.fetchEntitiesByPointers).toHaveBeenCalledWith(['urn:1'])
+    expect(flow.findItemsToDeploy).toHaveBeenCalledWith([item], [fresh], false)
+
+    catalyst.fetchEntitiesByPointers.mockRejectedValue(new TypeError('Failed to fetch'))
+    const offline = renderFlow()
+    await act(() => offline.result.current.start())
+    expect(offline.result.current.view).toMatchObject({ kind: 'step', step: 'approve' })
+    expect(flow.findItemsToDeploy).toHaveBeenLastCalledWith([item], [stale], false)
+
+    queryClient.clear()
+    const nothing = renderFlow()
+    await act(() => nothing.result.current.start())
+    expect(nothing.result.current.view).toMatchObject({ kind: 'error', step: 'prepare', detail: 'Failed to fetch' })
   })
 
   it('plans from the items the curator reviewed, not from the fresh fetch', async () => {
