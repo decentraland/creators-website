@@ -16,10 +16,6 @@ const THUMBNAIL_SIZE = 1024
 // has replaced it"); a few attempts absorb that without hiding a genuinely broken file.
 const MAX_ATTEMPTS = 4
 const RETRY_DELAY_MS = 750
-// A preview that never answers would otherwise hold the whole queue: drafts are processed one at a time.
-// Counted from the moment the run can start (the model's UPDATE, or a pose change on a loaded iframe), so a
-// cold boot of the preview app doesn't eat into it.
-const PROCESSING_TIMEOUT_MS = 30_000
 
 type Props = {
   draft: ItemDraft
@@ -28,21 +24,6 @@ type Props = {
 }
 
 type LoadPhase = 'idle' | 'update-sent' | 'loaded'
-
-type Run = {
-  runKey: string
-  done: boolean
-  busy: boolean
-  /** A LOAD that arrived during a read in flight; the read runs again when it ends. */
-  loadPending: boolean
-  attempts: number
-  retryTimer: number
-  watchdog: number
-}
-
-function createRun(runKey: string): Run {
-  return { runKey, done: false, busy: false, loadPending: false, attempts: 0, retryTimer: 0, watchdog: 0 }
-}
 
 /**
  * Off-screen WearablePreview that fills a draft's metrics and auto thumbnail, one draft at a
@@ -56,12 +37,11 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
   const pose = draft.type === ItemType.WEARABLE ? getThumbnailPose(draft.category) : null
   // A pose change on an already-processed draft is a new run against the same iframe.
   const runKey = `${draft.id}:${pose ?? ''}`
-  const runRef = useRef<Run>(createRun(''))
+  const runRef = useRef({ runKey: '', done: false, busy: false, attempts: 0, retryTimer: 0 })
 
   if (runRef.current.runKey !== runKey) {
     window.clearTimeout(runRef.current.retryTimer)
-    window.clearTimeout(runRef.current.watchdog)
-    runRef.current = createRun(runKey)
+    runRef.current = { runKey, done: false, busy: false, attempts: 0, retryTimer: 0 }
   }
 
   // The iframe is kept across drafts (a remount reboots the whole preview app), so a new draft's
@@ -70,17 +50,6 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
   const loadRef = useRef<{ draftId: string; phase: LoadPhase }>({ draftId: '', phase: 'idle' })
   if (loadRef.current.draftId !== draft.id) {
     loadRef.current = { draftId: draft.id, phase: 'idle' }
-  }
-
-  const armWatchdog = (run: Run) => {
-    window.clearTimeout(run.watchdog)
-    run.watchdog = window.setTimeout(() => {
-      if (run.done) return
-      run.done = true
-      // A re-render for a new pose that hangs keeps the metrics and thumbnail the draft already has.
-      if (draft.metrics) onResult(draft.id, { autoThumbnailCategory: draft.category })
-      else onError(draft.id)
-    }, PROCESSING_TIMEOUT_MS)
   }
 
   const attempt = () => {
@@ -137,25 +106,13 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
         run.retryTimer = window.setTimeout(attempt, RETRY_DELAY_MS)
       } finally {
         run.busy = false
-        if (run.loadPending) {
-          run.loadPending = false
-          attempt()
-        }
       }
     })()
   }
 
-  // A pose change on an already-loaded iframe produces no LOAD, so its run starts here.
+  // The iframe's onLoad only fires once per draft: a later pose change has to kick off its run here.
   useEffect(() => {
-    const run = runRef.current
-    if (loadRef.current.phase === 'loaded') {
-      armWatchdog(run)
-      attempt()
-    }
-    return () => {
-      window.clearTimeout(run.watchdog)
-      window.clearTimeout(run.retryTimer)
-    }
+    if (loadRef.current.phase === 'loaded') attempt()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runKey])
 
@@ -178,15 +135,12 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
         projection={PreviewProjection.ORTHOGRAPHIC}
         {...(isEmote ? { profile: 'default', disableFace: true, disableDefaultWearables: true, skin: '000000' } : {})}
         onUpdate={() => {
-          if (loadRef.current.phase !== 'idle') return
-          loadRef.current.phase = 'update-sent'
-          armWatchdog(runRef.current)
+          if (loadRef.current.phase === 'idle') loadRef.current.phase = 'update-sent'
         }}
         onLoad={() => {
           if (loadRef.current.phase === 'idle') return
           loadRef.current.phase = 'loaded'
-          if (runRef.current.busy) runRef.current.loadPending = true
-          else attempt()
+          attempt()
         }}
         onError={() => {
           // Iframe-level errors also count as attempts so a broken preview can't hang forever.
