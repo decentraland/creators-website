@@ -24,6 +24,7 @@ export const Row = styled.div`
 export const Name = styled.span`
   && {
     justify-content: flex-start;
+    align-items: center;
     gap: 12px;
     font-weight: 600;
 
@@ -33,6 +34,17 @@ export const Name = styled.span`
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+  }
+`
+
+// Long token lists end in an ellipsis; the full list is in the title.
+export const Mapping = styled.span`
+  && {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
   }
 `
 

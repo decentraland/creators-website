@@ -148,31 +148,37 @@ export function mappingsFromManifest(mapping: unknown, contract: LinkedContract 
   return isMappingValid(normalized) ? buildItemMappings(normalized, contract) : null
 }
 
-/** The item's token mapping for the collection's linked contract, as the message that labels it. */
-export function getMappingLabel(
+export type MappingLabel = { id: string; values?: Record<string, string | number> }
+
+/**
+ * The item's token mappings for the collection's linked contract, one message per rule, naming the tokens themselves
+ * (never just a count) so a reviewer can check them.
+ */
+export function getMappingLabels(
   mappings: unknown,
   network: string | undefined,
   contractAddress: string | undefined
-): { id: string; values?: Record<string, string | number> } {
+): MappingLabel[] {
   const key = (name: string) => `linked_collection.mapping.${name}`
-  if (!mappings || typeof mappings !== 'object' || !network || !contractAddress) return { id: key('none') }
+  const none = [{ id: key('none') }]
+  if (!mappings || typeof mappings !== 'object' || !network || !contractAddress) return none
   const contracts = (mappings as Mappings)[network as ContractNetwork]
   const entries = contracts
     ? Object.entries(contracts).find(([address]) => address.toLowerCase() === contractAddress.toLowerCase())?.[1]
     : undefined
-  if (!Array.isArray(entries) || entries.length === 0) return { id: key('none') }
-  if (entries.length > 1) return { id: key('rules'), values: { count: entries.length } }
-  const [mapping] = entries
-  switch (mapping.type) {
-    case MappingType.ANY:
-      return { id: key('any') }
-    case MappingType.SINGLE:
-      return { id: key('single'), values: { id: mapping.id } }
-    case MappingType.RANGE:
-      return { id: key('range'), values: { from: mapping.from, to: mapping.to } }
-    case MappingType.MULTIPLE:
-      return { id: key('multiple'), values: { count: mapping.ids.length } }
-    default:
-      return { id: key('none') }
-  }
+  if (!Array.isArray(entries) || entries.length === 0) return none
+  return entries.map((mapping): MappingLabel => {
+    switch (mapping.type) {
+      case MappingType.ANY:
+        return { id: key('any') }
+      case MappingType.SINGLE:
+        return { id: key('single'), values: { id: mapping.id } }
+      case MappingType.RANGE:
+        return { id: key('range'), values: { from: mapping.from, to: mapping.to } }
+      case MappingType.MULTIPLE:
+        return { id: key('multiple'), values: { ids: mapping.ids.map(id => `#${id}`).join(', ') } }
+      default:
+        return { id: key('none') }
+    }
+  })
 }

@@ -677,8 +677,8 @@
     "bulk_edit": {
       "title": "{count, plural, other {更新 # 个物品}}",
       "form_heading": "物品更新",
-      "hint": "每个 ZIP 会更新其 wearable.json 中 URN 对应的物品，替换该物品的文件和信息；若 ZIP 未设置映射，则保留原有映射。",
-      "success_toast": "{count, plural, other {已更新 # 个物品}}"
+      "success_toast": "{count, plural, other {已更新 # 个物品}}",
+      "target": "将更新 {name}（{urn}）"
     },
     "items_error": "无法加载此系列的物品，而将每个文件匹配到对应物品需要这些数据。请重试。",
     "items_loading": "此系列的物品仍在加载中，请稍后再保存。"
@@ -1582,8 +1582,7 @@
       "any": "任意代币",
       "single": "代币 #{id}",
       "range": "代币 #{from}–#{to}",
-      "multiple": "{count, plural, one {# 个代币} other {# 个代币}}",
-      "rules": "{count, plural, one {# 条规则} other {# 条规则}}"
+      "multiple": "代币 {ids}"
     },
     "kind_label": "第三方类型",
     "kind": {

@@ -677,8 +677,8 @@
     "bulk_edit": {
       "title": "{count, plural, one {Actualizar # ítem} other {Actualizar # ítems}}",
       "form_heading": "Actualización del ítem",
-      "hint": "Cada ZIP actualiza el ítem cuya URN figura en su wearable.json. Reemplaza los archivos y datos del ítem; su mapeo se mantiene salvo que el ZIP defina uno.",
-      "success_toast": "{count, plural, one {# ítem actualizado} other {# ítems actualizados}}"
+      "success_toast": "{count, plural, one {# ítem actualizado} other {# ítems actualizados}}",
+      "target": "Actualiza {name} ({urn})"
     },
     "items_error": "No pudimos cargar los ítems de esta colección, que hacen falta para asociar cada archivo con su ítem. Inténtalo de nuevo.",
     "items_loading": "Los ítems de esta colección todavía se están cargando. Intenta guardar de nuevo en un momento."
@@ -1582,8 +1582,7 @@
       "any": "Cualquier token",
       "single": "Token #{id}",
       "range": "Tokens #{from}–#{to}",
-      "multiple": "{count, plural, one {# token} other {# tokens}}",
-      "rules": "{count, plural, one {# regla} other {# reglas}}"
+      "multiple": "Tokens {ids}"
     },
     "kind_label": "Tipo de tercero",
     "kind": {

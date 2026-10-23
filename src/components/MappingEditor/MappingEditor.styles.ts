@@ -21,6 +21,8 @@ export const TypeCell = styled.div`
   gap: 8px;
 `
 
+const COMPACT_TOKEN_ID_WIDTH = '104px'
+
 export const Input = styled.input`
   width: 100%;
   min-width: 0;
@@ -55,8 +57,13 @@ export const Input = styled.input`
 
   [data-compact] > & {
     flex: 1 1 140px;
-    min-height: 36px;
-    padding: 6px 10px;
+  }
+
+  /* One token id and each bound of a range share one fixed width, so the column lines up whatever the type. */
+  [data-compact] > &[data-size='short'],
+  [data-compact] [data-range] > & {
+    flex: none;
+    width: ${COMPACT_TOKEN_ID_WIDTH};
   }
 
   [data-tone='dark'] & {
@@ -104,7 +111,7 @@ export const RangeRow = styled.div`
   min-width: 0;
 
   [data-compact] > & {
-    flex: 1 1 200px;
+    flex: none;
   }
 `
 

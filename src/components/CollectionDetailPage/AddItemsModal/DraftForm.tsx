@@ -29,7 +29,7 @@ import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } fr
 import { THUMBNAIL_PATH, hasFacialExpressions, toMB } from '~/lib/itemFiles'
 import { BodyShapeType, ItemType, VIDEO_PATH, type Item } from '~/lib/items'
 import { type Mapping } from '~/lib/mappings'
-import { type LinkedContract } from '~/lib/thirdParty'
+import { decodeLinkedUrn, type LinkedContract } from '~/lib/thirdParty'
 import { MappingEditor } from '~/components/MappingEditor'
 import { getCategoryOptions, getVariantTargets, type ItemDraft } from './AddItemsModal.state'
 import * as S from './AddItemsModal.styles'
@@ -78,6 +78,14 @@ export function DraftForm({
   const variantTargets = useMemo(
     () => (isSingleShape ? getVariantTargets(draft, drafts, collectionItems) : []),
     [isSingleShape, draft, drafts, collectionItems]
+  )
+  // Edit in bulk: the item this zip's wearable.json names, once the zip has been read.
+  const updatedItem = useMemo(
+    () =>
+      linked?.updating && draft.urnSuffix
+        ? collectionItems.find(item => decodeLinkedUrn(item.urn)?.itemSuffix === draft.urnSuffix)
+        : undefined,
+    [linked?.updating, draft.urnSuffix, collectionItems]
   )
   const variantTargetShape = draft.bodyShape === BodyShapeType.MALE ? BodyShapeType.FEMALE : BodyShapeType.MALE
   const showItemFields = !draft.isVariant
@@ -198,10 +206,13 @@ export function DraftForm({
         <S.FormHeading>
           {t(linked?.updating ? 'add_items_modal.bulk_edit.form_heading' : 'add_items_modal.form_heading')}
         </S.FormHeading>
-        {linked?.updating && (
-          <S.FieldHint data-testid="bulk-edit-hint">
+        {updatedItem?.urn && (
+          <S.FieldHint data-testid="bulk-edit-target" title={updatedItem.urn}>
             <InfoIcon />
-            {t('add_items_modal.bulk_edit.hint')}
+            {t('add_items_modal.bulk_edit.target', {
+              name: updatedItem.name,
+              urn: decodeLinkedUrn(updatedItem.urn)?.itemSuffix ?? updatedItem.urn
+            })}
           </S.FieldHint>
         )}
 

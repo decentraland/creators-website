@@ -7,7 +7,7 @@ import {
   buildItemMappings,
   fromMappingDraft,
   getItemMapping,
-  getMappingLabel,
+  getMappingLabels,
   isMappingValid,
   mappingsFromManifest,
   normalizeMapping,
@@ -107,32 +107,36 @@ describe('areMappingsEqual', () => {
   })
 })
 
-describe('getMappingLabel', () => {
+describe('getMappingLabels', () => {
   const mappingsFor = (...entries: unknown[]) => ({ amoy: { [CONTRACT.address]: entries } })
   const label = (id: string, values?: Record<string, string | number>) => ({
     id: `linked_collection.mapping.${id}`,
     ...(values && { values })
   })
 
-  it('names each mapping type', () => {
-    expect(getMappingLabel(mappingsFor({ type: 'any' }), 'amoy', CONTRACT.address)).toEqual(label('any'))
-    expect(getMappingLabel(mappingsFor({ type: 'single', id: '7' }), 'amoy', CONTRACT.address)).toEqual(
+  it('names the tokens of each mapping type, never just a count', () => {
+    expect(getMappingLabels(mappingsFor({ type: 'any' }), 'amoy', CONTRACT.address)).toEqual([label('any')])
+    expect(getMappingLabels(mappingsFor({ type: 'single', id: '7' }), 'amoy', CONTRACT.address)).toEqual([
       label('single', { id: '7' })
-    )
-    expect(getMappingLabel(mappingsFor({ type: 'range', from: '1', to: '9' }), 'amoy', CONTRACT.address)).toEqual(
+    ])
+    expect(getMappingLabels(mappingsFor({ type: 'range', from: '1', to: '9' }), 'amoy', CONTRACT.address)).toEqual([
       label('range', { from: '1', to: '9' })
-    )
-    expect(getMappingLabel(mappingsFor({ type: 'multiple', ids: ['1', '2'] }), 'amoy', CONTRACT.address)).toEqual(
-      label('multiple', { count: 2 })
+    ])
+    expect(getMappingLabels(mappingsFor({ type: 'multiple', ids: ['1', '5', '9'] }), 'amoy', CONTRACT.address)).toEqual(
+      [label('multiple', { ids: '#1, #5, #9' })]
     )
   })
 
-  it('counts several rules and reads anything else as no mapping', () => {
-    expect(getMappingLabel(mappingsFor({ type: 'any' }, { type: 'any' }), 'amoy', CONTRACT.address)).toEqual(
-      label('rules', { count: 2 })
-    )
-    expect(getMappingLabel(null, 'amoy', CONTRACT.address)).toEqual(label('none'))
-    expect(getMappingLabel(mappingsFor({ type: 'any' }), 'matic', CONTRACT.address)).toEqual(label('none'))
+  it('labels every rule of an item with several, and reads anything else as no mapping', () => {
+    expect(
+      getMappingLabels(
+        mappingsFor({ type: 'single', id: '3' }, { type: 'range', from: '10', to: '20' }),
+        'amoy',
+        CONTRACT.address
+      )
+    ).toEqual([label('single', { id: '3' }), label('range', { from: '10', to: '20' })])
+    expect(getMappingLabels(null, 'amoy', CONTRACT.address)).toEqual([label('none')])
+    expect(getMappingLabels(mappingsFor({ type: 'any' }), 'matic', CONTRACT.address)).toEqual([label('none')])
   })
 })
 

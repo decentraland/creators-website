@@ -116,6 +116,7 @@ export function MappingEditor({
           aria-label={t('mapping_editor.type.single')}
           disabled={disabled}
           data-invalid={(invalid && draft.id !== '') || undefined}
+          data-size="short"
           data-testid={`${testId}-id`}
           onChange={event => update({ id: event.target.value.replace(DIGITS, '') })}
         />
@@ -133,7 +134,7 @@ export function MappingEditor({
         />
       )}
       {draft.type === MappingType.RANGE && (
-        <S.RangeRow>
+        <S.RangeRow data-range>
           <S.Input
             value={draft.from}
             inputMode="numeric"

@@ -5,7 +5,7 @@ import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
-import { getMappingLabel } from '~/lib/mappings'
+import { getMappingLabels } from '~/lib/mappings'
 import { Button } from '~/components/Button'
 import { Checkbox } from '~/components/Checkbox'
 import { CategoryIcon } from '~/components/ItemIcons'
@@ -42,7 +42,9 @@ export function LinkedItemsStep({
   const renderRows = (items: Item[], testId: string) =>
     items.map(item => {
       const thumbnailHash = item.contents[item.thumbnail]
-      const mapping = getMappingLabel(item.mappings, network, address)
+      const mapping = getMappingLabels(item.mappings, network, address)
+        .map(label => t(label.id, label.values))
+        .join(' · ')
       return (
         <R.Row key={item.id} data-testid={testId}>
           <R.Name>
@@ -52,7 +54,9 @@ export function LinkedItemsStep({
             <span title={item.name}>{item.name}</span>
           </R.Name>
           <span>{item.data.category ? <CategoryIcon category={item.data.category} withLabel /> : '—'}</span>
-          <span data-testid={`${testId}-mapping`}>{t(mapping.id, mapping.values)}</span>
+          <R.Mapping title={mapping} data-testid={`${testId}-mapping`}>
+            {mapping}
+          </R.Mapping>
         </R.Row>
       )
     })

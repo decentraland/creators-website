@@ -677,8 +677,8 @@
     "bulk_edit": {
       "title": "{count, plural, one {Update # item} other {Update # items}}",
       "form_heading": "Item update",
-      "hint": "Each ZIP updates the item whose URN is in its wearable.json. It replaces the item's files and details; its mapping stays unless the ZIP sets one.",
-      "success_toast": "{count, plural, one {# item updated} other {# items updated}}"
+      "success_toast": "{count, plural, one {# item updated} other {# items updated}}",
+      "target": "Updates {name} ({urn})"
     },
     "items_error": "We couldn't load this collection's items, which are needed to match each file to its item. Try again.",
     "items_loading": "This collection's items are still loading. Try saving again in a moment."
@@ -1582,8 +1582,7 @@
       "any": "Any token",
       "single": "Token #{id}",
       "range": "Tokens #{from}–#{to}",
-      "multiple": "{count, plural, one {# token} other {# tokens}}",
-      "rules": "{count, plural, one {# rule} other {# rules}}"
+      "multiple": "Tokens {ids}"
     },
     "kind_label": "Third party type",
     "kind": {
