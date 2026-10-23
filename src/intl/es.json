@@ -1907,19 +1907,12 @@
       "delete_virtual": "Esperando que la red indexe tu tercero…",
       "publish": "Enviando tus ítems a revisión…",
       "push": "Enviando tus cambios a revisión…",
-      "short": {
-        "tos": "Términos",
-        "kind": "Tipo",
-        "allowance": "Aprobar",
-        "register": "Registrar",
-        "buy_slots": "Pagar",
-        "wait_tx": "Confirmar",
-        "delete_virtual": "Indexar",
-        "publish": "Enviar",
-        "push": "Cambios",
-        "check": "Revisión"
-      },
-      "check": "Revisando tus ítems…"
+      "check": "Revisando tus ítems…",
+      "phase": {
+        "prepare": "Preparar",
+        "pay": "Pagar",
+        "submit": "Enviar"
+      }
     },
     "error": {
       "title": "No pudimos publicar tus ítems",

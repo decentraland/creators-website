@@ -14,6 +14,9 @@ import { loadPendingPublish, savePendingPublish, type PendingPublish } from '~/l
 import { getMaticChainId } from '~/lib/publishCollection'
 import {
   LinkedPublishError,
+  getLinkedPublishPhase,
+  getLinkedPublishPhases,
+  getLinkedPublishQuote,
   getPublishState,
   readFreshLinkedQuote,
   type LinkedPublishStep
@@ -42,20 +45,6 @@ type Props = {
 }
 
 const NOTHING: Item[] = []
-
-// Steps whose work the creator pays for or that the server already recorded: closing mid-way would strand it.
-const RUNNING_STEP_ORDER: LinkedPublishStep[] = [
-  'check',
-  'tos',
-  'kind',
-  'allowance',
-  'register',
-  'buy_slots',
-  'wait_tx',
-  'delete_virtual',
-  'publish',
-  'push'
-]
 
 /**
  * The linked publish wizard (legacy PublishWizardCollectionModal for third parties): confirm name and email →
@@ -128,9 +117,11 @@ export function PublishLinkedItemsModal({
     [publishDone, liveCurations.data, selectedToPublish]
   )
   const isRunning = publish.isPending || runningStep !== null
-  const runningLabels = useMemo(
-    () => RUNNING_STEP_ORDER.map(name => t(`publish_linked_modal.running.short.${name}`)),
-    [t]
+  // Whether this run buys slots or resumes a payment, known once the fee is re-read on Submit.
+  const [runPays, setRunPays] = useState(false)
+  const phases = useMemo(
+    () => (runningStep ? getLinkedPublishPhases(runPays, runningStep) : []),
+    [runPays, runningStep]
   )
   useBeforeUnloadGuard(isRunning)
 
@@ -199,6 +190,13 @@ export function PublishLinkedItemsModal({
       setRunningStep(null)
       return
     }
+    setRunPays(
+      !!paidTx ||
+        getLinkedPublishQuote(itemsToPublish.length, fresh.slots, fresh.price, {
+          isProgrammatic,
+          published: thirdParty.published
+        }).slotsToBuy > 0
+    )
     publish.mutate(
       {
         collection,
@@ -259,8 +257,8 @@ export function PublishLinkedItemsModal({
         title={t('publish_linked_modal.running.title')}
         label={t(`publish_linked_modal.running.${runningStep}`)}
         steps={{
-          labels: runningLabels,
-          current: RUNNING_STEP_ORDER.indexOf(runningStep) + 1
+          labels: phases.map(phase => t(`publish_linked_modal.running.phase.${phase}`)),
+          current: phases.indexOf(getLinkedPublishPhase(runningStep)) + 1
         }}
         testId="publish-linked-running"
       />

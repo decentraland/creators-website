@@ -24,6 +24,34 @@ import { isWalletRejection } from '~/lib/walletErrors'
 export type LinkedPublishStep =
   'check' | 'tos' | 'kind' | 'allowance' | 'register' | 'buy_slots' | 'wait_tx' | 'delete_virtual' | 'publish' | 'push'
 
+/** The few phases the creator sees while the run goes through its steps. */
+export type LinkedPublishPhase = 'prepare' | 'pay' | 'submit'
+
+const PHASE_OF_STEP: Record<LinkedPublishStep, LinkedPublishPhase> = {
+  check: 'prepare',
+  tos: 'prepare',
+  kind: 'prepare',
+  allowance: 'pay',
+  register: 'pay',
+  buy_slots: 'pay',
+  wait_tx: 'pay',
+  delete_virtual: 'submit',
+  publish: 'submit',
+  push: 'submit'
+}
+
+export function getLinkedPublishPhase(step: LinkedPublishStep): LinkedPublishPhase {
+  return PHASE_OF_STEP[step]
+}
+
+/**
+ * The phases to show for a run: paying only when something is bought or an earlier payment is resumed, so a publish
+ * that charges nothing never shows a payment step. A run that turns out to pay anyway gains it as it gets there.
+ */
+export function getLinkedPublishPhases(pays: boolean, current?: LinkedPublishStep): LinkedPublishPhase[] {
+  return pays || (current && PHASE_OF_STEP[current] === 'pay') ? ['prepare', 'pay', 'submit'] : ['prepare', 'submit']
+}
+
 export type LinkedPublishFailureReason =
   | 'rejected'
   | 'reverted'

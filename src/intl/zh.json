@@ -1907,19 +1907,12 @@
       "delete_virtual": "正在等待网络索引您的第三方…",
       "publish": "正在提交物品进行审核…",
       "push": "正在推送更改进行审核…",
-      "short": {
-        "tos": "条款",
-        "kind": "方式",
-        "allowance": "授权",
-        "register": "注册",
-        "buy_slots": "支付",
-        "wait_tx": "确认",
-        "delete_virtual": "索引",
-        "publish": "提交",
-        "push": "推送",
-        "check": "检查"
-      },
-      "check": "正在检查您的物品…"
+      "check": "正在检查您的物品…",
+      "phase": {
+        "prepare": "准备",
+        "pay": "支付",
+        "submit": "提交"
+      }
     },
     "error": {
       "title": "无法发布您的物品",

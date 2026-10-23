@@ -113,6 +113,9 @@ describe('PublishLinkedItemsModal', () => {
 
     finishRead({ data: { available: 5, registered: true }, isError: false })
     await waitFor(() => expect(publishMutate).toHaveBeenCalledTimes(1))
+    // Nothing to buy: no payment phase among the few the creator sees.
+    expect(screen.getByTestId('publish-linked-running')).toHaveTextContent('Prepare')
+    expect(screen.getByTestId('publish-linked-running')).not.toHaveTextContent('Pay')
     expect(publishMutate.mock.calls[0][0]).toMatchObject({ slots: { available: 5 } })
   })
 

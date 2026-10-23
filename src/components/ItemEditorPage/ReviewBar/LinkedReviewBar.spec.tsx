@@ -116,4 +116,9 @@ describe('LinkedReviewBar', () => {
     expect(screen.queryByTestId('review-action-enable')).not.toBeInTheDocument()
     thirdParty.isApproved = true
   })
+
+  it('offers the curator a preview of the collection in world, like a standard review', () => {
+    render(renderBar(null), { wrapper })
+    expect(screen.getByTestId('review-preview')).toBeInTheDocument()
+  })
 })

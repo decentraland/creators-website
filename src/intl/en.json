@@ -1907,19 +1907,12 @@
       "delete_virtual": "Waiting for the network to index your third party…",
       "publish": "Submitting your items for review…",
       "push": "Sending your changes for review…",
-      "short": {
-        "tos": "Terms",
-        "kind": "Kind",
-        "allowance": "Approve",
-        "register": "Register",
-        "buy_slots": "Pay",
-        "wait_tx": "Confirm",
-        "delete_virtual": "Index",
-        "publish": "Submit",
-        "push": "Push",
-        "check": "Check"
-      },
-      "check": "Checking your items…"
+      "check": "Checking your items…",
+      "phase": {
+        "prepare": "Prepare",
+        "pay": "Pay",
+        "submit": "Submit"
+      }
     },
     "error": {
       "title": "We couldn't publish your items",

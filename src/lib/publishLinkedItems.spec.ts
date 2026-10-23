@@ -11,6 +11,8 @@ import {
   buildChequeTypedData,
   createChequeSalt,
   getLinkedPublishFee,
+  getLinkedPublishPhase,
+  getLinkedPublishPhases,
   getLinkedSlots,
   getResumablePayment,
   getSlotsToBuy,
@@ -1104,5 +1106,23 @@ describe('readFreshLinkedQuote', () => {
       readPrice: async () => price
     })
     expect(failed.kind).toBe('read_failed')
+  })
+})
+
+describe('linked publish phases', () => {
+  it('shows paying only when the run buys slots or resumes a payment, and adds it if the run gets there anyway', () => {
+    expect(getLinkedPublishPhases(true)).toEqual(['prepare', 'pay', 'submit'])
+    expect(getLinkedPublishPhases(false)).toEqual(['prepare', 'submit'])
+    expect(getLinkedPublishPhases(false, 'buy_slots')).toEqual(['prepare', 'pay', 'submit'])
+  })
+
+  it('groups every step of the run under one of them', () => {
+    expect(['check', 'tos', 'kind'].map(step => getLinkedPublishPhase(step as LinkedPublishStep))).toEqual([
+      'prepare',
+      'prepare',
+      'prepare'
+    ])
+    expect(getLinkedPublishPhase('wait_tx')).toBe('pay')
+    expect(getLinkedPublishPhase('push')).toBe('submit')
   })
 })
