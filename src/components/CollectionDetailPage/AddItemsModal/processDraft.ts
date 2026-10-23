@@ -122,8 +122,6 @@ export async function processDraftFile(file: File, prefillHides?: string[]): Pro
   return patch
 }
 
-export { imageThumbnailPatch, needsPreviewData }
-
 /** Image wearable whose auto thumbnail was padded for a different category (the padding differs per category). */
 export function isImageThumbnailStale(draft: ItemDraft): boolean {
   return (

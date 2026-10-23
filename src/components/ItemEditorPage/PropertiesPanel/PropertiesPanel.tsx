@@ -213,13 +213,14 @@ export function PropertiesPanel({
             {t('item_editor.details.download')}
           </ActionsMenuItem>
           {editable && (
-            <ActionsMenuItem testId={`${testId}-change-file`} onClick={() => setChangeFile({})}>
+            <ActionsMenuItem testId={`${testId}-change-file`} disabled={isSaving} onClick={() => setChangeFile({})}>
               {t('item_editor.details.change_file')}
             </ActionsMenuItem>
           )}
           {editable && missingShape && (
             <ActionsMenuItem
               testId={`${testId}-add-representation`}
+              disabled={isSaving}
               onClick={() => setChangeFile({ lockedBodyShape: missingShape })}
             >
               {t('item_editor.details.add_representation', {

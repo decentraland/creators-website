@@ -28,7 +28,8 @@ import {
   isValidationStale,
   type ItemDraft
 } from './AddItemsModal.state'
-import { imageThumbnailPatch, isImageThumbnailStale, processDraftFile, pickPreviewDraft } from './processDraft'
+import { imageThumbnailPatch } from '~/lib/draftPreview'
+import { isImageThumbnailStale, processDraftFile, pickPreviewDraft } from './processDraft'
 import { DraftList } from './DraftList'
 import { DraftForm } from './DraftForm'
 import { DraftProcessor } from '~/components/ItemDraftModal'

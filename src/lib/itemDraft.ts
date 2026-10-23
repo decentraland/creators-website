@@ -108,7 +108,7 @@ export function itemDraftReducer(draft: ItemDraft, action: ItemDraftAction): Ite
     case 'setVideo':
       return { ...draft, video: action.video }
     case 'setFileUpdate': {
-      const update = action.update && mergeFileUpdate(draft.fileUpdate, action.update)
+      const update = action.update
       if (!update || update.item.type !== ItemType.WEARABLE) return { ...draft, fileUpdate: update }
       // Image and model wearables take disjoint categories: switching kinds leaves the old one invalid.
       const categories = getWearableCategoryOptions(update.item.contents)
@@ -125,15 +125,6 @@ export function itemDraftReducer(draft: ItemDraft, action: ItemDraftAction): Ite
       return { ...draft, fileUpdate: update, category: null, hides: [] }
     }
   }
-}
-
-/** A second file change is built on the pending item, so the earlier update's files it still lists travel along. */
-function mergeFileUpdate(previous: BuiltItem | null, update: BuiltItem): BuiltItem {
-  if (!previous) return update
-  const carried = Object.fromEntries(
-    Object.entries(previous.blobs).filter(([path]) => path in update.item.contents && !(path in update.blobs))
-  )
-  return { item: update.item, blobs: { ...carried, ...update.blobs } }
 }
 
 function sameList(a: string[], b: string[]): boolean {

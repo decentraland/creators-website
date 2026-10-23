@@ -845,7 +845,6 @@
       "utility": "Utilidad",
       "utility_hint": "Una descripción corta de lo que hace este ítem en el mundo, visible para los coleccionistas.",
       "category": "Categoría",
-      "category_required": "Elige una categoría para el nuevo archivo.",
       "rarity": "Rareza"
     },
     "overrides": {

@@ -73,12 +73,14 @@ function Harness({
   readOnlyReason,
   onSave = vi.fn(),
   onSaveFile = () => Promise.resolve(),
+  isSaving = false,
   subject = item
 }: {
   editable?: boolean
   readOnlyReason?: 'role' | 'lock'
   onSave?: () => void
-  onSaveFile?: () => Promise<void>
+  onSaveFile?: (change: ItemFileChange) => Promise<void>
+  isSaving?: boolean
   subject?: Item
 }) {
   const form = useItemForm(subject)
@@ -92,7 +94,7 @@ function Harness({
       draft={form.draft}
       dispatch={form.dispatch}
       isDirty={form.isDirty}
-      isSaving={false}
+      isSaving={isSaving}
       springBones={null}
       onSave={onSave}
       onSaveFile={onSaveFile}
@@ -176,6 +178,13 @@ describe('PropertiesPanel', () => {
     expect(onSaveFile).toHaveBeenCalledWith(fileChange.result)
     expect(screen.getByTestId('properties-panel-name')).toHaveValue('Hat 2')
     expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
+  })
+
+  it('keeps the file actions out of reach while a save is in flight', async () => {
+    render(<Harness isSaving />, { wrapper: Providers })
+    await userEvent.click(screen.getByTestId('properties-panel-actions'))
+    expect(screen.getByTestId('properties-panel-change-file')).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByTestId('properties-panel-add-representation')).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('keeps saving a stored item whose category the editor does not offer', async () => {

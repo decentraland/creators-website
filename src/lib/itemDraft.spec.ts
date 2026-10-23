@@ -91,34 +91,6 @@ describe('item draft', () => {
     expect(backToModel.hides).toEqual(['hair', 'helmet'])
   })
 
-  it('carries the files of an earlier file change that a later one still lists', () => {
-    const female = new Blob(['f'])
-    const added = itemDraftReducer(createItemDraft(item), {
-      type: 'setFileUpdate',
-      update: {
-        item: { ...item, contents: { ...item.contents, 'female/hat.glb': 'bafyf' } },
-        blobs: { 'female/hat.glb': female }
-      }
-    })
-    const male = new Blob(['m'])
-    const replaced = itemDraftReducer(added, {
-      type: 'setFileUpdate',
-      update: {
-        item: { ...item, contents: { ...item.contents, 'male/hat.glb': 'bafym', 'female/hat.glb': 'bafyf' } },
-        blobs: { 'male/hat.glb': male }
-      }
-    })
-    expect(replaced.fileUpdate?.blobs).toEqual({ 'female/hat.glb': female, 'male/hat.glb': male })
-    const dropped = itemDraftReducer(added, {
-      type: 'setFileUpdate',
-      update: {
-        item: { ...item, contents: { ...item.contents, 'male/hat.glb': 'bafym' } },
-        blobs: { 'male/hat.glb': male }
-      }
-    })
-    expect(dropped.fileUpdate?.blobs).toEqual({ 'male/hat.glb': male })
-  })
-
   it('saves a file change from the saved item alone, with the render and the category it took', async () => {
     const update = {
       item: {
@@ -131,8 +103,14 @@ describe('item draft', () => {
       },
       blobs: { 'male/eyes.png': new Blob(['png']) }
     }
-    const built = await toFileChangeSaveable(item, { update, thumbnail: new Blob(['render']), category: 'eyes' })
+    const springBones = { version: 1, models: { bafyeyes: {} } }
+    const built = await toFileChangeSaveable(
+      item,
+      { update, thumbnail: new Blob(['render']), category: 'eyes' },
+      { springBones }
+    )
     expect(built.item.name).toBe('Hat')
+    expect(built.item.data.springBones).toEqual(springBones)
     expect(built.item.data.category).toBe('eyes')
     expect(built.item.data.hides).toEqual([])
     expect(built.item.data.representations[0].mainFile).toBe('male/eyes.png')
