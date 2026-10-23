@@ -167,7 +167,11 @@ describe('prepareLinkedApproval', () => {
     await expect(
       prepareLinkedApproval(collection, deps, {
         pendingIds: new Set(['1', '2']),
-        reviewedHashes: new Map([['2', item('2').currentContentHash]])
+        // Both were opened; '1' was deployed and approved by the first attempt.
+        reviewedHashes: new Map([
+          ['1', item('1').currentContentHash],
+          ['2', item('2').currentContentHash]
+        ])
       })
     ).resolves.toMatchObject({ pendingItems: [expect.objectContaining({ id: '2' })] })
   })

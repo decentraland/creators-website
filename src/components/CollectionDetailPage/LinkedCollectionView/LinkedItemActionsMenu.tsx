@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '~/intl'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useDeleteItem } from '~/hooks/usePublishCollection'
-import { useSaveItem } from '~/hooks/useSaveItem'
 import { track } from '~/lib/analytics'
 import { copyToClipboard } from '~/lib/clipboard'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
+import { type SaveItemPatch } from '~/lib/itemSaveQueue'
 import { isLinkedItemPublished, type ItemCuration } from '~/lib/linkedItemStatus'
 import { useNotifications } from '~/lib/notifications'
 import { buildLinkedItemUrn, decodeLinkedUrn } from '~/lib/thirdParty'
@@ -24,17 +24,27 @@ type Props = {
   curation: ItemCuration | null | undefined
   /** Whether the collection takes edits: a locked one refuses URN changes and deletes. */
   canEdit: boolean
+  /** Saves the item through the view's per-item queue, so this never undoes a mapping save still in flight. */
+  saveItemPatch: SaveItemPatch
   onDeleted?: () => void
 }
 
 type Dialog = 'urn' | 'delete' | null
 
 /** The ⋯ menu of a linked item row: open in the editor, copy or edit its URN, delete it while unpublished. */
-export function LinkedItemActionsMenu({ item, collection, address, curation, canEdit, onDeleted }: Props) {
+export function LinkedItemActionsMenu({
+  item,
+  collection,
+  address,
+  curation,
+  canEdit,
+  saveItemPatch,
+  onDeleted
+}: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const showToast = useNotifications(state => state.showToast)
-  const saveItem = useSaveItem(address)
+  const [urnSave, setUrnSave] = useState<'idle' | 'saving' | 'failed'>('idle')
   const deleteItem = useDeleteItem(address)
   const [dialog, setDialog] = useState<Dialog>(null)
   // Small screens are a viewer: only copying the URN stays available there.
@@ -54,21 +64,20 @@ export function LinkedItemActionsMenu({ item, collection, address, curation, can
 
   function closeDialog() {
     setDialog(null)
-    saveItem.reset()
+    setUrnSave('idle')
     deleteItem.reset()
   }
 
   function saveUrn(suffix: string) {
     const urn = buildLinkedItemUrn(collection.urn, suffix)
-    saveItem.mutate(
-      { item: { ...item, urn } },
-      {
-        onSuccess: () => {
-          track('Change TP Item URN', { oldURN: item.urn, newURN: urn })
-          closeDialog()
-          showToast(t('linked_collection.urn_saved'))
-        }
-      }
+    setUrnSave('saving')
+    saveItemPatch(item, { urn }).then(
+      () => {
+        track('Change TP Item URN', { oldURN: item.urn, newURN: urn })
+        closeDialog()
+        showToast(t('linked_collection.urn_saved'))
+      },
+      () => setUrnSave('failed')
     )
   }
 
@@ -119,8 +128,8 @@ export function LinkedItemActionsMenu({ item, collection, address, curation, can
           kind="item"
           urnPrefix={collection.urn}
           initialSuffix={decoded.itemSuffix}
-          isPending={saveItem.isPending}
-          error={saveItem.isError ? t('linked_collection.urn_error') : null}
+          isPending={urnSave === 'saving'}
+          error={urnSave === 'failed' ? t('linked_collection.urn_error') : null}
           onSubmit={saveUrn}
           onClose={closeDialog}
         />

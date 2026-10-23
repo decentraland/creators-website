@@ -1632,7 +1632,13 @@
     },
     "item_actions": {
       "edit_urn": "Edit URN"
-    }
+    },
+    "load_error": {
+      "title": "We couldn't load the items",
+      "description": "Check your connection and try again.",
+      "retry": "Try again"
+    },
+    "mapping_retry": "Not saved · Retry"
   },
   "success_modal": {
     "done": "Done"

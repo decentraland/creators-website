@@ -74,11 +74,14 @@ export function matchesReviewedContent(
   review: ReviewedContent,
   curations: Map<string, ItemCuration> = new Map()
 ): boolean {
-  const expected = [...review.pendingIds].filter(id => curations.get(id)?.status !== CurationStatus.APPROVED)
+  const stillPending = (id: string) => curations.get(id)?.status !== CurationStatus.APPROVED
+  const expected = [...review.pendingIds].filter(stillPending)
   if (pendingItems.length !== expected.length) return false
   const byId = new Map(pendingItems.map(item => [item.id, item]))
   if (expected.some(id => !byId.has(id))) return false
-  return [...review.reviewedHashes].every(([id, hash]) => byId.get(id)?.currentContentHash === hash)
+  return [...review.reviewedHashes]
+    .filter(([id]) => stillPending(id))
+    .every(([id, hash]) => byId.get(id)?.currentContentHash === hash)
 }
 
 const sameRoot = (a: string | null, b: string) => a?.toLowerCase() === b.toLowerCase()

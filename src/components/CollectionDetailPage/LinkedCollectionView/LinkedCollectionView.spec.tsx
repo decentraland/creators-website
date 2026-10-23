@@ -222,4 +222,33 @@ describe('LinkedCollectionView', () => {
     await userEvent.click(within(row).getByTestId('linked-item-select'))
     expect(await screen.findByTestId('publish-linked-items')).toHaveTextContent('Push changes (1)')
   })
+
+  it('says the items could not load, with a retry, instead of calling the collection empty', async () => {
+    setup({ page: [item('1')] })
+    const list = vi.mocked(fetchLinkedCollectionItems).getMockImplementation()!
+    vi.mocked(fetchLinkedCollectionItems).mockImplementation(async (...args) => {
+      if (args[3] !== 1) throw new Error('offline')
+      return list(...args)
+    })
+    renderView()
+
+    expect(await screen.findByTestId('linked-items-error')).toBeInTheDocument()
+    expect(screen.queryByTestId('collection-empty')).not.toBeInTheDocument()
+
+    vi.mocked(fetchLinkedCollectionItems).mockImplementation(list)
+    await userEvent.click(screen.getByTestId('linked-items-retry'))
+    expect(await rows()).toHaveLength(1)
+  })
+
+  it('keeps Publish available when counting what is left to publish fails', async () => {
+    setup({ page: [item('1')] })
+    const list = vi.mocked(fetchLinkedCollectionItems).getMockImplementation()!
+    vi.mocked(fetchLinkedCollectionItems).mockImplementation(async (...args) => {
+      if (args[3] === 1) throw new Error('offline')
+      return list(...args)
+    })
+    renderView()
+
+    expect(await screen.findByTestId('publish-linked-items')).toBeInTheDocument()
+  })
 })

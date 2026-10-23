@@ -1632,7 +1632,13 @@
     },
     "item_actions": {
       "edit_urn": "Editar URN"
-    }
+    },
+    "load_error": {
+      "title": "No pudimos cargar los ítems",
+      "description": "Revisa tu conexión e inténtalo de nuevo.",
+      "retry": "Reintentar"
+    },
+    "mapping_retry": "No se guardó · Reintentar"
   },
   "success_modal": {
     "done": "Listo"

@@ -112,7 +112,11 @@ export function useHasLinkedWork(
     staleTime: 30_000
   })
   const missingMappingIds = missingCount.data === 0 ? NO_IDS : missingMapping.data
+  // A failed count fails open: hiding Publish would leave the creator with no way forward and no message, while the
+  // button's own checks and the publish run still stop anything that can't go through.
+  const countFailed = unsynced.isError || missingCount.isError || missingMapping.isError
   return useMemo(() => {
+    if (countFailed && collection) return true
     if (!collection || !curations || unsynced.data === undefined || missingMappingIds === undefined) return undefined
     return hasLinkedWork({
       itemCount: collection.itemCount,
@@ -120,5 +124,5 @@ export function useHasLinkedWork(
       unsynced: unsynced.data,
       missingMappingIds
     })
-  }, [collection, curations, unsynced.data, missingMappingIds])
+  }, [collection, curations, unsynced.data, missingMappingIds, countFailed])
 }

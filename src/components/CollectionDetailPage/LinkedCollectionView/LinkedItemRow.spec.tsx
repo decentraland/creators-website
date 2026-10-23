@@ -90,6 +90,20 @@ describe('LinkedItemRow', () => {
     expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', false)
   })
 
+  it('offers a retry after a failed save, which saves the same mapping again', async () => {
+    vi.useFakeTimers()
+    const onSave = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue(item)
+    const { onMappingDirtyChange, input } = renderRow(onSave)
+
+    fireEvent.change(input, { target: { value: '12' } })
+    await act(async () => void vi.advanceTimersByTime(1000))
+    await act(async () => void fireEvent.click(screen.getByTestId('linked-item-mapping-retry')))
+
+    expect(onSave).toHaveBeenLastCalledWith(item, expected('12'))
+    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', false)
+    expect(screen.queryByTestId('linked-item-mapping-retry')).not.toBeInTheDocument()
+  })
+
   it('keeps an edit unsaved when its save fails or the draft is invalid', async () => {
     vi.useFakeTimers()
     const { onMappingDirtyChange, input } = renderRow(vi.fn().mockRejectedValue(new Error('offline')))

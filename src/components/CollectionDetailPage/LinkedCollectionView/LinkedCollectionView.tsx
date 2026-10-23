@@ -50,6 +50,7 @@ import {
 } from '~/hooks/useLinkedCollection'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useSaveItem } from '~/hooks/useSaveItem'
+import { createItemSaveQueue } from '~/lib/itemSaveQueue'
 import { theme } from '~/styles/theme'
 import { Button } from '~/components/Button'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
@@ -101,6 +102,14 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   const saveCollection = useSaveCollection(address)
   const queryClient = useQueryClient()
   const saveItem = useSaveItem(address)
+  const saveItemRef = useRef(saveItem)
+  saveItemRef.current = saveItem
+  const saveItemPatch = useMemo(
+    () => createItemSaveQueue(item => saveItemRef.current.mutateAsync({ item })),
+    // One queue per collection: every save of an item goes through it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [collection.id]
+  )
 
   const [isRenameOpen, setRenameOpen] = useState(false)
   const [isUrnOpen, setUrnOpen] = useState(false)
@@ -303,8 +312,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
 
   const saveMappings = useCallback(
     (item: Item, mappings: Mappings) =>
-      saveItem
-        .mutateAsync({ item: { ...item, mappings } })
+      saveItemPatch(item, { mappings })
         .then(saved => {
           track('Edit Item Mapping', {
             itemId: item.id,
@@ -313,10 +321,11 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
           return saved
         })
         .catch((error: unknown) => {
+          captureError(error, { flow: 'linked_mapping_save', collectionId: collection.id, itemId: item.id })
           showToast(t('linked_collection.mapping_error', { name: item.name }), { type: 'error' })
           throw error
         }),
-    [saveItem, showToast, t, contractAddress]
+    [saveItemPatch, showToast, t, contractAddress, collection.id]
   )
 
   function startAddItems(files: FileList | File[] | null) {
@@ -332,7 +341,9 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     void itemsPage.refetch()
   }, [curations, itemsPage])
 
-  const isEmpty = !itemsPage.isLoading && total === 0
+  // A failed load has no total: it must not read as an empty collection.
+  const loadFailed = itemsPage.isError && !itemsPage.data
+  const isEmpty = !itemsPage.isLoading && !loadFailed && total === 0
 
   return (
     <>
@@ -493,7 +504,20 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
         </P.SubActions>
       </P.SubHeader>
 
-      {isEmpty && filter === LinkedItemFilter.ALL ? (
+      {loadFailed ? (
+        <P.Panel data-testid="linked-items-error">
+          <P.PanelTitle>{t('linked_collection.load_error.title')}</P.PanelTitle>
+          <P.PanelText>{t('linked_collection.load_error.description')}</P.PanelText>
+          <Button
+            type="button"
+            variant="secondary"
+            data-testid="linked-items-retry"
+            onClick={() => void itemsPage.refetch()}
+          >
+            {t('linked_collection.load_error.retry')}
+          </Button>
+        </P.Panel>
+      ) : isEmpty && filter === LinkedItemFilter.ALL ? (
         <P.Panel data-testid="collection-empty">
           <P.DropArt src={addItemsArt} alt="" />
           <P.PanelTitle>{t('linked_collection.empty.title')}</P.PanelTitle>
@@ -604,6 +628,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
                     address={address}
                     curation={curations.isSuccess ? (curations.data.get(item.id) ?? null) : undefined}
                     canEdit={canEdit}
+                    saveItemPatch={saveItemPatch}
                   />
                 }
               />

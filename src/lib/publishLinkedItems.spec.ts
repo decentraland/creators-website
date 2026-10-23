@@ -814,7 +814,8 @@ describe('publishLinkedItems', () => {
     expect(deps.sendTransaction).not.toHaveBeenCalled()
     expect(deps.publishLinkedItems).not.toHaveBeenCalled()
     expect(deps.pushChanges).toHaveBeenCalledWith(itemsToPush, expect.any(Map))
-    expect(onPayment).toHaveBeenCalledWith(undefined)
+    // Never seen settling here: kept, so a later publish waits for it instead of paying again.
+    expect(onPayment).not.toHaveBeenCalled()
     expect(result.itemCurations).toEqual([])
   })
 
@@ -872,6 +873,56 @@ describe('publishLinkedItems', () => {
 
     expect(deps.fetchSlots).toHaveBeenCalledTimes(2)
     expect(deps.publishLinkedItems).toHaveBeenCalled()
+  })
+
+  it('keeps an earlier payment it has not seen settle when another review is pending', async () => {
+    const onPayment = vi.fn()
+    const deps = makeDeps({
+      fetchCurations: vi.fn(async () => new Map([['other', pendingCuration(makeItem('other'))]])),
+      onPayment
+    })
+
+    const error = await failure(
+      publishLinkedItems(makeParams({ paidTx: { txHash: '0xunmined', registration: false } }), deps)
+    )
+
+    expect(error.reason).toBe('pending_review')
+    expect(onPayment).not.toHaveBeenCalled()
+  })
+
+  it('counts a slots answer after a server failure as published when the items are pending', async () => {
+    let attempts = 0
+    let reads = 0
+    const deps = makeDeps({
+      fetchCurations: vi.fn(async () =>
+        ++reads === 1
+          ? new Map()
+          : new Map([
+              ...itemsToPublish.map(item => [item.id, pendingCuration(item)] as const),
+              [
+                'p',
+                { ...pendingCuration(itemsToPush[0]), status: CurationStatus.APPROVED, contentHash: 'old' }
+              ] as const
+            ])
+      ),
+      // The curations were written, then the forum post failed; the retry trips the slot check first.
+      publishLinkedItems: vi.fn(async () => {
+        throw ++attempts === 1 ? serverError(500, 'Discourse down') : INSUFFICIENT_SLOTS
+      })
+    })
+
+    const result = await publishLinkedItems(
+      makeParams({
+        thirdParty: { ...thirdParty, published: true },
+        slots: { available: 3, registered: true },
+        itemsToPush
+      }),
+      deps
+    )
+
+    expect(deps.publishLinkedItems).toHaveBeenCalledTimes(2)
+    expect(deps.pushChanges).toHaveBeenCalled()
+    expect(result.itemCurations).toEqual([])
   })
 
   it('stops before paying while another review of the collection is pending', async () => {

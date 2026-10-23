@@ -1632,7 +1632,13 @@
     },
     "item_actions": {
       "edit_urn": "编辑 URN"
-    }
+    },
+    "load_error": {
+      "title": "无法加载物品",
+      "description": "请检查网络连接后重试。",
+      "retry": "重试"
+    },
+    "mapping_retry": "未保存 · 重试"
   },
   "success_modal": {
     "done": "完成"

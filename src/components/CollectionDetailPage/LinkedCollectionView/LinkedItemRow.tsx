@@ -51,6 +51,8 @@ export function LinkedItemRow({
   const category = item.data.category
   const mapping = getItemMapping(item.mappings, contract)
   const [isSaving, setSaving] = useState(false)
+  // The mapping the last save failed to store, offered again with a retry until a save of it (or a newer edit) lands.
+  const [failedSave, setFailedSave] = useState<Mappings | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout>>()
   // The edit waiting for the pause, so leaving the row (page, filter, editor) saves it instead of dropping it.
   const pending = useRef<Mappings | null>(null)
@@ -74,7 +76,9 @@ export function LinkedItemRow({
     try {
       await latest.current.onSaveMappings(latest.current.item, mappings)
       saved.current = mappings
+      if (mounted.current) setFailedSave(null)
     } catch {
+      if (mounted.current && !pending.current) setFailedSave(mappings)
       return
     } finally {
       inFlight.current--
@@ -119,6 +123,7 @@ export function LinkedItemRow({
     const mappings = next && contract ? buildItemMappings(next, contract) : null
     draft.current = mappings
     pending.current = null
+    setFailedSave(null)
     if (!mappings) return setDirty(true)
     if (inFlight.current === 0 && areMappingsEqual(mappings, saved.current)) return setDirty(false)
     pending.current = mappings
@@ -177,6 +182,19 @@ export function LinkedItemRow({
           t('linked_collection.mapping.none')
         )}
         {isSaving && <R.Spinner data-testid="linked-item-mapping-saving" aria-hidden />}
+        {failedSave && !isSaving && (
+          <S.StatusRetry
+            type="button"
+            data-testid="linked-item-mapping-retry"
+            onClick={() => {
+              pending.current = failedSave
+              setFailedSave(null)
+              flush()
+            }}
+          >
+            {t('linked_collection.mapping_retry')}
+          </S.StatusRetry>
+        )}
       </S.MappingCell>
       <R.ActionsCell>{actions}</R.ActionsCell>
     </S.Row>

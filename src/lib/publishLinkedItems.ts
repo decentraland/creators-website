@@ -457,6 +457,12 @@ async function publishWithRetry(
         if (state === 'already_published') return null
         throw error
       }
+      // builder-server checks slots before pending curations: once an attempt failed after writing them (the forum
+      // post), a retry hears "exceeds the available slots" for the very slots it used.
+      if (serverFailed && isInsufficientSlotsError(error)) {
+        const state = getPublishState(params.itemsToPublish, await deps.fetchCurations())
+        if (state === 'already_published') return null
+      }
       const failedNow = isServerFailure(error)
       serverFailed ||= failedNow
       const retriable = failedNow || isInsufficientSlotsError(error) || hasStatus(error, 401)
@@ -502,6 +508,8 @@ export async function publishLinkedItems(
 
   // Kept outside the try so any later failure carries it: a retry must resume from this payment, not repeat it.
   let payment: LinkedPayment | undefined = params.paidTx
+  // Until an earlier payment has settled, its record is what stops a later publish from paying again.
+  let paidTxSettled = !params.paidTx
   const setPayment = (next: LinkedPayment | undefined) => {
     payment = next
     deps.onPayment?.(next)
@@ -519,7 +527,7 @@ export async function publishLinkedItems(
       const state = getPublishState(itemsToPublish, await deps.fetchCurations())
       if (state === 'pending_review') throw new LinkedPublishError('check', 'pending_review')
       alreadyPublished = state === 'already_published'
-      if (alreadyPublished && payment) setPayment(undefined)
+      if (alreadyPublished && payment && paidTxSettled) setPayment(undefined)
     }
 
     step('tos')
@@ -544,9 +552,11 @@ export async function publishLinkedItems(
         step('wait_tx')
         try {
           await settle(params.paidTx.txHash)
+          paidTxSettled = true
         } catch (error) {
           // It charged nothing: whatever is still missing is bought below, as on a first attempt.
           if (!(error instanceof LinkedPublishError && error.reason === 'reverted')) throw error
+          paidTxSettled = true
           setPayment(undefined)
           txHash = null
         }
@@ -646,8 +656,9 @@ export async function publishLinkedItems(
       published = await publishWithRetry(params, cheque, deps, sleep)
     }
 
-    // The publish consumed the payment: nothing a later failure could resume from.
-    if (payment) setPayment(undefined)
+    // The publish consumed the payment: nothing a later failure could resume from. An earlier payment this run never
+    // waited for (its items turned out published already) stays until a later run sees it settle.
+    if (payment && paidTxSettled) setPayment(undefined)
 
     let pushed: PushLinkedResult | null = null
     if (itemsToPush.length > 0) {
@@ -676,7 +687,9 @@ export async function publishLinkedItems(
     const failure = toLinkedPublishError(error, current, payment)
     // A reverted payment charged nothing, and a pending review means the items went through or can't for now: either
     // way there is nothing left to resume from.
-    if (failure.reason === 'reverted' || failure.reason === 'pending_review') deps.onPayment?.(undefined)
+    if (failure.reason === 'reverted' || (failure.reason === 'pending_review' && paidTxSettled)) {
+      deps.onPayment?.(undefined)
+    }
     throw failure
   }
 }
