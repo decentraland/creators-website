@@ -50,6 +50,7 @@ import { ItemType, canDeleteItem, canEditItemDetails, isSocialEmote, type Item }
 import { isLinkedItemPublished } from '~/lib/linkedItemStatus'
 import { LINKED_COLLECTION_NAME_MAX_LENGTH, isThirdPartyManager, type LinkedContract } from '~/lib/thirdParty'
 import { useItemCurations, useThirdParty } from '~/hooks/useLinkedCollection'
+import { usePendingLinkedItems } from '~/hooks/useLinkedReview'
 import { useNotifications } from '~/lib/notifications'
 import { type AvatarPreviewSource } from '~/lib/preview'
 import { getShapesMissingSpringBones, mergeSpringBonesIntoItem, type SpringBoneParamsByName } from '~/lib/springBones'
@@ -132,6 +133,14 @@ const ItemEditorPage = () => {
   const collection = collectionQuery.data
   const mobileCuration = useCollectionCuration(mode === 'review' ? address : undefined, collection)
   const items = itemsQuery.data ?? EMPTY_ITEMS
+  // A linked collection under review: the sidebar sets apart the items this review is about.
+  const pendingLinked = usePendingLinkedItems(address, mode === 'review' && isLinked ? collection : undefined)
+  const [reviewedIds, setReviewedIds] = useState<ReadonlySet<string>>(() => new Set())
+  const sidebarReview = useMemo(
+    () =>
+      pendingLinked.data ? { pendingIds: new Set(pendingLinked.data.map(item => item.id)), reviewedIds } : undefined,
+    [pendingLinked.data, reviewedIds]
+  )
   const selected = useMemo(() => resolveSelectedItem(items, itemParam), [items, itemParam])
   // Unity cannot play a social emote's extra armatures: those items always preview in Babylon.
   const renderer = selected && isSocialEmote(selected) ? PreviewRenderer.BABYLON : pickedRenderer
@@ -582,6 +591,7 @@ const ItemEditorPage = () => {
             thirdParty={thirdParty.data}
             selectedId={selectedId}
             onSelectItem={selectItem}
+            onReviewedChange={setReviewedIds}
           />
         )
       ) : (
@@ -684,6 +694,7 @@ const ItemEditorPage = () => {
       mode={mode}
       collapsed={sidebarCollapsed}
       onToggleCollapsed={toggleSidebar}
+      review={sidebarReview}
       canAddItems={isLinked ? canGrow : isDraftCollection && canManageCollectionItems(collection, address)}
       onRename={
         (isLinked ? canRename : isDraftCollection && canManageCollectionItems(collection, address))

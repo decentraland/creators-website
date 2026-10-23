@@ -362,6 +362,7 @@ export async function fetchLinkedCollectionItems(
   filter: LinkedItemsQuery = {}
 ): Promise<LinkedItemsPage> {
   const query = new URLSearchParams({ page: String(page), limit: String(limit) })
+  if (filter.status) query.set('status', filter.status)
   if (filter.synced !== undefined) query.set('synced', String(filter.synced))
   if (filter.mappingStatus) query.set('mappingStatus', filter.mappingStatus)
   const remote = await request<PaginatedResource<RemoteItem>>(

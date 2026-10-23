@@ -10,6 +10,7 @@ import {
   getLinkedItemStatus,
   getLinkedPublishAction,
   hasLinkedWork,
+  isLinkedDraft,
   isLinkedItemPublished,
   linkedItemFilterToQuery,
   parseLinkedItemFilter,
@@ -139,6 +140,7 @@ describe('item filters', () => {
   it('maps each chip to the server params', () => {
     expect(linkedItemFilterToQuery(LinkedItemFilter.ALL)).toEqual({})
     expect(linkedItemFilterToQuery(LinkedItemFilter.PUBLISHED)).toEqual({ synced: true })
+    expect(linkedItemFilterToQuery(LinkedItemFilter.UNDER_REVIEW)).toEqual({ status: CurationStatus.PENDING })
     expect(linkedItemFilterToQuery(LinkedItemFilter.READY_TO_PUSH)).toEqual({ synced: false })
     expect(linkedItemFilterToQuery(LinkedItemFilter.PENDING_MAPPING)).toEqual({ mappingStatus: 'missing_mapping' })
     expect(linkedItemFilterToQuery(LinkedItemFilter.PENDING_MIGRATION)).toEqual({
@@ -222,5 +224,14 @@ describe('hasLinkedWork', () => {
       hasLinkedWork({ itemCount: 1, curations: curated(CurationStatus.PENDING), unsynced: 0, missingMappingIds: [] })
     ).toBe(false)
     expect(hasLinkedWork({ itemCount: 0, curations: new Map(), unsynced: 0, missingMappingIds: [] })).toBe(false)
+  })
+})
+
+describe('isLinkedDraft', () => {
+  it('counts items never submitted and rejected ones, and nothing under review or approved', () => {
+    expect(isLinkedDraft(null)).toBe(true)
+    expect(isLinkedDraft(curation(CurationStatus.REJECTED))).toBe(true)
+    expect(isLinkedDraft(curation(CurationStatus.PENDING))).toBe(false)
+    expect(isLinkedDraft(curation(CurationStatus.APPROVED))).toBe(false)
   })
 })

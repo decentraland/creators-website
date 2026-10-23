@@ -3,6 +3,9 @@ import { type BodyShape } from '@dcl/schemas'
 import {
   Add as AddIcon,
   ArrowBackIosNew as BackIcon,
+  CheckCircle as ReviewedIcon,
+  Inventory2Outlined as RestIcon,
+  RateReviewOutlined as ToReviewIcon,
   GraphicEq as PlayingIcon,
   KeyboardDoubleArrowLeft as CollapseIcon,
   KeyboardDoubleArrowRight as ExpandIcon,
@@ -52,6 +55,11 @@ type Props = {
   onToggleDressed: (item: Item) => void
   /** Clicking the selected, dressed emote row toggles its playback. */
   onToggleEmotePlay: (item: Item) => void
+  /**
+   * A linked collection under review: splits the list into the items this review is about (new ones and pushed
+   * changes) and the rest of the collection, ticking the ones the curator has opened.
+   */
+  review?: { pendingIds: ReadonlySet<string>; reviewedIds: ReadonlySet<string> }
   testId?: string
 }
 
@@ -74,6 +82,7 @@ export function ItemsSidebar({
   onLeave,
   onToggleDressed,
   onToggleEmotePlay,
+  review,
   testId = 'items-sidebar'
 }: Props) {
   const { t } = useTranslation()
@@ -86,6 +95,16 @@ export function ItemsSidebar({
     row?.scrollIntoView?.({ block: 'nearest' })
   }, [selectedId, testId])
   const groups = useMemo(() => groupItemsByType(items), [items])
+  const reviewGroups = useMemo(
+    () =>
+      review && review.pendingIds.size > 0
+        ? {
+            toReview: items.filter(item => review.pendingIds.has(item.id)),
+            rest: items.filter(item => !review.pendingIds.has(item.id))
+          }
+        : null,
+    [review, items]
+  )
   const grouped = groups.wearables.length > 0 && groups.emotes.length > 0
   const backTo = `/collections/${collection.id}`
   const showBack = mode === 'edit'
@@ -141,6 +160,24 @@ export function ItemsSidebar({
             <ItemThumbnail src={thumbnail ? getContentsStorageUrl(thumbnail) : null} rarity={item.rarity} />
           </S.Thumb>
           <S.RowName title={item.name}>{item.name}</S.RowName>
+          {review?.pendingIds.has(item.id) && (
+            <>
+              {/* An item already live comes back with changes; any other is new to the collection. */}
+              <S.RowTag data-testid={`${testId}-tag-${item.id}`}>
+                {t(item.isApproved ? 'item_editor.sidebar.review_tag.changes' : 'item_editor.sidebar.review_tag.new')}
+              </S.RowTag>
+              {review.reviewedIds.has(item.id) && (
+                <S.RowGlyph
+                  data-reviewed
+                  role="img"
+                  aria-label={t('item_editor.sidebar.reviewed')}
+                  data-testid={`${testId}-reviewed-${item.id}`}
+                >
+                  <ReviewedIcon />
+                </S.RowGlyph>
+              )}
+            </>
+          )}
           {playing && (
             <S.RowGlyph data-playing data-testid={`${testId}-playing-${item.id}`}>
               <PlayingIcon />
@@ -186,6 +223,19 @@ export function ItemsSidebar({
       <EditorSection
         title={t(`item_editor.sidebar.${kind}`)}
         icon={kind === 'wearables' ? <WearableIcon /> : <EmoteIcon />}
+        iconOnly={collapsed}
+        testId={`${testId}-${kind}`}
+      >
+        <S.Rows>{groupItems.map(renderRow)}</S.Rows>
+      </EditorSection>
+    )
+  }
+
+  function renderReviewGroup(kind: 'to_review' | 'rest', groupItems: Item[]) {
+    return (
+      <EditorSection
+        title={t(`item_editor.sidebar.${kind}`, { count: groupItems.length })}
+        icon={kind === 'to_review' ? <ToReviewIcon /> : <RestIcon />}
         iconOnly={collapsed}
         testId={`${testId}-${kind}`}
       >
@@ -288,6 +338,11 @@ export function ItemsSidebar({
             </S.Rows>
           ) : items.length === 0 ? (
             !collapsed && <S.Empty data-testid={`${testId}-empty`}>{t('item_editor.sidebar.empty')}</S.Empty>
+          ) : reviewGroups ? (
+            <>
+              {renderReviewGroup('to_review', reviewGroups.toReview)}
+              {reviewGroups.rest.length > 0 && renderReviewGroup('rest', reviewGroups.rest)}
+            </>
           ) : grouped ? (
             <>
               {renderGroup('wearables', groups.wearables)}

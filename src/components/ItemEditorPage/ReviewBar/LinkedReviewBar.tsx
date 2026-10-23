@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useIntl } from 'react-intl'
 import { ArrowBack as ArrowBackIcon, Edit as EditIcon, PersonAddAlt as AssignIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
@@ -30,6 +30,8 @@ type Props = {
   thirdParty: ThirdParty
   selectedId: string | null
   onSelectItem: (item: Item) => void
+  /** The pending items opened so far, for the sidebar to tick. */
+  onReviewedChange?: (ids: ReadonlySet<string>) => void
 }
 
 type Dialog = 'assign' | 'reject' | 'approve' | 'disable' | 'enable' | null
@@ -38,7 +40,14 @@ type Dialog = 'assign' | 'reject' | 'approve' | 'disable' | 'enable' | null
  * The curator's toolbar over a linked collection: the items waiting for review, how many were opened against the
  * review threshold, and the committee's actions (approve, reject, enable or disable the third party).
  */
-export function LinkedReviewBar({ session, collection, thirdParty, selectedId, onSelectItem }: Props) {
+export function LinkedReviewBar({
+  session,
+  collection,
+  thirdParty,
+  selectedId,
+  onSelectItem,
+  onReviewedChange
+}: Props) {
   const { t } = useTranslation()
   const intl = useIntl()
   const address = session.address
@@ -57,8 +66,21 @@ export function LinkedReviewBar({ session, collection, thirdParty, selectedId, o
 
   const pendingItems = pending.data ?? []
   const { reviewedCount, nextToReview, review } = useReviewedItems(pendingItems, selectedId)
+  const reviewedKey = [...review.reviewedHashes.keys()].join(',')
+  useEffect(() => {
+    onReviewedChange?.(new Set(review.reviewedHashes.keys()))
+    // Reported when the opened set changes, not on every new map with the same ids.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reviewedKey])
   const threshold = getReviewThreshold(pendingItems.length)
   const canApprove = pendingItems.length > 0 && reviewedCount >= threshold
+  // Like the legacy builder, the third party's own switch only shows with nothing to review: approving pending items
+  // enables it anyway. Enabling is only offered back to one approved before (it has a root), which legacy left to do.
+  const canToggleThirdParty =
+    thirdParty.published &&
+    !pending.isLoading &&
+    pendingItems.length === 0 &&
+    (thirdParty.isApproved || !!thirdParty.root)
   const assignee = curation?.assignee ?? null
   const isLoading = pending.isLoading || curations.isLoading
   const [timeKey, time] = !curation
@@ -162,7 +184,7 @@ export function LinkedReviewBar({ session, collection, thirdParty, selectedId, o
             </Button>
           </>
         )}
-        {thirdParty.published &&
+        {canToggleThirdParty &&
           (thirdParty.isApproved ? (
             <Button
               type="button"

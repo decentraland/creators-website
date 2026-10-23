@@ -728,7 +728,14 @@
       "undress": "从虚拟形象上移除 {name}",
       "no_representation": "此物品没有适用于当前体型的版本。切换体型即可预览。",
       "male_only": "仅适用于男性体型",
-      "female_only": "仅适用于女性体型"
+      "female_only": "仅适用于女性体型",
+      "to_review": "待审核（{count}）",
+      "rest": "系列中的其他物品（{count}）",
+      "review_tag": {
+        "new": "新",
+        "changes": "更改"
+      },
+      "reviewed": "已审核"
     },
     "picker": {
       "title": "系列",
@@ -1594,7 +1601,9 @@
       "published": "已发布",
       "ready_to_push": "可推送更改",
       "pending_mapping": "待映射",
-      "pending_migration": "待迁移"
+      "pending_migration": "待迁移",
+      "draft": "草稿",
+      "under_review": "审核中"
     },
     "migration_banner": "此系列中有一个或多个物品是在代币映射推出之前发布的。请为每个物品添加映射并发布更改。",
     "publish_action": {

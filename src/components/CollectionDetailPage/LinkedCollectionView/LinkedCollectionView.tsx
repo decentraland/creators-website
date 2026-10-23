@@ -44,6 +44,7 @@ import { useSaveCollection } from '~/hooks/useCollection'
 import { invalidateCollectionItems } from '~/hooks/usePublishCollection'
 import {
   LINKED_ITEMS_PAGE_SIZE,
+  fetchDraftLinkedItems,
   useHasLinkedWork,
   useItemCurations,
   useLinkedCollectionItems
@@ -72,7 +73,14 @@ import { PushLinkedChangesModal } from './PushLinkedChangesModal'
 import * as S from './LinkedCollectionView.styles'
 
 const NETWORKS: string[] = Object.values(ContractNetwork)
-const BASE_FILTERS = [LinkedItemFilter.ALL, LinkedItemFilter.PUBLISHED, LinkedItemFilter.READY_TO_PUSH]
+// In the order an item goes through them.
+const BASE_FILTERS = [
+  LinkedItemFilter.ALL,
+  LinkedItemFilter.DRAFT,
+  LinkedItemFilter.UNDER_REVIEW,
+  LinkedItemFilter.PUBLISHED,
+  LinkedItemFilter.READY_TO_PUSH
+]
 const MIGRATION_FILTERS = [LinkedItemFilter.PENDING_MAPPING, LinkedItemFilter.PENDING_MIGRATION]
 
 type Props = {
@@ -268,7 +276,10 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     const startedWith = filter
     setSelectingAll(true)
     try {
-      const all = await fetchAllLinkedCollectionItems(address, collection.id, linkedItemFilterToQuery(filter))
+      const all =
+        filter === LinkedItemFilter.DRAFT
+          ? await fetchDraftLinkedItems(address, collection.id)
+          : await fetchAllLinkedCollectionItems(address, collection.id, linkedItemFilterToQuery(filter))
       // The filter changed while this loaded: these items belong to the previous one.
       if (filterRef.current !== startedWith) return
       const selectable = all.filter(item => isLinkedItemSelectable(item, curationMap.get(item.id) ?? null))

@@ -122,6 +122,9 @@ export function isLinkedItemSelectable(item: Item, curation: ItemCuration | null
 /** The filters of the linked collection's item list, mapped to builder-server's query params. */
 export enum LinkedItemFilter {
   ALL = 'all',
+  /** Never submitted for review, or rejected: picked client-side, as builder-server can't filter it. */
+  DRAFT = 'draft',
+  UNDER_REVIEW = 'under_review',
   PUBLISHED = 'published',
   READY_TO_PUSH = 'ready_to_push',
   PENDING_MAPPING = 'pending_mapping',
@@ -129,12 +132,15 @@ export enum LinkedItemFilter {
 }
 
 export type LinkedItemsQuery = {
+  status?: CurationStatus
   synced?: boolean
   mappingStatus?: 'missing_mapping' | 'unpublished_mapping'
 }
 
 export function linkedItemFilterToQuery(filter: LinkedItemFilter): LinkedItemsQuery {
   switch (filter) {
+    case LinkedItemFilter.UNDER_REVIEW:
+      return { status: CurationStatus.PENDING }
     case LinkedItemFilter.PUBLISHED:
       return { synced: true }
     case LinkedItemFilter.READY_TO_PUSH:
@@ -146,6 +152,11 @@ export function linkedItemFilterToQuery(filter: LinkedItemFilter): LinkedItemsQu
     default:
       return {}
   }
+}
+
+/** A draft: an item never submitted for review, or one a curator rejected. */
+export function isLinkedDraft(curation: ItemCuration | null | undefined): boolean {
+  return !curation || curation.status === CurationStatus.REJECTED
 }
 
 export function parseLinkedItemFilter(raw: string | null): LinkedItemFilter {

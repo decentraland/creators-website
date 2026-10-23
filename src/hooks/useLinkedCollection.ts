@@ -9,8 +9,26 @@ import {
 } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
-import { LinkedItemFilter, hasLinkedWork, linkedItemFilterToQuery, type ItemCuration } from '~/lib/linkedItemStatus'
+import {
+  LinkedItemFilter,
+  hasLinkedWork,
+  isLinkedDraft,
+  linkedItemFilterToQuery,
+  type ItemCuration
+} from '~/lib/linkedItemStatus'
 import { getThirdPartyId } from '~/lib/thirdParty'
+
+/**
+ * The drafts of a linked collection (never submitted, or rejected). builder-server filters by a curation's status but
+ * not by its absence, so every item and curation is read and filtered here.
+ */
+export async function fetchDraftLinkedItems(address: string, collectionId: string): Promise<Item[]> {
+  const [items, curations] = await Promise.all([
+    fetchAllLinkedCollectionItems(address, collectionId),
+    fetchItemCurations(address, collectionId)
+  ])
+  return items.filter(item => isLinkedDraft(curations.get(item.id)))
+}
 
 // Same page size as the legacy third-party collection page.
 export const LINKED_ITEMS_PAGE_SIZE = 50
@@ -65,7 +83,19 @@ export function useLinkedCollectionItems(
 ) {
   return useQuery<LinkedItemsPage>({
     queryKey: [...linkedItemsKey(address, collection?.id), page, filter, limit],
-    queryFn: () => fetchLinkedCollectionItems(address!, collection!.id, page, limit, linkedItemFilterToQuery(filter)),
+    queryFn: async () => {
+      if (filter !== LinkedItemFilter.DRAFT) {
+        return fetchLinkedCollectionItems(address!, collection!.id, page, limit, linkedItemFilterToQuery(filter))
+      }
+      const drafts = await fetchDraftLinkedItems(address!, collection!.id)
+      return {
+        results: drafts.slice((page - 1) * limit, page * limit),
+        total: drafts.length,
+        page,
+        pages: Math.ceil(drafts.length / limit),
+        limit
+      }
+    },
     enabled: !!address && !!collection,
     placeholderData: keepPreviousData,
     staleTime: 30_000

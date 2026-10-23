@@ -251,4 +251,24 @@ describe('LinkedCollectionView', () => {
 
     expect(await screen.findByTestId('publish-linked-items')).toBeInTheDocument()
   })
+
+  it('lists only drafts under Draft: never submitted or rejected', async () => {
+    const rejected: ItemCuration = { ...approved('2'), status: CurationStatus.REJECTED }
+    setup({
+      page: [item('1'), item('2'), item('3')],
+      curations: new Map([
+        ['2', rejected],
+        ['3', approved('3')]
+      ])
+    })
+    vi.mocked(fetchAllLinkedCollectionItems).mockResolvedValue([item('1'), item('2'), item('3')])
+    renderView()
+    await rows()
+
+    await userEvent.click(screen.getByTestId('linked-filter-draft'))
+
+    await waitFor(() =>
+      expect(screen.getAllByTestId('item-row-name').map(name => name.textContent)).toEqual(['Hat 1', 'Hat 2'])
+    )
+  })
 })

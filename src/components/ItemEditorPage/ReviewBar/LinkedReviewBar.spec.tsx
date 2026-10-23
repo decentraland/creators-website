@@ -94,4 +94,26 @@ describe('LinkedReviewBar', () => {
     await userEvent.click(screen.getByTestId('review-reject-confirm'))
     expect(rejectMutate).toHaveBeenCalledWith({ items: pending }, expect.anything())
   })
+
+  it('offers no third-party switch while items wait for review', () => {
+    render(renderBar(null), { wrapper })
+    expect(screen.queryByTestId('review-action-disable')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('review-action-enable')).not.toBeInTheDocument()
+  })
+
+  it('with nothing to review, offers Disable, or Enable only to a third party approved before', () => {
+    served = []
+    const { rerender } = render(renderBar(null), { wrapper })
+    expect(screen.getByTestId('review-action-disable')).toBeInTheDocument()
+
+    thirdParty.isApproved = false
+    thirdParty.root = '0xroot'
+    rerender(renderBar(null))
+    expect(screen.getByTestId('review-action-enable')).toBeInTheDocument()
+
+    thirdParty.root = ''
+    rerender(renderBar(null))
+    expect(screen.queryByTestId('review-action-enable')).not.toBeInTheDocument()
+    thirdParty.isApproved = true
+  })
 })

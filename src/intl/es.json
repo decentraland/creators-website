@@ -728,7 +728,14 @@
       "undress": "Quitar {name} del avatar",
       "no_representation": "Este ítem no tiene versión para la forma de cuerpo actual. Cambia la forma de cuerpo para previsualizarlo.",
       "male_only": "Solo para la forma de cuerpo masculina",
-      "female_only": "Solo para la forma de cuerpo femenina"
+      "female_only": "Solo para la forma de cuerpo femenina",
+      "to_review": "Por revisar ({count})",
+      "rest": "Resto de la colección ({count})",
+      "review_tag": {
+        "new": "Nuevo",
+        "changes": "Cambios"
+      },
+      "reviewed": "Revisado"
     },
     "picker": {
       "title": "Colecciones",
@@ -1594,7 +1601,9 @@
       "published": "Publicados",
       "ready_to_push": "Listos para enviar cambios",
       "pending_mapping": "Falta el mapeo",
-      "pending_migration": "Migración pendiente"
+      "pending_migration": "Migración pendiente",
+      "draft": "Borrador",
+      "under_review": "En revisión"
     },
     "migration_banner": "Uno o más ítems de esta colección se publicaron antes de que existiera el mapeo de tokens. Agrega un mapeo a cada uno y publica los cambios.",
     "publish_action": {

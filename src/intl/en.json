@@ -728,7 +728,14 @@
       "undress": "Remove {name} from the avatar",
       "no_representation": "This item has no version for the current body shape. Switch the body shape to preview it.",
       "male_only": "Made for the male body shape only",
-      "female_only": "Made for the female body shape only"
+      "female_only": "Made for the female body shape only",
+      "to_review": "To review ({count})",
+      "rest": "Rest of the collection ({count})",
+      "review_tag": {
+        "new": "New",
+        "changes": "Changes"
+      },
+      "reviewed": "Reviewed"
     },
     "picker": {
       "title": "Collections",
@@ -1594,7 +1601,9 @@
       "published": "Published",
       "ready_to_push": "Ready to push changes",
       "pending_mapping": "Pending mapping",
-      "pending_migration": "Pending migration"
+      "pending_migration": "Pending migration",
+      "draft": "Draft",
+      "under_review": "Under review"
     },
     "migration_banner": "One or more items in this collection were published before token mappings existed. Add a mapping to each and publish the changes.",
     "publish_action": {
