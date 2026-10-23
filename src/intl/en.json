@@ -1812,7 +1812,6 @@
       "multiple": "Multiple",
       "range": "Range"
     },
-    "any_value": "Any token ID",
     "single_placeholder": "Token ID, e.g. 123456",
     "multiple_placeholder": "Token IDs separated by commas, e.g. 1, 2, 3",
     "from": "From",

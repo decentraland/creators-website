@@ -21,16 +21,6 @@ export const TypeCell = styled.div`
   gap: 8px;
 `
 
-export const Value = styled.span`
-  font-size: 14px;
-  line-height: 1.57;
-  color: ${theme.colors.softWhite};
-
-  &[data-muted] {
-    color: ${theme.colors.offWhiteMuted};
-  }
-`
-
 export const Input = styled.input`
   width: 100%;
   min-width: 0;
@@ -72,6 +62,38 @@ export const Input = styled.input`
   [data-tone='dark'] & {
     background: ${theme.colors.chipDark};
     border-color: ${theme.colors.gray0};
+  }
+
+  /* Full-size on the default surface (the add-items form): the same box as that form's other text fields. */
+  [data-tone='default']:not([data-compact]) & {
+    min-height: 56px;
+    padding: 0 12px;
+    border-color: ${theme.colors.muted2};
+    border-radius: ${theme.radius.input};
+    background: transparent;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 24px;
+    color: ${theme.colors.softWhite};
+
+    &::placeholder {
+      color: ${theme.colors.muted2};
+      font-weight: 600;
+    }
+
+    &:focus-visible {
+      outline: 0;
+      border-color: ${theme.colors.white};
+    }
+
+    &[data-invalid] {
+      border-color: ${theme.colors.errStrong};
+      background: transparent;
+    }
+  }
+
+  [data-tone='default']:not([data-compact]) textarea& {
+    padding: 16px 12px;
   }
 `
 

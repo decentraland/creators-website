@@ -1812,7 +1812,6 @@
       "multiple": "多个",
       "range": "范围"
     },
-    "any_value": "任意代币 ID",
     "single_placeholder": "代币 ID，例如 123456",
     "multiple_placeholder": "以逗号分隔的代币 ID，例如 1, 2, 3",
     "from": "从",

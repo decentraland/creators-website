@@ -1812,7 +1812,6 @@
       "multiple": "Varios",
       "range": "Rango"
     },
-    "any_value": "Cualquier ID de token",
     "single_placeholder": "ID de token, p. ej. 123456",
     "multiple_placeholder": "IDs de token separados por comas, p. ej. 1, 2, 3",
     "from": "Desde",

@@ -107,11 +107,6 @@ export function MappingEditor({
           />
         )}
       </S.TypeCell>
-      {draft.type === MappingType.ANY && (
-        <S.Value data-muted data-testid={`${testId}-any`}>
-          {t('mapping_editor.any_value')}
-        </S.Value>
-      )}
       {draft.type === MappingType.SINGLE && (
         <S.Input
           value={draft.id}
