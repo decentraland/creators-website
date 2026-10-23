@@ -129,11 +129,18 @@ export enum ReviewType {
 }
 
 export function getReviewType(collection: Collection): ReviewType {
+  // Same rule as builder-server's review_type filter, so the pill and the chips agree. It reads a first approval
+  // stalled after the rescue step (reviewedAt moved, never approved) as updates, on both sides.
   return hasBeenApproved(collection) ? ReviewType.UPDATES : ReviewType.NEW
 }
 
 /** Assignee picker value for the collections without a curator; builder-server takes it as is. */
 export const UNASSIGNED = 'unassigned'
+
+/** What the assignee picker opens on: no curator, plus the signed-in one. */
+export function defaultAssignees(address?: string): string[] {
+  return address ? [UNASSIGNED, address.toLowerCase()] : [UNASSIGNED]
+}
 
 // Only sorts builder-server implements: an unknown one drops the ORDER BY and paginates at random.
 export const CURATION_SORTS = [
@@ -164,8 +171,8 @@ export type CurationFilters = {
 
 /**
  * The page's filters as they live in the URL; unknown values fall back to the defaults. A missing `status` or
- * `assignee` means the defaults (to review and under review, unassigned and the signed-in curator), while `all`
- * means the filter was cleared on purpose.
+ * `assignee` means the defaults (to review, unassigned and the signed-in curator), while `all` means the filter
+ * was cleared on purpose.
  */
 export function parseCurationFilters(params: URLSearchParams, address?: string): CurationFilters {
   const sort = params.get('sort') as CurationSort
@@ -176,7 +183,7 @@ export function parseCurationFilters(params: URLSearchParams, address?: string):
     statuses: parseMulti(params, 'status', DEFAULT_STATUS_FILTERS, value =>
       STATUS_FILTERS.includes(value as CurationStatusFilter) ? (value as CurationStatusFilter) : null
     ),
-    assignees: parseMulti(params, 'assignee', address ? [UNASSIGNED, address.toLowerCase()] : [UNASSIGNED], value =>
+    assignees: parseMulti(params, 'assignee', defaultAssignees(address), value =>
       value === UNASSIGNED ? value : value.toLowerCase()
     ),
     reviewType: Object.values(ReviewType).includes(reviewType) ? reviewType : null,

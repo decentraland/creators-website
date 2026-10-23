@@ -9,6 +9,7 @@ import {
   canEditAssignee,
   canPushChanges,
   curationListUrl,
+  defaultAssignees,
   rememberCurationSearch,
   fromRemoteCuration,
   getCurationState,
@@ -259,6 +260,13 @@ describe('curation filters', () => {
     expect(query.has('assignee')).toBe(false)
     expect(query.has('review_type')).toBe(false)
     expect(query.has('tag')).toBe(false)
+  })
+})
+
+describe('defaultAssignees', () => {
+  it('opens on the unassigned collections and the signed-in curator, lowercased', () => {
+    expect(defaultAssignees('0xME')).toEqual([UNASSIGNED, '0xme'])
+    expect(defaultAssignees(undefined)).toEqual([UNASSIGNED])
   })
 })
 

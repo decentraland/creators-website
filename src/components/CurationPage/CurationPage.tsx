@@ -20,6 +20,7 @@ import {
   ReviewType,
   STATUS_FILTERS,
   UNASSIGNED,
+  defaultAssignees,
   parseCurationFilters,
   rememberCurationSearch,
   toMultiParam,
@@ -31,8 +32,9 @@ import { useWallet } from '~/store/wallet'
 import { CurationRow } from './CurationRow'
 import * as S from './CurationPage.styles'
 
-const ALL_REVIEW_TYPES = 'all'
-const REVIEW_TYPE_FILTERS = [ALL_REVIEW_TYPES, ReviewType.NEW, ReviewType.UPDATES] as const
+// The chip that clears the review type, and what a cleared status or assignee picker reports to analytics.
+const ALL = 'all'
+const REVIEW_TYPE_FILTERS = [ALL, ReviewType.NEW, ReviewType.UPDATES] as const
 const SEARCH_DEBOUNCE_MS = 500
 
 type Assigning = { collection: Collection; curation: CollectionCuration | null; mode: 'self' | 'edit' }
@@ -46,6 +48,7 @@ const CurationPage = () => {
 
   const [searchParams, setSearchParams] = useSearchParams()
   const filters = useMemo(() => parseCurationFilters(searchParams, address), [searchParams, address])
+  const assigneeDefaults = useMemo(() => defaultAssignees(address), [address])
   const collections = useCurationCollections(address, filters, committee.isCurator)
   const curations = useCurationsByCollection(address, committee.isCurator)
   const [assigning, setAssigning] = useState<Assigning | null>(null)
@@ -89,13 +92,13 @@ const CurationPage = () => {
   }
 
   function changeFilter(filter: string, value: string | null) {
-    track('Curation filter changed', { filter, value: value ?? ALL_REVIEW_TYPES })
+    track('Curation filter changed', { filter, value: value ?? ALL })
     changeParams({ [filter]: value })
   }
 
   // The defaults are left out of the URL, so a plain /curation link always opens the standard view.
   function changeMultiFilter(filter: 'status' | 'assignee', values: string[], defaults: string[]) {
-    track('Curation filter changed', { filter, value: values.join(',') || ALL_REVIEW_TYPES })
+    track('Curation filter changed', { filter, value: values.join(',') || ALL })
     changeParams({ [filter]: toMultiParam(values, defaults) })
   }
 
@@ -139,10 +142,11 @@ const CurationPage = () => {
   const data = collections.data
   const total = data?.total ?? 0
   const shown = data?.results.length ?? 0
+  // The default pickers are the curator's queue, not a filter: an empty queue reads as empty, not as no match.
   const hasActiveFilters =
     !!filters.search ||
-    filters.statuses.length > 0 ||
-    filters.assignees.length > 0 ||
+    toMultiParam(filters.statuses, DEFAULT_STATUS_FILTERS) !== null ||
+    toMultiParam(filters.assignees, assigneeDefaults) !== null ||
     !!filters.reviewType ||
     !!filters.tag
   // Rows can't tell "never requested" from "not loaded yet": without the curations their actions would open new requests.
@@ -174,9 +178,9 @@ const CurationPage = () => {
             <S.Chip
               key={type}
               type="button"
-              data-active={(filters.reviewType ?? ALL_REVIEW_TYPES) === type || undefined}
+              data-active={(filters.reviewType ?? ALL) === type || undefined}
               data-testid={`curation-review-type-${type}`}
-              onClick={() => changeFilter('review_type', type === ALL_REVIEW_TYPES ? null : type)}
+              onClick={() => changeFilter('review_type', type === ALL ? null : type)}
             >
               {t(`curation_page.filter.review_type.${type}`)}
             </S.Chip>
@@ -207,7 +211,7 @@ const CurationPage = () => {
             <MultiSelect
               values={filters.assignees}
               options={assigneeOptions}
-              onChange={values => changeMultiFilter('assignee', values, [UNASSIGNED, session.address.toLowerCase()])}
+              onChange={values => changeMultiFilter('assignee', values, assigneeDefaults)}
               placeholder={t('curation_page.filter.all_assignees')}
               ariaLabel={t('curation_page.filter.assignee')}
               variant="compact"
