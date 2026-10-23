@@ -10,6 +10,7 @@ import {
   getMappingLabel,
   isMappingValid,
   mappingsFromManifest,
+  normalizeMapping,
   parseTokenIds,
   toMappingDraft,
   EMPTY_MAPPING_DRAFT,
@@ -132,5 +133,20 @@ describe('getMappingLabel', () => {
     )
     expect(getMappingLabel(null, 'amoy', CONTRACT.address)).toEqual(label('none'))
     expect(getMappingLabel(mappingsFor({ type: 'any' }), 'matic', CONTRACT.address)).toEqual(label('none'))
+  })
+})
+
+describe('token id normalization', () => {
+  it('drops leading zeros from typed, stored and imported ids, so they match their token', () => {
+    expect(fromMappingDraft({ ...EMPTY_MAPPING_DRAFT, type: MappingType.SINGLE, id: ' 007 ' })).toEqual({
+      type: MappingType.SINGLE,
+      id: '7'
+    })
+    expect(fromMappingDraft({ ...EMPTY_MAPPING_DRAFT, type: MappingType.MULTIPLE, ids: '7, 07' })).toBeNull()
+    expect(normalizeMapping({ type: MappingType.RANGE, from: '00', to: '010' })).toEqual({
+      type: MappingType.RANGE,
+      from: '0',
+      to: '10'
+    })
   })
 })

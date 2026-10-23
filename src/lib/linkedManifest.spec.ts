@@ -90,7 +90,7 @@ describe('resolveLinkedManifest edge cases', () => {
 
   it('refuses a URN whose own segment the server would refuse', () => {
     expect(errorKey(() => resolveLinkedManifest({ id: `${collectionUrn}:bad suffix` }, target))).toBe(
-      'linked_urn_mismatch'
+      'linked_urn_invalid'
     )
   })
 })

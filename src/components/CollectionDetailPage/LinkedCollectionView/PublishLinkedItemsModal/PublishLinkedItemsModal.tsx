@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from '~/intl'
 import { useSaveCollection } from '~/hooks/useCollection'
+import { useItemCurations } from '~/hooks/useLinkedCollection'
 import { useLinkedSlots, usePublishLinkedItems, useSignSlotsCheque, useThirdPartyPrice } from '~/hooks/useLinkedPublish'
 import { useProfile } from '~/hooks/useProfile'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
@@ -9,10 +10,14 @@ import { type Session } from '~/lib/auth'
 import { type SlotsCheque } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
-import { type ItemCuration } from '~/lib/linkedItemStatus'
 import { loadPendingPublish, savePendingPublish, type PendingPublish } from '~/lib/pendingLinkedPayment'
 import { getMaticChainId } from '~/lib/publishCollection'
-import { LinkedPublishError, readFreshLinkedQuote, type LinkedPublishStep } from '~/lib/publishLinkedItems'
+import {
+  LinkedPublishError,
+  getPublishState,
+  readFreshLinkedQuote,
+  type LinkedPublishStep
+} from '~/lib/publishLinkedItems'
 import { LINKED_COLLECTION_NAME_MAX_LENGTH, type ThirdParty } from '~/lib/thirdParty'
 import { Modal } from '~/components/Modal'
 import { PendingModal } from '~/components/PendingModal'
@@ -32,12 +37,13 @@ type Props = {
   session: Session
   itemsToPublish: Item[]
   itemsToPush: Item[]
-  curations: Map<string, ItemCuration>
   onClose: () => void
   onPublished: () => void
 }
 
 // Steps whose work the creator pays for or that the server already recorded: closing mid-way would strand it.
+const NOTHING: Item[] = []
+
 const RUNNING_STEP_ORDER: LinkedPublishStep[] = [
   'check',
   'tos',
@@ -60,9 +66,8 @@ export function PublishLinkedItemsModal({
   collection,
   thirdParty,
   session,
-  itemsToPublish,
+  itemsToPublish: selectedToPublish,
   itemsToPush,
-  curations,
   onClose,
   onPublished
 }: Props) {
@@ -110,6 +115,18 @@ export function PublishLinkedItemsModal({
   const price = useThirdPartyPrice()
   const slots = useLinkedSlots(address, thirdParty.id)
   const publish = usePublishLinkedItems(session, collection)
+  // Items an earlier attempt already published (its push failing afterwards, or its answer lost) are neither quoted
+  // nor paid for again: a retry only finishes what is left.
+  const liveCurations = useItemCurations(address, collection)
+  const [publishDone, setPublishDone] = useState(false)
+  const itemsToPublish = useMemo(
+    () =>
+      publishDone ||
+      (liveCurations.data && getPublishState(selectedToPublish, liveCurations.data) === 'already_published')
+        ? NOTHING
+        : selectedToPublish,
+    [publishDone, liveCurations.data, selectedToPublish]
+  )
   const isRunning = publish.isPending || runningStep !== null
   const runningLabels = useMemo(
     () => RUNNING_STEP_ORDER.map(name => t(`publish_linked_modal.running.short.${name}`)),
@@ -121,7 +138,7 @@ export function PublishLinkedItemsModal({
     track('Publish TP Items started', {
       collectionId: collection.id,
       thirdPartyId: thirdParty.id,
-      items: itemsToPublish.length,
+      items: selectedToPublish.length,
       pushed: itemsToPush.length
     })
     // Once per wizard opened.
@@ -195,7 +212,6 @@ export function PublishLinkedItemsModal({
         maxFeeManaWei: fresh.maxFeeManaWei,
         price: fresh.price,
         paidTx,
-        curations,
         onStep: setRunningStep,
         onPayment: payment => updatePending({ payment })
       },
@@ -206,9 +222,14 @@ export function PublishLinkedItemsModal({
           onPublished()
         },
         onError: error => {
-          setOutcome(
+          const failure =
             error instanceof LinkedPublishError ? error : new LinkedPublishError('publish', 'generic', String(error))
-          )
+          // Failing at the push means the items were published: the list refreshes, and a retry only pushes.
+          if (failure.reason === 'push_failed') {
+            setPublishDone(true)
+            onPublished()
+          }
+          setOutcome(failure)
         },
         onSettled: () => {
           submitting.current = false

@@ -37,12 +37,10 @@ export function resolveLinkedManifest(
 ): LinkedManifestFields {
   const id = manifest?.id ?? undefined
   const decoded = id ? decodeLinkedUrn(id) : null
-  if (
-    id &&
-    (!decoded?.itemSuffix || !isValidUrnSuffix(decoded.itemSuffix) || !id.startsWith(`${target.collectionUrn}:`))
-  ) {
+  if (id && (!decoded?.itemSuffix || !id.startsWith(`${target.collectionUrn}:`))) {
     throw new ItemFileError('linked_urn_mismatch')
   }
+  if (decoded?.itemSuffix && !isValidUrnSuffix(decoded.itemSuffix)) throw new ItemFileError('linked_urn_invalid')
   const existing = target.updating && id ? target.updating.get(id) : undefined
   if (target.updating) {
     if (!id) throw new ItemFileError('bulk_edit_missing_urn')

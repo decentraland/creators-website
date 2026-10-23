@@ -9,7 +9,6 @@ import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { EMAIL_MAX_LENGTH, isValidEmail } from '~/lib/email'
 import { type Item } from '~/lib/items'
-import { type ItemCuration } from '~/lib/linkedItemStatus'
 import { openExternal } from '~/lib/navigation'
 import { useNotifications } from '~/lib/notifications'
 import { Button } from '~/components/Button'
@@ -23,13 +22,12 @@ type Props = {
   collection: Collection
   session: Session
   items: Item[]
-  curations: Map<string, ItemCuration>
   onClose: () => void
   onPushed: () => void
 }
 
 /** Sends changed, already-approved linked items for review again: a confirmation, the terms, then one request per item. */
-export function PushLinkedChangesModal({ collection, session, items, curations, onClose, onPushed }: Props) {
+export function PushLinkedChangesModal({ collection, session, items, onClose, onPushed }: Props) {
   const { t } = useTranslation()
   const intl = useIntl()
   const emailErrorId = useId()
@@ -55,7 +53,7 @@ export function PushLinkedChangesModal({ collection, session, items, curations, 
     // A retry after a partial failure counts from zero again.
     setProgress({ done: 0, total: items.length })
     push.mutate(
-      { items, curations, email: currentEmail, onProgress: (done, total) => setProgress({ done, total }) },
+      { items, email: currentEmail, onProgress: (done, total) => setProgress({ done, total }) },
       {
         onSuccess: result => {
           onPushed()

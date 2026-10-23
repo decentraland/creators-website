@@ -670,7 +670,8 @@
       "linked_mapping_invalid": "El mapeo de wearable.json no es válido. Revisa su tipo y los IDs de token.",
       "bulk_edit_missing_urn": "Agrega la URN del ítem como \"id\" en wearable.json para actualizarlo.",
       "bulk_edit_no_match": "Ningún ítem de esta colección tiene la URN de este wearable.json.",
-      "linked_urn_in_use": "Un ítem de esta colección ya tiene la URN de este wearable.json. Usa Editar en bloque para actualizarlo, o quita el \"id\" para agregar un ítem nuevo."
+      "linked_urn_in_use": "Un ítem de esta colección ya tiene la URN de este wearable.json. Usa Editar en bloque para actualizarlo, o quita el \"id\" para agregar un ítem nuevo.",
+      "linked_urn_invalid": "El identificador del ítem al final de la URN del wearable.json no es válido: no puede contener espacios, \":\" ni \"|\"."
     },
     "mapping_hint": "Qué tokens del contrato vinculado desbloquean este wearable.",
     "bulk_edit": {
@@ -1800,7 +1801,7 @@
       "item": "La última parte de la URN del ítem. No se puede cambiar una vez publicado."
     },
     "label": "Identificador",
-    "error_invalid": "Los identificadores no pueden tener espacios ni el carácter \":\".",
+    "error_invalid": "Los identificadores no pueden tener espacios, \":\" ni \"|\".",
     "submit": "Guardar"
   },
   "mapping_editor": {

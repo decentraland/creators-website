@@ -8,7 +8,7 @@ import { type ContractCall, type TransactionSettlement } from '~/lib/auth'
 import { BuilderServerError, type PublishLinkedItemsResult, type SlotsCheque } from '~/lib/builder'
 import { CurationStatus, type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
-import { type ItemCuration } from '~/lib/linkedItemStatus'
+import { canPushLinkedItem, type ItemCuration } from '~/lib/linkedItemStatus'
 import { buildManaApproveCall } from '~/lib/mana'
 import { type PushLinkedResult } from '~/lib/pushLinkedChanges'
 import { type ThirdParty } from '~/lib/thirdParty'
@@ -373,7 +373,8 @@ export type PublishLinkedDeps = {
     itemIds: string[],
     cheque: SlotsCheque
   ) => Promise<PublishLinkedItemsResult>
-  pushChanges: (items: Item[]) => Promise<PushLinkedResult>
+  /** `curations` is read right before pushing: a pending request is refreshed, an approved item gets a new one. */
+  pushChanges: (items: Item[], curations: Map<string, ItemCuration>) => Promise<PushLinkedResult>
   onStep?: (step: LinkedPublishStep) => void
   /**
    * The payment to resume if this run stops, as soon as it changes: set the moment a purchase is sent, cleared once it
@@ -398,6 +399,9 @@ const TOS_RETRY_DELAY_MS = 500
 // Legacy pace for the subgraph to index the registration or the bought slots.
 const INDEXING_RETRIES = 20
 const INDEXING_RETRY_DELAY_MS = 5000
+
+const REPLACED_PURCHASE_READS = 4
+const REPLACED_PURCHASE_READ_DELAY_MS = 5000
 
 const defaultSleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
 
@@ -445,7 +449,14 @@ async function publishWithRetry(
     try {
       return await deps.publishLinkedItems(params.collection.id, itemIds, cheque)
     } catch (error) {
-      if (serverFailed && isPendingReviewError(error)) return null
+      if (isPendingReviewError(error)) {
+        if (serverFailed) return null
+        // The request may have reached the server on an earlier attempt of this publish whose answer never came back
+        // (a timeout): the items being pending means it did.
+        const state = getPublishState(params.itemsToPublish, await deps.fetchCurations())
+        if (state === 'already_published') return null
+        throw error
+      }
       const failedNow = isServerFailure(error)
       serverFailed ||= failedNow
       const retriable = failedNow || isInsufficientSlotsError(error) || hasStatus(error, 401)
@@ -601,8 +612,13 @@ export async function publishLinkedItems(
         }
         step('wait_tx')
         if ((await settle(txHash)) === 'dropped') {
-          const after = await deps.fetchSlots()
-          if (slotsToBuyFor(after) > 0) {
+          // A speed-up bought the slots under another hash; the registry may take a moment to show them.
+          let covered = false
+          for (let read = 0; read < REPLACED_PURCHASE_READS && !covered; read++) {
+            if (read > 0) await sleep(REPLACED_PURCHASE_READ_DELAY_MS)
+            covered = slotsToBuyFor(await deps.fetchSlots()) === 0
+          }
+          if (!covered) {
             throw new LinkedPublishError(current, 'reverted', `Transaction ${txHash} was replaced`, undefined, txHash)
           }
         }
@@ -636,7 +652,10 @@ export async function publishLinkedItems(
     let pushed: PushLinkedResult | null = null
     if (itemsToPush.length > 0) {
       step('push')
-      pushed = await deps.pushChanges(itemsToPush)
+      // Read again: a retry must not push what an earlier attempt already sent, nor refresh it as if still approved.
+      const curations = await deps.fetchCurations()
+      const toPush = itemsToPush.filter(item => canPushLinkedItem(item, curations.get(item.id) ?? null))
+      pushed = toPush.length > 0 ? await deps.pushChanges(toPush, curations) : { pushed: [], failed: [] }
       if (pushed.failed.length > 0) {
         throw new LinkedPublishError(
           'push',

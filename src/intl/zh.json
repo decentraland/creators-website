@@ -670,7 +670,8 @@
       "linked_mapping_invalid": "wearable.json 中的映射无效。请检查其类型和代币 ID。",
       "bulk_edit_missing_urn": "请在 wearable.json 中将物品的 URN 设为“id”以更新该物品。",
       "bulk_edit_no_match": "此系列中没有物品使用此 wearable.json 中的 URN。",
-      "linked_urn_in_use": "此系列中已有物品使用该 wearable.json 中的 URN。请使用批量编辑来更新它，或删除 \"id\" 以添加新物品。"
+      "linked_urn_in_use": "此系列中已有物品使用该 wearable.json 中的 URN。请使用批量编辑来更新它，或删除 \"id\" 以添加新物品。",
+      "linked_urn_invalid": "wearable.json 中 URN 末尾的物品标识符无效：不能包含空格、\":\" 或 \"|\"。"
     },
     "mapping_hint": "关联合约中哪些代币可解锁此可穿戴物品。",
     "bulk_edit": {

@@ -15,7 +15,7 @@ import {
 } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
-import { type ItemCuration } from '~/lib/linkedItemStatus'
+import { canPushLinkedItem, type ItemCuration } from '~/lib/linkedItemStatus'
 import { fetchManaAllowance } from '~/lib/mana'
 import { captureError } from '~/lib/monitoring'
 import { getMaticChainId } from '~/lib/publishCollection'
@@ -80,8 +80,6 @@ export function useSignSlotsCheque(session: Session) {
 }
 
 export type PublishLinkedVariables = Omit<PublishLinkedParams, 'address' | 'chainId'> & {
-  /** The latest curation of every item, so pushed items refresh a pending request instead of opening another. */
-  curations: Map<string, ItemCuration>
   onStep?: (step: LinkedPublishStep) => void
   onPayment?: (payment: LinkedPayment | undefined) => void
 }
@@ -91,8 +89,22 @@ export function usePublishLinkedItems(session: Session, collection: Collection) 
   const queryClient = useQueryClient()
   const chainId = getMaticChainId()
   const { address } = session
+  const published = (variables: PublishLinkedVariables, txHash: string | null | undefined) => {
+    track('Publish TP Items', {
+      collectionId: collection.id,
+      thirdPartyId: variables.thirdParty.id,
+      items: variables.itemsToPublish.length,
+      pushed: variables.itemsToPush.length,
+      txHash: txHash ?? undefined
+    })
+    void queryClient.invalidateQueries({ queryKey: thirdPartyKey(address, variables.thirdParty.id) })
+    void queryClient.invalidateQueries({ queryKey: thirdPartySlotsKey(address, variables.thirdParty.id) })
+    void queryClient.invalidateQueries({ queryKey: ['collections'] })
+    void queryClient.invalidateQueries({ queryKey: ['mana-balance', address] })
+    invalidateCollectionItems(queryClient, collection.id)
+  }
   return useMutation({
-    mutationFn: ({ onStep, onPayment, curations, ...params }: PublishLinkedVariables) =>
+    mutationFn: ({ onStep, onPayment, ...params }: PublishLinkedVariables) =>
       publishLinkedItems(
         { ...params, address, chainId },
         {
@@ -106,25 +118,14 @@ export function usePublishLinkedItems(session: Session, collection: Collection) 
           deleteVirtualThirdParty: thirdPartyId => deleteVirtualThirdParty(address, thirdPartyId),
           publishLinkedItems: (collectionId, itemIds, cheque: SlotsCheque) =>
             postLinkedItems(address, collectionId, itemIds, cheque),
-          pushChanges: items => pushChanges(address, items, curations),
+          pushChanges: (items, fresh) => pushChanges(address, items, fresh),
           onStep,
           onPayment
         }
       ),
     onSuccess: (result, variables) => {
-      track('Publish TP Items', {
-        collectionId: collection.id,
-        thirdPartyId: variables.thirdParty.id,
-        items: variables.itemsToPublish.length,
-        pushed: variables.itemsToPush.length,
-        txHash: result.txHash ?? undefined
-      })
       if (result.collection) queryClient.setQueryData(['collection', address, collection.id], result.collection)
-      void queryClient.invalidateQueries({ queryKey: thirdPartyKey(address, variables.thirdParty.id) })
-      void queryClient.invalidateQueries({ queryKey: thirdPartySlotsKey(address, variables.thirdParty.id) })
-      void queryClient.invalidateQueries({ queryKey: ['collections'] })
-      void queryClient.invalidateQueries({ queryKey: ['mana-balance', address] })
-      invalidateCollectionItems(queryClient, collection.id)
+      published(variables, result.txHash)
     },
     onError: (error, variables) => {
       const step = error instanceof LinkedPublishError ? error.step : 'unknown'
@@ -145,6 +146,8 @@ export function usePublishLinkedItems(session: Session, collection: Collection) 
           txHash: error.txHash
         })
       }
+      // Only some changes failed to push: the publish itself went through.
+      if (error instanceof LinkedPublishError && error.reason === 'push_failed') published(variables, error.txHash)
       // Reads what the server managed to write before failing.
       invalidateCollectionItems(queryClient, collection.id)
       void queryClient.invalidateQueries({ queryKey: thirdPartyKey(address, variables.thirdParty.id) })
@@ -172,7 +175,6 @@ function pushChanges(
 
 export type PushLinkedVariables = {
   items: Item[]
-  curations: Map<string, ItemCuration>
   email: string
   onProgress?: (done: number, total: number) => void
 }
@@ -182,14 +184,17 @@ export function usePushLinkedChanges(session: Session, collection: Collection) {
   const queryClient = useQueryClient()
   const { address } = session
   return useMutation({
-    mutationFn: async ({ items, curations, email, onProgress }: PushLinkedVariables) => {
+    mutationFn: async ({ items, email, onProgress }: PushLinkedVariables) => {
       await saveLinkedItemsTOS(
         address,
         collection,
         email,
         items.flatMap(item => (item.currentContentHash ? [item.currentContentHash] : []))
       )
-      return pushChanges(address, items, curations, onProgress)
+      // Read now, not when the dialog opened: a retry must neither resend what went through nor misread its state.
+      const curations = await fetchItemCurations(address, collection.id)
+      const toPush = items.filter(item => canPushLinkedItem(item, curations.get(item.id) ?? null))
+      return pushChanges(address, toPush, curations, onProgress)
     },
     onSuccess: (result, { items }) => {
       track('Push TP Changes', { collectionId: collection.id, items: items.length, failed: result.failed.length })

@@ -134,7 +134,13 @@ type Deps = { [K in keyof Required<PublishLinkedDeps>]: ReturnType<typeof vi.fn>
 function makeDeps(overrides: Partial<PublishLinkedDeps> = {}): Deps {
   let txCount = 0
   return {
-    fetchCurations: vi.fn(async () => new Map<string, ItemCuration>()),
+    // The item to push is approved with older content, as the list showed it.
+    fetchCurations: vi.fn(
+      async () =>
+        new Map<string, ItemCuration>([
+          ['p', { ...pendingCuration(itemsToPush[0]), status: CurationStatus.APPROVED, contentHash: 'old' }]
+        ])
+    ),
     saveTOS: vi.fn(async () => {}),
     setThirdPartyKind: vi.fn(async () => {}),
     fetchManaAllowance: vi.fn(async () => 0n),
@@ -385,7 +391,7 @@ describe('publishLinkedItems', () => {
     expect(deps.saveTOS).toHaveBeenCalledWith(collection, 'jane.doe@example.com', ['hash-p'])
     expect(deps.sendTransaction).not.toHaveBeenCalled()
     expect(deps.publishLinkedItems).not.toHaveBeenCalled()
-    expect(deps.pushChanges).toHaveBeenCalledWith(itemsToPush)
+    expect(deps.pushChanges).toHaveBeenCalledWith(itemsToPush, expect.any(Map))
     expect(result).toEqual({
       collection: undefined,
       items: [],
@@ -490,7 +496,7 @@ describe('publishLinkedItems', () => {
     expect(result.collection).toBeUndefined()
     expect(result.items).toEqual([])
     expect(result.itemCurations).toEqual([])
-    expect(deps.pushChanges).toHaveBeenCalledWith(itemsToPush)
+    expect(deps.pushChanges).toHaveBeenCalledWith(itemsToPush, expect.any(Map))
   })
 
   it('fails with pending_review when the collection already has a review pending', async () => {
@@ -790,7 +796,13 @@ describe('publishLinkedItems', () => {
   it('neither pays nor publishes again when an earlier request already published the items, and still pushes', async () => {
     const onPayment = vi.fn()
     const deps = makeDeps({
-      fetchCurations: vi.fn(async () => new Map(itemsToPublish.map(item => [item.id, pendingCuration(item)]))),
+      fetchCurations: vi.fn(
+        async () =>
+          new Map([
+            ...itemsToPublish.map(item => [item.id, pendingCuration(item)] as const),
+            ['p', { ...pendingCuration(itemsToPush[0]), status: CurationStatus.APPROVED, contentHash: 'old' }] as const
+          ])
+      ),
       onPayment
     })
 
@@ -801,9 +813,65 @@ describe('publishLinkedItems', () => {
 
     expect(deps.sendTransaction).not.toHaveBeenCalled()
     expect(deps.publishLinkedItems).not.toHaveBeenCalled()
-    expect(deps.pushChanges).toHaveBeenCalledWith(itemsToPush)
+    expect(deps.pushChanges).toHaveBeenCalledWith(itemsToPush, expect.any(Map))
     expect(onPayment).toHaveBeenCalledWith(undefined)
     expect(result.itemCurations).toEqual([])
+  })
+
+  it('on a retry after a partial push failure, pushes only what is left, from curations read now', async () => {
+    const [x, y] = [
+      makeItem('x', { isPublished: true, isApproved: true, inCatalyst: true, catalystContentHash: 'old-x' }),
+      makeItem('y', { isPublished: true, isApproved: true, inCatalyst: true, catalystContentHash: 'old-y' })
+    ]
+    const approved = (item: Item) => ({ ...pendingCuration(item), status: CurationStatus.APPROVED, contentHash: 'old' })
+    const fresh = new Map<string, ItemCuration>([
+      ...itemsToPublish.map(item => [item.id, pendingCuration(item)] as const),
+      // X went through on the first attempt; Y did not.
+      ['x', pendingCuration(x)],
+      ['y', approved(y)]
+    ])
+    const deps = makeDeps({ fetchCurations: vi.fn(async () => fresh) })
+
+    await publishLinkedItems(makeParams({ itemsToPush: [x, y] }), deps)
+
+    expect(deps.publishLinkedItems).not.toHaveBeenCalled()
+    expect(deps.pushChanges).toHaveBeenCalledWith([y], fresh)
+  })
+
+  it("counts a first attempt's pending-review answer as published when the items are pending", async () => {
+    let reads = 0
+    const deps = makeDeps({
+      // Free before the publish; the earlier request whose answer was lost lands meanwhile.
+      fetchCurations: vi.fn(async () =>
+        ++reads === 1 ? new Map() : new Map(itemsToPublish.map(item => [item.id, pendingCuration(item)]))
+      ),
+      publishLinkedItems: vi.fn(async () => {
+        throw PENDING_REVIEW
+      })
+    })
+
+    const result = await publishLinkedItems(
+      makeParams({ thirdParty: { ...thirdParty, published: true }, slots: { available: 3, registered: true } }),
+      deps
+    )
+
+    expect(result.itemCurations).toEqual([])
+  })
+
+  it('waits for the registry before calling a replaced purchase a cancel', async () => {
+    const deps = makeDeps({
+      fetchManaAllowance: vi.fn(async () => 10n ** 30n),
+      settleTransaction: vi.fn(async () => 'dropped' as const),
+      fetchSlots: vi
+        .fn()
+        .mockResolvedValueOnce({ available: 0, registered: true })
+        .mockResolvedValue({ available: 3, registered: true })
+    })
+
+    await publishLinkedItems(makeParams({ thirdParty: { ...thirdParty, published: true } }), deps)
+
+    expect(deps.fetchSlots).toHaveBeenCalledTimes(2)
+    expect(deps.publishLinkedItems).toHaveBeenCalled()
   })
 
   it('stops before paying while another review of the collection is pending', async () => {

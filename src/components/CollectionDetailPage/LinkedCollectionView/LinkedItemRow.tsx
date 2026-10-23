@@ -99,8 +99,10 @@ export function LinkedItemRow({
   const flushRef = useRef(flush)
   flushRef.current = flush
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    // Set here, not only at creation: StrictMode runs this cleanup once and mounts again.
+    mounted.current = true
+    return () => {
       mounted.current = false
       clearTimeout(timer.current)
       const mappings = pending.current
@@ -108,9 +110,8 @@ export function LinkedItemRow({
       // The row is gone: a failure still shows its toast, and nothing left on screen can be saved.
       if (mappings) void save(mappings).finally(report)
       else report()
-    },
-    [save]
-  )
+    }
+  }, [save])
 
   // A valid change saves itself after a pause, like the legacy row: no save button per mapping.
   function onMappingChange(next: Mapping | null) {

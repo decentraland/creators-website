@@ -670,7 +670,8 @@
       "linked_mapping_invalid": "The wearable.json mapping is invalid. Check its type and token IDs.",
       "bulk_edit_missing_urn": "Add the item's URN as \"id\" in wearable.json to update it.",
       "bulk_edit_no_match": "No item in this collection has the URN in this wearable.json.",
-      "linked_urn_in_use": "An item of this collection already has the URN in this wearable.json. Use Edit in bulk to update it, or remove the \"id\" to add a new item."
+      "linked_urn_in_use": "An item of this collection already has the URN in this wearable.json. Use Edit in bulk to update it, or remove the \"id\" to add a new item.",
+      "linked_urn_invalid": "The item identifier at the end of the wearable.json URN is invalid: it can't contain spaces, \":\" or \"|\"."
     },
     "mapping_hint": "Which tokens of the linked contract unlock this wearable.",
     "bulk_edit": {
@@ -1800,7 +1801,7 @@
       "item": "The last part of the item's URN. It can't be changed once the item is published."
     },
     "label": "Identifier",
-    "error_invalid": "Identifiers can't contain spaces or the \":\" character.",
+    "error_invalid": "Identifiers can't contain spaces, \":\" or \"|\".",
     "submit": "Save"
   },
   "mapping_editor": {

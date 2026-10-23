@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { type ReactNode } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TranslationProvider } from '~/intl'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { ItemType, type Item } from '~/lib/items'
+import { LinkedPublishError } from '~/lib/publishLinkedItems'
 import { type ThirdParty } from '~/lib/thirdParty'
 import { type ThirdPartyPrice } from '~/lib/thirdPartyRegistry'
 import { PublishLinkedItemsModal } from './PublishLinkedItemsModal'
@@ -29,6 +30,7 @@ vi.mock('~/hooks/useLinkedPublish', () => ({
   }),
   useLinkedSlots: () => ({ data: slotsData, isError: false, refetch: slotsRefetch })
 }))
+vi.mock('~/hooks/useLinkedCollection', () => ({ useItemCurations: () => ({ data: new Map() }) }))
 vi.mock('~/hooks/useCollection', () => ({
   useSaveCollection: () => ({ mutate: vi.fn(), isPending: false, error: null, reset: vi.fn() })
 }))
@@ -79,7 +81,6 @@ async function goToPayment() {
       session={{ address: '0xabc' } as unknown as Session}
       itemsToPublish={[item]}
       itemsToPush={[]}
-      curations={new Map()}
       onClose={vi.fn()}
       onPublished={vi.fn()}
     />,
@@ -163,5 +164,44 @@ describe('PublishLinkedItemsModal', () => {
     expect(JSON.parse(localStorage.getItem(`linked-publish.pending.80002.0xabc.${collection.id}`)!)).toEqual({
       payment
     })
+  })
+
+  it('after the push failed, retries only the push, without quoting or paying for the published items', async () => {
+    slotsRefetch.mockResolvedValue({ data: slotsData, isError: false })
+    const onPublished = vi.fn()
+    render(
+      <PublishLinkedItemsModal
+        collection={collection}
+        thirdParty={thirdParty}
+        session={{ address: '0xabc' } as unknown as Session}
+        itemsToPublish={[item]}
+        itemsToPush={[{ ...item, id: 'i2' }]}
+        onClose={vi.fn()}
+        onPublished={onPublished}
+      />,
+      { wrapper }
+    )
+    await userEvent.click(screen.getByTestId('publish-name-accept'))
+    await userEvent.click(screen.getByTestId('publish-name-confirm'))
+    await userEvent.click(screen.getByTestId('publish-linked-items-accept'))
+    await userEvent.click(screen.getByTestId('publish-linked-items-confirm'))
+    await userEvent.click(screen.getByTestId('publish-linked-terms-accept'))
+    await userEvent.click(screen.getByTestId('publish-linked-submit'))
+    await waitFor(() => expect(publishMutate).toHaveBeenCalledTimes(1))
+
+    const [, callbacks] = publishMutate.mock.calls[0] as [
+      unknown,
+      { onError: (error: unknown) => void; onSettled: () => void }
+    ]
+    act(() => {
+      callbacks.onError(new LinkedPublishError('push', 'push_failed'))
+      callbacks.onSettled()
+    })
+    expect(onPublished).toHaveBeenCalled()
+    await userEvent.click(screen.getByTestId('publish-error-retry'))
+    await userEvent.click(screen.getByTestId('publish-linked-submit'))
+
+    await waitFor(() => expect(publishMutate).toHaveBeenCalledTimes(2))
+    expect(publishMutate.mock.calls[1][0]).toMatchObject({ itemsToPublish: [] })
   })
 })

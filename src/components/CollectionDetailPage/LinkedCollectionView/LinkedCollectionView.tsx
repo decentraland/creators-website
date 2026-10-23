@@ -114,8 +114,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   // What the wizard opened with: the live selection shifts as a partial failure refreshes the list, while the cheque
   // was signed for this set.
   const [publishView, setPublishView] = useState<
-    | { kind: 'closed' }
-    | { kind: 'publish' | 'push'; toPublish: Item[]; toPush: Item[]; curations: Map<string, ItemCuration> }
+    { kind: 'closed' } | { kind: 'publish' | 'push'; toPublish: Item[]; toPush: Item[] }
   >({ kind: 'closed' })
   // Rows with a mapping edit not saved yet: publishing now would send the old mapping.
   const [unsavedMappings, setUnsavedMappings] = useState<ReadonlySet<string>>(() => new Set())
@@ -387,8 +386,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
                   setPublishView({
                     kind: publishAction === 'push' ? 'push' : 'publish',
                     toPublish: selection.toPublish,
-                    toPush: selection.toPush,
-                    curations: curationMap
+                    toPush: selection.toPush
                   })
                 }}
               >
@@ -698,7 +696,6 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
           session={session}
           itemsToPublish={publishView.toPublish}
           itemsToPush={publishView.toPush}
-          curations={publishView.curations}
           onClose={closePublish}
           onPublished={onPublished}
         />
@@ -708,7 +705,6 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
           collection={collection}
           session={session}
           items={publishView.toPush}
-          curations={publishView.curations}
           onClose={closePublish}
           onPushed={onPublished}
         />

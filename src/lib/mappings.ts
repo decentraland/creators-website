@@ -42,11 +42,31 @@ export function buildItemMappings(mapping: Mapping, contract: LinkedContract): M
   return { [contract.network]: { [contract.address.toLowerCase()]: [mapping] } }
 }
 
+/** `007` → `7`: the schema matches ids as exact strings, so a padded id would never match its token. */
+export function normalizeTokenId(value: string): string {
+  const trimmed = value.trim()
+  return /^\d+$/.test(trimmed) ? trimmed.replace(/^0+(?=\d)/, '') : trimmed
+}
+
 export function parseTokenIds(text: string): string[] {
   return text
     .split(/[\s,;]+/)
-    .map(part => part.trim())
+    .map(normalizeTokenId)
     .filter(part => part.length > 0)
+}
+
+/** The mapping with its token ids normalized, for stored or imported data written before ids were checked. */
+export function normalizeMapping(mapping: Mapping): Mapping {
+  switch (mapping.type) {
+    case MappingType.SINGLE:
+      return { ...mapping, id: normalizeTokenId(mapping.id) }
+    case MappingType.MULTIPLE:
+      return { ...mapping, ids: mapping.ids.map(normalizeTokenId) }
+    case MappingType.RANGE:
+      return { ...mapping, from: normalizeTokenId(mapping.from), to: normalizeTokenId(mapping.to) }
+    default:
+      return mapping
+  }
 }
 
 export function toMappingDraft(mapping: Mapping | null): MappingDraft {
@@ -71,13 +91,13 @@ export function fromMappingDraft(draft: MappingDraft): Mapping | null {
       mapping = { type: MappingType.ANY }
       break
     case MappingType.SINGLE:
-      mapping = { type: MappingType.SINGLE, id: draft.id.trim() }
+      mapping = { type: MappingType.SINGLE, id: normalizeTokenId(draft.id) }
       break
     case MappingType.MULTIPLE:
       mapping = { type: MappingType.MULTIPLE, ids: parseTokenIds(draft.ids) }
       break
     case MappingType.RANGE:
-      mapping = { type: MappingType.RANGE, from: draft.from.trim(), to: draft.to.trim() }
+      mapping = { type: MappingType.RANGE, from: normalizeTokenId(draft.from), to: normalizeTokenId(draft.to) }
       break
     default:
       return null
@@ -122,8 +142,10 @@ export function areMappingsEqual(a: Mappings | null | undefined, b: Mappings | n
 /** A `wearable.json` mapping as the docs describe it, wrapped under the collection's contract; null when unusable. */
 export function mappingsFromManifest(mapping: unknown, contract: LinkedContract | null): Mappings | null {
   if (!contract || !mapping || typeof mapping !== 'object') return null
-  const candidate = buildItemMappings(mapping as Mapping, contract)
-  return areMappingsValid(candidate) && isMappingValid(mapping as Mapping) ? candidate : null
+  const raw = buildItemMappings(mapping as Mapping, contract)
+  if (!areMappingsValid(raw)) return null
+  const normalized = normalizeMapping(mapping as Mapping)
+  return isMappingValid(normalized) ? buildItemMappings(normalized, contract) : null
 }
 
 /** The item's token mapping for the collection's linked contract, as the message that labels it. */
