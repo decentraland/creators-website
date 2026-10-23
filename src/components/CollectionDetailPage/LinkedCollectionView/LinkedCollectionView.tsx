@@ -10,7 +10,7 @@ import {
 import { ContractNetwork } from '@dcl/schemas'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
-import { fetchAllLinkedCollectionItems, isUnexpectedFailure } from '~/lib/builder'
+import { fetchAllLinkedCollectionItems, isRefusedRequest } from '~/lib/builder'
 import { captureError } from '~/lib/monitoring'
 import { type Session } from '~/lib/auth'
 import { shortenAddress } from '~/lib/address'
@@ -322,7 +322,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
         showToast(t('linked_collection.urn_saved'))
       },
       onError: error => {
-        if (isUnexpectedFailure(error))
+        if (!isRefusedRequest(error))
           captureError(error, { flow: 'linked_collection_urn', collectionId: collection.id })
       }
     })

@@ -624,7 +624,7 @@ describe('publishLinkedItems', () => {
       deps
     )
 
-    expect(deps.settleTransaction).toHaveBeenCalledWith('0xold', undefined)
+    expect(deps.settleTransaction).toHaveBeenCalledWith('0xold', undefined, expect.any(Function))
     expect(sentMethods(deps)).toEqual(['buyItemSlots'])
     expect(decodeSent(deps, 0)[1].toString()).toBe('1')
   })
@@ -696,6 +696,46 @@ describe('publishLinkedItems', () => {
     expect(deps.publishLinkedItems).toHaveBeenCalled()
   })
 
+  it('records the sender of a payment saved without one as soon as the watch sees it', async () => {
+    const onPayment = vi.fn()
+    const sender = { from: ADDRESS, nonce: 3 }
+    const deps = makeDeps({
+      settleTransaction: vi.fn(async (_hash: string, _sender, onSeen?: (seen: typeof sender) => void) => {
+        onSeen?.(sender)
+        return 'pending' as const
+      }),
+      onPayment
+    })
+
+    await failure(
+      publishLinkedItems(
+        makeParams({
+          thirdParty: { ...thirdParty, published: true },
+          paidTx: { txHash: '0xold', registration: false }
+        }),
+        deps
+      )
+    )
+
+    expect(onPayment).toHaveBeenCalledWith({ txHash: '0xold', registration: false, sender })
+  })
+
+  it('forgets a never-confirming payment once the registry holds its slots', async () => {
+    const onPayment = vi.fn()
+    const deps = makeDeps({
+      settleTransaction: vi.fn(async () => 'pending' as const),
+      fetchSlots: vi.fn(async () => ({ available: 3, registered: true })),
+      onPayment
+    })
+
+    await publishLinkedItems(
+      makeParams({ thirdParty: { ...thirdParty, published: true }, paidTx: { txHash: '0xold', registration: false } }),
+      deps
+    )
+
+    expect(onPayment).toHaveBeenCalledWith(undefined)
+  })
+
   it('records who sent a purchase, and watches it by that sender and nonce', async () => {
     const onPayment = vi.fn()
     const sender = { from: ADDRESS, nonce: 9 }
@@ -708,7 +748,7 @@ describe('publishLinkedItems', () => {
     await publishLinkedItems(makeParams({ thirdParty: { ...thirdParty, published: true } }), deps)
 
     expect(onPayment).toHaveBeenCalledWith({ txHash: '0xtx1', registration: false, sender })
-    expect(deps.settleTransaction).toHaveBeenCalledWith('0xtx1', sender)
+    expect(deps.settleTransaction).toHaveBeenCalledWith('0xtx1', sender, expect.any(Function))
   })
 
   it('reports a purchase replaced by a cancel as charging nothing', async () => {
@@ -816,7 +856,7 @@ describe('publishLinkedItems', () => {
       deps
     )
 
-    expect(deps.settleTransaction).toHaveBeenCalledWith('0xpaid', undefined)
+    expect(deps.settleTransaction).toHaveBeenCalledWith('0xpaid', undefined, expect.any(Function))
     expect(deps.sendTransaction).not.toHaveBeenCalled()
     expect(deps.fetchManaAllowance).not.toHaveBeenCalled()
     expect(deps.setThirdPartyKind).not.toHaveBeenCalled()

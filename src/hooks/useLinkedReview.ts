@@ -12,6 +12,7 @@ import {
 import { ApprovalError, waitForIndexer, APPROVAL_INDEX_TIMEOUT_MS } from '~/lib/approveCollection'
 import { sendContractTransaction, settleTransaction, signWithIdentity, type Session } from '~/lib/auth'
 import {
+  fetchAllLinkedCollectionItems,
   fetchContent,
   fetchItem,
   fetchItemCurations,
@@ -23,9 +24,9 @@ import {
 import { deployEntity, fetchAvailableContent } from '~/lib/catalyst'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
-import { generateCatalystImage } from '~/lib/media'
 import { captureError } from '~/lib/monitoring'
 import { getMaticChainId } from '~/lib/publishCollection'
+import { loadSentRoot, saveSentRoot } from '~/lib/pendingLinkedPayment'
 import { buildReviewThirdPartyCall, fetchRegisteredThirdParty } from '~/lib/thirdPartyRegistry'
 import { type ThirdParty } from '~/lib/thirdParty'
 import { isWalletRejection } from '~/lib/walletErrors'
@@ -139,7 +140,14 @@ export function useLinkedApprovalFlow(
           fetchPendingItems: collectionId => fetchPendingLinkedItems(address, collectionId),
           fetchApprovalData: collectionId => fetchLinkedApprovalData(address, collectionId),
           fetchItemCurations: collectionId => fetchItemCurations(address, collectionId),
-          fetchRegistryRoot: async () => (await fetchRegisteredThirdParty(chainId, thirdParty.id)).root
+          fetchRegistryRoot: async () => (await fetchRegisteredThirdParty(chainId, thirdParty.id)).root,
+          fetchDeployedHashes: async collectionId =>
+            new Map(
+              (await fetchAllLinkedCollectionItems(address, collectionId)).map(item => [
+                item.id,
+                item.catalystContentHash
+              ])
+            )
         },
         review
       )
@@ -153,36 +161,36 @@ export function useLinkedApprovalFlow(
     }
   }, [address, chainId, collection, thirdParty.id, review, set, fail])
 
-  // The root transaction a failed attempt sent and never saw settle, waited on by the next one.
-  const rootTx = useRef<string | null>(null)
-
   const runRoot = useCallback(async () => {
     if (!plan) return
     const token = run.current
     setRunning(true)
+    // A root transaction an earlier attempt sent and never saw settle, kept across dialogs and reloads.
+    const scope = { chainId, thirdPartyId: thirdParty.id }
+    const previousTx = loadSentRoot(scope)
     try {
-      set(token, { kind: 'step', step: 'root', phase: { kind: rootTx.current ? 'pending' : 'signing' } })
+      set(token, { kind: 'step', step: 'root', phase: { kind: previousTx ? 'pending' : 'signing' } })
       const txHash = await setLinkedMerkleRoot(thirdParty.id, plan, {
         chainId,
-        previousTx: rootTx.current ?? undefined,
+        previousTx,
         sendTransaction: async call => {
           if (token !== run.current) throw new RunStoppedError()
           set(token, { kind: 'step', step: 'root', phase: { kind: 'signing' } })
           const hash = await sendContractTransaction(session, call)
-          rootTx.current = hash
           set(token, { kind: 'step', step: 'root', phase: { kind: 'pending' } })
           return hash
         },
+        onSent: sent => saveSentRoot(scope, sent),
         settleTransaction: hash => settleTransaction(chainId, hash),
         fetchThirdParty: id => fetchThirdParty(address, id)
       })
-      rootTx.current = null
+      saveSentRoot(scope, undefined)
       track('Set TP Merkle root', { collectionId: collection.id, thirdPartyId: thirdParty.id, txHash })
       void queryClient.invalidateQueries({ queryKey: thirdPartyKey(address, thirdParty.id) })
       set(token, { kind: 'step', step: 'deploy', phase: IDLE })
     } catch (error) {
       // A root that reverted can't land: the next attempt sends a new one. Any other failure keeps it to wait on.
-      if (error instanceof ApprovalError && error.reason === 'reverted') rootTx.current = null
+      if (error instanceof ApprovalError && error.reason === 'reverted') saveSentRoot(scope, undefined)
       fail(token, 'root', error)
     } finally {
       setRunning(false)
@@ -203,12 +211,12 @@ export function useLinkedApprovalFlow(
         plan,
         {
           fetchContent,
-          renderCatalystImage: generateCatalystImage,
           sign: entityId => signWithIdentity(address, entityId),
           fetchAvailableContent,
           deployEntity,
           fetchItem: itemId => fetchItem(address, itemId),
-          approveItem: itemId => updateItemCuration(address, itemId, 'approved')
+          approveItem: itemId => updateItemCuration(address, itemId, 'approved'),
+          rejectItem: itemId => updateItemCuration(address, itemId, 'rejected')
         },
         uploading
       )

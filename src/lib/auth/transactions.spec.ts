@@ -197,6 +197,14 @@ describe('when watching a transaction until it settles', () => {
     ).resolves.toBe('dropped')
   })
 
+  it('should hand over the sender the first time the node returns the transaction', async () => {
+    const { reader, clock } = chain({ tx: { from: ACCOUNT, nonce: 4 }, count: 4 })
+    const onSeen = vi.fn()
+    await watchTransaction(reader, HASH, { ...options, ...clock, onSeen })
+    expect(onSeen).toHaveBeenCalledTimes(1)
+    expect(onSeen).toHaveBeenCalledWith({ from: ACCOUNT, nonce: 4 })
+  })
+
   it('should stop waiting at the timeout, as pending while the node still holds it', async () => {
     const { reader, clock } = chain({ tx: { from: ACCOUNT, nonce: 4 }, count: 4 })
     await expect(watchTransaction(reader, HASH, { ...options, ...clock })).resolves.toBe('pending')

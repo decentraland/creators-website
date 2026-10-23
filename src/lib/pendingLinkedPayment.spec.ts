@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { loadPendingPublish, savePendingPublish } from './pendingLinkedPayment'
+import { loadPendingPublish, loadSentRoot, savePendingPublish, saveSentRoot } from './pendingLinkedPayment'
 
 function memoryStore() {
   const values = new Map<string, string>()
@@ -59,5 +59,20 @@ describe('pending linked publish', () => {
     }
     expect(loadPendingPublish(scope, blocked)).toEqual({})
     expect(() => savePendingPublish(scope, { payment }, blocked)).not.toThrow()
+  })
+})
+
+describe('sent root', () => {
+  it('remembers a root transaction per chain and third party until cleared, ignoring malformed records', () => {
+    const store = memoryStore()
+    const scope = { chainId: 80002, thirdPartyId: 'urn:tp' }
+    const sent = { hash: '0xabc', merkleRoot: '0xdef' }
+    saveSentRoot(scope, sent, store)
+    expect(loadSentRoot(scope, store)).toEqual(sent)
+    expect(loadSentRoot({ ...scope, thirdPartyId: 'urn:other' }, store)).toBeUndefined()
+    saveSentRoot(scope, undefined, store)
+    expect(loadSentRoot(scope, store)).toBeUndefined()
+    store.setItem('linked-approval.root.80002.urn:tp', '{"hash":"nope"}')
+    expect(loadSentRoot(scope, store)).toBeUndefined()
   })
 })

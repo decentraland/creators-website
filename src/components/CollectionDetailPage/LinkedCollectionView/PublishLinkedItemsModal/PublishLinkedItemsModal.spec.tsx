@@ -213,4 +213,27 @@ describe('PublishLinkedItemsModal', () => {
     await waitFor(() => expect(publishMutate).toHaveBeenCalledTimes(2))
     expect(publishMutate.mock.calls[1][0]).toMatchObject({ itemsToPublish: [] })
   })
+
+  it('lets a creator who cancelled a never-confirming payment forget it and pay again', async () => {
+    const key = `linked-publish.pending.80002.0xabc.${collection.id}`
+    localStorage.setItem(key, JSON.stringify({ payment: { txHash: '0xabc123', registration: false } }))
+    slotsRefetch.mockResolvedValue({ data: slotsData, isError: false })
+    await goToPayment()
+    await userEvent.click(screen.getByTestId('publish-linked-submit'))
+    await waitFor(() => expect(publishMutate).toHaveBeenCalledTimes(1))
+
+    const [, callbacks] = publishMutate.mock.calls[0] as [
+      unknown,
+      { onError: (error: unknown) => void; onSettled: () => void }
+    ]
+    act(() => {
+      callbacks.onError(new LinkedPublishError('wait_tx', 'payment_pending'))
+      callbacks.onSettled()
+    })
+    await userEvent.click(screen.getByTestId('publish-forget-payment'))
+
+    expect(localStorage.getItem(key)).toBeNull()
+    expect(screen.getByTestId('publish-linked-payment-step')).toBeInTheDocument()
+    expect(screen.queryByTestId('publish-linked-resuming')).not.toBeInTheDocument()
+  })
 })

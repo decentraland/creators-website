@@ -189,7 +189,7 @@ export function buildItemEntity(
   return encodeEntity(type, content, buildItemEntityMetadata(collection, item, content), timestamp)
 }
 
-/** A linked item's entity: `content` is what it deploys (video out, generated image in), the metadata hashes its own. */
+/** A linked item's entity: `content` is what it deploys, which must be exactly the content its metadata declares. */
 export function buildLinkedItemEntity(
   collection: Collection,
   item: Item,

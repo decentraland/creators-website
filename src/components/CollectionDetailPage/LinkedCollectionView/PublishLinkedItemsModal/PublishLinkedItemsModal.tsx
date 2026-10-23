@@ -247,6 +247,11 @@ export function PublishLinkedItemsModal({
           // The server refusing the ToS most likely means the email: back to the first step.
           goTo(outcome !== 'success' && outcome.reason === 'tos_failed' ? 'name' : 'payment')
         }}
+        onForgetPayment={() => {
+          updatePending({ payment: undefined })
+          setOutcome(null)
+          goTo('payment')
+        }}
       />
     )
   }

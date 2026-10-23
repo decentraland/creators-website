@@ -39,11 +39,6 @@ export type CollectionItemPreview = {
 }
 
 /** Carries the HTTP status so callers can tell "no access / gone" from a transient failure. */
-/** A failure someone must look at: anything but builder-server refusing what was sent (a 4xx the user can fix). */
-export function isUnexpectedFailure(error: unknown): boolean {
-  return !(error instanceof BuilderServerError && error.status >= 400 && error.status < 500)
-}
-
 export class BuilderServerError extends Error {
   status: number
   /** The error envelope's `data`, when the server sent one. */
@@ -55,6 +50,14 @@ export class BuilderServerError extends Error {
     this.status = status
     this.data = data
   }
+}
+
+/**
+ * builder-server refusing what was sent (a 4xx): sending it again fails the same way, and it's the user's to fix.
+ * Anything else is transient, or something someone must look at.
+ */
+export function isRefusedRequest(error: unknown): boolean {
+  return error instanceof BuilderServerError && error.status >= 400 && error.status < 500
 }
 
 const baseUrl = () => config.get('BUILDER_SERVER_URL')

@@ -670,8 +670,7 @@
       "linked_mapping_invalid": "El mapeo de wearable.json no es válido. Revisa su tipo y los IDs de token.",
       "bulk_edit_missing_urn": "Agrega la URN del ítem como \"id\" en wearable.json para actualizarlo.",
       "bulk_edit_no_match": "Ningún ítem de esta colección tiene la URN de este wearable.json.",
-      "linked_urn_invalid": "El identificador del ítem al final de la URN del wearable.json no es válido: no puede contener espacios, \":\" ni \"|\".",
-      "linked_video": "Las colecciones vinculadas no admiten video de vista previa. Quita video.mp4 del ZIP."
+      "linked_urn_invalid": "El identificador del ítem al final de la URN del wearable.json no es válido: no puede contener espacios, \":\" ni \"|\"."
     },
     "mapping_hint": "Qué tokens del contrato vinculado desbloquean este wearable.",
     "bulk_edit": {
@@ -1924,7 +1923,9 @@
       "generic": "Algo salió mal al publicar tus ítems. Inténtalo de nuevo.",
       "payment_pending": "Tu pago aún no se confirmó. Vuelve a intentarlo en unos minutos: lo retomaremos sin volver a cobrarte.",
       "fee_changed": "La tarifa subió desde que la confirmaste, así que no se cobró nada. Vuelve a intentarlo para revisar la nueva tarifa.",
-      "push_failed": "Algunos cambios no se pudieron enviar a revisión. Lo que publicaste se envió correctamente. Inténtalo de nuevo para reenviar el resto."
+      "push_failed": "Algunos cambios no se pudieron enviar a revisión. Lo que publicaste se envió correctamente. Inténtalo de nuevo para reenviar el resto.",
+      "forget_payment": "Olvidar este pago",
+      "forget_payment_note": "Solo si lo cancelaste en tu wallet: si igual se confirma, pagarías esos cupos dos veces."
     }
   },
   "push_linked_modal": {
@@ -1979,7 +1980,7 @@
       "build": "su contenido cambió o no se pudo preparar",
       "deploy": "falló la subida a los servidores de contenido",
       "curation": "se subió, pero no se pudo marcar como aprobado",
-      "changed": "el creador lo editó durante la aprobación, así que queda pendiente de otra revisión"
+      "changed": "el creador lo editó durante la aprobación, así que se le devolvió para que lo envíe de nuevo"
     },
     "unsubmitted": "El creador guardó cambios en ítems después de enviarlos y no envió esos cambios a revisión. Debe volver a enviarlos antes de que estos ítems se puedan aprobar.",
     "has_video": {

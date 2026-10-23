@@ -5,7 +5,7 @@
 // items. Server and chain access is injected so the sequence runs against fakes in tests.
 import { ethers } from 'ethers'
 import { type ContractCall, type TransactionSender, type TransactionSettlement } from '~/lib/auth'
-import { BuilderServerError, type PublishLinkedItemsResult, type SlotsCheque } from '~/lib/builder'
+import { BuilderServerError, isRefusedRequest, type PublishLinkedItemsResult, type SlotsCheque } from '~/lib/builder'
 import { CurationStatus, type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
 import { canPushLinkedItem, type ItemCuration } from '~/lib/linkedItemStatus'
@@ -395,7 +395,11 @@ export type PublishLinkedDeps = {
   setThirdPartyKind: (thirdPartyId: string, isProgrammatic: boolean) => Promise<void>
   fetchManaAllowance: (owner: string, spender: string) => Promise<bigint>
   sendTransaction: (call: ContractCall) => Promise<string>
-  settleTransaction: (txHash: string, sender?: TransactionSender) => Promise<TransactionSettlement>
+  settleTransaction: (
+    txHash: string,
+    sender?: TransactionSender,
+    onSeen?: (sender: TransactionSender) => void
+  ) => Promise<TransactionSettlement>
   /** The sender and nonce of a transaction just sent, recorded with the payment. */
   readSender?: (txHash: string) => Promise<TransactionSender | undefined>
   fetchSlots: () => Promise<LinkedSlots>
@@ -457,10 +461,7 @@ async function retry<T>(
   throw lastError
 }
 
-// A 4xx is the server rejecting what was sent (e.g. the email): the same request will fail again.
-function isTransientFailure(error: unknown): boolean {
-  return !(error instanceof BuilderServerError && error.status >= 400 && error.status < 500)
-}
+const isTransientFailure = (error: unknown) => !isRefusedRequest(error)
 
 /**
  * POST /collections/:id/publish, retried while the subgraph has not caught up with the slots just bought (409
@@ -522,7 +523,10 @@ export async function publishLinkedItems(
   }
   // A dropped transaction was replaced: by a speed-up that may have bought the same slots, or by a cancel.
   const settle = async (txHash: string, sender?: TransactionSender): Promise<'mined' | 'dropped'> => {
-    const outcome = await deps.settleTransaction(txHash, sender)
+    // A payment saved without its sender gets it once the node returns it, so a later watch can tell it was replaced.
+    const outcome = await deps.settleTransaction(txHash, sender, seen => {
+      if (payment?.txHash === txHash && !payment.sender) setPayment({ ...payment, sender: seen })
+    })
     if (outcome === 'reverted') {
       throw new LinkedPublishError(current, 'reverted', `Transaction ${txHash} reverted`, undefined, txHash)
     }
@@ -616,6 +620,11 @@ export async function publishLinkedItems(
             undefined,
             params.paidTx.txHash
           )
+        }
+        // The slots are there: nothing is left to resume from it, and later publishes must not wait on it again.
+        if (stillPending) {
+          paidTxSettled = true
+          setPayment(undefined)
         }
       }
       let registered = slots.registered || thirdParty.published

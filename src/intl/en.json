@@ -670,8 +670,7 @@
       "linked_mapping_invalid": "The wearable.json mapping is invalid. Check its type and token IDs.",
       "bulk_edit_missing_urn": "Add the item's URN as \"id\" in wearable.json to update it.",
       "bulk_edit_no_match": "No item in this collection has the URN in this wearable.json.",
-      "linked_urn_invalid": "The item identifier at the end of the wearable.json URN is invalid: it can't contain spaces, \":\" or \"|\".",
-      "linked_video": "Linked collections can't hold a preview video. Remove video.mp4 from the ZIP."
+      "linked_urn_invalid": "The item identifier at the end of the wearable.json URN is invalid: it can't contain spaces, \":\" or \"|\"."
     },
     "mapping_hint": "Which tokens of the linked contract unlock this wearable.",
     "bulk_edit": {
@@ -1924,7 +1923,9 @@
       "generic": "Something went wrong while publishing your items. Please try again.",
       "payment_pending": "Your payment hasn't been confirmed yet. Try again in a few minutes: we'll pick it up without charging you again.",
       "fee_changed": "The fee went up since you confirmed it, so nothing was charged. Try again to review the new fee.",
-      "push_failed": "Some changes couldn't be sent for review. Anything you published went through. Try again to resend the rest."
+      "push_failed": "Some changes couldn't be sent for review. Anything you published went through. Try again to resend the rest.",
+      "forget_payment": "Forget this payment",
+      "forget_payment_note": "Only if you cancelled it in your wallet: if it still goes through, you'd pay for those slots twice."
     }
   },
   "push_linked_modal": {
@@ -1979,7 +1980,7 @@
       "build": "its content changed or could not be prepared",
       "deploy": "the upload to the content servers failed",
       "curation": "it was uploaded, but marking it approved failed",
-      "changed": "the creator edited it during the approval, so it stays pending for another review"
+      "changed": "the creator edited it during the approval, so it was sent back to them to submit again"
     },
     "unsubmitted": "The creator saved changes to items after submitting them, and hasn't submitted those changes for review. They need to submit them again before these items can be approved.",
     "has_video": {

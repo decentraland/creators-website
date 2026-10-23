@@ -250,6 +250,8 @@ type WatchOptions = {
   pollMs: number
   /** Known from when it was sent: nodes usually forget a replaced transaction, so its own lookup can't tell. */
   sender?: TransactionSender
+  /** The sender and nonce, the first time the node returns the transaction: worth keeping for a later watch. */
+  onSeen?: (sender: TransactionSender) => void
   sleep?: (ms: number) => Promise<void>
   now?: () => number
 }
@@ -264,15 +266,20 @@ const defaultSleep = (ms: number) => new Promise<void>(resolve => setTimeout(res
 export async function watchTransaction(
   reader: TransactionReader,
   txHash: string,
-  { timeoutMs, pollMs, sender, sleep = defaultSleep, now = Date.now }: WatchOptions
+  { timeoutMs, pollMs, sender, onSeen, sleep = defaultSleep, now = Date.now }: WatchOptions
 ): Promise<TransactionSettlement> {
   const deadline = now() + timeoutMs
   const fromReceipt = (receipt: ethers.providers.TransactionReceipt) => (receipt.status === 1 ? 'mined' : 'reverted')
+  let seen = false
   for (;;) {
     try {
       const receipt = await reader.getTransactionReceipt(txHash)
       if (receipt) return fromReceipt(receipt)
       const tx = await reader.getTransaction(txHash)
+      if (tx && !sender && !seen) {
+        seen = true
+        onSeen?.({ from: tx.from, nonce: tx.nonce })
+      }
       const known = tx ? { from: tx.from, nonce: tx.nonce } : sender
       if (known) {
         if ((await reader.getTransactionCount(known.from, 'latest')) > known.nonce) {
@@ -295,12 +302,14 @@ const SETTLE_POLL_MS = 4_000
 export async function settleTransaction(
   chainId: number,
   txHash: string,
-  sender?: TransactionSender
+  sender?: TransactionSender,
+  onSeen?: (sender: TransactionSender) => void
 ): Promise<TransactionSettlement> {
   return watchTransaction(await getReadProvider(chainId), txHash, {
     timeoutMs: SETTLE_TIMEOUT_MS,
     pollMs: SETTLE_POLL_MS,
-    sender
+    sender,
+    onSeen
   })
 }
 

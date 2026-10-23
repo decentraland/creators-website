@@ -6,7 +6,7 @@ import { ethers } from 'ethers'
 import { ContractName, getContract } from 'decentraland-transactions'
 import { config } from '~/config'
 import { type ContractCall } from '~/lib/auth'
-import { BuilderServerError, COLLECTION_LOCKED_STATUS } from '~/lib/builder'
+import { BuilderServerError, COLLECTION_LOCKED_STATUS, isRefusedRequest } from '~/lib/builder'
 import { isCollectionLocked, type Collection } from '~/lib/collections'
 import { CreditsServerError, type ExternalCall, type PublicationAuthorization } from '~/lib/credits'
 import { PublicationFeeMismatchError } from '~/lib/feeVerification'
@@ -208,10 +208,7 @@ async function retry<T>(
   throw lastError
 }
 
-// A 4xx is the server rejecting what was sent (e.g. the email): the same request will fail again.
-function isTransientFailure(error: unknown): boolean {
-  return !(error instanceof BuilderServerError && error.status >= 400 && error.status < 500)
-}
+const isTransientFailure = (error: unknown) => !isRefusedRequest(error)
 
 export type PublishParams = {
   address: string

@@ -670,8 +670,7 @@
       "linked_mapping_invalid": "wearable.json 中的映射无效。请检查其类型和代币 ID。",
       "bulk_edit_missing_urn": "请在 wearable.json 中将物品的 URN 设为“id”以更新该物品。",
       "bulk_edit_no_match": "此系列中没有物品使用此 wearable.json 中的 URN。",
-      "linked_urn_invalid": "wearable.json 中 URN 末尾的物品标识符无效：不能包含空格、\":\" 或 \"|\"。",
-      "linked_video": "关联系列不能包含预览视频。请从 ZIP 中移除 video.mp4。"
+      "linked_urn_invalid": "wearable.json 中 URN 末尾的物品标识符无效：不能包含空格、\":\" 或 \"|\"。"
     },
     "mapping_hint": "关联合约中哪些代币可解锁此可穿戴物品。",
     "bulk_edit": {
@@ -1924,7 +1923,9 @@
       "generic": "发布物品时出错，请重试。",
       "payment_pending": "您的付款尚未确认。请几分钟后重试：我们会继续处理，不会重复收费。",
       "fee_changed": "自您确认后费用已上涨，因此未收取任何费用。请重试以查看新费用。",
-      "push_failed": "部分更改无法提交审核。您发布的内容已成功提交。请重试以重新发送其余更改。"
+      "push_failed": "部分更改无法提交审核。您发布的内容已成功提交。请重试以重新发送其余更改。",
+      "forget_payment": "忘记此付款",
+      "forget_payment_note": "仅当您已在钱包中取消该付款时使用：如果它仍然成功，您将为这些名额支付两次。"
     }
   },
   "push_linked_modal": {
@@ -1979,7 +1980,7 @@
       "build": "其内容已更改或无法准备",
       "deploy": "上传到内容服务器失败",
       "curation": "已上传，但无法标记为已批准",
-      "changed": "创作者在批准过程中编辑了它，因此它将保持待审核状态以便再次审核"
+      "changed": "创作者在批准过程中编辑了它，因此已退回给创作者重新提交"
     },
     "unsubmitted": "创作者在提交物品后又保存了修改，但尚未将这些修改提交审核。创作者需要重新提交后，这些物品才能被批准。",
     "has_video": {

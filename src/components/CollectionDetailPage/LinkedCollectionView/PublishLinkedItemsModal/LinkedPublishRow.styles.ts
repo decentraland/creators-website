@@ -48,6 +48,21 @@ export const Mapping = styled.span`
   }
 `
 
+export const Forget = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+`
+
+export const ForgetText = styled.p`
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+  color: ${theme.colors.gray4};
+`
+
 export const KindCards = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));

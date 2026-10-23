@@ -54,6 +54,8 @@ export type PrepareDeps = {
   fetchItemCurations: (collectionId: string) => Promise<Map<string, ItemCuration>>
   /** The root the registry holds now: builder-server's copy lags it right after a root transaction. */
   fetchRegistryRoot: () => Promise<string>
+  /** The hash of what the Catalyst holds for each item, by id: approved content only counts once it is deployed. */
+  fetchDeployedHashes: (collectionId: string) => Promise<Map<string, string | undefined>>
 }
 
 /** What the curator saw: the pending items when they decided, and the content of each item they opened. */
@@ -102,11 +104,12 @@ export async function prepareLinkedApproval(
   deps: PrepareDeps,
   review?: ReviewedContent
 ): Promise<LinkedApprovalPlan> {
-  const [pendingItems, approvalData, curations, registryRoot] = await Promise.all([
+  const [pendingItems, approvalData, curations, registryRoot, deployedHashes] = await Promise.all([
     deps.fetchPendingItems(collection.id),
     deps.fetchApprovalData(collection.id),
     deps.fetchItemCurations(collection.id),
-    deps.fetchRegistryRoot()
+    deps.fetchRegistryRoot(),
+    deps.fetchDeployedHashes(collection.id)
   ])
   if (pendingItems.length === 0) throw new ApprovalError('nothing_pending', 'The collection has no items to approve')
   if (review && !matchesReviewedContent(pendingItems, review, curations)) {
@@ -133,10 +136,15 @@ export async function prepareLinkedApproval(
   const newItems = pendingItems.filter(item => !item.isApproved).length
 
   // Only approved content and the pending content verified above may be provable: a rejected or superseded hash in
-  // the root would let content nobody approved reach the Catalyst.
+  // the root would let content nobody approved reach the Catalyst. An approved hash also has to be what the Catalyst
+  // holds: builder-server records the hash an item has when approved, which a save at that moment can swap for
+  // content nobody reviewed.
   const pendingIds = new Set(pendingItems.map(item => item.id))
   const leaves = Object.entries(approvalData.contentHashes)
-    .filter(([id]) => pendingIds.has(id) || curations.get(id)?.status === CurationStatus.APPROVED)
+    .filter(
+      ([id, hash]) =>
+        pendingIds.has(id) || (curations.get(id)?.status === CurationStatus.APPROVED && deployedHashes.get(id) === hash)
+    )
     .map(([, hash]) => hash)
   const tree = await generateTree(leaves)
   // A root the registry already holds was set by an earlier attempt, which consumed the cheque with it.
@@ -159,6 +167,9 @@ export async function prepareLinkedApproval(
   }
 }
 
+/** A root transaction sent and not yet seen settled, with the root it sets. */
+export type SentRoot = { hash: string; merkleRoot: string }
+
 export type RootDeps = {
   chainId: number
   sendTransaction: (call: ContractCall) => Promise<string>
@@ -166,9 +177,11 @@ export type RootDeps = {
   fetchThirdParty: (thirdPartyId: string) => Promise<ThirdParty>
   /**
    * A root transaction an earlier attempt sent and never saw settle: waited on first, since sending another with the
-   * same cheque would revert once either lands.
+   * same cheque would revert once either lands. Only one setting this plan's root counts.
    */
-  previousTx?: string
+  previousTx?: SentRoot
+  /** Called as soon as a root transaction is sent, so it outlives the dialog (and a reload). */
+  onSent?: (sent: SentRoot) => void
   sleep?: (ms: number) => Promise<void>
 }
 
@@ -179,12 +192,19 @@ export async function setLinkedMerkleRoot(
   deps: RootDeps,
   timeoutMs = INDEXER_TIMEOUT_MS
 ): Promise<string> {
-  let txHash = deps.previousTx
+  const previous =
+    deps.previousTx && sameRoot(deps.previousTx.merkleRoot, plan.merkleRoot) ? deps.previousTx : undefined
+  let txHash = previous?.hash
   let outcome = txHash ? await deps.settleTransaction(txHash) : undefined
+  // A replaced one may have been sped up and set the root already, consuming the cheque: another would revert.
+  if (outcome === 'dropped' && sameRoot((await deps.fetchThirdParty(thirdPartyId)).root, plan.merkleRoot)) {
+    return txHash!
+  }
   // Only one that can never land (reverted, or replaced without setting the root) makes way for a new one.
   if (!txHash || outcome === 'reverted' || outcome === 'dropped') {
     const call = buildReviewThirdPartyWithRootCall(deps.chainId, thirdPartyId, plan.merkleRoot, plan.slots)
     txHash = await deps.sendTransaction(call)
+    deps.onSent?.({ hash: txHash, merkleRoot: plan.merkleRoot })
     outcome = await deps.settleTransaction(txHash)
   }
   if (outcome === 'reverted') throw new ApprovalError('reverted', `Merkle root ${txHash} reverted`)
@@ -201,17 +221,20 @@ export async function setLinkedMerkleRoot(
 
 /**
  * Where an item's deployment failed: building its entity, the Catalyst upload, or approving its curation; `changed`
- * when the creator saved it during the approval, which leaves it pending for another review.
+ * when the creator saved it during the approval, which sends it back to the creator to submit again.
  */
 export type LinkedDeployStage = 'build' | 'deploy' | 'curation' | 'changed'
 export type LinkedDeployFailure = DeployFailure & { stage: LinkedDeployStage }
 export type LinkedDeployResult = { deployed: Item[]; failed: LinkedDeployFailure[] }
 
-export type LinkedDeployDeps = DeployDeps & {
+// A linked item deploys exactly its stored content, so it never renders a Catalyst image.
+export type LinkedDeployDeps = Omit<DeployDeps, 'renderCatalystImage'> & {
   /** The item as the server holds it now, to catch an edit the creator saves while the approval runs. */
   fetchItem: (itemId: string) => Promise<Item>
   /** Resolves with the curation as approved, whose hash tells which content got approved. */
   approveItem: (itemId: string) => Promise<Pick<ItemCuration, 'contentHash'>>
+  /** Takes an approval back: content saved while it was being approved must not stay approved. */
+  rejectItem: (itemId: string) => Promise<unknown>
   concurrency?: number
 }
 
@@ -277,6 +300,9 @@ async function deployLinkedItem(
   const curation = await atStage('curation', () => deps.approveItem(item.id))
   // builder-server approves the hash the item has at that moment: a save landing just before still gets through.
   if (curation.contentHash !== proof.entityHash) {
+    // The Catalyst got the reviewed content, but the approval recorded the new one: rejecting it takes that back, and
+    // the item goes back to the creator to submit again.
+    await atStage('changed', () => deps.rejectItem(item.id))
     throw new StageError('changed', new Error(`Item ${item.id} was approved with content saved during the approval`))
   }
 }

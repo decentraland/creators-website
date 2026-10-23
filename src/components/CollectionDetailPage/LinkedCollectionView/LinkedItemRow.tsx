@@ -83,7 +83,12 @@ export function LinkedItemRow({
     } finally {
       inFlight.current--
     }
-    if (!mounted.current || pending.current || inFlight.current > 0 || draft.current === null) return
+    // Gone while this saved: with nothing newer waiting (the cleanup saves that itself), the row is clean.
+    if (!mounted.current) {
+      if (!pending.current && inFlight.current === 0) setDirty(false)
+      return
+    }
+    if (pending.current || inFlight.current > 0 || draft.current === null) return
     if (!draft.current || areMappingsEqual(draft.current, mappings)) return setDirty(false)
     // The editor moved on while this was saving: save what it shows now.
     pending.current = draft.current

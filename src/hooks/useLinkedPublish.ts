@@ -124,7 +124,7 @@ export function usePublishLinkedItems(session: Session, collection: Collection) 
           setThirdPartyKind: (thirdPartyId, isProgrammatic) => setThirdPartyKind(address, thirdPartyId, isProgrammatic),
           fetchManaAllowance: (owner, spender) => fetchManaAllowance(owner, spender, chainId),
           sendTransaction: call => sendContractTransaction(session, call),
-          settleTransaction: (txHash, sender) => settleTransaction(chainId, txHash, sender),
+          settleTransaction: (txHash, sender, onSeen) => settleTransaction(chainId, txHash, sender, onSeen),
           readSender: txHash => readTransactionSender(chainId, txHash),
           fetchSlots: () => fetchLinkedSlots(address, chainId, params.thirdParty.id),
           deleteVirtualThirdParty: thirdPartyId => deleteVirtualThirdParty(address, thirdPartyId),

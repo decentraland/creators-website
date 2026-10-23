@@ -50,8 +50,6 @@ export async function processDraftFile(
   const loaded = await loadItemFile(file)
   // Linked collections hold plain wearables only (legacy: "This item type is not allowed in Linked Wearables Collections").
   if (linked && loaded.scene) throw new ItemFileError('linked_smart_wearable')
-  // The Catalyst takes no preview video in a linked item, though builder-server would hash it in.
-  if (linked && loaded.contents[VIDEO_PATH]) throw new ItemFileError('linked_video')
   // A video shipped in the zip gets the same decode check as one picked in the form.
   if (loaded.contents[VIDEO_PATH]) {
     await loadVideoMetadata(loaded.contents[VIDEO_PATH]).catch(() => {

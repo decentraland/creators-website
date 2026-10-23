@@ -96,7 +96,9 @@ function prepareDeps(items: Item[], data: LinkedApprovalData) {
     fetchPendingItems: vi.fn().mockResolvedValue(items),
     fetchApprovalData: vi.fn().mockResolvedValue(data),
     fetchItemCurations: vi.fn().mockResolvedValue(curations),
-    fetchRegistryRoot: vi.fn().mockResolvedValue('')
+    fetchRegistryRoot: vi.fn().mockResolvedValue(''),
+    // Item 9 was approved and deployed with the content its curation holds.
+    fetchDeployedHashes: vi.fn().mockResolvedValue(new Map([['9', hashOf('9')]]))
   }
 }
 
@@ -153,6 +155,15 @@ describe('prepareLinkedApproval', () => {
     await expect(
       prepareLinkedApproval(collection, prepareDeps([drifted, item('2')], approvalData()))
     ).rejects.toMatchObject({ reason: 'changed' })
+  })
+
+  it('leaves out an approved hash the Catalyst does not hold, such as content saved while it was being approved', async () => {
+    const data = approvalData()
+    const deps = prepareDeps([item('1'), item('2')], data)
+    deps.fetchDeployedHashes.mockResolvedValue(new Map([['9', 'reviewed-content']]))
+    const plan = await prepareLinkedApproval(collection, deps)
+    const pendingOnly = generateTree([data.contentHashes['1'], data.contentHashes['2']]).merkleRoot
+    expect(plan.merkleRoot).toBe(pendingOnly)
   })
 
   it('accepts a retry once some reviewed items were approved by an earlier attempt', async () => {
@@ -339,7 +350,7 @@ describe('setLinkedMerkleRoot', () => {
     const plan = planFor([item('1')], { slots: [['2', '0xsalt', '0xr', '0xs', 27]] })
     const deps = {
       chainId: CHAIN_ID,
-      previousTx: '0xearlier',
+      previousTx: { hash: '0xearlier', merkleRoot: plan.merkleRoot },
       sendTransaction: vi.fn().mockResolvedValue('0xnew'),
       settleTransaction: vi.fn().mockResolvedValue('mined'),
       fetchThirdParty: vi.fn().mockResolvedValue(thirdParty(plan.merkleRoot)),
@@ -356,17 +367,48 @@ describe('setLinkedMerkleRoot', () => {
     deps.settleTransaction.mockResolvedValueOnce('reverted')
     await expect(setLinkedMerkleRoot(THIRD_PARTY_ID, plan, deps)).resolves.toBe('0xnew')
   })
+
+  it('sends nothing more when an earlier root was replaced by a speed-up that already set it', async () => {
+    const plan = planFor([item('1')])
+    const deps = {
+      chainId: CHAIN_ID,
+      previousTx: { hash: '0xearlier', merkleRoot: plan.merkleRoot },
+      sendTransaction: vi.fn().mockResolvedValue('0xnew'),
+      settleTransaction: vi.fn().mockResolvedValue('dropped'),
+      fetchThirdParty: vi.fn().mockResolvedValue(thirdParty(plan.merkleRoot)),
+      sleep: vi.fn().mockResolvedValue(undefined)
+    }
+    await expect(setLinkedMerkleRoot(THIRD_PARTY_ID, plan, deps)).resolves.toBe('0xearlier')
+    expect(deps.sendTransaction).not.toHaveBeenCalled()
+  })
+
+  it('ignores an earlier root transaction for another root, and records the one it sends', async () => {
+    const plan = planFor([item('1')])
+    const onSent = vi.fn()
+    const deps = {
+      chainId: CHAIN_ID,
+      previousTx: { hash: '0xstale', merkleRoot: '0x' + 'cd'.repeat(32) },
+      sendTransaction: vi.fn().mockResolvedValue('0xnew'),
+      settleTransaction: vi.fn().mockResolvedValue('mined'),
+      fetchThirdParty: vi.fn().mockResolvedValue(thirdParty(plan.merkleRoot)),
+      onSent,
+      sleep: vi.fn().mockResolvedValue(undefined)
+    }
+    await expect(setLinkedMerkleRoot(THIRD_PARTY_ID, plan, deps)).resolves.toBe('0xnew')
+    expect(deps.settleTransaction).not.toHaveBeenCalledWith('0xstale')
+    expect(onSent).toHaveBeenCalledWith({ hash: '0xnew', merkleRoot: plan.merkleRoot })
+  })
 })
 
 function deployDeps(overrides: Partial<LinkedDeployDeps> = {}): LinkedDeployDeps {
   return {
     fetchContent: vi.fn(async (hash: string) => new Blob([hash])),
-    renderCatalystImage: vi.fn(async () => new Blob(['img'])),
     sign: vi.fn(() => [{ type: 'SIGNER', payload: '0xme' }]),
     fetchAvailableContent: vi.fn(async () => new Set<string>()),
     deployEntity: vi.fn(async () => undefined),
     fetchItem: vi.fn(async (id: string) => served.find(target => target.id === id)!),
     approveItem: vi.fn(async (id: string) => ({ contentHash: curatedHash(served.find(target => target.id === id)!) })),
+    rejectItem: vi.fn(async () => undefined),
     ...overrides
   }
 }
@@ -390,7 +432,6 @@ describe('deployLinkedItems', () => {
     const deps = deployDeps()
     const result = await deployLinkedItems(collection, planFor([item('1', { contents })]), deps)
     expect(result.failed).toEqual([])
-    expect(deps.renderCatalystImage).not.toHaveBeenCalled()
     const form = vi.mocked(deps.deployEntity).mock.calls[0][0]
     const entity = JSON.parse(await (form.get(form.get('entityId') as string) as Blob).text())
     const uploaded = Object.fromEntries(
@@ -400,9 +441,10 @@ describe('deployLinkedItems', () => {
     expect(uploaded).toEqual(entity.metadata.content)
   })
 
-  it('reports an item the server approved with content saved during the approval', async () => {
+  it('takes back an approval recorded with content saved during the approval, and reports the item', async () => {
     const deps = deployDeps({ approveItem: vi.fn(async () => ({ contentHash: 'saved-meanwhile' })) })
     const result = await deployLinkedItems(collection, planFor([item('1')]), deps)
+    expect(deps.rejectItem).toHaveBeenCalledWith('1')
     expect(result.failed.map(({ item, stage }) => [item.id, stage])).toEqual([['1', 'changed']])
   })
 

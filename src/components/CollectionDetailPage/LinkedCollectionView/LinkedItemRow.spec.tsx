@@ -127,6 +127,20 @@ describe('LinkedItemRow', () => {
     expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', true)
   })
 
+  it('reports the row clean when a save started before it went away lands afterwards', async () => {
+    vi.useFakeTimers()
+    let finish: () => void = () => undefined
+    const onSave = vi.fn(() => new Promise<Item>(resolve => (finish = () => resolve(item))))
+    const { onMappingDirtyChange, input, unmount } = renderRow(onSave)
+
+    fireEvent.change(input, { target: { value: '12' } })
+    act(() => void vi.advanceTimersByTime(1000))
+    unmount()
+    await act(async () => finish())
+
+    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', false)
+  })
+
   it('does not save an invalid or unchanged mapping', () => {
     vi.useFakeTimers()
     const { onSaveMappings, input } = renderRow()

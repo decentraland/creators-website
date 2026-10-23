@@ -148,6 +148,16 @@ describe('processDraftFile', () => {
       expect(draft).toMatchObject({ urnSuffix: 'cap', mapping: { type: 'single', id: '7' } })
     })
 
+    it('never keeps a preview video, which the content servers reject for linked items', async () => {
+      const zip = new JSZip()
+      const withVideo = await manifestZip({ id: existing.urn })
+      await zip.loadAsync(await withVideo.arrayBuffer())
+      zip.file('video.mp4', 'mp4')
+      const file = new File([await zip.generateAsync({ type: 'arraybuffer' })], 'hat.zip')
+      const draft = await processDraftFile(file, undefined, target)
+      expect(draft.contents).not.toHaveProperty('video.mp4')
+    })
+
     it("takes the zip's mapping when it has one", async () => {
       const draft = await processDraftFile(
         await manifestZip({ id: existing.urn, mapping: { type: 'range', from: '1', to: '9' } }),

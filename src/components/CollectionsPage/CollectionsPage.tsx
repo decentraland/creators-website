@@ -25,7 +25,7 @@ import {
   type CollectionListFilter
 } from '~/lib/collections'
 import { buildNewCollection } from '~/lib/saveCollection'
-import { isUnexpectedFailure } from '~/lib/builder'
+import { isRefusedRequest } from '~/lib/builder'
 import { captureError } from '~/lib/monitoring'
 import {
   LINKED_WEARABLES_DOCS_PATH,
@@ -142,7 +142,7 @@ const CollectionsPage = () => {
         navigate(`/collections/${saved.id}`)
       },
       onError: error => {
-        if (isUnexpectedFailure(error)) captureError(error, { flow: 'linked_create', network: contract.network })
+        if (!isRefusedRequest(error)) captureError(error, { flow: 'linked_create', network: contract.network })
       }
     })
   }
