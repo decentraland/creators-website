@@ -730,7 +730,7 @@
       "male_only": "Made for the male body shape only",
       "female_only": "Made for the female body shape only",
       "to_review": "To review ({count})",
-      "rest": "Rest of the collection ({count})",
+      "rest": "Other items ({count})",
       "review_tag": {
         "new": "New",
         "changes": "Changes"
@@ -1945,7 +1945,7 @@
       "action": "Approve on chain",
       "signing": "Please confirm the approval in your wallet.",
       "pending": "Waiting for the approval to be confirmed…",
-      "reenables": "This third party is disabled. Approving these items enables it again, along with all of its collections."
+      "reenables": "This third party is disabled. Approving these items enables it, along with all of its collections."
     },
     "deploy": {
       "title": "Upload files",

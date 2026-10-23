@@ -177,4 +177,10 @@ describe('ItemsSidebar', () => {
     expect(within(rest).getByTestId('items-sidebar-row-dress')).toBeInTheDocument()
     expect(within(rest).queryByTestId('items-sidebar-tag-dress')).not.toBeInTheDocument()
   })
+
+  it('keeps nothing but the thumbnail in a collapsed row, so every thumbnail sits centered', () => {
+    renderSidebar({ collapsed: true })
+    const row = screen.getByTestId('items-sidebar-row-dress')
+    expect(within(row).queryByTestId('items-sidebar-shape-dress-trigger')).not.toBeInTheDocument()
+  })
 })

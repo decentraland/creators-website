@@ -184,7 +184,8 @@ export function ItemsSidebar({
             </S.RowGlyph>
           )}
         </S.RowButton>
-        {shape && (
+        {/* Collapsed, the row's own tooltip names the shape; this one's trigger would still take room beside the thumb. */}
+        {shape && !collapsed && (
           <Tooltip content={shapeLabel} testId={`${testId}-shape-${item.id}`}>
             <S.RowGlyph data-shape={shape}>{shape === BodyShapeType.MALE ? <MaleIcon /> : <FemaleIcon />}</S.RowGlyph>
           </Tooltip>

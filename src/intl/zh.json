@@ -730,7 +730,7 @@
       "male_only": "仅适用于男性体型",
       "female_only": "仅适用于女性体型",
       "to_review": "待审核（{count}）",
-      "rest": "系列中的其他物品（{count}）",
+      "rest": "其他物品（{count}）",
       "review_tag": {
         "new": "新",
         "changes": "更改"
@@ -1945,7 +1945,7 @@
       "action": "链上批准",
       "signing": "请在钱包中确认批准。",
       "pending": "正在等待批准确认…",
-      "reenables": "此第三方已被停用。批准这些物品会重新启用它及其所有系列。"
+      "reenables": "此第三方已被停用。批准这些物品会启用它及其所有系列。"
     },
     "deploy": {
       "title": "上传文件",

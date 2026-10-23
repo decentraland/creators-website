@@ -730,7 +730,7 @@
       "male_only": "Solo para la forma de cuerpo masculina",
       "female_only": "Solo para la forma de cuerpo femenina",
       "to_review": "Por revisar ({count})",
-      "rest": "Resto de la colección ({count})",
+      "rest": "Otros ítems ({count})",
       "review_tag": {
         "new": "Nuevo",
         "changes": "Cambios"
@@ -1945,7 +1945,7 @@
       "action": "Aprobar en la blockchain",
       "signing": "Confirma la aprobación en tu wallet.",
       "pending": "Esperando que se confirme la aprobación…",
-      "reenables": "Este tercero está deshabilitado. Aprobar estos ítems lo vuelve a habilitar, junto con todas sus colecciones."
+      "reenables": "Este tercero está deshabilitado. Aprobar estos ítems lo habilita, junto con todas sus colecciones."
     },
     "deploy": {
       "title": "Subir archivos",
