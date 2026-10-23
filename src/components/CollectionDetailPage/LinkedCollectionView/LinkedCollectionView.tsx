@@ -396,6 +396,9 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
             disabled={total === 0}
             data-desktop-only
             data-testid="preview-collection"
+            onLaunch={launched =>
+              track('Preview In World', { collectionId: collection.id, itemCount: total, launched, trigger: 'detail' })
+            }
           />
           {hasWork && (
             <Tooltip

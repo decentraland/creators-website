@@ -422,9 +422,10 @@ describe('fetchCurationCollections', () => {
     const result = await fetchCurationCollections(ADDRESS, {
       page: 1,
       search: '',
-      status: 'all' as never,
-      assignee: 'all',
-      sort: 'MOST_RELEVANT' as never,
+      statuses: [],
+      assignees: [],
+      reviewType: null,
+      sort: 'REQUESTED_AT_DESC' as never,
       tag: null,
       type: 'all' as never
     })

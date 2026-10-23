@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDropDown as ChevronIcon, Check as CheckIcon } from '@mui/icons-material'
+import { ArrowDropDown as ChevronIcon, Check as CheckIcon, ExpandMore as CompactChevronIcon } from '@mui/icons-material'
+import { useTranslation } from '~/intl'
 import * as Base from '~/components/Select/Select.styles'
 import { useListbox } from '~/components/Select/useListbox'
 import * as S from './MultiSelect.styles'
@@ -14,6 +15,8 @@ type Props<T extends string> = {
   placeholder?: string
   disabled?: boolean
   tone?: 'default' | 'dark'
+  /** `compact` is the short uppercase toolbar trigger, as in `Select`. */
+  variant?: 'default' | 'compact'
   ariaLabel?: string
   testId?: string
 }
@@ -28,9 +31,11 @@ export function MultiSelect<T extends string>({
   placeholder,
   disabled = false,
   tone = 'default',
+  variant = 'default',
   ariaLabel,
   testId = 'multi-select'
 }: Props<T>) {
+  const { t } = useTranslation()
   const { open, active, setActive, wrapRef, listRef, listStyle, listId, toggle, pick, onKeyDown } = useListbox({
     options,
     current: values[0] ?? null,
@@ -40,6 +45,13 @@ export function MultiSelect<T extends string>({
     minWidth: LIST_MIN_WIDTH
   })
   const selected = useMemo(() => options.filter(option => values.includes(option.value)), [options, values])
+  // The short compact trigger counts the picks beyond the first instead of truncating a comma list.
+  const summary =
+    selected.length === 0
+      ? placeholder
+      : variant === 'compact' && selected.length > 1
+        ? t('multi_select.summary', { first: selected[0].label, count: selected.length - 1 })
+        : selected.map(option => option.label).join(', ')
 
   return (
     <Base.Wrap ref={wrapRef} onKeyDown={onKeyDown}>
@@ -49,17 +61,18 @@ export function MultiSelect<T extends string>({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
-        aria-label={ariaLabel}
+        aria-label={ariaLabel && summary ? `${ariaLabel}: ${summary}` : ariaLabel}
         disabled={disabled}
         data-testid={testId}
         data-tone={tone}
+        data-variant={variant}
         data-count={values.length}
         onClick={toggle}
       >
         <Base.TriggerLabel data-placeholder={selected.length === 0 ? true : undefined}>
-          <S.Summary>{selected.length === 0 ? placeholder : selected.map(option => option.label).join(', ')}</S.Summary>
+          <S.Summary>{summary}</S.Summary>
         </Base.TriggerLabel>
-        <ChevronIcon />
+        {variant === 'compact' ? <CompactChevronIcon /> : <ChevronIcon />}
       </Base.Trigger>
       {open &&
         createPortal(
