@@ -34,6 +34,8 @@ type Props = {
   forumLink?: string
   /** Opens the collaborators / senders list; without it the owner-only entries are not rendered. */
   onManageRoles?: (kind: RoleKind) => void
+  /** Opens the transfer-ownership dialog; without it the owner-only entry is not rendered. */
+  onTransferOwnership?: () => void
   onDeleted?: () => void
 }
 
@@ -48,6 +50,7 @@ export function CollectionActionsMenu({
   onCreateDiscount,
   forumLink,
   onManageRoles,
+  onTransferOwnership,
   onDeleted
 }: Props) {
   const { t } = useTranslation()
@@ -176,6 +179,14 @@ export function CollectionActionsMenu({
             </ActionsMenuItem>
             <ActionsMenuItem testId="manage-senders" onClick={() => onManageRoles('senders')}>
               {t('collection_detail_page.actions.senders')}
+            </ActionsMenuItem>
+          </>
+        )}
+        {isOnChain && isOwner && showRoles && onTransferOwnership && (
+          <>
+            <ActionsMenuDivider />
+            <ActionsMenuItem testId="transfer-ownership" tone="danger" onClick={onTransferOwnership}>
+              {t('collection_detail_page.actions.transfer_ownership')}
             </ActionsMenuItem>
           </>
         )}

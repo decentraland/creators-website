@@ -99,6 +99,7 @@ import { PublishCollectionModal, PublishSuccessModal, type PublishResume } from 
 import { ValidationGate } from './PublishCollectionModal/ValidationGate'
 import { SellItemFlow, UpdatePriceFlow } from './SellItemFlow'
 import { ManageRolesFlow } from './ManageRolesFlow'
+import { TransferOwnershipFlow } from './TransferOwnershipFlow'
 import { SendItemsFlow } from './SendItemsFlow'
 import { CollectionDiscounts, DiscountFlow, EndDiscountFlow } from './DiscountFlow'
 import * as S from './CollectionDetailPage.styles'
@@ -219,6 +220,7 @@ const CollectionDetailPage = () => {
   )
   const [isSending, setSending] = useState(false)
   const [managingRoles, setManagingRoles] = useState<RoleKind | null>(null)
+  const [isTransferring, setTransferring] = useState(false)
   const listingsQuery = useCollectionListings(withMarket ? standardCollection.contractAddress : undefined)
   const listings = listingsQuery.data
   // `undefined` keeps the price cell blank while the catalog loads; a failed request shows no price rather than an error.
@@ -689,6 +691,7 @@ const CollectionDetailPage = () => {
                   onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
                   forumLink={showForumPost ? collection.forumLink : undefined}
                   onManageRoles={setManagingRoles}
+                  onTransferOwnership={() => setTransferring(true)}
                   onDeleted={() => navigate('/collections', { replace: true })}
                 />
               )}
@@ -941,6 +944,14 @@ const CollectionDetailPage = () => {
               kind={managingRoles}
               session={session}
               onClose={() => setManagingRoles(null)}
+            />
+          )}
+          {isTransferring && session && (
+            <TransferOwnershipFlow
+              collection={collection}
+              session={session}
+              onDone={() => navigate('/collections', { replace: true })}
+              onClose={() => setTransferring(false)}
             />
           )}
           {validationItem && (
