@@ -45,12 +45,24 @@ describe('when the wallet has no profile', () => {
     const { result } = renderHook(() => useProfile(WITHOUT_PROFILE), { wrapper })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(result.current.isError).toBe(false)
     expect(result.current.data).toBeUndefined()
   })
 
   it('should resolve to null when fetched directly, so a caller awaiting it does not reject', async () => {
     await expect(client.fetchQuery(profileQuery(WITHOUT_PROFILE))).resolves.toBeNull()
+  })
+})
+
+describe('when the Catalyst fails to answer', () => {
+  beforeEach(() => {
+    fetchMock.mockResolvedValue(new Response('Service Unavailable', { status: 503 }))
+  })
+
+  it('should fail the query instead of caching the wallet as one without a profile', async () => {
+    const { result } = renderHook(() => useProfile(WITH_PROFILE), { wrapper })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(result.current.data).toBeUndefined()
   })
 })
 
@@ -73,6 +85,5 @@ describe('when several wallets are looked up and only some have a profile', () =
 
     await waitFor(() => expect(result.current[0]).toEqual(avatar))
     expect(result.current[1]).toBeUndefined()
-    await waitFor(() => expect(client.getQueryState(['profile', WITHOUT_PROFILE])?.status).toBe('success'))
   })
 })

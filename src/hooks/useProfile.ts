@@ -21,7 +21,10 @@ async function fetchProfile(address: string): Promise<ProfileAvatar | null> {
   if (!res.ok) {
     // Cancel the unread body so the connection is released back to the pool.
     await res.body?.cancel()
-    return null
+    // Only a 404 means "no profile"; anything else (5xx, 429) is a real failure, left to fail and
+    // retry instead of being cached as a wallet without a profile.
+    if (res.status === 404) return null
+    throw new Error(`Could not fetch the profile: the Catalyst answered ${res.status}`)
   }
   const profile = (await res.json()) as { avatars?: ProfileAvatar[] } | null
   return profile?.avatars?.[0] ?? null
