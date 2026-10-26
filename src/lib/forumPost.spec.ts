@@ -198,6 +198,12 @@ describe('shouldRecoverForumPost', () => {
     expect(shouldRecoverForumPost(collection('r3', { updatedAt: NOW - HOUR }), synced, OWNER, NOW)).toBe(false)
   })
 
+  it('recovers once the 90-minute grace has passed', () => {
+    expect(
+      shouldRecoverForumPost(collection('r9', { lock: NOW - 2 * HOUR, updatedAt: NOW - 2 * HOUR }), synced, OWNER, NOW)
+    ).toBe(true)
+  })
+
   it('does not backfill collections published more than a month ago', () => {
     expect(shouldRecoverForumPost(collection('r8', { updatedAt: NOW - 31 * 24 * HOUR }), synced, OWNER, NOW)).toBe(
       false
