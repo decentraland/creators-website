@@ -73,8 +73,9 @@ export function CollectionActionsMenu({
     hasBeenApproved(collection) && collection.contractAddress ? shopCollectionUrl(collection.contractAddress) : null
   // A locked draft has a publish transaction in flight: nothing can be done to it yet.
   const canDelete = !compact && !isOnChain && !isCollectionLocked(collection)
-  // The header's Send Items button is desktop-only, so the menu carries the action on small screens.
+  // The explorer is desktop-only; phones would only reach the download page.
   const showPreviewInWorld = !compact && !!onPreviewInWorld
+  // The header's Send Items button is desktop-only, so the menu carries the action on small screens.
   const showSend = compact && !!onSendItems
   // Same for the header's Open Editor button; on mobile the editor is a viewer, hence "Preview".
   const showPreview = compact && !!onPreviewItems

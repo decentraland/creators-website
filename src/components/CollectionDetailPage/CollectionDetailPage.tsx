@@ -33,7 +33,7 @@ import {
 } from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
 import { track } from '~/lib/analytics'
-import { previewCollection } from '~/lib/explorer'
+import { previewCollectionFromDetail } from '~/lib/explorer'
 import { isForumPostRelevant, openForumPost } from '~/lib/forumPost'
 import { cancelCreditsOrder } from '~/lib/credits'
 import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'
@@ -675,17 +675,7 @@ const CollectionDetailPage = () => {
                   collection={collection}
                   address={address}
                   onPreviewInWorld={
-                    !isReader && hasItems
-                      ? () =>
-                          void previewCollection(collection.id).then(launched =>
-                            track('Preview In World', {
-                              collectionId: collection.id,
-                              itemCount: total,
-                              launched,
-                              trigger: 'detail'
-                            })
-                          )
-                      : undefined
+                    !isReader && hasItems ? () => previewCollectionFromDetail(collection.id, total) : undefined
                   }
                   onSendItems={canSend ? () => setSending(true) : undefined}
                   onCreateDiscount={canCreateDiscount ? () => openDiscount('menu') : undefined}

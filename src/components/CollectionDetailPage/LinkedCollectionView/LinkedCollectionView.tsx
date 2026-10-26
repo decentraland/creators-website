@@ -10,7 +10,7 @@ import {
 import { ContractNetwork } from '@dcl/schemas'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
-import { previewCollection } from '~/lib/explorer'
+import { previewCollectionFromDetail } from '~/lib/explorer'
 import { fetchAllLinkedCollectionItems, isRefusedRequest } from '~/lib/builder'
 import { captureError } from '~/lib/monitoring'
 import { type Session } from '~/lib/auth'
@@ -422,19 +422,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
             collection={collection}
             address={address}
             showRoles={false}
-            onPreviewInWorld={
-              total > 0
-                ? () =>
-                    void previewCollection(collection.id).then(launched =>
-                      track('Preview In World', {
-                        collectionId: collection.id,
-                        itemCount: total,
-                        launched,
-                        trigger: 'detail'
-                      })
-                    )
-                : undefined
-            }
+            onPreviewInWorld={total > 0 ? () => previewCollectionFromDetail(collection.id, total) : undefined}
             onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
             onEditUrn={canEditCollection ? () => setUrnOpen(true) : undefined}
             onEditInBulk={canEdit && total > 0 ? () => bulkInputRef.current?.click() : undefined}

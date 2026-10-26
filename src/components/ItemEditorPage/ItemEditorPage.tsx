@@ -64,6 +64,7 @@ import { ItemsSidebar } from './ItemsSidebar'
 import { MobilePreview } from './MobilePreview'
 import { PlaybackBar } from './PlaybackBar'
 import { PropertiesPanel, type SpringBonesFormProps } from './PropertiesPanel'
+import { EditorPreviewLaunch } from './EditorPreviewLaunch'
 import { ReviewBar } from './ReviewBar'
 import { LinkedReviewBar } from './ReviewBar/LinkedReviewBar'
 import { ValidationBadge } from '~/components/ValidationBadge'
@@ -523,21 +524,7 @@ const ItemEditorPage = () => {
         {collection &&
           (mode === 'review' ||
             (mode === 'edit' && (isLinked ? isManager : hasCollectionRole(collection, address)))) && (
-            <S.PreviewLaunch
-              collectionId={collection.id}
-              disabled={items.length === 0}
-              data-testid="editor-preview"
-              onLaunch={launched =>
-                mode === 'review'
-                  ? track('Review Preview In World', { collectionId: collection.id, itemCount: items.length, launched })
-                  : track('Preview In World', {
-                      collectionId: collection.id,
-                      itemCount: items.length,
-                      launched,
-                      trigger: 'editor'
-                    })
-              }
-            />
+            <EditorPreviewLaunch collectionId={collection.id} itemCount={items.length} reviewing={mode === 'review'} />
           )}
       </AvatarPreview>
     )
