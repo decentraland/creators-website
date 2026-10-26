@@ -53,6 +53,9 @@ import { downloadBlob } from '~/lib/navigation'
 import { useNotifications } from '~/lib/notifications'
 import { type SpringBoneParamsByName } from '~/lib/springBones'
 import { getEmoteCategoryOptions, getWearableCategoryOptions } from '~/lib/wearableCategories'
+import { buildItemMappings, getItemMapping } from '~/lib/mappings'
+import { type LinkedContract } from '~/lib/thirdParty'
+import { MappingEditor } from '~/components/MappingEditor'
 import { DeleteItemModal } from '~/components/CollectionDetailPage/DeleteItemModal'
 import { ChangeFileModal } from '../ChangeFileModal'
 import { EditorSection } from '../EditorSection'
@@ -85,6 +88,8 @@ type Props = {
   isDirty: boolean
   isSaving: boolean
   springBones: SpringBonesFormProps | null
+  /** Linked collections: the contract the item's mapping targets (null when the collection has none); undefined otherwise. */
+  linkedContract?: LinkedContract | null
   onSave: () => void
   /** Persists a file change from the modal on its own; rejects when the save fails. */
   onSaveFile: (change: ItemFileChange) => Promise<void>
@@ -105,6 +110,7 @@ export function PropertiesPanel({
   isDirty,
   isSaving,
   springBones,
+  linkedContract,
   onSave,
   onSaveFile,
   onRevert,
@@ -112,6 +118,10 @@ export function PropertiesPanel({
   testId = 'properties-panel'
 }: Props) {
   const { t, rich } = useTranslation()
+  const isLinked = linkedContract !== undefined
+  const [mappingInvalid, setMappingInvalid] = useState(false)
+  // Bumped by Revert: the mapping editor keeps a half-typed draft of its own, which only a remount discards.
+  const [revision, setRevision] = useState(0)
   const showToast = useNotifications(state => state.showToast)
   const [changeFile, setChangeFile] = useState<{ lockedBodyShape?: BodyShapeType.MALE | BodyShapeType.FEMALE } | null>(
     null
@@ -450,22 +460,41 @@ export function PropertiesPanel({
             onChange={category => dispatch({ type: 'setCategory', category })}
           />
         </S.Field>
-        <S.Field as="div">
-          <S.FieldLabel>
-            <S.LabelText>
-              {t('item_editor.basics.rarity')}{' '}
-              <InfoTooltip content={t('add_items_modal.rarity_tooltip')} testId={`${testId}-rarity-hint`} />
-            </S.LabelText>
-          </S.FieldLabel>
-          <RaritySelect
-            value={draft.rarity ?? ''}
-            disabled={disabled || item.isPublished}
-            tone="dark"
-            testId={`${testId}-rarity`}
-            onChange={rarity => dispatch({ type: 'setRarity', rarity })}
-          />
-        </S.Field>
+        {!isLinked && (
+          <S.Field as="div">
+            <S.FieldLabel>
+              <S.LabelText>
+                {t('item_editor.basics.rarity')}{' '}
+                <InfoTooltip content={t('add_items_modal.rarity_tooltip')} testId={`${testId}-rarity-hint`} />
+              </S.LabelText>
+            </S.FieldLabel>
+            <RaritySelect
+              value={draft.rarity ?? ''}
+              disabled={disabled || item.isPublished}
+              tone="dark"
+              testId={`${testId}-rarity`}
+              onChange={rarity => dispatch({ type: 'setRarity', rarity })}
+            />
+          </S.Field>
+        )}
       </EditorSection>
+
+      {isLinked && linkedContract && (
+        <EditorSection title={t('mapping_editor.label')} testId={`${testId}-mapping`}>
+          <MappingEditor
+            key={`${item.id}:${revision}`}
+            value={getItemMapping(draft.mappings, linkedContract)}
+            disabled={disabled}
+            tone="dark"
+            testId={`${testId}-mapping-editor`}
+            onChange={mapping => {
+              setMappingInvalid(mapping === null)
+              if (mapping) dispatch({ type: 'setMappings', mappings: buildItemMappings(mapping, linkedContract) })
+            }}
+          />
+          <S.SectionNote>{t('add_items_modal.mapping_hint')}</S.SectionNote>
+        </EditorSection>
+      )}
 
       {isWearable && (
         <EditorSection title={t('item_editor.overrides.title')} testId={`${testId}-overrides`}>
@@ -596,15 +625,20 @@ export function PropertiesPanel({
       )}
 
       <S.IntercomClearance aria-hidden />
-      {editable && isDirty && (
+      {/* An invalid mapping draft never reaches the item, so it doesn't make it dirty: Revert must still undo it. */}
+      {editable && (isDirty || mappingInvalid) && (
         <S.Footer data-testid={`${testId}-footer`}>
           <Button
             type="button"
             variant="secondary"
             size="sm"
-            disabled={!isDirty || isSaving}
+            disabled={!(isDirty || mappingInvalid) || isSaving}
             data-testid={`${testId}-revert`}
-            onClick={onRevert}
+            onClick={() => {
+              setMappingInvalid(false)
+              setRevision(current => current + 1)
+              onRevert()
+            }}
           >
             {t('item_editor.revert')}
           </Button>
@@ -612,7 +646,7 @@ export function PropertiesPanel({
             type="button"
             variant="primary"
             size="sm"
-            disabled={!isDirty || nameInvalid || descriptionInvalid || draft.name.trim() === ''}
+            disabled={!isDirty || nameInvalid || descriptionInvalid || mappingInvalid || draft.name.trim() === ''}
             loading={isSaving}
             data-testid={`${testId}-save`}
             onClick={onSave}

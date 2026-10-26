@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import JSZip from 'jszip'
-import { ItemType } from '~/lib/items'
+import { type ContractNetwork } from '@dcl/schemas'
+import { ItemType, type Item } from '~/lib/items'
+import { ItemFileError } from '~/lib/itemFiles'
 import { createDraft, type ItemDraft } from './AddItemsModal.state'
 import { pickPreviewDraft, processDraftFile } from './processDraft'
 
@@ -53,7 +55,14 @@ describe('processDraftFile', () => {
     hides = [],
     replaces = [],
     ...extra
-  }: { category?: string; hides?: string[]; replaces?: string[]; utility?: string } = {}): Promise<File> {
+  }: {
+    category?: string
+    hides?: string[]
+    replaces?: string[]
+    utility?: string
+    id?: string
+    mapping?: unknown
+  } = {}): Promise<File> {
     const zip = new JSZip()
     zip.file(
       'wearable.json',
@@ -110,5 +119,52 @@ describe('processDraftFile', () => {
 
   it("prefills the manifest's utility", async () => {
     expect((await processDraftFile(await manifestZip({ utility: ' Keeps you warm ' }))).utility).toBe('Keeps you warm')
+  })
+
+  describe('when editing a linked collection in bulk', () => {
+    const contract = { network: 'amoy' as ContractNetwork, address: '0x' + '1'.repeat(40) }
+    const collectionUrn = 'urn:decentraland:amoy:collections-thirdparty:brand:hats'
+    const existing = {
+      id: 'i1',
+      urn: `${collectionUrn}:cap`,
+      mappings: { amoy: { [contract.address]: [{ type: 'single', id: '7' }] } }
+    } as unknown as Item
+    const target = { collectionUrn, contract, updating: new Map([[existing.urn!, existing]]) }
+
+    async function errorKey(file: File): Promise<string | undefined> {
+      return processDraftFile(file, undefined, target).then(
+        () => undefined,
+        (error: unknown) => (error instanceof ItemFileError ? error.messageKey : 'unexpected')
+      )
+    }
+
+    it('refuses a zip that names no item, or one this collection does not have', async () => {
+      expect(await errorKey(await manifestZip())).toBe('bulk_edit_missing_urn')
+      expect(await errorKey(await manifestZip({ id: `${collectionUrn}:boots` }))).toBe('bulk_edit_no_match')
+    })
+
+    it('updates the named item, keeping its mapping when the zip sets none', async () => {
+      const draft = await processDraftFile(await manifestZip({ id: existing.urn }), undefined, target)
+      expect(draft).toMatchObject({ urnSuffix: 'cap', mapping: { type: 'single', id: '7' } })
+    })
+
+    it('never keeps a preview video, which the content servers reject for linked items', async () => {
+      const zip = new JSZip()
+      const withVideo = await manifestZip({ id: existing.urn })
+      await zip.loadAsync(await withVideo.arrayBuffer())
+      zip.file('video.mp4', 'mp4')
+      const file = new File([await zip.generateAsync({ type: 'arraybuffer' })], 'hat.zip')
+      const draft = await processDraftFile(file, undefined, target)
+      expect(draft.contents).not.toHaveProperty('video.mp4')
+    })
+
+    it("takes the zip's mapping when it has one", async () => {
+      const draft = await processDraftFile(
+        await manifestZip({ id: existing.urn, mapping: { type: 'range', from: '1', to: '9' } }),
+        undefined,
+        target
+      )
+      expect(draft.mapping).toEqual({ type: 'range', from: '1', to: '9' })
+    })
   })
 })

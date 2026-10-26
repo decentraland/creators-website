@@ -375,3 +375,11 @@ export const Select = styled.select`
     background: ${theme.colors.white};
   }
 `
+
+export const ItemsError = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 24px;
+`

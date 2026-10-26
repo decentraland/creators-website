@@ -149,6 +149,13 @@ export async function analyzeModel(
       return { type: ItemType.EMOTE, validationIssues: issues, suggestedCategory: null, emoteMetrics }
     }
 
+    // A wearable without geometry can't be previewed or published; the hidden preview would wait for it forever.
+    let hasMesh = false
+    gltf.scene.traverse(object => {
+      if ((object as { isMesh?: boolean }).isMesh) hasMesh = true
+    })
+    if (!hasMesh) throw new ItemFileError('invalid_model_file')
+
     // Suggestion only — a throw on malformed geometry must never fail the import.
     let suggestedCategory: WearableCategory | null = null
     try {

@@ -86,6 +86,12 @@ export function invalidateCollectionItems(queryClient: ReturnType<typeof useQuer
     queryKey: ['collection-preview'],
     predicate: q => q.queryKey.includes(collectionId)
   })
+  // Linked collections page their items and curations server-side under their own keys.
+  void queryClient.invalidateQueries({ queryKey: ['linked-items'], predicate: q => q.queryKey.includes(collectionId) })
+  void queryClient.invalidateQueries({
+    queryKey: ['item-curations'],
+    predicate: q => q.queryKey.includes(collectionId)
+  })
 }
 
 export function useDeleteItem(address: string | undefined) {

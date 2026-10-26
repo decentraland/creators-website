@@ -15,6 +15,9 @@ import { useTranslation } from '~/intl'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
 import { toMB } from '~/lib/itemFiles'
 import { BodyShapeType, ItemType, VIDEO_PATH, type Item } from '~/lib/items'
+import { type Mapping } from '~/lib/mappings'
+import { decodeLinkedUrn, type LinkedContract } from '~/lib/thirdParty'
+import { MappingEditor } from '~/components/MappingEditor'
 import { getCategoryOptions, getVariantTargets, type ItemDraft } from './AddItemsModal.state'
 import { BodyShapePicker, DraftPreviewPane } from '~/components/ItemDraftModal'
 import * as S from './AddItemsModal.styles'
@@ -29,6 +32,8 @@ type Props = {
   onOpenVideo: () => void
   /** Smart wearables only: a picked file replaces the preview video. */
   onVideoChange: (video: File) => void
+  /** Linked collections: no rarity, and the mapping field when the collection has a linked contract. */
+  linked?: { contract: LinkedContract | null; updating?: boolean }
 }
 
 export function DraftForm({
@@ -38,7 +43,8 @@ export function DraftForm({
   onUpdate,
   onOpenThumbnail,
   onOpenVideo,
-  onVideoChange
+  onVideoChange,
+  linked
 }: Props) {
   const { t } = useTranslation()
 
@@ -54,6 +60,14 @@ export function DraftForm({
   const variantTargets = useMemo(
     () => (isSingleShape ? getVariantTargets(draft, drafts, collectionItems) : []),
     [isSingleShape, draft, drafts, collectionItems]
+  )
+  // Edit in bulk: the item this zip's wearable.json names, once the zip has been read.
+  const updatedItem = useMemo(
+    () =>
+      linked?.updating && draft.urnSuffix
+        ? collectionItems.find(item => decodeLinkedUrn(item.urn)?.itemSuffix === draft.urnSuffix)
+        : undefined,
+    [linked?.updating, draft.urnSuffix, collectionItems]
   )
   const variantTargetShape = draft.bodyShape === BodyShapeType.MALE ? BodyShapeType.FEMALE : BodyShapeType.MALE
   const showItemFields = !draft.isVariant
@@ -75,7 +89,18 @@ export function DraftForm({
       <DraftPreviewPane draft={draft} thumbnailLocked={draft.isVariant} onOpenThumbnail={onOpenThumbnail} />
 
       <S.FormPane>
-        <S.FormHeading>{t('add_items_modal.form_heading')}</S.FormHeading>
+        <S.FormHeading>
+          {t(linked?.updating ? 'add_items_modal.bulk_edit.form_heading' : 'add_items_modal.form_heading')}
+        </S.FormHeading>
+        {updatedItem?.urn && (
+          <S.FieldHint data-testid="bulk-edit-target" title={updatedItem.urn}>
+            <InfoIcon />
+            {t('add_items_modal.bulk_edit.target', {
+              name: updatedItem.name,
+              urn: decodeLinkedUrn(updatedItem.urn)?.itemSuffix ?? updatedItem.urn
+            })}
+          </S.FieldHint>
+        )}
 
         {showItemFields && (
           <S.Field>
@@ -225,18 +250,35 @@ export function DraftForm({
                 </S.FieldHint>
               )}
             </S.Field>
-            <S.Field>
-              <S.FieldLabelRow>
-                {t('add_items_modal.rarity')}
-                <InfoTooltip content={t('add_items_modal.rarity_tooltip')} testId="rarity-tooltip" />
-              </S.FieldLabelRow>
-              <RaritySelect
-                value={draft.rarity}
-                testId="item-rarity"
-                onChange={rarity => onUpdate(draft.id, { rarity })}
-              />
-            </S.Field>
+            {!linked && (
+              <S.Field>
+                <S.FieldLabelRow>
+                  {t('add_items_modal.rarity')}
+                  <InfoTooltip content={t('add_items_modal.rarity_tooltip')} testId="rarity-tooltip" />
+                </S.FieldLabelRow>
+                <RaritySelect
+                  value={draft.rarity}
+                  testId="item-rarity"
+                  onChange={rarity => onUpdate(draft.id, { rarity })}
+                />
+              </S.Field>
+            )}
           </S.FieldRow>
+        )}
+
+        {showItemFields && linked?.contract && (
+          <S.Field as="div" data-testid="draft-mapping-field">
+            <S.FieldLabel>
+              {t('mapping_editor.label')}
+              <S.FieldHint>{t('add_items_modal.mapping_hint')}</S.FieldHint>
+            </S.FieldLabel>
+            <MappingEditor
+              key={draft.id}
+              value={draft.mapping}
+              testId="draft-mapping"
+              onChange={(mapping: Mapping | null) => onUpdate(draft.id, { mapping })}
+            />
+          </S.Field>
         )}
 
         {isSmart && (

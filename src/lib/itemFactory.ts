@@ -2,6 +2,7 @@
 // CreateSingleItemModal's createItem/addItemRepresentation + utils (sortContent,
 // buildRepresentations) and modules/deployment/contentUtils (computeHashes).
 import { hashV1 } from '@dcl/hashing'
+import { type Mappings } from '@dcl/schemas'
 import { ethers } from 'ethers'
 import {
   BODY_SHAPE_FEMALE,
@@ -80,6 +81,9 @@ export type ItemDraftPayload = {
   metrics: ItemMetrics
   owner: string
   collectionId: string
+  /** Linked items only: the item's URN (collection URN + its own suffix) and the tokens that unlock it. */
+  urn?: string
+  mappings?: Mappings
 }
 
 const prefixContentName = (bodyShape: BodyShapeType, contentKey: string): string => `${bodyShape}/${contentKey}`
@@ -337,6 +341,8 @@ export async function buildItem(draft: ItemDraftPayload): Promise<BuiltItem> {
     isApproved: false,
     inCatalyst: false,
     rarity: draft.rarity,
+    ...(draft.urn ? { urn: draft.urn } : {}),
+    ...(draft.mappings ? { mappings: draft.mappings } : {}),
     type: draft.type,
     data: springBones ? { ...data, springBones } : data,
     metrics: draft.metrics,

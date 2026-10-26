@@ -1,6 +1,6 @@
 // The properties form's local draft: a pure reducer over the editable fields of an item plus the
 // blobs picked while editing, and the projection back into a saveable Item (legacy RightPanel state).
-import { type SpringBonesData, WearableCategory } from '@dcl/schemas'
+import { type Mappings, type SpringBonesData, WearableCategory } from '@dcl/schemas'
 import { getWearableCategoryOptions, hidesForCategory } from './wearableCategories'
 import { computeHashes, withCatalystImageForRarity, withThumbnail, type BuiltItem } from './itemFactory'
 import { THUMBNAIL_PATH, VIDEO_PATH } from './itemFiles'
@@ -42,6 +42,8 @@ export type ItemDraft = {
   video: Blob | null
   /** A change-file / add-representation import; its item replaces the saved contents on save. */
   fileUpdate: BuiltItem | null
+  /** Linked items only: the token mapping as edited; null leaves the saved one alone. */
+  mappings: Mappings | null
 }
 
 export type ItemDraftAction =
@@ -56,6 +58,7 @@ export type ItemDraftAction =
   | { type: 'setThumbnail'; thumbnail: Blob | null }
   | { type: 'setVideo'; video: Blob | null }
   | { type: 'setFileUpdate'; update: BuiltItem | null }
+  | { type: 'setMappings'; mappings: Mappings | null }
 
 export function unique<T>(values: T[]): T[] {
   return Array.from(new Set(values))
@@ -81,7 +84,8 @@ export function createItemDraft(item: Item): ItemDraft {
     outlineCompatible: item.data.outlineCompatible ?? true,
     thumbnail: null,
     video: null,
-    fileUpdate: null
+    fileUpdate: null,
+    mappings: item.mappings ?? null
   }
 }
 
@@ -107,6 +111,8 @@ export function itemDraftReducer(draft: ItemDraft, action: ItemDraftAction): Ite
       return { ...draft, thumbnail: action.thumbnail }
     case 'setVideo':
       return { ...draft, video: action.video }
+    case 'setMappings':
+      return { ...draft, mappings: action.mappings }
     case 'setFileUpdate': {
       const update = action.update
       if (!update || update.item.type !== ItemType.WEARABLE) return { ...draft, fileUpdate: update }
@@ -147,7 +153,8 @@ export function isItemDraftDirty(draft: ItemDraft, item: Item): boolean {
     draft.outlineCompatible !== pristine.outlineCompatible ||
     draft.thumbnail !== null ||
     draft.video !== null ||
-    draft.fileUpdate !== null
+    draft.fileUpdate !== null ||
+    JSON.stringify(draft.mappings) !== JSON.stringify(pristine.mappings)
   )
 }
 
@@ -176,7 +183,8 @@ export function applyDraftToItem(item: Item, draft: ItemDraft): Item {
     ...base,
     name: draft.name.trim(),
     description: draft.description.trim(),
-    rarity: draft.rarity ?? base.rarity
+    rarity: draft.rarity ?? base.rarity,
+    ...(draft.mappings ? { mappings: draft.mappings } : {})
   }
   if (base.type === ItemType.EMOTE) {
     return applyUtility(

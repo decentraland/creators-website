@@ -46,7 +46,7 @@ const DECISIONS = [ReviewAction.APPROVE, ReviewAction.ENABLE, ReviewAction.REJEC
 // The constructive actions, as in the legacy panel; Reject and Disable stay dark.
 const PRIMARY = new Set([ReviewAction.APPROVE, ReviewAction.ENABLE, ReviewAction.DEPLOY_MISSING])
 // Only a pending request has content waiting on the committee's decision.
-const VALIDATED_STATES = [CurationState.TO_REVIEW, CurationState.UNDER_REVIEW]
+const VALIDATED_STATES = [CurationState.TO_REVIEW]
 const NO_ITEMS: Item[] = []
 
 /** The curator's toolbar over the read-only editor: the collection's review state and the committee's actions. */
