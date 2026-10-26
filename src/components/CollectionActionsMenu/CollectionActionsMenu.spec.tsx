@@ -184,6 +184,11 @@ describe('CollectionActionsMenu', () => {
       expect(screen.queryByTestId('collection-actions')).not.toBeInTheDocument()
     })
 
+    it('never offers Preview in World, since the explorer is desktop-only', () => {
+      renderMenu(draft, OWNER, { onPreviewInWorld: vi.fn() })
+      expect(screen.queryByTestId('collection-actions')).not.toBeInTheDocument()
+    })
+
     it('offers Preview items on a small screen, even for a draft', async () => {
       const onPreviewItems = vi.fn()
       renderMenu(draft, OWNER, { onPreviewItems })
@@ -216,6 +221,17 @@ describe('CollectionActionsMenu', () => {
       await userEvent.click(screen.getByTestId('forum-post-action'))
       expect(openExternal).toHaveBeenCalledWith('https://forum.decentraland.org/t/hats/77')
     })
+  })
+
+  it('leads with Preview in World on desktop and launches it', async () => {
+    stubViewport(false)
+    const onPreviewInWorld = vi.fn()
+    renderMenu(draft, OWNER, { onPreviewInWorld })
+    const menu = await openMenu()
+    const ids = Array.from(menu.querySelectorAll('[role="menuitem"]')).map(el => el.getAttribute('data-testid'))
+    expect(ids).toEqual(['preview-in-world-action', 'delete-collection'])
+    await userEvent.click(screen.getByTestId('preview-in-world-action'))
+    expect(onPreviewInWorld).toHaveBeenCalled()
   })
 
   it('never shows Preview items on desktop, where the Open Editor button covers it', async () => {

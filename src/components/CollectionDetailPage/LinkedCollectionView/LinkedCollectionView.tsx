@@ -10,6 +10,7 @@ import {
 import { ContractNetwork } from '@dcl/schemas'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
+import { previewCollectionFromDetail } from '~/lib/explorer'
 import { fetchAllLinkedCollectionItems, isRefusedRequest } from '~/lib/builder'
 import { captureError } from '~/lib/monitoring'
 import { type Session } from '~/lib/auth'
@@ -61,7 +62,6 @@ import { CollectionStatusPill } from '~/components/CollectionStatusPill'
 import { EditUrnModal } from './EditUrnModal'
 import { OpenEditorIcon } from '~/components/Icons'
 import { Pagination } from '~/components/Pagination'
-import { PreviewCollectionButton } from '~/components/PreviewCollectionButton'
 import { Tooltip } from '~/components/Tooltip'
 import addItemsArt from '~/assets/add-items.png'
 import { AddItemsModal } from '../AddItemsModal'
@@ -392,15 +392,6 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
           <CollectionStatusPill collection={collection} />
         </P.HeaderLeft>
         <P.HeaderActions>
-          <PreviewCollectionButton
-            collectionId={collection.id}
-            disabled={total === 0}
-            data-desktop-only
-            data-testid="preview-collection"
-            onLaunch={launched =>
-              track('Preview In World', { collectionId: collection.id, itemCount: total, launched, trigger: 'detail' })
-            }
-          />
           {hasWork && (
             <Tooltip
               content={publishBlocker ? t(`linked_collection.publish_blocker.${publishBlocker}`) : null}
@@ -431,6 +422,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
             collection={collection}
             address={address}
             showRoles={false}
+            onPreviewInWorld={total > 0 ? () => previewCollectionFromDetail(collection.id, total) : undefined}
             onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
             onEditUrn={canEditCollection ? () => setUrnOpen(true) : undefined}
             onEditInBulk={canEdit && total > 0 ? () => bulkInputRef.current?.click() : undefined}

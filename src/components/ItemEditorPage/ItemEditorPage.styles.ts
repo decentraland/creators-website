@@ -1,6 +1,5 @@
 import styled from '@emotion/styled'
 import { Link } from 'react-router-dom'
-import { PreviewCollectionButton } from '~/components/PreviewCollectionButton'
 import { theme } from '~/styles/theme'
 
 export const Workspace = styled.div`
@@ -81,18 +80,6 @@ export const PreviewArea = styled.div`
   position: relative;
   flex: 1;
   min-height: 0;
-`
-
-// Closes the preview's bottom bar on the right, away from the playback controls; the explorer is
-// desktop-only, so narrow screens would only be sent to the download page.
-export const PreviewLaunch = styled(PreviewCollectionButton)`
-  height: 48px;
-  margin-left: auto;
-  border: 1px solid ${theme.editor.line};
-
-  ${theme.media.noActions} {
-    display: none;
-  }
 `
 
 export const PreviewEmpty = styled.div`

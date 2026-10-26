@@ -118,11 +118,6 @@ describe('LinkedReviewBar', () => {
     thirdParty.isApproved = true
   })
 
-  it('offers the curator a preview of the collection in world, like a standard review', () => {
-    render(renderBar(null), { wrapper })
-    expect(screen.getByTestId('review-preview')).toBeInTheDocument()
-  })
-
   it('tells the sidebar which pending items the curator has opened', () => {
     const onReviewedChange = vi.fn()
     const { rerender } = render(renderBar('1', onReviewedChange), { wrapper })
