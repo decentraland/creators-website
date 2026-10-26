@@ -113,10 +113,11 @@ export async function postCollectionToForum(
   }
 }
 
-// The publishing tab posts once the transaction is mined and the publish synced (up to an hour of polls); recovering
-// inside that window could race it into a second topic, since builder-server's "already has a topic" check isn't
-// atomic. Wide on purpose: a late topic costs little, a duplicate one is public.
-const RECOVERY_GRACE_MS = 6 * 60 * 60_000
+// The publishing tab posts right after its publish sync, which polls for up to an hour (`CONSOLIDATE_RETRIES` in
+// publishCollection.ts: raise this along with it); recovering before then could race it into a second topic, since
+// builder-server's "already has a topic" check isn't atomic. The extra half hour is a margin for slow mining, which
+// has no upper bound. Err on the late side: a late topic costs little, a duplicate one is public.
+const RECOVERY_GRACE_MS = 90 * 60_000
 // Only recent publishes are recovered, so deploying this doesn't open topics for long-settled collections.
 const RECOVERY_MAX_AGE_MS = 30 * 24 * 60 * 60_000
 
