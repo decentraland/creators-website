@@ -520,21 +520,25 @@ const ItemEditorPage = () => {
           />
         )}
         {/* Linked collections have no owner: their third party's managers are who works on them. */}
-        {mode === 'edit' && collection && (isLinked ? isManager : hasCollectionRole(collection, address)) && (
-          <S.PreviewLaunch
-            collectionId={collection.id}
-            disabled={items.length === 0}
-            data-testid="editor-preview"
-            onLaunch={launched =>
-              track('Preview In World', {
-                collectionId: collection.id,
-                itemCount: items.length,
-                launched,
-                trigger: 'editor'
-              })
-            }
-          />
-        )}
+        {collection &&
+          (mode === 'review' ||
+            (mode === 'edit' && (isLinked ? isManager : hasCollectionRole(collection, address)))) && (
+            <S.PreviewLaunch
+              collectionId={collection.id}
+              disabled={items.length === 0}
+              data-testid="editor-preview"
+              onLaunch={launched =>
+                mode === 'review'
+                  ? track('Review Preview In World', { collectionId: collection.id, itemCount: items.length, launched })
+                  : track('Preview In World', {
+                      collectionId: collection.id,
+                      itemCount: items.length,
+                      launched,
+                      trigger: 'editor'
+                    })
+              }
+            />
+          )}
       </AvatarPreview>
     )
 

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { TranslationProvider } from '~/intl'
 import { type Session } from '~/lib/auth'
@@ -22,12 +22,10 @@ const state = vi.hoisted(() => ({
   issues: new Map<string, ValidationIssue[]>(),
   isValidating: false,
   selectItem: vi.fn(),
-  track: vi.fn(),
-  previewCollection: vi.fn()
+  track: vi.fn()
 }))
 vi.mock('~/lib/navigation', () => ({ openExternal: vi.fn() }))
 vi.mock('~/lib/analytics', () => ({ track: state.track }))
-vi.mock('~/lib/explorer', () => ({ previewCollection: state.previewCollection }))
 vi.mock('~/hooks/useCuration', () => ({
   useCollectionCuration: () => ({
     data: state.curation,
@@ -106,7 +104,6 @@ beforeEach(() => {
   state.isValidating = false
   state.selectItem.mockReset()
   state.track.mockReset()
-  state.previewCollection.mockReset().mockResolvedValue(true)
 })
 
 describe('ReviewBar', () => {
@@ -198,31 +195,6 @@ describe('ReviewBar', () => {
     renderBar({ ...base, isPublished: false })
     expect(actions()).toEqual([])
     expect(screen.getByTestId('review-unpublished')).toBeInTheDocument()
-  })
-
-  it('opens an unpublished collection in Decentraland and tracks whether the explorer opened', async () => {
-    renderBar({ ...base, isPublished: false })
-    fireEvent.click(screen.getByTestId('review-preview'))
-    expect(state.previewCollection).toHaveBeenCalledWith('c1')
-    await waitFor(() =>
-      expect(state.track).toHaveBeenCalledWith('Review Preview In World', {
-        collectionId: 'c1',
-        itemCount: 3,
-        launched: true
-      })
-    )
-  })
-
-  it('keeps the preview available while the review request loads or fails', () => {
-    state.curationLoading = true
-    renderBar()
-    expect(screen.getByTestId('review-preview')).toBeEnabled()
-  })
-
-  it('has nothing to preview in a collection without items', () => {
-    state.curationError = true
-    renderBar(base, [])
-    expect(screen.getByTestId('review-preview')).toBeDisabled()
   })
 
   it('assigns the collection from the bar', () => {

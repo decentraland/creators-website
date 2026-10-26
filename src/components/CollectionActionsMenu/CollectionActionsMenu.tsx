@@ -12,6 +12,7 @@ import { shopCollectionUrl } from '~/lib/shop'
 import { useNotifications } from '~/lib/notifications'
 import { theme } from '~/styles/theme'
 import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
+import { JumpInIcon } from '~/components/Icons'
 import { DeleteCollectionModal } from './DeleteCollectionModal'
 
 type Props = {
@@ -22,6 +23,8 @@ type Props = {
   /** The owner-only role entries (collaborators / senders); off in list rows. */
   showRoles?: boolean
   label?: string
+  /** Launches the collection in the desktop explorer; desktop-only, since phones would only reach the download page. */
+  onPreviewInWorld?: () => void
   /** Opens the Send Items flow; the header button covers this on desktop, so the item shows only when compact. */
   onSendItems?: () => void
   /** Opens the items in the editor; the header button covers this on desktop, so the item shows only when compact. */
@@ -45,6 +48,7 @@ export function CollectionActionsMenu({
   variant = 'header',
   showRoles = true,
   label,
+  onPreviewInWorld,
   onSendItems,
   onPreviewItems,
   onCreateDiscount,
@@ -70,6 +74,7 @@ export function CollectionActionsMenu({
   // A locked draft has a publish transaction in flight: nothing can be done to it yet.
   const canDelete = !compact && !isOnChain && !isCollectionLocked(collection)
   // The header's Send Items button is desktop-only, so the menu carries the action on small screens.
+  const showPreviewInWorld = !compact && !!onPreviewInWorld
   const showSend = compact && !!onSendItems
   // Same for the header's Open Editor button; on mobile the editor is a viewer, hence "Preview".
   const showPreview = compact && !!onPreviewItems
@@ -80,16 +85,9 @@ export function CollectionActionsMenu({
   // A linked collection's URN is meaningful from day one (it names its third party); a standard one's only on chain.
   const showCopyUrn = isOnChain || isLinked
 
-  if (
-    !showCopyUrn &&
-    !canDelete &&
-    !showSend &&
-    !showPreview &&
-    !showForum &&
-    !showDiscount &&
-    !showEditUrn &&
-    !showEditInBulk
-  ) {
+  const hasLeadingActions = showPreviewInWorld || showSend || showPreview || showDiscount || showForum
+
+  if (!showCopyUrn && !canDelete && !hasLeadingActions && !showEditUrn && !showEditInBulk) {
     return null
   }
 
@@ -117,6 +115,12 @@ export function CollectionActionsMenu({
         variant={variant}
         testId="collection-actions"
       >
+        {showPreviewInWorld && (
+          <ActionsMenuItem testId="preview-in-world-action" onClick={onPreviewInWorld}>
+            {t('preview_collection_button.label')}
+            <JumpInIcon />
+          </ActionsMenuItem>
+        )}
         {showPreview && (
           <ActionsMenuItem testId="preview-items-action" onClick={onPreviewItems}>
             {t('collection_detail_page.actions.preview_items')}
@@ -143,7 +147,7 @@ export function CollectionActionsMenu({
         )}
         {showCopyUrn && (
           <>
-            {(showSend || showPreview || showForum) && <ActionsMenuDivider />}
+            {hasLeadingActions && <ActionsMenuDivider />}
             <ActionsMenuItem
               testId="copy-urn"
               onClick={() => void copy(collection.urn, 'collection_detail_page.actions.copied_urn')}

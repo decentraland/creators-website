@@ -33,6 +33,7 @@ import {
 } from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
 import { track } from '~/lib/analytics'
+import { previewCollection } from '~/lib/explorer'
 import { isForumPostRelevant, openForumPost } from '~/lib/forumPost'
 import { cancelCreditsOrder } from '~/lib/credits'
 import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'
@@ -81,7 +82,6 @@ import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { Tooltip } from '~/components/Tooltip'
 import { EmoteIcon, OpenEditorIcon, WearableIcon } from '~/components/Icons'
-import { PreviewCollectionButton } from '~/components/PreviewCollectionButton'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { CollectionRolePill } from '~/components/CollectionRolePill'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
@@ -579,22 +579,6 @@ const CollectionDetailPage = () => {
                   />
                 </Tooltip>
               )}
-              {!isReader && (
-                <PreviewCollectionButton
-                  collectionId={collection.id}
-                  disabled={!hasItems}
-                  data-desktop-only
-                  data-testid="preview-collection"
-                  onLaunch={launched =>
-                    track('Preview In World', {
-                      collectionId: collection.id,
-                      itemCount: total,
-                      launched,
-                      trigger: 'detail'
-                    })
-                  }
-                />
-              )}
               {showForumPost && (
                 <Button
                   type="button"
@@ -649,6 +633,18 @@ const CollectionDetailPage = () => {
                   {t('collection_detail_page.send_items')}
                 </Button>
               )}
+              {canCreateDiscount && (
+                <Button
+                  type="button"
+                  variant="dark"
+                  data-desktop-only
+                  data-testid="create-discount"
+                  onClick={() => openDiscount('header')}
+                >
+                  <DiscountIcon fontSize="small" />
+                  {t('collection_discount.create')}
+                </Button>
+              )}
               {showPushChanges && (
                 <Tooltip
                   content={
@@ -674,22 +670,23 @@ const CollectionDetailPage = () => {
                   </Button>
                 </Tooltip>
               )}
-              {canCreateDiscount && (
-                <Button
-                  type="button"
-                  variant="dark"
-                  data-desktop-only
-                  data-testid="create-discount"
-                  onClick={() => openDiscount('header')}
-                >
-                  <DiscountIcon fontSize="small" />
-                  {t('collection_discount.create')}
-                </Button>
-              )}
               {address && (
                 <CollectionActionsMenu
                   collection={collection}
                   address={address}
+                  onPreviewInWorld={
+                    !isReader && hasItems
+                      ? () =>
+                          void previewCollection(collection.id).then(launched =>
+                            track('Preview In World', {
+                              collectionId: collection.id,
+                              itemCount: total,
+                              launched,
+                              trigger: 'detail'
+                            })
+                          )
+                      : undefined
+                  }
                   onSendItems={canSend ? () => setSending(true) : undefined}
                   onCreateDiscount={canCreateDiscount ? () => openDiscount('menu') : undefined}
                   onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}

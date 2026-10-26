@@ -66,6 +66,14 @@ export const Root = styled.button`
     background: ${theme.colors.overlayHover};
   }
 
+  &[data-variant='glass'] {
+    background: ${theme.colors.glassFaint};
+    color: ${theme.colors.softWhite};
+  }
+  &[data-variant='glass']:hover${enabled} {
+    background: ${theme.colors.glass};
+  }
+
   &[data-size='sm'] {
     height: 36px;
     min-width: 0;
