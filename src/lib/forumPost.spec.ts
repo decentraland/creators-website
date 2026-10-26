@@ -194,7 +194,7 @@ describe('shouldRecoverForumPost', () => {
   })
 
   it('leaves the publishing tab its window, measured from when publishing started', () => {
-    expect(shouldRecoverForumPost(collection('r2', { lock: NOW - 3 * HOUR }), synced, OWNER, NOW)).toBe(false)
+    expect(shouldRecoverForumPost(collection('r2', { lock: NOW - HOUR }), synced, OWNER, NOW)).toBe(false)
     expect(shouldRecoverForumPost(collection('r3', { updatedAt: NOW - HOUR }), synced, OWNER, NOW)).toBe(false)
   })
 
