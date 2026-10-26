@@ -48,6 +48,16 @@ describe('EditorPreviewLaunch', () => {
     )
   })
 
+  it('shows it is busy while the launch settles', async () => {
+    let settle!: (launched: boolean) => void
+    state.previewCollection.mockReturnValue(new Promise<boolean>(resolve => (settle = resolve)))
+    renderLaunch()
+    fireEvent.click(screen.getByTestId('editor-preview'))
+    expect(screen.getByTestId('editor-preview')).toHaveAttribute('aria-busy', 'true')
+    settle(true)
+    await waitFor(() => expect(screen.getByTestId('editor-preview')).not.toHaveAttribute('aria-busy'))
+  })
+
   it('has nothing to preview in a collection without items', () => {
     renderLaunch({ reviewing: true, itemCount: 0 })
     expect(screen.getByTestId('editor-preview')).toBeDisabled()
