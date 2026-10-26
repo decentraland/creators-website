@@ -81,25 +81,29 @@ export function useLinkedCollectionItems(
   filter: LinkedItemFilter,
   limit = LINKED_ITEMS_PAGE_SIZE
 ) {
-  return useQuery<LinkedItemsPage>({
+  const isDraft = filter === LinkedItemFilter.DRAFT
+  const pageQuery = useQuery<LinkedItemsPage>({
     queryKey: [...linkedItemsKey(address, collection?.id), page, filter, limit],
-    queryFn: async () => {
-      if (filter !== LinkedItemFilter.DRAFT) {
-        return fetchLinkedCollectionItems(address!, collection!.id, page, limit, linkedItemFilterToQuery(filter))
-      }
-      const drafts = await fetchDraftLinkedItems(address!, collection!.id)
-      return {
-        results: drafts.slice((page - 1) * limit, page * limit),
-        total: drafts.length,
-        page,
-        pages: Math.ceil(drafts.length / limit),
-        limit
-      }
-    },
-    enabled: !!address && !!collection,
+    queryFn: () => fetchLinkedCollectionItems(address!, collection!.id, page, limit, linkedItemFilterToQuery(filter)),
+    enabled: !!address && !!collection && !isDraft,
     placeholderData: keepPreviousData,
     staleTime: 30_000
   })
+  // Drafts are filtered here from the whole collection: read once, then each page is a slice of the same list.
+  const draftsQuery = useQuery<Item[], Error, LinkedItemsPage>({
+    queryKey: [...linkedItemsKey(address, collection?.id), LinkedItemFilter.DRAFT],
+    queryFn: () => fetchDraftLinkedItems(address!, collection!.id),
+    enabled: !!address && !!collection && isDraft,
+    select: drafts => ({
+      results: drafts.slice((page - 1) * limit, page * limit),
+      total: drafts.length,
+      page,
+      pages: Math.ceil(drafts.length / limit),
+      limit
+    }),
+    staleTime: 30_000
+  })
+  return isDraft ? draftsQuery : pageQuery
 }
 
 const NO_IDS: string[] = []

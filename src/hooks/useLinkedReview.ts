@@ -181,8 +181,9 @@ export function useLinkedApprovalFlow(
           return hash
         },
         onSent: sent => saveSentRoot(scope, sent),
-        settleTransaction: hash => settleTransaction(chainId, hash),
-        fetchThirdParty: id => fetchThirdParty(address, id)
+        settleTransaction: (hash, sender, onSeen) => settleTransaction(chainId, hash, sender, onSeen),
+        fetchThirdParty: id => fetchThirdParty(address, id),
+        fetchRegistryRoot: async () => (await fetchRegisteredThirdParty(chainId, thirdParty.id)).root
       })
       saveSentRoot(scope, undefined)
       track('Set TP Merkle root', { collectionId: collection.id, thirdPartyId: thirdParty.id, txHash })

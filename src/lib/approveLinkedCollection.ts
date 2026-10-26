@@ -2,7 +2,7 @@
 // handleInitiateTPItemsApprovalFlow and its batched deploy: the pending items' curated hashes form the third
 // party's Merkle tree; its root goes on chain (consuming the creator's slots cheque), then each item's entity is
 // deployed with its proof and its curation approved. Every step is idempotent, so a failed run can be resumed.
-import { type ContractCall, type TransactionSettlement } from '~/lib/auth'
+import { type ContractCall, type TransactionSender, type TransactionSettlement } from '~/lib/auth'
 import { type LinkedApprovalData } from '~/lib/builder'
 import {
   ApprovalError,
@@ -167,14 +167,20 @@ export async function prepareLinkedApproval(
   }
 }
 
-/** A root transaction sent and not yet seen settled, with the root it sets. */
-export type SentRoot = { hash: string; merkleRoot: string }
+/** A root transaction sent and not yet seen settled, with the root it sets and, once seen, who sent it. */
+export type SentRoot = { hash: string; merkleRoot: string; sender?: TransactionSender }
 
 export type RootDeps = {
   chainId: number
   sendTransaction: (call: ContractCall) => Promise<string>
-  settleTransaction: (txHash: string) => Promise<TransactionSettlement>
+  settleTransaction: (
+    txHash: string,
+    sender?: TransactionSender,
+    onSeen?: (sender: TransactionSender) => void
+  ) => Promise<TransactionSettlement>
   fetchThirdParty: (thirdPartyId: string) => Promise<ThirdParty>
+  /** The root the registry holds now, ahead of builder-server's indexed copy. */
+  fetchRegistryRoot: () => Promise<string>
   /**
    * A root transaction an earlier attempt sent and never saw settle: waited on first, since sending another with the
    * same cheque would revert once either lands. Only one setting this plan's root counts.
@@ -195,17 +201,20 @@ export async function setLinkedMerkleRoot(
   const previous =
     deps.previousTx && sameRoot(deps.previousTx.merkleRoot, plan.merkleRoot) ? deps.previousTx : undefined
   let txHash = previous?.hash
-  let outcome = txHash ? await deps.settleTransaction(txHash) : undefined
+  // Nodes forget a replaced transaction: its sender, recorded once seen, still tells it was replaced.
+  const remember = (sent: SentRoot) => (seen: TransactionSender) => deps.onSent?.({ ...sent, sender: seen })
+  let outcome = previous ? await deps.settleTransaction(previous.hash, previous.sender, remember(previous)) : undefined
   // A replaced one may have been sped up and set the root already, consuming the cheque: another would revert.
-  if (outcome === 'dropped' && sameRoot((await deps.fetchThirdParty(thirdPartyId)).root, plan.merkleRoot)) {
+  if (outcome === 'dropped' && sameRoot(await deps.fetchRegistryRoot(), plan.merkleRoot)) {
     return txHash!
   }
   // Only one that can never land (reverted, or replaced without setting the root) makes way for a new one.
   if (!txHash || outcome === 'reverted' || outcome === 'dropped') {
     const call = buildReviewThirdPartyWithRootCall(deps.chainId, thirdPartyId, plan.merkleRoot, plan.slots)
     txHash = await deps.sendTransaction(call)
-    deps.onSent?.({ hash: txHash, merkleRoot: plan.merkleRoot })
-    outcome = await deps.settleTransaction(txHash)
+    const sent = { hash: txHash, merkleRoot: plan.merkleRoot }
+    deps.onSent?.(sent)
+    outcome = await deps.settleTransaction(txHash, undefined, remember(sent))
   }
   if (outcome === 'reverted') throw new ApprovalError('reverted', `Merkle root ${txHash} reverted`)
   if (outcome === 'pending') throw new ApprovalError('not_indexed', `Merkle root ${txHash} is still pending`)
@@ -302,7 +311,9 @@ async function deployLinkedItem(
   if (curation.contentHash !== proof.entityHash) {
     // The Catalyst got the reviewed content, but the approval recorded the new one: rejecting it takes that back, and
     // the item goes back to the creator to submit again.
-    await atStage('changed', () => deps.rejectItem(item.id))
+    // If that fails it stays approved (the deployed-hash filter still keeps it out of any root): a curation failure,
+    // not an item sent back.
+    await atStage('curation', () => deps.rejectItem(item.id))
     throw new StageError('changed', new Error(`Item ${item.id} was approved with content saved during the approval`))
   }
 }

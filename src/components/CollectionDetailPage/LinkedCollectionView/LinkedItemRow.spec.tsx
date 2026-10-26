@@ -5,7 +5,7 @@ import { type ContractNetwork, type Mappings } from '@dcl/schemas'
 import { TranslationProvider } from '~/intl'
 import { ItemType, type Item } from '~/lib/items'
 import { LinkedItemStatus } from '~/lib/linkedItemStatus'
-import { LinkedItemRow } from './LinkedItemRow'
+import { LinkedItemRow, nextMappingStates } from './LinkedItemRow'
 
 const CONTRACT = { network: 'amoy' as ContractNetwork, address: '0x1d9fb685c257e74f869ba302e260c0b68f5ebb37' }
 
@@ -84,10 +84,10 @@ describe('LinkedItemRow', () => {
     const { onMappingDirtyChange, input } = renderRow()
 
     fireEvent.change(input, { target: { value: '12' } })
-    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', true)
+    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', true, expect.any(Number))
     await act(async () => void vi.advanceTimersByTime(1000))
 
-    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', false)
+    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', false, expect.any(Number))
   })
 
   it('offers a retry after a failed save, which saves the same mapping again', async () => {
@@ -100,7 +100,7 @@ describe('LinkedItemRow', () => {
     await act(async () => void fireEvent.click(screen.getByTestId('linked-item-mapping-retry')))
 
     expect(onSave).toHaveBeenLastCalledWith(item, expected('12'))
-    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', false)
+    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', false, expect.any(Number))
     expect(screen.queryByTestId('linked-item-mapping-retry')).not.toBeInTheDocument()
   })
 
@@ -110,10 +110,10 @@ describe('LinkedItemRow', () => {
 
     fireEvent.change(input, { target: { value: '12' } })
     await act(async () => void vi.advanceTimersByTime(1000))
-    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', true)
+    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', true, expect.any(Number))
 
     fireEvent.change(input, { target: { value: '' } })
-    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', true)
+    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', true, expect.any(Number))
   })
 
   it('keeps the row unsaved when its last edit fails to save on the way out', async () => {
@@ -124,7 +124,7 @@ describe('LinkedItemRow', () => {
     unmount()
     await act(async () => void (await Promise.resolve()))
 
-    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', true)
+    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', true, expect.any(Number))
   })
 
   it('reports the row clean when a save started before it went away lands afterwards', async () => {
@@ -138,7 +138,7 @@ describe('LinkedItemRow', () => {
     unmount()
     await act(async () => finish())
 
-    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', false)
+    expect(onMappingDirtyChange).toHaveBeenLastCalledWith('i1', false, expect.any(Number))
   })
 
   it('does not save an invalid or unchanged mapping', () => {
@@ -148,5 +148,18 @@ describe('LinkedItemRow', () => {
     fireEvent.change(input, { target: { value: '1' } })
     act(() => void vi.advanceTimersByTime(2000))
     expect(onSaveMappings).not.toHaveBeenCalled()
+  })
+})
+
+describe('nextMappingStates', () => {
+  it('lets a newer row of the same item win over a late report from one already gone', () => {
+    let states = nextMappingStates(new Map(), 'i1', true, 1)
+    // The row is shown again and its new edit waits for the pause.
+    states = nextMappingStates(states, 'i1', true, 2)
+    // The first row's save lands late.
+    states = nextMappingStates(states, 'i1', false, 1)
+    expect(states.get('i1')).toEqual({ dirty: true, generation: 2 })
+    states = nextMappingStates(states, 'i1', false, 2)
+    expect(states.get('i1')).toEqual({ dirty: false, generation: 2 })
   })
 })

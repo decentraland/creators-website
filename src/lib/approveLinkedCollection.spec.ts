@@ -315,6 +315,7 @@ describe('setLinkedMerkleRoot', () => {
         .mockResolvedValueOnce(thirdParty(''))
         .mockRejectedValueOnce(new Error('offline'))
         .mockResolvedValue(thirdParty(plan.merkleRoot.toUpperCase())),
+      fetchRegistryRoot: vi.fn().mockResolvedValue(''),
       sleep: vi.fn().mockResolvedValue(undefined)
     }
     await expect(setLinkedMerkleRoot(THIRD_PARTY_ID, plan, deps, 60_000)).resolves.toBe('0xtx')
@@ -334,6 +335,7 @@ describe('setLinkedMerkleRoot', () => {
       sendTransaction: vi.fn().mockResolvedValue('0xtx'),
       settleTransaction: vi.fn().mockResolvedValue('reverted'),
       fetchThirdParty: vi.fn().mockResolvedValue(thirdParty('0xold')),
+      fetchRegistryRoot: vi.fn().mockResolvedValue(''),
       sleep: vi.fn().mockResolvedValue(undefined)
     }
     await expect(setLinkedMerkleRoot(THIRD_PARTY_ID, plan, deps)).rejects.toMatchObject({ reason: 'reverted' })
@@ -354,6 +356,7 @@ describe('setLinkedMerkleRoot', () => {
       sendTransaction: vi.fn().mockResolvedValue('0xnew'),
       settleTransaction: vi.fn().mockResolvedValue('mined'),
       fetchThirdParty: vi.fn().mockResolvedValue(thirdParty(plan.merkleRoot)),
+      fetchRegistryRoot: vi.fn().mockResolvedValue(''),
       sleep: vi.fn().mockResolvedValue(undefined)
     }
     await expect(setLinkedMerkleRoot(THIRD_PARTY_ID, plan, deps)).resolves.toBe('0xearlier')
@@ -375,7 +378,9 @@ describe('setLinkedMerkleRoot', () => {
       previousTx: { hash: '0xearlier', merkleRoot: plan.merkleRoot },
       sendTransaction: vi.fn().mockResolvedValue('0xnew'),
       settleTransaction: vi.fn().mockResolvedValue('dropped'),
-      fetchThirdParty: vi.fn().mockResolvedValue(thirdParty(plan.merkleRoot)),
+      // builder-server hasn't indexed it yet; the registry already holds it.
+      fetchThirdParty: vi.fn().mockResolvedValue(thirdParty('')),
+      fetchRegistryRoot: vi.fn().mockResolvedValue(plan.merkleRoot),
       sleep: vi.fn().mockResolvedValue(undefined)
     }
     await expect(setLinkedMerkleRoot(THIRD_PARTY_ID, plan, deps)).resolves.toBe('0xearlier')
@@ -392,11 +397,31 @@ describe('setLinkedMerkleRoot', () => {
       settleTransaction: vi.fn().mockResolvedValue('mined'),
       fetchThirdParty: vi.fn().mockResolvedValue(thirdParty(plan.merkleRoot)),
       onSent,
+      fetchRegistryRoot: vi.fn().mockResolvedValue(''),
       sleep: vi.fn().mockResolvedValue(undefined)
     }
     await expect(setLinkedMerkleRoot(THIRD_PARTY_ID, plan, deps)).resolves.toBe('0xnew')
     expect(deps.settleTransaction).not.toHaveBeenCalledWith('0xstale')
     expect(onSent).toHaveBeenCalledWith({ hash: '0xnew', merkleRoot: plan.merkleRoot })
+  })
+
+  it('records who sent the root once the watch sees it, so a later attempt can tell it was replaced', async () => {
+    const plan = planFor([item('1')])
+    const onSent = vi.fn()
+    const sender = { from: '0x' + 'aa'.repeat(20), nonce: 2 }
+    const deps = {
+      chainId: CHAIN_ID,
+      sendTransaction: vi.fn().mockResolvedValue('0xnew'),
+      settleTransaction: vi.fn(async (_hash: string, _sender: unknown, onSeen?: (seen: typeof sender) => void) => {
+        onSeen?.(sender)
+        return 'pending' as const
+      }),
+      fetchThirdParty: vi.fn(),
+      fetchRegistryRoot: vi.fn().mockResolvedValue(''),
+      onSent
+    }
+    await expect(setLinkedMerkleRoot(THIRD_PARTY_ID, plan, deps)).rejects.toMatchObject({ reason: 'not_indexed' })
+    expect(onSent).toHaveBeenLastCalledWith({ hash: '0xnew', merkleRoot: plan.merkleRoot, sender })
   })
 })
 
@@ -514,6 +539,17 @@ describe('deployLinkedItems', () => {
     ).rejects.toMatchObject({ reason: 'no_identity' })
     expect(finished).toBe(1)
     expect(progress).not.toHaveBeenCalled()
+  })
+
+  it('reports a failed take-back as a curation failure, not as an item sent back to the creator', async () => {
+    const deps = deployDeps({
+      approveItem: vi.fn(async () => ({ contentHash: 'saved-meanwhile' })),
+      rejectItem: vi.fn(async () => {
+        throw new Error('offline')
+      })
+    })
+    const result = await deployLinkedItems(collection, planFor([item('1')]), deps)
+    expect(result.failed.map(({ item, stage }) => [item.id, stage])).toEqual([['1', 'curation']])
   })
 
   it('stops at once when the session cannot sign', async () => {

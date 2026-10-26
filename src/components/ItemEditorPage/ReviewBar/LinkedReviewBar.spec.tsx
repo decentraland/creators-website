@@ -44,7 +44,7 @@ const wrapper = ({ children }: { children: ReactNode }) => (
   </TranslationProvider>
 )
 
-function renderBar(selectedId: string | null) {
+function renderBar(selectedId: string | null, onReviewedChange?: (ids: ReadonlySet<string>) => void) {
   return (
     <LinkedReviewBar
       session={{ address: '0xcurator' } as unknown as Session}
@@ -52,6 +52,7 @@ function renderBar(selectedId: string | null) {
       thirdParty={thirdParty}
       selectedId={selectedId}
       onSelectItem={vi.fn()}
+      onReviewedChange={onReviewedChange}
     />
   )
 }
@@ -120,5 +121,12 @@ describe('LinkedReviewBar', () => {
   it('offers the curator a preview of the collection in world, like a standard review', () => {
     render(renderBar(null), { wrapper })
     expect(screen.getByTestId('review-preview')).toBeInTheDocument()
+  })
+
+  it('tells the sidebar which pending items the curator has opened', () => {
+    const onReviewedChange = vi.fn()
+    const { rerender } = render(renderBar('1', onReviewedChange), { wrapper })
+    rerender(renderBar('3', onReviewedChange))
+    expect([...(onReviewedChange.mock.lastCall![0] as ReadonlySet<string>)].sort()).toEqual(['1', '3'])
   })
 })

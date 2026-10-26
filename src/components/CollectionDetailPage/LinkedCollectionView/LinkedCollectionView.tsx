@@ -67,7 +67,7 @@ import addItemsArt from '~/assets/add-items.png'
 import { AddItemsModal } from '../AddItemsModal'
 import * as P from '../CollectionDetailPage.styles'
 import { LinkedItemActionsMenu } from './LinkedItemActionsMenu'
-import { LinkedItemRow } from './LinkedItemRow'
+import { LinkedItemRow, nextMappingStates } from './LinkedItemRow'
 import { PublishLinkedItemsModal } from './PublishLinkedItemsModal'
 import { PushLinkedChangesModal } from './PushLinkedChangesModal'
 import * as S from './LinkedCollectionView.styles'
@@ -134,18 +134,19 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   const [publishView, setPublishView] = useState<
     { kind: 'closed' } | { kind: 'publish' | 'push'; toPublish: Item[]; toPush: Item[] }
   >({ kind: 'closed' })
-  // Rows with a mapping edit not saved yet: publishing now would send the old mapping.
-  const [unsavedMappings, setUnsavedMappings] = useState<ReadonlySet<string>>(() => new Set())
+  // Rows with a mapping edit not saved yet, by item, with the generation of the row that reported it last: publishing
+  // now would send the old mapping, and a row already gone can't overrule a newer one.
+  const [mappingStates, setMappingStates] = useState<ReadonlyMap<string, { dirty: boolean; generation: number }>>(
+    () => new Map()
+  )
+  const unsavedMappings = useMemo(
+    () => new Set([...mappingStates].filter(([, state]) => state.dirty).map(([itemId]) => itemId)),
+    [mappingStates]
+  )
   // Leaving the page within a mapping's save delay would drop the edit.
   useBeforeUnloadGuard(unsavedMappings.size > 0)
-  const onMappingDirtyChange = useCallback((itemId: string, dirty: boolean) => {
-    setUnsavedMappings(current => {
-      if (current.has(itemId) === dirty) return current
-      const next = new Set(current)
-      if (dirty) next.add(itemId)
-      else next.delete(itemId)
-      return next
-    })
+  const onMappingDirtyChange = useCallback((itemId: string, dirty: boolean, generation: number) => {
+    setMappingStates(current => nextMappingStates(current, itemId, dirty, generation))
   }, [])
 
   const network = collection.linkedContractNetwork

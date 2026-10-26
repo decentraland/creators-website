@@ -14,6 +14,23 @@ import * as S from './LinkedCollectionView.styles'
 
 const EMPTY = '—'
 const MAPPING_SAVE_DEBOUNCE_MS = 1000
+let rowGenerations = 0
+
+export type MappingStates = ReadonlyMap<string, { dirty: boolean; generation: number }>
+
+/** The rows' mapping states after one reports: a row already gone (an older generation) never overrules a newer one. */
+export function nextMappingStates(
+  current: MappingStates,
+  itemId: string,
+  dirty: boolean,
+  generation: number
+): MappingStates {
+  const known = current.get(itemId)
+  if (known && (known.generation > generation || (known.generation === generation && known.dirty === dirty))) {
+    return current
+  }
+  return new Map(current).set(itemId, { dirty, generation })
+}
 
 type Props = {
   item: Item
@@ -29,7 +46,11 @@ type Props = {
   /** Saves a new mapping; a rejected promise keeps the row's draft so the creator can retry. */
   onSaveMappings: (item: Item, mappings: Mappings) => Promise<unknown>
   /** Whether a mapping edit is waiting for the pause or still saving. */
-  onMappingDirtyChange?: (itemId: string, dirty: boolean) => void
+  /**
+   * Whether a mapping edit is waiting for the pause or still saving. `generation` grows with each row shown, so a save
+   * from a row already gone can't clear a newer one's edit of the same item.
+   */
+  onMappingDirtyChange?: (itemId: string, dirty: boolean, generation: number) => void
   actions?: ReactNode
 }
 
@@ -61,9 +82,11 @@ export function LinkedItemRow({
   const saved = useRef(item.mappings)
   const inFlight = useRef(0)
   const mounted = useRef(true)
+  const generation = useRef(++rowGenerations)
   const latest = useRef({ item, onSaveMappings, onMappingDirtyChange })
   latest.current = { item, onSaveMappings, onMappingDirtyChange }
-  const setDirty = (dirty: boolean) => latest.current.onMappingDirtyChange?.(latest.current.item.id, dirty)
+  const setDirty = (dirty: boolean) =>
+    latest.current.onMappingDirtyChange?.(latest.current.item.id, dirty, generation.current)
 
   useEffect(() => {
     saved.current = item.mappings
@@ -112,7 +135,7 @@ export function LinkedItemRow({
     // Set here, not only at creation: StrictMode runs this cleanup once and mounts again.
     mounted.current = true
     // A row shows the server's mapping when it (re)appears: nothing of it is unsaved yet.
-    latest.current.onMappingDirtyChange?.(latest.current.item.id, false)
+    latest.current.onMappingDirtyChange?.(latest.current.item.id, false, generation.current)
     return () => {
       mounted.current = false
       clearTimeout(timer.current)
@@ -122,11 +145,11 @@ export function LinkedItemRow({
       // blocked (its toast names the item) until the row is shown again with the server's mapping.
       if (mappings) {
         void persist(current, mappings).then(
-          () => report?.(current.id, false),
+          () => report?.(current.id, false, generation.current),
           () => undefined
         )
       } else if (draft.current === null) {
-        report?.(current.id, false)
+        report?.(current.id, false, generation.current)
       }
     }
   }, [save])
