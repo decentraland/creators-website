@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@dcl-regenesislabs/wearable-validator": "0.6.2",
+    "@dcl/content-hash-tree": "^1.1.4",
     "@dcl/crypto": "^3.7.0",
     "@dcl/hashing": "^1.2.0",
     "@dcl/hooks": "^1.6.0",
@@ -43,6 +44,7 @@
     "@segment/analytics-next": "^1.84.3",
     "@sentry/react": "^9.47.1",
     "@tanstack/react-query": "^5.103.1",
+    "buffer": "6.0.3",
     "date-fns": "^4.4.0",
     "decentraland-connect": "^12.1.1",
     "decentraland-transactions": "^3.3.0",

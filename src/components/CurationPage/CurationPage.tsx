@@ -17,6 +17,7 @@ import { type Collection } from '~/lib/collections'
 import {
   CURATION_PAGE_SIZE,
   CURATION_SORTS,
+  CurationTypeFilter,
   DEFAULT_STATUS_FILTERS,
   ReviewType,
   STATUS_FILTERS,
@@ -81,6 +82,10 @@ const CurationPage = () => {
   )
   const sortOptions = useMemo<SelectOption<string>[]>(
     () => CURATION_SORTS.map(sort => ({ value: sort, label: t(`curation_page.sort.${sort}`) })),
+    [t]
+  )
+  const typeOptions = useMemo<SelectOption<CurationTypeFilter>[]>(
+    () => Object.values(CurationTypeFilter).map(type => ({ value: type, label: t(`curation_page.type.${type}`) })),
     [t]
   )
 
@@ -158,6 +163,7 @@ const CurationPage = () => {
     toMultiParam(filters.statuses, DEFAULT_STATUS_FILTERS) !== null ||
     toMultiParam(filters.assignees, assigneeDefaults) !== null ||
     !!filters.reviewType ||
+    filters.type !== CurationTypeFilter.ALL ||
     !!filters.tag
   // Rows can't tell "never requested" from "not loaded yet": without the curations their actions would open new requests.
   const isLoading = collections.isLoading || (collections.isFetching && !data) || curations.isLoading
@@ -210,6 +216,14 @@ const CurationPage = () => {
             </S.CampaignToggle>
           )}
           <S.Selects>
+            <Select
+              value={filters.type}
+              options={typeOptions}
+              onChange={value => changeFilter('type', value === CurationTypeFilter.ALL ? null : value)}
+              ariaLabel={t('curation_page.type.label')}
+              variant="compact"
+              testId="curation-type-filter"
+            />
             <MultiSelect<CurationStatusFilter>
               values={filters.statuses}
               options={statusOptions}

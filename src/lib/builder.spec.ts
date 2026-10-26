@@ -12,6 +12,7 @@ import {
   fetchItemContents,
   fetchItemCurations,
   fetchThirdParty,
+  fetchAllLinkedCollectionItems,
   getContentsStorageUrl,
   saveItem
 } from './builder'
@@ -425,12 +426,13 @@ describe('fetchCurationCollections', () => {
       assignees: [],
       reviewType: null,
       sort: 'REQUESTED_AT_DESC' as never,
-      tag: null
+      tag: null,
+      type: 'all' as never
     })
     expect(result.results[0]).toMatchObject({ id: 'a1b2', isPublished: true })
     const path = signedFetchMock.mock.calls[0][2] as string
     expect(path.startsWith('/collections?is_published=true')).toBe(true)
-    expect(path).toContain('type=standard')
+    expect(path).not.toContain('type=')
   })
 })
 
@@ -472,8 +474,8 @@ describe('fetchItemCurations', () => {
       ])
     )
     const curations = await fetchItemCurations(ADDRESS, 'a1b2')
-    expect(curations.get('i1')).toBe('approved')
-    expect(curations.get('i2')).toBe('pending')
+    expect(curations.get('i1')).toMatchObject({ itemId: 'i1', status: 'approved' })
+    expect(curations.get('i2')).toMatchObject({ itemId: 'i2', status: 'pending' })
     expect(curations.has('i3')).toBe(false)
   })
 
@@ -489,11 +491,44 @@ describe('fetchItemCurations', () => {
 })
 
 describe('fetchThirdParty', () => {
-  it("answers the third party's name and managers", async () => {
+  it('answers the third party, with safe defaults for what a virtual one lacks', async () => {
     signedFetchMock.mockResolvedValue(okResponse({ id: 'urn:tp', name: 'Brand X', managers: [ADDRESS] }))
-    await expect(fetchThirdParty(ADDRESS, 'urn:decentraland:amoy:collections-thirdparty:brand')).resolves.toEqual({
-      name: 'Brand X',
-      managers: [ADDRESS]
-    })
+    await expect(fetchThirdParty(ADDRESS, 'urn:decentraland:amoy:collections-thirdparty:brand')).resolves.toMatchObject(
+      { id: 'urn:tp', name: 'Brand X', managers: [ADDRESS], published: false, maxItems: '0', contracts: [] }
+    )
+  })
+})
+
+describe('fetchAllLinkedCollectionItems', () => {
+  const remoteItem = (id: string) => ({
+    id,
+    name: id,
+    description: '',
+    thumbnail: 'thumbnail.png',
+    eth_address: '',
+    collection_id: 'c1',
+    price: null,
+    beneficiary: null,
+    rarity: 'unique',
+    is_published: false,
+    is_approved: false,
+    in_catalyst: false,
+    type: 'wearable',
+    data: { representations: [] },
+    contents: {},
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z'
+  })
+
+  it('walks every page under the filter and keeps the filter on each request', async () => {
+    signedFetchMock
+      .mockResolvedValueOnce(
+        okResponse({ results: [remoteItem('a'), remoteItem('b')], total: 3, page: 1, pages: 2, limit: 2 })
+      )
+      .mockResolvedValueOnce(okResponse({ results: [remoteItem('c')], total: 3, page: 2, pages: 2, limit: 2 }))
+    const items = await fetchAllLinkedCollectionItems(ADDRESS, 'c1', { synced: false }, 2)
+    expect(items.map(item => item.id)).toEqual(['a', 'b', 'c'])
+    expect(signedFetchMock).toHaveBeenCalledTimes(2)
+    expect(signedFetchMock.mock.calls[1][2]).toBe('/collections/c1/items?page=2&limit=2&synced=false')
   })
 })

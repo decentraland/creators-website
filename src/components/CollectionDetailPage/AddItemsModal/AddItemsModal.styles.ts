@@ -671,6 +671,14 @@ export const ErrorText = styled.p`
   color: ${theme.colors.errStrong};
 `
 
+export const ItemsError = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 24px;
+`
+
 export const Footer = styled.div`
   display: flex;
   flex-shrink: 0;

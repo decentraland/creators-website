@@ -337,6 +337,22 @@ export const RowName = styled.span`
   }
 `
 
+export const RowTag = styled.span`
+  flex: none;
+  padding: 2px 6px;
+  border: 1px solid ${theme.editor.line};
+  border-radius: ${theme.radius.chip};
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: ${theme.editor.label};
+  text-transform: uppercase;
+
+  [data-collapsed] & {
+    display: none;
+  }
+`
+
 export const RowGlyph = styled.span`
   display: inline-flex;
   flex: none;
@@ -349,6 +365,10 @@ export const RowGlyph = styled.span`
 
   &[data-playing] {
     color: ${theme.editor.accent};
+  }
+
+  &[data-reviewed] {
+    color: ${theme.colors.white};
   }
 
   [data-collapsed] & {

@@ -284,6 +284,8 @@ export function cleanContentModelKeys(
 
 /** wearable.json manifest — the subset of the legacy WearableConfig this app reads. */
 export type WearableManifest = {
+  /** Linked wearables: the item's URN, whose last segment becomes its URN suffix. */
+  id?: string | null
   name: string
   description?: string
   /** Not in the legacy format: this app's addition, saved as the item's utility. */
@@ -303,6 +305,8 @@ export type WearableManifest = {
       overrideReplaces?: string[]
     }>
   }
+  /** Linked wearables: the token mapping, as the docs describe it (a single `Mapping`). */
+  mapping?: unknown
 }
 
 /** emote.json manifest. */

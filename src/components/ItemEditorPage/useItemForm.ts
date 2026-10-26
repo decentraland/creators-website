@@ -18,7 +18,8 @@ const EMPTY_DRAFT: ItemDraft = {
   outlineCompatible: true,
   thumbnail: null,
   video: null,
-  fileUpdate: null
+  fileUpdate: null,
+  mappings: null
 }
 
 /** The properties form state for the selected item: field draft plus spring bone params, reset on selection. */
