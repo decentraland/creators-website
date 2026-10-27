@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from '~/intl'
 import { useDiscardGuard } from '~/hooks/useDiscardGuard'
 import { useTransferCollectionOwnership } from '~/hooks/useTransferCollectionOwnership'
@@ -28,8 +28,9 @@ type Props = {
 /**
  * Hand the collection to another wallet. The form asks for the new owner and the collection's name as
  * confirmation; TRANSFER OWNERSHIP sends `transferCreatorship` in one transaction: web3 wallets get the
- * whole-dialog "confirm in your wallet" status, custodial ones just see the button spin. Closing with
- * anything filled in asks first.
+ * whole-dialog "confirm in your wallet" status, custodial ones just see the button spin. There is no
+ * backing out once sent: the wallet prompt can still sign an irreversible transfer, so the dialog stays
+ * locked until it settles. Closing with anything filled in asks first.
  */
 export function TransferOwnershipFlow({ collection, session, onDone, onClose }: Props) {
   const { t } = useTranslation()
@@ -41,13 +42,11 @@ export function TransferOwnershipFlow({ collection, session, onDone, onClose }: 
   const [newOwner, setNewOwner] = useState('')
   const [confirmation, setConfirmation] = useState('')
   const [reason, setReason] = useState<SellFailureReason | null>(null)
-  // Bumped when the creator backs out of a wallet prompt, so that attempt's outcome is ignored.
-  const attempt = useRef(0)
 
   const transfer = useTransferCollectionOwnership(session)
   const dirty = newOwner !== '' || confirmation !== ''
   const ready = newOwner !== '' && matchesCollectionName(collection, confirmation)
-  const busy = social && transfer.isPending
+  const busy = transfer.isPending
   const { isDiscardOpen, requestClose, keepEditing } = useDiscardGuard({
     state:
       view === 'form' ? (busy ? 'busy' : 'editing') : view === 'saving' ? 'busy' : view === 'error' ? 'failed' : 'done',
@@ -57,16 +56,13 @@ export function TransferOwnershipFlow({ collection, session, onDone, onClose }: 
   })
 
   function submit() {
-    const id = ++attempt.current
     setPhase('confirm')
     if (!social) setView('saving')
     transfer.mutate(
-      { collection, newOwner, onSigned: () => attempt.current === id && setPhase('pending') },
+      { collection, newOwner, onSigned: () => setPhase('pending') },
       {
-        // Backing out of the prompt only hides it: a transfer signed anyway is irreversible, so it is never ignored.
         onSuccess: () => setView('success'),
         onError: cause => {
-          if (attempt.current !== id) return
           const failure = toSellItemError(cause).reason
           // Dismissing the wallet prompt is the creator changing their mind, not a failure to report.
           if (failure === 'rejected') return setView('form')
@@ -88,7 +84,7 @@ export function TransferOwnershipFlow({ collection, session, onDone, onClose }: 
             friends={friends.data}
             isLoadingFriends={friends.isLoading}
             busy={busy}
-            canSubmit={ready && !transfer.isPending}
+            canSubmit={ready && !busy}
             onNewOwnerChange={setNewOwner}
             onConfirmationChange={setConfirmation}
             onSubmit={submit}
@@ -118,14 +114,6 @@ export function TransferOwnershipFlow({ collection, session, onDone, onClose }: 
       return (
         <PendingModal
           label={phase === 'confirm' ? t('sell_item_modal.confirm_in_wallet') : t('transfer_ownership_modal.saving')}
-          onCancel={
-            phase === 'confirm'
-              ? () => {
-                  attempt.current++
-                  setView('form')
-                }
-              : undefined
-          }
           testId="transfer-ownership-pending"
         />
       )
@@ -135,7 +123,7 @@ export function TransferOwnershipFlow({ collection, session, onDone, onClose }: 
           title={t('transfer_ownership_modal.success_title')}
           description={t('transfer_ownership_modal.success_description', {
             name: collection.name,
-            owner: shortenAddress(newOwner)
+            owner: shortenAddress(transfer.data?.owner ?? newOwner)
           })}
           onDone={onDone}
         />

@@ -1158,6 +1158,7 @@
     "self": "That’s your own address: you already own this collection.",
     "zero": "That’s the zero address: the collection would be lost for good.",
     "system": "This address belongs to the Decentraland Shop: a collection sent there can’t be recovered.",
+    "contract": "That’s this collection’s own contract: a collection sent there can’t be recovered.",
     "confirm_label": "Type “{name}” to confirm",
     "submit": "Transfer ownership",
     "saving": "Transferring ownership...",

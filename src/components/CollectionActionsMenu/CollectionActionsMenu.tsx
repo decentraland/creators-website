@@ -196,7 +196,7 @@ export function CollectionActionsMenu({
             </ActionsMenuItem>
           </>
         )}
-        {isOnChain && isOwner && showRoles && onTransferOwnership && (
+        {isOnChain && !isLinked && isOwner && showRoles && onTransferOwnership && (
           <>
             <ActionsMenuDivider />
             <ActionsMenuItem testId="transfer-ownership" tone="danger" onClick={onTransferOwnership}>

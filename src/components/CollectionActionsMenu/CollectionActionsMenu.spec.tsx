@@ -167,6 +167,15 @@ describe('CollectionActionsMenu', () => {
     expect(onTransferOwnership).toHaveBeenCalledTimes(1)
   })
 
+  it('never offers to transfer a linked collection, which has no contract of its own', async () => {
+    renderMenu({ ...draft, urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats', isPublished: true }, OWNER, {
+      onManageRoles: vi.fn(),
+      onTransferOwnership: vi.fn()
+    })
+    await openMenu()
+    expect(screen.queryByTestId('transfer-ownership')).not.toBeInTheDocument()
+  })
+
   it('never offers the transfer to a collaborator', async () => {
     renderMenu({ ...draft, isPublished: true, managers: ['0xdef'] }, '0xdef', { onTransferOwnership: vi.fn() })
     await openMenu()

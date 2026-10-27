@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ContractName, getContract } from 'decentraland-transactions'
 import { encodeContractCall } from './auth/transactions'
+import { BuilderServerError } from './builder'
 import { type Collection } from './collections'
 import {
   buildTransferOwnershipCall,
@@ -30,11 +31,12 @@ const collection: Collection = {
 }
 
 describe('choosing the new owner', () => {
-  it("refuses the owner's own address, the zero address and the Shop's contracts, and accepts anyone else", () => {
+  it("refuses the owner's own address, the zero address, the Shop's contracts and the collection's own contract, and accepts anyone else", () => {
     expect(getNewOwnerError(collection, OWNER.toUpperCase(), CHAIN_ID)).toBe('self')
     expect(getNewOwnerError(collection, '0x0000000000000000000000000000000000000000', CHAIN_ID)).toBe('zero')
     const marketplace = getContract(ContractName.OffChainMarketplaceV2, CHAIN_ID).address
     expect(getNewOwnerError(collection, marketplace.toUpperCase(), CHAIN_ID)).toBe('system')
+    expect(getNewOwnerError(collection, CONTRACT.toUpperCase(), CHAIN_ID)).toBe('contract')
     expect(getNewOwnerError(collection, OTHER, CHAIN_ID)).toBeNull()
   })
 
@@ -76,13 +78,21 @@ describe('waiting for the server to store the new owner', () => {
     expect(sync).toHaveBeenCalledTimes(3)
   })
 
-  it('gives up after the retries', async () => {
+  it('gives up after ten minutes', async () => {
     vi.useFakeTimers()
     const sync = vi.fn().mockResolvedValue(collection)
     const run = waitForOwnerSync(collection.id, OTHER, { syncCollectionOwner: sync })
     const failure = expect(run).rejects.toThrow(/indexed/)
-    await vi.advanceTimersByTimeAsync(60 * 60 * 1000)
+    await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
     await failure
-    expect(sync).toHaveBeenCalledTimes(721)
+    expect(sync).toHaveBeenCalledTimes(121)
+  })
+
+  it('fails straight away when the server refuses the request', async () => {
+    const sync = vi.fn().mockRejectedValue(new BuilderServerError('no such route', 404))
+    await expect(waitForOwnerSync(collection.id, OTHER, { syncCollectionOwner: sync }, 5, 0)).rejects.toThrow(
+      'no such route'
+    )
+    expect(sync).toHaveBeenCalledTimes(1)
   })
 })

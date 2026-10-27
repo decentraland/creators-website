@@ -4,6 +4,7 @@ import { sendContractTransaction, waitForTransaction, type Session } from '~/lib
 import { type Collection } from '~/lib/collections'
 import { syncCollectionOwner } from '~/lib/builder'
 import { buildTransferOwnershipCall, waitForOwnerSync } from '~/lib/collectionOwnership'
+import { captureError } from '~/lib/monitoring'
 import { getMaticChainId } from '~/lib/publishCollection'
 import { SellItemError } from '~/lib/sales'
 
@@ -27,10 +28,17 @@ export function useTransferCollectionOwnership(session: Session | null) {
       onSigned?.()
       const mined = await waitForTransaction(chainId, txHash)
       if (!mined) throw new SellItemError('generic', 'The transferCreatorship transaction reverted')
-      track('Transfer collection ownership', { collectionId: collection.id, newOwner: newOwner.toLowerCase() })
-      return waitForOwnerSync(collection.id, newOwner, {
-        syncCollectionOwner: id => syncCollectionOwner(session.address, id)
-      })
+      const owner = newOwner.toLowerCase()
+      track('Transfer collection ownership', { collectionId: collection.id, newOwner: owner })
+      // The transfer is done at this point, whatever the server says: trying again would only revert.
+      try {
+        return await waitForOwnerSync(collection.id, newOwner, {
+          syncCollectionOwner: id => syncCollectionOwner(session.address, id)
+        })
+      } catch (error) {
+        captureError(error, { flow: 'transfer_ownership', collectionId: collection.id })
+        return { ...collection, owner }
+      }
     },
     onSuccess: collection => {
       if (!session) return

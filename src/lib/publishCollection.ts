@@ -317,8 +317,8 @@ export type ConsolidateDeps = SyncDeps & {
 
 // One hour of 5s polls: the subgraph can lag well past a couple of minutes on a busy Polygon day. Forum post
 // recovery (`RECOVERY_GRACE_MS` in forumPost.ts) waits this out, so keep it shorter than that grace.
-export const CONSOLIDATE_RETRY_DELAY_MS = 5000
-export const CONSOLIDATE_RETRIES = (60 * 60 * 1000) / CONSOLIDATE_RETRY_DELAY_MS
+const CONSOLIDATE_RETRY_DELAY_MS = 5000
+const CONSOLIDATE_RETRIES = (60 * 60 * 1000) / CONSOLIDATE_RETRY_DELAY_MS
 
 /**
  * Asks builder-server to sync a published collection with the chain (item token ids). The server

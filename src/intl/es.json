@@ -1158,6 +1158,7 @@
     "self": "Esa es tu propia dirección: esta colección ya es tuya.",
     "zero": "Esa es la dirección cero: la colección se perdería para siempre.",
     "system": "Esta dirección pertenece a la Tienda de Decentraland: una colección enviada allí no se puede recuperar.",
+    "contract": "Esa es la dirección del contrato de esta colección: una colección enviada allí no se puede recuperar.",
     "confirm_label": "Escribe “{name}” para confirmar",
     "submit": "Transferir propiedad",
     "saving": "Transfiriendo la propiedad...",

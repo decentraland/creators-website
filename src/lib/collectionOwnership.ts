@@ -1,11 +1,11 @@
 import { ContractName, getContract } from 'decentraland-transactions'
 import { type ContractCall } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
+import { isRefusedRequest } from '~/lib/builder'
 import { getSystemMinters, isCollectionOwner } from '~/lib/collectionRoles'
-import { CONSOLIDATE_RETRIES, CONSOLIDATE_RETRY_DELAY_MS } from '~/lib/publishCollection'
 import { SellItemError } from '~/lib/sales'
 
-export type NewOwnerError = 'self' | 'zero' | 'system'
+export type NewOwnerError = 'self' | 'zero' | 'system' | 'contract'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
@@ -15,6 +15,7 @@ export function getNewOwnerError(collection: Collection, address: string, chainI
   if (isCollectionOwner(collection, target)) return 'self'
   if (target === ZERO_ADDRESS) return 'zero'
   if (getSystemMinters(chainId).has(target)) return 'system'
+  if (target === collection.contractAddress?.toLowerCase()) return 'contract'
   return null
 }
 
@@ -34,16 +35,21 @@ export type OwnerSyncDeps = {
   syncCollectionOwner: (collectionId: string) => Promise<Collection>
 }
 
+// Ten minutes of 5s polls: the subgraph usually indexes within a couple of minutes, and builder-server
+// also picks the new owner up on their first write, so a longer wait buys little.
+const OWNER_SYNC_DELAY_MS = 5000
+const OWNER_SYNC_RETRIES = (10 * 60 * 1000) / OWNER_SYNC_DELAY_MS
+
 /**
- * Asks builder-server to store the new owner until it reports it: the subgraph lags the transaction,
- * and a request that fails in between is retried too, as the transfer itself can't be undone.
+ * Asks builder-server to store the new owner until it reports it: the subgraph lags the transaction. A
+ * failed request is retried as well, except a refusal (4xx), which no amount of waiting fixes.
  */
 export async function waitForOwnerSync(
   collectionId: string,
   newOwner: string,
   deps: OwnerSyncDeps,
-  retries = CONSOLIDATE_RETRIES,
-  retryDelayMs = CONSOLIDATE_RETRY_DELAY_MS
+  retries = OWNER_SYNC_RETRIES,
+  retryDelayMs = OWNER_SYNC_DELAY_MS
 ): Promise<Collection> {
   const owner = newOwner.toLowerCase()
   for (let attempt = 0; ; attempt++) {
@@ -52,7 +58,7 @@ export async function waitForOwnerSync(
       if (collection.owner.toLowerCase() === owner) return collection
       if (attempt >= retries) throw new SellItemError('generic', 'The transfer was not indexed in time')
     } catch (error) {
-      if (attempt >= retries) throw error
+      if (isRefusedRequest(error) || attempt >= retries) throw error
     }
     await new Promise(resolve => setTimeout(resolve, retryDelayMs))
   }

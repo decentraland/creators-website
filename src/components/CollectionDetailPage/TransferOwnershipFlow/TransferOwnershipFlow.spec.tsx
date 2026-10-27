@@ -9,7 +9,11 @@ import { ADDRESS, FRIEND, Providers, collection, makeSession } from '../SellItem
 type Callbacks = { onSuccess?: (result: unknown) => void; onError?: (error: unknown) => void }
 type Variables = { newOwner: string; onSigned?: () => void }
 
-const transfer = { mutate: vi.fn<(variables: Variables, callbacks: Callbacks) => void>(), isPending: false }
+const transfer = {
+  mutate: vi.fn<(variables: Variables, callbacks: Callbacks) => void>(),
+  isPending: false,
+  data: undefined as { owner: string } | undefined
+}
 vi.mock('~/hooks/useTransferCollectionOwnership', () => ({ useTransferCollectionOwnership: () => transfer }))
 vi.mock('~/hooks/useSales', () => ({
   useFriends: () => ({
@@ -39,11 +43,14 @@ async function fillIn(name = collection.name) {
   await userEvent.type(screen.getByTestId('transfer-confirmation-input'), name)
 }
 
+const SIGNED = '0x00000000000000000000000000000000000000cc'
+
 const last = <T,>(mock: { mock: { calls: T[] } }) => mock.mock.calls[mock.mock.calls.length - 1]
 
 beforeEach(() => {
   transfer.mutate.mockReset()
   transfer.isPending = false
+  transfer.data = undefined
 })
 
 describe('TransferOwnershipFlow', () => {
@@ -86,54 +93,41 @@ describe('TransferOwnershipFlow', () => {
     expect(onClose).toHaveBeenCalledTimes(2)
   })
 
-  it('walks a web3 wallet through the prompt, then celebrates and hands over on DONE', async () => {
+  it('walks a web3 wallet through the prompt with no way out, then celebrates and hands over on DONE', async () => {
     const { onClose, onDone } = renderFlow()
     await fillIn()
     await userEvent.click(screen.getByTestId('transfer-submit'))
 
+    // The prompt can still sign an irreversible transfer, so the dialog offers no cancel until it settles.
     expect(screen.getByTestId('transfer-ownership-pending-label')).toHaveTextContent(/confirm in your wallet/i)
+    expect(screen.queryByTestId('transfer-ownership-pending-cancel')).not.toBeInTheDocument()
     const [variables, callbacks] = last(transfer.mutate)
     expect(variables).toMatchObject({ newOwner: FRIEND })
 
-    // Backing out of the prompt returns to the form, untouched; a rejection of that attempt changes nothing.
-    await userEvent.click(screen.getByTestId('transfer-ownership-pending-cancel'))
-    expect(screen.getByTestId('new-owner-name')).toHaveTextContent('Ana')
-    expect(screen.getByTestId('transfer-confirmation-input')).toHaveValue(collection.name)
-    await act(async () => callbacks.onError?.(new SellItemError('rejected')))
-    expect(screen.getByTestId('new-owner-name')).toHaveTextContent('Ana')
-
-    await userEvent.click(screen.getByTestId('transfer-submit'))
-    const [again, done] = last(transfer.mutate)
-    await act(async () => again.onSigned?.())
+    await act(async () => variables.onSigned?.())
     expect(screen.getByTestId('transfer-ownership-pending-label')).toHaveTextContent(/transferring ownership/i)
-    expect(screen.queryByTestId('transfer-ownership-pending-cancel')).not.toBeInTheDocument()
-    await act(async () => done.onSuccess?.(undefined))
+    transfer.data = { owner: SIGNED }
+    await act(async () => callbacks.onSuccess?.(undefined))
     expect(screen.getByTestId('success-modal-title')).toHaveTextContent(/ownership transferred/i)
-    expect(screen.getByTestId('success-modal-description')).toHaveTextContent(/0x0000…00bb/)
+    // The address named is the one the transfer went to, as the server reports it.
+    expect(screen.getByTestId('success-modal-description')).toHaveTextContent(/0x0000…00cc/)
     await userEvent.click(screen.getByTestId('success-modal-done'))
     expect(onDone).toHaveBeenCalledTimes(1)
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('still celebrates a transfer signed after backing out of the prompt, since it happened anyway', async () => {
-    const { onDone } = renderFlow()
-    await fillIn()
-    await userEvent.click(screen.getByTestId('transfer-submit'))
-    const [, callbacks] = last(transfer.mutate)
-    await userEvent.click(screen.getByTestId('transfer-ownership-pending-cancel'))
-    await act(async () => callbacks.onSuccess?.(undefined))
-    expect(screen.getByTestId('success-modal-title')).toHaveTextContent(/ownership transferred/i)
-    await userEvent.click(screen.getByTestId('success-modal-done'))
-    expect(onDone).toHaveBeenCalledTimes(1)
-  })
-
-  it('keeps a custodial wallet in the dialog with the button spinning', async () => {
-    renderFlow(ProviderType.MAGIC)
+  it('keeps a custodial wallet in the dialog, locked, with the button spinning', async () => {
+    const { onClose } = renderFlow(ProviderType.MAGIC)
     await fillIn()
     transfer.isPending = true
     await userEvent.click(screen.getByTestId('transfer-submit'))
     expect(screen.queryByTestId('transfer-ownership-pending')).not.toBeInTheDocument()
     expect(last(transfer.mutate)[0]).toMatchObject({ newOwner: FRIEND })
+    await act(async () => last(transfer.mutate)[0].onSigned?.())
+    expect(screen.getByTestId('transfer-cancel')).toBeDisabled()
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByTestId('discard-transfer-modal')).not.toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('reports a failure and lets TRY AGAIN reopen the form, while a dismissed prompt just returns to it', async () => {
