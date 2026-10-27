@@ -15,7 +15,10 @@ export type TransferOwnershipVariables = {
   onSigned?: () => void
 }
 
-/** Hands the collection to another wallet in one transaction and waits until builder-server knows. */
+// A sped-up or replaced transaction gets a new hash this one never sees mined, so the wait gives up.
+const MINING_TIMEOUT_MS = 5 * 60_000
+
+/** Hands the collection to another wallet in one transaction and waits until it is mined. */
 export function useTransferCollectionOwnership(session: Session | null) {
   const queryClient = useQueryClient()
   const chainId = getMaticChainId()
@@ -26,24 +29,24 @@ export function useTransferCollectionOwnership(session: Session | null) {
       const call = buildTransferOwnershipCall(collection, newOwner, chainId)
       const txHash = await sendContractTransaction(session, call)
       onSigned?.()
-      const mined = await waitForTransaction(chainId, txHash)
+      const mined = await waitForTransaction(chainId, txHash, MINING_TIMEOUT_MS)
       if (!mined) throw new SellItemError('generic', 'The transferCreatorship transaction reverted')
-      const owner = newOwner.toLowerCase()
-      track('Transfer collection ownership', { collectionId: collection.id, newOwner: owner })
-      // The transfer is done at this point, whatever the server says: trying again would only revert.
-      try {
-        return await waitForOwnerSync(collection.id, newOwner, {
-          syncCollectionOwner: id => syncCollectionOwner(session.address, id)
-        })
-      } catch (error) {
-        captureError(error, { flow: 'transfer_ownership', collectionId: collection.id })
-        return { ...collection, owner }
-      }
+      return { ...collection, owner: newOwner.toLowerCase() }
     },
     onSuccess: collection => {
+      track('Transfer collection ownership', { collectionId: collection.id, newOwner: collection.owner })
       if (!session) return
-      queryClient.setQueryData(['collection', session.address, collection.id], collection)
+      const address = session.address
+      queryClient.setQueryData(['collection', address, collection.id], collection)
       void queryClient.invalidateQueries({ queryKey: ['collections'] })
+      // Detached on purpose, like the publish sync: the dialog moves on and the server catches up on its own.
+      // The transfer is done either way, and the server also picks the new owner up on their first write.
+      waitForOwnerSync(collection.id, collection.owner, {
+        syncCollectionOwner: id => syncCollectionOwner(address, id)
+      })
+        .then(synced => queryClient.setQueryData(['collection', address, collection.id], synced))
+        .catch((error: unknown) => captureError(error, { flow: 'transfer_ownership', collectionId: collection.id }))
+        .finally(() => void queryClient.invalidateQueries({ queryKey: ['collections'] }))
     },
     onError: (error, { collection }) =>
       track('Transfer collection ownership error', { collectionId: collection.id, error: errorCode(error) })
