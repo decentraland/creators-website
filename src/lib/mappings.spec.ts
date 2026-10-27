@@ -161,17 +161,15 @@ describe('relinkMappings', () => {
   const to = { network: 'mainnet' as ContractNetwork, address: '0x' + 'b'.repeat(40) }
   const mapping: Mapping = { type: MappingType.MULTIPLE, ids: ['1', '7'] }
 
-  it('moves the mapping under the new contract', () => {
-    expect(relinkMappings(buildItemMappings(mapping, from), from, to)).toEqual(buildItemMappings(mapping, to))
-  })
-
-  it('finds the mapping whatever the case of the stored address', () => {
+  it('moves the mapping under the new contract, whatever contract or case it was stored under', () => {
+    expect(relinkMappings(buildItemMappings(mapping, from), to)).toEqual(buildItemMappings(mapping, to))
     const stored = { mainnet: { [from.address.toUpperCase()]: [mapping] } }
-    expect(relinkMappings(stored, from, to)).toEqual(buildItemMappings(mapping, to))
+    expect(relinkMappings(stored, to)).toEqual(buildItemMappings(mapping, to))
   })
 
-  it('is null for an unmapped item', () => {
-    expect(relinkMappings(null, from, to)).toBeNull()
-    expect(relinkMappings({ mainnet: {} }, from, to)).toBeNull()
+  it('leaves an item alone when it is unmapped or already under the new contract', () => {
+    expect(relinkMappings(null, to)).toBeNull()
+    expect(relinkMappings({ mainnet: {} }, to)).toBeNull()
+    expect(relinkMappings(buildItemMappings(mapping, to), to)).toBeNull()
   })
 })

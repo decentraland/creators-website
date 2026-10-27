@@ -1,1 +1,1 @@
-export { EditContractModal, type RelinkStep } from './EditContractModal'
+export { EditContractModal } from './EditContractModal'

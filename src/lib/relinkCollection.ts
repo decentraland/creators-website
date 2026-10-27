@@ -1,0 +1,79 @@
+// Re-points a linked collection to another NFT contract, in an order that stays safe to repeat: the server takes the
+// contract first (it refuses one another collection already links), the registry is rewritten only when it does not
+// list the contract yet, and every item is then moved under it. A run that stops halfway is finished by running again.
+import { type ContractCall, type TransactionSettlement } from '~/lib/auth'
+import { type Collection } from '~/lib/collections'
+import { type Item } from '~/lib/items'
+import { relinkMappings } from '~/lib/mappings'
+import { isSameContract, withContractReplaced, type LinkedContract, type ThirdParty } from '~/lib/thirdParty'
+import { buildUpdateThirdPartyCall } from '~/lib/thirdPartyRegistry'
+
+export type RelinkStep = 'collection' | 'tx' | 'items'
+
+export type RelinkDeps = {
+  saveCollection: (collection: Collection) => Promise<Collection>
+  /** What the registry lists right now; only read once the third party is on chain. */
+  fetchRegisteredContracts: () => Promise<LinkedContract[]>
+  sendTransaction: (call: ContractCall) => Promise<string>
+  settleTransaction: (txHash: string) => Promise<TransactionSettlement>
+  fetchItems: () => Promise<Item[]>
+  saveItem: (item: Item, patch: Pick<Item, 'mappings'>) => Promise<Item>
+  onStep?: (step: RelinkStep) => void
+}
+
+export type RelinkParams = {
+  chainId: number
+  collection: Collection
+  thirdParty: ThirdParty
+  /** The contract the collection had when the change was started, kept across retries. */
+  from: LinkedContract | null
+  to: LinkedContract
+}
+
+export type RelinkResult = {
+  /** Items whose mapping moved in this run. */
+  moved: number
+}
+
+export async function relinkCollection(deps: RelinkDeps, params: RelinkParams): Promise<RelinkResult> {
+  const { chainId, collection, thirdParty, from, to } = params
+
+  const current =
+    collection.linkedContractAddress && collection.linkedContractNetwork
+      ? {
+          address: collection.linkedContractAddress,
+          network: collection.linkedContractNetwork as LinkedContract['network']
+        }
+      : null
+  if (!current || !isSameContract(current, to)) {
+    deps.onStep?.('collection')
+    await deps.saveCollection({ ...collection, linkedContractAddress: to.address, linkedContractNetwork: to.network })
+  }
+
+  if (thirdParty.published) {
+    deps.onStep?.('tx')
+    const listed = await deps.fetchRegisteredContracts()
+    if (!listed.some(contract => isSameContract(contract, to))) {
+      const contracts = withContractReplaced(listed, from, to)
+      const txHash = await deps.sendTransaction(buildUpdateThirdPartyCall(chainId, { ...thirdParty, contracts }))
+      const outcome = await deps.settleTransaction(txHash)
+      // A dropped or still-pending transaction may have been replaced by a speed-up that did the update.
+      if (outcome !== 'mined') {
+        const after = await deps.fetchRegisteredContracts()
+        if (!after.some(contract => isSameContract(contract, to))) {
+          throw new Error(`Third party update transaction ${txHash} ${outcome}`)
+        }
+      }
+    }
+  }
+
+  deps.onStep?.('items')
+  let moved = 0
+  for (const item of await deps.fetchItems()) {
+    const mappings = relinkMappings(item.mappings, to)
+    if (!mappings) continue
+    await deps.saveItem(item, { mappings })
+    moved++
+  }
+  return { moved }
+}

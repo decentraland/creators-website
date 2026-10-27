@@ -1823,7 +1823,6 @@
     "title": "Change linked contract",
     "heading": "Link another NFT contract",
     "subtitle": "Use this when the NFT contract was redeployed. Mapped items keep their token ids under the new contract and go back through review.",
-    "error_same": "This is the contract the collection is already linked to.",
     "submit": "Change contract",
     "step": {
       "tx": "Confirm in your wallet…",

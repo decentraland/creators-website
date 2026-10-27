@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from '~/intl'
+import { type RelinkStep } from '~/lib/relinkCollection'
 import { type LinkedContract } from '~/lib/thirdParty'
 import { Button } from '~/components/Button'
 import { EMPTY_LINKED_CONTRACT, LinkedContractFields } from '~/components/LinkedContractFields'
@@ -7,10 +8,7 @@ import { Modal } from '~/components/Modal'
 import * as N from '~/components/CollectionNameInput/CollectionNameInput.styles'
 import * as S from '../EditUrnModal/EditUrnModal.styles'
 
-export type RelinkStep = 'tx' | 'collection' | 'items'
-
 type Props = {
-  current: LinkedContract
   /** Which part of the change is running, for the submit label; null while idle. */
   step: RelinkStep | null
   error: string | null
@@ -18,15 +16,17 @@ type Props = {
   onClose: () => void
 }
 
-/** Re-points a linked collection to another NFT contract (a redeploy after a hack, a migration), network included. */
-export function EditContractModal({ current, step, error, onSubmit, onClose }: Props) {
+/**
+ * Re-points a linked collection to another NFT contract (a redeploy after a hack, a migration), network included.
+ * Submitting the contract the collection already names is allowed: it finishes a change that stopped halfway.
+ */
+export function EditContractModal({ step, error, onSubmit, onClose }: Props) {
   const { t } = useTranslation()
   const [contract, setContract] = useState(EMPTY_LINKED_CONTRACT)
   const [edited, setEdited] = useState(false)
   const { network, address, check } = contract
   const isPending = step !== null
-  const isSame = network === current.network && address.toLowerCase() === current.address.toLowerCase()
-  const canSubmit = !!network && check === 'ok' && !isSame && !isPending
+  const canSubmit = !!network && check === 'ok' && !isPending
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -35,7 +35,7 @@ export function EditContractModal({ current, step, error, onSubmit, onClose }: P
     onSubmit({ network, address: address.toLowerCase() })
   }
 
-  const shownError = isSame && address ? t('edit_contract_modal.error_same') : !edited && error ? error : null
+  const shownError = !edited && error ? error : null
 
   return (
     <Modal
@@ -57,6 +57,7 @@ export function EditContractModal({ current, step, error, onSubmit, onClose }: P
           }}
         />
         {shownError && <N.ErrorText data-testid="edit-contract-error">{shownError}</N.ErrorText>}
+        {step && <S.Preview data-testid="edit-contract-step">{t(`edit_contract_modal.step.${step}`)}</S.Preview>}
         <S.Actions>
           <Button
             type="button"
@@ -68,7 +69,7 @@ export function EditContractModal({ current, step, error, onSubmit, onClose }: P
             {t('collection_name_modal.cancel')}
           </Button>
           <Button type="submit" data-testid="edit-contract-submit" loading={isPending} disabled={!canSubmit}>
-            {step ? t(`edit_contract_modal.step.${step}`) : t('edit_contract_modal.submit')}
+            {t('edit_contract_modal.submit')}
           </Button>
         </S.Actions>
       </S.Form>

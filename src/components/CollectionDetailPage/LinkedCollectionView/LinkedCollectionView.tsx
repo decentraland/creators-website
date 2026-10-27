@@ -29,9 +29,11 @@ import {
   splitLinkedSelection,
   type ItemCuration
 } from '~/lib/linkedItemStatus'
-import { relinkMappings, type Mappings } from '~/lib/mappings'
+import { isContractInUseError } from '~/lib/linkedContract'
+import { type Mappings } from '~/lib/mappings'
 import { getMaticChainId } from '~/lib/publishCollection'
-import { buildUpdateThirdPartyCall } from '~/lib/thirdPartyRegistry'
+import { relinkCollection, type RelinkStep } from '~/lib/relinkCollection'
+import { fetchRegisteredContracts } from '~/lib/thirdPartyRegistry'
 import { useNotifications } from '~/lib/notifications'
 import { pageRangeLabel } from '~/lib/pagination'
 import { CurationStatus } from '~/lib/collections'
@@ -62,7 +64,7 @@ import { Button } from '~/components/Button'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
-import { EditContractModal, type RelinkStep } from './EditContractModal'
+import { EditContractModal } from './EditContractModal'
 import { EditUrnModal } from './EditUrnModal'
 import { OpenEditorIcon } from '~/components/Icons'
 import { Pagination } from '~/components/Pagination'
@@ -126,7 +128,8 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
 
   const [isRenameOpen, setRenameOpen] = useState(false)
   const [isUrnOpen, setUrnOpen] = useState(false)
-  const [isContractOpen, setContractOpen] = useState(false)
+  // The contract the collection had when the dialog was opened: a retry after a partial run still knows what to replace.
+  const [contractAtOpen, setContractAtOpen] = useState<LinkedContract | null>(null)
   const [relinkStep, setRelinkStep] = useState<RelinkStep | null>(null)
   const [relinkError, setRelinkError] = useState<string | null>(null)
   const [addItemsFiles, setAddItemsFiles] = useState<File[] | null>(null)
@@ -315,53 +318,47 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   }
 
   function closeContract() {
-    setContractOpen(false)
+    setContractAtOpen(null)
     setRelinkError(null)
   }
 
-  /**
-   * Points the collection at another NFT contract: the registry first (only once the third party is on chain; a
-   * virtual one follows its collection on the server), then the collection, then every mapped item moved under the
-   * new contract so it shows up as ready to push. Each step is idempotent: a failed run is simply submitted again.
-   */
   async function relinkContract(next: LinkedContract) {
-    if (!contract || !thirdParty) return
+    if (!thirdParty) return
     setRelinkError(null)
     try {
-      if (thirdParty.published) {
-        setRelinkStep('tx')
-        const chainId = getMaticChainId()
-        const txHash = await sendContractTransaction(
-          session,
-          buildUpdateThirdPartyCall(chainId, { ...thirdParty, contracts: [next] })
-        )
-        const outcome = await settleTransaction(chainId, txHash)
-        if (outcome !== 'mined') throw new Error(`Third party update transaction ${outcome}`)
-      }
-      setRelinkStep('collection')
-      await saveCollection.mutateAsync({
-        ...collection,
-        linkedContractAddress: next.address,
-        linkedContractNetwork: next.network
+      const chainId = getMaticChainId()
+      const { moved } = await relinkCollection(
+        {
+          saveCollection: saveCollection.mutateAsync,
+          fetchRegisteredContracts: () => fetchRegisteredContracts(chainId, thirdParty.id),
+          sendTransaction: call => sendContractTransaction(session, call),
+          settleTransaction: txHash => settleTransaction(chainId, txHash),
+          fetchItems: () => fetchAllLinkedCollectionItems(address, collection.id),
+          saveItem: saveItemPatch,
+          onStep: setRelinkStep
+        },
+        { chainId, collection, thirdParty, from: contractAtOpen, to: next }
+      )
+      track('Edit TP Collection Contract', {
+        collectionId: collection.id,
+        from: contractAtOpen,
+        to: next,
+        items: moved
       })
-      setRelinkStep('items')
-      const all = await fetchAllLinkedCollectionItems(address, collection.id)
-      let moved = 0
-      for (const item of all) {
-        const mappings = relinkMappings(item.mappings, contract, next)
-        if (!mappings) continue
-        await saveItemPatch(item, { mappings })
-        moved++
-      }
-      track('Edit TP Collection Contract', { collectionId: collection.id, from: contract, to: next, items: moved })
       void queryClient.invalidateQueries({ queryKey: thirdPartyKey(address, thirdParty.id) })
       invalidateCollectionItems(queryClient, collection.id)
       void curations.refetch()
       closeContract()
       showToast(t('linked_collection.contract_saved', { count: moved }))
     } catch (error) {
-      captureError(error, { flow: 'linked_collection_contract', collectionId: collection.id })
-      setRelinkError(t('linked_collection.contract_error'))
+      if (!isContractInUseError(error)) {
+        captureError(error, { flow: 'linked_collection_contract', collectionId: collection.id })
+      }
+      setRelinkError(
+        isContractInUseError(error)
+          ? t('create_linked_collection_modal.error_contract_in_use')
+          : t('linked_collection.contract_error')
+      )
     } finally {
       setRelinkStep(null)
     }
@@ -485,7 +482,12 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
             onPreviewInWorld={total > 0 ? () => previewCollectionFromDetail(collection.id, total) : undefined}
             onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
             onEditUrn={canEditCollection ? () => setUrnOpen(true) : undefined}
-            onEditContract={canEdit && contract && thirdParty ? () => setContractOpen(true) : undefined}
+            onEditContract={
+              // A mapping edit still waiting to save would write the old contract back after the change.
+              canEdit && contract && thirdParty && unsavedMappings.size === 0
+                ? () => setContractAtOpen(contract)
+                : undefined
+            }
             onEditInBulk={canEdit && total > 0 ? () => bulkInputRef.current?.click() : undefined}
             onDeleted={() => navigate('/collections', { replace: true })}
           />
@@ -789,9 +791,8 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
           onClose={closeUrn}
         />
       )}
-      {isContractOpen && contract && (
+      {contractAtOpen && (
         <EditContractModal
-          current={contract}
           step={relinkStep}
           error={relinkError}
           onSubmit={next => void relinkContract(next)}

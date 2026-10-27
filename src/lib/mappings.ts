@@ -42,13 +42,13 @@ export function buildItemMappings(mapping: Mapping, contract: LinkedContract): M
   return { [contract.network]: { [contract.address.toLowerCase()]: [mapping] } }
 }
 
-/** The same mapping moved under another contract, for a collection whose NFT contract was redeployed; null when unmapped. */
-export function relinkMappings(
-  mappings: Mappings | null | undefined,
-  from: LinkedContract,
-  to: LinkedContract
-): Mappings | null {
-  const mapping = getItemMapping(mappings, from)
+/**
+ * The item's mapping moved under `to`, wherever it sits now (a retry finds items already moved and items still under
+ * the old contract alike); null when the item is unmapped or already under `to`.
+ */
+export function relinkMappings(mappings: Mappings | null | undefined, to: LinkedContract): Mappings | null {
+  if (!mappings || getItemMapping(mappings, to)) return null
+  const mapping = Object.values(mappings).flatMap(byAddress => Object.values(byAddress ?? {}))[0]?.[0]
   return mapping ? buildItemMappings(mapping, to) : null
 }
 

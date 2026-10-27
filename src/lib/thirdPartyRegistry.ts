@@ -5,7 +5,7 @@ import { ethers } from 'ethers'
 import { ContractName, getContract } from 'decentraland-transactions'
 import { readContract, type ContractCall } from '~/lib/auth'
 import { type SlotsCheque } from '~/lib/builder'
-import { toRawMetadata, type ThirdParty } from '~/lib/thirdParty'
+import { contractsFromRawMetadata, toRawMetadata, type LinkedContract, type ThirdParty } from '~/lib/thirdParty'
 
 export function getThirdPartyRegistry(chainId: number) {
   return getContract(ContractName.ThirdPartyRegistry, chainId)
@@ -128,6 +128,14 @@ export async function fetchRegisteredThirdParty(chainId: number, thirdPartyId: s
     maxItems: Number(record.maxItems.toString()),
     root: record.root === EMPTY_ROOT ? '' : record.root
   }
+}
+
+/** The contracts the registry itself lists for the third party right now, ahead of the subgraph. */
+export async function fetchRegisteredContracts(chainId: number, thirdPartyId: string): Promise<LinkedContract[]> {
+  const record = await readContract<{ metadata: string }>(getThirdPartyRegistry(chainId), 'thirdParties', [
+    thirdPartyId
+  ])
+  return contractsFromRawMetadata(record.metadata)
 }
 
 export type ThirdPartyPrice = {

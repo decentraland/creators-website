@@ -11,6 +11,7 @@ import {
   buildReviewThirdPartyCall,
   buildReviewThirdPartyWithRootCall,
   buildUpdateThirdPartyCall,
+  fetchRegisteredContracts,
   fetchRegisteredThirdParty,
   fetchThirdPartyPrice,
   getThirdPartyRegistry,
@@ -185,6 +186,20 @@ describe('fetchThirdPartyPrice', () => {
       programmaticMinSlots: 200,
       usdPerManaWei: ETHER / 2n
     })
+  })
+})
+
+describe('fetchRegisteredContracts', () => {
+  it('lists the contracts of the registry record, lower-cased, and none for a bare record', async () => {
+    vi.mocked(readContract).mockResolvedValueOnce({
+      metadata: `tp:1:Brand:A brand:mainnet-0x${'A'.repeat(40)};matic-0x${'b'.repeat(40)}`
+    })
+    await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([
+      { network: 'mainnet', address: '0x' + 'a'.repeat(40) },
+      { network: 'matic', address: '0x' + 'b'.repeat(40) }
+    ])
+    vi.mocked(readContract).mockResolvedValueOnce({ metadata: 'tp:1:Brand:A brand' })
+    await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([])
   })
 })
 

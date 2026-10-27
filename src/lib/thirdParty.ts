@@ -116,6 +116,30 @@ export function isThirdPartyManager(thirdParty: Pick<ThirdParty, 'managers'>, ad
   return thirdParty.managers.some(manager => manager.toLowerCase() === address.toLowerCase())
 }
 
+export function isSameContract(a: LinkedContract, b: LinkedContract): boolean {
+  return a.network === b.network && a.address.toLowerCase() === b.address.toLowerCase()
+}
+
+/** `contracts` with `from` swapped for `to` (appended when `from` is absent); never lists `to` twice. */
+export function withContractReplaced(
+  contracts: LinkedContract[],
+  from: LinkedContract | null,
+  to: LinkedContract
+): LinkedContract[] {
+  const kept = contracts.filter(contract => !(from && isSameContract(contract, from)))
+  return kept.some(contract => isSameContract(contract, to)) ? kept : [...kept, to]
+}
+
+/** The contracts of a raw registry metadata string (builder-server's parseRawMetadata, contracts only). */
+export function contractsFromRawMetadata(raw: string | undefined): LinkedContract[] {
+  const parts = (raw ?? '').split(':')
+  if (parts.length !== 5 || !parts[4]) return []
+  return parts[4].split(';').flatMap(entry => {
+    const [network, address] = entry.split('-')
+    return network && address ? [{ network: network as ContractNetwork, address: address.toLowerCase() }] : []
+  })
+}
+
 /** Legacy convertThirdPartyMetadataToRawMetadata: what `addThirdParties` stores on chain. */
 export function toRawMetadata(thirdParty: Pick<ThirdParty, 'name' | 'description' | 'contracts'>): string {
   const contracts = thirdParty.contracts.map(contract => `${contract.network}-${contract.address}`).join(';')

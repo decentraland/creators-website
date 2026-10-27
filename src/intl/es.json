@@ -1823,7 +1823,6 @@
     "title": "Cambiar contrato vinculado",
     "heading": "Vincular otro contrato NFT",
     "subtitle": "Úsalo cuando el contrato NFT se volvió a desplegar. Los ítems mapeados conservan sus token ids bajo el nuevo contrato y vuelven a pasar por revisión.",
-    "error_same": "La colección ya está vinculada a este contrato.",
     "submit": "Cambiar contrato",
     "step": {
       "tx": "Confirma en tu wallet…",

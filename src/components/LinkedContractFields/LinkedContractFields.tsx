@@ -38,6 +38,8 @@ export function LinkedContractFields({ value, onChange }: Props) {
   const checkRun = useRef(0)
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
+  const valueRef = useRef(value)
+  valueRef.current = value
 
   const isProduction = config.get('ENVIRONMENT') === 'production'
   const networks = useMemo(() => getLinkedContractNetworks(isProduction), [isProduction])
@@ -57,7 +59,11 @@ export function LinkedContractFields({ value, onChange }: Props) {
     onChangeRef.current({ network, address, check: 'checking' })
     checkTimer.current = setTimeout(() => {
       void checkLinkedContract(network, address).then(result => {
-        if (run === checkRun.current) onChangeRef.current({ network, address, check: result })
+        // A keystroke that landed while the check ran is kept; its own effect run re-checks.
+        const latest = valueRef.current
+        if (run === checkRun.current && latest.network === network && latest.address === address) {
+          onChangeRef.current({ network, address, check: result })
+        }
       })
     }, CONTRACT_CHECK_DEBOUNCE_MS)
     return () => clearTimeout(checkTimer.current)
