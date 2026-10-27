@@ -47,8 +47,8 @@ describe('RemoveListingFlow', () => {
     expect(screen.queryByTestId('remove-listing-pending-cancel')).not.toBeInTheDocument()
 
     await act(async () => last()[1].onSuccess?.())
-    expect(screen.getByTestId('sale-success-title')).toHaveTextContent(/removed from sale/i)
-    await userEvent.click(screen.getByTestId('sale-success-done'))
+    expect(screen.getByTestId('success-modal-title')).toHaveTextContent(/removed from sale/i)
+    await userEvent.click(screen.getByTestId('success-modal-done'))
     expect(onClose).toHaveBeenCalled()
   })
 

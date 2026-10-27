@@ -341,6 +341,7 @@ export const WarningCard = styled.div`
   color: ${theme.colors.warningText};
   font-size: 12px;
   line-height: 1.334;
+  overflow-wrap: anywhere;
 
   svg {
     flex-shrink: 0;
@@ -668,6 +669,14 @@ export const ErrorText = styled.p`
   margin: 0;
   font-size: 13px;
   color: ${theme.colors.errStrong};
+`
+
+export const ItemsError = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 24px;
 `
 
 export const Footer = styled.div`

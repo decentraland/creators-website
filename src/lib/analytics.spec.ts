@@ -48,6 +48,7 @@ beforeEach(() => {
   document.head.innerHTML = ''
   delete (window as { analytics?: unknown }).analytics
   localStorage.clear()
+  document.cookie = 'ajs_anonymous_id=; path=/; max-age=0'
   posted.mockClear()
 })
 
@@ -239,6 +240,20 @@ describe('getAnonymousId', () => {
 })
 
 describe('sendDirect', () => {
+  describe('when Segment has not booted and a shared cookie exists', () => {
+    beforeEach(() => {
+      document.cookie = 'ajs_anonymous_id=11111111-1111-4111-8111-111111111111; path=/'
+      localStorage.setItem('ajs_anonymous_id', JSON.stringify('stale-local-id'))
+    })
+
+    it('should attribute the direct beacon to the shared identity', async () => {
+      const { sendDirect } = await loadAnalytics()
+      sendDirect('key', { type: 'page', name: '/create' })
+      expect(posted).toHaveBeenLastCalledWith(
+        expect.objectContaining({ anonymousId: '11111111-1111-4111-8111-111111111111' })
+      )
+    })
+  })
   it('sends to the given source as the same visitor analytics.js knows, with the app’s common props', async () => {
     ;(window as unknown as { analytics: unknown }).analytics = segmentStub()
     localStorage.setItem('ajs_user_id', JSON.stringify('0xcreator'))
@@ -275,7 +290,9 @@ describe('sendDirect', () => {
     expect(posted).toHaveBeenLastCalledWith(expect.objectContaining({ anonymousId: 'stored-anon', userId: undefined }))
 
     localStorage.clear()
-    sendDirect('key', { type: 'page', name: '/create' })
+    document.cookie = 'ajs_anonymous_id=; path=/; max-age=0'
+    const fresh = await loadAnalytics()
+    fresh.sendDirect('key', { type: 'page', name: '/create' })
     const minted = (posted.mock.lastCall![0] as { anonymousId: string }).anonymousId
     expect(minted).toMatch(/^[0-9a-f-]{36}$/)
     expect(localStorage.getItem('ajs_anonymous_id')).toBe(JSON.stringify(minted))
@@ -306,5 +323,33 @@ describe('errorCode', () => {
 
     expect(errorCode(Object.assign(new Error('nope'), { code: 4001 }))).toBe('rejected')
     expect(errorCode(new Error('something exploded'))).toBe('unknown')
+  })
+})
+
+describe('when a direct event reads legacy identified-user storage', () => {
+  beforeEach(() => {
+    localStorage.setItem('ajs_user_id', '123')
+  })
+  it('should use the common id parser and preserve the numeric user id', async () => {
+    const { sendDirect } = await loadAnalytics()
+    sendDirect('test-key', { type: 'track', event: 'Click' })
+    expect(posted).toHaveBeenLastCalledWith(expect.objectContaining({ userId: '123' }))
+  })
+})
+
+describe('when a wallet reset is queued before the SDK boots', () => {
+  beforeEach(() => {
+    document.cookie = 'ajs_anonymous_id=pre-boot-id; path=/'
+    localStorage.setItem('ajs_user_id', JSON.stringify('pre-boot-user'))
+  })
+  it('should document the unchanged queued-reset limitation until SDK replay', async () => {
+    const { initAnalytics, reset, sendDirect } = await loadAnalytics()
+    initAnalytics()
+    reset()
+    sendDirect('test-key', { type: 'track', event: 'Click' })
+    expect((window as unknown as { analytics: unknown[] }).analytics).toContainEqual(['reset'])
+    expect(posted).toHaveBeenLastCalledWith(
+      expect.objectContaining({ anonymousId: 'pre-boot-id', userId: 'pre-boot-user' })
+    )
   })
 })

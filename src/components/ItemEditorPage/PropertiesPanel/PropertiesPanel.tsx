@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type Dispatch } from 'react'
+import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   CameraAlt as CameraIcon,
@@ -35,7 +35,7 @@ import { FeatureFlag } from '~/lib/featureFlags'
 import {
   ITEM_DESCRIPTION_MAX_LENGTH,
   ITEM_UTILITY_MAX_LENGTH,
-  canUpdateVideo,
+  isValidItemDescription,
   type ItemDraft,
   type ItemDraftAction
 } from '~/lib/itemDraft'
@@ -49,6 +49,9 @@ import { downloadBlob } from '~/lib/navigation'
 import { useNotifications } from '~/lib/notifications'
 import { type SpringBoneParamsByName } from '~/lib/springBones'
 import { getEmoteCategoryOptions, getWearableCategoryOptions } from '~/lib/wearableCategories'
+import { buildItemMappings, getItemMapping } from '~/lib/mappings'
+import { type LinkedContract } from '~/lib/thirdParty'
+import { MappingEditor } from '~/components/MappingEditor'
 import { DeleteItemModal } from '~/components/CollectionDetailPage/DeleteItemModal'
 import { EditorSection } from '../EditorSection'
 import { HidesEditor } from '../HidesEditor'
@@ -69,6 +72,10 @@ type Props = {
   address: string
   /** False in review mode, for viewers without edit rights, and while the collection is publish-locked. */
   editable: boolean
+  /** Review mode hides the read-only note: curators know the editor is locked. */
+  showReadOnlyNote?: boolean
+  /** Why the viewer cannot edit: no manage role, or the collection's publish lock. */
+  readOnlyReason?: 'role' | 'lock'
   /** Owner of a draft collection: the only one who may delete items here. */
   canDelete: boolean
   draft: ItemDraft
@@ -76,6 +83,8 @@ type Props = {
   isDirty: boolean
   isSaving: boolean
   springBones: SpringBonesFormProps | null
+  /** Linked collections: the contract the item's mapping targets (null when the collection has none); undefined otherwise. */
+  linkedContract?: LinkedContract | null
   onSave: () => void
   onRevert: () => void
   onDeleted: () => void
@@ -86,24 +95,32 @@ export function PropertiesPanel({
   item,
   address,
   editable,
+  showReadOnlyNote = true,
+  readOnlyReason = 'role',
   canDelete,
   draft,
   dispatch,
   isDirty,
   isSaving,
   springBones,
+  linkedContract,
   onSave,
   onRevert,
   onDeleted,
   testId = 'properties-panel'
 }: Props) {
-  const { t } = useTranslation()
+  const { t, rich } = useTranslation()
+  const isLinked = linkedContract !== undefined
+  const [mappingInvalid, setMappingInvalid] = useState(false)
+  // Bumped by Revert: the mapping editor keeps a half-typed draft of its own, which only a remount discards.
+  const [revision, setRevision] = useState(0)
   const showToast = useNotifications(state => state.showToast)
   const [isImporting, setImporting] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const [isVideoOpen, setVideoOpen] = useState(false)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
   const [isDownloading, setDownloading] = useState(false)
+  const tagsFieldRef = useRef<HTMLInputElement>(null)
   const deleteItem = useDeleteItem(address)
   const campaign = useCampaign()
   const utilityFlag = useFeatureFlag(FeatureFlag.WEARABLE_UTILITY)
@@ -125,13 +142,19 @@ export function PropertiesPanel({
     () => (isWearable && !isSmart ? getMissingBodyShapeType(item) : null),
     [isWearable, isSmart, item]
   )
+  // Only a new file can leave the category without a valid value; stored items keep saving as they are.
+  const categoryMissing = useMemo(
+    () => isWearable && draft.fileUpdate !== null && !categories.includes(draft.category ?? ''),
+    [isWearable, draft.fileUpdate, draft.category, categories]
+  )
   const nameInvalid = draft.name.length > 0 && !isValidItemName(draft.name)
+  const descriptionInvalid = !isValidItemDescription(draft.description)
   const thumbnailUrl = useObjectURL(draft.thumbnail)
   const thumbnailHash = item.contents[item.thumbnail]
   const videoHash = item.contents[VIDEO_PATH]
   const draftVideoUrl = useObjectURL(draft.video)
   const videoUrl = draftVideoUrl ?? (videoHash ? getContentsStorageUrl(videoHash) : null)
-  const canEditVideo = editable && canUpdateVideo(item)
+  const canEditVideo = editable
   const videoName = draft.video instanceof File ? draft.video.name : VIDEO_PATH
   const [videoDuration, setVideoDuration] = useState<number | null>(null)
   // A new video must not flash the previous one's duration until its metadata loads.
@@ -178,7 +201,8 @@ export function PropertiesPanel({
         setDeleteOpen(false)
         showToast(t('collection_detail_page.item_actions.deleted', { name: item.name }))
         onDeleted()
-      }
+      },
+      onError: () => showToast(t('collection_detail_page.delete_item.error'), { type: 'error' })
     })
   }
 
@@ -240,7 +264,11 @@ export function PropertiesPanel({
           )}
         </ActionsMenu>
       </S.PanelHeader>
-      {!editable && <S.ReadOnlyNote data-testid={`${testId}-readonly`}>{t('item_editor.read_only')}</S.ReadOnlyNote>}
+      {!editable && showReadOnlyNote && (
+        <S.ReadOnlyNote data-testid={`${testId}-readonly`}>
+          {t(readOnlyReason === 'lock' ? 'item_editor.read_only_locked' : 'item_editor.read_only')}
+        </S.ReadOnlyNote>
+      )}
 
       <EditorSection title={t('item_editor.details.title')} testId={`${testId}-details`}>
         <S.DetailsRow>
@@ -413,9 +441,15 @@ export function PropertiesPanel({
             value={draft.description}
             maxLength={ITEM_DESCRIPTION_MAX_LENGTH}
             disabled={disabled}
+            data-invalid={descriptionInvalid || undefined}
             data-testid={`${testId}-description`}
             onChange={event => dispatch({ type: 'setText', field: 'description', value: event.target.value })}
           />
+          {descriptionInvalid && (
+            <S.ErrorText data-testid={`${testId}-description-error`}>
+              {t('item_editor.basics.invalid_description')}
+            </S.ErrorText>
+          )}
         </S.Field>
         {utilityFlag.enabled && (
           <S.Field>
@@ -447,23 +481,47 @@ export function PropertiesPanel({
             testId={`${testId}-category`}
             onChange={category => dispatch({ type: 'setCategory', category })}
           />
+          {categoryMissing && editable && (
+            <S.ErrorText data-testid={`${testId}-category-error`}>
+              {t('item_editor.basics.category_required')}
+            </S.ErrorText>
+          )}
         </S.Field>
-        <S.Field as="div">
-          <S.FieldLabel>
-            <S.LabelText>
-              {t('item_editor.basics.rarity')}{' '}
-              <InfoTooltip content={t('add_items_modal.rarity_tooltip')} testId={`${testId}-rarity-hint`} />
-            </S.LabelText>
-          </S.FieldLabel>
-          <RaritySelect
-            value={draft.rarity ?? ''}
-            disabled={disabled || item.isPublished}
-            tone="dark"
-            testId={`${testId}-rarity`}
-            onChange={rarity => dispatch({ type: 'setRarity', rarity })}
-          />
-        </S.Field>
+        {!isLinked && (
+          <S.Field as="div">
+            <S.FieldLabel>
+              <S.LabelText>
+                {t('item_editor.basics.rarity')}{' '}
+                <InfoTooltip content={t('add_items_modal.rarity_tooltip')} testId={`${testId}-rarity-hint`} />
+              </S.LabelText>
+            </S.FieldLabel>
+            <RaritySelect
+              value={draft.rarity ?? ''}
+              disabled={disabled || item.isPublished}
+              tone="dark"
+              testId={`${testId}-rarity`}
+              onChange={rarity => dispatch({ type: 'setRarity', rarity })}
+            />
+          </S.Field>
+        )}
       </EditorSection>
+
+      {isLinked && linkedContract && (
+        <EditorSection title={t('mapping_editor.label')} testId={`${testId}-mapping`}>
+          <MappingEditor
+            key={`${item.id}:${revision}`}
+            value={getItemMapping(draft.mappings, linkedContract)}
+            disabled={disabled}
+            tone="dark"
+            testId={`${testId}-mapping-editor`}
+            onChange={mapping => {
+              setMappingInvalid(mapping === null)
+              if (mapping) dispatch({ type: 'setMappings', mappings: buildItemMappings(mapping, linkedContract) })
+            }}
+          />
+          <S.SectionNote>{t('add_items_modal.mapping_hint')}</S.SectionNote>
+        </EditorSection>
+      )}
 
       {isWearable && (
         <EditorSection title={t('item_editor.overrides.title')} testId={`${testId}-overrides`}>
@@ -526,10 +584,36 @@ export function PropertiesPanel({
       )}
 
       <EditorSection title={t('item_editor.tags.title')} testId={`${testId}-tags`}>
-        <TagsInput tags={draft.tags} disabled={disabled} onChange={tags => dispatch({ type: 'setTags', tags })} />
+        <TagsInput
+          tags={draft.tags}
+          disabled={disabled}
+          inputRef={tagsFieldRef}
+          onChange={tags => dispatch({ type: 'setTags', tags })}
+        />
         {editable && campaign && (
           <S.SectionNote data-testid={`${testId}-campaign-hint`}>
-            {t('item_editor.tags.campaign_hint', { tag: campaign.mainTag, name: campaign.name })}
+            {rich('item_editor.tags.campaign_hint', {
+              tag: campaign.mainTag,
+              name: campaign.name,
+              hl: chunks =>
+                draft.tags.includes(campaign.mainTag) ? (
+                  <strong>{chunks}</strong>
+                ) : (
+                  <Tooltip content={t('item_editor.tags.campaign_add')} asChild describeChild>
+                    <S.CampaignTag
+                      type="button"
+                      data-testid={`${testId}-campaign-tag`}
+                      onClick={() => {
+                        dispatch({ type: 'setTags', tags: [...draft.tags, campaign.mainTag] })
+                        // The button unmounts once the tag is on the draft, so keyboard focus would fall to the body.
+                        tagsFieldRef.current?.focus()
+                      }}
+                    >
+                      {chunks}
+                    </S.CampaignTag>
+                  </Tooltip>
+                )
+            })}
           </S.SectionNote>
         )}
       </EditorSection>
@@ -568,15 +652,20 @@ export function PropertiesPanel({
       )}
 
       <S.IntercomClearance aria-hidden />
-      {editable && isDirty && (
+      {/* An invalid mapping draft never reaches the item, so it doesn't make it dirty: Revert must still undo it. */}
+      {editable && (isDirty || mappingInvalid) && (
         <S.Footer data-testid={`${testId}-footer`}>
           <Button
             type="button"
             variant="secondary"
             size="sm"
-            disabled={!isDirty || isSaving}
+            disabled={!(isDirty || mappingInvalid) || isSaving}
             data-testid={`${testId}-revert`}
-            onClick={onRevert}
+            onClick={() => {
+              setMappingInvalid(false)
+              setRevision(current => current + 1)
+              onRevert()
+            }}
           >
             {t('item_editor.revert')}
           </Button>
@@ -584,7 +673,14 @@ export function PropertiesPanel({
             type="button"
             variant="primary"
             size="sm"
-            disabled={!isDirty || nameInvalid || draft.name.trim() === ''}
+            disabled={
+              !isDirty ||
+              nameInvalid ||
+              descriptionInvalid ||
+              categoryMissing ||
+              mappingInvalid ||
+              draft.name.trim() === ''
+            }
             loading={isSaving}
             data-testid={`${testId}-save`}
             onClick={onSave}
@@ -620,7 +716,6 @@ export function PropertiesPanel({
         <DeleteItemModal
           item={item}
           isDeleting={deleteItem.isPending}
-          error={deleteItem.isError}
           onCancel={() => {
             setDeleteOpen(false)
             deleteItem.reset()

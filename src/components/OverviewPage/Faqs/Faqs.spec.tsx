@@ -72,4 +72,18 @@ describe('Faqs', () => {
     expect(track).toHaveBeenCalledWith('Click', { place: 'Creators Faqs', title: 'faqs-cta' })
     expect(track).toHaveBeenCalledWith('Section Viewed', { section_viewed: 'Creators Faqs', mobile: false })
   })
+
+  it("describes every question and answer to search engines in the visitor's language", () => {
+    useLocale.setState({ locale: 'es' })
+    renderSection()
+    const data = JSON.parse(screen.getByTestId('overview-faqs-structured-data').textContent ?? '')
+    expect(data['@type']).toBe('FAQPage')
+    expect(data.mainEntity).toHaveLength(screen.getAllByTestId('overview-faq').length)
+    expect(data.mainEntity[0]).toMatchObject({
+      '@type': 'Question',
+      name: '¿Qué es Decentraland?',
+      acceptedAnswer: { '@type': 'Answer' }
+    })
+    expect(data.mainEntity[0].acceptedAnswer.text).not.toBe('')
+  })
 })

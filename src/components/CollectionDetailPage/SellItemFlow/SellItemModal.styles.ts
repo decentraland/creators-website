@@ -438,6 +438,17 @@ export const OptionNote = styled.li`
   color: ${theme.colors.gray4};
 `
 
+export const YouTag = styled.span`
+  flex: none;
+  padding: 1px 6px;
+  border-radius: ${theme.radius.chip};
+  background: ${theme.colors.chipDark};
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: ${theme.colors.white};
+`
+
 export const OptionAddress = styled.span`
   margin-left: auto;
   flex: none;

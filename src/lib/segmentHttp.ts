@@ -36,6 +36,17 @@ function timezone(): string | undefined {
   }
 }
 
+/** `context.campaign` as analytics.js derives it: every `utm_*` param, unprefixed, `campaign` as `name`. */
+export function campaignContext(search: string): Props | undefined {
+  const campaign: Props = {}
+  for (const [key, value] of new URLSearchParams(search)) {
+    if (!key.startsWith('utm_') || key.length <= 4) continue
+    const name = key.slice(4)
+    campaign[name === 'campaign' ? 'name' : name] = value
+  }
+  return Object.keys(campaign).length ? campaign : undefined
+}
+
 function messageId(): string {
   const id =
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -56,6 +67,7 @@ export function segmentBody(input: SegmentHttpInput): Props {
   const timestamp = new Date().toISOString()
   const agentData = userAgentData()
   const zone = timezone()
+  const campaign = campaignContext(input.search)
   return {
     writeKey: input.writeKey,
     ...(input.call.type === 'track' ? { event: input.call.event } : { name: input.call.name }),
@@ -71,6 +83,7 @@ export function segmentBody(input: SegmentHttpInput): Props {
       // Without it Segment treats a call with a custom `library` as server-side and drops the client IP.
       direct: true,
       page,
+      ...(campaign ? { campaign } : {}),
       userAgent: navigator.userAgent,
       ...(agentData ? { userAgentData: agentData } : {}),
       locale: navigator.language,

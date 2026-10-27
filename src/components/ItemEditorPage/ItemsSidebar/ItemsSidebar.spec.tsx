@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { BodyShape } from '@dcl/schemas'
@@ -96,6 +96,13 @@ describe('ItemsSidebar', () => {
     expect(screen.getByTestId('items-sidebar-row-hat')).not.toHaveAttribute('data-unavailable')
   })
 
+  it('flags wearables made for a single body shape', () => {
+    renderSidebar()
+    expect(screen.getByTestId('items-sidebar-shape-dress-trigger')).toBeInTheDocument()
+    expect(screen.queryByTestId('items-sidebar-shape-hat-trigger')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('items-sidebar-shape-dance-trigger')).not.toBeInTheDocument()
+  })
+
   it('toggles playback when the selected, dressed emote row is clicked again', async () => {
     const props = renderSidebar({ selectedId: 'dance', dressedIds: ['dance'], isPlaying: true })
     expect(screen.getByTestId('items-sidebar-playing-dance')).toBeInTheDocument()
@@ -119,11 +126,12 @@ describe('ItemsSidebar', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/collections/c1')
   })
 
-  it('hides the header actions in review mode and shows them to editors of a draft', () => {
+  it('hides the header actions and the back link in review mode, where the review bar has them', () => {
     renderSidebar({ mode: 'review', onRename: vi.fn() })
     expect(screen.queryByTestId('items-sidebar-add-items')).not.toBeInTheDocument()
     expect(screen.queryByTestId('items-sidebar-rename')).not.toBeInTheDocument()
-    expect(screen.getByTestId('items-sidebar-back')).toHaveAttribute('href', '/curation')
+    expect(screen.queryByTestId('items-sidebar-back')).not.toBeInTheDocument()
+    expect(screen.getByTestId('items-sidebar-collection')).toHaveTextContent('Pirate Hats')
   })
 
   it('offers renaming a draft collection from its title instead of linking away', async () => {
@@ -150,5 +158,29 @@ describe('ItemsSidebar', () => {
   it('shows the empty copy for a collection without items', () => {
     renderSidebar({ items: [] })
     expect(screen.getByTestId('items-sidebar-empty')).toBeInTheDocument()
+  })
+
+  it('sets apart, in review, the items sent for review from the rest, marking new, changed and opened ones', () => {
+    const changed = { ...make('cap', ItemType.WEARABLE), isApproved: true }
+    renderSidebar({
+      mode: 'review',
+      items: [hat, changed, femaleOnly],
+      review: { pendingIds: new Set(['hat', 'cap']), reviewedIds: new Set(['cap']) }
+    })
+
+    const toReview = screen.getByTestId('items-sidebar-to_review')
+    expect(within(toReview).getByTestId('items-sidebar-tag-hat')).toHaveTextContent('New')
+    expect(within(toReview).getByTestId('items-sidebar-tag-cap')).toHaveTextContent('Changes')
+    expect(within(toReview).getByTestId('items-sidebar-reviewed-cap')).toBeInTheDocument()
+    expect(within(toReview).queryByTestId('items-sidebar-reviewed-hat')).not.toBeInTheDocument()
+    const rest = screen.getByTestId('items-sidebar-rest')
+    expect(within(rest).getByTestId('items-sidebar-row-dress')).toBeInTheDocument()
+    expect(within(rest).queryByTestId('items-sidebar-tag-dress')).not.toBeInTheDocument()
+  })
+
+  it('keeps nothing but the thumbnail in a collapsed row, so every thumbnail sits centered', () => {
+    renderSidebar({ collapsed: true })
+    const row = screen.getByTestId('items-sidebar-row-dress')
+    expect(within(row).queryByTestId('items-sidebar-shape-dress-trigger')).not.toBeInTheDocument()
   })
 })

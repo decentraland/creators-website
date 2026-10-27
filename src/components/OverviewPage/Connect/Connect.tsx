@@ -1,10 +1,12 @@
 import { useCallback } from 'react'
 import { useTranslation } from '~/intl'
+import { contentfulImage } from '~/lib/contentfulImage'
 import { OverviewSection, trackClick } from '~/lib/overviewAnalytics'
 import discordIcon from '~/assets/overview/discord.svg'
 import { AnimatedSection } from '../AnimatedSection'
 import { Carousel } from '../Carousel'
 import { DISCORD_URL, testimonials, type Testimonial } from '../data'
+import { highlight, plainText } from '../highlight'
 import * as S from './Connect.styles'
 
 const AUTOPLAY_MS = 5000
@@ -12,7 +14,7 @@ const AUTOPLAY_MS = 5000
 const keyExtractor = (card: Testimonial) => card.id
 
 const Connect = () => {
-  const { t } = useTranslation()
+  const { t, rich } = useTranslation()
   const renderCard = useCallback(
     (card: Testimonial) => (
       <S.Card
@@ -26,7 +28,7 @@ const Connect = () => {
       >
         <S.Quote>&ldquo;{t(`overview.connect.cards.${card.id}`)}&rdquo;</S.Quote>
         <S.Author>
-          <img src={card.image} alt="" loading="lazy" />
+          <img src={contentfulImage(card.image, { width: 40 })} alt="" width={40} height={40} loading="lazy" />
           <S.AuthorName>{card.name}</S.AuthorName>
         </S.Author>
       </S.Card>
@@ -37,14 +39,12 @@ const Connect = () => {
   return (
     <AnimatedSection section={OverviewSection.CONNECT}>
       <S.Section data-testid="overview-connect">
-        <S.Title>
-          <span>{t('overview.connect.title_highlight')}</span> {t('overview.connect.title')}
-        </S.Title>
+        <S.Title>{rich('overview.connect.title', highlight)}</S.Title>
         <Carousel
           items={testimonials}
           renderItem={renderCard}
           keyExtractor={keyExtractor}
-          label={t('overview.connect.title')}
+          label={t('overview.connect.title', plainText)}
           slideWidth={500}
           autoplayMs={AUTOPLAY_MS}
           alignItems="center"

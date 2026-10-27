@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { TranslationProvider } from '~/intl'
 import { ItemType, type Item } from '~/lib/items'
 import { type ItemListing } from '~/lib/listings'
+import { ItemRowStatus } from '~/lib/itemSync'
 import { ValidationSeverity } from '~/lib/validation'
 import { ItemListRow } from './ItemListRow'
 
@@ -52,6 +53,41 @@ const emote: Partial<Item> = {
 }
 
 describe('ItemListRow', () => {
+  it('has no Status column until the page asks for it', () => {
+    renderRow({}, { syncStatus: ItemRowStatus.MODIFIED })
+    expect(screen.queryByTestId('item-row-status')).not.toBeInTheDocument()
+  })
+
+  it('explains a modified item in an (i) tooltip inside the pill', async () => {
+    renderRow({}, { withStatus: true, syncStatus: ItemRowStatus.MODIFIED })
+    const pill = screen.getByTestId('item-sync-status')
+    expect(pill).toHaveAttribute('data-status', 'modified')
+    expect(pill).toHaveTextContent('Modified')
+
+    await userEvent.hover(screen.getByTestId('item-sync-status-hint-trigger'))
+    expect(await screen.findByTestId('item-sync-status-hint')).toHaveTextContent(/send them for review/i)
+  })
+
+  it('flags an item whose files are not live, with the in-world warning in its tooltip', async () => {
+    renderRow({}, { withStatus: true, syncStatus: ItemRowStatus.MISSING })
+    const pill = screen.getByTestId('item-sync-status')
+    expect(pill).toHaveAttribute('data-status', 'missing')
+    expect(pill).toHaveTextContent('Incomplete')
+    await userEvent.hover(screen.getByTestId('item-sync-status-hint-trigger'))
+    expect(await screen.findByTestId('item-sync-status-hint')).toHaveTextContent(/may not work in-world/)
+  })
+
+  it('shows a plain published pill with nothing to explain, and leaves the cell blank while the sync is unknown', () => {
+    const { unmount } = renderRow({}, { withStatus: true, syncStatus: ItemRowStatus.PUBLISHED })
+    expect(screen.getByTestId('item-sync-status')).toHaveTextContent('Published')
+    expect(screen.queryByTestId('item-sync-status-hint-trigger')).not.toBeInTheDocument()
+    unmount()
+
+    renderRow({}, { withStatus: true, syncStatus: null })
+    expect(screen.getByTestId('item-row-status')).toHaveAttribute('data-empty', 'true')
+    expect(screen.queryByTestId('item-sync-status')).not.toBeInTheDocument()
+  })
+
   it('shows name, body shape, category and rarity with its supply', () => {
     renderRow()
     expect(screen.getByText('Pirate Hat')).toBeInTheDocument()
@@ -117,6 +153,32 @@ describe('ItemListRow', () => {
     expect(price.previousElementSibling).toBe(screen.getByTestId('item-row-rarity'))
     expect(screen.getByTestId('item-row-sales')).toHaveTextContent('15/100')
     expect(screen.getByTestId('item-row-sale-status')).toHaveTextContent(/on sale/i)
+  })
+
+  it('shows the discounted price, the percent off and the struck-through original while a discount reaches it', () => {
+    renderRow({ tokenId: '3' }, { withMarket: true, listing: creditsListing, discountPpm: 300_000 })
+    const price = screen.getByTestId('item-row-discounted-price')
+    expect(price).toHaveTextContent('-30%')
+    expect(price).toHaveTextContent('350')
+    expect(price.querySelector('s')).toHaveTextContent('500')
+  })
+
+  it('shows a MANA price discounted the way the contract charges it', () => {
+    renderRow({ tokenId: '3' }, { withMarket: true, listing: manaListing, discountPpm: 125_000 })
+    const price = screen.getByTestId('item-row-discounted-price')
+    expect(price).toHaveTextContent('-12.5%')
+    expect(price).toHaveTextContent('4.38')
+  })
+
+  // A cheap item can round the discount away: a badge over an unchanged price would read as a broken sale.
+  it('shows no discount when it does not change the price', () => {
+    renderRow({ tokenId: '3' }, { withMarket: true, listing: { ...creditsListing, credits: 1 }, discountPpm: 300_000 })
+    expect(screen.queryByTestId('item-row-discounted-price')).not.toBeInTheDocument()
+  })
+
+  it('shows the plain price when no running discount reaches the listing', () => {
+    renderRow({ tokenId: '3' }, { withMarket: true, listing: creditsListing })
+    expect(screen.queryByTestId('item-row-discounted-price')).not.toBeInTheDocument()
   })
 
   it('shows a MANA price for a listing made from the legacy marketplace', () => {

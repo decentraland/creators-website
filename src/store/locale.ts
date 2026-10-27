@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 const KEY = 'creators:locale'
 
-export const LOCALES = ['en', 'es'] as const
+export const LOCALES = ['en', 'es', 'zh'] as const
 
 export type Locale = (typeof LOCALES)[number]
 
@@ -14,7 +14,9 @@ export const getPreferredLocale = (): Locale => {
   } catch {
     // restricted storage → fall through to browser language
   }
-  return navigator.language?.toLowerCase().startsWith('es') ? 'es' : 'en'
+  // Primary subtag only (`-` or `_`): zh-TW/zh-HK get Simplified, the closest we have, and `zha` doesn't match.
+  const primary = navigator.language?.toLowerCase().split(/[-_]/)[0] ?? ''
+  return LOCALES.find(locale => locale === primary) ?? 'en'
 }
 
 type LocaleState = {

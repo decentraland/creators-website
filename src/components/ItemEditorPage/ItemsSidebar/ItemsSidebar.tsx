@@ -3,10 +3,15 @@ import { type BodyShape } from '@dcl/schemas'
 import {
   Add as AddIcon,
   ArrowBackIosNew as BackIcon,
+  CheckCircle as ReviewedIcon,
+  Inventory2Outlined as RestIcon,
+  RateReviewOutlined as ToReviewIcon,
   GraphicEq as PlayingIcon,
   KeyboardDoubleArrowLeft as CollapseIcon,
   KeyboardDoubleArrowRight as ExpandIcon,
   Edit as EditIcon,
+  Female as FemaleIcon,
+  Male as MaleIcon,
   Visibility as DressedIcon,
   VisibilityOff as UndressedIcon
 } from '@mui/icons-material'
@@ -19,9 +24,9 @@ import { useScrollFades } from '~/hooks/useScrollFades'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
 import { getContentsStorageUrl } from '~/lib/builder'
-import { type Collection, type CollectionDisplayStatus } from '~/lib/collections'
+import { isLinkedCollection, type Collection, type CollectionDisplayStatus } from '~/lib/collections'
 import { groupItemsByType, hasRepresentationFor, type EditorMode } from '~/lib/itemEditor'
-import { ItemType, type Item } from '~/lib/items'
+import { BodyShapeType, ItemType, getItemBodyShapeType, isSmartWearable, type Item } from '~/lib/items'
 import { EditorSection } from '../EditorSection'
 import * as S from './ItemsSidebar.styles'
 
@@ -50,6 +55,11 @@ type Props = {
   onToggleDressed: (item: Item) => void
   /** Clicking the selected, dressed emote row toggles its playback. */
   onToggleEmotePlay: (item: Item) => void
+  /**
+   * A linked collection under review: splits the list into the items this review is about (new ones and pushed
+   * changes) and the rest of the collection, ticking the ones the curator has opened.
+   */
+  review?: { pendingIds: ReadonlySet<string>; reviewedIds: ReadonlySet<string> }
   testId?: string
 }
 
@@ -72,6 +82,7 @@ export function ItemsSidebar({
   onLeave,
   onToggleDressed,
   onToggleEmotePlay,
+  review,
   testId = 'items-sidebar'
 }: Props) {
   const { t } = useTranslation()
@@ -84,8 +95,19 @@ export function ItemsSidebar({
     row?.scrollIntoView?.({ block: 'nearest' })
   }, [selectedId, testId])
   const groups = useMemo(() => groupItemsByType(items), [items])
+  const reviewGroups = useMemo(
+    () =>
+      review && review.pendingIds.size > 0
+        ? {
+            toReview: items.filter(item => review.pendingIds.has(item.id)),
+            rest: items.filter(item => !review.pendingIds.has(item.id))
+          }
+        : null,
+    [review, items]
+  )
   const grouped = groups.wearables.length > 0 && groups.emotes.length > 0
-  const backTo = mode === 'review' ? '/curation' : `/collections/${collection.id}`
+  const backTo = `/collections/${collection.id}`
+  const showBack = mode === 'edit'
   const showAddItems = mode === 'edit' && canAddItems
 
   function onRowClick(item: Item) {
@@ -95,7 +117,7 @@ export function ItemsSidebar({
         ITEM_ID: item.tokenId ?? null,
         ITEM_TYPE: item.type,
         ITEM_NAME: item.name,
-        ITEM_IS_THIRD_PARTY: false
+        ITEM_IS_THIRD_PARTY: isLinkedCollection(collection)
       })
     }
     if (item.type === ItemType.EMOTE && item.id === selectedId && dressedIds.includes(item.id)) {
@@ -105,11 +127,20 @@ export function ItemsSidebar({
     onSelect(item)
   }
 
+  /** Wearables made for one body shape only; emotes and smart wearables fit every avatar. */
+  function singleBodyShape(item: Item): BodyShapeType.MALE | BodyShapeType.FEMALE | null {
+    if (item.type !== ItemType.WEARABLE || isSmartWearable(item)) return null
+    const type = getItemBodyShapeType(item)
+    return type === BodyShapeType.MALE || type === BodyShapeType.FEMALE ? type : null
+  }
+
   function renderRow(item: Item) {
     const available = hasRepresentationFor(item, bodyShape)
     const dressed = dressedIds.includes(item.id)
     const thumbnail = item.contents[item.thumbnail]
     const playing = item.type === ItemType.EMOTE && dressed && isPlaying
+    const shape = singleBodyShape(item)
+    const shapeLabel = shape ? t(`item_editor.sidebar.${shape}_only`) : null
     const row = (
       <S.Row
         key={item.id}
@@ -129,12 +160,36 @@ export function ItemsSidebar({
             <ItemThumbnail src={thumbnail ? getContentsStorageUrl(thumbnail) : null} rarity={item.rarity} />
           </S.Thumb>
           <S.RowName title={item.name}>{item.name}</S.RowName>
+          {review?.pendingIds.has(item.id) && (
+            <>
+              {/* An item already live comes back with changes; any other is new to the collection. */}
+              <S.RowTag data-testid={`${testId}-tag-${item.id}`}>
+                {t(item.isApproved ? 'item_editor.sidebar.review_tag.changes' : 'item_editor.sidebar.review_tag.new')}
+              </S.RowTag>
+              {review.reviewedIds.has(item.id) && (
+                <S.RowGlyph
+                  data-reviewed
+                  role="img"
+                  aria-label={t('item_editor.sidebar.reviewed')}
+                  data-testid={`${testId}-reviewed-${item.id}`}
+                >
+                  <ReviewedIcon />
+                </S.RowGlyph>
+              )}
+            </>
+          )}
           {playing && (
             <S.RowGlyph data-playing data-testid={`${testId}-playing-${item.id}`}>
               <PlayingIcon />
             </S.RowGlyph>
           )}
         </S.RowButton>
+        {/* Collapsed, the row's own tooltip names the shape; this one's trigger would still take room beside the thumb. */}
+        {shape && !collapsed && (
+          <Tooltip content={shapeLabel} testId={`${testId}-shape-${item.id}`}>
+            <S.RowGlyph data-shape={shape}>{shape === BodyShapeType.MALE ? <MaleIcon /> : <FemaleIcon />}</S.RowGlyph>
+          </Tooltip>
+        )}
         <S.DressButton
           type="button"
           aria-pressed={dressed}
@@ -147,9 +202,9 @@ export function ItemsSidebar({
         </S.DressButton>
       </S.Row>
     )
-    // Collapsed rows have no visible name, so the tooltip carries it (and the body-shape note when relevant).
+    // Collapsed rows have no visible name or glyph, so the tooltip carries them (and the body-shape note when relevant).
     const note = available ? null : t('item_editor.sidebar.no_representation')
-    const content = collapsed ? (note ? `${item.name} · ${note}` : item.name) : note
+    const content = collapsed ? [item.name, shapeLabel, note].filter(Boolean).join(' · ') : note
     if (content === null) return row
     return (
       <Tooltip
@@ -177,31 +232,47 @@ export function ItemsSidebar({
     )
   }
 
+  function renderReviewGroup(kind: 'to_review' | 'rest', groupItems: Item[]) {
+    return (
+      <EditorSection
+        title={t(`item_editor.sidebar.${kind}`, { count: groupItems.length })}
+        icon={kind === 'to_review' ? <ToReviewIcon /> : <RestIcon />}
+        iconOnly={collapsed}
+        testId={`${testId}-${kind}`}
+      >
+        <S.Rows>{groupItems.map(renderRow)}</S.Rows>
+      </EditorSection>
+    )
+  }
+
   const toggleLabel = t(collapsed ? 'item_editor.sidebar.expand' : 'item_editor.sidebar.collapse')
 
   return (
     <S.Shell>
       <S.Wrap data-testid={testId} data-collapsed={collapsed || undefined}>
         <S.Header>
+          {/* The review bar carries its own back link, so the review sidebar only names the collection. */}
           <S.HeaderRow>
-            <Tooltip
-              content={t('item_editor.sidebar.back')}
-              placement="right"
-              asChild
-              testId={`${testId}-back-tooltip`}
-            >
-              <S.IconLink
-                to={backTo}
-                aria-label={t('item_editor.sidebar.back')}
-                data-testid={`${testId}-back`}
-                // A router link never reaches the unload guard, so leaving is asked about here.
-                onClick={event => {
-                  if (onLeave && !onLeave(backTo)) event.preventDefault()
-                }}
+            {showBack && (
+              <Tooltip
+                content={t('item_editor.sidebar.back')}
+                placement="right"
+                asChild
+                testId={`${testId}-back-tooltip`}
               >
-                <BackIcon fontSize="small" />
-              </S.IconLink>
-            </Tooltip>
+                <S.IconLink
+                  to={backTo}
+                  aria-label={t('item_editor.sidebar.back')}
+                  data-testid={`${testId}-back`}
+                  // A router link never reaches the unload guard, so leaving is asked about here.
+                  onClick={event => {
+                    if (onLeave && !onLeave(backTo)) event.preventDefault()
+                  }}
+                >
+                  <BackIcon fontSize="small" />
+                </S.IconLink>
+              </Tooltip>
+            )}
             <S.CollectionName>
               <S.TitleGroup>
                 <S.CollectionTitle title={collection.name} data-testid={`${testId}-collection`}>
@@ -218,7 +289,10 @@ export function ItemsSidebar({
                   </S.RenameButton>
                 )}
               </S.TitleGroup>
-              {collectionStatus && <CollectionStatusPill collection={collection} status={collectionStatus} />}
+              {/* The review bar shows the curation state instead. */}
+              {mode === 'edit' && collectionStatus && (
+                <CollectionStatusPill collection={collection} status={collectionStatus} />
+              )}
             </S.CollectionName>
           </S.HeaderRow>
           {showAddItems && (
@@ -245,7 +319,7 @@ export function ItemsSidebar({
                 <Button
                   type="button"
                   variant="secondary"
-                  size="sm"
+                  size="md"
                   data-testid={`${testId}-add-items`}
                   onClick={onAddItems}
                 >
@@ -265,6 +339,11 @@ export function ItemsSidebar({
             </S.Rows>
           ) : items.length === 0 ? (
             !collapsed && <S.Empty data-testid={`${testId}-empty`}>{t('item_editor.sidebar.empty')}</S.Empty>
+          ) : reviewGroups ? (
+            <>
+              {renderReviewGroup('to_review', reviewGroups.toReview)}
+              {reviewGroups.rest.length > 0 && renderReviewGroup('rest', reviewGroups.rest)}
+            </>
           ) : grouped ? (
             <>
               {renderGroup('wearables', groups.wearables)}

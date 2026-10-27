@@ -5,6 +5,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NO_EXPIRATION, formatDateValue, minExpirationDate, parseExpirationDate } from '~/lib/sales'
 import { SellItemModal } from './SellItemModal'
+import { useLocale } from '~/store/locale'
 import { ADDRESS, FRIEND, Providers, item, makeSession } from './testUtils'
 
 vi.mock('~/lib/featureFlags', async () => {
@@ -42,6 +43,7 @@ const price = () => screen.getByTestId('sell-price-input')
 beforeEach(() => {
   vi.clearAllMocks()
   rate.data = undefined
+  useLocale.setState({ locale: 'en' })
 })
 
 describe('SellItemModal', () => {
@@ -209,6 +211,19 @@ describe('SellItemModal', () => {
     await userEvent.click(screen.getByTestId('sell-expiration-toggle'))
     await userEvent.click(submit())
     expect(onSubmit.mock.calls[1][1]).toMatchObject({ expiresAt: NO_EXPIRATION })
+  })
+
+  it('formats the expiration date in the active language', async () => {
+    useLocale.setState({ locale: 'es' })
+    renderModal()
+    await userEvent.click(screen.getByTestId('sell-expiration-toggle'))
+    const date = screen.getByTestId('sell-expiration-date')
+    expect(date).toHaveAttribute('placeholder', 'DD/MM/AAAA')
+
+    const tomorrow = minExpirationDate()
+    const ddmmyyyy = `${String(tomorrow.getDate()).padStart(2, '0')}/${String(tomorrow.getMonth() + 1).padStart(2, '0')}/${tomorrow.getFullYear()}`
+    fireEvent.change(date, { target: { value: ddmmyyyy } })
+    expect(date).toHaveValue(ddmmyyyy)
   })
 
   it('restores a previous attempt and locks the form while a submit is in flight', () => {

@@ -66,6 +66,14 @@ export const Root = styled.button`
     background: ${theme.colors.overlayHover};
   }
 
+  &[data-variant='glass'] {
+    background: ${theme.colors.glassFaint};
+    color: ${theme.colors.softWhite};
+  }
+  &[data-variant='glass']:hover${enabled} {
+    background: ${theme.colors.glass};
+  }
+
   &[data-size='sm'] {
     height: 36px;
     min-width: 0;
@@ -125,6 +133,8 @@ export const Root = styled.button`
     padding: 24px 48px;
     border-radius: ${theme.radius.input};
     font-size: 19.89px;
+    /* Bold makes this large text, whose 3:1 contrast minimum white on the brand red passes. */
+    font-weight: 700;
     line-height: 31.82px;
     letter-spacing: 0.61px;
   }

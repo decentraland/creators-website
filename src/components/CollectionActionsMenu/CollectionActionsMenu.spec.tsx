@@ -209,6 +209,11 @@ describe('CollectionActionsMenu', () => {
       expect(screen.queryByTestId('collection-actions')).not.toBeInTheDocument()
     })
 
+    it('never offers Preview in World, since the explorer is desktop-only', () => {
+      renderMenu(draft, OWNER, { onPreviewInWorld: vi.fn() })
+      expect(screen.queryByTestId('collection-actions')).not.toBeInTheDocument()
+    })
+
     it('offers Preview items on a small screen, even for a draft', async () => {
       const onPreviewItems = vi.fn()
       renderMenu(draft, OWNER, { onPreviewItems })
@@ -226,6 +231,32 @@ describe('CollectionActionsMenu', () => {
       await userEvent.click(screen.getByTestId('send-items-action'))
       expect(onSendItems).toHaveBeenCalled()
     })
+
+    it('carries Create discount on a small screen, where the header button is hidden', async () => {
+      const onCreateDiscount = vi.fn()
+      renderMenu({ ...draft, isPublished: true }, OWNER, { onCreateDiscount })
+      await openMenu()
+      await userEvent.click(screen.getByTestId('create-discount-action'))
+      expect(onCreateDiscount).toHaveBeenCalled()
+    })
+
+    it('opens the forum post on a small screen, where the header button is hidden', async () => {
+      renderMenu({ ...draft, isPublished: true }, OWNER, { forumLink: 'https://forum.decentraland.org/t/hats/77' })
+      await openMenu()
+      await userEvent.click(screen.getByTestId('forum-post-action'))
+      expect(openExternal).toHaveBeenCalledWith('https://forum.decentraland.org/t/hats/77')
+    })
+  })
+
+  it('leads with Preview in World on desktop and launches it', async () => {
+    stubViewport(false)
+    const onPreviewInWorld = vi.fn()
+    renderMenu(draft, OWNER, { onPreviewInWorld })
+    const menu = await openMenu()
+    const ids = Array.from(menu.querySelectorAll('[role="menuitem"]')).map(el => el.getAttribute('data-testid'))
+    expect(ids).toEqual(['preview-in-world-action', 'delete-collection'])
+    await userEvent.click(screen.getByTestId('preview-in-world-action'))
+    expect(onPreviewInWorld).toHaveBeenCalled()
   })
 
   it('never shows Preview items on desktop, where the Open Editor button covers it', async () => {
@@ -235,6 +266,13 @@ describe('CollectionActionsMenu', () => {
     expect(screen.queryByTestId('preview-items-action')).not.toBeInTheDocument()
   })
 
+  it('never shows Create discount on desktop, where the header button covers it', async () => {
+    stubViewport(false)
+    renderMenu({ ...draft, isPublished: true }, OWNER, { onCreateDiscount: vi.fn() })
+    await openMenu()
+    expect(screen.queryByTestId('create-discount-action')).not.toBeInTheDocument()
+  })
+
   it('never shows Send Items on desktop, where the header button covers it', async () => {
     stubViewport(false)
     renderMenu({ ...draft, isPublished: true }, OWNER, { onSendItems: vi.fn() })
@@ -242,19 +280,26 @@ describe('CollectionActionsMenu', () => {
     expect(screen.queryByTestId('send-items-action')).not.toBeInTheDocument()
   })
 
-  it('offers only Edit in Builder for a linked collection, opening it in the legacy builder', async () => {
-    renderMenu({ ...draft, urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats', isPublished: true })
+  it('lets a manager copy or edit the URN of a draft linked collection and delete it', async () => {
+    const onEditUrn = vi.fn()
+    renderMenu({ ...draft, urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats' }, OWNER, { onEditUrn })
     await openMenu()
-    expect(screen.queryByTestId('copy-urn')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('delete-collection')).not.toBeInTheDocument()
+    expect(screen.getByTestId('copy-urn')).toBeInTheDocument()
+    expect(screen.getByTestId('delete-collection')).toBeInTheDocument()
+    expect(screen.queryByTestId('copy-address')).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByTestId('edit-in-builder'))
-    expect(openExternal).toHaveBeenCalledWith(expect.stringMatching(/\/builder\/thirdPartyCollections\/c1$/))
+    await userEvent.click(screen.getByTestId('edit-collection-urn'))
+    expect(onEditUrn).toHaveBeenCalled()
   })
 
-  it('offers nothing for a linked collection on small screens, since the builder is desktop-only', () => {
-    stubViewport(true)
-    renderMenu({ ...draft, urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats', isPublished: true })
-    expect(screen.queryByTestId('collection-actions')).not.toBeInTheDocument()
+  it('locks the URN and the delete once the linked collection has published items', async () => {
+    renderMenu({ ...draft, urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats', isPublished: true }, OWNER, {
+      onEditUrn: vi.fn()
+    })
+    await openMenu()
+    expect(screen.getByTestId('copy-urn')).toBeInTheDocument()
+    expect(screen.queryByTestId('copy-address')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('edit-collection-urn')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('delete-collection')).not.toBeInTheDocument()
   })
 })

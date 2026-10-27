@@ -2,15 +2,17 @@ import { useMemo } from 'react'
 import { Button } from '~/components/Button'
 import { PlayIcon } from '~/components/Icons'
 import { englishMessage, useTranslation } from '~/intl'
+import { contentfulImage } from '~/lib/contentfulImage'
 import { formatLongDate } from '~/lib/time'
 import { OverviewSection, trackClick } from '~/lib/overviewAnalytics'
 import { useLocale } from '~/store/locale'
 import { AnimatedSection } from '../AnimatedSection'
 import { SUBMIT_TUTORIAL_URL, YOUTUBE_CHANNEL_URL, learnCards, learnVideo } from '../data'
+import { highlight } from '../highlight'
 import * as S from './Learn.styles'
 
 const Learn = () => {
-  const { t } = useTranslation()
+  const { t, rich } = useTranslation()
   const locale = useLocale(s => s.locale)
   const cards = useMemo(
     () =>
@@ -27,9 +29,7 @@ const Learn = () => {
   return (
     <AnimatedSection section={OverviewSection.LEARN}>
       <S.Section data-testid="overview-learn">
-        <S.Title>
-          <span>{t('overview.learn.title_highlight')}</span> {t('overview.learn.title')}
-        </S.Title>
+        <S.Title>{rich('overview.learn.title', highlight)}</S.Title>
         <S.Rail>
           {cards.map(card => (
             <S.VideoCard
@@ -49,7 +49,13 @@ const Learn = () => {
               <S.VideoInfo>
                 <S.VideoMeta>
                   <S.VideoAuthor>
-                    <img src={card.authorImage} alt="" loading="lazy" />
+                    <img
+                      src={contentfulImage(card.authorImage, { width: 40 })}
+                      alt=""
+                      width={40}
+                      height={40}
+                      loading="lazy"
+                    />
                     <span>{card.author}</span>
                   </S.VideoAuthor>
                   <S.VideoDate>{card.date}</S.VideoDate>

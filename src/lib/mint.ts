@@ -2,10 +2,12 @@ import { ContractName, getContract } from 'decentraland-transactions'
 import { type ContractCall } from '~/lib/auth'
 import { hasBeenApproved, type Collection } from '~/lib/collections'
 import { getItemSales, type Item } from '~/lib/items'
-import { SellItemError } from '~/lib/sales'
+import { SellItemError, isValidAddress } from '~/lib/sales'
 
-// Same cap as the legacy builder's MAX_NFTS_PER_MINT: issueTokens runs out of gas past it.
-export const MAX_ITEMS_PER_SEND = 50
+// Bor caps a transaction at 2^25 gas (EIP-7825 as of the Madhugiri fork, live on Polygon and Amoy).
+// issueTokens costs ~157k gas per copy to never-held recipients (estimated on Amoy, 2026-10): 100 copies
+// is ~15.7M, under half the cap even with a wallet padding the estimate. The legacy builder caps at 50.
+export const MAX_ITEMS_PER_SEND = 100
 
 /** One bundle: every recipient gets `amounts[itemId]` copies of each item. */
 export type Transfer = {
@@ -29,6 +31,45 @@ export function canSendCollectionItems(collection: Collection, address: string |
   return collection.owner.toLowerCase() === target || collection.minters.some(m => m.toLowerCase() === target)
 }
 
+export type RecipientList = { added: string[]; invalid: number; repeated: number; cut: number }
+
+// A `0x` hex run on its own, whatever its length: a mistyped address still counts as one that didn't make it.
+// (No lookbehind: Safari before 16.4 can't parse one, and a regex it can't parse breaks the whole module.)
+const HEX_TOKEN = /(?:^|[^0-9a-zA-Z])(0x[0-9a-fA-F]+)(?![0-9a-zA-Z])/g
+
+function hexTokens(text: string): string[] {
+  return [...text.matchAll(HEX_TOKEN)].map(match => match[1])
+}
+
+/** Whether the text carries at least one address, as a pasted list does. */
+export function holdsAddresses(text: string): boolean {
+  return hexTokens(text).some(token => token.length === 42)
+}
+
+/**
+ * The wallets in a pasted list (a spreadsheet column, comma or line separated, whatever else is around them):
+ * every address token, lowercased and deduped. `invalid` counts the `0x` tokens that aren't an address (wrong
+ * length or checksum), `repeated` the repeats, including those already in `existing`, and `cut` the valid
+ * ones left out to keep `existing` plus `added` within `max`.
+ */
+export function parseRecipientList(text: string, existing: string[] = [], max = MAX_ITEMS_PER_SEND): RecipientList {
+  const seen = new Set(existing.map(address => address.toLowerCase()))
+  const added: string[] = []
+  let invalid = 0
+  let repeated = 0
+  for (const token of hexTokens(text)) {
+    const address = token.toLowerCase()
+    if (!isValidAddress(token)) invalid++
+    else if (seen.has(address)) repeated++
+    else {
+      seen.add(address)
+      added.push(address)
+    }
+  }
+  const room = Math.max(0, max - existing.length)
+  return { added: added.slice(0, room), invalid, repeated, cut: Math.max(0, added.length - room) }
+}
+
 /** Published and approved on chain: sold-out items are listed disabled, so they stay sendable here. */
 export function isSendableItem(item: Item): boolean {
   return item.isPublished && item.isApproved && !!item.tokenId && getItemSales(item) !== undefined
@@ -42,6 +83,13 @@ export function getStock(item: Item): { available: number; total: number } {
   const sales = getItemSales(item)
   if (!sales) return { available: 0, total: 0 }
   return { available: sales.maxSupply - sales.minted, total: sales.maxSupply }
+}
+
+/** Something was entered: a recipient or a copy in any transfer. Closing the dialog then asks first. */
+export function hasSendDraft(transfers: Transfer[]): boolean {
+  return transfers.some(
+    ({ recipients, amounts }) => recipients.length > 0 || Object.values(amounts).some(amount => amount > 0)
+  )
 }
 
 export function totalCopies(transfers: Transfer[]): number {
@@ -132,4 +180,14 @@ export function copiesPerItem(transfers: Transfer[]): Record<string, number> {
     }
   }
   return copies
+}
+
+/** The size of a send, as the analytics events report it: distinct items, total copies and distinct wallets. */
+export function sendBatchSize(transfers: Transfer[]): { item_count: number; copies: number; recipient_count: number } {
+  const copies = copiesPerItem(transfers)
+  return {
+    item_count: Object.values(copies).filter(amount => amount > 0).length,
+    copies: Object.values(copies).reduce((total, amount) => total + amount, 0),
+    recipient_count: new Set(transfers.flatMap(transfer => transfer.recipients.map(to => to.toLowerCase()))).size
+  }
 }

@@ -8,7 +8,7 @@ import { ConfirmModal } from '~/components/ConfirmModal'
 import { useCreditPacks } from '~/hooks/useCreditPacks'
 import { CREDIT_PACKS } from '~/lib/creditPacks'
 import errorArt from '~/assets/modal-error.png'
-import { PendingModal } from '../SellItemFlow/PendingModal'
+import { PendingModal } from '~/components/PendingModal'
 import { artForCredits } from './packArt'
 
 type Props = {

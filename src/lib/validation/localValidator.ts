@@ -136,9 +136,6 @@ async function validate(
   }
 }
 
-// The app always writes square 1024px thumbnails (legacy builder parity), so the 256px size hint is never actionable.
-const SQUARE_SIZE_HINT = /^(\d+)×\1$/
-
 async function validateThumbnail(source: ThumbnailSource, opts: ValidateOptions = {}): Promise<ValidationResult> {
   opts.signal?.throwIfAborted()
   return limited(async () => {
@@ -148,11 +145,7 @@ async function validateThumbnail(source: ThumbnailSource, opts: ValidateOptions 
         : await loadStored(source.item.thumbnail, source.item.contents[source.item.thumbnail], opts.signal)
     opts.signal?.throwIfAborted()
     const output = await runOffMainThread({ kind: 'thumbnail', path: THUMBNAIL_PATH, bytes }, opts.signal)
-    const size = output.thumbnailRecommendedSize
-    const findings = output.findings.filter(
-      finding => !(finding.limit === `${size}×${size}` && SQUARE_SIZE_HINT.test(String(finding.measured)))
-    )
-    return { issues: toIssues({ ...output, findings }) }
+    return { issues: toIssues(output) }
   }, opts.signal)
 }
 

@@ -120,14 +120,16 @@ describe('buildItem', () => {
     expect(Object.keys(blobs).sort()).toEqual(['female/model.glb', 'image.png', 'male/model.glb', 'thumbnail.png'])
   })
 
-  it('carries the manifest description, tags and VRM flag into the item', async () => {
+  it('carries the manifest description, utility, tags and VRM flag into the item', async () => {
     const { item } = await buildItem({
       ...baseDraft,
       description: 'A hat',
+      utility: ' Keeps you warm ',
       tags: ['hat', 'cool'],
       blockVrmExport: true
     })
     expect(item.description).toBe('A hat')
+    expect(item.utility).toBe('Keeps you warm')
     expect(item.data.tags).toEqual(['hat', 'cool'])
     expect(item.data.blockVrmExport).toBe(true)
   })

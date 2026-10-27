@@ -3,8 +3,13 @@ import { sendOverviewPage, sendOverviewTrack } from '~/lib/overviewSegment'
 import { OverviewSection, clickPayload, trackClick, trackOverviewPage, trackSectionViewed } from './overviewAnalytics'
 
 vi.mock('~/lib/overviewSegment', () => ({ sendOverviewTrack: vi.fn(), sendOverviewPage: vi.fn() }))
+const mac = vi.hoisted(() => ({ arch: null as 'intel' | 'apple_silicon' | 'unknown' | null }))
+vi.mock('~/lib/creatorHubDownload', () => ({ macArchHint: () => mac.arch }))
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  mac.arch = null
+})
 afterEach(() => window.history.replaceState({}, '', '/'))
 
 describe('trackSectionViewed', () => {
@@ -43,6 +48,16 @@ describe('clickPayload', () => {
     element.setAttribute('data-event', 'Download')
     element.setAttribute('data-download-target', 'creator_hub')
     expect(clickPayload(element)).toEqual({ place: 'Creators Hero', event: 'Download', download_target: 'creator_hub' })
+  })
+
+  it("adds the Mac's chip to a download click, and only to one", () => {
+    mac.arch = 'intel'
+    const download = document.createElement('a')
+    download.setAttribute('data-download-target', 'creator_hub')
+    expect(clickPayload(download)).toMatchObject({ mac_arch: 'intel' })
+    const other = document.createElement('a')
+    other.setAttribute('data-place', 'Creators Why')
+    expect(clickPayload(other)).not.toHaveProperty('mac_arch')
   })
 
   it('skips empty values, a redundant Click subtype and the data attributes styled primitives stamp', () => {

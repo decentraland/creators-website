@@ -9,3 +9,8 @@ export function shopItemUrl(contractAddress: string, itemId: string): string {
 export function shopCollectionUrl(contractAddress: string): string {
   return `${config.get('SHOP_URL')}/collection/${encodeURIComponent(contractAddress)}`
 }
+
+/** The creator's store in the Shop: every item they sell. */
+export function shopCreatorUrl(address: string): string {
+  return `${config.get('SHOP_URL')}/items/creator/${encodeURIComponent(address.toLowerCase())}`
+}

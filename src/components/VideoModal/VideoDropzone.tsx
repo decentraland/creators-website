@@ -81,7 +81,7 @@ export function VideoDropzone({ onPick, children, compact = false, testId = 'vid
           <>
             <VideoIcon />
             <S.DropText>
-              <span data-desktop>{t('video_modal.drop_cta')} </span>
+              <span data-desktop>{t('video_modal.drop_cta')}</span>
               <S.BrowseLink
                 type="button"
                 data-testid={`${testId}-browse`}

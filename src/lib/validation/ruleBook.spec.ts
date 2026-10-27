@@ -6,7 +6,6 @@ vi.mock('@dcl-regenesislabs/wearable-validator', () => {
   if (loads === 1) throw new Error('chunk failed to load')
   return {
     validate: vi.fn().mockResolvedValue({ findings: [], checks: [] }),
-    manifest: { fileSize: { thumbnailRecommendedSize: 256 } },
     checks: {}
   }
 })

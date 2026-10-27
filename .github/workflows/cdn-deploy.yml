@@ -12,13 +12,9 @@ on:
         description: 'Environment to promote to'
         required: true
         default: 'today'
-        # zone and today only. definitions gives @dcl/creators-site those two domains, and the
-        # broker refuses a rollout to an environment outside a package's domain-derived set —
-        # offering org here would produce a job that always fails. Add org alongside the .org
-        # launch, when definitions gains the domain and the repository gains the environment.
-        options: [zone, today]
+        options: [zone, today, org]
       version:
-        description: 'Version to put live, e.g. 0.0.3-36712345678.commit-1509d74 — copy it from the deploy run you want.'
+        description: 'Version to put live. org requires a release (e.g. 1.0.0); zone and today also take a commit build (e.g. 1.0.0-36712345678.commit-1509d74 — copy it from the deploy run you want).'
         required: true
       percentage:
         description: 'Rollout percentage'
@@ -45,9 +41,9 @@ jobs:
     # build of main. `today` needs an environment claim, and GitHub issues one only to a job
     # that declares an environment; `zone` needs none, so this one declaration covers both.
     #
-    # GitHub evaluates this before the job starts. `today` carries no protection rules and no
-    # deployment branch policy, so nothing waits -- but adding required reviewers to it would
-    # make every push to main queue for approval.
+    # GitHub evaluates this before the job starts. `today` only restricts which refs may deploy
+    # (`main` and `*.*.*` tags) and has no required reviewers, so nothing waits -- but adding
+    # reviewers to it would make every push to main queue for approval.
     environment: today
     env:
       # Job level, not step level: the build runs inside a composite action, and composite
@@ -168,6 +164,9 @@ jobs:
       # path, which means building with the tag as the version -- which is what passing
       # `version` alongside `build-command` does.
       #
+      # `org` is absent deliberately: production is promoted by hand, naming the version,
+      # from `promote` below.
+      #
       # The Sentry release name is `creators-website@<package.json version>`, derived in
       # vite.config from the version the action has just written, so a release's maps are
       # uploaded under the tag and match what its runtime reports.
@@ -184,12 +183,12 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # Keyed by environment: a promotion to zone must not queue behind one to today.
+    # Keyed by environment: a promotion to zone must not queue behind one to org.
     concurrency:
       group: cdn-deploy-${{ github.repository }}-promote-${{ inputs.environment }}
       cancel-in-progress: false
     # Required: GitHub evaluates this before the job starts and only then issues the
-    # environment claim the broker checks for today.
+    # environment claim the broker checks for today and org.
     environment: ${{ inputs.environment }}
     permissions:
       id-token: write

@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { TranslationProvider } from '~/intl'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
+import { PublishCollectionError } from '~/lib/publishCollection'
 import { ItemType, type Item } from '~/lib/items'
 import { ValidationSeverity, type ValidationIssue } from '~/lib/validation'
 import { PublishCollectionModal } from './PublishCollectionModal'
@@ -14,11 +15,35 @@ vi.mock('~/hooks/useCollection', () => ({
   useAllCollectionItems: () => ({ data: [], isLoading: false }),
   useSaveCollection: () => ({ mutate: vi.fn(), isPending: false, error: null })
 }))
+const profile = vi.hoisted(() => ({ data: undefined as { email?: string } | undefined, isLoading: false }))
+vi.mock('~/hooks/useProfile', () => ({ useProfile: () => profile }))
 vi.mock('~/hooks/useCollectionValidation', () => ({ useRerunItemValidation: () => rerun }))
 vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
-vi.mock('./ConfirmNameStep', () => ({ ConfirmNameStep: () => <div data-testid="confirm-name-step" /> }))
-vi.mock('./ConfirmItemsStep', () => ({ ConfirmItemsStep: () => <div /> }))
-vi.mock('./PaymentStep', () => ({ PaymentStep: () => <div data-testid="payment-step" /> }))
+vi.mock('./ConfirmNameStep', () => ({
+  ConfirmNameStep: (props: { initialEmail: string; onConfirm: (details: { name: string; email: string }) => void }) => (
+    <div data-testid="confirm-name-step" data-email={props.initialEmail}>
+      <button
+        data-testid="confirm-details"
+        onClick={() => props.onConfirm({ name: 'Halloween', email: 'sam@example.org' })}
+      />
+    </div>
+  )
+}))
+vi.mock('./ConfirmItemsStep', () => ({
+  ConfirmItemsStep: (props: { onBack: () => void; onConfirm: () => void }) => (
+    <div>
+      <button data-testid="items-back" onClick={props.onBack} />
+      <button data-testid="items-confirm" onClick={props.onConfirm} />
+    </div>
+  )
+}))
+vi.mock('./PaymentStep', () => ({
+  PaymentStep: (props: { email: string; onFailed: (error: PublishCollectionError) => void }) => (
+    <div data-testid="payment-step" data-email={props.email}>
+      <button data-testid="tos-fails" onClick={() => props.onFailed(new PublishCollectionError('tos_failed'))} />
+    </div>
+  )
+}))
 vi.mock('./TopUpOutcome', () => ({ TopUpOutcome: () => null }))
 
 const collection = { id: 'c1', name: 'Halloween' } as Collection
@@ -43,9 +68,7 @@ function makeItem(id: string): Item {
 }
 
 const error: ValidationIssue = { code: 'skeleton', severity: ValidationSeverity.ERROR, message: 'Wrong skeleton' }
-const warning: ValidationIssue = { code: 'textures', severity: ValidationSeverity.WARNING, message: 'Large texture' }
 const broken = makeItem('broken')
-const meh = makeItem('meh')
 const clean = makeItem('clean')
 
 type Props = ComponentProps<typeof PublishCollectionModal>
@@ -69,6 +92,8 @@ function renderModal(overrides: Partial<Props> = {}) {
 }
 
 beforeEach(() => {
+  profile.data = undefined
+  profile.isLoading = false
   onClose.mockReset()
   rerun.mockReset().mockResolvedValue([])
 })
@@ -81,94 +106,58 @@ describe('PublishCollectionModal item checks', () => {
     expect(screen.getByTestId('confirm-name-step')).toBeInTheDocument()
   })
 
-  it('closes from the waiting spinner', async () => {
-    renderModal()
-    await userEvent.click(screen.getByTestId('publish-validating-cancel'))
-    expect(onClose).toHaveBeenCalled()
-  })
-
-  it('lists the flagged items, errors first, and offers no way past errors that block publishing', async () => {
-    renderModal({
-      blockOnErrors: true,
-      validation: {
-        isValidating: false,
-        results: [
-          { item: meh, issues: [warning] },
-          { item: clean, issues: [] },
-          { item: broken, issues: [error] }
-        ]
-      }
-    })
-    const cards = screen.getAllByTestId(/^publish-validation-.*-card$/)
-    expect(cards.map(card => card.dataset.testid)).toEqual([
-      'publish-validation-broken-card',
-      'publish-validation-meh-card'
-    ])
-    expect(screen.getByTestId('publish-validation-issues-title')).toHaveTextContent('Some items need your attention')
-    expect(screen.queryByTestId('publish-validation-continue')).not.toBeInTheDocument()
-    await userEvent.click(screen.getByTestId('publish-validation-back'))
-    expect(onClose).toHaveBeenCalled()
-  })
-
-  it('lets the creator continue past errors when they do not block publishing', async () => {
+  it('holds the wizard behind the issues view until the creator continues', async () => {
     renderModal({ validation: { isValidating: false, results: [{ item: broken, issues: [error] }] } })
-    expect(screen.getByTestId('publish-validation-issues-title')).toHaveTextContent('Some items have issues')
-    await userEvent.click(screen.getByTestId('publish-validation-continue'))
-    expect(screen.getByTestId('confirm-name-step')).toBeInTheDocument()
-  })
-
-  it('never blocks on a check that could not run, even when errors block publishing', () => {
-    const failed: ValidationIssue = { code: 'model', severity: ValidationSeverity.WARNING, message: 'Could not check' }
-    renderModal({
-      blockOnErrors: true,
-      validation: { isValidating: false, results: [{ item: meh, issues: [failed] }] }
-    })
-    expect(screen.getByTestId('publish-validation-continue')).toBeInTheDocument()
-  })
-
-  it('lets the creator continue past warnings', async () => {
-    renderModal({
-      blockOnErrors: true,
-      validation: { isValidating: false, results: [{ item: meh, issues: [warning] }] }
-    })
-    expect(screen.getByTestId('publish-validation-issues-title')).toHaveTextContent('A few things to review')
-    await userEvent.click(screen.getByTestId('publish-validation-continue'))
-    expect(screen.getByTestId('confirm-name-step')).toBeInTheDocument()
-  })
-
-  it('follows a re-run live: a fixed item stays listed as passing and the last error unlocks Continue', async () => {
-    const { update } = renderModal({
-      blockOnErrors: true,
-      validation: {
-        isValidating: false,
-        results: [
-          { item: broken, issues: [error] },
-          { item: meh, issues: [warning] }
-        ]
-      }
-    })
-    await userEvent.click(screen.getByTestId('publish-validation-broken-rerun'))
-    expect(rerun).toHaveBeenCalledWith(broken, 'publish', 'errors')
-
-    update({
-      blockOnErrors: true,
-      validation: {
-        isValidating: false,
-        results: [
-          { item: broken, issues: [] },
-          { item: meh, issues: [warning] }
-        ]
-      }
-    })
-    expect(screen.getByTestId('publish-validation-broken-pass')).toBeInTheDocument()
-    expect(screen.getByTestId('publish-validation-issues-title')).toHaveTextContent('A few things to review')
-    expect(screen.getByTestId('publish-validation-continue')).toBeInTheDocument()
     expect(screen.queryByTestId('confirm-name-step')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('publish-validation-continue'))
+    expect(screen.getByTestId('confirm-name-step')).toBeInTheDocument()
   })
 
   it('skips the checks when coming back from buying credits', () => {
-    renderModal({ resume: { paymentMethod: 'credits', termsAccepted: true, orderId: null } })
+    renderModal({
+      resume: { paymentMethod: 'credits', termsAccepted: true, email: 'jane.doe@example.com', orderId: null }
+    })
     expect(screen.queryByTestId('publish-validating')).not.toBeInTheDocument()
     expect(screen.getByTestId('payment-step')).toBeInTheDocument()
+  })
+
+  it('asks for the email again when the credits purchase was started without one', () => {
+    renderModal({ resume: { paymentMethod: 'credits', termsAccepted: true, email: null, orderId: null } })
+    expect(screen.queryByTestId('payment-step')).not.toBeInTheDocument()
+    expect(screen.getByTestId('confirm-name-step')).toBeInTheDocument()
+  })
+})
+
+describe('PublishCollectionModal contact email', () => {
+  const ready = { validation: { isValidating: false, results: [] } }
+
+  it('waits for the profile, then offers its email', () => {
+    profile.isLoading = true
+    const { update } = renderModal(ready)
+    expect(screen.getByTestId('publish-name-loading')).toBeInTheDocument()
+    profile.isLoading = false
+    profile.data = { email: ' jane.doe@example.com ' }
+    update(ready)
+    expect(screen.getByTestId('confirm-name-step')).toHaveAttribute('data-email', 'jane.doe@example.com')
+  })
+
+  it('keeps the confirmed email when going back and hands it to the payment step', async () => {
+    profile.data = { email: 'jane.doe@example.com' }
+    renderModal(ready)
+    await userEvent.click(screen.getByTestId('confirm-details'))
+    await userEvent.click(screen.getByTestId('items-back'))
+    expect(screen.getByTestId('confirm-name-step')).toHaveAttribute('data-email', 'sam@example.org')
+    await userEvent.click(screen.getByTestId('confirm-details'))
+    await userEvent.click(screen.getByTestId('items-confirm'))
+    expect(screen.getByTestId('payment-step')).toHaveAttribute('data-email', 'sam@example.org')
+  })
+
+  it('sends the creator back to the email when the ToS record fails', async () => {
+    renderModal({
+      resume: { paymentMethod: 'credits', termsAccepted: true, email: 'jane.doe@example.com', orderId: null }
+    })
+    await userEvent.click(screen.getByTestId('tos-fails'))
+    await userEvent.click(screen.getByTestId('publish-error-retry'))
+    expect(screen.getByTestId('confirm-name-step')).toHaveAttribute('data-email', 'jane.doe@example.com')
   })
 })

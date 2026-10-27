@@ -5,19 +5,17 @@ import { type Item } from '~/lib/items'
 type Props = {
   item: Item
   isDeleting: boolean
-  error: boolean
   onCancel: () => void
   onConfirm: () => void
 }
 
 /** "Delete this item?" — the confirm step before an item leaves the collection for good. */
-export function DeleteItemModal({ item, isDeleting, error, onCancel, onConfirm }: Props) {
+export function DeleteItemModal({ item, isDeleting, onCancel, onConfirm }: Props) {
   const { t } = useTranslation()
   return (
     <ConfirmModal
       title={t('collection_detail_page.delete_item.title')}
       description={t('collection_detail_page.delete_item.description', { name: item.name })}
-      error={error ? t('collection_detail_page.delete_item.error') : null}
       busy={isDeleting}
       onClose={onCancel}
       cancel={{

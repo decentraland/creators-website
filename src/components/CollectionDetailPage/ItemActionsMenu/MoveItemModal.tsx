@@ -13,13 +13,12 @@ type Props = {
   collections: Collection[] | undefined
   isMoving: boolean
   isLoading: boolean
-  error: boolean
   onConfirm: (collection: Collection) => void
   onClose: () => void
 }
 
 /** Pick the draft collection an item moves to. Locked drafts (publish in flight) can't take items. */
-export function MoveItemModal({ item, collections, isMoving, isLoading, error, onConfirm, onClose }: Props) {
+export function MoveItemModal({ item, collections, isMoving, isLoading, onConfirm, onClose }: Props) {
   const { t } = useTranslation()
   const [targetId, setTargetId] = useState<string | null>(null)
 
@@ -58,9 +57,6 @@ export function MoveItemModal({ item, collections, isMoving, isLoading, error, o
               testId="move-item-target"
             />
           </S.Field>
-        )}
-        {error && (
-          <S.Error data-testid="move-item-error">{t('collection_detail_page.item_actions.move_modal.error')}</S.Error>
         )}
         <S.Actions>
           <Button

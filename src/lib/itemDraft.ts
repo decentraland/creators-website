@@ -1,12 +1,26 @@
 // The properties form's local draft: a pure reducer over the editable fields of an item plus the
 // blobs picked while editing, and the projection back into a saveable Item (legacy RightPanel state).
-import { type SpringBonesData, WearableCategory } from '@dcl/schemas'
-import { computeHashes, withThumbnail, type BuiltItem } from './itemFactory'
-import { VIDEO_PATH } from './itemFiles'
-import { ItemType, type Item } from './items'
+import { type Mappings, type SpringBonesData, WearableCategory } from '@dcl/schemas'
+import { getWearableCategoryOptions, hidesForCategory } from './wearableCategories'
+import { computeHashes, withCatalystImageForRarity, withThumbnail, type BuiltItem } from './itemFactory'
+import { THUMBNAIL_PATH, VIDEO_PATH } from './itemFiles'
+import { ItemType, tracksVideoOnSave, type Item } from './items'
+
+export { tracksVideoOnSave }
 
 export const ITEM_DESCRIPTION_MAX_LENGTH = 64
 export const ITEM_UTILITY_MAX_LENGTH = 64
+
+// The description is part of the on-chain metadata string, where ':' is the field separator.
+export function isValidItemDescription(description: string): boolean {
+  const trimmed = description.trim()
+  return trimmed.length <= ITEM_DESCRIPTION_MAX_LENGTH && !trimmed.includes(':')
+}
+
+/** A manifest description made valid: separators dropped, trimmed, cut at the cap. */
+export function sanitizeItemDescription(description: string): string {
+  return description.replace(/:/g, '').trim().slice(0, ITEM_DESCRIPTION_MAX_LENGTH).trim()
+}
 
 const UPPER_BODY = WearableCategory.UPPER_BODY as string
 const HANDS = 'hands'
@@ -28,6 +42,8 @@ export type ItemDraft = {
   video: Blob | null
   /** A change-file / add-representation import; its item replaces the saved contents on save. */
   fileUpdate: BuiltItem | null
+  /** Linked items only: the token mapping as edited; null leaves the saved one alone. */
+  mappings: Mappings | null
 }
 
 export type ItemDraftAction =
@@ -42,6 +58,7 @@ export type ItemDraftAction =
   | { type: 'setThumbnail'; thumbnail: Blob | null }
   | { type: 'setVideo'; video: Blob | null }
   | { type: 'setFileUpdate'; update: BuiltItem | null }
+  | { type: 'setMappings'; mappings: Mappings | null }
 
 export function unique<T>(values: T[]): T[] {
   return Array.from(new Set(values))
@@ -67,7 +84,8 @@ export function createItemDraft(item: Item): ItemDraft {
     outlineCompatible: item.data.outlineCompatible ?? true,
     thumbnail: null,
     video: null,
-    fileUpdate: null
+    fileUpdate: null,
+    mappings: item.mappings ?? null
   }
 }
 
@@ -78,12 +96,7 @@ export function itemDraftReducer(draft: ItemDraft, action: ItemDraftAction): Ite
     case 'setText':
       return { ...draft, [action.field]: action.value }
     case 'setCategory':
-      // A skin covers the whole body: nothing is left to hide.
-      return {
-        ...draft,
-        category: action.category,
-        hides: action.category === (WearableCategory.SKIN as string) ? [] : draft.hides
-      }
+      return { ...draft, category: action.category, hides: hidesForCategory(action.category, draft.hides) }
     case 'setRarity':
       return { ...draft, rarity: action.rarity }
     case 'setHides':
@@ -98,8 +111,25 @@ export function itemDraftReducer(draft: ItemDraft, action: ItemDraftAction): Ite
       return { ...draft, thumbnail: action.thumbnail }
     case 'setVideo':
       return { ...draft, video: action.video }
-    case 'setFileUpdate':
-      return { ...draft, fileUpdate: action.update }
+    case 'setMappings':
+      return { ...draft, mappings: action.mappings }
+    case 'setFileUpdate': {
+      const update = action.update
+      if (!update || update.item.type !== ItemType.WEARABLE) return { ...draft, fileUpdate: update }
+      // Image and model wearables take disjoint categories: switching kinds leaves the old one invalid.
+      const categories = getWearableCategoryOptions(update.item.contents)
+      if (draft.category === null) {
+        // Switching back to the stored kind (model → image → model) brings the stored category back.
+        const stored = createItemDraft(update.item)
+        const fits = stored.category !== null && categories.includes(stored.category)
+        return fits
+          ? { ...draft, fileUpdate: update, category: stored.category, hides: stored.hides }
+          : { ...draft, fileUpdate: update }
+      }
+      if (categories.includes(draft.category)) return { ...draft, fileUpdate: update }
+      // Image wearables hide nothing, so a switch either way leaves no hide that still applies.
+      return { ...draft, fileUpdate: update, category: null, hides: [] }
+    }
   }
 }
 
@@ -123,7 +153,8 @@ export function isItemDraftDirty(draft: ItemDraft, item: Item): boolean {
     draft.outlineCompatible !== pristine.outlineCompatible ||
     draft.thumbnail !== null ||
     draft.video !== null ||
-    draft.fileUpdate !== null
+    draft.fileUpdate !== null ||
+    JSON.stringify(draft.mappings) !== JSON.stringify(pristine.mappings)
   )
 }
 
@@ -152,7 +183,8 @@ export function applyDraftToItem(item: Item, draft: ItemDraft): Item {
     ...base,
     name: draft.name.trim(),
     description: draft.description.trim(),
-    rarity: draft.rarity ?? base.rarity
+    rarity: draft.rarity ?? base.rarity,
+    ...(draft.mappings ? { mappings: draft.mappings } : {})
   }
   if (base.type === ItemType.EMOTE) {
     return applyUtility(
@@ -204,14 +236,11 @@ export function toPreviewItem(item: Item, draft: ItemDraft): Item {
   })
 }
 
-/** The preview video may change until the item is approved; after that it is frozen with the deployment. */
-export function canUpdateVideo(item: Item): boolean {
-  return !item.isPublished || !item.isApproved
-}
-
 export type SaveOptions = {
   /** Spring bone params to persist; `undefined` leaves the saved data untouched. */
   springBones?: SpringBonesData | null
+  /** Loads the stored thumbnail to rebuild the catalyst image when only the rarity changed; null skips the rebuild. */
+  fetchThumbnail?: (item: Item) => Promise<Blob | null>
 }
 
 /** The item to PUT plus the files to upload: fields applied, new thumbnail/video hashed, spring bones merged. */
@@ -223,10 +252,18 @@ export async function toSaveableItem(item: Item, draft: ItemDraft, options: Save
     const built = await withThumbnail(next, draft.thumbnail)
     next = built.item
     blobs = { ...blobs, ...built.blobs }
+  } else if (next.rarity !== item.rarity && options.fetchThumbnail) {
+    const thumbnail = blobs[THUMBNAIL_PATH] ?? (await options.fetchThumbnail(item))
+    if (thumbnail) {
+      const built = await withCatalystImageForRarity(next, thumbnail)
+      next = built.item
+      blobs = { ...blobs, ...built.blobs }
+    }
   }
-  if (draft.video && canUpdateVideo(item)) {
+  if (draft.video) {
     const { [VIDEO_PATH]: hash } = await computeHashes({ [VIDEO_PATH]: draft.video })
-    next = { ...next, video: hash, contents: { ...next.contents, [VIDEO_PATH]: hash } }
+    next = { ...next, contents: { ...next.contents, [VIDEO_PATH]: hash } }
+    if (tracksVideoOnSave(item)) next = { ...next, video: hash }
     blobs[VIDEO_PATH] = draft.video
   }
   if (options.springBones !== undefined && next.type === ItemType.WEARABLE) {

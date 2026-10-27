@@ -55,6 +55,16 @@ describe('postToSegment', () => {
     expect(Number.isNaN(Date.parse(body.timestamp as string))).toBe(false)
   })
 
+  it('carries the campaign context analytics.js derives from the utm params', async () => {
+    postToSegment(input({ search: '?utm_source=partner&utm_campaign=Spring%20Drop&utm_org=dcl&ref=x' }))
+    expect((await sentBody(beacon)).context).toMatchObject({
+      campaign: { source: 'partner', name: 'Spring Drop', org: 'dcl' }
+    })
+    beacon.mockClear()
+    postToSegment(input({ search: '' }))
+    expect((await sentBody(beacon)).context).not.toHaveProperty('campaign')
+  })
+
   it('sends an anonymous visitor without a userId', async () => {
     postToSegment(input())
     expect(await sentBody(beacon)).not.toHaveProperty('userId')

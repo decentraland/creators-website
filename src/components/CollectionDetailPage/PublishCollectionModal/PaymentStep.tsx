@@ -3,7 +3,6 @@ import { ChevronLeft as ChevronLeftIcon } from '@mui/icons-material'
 import { useIntl } from 'react-intl'
 import { config } from '~/config'
 import { useTranslation } from '~/intl'
-import { useProfile } from '~/hooks/useProfile'
 import { useCreditsBalance, useManaBalance } from '~/hooks/useBalances'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useApproveMana, useManaAllowance, usePublishCollection, useRarities } from '~/hooks/usePublishCollection'
@@ -54,6 +53,8 @@ type Props = {
   session: Session
   paymentMethod: PaymentMethod | null
   onPaymentMethodChange: (method: PaymentMethod) => void
+  /** The contact email confirmed in step 1, recorded with the ToS acceptance. */
+  email: string
   accepted: boolean
   onAcceptedChange: (accepted: boolean) => void
   onBusyChange: (busy: boolean) => void
@@ -69,6 +70,7 @@ export function PaymentStep({
   session,
   paymentMethod,
   onPaymentMethodChange,
+  email,
   accepted,
   onAcceptedChange,
   onBusyChange,
@@ -83,7 +85,6 @@ export function PaymentStep({
   const rarities = useRarities(address)
   const credits = useCreditsBalance(address)
   const mana = useManaBalance(address)
-  const profile = useProfile(address)
   const fee = useMemo(() => getPublicationFee(rarities.data ?? [], items.length), [rarities.data, items.length])
 
   const creditsFlag = useFeatureFlag(FeatureFlag.SHOP_CREDITS_FOR_COLLECTIONS_FEE)
@@ -145,7 +146,7 @@ export function PaymentStep({
     }
     setStatus('confirming')
     publish.mutate(
-      { collection, items, paymentMethod, fee, email: profile.data?.email?.trim() || null },
+      { collection, items, paymentMethod, fee, email },
       {
         onSuccess: onPublished,
         onError: error => {
@@ -171,7 +172,8 @@ export function PaymentStep({
       collectionId: collection.id,
       orderId: checkout.orderId,
       paymentMethod,
-      termsAccepted: accepted
+      termsAccepted: accepted,
+      email
     })
     track('Start credits checkout', {
       collectionId: collection.id,

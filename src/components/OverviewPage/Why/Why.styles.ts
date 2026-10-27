@@ -113,6 +113,7 @@ export const CardImage = styled.div`
     flex: 1 1 auto;
     min-height: 0;
     max-width: 100%;
+    height: auto;
     object-fit: contain;
   }
 

@@ -15,7 +15,7 @@ Ported from shop's config:
 - **Core:** Vite + React 18 + TypeScript strict, React Router v6, `~` → `src/` path alias.
 - **State:** `@tanstack/react-query` for server state (builder-server data), `zustand` for client/session state. No redux.
 - **Styling:** Emotion `styled` + a `src/styles/theme.ts` token file (shop's palette), `decentraland-ui2` (MUI-based) where it fits. The item editor's resizable columns use `react-resizable-panels` (creator-hub inspector's choice).
-- **i18n:** `react-intl` with `en.json` / `es.json`.
+- **i18n:** `react-intl` with `en.json` / `es.json` / `zh.json`.
 - **Auth:** `decentraland-connect` + `@dcl/single-sign-on-client` + a zustand wallet store; builder-server requests signed with `@dcl/crypto` AuthChain.
 - **Monitoring:** Sentry (`@sentry/react`).
 - **Tests:** Vitest + Testing Library for unit tests (`vitest.config.ts`, jsdom); Puppeteer + Vitest for e2e (e2e setup pending).
@@ -47,6 +47,8 @@ This SPA is the creator surface of decentraland.org: it is served **by path** at
 
 Item editor (`/collections/editor`, spec `design/ITEM_EDITOR_SPEC.md`): the shared `~/components/AvatarPreview` mounts ui2's `WearablePreview` once with a frozen URL snapshot and pushes every later change through `lib/previewBridge` (postMessage UPDATE), so avatar/item changes never reload the iframe. The renderer is decided per mount by `lib/pickRenderer` (`unity-wearable-preview` flag via `lib/featureFlags`, `?unity=false` override resolved in `src/config`). Model checks go through the swappable `lib/validation` module (README inside); spring bone physics through `lib/springBones`.
 
+Curation (`/curation`, spec `design/CURATION_SPEC.md`): committee members, per `useCommittee` (`GET /committee`, fails closed), get the Curation tab and review collections in the item editor with `?reviewing=true`: a read-only review mode that only committee members get (anyone else sees the regular editor under their own permissions). Committee chain writes go through `lib/collectionApproval` (`Committee.manageCollection`); the approval flow lives in `lib/approveCollection` and Catalyst entities in `lib/catalystEntity`, whose metadata key order is part of the content hash.
+
 Entry: `index.html` → `src/main.tsx` (creates the `BrowserRouter`, the single router call site — see `CONVENTIONS.md` — with `basename` from `~/config`) → `src/App.tsx` (declares the routes: `React.lazy` pages + `<Routes>`). Page components live in `src/components/` (`components/CollectionsPage`, …), one per route. Component organization is semantic — see "Component organization" in `CONVENTIONS.md`. Zustand stores in `src/store/`; business logic (API clients, flows, encoding) in `src/lib/` — heavily unit-tested, never in components; react-query hooks in `src/hooks/`; i18n provider and messages in `src/intl/`.
 
 ### Environment configuration (`@dcl/ui-env`)
@@ -57,7 +59,7 @@ Runtime config lives in `src/config/index.ts`, built from per-environment JSON f
 
 `scripts/prebuild.cjs` runs before every build: it syncs the version from `package.json` into `public/package.json` and computes `VITE_BASE_URL` — empty for local builds, `https://cdn.decentraland.org/<name>/<version>` in CI — rewriting `.env` and both package.json `homepage` fields in place. Vite uses `VITE_BASE_URL` as `base` for production builds only.
 
-Releases: `.github/workflows/build-release.yml` (push to `main`, GitHub release, or manual dispatch) publishes `dist/` as the `@dcl/creators-site` npm package and triggers the CDN deploy; `set-rollout.yml` then points `.zone` and `.today` at it. Production (`.org`) is promoted by hand with `set-rollout-manual.yml` from an already-published version. Source maps upload to Sentry only when `SENTRY_AUTH_TOKEN` is set and are deleted before publish.
+Releases: `.github/workflows/cdn-deploy.yml` uploads `dist/` to the CDN as `@dcl/creators-site` through `decentraland/actions/cdn-deploy`. Every push to `main` deploys a commit build to `.zone` and `.today`; a published GitHub release (not a prerelease, cut from `main`) rebuilds with the tag as the version and deploys it there too. Any environment can be promoted by hand (Actions → CDN deploy → Run workflow with an environment, a version and a percentage); that is how production (`.org`) goes live, and it only takes a release tag, while `.zone` and `.today` also take a commit build (`1.0.0-<runId>.commit-<sha7>`). The `org` and `zone` GitHub environments only accept runs from protected branches, and `today` accepts `main` plus `*.*.*` tags. Rolling back is not one run: see the comments on the `promote` job. Versions published before this workflow existed (the npm-era builds) cannot be promoted, so a rollback cannot go past it. Source maps upload to Sentry only when `SENTRY_AUTH_TOKEN` is set and are deleted before the CDN upload.
 
 ## Design specs are the source of truth
 
@@ -69,7 +71,7 @@ The spec for all of Decentraland's public APIs is available at https://docs.dece
 
 ### i18n (hard rule)
 
-Every user-facing string — buttons, labels, headings, placeholders, statuses, errors, tooltips, empty states — goes through `t('a.b.c')` with a key added to **both** `en.json` and `es.json`. Never hardcode a display string in a component; this is part of "done" for any UI change. Spanish uses neutral (Latin American) **"tú"** forms, never "vos" ("Inicia sesión", not "Iniciá").
+Every user-facing string — buttons, labels, headings, placeholders, statuses, errors, tooltips, empty states — goes through `t('a.b.c')` with a key added to **every** locale file: `en.json`, `es.json` and `zh.json`. Never hardcode a display string in a component; this is part of "done" for any UI change. Spanish uses neutral (Latin American) **"tú"** forms, never "vos" ("Inicia sesión", not "Iniciá"). Chinese is Simplified, follows the sites repo's `zh.json` style (您, full-width punctuation, a space between Chinese and Latin text) and keeps its fixed terms: 系列 (collection), 可穿戴物品 (wearable), 表情动作 (emote), 物品 (item), 积分 (credits); brand names (Decentraland, MANA, Marketplace, Shop, Builder, Creator Hub) stay in English.
 
 One exception: item validation findings show the wearable-validator rule book's own English messages and check titles, so the editor says exactly what curation says. Copy the app adds around them (badge states, fallbacks when a check can't run) still goes through `t()`.
 
@@ -89,7 +91,7 @@ Prefer friendly copy and hide blockchain plumbing where possible. Wallet/MANA/tr
 
 ### Feature flags
 
-Decentraland's flag service is read through `lib/featureFlags` (one `FeatureFlag` enum entry plus its owning application, `builder` or `dapps`) and consumed with `useFeatureFlag(flag)` → `{ enabled, isLoading }`. Reads fail closed: a flag still loading, absent, or unreachable is off. Add a flag by adding the enum entry and its `APPLICATION` row — never by fetching the service anywhere else. Locally, override with `VITE_FEATURE_FLAG_OVERRIDES=unity-wearable-preview:true`. In specs, mock `~/lib/featureFlags` onto `~/test/featureFlags` and declare the flags the subject runs with via `setFeatureFlags(...)`.
+Decentraland's flag service is read through `lib/featureFlags` (one `FeatureFlag` enum entry plus its owning application, `builder` or `dapps`) and consumed with `useFeatureFlag(flag)` → `{ enabled, isLoading }`. Reads fail closed: a flag still loading, absent, or unreachable is off. Add a flag by adding the enum entry and its `APPLICATION` row — never by fetching the service anywhere else. A flag paired with its address-list variant (the pre-launch gate's allowlist) is read with `getAddressListGate(flag)` → `{ enabled, allowed }`, both from one snapshot. Locally, override with `VITE_FEATURE_FLAG_OVERRIDES=unity-wearable-preview:true` and `VITE_FEATURE_FLAG_VARIANT_OVERRIDES=creators-prelaunch:0x…,0x…`. In specs, mock `~/lib/featureFlags` onto `~/test/featureFlags` and declare the flags the subject runs with via `setFeatureFlags(...)` / `setAddressListVariant(...)`.
 
 ### Testing
 
@@ -108,3 +110,14 @@ Every feature plan and spec includes an analytics section before implementation 
 ### Responsive (standing requirement)
 
 Every feature or edit must work on mobile as well as desktop — responsive behavior is part of "done" for any UI change. Verify at a narrow viewport (≤ 768px, the primary mobile breakpoint) as well as desktop; keep touch targets ~44px; hover-only affordances need a tap/focus equivalent; anchored overlays must not spill off-screen on narrow widths.
+
+### Performance and SEO (standing requirement)
+
+The overview at `/` is the public, indexed landing page (`decentraland.org/create`) and must stay fast on mobile. Lighthouse targets: mobile and desktop performance ≥ 0.85, CLS < 0.1, SEO ≥ 0.92 on `.org`. Any change that touches the overview, the shell (navbar, footer, `App.tsx`, `main.tsx`) or `index.html` keeps them:
+
+- **Keep the first load lean.** Code reachable from `main.tsx` without a `React.lazy` boundary ships to every visitor of the landing page. Don't add editor, publishing, chain or zip code (`ethers`, `decentraland-transactions`, `jszip`, `@dcl/schemas`, …) to that graph; put it behind a lazy route or a dynamic `import()`. The navbar still pulls some in today; moving it out is the open follow-up, so never add more.
+- **Defer what isn't the first paint.** Third-party widgets, embeds, extra monitoring and decorative media load through `lib/idle` (`afterLoadIdle` / `useAfterLoadIdle`) or on approach (`useInView`), never at startup.
+- **Images:** Contentful images go through `lib/contentfulImage` (resized WebP); every `<img>` whose box depends on the image gets `width`/`height`; below-the-fold images are `loading="lazy"`. The LCP image is preloaded in `index.html` for its route only, kept in sync with the code by a spec.
+- **No layout shift:** reserve space for anything that appears late (images, async rails, gated UI), and keep `"Inter Fallback"` in the font stack.
+- **SEO:** keep the static title, description, canonical, Open Graph/Twitter tags and JSON-LD in `index.html`; `lib/seo` points canonical/`og:url` at the production URL per route. Link text is descriptive (never a bare "See more"), images that convey content get `alt`, and structured data that mirrors copy is built from `t()`.
+- **Measure, don't guess.** For a change that can affect load, compare Lighthouse (mobile and desktop) of `main` vs the branch, both served locally with `npm run build` + `npx vite preview`. Don't judge from `.zone` (served with `noindex`, which caps SEO) or from Vercel previews (behind Vercel auth, so Lighthouse scores the login page).

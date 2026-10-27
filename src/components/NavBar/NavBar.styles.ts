@@ -1,5 +1,5 @@
 import styled from '@emotion/styled'
-import { theme } from '~/styles/theme'
+import { breakpoints, theme } from '~/styles/theme'
 
 const { colors, media } = theme
 
@@ -13,24 +13,20 @@ export const Subnav = styled.div`
   z-index: 40;
   display: flex;
   align-items: center;
-  height: 64px;
-  /* 54px matches the ui2 Navbar's desktop side padding so the sub-nav aligns with the top nav. */
-  padding: 0 54px;
-  /* Translucent deep-purple band over the page field, hairline white divider. 20% at rest, deepening
-     once the page scrolls so the bar doesn't wash out over light content passing underneath — the same
-     treatment the top nav carries. */
+  /* Same band as sites' sub-tab bar (events AdminTabsBar): 56px tall with 16px sides, 64px tall with
+     64px sides from ui2's md breakpoint (min-width: 1024px inclusive, which media.minWidth can't
+     express). Keep the height in sync with --sub-nav-h in styles/index.css. */
+  height: 56px;
+  padding: 0 16px;
   background: ${colors.subnavOverlay};
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-  transition: background 0.25s ease;
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 
-  &[data-scrolled] {
-    background: ${colors.subnavOverlayScrolled};
-  }
-
-  ${mobile} {
-    padding: 0 16px;
+  @media (min-width: ${breakpoints.laptop}px) {
+    height: 64px;
+    padding: 0 64px;
   }
 `
 

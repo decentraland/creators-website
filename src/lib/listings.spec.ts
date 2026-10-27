@@ -54,6 +54,15 @@ describe('fetchCollectionListings', () => {
     expect(listings.has('5')).toBe(false)
   })
 
+  it('says which marketplace each order was signed for, so a discount knows which listings it reaches', async () => {
+    const onV3 = { ...creditsItem, tradeContractAddress: '0xE38EF22ABE871513555CBA89ADFE45AB4F548ADA' }
+    mockServer([onV3, manaItem], catalog)
+    const listings = await fetchCollectionListings(CONTRACT)
+
+    expect(listings.get('0')?.tradeContract).toBe('0xe38ef22abe871513555cba89adfe45ab4f548ada')
+    expect(listings.get('1')?.tradeContract).toBeUndefined()
+  })
+
   it('fails when either request fails', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ error: 'nope' }, 500))
     await expect(fetchCollectionListings(CONTRACT)).rejects.toThrow(/500/)

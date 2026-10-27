@@ -1,21 +1,20 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { type Entity } from '@dcl/schemas'
 import { fetchEntitiesByPointers } from '~/lib/catalyst'
-import { CurationStatus, type Collection } from '~/lib/collections'
-import { useCollectionCuration } from '~/hooks/useCollection'
-import { getItemSyncStatus, mapEntitiesByItemId, type ItemSyncStatus } from '~/lib/itemSync'
+import { useCollectionCuration } from '~/hooks/useCuration'
+import { type Collection } from '~/lib/collections'
+import { ItemSyncStatus, getItemSyncStatus, mapEntitiesByItemId, type ItemSync } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
 
-export type ItemSync = {
-  status: ItemSyncStatus
-  /** The deployed entity, when there is one — what "Reset item" restores. */
-  entity?: Entity
+/** The deployed entities of a collection's items, shared with the approval flow so it plans from what the editor shows. */
+export function itemEntitiesKey(collectionId: string | undefined, pointers: string[]) {
+  return ['item-entities', collectionId, pointers] as const
 }
 
 /**
- * Each item's Catalyst sync status. Only published items have anything deployed, so drafts cost no
- * request; the collection's pending curation turns "unsynced" into "under review".
+ * Each item's Catalyst sync status, as every view shows it: tags are left out, since a tag edit is live
+ * without a review (the approval's deploy plan still compares them). Only published items have anything
+ * deployed, so drafts cost no request; the collection's pending curation turns "unsynced" into "under review".
  */
 export function useItemSyncs(
   address: string | undefined,
@@ -30,7 +29,7 @@ export function useItemSyncs(
   )
 
   const entitiesQuery = useQuery({
-    queryKey: ['item-entities', collectionId, pointers],
+    queryKey: itemEntitiesKey(collectionId, pointers),
     queryFn: () => fetchEntitiesByPointers(pointers),
     enabled: pointers.length > 0,
     staleTime: 30_000
@@ -38,18 +37,30 @@ export function useItemSyncs(
   const curationQuery = useCollectionCuration(address, collection)
 
   const entities = entitiesQuery.data
-  // A failed entities request settles too: an approved item then reads as unsynced rather than loading forever.
-  const entitiesLoaded = pointers.length === 0 || entitiesQuery.isFetched
-  const curationPending = curationQuery.data?.status === CurationStatus.PENDING
+  // Only a successful answer settles it: during a Catalyst outage an approved item reads as loading, not as missing
+  // its entity (which would offer Deploy missing entities and Publish changes for nothing).
+  const entitiesLoaded = pointers.length === 0 || entitiesQuery.isSuccess
+  const curationPending = curationQuery.data?.status === 'pending'
+  // A failed or skipped request settles too, read as "nothing pending": edited rows then say Modified where Under
+  // review would be right, which beats never resolving. Publish changes stays hidden, since the page gates it on success.
+  const curationLoaded = !isPublished || !address || curationQuery.isSuccess || curationQuery.isError
+  const lookupFailed = pointers.length > 0 && entitiesQuery.isError
 
   return useMemo(() => {
     const byItemId = mapEntitiesByItemId(items, entities ?? [])
     const syncs = new Map<string, ItemSync>()
     for (const item of items) {
       const entity = byItemId.get(item.id)
-      const status = getItemSyncStatus(item, entity, { isCurationPending: curationPending, entitiesLoaded })
-      syncs.set(item.id, entity ? { status, entity } : { status })
+      const status = getItemSyncStatus(item, entity, {
+        isCurationPending: curationPending,
+        curationLoaded,
+        entitiesLoaded,
+        ignoreTags: true
+      })
+      if (entity) syncs.set(item.id, { status, entity })
+      else if (lookupFailed && status === ItemSyncStatus.LOADING) syncs.set(item.id, { status, lookupFailed })
+      else syncs.set(item.id, { status })
     }
     return syncs
-  }, [items, entities, curationPending, entitiesLoaded])
+  }, [items, entities, curationPending, curationLoaded, entitiesLoaded, lookupFailed])
 }

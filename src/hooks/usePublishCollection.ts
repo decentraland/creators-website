@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ContractName, getContract } from 'decentraland-transactions'
 import { errorCode, track } from '~/lib/analytics'
+import { captureError } from '~/lib/monitoring'
 import {
   deleteItem,
   fetchAllCollectionItems,
@@ -22,6 +23,7 @@ import { type Item } from '~/lib/items'
 import { buildManaApproveCall, fetchManaAllowance } from '~/lib/mana'
 import { useNotifications } from '~/lib/notifications'
 import {
+  PublishCollectionError,
   PublishTransactionRevertedError,
   consolidatePublishedCollection,
   getMaticChainId,
@@ -33,6 +35,7 @@ import {
 import { type PublicationFee } from '~/lib/publishFee'
 import { buildCollectionInitializeData } from '~/lib/saveCollection'
 import { useTranslation } from '~/intl'
+import { postToForum } from '~/hooks/useForumPost'
 
 export function useRarities(address: string | undefined) {
   return useQuery({
@@ -83,6 +86,12 @@ export function invalidateCollectionItems(queryClient: ReturnType<typeof useQuer
     queryKey: ['collection-preview'],
     predicate: q => q.queryKey.includes(collectionId)
   })
+  // Linked collections page their items and curations server-side under their own keys.
+  void queryClient.invalidateQueries({ queryKey: ['linked-items'], predicate: q => q.queryKey.includes(collectionId) })
+  void queryClient.invalidateQueries({
+    queryKey: ['item-curations'],
+    predicate: q => q.queryKey.includes(collectionId)
+  })
 }
 
 export function useDeleteItem(address: string | undefined) {
@@ -106,7 +115,7 @@ export type PublishVariables = {
   items: Item[]
   paymentMethod: PaymentMethod
   fee: PublicationFee
-  email: string | null
+  email: string
 }
 
 /**
@@ -159,7 +168,9 @@ export function usePublishCollection(session: Session | null) {
       syncing.add(collection.id)
       consolidatePublishedCollection(collection.id, txHash, {
         waitForTransaction: hash => waitForTransaction(chainId, hash),
-        publishCollectionItems: collectionId => publishCollectionItems(address!, collectionId)
+        publishCollectionItems: collectionId => publishCollectionItems(address!, collectionId),
+        // Not awaited: the forum's retries must not hold the sync's cleanup below.
+        onSynced: () => void postToForum(queryClient, address!, collection, 'publish')
       })
         .catch((error: unknown) => {
           console.error('Collection consolidation failed', error)
@@ -178,13 +189,18 @@ export function usePublishCollection(session: Session | null) {
           invalidateCollectionItems(queryClient, collection.id)
         })
     },
-    onError: (error, { collection, paymentMethod }) =>
+    onError: (error, { collection, paymentMethod }) => {
       track('Publish collection error', {
         collectionId: collection.id,
         isFiat: false,
         usedCredits: paymentMethod === 'credits',
         error: errorCode(error)
       })
+      // Every publish needs the ToS record, so a failure to write it blocks creators until someone looks.
+      if (error instanceof PublishCollectionError && error.reason === 'tos_failed') {
+        captureError(error.cause ?? error, { flow: 'publish', step: 'tos', collectionId: collection.id })
+      }
+    }
   })
 }
 

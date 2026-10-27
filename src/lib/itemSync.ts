@@ -1,7 +1,10 @@
 // Whether a published item still matches the entity deployed to the Catalyst — the version the world
 // and the marketplace show. Ported from the legacy builder (modules/item/utils areSynced + the
-// getStatusForStandard selector) so both apps judge the same item the same way.
+// getStatusForStandard selector). The one deliberate divergence is `ignoreTags`: every view here leaves
+// tags out of the comparison, so an item the legacy builder reads as unsynced may read as published here.
 import { type Entity } from '@dcl/schemas'
+import { type Collection } from './collections'
+import { type CollectionCuration } from './curation'
 import { ItemType, VIDEO_PATH, type Item, type ItemData, type ItemRepresentation } from './items'
 
 /** Edited after approval (submitted for review or not): the Shop and the world still serve the approved version. */
@@ -51,7 +54,8 @@ export function mapEntitiesByItemId(items: Item[], entities: Entity[]): Map<stri
   return byItemId
 }
 
-function getDeployableFiles(contents: Record<string, string>): Set<string> {
+/** The paths an item deploys: directory entries and empty files never reach the Catalyst. */
+export function getDeployableFiles(contents: Record<string, string>): Set<string> {
   return new Set(Object.keys(contents).filter(path => !path.endsWith('/') && contents[path] !== EMPTY_CONTENT_HASH))
 }
 
@@ -82,10 +86,11 @@ function sameRepresentations(a: ItemRepresentation[], b: ItemRepresentation[]): 
   })
 }
 
-function sameMetadata(item: Item, metadata: CatalystItemMetadata, deployed: ItemData): boolean {
+function sameMetadata(item: Item, metadata: CatalystItemMetadata, deployed: ItemData, options: SyncOptions): boolean {
   if (item.name !== metadata.name || item.description !== metadata.description) return false
   const data = item.data
-  if (data.category !== deployed.category || !sameList(data.tags, deployed.tags)) return false
+  if (data.category !== deployed.category) return false
+  if (!options.ignoreTags && !sameList(data.tags, deployed.tags)) return false
   if (item.type === ItemType.EMOTE) {
     if (data.loop !== deployed.loop) return false
     if (data.outcomes && data.outcomes.length > 0) {
@@ -102,13 +107,22 @@ function sameMetadata(item: Item, metadata: CatalystItemMetadata, deployed: Item
   )
 }
 
+export type SyncOptions = {
+  /**
+   * Leave tags out: the marketplace and the Shop read them from the builder, so a tag edit is live without a
+   * review. For what the UI shows; what to deploy is still decided on the full entity, so the edit reaches
+   * the Catalyst with the collection's next approval.
+   */
+  ignoreTags?: boolean
+}
+
 /** Whether the builder item and its deployed entity carry the same metadata, representations and files. */
-export function isItemSynced(item: Item, entity: Entity): boolean {
+export function isItemSynced(item: Item, entity: Entity, options: SyncOptions = {}): boolean {
   const metadata = entity.metadata as CatalystItemMetadata
   const deployed = getEntityItemData(entity)
   // A pre-ADR-74 emote has to be redeployed no matter what.
   if (!deployed || (item.type === ItemType.EMOTE && !metadata.emoteDataADR74)) return false
-  if (!sameMetadata(item, metadata, deployed)) return false
+  if (!sameMetadata(item, metadata, deployed, options)) return false
 
   const deployable = getDeployableFiles(item.contents)
   const representations = item.data.representations.map(rep => ({
@@ -128,21 +142,82 @@ export function isItemSynced(item: Item, entity: Entity): boolean {
   return true
 }
 
-type SyncContext = {
+type SyncContext = SyncOptions & {
   /** The collection has a curation request the committee has not answered yet. */
   isCurationPending: boolean
+  /** The curation request has settled; until then an edited item can't tell "unsynced" from "under review". */
+  curationLoaded: boolean
   /** The entities request has settled, so a missing entity is really missing rather than still loading. */
   entitiesLoaded: boolean
 }
 
 export function getItemSyncStatus(item: Item, entity: Entity | undefined, context: SyncContext): ItemSyncStatus {
+  if (!item.isPublished) return ItemSyncStatus.UNPUBLISHED
+  if (!context.curationLoaded) return ItemSyncStatus.LOADING
   if (entity) {
-    if (isItemSynced(item, entity)) return ItemSyncStatus.SYNCED
+    if (isItemSynced(item, entity, { ignoreTags: context.ignoreTags })) return ItemSyncStatus.SYNCED
     return context.isCurationPending ? ItemSyncStatus.UNDER_REVIEW : ItemSyncStatus.UNSYNCED
   }
-  if (!item.isPublished) return ItemSyncStatus.UNPUBLISHED
   if (!item.isApproved) return ItemSyncStatus.UNDER_REVIEW
   return context.entitiesLoaded ? ItemSyncStatus.UNSYNCED : ItemSyncStatus.LOADING
+}
+
+export type ItemSync = {
+  status: ItemSyncStatus
+  /** The deployed entity, when there is one: what "Reset item" restores. */
+  entity?: Entity
+  /** Set on a still-loading item once the Catalyst lookup has failed: whether it changed can't be known. */
+  lookupFailed?: true
+}
+
+/** What the item row's Status pill says on a collection approved at least once. */
+export enum ItemRowStatus {
+  PUBLISHED = 'published',
+  MODIFIED = 'modified',
+  REJECTED = 'rejected',
+  UNDER_REVIEW = 'under_review',
+  MISSING = 'missing'
+}
+
+/** What the row status needs from the collection's latest review request. */
+export type RowStatusCuration = Pick<CollectionCuration, 'status' | 'updatedAt'>
+
+/**
+ * Null while the sync is unknown, and for an unapproved item outside a review: the collection pill tells that
+ * story. An edited item reads "rejected" when the committee turned the changes down, which only covers edits
+ * made before the rejection: a later edit is something the committee never saw. An approved item with no entity
+ * is "missing" (its files never reached the Catalyst, so it may not work in-world) unless its collection is under
+ * review, which is the way it gets redeployed.
+ */
+export function getItemRowStatus(
+  item: Pick<Item, 'updatedAt'>,
+  sync: ItemSync | undefined,
+  curation: RowStatusCuration | null | undefined
+): ItemRowStatus | null {
+  const pending = curation?.status === 'pending'
+  const rejected = curation?.status === 'rejected' && item.updatedAt <= curation.updatedAt
+  switch (sync?.status) {
+    case ItemSyncStatus.SYNCED:
+      return ItemRowStatus.PUBLISHED
+    case ItemSyncStatus.UNDER_REVIEW:
+      return pending ? ItemRowStatus.UNDER_REVIEW : null
+    case ItemSyncStatus.UNSYNCED:
+      if (sync.entity) return rejected ? ItemRowStatus.REJECTED : ItemRowStatus.MODIFIED
+      return pending ? ItemRowStatus.UNDER_REVIEW : ItemRowStatus.MISSING
+    default:
+      return null
+  }
+}
+
+/**
+ * The Status column exists on collections approved on chain, while some row on the page says more than
+ * "published": until then the collection pill already tells the whole story. Approved on chain, not merely
+ * reviewed: the rescue step of a first approval already stamps `reviewedAt`, with the deploy still to come.
+ */
+export function showsItemStatusColumn(collection: Collection, statuses: Iterable<ItemRowStatus | null>): boolean {
+  if (!collection.isApproved) return false
+  for (const status of statuses) if (status !== null && status !== ItemRowStatus.PUBLISHED) return true
+  return false
 }
 
 /**
@@ -154,10 +229,12 @@ export function buildResetItem(item: Item, entity: Entity): Item {
   const deployed = getEntityItemData(entity)
   if (!deployed || !entity.content) throw new Error(`Entity ${entity.id} has no item data or content`)
   const contents = Object.fromEntries(entity.content.map(({ file, hash }) => [file, hash]))
-  // The preview video and the permission list never reach the Catalyst; keep the builder's.
-  if (item.contents[VIDEO_PATH]) contents[VIDEO_PATH] = item.contents[VIDEO_PATH]
-  const data = item.data.requiredPermissions
-    ? { ...deployed, requiredPermissions: item.data.requiredPermissions }
-    : deployed
+  // The preview video and the permission list never reach the Catalyst, and tags are live from the builder;
+  // keep the builder's. `item.video` is the approved hash, so a video uploaded after approval (pending in
+  // `contents`) is discarded with the reset.
+  const video = item.video ?? item.contents[VIDEO_PATH]
+  if (video) contents[VIDEO_PATH] = video
+  const data: ItemData = { ...deployed, tags: item.data.tags ?? deployed.tags }
+  if (item.data.requiredPermissions) data.requiredPermissions = item.data.requiredPermissions
   return { ...item, name: metadata.name, description: metadata.description, data, contents }
 }

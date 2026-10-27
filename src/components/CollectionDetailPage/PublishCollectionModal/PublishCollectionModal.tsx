@@ -1,21 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from '~/intl'
 import { useAllCollectionItems, useSaveCollection } from '~/hooks/useCollection'
-import { useRerunItemValidation } from '~/hooks/useCollectionValidation'
+import { useProfile } from '~/hooks/useProfile'
 import { track } from '~/lib/analytics'
-import { countIssues, getValidationStatus, hasErrors } from '~/lib/validation'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { type TopUpResume } from '~/lib/creditsTopUp'
 import { type PaymentMethod, type PublishCollectionError, type PublishResult } from '~/lib/publishCollection'
 import { Modal } from '~/components/Modal'
-import { PendingModal } from '../SellItemFlow/PendingModal'
 import { ConfirmItemsStep } from './ConfirmItemsStep'
 import { ConfirmNameStep } from './ConfirmNameStep'
 import { PaymentStep } from './PaymentStep'
 import { PublishErrorModal } from './PublishErrorModal'
 import { TopUpOutcome } from './TopUpOutcome'
-import { ValidationIssuesView, type ItemCheck } from './ValidationIssuesView'
+import { ValidationGate } from './ValidationGate'
+import { type ItemCheck } from './ValidationIssuesView'
 import { StepIndicator } from '~/components/StepIndicator'
 import * as S from './PublishCollectionModal.styles'
 
@@ -28,13 +27,10 @@ enum Step {
 const TOTAL_STEPS = 3
 
 /** Where a creator back from buying credits picks the wizard up: the payment step, with the order to settle. */
-export type PublishResume = Pick<TopUpResume, 'paymentMethod' | 'termsAccepted'> & {
+export type PublishResume = Pick<TopUpResume, 'paymentMethod' | 'termsAccepted' | 'email'> & {
   /** Null when the checkout was cancelled: nothing to wait for. */
   orderId: string | null
 }
-
-/** Before the wizard: wait for the item checks, then show what they found. Decided once, never revisited. */
-type Phase = 'validating' | 'issues' | 'wizard'
 
 type Props = {
   collection: Collection
@@ -46,10 +42,6 @@ type Props = {
   blockOnErrors: boolean
   onClose: () => void
   onPublished: (result: PublishResult) => void
-}
-
-function totals(checks: ItemCheck[]) {
-  return countIssues(checks.flatMap(check => check.issues))
 }
 
 /**
@@ -69,57 +61,12 @@ export function PublishCollectionModal({
   const { t } = useTranslation()
   const { address } = session
 
-  const [phase, setPhase] = useState<Phase>(resume ? 'wizard' : 'validating')
-  const openedAt = useRef(Date.now())
-  // The items the issues view lists: those with issues when it opened, errors first. A re-run that clears
-  // one keeps its card so the creator sees it pass.
-  const [flaggedIds, setFlaggedIds] = useState<string[]>([])
-  const collectionId = collection.id
+  // Before the wizard: wait for the item checks and show what they found. Resuming skips them.
+  const [gated, setGated] = useState(!resume)
 
-  useEffect(() => {
-    if (!resume) track('Publish Validation Started', { collectionId, itemCount: validation.results.length })
-    // Once per opening.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useEffect(() => {
-    if (phase !== 'validating' || validation.isValidating) return
-    const flagged = validation.results.filter(check => check.issues.length > 0)
-    const { errors, warnings } = totals(flagged)
-    track('Publish Validation Result', {
-      collectionId,
-      errors,
-      warnings,
-      itemsWithIssues: flagged.length,
-      blocking: blockOnErrors && errors > 0,
-      durationMs: Date.now() - openedAt.current
-    })
-    if (flagged.length === 0) {
-      setPhase('wizard')
-      return
-    }
-    const withErrors = flagged.filter(check => hasErrors(check.issues))
-    const withWarnings = flagged.filter(check => !hasErrors(check.issues))
-    setFlaggedIds([...withErrors, ...withWarnings].map(({ item }) => item.id))
-    setPhase('issues')
-  }, [phase, validation, blockOnErrors, collectionId])
-
-  const flaggedChecks = useMemo(() => {
-    const byId = new Map(validation.results.map(check => [check.item.id, check]))
-    return flaggedIds.flatMap(id => byId.get(id) ?? [])
-  }, [flaggedIds, validation.results])
-  const rerunItemValidation = useRerunItemValidation()
-  const rerun = useCallback(
-    (check: ItemCheck) => rerunItemValidation(check.item, 'publish', getValidationStatus(check.issues, false)),
-    [rerunItemValidation]
-  )
-  function resolveIssues(action: 'continue' | 'back') {
-    track('Publish Validation Resolved', { collectionId, action, ...totals(flaggedChecks) })
-    if (action === 'continue') setPhase('wizard')
-    else onClose()
-  }
-
-  const [step, setStep] = useState<Step>(resume ? Step.Payment : Step.Name)
+  // A record from before step 1 asked for the email can't publish: send the creator back for it.
+  const [step, setStep] = useState<Step>(resume?.email ? Step.Payment : Step.Name)
+  const [email, setEmail] = useState(resume?.email ?? '')
   const [error, setError] = useState<PublishCollectionError | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(resume?.paymentMethod ?? null)
   const [termsAccepted, setTermsAccepted] = useState(resume?.termsAccepted ?? false)
@@ -130,27 +77,37 @@ export function PublishCollectionModal({
   const itemsQuery = useAllCollectionItems(address, collection.id)
   const items = itemsQuery.data ?? []
   const saveCollection = useSaveCollection(address)
+  const profile = useProfile(address)
+  const profileEmail = profile.data?.email?.trim() ?? ''
 
-  function confirmName(name: string) {
-    if (name === collection.name) {
+  function confirmDetails(details: { name: string; email: string }) {
+    const { name } = details
+    setEmail(details.email)
+    // Tracked once the step is actually left, so a failed rename retried N times counts once.
+    const advance = () => {
+      track('Publish details confirmed', {
+        collectionId: collection.id,
+        nameChanged: name !== collection.name,
+        emailSource: !profileEmail ? 'typed' : details.email === profileEmail ? 'profile' : 'edited'
+      })
       setStep(Step.Items)
+    }
+    if (name === collection.name) {
+      advance()
       return
     }
-    saveCollection.mutate({ ...collection, name }, { onSuccess: () => setStep(Step.Items) })
+    saveCollection.mutate({ ...collection, name }, { onSuccess: advance })
   }
 
-  if (phase === 'validating') {
-    return <PendingModal label={t('item_validation.checking')} onCancel={onClose} testId="publish-validating" />
-  }
-
-  if (phase === 'issues') {
+  if (gated) {
     return (
-      <ValidationIssuesView
-        checks={flaggedChecks}
+      <ValidationGate
+        collectionId={collection.id}
+        flow="publish"
+        validation={validation}
         blockOnErrors={blockOnErrors}
-        onRerun={rerun}
-        onBack={() => resolveIssues('back')}
-        onContinue={() => resolveIssues('continue')}
+        onPass={() => setGated(false)}
+        onClose={onClose}
       />
     )
   }
@@ -162,7 +119,8 @@ export function PublishCollectionModal({
         onCancel={onClose}
         onRetry={() => {
           setError(null)
-          setStep(Step.Payment)
+          // The server refusing the ToS record most likely means the email: send the creator back to it.
+          setStep(error.reason === 'tos_failed' ? Step.Name : Step.Payment)
         }}
       />
     )
@@ -180,15 +138,21 @@ export function PublishCollectionModal({
     >
       <S.Main>
         <StepIndicator current={step} total={TOTAL_STEPS} testId="publish-steps" />
-        {step === Step.Name && (
-          <ConfirmNameStep
-            initialName={collection.name}
-            isSaving={saveCollection.isPending}
-            saveError={saveCollection.error?.message ?? null}
-            onCancel={onClose}
-            onConfirm={confirmName}
-          />
-        )}
+        {step === Step.Name &&
+          (profile.isLoading ? (
+            <S.InlineNote data-testid="publish-name-loading">
+              <S.Spinner aria-hidden />
+            </S.InlineNote>
+          ) : (
+            <ConfirmNameStep
+              initialName={collection.name}
+              initialEmail={email || profileEmail}
+              isSaving={saveCollection.isPending}
+              saveError={saveCollection.error?.message ?? null}
+              onCancel={onClose}
+              onConfirm={confirmDetails}
+            />
+          ))}
         {step === Step.Items &&
           (itemsQuery.isLoading ? (
             <S.InlineNote data-testid="publish-items-loading">
@@ -197,6 +161,7 @@ export function PublishCollectionModal({
           ) : (
             <ConfirmItemsStep
               address={address}
+              collection={collection}
               items={items}
               onBusyChange={setStepBusy}
               onBack={() => setStep(Step.Name)}
@@ -210,6 +175,7 @@ export function PublishCollectionModal({
             session={session}
             paymentMethod={paymentMethod}
             onPaymentMethodChange={setPaymentMethod}
+            email={email}
             accepted={termsAccepted}
             onAcceptedChange={setTermsAccepted}
             onBusyChange={setStepBusy}

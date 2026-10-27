@@ -86,7 +86,7 @@ export function BuyCreditsModal({ balance, shortfall, onCancel, onBuy }: Props) 
         <S.Header>
           <S.Heading>{t('publish_collection_modal.buy_credits.title')}</S.Heading>
           <S.Balance data-testid="buy-credits-balance">
-            {t('publish_collection_modal.buy_credits.balance')}{' '}
+            {t('publish_collection_modal.buy_credits.balance')}
             <span>
               <CurrencyAmount currency="credits">{formatCredits(balance)}</CurrencyAmount>
             </span>

@@ -4,6 +4,7 @@ import {
   BODY_SHAPE_FEMALE,
   BODY_SHAPE_MALE,
   BodyShapeType,
+  canDeleteItem,
   canEditItemDetails,
   canEditItemPrice,
   canManageItem,
@@ -273,16 +274,44 @@ describe('canManageItem', () => {
   }
   const item = fromRemoteItem({ ...remote, eth_address: '0xCreator' })
 
-  it('lets the item creator, the collection owner and its collaborators manage the item', () => {
-    expect(canManageItem(collection, item, '0xcreator')).toBe(true)
+  it('lets the collection owner and its collaborators manage the item', () => {
     expect(canManageItem(collection, item, '0xowner')).toBe(true)
     expect(canManageItem(collection, item, '0xmanager')).toBe(true)
   })
 
-  it('keeps minters and strangers out', () => {
+  it('keeps minters, strangers and a creator with no role on the collection out', () => {
+    expect(canManageItem(collection, item, '0xcreator')).toBe(false)
     expect(canManageItem(collection, item, '0xminter')).toBe(false)
     expect(canManageItem(collection, item, '0xother')).toBe(false)
     expect(canManageItem(collection, item, undefined)).toBe(false)
+  })
+})
+
+describe('canDeleteItem', () => {
+  const draft = {
+    id: 'c1',
+    name: 'Hats',
+    owner: '0xOwner',
+    urn: 'urn',
+    isPublished: false,
+    isApproved: false,
+    itemCount: 1,
+    minters: ['0xMinter'],
+    managers: ['0xManager'],
+    createdAt: 1,
+    updatedAt: 1
+  }
+
+  it('lets only the collection owner delete an item from a draft', () => {
+    expect(canDeleteItem(draft, '0xowner')).toBe(true)
+    expect(canDeleteItem(draft, '0xmanager')).toBe(false)
+    expect(canDeleteItem(draft, '0xminter')).toBe(false)
+    expect(canDeleteItem(draft, undefined)).toBe(false)
+  })
+
+  it('refuses once the collection is published or under the publish lock', () => {
+    expect(canDeleteItem({ ...draft, isPublished: true }, '0xowner')).toBe(false)
+    expect(canDeleteItem({ ...draft, lock: Date.now() }, '0xowner')).toBe(false)
   })
 })
 
@@ -303,7 +332,7 @@ describe('canEditItemDetails', () => {
   const item = fromRemoteItem({ ...remote, eth_address: '0xCreator' })
 
   it('lets whoever manages the item edit it, before and after publishing', () => {
-    expect(canEditItemDetails(collection, item, '0xcreator')).toBe(true)
+    expect(canEditItemDetails(collection, item, '0xowner')).toBe(true)
     expect(canEditItemDetails({ ...collection, isPublished: true, isApproved: true }, item, '0xmanager')).toBe(true)
     expect(canEditItemDetails(collection, item, '0xminter')).toBe(false)
     expect(canEditItemDetails(collection, item, undefined)).toBe(false)

@@ -5,7 +5,9 @@ import { useDeleteItem } from '~/hooks/usePublishCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useSaveItem } from '~/hooks/useSaveItem'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
-import { type Item } from '~/lib/items'
+import { type Collection } from '~/lib/collections'
+import { canDeleteItem, type Item } from '~/lib/items'
+import { useNotifications } from '~/lib/notifications'
 import { Button } from '~/components/Button'
 import { type ThumbnailPatch } from '~/components/ThumbnailModal'
 import { Checkbox } from '~/components/Checkbox'
@@ -16,6 +18,7 @@ import * as S from './PublishCollectionModal.styles'
 
 type Props = {
   address: string
+  collection: Collection
   items: Item[]
   onBusyChange: (busy: boolean) => void
   onBack: () => void
@@ -23,8 +26,9 @@ type Props = {
 }
 
 /** Step 2: review every item; names and rarities are editable in place, items can be removed. */
-export function ConfirmItemsStep({ address, items, onBusyChange, onBack, onConfirm }: Props) {
+export function ConfirmItemsStep({ address, collection, items, onBusyChange, onBack, onConfirm }: Props) {
   const { t } = useTranslation()
+  const showToast = useNotifications(state => state.showToast)
   const [accepted, setAccepted] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<Item | null>(null)
@@ -57,14 +61,21 @@ export function ConfirmItemsStep({ address, items, onBusyChange, onBack, onConfi
       return
     }
     updateItem.mutate(
-      { item: { ...item, ...changes }, thumbnail: thumbnailPatch?.contents[THUMBNAIL_PATH] },
+      {
+        item: { ...item, ...changes },
+        thumbnail: thumbnailPatch?.contents[THUMBNAIL_PATH],
+        imageStale: changes.rarity !== item.rarity
+      },
       { onSuccess: stopEditing }
     )
   }
 
   function confirmDelete() {
     if (!deleting) return
-    deleteItem.mutate(deleting, { onSuccess: () => setDeleting(null) })
+    deleteItem.mutate(deleting, {
+      onSuccess: () => setDeleting(null),
+      onError: () => showToast(t('collection_detail_page.delete_item.error'), { type: 'error' })
+    })
   }
 
   return (
@@ -95,7 +106,7 @@ export function ConfirmItemsStep({ address, items, onBusyChange, onBack, onConfi
                 isEditing={editingId === item.id}
                 isSaving={editingId === item.id && updateItem.isPending}
                 saveError={editingId === item.id && updateItem.isError}
-                canDelete={items.length > 1}
+                canDelete={items.length > 1 && canDeleteItem(collection, address)}
                 locked={editingId !== null && editingId !== item.id}
                 pendingThumbnail={editingId === item.id ? (thumbnailPatch?.thumbnail ?? null) : null}
                 onEdit={() => {
@@ -134,7 +145,6 @@ export function ConfirmItemsStep({ address, items, onBusyChange, onBack, onConfi
         <DeleteItemModal
           item={deleting}
           isDeleting={deleteItem.isPending}
-          error={deleteItem.isError}
           onCancel={() => setDeleting(null)}
           onConfirm={confirmDelete}
         />

@@ -3,13 +3,14 @@
 // feeds results in through actions, so this reducer stays fully unit-testable.
 import { EmoteCategory, WearableCategory } from '@dcl/schemas'
 import { type ValidationIssue } from '~/lib/validation'
+import { type Mapping, type Mappings } from '~/lib/mappings'
 import { VIDEO_PATH, cleanAssetName, isImageFile, isModelFile } from '~/lib/itemFiles'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
 import { BodyShapeType, ItemType, getMissingBodyShapeType, type Item, type ItemMetrics } from '~/lib/items'
 import { type UploadFailureReason } from '~/lib/uploadItems'
 import { type AnimationMetrics } from '~/lib/models'
 import { DEFAULT_RARITY } from '~/lib/rarities'
-import { IMAGE_WEARABLE_CATEGORIES } from '~/lib/wearableCategories'
+import { IMAGE_WEARABLE_CATEGORIES, hidesForCategory } from '~/lib/wearableCategories'
 
 export type DraftStatus = 'processing' | 'ready' | 'failed'
 
@@ -38,8 +39,11 @@ export type ItemDraft = {
   rarity: string
   /** From wearable.json / emote.json when the zip ships one. */
   description: string
+  utility: string
   tags: string[]
   blockVrmExport: boolean
+  /** Wearables only: the live preview's hides, else the manifest's hides and replaces. Saved and used by every triangle check. */
+  hides: string[]
   playMode: EmotePlayMode
   /** Data URL of the current thumbnail; also stored as contents['thumbnail.png'] once final. */
   thumbnail: string | null
@@ -52,6 +56,12 @@ export type ItemDraft = {
   validationIssues: ValidationIssue[]
   /** Category the validation issues were computed for; a different pick re-runs the validator. */
   validatedCategory: string | null
+  /** Linked collections only: which tokens of the linked contract unlock the item. */
+  mapping: Mapping | null
+  /** Edit in bulk: the item's whole mappings, saved as they are while `mapping` is left untouched. */
+  keptMappings: Mappings | null
+  /** Linked collections only: the URN suffix a zip's wearable.json fixed; generated from the name otherwise. */
+  urnSuffix: string | null
   checked: boolean
 }
 
@@ -84,8 +94,10 @@ export function createDraft(file: File, { nameFromFile = true } = {}): ItemDraft
     suggestedCategory: null,
     rarity: DEFAULT_RARITY,
     description: '',
+    utility: '',
     tags: [],
     blockVrmExport: false,
+    hides: [],
     playMode: EmotePlayMode.SIMPLE,
     thumbnail: null,
     isAutoThumbnail: false,
@@ -94,6 +106,9 @@ export function createDraft(file: File, { nameFromFile = true } = {}): ItemDraft
     emoteMetrics: null,
     validationIssues: [],
     validatedCategory: null,
+    mapping: null,
+    keptMappings: null,
+    urnSuffix: null,
     checked: false
   }
 }
@@ -171,7 +186,12 @@ export function addItemsReducer(state: AddItemsState, action: AddItemsAction): A
     }
     case 'draftUpdated':
       // Any edit invalidates a previous review: the draft must be saved (checked) again.
-      return updateDraft(state, action.id, draft => ({ ...draft, ...action.patch, checked: false }))
+      return updateDraft(state, action.id, draft => ({
+        ...draft,
+        ...action.patch,
+        ...(action.patch.category !== undefined ? { hides: hidesForCategory(action.patch.category, draft.hides) } : {}),
+        checked: false
+      }))
     case 'draftChecked': {
       const checkedState = updateDraft(state, action.id, draft => ({ ...draft, checked: true }))
       // SAVE & NEXT advances to the next unchecked draft, wrapping around.
@@ -266,8 +286,19 @@ export function getCategoryOptions(draft: ItemDraft): string[] {
   )
 }
 
+export type DraftRules = {
+  /** Linked collections: no rarity, and a token mapping is required when the collection has a linked contract. */
+  linked?: boolean
+  requiresMapping?: boolean
+}
+
 /** Whether the draft satisfies every requirement to be saved (mirrors legacy validateItemDraft). */
-export function isDraftComplete(draft: ItemDraft, drafts: ItemDraft[], collectionItems: Item[]): boolean {
+export function isDraftComplete(
+  draft: ItemDraft,
+  drafts: ItemDraft[],
+  collectionItems: Item[],
+  rules: DraftRules = {}
+): boolean {
   if (draft.status !== 'ready' || !draft.type || !draft.thumbnail || !draft.metrics) return false
   if (
     draft.type === ItemType.WEARABLE &&
@@ -284,6 +315,7 @@ export function isDraftComplete(draft: ItemDraft, drafts: ItemDraft[], collectio
   }
 
   if (!isValidItemName(draft.name)) return false
-  if (!draft.category || !draft.rarity) return false
-  return true
+  if (!draft.category) return false
+  if (rules.linked) return !rules.requiresMapping || draft.mapping !== null
+  return !!draft.rarity
 }

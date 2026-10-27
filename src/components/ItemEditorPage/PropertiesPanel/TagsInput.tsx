@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from 'react'
+import { useState, type KeyboardEvent, type RefObject } from 'react'
 import { Close as RemoveIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import * as S from '../ItemEditorPage.styles'
@@ -7,11 +7,16 @@ type Props = {
   tags: string[]
   disabled?: boolean
   onChange: (tags: string[]) => void
+  /** The text field, for callers that add a tag from elsewhere and want focus to land here afterwards. */
+  inputRef?: RefObject<HTMLInputElement>
   testId?: string
 }
 
-/** Chip list plus a text field: Enter or comma adds a tag, Backspace on an empty field removes the last. */
-export function TagsInput({ tags, disabled = false, onChange, testId = 'tags-input' }: Props) {
+/**
+ * Chip list plus a text field: Enter or comma adds a tag, Backspace on an empty field removes the last.
+ * Disabled, it is a plain read-only list.
+ */
+export function TagsInput({ tags, disabled = false, onChange, inputRef, testId = 'tags-input' }: Props) {
   const { t } = useTranslation()
   const [value, setValue] = useState('')
 
@@ -34,31 +39,37 @@ export function TagsInput({ tags, disabled = false, onChange, testId = 'tags-inp
     <S.Field as="div">
       <S.Chips data-testid={testId}>
         {tags.map(tag => (
-          <S.TagChip key={tag} data-testid={`${testId}-tag`}>
+          <S.TagChip key={tag} data-testid={`${testId}-tag`} data-readonly={disabled || undefined}>
             {tag}
-            <button
-              type="button"
-              aria-label={t('item_editor.tags.remove', { tag })}
-              disabled={disabled}
-              data-testid={`${testId}-remove-${tag}`}
-              onClick={() => onChange(tags.filter(candidate => candidate !== tag))}
-            >
-              <RemoveIcon sx={{ fontSize: 14 }} />
-            </button>
+            {!disabled && (
+              <button
+                type="button"
+                aria-label={t('item_editor.tags.remove', { tag })}
+                data-testid={`${testId}-remove-${tag}`}
+                onClick={() => onChange(tags.filter(candidate => candidate !== tag))}
+              >
+                <RemoveIcon sx={{ fontSize: 14 }} />
+              </button>
+            )}
           </S.TagChip>
         ))}
       </S.Chips>
-      <S.TextInput
-        value={value}
-        placeholder={t('item_editor.tags.placeholder')}
-        maxLength={32}
-        aria-label={t('item_editor.tags.title')}
-        disabled={disabled}
-        data-testid={`${testId}-field`}
-        onChange={event => setValue(event.target.value)}
-        onKeyDown={onKeyDown}
-        onBlur={commit}
-      />
+      {disabled && tags.length === 0 && (
+        <S.SectionNote data-testid={`${testId}-empty`}>{t('item_editor.tags.empty')}</S.SectionNote>
+      )}
+      {!disabled && (
+        <S.TextInput
+          ref={inputRef}
+          value={value}
+          placeholder={t('item_editor.tags.placeholder')}
+          maxLength={32}
+          aria-label={t('item_editor.tags.title')}
+          data-testid={`${testId}-field`}
+          onChange={event => setValue(event.target.value)}
+          onKeyDown={onKeyDown}
+          onBlur={commit}
+        />
+      )}
     </S.Field>
   )
 }

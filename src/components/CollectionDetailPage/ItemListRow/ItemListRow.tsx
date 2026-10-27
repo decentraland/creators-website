@@ -13,7 +13,9 @@ import { ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
 import { ItemType, getItemBodyShapeType, getItemSales, isSmartWearable, type Item } from '~/lib/items'
 import { EmotePlayMode } from '~/lib/itemFactory'
 import { type ItemListing } from '~/lib/listings'
+import { type ItemRowStatus } from '~/lib/itemSync'
 import { type ItemValidation } from '~/hooks/useCollectionValidation'
+import { discountedCreditsPpm, discountedManaWeiPpm } from '~/lib/collectionDiscount'
 import { formatCredits, formatMana } from '~/lib/publishFee'
 import { shopItemUrl } from '~/lib/shop'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
@@ -23,6 +25,8 @@ import { BodyShapeIcon, CategoryIcon, PlayModeIcon } from '~/components/ItemIcon
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { RarityPill } from '~/components/RarityPill'
 import { ItemSaleStatus } from '../ItemSaleStatus'
+import { ItemSyncPill } from '../ItemSyncPill'
+import { SaleTag } from '../SaleTag'
 import * as S from './ItemListRow.styles'
 
 const EMPTY = '—'
@@ -35,6 +39,12 @@ type Props = {
   withMarket?: boolean
   /** The item's primary listing: `null` when it has none, `undefined` while listings are still loading. */
   listing?: ItemListing | null
+  /** Parts per million a running collection discount takes off this listing in the Shop, when one does. */
+  discountPpm?: number
+  /** Lay out the Status column; the list shows it only when some row on the page is not plain published. */
+  withStatus?: boolean
+  /** The row's Status pill; `null` while the sync is still unknown. */
+  syncStatus?: ItemRowStatus | null
   /** Whether the collection has been approved at least once, so its items can be put on sale. */
   canSell?: boolean
   onPutOnSale?: (item: Item) => void
@@ -61,6 +71,9 @@ export function ItemListRow({
   withPlayMode = false,
   withMarket = false,
   listing,
+  discountPpm,
+  withStatus = false,
+  syncStatus = null,
   canSell = false,
   onPutOnSale,
   onEditPrice,
@@ -138,20 +151,43 @@ export function ItemListRow({
   }
 
   function renderAmount(listing: ItemListing) {
-    if (listing.currency === 'mana') {
-      if (listing.manaWei === 0n) return t('collection_detail_page.price.free')
-      const amount = formatMana(listing.manaWei)
+    const isFree = listing.currency === 'mana' ? listing.manaWei === 0n : listing.credits === 0
+    if (isFree) return t('collection_detail_page.price.free')
+    const currency = listing.currency
+    const amount = listing.currency === 'mana' ? formatMana(listing.manaWei) : formatCredits(listing.credits)
+    const title =
+      currency === 'mana'
+        ? t('collection_detail_page.price.mana', { amount })
+        : t('collection_detail_page.price.credits', { amount })
+    const sale = !discountPpm
+      ? amount
+      : listing.currency === 'mana'
+        ? formatMana(discountedManaWeiPpm(listing.manaWei, discountPpm))
+        : formatCredits(discountedCreditsPpm(listing.credits, discountPpm))
+    // A cheap item can round a discount away; then there is nothing to show but its price.
+    if (sale === amount) {
       return (
-        <S.Amount title={t('collection_detail_page.price.mana', { amount })}>
-          <CurrencyAmount currency="mana">{amount}</CurrencyAmount>
+        <S.Amount title={title}>
+          <CurrencyAmount currency={currency}>{amount}</CurrencyAmount>
         </S.Amount>
       )
     }
-    if (listing.credits === 0) return t('collection_detail_page.price.free')
-    const amount = formatCredits(listing.credits)
+    const discountPct = discountPpm! / 10_000
     return (
-      <S.Amount title={t('collection_detail_page.price.credits', { amount })}>
-        <CurrencyAmount currency="credits">{amount}</CurrencyAmount>
+      <S.Amount
+        title={t('collection_detail_page.price.discounted', {
+          amount: sale,
+          original: amount,
+          pct: intl.formatNumber(discountPct, { maximumFractionDigits: 2 })
+        })}
+        data-discounted
+        data-testid="item-row-discounted-price"
+      >
+        <SaleTag pct={discountPct} />
+        <S.SalePrice>
+          <CurrencyAmount currency={currency}>{sale}</CurrencyAmount>
+        </S.SalePrice>
+        <S.OriginalPrice>{amount}</S.OriginalPrice>
       </S.Amount>
     )
   }
@@ -198,6 +234,7 @@ export function ItemListRow({
       data-testid="item-row"
       data-with-play-mode={withPlayMode || undefined}
       data-with-market={withMarket || undefined}
+      data-with-status={withStatus || undefined}
       data-validation={flagged?.status}
     >
       <S.Thumb>
@@ -322,6 +359,11 @@ export function ItemListRow({
               />
             </S.Cell>
           </>
+        )}
+        {withStatus && (
+          <S.Cell data-testid="item-row-status" data-empty={!syncStatus || undefined}>
+            {syncStatus && <ItemSyncPill status={syncStatus} />}
+          </S.Cell>
         )}
       </S.Content>
       <S.ActionsCell>{actions}</S.ActionsCell>

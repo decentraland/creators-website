@@ -3,13 +3,19 @@
 // thumbnails) is filled afterwards by DraftProcessor.
 import { WearableCategory } from '@dcl/schemas'
 import { blobToDataURL, convertImageIntoWearableThumbnail, dataURLToBlob, loadVideoMetadata } from '~/lib/media'
+import { sanitizeItemDescription, unique } from '~/lib/itemDraft'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH } from '~/lib/itemFactory'
 import { ItemFileError, THUMBNAIL_PATH, VIDEO_PATH, isImageFile, loadItemFile } from '~/lib/itemFiles'
 import { BodyShapeType, ItemType, type ItemMetrics } from '~/lib/items'
 import { analyzeModel } from '~/lib/models'
 import { isRarity } from '~/lib/rarities'
 import { isAutoThumbnailStale } from '~/lib/thumbnailPose'
+import { getWearableCategoryOptions, hidesForCategory } from '~/lib/wearableCategories'
+import { resolveLinkedManifest, type LinkedManifestTarget } from '~/lib/linkedManifest'
 import { type ItemDraft } from './AddItemsModal.state'
+
+/** The linked collection a draft is for: what its items may be and where their URN and mapping come from. */
+export type LinkedDraftTarget = LinkedManifestTarget
 
 const IMAGE_WEARABLE_METRICS: ItemMetrics = {
   triangles: 100,
@@ -36,22 +42,40 @@ function sanitizePlayMode(playMode: string | undefined): EmotePlayMode | null {
  * import problems. The returned patch may still lack metrics/thumbnail — DraftProcessor fills
  * those through the WearablePreview iframe.
  */
-export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> {
+export async function processDraftFile(
+  file: File,
+  prefillHides?: string[],
+  linked?: LinkedDraftTarget
+): Promise<Partial<ItemDraft>> {
   const loaded = await loadItemFile(file)
+  // Linked collections hold plain wearables only (legacy: "This item type is not allowed in Linked Wearables Collections").
+  if (linked && loaded.scene) throw new ItemFileError('linked_smart_wearable')
   // A video shipped in the zip gets the same decode check as one picked in the form.
   if (loaded.contents[VIDEO_PATH]) {
     await loadVideoMetadata(loaded.contents[VIDEO_PATH]).catch(() => {
       throw new ItemFileError('invalid_video')
     })
   }
-  // The manifest's category and hides drive the category-dependent limits (triangle budget, skin caps).
+  // A wearable manifest category the file can't take (a 3D model as eyes) is ignored, so the picker, the checks and
+  // the saved item all fall back to the suggestion instead of disagreeing.
+  const manifest = loaded.wearable?.data
+  const wearableCategory =
+    manifest?.category && getWearableCategoryOptions(loaded.contents).includes(manifest.category)
+      ? manifest.category
+      : undefined
+  // The manifest's category and hides drive the category-dependent limits (triangle budget, skin caps). Its
+  // `replaces` joins the hides, as the editor does on load. A live preview prefill never ships a manifest.
+  const hides =
+    prefillHides ??
+    hidesForCategory(wearableCategory, unique([...(manifest?.hides ?? []), ...(manifest?.replaces ?? [])]))
   const analysis = await analyzeModel(
     loaded.model,
     loaded.contents,
-    loaded.wearable?.data.category as WearableCategory | undefined,
-    loaded.wearable?.data.hides
+    wearableCategory as WearableCategory | undefined,
+    hides
   )
 
+  if (linked && analysis.type === ItemType.EMOTE) throw new ItemFileError('linked_emote')
   const isSmart = !!loaded.scene
   // Emotes and smart wearables are always unisex.
   const isUnisex = analysis.type === ItemType.EMOTE || isSmart
@@ -60,12 +84,13 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
     model: loaded.model,
     type: analysis.type,
     validationIssues: analysis.validationIssues,
-    validatedCategory: loaded.wearable?.data.category ?? analysis.suggestedCategory,
+    validatedCategory: wearableCategory ?? analysis.suggestedCategory,
     emoteMetrics: analysis.emoteMetrics ?? null,
     bodyShape: isUnisex ? BodyShapeType.BOTH : (loaded.bodyShape ?? BodyShapeType.BOTH),
     bodyShapeLocked: isUnisex,
     isSmart,
-    requiredPermissions: loaded.scene?.requiredPermissions ?? []
+    requiredPermissions: loaded.scene?.requiredPermissions ?? [],
+    hides
   }
 
   if (analysis.suggestedCategory) {
@@ -78,12 +103,18 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
     patch.metrics = { sequences, duration, frames, fps, props, additionalArmatures }
   }
 
+  if (linked) {
+    // A zip's wearable.json may fix the URN and the mapping; anything else gets the default "any token" mapping.
+    Object.assign(patch, resolveLinkedManifest(loaded.wearable, linked))
+  }
+
   if (loaded.wearable) {
     patch.name = loaded.wearable.name.slice(0, ITEM_NAME_MAX_LENGTH)
-    if (loaded.wearable.data.category) patch.category = loaded.wearable.data.category
+    if (wearableCategory) patch.category = wearableCategory
     const rarity = sanitizeRarity(loaded.wearable.rarity)
     if (rarity) patch.rarity = rarity
-    patch.description = loaded.wearable.description ?? ''
+    patch.description = sanitizeItemDescription(loaded.wearable.description ?? '')
+    patch.utility = (loaded.wearable.utility ?? '').trim()
     patch.tags = loaded.wearable.data.tags ?? []
     patch.blockVrmExport = loaded.wearable.data.blockVrmExport ?? false
   } else if (loaded.emote) {
@@ -91,11 +122,15 @@ export async function processDraftFile(file: File): Promise<Partial<ItemDraft>> 
     if (loaded.emote.category) patch.category = loaded.emote.category
     const rarity = sanitizeRarity(loaded.emote.rarity)
     if (rarity) patch.rarity = rarity
-    patch.description = loaded.emote.description ?? ''
+    patch.description = sanitizeItemDescription(loaded.emote.description ?? '')
+    patch.utility = (loaded.emote.utility ?? '').trim()
     patch.tags = loaded.emote.tags ?? []
     const playMode = sanitizePlayMode(loaded.emote.play_mode)
     if (playMode) patch.playMode = playMode
   }
+
+  // The suggestion may stand in for an unusable manifest category, so self-hides are dropped against the final one.
+  if (patch.hides && patch.category) patch.hides = hidesForCategory(patch.category, patch.hides)
 
   if (isImageFile(loaded.model)) {
     // Image wearables need no 3D render: fixed metrics + canvas-padded thumbnail.

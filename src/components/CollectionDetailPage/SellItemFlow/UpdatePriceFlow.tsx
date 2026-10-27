@@ -7,11 +7,12 @@ import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
 import { type ItemListing } from '~/lib/listings'
 import { toSellItemError, type ListingTerms, type PricedSale, type SellFailureReason } from '~/lib/sales'
-import { PendingModal } from './PendingModal'
+import { PendingModal } from '~/components/PendingModal'
 import { type PriceFormValues } from './PriceField'
-import { SaleErrorModal } from './SaleErrorModal'
-import { SaleSuccessModal } from './SaleSuccessModal'
+import { SaleErrorModal, type SaleStage } from './SaleErrorModal'
+import { SuccessModal } from '~/components/SuccessModal'
 import { UpdatePriceModal } from './UpdatePriceModal'
+import { useEnableSalesStep } from './useEnableSalesStep'
 
 type View = 'form' | 'signing' | 'storing' | 'success' | 'error'
 // The two wallet prompts of a price change, then the order being stored.
@@ -29,6 +30,8 @@ type Props = {
  * Change a listing's price or currency: the current order is cancelled on chain and a new one is signed
  * with the same beneficiary and expiration. Web3 wallets see the two signatures as steps; social login signs
  * silently and only sees "Updating price". Once the old order is gone, a retry re-lists directly.
+ * The new order is signed on the current marketplace, so if that one cannot mint the collection yet
+ * (the listing is on an older one), sales are enabled for it first.
  */
 export function UpdatePriceFlow({ item, collection, listing, session, onClose }: Props) {
   const { t } = useTranslation()
@@ -36,6 +39,7 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
 
   const [view, setView] = useState<View>('form')
   const [step, setStep] = useState<Step>('cancel')
+  const [stage, setStage] = useState<SaleStage>('update')
   const [reason, setReason] = useState<SellFailureReason>('generic')
   const [values, setValues] = useState<PriceFormValues | undefined>()
   // Set once the old listing is cancelled: from then on only the new order is missing. A ref, because
@@ -43,9 +47,21 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
   const terms = useRef<ListingTerms | null>(null)
   const attempt = useRef(0)
 
+  // A live listing means the collection already sells, just not on the marketplace new orders are signed on.
+  const enableStep = useEnableSalesStep({
+    collection,
+    session,
+    reason: 'marketplace-upgrade',
+    onClose,
+    onFailed: failure => {
+      setStage('enable')
+      setReason(failure)
+      setView('error')
+    }
+  })
   const update = useUpdatePrice(session)
   const sell = useSellItem(session)
-  useBeforeUnloadGuard(update.isPending || sell.isPending)
+  useBeforeUnloadGuard(enableStep.isPending || update.isPending || sell.isPending)
 
   function fail(cause: unknown) {
     const failure = toSellItemError(cause).reason
@@ -55,6 +71,7 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
       setView('form')
       return
     }
+    setStage('update')
     setReason(failure)
     setView('error')
   }
@@ -112,6 +129,9 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
     current: step === 'cancel' ? 1 : 2
   }
 
+  // Until sales are enabled, the Enable Sales step stands in for the form (a failed enable still shows its error).
+  if (enableStep.modal && view !== 'error') return enableStep.modal
+
   switch (view) {
     case 'form':
       return (
@@ -136,13 +156,13 @@ export function UpdatePriceFlow({ item, collection, listing, session, onClose }:
       return <PendingModal label={t('sell_item_modal.update_price.pending')} testId="update-price-pending" />
     case 'success':
       return (
-        <SaleSuccessModal
+        <SuccessModal
           title={t('sell_item_modal.update_price.success_title')}
           description={t('sell_item_modal.update_price.success_description')}
           onDone={onClose}
         />
       )
     case 'error':
-      return <SaleErrorModal stage="update" reason={reason} onCancel={onClose} onRetry={() => setView('form')} />
+      return <SaleErrorModal stage={stage} reason={reason} onCancel={onClose} onRetry={() => setView('form')} />
   }
 }

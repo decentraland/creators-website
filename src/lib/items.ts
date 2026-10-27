@@ -8,7 +8,7 @@ import {
   isCollectionLocked,
   type Collection
 } from './collections'
-import { type SpringBonesData } from '@dcl/schemas'
+import { type Mappings, type SpringBonesData } from '@dcl/schemas'
 import { type ItemListing } from './listings'
 import { getRarityMaxSupply } from './rarities'
 
@@ -94,12 +94,17 @@ export type RemoteItem = {
   is_approved: boolean
   in_catalyst: boolean
   utility?: string | null
-  mappings?: unknown
+  mappings?: Mappings | null
+  /** Linked items: whether the latest item curation covered a mapping (`isMappingComplete` on the wire). */
+  isMappingComplete?: boolean
   type: ItemType
   data: ItemData
   metrics?: ItemMetrics
   contents: Record<string, string>
   content_hash?: string | null
+  local_content_hash?: string | null
+  /** Linked items: the hash of the entity the Catalyst holds, null until the item is approved. */
+  catalyst_content_hash?: string | null
   created_at: string
   updated_at: string
 }
@@ -121,11 +126,19 @@ export type Item = {
   totalSupply?: number
   /** On-chain item id (`blockchain_item_id`), assigned once the collection is published. */
   tokenId?: string
+  /** Content hash of the builder copy, computed by builder-server once the item is published. */
+  currentContentHash?: string
+  /** Content hash the collection contract holds for the item. */
+  blockchainContentHash?: string
   isPublished: boolean
   isApproved: boolean
   inCatalyst: boolean
   /** Linked items only: which tokens of the linked contract unlock the item (`@dcl/schemas` Mappings). */
-  mappings?: unknown
+  mappings?: Mappings | null
+  /** Linked items only: false when the item was published before mappings existed and its mapping awaits review. */
+  isMappingComplete?: boolean
+  /** Linked items only: the content hash of the entity the Catalyst holds, once approved. */
+  catalystContentHash?: string
   type: ItemType
   data: ItemData
   metrics?: ItemMetrics
@@ -160,7 +173,11 @@ export function fromRemoteItem(remote: RemoteItem): Item {
   if (remote.utility) item.utility = remote.utility
   if (remote.total_supply !== undefined && remote.total_supply !== null) item.totalSupply = remote.total_supply
   if (remote.blockchain_item_id) item.tokenId = remote.blockchain_item_id
+  if (remote.local_content_hash) item.currentContentHash = remote.local_content_hash
+  if (remote.content_hash) item.blockchainContentHash = remote.content_hash
   if (remote.mappings) item.mappings = remote.mappings
+  if (remote.isMappingComplete !== undefined) item.isMappingComplete = remote.isMappingComplete
+  if (remote.catalyst_content_hash) item.catalystContentHash = remote.catalyst_content_hash
   return item
 }
 
@@ -186,7 +203,7 @@ export function toRemoteItem(item: Item): Omit<RemoteItem, 'created_at' | 'updat
     is_published: false,
     is_approved: false,
     utility: item.utility || null,
-    mappings: null,
+    mappings: item.mappings ?? null,
     type: item.type,
     data: item.data,
     metrics: item.metrics,
@@ -308,15 +325,23 @@ function getEmoteOutcomeType(item: Item): string {
   return randomizeOutcomes ? 'ro' : 'mo'
 }
 
-/** The item's creator, or anyone who manages its collection, may edit, move, reset or delete it. */
-export function canManageItem(collection: Collection, item: Item, address: string | undefined): boolean {
-  if (!address) return false
-  return item.owner.toLowerCase() === address.toLowerCase() || canManageCollectionItems(collection, address)
+/**
+ * Whoever manages the collection may edit, move, reset or delete its items. Having created the item grants
+ * nothing on its own: builder-server rejects edits from a creator who no longer holds a role on the collection.
+ */
+export function canManageItem(collection: Collection, _item: Item, address: string | undefined): boolean {
+  return canManageCollectionItems(collection, address)
 }
 
 /** Name and thumbnail stay editable after publishing (edits go through curation), but not during the publish lock. */
 export function canEditItemDetails(collection: Collection, item: Item, address: string | undefined): boolean {
   return canManageItem(collection, item, address) && !isCollectionLocked(collection)
+}
+
+/** Only the collection owner may delete an item, and only while the collection is a draft outside the publish lock. */
+export function canDeleteItem(collection: Collection, address: string | undefined): boolean {
+  if (!address || collection.isPublished || isCollectionLocked(collection)) return false
+  return collection.owner.toLowerCase() === address.toLowerCase()
 }
 
 /**
@@ -333,4 +358,13 @@ export function canEditItemPrice(
   if (!canSellCollectionItems(collection, address)) return false
   const sales = getItemSales(item)
   return !(sales && sales.minted >= sales.maxSupply)
+}
+
+/**
+ * `item.video` is the hash curation last approved. A save replaces it directly until the item is approved; after
+ * that only `contents['video.mp4']` moves, so the item reads as changed and goes through review (builder-server
+ * copies the hash over on approval).
+ */
+export function tracksVideoOnSave(item: Item): boolean {
+  return !item.isPublished || !item.isApproved
 }

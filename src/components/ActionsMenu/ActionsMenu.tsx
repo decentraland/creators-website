@@ -85,7 +85,7 @@ export function ActionsMenu({ label, variant = 'header', tone = 'default', testI
   return (
     <S.Wrap ref={wrapRef}>
       <S.Trigger
-        variant="secondary"
+        variant={variant === 'row' ? 'secondary' : 'glass'}
         size="icon"
         type="button"
         aria-label={label}

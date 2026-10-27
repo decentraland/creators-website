@@ -4,7 +4,10 @@ import {
   Add as AddIcon,
   ArrowBackIosNew as ArrowBackIcon,
   Edit as EditIcon,
-  PersonOutline as PersonOutlineIcon
+  ForumOutlined as ForumIcon,
+  LocalOfferOutlined as DiscountIcon,
+  PersonOutline as PersonOutlineIcon,
+  Sync as SyncIcon
 } from '@mui/icons-material'
 import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
@@ -16,21 +19,30 @@ import {
   useCollectionStatus,
   useSaveCollection
 } from '~/hooks/useCollection'
-import { BuilderServerError, getContentsStorageUrl } from '~/lib/builder'
+import { BuilderServerError } from '~/lib/builder'
 import { FeatureFlag } from '~/lib/featureFlags'
 import {
   CollectionDisplayStatus,
+  canManageCollectionItems,
   canSellCollectionItems,
   hasBeenApproved,
+  canViewCollection,
   hasCollectionRole,
   isCollectionLocked,
   isLinkedCollection
 } from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
 import { track } from '~/lib/analytics'
+import { previewCollectionFromDetail } from '~/lib/explorer'
+import { isForumPostRelevant, openForumPost } from '~/lib/forumPost'
 import { cancelCreditsOrder } from '~/lib/credits'
 import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'
-import { type RoleKind } from '~/lib/collectionRoles'
+import { isCollectionOwner, type RoleKind } from '~/lib/collectionRoles'
+import { runningDiscountPpm } from '~/lib/collectionDiscount'
+import { toSaleableCollection } from '~/lib/saleableCollection'
+import { useManaUsdRate } from '~/hooks/useSales'
+import { type CollectionDiscount } from '~/lib/coupons'
+import { getMaticChainId } from '~/lib/publishCollection'
 import { canSendCollectionItems } from '~/lib/mint'
 import { ItemType, canEditItemDetails, canEditItemPrice, type Item } from '~/lib/items'
 import {
@@ -43,41 +55,53 @@ import {
 } from '~/lib/itemFilters'
 import { MAX_PUBLISH_ITEMS, getPublishBlocker } from '~/lib/publishCollection'
 import { useSaveItem } from '~/hooks/useSaveItem'
+import { useForumPostRecovery } from '~/hooks/useForumPost'
 import { useSyncPublishedItems } from '~/hooks/usePublishCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useCollectionListings } from '~/hooks/useCollectionListings'
+import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
+import {
+  DISCOUNT_OPENED_EVENT,
+  useAnyDiscountInFlight,
+  useCollectionDiscounts,
+  useDiscountFlags
+} from '~/hooks/useCollectionDiscounts'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { useCollectionValidation, useRerunItemValidation } from '~/hooks/useCollectionValidation'
-import { hasPendingChanges } from '~/lib/itemSync'
-import { previewCollection } from '~/lib/explorer'
+import { ItemSyncStatus, getItemRowStatus, hasPendingChanges, showsItemStatusColumn } from '~/lib/itemSync'
+import { canPushChanges } from '~/lib/curation'
+import { useCollectionCuration, useCommittee, usePushCuration } from '~/hooks/useCuration'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS, THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { type ItemListing } from '~/lib/listings'
 import { useNotifications } from '~/lib/notifications'
 import { theme } from '~/styles/theme'
 import { Button } from '~/components/Button'
+import { ConfirmModal } from '~/components/ConfirmModal'
 import { Tooltip } from '~/components/Tooltip'
-import { EmoteIcon, JumpInIcon, OpenEditorIcon, WearableIcon } from '~/components/Icons'
+import { EmoteIcon, OpenEditorIcon, WearableIcon } from '~/components/Icons'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { CollectionRolePill } from '~/components/CollectionRolePill'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
 import { Pagination } from '~/components/Pagination'
-import { ValidationResultsModal } from '~/components/ValidationBadge'
+import { ValidationResultsModal, toValidationSubject } from '~/components/ValidationBadge'
 import addItemsArt from '~/assets/add-items.png'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { useThirdParty } from '~/hooks/useLinkedCollection'
-import { getThirdPartyId, isThirdPartyManager } from '~/lib/linkedCollections'
+import { getThirdPartyId, isThirdPartyManager } from '~/lib/thirdParty'
 import { AddItemsModal } from './AddItemsModal'
 import { LinkedCollectionView } from './LinkedCollectionView'
 import { ItemActionsMenu } from './ItemActionsMenu'
 import { ItemListRow } from './ItemListRow'
 import { PublishCollectionModal, PublishSuccessModal, type PublishResume } from './PublishCollectionModal'
+import { ValidationGate } from './PublishCollectionModal/ValidationGate'
 import { SellItemFlow, UpdatePriceFlow } from './SellItemFlow'
 import { ManageRolesFlow } from './ManageRolesFlow'
 import { TransferOwnershipFlow } from './TransferOwnershipFlow'
 import { SendItemsFlow } from './SendItemsFlow'
+import { CollectionDiscounts, DiscountFlow, EndDiscountFlow } from './DiscountFlow'
 import * as S from './CollectionDetailPage.styles'
 
 const NOT_FOUND_STATUSES = [401, 403, 404]
@@ -104,7 +128,6 @@ const CollectionDetailPage = () => {
   const topUpReturn = useMemo(() => parseTopUpReturn(searchParams), [searchParams])
   const [addItemsFiles, setAddItemsFiles] = useState<File[] | null>(null)
   const [isDragging, setDragging] = useState(false)
-  const [isPreviewLaunching, setPreviewLaunching] = useState(false)
   const [sellingItem, setSellingItem] = useState<Item | null>(null)
   // The price dialog keeps the listing it opened with: the flow rewrites the listings cache itself.
   const [priceEdit, setPriceEdit] = useState<{ item: Item; listing: ItemListing & { tradeId: string } } | null>(null)
@@ -125,13 +148,19 @@ const CollectionDetailPage = () => {
     setPublishResume({
       paymentMethod: resume.paymentMethod,
       termsAccepted: resume.termsAccepted,
+      email: resume.email,
       orderId: topUpReturn.canceled ? null : topUpReturn.orderId
     })
     setPublishView('wizard')
   }, [topUpReturn, restored, session, collectionId, setSearchParams])
 
   const collectionQuery = useCollection(address, collectionId)
-  const itemsQuery = useAllCollectionItems(address, collectionId)
+  // Linked collections page their items server-side (they can hold thousands): the whole-list query starts with the
+  // collection's, so standard pages load both in parallel, and stops once the collection turns out to be linked.
+  const itemsQuery = useAllCollectionItems(
+    address,
+    collectionQuery.data && isLinkedCollection(collectionQuery.data) ? undefined : collectionId
+  )
   const saveCollection = useSaveCollection(address)
   const updateItem = useSaveItem(address)
   const showToast = useNotifications(state => state.showToast)
@@ -165,17 +194,27 @@ const CollectionDetailPage = () => {
   )
   // Play Mode is an emote-only attribute; the column exists only while the visible page has emotes.
   const withPlayMode = useMemo(() => results.some(item => item.type === ItemType.EMOTE), [results])
-  useSyncPublishedItems(address, standardCollection, allItems ?? [])
+  const canManage = !!standardCollection && canManageCollectionItems(standardCollection, address)
+  // A reader holds no role: they reached a published collection by link and only browse it.
+  const isReader = !!collection && !hasCollectionRole(collection, address)
+  // builder-server serves a collection's curation to its owner, collaborators and the committee only.
+  const committee = useCommittee(address)
+  const curationAddress = canManage || committee.isCurator ? address : undefined
+  useSyncPublishedItems(canManage ? address : undefined, standardCollection, allItems ?? [])
+  useForumPostRecovery(address, standardCollection, allItems ?? [])
   // Price, Sales and Sale Status exist once the collection is published; the owner can put items on sale
   // once it has been approved at least once, even if it is under review again.
   const withMarket = !!standardCollection?.isPublished
-  const status = useCollectionStatus(address, standardCollection)
+  const status = useCollectionStatus(curationAddress, standardCollection)
+  const showForumPost = !!standardCollection && isForumPostRelevant(standardCollection, status)
   const statusHint =
-    status === CollectionDisplayStatus.UNDER_REVIEW
-      ? t('collection_status.under_review_hint')
-      : status === CollectionDisplayStatus.DISABLED
-        ? t('collection_status.disabled_hint')
-        : null
+    status === CollectionDisplayStatus.REJECTED
+      ? t('collection_detail_page.review_notice.rejected')
+      : status === CollectionDisplayStatus.UNDER_REVIEW
+        ? t('collection_status.under_review_hint')
+        : status === CollectionDisplayStatus.DISABLED
+          ? t('collection_status.disabled_hint')
+          : null
   // Sales here are off-chain public orders only: with the flag off there is no other way to list an item.
   const canListItems = useFeatureFlag(FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS).enabled
   const isApprovedForSale = canListItems && !!collection && hasBeenApproved(collection)
@@ -192,12 +231,98 @@ const CollectionDetailPage = () => {
   // `undefined` keeps the price cell blank while the catalog loads; a failed request shows no price rather than an error.
   const listingFor = (item: Item) =>
     listings ? (listings.get(item.tokenId ?? '') ?? null) : listingsQuery.isError ? null : undefined
-  const syncs = useItemSyncs(address, standardCollection, allItems ?? [])
+  const discountFlags = useDiscountFlags()
+  // Only the collection's creator can sign a discount over it: marketplace-server checks the on-chain creator.
+  // While the Shop applies discounts, running ones stay listed and endable even with creation off here.
+  const canManageDiscounts =
+    isApprovedForSale &&
+    discountFlags.shopApplies &&
+    !!standardCollection?.contractAddress &&
+    isCollectionOwner(standardCollection, address)
+  // Offered once something is listed, even if none of it can take a discount: the modal explains what to change.
+  const canCreateDiscountHere =
+    canManageDiscounts && discountFlags.enabled && discountFlags.manaListings !== undefined && !!listings?.size
+  const { discounts: openDiscounts, now: discountsNow } = useCollectionDiscounts(
+    canManageDiscounts ? address : undefined,
+    standardCollection?.contractAddress
+  )
+  const discountReachOptions = useMemo(
+    () => ({ chainId: getMaticChainId(), manaListings: !!discountFlags.manaListings }),
+    [discountFlags.manaListings]
+  )
+  const discountPpmFor = (listing: ItemListing | null | undefined) =>
+    listing && openDiscounts
+      ? runningDiscountPpm(listing, openDiscounts, discountReachOptions, discountsNow)
+      : undefined
+  const [discountOpen, setDiscountOpen] = useState(false)
+  // A MANA listing the discount reaches is previewed in credits, at the live rate.
+  const reachesMana = useMemo(
+    () => !!discountFlags.manaListings && [...(listings?.values() ?? [])].some(listing => listing.currency === 'mana'),
+    [listings, discountFlags.manaListings]
+  )
+  // Only once the modal is open: the rate is three contract reads, and only its preview needs it.
+  const manaRate = useManaUsdRate(discountOpen && reachesMana).data
+  const sale = useMemo(
+    () =>
+      listings && standardCollection && allItems
+        ? toSaleableCollection(standardCollection, allItems, listings, { ...discountReachOptions, manaRate })
+        : null,
+    [listings, standardCollection, allItems, discountReachOptions, manaRate]
+  )
+  // Offered when something can take a discount, or is listed at a price the modal explains how to change. Listings
+  // of sold-out items alone leave nothing a discount could reach.
+  const canCreateDiscount = useMemo(
+    () => canCreateDiscountHere && !!sale?.items.some(item => item.state === 'discounted' || item.state === 'classic'),
+    [canCreateDiscountHere, sale]
+  )
+  // Also once its dialog is closed: a reload loses this tab's record of a cancellation that is still mining.
+  useBeforeUnloadGuard(useAnyDiscountInFlight())
+  const [endingDiscount, setEndingDiscount] = useState<CollectionDiscount | null>(null)
+  const openDiscount = useCallback(
+    (source: 'header' | 'menu') => {
+      if (collection) track(DISCOUNT_OPENED_EVENT, { collectionId: collection.id, source })
+      setDiscountOpen(true)
+    },
+    [collection]
+  )
+  const syncs = useItemSyncs(curationAddress, standardCollection, allItems ?? [])
+  const curationQuery = useCollectionCuration(curationAddress, standardCollection)
+  const curation = curationQuery.data ?? null
+  const pushCuration = usePushCuration(address)
+  // Sending changes for review runs the same item checks as publishing before its confirm modal.
+  const [pushView, setPushView] = useState<'closed' | 'gate' | 'confirm'>('closed')
+  const hasUnsyncedItems = useMemo(
+    () => [...syncs.values()].some(sync => sync.status === ItemSyncStatus.UNSYNCED),
+    [syncs]
+  )
+  const closePush = () => {
+    setPushView('closed')
+    pushCuration.reset()
+  }
+  // Until the request loads, a pending one looks like none and the push would duplicate it.
+  const curationLoaded = curationQuery.isSuccess
+  const showPushChanges = useMemo(
+    () =>
+      !!standardCollection &&
+      curationLoaded &&
+      canPushChanges(standardCollection, curation, hasUnsyncedItems, canManage),
+    [standardCollection, curationLoaded, curation, hasUnsyncedItems, canManage]
+  )
+  // After a rejection the creator asks for a review again, whether it was the first one or a pushed update.
+  const pushCopy = curation?.status === 'rejected' ? 'request_review' : 'push_changes'
+  const rowStatuses = useMemo(
+    () => new Map(results.map(item => [item.id, getItemRowStatus(item, syncs.get(item.id), curation)])),
+    [results, syncs, curation]
+  )
+  const withStatus = useMemo(
+    () => !!standardCollection && !isReader && showsItemStatusColumn(standardCollection, rowStatuses.values()),
+    [standardCollection, isReader, rowStatuses]
+  )
 
   // Drafts check every item; published collections only the items with changes waiting for approval.
-  // Small screens are a viewer and check nothing, unless the publish modal is already open: crossing the
-  // breakpoint mid-check must not empty its results and let it through.
-  const validates = !compact || publishView === 'wizard'
+  // Only who can fix the findings checks. Small screens are a viewer and check nothing, unless a gated
+  // modal is already open: crossing the breakpoint mid-check must not empty its results and let it through.
+  const validates = canManage && (!compact || publishView === 'wizard' || pushView !== 'closed')
   const validationItems = useMemo(
     () =>
       !validates || !standardCollection || !allItems
@@ -227,20 +352,21 @@ const CollectionDetailPage = () => {
       track('Item Validation Details Opened', {
         itemId: item.id,
         status: validation.results.get(item.id)?.status ?? 'idle',
-        source: 'row'
+        trigger: 'row'
       })
     },
     [validation.results]
   )
 
   const isLoading =
-    !restored || (!!address && (collectionQuery.isLoading || itemsQuery.isLoading || thirdParty.isLoading))
+    !restored ||
+    (!!address &&
+      (collectionQuery.isLoading || (!isLinked && !!collection && itemsQuery.isLoading) || thirdParty.isLoading))
   const isThirdPartyNotFound =
     thirdParty.isError &&
     thirdParty.error instanceof BuilderServerError &&
     NOT_FOUND_STATUSES.includes(thirdParty.error.status)
-  // builder-server serves published collections to any signer; addresses with no role on it get
-  // the same "not found" as a rejected request, so strangers can't browse other creators' work.
+  // A draft is private: addresses with no role on it get the same "not found" as a rejected request.
   const isNotFound =
     !collectionId ||
     (collectionQuery.isError &&
@@ -251,15 +377,17 @@ const CollectionDetailPage = () => {
         ? !getThirdPartyId(collection) ||
           isThirdPartyNotFound ||
           (!!thirdParty.data && !isThirdPartyManager(thirdParty.data, address))
-        : !hasCollectionRole(collection, address)))
-  const isError = !isNotFound && (collectionQuery.isError || itemsQuery.isError || thirdParty.isError)
+        : !canViewCollection(collection, address)))
+  const isError = !isNotFound && (collectionQuery.isError || (!isLinked && itemsQuery.isError) || thirdParty.isError)
   const isEmpty = filteredTotal === 0
   const hasItems = total > 0
   const canRename = !!collection && !collection.isPublished && !isCollectionLocked(collection)
   const canAddItems = canRename
+  const hasInvalidItems = blockOnErrors && invalidCount > 0
   const publishBlocker = collection
-    ? getPublishBlocker(collection, total, allItems ?? [], { hasInvalidItems: blockOnErrors && invalidCount > 0 })
+    ? getPublishBlocker(collection, total, allItems ?? [], { hasInvalidItems })
     : 'not_draft'
+  const pushBlocked = hasInvalidItems
 
   function openFileBrowser() {
     filesInputRef.current?.click()
@@ -397,12 +525,11 @@ const CollectionDetailPage = () => {
             {t('collection_detail_page.error.retry')}
           </Button>
         </S.Panel>
-      ) : isLinked && address ? (
+      ) : isLinked && session ? (
         <LinkedCollectionView
           collection={collection}
-          thirdPartyName={thirdParty.data?.name}
-          items={allItems ?? []}
-          address={address}
+          thirdParty={thirdParty.data}
+          session={session}
           page={page}
           onBack={() => navigate({ pathname: '/collections', search: listState?.listSearch })}
           onPageChange={goToPage}
@@ -411,19 +538,21 @@ const CollectionDetailPage = () => {
         <>
           <S.Header>
             <S.HeaderLeft>
-              <S.BackLink
-                type="button"
-                aria-label={t('collection_detail_page.back')}
-                data-testid="back-to-collections"
-                onClick={() =>
-                  navigate({
-                    pathname: '/collections',
-                    search: listState?.listSearch
-                  })
-                }
-              >
-                <ArrowBackIcon />
-              </S.BackLink>
+              {!isReader && (
+                <S.BackLink
+                  type="button"
+                  aria-label={t('collection_detail_page.back')}
+                  data-testid="back-to-collections"
+                  onClick={() =>
+                    navigate({
+                      pathname: '/collections',
+                      search: listState?.listSearch
+                    })
+                  }
+                >
+                  <ArrowBackIcon />
+                </S.BackLink>
+              )}
               <S.TitleGroup>
                 <S.Title title={collection.name}>{collection.name}</S.Title>
                 {canRename && (
@@ -452,20 +581,18 @@ const CollectionDetailPage = () => {
                   />
                 </Tooltip>
               )}
-              <Button
-                type="button"
-                variant="dark"
-                disabled={!hasItems || isPreviewLaunching}
-                data-desktop-only
-                data-testid="preview-collection"
-                onClick={() => {
-                  setPreviewLaunching(true)
-                  void previewCollection(collection.id).finally(() => setPreviewLaunching(false))
-                }}
-              >
-                {t('collection_detail_page.preview')}
-                <JumpInIcon />
-              </Button>
+              {showForumPost && (
+                <Button
+                  type="button"
+                  variant="dark"
+                  data-desktop-only
+                  data-testid="forum-post"
+                  onClick={() => openForumPost(collection, 'detail')}
+                >
+                  <ForumIcon fontSize="small" />
+                  {t('collection_detail_page.forum_post')}
+                </Button>
+              )}
               {publishBlocker !== 'not_draft' && (
                 <Tooltip
                   content={
@@ -508,12 +635,54 @@ const CollectionDetailPage = () => {
                   {t('collection_detail_page.send_items')}
                 </Button>
               )}
+              {canCreateDiscount && (
+                <Button
+                  type="button"
+                  variant="dark"
+                  data-desktop-only
+                  data-testid="create-discount"
+                  onClick={() => openDiscount('header')}
+                >
+                  <DiscountIcon fontSize="small" />
+                  {t('collection_discount.create')}
+                </Button>
+              )}
+              {showPushChanges && (
+                <Tooltip
+                  content={
+                    pushBlocked
+                      ? t('collection_detail_page.push_blocker.has_invalid_items', { count: invalidCount })
+                      : null
+                  }
+                  placement="bottom"
+                  asChild
+                  testId="push-changes-blocker"
+                >
+                  <Button
+                    type="button"
+                    variant="primary"
+                    data-desktop-only
+                    data-testid="push-changes"
+                    aria-disabled={pushBlocked || undefined}
+                    onClick={() => {
+                      if (!pushBlocked) setPushView('gate')
+                    }}
+                  >
+                    {t(`collection_detail_page.${pushCopy}.action`)}
+                  </Button>
+                </Tooltip>
+              )}
               {address && (
                 <CollectionActionsMenu
                   collection={collection}
                   address={address}
+                  onPreviewInWorld={
+                    !isReader && hasItems ? () => previewCollectionFromDetail(collection.id, total) : undefined
+                  }
                   onSendItems={canSend ? () => setSending(true) : undefined}
+                  onCreateDiscount={canCreateDiscount ? () => openDiscount('menu') : undefined}
                   onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
+                  forumLink={showForumPost ? collection.forumLink : undefined}
                   onManageRoles={setManagingRoles}
                   onTransferOwnership={() => setTransferring(true)}
                   onDeleted={() => navigate('/collections', { replace: true })}
@@ -521,6 +690,9 @@ const CollectionDetailPage = () => {
               )}
             </S.HeaderActions>
           </S.Header>
+          {canManageDiscounts && openDiscounts && (
+            <CollectionDiscounts discounts={openDiscounts} now={discountsNow} onEnd={setEndingDiscount} />
+          )}
 
           <S.SubHeader>
             <S.FilterChips data-testid="type-filters">
@@ -546,7 +718,7 @@ const CollectionDetailPage = () => {
                 onClick={() => navigate(`/collections/editor?collection=${collection.id}`)}
               >
                 <OpenEditorIcon />
-                {t('collection_detail_page.open_editor')}
+                {t(canManage ? 'collection_detail_page.open_editor' : 'collection_detail_page.open_preview')}
               </Button>
               {canAddItems && (
                 <Button variant="secondary" type="button" data-testid="add-items" onClick={openFileBrowser}>
@@ -600,6 +772,7 @@ const CollectionDetailPage = () => {
                 <S.ListHeader
                   data-with-play-mode={withPlayMode || undefined}
                   data-with-market={withMarket || undefined}
+                  data-with-status={withStatus || undefined}
                 >
                   <span>{t('collection_detail_page.list.item')}</span>
                   <span>{t('collection_detail_page.list.body_shape')}</span>
@@ -615,6 +788,9 @@ const CollectionDetailPage = () => {
                       <span data-testid="list-header-sale-status">{t('collection_detail_page.list.sale_status')}</span>
                     </>
                   )}
+                  {withStatus && (
+                    <span data-testid="list-header-status">{t('collection_detail_page.list.status')}</span>
+                  )}
                   <S.ListHeaderActions>{t('collection_detail_page.list.actions')}</S.ListHeaderActions>
                 </S.ListHeader>
                 {results.map(item => (
@@ -624,6 +800,9 @@ const CollectionDetailPage = () => {
                     withPlayMode={withPlayMode}
                     withMarket={withMarket}
                     listing={withMarket ? listingFor(item) : undefined}
+                    discountPpm={withMarket ? discountPpmFor(listingFor(item)) : undefined}
+                    withStatus={withStatus}
+                    syncStatus={rowStatuses.get(item.id)}
                     canSell={isApprovedForSale && item.isPublished && !!item.tokenId}
                     onPutOnSale={isSeller ? setSellingItem : undefined}
                     onEditPrice={
@@ -707,6 +886,43 @@ const CollectionDetailPage = () => {
             />
           )}
           {publishView === 'success' && <PublishSuccessModal onDone={() => setPublishView('closed')} />}
+          {pushView === 'gate' && (
+            <ValidationGate
+              collectionId={collection.id}
+              flow="push_changes"
+              validation={publishValidation}
+              blockOnErrors={blockOnErrors}
+              onPass={() => setPushView('confirm')}
+              onClose={closePush}
+            />
+          )}
+          {pushView === 'confirm' && (
+            <ConfirmModal
+              icon={<SyncIcon />}
+              title={t(`collection_detail_page.${pushCopy}.title`)}
+              description={t(`collection_detail_page.${pushCopy}.description`)}
+              error={pushCuration.isError ? t(`collection_detail_page.${pushCopy}.error`) : null}
+              busy={pushCuration.isPending}
+              onClose={closePush}
+              cancel={{
+                label: t(`collection_detail_page.${pushCopy}.cancel`),
+                onClick: closePush,
+                testId: 'push-changes-cancel'
+              }}
+              confirm={{
+                label: t(`collection_detail_page.${pushCopy}.confirm`),
+                onClick: () =>
+                  pushCuration.mutate(collection, {
+                    onSuccess: () => {
+                      setPushView('closed')
+                      showToast(t(`collection_detail_page.${pushCopy}.success`))
+                    }
+                  }),
+                testId: 'push-changes-confirm'
+              }}
+              testId="push-changes-modal"
+            />
+          )}
           {isSending && session && (
             <SendItemsFlow
               collection={collection}
@@ -733,15 +949,7 @@ const CollectionDetailPage = () => {
           )}
           {validationItem && (
             <ValidationResultsModal
-              subject={{
-                name: validationItem.name,
-                type: validationItem.type,
-                category: validationItem.data.category,
-                rarity: validationItem.rarity,
-                thumbnail: validationItem.contents[validationItem.thumbnail]
-                  ? getContentsStorageUrl(validationItem.contents[validationItem.thumbnail])
-                  : null
-              }}
+              subject={toValidationSubject(validationItem)}
               issues={validation.results.get(validationItem.id)?.issues ?? []}
               onRerun={() =>
                 rerunItemValidation(
@@ -762,6 +970,22 @@ const CollectionDetailPage = () => {
               listing={priceEdit.listing}
               session={session}
               onClose={() => setPriceEdit(null)}
+            />
+          )}
+          {discountOpen && session && sale && (
+            <DiscountFlow
+              collection={collection}
+              session={session}
+              sale={sale}
+              onClose={() => setDiscountOpen(false)}
+            />
+          )}
+          {endingDiscount && session && (
+            <EndDiscountFlow
+              discount={endingDiscount}
+              collection={collection}
+              session={session}
+              onClose={() => setEndingDiscount(null)}
             />
           )}
           {sellingItem && session && (

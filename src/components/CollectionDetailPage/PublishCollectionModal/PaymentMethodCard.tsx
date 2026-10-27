@@ -74,7 +74,7 @@ export function PaymentMethodCard({
       <S.Info>
         <S.Title>{t(`publish_collection_modal.payment_step.${method}`)}</S.Title>
         <S.Balance data-insufficient={hasEnough ? undefined : true} data-testid={`payment-method-${method}-balance`}>
-          {t(`publish_collection_modal.payment_step.${method}_balance`)}{' '}
+          {t(`publish_collection_modal.payment_step.${method}_balance`)}
           <span>
             <CurrencyAmount currency={method}>{balance}</CurrencyAmount>
           </span>

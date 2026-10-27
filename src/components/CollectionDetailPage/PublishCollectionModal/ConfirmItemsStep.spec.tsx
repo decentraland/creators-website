@@ -4,8 +4,9 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TranslationProvider } from '~/intl'
-import { deleteItem, fetchItemContents, saveItem } from '~/lib/builder'
+import { deleteItem, fetchContent, fetchItemContents, saveItem } from '~/lib/builder'
 import { type ThumbnailPatch } from '~/components/ThumbnailModal'
+import { type Collection } from '~/lib/collections'
 import { ItemType, type Item, BODY_SHAPE_MALE } from '~/lib/items'
 import { ConfirmItemsStep } from './ConfirmItemsStep'
 
@@ -13,6 +14,7 @@ vi.mock('~/lib/builder', async importOriginal => ({
   ...(await importOriginal<typeof import('~/lib/builder')>()),
   saveItem: vi.fn(),
   deleteItem: vi.fn(),
+  fetchContent: vi.fn(),
   fetchItemContents: vi.fn()
 }))
 
@@ -70,8 +72,21 @@ function makeItem(id: string, name: string): Item {
 }
 
 const items = [makeItem('a', 'Pirate Hat'), makeItem('b', 'Ghost Cape')]
+const collection: Collection = {
+  id: 'col-1',
+  name: 'Pirate Hats',
+  owner: ADDRESS,
+  urn: 'urn:decentraland:amoy:collections-v2:0xc0ffee',
+  isPublished: false,
+  isApproved: false,
+  itemCount: 2,
+  minters: [],
+  managers: ['0xmanager'],
+  createdAt: 1,
+  updatedAt: 1
+}
 
-function renderStep(list = items) {
+function renderStep(list = items, address = ADDRESS) {
   const onConfirm = vi.fn()
   const onBack = vi.fn()
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -81,7 +96,14 @@ function renderStep(list = items) {
     </QueryClientProvider>
   )
   render(
-    <ConfirmItemsStep address={ADDRESS} items={list} onBusyChange={vi.fn()} onBack={onBack} onConfirm={onConfirm} />,
+    <ConfirmItemsStep
+      address={address}
+      collection={collection}
+      items={list}
+      onBusyChange={vi.fn()}
+      onBack={onBack}
+      onConfirm={onConfirm}
+    />,
     { wrapper }
   )
   return { onConfirm, onBack }
@@ -91,6 +113,7 @@ beforeEach(() => {
   vi.mocked(saveItem).mockReset()
   vi.mocked(deleteItem).mockReset()
   vi.mocked(fetchItemContents).mockReset()
+  vi.mocked(fetchContent).mockReset()
 })
 
 describe('ConfirmItemsStep', () => {
@@ -111,6 +134,7 @@ describe('ConfirmItemsStep', () => {
 
   it('saves an edited name and rarity as soon as the check button is clicked', async () => {
     vi.mocked(saveItem).mockImplementation(async (_address, item) => item)
+    vi.mocked(fetchContent).mockResolvedValue(new Blob(['png'], { type: 'image/png' }))
     renderStep()
     const row = screen.getAllByTestId('publish-item-row')[0]
     await userEvent.click(within(row).getByTestId('publish-item-edit'))
@@ -123,8 +147,11 @@ describe('ConfirmItemsStep', () => {
     await userEvent.click(within(row).getByTestId('publish-item-save'))
 
     await waitFor(() => expect(saveItem).toHaveBeenCalledTimes(1))
-    const saved = vi.mocked(saveItem).mock.calls[0][1]
+    const [, saved, blobs] = vi.mocked(saveItem).mock.calls[0]
     expect(saved).toMatchObject({ id: 'a', name: 'Captain Hat', rarity: 'epic' })
+    // A new rarity means a new catalyst image, rebuilt from the stored thumbnail.
+    expect(fetchContent).toHaveBeenCalledWith('Qmthumb')
+    expect(Object.keys(blobs ?? {})).toEqual(['image.png'])
     await waitFor(() => expect(within(row).queryByTestId('publish-item-name-input')).not.toBeInTheDocument())
   })
 
@@ -141,6 +168,11 @@ describe('ConfirmItemsStep', () => {
     await userEvent.click(within(row).getByTestId('publish-item-cancel'))
     expect(within(row).getByTestId('publish-item-name')).toHaveTextContent('Ghost Cape')
     expect(saveItem).not.toHaveBeenCalled()
+  })
+
+  it('offers delete to the collection owner only', () => {
+    renderStep(items, '0xmanager')
+    expect(screen.queryByTestId('publish-item-delete')).not.toBeInTheDocument()
   })
 
   it('deletes an item after confirmation', async () => {

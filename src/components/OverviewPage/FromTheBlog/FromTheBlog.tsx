@@ -2,14 +2,16 @@ import { ChevronRight as ChevronRightIcon } from '@mui/icons-material'
 import { useLatestBlogPosts } from '~/hooks/useLatestBlogPosts'
 import { useTranslation } from '~/intl'
 import { blogUrl } from '~/lib/blog'
+import { contentfulImage } from '~/lib/contentfulImage'
 import { OverviewSection, trackClick } from '~/lib/overviewAnalytics'
 import { formatLongDate } from '~/lib/time'
 import { useLocale } from '~/store/locale'
 import { AnimatedSection } from '../AnimatedSection'
+import { highlight } from '../highlight'
 import * as S from './FromTheBlog.styles'
 
 const FromTheBlog = () => {
-  const { t } = useTranslation()
+  const { t, rich } = useTranslation()
   const locale = useLocale(s => s.locale)
   const { data: posts } = useLatestBlogPosts()
 
@@ -19,9 +21,7 @@ const FromTheBlog = () => {
   return (
     <AnimatedSection section={OverviewSection.BLOG}>
       <S.Section data-testid="overview-blog">
-        <S.Title>
-          <span>{t('overview.blog.title_highlight')}</span> {t('overview.blog.title')}
-        </S.Title>
+        <S.Title>{rich('overview.blog.title', highlight)}</S.Title>
         <S.Posts>
           {posts.map(post => (
             <S.PostCard
@@ -32,7 +32,9 @@ const FromTheBlog = () => {
               data-title={post.title}
               onClick={trackClick}
             >
-              <S.PostImage>{post.imageUrl && <img src={post.imageUrl} alt="" loading="lazy" />}</S.PostImage>
+              <S.PostImage>
+                {post.imageUrl && <img src={contentfulImage(post.imageUrl, { width: 380 })} alt="" loading="lazy" />}
+              </S.PostImage>
               <S.PostInfo>
                 <S.PostMeta>
                   {post.categoryTitle && <S.PostCategory>{post.categoryTitle}</S.PostCategory>}

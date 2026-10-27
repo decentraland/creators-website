@@ -1,31 +1,56 @@
 import { useState } from 'react'
 import { Add as AddIcon, Close as CloseIcon, Remove as RemoveIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
+import { track } from '~/lib/analytics'
 import { getContentsStorageUrl } from '~/lib/builder'
 import { type Friend } from '~/lib/friends'
 import { type Item } from '~/lib/items'
-import { allocatedElsewhere, getStock, maxAmount, type Transfer } from '~/lib/mint'
+import {
+  MAX_ITEMS_PER_SEND,
+  allocatedElsewhere,
+  getStock,
+  maxAmount,
+  parseRecipientList,
+  type Transfer
+} from '~/lib/mint'
+import { useNotifications } from '~/lib/notifications'
 import { Checkbox } from '~/components/Checkbox'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { BeneficiaryInput } from '../SellItemFlow/BeneficiaryInput'
 import * as S from './SendItemsModal.styles'
 
 type Props = {
+  collectionId: string
   index: number
   transfers: Transfer[]
   items: Item[]
   friends: Friend[] | undefined
   isLoadingFriends: boolean
+  /** The signed-in wallet, offered first in the recipient list. */
+  self: string
   onChange: (transfer: Transfer) => void
   onRemove?: () => void
 }
 
 /** One transfer: its recipients, and how many copies of each item every one of them gets. */
-export function TransferCard({ index, transfers, items, friends, isLoadingFriends, onChange, onRemove }: Props) {
+export function TransferCard({
+  collectionId,
+  index,
+  transfers,
+  items,
+  friends,
+  isLoadingFriends,
+  self,
+  onChange,
+  onRemove
+}: Props) {
   const { t } = useTranslation()
+  const showToast = useNotifications(state => state.showToast)
   const transfer = transfers[index]
   const [adding, setAdding] = useState(false)
-  const showInput = transfer.recipients.length === 0 || adding
+  // Every recipient gets at least one copy, so a transfer at the send cap takes no more.
+  const full = transfer.recipients.length >= MAX_ITEMS_PER_SEND
+  const showInput = !full && (transfer.recipients.length === 0 || adding)
   const testId = `transfer-${index + 1}`
 
   function setRecipients(recipients: string[]) {
@@ -38,6 +63,26 @@ export function TransferCard({ index, transfers, items, friends, isLoadingFriend
         .filter(([, amount]) => amount > 0)
     )
     onChange({ recipients, amounts })
+  }
+
+  /** A pasted list: every new address joins the transfer, and a toast says how many did (or why none could). */
+  function addRecipients(text: string): string | null {
+    const { added, invalid, repeated, cut } = parseRecipientList(text, transfer.recipients)
+    track('Paste recipients', { collectionId, added: added.length, invalid, repeated, cut })
+    if (added.length === 0) {
+      if (invalid > 0) return t('sell_item_modal.beneficiary.invalid')
+      // Only repeats, dropped like a typed one: the field clears and a toast says why.
+      showToast(t('send_items_modal.duplicate_recipient'), { type: 'info' })
+      return null
+    }
+    setRecipients([...transfer.recipients, ...added])
+    setAdding(false)
+    const count = added.length
+    const skipped = invalid + repeated
+    if (cut > 0) showToast(t('send_items_modal.paste_cut', { count, max: MAX_ITEMS_PER_SEND }), { type: 'warn' })
+    else if (skipped > 0) showToast(t('send_items_modal.paste_skipped', { count, skipped }), { type: 'warn' })
+    else showToast(t('send_items_modal.paste_added', { count }))
+    return null
   }
 
   function setAmount(itemId: string, amount: number) {
@@ -72,6 +117,7 @@ export function TransferCard({ index, transfers, items, friends, isLoadingFriend
               onChange={() => setRecipients(transfer.recipients.filter(other => other !== address))}
               friends={friends}
               isLoadingFriends={isLoadingFriends}
+              self={self}
               variant="compact"
               testId={`${testId}-recipient`}
             />
@@ -89,23 +135,41 @@ export function TransferCard({ index, transfers, items, friends, isLoadingFriend
               friends={friends}
               isLoadingFriends={isLoadingFriends}
               placeholder={t('send_items_modal.recipient_placeholder')}
-              duplicateError={address =>
-                transfer.recipients.includes(address) ? t('send_items_modal.duplicate_recipient') : null
-              }
+              self={self}
+              exclude={transfer.recipients}
+              onExcluded={() => showToast(t('send_items_modal.duplicate_recipient'), { type: 'info' })}
+              onChangeMany={addRecipients}
               testId={`${testId}-recipient`}
             />
           </S.Recipient>
         )}
       </S.Recipients>
-      <S.LinkButton
-        type="button"
-        disabled={showInput}
-        data-testid={`${testId}-add-recipient`}
-        onClick={() => setAdding(true)}
-      >
-        <AddIcon />
-        {t('send_items_modal.add_recipient')}
-      </S.LinkButton>
+      <S.RecipientActions>
+        {!full && (
+          <S.LinkButton
+            type="button"
+            disabled={showInput}
+            data-testid={`${testId}-add-recipient`}
+            onClick={() => setAdding(true)}
+          >
+            <AddIcon />
+            {t('send_items_modal.add_recipient')}
+          </S.LinkButton>
+        )}
+        {transfer.recipients.length > 1 && (
+          <S.LinkButton
+            type="button"
+            data-testid={`${testId}-clear-recipients`}
+            onClick={() => {
+              setRecipients([])
+              setAdding(false)
+            }}
+          >
+            <CloseIcon />
+            {t('send_items_modal.clear_recipients')}
+          </S.LinkButton>
+        )}
+      </S.RecipientActions>
 
       {transfer.recipients.length > 0 && <S.Label>{t('send_items_modal.items_for_recipient')}</S.Label>}
       <S.Items>

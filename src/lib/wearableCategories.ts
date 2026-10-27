@@ -10,6 +10,12 @@ export const IMAGE_WEARABLE_CATEGORIES: string[] = [
   WearableCategory.MOUTH
 ]
 
+/** Hides that still mean something for a wearable of this category: a skin covers everything, and no wearable hides itself. */
+export function hidesForCategory(category: string | null | undefined, hides: string[]): string[] {
+  if (category === (WearableCategory.SKIN as string)) return []
+  return hides.filter(hide => hide !== category)
+}
+
 /** Everything a skin already covers, so it can't also be listed as hidden by one. */
 export const SKIN_HIDDEN_CATEGORIES: string[] = [
   BodyPartCategory.HEAD,
@@ -49,8 +55,9 @@ export function getHideableBodyPartCategories(contents: Record<string, unknown>)
 }
 
 /**
- * Wearable slots this wearable may hide. `body_shape` is never offered anew (legacy builder#2068) but
- * stays selectable while already hidden; a skin can't hide what it already covers.
+ * Wearable slots this wearable may hide. `body_shape` and the wearable's own category are never offered
+ * anew (legacy builder#2068; renderers ignore a self-hide) but stay selectable while already hidden; a skin
+ * can't hide what it already covers.
  */
 export function getHideableWearableCategories(
   contents: Record<string, unknown>,
@@ -64,6 +71,8 @@ export function getHideableWearableCategories(
     )
   }
   return hideable.filter(
-    candidate => candidate !== (WearableCategory.BODY_SHAPE as string) || currentHides.includes(candidate)
+    candidate =>
+      (candidate !== (WearableCategory.BODY_SHAPE as string) && candidate !== category) ||
+      currentHides.includes(candidate)
   )
 }

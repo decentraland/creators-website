@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { useInView } from 'react-intersection-observer'
+import { useLocation } from 'react-router-dom'
+import { useAfterLoadIdle } from '~/hooks/useAfterLoadIdle'
 import { useLocale, LOCALES, type Locale } from '~/store/locale'
-import { useTranslation } from '~/intl'
+import { englishMessage, useTranslation } from '~/intl'
+import { isOverviewPath, LandingPlace, trackLandingClick } from '~/lib/overviewAnalytics'
 import * as S from './Footer.styles'
 
 // The full Decentraland footer — the large purple footer with newsletter, MENU columns, social links
@@ -44,14 +48,23 @@ const legalLinks = [
 
 const LANGUAGE_LABELS: Record<Locale, { label: string; flag: string }> = {
   en: { label: 'English', flag: '🇺🇸' },
-  es: { label: 'Español', flag: '🇪🇸' }
+  es: { label: 'Español', flag: '🇪🇸' },
+  zh: { label: '中文', flag: '🇨🇳' }
 }
 
-const SocialRow = () => {
+const SocialRow = ({ onTrack }: { onTrack: (platform: string) => void }) => {
   return (
     <S.Social>
       {socialLinks.map(({ name, url, icon: Icon }) => (
-        <a key={name} href={url} target="_blank" rel="noopener noreferrer" aria-label={name}>
+        <a
+          key={name}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={name}
+          data-testid="footer-social-link"
+          onClick={() => onTrack(name)}
+        >
           <Icon />
         </a>
       ))}
@@ -61,6 +74,14 @@ const SocialRow = () => {
 
 const Footer = () => {
   const { t } = useTranslation()
+  // Only the overview stands in for sites' /create; its labels go out in English whatever the locale.
+  const onOverview = isOverviewPath(useLocation().pathname)
+  const trackLink = (labelKey: string) => {
+    if (onOverview) trackLandingClick(LandingPlace.FOOTER_LINK, { link: englishMessage(labelKey) })
+  }
+  const trackSocial = (platform: string) => {
+    if (onOverview) trackLandingClick(LandingPlace.FOOTER_SOCIAL, { platform })
+  }
   const locale = useLocale(s => s.locale)
   const setLocale = useLocale(s => s.setLocale)
   const [openSection, setOpenSection] = useState<string | null>(null)
@@ -68,6 +89,15 @@ const Footer = () => {
   const langRef = useRef<HTMLDivElement>(null)
   const langBtnRef = useRef<HTMLButtonElement>(null)
   const current = LANGUAGE_LABELS[locale] ?? LANGUAGE_LABELS.en
+  // The embed pulls in its own scripts, fonts and bot checks: it only loads when a visitor nears the footer.
+  // Watching starts once the page has settled, since the footer sits by the fold until the sections stream in.
+  const idle = useAfterLoadIdle()
+  const { ref: newsRef, inView: newsNear } = useInView({
+    skip: !idle,
+    triggerOnce: true,
+    rootMargin: '400px 0px',
+    fallbackInView: true
+  })
 
   useEffect(() => {
     if (!langOpen) return
@@ -96,24 +126,23 @@ const Footer = () => {
         <S.Left>
           <S.Wordmark>Decentraland</S.Wordmark>
 
-          <S.News>
+          <S.News ref={newsRef}>
             <S.NewsTitle>{t('footer.newsletterTitle')}</S.NewsTitle>
             <S.NewsFrame
-              src={BEEHIIV_EMBED_URL}
+              src={newsNear ? BEEHIIV_EMBED_URL : undefined}
               // Cross-origin embed: it may run and submit its form, never navigate this page or open unscoped windows.
               sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
               data-testid="footer-newsletter-frame"
               height="65"
               frameBorder="0"
               scrolling="no"
-              loading="lazy"
               title={t('footer.newsletterFrameTitle')}
             />
           </S.News>
 
           <S.Connect data-variant="desktop">
             <S.Label>{t('footer.connect')}</S.Label>
-            <SocialRow />
+            <SocialRow onTrack={trackSocial} />
           </S.Connect>
         </S.Left>
 
@@ -121,7 +150,14 @@ const Footer = () => {
           <S.Col>
             <S.Label>{t('footer.gettingStarted')}</S.Label>
             {gettingStartedLinks.map(l => (
-              <S.FootLink key={l.label} href={l.url} target="_blank" rel="noopener noreferrer">
+              <S.FootLink
+                key={l.label}
+                href={l.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="footer-link"
+                onClick={() => trackLink(l.label)}
+              >
                 {t(l.label)}
               </S.FootLink>
             ))}
@@ -129,7 +165,14 @@ const Footer = () => {
           <S.Col>
             <S.Label>{t('footer.resources')}</S.Label>
             {resourceLinks.map(l => (
-              <S.FootLink key={l.label} href={l.url} target="_blank" rel="noopener noreferrer">
+              <S.FootLink
+                key={l.label}
+                href={l.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="footer-link"
+                onClick={() => trackLink(l.label)}
+              >
                 {t(l.label)}
               </S.FootLink>
             ))}
@@ -158,7 +201,13 @@ const Footer = () => {
               </S.Dropdown>
               <S.DropContent id={`footer-section-${section.key}`} data-open={openSection === section.key || undefined}>
                 {section.links.map(l => (
-                  <S.MLink key={l.label} href={l.url} target="_blank" rel="noopener noreferrer">
+                  <S.MLink
+                    key={l.label}
+                    href={l.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => trackLink(l.label)}
+                  >
                     {t(l.label)}
                   </S.MLink>
                 ))}
@@ -169,7 +218,7 @@ const Footer = () => {
 
         <S.Connect data-variant="mobile">
           <S.Label>{t('footer.connect')}</S.Label>
-          <SocialRow />
+          <SocialRow onTrack={trackSocial} />
         </S.Connect>
       </S.Main>
 

@@ -185,6 +185,7 @@ describe('loadItemFile', () => {
     const manifest = {
       name: 'Cool Hat',
       rarity: 'legendary',
+      utility: 'Glows at night',
       data: {
         category: 'hat',
         replaces: [],
@@ -202,6 +203,7 @@ describe('loadItemFile', () => {
     const file = await zipFile({ 'wearable.json': JSON.stringify(manifest), 'model.glb': 'glb-bytes' })
     const result = await loadItemFile(file)
     expect(result.wearable?.name).toBe('Cool Hat')
+    expect(result.wearable?.utility).toBe('Glows at night')
     expect(result.bodyShape).toBe(BodyShapeType.MALE)
     expect(result.model).toBe('model.glb')
     expect(result.contents['wearable.json']).toBeUndefined()
@@ -230,11 +232,12 @@ describe('loadItemFile', () => {
 
   it('reads an emote.json manifest', async () => {
     const file = await zipFile({
-      'emote.json': JSON.stringify({ name: 'Wave', play_mode: 'loop' }),
+      'emote.json': JSON.stringify({ name: 'Wave', play_mode: 'loop', utility: 'Unlocks a dance floor' }),
       'emote.glb': 'glb'
     })
     const result = await loadItemFile(file)
     expect(result.emote?.play_mode).toBe('loop')
+    expect(result.emote?.utility).toBe('Unlocks a dance floor')
     expect(result.bodyShape).toBe(BodyShapeType.BOTH)
   })
 

@@ -6,25 +6,48 @@ export { Spinner }
 
 const card = theme.media.noActions
 
-// Shared by the header and the rows so they stay aligned; the header's "Item" spans the first two columns.
-// The name gets twice the room of the other fields.
-const columns = (count: number) =>
-  `grid-template-columns: 74px minmax(0, 1.5fr) repeat(${count - 1}, minmax(0, 1fr)) minmax(56px, auto);`
+// Shared by the header and the rows so they stay aligned: every track depends on the row width alone, never on
+// its content, so each row resolves the same widths. The name gets twice the room of the other fields; the pill
+// columns keep a floor so their nowrap pills never spill into the next cell.
+const FIELD = 'minmax(0, 1fr)'
+const SALE_STATUS = 'minmax(124px, 1fr)'
+const STATUS = 'minmax(136px, 1fr)'
+const columns = ({ playMode = false, market = false, status = false } = {}) =>
+  `grid-template-columns: 74px minmax(0, 1.5fr) ${[
+    FIELD,
+    FIELD,
+    ...(playMode ? [FIELD] : []),
+    FIELD,
+    ...(market ? [FIELD, FIELD, SALE_STATUS] : []),
+    ...(status ? [STATUS] : [])
+  ].join(' ')} minmax(56px, auto);`
 
 export const itemListColumns = `
   display: grid;
-  ${columns(4)}
+  ${columns()}
   align-items: center;
   gap: 16px;
 
   &[data-with-play-mode] {
-    ${columns(5)}
+    ${columns({ playMode: true })}
   }
   &[data-with-market] {
-    ${columns(7)}
+    ${columns({ market: true })}
   }
   &[data-with-play-mode][data-with-market] {
-    ${columns(8)}
+    ${columns({ playMode: true, market: true })}
+  }
+  &[data-with-status] {
+    ${columns({ status: true })}
+  }
+  &[data-with-play-mode][data-with-status] {
+    ${columns({ playMode: true, status: true })}
+  }
+  &[data-with-market][data-with-status] {
+    ${columns({ market: true, status: true })}
+  }
+  &[data-with-play-mode][data-with-market][data-with-status] {
+    ${columns({ playMode: true, market: true, status: true })}
   }
 `
 
@@ -334,6 +357,22 @@ export const Amount = styled.span`
   align-items: center;
   gap: 6px;
   white-space: nowrap;
+`
+
+// The price a buyer pays and the one it replaces, as the Shop's cards draw them: the price in plain ink (the tag
+// already says "on sale" in red), the old one struck through in grey.
+export const SalePrice = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: ${theme.colors.softWhite};
+  font-weight: 700;
+`
+
+export const OriginalPrice = styled.s`
+  color: ${theme.colors.muted2};
+  font-size: 12px;
+  font-weight: 600;
 `
 
 export const ActionsCell = styled.div`

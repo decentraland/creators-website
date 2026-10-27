@@ -1,9 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { config } from '~/config'
-import { buildCollectionPreviewDeepLink, launchCollectionPreview, previewCollection } from './explorer'
+import {
+  buildCollectionPreviewDeepLink,
+  launchCollectionPreview,
+  previewCollection,
+  previewCollectionFromDetail
+} from './explorer'
+import { track } from './analytics'
 import { openExternal, openProtocolLink } from './navigation'
 
 vi.mock('./navigation', () => ({ openExternal: vi.fn(), openProtocolLink: vi.fn() }))
+vi.mock('./analytics', () => ({ track: vi.fn() }))
 
 describe('buildCollectionPreviewDeepLink', () => {
   it('deep-links the desktop client to the collection self-preview in the preview world with the backpack open', () => {
@@ -54,7 +61,7 @@ describe('launchCollectionPreview', () => {
   it('sends the user to the download page when no desktop client picks up the link', async () => {
     const done = previewCollection('col-1')
     await vi.runAllTimersAsync()
-    await done
+    await expect(done).resolves.toBe(false)
     expect(openExternal).toHaveBeenCalledWith(config.get('DOWNLOAD_URL'))
   })
 
@@ -62,7 +69,38 @@ describe('launchCollectionPreview', () => {
     const done = previewCollection('col-1')
     window.dispatchEvent(new Event('blur'))
     await vi.runAllTimersAsync()
-    await done
+    await expect(done).resolves.toBe(true)
     expect(openExternal).not.toHaveBeenCalled()
+  })
+})
+
+describe('previewCollectionFromDetail', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.mocked(openProtocolLink).mockReset()
+    vi.mocked(openExternal).mockReset()
+    vi.mocked(track).mockReset()
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('opens the deep link and tracks the launch from the collection page', async () => {
+    previewCollectionFromDetail('col-1', 4)
+    expect(openProtocolLink).toHaveBeenCalledTimes(1)
+    await vi.runAllTimersAsync()
+    expect(track).toHaveBeenCalledWith('Preview In World', {
+      collectionId: 'col-1',
+      itemCount: 4,
+      launched: false,
+      trigger: 'detail'
+    })
+  })
+
+  it('ignores a second click while the first launch is settling, and allows one after', async () => {
+    previewCollectionFromDetail('col-1', 4)
+    previewCollectionFromDetail('col-1', 4)
+    expect(openProtocolLink).toHaveBeenCalledTimes(1)
+    await vi.runAllTimersAsync()
+    previewCollectionFromDetail('col-1', 4)
+    expect(openProtocolLink).toHaveBeenCalledTimes(2)
   })
 })

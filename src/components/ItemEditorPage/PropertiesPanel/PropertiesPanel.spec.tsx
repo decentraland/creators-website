@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FeatureFlag } from '~/lib/featureFlags'
 import { setFeatureFlags } from '~/test/featureFlags'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BodyShape } from '@dcl/schemas'
 import { Providers } from '~/components/CollectionDetailPage/SellItemFlow/testUtils'
@@ -9,13 +9,28 @@ import { ItemType, type Item } from '~/lib/items'
 import { useItemForm } from '../useItemForm'
 import { PropertiesPanel } from './PropertiesPanel'
 
+const pickFile = vi.fn()
+const importItemModel = vi.fn()
+vi.mock('~/lib/filePicker', () => ({ pickFile: (...args: unknown[]) => pickFile(...args) }))
+vi.mock('~/lib/itemModelImport', () => ({ importItemModel: (...args: unknown[]) => importItemModel(...args) }))
+vi.mock('~/lib/builder', async () => ({
+  ...(await vi.importActual<typeof import('~/lib/builder')>('~/lib/builder')),
+  fetchContent: () => Promise.resolve(new Blob())
+}))
+
+const campaign = vi.hoisted(() => ({ current: null as { name: string; mainTag: string } | null }))
+vi.mock('~/hooks/useCampaign', () => ({ useCampaign: () => campaign.current }))
+
 vi.mock('~/lib/featureFlags', async () => {
   const actual = await vi.importActual<typeof import('~/lib/featureFlags')>('~/lib/featureFlags')
   const mock = await import('~/test/featureFlags')
   return { ...actual, getIsFeatureEnabled: mock.getIsFeatureEnabled }
 })
 
-beforeEach(() => setFeatureFlags(FeatureFlag.WEARABLE_UTILITY, FeatureFlag.VRM_OPTOUT))
+beforeEach(() => {
+  setFeatureFlags(FeatureFlag.WEARABLE_UTILITY, FeatureFlag.VRM_OPTOUT)
+  campaign.current = null
+})
 
 const item: Item = {
   id: 'w1',
@@ -40,23 +55,25 @@ const item: Item = {
   createdAt: 1,
   updatedAt: 1
 }
-const noSpringBones = { isLoading: false, models: [], initialParams: {}, bonesByHash: {} }
 
 function Harness({
   editable = true,
+  readOnlyReason,
   onSave = vi.fn(),
   subject = item
 }: {
   editable?: boolean
+  readOnlyReason?: 'role' | 'lock'
   onSave?: () => void
   subject?: Item
 }) {
-  const form = useItemForm(subject, noSpringBones)
+  const form = useItemForm(subject)
   return (
     <PropertiesPanel
       item={subject}
       address="0xabc"
       editable={editable}
+      readOnlyReason={readOnlyReason}
       canDelete={editable}
       draft={form.draft}
       dispatch={form.dispatch}
@@ -127,11 +144,42 @@ describe('PropertiesPanel', () => {
     expect(screen.getByTestId('properties-panel-save')).toBeDisabled()
   })
 
+  it('asks for a category when a new file does not fit the current one', async () => {
+    pickFile.mockResolvedValue(new File(['png'], 'eyes.png'))
+    importItemModel.mockResolvedValue({ item: { ...item, contents: { 'male/eyes.png': 'bafyeyes' } }, blobs: {} })
+    render(<Harness />, { wrapper: Providers })
+    await userEvent.click(screen.getByTestId('properties-panel-actions'))
+    await userEvent.click(screen.getByTestId('properties-panel-change-file'))
+    expect(await screen.findByTestId('properties-panel-category-error')).toBeInTheDocument()
+    expect(screen.getByTestId('properties-panel-save')).toBeDisabled()
+    await userEvent.click(screen.getByTestId('properties-panel-category'))
+    await userEvent.click(screen.getByTestId('properties-panel-category-option-eyes'))
+    expect(screen.queryByTestId('properties-panel-category-error')).not.toBeInTheDocument()
+    expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
+  })
+
+  it('keeps saving a stored item whose category the editor does not offer', async () => {
+    render(<Harness subject={{ ...item, data: { ...item.data, category: 'body_shape' } }} />, { wrapper: Providers })
+    await userEvent.type(screen.getByTestId('properties-panel-name'), ' 2')
+    expect(screen.queryByTestId('properties-panel-category-error')).not.toBeInTheDocument()
+    expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
+  })
+
+  it('keeps a description with a colon from being saved', async () => {
+    render(<Harness />, { wrapper: Providers })
+    await userEvent.type(screen.getByTestId('properties-panel-description'), ': red')
+    expect(screen.getByTestId('properties-panel-description-error')).toBeInTheDocument()
+    expect(screen.getByTestId('properties-panel-save')).toBeDisabled()
+  })
+
   it('locks every control and hides the footer when not editable', () => {
     render(<Harness editable={false} />, { wrapper: Providers })
     expect(screen.getByTestId('properties-panel-readonly')).toBeInTheDocument()
     expect(screen.getByTestId('properties-panel-name')).toBeDisabled()
-    expect(screen.getByTestId('properties-panel-hides-categories')).toBeDisabled()
+    expect(screen.getAllByTestId('properties-panel-hides-categories-pill').map(pill => pill.textContent)).toEqual([
+      'Hair',
+      'Helmet'
+    ])
     expect(screen.queryByTestId('properties-panel-footer')).not.toBeInTheDocument()
   })
 
@@ -147,11 +195,51 @@ describe('PropertiesPanel', () => {
     expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
   })
 
+  it('tells a locked collection apart from missing edit rights in the read-only note', () => {
+    const { unmount } = render(<Harness editable={false} />, { wrapper: Providers })
+    expect(screen.getByTestId('properties-panel-readonly')).toHaveTextContent(
+      'only the collection owner and collaborators'
+    )
+    unmount()
+    render(<Harness editable={false} readOnlyReason="lock" />, { wrapper: Providers })
+    expect(screen.getByTestId('properties-panel-readonly')).toHaveTextContent('while the collection is being published')
+  })
+
+  it('lists tags read-only without the field when not editable', () => {
+    render(<Harness editable={false} />, { wrapper: Providers })
+    expect(screen.getAllByTestId('tags-input-tag').map(tag => tag.textContent)).toEqual(['cool'])
+    expect(screen.queryByTestId('tags-input-field')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('tags-input-remove-cool')).not.toBeInTheDocument()
+  })
+
   it('adds and removes tags', async () => {
     render(<Harness />, { wrapper: Providers })
     await userEvent.type(screen.getByTestId('tags-input-field'), 'pirate{enter}')
     expect(screen.getAllByTestId('tags-input-tag').map(tag => tag.textContent)).toEqual(['cool', 'pirate'])
     await userEvent.click(screen.getByTestId('tags-input-remove-cool'))
     expect(screen.getAllByTestId('tags-input-tag')).toHaveLength(1)
+  })
+
+  it('adds the campaign tag from the hint and stops offering it once present', async () => {
+    campaign.current = { name: 'Summer Fest', mainTag: 'summer' }
+    render(<Harness />, { wrapper: Providers })
+    const hint = screen.getByTestId('properties-panel-campaign-hint')
+    expect(hint).toHaveTextContent('Add the summer tag to enter this item in Summer Fest.')
+    const tagButton = screen.getByTestId('properties-panel-campaign-tag')
+    await userEvent.hover(tagButton)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Click to add')
+    await userEvent.click(tagButton)
+    expect(screen.getAllByTestId('tags-input-tag').map(tag => tag.textContent)).toEqual(['cool', 'summer'])
+    expect(screen.queryByTestId('properties-panel-campaign-tag')).not.toBeInTheDocument()
+    expect(hint).toHaveTextContent('Add the summer tag to enter this item in Summer Fest.')
+    expect(within(hint).getByText('summer').tagName).toBe('STRONG')
+    expect(screen.getByTestId('tags-input-field')).toHaveFocus()
+    expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
+  })
+
+  it('keeps the campaign hint out of the read-only panel', () => {
+    campaign.current = { name: 'Summer Fest', mainTag: 'summer' }
+    render(<Harness editable={false} />, { wrapper: Providers })
+    expect(screen.queryByTestId('properties-panel-campaign-hint')).not.toBeInTheDocument()
   })
 })

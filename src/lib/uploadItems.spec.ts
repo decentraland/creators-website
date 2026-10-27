@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BodyShapeType, ItemType } from './items'
 import { EmotePlayMode, buildItem, type ItemDraftPayload } from './itemFactory'
 import { BuilderServerError } from './builder'
-import { executeUpload, planUpload, type UploadDraft } from './uploadItems'
+import { type Item } from './items'
+import { executeUpload, findDuplicateUrns, planUpload, type UploadDraft } from './uploadItems'
 
 vi.mock('./builder', async importOriginal => {
   const original = await importOriginal<typeof import('./builder')>()
@@ -164,5 +165,40 @@ describe('executeUpload', () => {
     const operations = await planUpload([draft('a')], [])
     const result = await executeUpload('0xowner', operations)
     expect(result.failureReason).toBe('published')
+  })
+
+  it("tells a URN another item holds apart from a published collection, even when the message says 'return'", async () => {
+    saveItemMock.mockRejectedValue(
+      new BuilderServerError("The URN provided already belong to another item. The item can't be inserted.", 409)
+    )
+    expect((await executeUpload('0xowner', await planUpload([draft('a')], []))).failureReason).toBe('urn_taken')
+    saveItemMock.mockRejectedValue(new BuilderServerError('Items cannot be returned once published', 409))
+    expect((await executeUpload('0xowner', await planUpload([draft('a')], []))).failureReason).toBe('published')
+  })
+})
+
+describe('linked URNs', () => {
+  const URN = 'urn:decentraland:amoy:collections-thirdparty:brand:hats:cap'
+  const existing = { id: 'item-1', urn: URN, owner: '', createdAt: 1, contents: {} } as unknown as Item
+
+  it('only replaces the item that holds a URN when editing in bulk', async () => {
+    const [update] = await planUpload([draft('a', { urn: URN })], [existing], { replaceByUrn: true })
+    expect(update.isExistingItemUpdate).toBe(true)
+    expect(update.built.item.id).toBe('item-1')
+
+    const [added] = await planUpload([draft('a', { urn: URN })], [existing])
+    expect(added.isExistingItemUpdate).toBe(false)
+    expect(added.built.item.id).not.toBe('item-1')
+  })
+
+  it('finds the drafts that repeat a URN an earlier draft of the batch takes', () => {
+    const drafts = [
+      draft('a', { urn: URN }),
+      draft('b', { urn: `${URN}-2` }),
+      draft('c', { urn: URN }),
+      draft('v', { urn: URN, variantTargetId: 'a' })
+    ]
+    expect(findDuplicateUrns(drafts)).toEqual(['c'])
+    expect(findDuplicateUrns([draft('x'), draft('y')])).toEqual([])
   })
 })

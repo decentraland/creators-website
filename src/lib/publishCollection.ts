@@ -1,12 +1,12 @@
 // Everything the publish flow needs besides React: the createCollection arguments, the
 // CreditsManager external call, payment-method availability, and the publish sequence itself,
-// ported from the legacy builder's publish saga (minus the forum post, which no longer exists).
+// ported from the legacy builder's publish saga (the forum post lives in hooks/useForumPost).
 // Server and chain access is injected so the sequence is unit-testable end to end.
 import { ethers } from 'ethers'
 import { ContractName, getContract } from 'decentraland-transactions'
 import { config } from '~/config'
 import { type ContractCall } from '~/lib/auth'
-import { BuilderServerError, COLLECTION_LOCKED_STATUS } from '~/lib/builder'
+import { BuilderServerError, COLLECTION_LOCKED_STATUS, isRefusedRequest } from '~/lib/builder'
 import { isCollectionLocked, type Collection } from '~/lib/collections'
 import { CreditsServerError, type ExternalCall, type PublicationAuthorization } from '~/lib/credits'
 import { PublicationFeeMismatchError } from '~/lib/feeVerification'
@@ -152,15 +152,25 @@ export function buildUseCreditsCall(
 }
 
 export type PublishFailureReason =
-  'missing_salt' | 'unsynced' | 'locked' | 'insufficient_credits' | 'fee_mismatch' | 'rejected' | 'generic'
+  | 'missing_salt'
+  | 'unsynced'
+  | 'locked'
+  | 'insufficient_credits'
+  | 'fee_mismatch'
+  | 'tos_failed'
+  | 'rejected'
+  | 'generic'
 
 export class PublishCollectionError extends Error {
   reason: PublishFailureReason
+  /** The underlying failure, when this one wraps it. */
+  cause?: unknown
 
-  constructor(reason: PublishFailureReason, message: string = reason) {
+  constructor(reason: PublishFailureReason, message: string = reason, cause?: unknown) {
     super(message)
     this.name = 'PublishCollectionError'
     this.reason = reason
+    this.cause = cause
   }
 }
 
@@ -179,18 +189,26 @@ export function toPublishError(error: unknown): PublishCollectionError {
   return new PublishCollectionError('generic', message)
 }
 
-async function retry<T>(times: number, delayMs: number, fn: () => Promise<T>): Promise<T> {
+async function retry<T>(
+  times: number,
+  delayMs: number,
+  fn: () => Promise<T>,
+  shouldRetry: (error: unknown) => boolean = () => true
+): Promise<T> {
   let lastError: unknown
   for (let attempt = 0; attempt < times; attempt++) {
     try {
       return await fn()
     } catch (error) {
       lastError = error
+      if (!shouldRetry(error)) break
       if (attempt < times - 1) await new Promise(resolve => setTimeout(resolve, delayMs))
     }
   }
   throw lastError
 }
+
+const isTransientFailure = (error: unknown) => !isRefusedRequest(error)
 
 export type PublishParams = {
   address: string
@@ -198,8 +216,8 @@ export type PublishParams = {
   items: Item[]
   paymentMethod: PaymentMethod
   fee: PublicationFee
-  /** Recorded with the Terms of Service acceptance; null skips the record (no profile email). */
-  email: string | null
+  /** The contact email from step 1, recorded with the Terms of Service acceptance. */
+  email: string
   chainId: number
 }
 
@@ -252,7 +270,11 @@ export async function publishCollection(params: PublishParams, deps: PublishDeps
     items = rehashed
 
     // Recorded before the transaction so a ToS failure never leaves the collection locked.
-    if (email) await retry(3, 500, () => deps.saveTOS(collection, email))
+    try {
+      await retry(3, 500, () => deps.saveTOS(collection, email), isTransientFailure)
+    } catch (error) {
+      throw new PublishCollectionError('tos_failed', error instanceof Error ? error.message : String(error), error)
+    }
 
     const args = buildCreateCollectionArgs(collection, items, address, chainId)
     let txHash: string
@@ -289,9 +311,12 @@ export type SyncDeps = {
 
 export type ConsolidateDeps = SyncDeps & {
   waitForTransaction: (txHash: string) => Promise<boolean>
+  /** Runs once the server holds the published items, e.g. to open the collection's forum topic. */
+  onSynced?: () => void
 }
 
-// One hour of 5s polls: the subgraph can lag well past a couple of minutes on a busy Polygon day.
+// One hour of 5s polls: the subgraph can lag well past a couple of minutes on a busy Polygon day. Forum post
+// recovery (`RECOVERY_GRACE_MS` in forumPost.ts) waits this out, so keep it shorter than that grace.
 const CONSOLIDATE_RETRY_DELAY_MS = 5000
 const CONSOLIDATE_RETRIES = (60 * 60 * 1000) / CONSOLIDATE_RETRY_DELAY_MS
 
@@ -328,7 +353,7 @@ export class PublishTransactionRevertedError extends Error {
   }
 }
 
-/** Waits for the publish transaction to be mined, then runs the server sync. */
+/** Waits for the publish transaction to be mined, then runs the server sync and `onSynced`. */
 export async function consolidatePublishedCollection(
   collectionId: string,
   txHash: string,
@@ -339,4 +364,5 @@ export async function consolidatePublishedCollection(
   const mined = await deps.waitForTransaction(txHash)
   if (!mined) throw new PublishTransactionRevertedError(txHash)
   await syncPublishedItems(collectionId, deps, retries, retryDelayMs)
+  deps.onSynced?.()
 }

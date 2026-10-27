@@ -9,6 +9,7 @@
 // Nothing here is user-facing, so the copy/i18n rules don't apply. Never emit PII or secrets; wallet
 // addresses are pseudonymous public ids and are allowed.
 import { isbot } from 'isbot'
+import { createAnonymousIdResolver, readStoredId } from '~/lib/segmentAnonymousId.helpers'
 import { APP_VERSION, config, currentSearch } from '~/config'
 import { currentAddress } from '~/lib/currentAddress'
 import { postToSegment, type SegmentCall } from '~/lib/segmentHttp'
@@ -37,7 +38,7 @@ const SESSION_ID =
   typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `s-${String(performance.now())}`
 
 // Crawlers would otherwise inflate every funnel metric. Evaluated once: the user agent can't change.
-const IS_BOT = typeof navigator !== 'undefined' && isbot(navigator.userAgent)
+export const IS_BOT = typeof navigator !== 'undefined' && isbot(navigator.userAgent)
 
 function segment(): SegmentApi | undefined {
   if (IS_BOT || typeof window === 'undefined') return undefined
@@ -114,40 +115,12 @@ export function getAnonymousId(): string | undefined {
   return typeof user?.anonymousId === 'function' ? user.anonymousId() : undefined
 }
 
-const ANONYMOUS_ID_KEY = 'ajs_anonymous_id'
 const USER_ID_KEY = 'ajs_user_id'
 
-// analytics.js stores its ids JSON-encoded; a bare string is tolerated.
-function readStoredId(key: string): string | undefined {
-  try {
-    const raw = localStorage.getItem(key)
-    if (!raw) return undefined
-    try {
-      const parsed: unknown = JSON.parse(raw)
-      return typeof parsed === 'string' && parsed !== '' ? parsed : undefined
-    } catch {
-      return raw
-    }
-  } catch {
-    return undefined
-  }
-}
+const anonymousIdResolver = createAnonymousIdResolver(getAnonymousId)
 
-/**
- * The visitor's Segment anonymous id for calls sent outside analytics.js, so they join the same visitor.
- * Before analytics.js has booted one is minted and stored the way analytics.js stores it, so it adopts it.
- */
-export function ensureAnonymousId(): string {
-  const existing = getAnonymousId() ?? readStoredId(ANONYMOUS_ID_KEY)
-  if (existing) return existing
-  const id = crypto.randomUUID()
-  try {
-    localStorage.setItem(ANONYMOUS_ID_KEY, JSON.stringify(id))
-  } catch {
-    // Storage blocked: the id still labels this call.
-  }
-  return id
-}
+/** Uses the same browser identity for direct beacons and the loaded SDK. */
+export const ensureAnonymousId = anonymousIdResolver.ensure
 
 /**
  * Sends one call to the Segment source of `writeKey` over the HTTP API, with this app's common props and
@@ -243,7 +216,7 @@ function installSnippet(): Snippet | undefined {
  * at a first party proxy — and `_cdn` has to point there too, because analytics.js fetches its SETTINGS
  * separately and would otherwise still hit (and lose them to) Segment's CDN.
  */
-function resolveAnalyticsUrl(url: string): URL | undefined {
+export function resolveAnalyticsUrl(url: string): URL | undefined {
   if (!url) return undefined
   try {
     const resolved = new URL(url, window.location.href)
@@ -261,7 +234,7 @@ function resolveAnalyticsUrl(url: string): URL | undefined {
  * `context_app_name` / `context_app_version` columns, which no caller prop can collide with; the
  * `source` and `version` props stay as the cross-app filter the legacy builder's queries already use.
  */
-function stampApp(analytics: Pick<SegmentApi, 'addSourceMiddleware'>): void {
+export function stampApp(analytics: Pick<SegmentApi, 'addSourceMiddleware'>): void {
   analytics.addSourceMiddleware?.(({ payload, next }) => {
     // `next` in a finally: a middleware that throws (or one handed an unexpected payload shape by a
     // future analytics.js) would otherwise swallow the call, and every event with it.

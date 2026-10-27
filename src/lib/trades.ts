@@ -1,11 +1,18 @@
-// Off-chain marketplace (OffChainMarketplaceV2) orders: the EIP-712 encoding a creator signs and the
+// Off-chain marketplace orders: the EIP-712 encoding a creator signs and the
 // marketplace-server endpoint that stores the signed order. Ported from the legacy builder's
 // lib/trades + TradeService; the shop reads these orders back through its unified catalog.
 import { ethers } from 'ethers'
-import { TradeAssetType, type OnChainTrade, type Trade, type TradeAsset, type TradeCreation } from '@dcl/schemas'
+import {
+  TradeAssetType,
+  type OnChainTrade,
+  type Trade,
+  type TradeAsset,
+  type TradeChecks,
+  type TradeCreation
+} from '@dcl/schemas'
 import { ContractName, getContract, getContractName } from 'decentraland-transactions'
 import { config } from '~/config'
-import { readContract, signedFetch } from '~/lib/auth'
+import { readContract, signedFetch, type ContractData } from '~/lib/auth'
 
 export type UnsignedTrade = Omit<TradeCreation, 'signature'>
 
@@ -49,8 +56,12 @@ export const OFFCHAIN_MARKETPLACE_TYPES: Record<string, ethers.TypedDataField[]>
 // Signed requests to marketplace-server must declare who signs and why.
 const TRADE_AUTH_METADATA = { signer: 'dcl:builder', intent: 'dcl:create-trade' }
 
+/**
+ * The marketplace new orders are signed on, and the one that must be able to mint the collection.
+ * marketplace-server only accepts new orders on it; older orders are still cancelled on their own contract.
+ */
 export function getOffchainMarketplaceContract(chainId: number) {
-  return getContract(ContractName.OffChainMarketplaceV2, chainId)
+  return getContract(ContractName.OffChainMarketplaceV3, chainId)
 }
 
 /** The marketplace's EIP-712 domain: the chain id travels in `salt`, Decentraland's meta-tx convention. */
@@ -80,24 +91,29 @@ const toSeconds = (ms: number) => Math.floor(ms / 1000)
 // Empty bytes are encoded as '0x'; the server-side JSON keeps ''.
 const bytes = (value: string) => value || '0x'
 
+/** `Checks` as the contracts sign and read them, for orders and coupons alike: timestamps in seconds, bytes32 zero-padded. */
+export function toTypedChecks(checks: TradeChecks) {
+  return {
+    uses: checks.uses,
+    expiration: toSeconds(checks.expiration),
+    effective: toSeconds(checks.effective),
+    salt: ethers.utils.hexZeroPad(checks.salt, 32),
+    contractSignatureIndex: checks.contractSignatureIndex,
+    signerSignatureIndex: checks.signerSignatureIndex,
+    allowedRoot: ethers.utils.hexZeroPad(bytes(checks.allowedRoot), 32),
+    externalChecks: (checks.externalChecks ?? []).map(check => ({
+      contractAddress: check.contractAddress,
+      selector: check.selector,
+      value: bytes(check.value),
+      required: check.required
+    }))
+  }
+}
+
 /** The struct the wallet signs: timestamps in seconds, bytes32 fields zero-padded, assets flattened to `value`. */
 export function toTradeTypedValues(trade: UnsignedTrade): Record<string, unknown> {
   return {
-    checks: {
-      uses: trade.checks.uses,
-      expiration: toSeconds(trade.checks.expiration),
-      effective: toSeconds(trade.checks.effective),
-      salt: ethers.utils.hexZeroPad(trade.checks.salt, 32),
-      contractSignatureIndex: trade.checks.contractSignatureIndex,
-      signerSignatureIndex: trade.checks.signerSignatureIndex,
-      allowedRoot: ethers.utils.hexZeroPad(bytes(trade.checks.allowedRoot), 32),
-      externalChecks: trade.checks.externalChecks.map(check => ({
-        contractAddress: check.contractAddress,
-        selector: check.selector,
-        value: bytes(check.value),
-        required: check.required
-      }))
-    },
+    checks: toTypedChecks(trade.checks),
     sent: trade.sent.map(asset => ({
       assetType: asset.assetType,
       contractAddress: asset.contractAddress,
@@ -116,7 +132,8 @@ export function toTradeTypedValues(trade: UnsignedTrade): Record<string, unknown
 
 const MARKETPLACE_CONTRACTS = new Set<ContractName>([
   ContractName.OffChainMarketplace,
-  ContractName.OffChainMarketplaceV2
+  ContractName.OffChainMarketplaceV2,
+  ContractName.OffChainMarketplaceV3
 ])
 
 /** The stored order's marketplace names a contract this client does not know. */
@@ -128,7 +145,7 @@ export class UnknownTradeContractError extends Error {
 }
 
 /**
- * The marketplace generation a stored trade belongs to (older listings sit on the V1 contract), always
+ * The marketplace generation a stored trade belongs to (older listings sit on the V1 or V2 contract), always
  * resolved to the canonical address for that generation. The server's `contract` is only a lookup key:
  * a transaction is never sent to an address the client cannot vouch for, nor to another chain.
  */
@@ -169,8 +186,12 @@ export function toOnChainTrade(trade: Trade): OnChainTrade {
 export type SignatureIndexes = { contractSignatureIndex: number; signerSignatureIndex: number }
 
 /** The marketplace's current signature indexes; an order signed with stale ones is unredeemable. */
-export async function fetchSignatureIndexes(signer: string, chainId: number): Promise<SignatureIndexes> {
-  const contract = getOffchainMarketplaceContract(chainId)
+export function fetchSignatureIndexes(signer: string, chainId: number): Promise<SignatureIndexes> {
+  return readSignatureIndexes(getOffchainMarketplaceContract(chainId), signer)
+}
+
+/** A signatures contract's current indexes for `signer` (a marketplace or a coupon manager). */
+export async function readSignatureIndexes(contract: ContractData, signer: string): Promise<SignatureIndexes> {
   const [contractIndex, signerIndex] = await Promise.all([
     readContract<ethers.BigNumber>(contract, 'contractSignatureIndex'),
     readContract<ethers.BigNumber>(contract, 'signerSignatureIndex', [signer])

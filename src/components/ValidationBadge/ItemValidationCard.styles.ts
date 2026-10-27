@@ -17,6 +17,36 @@ export const Header = styled.div`
   gap: 12px;
 `
 
+const subject = `
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+`
+
+export const Subject = styled.div`
+  ${subject}
+`
+
+export const SubjectButton = styled.button`
+  ${subject}
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: ${theme.radius.chip};
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: ${theme.colors.overlayLight};
+  }
+`
+
 export const Thumbnail = styled(ItemThumbnail)`
   flex: none;
   width: 46px;
@@ -24,7 +54,7 @@ export const Thumbnail = styled(ItemThumbnail)`
   border-radius: ${theme.radius.chip};
 `
 
-export const SubjectText = styled.div`
+export const SubjectText = styled.span`
   display: flex;
   flex: 1;
   flex-direction: column;

@@ -2,6 +2,7 @@
 // CreateSingleItemModal's createItem/addItemRepresentation + utils (sortContent,
 // buildRepresentations) and modules/deployment/contentUtils (computeHashes).
 import { hashV1 } from '@dcl/hashing'
+import { type Mappings } from '@dcl/schemas'
 import { ethers } from 'ethers'
 import {
   BODY_SHAPE_FEMALE,
@@ -26,7 +27,7 @@ import {
   isModelPath,
   toMB
 } from './itemFiles'
-import { generateCatalystImage } from './media'
+import { compressPngBlob, generateCatalystImage } from './media'
 import { mergeSpringBonesIntoItem, type SpringBoneParamsByName } from './springBones'
 
 export const ITEM_NAME_MAX_LENGTH = 32
@@ -65,6 +66,7 @@ export type ItemDraftPayload = {
   requiredPermissions?: string[]
   /** From wearable.json / emote.json when the zip ships one. */
   description?: string
+  utility?: string
   tags?: string[]
   blockVrmExport?: boolean
   /** Wearables only: slots and body parts the item hides (the Blender live preview hands these over). */
@@ -78,6 +80,9 @@ export type ItemDraftPayload = {
   metrics: ItemMetrics
   owner: string
   collectionId: string
+  /** Linked items only: the item's URN (collection URN + its own suffix) and the tokens that unlock it. */
+  urn?: string
+  mappings?: Mappings
 }
 
 const prefixContentName = (bodyShape: BodyShapeType, contentKey: string): string => `${bodyShape}/${contentKey}`
@@ -323,7 +328,8 @@ export async function buildItem(draft: ItemDraftPayload): Promise<BuiltItem> {
   const item: Item = {
     id: draft.id,
     name: draft.name,
-    description: draft.description ?? '',
+    description: (draft.description ?? '').trim(),
+    ...(draft.utility?.trim() ? { utility: draft.utility.trim() } : {}),
     thumbnail: THUMBNAIL_PATH,
     ...(contents[VIDEO_PATH] ? { video: contents[VIDEO_PATH] } : {}),
     owner: draft.owner,
@@ -333,6 +339,8 @@ export async function buildItem(draft: ItemDraftPayload): Promise<BuiltItem> {
     isApproved: false,
     inCatalyst: false,
     rarity: draft.rarity,
+    ...(draft.urn ? { urn: draft.urn } : {}),
+    ...(draft.mappings ? { mappings: draft.mappings } : {}),
     type: draft.type,
     data: springBones ? { ...data, springBones } : data,
     metrics: draft.metrics,
@@ -347,11 +355,25 @@ export async function buildItem(draft: ItemDraftPayload): Promise<BuiltItem> {
   return { item, blobs }
 }
 
-/** Adds the catalyst image next to the thumbnail (legacy generateCatalystImage before every save). */
+/**
+ * Quantizes the thumbnail and adds the catalyst image next to it (legacy compressPngBlob + generateCatalystImage
+ * before every save). Quantizing first keeps the stored thumbnail under its cap more often.
+ */
 async function withCatalystImage(blobs: Record<string, Blob>, rarity: string): Promise<Record<string, Blob>> {
-  const thumbnail = blobs[THUMBNAIL_PATH]
-  if (!thumbnail) return blobs
-  return { ...blobs, [IMAGE_PATH]: await generateCatalystImage(thumbnail, rarity) }
+  if (!blobs[THUMBNAIL_PATH]) return blobs
+  const thumbnail = await compressPngBlob(blobs[THUMBNAIL_PATH])
+  const image = await compressPngBlob(await generateCatalystImage(thumbnail, rarity))
+  return { ...blobs, [THUMBNAIL_PATH]: thumbnail, [IMAGE_PATH]: image }
+}
+
+/**
+ * Rebuilds only the catalyst image from the stored thumbnail, for a rarity change that uploads no new thumbnail
+ * (legacy regenerated the image whenever the rarity changed).
+ */
+export async function withCatalystImageForRarity(item: Item, thumbnail: Blob): Promise<BuiltItem> {
+  const image = await compressPngBlob(await generateCatalystImage(thumbnail, item.rarity ?? ''))
+  const hashes = await computeHashes({ [IMAGE_PATH]: image })
+  return { item: { ...item, contents: { ...item.contents, ...hashes } }, blobs: { [IMAGE_PATH]: image } }
 }
 
 /**

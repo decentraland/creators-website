@@ -1,12 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { Network } from '@dcl/schemas'
 import { ethers } from 'ethers'
 import { TopNav } from '~/components/TopNav'
 import { useWallet } from '~/store/wallet'
 import { useCreditsBalance, useManaBalance } from '~/hooks/useBalances'
+import { useCommittee } from '~/hooks/useCuration'
 import { useProfile } from '~/hooks/useProfile'
+import { useWalletChain } from '~/hooks/useWalletChain'
+import { track } from '~/lib/analytics'
+import { isSocialLogin } from '~/lib/auth'
 import { openExternal } from '~/lib/navigation'
+import { isOverviewPath, LandingPlace, trackLandingClick } from '~/lib/overviewAnalytics'
 import { useTranslation } from '~/intl'
 import { config } from '~/config'
 import * as S from './NavBar.styles'
@@ -16,13 +21,29 @@ const builderUrl = config.get('BUILDER_URL')
 const shopCreditsUrl = `${config.get('SHOP_URL')}/credits`
 const accountUrl = config.get('ACCOUNT_URL')
 
-const NavBar = () => {
+type Props = {
+  /** Off behind the pre-launch gate: only the ui2 top bar renders, like sites' creator landing. */
+  subnav?: boolean
+}
+
+const NavBar = ({ subnav = true }: Props) => {
   const { t } = useTranslation()
   const { session, connecting, signIn, disconnect } = useWallet()
   const address = session?.address
   const { data: avatar, isLoading: isLoadingProfile } = useProfile(address)
   const { data: credits } = useCreditsBalance(address)
   const { data: manaWei } = useManaBalance(address)
+  const { isCurator } = useCommittee(address)
+  // A social login has no network to choose (every write of theirs is relayed), so it is handed no session
+  // and ui2 hides the chain pill inside the profile panel. The event is the legacy builder's.
+  const { chainId, chains, switchTo } = useWalletChain(session && !isSocialLogin(session) ? session : null)
+  const selectChain = useCallback(
+    (chain: number) => {
+      track('Change Network', { from_chain_id: chainId, to_chain_id: chain })
+      void switchTo(chain)
+    },
+    [chainId, switchTo]
+  )
   // Polygon only: it's the network publishing pays on. Like the legacy builder, an empty wallet shows
   // no MANA chip at all; ui2 renders whole units.
   const manaBalances = useMemo(
@@ -33,16 +54,11 @@ const NavBar = () => {
   // Collections stays active across the collection detail / item detail / editor pages too, not just
   // the /collections list — a NavLink to /collections alone wouldn't light up on the nested routes.
   const collectionsActive = /^\/collections(\/|$)/.test(pathname)
-  // The translucent band washes out over light content, so it deepens once the page scrolls.
-  const [scrolled, setScrolled] = useState(false)
-
+  // The top bar's translucent fill washes out over light content, so it deepens once the page scrolls.
+  // Set on <body> because the ui2 navbar is styled from TopNav via ancestor selectors.
   useEffect(() => {
     const onScroll = () => {
-      const v = window.scrollY > 8
-      setScrolled(v)
-      // Mirrored on <body> so the global ui2 navbar (styled from TopNav via ancestor selectors,
-      // outside this component) can deepen in step with the sub-nav.
-      document.body.toggleAttribute('data-scrolled', v)
+      document.body.toggleAttribute('data-scrolled', window.scrollY > 8)
     }
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
@@ -66,22 +82,35 @@ const NavBar = () => {
         manaBalances={manaBalances}
         showManaBalancesInNavbar
         onClickBalance={() => openExternal(accountUrl)}
-        onClickSignIn={() => signIn()}
+        selectedChain={chainId}
+        chains={chains}
+        onSelectChain={selectChain}
+        onClickSignIn={() => {
+          if (isOverviewPath(pathname)) trackLandingClick(LandingPlace.NAVBAR, { action: 'sign_in' })
+          signIn()
+        }}
         onClickSignOut={() => void disconnect()}
       />
 
-      <S.Subnav data-testid="subnav" data-scrolled={scrolled || undefined}>
-        <S.Tabs data-testid="subnav-tabs">
-          <NavLink to="/" end>
-            {t('nav.overview')}
-          </NavLink>
-          <NavLink to="/collections" className={() => (collectionsActive ? 'active' : '')}>
-            {t('nav.collections')}
-          </NavLink>
-          <a href={`${builderUrl}/scenes`}>{t('nav.scenes')}</a>
-          <a href={`${builderUrl}/land`}>{t('nav.land')}</a>
-        </S.Tabs>
-      </S.Subnav>
+      {subnav && (
+        <S.Subnav data-testid="subnav">
+          <S.Tabs data-testid="subnav-tabs">
+            <NavLink to="/" end>
+              {t('nav.overview')}
+            </NavLink>
+            <NavLink to="/collections" className={() => (collectionsActive ? 'active' : '')}>
+              {t('nav.collections')}
+            </NavLink>
+            {isCurator && (
+              <NavLink to="/curation" data-testid="nav-curation">
+                {t('nav.curation')}
+              </NavLink>
+            )}
+            <a href={`${builderUrl}/scenes`}>{t('nav.scenes')}</a>
+            <a href={`${builderUrl}/land`}>{t('nav.land')}</a>
+          </S.Tabs>
+        </S.Subnav>
+      )}
     </>
   )
 }

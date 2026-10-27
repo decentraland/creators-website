@@ -1,5 +1,6 @@
 // Collection domain model + wire mapping for builder-server, ported from the legacy builder
 // (src/modules/collection + lib/api/builder.ts) so both apps read the same API identically.
+import type { CurationRequestStatus } from '~/lib/curation'
 
 export type RemoteCollection = {
   id: string
@@ -68,7 +69,9 @@ export enum CollectionSort {
   UPDATED_AT_DESC = 'UPDATED_AT_DESC',
   UPDATED_AT_ASC = 'UPDATED_AT_ASC',
   LAST_ACTIVITY_DESC = 'LAST_ACTIVITY_DESC',
-  LAST_ACTIVITY_ASC = 'LAST_ACTIVITY_ASC'
+  LAST_ACTIVITY_ASC = 'LAST_ACTIVITY_ASC',
+  REQUESTED_AT_DESC = 'REQUESTED_AT_DESC',
+  REQUESTED_AT_ASC = 'REQUESTED_AT_ASC'
 }
 
 export enum CurationStatus {
@@ -78,6 +81,16 @@ export enum CurationStatus {
   APPROVED = 'approved',
   REJECTED = 'rejected',
   DISABLED = 'disabled'
+}
+
+/** A server-provided link, or undefined unless it is http(s): it is opened as a page, so `javascript:` must not pass. */
+export function toSafeLink(url: string | null): string | undefined {
+  if (!url) return undefined
+  try {
+    return ['https:', 'http:'].includes(new URL(url).protocol) ? url : undefined
+  } catch {
+    return undefined
+  }
 }
 
 /** The status a collection pill displays. */
@@ -123,6 +136,7 @@ export type FetchCollectionsParams = {
   page?: number
   limit?: number
   q?: string
+  contractAddress?: string
   type?: CollectionType
   sort?: CollectionSort
   status?: Exclude<CollectionStatusFilter, CollectionStatusFilter.ALL>
@@ -145,7 +159,7 @@ export function fromRemoteCollection(remote: RemoteCollection): Collection {
     itemCount: Number(remote.item_count ?? 0),
     minters: remote.minters || [],
     managers: remote.managers || [],
-    forumLink: remote.forum_link || undefined,
+    forumLink: toSafeLink(remote.forum_link),
     lock: remote.lock ? +new Date(remote.lock) : undefined,
     reviewedAt: remote.reviewed_at ? +new Date(remote.reviewed_at) : undefined,
     linkedContractAddress: remote.linked_contract_address || undefined,
@@ -162,6 +176,19 @@ export function fromRemoteCollection(remote: RemoteCollection): Collection {
   return collection
 }
 
+const CONTRACT_ADDRESS = /^0x[0-9a-fA-F]{40}$/
+
+export function isContractAddress(value: string): boolean {
+  return CONTRACT_ADDRESS.test(value)
+}
+
+/** The collection deployed at `contractAddress`, whatever the casing of either side. */
+export function findCollectionByContract(collections: Collection[], contractAddress: string): Collection | undefined {
+  if (!isContractAddress(contractAddress)) return undefined
+  const wanted = contractAddress.toLowerCase()
+  return collections.find(collection => collection.contractAddress?.toLowerCase() === wanted)
+}
+
 // Snake_case query params, falsy values dropped — matches the legacy builder's serializer, so
 // builder-server receives byte-identical requests.
 export function toCollectionsQueryString(params: FetchCollectionsParams): string {
@@ -171,6 +198,7 @@ export function toCollectionsQueryString(params: FetchCollectionsParams): string
   if (params.type) query.append('type', params.type)
   if (params.sort) query.append('sort', params.sort)
   if (params.q) query.append('q', params.q)
+  if (params.contractAddress) query.append('contract_address', params.contractAddress)
   if (params.page) query.append('page', String(params.page))
   if (params.limit) query.append('limit', String(params.limit))
   const s = query.toString()
@@ -194,6 +222,24 @@ export function listFilterToParams(filter: CollectionListFilter): Partial<FetchC
 export type CollectionsSummary = { counts: CollectionStatusCounts; linkedTotal: number }
 
 /**
+ * A cached collections page without the collection just deleted, so the list stops rendering it (and its cover
+ * stops asking builder-server for the previews of a collection that no longer exists) while the refetch is in
+ * flight. Anything that is not a page holding that collection comes back as it was.
+ */
+export function withoutCollection<T>(data: T, collectionId: string): T {
+  if (!isCollectionsPage(data)) return data
+  const results = data.results.filter(collection => collection.id !== collectionId)
+  if (results.length === data.results.length) return data
+  // `total` and `counts` are left as they were: the refetch corrects both, and adjusting only one of them would
+  // throw off the linked count `summarizeCollections` derives from the pair.
+  return { ...data, results }
+}
+
+function isCollectionsPage(data: unknown): data is PaginatedResource<Collection> {
+  return typeof data === 'object' && data !== null && Array.isArray((data as { results?: unknown }).results)
+}
+
+/**
  * The chip counts, from an unfiltered list: builder-server counts only standard collections by status
  * (linked ones have none), so the linked ones are the rest of the total.
  */
@@ -212,7 +258,7 @@ export function isLinkedCollection(collection: Pick<Collection, 'urn'>): boolean
 /** Mirrors builder-server's `/:address/collections` status filter, so a pill always matches its chip. */
 export function getCollectionDisplayStatus(
   collection: Collection,
-  curationStatus = collection.curationStatus
+  curationStatus: CurationStatus | CurationRequestStatus | null | undefined = collection.curationStatus
 ): CollectionDisplayStatus {
   if (isLinkedCollection(collection)) return CollectionDisplayStatus.LINKED
   // A locked draft has its publish transaction in flight: the server just hasn't seen it yet, so it stays
@@ -306,17 +352,18 @@ export function toRemoteCollection(
   }
 }
 
-/** The latest curation request of a collection; only its status matters here. */
-export type CollectionCuration = { status: CurationStatus }
-
-/**
- * Whether this address is the owner, a collaborator or a minter of the collection. builder-server
- * serves published collections to anyone, so this is the app's own gate: the detail page (and later
- * the editor) shows "not found" to addresses with no role instead of a read-only view.
- */
+/** Whether this address is the owner, a collaborator or a minter of the collection. */
 export function hasCollectionRole(collection: Collection, address: string | undefined): boolean {
   if (!address) return false
   return collection.owner.toLowerCase() === address.toLowerCase() || getCollectionRole(collection, address) !== null
+}
+
+/**
+ * Published collections are public: any signer may view them read-only, as builder-server serves them.
+ * Drafts stay private to the addresses with a role, so the detail page and editor show "not found" otherwise.
+ */
+export function canViewCollection(collection: Collection, address: string | undefined): boolean {
+  return !!address && (collection.isPublished || hasCollectionRole(collection, address))
 }
 
 /** Owners and collaborators (managers) may change a collection's items; minters only sell them. */

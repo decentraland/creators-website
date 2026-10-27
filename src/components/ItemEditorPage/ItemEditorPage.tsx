@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { BodyShape, PreviewRenderer, type IPreviewController } from '@dcl/schemas'
-import { PersonOutline as PersonOutlineIcon } from '@mui/icons-material'
+import { BodyShape, PreviewRenderer, type ContractNetwork, type IPreviewController } from '@dcl/schemas'
+import { ArrowBackIosNew, PersonOutline as PersonOutlineIcon } from '@mui/icons-material'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { AvatarPreview } from '~/components/AvatarPreview'
 import { Button } from '~/components/Button'
 import { AddItemsModal } from '~/components/CollectionDetailPage/AddItemsModal'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
+import { CollectionStatusPill } from '~/components/CollectionStatusPill'
+import { CurationStatePill } from '~/components/CurationStatePill'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { ZoomControls } from '~/components/ZoomControls'
 import { useBaseWearables } from '~/hooks/useBaseWearables'
@@ -19,6 +21,7 @@ import {
   useCollectionStatus,
   useSaveCollection
 } from '~/hooks/useCollection'
+import { useCollectionCuration, useCommittee } from '~/hooks/useCuration'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { track } from '~/lib/analytics'
 import { modelValidationKey, useModelValidation } from '~/hooks/useModelValidation'
@@ -26,24 +29,29 @@ import { useRerunValidation } from '~/hooks/useRerunValidation'
 import { useObjectURL } from '~/hooks/useObjectURL'
 import { thumbnailValidationKey, useThumbnailValidation } from '~/hooks/useThumbnailValidation'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
-import { useSaveItem } from '~/hooks/useSaveItem'
-import { useSpringBones } from '~/hooks/useSpringBones'
+import { fetchStoredThumbnail, useSaveItem } from '~/hooks/useSaveItem'
 import { useTranslation } from '~/intl'
 import { type AvatarAttributes } from '~/lib/avatar'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS, getContentsStorageUrl } from '~/lib/builder'
 import {
   canManageCollectionItems,
+  canViewCollection,
   hasCollectionRole,
   isCollectionLocked,
   isLinkedCollection,
   type Collection
 } from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
+import { getCurationState, curationListUrl } from '~/lib/curation'
 import { toPreviewItem, toSaveableItem } from '~/lib/itemDraft'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
 import { pickFiles } from '~/lib/filePicker'
-import { ITEM_EXTENSIONS } from '~/lib/itemFiles'
-import { ItemType, canEditItemDetails, isSocialEmote, type Item } from '~/lib/items'
+import { IMAGE_PATH, ITEM_EXTENSIONS } from '~/lib/itemFiles'
+import { ItemType, canDeleteItem, canEditItemDetails, isSocialEmote, type Item } from '~/lib/items'
+import { isLinkedItemPublished } from '~/lib/linkedItemStatus'
+import { LINKED_COLLECTION_NAME_MAX_LENGTH, isThirdPartyManager, type LinkedContract } from '~/lib/thirdParty'
+import { useItemCurations, useThirdParty } from '~/hooks/useLinkedCollection'
+import { usePendingLinkedItems } from '~/hooks/useLinkedReview'
 import { useNotifications } from '~/lib/notifications'
 import { type AvatarPreviewSource } from '~/lib/preview'
 import { getShapesMissingSpringBones, mergeSpringBonesIntoItem, type SpringBoneParamsByName } from '~/lib/springBones'
@@ -56,7 +64,9 @@ import { ItemsSidebar } from './ItemsSidebar'
 import { MobilePreview } from './MobilePreview'
 import { PlaybackBar } from './PlaybackBar'
 import { PropertiesPanel, type SpringBonesFormProps } from './PropertiesPanel'
+import { EditorPreviewLaunch } from './EditorPreviewLaunch'
 import { ReviewBar } from './ReviewBar'
+import { LinkedReviewBar } from './ReviewBar/LinkedReviewBar'
 import { ValidationBadge } from '~/components/ValidationBadge'
 import { distinctModels, getValidationStatus, itemValidationContext, type ValidationSource } from '~/lib/validation'
 import { useEditorLayout } from './useEditorLayout'
@@ -79,9 +89,6 @@ const isBodyShape = (value: string): value is BodyShape => BodyShape.validate(va
 /** A navigation held back by unsaved changes: another item, or out of the editor entirely. */
 type PendingNavigation = { kind: 'item'; item: Item } | { kind: 'away'; to: string }
 
-// Until the curation feature lands there is no committee check: `?reviewing=true` is ignored.
-const isCurator = false
-
 const ItemEditorPage = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -90,14 +97,34 @@ const ItemEditorPage = () => {
   const collectionParam = searchParams.get('collection')
   const collectionId = parseUuidParam(collectionParam) ?? null
   const itemParam = parseUuidParam(searchParams.get('item')) ?? null
-  const mode = useMemo(() => getEditorMode(searchParams, isCurator), [searchParams])
   const { session, restored, signIn } = useWallet()
   const address = session?.address
+  const committee = useCommittee(address)
+  const isCurator = committee.isCurator
+  const mode = useMemo(() => getEditorMode(searchParams, isCurator), [searchParams, isCurator])
+  // Until the committee answers, a review link can't tell a curator from someone with no access.
+  const isResolvingReviewer = searchParams.get('reviewing') === 'true' && !!address && committee.isLoading
   const showToast = useNotifications(state => state.showToast)
   const isMobile = useMediaQuery(theme.media.maxWidth('mobile'))
 
   const collectionQuery = useCollection(address, collectionId ?? undefined)
-  const collectionStatus = useCollectionStatus(address, collectionQuery.data)
+  // Linked collections belong to a third party: its managers, not the collection's roles, may edit them.
+  const isLinked = !!collectionQuery.data && isLinkedCollection(collectionQuery.data)
+  const thirdParty = useThirdParty(address, isLinked ? collectionQuery.data : undefined)
+  const isManager = isLinked && !!thirdParty.data && isThirdPartyManager(thirdParty.data, address)
+  const linkedCurations = useItemCurations(address, isLinked ? collectionQuery.data : undefined)
+  const linkedContract = useMemo<LinkedContract | null>(() => {
+    const target = collectionQuery.data
+    return target?.linkedContractNetwork && target.linkedContractAddress
+      ? { network: target.linkedContractNetwork as ContractNetwork, address: target.linkedContractAddress }
+      : null
+  }, [collectionQuery.data])
+  // builder-server serves a collection's curation to its owner, collaborators and the committee only.
+  const canReadCuration =
+    !!collectionQuery.data &&
+    !isLinked &&
+    (canManageCollectionItems(collectionQuery.data, address) || committee.isCurator)
+  const collectionStatus = useCollectionStatus(canReadCuration ? address : undefined, collectionQuery.data)
   const itemsQuery = useAllCollectionItems(address, collectionId ?? undefined)
   const baseWearables = useBaseWearables()
   const pickedRenderer = usePreviewRenderer()
@@ -106,7 +133,16 @@ const ItemEditorPage = () => {
   const [isRenameOpen, setRenameOpen] = useState(false)
 
   const collection = collectionQuery.data
+  const mobileCuration = useCollectionCuration(mode === 'review' ? address : undefined, collection)
   const items = itemsQuery.data ?? EMPTY_ITEMS
+  // A linked collection under review: the sidebar sets apart the items this review is about.
+  const pendingLinked = usePendingLinkedItems(address, mode === 'review' && isLinked ? collection : undefined)
+  const [reviewedIds, setReviewedIds] = useState<ReadonlySet<string>>(() => new Set())
+  const sidebarReview = useMemo(
+    () =>
+      pendingLinked.data ? { pendingIds: new Set(pendingLinked.data.map(item => item.id)), reviewedIds } : undefined,
+    [pendingLinked.data, reviewedIds]
+  )
   const selected = useMemo(() => resolveSelectedItem(items, itemParam), [items, itemParam])
   // Unity cannot play a social emote's extra armatures: those items always preview in Babylon.
   const renderer = selected && isSocialEmote(selected) ? PreviewRenderer.BABYLON : pickedRenderer
@@ -148,25 +184,37 @@ const ItemEditorPage = () => {
   }, [selectedId, selectedType, selectedCategory, dress])
 
   // Form state.
-  const springBones = useSpringBones(selected)
-  const form = useItemForm(selected, springBones)
+  const form = useItemForm(selected)
+  const { springBones } = form
   const [activeSpringHash, setActiveSpringHash] = useState<string | null>(null)
   useBeforeUnloadGuard(form.isDirty)
 
   const previewSelected = useMemo(() => (selected ? toPreviewItem(selected, form.draft) : null), [selected, form.draft])
   const previewItems = useMemo(() => {
+    // A wearable whose new file dropped its category has no slot to render in until one is picked.
+    const unplaceable = previewSelected?.type === ItemType.WEARABLE && form.draft.category === null
     const withDraft = previewSelected
-      ? items.map(item => (item.id === previewSelected.id ? previewSelected : item))
+      ? items.flatMap(item => {
+          if (item.id !== previewSelected.id) return [item]
+          return unplaceable ? [] : [previewSelected]
+        })
       : items
     return pickDressedItems(withDraft, dressedItemIds, bodyShape)
-  }, [items, previewSelected, dressedItemIds, bodyShape])
-  const source = useMemo<AvatarPreviewSource>(() => ({ kind: 'items', items: previewItems }), [previewItems])
+  }, [items, previewSelected, form.draft.category, dressedItemIds, bodyShape])
+  const fileUpdate = form.draft.fileUpdate
+  const source = useMemo<AvatarPreviewSource>(
+    () => ({
+      kind: 'items',
+      items: previewItems,
+      unsaved: fileUpdate && selectedId ? { itemId: selectedId, blobs: fileUpdate.blobs } : undefined
+    }),
+    [previewItems, fileUpdate, selectedId]
+  )
   const collectionEmotes = useMemo(() => items.filter(item => item.type === ItemType.EMOTE), [items])
   const subjectEmote = useMemo(() => previewItems.find(item => item.type === ItemType.EMOTE) ?? null, [previewItems])
   const previewedWearables = useMemo(() => previewItems.filter(item => item.type === ItemType.WEARABLE), [previewItems])
 
   // An unsaved model's files exist only in memory: storage would 404 on their hashes. Phones validate nothing.
-  const fileUpdate = form.draft.fileUpdate
   const validationSource = useMemo<ValidationSource | null>(() => {
     if (!previewSelected || isMobile) return null
     const representations = fileUpdate?.item.data.representations ?? []
@@ -226,13 +274,13 @@ const ItemEditorPage = () => {
     const issues = await rerunValidation(keys)
     track('Item Validation Rerun', {
       itemId: selectedId,
-      source: 'details',
+      trigger: 'details',
       previousStatus: validationStatus,
       newStatus: getValidationStatus(issues, false)
     })
   }, [rerunValidation, validationSource, validationCtx, fileUpdateId, thumbnailSource, selectedId, validationStatus])
   const onValidationOpen = useCallback(
-    () => track('Item Validation Details Opened', { itemId: selectedId, status: validationStatus, source: 'editor' }),
+    () => track('Item Validation Details Opened', { itemId: selectedId, status: validationStatus, trigger: 'editor' }),
     [selectedId, validationStatus]
   )
 
@@ -321,17 +369,38 @@ const ItemEditorPage = () => {
   // Save / revert.
   const [springWarning, setSpringWarning] = useState(false)
   const isDraftCollection = !!collection && !collection.isPublished && !isCollectionLocked(collection)
+  // A linked collection keeps taking items after publishing; only its name and URN freeze.
+  const canGrow = isLinked ? isManager && !!collection && !isCollectionLocked(collection) : isDraftCollection
+  const canRename = isLinked ? canGrow && !collection?.isPublished : isDraftCollection
   const editable =
-    mode === 'edit' && !!collection && !!selected && !!address && canEditItemDetails(collection, selected, address)
+    mode === 'edit' &&
+    !!collection &&
+    !!selected &&
+    !!address &&
+    (isLinked ? isManager && !isCollectionLocked(collection) : canEditItemDetails(collection, selected, address))
   const canDelete =
-    editable && isDraftCollection && !!collection && collection.owner.toLowerCase() === address?.toLowerCase()
+    editable &&
+    !!collection &&
+    (isLinked
+      ? linkedCurations.isSuccess && !isLinkedItemPublished(selected, linkedCurations.data.get(selected.id) ?? null)
+      : canDeleteItem(collection, address))
 
   async function persist(item: Item) {
     const hasSpringModels = springBones.models.length > 0
+    // A new model without spring bones drops the replaced model's params instead of leaving them orphaned.
+    const dropsSpringBones = !!form.draft.fileUpdate && !springBones.isLoading && !springBones.isError
     const built = await toSaveableItem(item, form.draft, {
-      springBones: hasSpringModels ? (mergeSpringBonesIntoItem(form.springBoneParams) ?? null) : undefined
+      springBones: hasSpringModels
+        ? (mergeSpringBonesIntoItem(form.springBoneParams) ?? null)
+        : dropsSpringBones
+          ? null
+          : undefined,
+      fetchThumbnail: fetchStoredThumbnail
     })
-    const saved = await saveItem.mutateAsync(built)
+    if (form.draft.rarity !== item.rarity && !form.draft.thumbnail && !built.blobs[IMAGE_PATH]) {
+      showToast(t('item_editor.image_refresh_skipped'), { type: 'warn' })
+    }
+    const saved = await saveItem.mutateAsync({ ...built, previousVideo: item.video })
     queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collectionId ?? undefined), current =>
       current?.map(candidate => (candidate.id === saved.id ? saved : candidate))
     )
@@ -341,8 +410,11 @@ const ItemEditorPage = () => {
     showToast(t('item_editor.save_success', { name: saved.name }))
   }
 
+  // Until the new model's chains are carried over, a save would store them under the replaced model.
+  const isCarryingSpringBones = !!form.draft.fileUpdate && springBones.isLoading
+
   function save() {
-    if (!selected) return
+    if (!selected || isCarryingSpringBones) return
     const missing = getShapesMissingSpringBones(form.springBoneParams, springBones.bonesByHash)
     if (missing.length > 0 && !springWarning) {
       setSpringWarning(true)
@@ -391,15 +463,31 @@ const ItemEditorPage = () => {
   const closeCustomizer = useCallback(() => setCustomizerOpen(false), [])
 
   // States.
-  const isLoading = !restored || (!!address && !!collectionId && (collectionQuery.isLoading || itemsQuery.isLoading))
+  const isLoading =
+    !restored ||
+    isResolvingReviewer ||
+    (!!address && !!collectionId && (collectionQuery.isLoading || itemsQuery.isLoading || thirdParty.isLoading))
+  const isThirdPartyNotFound =
+    thirdParty.isError &&
+    thirdParty.error instanceof BuilderServerError &&
+    NOT_FOUND_STATUSES.includes(thirdParty.error.status)
   const isNotFound =
     (!!collectionParam && !collectionId) ||
     (!!collectionId &&
       ((collectionQuery.isError &&
         collectionQuery.error instanceof BuilderServerError &&
         NOT_FOUND_STATUSES.includes(collectionQuery.error.status)) ||
-        (!!collection && !hasCollectionRole(collection, address))))
-  const isError = !isNotFound && !!collectionId && (collectionQuery.isError || itemsQuery.isError)
+        // Drafts are private to their roles; published collections open read-only to any signer
+        // (curators review through mode === 'review', which skips the gate).
+        (!!collection &&
+          mode === 'edit' &&
+          (isLinked
+            ? isThirdPartyNotFound || (!!thirdParty.data && !isManager)
+            : !canViewCollection(collection, address)))))
+  const isError =
+    !isNotFound &&
+    !!collectionId &&
+    (collectionQuery.isError || itemsQuery.isError || (thirdParty.isError && !isThirdPartyNotFound))
 
   const preview =
     renderer === undefined ? null : (
@@ -432,6 +520,12 @@ const ItemEditorPage = () => {
             onOpen={onValidationOpen}
           />
         )}
+        {/* Linked collections have no owner: their third party's managers are who works on them. */}
+        {collection &&
+          (mode === 'review' ||
+            (mode === 'edit' && (isLinked ? isManager : hasCollectionRole(collection, address)))) && (
+            <EditorPreviewLaunch collectionId={collection.id} itemCount={items.length} reviewing={mode === 'review'} />
+          )}
       </AvatarPreview>
     )
 
@@ -447,11 +541,6 @@ const ItemEditorPage = () => {
         </S.StatePanel>
       </S.Workspace>
     )
-  }
-
-  // Linked collections are read-only here: their items are edited in the legacy builder.
-  if (collection && isLinkedCollection(collection)) {
-    return <Navigate to={`/collections/${collection.id}`} replace />
   }
 
   if (isNotFound) {
@@ -499,9 +588,88 @@ const ItemEditorPage = () => {
     )
   }
 
+  const reviewBar =
+    mode === 'review' && collection && session ? (
+      isLinked ? (
+        thirdParty.data && (
+          <LinkedReviewBar
+            key={collection.id}
+            session={session}
+            collection={collection}
+            thirdParty={thirdParty.data}
+            selectedId={selectedId}
+            onSelectItem={selectItem}
+            onReviewedChange={setReviewedIds}
+          />
+        )
+      ) : (
+        <ReviewBar
+          key={collection.id}
+          session={session}
+          collection={collection}
+          items={items}
+          onSelectItem={selectItem}
+        />
+      )
+    ) : null
+  const properties =
+    collection && selected ? (
+      <PropertiesPanel
+        key={selected.id}
+        item={selected}
+        address={address}
+        editable={editable}
+        showReadOnlyNote={mode !== 'review'}
+        readOnlyReason={isCollectionLocked(collection) ? 'lock' : 'role'}
+        canDelete={canDelete}
+        draft={form.draft}
+        dispatch={form.dispatch}
+        isDirty={form.isDirty}
+        isSaving={saveItem.isPending || isCarryingSpringBones}
+        springBones={springBonesForm}
+        linkedContract={isLinked ? linkedContract : undefined}
+        onSave={save}
+        onRevert={() => form.reset(selected)}
+        onDeleted={() => navigateToItem(null)}
+      />
+    ) : null
+
+  const collectionUrl = collection ? `/collections/${collection.id}` : ''
+  const leaveEditor = () => {
+    if (!form.isDirty) return true
+    setPending({ kind: 'away', to: collectionUrl })
+    return false
+  }
+  // Phones get no sidebar and no review bar, so this strip is the only way back out of the editor.
+  const mobileHeader = collection ? (
+    <S.MobileEditorHeader data-testid="mobile-editor-header">
+      <S.MobileBackLink
+        to={mode === 'review' ? curationListUrl() : collectionUrl}
+        aria-label={t(mode === 'review' ? 'item_editor.review.back' : 'item_editor.sidebar.back')}
+        data-testid="mobile-editor-back"
+        onClick={event => {
+          if (mode === 'edit' && !leaveEditor()) event.preventDefault()
+        }}
+      >
+        <ArrowBackIosNew fontSize="small" />
+      </S.MobileBackLink>
+      <S.MobileCollectionName title={collection.name} data-testid="mobile-editor-collection">
+        {collection.name}
+      </S.MobileCollectionName>
+      {mode === 'review'
+        ? !mobileCuration.isLoading &&
+          !mobileCuration.isError && (
+            <CurationStatePill state={getCurationState(collection, mobileCuration.data ?? null)} />
+          )
+        : collectionStatus && <CollectionStatusPill collection={collection} status={collectionStatus} />}
+    </S.MobileEditorHeader>
+  ) : null
+
   if (isMobile) {
     return (
       <MobilePreview
+        header={mobileHeader}
+        readOnly={mode === 'review'}
         items={items}
         selectedId={selectedId}
         dressedIds={dressedItemIds}
@@ -534,9 +702,12 @@ const ItemEditorPage = () => {
       mode={mode}
       collapsed={sidebarCollapsed}
       onToggleCollapsed={toggleSidebar}
-      canAddItems={isDraftCollection && canManageCollectionItems(collection, address)}
+      review={sidebarReview}
+      canAddItems={isLinked ? canGrow : isDraftCollection && canManageCollectionItems(collection, address)}
       onRename={
-        isDraftCollection && canManageCollectionItems(collection, address) ? () => setRenameOpen(true) : undefined
+        (isLinked ? canRename : isDraftCollection && canManageCollectionItems(collection, address))
+          ? () => setRenameOpen(true)
+          : undefined
       }
       onAddItems={() => {
         addItems().catch((error: unknown) => console.error('Add items failed:', error))
@@ -556,7 +727,7 @@ const ItemEditorPage = () => {
 
   return (
     <S.Workspace data-testid="item-editor-page" data-mode={mode}>
-      {mode === 'review' && <ReviewBar />}
+      {reviewBar}
       <S.Columns>
         {collection ? sidebar : <S.PickerColumn>{sidebar}</S.PickerColumn>}
         <PanelGroup
@@ -591,21 +762,7 @@ const ItemEditorPage = () => {
                 <S.Handle data-testid="resize-handle-right" />
               </PanelResizeHandle>
               <Panel id="editor-properties" defaultSize={RIGHT_DEFAULT_PCT} minSize={RIGHT_MIN_PCT} order={3}>
-                <PropertiesPanel
-                  key={selected.id}
-                  item={selected}
-                  address={address}
-                  editable={editable}
-                  canDelete={canDelete}
-                  draft={form.draft}
-                  dispatch={form.dispatch}
-                  isDirty={form.isDirty}
-                  isSaving={saveItem.isPending}
-                  springBones={springBonesForm}
-                  onSave={save}
-                  onRevert={() => form.reset(selected)}
-                  onDeleted={() => navigateToItem(null)}
-                />
+                {properties}
               </Panel>
             </>
           )}
@@ -619,6 +776,7 @@ const ItemEditorPage = () => {
         <CollectionNameModal
           variant="rename"
           initialName={collection.name}
+          nameMaxLength={isLinked ? LINKED_COLLECTION_NAME_MAX_LENGTH : undefined}
           isPending={saveCollection.isPending}
           error={saveCollection.error?.message ?? null}
           onSubmit={name => {

@@ -17,19 +17,24 @@ type Props = {
   onTap: (item: Item) => void
   /** The avatar preview with its overlay controls. */
   children: ReactNode
+  /** The bar above the preview: back link, collection name and status. */
+  header?: ReactNode
+  /** Review mode: curators only look on phones, so the editing hint is left out. */
+  readOnly?: boolean
 }
 
 /**
  * Phone layout: the preview fills the screen and a thumbnail strip is the only item control, so each
  * thumbnail is a toggle — there is no dress button as on desktop.
  */
-export function MobilePreview({ items, selectedId, dressedIds, bodyShape, onTap, children }: Props) {
+export function MobilePreview({ items, selectedId, dressedIds, bodyShape, onTap, children, header, readOnly }: Props) {
   const { t } = useTranslation()
   const [hintDismissed, setHintDismissed] = useState(false)
   return (
     <S.MobileWorkspace data-testid="item-editor-mobile">
+      {header}
       <S.MobilePreviewArea>{children}</S.MobilePreviewArea>
-      {!hintDismissed && (
+      {!hintDismissed && !readOnly && (
         <S.MobileHint data-testid="mobile-hint">
           <DesktopIcon fontSize="small" />
           <span>{t('item_editor.mobile_hint')}</span>

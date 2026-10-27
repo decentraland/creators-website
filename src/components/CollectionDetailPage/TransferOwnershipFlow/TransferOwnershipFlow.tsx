@@ -1,18 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from '~/intl'
-import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
+import { useDiscardGuard } from '~/hooks/useDiscardGuard'
 import { useTransferCollectionOwnership } from '~/hooks/useTransferCollectionOwnership'
 import { useFriends } from '~/hooks/useSales'
 import { shortenAddress } from '~/lib/address'
 import { isSocialLogin, type Session } from '~/lib/auth'
-import { installBackGuard } from '~/lib/backGuard'
 import { type Collection } from '~/lib/collections'
 import { matchesCollectionName } from '~/lib/collectionOwnership'
 import { toSellItemError, type SellFailureReason } from '~/lib/sales'
-import { PendingModal } from '../SellItemFlow/PendingModal'
-import { SaleErrorModal } from '../SellItemFlow/SaleErrorModal'
-import { SaleSuccessModal } from '../SellItemFlow/SaleSuccessModal'
+import { PendingModal } from '~/components/PendingModal'
+import { SuccessModal } from '~/components/SuccessModal'
 import { ConfirmModal } from '~/components/ConfirmModal'
+import { SaleErrorModal } from '../SellItemFlow/SaleErrorModal'
 import { TransferOwnershipModal } from './TransferOwnershipModal'
 
 type View = 'form' | 'saving' | 'success' | 'error'
@@ -41,7 +40,6 @@ export function TransferOwnershipFlow({ collection, session, onDone, onClose }: 
   const [phase, setPhase] = useState<Phase>('confirm')
   const [newOwner, setNewOwner] = useState('')
   const [confirmation, setConfirmation] = useState('')
-  const [isDiscardOpen, setDiscardOpen] = useState(false)
   const [reason, setReason] = useState<SellFailureReason | null>(null)
   // Bumped when the creator backs out of a wallet prompt, so that attempt's outcome is ignored.
   const attempt = useRef(0)
@@ -50,18 +48,13 @@ export function TransferOwnershipFlow({ collection, session, onDone, onClose }: 
   const dirty = newOwner !== '' || confirmation !== ''
   const ready = newOwner !== '' && matchesCollectionName(collection, confirmation)
   const busy = social && transfer.isPending
-  useBeforeUnloadGuard(dirty || transfer.isPending)
-
-  function requestClose() {
-    if (busy || isDiscardOpen) return
-    if (dirty) setDiscardOpen(true)
-    else onClose()
-  }
-
-  // Browser back would silently unmount the dialog; the guard absorbs it and asks about the filled-in form instead.
-  const requestCloseRef = useRef(requestClose)
-  requestCloseRef.current = requestClose
-  useEffect(() => installBackGuard(() => requestCloseRef.current()), [])
+  const { isDiscardOpen, requestClose, keepEditing } = useDiscardGuard({
+    state:
+      view === 'form' ? (busy ? 'busy' : 'editing') : view === 'saving' ? 'busy' : view === 'error' ? 'failed' : 'done',
+    dirty,
+    pending: transfer.isPending,
+    onClose
+  })
 
   function submit() {
     const id = ++attempt.current
@@ -104,7 +97,7 @@ export function TransferOwnershipFlow({ collection, session, onDone, onClose }: 
             <ConfirmModal
               title={t('transfer_ownership_modal.discard.title')}
               description={t('transfer_ownership_modal.discard.description')}
-              onClose={() => setDiscardOpen(false)}
+              onClose={keepEditing}
               cancel={{
                 label: t('transfer_ownership_modal.discard.leave'),
                 onClick: onClose,
@@ -112,7 +105,7 @@ export function TransferOwnershipFlow({ collection, session, onDone, onClose }: 
               }}
               confirm={{
                 label: t('transfer_ownership_modal.discard.keep'),
-                onClick: () => setDiscardOpen(false),
+                onClick: keepEditing,
                 testId: 'discard-transfer-keep'
               }}
               testId="discard-transfer-modal"
@@ -137,7 +130,7 @@ export function TransferOwnershipFlow({ collection, session, onDone, onClose }: 
       )
     case 'success':
       return (
-        <SaleSuccessModal
+        <SuccessModal
           title={t('transfer_ownership_modal.success_title')}
           description={t('transfer_ownership_modal.success_description', {
             name: collection.name,

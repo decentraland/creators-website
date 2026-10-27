@@ -1,11 +1,16 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
+import { contentfulImage } from '~/lib/contentfulImage'
 import { englishMessage, useTranslation } from '~/intl'
 import { OVERVIEW_MOBILE_QUERY, OverviewSection, trackClick } from '~/lib/overviewAnalytics'
 import { AnimatedSection } from '../AnimatedSection'
 import { Carousel } from '../Carousel'
 import { createCards, type CreateCard as CreateCardData, type CreateTab } from '../data'
+import { highlight, plainText } from '../highlight'
 import * as S from './CreateCards.styles'
+
+// Widest the figure renders: 35% of the 1200px slide on desktop, the full stacked card below `laptop`.
+const FIGURE_MAX_WIDTH = 520
 
 // The carousel renders every card three times, so DOM ids carry the slide they belong to.
 type TabContentProps = { card: CreateCardData; tab: CreateTab; slide: number }
@@ -71,8 +76,8 @@ const CreateCard = ({ card, slide }: { card: CreateCardData; slide: number }) =>
 
   return (
     <S.Card data-testid="overview-create-card" data-card={card.id}>
-      <S.Figure style={{ backgroundImage: `url(${card.background})` }}>
-        <img src={card.image} alt="" loading="lazy" />
+      <S.Figure style={{ backgroundImage: `url(${contentfulImage(card.background, { width: FIGURE_MAX_WIDTH })})` }}>
+        <img src={contentfulImage(card.image, { width: FIGURE_MAX_WIDTH })} alt="" loading="lazy" />
       </S.Figure>
       <S.Info>
         <S.CardTitle>{title}</S.CardTitle>
@@ -110,21 +115,17 @@ const CreateCard = ({ card, slide }: { card: CreateCardData; slide: number }) =>
 const keyExtractor = (card: CreateCardData) => card.id
 
 const CreateCards = () => {
-  const { t } = useTranslation()
+  const { t, rich } = useTranslation()
   const renderCard = useCallback((card: CreateCardData, slide: number) => <CreateCard card={card} slide={slide} />, [])
   return (
     <AnimatedSection section={OverviewSection.CREATE}>
       <S.Section data-testid="overview-create">
-        <S.Title>
-          {t('overview.create.title')}
-          <span>{t('overview.create.title_highlight')}</span>
-          {t('overview.create.title_second_part')}
-        </S.Title>
+        <S.Title>{rich('overview.create.title', highlight)}</S.Title>
         <Carousel
           items={createCards}
           renderItem={renderCard}
           keyExtractor={keyExtractor}
-          label={t('overview.create.title_highlight')}
+          label={t('overview.create.title', plainText)}
           slideWidth={1200}
         />
       </S.Section>

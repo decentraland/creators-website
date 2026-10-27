@@ -3,8 +3,9 @@
 import { type WearableCategory } from '@dcl/schemas'
 import { addRepresentationToItem, getSizeError, withReplacedModel, type BuiltItem } from './itemFactory'
 import { ItemFileError, THUMBNAIL_PATH, getBodyShapeTypeFromContents, loadItemFile } from './itemFiles'
-import { BodyShapeType, ItemType, getItemBodyShapeType, type Item, type ItemMetrics } from './items'
+import { BodyShapeType, ItemType, getItemBodyShapeType, isSocialEmote, type Item, type ItemMetrics } from './items'
 import { analyzeModel, getModelMetrics, loadGltf } from './models'
+import { getWearableCategoryOptions } from './wearableCategories'
 
 export type ModelImportKind = { kind: 'replace' } | { kind: 'add-representation'; bodyShape: BodyShapeType }
 
@@ -22,6 +23,8 @@ async function readWearableMetrics(model: string, contents: Record<string, Blob>
  * rejected; a single representation can't come from a zip with both body-shape folders.
  */
 export async function importItemModel(file: File, item: Item, kind: ModelImportKind): Promise<BuiltItem> {
+  // A legacy social emote's startAnimation/outcomes point at clips of its current file and can't be edited here.
+  if (isSocialEmote(item)) throw new ItemFileError('emote_social_unsupported')
   const loaded = await loadItemFile(file)
   // The thumbnail never travels with a model change: the item keeps its own.
   const contents = { ...loaded.contents }
@@ -47,6 +50,11 @@ export async function importItemModel(file: File, item: Item, kind: ModelImportK
     built = await withReplacedModel(item, { contents, model: loaded.model, bodyShape, metrics })
   } else {
     if (getBodyShapeTypeFromContents(contents) === BodyShapeType.BOTH) throw new ItemFileError('invalid_representation')
+    // Both body shapes share the item's category, and image and model wearables take disjoint ones.
+    const category = item.data.category
+    if (item.type === ItemType.WEARABLE && category && !getWearableCategoryOptions(contents).includes(category)) {
+      throw new ItemFileError('representation_category_mismatch')
+    }
     built = await addRepresentationToItem(
       { item },
       {

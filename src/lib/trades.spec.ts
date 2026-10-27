@@ -59,8 +59,8 @@ const trade: UnsignedTrade = {
 afterEach(() => vi.mocked(signedFetch).mockReset())
 
 describe('getTradeDomain', () => {
-  it('names the marketplace contract and carries the chain id in the salt', () => {
-    const contract = getContract(ContractName.OffChainMarketplaceV2, CHAIN_ID)
+  it('names the newest marketplace contract and carries the chain id in the salt', () => {
+    const contract = getContract(ContractName.OffChainMarketplaceV3, CHAIN_ID)
     expect(getTradeDomain(CHAIN_ID)).toEqual({
       name: contract.name,
       version: contract.version,
@@ -102,7 +102,7 @@ describe('fetchSignatureIndexes', () => {
       contractSignatureIndex: 1,
       signerSignatureIndex: 4
     })
-    const contract = getContract(ContractName.OffChainMarketplaceV2, CHAIN_ID)
+    const contract = getContract(ContractName.OffChainMarketplaceV3, CHAIN_ID)
     expect(readContract).toHaveBeenCalledWith(contract, 'contractSignatureIndex')
     expect(readContract).toHaveBeenCalledWith(contract, 'signerSignatureIndex', [SIGNER])
   })
@@ -165,6 +165,8 @@ describe('getTradeContract', () => {
     expect(
       getTradeContract({ contract: V2.address.toUpperCase().replace('0X', '0x'), chainId: CHAIN_ID })
     ).toMatchObject({ name: V2.name, address: V2.address })
+    const v3 = getContract(ContractName.OffChainMarketplaceV3, CHAIN_ID)
+    expect(getTradeContract({ contract: v3.address, chainId: CHAIN_ID })).toMatchObject({ address: v3.address })
   })
 
   it('refuses to target an address the client does not know, another Decentraland contract or another chain', () => {

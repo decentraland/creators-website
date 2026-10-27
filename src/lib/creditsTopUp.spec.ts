@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearTopUpResume, parseTopUpReturn, readTopUpResume, saveTopUpResume, stripTopUpReturn } from './creditsTopUp'
 
-const resume = { collectionId: 'c1', orderId: 'order-1', paymentMethod: 'credits' as const, termsAccepted: true }
+const resume = {
+  collectionId: 'c1',
+  orderId: 'order-1',
+  paymentMethod: 'credits' as const,
+  termsAccepted: true,
+  email: 'jane.doe@example.com'
+}
 
 beforeEach(() => sessionStorage.clear())
 
@@ -39,9 +45,14 @@ describe('the top-up hand-off record', () => {
     expect(readTopUpResume()).toBeNull()
     sessionStorage.setItem(
       'wemotes-builder.credits-top-up',
-      JSON.stringify({ ...resume, paymentMethod: 'cash', termsAccepted: 'yes' })
+      JSON.stringify({ ...resume, paymentMethod: 'cash', termsAccepted: 'yes', email: 42 })
     )
-    expect(readTopUpResume()).toEqual({ ...resume, paymentMethod: null, termsAccepted: false })
+    expect(readTopUpResume()).toEqual({ ...resume, paymentMethod: null, termsAccepted: false, email: null })
+  })
+
+  it('drops a malformed email so the wizard asks for it again', () => {
+    sessionStorage.setItem('wemotes-builder.credits-top-up', JSON.stringify({ ...resume, email: 'jane.doe@' }))
+    expect(readTopUpResume()?.email).toBeNull()
   })
 })
 

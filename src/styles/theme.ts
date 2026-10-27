@@ -26,6 +26,12 @@ const colors = {
   magenta: '#c640cd',
   brandViolet: '#a524b3',
   softWhite: '#fcfcfc',
+  // The Shop's discount tag: pink fill, red ink. Same values as the Shop, so a discount reads the same in both.
+  saleTag: '#ffc9d5',
+  saleTagInk: '#ec303a',
+  // Shop tokens the collection discount modal is drawn with, kept at the Shop's values so it matches it exactly.
+  fieldBottomWashed: '#3c1556',
+  rarityBg: 'rgba(161, 75, 243, 0.3)',
   dclRed: '#ff2d55',
   dclRedHover: '#ff4269',
   ok: '#1ea672',
@@ -65,8 +71,9 @@ const colors = {
   info: '#1764c0',
   infoLight: '#63b4f6',
   infoLighter: '#bbdefb',
-  // Sub-nav band: translucent deep purple (#401458, shop's designer value), deepening on scroll.
-  subnavOverlay: 'rgba(64, 20, 88, 0.2)',
+  // Sub-nav band: translucent deep purple, the same as sites' sub-tab bar.
+  subnavOverlay: 'rgba(39, 5, 55, 0.6)',
+  // Deeper fill for dropdowns over the page (Select).
   subnavOverlayScrolled: 'rgba(64, 20, 88, 0.8)',
   // Translucent white fills for controls on dark surfaces (filter pills, search bars, buttons).
   glass: 'rgba(255, 255, 255, 0.2)',
@@ -86,7 +93,14 @@ const colors = {
   dclRedLine: 'rgba(255, 45, 85, 0.5)', // MUI outlined-primary border (light button)
   glassHint: 'rgba(255, 255, 255, 0.08)', // MUI dark action.hover (ghost button)
   glassGlow: 'rgba(255, 255, 255, 0.15)', // active carousel slide halo
-  glassStrong: 'rgba(255, 255, 255, 0.4)' // idle carousel dot
+  glassStrong: 'rgba(255, 255, 255, 0.4)', // idle carousel dot
+  // Status pill fills: the pill's own color at low opacity.
+  greenTint: 'rgba(48, 205, 0, 0.2)',
+  orangeTint: 'rgba(244, 130, 33, 0.2)',
+  infoTint: 'rgba(23, 100, 192, 0.4)',
+  redTint: 'rgba(204, 29, 44, 0.2)',
+  mutedTint: 'rgba(160, 155, 168, 0.2)',
+  violetTint: 'rgba(165, 36, 179, 0.3)'
 } as const
 
 // Per-rarity design colors (Figma "Rarities/*", shop's palette). Distinct from @dcl/schemas' Rarity.getColor:
@@ -141,7 +155,7 @@ const radius = {
 } as const
 
 const font = {
-  sans: '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  sans: '"Inter", "Inter Fallback", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   // MUI Typography's body tracking; the overview page carries it on every text block sites set in Typography.
   tracking: '0.00938em'
 } as const

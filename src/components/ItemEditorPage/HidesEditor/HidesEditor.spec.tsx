@@ -33,4 +33,38 @@ describe('HidesEditor', () => {
     rerender(<HidesEditor contents={{ 'eyes.png': 'x' }} category="eyes" hides={[]} onChange={vi.fn()} />)
     expect(screen.queryByTestId('hides-editor-body-parts')).not.toBeInTheDocument()
   })
+
+  it('names hides the current category no longer offers', () => {
+    render(
+      <HidesEditor contents={contents} category="skin" hides={['hair', 'upper_body']} disabled onChange={vi.fn()} />,
+      {
+        wrapper: TranslationProvider
+      }
+    )
+    expect(screen.getAllByTestId('hides-editor-categories-pill').map(pill => pill.textContent)).toEqual([
+      'Hair',
+      'Upper Body'
+    ])
+  })
+
+  it('lists hidden slots as pills when read-only, or says nothing is hidden', () => {
+    const { rerender } = render(
+      <HidesEditor
+        contents={contents}
+        category="hat"
+        hides={['head', 'hair', 'earring']}
+        disabled
+        onChange={vi.fn()}
+      />,
+      { wrapper: TranslationProvider }
+    )
+    expect(screen.getAllByTestId('hides-editor-categories-pill').map(pill => pill.textContent)).toEqual([
+      'Hair',
+      'Earring'
+    ])
+    expect(screen.getAllByTestId('hides-editor-body-parts-pill').map(pill => pill.textContent)).toEqual(['Head'])
+    rerender(<HidesEditor contents={contents} category="hat" hides={[]} disabled onChange={vi.fn()} />)
+    expect(screen.getByTestId('hides-editor-categories-empty')).toHaveTextContent('Nothing hidden')
+    expect(screen.getByTestId('hides-editor-body-parts-empty')).toHaveTextContent('Nothing hidden')
+  })
 })

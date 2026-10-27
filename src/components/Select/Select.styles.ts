@@ -55,6 +55,23 @@ export const Trigger = styled.button`
     }
   }
 
+  &[data-variant='compact'] {
+    height: 40px;
+    padding: 0 12px 0 16px;
+    border-color: ${theme.colors.glassLine};
+    border-radius: ${theme.radius.btnSm};
+    background: ${theme.colors.subnavOverlayScrolled};
+    color: ${theme.colors.white};
+    font-size: 14px;
+    letter-spacing: 0.46px;
+    text-transform: uppercase;
+
+    > svg {
+      width: 20px;
+      height: 20px;
+    }
+  }
+
   /* A square glyph box; it widens to fit the chevron on hover, focus or while open. */
   &[data-variant='glyph'] {
     display: flex;
@@ -147,6 +164,9 @@ export const OptionLabel = styled.span`
 export const Listbox = styled.ul`
   position: fixed;
   z-index: ${theme.z.tooltip};
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   max-height: min(360px, calc(100vh - 16px));
   margin: 0;
   overflow-y: auto;

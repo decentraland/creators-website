@@ -1,5 +1,6 @@
 import { Env } from '@dcl/ui-env'
 import { config } from '~/config'
+import { track } from './analytics'
 import { openExternal, openProtocolLink } from './navigation'
 
 type LaunchOptions = {
@@ -75,8 +76,23 @@ export function launchCollectionPreview(
   })
 }
 
-/** Jumps into the collection preview, or sends the user to get the desktop app when none is installed. */
-export async function previewCollection(collectionId: string): Promise<void> {
+/**
+ * Jumps into the collection preview, or sends the user to get the desktop app when none is installed.
+ * Resolves whether the desktop client took over.
+ */
+export async function previewCollection(collectionId: string): Promise<boolean> {
   const launched = await launchCollectionPreview(collectionId)
   if (!launched) openExternal(config.get('DOWNLOAD_URL'))
+  return launched
+}
+
+const launching = new Set<string>()
+
+/** Launches the preview from a collection page and tracks it; a click while that launch is settling is ignored. */
+export function previewCollectionFromDetail(collectionId: string, itemCount: number): void {
+  if (launching.has(collectionId)) return
+  launching.add(collectionId)
+  void previewCollection(collectionId)
+    .then(launched => track('Preview In World', { collectionId, itemCount, launched, trigger: 'detail' }))
+    .finally(() => launching.delete(collectionId))
 }

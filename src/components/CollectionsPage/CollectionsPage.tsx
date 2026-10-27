@@ -10,10 +10,12 @@ import {
 } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'
+import { openExternal } from '~/lib/navigation'
 import { pageRangeLabel } from '~/lib/pagination'
 import { useWallet } from '~/store/wallet'
 import { COLLECTIONS_PAGE_SIZE, useCollections, useCollectionsSummary } from '~/hooks/useCollections'
 import { useSaveCollection } from '~/hooks/useCollection'
+import { CONTRACT_PARAM, useCollectionByContractLink } from '~/hooks/useCollectionByContractLink'
 import { track } from '~/lib/analytics'
 import {
   CollectionSort,
@@ -23,7 +25,17 @@ import {
   type CollectionListFilter
 } from '~/lib/collections'
 import { buildNewCollection } from '~/lib/saveCollection'
+import { isRefusedRequest } from '~/lib/builder'
+import { captureError } from '~/lib/monitoring'
+import {
+  LINKED_WEARABLES_DOCS_PATH,
+  buildNewLinkedCollection,
+  getThirdPartyId,
+  type LinkedContract
+} from '~/lib/thirdParty'
+import { config } from '~/config'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
+import { CreateLinkedCollectionModal } from './CreateLinkedCollectionModal'
 import { Pagination } from '~/components/Pagination'
 import emptyCollectionsArt from '~/assets/empty-collections.png'
 import { Button } from '~/components/Button'
@@ -31,7 +43,13 @@ import { CollectionCard } from './CollectionCard'
 import { CollectionListRow } from './CollectionListRow'
 import * as S from './CollectionsPage.styles'
 
-const STATUS_FILTERS = Object.values(CollectionStatusFilter)
+const STATUS_FILTERS = [
+  CollectionStatusFilter.ALL,
+  CollectionStatusFilter.DRAFT,
+  CollectionStatusFilter.PUBLISHED,
+  CollectionStatusFilter.UNDER_REVIEW,
+  CollectionStatusFilter.REJECTED
+]
 const SEARCH_DEBOUNCE_MS = 500
 const LEARN_MORE_URL =
   'https://docs.decentraland.org/creator/wearables-and-emotes/manage-collections/creating-a-collection/'
@@ -56,6 +74,7 @@ const CollectionsPage = () => {
   const search = searchParams.get('q') ?? ''
   const status = parseStatus(searchParams.get('status'))
   const [view, setView] = useState<ViewMode>('grid')
+  const contractLink = useCollectionByContractLink(address)
 
   // Stripe returns every credits purchase to this route; the hand-off record says which collection's
   // publish wizard it belongs to. Without one there is nothing to resume, so the params are dropped.
@@ -92,6 +111,8 @@ const CollectionsPage = () => {
 
   const [isCreateOpen, setCreateOpen] = useState(false)
   const saveCollection = useSaveCollection(address)
+  // Under the Linked chip the page creates linked collections: same button, its own dialog.
+  const isLinkedSection = status === LINKED_FILTER
 
   function closeCreateModal() {
     setCreateOpen(false)
@@ -102,6 +123,27 @@ const CollectionsPage = () => {
     if (!address) return
     saveCollection.mutate(buildNewCollection(name, address), {
       onSuccess: collection => navigate(`/collections/${collection.id}`)
+    })
+  }
+
+  function onCreateLinkedSubmit(name: string, contract: LinkedContract) {
+    if (!address) return
+    const collection = buildNewLinkedCollection(name, address, contract)
+    saveCollection.mutate(collection, {
+      onSuccess: saved => {
+        // Legacy event and prop names, so the funnel lines up with the old builder's.
+        track('Create TP Collection', {
+          collectionId: saved.id,
+          thirdPartyId: getThirdPartyId(saved),
+          linkedContractAddress: contract.address.toLowerCase(),
+          linkedContractNetwork: contract.network,
+          collectionName: name
+        })
+        navigate(`/collections/${saved.id}`)
+      },
+      onError: error => {
+        if (!isRefusedRequest(error)) captureError(error, { flow: 'linked_create', network: contract.network })
+      }
     })
   }
 
@@ -124,14 +166,18 @@ const CollectionsPage = () => {
   }
 
   // A chip whose last collection moved on disappears: fall back to All. While searching, the active
-  // chip stays, showing (0) next to the no-results state.
+  // chip stays, showing (0) next to the no-results state. The Linked chip always stays: it is where
+  // linked collections are created.
   const isActiveChipGone =
     !!counts &&
     !summary.isPlaceholderData &&
     !search &&
-    (status === LINKED_FILTER ? linkedTotal === 0 : !isStatusFilterShown(status, counts))
+    status !== LINKED_FILTER &&
+    !isStatusFilterShown(status, counts)
+  // A contract link rewrites the URL itself; writing back from this render's params could revive it.
+  const hasContractLink = searchParams.has(CONTRACT_PARAM)
   useEffect(() => {
-    if (!isActiveChipGone) return
+    if (!isActiveChipGone || hasContractLink) return
     setSearchParams(
       prev => {
         const next = new URLSearchParams(prev)
@@ -141,7 +187,7 @@ const CollectionsPage = () => {
       },
       { replace: true }
     )
-  }, [isActiveChipGone, setSearchParams])
+  }, [isActiveChipGone, hasContractLink, setSearchParams])
 
   function onSearchChange(value: string) {
     setSearchInput(value)
@@ -169,8 +215,10 @@ const CollectionsPage = () => {
     : 0
   // Counts ignore the status filter but follow the search, so only an unsearched list proves there are no collections.
   const isEmpty = !!counts && !search && allCount === 0
-  const noResults = !!data && total === 0 && hasActiveFilters && !isEmpty
-  const isLoading = !restored || (!!address && (collections.isLoading || (collections.isFetching && !data)))
+  const isLinkedEmpty = !!counts && !search && isLinkedSection && linkedTotal === 0
+  const noResults = !!data && total === 0 && hasActiveFilters && !isEmpty && !isLinkedEmpty
+  const isLoading =
+    !restored || contractLink.isResolving || (!!address && (collections.isLoading || (collections.isFetching && !data)))
   // Debounce window (input ahead of the URL) or a refetch with a search applied.
   const isSearching = searchInput.trim() !== search || (!!search && collections.isFetching)
 
@@ -190,9 +238,15 @@ const CollectionsPage = () => {
             />
             {isSearching && <S.Spinner data-testid="search-spinner" aria-hidden />}
           </S.SearchBox>
-          <Button type="button" variant="primary" data-testid="new-collection" onClick={onNewCollection}>
+          <Button
+            type="button"
+            variant="primary"
+            data-testid="new-collection"
+            data-linked={isLinkedSection || undefined}
+            onClick={onNewCollection}
+          >
             <AddIcon fontSize="small" />
-            {t('collections_page.new_collection')}
+            {t(isLinkedSection ? 'collections_page.new_linked_collection' : 'collections_page.new_collection')}
           </Button>
         </S.HeaderActions>
       </S.Header>
@@ -216,7 +270,7 @@ const CollectionsPage = () => {
                 )}
               </S.Chip>
             ))}
-          {counts && (linkedTotal > 0 || status === LINKED_FILTER) && (
+          {counts && (
             <>
               <S.ChipDivider aria-hidden />
               <S.Chip
@@ -298,6 +352,35 @@ const CollectionsPage = () => {
             </Button>
           </S.EmptyActions>
         </S.Panel>
+      ) : isLinkedEmpty ? (
+        <S.Panel data-testid="linked-collections-empty">
+          <S.EmptyArt src={emptyCollectionsArt} alt="" />
+          <S.PanelTitle>{t('collections_page.linked_empty.title')}</S.PanelTitle>
+          <S.PanelText data-desktop>{t('collections_page.linked_empty.description')}</S.PanelText>
+          <S.PanelText data-mobile>{t('collections_page.empty.description_mobile')}</S.PanelText>
+          <S.EmptyActions>
+            <Button
+              as="a"
+              variant="secondary"
+              href={`${config.get('DOCS_URL')}${LINKED_WEARABLES_DOCS_PATH}`}
+              onClick={(event: React.MouseEvent) => {
+                event.preventDefault()
+                openExternal(`${config.get('DOCS_URL')}${LINKED_WEARABLES_DOCS_PATH}`)
+              }}
+            >
+              {t('collections_page.empty.learn_more')}
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              data-testid="create-first-linked-collection"
+              onClick={onNewCollection}
+            >
+              <AddIcon fontSize="small" />
+              {t('collections_page.linked_empty.create_first')}
+            </Button>
+          </S.EmptyActions>
+        </S.Panel>
       ) : noResults ? (
         <S.Panel data-testid="collections-no-results">
           <S.EmptyArt src={emptyCollectionsArt} alt="" />
@@ -336,12 +419,20 @@ const CollectionsPage = () => {
         </>
       )}
 
-      {isCreateOpen && (
+      {isCreateOpen && !isLinkedSection && (
         <CollectionNameModal
           variant="create"
           isPending={saveCollection.isPending}
           error={saveCollection.error?.message ?? null}
           onSubmit={onCreateSubmit}
+          onClose={closeCreateModal}
+        />
+      )}
+      {isCreateOpen && isLinkedSection && (
+        <CreateLinkedCollectionModal
+          isPending={saveCollection.isPending}
+          error={saveCollection.error}
+          onSubmit={onCreateLinkedSubmit}
           onClose={closeCreateModal}
         />
       )}

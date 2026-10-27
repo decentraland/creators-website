@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  findCollectionByContract,
   COLLECTION_NAME_MAX_LENGTH,
   CollectionDisplayStatus,
   canManageCollectionItems,
@@ -12,6 +13,7 @@ import {
   getCollectionDisplayStatus,
   getCollectionRole,
   hasCollectionRole,
+  canViewCollection,
   CollectionRole,
   hasBeenApproved,
   isCollectionLocked,
@@ -23,6 +25,7 @@ import {
   toCollectionsQueryString,
   toRemoteCollection,
   validateCollectionName,
+  withoutCollection,
   type Collection,
   type RemoteCollection
 } from './collections'
@@ -105,10 +108,16 @@ describe('toCollectionsQueryString', () => {
         limit: 20,
         q: 'hat',
         type: CollectionType.STANDARD,
-        sort: CollectionSort.CREATED_AT_DESC,
+        sort: CollectionSort.LAST_ACTIVITY_DESC,
         isPublished: true
       })
-    ).toBe('?is_published=true&type=standard&sort=CREATED_AT_DESC&q=hat&page=2&limit=20')
+    ).toBe('?is_published=true&type=standard&sort=LAST_ACTIVITY_DESC&q=hat&page=2&limit=20')
+  })
+
+  it('sends a contract address as contract_address', () => {
+    expect(toCollectionsQueryString({ contractAddress: '0xabc', page: 1, limit: 1 })).toBe(
+      '?contract_address=0xabc&page=1&limit=1'
+    )
   })
 
   it('serializes is_published=false and returns an empty string with no params', () => {
@@ -357,6 +366,15 @@ describe('hasCollectionRole', () => {
   })
 })
 
+describe('canViewCollection', () => {
+  it('opens published collections to anyone signed in, drafts only to addresses with a role', () => {
+    expect(canViewCollection({ ...roleCollection, isPublished: true }, '0xstranger')).toBe(true)
+    expect(canViewCollection({ ...roleCollection, isPublished: true }, undefined)).toBe(false)
+    expect(canViewCollection({ ...roleCollection, isPublished: false }, '0xstranger')).toBe(false)
+    expect(canViewCollection({ ...roleCollection, isPublished: false }, '0xminter')).toBe(true)
+  })
+})
+
 describe('canManageCollectionItems', () => {
   it('is granted to the owner and collaborators regardless of address casing, never to minters', () => {
     expect(canManageCollectionItems(roleCollection, '0xowner')).toBe(true)
@@ -373,5 +391,43 @@ describe('canSellCollectionItems', () => {
     expect(canSellCollectionItems(roleCollection, '0xminter')).toBe(false)
     expect(canSellCollectionItems(roleCollection, '0xstranger')).toBe(false)
     expect(canSellCollectionItems(roleCollection, undefined)).toBe(false)
+  })
+})
+
+describe('findCollectionByContract', () => {
+  const CONTRACT = '0x1d9fB685c257E74F869BA302e260C0B68f5eBb37'
+  const collections = [{ id: 'draft' }, { id: 'published', contractAddress: CONTRACT.toLowerCase() }] as Collection[]
+
+  it('finds the collection deployed at the address, whatever its casing', () => {
+    expect(findCollectionByContract(collections, CONTRACT)?.id).toBe('published')
+  })
+
+  it('finds nothing for an address none of the collections is deployed at', () => {
+    expect(findCollectionByContract(collections, '0x' + '0'.repeat(40))).toBeUndefined()
+  })
+
+  it('finds nothing for a value that is not a contract address', () => {
+    expect(findCollectionByContract(collections, 'undefined')).toBeUndefined()
+  })
+})
+
+describe('withoutCollection', () => {
+  const kept = { id: 'kept' } as Collection
+  const deleted = { id: 'deleted' } as Collection
+  const page = { results: [kept, deleted], total: 9, limit: 8, page: 1, pages: 2 }
+
+  it('drops the deleted collection from a cached page, leaving the totals to the refetch', () => {
+    expect(withoutCollection(page, 'deleted')).toStrictEqual({ ...page, results: [kept] })
+  })
+
+  // The same object, not an equal copy, so react-query sees no change and re-renders nothing.
+  it('returns the same page when it does not hold that collection', () => {
+    expect(withoutCollection(page, 'other')).toBe(page)
+  })
+
+  it('leaves anything that is not a page untouched', () => {
+    expect(withoutCollection(undefined, 'deleted')).toBeUndefined()
+    const contractLinkResults = [{ id: 'deleted' }]
+    expect(withoutCollection(contractLinkResults, 'deleted')).toBe(contractLinkResults)
   })
 })

@@ -1,20 +1,20 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from '~/intl'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
-import { useEnableSales, useSalesEnabled, useSellItem } from '~/hooks/useSales'
+import { useSellItem } from '~/hooks/useSales'
 import { isSocialLogin, type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
-import { toSellItemError, type SellFailureReason } from '~/lib/sales'
-import { EnableSalesModal } from './EnableSalesModal'
-import { PendingModal } from './PendingModal'
+import { getMaticChainId } from '~/lib/publishCollection'
+import { isSellingOnOlderMarketplace, toSellItemError, type SellFailureReason } from '~/lib/sales'
+import { PendingModal } from '~/components/PendingModal'
+import { type EnableSalesReason } from './EnableSalesModal'
 import { SaleErrorModal, type SaleStage } from './SaleErrorModal'
-import { SaleSuccessModal } from './SaleSuccessModal'
+import { SuccessModal } from '~/components/SuccessModal'
 import { DEFAULT_SELL_VALUES, SellItemModal, type SellFormValues, type SellSubmission } from './SellItemModal'
+import { useEnableSalesStep, type Phase } from './useEnableSalesStep'
 
-type View = 'enable' | 'enabling' | 'form' | 'selling' | 'success' | 'error'
-// A wallet transaction/signature is first prompted, then (once signed) confirmed or stored.
-type Phase = 'confirm' | 'pending'
+type View = 'form' | 'selling' | 'success' | 'error'
 
 type Props = {
   item: Item
@@ -33,41 +33,40 @@ type Props = {
 export function SellItemFlow({ item, collection, session, hasPendingChanges = false, onClose }: Props) {
   const { t } = useTranslation()
   const social = isSocialLogin(session)
-  const salesEnabled = useSalesEnabled(collection)
+  const reason = useMemo<EnableSalesReason>(
+    () => (isSellingOnOlderMarketplace(collection, getMaticChainId()) ? 'marketplace-upgrade' : 'first-sale'),
+    [collection]
+  )
 
-  const [view, setView] = useState<View>(salesEnabled ? 'form' : 'enable')
+  const [view, setView] = useState<View>('form')
   const [phase, setPhase] = useState<Phase>('confirm')
   const [error, setError] = useState<{ stage: SaleStage; reason: SellFailureReason } | null>(null)
   const [values, setValues] = useState<SellFormValues>(DEFAULT_SELL_VALUES)
   // Bumped when the creator backs out of a wallet prompt, so that attempt's outcome is ignored.
   const attempt = useRef(0)
 
-  const enableSales = useEnableSales(session)
+  const enableStep = useEnableSalesStep({
+    collection,
+    session,
+    reason,
+    onClose,
+    onFailed: failure => {
+      setError({ stage: 'enable', reason: failure })
+      setView('error')
+    }
+  })
   const sell = useSellItem(session)
-  useBeforeUnloadGuard(enableSales.isPending || sell.isPending)
+  useBeforeUnloadGuard(enableStep.isPending || sell.isPending)
 
-  function fail(stage: SaleStage, cause: unknown, backTo: View) {
-    const reason = toSellItemError(cause).reason
+  function fail(cause: unknown) {
+    const failure = toSellItemError(cause).reason
     // Dismissing the wallet prompt is the creator changing their mind, not a failure to report.
-    if (reason === 'rejected') {
-      setView(backTo)
+    if (failure === 'rejected') {
+      setView('form')
       return
     }
-    setError({ stage, reason })
+    setError({ stage: 'sell', reason: failure })
     setView('error')
-  }
-
-  function startEnable() {
-    const id = ++attempt.current
-    setPhase('confirm')
-    if (!social) setView('enabling')
-    enableSales.mutate(
-      { collection, onSigned: () => attempt.current === id && setPhase('pending') },
-      {
-        onSuccess: () => attempt.current === id && setView('form'),
-        onError: cause => attempt.current === id && fail('enable', cause, 'enable')
-      }
-    )
   }
 
   function submitSell(formValues: SellFormValues, submission: SellSubmission) {
@@ -79,29 +78,20 @@ export function SellItemFlow({ item, collection, session, hasPendingChanges = fa
       { collection, item, ...submission, onSigned: () => attempt.current === id && setPhase('pending') },
       {
         onSuccess: () => attempt.current === id && setView('success'),
-        onError: cause => attempt.current === id && fail('sell', cause, 'form')
+        onError: cause => attempt.current === id && fail(cause)
       }
     )
   }
 
-  function backOut(to: View) {
+  function backOut() {
     attempt.current++
-    setView(to)
+    setView('form')
   }
 
+  // Until sales are enabled, the Enable Sales step stands in for the form (a failed enable still shows its error).
+  if (enableStep.modal && view !== 'error') return enableStep.modal
+
   switch (view) {
-    case 'enable':
-      return <EnableSalesModal busy={social && enableSales.isPending} onCancel={onClose} onConfirm={startEnable} />
-    case 'enabling':
-      return (
-        <PendingModal
-          label={
-            phase === 'confirm' ? t('sell_item_modal.confirm_in_wallet') : t('sell_item_modal.enable_sales.pending')
-          }
-          onCancel={phase === 'confirm' ? () => backOut('enable') : undefined}
-          testId="enable-sales-pending"
-        />
-      )
     case 'form':
       return (
         <SellItemModal
@@ -118,13 +108,13 @@ export function SellItemFlow({ item, collection, session, hasPendingChanges = fa
       return (
         <PendingModal
           label={phase === 'confirm' ? t('sell_item_modal.confirm_in_wallet') : t('sell_item_modal.selling')}
-          onCancel={phase === 'confirm' ? () => backOut('form') : undefined}
+          onCancel={phase === 'confirm' ? backOut : undefined}
           testId="sell-item-pending"
         />
       )
     case 'success':
       return (
-        <SaleSuccessModal
+        <SuccessModal
           title={t('sell_item_modal.success.title')}
           description={t('sell_item_modal.success.description')}
           onDone={onClose}
@@ -138,7 +128,8 @@ export function SellItemFlow({ item, collection, session, hasPendingChanges = fa
           onCancel={onClose}
           onRetry={() => {
             setError(null)
-            setView(error.stage === 'enable' ? 'enable' : 'form')
+            // A failed enable left the Enable Sales step on its dialog, which takes over again.
+            setView('form')
           }}
         />
       ) : null

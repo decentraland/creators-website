@@ -32,6 +32,7 @@ import {
   toPricedSale,
   formatDateValue,
   isSalesEnabled,
+  isSellingOnOlderMarketplace,
   isValidAddress,
   minExpirationDate,
   parseExpirationDate,
@@ -46,6 +47,7 @@ const CHAIN_ID = 80002
 const ADDRESS = '0x00000000000000000000000000000000000000aa'
 const BENEFICIARY = '0x00000000000000000000000000000000000000bb'
 const CONTRACT = '0x00000000000000000000000000000000000000cc'
+const MARKETPLACE_V3 = getContract(ContractName.OffChainMarketplaceV3, CHAIN_ID).address
 const MARKETPLACE_V2 = getContract(ContractName.OffChainMarketplaceV2, CHAIN_ID).address
 const MARKETPLACE_V1 = getContract(ContractName.OffChainMarketplace, CHAIN_ID).address
 const MANA = getContract(ContractName.MANAToken, CHAIN_ID).address
@@ -168,15 +170,38 @@ describe('price and date helpers', () => {
 })
 
 describe('enabling sales', () => {
-  it('is enabled once either off-chain marketplace is a minter, whatever the casing', () => {
+  it('is enabled once the marketplace new orders are signed on is a minter, whatever the casing', () => {
     expect(isSalesEnabled(collection, CHAIN_ID)).toBe(false)
     expect(
-      isSalesEnabled({ ...collection, minters: [MARKETPLACE_V2.toUpperCase().replace('0X', '0x')] }, CHAIN_ID)
+      isSalesEnabled({ ...collection, minters: [MARKETPLACE_V3.toUpperCase().replace('0X', '0x')] }, CHAIN_ID)
     ).toBe(true)
-    expect(isSalesEnabled({ ...collection, minters: [MARKETPLACE_V1] }, CHAIN_ID)).toBe(true)
+  })
+
+  it('is not enabled when only an older marketplace is a minter, so sales are enabled again for the new one', () => {
+    expect(isSalesEnabled({ ...collection, minters: [MARKETPLACE_V2, MARKETPLACE_V1] }, CHAIN_ID)).toBe(false)
     expect(isSalesEnabled({ ...collection, minters: ['0x00000000000000000000000000000000000000dd'] }, CHAIN_ID)).toBe(
       false
     )
+  })
+
+  it('knows a collection already sells on an older marketplace, whatever the casing', () => {
+    expect(isSellingOnOlderMarketplace({ ...collection, minters: [MARKETPLACE_V1] }, CHAIN_ID)).toBe(true)
+    expect(
+      isSellingOnOlderMarketplace(
+        { ...collection, minters: [MARKETPLACE_V2.toUpperCase().replace('0X', '0x')] },
+        CHAIN_ID
+      )
+    ).toBe(true)
+  })
+
+  it('does not count the current marketplace or any other minter as an older marketplace', () => {
+    expect(isSellingOnOlderMarketplace(collection, CHAIN_ID)).toBe(false)
+    expect(
+      isSellingOnOlderMarketplace(
+        { ...collection, minters: [MARKETPLACE_V3, '0x00000000000000000000000000000000000000dd'] },
+        CHAIN_ID
+      )
+    ).toBe(false)
   })
 
   it('builds setMinters([marketplace], [true]) on the collection contract', () => {
@@ -184,7 +209,7 @@ describe('enabling sales', () => {
     expect(call.contract.address).toBe(CONTRACT)
     const iface = new ethers.utils.Interface(call.contract.abi)
     const decoded = iface.decodeFunctionData('setMinters', encodeContractCall(call))
-    expect((decoded[0] as string[]).map(a => a.toLowerCase())).toEqual([MARKETPLACE_V2.toLowerCase()])
+    expect((decoded[0] as string[]).map(a => a.toLowerCase())).toEqual([MARKETPLACE_V3.toLowerCase()])
     expect(decoded[1]).toEqual([true])
   })
 
@@ -291,14 +316,32 @@ describe('sellItem', () => {
     expect(signed.checks.salt).toMatch(/^0x[0-9a-f]{64}$/)
     expect(deps.onSigned).toHaveBeenCalledTimes(1)
     expect(deps.createTrade).toHaveBeenCalledWith({ ...signed, signature: '0xsignature' })
-    expect(result).toEqual({ itemId: '3', tradeId: 'trade-1', currency: 'credits', credits: 50 })
+    expect(result).toEqual({
+      itemId: '3',
+      tradeId: 'trade-1',
+      tradeContract: MARKETPLACE_V3.toLowerCase(),
+      currency: 'credits',
+      credits: 50
+    })
   })
 
   it('answers a free listing for a giveaway and a MANA listing for a MANA price', async () => {
     const free = await sellItem({ ...params, price: { kind: 'free' } }, makeDeps())
-    expect(free).toEqual({ itemId: '3', tradeId: 'trade-1', currency: 'mana', manaWei: 0n })
+    expect(free).toEqual({
+      itemId: '3',
+      tradeId: 'trade-1',
+      tradeContract: MARKETPLACE_V3.toLowerCase(),
+      currency: 'mana',
+      manaWei: 0n
+    })
     const mana = await sellItem({ ...params, price: { kind: 'mana', manaWei: 10n ** 18n } }, makeDeps())
-    expect(mana).toEqual({ itemId: '3', tradeId: 'trade-1', currency: 'mana', manaWei: 10n ** 18n })
+    expect(mana).toEqual({
+      itemId: '3',
+      tradeId: 'trade-1',
+      tradeContract: MARKETPLACE_V3.toLowerCase(),
+      currency: 'mana',
+      manaWei: 10n ** 18n
+    })
   })
 
   it('maps a dismissed wallet prompt to a rejection without storing anything', async () => {
@@ -422,7 +465,13 @@ describe('updating the price', () => {
     const signed = deps.signTrade.mock.calls[0][0]
     expect(signed.received[0]).toMatchObject({ amount: creditsToUsdWei(80), beneficiary: BENEFICIARY })
     expect(signed.checks.expiration).toBe(NO_EXPIRATION)
-    expect(listing).toEqual({ itemId: '3', tradeId: 'trade-2', currency: 'credits', credits: 80 })
+    expect(listing).toEqual({
+      itemId: '3',
+      tradeId: 'trade-2',
+      tradeContract: MARKETPLACE_V3.toLowerCase(),
+      currency: 'credits',
+      credits: 80
+    })
   })
 
   it('can switch the listing to MANA, keeping the same terms', async () => {
@@ -451,7 +500,13 @@ describe('updating the price', () => {
       amount: '1000000000000000000',
       beneficiary: BENEFICIARY
     })
-    expect(listing).toEqual({ itemId: '3', tradeId: 'trade-2', currency: 'mana', manaWei: 10n ** 18n })
+    expect(listing).toEqual({
+      itemId: '3',
+      tradeId: 'trade-2',
+      tradeContract: MARKETPLACE_V3.toLowerCase(),
+      currency: 'mana',
+      manaWei: 10n ** 18n
+    })
   })
 
   it('refuses a sold-out item before cancelling its order', async () => {
