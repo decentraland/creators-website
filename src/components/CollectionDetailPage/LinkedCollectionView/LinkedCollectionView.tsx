@@ -32,7 +32,13 @@ import {
 import { isContractInUseError } from '~/lib/linkedContract'
 import { type Mappings } from '~/lib/mappings'
 import { getMaticChainId } from '~/lib/publishCollection'
-import { loadRelinkFrom, relinkCollection, storeRelinkFrom, type RelinkStep } from '~/lib/relinkCollection'
+import {
+  RelinkCancelledError,
+  loadRelinkFrom,
+  relinkCollection,
+  storeRelinkFrom,
+  type RelinkStep
+} from '~/lib/relinkCollection'
 import errorArt from '~/assets/modal-error.png'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { PendingModal } from '~/components/PendingModal'
@@ -144,9 +150,10 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   // knows what to replace), `view` which of its screens is up.
   const [relink, setRelink] = useState<{ from: LinkedContract | null; view: RelinkView } | null>(null)
   const runningView = relink?.view.kind === 'running' ? relink.view : null
-  const relinkStep = runningView?.step ?? null
-  // Bumped when the user backs out of the wallet prompt, so a run that still finishes is not shown.
+  // Bumped when the user backs out of the wallet prompt: that run stops once the wallet answers, and is not shown.
   const relinkAttempt = useRef(0)
+  // A run the user backed out of is still waiting on its wallet prompt; no other run may start until it settles.
+  const [relinkInFlight, setRelinkInFlight] = useState(false)
   const errorView = relink?.view.kind === 'error' ? relink.view : null
   const [addItemsFiles, setAddItemsFiles] = useState<File[] | null>(null)
   const [bulkEditFiles, setBulkEditFiles] = useState<File[] | null>(null)
@@ -170,7 +177,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     [mappingStates]
   )
   // Leaving the page within a mapping's save delay would drop the edit; leaving mid-relink leaves items behind.
-  useBeforeUnloadGuard(unsavedMappings.size > 0 || relinkStep !== null)
+  useBeforeUnloadGuard(unsavedMappings.size > 0 || relinkInFlight)
   const onMappingDirtyChange = useCallback((itemId: string, dirty: boolean, generation: number) => {
     setMappingStates(current => nextMappingStates(current, itemId, dirty, generation))
   }, [])
@@ -348,6 +355,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     const show = (view: RelinkView) => {
       if (relinkAttempt.current === attempt) setRelink({ from, view })
     }
+    setRelinkInFlight(true)
     try {
       const chainId = getMaticChainId()
       if (from && !isSameContract(from, next)) storeRelinkFrom(collection.id, from)
@@ -359,7 +367,8 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
           settleTransaction: txHash => settleTransaction(chainId, txHash),
           fetchItems: () => fetchAllLinkedCollectionItems(address, collection.id),
           saveItem: saveItemPatch,
-          onStep: step => show({ kind: 'running', step, to: next })
+          onStep: step => show({ kind: 'running', step, to: next }),
+          isCancelled: () => relinkAttempt.current !== attempt
         },
         { chainId, collection, thirdParty, from, to: next }
       )
@@ -368,13 +377,16 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
       void curations.refetch()
       show({ kind: 'success', moved })
     } catch (error) {
-      const inUse = isContractInUseError(error)
-      if (!inUse) captureError(error, { flow: 'linked_collection_contract', collectionId: collection.id })
-      show({ kind: 'error', inUse, to: next })
+      if (!(error instanceof RelinkCancelledError)) {
+        const inUse = isContractInUseError(error)
+        if (!inUse) captureError(error, { flow: 'linked_collection_contract', collectionId: collection.id })
+        show({ kind: 'error', inUse, to: next })
+      }
     } finally {
       // A run that stopped halfway has already changed the collection, the registry or some items.
       void queryClient.invalidateQueries({ queryKey: thirdPartyKey(address, thirdParty.id) })
       invalidateCollectionItems(queryClient, collection.id)
+      setRelinkInFlight(false)
     }
   }
 
@@ -806,7 +818,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
       {relink && (relink.view.kind === 'form' || (relink.view.kind === 'running' && isSocialLogin(session))) && (
         <EditContractModal
           initial={relink.view.kind === 'form' ? relink.view.last : relink.view.to}
-          isPending={relink.view.kind === 'running'}
+          isPending={relink.view.kind === 'running' || relinkInFlight}
           onSubmit={next => void relinkContract(next)}
           onClose={closeContract}
         />

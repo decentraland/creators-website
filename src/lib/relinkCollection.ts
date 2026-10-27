@@ -19,6 +19,16 @@ export type RelinkDeps = {
   fetchItems: () => Promise<Item[]>
   saveItem: (item: Item, patch: Pick<Item, 'mappings'>) => Promise<Item>
   onStep?: (step: RelinkStep) => void
+  /** Asked once the wallet answered: a run the user backed out of stops there, leaving only the sent transaction. */
+  isCancelled?: () => boolean
+}
+
+/** The user backed out while the wallet prompt was open; whatever was signed afterwards goes through on its own. */
+export class RelinkCancelledError extends Error {
+  constructor() {
+    super('Contract change cancelled by the user')
+    this.name = 'RelinkCancelledError'
+  }
 }
 
 export type RelinkParams = {
@@ -73,15 +83,18 @@ export async function relinkCollection(deps: RelinkDeps, params: RelinkParams): 
   }
 
   if (thirdParty.published) {
-    deps.onStep?.('signing')
     const listed = await deps.fetchRegisteredContracts()
     // A record this code cannot read would be rewritten with `to` alone, dropping the sibling contracts.
     if (listed.length === 0 && thirdParty.contracts.length > 0) {
       throw new Error(`Registry record of ${thirdParty.id} could not be parsed`)
     }
     if (!listed.some(contract => isSameContract(contract, to))) {
-      const contracts = withContractReplaced(listed, from, to)
+      // Both the contract the change started from and the one the collection held now are being replaced: they
+      // differ after a run that saved the collection but never reached the registry.
+      const contracts = withContractReplaced(listed, [from, current], to)
+      deps.onStep?.('signing')
       const txHash = await deps.sendTransaction(buildUpdateThirdPartyCall(chainId, { ...thirdParty, contracts }))
+      if (deps.isCancelled?.()) throw new RelinkCancelledError()
       deps.onStep?.('pending')
       const outcome = await deps.settleTransaction(txHash)
       // A dropped or still-pending transaction may have been replaced by a speed-up that did the update.

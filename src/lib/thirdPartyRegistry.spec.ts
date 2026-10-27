@@ -202,6 +202,11 @@ describe('fetchRegisteredContracts', () => {
     await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([])
   })
 
+  it('does not mistake description text for a contract', async () => {
+    vi.mocked(readContract).mockResolvedValueOnce({ metadata: 'tp:1:Brand:Shop: limited-edition' })
+    await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([])
+  })
+
   it('still reads the contracts when a legacy description contains a colon', async () => {
     vi.mocked(readContract).mockResolvedValueOnce({ metadata: `tp:1:Brand:Note: legacy:matic-0x${'b'.repeat(40)}` })
     await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([

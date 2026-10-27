@@ -3,7 +3,13 @@ import { type ContractNetwork } from '@dcl/schemas'
 import { type Collection } from './collections'
 import { type Item } from './items'
 import { MappingType, buildItemMappings } from './mappings'
-import { loadRelinkFrom, relinkCollection, storeRelinkFrom, type RelinkDeps } from './relinkCollection'
+import {
+  RelinkCancelledError,
+  loadRelinkFrom,
+  relinkCollection,
+  storeRelinkFrom,
+  type RelinkDeps
+} from './relinkCollection'
 import { type ThirdParty } from './thirdParty'
 
 const CHAIN_ID = 80002
@@ -89,7 +95,7 @@ describe('relinkCollection', () => {
 
     expect(d.saveCollection).not.toHaveBeenCalled()
     expect(d.sendTransaction).not.toHaveBeenCalled()
-    expect(steps).toEqual(['signing', 'items'])
+    expect(steps).toEqual(['items'])
     expect(d.saveItem).toHaveBeenCalledTimes(1)
     expect(vi.mocked(d.saveItem).mock.calls[0][0].id).toBe('left')
     expect(result).toEqual({ moved: 1 })
@@ -108,6 +114,29 @@ describe('relinkCollection', () => {
     })
     await expect(relinkCollection(failing.d, params)).rejects.toThrow('dropped')
     expect(failing.d.saveItem).not.toHaveBeenCalled()
+  })
+
+  it('drops the contract the collection held after a run that never reached the registry', async () => {
+    const THIRD = { network: 'mainnet' as ContractNetwork, address: '0x' + 'd'.repeat(40) }
+    const { d } = deps({ fetchRegisteredContracts: vi.fn(async () => [SIBLING, OLD]) })
+    // The collection already names NEW from the earlier run, and the user now targets THIRD.
+    const saved = { ...collection, linkedContractAddress: NEW.address, linkedContractNetwork: NEW.network }
+    await relinkCollection(d, { ...params, collection: saved, from: OLD, to: THIRD })
+    const call = vi.mocked(d.sendTransaction).mock.calls[0][0]
+    expect(call.args[0] as [string, string][]).toEqual([
+      [thirdParty.id, `tp:1:Brand::mainnet-${SIBLING.address};mainnet-${THIRD.address}`, '', [], [], '0']
+    ])
+  })
+
+  it('stops after the signature when the user backed out meanwhile, leaving items untouched', async () => {
+    let cancelled = false
+    const { d } = deps({
+      sendTransaction: vi.fn(async () => ((cancelled = true), '0xtx')),
+      isCancelled: () => cancelled
+    })
+    await expect(relinkCollection(d, params)).rejects.toBeInstanceOf(RelinkCancelledError)
+    expect(d.settleTransaction).not.toHaveBeenCalled()
+    expect(d.saveItem).not.toHaveBeenCalled()
   })
 
   it('refuses to rewrite a registry record it could not read', async () => {
