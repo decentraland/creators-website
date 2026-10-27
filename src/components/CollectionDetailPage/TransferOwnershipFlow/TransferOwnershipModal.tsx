@@ -3,6 +3,7 @@ import { useTranslation } from '~/intl'
 import { type Collection } from '~/lib/collections'
 import { getNewOwnerError } from '~/lib/collectionOwnership'
 import { type Friend } from '~/lib/friends'
+import { getMaticChainId } from '~/lib/publishCollection'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { BeneficiaryInput } from '../SellItemFlow/BeneficiaryInput'
@@ -43,7 +44,7 @@ export function TransferOwnershipModal({
   const { t } = useTranslation()
 
   function rejection(address: string): string | null {
-    const error = getNewOwnerError(collection, address)
+    const error = getNewOwnerError(collection, address, getMaticChainId())
     return error ? t(`transfer_ownership_modal.${error}`) : null
   }
 

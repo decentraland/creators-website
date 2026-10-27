@@ -95,12 +95,12 @@ describe('TransferOwnershipFlow', () => {
     const [variables, callbacks] = last(transfer.mutate)
     expect(variables).toMatchObject({ newOwner: FRIEND })
 
-    // Backing out of the prompt returns to the form, untouched.
+    // Backing out of the prompt returns to the form, untouched; a rejection of that attempt changes nothing.
     await userEvent.click(screen.getByTestId('transfer-ownership-pending-cancel'))
     expect(screen.getByTestId('new-owner-name')).toHaveTextContent('Ana')
     expect(screen.getByTestId('transfer-confirmation-input')).toHaveValue(collection.name)
-    await act(async () => callbacks.onSuccess?.(undefined))
-    expect(screen.queryByTestId('success-modal-modal')).not.toBeInTheDocument()
+    await act(async () => callbacks.onError?.(new SellItemError('rejected')))
+    expect(screen.getByTestId('new-owner-name')).toHaveTextContent('Ana')
 
     await userEvent.click(screen.getByTestId('transfer-submit'))
     const [again, done] = last(transfer.mutate)
@@ -113,6 +113,18 @@ describe('TransferOwnershipFlow', () => {
     await userEvent.click(screen.getByTestId('success-modal-done'))
     expect(onDone).toHaveBeenCalledTimes(1)
     expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('still celebrates a transfer signed after backing out of the prompt, since it happened anyway', async () => {
+    const { onDone } = renderFlow()
+    await fillIn()
+    await userEvent.click(screen.getByTestId('transfer-submit'))
+    const [, callbacks] = last(transfer.mutate)
+    await userEvent.click(screen.getByTestId('transfer-ownership-pending-cancel'))
+    await act(async () => callbacks.onSuccess?.(undefined))
+    expect(screen.getByTestId('success-modal-title')).toHaveTextContent(/ownership transferred/i)
+    await userEvent.click(screen.getByTestId('success-modal-done'))
+    expect(onDone).toHaveBeenCalledTimes(1)
   })
 
   it('keeps a custodial wallet in the dialog with the button spinning', async () => {

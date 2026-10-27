@@ -63,7 +63,8 @@ export function TransferOwnershipFlow({ collection, session, onDone, onClose }: 
     transfer.mutate(
       { collection, newOwner, onSigned: () => attempt.current === id && setPhase('pending') },
       {
-        onSuccess: () => attempt.current === id && setView('success'),
+        // Backing out of the prompt only hides it: a transfer signed anyway is irreversible, so it is never ignored.
+        onSuccess: () => setView('success'),
         onError: cause => {
           if (attempt.current !== id) return
           const failure = toSellItemError(cause).reason

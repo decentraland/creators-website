@@ -513,7 +513,7 @@
       "title_collaborators": "无法更新协作者",
       "description_collaborators": "保存此系列的协作者时出错了，请重试。",
       "title_transfer": "无法转让所有权",
-      "description_transfer": "转让此系列时出错了。它仍然属于您，请重试。"
+      "description_transfer": "转让此系列时出错了。重试前请先确认此系列的所有者。"
     },
     "remove": {
       "title": "要下架吗？",
@@ -1156,6 +1156,8 @@
     "placeholder": "选择或粘贴新所有者的用户 ID",
     "clear": "清除新所有者",
     "self": "这是您自己的地址：此系列已经属于您。",
+    "zero": "这是零地址：此系列将永久丢失。",
+    "system": "此地址属于 Decentraland Shop：发送到那里的系列无法找回。",
     "confirm_label": "输入“{name}”以确认",
     "submit": "转让所有权",
     "saving": "正在转让所有权……",

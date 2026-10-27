@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { ContractName, getContract } from 'decentraland-transactions'
 import { encodeContractCall } from './auth/transactions'
 import { type Collection } from './collections'
 import { buildTransferOwnershipCall, getNewOwnerError, matchesCollectionName, withOwner } from './collectionOwnership'
@@ -24,9 +25,12 @@ const collection: Collection = {
 }
 
 describe('choosing the new owner', () => {
-  it("refuses the owner's own address and accepts anyone else", () => {
-    expect(getNewOwnerError(collection, OWNER.toUpperCase())).toBe('self')
-    expect(getNewOwnerError(collection, OTHER)).toBeNull()
+  it("refuses the owner's own address, the zero address and the Shop's contracts, and accepts anyone else", () => {
+    expect(getNewOwnerError(collection, OWNER.toUpperCase(), CHAIN_ID)).toBe('self')
+    expect(getNewOwnerError(collection, '0x0000000000000000000000000000000000000000', CHAIN_ID)).toBe('zero')
+    const marketplace = getContract(ContractName.OffChainMarketplaceV2, CHAIN_ID).address
+    expect(getNewOwnerError(collection, marketplace.toUpperCase(), CHAIN_ID)).toBe('system')
+    expect(getNewOwnerError(collection, OTHER, CHAIN_ID)).toBeNull()
   })
 
   it('matches the typed confirmation to the collection name, ignoring case and surrounding spaces', () => {

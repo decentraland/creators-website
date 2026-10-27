@@ -513,7 +513,7 @@
       "title_collaborators": "No pudimos actualizar los colaboradores",
       "description_collaborators": "Algo salió mal al guardar los colaboradores de esta colección. Por favor, inténtalo de nuevo.",
       "title_transfer": "No pudimos transferir la propiedad",
-      "description_transfer": "Algo salió mal al transferir esta colección. Sigue siendo tuya. Por favor, inténtalo de nuevo."
+      "description_transfer": "Algo salió mal al transferir esta colección. Comprueba quién es el dueño antes de intentarlo de nuevo."
     },
     "remove": {
       "title": "¿Quitar de la venta?",
@@ -1156,6 +1156,8 @@
     "placeholder": "Selecciona o copia el User ID del nuevo dueño",
     "clear": "Quitar nuevo dueño",
     "self": "Esa es tu propia dirección: esta colección ya es tuya.",
+    "zero": "Esa es la dirección cero: la colección se perdería para siempre.",
+    "system": "Esta dirección pertenece a la Tienda de Decentraland: una colección enviada allí no se puede recuperar.",
     "confirm_label": "Escribe “{name}” para confirmar",
     "submit": "Transferir propiedad",
     "saving": "Transfiriendo la propiedad...",

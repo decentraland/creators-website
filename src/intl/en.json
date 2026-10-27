@@ -513,7 +513,7 @@
       "title_collaborators": "We couldn’t update the collaborators",
       "description_collaborators": "Something went wrong while saving the collaborators of this collection. Please try again.",
       "title_transfer": "We couldn’t transfer the ownership",
-      "description_transfer": "Something went wrong while transferring this collection. It is still yours. Please try again."
+      "description_transfer": "Something went wrong while transferring this collection. Check who owns it before trying again."
     },
     "remove": {
       "title": "Remove from sale?",
@@ -1156,6 +1156,8 @@
     "placeholder": "Select or copy the new owner’s User ID",
     "clear": "Clear new owner",
     "self": "That’s your own address: you already own this collection.",
+    "zero": "That’s the zero address: the collection would be lost for good.",
+    "system": "This address belongs to the Decentraland Shop: a collection sent there can’t be recovered.",
     "confirm_label": "Type “{name}” to confirm",
     "submit": "Transfer ownership",
     "saving": "Transferring ownership...",

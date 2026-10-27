@@ -1,14 +1,20 @@
 import { ContractName, getContract } from 'decentraland-transactions'
 import { type ContractCall } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
-import { isCollectionOwner } from '~/lib/collectionRoles'
+import { getSystemMinters, isCollectionOwner } from '~/lib/collectionRoles'
 import { SellItemError } from '~/lib/sales'
 
-export type NewOwnerError = 'self'
+export type NewOwnerError = 'self' | 'zero' | 'system'
 
-/** Why an address can't become the new owner, if it can't. */
-export function getNewOwnerError(collection: Collection, address: string): NewOwnerError | null {
-  return isCollectionOwner(collection, address) ? 'self' : null
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+
+/** Why an address can't become the new owner, if it can't: a transfer to a contract can't be undone. */
+export function getNewOwnerError(collection: Collection, address: string, chainId: number): NewOwnerError | null {
+  const target = address.toLowerCase()
+  if (isCollectionOwner(collection, target)) return 'self'
+  if (target === ZERO_ADDRESS) return 'zero'
+  if (getSystemMinters(chainId).has(target)) return 'system'
+  return null
 }
 
 /** Whether the typed confirmation is the collection's name; surrounding spaces and case don't count. */
