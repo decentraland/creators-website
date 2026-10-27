@@ -1151,6 +1151,9 @@
   "transfer_ownership_modal": {
     "title": "Transfer ownership",
     "description": "The new owner takes full control of “{name}”: editing its items, publishing changes, sales, and the senders and collaborators lists. If you also hold one of those roles you keep it.",
+    "step_details": "Details",
+    "step_confirm": "Confirm",
+    "confirm_intro": "You’re about to hand “{name}” to this wallet. Please make sure it’s correct, as this can’t be reverted.",
     "warning": "You can’t undo this. Only the new owner could transfer the collection back to you.",
     "new_owner": "New owner",
     "placeholder": "Select or copy the new owner’s User ID",

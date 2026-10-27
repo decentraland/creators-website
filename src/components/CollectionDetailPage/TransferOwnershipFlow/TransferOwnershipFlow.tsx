@@ -11,7 +11,7 @@ import { toSellItemError, type SellFailureReason } from '~/lib/sales'
 import { PendingModal } from '~/components/PendingModal'
 import { SuccessModal } from '~/components/SuccessModal'
 import { SaleErrorModal } from '../SellItemFlow/SaleErrorModal'
-import { TransferOwnershipModal } from './TransferOwnershipModal'
+import { TransferOwnershipModal, type TransferStep } from './TransferOwnershipModal'
 
 type View = 'form' | 'saving' | 'success' | 'error'
 type Phase = 'confirm' | 'pending'
@@ -26,7 +26,8 @@ type Props = {
 
 /**
  * Hand the collection to another wallet. The form asks for the new owner and the collection's name as
- * confirmation; TRANSFER OWNERSHIP sends `transferCreatorship` in one transaction: web3 wallets get the
+ * confirmation, then a second step shows the chosen wallet once more before anything is sent.
+ * TRANSFER OWNERSHIP sends `transferCreatorship` in one transaction: web3 wallets get the
  * whole-dialog "confirm in your wallet" status, custodial ones just see the button spin. There is no
  * backing out once sent: the wallet prompt can still sign an irreversible transfer, so the dialog stays
  * locked until it settles. Closing never asks: two fields are nothing to lose.
@@ -38,6 +39,7 @@ export function TransferOwnershipFlow({ collection, session, onDone, onClose }: 
 
   const [view, setView] = useState<View>('form')
   const [phase, setPhase] = useState<Phase>('confirm')
+  const [step, setStep] = useState<TransferStep>('details')
   const [newOwner, setNewOwner] = useState('')
   const [confirmation, setConfirmation] = useState('')
   const [reason, setReason] = useState<SellFailureReason | null>(null)
@@ -76,12 +78,14 @@ export function TransferOwnershipFlow({ collection, session, onDone, onClose }: 
       return (
         <TransferOwnershipModal
           collection={collection}
+          step={step}
           newOwner={newOwner}
           confirmation={confirmation}
           friends={friends.data}
           isLoadingFriends={friends.isLoading}
           busy={busy}
-          canSubmit={ready && !busy}
+          canContinue={ready && !busy}
+          onStep={setStep}
           onNewOwnerChange={setNewOwner}
           onConfirmationChange={setConfirmation}
           onSubmit={submit}

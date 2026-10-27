@@ -41,6 +41,7 @@ function renderFlow(providerType = ProviderType.INJECTED) {
 async function fillIn(name = collection.name) {
   await userEvent.type(screen.getByTestId('new-owner-input'), FRIEND)
   await userEvent.type(screen.getByTestId('transfer-confirmation-input'), name)
+  await userEvent.click(screen.getByTestId('transfer-continue'))
 }
 
 const SIGNED = '0x00000000000000000000000000000000000000cc'
@@ -54,19 +55,30 @@ beforeEach(() => {
 })
 
 describe('TransferOwnershipFlow', () => {
-  it('enables the transfer only once a new owner is picked and the collection name is typed', async () => {
+  it('moves on only once a new owner is picked and the collection name is typed, then shows the wallet again to confirm', async () => {
     renderFlow()
     expect(screen.getByTestId('transfer-ownership-modal')).toHaveTextContent(/transfer ownership/i)
-    expect(screen.getByTestId('transfer-submit')).toBeDisabled()
+    expect(screen.getByTestId('transfer-continue')).toBeDisabled()
 
     await userEvent.type(screen.getByTestId('new-owner-input'), FRIEND)
     expect(screen.getByTestId('new-owner-name')).toHaveTextContent('Ana')
-    expect(screen.getByTestId('transfer-submit')).toBeDisabled()
+    expect(screen.getByTestId('transfer-continue')).toBeDisabled()
 
     await userEvent.type(screen.getByTestId('transfer-confirmation-input'), 'Pirate Hat')
-    expect(screen.getByTestId('transfer-submit')).toBeDisabled()
+    expect(screen.getByTestId('transfer-continue')).toBeDisabled()
     await userEvent.type(screen.getByTestId('transfer-confirmation-input'), 's')
-    expect(screen.getByTestId('transfer-submit')).toBeEnabled()
+    expect(screen.getByTestId('transfer-continue')).toBeEnabled()
+
+    await userEvent.click(screen.getByTestId('transfer-continue'))
+    expect(screen.getByTestId('transfer-confirm-owner')).toHaveTextContent('Ana')
+    expect(screen.getByTestId('transfer-confirm-owner')).toHaveTextContent(FRIEND)
+    expect(screen.getByTestId('transfer-ownership-warning')).toHaveTextContent(/can’t undo/i)
+    expect(transfer.mutate).not.toHaveBeenCalled()
+
+    // Back keeps what was filled in.
+    await userEvent.click(screen.getByTestId('transfer-back'))
+    expect(screen.getByTestId('new-owner-name')).toHaveTextContent('Ana')
+    expect(screen.getByTestId('transfer-confirmation-input')).toHaveValue(collection.name)
   })
 
   it("refuses the owner's own address with an inline reason", async () => {
@@ -119,7 +131,7 @@ describe('TransferOwnershipFlow', () => {
     expect(screen.queryByTestId('transfer-ownership-pending')).not.toBeInTheDocument()
     expect(last(transfer.mutate)[0]).toMatchObject({ newOwner: FRIEND })
     await act(async () => last(transfer.mutate)[0].onSigned?.())
-    expect(screen.getByTestId('transfer-cancel')).toBeDisabled()
+    expect(screen.getByTestId('transfer-back')).toBeDisabled()
     await userEvent.keyboard('{Escape}')
     expect(onClose).not.toHaveBeenCalled()
   })
@@ -129,13 +141,13 @@ describe('TransferOwnershipFlow', () => {
     await fillIn()
     await userEvent.click(screen.getByTestId('transfer-submit'))
     await act(async () => last(transfer.mutate)[1].onError?.(new SellItemError('rejected')))
-    expect(screen.getByTestId('new-owner-name')).toHaveTextContent('Ana')
+    expect(screen.getByTestId('transfer-confirm-owner')).toHaveTextContent('Ana')
 
     await userEvent.click(screen.getByTestId('transfer-submit'))
     await act(async () => last(transfer.mutate)[1].onError?.(new Error('boom')))
     expect(screen.getByTestId('sale-error-modal-title')).toHaveTextContent(/transfer the ownership/i)
     await userEvent.click(screen.getByTestId('sale-error-retry'))
-    expect(screen.getByTestId('new-owner-name')).toHaveTextContent('Ana')
+    expect(screen.getByTestId('transfer-confirm-owner')).toHaveTextContent('Ana')
     expect(onClose).not.toHaveBeenCalled()
   })
 })

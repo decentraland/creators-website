@@ -1151,6 +1151,9 @@
   "transfer_ownership_modal": {
     "title": "转让所有权",
     "description": "新所有者将完全掌控“{name}”：编辑其物品、发布更改、销售，以及发送者和协作者列表。如果您同时拥有其中一个角色，将会保留。",
+    "step_details": "详情",
+    "step_confirm": "确认",
+    "confirm_intro": "您即将把“{name}”交给此钱包。请确认无误，此操作无法撤销。",
     "warning": "此操作无法撤销。只有新所有者才能将此系列转回给您。",
     "new_owner": "新所有者",
     "placeholder": "选择或粘贴新所有者的用户 ID",

@@ -1151,6 +1151,9 @@
   "transfer_ownership_modal": {
     "title": "Transferir propiedad",
     "description": "El nuevo dueño toma el control total de “{name}”: editar sus ítems, publicar cambios, las ventas y las listas de emisores y colaboradores. Si además tienes uno de esos roles, lo conservas.",
+    "step_details": "Detalles",
+    "step_confirm": "Confirmar",
+    "confirm_intro": "Estás a punto de entregar “{name}” a esta billetera. Por favor, asegúrate de que sea la correcta, ya que esto no se puede revertir.",
     "warning": "Esto no se puede deshacer. Solo el nuevo dueño podría devolverte la colección.",
     "new_owner": "Nuevo dueño",
     "placeholder": "Selecciona o copia el User ID del nuevo dueño",
