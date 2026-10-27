@@ -1,8 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ContractName, getContract } from 'decentraland-transactions'
 import { encodeContractCall } from './auth/transactions'
 import { type Collection } from './collections'
-import { buildTransferOwnershipCall, getNewOwnerError, matchesCollectionName, withOwner } from './collectionOwnership'
+import {
+  buildTransferOwnershipCall,
+  getNewOwnerError,
+  matchesCollectionName,
+  waitForOwnerSync
+} from './collectionOwnership'
 
 const OWNER = '0x00000000000000000000000000000000000000aa'
 const OTHER = '0x00000000000000000000000000000000000000dd'
@@ -54,9 +59,30 @@ describe('transferring', () => {
       /not_published|contract/
     )
   })
+})
 
-  it('patches the owner, lowercased, leaving the roles alone', () => {
-    const roles = { ...collection, minters: ['0xM'], managers: ['0xG'] }
-    expect(withOwner(roles, OTHER.toUpperCase())).toEqual({ ...roles, owner: OTHER })
+describe('waiting for the server to store the new owner', () => {
+  afterEach(() => vi.useRealTimers())
+
+  it('resolves with the collection once the server reports the new owner', async () => {
+    const sync = vi
+      .fn()
+      .mockResolvedValueOnce(collection)
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({ ...collection, owner: OTHER.toUpperCase() })
+    await expect(waitForOwnerSync(collection.id, OTHER, { syncCollectionOwner: sync }, 5, 0)).resolves.toMatchObject({
+      owner: OTHER.toUpperCase()
+    })
+    expect(sync).toHaveBeenCalledTimes(3)
+  })
+
+  it('gives up after the retries', async () => {
+    vi.useFakeTimers()
+    const sync = vi.fn().mockResolvedValue(collection)
+    const run = waitForOwnerSync(collection.id, OTHER, { syncCollectionOwner: sync })
+    const failure = expect(run).rejects.toThrow(/indexed/)
+    await vi.advanceTimersByTimeAsync(60 * 60 * 1000)
+    await failure
+    expect(sync).toHaveBeenCalledTimes(721)
   })
 })

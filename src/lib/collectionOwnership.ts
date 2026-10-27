@@ -2,6 +2,7 @@ import { ContractName, getContract } from 'decentraland-transactions'
 import { type ContractCall } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { getSystemMinters, isCollectionOwner } from '~/lib/collectionRoles'
+import { CONSOLIDATE_RETRIES, CONSOLIDATE_RETRY_DELAY_MS } from '~/lib/publishCollection'
 import { SellItemError } from '~/lib/sales'
 
 export type NewOwnerError = 'self' | 'zero' | 'system'
@@ -29,7 +30,30 @@ export function buildTransferOwnershipCall(collection: Collection, newOwner: str
   return { contract, method: 'transferCreatorship', args: [newOwner] }
 }
 
-/** The collection as builder-server will report it once the subgraph catches up with the transfer. */
-export function withOwner(collection: Collection, newOwner: string): Collection {
-  return { ...collection, owner: newOwner.toLowerCase() }
+export type OwnerSyncDeps = {
+  syncCollectionOwner: (collectionId: string) => Promise<Collection>
+}
+
+/**
+ * Asks builder-server to store the new owner until it reports it: the subgraph lags the transaction,
+ * and a request that fails in between is retried too, as the transfer itself can't be undone.
+ */
+export async function waitForOwnerSync(
+  collectionId: string,
+  newOwner: string,
+  deps: OwnerSyncDeps,
+  retries = CONSOLIDATE_RETRIES,
+  retryDelayMs = CONSOLIDATE_RETRY_DELAY_MS
+): Promise<Collection> {
+  const owner = newOwner.toLowerCase()
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const collection = await deps.syncCollectionOwner(collectionId)
+      if (collection.owner.toLowerCase() === owner) return collection
+      if (attempt >= retries) throw new SellItemError('generic', 'The transfer was not indexed in time')
+    } catch (error) {
+      if (attempt >= retries) throw error
+    }
+    await new Promise(resolve => setTimeout(resolve, retryDelayMs))
+  }
 }

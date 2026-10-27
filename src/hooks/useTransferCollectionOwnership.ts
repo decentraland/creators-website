@@ -2,7 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { errorCode, track } from '~/lib/analytics'
 import { sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
-import { buildTransferOwnershipCall, withOwner } from '~/lib/collectionOwnership'
+import { syncCollectionOwner } from '~/lib/builder'
+import { buildTransferOwnershipCall, waitForOwnerSync } from '~/lib/collectionOwnership'
 import { getMaticChainId } from '~/lib/publishCollection'
 import { SellItemError } from '~/lib/sales'
 
@@ -13,7 +14,7 @@ export type TransferOwnershipVariables = {
   onSigned?: () => void
 }
 
-/** Hands the collection to another wallet in one transaction and waits until it is mined. */
+/** Hands the collection to another wallet in one transaction and waits until builder-server knows. */
 export function useTransferCollectionOwnership(session: Session | null) {
   const queryClient = useQueryClient()
   const chainId = getMaticChainId()
@@ -26,12 +27,13 @@ export function useTransferCollectionOwnership(session: Session | null) {
       onSigned?.()
       const mined = await waitForTransaction(chainId, txHash)
       if (!mined) throw new SellItemError('generic', 'The transferCreatorship transaction reverted')
-      return withOwner(collection, newOwner)
+      track('Transfer collection ownership', { collectionId: collection.id, newOwner: newOwner.toLowerCase() })
+      return waitForOwnerSync(collection.id, newOwner, {
+        syncCollectionOwner: id => syncCollectionOwner(session.address, id)
+      })
     },
     onSuccess: collection => {
-      track('Transfer collection ownership', { collectionId: collection.id, newOwner: collection.owner })
       if (!session) return
-      // builder-server reports the owner from the subgraph, which lags the transaction: patch what this tab shows.
       queryClient.setQueryData(['collection', session.address, collection.id], collection)
       void queryClient.invalidateQueries({ queryKey: ['collections'] })
     },
