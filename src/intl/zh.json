@@ -119,6 +119,7 @@
       "copy_address": "复制合约地址",
       "collaborators": "协作者",
       "senders": "发送者",
+      "transfer_ownership": "转让所有权",
       "delete": "删除系列",
       "copied_urn": "URN 已复制到剪贴板",
       "copied_address": "合约地址已复制到剪贴板",
@@ -510,7 +511,9 @@
       "title_senders": "无法更新发送者",
       "description_senders": "保存此系列的发送者时出错了，请重试。",
       "title_collaborators": "无法更新协作者",
-      "description_collaborators": "保存此系列的协作者时出错了，请重试。"
+      "description_collaborators": "保存此系列的协作者时出错了，请重试。",
+      "title_transfer": "无法转让所有权",
+      "description_transfer": "转让此系列时出错了。重试前请先确认此系列的所有者。"
     },
     "remove": {
       "title": "要下架吗？",
@@ -1144,6 +1147,26 @@
       "leave": "放弃更改",
       "keep": "继续编辑"
     }
+  },
+  "transfer_ownership_modal": {
+    "title": "转让所有权",
+    "description": "新所有者将完全掌控“{name}”：编辑其物品、发布更改、销售，以及发送者和协作者列表。如果您同时拥有其中一个角色，将会保留。",
+    "step_details": "详情",
+    "step_confirm": "确认",
+    "confirm_intro": "您即将把“{name}”交给此钱包。请确认无误，此操作无法撤销。",
+    "warning": "此操作无法撤销。只有新所有者才能将此系列转回给您。",
+    "new_owner": "新所有者",
+    "placeholder": "选择或粘贴新所有者的用户 ID",
+    "clear": "清除新所有者",
+    "self": "这是您自己的地址：此系列已经属于您。",
+    "zero": "这是零地址：此系列将永久丢失。",
+    "system": "此地址属于 Decentraland Shop：发送到那里的系列无法找回。",
+    "contract": "这是此系列自身的合约地址：发送到那里的系列无法找回。",
+    "confirm_label": "输入“{name}”以确认",
+    "submit": "转让所有权",
+    "saving": "正在转让所有权……",
+    "success_title": "所有权已转让！",
+    "success_description": "“{name}”现在属于 {owner}。只有当您是其协作者或发送者时，它才会继续留在您的系列中。"
   },
   "required_permissions": {
     "title": "所需权限",
