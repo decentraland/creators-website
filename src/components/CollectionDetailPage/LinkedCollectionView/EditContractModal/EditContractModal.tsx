@@ -1,17 +1,16 @@
 import { useState } from 'react'
 import { useTranslation } from '~/intl'
-import { type RelinkStep } from '~/lib/relinkCollection'
 import { type LinkedContract } from '~/lib/thirdParty'
 import { Button } from '~/components/Button'
 import { EMPTY_LINKED_CONTRACT, LinkedContractFields } from '~/components/LinkedContractFields'
 import { Modal } from '~/components/Modal'
-import * as N from '~/components/CollectionNameInput/CollectionNameInput.styles'
 import * as S from '../EditUrnModal/EditUrnModal.styles'
 
 type Props = {
-  /** Which part of the change is running, for the submit label; null while idle. */
-  step: RelinkStep | null
-  error: string | null
+  /** The contract a previous attempt submitted, so a retry starts from it. */
+  initial?: LinkedContract
+  /** While the change runs for a social login, whose wallet never prompts: the submit button spins instead. */
+  isPending: boolean
   onSubmit: (contract: LinkedContract) => void
   onClose: () => void
 }
@@ -20,22 +19,17 @@ type Props = {
  * Re-points a linked collection to another NFT contract (a redeploy after a hack, a migration), network included.
  * Submitting the contract the collection already names is allowed: it finishes a change that stopped halfway.
  */
-export function EditContractModal({ step, error, onSubmit, onClose }: Props) {
+export function EditContractModal({ initial, isPending, onSubmit, onClose }: Props) {
   const { t } = useTranslation()
-  const [contract, setContract] = useState(EMPTY_LINKED_CONTRACT)
-  const [edited, setEdited] = useState(false)
+  const [contract, setContract] = useState(initial ? { ...initial, check: null } : EMPTY_LINKED_CONTRACT)
   const { network, address, check } = contract
-  const isPending = step !== null
   const canSubmit = !!network && check === 'ok' && !isPending
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
     if (!canSubmit || !network) return
-    setEdited(false)
     onSubmit({ network, address: address.toLowerCase() })
   }
-
-  const shownError = !edited && error ? error : null
 
   return (
     <Modal
@@ -49,15 +43,7 @@ export function EditContractModal({ step, error, onSubmit, onClose }: Props) {
           <S.Heading>{t('edit_contract_modal.heading')}</S.Heading>
           <S.Subtitle>{t('edit_contract_modal.subtitle')}</S.Subtitle>
         </S.Intro>
-        <LinkedContractFields
-          value={contract}
-          onChange={next => {
-            setContract(next)
-            if (next.network !== network || next.address !== address) setEdited(true)
-          }}
-        />
-        {shownError && <N.ErrorText data-testid="edit-contract-error">{shownError}</N.ErrorText>}
-        {step && <S.Preview data-testid="edit-contract-step">{t(`edit_contract_modal.step.${step}`)}</S.Preview>}
+        <LinkedContractFields value={contract} onChange={setContract} />
         <S.Actions>
           <Button
             type="button"

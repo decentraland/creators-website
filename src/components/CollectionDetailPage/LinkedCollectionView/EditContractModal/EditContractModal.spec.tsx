@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { type ReactNode } from 'react'
+import { type ContractNetwork } from '@dcl/schemas'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TranslationProvider } from '~/intl'
@@ -19,7 +20,7 @@ const wrapper = ({ children }: { children: ReactNode }) => <TranslationProvider>
 function renderModal(props: Partial<React.ComponentProps<typeof EditContractModal>> = {}) {
   const onSubmit = vi.fn()
   const onClose = vi.fn()
-  const view = render(<EditContractModal step={null} error={null} onSubmit={onSubmit} onClose={onClose} {...props} />, {
+  const view = render(<EditContractModal isPending={false} onSubmit={onSubmit} onClose={onClose} {...props} />, {
     wrapper
   })
   return { onSubmit, onClose, rerender: view.rerender }
@@ -48,18 +49,21 @@ describe('EditContractModal', () => {
     expect(onSubmit).toHaveBeenCalledWith({ network: 'amoy', address: CONTRACT.toLowerCase() })
   })
 
-  it('shows which step is running and keeps the dialog from closing meanwhile', () => {
-    const { onClose } = renderModal({ step: 'tx' })
-    expect(screen.getByTestId('edit-contract-step')).toHaveTextContent('Confirm in your wallet')
+  it('spins the submit button and keeps the dialog from closing while the change runs', () => {
+    const { onClose } = renderModal({ isPending: true })
     expect(screen.getByTestId('edit-contract-submit')).toBeDisabled()
     expect(screen.getByTestId('edit-contract-cancel')).toBeDisabled()
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('shows the failed run until the contract is edited again', async () => {
-    renderModal({ error: 'Something failed' })
-    expect(screen.getByTestId('edit-contract-error')).toHaveTextContent('Something failed')
-    await userEvent.type(screen.getByTestId('linked-contract-address-input'), '0x')
-    expect(screen.queryByTestId('edit-contract-error')).not.toBeInTheDocument()
+  it('starts from the contract a previous attempt submitted', async () => {
+    checkMock.mockResolvedValue('ok')
+    const { onSubmit } = renderModal({
+      initial: { network: 'amoy' as ContractNetwork, address: CONTRACT.toLowerCase() }
+    })
+    expect(screen.getByTestId('linked-contract-address-input')).toHaveValue(CONTRACT.toLowerCase())
+    await waitFor(() => expect(screen.getByTestId('edit-contract-submit')).toBeEnabled(), { timeout: 3000 })
+    await userEvent.click(screen.getByTestId('edit-contract-submit'))
+    expect(onSubmit).toHaveBeenCalledWith({ network: 'amoy', address: CONTRACT.toLowerCase() })
   })
 })

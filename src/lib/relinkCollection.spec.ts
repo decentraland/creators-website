@@ -57,7 +57,7 @@ describe('relinkCollection', () => {
     const result = await relinkCollection(d, params)
 
     expect(order).toEqual(['save', 'tx'])
-    expect(steps).toEqual(['collection', 'tx', 'items'])
+    expect(steps).toEqual(['collection', 'signing', 'pending', 'items'])
     expect(d.saveCollection).toHaveBeenCalledWith(
       expect.objectContaining({ linkedContractAddress: NEW.address, linkedContractNetwork: NEW.network })
     )
@@ -89,7 +89,7 @@ describe('relinkCollection', () => {
 
     expect(d.saveCollection).not.toHaveBeenCalled()
     expect(d.sendTransaction).not.toHaveBeenCalled()
-    expect(steps).toEqual(['tx', 'items'])
+    expect(steps).toEqual(['signing', 'items'])
     expect(d.saveItem).toHaveBeenCalledTimes(1)
     expect(vi.mocked(d.saveItem).mock.calls[0][0].id).toBe('left')
     expect(result).toEqual({ moved: 1 })

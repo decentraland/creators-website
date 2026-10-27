@@ -13,7 +13,7 @@ import { track } from '~/lib/analytics'
 import { previewCollectionFromDetail } from '~/lib/explorer'
 import { fetchAllLinkedCollectionItems, isRefusedRequest } from '~/lib/builder'
 import { captureError } from '~/lib/monitoring'
-import { sendContractTransaction, settleTransaction, type Session } from '~/lib/auth'
+import { isSocialLogin, sendContractTransaction, settleTransaction, type Session } from '~/lib/auth'
 import { shortenAddress } from '~/lib/address'
 import { copyToClipboard } from '~/lib/clipboard'
 import { isCollectionLocked, type Collection } from '~/lib/collections'
@@ -33,6 +33,11 @@ import { isContractInUseError } from '~/lib/linkedContract'
 import { type Mappings } from '~/lib/mappings'
 import { getMaticChainId } from '~/lib/publishCollection'
 import { loadRelinkFrom, relinkCollection, storeRelinkFrom, type RelinkStep } from '~/lib/relinkCollection'
+import errorArt from '~/assets/modal-error.png'
+import { ConfirmModal } from '~/components/ConfirmModal'
+import { PendingModal } from '~/components/PendingModal'
+import { SuccessModal } from '~/components/SuccessModal'
+
 import { fetchRegisteredContracts } from '~/lib/thirdPartyRegistry'
 import { useNotifications } from '~/lib/notifications'
 import { pageRangeLabel } from '~/lib/pagination'
@@ -78,6 +83,12 @@ import { LinkedItemRow, nextMappingStates } from './LinkedItemRow'
 import { PublishLinkedItemsModal } from './PublishLinkedItemsModal'
 import { PushLinkedChangesModal } from './PushLinkedChangesModal'
 import * as S from './LinkedCollectionView.styles'
+
+type RelinkView =
+  | { kind: 'form'; last?: LinkedContract }
+  | { kind: 'running'; step: RelinkStep; to: LinkedContract }
+  | { kind: 'success'; moved: number }
+  | { kind: 'error'; inUse: boolean; to: LinkedContract }
 
 const NETWORKS: string[] = Object.values(ContractNetwork)
 // In the order an item goes through them.
@@ -129,10 +140,14 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
 
   const [isRenameOpen, setRenameOpen] = useState(false)
   const [isUrnOpen, setUrnOpen] = useState(false)
-  // The contract the collection had when the dialog was opened: a retry after a partial run still knows what to replace.
-  const [contractAtOpen, setContractAtOpen] = useState<LinkedContract | null>(null)
-  const [relinkStep, setRelinkStep] = useState<RelinkStep | null>(null)
-  const [relinkError, setRelinkError] = useState<string | null>(null)
+  // The contract change: `from` is what the collection had when the dialog opened (a retry after a partial run still
+  // knows what to replace), `view` which of its screens is up.
+  const [relink, setRelink] = useState<{ from: LinkedContract | null; view: RelinkView } | null>(null)
+  const runningView = relink?.view.kind === 'running' ? relink.view : null
+  const relinkStep = runningView?.step ?? null
+  // Bumped when the user backs out of the wallet prompt, so a run that still finishes is not shown.
+  const relinkAttempt = useRef(0)
+  const errorView = relink?.view.kind === 'error' ? relink.view : null
   const [addItemsFiles, setAddItemsFiles] = useState<File[] | null>(null)
   const [bulkEditFiles, setBulkEditFiles] = useState<File[] | null>(null)
   const bulkInputRef = useRef<HTMLInputElement>(null)
@@ -318,17 +333,24 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     saveCollection.reset()
   }
 
+  function openContract() {
+    if (contract) setRelink({ from: loadRelinkFrom(collection.id) ?? contract, view: { kind: 'form' } })
+  }
+
   function closeContract() {
-    setContractAtOpen(null)
-    setRelinkError(null)
+    setRelink(null)
   }
 
   async function relinkContract(next: LinkedContract) {
-    if (!thirdParty) return
-    setRelinkError(null)
+    if (!thirdParty || !relink) return
+    const { from } = relink
+    const attempt = ++relinkAttempt.current
+    const show = (view: RelinkView) => {
+      if (relinkAttempt.current === attempt) setRelink({ from, view })
+    }
     try {
       const chainId = getMaticChainId()
-      if (contractAtOpen && !isSameContract(contractAtOpen, next)) storeRelinkFrom(collection.id, contractAtOpen)
+      if (from && !isSameContract(from, next)) storeRelinkFrom(collection.id, from)
       const { moved } = await relinkCollection(
         {
           saveCollection: saveCollection.mutateAsync,
@@ -337,34 +359,22 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
           settleTransaction: txHash => settleTransaction(chainId, txHash),
           fetchItems: () => fetchAllLinkedCollectionItems(address, collection.id),
           saveItem: saveItemPatch,
-          onStep: setRelinkStep
+          onStep: step => show({ kind: 'running', step, to: next })
         },
-        { chainId, collection, thirdParty, from: contractAtOpen, to: next }
+        { chainId, collection, thirdParty, from, to: next }
       )
-      track('Edit TP Collection Contract', {
-        collectionId: collection.id,
-        from: contractAtOpen,
-        to: next,
-        items: moved
-      })
+      track('Edit TP Collection Contract', { collectionId: collection.id, from, to: next, items: moved })
       storeRelinkFrom(collection.id, null)
       void curations.refetch()
-      closeContract()
-      showToast(t('linked_collection.contract_saved', { count: moved }))
+      show({ kind: 'success', moved })
     } catch (error) {
-      if (!isContractInUseError(error)) {
-        captureError(error, { flow: 'linked_collection_contract', collectionId: collection.id })
-      }
-      setRelinkError(
-        isContractInUseError(error)
-          ? t('create_linked_collection_modal.error_contract_in_use')
-          : t('linked_collection.contract_error')
-      )
+      const inUse = isContractInUseError(error)
+      if (!inUse) captureError(error, { flow: 'linked_collection_contract', collectionId: collection.id })
+      show({ kind: 'error', inUse, to: next })
     } finally {
       // A run that stopped halfway has already changed the collection, the registry or some items.
       void queryClient.invalidateQueries({ queryKey: thirdPartyKey(address, thirdParty.id) })
       invalidateCollectionItems(queryClient, collection.id)
-      setRelinkStep(null)
     }
   }
 
@@ -488,9 +498,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
             onEditUrn={canEditCollection ? () => setUrnOpen(true) : undefined}
             onEditContract={
               // A mapping edit still waiting to save would write the old contract back after the change.
-              canEdit && contract && thirdParty && unsavedMappings.size === 0
-                ? () => setContractAtOpen(loadRelinkFrom(collection.id) ?? contract)
-                : undefined
+              canEdit && contract && thirdParty && unsavedMappings.size === 0 ? openContract : undefined
             }
             onEditInBulk={canEdit && total > 0 ? () => bulkInputRef.current?.click() : undefined}
             onDeleted={() => navigate('/collections', { replace: true })}
@@ -795,12 +803,56 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
           onClose={closeUrn}
         />
       )}
-      {contractAtOpen && (
+      {relink && (relink.view.kind === 'form' || (relink.view.kind === 'running' && isSocialLogin(session))) && (
         <EditContractModal
-          step={relinkStep}
-          error={relinkError}
+          initial={relink.view.kind === 'form' ? relink.view.last : relink.view.to}
+          isPending={relink.view.kind === 'running'}
           onSubmit={next => void relinkContract(next)}
           onClose={closeContract}
+        />
+      )}
+      {relink && runningView && !isSocialLogin(session) && (
+        <PendingModal
+          label={t(
+            runningView.step === 'signing' ? 'sell_item_modal.confirm_in_wallet' : 'edit_contract_modal.running.working'
+          )}
+          onCancel={
+            runningView.step === 'signing'
+              ? () => {
+                  relinkAttempt.current++
+                  setRelink({ from: relink.from, view: { kind: 'form', last: runningView.to } })
+                }
+              : undefined
+          }
+          testId="edit-contract-running"
+        />
+      )}
+      {relink?.view.kind === 'success' && (
+        <SuccessModal
+          title={t('edit_contract_modal.success.title')}
+          description={t('edit_contract_modal.success.body', { count: relink.view.moved })}
+          onDone={closeContract}
+        />
+      )}
+      {relink && errorView && (
+        <ConfirmModal
+          title={t('edit_contract_modal.error.title')}
+          description={t(
+            errorView.inUse ? 'create_linked_collection_modal.error_contract_in_use' : 'edit_contract_modal.error.body'
+          )}
+          art={{ src: errorArt }}
+          onClose={closeContract}
+          cancel={{
+            label: t('publish_collection_modal.error.cancel'),
+            onClick: closeContract,
+            testId: 'edit-contract-error-cancel'
+          }}
+          confirm={{
+            label: t('publish_collection_modal.error.try_again'),
+            onClick: () => setRelink({ from: relink.from, view: { kind: 'form', last: errorView.to } }),
+            testId: 'edit-contract-error-retry'
+          }}
+          testId="edit-contract-error"
         />
       )}
       {publishView.kind === 'publish' && thirdParty && (

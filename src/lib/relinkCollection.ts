@@ -8,7 +8,7 @@ import { relinkMappings } from '~/lib/mappings'
 import { isSameContract, withContractReplaced, type LinkedContract, type ThirdParty } from '~/lib/thirdParty'
 import { buildUpdateThirdPartyCall } from '~/lib/thirdPartyRegistry'
 
-export type RelinkStep = 'collection' | 'tx' | 'items'
+export type RelinkStep = 'collection' | 'signing' | 'pending' | 'items'
 
 export type RelinkDeps = {
   saveCollection: (collection: Collection) => Promise<Collection>
@@ -73,7 +73,7 @@ export async function relinkCollection(deps: RelinkDeps, params: RelinkParams): 
   }
 
   if (thirdParty.published) {
-    deps.onStep?.('tx')
+    deps.onStep?.('signing')
     const listed = await deps.fetchRegisteredContracts()
     // A record this code cannot read would be rewritten with `to` alone, dropping the sibling contracts.
     if (listed.length === 0 && thirdParty.contracts.length > 0) {
@@ -82,6 +82,7 @@ export async function relinkCollection(deps: RelinkDeps, params: RelinkParams): 
     if (!listed.some(contract => isSameContract(contract, to))) {
       const contracts = withContractReplaced(listed, from, to)
       const txHash = await deps.sendTransaction(buildUpdateThirdPartyCall(chainId, { ...thirdParty, contracts }))
+      deps.onStep?.('pending')
       const outcome = await deps.settleTransaction(txHash)
       // A dropped or still-pending transaction may have been replaced by a speed-up that did the update.
       if (outcome !== 'mined') {
