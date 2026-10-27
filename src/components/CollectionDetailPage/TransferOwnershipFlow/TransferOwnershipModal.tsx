@@ -61,10 +61,6 @@ export function TransferOwnershipModal({
         <S.Description data-testid="transfer-ownership-description">
           {t('transfer_ownership_modal.description', { name: collection.name })}
         </S.Description>
-        <S.Note data-variant="warning" data-testid="transfer-ownership-warning">
-          <WarningIcon aria-hidden />
-          <p>{t('transfer_ownership_modal.warning')}</p>
-        </S.Note>
         <S.Field>
           <S.Label>{t('transfer_ownership_modal.new_owner')}</S.Label>
           <BeneficiaryInput
@@ -91,6 +87,10 @@ export function TransferOwnershipModal({
             />
           </S.Box>
         </S.Field>
+        <S.Note data-variant="warning" data-testid="transfer-ownership-warning">
+          <WarningIcon aria-hidden />
+          <p>{t('transfer_ownership_modal.warning')}</p>
+        </S.Note>
       </S.Body>
 
       <Sell.Footer>
