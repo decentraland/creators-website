@@ -45,7 +45,7 @@ type Props = {
 const MB = 1024 * 1024
 const COPIED_FEEDBACK_MS = 1500
 
-function formatSize(t: Translate, bytes: number): string {
+export function formatSize(t: Translate, bytes: number): string {
   return bytes >= MB
     ? t('approval_flow.size_mb', { size: (bytes / MB).toFixed(1) })
     : t('approval_flow.size_kb', { size: (bytes / 1024).toFixed(1) })

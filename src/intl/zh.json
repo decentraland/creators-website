@@ -1981,8 +1981,7 @@
     "deploy": {
       "title": "上传文件",
       "body": "将{count, plural, other {# 个已批准物品}}上传到内容服务器，使其在 Decentraland 中显示。",
-      "action": "上传",
-      "uploading_body": "每个物品上传后，其审核将标记为已批准。"
+      "action": "上传"
     },
     "columns": {
       "urn": "标识符"
