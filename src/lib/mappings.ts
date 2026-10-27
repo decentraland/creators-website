@@ -42,6 +42,16 @@ export function buildItemMappings(mapping: Mapping, contract: LinkedContract): M
   return { [contract.network]: { [contract.address.toLowerCase()]: [mapping] } }
 }
 
+/** The same mapping moved under another contract, for a collection whose NFT contract was redeployed; null when unmapped. */
+export function relinkMappings(
+  mappings: Mappings | null | undefined,
+  from: LinkedContract,
+  to: LinkedContract
+): Mappings | null {
+  const mapping = getItemMapping(mappings, from)
+  return mapping ? buildItemMappings(mapping, to) : null
+}
+
 /** `007` → `7`: the schema matches ids as exact strings, so a padded id would never match its token. */
 export function normalizeTokenId(value: string): string {
   const trimmed = value.trim()

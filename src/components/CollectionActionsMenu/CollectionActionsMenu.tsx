@@ -37,6 +37,8 @@ type Props = {
   onManageRoles?: (kind: RoleKind) => void
   /** Linked collections only: opens the URN dialog while the collection is unpublished. */
   onEditUrn?: () => void
+  /** Linked collections only: re-points the collection to another NFT contract, published or not. */
+  onEditContract?: () => void
   /** Linked collections only: re-uploads zips over the items they name. */
   onEditInBulk?: () => void
   onDeleted?: () => void
@@ -55,6 +57,7 @@ export function CollectionActionsMenu({
   forumLink,
   onManageRoles,
   onEditUrn,
+  onEditContract,
   onEditInBulk,
   onDeleted
 }: Props) {
@@ -82,13 +85,14 @@ export function CollectionActionsMenu({
   const showForum = compact && !!forumLink
   const showDiscount = compact && !!onCreateDiscount
   const showEditUrn = !compact && isLinked && !isOnChain && !!onEditUrn
+  const showEditContract = !compact && isLinked && !!onEditContract
   const showEditInBulk = !compact && isLinked && !!onEditInBulk
   // A linked collection's URN is meaningful from day one (it names its third party); a standard one's only on chain.
   const showCopyUrn = isOnChain || isLinked
 
   const hasLeadingActions = showPreviewInWorld || showSend || showPreview || showDiscount || showForum
 
-  if (!showCopyUrn && !canDelete && !hasLeadingActions && !showEditUrn && !showEditInBulk) {
+  if (!showCopyUrn && !canDelete && !hasLeadingActions && !showEditUrn && !showEditContract && !showEditInBulk) {
     return null
   }
 
@@ -158,6 +162,11 @@ export function CollectionActionsMenu({
             {showEditUrn && (
               <ActionsMenuItem testId="edit-collection-urn" onClick={onEditUrn}>
                 {t('linked_collection.actions.edit_urn')}
+              </ActionsMenuItem>
+            )}
+            {showEditContract && (
+              <ActionsMenuItem testId="edit-linked-contract" onClick={onEditContract}>
+                {t('linked_collection.actions.edit_contract')}
               </ActionsMenuItem>
             )}
             {showEditInBulk && (

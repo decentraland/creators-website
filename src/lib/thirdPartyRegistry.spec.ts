@@ -10,6 +10,7 @@ import {
   buildBuyItemSlotsCall,
   buildReviewThirdPartyCall,
   buildReviewThirdPartyWithRootCall,
+  buildUpdateThirdPartyCall,
   fetchRegisteredThirdParty,
   fetchThirdPartyPrice,
   getThirdPartyRegistry,
@@ -68,6 +69,24 @@ describe('buildAddThirdPartyCall', () => {
     const [parties] = roundTrip(call)
     expect(parties[0][3]).toHaveLength(2)
     expect(parties[0][4]).toEqual([true, true])
+  })
+})
+
+describe('buildUpdateThirdPartyCall', () => {
+  it('rewrites the metadata with the new contract and leaves resolver, managers and slots untouched', () => {
+    const next = { network: 'mainnet' as ContractNetwork, address: '0x' + '2'.repeat(40) }
+    const call = buildUpdateThirdPartyCall(CHAIN_ID, { ...thirdParty, contracts: [next] })
+
+    expect(call.method).toBe('updateThirdParties')
+    const [parties] = roundTrip(call)
+    expect(parties).toHaveLength(1)
+    const [id, metadata, resolver, managers, enabled, slots] = parties[0]
+    expect(id).toBe(THIRD_PARTY_ID)
+    expect(metadata).toBe(`tp:1:Brand:A brand:mainnet-${next.address}`)
+    expect(resolver).toBe('')
+    expect(managers).toEqual([])
+    expect(enabled).toEqual([])
+    expect(slots.toString()).toBe('0')
   })
 })
 

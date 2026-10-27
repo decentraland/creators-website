@@ -1646,10 +1646,13 @@
     "select_item": "Seleccionar {name}",
     "urn_saved": "URN actualizada",
     "urn_error": "No pudimos actualizar la URN. Puede que ya esté en uso o que el ítem esté publicado.",
+    "contract_saved": "Contrato actualizado. {count, plural, =0 {Ningún ítem tenía mapping} one {1 ítem listo para enviar cambios} other {# ítems listos para enviar cambios}}.",
+    "contract_error": "No pudimos cambiar el contrato. Lo que ya se completó no se pierde: vuelve a enviarlo para terminar.",
     "mapping_error": "No pudimos guardar el mapeo de {name}. Inténtalo de nuevo.",
     "actions": {
       "edit_urn": "Editar URN",
-      "edit_in_bulk": "Editar en bloque"
+      "edit_in_bulk": "Editar en bloque",
+      "edit_contract": "Cambiar contrato vinculado"
     },
     "item_actions": {
       "edit_urn": "Editar URN"
@@ -1815,6 +1818,18 @@
     "error_generic": "No pudimos crear tu colección vinculada. Inténtalo de nuevo.",
     "submit": "Crear",
     "contract_placeholder": "Dirección del contrato 0x…"
+  },
+  "edit_contract_modal": {
+    "title": "Cambiar contrato vinculado",
+    "heading": "Vincular otro contrato NFT",
+    "subtitle": "Úsalo cuando el contrato NFT se volvió a desplegar. Los ítems mapeados conservan sus token ids bajo el nuevo contrato y vuelven a pasar por revisión.",
+    "error_same": "La colección ya está vinculada a este contrato.",
+    "submit": "Cambiar contrato",
+    "step": {
+      "tx": "Confirma en tu wallet…",
+      "collection": "Guardando colección…",
+      "items": "Moviendo mappings de los ítems…"
+    }
   },
   "edit_urn_modal": {
     "title": {

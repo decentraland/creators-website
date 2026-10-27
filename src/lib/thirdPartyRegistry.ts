@@ -44,6 +44,21 @@ export function buildAddThirdPartyCall(
   }
 }
 
+/**
+ * Rewrites a registered third party's metadata (name, description, linked contracts). Empty resolver, managers and
+ * slots leave those as they are: the registry skips every empty field.
+ */
+export function buildUpdateThirdPartyCall(
+  chainId: number,
+  thirdParty: Pick<ThirdParty, 'id' | 'name' | 'description' | 'contracts'>
+): ContractCall {
+  return {
+    contract: getThirdPartyRegistry(chainId),
+    method: 'updateThirdParties',
+    args: [[[thirdParty.id, toRawMetadata(thirdParty), '', [], [], '0']]]
+  }
+}
+
 /** Buys `qty` more item slots for a registered third party (legacy `buyItemSlots` on later publishes). */
 export function buildBuyItemSlotsCall(
   chainId: number,

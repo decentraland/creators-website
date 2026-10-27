@@ -13,7 +13,7 @@ import { track } from '~/lib/analytics'
 import { previewCollectionFromDetail } from '~/lib/explorer'
 import { fetchAllLinkedCollectionItems, isRefusedRequest } from '~/lib/builder'
 import { captureError } from '~/lib/monitoring'
-import { type Session } from '~/lib/auth'
+import { sendContractTransaction, settleTransaction, type Session } from '~/lib/auth'
 import { shortenAddress } from '~/lib/address'
 import { copyToClipboard } from '~/lib/clipboard'
 import { isCollectionLocked, type Collection } from '~/lib/collections'
@@ -29,7 +29,9 @@ import {
   splitLinkedSelection,
   type ItemCuration
 } from '~/lib/linkedItemStatus'
-import { type Mappings } from '~/lib/mappings'
+import { relinkMappings, type Mappings } from '~/lib/mappings'
+import { getMaticChainId } from '~/lib/publishCollection'
+import { buildUpdateThirdPartyCall } from '~/lib/thirdPartyRegistry'
 import { useNotifications } from '~/lib/notifications'
 import { pageRangeLabel } from '~/lib/pagination'
 import { CurationStatus } from '~/lib/collections'
@@ -46,6 +48,7 @@ import { invalidateCollectionItems } from '~/hooks/usePublishCollection'
 import {
   LINKED_ITEMS_PAGE_SIZE,
   fetchDraftLinkedItems,
+  thirdPartyKey,
   useHasLinkedWork,
   useItemCurations,
   useLinkedCollectionItems
@@ -59,6 +62,7 @@ import { Button } from '~/components/Button'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
+import { EditContractModal, type RelinkStep } from './EditContractModal'
 import { EditUrnModal } from './EditUrnModal'
 import { OpenEditorIcon } from '~/components/Icons'
 import { Pagination } from '~/components/Pagination'
@@ -122,6 +126,9 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
 
   const [isRenameOpen, setRenameOpen] = useState(false)
   const [isUrnOpen, setUrnOpen] = useState(false)
+  const [isContractOpen, setContractOpen] = useState(false)
+  const [relinkStep, setRelinkStep] = useState<RelinkStep | null>(null)
+  const [relinkError, setRelinkError] = useState<string | null>(null)
   const [addItemsFiles, setAddItemsFiles] = useState<File[] | null>(null)
   const [bulkEditFiles, setBulkEditFiles] = useState<File[] | null>(null)
   const bulkInputRef = useRef<HTMLInputElement>(null)
@@ -307,6 +314,59 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     saveCollection.reset()
   }
 
+  function closeContract() {
+    setContractOpen(false)
+    setRelinkError(null)
+  }
+
+  /**
+   * Points the collection at another NFT contract: the registry first (only once the third party is on chain; a
+   * virtual one follows its collection on the server), then the collection, then every mapped item moved under the
+   * new contract so it shows up as ready to push. Each step is idempotent: a failed run is simply submitted again.
+   */
+  async function relinkContract(next: LinkedContract) {
+    if (!contract || !thirdParty) return
+    setRelinkError(null)
+    try {
+      if (thirdParty.published) {
+        setRelinkStep('tx')
+        const chainId = getMaticChainId()
+        const txHash = await sendContractTransaction(
+          session,
+          buildUpdateThirdPartyCall(chainId, { ...thirdParty, contracts: [next] })
+        )
+        const outcome = await settleTransaction(chainId, txHash)
+        if (outcome !== 'mined') throw new Error(`Third party update transaction ${outcome}`)
+      }
+      setRelinkStep('collection')
+      await saveCollection.mutateAsync({
+        ...collection,
+        linkedContractAddress: next.address,
+        linkedContractNetwork: next.network
+      })
+      setRelinkStep('items')
+      const all = await fetchAllLinkedCollectionItems(address, collection.id)
+      let moved = 0
+      for (const item of all) {
+        const mappings = relinkMappings(item.mappings, contract, next)
+        if (!mappings) continue
+        await saveItemPatch(item, { mappings })
+        moved++
+      }
+      track('Edit TP Collection Contract', { collectionId: collection.id, from: contract, to: next, items: moved })
+      void queryClient.invalidateQueries({ queryKey: thirdPartyKey(address, thirdParty.id) })
+      invalidateCollectionItems(queryClient, collection.id)
+      void curations.refetch()
+      closeContract()
+      showToast(t('linked_collection.contract_saved', { count: moved }))
+    } catch (error) {
+      captureError(error, { flow: 'linked_collection_contract', collectionId: collection.id })
+      setRelinkError(t('linked_collection.contract_error'))
+    } finally {
+      setRelinkStep(null)
+    }
+  }
+
   function closeUrn() {
     setUrnOpen(false)
     saveCollection.reset()
@@ -425,6 +485,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
             onPreviewInWorld={total > 0 ? () => previewCollectionFromDetail(collection.id, total) : undefined}
             onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
             onEditUrn={canEditCollection ? () => setUrnOpen(true) : undefined}
+            onEditContract={canEdit && contract && thirdParty ? () => setContractOpen(true) : undefined}
             onEditInBulk={canEdit && total > 0 ? () => bulkInputRef.current?.click() : undefined}
             onDeleted={() => navigate('/collections', { replace: true })}
           />
@@ -726,6 +787,15 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
           error={saveCollection.isError ? t('linked_collection.urn_error') : null}
           onSubmit={saveUrn}
           onClose={closeUrn}
+        />
+      )}
+      {isContractOpen && contract && (
+        <EditContractModal
+          current={contract}
+          step={relinkStep}
+          error={relinkError}
+          onSubmit={next => void relinkContract(next)}
+          onClose={closeContract}
         />
       )}
       {publishView.kind === 'publish' && thirdParty && (
