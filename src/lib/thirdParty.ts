@@ -132,9 +132,10 @@ export function withContractReplaced(
 
 /** The contracts of a raw registry metadata string (builder-server's parseRawMetadata, contracts only). */
 export function contractsFromRawMetadata(raw: string | undefined): LinkedContract[] {
+  // Contracts are the last segment and never contain ':', so a ':' inside a legacy description is harmless.
   const parts = (raw ?? '').split(':')
-  if (parts.length !== 5 || !parts[4]) return []
-  return parts[4].split(';').flatMap(entry => {
+  if (parts.length < 5) return []
+  return parts[parts.length - 1].split(';').flatMap(entry => {
     const [network, address] = entry.split('-')
     return network && address ? [{ network: network as ContractNetwork, address: address.toLowerCase() }] : []
   })

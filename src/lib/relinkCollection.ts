@@ -30,6 +30,28 @@ export type RelinkParams = {
   to: LinkedContract
 }
 
+const FROM_KEY_PREFIX = 'linked-collection.relink-from.'
+
+/** The contract a relink started from, kept across reloads so a later run still knows what to drop from the registry. */
+export function loadRelinkFrom(collectionId: string): LinkedContract | null {
+  try {
+    const raw = localStorage.getItem(FROM_KEY_PREFIX + collectionId)
+    const { network, address } = raw ? (JSON.parse(raw) as Partial<LinkedContract>) : {}
+    return network && address ? { network, address } : null
+  } catch {
+    return null
+  }
+}
+
+export function storeRelinkFrom(collectionId: string, from: LinkedContract | null): void {
+  try {
+    if (from) localStorage.setItem(FROM_KEY_PREFIX + collectionId, JSON.stringify(from))
+    else localStorage.removeItem(FROM_KEY_PREFIX + collectionId)
+  } catch {
+    // Storage may be blocked; the run still works, only a later retry loses `from`.
+  }
+}
+
 export type RelinkResult = {
   /** Items whose mapping moved in this run. */
   moved: number
@@ -53,6 +75,10 @@ export async function relinkCollection(deps: RelinkDeps, params: RelinkParams): 
   if (thirdParty.published) {
     deps.onStep?.('tx')
     const listed = await deps.fetchRegisteredContracts()
+    // A record this code cannot read would be rewritten with `to` alone, dropping the sibling contracts.
+    if (listed.length === 0 && thirdParty.contracts.length > 0) {
+      throw new Error(`Registry record of ${thirdParty.id} could not be parsed`)
+    }
     if (!listed.some(contract => isSameContract(contract, to))) {
       const contracts = withContractReplaced(listed, from, to)
       const txHash = await deps.sendTransaction(buildUpdateThirdPartyCall(chainId, { ...thirdParty, contracts }))

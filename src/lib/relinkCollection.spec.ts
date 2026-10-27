@@ -3,7 +3,7 @@ import { type ContractNetwork } from '@dcl/schemas'
 import { type Collection } from './collections'
 import { type Item } from './items'
 import { MappingType, buildItemMappings } from './mappings'
-import { relinkCollection, type RelinkDeps } from './relinkCollection'
+import { loadRelinkFrom, relinkCollection, storeRelinkFrom, type RelinkDeps } from './relinkCollection'
 import { type ThirdParty } from './thirdParty'
 
 const CHAIN_ID = 80002
@@ -110,11 +110,27 @@ describe('relinkCollection', () => {
     expect(failing.d.saveItem).not.toHaveBeenCalled()
   })
 
+  it('refuses to rewrite a registry record it could not read', async () => {
+    const { d } = deps({ fetchRegisteredContracts: vi.fn(async () => []) })
+    await expect(relinkCollection(d, params)).rejects.toThrow('could not be parsed')
+    expect(d.sendTransaction).not.toHaveBeenCalled()
+  })
+
   it('skips the chain for a third party that is not registered yet', async () => {
     const { d, steps } = deps()
     await relinkCollection(d, { ...params, thirdParty: { ...thirdParty, published: false } })
     expect(d.fetchRegisteredContracts).not.toHaveBeenCalled()
     expect(d.sendTransaction).not.toHaveBeenCalled()
     expect(steps).toEqual(['collection', 'items'])
+  })
+})
+
+describe('loadRelinkFrom / storeRelinkFrom', () => {
+  it('remembers the contract a relink started from until it is cleared', () => {
+    expect(loadRelinkFrom('col')).toBeNull()
+    storeRelinkFrom('col', OLD)
+    expect(loadRelinkFrom('col')).toEqual(OLD)
+    storeRelinkFrom('col', null)
+    expect(loadRelinkFrom('col')).toBeNull()
   })
 })

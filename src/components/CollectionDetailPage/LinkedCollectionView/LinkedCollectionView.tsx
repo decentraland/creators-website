@@ -32,7 +32,7 @@ import {
 import { isContractInUseError } from '~/lib/linkedContract'
 import { type Mappings } from '~/lib/mappings'
 import { getMaticChainId } from '~/lib/publishCollection'
-import { relinkCollection, type RelinkStep } from '~/lib/relinkCollection'
+import { loadRelinkFrom, relinkCollection, storeRelinkFrom, type RelinkStep } from '~/lib/relinkCollection'
 import { fetchRegisteredContracts } from '~/lib/thirdPartyRegistry'
 import { useNotifications } from '~/lib/notifications'
 import { pageRangeLabel } from '~/lib/pagination'
@@ -40,6 +40,7 @@ import { CurationStatus } from '~/lib/collections'
 import {
   LINKED_COLLECTION_NAME_MAX_LENGTH,
   decodeLinkedUrn,
+  isSameContract,
   withCollectionUrnSuffix,
   type LinkedContract,
   type ThirdParty
@@ -153,8 +154,8 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     () => new Set([...mappingStates].filter(([, state]) => state.dirty).map(([itemId]) => itemId)),
     [mappingStates]
   )
-  // Leaving the page within a mapping's save delay would drop the edit.
-  useBeforeUnloadGuard(unsavedMappings.size > 0)
+  // Leaving the page within a mapping's save delay would drop the edit; leaving mid-relink leaves items behind.
+  useBeforeUnloadGuard(unsavedMappings.size > 0 || relinkStep !== null)
   const onMappingDirtyChange = useCallback((itemId: string, dirty: boolean, generation: number) => {
     setMappingStates(current => nextMappingStates(current, itemId, dirty, generation))
   }, [])
@@ -327,6 +328,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     setRelinkError(null)
     try {
       const chainId = getMaticChainId()
+      if (contractAtOpen && !isSameContract(contractAtOpen, next)) storeRelinkFrom(collection.id, contractAtOpen)
       const { moved } = await relinkCollection(
         {
           saveCollection: saveCollection.mutateAsync,
@@ -345,8 +347,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
         to: next,
         items: moved
       })
-      void queryClient.invalidateQueries({ queryKey: thirdPartyKey(address, thirdParty.id) })
-      invalidateCollectionItems(queryClient, collection.id)
+      storeRelinkFrom(collection.id, null)
       void curations.refetch()
       closeContract()
       showToast(t('linked_collection.contract_saved', { count: moved }))
@@ -360,6 +361,9 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
           : t('linked_collection.contract_error')
       )
     } finally {
+      // A run that stopped halfway has already changed the collection, the registry or some items.
+      void queryClient.invalidateQueries({ queryKey: thirdPartyKey(address, thirdParty.id) })
+      invalidateCollectionItems(queryClient, collection.id)
       setRelinkStep(null)
     }
   }
@@ -485,7 +489,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
             onEditContract={
               // A mapping edit still waiting to save would write the old contract back after the change.
               canEdit && contract && thirdParty && unsavedMappings.size === 0
-                ? () => setContractAtOpen(contract)
+                ? () => setContractAtOpen(loadRelinkFrom(collection.id) ?? contract)
                 : undefined
             }
             onEditInBulk={canEdit && total > 0 ? () => bulkInputRef.current?.click() : undefined}
