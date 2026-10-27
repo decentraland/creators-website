@@ -1163,13 +1163,7 @@
     "submit": "转让所有权",
     "saving": "正在转让所有权……",
     "success_title": "所有权已转让！",
-    "success_description": "“{name}”现在属于 {owner}。只有当您是其协作者或发送者时，它才会继续留在您的系列中。",
-    "discard": {
-      "title": "放弃此次转让？",
-      "description": "如果现在离开，不会有任何更改，此系列仍然属于您。",
-      "leave": "放弃",
-      "keep": "继续编辑"
-    }
+    "success_description": "“{name}”现在属于 {owner}。只有当您是其协作者或发送者时，它才会继续留在您的系列中。"
   },
   "required_permissions": {
     "title": "所需权限",

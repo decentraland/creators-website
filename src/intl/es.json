@@ -1163,13 +1163,7 @@
     "submit": "Transferir propiedad",
     "saving": "Transfiriendo la propiedad...",
     "success_title": "¡Propiedad transferida!",
-    "success_description": "“{name}” ahora pertenece a {owner}. Seguirá en tus colecciones solo si eres colaborador o emisor.",
-    "discard": {
-      "title": "¿Descartar esta transferencia?",
-      "description": "Si sales ahora, nada cambia y la colección sigue siendo tuya.",
-      "leave": "Descartar",
-      "keep": "Seguir editando"
-    }
+    "success_description": "“{name}” ahora pertenece a {owner}. Seguirá en tus colecciones solo si eres colaborador o emisor."
   },
   "required_permissions": {
     "title": "Permisos requeridos",

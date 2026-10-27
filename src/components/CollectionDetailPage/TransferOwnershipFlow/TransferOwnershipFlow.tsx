@@ -10,7 +10,6 @@ import { matchesCollectionName } from '~/lib/collectionOwnership'
 import { toSellItemError, type SellFailureReason } from '~/lib/sales'
 import { PendingModal } from '~/components/PendingModal'
 import { SuccessModal } from '~/components/SuccessModal'
-import { ConfirmModal } from '~/components/ConfirmModal'
 import { SaleErrorModal } from '../SellItemFlow/SaleErrorModal'
 import { TransferOwnershipModal } from './TransferOwnershipModal'
 
@@ -30,7 +29,7 @@ type Props = {
  * confirmation; TRANSFER OWNERSHIP sends `transferCreatorship` in one transaction: web3 wallets get the
  * whole-dialog "confirm in your wallet" status, custodial ones just see the button spin. There is no
  * backing out once sent: the wallet prompt can still sign an irreversible transfer, so the dialog stays
- * locked until it settles. Closing with anything filled in asks first.
+ * locked until it settles. Closing never asks: two fields are nothing to lose.
  */
 export function TransferOwnershipFlow({ collection, session, onDone, onClose }: Props) {
   const { t } = useTranslation()
@@ -44,13 +43,12 @@ export function TransferOwnershipFlow({ collection, session, onDone, onClose }: 
   const [reason, setReason] = useState<SellFailureReason | null>(null)
 
   const transfer = useTransferCollectionOwnership(session)
-  const dirty = newOwner !== '' || confirmation !== ''
   const ready = newOwner !== '' && matchesCollectionName(collection, confirmation)
   const busy = transfer.isPending
-  const { isDiscardOpen, requestClose, keepEditing } = useDiscardGuard({
-    state:
-      view === 'form' ? (busy ? 'busy' : 'editing') : view === 'saving' ? 'busy' : view === 'error' ? 'failed' : 'done',
-    dirty,
+  // Only for the busy lock and browser back; nothing to discard, so the close is never questioned.
+  const { requestClose } = useDiscardGuard({
+    state: view === 'saving' || busy ? 'busy' : 'done',
+    dirty: false,
     pending: transfer.isPending,
     onClose
   })
@@ -76,39 +74,19 @@ export function TransferOwnershipFlow({ collection, session, onDone, onClose }: 
   switch (view) {
     case 'form':
       return (
-        <>
-          <TransferOwnershipModal
-            collection={collection}
-            newOwner={newOwner}
-            confirmation={confirmation}
-            friends={friends.data}
-            isLoadingFriends={friends.isLoading}
-            busy={busy}
-            canSubmit={ready && !busy}
-            onNewOwnerChange={setNewOwner}
-            onConfirmationChange={setConfirmation}
-            onSubmit={submit}
-            onClose={requestClose}
-          />
-          {isDiscardOpen && (
-            <ConfirmModal
-              title={t('transfer_ownership_modal.discard.title')}
-              description={t('transfer_ownership_modal.discard.description')}
-              onClose={keepEditing}
-              cancel={{
-                label: t('transfer_ownership_modal.discard.leave'),
-                onClick: onClose,
-                testId: 'discard-transfer-leave'
-              }}
-              confirm={{
-                label: t('transfer_ownership_modal.discard.keep'),
-                onClick: keepEditing,
-                testId: 'discard-transfer-keep'
-              }}
-              testId="discard-transfer-modal"
-            />
-          )}
-        </>
+        <TransferOwnershipModal
+          collection={collection}
+          newOwner={newOwner}
+          confirmation={confirmation}
+          friends={friends.data}
+          isLoadingFriends={friends.isLoading}
+          busy={busy}
+          canSubmit={ready && !busy}
+          onNewOwnerChange={setNewOwner}
+          onConfirmationChange={setConfirmation}
+          onSubmit={submit}
+          onClose={requestClose}
+        />
       )
     case 'saving':
       return (

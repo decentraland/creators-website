@@ -76,21 +76,16 @@ describe('TransferOwnershipFlow', () => {
     expect(screen.queryByTestId('new-owner-selected')).not.toBeInTheDocument()
   })
 
-  it('closes straight away when empty, but asks before discarding what was filled in', async () => {
+  it('closes straight away, even with something filled in: two fields are nothing to lose', async () => {
     const { onClose } = renderFlow()
     await userEvent.click(screen.getByTestId('transfer-cancel'))
     expect(onClose).toHaveBeenCalledTimes(1)
 
     await userEvent.type(screen.getByTestId('transfer-confirmation-input'), 'Pir')
     await userEvent.keyboard('{Escape}')
-    expect(screen.getByTestId('discard-transfer-modal-title')).toHaveTextContent(/discard/i)
-    await userEvent.click(screen.getByTestId('discard-transfer-keep'))
-    expect(screen.getByTestId('transfer-confirmation-input')).toHaveValue('Pir')
-    expect(onClose).toHaveBeenCalledTimes(1)
-
-    await userEvent.click(screen.getByTestId('transfer-ownership-modal-close'))
-    await userEvent.click(screen.getByTestId('discard-transfer-leave'))
     expect(onClose).toHaveBeenCalledTimes(2)
+    await userEvent.click(screen.getByTestId('transfer-ownership-modal-close'))
+    expect(onClose).toHaveBeenCalledTimes(3)
   })
 
   it('walks a web3 wallet through the prompt with no way out, then celebrates and hands over on DONE', async () => {
@@ -126,7 +121,6 @@ describe('TransferOwnershipFlow', () => {
     await act(async () => last(transfer.mutate)[0].onSigned?.())
     expect(screen.getByTestId('transfer-cancel')).toBeDisabled()
     await userEvent.keyboard('{Escape}')
-    expect(screen.queryByTestId('discard-transfer-modal')).not.toBeInTheDocument()
     expect(onClose).not.toHaveBeenCalled()
   })
 

@@ -1163,13 +1163,7 @@
     "submit": "Transfer ownership",
     "saving": "Transferring ownership...",
     "success_title": "Ownership transferred!",
-    "success_description": "“{name}” now belongs to {owner}. It stays in your collections only if you’re one of its collaborators or senders.",
-    "discard": {
-      "title": "Discard this transfer?",
-      "description": "If you leave now, nothing changes and the collection stays yours.",
-      "leave": "Discard",
-      "keep": "Keep editing"
-    }
+    "success_description": "“{name}” now belongs to {owner}. It stays in your collections only if you’re one of its collaborators or senders."
   },
   "required_permissions": {
     "title": "Required permissions",
