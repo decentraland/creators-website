@@ -104,6 +104,8 @@ type Props = {
   collection: Collection
   thirdParty: ThirdParty | undefined
   session: Session
+  /** A signer who is not one of the third party's managers: the collection is published and read-only to them. */
+  isReader: boolean
   page: number
   onBack: () => void
   onPageChange: (page: number) => void
@@ -111,7 +113,7 @@ type Props = {
 
 /** A linked (third-party) collection: its contract, its items with their review status and token mapping, and the
  * actions to grow, publish and push it. */
-export function LinkedCollectionView({ collection, thirdParty, session, page, onBack, onPageChange }: Props) {
+export function LinkedCollectionView({ collection, thirdParty, session, isReader, page, onBack, onPageChange }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { address } = session
@@ -124,7 +126,8 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   const itemsPage = useLinkedCollectionItems(address, collection, page, filter)
   const items = useMemo(() => itemsPage.data?.results ?? [], [itemsPage.data])
   // Every item's latest curation: the rows read theirs, and a pending one anywhere blocks publishing.
-  const curations = useItemCurations(address, collection)
+  // builder-server serves them to managers only, so readers get no status column, as on standard collections.
+  const curations = useItemCurations(address, isReader ? undefined : collection)
   const saveCollection = useSaveCollection(address)
   const queryClient = useQueryClient()
   const saveItem = useSaveItem(address)
@@ -181,7 +184,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     () => (network && contractAddress ? { network: network as ContractNetwork, address: contractAddress } : null),
     [network, contractAddress]
   )
-  const canEdit = !compact && !isCollectionLocked(collection)
+  const canEdit = !isReader && !compact && !isCollectionLocked(collection)
   const canEditCollection = canEdit && !collection.isPublished
   const total = itemsPage.data?.total ?? 0
   const pages = itemsPage.data?.pages ?? 0
@@ -191,8 +194,13 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   useEffect(() => {
     if (tracked.current || !itemsPage.data) return
     tracked.current = true
-    track('View linked collection', { collectionId: collection.id, item_count: itemsPage.data.total, network })
-  }, [collection.id, itemsPage.data, network])
+    track('View linked collection', {
+      collectionId: collection.id,
+      item_count: itemsPage.data.total,
+      network,
+      is_reader: isReader
+    })
+  }, [collection.id, itemsPage.data, network, isReader])
 
   // A filter shows another set of items: a selection made under the previous one would publish things off screen.
   const filterRef = useRef(filter)
@@ -236,7 +244,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   const selectedCount = selection.toPublish.length + selection.toPush.length
   const publishAction = getLinkedPublishAction(selection)
   // Nothing anywhere to publish or push: the button would only ever be disabled, so it isn't shown.
-  const hasWork = useHasLinkedWork(address, collection, curations.data)
+  const hasWork = useHasLinkedWork(address, isReader ? undefined : collection, curations.data)
   const hasPendingReview = useMemo(
     () => [...(curations.data?.values() ?? [])].some(curation => curation.status === CurationStatus.PENDING),
     [curations.data]
@@ -445,14 +453,16 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     <>
       <P.Header>
         <P.HeaderLeft>
-          <P.BackLink
-            type="button"
-            aria-label={t('collection_detail_page.back')}
-            data-testid="back-to-collections"
-            onClick={onBack}
-          >
-            <ArrowBackIcon />
-          </P.BackLink>
+          {!isReader && (
+            <P.BackLink
+              type="button"
+              aria-label={t('collection_detail_page.back')}
+              data-testid="back-to-collections"
+              onClick={onBack}
+            >
+              <ArrowBackIcon />
+            </P.BackLink>
+          )}
           <P.TitleGroup>
             <P.Title title={collection.name}>{collection.name}</P.Title>
             {canEditCollection && (
@@ -499,7 +509,9 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
             collection={collection}
             address={address}
             showRoles={false}
-            onPreviewInWorld={total > 0 ? () => previewCollectionFromDetail(collection.id, total) : undefined}
+            onPreviewInWorld={
+              !isReader && total > 0 ? () => previewCollectionFromDetail(collection.id, total) : undefined
+            }
             onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
             onEditUrn={canEditCollection ? () => setUrnOpen(true) : undefined}
             onEditContract={
@@ -583,7 +595,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
             onClick={() => navigate(`/collections/editor?collection=${collection.id}`)}
           >
             <OpenEditorIcon />
-            {t('collection_detail_page.open_editor')}
+            {t(isReader ? 'collection_detail_page.open_preview' : 'collection_detail_page.open_editor')}
           </Button>
           {canEdit && (
             <Button
@@ -612,7 +624,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
             {t('linked_collection.load_error.retry')}
           </Button>
         </P.Panel>
-      ) : isEmpty && filter === LinkedItemFilter.ALL ? (
+      ) : isEmpty && filter === LinkedItemFilter.ALL && !isReader ? (
         <P.Panel data-testid="collection-empty">
           <P.DropArt src={addItemsArt} alt="" />
           <P.PanelTitle>{t('linked_collection.empty.title')}</P.PanelTitle>

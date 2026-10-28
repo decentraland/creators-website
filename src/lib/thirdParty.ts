@@ -109,11 +109,23 @@ export function isValidUrnSuffix(suffix: string): boolean {
 
 /**
  * Linked collections belong to a third party, not a wallet (builder-server leaves their owner empty):
- * its managers are who may see and edit them, the same check builder-server makes.
+ * its managers are who may edit them, the same check builder-server makes.
  */
 export function isThirdPartyManager(thirdParty: Pick<ThirdParty, 'managers'>, address: string | undefined): boolean {
   if (!address) return false
   return thirdParty.managers.some(manager => manager.toLowerCase() === address.toLowerCase())
+}
+
+/**
+ * Like standard collections, a published linked collection (one with a submitted item) is public: any signer may
+ * view it read-only, as builder-server serves it. Before that, only the third party's managers may.
+ */
+export function canViewLinkedCollection(
+  collection: Pick<Collection, 'isPublished'>,
+  thirdParty: Pick<ThirdParty, 'managers'>,
+  address: string | undefined
+): boolean {
+  return !!address && (collection.isPublished || isThirdPartyManager(thirdParty, address))
 }
 
 export function isSameContract(a: LinkedContract, b: LinkedContract): boolean {
