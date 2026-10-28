@@ -37,7 +37,8 @@ vi.mock('~/lib/featureFlags', async () => {
 })
 vi.mock('~/lib/catalyst', () => ({ fetchBaseWearables: vi.fn().mockResolvedValue([]) }))
 vi.mock('~/lib/analytics', () => ({ track: vi.fn(), errorCode: () => 'unknown' }))
-vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
+vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn(), setMonitoringTags: vi.fn() }))
+vi.mock('~/lib/connectionSpeed', () => ({ measureDownlinkMbps: () => Promise.resolve(null) }))
 
 const validate = vi.fn(async (_source: ValidationSource, _ctx: ValidationContext) => ({ issues: [] }))
 vi.mock('~/lib/validation', async () => {
