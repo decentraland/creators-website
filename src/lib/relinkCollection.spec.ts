@@ -74,14 +74,30 @@ describe('relinkCollection', () => {
     expect(vi.mocked(d.saveItem).mock.calls[0][1]).toEqual({
       mappings: buildItemMappings({ type: MappingType.SINGLE, id: '1' }, NEW)
     })
-    expect(result).toEqual({ moved: 2 })
+    expect(result).toEqual({ linked: 2 })
   })
 
-  it('does not reach the chain when the server refuses the contract', async () => {
+  it('remembers the contract it started from once the server took the new one, and forgets it when done', async () => {
+    const { d } = deps()
+    let stored: unknown
+    vi.mocked(d.sendTransaction).mockImplementation(async () => ((stored = loadRelinkFrom('col')), '0xtx'))
+    await relinkCollection(d, params)
+    expect(stored).toEqual(OLD)
+    expect(loadRelinkFrom('col')).toBeNull()
+  })
+
+  it('also moves an item mapped under a contract the collection never had', async () => {
+    const { d } = deps({ fetchItems: vi.fn(async () => [item('stray', SIBLING)]) })
+    await expect(relinkCollection(d, params)).resolves.toEqual({ linked: 1 })
+    expect(d.saveItem).toHaveBeenCalledWith(item('stray', SIBLING), { mappings: item('stray', NEW).mappings })
+  })
+
+  it('does not reach the chain, nor mark the old contract for removal, when the server refuses the contract', async () => {
     const { d } = deps({ saveCollection: vi.fn(async () => Promise.reject(new Error('in use'))) })
     await expect(relinkCollection(d, params)).rejects.toThrow('in use')
     expect(d.sendTransaction).not.toHaveBeenCalled()
     expect(d.saveItem).not.toHaveBeenCalled()
+    expect(loadRelinkFrom('col')).toBeNull()
   })
 
   it('finishes a run that stopped halfway without a second signature or re-saving moved items', async () => {
@@ -98,7 +114,8 @@ describe('relinkCollection', () => {
     expect(steps).toEqual(['items'])
     expect(d.saveItem).toHaveBeenCalledTimes(1)
     expect(vi.mocked(d.saveItem).mock.calls[0][0].id).toBe('left')
-    expect(result).toEqual({ moved: 1 })
+    // Both items point to NEW now, the one an earlier run moved included.
+    expect(result).toEqual({ linked: 2 })
   })
 
   it('accepts a replaced transaction once the registry shows the contract, and fails when it does not', async () => {
@@ -106,7 +123,7 @@ describe('relinkCollection', () => {
       settleTransaction: vi.fn(async () => 'dropped' as const),
       fetchRegisteredContracts: vi.fn().mockResolvedValueOnce([OLD]).mockResolvedValueOnce([NEW])
     })
-    await expect(relinkCollection(d, params)).resolves.toEqual({ moved: 2 })
+    await expect(relinkCollection(d, params)).resolves.toEqual({ linked: 2 })
 
     const failing = deps({
       settleTransaction: vi.fn(async () => 'dropped' as const),

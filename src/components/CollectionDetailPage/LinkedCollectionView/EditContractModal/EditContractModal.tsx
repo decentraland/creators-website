@@ -4,7 +4,7 @@ import { type LinkedContract } from '~/lib/thirdParty'
 import { Button } from '~/components/Button'
 import { EMPTY_LINKED_CONTRACT, LinkedContractFields } from '~/components/LinkedContractFields'
 import { Modal } from '~/components/Modal'
-import * as S from '../EditUrnModal/EditUrnModal.styles'
+import * as S from '~/components/CollectionNameModal/CollectionNameModal.styles'
 
 type Props = {
   /** The contract a previous attempt submitted, so a retry starts from it. */

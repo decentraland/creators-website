@@ -291,7 +291,7 @@ describe('LinkedCollectionView', () => {
     // A run parked at the wallet prompt: the test decides when and how it ends.
     function parkedRun() {
       let deps!: RelinkDeps
-      let finish!: (result: { moved: number }) => void
+      let finish!: (result: { linked: number }) => void
       let fail!: (error: Error) => void
       vi.mocked(relinkCollection).mockImplementation((d, params) => {
         deps = d
@@ -302,7 +302,7 @@ describe('LinkedCollectionView', () => {
           fail = reject
         })
       })
-      return { deps: () => deps, finish: (moved = 1) => finish({ moved }), fail: (error: Error) => fail(error) }
+      return { deps: () => deps, finish: (linked = 1) => finish({ linked }), fail: (error: Error) => fail(error) }
     }
 
     async function submitContract() {
@@ -321,13 +321,12 @@ describe('LinkedCollectionView', () => {
       setup({ page: [item('a')] })
     })
 
-    it('shows the wallet prompt modal, remembers the old contract, and ends on the success modal', async () => {
+    it('shows the wallet prompt modal, starts from the current contract, and ends on the success modal', async () => {
       const run = parkedRun()
       renderView()
       await rows()
       await submitContract()
       expect(screen.getByTestId('edit-contract-running-label')).toHaveTextContent('Confirm in your wallet')
-      expect(JSON.parse(localStorage.getItem(FROM_KEY) ?? 'null')).toEqual({ network: 'amoy', address: CONTRACT })
       expect(vi.mocked(relinkCollection).mock.calls[0][1]).toMatchObject({
         from: { network: 'amoy', address: CONTRACT },
         to: { network: 'amoy', address: NEW }
@@ -336,7 +335,26 @@ describe('LinkedCollectionView', () => {
       run.finish(2)
       await screen.findByTestId('success-modal-modal')
       expect(screen.getByTestId('success-modal-modal')).toHaveTextContent('2 items now point to the new contract')
-      expect(localStorage.getItem(FROM_KEY)).toBeNull()
+    })
+
+    it('returns to the form quietly when the wallet prompt is rejected', async () => {
+      const run = parkedRun()
+      renderView()
+      await rows()
+      await submitContract()
+      run.fail(Object.assign(new Error('user rejected transaction'), { code: 'ACTION_REJECTED' }))
+      await waitFor(() => expect(screen.queryByTestId('edit-contract-running')).not.toBeInTheDocument())
+      expect(screen.queryByTestId('edit-contract-error')).not.toBeInTheDocument()
+      expect(screen.getByTestId('linked-contract-address-input')).toHaveValue(NEW)
+    })
+
+    it('starts a later run from the contract an interrupted one began with', async () => {
+      localStorage.setItem(FROM_KEY, JSON.stringify({ network: 'mainnet', address: NEW }))
+      parkedRun()
+      renderView()
+      await rows()
+      await submitContract()
+      expect(vi.mocked(relinkCollection).mock.calls[0][1]).toMatchObject({ from: { network: 'mainnet', address: NEW } })
     })
 
     it('lets the user back out of the wallet prompt, and blocks a new run until that one has settled', async () => {
@@ -376,8 +394,6 @@ describe('LinkedCollectionView', () => {
       await screen.findByTestId('edit-contract-error')
       await userEvent.click(screen.getByTestId('edit-contract-error-retry'))
       expect(screen.getByTestId('linked-contract-address-input')).toHaveValue(NEW)
-      // The old contract is still what the next run must replace.
-      expect(JSON.parse(localStorage.getItem(FROM_KEY) ?? 'null')).toEqual({ network: 'amoy', address: CONTRACT })
     })
   })
 })

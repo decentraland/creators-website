@@ -117,12 +117,14 @@ export type RegisteredThirdParty = {
 
 const EMPTY_ROOT = ethers.constants.HashZero
 
+type ThirdPartyRecord = { registered: ethers.BigNumber; maxItems: ethers.BigNumber; root: string; metadata: string }
+
+function readThirdPartyRecord(chainId: number, thirdPartyId: string): Promise<ThirdPartyRecord> {
+  return readContract<ThirdPartyRecord>(getThirdPartyRegistry(chainId), 'thirdParties', [thirdPartyId])
+}
+
 export async function fetchRegisteredThirdParty(chainId: number, thirdPartyId: string): Promise<RegisteredThirdParty> {
-  const record = await readContract<{ registered: ethers.BigNumber; maxItems: ethers.BigNumber; root: string }>(
-    getThirdPartyRegistry(chainId),
-    'thirdParties',
-    [thirdPartyId]
-  )
+  const record = await readThirdPartyRecord(chainId, thirdPartyId)
   return {
     registered: !record.registered.isZero(),
     maxItems: Number(record.maxItems.toString()),
@@ -132,9 +134,7 @@ export async function fetchRegisteredThirdParty(chainId: number, thirdPartyId: s
 
 /** The contracts the registry itself lists for the third party right now, ahead of the subgraph. */
 export async function fetchRegisteredContracts(chainId: number, thirdPartyId: string): Promise<LinkedContract[]> {
-  const record = await readContract<{ metadata: string }>(getThirdPartyRegistry(chainId), 'thirdParties', [
-    thirdPartyId
-  ])
+  const record = await readThirdPartyRecord(chainId, thirdPartyId)
   return contractsFromRawMetadata(record.metadata)
 }
 

@@ -132,20 +132,26 @@ export function withContractReplaced(
   return kept.some(contract => isSameContract(contract, to)) ? kept : [...kept, to]
 }
 
-const REGISTRY_NETWORKS = new Set<string>(Object.values(ContractNetwork))
+export const REGISTRY_NETWORKS = new Set<string>(Object.values(ContractNetwork))
 
 /** The contracts of a raw registry metadata string (builder-server's parseRawMetadata, contracts only). */
 export function contractsFromRawMetadata(raw: string | undefined): LinkedContract[] {
   // Contracts are the last segment and never contain ':', so a ':' inside a legacy description is harmless.
   const parts = (raw ?? '').split(':')
   if (parts.length < 5) return []
-  return parts[parts.length - 1].split(';').flatMap(entry => {
+  const entries = parts[parts.length - 1].split(';')
+  const contracts = entries.flatMap(entry => {
     const [network, address] = entry.split('-')
-    // Description text can end up in this segment on a record with no contracts; only real entries count.
     return network && address && REGISTRY_NETWORKS.has(network) && /^0x[0-9a-fA-F]{40}$/.test(address)
       ? [{ network: network as ContractNetwork, address: address.toLowerCase() }]
       : []
   })
+  // No readable entry is description text on a record without contracts. A partly readable segment is a record this
+  // code must not rewrite, or the unreadable sibling would be dropped from the chain.
+  if (contracts.length > 0 && contracts.length < entries.length) {
+    throw new Error('Registry record lists a contract entry that could not be parsed')
+  }
+  return contracts
 }
 
 /** Legacy convertThirdPartyMetadataToRawMetadata: what `addThirdParties` stores on chain. */

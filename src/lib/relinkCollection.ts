@@ -4,7 +4,7 @@
 import { type ContractCall, type TransactionSettlement } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
-import { relinkMappings } from '~/lib/mappings'
+import { getItemMapping, relinkMappings } from '~/lib/mappings'
 import { isSameContract, withContractReplaced, type LinkedContract, type ThirdParty } from '~/lib/thirdParty'
 import { buildUpdateThirdPartyCall } from '~/lib/thirdPartyRegistry'
 
@@ -63,8 +63,8 @@ export function storeRelinkFrom(collectionId: string, from: LinkedContract | nul
 }
 
 export type RelinkResult = {
-  /** Items whose mapping moved in this run. */
-  moved: number
+  /** Items that point to the new contract once the run ends, those moved by an earlier run included. */
+  linked: number
 }
 
 export async function relinkCollection(deps: RelinkDeps, params: RelinkParams): Promise<RelinkResult> {
@@ -81,6 +81,8 @@ export async function relinkCollection(deps: RelinkDeps, params: RelinkParams): 
     deps.onStep?.('collection')
     await deps.saveCollection({ ...collection, linkedContractAddress: to.address, linkedContractNetwork: to.network })
   }
+  // Remembered only once the server took the contract: a refused run must not mark `from` for removal.
+  if (from && !isSameContract(from, to)) storeRelinkFrom(collection.id, from)
 
   if (thirdParty.published) {
     const listed = await deps.fetchRegisteredContracts()
@@ -108,12 +110,13 @@ export async function relinkCollection(deps: RelinkDeps, params: RelinkParams): 
   }
 
   deps.onStep?.('items')
-  let moved = 0
+  let linked = 0
   for (const item of await deps.fetchItems()) {
     const mappings = relinkMappings(item.mappings, to)
-    if (!mappings) continue
-    await deps.saveItem(item, { mappings })
-    moved++
+    if (mappings) await deps.saveItem(item, { mappings })
+    else if (!getItemMapping(item.mappings, to)) continue
+    linked++
   }
-  return { moved }
+  storeRelinkFrom(collection.id, null)
+  return { linked }
 }

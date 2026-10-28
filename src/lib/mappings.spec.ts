@@ -167,6 +167,11 @@ describe('relinkMappings', () => {
     expect(relinkMappings(stored, to)).toEqual(buildItemMappings(mapping, to))
   })
 
+  it('moves to the same address on another network', () => {
+    const elsewhere = { ...from, network: 'matic' as ContractNetwork }
+    expect(relinkMappings(buildItemMappings(mapping, from), elsewhere)).toEqual(buildItemMappings(mapping, elsewhere))
+  })
+
   it('leaves an item alone when it is unmapped or already under the new contract', () => {
     expect(relinkMappings(null, to)).toBeNull()
     expect(relinkMappings({ mainnet: {} }, to)).toBeNull()

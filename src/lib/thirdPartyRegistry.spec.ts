@@ -207,6 +207,13 @@ describe('fetchRegisteredContracts', () => {
     await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([])
   })
 
+  it('refuses a record whose contract segment is only partly readable', async () => {
+    vi.mocked(readContract).mockResolvedValueOnce({
+      metadata: `tp:1:Brand:A brand:mainnet-0x${'a'.repeat(40)};moon-0x1`
+    })
+    await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).rejects.toThrow('could not be parsed')
+  })
+
   it('still reads the contracts when a legacy description contains a colon', async () => {
     vi.mocked(readContract).mockResolvedValueOnce({ metadata: `tp:1:Brand:Note: legacy:matic-0x${'b'.repeat(40)}` })
     await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([

@@ -32,26 +32,20 @@ import {
 import { isContractInUseError } from '~/lib/linkedContract'
 import { type Mappings } from '~/lib/mappings'
 import { getMaticChainId } from '~/lib/publishCollection'
-import {
-  RelinkCancelledError,
-  loadRelinkFrom,
-  relinkCollection,
-  storeRelinkFrom,
-  type RelinkStep
-} from '~/lib/relinkCollection'
+import { RelinkCancelledError, loadRelinkFrom, relinkCollection, type RelinkStep } from '~/lib/relinkCollection'
+import { isWalletRejection } from '~/lib/walletErrors'
 import errorArt from '~/assets/modal-error.png'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { PendingModal } from '~/components/PendingModal'
 import { SuccessModal } from '~/components/SuccessModal'
-
 import { fetchRegisteredContracts } from '~/lib/thirdPartyRegistry'
 import { useNotifications } from '~/lib/notifications'
 import { pageRangeLabel } from '~/lib/pagination'
 import { CurationStatus } from '~/lib/collections'
 import {
   LINKED_COLLECTION_NAME_MAX_LENGTH,
+  REGISTRY_NETWORKS,
   decodeLinkedUrn,
-  isSameContract,
   withCollectionUrnSuffix,
   type LinkedContract,
   type ThirdParty
@@ -93,10 +87,9 @@ import * as S from './LinkedCollectionView.styles'
 type RelinkView =
   | { kind: 'form'; last?: LinkedContract }
   | { kind: 'running'; step: RelinkStep; to: LinkedContract }
-  | { kind: 'success'; moved: number }
+  | { kind: 'success'; linked: number }
   | { kind: 'error'; inUse: boolean; to: LinkedContract }
 
-const NETWORKS: string[] = Object.values(ContractNetwork)
 // In the order an item goes through them.
 const BASE_FILTERS = [
   LinkedItemFilter.ALL,
@@ -358,8 +351,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     setRelinkInFlight(true)
     try {
       const chainId = getMaticChainId()
-      if (from && !isSameContract(from, next)) storeRelinkFrom(collection.id, from)
-      const { moved } = await relinkCollection(
+      const { linked } = await relinkCollection(
         {
           saveCollection: saveCollection.mutateAsync,
           fetchRegisteredContracts: () => fetchRegisteredContracts(chainId, thirdParty.id),
@@ -372,16 +364,18 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
         },
         { chainId, collection, thirdParty, from, to: next }
       )
-      track('Edit TP Collection Contract', { collectionId: collection.id, from, to: next, items: moved })
-      storeRelinkFrom(collection.id, null)
+      track('Edit TP Collection Contract', { collectionId: collection.id, from, to: next, items: linked })
       void curations.refetch()
-      show({ kind: 'success', moved })
+      show({ kind: 'success', linked })
     } catch (error) {
-      if (!(error instanceof RelinkCancelledError)) {
-        const inUse = isContractInUseError(error)
-        if (!inUse) captureError(error, { flow: 'linked_collection_contract', collectionId: collection.id })
-        show({ kind: 'error', inUse, to: next })
+      if (error instanceof RelinkCancelledError) return
+      if (isWalletRejection(error)) {
+        show({ kind: 'form', last: next })
+        return
       }
+      const inUse = isContractInUseError(error)
+      if (!inUse) captureError(error, { flow: 'linked_collection_contract', collectionId: collection.id })
+      show({ kind: 'error', inUse, to: next })
     } finally {
       // A run that stopped halfway has already changed the collection, the registry or some items.
       void queryClient.invalidateQueries({ queryKey: thirdPartyKey(address, thirdParty.id) })
@@ -538,7 +532,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
           <S.ContractField>
             <S.ContractLabel>{t('linked_collection.network')}</S.ContractLabel>
             <S.ContractValue data-testid="linked-network">
-              {NETWORKS.includes(network) ? t(`linked_collection.networks.${network}`) : network}
+              {REGISTRY_NETWORKS.has(network) ? t(`linked_collection.networks.${network}`) : network}
             </S.ContractValue>
           </S.ContractField>
         )}
@@ -842,7 +836,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
       {relink?.view.kind === 'success' && (
         <SuccessModal
           title={t('edit_contract_modal.success.title')}
-          description={t('edit_contract_modal.success.body', { count: relink.view.moved })}
+          description={t('edit_contract_modal.success.body', { count: relink.view.linked })}
           onDone={closeContract}
         />
       )}
