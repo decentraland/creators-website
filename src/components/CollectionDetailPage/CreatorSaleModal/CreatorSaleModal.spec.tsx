@@ -176,6 +176,29 @@ describe('when a creator discounts a collection from the builder', () => {
     expect(screen.getByTestId('creator-sale-review')).toBeInTheDocument()
   })
 
+  it('should show the open wallet request again on Submit after backing out, never a second one', async () => {
+    const onSubmit = vi.fn(() => new Promise<CollectionDiscount>(() => {}))
+    open({ onSubmit })
+    fireEvent.click(screen.getByTestId('creator-sale-continue'))
+    await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    fireEvent.click(screen.getByTestId('creator-sale-pending-cancel'))
+    await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    expect(screen.getByTestId('creator-sale-pending-label')).toHaveTextContent('Confirm in your wallet')
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+  })
+
+  it('should start a new request on Submit once the one backed out of was dismissed in the wallet', async () => {
+    let reject: (e: unknown) => void = () => {}
+    const onSubmit = vi.fn(() => new Promise<CollectionDiscount>((_, r) => (reject = r)))
+    open({ onSubmit })
+    fireEvent.click(screen.getByTestId('creator-sale-continue'))
+    await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    fireEvent.click(screen.getByTestId('creator-sale-pending-cancel'))
+    await act(async () => reject(new DiscountError('rejected')))
+    await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    expect(onSubmit).toHaveBeenCalledTimes(2)
+  })
+
   it('should show a signature backed out of that still lands as the success', async () => {
     let resolve: (sale: CollectionDiscount) => void = () => {}
     open({ onSubmit: vi.fn(() => new Promise<CollectionDiscount>(r => (resolve = r))) })

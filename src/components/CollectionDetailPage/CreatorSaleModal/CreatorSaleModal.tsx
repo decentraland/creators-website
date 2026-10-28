@@ -220,6 +220,10 @@ export function CreatorSaleModal({
   const attempt = useRef(0)
   // A submit not yet settled, including one backed out of whose wallet prompt may still be signed.
   const unsettled = useRef(false)
+  // The attempt backed out of while still open: Submit shows it again rather than opening a second prompt, which
+  // could sign a second coupon.
+  const backedOut = useRef<number | null>(null)
+  const signed = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [created, setCreated] = useState<CollectionDiscount | null>(null)
 
@@ -344,6 +348,14 @@ export function CreatorSaleModal({
   useEffect(measureStrip, [previewItems, step])
 
   async function submit() {
+    if (backedOut.current !== null) {
+      attempt.current = backedOut.current
+      backedOut.current = null
+      setError(null)
+      setBusy(true)
+      setAwaitingWallet(!isManaged && !signed.current)
+      return
+    }
     setTouched(true)
     setError(null)
     if (terms.problem) {
@@ -365,10 +377,12 @@ export function CreatorSaleModal({
     }
     const run = ++attempt.current
     unsettled.current = true
+    signed.current = false
     setBusy(true)
     try {
       setAwaitingWallet(!isManaged)
       const sale = await onSubmit({ discountPct: terms.discountPct, ...signedWindow }, () => {
+        signed.current = true
         if (attempt.current === run) setAwaitingWallet(false)
       })
       if (!mounted.current) return
@@ -386,6 +400,7 @@ export function CreatorSaleModal({
       }
     } finally {
       unsettled.current = false
+      if (backedOut.current === run) backedOut.current = null
       if (attempt.current === run) {
         setBusy(false)
         setAwaitingWallet(false)
@@ -394,7 +409,7 @@ export function CreatorSaleModal({
   }
 
   function backOutOfWallet() {
-    attempt.current++
+    backedOut.current = attempt.current++
     setBusy(false)
     setAwaitingWallet(false)
   }
