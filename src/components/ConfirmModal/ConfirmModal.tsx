@@ -13,7 +13,7 @@ type Action = {
 
 type Props = {
   title: string
-  description: string
+  description: ReactNode
   /** Illustration shown instead of the warning glyph. */
   art?: { src: string }
   /** Glyph shown instead of the warning one, for confirmations that aren't warnings. */
@@ -30,6 +30,8 @@ type Props = {
   onClose: () => void
   cancel?: Action
   confirm?: Action
+  /** Keeps a lone action full width, for a dialog that hides Cancel only while its request is open. */
+  fillActions?: boolean
   testId: string
 }
 
@@ -47,6 +49,7 @@ export function ConfirmModal({
   onClose,
   cancel,
   confirm,
+  fillActions = false,
   testId
 }: Props) {
   return (
@@ -60,7 +63,7 @@ export function ConfirmModal({
           {error && <S.Text data-testid={`${testId}-error`}>{error}</S.Text>}
           {children}
         </S.Body>
-        <S.Actions>
+        <S.Actions data-single={(!cancel || !confirm) && !fillActions ? '' : undefined}>
           {cancel && (
             <Button
               type="button"

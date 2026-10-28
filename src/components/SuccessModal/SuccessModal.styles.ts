@@ -32,3 +32,10 @@ export const Text = styled.p`
   line-height: 1.5;
   color: ${theme.colors.softWhite};
 `
+
+export const Actions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+`

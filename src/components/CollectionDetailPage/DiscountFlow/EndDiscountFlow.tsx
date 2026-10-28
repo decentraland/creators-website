@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { AccountBalanceWalletOutlined as WalletIcon } from '@mui/icons-material'
 import errorArt from '~/assets/modal-error.png'
 import { useTranslation } from '~/intl'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
@@ -29,22 +30,51 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
   const [view, setView] = useState<View>('confirm')
   const [phase, setPhase] = useState<'confirm' | 'mining'>('confirm')
   const attempt = useRef(0)
+  // This dialog's own request whose wallet prompt the creator backed out of: the prompt stays open in the wallet,
+  // so End shows that request again rather than sending a second paid one.
+  const backedOut = useRef<number | null>(null)
+  const [heldOpen, setHeldOpen] = useState(false)
   // An attempt from a dialog the creator closed counts too: it may still be mining, or have already settled.
   const outcome = endOutcome(session.address, discount.id)
   useBeforeUnloadGuard(ending)
 
+  function hold(id: number | null) {
+    backedOut.current = id
+    setHeldOpen(id !== null)
+  }
+
   function start() {
-    // A prompt the creator backed out of may still be open: a second one would be a second paid cancellation.
+    if (backedOut.current !== null && ending) {
+      attempt.current = backedOut.current
+      hold(null)
+      setPhase('confirm')
+      setView('pending')
+      return
+    }
+    // A request from a dialog the creator closed may still be open: a second one would be a second paid cancellation.
     if (ending || outcome) return
     const id = ++attempt.current
     setPhase('confirm')
     setView('pending')
     end.mutate(
-      { discount, collection, onSigned: () => attempt.current === id && setPhase('mining') },
+      {
+        discount,
+        collection,
+        // Signed even after backing out: only one request is ever open, so it is the one to show mining.
+        onSigned: () => {
+          attempt.current = id
+          hold(null)
+          setPhase('mining')
+          setView('pending')
+        }
+      },
       {
         onSuccess: () => setView('success'),
         onError: cause => {
-          if (attempt.current !== id) return
+          // A request backed out of still owns the confirmation, so its failure is explained there too.
+          const backedOutOf = backedOut.current === id
+          if (backedOutOf) hold(null)
+          if (attempt.current !== id && !backedOutOf) return
           const reason = toDiscountError(cause).reason
           if (reason === 'rejected') {
             setView('confirm')
@@ -66,10 +96,11 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
   if (social) {
     return (
       <ConfirmModal
-        title={t('collection_discount.end.title')}
+        title={t('collection_discount.end.social_title')}
         description={t('collection_discount.end.social_description')}
+        icon={<WalletIcon />}
         onClose={onClose}
-        cancel={{ label: t('collection_discount.end.close'), onClick: onClose, testId: 'end-discount-cancel' }}
+        confirm={{ label: t('collection_discount.end.got_it'), onClick: onClose, testId: 'end-discount-dismiss' }}
         testId="end-discount-modal"
       />
     )
@@ -82,7 +113,9 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
       : outcome === 'ended'
         ? 'success'
         : ending
-          ? 'in_flight'
+          ? heldOpen
+            ? view
+            : 'in_flight'
           : outcome === 'pending'
             ? 'slow'
             : view
@@ -119,6 +152,7 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
           onCancel={
             phase === 'confirm'
               ? () => {
+                  hold(attempt.current)
                   attempt.current++
                   setView('confirm')
                 }
@@ -141,7 +175,7 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
           title={t('collection_discount.end.slow_title')}
           description={t('collection_discount.end.slow_description')}
           onClose={onClose}
-          cancel={{ label: t('collection_discount.end.close'), onClick: onClose, testId: 'end-discount-slow-close' }}
+          confirm={{ label: t('collection_discount.end.got_it'), onClick: onClose, testId: 'end-discount-slow-close' }}
           testId="end-discount-slow-modal"
         />
       )

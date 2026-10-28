@@ -95,7 +95,7 @@ describe('when a creator discounts a collection from the builder', () => {
     ]
     expect(terms).toMatchObject({ discountPct: 30, startsAtMs: undefined, uses: undefined })
     expect(terms.endsAtMs).toBeGreaterThan(Date.now() + 71 * HOUR)
-    expect(screen.getByTestId('creator-sale-success')).toBeInTheDocument()
+    expect(screen.getByTestId('creator-sale-success-modal')).toBeInTheDocument()
   })
 
   it('should send the creator to their store in the Shop once it is live', async () => {
@@ -147,7 +147,7 @@ describe('when a creator discounts a collection from the builder', () => {
   it('should say why nothing can take a discount, and close on its action', () => {
     const { onClose } = open({ of: blocked })
     expect(screen.getByTestId('creator-sale-blocked')).toHaveTextContent(/Credits/)
-    fireEvent.click(screen.getByText('Update prices'))
+    fireEvent.click(screen.getByTestId('creator-sale-blocked-dismiss'))
     expect(onClose).toHaveBeenCalled()
   })
 
@@ -161,27 +161,92 @@ describe('when a creator discounts a collection from the builder', () => {
     fireEvent.click(screen.getByLabelText('Cancel'))
     expect(track).toHaveBeenCalledWith('Abandon collection discount', {
       collectionId: 'c1',
-      lastStep: 'review',
-      reason: 'closed'
+      lastStep: 'review'
     })
     expect(onClose).toHaveBeenCalled()
   })
 
   // A dropped WalletConnect session never answers: the creator has to be able to walk away from it.
-  it('should let a wallet creator close while the wallet prompt is still open', async () => {
-    const { onClose } = open()
+  it('should ask a wallet creator to confirm in their wallet, and let them back out to the review', async () => {
+    open()
     fireEvent.click(screen.getByTestId('creator-sale-continue'))
     await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
-    expect(screen.getByLabelText('Cancel')).toBeEnabled()
-    fireEvent.click(screen.getByLabelText('Cancel'))
-    expect(onClose).toHaveBeenCalled()
+    expect(screen.getByTestId('creator-sale-pending-label')).toHaveTextContent('Confirm in your wallet')
+    fireEvent.click(screen.getByTestId('creator-sale-pending-cancel'))
+    expect(screen.getByTestId('creator-sale-review')).toBeInTheDocument()
   })
 
-  it('should hold a social-login creator in place while their signature is stored', async () => {
+  it('should show the open wallet request again on Submit after backing out, never a second one', async () => {
+    const onSubmit = vi.fn(() => new Promise<CollectionDiscount>(() => {}))
+    open({ onSubmit })
+    fireEvent.click(screen.getByTestId('creator-sale-continue'))
+    await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    fireEvent.click(screen.getByTestId('creator-sale-pending-cancel'))
+    await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    expect(screen.getByTestId('creator-sale-pending-label')).toHaveTextContent('Confirm in your wallet')
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+  })
+
+  it('should keep the terms locked to the request still open in the wallet', async () => {
+    open()
+    fireEvent.click(screen.getByTestId('creator-sale-continue'))
+    await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    fireEvent.click(screen.getByTestId('creator-sale-pending-cancel'))
+    expect(screen.getByTestId('creator-sale-back')).toBeDisabled()
+    expect(screen.getByTestId('creator-sale-request-open')).toBeInTheDocument()
+  })
+
+  it('should explain a request backed out of that later fails', async () => {
+    let reject: (e: unknown) => void = () => {}
+    open({ onSubmit: vi.fn(() => new Promise<CollectionDiscount>((_, r) => (reject = r))) })
+    fireEvent.click(screen.getByTestId('creator-sale-continue'))
+    await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    fireEvent.click(screen.getByTestId('creator-sale-pending-cancel'))
+    await act(async () => reject(new DiscountError('generic')))
+    expect(screen.getByTestId('creator-sale-error')).toBeInTheDocument()
+    expect(screen.getByTestId('creator-sale-back')).toBeEnabled()
+  })
+
+  it('should show a request backed out of as being created once it is signed', async () => {
+    let sign: () => void = () => {}
+    open({
+      onSubmit: vi.fn((...args: unknown[]) => new Promise<CollectionDiscount>(() => (sign = args[1] as () => void)))
+    })
+    fireEvent.click(screen.getByTestId('creator-sale-continue'))
+    await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    fireEvent.click(screen.getByTestId('creator-sale-pending-cancel'))
+    await act(async () => sign())
+    expect(screen.getByTestId('creator-sale-pending-label')).toHaveTextContent('Creating your discount')
+  })
+
+  it('should start a new request on Submit once the one backed out of was dismissed in the wallet', async () => {
+    let reject: (e: unknown) => void = () => {}
+    const onSubmit = vi.fn(() => new Promise<CollectionDiscount>((_, r) => (reject = r)))
+    open({ onSubmit })
+    fireEvent.click(screen.getByTestId('creator-sale-continue'))
+    await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    fireEvent.click(screen.getByTestId('creator-sale-pending-cancel'))
+    await act(async () => reject(new DiscountError('rejected')))
+    await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    expect(onSubmit).toHaveBeenCalledTimes(2)
+  })
+
+  it('should show a signature backed out of that still lands as the success', async () => {
+    let resolve: (sale: CollectionDiscount) => void = () => {}
+    open({ onSubmit: vi.fn(() => new Promise<CollectionDiscount>(r => (resolve = r))) })
+    fireEvent.click(screen.getByTestId('creator-sale-continue'))
+    await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    fireEvent.click(screen.getByTestId('creator-sale-pending-cancel'))
+    await act(async () => resolve(live))
+    expect(screen.getByTestId('creator-sale-success-modal')).toBeInTheDocument()
+  })
+
+  it('should hold a social-login creator on a loading state while their discount is set up', async () => {
     open({ social: true })
     fireEvent.click(screen.getByTestId('creator-sale-continue'))
     await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
-    expect(screen.getByLabelText('Cancel')).toBeDisabled()
+    expect(screen.getByTestId('creator-sale-pending-label')).toHaveTextContent('Creating your discount')
+    expect(screen.queryByTestId('creator-sale-pending-cancel')).not.toBeInTheDocument()
   })
 
   it('should close on Escape', () => {
@@ -222,6 +287,7 @@ describe('when a creator discounts a collection from the builder', () => {
     open()
     fireEvent.click(screen.getByTestId('creator-sale-continue'))
     await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    fireEvent.click(screen.getByTestId('creator-sale-pending-cancel'))
     fireEvent.click(screen.getByLabelText('Cancel'))
     expect(track.mock.calls.filter(([event]) => event === 'Abandon collection discount')).toHaveLength(0)
   })
@@ -231,7 +297,7 @@ describe('when a creator discounts a collection from the builder', () => {
     open({ strict: true, onSubmit: vi.fn().mockResolvedValue(live) })
     fireEvent.click(screen.getByTestId('creator-sale-continue'))
     await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
-    expect(screen.getByTestId('creator-sale-success')).toBeInTheDocument()
+    expect(screen.getByTestId('creator-sale-success-modal')).toBeInTheDocument()
   })
 
   // With reduced motion (or a long press) the calendar is already folded when the click lands on the backdrop.

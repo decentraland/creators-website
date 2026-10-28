@@ -70,7 +70,7 @@ describe('when a creator creates a discount', () => {
     expect(create.mutateAsync).toHaveBeenCalledWith(
       expect.objectContaining({ collection, discountPct: 20, discountedCount: 1 })
     )
-    expect(await screen.findByTestId('creator-sale-success')).toBeInTheDocument()
+    expect(await screen.findByTestId('creator-sale-success-modal')).toBeInTheDocument()
   })
 
   // Signed, but whether it was stored is unknown: the flow settles that coupon instead of offering a new one.

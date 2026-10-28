@@ -1,5 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import {
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+  Close as CloseIcon,
+  InfoOutlined as InfoOutlinedIcon
+} from '@mui/icons-material'
 import { useIntl } from 'react-intl'
 import { useTranslation, type Translate } from '~/intl'
 import { isSocialLogin, type Session } from '~/lib/auth'
@@ -20,7 +26,12 @@ import { discountedPriceCredits, type SaleableCollection } from '~/lib/saleableC
 import { startOfDay, windowOf, type SaleWhen } from '~/lib/saleWindow'
 import { shopCreatorUrl } from '~/lib/shop'
 import { useNotifications } from '~/lib/notifications'
+import { Button } from '~/components/Button'
 import { CollectionMosaic } from '~/components/CollectionMosaic'
+import { ConfirmModal } from '~/components/ConfirmModal'
+import { PendingModal } from '~/components/PendingModal'
+import { StepIndicator } from '~/components/StepIndicator'
+import { SuccessModal } from '~/components/SuccessModal'
 import { Tooltip } from '~/components/Tooltip'
 import { SaleTag } from '../SaleTag'
 import { CurrencyIcon } from './CurrencyIcon'
@@ -128,6 +139,7 @@ export function CreatorSaleModal({
   const [stripEdges, setStripEdges] = useState({ start: true, end: true })
   const whenPicker = useRef<RangePickerHandle>(null)
   const card = useRef<HTMLDivElement>(null)
+  const body = useRef<HTMLDivElement>(null)
   const whenTrigger = useRef<HTMLButtonElement>(null)
   // Where the calendar floats: over the page, on the trigger's box, so opening it never grows the card.
   const [whenAnchor, setWhenAnchor] = useState<{ top: number; left: number; width: number; height: number } | null>(
@@ -155,10 +167,10 @@ export function CreatorSaleModal({
     })
   }, [whenOpen])
 
-  // Anchored to where the trigger WAS: once the card scrolls or the window resizes it no longer is, so it folds away.
+  // Anchored to where the trigger WAS: once the body scrolls or the window resizes it no longer is, so it folds away.
   useEffect(() => {
     if (!whenOpen) return
-    const scroller = card.current
+    const scroller = body.current
     // The lift in `openWhen` reports its own scroll a frame late; only a scroll away from there moves the trigger.
     const opened = scroller?.scrollTop ?? 0
     const fold = () => whenPicker.current?.close()
@@ -175,9 +187,9 @@ export function CreatorSaleModal({
 
   function openWhen() {
     const trigger = whenTrigger.current
-    const scroller = card.current
+    const scroller = body.current
     if (!trigger) return
-    // A calendar needs room under its trigger: lift the trigger to the card's top first when it has less.
+    // A calendar needs room under its trigger: lift the trigger to the body's top first when it has less.
     const room = window.innerHeight - trigger.getBoundingClientRect().bottom
     if (scroller && room < CALENDAR_ROOM) {
       scroller.scrollTop += trigger.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 16
@@ -203,8 +215,15 @@ export function CreatorSaleModal({
       mounted.current = false
     }
   }, [])
-  const locked = busy && !awaitingWallet
-  const [status, setStatus] = useState<string | null>(null)
+  // A submit whose wallet prompt the creator backed out of: its rejection is ignored, but a signature that still
+  // lands creates the discount, so its success is shown.
+  const attempt = useRef(0)
+  // A submit not yet settled, including one backed out of whose wallet prompt may still be signed.
+  const unsettled = useRef(false)
+  // The attempt backed out of while still open: Submit shows it again rather than opening a second prompt, which
+  // could sign a second coupon, and the terms stay locked to what that prompt signs.
+  const backedOut = useRef<number | null>(null)
+  const [heldOpen, setHeldOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [created, setCreated] = useState<CollectionDiscount | null>(null)
 
@@ -248,6 +267,8 @@ export function CreatorSaleModal({
     }
   }, [])
 
+  const blocked = review.listed.length === 0 && review.classic.length > 0
+
   // Keyboard focus as the shared Modal handles it: in the dialog while it is open (each step swaps the card, and
   // Continue unmounts the very button that was focused), Tab kept inside it, and handed back to whatever opened it.
   useEffect(() => {
@@ -257,13 +278,14 @@ export function CreatorSaleModal({
   useEffect(() => {
     const dialog = card.current
     if (dialog && !dialog.contains(document.activeElement)) dialog.focus()
-  }, [step, created])
+  }, [step, created, busy])
   useEffect(() => {
-    // The calendar floats outside the card and keeps its own focus and Escape while it is open.
-    if (whenOpen) return
+    // The calendar floats outside the card and keeps its own focus and Escape while it is open; the blocked
+    // notice, the pending state and the success are shared modals, which handle both themselves.
+    if (whenOpen || blocked || created || busy) return
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        if (!locked) onClose()
+        onClose()
         return
       }
       const dialog = card.current
@@ -291,20 +313,15 @@ export function CreatorSaleModal({
   })
 
   /** Every way out goes through here: leaving without a discount is the funnel's drop-off, and from which step. */
-  function leave(reason: 'closed' | 'update_prices') {
+  function onClose() {
     // With a wallet prompt still open the discount may yet be created: that is not a drop-off.
-    if (!created && !awaitingWallet) {
-      const blocked = review.listed.length === 0 && review.classic.length > 0
+    if (!created && !unsettled.current) {
       track(DISCOUNT_ABANDONED_EVENT, {
         collectionId: current.collectionId,
-        lastStep: blocked ? 'blocked' : step,
-        reason
+        lastStep: blocked ? 'blocked' : step
       })
     }
     closeModal()
-  }
-  function onClose() {
-    leave('closed')
   }
 
   // What a buyer will see: the collection's priciest listed items, where the cut reads clearest.
@@ -330,7 +347,23 @@ export function CreatorSaleModal({
   }
   useEffect(measureStrip, [previewItems, step])
 
+  function releaseBackedOut(run: number) {
+    if (backedOut.current !== run) return false
+    backedOut.current = null
+    setHeldOpen(false)
+    return true
+  }
+
+  function resume(run: number) {
+    releaseBackedOut(run)
+    attempt.current = run
+    setError(null)
+    setBusy(true)
+    setAwaitingWallet(true)
+  }
+
   async function submit() {
+    if (backedOut.current !== null) return resume(backedOut.current)
     setTouched(true)
     setError(null)
     if (terms.problem) {
@@ -350,22 +383,24 @@ export function CreatorSaleModal({
       setError(problemCopy(t, e instanceof DiscountInputError ? e.problem : 'window'))
       return
     }
+    const run = ++attempt.current
+    unsettled.current = true
     setBusy(true)
     try {
-      setStatus(isManaged ? t('creator_sale.starting') : t('creator_sale.confirm'))
       setAwaitingWallet(!isManaged)
       const sale = await onSubmit({ discountPct: terms.discountPct, ...signedWindow }, () => {
-        setAwaitingWallet(false)
-        setStatus(t('creator_sale.finishing'))
+        // Signed after backing out: the discount is being created, so show that rather than the review.
+        if (backedOut.current === run) resume(run)
+        if (attempt.current === run) setAwaitingWallet(false)
       })
       if (!mounted.current) return
-      setStatus(null)
       setCreated(sale)
       showToast(sale.status === 'scheduled' ? t('creator_sale.toast_scheduled') : t('creator_sale.toast_live'))
     } catch (e) {
       const reason = toDiscountError(e).reason
-      if (!mounted.current) return
-      setStatus(null)
+      // A backed-out attempt still owns the review until it settles, so its failure is shown there too.
+      const backedOutOf = releaseBackedOut(run)
+      if (!mounted.current || (attempt.current !== run && !backedOutOf)) return
       if (e instanceof DiscountInputError) setError(problemCopy(t, e.problem))
       // Signed, but whether it was stored is unknown: only that same coupon may be retried, never a new one.
       else if (reason === 'unconfirmed') onUnconfirmed()
@@ -374,9 +409,20 @@ export function CreatorSaleModal({
         setError(reason === 'wallet' ? t('creator_sale.error_wallet') : t('creator_sale.error_generic'))
       }
     } finally {
-      setBusy(false)
-      setAwaitingWallet(false)
+      unsettled.current = false
+      releaseBackedOut(run)
+      if (attempt.current === run) {
+        setBusy(false)
+        setAwaitingWallet(false)
+      }
     }
+  }
+
+  function backOutOfWallet() {
+    backedOut.current = attempt.current++
+    setHeldOpen(true)
+    setBusy(false)
+    setAwaitingWallet(false)
   }
 
   function viewStore() {
@@ -411,31 +457,11 @@ export function CreatorSaleModal({
   if (created) {
     const scheduled = created.status === 'scheduled'
     return (
-      <S.Scrim onClick={onClose} role="presentation">
-        <S.Card
-          ref={card}
-          tabIndex={-1}
-          data-testid="creator-sale-success"
-          onClick={e => e.stopPropagation()}
-          role="dialog"
-          aria-modal="true"
-          aria-label={scheduled ? t('creator_sale.success_scheduled_title') : t('creator_sale.success_title')}
-        >
-          <S.Head>
-            <S.Title>{scheduled ? t('creator_sale.success_scheduled_title') : t('creator_sale.success_title')}</S.Title>
-            <S.Close onClick={onClose} aria-label={t('creator_sale.done')}>
-              <Icon name="close" className="ico" />
-            </S.Close>
-          </S.Head>
-          <S.SuccessBanner>
-            <S.SuccessCheck aria-hidden>
-              <Icon name="check" className="ico" />
-            </S.SuccessCheck>
-            <S.SuccessText>
-              <b>
-                {t('creator_sale.success_body', { count: created.collections.length, pct: created.discount / 10_000 })}
-              </b>
-            </S.SuccessText>
+      <SuccessModal
+        title={scheduled ? t('creator_sale.success_scheduled_title') : t('creator_sale.success_title')}
+        description={
+          <>
+            {t('creator_sale.success_body', { count: created.collections.length, pct: created.discount / 10_000 })}
             <S.SuccessDetail>
               {scheduled ? (
                 t('creator_sale.success_starts', { date: formatDateTime(created.checks.effective, intl.locale) })
@@ -446,17 +472,17 @@ export function CreatorSaleModal({
                 </>
               )}
             </S.SuccessDetail>
-          </S.SuccessBanner>
-          <S.Actions>
-            <S.ActionBtn variant="white" onClick={onClose}>
-              {t('creator_sale.done')}
-            </S.ActionBtn>
-            <S.ActionBtn variant="purple" onClick={viewStore}>
-              {t('creator_sale.view_store')}
-            </S.ActionBtn>
-          </S.Actions>
-        </S.Card>
-      </S.Scrim>
+          </>
+        }
+        action={{
+          label: t('creator_sale.view_store'),
+          onClick: viewStore,
+          testId: 'creator-sale-view-store',
+          external: true
+        }}
+        onDone={onClose}
+        testId="creator-sale-success"
+      />
     )
   }
 
@@ -481,10 +507,31 @@ export function CreatorSaleModal({
       ? tNode('creator_sale.review_cap', { b: bold, count: (reviewed ?? terms).uses as number })
       : tNode('creator_sale.review_no_cap', { b: bold, count: review.supply })
 
+  const steps = (current: number) => (
+    <S.Steps>
+      <StepIndicator
+        current={current}
+        total={2}
+        labels={[t('creator_sale.step_setup'), t('creator_sale.step_review')]}
+        testId="creator-sale-steps"
+      />
+    </S.Steps>
+  )
+
+  if (busy) {
+    return (
+      <PendingModal
+        label={awaitingWallet ? t('collection_discount.confirm_in_wallet') : t('collection_discount.saving')}
+        onCancel={awaitingWallet ? backOutOfWallet : undefined}
+        testId="creator-sale-pending"
+      />
+    )
+  }
+
   if (step === 'review') {
     const shown = reviewed ?? terms
     return (
-      <S.Scrim onClick={locked ? undefined : onClose} role="presentation">
+      <S.Scrim onClick={onClose} role="presentation">
         <S.Card
           ref={card}
           tabIndex={-1}
@@ -492,158 +539,168 @@ export function CreatorSaleModal({
           onClick={e => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
-          aria-label={t('creator_sale.review_title')}
+          aria-label={t('creator_sale.title')}
         >
           <S.Head>
-            <S.Title>{t('creator_sale.review_title')}</S.Title>
-            <S.Close onClick={onClose} disabled={locked} aria-label={t('creator_sale.cancel')}>
-              <Icon name="close" className="ico" />
+            <S.Title>{t('creator_sale.title')}</S.Title>
+            <S.Close type="button" onClick={onClose} aria-label={t('creator_sale.cancel')}>
+              <CloseIcon fontSize="small" />
             </S.Close>
           </S.Head>
-
-          {/* Three labelled rows sharing one column, so the discount, the start and the end line up as
+          <S.Divider />
+          {steps(2)}
+          <S.Body ref={body}>
+            {/* Three labelled rows sharing one column, so the discount, the start and the end line up as
               the same kind of fact. Each end of the window carries how long until it: a date alone does
               not answer "when does this actually happen", which is what a creator is checking here. */}
-          <S.ReviewSummary>
-            <S.ReviewWhenRow data-testid="creator-sale-review-discount">
-              <S.ReviewWhenLabel>{t('creator_sale.discount')}</S.ReviewWhenLabel>
-              <S.ReviewPct>
-                <SaleTag pct={pct} testId="creator-sale-review-pct" />
-              </S.ReviewPct>
-            </S.ReviewWhenRow>
-            <S.ReviewWhenRow data-testid="creator-sale-review-starts">
-              <S.ReviewWhenLabel>{t('creator_sale.review_starts')}</S.ReviewWhenLabel>
-              <S.ReviewWhenValue>
-                {shown.startsAtMs ? formatDateTime(shown.startsAtMs, intl.locale) : t('creator_sale.review_starts_now')}
-              </S.ReviewWhenValue>
-              {shown.startsAtMs ? <S.ReviewWhenLeft until={shown.startsAtMs} /> : null}
-            </S.ReviewWhenRow>
-            <S.ReviewWhenRow data-testid="creator-sale-review-ends">
-              <S.ReviewWhenLabel>{t('creator_sale.review_ends')}</S.ReviewWhenLabel>
-              <S.ReviewWhenValue>{formatDateTime(shown.endsAtMs, intl.locale)}</S.ReviewWhenValue>
-              <S.ReviewWhenLeft until={shown.endsAtMs} />
-            </S.ReviewWhenRow>
-          </S.ReviewSummary>
+            <S.ReviewSummary>
+              <S.ReviewWhenRow data-testid="creator-sale-review-discount">
+                <S.ReviewWhenLabel>{t('creator_sale.discount')}</S.ReviewWhenLabel>
+                <S.ReviewPct>
+                  <SaleTag pct={pct} testId="creator-sale-review-pct" />
+                </S.ReviewPct>
+              </S.ReviewWhenRow>
+              <S.ReviewWhenRow data-testid="creator-sale-review-starts">
+                <S.ReviewWhenLabel>{t('creator_sale.review_starts')}</S.ReviewWhenLabel>
+                <S.ReviewWhenValue>
+                  {shown.startsAtMs
+                    ? formatDateTime(shown.startsAtMs, intl.locale)
+                    : t('creator_sale.review_starts_now')}
+                </S.ReviewWhenValue>
+                {shown.startsAtMs ? <S.ReviewWhenLeft until={shown.startsAtMs} /> : null}
+              </S.ReviewWhenRow>
+              <S.ReviewWhenRow data-testid="creator-sale-review-ends">
+                <S.ReviewWhenLabel>{t('creator_sale.review_ends')}</S.ReviewWhenLabel>
+                <S.ReviewWhenValue>{formatDateTime(shown.endsAtMs, intl.locale)}</S.ReviewWhenValue>
+                <S.ReviewWhenLeft until={shown.endsAtMs} />
+              </S.ReviewWhenRow>
+            </S.ReviewSummary>
 
-          <S.ReviewGroup>
-            <S.ReviewGroupTitle>{t('creator_sale.review_on_sale', { count: review.listed.length })}</S.ReviewGroupTitle>
-            <S.ReviewList data-testid="creator-sale-review-items">
-              {review.listed.map(i => (
-                <S.ReviewRow key={i.key} data-testid="creator-sale-review-item">
-                  <S.ReviewThumb src={i.thumbnail} alt="" />
-                  <S.ReviewName data-testid="review-name">{i.name}</S.ReviewName>
-                  {/* A MANA listing with no rate yet to quote it in credits shows its own currency instead. */}
-                  {i.priceCredits === null && i.manaWei !== undefined ? (
-                    <S.ReviewPrices>
-                      <S.ReviewWas data-testid="review-was">
-                        <CurrencyIcon currency="mana" size={14} />
-                        {formatMana(i.manaWei)}
-                      </S.ReviewWas>
-                      <S.ReviewNow data-testid="review-now">
-                        <CurrencyIcon currency="mana" size={16} />
-                        {formatMana(discountedManaWei(i.manaWei, pct))}
-                      </S.ReviewNow>
-                    </S.ReviewPrices>
-                  ) : (
-                    <S.ReviewPrices>
-                      <S.ReviewWas data-testid="review-was">
-                        <CurrencyIcon size={14} />
-                        {formatCredits(i.priceCredits as number)}
-                      </S.ReviewWas>
-                      <S.ReviewNow data-testid="review-now">
-                        <CurrencyIcon size={16} />
-                        {formatCredits(discountedPriceCredits(i, pct, current.manaRate) as number)}
-                      </S.ReviewNow>
-                    </S.ReviewPrices>
-                  )}
-                </S.ReviewRow>
-              ))}
-            </S.ReviewList>
-          </S.ReviewGroup>
+            <S.ReviewGroup>
+              <S.ReviewGroupTitle>
+                {t('creator_sale.review_on_sale', { count: review.listed.length })}
+              </S.ReviewGroupTitle>
+              <S.ReviewList data-testid="creator-sale-review-items">
+                {review.listed.map(i => (
+                  <S.ReviewRow key={i.key} data-testid="creator-sale-review-item">
+                    <S.ReviewThumb src={i.thumbnail} alt="" />
+                    <S.ReviewName data-testid="review-name">{i.name}</S.ReviewName>
+                    {/* A MANA listing with no rate yet to quote it in credits shows its own currency instead. */}
+                    {i.priceCredits === null && i.manaWei !== undefined ? (
+                      <S.ReviewPrices>
+                        <S.ReviewWas data-testid="review-was">
+                          <CurrencyIcon currency="mana" size={14} />
+                          {formatMana(i.manaWei)}
+                        </S.ReviewWas>
+                        <S.ReviewNow data-testid="review-now">
+                          <CurrencyIcon currency="mana" size={16} />
+                          {formatMana(discountedManaWei(i.manaWei, pct))}
+                        </S.ReviewNow>
+                      </S.ReviewPrices>
+                    ) : (
+                      <S.ReviewPrices>
+                        <S.ReviewWas data-testid="review-was">
+                          <CurrencyIcon size={14} />
+                          {formatCredits(i.priceCredits as number)}
+                        </S.ReviewWas>
+                        <S.ReviewNow data-testid="review-now">
+                          <CurrencyIcon size={16} />
+                          {formatCredits(discountedPriceCredits(i, pct, current.manaRate) as number)}
+                        </S.ReviewNow>
+                      </S.ReviewPrices>
+                    )}
+                  </S.ReviewRow>
+                ))}
+              </S.ReviewList>
+            </S.ReviewGroup>
 
-          {/* Its own section, above the unlisted ones: this is the group the creator can DO something about,
+            {/* Its own section, above the unlisted ones: this is the group the creator can DO something about,
               and the one where "not for sale" would have been a lie. */}
-          {review.classic.length > 0 ? (
-            <S.ReviewGroup>
-              <S.ReviewGroupTitle>
-                {t('creator_sale.review_classic', { count: review.classic.length })}
-              </S.ReviewGroupTitle>
-              <S.ReviewList data-testid="creator-sale-review-classic">
-                {review.classic.map(i => (
-                  <S.ReviewRow key={i.key} data-muted>
-                    <S.ReviewThumb src={i.thumbnail} alt="" />
-                    <S.ReviewName>{i.name}</S.ReviewName>
-                    <S.ReviewUnaffected>
-                      {t('creator_sale.review_classic_tag')}
-                      <Tooltip content={t('creator_sale.review_classic_why')}>
-                        <S.UnaffectedInfo
-                          name="info"
-                          role="img"
-                          aria-label={t('creator_sale.review_classic_why')}
-                          tabIndex={0}
-                          data-testid="creator-sale-classic-why"
-                        />
-                      </Tooltip>
-                    </S.ReviewUnaffected>
-                  </S.ReviewRow>
-                ))}
-              </S.ReviewList>
-              <S.ReviewFootNote>{tNode('creator_sale.review_classic_hint', { c: marked })}</S.ReviewFootNote>
-            </S.ReviewGroup>
-          ) : null}
+            {review.classic.length > 0 ? (
+              <S.ReviewGroup>
+                <S.ReviewGroupTitle>
+                  {t('creator_sale.review_classic', { count: review.classic.length })}
+                </S.ReviewGroupTitle>
+                <S.ReviewList data-testid="creator-sale-review-classic">
+                  {review.classic.map(i => (
+                    <S.ReviewRow key={i.key} data-muted>
+                      <S.ReviewThumb src={i.thumbnail} alt="" />
+                      <S.ReviewName>{i.name}</S.ReviewName>
+                      <S.ReviewUnaffected>
+                        {t('creator_sale.review_classic_tag')}
+                        <Tooltip content={t('creator_sale.review_classic_why')}>
+                          <S.UnaffectedInfo
+                            name="info"
+                            role="img"
+                            aria-label={t('creator_sale.review_classic_why')}
+                            tabIndex={0}
+                            data-testid="creator-sale-classic-why"
+                          />
+                        </Tooltip>
+                      </S.ReviewUnaffected>
+                    </S.ReviewRow>
+                  ))}
+                </S.ReviewList>
+                <S.ReviewFootNote>{tNode('creator_sale.review_classic_hint', { c: marked })}</S.ReviewFootNote>
+              </S.ReviewGroup>
+            ) : null}
 
-          {/* Named explicitly rather than left out: an item the creator did not list is untouched by the
+            {/* Named explicitly rather than left out: an item the creator did not list is untouched by the
               sale, and silence there reads as "everything is covered". */}
-          {review.unlisted.length > 0 ? (
-            <S.ReviewGroup>
-              <S.ReviewGroupTitle>
-                {t('creator_sale.review_untouched', { count: review.unlisted.length })}
-              </S.ReviewGroupTitle>
-              <S.ReviewList data-testid="creator-sale-review-untouched">
-                {review.unlisted.map(i => (
-                  <S.ReviewRow key={i.key} data-muted>
-                    <S.ReviewThumb src={i.thumbnail} alt="" />
-                    <S.ReviewName>{i.name}</S.ReviewName>
-                    <S.ReviewUnaffected>{t('creator_sale.review_not_listed')}</S.ReviewUnaffected>
-                  </S.ReviewRow>
-                ))}
-              </S.ReviewList>
-            </S.ReviewGroup>
-          ) : null}
+            {review.unlisted.length > 0 ? (
+              <S.ReviewGroup>
+                <S.ReviewGroupTitle>
+                  {t('creator_sale.review_untouched', { count: review.unlisted.length })}
+                </S.ReviewGroupTitle>
+                <S.ReviewList data-testid="creator-sale-review-untouched">
+                  {review.unlisted.map(i => (
+                    <S.ReviewRow key={i.key} data-muted>
+                      <S.ReviewThumb src={i.thumbnail} alt="" />
+                      <S.ReviewName>{i.name}</S.ReviewName>
+                      <S.ReviewUnaffected>{t('creator_sale.review_not_listed')}</S.ReviewUnaffected>
+                    </S.ReviewRow>
+                  ))}
+                </S.ReviewList>
+              </S.ReviewGroup>
+            ) : null}
 
-          <S.ReviewFoot>{capCopy}</S.ReviewFoot>
+            <S.ReviewFoot>
+              <InfoOutlinedIcon fontSize="small" aria-hidden />
+              <span>{capCopy}</span>
+            </S.ReviewFoot>
+          </S.Body>
 
           <S.Actions>
-            {status || error ? (
+            {error ? (
               <S.ActionsNote>
-                {status ? <S.Status>{status}</S.Status> : null}
                 <ErrorNotice message={error} testId="creator-sale-error" />
               </S.ActionsNote>
+            ) : heldOpen ? (
+              <S.ActionsNote>
+                <S.ReviewFoot data-testid="creator-sale-request-open">
+                  <InfoOutlinedIcon fontSize="small" aria-hidden />
+                  <span>{t('creator_sale.request_open')}</span>
+                </S.ReviewFoot>
+              </S.ActionsNote>
             ) : null}
-            <S.ActionBtn
-              variant="white"
+            <Button
+              type="button"
+              variant="secondary"
               onClick={() => {
                 // A rejected signature left its notice on screen when the creator came back to change
                 // something — the message then belonged to an attempt that no longer exists.
                 setError(null)
-                setStatus(null)
                 setStep('form')
               }}
-              disabled={busy}
+              disabled={busy || heldOpen}
               data-testid="creator-sale-back"
             >
+              <ChevronLeftIcon fontSize="small" />
               {t('creator_sale.back')}
-            </S.ActionBtn>
-            <S.ActionBtn variant="red" data-testid="creator-sale-submit" onClick={() => void submit()} disabled={busy}>
-              {busy ? (
-                status
-              ) : (
-                <>
-                  <span aria-hidden>🔥</span>
-                  {shown.startsAtMs ? t('creator_sale.submit_scheduled') : t('creator_sale.submit')}
-                </>
-              )}
-            </S.ActionBtn>
+            </Button>
+            <Button type="button" data-testid="creator-sale-submit" onClick={() => void submit()} disabled={busy}>
+              {shown.startsAtMs ? t('creator_sale.submit_scheduled') : t('creator_sale.submit')}
+            </Button>
           </S.Actions>
         </S.Card>
       </S.Scrim>
@@ -664,35 +721,16 @@ export function CreatorSaleModal({
    * Offered anyway, and answered here. The button used to be absent for these collections, which told the
    * creator nothing — least of all that the fix is one page away.
    */
-  if (review.listed.length === 0 && review.classic.length > 0) {
+  if (blocked) {
     return (
-      <S.Scrim onClick={onClose} role="presentation">
-        <S.Card
-          ref={card}
-          tabIndex={-1}
-          data-testid="creator-sale-blocked"
-          onClick={e => e.stopPropagation()}
-          role="dialog"
-          aria-modal="true"
-          aria-label={t('creator_sale.title')}
-        >
-          <S.Head>
-            <S.Title>{t('creator_sale.title')}</S.Title>
-            <S.Close onClick={onClose} aria-label={t('creator_sale.cancel')}>
-              <Icon name="close" className="ico" />
-            </S.Close>
-          </S.Head>
-          <S.Subtitle>{tNode('creator_sale.blocked_body', { c: marked, count: review.classic.length })}</S.Subtitle>
-          <S.Actions>
-            <S.ActionBtn variant="white" onClick={onClose}>
-              {t('creator_sale.cancel')}
-            </S.ActionBtn>
-            <S.ActionBtn variant="red" onClick={() => leave('update_prices')}>
-              {t('creator_sale.blocked_cta')}
-            </S.ActionBtn>
-          </S.Actions>
-        </S.Card>
-      </S.Scrim>
+      <ConfirmModal
+        title={t('creator_sale.blocked_title')}
+        icon={<CurrencyIcon size={48} />}
+        description={tNode('creator_sale.blocked_body', { c: marked, count: review.classic.length })}
+        onClose={onClose}
+        confirm={{ label: t('creator_sale.blocked_dismiss'), onClick: onClose, testId: 'creator-sale-blocked-dismiss' }}
+        testId="creator-sale-blocked"
+      />
     )
   }
 
@@ -706,7 +744,7 @@ export function CreatorSaleModal({
       onClick={() => {
         const foldedCalendar = calendarOpenOnPress.current || whenOpen
         calendarOpenOnPress.current = false
-        if (!locked && !foldedCalendar) onClose()
+        if (!foldedCalendar) onClose()
       }}
       role="presentation"
     >
@@ -721,257 +759,257 @@ export function CreatorSaleModal({
       >
         <S.Head>
           <S.Title>{t('creator_sale.title')}</S.Title>
-          <S.Close onClick={onClose} disabled={locked} aria-label={t('creator_sale.cancel')}>
-            <Icon name="close" className="ico" />
+          <S.Close type="button" onClick={onClose} aria-label={t('creator_sale.cancel')}>
+            <CloseIcon fontSize="small" />
           </S.Close>
         </S.Head>
+        <S.Divider />
+        {steps(1)}
+        <S.Body ref={body}>
+          <S.Subtitle>{t('creator_sale.subtitle')}</S.Subtitle>
 
-        <S.Subtitle>{t('creator_sale.subtitle')}</S.Subtitle>
-
-        {/* Read-only: the sale is scoped to the collection the creator opened it from, so this states the
+          {/* Read-only: the sale is scoped to the collection the creator opened it from, so this states the
             context rather than offering a choice. */}
-        <S.CollectionRow data-testid="creator-sale-collections">
-          <S.RowThumb>
-            <CollectionMosaic collectionId={current.collectionId} itemCount={current.itemCount} />
-          </S.RowThumb>
-          <S.RowText>
-            <S.RowName>{current.name}</S.RowName>
-            <S.RowMeta>{t('creator_sale.collection_listed', { count: current.listedCount })}</S.RowMeta>
-          </S.RowText>
-        </S.CollectionRow>
+          <S.CollectionRow data-testid="creator-sale-collections">
+            <S.RowThumb>
+              <CollectionMosaic collectionId={current.collectionId} itemCount={current.itemCount} />
+            </S.RowThumb>
+            <S.RowText>
+              <S.RowName>{current.name}</S.RowName>
+              <S.RowMeta>{t('creator_sale.collection_listed', { count: current.listedCount })}</S.RowMeta>
+            </S.RowText>
+          </S.CollectionRow>
 
-        <S.Field>
-          <S.FieldLabel>{t('creator_sale.discount')}</S.FieldLabel>
-          <S.Chips role="group" aria-label={t('creator_sale.discount')} data-testid="creator-sale-discounts">
-            {PCT_PRESETS.map(p => (
-              <S.Chip
-                key={p}
-                type="button"
-                data-selected={pctPreset === p || undefined}
-                aria-pressed={pctPreset === p}
-                aria-label={t('creator_sale.off_pct', { pct: p })}
-                disabled={busy}
-                onClick={() => {
-                  setTouched(true)
-                  setPctPreset(p)
-                }}
-                data-testid={`creator-sale-pct-${p}`}
-              >
-                {pctPreset === p ? <span aria-hidden>🔥</span> : null}
-                {t('creator_sale.pct_tag', { pct: p })}
-              </S.Chip>
-            ))}
-            {customPctOpen ? (
-              <S.InlineInput
-                data-selected
-                aria-invalid={touched && terms.problem === 'pct' ? true : undefined}
-                data-testid="creator-sale-custom-pct-field"
-              >
-                <span aria-hidden>-</span>
-                <input
-                  type="number"
-                  min={MIN_DISCOUNT_PCT}
-                  max={MAX_DISCOUNT_PCT}
-                  step="1"
-                  inputMode="numeric"
-                  value={customPct}
-                  disabled={busy}
-                  autoFocus
-                  aria-label={t('creator_sale.pct_label')}
-                  onChange={e => {
-                    setTouched(true)
-                    // Whole percentages of at most two digits, or nothing: anything else keeps what was there, so
-                    // "5.5" or "1e1" can never be rewritten into a discount nobody typed.
-                    const next = e.target.value
-                    if (/^\d{0,2}$/.test(next)) setCustomPct(next)
-                  }}
-                />
-                <span aria-hidden>%</span>
-              </S.InlineInput>
-            ) : (
-              <S.Chip
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  setTouched(true)
-                  setPctPreset('custom')
-                }}
-                data-testid="creator-sale-custom-pct-chip"
-              >
-                {t('creator_sale.custom_pct')}
-              </S.Chip>
-            )}
-          </S.Chips>
-        </S.Field>
-
-        <S.Field>
-          <S.FieldLabel>{t('creator_sale.when')}</S.FieldLabel>
-          <S.WhenWrap>
-            <S.WhenTrigger
-              type="button"
-              aria-expanded={whenOpen}
-              aria-haspopup="dialog"
-              aria-label={t('creator_sale.when_aria', { label: t('creator_sale.when'), value: whenLabel })}
-              ref={whenTrigger}
-              data-sale-when-trigger=""
-              disabled={busy}
-              onClick={() => (whenOpen ? whenPicker.current?.close() : openWhen())}
-              data-testid="creator-sale-when"
-            >
-              <Icon name="calendar" size={20} aria-hidden />
-              <span>{whenLabel}</span>
-              <Icon name="arrow-drop-down" size={24} aria-hidden data-open={whenOpen ? '' : undefined} />
-            </S.WhenTrigger>
-            {whenOpen && whenAnchor
-              ? createPortal(
-                  <S.WhenAnchor ref={anchor} style={whenAnchor}>
-                    <RangePicker
-                      stretch
-                      handle={whenPicker}
-                      label={t('creator_sale.when')}
-                      triggerSelector={WHEN_TRIGGER}
-                      testId="creator-sale-range"
-                      presetTestId="creator-sale-when"
-                      from={when.kind === 'range' ? when.from : Date.now()}
-                      to={when.kind === 'range' ? when.to : Date.now() + (when.hours - 1) * HOUR_MS}
-                      min={startOfDay(Date.now())}
-                      max={Date.now() + (MAX_DAYS - 1) * DAY_MS}
-                      presets={durationPresets}
-                      onApply={(from, to) => {
-                        setTouched(true)
-                        setWhen({ kind: 'range', from, to })
-                        setWhenOpen(false)
-                      }}
-                      onClose={() => setWhenOpen(false)}
-                    />
-                  </S.WhenAnchor>,
-                  document.body
-                )
-              : null}
-          </S.WhenWrap>
-          {terms.startsAtMs ? (
-            <S.FieldHint data-testid="creator-sale-when-hint">
-              {t('creator_sale.starts_on', { date: formatDateTime(terms.startsAtMs, intl.locale) })}
-            </S.FieldHint>
-          ) : null}
-        </S.Field>
-
-        <S.Field>
-          <S.CapLabel htmlFor="creator-sale-cap">{t('creator_sale.cap_label')}</S.CapLabel>
-          <S.CapInput data-disabled={busy || undefined}>
-            <input
-              id="creator-sale-cap"
-              type="text"
-              inputMode="numeric"
-              autoComplete="off"
-              value={cap}
-              disabled={busy}
-              placeholder={t('creator_sale.cap_placeholder')}
-              aria-describedby={review.supply > 0 ? 'creator-sale-cap-hint' : undefined}
-              data-testid="creator-sale-cap"
-              onChange={e => {
-                const v = e.target.value
-                if (!/^\d{0,7}$/.test(v)) return
-                setTouched(true)
-                setCap(review.supply > 0 && Number(v) > review.supply ? String(review.supply) : v)
-              }}
-            />
-            {review.supply > 0 ? (
-              <span aria-hidden data-testid="creator-sale-cap-count">
-                {terms.uses ?? 0}/{review.supply}
-              </span>
-            ) : null}
-          </S.CapInput>
-          {review.supply > 0 ? (
-            <S.CapHint id="creator-sale-cap-hint">
-              <Icon name="circle-warning" size={15} aria-hidden />
-              <span>{t('creator_sale.cap_hint', { count: review.supply })}</span>
-            </S.CapHint>
-          ) : null}
-          {/* Not in the Shop's modal: there a social login can't end a discount either, but here it is the only place
-              to say so before signing. */}
-          {isManaged ? (
-            <S.CapHint data-testid="creator-sale-social-note">
-              <Icon name="circle-warning" size={15} aria-hidden />
-              <span>{t('creator_sale.social_note')}</span>
-            </S.CapHint>
-          ) : null}
-        </S.Field>
-
-        {/* The collection as a buyer will meet it: the same tag and struck price the Shop's cards wear. */}
-        {previewItems.length > 0 ? (
           <S.Field>
-            <S.PreviewHead>
-              <S.FieldLabel>
-                {t('creator_sale.preview_title')} · {t('creator_sale.preview_count', { count: previewItems.length })}
-              </S.FieldLabel>
-              {stripEdges.start && stripEdges.end ? null : (
-                <S.StripArrows>
-                  <S.StripArrow
-                    type="button"
-                    aria-label={t('creator_sale.preview_prev')}
-                    disabled={stripEdges.start}
-                    onClick={() => scrollStrip(-1)}
-                    data-testid="creator-sale-preview-prev"
-                  >
-                    <Icon name="chevron-down" size={16} aria-hidden style={{ transform: 'rotate(90deg)' }} />
-                  </S.StripArrow>
-                  <S.StripArrow
-                    type="button"
-                    aria-label={t('creator_sale.preview_next')}
-                    disabled={stripEdges.end}
-                    onClick={() => scrollStrip(1)}
-                    data-testid="creator-sale-preview-next"
-                  >
-                    <Icon name="chevron-down" size={16} aria-hidden style={{ transform: 'rotate(-90deg)' }} />
-                  </S.StripArrow>
-                </S.StripArrows>
+            <S.FieldLabel>{t('creator_sale.discount')}</S.FieldLabel>
+            <S.Chips role="group" aria-label={t('creator_sale.discount')} data-testid="creator-sale-discounts">
+              {PCT_PRESETS.map(p => (
+                <S.Chip
+                  key={p}
+                  type="button"
+                  data-selected={pctPreset === p || undefined}
+                  aria-pressed={pctPreset === p}
+                  aria-label={t('creator_sale.off_pct', { pct: p })}
+                  disabled={busy}
+                  onClick={() => {
+                    setTouched(true)
+                    setPctPreset(p)
+                  }}
+                  data-testid={`creator-sale-pct-${p}`}
+                >
+                  {t('creator_sale.pct_tag', { pct: p })}
+                </S.Chip>
+              ))}
+              {customPctOpen ? (
+                <S.InlineInput
+                  data-selected
+                  aria-invalid={touched && terms.problem === 'pct' ? true : undefined}
+                  data-testid="creator-sale-custom-pct-field"
+                >
+                  <span aria-hidden>-</span>
+                  <input
+                    type="number"
+                    min={MIN_DISCOUNT_PCT}
+                    max={MAX_DISCOUNT_PCT}
+                    step="1"
+                    inputMode="numeric"
+                    value={customPct}
+                    disabled={busy}
+                    autoFocus
+                    aria-label={t('creator_sale.pct_label')}
+                    onChange={e => {
+                      setTouched(true)
+                      // Whole percentages of at most two digits, or nothing: anything else keeps what was there, so
+                      // "5.5" or "1e1" can never be rewritten into a discount nobody typed.
+                      const next = e.target.value
+                      if (/^\d{0,2}$/.test(next)) setCustomPct(next)
+                    }}
+                  />
+                  <span aria-hidden>%</span>
+                </S.InlineInput>
+              ) : (
+                <S.Chip
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setTouched(true)
+                    setPctPreset('custom')
+                  }}
+                  data-testid="creator-sale-custom-pct-chip"
+                >
+                  {t('creator_sale.custom_pct')}
+                </S.Chip>
               )}
-            </S.PreviewHead>
-            <S.PreviewStrip ref={strip} onScroll={measureStrip} data-testid="creator-sale-preview">
-              {previewItems.map(item => {
-                const price = item.priceCredits as number
-                const sale = discountedPriceCredits(item, previewPct, current.manaRate) as number
-                return (
-                  <S.PreviewCard key={item.key} data-testid="creator-sale-preview-item">
-                    <S.PreviewMedia>
-                      {item.thumbnail ? <img src={item.thumbnail} alt="" /> : null}
-                      {sale < price ? <S.PreviewTag pct={previewPct} /> : null}
-                    </S.PreviewMedia>
-                    <S.PreviewName>{item.name}</S.PreviewName>
-                    <S.PreviewPrices>
-                      <S.PreviewNow data-testid="creator-sale-preview-now">
-                        <CurrencyIcon size={14} className="ccy-mark" />
-                        {formatCredits(sale)}
-                      </S.PreviewNow>
-                      {sale < price ? (
-                        <S.PreviewWas data-testid="creator-sale-preview-was">{formatCredits(price)}</S.PreviewWas>
-                      ) : null}
-                    </S.PreviewPrices>
-                  </S.PreviewCard>
-                )
-              })}
-            </S.PreviewStrip>
-            {rounded ? (
-              <S.FieldHint data-testid="creator-sale-preview-rounding">
-                {t('creator_sale.preview_rounding')}
+            </S.Chips>
+          </S.Field>
+
+          <S.Field>
+            <S.FieldLabel>{t('creator_sale.when')}</S.FieldLabel>
+            <S.WhenWrap>
+              <S.WhenTrigger
+                type="button"
+                aria-expanded={whenOpen}
+                aria-haspopup="dialog"
+                aria-label={t('creator_sale.when_aria', { label: t('creator_sale.when'), value: whenLabel })}
+                ref={whenTrigger}
+                data-sale-when-trigger=""
+                disabled={busy}
+                onClick={() => (whenOpen ? whenPicker.current?.close() : openWhen())}
+                data-testid="creator-sale-when"
+              >
+                <Icon name="calendar" size={20} aria-hidden />
+                <span>{whenLabel}</span>
+                <Icon name="arrow-drop-down" size={24} aria-hidden data-open={whenOpen ? '' : undefined} />
+              </S.WhenTrigger>
+              {whenOpen && whenAnchor
+                ? createPortal(
+                    <S.WhenAnchor ref={anchor} style={whenAnchor}>
+                      <RangePicker
+                        stretch
+                        handle={whenPicker}
+                        label={t('creator_sale.when')}
+                        triggerSelector={WHEN_TRIGGER}
+                        testId="creator-sale-range"
+                        presetTestId="creator-sale-when"
+                        from={when.kind === 'range' ? when.from : Date.now()}
+                        to={when.kind === 'range' ? when.to : Date.now() + (when.hours - 1) * HOUR_MS}
+                        min={startOfDay(Date.now())}
+                        max={Date.now() + (MAX_DAYS - 1) * DAY_MS}
+                        presets={durationPresets}
+                        onApply={(from, to) => {
+                          setTouched(true)
+                          setWhen({ kind: 'range', from, to })
+                          setWhenOpen(false)
+                        }}
+                        onClose={() => setWhenOpen(false)}
+                      />
+                    </S.WhenAnchor>,
+                    document.body
+                  )
+                : null}
+            </S.WhenWrap>
+            {terms.startsAtMs ? (
+              <S.FieldHint data-testid="creator-sale-when-hint">
+                {t('creator_sale.starts_on', { date: formatDateTime(terms.startsAtMs, intl.locale) })}
               </S.FieldHint>
             ) : null}
           </S.Field>
-        ) : null}
 
+          <S.Field>
+            <S.CapLabel htmlFor="creator-sale-cap">{t('creator_sale.cap_label')}</S.CapLabel>
+            <S.CapInput data-disabled={busy || undefined}>
+              <input
+                id="creator-sale-cap"
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                value={cap}
+                disabled={busy}
+                placeholder={t('creator_sale.cap_placeholder')}
+                aria-describedby={review.supply > 0 ? 'creator-sale-cap-hint' : undefined}
+                data-testid="creator-sale-cap"
+                onChange={e => {
+                  const v = e.target.value
+                  if (!/^\d{0,7}$/.test(v)) return
+                  setTouched(true)
+                  setCap(review.supply > 0 && Number(v) > review.supply ? String(review.supply) : v)
+                }}
+              />
+              {review.supply > 0 ? (
+                <span aria-hidden data-testid="creator-sale-cap-count">
+                  {terms.uses ?? 0}/{review.supply}
+                </span>
+              ) : null}
+            </S.CapInput>
+            {review.supply > 0 ? (
+              <S.CapHint id="creator-sale-cap-hint">
+                <Icon name="circle-warning" size={15} aria-hidden />
+                <span>{t('creator_sale.cap_hint', { count: review.supply })}</span>
+              </S.CapHint>
+            ) : null}
+            {/* Not in the Shop's modal: there a social login can't end a discount either, but here it is the only place
+              to say so before signing. */}
+            {isManaged ? (
+              <S.CapHint data-testid="creator-sale-social-note">
+                <Icon name="circle-warning" size={15} aria-hidden />
+                <span>{t('creator_sale.social_note')}</span>
+              </S.CapHint>
+            ) : null}
+          </S.Field>
+
+          {/* The collection as a buyer will meet it: the same tag and struck price the Shop's cards wear. */}
+          {previewItems.length > 0 ? (
+            <S.Field>
+              <S.PreviewHead>
+                <S.FieldLabel>
+                  {t('creator_sale.preview_title')} · {t('creator_sale.preview_count', { count: previewItems.length })}
+                </S.FieldLabel>
+                {stripEdges.start && stripEdges.end ? null : (
+                  <S.StripArrows>
+                    <S.StripArrow
+                      type="button"
+                      aria-label={t('creator_sale.preview_prev')}
+                      disabled={stripEdges.start}
+                      onClick={() => scrollStrip(-1)}
+                      data-testid="creator-sale-preview-prev"
+                    >
+                      <Icon name="chevron-down" size={16} aria-hidden style={{ transform: 'rotate(90deg)' }} />
+                    </S.StripArrow>
+                    <S.StripArrow
+                      type="button"
+                      aria-label={t('creator_sale.preview_next')}
+                      disabled={stripEdges.end}
+                      onClick={() => scrollStrip(1)}
+                      data-testid="creator-sale-preview-next"
+                    >
+                      <Icon name="chevron-down" size={16} aria-hidden style={{ transform: 'rotate(-90deg)' }} />
+                    </S.StripArrow>
+                  </S.StripArrows>
+                )}
+              </S.PreviewHead>
+              <S.PreviewStrip ref={strip} onScroll={measureStrip} data-testid="creator-sale-preview">
+                {previewItems.map(item => {
+                  const price = item.priceCredits as number
+                  const sale = discountedPriceCredits(item, previewPct, current.manaRate) as number
+                  return (
+                    <S.PreviewCard key={item.key} data-testid="creator-sale-preview-item">
+                      <S.PreviewMedia>
+                        {item.thumbnail ? <img src={item.thumbnail} alt="" /> : null}
+                        {sale < price ? <S.PreviewTag pct={previewPct} /> : null}
+                      </S.PreviewMedia>
+                      <S.PreviewName>{item.name}</S.PreviewName>
+                      <S.PreviewPrices>
+                        <S.PreviewNow data-testid="creator-sale-preview-now">
+                          <CurrencyIcon size={14} className="ccy-mark" />
+                          {formatCredits(sale)}
+                        </S.PreviewNow>
+                        {sale < price ? (
+                          <S.PreviewWas data-testid="creator-sale-preview-was">{formatCredits(price)}</S.PreviewWas>
+                        ) : null}
+                      </S.PreviewPrices>
+                    </S.PreviewCard>
+                  )
+                })}
+              </S.PreviewStrip>
+              {rounded ? (
+                <S.FieldHint data-testid="creator-sale-preview-rounding">
+                  {t('creator_sale.preview_rounding')}
+                </S.FieldHint>
+              ) : null}
+            </S.Field>
+          ) : null}
+        </S.Body>
         <S.Actions>
-          {status || error || inlineProblem ? (
+          {error || inlineProblem ? (
             <S.ActionsNote>
-              {status ? <S.Status>{status}</S.Status> : null}
               <ErrorNotice message={error ?? inlineProblem} testId="creator-sale-error" />
             </S.ActionsNote>
           ) : null}
-          <S.ActionBtn variant="white" onClick={onClose} disabled={busy} data-testid="creator-sale-cancel">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={busy} data-testid="creator-sale-cancel">
             {t('creator_sale.cancel')}
-          </S.ActionBtn>
-          <S.ActionBtn
-            variant="red"
+          </Button>
+          <Button
+            type="button"
             data-testid="creator-sale-continue"
             onClick={() => {
               setTouched(true)
@@ -1008,8 +1046,8 @@ export function CreatorSaleModal({
             disabled={busy || (touched && !!terms.problem)}
           >
             {t('creator_sale.continue')}
-            <Icon name="chevron-right" size={22} aria-hidden />
-          </S.ActionBtn>
+            <ChevronRightIcon fontSize="small" />
+          </Button>
         </S.Actions>
       </S.Card>
     </S.Scrim>
