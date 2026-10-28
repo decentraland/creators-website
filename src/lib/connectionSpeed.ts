@@ -36,7 +36,7 @@ export async function measureDownlinkMbps(): Promise<number | null> {
       }
     }
     if (received < MIN_PROBE_BYTES || halfAt === null || bytesAfterHalf === 0) return null
-    // ponytail: a single read delivering the whole rest clamps to 1 ms; that reads "fast", which it is.
+    // A single read delivering the whole rest clamps to 1 ms; that reads "fast", which it is.
     const seconds = Math.max(performance.now() - halfAt, 1) / 1000
     return (bytesAfterHalf * 8) / 1e6 / seconds
   } catch (error) {
