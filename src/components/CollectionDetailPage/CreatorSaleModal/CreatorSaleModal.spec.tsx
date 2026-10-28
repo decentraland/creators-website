@@ -187,6 +187,38 @@ describe('when a creator discounts a collection from the builder', () => {
     expect(onSubmit).toHaveBeenCalledTimes(1)
   })
 
+  it('should keep the terms locked to the request still open in the wallet', async () => {
+    open()
+    fireEvent.click(screen.getByTestId('creator-sale-continue'))
+    await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    fireEvent.click(screen.getByTestId('creator-sale-pending-cancel'))
+    expect(screen.getByTestId('creator-sale-back')).toBeDisabled()
+    expect(screen.getByTestId('creator-sale-request-open')).toBeInTheDocument()
+  })
+
+  it('should explain a request backed out of that later fails', async () => {
+    let reject: (e: unknown) => void = () => {}
+    open({ onSubmit: vi.fn(() => new Promise<CollectionDiscount>((_, r) => (reject = r))) })
+    fireEvent.click(screen.getByTestId('creator-sale-continue'))
+    await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    fireEvent.click(screen.getByTestId('creator-sale-pending-cancel'))
+    await act(async () => reject(new DiscountError('generic')))
+    expect(screen.getByTestId('creator-sale-error')).toBeInTheDocument()
+    expect(screen.getByTestId('creator-sale-back')).toBeEnabled()
+  })
+
+  it('should show a request backed out of as being created once it is signed', async () => {
+    let sign: () => void = () => {}
+    open({
+      onSubmit: vi.fn((...args: unknown[]) => new Promise<CollectionDiscount>(() => (sign = args[1] as () => void)))
+    })
+    fireEvent.click(screen.getByTestId('creator-sale-continue'))
+    await act(async () => fireEvent.click(screen.getByTestId('creator-sale-submit')))
+    fireEvent.click(screen.getByTestId('creator-sale-pending-cancel'))
+    await act(async () => sign())
+    expect(screen.getByTestId('creator-sale-pending-label')).toHaveTextContent('Creating your discount')
+  })
+
   it('should start a new request on Submit once the one backed out of was dismissed in the wallet', async () => {
     let reject: (e: unknown) => void = () => {}
     const onSubmit = vi.fn(() => new Promise<CollectionDiscount>((_, r) => (reject = r)))

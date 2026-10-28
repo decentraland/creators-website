@@ -33,7 +33,6 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
   // This dialog's own request whose wallet prompt the creator backed out of: the prompt stays open in the wallet,
   // so End shows that request again rather than sending a second paid one.
   const [backedOut, setBackedOut] = useState<number | null>(null)
-  const signed = useRef(false)
   // An attempt from a dialog the creator closed counts too: it may still be mining, or have already settled.
   const outcome = endOutcome(session.address, discount.id)
   useBeforeUnloadGuard(ending)
@@ -42,23 +41,25 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
     if (backedOut !== null && ending) {
       attempt.current = backedOut
       setBackedOut(null)
-      setPhase(signed.current ? 'mining' : 'confirm')
+      setPhase('confirm')
       setView('pending')
       return
     }
     // A request from a dialog the creator closed may still be open: a second one would be a second paid cancellation.
     if (ending || outcome) return
     const id = ++attempt.current
-    signed.current = false
     setPhase('confirm')
     setView('pending')
     end.mutate(
       {
         discount,
         collection,
+        // Signed even after backing out: only one request is ever open, so it is the one to show mining.
         onSigned: () => {
-          signed.current = true
-          if (attempt.current === id) setPhase('mining')
+          attempt.current = id
+          setBackedOut(null)
+          setPhase('mining')
+          setView('pending')
         }
       },
       {

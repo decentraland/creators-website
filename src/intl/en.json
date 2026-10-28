@@ -1749,6 +1749,7 @@
     "in_flight": "A previous request for this collection is still in progress. This updates as soon as it finishes."
   },
   "creator_sale": {
+    "request_open": "Your request is still open in your wallet. Confirm or reject it there to change the terms.",
     "back": "Back",
     "blocked_title": "Discounts need prices in Credits",
     "blocked_body": "Nothing listed in this collection can take a discount yet. Switch {count, plural, one {the listing} other {these listings}} to a price in <c>Credits</c> and the discount will be ready to run.",

@@ -1749,6 +1749,7 @@
     "in_flight": "Una solicitud anterior para esta colección sigue en curso. Esto se actualiza en cuanto termine."
   },
   "creator_sale": {
+    "request_open": "Tu solicitud sigue abierta en tu wallet. Confírmala o recházala allí para cambiar los términos.",
     "back": "Atrás",
     "blocked_title": "Los descuentos necesitan precios en Créditos",
     "blocked_body": "Nada de lo publicado en esta colección puede tener descuento todavía. Pasa {count, plural, one {la publicación} other {esas publicaciones}} a un precio en <c>Créditos</c> y el descuento va a quedar listo.",

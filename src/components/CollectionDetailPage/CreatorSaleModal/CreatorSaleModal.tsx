@@ -221,9 +221,9 @@ export function CreatorSaleModal({
   // A submit not yet settled, including one backed out of whose wallet prompt may still be signed.
   const unsettled = useRef(false)
   // The attempt backed out of while still open: Submit shows it again rather than opening a second prompt, which
-  // could sign a second coupon.
+  // could sign a second coupon, and the terms stay locked to what that prompt signs.
   const backedOut = useRef<number | null>(null)
-  const signed = useRef(false)
+  const [heldOpen, setHeldOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [created, setCreated] = useState<CollectionDiscount | null>(null)
 
@@ -347,15 +347,23 @@ export function CreatorSaleModal({
   }
   useEffect(measureStrip, [previewItems, step])
 
+  function releaseBackedOut(run: number) {
+    if (backedOut.current !== run) return false
+    backedOut.current = null
+    setHeldOpen(false)
+    return true
+  }
+
+  function resume(run: number) {
+    releaseBackedOut(run)
+    attempt.current = run
+    setError(null)
+    setBusy(true)
+    setAwaitingWallet(true)
+  }
+
   async function submit() {
-    if (backedOut.current !== null) {
-      attempt.current = backedOut.current
-      backedOut.current = null
-      setError(null)
-      setBusy(true)
-      setAwaitingWallet(!isManaged && !signed.current)
-      return
-    }
+    if (backedOut.current !== null) return resume(backedOut.current)
     setTouched(true)
     setError(null)
     if (terms.problem) {
@@ -377,12 +385,12 @@ export function CreatorSaleModal({
     }
     const run = ++attempt.current
     unsettled.current = true
-    signed.current = false
     setBusy(true)
     try {
       setAwaitingWallet(!isManaged)
       const sale = await onSubmit({ discountPct: terms.discountPct, ...signedWindow }, () => {
-        signed.current = true
+        // Signed after backing out: the discount is being created, so show that rather than the review.
+        if (backedOut.current === run) resume(run)
         if (attempt.current === run) setAwaitingWallet(false)
       })
       if (!mounted.current) return
@@ -390,7 +398,9 @@ export function CreatorSaleModal({
       showToast(sale.status === 'scheduled' ? t('creator_sale.toast_scheduled') : t('creator_sale.toast_live'))
     } catch (e) {
       const reason = toDiscountError(e).reason
-      if (!mounted.current || attempt.current !== run) return
+      // A backed-out attempt still owns the review until it settles, so its failure is shown there too.
+      const backedOutOf = releaseBackedOut(run)
+      if (!mounted.current || (attempt.current !== run && !backedOutOf)) return
       if (e instanceof DiscountInputError) setError(problemCopy(t, e.problem))
       // Signed, but whether it was stored is unknown: only that same coupon may be retried, never a new one.
       else if (reason === 'unconfirmed') onUnconfirmed()
@@ -400,7 +410,7 @@ export function CreatorSaleModal({
       }
     } finally {
       unsettled.current = false
-      if (backedOut.current === run) backedOut.current = null
+      releaseBackedOut(run)
       if (attempt.current === run) {
         setBusy(false)
         setAwaitingWallet(false)
@@ -410,6 +420,7 @@ export function CreatorSaleModal({
 
   function backOutOfWallet() {
     backedOut.current = attempt.current++
+    setHeldOpen(true)
     setBusy(false)
     setAwaitingWallet(false)
   }
@@ -664,6 +675,13 @@ export function CreatorSaleModal({
               <S.ActionsNote>
                 <ErrorNotice message={error} testId="creator-sale-error" />
               </S.ActionsNote>
+            ) : heldOpen ? (
+              <S.ActionsNote>
+                <S.ReviewFoot data-testid="creator-sale-request-open">
+                  <InfoOutlinedIcon fontSize="small" aria-hidden />
+                  <span>{t('creator_sale.request_open')}</span>
+                </S.ReviewFoot>
+              </S.ActionsNote>
             ) : null}
             <Button
               type="button"
@@ -674,7 +692,7 @@ export function CreatorSaleModal({
                 setError(null)
                 setStep('form')
               }}
-              disabled={busy}
+              disabled={busy || heldOpen}
               data-testid="creator-sale-back"
             >
               <ChevronLeftIcon fontSize="small" />
