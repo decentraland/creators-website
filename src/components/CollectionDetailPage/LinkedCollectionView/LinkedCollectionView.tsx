@@ -267,7 +267,13 @@ export function LinkedCollectionView({ collection, thirdParty, session, isReader
   }, [pageSelected, allPageSelected])
   const canSelectAcross = allPageSelected && !allAcrossSelected && pages > 1
 
-  const filters = collection.isMappingComplete === false ? [...BASE_FILTERS, ...MIGRATION_FILTERS] : BASE_FILTERS
+  // Readers keep the All chip alone: the workflow filters describe the manager's work (and Draft reads manager-only
+  // data), while an empty row would push the sub-header actions to the left.
+  const filters = isReader
+    ? [LinkedItemFilter.ALL]
+    : collection.isMappingComplete === false
+      ? [...BASE_FILTERS, ...MIGRATION_FILTERS]
+      : BASE_FILTERS
 
   function changeFilter(next: LinkedItemFilter) {
     setSearchParams(
@@ -577,21 +583,19 @@ export function LinkedCollectionView({ collection, thirdParty, session, isReader
       )}
 
       <P.SubHeader>
-        {!isReader && (
-          <P.FilterChips data-testid="linked-filters">
-            {filters.map(value => (
-              <P.FilterChip
-                key={value}
-                type="button"
-                data-active={filter === value || undefined}
-                data-testid={`linked-filter-${value}`}
-                onClick={() => changeFilter(value)}
-              >
-                {t(`linked_collection.filter.${value}`)}
-              </P.FilterChip>
-            ))}
-          </P.FilterChips>
-        )}
+        <P.FilterChips data-testid="linked-filters">
+          {filters.map(value => (
+            <P.FilterChip
+              key={value}
+              type="button"
+              data-active={filter === value || undefined}
+              data-testid={`linked-filter-${value}`}
+              onClick={() => changeFilter(value)}
+            >
+              {t(`linked_collection.filter.${value}`)}
+            </P.FilterChip>
+          ))}
+        </P.FilterChips>
         <P.SubActions>
           <Button
             variant="secondary"
