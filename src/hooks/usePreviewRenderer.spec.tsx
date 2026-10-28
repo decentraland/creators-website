@@ -9,6 +9,10 @@ vi.mock('~/lib/featureFlags', async importOriginal => ({
   ...(await importOriginal<typeof import('~/lib/featureFlags')>()),
   getIsFeatureEnabled: () => getIsFeatureEnabled()
 }))
+const measureDownlinkMbps = vi.fn()
+vi.mock('~/lib/connectionSpeed', () => ({ measureDownlinkMbps: () => measureDownlinkMbps() }))
+const track = vi.fn()
+vi.mock('~/lib/analytics', () => ({ track: (...args: unknown[]) => track(...args) }))
 
 const { usePreviewRenderer } = await import('./usePreviewRenderer')
 
@@ -17,18 +21,40 @@ function wrapper({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>
 }
 
-beforeEach(() => getIsFeatureEnabled.mockReset())
+beforeEach(() => {
+  getIsFeatureEnabled.mockReset()
+  measureDownlinkMbps.mockReset()
+  track.mockReset()
+})
 
 describe('usePreviewRenderer', () => {
-  it('waits for the flag and then settles on Unity when it is on', async () => {
+  it('waits for the flag and the probe, then settles on Unity over a good link', async () => {
     getIsFeatureEnabled.mockResolvedValue(true)
+    measureDownlinkMbps.mockResolvedValue(48.26)
     const { result } = renderHook(() => usePreviewRenderer(), { wrapper })
     expect(result.current).toBeUndefined()
     await waitFor(() => expect(result.current).toBe(PreviewRenderer.UNITY))
+    expect(track).toHaveBeenCalledWith('Preview Renderer Picked', {
+      renderer: PreviewRenderer.UNITY,
+      reason: 'connection-ok',
+      measured_mbps: 48.3
+    })
+  })
+
+  it('falls back to Babylon on a slow link', async () => {
+    getIsFeatureEnabled.mockResolvedValue(true)
+    measureDownlinkMbps.mockResolvedValue(3)
+    const { result } = renderHook(() => usePreviewRenderer(), { wrapper })
+    await waitFor(() => expect(result.current).toBe(PreviewRenderer.BABYLON))
+    expect(track).toHaveBeenCalledWith(
+      'Preview Renderer Picked',
+      expect.objectContaining({ reason: 'slow-connection' })
+    )
   })
 
   it('falls back to Babylon while the flag is off or unknown', async () => {
     getIsFeatureEnabled.mockResolvedValue(false)
+    measureDownlinkMbps.mockResolvedValue(null)
     const { result } = renderHook(() => usePreviewRenderer(), { wrapper })
     await waitFor(() => expect(result.current).toBe(PreviewRenderer.BABYLON))
   })
