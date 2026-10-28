@@ -41,6 +41,8 @@ type Props = {
   selectable: boolean
   selected: boolean
   onSelectedChange: (selected: boolean) => void
+  /** A signer who is not a manager: no selection nor status, which describe the manager's publishing work. */
+  isReader?: boolean
   /** Whether the viewer may edit the mapping in place (desktop managers). */
   editable: boolean
   /** Saves a new mapping; a rejected promise keeps the row's draft so the creator can retry. */
@@ -62,6 +64,7 @@ export function LinkedItemRow({
   selectable,
   selected,
   onSelectedChange,
+  isReader = false,
   editable,
   onSaveMappings,
   onMappingDirtyChange,
@@ -169,17 +172,19 @@ export function LinkedItemRow({
   }
 
   return (
-    <S.Row data-testid="linked-item-row" data-selected={selected || undefined}>
-      <S.SelectCell>
-        <input
-          type="checkbox"
-          checked={selected}
-          disabled={!selectable}
-          aria-label={t('linked_collection.select_item', { name: item.name })}
-          data-testid="linked-item-select"
-          onChange={event => onSelectedChange(event.target.checked)}
-        />
-      </S.SelectCell>
+    <S.Row data-testid="linked-item-row" data-selected={selected || undefined} data-reader={isReader || undefined}>
+      {!isReader && (
+        <S.SelectCell>
+          <input
+            type="checkbox"
+            checked={selected}
+            disabled={!selectable}
+            aria-label={t('linked_collection.select_item', { name: item.name })}
+            data-testid="linked-item-select"
+            onChange={event => onSelectedChange(event.target.checked)}
+          />
+        </S.SelectCell>
+      )}
       <R.Thumb>
         <ItemThumbnail src={thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null} rarity={item.rarity} />
       </R.Thumb>
@@ -196,15 +201,17 @@ export function LinkedItemRow({
       <R.Cell data-testid="item-row-category">
         {category ? <CategoryIcon category={category} withLabel /> : EMPTY}
       </R.Cell>
-      <R.Cell data-testid="linked-item-status-cell">
-        {status ? (
-          <Pill data-testid="linked-item-status" data-status={status}>
-            {t(`linked_collection.item_status.${status}`)}
-          </Pill>
-        ) : (
-          EMPTY
-        )}
-      </R.Cell>
+      {!isReader && (
+        <R.Cell data-testid="linked-item-status-cell">
+          {status ? (
+            <Pill data-testid="linked-item-status" data-status={status}>
+              {t(`linked_collection.item_status.${status}`)}
+            </Pill>
+          ) : (
+            EMPTY
+          )}
+        </R.Cell>
+      )}
       <S.MappingCell data-testid="linked-item-mapping" data-saving={isSaving || undefined}>
         {contract ? (
           <MappingEditor

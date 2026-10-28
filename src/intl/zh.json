@@ -711,6 +711,7 @@
     "mobile_hint": "编辑功能仅在桌面端可用。您可以在这里预览物品。",
     "read_only": "此物品为只读：只有系列所有者和协作者可以编辑。",
     "read_only_locked": "系列发布期间，此物品为只读。",
+    "read_only_linked": "此物品为只读：只有关联系列的管理员可以编辑。",
     "save": "保存",
     "revert": "撤销",
     "save_success": "“{name}”已保存。",

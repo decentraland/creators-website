@@ -711,6 +711,7 @@
     "mobile_hint": "La edición está disponible en escritorio. Aquí puedes previsualizar los ítems.",
     "read_only": "Este ítem es de solo lectura: solo el dueño y los colaboradores de la colección pueden editarlo.",
     "read_only_locked": "Este ítem es de solo lectura mientras la colección se está publicando.",
+    "read_only_linked": "Este ítem es de solo lectura: solo los administradores de la colección vinculada pueden editarlo.",
     "save": "Guardar",
     "revert": "Descartar",
     "save_success": "Se guardó “{name}”.",

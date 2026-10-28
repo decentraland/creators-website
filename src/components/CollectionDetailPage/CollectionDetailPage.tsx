@@ -197,7 +197,8 @@ const CollectionDetailPage = () => {
   const withPlayMode = useMemo(() => results.some(item => item.type === ItemType.EMOTE), [results])
   const canManage = !!standardCollection && canManageCollectionItems(standardCollection, address)
   // A reader holds no role: they reached a published collection by link and only browse it.
-  const isReader = !!collection && !hasCollectionRole(collection, address)
+  // Readers hold no role: a linked collection's roles are its third party's managers.
+  const isReader = !!collection && (isLinked ? !isLinkedManager : !hasCollectionRole(collection, address))
   // builder-server serves a collection's curation to its owner, collaborators and the committee only.
   const committee = useCommittee(address)
   const curationAddress = canManage || committee.isCurator ? address : undefined
@@ -532,7 +533,7 @@ const CollectionDetailPage = () => {
           collection={collection}
           thirdParty={thirdParty.data}
           session={session}
-          isReader={!isLinkedManager}
+          isReader={isReader}
           page={page}
           onBack={() => navigate({ pathname: '/collections', search: listState?.listSearch })}
           onPageChange={goToPage}

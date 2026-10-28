@@ -82,6 +82,7 @@ describe('canViewLinkedCollection', () => {
   const stranger = '0xdef0000000000000000000000000000000000002'
 
   it('opens a published collection to any signer', () => {
+    expect(canViewLinkedCollection({ isPublished: true }, thirdParty, manager)).toBe(true)
     expect(canViewLinkedCollection({ isPublished: true }, thirdParty, stranger)).toBe(true)
     expect(canViewLinkedCollection({ isPublished: true }, thirdParty, undefined)).toBe(false)
   })

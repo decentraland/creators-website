@@ -153,6 +153,10 @@ async function rows() {
 }
 
 describe('LinkedCollectionView', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('opens read-only to a signer who is not a manager: no editing, publishing or item statuses', async () => {
     setup({ page: [item('a'), item('b')], unsynced: 2 })
     renderView({}, { address: '0xdef0000000000000000000000000000000000002' } as unknown as Session, true)
@@ -164,14 +168,11 @@ describe('LinkedCollectionView', () => {
     expect(screen.queryByTestId('publish-linked-items')).toBeNull()
     expect(screen.queryByTestId('rename-collection')).toBeNull()
     expect(screen.queryByTestId('back-to-collections')).toBeNull()
-    expect(screen.getByTestId('linked-select-all')).toBeDisabled()
-    expect(within(list[0]).getByTestId('linked-item-select')).toBeDisabled()
-    expect(within(list[0]).queryByTestId('linked-item-status')).toBeNull()
+    expect(screen.queryByTestId('linked-filters')).toBeNull()
+    expect(screen.queryByTestId('linked-select-all')).toBeNull()
+    expect(within(list[0]).queryByTestId('linked-item-select')).toBeNull()
+    expect(within(list[0]).queryByTestId('linked-item-status-cell')).toBeNull()
     expect(fetchItemCurations).not.toHaveBeenCalled()
-  })
-
-  beforeEach(() => {
-    vi.clearAllMocks()
   })
 
   it('shows the third party, its type and the linked contract', async () => {

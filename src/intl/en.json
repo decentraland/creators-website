@@ -711,6 +711,7 @@
     "mobile_hint": "Editing is available on desktop. Here you can preview the items.",
     "read_only": "This item is read-only: only the collection owner and collaborators can edit it.",
     "read_only_locked": "This item is read-only while the collection is being published.",
+    "read_only_linked": "This item is read-only: only the linked collection's managers can edit it.",
     "save": "Save",
     "revert": "Revert",
     "save_success": "“{name}” was saved.",
