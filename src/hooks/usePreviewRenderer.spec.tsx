@@ -52,10 +52,33 @@ describe('usePreviewRenderer', () => {
     )
   })
 
-  it('falls back to Babylon while the flag is off or unknown', async () => {
+  it('falls back to Babylon while the flag is off or unknown, without probing the link', async () => {
     getIsFeatureEnabled.mockResolvedValue(false)
-    measureDownlinkMbps.mockResolvedValue(null)
     const { result } = renderHook(() => usePreviewRenderer(), { wrapper })
     await waitFor(() => expect(result.current).toBe(PreviewRenderer.BABYLON))
+    expect(measureDownlinkMbps).not.toHaveBeenCalled()
+    expect(track).toHaveBeenCalledWith('Preview Renderer Picked', expect.objectContaining({ reason: 'flag-off' }))
+  })
+
+  it("does not spend a data-saver user's data on a probe", async () => {
+    getIsFeatureEnabled.mockResolvedValue(true)
+    Object.defineProperty(navigator, 'connection', { value: { saveData: true }, configurable: true })
+    try {
+      const { result } = renderHook(() => usePreviewRenderer(), { wrapper })
+      await waitFor(() => expect(result.current).toBe(PreviewRenderer.BABYLON))
+      expect(measureDownlinkMbps).not.toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(navigator, 'connection', { value: undefined, configurable: true })
+    }
+  })
+
+  it('still mounts the preview when reporting the decision throws', async () => {
+    getIsFeatureEnabled.mockResolvedValue(true)
+    measureDownlinkMbps.mockResolvedValue(50)
+    track.mockImplementation(() => {
+      throw new Error('segment down')
+    })
+    const { result } = renderHook(() => usePreviewRenderer(), { wrapper })
+    await waitFor(() => expect(result.current).toBe(PreviewRenderer.UNITY))
   })
 })
