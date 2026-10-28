@@ -301,6 +301,16 @@ describe('CollectionActionsMenu', () => {
     expect(onEditUrn).toHaveBeenCalled()
   })
 
+  it('lets a manager change the linked contract whether or not the collection is published', async () => {
+    const onEditContract = vi.fn()
+    renderMenu({ ...draft, urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats', isPublished: true }, OWNER, {
+      onEditContract
+    })
+    await openMenu()
+    await userEvent.click(screen.getByTestId('edit-linked-contract'))
+    expect(onEditContract).toHaveBeenCalled()
+  })
+
   it('locks the URN and the delete once the linked collection has published items', async () => {
     renderMenu({ ...draft, urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats', isPublished: true }, OWNER, {
       onEditUrn: vi.fn()

@@ -1672,7 +1672,8 @@
     "mapping_error": "无法保存 {name} 的映射，请重试。",
     "actions": {
       "edit_urn": "编辑 URN",
-      "edit_in_bulk": "批量编辑"
+      "edit_in_bulk": "批量编辑",
+      "edit_contract": "更改关联合约"
     },
     "item_actions": {
       "edit_urn": "编辑 URN"
@@ -1838,6 +1839,23 @@
     "error_generic": "无法创建您的关联系列，请重试。",
     "submit": "创建",
     "contract_placeholder": "0x… 合约地址"
+  },
+  "edit_contract_modal": {
+    "title": "更改关联合约",
+    "heading": "关联另一个 NFT 合约",
+    "subtitle": "当 NFT 合约重新部署时使用。已映射的物品会在新合约下保留其 token id，并重新进入审核。",
+    "submit": "更改合约",
+    "running": {
+      "working": "正在更新关联合约…"
+    },
+    "success": {
+      "title": "合约已更改",
+      "body": "{count, plural, =0 {系列现已关联新合约。没有需要迁移映射的物品，因此无需推送。} one {1 个物品现已指向新合约，可推送审核。审核通过后即可在世界中生效。} other {# 个物品现已指向新合约，可推送审核。审核通过后即可在世界中生效。}}"
+    },
+    "error": {
+      "title": "无法更改合约",
+      "body": "已完成的部分不会丢失。请重试以完成更改。"
+    }
   },
   "edit_urn_modal": {
     "title": {

@@ -4,12 +4,13 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { type Mappings } from '@dcl/schemas'
+import { ProviderType, type Mappings } from '@dcl/schemas'
 import { TranslationProvider } from '~/intl'
 import { type Session } from '~/lib/auth'
 import { CurationStatus, type Collection } from '~/lib/collections'
 import { ItemType, type Item } from '~/lib/items'
 import { type ItemCuration, type LinkedItemsQuery } from '~/lib/linkedItemStatus'
+import { RelinkCancelledError, type RelinkDeps } from '~/lib/relinkCollection'
 import { type ThirdParty } from '~/lib/thirdParty'
 import { LinkedCollectionView } from './LinkedCollectionView'
 
@@ -20,7 +21,17 @@ vi.mock('~/lib/builder', async importOriginal => ({
   fetchItemCurations: vi.fn()
 }))
 
+vi.mock('~/lib/relinkCollection', async importOriginal => ({
+  ...(await importOriginal<typeof import('~/lib/relinkCollection')>()),
+  relinkCollection: vi.fn()
+}))
+vi.mock('~/lib/linkedContract', async importOriginal => ({
+  ...(await importOriginal<typeof import('~/lib/linkedContract')>()),
+  checkLinkedContract: vi.fn(async () => 'ok' as const)
+}))
+
 import { fetchAllLinkedCollectionItems, fetchItemCurations, fetchLinkedCollectionItems } from '~/lib/builder'
+import { relinkCollection } from '~/lib/relinkCollection'
 
 const ADDRESS = '0xabc0000000000000000000000000000000000001'
 const CONTRACT = '0x1d9fb685c257e74f869ba302e260c0b68f5ebb37'
@@ -113,7 +124,7 @@ function setup({ page, pages = 1, total = page.length, curations = new Map(), un
   vi.mocked(fetchAllLinkedCollectionItems).mockResolvedValue([])
 }
 
-function renderView(view: Partial<Collection> = {}) {
+function renderView(view: Partial<Collection> = {}, who: Session = session) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
@@ -126,7 +137,7 @@ function renderView(view: Partial<Collection> = {}) {
     <LinkedCollectionView
       collection={{ ...collection, ...view }}
       thirdParty={thirdParty}
-      session={session}
+      session={who}
       page={1}
       onBack={vi.fn()}
       onPageChange={vi.fn()}
@@ -270,5 +281,119 @@ describe('LinkedCollectionView', () => {
     await waitFor(() =>
       expect(screen.getAllByTestId('item-row-name').map(name => name.textContent)).toEqual(['Hat 1', 'Hat 2'])
     )
+  })
+
+  describe('changing the linked contract', () => {
+    const NEW = '0x' + 'b'.repeat(40)
+    const FROM_KEY = 'linked-collection.relink-from.c1'
+    const social = { address: ADDRESS, providerType: ProviderType.MAGIC } as unknown as Session
+
+    // A run parked at the wallet prompt: the test decides when and how it ends.
+    function parkedRun() {
+      let deps!: RelinkDeps
+      let finish!: (result: { linked: number }) => void
+      let fail!: (error: Error) => void
+      vi.mocked(relinkCollection).mockImplementation((d, params) => {
+        deps = d
+        d.onStep?.('collection')
+        if (params.thirdParty.published) d.onStep?.('signing')
+        return new Promise((resolve, reject) => {
+          finish = resolve
+          fail = reject
+        })
+      })
+      return { deps: () => deps, finish: (linked = 1) => finish({ linked }), fail: (error: Error) => fail(error) }
+    }
+
+    async function submitContract() {
+      await userEvent.click(screen.getByTestId('collection-actions'))
+      await userEvent.click(screen.getByTestId('edit-linked-contract'))
+      const form = within(screen.getByTestId('edit-contract-modal'))
+      await userEvent.click(form.getByTestId('linked-network'))
+      await userEvent.click(within(screen.getByRole('listbox')).getByText('Amoy'))
+      await userEvent.type(form.getByTestId('linked-contract-address-input'), NEW)
+      await waitFor(() => expect(screen.getByTestId('edit-contract-submit')).toBeEnabled(), { timeout: 3000 })
+      await userEvent.click(screen.getByTestId('edit-contract-submit'))
+    }
+
+    beforeEach(() => {
+      localStorage.clear()
+      setup({ page: [item('a')] })
+    })
+
+    it('shows the wallet prompt modal, starts from the current contract, and ends on the success modal', async () => {
+      const run = parkedRun()
+      renderView()
+      await rows()
+      await submitContract()
+      expect(screen.getByTestId('edit-contract-running-label')).toHaveTextContent('Confirm in your wallet')
+      expect(vi.mocked(relinkCollection).mock.calls[0][1]).toMatchObject({
+        from: { network: 'amoy', address: CONTRACT },
+        to: { network: 'amoy', address: NEW }
+      })
+
+      run.finish(2)
+      await screen.findByTestId('success-modal-modal')
+      expect(screen.getByTestId('success-modal-modal')).toHaveTextContent('2 items now point to the new contract')
+    })
+
+    it('returns to the form quietly when the wallet prompt is rejected', async () => {
+      const run = parkedRun()
+      renderView()
+      await rows()
+      await submitContract()
+      run.fail(Object.assign(new Error('user rejected transaction'), { code: 'ACTION_REJECTED' }))
+      await waitFor(() => expect(screen.queryByTestId('edit-contract-running')).not.toBeInTheDocument())
+      expect(screen.queryByTestId('edit-contract-error')).not.toBeInTheDocument()
+      expect(screen.getByTestId('linked-contract-address-input')).toHaveValue(NEW)
+    })
+
+    it('starts a later run from the contract an interrupted one began with', async () => {
+      localStorage.setItem(FROM_KEY, JSON.stringify({ network: 'mainnet', address: NEW }))
+      parkedRun()
+      renderView()
+      await rows()
+      await submitContract()
+      expect(vi.mocked(relinkCollection).mock.calls[0][1]).toMatchObject({ from: { network: 'mainnet', address: NEW } })
+    })
+
+    it('lets the user back out of the wallet prompt, and blocks a new run until that one has settled', async () => {
+      const run = parkedRun()
+      renderView()
+      await rows()
+      await submitContract()
+      await userEvent.click(screen.getByTestId('edit-contract-running-cancel'))
+
+      expect(screen.queryByTestId('edit-contract-running')).not.toBeInTheDocument()
+      expect(screen.getByTestId('linked-contract-address-input')).toHaveValue(NEW)
+      expect(screen.getByTestId('edit-contract-submit')).toBeDisabled()
+      expect(run.deps().isCancelled?.()).toBe(true)
+
+      run.fail(new RelinkCancelledError())
+      await waitFor(() => expect(screen.getByTestId('edit-contract-submit')).toBeEnabled())
+      expect(screen.queryByTestId('edit-contract-error')).not.toBeInTheDocument()
+    })
+
+    it('keeps the form with a spinning button for a social login, which never sees a wallet prompt', async () => {
+      const run = parkedRun()
+      renderView({}, social)
+      await rows()
+      await submitContract()
+      expect(screen.queryByTestId('edit-contract-running')).not.toBeInTheDocument()
+      expect(screen.getByTestId('edit-contract-submit')).toBeDisabled()
+      run.finish()
+      await screen.findByTestId('success-modal-modal')
+    })
+
+    it('offers a retry from the error modal that reopens the form on the same contract', async () => {
+      const run = parkedRun()
+      renderView()
+      await rows()
+      await submitContract()
+      run.fail(new Error('registry down'))
+      await screen.findByTestId('edit-contract-error')
+      await userEvent.click(screen.getByTestId('edit-contract-error-retry'))
+      expect(screen.getByTestId('linked-contract-address-input')).toHaveValue(NEW)
+    })
   })
 })

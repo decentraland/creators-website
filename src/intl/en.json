@@ -1672,7 +1672,8 @@
     "mapping_error": "We couldn't save the mapping of {name}. Please try again.",
     "actions": {
       "edit_urn": "Edit URN",
-      "edit_in_bulk": "Edit in bulk"
+      "edit_in_bulk": "Edit in bulk",
+      "edit_contract": "Change linked contract"
     },
     "item_actions": {
       "edit_urn": "Edit URN"
@@ -1838,6 +1839,23 @@
     "error_generic": "We couldn't create your linked collection. Please try again.",
     "submit": "Create",
     "contract_placeholder": "0x… contract address"
+  },
+  "edit_contract_modal": {
+    "title": "Change linked contract",
+    "heading": "Link another NFT contract",
+    "subtitle": "Use this when the NFT contract was redeployed. Mapped items keep their token ids under the new contract and go back through review.",
+    "submit": "Change contract",
+    "running": {
+      "working": "Updating the linked contract…"
+    },
+    "success": {
+      "title": "Contract changed",
+      "body": "{count, plural, =0 {The collection now links the new contract. No item had a mapping to move, so there is nothing to push.} one {1 item now points to the new contract and is ready to push for review. It will go live in world once approved.} other {# items now point to the new contract and are ready to push for review. They will go live in world once approved.}}"
+    },
+    "error": {
+      "title": "We couldn't change the contract",
+      "body": "Nothing that already went through is lost. Try again to finish the change."
+    }
   },
   "edit_urn_modal": {
     "title": {

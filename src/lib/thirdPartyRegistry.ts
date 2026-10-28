@@ -5,7 +5,7 @@ import { ethers } from 'ethers'
 import { ContractName, getContract } from 'decentraland-transactions'
 import { readContract, type ContractCall } from '~/lib/auth'
 import { type SlotsCheque } from '~/lib/builder'
-import { toRawMetadata, type ThirdParty } from '~/lib/thirdParty'
+import { contractsFromRawMetadata, toRawMetadata, type LinkedContract, type ThirdParty } from '~/lib/thirdParty'
 
 export function getThirdPartyRegistry(chainId: number) {
   return getContract(ContractName.ThirdPartyRegistry, chainId)
@@ -41,6 +41,21 @@ export function buildAddThirdPartyCall(
       [thirdParty.isProgrammatic],
       [maxPriceWei.toString()]
     ]
+  }
+}
+
+/**
+ * Rewrites a registered third party's metadata (name, description, linked contracts). Empty resolver, managers and
+ * slots leave those as they are: the registry skips every empty field.
+ */
+export function buildUpdateThirdPartyCall(
+  chainId: number,
+  thirdParty: Pick<ThirdParty, 'id' | 'name' | 'description' | 'contracts'>
+): ContractCall {
+  return {
+    contract: getThirdPartyRegistry(chainId),
+    method: 'updateThirdParties',
+    args: [[[thirdParty.id, toRawMetadata(thirdParty), '', [], [], '0']]]
   }
 }
 
@@ -102,17 +117,25 @@ export type RegisteredThirdParty = {
 
 const EMPTY_ROOT = ethers.constants.HashZero
 
+type ThirdPartyRecord = { registered: ethers.BigNumber; maxItems: ethers.BigNumber; root: string; metadata: string }
+
+function readThirdPartyRecord(chainId: number, thirdPartyId: string): Promise<ThirdPartyRecord> {
+  return readContract<ThirdPartyRecord>(getThirdPartyRegistry(chainId), 'thirdParties', [thirdPartyId])
+}
+
 export async function fetchRegisteredThirdParty(chainId: number, thirdPartyId: string): Promise<RegisteredThirdParty> {
-  const record = await readContract<{ registered: ethers.BigNumber; maxItems: ethers.BigNumber; root: string }>(
-    getThirdPartyRegistry(chainId),
-    'thirdParties',
-    [thirdPartyId]
-  )
+  const record = await readThirdPartyRecord(chainId, thirdPartyId)
   return {
     registered: !record.registered.isZero(),
     maxItems: Number(record.maxItems.toString()),
     root: record.root === EMPTY_ROOT ? '' : record.root
   }
+}
+
+/** The contracts the registry itself lists for the third party right now, ahead of the subgraph. */
+export async function fetchRegisteredContracts(chainId: number, thirdPartyId: string): Promise<LinkedContract[]> {
+  const record = await readThirdPartyRecord(chainId, thirdPartyId)
+  return contractsFromRawMetadata(record.metadata)
 }
 
 export type ThirdPartyPrice = {
