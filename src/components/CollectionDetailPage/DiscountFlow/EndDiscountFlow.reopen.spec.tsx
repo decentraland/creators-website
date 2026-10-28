@@ -112,6 +112,29 @@ describe('when the creator backs out of the wallet prompt without closing the En
     await act(async () => mine())
     expect(await screen.findByTestId('success-modal-title')).toHaveTextContent(/discount ended/i)
   })
+  it('should explain a request backed out of that later fails', async () => {
+    const { wrapper, session } = setup()
+    let fail: () => void = () => {}
+    vi.mocked(endDiscount).mockImplementation(
+      () => new Promise<void>((_, reject) => (fail = () => reject(new DiscountError('generic'))))
+    )
+    render(
+      <EndDiscountFlow
+        discount={discountOf('failed-later', session.address)}
+        collection={collection}
+        session={session}
+        onClose={vi.fn()}
+      />,
+      { wrapper }
+    )
+
+    await userEvent.click(screen.getByTestId('end-discount-confirm'))
+    await userEvent.click(screen.getByTestId('end-discount-pending-cancel'))
+    await act(async () => fail())
+    expect(screen.queryByTestId('end-discount-confirm')).not.toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toHaveTextContent(/couldn't end your discount/i)
+  })
+
   it('should show a request backed out of as mining once it is signed, no longer offering End', async () => {
     const { wrapper, session } = setup()
     let sign: () => void = () => {}

@@ -68,7 +68,7 @@ export const ModalActions = styled.div`
     min-width: fit-content;
   }
   /* A lone acknowledgement sizes to its label, centered, like the success dialog's DONE. */
-  & > button:only-child {
+  &[data-single] > button {
     flex: 0 0 auto;
     margin-inline: auto;
   }

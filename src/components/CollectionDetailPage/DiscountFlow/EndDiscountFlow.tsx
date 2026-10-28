@@ -32,15 +32,21 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
   const attempt = useRef(0)
   // This dialog's own request whose wallet prompt the creator backed out of: the prompt stays open in the wallet,
   // so End shows that request again rather than sending a second paid one.
-  const [backedOut, setBackedOut] = useState<number | null>(null)
+  const backedOut = useRef<number | null>(null)
+  const [heldOpen, setHeldOpen] = useState(false)
   // An attempt from a dialog the creator closed counts too: it may still be mining, or have already settled.
   const outcome = endOutcome(session.address, discount.id)
   useBeforeUnloadGuard(ending)
 
+  function hold(id: number | null) {
+    backedOut.current = id
+    setHeldOpen(id !== null)
+  }
+
   function start() {
-    if (backedOut !== null && ending) {
-      attempt.current = backedOut
-      setBackedOut(null)
+    if (backedOut.current !== null && ending) {
+      attempt.current = backedOut.current
+      hold(null)
       setPhase('confirm')
       setView('pending')
       return
@@ -57,7 +63,7 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
         // Signed even after backing out: only one request is ever open, so it is the one to show mining.
         onSigned: () => {
           attempt.current = id
-          setBackedOut(null)
+          hold(null)
           setPhase('mining')
           setView('pending')
         }
@@ -65,8 +71,10 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
       {
         onSuccess: () => setView('success'),
         onError: cause => {
-          setBackedOut(current => (current === id ? null : current))
-          if (attempt.current !== id) return
+          // A request backed out of still owns the confirmation, so its failure is explained there too.
+          const backedOutOf = backedOut.current === id
+          if (backedOutOf) hold(null)
+          if (attempt.current !== id && !backedOutOf) return
           const reason = toDiscountError(cause).reason
           if (reason === 'rejected') {
             setView('confirm')
@@ -105,7 +113,7 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
       : outcome === 'ended'
         ? 'success'
         : ending
-          ? backedOut !== null
+          ? heldOpen
             ? view
             : 'in_flight'
           : outcome === 'pending'
@@ -144,7 +152,7 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
           onCancel={
             phase === 'confirm'
               ? () => {
-                  setBackedOut(attempt.current)
+                  hold(attempt.current)
                   attempt.current++
                   setView('confirm')
                 }
