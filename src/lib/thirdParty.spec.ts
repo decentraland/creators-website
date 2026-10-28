@@ -3,6 +3,7 @@ import { type ContractNetwork } from '@dcl/schemas'
 import {
   buildLinkedItemUrn,
   buildNewLinkedCollection,
+  canViewLinkedCollection,
   decodeLinkedUrn,
   fromRemoteThirdParty,
   getDefaultUrnSuffix,
@@ -72,6 +73,23 @@ describe('isThirdPartyManager', () => {
   it('keeps everyone else out', () => {
     expect(isThirdPartyManager(thirdParty, '0xdef0000000000000000000000000000000000002')).toBe(false)
     expect(isThirdPartyManager(thirdParty, undefined)).toBe(false)
+  })
+})
+
+describe('canViewLinkedCollection', () => {
+  const thirdParty = { managers: ['0xabc0000000000000000000000000000000000001'] }
+  const manager = '0xabc0000000000000000000000000000000000001'
+  const stranger = '0xdef0000000000000000000000000000000000002'
+
+  it('opens a published collection to any signer', () => {
+    expect(canViewLinkedCollection({ isPublished: true }, thirdParty, manager)).toBe(true)
+    expect(canViewLinkedCollection({ isPublished: true }, thirdParty, stranger)).toBe(true)
+    expect(canViewLinkedCollection({ isPublished: true }, thirdParty, undefined)).toBe(false)
+  })
+
+  it('keeps an unpublished collection to its managers', () => {
+    expect(canViewLinkedCollection({ isPublished: false }, thirdParty, manager)).toBe(true)
+    expect(canViewLinkedCollection({ isPublished: false }, thirdParty, stranger)).toBe(false)
   })
 })
 

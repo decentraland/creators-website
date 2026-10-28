@@ -124,7 +124,7 @@ function setup({ page, pages = 1, total = page.length, curations = new Map(), un
   vi.mocked(fetchAllLinkedCollectionItems).mockResolvedValue([])
 }
 
-function renderView(view: Partial<Collection> = {}, who: Session = session) {
+function renderView(view: Partial<Collection> = {}, who: Session = session, isReader = false) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
@@ -138,6 +138,7 @@ function renderView(view: Partial<Collection> = {}, who: Session = session) {
       collection={{ ...collection, ...view }}
       thirdParty={thirdParty}
       session={who}
+      isReader={isReader}
       page={1}
       onBack={vi.fn()}
       onPageChange={vi.fn()}
@@ -154,6 +155,25 @@ async function rows() {
 describe('LinkedCollectionView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('opens read-only to a signer who is not a manager: no editing, publishing or item statuses', async () => {
+    setup({ page: [item('a'), item('b')], unsynced: 2 })
+    renderView({}, { address: '0xdef0000000000000000000000000000000000002' } as unknown as Session, true)
+
+    const list = await rows()
+    expect(list).toHaveLength(2)
+    expect(screen.getByTestId('open-editor')).toHaveTextContent('Open Preview')
+    expect(screen.queryByTestId('add-items')).toBeNull()
+    expect(screen.queryByTestId('publish-linked-items')).toBeNull()
+    expect(screen.queryByTestId('rename-collection')).toBeNull()
+    expect(screen.queryByTestId('back-to-collections')).toBeNull()
+    expect(within(screen.getByTestId('linked-filters')).getAllByRole('button')).toHaveLength(1)
+    expect(screen.getByTestId('linked-filter-all')).toHaveAttribute('data-active')
+    expect(screen.queryByTestId('linked-select-all')).toBeNull()
+    expect(within(list[0]).queryByTestId('linked-item-select')).toBeNull()
+    expect(within(list[0]).queryByTestId('linked-item-status-cell')).toBeNull()
+    expect(fetchItemCurations).not.toHaveBeenCalled()
   })
 
   it('shows the third party, its type and the linked contract', async () => {

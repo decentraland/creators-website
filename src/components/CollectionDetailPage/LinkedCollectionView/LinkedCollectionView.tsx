@@ -104,6 +104,8 @@ type Props = {
   collection: Collection
   thirdParty: ThirdParty | undefined
   session: Session
+  /** A signer who is not one of the third party's managers: the collection is published and read-only to them. */
+  isReader: boolean
   page: number
   onBack: () => void
   onPageChange: (page: number) => void
@@ -111,20 +113,24 @@ type Props = {
 
 /** A linked (third-party) collection: its contract, its items with their review status and token mapping, and the
  * actions to grow, publish and push it. */
-export function LinkedCollectionView({ collection, thirdParty, session, page, onBack, onPageChange }: Props) {
+export function LinkedCollectionView({ collection, thirdParty, session, isReader, page, onBack, onPageChange }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { address } = session
   const showToast = useNotifications(state => state.showToast)
   const [searchParams, setSearchParams] = useSearchParams()
-  const filter = parseLinkedItemFilter(searchParams.get('filter'))
+  // Readers only ever receive published items, and the workflow filters (drafts first) read manager-only data.
+  const filter = isReader ? LinkedItemFilter.ALL : parseLinkedItemFilter(searchParams.get('filter'))
   const compact = useMediaQuery(theme.media.noActions)
   const filesInputRef = useRef<HTMLInputElement>(null)
 
   const itemsPage = useLinkedCollectionItems(address, collection, page, filter)
   const items = useMemo(() => itemsPage.data?.results ?? [], [itemsPage.data])
+  // Readers get no status column nor publishing, as on standard collections: builder-server serves item curations
+  // to managers only, and the publish counts describe the manager's work.
+  const workCollection = isReader ? undefined : collection
   // Every item's latest curation: the rows read theirs, and a pending one anywhere blocks publishing.
-  const curations = useItemCurations(address, collection)
+  const curations = useItemCurations(address, workCollection)
   const saveCollection = useSaveCollection(address)
   const queryClient = useQueryClient()
   const saveItem = useSaveItem(address)
@@ -181,7 +187,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     () => (network && contractAddress ? { network: network as ContractNetwork, address: contractAddress } : null),
     [network, contractAddress]
   )
-  const canEdit = !compact && !isCollectionLocked(collection)
+  const canEdit = !isReader && !compact && !isCollectionLocked(collection)
   const canEditCollection = canEdit && !collection.isPublished
   const total = itemsPage.data?.total ?? 0
   const pages = itemsPage.data?.pages ?? 0
@@ -191,8 +197,13 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   useEffect(() => {
     if (tracked.current || !itemsPage.data) return
     tracked.current = true
-    track('View linked collection', { collectionId: collection.id, item_count: itemsPage.data.total, network })
-  }, [collection.id, itemsPage.data, network])
+    track('View linked collection', {
+      collectionId: collection.id,
+      item_count: itemsPage.data.total,
+      network,
+      is_reader: isReader
+    })
+  }, [collection.id, itemsPage.data, network, isReader])
 
   // A filter shows another set of items: a selection made under the previous one would publish things off screen.
   const filterRef = useRef(filter)
@@ -236,7 +247,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   const selectedCount = selection.toPublish.length + selection.toPush.length
   const publishAction = getLinkedPublishAction(selection)
   // Nothing anywhere to publish or push: the button would only ever be disabled, so it isn't shown.
-  const hasWork = useHasLinkedWork(address, collection, curations.data)
+  const hasWork = useHasLinkedWork(address, workCollection, curations.data)
   const hasPendingReview = useMemo(
     () => [...(curations.data?.values() ?? [])].some(curation => curation.status === CurationStatus.PENDING),
     [curations.data]
@@ -256,7 +267,13 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   }, [pageSelected, allPageSelected])
   const canSelectAcross = allPageSelected && !allAcrossSelected && pages > 1
 
-  const filters = collection.isMappingComplete === false ? [...BASE_FILTERS, ...MIGRATION_FILTERS] : BASE_FILTERS
+  // Readers keep the All chip alone: the workflow filters describe the manager's work (and Draft reads manager-only
+  // data), while an empty row would push the sub-header actions to the left.
+  const filters = isReader
+    ? [LinkedItemFilter.ALL]
+    : collection.isMappingComplete === false
+      ? [...BASE_FILTERS, ...MIGRATION_FILTERS]
+      : BASE_FILTERS
 
   function changeFilter(next: LinkedItemFilter) {
     setSearchParams(
@@ -445,14 +462,16 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
     <>
       <P.Header>
         <P.HeaderLeft>
-          <P.BackLink
-            type="button"
-            aria-label={t('collection_detail_page.back')}
-            data-testid="back-to-collections"
-            onClick={onBack}
-          >
-            <ArrowBackIcon />
-          </P.BackLink>
+          {!isReader && (
+            <P.BackLink
+              type="button"
+              aria-label={t('collection_detail_page.back')}
+              data-testid="back-to-collections"
+              onClick={onBack}
+            >
+              <ArrowBackIcon />
+            </P.BackLink>
+          )}
           <P.TitleGroup>
             <P.Title title={collection.name}>{collection.name}</P.Title>
             {canEditCollection && (
@@ -499,7 +518,9 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
             collection={collection}
             address={address}
             showRoles={false}
-            onPreviewInWorld={total > 0 ? () => previewCollectionFromDetail(collection.id, total) : undefined}
+            onPreviewInWorld={
+              !isReader && total > 0 ? () => previewCollectionFromDetail(collection.id, total) : undefined
+            }
             onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
             onEditUrn={canEditCollection ? () => setUrnOpen(true) : undefined}
             onEditContract={
@@ -583,7 +604,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
             onClick={() => navigate(`/collections/editor?collection=${collection.id}`)}
           >
             <OpenEditorIcon />
-            {t('collection_detail_page.open_editor')}
+            {t(isReader ? 'collection_detail_page.open_preview' : 'collection_detail_page.open_editor')}
           </Button>
           {canEdit && (
             <Button
@@ -612,7 +633,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
             {t('linked_collection.load_error.retry')}
           </Button>
         </P.Panel>
-      ) : isEmpty && filter === LinkedItemFilter.ALL ? (
+      ) : isEmpty && filter === LinkedItemFilter.ALL && !isReader ? (
         <P.Panel data-testid="collection-empty">
           <P.DropArt src={addItemsArt} alt="" />
           <P.PanelTitle>{t('linked_collection.empty.title')}</P.PanelTitle>
@@ -637,18 +658,20 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
       ) : (
         <>
           <S.List data-testid="items-list" aria-busy={itemsPage.isFetching || undefined}>
-            <S.ListHeader data-selecting={selectedCount > 0 || undefined}>
-              <S.HeaderSelect>
-                <input
-                  ref={headerCheckbox}
-                  type="checkbox"
-                  checked={allPageSelected}
-                  disabled={selectableIds.length === 0 || isSelectingAll}
-                  aria-label={t('linked_collection.select_all')}
-                  data-testid="linked-select-all"
-                  onChange={event => togglePage(event.target.checked)}
-                />
-              </S.HeaderSelect>
+            <S.ListHeader data-selecting={selectedCount > 0 || undefined} data-reader={isReader || undefined}>
+              {!isReader && (
+                <S.HeaderSelect>
+                  <input
+                    ref={headerCheckbox}
+                    type="checkbox"
+                    checked={allPageSelected}
+                    disabled={selectableIds.length === 0 || isSelectingAll}
+                    aria-label={t('linked_collection.select_all')}
+                    data-testid="linked-select-all"
+                    onChange={event => togglePage(event.target.checked)}
+                  />
+                </S.HeaderSelect>
+              )}
               {selectedCount > 0 ? (
                 <S.SelectionSummary data-testid="linked-selection">
                   <S.SelectionCount data-testid="linked-selection-count">
@@ -685,19 +708,21 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
                 <>
                   <span data-name>{t('collection_detail_page.list.item')}</span>
                   <span>{t('collection_detail_page.list.category')}</span>
-                  <span>
-                    {t('linked_collection.list.status')}
-                    {curations.isError && (
-                      <S.StatusRetry
-                        type="button"
-                        data-testid="linked-item-status-retry"
-                        disabled={curations.isFetching}
-                        onClick={() => void curations.refetch()}
-                      >
-                        {t('linked_collection.item_status.retry')}
-                      </S.StatusRetry>
-                    )}
-                  </span>
+                  {!isReader && (
+                    <span>
+                      {t('linked_collection.list.status')}
+                      {curations.isError && (
+                        <S.StatusRetry
+                          type="button"
+                          data-testid="linked-item-status-retry"
+                          disabled={curations.isFetching}
+                          onClick={() => void curations.refetch()}
+                        >
+                          {t('linked_collection.item_status.retry')}
+                        </S.StatusRetry>
+                      )}
+                    </span>
+                  )}
                   <span>{t('linked_collection.list.mapping')}</span>
                   <span>{t('collection_detail_page.list.actions')}</span>
                 </>
@@ -712,6 +737,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
                 selectable={selectableSet.has(item.id)}
                 selected={selected.has(item.id)}
                 onSelectedChange={isSelected => toggleSelected(item, isSelected)}
+                isReader={isReader}
                 editable={canEdit}
                 onSaveMappings={saveMappings}
                 onMappingDirtyChange={onMappingDirtyChange}

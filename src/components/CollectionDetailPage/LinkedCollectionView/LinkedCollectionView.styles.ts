@@ -89,6 +89,11 @@ const columns = `
   grid-template-columns: 36px 74px minmax(0, 1.4fr) minmax(0, 1fr) minmax(136px, 1fr) minmax(260px, 2fr) minmax(56px, auto);
   align-items: center;
   gap: 16px;
+
+  /* Readers get no checkbox nor status column. */
+  &[data-reader] {
+    grid-template-columns: 74px minmax(0, 1.4fr) minmax(0, 1fr) minmax(260px, 2fr) minmax(56px, auto);
+  }
 `
 
 export const List = styled.div`
