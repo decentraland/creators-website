@@ -13,7 +13,7 @@ type Action = {
 
 type Props = {
   title: string
-  description: string
+  description: ReactNode
   /** Illustration shown instead of the warning glyph. */
   art?: { src: string }
   /** Glyph shown instead of the warning one, for confirmations that aren't warnings. */

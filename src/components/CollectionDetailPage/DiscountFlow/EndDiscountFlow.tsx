@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { AccountBalanceWalletOutlined as WalletIcon } from '@mui/icons-material'
 import errorArt from '~/assets/modal-error.png'
 import { useTranslation } from '~/intl'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
@@ -29,21 +30,41 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
   const [view, setView] = useState<View>('confirm')
   const [phase, setPhase] = useState<'confirm' | 'mining'>('confirm')
   const attempt = useRef(0)
+  // This dialog's own request whose wallet prompt the creator backed out of: the prompt stays open in the wallet,
+  // so End shows that request again rather than sending a second paid one.
+  const [backedOut, setBackedOut] = useState<number | null>(null)
+  const signed = useRef(false)
   // An attempt from a dialog the creator closed counts too: it may still be mining, or have already settled.
   const outcome = endOutcome(session.address, discount.id)
   useBeforeUnloadGuard(ending)
 
   function start() {
-    // A prompt the creator backed out of may still be open: a second one would be a second paid cancellation.
+    if (backedOut !== null && ending) {
+      attempt.current = backedOut
+      setBackedOut(null)
+      setPhase(signed.current ? 'mining' : 'confirm')
+      setView('pending')
+      return
+    }
+    // A request from a dialog the creator closed may still be open: a second one would be a second paid cancellation.
     if (ending || outcome) return
     const id = ++attempt.current
+    signed.current = false
     setPhase('confirm')
     setView('pending')
     end.mutate(
-      { discount, collection, onSigned: () => attempt.current === id && setPhase('mining') },
+      {
+        discount,
+        collection,
+        onSigned: () => {
+          signed.current = true
+          if (attempt.current === id) setPhase('mining')
+        }
+      },
       {
         onSuccess: () => setView('success'),
         onError: cause => {
+          setBackedOut(current => (current === id ? null : current))
           if (attempt.current !== id) return
           const reason = toDiscountError(cause).reason
           if (reason === 'rejected') {
@@ -66,10 +87,11 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
   if (social) {
     return (
       <ConfirmModal
-        title={t('collection_discount.end.title')}
+        title={t('collection_discount.end.social_title')}
         description={t('collection_discount.end.social_description')}
+        icon={<WalletIcon />}
         onClose={onClose}
-        cancel={{ label: t('collection_discount.end.close'), onClick: onClose, testId: 'end-discount-cancel' }}
+        confirm={{ label: t('collection_discount.end.got_it'), onClick: onClose, testId: 'end-discount-dismiss' }}
         testId="end-discount-modal"
       />
     )
@@ -82,7 +104,9 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
       : outcome === 'ended'
         ? 'success'
         : ending
-          ? 'in_flight'
+          ? backedOut !== null
+            ? view
+            : 'in_flight'
           : outcome === 'pending'
             ? 'slow'
             : view
@@ -119,6 +143,7 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
           onCancel={
             phase === 'confirm'
               ? () => {
+                  setBackedOut(attempt.current)
                   attempt.current++
                   setView('confirm')
                 }
@@ -141,7 +166,7 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
           title={t('collection_discount.end.slow_title')}
           description={t('collection_discount.end.slow_description')}
           onClose={onClose}
-          cancel={{ label: t('collection_discount.end.close'), onClick: onClose, testId: 'end-discount-slow-close' }}
+          confirm={{ label: t('collection_discount.end.got_it'), onClick: onClose, testId: 'end-discount-slow-close' }}
           testId="end-discount-slow-modal"
         />
       )
