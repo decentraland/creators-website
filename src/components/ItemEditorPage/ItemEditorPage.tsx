@@ -30,6 +30,8 @@ import { useObjectURL } from '~/hooks/useObjectURL'
 import { thumbnailValidationKey, useThumbnailValidation } from '~/hooks/useThumbnailValidation'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { fetchStoredThumbnail, useSaveItem } from '~/hooks/useSaveItem'
+import { captureError } from '~/lib/monitoring'
+import { springBonesFetcher } from '~/hooks/useSpringBones'
 import { useTranslation } from '~/intl'
 import { type AvatarAttributes } from '~/lib/avatar'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS, getContentsStorageUrl } from '~/lib/builder'
@@ -43,7 +45,7 @@ import {
 } from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
 import { getCurationState, curationListUrl } from '~/lib/curation'
-import { toPreviewItem, toSaveableItem } from '~/lib/itemDraft'
+import { toFileChangeSaveable, toPreviewItem, toSaveableItem, type ItemFileChange } from '~/lib/itemDraft'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
 import { pickFiles } from '~/lib/filePicker'
 import { IMAGE_PATH, ITEM_EXTENSIONS } from '~/lib/itemFiles'
@@ -54,7 +56,12 @@ import { useItemCurations, useThirdParty } from '~/hooks/useLinkedCollection'
 import { usePendingLinkedItems } from '~/hooks/useLinkedReview'
 import { useNotifications } from '~/lib/notifications'
 import { type AvatarPreviewSource } from '~/lib/preview'
-import { getShapesMissingSpringBones, mergeSpringBonesIntoItem, type SpringBoneParamsByName } from '~/lib/springBones'
+import {
+  carrySpringBonesForSave,
+  getShapesMissingSpringBones,
+  mergeSpringBonesIntoItem,
+  type SpringBoneParamsByName
+} from '~/lib/springBones'
 import { selectAvatarAttributes, useAvatarPreview } from '~/store/avatarPreview'
 import { useWallet } from '~/store/wallet'
 import { theme } from '~/styles/theme'
@@ -68,7 +75,7 @@ import { EditorPreviewLaunch } from './EditorPreviewLaunch'
 import { ReviewBar } from './ReviewBar'
 import { LinkedReviewBar } from './ReviewBar/LinkedReviewBar'
 import { ValidationBadge } from '~/components/ValidationBadge'
-import { distinctModels, getValidationStatus, itemValidationContext, type ValidationSource } from '~/lib/validation'
+import { getValidationStatus, itemValidationContext, type ValidationSource } from '~/lib/validation'
 import { useEditorLayout } from './useEditorLayout'
 import { useItemForm } from './useItemForm'
 import * as S from './ItemEditorPage.styles'
@@ -201,41 +208,21 @@ const ItemEditorPage = () => {
       : items
     return pickDressedItems(withDraft, dressedItemIds, bodyShape)
   }, [items, previewSelected, form.draft.category, dressedItemIds, bodyShape])
-  const fileUpdate = form.draft.fileUpdate
-  const source = useMemo<AvatarPreviewSource>(
-    () => ({
-      kind: 'items',
-      items: previewItems,
-      unsaved: fileUpdate && selectedId ? { itemId: selectedId, blobs: fileUpdate.blobs } : undefined
-    }),
-    [previewItems, fileUpdate, selectedId]
-  )
+  const source = useMemo<AvatarPreviewSource>(() => ({ kind: 'items', items: previewItems }), [previewItems])
   const collectionEmotes = useMemo(() => items.filter(item => item.type === ItemType.EMOTE), [items])
   const subjectEmote = useMemo(() => previewItems.find(item => item.type === ItemType.EMOTE) ?? null, [previewItems])
   const previewedWearables = useMemo(() => previewItems.filter(item => item.type === ItemType.WEARABLE), [previewItems])
 
-  // An unsaved model's files exist only in memory: storage would 404 on their hashes. Phones validate nothing.
-  const validationSource = useMemo<ValidationSource | null>(() => {
-    if (!previewSelected || isMobile) return null
-    const representations = fileUpdate?.item.data.representations ?? []
-    if (!fileUpdate || representations.length === 0) return { kind: 'item', item: previewSelected }
-    const models = distinctModels(representations, path => fileUpdate.item.contents[path])
-    return {
-      kind: 'blob',
-      contents: fileUpdate.blobs,
-      mainFile: representations[0].mainFile,
-      representations: models.map(({ mainFile, bodyShapes, audio }) => ({ mainFile, bodyShapes, contents: audio }))
-    }
-  }, [previewSelected, fileUpdate, isMobile])
-  const fileUpdateId = useMemo(
-    () => (fileUpdate ? Object.values(fileUpdate.item.contents).sort().join() : undefined),
-    [fileUpdate]
+  // Phones validate nothing.
+  const validationSource = useMemo<ValidationSource | null>(
+    () => (previewSelected && !isMobile ? { kind: 'item', item: previewSelected } : null),
+    [previewSelected, isMobile]
   )
   const validationCtx = useMemo(
     () => (previewSelected ? itemValidationContext(previewSelected) : { type: ItemType.WEARABLE }),
     [previewSelected]
   )
-  const validation = useModelValidation(validationSource, validationCtx, fileUpdateId)
+  const validation = useModelValidation(validationSource, validationCtx)
   // An unsaved thumbnail is checked as picked; otherwise the stored one.
   const thumbnailSource = useMemo(() => {
     if (isMobile) return null
@@ -269,7 +256,7 @@ const ItemEditorPage = () => {
   const rerunValidation = useRerunValidation()
   const rerunSelectedValidation = useCallback(async () => {
     const keys: (readonly unknown[])[] = []
-    if (validationSource) keys.push(modelValidationKey(validationSource, validationCtx, fileUpdateId))
+    if (validationSource) keys.push(modelValidationKey(validationSource, validationCtx))
     if (thumbnailSource) keys.push(thumbnailValidationKey(thumbnailSource))
     const issues = await rerunValidation(keys)
     track('Item Validation Rerun', {
@@ -278,7 +265,7 @@ const ItemEditorPage = () => {
       previousStatus: validationStatus,
       newStatus: getValidationStatus(issues, false)
     })
-  }, [rerunValidation, validationSource, validationCtx, fileUpdateId, thumbnailSource, selectedId, validationStatus])
+  }, [rerunValidation, validationSource, validationCtx, thumbnailSource, selectedId, validationStatus])
   const onValidationOpen = useCallback(
     () => track('Item Validation Details Opened', { itemId: selectedId, status: validationStatus, trigger: 'editor' }),
     [selectedId, validationStatus]
@@ -386,15 +373,9 @@ const ItemEditorPage = () => {
       : canDeleteItem(collection, address))
 
   async function persist(item: Item) {
-    const hasSpringModels = springBones.models.length > 0
-    // A new model without spring bones drops the replaced model's params instead of leaving them orphaned.
-    const dropsSpringBones = !!form.draft.fileUpdate && !springBones.isLoading && !springBones.isError
     const built = await toSaveableItem(item, form.draft, {
-      springBones: hasSpringModels
-        ? (mergeSpringBonesIntoItem(form.springBoneParams) ?? null)
-        : dropsSpringBones
-          ? null
-          : undefined,
+      springBones:
+        springBones.models.length > 0 ? (mergeSpringBonesIntoItem(form.springBoneParams) ?? null) : undefined,
       fetchThumbnail: fetchStoredThumbnail
     })
     if (form.draft.rarity !== item.rarity && !form.draft.thumbnail && !built.blobs[IMAGE_PATH]) {
@@ -410,22 +391,59 @@ const ItemEditorPage = () => {
     showToast(t('item_editor.save_success', { name: saved.name }))
   }
 
-  // Until the new model's chains are carried over, a save would store them under the replaced model.
-  const isCarryingSpringBones = !!form.draft.fileUpdate && springBones.isLoading
+  // A locked collection is the creator's to wait out; anything else is ours to look into.
+  function reportSaveError(error: unknown, flow: 'item_save' | 'item_file_change') {
+    console.error('Item save failed:', error)
+    const locked = error instanceof BuilderServerError && error.status === COLLECTION_LOCKED_STATUS
+    if (!locked) captureError(error, { flow, itemId: selectedIdRef.current ?? undefined })
+    showToast(t(locked ? 'item_editor.save_error_locked' : 'item_editor.save_error'), { type: 'error' })
+  }
+
+  // The change-file modal saves on confirm, like the legacy builder's: the file change alone, built
+  // from the saved item. Spring-bone params ride along as they stand in the form (chains are keyed by
+  // model, so they move with the file); every other unsaved panel edit stays pending, except what the
+  // file change decided (category, thumbnail).
+  async function saveFileChange(change: ItemFileChange): Promise<void> {
+    if (!selected) throw new Error('No item selected')
+    const base = selected
+    try {
+      const springBonesData = await carrySpringBonesForSave(
+        springBonesFetcher(queryClient),
+        base,
+        change.update,
+        form.springBoneParams
+      )
+      const built = await toFileChangeSaveable(base, change, {
+        springBones: springBonesData,
+        fetchThumbnail: fetchStoredThumbnail
+      })
+      const saved = await saveItem.mutateAsync({ ...built, previousVideo: base.video })
+      queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collectionId ?? undefined), current =>
+        current?.map(candidate => (candidate.id === saved.id ? saved : candidate))
+      )
+      if (selectedIdRef.current === saved.id) {
+        if (change.category) {
+          form.dispatch({ type: 'setCategory', category: change.category })
+          form.dispatch({ type: 'setHides', hides: saved.data.hides ?? [] })
+        }
+        if (change.thumbnail) form.dispatch({ type: 'setThumbnail', thumbnail: null })
+      }
+      showToast(t('item_editor.save_success', { name: saved.name }))
+    } catch (error) {
+      reportSaveError(error, 'item_file_change')
+      throw error
+    }
+  }
 
   function save() {
-    if (!selected || isCarryingSpringBones) return
+    if (!selected) return
     const missing = getShapesMissingSpringBones(form.springBoneParams, springBones.bonesByHash)
     if (missing.length > 0 && !springWarning) {
       setSpringWarning(true)
       return
     }
     setSpringWarning(false)
-    persist(selected).catch((error: unknown) => {
-      console.error('Item save failed:', error)
-      const locked = error instanceof BuilderServerError && error.status === COLLECTION_LOCKED_STATUS
-      showToast(t(locked ? 'item_editor.save_error_locked' : 'item_editor.save_error'), { type: 'error' })
-    })
+    persist(selected).catch((error: unknown) => reportSaveError(error, 'item_save'))
   }
 
   // Read off `form` before the memo: `form` itself is a fresh object every render, so depending on it
@@ -625,10 +643,11 @@ const ItemEditorPage = () => {
         draft={form.draft}
         dispatch={form.dispatch}
         isDirty={form.isDirty}
-        isSaving={saveItem.isPending || isCarryingSpringBones}
+        isSaving={saveItem.isPending}
         springBones={springBonesForm}
         linkedContract={isLinked ? linkedContract : undefined}
         onSave={save}
+        onSaveFile={saveFileChange}
         onRevert={() => form.reset(selected)}
         onDeleted={() => navigateToItem(null)}
       />

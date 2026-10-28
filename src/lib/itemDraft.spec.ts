@@ -10,6 +10,7 @@ import {
   createItemDraft,
   isItemDraftDirty,
   itemDraftReducer,
+  toFileChangeSaveable,
   toSaveableItem
 } from './itemDraft'
 import { ItemType, type Item } from './items'
@@ -88,6 +89,33 @@ describe('item draft', () => {
     })
     expect(backToModel.category).toBe('hat')
     expect(backToModel.hides).toEqual(['hair', 'helmet'])
+  })
+
+  it('saves a file change from the saved item alone, with the render and the category it took', async () => {
+    const update = {
+      item: {
+        ...item,
+        data: {
+          ...item.data,
+          representations: [{ bodyShapes: [BodyShape.MALE], mainFile: 'male/eyes.png', contents: ['male/eyes.png'] }]
+        },
+        contents: { 'male/eyes.png': 'bafyeyes', 'thumbnail.png': 'bafythumb', 'video.mp4': 'bafyvideo' }
+      },
+      blobs: { 'male/eyes.png': new Blob(['png']) }
+    }
+    const springBones = { version: 1, models: { bafyeyes: {} } }
+    const built = await toFileChangeSaveable(
+      item,
+      { update, thumbnail: new Blob(['render']), category: 'eyes' },
+      { springBones }
+    )
+    expect(built.item.name).toBe('Hat')
+    expect(built.item.data.springBones).toEqual(springBones)
+    expect(built.item.data.category).toBe('eyes')
+    expect(built.item.data.hides).toEqual([])
+    expect(built.item.data.representations[0].mainFile).toBe('male/eyes.png')
+    expect(built.item.contents['thumbnail.png']).not.toBe('bafythumb')
+    expect(Object.keys(built.blobs).sort()).toEqual(['image.png', 'male/eyes.png', 'thumbnail.png'])
   })
 
   it('projects the draft onto the item with mirrored overrides and default hiding', () => {

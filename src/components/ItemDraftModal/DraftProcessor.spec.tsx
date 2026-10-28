@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, render } from '@testing-library/react'
 import { ItemType } from '~/lib/items'
-import { createDraft, type ItemDraft } from './AddItemsModal.state'
+import { type PreviewDraft } from '~/lib/draftPreview'
 
 type PreviewProps = { id: string; onLoad?: () => void; onUpdate?: () => void }
 const previewProps: PreviewProps[] = []
@@ -25,14 +25,22 @@ const { DraftProcessor } = await import('./DraftProcessor')
 const REAL_METRICS = { triangles: 708, materials: 3, meshes: 5, textures: 4, bodies: 5, entities: 1 }
 const EMPTY_SCENE_METRICS = { triangles: 0, materials: 0, meshes: 0, textures: 0, bodies: 0, entities: 1 }
 
-function wearableDraft(): ItemDraft {
+function wearableDraft(): PreviewDraft {
   const file = new File([new Blob(['glb'])], 'hat.glb')
   return {
-    ...createDraft(file),
+    id: 'draft-1',
     type: ItemType.WEARABLE,
-    status: 'ready',
     model: 'hat.glb',
-    contents: { 'hat.glb': file }
+    contents: { 'hat.glb': file },
+    category: null,
+    rarity: 'epic',
+    isSmart: false,
+    requiredPermissions: [],
+    metrics: null,
+    thumbnail: null,
+    isAutoThumbnail: false,
+    autoThumbnailCategory: null,
+    validationIssues: []
   }
 }
 

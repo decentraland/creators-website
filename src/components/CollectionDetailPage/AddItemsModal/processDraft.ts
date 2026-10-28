@@ -1,30 +1,21 @@
 // Async half of draft creation: file loading + model analysis + manifest prefills. Results are
 // dispatched into the pure reducer; WearablePreview-dependent data (wearable metrics, auto
 // thumbnails) is filled afterwards by DraftProcessor.
-import { WearableCategory } from '@dcl/schemas'
-import { blobToDataURL, convertImageIntoWearableThumbnail, dataURLToBlob, loadVideoMetadata } from '~/lib/media'
+import { type WearableCategory } from '@dcl/schemas'
+import { blobToDataURL, loadVideoMetadata } from '~/lib/media'
 import { sanitizeItemDescription, unique } from '~/lib/itemDraft'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH } from '~/lib/itemFactory'
 import { ItemFileError, THUMBNAIL_PATH, VIDEO_PATH, isImageFile, loadItemFile } from '~/lib/itemFiles'
-import { BodyShapeType, ItemType, type ItemMetrics } from '~/lib/items'
+import { BodyShapeType, IMAGE_WEARABLE_METRICS, ItemType } from '~/lib/items'
 import { analyzeModel } from '~/lib/models'
 import { isRarity } from '~/lib/rarities'
-import { isAutoThumbnailStale } from '~/lib/thumbnailPose'
+import { imageThumbnailPatch, needsPreviewData } from '~/lib/draftPreview'
 import { getWearableCategoryOptions, hidesForCategory } from '~/lib/wearableCategories'
 import { resolveLinkedManifest, type LinkedManifestTarget } from '~/lib/linkedManifest'
 import { type ItemDraft } from './AddItemsModal.state'
 
 /** The linked collection a draft is for: what its items may be and where their URN and mapping come from. */
 export type LinkedDraftTarget = LinkedManifestTarget
-
-const IMAGE_WEARABLE_METRICS: ItemMetrics = {
-  triangles: 100,
-  materials: 1,
-  textures: 1,
-  meshes: 1,
-  bodies: 1,
-  entities: 1
-}
 
 function sanitizeRarity(rarity: string | undefined): string | null {
   const value = rarity?.toLowerCase()
@@ -147,21 +138,6 @@ export async function processDraftFile(
   return patch
 }
 
-/** Canvas-padded thumbnail for an image wearable (legacy updateThumbnailByCategory). */
-export async function imageThumbnailPatch(
-  contents: Record<string, Blob>,
-  model: string,
-  category: string | null
-): Promise<Pick<ItemDraft, 'thumbnail' | 'contents'>> {
-  const source = contents[THUMBNAIL_PATH] ?? contents[model]
-  const thumbnail = await convertImageIntoWearableThumbnail(
-    source,
-    (category as WearableCategory | null) ?? WearableCategory.EYES
-  )
-  const thumbnailBlob = dataURLToBlob(thumbnail)
-  return { thumbnail, contents: thumbnailBlob ? { ...contents, [THUMBNAIL_PATH]: thumbnailBlob } : contents }
-}
-
 /** Image wearable whose auto thumbnail was padded for a different category (the padding differs per category). */
 export function isImageThumbnailStale(draft: ItemDraft): boolean {
   return (
@@ -173,13 +149,6 @@ export function isImageThumbnailStale(draft: ItemDraft): boolean {
   )
 }
 
-/** True when the draft still needs metrics or an auto thumbnail (missing, or posed for another category). */
-export function needsPreviewData(draft: ItemDraft): boolean {
-  if (draft.status !== 'ready' || !draft.type) return false
-  if (isImageFile(draft.model)) return false
-  return !draft.metrics || !draft.thumbnail || isAutoThumbnailStale(draft)
-}
-
 /**
  * Next draft for the DraftProcessor. Switching the processor mid-load throws that load away, so a
  * draft already in flight keeps its turn; otherwise the one on screen goes before the rest.
@@ -189,9 +158,10 @@ export function pickPreviewDraft(
   selectedId: string | null,
   inFlightId: string | null
 ): ItemDraft | null {
+  const pending = (draft: ItemDraft) => draft.status === 'ready' && needsPreviewData(draft)
   const inFlight = drafts.find(draft => draft.id === inFlightId)
-  if (inFlight && needsPreviewData(inFlight)) return inFlight
+  if (inFlight && pending(inFlight)) return inFlight
   const selected = drafts.find(draft => draft.id === selectedId)
-  if (selected && needsPreviewData(selected)) return selected
-  return drafts.find(needsPreviewData) ?? null
+  if (selected && pending(selected)) return selected
+  return drafts.find(pending) ?? null
 }

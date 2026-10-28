@@ -271,3 +271,25 @@ export async function toSaveableItem(item: Item, draft: ItemDraft, options: Save
   }
   return { item: { ...next, updatedAt: Date.now() }, blobs }
 }
+
+/** What the change-file modal decided: the built item and files, plus a render and a category when taken. */
+export type ItemFileChange = {
+  update: BuiltItem
+  thumbnail: Blob | null
+  category: string | null
+}
+
+/**
+ * The PUT for a file change alone, built from the saved item: whatever the panel holds unsaved stays
+ * there, as the legacy builder's modal did.
+ */
+export function toFileChangeSaveable(
+  item: Item,
+  change: ItemFileChange,
+  options: SaveOptions = {}
+): Promise<BuiltItem> {
+  let draft = itemDraftReducer(createItemDraft(item), { type: 'setFileUpdate', update: change.update })
+  if (change.thumbnail) draft = itemDraftReducer(draft, { type: 'setThumbnail', thumbnail: change.thumbnail })
+  if (change.category) draft = itemDraftReducer(draft, { type: 'setCategory', category: change.category })
+  return toSaveableItem(item, draft, options)
+}
