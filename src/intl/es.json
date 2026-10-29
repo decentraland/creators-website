@@ -2000,8 +2000,7 @@
     "deploy": {
       "title": "Subir archivos",
       "body": "Sube {count, plural, one {el ítem aprobado} other {los # ítems aprobados}} a los servidores de contenido para que aparezcan en Decentraland.",
-      "action": "Subir",
-      "uploading_body": "Cada ítem se sube y su revisión se marca como aprobada."
+      "action": "Subir"
     },
     "columns": {
       "urn": "Identificador"

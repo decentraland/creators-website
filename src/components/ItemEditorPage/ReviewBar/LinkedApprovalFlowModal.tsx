@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { ChevronRight as ChevronRightIcon, WarningAmberOutlined as WarningIcon } from '@mui/icons-material'
 import approvedArt from '~/assets/send-success.png'
 import errorArt from '~/assets/modal-error.png'
@@ -13,12 +14,14 @@ import { SuccessModal } from '~/components/SuccessModal'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { useLinkedApprovalFlow } from '~/hooks/useLinkedReview'
 import { isSocialLogin, type Session } from '~/lib/auth'
-import { getContentsStorageUrl } from '~/lib/builder'
+import { fetchContentSize, getContentsStorageUrl } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
 import { decodeLinkedUrn, type ThirdParty } from '~/lib/thirdParty'
+import { measureItems } from '~/lib/approveCollection'
 import { type ReviewedContent } from '~/lib/approveLinkedCollection'
 import { ProgressModal } from '~/components/ProgressModal'
+import { formatSize } from './ApprovalFlowModal'
 import * as S from './ApprovalFlowModal.styles'
 
 type Props = {
@@ -48,6 +51,14 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, revie
     [view, t]
   )
   useBeforeUnloadGuard(view.kind === 'step' && (view.phase.kind !== 'idle' || flow.running))
+  const pendingItems = plan?.pendingItems
+  const pendingIds = useMemo(() => pendingItems?.map(item => item.id) ?? [], [pendingItems])
+  const sizes = useQuery({
+    queryKey: ['approval-item-sizes', pendingIds],
+    queryFn: () => measureItems(pendingItems ?? [], fetchContentSize),
+    enabled: view.kind === 'step' && view.step === 'deploy' && !!pendingItems,
+    staleTime: Infinity
+  })
 
   useEffect(() => {
     void start()
@@ -144,7 +155,7 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, revie
       <ProgressModal
         title={t('approval_flow.title')}
         heading={t('approval_flow.deploy.uploading_title')}
-        description={t('linked_approval_flow.deploy.uploading_body')}
+        description={t('approval_flow.deploy.uploading_body')}
         label={t('approval_flow.deploy.uploading')}
         done={phase.done}
         total={phase.total}
@@ -185,15 +196,22 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, revie
           <S.Table>
             <S.Header data-table="deploy">
               <span>{t('approval_flow.columns.item')}</span>
-              <span>{t('linked_approval_flow.columns.urn')}</span>
+              <span>{t(step === 'deploy' ? 'approval_flow.columns.size' : 'linked_approval_flow.columns.urn')}</span>
             </S.Header>
             <S.TableBody>
-              {items.slice(0, SHOWN_ITEMS).map(item => (
-                <S.Row key={item.id} data-table="deploy" data-testid="approval-item-row">
-                  <ItemName item={item} />
-                  <span title={item.urn}>{decodeLinkedUrn(item.urn)?.itemSuffix ?? item.urn}</span>
-                </S.Row>
-              ))}
+              {items.slice(0, SHOWN_ITEMS).map(item => {
+                const bytes = sizes.data?.get(item.id)
+                return (
+                  <S.Row key={item.id} data-table="deploy" data-testid="approval-item-row">
+                    <ItemName item={item} />
+                    {step === 'deploy' ? (
+                      <span data-testid="approval-item-size">{bytes === undefined ? '—' : formatSize(t, bytes)}</span>
+                    ) : (
+                      <span title={item.urn}>{decodeLinkedUrn(item.urn)?.itemSuffix ?? item.urn}</span>
+                    )}
+                  </S.Row>
+                )
+              })}
               {items.length > SHOWN_ITEMS && (
                 <S.Row data-table="deploy">
                   <span>{t('linked_approval_flow.more_items', { count: items.length - SHOWN_ITEMS })}</span>

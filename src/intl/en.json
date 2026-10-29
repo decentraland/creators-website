@@ -2000,8 +2000,7 @@
     "deploy": {
       "title": "Upload files",
       "body": "Upload the {count, plural, one {approved item} other {# approved items}} to the content servers so they show up in Decentraland.",
-      "action": "Upload",
-      "uploading_body": "Each item is uploaded and its review marked as approved."
+      "action": "Upload"
     },
     "columns": {
       "urn": "Identifier"
