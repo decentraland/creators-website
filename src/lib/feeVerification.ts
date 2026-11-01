@@ -5,7 +5,6 @@
 import { type ethers } from 'ethers'
 import { ContractName, getContract } from 'decentraland-transactions'
 import { readContract } from '~/lib/auth'
-import { withOracleDriftPad } from '~/lib/mana'
 import { type Item } from './items'
 import { type PublicationFee } from './publishFee'
 
@@ -40,17 +39,9 @@ export function isWithinFeeTolerance(quoted: bigint, onChain: bigint): boolean {
 }
 
 /**
- * The MANA allowance a publish paid in MANA needs. The CollectionManager pulls the on-chain total, which a
- * verified quote may still sit below (by up to FEE_TOLERANCE_BPS), so approving the quote alone can leave the
- * transaction short: cover the larger of the two, plus headroom for the oracle moving before it executes.
- */
-export function getPublicationAllowance(quotedWei: bigint, onChainWei: bigint): bigint {
-  return withOracleDriftPad(quotedWei > onChainWei ? quotedWei : onChainWei)
-}
-
-/**
  * Throws PublicationFeeMismatchError when the quoted total is not what the contract would charge for
- * these items: one on-chain read per distinct rarity, summed by item count. Answers that on-chain total.
+ * these items: one on-chain read per distinct rarity, summed by item count. Answers that on-chain total,
+ * which is what the contract will actually pull.
  */
 export async function verifyPublicationFee(
   fee: PublicationFee,

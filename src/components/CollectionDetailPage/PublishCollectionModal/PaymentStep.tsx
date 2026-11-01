@@ -5,7 +5,7 @@ import { config } from '~/config'
 import { useTranslation } from '~/intl'
 import { useCreditsBalance, useManaBalance } from '~/hooks/useBalances'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
-import { useApproveMana, useManaAllowance, usePublishCollection, useRarities } from '~/hooks/usePublishCollection'
+import { useApproveMana, usePublishCollection, useRarities } from '~/hooks/usePublishCollection'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { track } from '~/lib/analytics'
 import { type Session } from '~/lib/auth'
@@ -17,10 +17,12 @@ import { createCreditsCheckout } from '~/lib/credits'
 import { type PackSelection, type PackTotals } from '~/lib/creditPacks'
 import { saveTopUpResume } from '~/lib/creditsTopUp'
 import { openExternal, redirectExternal } from '~/lib/navigation'
-import { getPublicationAllowance, verifyPublicationFee } from '~/lib/feeVerification'
+import { verifyPublicationFee } from '~/lib/feeVerification'
 import {
   canPayWith,
+  fetchCollectionManagerAllowance,
   getAvailablePaymentMethods,
+  getManaApprovalNeeded,
   getMaticChainId,
   toPublishError,
   type PaymentMethod,
@@ -92,7 +94,6 @@ export function PaymentStep({
     () => getAvailablePaymentMethods(mana.data, creditsFlag.enabled),
     [mana.data, creditsFlag.enabled]
   )
-  const allowance = useManaAllowance(address, methods.includes('mana'))
   const approve = useApproveMana(session)
   const publish = usePublishCollection(session)
 
@@ -135,20 +136,19 @@ export function PaymentStep({
       onFailed(toPublishError(error))
       return
     }
-    if (paymentMethod === 'mana') {
-      // The contract pulls its own price, not the quote: approving the quote alone reverts the publish.
-      const required = getPublicationAllowance(fee.total.manaWei, onChainTotal)
-      // Read fresh: a cached figure may predate a publish that already spent it.
-      const current = (await allowance.refetch()).data ?? 0n
-      if (current < required) {
-        setStatus('approving')
-        try {
-          await approve.mutateAsync(required)
-        } catch (error) {
-          setStatus('idle')
-          if (toPublishError(error).reason !== 'rejected') setApproveFailed(true)
-          return
-        }
+    // The contract pulls its own price, not the quote, and the allowance is read from the chain right now.
+    const approval =
+      paymentMethod === 'mana'
+        ? await getManaApprovalNeeded(onChainTotal, () => fetchCollectionManagerAllowance(address))
+        : null
+    if (approval !== null) {
+      setStatus('approving')
+      try {
+        await approve.mutateAsync(approval)
+      } catch (error) {
+        setStatus('idle')
+        if (toPublishError(error).reason !== 'rejected') setApproveFailed(true)
+        return
       }
     }
     setStatus('confirming')

@@ -1,12 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { getPublicationFee } from './publishFee'
 import { type BlockchainRarity } from './rarities'
-import {
-  PublicationFeeMismatchError,
-  getPublicationAllowance,
-  isWithinFeeTolerance,
-  verifyPublicationFee
-} from './feeVerification'
+import { PublicationFeeMismatchError, isWithinFeeTolerance, verifyPublicationFee } from './feeVerification'
 
 const ETHER = 10n ** 18n
 const CHAIN_ID = 80002
@@ -64,22 +59,5 @@ describe('verifyPublicationFee', () => {
     expect(isWithinFeeTolerance(1n, 0n)).toBe(false)
     expect(isWithinFeeTolerance(1050n, 1000n)).toBe(true)
     expect(isWithinFeeTolerance(1051n, 1000n)).toBe(false)
-  })
-})
-
-describe('getPublicationAllowance', () => {
-  it('covers the on-chain total, plus the drift pad, when the quote sits below it', () => {
-    // The quote passed verification 3% under what the contract pulls: approving the quote would revert.
-    expect(getPublicationAllowance(1500n * ETHER, 1545n * ETHER)).toBe(1_552_725_000_000_000_000_000n)
-    expect(getPublicationAllowance(1500n * ETHER, 1545n * ETHER)).toBeGreaterThan(1545n * ETHER)
-  })
-
-  it('covers the quote, plus the drift pad, when the quote is the larger figure', () => {
-    expect(getPublicationAllowance(1500n * ETHER, 1480n * ETHER)).toBe(1_507_500_000_000_000_000_000n)
-  })
-
-  it('rounds the pad up and leaves a free fee at zero', () => {
-    expect(getPublicationAllowance(1n, 1n)).toBe(2n)
-    expect(getPublicationAllowance(0n, 0n)).toBe(0n)
   })
 })

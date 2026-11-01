@@ -20,7 +20,7 @@ import { type Collection } from '~/lib/collections'
 import { authorizePublication } from '~/lib/credits'
 import { withRehashedContents } from '~/lib/itemFactory'
 import { type Item } from '~/lib/items'
-import { buildManaApproveCall, fetchManaAllowance } from '~/lib/mana'
+import { buildManaApproveCall } from '~/lib/mana'
 import { useNotifications } from '~/lib/notifications'
 import {
   PublishCollectionError,
@@ -46,21 +46,8 @@ export function useRarities(address: string | undefined) {
   })
 }
 
-/** How much MANA the CollectionManager may pull from the wallet — the publish fee must fit in it. */
-export function useManaAllowance(address: string | undefined, enabled = true) {
-  const chainId = getMaticChainId()
-  const spender = getContract(ContractName.CollectionManager, chainId).address
-  return useQuery({
-    queryKey: ['mana-allowance', address, chainId, spender],
-    queryFn: () => fetchManaAllowance(address!, spender, chainId),
-    enabled: !!address && enabled,
-    staleTime: 30_000
-  })
-}
-
 /** Approves the CollectionManager to spend `amountWei` of MANA (never unlimited) and waits until the approval is mined. */
 export function useApproveMana(session: Session | null) {
-  const queryClient = useQueryClient()
   const chainId = getMaticChainId()
   return useMutation({
     mutationFn: async (amountWei: bigint) => {
@@ -69,9 +56,6 @@ export function useApproveMana(session: Session | null) {
       const txHash = await sendContractTransaction(session, buildManaApproveCall(chainId, spender, amountWei))
       const mined = await waitForTransaction(chainId, txHash)
       if (!mined) throw new Error('MANA approval reverted')
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['mana-allowance', session?.address] })
     }
   })
 }
@@ -164,7 +148,6 @@ export function usePublishCollection(session: Session | null) {
       void queryClient.invalidateQueries({ queryKey: ['collections'] })
       void queryClient.invalidateQueries({ queryKey: ['credits-balance', address] })
       void queryClient.invalidateQueries({ queryKey: ['mana-balance', address] })
-      void queryClient.invalidateQueries({ queryKey: ['mana-allowance', address] })
       // Detached on purpose: the modal closes right away and the server catches up on its own.
       syncing.add(collection.id)
       consolidatePublishedCollection(collection.id, txHash, {
