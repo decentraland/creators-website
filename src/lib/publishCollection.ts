@@ -11,8 +11,8 @@ import { isCollectionLocked, type Collection } from '~/lib/collections'
 import { CreditsServerError, type ExternalCall, type PublicationAuthorization } from '~/lib/credits'
 import { PublicationFeeMismatchError } from '~/lib/feeVerification'
 import { hasOldHashedContents } from '~/lib/itemFactory'
-import { fetchManaAllowance, withOracleDriftPad } from '~/lib/mana'
 import { isMissingSmartWearableVideo, type Item } from '~/lib/items'
+import { fetchManaAllowance, withOracleDriftPad } from '~/lib/mana'
 import { weiToUsdCents, type PublicationFee } from '~/lib/publishFee'
 import { isWalletRejection } from '~/lib/walletErrors'
 import { getCollectionSymbol, toInitializeItems, type InitializeItem } from '~/lib/saveCollection'
@@ -69,7 +69,7 @@ export function canPayWith(method: PaymentMethod, fee: PublicationFee, balances:
 export type CreditsAndMana = { credits: number; manaWei: bigint }
 
 /** How much MANA the CollectionManager may pull from `address` right now, read from the chain. */
-export function fetchCollectionManagerAllowance(address: string): Promise<bigint> {
+export async function fetchCollectionManagerAllowance(address: string): Promise<bigint> {
   const chainId = getMaticChainId()
   return fetchManaAllowance(address, getContract(ContractName.CollectionManager, chainId).address, chainId)
 }
