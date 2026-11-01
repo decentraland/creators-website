@@ -17,7 +17,7 @@ import { createCreditsCheckout } from '~/lib/credits'
 import { type PackSelection, type PackTotals } from '~/lib/creditPacks'
 import { saveTopUpResume } from '~/lib/creditsTopUp'
 import { openExternal, redirectExternal } from '~/lib/navigation'
-import { verifyPublicationFee } from '~/lib/feeVerification'
+import { getPublicationAllowance, verifyPublicationFee } from '~/lib/feeVerification'
 import {
   canPayWith,
   getAvailablePaymentMethods,
@@ -126,22 +126,29 @@ export function PaymentStep({
     setApproveFailed(false)
     // The quote is builder-server's word; the contract's own price decides whether a wallet prompt is warranted.
     setStatus('checking')
+    let onChainTotal: bigint
     try {
-      await verifyPublicationFee(fee, items, getMaticChainId())
+      onChainTotal = await verifyPublicationFee(fee, items, getMaticChainId())
     } catch (error) {
       setStatus('idle')
       void rarities.refetch()
       onFailed(toPublishError(error))
       return
     }
-    if (paymentMethod === 'mana' && (allowance.data ?? 0n) < fee.total.manaWei) {
-      setStatus('approving')
-      try {
-        await approve.mutateAsync(fee.total.manaWei)
-      } catch (error) {
-        setStatus('idle')
-        if (toPublishError(error).reason !== 'rejected') setApproveFailed(true)
-        return
+    if (paymentMethod === 'mana') {
+      // The contract pulls its own price, not the quote: approving the quote alone reverts the publish.
+      const required = getPublicationAllowance(fee.total.manaWei, onChainTotal)
+      // Read fresh: a cached figure may predate a publish that already spent it.
+      const current = (await allowance.refetch()).data ?? 0n
+      if (current < required) {
+        setStatus('approving')
+        try {
+          await approve.mutateAsync(required)
+        } catch (error) {
+          setStatus('idle')
+          if (toPublishError(error).reason !== 'rejected') setApproveFailed(true)
+          return
+        }
       }
     }
     setStatus('confirming')

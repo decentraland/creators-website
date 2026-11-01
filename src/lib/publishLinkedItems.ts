@@ -9,7 +9,7 @@ import { BuilderServerError, isRefusedRequest, type PublishLinkedItemsResult, ty
 import { CurationStatus, type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
 import { canPushLinkedItem, type ItemCuration } from '~/lib/linkedItemStatus'
-import { buildManaApproveCall } from '~/lib/mana'
+import { buildManaApproveCall, withOracleDriftPad } from '~/lib/mana'
 import { type PushLinkedResult } from '~/lib/pushLinkedChanges'
 import { type ThirdParty } from '~/lib/thirdParty'
 import {
@@ -283,9 +283,6 @@ export type LinkedPublishFee = {
   maxManaWei: bigint
 }
 
-const MAX_PRICE_PAD_NUMERATOR = 1005n
-const MAX_PRICE_PAD_DENOMINATOR = 1000n
-
 export type LinkedFeeKind = {
   isProgrammatic: boolean
   /** Whether the third party is already on chain. */
@@ -305,9 +302,7 @@ export function getLinkedPublishFee(
     slotsToBuy <= 0 || !kind.isProgrammatic ? slotsToBuy : kind.isPublished ? 0 : price.programmaticMinSlots
   const slots = BigInt(Math.max(0, charged))
   const manaWei = price.itemSlotManaWei * slots
-  const padded = manaWei * MAX_PRICE_PAD_NUMERATOR
-  const maxManaWei = (padded + MAX_PRICE_PAD_DENOMINATOR - 1n) / MAX_PRICE_PAD_DENOMINATOR
-  return { usdWei: price.itemSlotUsdWei * slots, manaWei, maxManaWei }
+  return { usdWei: price.itemSlotUsdWei * slots, manaWei, maxManaWei: withOracleDriftPad(manaWei) }
 }
 
 export type LinkedPublishQuote = { slotsToBuy: number; fee: LinkedPublishFee }

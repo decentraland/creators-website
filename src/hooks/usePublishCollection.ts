@@ -58,7 +58,7 @@ export function useManaAllowance(address: string | undefined, enabled = true) {
   })
 }
 
-/** Approves the CollectionManager to spend exactly `amountWei` of MANA and waits until the approval is mined. */
+/** Approves the CollectionManager to spend `amountWei` of MANA (never unlimited) and waits until the approval is mined. */
 export function useApproveMana(session: Session | null) {
   const queryClient = useQueryClient()
   const chainId = getMaticChainId()
@@ -164,6 +164,7 @@ export function usePublishCollection(session: Session | null) {
       void queryClient.invalidateQueries({ queryKey: ['collections'] })
       void queryClient.invalidateQueries({ queryKey: ['credits-balance', address] })
       void queryClient.invalidateQueries({ queryKey: ['mana-balance', address] })
+      void queryClient.invalidateQueries({ queryKey: ['mana-allowance', address] })
       // Detached on purpose: the modal closes right away and the server catches up on its own.
       syncing.add(collection.id)
       consolidatePublishedCollection(collection.id, txHash, {
