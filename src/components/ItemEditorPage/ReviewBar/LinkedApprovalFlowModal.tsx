@@ -18,7 +18,7 @@ import { fetchContentSize, getContentsStorageUrl } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
 import { decodeLinkedUrn, type ThirdParty } from '~/lib/thirdParty'
-import { measureItems } from '~/lib/approveCollection'
+import { itemSizesKey, measureItems } from '~/lib/approveCollection'
 import { type ReviewedContent } from '~/lib/approveLinkedCollection'
 import { ProgressModal } from '~/components/ProgressModal'
 import { formatSize } from './formatSize'
@@ -52,9 +52,9 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, revie
   )
   useBeforeUnloadGuard(view.kind === 'step' && (view.phase.kind !== 'idle' || flow.running))
   const pendingItems = plan?.pendingItems
-  const pendingIds = useMemo(() => pendingItems?.map(item => item.id) ?? [], [pendingItems])
+  const sizesKey = useMemo(() => itemSizesKey(pendingItems ?? []), [pendingItems])
   const sizes = useQuery({
-    queryKey: ['approval-item-sizes', pendingIds],
+    queryKey: sizesKey,
     queryFn: () => measureItems(pendingItems ?? [], fetchContentSize),
     enabled: view.kind === 'step' && view.step === 'deploy' && !!pendingItems,
     staleTime: Infinity

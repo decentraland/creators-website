@@ -23,7 +23,7 @@ import { PendingModal } from '~/components/PendingModal'
 import { useApprovalFlow, type ApprovalMode, type ApprovalPlan, type ApprovalStep } from '~/hooks/useApprovalFlow'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { track } from '~/lib/analytics'
-import { measureItems } from '~/lib/approveCollection'
+import { itemSizesKey, measureItems } from '~/lib/approveCollection'
 import { isSocialLogin, type Session } from '~/lib/auth'
 import { copyToClipboard } from '~/lib/clipboard'
 import { fetchContentSize, getContentsStorageUrl } from '~/lib/builder'
@@ -214,9 +214,9 @@ function ItemName({ item }: { item: Item }) {
 
 function StepTable({ step, plan, collection }: { step: ApprovalStep; plan: ApprovalPlan; collection: Collection }) {
   const { t } = useTranslation()
-  const deployIds = useMemo(() => plan.deploy.map(item => item.id), [plan.deploy])
+  const sizesKey = useMemo(() => itemSizesKey(plan.deploy), [plan.deploy])
   const sizes = useQuery({
-    queryKey: ['approval-item-sizes', deployIds],
+    queryKey: sizesKey,
     queryFn: () => measureItems(plan.deploy, fetchContentSize),
     enabled: step === 'deploy',
     staleTime: Infinity
