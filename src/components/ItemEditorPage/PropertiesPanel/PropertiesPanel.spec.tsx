@@ -70,6 +70,7 @@ const item: Item = {
 
 function Harness({
   editable = true,
+  canDownload = true,
   readOnlyReason,
   onSave = vi.fn(),
   onSaveFile = () => Promise.resolve(),
@@ -77,6 +78,7 @@ function Harness({
   subject = item
 }: {
   editable?: boolean
+  canDownload?: boolean
   readOnlyReason?: 'role' | 'lock'
   onSave?: () => void
   onSaveFile?: (change: ItemFileChange) => Promise<void>
@@ -91,6 +93,7 @@ function Harness({
       editable={editable}
       readOnlyReason={readOnlyReason}
       canDelete={editable}
+      canDownload={canDownload}
       draft={form.draft}
       dispatch={form.dispatch}
       isDirty={form.isDirty}
@@ -132,6 +135,19 @@ describe('PropertiesPanel', () => {
     expect(screen.getByTestId('properties-panel-change-file')).toBeInTheDocument()
     expect(screen.getByTestId('properties-panel-add-representation')).toBeInTheDocument()
     expect(screen.getByTestId('properties-panel-delete')).toBeInTheDocument()
+  })
+
+  it('keeps the download for a read-only viewer who may still have the files', async () => {
+    render(<Harness editable={false} />, { wrapper: Providers })
+    await userEvent.click(screen.getByTestId('properties-panel-actions'))
+    expect(screen.getByTestId('properties-panel-download')).toBeInTheDocument()
+    expect(screen.queryByTestId('properties-panel-change-file')).not.toBeInTheDocument()
+  })
+
+  it('drops the download and the empty menu for someone outside the collection', () => {
+    render(<Harness editable={false} canDownload={false} />, { wrapper: Providers })
+    expect(screen.queryByTestId('properties-panel-actions')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('properties-panel-download')).not.toBeInTheDocument()
   })
 
   it('exposes the wearable options as switches', async () => {

@@ -3,6 +3,7 @@ import { type ContractNetwork } from '@dcl/schemas'
 import {
   buildLinkedItemUrn,
   buildNewLinkedCollection,
+  canViewLinkedCollection,
   decodeLinkedUrn,
   fromRemoteThirdParty,
   getDefaultUrnSuffix,
@@ -13,7 +14,8 @@ import {
   slugify,
   toRawMetadata,
   validateLinkedCollectionName,
-  withCollectionUrnSuffix
+  withCollectionUrnSuffix,
+  withContractReplaced
 } from './thirdParty'
 
 const CONTRACT = { network: 'amoy' as ContractNetwork, address: '0x1D9FB685C257E74F869BA302E260C0B68F5EBB37' }
@@ -74,6 +76,23 @@ describe('isThirdPartyManager', () => {
   })
 })
 
+describe('canViewLinkedCollection', () => {
+  const thirdParty = { managers: ['0xabc0000000000000000000000000000000000001'] }
+  const manager = '0xabc0000000000000000000000000000000000001'
+  const stranger = '0xdef0000000000000000000000000000000000002'
+
+  it('opens a published collection to any signer', () => {
+    expect(canViewLinkedCollection({ isPublished: true }, thirdParty, manager)).toBe(true)
+    expect(canViewLinkedCollection({ isPublished: true }, thirdParty, stranger)).toBe(true)
+    expect(canViewLinkedCollection({ isPublished: true }, thirdParty, undefined)).toBe(false)
+  })
+
+  it('keeps an unpublished collection to its managers', () => {
+    expect(canViewLinkedCollection({ isPublished: false }, thirdParty, manager)).toBe(true)
+    expect(canViewLinkedCollection({ isPublished: false }, thirdParty, stranger)).toBe(false)
+  })
+})
+
 describe('buildNewLinkedCollection', () => {
   it('gives the collection its own third party and links the contract, address lowercased', () => {
     const collection = buildNewLinkedCollection('Pirate Hats', '0xowner', CONTRACT, 'pirate-hats-ab12')
@@ -119,6 +138,21 @@ describe('validateLinkedCollectionName', () => {
     expect(validateLinkedCollectionName('x'.repeat(43))).toBe('too_long')
     expect(validateLinkedCollectionName('a:b')).toBe('invalid_character')
     expect(validateLinkedCollectionName('  ')).toBe('empty')
+  })
+})
+
+describe('withContractReplaced', () => {
+  const sibling = { network: 'matic' as ContractNetwork, address: '0x' + '1'.repeat(40) }
+  const to = { network: 'amoy' as ContractNetwork, address: '0x' + '2'.repeat(40) }
+
+  it('drops every replaced contract, whatever its casing, and lists the new one once', () => {
+    const listed = [sibling, { ...CONTRACT, address: CONTRACT.address.toLowerCase() }]
+    expect(withContractReplaced(listed, [CONTRACT, null], to)).toEqual([sibling, to])
+    expect(withContractReplaced([sibling, to], [CONTRACT], to)).toEqual([sibling, to])
+  })
+
+  it('keeps the new contract when it is also among the replaced ones', () => {
+    expect(withContractReplaced([to], [to], to)).toEqual([to])
   })
 })
 

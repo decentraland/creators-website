@@ -605,6 +605,15 @@ export async function lockCollection(address: string, collectionId: string): Pro
 }
 
 /**
+ * Stores the collection's on-chain owner: POST /collections/{id}/owner/sync. The answer carries the owner
+ * builder-server read from the subgraph, which is still the previous one until the transfer is indexed.
+ */
+export async function syncCollectionOwner(address: string, collectionId: string): Promise<Collection> {
+  const remote = await request<RemoteCollection>(address, 'POST', `/collections/${collectionId}/owner/sync`)
+  return fromRemoteCollection(remote)
+}
+
+/**
  * Consolidates a published collection with the chain: POST /collections/{id}/publish. builder-server
  * reads the collection from the subgraph and assigns every item its on-chain id; it answers 401
  * while the graph hasn't indexed the transaction yet, so callers retry on that status.

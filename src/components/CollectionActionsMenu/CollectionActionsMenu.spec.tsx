@@ -88,6 +88,7 @@ describe('CollectionActionsMenu', () => {
     expect(screen.getByTestId('delete-collection')).toBeInTheDocument()
     expect(screen.queryByTestId('copy-urn')).not.toBeInTheDocument()
     expect(screen.queryByTestId('manage-senders')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('transfer-ownership')).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByTestId('delete-collection'))
     expect(screen.getByTestId('delete-collection-modal-description')).toHaveTextContent('Pirate Hats')
@@ -154,12 +155,45 @@ describe('CollectionActionsMenu', () => {
     expect(onManageRoles).toHaveBeenCalledWith('senders')
   })
 
+  it('offers the owner of an on-chain collection to transfer it, as the last, destructive entry', async () => {
+    const onTransferOwnership = vi.fn()
+    renderMenu({ ...draft, isPublished: true }, OWNER, { onManageRoles: vi.fn(), onTransferOwnership })
+    const menu = await openMenu()
+    const items = Array.from(menu.querySelectorAll('[role="menuitem"]'))
+    const transfer = screen.getByTestId('transfer-ownership')
+    expect(items[items.length - 1]).toBe(transfer)
+    expect(transfer).toHaveAttribute('data-tone', 'danger')
+    await userEvent.click(transfer)
+    expect(onTransferOwnership).toHaveBeenCalledTimes(1)
+  })
+
+  it('never offers to transfer a linked collection, which has no contract of its own', async () => {
+    renderMenu({ ...draft, urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats', isPublished: true }, OWNER, {
+      onManageRoles: vi.fn(),
+      onTransferOwnership: vi.fn()
+    })
+    await openMenu()
+    expect(screen.queryByTestId('transfer-ownership')).not.toBeInTheDocument()
+  })
+
+  it('never offers the transfer to a collaborator', async () => {
+    renderMenu({ ...draft, isPublished: true, managers: ['0xdef'] }, '0xdef', { onTransferOwnership: vi.fn() })
+    await openMenu()
+    expect(screen.getByTestId('copy-urn')).toBeInTheDocument()
+    expect(screen.queryByTestId('transfer-ownership')).not.toBeInTheDocument()
+  })
+
   it('hides the role entries when asked, even for the owner', async () => {
-    renderMenu({ ...draft, isPublished: true }, OWNER, { showRoles: false, onManageRoles: vi.fn() })
+    renderMenu({ ...draft, isPublished: true }, OWNER, {
+      showRoles: false,
+      onManageRoles: vi.fn(),
+      onTransferOwnership: vi.fn()
+    })
     await openMenu()
     expect(screen.getByTestId('copy-urn')).toBeInTheDocument()
     expect(screen.queryByTestId('manage-collaborators')).not.toBeInTheDocument()
     expect(screen.queryByTestId('manage-senders')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('transfer-ownership')).not.toBeInTheDocument()
   })
 
   it('closes with Escape', async () => {
@@ -181,6 +215,11 @@ describe('CollectionActionsMenu', () => {
 
     it('renders nothing for a draft, since deleting is desktop-only', () => {
       renderMenu(draft)
+      expect(screen.queryByTestId('collection-actions')).not.toBeInTheDocument()
+    })
+
+    it('never offers Preview in World, since the explorer is desktop-only', () => {
+      renderMenu(draft, OWNER, { onPreviewInWorld: vi.fn() })
       expect(screen.queryByTestId('collection-actions')).not.toBeInTheDocument()
     })
 
@@ -218,6 +257,17 @@ describe('CollectionActionsMenu', () => {
     })
   })
 
+  it('leads with Preview in World on desktop and launches it', async () => {
+    stubViewport(false)
+    const onPreviewInWorld = vi.fn()
+    renderMenu(draft, OWNER, { onPreviewInWorld })
+    const menu = await openMenu()
+    const ids = Array.from(menu.querySelectorAll('[role="menuitem"]')).map(el => el.getAttribute('data-testid'))
+    expect(ids).toEqual(['preview-in-world-action', 'delete-collection'])
+    await userEvent.click(screen.getByTestId('preview-in-world-action'))
+    expect(onPreviewInWorld).toHaveBeenCalled()
+  })
+
   it('never shows Preview items on desktop, where the Open Editor button covers it', async () => {
     stubViewport(false)
     renderMenu({ ...draft, isPublished: true }, OWNER, { onPreviewItems: vi.fn() })
@@ -249,6 +299,16 @@ describe('CollectionActionsMenu', () => {
 
     await userEvent.click(screen.getByTestId('edit-collection-urn'))
     expect(onEditUrn).toHaveBeenCalled()
+  })
+
+  it('lets a manager change the linked contract whether or not the collection is published', async () => {
+    const onEditContract = vi.fn()
+    renderMenu({ ...draft, urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats', isPublished: true }, OWNER, {
+      onEditContract
+    })
+    await openMenu()
+    await userEvent.click(screen.getByTestId('edit-linked-contract'))
+    expect(onEditContract).toHaveBeenCalled()
   })
 
   it('locks the URN and the delete once the linked collection has published items', async () => {

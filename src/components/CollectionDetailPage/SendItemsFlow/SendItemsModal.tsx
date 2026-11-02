@@ -206,13 +206,16 @@ function RecipientSummary({ bundle, items, friends }: SummaryProps) {
   )
 }
 
-function RecipientLine({ address, friends }: { address: string; friends: Friend[] | undefined }) {
+type RecipientLineProps = { address: string; friends: Friend[] | undefined; testId?: string }
+
+/** One wallet as a person: avatar and name when known (a friend or a claimed profile), the address always. */
+export function RecipientLine({ address, friends, testId = 'send-summary-recipient' }: RecipientLineProps) {
   const friend = useMemo(() => friends?.find(candidate => candidate.address === address), [friends, address])
   const profile = useProfile(friend ? undefined : address)
   const name = friend?.name ?? profile.data?.name
   const avatar = friend?.avatarUrl ?? profile.data?.avatar?.snapshots?.face256
   return (
-    <S.RecipientLine data-testid="send-summary-recipient">
+    <S.RecipientLine data-testid={testId}>
       {avatar ? <Sell.Avatar src={avatar} alt="" /> : <Sell.AvatarFallback aria-hidden />}
       {name && <b>{name}</b>}
       <span title={address}>{name ? `(${address})` : address}</span>

@@ -51,7 +51,12 @@ import { pickFiles } from '~/lib/filePicker'
 import { IMAGE_PATH, ITEM_EXTENSIONS } from '~/lib/itemFiles'
 import { ItemType, canDeleteItem, canEditItemDetails, isSocialEmote, type Item } from '~/lib/items'
 import { isLinkedItemPublished } from '~/lib/linkedItemStatus'
-import { LINKED_COLLECTION_NAME_MAX_LENGTH, isThirdPartyManager, type LinkedContract } from '~/lib/thirdParty'
+import {
+  LINKED_COLLECTION_NAME_MAX_LENGTH,
+  canViewLinkedCollection,
+  isThirdPartyManager,
+  type LinkedContract
+} from '~/lib/thirdParty'
 import { useItemCurations, useThirdParty } from '~/hooks/useLinkedCollection'
 import { usePendingLinkedItems } from '~/hooks/useLinkedReview'
 import { useNotifications } from '~/lib/notifications'
@@ -71,6 +76,7 @@ import { ItemsSidebar } from './ItemsSidebar'
 import { MobilePreview } from './MobilePreview'
 import { PlaybackBar } from './PlaybackBar'
 import { PropertiesPanel, type SpringBonesFormProps } from './PropertiesPanel'
+import { EditorPreviewLaunch } from './EditorPreviewLaunch'
 import { ReviewBar } from './ReviewBar'
 import { LinkedReviewBar } from './ReviewBar/LinkedReviewBar'
 import { ValidationBadge } from '~/components/ValidationBadge'
@@ -118,7 +124,8 @@ const ItemEditorPage = () => {
   const isLinked = !!collectionQuery.data && isLinkedCollection(collectionQuery.data)
   const thirdParty = useThirdParty(address, isLinked ? collectionQuery.data : undefined)
   const isManager = isLinked && !!thirdParty.data && isThirdPartyManager(thirdParty.data, address)
-  const linkedCurations = useItemCurations(address, isLinked ? collectionQuery.data : undefined)
+  // builder-server serves item curations to managers only; readers never delete, which is all they would decide.
+  const linkedCurations = useItemCurations(address, isManager ? collectionQuery.data : undefined)
   const linkedContract = useMemo<LinkedContract | null>(() => {
     const target = collectionQuery.data
     return target?.linkedContractNetwork && target.linkedContractAddress
@@ -494,12 +501,13 @@ const ItemEditorPage = () => {
       ((collectionQuery.isError &&
         collectionQuery.error instanceof BuilderServerError &&
         NOT_FOUND_STATUSES.includes(collectionQuery.error.status)) ||
-        // Drafts are private to their roles; published collections open read-only to any signer
-        // (curators review through mode === 'review', which skips the gate).
+        // Drafts are private to their roles; published collections, linked ones included, open read-only to any
+        // signer (curators review through mode === 'review', which skips the gate).
         (!!collection &&
           mode === 'edit' &&
           (isLinked
-            ? isThirdPartyNotFound || (!!thirdParty.data && !isManager)
+            ? isThirdPartyNotFound ||
+              (!!thirdParty.data && !canViewLinkedCollection(collection, thirdParty.data, address))
             : !canViewCollection(collection, address)))))
   const isError =
     !isNotFound &&
@@ -538,21 +546,11 @@ const ItemEditorPage = () => {
           />
         )}
         {/* Linked collections have no owner: their third party's managers are who works on them. */}
-        {mode === 'edit' && collection && (isLinked ? isManager : hasCollectionRole(collection, address)) && (
-          <S.PreviewLaunch
-            collectionId={collection.id}
-            disabled={items.length === 0}
-            data-testid="editor-preview"
-            onLaunch={launched =>
-              track('Preview In World', {
-                collectionId: collection.id,
-                itemCount: items.length,
-                launched,
-                trigger: 'editor'
-              })
-            }
-          />
-        )}
+        {collection &&
+          (mode === 'review' ||
+            (mode === 'edit' && (isLinked ? isManager : hasCollectionRole(collection, address)))) && (
+            <EditorPreviewLaunch collectionId={collection.id} itemCount={items.length} reviewing={mode === 'review'} />
+          )}
       </AvatarPreview>
     )
 
@@ -647,8 +645,9 @@ const ItemEditorPage = () => {
         address={address}
         editable={editable}
         showReadOnlyNote={mode !== 'review'}
-        readOnlyReason={isCollectionLocked(collection) ? 'lock' : 'role'}
+        readOnlyReason={isCollectionLocked(collection) ? 'lock' : isLinked ? 'linked' : 'role'}
         canDelete={canDelete}
+        canDownload={canManageCollectionItems(collection, address) || isManager || isCurator}
         draft={form.draft}
         dispatch={form.dispatch}
         isDirty={form.isDirty}

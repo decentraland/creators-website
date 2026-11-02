@@ -42,6 +42,16 @@ export function buildItemMappings(mapping: Mapping, contract: LinkedContract): M
   return { [contract.network]: { [contract.address.toLowerCase()]: [mapping] } }
 }
 
+/**
+ * The item's mapping moved under `to`, wherever it sits now (a retry finds items already moved and items still under
+ * the old contract alike); null when the item is unmapped or already under `to`.
+ */
+export function relinkMappings(mappings: Mappings | null | undefined, to: LinkedContract): Mappings | null {
+  if (!mappings || getItemMapping(mappings, to)) return null
+  const mapping = Object.values(mappings).flatMap(byAddress => Object.values(byAddress ?? {}))[0]?.[0]
+  return mapping ? buildItemMappings(mapping, to) : null
+}
+
 /** `007` → `7`: the schema matches ids as exact strings, so a padded id would never match its token. */
 export function normalizeTokenId(value: string): string {
   const trimmed = value.trim()

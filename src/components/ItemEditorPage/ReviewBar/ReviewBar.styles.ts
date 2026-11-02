@@ -1,6 +1,5 @@
 import styled from '@emotion/styled'
 import { Link } from 'react-router-dom'
-import { PreviewCollectionButton } from '~/components/PreviewCollectionButton'
 import { theme } from '~/styles/theme'
 
 export const ReviewBar = styled.div`
@@ -85,11 +84,4 @@ export const Actions = styled.div`
   display: flex;
   gap: 8px;
   margin-left: auto;
-`
-
-// The explorer is desktop-only, so phones would only be sent to the download page.
-export const PreviewButton = styled(PreviewCollectionButton)`
-  ${theme.media.noActions} {
-    display: none;
-  }
 `

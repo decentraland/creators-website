@@ -80,9 +80,11 @@ type Props = {
   /** Review mode hides the read-only note: curators know the editor is locked. */
   showReadOnlyNote?: boolean
   /** Why the viewer cannot edit: no manage role, or the collection's publish lock. */
-  readOnlyReason?: 'role' | 'lock'
+  readOnlyReason?: 'role' | 'linked' | 'lock'
   /** Owner of a draft collection: the only one who may delete items here. */
   canDelete: boolean
+  /** Only the people behind the collection and curators get the source files; anyone else could re-upload them as their own. */
+  canDownload: boolean
   draft: ItemDraft
   dispatch: Dispatch<ItemDraftAction>
   isDirty: boolean
@@ -105,6 +107,7 @@ export function PropertiesPanel({
   showReadOnlyNote = true,
   readOnlyReason = 'role',
   canDelete,
+  canDownload,
   draft,
   dispatch,
   isDirty,
@@ -218,39 +221,49 @@ export function PropertiesPanel({
             </Tooltip>
           )}
         </S.PanelTitleRow>
-        <ActionsMenu label={t('item_editor.actions.label')} variant="row" tone="dark" testId={`${testId}-actions`}>
-          <ActionsMenuItem testId={`${testId}-download`} disabled={isDownloading} onClick={() => void download()}>
-            {t('item_editor.details.download')}
-          </ActionsMenuItem>
-          {editable && (
-            <ActionsMenuItem testId={`${testId}-change-file`} disabled={isSaving} onClick={() => setChangeFile({})}>
-              {t('item_editor.details.change_file')}
-            </ActionsMenuItem>
-          )}
-          {editable && missingShape && (
-            <ActionsMenuItem
-              testId={`${testId}-add-representation`}
-              disabled={isSaving}
-              onClick={() => setChangeFile({ lockedBodyShape: missingShape })}
-            >
-              {t('item_editor.details.add_representation', {
-                shape: t(`add_items_modal.body_shape_option.${missingShape}`)
-              })}
-            </ActionsMenuItem>
-          )}
-          {canDelete && (
-            <>
-              <ActionsMenuDivider />
-              <ActionsMenuItem testId={`${testId}-delete`} onClick={() => setDeleteOpen(true)}>
-                {t('item_editor.danger.delete')}
+        {(canDownload || editable) && (
+          <ActionsMenu label={t('item_editor.actions.label')} variant="row" tone="dark" testId={`${testId}-actions`}>
+            {canDownload && (
+              <ActionsMenuItem testId={`${testId}-download`} disabled={isDownloading} onClick={() => void download()}>
+                {t('item_editor.details.download')}
               </ActionsMenuItem>
-            </>
-          )}
-        </ActionsMenu>
+            )}
+            {editable && (
+              <ActionsMenuItem testId={`${testId}-change-file`} disabled={isSaving} onClick={() => setChangeFile({})}>
+                {t('item_editor.details.change_file')}
+              </ActionsMenuItem>
+            )}
+            {editable && missingShape && (
+              <ActionsMenuItem
+                testId={`${testId}-add-representation`}
+                disabled={isSaving}
+                onClick={() => setChangeFile({ lockedBodyShape: missingShape })}
+              >
+                {t('item_editor.details.add_representation', {
+                  shape: t(`add_items_modal.body_shape_option.${missingShape}`)
+                })}
+              </ActionsMenuItem>
+            )}
+            {canDelete && (
+              <>
+                <ActionsMenuDivider />
+                <ActionsMenuItem testId={`${testId}-delete`} onClick={() => setDeleteOpen(true)}>
+                  {t('item_editor.danger.delete')}
+                </ActionsMenuItem>
+              </>
+            )}
+          </ActionsMenu>
+        )}
       </S.PanelHeader>
       {!editable && showReadOnlyNote && (
         <S.ReadOnlyNote data-testid={`${testId}-readonly`}>
-          {t(readOnlyReason === 'lock' ? 'item_editor.read_only_locked' : 'item_editor.read_only')}
+          {t(
+            readOnlyReason === 'lock'
+              ? 'item_editor.read_only_locked'
+              : readOnlyReason === 'linked'
+                ? 'item_editor.read_only_linked'
+                : 'item_editor.read_only'
+          )}
         </S.ReadOnlyNote>
       )}
 

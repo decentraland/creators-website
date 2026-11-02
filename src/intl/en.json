@@ -119,6 +119,7 @@
       "copy_address": "Copy contract address",
       "collaborators": "Collaborators",
       "senders": "Senders",
+      "transfer_ownership": "Transfer ownership",
       "delete": "Delete collection",
       "copied_urn": "URN copied to clipboard",
       "copied_address": "Contract address copied to clipboard",
@@ -395,7 +396,7 @@
       "fee_error": "We couldn't load the publication fee.",
       "retry": "Try again",
       "approve_error": "The MANA approval didn't go through. Please try again.",
-      "checkbox": "I warrant that the submitted items fully comply with the <terms>Terms of Use</terms> and <policy>Content Policy</policy>, which I acknowledge and accept. I acknowledge that the DAO may refuse to approve them if they infringe either, and that the publication fee won't be refunded if they're rejected.",
+      "checkbox": "I warrant that the submitted items are my original work and that they fully comply with the <terms>Terms of Use</terms> and <policy>Content Policy</policy>, which I acknowledge and accept. I acknowledge that the DAO may refuse to approve them if they copy someone else's work or infringe either, and that the publication fee won't be refunded if they're rejected.",
       "submit": "Publish & Pay"
     },
     "buy_credits": {
@@ -510,7 +511,9 @@
       "title_senders": "We couldn’t update the senders",
       "description_senders": "Something went wrong while saving the senders of this collection. Please try again.",
       "title_collaborators": "We couldn’t update the collaborators",
-      "description_collaborators": "Something went wrong while saving the collaborators of this collection. Please try again."
+      "description_collaborators": "Something went wrong while saving the collaborators of this collection. Please try again.",
+      "title_transfer": "We couldn’t transfer the ownership",
+      "description_transfer": "Something went wrong while transferring this collection. Check who owns it before trying again."
     },
     "remove": {
       "title": "Remove from sale?",
@@ -709,6 +712,7 @@
     "mobile_hint": "Editing is available on desktop. Here you can preview the items.",
     "read_only": "This item is read-only: only the collection owner and collaborators can edit it.",
     "read_only_locked": "This item is read-only while the collection is being published.",
+    "read_only_linked": "This item is read-only: only the linked collection's managers can edit it.",
     "save": "Save",
     "revert": "Revert",
     "save_success": "“{name}” was saved.",
@@ -1157,6 +1161,26 @@
       "leave": "Discard changes",
       "keep": "Keep editing"
     }
+  },
+  "transfer_ownership_modal": {
+    "title": "Transfer ownership",
+    "description": "The new owner takes full control of “{name}”: editing its items, publishing changes, sales, and the senders and collaborators lists. If you also hold one of those roles you keep it.",
+    "step_details": "Details",
+    "step_confirm": "Confirm",
+    "confirm_intro": "You’re about to hand “{name}” to this wallet. Please make sure it’s correct, as this can’t be reverted.",
+    "warning": "You can’t undo this. Only the new owner could transfer the collection back to you.",
+    "new_owner": "New owner",
+    "placeholder": "Select or copy the new owner’s User ID",
+    "clear": "Clear new owner",
+    "self": "That’s your own address: you already own this collection.",
+    "zero": "That’s the zero address: the collection would be lost for good.",
+    "system": "This address belongs to the Decentraland Shop: a collection sent there can’t be recovered.",
+    "contract": "That’s this collection’s own contract: a collection sent there can’t be recovered.",
+    "confirm_label": "Type “{name}” to confirm",
+    "submit": "Transfer ownership",
+    "saving": "Transferring ownership...",
+    "success_title": "Ownership transferred!",
+    "success_description": "“{name}” now belongs to {owner}. It stays in your collections only if you’re one of its collaborators or senders."
   },
   "required_permissions": {
     "title": "Required permissions",
@@ -1662,7 +1686,8 @@
     "mapping_error": "We couldn't save the mapping of {name}. Please try again.",
     "actions": {
       "edit_urn": "Edit URN",
-      "edit_in_bulk": "Edit in bulk"
+      "edit_in_bulk": "Edit in bulk",
+      "edit_contract": "Change linked contract"
     },
     "item_actions": {
       "edit_urn": "Edit URN"
@@ -1683,7 +1708,7 @@
     "label": "Preview in World"
   },
   "collection_discount": {
-    "create": "Create discount",
+    "create": "Create discounts",
     "cancel": "Cancel",
     "confirm_in_wallet": "Confirm in your wallet",
     "saving": "Creating your discount…",
@@ -1828,6 +1853,23 @@
     "error_generic": "We couldn't create your linked collection. Please try again.",
     "submit": "Create",
     "contract_placeholder": "0x… contract address"
+  },
+  "edit_contract_modal": {
+    "title": "Change linked contract",
+    "heading": "Link another NFT contract",
+    "subtitle": "Use this when the NFT contract was redeployed. Mapped items keep their token ids under the new contract and go back through review.",
+    "submit": "Change contract",
+    "running": {
+      "working": "Updating the linked contract…"
+    },
+    "success": {
+      "title": "Contract changed",
+      "body": "{count, plural, =0 {The collection now links the new contract. No item had a mapping to move, so there is nothing to push.} one {1 item now points to the new contract and is ready to push for review. It will go live in world once approved.} other {# items now point to the new contract and are ready to push for review. They will go live in world once approved.}}"
+    },
+    "error": {
+      "title": "We couldn't change the contract",
+      "body": "Nothing that already went through is lost. Try again to finish the change."
+    }
   },
   "edit_urn_modal": {
     "title": {

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useIntl } from 'react-intl'
 import { ArrowBack as ArrowBackIcon, Edit as EditIcon, PersonAddAlt as AssignIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
-import { track } from '~/lib/analytics'
 import { AssignCuratorModal } from '~/components/AssignCuratorModal'
 import { Button } from '~/components/Button'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
@@ -141,15 +140,6 @@ export function LinkedReviewBar({
             </S.AssigneeChip>
           )
         )}
-        <S.PreviewButton
-          collectionId={collection.id}
-          size="sm"
-          disabled={collection.itemCount === 0}
-          data-testid="review-preview"
-          onLaunch={launched =>
-            track('Review Preview In World', { collectionId: collection.id, itemCount: collection.itemCount, launched })
-          }
-        />
       </S.Meta>
 
       <S.Actions>

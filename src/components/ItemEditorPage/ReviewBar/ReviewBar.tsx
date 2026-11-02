@@ -225,15 +225,6 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
             )}
           </>
         )}
-        <S.PreviewButton
-          collectionId={collection.id}
-          size="sm"
-          disabled={items.length === 0}
-          data-testid="review-preview"
-          onLaunch={launched =>
-            track('Review Preview In World', { collectionId: collection.id, itemCount: items.length, launched })
-          }
-        />
       </S.Meta>
 
       {showActions && (

@@ -10,6 +10,8 @@ import {
   buildBuyItemSlotsCall,
   buildReviewThirdPartyCall,
   buildReviewThirdPartyWithRootCall,
+  buildUpdateThirdPartyCall,
+  fetchRegisteredContracts,
   fetchRegisteredThirdParty,
   fetchThirdPartyPrice,
   getThirdPartyRegistry,
@@ -68,6 +70,24 @@ describe('buildAddThirdPartyCall', () => {
     const [parties] = roundTrip(call)
     expect(parties[0][3]).toHaveLength(2)
     expect(parties[0][4]).toEqual([true, true])
+  })
+})
+
+describe('buildUpdateThirdPartyCall', () => {
+  it('rewrites the metadata with the new contract and leaves resolver, managers and slots untouched', () => {
+    const next = { network: 'mainnet' as ContractNetwork, address: '0x' + '2'.repeat(40) }
+    const call = buildUpdateThirdPartyCall(CHAIN_ID, { ...thirdParty, contracts: [next] })
+
+    expect(call.method).toBe('updateThirdParties')
+    const [parties] = roundTrip(call)
+    expect(parties).toHaveLength(1)
+    const [id, metadata, resolver, managers, enabled, slots] = parties[0]
+    expect(id).toBe(THIRD_PARTY_ID)
+    expect(metadata).toBe(`tp:1:Brand:A brand:mainnet-${next.address}`)
+    expect(resolver).toBe('')
+    expect(managers).toEqual([])
+    expect(enabled).toEqual([])
+    expect(slots.toString()).toBe('0')
   })
 })
 
@@ -166,6 +186,39 @@ describe('fetchThirdPartyPrice', () => {
       programmaticMinSlots: 200,
       usdPerManaWei: ETHER / 2n
     })
+  })
+})
+
+describe('fetchRegisteredContracts', () => {
+  it('lists the contracts of the registry record, lower-cased, and none for a bare record', async () => {
+    vi.mocked(readContract).mockResolvedValueOnce({
+      metadata: `tp:1:Brand:A brand:mainnet-0x${'A'.repeat(40)};matic-0x${'b'.repeat(40)}`
+    })
+    await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([
+      { network: 'mainnet', address: '0x' + 'a'.repeat(40) },
+      { network: 'matic', address: '0x' + 'b'.repeat(40) }
+    ])
+    vi.mocked(readContract).mockResolvedValueOnce({ metadata: 'tp:1:Brand:A brand' })
+    await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([])
+  })
+
+  it('does not mistake description text for a contract', async () => {
+    vi.mocked(readContract).mockResolvedValueOnce({ metadata: 'tp:1:Brand:Shop: limited-edition' })
+    await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([])
+  })
+
+  it('refuses a record whose contract segment is only partly readable', async () => {
+    vi.mocked(readContract).mockResolvedValueOnce({
+      metadata: `tp:1:Brand:A brand:mainnet-0x${'a'.repeat(40)};moon-0x1`
+    })
+    await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).rejects.toThrow('could not be parsed')
+  })
+
+  it('still reads the contracts when a legacy description contains a colon', async () => {
+    vi.mocked(readContract).mockResolvedValueOnce({ metadata: `tp:1:Brand:Note: legacy:matic-0x${'b'.repeat(40)}` })
+    await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([
+      { network: 'matic', address: '0x' + 'b'.repeat(40) }
+    ])
   })
 })
 
