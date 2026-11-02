@@ -369,6 +369,15 @@ describe('loadItemFile', () => {
       ])
     })
 
+    it('flattens a single body-shape folder of a scene zip: the model serves both shapes', async () => {
+      const result = await loadItemFile(
+        await zipFile({ 'scene.json': scene(), 'female/model.glb': 'glb', 'bin/game.js': 'code' })
+      )
+      expect(result.model).toBe('model.glb')
+      expect(result.bodyShape).toBe(BodyShapeType.BOTH)
+      expect(Object.keys(result.contents).sort()).toEqual(['bin/game.js', 'model.glb', 'scene.json'])
+    })
+
     it('rejects a nested scene.json next to a root wearable.json', async () => {
       await expectItemFileError(
         loadItemFile(

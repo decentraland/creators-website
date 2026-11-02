@@ -602,13 +602,17 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
   // the form supplies name, category and rarity. Always unisex.
   if (sceneFile) {
     const { scene, blob } = await loadScene(sceneFile, content, readText)
-    const keys = Object.keys(content)
+    // A single body-shape folder is just where the model sits: it serves both shapes, so it is flattened
+    // like a plain zip's; male/ + female/ folders stay for the per-shape sort.
+    const files =
+      getBodyShapeTypeFromContents(content) === BodyShapeType.BOTH ? content : cleanContentModelKeys(content)
+    const keys = Object.keys(files)
     const model = keys.find(isModelFile) ?? keys.find(isModelPath)
     if (!model) throw new ItemFileError('missing_model_file')
     if (contentsSize > MAX_WEARABLE_FILE_SIZE) {
       throw new ItemFileError('file_too_big', { size: toMB(MAX_WEARABLE_FILE_SIZE) })
     }
-    return { contents: withVideo({ ...content, [SCENE_PATH]: blob }), model, bodyShape: BodyShapeType.BOTH, scene }
+    return { contents: withVideo({ ...files, [SCENE_PATH]: blob }), model, bodyShape: BodyShapeType.BOTH, scene }
   }
 
   const model = Object.keys(content).find(isModelPath)
