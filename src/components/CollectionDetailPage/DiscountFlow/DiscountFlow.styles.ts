@@ -24,6 +24,11 @@ export const DiscountChip = styled.li`
   font-size: 14px;
   color: ${theme.colors.softWhite};
 
+  /* The tight right edge is sized for the End button; without it the terms need the same room as the left. */
+  &:not(:has(> button)) {
+    padding-right: 16px;
+  }
+
   & span {
     color: ${theme.colors.gray4};
     font-size: 13px;
