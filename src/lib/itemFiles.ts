@@ -15,6 +15,7 @@ import {
   type JSONSchema
 } from '@dcl/schemas'
 import { BodyShapeType, IMAGE_PATH, VIDEO_PATH, hasSceneCode, isSceneCodeFile } from './items'
+import { blobsAreEqual } from './livePreview'
 
 export const THUMBNAIL_PATH = 'thumbnail.png'
 /** A smart wearable's scene manifest; kept inside the item contents so the explorer can run it. */
@@ -456,12 +457,17 @@ function toSceneManifest(value: unknown): SceneManifest {
   }
 }
 
-/** The zip's scene.json: at the root, or the single one inside a zipped project folder. */
+/**
+ * The zip's scene.json: at the root, the single one inside a zipped project folder, or the copies a
+ * downloaded item carries under male/ and female/ (one manifest stored per body shape, so any will do).
+ */
 function findSceneFile(zip: JSZip): JSZip.JSZipObject | null {
   const root = zip.file(SCENE_PATH)
   if (root) return root
   const nested = zip.file(/(^|\/)scene\.json$/)
-  return nested.length === 1 ? nested[0] : null
+  if (nested.length === 1) return nested[0]
+  const perBodyShape = nested.length > 0 && nested.every(file => /(^|\/)(male|female)\/scene\.json$/.test(file.name))
+  return perBodyShape ? nested[0] : null
 }
 
 /** Parses and validates the scene manifest, checks its code bundle shipped, and returns the normalized file to store. */
@@ -474,7 +480,15 @@ async function loadScene(
   const scene = toSceneManifest(rawScene)
   // The entry point is what makes the wearable "smart" downstream (hasSceneCode), so it must be code.
   if (!isSceneCodeFile(scene.main)) throw new ItemFileError('scene_main_not_code', { fileName: scene.main })
-  if (!content[scene.main]) throw new ItemFileError('manifest_file_missing', { fileName: scene.main })
+  // A downloaded item ships the bundle under male/ and female/; a smart wearable has one code, so both must match.
+  const male = content[`male/${scene.main}`]
+  const female = content[`female/${scene.main}`]
+  if (!content[scene.main] && !male && !female) {
+    throw new ItemFileError('manifest_file_missing', { fileName: scene.main })
+  }
+  if (male && female && !(await blobsAreEqual(male, female))) {
+    throw new ItemFileError('scene_code_mismatch', { fileName: scene.main })
+  }
   return { scene, blob: new Blob([JSON.stringify(rawScene)], { type: 'application/json' }) }
 }
 

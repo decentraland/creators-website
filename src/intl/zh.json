@@ -653,6 +653,7 @@
       "allowed_media_hostnames_empty": "scene.json 请求了 ALLOW_MEDIA_HOSTNAMES，但未列出任何主机名。",
       "scene_manifest_missing": "此 ZIP 包含场景代码，但没有 scene.json。智能可穿戴物品需要 scene.json。",
       "scene_manifest_nested": "使用 wearable.json 时，scene.json 必须与其一同位于 ZIP 的根目录。",
+      "scene_code_mismatch": "male 和 female 文件夹中的 {fileName} 版本不同。智能可穿戴物品只有一份代码，两个副本必须一致。",
       "scene_main_not_code": "scene.json 的 main 指向 {fileName}，但它必须是 JavaScript 包。",
       "emote_duration_too_long": "表情动作最长 {seconds} 秒。",
       "emote_with_mesh": "此表情动作包含虚拟形象网格。请仅导出骨架和动画。",

@@ -451,6 +451,48 @@ describe('loadItemFile', () => {
       expect(Object.keys(result.contents).sort()).toEqual(['bin/game.js', 'model.glb', 'scene.json'])
     })
 
+    it('round-trips a downloaded smart wearable: scene and code duplicated under male/ and female/', async () => {
+      const result = await loadItemFile(
+        await zipFile({
+          'anime/thumbnail.png': 'thumb',
+          'anime/image.png': 'catalyst',
+          'anime/male/scene.json': scene(),
+          'anime/male/bin/game.js': 'code',
+          'anime/male/long.glb': 'glb-m',
+          'anime/female/scene.json': scene(),
+          'anime/female/bin/game.js': 'code',
+          'anime/female/short.glb': 'glb-f'
+        })
+      )
+      expect(result.scene?.main).toBe('bin/game.js')
+      expect(result.bodyShape).toBe(BodyShapeType.BOTH)
+      expect(Object.keys(result.contents).sort()).toEqual([
+        'female/bin/game.js',
+        'female/short.glb',
+        'image.png',
+        'male/bin/game.js',
+        'male/long.glb',
+        'scene.json',
+        'thumbnail.png'
+      ])
+    })
+
+    it('rejects a downloaded smart wearable whose male and female code differ', async () => {
+      await expectItemFileError(
+        loadItemFile(
+          await zipFile({
+            'male/scene.json': scene(),
+            'male/bin/game.js': 'code v2',
+            'male/model.glb': 'glb',
+            'female/scene.json': scene(),
+            'female/bin/game.js': 'code v1',
+            'female/model.glb': 'glb'
+          })
+        ),
+        'scene_code_mismatch'
+      )
+    })
+
     it('keeps a bundled video.mp4 without counting it toward the size cap', async () => {
       const result = await loadItemFile(
         await zipFile({
