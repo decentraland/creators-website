@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -29,7 +29,7 @@ const pending = [
   }
 ] as unknown as Item[]
 
-const flow = {
+const initialFlow = () => ({
   view: { kind: 'error', step: 'has_video', failed: [], items: withVideo } as Record<string, unknown>,
   plan: null as Record<string, unknown> | null,
   steps: [] as string[],
@@ -38,7 +38,10 @@ const flow = {
   runRoot: vi.fn(),
   runDeploy: vi.fn(),
   stop: vi.fn()
-}
+})
+const flow = initialFlow()
+
+beforeEach(() => Object.assign(flow, initialFlow()))
 
 vi.mock('~/hooks/useLinkedReview', () => ({ useLinkedApprovalFlow: () => flow }))
 vi.mock('~/lib/builder', async importOriginal => ({
@@ -47,7 +50,7 @@ vi.mock('~/lib/builder', async importOriginal => ({
 }))
 
 const wrapper = ({ children }: { children: ReactNode }) => (
-  <QueryClientProvider client={new QueryClient()}>
+  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
     <TranslationProvider>{children}</TranslationProvider>
   </QueryClientProvider>
 )

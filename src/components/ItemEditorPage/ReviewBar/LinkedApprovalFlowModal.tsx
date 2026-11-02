@@ -21,7 +21,7 @@ import { decodeLinkedUrn, type ThirdParty } from '~/lib/thirdParty'
 import { measureItems } from '~/lib/approveCollection'
 import { type ReviewedContent } from '~/lib/approveLinkedCollection'
 import { ProgressModal } from '~/components/ProgressModal'
-import { formatSize } from './ApprovalFlowModal'
+import { formatSize } from './formatSize'
 import * as S from './ApprovalFlowModal.styles'
 
 type Props = {

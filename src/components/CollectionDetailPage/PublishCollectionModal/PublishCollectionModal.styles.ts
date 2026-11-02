@@ -134,6 +134,9 @@ export const Footer = styled.div`
   gap: 16px;
   margin-top: auto;
   padding-top: 24px;
+  [data-testid='checkbox-label'] ~ & {
+    margin-top: 0;
+  }
   border-top: 1px solid ${theme.colors.glassHover};
   background: ${theme.colors.modalSurface};
   position: sticky;
