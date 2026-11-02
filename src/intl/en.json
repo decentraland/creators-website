@@ -667,7 +667,6 @@
       "video_wrong_format": "The video must be an MP4 file.",
       "invalid_video": "Your video seems to be invalid or broken. Check the file and try again.",
       "invalid_model_file_type": "The file is a different item type. A wearable can only be replaced with a wearable, and an emote with an emote.",
-      "representation_path_collision": "The other body shape already uses a file with this name. Rename the file and try again.",
       "linked_emote": "Linked collections can only hold wearables, not emotes.",
       "linked_smart_wearable": "Linked collections can't hold smart wearables.",
       "linked_urn_mismatch": "The wearable.json URN doesn't belong to this collection.",
