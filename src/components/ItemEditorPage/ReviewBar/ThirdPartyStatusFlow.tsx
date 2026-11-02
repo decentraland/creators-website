@@ -69,6 +69,7 @@ export function ThirdPartyStatusFlow({ session, thirdParty, approved, onClose, o
       error={review.isError ? t(`item_editor.linked_review.${action}.error`) : null}
       busy={review.isPending && !awaitingWallet}
       onClose={review.isPending ? () => undefined : onClose}
+      fillActions
       cancel={
         review.isPending
           ? undefined

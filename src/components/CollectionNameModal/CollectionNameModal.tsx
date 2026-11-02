@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { ChevronRight as ChevronRightIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { NAME_ALREADY_IN_USE_ERROR, validateCollectionName } from '~/lib/collections'
 import { validateLinkedCollectionName } from '~/lib/thirdParty'
@@ -97,7 +96,6 @@ export function CollectionNameModal({
           </Button>
           <Button type="submit" data-testid="collection-name-submit" loading={isPending} disabled={!trimmed}>
             {t('collection_name_modal.submit', { variant })}
-            <ChevronRightIcon fontSize="small" />
           </Button>
         </S.Actions>
       </S.Form>

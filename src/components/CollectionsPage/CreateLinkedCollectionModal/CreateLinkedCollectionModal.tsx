@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { ChevronRight as ChevronRightIcon } from '@mui/icons-material'
 import { config } from '~/config'
 import { useTranslation } from '~/intl'
 import { openExternal } from '~/lib/navigation'
@@ -117,7 +116,6 @@ export function CreateLinkedCollectionModal({ isPending, error, onSubmit, onClos
           </Button>
           <Button type="submit" data-testid="linked-collection-submit" loading={isPending} disabled={!canSubmit}>
             {t('create_linked_collection_modal.submit')}
-            <ChevronRightIcon fontSize="small" />
           </Button>
         </S.Actions>
       </S.Form>
