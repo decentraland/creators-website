@@ -443,6 +443,22 @@ describe('loadItemFile', () => {
       )
     })
 
+    it('rejects per-body-shape scene.json copies that are not inside the same folder', async () => {
+      await expectItemFileError(
+        loadItemFile(
+          await zipFile({
+            'a/male/scene.json': scene(),
+            'a/male/bin/game.js': 'code',
+            'a/male/model.glb': 'glb',
+            'b/female/scene.json': scene(),
+            'b/female/bin/game.js': 'code',
+            'b/female/model.glb': 'glb'
+          })
+        ),
+        'scene_manifest_missing'
+      )
+    })
+
     it('finds the scene.json of a zipped project folder', async () => {
       const result = await loadItemFile(
         await zipFile({ 'my-sw/scene.json': scene(), 'my-sw/model.glb': 'glb', 'my-sw/bin/game.js': 'code' })
@@ -459,7 +475,7 @@ describe('loadItemFile', () => {
           'anime/male/scene.json': scene(),
           'anime/male/bin/game.js': 'code',
           'anime/male/long.glb': 'glb-m',
-          'anime/female/scene.json': scene(),
+          'anime/female/scene.json': JSON.stringify(JSON.parse(scene()), null, 2),
           'anime/female/bin/game.js': 'code',
           'anime/female/short.glb': 'glb-f'
         })

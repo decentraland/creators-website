@@ -469,10 +469,13 @@ async function findSceneFile(
   if (root) return root
   const nested = zip.file(/(^|\/)scene\.json$/)
   if (nested.length === 1) return nested[0]
-  const perBodyShape = nested.length > 0 && nested.every(file => /(^|\/)(male|female)\/scene\.json$/.test(file.name))
-  if (!perBodyShape) return null
-  const texts = await Promise.all(nested.map(readText))
-  if (texts.some(text => text !== texts[0])) throw new ItemFileError('scene_code_mismatch', { fileName: SCENE_PATH })
+  // Exactly the download layout: one copy under female/ and one under male/, inside the same folder.
+  const names = nested.map(file => file.name).sort()
+  if (names.length !== 2 || names[0].replace(/(^|\/)female\/scene\.json$/, '$1male/scene.json') !== names[1])
+    return null
+  // Compared as parsed JSON so a reformatted copy still counts as the same manifest.
+  const texts = await Promise.all(nested.map(async file => JSON.stringify(parseJson(await readText(file), SCENE_PATH))))
+  if (texts[0] !== texts[1]) throw new ItemFileError('scene_code_mismatch', { fileName: SCENE_PATH })
   return nested[0]
 }
 
