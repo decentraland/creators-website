@@ -46,6 +46,7 @@ import {
 import { parseUuidParam } from '~/lib/ids'
 import { getCurationState, curationListUrl } from '~/lib/curation'
 import { toFileChangeSaveable, toPreviewItem, toSaveableItem, type ItemFileChange } from '~/lib/itemDraft'
+import { type BuiltItem } from '~/lib/itemFactory'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
 import { pickFiles } from '~/lib/filePicker'
 import { IMAGE_PATH, ITEM_EXTENSIONS } from '~/lib/itemFiles'
@@ -387,14 +388,20 @@ const ItemEditorPage = () => {
     if (form.draft.rarity !== item.rarity && !form.draft.thumbnail && !built.blobs[IMAGE_PATH]) {
       showToast(t('item_editor.image_refresh_skipped'), { type: 'warn' })
     }
+    const saved = await commit(item, built)
+    // The selection may have moved on while the save was in flight; resetting then would wipe the
+    // form of whichever item is on screen now with this item's data.
+    if (selectedIdRef.current === saved.id) form.reset(saved)
+  }
+
+  /** PUTs the built item, refreshes the cached list and toasts. */
+  async function commit(item: Item, built: BuiltItem): Promise<Item> {
     const saved = await saveItem.mutateAsync({ ...built, previousVideo: item.video })
     queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collectionId ?? undefined), current =>
       current?.map(candidate => (candidate.id === saved.id ? saved : candidate))
     )
-    // The selection may have moved on while the save was in flight; resetting then would wipe the
-    // form of whichever item is on screen now with this item's data.
-    if (selectedIdRef.current === saved.id) form.reset(saved)
     showToast(t('item_editor.save_success', { name: saved.name }))
+    return saved
   }
 
   // A locked collection is the creator's to wait out; anything else is ours to look into.
@@ -423,10 +430,7 @@ const ItemEditorPage = () => {
         springBones: springBonesData,
         fetchThumbnail: fetchStoredThumbnail
       })
-      const saved = await saveItem.mutateAsync({ ...built, previousVideo: base.video })
-      queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collectionId ?? undefined), current =>
-        current?.map(candidate => (candidate.id === saved.id ? saved : candidate))
-      )
+      const saved = await commit(base, built)
       if (selectedIdRef.current === saved.id) {
         if (change.category) {
           form.dispatch({ type: 'setCategory', category: change.category })
@@ -434,7 +438,6 @@ const ItemEditorPage = () => {
         }
         if (change.thumbnail) form.dispatch({ type: 'setThumbnail', thumbnail: null })
       }
-      showToast(t('item_editor.save_success', { name: saved.name }))
     } catch (error) {
       reportSaveError(error, 'item_file_change')
       throw error

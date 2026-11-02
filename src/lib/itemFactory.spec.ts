@@ -258,20 +258,6 @@ describe('addRepresentationToItem', () => {
     const variant = { ...baseDraft, id: 'draft-2', bodyShape: BodyShapeType.MALE }
     await expect(addRepresentationToItem({ item: base }, variant)).rejects.toThrow()
   })
-
-  it('takes the picked folder from a zip that ships both body shapes', async () => {
-    const base = await buildBase()
-    const variant: ItemDraftPayload = {
-      ...baseDraft,
-      id: 'draft-2',
-      bodyShape: BodyShapeType.FEMALE,
-      contents: { 'male/m.glb': blob('m'), 'female/f.glb': blob('f'), 'shared.png': blob('s') },
-      model: 'male/m.glb'
-    }
-    const { item, blobs } = await addRepresentationToItem({ item: base }, variant)
-    expect(item.data.representations[1].mainFile).toBe('female/f.glb')
-    expect(Object.keys(blobs).sort()).toEqual(['female/f.glb', 'female/shared.png'])
-  })
 })
 
 describe('withReplacedRepresentation', () => {

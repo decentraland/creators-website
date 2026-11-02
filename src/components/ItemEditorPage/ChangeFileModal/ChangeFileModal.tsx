@@ -13,20 +13,13 @@ import { imageThumbnailPatch, needsPreviewData, type PreviewDraft } from '~/lib/
 import { pickFile } from '~/lib/filePicker'
 import { type ItemFileChange } from '~/lib/itemDraft'
 import { type BuiltItem } from '~/lib/itemFactory'
-import {
-  ITEM_EXTENSIONS,
-  ItemFileError,
-  THUMBNAIL_PATH,
-  getBodyShapeTypeFromContents,
-  getExtension,
-  isImageFile
-} from '~/lib/itemFiles'
+import { ITEM_EXTENSIONS, ItemFileError, THUMBNAIL_PATH, getExtension, isImageFile } from '~/lib/itemFiles'
 import {
   buildModelUpdate,
   getDefaultBodyShape,
   getModelUpdateError,
   getModelUpdateMode,
-  getPreviewModel,
+  narrowToShape,
   isBodyShapeLocked,
   loadModelForItem,
   needsNewCategory,
@@ -47,32 +40,22 @@ type Props = {
   onClose: () => void
 }
 
-/**
- * What the preview measures and renders for a pick: one folder of a two-folder zip, under an id of its
- * own so a run still going for another folder can't land on it. A 3D model leaves metrics and the render
- * to the DraftProcessor; a texture takes its fixed metrics here and its padded thumbnail from `textureThumbnail`.
- */
-function previewFor(baseId: string, loaded: LoadedItemModel, shape: BodyShapeType): Partial<PreviewDraft> {
-  const preview = getPreviewModel(loaded, shape)
+/** The preview draft for a file: a 3D model leaves metrics and render to the DraftProcessor, a texture has fixed metrics. */
+function makeDraft(file: LoadedItemModel, item: Item): PreviewDraft {
   return {
-    id: `${baseId}:${shape}`,
-    ...preview,
-    metrics: isImageFile(preview.model) ? IMAGE_WEARABLE_METRICS : loaded.metrics,
+    id: crypto.randomUUID(),
+    type: file.type,
+    contents: file.contents,
+    model: file.model,
+    category: item.data.category ?? null,
+    rarity: item.rarity ?? DEFAULT_RARITY,
+    isSmart: file.isSmart,
+    requiredPermissions: file.requiredPermissions,
+    metrics: isImageFile(file.model) ? IMAGE_WEARABLE_METRICS : file.metrics,
     thumbnail: null,
     isAutoThumbnail: false,
-    autoThumbnailCategory: null
-  }
-}
-
-async function textureThumbnail(
-  preview: Partial<PreviewDraft>,
-  category: string | null
-): Promise<Partial<PreviewDraft>> {
-  if (!preview.model || !preview.contents || !isImageFile(preview.model)) return {}
-  return {
-    ...(await imageThumbnailPatch(preview.contents, preview.model, category)),
-    isAutoThumbnail: true,
-    autoThumbnailCategory: category
+    autoThumbnailCategory: null,
+    validationIssues: file.validationIssues
   }
 }
 
@@ -82,7 +65,7 @@ async function textureThumbnail(
  */
 export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Props) {
   const { t, rich } = useTranslation()
-  const [file, setFile] = useState<File | null>(null)
+  const [picked, setPicked] = useState<File | null>(null)
   const [loaded, setLoaded] = useState<LoadedItemModel | null>(null)
   const [draft, setDraft] = useState<PreviewDraft | null>(null)
   const [isLoading, setLoading] = useState(false)
@@ -117,13 +100,12 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
       : isSmartWearable(item) || loaded?.isSmart
         ? t('add_items_modal.body_shape_smart_hint')
         : null
+  // A two-folder zip is seen through the pick: one folder, as the save will take it.
+  const file = useMemo(() => (loaded ? narrowToShape(loaded, bodyShape) : null), [loaded, bodyShape])
   const mode = useMemo(() => getModelUpdateMode(item, bodyShape), [item, bodyShape])
-  const pickError = useMemo(
-    () => (loaded ? getModelUpdateError(loaded, item, bodyShape) : null),
-    [loaded, item, bodyShape]
-  )
-  const needsCategory = useMemo(() => !!loaded && needsNewCategory(loaded, item, bodyShape), [loaded, item, bodyShape])
-  const categories = useMemo(() => (loaded ? getWearableCategoryOptions(loaded.contents) : []), [loaded])
+  const pickError = useMemo(() => (file ? getModelUpdateError(file, item, bodyShape) : null), [file, item, bodyShape])
+  const needsCategory = useMemo(() => !!file && needsNewCategory(file, item, bodyShape), [file, item, bodyShape])
+  const categories = useMemo(() => (file ? getWearableCategoryOptions(file.contents) : []), [file])
   const shapeLabel = t(`add_items_modal.body_shape_option.${bodyShape}`)
   const isReady = !!draft && !!draft.metrics && !!draft.thumbnail
   const canSave = isReady && !pickError && (!needsCategory || category !== null) && !isSaving
@@ -136,6 +118,24 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
     setError(t(`add_items_modal.file_error.${key}`, params))
   }
 
+  /** Shows a file as picked: a fresh draft, and for a texture its padded thumbnail once rendered. */
+  function showDraft(next: LoadedItemModel) {
+    const pick = ++pickRef.current
+    const draft = makeDraft(next, item)
+    setDraft(draft)
+    if (!isImageFile(next.model)) return
+    imageThumbnailPatch(next.contents, next.model, draft.category)
+      .then(patch => {
+        if (!mountedRef.current || pickRef.current !== pick) return
+        setDraft(
+          current => current && { ...current, ...patch, isAutoThumbnail: true, autoThumbnailCategory: draft.category }
+        )
+      })
+      .catch((err: unknown) => {
+        if (mountedRef.current && pickRef.current === pick) reportError(err)
+      })
+  }
+
   async function handleFile(picked: File | null | undefined) {
     if (!picked) return
     setDragging(false)
@@ -143,34 +143,13 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
     setLoading(true)
     try {
       const next = await loadModelForItem(picked, item)
-      const shape = lockedBodyShape ?? getDefaultBodyShape(item, next)
-      const itemCategory = item.data.category ?? null
-      const baseId = crypto.randomUUID()
-      const preview = previewFor(baseId, next, shape)
-      const base: PreviewDraft = {
-        id: baseId,
-        type: next.type,
-        contents: {},
-        model: '',
-        category: itemCategory,
-        rarity: item.rarity ?? DEFAULT_RARITY,
-        isSmart: next.isSmart,
-        requiredPermissions: next.requiredPermissions,
-        metrics: null,
-        thumbnail: null,
-        isAutoThumbnail: false,
-        autoThumbnailCategory: null,
-        validationIssues: next.validationIssues,
-        ...preview,
-        ...(await textureThumbnail(preview, itemCategory))
-      }
       if (!mountedRef.current) return
-      pickRef.current++
-      setFile(picked)
+      const shape = lockedBodyShape ?? getDefaultBodyShape(item, next)
+      setPicked(picked)
       setLoaded(next)
-      setDraft(base)
       setBodyShape(shape)
       setCategory(null)
+      showDraft(narrowToShape(next, shape))
     } catch (err) {
       if (mountedRef.current) reportError(err)
     } finally {
@@ -179,21 +158,11 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
   }
 
   function pickShape(value: BodyShapeType) {
-    if (locked || !loaded || !draft || value === bodyShape) return
+    if (locked || !loaded || value === bodyShape) return
     setBodyShape(value)
-    // Another folder of a two-folder zip is another model: its metrics and render are redone, and the
-    // previous folder's are dropped right away so they can't be saved meanwhile.
-    if (getBodyShapeTypeFromContents(loaded.contents) !== BodyShapeType.BOTH) return
-    const pick = ++pickRef.current
-    const preview = previewFor(draft.id.split(':')[0], loaded, value)
-    setDraft(current => current && { ...current, ...preview })
-    textureThumbnail(preview, item.data.category ?? null)
-      .then(patch => {
-        if (mountedRef.current && pickRef.current === pick) setDraft(current => current && { ...current, ...patch })
-      })
-      .catch((err: unknown) => {
-        if (mountedRef.current && pickRef.current === pick) reportError(err)
-      })
+    // Another folder of a two-folder zip is another model: a new draft, measured and rendered again.
+    const next = narrowToShape(loaded, value)
+    if (next !== file) showDraft(next)
   }
 
   function handleDrop(event: DragEvent) {
@@ -207,11 +176,11 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
   }
 
   async function save() {
-    if (!loaded || !draft || !canSave) return
+    if (!file || !draft || !canSave) return
     setSaving(true)
     let update: BuiltItem
     try {
-      update = await buildModelUpdate(loaded, item, bodyShape, draft.metrics ?? loaded.metrics ?? {})
+      update = await buildModelUpdate(file, item, bodyShape, draft.metrics ?? {})
     } catch (err) {
       reportError(err)
       setSaving(false)
@@ -229,7 +198,7 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
       itemId: item.id,
       bodyShape,
       mode,
-      fileKind: (file && getExtension(file.name)?.slice(1)) ?? 'unknown',
+      fileKind: (picked && getExtension(picked.name)?.slice(1)) ?? 'unknown',
       thumbnailRegenerated: thumbnail !== null
     })
     onClose()

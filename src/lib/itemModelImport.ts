@@ -114,15 +114,12 @@ function keptRepresentationPaths(item: Item, bodyShape: BodyShapeType): string[]
 }
 
 /**
- * The files the preview should measure and render for a pick: a zip with both body-shape folders shows
- * the picked folder only (its files unprefixed, shared files alongside); anything else shows as loaded.
+ * A zip with both body-shape folders, seen through one pick: that folder's files unprefixed (shared files
+ * alongside) and its model. Everything downstream, preview and save alike, then handles a plain file.
  */
-export function getPreviewModel(
-  loaded: LoadedItemModel,
-  bodyShape: BodyShapeType
-): { contents: Record<string, Blob>; model: string } {
+export function narrowToShape(loaded: LoadedItemModel, bodyShape: BodyShapeType): LoadedItemModel {
   if (bodyShape === BodyShapeType.BOTH || getBodyShapeTypeFromContents(loaded.contents) !== BodyShapeType.BOTH) {
-    return { contents: loaded.contents, model: loaded.model }
+    return loaded
   }
   const folder = `${bodyShape}/`
   const other = `${bodyShape === BodyShapeType.MALE ? BodyShapeType.FEMALE : BodyShapeType.MALE}/`
@@ -131,8 +128,12 @@ export function getPreviewModel(
     if (path.startsWith(other)) continue
     contents[path.startsWith(folder) ? path.slice(folder.length) : path] = blob
   }
-  const model = Object.keys(contents).find(isModelPath) ?? loaded.model
-  return { contents, model }
+  return {
+    ...loaded,
+    contents,
+    model: Object.keys(contents).find(isModelPath) ?? loaded.model,
+    fileBodyShape: bodyShape
+  }
 }
 
 /**
@@ -177,11 +178,12 @@ export function needsNewCategory(loaded: LoadedItemModel, item: Item, bodyShape:
  * replaced, one shape's model replaced (the other kept), or a representation added.
  */
 export async function buildModelUpdate(
-  loaded: LoadedItemModel,
+  file: LoadedItemModel,
   item: Item,
   bodyShape: BodyShapeType,
   metrics: ItemMetrics
 ): Promise<BuiltItem> {
+  const loaded = narrowToShape(file, bodyShape)
   const error = getModelUpdateError(loaded, item, bodyShape)
   if (error) throw new ItemFileError(error)
   const mode = getModelUpdateMode(item, bodyShape)
@@ -189,13 +191,15 @@ export async function buildModelUpdate(
   let built: BuiltItem
   if (mode === 'replace_all') {
     // A new smart zip brings its own scene permissions and preview video; a plain file clears both.
-    const video = contents[VIDEO_PATH] ?? (loaded.isSmart ? undefined : null)
-    built = await withReplacedModel(item, { contents, model, bodyShape: BodyShapeType.BOTH, metrics, video })
-    if (item.type === ItemType.WEARABLE) {
-      const data = { ...built.item.data }
-      delete data.requiredPermissions
-      built.item.data = loaded.isSmart ? { ...data, requiredPermissions: loaded.requiredPermissions } : data
-    }
+    built = await withReplacedModel(item, {
+      contents,
+      model,
+      bodyShape: BodyShapeType.BOTH,
+      metrics,
+      video: contents[VIDEO_PATH] ?? (loaded.isSmart ? undefined : null),
+      requiredPermissions:
+        item.type === ItemType.WEARABLE ? (loaded.isSmart ? loaded.requiredPermissions : null) : undefined
+    })
   } else if (mode === 'replace_shape' && bodyShape !== BodyShapeType.BOTH) {
     built = await withReplacedRepresentation(item, bodyShape, { contents, model, metrics })
   } else {

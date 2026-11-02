@@ -17,7 +17,6 @@ const EMPTY_DRAFT: ItemDraft = {
   outlineCompatible: true,
   thumbnail: null,
   video: null,
-  fileUpdate: null,
   mappings: null
 }
 

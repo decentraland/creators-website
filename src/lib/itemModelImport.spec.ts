@@ -12,14 +12,8 @@ vi.mock('./models', () => ({
   analyzeModel: (...args: unknown[]) => analyzeModel(...args)
 }))
 
-const {
-  buildModelUpdate,
-  getDefaultBodyShape,
-  getModelUpdateMode,
-  getPreviewModel,
-  loadModelForItem,
-  needsNewCategory
-} = await import('./itemModelImport')
+const { buildModelUpdate, getDefaultBodyShape, getModelUpdateMode, narrowToShape, loadModelForItem, needsNewCategory } =
+  await import('./itemModelImport')
 
 const maleOnly: Item = {
   id: 'w1',
@@ -175,15 +169,15 @@ describe('getModelUpdateMode / getDefaultBodyShape', () => {
   })
 })
 
-describe('getPreviewModel', () => {
+describe('narrowToShape', () => {
   it('shows the picked folder of a two-folder zip, unprefixed, with the shared files', () => {
     const zip = { ...bothZip(), contents: { ...bothZip().contents, 'shared.png': new Blob(['s']) } }
-    expect(getPreviewModel(zip, BodyShapeType.BOTH)).toEqual({ contents: zip.contents, model: 'male/a.glb' })
-    const female = getPreviewModel(zip, BodyShapeType.FEMALE)
+    expect(narrowToShape(zip, BodyShapeType.BOTH)).toBe(zip)
+    const female = narrowToShape(zip, BodyShapeType.FEMALE)
     expect(Object.keys(female.contents).sort()).toEqual(['a.glb', 'shared.png'])
     expect(female.contents['a.glb']).toBe(zip.contents['female/a.glb'])
-    expect(female.model).toBe('a.glb')
-    expect(getPreviewModel(newFile(), BodyShapeType.MALE).model).toBe('new.glb')
+    expect(female).toMatchObject({ model: 'a.glb', fileBodyShape: BodyShapeType.FEMALE })
+    expect(narrowToShape(newFile(), BodyShapeType.MALE).model).toBe('new.glb')
   })
 })
 
