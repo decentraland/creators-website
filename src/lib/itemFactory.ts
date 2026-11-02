@@ -10,6 +10,7 @@ import {
   BodyShapeType,
   ItemType,
   getItemBodyShapeType,
+  tracksVideoOnSave,
   type Item,
   type ItemMetrics,
   type ItemRepresentation
@@ -24,6 +25,7 @@ import {
   THUMBNAIL_PATH,
   VIDEO_PATH,
   getBodyShapeTypeFromContents,
+  isModelFile,
   isModelPath,
   toMB
 } from './itemFiles'
@@ -131,10 +133,11 @@ export function sortContentZipBothBodyShape(bodyShape: BodyShapeType, contents: 
   const both: Record<string, Blob> = {}
 
   for (const [key, value] of Object.entries(contents)) {
-    if (key.startsWith('male/') && (bodyShape === BodyShapeType.BOTH || bodyShape === BodyShapeType.MALE)) {
-      male[key] = value
-    } else if (key.startsWith('female/') && (bodyShape === BodyShapeType.BOTH || bodyShape === BodyShapeType.FEMALE)) {
-      female[key] = value
+    // The folder of a shape not picked is left out, never treated as a shared file.
+    if (key.startsWith('male/')) {
+      if (bodyShape === BodyShapeType.BOTH || bodyShape === BodyShapeType.MALE) male[key] = value
+    } else if (key.startsWith('female/')) {
+      if (bodyShape === BodyShapeType.BOTH || bodyShape === BodyShapeType.FEMALE) female[key] = value
     } else {
       both[key] = value
     }
@@ -193,7 +196,7 @@ export function buildRepresentationsZipBothBodyShape(
   const representations: ItemRepresentation[] = []
 
   if (bodyShape === BodyShapeType.MALE || bodyShape === BodyShapeType.BOTH) {
-    const maleMainFile = Object.keys(contents.male).find(isModelPath)
+    const maleMainFile = Object.keys(contents.male).find(isModelFile) ?? Object.keys(contents.male).find(isModelPath)
     if (!maleMainFile) throw new ItemFileError('missing_model_file')
     representations.push({
       bodyShapes: [BODY_SHAPE_MALE],
@@ -205,7 +208,8 @@ export function buildRepresentationsZipBothBodyShape(
   }
 
   if (bodyShape === BodyShapeType.FEMALE || bodyShape === BodyShapeType.BOTH) {
-    const femaleMainFile = Object.keys(contents.female).find(isModelPath)
+    const femaleMainFile =
+      Object.keys(contents.female).find(isModelFile) ?? Object.keys(contents.female).find(isModelPath)
     if (!femaleMainFile) throw new ItemFileError('missing_model_file')
     representations.push({
       bodyShapes: [BODY_SHAPE_FEMALE],
@@ -459,36 +463,98 @@ export type ReplacementModel = {
   model: string
   bodyShape: BodyShapeType
   metrics: ItemMetrics
+  /** A smart wearable's new preview video; `null` drops the current one (the new file has no scene), `undefined` keeps it. */
+  video?: Blob | null
+  /** A smart wearable's scene permissions; `null` clears them (the new file has no scene), `undefined` keeps them. */
+  requiredPermissions?: string[] | null
 }
 
 /**
  * Swaps a saved item's model for a new file (legacy "change file"): the representations are rebuilt for
- * the item's current body shapes from the new contents, while the thumbnail, catalyst image and video
- * stay. Callers reject a wearable↔emote type switch before getting here.
+ * `replacement.bodyShape` from the new contents (every previous representation goes), while the
+ * thumbnail, catalyst image and video stay. Callers reject a wearable↔emote type switch before getting here.
  */
 export async function withReplacedModel(item: Item, replacement: ReplacementModel): Promise<BuiltItem> {
-  const bodyShape = getItemBodyShapeType(item) ?? replacement.bodyShape
-  const isBothZip = getBodyShapeTypeFromContents(replacement.contents) === BodyShapeType.BOTH
-  const sorted = isBothZip
-    ? sortContentZipBothBodyShape(bodyShape, replacement.contents)
-    : sortContent(bodyShape, replacement.contents)
+  const { bodyShape, contents: files, model } = replacement
+  const isBothZip = getBodyShapeTypeFromContents(files) === BodyShapeType.BOTH
+  const sorted = isBothZip ? sortContentZipBothBodyShape(bodyShape, files) : sortContent(bodyShape, files)
   const representations = isBothZip
     ? buildRepresentationsZipBothBodyShape(bodyShape, sorted)
-    : buildRepresentations(bodyShape, replacement.model, sorted)
-  const modelBlobs = { ...sorted.male, ...sorted.female }
-  const hashes = await computeHashes(modelBlobs)
+    : buildRepresentations(bodyShape, model, sorted)
+  const blobs = { ...sorted.male, ...sorted.female }
   const kept: Record<string, string> = {}
   for (const path of ROOT_PATHS) {
-    if (item.contents[path]) kept[path] = item.contents[path]
+    if (item.contents[path] && (path !== VIDEO_PATH || replacement.video === undefined))
+      kept[path] = item.contents[path]
+  }
+  if (replacement.video) blobs[VIDEO_PATH] = replacement.video
+  const hashes = await computeHashes(blobs)
+  const data = { ...item.data, representations }
+  if (replacement.requiredPermissions === null) delete data.requiredPermissions
+  else if (replacement.requiredPermissions) data.requiredPermissions = replacement.requiredPermissions
+  const next: Item = {
+    ...item,
+    data,
+    metrics: replacement.metrics,
+    contents: { ...kept, ...hashes },
+    updatedAt: Date.now()
+  }
+  // The approved hash stays until curation copies the new one over (see tracksVideoOnSave).
+  if (replacement.video && tracksVideoOnSave(item)) next.video = hashes[VIDEO_PATH]
+  if (replacement.video === null) delete next.video
+  return { item: next, blobs }
+}
+
+/** Files that stay with the item when `shape` is replaced: every path the other shape's representation lists. */
+export function getKeptRepresentationPaths(item: Item, shape: string): string[] {
+  return item.data.representations
+    .filter(representation => !representation.bodyShapes.includes(shape))
+    .flatMap(representation => representation.contents)
+}
+
+/**
+ * Replaces one body shape's model of a saved item and keeps the other representation and its files. The
+ * item must already have that shape, in a representation of its own: this editor and the legacy builder
+ * never store one representation for both shapes.
+ */
+export async function withReplacedRepresentation(
+  item: Item,
+  bodyShape: BodyShapeType.MALE | BodyShapeType.FEMALE,
+  replacement: Omit<ReplacementModel, 'bodyShape' | 'video' | 'requiredPermissions'>
+): Promise<BuiltItem> {
+  const wearableBodyShape = bodyShape === BodyShapeType.MALE ? BODY_SHAPE_MALE : BODY_SHAPE_FEMALE
+  const index = item.data.representations.findIndex(representation =>
+    representation.bodyShapes.includes(wearableBodyShape)
+  )
+  // Not a shape of its own (one representation for both): replacing it would drop the other shape.
+  if (index === -1 || item.data.representations[index].bodyShapes.length > 1) {
+    throw new ItemFileError('invalid_representation')
+  }
+
+  const sorted = sortContent(bodyShape, replacement.contents)
+  const representations = buildRepresentations(bodyShape, replacement.model, sorted)
+  const blobs = bodyShape === BodyShapeType.MALE ? sorted.male : sorted.female
+  const hashes = await computeHashes(blobs)
+  const replaced = item.data.representations[index]
+  const kept = new Set(getKeptRepresentationPaths(item, wearableBodyShape))
+  const contents: Record<string, string> = {}
+  for (const [path, hash] of Object.entries(item.contents)) {
+    if (!replaced.contents.includes(path) || kept.has(path)) contents[path] = hash
+  }
+  const next = [...item.data.representations]
+  next[index] = {
+    ...representations[0],
+    overrideHides: replaced.overrideHides ?? [],
+    overrideReplaces: replaced.overrideReplaces ?? []
   }
   return {
     item: {
       ...item,
-      data: { ...item.data, representations },
+      data: { ...item.data, representations: next },
       metrics: replacement.metrics,
-      contents: { ...kept, ...hashes },
+      contents: { ...contents, ...hashes },
       updatedAt: Date.now()
     },
-    blobs: modelBlobs
+    blobs
   }
 }

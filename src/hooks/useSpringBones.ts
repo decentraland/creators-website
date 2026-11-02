@@ -1,18 +1,15 @@
 import { useMemo } from 'react'
-import { useQueries } from '@tanstack/react-query'
+import { useQueries, type QueryClient } from '@tanstack/react-query'
 import { fetchContent } from '~/lib/builder'
-import { type BuiltItem } from '~/lib/itemFactory'
 import { type Item } from '~/lib/items'
 import {
-  carrySpringBoneParams,
   getInitialSpringBoneParams,
   getRepresentationModelHashes,
   hasSpringBones,
   isSpringBoneItem,
   parseSpringBones,
   type BoneNode,
-  type SpringBoneParamsByHash,
-  type SpringBonesCarrySource
+  type SpringBoneParamsByHash
 } from '~/lib/springBones'
 
 export type SpringBonesModel = {
@@ -35,47 +32,23 @@ export type SpringBonesData = {
 
 const EMPTY: SpringBonesData = { isLoading: false, isError: false, models: [], initialParams: {}, bonesByHash: {} }
 
-/**
- * Parses each representation GLB of a wearable for spring bones and merges the item's saved params.
- * With a pending model change, the models are the new ones and their params carry over from `carryFrom`
- * (the saved item when omitted).
- */
-export function useSpringBones(
-  item: Item | null,
-  pending: BuiltItem | null = null,
-  carryFrom: SpringBonesCarrySource | null = null
-): SpringBonesData {
-  const current = pending?.item ?? item
-  const hashes = useMemo(
-    () => (current && isSpringBoneItem(current) ? getRepresentationModelHashes(current) : []),
-    [current]
-  )
-  const source = useMemo<SpringBonesCarrySource | null>(() => {
-    if (!pending || !item) return null
-    return carryFrom ?? { item, params: item.data.springBones?.models ?? {} }
-  }, [pending, item, carryFrom])
-  const sourceHashes = useMemo(
-    () => (source && isSpringBoneItem(source.item) ? getRepresentationModelHashes(source.item) : []),
-    [source]
-  )
-  const parsed = useMemo(() => [...new Set([...hashes, ...sourceHashes])], [hashes, sourceHashes])
-  // An unsaved model exists only in memory: storage would 404 on its hash.
-  const blobsByHash = useMemo(() => {
-    if (!pending) return {}
-    const blobs: Record<string, Blob> = {}
-    for (const [path, blob] of Object.entries(pending.blobs)) {
-      const hash = pending.item.contents[path]
-      if (hash) blobs[hash] = blob
-    }
-    return blobs
-  }, [pending])
-  const queries = useQueries({
-    queries: parsed.map(hash => ({
-      queryKey: ['spring-bones', hash],
-      queryFn: async () => parseSpringBones(await (blobsByHash[hash] ?? (await fetchContent(hash))).arrayBuffer()),
-      staleTime: Infinity
-    }))
-  })
+function springBonesQuery(hash: string, blob?: Blob) {
+  return {
+    queryKey: ['spring-bones', hash],
+    queryFn: async () => parseSpringBones(await (blob ?? (await fetchContent(hash))).arrayBuffer()),
+    staleTime: Infinity
+  }
+}
+
+/** Parses a model's spring bones through the same cache the editor form reads. */
+export function springBonesFetcher(queryClient: QueryClient): (hash: string, blob?: Blob) => Promise<BoneNode[]> {
+  return (hash, blob) => queryClient.fetchQuery(springBonesQuery(hash, blob))
+}
+
+/** Parses each representation GLB of a wearable for spring bones and merges the item's saved params. */
+export function useSpringBones(item: Item | null): SpringBonesData {
+  const hashes = useMemo(() => (item && isSpringBoneItem(item) ? getRepresentationModelHashes(item) : []), [item])
+  const queries = useQueries({ queries: hashes.map(hash => springBonesQuery(hash)) })
   const isLoading = queries.some(query => query.isLoading)
   const isError = queries.some(query => query.isError)
   // One scalar stands in for the per-query results: a dependency array must keep its length. Not
@@ -83,30 +56,22 @@ export function useSpringBones(
   // recompute every render anyway — this map is what produces the stable key the real memo uses.
   const dataVersion = queries.map(query => query.dataUpdatedAt).join('|')
   return useMemo(() => {
-    if (!item || !current || hashes.length === 0) return EMPTY
-    const parsedBones: Record<string, BoneNode[]> = {}
-    parsed.forEach((hash, index) => {
-      const bones = queries[index].data
-      if (bones) parsedBones[hash] = bones
-    })
-    // Carrying needs the saved models' bones too, to tell a new root from one removed on purpose.
-    if (source && isLoading) return { ...EMPTY, isLoading }
-    const carried = source ? carrySpringBoneParams(source, current, parsedBones) : null
+    if (!item || hashes.length === 0) return EMPTY
     const models: SpringBonesModel[] = []
     const initialParams: SpringBoneParamsByHash = {}
     const bonesByHash: Record<string, BoneNode[]> = {}
-    for (const hash of hashes) {
-      const bones = parsedBones[hash]
-      if (!bones || !hasSpringBones(bones)) continue
-      const bodyShapes = current.data.representations
-        .filter(representation => current.contents[representation.mainFile] === hash)
+    hashes.forEach((hash, index) => {
+      const bones = queries[index].data
+      if (!bones || !hasSpringBones(bones)) return
+      const bodyShapes = item.data.representations
+        .filter(representation => item.contents[representation.mainFile] === hash)
         .flatMap(representation => representation.bodyShapes)
       models.push({ hash, bodyShapes, bones })
       bonesByHash[hash] = bones
-      initialParams[hash] = carried?.[hash] ?? getInitialSpringBoneParams(item, hash, bones)
-    }
+      initialParams[hash] = getInitialSpringBoneParams(item, hash, bones)
+    })
     return { isLoading, isError, models, initialParams, bonesByHash }
     // `queries` is a fresh array every render; dataVersion tracks the results that matter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item, current, source, hashes, parsed, isLoading, isError, dataVersion])
+  }, [item, hashes, isLoading, isError, dataVersion])
 }

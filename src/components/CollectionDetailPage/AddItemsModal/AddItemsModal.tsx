@@ -32,16 +32,11 @@ import {
   isValidationStale,
   type ItemDraft
 } from './AddItemsModal.state'
-import {
-  imageThumbnailPatch,
-  isImageThumbnailStale,
-  processDraftFile,
-  pickPreviewDraft,
-  type LinkedDraftTarget
-} from './processDraft'
+import { imageThumbnailPatch } from '~/lib/draftPreview'
+import { isImageThumbnailStale, processDraftFile, pickPreviewDraft, type LinkedDraftTarget } from './processDraft'
 import { DraftList } from './DraftList'
 import { DraftForm } from './DraftForm'
-import { DraftProcessor } from './DraftProcessor'
+import { DraftProcessor } from '~/components/ItemDraftModal'
 import { VideoModal } from '~/components/VideoModal'
 import { LeaveConfirmModal } from './LeaveConfirmModal'
 import { UploadErrorModal } from './UploadErrorModal'

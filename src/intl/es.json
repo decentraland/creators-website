@@ -868,11 +868,8 @@
       "edit_thumbnail": "Editar miniatura",
       "download": "Descargar ítem",
       "watch_video": "Ver video de vista previa",
-      "change_file": "Cambiar archivo",
-      "add_representation": "Agregar representación {shape}",
-      "file_update_pending": "Hay un modelo nuevo listo. Guarda para subirlo.",
-      "import_error_title": "No pudimos usar ese archivo",
-      "import_error_close": "OK",
+      "change_file": "Reemplazar modelo",
+      "add_representation": "Agregar modelo {shape}",
       "download_error": "No pudimos descargar el ítem. Inténtalo de nuevo.",
       "video_required": "Se necesita un video de vista previa para publicar un smart wearable.",
       "video_hint": "Un video corto que muestra lo que hace el smart wearable en el mundo."
@@ -885,7 +882,6 @@
       "utility": "Utilidad",
       "utility_hint": "Una descripción corta de lo que hace este ítem en el mundo, visible para los coleccionistas.",
       "category": "Categoría",
-      "category_required": "Elige una categoría para el nuevo archivo.",
       "rarity": "Rareza"
     },
     "overrides": {
@@ -947,6 +943,22 @@
     },
     "actions": {
       "label": "Acciones del ítem"
+    },
+    "change_file": {
+      "heading": "Nuevo modelo",
+      "drop_description": "Arrastra y suelta tu archivo aquí, o <browse>explora tu dispositivo</browse>.",
+      "effect": {
+        "replace_all": "Reemplaza el modelo para ambos tipos de cuerpo.",
+        "replace_shape": "Reemplaza solo el modelo {shape}. El otro tipo de cuerpo conserva su modelo actual.",
+        "add_representation": "Agrega un modelo {shape}. El ítem quedará disponible para ambos tipos de cuerpo.",
+        "replace_only_shape": "Reemplaza el modelo {shape}."
+      },
+      "locked_hint": "Esta representación está fijada para este cambio.",
+      "use_thumbnail": "Actualizar la miniatura",
+      "category_hint": "El nuevo archivo no encaja en la categoría actual del ítem. Elige una.",
+      "discard_title": "¿Descartar el nuevo modelo?",
+      "discard_description": "El modelo que cargaste no se aplicará al ítem.",
+      "discard": "Descartar"
     },
     "linked_review": {
       "nothing_pending": "No hay ítems esperando revisión",

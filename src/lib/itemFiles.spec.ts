@@ -369,6 +369,66 @@ describe('loadItemFile', () => {
       ])
     })
 
+    it('flattens a single body-shape folder of a scene zip: the model serves both shapes', async () => {
+      const result = await loadItemFile(
+        await zipFile({ 'scene.json': scene(), 'female/model.glb': 'glb', 'bin/game.js': 'code' })
+      )
+      expect(result.model).toBe('model.glb')
+      expect(result.bodyShape).toBe(BodyShapeType.BOTH)
+      expect(Object.keys(result.contents).sort()).toEqual(['bin/game.js', 'model.glb', 'scene.json'])
+    })
+
+    it('takes the 3D model of a downloaded item zip, not its catalyst image or thumbnail', async () => {
+      const result = await loadItemFile(
+        await zipFile({ 'image.png': 'catalyst', 'thumbnail.png': 'thumb', 'male/hat.glb': 'glb' })
+      )
+      expect(result.model).toBe('hat.glb')
+      expect(result.bodyShape).toBe(BodyShapeType.MALE)
+      expect(Object.keys(result.contents).sort()).toEqual(['hat.glb', 'image.png', 'thumbnail.png'])
+    })
+
+    it('keeps a scene zip own folders: only a body-shape folder is stripped', async () => {
+      const result = await loadItemFile(
+        await zipFile({
+          'scene.json': scene(),
+          'models/hat.glb': 'glb',
+          'models/hat.bin': 'bin',
+          'images/a/tex.png': 'a',
+          'images/b/tex.png': 'b',
+          'bin/game.js': 'code'
+        })
+      )
+      expect(result.model).toBe('models/hat.glb')
+      expect(Object.keys(result.contents).sort()).toEqual([
+        'bin/game.js',
+        'images/a/tex.png',
+        'images/b/tex.png',
+        'models/hat.bin',
+        'models/hat.glb',
+        'scene.json'
+      ])
+      const nested = await loadItemFile(
+        await zipFile({
+          'scene.json': scene(),
+          'female/models/hat.glb': 'glb',
+          'female/models/hat.bin': 'bin',
+          'bin/game.js': 'code'
+        })
+      )
+      expect(nested.model).toBe('models/hat.glb')
+      expect(Object.keys(nested.contents).sort()).toEqual([
+        'bin/game.js',
+        'models/hat.bin',
+        'models/hat.glb',
+        'scene.json'
+      ])
+    })
+
+    it('still takes a texture called image.png inside a body-shape folder', async () => {
+      const result = await loadItemFile(await zipFile({ 'male/image.png': 'png' }))
+      expect(result.model).toBe('image.png')
+    })
+
     it('rejects a nested scene.json next to a root wearable.json', async () => {
       await expectItemFileError(
         loadItemFile(

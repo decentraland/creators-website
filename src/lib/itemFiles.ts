@@ -147,7 +147,8 @@ export function isModelFile(fileName: string): boolean {
 export function isModelPath(fileName: string): boolean {
   const lower = fileName.toLowerCase()
   if (lower.endsWith('.glb') || lower.endsWith('.gltf')) return true
-  if (lower.indexOf(THUMBNAIL_PATH) !== -1) return false
+  // The item's own thumbnail and catalyst image (as a downloaded item zip ships them) are never a texture.
+  if (lower.indexOf(THUMBNAIL_PATH) !== -1 || lower === IMAGE_PATH) return false
   // `_mask.png` also covers `_expressions_mask.png` by construction.
   if (lower.endsWith('_mask.png') || lower.endsWith('_expressions.png')) return false
   return lower.endsWith('.png')
@@ -251,6 +252,14 @@ export function getBodyShapeTypeFromContents(contents: Record<string, unknown>):
   if (hasMale) return BodyShapeType.MALE
   if (hasFemale) return BodyShapeType.FEMALE
   return null
+}
+
+/** Drops a `male/` or `female/` prefix from the paths under it; everything else keeps its path. */
+function stripBodyShapeFolder(contents: Record<string, Blob>, shape: BodyShapeType): Record<string, Blob> {
+  const prefix = `${shape}/`
+  return Object.fromEntries(
+    Object.entries(contents).map(([path, blob]) => [path.startsWith(prefix) ? path.slice(prefix.length) : path, blob])
+  )
 }
 
 export function getModelFileNameFromSubfolder(modelPath: string): string {
@@ -602,16 +611,23 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
   // the form supplies name, category and rarity. Always unisex.
   if (sceneFile) {
     const { scene, blob } = await loadScene(sceneFile, content, readText)
-    const keys = Object.keys(content)
+    // A single body-shape folder is just where the model sits: it serves both shapes, so that one prefix
+    // goes; other folders (models/, images/) are the scene's own layout and stay as the code expects them.
+    const shape = getBodyShapeTypeFromContents(content)
+    const files =
+      shape === BodyShapeType.MALE || shape === BodyShapeType.FEMALE ? stripBodyShapeFolder(content, shape) : content
+    const keys = Object.keys(files)
     const model = keys.find(isModelFile) ?? keys.find(isModelPath)
     if (!model) throw new ItemFileError('missing_model_file')
     if (contentsSize > MAX_WEARABLE_FILE_SIZE) {
       throw new ItemFileError('file_too_big', { size: toMB(MAX_WEARABLE_FILE_SIZE) })
     }
-    return { contents: withVideo({ ...content, [SCENE_PATH]: blob }), model, bodyShape: BodyShapeType.BOTH, scene }
+    return { contents: withVideo({ ...files, [SCENE_PATH]: blob }), model, bodyShape: BodyShapeType.BOTH, scene }
   }
 
-  const model = Object.keys(content).find(isModelPath)
+  // A 3D model is the item's main file whenever there is one; a PNG only makes a texture item on its own.
+  const keys = Object.keys(content)
+  const model = keys.find(isModelFile) ?? keys.find(isModelPath)
   if (!model) throw new ItemFileError('missing_model_file')
 
   if (isImageFile(model)) assertNoOrphanedAuxiliaryFiles(content)
