@@ -121,15 +121,6 @@ export async function queryLocalNetworkPermission(
   return null
 }
 
-/** Byte-wise, so a re-export of an unchanged scene is recognised and spares the renderer a reload. */
-export async function blobsAreEqual(a: Blob, b: Blob): Promise<boolean> {
-  if (a === b) return true
-  if (a.size !== b.size) return false
-  const [x, y] = await Promise.all([a.arrayBuffer(), b.arrayBuffer()])
-  const v = new Uint8Array(y)
-  return new Uint8Array(x).every((byte, i) => byte === v[i])
-}
-
 /** Same item, ignoring the version counter. */
 export function isSameModelMetadata(a: BridgeState | null, b: BridgeState): boolean {
   return (

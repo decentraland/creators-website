@@ -482,15 +482,45 @@ describe('loadItemFile', () => {
         loadItemFile(
           await zipFile({
             'male/scene.json': scene(),
-            'male/bin/game.js': 'code v2',
+            'male/bin/game.js': 'code A',
             'male/model.glb': 'glb',
             'female/scene.json': scene(),
-            'female/bin/game.js': 'code v1',
+            'female/bin/game.js': 'code B',
             'female/model.glb': 'glb'
           })
         ),
         'scene_code_mismatch'
       )
+    })
+
+    it('rejects a downloaded smart wearable whose scene.json copies differ', async () => {
+      await expectItemFileError(
+        loadItemFile(
+          await zipFile({
+            'male/scene.json': scene(),
+            'male/bin/game.js': 'code',
+            'male/model.glb': 'glb',
+            'female/scene.json': scene({ requiredPermissions: ['USE_FETCH'] }),
+            'female/bin/game.js': 'code',
+            'female/model.glb': 'glb'
+          })
+        ),
+        'scene_code_mismatch'
+      )
+    })
+
+    it('requires the code in every body-shape folder when it is not at the root', async () => {
+      const promise = loadItemFile(
+        await zipFile({
+          'male/scene.json': scene(),
+          'male/bin/game.js': 'code',
+          'male/model.glb': 'glb',
+          'female/scene.json': scene(),
+          'female/model.glb': 'glb'
+        })
+      )
+      await expectItemFileError(promise, 'manifest_file_missing')
+      await expect(promise).rejects.toMatchObject({ messageParams: { fileName: 'female/bin/game.js' } })
     })
 
     it('keeps a bundled video.mp4 without counting it toward the size cap', async () => {
