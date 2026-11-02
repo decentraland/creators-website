@@ -943,7 +943,6 @@
     },
     "change_file": {
       "heading": "New file",
-      "drop_title": "Drop the new file here",
       "drop_description": "Drag and drop your file here, or <browse>browse your device</browse>.",
       "effect": {
         "replace_all": "Replaces the model for both body shapes.",
@@ -955,7 +954,8 @@
       "category_hint": "The new file doesn't fit the item's current category. Pick one.",
       "discard_title": "Discard the new file?",
       "discard_description": "The file you loaded won't be applied to the item.",
-      "discard": "Discard"
+      "discard": "Discard",
+      "description": "Upload a new model file for this item."
     },
     "linked_review": {
       "nothing_pending": "No items waiting for review",

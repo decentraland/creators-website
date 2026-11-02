@@ -198,6 +198,7 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
 
   function handleDrop(event: DragEvent) {
     event.preventDefault()
+    if (isLoading) return
     handleFile(event.dataTransfer.files[0]).catch(() => undefined)
   }
 
@@ -246,15 +247,16 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
 
   return (
     <>
-      <Modal title={title} onClose={requestClose} size="wide" closeDisabled={isSaving} testId="change-file-modal">
-        <S.Layout>
-          <S.Main>
-            {isLoading ? (
-              <S.ProcessingPane data-testid="change-file-processing">
-                <S.ProcessingSpinner aria-hidden />
-                {t('add_items_modal.processing')}
-              </S.ProcessingPane>
-            ) : draft && loaded ? (
+      <Modal
+        title={title}
+        onClose={requestClose}
+        size={draft && loaded ? 'wide' : 'default'}
+        closeDisabled={isSaving}
+        testId="change-file-modal"
+      >
+        {draft && loaded ? (
+          <S.Layout>
+            <S.Main>
               <S.Content data-testid="change-file-form">
                 <DraftPreviewPane
                   draft={draft}
@@ -310,59 +312,73 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
                   {error && <S.ErrorText data-testid="change-file-error">{error}</S.ErrorText>}
                 </S.FormPane>
               </S.Content>
-            ) : (
-              <S.Dropzone
-                data-testid="change-file-dropzone"
-                data-dragging={isDragging || undefined}
-                onDragOver={event => {
-                  event.preventDefault()
-                  setDragging(true)
-                }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={handleDrop}
-              >
-                <S.DropIcon>
-                  <UploadIcon />
-                </S.DropIcon>
-                <S.DropTitle>{t('item_editor.change_file.drop_title')}</S.DropTitle>
-                <S.DropText>
-                  {rich('item_editor.change_file.drop_description', {
-                    browse: chunks => (
-                      <S.BrowseLink type="button" data-testid="change-file-browse" onClick={() => void browse()}>
-                        {chunks}
-                      </S.BrowseLink>
-                    )
-                  })}
-                </S.DropText>
-                <S.DropFormats>{t('collection_detail_page.empty.formats')}</S.DropFormats>
-                {error && <S.DropError data-testid="change-file-error">{error}</S.DropError>}
-              </S.Dropzone>
-            )}
-            <S.Footer>
-              <Button
-                type="button"
-                variant="secondary"
-                data-testid="change-file-cancel"
-                disabled={isSaving}
-                onClick={requestClose}
-              >
-                {t('add_items_modal.cancel')}
-              </Button>
-              <S.FooterRight>
+              <S.Footer>
                 <Button
                   type="button"
-                  variant="primary"
-                  data-testid="change-file-save"
-                  disabled={!canSave}
-                  loading={isSaving}
-                  onClick={() => void save()}
+                  variant="secondary"
+                  data-testid="change-file-cancel"
+                  disabled={isSaving}
+                  onClick={requestClose}
                 >
-                  {t('add_items_modal.save')}
+                  {t('add_items_modal.cancel')}
                 </Button>
-              </S.FooterRight>
-            </S.Footer>
-          </S.Main>
-        </S.Layout>
+                <S.FooterRight>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    data-testid="change-file-save"
+                    disabled={!canSave}
+                    loading={isSaving}
+                    onClick={() => void save()}
+                  >
+                    {t('add_items_modal.save')}
+                  </Button>
+                </S.FooterRight>
+              </S.Footer>
+            </S.Main>
+          </S.Layout>
+        ) : (
+          <S.PickStep>
+            <S.Description>{t('item_editor.change_file.description')}</S.Description>
+            <S.Dropzone
+              data-testid="change-file-dropzone"
+              data-dragging={isDragging || undefined}
+              data-busy={isLoading || undefined}
+              onDragOver={event => {
+                event.preventDefault()
+                if (!isLoading) setDragging(true)
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={handleDrop}
+            >
+              {isLoading && <S.Spinner aria-hidden data-spinner data-testid="change-file-processing" />}
+              <S.DropIcon>
+                <UploadIcon />
+              </S.DropIcon>
+              <S.DropText>
+                {rich('item_editor.change_file.drop_description', {
+                  browse: chunks => (
+                    <S.BrowseLink
+                      type="button"
+                      data-testid="change-file-browse"
+                      disabled={isLoading}
+                      onClick={() => void browse()}
+                    >
+                      {chunks}
+                    </S.BrowseLink>
+                  )
+                })}
+              </S.DropText>
+              <S.DropFormats>{t('collection_detail_page.empty.formats')}</S.DropFormats>
+            </S.Dropzone>
+            {error && <S.DropError data-testid="change-file-error">{error}</S.DropError>}
+            <S.PickActions>
+              <Button type="button" variant="secondary" data-testid="change-file-cancel" onClick={requestClose}>
+                {t('add_items_modal.cancel')}
+              </Button>
+            </S.PickActions>
+          </S.PickStep>
+        )}
       </Modal>
 
       {draft && needsPreviewData(draft) && (

@@ -943,7 +943,6 @@
     },
     "change_file": {
       "heading": "Nuevo archivo",
-      "drop_title": "Suelta el nuevo archivo aquí",
       "drop_description": "Arrastra y suelta tu archivo aquí, o <browse>explora tu dispositivo</browse>.",
       "effect": {
         "replace_all": "Reemplaza el modelo para ambos tipos de cuerpo.",
@@ -955,7 +954,8 @@
       "category_hint": "El nuevo archivo no encaja en la categoría actual del ítem. Elige una.",
       "discard_title": "¿Descartar el nuevo archivo?",
       "discard_description": "El archivo que cargaste no se aplicará al ítem.",
-      "discard": "Descartar"
+      "discard": "Descartar",
+      "description": "Sube un nuevo archivo de modelo para este ítem."
     },
     "linked_review": {
       "nothing_pending": "No hay ítems esperando revisión",

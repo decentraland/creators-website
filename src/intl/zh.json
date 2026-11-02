@@ -943,7 +943,6 @@
     },
     "change_file": {
       "heading": "新文件",
-      "drop_title": "将新文件拖放到此处",
       "drop_description": "将文件拖放到此处，或 <browse>浏览您的设备</browse>。",
       "effect": {
         "replace_all": "替换两种体型的模型。",
@@ -955,7 +954,8 @@
       "category_hint": "新文件不符合物品当前的类别。请选择一个类别。",
       "discard_title": "放弃新文件？",
       "discard_description": "您加载的文件不会应用到该物品。",
-      "discard": "放弃"
+      "discard": "放弃",
+      "description": "为此物品上传新的模型文件。"
     },
     "linked_review": {
       "nothing_pending": "没有待审核的物品",
