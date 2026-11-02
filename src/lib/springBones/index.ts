@@ -306,18 +306,26 @@ export async function carrySpringBonesForSave(
   if (!isSpringBoneItem(next)) return undefined
   const hashes = getRepresentationModelHashes(next)
   if (hashes.length === 0) return undefined
-  const source: SpringBonesCarrySource = {
-    item,
-    params: params && Object.keys(params).length > 0 ? params : (item.data.springBones?.models ?? {})
-  }
+  // The form may hold params for some models only (still loading); the saved ones fill the rest.
+  const source: SpringBonesCarrySource = { item, params: { ...item.data.springBones?.models, ...params } }
   const sourceHashes = isSpringBoneItem(item) ? getRepresentationModelHashes(item) : []
   const blobsByHash = pendingBlobsByHash(pending)
   const parsed: Record<string, BoneNode[]> = {}
-  await Promise.all(
-    [...new Set([...hashes, ...sourceHashes])].map(async hash => {
+  await Promise.all([
+    ...hashes.map(async hash => {
       parsed[hash] = await fetchBones(hash, blobsByHash[hash])
-    })
-  )
+    }),
+    // A replaced model that can't be read any more carries nothing by itself; the params still carry by name.
+    ...sourceHashes
+      .filter(hash => !hashes.includes(hash))
+      .map(async hash => {
+        try {
+          parsed[hash] = await fetchBones(hash)
+        } catch {
+          /* nothing to tell a removed root from a new one; defaults apply */
+        }
+      })
+  ])
   const carried = carrySpringBoneParams(source, next, parsed)
   const result: SpringBoneParamsByHash = {}
   for (const hash of hashes) {

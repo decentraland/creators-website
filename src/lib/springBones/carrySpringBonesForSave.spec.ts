@@ -93,6 +93,31 @@ describe('carrySpringBonesForSave', () => {
     expect(data?.models.bafyNew).toEqual({ Tail_springbone_1: unsaved })
   })
 
+  it('fills the shapes the form has no params for from the saved ones', async () => {
+    const pending = {
+      item: wearable({ 'male/tail.glb': 'bafyMale', 'female/tail.glb': 'bafyNew' }),
+      blobs: { 'female/tail.glb': new Blob([tail]) }
+    }
+    const data = await carrySpringBonesForSave(fetchBones, saved, pending, {
+      bafyFemale: { Tail_springbone_1: { ...tuned, drag: 0.9 } }
+    })
+    expect(data?.models.bafyMale).toEqual({ Tail_springbone_1: tuned })
+    expect(data?.models.bafyNew.Tail_springbone_1.drag).toBe(0.9)
+  })
+
+  it('still carries by name when a replaced model cannot be fetched', async () => {
+    const failing = async (_hash: string, blob?: Blob) => {
+      if (!blob) throw new Error('storage down')
+      return parseSpringBones(await blob.arrayBuffer())
+    }
+    const pending = {
+      item: wearable({ 'male/tail.glb': 'bafyNewM', 'female/tail.glb': 'bafyNewF' }),
+      blobs: { 'male/tail.glb': new Blob([tail]), 'female/tail.glb': new Blob([tail]) }
+    }
+    const data = await carrySpringBonesForSave(failing, saved, pending)
+    expect(data?.models.bafyNewM).toEqual({ Tail_springbone_1: tuned })
+  })
+
   it('drops the params when no new model has spring bones, and leaves emotes alone', async () => {
     const pending = {
       item: wearable({ 'male/tail.glb': 'bafyPlainM', 'female/tail.glb': 'bafyPlainF' }),

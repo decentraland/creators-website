@@ -276,6 +276,26 @@ describe('withReplacedRepresentation', () => {
     expect(Object.keys(built.blobs)).toEqual(['female/new.glb'])
   })
 
+  it('refuses a representation that serves both shapes: replacing it would drop one', async () => {
+    const { item: built } = await buildItem(baseDraft)
+    const combined: Item = {
+      ...built,
+      data: {
+        ...built.data,
+        representations: [
+          { bodyShapes: [BODY_SHAPE_MALE, BODY_SHAPE_FEMALE], mainFile: 'model.glb', contents: ['model.glb'] }
+        ]
+      }
+    }
+    await expect(
+      withReplacedRepresentation(combined, BodyShapeType.MALE, {
+        contents: { 'x.glb': blob('x') },
+        model: 'x.glb',
+        metrics: {}
+      })
+    ).rejects.toThrow()
+  })
+
   it('refuses a shape the item does not have', async () => {
     const { item: base } = await buildItem({ ...baseDraft, bodyShape: BodyShapeType.MALE })
     await expect(

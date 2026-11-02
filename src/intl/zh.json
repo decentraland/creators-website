@@ -950,7 +950,8 @@
       "effect": {
         "replace_all": "替换两种体型的模型。",
         "replace_shape": "仅替换{shape}模型。另一种体型保留当前模型。",
-        "add_representation": "添加{shape}模型。此后该物品将适用于两种体型。"
+        "add_representation": "添加{shape}模型。此后该物品将适用于两种体型。",
+        "replace_only_shape": "替换{shape}模型。"
       },
       "locked_hint": "本次更改的体型已固定。",
       "use_thumbnail": "更新缩略图",

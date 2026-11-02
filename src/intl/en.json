@@ -950,7 +950,8 @@
       "effect": {
         "replace_all": "Replaces the model for both body shapes.",
         "replace_shape": "Replaces the {shape} model only. The other body shape keeps its current model.",
-        "add_representation": "Adds a {shape} model. The item will then fit both body shapes."
+        "add_representation": "Adds a {shape} model. The item will then fit both body shapes.",
+        "replace_only_shape": "Replaces the {shape} model."
       },
       "locked_hint": "This representation is fixed for this change.",
       "use_thumbnail": "Update the thumbnail",

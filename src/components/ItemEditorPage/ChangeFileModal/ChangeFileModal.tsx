@@ -25,7 +25,14 @@ import {
   needsNewCategory,
   type LoadedItemModel
 } from '~/lib/itemModelImport'
-import { BodyShapeType, IMAGE_WEARABLE_METRICS, ItemType, isSmartWearable, type Item } from '~/lib/items'
+import {
+  BodyShapeType,
+  IMAGE_WEARABLE_METRICS,
+  ItemType,
+  getItemBodyShapeType,
+  isSmartWearable,
+  type Item
+} from '~/lib/items'
 import { captureError } from '~/lib/monitoring'
 import { DEFAULT_RARITY } from '~/lib/rarities'
 import { getWearableCategoryOptions } from '~/lib/wearableCategories'
@@ -255,7 +262,13 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
                       {t('add_items_modal.body_shape')}
                       <S.FieldHint data-testid="change-file-effect">
                         <HintIcon />
-                        {lockHint ?? t(`item_editor.change_file.effect.${mode}`, { shape: shapeLabel })}
+                        {lockHint ??
+                          t(
+                            mode === 'replace_shape' && getItemBodyShapeType(item) !== BodyShapeType.BOTH
+                              ? 'item_editor.change_file.effect.replace_only_shape'
+                              : `item_editor.change_file.effect.${mode}`,
+                            { shape: shapeLabel }
+                          )}
                       </S.FieldHint>
                     </S.FieldLabel>
                     <BodyShapePicker
@@ -367,7 +380,7 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
           onError={() => {
             setDraft(null)
             setLoaded(null)
-            setError(t('add_items_modal.file_error.invalid_model_file'))
+            reportError(new Error('The preview could not process the model'))
           }}
         />
       )}

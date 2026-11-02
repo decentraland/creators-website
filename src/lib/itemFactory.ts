@@ -526,7 +526,10 @@ export async function withReplacedRepresentation(
   const index = item.data.representations.findIndex(representation =>
     representation.bodyShapes.includes(wearableBodyShape)
   )
-  if (index === -1) throw new ItemFileError('invalid_representation')
+  // Not a shape of its own (one representation for both): replacing it would drop the other shape.
+  if (index === -1 || item.data.representations[index].bodyShapes.length > 1) {
+    throw new ItemFileError('invalid_representation')
+  }
 
   const sorted = sortContent(bodyShape, replacement.contents)
   const representations = buildRepresentations(bodyShape, replacement.model, sorted)

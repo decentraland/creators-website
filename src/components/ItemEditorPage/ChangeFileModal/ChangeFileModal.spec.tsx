@@ -123,7 +123,7 @@ describe('ChangeFileModal', () => {
     const { onApply, onClose } = renderModal(maleOnly)
     await loadFile()
     expect(screen.getByTestId('body-shape-male')).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByTestId('change-file-effect')).toHaveTextContent('Replaces the Male model only')
+    expect(screen.getByTestId('change-file-effect')).toHaveTextContent('Replaces the Male model.')
     await waitFor(() => expect(screen.getByTestId('change-file-save')).toBeEnabled())
     await userEvent.click(screen.getByTestId('change-file-save'))
     await waitFor(() => expect(onApply).toHaveBeenCalled())

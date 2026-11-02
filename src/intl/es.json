@@ -950,7 +950,8 @@
       "effect": {
         "replace_all": "Reemplaza el modelo para ambos tipos de cuerpo.",
         "replace_shape": "Reemplaza solo el modelo {shape}. El otro tipo de cuerpo conserva su modelo actual.",
-        "add_representation": "Agrega un modelo {shape}. El ítem quedará disponible para ambos tipos de cuerpo."
+        "add_representation": "Agrega un modelo {shape}. El ítem quedará disponible para ambos tipos de cuerpo.",
+        "replace_only_shape": "Reemplaza el modelo {shape}."
       },
       "locked_hint": "Esta representación está fijada para este cambio.",
       "use_thumbnail": "Actualizar la miniatura",
