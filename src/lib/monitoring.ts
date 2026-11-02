@@ -239,6 +239,12 @@ export function setMonitoringUser(address: string | null): void {
   Sentry.setUser(address ? { id: address.toLowerCase() } : null)
 }
 
+/** Tags every later error carries (the preview renderer, say). Sends nothing on its own. */
+export function setMonitoringTags(tags: Record<string, string>): void {
+  if (!initialized) return
+  Sentry.setTags(tags)
+}
+
 function safeAddress(): string | null {
   return currentAddress() ?? null
 }
