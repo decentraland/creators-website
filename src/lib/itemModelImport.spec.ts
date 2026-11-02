@@ -95,6 +95,19 @@ describe('loadModelForItem', () => {
     expect(loadItemFile).not.toHaveBeenCalled()
   })
 
+  it('refuses a smart zip for an item of a linked collection', async () => {
+    loadItemFile.mockResolvedValue({
+      contents: { 'sw.glb': new Blob(['g']), 'scene.json': new Blob(['{}']) },
+      model: 'sw.glb',
+      bodyShape: BodyShapeType.BOTH,
+      scene: { requiredPermissions: [] }
+    })
+    await expect(loadModelForItem(file, maleOnly, { linked: true })).rejects.toMatchObject({
+      messageKey: 'linked_smart_wearable'
+    })
+    await expect(loadModelForItem(file, maleOnly)).resolves.toMatchObject({ isSmart: true })
+  })
+
   it('rejects a file of the other item type', async () => {
     analyzeModel.mockResolvedValue({
       type: ItemType.EMOTE,
@@ -296,23 +309,6 @@ describe('buildModelUpdate', () => {
     await expect(buildModelUpdate(texture, unisex, BodyShapeType.FEMALE, metrics)).rejects.toMatchObject({
       messageKey: 'representation_category_mismatch'
     })
-    // A representation serving both shapes keeps the other shape too, so the same rule applies.
-    const combined: Item = {
-      ...unisex,
-      data: {
-        category: 'hat',
-        representations: [
-          { bodyShapes: [BodyShape.MALE, BodyShape.FEMALE], mainFile: 'hat.glb', contents: ['hat.glb'] }
-        ]
-      },
-      contents: { 'hat.glb': 'bafyShared', 'thumbnail.png': 'bafyThumb' }
-    }
-    await expect(buildModelUpdate(texture, combined, BodyShapeType.FEMALE, metrics)).rejects.toMatchObject({
-      messageKey: 'representation_category_mismatch'
-    })
-    const split = await buildModelUpdate(newFile(), combined, BodyShapeType.MALE, metrics)
-    expect(shapesOf(split.item)).toEqual([BodyShape.MALE, BodyShape.FEMALE])
-    expect(split.item.contents['hat.glb']).toBe('bafyShared')
     // Replacing the only representation may switch kinds: the editor then asks for a category.
     const switched = await buildModelUpdate(texture, maleOnly, BodyShapeType.MALE, metrics)
     expect(switched.item.data.representations[0].mainFile).toBe('male/eyes.png')

@@ -75,12 +75,14 @@ export function getDefaultBodyShape(item: Item, loaded: LoadedItemModel): BodySh
 
 /**
  * Loads and analyzes a model file for an existing item. A file of the other item type (wearable ↔ emote)
- * is rejected, and so is any change to a legacy social emote.
+ * is rejected, so is any change to a legacy social emote, and a smart zip for an item of a linked collection.
  */
-export async function loadModelForItem(file: File, item: Item): Promise<LoadedItemModel> {
+export async function loadModelForItem(file: File, item: Item, { linked = false } = {}): Promise<LoadedItemModel> {
   // A legacy social emote's startAnimation/outcomes point at clips of its current file and can't be edited here.
   if (isSocialEmote(item)) throw new ItemFileError('emote_social_unsupported')
   const loaded = await loadItemFile(file)
+  // Linked collections hold plain wearables only, as the add-items flow enforces.
+  if (linked && loaded.scene) throw new ItemFileError('linked_smart_wearable')
   const contents = { ...loaded.contents }
   delete contents[THUMBNAIL_PATH]
   const analysis = await analyzeModel(

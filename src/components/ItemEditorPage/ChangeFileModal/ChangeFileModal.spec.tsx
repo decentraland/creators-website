@@ -284,7 +284,12 @@ describe('ChangeFileModal', () => {
     expect(screen.getByTestId('change-file-pick-error')).toBeInTheDocument()
     expect(screen.getByTestId('change-file-save')).toBeDisabled()
 
+    // Back on Male the category is asked again: the pick that applied to the other shape is gone.
     await userEvent.click(screen.getByTestId('body-shape-male'))
+    expect(screen.queryByTestId('change-file-pick-error')).not.toBeInTheDocument()
+    expect(screen.getByTestId('change-file-save')).toBeDisabled()
+    await userEvent.click(screen.getByTestId('change-file-category'))
+    await userEvent.click(screen.getByTestId('change-file-category-option-eyes'))
     await userEvent.click(screen.getByTestId('change-file-save'))
     await waitFor(() => expect(onApply).toHaveBeenCalled())
     expect(onApply.mock.calls[0][0].category).toBe('eyes')

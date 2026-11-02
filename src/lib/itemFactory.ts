@@ -505,22 +505,17 @@ export async function withReplacedModel(item: Item, replacement: ReplacementMode
   return { item: next, blobs }
 }
 
-/** The body shapes a representation serves besides `shape`; a combined representation lists both. */
-function otherBodyShapes(representation: ItemRepresentation, shape: string): string[] {
-  return representation.bodyShapes.filter(bodyShape => bodyShape !== shape)
-}
-
-/** Files that stay with the item when `shape` is replaced: every path another shape still serves. */
+/** Files that stay with the item when `shape` is replaced: every path the other shape's representation lists. */
 export function getKeptRepresentationPaths(item: Item, shape: string): string[] {
   return item.data.representations
-    .filter(representation => otherBodyShapes(representation, shape).length > 0)
+    .filter(representation => !representation.bodyShapes.includes(shape))
     .flatMap(representation => representation.contents)
 }
 
 /**
- * Replaces one body shape's model of a saved item and keeps the other representation and its files. A
- * representation serving both shapes is split, the other shape keeping the current files. The item must
- * already have that shape.
+ * Replaces one body shape's model of a saved item and keeps the other representation and its files. The
+ * item must already have that shape, in a representation of its own: this editor and the legacy builder
+ * never store one representation for both shapes.
  */
 export async function withReplacedRepresentation(
   item: Item,
@@ -549,8 +544,6 @@ export async function withReplacedRepresentation(
     overrideHides: replaced.overrideHides ?? [],
     overrideReplaces: replaced.overrideReplaces ?? []
   }
-  const others = otherBodyShapes(replaced, wearableBodyShape)
-  if (others.length > 0) next.splice(index + 1, 0, { ...replaced, bodyShapes: others })
   return {
     item: {
       ...item,

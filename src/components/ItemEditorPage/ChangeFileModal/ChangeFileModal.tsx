@@ -35,6 +35,8 @@ type Props = {
   item: Item
   /** "Add {shape} representation": the pick is fixed to the shape the item lacks. */
   lockedBodyShape?: BodyShapeType.MALE | BodyShapeType.FEMALE
+  /** Items of a linked collection take no smart zip, as add items enforces. */
+  linked?: boolean
   /** Persists the change; the modal closes when it resolves and stays open when it rejects (already reported). */
   onSave: (change: ItemFileChange) => Promise<void>
   onClose: () => void
@@ -63,7 +65,7 @@ function makeDraft(file: LoadedItemModel, item: Item): PreviewDraft {
  * Loads a new model for a saved item and lets the creator pick which body shape it goes to; Save
  * persists the item at once, as the legacy builder's modal did.
  */
-export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Props) {
+export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave, onClose }: Props) {
   const { t, rich } = useTranslation()
   const [picked, setPicked] = useState<File | null>(null)
   const [loaded, setLoaded] = useState<LoadedItemModel | null>(null)
@@ -132,7 +134,11 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
         )
       })
       .catch((err: unknown) => {
-        if (mountedRef.current && pickRef.current === pick) reportError(err)
+        if (!mountedRef.current || pickRef.current !== pick) return
+        // Without a thumbnail there is nothing to save: back to the drop area, with the reason.
+        setDraft(null)
+        setLoaded(null)
+        reportError(err)
       })
   }
 
@@ -142,7 +148,7 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
     setError(null)
     setLoading(true)
     try {
-      const next = await loadModelForItem(picked, item)
+      const next = await loadModelForItem(picked, item, { linked })
       if (!mountedRef.current) return
       const shape = lockedBodyShape ?? getDefaultBodyShape(item, next)
       setPicked(picked)
@@ -160,6 +166,9 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
   function pickShape(value: BodyShapeType) {
     if (locked || !loaded || value === bodyShape) return
     setBodyShape(value)
+    // What the last pick said or chose no longer applies: a size error, a category for another kind of file.
+    setError(null)
+    setCategory(null)
     // Another folder of a two-folder zip is another model: a new draft, measured and rendered again.
     const next = narrowToShape(loaded, value)
     if (next !== file) showDraft(next)

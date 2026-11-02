@@ -148,7 +148,7 @@ export function isModelPath(fileName: string): boolean {
   const lower = fileName.toLowerCase()
   if (lower.endsWith('.glb') || lower.endsWith('.gltf')) return true
   // The item's own thumbnail and catalyst image (as a downloaded item zip ships them) are never a texture.
-  if (lower.indexOf(THUMBNAIL_PATH) !== -1 || lower.slice(lower.lastIndexOf('/') + 1) === IMAGE_PATH) return false
+  if (lower.indexOf(THUMBNAIL_PATH) !== -1 || lower === IMAGE_PATH) return false
   // `_mask.png` also covers `_expressions_mask.png` by construction.
   if (lower.endsWith('_mask.png') || lower.endsWith('_expressions.png')) return false
   return lower.endsWith('.png')
@@ -252,6 +252,14 @@ export function getBodyShapeTypeFromContents(contents: Record<string, unknown>):
   if (hasMale) return BodyShapeType.MALE
   if (hasFemale) return BodyShapeType.FEMALE
   return null
+}
+
+/** Drops a `male/` or `female/` prefix from the paths under it; everything else keeps its path. */
+function stripBodyShapeFolder(contents: Record<string, Blob>, shape: BodyShapeType): Record<string, Blob> {
+  const prefix = `${shape}/`
+  return Object.fromEntries(
+    Object.entries(contents).map(([path, blob]) => [path.startsWith(prefix) ? path.slice(prefix.length) : path, blob])
+  )
 }
 
 export function getModelFileNameFromSubfolder(modelPath: string): string {
@@ -603,10 +611,11 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
   // the form supplies name, category and rarity. Always unisex.
   if (sceneFile) {
     const { scene, blob } = await loadScene(sceneFile, content, readText)
-    // A single body-shape folder is just where the model sits: it serves both shapes, so it is flattened
-    // like a plain zip's; male/ + female/ folders stay for the per-shape sort.
+    // A single body-shape folder is just where the model sits: it serves both shapes, so that one prefix
+    // goes; other folders (models/, images/) are the scene's own layout and stay as the code expects them.
+    const shape = getBodyShapeTypeFromContents(content)
     const files =
-      getBodyShapeTypeFromContents(content) === BodyShapeType.BOTH ? content : cleanContentModelKeys(content)
+      shape === BodyShapeType.MALE || shape === BodyShapeType.FEMALE ? stripBodyShapeFolder(content, shape) : content
     const keys = Object.keys(files)
     const model = keys.find(isModelFile) ?? keys.find(isModelPath)
     if (!model) throw new ItemFileError('missing_model_file')

@@ -682,6 +682,7 @@ export function PropertiesPanel({
         <ChangeFileModal
           item={item}
           lockedBodyShape={changeFile.lockedBodyShape}
+          linked={isLinked}
           onSave={onSaveFile}
           onClose={() => setChangeFile(null)}
         />
