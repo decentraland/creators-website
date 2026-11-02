@@ -266,6 +266,7 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
                     <Checkbox checked={keepThumbnail} onChange={setKeepThumbnail} testId="change-file-keep-thumbnail">
                       {t('item_editor.change_file.use_thumbnail')}
                     </Checkbox>
+                    <S.ThumbnailToggleHint>{t('item_editor.change_file.use_thumbnail_hint')}</S.ThumbnailToggleHint>
                   </S.ThumbnailToggle>
                 </DraftPreviewPane>
                 <S.FormPane>

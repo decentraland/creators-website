@@ -951,11 +951,12 @@
         "add_representation": "Adds a {shape} model. The item will then fit both body shapes."
       },
       "locked_hint": "This representation is fixed for this change.",
-      "use_thumbnail": "Use this render as the item thumbnail",
+      "use_thumbnail": "Update the thumbnail",
       "category_hint": "The new file doesn't fit the item's current category. Pick one.",
       "discard_title": "Discard the new file?",
       "discard_description": "The file you loaded won't be applied to the item.",
-      "discard": "Discard"
+      "discard": "Discard",
+      "use_thumbnail_hint": "The current one stays if you untick this."
     },
     "linked_review": {
       "nothing_pending": "No items waiting for review",
