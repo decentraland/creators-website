@@ -308,7 +308,6 @@ export function ChangeFileModal({ item, lockedBodyShape, onSave, onClose }: Prop
           </S.Layout>
         ) : (
           <S.PickStep>
-            <S.Description>{t('item_editor.change_file.description')}</S.Description>
             <S.Dropzone
               data-testid="change-file-dropzone"
               data-dragging={isDragging || undefined}

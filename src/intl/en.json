@@ -869,8 +869,8 @@
       "edit_thumbnail": "Edit thumbnail",
       "download": "Download item",
       "watch_video": "Watch preview video",
-      "change_file": "Change file",
-      "add_representation": "Add {shape} representation",
+      "change_file": "Replace model",
+      "add_representation": "Add {shape} model",
       "download_error": "We couldn't download the item. Please try again.",
       "video_required": "A preview video is required to publish a smart wearable.",
       "video_hint": "A short video showcasing what the smart wearable does in-world."
@@ -946,7 +946,7 @@
       "label": "Item actions"
     },
     "change_file": {
-      "heading": "New file",
+      "heading": "New model",
       "drop_description": "Drag and drop your file here, or <browse>browse your device</browse>.",
       "effect": {
         "replace_all": "Replaces the model for both body shapes.",
@@ -956,10 +956,9 @@
       "locked_hint": "This representation is fixed for this change.",
       "use_thumbnail": "Update the thumbnail",
       "category_hint": "The new file doesn't fit the item's current category. Pick one.",
-      "discard_title": "Discard the new file?",
-      "discard_description": "The file you loaded won't be applied to the item.",
-      "discard": "Discard",
-      "description": "Upload a new model file for this item."
+      "discard_title": "Discard the new model?",
+      "discard_description": "The model you loaded won't be applied to the item.",
+      "discard": "Discard"
     },
     "linked_review": {
       "nothing_pending": "No items waiting for review",

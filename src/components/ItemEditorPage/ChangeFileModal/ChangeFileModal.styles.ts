@@ -24,13 +24,6 @@ export const PickStep = styled.div`
   max-width: 100%;
 `
 
-export const Description = styled.p`
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.5;
-  color: ${theme.colors.softWhite};
-`
-
 export const Dropzone = styled.div`
   position: relative;
   display: flex;

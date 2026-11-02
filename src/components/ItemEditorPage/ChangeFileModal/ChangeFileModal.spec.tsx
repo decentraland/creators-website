@@ -186,7 +186,7 @@ describe('ChangeFileModal', () => {
       bodyShape: BodyShapeType.BOTH
     })
     const { onApply } = renderModal(maleOnly, BodyShapeType.FEMALE)
-    expect(screen.getByTestId('change-file-modal')).toHaveTextContent('Add Female representation')
+    expect(screen.getByTestId('change-file-modal')).toHaveTextContent('Add Female model')
     await loadFile()
     expect(screen.getByTestId('body-shape-female')).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByTestId('change-file-effect')).toHaveTextContent('Adds a Female model')

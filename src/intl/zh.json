@@ -869,8 +869,8 @@
       "edit_thumbnail": "编辑缩略图",
       "download": "下载物品",
       "watch_video": "观看预览视频",
-      "change_file": "更换文件",
-      "add_representation": "添加{shape}版本",
+      "change_file": "替换模型",
+      "add_representation": "添加{shape}模型",
       "download_error": "无法下载该物品，请重试。",
       "video_required": "发布智能可穿戴物品需要提供预览视频。",
       "video_hint": "一段简短的视频，展示该智能可穿戴物品在世界中的效果。"
@@ -946,7 +946,7 @@
       "label": "物品操作"
     },
     "change_file": {
-      "heading": "新文件",
+      "heading": "新模型",
       "drop_description": "将文件拖放到此处，或 <browse>浏览您的设备</browse>。",
       "effect": {
         "replace_all": "替换两种体型的模型。",
@@ -956,10 +956,9 @@
       "locked_hint": "本次更改的体型已固定。",
       "use_thumbnail": "更新缩略图",
       "category_hint": "新文件不符合物品当前的类别。请选择一个类别。",
-      "discard_title": "放弃新文件？",
-      "discard_description": "您加载的文件不会应用到该物品。",
-      "discard": "放弃",
-      "description": "为此物品上传新的模型文件。"
+      "discard_title": "放弃新模型？",
+      "discard_description": "您加载的模型不会应用到该物品。",
+      "discard": "放弃"
     },
     "linked_review": {
       "nothing_pending": "没有待审核的物品",
