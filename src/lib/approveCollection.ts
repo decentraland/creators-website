@@ -229,6 +229,12 @@ export async function approveOnChain(collection: Collection, deps: ApproveDeps):
   return txHash
 }
 
+/** Cache key for measureItems: a new content hash re-measures the item. */
+export const itemSizesKey = (items: Item[]) => [
+  'approval-item-sizes',
+  items.map(item => `${item.id}:${item.currentContentHash ?? ''}`)
+]
+
 /** Bytes each item uploads, by item id. Files shared between items are measured once; unmeasurable ones count 0. */
 export async function measureItems(
   items: Item[],
