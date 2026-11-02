@@ -25,6 +25,7 @@ import {
   THUMBNAIL_PATH,
   VIDEO_PATH,
   getBodyShapeTypeFromContents,
+  isModelFile,
   isModelPath,
   toMB
 } from './itemFiles'
@@ -195,7 +196,7 @@ export function buildRepresentationsZipBothBodyShape(
   const representations: ItemRepresentation[] = []
 
   if (bodyShape === BodyShapeType.MALE || bodyShape === BodyShapeType.BOTH) {
-    const maleMainFile = Object.keys(contents.male).find(isModelPath)
+    const maleMainFile = Object.keys(contents.male).find(isModelFile) ?? Object.keys(contents.male).find(isModelPath)
     if (!maleMainFile) throw new ItemFileError('missing_model_file')
     representations.push({
       bodyShapes: [BODY_SHAPE_MALE],
@@ -207,7 +208,8 @@ export function buildRepresentationsZipBothBodyShape(
   }
 
   if (bodyShape === BodyShapeType.FEMALE || bodyShape === BodyShapeType.BOTH) {
-    const femaleMainFile = Object.keys(contents.female).find(isModelPath)
+    const femaleMainFile =
+      Object.keys(contents.female).find(isModelFile) ?? Object.keys(contents.female).find(isModelPath)
     if (!femaleMainFile) throw new ItemFileError('missing_model_file')
     representations.push({
       bodyShapes: [BODY_SHAPE_FEMALE],

@@ -15,6 +15,7 @@ import {
   VIDEO_PATH,
   getBodyShapeTypeFromContents,
   isImageFile,
+  isModelFile,
   isModelPath,
   loadItemFile
 } from './itemFiles'
@@ -131,7 +132,7 @@ export function narrowToShape(loaded: LoadedItemModel, bodyShape: BodyShapeType)
   return {
     ...loaded,
     contents,
-    model: Object.keys(contents).find(isModelPath) ?? loaded.model,
+    model: Object.keys(contents).find(isModelFile) ?? Object.keys(contents).find(isModelPath) ?? loaded.model,
     fileBodyShape: bodyShape
   }
 }

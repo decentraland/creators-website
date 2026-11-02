@@ -378,6 +378,15 @@ describe('loadItemFile', () => {
       expect(Object.keys(result.contents).sort()).toEqual(['bin/game.js', 'model.glb', 'scene.json'])
     })
 
+    it('takes the 3D model of a downloaded item zip, not its catalyst image or thumbnail', async () => {
+      const result = await loadItemFile(
+        await zipFile({ 'image.png': 'catalyst', 'thumbnail.png': 'thumb', 'male/hat.glb': 'glb' })
+      )
+      expect(result.model).toBe('hat.glb')
+      expect(result.bodyShape).toBe(BodyShapeType.MALE)
+      expect(Object.keys(result.contents).sort()).toEqual(['hat.glb', 'image.png', 'thumbnail.png'])
+    })
+
     it('rejects a nested scene.json next to a root wearable.json', async () => {
       await expectItemFileError(
         loadItemFile(

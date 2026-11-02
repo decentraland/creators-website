@@ -147,7 +147,8 @@ export function isModelFile(fileName: string): boolean {
 export function isModelPath(fileName: string): boolean {
   const lower = fileName.toLowerCase()
   if (lower.endsWith('.glb') || lower.endsWith('.gltf')) return true
-  if (lower.indexOf(THUMBNAIL_PATH) !== -1) return false
+  // The item's own thumbnail and catalyst image (as a downloaded item zip ships them) are never a texture.
+  if (lower.indexOf(THUMBNAIL_PATH) !== -1 || lower.slice(lower.lastIndexOf('/') + 1) === IMAGE_PATH) return false
   // `_mask.png` also covers `_expressions_mask.png` by construction.
   if (lower.endsWith('_mask.png') || lower.endsWith('_expressions.png')) return false
   return lower.endsWith('.png')
@@ -615,7 +616,9 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
     return { contents: withVideo({ ...files, [SCENE_PATH]: blob }), model, bodyShape: BodyShapeType.BOTH, scene }
   }
 
-  const model = Object.keys(content).find(isModelPath)
+  // A 3D model is the item's main file whenever there is one; a PNG only makes a texture item on its own.
+  const keys = Object.keys(content)
+  const model = keys.find(isModelFile) ?? keys.find(isModelPath)
   if (!model) throw new ItemFileError('missing_model_file')
 
   if (isImageFile(model)) assertNoOrphanedAuxiliaryFiles(content)
