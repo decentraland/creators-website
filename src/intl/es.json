@@ -955,8 +955,7 @@
       "category_hint": "El nuevo archivo no encaja en la categoría actual del ítem. Elige una.",
       "discard_title": "¿Descartar el nuevo archivo?",
       "discard_description": "El archivo que cargaste no se aplicará al ítem.",
-      "discard": "Descartar",
-      "use_thumbnail_hint": "Si lo desmarcas, se conserva la actual."
+      "discard": "Descartar"
     },
     "linked_review": {
       "nothing_pending": "No hay ítems esperando revisión",

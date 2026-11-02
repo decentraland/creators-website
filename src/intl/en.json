@@ -955,8 +955,7 @@
       "category_hint": "The new file doesn't fit the item's current category. Pick one.",
       "discard_title": "Discard the new file?",
       "discard_description": "The file you loaded won't be applied to the item.",
-      "discard": "Discard",
-      "use_thumbnail_hint": "The current one stays if you untick this."
+      "discard": "Discard"
     },
     "linked_review": {
       "nothing_pending": "No items waiting for review",

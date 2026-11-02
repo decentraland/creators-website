@@ -98,10 +98,3 @@ export const ThumbnailToggle = styled.div`
   font-size: 14px;
   color: ${theme.colors.softWhite};
 `
-
-export const ThumbnailToggleHint = styled.p`
-  margin: 4px 0 0 32px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: ${theme.colors.gray4};
-`

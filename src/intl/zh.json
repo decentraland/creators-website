@@ -955,8 +955,7 @@
       "category_hint": "新文件不符合物品当前的类别。请选择一个类别。",
       "discard_title": "放弃新文件？",
       "discard_description": "您加载的文件不会应用到该物品。",
-      "discard": "放弃",
-      "use_thumbnail_hint": "取消勾选则保留当前缩略图。"
+      "discard": "放弃"
     },
     "linked_review": {
       "nothing_pending": "没有待审核的物品",
