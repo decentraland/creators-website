@@ -20,6 +20,7 @@ import {
   useSaveCollection
 } from '~/hooks/useCollection'
 import { BuilderServerError } from '~/lib/builder'
+import { isSocialLogin } from '~/lib/auth'
 import { FeatureFlag } from '~/lib/featureFlags'
 import {
   CollectionDisplayStatus,
@@ -691,7 +692,11 @@ const CollectionDetailPage = () => {
             </S.HeaderActions>
           </S.Header>
           {canManageDiscounts && openDiscounts && (
-            <CollectionDiscounts discounts={openDiscounts} now={discountsNow} onEnd={setEndingDiscount} />
+            <CollectionDiscounts
+              discounts={openDiscounts}
+              now={discountsNow}
+              onEnd={session && !isSocialLogin(session) ? setEndingDiscount : undefined}
+            />
           )}
 
           <S.SubHeader>

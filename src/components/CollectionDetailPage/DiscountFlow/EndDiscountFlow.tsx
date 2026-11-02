@@ -1,10 +1,9 @@
 import { useRef, useState } from 'react'
-import { AccountBalanceWalletOutlined as WalletIcon } from '@mui/icons-material'
 import errorArt from '~/assets/modal-error.png'
 import { useTranslation } from '~/intl'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { endOutcome, useDiscountInFlight, useEndDiscount } from '~/hooks/useCollectionDiscounts'
-import { isSocialLogin, type Session } from '~/lib/auth'
+import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { discountPct, toDiscountError, type CollectionDiscount, type DiscountFailureReason } from '~/lib/coupons'
 import { ConfirmModal } from '~/components/ConfirmModal'
@@ -23,7 +22,6 @@ type Props = {
 /** End a discount early: confirm, cancel the coupon from the wallet on Polygon (it pays the gas), celebrate. */
 export function EndDiscountFlow({ discount, collection, session, onClose }: Props) {
   const { t } = useTranslation()
-  const social = isSocialLogin(session)
   const end = useEndDiscount(session)
   const { ending } = useDiscountInFlight({ discountId: discount.id })
   const [failure, setFailure] = useState<DiscountFailureReason>('generic')
@@ -89,20 +87,6 @@ export function EndDiscountFlow({ discount, collection, session, onClose }: Prop
           setView('error')
         }
       }
-    )
-  }
-
-  // A social login's wallet can't move to Polygon or pay its gas, so the discount runs until its date.
-  if (social) {
-    return (
-      <ConfirmModal
-        title={t('collection_discount.end.social_title')}
-        description={t('collection_discount.end.social_description')}
-        icon={<WalletIcon />}
-        onClose={onClose}
-        confirm={{ label: t('collection_discount.end.got_it'), onClick: onClose, testId: 'end-discount-dismiss' }}
-        testId="end-discount-modal"
-      />
     )
   }
 

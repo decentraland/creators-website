@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ProviderType } from '@dcl/schemas'
 import { type SaleableCollection } from '~/lib/saleableCollection'
 import { DiscountError, type CollectionDiscount } from '~/lib/coupons'
 import { Providers, collection, makeSession } from '../SellItemFlow/testUtils'
@@ -114,12 +113,19 @@ describe("when a creator looks at the collection's discounts", () => {
     await userEvent.click(screen.getAllByTestId('end-discount')[1])
     expect(onEnd).toHaveBeenCalledWith(scheduled)
   })
+
+  // A social login cannot move its wallet to Polygon or pay the gas, so its discounts run until their date.
+  it('should list the discounts without a way to end them when the creator cannot', () => {
+    render(<CollectionDiscounts discounts={[running]} now={Date.now()} />, { wrapper: Providers })
+    expect(screen.getByTestId('collection-discount')).toHaveTextContent('-30%')
+    expect(screen.queryByTestId('end-discount')).not.toBeInTheDocument()
+  })
 })
 
 describe('when a creator ends a discount', () => {
-  function renderEnd(discount = running, session = makeSession()) {
+  function renderEnd(discount = running) {
     const onClose = vi.fn()
-    render(<EndDiscountFlow discount={discount} collection={collection} session={session} onClose={onClose} />, {
+    render(<EndDiscountFlow discount={discount} collection={collection} session={makeSession()} onClose={onClose} />, {
       wrapper: Providers
     })
     return { onClose }
@@ -128,14 +134,6 @@ describe('when a creator ends a discount', () => {
   it('should say ending a discount over several collections ends it on all of them', () => {
     renderEnd({ ...running, collections: ['0xcc', '0xdd', '0xee'] })
     expect(screen.getByTestId('end-discount-modal-description')).toHaveTextContent('2 other collections')
-  })
-
-  // A social login cannot move its wallet to Polygon or pay the gas.
-  it('should tell a social-login creator the discount runs until its date, sending nothing', async () => {
-    renderEnd(running, makeSession(ProviderType.MAGIC))
-    expect(screen.getByTestId('end-discount-modal-description')).toHaveTextContent(/ends on its date/i)
-    expect(screen.queryByTestId('end-discount-confirm')).not.toBeInTheDocument()
-    expect(end.mutate).not.toHaveBeenCalled()
   })
 
   it('should warn it is a paid transaction, send it and celebrate', async () => {

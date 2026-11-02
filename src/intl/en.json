@@ -1728,8 +1728,6 @@
       "error_title": "We couldn't end your discount",
       "error_description": "The transaction didn't go through. Check that your wallet has POL on Polygon and try again.",
       "description_multi": "This {pct}% discount also covers {others, plural, one {# other collection} other {# other collections}}, and ending it ends it there too. Ending it is a Polygon transaction sent from your wallet, so it needs a little POL for gas.",
-      "social_title": "Ending early needs a wallet",
-      "social_description": "Ending a discount early is a Polygon transaction paid from a wallet, which accounts signed in with a social login can't send. It ends on its date; to end it sooner, sign in with a wallet such as MetaMask.",
       "got_it": "Got it",
       "slow_title": "Still ending your discount",
       "slow_description": "Your transaction was sent but is taking longer than usual. It can still go through: check back in a few minutes. Don't send it again, or you'll pay the gas twice.",

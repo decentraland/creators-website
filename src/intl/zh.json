@@ -1728,8 +1728,6 @@
       "error_title": "无法结束您的折扣",
       "error_description": "交易未完成。请确认您的钱包在 Polygon 上有 POL，然后重试。",
       "description_multi": "此 {pct}% 折扣还适用于另外 {others, plural, other {# 个系列}}，结束后这些系列也会一并结束。结束折扣是从您的钱包发起的 Polygon 交易，需要少量 POL 支付 gas。",
-      "social_title": "提前结束需要钱包",
-      "social_description": "提前结束折扣需要从钱包支付一笔 Polygon 交易，而社交账号登录无法发送。折扣将在结束日期自动结束；如需提前结束，请使用 MetaMask 等钱包登录。",
       "got_it": "知道了",
       "slow_title": "仍在结束您的折扣",
       "slow_description": "您的交易已发送，但耗时比平常更长，仍可能完成。请几分钟后再查看。请勿重复发送，否则需要支付两次 gas。",
