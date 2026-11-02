@@ -12,6 +12,7 @@ import {
   mappingsFromManifest,
   normalizeMapping,
   parseTokenIds,
+  relinkMappings,
   toMappingDraft,
   EMPTY_MAPPING_DRAFT,
   type Mapping
@@ -152,5 +153,28 @@ describe('token id normalization', () => {
       from: '0',
       to: '10'
     })
+  })
+})
+
+describe('relinkMappings', () => {
+  const from = { network: 'mainnet' as ContractNetwork, address: '0x' + 'a'.repeat(40) }
+  const to = { network: 'mainnet' as ContractNetwork, address: '0x' + 'b'.repeat(40) }
+  const mapping: Mapping = { type: MappingType.MULTIPLE, ids: ['1', '7'] }
+
+  it('moves the mapping under the new contract, whatever contract or case it was stored under', () => {
+    expect(relinkMappings(buildItemMappings(mapping, from), to)).toEqual(buildItemMappings(mapping, to))
+    const stored = { mainnet: { [from.address.toUpperCase()]: [mapping] } }
+    expect(relinkMappings(stored, to)).toEqual(buildItemMappings(mapping, to))
+  })
+
+  it('moves to the same address on another network', () => {
+    const elsewhere = { ...from, network: 'matic' as ContractNetwork }
+    expect(relinkMappings(buildItemMappings(mapping, from), elsewhere)).toEqual(buildItemMappings(mapping, elsewhere))
+  })
+
+  it('leaves an item alone when it is unmapped or already under the new contract', () => {
+    expect(relinkMappings(null, to)).toBeNull()
+    expect(relinkMappings({ mainnet: {} }, to)).toBeNull()
+    expect(relinkMappings(buildItemMappings(mapping, to), to)).toBeNull()
   })
 })

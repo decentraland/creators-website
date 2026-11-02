@@ -1,7 +1,7 @@
 // Third parties and their linked collections, ported from the legacy builder (modules/thirdParty + lib/urn):
 // a linked collection belongs to a third party (one per collection, created on first save), is tied to one
 // external NFT contract, and its items are unlocked by tokens of that contract (see lib/mappings).
-import { type ContractNetwork } from '@dcl/schemas'
+import { ContractNetwork } from '@dcl/schemas'
 import { config } from '~/config'
 import { type Collection } from './collections'
 
@@ -109,11 +109,61 @@ export function isValidUrnSuffix(suffix: string): boolean {
 
 /**
  * Linked collections belong to a third party, not a wallet (builder-server leaves their owner empty):
- * its managers are who may see and edit them, the same check builder-server makes.
+ * its managers are who may edit them, the same check builder-server makes.
  */
 export function isThirdPartyManager(thirdParty: Pick<ThirdParty, 'managers'>, address: string | undefined): boolean {
   if (!address) return false
   return thirdParty.managers.some(manager => manager.toLowerCase() === address.toLowerCase())
+}
+
+/**
+ * Like standard collections, a published linked collection (one with a submitted item) is public: any signer may
+ * view it read-only, as builder-server serves it. Before that, only the third party's managers may.
+ */
+export function canViewLinkedCollection(
+  collection: Pick<Collection, 'isPublished'>,
+  thirdParty: Pick<ThirdParty, 'managers'>,
+  address: string | undefined
+): boolean {
+  return !!address && (collection.isPublished || isThirdPartyManager(thirdParty, address))
+}
+
+export function isSameContract(a: LinkedContract, b: LinkedContract): boolean {
+  return a.network === b.network && a.address.toLowerCase() === b.address.toLowerCase()
+}
+
+/** `contracts` without the `replaced` ones and with `to` listed once. */
+export function withContractReplaced(
+  contracts: LinkedContract[],
+  replaced: (LinkedContract | null)[],
+  to: LinkedContract
+): LinkedContract[] {
+  const kept = contracts.filter(
+    contract => !replaced.some(old => old && !isSameContract(old, to) && isSameContract(contract, old))
+  )
+  return kept.some(contract => isSameContract(contract, to)) ? kept : [...kept, to]
+}
+
+export const REGISTRY_NETWORKS = new Set<string>(Object.values(ContractNetwork))
+
+/** The contracts of a raw registry metadata string (builder-server's parseRawMetadata, contracts only). */
+export function contractsFromRawMetadata(raw: string | undefined): LinkedContract[] {
+  // Contracts are the last segment and never contain ':', so a ':' inside a legacy description is harmless.
+  const parts = (raw ?? '').split(':')
+  if (parts.length < 5) return []
+  const entries = parts[parts.length - 1].split(';')
+  const contracts = entries.flatMap(entry => {
+    const [network, address] = entry.split('-')
+    return network && address && REGISTRY_NETWORKS.has(network) && /^0x[0-9a-fA-F]{40}$/.test(address)
+      ? [{ network: network as ContractNetwork, address: address.toLowerCase() }]
+      : []
+  })
+  // No readable entry is description text on a record without contracts. A partly readable segment is a record this
+  // code must not rewrite, or the unreadable sibling would be dropped from the chain.
+  if (contracts.length > 0 && contracts.length < entries.length) {
+    throw new Error('Registry record lists a contract entry that could not be parsed')
+  }
+  return contracts
 }
 
 /** Legacy convertThirdPartyMetadataToRawMetadata: what `addThirdParties` stores on chain. */

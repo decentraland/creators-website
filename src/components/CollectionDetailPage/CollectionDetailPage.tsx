@@ -90,7 +90,7 @@ import { ValidationResultsModal, toValidationSubject } from '~/components/Valida
 import addItemsArt from '~/assets/add-items.png'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { useThirdParty } from '~/hooks/useLinkedCollection'
-import { getThirdPartyId, isThirdPartyManager } from '~/lib/thirdParty'
+import { canViewLinkedCollection, getThirdPartyId, isThirdPartyManager } from '~/lib/thirdParty'
 import { AddItemsModal } from './AddItemsModal'
 import { LinkedCollectionView } from './LinkedCollectionView'
 import { ItemActionsMenu } from './ItemActionsMenu'
@@ -181,6 +181,7 @@ const CollectionDetailPage = () => {
   const isLinked = !!collection && isLinkedCollection(collection)
   const standardCollection = isLinked ? undefined : collection
   const thirdParty = useThirdParty(address, isLinked ? collection : undefined)
+  const isLinkedManager = !!thirdParty.data && isThirdPartyManager(thirdParty.data, address)
   const allItems = itemsQuery.data
   const total = allItems?.length ?? 0
   const counts = useMemo(() => countItemsByType(allItems ?? []), [allItems])
@@ -196,7 +197,8 @@ const CollectionDetailPage = () => {
   const withPlayMode = useMemo(() => results.some(item => item.type === ItemType.EMOTE), [results])
   const canManage = !!standardCollection && canManageCollectionItems(standardCollection, address)
   // A reader holds no role: they reached a published collection by link and only browse it.
-  const isReader = !!collection && !hasCollectionRole(collection, address)
+  // Readers hold no role: a linked collection's roles are its third party's managers.
+  const isReader = !!collection && (isLinked ? !isLinkedManager : !hasCollectionRole(collection, address))
   // builder-server serves a collection's curation to its owner, collaborators and the committee only.
   const committee = useCommittee(address)
   const curationAddress = canManage || committee.isCurator ? address : undefined
@@ -366,7 +368,8 @@ const CollectionDetailPage = () => {
     thirdParty.isError &&
     thirdParty.error instanceof BuilderServerError &&
     NOT_FOUND_STATUSES.includes(thirdParty.error.status)
-  // A draft is private: addresses with no role on it get the same "not found" as a rejected request.
+  // A draft is private: addresses with no role on it get the same "not found" as a rejected request. Published
+  // collections, linked ones included, open read-only to any signer.
   const isNotFound =
     !collectionId ||
     (collectionQuery.isError &&
@@ -376,7 +379,7 @@ const CollectionDetailPage = () => {
       (isLinked
         ? !getThirdPartyId(collection) ||
           isThirdPartyNotFound ||
-          (!!thirdParty.data && !isThirdPartyManager(thirdParty.data, address))
+          (!!thirdParty.data && !canViewLinkedCollection(collection, thirdParty.data, address))
         : !canViewCollection(collection, address)))
   const isError = !isNotFound && (collectionQuery.isError || (!isLinked && itemsQuery.isError) || thirdParty.isError)
   const isEmpty = filteredTotal === 0
@@ -530,6 +533,7 @@ const CollectionDetailPage = () => {
           collection={collection}
           thirdParty={thirdParty.data}
           session={session}
+          isReader={isReader}
           page={page}
           onBack={() => navigate({ pathname: '/collections', search: listState?.listSearch })}
           onPageChange={goToPage}
