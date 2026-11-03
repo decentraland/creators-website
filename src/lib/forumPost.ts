@@ -102,11 +102,11 @@ export async function postCollectionToForum(
       const current = await deps.fetchForumLink(collection.id)
       if (current) return deps.onPosted(current)
       const { link, existing } = await createForumTopic(collection.id, deps.createPost, RETRIES, deps.retryDelayMs)
-      track('Create forum post', { collectionId: collection.id, source, existing })
+      track('Create forum post', { collectionId: collection.id, trigger: source, existing })
       deps.onPosted(link)
     })
   } catch (error) {
-    track('Create forum post error', { collectionId: collection.id, source, error: errorCode(error) })
+    track('Create forum post error', { collectionId: collection.id, trigger: source, error: errorCode(error) })
     captureError(error, { flow: 'forum_post', collectionId: collection.id, source })
   } finally {
     posting.delete(collection.id)

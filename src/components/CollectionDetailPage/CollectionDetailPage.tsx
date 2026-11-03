@@ -282,8 +282,9 @@ const CollectionDetailPage = () => {
   useBeforeUnloadGuard(useAnyDiscountInFlight())
   const [endingDiscount, setEndingDiscount] = useState<CollectionDiscount | null>(null)
   const openDiscount = useCallback(
-    (source: 'header' | 'menu') => {
-      if (collection) track(DISCOUNT_OPENED_EVENT, { collectionId: collection.id, source })
+    (trigger: 'header' | 'menu') => {
+      // Not `source`: that prop is reserved for the app discriminator and would overwrite this one.
+      if (collection) track(DISCOUNT_OPENED_EVENT, { collectionId: collection.id, trigger })
       setDiscountOpen(true)
     },
     [collection]

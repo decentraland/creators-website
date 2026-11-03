@@ -140,7 +140,7 @@ describe('postCollectionToForum', () => {
     expect(deps.onPosted).toHaveBeenCalledWith(LINK)
     expect(analytics.track).toHaveBeenCalledWith('Create forum post', {
       collectionId: 'p1',
-      source: 'publish',
+      trigger: 'publish',
       existing: false
     })
   })
@@ -164,7 +164,7 @@ describe('postCollectionToForum', () => {
     await postCollectionToForum(collection('p3'), 'publish', postDeps({ createPost }))
     expect(analytics.track).toHaveBeenCalledWith('Create forum post', {
       collectionId: 'p3',
-      source: 'publish',
+      trigger: 'publish',
       existing: true
     })
   })
