@@ -32,6 +32,11 @@ export async function fetchOnChainRarityPrice(rarityName: string, chainId: numbe
   return BigInt(rarity.price.toString())
 }
 
+/** `amountWei` plus the same tolerance, rounded up: what an approval must cover so the publish cannot revert on drift. */
+export function withFeeTolerance(amountWei: bigint): bigint {
+  return (amountWei * (10_000n + FEE_TOLERANCE_BPS) + 9_999n) / 10_000n
+}
+
 /** Whether `quoted` sits within the oracle tolerance of `onChain`. */
 export function isWithinFeeTolerance(quoted: bigint, onChain: bigint): boolean {
   const difference = quoted > onChain ? quoted - onChain : onChain - quoted

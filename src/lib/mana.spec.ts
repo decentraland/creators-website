@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ethers } from 'ethers'
 import { ContractName, getContract } from 'decentraland-transactions'
-import { buildManaApproveCall, getManaContract, withOracleDriftPad } from './mana'
+import { buildManaApproveCall, getManaContract } from './mana'
 
 const CHAIN_ID = 80002
 const SPENDER = getContract(ContractName.CollectionManager, CHAIN_ID).address
@@ -21,13 +21,5 @@ describe('buildManaApproveCall', () => {
 
   it('refuses a zero or negative amount', () => {
     expect(() => buildManaApproveCall(CHAIN_ID, SPENDER, 0n)).toThrow()
-  })
-})
-
-describe('withOracleDriftPad', () => {
-  it('adds 0.5% headroom, rounded up', () => {
-    expect(withOracleDriftPad(1000n * 10n ** 18n)).toBe(1005n * 10n ** 18n)
-    expect(withOracleDriftPad(1n)).toBe(2n)
-    expect(withOracleDriftPad(0n)).toBe(0n)
   })
 })

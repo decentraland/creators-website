@@ -171,9 +171,9 @@ describe('payment methods', () => {
 describe('getManaApprovalNeeded', () => {
   // What the contract pulls: 3% above a 1000 MANA quote, still within the verification tolerance.
   const onChainTotal = 1030n * ETHER
-  const padded = 1_035_150_000_000_000_000_000n
+  const padded = 1081n * ETHER + ETHER / 2n
 
-  it('approves the on-chain total plus the drift pad when the allowance only covers the quote', async () => {
+  it('approves the on-chain total plus the fee tolerance when the allowance only covers the quote', async () => {
     await expect(getManaApprovalNeeded(onChainTotal, () => Promise.resolve(1000n * ETHER))).resolves.toBe(padded)
   })
 

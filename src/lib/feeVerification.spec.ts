@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import { getPublicationFee } from './publishFee'
 import { type BlockchainRarity } from './rarities'
-import { PublicationFeeMismatchError, isWithinFeeTolerance, verifyPublicationFee } from './feeVerification'
+import {
+  PublicationFeeMismatchError,
+  isWithinFeeTolerance,
+  verifyPublicationFee,
+  withFeeTolerance
+} from './feeVerification'
 
 const ETHER = 10n ** 18n
 const CHAIN_ID = 80002
@@ -59,5 +64,20 @@ describe('verifyPublicationFee', () => {
     expect(isWithinFeeTolerance(1n, 0n)).toBe(false)
     expect(isWithinFeeTolerance(1050n, 1000n)).toBe(true)
     expect(isWithinFeeTolerance(1051n, 1000n)).toBe(false)
+  })
+})
+
+describe('withFeeTolerance', () => {
+  it('adds the fee tolerance as headroom, rounded up', () => {
+    expect(withFeeTolerance(1000n * ETHER)).toBe(1050n * ETHER)
+    expect(withFeeTolerance(1n)).toBe(2n)
+    expect(withFeeTolerance(0n)).toBe(0n)
+  })
+
+  it('covers any on-chain total the verification would have accepted', () => {
+    const quoted = 1000n * ETHER
+    const onChain = 1050n * ETHER
+    expect(isWithinFeeTolerance(quoted, onChain)).toBe(true)
+    expect(withFeeTolerance(quoted) >= onChain).toBe(true)
   })
 })
