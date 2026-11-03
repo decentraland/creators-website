@@ -15,6 +15,7 @@ import {
   type JSONSchema
 } from '@dcl/schemas'
 import { BodyShapeType, IMAGE_PATH, VIDEO_PATH, hasSceneCode, isSceneCodeFile } from './items'
+import { blobsAreEqual } from './blobs'
 
 export const THUMBNAIL_PATH = 'thumbnail.png'
 /** A smart wearable's scene manifest; kept inside the item contents so the explorer can run it. */
@@ -456,12 +457,26 @@ function toSceneManifest(value: unknown): SceneManifest {
   }
 }
 
-/** The zip's scene.json: at the root, or the single one inside a zipped project folder. */
-function findSceneFile(zip: JSZip): JSZip.JSZipObject | null {
+/**
+ * The zip's scene.json: at the root, the single one inside a zipped project folder, or the copies a
+ * downloaded item carries under male/ and female/ (one manifest stored per body shape, so they must match).
+ */
+async function findSceneFile(
+  zip: JSZip,
+  readText: (entry: JSZip.JSZipObject) => Promise<string>
+): Promise<JSZip.JSZipObject | null> {
   const root = zip.file(SCENE_PATH)
   if (root) return root
   const nested = zip.file(/(^|\/)scene\.json$/)
-  return nested.length === 1 ? nested[0] : null
+  if (nested.length === 1) return nested[0]
+  // Exactly the download layout: one copy under female/ and one under male/, inside the same folder.
+  const names = nested.map(file => file.name).sort()
+  if (names.length !== 2 || names[0].replace(/(^|\/)female\/scene\.json$/, '$1male/scene.json') !== names[1])
+    return null
+  // Compared as parsed JSON so a reformatted copy still counts as the same manifest.
+  const texts = await Promise.all(nested.map(async file => JSON.stringify(parseJson(await readText(file), SCENE_PATH))))
+  if (texts[0] !== texts[1]) throw new ItemFileError('scene_code_mismatch', { fileName: SCENE_PATH })
+  return nested[0]
 }
 
 /** Parses and validates the scene manifest, checks its code bundle shipped, and returns the normalized file to store. */
@@ -474,7 +489,16 @@ async function loadScene(
   const scene = toSceneManifest(rawScene)
   // The entry point is what makes the wearable "smart" downstream (hasSceneCode), so it must be code.
   if (!isSceneCodeFile(scene.main)) throw new ItemFileError('scene_main_not_code', { fileName: scene.main })
-  if (!content[scene.main]) throw new ItemFileError('manifest_file_missing', { fileName: scene.main })
+  // The bundle sits at the root or, in a downloaded item, in every body-shape folder: one code for every shape.
+  const shape = getBodyShapeTypeFromContents(content)
+  const folders = shape === BodyShapeType.BOTH ? [BodyShapeType.MALE, BodyShapeType.FEMALE] : shape ? [shape] : []
+  const paths =
+    content[scene.main] || folders.length === 0 ? [scene.main] : folders.map(folder => `${folder}/${scene.main}`)
+  const missing = paths.find(path => !content[path])
+  if (missing) throw new ItemFileError('manifest_file_missing', { fileName: missing })
+  if (paths.length === 2 && !(await blobsAreEqual(content[paths[0]], content[paths[1]]))) {
+    throw new ItemFileError('scene_code_mismatch', { fileName: scene.main })
+  }
   return { scene, blob: new Blob([JSON.stringify(rawScene)], { type: 'application/json' }) }
 }
 
@@ -506,7 +530,6 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
     throw new ItemFileError('invalid_zip')
   }
 
-  const sceneFile = findSceneFile(zip)
   const wearableFile = zip.file(WEARABLE_MANIFEST)
   const emoteFile = zip.file(EMOTE_MANIFEST)
 
@@ -526,6 +549,7 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
   // Manifests share the budget: a bogus wearable.json is as good a bomb as any model file.
   const inflater = createZipInflater(MAX_ZIP_CONTENTS_SIZE)
   const readText = async (entry: JSZip.JSZipObject) => (await inflater.inflate(entry)).text()
+  const sceneFile = await findSceneFile(zip, readText)
   const rawContent: Record<string, Blob> = {}
   for (const { path, entry } of entries) {
     const blob = await inflater.inflate(entry)

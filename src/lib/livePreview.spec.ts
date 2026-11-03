@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BodyPartCategory, BodyShape, WearableCategory } from '@dcl/schemas'
 import {
   LivePreviewError,
-  blobsAreEqual,
   buildDefinition,
   buildStateUrl,
   fetchBridgeState,
@@ -65,16 +64,6 @@ describe('isSameModelMetadata', () => {
         { version: 2, bodyShapes: [BodyShape.FEMALE, BodyShape.MALE] }
       )
     ).toBe(true)
-  })
-})
-
-describe('blobsAreEqual', () => {
-  it('compares bytes, skipping the read when sizes differ', async () => {
-    expect(await blobsAreEqual(new Blob([new Uint8Array([1, 2, 3])]), new Blob([new Uint8Array([1, 2, 3])]))).toBe(true)
-    expect(await blobsAreEqual(new Blob([new Uint8Array([1, 2, 3])]), new Blob([new Uint8Array([1, 2, 4])]))).toBe(
-      false
-    )
-    expect(await blobsAreEqual(new Blob([new Uint8Array([1, 2, 3])]), new Blob([new Uint8Array([1, 2])]))).toBe(false)
   })
 })
 

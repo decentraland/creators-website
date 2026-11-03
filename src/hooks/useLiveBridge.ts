@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { track } from '~/lib/analytics'
+import { blobsAreEqual } from '~/lib/blobs'
 import {
   LivePreviewError,
-  blobsAreEqual,
   fetchBridgeState,
   fetchModelBlob,
   isSameModelMetadata,
