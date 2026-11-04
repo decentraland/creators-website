@@ -11,12 +11,13 @@ import {
   fetchRarities,
   lockCollection,
   publishCollectionItems,
+  pushCollectionCuration,
   saveCollection,
   saveCollectionTOS,
   saveItem
 } from '~/lib/builder'
 import { sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
-import { type Collection } from '~/lib/collections'
+import { isLinkedCollection, type Collection } from '~/lib/collections'
 import { authorizePublication } from '~/lib/credits'
 import { withRehashedContents } from '~/lib/itemFactory'
 import { type Item } from '~/lib/items'
@@ -27,6 +28,7 @@ import {
   PublishTransactionRevertedError,
   consolidatePublishedCollection,
   getMaticChainId,
+  openFirstReviewRequest,
   publishCollection,
   syncPublishedItems,
   type PaymentMethod,
@@ -36,6 +38,7 @@ import { type PublicationFee } from '~/lib/publishFee'
 import { buildCollectionInitializeData } from '~/lib/saveCollection'
 import { useTranslation } from '~/intl'
 import { postToForum } from '~/hooks/useForumPost'
+import { collectionCurationKey } from '~/hooks/useCuration'
 
 export function useRarities(address: string | undefined) {
   return useQuery({
@@ -170,7 +173,10 @@ export function usePublishCollection(session: Session | null) {
         waitForTransaction: hash => waitForTransaction(chainId, hash),
         publishCollectionItems: collectionId => publishCollectionItems(address!, collectionId),
         // Not awaited: the forum's retries must not hold the sync's cleanup below.
-        onSynced: () => void postToForum(queryClient, address!, collection, 'publish')
+        onSynced: () => {
+          void postToForum(queryClient, address!, collection, 'publish')
+          void requestFirstReview(queryClient, address!, collection)
+        }
       })
         .catch((error: unknown) => {
           console.error('Collection consolidation failed', error)
@@ -205,6 +211,32 @@ export function usePublishCollection(session: Session | null) {
 }
 
 const CONSOLIDATION_TOAST_MS = 20_000
+
+/**
+ * Opens the published collection's review request and puts it in the cache, so the status pill and the curation
+ * list read "Under review" at once. Never throws: the collection is on chain either way, so a failure is only
+ * reported. Linked collections send their items for review through their own flow.
+ */
+export async function requestFirstReview(
+  queryClient: ReturnType<typeof useQueryClient>,
+  address: string,
+  collection: Collection
+): Promise<void> {
+  if (isLinkedCollection(collection)) return
+  const key = collectionCurationKey(address, collection.id)
+  try {
+    const curation = await openFirstReviewRequest(collection.id, {
+      pushCollectionCuration: id => pushCollectionCuration(address, id)
+    })
+    if (curation) queryClient.setQueryData(key, curation)
+    else void queryClient.invalidateQueries({ queryKey: key })
+    void queryClient.invalidateQueries({ queryKey: ['curations'] })
+    void queryClient.invalidateQueries({ queryKey: ['curation-collections'] })
+    void queryClient.invalidateQueries({ queryKey: ['collections'] })
+  } catch (error) {
+    captureError(error, { flow: 'publish_review_request', collectionId: collection.id })
+  }
+}
 
 // Collections whose chain→server sync is running in this tab, so a page mount doesn't start a second one.
 const syncing = new Set<string>()

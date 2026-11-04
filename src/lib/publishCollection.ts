@@ -8,6 +8,7 @@ import { config } from '~/config'
 import { type ContractCall } from '~/lib/auth'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS, isRefusedRequest } from '~/lib/builder'
 import { isCollectionLocked, type Collection } from '~/lib/collections'
+import { type CollectionCuration } from '~/lib/curation'
 import { CreditsServerError, type ExternalCall, type PublicationAuthorization } from '~/lib/credits'
 import { PublicationFeeMismatchError } from '~/lib/feeVerification'
 import { hasOldHashedContents } from '~/lib/itemFactory'
@@ -339,6 +340,33 @@ export async function syncPublishedItems(
       if (!notIndexedYet || attempt >= retries) throw error
       await new Promise(resolve => setTimeout(resolve, retryDelayMs))
     }
+  }
+}
+
+export type ReviewRequestDeps = {
+  pushCollectionCuration: (collectionId: string) => Promise<CollectionCuration>
+}
+
+const ALREADY_REQUESTED_STATUS = 400
+
+/**
+ * Opens the first review request of a collection that just went on chain: publishing is sending it for review,
+ * so curators and the status pill see a pending request instead of inferring one from its absence. Resolves to
+ * null when a request is already open (a publish retried from another tab), which is the server's 400.
+ */
+export async function openFirstReviewRequest(
+  collectionId: string,
+  deps: ReviewRequestDeps
+): Promise<CollectionCuration | null> {
+  try {
+    return await deps.pushCollectionCuration(collectionId)
+  } catch (error) {
+    const alreadyRequested =
+      error instanceof BuilderServerError &&
+      error.status === ALREADY_REQUESTED_STATUS &&
+      error.message.includes('ongoing review request')
+    if (alreadyRequested) return null
+    throw error
   }
 }
 
