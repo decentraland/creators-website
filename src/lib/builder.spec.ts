@@ -13,6 +13,7 @@ import {
   fetchItemCurations,
   fetchThirdParty,
   fetchAllLinkedCollectionItems,
+  fetchContentSize,
   getContentsStorageUrl,
   saveItem
 } from './builder'
@@ -377,6 +378,35 @@ describe('fetchItemContents', () => {
       vi.fn(async () => new Response(null, { status: 404 }))
     )
     await expect(fetchItemContents(item)).rejects.toThrow(/404/)
+    vi.unstubAllGlobals()
+  })
+})
+
+describe('fetchContentSize', () => {
+  it('reads the size storage declares', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('abc', { headers: { 'content-length': '2048' } }))
+    )
+    expect(await fetchContentSize('bafmodel')).toBe(2048)
+    vi.unstubAllGlobals()
+  })
+
+  it('measures the body when storage does not declare a size, so a file never counts as empty', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(new Uint8Array(1500)))
+    )
+    expect(await fetchContentSize('bafmodel')).toBe(1500)
+    vi.unstubAllGlobals()
+  })
+
+  it('fails when the file cannot be read', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(null, { status: 404 }))
+    )
+    await expect(fetchContentSize('bafmodel')).rejects.toThrow(/404/)
     vi.unstubAllGlobals()
   })
 })

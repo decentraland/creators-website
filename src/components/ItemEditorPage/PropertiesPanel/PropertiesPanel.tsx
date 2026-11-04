@@ -41,6 +41,7 @@ import {
 import { buildItemZip, getItemZipName } from '~/lib/itemDownload'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
 import { hasFacialExpressions, THUMBNAIL_PATH, VIDEO_PATH, toMB } from '~/lib/itemFiles'
+import { formatItemSize, isOverSizeLimit, type ItemSize } from '~/lib/itemSize'
 import {
   BodyShapeType,
   ItemType,
@@ -89,6 +90,8 @@ type Props = {
   dispatch: Dispatch<ItemDraftAction>
   isDirty: boolean
   isSaving: boolean
+  /** The item's size as a save would leave it (thumbnail and rarity image included); null while unknown. */
+  size?: ItemSize | null
   springBones: SpringBonesFormProps | null
   /** Linked collections: the contract the item's mapping targets (null when the collection has none); undefined otherwise. */
   linkedContract?: LinkedContract | null
@@ -112,6 +115,7 @@ export function PropertiesPanel({
   dispatch,
   isDirty,
   isSaving,
+  size = null,
   springBones,
   linkedContract,
   onSave,
@@ -173,6 +177,8 @@ export function PropertiesPanel({
     staleTime: Infinity
   })
   const metrics = item.metrics
+  const sizeText = useMemo(() => (size ? formatItemSize(size) : null), [size])
+  const sizeExceeded = !!size && isOverSizeLimit(size)
 
   async function download() {
     setDownloading(true)
@@ -286,9 +292,9 @@ export function PropertiesPanel({
               </S.ThumbOverlay>
             )}
           </S.ThumbButton>
-          {metrics && (
+          {(metrics || sizeText) && (
             <S.Metrics data-testid={`${testId}-metrics`}>
-              {isEmote ? (
+              {!metrics ? null : isEmote ? (
                 <>
                   <S.Metric>
                     <ClockIcon />
@@ -319,9 +325,20 @@ export function PropertiesPanel({
                   </S.Metric>
                 </>
               )}
+              {sizeText && (
+                <S.Metric data-testid={`${testId}-size`} data-exceeded={sizeExceeded || undefined}>
+                  <SizeIcon />
+                  {t('item_size.value', sizeText)}
+                </S.Metric>
+              )}
             </S.Metrics>
           )}
         </S.DetailsRow>
+        {sizeExceeded && sizeText && (
+          <S.ErrorText role="alert" data-testid={`${testId}-size-error`}>
+            {t('add_items_modal.file_error.size_exceeded', sizeText)}
+          </S.ErrorText>
+        )}
         {isSmart && (
           <S.VideoPane data-testid={`${testId}-video`}>
             <S.FieldLabel>
@@ -659,7 +676,14 @@ export function PropertiesPanel({
             type="button"
             variant="primary"
             size="sm"
-            disabled={!isDirty || nameInvalid || descriptionInvalid || mappingInvalid || draft.name.trim() === ''}
+            disabled={
+              !isDirty ||
+              nameInvalid ||
+              descriptionInvalid ||
+              mappingInvalid ||
+              sizeExceeded ||
+              draft.name.trim() === ''
+            }
             loading={isSaving}
             data-testid={`${testId}-save`}
             onClick={onSave}

@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
+import { useItemSizes } from '~/hooks/useItemSize'
 import { useDeleteItem } from '~/hooks/usePublishCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useSaveItem } from '~/hooks/useSaveItem'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { type Collection } from '~/lib/collections'
+import { isItemTooBigError, isOverSizeLimit } from '~/lib/itemSize'
 import { canDeleteItem, type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import { Button } from '~/components/Button'
@@ -42,7 +44,21 @@ export function ConfirmItemsStep({ address, collection, items, onBusyChange, onB
     if (subject.kind === 'item' && subject.item.id === editingId) setThumbnailPatch(patch)
   })
 
-  const canContinue = accepted && items.length > 0 && editingId === null
+  // Every item's size as the catalyst counts it, thumbnail and rarity image included: the catalyst refuses any item
+  // over its limit at deploy, so none can be published. A size that couldn't be measured blocks nothing.
+  const { sizes, isMeasuring } = useItemSizes(items)
+  const hasOversized = useMemo(
+    () =>
+      items.some(item => {
+        const size = sizes.get(item.id)
+        return !!size && isOverSizeLimit(size)
+      }),
+    [items, sizes]
+  )
+  const canContinue = accepted && items.length > 0 && editingId === null && !isMeasuring && !hasOversized
+  const saveErrorMessage = isItemTooBigError(updateItem.error)
+    ? t('add_items_modal.file_error.size_exceeded', updateItem.error.messageParams)
+    : undefined
 
   const isBusy = updateItem.isPending || deleteItem.isPending
   useEffect(() => {
@@ -106,6 +122,8 @@ export function ConfirmItemsStep({ address, collection, items, onBusyChange, onB
                 isEditing={editingId === item.id}
                 isSaving={editingId === item.id && updateItem.isPending}
                 saveError={editingId === item.id && updateItem.isError}
+                saveErrorMessage={saveErrorMessage}
+                size={sizes.get(item.id) ?? null}
                 canDelete={items.length > 1 && canDeleteItem(collection, address)}
                 locked={editingId !== null && editingId !== item.id}
                 pendingThumbnail={editingId === item.id ? (thumbnailPatch?.thumbnail ?? null) : null}
@@ -125,6 +143,11 @@ export function ConfirmItemsStep({ address, collection, items, onBusyChange, onB
           )}
         </S.TableBody>
       </S.Table>
+      {hasOversized && (
+        <S.ErrorText role="alert" data-testid="publish-items-oversized">
+          {t('publish_collection_modal.items_step.oversized')}
+        </S.ErrorText>
+      )}
       <Checkbox checked={accepted} onChange={setAccepted} testId="publish-items-accept">
         {t('publish_collection_modal.items_step.checkbox')}
       </Checkbox>

@@ -370,6 +370,7 @@
       "save_error": "我们无法保存该物品，请重试。",
       "empty": "此系列已没有可发布的物品。请先添加物品再发布。",
       "checkbox": "我了解发布后将无法添加或移除物品，也无法更改其稀有度。",
+      "oversized": "部分物品超出了大小限制，无法发布。请在物品编辑器中更换其文件后再返回。",
       "confirm": "确认物品"
     },
     "payment_step": {
@@ -615,7 +616,7 @@
       "title_locked": "此系列正在审核中",
       "title_published": "此系列已发布",
       "description_generic": "上传您的物品时出错了，请重试。",
-      "description_too_big": "您的某个物品与已保存的文件合并后超出了大小限制。请减小文件大小后重试。",
+      "description_too_big": "计入缩略图、稀有度图片和已保存的文件后，您的某个物品超出了大小限制（3 MB，皮肤为 9 MB）。请减小文件大小后重试。",
       "description_locked": "系列审核期间无法添加物品。您的文件未保存，审核完成后即可添加。",
       "description_published": "已发布的系列无法添加新物品。您的文件未保存，请创建一个新系列来添加它们。",
       "try_again": "重试",
@@ -640,7 +641,7 @@
       "wrong_extension": "不支持此文件类型。请使用 {extensions}。",
       "file_too_big": "文件过大，最大为 {size}MB。",
       "thumbnail_too_big": "缩略图过大，最大为 {size}MB。",
-      "size_exceeded": "此物品过大，包括缩略图在内最大为 {size}MB。",
+      "size_exceeded": "此物品大小为 {size} MB，超出了 {limit} MB 的限制。缩略图和稀有度图片也计入其中：请减少纹理或几何体后重试。",
       "missing_model_file": "我们在此文件中未找到 3D 模型或贴图。",
       "invalid_zip": "我们无法读取此 ZIP 文件。",
       "too_many_files": "此 ZIP 包含的文件过多，最多 {max} 个。",
@@ -1567,6 +1568,10 @@
       "confirm": "查看更改"
     },
     "enable_body": "启用该系列，使其物品可以按上一个已批准版本重新铸造。创作者尚未提交审核的更改不会包含在内。请在钱包中确认。"
+  },
+  "item_size": {
+    "label": "总大小（含缩略图和稀有度图片）",
+    "value": "{size} / {limit} MB"
   },
   "item_validation": {
     "checking": "正在检查您的物品……",

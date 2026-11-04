@@ -370,6 +370,7 @@
       "save_error": "No pudimos guardar el ítem. Inténtalo de nuevo.",
       "empty": "Esta colección no tiene ítems para publicar. Agrega ítems antes de publicar.",
       "checkbox": "Entiendo que una vez publicada no podré agregar ni quitar ítems, ni cambiar su rareza.",
+      "oversized": "Algunos ítems superan su límite de tamaño y no se pueden publicar. Cambia sus archivos en el editor de ítems y vuelve.",
       "confirm": "Confirmar ítems"
     },
     "payment_step": {
@@ -615,7 +616,7 @@
       "title_locked": "Esta colección está en revisión",
       "title_published": "Esta colección ya está publicada",
       "description_generic": "Algo salió mal al subir tus ítems. Inténtalo de nuevo.",
-      "description_too_big": "Uno de tus ítems supera su límite de tamaño al combinarlo con los archivos ya guardados. Reduce el tamaño del archivo e inténtalo de nuevo.",
+      "description_too_big": "Uno de tus ítems supera su límite de tamaño (3 MB, 9 MB para pieles) al contar su miniatura, su imagen de rareza y los archivos ya guardados. Reduce el tamaño del archivo e inténtalo de nuevo.",
       "description_locked": "No se pueden agregar ítems mientras la colección está en revisión. Tus archivos no se guardaron; podrás agregarlos cuando termine la revisión.",
       "description_published": "Las colecciones publicadas no admiten ítems nuevos. Tus archivos no se guardaron; crea una nueva colección para agregarlos.",
       "try_again": "Intentar de nuevo",
@@ -640,7 +641,7 @@
       "wrong_extension": "Este tipo de archivo no es compatible. Usa {extensions}.",
       "file_too_big": "El archivo es demasiado grande: el tamaño máximo es {size}MB.",
       "thumbnail_too_big": "La miniatura es demasiado grande: el tamaño máximo es {size}MB.",
-      "size_exceeded": "Este ítem es demasiado grande: el tamaño máximo es {size}MB incluyendo la miniatura.",
+      "size_exceeded": "Este ítem pesa {size} MB y supera su límite de {limit} MB. La miniatura y la imagen de rareza cuentan para el límite: reduce las texturas o la geometría e inténtalo de nuevo.",
       "missing_model_file": "No encontramos un modelo 3D o una textura dentro de este archivo.",
       "invalid_zip": "No pudimos leer este archivo ZIP.",
       "too_many_files": "Este ZIP tiene demasiados archivos — el máximo es {max}.",
@@ -1567,6 +1568,10 @@
       "confirm": "Revisar cambios"
     },
     "enable_body": "Habilita la colección para que sus ítems se puedan mintear de nuevo, tal como se aprobaron por última vez. Los cambios que el creador no envió a revisión quedan afuera. Confirma en tu wallet."
+  },
+  "item_size": {
+    "label": "Tamaño total (con miniatura e imagen de rareza)",
+    "value": "{size} / {limit} MB"
   },
   "item_validation": {
     "checking": "Revisando tus ítems…",

@@ -8,6 +8,7 @@ import { Providers } from '~/components/CollectionDetailPage/SellItemFlow/testUt
 import { ItemType, type Item } from '~/lib/items'
 import { useItemForm } from '../useItemForm'
 import { type ItemFileChange } from '~/lib/itemDraft'
+import { type ItemSize } from '~/lib/itemSize'
 import { PropertiesPanel } from './PropertiesPanel'
 
 // The change-file modal has its own spec; here it hands back whatever result the test prepared.
@@ -75,7 +76,8 @@ function Harness({
   onSave = vi.fn(),
   onSaveFile = () => Promise.resolve(),
   isSaving = false,
-  subject = item
+  subject = item,
+  size = null
 }: {
   editable?: boolean
   canDownload?: boolean
@@ -84,6 +86,7 @@ function Harness({
   onSaveFile?: (change: ItemFileChange) => Promise<void>
   isSaving?: boolean
   subject?: Item
+  size?: ItemSize | null
 }) {
   const form = useItemForm(subject)
   return (
@@ -98,6 +101,7 @@ function Harness({
       dispatch={form.dispatch}
       isDirty={form.isDirty}
       isSaving={isSaving}
+      size={size}
       springBones={null}
       onSave={onSave}
       onSaveFile={onSaveFile}
@@ -166,6 +170,23 @@ describe('PropertiesPanel', () => {
     expect(await screen.findByTestId('properties-panel-outline')).toBeInTheDocument()
     expect(screen.queryByTestId('properties-panel-vrm-export')).not.toBeInTheDocument()
     expect(screen.queryByTestId('properties-panel-utility')).not.toBeInTheDocument()
+  })
+
+  it('shows the item size against its limit, thumbnail and rarity image included', () => {
+    render(<Harness size={{ bytes: 3_093_299, limit: 3 * 1024 * 1024 }} />, { wrapper: Providers })
+    expect(screen.getByTestId('properties-panel-size')).toHaveTextContent('2.95 / 3.00 MB')
+    expect(screen.getByTestId('properties-panel-size')).not.toHaveAttribute('data-exceeded')
+    expect(screen.queryByTestId('properties-panel-size-error')).not.toBeInTheDocument()
+  })
+
+  it('keeps an item over its size limit from being saved, and says what counts', async () => {
+    render(<Harness size={{ bytes: 3_243_672, limit: 3 * 1024 * 1024 }} />, { wrapper: Providers })
+    expect(screen.getByTestId('properties-panel-size')).toHaveAttribute('data-exceeded', 'true')
+    expect(screen.getByTestId('properties-panel-size-error')).toHaveTextContent(
+      'This item is 3.09 MB, over its 3.00 MB limit. The thumbnail and the rarity image count toward it'
+    )
+    await userEvent.type(screen.getByTestId('properties-panel-name'), ' 2')
+    expect(screen.getByTestId('properties-panel-save')).toBeDisabled()
   })
 
   it('keeps a name without characters from being saved', async () => {

@@ -29,6 +29,7 @@ import { useRerunValidation } from '~/hooks/useRerunValidation'
 import { useObjectURL } from '~/hooks/useObjectURL'
 import { thumbnailValidationKey, useThumbnailValidation } from '~/hooks/useThumbnailValidation'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
+import { useMeasuredBytes } from '~/hooks/useItemSize'
 import { fetchStoredThumbnail, useSaveItem } from '~/hooks/useSaveItem'
 import { captureError } from '~/lib/monitoring'
 import { springBonesFetcher } from '~/hooks/useSpringBones'
@@ -45,11 +46,19 @@ import {
 } from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
 import { getCurationState, curationListUrl } from '~/lib/curation'
-import { toFileChangeSaveable, toPreviewItem, toSaveableItem, type ItemFileChange } from '~/lib/itemDraft'
+import { identityKey } from '~/lib/blobs'
+import {
+  createItemDraft,
+  toFileChangeSaveable,
+  toPreviewItem,
+  toSaveableItem,
+  type ItemFileChange
+} from '~/lib/itemDraft'
 import { type BuiltItem } from '~/lib/itemFactory'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
 import { pickFiles } from '~/lib/filePicker'
 import { IMAGE_PATH, ITEM_EXTENSIONS } from '~/lib/itemFiles'
+import { getItemSizeLimit, isItemTooBigError, type ItemSize } from '~/lib/itemSize'
 import { ItemType, canDeleteItem, canEditItemDetails, isSocialEmote, type Item } from '~/lib/items'
 import { isLinkedItemPublished } from '~/lib/linkedItemStatus'
 import {
@@ -260,6 +269,35 @@ const ItemEditorPage = () => {
     () => getValidationStatus(validationIssues, validation.isLoading || thumbnailValidation.isLoading),
     [validationIssues, validation.isLoading, thumbnailValidation.isLoading]
   )
+  // The item's size as a save would leave it: only a new thumbnail or a rarity change (a new rarity image) touches
+  // its files, so only those measure again; the category only moves the limit (skins get 9 MB).
+  const draftThumbnail = form.draft.thumbnail
+  const draftRarity = form.draft.rarity
+  const sizeBuild = useMemo(
+    () =>
+      selected
+        ? () =>
+            toSaveableItem(
+              selected,
+              { ...createItemDraft(selected), thumbnail: draftThumbnail, rarity: draftRarity },
+              { fetchThumbnail: fetchStoredThumbnail }
+            )
+        : null,
+    [selected, draftThumbnail, draftRarity]
+  )
+  const measuredSize = useMeasuredBytes(
+    sizeBuild,
+    [identityKey(selected), identityKey(draftThumbnail), draftRarity],
+    'item_editor'
+  )
+  const sizeCategory = form.draft.category ?? selected?.data.category
+  const itemSize = useMemo<ItemSize | null>(
+    () =>
+      selected && measuredSize.bytes !== null
+        ? { bytes: measuredSize.bytes, limit: getItemSizeLimit(selected.type, sizeCategory) }
+        : null,
+    [selected, measuredSize.bytes, sizeCategory]
+  )
   const rerunValidation = useRerunValidation()
   const rerunSelectedValidation = useCallback(async () => {
     const keys: (readonly unknown[])[] = []
@@ -404,8 +442,13 @@ const ItemEditorPage = () => {
     return saved
   }
 
-  // A locked collection is the creator's to wait out; anything else is ours to look into.
+  // A locked collection is the creator's to wait out, an item over its size limit the creator's to slim down;
+  // anything else is ours to look into.
   function reportSaveError(error: unknown, flow: 'item_save' | 'item_file_change') {
+    if (isItemTooBigError(error)) {
+      showToast(t('add_items_modal.file_error.size_exceeded', error.messageParams), { type: 'error' })
+      return
+    }
     console.error('Item save failed:', error)
     const locked = error instanceof BuilderServerError && error.status === COLLECTION_LOCKED_STATUS
     if (!locked) captureError(error, { flow, itemId: selectedIdRef.current ?? undefined })
@@ -439,7 +482,8 @@ const ItemEditorPage = () => {
         if (change.thumbnail) form.dispatch({ type: 'setThumbnail', thumbnail: null })
       }
     } catch (error) {
-      reportSaveError(error, 'item_file_change')
+      // The modal shows an oversized result itself, next to the file that caused it.
+      if (!isItemTooBigError(error)) reportSaveError(error, 'item_file_change')
       throw error
     }
   }
@@ -655,6 +699,7 @@ const ItemEditorPage = () => {
         dispatch={form.dispatch}
         isDirty={form.isDirty}
         isSaving={saveItem.isPending}
+        size={itemSize}
         springBones={springBonesForm}
         linkedContract={isLinked ? linkedContract : undefined}
         onSave={save}

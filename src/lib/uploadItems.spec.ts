@@ -3,16 +3,16 @@ import { BodyShapeType, ItemType } from './items'
 import { EmotePlayMode, buildItem, type ItemDraftPayload } from './itemFactory'
 import { BuilderServerError } from './builder'
 import { type Item } from './items'
-import { executeUpload, findDuplicateUrns, planUpload, type UploadDraft } from './uploadItems'
+import { executeUpload, findDuplicateUrns, planDraftUpload, planUpload, type UploadDraft } from './uploadItems'
 
 vi.mock('./builder', async importOriginal => {
   const original = await importOriginal<typeof import('./builder')>()
-  return { ...original, saveItem: vi.fn(), fetchContent: vi.fn() }
+  return { ...original, saveItem: vi.fn(), fetchContentSize: vi.fn() }
 })
 
-const { saveItem, fetchContent } = await import('./builder')
+const { saveItem, fetchContentSize } = await import('./builder')
 const saveItemMock = vi.mocked(saveItem)
-const fetchContentMock = vi.mocked(fetchContent)
+const fetchContentSizeMock = vi.mocked(fetchContentSize)
 
 const blob = (text = 'x') => new Blob([text])
 
@@ -37,8 +37,8 @@ function draft(id: string, overrides: Partial<UploadDraft> = {}): UploadDraft {
 beforeEach(() => {
   saveItemMock.mockReset()
   saveItemMock.mockResolvedValue({} as never)
-  fetchContentMock.mockReset()
-  fetchContentMock.mockResolvedValue(blob('stored'))
+  fetchContentSizeMock.mockReset()
+  fetchContentSizeMock.mockResolvedValue(6)
 })
 
 describe('planUpload', () => {
@@ -125,10 +125,8 @@ describe('executeUpload', () => {
       model: 'f.glb'
     })
     // Stored model + retained thumbnail together cross the cap; neither alone does.
-    fetchContentMock.mockImplementation(async (hash: string) =>
-      hash === existing.contents['thumbnail.png']
-        ? new Blob([new Uint8Array(1024 * 1024)])
-        : new Blob([new Uint8Array(2.5 * 1024 * 1024)])
+    fetchContentSizeMock.mockImplementation(async (hash: string) =>
+      hash === existing.contents['thumbnail.png'] ? 1024 * 1024 : 2.5 * 1024 * 1024
     )
     const operations = await planUpload([variant, draft('b')], [existing])
     const result = await executeUpload('0xowner', operations)
@@ -152,12 +150,22 @@ describe('executeUpload', () => {
       model: 'f.glb'
     })
     // 2MB once fits; counted per path it would not.
-    fetchContentMock.mockImplementation(async (hash: string) =>
-      hash === modelHash ? new Blob([new Uint8Array(2 * 1024 * 1024)]) : blob('small')
-    )
+    fetchContentSizeMock.mockImplementation(async (hash: string) => (hash === modelHash ? 2 * 1024 * 1024 : 5))
     const result = await executeUpload('0xowner', await planUpload([variant], [existing]))
     expect(result.savedDraftIds).toEqual(['variant'])
-    expect(fetchContentMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('refuses a new item whose model fits but whose thumbnail takes it over the limit', async () => {
+    const big = draft('big', {
+      contents: {
+        'model.glb': new Blob([new Uint8Array(3 * 1024 * 1024 - 100)]),
+        'thumbnail.png': blob('t'.repeat(200))
+      }
+    })
+    const result = await executeUpload('0xowner', await planUpload([big, draft('b')], []))
+    expect(result.failedDraftIds).toEqual(['big'])
+    expect(result.savedDraftIds).toEqual(['b'])
+    expect(result.failureReason).toBe('too_big')
   })
 
   it('maps an already-published conflict to its own reason', async () => {
@@ -174,6 +182,40 @@ describe('executeUpload', () => {
     expect((await executeUpload('0xowner', await planUpload([draft('a')], []))).failureReason).toBe('urn_taken')
     saveItemMock.mockRejectedValue(new BuilderServerError('Items cannot be returned once published', 409))
     expect((await executeUpload('0xowner', await planUpload([draft('a')], []))).failureReason).toBe('published')
+  })
+})
+
+describe('planDraftUpload', () => {
+  it('builds a variant inside the batch draft it belongs to, as the upload will', async () => {
+    const base = draft('base', { bodyShape: BodyShapeType.MALE })
+    const variant = draft('variant', {
+      bodyShape: BodyShapeType.FEMALE,
+      variantTargetId: 'base',
+      contents: { 'f.glb': blob('f'), 'thumbnail.png': blob('t') },
+      model: 'f.glb'
+    })
+    const operation = await planDraftUpload('variant', [base, variant, draft('other')], [])
+    expect(operation?.draftIds).toEqual(['base', 'variant'])
+    expect(Object.keys(operation!.built.item.contents)).toEqual(
+      expect.arrayContaining(['male/model.glb', 'female/f.glb', 'thumbnail.png', 'image.png'])
+    )
+  })
+
+  it('builds a variant of a saved item on top of that item', async () => {
+    const { item: existing } = await buildItem({
+      ...(draft('existing') as ItemDraftPayload),
+      bodyShape: BodyShapeType.MALE
+    })
+    const variant = draft('variant', {
+      bodyShape: BodyShapeType.FEMALE,
+      variantTargetId: existing.id,
+      contents: { 'f.glb': blob('f') },
+      model: 'f.glb'
+    })
+    const operation = await planDraftUpload('variant', [variant], [existing])
+    expect(operation?.isExistingItemUpdate).toBe(true)
+    expect(operation?.built.item.contents['male/model.glb']).toBe(existing.contents['male/model.glb'])
+    expect(Object.keys(operation!.built.blobs)).toEqual(['female/f.glb'])
   })
 })
 
