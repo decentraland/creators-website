@@ -2,6 +2,9 @@
 // (`GET /collections/:id/events`). The review stage, the validator's verdict and the daily retry
 // allowance are all read off these rows; nothing here is stored on the client.
 
+import { BodyShape as BodyShapeId } from '@dcl/schemas'
+import { ValidationSeverity, type ValidationIssue } from '~/lib/validation/types'
+
 export const COLLECTION_EVENT_TYPES = [
   'collection.published',
   'review.human_required',
@@ -82,6 +85,8 @@ export type ValidationVerdictPayload = {
   retryable?: boolean
   rulesVersion?: string
   items: ValidationItemResult[]
+  /** Items edited while the validator ran: the verdict is about content that is already gone. */
+  staleItemIds?: string[]
 }
 
 export type CurationDecisionPayload = {
@@ -93,6 +98,8 @@ export type HumanRequiredReason = 'third_party' | 'unsupported_items' | 'validat
 
 /** `review.ai_error` reasons the server never resends: only a curator or a new request moves the review on. */
 export type FinalAiErrorReason = 'sweep_exhausted' | 'too_large'
+/** The request never reached the validator; the server's sweep sends it again within minutes. */
+export const PUBLISH_FAILED_REASON = 'publish_failed'
 
 export type CollectionEventPayload = Omit<Partial<ValidationVerdictPayload>, 'reason'> &
   CurationDecisionPayload & {
@@ -100,6 +107,8 @@ export type CollectionEventPayload = Omit<Partial<ValidationVerdictPayload>, 're
     reason?: string
     trigger?: string
     itemIds?: string[]
+    /** `review.ai_started`: the content hash of every item sent, so a later run can tell what changed. */
+    contentHashes?: Record<string, string>
     note?: string
     assignee?: string | null
   }
@@ -161,7 +170,8 @@ export function getLatestVerdict(
       validationId: event.payload.validationId,
       verdict: event.payload.verdict ?? (event.type === 'review.ai_passed' ? 'passed' : 'rejected'),
       rulesVersion: event.payload.rulesVersion,
-      items: event.payload.items
+      items: event.payload.items,
+      staleItemIds: event.payload.staleItemIds
     }
   }
 }
@@ -172,15 +182,16 @@ export function startOfUtcDay(now: number): number {
 }
 
 /**
- * Automatic reviews used today: verdicts newer than the later of today 00:00 UTC and the newest curator
- * decision. The server counts the same way, so the button and the 429 agree. `events` newest first.
+ * Automatic reviews used today: every run the creator caused (the publish, a retry, submitted changes; never
+ * the server's own re-sends) newer than the later of today 00:00 UTC and the newest curator decision. The
+ * server counts the same way, so the counter and the 429 agree. `events` newest first.
  */
 export function countValidationAttempts(events: CollectionEvent[], now = Date.now()): number {
   const dayStart = startOfUtcDay(now)
   let attempts = 0
   for (const event of events) {
     if (event.createdAt < dayStart || HUMAN_DECISION_TYPES.has(event.type)) break
-    if (VERDICT_TYPES.has(event.type)) attempts++
+    if (event.type === 'review.ai_started' && event.payload.trigger !== 'sweep') attempts++
   }
   return attempts
 }
@@ -269,4 +280,33 @@ export type ValidationTrigger = (typeof VALIDATION_TRIGGERS)[number]
 
 export function isValidationTrigger(value: unknown): value is ValidationTrigger {
   return typeof value === 'string' && (VALIDATION_TRIGGERS as readonly string[]).includes(value)
+}
+
+/** One validator finding as the item checks show it, so the automatic review reads like the browser's. */
+export function toValidationIssue(finding: ValidationFinding): ValidationIssue {
+  return {
+    code: finding.rule,
+    severity: finding.severity === 'error' ? ValidationSeverity.ERROR : ValidationSeverity.WARNING,
+    message: finding.fix ? `${finding.message} ${finding.fix}` : finding.message,
+    title: finding.check,
+    where: finding.where,
+    bodyShapes: finding.bodyShape ? [finding.bodyShape === 'male' ? BodyShapeId.MALE : BodyShapeId.FEMALE] : undefined,
+    source: 'ai'
+  }
+}
+
+/**
+ * The newest rejection's findings per item that did not pass, keyed by item id; empty once the validator
+ * passed the collection, while no verdict exists, or when the latest one is stale (edited since).
+ */
+export function getAiIssuesByItem(events: CollectionEvent[]): Map<string, ValidationIssue[]> {
+  const verdict = getLatestVerdict(events)
+  const issues = new Map<string, ValidationIssue[]>()
+  if (!verdict || verdict.payload.verdict !== 'rejected') return issues
+  const stale = new Set(verdict.payload.staleItemIds ?? [])
+  for (const item of getFailedItems(verdict.payload)) {
+    if (stale.has(item.itemId) || item.findings.length === 0) continue
+    issues.set(item.itemId, item.findings.map(toValidationIssue))
+  }
+  return issues
 }

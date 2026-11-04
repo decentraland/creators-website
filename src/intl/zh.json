@@ -333,7 +333,8 @@
       "reviewing": "审核员正在审核您的系列。"
     },
     "push_blocker": {
-      "has_invalid_items": "请先修复标为红色的 {count, plural, one {# 个物品} other {# 个物品}}才能提交审核。"
+      "has_invalid_items": "请先修复标为红色的 {count, plural, one {# 个物品} other {# 个物品}}才能提交审核。",
+      "reviewing": "您的系列正在自动审核中。审核完成后（约 5 分钟）即可发布更改。"
     }
   },
   "publish_collection_modal": {
@@ -990,7 +991,8 @@
         "signing": "请在钱包中确认以启用该第三方。",
         "pending": "正在启用第三方…"
       }
-    }
+    },
+    "read_only_reviewing": "系列自动审核进行期间（约 5 分钟），此物品为只读。"
   },
   "zoom_controls": {
     "in": "放大",
@@ -2044,6 +2046,59 @@
       "description": "{items} 包含预览视频，而内容服务器不接受关联物品带有视频。未在链上执行任何操作。创作者需要在不含视频的情况下重新上传这些物品。"
     }
   },
+  "review_flow": {
+    "notice": {
+      "ai_reviewing": "我们正在自动检查您的系列，通常需要几分钟。",
+      "awaiting_curator": "自动检查已通过。接下来审核员将审核您的系列。",
+      "awaiting_curator_assigned": "自动检查已通过。审核员正在审核您的系列。",
+      "human_review": "审核员将审核您的系列。",
+      "unsupported_items": "部分物品无法自动审核。审核员将审核您的系列。",
+      "appealed": "您已申请人工审核。审核员将查看您的系列。",
+      "validator_failed": "自动审核无法检查您的系列。审核员将进行审核。",
+      "too_large": "您的系列过大，无法自动审核。审核员将进行审核。",
+      "rejected_by_validator": "自动审核在您的物品中发现了问题。请修复后重新验证，或申请审核员审核您的系列。",
+      "rejected_by_curator": "审核员拒绝了您的系列。请修复其指出的问题并发布更改，或申请再次审核。"
+    },
+    "reviewing": {
+      "title": "正在审核系列",
+      "description": "您的系列正在审核以待批准，最多可能需要 5 分钟。审核完成后我们会通知您。"
+    },
+    "attempts": "自动审核：今日已用 {used}/{max} 次",
+    "issues": {
+      "title": "部分物品需要您的注意",
+      "intro": "我们发现了一些问题，需要先解决才能发布您的系列。您可以修复后重试；如果您认为这些问题标记有误，也可以申请审核员审核。",
+      "request": "申请审核员审核",
+      "back": "返回系列",
+      "see": "查看问题"
+    },
+    "request": {
+      "title": "申请审核员审核？",
+      "description": "如果您认为检测到的问题有误，可以申请 Decentraland 审核员进行审核，最多可能需要 48 小时。审核完成后我们会通知您。",
+      "cancel": "取消",
+      "confirm": "申请审核"
+    },
+    "sent": {
+      "title": "系列已送审！",
+      "description": "您的系列已发送给 Decentraland 审核员审核，最多可能需要 48 小时。无论您的系列获得批准还是需要修改，审核完成后我们都会通知您。"
+    },
+    "limit": {
+      "title": "已达到每日自动审核上限",
+      "description": "您已达到每日 {max} 次自动审核的上限。您可以申请 Decentraland 审核员进行人工审核（可能需要更长时间），或等待 24 小时后再试。",
+      "not_now": "暂不",
+      "request": "申请审核员审核"
+    },
+    "additional": {
+      "title": "您的系列需要额外审核",
+      "description": "您系列中的部分内容需要进一步查看。我们已将其发送给 Decentraland 审核员审核，最多可能需要 48 小时。获得批准或需要修改时，我们会通知您。"
+    },
+    "validate_again": "重新验证（今日剩余 {left}/{max} 次）",
+    "request_review": "申请审核员审核",
+    "running": "已有一次审核正在进行，请在完成后再试。",
+    "appeal_open": "此系列已申请过审核员审核。",
+    "appeal_error": "我们无法发送您的申请，请重试。",
+    "validation_started": "自动审核已开始。完成后我们会更新此页面。",
+    "validation_error": "我们无法启动自动审核，请重试。"
+  },
   "review_stage": {
     "ai_reviewing": "AI 审核中",
     "awaiting_curator": "已通过，等待审核员",
@@ -2087,48 +2142,6 @@
       "male": "男性",
       "female": "女性"
     }
-  },
-  "review_panel": {
-    "ai_reviewing": "我们正在自动检查您的系列，通常需要几分钟。",
-    "awaiting_curator": "自动检查已通过。接下来审核员将审核您的系列。",
-    "awaiting_curator_assigned": "自动检查已通过。审核员正在审核您的系列。",
-    "human_review": "审核员将审核您的系列。",
-    "unsupported_items": "部分物品无法自动审核。审核员将审核您的系列。",
-    "appealed": "您已申请人工审核。审核员将查看您的系列。",
-    "rejected_by_validator": {
-      "title": "自动审核发现了问题",
-      "description": "修复下方问题后重新验证，或请审核员进行审核。"
-    },
-    "rejected_by_curator": {
-      "title": "审核员拒绝了您的系列",
-      "description": "修复审核员指出的问题后重新验证，或再次申请人工审核。"
-    },
-    "reasons": "原因",
-    "message": "审核员的留言",
-    "validate_again": "重新验证",
-    "attempts_left": "{left, plural, =0 {今日自动审核次数已用完} other {今日剩余 # 次（共 {max} 次）}}",
-    "attempts_exhausted": "您已用完今日的 {max} 次自动审核。请明天再试。",
-    "validation_running": "已有一次自动审核正在进行。",
-    "validation_started": "自动审核已开始。完成后我们会更新此页面。",
-    "validation_limit": "您已用完今日的自动审核次数。请{time}再试。",
-    "validation_limit_tomorrow": "您已用完今日的自动审核次数。请明天再试。",
-    "validation_error": "我们无法启动自动审核，请重试。",
-    "request_review": "申请人工审核",
-    "appeal_open": "已申请过人工审核。",
-    "no_access": "只有所有者和协作者可以重新验证或申请人工审核。",
-    "validator_failed": "自动审核无法检查您的系列。审核员将进行审核。",
-    "too_large": "您的系列过大，无法自动审核。审核员将进行审核。"
-  },
-  "appeal_modal": {
-    "title": "申请人工审核",
-    "description": "审核员将查看您的系列并做出决定。请说明您做了哪些更改，或为什么您认为它符合规范。",
-    "note": "给审核员的留言",
-    "note_placeholder": "您修复了什么，或为什么不同意此次拒绝？",
-    "cancel": "取消",
-    "submit": "发送申请",
-    "success": "审核员将审核您的系列。",
-    "already_open": "此系列已申请过人工审核。",
-    "error": "我们无法发送您的申请，请重试。"
   },
   "reject_curation_modal": {
     "title": "拒绝 {collection}",

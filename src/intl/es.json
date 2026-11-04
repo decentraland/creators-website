@@ -333,7 +333,8 @@
       "rejected": "El comité de curaduría rechazó la última versión de esta colección. Actualiza tus ítems y envíalos a revisión de nuevo."
     },
     "push_blocker": {
-      "has_invalid_items": "Corrige {count, plural, one {# ítem marcado} other {# ítems marcados}} en rojo antes de enviar a revisión."
+      "has_invalid_items": "Corrige {count, plural, one {# ítem marcado} other {# ítems marcados}} en rojo antes de enviar a revisión.",
+      "reviewing": "Tu colección se está revisando automáticamente. Podrás publicar cambios cuando termine (unos 5 minutos)."
     }
   },
   "publish_collection_modal": {
@@ -990,7 +991,8 @@
         "signing": "Confirma en tu wallet para habilitar el tercero.",
         "pending": "Habilitando tercero…"
       }
-    }
+    },
+    "read_only_reviewing": "Este ítem es de solo lectura mientras se ejecuta la revisión automática de la colección (unos 5 minutos)."
   },
   "zoom_controls": {
     "in": "Acercar",
@@ -2044,6 +2046,59 @@
       "description": "{items} incluyen un video de vista previa, que los servidores de contenido no aceptan en ítems vinculados. No se registró nada en la blockchain. El creador debe volver a subirlos sin el video."
     }
   },
+  "review_flow": {
+    "notice": {
+      "ai_reviewing": "Estamos revisando tu colección automáticamente. Suele tardar unos minutos.",
+      "awaiting_curator": "La revisión automática pasó. Ahora la revisará un curador.",
+      "awaiting_curator_assigned": "La revisión automática pasó. Un curador está revisando tu colección.",
+      "human_review": "Un curador revisará tu colección.",
+      "unsupported_items": "Algunos ítems no se pueden revisar automáticamente. Un curador revisará tu colección.",
+      "appealed": "Pediste una revisión humana. Un curador revisará tu colección.",
+      "validator_failed": "La revisión automática no pudo revisar tu colección. La revisará un curador.",
+      "too_large": "Tu colección es demasiado grande para la revisión automática. La revisará un curador.",
+      "rejected_by_validator": "La revisión automática encontró problemas en tus ítems. Corrígelos y valida de nuevo, o pide que un curador revise tu colección.",
+      "rejected_by_curator": "Un curador rechazó tu colección. Corrige lo que señaló y publica tus cambios, o pide otra revisión."
+    },
+    "reviewing": {
+      "title": "Revisando la colección",
+      "description": "Tu colección se está revisando para su aprobación. Puede tardar hasta 5 minutos. Te avisaremos cuando la revisión termine."
+    },
+    "attempts": "Revisiones automáticas: {used} de {max} usadas hoy",
+    "issues": {
+      "title": "Algunos ítems necesitan tu atención",
+      "intro": "Encontramos algunos problemas que hay que resolver antes de publicar tu colección. Puedes corregirlos e intentarlo de nuevo, o pedir una revisión de un curador si crees que se marcaron por error.",
+      "request": "Pedir revisión de un curador",
+      "back": "Volver a la colección",
+      "see": "Ver los problemas"
+    },
+    "request": {
+      "title": "¿Pedir una revisión de un curador?",
+      "description": "Si crees que los problemas detectados no son correctos, puedes pedir una revisión a un curador de Decentraland. Puede tardar hasta 48 horas. Te avisaremos cuando la revisión termine.",
+      "cancel": "Cancelar",
+      "confirm": "Pedir revisión"
+    },
+    "sent": {
+      "title": "¡Colección enviada a revisión!",
+      "description": "Tu colección se envió a un curador de Decentraland para su revisión. Puede tardar hasta 48 horas. Te avisaremos cuando termine, tanto si tu colección se aprueba como si necesita cambios."
+    },
+    "limit": {
+      "title": "Alcanzaste el límite diario de revisiones automáticas",
+      "description": "Alcanzaste el límite de {max} revisiones automáticas por día. Puedes pedir una revisión manual a un curador de Decentraland, que puede tardar un poco más, o esperar 24 horas para intentarlo de nuevo.",
+      "not_now": "Ahora no",
+      "request": "Pedir revisión de un curador"
+    },
+    "additional": {
+      "title": "Tu colección necesita una revisión adicional",
+      "description": "Parte del contenido de tu colección requiere una mirada más detallada. La enviamos a un curador de Decentraland para su revisión, que puede tardar hasta 48 horas. Te avisaremos cuando se apruebe o si hace falta algún cambio."
+    },
+    "validate_again": "Validar de nuevo ({left} de {max} restantes hoy)",
+    "request_review": "Pedir revisión de un curador",
+    "running": "Ya hay una revisión en curso. Inténtalo cuando termine.",
+    "appeal_open": "Ya se pidió una revisión de un curador para esta colección.",
+    "appeal_error": "No pudimos enviar tu solicitud. Inténtalo de nuevo.",
+    "validation_started": "Revisión automática iniciada. Actualizaremos esta página cuando termine.",
+    "validation_error": "No pudimos iniciar la revisión automática. Inténtalo de nuevo."
+  },
   "review_stage": {
     "ai_reviewing": "Revisión automática",
     "awaiting_curator": "Aprobada por la IA, espera curador",
@@ -2087,48 +2142,6 @@
       "male": "Masculino",
       "female": "Femenino"
     }
-  },
-  "review_panel": {
-    "ai_reviewing": "Estamos revisando tu colección automáticamente. Suele tardar unos minutos.",
-    "awaiting_curator": "La revisión automática pasó. Ahora la revisará un curador.",
-    "awaiting_curator_assigned": "La revisión automática pasó. Un curador está revisando tu colección.",
-    "human_review": "Un curador revisará tu colección.",
-    "unsupported_items": "Algunos ítems no se pueden revisar automáticamente. Un curador revisará tu colección.",
-    "appealed": "Pediste una revisión humana. Un curador revisará tu colección.",
-    "rejected_by_validator": {
-      "title": "La revisión automática encontró problemas",
-      "description": "Corrige los problemas de abajo y vuelve a validar, o pide que la revise un curador."
-    },
-    "rejected_by_curator": {
-      "title": "Un curador rechazó tu colección",
-      "description": "Corrige lo que señaló el curador y vuelve a validar, o pide otra revisión humana."
-    },
-    "reasons": "Motivos",
-    "message": "Mensaje del curador",
-    "validate_again": "Validar de nuevo",
-    "attempts_left": "{left, plural, =0 {No quedan revisiones automáticas hoy} one {Queda # de {max} hoy} other {Quedan # de {max} hoy}}",
-    "attempts_exhausted": "Ya usaste las {max} revisiones automáticas de hoy. Inténtalo mañana.",
-    "validation_running": "Ya hay una revisión automática en curso.",
-    "validation_started": "Revisión automática iniciada. Actualizaremos esta página cuando termine.",
-    "validation_limit": "Ya usaste las revisiones automáticas de hoy. Inténtalo {time}.",
-    "validation_limit_tomorrow": "Ya usaste las revisiones automáticas de hoy. Inténtalo mañana.",
-    "validation_error": "No pudimos iniciar la revisión automática. Inténtalo de nuevo.",
-    "request_review": "Pedir revisión humana",
-    "appeal_open": "Ya se pidió una revisión humana.",
-    "no_access": "Solo el dueño y los colaboradores pueden volver a validar o pedir una revisión humana.",
-    "validator_failed": "La revisión automática no pudo revisar tu colección. La revisará un curador.",
-    "too_large": "Tu colección es demasiado grande para la revisión automática. La revisará un curador."
-  },
-  "appeal_modal": {
-    "title": "Pedir una revisión humana",
-    "description": "Un curador revisará tu colección y decidirá. Cuéntale qué cambiaste o por qué crees que cumple.",
-    "note": "Nota para los curadores",
-    "note_placeholder": "¿Qué arreglaste o por qué no estás de acuerdo con el rechazo?",
-    "cancel": "Cancelar",
-    "submit": "Enviar solicitud",
-    "success": "Un curador revisará tu colección.",
-    "already_open": "Ya se pidió una revisión humana para esta colección.",
-    "error": "No pudimos enviar tu solicitud. Inténtalo de nuevo."
   },
   "reject_curation_modal": {
     "title": "Rechazar {collection}",

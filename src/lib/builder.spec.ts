@@ -458,6 +458,15 @@ describe('curation requests', () => {
     expect(signedFetchMock.mock.calls[1][3].body).toBeUndefined()
   })
 
+  it("turns the daily limit on a creator's request into the error carrying when to retry", async () => {
+    signedFetchMock.mockResolvedValue(
+      jsonResponse({ ok: false, error: 'Too many attempts', data: { retryAt: '2026-09-30T00:00:00Z' } }, false, 429)
+    )
+    const error = await pushCollectionCuration(ADDRESS, 'a1b2').catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(ValidationLimitError)
+    expect((error as ValidationLimitError).retryAt).toBe(Date.parse('2026-09-30T00:00:00Z'))
+  })
+
   it('patches the status or the assignee of the latest request', async () => {
     signedFetchMock.mockResolvedValue(okResponse({ ...remoteCuration, status: 'rejected' }))
     await expect(updateCollectionCuration(ADDRESS, 'a1b2', { status: 'rejected' })).resolves.toMatchObject({
@@ -589,7 +598,7 @@ describe('collection events and review requests', () => {
     expect((error as BuilderServerError).status).toBe(409)
   })
 
-  it('sends the appeal note', async () => {
+  it('sends the appeal note, or an empty body without one', async () => {
     signedFetchMock.mockResolvedValue(jsonResponse({ ok: true }))
     await appealCollectionCuration(ADDRESS, 'a1b2', 'Fixed the sleeves')
     expect(signedFetchMock.mock.calls[0][2]).toBe('/collections/a1b2/curation/appeal')
@@ -597,6 +606,9 @@ describe('collection events and review requests', () => {
       method: 'POST',
       body: JSON.stringify({ note: 'Fixed the sleeves' })
     })
+
+    await appealCollectionCuration(ADDRESS, 'a1b2')
+    expect(signedFetchMock.mock.calls[1][3]).toMatchObject({ method: 'POST', body: JSON.stringify({}) })
   })
 
   it('sends the rejection reasons and message with the status', async () => {

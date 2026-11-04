@@ -199,13 +199,16 @@ export async function pushCollectionCuration(
   assignee?: string | null
 ): Promise<CollectionCuration> {
   const body = assignee === undefined ? undefined : { curation: { assignee } }
-  const remote = await request<RemoteCollectionCuration>(
-    address,
-    'POST',
-    `/collections/${collectionId}/curation`,
-    '',
-    body
-  )
+  let remote: RemoteCollectionCuration
+  try {
+    remote = await request<RemoteCollectionCuration>(address, 'POST', `/collections/${collectionId}/curation`, '', body)
+  } catch (error) {
+    // A creator's changes wait for the day's automatic reviews like a retry does.
+    if (error instanceof BuilderServerError && error.status === VALIDATION_LIMIT_STATUS) {
+      throw new ValidationLimitError(error)
+    }
+    throw error
+  }
   return fromRemoteCuration(remote)
 }
 
@@ -540,8 +543,9 @@ export async function fetchLinkedApprovalData(address: string, collectionId: str
 }
 
 /** Escalates a rejection to a human curator: POST /collections/{id}/curation/appeal. 409 while an appeal is open. */
-export async function appealCollectionCuration(address: string, collectionId: string, note: string): Promise<void> {
-  await request<unknown>(address, 'POST', `/collections/${collectionId}/curation/appeal`, '', { note }, false)
+export async function appealCollectionCuration(address: string, collectionId: string, note = ''): Promise<void> {
+  const body = note.trim() ? { note: note.trim() } : {}
+  await request<unknown>(address, 'POST', `/collections/${collectionId}/curation/appeal`, '', body, false)
 }
 
 /**

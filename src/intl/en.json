@@ -333,7 +333,8 @@
       "rejected": "The curation committee rejected the latest version of this collection. Update your items and send them for review again."
     },
     "push_blocker": {
-      "has_invalid_items": "Fix {count, plural, one {# item} other {# items}} marked in red before sending for review."
+      "has_invalid_items": "Fix {count, plural, one {# item} other {# items}} marked in red before sending for review.",
+      "reviewing": "Your collection is being reviewed automatically. You can publish changes once it finishes (about 5 minutes)."
     }
   },
   "publish_collection_modal": {
@@ -990,7 +991,8 @@
         "signing": "Please confirm in your wallet to enable the third party.",
         "pending": "Enabling third party…"
       }
-    }
+    },
+    "read_only_reviewing": "This item is read-only while the automatic review of the collection runs (about 5 minutes)."
   },
   "zoom_controls": {
     "in": "Zoom in",
@@ -2044,6 +2046,59 @@
       "description": "{items} include a preview video, which the content servers don't accept for linked items. Nothing was put on chain. The creator needs to upload them again without the video."
     }
   },
+  "review_flow": {
+    "notice": {
+      "ai_reviewing": "We're checking your collection automatically. This usually takes a few minutes.",
+      "awaiting_curator": "Automatic checks passed. A curator will review your collection next.",
+      "awaiting_curator_assigned": "Automatic checks passed. A curator is reviewing your collection.",
+      "human_review": "A curator will review your collection.",
+      "unsupported_items": "Some items can't be reviewed automatically. A curator will review your collection.",
+      "appealed": "You asked for a human review. A curator will look at your collection.",
+      "validator_failed": "The automatic review couldn't check your collection. A curator will review it.",
+      "too_large": "Your collection is too large for the automatic review. A curator will review it.",
+      "rejected_by_validator": "The automatic review found issues in your items. Fix them and validate again, or ask a curator to review your collection.",
+      "rejected_by_curator": "A curator rejected your collection. Fix what they pointed out and publish your changes, or ask for another review."
+    },
+    "reviewing": {
+      "title": "Reviewing collection",
+      "description": "Your collection is being reviewed for approval. This may take up to 5 minutes. We'll notify you once the review is complete."
+    },
+    "attempts": "Automated reviews: {used} of {max} used today",
+    "issues": {
+      "title": "Some items need your attention",
+      "intro": "We found a few issues that need to be resolved before your collection can be published. You can fix them and try again, or request a curator review if you believe the issues were flagged incorrectly.",
+      "request": "Request curator review",
+      "back": "Back to collection",
+      "see": "See the issues"
+    },
+    "request": {
+      "title": "Request curator review?",
+      "description": "If you believe the detected issues are incorrect, you can request a review from a Decentraland curator. This may take up to 48 hours. We'll notify you once the review is complete.",
+      "cancel": "Cancel",
+      "confirm": "Request review"
+    },
+    "sent": {
+      "title": "Collection sent for review!",
+      "description": "Your collection has been sent to a Decentraland curator for review. This may take up to 48 hours. We'll notify you once the review is complete, whether your collection is approved or needs changes."
+    },
+    "limit": {
+      "title": "Daily automated review limit reached",
+      "description": "You've reached the limit of {max} automated reviews per day. You can request a manual review from a Decentraland curator, which may take a little longer, or wait 24 hours to try again.",
+      "not_now": "Not now",
+      "request": "Request curator review"
+    },
+    "additional": {
+      "title": "Your collection needs an additional review",
+      "description": "Some content in your collection requires a closer look. We've sent it to a Decentraland curator for review, which may take up to 48 hours. We'll notify you once it's approved or if any changes are needed."
+    },
+    "validate_again": "Validate again ({left} of {max} left today)",
+    "request_review": "Request curator review",
+    "running": "A review is already running. Try again when it finishes.",
+    "appeal_open": "A curator review was already requested for this collection.",
+    "appeal_error": "We couldn't send your request. Please try again.",
+    "validation_started": "Automatic review started. We'll update this page when it finishes.",
+    "validation_error": "We couldn't start the automatic review. Please try again."
+  },
   "review_stage": {
     "ai_reviewing": "AI reviewing",
     "awaiting_curator": "Passed, awaiting curator",
@@ -2087,48 +2142,6 @@
       "male": "Male",
       "female": "Female"
     }
-  },
-  "review_panel": {
-    "ai_reviewing": "We're checking your collection automatically. This usually takes a few minutes.",
-    "awaiting_curator": "Automatic checks passed. A curator will review your collection next.",
-    "awaiting_curator_assigned": "Automatic checks passed. A curator is reviewing your collection.",
-    "human_review": "A curator will review your collection.",
-    "unsupported_items": "Some items can't be reviewed automatically. A curator will review your collection.",
-    "appealed": "You asked for a human review. A curator will look at your collection.",
-    "rejected_by_validator": {
-      "title": "The automatic review found issues",
-      "description": "Fix the issues below and validate again, or ask a curator to review it."
-    },
-    "rejected_by_curator": {
-      "title": "A curator rejected your collection",
-      "description": "Fix what the curator pointed out and validate again, or ask for another human review."
-    },
-    "reasons": "Reasons",
-    "message": "Message from the curator",
-    "validate_again": "Validate again",
-    "attempts_left": "{left, plural, =0 {No automatic reviews left today} one {# of {max} left today} other {# of {max} left today}}",
-    "attempts_exhausted": "You've used today's {max} automatic reviews. Try again tomorrow.",
-    "validation_running": "An automatic review is already running.",
-    "validation_started": "Automatic review started. We'll update this page when it finishes.",
-    "validation_limit": "You've used today's automatic reviews. Try again {time}.",
-    "validation_limit_tomorrow": "You've used today's automatic reviews. Try again tomorrow.",
-    "validation_error": "We couldn't start the automatic review. Please try again.",
-    "request_review": "Request human review",
-    "appeal_open": "A human review was already requested.",
-    "no_access": "Only the owner and collaborators can validate again or request a human review.",
-    "validator_failed": "The automatic review couldn't check your collection. A curator will review it.",
-    "too_large": "Your collection is too large for the automatic review. A curator will review it."
-  },
-  "appeal_modal": {
-    "title": "Request a human review",
-    "description": "A curator will look at your collection and decide. Tell them what you changed or why you think it complies.",
-    "note": "Note for the curators",
-    "note_placeholder": "What did you fix, or why do you disagree with the rejection?",
-    "cancel": "Cancel",
-    "submit": "Send request",
-    "success": "A curator will review your collection.",
-    "already_open": "A human review was already requested for this collection.",
-    "error": "We couldn't send your request. Please try again."
   },
   "reject_curation_modal": {
     "title": "Reject {collection}",

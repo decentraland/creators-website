@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { BodyShape } from '@dcl/schemas'
+import { ValidationSeverity } from '~/lib/validation'
 import {
   countValidationAttempts,
   fromRemoteEvent,
+  getAiIssuesByItem,
   getFailedItems,
   getLatestVerdict,
   getValidationAttemptsLeft,
@@ -48,37 +51,97 @@ describe('fromRemoteEvent', () => {
 })
 
 describe('countValidationAttempts', () => {
-  it('counts only verdicts, never starts or errors', () => {
+  it('counts the runs the creator caused, never the sweep re-sends nor the verdicts', () => {
     const events = [
-      event('review.ai_started', NOW),
+      event('review.ai_started', NOW, { trigger: 'sweep' }),
       event('review.ai_rejected', NOW - 1000),
-      event('review.ai_error', NOW - 2000),
-      event('review.ai_started', NOW - 3000),
-      event('review.ai_passed', NOW - 4000)
+      event('review.ai_started', NOW - 2000, { trigger: 'retry' }),
+      event('review.ai_error', NOW - 3000),
+      event('review.ai_started', NOW - 4000, { trigger: 'changes' }),
+      event('review.ai_passed', NOW - 5000),
+      event('review.ai_started', NOW - 6000, { trigger: 'publish' })
     ]
-    expect(countValidationAttempts(events, NOW)).toBe(2)
-    expect(getValidationAttemptsLeft(events, NOW)).toBe(1)
+    expect(countValidationAttempts(events, NOW)).toBe(3)
+    expect(getValidationAttemptsLeft(events, NOW)).toBe(0)
+  })
+
+  it('reads one review used right after publishing', () => {
+    const events = [event('review.ai_started', NOW, { trigger: 'publish' }), event('collection.published', NOW - 1)]
+    expect(countValidationAttempts(events, NOW)).toBe(1)
+    expect(getValidationAttemptsLeft(events, NOW)).toBe(2)
   })
 
   it('resets at 00:00 UTC', () => {
-    const events = [event('review.ai_rejected', TODAY + 1), event('review.ai_rejected', TODAY - 1)]
+    const events = [
+      event('review.ai_started', TODAY + 1, { trigger: 'retry' }),
+      event('review.ai_started', TODAY - 1, { trigger: 'retry' })
+    ]
     expect(startOfUtcDay(NOW)).toBe(TODAY)
     expect(countValidationAttempts(events, NOW)).toBe(1)
   })
 
   it('resets after a curator decision', () => {
     const events = [
-      event('review.ai_rejected', NOW - 1000),
+      event('review.ai_started', NOW - 1000, { trigger: 'retry' }),
       event('review.approved', NOW - 2000),
-      event('review.ai_rejected', NOW - 3000),
-      event('review.ai_rejected', NOW - 4000)
+      event('review.ai_started', NOW - 3000, { trigger: 'retry' }),
+      event('review.ai_started', NOW - 4000, { trigger: 'publish' })
     ]
     expect(countValidationAttempts(events, NOW)).toBe(1)
   })
 
   it('clamps the attempts left at zero', () => {
-    const events = Array.from({ length: 4 }, (_, i) => event('review.ai_rejected', NOW - i))
+    const events = Array.from({ length: 4 }, (_, i) => event('review.ai_started', NOW - i, { trigger: 'retry' }))
     expect(getValidationAttemptsLeft(events, NOW)).toBe(0)
+  })
+})
+
+describe('getAiIssuesByItem', () => {
+  const finding: ValidationFinding = {
+    rule: 'M-01',
+    check: 'Triangle count',
+    severity: 'error',
+    message: 'Too many triangles.',
+    fix: 'Decimate the mesh.',
+    bodyShape: 'male',
+    where: 'male/hat.glb'
+  }
+
+  it("dresses the newest rejection's findings per failed item like the browser's checks", () => {
+    const events = [
+      event('review.ai_rejected', NOW, {
+        verdict: 'rejected',
+        items: [
+          { itemId: 'i1', contentHash: 'h', passed: false, findings: [finding] },
+          { itemId: 'i2', contentHash: 'h', passed: true, findings: [] },
+          { itemId: 'i3', contentHash: 'h', passed: null, findings: [], unsupported: true }
+        ]
+      })
+    ]
+    const issues = getAiIssuesByItem(events)
+    expect([...issues.keys()]).toEqual(['i1'])
+    expect(issues.get('i1')).toEqual([
+      {
+        code: 'M-01',
+        severity: ValidationSeverity.ERROR,
+        message: 'Too many triangles. Decimate the mesh.',
+        title: 'Triangle count',
+        where: 'male/hat.glb',
+        bodyShapes: [BodyShape.MALE],
+        source: 'ai'
+      }
+    ])
+  })
+
+  it('shows nothing after a pass, without a verdict, or for items edited while the validator ran', () => {
+    const rejected = { itemId: 'i1', contentHash: 'h', passed: false, findings: [finding] }
+    expect(getAiIssuesByItem([event('review.ai_passed', NOW, { verdict: 'passed', items: [] })]).size).toBe(0)
+    expect(getAiIssuesByItem([event('review.ai_started', NOW)]).size).toBe(0)
+    expect(
+      getAiIssuesByItem([
+        event('review.ai_rejected', NOW, { verdict: 'rejected', items: [rejected], staleItemIds: ['i1'] })
+      ]).size
+    ).toBe(0)
   })
 })
 
