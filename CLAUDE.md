@@ -40,14 +40,14 @@ Node >= 24 required. Pre-commit (simple-git-hooks + nano-staged, installed on `n
 
 ### App boundaries: served by path at `/create`
 
-This SPA is the creator surface of decentraland.org: it is served **by path** at `decentraland.org/create` (`.zone`/`.today` per environment), the router's `basename` is `/create` whenever the page URL starts with it (`src/config/index.ts`, `resolveBasePath`) and `/` otherwise (local dev, Vercel previews), so one build works in both. It owns the creator home ("Overview", `components/OverviewPage`, spec `design/OVERVIEW_SPEC.md`) at `/` and the collections surfaces under `/collections`; `/overview` survives only as a redirect to `/` for old links. The overview's outbound destinations (places, blog, Creator Hub download, docs, Discord) are plain full-page links built from `SITES_URL` / `DOCS_URL` / `DISCORD_URL` in the env config, never router routes:
+This SPA is the creator surface of decentraland.org: it is served **by path** at `decentraland.org/create` (`.zone`/`.today` per environment), the router's `basename` is `/create` whenever the page URL starts with it (`src/config/index.ts`, `resolveBasePath`) and `/` otherwise (local dev, Vercel previews), so one build works in both. It owns the creator home ("Overview", `components/OverviewPage`) at `/` and the collections surfaces under `/collections`; `/overview` survives only as a redirect to `/` for old links. The overview's outbound destinations (places, blog, Creator Hub download, docs, Discord) are plain full-page links built from `SITES_URL` / `DOCS_URL` / `DISCORD_URL` in the env config, never router routes:
 
 - **Scenes** and **Land** tabs link to the legacy builder at `BUILDER_URL`.
 - The hot-scenes rail reads `HOT_SCENES_URL`; the blog rail reads the Contentful CMS (`CMS_API_URL` + space + environment).
 
-Item editor (`/collections/editor`, spec `design/ITEM_EDITOR_SPEC.md`): the shared `~/components/AvatarPreview` mounts ui2's `WearablePreview` once with a frozen URL snapshot and pushes every later change through `lib/previewBridge` (postMessage UPDATE), so avatar/item changes never reload the iframe. The renderer is decided per mount by `lib/pickRenderer` (`unity-wearable-preview` flag via `lib/featureFlags`, `?unity=false` override resolved in `src/config`). Model checks go through the swappable `lib/validation` module (README inside); spring bone physics through `lib/springBones`.
+Item editor (`/collections/editor`): the shared `~/components/AvatarPreview` mounts ui2's `WearablePreview` once with a frozen URL snapshot and pushes every later change through `lib/previewBridge` (postMessage UPDATE), so avatar/item changes never reload the iframe. The renderer is decided per mount by `lib/pickRenderer` (`unity-wearable-preview` flag via `lib/featureFlags`, `?unity=false` override resolved in `src/config`). Model checks go through the swappable `lib/validation` module (README inside); spring bone physics through `lib/springBones`.
 
-Curation (`/curation`, spec `design/CURATION_SPEC.md`): committee members, per `useCommittee` (`GET /committee`, fails closed), get the Curation tab and review collections in the item editor with `?reviewing=true`: a read-only review mode that only committee members get (anyone else sees the regular editor under their own permissions). Committee chain writes go through `lib/collectionApproval` (`Committee.manageCollection`); the approval flow lives in `lib/approveCollection` and Catalyst entities in `lib/catalystEntity`, whose metadata key order is part of the content hash.
+Curation (`/curation`): committee members, per `useCommittee` (`GET /committee`, fails closed), get the Curation tab and review collections in the item editor with `?reviewing=true`: a read-only review mode that only committee members get (anyone else sees the regular editor under their own permissions). Committee chain writes go through `lib/collectionApproval` (`Committee.manageCollection`); the approval flow lives in `lib/approveCollection` and Catalyst entities in `lib/catalystEntity`, whose metadata key order is part of the content hash.
 
 Entry: `index.html` → `src/main.tsx` (creates the `BrowserRouter`, the single router call site — see `CONVENTIONS.md` — with `basename` from `~/config`) → `src/App.tsx` (declares the routes: `React.lazy` pages + `<Routes>`). Page components live in `src/components/` (`components/CollectionsPage`, …), one per route. Component organization is semantic — see "Component organization" in `CONVENTIONS.md`. Zustand stores in `src/store/`; business logic (API clients, flows, encoding) in `src/lib/` — heavily unit-tested, never in components; react-query hooks in `src/hooks/`; i18n provider and messages in `src/intl/`.
 
@@ -61,9 +61,20 @@ Runtime config lives in `src/config/index.ts`, built from per-environment JSON f
 
 Releases: `.github/workflows/cdn-deploy.yml` uploads `dist/` to the CDN as `@dcl/creators-site` through `decentraland/actions/cdn-deploy`. Every push to `main` deploys a commit build to `.zone` and `.today`; a published GitHub release (not a prerelease, cut from `main`) rebuilds with the tag as the version and deploys it there too. Any environment can be promoted by hand (Actions → CDN deploy → Run workflow with an environment, a version and a percentage); that is how production (`.org`) goes live, and it only takes a release tag, while `.zone` and `.today` also take a commit build (`1.0.0-<runId>.commit-<sha7>`). The `org` and `zone` GitHub environments only accept runs from protected branches, and `today` accepts `main` plus `*.*.*` tags. Rolling back is not one run: see the comments on the `promote` job. Versions published before this workflow existed (the npm-era builds) cannot be promoted, so a rollback cannot go past it. Source maps upload to Sentry only when `SENTRY_AUTH_TOKEN` is set and are deleted before the CDN upload.
 
-## Design specs are the source of truth
+## Documentation: `docs/` (committed) and `design/` (local)
 
-Feature behavior is specified in `design/*.md` before/alongside implementation, fed from the Figma mockups. Before changing a flow, read the matching spec. Code/copy rules live in `CONVENTIONS.md`.
+This repo is public, so anything committed is published. Two folders with different jobs:
+
+- **`docs/` is committed and is the team's shared context.** It holds what the code cannot explain and every contributor and agent must respect:
+  - `docs/DECISIONS.md`: product and technical decisions per flow — deliberate differences from the legacy Builder, scope cuts, back-end and chain facts the client depends on. **Read the section for the flow you are touching before changing it**; a behavior listed there is a decision, not a bug. When a change makes, reverses or extends a decision, update the entry in the same PR (rewrite in place, don't append contradictions).
+  - `docs/TRACKING_SPEC.md`: the analytics contract (event names, props, the `source` convention, what is deliberately not tracked). Code and spec change together.
+  - `docs/VALIDATION_PARITY.md`: every legacy client-side item validation and its status here; the acceptance criteria when a validation-bearing feature is migrated.
+
+  Keep `docs/` durable and short: no layout or copy descriptions (the code and Figma are the reference), no local paths, no plans or research, and nothing that isn't safe in a public repo.
+
+- **`design/` is gitignored and local.** It holds working documents: full feature specs written from the Figma mockups before and during implementation, legacy reviews, plans, research notes, audits. They are the source of truth _while a feature is being built_; once it ships the code is the better description, and only the durable residue (decisions, tracking, parity) moves to `docs/`. A spec there may be stale or describe unmerged work; the code and `docs/` win when they disagree. Don't reference `design/` files from committed files (code comments, `docs/`, PR descriptions), since other machines don't have them.
+
+Code/copy rules live in `CONVENTIONS.md`.
 
 The spec for all of Decentraland's public APIs is available at https://docs.decentraland.org/apis — consult it when integrating with or debugging any Decentraland API.
 
@@ -105,7 +116,7 @@ Unit tests for the logic layer, e2e for user flows.
 
 ### Analytics and error reporting (part of every feature plan)
 
-Every feature plan and spec includes an analytics section before implementation starts: the funnel of the feature's usage (entry → key steps → outcome) or the product metrics that match its business impact, as Segment events through `lib/analytics#track`, with names and props recorded in `design/TRACKING_SPEC.md` in the same change. Where a step can fail in a way the team must know about (a request the user can't recover from, a data or schema mismatch, an unexpected throw), report it to Sentry through `lib/monitoring#captureError` with a `flow` tag; expected states the user can fix themselves (offline, permission denied, validation warnings) are tracked as events, not errors. A feature without its events and error reporting is not "done".
+Every feature plan and spec includes an analytics section before implementation starts: the funnel of the feature's usage (entry → key steps → outcome) or the product metrics that match its business impact, as Segment events through `lib/analytics#track`, with names and props recorded in `docs/TRACKING_SPEC.md` in the same change. Where a step can fail in a way the team must know about (a request the user can't recover from, a data or schema mismatch, an unexpected throw), report it to Sentry through `lib/monitoring#captureError` with a `flow` tag; expected states the user can fix themselves (offline, permission denied, validation warnings) are tracked as events, not errors. A feature without its events and error reporting is not "done".
 
 ### Responsive (standing requirement)
 
