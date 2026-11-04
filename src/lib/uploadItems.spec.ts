@@ -201,6 +201,19 @@ describe('planDraftUpload', () => {
     )
   })
 
+  it("counts a batch variant's files in the draft it targets, too", async () => {
+    const base = draft('base', { bodyShape: BodyShapeType.MALE })
+    const variant = draft('variant', {
+      bodyShape: BodyShapeType.FEMALE,
+      variantTargetId: 'base',
+      contents: { 'f.glb': blob('f') },
+      model: 'f.glb'
+    })
+    const operation = await planDraftUpload('base', [variant, base], [])
+    expect(operation?.draftIds).toEqual(['base', 'variant'])
+    expect(operation?.built.blobs['female/f.glb']).toBeDefined()
+  })
+
   it('builds a variant of a saved item on top of that item', async () => {
     const { item: existing } = await buildItem({
       ...(draft('existing') as ItemDraftPayload),

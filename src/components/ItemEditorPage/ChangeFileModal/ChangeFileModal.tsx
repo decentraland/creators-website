@@ -122,7 +122,7 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
   // The item as Save would leave it, measured the catalyst way: the new files plus everything it keeps (the other
   // body shape's files, the thumbnail, new or kept, and the rarity image).
   const newThumbnail = keepThumbnail ? (draft?.contents[THUMBNAIL_PATH] ?? null) : null
-  const measuredSize = useMeasuredBytes(
+  const measuredBytes = useMeasuredBytes(
     file && !pickError
       ? async () =>
           toFileChangeSaveable(item, {
@@ -136,11 +136,8 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
   )
   const sizeCategory = (needsCategory ? category : null) ?? item.data.category
   const size = useMemo<ItemSize | null>(
-    () =>
-      measuredSize.bytes !== null
-        ? { bytes: measuredSize.bytes, limit: getItemSizeLimit(item.type, sizeCategory) }
-        : null,
-    [measuredSize.bytes, item.type, sizeCategory]
+    () => (measuredBytes !== null ? { bytes: measuredBytes, limit: getItemSizeLimit(item.type, sizeCategory) } : null),
+    [measuredBytes, item.type, sizeCategory]
   )
   const sizeText = useMemo(() => (size ? formatItemSize(size) : null), [size])
   const sizeExceeded = !!size && isOverSizeLimit(size)

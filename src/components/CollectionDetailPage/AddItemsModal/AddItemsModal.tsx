@@ -239,7 +239,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
     () => [selected?.id ?? null, identityKey(collectionItems), draftSizeKey(drafts)],
     [selected?.id, collectionItems, drafts]
   )
-  const measuredSize = useMeasuredBytes(
+  const measuredBytes = useMeasuredBytes(
     selected?.status === 'ready' && selected.type
       ? async () => (await planDraftUpload(selected.id, drafts.map(toPayload), collectionItems))?.built ?? null
       : null,
@@ -248,10 +248,10 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
   )
   const selectedSize = useMemo<ItemSize | null>(
     () =>
-      selected && measuredSize.bytes !== null
-        ? { bytes: measuredSize.bytes, limit: getDraftSizeLimit(selected, drafts, collectionItems) }
+      selected && measuredBytes !== null
+        ? { bytes: measuredBytes, limit: getDraftSizeLimit(selected, drafts, collectionItems) }
         : null,
-    [selected, measuredSize.bytes, drafts, collectionItems]
+    [selected, measuredBytes, drafts, collectionItems]
   )
 
   const isSelectedComplete = useMemo(

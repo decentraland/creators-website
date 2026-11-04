@@ -3,28 +3,51 @@
 import { useCallback, useMemo } from 'react'
 import { useQueries, useQuery, useQueryClient, type QueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { fetchContent, fetchContentSize } from '~/lib/builder'
-import { buildMissingImage } from '~/lib/catalystEntity'
+import { buildMissingImage, type ImageDeps } from '~/lib/catalystEntity'
 import { ItemFileError } from '~/lib/itemFiles'
-import { measureItem, measureItemBytes, type ItemSize, type MeasurableItem, type MeasureDeps } from '~/lib/itemSize'
+import {
+  MAX_CONCURRENT_MEASUREMENTS,
+  MEASUREMENT_TIMEOUT_MS,
+  createLimiter,
+  measureItem,
+  measureItemBytes,
+  type ItemSize,
+  type MeasurableItem,
+  type MeasureDeps
+} from '~/lib/itemSize'
 import { type Item } from '~/lib/items'
 import { generateCatalystImage } from '~/lib/media'
 import { captureError } from '~/lib/monitoring'
 
-const imageDeps = { fetchContent, renderCatalystImage: generateCatalystImage }
+/** How the approval flow renders the image.png an item saved without one deploys; measuring renders it the same way. */
+export const catalystImageDeps: ImageDeps = { fetchContent, renderCatalystImage: generateCatalystImage }
 
 export const contentSizeKey = (hash: string) => ['content-size', hash] as const
 
+// One queue for every measurement in the app, so a whole collection's sizes never open dozens of requests together.
+const limited = createLimiter(MAX_CONCURRENT_MEASUREMENTS)
+
 /**
  * Measuring for the app: a content hash names bytes that never change, so each stored file's size is read once and
- * cached; a legacy item saved without image.png gets the one the approval flow would render for it at deploy.
+ * cached; a standard item saved without image.png gets the one the approval flow would render for it at deploy.
+ * Requests wait their turn in one queue and each gets `timeoutMs` once it starts: a stalled one fails (and blocks
+ * nothing) instead of staying pending.
  */
-export function itemSizeDeps(queryClient: QueryClient): MeasureDeps {
+export function itemSizeDeps(
+  queryClient: QueryClient,
+  { timeoutMs = MEASUREMENT_TIMEOUT_MS }: { timeoutMs?: number } = {}
+): MeasureDeps {
+  const imageDeps: ImageDeps = {
+    ...catalystImageDeps,
+    fetchContent: hash => limited(() => fetchContent(hash, AbortSignal.timeout(timeoutMs)))
+  }
   return {
     sizeOf: hash =>
       queryClient.fetchQuery({
         queryKey: contentSizeKey(hash),
-        queryFn: () => fetchContentSize(hash),
-        staleTime: Infinity
+        queryFn: () => limited(() => fetchContentSize(hash, AbortSignal.timeout(timeoutMs))),
+        staleTime: Infinity,
+        retry: false
       }),
     imageOf: item => (item.contents[item.thumbnail] ? buildMissingImage(item, imageDeps) : Promise.resolve(null))
   }
@@ -35,20 +58,18 @@ export function useItemSizeDeps(): MeasureDeps {
   return useMemo(() => itemSizeDeps(queryClient), [queryClient])
 }
 
-export type MeasuredBytes = { bytes: number | null; isMeasuring: boolean }
-
 /**
  * The bytes of the item `build` resolves to, counted as the catalyst counts them: what a save would send, measured
- * before it is sent. `key` names the inputs that change the files (use `identityKey` for blobs and items); a new key
- * measures again with that render's `build`, and `build` null measures nothing. A build that can't be made yet (an
- * ItemFileError) or a measurement that fails leaves `bytes` null, the latter reported: nothing is blocked on a
- * measurement that didn't happen, and the save re-checks.
+ * before it is sent; null while unknown. `key` names the inputs that change the files (use `identityKey` for blobs
+ * and items); a new key measures again with that render's `build`, and `build` null measures nothing. A build that
+ * can't be made yet (an ItemFileError) is null. A measurement that fails is reported and stays failed, so a later
+ * mount tries again; nothing is blocked on it, and the save re-checks.
  */
 export function useMeasuredBytes(
   build: (() => Promise<MeasurableItem | null>) | null,
   key: readonly unknown[],
   flow: string
-): MeasuredBytes {
+): number | null {
   const deps = useItemSizeDeps()
   const query = useQuery({
     queryKey: ['measured-item-size', flow, ...key],
@@ -57,15 +78,16 @@ export function useMeasuredBytes(
         const built = await build!()
         return built ? await measureItemBytes(built, deps) : null
       } catch (error) {
-        if (!(error instanceof ItemFileError)) captureError(error, { flow, step: 'measure_size' })
-        return null
+        if (error instanceof ItemFileError) return null
+        captureError(error, { flow, step: 'measure_size' })
+        throw error
       }
     },
     enabled: build !== null,
     staleTime: Infinity,
     retry: false
   })
-  return { bytes: build ? (query.data ?? null) : null, isMeasuring: build !== null && query.isFetching }
+  return build ? (query.data ?? null) : null
 }
 
 /** A saved item's size key: its stored files plus what decides its limit and a missing rarity image. */

@@ -285,7 +285,7 @@ const ItemEditorPage = () => {
         : null,
     [selected, draftThumbnail, draftRarity]
   )
-  const measuredSize = useMeasuredBytes(
+  const measuredBytes = useMeasuredBytes(
     sizeBuild,
     [identityKey(selected), identityKey(draftThumbnail), draftRarity],
     'item_editor'
@@ -293,10 +293,10 @@ const ItemEditorPage = () => {
   const sizeCategory = form.draft.category ?? selected?.data.category
   const itemSize = useMemo<ItemSize | null>(
     () =>
-      selected && measuredSize.bytes !== null
-        ? { bytes: measuredSize.bytes, limit: getItemSizeLimit(selected.type, sizeCategory) }
+      selected && measuredBytes !== null
+        ? { bytes: measuredBytes, limit: getItemSizeLimit(selected.type, sizeCategory) }
         : null,
-    [selected, measuredSize.bytes, sizeCategory]
+    [selected, measuredBytes, sizeCategory]
   )
   const rerunValidation = useRerunValidation()
   const rerunSelectedValidation = useCallback(async () => {

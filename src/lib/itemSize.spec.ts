@@ -5,6 +5,7 @@ import { ItemFileError } from './itemFiles'
 import { BODY_SHAPE_FEMALE, BODY_SHAPE_MALE, BodyShapeType, ItemType, type Item } from './items'
 import {
   assertItemSize,
+  createLimiter,
   formatItemSize,
   getItemSizeLimit,
   guardItemSize,
@@ -178,6 +179,46 @@ describe('measureItem', () => {
     const imageOf = vi.fn(async () => ({ hash: 'bafrendered', blob: bytes(90_000) }))
     const { bytes: total } = await measureItem({ item: legacy }, { sizeOf, imageOf })
     expect(total).toBe(BULL_AND_BEAR.male + BULL_AND_BEAR.female + BULL_AND_BEAR.thumbnail + 90_000)
+  })
+})
+
+describe('linked items', () => {
+  it('count only the files they deploy: never a generated rarity image', async () => {
+    const withoutImage = Object.fromEntries(
+      Object.entries(storedItem().contents).filter(([path]) => path !== 'image.png')
+    )
+    const linked = storedItem({
+      urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats:bull-bear',
+      contents: withoutImage
+    })
+    const imageOf = vi.fn(async () => ({ hash: 'bafrendered', blob: bytes(90_000) }))
+    const { bytes: total } = await measureItem({ item: linked }, { sizeOf, imageOf })
+    expect(total).toBe(BULL_AND_BEAR.male + BULL_AND_BEAR.female + BULL_AND_BEAR.thumbnail)
+    expect(imageOf).not.toHaveBeenCalled()
+  })
+})
+
+describe('createLimiter', () => {
+  it('runs at most the given number of tasks at once and runs every one', async () => {
+    const limited = createLimiter(2)
+    let inFlight = 0
+    let peak = 0
+    const task = async (value: number) => {
+      inFlight++
+      peak = Math.max(peak, inFlight)
+      await new Promise(resolve => setTimeout(resolve, 2))
+      inFlight--
+      return value
+    }
+    const results = await Promise.all([1, 2, 3, 4, 5].map(value => limited(() => task(value))))
+    expect(results).toEqual([1, 2, 3, 4, 5])
+    expect(peak).toBe(2)
+  })
+
+  it('frees the slot of a task that fails', async () => {
+    const limited = createLimiter(1)
+    await expect(limited(async () => Promise.reject(new Error('boom')))).rejects.toThrow('boom')
+    await expect(limited(async () => 'next')).resolves.toBe('next')
   })
 })
 

@@ -22,8 +22,9 @@ import { ProgressModal } from '~/components/ProgressModal'
 import { PendingModal } from '~/components/PendingModal'
 import { useApprovalFlow, type ApprovalMode, type ApprovalPlan, type ApprovalStep } from '~/hooks/useApprovalFlow'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
+import { catalystImageDeps } from '~/hooks/useItemSize'
 import { track } from '~/lib/analytics'
-import { itemSizesKey, measureItems } from '~/lib/approveCollection'
+import { buildMissingImage, itemSizesKey, measureItems } from '~/lib/approveCollection'
 import { isSocialLogin, type Session } from '~/lib/auth'
 import { copyToClipboard } from '~/lib/clipboard'
 import { fetchContentSize, getContentsStorageUrl } from '~/lib/builder'
@@ -217,7 +218,8 @@ function StepTable({ step, plan, collection }: { step: ApprovalStep; plan: Appro
   const sizesKey = useMemo(() => itemSizesKey(plan.deploy), [plan.deploy])
   const sizes = useQuery({
     queryKey: sizesKey,
-    queryFn: () => measureItems(plan.deploy, fetchContentSize),
+    // The image.png the deploy renders for an item saved without one counts, rendered the deploy's way.
+    queryFn: () => measureItems(plan.deploy, fetchContentSize, item => buildMissingImage(item, catalystImageDeps)),
     enabled: step === 'deploy',
     staleTime: Infinity
   })

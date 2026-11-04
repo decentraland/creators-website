@@ -3,14 +3,20 @@
 // and image.png (the rarity-background image), with a file both body shapes share counted once. The smart-wearable
 // preview video never deploys and never counts. The wearable-validator's file-size check (S-05) counts the same.
 // Every place that shows or enforces an item's size goes through here.
-import { getEntityContent, type MissingImage } from './catalystEntity'
+import { getEntityContent, getLinkedEntityContent, type MissingImage } from './catalystEntity'
 import { type BuiltItem } from './itemFactory'
 import { ItemFileError, MAX_EMOTE_FILE_SIZE, MAX_SKIN_FILE_SIZE, MAX_WEARABLE_FILE_SIZE } from './itemFiles'
 import { IMAGE_PATH, ItemType, type Item } from './items'
 import { captureError } from './monitoring'
+import { THIRD_PARTY_URN_TYPE } from './thirdParty'
 
 const SKIN_CATEGORY = 'skin'
 const MIB = 1024 * 1024
+
+/** Stored files measured at once, app-wide: a collection's worth of sizes must not open dozens of requests together. */
+export const MAX_CONCURRENT_MEASUREMENTS = 6
+/** A stored file's size that hasn't arrived by then counts as unmeasurable (non-blocking), never as pending. */
+export const MEASUREMENT_TIMEOUT_MS = 20_000
 
 export type ItemSize = { bytes: number; limit: number }
 
@@ -41,16 +47,23 @@ export function sumUniqueContent(files: Iterable<{ hash: string; bytes: number }
   return total
 }
 
+/** A linked (third-party) item: its URN, like its collection's, is a `collections-thirdparty` one. */
+export function isLinkedItem(item: Pick<Item, 'urn'>): boolean {
+  return item.urn?.split(':')[3] === THIRD_PARTY_URN_TYPE
+}
+
 /**
  * The bytes the item's entity deploys. Files about to be uploaded are measured from `blobs`, stored ones through
- * `sizeOf`; `imageOf` renders the image.png an item saved without one would get at deploy, so it counts too.
+ * `sizeOf`; `imageOf` renders the image.png a standard item saved without one would get at deploy, so it counts
+ * too. A linked item deploys its stored files exactly (getLinkedEntityContent), never a generated image.
  */
 export async function measureItemBytes(
   { item, blobs = {} }: MeasurableItem,
   { sizeOf, imageOf }: MeasureDeps
 ): Promise<number> {
-  const image = !item.contents[IMAGE_PATH] && imageOf ? await imageOf(item) : null
-  const content = getEntityContent(item, image?.hash)
+  const linked = isLinkedItem(item)
+  const image = !linked && !item.contents[IMAGE_PATH] && imageOf ? await imageOf(item) : null
+  const content = linked ? getLinkedEntityContent(item) : getEntityContent(item, image?.hash)
   const known = new Map<string, number>()
   if (image) known.set(image.hash, image.blob.size)
   for (const [path, hash] of Object.entries(content)) {
@@ -110,5 +123,25 @@ export async function guardItemSize(built: MeasurableItem, deps: MeasureDeps, fl
   } catch (error) {
     if (isItemTooBigError(error)) throw error
     captureError(error, { flow, step: 'measure_size', itemId: built.item.id })
+  }
+}
+
+/**
+ * Runs at most `max` tasks at once; the others wait their turn, first come first served. A finished task hands its
+ * slot straight to the next one waiting.
+ */
+export function createLimiter(max: number) {
+  let running = 0
+  const waiting: Array<() => void> = []
+  return async function limited<T>(task: () => Promise<T>): Promise<T> {
+    if (running < max) running++
+    else await new Promise<void>(resolve => waiting.push(resolve))
+    try {
+      return await task()
+    } finally {
+      const next = waiting.shift()
+      if (next) next()
+      else running--
+    }
   }
 }

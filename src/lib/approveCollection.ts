@@ -227,11 +227,13 @@ export const itemSizesKey = (items: Item[]) => [
 
 /**
  * Each item's size as the catalyst counts it (lib/itemSize), by item id. Files shared between items are fetched
- * once; unmeasurable ones count 0.
+ * once; unmeasurable ones count 0. `imageOf` renders the image.png the deploy adds for a standard item saved without
+ * one (pass the deploy's own `buildMissingImage` deps; one that can't be rendered counts 0); linked items never get one.
  */
 export async function measureItems(
   items: Item[],
-  sizeOf: (hash: string) => Promise<number>
+  sizeOf: (hash: string) => Promise<number>,
+  imageOf?: (item: Item) => Promise<MissingImage | null>
 ): Promise<Map<string, number>> {
   const sizes = new Map<string, Promise<number>>()
   const measure = (hash: string) => {
@@ -242,8 +244,11 @@ export async function measureItems(
       )
     return sizes.get(hash)!
   }
+  const renderImage = imageOf && ((item: Item) => imageOf(item).catch(() => null))
   const totals = await Promise.all(
-    items.map(async item => [item.id, await measureItemBytes({ item }, { sizeOf: measure })] as const)
+    items.map(
+      async item => [item.id, await measureItemBytes({ item }, { sizeOf: measure, imageOf: renderImage })] as const
+    )
   )
   return new Map(totals)
 }

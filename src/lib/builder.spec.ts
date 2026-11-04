@@ -409,6 +409,21 @@ describe('fetchContentSize', () => {
     await expect(fetchContentSize('bafmodel')).rejects.toThrow(/404/)
     vi.unstubAllGlobals()
   })
+
+  it('gives up when its signal fires, so a stalled request never stays pending', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        (_url: string, init: RequestInit) =>
+          new Promise((_resolve, reject) => init.signal?.addEventListener('abort', () => reject(new Error('aborted'))))
+      )
+    )
+    const timeout = new AbortController()
+    const size = fetchContentSize('bafmodel', timeout.signal)
+    timeout.abort()
+    await expect(size).rejects.toThrow('aborted')
+    vi.unstubAllGlobals()
+  })
 })
 
 const remoteCuration = {
