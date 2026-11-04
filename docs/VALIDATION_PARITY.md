@@ -9,9 +9,12 @@ Status legend:
 - **ported** — implemented here (with the location).
 - **delegated** — not implemented here because the shared wearable-validator rule book covers it.
 - **gap** — applies to a flow that exists here today but is missing. Fix independently of any feature migration.
-- **deferred: _feature_** — belongs to a feature not yet migrated. Port it with that feature.
+- **partial** — ported for the common case, with a named remainder.
+- **rejected at import (interim)** — the input is refused until the feature it belongs to is supported (social emotes today).
 - **dropped on purpose** — the flow exists here and behaves differently by decision (see `DECISIONS.md`).
 - **n/a** — intentionally not carried over.
+
+Every legacy flow is migrated, so no row is deferred to a feature anymore; a rule of a future feature (social emotes, …) goes in as **gap** or **rejected at import** when the feature lands.
 
 Rule of thumb: nothing is ported before the flow that calls it exists. Unwired validation has no test and rots silently. Model and emote checks are not ported at all: they come from the shared wearable-validator rule book (§1), so a rule change lands there, never here.
 
@@ -62,7 +65,7 @@ Wiring: every distinct main file is checked once, in a module worker with inline
 | Changing an item's file to a different type (wearable↔emote) → `InvalidModelFileType` | ported: `lib/itemModelImport.ts` `loadModelForItem` (`invalid_model_file_type`) | `itemModelImport.spec.ts` | `ImportStep.tsx:413` |
 | Add-representation dropzone restricted to `MODEL_EXTENSIONS` / `IMAGE_EXTENSIONS` by category | ported with a different approach: the change-file modal accepts every `ITEM_EXTENSIONS` file and refuses a model next to a kept texture representation (or vice versa) after the pick (`representation_category_mismatch`) | `lib/itemModelImport.ts` `getModelUpdateError` | `types.ts:180-181`; `ImportStep.tsx:501` |
 | `scene.json` zips (smart wearables): `scene.main` must exist, `wearable.json` required, permission checks (`UnknownRequiredPermissions`, `DuplicatedRequiredPermissions`, `MissingRequiredProperties`, `AllowedMediaHostnameIsEmptyOrInvalid`) | ported with one relaxation: `wearable.json` is optional (see "Smart wearables" in `DECISIONS.md`). `lib/itemFiles.ts` `toSceneManifest` / `loadScene` (`manifest_file_missing`, `scene_main_not_code`, `scene_manifest_missing` for scene code without a `scene.json`, `scene_manifest_nested`, `scene_code_mismatch`, `unknown_required_permissions`, `duplicated_required_permissions`, `allowed_media_hostnames_empty`, `invalid_manifest`) | `itemFiles.spec.ts` | builder-client `files.js` `loadSceneConfig`; `ImportStep.tsx:227` |
-| Emotes / smart wearables forbidden in third-party collections | ported: `linked_emote` / `linked_smart_wearable` at import and in the change-file modal | `processDraft.ts`, `lib/itemModelImport.ts` | `ImportStep.tsx:419` |
+| Emotes / smart wearables forbidden in third-party collections | ported: `linked_emote` / `linked_smart_wearable` at import; in the change-file modal `linked_smart_wearable` again, while an emote file on a linked wearable is refused as a type switch (`invalid_model_file_type`) | `processDraft.ts`, `lib/itemModelImport.ts` | `ImportStep.tsx:419` |
 | Bulk zip must contain `wearable.json`; item URN must match collection URN; mapping required for linked collections | ported with one relaxation: in Edit in bulk each zip's `wearable.json` must name an item of the collection (`bulk_edit_no_match`), a URN of another collection is refused (`linked_urn_mismatch`), and a zip without a `mapping` gets All NFTs instead of `missing_mapping` (see "Linked collections" in `DECISIONS.md`) | `lib/linkedManifest.ts` | `CreateAndEditMultipleItemsModal.tsx:162,249` |
 
 ## 3. File sizes
@@ -89,7 +92,7 @@ Constants (`lib/itemFiles.ts`, same values as `@dcl/builder-client` `files/const
 | Emote GLB containing the avatar mesh (`basemesh` / `avatar_mesh`) → rejected | ported (fails at import for zips as well; builder's zip path throws later untried) | `getEmoteMetrics` `emote_with_mesh` | `getModelData.ts:303` |
 | Avatar and prop clip durations must match unless `Armature_Other` present | ported; `Armature_Other` is rejected instead (`emote_social_unsupported`, interim until social emotes are supported) | `emote_animations_out_of_sync` | `getModelData.ts:315` |
 | Metrics: sequences, duration, frames, fps, props, additionalArmatures (display only) | ported | `AnimationMetrics` | `getModelData.ts:326` |
-| Play mode (simple/loop) required before save unless social emote | ported (required for all emotes; social emotes deferred) | `isDraftComplete` | `EmoteDetails.tsx:97`; `CreateSingleItemModal.tsx:122` |
+| Play mode (simple/loop) required before save unless social emote | ported (required for all emotes; social emotes are rejected at import) | `isDraftComplete` | `EmoteDetails.tsx:97`; `CreateSingleItemModal.tsx:122` |
 | Social emotes: `startAnimation` / outcomes autocompleted from clip names; ≤ 3 outcomes in editor (`MAX_OUTCOMES`), outcome title ≤ 24 chars; server caps outcomes at 10 | rejected at import (interim; support tracked on the taskboard) | `getEmoteMetrics` `emote_social_unsupported` | `CreateSingleItemModal.tsx:283`; `RightPanel.tsx:76,986,1061`; server `Item.model.ts` `MAX_OUTCOMES_LENGTH` |
 
 ## 5. Metadata

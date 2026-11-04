@@ -91,7 +91,7 @@ A Segment `page` call per pathname change, named from a fixed map in `lib/pageVi
 | `Publish TP Items started` | the linked publish wizard opens | `collectionId`, `thirdPartyId`, `items`, `pushed` |
 | `Sign TP cheque` | the creator signs the slots cheque (wizard step 2) | `collectionId`, `thirdPartyId`, `qty` |
 | `Publish TP Items` | the whole linked publish finished | `collectionId`, `thirdPartyId`, `items`, `pushed`, `txHash` |
-| `Publish TP Items error` | a step failed | `collectionId`, `step` (`tos` … `push`, `unknown` for a throw outside the flow), `error` |
+| `Publish TP Items error` | a step failed | `collectionId`, `step` (`check` … `push`, `unknown` for a throw outside the flow), `error` |
 | `Push TP Changes` / `… error` | already-approved linked items are sent for review again | `collectionId`, `items`, `failed` / `error` |
 | `Edit TP Collection Contract` | a linked collection was moved to another registered contract and its items re-linked | `collectionId`, `from`, `to`, `items` (how many were re-linked) |
 | `Open collection by contract` | a signed-in creator lands on `/collections?contract=<address>` (marketplace's link to a collection it only knows by contract) and it resolves | `outcome` (`found` / `not_found` / `invalid` (not an address, nothing read) / `error` (read failed, also reported by the query cache)), `collectionId` (when found) |
@@ -317,14 +317,14 @@ The preview renderer decision is not an error: it is set as the `preview_rendere
 
 Item validation reports a crashed rule-book worker once per page load with `flow: 'validation_worker'` (runs fall back inline), a model or thumbnail check that could not run with `flow: 'model_validation'` / `'thumbnail_validation'` (shown as a non-blocking warning), and a check that crashed inside the rule book with `flow: 'validation'`.
 
-Linked collections report with `flow: 'linked_publish'` from `step: 'sign_cheque'` (a cheque signature that fails for a reason other than a wallet rejection) and from the payment on (`wait_tx`, `delete_virtual`, `publish`, `push`: the creator may have paid, so a failure there needs someone to look, a payment still unconfirmed after the wait included; `txHash` in extra). A rejected wallet prompt or a reverted transaction charged nothing and stays an event. The curator side reports with `flow: 'linked_curation_approve'` (`step`: `prepare` / `root` / `deploy`), `'linked_curation_reject'` and `'linked_curation_review'` (enable / disable a third party). A wallet rejection, a non-NFT contract, an invalid mapping or a pending review are the user's to fix and stay Segment events.
+Linked collections report with `flow: 'linked_publish'` from `step: 'sign_cheque'` (a cheque signature that fails for a reason other than a wallet rejection) and from the payment on (`wait_tx`, `delete_virtual`, `publish`, `push`: the creator may have paid, so a failure there needs someone to look, a payment still unconfirmed after the wait included; `txHash` in extra). The `linked_publish` flow itself skips a rejected wallet prompt and a reverted transaction (nothing was charged), but a `pending_review` or `insufficient_slots` refusal at the `publish` step still reaches it, and the mutation reporter (below) still sends every non-wallet-rejection failure of the publish, reverted transactions and early-step refusals included, as `flow: 'mutation'`. The curator side reports with `flow: 'linked_curation_approve'` (`step`: `prepare` / `root` / `deploy`), `'linked_curation_reject'` and `'linked_curation_review'` (enable / disable a third party). A wallet rejection is never reported; a non-NFT contract or an invalid mapping is refused in the form before any request and is a Segment event only.
 
-Every `flow` tag the app sends, with what it covers (wallet rejections and user-fixable refusals are never reported under any of them):
+Every `flow` tag the app sends, with what it covers. A wallet rejection is never reported under any of them. The feature flows skip the refusals named in their section, but the mutation reporter (`flow: 'mutation'`) filters wallet rejections only, so a refusal the creator can fix (a locked collection on save, a linked publish's `pending_review` / `insufficient_slots`, a discount's `pending` / `unconfirmed`, a reverted transaction) still reaches Sentry under `mutation` whenever it fails a react-query mutation:
 
 | flow | reported from |
 | --- | --- |
 | `publish` | the publish wizard's ToS record failing before payment (`step: 'tos'`); every other publish failure reaches Sentry through the mutation reporter (`flow: 'mutation'`, below) |
-| `credits-top-up` | reading a credits order's outcome after Stripe failed (the event reports `pending`) |
+| `credits-top-up` | reading a credits order's outcome after Stripe threw something other than a credits-server error or a network `TypeError` (those two only show `pending`; the event reports `pending` in every case) |
 | `add_items` | the add-items modal: a model that could not be analysed (`step: 'validate'`) or re-validated after a category change (`step: 'revalidate'`) |
 | `save-item` / `item_save` | saving an item: the mutation's reporter (`save-item`) and the editor's save path (`item_save`) |
 | `item_file_change` | the change-file modal's import or save |
@@ -332,13 +332,13 @@ Every `flow` tag the app sends, with what it covers (wallet rejections and user-
 | `transfer_ownership` | the detached owner sync after a transfer gave up |
 | `create_collection_discount` / `end_collection_discount` | signing or storing a collection discount, ending one early |
 | `network-selector` | reading or switching the wallet's chain (`step: 'read-chain'` / `'switch-chain'`) |
-| `curation_assign` / `curation_reject` / `curation_disable` / `curation_push` / `curation_approve` | the standard curation actions (§3 Curation; `curation_approve` carries `step`) |
+| `curation_assign` / `curation_reject` / `curation_disable` / `curation_push` / `curation_approve` | the standard curation actions (§3 Curation; `curation_approve` carries `step`: the flow's own steps, plus `changed_check` when the pre-approval drift check fails and `entities` when the Catalyst entities could not be read) |
 | `forum_post` | a forum topic creation that gave up, or a failed assignee reply |
 | `linked_create` / `linked_collection_contract` / `linked_collection_urn` / `linked_item_urn` / `linked_mapping_save` / `linked_select_all` | linked collection management: creating one, moving it to another contract, editing a collection or item URN, saving a mapping, fetching every page for Select all |
 | `linked_publish` / `linked_push` | the linked publish wizard (above) and pushing linked changes |
 | `linked_curation_approve` / `linked_curation_reject` / `linked_curation_review` | the linked curation actions (above) |
 | `live_preview` | the Blender live preview (below) |
-| `validation_worker` / `model_validation` / `thumbnail_validation` / `validation` | item validation (above) |
+| `validation_worker` / `model_validation` / `thumbnail_validation` / `validation` | item validation (above); `validation_worker` carries `step: 'timeout'` when a hung worker was replaced |
 | `query` / `mutation` / `render` | the react-query cache reporters and the error boundary (below) |
 
 The Blender live preview reports with `flow: 'live_preview'`: a bridge that answers but breaks the contract (`step: 'poll'` — an invalid `/state` payload, a failed `/model.glb` after a good state: add-on / page schema drift), a streamed GLB the spring bone parser or the preview cannot take (`parse_spring_bones`, `preview`), and a physics push the renderer rejects (`physics`, once per session). An unreachable bridge and a denied local-network permission are the creator's to fix, so they stay Segment events.
