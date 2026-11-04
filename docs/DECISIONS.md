@@ -21,8 +21,8 @@ Rules for this file:
 
 ## Collections list and status model
 
-- **One status rule set** (agreed in creators-website #88, mirrors builder-server #814). The source of truth is builder-server's `Collection.getStatusStatement`; `lib/collections#getCollectionDisplayStatus` mirrors it so a pill always matches the chip it is listed under. First match wins: linked → Linked; not on chain → Draft (a locked draft with a publish in flight reads Publishing); latest review request `rejected` → Rejected, which wins over approval and disable alike; approved on chain → Under review if the latest request is `pending`, else Published; not approved but reviewed before → Paused (curators keep the legacy "Disabled" wording); anything else → Under review.
-- **`reviewedAt` alone never proves an approval.** The rescue step of a first approval stamps it too. `hasBeenApproved` is "approved now, or `reviewedAt` later than `createdAt`" (the contract stamps `reviewedAt` with `createdAt` on creation), so a collection under review again still counts as approved before.
+- **One status rule set** (agreed in creators-website #88, mirrors builder-server #814). The source of truth is builder-server's `Collection.getStatusStatement`; `lib/collections#getCollectionDisplayStatus` mirrors it so a pill always matches the chip it is listed under. First match wins: linked → Linked; not on chain → Draft (a locked draft with a publish in flight reads Publishing); latest review request `rejected` → Rejected, which wins over approval and disable alike; approved on chain → Under review if the latest request is `pending`, else Published; not approved on chain and (latest request `approved`, or no request and approved before) → Paused (curators keep the legacy "Disabled" wording); anything else, a previously reviewed collection with a `pending` request included → Under review.
+- **`reviewedAt` alone never proves an approval.** The rescue step of a first approval stamps it too. `hasBeenApproved` is "approved now, or `reviewedAt` differs from `createdAt`" (the contract stamps `reviewedAt` with `createdAt` on creation), so a collection under review again still counts as approved before.
 - **Rejected pushed changes on an approved collection read Rejected**, while buyers keep getting the approved version. A collection disabled after its changes were rejected also reads Rejected, and its creator can request review again.
 - **Standard collections only in the main list by default.** Linked (third-party) collections sit behind their own chip, always shown, and carry no status.
 - **Dropped from legacy:** the orphan-items tab, the sort dropdown and the notifications bell.
@@ -79,7 +79,7 @@ Rules for this file:
 
 - **"Replace model" and "Add {shape} model" open one modal that saves on confirm** (2026-10-22, 2026-11-02), as the legacy modal did; creators are used to it. It saves the file change alone, built from the saved item; every other unsaved panel edit stays pending in the form, except a category the modal had to pick and a render it stored.
 - **Replacing one shape of a unisex item keeps the other** (differs from legacy, which narrowed the item to the picked shape). A zip with both `male/` and `female/` folders on a single-shape pick is not rejected: it is narrowed to that folder's files once, right after the pick. One representation serving both shapes is never produced: neither this editor nor legacy stores one.
-- **A wearable↔emote type switch is rejected** (`InvalidModelFileType`), and so is a social GLB.
+- **A wearable↔emote type switch is rejected** (`invalid_model_file_type`), and so is a social GLB.
 - **Spring-bone params survive a model change per body shape, by bone name** (PR #152), unsaved tuning included; legacy carried only the saved ones. A new model inherits the params of the model that served its first shape; two models collapsing to one unisex take the first shape's. A new model with no spring bones drops them.
 - **The "Update the thumbnail" checkbox is ticked by default** and the copy never says "render" (2026-11-02).
 
@@ -156,7 +156,7 @@ Rules for this file:
 - **Deploy missing entities skips edited-but-unsynced items on purpose.** Their new hash is not rescued on chain, so the Catalyst would reject them and abort the missing ones, and deploying them would ship unreviewed changes. Legacy deployed both together.
 - **Enable (a disabled collection with no pending request) only flips `setApproved(true)`**: no rescue, no upload, the review request untouched, since approving one would promote unsent smart-wearable videos.
 - **Creators can request review again after a rejection** (owners and collaborators); legacy had no way out of that state. Publish changes and Request review again run the same validation pre-step as publishing.
-- **The first review request is opened by the front end on publish** through `POST /collections/:id/curation` (2026-11-03), not server-side in `/publish`.
+- **Publishing opens no review request.** A first review has no curation row until a curator acts (assign, reject, approve) or the creator requests a review again; the curation list surfaces published collections without one as To review from the collection itself.
 
 ## Forum post
 
