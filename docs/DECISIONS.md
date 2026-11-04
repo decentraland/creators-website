@@ -18,6 +18,7 @@ Rules for this file:
 - **Mobile is a viewer.** Below the `noActions` breakpoint (900px) collection management actions are hidden, and below 768px the editor is preview-only. Curation actions are desktop-only too.
 - **Event names reuse the legacy Builder's verbatim** where an event for the same intent exists, props included, so a warehouse query written for the old Builder also counts this app. See `TRACKING_SPEC.md`.
 - **e2e tests are pending repo-wide** (no Puppeteer harness yet). Flows are covered by component specs until it lands; this is a known gap, not a per-feature decision.
+- **Pre-monorepo refactor.** The app is being prepared to move into the dcl-one monorepo, whose web apps use CSS Modules and have no Emotion, MUI or decentraland-ui2. Until the move, no new Emotion, MUI (icons excepted for now) or decentraland-ui2 usage is added outside the existing allowlist, which ESLint enforces, and styled defs live only in `*.styles.ts`. The targets are CSS Modules for styling, viem for chain code, and components that never call a back-end transport directly (hooks and `lib/` do).
 
 ## Collections list and status model
 
