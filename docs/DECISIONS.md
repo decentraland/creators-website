@@ -70,7 +70,7 @@ Rules for this file:
 - **The editor styling follows creator-hub's inspector** (surfaces, paddings, panel format, `theme.editor` tokens), not the legacy Builder. Panel sizes and the sidebar mode persist in `localStorage`.
 - **Selection and dressing are separate.** Selecting a wearable dresses it; the eye toggle dresses or undresses without changing selection; at most one emote is dressed. Items with no representation for the current body shape stay selectable but not dressable.
 - **Name and description are limited to 32 and 64 characters with no `:`** because both are fields of the on-chain metadata string; an invalid one blocks Save inline. Rarity is locked once published.
-- **Camera range:** `zoom` scaled by 2 with `wheelZoom = 6`, `wheelStart = 80`, which lands the starting radius where the legacy editor had it while allowing twice the zoom in and three times out. The JUMP emote keeps its wider framing (legacy quirk).
+- **Camera range (Babylon only; Unity drives its own camera):** `zoom` scaled by 3 with `wheelZoom = 5`, `wheelStart = 50`, which keeps the legacy starting radius (`radius / 1.75`) while the wheel zooms 3× in, like Unity's FOV range, and about 1.7× out. The JUMP emote keeps its wider framing (legacy quirk).
 - **The campaign tag hint** comes from Contentful through Decentraland's CMS proxy behind the `builder-campaign` flag, exactly as legacy read it. No campaign, flag off or CMS down shows nothing and never errors.
 - **Review mode is read-only for curators too** (2026-09-25, user feedback). A curator must not approve by previewing the model without reading each item's metadata, so the properties panel is always shown, never collapsible, fully disabled.
 - **Out (v1):** orphan items and social-emote editing (start animation, outcomes).
@@ -118,7 +118,7 @@ Rules for this file:
 - **A giveaway is encoded the legacy way** (ERC20 MANA, amount 0, zero-address beneficiary). The Shop catalog hides zero-price listings, so giveaways are not visible there; chosen knowingly to match legacy.
 - **No expiration means 2100-01-01** (`NO_EXPIRATION`); an expiration date ends at the end of the chosen local day.
 - **Remove from sale resolves the order's contract through `decentraland-transactions`**, never trusting the address marketplace-server returns: an unknown address, a non-marketplace contract or another chain aborts the cancellation. A legacy CollectionStore price with no order is cleared on the collection contract with `editItemsData` instead.
-- **Edit price is cancel-then-resign.** Orders are immutable, so the old order is cancelled on chain and a new one signed with the old beneficiary and expiration. marketplace-server may answer 409 while its indexer still holds the cancelled order; only the POST is retried (seven attempts, 3→8s), never the signature. A failure after the cancellation lands keeps its terms, so TRY AGAIN signs the new order directly.
+- **Edit price is cancel-then-resign.** Orders are immutable, so the old order is cancelled on chain and a new one signed with the old beneficiary and expiration. marketplace-server may answer 409 while its indexer still holds the cancelled order; only the POST is retried (up to eight attempts: seven retries 3→8s apart), never the signature. A failure after the cancellation lands keeps its terms, so TRY AGAIN signs the new order directly.
 - **Minting for free from the Builder is out of scope.**
 
 ## Send items

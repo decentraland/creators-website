@@ -77,6 +77,10 @@ A Segment `page` call per pathname change, named from a fixed map in `lib/pageVi
 | `Publish details confirmed` | step 1 of the publish wizard was confirmed and left (after a rename saved) | `collectionId`, `nameChanged`, `emailSource` (`profile` = kept the profile email, `edited` = changed it, `typed` = no profile email) |
 | `Publish collection` | the publish transaction was sent and the collection locked | `collectionId`, `txHash`, `isFiat` (always `false` — no fiat publish here), `usedCredits`, `creditsAmount`, `item_count` |
 | `Publish collection error` |  | `collectionId`, `isFiat`, `usedCredits`, `error` |
+| `Open buy credits` | the credits top-up opened from the publish payment step because the balance falls short | `collectionId`, `shortfall` |
+| `Start credits checkout` | the creator leaves for Stripe's hosted checkout (the wizard state is saved to resume on return) | `collectionId`, `orderId`, `packId`, `quantity`, `credits`, `usd`, `shortfall`, `resumeSaved` |
+| `Credits checkout canceled` | back from Stripe with the checkout cancelled; the order is cancelled server-side | `collectionId`, `orderId` |
+| `Credits checkout settled` | back from Stripe, once the order's outcome is known (nothing while confirming) | `orderId`, `status` (the order status: `initiated` / `processing` / `crediting` / `credited` / `failed` / `abandoned`, or `pending` when the poll gave up), `credits` (granted, else `null`) |
 | `Filter linked collections` | the Linked chip on My collections is selected | `count` |
 | `View linked collection` | a linked (third-party) collection's detail loads | `collectionId`, `item_count`, `network`, `is_reader` (the signer is not a manager: the public read-only view) |
 | `Copy linked contract address` | the linked contract address is copied on the detail | `collectionId`, `network` |
@@ -88,14 +92,17 @@ A Segment `page` call per pathname change, named from a fixed map in `lib/pageVi
 | `Sign TP cheque` | the creator signs the slots cheque (wizard step 2) | `collectionId`, `thirdPartyId`, `qty` |
 | `Publish TP Items` / `… error` | the whole linked publish finished / failed | `collectionId`, `thirdPartyId`, `items`, `pushed`, `txHash`; on error `step` (`tos` … `push`) and `error` |
 | `Push TP Changes` / `… error` | already-approved linked items are sent for review again | `collectionId`, `items`, `failed` / `error` |
+| `Edit TP Collection Contract` | a linked collection was moved to another registered contract and its items re-linked | `collectionId`, `from`, `to`, `items` (how many were re-linked) |
+| `Open collection by contract` | a signed-in creator lands on `/collections?contract=<address>` (marketplace's link to a collection it only knows by contract) and it resolves | `outcome` (`found` / `not_found` / `invalid` (not an address, nothing read) / `error` (read failed, also reported by the query cache)), `collectionId` (when found) |
 
-Linked funnel: Linked chip → `Create TP Collection` → `Add items` → `Publish TP Items started` → `Sign TP cheque` → `Publish TP Items` → curator `Approve TP Collection`. | `Open collection by contract` | a signed-in creator lands on `/collections?contract=<address>` (marketplace's link to a collection it only knows by contract) and it resolves | `outcome` (`found` / `not_found` / `invalid` (not an address, nothing read) / `error` (read failed, also reported by the query cache)), `collectionId` (when found) |
+Linked funnel: Linked chip → `Create TP Collection` → `Add items` → `Publish TP Items started` → `Sign TP cheque` → `Publish TP Items` → curator `Approve TP Collection`.
 
 ### Items
 
 | event | when | props |
 | --- | --- | --- |
-| `Add items` | an upload finished in the add-items modal. One event per upload, **not** per item: the legacy builder's per-item `Save item` on creation reads here as `item_count` | `collectionId`, `item_count`, `failed_count`, `error` (only when some failed) |
+| `Add items` | an upload that creates items finished in the add-items modal. One event per upload, **not** per item: the legacy builder's per-item `Save item` on creation reads here as `item_count` | `collectionId`, `item_count`, `failed_count`, `error` (only when some failed) |
+| `Edit TP Items` | an update-only upload finished (every draft edits an existing linked item; legacy name, so bulk edits line up with the old builder's) | `collectionId`, `item_count`, `failed_count` |
 | `Add items error` | the upload threw before producing a result, or was refused because drafts share a linked URN (`error: duplicate_urn`) | `collectionId`, `item_count`, `error` |
 | `Save item` | a single item was saved from the editor | `itemId` |
 | `Save item error` |  | `itemId`, `error` |
@@ -113,9 +120,8 @@ Legacy prop names, so the events line up with the old editor's.
 | event | when | props |
 | --- | --- | --- |
 | `Preview Renderer Picked` | once per page load, when the first preview decides its renderer (not with `?unity=false`) | `renderer` (`unity` / `babylon`), `reason` (`flag-off` / `save-data` / `slow-connection` / `low-device-memory` / `gpu-capability` / `connection-ok` / `optimistic-default`), `measured_mbps` (the link probe, one decimal; `0` on timeout, `null` when it could not run) |
-| `Preview Item` | an item is selected into the preview (not on re-selecting the same one) | `ITEM_ID` (on-chain token id, `null` while unpublished), `ITEM_TYPE`, `ITEM_NAME`, `ITEM_IS_THIRD_PARTY` (always `false`) |
+| `Preview Item` | an item is selected into the preview (not on re-selecting the same one) | `ITEM_ID` (on-chain token id, `null` while unpublished), `ITEM_TYPE`, `ITEM_NAME`, `ITEM_IS_THIRD_PARTY` (`true` in a linked collection) |
 | `Play Emote` | an emote is picked in the playback bar — one event per wearable on the avatar, as in the legacy editor. Where legacy emits nothing at all on a bare avatar, this app emits one event with null wearable props | `EMOTE_PLAYED_BASE` (a default animation rather than a collection emote), `EMOTE_PLAYED_ITEM_ID`, `EMOTE_PLAYED_NAME`, `PREVIEWED_WEARABLE_ITEM_ID`, `PREVIEWED_WEARABLE_NAME` |
-| `Toggle scene boundaries` | the scene boundaries (cylinder) toggle is clicked in the editor or the live preview | `visible` (the state after the click) |
 | `Change item file` | the change-file modal saved a new model for the item (after the `Save item` of that PUT) | `itemId`, `bodyShape` (`both` / `male` / `female`), `mode` (`replace_all` / `replace_shape` / `add_representation`), `fileKind` (`glb` / `gltf` / `zip` / `png`), `thumbnailRegenerated` |
 | `Change item file error` | the picked file was rejected or the import threw | `itemId`, `error` (the `ItemFileError` key, or `errorCode` for a throw) |
 
@@ -223,7 +229,6 @@ Legacy names where the legacy builder had the event. Give-ups and failed assigne
 | `Create forum post error` | creating it failed after the retries | `collectionId`, `trigger`, `error` |
 | `Forum post opened` | the topic link was clicked | `collectionId`, `surface` (`detail` / `detail_menu` / `curation_list` / `review_verdict`) |
 | `Assignee forum post error` | the assignment reply could not be posted | `collectionId`, `error` |
-| `Approve curation error` |  | `collectionId`, `error` |
 | `Push curation` | a creator sent a collection back to the committee: an approved one's changes, or a rejected first review again | `collectionId`, `first_review` |
 | `Push curation error` |  | `collectionId`, `error` |
 
@@ -305,13 +310,13 @@ The support widget (`src/components/Intercom`) boots on every route with `INTERC
 
 ## 5. Error reporting
 
-`captureError(error, { flow, … })` always logs to the console and forwards to Sentry when configured. `flow`, `step`, `rpc_code` and `http_status` are promoted to Sentry **tags** (the rest of the context stays in `extra`, which Sentry does not index). Outgoing events are scrubbed — errors AND performance transactions, breadcrumb and span **data** as well as messages, since a fetch breadcrumb keeps its url under `data.url`: signatures, 32-byte hex values and secret-shaped strings are redacted, and keys matching `signature|private|identity|authchain| ephemeral|token|secret|password|cookie|authorization` are dropped. A wallet/RPC failure thrown as a plain object is converted to a named Error keeping its original stack, so those failures group properly.
+`captureError(error, { flow, … })` always logs to the console and forwards to Sentry when configured. `flow`, `step`, `rpc_code` and `http_status` are promoted to Sentry **tags** (the rest of the context stays in `extra`, which Sentry does not index). Outgoing events are scrubbed — errors AND performance transactions, breadcrumb and span **data** as well as messages, since a fetch breadcrumb keeps its url under `data.url`: signatures, 32-byte hex values and secret-shaped strings are redacted, and keys matching `signature|private|identity|authchain|auth_chain|ephemeral|token|secret|password|cookie|authorization` are dropped. A wallet/RPC failure thrown as a plain object is converted to a named Error keeping its original stack, so those failures group properly.
 
 The preview renderer decision is not an error: it is set as the `preview_renderer` and `preview_renderer_reason` tags (`setMonitoringTags`), so any later error from that session says which renderer it ran on. A failed link probe is the creator's network and is not reported.
 
 Item validation reports a crashed rule-book worker once per page load with `flow: 'validation_worker'` (runs fall back inline), a model or thumbnail check that could not run with `flow: 'model_validation'` / `'thumbnail_validation'` (shown as a non-blocking warning), and a check that crashed inside the rule book with `flow: 'validation'`.
 
-Linked collections report with `flow: 'linked_publish'` only past the chain step (`delete_virtual`, `publish`, `push`: the creator has paid, so a failure there needs someone to look; `txHash` in extra; a payment still unconfirmed after the wait, `payment_pending`, is only an event), with `flow: 'linked_curation_approve'` (`step`: `prepare` / `root` / `deploy`), `'linked_curation_reject'` and `'linked_curation_review'` (enable / disable a third party). A wallet rejection, a non-NFT contract, an invalid mapping or a pending review are the user's to fix and stay Segment events.
+Linked collections report with `flow: 'linked_publish'` from the payment on (`wait_tx`, `delete_virtual`, `publish`, `push`: the creator may have paid, so a failure there needs someone to look, a payment still unconfirmed after the wait included; `txHash` in extra). A rejected wallet prompt or a reverted transaction charged nothing and stays an event. Earlier steps also stay events, with `flow: 'linked_curation_approve'` (`step`: `prepare` / `root` / `deploy`), `'linked_curation_reject'` and `'linked_curation_review'` (enable / disable a third party). A wallet rejection, a non-NFT contract, an invalid mapping or a pending review are the user's to fix and stay Segment events.
 
 The Blender live preview reports with `flow: 'live_preview'`: a bridge that answers but breaks the contract (`step: 'poll'` — an invalid `/state` payload, a failed `/model.glb` after a good state: add-on / page schema drift), a streamed GLB the spring bone parser or the preview cannot take (`parse_spring_bones`, `preview`), and a physics push the renderer rejects (`physics`, once per session). An unreachable bridge and a denied local-network permission are the creator's to fix, so they stay Segment events.
 
