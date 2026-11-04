@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import {
   CameraAlt as CameraIcon,
   ChangeHistory as TriangleIcon,
@@ -25,10 +24,11 @@ import { VideoDropzone, VideoModal } from '~/components/VideoModal'
 import { useCampaign } from '~/hooks/useCampaign'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useObjectURL } from '~/hooks/useObjectURL'
+import { useDownloadItem, useItemVideo } from '~/hooks/useItem'
 import { useDeleteItem } from '~/hooks/usePublishCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useTranslation } from '~/intl'
-import { fetchContent, fetchItemContents, getContentsStorageUrl } from '~/lib/builder'
+import { getContentsStorageUrl } from '~/lib/builder'
 import { FeatureFlag } from '~/lib/featureFlags'
 import {
   ITEM_DESCRIPTION_MAX_LENGTH,
@@ -38,7 +38,6 @@ import {
   type ItemDraftAction,
   type ItemFileChange
 } from '~/lib/itemDraft'
-import { buildItemZip, getItemZipName } from '~/lib/itemDownload'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
 import { hasFacialExpressions, THUMBNAIL_PATH, VIDEO_PATH, toMB } from '~/lib/itemFiles'
 import {
@@ -49,7 +48,6 @@ import {
   isSmartWearable,
   type Item
 } from '~/lib/items'
-import { downloadBlob } from '~/lib/navigation'
 import { useNotifications } from '~/lib/notifications'
 import { type SpringBoneParamsByName } from '~/lib/springBones'
 import { getEmoteCategoryOptions, getWearableCategoryOptions } from '~/lib/wearableCategories'
@@ -131,9 +129,9 @@ export function PropertiesPanel({
   )
   const [isVideoOpen, setVideoOpen] = useState(false)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
-  const [isDownloading, setDownloading] = useState(false)
   const tagsFieldRef = useRef<HTMLInputElement>(null)
   const deleteItem = useDeleteItem(address)
+  const downloadItem = useDownloadItem()
   const campaign = useCampaign()
   const utilityFlag = useFeatureFlag(FeatureFlag.WEARABLE_UTILITY)
   const vrmFlag = useFeatureFlag(FeatureFlag.VRM_OPTOUT)
@@ -166,24 +164,16 @@ export function PropertiesPanel({
   const [videoDuration, setVideoDuration] = useState<number | null>(null)
   // A new video must not flash the previous one's duration until its metadata loads.
   useEffect(() => setVideoDuration(null), [videoUrl])
-  const storedVideo = useQuery({
-    queryKey: ['item-video', videoHash],
-    queryFn: () => fetchContent(videoHash),
-    enabled: isVideoOpen && !draft.video && !!videoHash,
-    staleTime: Infinity
-  })
+  const storedVideo = useItemVideo(videoHash, isVideoOpen && !draft.video)
   const metrics = item.metrics
 
-  async function download() {
-    setDownloading(true)
-    try {
-      downloadBlob(await buildItemZip(await fetchItemContents(item)), getItemZipName(item))
-    } catch (error) {
-      console.error('Item download failed:', error)
-      showToast(t('item_editor.details.download_error'), { type: 'error' })
-    } finally {
-      setDownloading(false)
-    }
+  function download() {
+    downloadItem.mutate(item, {
+      onError: error => {
+        console.error('Item download failed:', error)
+        showToast(t('item_editor.details.download_error'), { type: 'error' })
+      }
+    })
   }
 
   function confirmDelete() {
@@ -224,7 +214,7 @@ export function PropertiesPanel({
         {(canDownload || editable) && (
           <ActionsMenu label={t('item_editor.actions.label')} variant="row" tone="dark" testId={`${testId}-actions`}>
             {canDownload && (
-              <ActionsMenuItem testId={`${testId}-download`} disabled={isDownloading} onClick={() => void download()}>
+              <ActionsMenuItem testId={`${testId}-download`} disabled={downloadItem.isPending} onClick={download}>
                 {t('item_editor.details.download')}
               </ActionsMenuItem>
             )}

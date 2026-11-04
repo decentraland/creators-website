@@ -11,7 +11,7 @@ import { ContractNetwork } from '@dcl/schemas'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
 import { previewCollectionFromDetail } from '~/lib/explorer'
-import { fetchAllLinkedCollectionItems, isRefusedRequest } from '~/lib/builder'
+import { isRefusedRequest } from '~/lib/builder'
 import { captureError } from '~/lib/monitoring'
 import { isSocialLogin, sendContractTransaction, settleTransaction, type Session } from '~/lib/auth'
 import { shortenAddress } from '~/lib/address'
@@ -24,7 +24,6 @@ import {
   getLinkedItemStatus,
   getLinkedPublishAction,
   isLinkedItemSelectable,
-  linkedItemFilterToQuery,
   parseLinkedItemFilter,
   splitLinkedSelection,
   type ItemCuration
@@ -55,8 +54,8 @@ import { useSaveCollection } from '~/hooks/useCollection'
 import { invalidateCollectionItems } from '~/hooks/usePublishCollection'
 import {
   LINKED_ITEMS_PAGE_SIZE,
-  fetchDraftLinkedItems,
   thirdPartyKey,
+  useFetchLinkedItems,
   useHasLinkedWork,
   useItemCurations,
   useLinkedCollectionItems
@@ -134,6 +133,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, isReader
   const saveCollection = useSaveCollection(address)
   const queryClient = useQueryClient()
   const saveItem = useSaveItem(address)
+  const fetchLinkedItems = useFetchLinkedItems(address, collection.id)
   const saveItemRef = useRef(saveItem)
   saveItemRef.current = saveItem
   const saveItemPatch = useMemo(
@@ -320,10 +320,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, isReader
     const startedWith = filter
     setSelectingAll(true)
     try {
-      const all =
-        filter === LinkedItemFilter.DRAFT
-          ? await fetchDraftLinkedItems(address, collection.id)
-          : await fetchAllLinkedCollectionItems(address, collection.id, linkedItemFilterToQuery(filter))
+      const all = await fetchLinkedItems(filter)
       // The filter changed while this loaded: these items belong to the previous one.
       if (filterRef.current !== startedWith) return
       const selectable = all.filter(item => isLinkedItemSelectable(item, curationMap.get(item.id) ?? null))
@@ -374,7 +371,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, isReader
           fetchRegisteredContracts: () => fetchRegisteredContracts(chainId, thirdParty.id),
           sendTransaction: call => sendContractTransaction(session, call),
           settleTransaction: txHash => settleTransaction(chainId, txHash),
-          fetchItems: () => fetchAllLinkedCollectionItems(address, collection.id),
+          fetchItems: () => fetchLinkedItems(),
           saveItem: saveItemPatch,
           onStep: step => show({ kind: 'running', step, to: next }),
           isCancelled: () => relinkAttempt.current !== attempt

@@ -49,6 +49,31 @@ const MUI = {
   message:
     'The monorepo has no MUI; only @mui/icons-material is allowed. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
+const SEAM_5 = 'See CONVENTIONS.md seam 5.'
+const BUILDER_TRANSPORT = {
+  group: ['~/lib/builder/transport'],
+  message: `Only src/lib/builder imports its transport; call the endpoint functions from ~/lib/builder. ${SEAM_5}`
+}
+const BUILDER_IN_COMPONENTS_MESSAGE = `Components get builder-server data through hooks and import only URL helpers, error classification and types from ~/lib/builder. ${SEAM_5}`
+const BUILDER_IN_COMPONENTS = {
+  paths: [
+    {
+      name: '~/lib/builder',
+      allowImportNames: [
+        'getContentsStorageUrl',
+        'isRefusedRequest',
+        'BuilderServerError',
+        'COLLECTION_LOCKED_STATUS',
+        'ALREADY_PUBLISHED_STATUS',
+        'SlotsCheque',
+        'CollectionItemPreview'
+      ],
+      message: BUILDER_IN_COMPONENTS_MESSAGE
+    }
+  ],
+  patterns: [{ group: ['~/lib/builder/*'], message: BUILDER_IN_COMPONENTS_MESSAGE }]
+}
+const SPEC_FILES = ['**/*.spec.{ts,tsx}', '**/*.test.{ts,tsx}']
 
 export default tseslint.config(
   { ignores: ['dist/**', 'coverage/**'] },
@@ -114,20 +139,39 @@ export default tseslint.config(
 
   // Pre-monorepo fence (docs/DECISIONS.md, "Pre-monorepo refactor"): the monorepo has no Emotion or MUI,
   // so no new usage; @emotion/styled stays in *.styles.ts and src/styles until the CSS Modules migration.
+  // The same rule keeps the builder-server transport inside src/lib/builder and components off its endpoints
+  // (CONVENTIONS.md seam 5); component specs import endpoints to mock them, so they stay out of that block.
   {
     files: ['src/**/*.{ts,tsx}'],
-    ignores: STYLES_FILES,
+    ignores: [...STYLES_FILES, 'src/lib/builder/**'],
+    rules: { 'no-restricted-imports': ['error', { patterns: [EMOTION_ALL, MUI, BUILDER_TRANSPORT] }] }
+  },
+  {
+    files: ['src/lib/builder/**/*.{ts,tsx}'],
     rules: { 'no-restricted-imports': ['error', { patterns: [EMOTION_ALL, MUI] }] }
   },
   {
+    files: ['src/components/**/*.{ts,tsx}'],
+    ignores: [...STYLES_FILES, ...SPEC_FILES],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: BUILDER_IN_COMPONENTS.paths,
+          patterns: [EMOTION_ALL, MUI, ...BUILDER_IN_COMPONENTS.patterns]
+        }
+      ]
+    }
+  },
+  {
     files: STYLES_FILES,
-    rules: { 'no-restricted-imports': ['error', { patterns: [EMOTION_EXCEPT_STYLED, MUI] }] }
+    rules: { 'no-restricted-imports': ['error', { patterns: [EMOTION_EXCEPT_STYLED, MUI, BUILDER_TRANSPORT] }] }
   },
 
   // Mocks and fixtures legitimately traffic in `any` and unbound methods, so the
   // no-unsafe-* family is high-noise here — real source stays strict.
   {
-    files: ['**/*.spec.{ts,tsx}', '**/*.test.{ts,tsx}'],
+    files: SPEC_FILES,
     rules: {
       '@typescript-eslint/unbound-method': 'off',
       '@typescript-eslint/no-explicit-any': 'off',

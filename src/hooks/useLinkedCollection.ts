@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
   fetchAllLinkedCollectionItems,
@@ -28,6 +28,20 @@ export async function fetchDraftLinkedItems(address: string, collectionId: strin
     fetchItemCurations(address, collectionId)
   ])
   return items.filter(item => isLinkedDraft(curations.get(item.id)))
+}
+
+/**
+ * Reads every item of a linked collection across pages: under a filter (drafts included) for "Select all", or all
+ * of them without one.
+ */
+export function useFetchLinkedItems(address: string, collectionId: string) {
+  return useCallback(
+    (filter?: LinkedItemFilter): Promise<Item[]> =>
+      filter === LinkedItemFilter.DRAFT
+        ? fetchDraftLinkedItems(address, collectionId)
+        : fetchAllLinkedCollectionItems(address, collectionId, filter ? linkedItemFilterToQuery(filter) : {}),
+    [address, collectionId]
+  )
 }
 
 // Same page size as the legacy third-party collection page.
