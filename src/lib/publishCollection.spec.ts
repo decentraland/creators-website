@@ -19,6 +19,7 @@ import {
   getAvailablePaymentMethods,
   syncPublishedItems,
   getPublishBlocker,
+  openFirstReviewRequest,
   publishCollection,
   toPublishError,
   type PublishDeps
@@ -366,6 +367,27 @@ describe('syncPublishedItems', () => {
     await failure
     expect(publish).toHaveBeenCalledTimes(721)
     vi.useRealTimers()
+  })
+})
+
+describe('openFirstReviewRequest', () => {
+  it('opens the request and hands back the pending curation', async () => {
+    const curation = { collectionId: 'col-1', status: 'pending' }
+    const pushCollectionCuration = vi.fn().mockResolvedValue(curation)
+    await expect(openFirstReviewRequest('col-1', { pushCollectionCuration })).resolves.toBe(curation)
+    expect(pushCollectionCuration).toHaveBeenCalledWith('col-1')
+  })
+
+  it('treats a request already open as done, so a retried publish never fails on it', async () => {
+    const pushCollectionCuration = vi
+      .fn()
+      .mockRejectedValue(new BuilderServerError('There is already an ongoing review request', 400))
+    await expect(openFirstReviewRequest('col-1', { pushCollectionCuration })).resolves.toBeNull()
+  })
+
+  it('surfaces any other failure', async () => {
+    const pushCollectionCuration = vi.fn().mockRejectedValue(new BuilderServerError('Unauthorized', 401))
+    await expect(openFirstReviewRequest('col-1', { pushCollectionCuration })).rejects.toBeInstanceOf(BuilderServerError)
   })
 })
 
