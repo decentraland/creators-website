@@ -309,7 +309,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
       const result = await executeUpload(address, operations)
 
       // One event per upload rather than per item: the legacy builder's per-item `Save item` on creation
-      // reads here as `item_count` (see design/TRACKING_SPEC.md).
+      // reads here as `item_count` (see docs/TRACKING_SPEC.md).
       if (updateOnly) {
         // Legacy event name, so bulk edits line up with the old builder's.
         track('Edit TP Items', {

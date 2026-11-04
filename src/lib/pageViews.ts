@@ -12,7 +12,7 @@ const PAGE_NAMES: Record<string, string> = {
 // Redirect-only routes: the page they land on sends its own view, so old links don't count twice.
 const REDIRECT_PATHS = ['/overview']
 
-/** The page view for a new pathname (spec: design/TRACKING_SPEC.md "Page views"). */
+/** The page view for a new pathname (spec: docs/TRACKING_SPEC.md "Page views"). */
 export function trackPageView(pathname: string): void {
   const path = pathname.replace(/\/+$/, '') || '/'
   if (REDIRECT_PATHS.includes(path)) return

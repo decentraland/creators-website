@@ -1,4 +1,4 @@
-// The overview page's sender (spec: design/TRACKING_SPEC.md "Overview"). Its events feed sites' warehouse
+// The overview page's sender (spec: docs/TRACKING_SPEC.md "Overview"). Its events feed sites' warehouse
 // tables and Metabase cards, so they go to sites' Segment source. A second analytics.js instance with
 // sites' key (the app's own instance carries the builder key) loads that source's browser destinations
 // (GA4, GTM) as sites did; until it is ready, calls queue, and leave over the HTTP API if the page goes first.
