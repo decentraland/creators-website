@@ -1,14 +1,16 @@
 # Item Validation Parity (legacy Builder → creators-website)
 
-Inventory of every client-side validation the legacy builder applies to wearable/emote items, and its status here. Purpose: when a feature that is out of scope today (smart wearables, item editor, third-party collections, …) gets migrated, its validation rules are listed below as acceptance criteria instead of being rediscovered from scattered builder code.
+Inventory of every client-side validation the legacy builder applies to wearable/emote items, and its status here. Purpose: the acceptance criteria for every migrated flow, listed once instead of being rediscovered from scattered builder code, and the checklist for whatever is still to come (social emotes, per-item minter allowances, …).
 
 Builder references are `file:line` in `decentraland/builder` at `2c1f7586` (master, 2026-09). Line numbers drift; the file and symbol are the durable pointer. Server-side rules come from `builder-server`, which is unchanged and enforces them regardless of client.
 
 Status legend:
 
 - **ported** — implemented here (with the location).
+- **delegated** — not implemented here because the shared wearable-validator rule book covers it.
 - **gap** — applies to a flow that exists here today but is missing. Fix independently of any feature migration.
 - **deferred: _feature_** — belongs to a feature not yet migrated. Port it with that feature.
+- **dropped on purpose** — the flow exists here and behaves differently by decision (see `DECISIONS.md`).
 - **n/a** — intentionally not carried over.
 
 Rule of thumb: nothing is ported before the flow that calls it exists. Unwired validation has no test and rots silently. Model and emote checks are not ported at all: they come from the shared wearable-validator rule book (§1), so a rule change lands there, never here.
@@ -58,10 +60,10 @@ Wiring: every distinct main file is checked once, in a module worker with inline
 | Missing external GLTF buffers/textures → specific error | ported | `lib/models.ts` `loadGltf` `missing_external_resources` | `lib/getModelData.ts:87`; `ImportStep.tsx:214` |
 | Zip with both `male/` and `female/` while adding a **single representation** → `InvalidModelFilesRepresentation` | **dropped on purpose** (2026-10-22): the change-file modal takes the chosen shape's folder and ignores the other (`lib/itemFactory` `sortContentZipBothBodyShape`; see "Replace model" in `DECISIONS.md`) | `itemModelImport.spec.ts` | `ImportStep.tsx:389` |
 | Changing an item's file to a different type (wearable↔emote) → `InvalidModelFileType` | ported: `lib/itemModelImport.ts` `loadModelForItem` (`invalid_model_file_type`) | `itemModelImport.spec.ts` | `ImportStep.tsx:413` |
-| Add-representation dropzone restricted to `MODEL_EXTENSIONS` / `IMAGE_EXTENSIONS` by category | deferred: add representation | — | `types.ts:180-181`; `ImportStep.tsx:501` |
+| Add-representation dropzone restricted to `MODEL_EXTENSIONS` / `IMAGE_EXTENSIONS` by category | ported with a different approach: the change-file modal accepts every `ITEM_EXTENSIONS` file and refuses a model next to a kept texture representation (or vice versa) after the pick (`representation_category_mismatch`) | `lib/itemModelImport.ts` `getModelUpdateError` | `types.ts:180-181`; `ImportStep.tsx:501` |
 | `scene.json` zips (smart wearables): `scene.main` must exist, `wearable.json` required, permission checks (`UnknownRequiredPermissions`, `DuplicatedRequiredPermissions`, `MissingRequiredProperties`, `AllowedMediaHostnameIsEmptyOrInvalid`) | ported with one relaxation: `wearable.json` is optional (see "Smart wearables" in `DECISIONS.md`). `lib/itemFiles.ts` `toSceneManifest` / `loadScene` (`manifest_file_missing`, `scene_main_not_code`, `scene_manifest_missing` for scene code without a `scene.json`, `scene_manifest_nested`, `scene_code_mismatch`, `unknown_required_permissions`, `duplicated_required_permissions`, `allowed_media_hostnames_empty`, `invalid_manifest`) | `itemFiles.spec.ts` | builder-client `files.js` `loadSceneConfig`; `ImportStep.tsx:227` |
-| Emotes / smart wearables forbidden in third-party collections | deferred: third-party collections | — | `ImportStep.tsx:419` |
-| Bulk zip must contain `wearable.json`; item URN must match collection URN; mapping required for linked collections | deferred: bulk edit (`CreateAndEditMultipleItemsModal`) | — | `CreateAndEditMultipleItemsModal.tsx:162,249` |
+| Emotes / smart wearables forbidden in third-party collections | ported: `linked_emote` / `linked_smart_wearable` at import and in the change-file modal | `processDraft.ts`, `lib/itemModelImport.ts` | `ImportStep.tsx:419` |
+| Bulk zip must contain `wearable.json`; item URN must match collection URN; mapping required for linked collections | ported with one relaxation: in Edit in bulk each zip's `wearable.json` must name an item of the collection (`bulk_edit_no_match`), a URN of another collection is refused (`linked_urn_mismatch`), and a zip without a `mapping` gets All NFTs instead of `missing_mapping` (see "Linked collections" in `DECISIONS.md`) | `lib/linkedManifest.ts` | `CreateAndEditMultipleItemsModal.tsx:162,249` |
 
 ## 3. File sizes
 
@@ -75,8 +77,8 @@ Constants (`lib/itemFiles.ts`, same values as `@dcl/builder-client` `files/const
 | Draft recheck before save: model + thumbnail vs type/category cap → save disabled | ported | `isDraftComplete` → `getSizeError` | `CreateSingleItemModal.tsx:148`; `utils.ts:1021` |
 | Generated / uploaded thumbnail > 1 MB rejected before save | ported | `ThumbnailModal.tsx` `ThumbnailTooBigError` on capture / upload; `lib/itemFactory.ts` `assertUploadSize` again at save time | `sagas.ts:512` `ThumbnailFileTooBigError`; `CreateSingleItemModal.tsx:131` (checks 5 MB but message says 1 MB, a builder bug: use 1 MB) |
 | Thumbnail PNG palette-quantized to 256 colors before upload to stay under 1 MB | ported | `media.ts` `compressPngBlob` (upng-js, size floor: the original is kept when quantizing does not shrink it), applied to the thumbnail and `image.png` in `itemFactory.ts` `withCatalystImage` | `sagas.ts:492` `THUMBNAIL_PALETTE_COLORS` |
-| Save-time recompute of final model size deduplicated by hash against existing contents (`calculateModelFinalSize`) | deferred: edit existing item | — | `modules/item/export.ts:73` |
-| Smart wearable 3 MB cap | ported: `MAX_SMART_WEARABLE_FILE_SIZE` in `itemFiles.ts` + `getSizeError` | `itemFiles.spec.ts`, `itemFactory.spec.ts` | builder-client; `ImportStep.tsx:238` |
+| Save-time recompute of final model size deduplicated by hash against existing contents (`calculateModelFinalSize`) | ported in add-items (`uploadItems.ts` `checkOperationSize` fetches the kept stored files); **gap** in the editor's change-file path, where `lib/itemModelImport.ts` sizes the new blobs only (`getSizeError` without `storedSizes`) | `uploadItems.ts` | `modules/item/export.ts:73` |
+| Smart wearable 3 MB cap | ported: smart wearables fall through to `MAX_WEARABLE_FILE_SIZE` in `getSizeError` (skin's 8 MB still wins); the video is excluded from the cap | `itemFactory.spec.ts` | builder-client; `ImportStep.tsx:238` |
 | Video > 250 MB | ported: `validateVideoFile` (VideoModal) and the zip import (`video_too_big`); mp4 only (`video_wrong_format`); undecodable file (`invalid_video`) | `itemFiles.ts`, `media.ts` `loadVideoMetadata` | `UploadVideoStep.tsx:44`; `sagas.ts`; server `Item.router.ts` `MAX_VIDEO_SIZE` |
 
 ## 4. Emote import rules (outside the GLB suite)
@@ -97,11 +99,11 @@ Constants (`lib/itemFiles.ts`, same values as `@dcl/builder-client` `files/const
 | Name ≤ 32 chars, non-empty, no `:` | ported | `isValidItemName`, `ITEM_NAME_MAX_LENGTH` | `types.ts:175`; `utils.ts:711` `isValidText`; `sagas.ts:453`; server `Item.schema.ts` pattern `^[^:]*$` |
 | Required before save: name, thumbnail, metrics, category, rarity, body shape (wearables) / play mode (emotes) | ported | `isDraftComplete` | `CreateSingleItemModal.tsx:117` |
 | Category list: models → all `WearableCategory` minus `body_shape`; PNG-only → eyes/eyebrows/mouth | ported | `getCategoryOptions` | `utils.ts:524` |
-| `removesDefaultHiding = [hands]` auto-set for `upper_body` and for items that **hide** `upper_body` | ported | `lib/itemFactory.ts` `buildItem`, `buildRepresentationItem` | `CreateSingleItemModal.tsx:263,366` |
-| Description ≤ 64 chars, no `:`; utility ≤ 64 chars | deferred: description / utility fields (server-enforced meanwhile) | — | `types.ts:176`; `RightPanel.tsx:855`; server `Item.schema.ts` |
-| Hides editor: skin removes head/hands/hair/facial_hair/mouth/eyebrows/eyes/upper/lower/feet and `skin`; `body_shape` hidden unless already set; legacy `replaces` merged into `hides` on load | deferred: item editor (hides) | — | `utils.ts:509-561`; `RightPanel.tsx:108,660` |
-| Tags ≤ 20 (server only; builder has no client cap in item flows) | deferred: tags field (server-enforced) | — | server `Item.model.ts` `MAX_TAGS_LENGTH` |
-| Third-party: rarity forced UNIQUE, price 0 / zero beneficiary, `mappings` required and valid when a linked contract exists, ≤ 1 mapping property | deferred: third-party collections | — | `CommonFields.tsx:126`; `CreateSingleItemModal.tsx:140,330`; server `Item.schema.ts` |
+| `removesDefaultHiding = [hands]` auto-set for `upper_body` and for items that **hide** `upper_body` | ported | `lib/itemFactory.ts` `buildItem`, `addRepresentationToItem`; the editor recomputes it on save with `lib/itemDraft.ts` `computeRemovesDefaultHiding` | `CreateSingleItemModal.tsx:263,366` |
+| Description ≤ 64 chars, no `:`; utility ≤ 64 chars | ported in the item editor (not at import, where the fields don't exist) | `lib/itemDraft.ts` `ITEM_DESCRIPTION_MAX_LENGTH`, `ITEM_UTILITY_MAX_LENGTH`, `isValidItemDescription`; `PropertiesPanel` | `types.ts:176`; `RightPanel.tsx:855`; server `Item.schema.ts` |
+| Hides editor: skin removes head/hands/hair/facial_hair/mouth/eyebrows/eyes/upper/lower/feet and `skin`; `body_shape` hidden unless already set; legacy `replaces` merged into `hides` on load | ported | `components/ItemEditorPage/HidesEditor`; `lib/wearableCategories.ts` `getHideableBodyPartCategories` / `getHideableWearableCategories`; the `replaces` → `hides` merge in `lib/itemDraft.ts` | `utils.ts:509-561`; `RightPanel.tsx:108,660` |
+| Tags ≤ 20 (server only; builder has no client cap in item flows) | n/a, as in the builder: the editor's `TagsInput` sets no cap and the server enforces it | — | server `Item.model.ts` `MAX_TAGS_LENGTH` |
+| Third-party: rarity forced UNIQUE, price 0 / zero beneficiary, `mappings` required and valid when a linked contract exists, ≤ 1 mapping property | ported: the add-items form hides rarity for linked collections and shows the mapping field (required with a linked contract, default All NFTs); manifest mappings are validated with `@dcl/schemas` | `AddItemsModal/DraftForm.tsx`; `lib/linkedManifest.ts`; `lib/mappings.ts` | `CommonFields.tsx:126`; `CreateSingleItemModal.tsx:140,330`; server `Item.schema.ts` |
 
 ## 6. Thumbnails
 
@@ -125,7 +127,7 @@ Constants (`lib/itemFiles.ts`, same values as `@dcl/builder-client` `files/const
 
 | Rule | Status | Builder ref |
 | --- | --- | --- |
-| Full `validateWearableGLTF` re-run when category **or hides** change on an existing item, with traffic-light indicator and issues modal | deferred: item editor | `ItemEditorPage/CenterPanel.tsx:93-163,366` |
+| Full `validateWearableGLTF` re-run when category **or hides** change on an existing item, with traffic-light indicator and issues modal | ported: `ItemEditorPage` re-runs the rule book through `itemValidationContext` when the type, category, hides or loop change, shows `ValidationBadge` and opens the item's details modal (§1 Wiring) | `ItemEditorPage/CenterPanel.tsx:93-163,366` |
 | Bulk modal runs the suite per file and rejects only on `ERROR` issues (never happens) | n/a (no blocking behavior to preserve) | `CreateAndEditMultipleItemsModal.tsx:214-232` |
 
 ## 9. Error surfacing

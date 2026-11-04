@@ -80,7 +80,7 @@ A Segment `page` call per pathname change, named from a fixed map in `lib/pageVi
 | `Open buy credits` | the credits top-up opened from the publish payment step because the balance falls short | `collectionId`, `shortfall` |
 | `Start credits checkout` | the creator leaves for Stripe's hosted checkout (the wizard state is saved to resume on return) | `collectionId`, `orderId`, `packId`, `quantity`, `credits`, `usd`, `shortfall`, `resumeSaved` |
 | `Credits checkout canceled` | back from Stripe with the checkout cancelled; the order is cancelled server-side | `collectionId`, `orderId` |
-| `Credits checkout settled` | back from Stripe, once the order's outcome is known (nothing while confirming) | `orderId`, `status` (the order status: `initiated` / `processing` / `crediting` / `credited` / `failed` / `abandoned`, or `pending` when the poll gave up), `credits` (granted, else `null`) |
+| `Credits checkout settled` | back from Stripe, once the order's outcome is known (nothing while confirming) | `orderId`, `status` (a settled order status: `credited` / `failed` / `abandoned`; `initiated` when nobody paid by the poll's deadline; `pending` when the order was paid but still processing at the deadline, or the read failed), `credits` (granted, else `null`) |
 | `Filter linked collections` | the Linked chip on My collections is selected | `count` |
 | `View linked collection` | a linked (third-party) collection's detail loads | `collectionId`, `item_count`, `network`, `is_reader` (the signer is not a manager: the public read-only view) |
 | `Copy linked contract address` | the linked contract address is copied on the detail | `collectionId`, `network` |
@@ -90,7 +90,8 @@ A Segment `page` call per pathname change, named from a fixed map in `lib/pageVi
 | `Select all linked items` | Select all {total} items picks every page of a linked collection | `collectionId`, `filter`, `count` |
 | `Publish TP Items started` | the linked publish wizard opens | `collectionId`, `thirdPartyId`, `items`, `pushed` |
 | `Sign TP cheque` | the creator signs the slots cheque (wizard step 2) | `collectionId`, `thirdPartyId`, `qty` |
-| `Publish TP Items` / `… error` | the whole linked publish finished / failed | `collectionId`, `thirdPartyId`, `items`, `pushed`, `txHash`; on error `step` (`tos` … `push`) and `error` |
+| `Publish TP Items` | the whole linked publish finished | `collectionId`, `thirdPartyId`, `items`, `pushed`, `txHash` |
+| `Publish TP Items error` | a step failed | `collectionId`, `step` (`tos` … `push`, `unknown` for a throw outside the flow), `error` |
 | `Push TP Changes` / `… error` | already-approved linked items are sent for review again | `collectionId`, `items`, `failed` / `error` |
 | `Edit TP Collection Contract` | a linked collection was moved to another registered contract and its items re-linked | `collectionId`, `from`, `to`, `items` (how many were re-linked) |
 | `Open collection by contract` | a signed-in creator lands on `/collections?contract=<address>` (marketplace's link to a collection it only knows by contract) and it resolves | `outcome` (`found` / `not_found` / `invalid` (not an address, nothing read) / `error` (read failed, also reported by the query cache)), `collectionId` (when found) |
@@ -205,9 +206,13 @@ Committee actions keep the legacy names (the on-chain disable was "Reject collec
 | `Approve collection` | the collection was approved (or enabled) on chain | `collectionId`, `txHash` |
 | `Approve collection error` |  | `collectionId`, `error` |
 | `Approve curation` | the pending review request was marked approved | `collectionId` |
+| `Push curation` | a creator sent a collection back to the committee: an approved one's changes, or a rejected first review again | `collectionId`, `first_review` |
+| `Push curation error` |  | `collectionId`, `error` |
 | `Review Validation Result` | the review bar's checks of a collection's pending items first settle, once per collection opened (cached results included) | `collectionId`, `itemCount`, `errors`, `warnings`, `itemsWithIssues`, `durationMs` (from opening) |
 | `Review Validation Opened` | the curator opened the collection's validation results | `collectionId`, `status` (`warnings` \| `errors`) |
 | `Review Preview In World` | a **Preview in World** launch from the editor in review mode settles (desktop only) | `collectionId`, `itemCount`, `launched` (the desktop explorer opened; `false` = sent to the download page) |
+
+Sentry flows: `curation_assign`, `curation_reject`, `curation_disable`, `curation_push`, `curation_approve` (with `step`). Wallet rejections are events only.
 
 Linked collections (curator side):
 
@@ -229,10 +234,6 @@ Legacy names where the legacy builder had the event. Give-ups and failed assigne
 | `Create forum post error` | creating it failed after the retries | `collectionId`, `trigger`, `error` |
 | `Forum post opened` | the topic link was clicked | `collectionId`, `surface` (`detail` / `detail_menu` / `curation_list` / `review_verdict`) |
 | `Assignee forum post error` | the assignment reply could not be posted | `collectionId`, `error` |
-| `Push curation` | a creator sent a collection back to the committee: an approved one's changes, or a rejected first review again | `collectionId`, `first_review` |
-| `Push curation error` |  | `collectionId`, `error` |
-
-Sentry flows: `curation_assign`, `curation_reject`, `curation_disable`, `curation_push`, `curation_approve` (with `step`). Wallet rejections are events only.
 
 ### Roles
 
@@ -316,7 +317,29 @@ The preview renderer decision is not an error: it is set as the `preview_rendere
 
 Item validation reports a crashed rule-book worker once per page load with `flow: 'validation_worker'` (runs fall back inline), a model or thumbnail check that could not run with `flow: 'model_validation'` / `'thumbnail_validation'` (shown as a non-blocking warning), and a check that crashed inside the rule book with `flow: 'validation'`.
 
-Linked collections report with `flow: 'linked_publish'` from the payment on (`wait_tx`, `delete_virtual`, `publish`, `push`: the creator may have paid, so a failure there needs someone to look, a payment still unconfirmed after the wait included; `txHash` in extra). A rejected wallet prompt or a reverted transaction charged nothing and stays an event. Earlier steps also stay events, with `flow: 'linked_curation_approve'` (`step`: `prepare` / `root` / `deploy`), `'linked_curation_reject'` and `'linked_curation_review'` (enable / disable a third party). A wallet rejection, a non-NFT contract, an invalid mapping or a pending review are the user's to fix and stay Segment events.
+Linked collections report with `flow: 'linked_publish'` from `step: 'sign_cheque'` (a cheque signature that fails for a reason other than a wallet rejection) and from the payment on (`wait_tx`, `delete_virtual`, `publish`, `push`: the creator may have paid, so a failure there needs someone to look, a payment still unconfirmed after the wait included; `txHash` in extra). A rejected wallet prompt or a reverted transaction charged nothing and stays an event. The curator side reports with `flow: 'linked_curation_approve'` (`step`: `prepare` / `root` / `deploy`), `'linked_curation_reject'` and `'linked_curation_review'` (enable / disable a third party). A wallet rejection, a non-NFT contract, an invalid mapping or a pending review are the user's to fix and stay Segment events.
+
+Every `flow` tag the app sends, with what it covers (wallet rejections and user-fixable refusals are never reported under any of them):
+
+| flow | reported from |
+| --- | --- |
+| `publish` | the publish wizard's ToS record failing before payment (`step: 'tos'`); every other publish failure reaches Sentry through the mutation reporter (`flow: 'mutation'`, below) |
+| `credits-top-up` | reading a credits order's outcome after Stripe failed (the event reports `pending`) |
+| `add_items` | the add-items modal: a model that could not be analysed (`step: 'validate'`) or re-validated after a category change (`step: 'revalidate'`) |
+| `save-item` / `item_save` | saving an item: the mutation's reporter (`save-item`) and the editor's save path (`item_save`) |
+| `item_file_change` | the change-file modal's import or save |
+| `send_items` | a send that failed for a reason other than a wallet rejection (`collectionId`, the batch size) |
+| `transfer_ownership` | the detached owner sync after a transfer gave up |
+| `create_collection_discount` / `end_collection_discount` | signing or storing a collection discount, ending one early |
+| `network-selector` | reading or switching the wallet's chain (`step: 'read-chain'` / `'switch-chain'`) |
+| `curation_assign` / `curation_reject` / `curation_disable` / `curation_push` / `curation_approve` | the standard curation actions (§3 Curation; `curation_approve` carries `step`) |
+| `forum_post` | a forum topic creation that gave up, or a failed assignee reply |
+| `linked_create` / `linked_collection_contract` / `linked_collection_urn` / `linked_item_urn` / `linked_mapping_save` / `linked_select_all` | linked collection management: creating one, moving it to another contract, editing a collection or item URN, saving a mapping, fetching every page for Select all |
+| `linked_publish` / `linked_push` | the linked publish wizard (above) and pushing linked changes |
+| `linked_curation_approve` / `linked_curation_reject` / `linked_curation_review` | the linked curation actions (above) |
+| `live_preview` | the Blender live preview (below) |
+| `validation_worker` / `model_validation` / `thumbnail_validation` / `validation` | item validation (above) |
+| `query` / `mutation` / `render` | the react-query cache reporters and the error boundary (below) |
 
 The Blender live preview reports with `flow: 'live_preview'`: a bridge that answers but breaks the contract (`step: 'poll'` — an invalid `/state` payload, a failed `/model.glb` after a good state: add-on / page schema drift), a streamed GLB the spring bone parser or the preview cannot take (`parse_spring_bones`, `preview`), and a physics push the renderer rejects (`physics`, once per session). An unreachable bridge and a denied local-network permission are the creator's to fix, so they stay Segment events.
 
