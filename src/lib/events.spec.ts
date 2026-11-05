@@ -11,11 +11,11 @@ import {
   hasOpenAppeal,
   isFinalValidationError,
   isValidationInProgress,
-  isValidationRunning,
   mergeBodyShapeFindings,
   startOfUtcDay,
   type CollectionEvent,
-  type ValidationFinding
+  type ValidationFinding,
+  type ValidationItemResult
 } from './events'
 
 const NOW = Date.UTC(2026, 8, 29, 15, 0, 0)
@@ -63,6 +63,15 @@ describe('countValidationAttempts', () => {
     ]
     expect(countValidationAttempts(events, NOW)).toBe(3)
     expect(getValidationAttemptsLeft(events, NOW)).toBe(0)
+  })
+
+  it("doesn't count a run whose request never reached the validator", () => {
+    const events = [
+      event('review.ai_error', NOW, { reason: 'publish_failed' }),
+      event('review.ai_started', NOW - 1, { trigger: 'retry' }),
+      event('review.ai_started', NOW - 1000, { trigger: 'publish' })
+    ]
+    expect(countValidationAttempts(events, NOW)).toBe(1)
   })
 
   it('reads one review used right after publishing', () => {
@@ -118,7 +127,7 @@ describe('getAiIssuesByItem', () => {
         ]
       })
     ]
-    const issues = getAiIssuesByItem(events)
+    const issues = getAiIssuesByItem(events, [])
     expect([...issues.keys()]).toEqual(['i1'])
     expect(issues.get('i1')).toEqual([
       {
@@ -135,13 +144,36 @@ describe('getAiIssuesByItem', () => {
 
   it('shows nothing after a pass, without a verdict, or for items edited while the validator ran', () => {
     const rejected = { itemId: 'i1', contentHash: 'h', passed: false, findings: [finding] }
-    expect(getAiIssuesByItem([event('review.ai_passed', NOW, { verdict: 'passed', items: [] })]).size).toBe(0)
-    expect(getAiIssuesByItem([event('review.ai_started', NOW)]).size).toBe(0)
+    expect(getAiIssuesByItem([event('review.ai_passed', NOW, { verdict: 'passed', items: [] })], []).size).toBe(0)
+    expect(getAiIssuesByItem([event('review.ai_started', NOW)], []).size).toBe(0)
     expect(
-      getAiIssuesByItem([
-        event('review.ai_rejected', NOW, { verdict: 'rejected', items: [rejected], staleItemIds: ['i1'] })
-      ]).size
+      getAiIssuesByItem(
+        [event('review.ai_rejected', NOW, { verdict: 'rejected', items: [rejected], staleItemIds: ['i1'] })],
+        []
+      ).size
     ).toBe(0)
+  })
+
+  it('drops the findings of an item saved since the run, and keeps them while its content is the one judged', () => {
+    const rejected = [
+      event('review.ai_rejected', NOW, {
+        verdict: 'rejected',
+        items: [{ itemId: 'i1', contentHash: 'judged', passed: false, findings: [finding] }]
+      })
+    ]
+    expect(getAiIssuesByItem(rejected, [{ id: 'i1', currentContentHash: 'fixed' }]).size).toBe(0)
+    expect(getAiIssuesByItem(rejected, [{ id: 'i1', currentContentHash: 'judged' }]).size).toBe(1)
+    expect(getAiIssuesByItem(rejected, [{ id: 'i1', currentContentHash: undefined }]).size).toBe(1)
+  })
+
+  it('reads a malformed item without findings as having none', () => {
+    const events = [
+      event('review.ai_rejected', NOW, {
+        verdict: 'rejected',
+        items: [{ itemId: 'i1', contentHash: 'h', passed: false } as unknown as ValidationItemResult]
+      })
+    ]
+    expect(getAiIssuesByItem(events, []).size).toBe(0)
   })
 })
 
@@ -166,8 +198,8 @@ describe('getLatestVerdict', () => {
 
 describe('latest-event flags', () => {
   it('knows when a validation is running and when an appeal is open', () => {
-    expect(isValidationRunning([event('review.ai_started', NOW)])).toBe(true)
-    expect(isValidationRunning([event('review.ai_rejected', NOW)])).toBe(false)
+    expect(isValidationInProgress([event('review.assigned', NOW), event('review.ai_started', NOW - 1)])).toBe(true)
+    expect(isValidationInProgress([event('review.ai_rejected', NOW)])).toBe(false)
     expect(hasOpenAppeal([event('review.appeal_requested', NOW)])).toBe(true)
     expect(hasOpenAppeal([])).toBe(false)
   })

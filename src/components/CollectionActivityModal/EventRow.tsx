@@ -14,7 +14,7 @@ import {
   isValidationTrigger,
   type CollectionEvent
 } from '~/lib/events'
-import { shortAddress } from '~/lib/ids'
+import { shortenAddress } from '~/lib/address'
 import { type Item } from '~/lib/items'
 import { formatTimeAgo } from '~/lib/time'
 import { useProfile } from '~/hooks/useProfile'
@@ -40,7 +40,7 @@ const ACTOR_LED = new Set([
 
 function AssigneeName({ address }: { address: string }) {
   const { data: profile } = useProfile(address)
-  return <>{profile?.name || shortAddress(address)}</>
+  return <>{profile?.name || shortenAddress(address)}</>
 }
 
 export function EventRow({ event, items, isCurator }: Props) {

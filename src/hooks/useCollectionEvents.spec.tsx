@@ -122,10 +122,10 @@ describe('useRequestValidation', () => {
 })
 
 describe('useAppealCuration', () => {
-  it('sends the note', async () => {
+  it('asks for a curator review of the collection', async () => {
     api.appealCollectionCuration.mockResolvedValue(undefined)
     const { result } = renderHook(() => useAppealCuration('0xme'), { wrapper })
-    await act(() => result.current.mutateAsync({ collection, note: 'Fixed' }))
-    expect(api.appealCollectionCuration).toHaveBeenCalledWith('0xme', 'c1', 'Fixed')
+    await act(() => result.current.mutateAsync({ collection }))
+    expect(api.appealCollectionCuration).toHaveBeenCalledWith('0xme', 'c1')
   })
 })

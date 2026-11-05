@@ -22,6 +22,7 @@ import {
 import { BuilderServerError, VALIDATION_RUNNING_STATUS, ValidationLimitError } from '~/lib/builder'
 import { isSocialLogin } from '~/lib/auth'
 import { FeatureFlag } from '~/lib/featureFlags'
+import { getValidationStatus } from '~/lib/validation'
 import {
   CollectionDisplayStatus,
   canManageCollectionItems,
@@ -295,7 +296,8 @@ const CollectionDetailPage = () => {
   const syncs = useItemSyncs(curationAddress, standardCollection, allItems ?? [])
   const curationQuery = useCollectionCuration(curationAddress, standardCollection)
   const curation = curationQuery.data ?? null
-  const { events } = useCollectionEvents(address, standardCollection)
+  const eventsQuery = useCollectionEvents(curationAddress, standardCollection)
+  const { events } = eventsQuery
   const pushCuration = usePushCuration(address)
   // Sending changes for review runs the same item checks as publishing before its confirm modal.
   const [pushView, setPushView] = useState<'closed' | 'gate' | 'confirm'>('closed')
@@ -316,8 +318,17 @@ const CollectionDetailPage = () => {
   const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION).enabled
   const [reviewRequest, setReviewRequest] = useState<ReviewFlowRequest | null>(null)
   const clearReviewRequest = useCallback(() => setReviewRequest(null), [])
+  // After publishing, the review modal needs a server that keeps the timeline; without one the plain success shows.
+  const [awaitingReviewStart, setAwaitingReviewStart] = useState(false)
+  const timelineSettled = eventsQuery.isFetched || eventsQuery.isError
+  useEffect(() => {
+    if (!awaitingReviewStart || !timelineSettled) return
+    setAwaitingReviewStart(false)
+    if (eventsQuery.isAvailable) setReviewRequest('reviewing')
+    else setPublishView('success')
+  }, [awaitingReviewStart, timelineSettled, eventsQuery.isAvailable])
   // The validator's findings dress the rows and the details modal like the browser's checks do.
-  const aiIssues = useMemo(() => getAiIssuesByItem(events ?? []), [events])
+  const aiIssues = useMemo(() => getAiIssuesByItem(events ?? [], allItems ?? []), [events, allItems])
   // Until the request loads, a pending one looks like none and the push would duplicate it. A rejection the
   // automatic review tracks is resubmitted from the review panel (validate again / appeal), never from here.
   const curationLoaded = curationQuery.isSuccess
@@ -366,15 +377,19 @@ const CollectionDetailPage = () => {
     [itemsQuery.isFetching, validation, validationItems]
   )
   const rerunItemValidation = useRerunItemValidation()
-  const rowValidation = useCallback(
-    (item: Item): ItemValidation | undefined => {
-      const local = validation.results.get(item.id)
-      const ai = aiIssues.get(item.id)
-      if (!ai) return local
-      return { status: 'errors', issues: [...(local?.issues ?? []), ...ai] }
-    },
-    [validation.results, aiIssues]
-  )
+  const rowValidations = useMemo(() => {
+    const merged = new Map<string, ItemValidation>(validation.results)
+    for (const [itemId, ai] of aiIssues) {
+      const local = validation.results.get(itemId)
+      const issues = [...(local?.issues ?? []), ...ai]
+      merged.set(itemId, {
+        status: local?.status === 'loading' ? 'loading' : getValidationStatus(issues, false),
+        issues
+      })
+    }
+    return merged
+  }, [validation.results, aiIssues])
+  const rowValidation = useCallback((item: Item) => rowValidations.get(item.id), [rowValidations])
   const [validationItem, setValidationItem] = useState<Item | null>(null)
   const showValidation = useCallback(
     (item: Item) => {
@@ -936,7 +951,7 @@ const CollectionDetailPage = () => {
               onClose={() => setPublishView('closed')}
               onPublished={() => {
                 setPublishView('closed')
-                if (autoCuration) setReviewRequest('reviewing')
+                if (autoCuration) setAwaitingReviewStart(true)
                 else setPublishView('success')
               }}
             />

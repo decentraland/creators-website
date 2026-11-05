@@ -3,6 +3,7 @@
 // allowance are all read off these rows; nothing here is stored on the client.
 
 import { BodyShape as BodyShapeId } from '@dcl/schemas'
+import { type Item } from '~/lib/items'
 import { ValidationSeverity, type ValidationIssue } from '~/lib/validation/types'
 
 export const COLLECTION_EVENT_TYPES = [
@@ -183,26 +184,28 @@ export function startOfUtcDay(now: number): number {
 
 /**
  * Automatic reviews used today: every run the creator caused (the publish, a retry, submitted changes; never
- * the server's own re-sends) newer than the later of today 00:00 UTC and the newest curator decision. The
- * server counts the same way, so the counter and the 429 agree. `events` newest first.
+ * the server's own re-sends) newer than the later of today 00:00 UTC and the newest curator decision. A run
+ * whose request never reached the validator doesn't count. The server counts the same way, so the counter
+ * and the 429 agree. `events` newest first.
  */
 export function countValidationAttempts(events: CollectionEvent[], now = Date.now()): number {
   const dayStart = startOfUtcDay(now)
+  // The server records the failed send right after its start; creators get no validationId to pair them by.
+  let unsentStarts = 0
   let attempts = 0
   for (const event of events) {
     if (event.createdAt < dayStart || HUMAN_DECISION_TYPES.has(event.type)) break
-    if (event.type === 'review.ai_started' && event.payload.trigger !== 'sweep') attempts++
+    if (event.type === 'review.ai_error' && event.payload.reason === PUBLISH_FAILED_REASON) unsentStarts++
+    else if (event.type === 'review.ai_started') {
+      if (unsentStarts > 0) unsentStarts--
+      else if (event.payload.trigger !== 'sweep') attempts++
+    }
   }
   return attempts
 }
 
 export function getValidationAttemptsLeft(events: CollectionEvent[], now = Date.now()): number {
   return Math.max(0, VALIDATION_ATTEMPTS_PER_DAY - countValidationAttempts(events, now))
-}
-
-/** A retry is refused (409) while the validator is still working on the latest request. */
-export function isValidationRunning(events: CollectionEvent[]): boolean {
-  return events[0]?.type === 'review.ai_started'
 }
 
 /** Events that say nothing about the review stage: an assignment or a submitted change leaves it where it was. */
@@ -242,7 +245,9 @@ export function hasOpenAppeal(events: CollectionEvent[]): boolean {
 
 /** The items the validator did not pass, in payload order; `null` (not checked) is listed too, never as a pass. */
 export function getFailedItems(payload: ValidationVerdictPayload): ValidationItemResult[] {
-  return payload.items.filter(item => item.passed !== true)
+  return payload.items
+    .filter(item => item.passed !== true)
+    .map(item => (Array.isArray(item.findings) ? item : { ...item, findings: [] }))
 }
 
 /** Items the validator explicitly failed; an unchecked (`null`) item is not counted as one. */
@@ -297,16 +302,23 @@ export function toValidationIssue(finding: ValidationFinding): ValidationIssue {
 
 /**
  * The newest rejection's findings per item that did not pass, keyed by item id; empty once the validator
- * passed the collection, while no verdict exists, or when the latest one is stale (edited since).
+ * passed the collection or while no verdict exists. Items edited during the run or saved since are left out.
  */
-export function getAiIssuesByItem(events: CollectionEvent[]): Map<string, ValidationIssue[]> {
+export function getAiIssuesByItem(
+  events: CollectionEvent[],
+  items: Pick<Item, 'id' | 'currentContentHash'>[]
+): Map<string, ValidationIssue[]> {
   const verdict = getLatestVerdict(events)
   const issues = new Map<string, ValidationIssue[]>()
   if (!verdict || verdict.payload.verdict !== 'rejected') return issues
   const stale = new Set(verdict.payload.staleItemIds ?? [])
-  for (const item of getFailedItems(verdict.payload)) {
-    if (stale.has(item.itemId) || item.findings.length === 0) continue
-    issues.set(item.itemId, item.findings.map(toValidationIssue))
+  // An item saved since the run carries another hash: its findings were about content that is gone.
+  const currentHashes = new Map(items.map(item => [item.id, item.currentContentHash]))
+  for (const result of getFailedItems(verdict.payload)) {
+    const currentHash = currentHashes.get(result.itemId)
+    const changed = currentHash !== undefined && currentHash !== result.contentHash
+    if (stale.has(result.itemId) || changed || result.findings.length === 0) continue
+    issues.set(result.itemId, result.findings.map(toValidationIssue))
   }
   return issues
 }

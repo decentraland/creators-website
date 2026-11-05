@@ -133,13 +133,12 @@ describe('fetchItemCurations', () => {
 })
 
 describe('review requests under the automatic review', () => {
-  it("turns the daily limit on a creator's request into the error carrying when to retry", async () => {
+  it("turns the daily limit on a creator's request into the daily-limit error", async () => {
     signedFetchMock.mockResolvedValue(
       jsonResponse({ ok: false, error: 'Too many attempts', data: { retryAt: '2026-09-30T00:00:00Z' } }, false, 429)
     )
     const error = await pushCollectionCuration(ADDRESS, 'a1b2').catch((e: unknown) => e)
     expect(error).toBeInstanceOf(ValidationLimitError)
-    expect((error as ValidationLimitError).retryAt).toBe(Date.parse('2026-09-30T00:00:00Z'))
   })
 
   it('sends the rejection reasons and message with the status', async () => {

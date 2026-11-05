@@ -10,9 +10,12 @@ import { CurationRow } from './CurationRow'
 vi.mock('~/lib/navigation', () => ({ openExternal: vi.fn() }))
 vi.mock('~/components/CollectionMosaic', () => ({ CollectionMosaic: () => null }))
 vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: undefined }) }))
-const latest = vi.hoisted(() => ({ event: null as { type: string } | null, timeline: true }))
+const latest = vi.hoisted(() => ({ event: null as { type: string } | null, timeline: true, fetched: [] as boolean[] }))
 vi.mock('~/hooks/useCollectionEvents', () => ({
-  useRecentCollectionEvents: () => ({ data: latest.timeline ? (latest.event ? [latest.event] : []) : null })
+  useRecentCollectionEvents: (_address: string, _id: string, enabled: boolean) => {
+    latest.fetched.push(enabled)
+    return { data: latest.timeline ? (latest.event ? [latest.event] : []) : null, flagEnabled: latest.timeline }
+  }
 }))
 
 const ME = '0xme00000000000000000000000000000000000001'
@@ -112,6 +115,13 @@ describe('CurationRow', () => {
   it('shows Approved from the timeline on an approved collection', () => {
     renderRow({ ...pending, status: 'approved', reviewedBy: '0xcurator' }, { ...collection, isApproved: true })
     expect(screen.getByTestId('review-stage')).toHaveAttribute('data-stage', 'approved')
+  })
+
+  it('reads the stage of a decided request without asking the server for its timeline', () => {
+    latest.fetched = []
+    renderRow({ ...pending, status: 'rejected', reviewedBy: 'validator' })
+    expect(screen.getByTestId('review-stage')).toBeInTheDocument()
+    expect(latest.fetched.every(fetched => !fetched)).toBe(true)
   })
 
   it('keeps the legacy state without a timeline, even when the server names the reviewer', () => {

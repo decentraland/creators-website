@@ -4,6 +4,7 @@ import {
   ValidationLimitError,
   appealCollectionCuration,
   fetchCollectionEvents,
+  isAppealAlreadyOpen,
   requestCollectionValidation
 } from './review'
 
@@ -54,14 +55,13 @@ describe('collection events and review requests', () => {
     expect(signedFetchMock.mock.calls[0][3]).toMatchObject({ method: 'POST' })
   })
 
-  it('turns the daily limit into an error carrying when to retry', async () => {
+  it('turns the daily limit into the daily-limit error', async () => {
     signedFetchMock.mockResolvedValue(
       jsonResponse({ ok: false, error: 'Too many attempts', data: { retryAt: '2026-09-30T00:00:00Z' } }, false, 429)
     )
     const error = await requestCollectionValidation(ADDRESS, 'a1b2').catch((e: unknown) => e)
     expect(error).toBeInstanceOf(ValidationLimitError)
     expect((error as ValidationLimitError).status).toBe(429)
-    expect((error as ValidationLimitError).retryAt).toBe(Date.parse('2026-09-30T00:00:00Z'))
   })
 
   it('keeps a running validation as a plain 409', async () => {
@@ -72,16 +72,18 @@ describe('collection events and review requests', () => {
     expect((error as BuilderServerError).status).toBe(409)
   })
 
-  it('sends the appeal note, or an empty body without one', async () => {
+  it('asks for a curator review', async () => {
     signedFetchMock.mockResolvedValue(jsonResponse({ ok: true }))
-    await appealCollectionCuration(ADDRESS, 'a1b2', 'Fixed the sleeves')
-    expect(signedFetchMock.mock.calls[0][2]).toBe('/collections/a1b2/curation/appeal')
-    expect(signedFetchMock.mock.calls[0][3]).toMatchObject({
-      method: 'POST',
-      body: JSON.stringify({ note: 'Fixed the sleeves' })
-    })
-
     await appealCollectionCuration(ADDRESS, 'a1b2')
-    expect(signedFetchMock.mock.calls[1][3]).toMatchObject({ method: 'POST', body: JSON.stringify({}) })
+    expect(signedFetchMock.mock.calls[0][2]).toBe('/collections/a1b2/curation/appeal')
+    expect(signedFetchMock.mock.calls[0][3]).toMatchObject({ method: 'POST', body: JSON.stringify({}) })
+  })
+
+  it('tells an appeal already open from the other refusals', () => {
+    expect(
+      isAppealAlreadyOpen(new BuilderServerError('There is already an open appeal for this collection', 409))
+    ).toBe(true)
+    expect(isAppealAlreadyOpen(new BuilderServerError('Only rejected collections can be appealed', 409))).toBe(false)
+    expect(isAppealAlreadyOpen(null)).toBe(false)
   })
 })

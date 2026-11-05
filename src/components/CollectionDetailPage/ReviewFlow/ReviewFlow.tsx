@@ -4,9 +4,15 @@ import { useTranslation } from '~/intl'
 import { Button } from '~/components/Button'
 import { useAppealCuration, useRequestValidation } from '~/hooks/useCollectionEvents'
 import { track } from '~/lib/analytics'
-import { BuilderServerError, VALIDATION_RUNNING_STATUS, ValidationLimitError } from '~/lib/builder'
+import { BuilderServerError, VALIDATION_RUNNING_STATUS, ValidationLimitError, isAppealAlreadyOpen } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
-import { ReviewStage, getCreatorReviewNotice, getReviewStage, type CollectionCuration } from '~/lib/curation'
+import {
+  ReviewStage,
+  getCreatorReviewNotice,
+  getReviewStage,
+  isRejectedStage,
+  type CollectionCuration
+} from '~/lib/curation'
 import {
   VALIDATION_ATTEMPTS_PER_DAY,
   countValidationAttempts,
@@ -15,7 +21,7 @@ import {
   hasOpenAppeal,
   isFinalValidationError,
   isUnsupportedItemsReview,
-  isValidationRunning,
+  isValidationInProgress,
   latestStageEvent,
   type CollectionEvent
 } from '~/lib/events'
@@ -30,7 +36,7 @@ import {
   SentForReviewModal,
   type AiItemIssues
 } from './ReviewModals'
-import { markReviewModalSeen, wasReviewModalSeen } from './reviewModalMemory'
+import { markReviewModalSeen, wasReviewModalSeen } from '~/lib/reviewModalMemory'
 import * as S from './ReviewFlow.styles'
 
 /** A modal the page asks for: right after publishing, or when submitted changes hit the daily limit. */
@@ -75,12 +81,12 @@ export function ReviewFlow({
   const stage = useMemo(() => getReviewStage(collection, curation, events), [collection, curation, events])
   const verdict = useMemo(() => getLatestVerdict(timeline), [timeline])
   const aiResults = useMemo<AiItemIssues[]>(() => {
-    const byItem = getAiIssuesByItem(timeline)
+    const byItem = getAiIssuesByItem(timeline, items)
     return items.filter(item => byItem.has(item.id)).map(item => ({ item, issues: byItem.get(item.id)! }))
   }, [timeline, items])
   const attemptsUsed = useMemo(() => countValidationAttempts(timeline), [timeline])
   const attemptsLeft = Math.max(0, VALIDATION_ATTEMPTS_PER_DAY - attemptsUsed)
-  const running = useMemo(() => isValidationRunning(timeline), [timeline])
+  const running = useMemo(() => isValidationInProgress(timeline), [timeline])
   const appealOpen = useMemo(() => hasOpenAppeal(timeline), [timeline])
   const cause = useMemo(() => latestStageEvent(timeline), [timeline])
 
@@ -120,7 +126,11 @@ export function ReviewFlow({
   }
 
   function validateAgain() {
-    if (running || attemptsLeft === 0) {
+    if (running) {
+      showToast(t('review_flow.running'), { type: 'warn' })
+      return
+    }
+    if (attemptsLeft === 0) {
       open('limit')
       return
     }
@@ -147,15 +157,16 @@ export function ReviewFlow({
   }
 
   function confirmReview() {
-    appeal.mutate({ collection, note: '' }, { onSuccess: () => open('sent') })
+    appeal.mutate({ collection }, { onSuccess: () => open('sent') })
   }
 
-  const appealError =
-    appeal.error instanceof BuilderServerError && appeal.error.status === VALIDATION_RUNNING_STATUS
-      ? t('review_flow.appeal_open')
-      : appeal.isError
-        ? t('review_flow.appeal_error')
-        : null
+  const appealError = isAppealAlreadyOpen(appeal.error)
+    ? t('review_flow.appeal_open')
+    : appeal.isError
+      ? t('review_flow.appeal_error')
+      : null
+  // Only a rejection can be sent to a curator; the limit modal on submitted changes just says to wait.
+  const canAppeal = canManage && isRejectedStage(stage)
 
   const modals = (
     <>
@@ -173,7 +184,11 @@ export function ReviewFlow({
       )}
       {modal === 'sent' && <SentForReviewModal onDone={close} />}
       {modal === 'limit' && (
-        <DailyLimitModal attemptsUsed={attemptsUsed} onRequestReview={requestReview} onClose={close} />
+        <DailyLimitModal
+          attemptsUsed={attemptsUsed}
+          onRequestReview={canAppeal ? requestReview : undefined}
+          onClose={close}
+        />
       )}
       {modal === 'additional' && <AdditionalReviewModal onDone={close} />}
     </>

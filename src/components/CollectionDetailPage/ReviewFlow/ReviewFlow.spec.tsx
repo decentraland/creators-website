@@ -13,7 +13,8 @@ const mocks = vi.hoisted(() => ({
   appeal: vi.fn(),
   appealReset: vi.fn(),
   toast: vi.fn(),
-  track: vi.fn()
+  track: vi.fn(),
+  appealError: null as Error | null
 }))
 vi.mock('~/hooks/useCollectionEvents', () => ({
   useRequestValidation: () => ({ mutate: mocks.validate, isPending: false }),
@@ -21,8 +22,8 @@ vi.mock('~/hooks/useCollectionEvents', () => ({
     mutate: mocks.appeal,
     reset: mocks.appealReset,
     isPending: false,
-    isError: false,
-    error: null
+    isError: mocks.appealError !== null,
+    error: mocks.appealError
   })
 }))
 vi.mock('~/lib/notifications', () => ({
@@ -107,6 +108,7 @@ describe('ReviewFlow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
+    mocks.appealError = null
   })
 
   it('tells the creator the automatic review is running, with nothing to do', () => {
@@ -167,7 +169,22 @@ describe('ReviewFlow', () => {
 
     fireEvent.click(screen.getByTestId('daily-limit-request'))
     fireEvent.click(screen.getByTestId('request-review-confirm'))
-    expect(mocks.appeal).toHaveBeenCalledWith({ collection, note: '' }, expect.anything())
+    expect(mocks.appeal).toHaveBeenCalledWith({ collection }, expect.anything())
+  })
+
+  it('says a review is running instead of opening the limit modal while one is in progress', () => {
+    renderFlow(rejectedByValidator, [event('review.ai_started', { trigger: 'retry' }), verdict()])
+    fireEvent.click(screen.getByTestId('ai-issues-back'))
+    fireEvent.click(screen.getByTestId('validate-again'))
+    expect(mocks.validate).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('daily-limit-modal')).toBeNull()
+    expect(mocks.toast).toHaveBeenCalledWith(expect.any(String), { type: 'warn' })
+  })
+
+  it('only asks the creator to wait when submitted changes hit the limit outside a rejection', () => {
+    renderFlow(pending, [event('review.ai_passed', { verdict: 'passed', items: [] })], { request: 'limit' })
+    expect(screen.getByTestId('daily-limit-modal')).toBeInTheDocument()
+    expect(screen.queryByTestId('daily-limit-request')).toBeNull()
   })
 
   it('explains a 429 and a 409 answered by the server', () => {
@@ -193,8 +210,21 @@ describe('ReviewFlow', () => {
     fireEvent.click(screen.getByTestId('request-curator-review'))
     mocks.appeal.mockImplementationOnce((_, { onSuccess }) => onSuccess())
     fireEvent.click(screen.getByTestId('request-review-confirm'))
-    expect(mocks.appeal).toHaveBeenCalledWith({ collection, note: '' }, expect.anything())
+    expect(mocks.appeal).toHaveBeenCalledWith({ collection }, expect.anything())
     expect(screen.getByTestId('sent-for-review-modal-title')).toHaveTextContent('Collection sent for review!')
+  })
+
+  it('tells an appeal already open from one the server refuses for another reason', () => {
+    mocks.appealError = new BuilderServerError('There is already an open appeal for this collection', 409)
+    const { unmount } = renderFlow(rejectedByCurator, [event('review.rejected')])
+    fireEvent.click(screen.getByTestId('request-curator-review'))
+    expect(screen.getByTestId('request-review-modal')).toHaveTextContent('already requested')
+    unmount()
+
+    mocks.appealError = new BuilderServerError('Only rejected collections can be appealed', 409)
+    renderFlow(rejectedByCurator, [event('review.rejected')])
+    fireEvent.click(screen.getByTestId('request-curator-review'))
+    expect(screen.getByTestId('request-review-modal')).not.toHaveTextContent('already requested')
   })
 
   it('warns instead of asking twice while an appeal is open', () => {

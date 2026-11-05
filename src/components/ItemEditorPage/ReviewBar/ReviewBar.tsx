@@ -286,7 +286,15 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
         />
       )}
       {dialog === 'reject' && withReasons && (
-        <RejectCurationModal collection={collection} curation={curation} address={address} onClose={closeDialog} />
+        <RejectCurationModal
+          collection={collection}
+          curation={curation}
+          address={address}
+          onClose={closeDialog}
+          onRejected={() => {
+            if (collection.forumLink) setForumVerdict(true)
+          }}
+        />
       )}
       {dialog === 'reject' && !withReasons && (
         <ConfirmModal

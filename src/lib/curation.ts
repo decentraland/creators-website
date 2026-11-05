@@ -336,11 +336,6 @@ export function getCreatorReviewNotice(
  * are unsynced, or one that isn't approved on chain and reads as rejected (a rejected first review, or a
  * collection disabled after its changes were rejected); its items always read as under review, so there is
  * no sync signal to wait for.
-
-/**
- * Owners and collaborators may ask the committee for another look: an approved collection once its items
- * are unsynced, or a never-approved one after a rejected first review (its items always read as under
- * review, so there is no sync signal to wait for).
  */
 export function canPushChanges(
   collection: Collection,

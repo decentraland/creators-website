@@ -17,10 +17,12 @@ type Props = {
   curation: CollectionCuration | null
   address: string
   onClose: () => void
+  /** After the rejection is saved, once the modal closed. */
+  onRejected?: () => void
 }
 
 /** The committee's rejection: one or more fixed reasons plus a message, both required, both shown to the creator. */
-export function RejectCurationModal({ collection, curation, address, onClose }: Props) {
+export function RejectCurationModal({ collection, curation, address, onClose, onRejected }: Props) {
   const { t } = useTranslation()
   const showToast = useNotifications(state => state.showToast)
   const reject = useRejectCuration(address)
@@ -43,6 +45,7 @@ export function RejectCurationModal({ collection, curation, address, onClose }: 
         onSuccess: () => {
           showToast(t('reject_curation_modal.success', { collection: collection.name }))
           onClose()
+          onRejected?.()
         }
       }
     )

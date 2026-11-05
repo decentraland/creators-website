@@ -22,6 +22,8 @@ import {
   useSaveCollection
 } from '~/hooks/useCollection'
 import { useCollectionCuration, useCommittee } from '~/hooks/useCuration'
+import { useFeatureFlag } from '~/hooks/useFeatureFlag'
+import { FeatureFlag } from '~/lib/featureFlags'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { track } from '~/lib/analytics'
 import { modelValidationKey, useModelValidation } from '~/hooks/useModelValidation'
@@ -151,14 +153,18 @@ const ItemEditorPage = () => {
   const collection = collectionQuery.data
   const mobileCuration = useCollectionCuration(mode === 'review' ? address : undefined, collection)
   // The automatic review locks the items it judges and dresses them with its findings.
-  const reviewCuration = useCollectionCuration(canReadCuration ? address : undefined, collection)
+  const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION).enabled
+  const reviewCuration = useCollectionCuration(canReadCuration && autoCuration ? address : undefined, collection)
   const { events: reviewEvents } = useCollectionEvents(canReadCuration ? address : undefined, collection)
   const reviewStage = useMemo(
     () => (collection ? getReviewStage(collection, reviewCuration.data ?? null, reviewEvents) : null),
     [collection, reviewCuration.data, reviewEvents]
   )
   const reviewLocked = reviewStage === ReviewStage.AI_REVIEWING
-  const aiIssues = useMemo(() => getAiIssuesByItem(reviewEvents ?? []), [reviewEvents])
+  const aiIssues = useMemo(
+    () => getAiIssuesByItem(reviewEvents ?? [], itemsQuery.data ?? EMPTY_ITEMS),
+    [reviewEvents, itemsQuery.data]
+  )
   const items = itemsQuery.data ?? EMPTY_ITEMS
   // A linked collection under review: the sidebar sets apart the items this review is about.
   const pendingLinked = usePendingLinkedItems(address, mode === 'review' && isLinked ? collection : undefined)

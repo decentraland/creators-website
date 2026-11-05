@@ -82,7 +82,8 @@ const BUILDER_IN_COMPONENTS = {
         'BuilderServerError',
         'COLLECTION_LOCKED_STATUS',
         'ValidationLimitError',
-        'VALIDATION_RUNNING_STATUS'
+        'VALIDATION_RUNNING_STATUS',
+        'isAppealAlreadyOpen'
       ],
       allowTypeImports: true,
       message: BUILDER_IN_COMPONENTS_MESSAGE

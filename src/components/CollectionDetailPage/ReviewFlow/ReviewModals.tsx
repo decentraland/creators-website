@@ -96,7 +96,12 @@ export function RequestCuratorReviewModal({ busy, error, onConfirm, onClose }: R
   )
 }
 
-type LimitProps = { attemptsUsed: number; onRequestReview: () => void; onClose: () => void }
+type LimitProps = {
+  attemptsUsed: number
+  /** Only when the collection was rejected: a curator can't review submitted changes ahead of the queue. */
+  onRequestReview?: () => void
+  onClose: () => void
+}
 
 /** The day's automatic reviews are spent: wait, or ask a curator instead. */
 export function DailyLimitModal({ attemptsUsed, onRequestReview, onClose }: LimitProps) {
@@ -105,10 +110,16 @@ export function DailyLimitModal({ attemptsUsed, onRequestReview, onClose }: Limi
     <ConfirmModal
       art={{ src: limitArt }}
       title={t('review_flow.limit.title')}
-      description={t('review_flow.limit.description', { max: VALIDATION_ATTEMPTS_PER_DAY })}
+      description={t(onRequestReview ? 'review_flow.limit.description' : 'review_flow.limit.description_wait', {
+        max: VALIDATION_ATTEMPTS_PER_DAY
+      })}
       onClose={onClose}
       cancel={{ label: t('review_flow.limit.not_now'), onClick: onClose, testId: 'daily-limit-not-now' }}
-      confirm={{ label: t('review_flow.limit.request'), onClick: onRequestReview, testId: 'daily-limit-request' }}
+      confirm={
+        onRequestReview
+          ? { label: t('review_flow.limit.request'), onClick: onRequestReview, testId: 'daily-limit-request' }
+          : undefined
+      }
       testId="daily-limit-modal"
     >
       <Attempts used={attemptsUsed} testId="daily-limit-attempts" />

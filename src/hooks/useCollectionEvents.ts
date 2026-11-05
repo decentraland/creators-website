@@ -106,7 +106,7 @@ export function useRecentCollectionEvents(
   enabled: boolean
 ) {
   const flag = useFeatureFlag(FeatureFlag.AUTO_CURATION)
-  return useQuery({
+  const query = useQuery({
     queryKey: [...collectionEventsKey(address, collectionId), 'recent'],
     queryFn: async (): Promise<CollectionEvent[] | null> => {
       const page = await fetchPage(address!, collectionId!, 1, RECENT_EVENTS_LIMIT)
@@ -115,6 +115,7 @@ export function useRecentCollectionEvents(
     enabled: !!address && !!collectionId && enabled && flag.enabled,
     staleTime: 30_000
   })
+  return { ...query, flagEnabled: flag.enabled }
 }
 
 function useRefreshReview(address: string | undefined) {
@@ -151,15 +152,15 @@ export function useRequestValidation(address: string | undefined) {
   })
 }
 
-export type AppealVariables = { collection: Collection; note: string }
+export type AppealVariables = { collection: Collection }
 
-/** The creator's "Request human review": sends the rejection back to the committee with a note. */
+/** The creator's "Request curator review": sends the rejection back to the committee. */
 export function useAppealCuration(address: string | undefined) {
   const refresh = useRefreshReview(address)
   return useMutation({
-    mutationFn: ({ collection, note }: AppealVariables) => {
+    mutationFn: ({ collection }: AppealVariables) => {
       if (!address) throw new Error('Wallet disconnected')
-      return appealCollectionCuration(address, collection.id, note)
+      return appealCollectionCuration(address, collection.id)
     },
     onSuccess: (_, { collection }) => {
       track('Appeal curation', { collectionId: collection.id })

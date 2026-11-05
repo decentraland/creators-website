@@ -11,16 +11,24 @@ const api = vi.hoisted(() => ({
   updateCollectionCuration: vi.fn(),
   createCurationForumReply: vi.fn()
 }))
-vi.mock('~/lib/builder', () => ({
-  ...api,
-  fetchCollectionCuration: vi.fn(),
-  fetchCurationCollections: vi.fn(),
-  fetchCurations: vi.fn()
-}))
+vi.mock('~/lib/builder', async importOriginal => {
+  const actual = await importOriginal<typeof import('~/lib/builder')>()
+  return {
+    ...api,
+    BuilderServerError: actual.BuilderServerError,
+    ValidationLimitError: actual.ValidationLimitError,
+    VALIDATION_RUNNING_STATUS: actual.VALIDATION_RUNNING_STATUS,
+    fetchCollectionCuration: vi.fn(),
+    fetchCurationCollections: vi.fn(),
+    fetchCurations: vi.fn()
+  }
+})
 vi.mock('~/lib/analytics', () => ({ track: vi.fn(), errorCode: () => 'unknown' }))
 vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
+const { captureError } = await import('~/lib/monitoring')
+const { BuilderServerError, ValidationLimitError } = await import('~/lib/builder')
 
-const { useAssignCurator, useCommittee, useRejectCuration } = await import('./useCuration')
+const { useAssignCurator, useCommittee, usePushCuration, useRejectCuration } = await import('./useCuration')
 
 const ADDRESS = '0xCurator'
 const collection = { id: 'c1', name: 'Hats', isPublished: true } as Collection
@@ -137,5 +145,24 @@ describe('useAssignCurator', () => {
     await act(() => result.current.mutateAsync({ collection: posted, curation: pending, assignee: null }))
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     await waitFor(() => expect(api.createCurationForumReply).toHaveBeenCalled())
+  })
+})
+
+describe('usePushCuration', () => {
+  it("reports a failure, but not the answers the creator acts on: a running review or today's limit", async () => {
+    vi.mocked(captureError).mockClear()
+    const { result } = renderHook(() => usePushCuration(ADDRESS), { wrapper })
+
+    api.pushCollectionCuration.mockRejectedValueOnce(
+      new ValidationLimitError(new BuilderServerError('Daily limit', 429))
+    )
+    await act(() => result.current.mutateAsync(collection).catch(() => undefined))
+    api.pushCollectionCuration.mockRejectedValueOnce(new BuilderServerError('A validation is already in progress', 409))
+    await act(() => result.current.mutateAsync(collection).catch(() => undefined))
+    expect(captureError).not.toHaveBeenCalled()
+
+    api.pushCollectionCuration.mockRejectedValueOnce(new BuilderServerError('Service unavailable', 503))
+    await act(() => result.current.mutateAsync(collection).catch(() => undefined))
+    expect(captureError).toHaveBeenCalledTimes(1)
   })
 })

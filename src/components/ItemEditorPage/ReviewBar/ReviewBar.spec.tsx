@@ -222,6 +222,19 @@ describe('ReviewBar', () => {
     )
   })
 
+  it('also points the curator to the forum post after rejecting with reasons', () => {
+    state.events = []
+    state.reject.mockImplementation((_vars: unknown, options: { onSuccess: () => void }) => options.onSuccess())
+    renderBar({ ...base, forumLink: 'https://forum.decentraland.org/t/hats/77' })
+    fireEvent.click(screen.getByTestId('review-action-reject'))
+    fireEvent.click(screen.getByTestId('assign-continue'))
+    fireEvent.click(screen.getByTestId('reject-reason-clipping'))
+    fireEvent.change(screen.getByTestId('rejection-message'), { target: { value: 'Clips through the torso' } })
+    fireEvent.click(screen.getByTestId('reject-curation-confirm'))
+    fireEvent.click(screen.getByTestId('review-verdict-forum-link'))
+    expect(openExternal).toHaveBeenCalledWith('https://forum.decentraland.org/t/hats/77')
+  })
+
   it('shows the derived stage and opens the AI verdict with its findings', () => {
     state.curation = {
       id: 'r1',

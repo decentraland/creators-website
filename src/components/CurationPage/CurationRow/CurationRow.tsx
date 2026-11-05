@@ -8,6 +8,7 @@ import { ReviewTypePill } from '../ReviewTypePill'
 import { ProfileBadge } from '~/components/ProfileBadge'
 import { ReviewStagePill } from '~/components/ReviewStagePill'
 import { useRecentCollectionEvents } from '~/hooks/useCollectionEvents'
+import { type CollectionEvent } from '~/lib/events'
 import { isLinkedCollection, type Collection } from '~/lib/collections'
 import { openForumPost } from '~/lib/forumPost'
 import {
@@ -27,6 +28,8 @@ type Props = {
   onAssign: (collection: Collection, curation: CollectionCuration | null, mode: 'self' | 'edit') => void
 }
 
+const NO_EVENTS: CollectionEvent[] = []
+
 function reviewUrl(collection: Collection): string {
   return `/collections/editor?collection=${collection.id}&reviewing=true`
 }
@@ -35,9 +38,11 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
   const { t } = useTranslation()
   const intl = useIntl()
   const state = getCurationState(collection, curation)
-  // A stage needs the timeline (pending: which step; decided: that the server has one at all).
-  const recent = useRecentCollectionEvents(address, collection.id, !!curation)
-  const events = recent.data ?? null
+  // Only a pending request needs the timeline to tell its step. A decided one carries its reviewer, which
+  // only a server with the timeline writes, so its stage needs no request per row.
+  const pending = curation?.status === 'pending'
+  const recent = useRecentCollectionEvents(address, collection.id, pending)
+  const events = pending ? (recent.data ?? null) : recent.flagEnabled && curation?.reviewedBy ? NO_EVENTS : null
   const stage = useMemo(() => getReviewStage(collection, curation, events), [collection, curation, events])
   const assignee = curation?.assignee ?? null
   const canAssign = canEditAssignee(collection, curation)

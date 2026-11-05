@@ -2084,6 +2084,7 @@
     "limit": {
       "title": "Daily automated review limit reached",
       "description": "You've reached the limit of {max} automated reviews per day. You can request a manual review from a Decentraland curator, which may take a little longer, or wait 24 hours to try again.",
+      "description_wait": "You've reached the limit of {max} automated reviews per day. Try again in 24 hours.",
       "not_now": "Not now",
       "request": "Request curator review"
     },
