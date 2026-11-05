@@ -53,6 +53,12 @@ export async function waitForEnabled(page: Page, id: string, timeout = 20_000): 
   )
 }
 
+/** Whether an element with the test id is on the page and visible (not `display: none`, zero-sized or hidden). */
+export async function isShown(page: Page, id: string): Promise<boolean> {
+  const handle = await page.$(byTestId(id))
+  return handle ? handle.isVisible() : false
+}
+
 /** Toggles a `~/components/Checkbox`, whose input is visually hidden behind its label. */
 export async function check(page: Page, testId: string): Promise<void> {
   await page.waitForSelector(byTestId(testId))
