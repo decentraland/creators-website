@@ -1,7 +1,4 @@
-import styled from '@emotion/styled'
-import { Tooltip as UiTooltip } from 'decentraland-ui2'
-import type { ComponentProps, ReactElement, ReactNode } from 'react'
-import { theme } from '~/styles/theme'
+import type { ReactElement, ReactNode } from 'react'
 import * as S from './Tooltip.styles'
 
 type Props = {
@@ -11,38 +8,11 @@ type Props = {
   children: ReactNode
   /** Use the child as the trigger instead of wrapping it: it must be a single element that forwards its ref. */
   asChild?: boolean
-  placement?: UiTooltipProps['placement']
+  placement?: S.UiTooltipProps['placement']
   /** The tooltip describes the trigger instead of naming it, so its visible label stays its accessible name. */
   describeChild?: boolean
   testId?: string
 }
-
-type UiTooltipProps = ComponentProps<typeof UiTooltip>
-
-// MUI applies `className` to the trigger, so route it to the portalled popper to style the bubble.
-const Popper = styled(({ className, ...props }: UiTooltipProps) => (
-  <UiTooltip {...props} classes={{ popper: className }} />
-))`
-  z-index: ${theme.z.tooltip};
-
-  .MuiTooltip-tooltip {
-    max-width: min(320px, calc(100vw - 32px));
-    padding: 10px 12px;
-    border-radius: ${theme.radius.btnSm};
-    background: ${theme.colors.text2};
-    color: ${theme.colors.white};
-    font-family: ${theme.font.sans};
-    font-size: 13px;
-    font-weight: 400;
-    line-height: 1.4;
-    white-space: pre-line;
-    box-shadow: 0 8px 24px ${theme.colors.overlayStrong};
-  }
-
-  .MuiTooltip-arrow {
-    color: ${theme.colors.text2};
-  }
-`
 
 export function Tooltip({
   content,
@@ -57,7 +27,7 @@ export function Tooltip({
   // remount it (and drop its focus); MUI renders no tooltip for an empty title.
   if (empty && !asChild) return <>{children}</>
   return (
-    <Popper
+    <S.Popper
       arrow
       describeChild={describeChild}
       title={empty ? '' : <S.Content data-testid={testId}>{content}</S.Content>}
@@ -73,6 +43,6 @@ export function Tooltip({
           {children}
         </S.Trigger>
       )}
-    </Popper>
+    </S.Popper>
   )
 }

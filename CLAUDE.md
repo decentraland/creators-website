@@ -92,7 +92,7 @@ Prefer friendly copy and hide blockchain plumbing where possible. Wallet/MANA/tr
 
 ### Styling
 
-- Every component is a folder — `components/Foo/{Foo.tsx, Foo.styles.ts, Foo.spec.tsx, index.ts}` — with `index.ts` re-exporting so consumers import `~/components/Foo`. Styled defs live in the `.styles.ts` file (`import * as S from './Foo.styles'`); a tiny single-use def may stay inline.
+- Every component is a folder — `components/Foo/{Foo.tsx, Foo.styles.ts, Foo.spec.tsx, index.ts}` — with `index.ts` re-exporting so consumers import `~/components/Foo`. Styled defs live only in the `.styles.ts` file (`import * as S from './Foo.styles'`), never inline in a `.tsx`.
 - Pull colors/radii/breakpoints from the theme, never re-hardcode hexes or pixel breakpoints. **Import the theme directly** (`import { theme } from '~/styles/theme'`), never via ThemeProvider or `({ theme }) =>` callbacks — there is no runtime theming, and the direct import keeps unit tests provider-free.
 - Media queries via `theme.media.maxWidth(bp)` / `.minWidth(bp)`; raw `@media` strings only for genuinely non-canonical values.
 - State and variants are `data-*` attributes (`data-open`, `data-variant`, `data-selected`) styled via `&[data-…]` selectors — never `is-*`/BEM-modifier classNames.
