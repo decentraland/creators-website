@@ -560,7 +560,9 @@ const CollectionDetailPage = () => {
                 </S.BackLink>
               )}
               <S.TitleGroup>
-                <S.Title title={collection.name}>{collection.name}</S.Title>
+                <S.Title data-testid="collection-name" title={collection.name}>
+                  {collection.name}
+                </S.Title>
                 {canRename && (
                   <S.RenameButton
                     type="button"
