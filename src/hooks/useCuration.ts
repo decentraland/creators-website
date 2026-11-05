@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from '~/intl'
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { errorCode, track } from '~/lib/analytics'
 import { sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
 import {
@@ -115,16 +115,19 @@ export function useCurationCollections(address: string | undefined, filters: Cur
   })
 }
 
+/** Shows a collection's new latest curation everywhere it is read, without refetching. */
+export function storeCuration(queryClient: QueryClient, address: string | undefined, curation: CollectionCuration) {
+  queryClient.setQueryData(collectionCurationKey(address, curation.collectionId), curation)
+  queryClient.setQueryData<CollectionCuration[]>(['curations', address], current =>
+    current ? [...current.filter(existing => existing.collectionId !== curation.collectionId), curation] : current
+  )
+  void queryClient.invalidateQueries({ queryKey: ['curation-collections'] })
+  void queryClient.invalidateQueries({ queryKey: collectionEventsKey(address, curation.collectionId) })
+}
+
 function useStoreCuration(address: string | undefined) {
   const queryClient = useQueryClient()
-  return (curation: CollectionCuration) => {
-    queryClient.setQueryData(collectionCurationKey(address, curation.collectionId), curation)
-    queryClient.setQueryData<CollectionCuration[]>(['curations', address], current =>
-      current ? [...current.filter(existing => existing.collectionId !== curation.collectionId), curation] : current
-    )
-    void queryClient.invalidateQueries({ queryKey: ['curation-collections'] })
-    void queryClient.invalidateQueries({ queryKey: collectionEventsKey(address, curation.collectionId) })
-  }
+  return (curation: CollectionCuration) => storeCuration(queryClient, address, curation)
 }
 
 export type AssignVariables = {

@@ -18,7 +18,7 @@ Ported from shop's config:
 - **i18n:** `react-intl` with `en.json` / `es.json` / `zh.json`.
 - **Auth:** `decentraland-connect` + `@dcl/single-sign-on-client` + a zustand wallet store; builder-server requests signed with `@dcl/crypto` AuthChain.
 - **Monitoring:** Sentry (`@sentry/react`).
-- **Tests:** Vitest + Testing Library for unit tests (`vitest.config.ts`, jsdom); Puppeteer + Vitest for e2e (e2e setup pending).
+- **Tests:** Vitest + Testing Library for unit tests (`vitest.config.ts`, jsdom); Puppeteer + Vitest for e2e (`vitest.e2e.config.ts`, `e2e/`).
 - **Deploy:** Decentraland CDN convention (`prebuild.cjs`, env per hostname); Vercel is used for PR/dev previews only.
 - **Out of scope** (shop features that do not carry over): thirdweb, cart/favorites/follows, fitting room.
 
@@ -31,6 +31,7 @@ Current commands (keep this section in sync with `package.json`):
 - `npm run typecheck` — `tsc -b` only
 - `npm run test` — run all Vitest tests once; `npm run test:watch` for watch mode; `npm run test:coverage` for coverage
 - `npx vitest run src/path/to/file.spec.ts` — run a single test file; add `-t 'name'` to filter by test name
+- `npm run test:e2e` — browser e2e suite; starts its own Vite dev server on port 5283 (`E2E_PORT=<port>` to move it). One spec: `npm run test:e2e -- e2e/collections.e2e.ts`. Chrome comes from Puppeteer's postinstall; after an `--ignore-scripts` install run `npx puppeteer browsers install chrome`
 - `npm run lint` / `npm run lint:fix` — ESLint (flat config, `eslint.config.js`) over `src`
 - `npm run format` — Prettier check; `npm run format:fix` — write (rules in `.prettierrc`)
 
@@ -92,7 +93,7 @@ Prefer friendly copy and hide blockchain plumbing where possible. Wallet/MANA/tr
 
 ### Styling
 
-- Every component is a folder — `components/Foo/{Foo.tsx, Foo.styles.ts, Foo.spec.tsx, index.ts}` — with `index.ts` re-exporting so consumers import `~/components/Foo`. Styled defs live in the `.styles.ts` file (`import * as S from './Foo.styles'`); a tiny single-use def may stay inline.
+- Every component is a folder — `components/Foo/{Foo.tsx, Foo.styles.ts, Foo.spec.tsx, index.ts}` — with `index.ts` re-exporting so consumers import `~/components/Foo`. Styled defs live only in the `.styles.ts` file (`import * as S from './Foo.styles'`), never inline in a `.tsx`.
 - Pull colors/radii/breakpoints from the theme, never re-hardcode hexes or pixel breakpoints. **Import the theme directly** (`import { theme } from '~/styles/theme'`), never via ThemeProvider or `({ theme }) =>` callbacks — there is no runtime theming, and the direct import keeps unit tests provider-free.
 - Media queries via `theme.media.maxWidth(bp)` / `.minWidth(bp)`; raw `@media` strings only for genuinely non-canonical values.
 - State and variants are `data-*` attributes (`data-open`, `data-variant`, `data-selected`) styled via `&[data-…]` selectors — never `is-*`/BEM-modifier classNames.
@@ -110,7 +111,8 @@ Unit tests for the logic layer, e2e for user flows.
 
 - Unit tests are colocated with their subject (`foo.spec.ts` next to `foo.ts`). `lib/` and `store/` are the well-covered logic layer — every module there gets unit tests. Pages get no unit tests; they're covered by e2e.
 - **Components with logic get unit tests.** Purely presentational/atomic components don't need them; any component carrying real behavior does.
-- **Every user-facing flow has an e2e test** covering its happy path — this is part of "done" for a feature. E2E tests drive the built app in a real headless browser with wallet, network, and HTTP fully mocked — never introduce a real network call or real key.
+- **Every user-facing flow has an e2e test** covering its happy path — this is part of "done" for a feature. E2E tests drive the app in a real headless browser with wallet, network, and HTTP fully mocked — never introduce a real network call or real key.
+- **E2E harness (`e2e/`).** `launchApp(opts)` opens the app on the dev server with a restored session for a deterministic fake wallet (`signedOut: true` for a visitor) and answers every off-origin request through `helpers/route.ts`, matched by the `dev.json` hostnames. builder-server is an in-memory store (`helpers/builderServer.ts`) seeded per spec from the `e2e/fixtures.ts` factories: writes mutate it, so assert on what the page shows after a save, not on the requests. Flags are off unless a spec passes `flags` (keyed `${application}-${flag}`); `app.waitForEvent(name, props)` asserts a Segment event. Model fixtures live in `e2e/fixtures/files` (see `helpers/files.ts` for which pass the rule book); zips are built from them at run time. A route the app needs and the harness lacks is logged as `[e2e] unmocked …`: add it to the router or the fake server, never let it reach the network. The run fails if its port is already taken, so a server from another worktree is never tested by mistake.
 - **Test functionality, not implementation (hard rule).** Write tests from the user's / use-case perspective: given this input or action, this observable outcome. Never assert on internals (call order, private state shape, intermediate steps) that a refactor could change without changing behavior. After a refactor, don't add or keep tests pinned to the old implementation's specifics — if a test breaks while behavior didn't, rewrite or delete it rather than patching it to match the new internals. Fewer meaningful use-case tests beat many noisy atomic ones.
 - **Select by `data-testid`, never by CSS class (hard rule).** Add a stable `data-testid` and select on `[data-testid="…"]`; for stateful/variant elements assert on `data-*` attributes. Styling class names are presentational and change with the design.
 

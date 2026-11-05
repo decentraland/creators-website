@@ -10,9 +10,10 @@ import { BuilderServerError, COLLECTION_LOCKED_STATUS, isRefusedRequest } from '
 import { isCollectionLocked, type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
 import { CreditsServerError, type ExternalCall, type PublicationAuthorization } from '~/lib/credits'
-import { PublicationFeeMismatchError } from '~/lib/feeVerification'
+import { PublicationFeeMismatchError, withFeeTolerance } from '~/lib/feeVerification'
 import { hasOldHashedContents } from '~/lib/itemFactory'
 import { isMissingSmartWearableVideo, type Item } from '~/lib/items'
+import { fetchManaAllowance } from '~/lib/mana'
 import { weiToUsdCents, type PublicationFee } from '~/lib/publishFee'
 import { isWalletRejection } from '~/lib/walletErrors'
 import { getCollectionSymbol, toInitializeItems, type InitializeItem } from '~/lib/saveCollection'
@@ -67,6 +68,28 @@ export function canPayWith(method: PaymentMethod, fee: PublicationFee, balances:
 }
 
 export type CreditsAndMana = { credits: number; manaWei: bigint }
+
+/** How much MANA the CollectionManager may pull from `address` right now, read from the chain. */
+export async function fetchCollectionManagerAllowance(address: string): Promise<bigint> {
+  const chainId = getMaticChainId()
+  return fetchManaAllowance(address, getContract(ContractName.CollectionManager, chainId).address, chainId)
+}
+
+/**
+ * The MANA approval a publish paid in MANA still needs, or null when the allowance already covers it. The
+ * CollectionManager pulls the on-chain total (which a verified quote may sit below), so that total plus the same
+ * tolerance the verification grants the oracle is what must fit. A failed allowance read counts as no allowance: an
+ * extra approval prompt beats a publish that reverts.
+ */
+export async function getManaApprovalNeeded(
+  onChainTotalWei: bigint,
+  fetchAllowance: () => Promise<bigint>
+): Promise<bigint | null> {
+  const required = withFeeTolerance(onChainTotalWei)
+  if (required === 0n) return null
+  const allowance = await fetchAllowance().catch(() => 0n)
+  return allowance < required ? required : null
+}
 
 // CollectionManager.createCollection(forwarder, factory, salt, name, symbol, baseURI, creator, items).
 export type CreateCollectionArgs = [string, string, string, string, string, string, string, InitializeItem[]]
@@ -343,29 +366,39 @@ export async function syncPublishedItems(
   }
 }
 
+// Matches the forum post's recovery window: older collections keep reading To review without a request.
+const REVIEW_RECOVERY_MAX_AGE_MS = 30 * 24 * 60 * 60_000
+
+/** Whether a publish finished on a later visit still gets its review request: only within a month of publishing. */
+export function isRecentPublication(collection: Pick<Collection, 'lock' | 'updatedAt'>, now = Date.now()): boolean {
+  return now - Math.max(collection.lock ?? 0, collection.updatedAt) < REVIEW_RECOVERY_MAX_AGE_MS
+}
+
 export type ReviewRequestDeps = {
+  fetchCollectionCuration: (collectionId: string) => Promise<CollectionCuration | null>
   pushCollectionCuration: (collectionId: string) => Promise<CollectionCuration>
 }
 
 const ALREADY_REQUESTED_STATUS = 400
 
 /**
- * Opens the first review request of a collection that just went on chain: publishing is sending it for review,
- * so curators and the status pill see a pending request instead of inferring one from its absence. Resolves to
- * null when a request is already open (a publish retried from another tab), which is the server's 400.
+ * Opens a published collection's first review request and returns the collection's latest one; a request that
+ * already exists (a retry, or a curator who acted first) is returned as is, never reopened.
  */
 export async function openFirstReviewRequest(
   collectionId: string,
   deps: ReviewRequestDeps
 ): Promise<CollectionCuration | null> {
+  const existing = await deps.fetchCollectionCuration(collectionId)
+  if (existing) return existing
   try {
     return await deps.pushCollectionCuration(collectionId)
   } catch (error) {
-    const alreadyRequested =
+    const openedMeanwhile =
       error instanceof BuilderServerError &&
       error.status === ALREADY_REQUESTED_STATUS &&
       error.message.includes('ongoing review request')
-    if (alreadyRequested) return null
+    if (openedMeanwhile) return deps.fetchCollectionCuration(collectionId)
     throw error
   }
 }

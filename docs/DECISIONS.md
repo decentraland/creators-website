@@ -17,7 +17,8 @@ Rules for this file:
 - **Raw errors never reach the user.** Failures map to friendly copy, go to Sentry with a `flow` tag, and retries are offered only when a retry can succeed (a locked or already-published collection gets no TRY AGAIN). Curators are the one exception: the approval flow shows them the raw error with a Copy button for support.
 - **Mobile is a viewer.** Below the `noActions` breakpoint (900px) collection management actions are hidden, and below 768px the editor is preview-only. Curation actions are desktop-only too.
 - **Event names reuse the legacy Builder's verbatim** where an event for the same intent exists, props included, so a warehouse query written for the old Builder also counts this app. See `TRACKING_SPEC.md`.
-- **e2e tests are pending repo-wide** (no Puppeteer harness yet). Flows are covered by component specs until it lands; this is a known gap, not a per-feature decision.
+- **e2e tests never touch a real environment.** They run against an in-memory builder-server and mocked services, wallet and chain, so a spec can neither depend on nor change shared data. Flows that predate the harness keep their component specs until their e2e spec lands; a missing one is a known gap, not a decision.
+- **Pre-monorepo refactor.** The app is being prepared to move into the dcl-one monorepo, whose web apps use CSS Modules and have no Emotion, MUI or decentraland-ui2. Until the move, no new Emotion, MUI (icons excepted for now) or decentraland-ui2 usage is added, static or lazy-loaded: ESLint rejects it outside the files that already depend on it, and styled defs live only in `*.styles.ts`. The targets are CSS Modules for styling, viem for chain code, and components that never call a back-end transport directly (hooks and `lib/` do). For builder-server this is done: its client is one folder with a single transport, and components never call it directly (ESLint enforces it).
 
 ## Collections list and status model
 
@@ -156,7 +157,7 @@ Rules for this file:
 - **Deploy missing entities skips edited-but-unsynced items on purpose.** Their new hash is not rescued on chain, so the Catalyst would reject them and abort the missing ones, and deploying them would ship unreviewed changes. Legacy deployed both together.
 - **Enable (a disabled collection with no pending request) only flips `setApproved(true)`**: no rescue, no upload, the review request untouched, since approving one would promote unsent smart-wearable videos.
 - **Creators can request review again after a rejection** (owners and collaborators); legacy had no way out of that state. Publish changes and Request review again run the same validation pre-step as publishing.
-- **Publishing opens no review request.** A first review has no curation row until a curator acts (assign, reject, approve) or the creator requests a review again; the curation list surfaces published collections without one as To review from the collection itself.
+- **Publishing opens the first review request** (2026-11-05, reverses the earlier rule): publishing means sending the collection for review, so the publish flow opens the request once the publication is synced, also when a later visit, within a month of publishing, finishes a publish the tab left halfway. It is opened from the front end, like the request the approval flow already opens before approving or rejecting; builder-server treats a creator's first request as the publication's, not as submitted changes. A collection that already has a request keeps it, and collections published before this, or from the legacy Builder, still read as To review without one.
 
 ## Forum post
 

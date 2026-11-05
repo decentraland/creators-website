@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import {
   Check as CheckIcon,
   ChevronRight as ChevronRightIcon,
@@ -20,13 +19,13 @@ import { SuccessModal } from '~/components/SuccessModal'
 import { Tooltip } from '~/components/Tooltip'
 import { ProgressModal } from '~/components/ProgressModal'
 import { PendingModal } from '~/components/PendingModal'
+import { useItemSizes } from '~/hooks/useItemSizes'
 import { useApprovalFlow, type ApprovalMode, type ApprovalPlan, type ApprovalStep } from '~/hooks/useApprovalFlow'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { track } from '~/lib/analytics'
-import { itemSizesKey, measureItems } from '~/lib/approveCollection'
 import { isSocialLogin, type Session } from '~/lib/auth'
 import { copyToClipboard } from '~/lib/clipboard'
-import { fetchContentSize, getContentsStorageUrl } from '~/lib/builder'
+import { getContentsStorageUrl } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
 import { getItemBodyShapeType, type Item } from '~/lib/items'
@@ -214,13 +213,7 @@ function ItemName({ item }: { item: Item }) {
 
 function StepTable({ step, plan, collection }: { step: ApprovalStep; plan: ApprovalPlan; collection: Collection }) {
   const { t } = useTranslation()
-  const sizesKey = useMemo(() => itemSizesKey(plan.deploy), [plan.deploy])
-  const sizes = useQuery({
-    queryKey: sizesKey,
-    queryFn: () => measureItems(plan.deploy, fetchContentSize),
-    enabled: step === 'deploy',
-    staleTime: Infinity
-  })
+  const sizes = useItemSizes(plan.deploy, step === 'deploy')
   const column = (key: string, optional = false) => (
     <span data-optional={optional || undefined}>{t(`approval_flow.columns.${key}`)}</span>
   )

@@ -1,5 +1,4 @@
 import { useEffect, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { ChevronRight as ChevronRightIcon, WarningAmberOutlined as WarningIcon } from '@mui/icons-material'
 import approvedArt from '~/assets/send-success.png'
 import errorArt from '~/assets/modal-error.png'
@@ -12,13 +11,13 @@ import { PendingModal } from '~/components/PendingModal'
 import { StepIndicator } from '~/components/StepIndicator'
 import { SuccessModal } from '~/components/SuccessModal'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
+import { useItemSizes } from '~/hooks/useItemSizes'
 import { useLinkedApprovalFlow } from '~/hooks/useLinkedReview'
 import { isSocialLogin, type Session } from '~/lib/auth'
-import { fetchContentSize, getContentsStorageUrl } from '~/lib/builder'
+import { getContentsStorageUrl } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
 import { decodeLinkedUrn, type ThirdParty } from '~/lib/thirdParty'
-import { itemSizesKey, measureItems } from '~/lib/approveCollection'
 import { type ReviewedContent } from '~/lib/approveLinkedCollection'
 import { ProgressModal } from '~/components/ProgressModal'
 import { formatSize } from './formatSize'
@@ -52,13 +51,7 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, revie
   )
   useBeforeUnloadGuard(view.kind === 'step' && (view.phase.kind !== 'idle' || flow.running))
   const pendingItems = plan?.pendingItems
-  const sizesKey = useMemo(() => itemSizesKey(pendingItems ?? []), [pendingItems])
-  const sizes = useQuery({
-    queryKey: sizesKey,
-    queryFn: () => measureItems(pendingItems ?? [], fetchContentSize),
-    enabled: view.kind === 'step' && view.step === 'deploy' && !!pendingItems,
-    staleTime: Infinity
-  })
+  const sizes = useItemSizes(pendingItems, view.kind === 'step' && view.step === 'deploy')
 
   useEffect(() => {
     void start()

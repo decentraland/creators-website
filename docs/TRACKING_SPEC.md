@@ -330,6 +330,7 @@ Every `flow` tag the app sends, with what it covers. A wallet rejection is never
 | flow | reported from |
 | --- | --- |
 | `publish` | the publish wizard's ToS record failing before payment (`step: 'tos'`); every other publish failure reaches Sentry through the mutation reporter (`flow: 'mutation'`, below) |
+| `publish_review_request` | opening a published collection's first review request failing for any reason other than one already being open; the publish itself still succeeds |
 | `credits-top-up` | reading a credits order's outcome after Stripe threw something other than a credits-server error or a network `TypeError` (those two only show `pending`; the event reports `pending` in every case) |
 | `add_items` | the add-items modal: a model that could not be analysed (`step: 'validate'`) or re-validated after a category change (`step: 'revalidate'`) |
 | `save-item` / `item_save` | saving an item: the mutation's reporter (`save-item`) and the editor's save path (`item_save`) |

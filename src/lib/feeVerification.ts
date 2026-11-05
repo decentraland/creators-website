@@ -32,6 +32,11 @@ export async function fetchOnChainRarityPrice(rarityName: string, chainId: numbe
   return BigInt(rarity.price.toString())
 }
 
+/** `amountWei` plus the same tolerance, rounded up: what an approval must cover so the publish cannot revert on drift. */
+export function withFeeTolerance(amountWei: bigint): bigint {
+  return (amountWei * (10_000n + FEE_TOLERANCE_BPS) + 9_999n) / 10_000n
+}
+
 /** Whether `quoted` sits within the oracle tolerance of `onChain`. */
 export function isWithinFeeTolerance(quoted: bigint, onChain: bigint): boolean {
   const difference = quoted > onChain ? quoted - onChain : onChain - quoted
@@ -40,14 +45,15 @@ export function isWithinFeeTolerance(quoted: bigint, onChain: bigint): boolean {
 
 /**
  * Throws PublicationFeeMismatchError when the quoted total is not what the contract would charge for
- * these items: one on-chain read per distinct rarity, summed by item count.
+ * these items: one on-chain read per distinct rarity, summed by item count. Answers that on-chain total,
+ * which is what the contract will actually pull.
  */
 export async function verifyPublicationFee(
   fee: PublicationFee,
   items: Pick<Item, 'rarity'>[],
   chainId: number,
   readPrice: RarityPriceReader = fetchOnChainRarityPrice
-): Promise<void> {
+): Promise<bigint> {
   const counts = new Map<string, bigint>()
   for (const item of items) {
     const rarity = item.rarity ?? ''
@@ -59,4 +65,5 @@ export async function verifyPublicationFee(
   if (!isWithinFeeTolerance(fee.total.manaWei, onChainTotal)) {
     throw new PublicationFeeMismatchError(fee.total.manaWei, onChainTotal)
   }
+  return onChainTotal
 }
