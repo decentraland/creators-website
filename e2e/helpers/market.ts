@@ -1,7 +1,10 @@
+import { StandardMerkleTree } from '@openzeppelin/merkle-tree'
 import { type SentTransaction } from './rpc'
 
 /** OffChainMarketplace V3 on Amoy: where every new trade is listed. */
 export const MARKETPLACE_V3 = '0x36fd1434a6c4b8ade80c9847c1d15033ce34488c'
+/** CouponManager for OffChainMarketplace V3 on Amoy: the manager new discounts are signed against. */
+export const COUPON_MANAGER_V3 = '0x6c956587d9fe70032781edcdc626310648575382'
 /** `received` asset type of a trade priced in USD-pegged MANA, which is what a credits price is. */
 const USD_PEGGED_MANA = 2
 
@@ -56,7 +59,22 @@ export function createMarket(seed: MarketSeed = {}) {
       return { status: 200, body: { data: coupons.filter(c => !signer || String(c.signer).toLowerCase() === signer) } }
     }
     if (method === 'POST' && path === '/v1/coupons') {
-      const coupon = { id: `coupon-${coupons.length + 1}`, ...(body as object), createdAt: Date.now() }
+      const sent = body as { collections: string[]; checks: { effective: number } }
+      const collections = [...new Set(sent.collections.map(c => c.toLowerCase()))]
+      // What the server adds: the manager it was signed against, the root it rebuilds, and its status.
+      const coupon = {
+        id: `coupon-${coupons.length + 1}`,
+        ...sent,
+        collections,
+        couponManager: COUPON_MANAGER_V3,
+        root: StandardMerkleTree.of(
+          collections.map(c => [c]),
+          ['address']
+        ).root,
+        state: null,
+        status: sent.checks.effective > Date.now() ? 'scheduled' : 'active',
+        createdAt: Date.now()
+      }
       coupons.push(coupon)
       return ok(coupon)
     }
@@ -109,6 +127,9 @@ export function createMarket(seed: MarketSeed = {}) {
   // A cancelled signature takes its trade off the market, as the indexer would.
   function applyTransaction(tx: SentTransaction) {
     if (tx.fn !== 'cancelSignature') return
+    for (const coupon of coupons) {
+      if (tx.data.toLowerCase().includes(String(coupon.signature).slice(2).toLowerCase())) coupon.status = 'cancelled'
+    }
     for (const [id, trade] of trades) {
       if (!tx.data.toLowerCase().includes(String(trade.signature).slice(2).toLowerCase())) continue
       trades.delete(id)
