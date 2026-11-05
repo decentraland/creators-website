@@ -225,6 +225,23 @@ describe('createChequeSalt', () => {
 })
 
 describe('signSlotsCheque', () => {
+  it('signs the ConsumeSlots cheque with the given salt, byte for byte', async () => {
+    const salt = '0x' + '33'.repeat(32)
+    const signed = await signSlotsCheque(
+      { signTypedData: signTypedDataWithTestKey, randomSalt: () => salt },
+      CHAIN_ID,
+      THIRD_PARTY_ID,
+      5
+    )
+
+    expect(signed).toEqual({
+      qty: 5,
+      salt,
+      signature:
+        '0x4fcfe12a7f648caab7cfde9184b5f28a6a7130f8111c67a71158e8f241eb1e19204092bbd56a0db39c11dcc5340b59bfd5bb1fc32732da56f7ff147b6dffdfc21b'
+    })
+  })
+
   it('signs the typed data and answers a cheque builder-server can recover the signer from', async () => {
     const signed = await signSlotsCheque({ signTypedData: signTypedDataWithTestKey }, CHAIN_ID, THIRD_PARTY_ID, 5)
 

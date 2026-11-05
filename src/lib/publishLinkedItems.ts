@@ -248,6 +248,7 @@ export type SignChequeDeps = {
     primaryType: string,
     value: Record<string, unknown>
   ) => Promise<string>
+  randomSalt?: () => string
 }
 
 /** Signs a cheque for `qty` slots; the wizard asks for it before the paid steps so the wallet prompt comes first. */
@@ -257,7 +258,7 @@ export async function signSlotsCheque(
   thirdPartyId: string,
   qty: number
 ): Promise<SlotsCheque> {
-  const salt = createChequeSalt()
+  const salt = (deps.randomSalt ?? createChequeSalt)()
   const { domain, types, value } = buildChequeTypedData(chainId, thirdPartyId, qty, salt)
   const signature = await deps.signTypedData(domain, types, 'ConsumeSlots', value)
   return { signature, qty, salt }
