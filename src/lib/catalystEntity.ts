@@ -16,6 +16,21 @@ const EMPTY_ITEM_METRICS = { triangles: 0, materials: 0, textures: 0, meshes: 0,
 
 export type EntityContent = Record<string, string>
 
+/** A generated `image.png` for an item saved without one (legacy generateCatalystImage). */
+export type MissingImage = { hash: string; blob: Blob }
+
+export type ImageDeps = {
+  fetchContent: (hash: string) => Promise<Blob>
+  renderCatalystImage: (thumbnail: Blob, rarity: string) => Promise<Blob>
+}
+
+export async function buildMissingImage(item: Item, deps: ImageDeps): Promise<MissingImage | null> {
+  if (item.contents[IMAGE_PATH]) return null
+  const thumbnail = await deps.fetchContent(item.contents[item.thumbnail])
+  const blob = await deps.renderCatalystImage(thumbnail, item.rarity ?? '')
+  return { hash: await hashV1(new Uint8Array(await blob.arrayBuffer())), blob }
+}
+
 /**
  * The files an item deploys: its stored contents minus the smart-wearable preview video, directory
  * entries and empty files, with `image.png` taken from `imageHash` when the item was saved without one.

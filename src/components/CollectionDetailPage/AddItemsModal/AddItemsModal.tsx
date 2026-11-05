@@ -7,6 +7,8 @@ import { allCollectionItemsKey, useAllCollectionItems } from '~/hooks/useCollect
 import { itemCurationsKey, linkedItemsKey } from '~/hooks/useLinkedCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
+import { useItemSizeDeps, useMeasuredBytes } from '~/hooks/useItemSize'
+import { identityKey } from '~/lib/blobs'
 import { installBackGuard } from '~/lib/backGuard'
 import { ItemFileError, VIDEO_PATH } from '~/lib/itemFiles'
 import { type EmotePlayMode, type ItemDraftPayload } from '~/lib/itemFactory'
@@ -23,11 +25,14 @@ import { useNotifications } from '~/lib/notifications'
 import { type SpringBoneParamsByName } from '~/lib/springBones'
 import { errorCode, track } from '~/lib/analytics'
 import { captureError } from '~/lib/monitoring'
-import { executeUpload, findDuplicateUrns, planUpload, type UploadDraft } from '~/lib/uploadItems'
+import { type ItemSize } from '~/lib/itemSize'
+import { executeUpload, findDuplicateUrns, planDraftUpload, planUpload, type UploadDraft } from '~/lib/uploadItems'
 import {
   addItemsReducer,
   createDraft,
   createInitialState,
+  draftSizeKey,
+  getDraftSizeLimit,
   isDraftComplete,
   isValidationStale,
   type ItemDraft
@@ -227,9 +232,31 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
       .finally(() => validatingIdsRef.current.delete(stale.id))
   }, [drafts])
 
+  // The item the selected draft will be saved as, built exactly as the upload builds it (thumbnail quantized, rarity
+  // image rendered, a variant merged into its target) and measured the catalyst way (lib/itemSize).
+  const sizeDeps = useItemSizeDeps()
+  const sizeKey = useMemo(
+    () => [selected?.id ?? null, identityKey(collectionItems), draftSizeKey(drafts)],
+    [selected?.id, collectionItems, drafts]
+  )
+  const measuredBytes = useMeasuredBytes(
+    selected?.status === 'ready' && selected.type
+      ? async () => (await planDraftUpload(selected.id, drafts.map(toPayload), collectionItems))?.built ?? null
+      : null,
+    sizeKey,
+    'add_items'
+  )
+  const selectedSize = useMemo<ItemSize | null>(
+    () =>
+      selected && measuredBytes !== null
+        ? { bytes: measuredBytes, limit: getDraftSizeLimit(selected, drafts, collectionItems) }
+        : null,
+    [selected, measuredBytes, drafts, collectionItems]
+  )
+
   const isSelectedComplete = useMemo(
-    () => !!selected && isDraftComplete(selected, drafts, collectionItems, draftRules),
-    [selected, drafts, collectionItems, draftRules]
+    () => !!selected && isDraftComplete(selected, drafts, collectionItems, draftRules, selectedSize),
+    [selected, drafts, collectionItems, draftRules, selectedSize]
   )
   const othersChecked = useMemo(
     () => !!selected && drafts.every(draft => draft.id === selected.id || draft.checked),
@@ -306,7 +333,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
     }
     try {
       const operations = await planUpload(payloads, collectionItems, { replaceByUrn: updateOnly })
-      const result = await executeUpload(address, operations)
+      const result = await executeUpload(address, operations, sizeDeps)
 
       // One event per upload rather than per item: the legacy builder's per-item `Save item` on creation
       // reads here as `item_count` (see docs/TRACKING_SPEC.md).
@@ -477,6 +504,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
                 }
                 onOpenVideo={() => setVideoOpen(true)}
                 onVideoChange={handleVideoChange}
+                size={selectedSize}
                 linked={isLinked ? { contract: linkedContract, updating: updateOnly } : undefined}
               />
             ) : (

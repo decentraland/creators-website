@@ -1,7 +1,6 @@
 // The committee's approval flow for a standard collection, ported from the legacy builder's
 // handleInitiateApprovalFlow: token ids → rescue content hashes on chain → deploy entities → approve.
 // Every step is idempotent, so running the flow again resumes where a closed or failed run stopped.
-import { hashV1 } from '@dcl/hashing'
 import { type Entity } from '@dcl/schemas'
 import { type ContractCall } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
@@ -9,29 +8,20 @@ import { RESCUE_CHUNK_SIZE, buildRescueItemsCalls, buildSetApprovedCall } from '
 import {
   buildDeploymentForm,
   buildItemEntity,
+  buildMissingImage,
   computeItemContentHash,
   getEntityContent,
-  type AuthLink
+  type AuthLink,
+  type ImageDeps,
+  type MissingImage
 } from '~/lib/catalystEntity'
 import { isItemSynced } from '~/lib/itemSync'
-import { IMAGE_PATH, ItemType, getItemMetadata, type Item } from '~/lib/items'
+import { measureItemBytes } from '~/lib/itemSize'
+import { ItemType, getItemMetadata, type Item } from '~/lib/items'
+
+export { buildMissingImage, type ImageDeps, type MissingImage }
 
 export type RescueTarget = { item: Item; contentHash: string }
-
-/** A generated `image.png` for an item saved without one (legacy generateCatalystImage). */
-export type MissingImage = { hash: string; blob: Blob }
-
-export type ImageDeps = {
-  fetchContent: (hash: string) => Promise<Blob>
-  renderCatalystImage: (thumbnail: Blob, rarity: string) => Promise<Blob>
-}
-
-export async function buildMissingImage(item: Item, deps: ImageDeps): Promise<MissingImage | null> {
-  if (item.contents[IMAGE_PATH]) return null
-  const thumbnail = await deps.fetchContent(item.contents[item.thumbnail])
-  const blob = await deps.renderCatalystImage(thumbnail, item.rarity ?? '')
-  return { hash: await hashV1(new Uint8Array(await blob.arrayBuffer())), blob }
-}
 
 export class ApprovalError extends Error {
   reason:
@@ -235,10 +225,15 @@ export const itemSizesKey = (items: Item[]) => [
   items.map(item => `${item.id}:${item.currentContentHash ?? ''}`)
 ]
 
-/** Bytes each item uploads, by item id. Files shared between items are measured once; unmeasurable ones count 0. */
+/**
+ * Each item's size as the catalyst counts it (lib/itemSize), by item id. Files shared between items are fetched
+ * once; unmeasurable ones count 0. `imageOf` renders the image.png the deploy adds for a standard item saved without
+ * one (pass the deploy's own `buildMissingImage` deps; one that can't be rendered counts 0); linked items never get one.
+ */
 export async function measureItems(
   items: Item[],
-  sizeOf: (hash: string) => Promise<number>
+  sizeOf: (hash: string) => Promise<number>,
+  imageOf?: (item: Item) => Promise<MissingImage | null>
 ): Promise<Map<string, number>> {
   const sizes = new Map<string, Promise<number>>()
   const measure = (hash: string) => {
@@ -249,11 +244,11 @@ export async function measureItems(
       )
     return sizes.get(hash)!
   }
+  const renderImage = imageOf && ((item: Item) => imageOf(item).catch(() => null))
   const totals = await Promise.all(
-    items.map(async item => {
-      const bytes = await Promise.all(Object.values(getEntityContent(item)).map(measure))
-      return [item.id, bytes.reduce((sum, size) => sum + size, 0)] as const
-    })
+    items.map(
+      async item => [item.id, await measureItemBytes({ item }, { sizeOf: measure, imageOf: renderImage })] as const
+    )
   )
   return new Map(totals)
 }

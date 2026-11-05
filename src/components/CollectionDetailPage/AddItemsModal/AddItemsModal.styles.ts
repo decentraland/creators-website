@@ -17,6 +17,7 @@ export {
   ProcessingSpinner,
   SegmentButton,
   Segmented,
+  SizeLine,
   WarningCard
 } from '~/components/ItemDraftModal/ItemDraftModal.styles'
 

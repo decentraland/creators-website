@@ -18,10 +18,7 @@ import {
 import {
   IMAGE_PATH,
   ItemFileError,
-  MAX_EMOTE_FILE_SIZE,
-  MAX_SKIN_FILE_SIZE,
   MAX_THUMBNAIL_FILE_SIZE,
-  MAX_WEARABLE_FILE_SIZE,
   THUMBNAIL_PATH,
   VIDEO_PATH,
   getBodyShapeTypeFromContents,
@@ -46,7 +43,6 @@ export enum EmotePlayMode {
 }
 
 const UPPER_BODY_CATEGORY = 'upper_body'
-const SKIN_CATEGORY = 'skin'
 const HANDS_BODY_PART = 'hands'
 
 export type SortedContent = {
@@ -232,43 +228,12 @@ export async function computeHashes(contents: Record<string, Blob>): Promise<Rec
   return hashes
 }
 
-/**
- * The per-type size cap over the final payload (model + thumbnail, never the video), re-checked
- * at the details step where type and category are known. Returns the violated cap in MB, or null
- * when valid.
- */
-export function getSizeError(
-  type: ItemType,
-  category: string | undefined,
-  contents: Record<string, Blob>,
-  /** Sizes of already-stored files kept by an update (legacy calculateModelFinalSize). */
-  storedSizes: number[] = []
-): number | null {
-  // A unisex item carries the same blob under male/ and female/; like legacy's getUniqueFiles, count it once.
-  const uniqueBlobs = new Set(
-    Object.entries(contents)
-      .filter(([path]) => path !== VIDEO_PATH && path !== IMAGE_PATH)
-      .map(([, blob]) => blob)
-  )
-  let totalSize = storedSizes.reduce((total, size) => total + size, 0)
-  for (const blob of uniqueBlobs) totalSize += blob.size
-  const maxSize =
-    type === ItemType.EMOTE
-      ? MAX_EMOTE_FILE_SIZE
-      : category === SKIN_CATEGORY
-        ? MAX_SKIN_FILE_SIZE
-        : MAX_WEARABLE_FILE_SIZE
-  return totalSize > maxSize ? toMB(maxSize) : null
-}
-
-/** Save-time re-check of every cap (legacy sagas): the item cap over model + thumbnail, plus the thumbnail's own. */
-export function assertUploadSize(item: Item, blobs: Record<string, Blob>, storedSizes: number[] = []): void {
+/** The thumbnail's own cap, re-checked right before a save uploads a new one (legacy sagas). */
+export function assertThumbnailSize(blobs: Record<string, Blob>): void {
   const thumbnail = blobs[THUMBNAIL_PATH]
   if (thumbnail && thumbnail.size > MAX_THUMBNAIL_FILE_SIZE) {
     throw new ItemFileError('thumbnail_too_big', { size: toMB(MAX_THUMBNAIL_FILE_SIZE) })
   }
-  const size = getSizeError(item.type, item.data.category, blobs, storedSizes)
-  if (size !== null) throw new ItemFileError('size_exceeded', { size })
 }
 
 /** An item to persist plus the blobs to upload, keyed by content path. */

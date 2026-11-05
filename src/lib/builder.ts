@@ -631,16 +631,25 @@ export async function publishCollectionItems(
 }
 
 /**
- * A stored file's size in bytes, or 0 when storage doesn't say. The bucket's CORS allows only GET, so this reads the
- * headers of a GET and cancels it before the body downloads.
+ * A stored file's size in bytes. The bucket's CORS allows only GET, so this reads the headers of a GET and cancels it
+ * before the body downloads; a response that doesn't say its length is read to the end instead, since item sizes are
+ * enforced with this and a 0 would let an item through. `signal` (a timeout) cancels the request and the body read.
  */
-export async function fetchContentSize(hash: string): Promise<number> {
+export async function fetchContentSize(hash: string, signal?: AbortSignal): Promise<number> {
   const controller = new AbortController()
-  // no-cache for the same reason as fetchContent: a cached copy from an <img> has no CORS headers.
-  const response = await fetch(getContentsStorageUrl(hash), { cache: 'no-cache', signal: controller.signal })
-  controller.abort()
-  if (!response.ok) throw new BuilderServerError(`Could not read ${hash} (${response.status})`, response.status)
-  return Number(response.headers.get('content-length')) || 0
+  const cancel = () => controller.abort(signal?.reason)
+  if (signal?.aborted) cancel()
+  signal?.addEventListener('abort', cancel, { once: true })
+  try {
+    // no-cache for the same reason as fetchContent: a cached copy from an <img> has no CORS headers.
+    const response = await fetch(getContentsStorageUrl(hash), { cache: 'no-cache', signal: controller.signal })
+    const length = Number(response.headers.get('content-length'))
+    if (!response.ok || length > 0) controller.abort()
+    if (!response.ok) throw new BuilderServerError(`Could not read ${hash} (${response.status})`, response.status)
+    return length > 0 ? length : (await response.blob()).size
+  } finally {
+    signal?.removeEventListener('abort', cancel)
+  }
 }
 
 /** One stored file by hash, from public storage. */
