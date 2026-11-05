@@ -1,0 +1,68 @@
+import { afterEach, describe, expect, it } from 'vitest'
+import { collection, upperBody, wearable } from './fixtures'
+import { launchApp, type App } from './helpers/app'
+import { byTestId, clickTestId, selectOption, waitForTestId, waitForText } from './helpers/dom'
+
+let app: App | undefined
+afterEach(async () => {
+  await app?.close()
+  app = undefined
+})
+
+const draft = collection({ name: 'Summer Drop' })
+const hat = wearable({ collection_id: draft.id, name: 'Red Bandana' })
+const polo = upperBody({ collection_id: draft.id }, { invalid: true })
+
+const editorPath = (itemId: string) => `/collections/editor?collection=${draft.id}&item=${itemId}`
+
+async function openEditor(itemId: string): Promise<App> {
+  const launched = await launchApp({ path: editorPath(itemId), builder: { collections: [draft], items: [hat, polo] } })
+  await launched.page.waitForSelector('[data-testid="item-editor-page"][data-mode="edit"]')
+  return launched
+}
+
+const badgeStatus = (a: App, status: string) =>
+  a.page.waitForSelector(`[data-testid="validation-badge"][data-status="${status}"]`, { timeout: 30_000 })
+
+describe('item editor', () => {
+  it('saves name, category and hides, and keeps them after a reload', async () => {
+    app = await openEditor(hat.id)
+    const { page } = app
+    await badgeStatus(app, 'pass')
+
+    await page.click(byTestId('properties-panel-name'), { count: 3 })
+    await page.keyboard.type('Bandana Deluxe')
+    await selectOption(page, 'properties-panel-category', 'helmet')
+    await clickTestId(page, 'properties-panel-hides-categories')
+    await clickTestId(page, 'properties-panel-hides-categories-option-eyewear')
+    await page.keyboard.press('Escape')
+    await clickTestId(page, 'properties-panel-save')
+
+    await waitForText(page, 'was saved')
+    await app.waitForEvent('Save item', { itemId: hat.id })
+    const saved = app.builder.items.get(hat.id)!
+    expect(saved).toMatchObject({ name: 'Bandana Deluxe', data: { category: 'helmet' } })
+    expect(saved.data.hides).toContain('eyewear')
+    // The item's hides apply to every body shape's model.
+    for (const representation of saved.data.representations as Array<{ overrideHides: string[] }>) {
+      expect(representation.overrideHides).toContain('eyewear')
+    }
+
+    await page.reload({ waitUntil: 'networkidle2' })
+    await page.waitForSelector('[data-testid="item-editor-page"][data-mode="edit"]')
+    expect(await page.$eval(byTestId('properties-panel-name'), el => (el as HTMLInputElement).value)).toBe(
+      'Bandana Deluxe'
+    )
+    expect(app.pageViews()).toEqual(['item_editor', 'item_editor'])
+  })
+
+  it('shows the rule book errors of an invalid model', async () => {
+    app = await openEditor(polo.id)
+    await badgeStatus(app, 'errors')
+
+    await clickTestId(app.page, 'validation-badge')
+    await waitForTestId(app.page, 'validation-badge-modal')
+    await waitForText(app.page, 'maximum texture size')
+    await app.waitForEvent('Item Validation Details Opened', { itemId: polo.id, status: 'errors', trigger: 'editor' })
+  })
+})
