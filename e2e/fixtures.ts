@@ -48,13 +48,34 @@ export type RemoteItemRow = {
   data: Record<string, unknown>
   metrics: Record<string, number>
   contents: Record<string, string>
+  content_hash?: string | null
+  local_content_hash?: string | null
   urn: string | null
   created_at: string
   updated_at: string
 }
 
+/** Content hashes of the committed fixture files; the fake storage serves each one's real bytes. */
+export const HASH = {
+  hat: 'bafyhat',
+  tshirtMale: 'bafytshirtmale',
+  tshirtFemale: 'bafytshirtfemale',
+  poloMale: 'bafypolomale',
+  poloFemale: 'bafypolofemale',
+  emote: 'bafyemote',
+  thumbnail: 'bafythumbnail'
+} as const
+
 let sequence = 0
 const nextId = () => `00000000-0000-4000-8000-${String(++sequence).padStart(12, '0')}`
+
+const representation = (bodyShape: string, file: string) => ({
+  bodyShapes: [bodyShape],
+  mainFile: file,
+  contents: [file],
+  overrideHides: [],
+  overrideReplaces: []
+})
 
 export function collection(overrides: Partial<RemoteCollectionRow> = {}): RemoteCollectionRow {
   const id = overrides.id ?? nextId()
@@ -120,25 +141,10 @@ export function wearable(overrides: Partial<RemoteItemRow> = {}): RemoteItemRow 
       replaces: [],
       tags: [],
       requiredPermissions: [],
-      representations: [
-        {
-          bodyShapes: [MALE],
-          mainFile: 'male/hat.glb',
-          contents: ['male/hat.glb'],
-          overrideHides: [],
-          overrideReplaces: []
-        },
-        {
-          bodyShapes: [FEMALE],
-          mainFile: 'female/hat.glb',
-          contents: ['female/hat.glb'],
-          overrideHides: [],
-          overrideReplaces: []
-        }
-      ]
+      representations: [representation(MALE, 'male/hat.glb'), representation(FEMALE, 'female/hat.glb')]
     },
     metrics: { triangles: 540, materials: 1, textures: 1, meshes: 1, bodies: 1, entities: 1 },
-    contents: { 'male/hat.glb': 'bafyhat', 'female/hat.glb': 'bafyhat', 'thumbnail.png': 'bafythumbnail' },
+    contents: { 'male/hat.glb': HASH.hat, 'female/hat.glb': HASH.hat, 'thumbnail.png': HASH.thumbnail },
     urn: null,
     created_at: NOW,
     updated_at: NOW,
@@ -146,13 +152,70 @@ export function wearable(overrides: Partial<RemoteItemRow> = {}): RemoteItemRow 
   }
 }
 
+/** An upper-body wearable with a model per body shape; `invalid` uses the polo pair, which fails texture-size. */
+export function upperBody(overrides: Partial<RemoteItemRow> = {}, { invalid = false } = {}): RemoteItemRow {
+  const [male, female] = invalid ? [HASH.poloMale, HASH.poloFemale] : [HASH.tshirtMale, HASH.tshirtFemale]
+  return wearable({
+    name: invalid ? 'Striped Polo' : 'Yellow T-Shirt',
+    data: {
+      category: 'upper_body',
+      hides: [],
+      replaces: [],
+      tags: [],
+      requiredPermissions: [],
+      representations: [representation(MALE, 'male/shirt.glb'), representation(FEMALE, 'female/shirt.glb')]
+    },
+    metrics: { triangles: 800, materials: 2, textures: 2, meshes: 1, bodies: 1, entities: 1 },
+    contents: { 'male/shirt.glb': male, 'female/shirt.glb': female, 'thumbnail.png': HASH.thumbnail },
+    ...overrides
+  })
+}
+
+export function emote(overrides: Partial<RemoteItemRow> = {}): RemoteItemRow {
+  return wearable({
+    name: 'Wave',
+    type: 'emote',
+    data: {
+      category: 'greetings',
+      loop: false,
+      tags: [],
+      representations: [representation(MALE, 'male/emote.glb'), representation(FEMALE, 'female/emote.glb')]
+    },
+    metrics: { sequences: 1, duration: 2, frames: 60, fps: 30, props: 0 },
+    contents: { 'male/emote.glb': HASH.emote, 'female/emote.glb': HASH.emote, 'thumbnail.png': HASH.thumbnail },
+    ...overrides
+  })
+}
+
+/** Every rarity costs the same: 3.7 MANA, or 1 USD (10 credits), per item. */
+const PRICES = { MANA: '3700000000000000000', USD: '1000000000000000000' }
+
 export const RARITIES = [
-  { id: 'common', name: 'common', price: '1000000000000000000', maxSupply: '100000' },
-  { id: 'uncommon', name: 'uncommon', price: '1000000000000000000', maxSupply: '10000' },
-  { id: 'rare', name: 'rare', price: '1000000000000000000', maxSupply: '5000' },
-  { id: 'epic', name: 'epic', price: '1000000000000000000', maxSupply: '1000' },
-  { id: 'legendary', name: 'legendary', price: '1000000000000000000', maxSupply: '100' },
-  { id: 'exotic', name: 'exotic', price: '1000000000000000000', maxSupply: '50' },
-  { id: 'mythic', name: 'mythic', price: '1000000000000000000', maxSupply: '10' },
-  { id: 'unique', name: 'unique', price: '1000000000000000000', maxSupply: '1' }
-]
+  ['common', '100000'],
+  ['uncommon', '10000'],
+  ['rare', '5000'],
+  ['epic', '1000'],
+  ['legendary', '100'],
+  ['exotic', '50'],
+  ['mythic', '10'],
+  ['unique', '1']
+].map(([name, maxSupply]) => ({ id: name, name, price: PRICES.MANA, maxSupply, prices: PRICES }))
+
+/** An item of a published collection: on chain with a token id, approved unless overridden. */
+export function publishedItem(
+  parent: RemoteCollectionRow,
+  index: number,
+  overrides: Partial<RemoteItemRow> = {}
+): RemoteItemRow {
+  const urn = `urn:decentraland:amoy:collections-v2:${parent.contract_address}:${index}`
+  return wearable({
+    collection_id: parent.id,
+    blockchain_item_id: String(index),
+    urn,
+    rarity: 'common',
+    is_published: true,
+    is_approved: true,
+    in_catalyst: true,
+    ...overrides
+  })
+}
