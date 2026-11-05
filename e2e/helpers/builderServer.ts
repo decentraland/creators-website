@@ -127,6 +127,56 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
     return ok({ ...paginate(rows, query), counts })
   }
 
+  // builder-server's curation filters (Collection.model getCurationStatusStatement), standard collections only.
+  function curationStatusMatches(row: RemoteCollectionRow, status: string): boolean {
+    const curation = curations.get(row.id)
+    const onChain = !!row.contract_address && row.is_published
+    const reviewed = row.reviewed_at !== null && row.reviewed_at !== row.created_at
+    switch (status) {
+      case 'pending':
+        return curation ? curation.status === 'pending' && !row.is_approved : !row.is_approved
+      case 'approved':
+        return curation ? curation.status === 'approved' && row.is_approved : row.is_approved
+      case 'rejected':
+        return curation?.status === 'rejected' && onChain
+      case 'to_review':
+        return (
+          !curation?.assignee &&
+          onChain &&
+          (curation?.status === 'pending' || (!curation && !row.is_approved && !reviewed))
+        )
+      case 'under_review':
+        return !!curation?.assignee && curation.status === 'pending'
+      case 'disabled':
+        return !row.is_approved && (curation?.status === 'approved' || (!curation && reviewed))
+      default:
+        return false
+    }
+  }
+
+  function listCurationCollections(query: URLSearchParams): BuilderResponse {
+    const statuses = query.getAll('status')
+    const assignees = query.getAll('assignee').map(a => a.toLowerCase())
+    const reviewType = query.get('review_type')
+    const q = query.get('q')?.toLowerCase()
+    const rows = [...collections.values()]
+      .filter(row => row.is_published && !isLinked(row))
+      .filter(row => !q || row.name.toLowerCase().includes(q))
+      .filter(row => statuses.length === 0 || statuses.some(status => curationStatusMatches(row, status)))
+      .filter(row => {
+        if (assignees.length === 0) return true
+        const assignee = curations.get(row.id)?.assignee?.toLowerCase() ?? null
+        return assignees.some(a => (a === 'unassigned' ? assignee === null : a === assignee))
+      })
+      .filter(row => {
+        if (!reviewType) return true
+        const approvedBefore = row.is_approved || (row.reviewed_at !== null && row.reviewed_at !== row.created_at)
+        return reviewType === 'updates' ? approvedBefore : !approvedBefore
+      })
+      .map(withCount)
+    return ok(paginate(rows, query))
+  }
+
   function saveCollection(id: string, body: unknown): BuilderResponse {
     const { collection: sent = {}, data } = (body ?? {}) as { collection?: Partial<RemoteCollectionRow>; data?: string }
     const row = collections.get(id)
@@ -289,6 +339,10 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
     if (head === 'collections' && id && sub === 'owner' && subPath === 'sync' && method === 'POST') {
       const row = collections.get(id)
       return row ? ok(withCount(row)) : notFound('collection')
+    }
+    if (method === 'GET' && parts.length === 1 && head === 'collections') return listCurationCollections(query)
+    if (head === 'collections' && id && sub === 'curation' && subPath === 'post' && method === 'POST') {
+      return collections.has(id) ? { status: 200, body: { ok: true } } : notFound('collection')
     }
     if (head === 'collections' && id) return handleCollection(method, id, sub, query, body)
     if (head === 'items' && id) return handleItem(method, id, sub, body)
