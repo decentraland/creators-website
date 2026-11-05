@@ -119,6 +119,7 @@ async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
   const builder = createBuilderServer(opts.builder)
   chain.onTransaction(tx => builder.applyTransaction(tx))
   const market = createMarket(opts.market)
+  chain.onTransaction(tx => market.applyTransaction(tx))
 
   await browser.defaultBrowserContext().overridePermissions(BASE, ['clipboard-read', 'clipboard-write'])
   const page = await browser.newPage()
