@@ -29,6 +29,7 @@ import {
   PublishTransactionRevertedError,
   consolidatePublishedCollection,
   getMaticChainId,
+  isRecentPublication,
   openFirstReviewRequest,
   publishCollection,
   syncPublishedItems,
@@ -201,7 +202,7 @@ const CONSOLIDATION_TOAST_MS = 20_000
 export async function requestFirstReview(
   queryClient: QueryClient,
   address: string,
-  collection: Collection
+  collection: Pick<Collection, 'id' | 'urn'>
 ): Promise<void> {
   if (isLinkedCollection(collection)) return
   try {
@@ -226,20 +227,24 @@ const syncing = new Set<string>()
 export function useSyncPublishedItems(address: string | undefined, collection: Collection | undefined, items: Item[]) {
   const queryClient = useQueryClient()
   const collectionId = collection?.id
+  const urn = collection?.urn
   const isPublished = !!collection?.isPublished
   const needsSync = useMemo(() => isPublished && items.some(item => !item.tokenId), [isPublished, items])
+  const opensReview = useMemo(() => !!collection && isRecentPublication(collection), [collection])
 
   useEffect(() => {
-    if (!address || !collectionId || !needsSync || syncing.has(collectionId)) return
+    if (!address || !collectionId || !urn || !needsSync || syncing.has(collectionId)) return
     syncing.add(collectionId)
     syncPublishedItems(collectionId, { publishCollectionItems: id => publishCollectionItems(address, id) })
-      .then(() => collection && requestFirstReview(queryClient, address, collection))
+      .then(async () => {
+        if (opensReview) await requestFirstReview(queryClient, address, { id: collectionId, urn })
+      })
       .catch(error => console.error('Collection items sync failed', error))
       .finally(() => {
         syncing.delete(collectionId)
         invalidateCollectionItems(queryClient, collectionId)
       })
-  }, [address, collection, collectionId, needsSync, queryClient])
+  }, [address, collectionId, urn, needsSync, opensReview, queryClient])
 }
 
 /** The files of a saved item as blobs, for the thumbnail editor; off until an item is given. */

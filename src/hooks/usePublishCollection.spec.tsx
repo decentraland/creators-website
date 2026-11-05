@@ -93,18 +93,63 @@ describe('requestFirstReview', () => {
 })
 
 describe('useSyncPublishedItems', () => {
-  const published = { ...collection, isPublished: true } as Collection
   const unsyncedItem = { id: 'i1', tokenId: undefined } as unknown as Item
+  const publishedNow = (id: string) =>
+    ({ ...collection, id, isPublished: true, lock: Date.now(), updatedAt: Date.now() }) as Collection
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
 
   it('opens the review request once it finishes a publish the tab left halfway', async () => {
+    const recent = publishedNow('c-recent')
     api.publishCollectionItems.mockResolvedValue({})
-    api.pushCollectionCuration.mockResolvedValue(pending)
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    api.pushCollectionCuration.mockResolvedValue({ ...pending, collectionId: recent.id })
+
+    renderHook(() => useSyncPublishedItems(address, recent, [unsyncedItem]), { wrapper })
+
+    await waitFor(() =>
+      expect(queryClient.getQueryData(collectionCurationKey(address, recent.id))).toEqual(
+        expect.objectContaining({ status: 'pending' })
+      )
     )
+  })
 
-    renderHook(() => useSyncPublishedItems(address, published, [unsyncedItem]), { wrapper })
+  it('opens no request when the sync fails', async () => {
+    const failing = publishedNow('c-failing')
+    api.publishCollectionItems.mockRejectedValue(new BuilderServerError('Unavailable', 503))
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
 
-    await waitFor(() => expect(shownCuration()).toBe(pending))
+    renderHook(() => useSyncPublishedItems(address, failing, [unsyncedItem]), { wrapper })
+
+    await waitFor(() => expect(api.publishCollectionItems).toHaveBeenCalled())
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(api.pushCollectionCuration).not.toHaveBeenCalled()
+  })
+
+  it('finishes the sync of a collection published long ago without opening a request', async () => {
+    const monthsAgo = Date.now() - 90 * 24 * 60 * 60_000
+    const old = { ...publishedNow('c-old'), lock: monthsAgo, updatedAt: monthsAgo } as Collection
+    api.publishCollectionItems.mockResolvedValue({})
+
+    renderHook(() => useSyncPublishedItems(address, old, [unsyncedItem]), { wrapper })
+
+    await waitFor(() => expect(api.publishCollectionItems).toHaveBeenCalledWith(address, old.id))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(api.fetchCollectionCuration).not.toHaveBeenCalled()
+    expect(api.pushCollectionCuration).not.toHaveBeenCalled()
+  })
+
+  it('runs one sync per mount however often the collection is refetched', async () => {
+    const refetched = publishedNow('c-refetched')
+    api.publishCollectionItems.mockReturnValue(new Promise(() => undefined))
+
+    const { rerender } = renderHook(({ current }) => useSyncPublishedItems(address, current, [unsyncedItem]), {
+      wrapper,
+      initialProps: { current: refetched }
+    })
+    rerender({ current: { ...refetched, updatedAt: refetched.updatedAt + 1 } })
+    rerender({ current: { ...refetched, updatedAt: refetched.updatedAt + 2 } })
+
+    await waitFor(() => expect(api.publishCollectionItems).toHaveBeenCalledTimes(1))
   })
 })

@@ -20,6 +20,7 @@ import {
   getManaApprovalNeeded,
   syncPublishedItems,
   getPublishBlocker,
+  isRecentPublication,
   openFirstReviewRequest,
   publishCollection,
   toPublishError,
@@ -392,6 +393,19 @@ describe('syncPublishedItems', () => {
     await failure
     expect(publish).toHaveBeenCalledTimes(721)
     vi.useRealTimers()
+  })
+})
+
+describe('isRecentPublication', () => {
+  const now = Date.UTC(2026, 10, 5)
+  const day = 24 * 60 * 60_000
+
+  it('counts a collection published this month', () => {
+    expect(isRecentPublication({ lock: now - 3 * day, updatedAt: now - 10 * day }, now)).toBe(true)
+  })
+
+  it('leaves out a collection published over a month ago', () => {
+    expect(isRecentPublication({ lock: undefined, updatedAt: now - 45 * day }, now)).toBe(false)
   })
 })
 

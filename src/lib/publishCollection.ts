@@ -366,6 +366,14 @@ export async function syncPublishedItems(
   }
 }
 
+// Matches the forum post's recovery window: older collections keep reading To review without a request.
+const REVIEW_RECOVERY_MAX_AGE_MS = 30 * 24 * 60 * 60_000
+
+/** Whether a publish finished on a later visit still gets its review request: only within a month of publishing. */
+export function isRecentPublication(collection: Pick<Collection, 'lock' | 'updatedAt'>, now = Date.now()): boolean {
+  return now - Math.max(collection.lock ?? 0, collection.updatedAt) < REVIEW_RECOVERY_MAX_AGE_MS
+}
+
 export type ReviewRequestDeps = {
   fetchCollectionCuration: (collectionId: string) => Promise<CollectionCuration | null>
   pushCollectionCuration: (collectionId: string) => Promise<CollectionCuration>
