@@ -34,7 +34,7 @@ Related projects:
 
 ## Tech Stack
 
-Vite + React 18 + TypeScript (strict), React Router, @tanstack/react-query (server state), zustand (client state), react-intl (en/es), Emotion + decentraland-ui2 for styling (shop's theme and color palette), Vitest + Testing Library for unit tests. Auth via decentraland-connect + single sign-on, with AuthChain-signed requests to builder-server. Error monitoring (Sentry) and browser e2e tests (Puppeteer) are planned and not wired yet.
+Vite + React 18 + TypeScript (strict), React Router, @tanstack/react-query (server state), zustand (client state), react-intl (en/es), Emotion + decentraland-ui2 for styling (shop's theme and color palette), Vitest + Testing Library for unit tests, Puppeteer for browser e2e tests. Auth via decentraland-connect + single sign-on, with AuthChain-signed requests to builder-server. Errors are reported to Sentry.
 
 ## Getting Started
 
@@ -80,7 +80,7 @@ npm run start
 
 ## Testing
 
-This UI contains unit tests that assert the behavior of components, stores and business logic. Browser-level e2e tests are not set up yet.
+Unit tests assert the behavior of components, stores and business logic. Browser e2e tests drive each user flow in headless Chrome with the wallet and every back end mocked.
 
 ### Running tests
 
@@ -96,9 +96,15 @@ Run all tests with coverage:
 npm run test:coverage
 ```
 
+Run the e2e suite (it starts its own dev server on port 5283):
+
+```bash
+npm run test:e2e
+```
+
 ### Test Structure
 
-Tests are colocated with the file they're testing, using a `.spec.ts` / `.spec.tsx` extension.
+Unit tests are colocated with the file they're testing, using a `.spec.ts` / `.spec.tsx` extension. E2E specs live in `e2e/` as `*.e2e.ts`.
 
 ## Security
 

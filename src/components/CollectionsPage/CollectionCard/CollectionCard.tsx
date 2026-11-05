@@ -30,7 +30,9 @@ export function CollectionCard({ collection }: Props) {
       </S.Media>
       <S.Body>
         <S.NameRow>
-          <S.Name title={collection.name}>{collection.name}</S.Name>
+          <S.Name data-testid="collection-card-name" title={collection.name}>
+            {collection.name}
+          </S.Name>
           <CollectionStatusPill collection={collection} />
         </S.NameRow>
         <S.Meta data-testid="collection-card-items">
