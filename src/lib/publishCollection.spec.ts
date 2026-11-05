@@ -396,23 +396,43 @@ describe('syncPublishedItems', () => {
 })
 
 describe('openFirstReviewRequest', () => {
-  it('opens the request and hands back the pending curation', async () => {
-    const curation = { collectionId: 'col-1', status: 'pending' }
-    const pushCollectionCuration = vi.fn().mockResolvedValue(curation)
-    await expect(openFirstReviewRequest('col-1', { pushCollectionCuration })).resolves.toBe(curation)
+  const pending = { collectionId: 'col-1', status: 'pending' }
+
+  it('opens the request when the collection has none and hands back the pending curation', async () => {
+    const pushCollectionCuration = vi.fn().mockResolvedValue(pending)
+    const fetchCollectionCuration = vi.fn().mockResolvedValue(null)
+    await expect(openFirstReviewRequest('col-1', { fetchCollectionCuration, pushCollectionCuration })).resolves.toBe(
+      pending
+    )
     expect(pushCollectionCuration).toHaveBeenCalledWith('col-1')
   })
 
-  it('treats a request already open as done, so a retried publish never fails on it', async () => {
+  it('keeps a request that already exists, so a curator decision is never reopened', async () => {
+    const rejected = { collectionId: 'col-1', status: 'rejected' }
+    const pushCollectionCuration = vi.fn()
+    const fetchCollectionCuration = vi.fn().mockResolvedValue(rejected)
+    await expect(openFirstReviewRequest('col-1', { fetchCollectionCuration, pushCollectionCuration })).resolves.toBe(
+      rejected
+    )
+    expect(pushCollectionCuration).not.toHaveBeenCalled()
+  })
+
+  it('hands back the request another tab opened in the meantime', async () => {
     const pushCollectionCuration = vi
       .fn()
       .mockRejectedValue(new BuilderServerError('There is already an ongoing review request', 400))
-    await expect(openFirstReviewRequest('col-1', { pushCollectionCuration })).resolves.toBeNull()
+    const fetchCollectionCuration = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(pending)
+    await expect(openFirstReviewRequest('col-1', { fetchCollectionCuration, pushCollectionCuration })).resolves.toBe(
+      pending
+    )
   })
 
   it('surfaces any other failure', async () => {
     const pushCollectionCuration = vi.fn().mockRejectedValue(new BuilderServerError('Unauthorized', 401))
-    await expect(openFirstReviewRequest('col-1', { pushCollectionCuration })).rejects.toBeInstanceOf(BuilderServerError)
+    const fetchCollectionCuration = vi.fn().mockResolvedValue(null)
+    await expect(
+      openFirstReviewRequest('col-1', { fetchCollectionCuration, pushCollectionCuration })
+    ).rejects.toBeInstanceOf(BuilderServerError)
   })
 })
 

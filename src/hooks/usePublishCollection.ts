@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { ContractName, getContract } from 'decentraland-transactions'
 import { errorCode, track } from '~/lib/analytics'
 import { captureError } from '~/lib/monitoring'
@@ -11,6 +11,7 @@ import {
   fetchRarities,
   lockCollection,
   publishCollectionItems,
+  fetchCollectionCuration,
   pushCollectionCuration,
   saveCollection,
   saveCollectionTOS,
@@ -38,7 +39,7 @@ import { type PublicationFee } from '~/lib/publishFee'
 import { buildCollectionInitializeData } from '~/lib/saveCollection'
 import { useTranslation } from '~/intl'
 import { postToForum } from '~/hooks/useForumPost'
-import { collectionCurationKey } from '~/hooks/useCuration'
+import { storeCuration } from '~/hooks/useCuration'
 
 export function useRarities(address: string | undefined) {
   return useQuery({
@@ -196,27 +197,19 @@ export function usePublishCollection(session: Session | null) {
 
 const CONSOLIDATION_TOAST_MS = 20_000
 
-/**
- * Opens the published collection's review request and puts it in the cache, so the status pill and the curation
- * list read "Under review" at once. Never throws: the collection is on chain either way, so a failure is only
- * reported. Linked collections send their items for review through their own flow.
- */
+/** Opens the collection's first review request once it is published; never fails the publish. */
 export async function requestFirstReview(
-  queryClient: ReturnType<typeof useQueryClient>,
+  queryClient: QueryClient,
   address: string,
   collection: Collection
 ): Promise<void> {
   if (isLinkedCollection(collection)) return
-  const key = collectionCurationKey(address, collection.id)
   try {
     const curation = await openFirstReviewRequest(collection.id, {
+      fetchCollectionCuration: id => fetchCollectionCuration(address, id),
       pushCollectionCuration: id => pushCollectionCuration(address, id)
     })
-    if (curation) queryClient.setQueryData(key, curation)
-    else void queryClient.invalidateQueries({ queryKey: key })
-    void queryClient.invalidateQueries({ queryKey: ['curations'] })
-    void queryClient.invalidateQueries({ queryKey: ['curation-collections'] })
-    void queryClient.invalidateQueries({ queryKey: ['collections'] })
+    if (curation) storeCuration(queryClient, address, curation)
   } catch (error) {
     captureError(error, { flow: 'publish_review_request', collectionId: collection.id })
   }
@@ -240,12 +233,13 @@ export function useSyncPublishedItems(address: string | undefined, collection: C
     if (!address || !collectionId || !needsSync || syncing.has(collectionId)) return
     syncing.add(collectionId)
     syncPublishedItems(collectionId, { publishCollectionItems: id => publishCollectionItems(address, id) })
+      .then(() => collection && requestFirstReview(queryClient, address, collection))
       .catch(error => console.error('Collection items sync failed', error))
       .finally(() => {
         syncing.delete(collectionId)
         invalidateCollectionItems(queryClient, collectionId)
       })
-  }, [address, collectionId, needsSync, queryClient])
+  }, [address, collection, collectionId, needsSync, queryClient])
 }
 
 /** The files of a saved item as blobs, for the thumbnail editor; off until an item is given. */

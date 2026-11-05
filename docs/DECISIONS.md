@@ -157,7 +157,7 @@ Rules for this file:
 - **Deploy missing entities skips edited-but-unsynced items on purpose.** Their new hash is not rescued on chain, so the Catalyst would reject them and abort the missing ones, and deploying them would ship unreviewed changes. Legacy deployed both together.
 - **Enable (a disabled collection with no pending request) only flips `setApproved(true)`**: no rescue, no upload, the review request untouched, since approving one would promote unsent smart-wearable videos.
 - **Creators can request review again after a rejection** (owners and collaborators); legacy had no way out of that state. Publish changes and Request review again run the same validation pre-step as publishing.
-- **Publishing opens no review request.** A first review has no curation row until a curator acts (assign, reject, approve) or the creator requests a review again; the curation list surfaces published collections without one as To review from the collection itself.
+- **Publishing opens the first review request** (2026-11-05, reverses the earlier rule): publishing means sending the collection for review, so the publish flow opens the request once the publication is synced, also when a later visit finishes a publish the tab left halfway. It is opened from the front end, like the request the approval flow already opens before approving or rejecting; builder-server treats a creator's first request as the publication's, not as submitted changes. A collection that already has a request keeps it, and collections published before this, or from the legacy Builder, still read as To review without one.
 
 ## Forum post
 
