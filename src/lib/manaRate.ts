@@ -1,6 +1,6 @@
 // The MANA/USD rate the off-chain marketplace settles USD-pegged trades with, read from the same
 // Chainlink aggregator the contract uses, so the USD hint next to a MANA price matches what a sale converts at.
-import { ethers } from 'ethers'
+import { parseAbi } from 'viem'
 import { readContract, type ContractData } from '~/lib/auth'
 import { getOffchainMarketplaceContract } from '~/lib/trades'
 
@@ -9,17 +9,18 @@ const MAX_STALENESS_SECONDS = 90_000
 // A round "from the future" means the local clock is off; a few minutes of skew is tolerated, more is not trusted.
 const MAX_CLOCK_SKEW_SECONDS = 300
 
-const AGGREGATOR_ABI = new ethers.utils.Interface([
+const AGGREGATOR_ABI = parseAbi([
   'function decimals() view returns (uint8)',
   'function latestRoundData() view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)'
-]).fragments as unknown as object[]
+]) as unknown as object[]
 
-type RoundData = {
-  roundId: ethers.BigNumber
-  answer: ethers.BigNumber
-  updatedAt: ethers.BigNumber
-  answeredInRound: ethers.BigNumber
-}
+type RoundData = readonly [
+  roundId: bigint,
+  answer: bigint,
+  startedAt: bigint,
+  updatedAt: bigint,
+  answeredInRound: bigint
+]
 
 export type ReadContract = <T>(contract: ContractData, method: string, args?: unknown[]) => Promise<T>
 
@@ -42,17 +43,17 @@ export async function fetchManaUsdRate(
   const marketplace = getOffchainMarketplaceContract(chainId)
   const address = await read<string>(marketplace, 'manaUsdAggregator')
   const aggregator: ContractData = { ...marketplace, name: 'ManaUsdAggregator', address, abi: AGGREGATOR_ABI }
-  const [decimals, round] = await Promise.all([
+  const [decimals, [roundId, answer, , updatedAt, answeredInRound]] = await Promise.all([
     read<number>(aggregator, 'decimals'),
     read<RoundData>(aggregator, 'latestRoundData')
   ])
-  if (round.answer.lte(0)) throw new ManaRateError('MANA rate unavailable')
+  if (answer <= 0n) throw new ManaRateError('MANA rate unavailable')
   // An answer carried over from an earlier round is not fresh data for this one.
-  if (round.answeredInRound.lt(round.roundId)) throw new ManaRateError('MANA rate incomplete')
-  const age = Math.floor(now / 1000) - round.updatedAt.toNumber()
-  if (round.updatedAt.lte(0) || age < -MAX_CLOCK_SKEW_SECONDS || age > MAX_STALENESS_SECONDS) {
+  if (answeredInRound < roundId) throw new ManaRateError('MANA rate incomplete')
+  const age = Math.floor(now / 1000) - Number(updatedAt)
+  if (updatedAt <= 0n || age < -MAX_CLOCK_SKEW_SECONDS || age > MAX_STALENESS_SECONDS) {
     throw new ManaRateError('MANA rate stale')
   }
   if (Number(decimals) > 18) throw new ManaRateError(`Unexpected oracle decimals: ${String(decimals)}`)
-  return BigInt(round.answer.toString()) * 10n ** BigInt(18 - Number(decimals))
+  return answer * 10n ** BigInt(18 - Number(decimals))
 }

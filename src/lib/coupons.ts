@@ -7,7 +7,15 @@ import { Network, type TradeChecks } from '@dcl/schemas'
 import { ContractName, getContract, getContractName, getCouponManager } from 'decentraland-transactions'
 import { StandardMerkleTree } from '@openzeppelin/merkle-tree'
 import { config } from '~/config'
-import { WrongAccountError, WrongChainError, signedFetch, type ContractCall, type ContractData } from '~/lib/auth'
+import {
+  WrongAccountError,
+  WrongChainError,
+  signedFetch,
+  type ContractCall,
+  type ContractData,
+  type TypedDataDomain,
+  type TypedDataTypes
+} from '~/lib/auth'
 import { OFFCHAIN_MARKETPLACE_TYPES, getOffchainMarketplaceContract, toTypedChecks } from '~/lib/trades'
 import { isWalletRejection } from '~/lib/walletErrors'
 
@@ -142,7 +150,7 @@ export const COUPON_TYPES: Record<string, ethers.TypedDataField[]> = {
   ExternalCheck: OFFCHAIN_MARKETPLACE_TYPES.ExternalCheck
 }
 
-export function couponDomain(chainId: number, contracts: CouponContracts): ethers.TypedDataDomain {
+export function couponDomain(chainId: number, contracts: CouponContracts): TypedDataDomain {
   return {
     name: contracts.couponManager.name,
     version: contracts.couponManager.version,
@@ -229,8 +237,9 @@ export type CreateDiscountDeps = {
     signer: string
   ) => Promise<{ contractSignatureIndex: number; signerSignatureIndex: number }>
   signTypedData: (
-    domain: ethers.TypedDataDomain,
-    types: Record<string, ethers.TypedDataField[]>,
+    domain: TypedDataDomain,
+    types: TypedDataTypes,
+    primaryType: string,
     value: Record<string, unknown>
   ) => Promise<string>
   postCoupon: (payload: CouponCreation) => Promise<CollectionDiscount>
@@ -273,6 +282,7 @@ export async function createDiscount(
     const signature = await deps.signTypedData(
       couponDomain(params.chainId, contracts),
       COUPON_TYPES,
+      'Coupon',
       couponTypedValues(checks, contracts.coupon, data)
     )
     deps.onSigned?.()

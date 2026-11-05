@@ -98,7 +98,7 @@ describe('toTradeTypedValues', () => {
 describe('fetchSignatureIndexes', () => {
   it('reads both indexes from the marketplace contract', async () => {
     vi.mocked(readContract).mockImplementation(async (_contract, method) =>
-      ethers.BigNumber.from(method === 'contractSignatureIndex' ? 1 : 4)
+      method === 'contractSignatureIndex' ? 1n : 4n
     )
     await expect(fetchSignatureIndexes(SIGNER, CHAIN_ID)).resolves.toEqual({
       contractSignatureIndex: 1,

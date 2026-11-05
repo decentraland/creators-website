@@ -117,17 +117,32 @@ export type RegisteredThirdParty = {
 
 const EMPTY_ROOT = ethers.constants.HashZero
 
-type ThirdPartyRecord = { registered: ethers.BigNumber; maxItems: ethers.BigNumber; root: string; metadata: string }
+type ThirdPartyRecord = { registered: bigint; maxItems: bigint; root: string; metadata: string }
 
-function readThirdPartyRecord(chainId: number, thirdPartyId: string): Promise<ThirdPartyRecord> {
-  return readContract<ThirdPartyRecord>(getThirdPartyRegistry(chainId), 'thirdParties', [thirdPartyId])
+type ThirdPartyOutputs = readonly [
+  isApproved: boolean,
+  root: string,
+  maxItems: bigint,
+  consumedSlots: bigint,
+  registered: bigint,
+  metadata: string,
+  resolver: string
+]
+
+async function readThirdPartyRecord(chainId: number, thirdPartyId: string): Promise<ThirdPartyRecord> {
+  const [, root, maxItems, , registered, metadata] = await readContract<ThirdPartyOutputs>(
+    getThirdPartyRegistry(chainId),
+    'thirdParties',
+    [thirdPartyId]
+  )
+  return { registered, maxItems, root, metadata }
 }
 
 export async function fetchRegisteredThirdParty(chainId: number, thirdPartyId: string): Promise<RegisteredThirdParty> {
   const record = await readThirdPartyRecord(chainId, thirdPartyId)
   return {
-    registered: !record.registered.isZero(),
-    maxItems: Number(record.maxItems.toString()),
+    registered: record.registered !== 0n,
+    maxItems: Number(record.maxItems),
     root: record.root === EMPTY_ROOT ? '' : record.root
   }
 }
@@ -154,17 +169,15 @@ export async function fetchThirdPartyPrice(chainId: number): Promise<ThirdPartyP
   const registry = getThirdPartyRegistry(chainId)
   const oracle = getContract(ContractName.ChainlinkOracle, chainId)
   const [slotPrice, minSlots, rate] = await Promise.all([
-    readContract<ethers.BigNumber>(registry, 'itemSlotPrice'),
-    readContract<ethers.BigNumber>(registry, 'programmaticBasePurchasedSlots'),
-    readContract<ethers.BigNumber>(oracle, 'getRate')
+    readContract<bigint>(registry, 'itemSlotPrice'),
+    readContract<bigint>(registry, 'programmaticBasePurchasedSlots'),
+    readContract<bigint>(oracle, 'getRate')
   ])
-  const itemSlotUsdWei = BigInt(slotPrice.toString())
-  const usdPerManaWei = BigInt(rate.toString())
   return {
-    itemSlotUsdWei,
-    itemSlotManaWei: usdToMana(itemSlotUsdWei, usdPerManaWei),
-    programmaticMinSlots: Number(minSlots.toString()),
-    usdPerManaWei
+    itemSlotUsdWei: slotPrice,
+    itemSlotManaWei: usdToMana(slotPrice, rate),
+    programmaticMinSlots: Number(minSlots),
+    usdPerManaWei: rate
   }
 }
 

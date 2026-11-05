@@ -3,7 +3,8 @@ import { ethers } from 'ethers'
 import { Authenticator, type AuthIdentity, type AuthLink } from '@dcl/crypto'
 import { localStorageStoreIdentity, localStorageClearIdentity } from '@dcl/single-sign-on-client'
 import { ProviderType } from '@dcl/schemas'
-import { createAuthHeaders, getIdentity, isSocialLogin, logout, signedFetch } from './auth'
+import { TEST_PRIVATE_KEY, TEST_SIGNER } from '~/test/chain'
+import { createAuthHeaders, createEphemeralIdentity, getIdentity, isSocialLogin, logout, signedFetch } from './auth'
 
 vi.mock('decentraland-connect', () => ({
   connection: { disconnect: vi.fn().mockResolvedValue(undefined) }
@@ -119,6 +120,20 @@ describe('auth', () => {
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(Object.keys(init.headers as Record<string, string>)).toHaveLength(0)
+  })
+
+  // The auth chain stores these strings as they are: their format is what servers and other dapps parse.
+  it('createEphemeralIdentity answers the checksummed address and the uncompressed public key of its key', async () => {
+    await expect(createEphemeralIdentity(TEST_PRIVATE_KEY)).resolves.toEqual({
+      address: TEST_SIGNER,
+      publicKey:
+        '0x044f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aa385b6b1b8ead809ca67454d9683fcf2ba03456d6fe2c4abe2b07f0fbdbb2f1c1',
+      privateKey: TEST_PRIVATE_KEY
+    })
+    const fresh = await createEphemeralIdentity()
+    expect(fresh.privateKey).toMatch(/^0x[0-9a-f]{64}$/)
+    expect(fresh.publicKey).toMatch(/^0x04[0-9a-f]{128}$/)
+    expect(fresh.address).toMatch(/^0x[0-9a-fA-F]{40}$/)
   })
 
   it('isSocialLogin is true only for Magic-backed sessions', () => {

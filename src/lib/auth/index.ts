@@ -26,5 +26,7 @@ export {
   type ContractCall,
   type TransactionSender,
   type TransactionSettlement,
-  type ContractData
+  type ContractData,
+  type TypedDataDomain,
+  type TypedDataTypes
 } from './transactions'

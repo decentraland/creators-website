@@ -12,7 +12,7 @@ import {
 } from '@dcl/schemas'
 import { ContractName, getContract, getContractName } from 'decentraland-transactions'
 import { config } from '~/config'
-import { readContract, signedFetch, type ContractData } from '~/lib/auth'
+import { readContract, signedFetch, type ContractData, type TypedDataDomain } from '~/lib/auth'
 
 export type UnsignedTrade = Omit<TradeCreation, 'signature'>
 
@@ -65,7 +65,7 @@ export function getOffchainMarketplaceContract(chainId: number) {
 }
 
 /** The marketplace's EIP-712 domain: the chain id travels in `salt`, Decentraland's meta-tx convention. */
-export function getTradeDomain(chainId: number): ethers.TypedDataDomain {
+export function getTradeDomain(chainId: number): TypedDataDomain {
   const contract = getOffchainMarketplaceContract(chainId)
   return {
     name: contract.name,
@@ -193,10 +193,10 @@ export function fetchSignatureIndexes(signer: string, chainId: number): Promise<
 /** A signatures contract's current indexes for `signer` (a marketplace or a coupon manager). */
 export async function readSignatureIndexes(contract: ContractData, signer: string): Promise<SignatureIndexes> {
   const [contractIndex, signerIndex] = await Promise.all([
-    readContract<ethers.BigNumber>(contract, 'contractSignatureIndex'),
-    readContract<ethers.BigNumber>(contract, 'signerSignatureIndex', [signer])
+    readContract<bigint>(contract, 'contractSignatureIndex'),
+    readContract<bigint>(contract, 'signerSignatureIndex', [signer])
   ])
-  return { contractSignatureIndex: contractIndex.toNumber(), signerSignatureIndex: signerIndex.toNumber() }
+  return { contractSignatureIndex: Number(contractIndex), signerSignatureIndex: Number(signerIndex) }
 }
 
 /** The server retires an order (re-signing it as supply shrinks, or after it is cancelled), so a cached id can vanish. */

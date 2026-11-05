@@ -98,7 +98,7 @@ function orderDeps(session: Session, chainId: number) {
     sendTransaction: (call: ContractCall) => sendContractTransaction(session, call),
     waitForTransaction: (hash: string) => waitForTransaction(chainId, hash),
     signTrade: (trade: UnsignedTrade) =>
-      signTypedData(session, getTradeDomain(chainId), OFFCHAIN_MARKETPLACE_TYPES, toTradeTypedValues(trade)),
+      signTypedData(session, getTradeDomain(chainId), OFFCHAIN_MARKETPLACE_TYPES, 'Trade', toTradeTypedValues(trade)),
     createTrade: (trade: TradeCreation) => createTrade(session.address, trade)
   }
 }

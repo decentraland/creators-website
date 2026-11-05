@@ -82,7 +82,10 @@ export function useSignSlotsCheque(session: Session) {
     },
     mutationFn: ({ thirdPartyId, qty }: { thirdPartyId: string; qty: number }) =>
       signSlotsCheque(
-        { signTypedData: (domain, types, value) => signTypedData(session, domain, types, value) },
+        {
+          signTypedData: (domain, types, primaryType, value) =>
+            signTypedData(session, domain, types, primaryType, value)
+        },
         chainId,
         thirdPartyId,
         qty

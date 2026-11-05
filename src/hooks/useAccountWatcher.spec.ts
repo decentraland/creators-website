@@ -15,7 +15,7 @@ const provider = {
 }
 
 const session = (over: Partial<Session> = {}): Session =>
-  ({ address: A, providerType: ProviderType.INJECTED, web3Provider: { provider }, ...over }) as unknown as Session
+  ({ address: A, providerType: ProviderType.INJECTED, provider, ...over }) as unknown as Session
 
 const walletState: { session: Session | null } = { session: session() }
 vi.mock('~/store/wallet', () => ({
