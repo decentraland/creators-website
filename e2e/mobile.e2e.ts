@@ -27,8 +27,7 @@ describe('phones view collections without managing them', () => {
     expect(await page.$('[data-testid="validation-spinner"], [data-testid="item-row-validation"]')).toBeNull()
 
     await clickTestId(page, 'collection-actions')
-    await waitForTestId(page, 'collection-actions-menu')
-    expect(await isShown(page, 'preview-items-action')).toBe(true)
+    await waitForTestId(page, 'preview-items-action')
     expect(await isShown(page, 'delete-collection')).toBe(false)
   })
 
@@ -39,8 +38,7 @@ describe('phones view collections without managing them', () => {
     expect(await isShown(page, 'send-items')).toBe(false)
 
     await clickTestId(page, 'collection-actions')
-    await waitForTestId(page, 'collection-actions-menu')
-    expect(await isShown(page, 'send-items-action')).toBe(true)
+    await waitForTestId(page, 'send-items-action')
   })
 
   it('turns the editor into a preview strip', async () => {
