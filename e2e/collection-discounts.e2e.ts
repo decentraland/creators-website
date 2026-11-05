@@ -54,7 +54,7 @@ describe('collection discounts', () => {
     await page.waitForSelector('[data-testid^="creator-sale-success"]', { timeout: 30_000 })
 
     expect(app.market.coupons).toHaveLength(1)
-    const [coupon] = app.market.coupons as Array<Record<string, unknown>>
+    const [coupon] = app.market.coupons
     // 30% in parts per million, over this collection only, signed by the creator.
     expect(coupon).toMatchObject({ signer: TEST_ADDRESS, discount: 300_000, collections: [contractAddress] })
     expect(app.transactions).toHaveLength(0)
