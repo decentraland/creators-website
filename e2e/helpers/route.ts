@@ -23,12 +23,16 @@ export type ForcedErrors = Record<string, { status: number; body?: unknown }>
 
 export type Credits = { balanceCents: number; credits: number }
 
+/** The Blender add-on's local bridge: the state it reports and the model it serves. Mutate `state` to export again. */
+export type Bridge = { port: number; state: Record<string, unknown>; model: Buffer }
+
 export type RouteContext = {
   appOrigin: string
   builder: BuilderServer
   chain: Chain
   market: Market
   credits: Credits
+  bridge?: Bridge
   flags: Flags
   variants: Variants
   errors: ForcedErrors
@@ -120,6 +124,18 @@ export function route(req: HTTPRequest, ctx: RouteContext): Promise<void> {
   const { hostname, pathname } = url
   const method = req.method()
 
+  if (ctx.bridge && url.hostname === 'localhost' && url.port === String(ctx.bridge.port)) {
+    if (method === 'OPTIONS') return req.respond({ status: 204, headers: CORS })
+    if (pathname === '/state') return json(req, ctx.bridge.state)
+    if (pathname === '/model.glb') {
+      return req.respond({
+        status: 200,
+        headers: { 'content-type': 'model/gltf-binary', ...CORS },
+        body: ctx.bridge.model
+      })
+    }
+    return json(req, {}, 404)
+  }
   // Vite proxies /auth to the real auth site, so a sign-in click must stop here.
   if (url.origin === ctx.appOrigin && pathname.startsWith('/auth')) {
     return req.respond({
