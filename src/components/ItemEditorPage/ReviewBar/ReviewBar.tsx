@@ -1,15 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useIntl } from 'react-intl'
-import { ArrowBack as ArrowBackIcon, Edit as EditIcon, PersonAddAlt as AssignIcon } from '@mui/icons-material'
+import {
+  ArrowBack as ArrowBackIcon,
+  AutoAwesome as VerdictIcon,
+  Edit as EditIcon,
+  PersonAddAlt as AssignIcon
+} from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { AssignCuratorModal } from '~/components/AssignCuratorModal'
 import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { CurationStatePill } from '~/components/CurationStatePill'
 import { ProfileBadge } from '~/components/ProfileBadge'
+import { ReviewStagePill } from '~/components/ReviewStagePill'
 import { ValidationBadge, toValidationSubject, type ItemResult } from '~/components/ValidationBadge'
+import { useCollectionEvents } from '~/hooks/useCollectionEvents'
 import { useCollectionValidation } from '~/hooks/useCollectionValidation'
 import { useCollectionCuration, useRejectCuration } from '~/hooks/useCuration'
+import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { type ApprovalMode } from '~/hooks/useApprovalFlow'
 import { track } from '~/lib/analytics'
@@ -21,16 +29,21 @@ import {
   canEditAssignee,
   curationListUrl,
   getCurationState,
-  getReviewActions
+  getReviewActions,
+  getReviewStage
 } from '~/lib/curation'
+import { getLatestVerdict } from '~/lib/events'
+import { FeatureFlag } from '~/lib/featureFlags'
 import { ItemSyncStatus, hasPendingChanges } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import { formatTimeAgo } from '~/lib/time'
 import { countIssues, getValidationStatus } from '~/lib/validation'
+import { AiVerdictModal } from './AiVerdictModal'
 import { ApprovalFlowModal } from './ApprovalFlowModal'
 import { DisableCollectionFlow } from './DisableCollectionFlow'
 import { ForumVerdictModal } from './ForumVerdictModal'
+import { RejectCurationModal } from './RejectCurationModal'
 import * as S from './ReviewBar.styles'
 
 type Props = {
@@ -40,7 +53,7 @@ type Props = {
   onSelectItem: (item: Item) => void
 }
 
-type Dialog = 'assign' | 'reject' | 'disable' | null
+type Dialog = 'assign' | 'reject' | 'disable' | 'verdict' | null
 
 const DECISIONS = [ReviewAction.APPROVE, ReviewAction.ENABLE, ReviewAction.REJECT]
 // The constructive actions, as in the legacy panel; Reject and Disable stay dark.
@@ -58,12 +71,16 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
   const curationQuery = useCollectionCuration(address, collection)
   const curation = curationQuery.data ?? null
   const syncs = useItemSyncs(address, collection, items)
+  const { events, isAvailable } = useCollectionEvents(address, collection)
+  // A server without the timeline refuses the rejection fields (schema) whatever the flag says, so the
+  // reason form only replaces the plain confirm where the timeline answered.
+  const withReasons = useFeatureFlag(FeatureFlag.AUTO_CURATION).enabled && isAvailable
   const reject = useRejectCuration(address)
   const [dialog, setDialog] = useState<Dialog>(null)
   const [approval, setApproval] = useState<ApprovalMode | null>(null)
   // The curator about to decide is assigned first, so the request always names who curated the collection.
   const [takeOver, setTakeOver] = useState<ReviewAction | null>(null)
-  const [verdict, setVerdict] = useState(false)
+  const [forumVerdict, setForumVerdict] = useState(false)
   const self = address.toLowerCase()
 
   const hasMissingEntities = useMemo(
@@ -71,6 +88,8 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
     [syncs]
   )
   const state = getCurationState(collection, curation)
+  const stage = useMemo(() => getReviewStage(collection, curation, events), [collection, curation, events])
+  const aiVerdict = useMemo(() => (events ? getLatestVerdict(events) : null), [events])
   const actions = collection.isPublished ? getReviewActions(collection, curation, hasMissingEntities) : []
   const assignee = curation?.assignee ?? null
   // A first-review rejection opens the request itself, so its creation time only means something while pending.
@@ -173,7 +192,9 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
           <ArrowBackIcon fontSize="small" />
         </S.BackLink>
         <S.Name title={collection.name}>{collection.name}</S.Name>
-        {!isLoading && !isCurationError && <CurationStatePill state={state} />}
+        {!isLoading &&
+          !isCurationError &&
+          (stage ? <ReviewStagePill stage={stage} /> : <CurationStatePill state={state} />)}
         <ValidationBadge
           status={validationStatus}
           results={validationResults}
@@ -204,6 +225,17 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
             <span data-testid="review-requested">
               {t(`item_editor.review.${timeKey}`, { time: formatTimeAgo(time, intl.locale) })}
             </span>
+            {aiVerdict && (
+              <S.AssigneeChip
+                type="button"
+                data-verdict={aiVerdict.payload.verdict}
+                data-testid="review-ai-verdict"
+                onClick={() => setDialog('verdict')}
+              >
+                <VerdictIcon fontSize="small" />
+                {t('ai_verdict.button')}
+              </S.AssigneeChip>
+            )}
             {assignee ? (
               <S.AssigneeChip
                 type="button"
@@ -253,7 +285,18 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
           onClose={closeDialog}
         />
       )}
-      {dialog === 'reject' && (
+      {dialog === 'reject' && withReasons && (
+        <RejectCurationModal
+          collection={collection}
+          curation={curation}
+          address={address}
+          onClose={closeDialog}
+          onRejected={() => {
+            if (collection.forumLink) setForumVerdict(true)
+          }}
+        />
+      )}
+      {dialog === 'reject' && !withReasons && (
         <ConfirmModal
           title={t('item_editor.review.reject.title', { collection: collection.name })}
           description={t(
@@ -273,7 +316,7 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
                   onSuccess: () => {
                     showToast(t('item_editor.review.reject.success', { collection: collection.name }))
                     closeDialog()
-                    if (collection.forumLink) setVerdict(true)
+                    if (collection.forumLink) setForumVerdict(true)
                   }
                 }
               )
@@ -300,16 +343,17 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
           collection={collection}
           onClose={closeDialog}
           onDisabled={() => {
-            if (collection.forumLink) setVerdict(true)
+            if (collection.forumLink) setForumVerdict(true)
           }}
         />
       )}
-      {verdict && collection.forumLink && (
+      {forumVerdict && collection.forumLink && (
         <ForumVerdictModal
           collection={{ ...collection, forumLink: collection.forumLink }}
-          onClose={() => setVerdict(false)}
+          onClose={() => setForumVerdict(false)}
         />
       )}
+      {dialog === 'verdict' && aiVerdict && <AiVerdictModal verdict={aiVerdict} items={items} onClose={closeDialog} />}
       {approval && (
         <ApprovalFlowModal
           session={session}

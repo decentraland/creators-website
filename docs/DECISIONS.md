@@ -194,3 +194,12 @@ Rules for this file:
 - **Every push gets a new definition id** (`live-preview-<version>`, with a loop suffix for emotes) because both renderers key their caches by id.
 - **Signed-out creators can preview**; signing in is asked only when adding to a collection, which reuses the add-items modal with category, hides, spring bones or play mode pre-filled.
 - **Out (v1):** third-party collections, a nav entry point, saving outside the add-items flow, remote bridges, scene and prop previews.
+
+## Automatic review (auto-curation)
+
+- **Stages are derived, never stored**: the latest review request plus the newest stage-defining timeline event (`GET /collections/:id/events`), behind the `auto-curation` flag. Without a timeline every surface keeps the legacy curation state, so one build serves before and after the server rollout.
+- **The first review request is opened by the publish flow**, through the existing request endpoint right after `/publish` syncs; the "already an ongoing review request" 400 is ignored. builder-server never creates it.
+- **The validator's findings look like the browser's checks**: they are mapped to the same issue shape (`source: 'ai'`) and shown by the same rows, badge and cards; items edited while the run was in flight (`staleItemIds`) are left out.
+- **Editing is locked while a run is in flight** (about 5 minutes): the validator judges a snapshot, so rows, the editor's save and Publish changes wait for the verdict.
+- **Three automatic reviews per UTC day**, counted as the server does: every run the creator caused (publish, retry, submitted changes), never a sweep re-send nor a run whose request never reached the validator, reset by a curator decision. At the limit the creator asks a curator instead; the appeal carries no note.
+- **The verdict announces itself once** (the findings modal, the hand-off to a curator), remembered per collection in local storage; the notice reopens the findings any time.

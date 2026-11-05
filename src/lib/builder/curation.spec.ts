@@ -8,6 +8,7 @@ import {
   pushCollectionCuration,
   updateCollectionCuration
 } from './curation'
+import { ValidationLimitError } from './review'
 
 vi.mock('~/lib/auth', () => ({
   signedFetch: vi.fn()
@@ -128,5 +129,29 @@ describe('fetchItemCurations', () => {
   it('still fails on any other error', async () => {
     signedFetchMock.mockResolvedValue(jsonResponse({ ok: false, error: 'Unauthorized' }, false, 401))
     await expect(fetchItemCurations(ADDRESS, 'a1b2')).rejects.toThrow('Unauthorized')
+  })
+})
+
+describe('review requests under the automatic review', () => {
+  it("turns the daily limit on a creator's request into the daily-limit error", async () => {
+    signedFetchMock.mockResolvedValue(
+      jsonResponse({ ok: false, error: 'Too many attempts', data: { retryAt: '2026-09-30T00:00:00Z' } }, false, 429)
+    )
+    const error = await pushCollectionCuration(ADDRESS, 'a1b2').catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(ValidationLimitError)
+  })
+
+  it('sends the rejection reasons and message with the status', async () => {
+    signedFetchMock.mockResolvedValue(okResponse({ ...remoteCuration, status: 'rejected' }))
+    await updateCollectionCuration(ADDRESS, 'a1b2', {
+      status: 'rejected',
+      rejectionReasons: ['clipping'],
+      rejectionMessage: 'Clips through the torso'
+    })
+    expect(signedFetchMock.mock.calls[0][3]).toMatchObject({
+      body: JSON.stringify({
+        curation: { status: 'rejected', rejectionReasons: ['clipping'], rejectionMessage: 'Clips through the torso' }
+      })
+    })
   })
 })

@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { type Item } from '~/lib/items'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
-import { collectionCurationKey } from '~/hooks/useCuration'
+import { collectionCurationKey, collectionEventsKey } from '~/hooks/useCuration'
 
 const api = vi.hoisted(() => ({
   fetchCollectionCuration: vi.fn(),
@@ -47,6 +47,16 @@ describe('requestFirstReview', () => {
     expect(shownCuration()).toBe(pending)
     expect(listedCurations()).toEqual([other, pending])
     expect(monitoring.captureError).not.toHaveBeenCalled()
+  })
+
+  it('refreshes the review timeline so the page reads the review that just started', async () => {
+    const eventsKey = collectionEventsKey(address, collection.id)
+    queryClient.setQueryData(eventsKey, { pages: [], pageParams: [] })
+    api.pushCollectionCuration.mockResolvedValue(pending)
+
+    await requestFirstReview(queryClient, address, collection)
+
+    expect(queryClient.getQueryState(eventsKey)?.isInvalidated).toBe(true)
   })
 
   it('shows the request that already exists instead of opening another', async () => {

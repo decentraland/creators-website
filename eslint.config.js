@@ -76,7 +76,15 @@ const BUILDER_IN_COMPONENTS = {
   paths: [
     {
       name: '~/lib/builder',
-      allowImportNames: ['getContentsStorageUrl', 'isRefusedRequest', 'BuilderServerError', 'COLLECTION_LOCKED_STATUS'],
+      allowImportNames: [
+        'getContentsStorageUrl',
+        'isRefusedRequest',
+        'BuilderServerError',
+        'COLLECTION_LOCKED_STATUS',
+        'ValidationLimitError',
+        'VALIDATION_RUNNING_STATUS',
+        'isAppealAlreadyOpen'
+      ],
       allowTypeImports: true,
       message: BUILDER_IN_COMPONENTS_MESSAGE
     }

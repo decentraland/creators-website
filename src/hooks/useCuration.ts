@@ -4,6 +4,9 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClie
 import { errorCode, track } from '~/lib/analytics'
 import { sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
 import {
+  BuilderServerError,
+  VALIDATION_RUNNING_STATUS,
+  ValidationLimitError,
   fetchCollection,
   fetchCollectionCuration,
   fetchCommittee,
@@ -17,6 +20,7 @@ import { buildSetApprovedCall } from '~/lib/collectionApproval'
 import { APPROVAL_INDEX_TIMEOUT_MS, waitForIndexer } from '~/lib/approveCollection'
 import { isCommitteeMember, orderCurators, type CollectionCuration, type CurationFilters } from '~/lib/curation'
 import { shortenAddress } from '~/lib/address'
+import { type RejectReasonCode } from '~/lib/events'
 import { captureError } from '~/lib/monitoring'
 import { postAssignee } from '~/hooks/useForumPost'
 import { useProfiles } from '~/hooks/useProfile'
@@ -74,6 +78,10 @@ export function collectionCurationKey(address: string | undefined, collectionId:
   return ['collection-curation', address, collectionId] as const
 }
 
+export function collectionEventsKey(address: string | undefined, collectionId: string | undefined) {
+  return ['collection-events', address, collectionId] as const
+}
+
 /** The collection's latest review request, `null` when it was never requested. */
 export function useCollectionCuration(address: string | undefined, collection: Collection | undefined) {
   return useQuery({
@@ -117,6 +125,7 @@ export function storeCuration(queryClient: QueryClient, address: string | undefi
     current ? [...current.filter(existing => existing.collectionId !== curation.collectionId), curation] : current
   )
   void queryClient.invalidateQueries({ queryKey: ['curation-collections'] })
+  void queryClient.invalidateQueries({ queryKey: collectionEventsKey(address, curation.collectionId) })
 }
 
 function useStoreCuration(address: string | undefined) {
@@ -153,7 +162,14 @@ export function useAssignCurator(address: string | undefined) {
   })
 }
 
-export type RejectVariables = { collection: Collection; curation: CollectionCuration | null }
+export type RejectDecision = { rejectionReasons: RejectReasonCode[]; rejectionMessage: string }
+
+export type RejectVariables = {
+  collection: Collection
+  curation: CollectionCuration | null
+  /** The reasons and message the creator reads; only sent where builder-server's auto-curation accepts them. */
+  decision?: RejectDecision
+}
 
 /**
  * Rejects the collection's review request. A collection nobody requested a review for has no request to
@@ -163,13 +179,22 @@ export function useRejectCuration(address: string | undefined) {
   const queryClient = useQueryClient()
   const store = useStoreCuration(address)
   return useMutation({
-    mutationFn: async ({ collection, curation }: RejectVariables) => {
+    mutationFn: async ({ collection, curation, decision }: RejectVariables) => {
       if (!address) throw new Error('Wallet disconnected')
-      const current = curation?.status === 'pending' ? curation : await pushCollectionCuration(address, collection.id)
-      return updateCollectionCuration(address, current.collectionId, { status: 'rejected' })
+      let current = curation
+      if (current?.status !== 'pending') {
+        current = await pushCollectionCuration(address, collection.id)
+        // Kept even if the PATCH below fails, so a retry patches this request instead of opening another.
+        store(current)
+      }
+      return updateCollectionCuration(address, current.collectionId, { status: 'rejected', ...decision })
     },
-    onSuccess: (curation, { collection, curation: previous }) => {
-      track('Reject curation', { collectionId: collection.id, first_review: !previous })
+    onSuccess: (curation, { collection, curation: previous, decision }) => {
+      track('Reject curation', {
+        collectionId: collection.id,
+        first_review: !previous,
+        reasons: decision?.rejectionReasons ?? []
+      })
       store(curation)
     },
     onError: (error, { collection }) => {
@@ -196,7 +221,11 @@ export function usePushCuration(address: string | undefined) {
     },
     onError: (error, collection) => {
       track('Push curation error', { collectionId: collection.id, error: errorCode(error) })
-      captureError(error, { flow: 'curation_push', collectionId: collection.id })
+      // A running review (409) and the daily limit (429) are answers the creator acts on, not failures.
+      const expected =
+        error instanceof ValidationLimitError ||
+        (error instanceof BuilderServerError && error.status === VALIDATION_RUNNING_STATUS)
+      if (!expected) captureError(error, { flow: 'curation_push', collectionId: collection.id })
     }
   })
 }

@@ -8,7 +8,9 @@ import {
 } from '~/lib/curation'
 import { fromRemoteCollection, type Collection, type PaginatedResource, type RemoteCollection } from '~/lib/collections'
 import { fromRemoteItemCuration, type ItemCuration, type RemoteItemCuration } from '~/lib/linkedItemStatus'
+import { type RejectReasonCode } from '~/lib/events'
 import { BuilderServerError, UNPUBLISHED_COLLECTION_STATUS, request } from './transport'
+import { toValidationLimitError } from './review'
 
 /** The collection's latest curation request: GET /collections/{id}/curation. Empty data when it was never reviewed. */
 export async function fetchCollectionCuration(
@@ -62,21 +64,33 @@ export async function pushCollectionCuration(
   assignee?: string | null
 ): Promise<CollectionCuration> {
   const body = assignee === undefined ? undefined : { curation: { assignee } }
-  const remote = await request<RemoteCollectionCuration>(
-    address,
-    'POST',
-    `/collections/${collectionId}/curation`,
-    '',
-    body
-  )
-  return fromRemoteCuration(remote)
+  try {
+    const remote = await request<RemoteCollectionCuration>(
+      address,
+      'POST',
+      `/collections/${collectionId}/curation`,
+      '',
+      body
+    )
+    return fromRemoteCuration(remote)
+  } catch (error) {
+    // A creator's changes wait for the day's automatic reviews like a retry does.
+    throw toValidationLimitError(error)
+  }
+}
+
+export type CurationUpdate = {
+  status?: CurationRequestStatus
+  assignee?: string | null
+  rejectionReasons?: RejectReasonCode[]
+  rejectionMessage?: string
 }
 
 /** Updates the latest request: PATCH /collections/{id}/curation. Status changes and assignees are committee-only. */
 export async function updateCollectionCuration(
   address: string,
   collectionId: string,
-  curation: { status?: CurationRequestStatus; assignee?: string | null }
+  curation: CurationUpdate
 ): Promise<CollectionCuration> {
   const remote = await request<RemoteCollectionCuration>(
     address,
