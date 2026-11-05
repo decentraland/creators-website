@@ -2,8 +2,14 @@ import { describe, expect, it, vi } from 'vitest'
 import { ethers } from 'ethers'
 import { Network, TradeAssetType, TradeType, type Trade } from '@dcl/schemas'
 import { ContractName, getContract } from 'decentraland-transactions'
-import { encodeContractCall } from './auth/transactions'
-import { TradeConflictError, TradeNotFoundError } from './trades'
+import { TEST_SIGNER, signTypedDataWithTestKey, toTransaction } from '~/test/chain'
+import {
+  OFFCHAIN_MARKETPLACE_TYPES,
+  TradeConflictError,
+  TradeNotFoundError,
+  getTradeDomain,
+  toTradeTypedValues
+} from './trades'
 import { type Collection } from './collections'
 import { ItemType, type Item } from './items'
 import {
@@ -205,12 +211,17 @@ describe('enabling sales', () => {
   })
 
   it('builds setMinters([marketplace], [true]) on the collection contract', () => {
-    const call = buildEnableSalesCall(collection, CHAIN_ID)
-    expect(call.contract.address).toBe(CONTRACT)
-    const iface = new ethers.utils.Interface(call.contract.abi)
-    const decoded = iface.decodeFunctionData('setMinters', encodeContractCall(call))
-    expect((decoded[0] as string[]).map(a => a.toLowerCase())).toEqual([MARKETPLACE_V3.toLowerCase()])
-    expect(decoded[1]).toEqual([true])
+    expect(toTransaction(buildEnableSalesCall(collection, CHAIN_ID))).toEqual({
+      to: '0x00000000000000000000000000000000000000cc',
+      data:
+        '0x41bceced' +
+        '0000000000000000000000000000000000000000000000000000000000000040' +
+        '0000000000000000000000000000000000000000000000000000000000000080' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '00000000000000000000000036fd1434a6c4b8ade80c9847c1d15033ce34488c' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000001'
+    })
   })
 
   it('refuses a collection without a contract', () => {
@@ -325,6 +336,50 @@ describe('sellItem', () => {
     })
   })
 
+  it('stores the order exactly as signed, its amount as a decimal string', async () => {
+    vi.useFakeTimers({ now: Date.UTC(2026, 9, 16, 12), toFake: ['Date'] })
+    const createTrade = vi.fn().mockResolvedValue('trade-1')
+    const deps = makeDeps({
+      randomSalt: () => SALT,
+      signTrade: trade =>
+        signTypedDataWithTestKey(getTradeDomain(CHAIN_ID), OFFCHAIN_MARKETPLACE_TYPES, toTradeTypedValues(trade)),
+      createTrade
+    })
+    try {
+      await sellItem({ ...params, address: TEST_SIGNER.toLowerCase() }, deps)
+    } finally {
+      vi.useRealTimers()
+    }
+    expect(createTrade.mock.calls[0][0]).toEqual({
+      signer: '0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a',
+      network: 'MATIC',
+      chainId: 80002,
+      type: 'public_item_order',
+      checks: {
+        uses: 90,
+        expiration: 4102444800000,
+        effective: 1792152000000,
+        salt: '0x1111111111111111111111111111111111111111111111111111111111111111',
+        contractSignatureIndex: 1,
+        signerSignatureIndex: 2,
+        allowedRoot: '0x',
+        externalChecks: []
+      },
+      sent: [{ assetType: 4, contractAddress: '0x00000000000000000000000000000000000000cc', itemId: '3', extra: '' }],
+      received: [
+        {
+          assetType: 2,
+          contractAddress: '0x7ad72b9f944ea9793cf4055d88f81138cc2c63a0',
+          amount: '5000000000000000000',
+          extra: '',
+          beneficiary: '0x00000000000000000000000000000000000000bb'
+        }
+      ],
+      signature:
+        '0xbd3d350e94e601edb40e952b98a2091c71cd595059c99e095467b5dca0b3de66320e714fe18b7bff5e8726d93040b5244f8db43cc09fe62440146eb05b775b3c1c'
+    })
+  })
+
   it('answers a free listing for a giveaway and a MANA listing for a MANA price', async () => {
     const free = await sellItem({ ...params, price: { kind: 'free' } }, makeDeps())
     expect(free).toEqual({
@@ -370,11 +425,50 @@ const REF = { tradeId: 'trade-1', contractAddress: CONTRACT, itemId: '3' }
 
 describe('removing a listing', () => {
   it('cancels the stored order on the marketplace it was signed for', () => {
-    const call = buildCancelListingCall(storedTrade)
-    expect(call.contract.address).toBe(MARKETPLACE_V2)
-    expect(call.method).toBe('cancelSignature')
-    const iface = new ethers.utils.Interface(call.contract.abi)
-    expect(() => iface.encodeFunctionData(call.method, call.args)).not.toThrow()
+    expect(toTransaction(buildCancelListingCall(storedTrade))).toEqual({
+      to: '0x1b67d0e31eeb6b52d8eeed71d3616c2f5b33b8e7',
+      data:
+        '0x6f773280' +
+        '0000000000000000000000000000000000000000000000000000000000000020' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000020' +
+        '00000000000000000000000000000000000000000000000000000000000000aa' +
+        '00000000000000000000000000000000000000000000000000000000000000a0' +
+        '0000000000000000000000000000000000000000000000000000000000000120' +
+        '0000000000000000000000000000000000000000000000000000000000000280' +
+        '0000000000000000000000000000000000000000000000000000000000000380' +
+        '0000000000000000000000000000000000000000000000000000000000000041' +
+        'abababababababababababababababababababababababababababababababab' +
+        'abababababababababababababababababababababababababababababababab' +
+        'ab00000000000000000000000000000000000000000000000000000000000000' +
+        '000000000000000000000000000000000000000000000000000000000000005a' +
+        '00000000000000000000000000000000000000000000000000000000f4865700' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '1111111111111111111111111111111111111111111111111111111111111111' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000002' +
+        '0000000000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000120' +
+        '0000000000000000000000000000000000000000000000000000000000000140' +
+        '0000000000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000020' +
+        '0000000000000000000000000000000000000000000000000000000000000004' +
+        '00000000000000000000000000000000000000000000000000000000000000cc' +
+        '0000000000000000000000000000000000000000000000000000000000000003' +
+        '0000000000000000000000000000000000000000000000000000000000000000' +
+        '00000000000000000000000000000000000000000000000000000000000000a0' +
+        '0000000000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000020' +
+        '0000000000000000000000000000000000000000000000000000000000000002' +
+        '0000000000000000000000007ad72b9f944ea9793cf4055d88f81138cc2c63a0' +
+        '0000000000000000000000000000000000000000000000004563918244f40000' +
+        '00000000000000000000000000000000000000000000000000000000000000bb' +
+        '00000000000000000000000000000000000000000000000000000000000000a0' +
+        '0000000000000000000000000000000000000000000000000000000000000000'
+    })
   })
 
   it('reads the order, sends the cancellation, reports the signature and waits for the receipt', async () => {
@@ -605,16 +699,25 @@ describe('removing a legacy store listing', () => {
     }
     await removeStoreListing(collection, item, CHAIN_ID, deps)
     expect(deps.readContract).toHaveBeenCalledWith(expect.objectContaining({ address: CONTRACT }), 'items', ['3'])
-    const call = deps.sendTransaction.mock.calls[0][0]
-    expect(call.contract.address).toBe(CONTRACT)
-    const decoded = new ethers.utils.Interface(call.contract.abi).decodeFunctionData(
-      'editItemsData',
-      encodeContractCall(call)
-    )
-    expect(decoded[0].map(String)).toEqual(['3'])
-    expect(decoded[1].map(String)).toEqual([ethers.constants.MaxUint256.toString()])
-    expect((decoded[2] as string[]).map(a => a.toLowerCase())).toEqual([BENEFICIARY])
-    expect(decoded[3]).toEqual([onChain.metadata])
+    expect(toTransaction(deps.sendTransaction.mock.calls[0][0])).toEqual({
+      to: '0x00000000000000000000000000000000000000cc',
+      data:
+        '0x0ebde06e' +
+        '0000000000000000000000000000000000000000000000000000000000000080' +
+        '00000000000000000000000000000000000000000000000000000000000000c0' +
+        '0000000000000000000000000000000000000000000000000000000000000100' +
+        '0000000000000000000000000000000000000000000000000000000000000140' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000003' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '00000000000000000000000000000000000000000000000000000000000000bb' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000020' +
+        '0000000000000000000000000000000000000000000000000000000000000020' +
+        '313a773a506972617465204861743a596172723a6861743a426173654d616c65'
+    })
     expect(deps.onSigned).toHaveBeenCalledTimes(1)
     expect(deps.waitForTransaction).toHaveBeenCalledWith('0xhash')
   })

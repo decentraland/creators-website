@@ -260,6 +260,7 @@ export type PublishDeps = {
   }) => Promise<PublicationAuthorization>
   sendTransaction: (call: ContractCall) => Promise<string>
   lockCollection: (collectionId: string) => Promise<number>
+  randomSalt?: () => string
 }
 
 export type PublishResult = {
@@ -303,7 +304,7 @@ export async function publishCollection(params: PublishParams, deps: PublishDeps
     const args = buildCreateCollectionArgs(collection, items, address, chainId)
     let txHash: string
     if (paymentMethod === 'credits') {
-      const externalCall = buildCollectionManagerExternalCall(chainId, args)
+      const externalCall = buildCollectionManagerExternalCall(chainId, args, Date.now(), deps.randomSalt?.())
       const authorization = await deps.authorizePublication({
         usdPriceCents: weiToUsdCents(fee.total.usdWei),
         chainId,

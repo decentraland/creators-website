@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ContractName, getCouponManager } from 'decentraland-transactions'
+import { ContractName, getContract, getCouponManager, sendMetaTransaction } from 'decentraland-transactions'
 import { type Session } from './auth'
 import {
   WrongAccountError,
@@ -12,6 +12,12 @@ import {
   watchTransaction
 } from './transactions'
 
+vi.mock('decentraland-transactions', async () => {
+  const actual = await vi.importActual<typeof import('decentraland-transactions')>('decentraland-transactions')
+  return { ...actual, sendMetaTransaction: vi.fn().mockResolvedValue('0xrelayed') }
+})
+vi.mock('decentraland-connect', () => ({ getRpcUrls: () => ({ 80002: 'https://rpc.example.com' }) }))
+
 const manager = { ...getCouponManager(ContractName.OffChainMarketplaceV3, 80002), chainId: 80002 }
 const call = { contract: manager, method: 'increaseSignerSignatureIndex', args: [] }
 
@@ -19,6 +25,7 @@ type Behavior = 'switches' | 'needs-add' | 'refuses' | 'ignores' | 'changes-acco
 
 const ACCOUNT = '0x00000000000000000000000000000000000000aa'
 const OTHER = '0x00000000000000000000000000000000000000bb'
+const COLLECTION = '0x00000000000000000000000000000000000000ee'
 
 /** A wallet on `chainId`, signed in as `account`, that reacts to a switch request the way `behavior` says. */
 function walletOn(chainId: number, behavior: Behavior = 'switches', account = ACCOUNT) {
@@ -108,6 +115,26 @@ describe('when sending a transaction from the wallet itself', () => {
     const { session, sendTransaction } = walletOn(80002)
     await sendContractTransaction({ ...session, signer: { sendTransaction } } as unknown as Session, call)
     expect(sendTransaction.mock.calls[0][0].maxPriorityFeePerGas.toString()).toBe('30000000000')
+  })
+})
+
+describe('when the wallet is on another chain than the contract', () => {
+  it('should relay the exact calldata as a Polygon meta-transaction', async () => {
+    const eip1193 = { request: vi.fn() }
+    const session = {
+      web3Provider: { getNetwork: async () => ({ chainId: 1 }), provider: eip1193 }
+    } as unknown as Session
+    const contract = { ...getContract(ContractName.ERC721CollectionV2, 80002), address: COLLECTION }
+    const transfer = { contract, method: 'transferCreatorship', args: [OTHER] }
+
+    await expect(sendContractTransaction(session, transfer)).resolves.toBe('0xrelayed')
+    const [provider, , data, target, options] = vi.mocked(sendMetaTransaction).mock.calls[0]
+    expect(provider).toBe(eip1193)
+    expect(target).toBe(contract)
+    expect({ data, options }).toEqual({
+      data: '0x6d2e4b1b00000000000000000000000000000000000000000000000000000000000000bb',
+      options: { serverURL: 'https://transactions-api.decentraland.zone/v1' }
+    })
   })
 })
 
