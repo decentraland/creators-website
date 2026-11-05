@@ -8,6 +8,7 @@ import { Providers } from '~/components/CollectionDetailPage/SellItemFlow/testUt
 import { ItemType, type Item } from '~/lib/items'
 import { useItemForm } from '../useItemForm'
 import { type ItemFileChange } from '~/lib/itemDraft'
+import { useNotifications } from '~/lib/notifications'
 import { PropertiesPanel } from './PropertiesPanel'
 
 // The change-file modal has its own spec; here it hands back whatever result the test prepared.
@@ -22,9 +23,11 @@ vi.mock('../ChangeFileModal', () => ({
     />
   )
 }))
+const builder = vi.hoisted(() => ({ fetchItemContents: vi.fn() }))
 vi.mock('~/lib/builder', async () => ({
   ...(await vi.importActual<typeof import('~/lib/builder')>('~/lib/builder')),
-  fetchContent: () => Promise.resolve(new Blob())
+  fetchContent: () => Promise.resolve(new Blob()),
+  fetchItemContents: builder.fetchItemContents
 }))
 
 const campaign = vi.hoisted(() => ({ current: null as { name: string; mainTag: string } | null }))
@@ -148,6 +151,22 @@ describe('PropertiesPanel', () => {
     render(<Harness editable={false} canDownload={false} />, { wrapper: Providers })
     expect(screen.queryByTestId('properties-panel-actions')).not.toBeInTheDocument()
     expect(screen.queryByTestId('properties-panel-download')).not.toBeInTheDocument()
+  })
+
+  it('tells the creator a download failed even after they left the panel', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    let fail: (error: Error) => void = () => undefined
+    builder.fetchItemContents.mockReturnValue(new Promise((_, reject) => (fail = reject)))
+    const { unmount } = render(<Harness />, { wrapper: Providers })
+    await userEvent.click(screen.getByTestId('properties-panel-actions'))
+    await userEvent.click(screen.getByTestId('properties-panel-download'))
+    unmount()
+    fail(new Error('storage down'))
+    await vi.waitFor(() =>
+      expect(useNotifications.getState().toasts).toContainEqual(
+        expect.objectContaining({ type: 'error', message: "We couldn't download the item. Please try again." })
+      )
+    )
   })
 
   it('exposes the wearable options as switches', async () => {

@@ -1,12 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type Entity } from '@dcl/schemas'
 import { errorCode, track } from '~/lib/analytics'
-import { fetchContent, fetchItemContents, saveItem } from '~/lib/builder'
+import { fetchContent, saveItem } from '~/lib/builder'
 import { fetchCatalystContent } from '~/lib/catalyst'
 import { buildResetItem } from '~/lib/itemSync'
-import { buildItemZip, getItemZipName } from '~/lib/itemDownload'
 import { type Item } from '~/lib/items'
-import { downloadBlob } from '~/lib/navigation'
 import { invalidateCollectionItems } from './usePublishCollection'
 
 /** Moves a draft item into another draft collection: the same item save with a new collection id. */
@@ -61,13 +59,5 @@ export function useItemVideo(hash: string | undefined, enabled: boolean) {
     queryFn: () => fetchContent(hash!),
     enabled: enabled && !!hash,
     staleTime: Infinity
-  })
-}
-
-/** Downloads a saved item's files as the zip the importer accepts back. */
-export function useDownloadItem() {
-  return useMutation({
-    mutationFn: async (item: Item) =>
-      downloadBlob(await buildItemZip(await fetchItemContents(item)), getItemZipName(item))
   })
 }

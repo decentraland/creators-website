@@ -22,7 +22,7 @@ import { getThirdPartyId } from '~/lib/thirdParty'
  * The drafts of a linked collection (never submitted, or rejected). builder-server filters by a curation's status but
  * not by its absence, so every item and curation is read and filtered here.
  */
-export async function fetchDraftLinkedItems(address: string, collectionId: string): Promise<Item[]> {
+async function fetchDraftLinkedItems(address: string, collectionId: string): Promise<Item[]> {
   const [items, curations] = await Promise.all([
     fetchAllLinkedCollectionItems(address, collectionId),
     fetchItemCurations(address, collectionId)

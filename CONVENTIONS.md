@@ -41,7 +41,7 @@ One file creates the router, with `basename` taken from config. No other module 
 
 ### 5. Back-end clients are folders with one transport
 
-Each back end the app calls has its client under `src/lib/<server>/`: a `transport.ts` that owns the base URL, request signing and envelope parsing, endpoint modules beside it, and an `index.ts` that re-exports them. Only the client's own folder imports its transport, so moving to a server with another base path or routes touches that folder alone. Components import from `~/lib/builder` only URL helpers, error classification and types, and get data through hooks; ESLint enforces both. Today only builder-server (`src/lib/builder/`) follows it; marketplace-server (`lib/coupons`, `lib/trades`, `lib/listings`) and credits-server (`lib/credits`, `lib/creditPacks`) are the follow-ups.
+Each back end the app calls has its client under `src/lib/<server>/`: a `transport.ts` that owns the base URL, request signing and envelope parsing, endpoint modules beside it, and an `index.ts` that re-exports them. Only the client's own folder imports its transport, so moving to a server with another base path or routes touches that folder alone. Components get data through hooks: from `~/lib/builder` they import URL helpers, error classification and any type, never endpoint functions. ESLint enforces it for the static `~/` imports the codebase uses. Today only builder-server (`src/lib/builder/`) follows it; marketplace-server (`lib/coupons`, `lib/trades`, `lib/listings`) and credits-server (`lib/credits`, `lib/creditPacks`) are the follow-ups.
 
 ## Icons
 

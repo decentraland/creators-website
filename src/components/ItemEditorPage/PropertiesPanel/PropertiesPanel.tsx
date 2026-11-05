@@ -24,7 +24,7 @@ import { VideoDropzone, VideoModal } from '~/components/VideoModal'
 import { useCampaign } from '~/hooks/useCampaign'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useObjectURL } from '~/hooks/useObjectURL'
-import { useDownloadItem, useItemVideo } from '~/hooks/useItem'
+import { useItemVideo } from '~/hooks/useItem'
 import { useDeleteItem } from '~/hooks/usePublishCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useTranslation } from '~/intl'
@@ -38,6 +38,7 @@ import {
   type ItemDraftAction,
   type ItemFileChange
 } from '~/lib/itemDraft'
+import { downloadItem } from '~/lib/itemDownload'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
 import { hasFacialExpressions, THUMBNAIL_PATH, VIDEO_PATH, toMB } from '~/lib/itemFiles'
 import {
@@ -129,9 +130,9 @@ export function PropertiesPanel({
   )
   const [isVideoOpen, setVideoOpen] = useState(false)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
+  const [isDownloading, setDownloading] = useState(false)
   const tagsFieldRef = useRef<HTMLInputElement>(null)
   const deleteItem = useDeleteItem(address)
-  const downloadItem = useDownloadItem()
   const campaign = useCampaign()
   const utilityFlag = useFeatureFlag(FeatureFlag.WEARABLE_UTILITY)
   const vrmFlag = useFeatureFlag(FeatureFlag.VRM_OPTOUT)
@@ -167,13 +168,16 @@ export function PropertiesPanel({
   const storedVideo = useItemVideo(videoHash, isVideoOpen && !draft.video)
   const metrics = item.metrics
 
-  function download() {
-    downloadItem.mutate(item, {
-      onError: error => {
-        console.error('Item download failed:', error)
-        showToast(t('item_editor.details.download_error'), { type: 'error' })
-      }
-    })
+  async function download() {
+    setDownloading(true)
+    try {
+      await downloadItem(item)
+    } catch (error) {
+      console.error('Item download failed:', error)
+      showToast(t('item_editor.details.download_error'), { type: 'error' })
+    } finally {
+      setDownloading(false)
+    }
   }
 
   function confirmDelete() {
@@ -214,7 +218,7 @@ export function PropertiesPanel({
         {(canDownload || editable) && (
           <ActionsMenu label={t('item_editor.actions.label')} variant="row" tone="dark" testId={`${testId}-actions`}>
             {canDownload && (
-              <ActionsMenuItem testId={`${testId}-download`} disabled={downloadItem.isPending} onClick={download}>
+              <ActionsMenuItem testId={`${testId}-download`} disabled={isDownloading} onClick={() => void download()}>
                 {t('item_editor.details.download')}
               </ActionsMenuItem>
             )}
