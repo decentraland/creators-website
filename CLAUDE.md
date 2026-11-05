@@ -118,6 +118,8 @@ Unit tests for the logic layer, e2e for user flows.
 
 Every feature plan and spec includes an analytics section before implementation starts: the funnel of the feature's usage (entry → key steps → outcome) or the product metrics that match its business impact, as Segment events through `lib/analytics#track`, with names and props recorded in `docs/TRACKING_SPEC.md` in the same change. Where a step can fail in a way the team must know about (a request the user can't recover from, a data or schema mismatch, an unexpected throw), report it to Sentry through `lib/monitoring#captureError` with a `flow` tag; expected states the user can fix themselves (offline, permission denied, validation warnings) are tracked as events, not errors. A feature without its events and error reporting is not "done".
 
+Events only reach the warehouse once `decentraland/monodata` stages them (`dwh-next`, Segment domain `builder`: one `stg_builder_<event>` model, its `schema.yml` table and its branch in `int_builder_tracks`). A change that adds an event, adds a prop to an existing event, or renames one also needs that monodata PR; list it in the PR description as a follow-up. It ships after the first row lands in Snowflake, since Segment only creates the raw table or column then and the dbt build fails before. Removed props and new prop values need nothing there.
+
 ### Responsive (standing requirement)
 
 Every feature or edit must work on mobile as well as desktop — responsive behavior is part of "done" for any UI change. Verify at a narrow viewport (≤ 768px, the primary mobile breakpoint) as well as desktop; keep touch targets ~44px; hover-only affordances need a tap/focus equivalent; anchored overlays must not spill off-screen on narrow widths.
