@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { ContractName, getContract } from 'decentraland-transactions'
 import { errorCode, track } from '~/lib/analytics'
 import { captureError } from '~/lib/monitoring'
@@ -11,12 +11,14 @@ import {
   fetchRarities,
   lockCollection,
   publishCollectionItems,
+  fetchCollectionCuration,
+  pushCollectionCuration,
   saveCollection,
   saveCollectionTOS,
   saveItem
 } from '~/lib/builder'
 import { sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
-import { type Collection } from '~/lib/collections'
+import { isLinkedCollection, type Collection } from '~/lib/collections'
 import { authorizePublication } from '~/lib/credits'
 import { withRehashedContents } from '~/lib/itemFactory'
 import { type Item } from '~/lib/items'
@@ -27,6 +29,8 @@ import {
   PublishTransactionRevertedError,
   consolidatePublishedCollection,
   getMaticChainId,
+  isRecentPublication,
+  openFirstReviewRequest,
   publishCollection,
   syncPublishedItems,
   type PaymentMethod,
@@ -36,6 +40,7 @@ import { type PublicationFee } from '~/lib/publishFee'
 import { buildCollectionInitializeData } from '~/lib/saveCollection'
 import { useTranslation } from '~/intl'
 import { postToForum } from '~/hooks/useForumPost'
+import { storeCuration } from '~/hooks/useCuration'
 
 export function useRarities(address: string | undefined) {
   return useQuery({
@@ -154,7 +159,10 @@ export function usePublishCollection(session: Session | null) {
         waitForTransaction: hash => waitForTransaction(chainId, hash),
         publishCollectionItems: collectionId => publishCollectionItems(address!, collectionId),
         // Not awaited: the forum's retries must not hold the sync's cleanup below.
-        onSynced: () => void postToForum(queryClient, address!, collection, 'publish')
+        onSynced: () => {
+          void postToForum(queryClient, address!, collection, 'publish')
+          void requestFirstReview(queryClient, address!, collection)
+        }
       })
         .catch((error: unknown) => {
           console.error('Collection consolidation failed', error)
@@ -190,6 +198,24 @@ export function usePublishCollection(session: Session | null) {
 
 const CONSOLIDATION_TOAST_MS = 20_000
 
+/** Opens the collection's first review request once it is published; never fails the publish. */
+export async function requestFirstReview(
+  queryClient: QueryClient,
+  address: string,
+  collection: Pick<Collection, 'id' | 'urn'>
+): Promise<void> {
+  if (isLinkedCollection(collection)) return
+  try {
+    const curation = await openFirstReviewRequest(collection.id, {
+      fetchCollectionCuration: id => fetchCollectionCuration(address, id),
+      pushCollectionCuration: id => pushCollectionCuration(address, id)
+    })
+    if (curation) storeCuration(queryClient, address, curation)
+  } catch (error) {
+    captureError(error, { flow: 'publish_review_request', collectionId: collection.id })
+  }
+}
+
 // Collections whose chain→server sync is running in this tab, so a page mount doesn't start a second one.
 const syncing = new Set<string>()
 
@@ -201,19 +227,24 @@ const syncing = new Set<string>()
 export function useSyncPublishedItems(address: string | undefined, collection: Collection | undefined, items: Item[]) {
   const queryClient = useQueryClient()
   const collectionId = collection?.id
+  const urn = collection?.urn
   const isPublished = !!collection?.isPublished
   const needsSync = useMemo(() => isPublished && items.some(item => !item.tokenId), [isPublished, items])
+  const opensReview = useMemo(() => !!collection && isRecentPublication(collection), [collection])
 
   useEffect(() => {
-    if (!address || !collectionId || !needsSync || syncing.has(collectionId)) return
+    if (!address || !collectionId || !urn || !needsSync || syncing.has(collectionId)) return
     syncing.add(collectionId)
     syncPublishedItems(collectionId, { publishCollectionItems: id => publishCollectionItems(address, id) })
+      .then(async () => {
+        if (opensReview) await requestFirstReview(queryClient, address, { id: collectionId, urn })
+      })
       .catch(error => console.error('Collection items sync failed', error))
       .finally(() => {
         syncing.delete(collectionId)
         invalidateCollectionItems(queryClient, collectionId)
       })
-  }, [address, collectionId, needsSync, queryClient])
+  }, [address, collectionId, urn, needsSync, opensReview, queryClient])
 }
 
 /** The files of a saved item as blobs, for the thumbnail editor; off until an item is given. */

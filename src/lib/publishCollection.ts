@@ -8,6 +8,7 @@ import { config } from '~/config'
 import { type ContractCall } from '~/lib/auth'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS, isRefusedRequest } from '~/lib/builder'
 import { isCollectionLocked, type Collection } from '~/lib/collections'
+import { type CollectionCuration } from '~/lib/curation'
 import { CreditsServerError, type ExternalCall, type PublicationAuthorization } from '~/lib/credits'
 import { PublicationFeeMismatchError, withFeeTolerance } from '~/lib/feeVerification'
 import { hasOldHashedContents } from '~/lib/itemFactory'
@@ -362,6 +363,43 @@ export async function syncPublishedItems(
       if (!notIndexedYet || attempt >= retries) throw error
       await new Promise(resolve => setTimeout(resolve, retryDelayMs))
     }
+  }
+}
+
+// Matches the forum post's recovery window: older collections keep reading To review without a request.
+const REVIEW_RECOVERY_MAX_AGE_MS = 30 * 24 * 60 * 60_000
+
+/** Whether a publish finished on a later visit still gets its review request: only within a month of publishing. */
+export function isRecentPublication(collection: Pick<Collection, 'lock' | 'updatedAt'>, now = Date.now()): boolean {
+  return now - Math.max(collection.lock ?? 0, collection.updatedAt) < REVIEW_RECOVERY_MAX_AGE_MS
+}
+
+export type ReviewRequestDeps = {
+  fetchCollectionCuration: (collectionId: string) => Promise<CollectionCuration | null>
+  pushCollectionCuration: (collectionId: string) => Promise<CollectionCuration>
+}
+
+const ALREADY_REQUESTED_STATUS = 400
+
+/**
+ * Opens a published collection's first review request and returns the collection's latest one; a request that
+ * already exists (a retry, or a curator who acted first) is returned as is, never reopened.
+ */
+export async function openFirstReviewRequest(
+  collectionId: string,
+  deps: ReviewRequestDeps
+): Promise<CollectionCuration | null> {
+  const existing = await deps.fetchCollectionCuration(collectionId)
+  if (existing) return existing
+  try {
+    return await deps.pushCollectionCuration(collectionId)
+  } catch (error) {
+    const openedMeanwhile =
+      error instanceof BuilderServerError &&
+      error.status === ALREADY_REQUESTED_STATUS &&
+      error.message.includes('ongoing review request')
+    if (openedMeanwhile) return deps.fetchCollectionCuration(collectionId)
+    throw error
   }
 }
 
