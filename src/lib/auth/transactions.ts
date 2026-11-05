@@ -395,16 +395,35 @@ export async function readTransactionSender(chainId: number, txHash: string): Pr
   return undefined
 }
 
+const RECEIPT_POLL_MS = 4_000
+
+type ReceiptWaitOptions = {
+  timeoutMs?: number
+  pollMs?: number
+  sleep?: (ms: number) => Promise<void>
+  now?: () => number
+}
+
 /**
- * Resolves true when the transaction is mined successfully, false when it reverted; without `timeoutMs` it waits
- * as long as it takes. A replacement's receipt never stands in for this transaction's.
+ * Polls for this hash's receipt: true once mined successfully, false once reverted. A failed read (network, 5xx,
+ * rate limit) is retried, never thrown; only `timeoutMs`, when given, ends the wait without an outcome, as an error.
+ * A replacement's receipt never stands in for this transaction's.
  */
+export async function waitForReceipt(
+  reader: Pick<TransactionReader, 'getTransactionReceipt'>,
+  txHash: string,
+  { timeoutMs, pollMs = RECEIPT_POLL_MS, sleep = defaultSleep, now = Date.now }: ReceiptWaitOptions = {}
+): Promise<boolean> {
+  const deadline = timeoutMs === undefined ? Infinity : now() + timeoutMs
+  for (;;) {
+    const receipt = await receiptOf(reader, txHash as Hash).catch(() => null)
+    if (receipt) return receipt.status === 'success'
+    if (now() >= deadline) throw new Error(`Transaction ${txHash} was not mined within ${timeoutMs}ms`)
+    await sleep(pollMs)
+  }
+}
+
+/** Resolves true when the transaction is mined successfully, false when it reverted; see `waitForReceipt`. */
 export async function waitForTransaction(chainId: number, txHash: string, timeoutMs?: number): Promise<boolean> {
-  const client = await getReadClient(chainId)
-  const receipt = await client.waitForTransactionReceipt({
-    hash: txHash as Hash,
-    timeout: timeoutMs ?? 0,
-    checkReplacement: false
-  })
-  return receipt.status === 'success'
+  return waitForReceipt(await getReadClient(chainId), txHash, { timeoutMs })
 }

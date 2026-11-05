@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { TransactionNotFoundError, TransactionReceiptNotFoundError, hashTypedData, numberToHex } from 'viem'
 import { ContractName, getContract, getCouponManager, sendMetaTransaction } from 'decentraland-transactions'
 import { buildChequeTypedData } from '~/lib/publishLinkedItems'
+import { isWalletRejection } from '~/lib/walletErrors'
 import { type Session } from './auth'
 import {
   WrongAccountError,
@@ -14,6 +15,7 @@ import {
   signTypedData,
   subscribeWalletChain,
   switchWalletChain,
+  waitForReceipt,
   waitForTransaction,
   watchTransaction
 } from './transactions'
@@ -32,7 +34,8 @@ const manager = { ...getCouponManager(ContractName.OffChainMarketplaceV3, 80002)
 const call = { contract: manager, method: 'increaseSignerSignatureIndex', args: [] }
 const CALLDATA = '0xceefad9f'
 
-type Behavior = 'switches' | 'needs-add' | 'needs-add-wrapped' | 'refuses' | 'ignores' | 'changes-account' | 'reverts'
+type Behavior =
+  'switches' | 'needs-add' | 'needs-add-wrapped' | 'refuses' | 'ignores' | 'changes-account' | 'reverts' | 'dismisses'
 type Request = { method: string; params?: unknown[] }
 
 const ACCOUNT = '0x00000000000000000000000000000000000000aa'
@@ -73,10 +76,12 @@ function walletOn(chainId: number, behavior: Behavior = 'switches', account = AC
         if (behavior === 'reverts') throw Object.assign(new Error('execution reverted'), { code: 3 })
         return '0x5208'
       case 'eth_sendTransaction':
+        if (behavior === 'dismisses') throw Object.assign(new Error('Request cancelled'), { code: 4001 })
         return HASH
       case 'eth_getTransactionByHash':
         return knowsSent ? { hash: HASH, from: active, nonce: '0x7' } : null
       case 'eth_signTypedData_v4':
+        if (behavior === 'dismisses') throw Object.assign(new Error('Request cancelled'), { code: 4001 })
         return `0x${'11'.repeat(65)}`
     }
     throw new Error(`Unexpected ${method}`)
@@ -152,6 +157,12 @@ describe('when sending a transaction from the wallet itself', () => {
     const { session, sent } = walletOn(1, 'changes-account')
     await expect(sendWalletTransaction(session, call)).rejects.toBeInstanceOf(WrongAccountError)
     expect(sent()).toHaveLength(0)
+  })
+
+  it('should report a dismissed prompt as a wallet rejection', async () => {
+    const { session } = walletOn(80002, 'dismisses')
+    const error: unknown = await sendWalletTransaction(session, call).catch((e: unknown) => e)
+    expect(isWalletRejection(error)).toBe(true)
   })
 
   it('should send nothing when the call would revert', async () => {
@@ -230,6 +241,15 @@ describe('when signing typed data', () => {
   })
 })
 
+describe('when the creator dismisses a typed-data prompt', () => {
+  it('should report it as a wallet rejection', async () => {
+    const { session } = walletOn(80002, 'dismisses')
+    const { domain, types, value } = buildChequeTypedData(80002, 'urn:x', 1, '0x' + '22'.repeat(32))
+    const error: unknown = await signTypedData(session, domain, types, 'ConsumeSlots', value).catch((e: unknown) => e)
+    expect(isWalletRejection(error)).toBe(true)
+  })
+})
+
 describe('when the navbar asks where the wallet is', () => {
   const sessionAnswering = (answer: unknown) =>
     ({ provider: { request: vi.fn(async () => answer) } }) as unknown as Session
@@ -286,10 +306,59 @@ describe('when reading the chain', () => {
     await expect(waitForTransaction(80002, HASH)).resolves.toBe(false)
   })
 
+  it('should answer unknown rather than fail when the read node errors', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init: { body: string }) => {
+        const { id } = JSON.parse(init.body) as { id: number }
+        return new Response(JSON.stringify({ jsonrpc: '2.0', id, error: { code: -32602, message: 'bad params' } }))
+      })
+    )
+    await expect(readTransactionOutcome(80002, HASH, ACCOUNT, 4)).resolves.toBe('unknown')
+  })
+
   it('should call a transaction superseded once its sender used its nonce, and pending otherwise', async () => {
     readNode({ eth_getTransactionReceipt: null, eth_getTransactionCount: '0x5' })
     await expect(readTransactionOutcome(80002, HASH, ACCOUNT, 4)).resolves.toBe('superseded')
     await expect(readTransactionOutcome(80002, HASH, ACCOUNT, 5)).resolves.toBe('unknown')
+  })
+})
+
+describe('when waiting for a transaction to be mined', () => {
+  function node(answers: (() => Promise<unknown>)[]) {
+    let time = 0
+    const getTransactionReceipt = vi.fn(() => answers.shift()?.() ?? Promise.reject(new Error('No more answers')))
+    return {
+      reader: { getTransactionReceipt } as never,
+      clock: {
+        now: () => time,
+        sleep: vi.fn(async (ms: number) => {
+          time += ms
+        })
+      }
+    }
+  }
+  const down = () => Promise.reject(new Error('fetch failed'))
+  const pending = () => Promise.reject(new TransactionReceiptNotFoundError({ hash: HASH as `0x${string}` }))
+  const mined = (status: 'success' | 'reverted') => () => Promise.resolve({ status })
+
+  it('should keep waiting through failed reads until the receipt arrives', async () => {
+    const { reader, clock } = node([down, down, mined('success')])
+    await expect(waitForReceipt(reader, HASH, clock)).resolves.toBe(true)
+    expect(clock.sleep).toHaveBeenCalledTimes(2)
+  })
+
+  it('should answer false for a reverted transaction, however long it took', async () => {
+    const { reader, clock } = node([pending, pending, pending, mined('reverted')])
+    await expect(waitForReceipt(reader, HASH, clock)).resolves.toBe(false)
+  })
+
+  it('should give up only once the timeout passes', async () => {
+    const { reader, clock } = node(Array.from({ length: 20 }, () => pending))
+    await expect(waitForReceipt(reader, HASH, { ...clock, timeoutMs: 10_000, pollMs: 1_000 })).rejects.toThrow(
+      /not mined/
+    )
+    expect(clock.sleep).toHaveBeenCalledTimes(10)
   })
 })
 

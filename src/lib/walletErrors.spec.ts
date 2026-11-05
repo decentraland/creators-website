@@ -8,6 +8,12 @@ describe('isWalletRejection', () => {
     expect(isWalletRejection(new Error('MetaMask Tx Signature: User denied transaction signature.'))).toBe(true)
   })
 
+  it('recognizes a rejection wrapped by a chain library, through its causes', () => {
+    const caused = (message: string, cause: unknown) => Object.assign(new Error(message), { cause })
+    expect(isWalletRejection(caused('Transaction failed', caused('Request failed', { code: 4001 })))).toBe(true)
+    expect(isWalletRejection(caused('Transaction failed', new Error('nonce too low')))).toBe(false)
+  })
+
   it('leaves other failures alone', () => {
     expect(isWalletRejection(new Error('insufficient funds'))).toBe(false)
     expect(isWalletRejection('nope')).toBe(false)
