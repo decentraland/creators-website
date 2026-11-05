@@ -50,6 +50,8 @@ export type RemoteItemRow = {
   contents: Record<string, string>
   content_hash?: string | null
   local_content_hash?: string | null
+  catalyst_content_hash?: string | null
+  mappings?: Record<string, unknown> | null
   urn: string | null
   created_at: string
   updated_at: string
@@ -218,4 +220,49 @@ export function publishedItem(
     in_catalyst: true,
     ...overrides
   })
+}
+
+export const THIRD_PARTY_ID = 'urn:decentraland:amoy:collections-thirdparty:e2e-tp'
+export const LINKED_CONTRACT = '0x' + 'd1'.repeat(20)
+
+/** A linked (third-party) collection mapping NFTs of LINKED_CONTRACT on Amoy. */
+export function linkedCollection(overrides: Partial<RemoteCollectionRow> = {}): RemoteCollectionRow {
+  return collection({
+    name: 'Linked Drops',
+    eth_address: '',
+    urn: `${THIRD_PARTY_ID}:e2e-collection`,
+    linked_contract_address: LINKED_CONTRACT,
+    linked_contract_network: 'amoy',
+    is_mapping_complete: true,
+    ...overrides
+  })
+}
+
+/** An item of a linked collection, mapped to any token of its contract. */
+export function linkedItem(parent: RemoteCollectionRow, index: number, overrides: Partial<RemoteItemRow> = {}) {
+  return wearable({
+    name: `Linked Hat ${index}`,
+    collection_id: parent.id,
+    urn: `${parent.urn}:item-${index}`,
+    rarity: null,
+    mappings: { amoy: { [LINKED_CONTRACT]: [{ type: 'any' }] } },
+    local_content_hash: `bafylinked${index}`,
+    ...overrides
+  })
+}
+
+export function thirdParty(overrides: Record<string, unknown> = {}) {
+  return {
+    id: THIRD_PARTY_ID,
+    name: 'E2E Third Party',
+    description: 'Linked wearables for e2e runs',
+    root: '',
+    managers: [TEST_ADDRESS],
+    isApproved: true,
+    isProgrammatic: false,
+    maxItems: '100',
+    contracts: [{ network: 'amoy', address: LINKED_CONTRACT }],
+    published: true,
+    ...overrides
+  }
 }

@@ -2,10 +2,37 @@ import { ethers } from 'ethers'
 import { RARITIES, collection, wearable, type RemoteCollectionRow, type RemoteItemRow } from '../fixtures'
 import { decodeTransaction, type SentTransaction } from './rpc'
 
+export type RemoteThirdPartyRow = {
+  id: string
+  name: string
+  description: string
+  root: string
+  managers: string[]
+  isApproved: boolean
+  isProgrammatic: boolean
+  maxItems: string
+  contracts: Array<{ network: string; address: string }>
+  published: boolean
+}
+
+export type RemoteItemCurationRow = {
+  id: string
+  item_id: string
+  status: 'pending' | 'approved' | 'rejected'
+  content_hash: string | null
+  is_mapping_complete: boolean
+  created_at: string
+  updated_at: string
+}
+
 export type BuilderSeed = {
   collections?: RemoteCollectionRow[]
   items?: RemoteItemRow[]
   curations?: RemoteCurationRow[]
+  thirdParties?: RemoteThirdPartyRow[]
+  /** Item slots each third party has left, by id. */
+  slots?: Record<string, number>
+  itemCurations?: RemoteItemCurationRow[]
   /** Addresses seated on the curation committee. */
   committee?: string[]
 }
@@ -94,6 +121,9 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
   const items = new Map((seed.items ?? []).map(row => [row.id, structuredClone(row)]))
   const curations = new Map((seed.curations ?? []).map(row => [row.collection_id, structuredClone(row)]))
   const committee = seed.committee ?? []
+  const thirdParties = new Map((seed.thirdParties ?? []).map(row => [row.id, structuredClone(row)]))
+  const slots = { ...seed.slots }
+  const itemCurations = new Map((seed.itemCurations ?? []).map(row => [row.item_id, structuredClone(row)]))
 
   const itemsOf = (collectionId: string) => [...items.values()].filter(item => item.collection_id === collectionId)
   const withCount = (row: RemoteCollectionRow): RemoteCollectionRow => ({
@@ -250,13 +280,49 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
       return ok(true)
     }
     if (method === 'GET' && sub === 'items') {
+      const status = query.get('status')
+      const synced = query.get('synced')
+      const mappingStatus = query.get('mappingStatus')
       const rows = itemsOf(id)
+        .filter(item => !status || itemCurations.get(item.id)?.status === status)
+        .filter(
+          item =>
+            synced === null ||
+            (synced === 'true') ===
+              (!!item.catalyst_content_hash && item.catalyst_content_hash === item.local_content_hash)
+        )
+        .filter(item => mappingStatus !== 'missing_mapping' || !item.mappings)
+        // No fixture has a mapping waiting for migration.
+        .filter(() => mappingStatus !== 'unpublished_mapping')
       return ok(query.has('page') ? paginate(rows, query) : rows)
     }
     if (method === 'POST' && sub === 'tos') return { status: 200, body: { ok: true } }
     if (method === 'POST' && sub === 'lock') {
       row.lock = now()
       return ok(row.lock)
+    }
+    if (method === 'POST' && sub === 'publish' && isLinked(row)) {
+      const { itemIds = [] } = (body ?? {}) as { itemIds?: string[] }
+      const thirdPartyId = row.urn.split(':').slice(0, 5).join(':')
+      if ((slots[thirdPartyId] ?? 0) < itemIds.length) return conflict('Not enough slots')
+      slots[thirdPartyId] = (slots[thirdPartyId] ?? 0) - itemIds.length
+      row.is_published = true
+      const published = itemIds.map(itemId => {
+        const item = items.get(itemId)!
+        item.is_published = true
+        const curation: RemoteItemCurationRow = {
+          id: `item-curation-${itemId}`,
+          item_id: itemId,
+          status: 'pending',
+          content_hash: item.local_content_hash ?? null,
+          is_mapping_complete: true,
+          created_at: now(),
+          updated_at: now()
+        }
+        itemCurations.set(itemId, curation)
+        return curation
+      })
+      return ok({ collection: withCount(row), items: itemsOf(id), itemCurations: published })
     }
     if (method === 'POST' && sub === 'publish') {
       row.is_published = true
@@ -297,7 +363,14 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
       setCuration(id, curation)
       return ok(curation)
     }
-    if (method === 'GET' && sub === 'itemCurations') return ok([])
+    if (method === 'GET' && sub === 'itemCurations') {
+      const ids = new Set(query.getAll('itemIds[]'))
+      return ok(
+        itemsOf(id)
+          .filter(item => ids.size === 0 || ids.has(item.id))
+          .flatMap(item => itemCurations.get(item.id) ?? [])
+      )
+    }
     return null
   }
 
@@ -332,7 +405,18 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
       return ok(committee.map(address => ({ address })))
     if (method === 'GET' && parts.length === 1 && head === 'rarities') return ok(RARITIES)
     if (method === 'GET' && parts.length === 1 && head === 'curations') return ok([...curations.values()])
-    if (method === 'GET' && parts.length === 1 && head === 'thirdParties') return ok([])
+    if (method === 'GET' && parts.length === 1 && head === 'thirdParties') return ok([...thirdParties.values()])
+    if (head === 'thirdParties' && id) {
+      const thirdPartyId = decodeURIComponent(id)
+      const row = thirdParties.get(thirdPartyId)
+      if (!row) return notFound('third party')
+      if (method === 'GET' && !sub) return ok(row)
+      if (method === 'GET' && sub === 'slots') return ok(slots[thirdPartyId] ?? 0)
+      if (method === 'PATCH' && !sub) {
+        Object.assign(row, (body as { thirdParty?: Partial<RemoteThirdPartyRow> })?.thirdParty ?? body)
+        return ok(row)
+      }
+    }
     if (method === 'GET' && parts.length === 2 && /^0x[0-9a-f]{40}$/i.test(head) && id === 'collections') {
       return listCollections(head.toLowerCase(), query)
     }
@@ -349,7 +433,7 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
     return null
   }
 
-  return { handle, applyTransaction, collections, items, curations }
+  return { handle, applyTransaction, collections, items, curations, thirdParties, slots, itemCurations }
 }
 
 export type BuilderServer = ReturnType<typeof createBuilderServer>
