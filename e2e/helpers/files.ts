@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import JSZip from 'jszip'
@@ -38,12 +38,14 @@ export const FIXTURE = {
 
 const read = (path: string) => readFileSync(path)
 
+// One directory per run, so two worktrees running at once never overwrite each other's zips.
+let outputDir: string | undefined
+const outputPath = (name: string) => join((outputDir ??= mkdtempSync(join(tmpdir(), 'creators-e2e-'))), name)
+
 async function writeZip(name: string, entries: Record<string, Buffer | string>): Promise<string> {
   const zip = new JSZip()
   for (const [path, content] of Object.entries(entries)) zip.file(path, content)
-  const dir = join(tmpdir(), 'creators-e2e')
-  mkdirSync(dir, { recursive: true })
-  const out = join(dir, name)
+  const out = outputPath(name)
   writeFileSync(out, await zip.generateAsync({ type: 'nodebuffer' }))
   return out
 }
@@ -96,9 +98,7 @@ export function downloadedEmoteZip(model: string = FIXTURE.emote): Promise<strin
 export async function smartWearableWithVideoZip(): Promise<string> {
   const zip = await JSZip.loadAsync(read(FIXTURE.smartWearable))
   zip.file('preview.mp4', read(FIXTURE.previewVideo))
-  const dir = join(tmpdir(), 'creators-e2e')
-  mkdirSync(dir, { recursive: true })
-  const out = join(dir, 'smart-wearable-with-video.zip')
+  const out = outputPath('smart-wearable-with-video.zip')
   writeFileSync(out, await zip.generateAsync({ type: 'nodebuffer' }))
   return out
 }

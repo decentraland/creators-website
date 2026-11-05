@@ -1,4 +1,4 @@
-import { RARITIES, type RemoteCollectionRow, type RemoteItemRow } from '../fixtures'
+import { RARITIES, collection, wearable, type RemoteCollectionRow, type RemoteItemRow } from '../fixtures'
 
 export type BuilderSeed = {
   collections?: RemoteCollectionRow[]
@@ -11,6 +11,33 @@ export type BuilderResponse = { status: number; body: unknown }
 
 type Status = 'draft' | 'published' | 'under_review' | 'rejected' | 'disabled'
 const STATUSES: Status[] = ['published', 'draft', 'under_review', 'rejected', 'disabled']
+
+// What builder-server keeps from its own row on a PUT, whatever the client sends.
+const SERVER_OWNED_COLLECTION_FIELDS = [
+  'eth_address',
+  'urn',
+  'lock',
+  'created_at',
+  'updated_at',
+  'forum_link',
+  'reviewed_at',
+  'is_published',
+  'is_approved'
+] as const
+const SERVER_OWNED_ITEM_FIELDS = [
+  'eth_address',
+  'blockchain_item_id',
+  'is_published',
+  'is_approved',
+  'in_catalyst',
+  'total_supply',
+  'created_at',
+  'updated_at'
+] as const
+
+function withoutFields<T extends object>(sent: Partial<T>, fields: readonly string[]): Partial<T> {
+  return Object.fromEntries(Object.entries(sent).filter(([key]) => !fields.includes(key))) as Partial<T>
+}
 
 const ok = (data: unknown): BuilderResponse => ({ status: 200, body: { ok: true, data } })
 const notFound = (what: string): BuilderResponse => ({ status: 404, body: { ok: false, error: `${what} not found` } })
@@ -90,7 +117,12 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
       const row = collections.get(id)
       if (method === 'PUT' && !sub) {
         const sent = (body as { collection?: Partial<RemoteCollectionRow> } | undefined)?.collection ?? {}
-        const saved = { ...(row ?? ({} as RemoteCollectionRow)), ...sent, id, updated_at: new Date().toISOString() }
+        const saved = {
+          ...(row ?? collection({ created_at: new Date().toISOString() })),
+          ...withoutFields(sent, SERVER_OWNED_COLLECTION_FIELDS),
+          id,
+          updated_at: new Date().toISOString()
+        }
         collections.set(id, saved)
         return ok(withCount(saved))
       }
@@ -112,7 +144,12 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
       const row = items.get(id)
       if (method === 'PUT' && !sub) {
         const sent = (body as { item?: Partial<RemoteItemRow> } | undefined)?.item ?? {}
-        const saved = { ...(row ?? ({} as RemoteItemRow)), ...sent, id, updated_at: new Date().toISOString() }
+        const saved = {
+          ...(row ?? wearable({ created_at: new Date().toISOString() })),
+          ...withoutFields(sent, SERVER_OWNED_ITEM_FIELDS),
+          id,
+          updated_at: new Date().toISOString()
+        }
         items.set(id, saved)
         return ok(saved)
       }

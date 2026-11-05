@@ -52,6 +52,16 @@ export async function launchApp(opts: LaunchOptions = {}): Promise<App> {
       '--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4'
     ]
   })
+  try {
+    return await openPage(browser, builder, opts)
+  } catch (error) {
+    // The spec never gets an App to close, so a failed launch would leave Chrome running.
+    await browser.close()
+    throw error
+  }
+}
+
+async function openPage(browser: Browser, builder: BuilderServer, opts: LaunchOptions): Promise<App> {
   const page = await browser.newPage()
   await page.setViewport(VIEWPORTS[opts.viewport ?? 'desktop'])
   // isbot reads "HeadlessChrome" as a crawler, and the app turns analytics off for crawlers.
@@ -78,10 +88,12 @@ export async function launchApp(opts: LaunchOptions = {}): Promise<App> {
     const body = req.postData() ?? ''
     if (url.hostname.startsWith('api.e.') && url.pathname.endsWith('/track')) {
       // A sendBeacon body is a Blob, which Chrome doesn't inline into the request event.
-      void (req.hasPostData() && !body ? req.fetchPostData() : Promise.resolve(body)).then(raw => {
-        const call = JSON.parse(raw || '{}') as { event?: string; properties?: Record<string, unknown> }
-        if (call.event) beaconEvents.push({ event: call.event, props: call.properties ?? {} })
-      })
+      void (req.hasPostData() && !body ? req.fetchPostData() : Promise.resolve(body))
+        .then(raw => {
+          const call = JSON.parse(raw || '{}') as { event?: string; properties?: Record<string, unknown> }
+          if (call.event) beaconEvents.push({ event: call.event, props: call.properties ?? {} })
+        })
+        .catch((error: unknown) => process.stderr.write(`[e2e] unreadable analytics beacon: ${String(error)}\n`))
     } else if (
       !['GET', 'HEAD', 'OPTIONS'].includes(req.method()) &&
       url.origin !== ctx.appOrigin &&
@@ -91,7 +103,14 @@ export async function launchApp(opts: LaunchOptions = {}): Promise<App> {
     ) {
       writes.push(`${req.method()} ${url.pathname}`)
     }
-    route(req, ctx).catch(() => {})
+    // A throw inside the router would otherwise leave the request unanswered until the spec times out.
+    Promise.resolve()
+      .then(() => route(req, ctx))
+      .catch(async (error: unknown) => {
+        process.stderr.write(`[e2e] router failed on ${req.method()} ${req.url()}: ${String(error)}\n`)
+        if (!req.isInterceptResolutionHandled()) await req.respond({ status: 500, body: String(error) })
+      })
+      .catch(() => {})
   })
 
   await page.goto(`${BASE}${opts.path ?? '/'}`, { waitUntil: opts.waitUntil ?? 'networkidle2', timeout: 45_000 })
