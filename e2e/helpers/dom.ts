@@ -53,6 +53,12 @@ export async function waitForEnabled(page: Page, id: string, timeout = 20_000): 
   )
 }
 
+/** Toggles a `~/components/Checkbox`, whose input is visually hidden behind its label. */
+export async function check(page: Page, testId: string): Promise<void> {
+  await page.waitForSelector(byTestId(testId))
+  await page.$eval(byTestId(testId), el => (el as HTMLInputElement).click())
+}
+
 /** Picks files in the next file chooser the page opens after `trigger`. */
 export async function uploadFiles(page: Page, trigger: () => Promise<void>, paths: string[]): Promise<void> {
   const [chooser] = await Promise.all([page.waitForFileChooser({ timeout: 10_000 }), trigger()])

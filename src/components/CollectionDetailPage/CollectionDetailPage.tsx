@@ -620,6 +620,7 @@ const CollectionDetailPage = () => {
                     variant="primary"
                     data-desktop-only
                     data-testid="publish-collection"
+                    data-blocker={publishBlocker ?? undefined}
                     aria-disabled={publishBlocker ? true : undefined}
                     onClick={() => {
                       if (publishBlocker) return
