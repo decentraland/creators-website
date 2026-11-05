@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { Network } from '@dcl/schemas'
-import { ethers } from 'ethers'
+import { formatEther } from 'viem'
 import { TopNav } from '~/components/TopNav'
 import { useWallet } from '~/store/wallet'
 import { useCreditsBalance, useManaBalance } from '~/hooks/useBalances'
@@ -47,7 +47,7 @@ const NavBar = ({ subnav = true }: Props) => {
   // Polygon only: it's the network publishing pays on. Like the legacy builder, an empty wallet shows
   // no MANA chip at all; ui2 renders whole units.
   const manaBalances = useMemo(
-    () => (manaWei ? { [Network.MATIC]: Number(ethers.utils.formatEther(manaWei)) } : undefined),
+    () => (manaWei ? { [Network.MATIC]: Number(formatEther(manaWei)) } : undefined),
     [manaWei]
   )
   const { pathname } = useLocation()

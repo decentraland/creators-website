@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ethers } from 'ethers'
 import { Network, TradeAssetType, TradeType, type Trade } from '@dcl/schemas'
 import { ContractName, getContract } from 'decentraland-transactions'
+import { zeroAddress } from 'viem'
 import { TEST_SIGNER, signTypedDataWithTestKey, toTransaction } from '~/test/chain'
 import {
   OFFCHAIN_MARKETPLACE_TYPES,
@@ -130,6 +130,7 @@ describe('price and date helpers', () => {
     expect(parseManaAmount('.5')).toBe(500_000_000_000_000_000n)
     expect(parseManaAmount('')).toBeNull()
     expect(parseManaAmount('1.')).toBe(1_000_000_000_000_000_000n)
+    expect(parseManaAmount('0.' + '9'.repeat(19))).toBeNull()
     expect(isValidManaWei(MIN_SALE_MANA_WEI)).toBe(true)
     expect(isValidManaWei(MIN_SALE_MANA_WEI - 1n)).toBe(false)
     expect(isValidManaWei(MAX_SALE_MANA_WEI)).toBe(true)
@@ -163,6 +164,9 @@ describe('price and date helpers', () => {
     expect(isValidAddress(BENEFICIARY)).toBe(true)
     expect(isValidAddress('0x123')).toBe(false)
     expect(isValidAddress('pirate.dcl.eth')).toBe(false)
+    expect(isValidAddress(BENEFICIARY.toUpperCase().replace('0X', '0x'))).toBe(true)
+    expect(isValidAddress('0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2a')).toBe(false)
+    expect(isValidAddress(BENEFICIARY.slice(2))).toBe(false)
   })
 
   it('expires at the end of the picked day, and only accepts dates from tomorrow on', () => {
@@ -291,7 +295,7 @@ describe('buildItemOrder', () => {
         contractAddress: MANA,
         amount: '0',
         extra: '',
-        beneficiary: ethers.constants.AddressZero
+        beneficiary: zeroAddress
       }
     ])
   })

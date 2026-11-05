@@ -2,8 +2,17 @@
 // CreditsManager external call, payment-method availability, and the publish sequence itself,
 // ported from the legacy builder's publish saga (the forum post lives in hooks/useForumPost).
 // Server and chain access is injected so the sequence is unit-testable end to end.
-import { ethers } from 'ethers'
 import { ContractName, getContract } from 'decentraland-transactions'
+import {
+  encodeAbiParameters,
+  getAbiItem,
+  pad,
+  toFunctionSelector,
+  toHex,
+  type Abi,
+  type AbiFunction,
+  type Hex
+} from 'viem'
 import { config } from '~/config'
 import { type ContractCall } from '~/lib/auth'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS, isRefusedRequest } from '~/lib/builder'
@@ -127,26 +136,14 @@ export function buildCollectionManagerExternalCall(
   chainId: number,
   args: CreateCollectionArgs,
   now = Date.now(),
-  salt = ethers.utils.hexlify(ethers.utils.randomBytes(32))
+  salt: string = toHex(crypto.getRandomValues(new Uint8Array(32)))
 ): ExternalCall {
   const manager = getContract(ContractName.CollectionManager, chainId)
-  const contractInterface = new ethers.utils.Interface(manager.abi)
+  const createCollection = getAbiItem({ abi: manager.abi as Abi, name: 'createCollection' }) as AbiFunction
   return {
     target: manager.address,
-    selector: contractInterface.getSighash('createCollection'),
-    data: ethers.utils.defaultAbiCoder.encode(
-      [
-        'address',
-        'address',
-        'bytes32',
-        'string',
-        'string',
-        'string',
-        'address',
-        'tuple(string,uint256,address,string)[]'
-      ],
-      args
-    ),
+    selector: toFunctionSelector(createCollection),
+    data: encodeAbiParameters(createCollection.inputs, args),
     expiresAt: Math.floor((now + EXTERNAL_CALL_TTL_MS) / 1000),
     salt
   }
@@ -164,7 +161,7 @@ export function buildUseCreditsCall(
     method: 'useCredits',
     args: [
       {
-        credits: [{ value: credit.amount, expiresAt: credit.expiresAt, salt: ethers.utils.hexZeroPad(credit.id, 32) }],
+        credits: [{ value: credit.amount, expiresAt: credit.expiresAt, salt: pad(credit.id as Hex, { size: 32 }) }],
         creditsSignatures: [credit.signature],
         externalCall,
         customExternalCallSignature: externalCallSignature,

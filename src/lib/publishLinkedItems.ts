@@ -3,7 +3,7 @@
 // ThirdPartyRegistry when needed (registering the third party on its first publish), then hand the signed slots
 // cheque to builder-server, which opens one item curation per item, and finally push changes of already-reviewed
 // items. Server and chain access is injected so the sequence runs against fakes in tests.
-import { ethers } from 'ethers'
+import { numberToHex, toHex } from 'viem'
 import {
   type ContractCall,
   type TransactionSender,
@@ -223,7 +223,7 @@ export function buildChequeTypedData(
       name: registry.name,
       version: registry.version,
       verifyingContract: registry.address,
-      salt: ethers.utils.hexZeroPad(ethers.utils.hexlify(chainId), 32)
+      salt: numberToHex(chainId, { size: 32 })
     },
     types: {
       ConsumeSlots: [
@@ -238,7 +238,7 @@ export function buildChequeTypedData(
 
 /** A random 32-byte hex salt; the registry rejects a cheque whose salt was consumed before. */
 export function createChequeSalt(): string {
-  return ethers.utils.hexlify(crypto.getRandomValues(new Uint8Array(32)))
+  return toHex(crypto.getRandomValues(new Uint8Array(32)))
 }
 
 export type SignChequeDeps = {
