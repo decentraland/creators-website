@@ -28,6 +28,8 @@ export type App = {
   page: Page
   builder: BuilderServer
   market: Market
+  /** Builder storage by content hash: fixture files plus everything the app uploaded. */
+  storage: Record<string, Buffer>
   /** Every write the app sent to a mocked service (`METHOD /path`), in order; chain reads and analytics excluded. */
   writes: string[]
   /** Every transaction the wallet sent, decoded where the function is known. */
@@ -183,6 +185,7 @@ async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
     page,
     builder,
     market,
+    storage: ctx.storage,
     writes,
     transactions: chain.transactions,
     openedUrls,

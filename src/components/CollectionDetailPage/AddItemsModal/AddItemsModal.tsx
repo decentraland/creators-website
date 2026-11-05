@@ -480,7 +480,10 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
                 linked={isLinked ? { contract: linkedContract, updating: updateOnly } : undefined}
               />
             ) : (
-              <S.ProcessingPane data-testid="draft-processing">
+              <S.ProcessingPane
+                data-testid="draft-processing"
+                data-error={selected?.status === 'failed' ? (selected.errorKey ?? 'invalid_model_file') : undefined}
+              >
                 {selected?.status === 'failed' ? (
                   t(`add_items_modal.file_error.${selected.errorKey ?? 'invalid_model_file'}`, selected.errorParams)
                 ) : (
