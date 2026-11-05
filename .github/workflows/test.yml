@@ -27,6 +27,14 @@ jobs:
       - name: Install
         run: npm ci --ignore-scripts
 
+      # pull-request.yml's lint-action annotates PRs to main only; these also gate pushes to main,
+      # stacked PRs and reopened PRs, and the Prettier check covers html/cjs/mjs too.
+      - name: Lint
+        run: npm run lint
+
+      - name: Format
+        run: npm run format
+
       - name: Typecheck
         run: npm run typecheck
 

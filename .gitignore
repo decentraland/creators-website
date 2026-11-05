@@ -29,4 +29,5 @@ coverage/*
 # local env (prebuild.cjs rewrites it on every build)
 .env
 
+# local working docs (feature specs, plans, research); durable team docs live in docs/
 design/*
