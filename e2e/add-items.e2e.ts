@@ -46,7 +46,8 @@ async function savedItems(a: App) {
 }
 
 /** Every file a saved item points at was uploaded, so it previews and validates from storage. */
-const uploaded = (a: App, contents: Record<string, string>) => Object.values(contents).every(hash => a.storage[hash])
+const uploaded = (a: App, contents: Record<string, string>) =>
+  Object.values(contents).every(hash => (a.storage[hash]?.length ?? 0) > 0)
 
 describe('add items to a collection', () => {
   it('imports a batch of a manifest zip, an emote and a facial feature', async () => {

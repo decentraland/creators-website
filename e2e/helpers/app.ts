@@ -64,6 +64,30 @@ export type LaunchOptions = {
   waitUntil?: 'load' | 'domcontentloaded' | 'networkidle0' | 'networkidle2'
 }
 
+/**
+ * Request interception never sees the bytes of a Blob in a multipart body, so item uploads are read in the page,
+ * before they leave, and handed to node (`__e2eUpload`) to store by content hash.
+ */
+const UPLOAD_CAPTURE_SCRIPT = `(() => {
+  const realFetch = window.fetch;
+  const toBase64 = async blob => {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(binary);
+  };
+  window.fetch = async function (input, init) {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    const upload = /\\/items\\/([^/?]+)\\/(files|videos)$/.exec(new URL(url, location.href).pathname);
+    if (upload && init && init.body instanceof FormData) {
+      for (const [name, value] of init.body.entries()) {
+        if (value instanceof Blob) await window.__e2eUpload(upload[1], name, await toBase64(value));
+      }
+    }
+    return realFetch.call(this, input, init);
+  };
+})()`
+
 // The page has no tab to open, and a real one would escape the request mocks.
 const WINDOW_OPEN_SCRIPT = `window.open = function (url) { window.__e2eOpen && window.__e2eOpen(String(url)); return null; };`
 
@@ -108,6 +132,11 @@ async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
   const pages: string[] = []
   const openedUrls: string[] = []
   await page.exposeFunction('__e2eWallet', (method: string, params: unknown[]) => chain.walletRequest(method, params))
+  await page.exposeFunction('__e2eUpload', (itemId: string, name: string, base64: string) => {
+    // Files go under their content hash; the video goes under `video.mp4`, whose hash the item already names.
+    const hash = builder.items.get(itemId)?.contents[name] ?? name
+    storage[hash] = Buffer.from(base64, 'base64')
+  })
   await page.exposeFunction('__e2eOpen', (url: string) => void openedUrls.push(url))
   await page.exposeFunction('__e2eAnalytics', (method: string, args: unknown[]) => {
     if (method === 'track')
@@ -116,11 +145,13 @@ async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
   })
   await page.evaluateOnNewDocument(OFFLINE_WEBSOCKET_SCRIPT)
   await page.evaluateOnNewDocument(WINDOW_OPEN_SCRIPT)
+  await page.evaluateOnNewDocument(UPLOAD_CAPTURE_SCRIPT)
   if (!opts.signedOut) {
     await page.evaluateOnNewDocument(sessionInitScript(await testSession(), opts.chainId ?? POLYGON_AMOY))
   }
 
   const writes: string[] = []
+  const storage = { ...fixtureStorage(), ...opts.storage }
   const ctx: RouteContext = {
     appOrigin: new URL(BASE).origin,
     builder,
@@ -130,7 +161,7 @@ async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
     flags: opts.flags ?? {},
     variants: opts.variants ?? {},
     errors: opts.errors ?? {},
-    storage: { ...fixtureStorage(), ...opts.storage },
+    storage,
     data: { ...DEFAULT_EXTERNAL_DATA, ...opts.data }
   }
   await page.setRequestInterception(true)

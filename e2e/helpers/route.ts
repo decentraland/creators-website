@@ -114,41 +114,6 @@ function parseBody(req: HTTPRequest): unknown {
   }
 }
 
-/** The parts of a multipart body, by field name. */
-function parseMultipart(body: Buffer, contentType: string): Array<{ name: string; data: Buffer }> {
-  const boundary = /boundary=(?:"([^"]+)"|([^;]+))/.exec(contentType)
-  if (!boundary) return []
-  const delimiter = Buffer.from(`--${boundary[1] ?? boundary[2]}`)
-  const parts: Array<{ name: string; data: Buffer }> = []
-  let position = body.indexOf(delimiter)
-  while (position !== -1) {
-    const start = position + delimiter.length
-    if (body.subarray(start, start + 2).toString() === '--') break
-    const next = body.indexOf(delimiter, start)
-    if (next === -1) break
-    // Each part sits between the CRLF after its delimiter and the CRLF before the next one.
-    const part = body.subarray(start + 2, next - 2)
-    const headerEnd = part.indexOf('\r\n\r\n')
-    const name = /name="([^"]+)"/.exec(part.subarray(0, headerEnd).toString())?.[1]
-    if (name) parts.push({ name, data: Buffer.from(part.subarray(headerEnd + 4)) })
-    position = next
-  }
-  return parts
-}
-
-/**
- * An item's file upload. Files are sent under their content hash and the video under `video.mp4`, whose hash the
- * item's contents already name, so storage can serve every uploaded file back by hash.
- */
-async function storeUpload(req: HTTPRequest, ctx: RouteContext, itemId: string): Promise<void> {
-  const body = Buffer.from((await req.content()) ?? new Uint8Array())
-  const contents = ctx.builder.items.get(itemId)?.contents ?? {}
-  for (const { name, data } of parseMultipart(body, req.headers()['content-type'] ?? '')) {
-    ctx.storage[contents[name] ?? name] = data
-  }
-  return json(req, { ok: true })
-}
-
 /** Answers every request the page makes: the app's own assets pass through, everything else is mocked. */
 export function route(req: HTTPRequest, ctx: RouteContext): Promise<void> {
   const url = new URL(req.url())
@@ -191,8 +156,8 @@ export function route(req: HTTPRequest, ctx: RouteContext): Promise<void> {
         ? req.respond({ status: 200, headers: { 'content-type': 'application/octet-stream', ...CORS }, body: file })
         : req.respond({ status: 404, headers: CORS, body: '' })
     }
-    const upload = path.match(/^\/items\/([^/]+)\/(files|videos)$/)
-    if (method === 'POST' && upload) return storeUpload(req, ctx, upload[1])
+    // The bytes were captured in the page before the request left (see UPLOAD_CAPTURE_SCRIPT).
+    if (method === 'POST' && /^\/items\/[^/]+\/(files|videos)$/.test(path)) return json(req, { ok: true })
     const answer = ctx.builder.handle(method, path, url.searchParams, parseBody(req))
     if (answer) return json(req, answer.body, answer.status)
     process.stderr.write(`[e2e] unmocked builder-server route: ${method} ${path}\n`)
