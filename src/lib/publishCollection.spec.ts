@@ -17,6 +17,7 @@ import {
   consolidatePublishedCollection,
   PublishTransactionRevertedError,
   getAvailablePaymentMethods,
+  getManaApprovalNeeded,
   syncPublishedItems,
   getPublishBlocker,
   publishCollection,
@@ -164,6 +165,30 @@ describe('payment methods', () => {
     expect(canPayWith('credits', fee, { credits: 99, manaWei: 0n })).toBe(false)
     expect(canPayWith('mana', fee, { credits: 0, manaWei: 1000n * ETHER })).toBe(true)
     expect(canPayWith('mana', fee, { credits: 0, manaWei: 999n * ETHER })).toBe(false)
+  })
+})
+
+describe('getManaApprovalNeeded', () => {
+  // What the contract pulls: 3% above a 1000 MANA quote, still within the verification tolerance.
+  const onChainTotal = 1030n * ETHER
+  const padded = 1081n * ETHER + ETHER / 2n
+
+  it('approves the on-chain total plus the fee tolerance when the allowance only covers the quote', async () => {
+    await expect(getManaApprovalNeeded(onChainTotal, () => Promise.resolve(1000n * ETHER))).resolves.toBe(padded)
+  })
+
+  it('asks for no approval once the allowance covers the padded on-chain total', async () => {
+    await expect(getManaApprovalNeeded(onChainTotal, () => Promise.resolve(padded))).resolves.toBeNull()
+  })
+
+  it('treats a failed allowance read as no allowance', async () => {
+    await expect(getManaApprovalNeeded(onChainTotal, () => Promise.reject(new Error('rpc down')))).resolves.toBe(padded)
+  })
+
+  it('neither reads nor approves a free fee', async () => {
+    const read = vi.fn()
+    await expect(getManaApprovalNeeded(0n, read)).resolves.toBeNull()
+    expect(read).not.toHaveBeenCalled()
   })
 })
 

@@ -9,9 +9,10 @@ import { type ContractCall } from '~/lib/auth'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS, isRefusedRequest } from '~/lib/builder'
 import { isCollectionLocked, type Collection } from '~/lib/collections'
 import { CreditsServerError, type ExternalCall, type PublicationAuthorization } from '~/lib/credits'
-import { PublicationFeeMismatchError } from '~/lib/feeVerification'
+import { PublicationFeeMismatchError, withFeeTolerance } from '~/lib/feeVerification'
 import { hasOldHashedContents } from '~/lib/itemFactory'
 import { isMissingSmartWearableVideo, type Item } from '~/lib/items'
+import { fetchManaAllowance } from '~/lib/mana'
 import { weiToUsdCents, type PublicationFee } from '~/lib/publishFee'
 import { isWalletRejection } from '~/lib/walletErrors'
 import { getCollectionSymbol, toInitializeItems, type InitializeItem } from '~/lib/saveCollection'
@@ -66,6 +67,28 @@ export function canPayWith(method: PaymentMethod, fee: PublicationFee, balances:
 }
 
 export type CreditsAndMana = { credits: number; manaWei: bigint }
+
+/** How much MANA the CollectionManager may pull from `address` right now, read from the chain. */
+export async function fetchCollectionManagerAllowance(address: string): Promise<bigint> {
+  const chainId = getMaticChainId()
+  return fetchManaAllowance(address, getContract(ContractName.CollectionManager, chainId).address, chainId)
+}
+
+/**
+ * The MANA approval a publish paid in MANA still needs, or null when the allowance already covers it. The
+ * CollectionManager pulls the on-chain total (which a verified quote may sit below), so that total plus the same
+ * tolerance the verification grants the oracle is what must fit. A failed allowance read counts as no allowance: an
+ * extra approval prompt beats a publish that reverts.
+ */
+export async function getManaApprovalNeeded(
+  onChainTotalWei: bigint,
+  fetchAllowance: () => Promise<bigint>
+): Promise<bigint | null> {
+  const required = withFeeTolerance(onChainTotalWei)
+  if (required === 0n) return null
+  const allowance = await fetchAllowance().catch(() => 0n)
+  return allowance < required ? required : null
+}
 
 // CollectionManager.createCollection(forwarder, factory, salt, name, symbol, baseURI, creator, items).
 export type CreateCollectionArgs = [string, string, string, string, string, string, string, InitializeItem[]]

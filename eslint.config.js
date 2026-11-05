@@ -27,15 +27,19 @@ const UI2 = {
   patterns: [{ group: ['decentraland-ui2/*'], message: UI2_MESSAGE, allowTypeImports: true }]
 }
 const UI2_ALLOWED = [
-  'src/components/AvatarPreview/**/*.{ts,tsx}',
-  'src/components/PreviewControls/**/*.{ts,tsx}',
-  'src/components/ThumbnailModal/**/*.{ts,tsx}',
+  'src/components/AvatarPreview/AvatarPreview.tsx',
   'src/components/ItemDraftModal/DraftProcessor.tsx',
-  'src/components/Tooltip/**/*.{ts,tsx}',
-  'src/components/TopNav/**/*.{ts,tsx}'
+  'src/components/ThumbnailModal/ThumbnailModal.tsx',
+  'src/components/Tooltip/Tooltip.styles.ts'
 ]
+const UI2_STYLING = {
+  name: 'decentraland-ui2',
+  importNames: ['styled', 'keyframes', 'GlobalStyles'],
+  message:
+    'Styled defs live only in *.styles.ts, through @emotion/styled. See docs/DECISIONS.md (Pre-monorepo refactor).'
+}
 
-const STYLES_FILES = ['src/**/*.styles.ts', 'src/styles/**/*.{ts,tsx}']
+const STYLES_FILES = ['src/**/*.styles.ts', 'src/styles/**/*.ts']
 const EMOTION_ALL = {
   regex: '^@emotion/',
   message: 'Styling is migrating to CSS Modules; add no new Emotion. See docs/DECISIONS.md (Pre-monorepo refactor).'
@@ -49,6 +53,19 @@ const MUI = {
   message:
     'The monorepo has no MUI; only @mui/icons-material is allowed. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
+
+// no-restricted-imports does not see import(), so lazy-loaded usage needs its own rule.
+const DYNAMIC_EMOTION_MUI = {
+  selector: 'ImportExpression[source.value=/^(@emotion\\/|@mui\\/(?!icons-material(\\/|$)))/]',
+  message: 'No new Emotion or MUI, lazy-loaded included. See docs/DECISIONS.md (Pre-monorepo refactor).'
+}
+const DYNAMIC_UI2 = {
+  selector: 'ImportExpression[source.value=/^decentraland-ui2(\\/|$)/]',
+  message: UI2_MESSAGE
+}
+const DYNAMIC_UI2_ALLOWED = ['src/components/TopNav/TopNav.tsx']
+const DYNAMIC_ALL_ALLOWED = ['src/components/PreviewControls/PreviewControls.tsx']
+
 const SEAM_5 = 'See CONVENTIONS.md seam 5.'
 const BUILDER_TRANSPORT = {
   group: ['~/lib/builder/transport'],
@@ -130,7 +147,12 @@ export default tseslint.config(
   },
   {
     files: UI2_ALLOWED,
-    rules: { '@typescript-eslint/no-restricted-imports': ['error', AUTH] }
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        { paths: [...AUTH.paths, UI2_STYLING], patterns: AUTH.patterns }
+      ]
+    }
   },
   {
     files: ['src/lib/auth/**/*.{ts,tsx}'],
@@ -166,6 +188,15 @@ export default tseslint.config(
   {
     files: STYLES_FILES,
     rules: { 'no-restricted-imports': ['error', { patterns: [EMOTION_EXCEPT_STYLED, MUI, BUILDER_TRANSPORT] }] }
+  },
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: [...DYNAMIC_UI2_ALLOWED, ...DYNAMIC_ALL_ALLOWED],
+    rules: { 'no-restricted-syntax': ['error', DYNAMIC_EMOTION_MUI, DYNAMIC_UI2] }
+  },
+  {
+    files: DYNAMIC_UI2_ALLOWED,
+    rules: { 'no-restricted-syntax': ['error', DYNAMIC_EMOTION_MUI] }
   },
 
   // Mocks and fixtures legitimately traffic in `any` and unbound methods, so the
