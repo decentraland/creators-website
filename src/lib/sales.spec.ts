@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { Network, TradeAssetType, TradeType, type Trade } from '@dcl/schemas'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
 import { zeroAddress } from 'viem'
 import { TEST_SIGNER, signTypedDataWithTestKey, toTransaction } from '~/test/chain'
 import { TradeConflictError, TradeNotFoundError, tradeSigner } from './trades'

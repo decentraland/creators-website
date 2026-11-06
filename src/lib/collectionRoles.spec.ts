@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { toTransaction } from '~/test/chain'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
 import { type Collection } from './collections'
 import {
   buildSetRolesCall,

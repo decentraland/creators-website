@@ -1,7 +1,7 @@
 // Calls on the ThirdPartyRegistry (Polygon), ported from the legacy builder's thirdParty sagas and the TP approval
 // flow: creators register their third party and buy item slots when publishing; curators set the Merkle root of the
 // approved items (consuming the creator's cheque) and enable or disable a third party.
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
 import { parseSignature, zeroHash, type Hex } from 'viem'
 import { readContract, type ContractCall } from '~/lib/auth'
 import { type SlotsCheque } from '~/lib/builder'

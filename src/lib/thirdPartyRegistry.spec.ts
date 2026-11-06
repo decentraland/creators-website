@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { type ContractNetwork } from '@dcl/schemas'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
 import { zeroHash } from 'viem'
 import { readContract } from '~/lib/auth'
 import { decodeCall, toTransaction } from '~/test/chain'

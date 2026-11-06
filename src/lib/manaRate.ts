@@ -12,7 +12,7 @@ const MAX_CLOCK_SKEW_SECONDS = 300
 const AGGREGATOR_ABI = parseAbi([
   'function decimals() view returns (uint8)',
   'function latestRoundData() view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)'
-]) as unknown as object[]
+])
 
 type RoundData = readonly [
   roundId: bigint,
