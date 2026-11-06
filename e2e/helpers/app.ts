@@ -36,6 +36,8 @@ export type App = {
   transactions: SentTransaction[]
   /** URLs the page tried to open in a new tab or window. */
   openedUrls: string[]
+  /** Messages of the browser dialogs (confirm, beforeunload) the page raised; each one is accepted. */
+  dialogs: string[]
   /** The Segment `track` calls made so far, across reloads. */
   events: () => Promise<TrackedEvent[]>
   /** The Segment page view names, across reloads. */
@@ -125,9 +127,14 @@ async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
   await page.setViewport(VIEWPORTS[opts.viewport ?? 'desktop'])
   // isbot reads "HeadlessChrome" as a crawler, and the app turns analytics off for crawlers.
   await page.setUserAgent((await browser.userAgent()).replace('HeadlessChrome', 'Chrome'))
-  // Leaving a page with unsaved work asks first; specs that reload mean to.
-  page.on('dialog', dialog => void dialog.accept().catch(() => {}))
+  // Leaving a page with unsaved work asks first; specs that reload mean to, and can assert what was asked.
+  const dialogs: string[] = []
+  page.on('dialog', dialog => {
+    dialogs.push(dialog.type() === 'beforeunload' ? 'beforeunload' : dialog.message())
+    void dialog.accept().catch(() => {})
+  })
 
+  const storage = { ...fixtureStorage(), ...opts.storage }
   const tracked: TrackedEvent[] = []
   const pages: string[] = []
   const openedUrls: string[] = []
@@ -151,7 +158,6 @@ async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
   }
 
   const writes: string[] = []
-  const storage = { ...fixtureStorage(), ...opts.storage }
   const ctx: RouteContext = {
     appOrigin: new URL(BASE).origin,
     builder,
@@ -220,6 +226,7 @@ async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
     writes,
     transactions: chain.transactions,
     openedUrls,
+    dialogs,
     events,
     pageViews: () => [...pages],
     waitForEvent,

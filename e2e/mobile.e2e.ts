@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { collection, publishedCollection, publishedItem, wearable } from './fixtures'
 import { launchApp, type App } from './helpers/app'
-import { clickTestId, isShown, waitForTestId } from './helpers/dom'
+import { clickTestId, isHidden, waitForTestId } from './helpers/dom'
 
 let app: App | undefined
 afterEach(async () => {
@@ -22,20 +22,21 @@ describe('phones view collections without managing them', () => {
     await waitForTestId(page, 'item-row')
 
     for (const id of ['publish-collection', 'add-items', 'open-editor']) {
-      expect(await isShown(page, id), id).toBe(false)
+      expect(await isHidden(page, id), id).toBe(true)
     }
     expect(await page.$('[data-testid="validation-spinner"], [data-testid="item-row-validation"]')).toBeNull()
 
     await clickTestId(page, 'collection-actions')
     await waitForTestId(page, 'preview-items-action')
-    expect(await isShown(page, 'delete-collection')).toBe(false)
+    // The compact menu leaves deleting out altogether.
+    expect(await page.$('[data-testid="delete-collection"]')).toBeNull()
   })
 
   it('moves the published actions into the menu', async () => {
     app = await launchApp({ path: `/collections/${live.id}`, builder, viewport: 'mobile' })
     const { page } = app
     await waitForTestId(page, 'item-row')
-    expect(await isShown(page, 'send-items')).toBe(false)
+    expect(await isHidden(page, 'send-items')).toBe(true)
 
     await clickTestId(page, 'collection-actions')
     await waitForTestId(page, 'send-items-action')
@@ -57,9 +58,10 @@ describe('phones view collections without managing them', () => {
     app = await launchApp({ path: `/collections/${draft.id}`, builder })
     await app.page.setViewport({ width: 820, height: 1000 })
     await waitForTestId(app.page, 'item-row')
-    await app.page.waitForFunction(
-      () => !document.querySelector('[data-testid="publish-collection"]')?.checkVisibility()
-    )
-    expect(await isShown(app.page, 'add-items')).toBe(false)
+    await app.page.waitForFunction(() => {
+      const button = document.querySelector('[data-testid="publish-collection"]')
+      return !!button && !button.checkVisibility()
+    })
+    expect(await isHidden(app.page, 'add-items')).toBe(true)
   })
 })

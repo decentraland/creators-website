@@ -18,7 +18,7 @@ const PNG = Buffer.from(
 
 export type Flags = Record<string, boolean>
 export type Variants = Record<string, string>
-/** Forced responses keyed `[METHOD ]path-fragment`, e.g. `{ 'POST /tos': { status: 500 } }`. */
+/** Forced responses keyed `[METHOD ]path-suffix`, e.g. `{ 'POST /collections/<id>/tos': { status: 500 } }`. */
 export type ForcedErrors = Record<string, { status: number; body?: unknown }>
 
 export type Credits = { balanceCents: number; credits: number }
@@ -121,7 +121,8 @@ export function route(req: HTTPRequest, ctx: RouteContext): Promise<void> {
   const method = req.method()
 
   // Vite proxies /auth to the real auth site, so a sign-in click must stop here.
-  if (url.origin === ctx.appOrigin && pathname.startsWith('/auth')) {
+  // The same match as the dev proxy in vite.config.ts, which leaves `/authorizations` alone.
+  if (url.origin === ctx.appOrigin && /^\/auth(\/|$)/.test(pathname)) {
     return req.respond({
       status: 200,
       headers: { 'content-type': 'text/html' },
@@ -134,7 +135,7 @@ export function route(req: HTTPRequest, ctx: RouteContext): Promise<void> {
 
   const forced = Object.entries(ctx.errors).find(([key]) => {
     const [forcedMethod, fragment] = key.includes(' ') ? key.split(' ', 2) : [undefined, key]
-    return (!forcedMethod || forcedMethod === method) && pathname.includes(fragment)
+    return (!forcedMethod || forcedMethod === method) && pathname.endsWith(fragment)
   })
   if (forced) return json(req, forced[1].body ?? { ok: false, error: 'forced e2e error' }, forced[1].status)
 

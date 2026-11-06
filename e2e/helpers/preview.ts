@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { FIXTURE } from './files'
 
-/** Metrics the fake renderer reports for any model: a small single-mesh wearable. */
-export const PREVIEW_METRICS = { triangles: 540, materials: 1, textures: 1, meshes: 1, bodies: 1, entities: 1 }
+/** Metrics the fake renderer reports for any model, with values no fixture row uses so they can be traced. */
+export const PREVIEW_METRICS = { triangles: 1234, materials: 2, textures: 2, meshes: 1, bodies: 1, entities: 1 }
 
 let html: string | undefined
 
