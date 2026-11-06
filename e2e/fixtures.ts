@@ -29,6 +29,19 @@ export type RemoteCollectionRow = {
   last_activity_at?: string
 }
 
+export type RemoteThirdPartyRow = {
+  id: string
+  name: string
+  description: string
+  root: string
+  managers: string[]
+  isApproved: boolean
+  isProgrammatic: boolean
+  maxItems: string
+  contracts: Array<{ network: string; address: string }>
+  published: boolean
+}
+
 export type RemoteItemRow = {
   id: string
   name: string
@@ -116,6 +129,41 @@ export function publishedCollection(overrides: Partial<RemoteCollectionRow> = {}
     is_approved: true,
     reviewed_at: NOW,
     curation_status: 'approved',
+    ...overrides
+  })
+}
+
+export const THIRD_PARTY_ID = 'urn:decentraland:amoy:collections-thirdparty:brand-x'
+/** The NFT contract every linked fixture maps its items to. */
+export const LINKED_CONTRACT = '0x' + 'c3'.repeat(20)
+
+export function thirdParty(overrides: Partial<RemoteThirdPartyRow> = {}): RemoteThirdPartyRow {
+  return {
+    id: THIRD_PARTY_ID,
+    name: 'Brand X',
+    description: 'Linked wearables for e2e runs',
+    root: '',
+    managers: [TEST_ADDRESS],
+    isApproved: true,
+    isProgrammatic: false,
+    maxItems: '100',
+    contracts: [{ network: 'amoy', address: LINKED_CONTRACT }],
+    published: true,
+    ...overrides
+  }
+}
+
+/** A linked collection with a submitted item: what builder-server marks published. */
+export function linkedCollection(overrides: Partial<RemoteCollectionRow> = {}): RemoteCollectionRow {
+  const id = overrides.id ?? nextId()
+  return collection({
+    id,
+    eth_address: '',
+    urn: `${THIRD_PARTY_ID}:${id.slice(-4)}`,
+    is_published: true,
+    linked_contract_address: LINKED_CONTRACT,
+    linked_contract_network: 'amoy',
+    is_mapping_complete: true,
     ...overrides
   })
 }
@@ -222,22 +270,6 @@ export function publishedItem(
   })
 }
 
-export const THIRD_PARTY_ID = 'urn:decentraland:amoy:collections-thirdparty:e2e-tp'
-export const LINKED_CONTRACT = '0x' + 'd1'.repeat(20)
-
-/** A linked (third-party) collection mapping NFTs of LINKED_CONTRACT on Amoy. */
-export function linkedCollection(overrides: Partial<RemoteCollectionRow> = {}): RemoteCollectionRow {
-  return collection({
-    name: 'Linked Drops',
-    eth_address: '',
-    urn: `${THIRD_PARTY_ID}:e2e-collection`,
-    linked_contract_address: LINKED_CONTRACT,
-    linked_contract_network: 'amoy',
-    is_mapping_complete: true,
-    ...overrides
-  })
-}
-
 /** An item of a linked collection, mapped to any token of its contract. */
 export function linkedItem(parent: RemoteCollectionRow, index: number, overrides: Partial<RemoteItemRow> = {}) {
   return wearable({
@@ -249,20 +281,4 @@ export function linkedItem(parent: RemoteCollectionRow, index: number, overrides
     local_content_hash: `bafylinked${index}`,
     ...overrides
   })
-}
-
-export function thirdParty(overrides: Record<string, unknown> = {}) {
-  return {
-    id: THIRD_PARTY_ID,
-    name: 'E2E Third Party',
-    description: 'Linked wearables for e2e runs',
-    root: '',
-    managers: [TEST_ADDRESS],
-    isApproved: true,
-    isProgrammatic: false,
-    maxItems: '100',
-    contracts: [{ network: 'amoy', address: LINKED_CONTRACT }],
-    published: true,
-    ...overrides
-  }
 }

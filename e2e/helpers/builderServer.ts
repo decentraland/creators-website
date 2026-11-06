@@ -1,19 +1,13 @@
 import { ethers } from 'ethers'
-import { RARITIES, collection, wearable, type RemoteCollectionRow, type RemoteItemRow } from '../fixtures'
+import {
+  RARITIES,
+  collection,
+  wearable,
+  type RemoteCollectionRow,
+  type RemoteItemRow,
+  type RemoteThirdPartyRow
+} from '../fixtures'
 import { decodeTransaction, type SentTransaction } from './rpc'
-
-export type RemoteThirdPartyRow = {
-  id: string
-  name: string
-  description: string
-  root: string
-  managers: string[]
-  isApproved: boolean
-  isProgrammatic: boolean
-  maxItems: string
-  contracts: Array<{ network: string; address: string }>
-  published: boolean
-}
 
 export type RemoteItemCurationRow = {
   id: string

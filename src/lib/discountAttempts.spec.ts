@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { Network } from '@dcl/schemas'
 import { type CouponCreation } from '~/lib/coupons'
 import {
   acknowledgeUnconfirmedCreate,
@@ -140,5 +141,73 @@ describe('when the creator chooses to sign a new coupon next to an unconfirmed o
     expect(unconfirmedCreateOf(ADDRESS, 'c1')).toBeUndefined()
     const stored = JSON.parse(localStorage.getItem(`collection-discount-attempts:${ADDRESS.toLowerCase()}`)!)
     expect(stored.creates).toEqual([{ ...first, acknowledged: true }])
+  })
+})
+
+describe('when the attempts are written to storage', () => {
+  // A later build reads these back after a reload: their encoding must not drift.
+  it('should store them as plain JSON', () => {
+    const payload: CouponCreation = {
+      signer: ADDRESS.toLowerCase(),
+      chainId: 80002,
+      network: Network.MATIC,
+      checks: {
+        uses: 1_000_000,
+        expiration: NOW + 7 * 86_400_000,
+        effective: NOW,
+        salt: '0x' + '22'.repeat(32),
+        contractSignatureIndex: 2,
+        signerSignatureIndex: 5,
+        allowedRoot: '0x',
+        externalChecks: []
+      },
+      couponAddress: '0x00000000000000000000000000000000000000dd',
+      discountType: 1,
+      discount: 300_000,
+      collections: ['0x00000000000000000000000000000000000000cc'],
+      signature: '0x' + 'ab'.repeat(65)
+    }
+    savePendingEnd(ADDRESS, { ...end, nonce: 4, expiresAt: NOW + 86_400_000 })
+    saveUnconfirmedCreate(ADDRESS, { collectionId: 'c1', payload })
+    expect(localStorage.getItem(`collection-discount-attempts:${ADDRESS.toLowerCase()}`)).toBe(
+      JSON.stringify({
+        ends: [
+          {
+            discountId: 'd1',
+            txHash: '0xhash',
+            chainId: 80002,
+            sentAt: 1792108800000,
+            expiresAt: 1792195200000,
+            nonce: 4
+          }
+        ],
+        creates: [
+          {
+            collectionId: 'c1',
+            payload: {
+              signer: '0x00000000000000000000000000000000000000aa',
+              chainId: 80002,
+              network: 'MATIC',
+              checks: {
+                uses: 1000000,
+                expiration: 1792713600000,
+                effective: 1792108800000,
+                salt: '0x2222222222222222222222222222222222222222222222222222222222222222',
+                contractSignatureIndex: 2,
+                signerSignatureIndex: 5,
+                allowedRoot: '0x',
+                externalChecks: []
+              },
+              couponAddress: '0x00000000000000000000000000000000000000dd',
+              discountType: 1,
+              discount: 300000,
+              collections: ['0x00000000000000000000000000000000000000cc'],
+              signature:
+                '0xababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab'
+            }
+          }
+        ]
+      })
+    )
   })
 })
