@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { HASH, collection, upperBody } from './fixtures'
 import { launchApp, type App } from './helpers/app'
-import { clickTestId, uploadFiles, waitForEnabled, waitForTestId, waitForText } from './helpers/dom'
+import { clickTestId, uploadFiles, waitForEditor, waitForEnabled, waitForTestId, waitForToast } from './helpers/dom'
 import { FIXTURE } from './helpers/files'
 
 let app: App | undefined
@@ -24,7 +24,7 @@ describe('replace a model', () => {
       builder: { collections: [draft], items: [shirt] }
     })
     const { page } = app
-    await page.waitForSelector('[data-testid="item-editor-page"][data-mode="edit"]')
+    await waitForEditor(page)
     const before = structuredClone(app.builder.items.get(shirt.id)!)
 
     await clickTestId(page, 'properties-panel-actions')
@@ -37,7 +37,7 @@ describe('replace a model', () => {
     await waitForEnabled(page, 'change-file-save')
     await clickTestId(page, 'change-file-save')
 
-    await waitForText(page, 'was saved')
+    await waitForToast(page)
     await app.waitForEvent('Change item file', { itemId: shirt.id, bodyShape: 'male', mode: 'replace_shape' })
     const after = app.builder.items.get(shirt.id)!
     const representations = (item: typeof after) =>

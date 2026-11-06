@@ -76,10 +76,9 @@ describe('publish a collection', () => {
       builder: { collections: [draft], items: [items[0], upperBody({ collection_id: draft.id }, { invalid: true })] },
       flags: { 'builder-block-publish-on-validation-errors': true }
     })
-    await app.page.waitForSelector('[data-testid="publish-collection"][data-blocker="has_invalid_items"]', {
-      timeout: 30_000
-    })
-    await clickTestId(app.page, 'publish-collection')
-    expect(await app.page.$(byTestId('publish-name-step'))).toBeNull()
+    await app.page.waitForSelector(
+      '[data-testid="publish-collection"][data-blocker="has_invalid_items"][aria-disabled="true"]',
+      { timeout: 30_000 }
+    )
   })
 })

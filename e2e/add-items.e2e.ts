@@ -9,7 +9,7 @@ import {
   selectOptions,
   waitForEnabled,
   waitForTestId,
-  waitForText
+  waitForToast
 } from './helpers/dom'
 import { FIXTURE, downloadedEmoteZip, eyesWithMaskZip, legacyWearableZip } from './helpers/files'
 import { PREVIEW_METRICS } from './helpers/preview'
@@ -93,7 +93,7 @@ describe('add items to a collection', () => {
     expect(Object.keys(eyes?.contents ?? {}).some(path => path.endsWith('eyes_mask.png'))).toBe(true)
     expect(items.every(item => uploaded(app!, item.contents))).toBe(true)
 
-    await waitForText(app.page, '3 Items successfully added')
+    await waitForToast(app.page)
     await app.waitForEvent('Add items', { collectionId: draft.id, item_count: 3, failed_count: 0 })
     await app.page.waitForFunction(() => document.querySelectorAll('[data-testid="item-row"]').length === 3)
   })
@@ -110,7 +110,7 @@ describe('add items to a collection', () => {
     const [item] = await savedItems(app)
     expect(item).toMatchObject({ name: 'hat', rarity: 'rare', data: { category: 'hat' } })
     // The metrics and the thumbnail come from the preview the draft was rendered in.
-    expect(item.metrics).toMatchObject({ triangles: PREVIEW_METRICS.triangles })
+    expect(item.metrics).toEqual(PREVIEW_METRICS)
     expect(uploaded(app, item.contents)).toBe(true)
     await app.page.waitForFunction(() => document.querySelectorAll('[data-testid="item-row"]').length === 1)
   })

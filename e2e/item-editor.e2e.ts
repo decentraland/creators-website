@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { collection, upperBody, wearable } from './fixtures'
 import { launchApp, type App } from './helpers/app'
-import { byTestId, clickTestId, selectOption, waitForTestId, waitForText } from './helpers/dom'
+import { byTestId, clickTestId, selectOption, waitForEditor, waitForTestId, waitForToast } from './helpers/dom'
 
 let app: App | undefined
 afterEach(async () => {
@@ -17,7 +17,7 @@ const editorPath = (itemId: string) => `/collections/editor?collection=${draft.i
 
 async function openEditor(itemId: string): Promise<App> {
   const launched = await launchApp({ path: editorPath(itemId), builder: { collections: [draft], items: [hat, polo] } })
-  await launched.page.waitForSelector('[data-testid="item-editor-page"][data-mode="edit"]')
+  await waitForEditor(launched.page)
   return launched
 }
 
@@ -38,7 +38,7 @@ describe('item editor', () => {
     await page.keyboard.press('Escape')
     await clickTestId(page, 'properties-panel-save')
 
-    await waitForText(page, 'was saved')
+    await waitForToast(page)
     await app.waitForEvent('Save item', { itemId: hat.id })
     const saved = app.builder.items.get(hat.id)!
     expect(saved).toMatchObject({ name: 'Bandana Deluxe', data: { category: 'helmet' } })
@@ -49,7 +49,7 @@ describe('item editor', () => {
     }
 
     await page.reload({ waitUntil: 'networkidle2' })
-    await page.waitForSelector('[data-testid="item-editor-page"][data-mode="edit"]')
+    await waitForEditor(page)
     expect(await page.$eval(byTestId('properties-panel-name'), el => (el as HTMLInputElement).value)).toBe(
       'Bandana Deluxe'
     )
@@ -62,7 +62,9 @@ describe('item editor', () => {
 
     await clickTestId(app.page, 'validation-badge')
     await waitForTestId(app.page, 'validation-badge-modal')
-    await waitForText(app.page, 'maximum texture size')
+    await app.page.waitForSelector(
+      '[data-testid="validation-badge-modal"] [data-severity="error"][data-code="texture-size"]'
+    )
     await app.waitForEvent('Item Validation Details Opened', { itemId: polo.id, status: 'errors', trigger: 'editor' })
   })
 })
