@@ -56,7 +56,8 @@ import {
 import { MAX_PUBLISH_ITEMS, getPublishBlocker } from '~/lib/publishCollection'
 import { useSaveItem } from '~/hooks/useSaveItem'
 import { useForumPostRecovery } from '~/hooks/useForumPost'
-import { usePublishInFlight, useSyncPublishedItems } from '~/hooks/usePublishCollection'
+import { useLockedCollectionDeployed, useSyncPublishedItems } from '~/hooks/usePublishCollection'
+import { usePublishInFlight } from '~/store/publishSync'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useCollectionListings } from '~/hooks/useCollectionListings'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
@@ -386,13 +387,16 @@ const CollectionDetailPage = () => {
   const canRename = !!collection && !collection.isPublished && !isCollectionLocked(collection)
   const canAddItems = canRename
   const hasInvalidItems = blockOnErrors && invalidCount > 0
-  const publishInFlight = usePublishInFlight(collection?.id)
-  const publishBlocker =
-    collection && !publishInFlight
-      ? getPublishBlocker(collection, total, allItems ?? [], { hasInvalidItems })
-      : 'not_draft'
   // A locked draft's last transaction may have reverted: publishing again is safe, as at most one can land.
   const isPublishRetry = !!collection && isCollectionLocked(collection)
+  const publishInFlight = usePublishInFlight(collection?.id)
+  // A retry is hidden once an earlier attempt is known to have landed; a failed read still offers it.
+  const deployed = useLockedCollectionDeployed(isPublishRetry ? collection : undefined)
+  const retryLanded = isPublishRetry && (deployed.isLoading || deployed.data === true)
+  const publishBlocker =
+    collection && !publishInFlight && !retryLanded
+      ? getPublishBlocker(collection, total, allItems ?? [], { hasInvalidItems })
+      : 'not_draft'
   const pushBlocked = hasInvalidItems
 
   function openFileBrowser() {

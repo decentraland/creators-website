@@ -435,6 +435,8 @@ export async function consolidatePublishedCollection(
   retryDelayMs = CONSOLIDATE_RETRY_DELAY_MS
 ): Promise<void> {
   const mined = await deps.waitForTransaction(txHash)
+  // Code at the address can only be this exact collection: the factory derives it from the salt, its caller (the
+  // CollectionManager's forwarder) and the full initialize calldata, creator included.
   if (!mined && !(await deps.isCollectionDeployed?.().catch(() => false))) {
     throw new PublishTransactionRevertedError(txHash)
   }

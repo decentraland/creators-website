@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useSyncExternalStore } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { ContractName, getContract } from 'decentraland-transactions'
 import { errorCode, track } from '~/lib/analytics'
@@ -41,6 +41,7 @@ import { buildCollectionInitializeData } from '~/lib/saveCollection'
 import { useTranslation } from '~/intl'
 import { postToForum } from '~/hooks/useForumPost'
 import { storeCuration } from '~/hooks/useCuration'
+import { isPublishSyncing, usePublishSyncStore } from '~/store/publishSync'
 
 export function useRarities(address: string | undefined) {
   return useQuery({
@@ -155,7 +156,7 @@ export function usePublishCollection(session: Session | null) {
       void queryClient.invalidateQueries({ queryKey: ['credits-balance', address] })
       void queryClient.invalidateQueries({ queryKey: ['mana-balance', address] })
       // Detached on purpose: the modal closes right away and the server catches up on its own.
-      startSync(collection.id)
+      usePublishSyncStore.getState().start(collection.id)
       const { contractAddress } = collection
       consolidatePublishedCollection(collection.id, txHash, {
         waitForTransaction: hash => waitForTransaction(chainId, hash),
@@ -187,7 +188,7 @@ export function usePublishCollection(session: Session | null) {
           })
         })
         .finally(() => {
-          endSync(collection.id)
+          usePublishSyncStore.getState().end(collection.id)
           invalidateCollectionItems(queryClient, collection.id)
         })
     },
@@ -227,33 +228,6 @@ export async function requestFirstReview(
   }
 }
 
-// Collections whose chain→server sync is running in this tab, so a page mount doesn't start a second one and the
-// publishing tab doesn't offer to publish again while its own transaction is still pending.
-const syncing = new Set<string>()
-const syncListeners = new Set<() => void>()
-
-function startSync(collectionId: string) {
-  syncing.add(collectionId)
-  syncListeners.forEach(listener => listener())
-}
-
-function endSync(collectionId: string) {
-  syncing.delete(collectionId)
-  syncListeners.forEach(listener => listener())
-}
-
-function subscribeSyncing(listener: () => void) {
-  syncListeners.add(listener)
-  return () => {
-    syncListeners.delete(listener)
-  }
-}
-
-/** Whether this tab is still waiting for the collection's publish transaction or its server sync. */
-export function usePublishInFlight(collectionId: string | undefined): boolean {
-  return useSyncExternalStore(subscribeSyncing, () => !!collectionId && syncing.has(collectionId))
-}
-
 /**
  * Recovery for a publish whose consolidation never finished (tab closed before the transaction was
  * mined): once the server reports the collection published while its items still lack token ids,
@@ -268,18 +242,33 @@ export function useSyncPublishedItems(address: string | undefined, collection: C
   const opensReview = useMemo(() => !!collection && isRecentPublication(collection), [collection])
 
   useEffect(() => {
-    if (!address || !collectionId || !urn || !needsSync || syncing.has(collectionId)) return
-    startSync(collectionId)
+    if (!address || !collectionId || !urn || !needsSync || isPublishSyncing(collectionId)) return
+    usePublishSyncStore.getState().start(collectionId)
     syncPublishedItems(collectionId, { publishCollectionItems: id => publishCollectionItems(address, id) })
       .then(async () => {
         if (opensReview) await requestFirstReview(queryClient, address, { id: collectionId, urn })
       })
       .catch(error => console.error('Collection items sync failed', error))
       .finally(() => {
-        endSync(collectionId)
+        usePublishSyncStore.getState().end(collectionId)
         invalidateCollectionItems(queryClient, collectionId)
       })
   }, [address, collectionId, urn, needsSync, opensReview, queryClient])
+}
+
+/**
+ * Whether a locked draft's contract is already on chain: an earlier attempt landed but isn't indexed yet, so a retry
+ * would only revert. Off for any other collection.
+ */
+export function useLockedCollectionDeployed(collection: Collection | undefined) {
+  const chainId = getMaticChainId()
+  const contractAddress = collection && isCollectionLocked(collection) ? collection.contractAddress : undefined
+  return useQuery({
+    queryKey: ['collection-deployed', chainId, contractAddress],
+    queryFn: () => isContractDeployed(chainId, contractAddress!),
+    enabled: !!contractAddress,
+    staleTime: 30_000
+  })
 }
 
 /** The files of a saved item as blobs, for the thumbnail editor; off until an item is given. */
