@@ -18,6 +18,7 @@ type Props = {
   isEditing: boolean
   isSaving: boolean
   saveError: boolean
+  canEdit: boolean
   canDelete: boolean
   /** Other rows lock while one is being edited. */
   locked: boolean
@@ -36,6 +37,7 @@ export function PublishItemRow({
   isEditing,
   isSaving,
   saveError,
+  canEdit,
   canDelete,
   locked,
   pendingThumbnail,
@@ -157,16 +159,18 @@ export function PublishItemRow({
           </>
         ) : (
           <>
-            <S.IconButton
-              type="button"
-              title={t('publish_collection_modal.items_step.edit')}
-              aria-label={t('publish_collection_modal.items_step.edit')}
-              disabled={locked}
-              data-testid="publish-item-edit"
-              onClick={startEditing}
-            >
-              <EditIcon />
-            </S.IconButton>
+            {canEdit && (
+              <S.IconButton
+                type="button"
+                title={t('publish_collection_modal.items_step.edit')}
+                aria-label={t('publish_collection_modal.items_step.edit')}
+                disabled={locked}
+                data-testid="publish-item-edit"
+                onClick={startEditing}
+              >
+                <EditIcon />
+              </S.IconButton>
+            )}
             {canDelete && (
               <S.IconButton
                 type="button"

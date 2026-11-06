@@ -56,7 +56,7 @@ import {
 import { MAX_PUBLISH_ITEMS, getPublishBlocker } from '~/lib/publishCollection'
 import { useSaveItem } from '~/hooks/useSaveItem'
 import { useForumPostRecovery } from '~/hooks/useForumPost'
-import { useSyncPublishedItems } from '~/hooks/usePublishCollection'
+import { usePublishInFlight, useSyncPublishedItems } from '~/hooks/usePublishCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useCollectionListings } from '~/hooks/useCollectionListings'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
@@ -386,9 +386,13 @@ const CollectionDetailPage = () => {
   const canRename = !!collection && !collection.isPublished && !isCollectionLocked(collection)
   const canAddItems = canRename
   const hasInvalidItems = blockOnErrors && invalidCount > 0
-  const publishBlocker = collection
-    ? getPublishBlocker(collection, total, allItems ?? [], { hasInvalidItems })
-    : 'not_draft'
+  const publishInFlight = usePublishInFlight(collection?.id)
+  const publishBlocker =
+    collection && !publishInFlight
+      ? getPublishBlocker(collection, total, allItems ?? [], { hasInvalidItems })
+      : 'not_draft'
+  // A locked draft's last transaction may have reverted: publishing again is safe, as at most one can land.
+  const isPublishRetry = !!collection && isCollectionLocked(collection)
   const pushBlocked = hasInvalidItems
 
   function openFileBrowser() {
@@ -603,7 +607,9 @@ const CollectionDetailPage = () => {
                           max: MAX_PUBLISH_ITEMS,
                           count: invalidCount
                         })
-                      : null
+                      : isPublishRetry
+                        ? t('collection_detail_page.publish_again_hint')
+                        : null
                   }
                   placement="bottom"
                   asChild
@@ -615,6 +621,7 @@ const CollectionDetailPage = () => {
                     data-desktop-only
                     data-testid="publish-collection"
                     data-blocker={publishBlocker ?? undefined}
+                    data-retry={isPublishRetry || undefined}
                     aria-disabled={publishBlocker ? true : undefined}
                     onClick={() => {
                       if (publishBlocker) return
@@ -622,7 +629,7 @@ const CollectionDetailPage = () => {
                       setPublishView('wizard')
                     }}
                   >
-                    {t('collection_detail_page.publish')}
+                    {t(isPublishRetry ? 'collection_detail_page.publish_again' : 'collection_detail_page.publish')}
                   </Button>
                 </Tooltip>
               )}

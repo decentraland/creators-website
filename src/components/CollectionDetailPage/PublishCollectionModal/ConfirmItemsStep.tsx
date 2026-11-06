@@ -20,13 +20,23 @@ type Props = {
   address: string
   collection: Collection
   items: Item[]
+  /** Items can't be edited or removed: the collection is locked by a publish. */
+  readOnly?: boolean
   onBusyChange: (busy: boolean) => void
   onBack: () => void
   onConfirm: () => void
 }
 
 /** Step 2: review every item; names and rarities are editable in place, items can be removed. */
-export function ConfirmItemsStep({ address, collection, items, onBusyChange, onBack, onConfirm }: Props) {
+export function ConfirmItemsStep({
+  address,
+  collection,
+  items,
+  readOnly = false,
+  onBusyChange,
+  onBack,
+  onConfirm
+}: Props) {
   const { t } = useTranslation()
   const showToast = useNotifications(state => state.showToast)
   const [accepted, setAccepted] = useState(false)
@@ -106,7 +116,8 @@ export function ConfirmItemsStep({ address, collection, items, onBusyChange, onB
                 isEditing={editingId === item.id}
                 isSaving={editingId === item.id && updateItem.isPending}
                 saveError={editingId === item.id && updateItem.isError}
-                canDelete={items.length > 1 && canDeleteItem(collection, address)}
+                canEdit={!readOnly}
+                canDelete={!readOnly && items.length > 1 && canDeleteItem(collection, address)}
                 locked={editingId !== null && editingId !== item.id}
                 pendingThumbnail={editingId === item.id ? (thumbnailPatch?.thumbnail ?? null) : null}
                 onEdit={() => {

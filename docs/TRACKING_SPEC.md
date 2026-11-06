@@ -75,8 +75,9 @@ A Segment `page` call per pathname change, named from a fixed map in `lib/pageVi
 | `Delete collection error` |  | `collectionId`, `error` |
 | `Preview In World` | a **Preview in World** launch settles (desktop only) | `collectionId`, `itemCount`, `launched` (the desktop explorer opened; `false` = sent to the download page), `trigger` (`detail` = the collection page's ⋯ menu, `editor` = item editor preview bar; not `source`, which the app sets on every event) |
 | `Publish details confirmed` | step 1 of the publish wizard was confirmed and left (after a rename saved) | `collectionId`, `nameChanged`, `emailSource` (`profile` = kept the profile email, `edited` = changed it, `typed` = no profile email) |
-| `Publish collection` | the publish transaction was sent and the collection locked | `collectionId`, `txHash`, `isFiat` (always `false` — no fiat publish here), `usedCredits`, `creditsAmount`, `item_count` |
-| `Publish collection error` |  | `collectionId`, `isFiat`, `usedCredits`, `error` |
+| `Publish collection` | the publish transaction was sent and the collection locked | `collectionId`, `txHash`, `isFiat` (always `false` — no fiat publish here), `usedCredits`, `creditsAmount`, `item_count`, `isRetry` (the collection was still locked by an earlier publish) |
+| `Publish collection error` |  | `collectionId`, `isFiat`, `usedCredits`, `isRetry`, `error` |
+| `Publish collection reverted` | the publish transaction was mined but reverted (and no earlier attempt had deployed the collection); nothing was charged and the creator can publish again | `collectionId`, `txHash`, `usedCredits` |
 | `Open buy credits` | the credits top-up opened from the publish payment step because the balance falls short | `collectionId`, `shortfall` |
 | `Start credits checkout` | the creator leaves for Stripe's hosted checkout (the wizard state is saved to resume on return) | `collectionId`, `orderId`, `packId`, `quantity`, `credits`, `usd`, `shortfall`, `resumeSaved` |
 | `Credits checkout canceled` | back from Stripe with the checkout cancelled; the order is cancelled server-side | `collectionId`, `orderId` |
