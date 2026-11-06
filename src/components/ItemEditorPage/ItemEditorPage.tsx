@@ -73,7 +73,7 @@ import { useWallet } from '~/store/wallet'
 import { theme } from '~/styles/theme'
 import { AvatarCustomizerDrawer, AvatarCustomizerToggle } from './AvatarCustomizer'
 import { CollectionPicker } from './CollectionPicker'
-import { ItemsSidebar } from './ItemsSidebar'
+import { ItemsSidebar, type EditorBack } from './ItemsSidebar'
 import { MobilePreview } from './MobilePreview'
 import { PlaybackBar } from './PlaybackBar'
 import { PropertiesPanel, type SpringBonesFormProps } from './PropertiesPanel'
@@ -495,7 +495,9 @@ const ItemEditorPage = () => {
   const isLoading =
     !restored ||
     isResolvingReviewer ||
-    (!!address && !!collectionId && (collectionQuery.isLoading || itemsQuery.isLoading || thirdParty.isLoading))
+    (!!address && !!collectionId && (collectionQuery.isLoading || itemsQuery.isLoading || thirdParty.isLoading)) ||
+    // Whether a viewer without a role gets a back link depends on the committee, so wait for it.
+    (mode === 'edit' && !!collection && !hasRole && committee.isLoading)
   const isThirdPartyNotFound =
     thirdParty.isError &&
     thirdParty.error instanceof BuilderServerError &&
@@ -666,14 +668,15 @@ const ItemEditorPage = () => {
 
   // The detail page is for the collection's roles; a curator with none goes back to the curation list, and anyone
   // else reached a published collection by link and has nowhere to go back to.
-  const editBackTo = collection
+  const editBack: EditorBack | undefined = collection
     ? hasRole
-      ? `/collections/${collection.id}`
+      ? { to: `/collections/${collection.id}`, label: t('item_editor.sidebar.back') }
       : isCurator
-        ? curationListUrl()
+        ? { to: curationListUrl(), label: t('item_editor.review.back') }
         : undefined
     : undefined
-  const mobileBackTo = mode === 'review' ? curationListUrl() : editBackTo
+  const mobileBack: EditorBack | undefined =
+    mode === 'review' ? { to: curationListUrl(), label: t('item_editor.review.back') } : editBack
   const leaveEditor = (to: string) => {
     if (!form.isDirty) return true
     setPending({ kind: 'away', to })
@@ -682,13 +685,13 @@ const ItemEditorPage = () => {
   // Phones get no sidebar and no review bar, so this strip is the only way back out of the editor.
   const mobileHeader = collection ? (
     <S.MobileEditorHeader data-testid="mobile-editor-header">
-      {mobileBackTo && (
+      {mobileBack && (
         <S.MobileBackLink
-          to={mobileBackTo}
-          aria-label={t(mode === 'review' ? 'item_editor.review.back' : 'item_editor.sidebar.back')}
+          to={mobileBack.to}
+          aria-label={mobileBack.label}
           data-testid="mobile-editor-back"
           onClick={event => {
-            if (mode === 'edit' && !leaveEditor(mobileBackTo)) event.preventDefault()
+            if (mode === 'edit' && !leaveEditor(mobileBack.to)) event.preventDefault()
           }}
         >
           <ArrowBackIosNew fontSize="small" />
@@ -754,7 +757,7 @@ const ItemEditorPage = () => {
         addItems().catch((error: unknown) => console.error('Add items failed:', error))
       }}
       onSelect={selectItem}
-      backTo={editBackTo}
+      back={editBack}
       onLeave={leaveEditor}
       onToggleDressed={item => toggleDressed({ id: item.id, type: item.type, category: item.data.category })}
       onToggleEmotePlay={toggleEmotePlay}

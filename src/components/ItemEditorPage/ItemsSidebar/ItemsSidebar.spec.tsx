@@ -64,7 +64,7 @@ function renderSidebar(overrides: Partial<ComponentProps<typeof ItemsSidebar>> =
     bodyShape: BodyShape.MALE,
     isPlaying: false,
     mode: 'edit',
-    backTo: '/collections/c1',
+    back: { to: '/collections/c1', label: 'Back to collection' },
     collapsed: false,
     onToggleCollapsed: vi.fn(),
     canAddItems: true,
@@ -128,7 +128,7 @@ describe('ItemsSidebar', () => {
   })
 
   it('shows no back link to a visitor with nowhere to go back to', () => {
-    renderSidebar({ backTo: undefined })
+    renderSidebar({ back: undefined })
     expect(screen.queryByTestId('items-sidebar-back')).not.toBeInTheDocument()
     expect(screen.getByTestId('items-sidebar-collection')).toHaveTextContent('Pirate Hats')
   })

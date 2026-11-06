@@ -132,6 +132,11 @@ export function route(req: HTTPRequest, ctx: RouteContext): Promise<void> {
 
   if (hostname === 'api.github.com') return json(req, { assets: [] })
 
+  // No published collection in a seed has listings or minted items.
+  if (hostname.startsWith('marketplace-api.') && (pathname === '/v1/items' || pathname === '/v3/catalog/unified')) {
+    return json(req, { data: [] })
+  }
+
   if (hostname.startsWith('credits.') && /^\/users\/[^/]+\/credits$/.test(pathname)) {
     return json(req, { usd: { balanceCents: 0, credits: 0 } })
   }

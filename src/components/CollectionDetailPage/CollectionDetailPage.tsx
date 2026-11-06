@@ -182,6 +182,7 @@ const CollectionDetailPage = () => {
   const standardCollection = isLinked ? undefined : collection
   const thirdParty = useThirdParty(address, isLinked ? collection : undefined)
   const isLinkedManager = !!thirdParty.data && isThirdPartyManager(thirdParty.data, address)
+  const hasRole = !!collection && (isLinked ? isLinkedManager : hasCollectionRole(collection, address))
   const allItems = itemsQuery.data
   const total = allItems?.length ?? 0
   const counts = useMemo(() => countItemsByType(allItems ?? []), [allItems])
@@ -198,13 +199,13 @@ const CollectionDetailPage = () => {
   const canManage = !!standardCollection && canManageCollectionItems(standardCollection, address)
   // builder-server serves a collection's curation to its owner, collaborators and the committee only.
   const committee = useCommittee(address)
-  const curationAddress = canManage || committee.isCurator ? address : undefined
+  // Without a role the page is "not found", so curators only read it where they hold one.
+  const curationAddress = canManage || (committee.isCurator && hasRole) ? address : undefined
   useSyncPublishedItems(canManage ? address : undefined, standardCollection, allItems ?? [])
   useForumPostRecovery(address, standardCollection, allItems ?? [])
   // Price, Sales and Sale Status exist once the collection is published; the owner can put items on sale
   // once it has been approved at least once, even if it is under review again.
-  // Skipped for a visitor with no role, who gets "not found" instead.
-  const withMarket = !!standardCollection?.isPublished && hasCollectionRole(standardCollection, address)
+  const withMarket = !!standardCollection?.isPublished && hasRole
   const status = useCollectionStatus(curationAddress, standardCollection)
   const showForumPost = !!standardCollection && isForumPostRelevant(standardCollection, status)
   const statusHint =
@@ -376,8 +377,9 @@ const CollectionDetailPage = () => {
       NOT_FOUND_STATUSES.includes(collectionQuery.error.status)) ||
     (!!collection &&
       (isLinked
-        ? !getThirdPartyId(collection) || isThirdPartyNotFound || (!!thirdParty.data && !isLinkedManager)
-        : !hasCollectionRole(collection, address)))
+        ? // A third-party request that failed otherwise is a retryable error, not a missing role.
+          !getThirdPartyId(collection) || isThirdPartyNotFound || (!thirdParty.isError && !hasRole)
+        : !hasRole))
   const isError = !isNotFound && (collectionQuery.isError || (!isLinked && itemsQuery.isError) || thirdParty.isError)
   const isEmpty = filteredTotal === 0
   const hasItems = total > 0
