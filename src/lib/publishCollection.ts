@@ -119,6 +119,8 @@ export function buildCreateCollectionCall(chainId: number, args: CreateCollectio
 
 const EXTERNAL_CALL_TTL_MS = 24 * 60 * 60 * 1000
 
+const randomSalt = () => toHex(crypto.getRandomValues(new Uint8Array(32)))
+
 /**
  * The CreditsManager external call that runs createCollection on the creator's behalf. Byte-compatible
  * with decentraland-dapps' `buildCollectionManagerExternalCall`: selector + ABI-encoded params.
@@ -127,7 +129,7 @@ export function buildCollectionManagerExternalCall(
   chainId: number,
   args: CreateCollectionArgs,
   now = Date.now(),
-  salt: string = toHex(crypto.getRandomValues(new Uint8Array(32)))
+  salt: string = randomSalt()
 ): ExternalCall {
   const manager = getContract(ContractName.CollectionManager, chainId)
   const createCollection = getAbiItem({ abi: manager.abi, name: 'createCollection' }) as AbiFunction
@@ -292,7 +294,12 @@ export async function publishCollection(params: PublishParams, deps: PublishDeps
     const args = buildCreateCollectionArgs(collection, items, address, chainId)
     let txHash: string
     if (paymentMethod === 'credits') {
-      const externalCall = buildCollectionManagerExternalCall(chainId, args, Date.now(), deps.randomSalt?.())
+      const externalCall = buildCollectionManagerExternalCall(
+        chainId,
+        args,
+        Date.now(),
+        (deps.randomSalt ?? randomSalt)()
+      )
       const authorization = await deps.authorizePublication({
         usdPriceCents: weiToUsdCents(fee.total.usdWei),
         chainId,

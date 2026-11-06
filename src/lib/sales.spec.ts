@@ -3,13 +3,7 @@ import { Network, TradeAssetType, TradeType, type Trade } from '@dcl/schemas'
 import { ContractName, getContract } from '~/lib/chain/contracts'
 import { zeroAddress } from 'viem'
 import { TEST_SIGNER, signTypedDataWithTestKey, toTransaction } from '~/test/chain'
-import {
-  OFFCHAIN_MARKETPLACE_TYPES,
-  TradeConflictError,
-  TradeNotFoundError,
-  getTradeDomain,
-  toTradeTypedValues
-} from './trades'
+import { TradeConflictError, TradeNotFoundError, tradeSigner } from './trades'
 import { type Collection } from './collections'
 import { ItemType, type Item } from './items'
 import {
@@ -345,13 +339,7 @@ describe('sellItem', () => {
     const createTrade = vi.fn().mockResolvedValue('trade-1')
     const deps = makeDeps({
       randomSalt: () => SALT,
-      signTrade: trade =>
-        signTypedDataWithTestKey(
-          getTradeDomain(CHAIN_ID),
-          OFFCHAIN_MARKETPLACE_TYPES,
-          'Trade',
-          toTradeTypedValues(trade)
-        ),
+      signTrade: tradeSigner(signTypedDataWithTestKey, CHAIN_ID),
       createTrade
     })
     try {
