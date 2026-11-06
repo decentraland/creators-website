@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ContractName, getCouponManager } from 'decentraland-transactions'
+import { ethers } from 'ethers'
+import { ContractName, getContract, getCouponManager, sendMetaTransaction } from 'decentraland-transactions'
 import { type Session } from './auth'
 import {
   WrongAccountError,
@@ -7,10 +8,19 @@ import {
   readWalletChainId,
   sendContractTransaction,
   sendWalletTransaction,
+  signTypedData,
   subscribeWalletChain,
   switchWalletChain,
   watchTransaction
 } from './transactions'
+import { OFFCHAIN_MARKETPLACE_TYPES, getTradeDomain } from '~/lib/trades'
+import { typedDataDigest } from '~/test/chain'
+
+vi.mock('decentraland-transactions', async () => {
+  const actual = await vi.importActual<typeof import('decentraland-transactions')>('decentraland-transactions')
+  return { ...actual, sendMetaTransaction: vi.fn().mockResolvedValue('0xrelayed') }
+})
+vi.mock('decentraland-connect', () => ({ getRpcUrls: () => ({ 80002: 'https://rpc.example.com' }) }))
 
 const manager = { ...getCouponManager(ContractName.OffChainMarketplaceV3, 80002), chainId: 80002 }
 const call = { contract: manager, method: 'increaseSignerSignatureIndex', args: [] }
@@ -19,6 +29,7 @@ type Behavior = 'switches' | 'needs-add' | 'refuses' | 'ignores' | 'changes-acco
 
 const ACCOUNT = '0x00000000000000000000000000000000000000aa'
 const OTHER = '0x00000000000000000000000000000000000000bb'
+const COLLECTION = '0x00000000000000000000000000000000000000ee'
 
 /** A wallet on `chainId`, signed in as `account`, that reacts to a switch request the way `behavior` says. */
 function walletOn(chainId: number, behavior: Behavior = 'switches', account = ACCOUNT) {
@@ -108,6 +119,26 @@ describe('when sending a transaction from the wallet itself', () => {
     const { session, sendTransaction } = walletOn(80002)
     await sendContractTransaction({ ...session, signer: { sendTransaction } } as unknown as Session, call)
     expect(sendTransaction.mock.calls[0][0].maxPriorityFeePerGas.toString()).toBe('30000000000')
+  })
+})
+
+describe('when the wallet is on another chain than the contract', () => {
+  it('should relay the exact calldata as a Polygon meta-transaction', async () => {
+    const eip1193 = { request: vi.fn() }
+    const session = {
+      web3Provider: { getNetwork: async () => ({ chainId: 1 }), provider: eip1193 }
+    } as unknown as Session
+    const contract = { ...getContract(ContractName.ERC721CollectionV2, 80002), address: COLLECTION }
+    const transfer = { contract, method: 'transferCreatorship', args: [OTHER] }
+
+    await expect(sendContractTransaction(session, transfer)).resolves.toBe('0xrelayed')
+    const [provider, , data, target, options] = vi.mocked(sendMetaTransaction).mock.calls[0]
+    expect(provider).toBe(eip1193)
+    expect(target).toBe(contract)
+    expect({ data, options }).toEqual({
+      data: '0x6d2e4b1b00000000000000000000000000000000000000000000000000000000000000bb',
+      options: { serverURL: 'https://transactions-api.decentraland.zone/v1' }
+    })
   })
 })
 
@@ -216,5 +247,71 @@ describe('when watching a transaction until it settles', () => {
     await expect(watchTransaction(unknown.reader, HASH, { ...options, ...unknown.clock })).resolves.toBe('pending')
     const down = chain({ fail: true })
     await expect(watchTransaction(down.reader, HASH, { ...options, ...down.clock })).resolves.toBe('pending')
+  })
+})
+
+describe('signTypedData', () => {
+  it('asks the wallet for an eth_signTypedData_v4 signature whose payload hashes to the order digest', async () => {
+    const request = vi.fn(async ({ method }: { method: string; params?: unknown[] }) => {
+      if (method === 'eth_chainId') return '0x13882'
+      if (method === 'eth_accounts') return [ACCOUNT]
+      if (method === 'eth_signTypedData_v4') return '0xsignature'
+      throw new Error(`Unexpected ${method}`)
+    })
+    const web3Provider = new ethers.providers.Web3Provider({ request }, 'any')
+    const session = { address: ACCOUNT, web3Provider, signer: web3Provider.getSigner() } as unknown as Session
+    const order = {
+      checks: {
+        uses: 90,
+        expiration: 4102444800,
+        effective: 1757500000,
+        salt: '0x' + '00'.repeat(31) + '01',
+        contractSignatureIndex: 2,
+        signerSignatureIndex: 3,
+        allowedRoot: '0x' + '00'.repeat(32),
+        externalChecks: []
+      },
+      sent: [{ assetType: 4, contractAddress: '0x00000000000000000000000000000000000000cc', value: '7', extra: '0x' }],
+      received: [
+        {
+          assetType: 2,
+          contractAddress: getContract(ContractName.MANAToken, 80002).address,
+          value: '500000000000000000',
+          extra: '0x',
+          beneficiary: ACCOUNT
+        }
+      ]
+    }
+
+    await expect(signTypedData(session, getTradeDomain(80002), OFFCHAIN_MARKETPLACE_TYPES, order)).resolves.toBe(
+      '0xsignature'
+    )
+
+    const params = request.mock.calls.find(([args]) => args.method === 'eth_signTypedData_v4')?.[0].params
+    const [signer, json] = params as [string, string]
+    expect(signer).toBe(ACCOUNT)
+    const payload = JSON.parse(json) as {
+      primaryType: string
+      domain: Record<string, string>
+      types: Record<string, ethers.TypedDataField[]>
+      message: Record<string, unknown>
+    }
+    expect(payload.primaryType).toBe('Trade')
+    expect(payload.domain).toEqual({
+      name: 'DecentralandMarketplacePolygon',
+      version: '1.0.0',
+      salt: '0x0000000000000000000000000000000000000000000000000000000000013882',
+      verifyingContract: getContract(ContractName.OffChainMarketplaceV3, 80002).address
+    })
+    expect(payload.types.EIP712Domain).toEqual([
+      { name: 'name', type: 'string' },
+      { name: 'version', type: 'string' },
+      { name: 'verifyingContract', type: 'address' },
+      { name: 'salt', type: 'bytes32' }
+    ])
+    const types = Object.fromEntries(Object.entries(payload.types).filter(([name]) => name !== 'EIP712Domain'))
+    expect(typedDataDigest(payload.domain, types, payload.message)).toBe(
+      '0xfc5244b13838fde268d232e2e06c9720b233590078a5dbd7c2ce17bebe156e9f'
+    )
   })
 })

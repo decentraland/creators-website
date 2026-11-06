@@ -8,6 +8,7 @@ vi.mock('~/lib/auth', async () => {
 })
 
 import { signedFetch } from '~/lib/auth'
+import { TEST_PRIVATE_KEY, toTransaction, typedDataDigest } from '~/test/chain'
 import {
   COUPON_TYPES,
   DiscountError,
@@ -37,7 +38,8 @@ const DAY = 24 * 60 * 60 * 1000
 const COLLECTION = '0x00000000000000000000000000000000000000CC'
 const V3_MANAGER = getCouponManager(ContractName.OffChainMarketplaceV3, CHAIN_ID).address
 const V2_MANAGER = getCouponManager(ContractName.OffChainMarketplaceV2, CHAIN_ID).address
-const wallet = new ethers.Wallet('0x' + '11'.repeat(32))
+const wallet = new ethers.Wallet(TEST_PRIVATE_KEY)
+const SALT = '0x' + '22'.repeat(32)
 
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
@@ -67,6 +69,7 @@ function makeDeps(overrides: Partial<CreateDiscountDeps> = {}): CreateDiscountDe
     findStored: vi.fn().mockResolvedValue(undefined),
     onSigned: vi.fn(),
     now: () => NOW,
+    randomSalt: () => SALT,
     ...overrides
   }
 }
@@ -146,6 +149,43 @@ describe('when creating a discount', () => {
     expect(ethers.utils.verifyTypedData(domain, COUPON_TYPES, value, payload.signature)).toBe(wallet.address)
     expect(deps.onSigned).toHaveBeenCalledTimes(1)
     expect(discount.id).toBe('coupon-1')
+  })
+
+  it('should sign the exact coupon and post it as plain JSON', async () => {
+    const deps = makeDeps()
+    await createDiscount({ ...terms, signer: wallet.address, chainId: CHAIN_ID }, deps)
+    const [domain, types, value] = vi.mocked(deps.signTypedData).mock.calls[0]
+    expect(value.data).toBe(
+      '0x0000000000000000000000000000000000000000000000000000000000000001' +
+        '00000000000000000000000000000000000000000000000000000000000493e0' +
+        'ee692dfecdec95964d7a9b1aead170d6cdd7ecaf4b863082e6b9ee269631ee1c'
+    )
+    expect(typedDataDigest(domain, types, value)).toBe(
+      '0xbf8a27de61bc320a808dd3f6c6d105812d8cc7b8eacfb7227478d409a6508a1e'
+    )
+    expect(JSON.stringify(vi.mocked(deps.postCoupon).mock.calls[0][0])).toBe(
+      JSON.stringify({
+        signer: '0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a',
+        chainId: 80002,
+        network: 'MATIC',
+        checks: {
+          uses: 1000000,
+          expiration: 1792756800000,
+          effective: 1792152000000,
+          salt: '0x2222222222222222222222222222222222222222222222222222222222222222',
+          contractSignatureIndex: 2,
+          signerSignatureIndex: 5,
+          allowedRoot: '0x',
+          externalChecks: []
+        },
+        couponAddress: '0x4ee8f6b87f4917a3bbc7c8bb3a06db8555f83db9',
+        discountType: 1,
+        discount: 300000,
+        collections: ['0x00000000000000000000000000000000000000cc'],
+        signature:
+          '0x59cfee677887f7b0cabd5ba995b6e94e507de9eb4e9ac4e4f3a2985ab50869e556b28a0fcda4c0ad9ea22d3c77c48317a6e440be4aff7fa757a785c68711f9f41b'
+      })
+    )
   })
 
   it('should cap the discounted purchases when the creator set a limit', async () => {
@@ -407,6 +447,42 @@ describe('when ending a discount', () => {
       verifyingContract: V3_MANAGER
     }
     expect(ethers.utils.verifyTypedData(domain, COUPON_TYPES, value, coupon.signature)).toBe(wallet.address)
+  })
+
+  it('should send the exact cancellation transaction', async () => {
+    expect(toTransaction(buildEndDiscountCall(await signedDiscount()))).toEqual({
+      to: '0x6c956587d9fe70032781edcdc626310648575382',
+      data:
+        '0xd41feedf' +
+        '0000000000000000000000000000000000000000000000000000000000000020' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000020' +
+        '00000000000000000000000000000000000000000000000000000000000000a0' +
+        '0000000000000000000000000000000000000000000000000000000000000120' +
+        '0000000000000000000000004ee8f6b87f4917a3bbc7c8bb3a06db8555f83db9' +
+        '0000000000000000000000000000000000000000000000000000000000000280' +
+        '0000000000000000000000000000000000000000000000000000000000000300' +
+        '0000000000000000000000000000000000000000000000000000000000000041' +
+        '59cfee677887f7b0cabd5ba995b6e94e507de9eb4e9ac4e4f3a2985ab50869e5' +
+        '56b28a0fcda4c0ad9ea22d3c77c48317a6e440be4aff7fa757a785c68711f9f4' +
+        '1b00000000000000000000000000000000000000000000000000000000000000' +
+        '00000000000000000000000000000000000000000000000000000000000f4240' +
+        '000000000000000000000000000000000000000000000000000000006adb4c40' +
+        '000000000000000000000000000000000000000000000000000000006ad211c0' +
+        '2222222222222222222222222222222222222222222222222222222222222222' +
+        '0000000000000000000000000000000000000000000000000000000000000002' +
+        '0000000000000000000000000000000000000000000000000000000000000005' +
+        '0000000000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000120' +
+        '0000000000000000000000000000000000000000000000000000000000000140' +
+        '0000000000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000060' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '00000000000000000000000000000000000000000000000000000000000493e0' +
+        'ee692dfecdec95964d7a9b1aead170d6cdd7ecaf4b863082e6b9ee269631ee1c' +
+        '0000000000000000000000000000000000000000000000000000000000000000'
+    })
   })
 
   // The manager records any digest it is handed, so a payload that is not the signed coupon ends nothing.
