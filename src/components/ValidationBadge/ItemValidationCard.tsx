@@ -92,7 +92,11 @@ export function ItemValidationCard({ subject, issues, onRerun, onSelect, testId 
           {issues.map((issue, index) => {
             const shape = shapeLabel(issue.bodyShapes)
             return (
-              <S.Issue key={`${issue.code}-${issue.where ?? ''}-${index}`} data-severity={issue.severity}>
+              <S.Issue
+                key={`${issue.code}-${issue.where ?? ''}-${index}`}
+                data-severity={issue.severity}
+                data-code={issue.code}
+              >
                 {issue.severity === ValidationSeverity.ERROR ? <ErrorIcon /> : <WarningIcon />}
                 <S.IssueText>
                   {(issue.title || shape) && (

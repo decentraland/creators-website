@@ -1,6 +1,8 @@
 import { type HTTPRequest } from 'puppeteer'
 import { type BuilderServer } from './builderServer'
-import { handleRpc } from './rpc'
+import { type Market } from './market'
+import { previewPageHtml } from './preview'
+import { type Chain } from './rpc'
 
 export const CORS = {
   'access-control-allow-origin': '*',
@@ -16,11 +18,17 @@ const PNG = Buffer.from(
 
 export type Flags = Record<string, boolean>
 export type Variants = Record<string, string>
+/** Forced responses keyed `[METHOD ]path-suffix`, e.g. `{ 'POST /collections/<id>/tos': { status: 500 } }`. */
 export type ForcedErrors = Record<string, { status: number; body?: unknown }>
+
+export type Credits = { balanceCents: number; credits: number }
 
 export type RouteContext = {
   appOrigin: string
   builder: BuilderServer
+  chain: Chain
+  market: Market
+  credits: Credits
   flags: Flags
   variants: Variants
   errors: ForcedErrors
@@ -32,6 +40,8 @@ export type RouteContext = {
 export type ExternalData = {
   hotScenes: unknown[]
   blogPosts: unknown[]
+  /** What the Catalyst answers to `POST /content/entities/active`. */
+  catalystEntities: unknown[]
 }
 
 export const DEFAULT_EXTERNAL_DATA: ExternalData = {
@@ -58,8 +68,35 @@ export const DEFAULT_EXTERNAL_DATA: ExternalData = {
       sys: { id: 'post-1' },
       fields: { id: 'creator-spotlight', title: 'Creator spotlight', publishedDate: '2026-10-30T00:00:00.000Z' }
     }
-  ]
+  ],
+  catalystEntities: []
 }
+
+/**
+ * Stands in for analytics.js: replays the snippet's queue and forwards every later call to node (`__e2eAnalytics`),
+ * so tracked events survive reloads and navigations.
+ */
+const ANALYTICS_JS = `(function () {
+  var queue = window.analytics || [];
+  function record(method, args) {
+    var plain = [].slice.call(args).filter(function (a) { return typeof a !== 'function'; });
+    try { window.__e2eAnalytics && window.__e2eAnalytics(method, JSON.parse(JSON.stringify(plain))); } catch (e) {}
+  }
+  var analytics = { initialize: true, invoked: true };
+  ['track', 'page', 'identify', 'group', 'alias'].forEach(function (method) {
+    analytics[method] = function () { record(method, arguments); return Promise.resolve(); };
+  });
+  ['reset', 'on', 'once', 'off', 'debug', 'setAnonymousId', 'addSourceMiddleware', 'addDestinationMiddleware'].forEach(
+    function (method) { analytics[method] = function () {}; }
+  );
+  analytics.ready = function (cb) { if (typeof cb === 'function') cb(); };
+  analytics.user = function () { return { anonymousId: function () { return 'e2e-anonymous-id'; }, id: function () { return null; } }; };
+  window.analytics = analytics;
+  for (var i = 0; i < queue.length; i++) {
+    var call = queue[i];
+    if (Array.isArray(call) && typeof analytics[call[0]] === 'function') analytics[call[0]].apply(analytics, call.slice(1));
+  }
+})();`
 
 const json = (req: HTTPRequest, body: unknown, status = 200) =>
   req.respond({ status, headers: { 'content-type': 'application/json', ...CORS }, body: JSON.stringify(body) })
@@ -83,11 +120,23 @@ export function route(req: HTTPRequest, ctx: RouteContext): Promise<void> {
   const { hostname, pathname } = url
   const method = req.method()
 
+  // Vite proxies /auth to the real auth site, so a sign-in click must stop here.
+  // The same match as the dev proxy in vite.config.ts, which leaves `/authorizations` alone.
+  if (url.origin === ctx.appOrigin && /^\/auth(\/|$)/.test(pathname)) {
+    return req.respond({
+      status: 200,
+      headers: { 'content-type': 'text/html' },
+      body: '<!doctype html><title>auth</title>'
+    })
+  }
   if (url.origin === ctx.appOrigin || url.protocol === 'data:' || url.protocol === 'blob:') return req.continue()
   // A failed preflight would surface as "Failed to fetch" and hide the forced error the spec asked for.
   if (method === 'OPTIONS') return req.respond({ status: 204, headers: CORS })
 
-  const forced = Object.entries(ctx.errors).find(([path]) => pathname.endsWith(path))
+  const forced = Object.entries(ctx.errors).find(([key]) => {
+    const [forcedMethod, fragment] = key.includes(' ') ? key.split(' ', 2) : [undefined, key]
+    return (!forcedMethod || forcedMethod === method) && pathname.endsWith(fragment)
+  })
   if (forced) return json(req, forced[1].body ?? { ok: false, error: 'forced e2e error' }, forced[1].status)
 
   if (hostname.startsWith('feature-flags.')) {
@@ -108,6 +157,8 @@ export function route(req: HTTPRequest, ctx: RouteContext): Promise<void> {
         ? req.respond({ status: 200, headers: { 'content-type': 'application/octet-stream', ...CORS }, body: file })
         : req.respond({ status: 404, headers: CORS, body: '' })
     }
+    // The bytes were captured in the page before the request left (see UPLOAD_CAPTURE_SCRIPT).
+    if (method === 'POST' && /^\/items\/[^/]+\/(files|videos)$/.test(path)) return json(req, { ok: true })
     const answer = ctx.builder.handle(method, path, url.searchParams, parseBody(req))
     if (answer) return json(req, answer.body, answer.status)
     process.stderr.write(`[e2e] unmocked builder-server route: ${method} ${path}\n`)
@@ -116,7 +167,9 @@ export function route(req: HTTPRequest, ctx: RouteContext): Promise<void> {
 
   if (hostname.startsWith('peer.')) {
     if (pathname.startsWith('/lambdas/profiles/')) return json(req, { avatars: [] })
+    if (pathname.startsWith('/lambdas/collections/wearables')) return json(req, { wearables: [] })
     if (pathname.startsWith('/content/contents/')) return req.respond({ status: 200, headers: CORS, body: PNG })
+    if (pathname === '/content/entities/active') return json(req, ctx.data.catalystEntities)
     return json(req, [])
   }
 
@@ -132,37 +185,45 @@ export function route(req: HTTPRequest, ctx: RouteContext): Promise<void> {
 
   if (hostname === 'api.github.com') return json(req, { assets: [] })
 
-  // No published collection in a seed has listings or minted items.
-  if (hostname.startsWith('marketplace-api.') && (pathname === '/v1/items' || pathname === '/v3/catalog/unified')) {
-    return json(req, { data: [] })
+  if (hostname.startsWith('credits.')) {
+    if (/^\/users\/[^/]+\/credits$/.test(pathname)) return json(req, { usd: ctx.credits })
+    if (method === 'POST' && pathname === '/credits/authorize-publication') {
+      return json(req, {
+        credit: {
+          id: '0x' + '55'.repeat(32),
+          amount: '1000000000000000000000',
+          expiresAt: Math.floor(Date.now() / 1000) + 900,
+          signature: '0x' + 'ab'.repeat(65)
+        },
+        externalCallSignature: '0x' + 'cd'.repeat(65)
+      })
+    }
   }
 
-  if (hostname.startsWith('credits.') && /^\/users\/[^/]+\/credits$/.test(pathname)) {
-    return json(req, { usd: { balanceCents: 0, credits: 0 } })
+  if (hostname.startsWith('marketplace-api.')) {
+    const answer = ctx.market.handle(method, pathname, url.searchParams, parseBody(req))
+    if (answer) return json(req, answer.body, answer.status)
   }
 
-  // The read-only provider and the relayer: no chain is ever reached.
+  // The read-only provider: no chain is ever reached.
   if (hostname.startsWith('rpc-') || hostname.includes('rpc.') || pathname.includes('/rpc')) {
-    return json(req, handleRpc(req.postData() ?? '{}'))
+    return json(req, ctx.chain.handleRpc(req.postData() ?? '{}'))
   }
 
-  // Monitoring and analytics sinks. analytics.js is served empty, so tracked calls stay in the snippet's queue.
+  // Monitoring and analytics sinks.
   if (hostname.endsWith('sentry.io') || hostname.startsWith('api.e.')) return empty(req)
-  if (hostname.startsWith('evs.e.') || hostname === 'cdn.segment.com') return empty(req, 'application/javascript')
-  if (hostname.includes('intercom')) return empty(req, 'application/javascript')
-
-  // The preview iframe can't run Unity/Babylon headless. This page posts the LOAD message the real one sends.
-  if (hostname.startsWith('wearable-preview')) {
+  if (hostname.startsWith('evs.e.') || hostname === 'cdn.segment.com') {
     return req.respond({
       status: 200,
-      headers: { 'content-type': 'text/html', ...CORS },
-      body:
-        '<!doctype html><title>preview</title><script>' +
-        'var m={type:"load",payload:{renderer:"babylon"}};' +
-        'var n=0,i=setInterval(function(){parent.postMessage(m,"*");if(++n>20)clearInterval(i)},100);' +
-        'parent.postMessage(m,"*");' +
-        '</script>'
+      headers: { 'content-type': 'application/javascript', ...CORS },
+      body: ANALYTICS_JS
     })
+  }
+  if (hostname.includes('intercom')) return empty(req, 'application/javascript')
+
+  // The preview iframe can't render headless; this page speaks its protocol instead.
+  if (hostname.startsWith('wearable-preview')) {
+    return req.respond({ status: 200, headers: { 'content-type': 'text/html', ...CORS }, body: previewPageHtml() })
   }
 
   const type = req.resourceType()

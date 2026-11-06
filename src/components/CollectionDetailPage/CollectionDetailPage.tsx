@@ -554,7 +554,9 @@ const CollectionDetailPage = () => {
                 <ArrowBackIcon />
               </S.BackLink>
               <S.TitleGroup>
-                <S.Title title={collection.name}>{collection.name}</S.Title>
+                <S.Title data-testid="collection-name" title={collection.name}>
+                  {collection.name}
+                </S.Title>
                 {canRename && (
                   <S.RenameButton
                     type="button"
@@ -612,6 +614,7 @@ const CollectionDetailPage = () => {
                     variant="primary"
                     data-desktop-only
                     data-testid="publish-collection"
+                    data-blocker={publishBlocker ?? undefined}
                     aria-disabled={publishBlocker ? true : undefined}
                     onClick={() => {
                       if (publishBlocker) return

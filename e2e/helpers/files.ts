@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import JSZip from 'jszip'
+import { HASH } from '../fixtures'
 
 const FILES = resolve(import.meta.dirname, '../fixtures/files')
 const MALE = 'urn:decentraland:off-chain:base-avatars:BaseMale'
@@ -37,6 +38,19 @@ export const FIXTURE = {
 } as const
 
 const read = (path: string) => readFileSync(path)
+
+/** The bytes behind every fixture content hash, served by the fake builder storage. */
+export function fixtureStorage(): Record<string, Buffer> {
+  return {
+    [HASH.hat]: read(FIXTURE.hat),
+    [HASH.tshirtMale]: read(FIXTURE.tshirtMale),
+    [HASH.tshirtFemale]: read(FIXTURE.tshirtFemale),
+    [HASH.poloMale]: read(FIXTURE.poloMale),
+    [HASH.poloFemale]: read(FIXTURE.poloFemale),
+    [HASH.emote]: read(FIXTURE.emote),
+    [HASH.thumbnail]: read(FIXTURE.thumbnail)
+  }
+}
 
 // One directory per run, so two worktrees running at once never overwrite each other's zips.
 let outputDir: string | undefined
