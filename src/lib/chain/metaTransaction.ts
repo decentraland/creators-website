@@ -10,13 +10,18 @@ export const MetaTransactionErrorCode = {
   USER_DENIED: 'user_denied'
 } as const
 
+// `cause` keeps the wallet's own error (its 4001 code) reachable by isWalletRejection and the Sentry tags.
 export class MetaTransactionError extends Error {
+  cause?: unknown
+
   constructor(
     message: string,
-    public code: string
+    public code: string,
+    cause?: unknown
   ) {
     super(message)
     this.name = 'MetaTransactionError'
+    if (cause !== undefined) this.cause = cause
   }
 }
 
@@ -167,7 +172,8 @@ export async function sendMetaTransaction(
     const denied = message.includes('User denied message signature')
     throw new MetaTransactionError(
       message,
-      denied ? MetaTransactionErrorCode.USER_DENIED : MetaTransactionErrorCode.UNKNOWN
+      denied ? MetaTransactionErrorCode.USER_DENIED : MetaTransactionErrorCode.UNKNOWN,
+      error
     )
   }
 }

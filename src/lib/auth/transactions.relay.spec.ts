@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { parseAbi } from 'viem'
 import { getCollectionContract, getContract, type ContractData } from '~/lib/chain/contracts'
+import { isWalletRejection } from '~/lib/walletErrors'
 import { TEST_SIGNER, testAccount } from '~/test/chain'
 import { type Session } from './auth'
 import { sendContractTransaction } from './transactions'
@@ -22,6 +23,7 @@ type Scenario = {
   code?: string
   ledger?: boolean
   denies?: boolean
+  signError?: unknown
   noRequestAccounts?: boolean
   relay?: { status: number; body: object }
 }
@@ -43,6 +45,8 @@ function world(scenario: Scenario = {}) {
         return scenario.code ?? '0x'
       case 'eth_signTypedData_v4': {
         if (scenario.denies) throw new Error('MetaMask Typed Message Signature: User denied message signature.')
+        // eslint-disable-next-line @typescript-eslint/only-throw-error -- EIP-1193 wallets reject with plain objects
+        if (scenario.signError) throw scenario.signError
         const { types, domain, primaryType, message } = JSON.parse(params[1] as string)
         const withoutDomain = Object.fromEntries(Object.entries(types).filter(([name]) => name !== 'EIP712Domain'))
         const signature = await testAccount.signTypedData({ types: withoutDomain, domain, primaryType, message })
@@ -200,5 +204,15 @@ describe('when a call goes gasless through the relayer', () => {
     const { outcome, relayed } = await sendTransfer(scenario)
     expect(outcome).toEqual({ error })
     expect(relayed).toHaveLength(relays)
+  })
+
+  it('should treat a dismissed signature as a wallet rejection whatever the wallet says', async () => {
+    const { session } = world({ signError: { code: 4001, message: 'whatever' } })
+    const error = await sendContractTransaction(session, {
+      contract: transfer[0],
+      method: transfer[1],
+      args: [...transfer[2]]
+    }).catch((e: unknown) => e)
+    expect(isWalletRejection(error)).toBe(true)
   })
 })
