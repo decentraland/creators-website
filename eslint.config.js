@@ -55,6 +55,10 @@ const MUI = {
 }
 
 const ETHERS = { regex: '^ethers(/|$)', message: 'Chain code uses viem; ethers is not a dependency.' }
+const DCL_TRANSACTIONS = {
+  regex: '^decentraland-transactions(/|$)',
+  message: 'Contract data lives in ~/lib/chain/contracts and meta-transactions in ~/lib/chain/metaTransaction.'
+}
 
 // no-restricted-imports does not see import(), so lazy-loaded usage needs its own rule.
 const DYNAMIC_EMOTION_MUI = {
@@ -68,6 +72,10 @@ const DYNAMIC_UI2 = {
 const DYNAMIC_ETHERS = {
   selector: 'ImportExpression[source.value=/^ethers(\\/|$)/]',
   message: ETHERS.message
+}
+const DYNAMIC_DCL_TRANSACTIONS = {
+  selector: 'ImportExpression[source.value=/^decentraland-transactions(\\/|$)/]',
+  message: DCL_TRANSACTIONS.message
 }
 const DYNAMIC_UI2_ALLOWED = ['src/components/TopNav/TopNav.tsx']
 const DYNAMIC_ALL_ALLOWED = ['src/components/PreviewControls/PreviewControls.tsx']
@@ -165,11 +173,13 @@ export default tseslint.config(
   {
     files: ['src/**/*.{ts,tsx}'],
     ignores: [...STYLES_FILES, 'src/lib/builder/**'],
-    rules: { 'no-restricted-imports': ['error', { patterns: [EMOTION_ALL, MUI, BUILDER_TRANSPORT, ETHERS] }] }
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [EMOTION_ALL, MUI, BUILDER_TRANSPORT, ETHERS, DCL_TRANSACTIONS] }]
+    }
   },
   {
     files: ['src/lib/builder/**/*.{ts,tsx}'],
-    rules: { 'no-restricted-imports': ['error', { patterns: [EMOTION_ALL, MUI, ETHERS] }] }
+    rules: { 'no-restricted-imports': ['error', { patterns: [EMOTION_ALL, MUI, ETHERS, DCL_TRANSACTIONS] }] }
   },
   {
     files: ['src/components/**/*.{ts,tsx}'],
@@ -179,7 +189,7 @@ export default tseslint.config(
         'error',
         {
           paths: BUILDER_IN_COMPONENTS.paths,
-          patterns: [EMOTION_ALL, MUI, ETHERS, ...BUILDER_IN_COMPONENTS.patterns]
+          patterns: [EMOTION_ALL, MUI, ETHERS, DCL_TRANSACTIONS, ...BUILDER_IN_COMPONENTS.patterns]
         }
       ]
     }
@@ -187,21 +197,26 @@ export default tseslint.config(
   {
     files: STYLES_FILES,
     rules: {
-      'no-restricted-imports': ['error', { patterns: [EMOTION_EXCEPT_STYLED, MUI, BUILDER_TRANSPORT, ETHERS] }]
+      'no-restricted-imports': [
+        'error',
+        { patterns: [EMOTION_EXCEPT_STYLED, MUI, BUILDER_TRANSPORT, ETHERS, DCL_TRANSACTIONS] }
+      ]
     }
   },
   {
     files: ['src/**/*.{ts,tsx}'],
     ignores: [...DYNAMIC_UI2_ALLOWED, ...DYNAMIC_ALL_ALLOWED],
-    rules: { 'no-restricted-syntax': ['error', DYNAMIC_EMOTION_MUI, DYNAMIC_UI2, DYNAMIC_ETHERS] }
+    rules: {
+      'no-restricted-syntax': ['error', DYNAMIC_EMOTION_MUI, DYNAMIC_UI2, DYNAMIC_ETHERS, DYNAMIC_DCL_TRANSACTIONS]
+    }
   },
   {
     files: DYNAMIC_UI2_ALLOWED,
-    rules: { 'no-restricted-syntax': ['error', DYNAMIC_EMOTION_MUI, DYNAMIC_ETHERS] }
+    rules: { 'no-restricted-syntax': ['error', DYNAMIC_EMOTION_MUI, DYNAMIC_ETHERS, DYNAMIC_DCL_TRANSACTIONS] }
   },
   {
     files: DYNAMIC_ALL_ALLOWED,
-    rules: { 'no-restricted-syntax': ['error', DYNAMIC_ETHERS] }
+    rules: { 'no-restricted-syntax': ['error', DYNAMIC_ETHERS, DYNAMIC_DCL_TRANSACTIONS] }
   },
 
   // Mocks and fixtures legitimately traffic in `any` and unbound methods, so the

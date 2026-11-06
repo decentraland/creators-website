@@ -48,7 +48,6 @@
     "buffer": "6.0.3",
     "date-fns": "^4.4.0",
     "decentraland-connect": "^12.1.1",
-    "decentraland-transactions": "^3.3.0",
     "decentraland-ui2": "3.23.8",
     "idb-keyval": "6.3.0",
     "isbot": "^5.2.2",
