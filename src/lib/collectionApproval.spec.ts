@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { ContractName, getContract } from 'decentraland-transactions'
-import { decodeFunctionData, type Abi, type Hex } from 'viem'
+import { ContractName, getCollectionContract, getContract } from '~/lib/chain/contracts'
+import { decodeFunctionData, type Hex } from 'viem'
 import { toTransaction } from '~/test/chain'
 import { type Collection } from './collections'
 import { buildRescueItemsCalls, buildSetApprovedCall, RESCUE_CHUNK_SIZE } from './collectionApproval'
 
 const CHAIN_ID = 80002
 const collection = { id: 'c1', contractAddress: '0x' + '1'.repeat(40) } as Collection
-const collectionAbi = getContract(ContractName.ERC721CollectionV2, CHAIN_ID).abi as Abi
+const collectionAbi = getCollectionContract(CHAIN_ID, collection.contractAddress!).abi
 
 function innerCall(call: ReturnType<typeof buildSetApprovedCall>) {
   const [, , target, data] = call.args as [string, string, string, string[]]

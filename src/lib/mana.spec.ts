@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { maxUint256 } from 'viem'
 import { decodeCall, toTransaction } from '~/test/chain'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
 import { buildManaApproveCall, getManaContract } from './mana'
 
 const CHAIN_ID = 80002

@@ -1,12 +1,5 @@
 // For specs that pin chain outputs (calldata, EIP-712 digests, signatures) as literals.
-import {
-  decodeFunctionData,
-  hashTypedData,
-  recoverTypedDataAddress,
-  type Abi,
-  type Hex,
-  type TypedDataDefinition
-} from 'viem'
+import { decodeFunctionData, hashTypedData, recoverTypedDataAddress, type Hex, type TypedDataDefinition } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { encodeContractCall, type ContractCall } from '~/lib/auth/transactions'
 import { type TypedDataDomain, type TypedDataTypes } from '~/lib/auth'
@@ -72,5 +65,5 @@ export function recoverTypedDataSigner(
 
 /** The call's arguments as the contract decodes them: uints as `bigint`, named tuples as objects. */
 export function decodeCall(call: ContractCall): readonly unknown[] {
-  return decodeFunctionData({ abi: call.contract.abi as Abi, data: encodeContractCall(call) as Hex }).args ?? []
+  return decodeFunctionData({ abi: call.contract.abi, data: encodeContractCall(call) as Hex }).args ?? []
 }

@@ -3,7 +3,7 @@
 // order, priced in credits (USD-pegged MANA) or plain MANA. Ported from the legacy builder's
 // SellCollectionModal + PutForSaleOffchainModal.
 import { Network, TradeAssetType, TradeType, type Trade, type TradeCreation } from '@dcl/schemas'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getCollectionContract, getContract } from '~/lib/chain/contracts'
 import { isAddress, maxUint256, parseEther, toHex, zeroAddress } from 'viem'
 import { type ContractCall, type ContractData } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
@@ -174,7 +174,7 @@ export function isSellingOnOlderMarketplace(collection: Collection, chainId: num
 /** `setMinters([marketplace], [true])` on the collection contract itself. */
 export function buildEnableSalesCall(collection: Collection, chainId: number): ContractCall {
   if (!collection.contractAddress) throw new SellItemError('not_published', 'The collection has no contract yet')
-  const contract = { ...getContract(ContractName.ERC721CollectionV2, chainId), address: collection.contractAddress }
+  const contract = getCollectionContract(chainId, collection.contractAddress)
   return { contract, method: 'setMinters', args: [[getOffchainMarketplaceContract(chainId).address], [true]] }
 }
 
@@ -491,7 +491,7 @@ export async function readStoreItem(
 ): Promise<StoreItemData> {
   if (!collection.contractAddress || !item.tokenId)
     throw new SellItemError('not_published', `Item "${item.id}" is not published`)
-  const contract = { ...getContract(ContractName.ERC721CollectionV2, chainId), address: collection.contractAddress }
+  const contract = getCollectionContract(chainId, collection.contractAddress)
   const [, , , , beneficiary, metadata] = await read<StoreItemOutputs>(contract, 'items', [item.tokenId])
   return { beneficiary, metadata }
 }
@@ -508,7 +508,7 @@ export function buildStoreDelistCall(
 ): ContractCall {
   if (!collection.contractAddress || !item.tokenId)
     throw new SellItemError('not_published', `Item "${item.id}" is not published`)
-  const contract = { ...getContract(ContractName.ERC721CollectionV2, chainId), address: collection.contractAddress }
+  const contract = getCollectionContract(chainId, collection.contractAddress)
   return {
     contract,
     method: 'editItemsData',

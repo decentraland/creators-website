@@ -12,7 +12,6 @@ import {
   isHex,
   numberToHex,
   parseUnits,
-  type Abi,
   type Address,
   type Hash,
   type Hex,
@@ -20,8 +19,9 @@ import {
 } from 'viem'
 import { estimateGas, getTransaction } from 'viem/actions'
 import { ProviderType } from '@dcl/schemas'
-import { sendMetaTransaction, type ContractData } from 'decentraland-transactions'
 import { config } from '~/config'
+import { type ContractData } from '~/lib/chain/contracts'
+import { sendMetaTransaction, type MetaTransactionWallet } from '~/lib/chain/metaTransaction'
 import { walletClientOf, type Session } from './auth'
 
 export type { ContractData }
@@ -58,7 +58,7 @@ async function getReadClient(chainId: number): Promise<PublicClient> {
 
 /** ABI-encoded calldata for a contract call. */
 export function encodeContractCall({ contract, method, args }: ContractCall): string {
-  return encodeFunctionData({ abi: contract.abi as Abi, functionName: method, args })
+  return encodeFunctionData({ abi: contract.abi, functionName: method, args })
 }
 
 /** A view call: integers wider than 48 bits come back as `bigint`, several outputs as an array. */
@@ -66,7 +66,7 @@ export async function readContract<T>(contract: ContractData, method: string, ar
   const client = await getReadClient(contract.chainId)
   const result: unknown = await client.readContract({
     address: contract.address as Address,
-    abi: contract.abi as Abi,
+    abi: contract.abi,
     functionName: method,
     args
   })
@@ -78,13 +78,31 @@ export async function sendContractTransaction(session: Session, call: ContractCa
   const chainId = await readWalletChainId(session)
   if (chainId === Number(call.contract.chainId)) return sendFromWallet(session, chainId, call)
   const target = await getReadClient(call.contract.chainId)
-  const metaTransactionProvider = {
-    request: ({ method, params }: { method: string; params?: unknown[] }) =>
-      target.request({ method, params } as Parameters<PublicClient['request']>[0])
+  const callContract = (tx: { data: string; to: string }) =>
+    target.request({ method: 'eth_call', params: [tx as { data: Hex; to: Address }, 'latest'] })
+  return sendMetaTransaction(
+    metaTransactionWallet(session),
+    callContract,
+    encodeContractCall(call),
+    call.contract,
+    config.get('TRANSACTIONS_API_URL')
+  )
+}
+
+// An empty answer counts as a failed request, and legacy providers wrap theirs in `result`.
+function metaTransactionWallet(session: Session): MetaTransactionWallet {
+  const request = async (method: string, params: unknown[]) => {
+    const answer = await session.provider.request({ method, params })
+    if (!answer) throw new Error(`The wallet gave no answer to ${method}`)
+    return (answer as { result?: unknown }).result || answer
   }
-  return sendMetaTransaction(session.provider, metaTransactionProvider, encodeContractCall(call), call.contract, {
-    serverURL: config.get('TRANSACTIONS_API_URL')
-  })
+  return {
+    // Some wallets only answer eth_accounts.
+    accounts: async () =>
+      (await request('eth_requestAccounts', []).catch(() => request('eth_accounts', []))) as string[],
+    code: async address => (await request('eth_getCode', [address, 'latest'])) as string,
+    signTypedData: async (address, typedData) => (await request('eth_signTypedData_v4', [address, typedData])) as string
+  }
 }
 
 // Estimated before sending, so a call that would revert fails here instead of reaching the wallet prompt.

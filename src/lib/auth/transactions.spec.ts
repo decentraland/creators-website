@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { TransactionNotFoundError, TransactionReceiptNotFoundError, hashTypedData, numberToHex } from 'viem'
-import { ContractName, getContract, getCouponManager, sendMetaTransaction } from 'decentraland-transactions'
+import { TransactionNotFoundError, TransactionReceiptNotFoundError, hashTypedData, numberToHex, parseAbi } from 'viem'
+import { ContractName, getCollectionContract, getContract, getCouponManager } from '~/lib/chain/contracts'
 import { buildChequeTypedData } from '~/lib/publishLinkedItems'
 import { isWalletRejection } from '~/lib/walletErrors'
 import { type Session } from './auth'
@@ -20,22 +20,29 @@ import {
   watchTransaction
 } from './transactions'
 
-vi.mock('decentraland-transactions', async () => {
-  const actual = await vi.importActual<typeof import('decentraland-transactions')>('decentraland-transactions')
-  return { ...actual, sendMetaTransaction: vi.fn().mockResolvedValue('0xrelayed') }
-})
 vi.mock('decentraland-connect', () => ({ getRpcUrls: () => ({ 80002: 'https://rpc.example.com' }) }))
 
 afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-const manager = { ...getCouponManager(ContractName.OffChainMarketplaceV3, 80002), chainId: 80002 }
+const manager = {
+  ...getCouponManager(ContractName.OffChainMarketplaceV3, 80002),
+  abi: parseAbi(['function increaseSignerSignatureIndex()'])
+}
 const call = { contract: manager, method: 'increaseSignerSignatureIndex', args: [] }
 const CALLDATA = '0xceefad9f'
 
 type Behavior =
-  'switches' | 'needs-add' | 'needs-add-wrapped' | 'refuses' | 'ignores' | 'changes-account' | 'reverts' | 'dismisses'
+  | 'switches'
+  | 'needs-add'
+  | 'needs-add-wrapped'
+  | 'refuses'
+  | 'ignores'
+  | 'changes-account'
+  | 'reverts'
+  | 'dismisses'
+  | 'denies-signature'
 type Request = { method: string; params?: unknown[] }
 
 const ACCOUNT = '0x00000000000000000000000000000000000000aa'
@@ -53,8 +60,11 @@ function walletOn(chainId: number, behavior: Behavior = 'switches', account = AC
   const request = vi.fn(async ({ method, params = [] }: Request): Promise<unknown> => {
     const [first] = params as [Record<string, string>]
     switch (method) {
+      case 'eth_requestAccounts':
       case 'eth_accounts':
         return [active]
+      case 'eth_getCode':
+        return '0x'
       case 'eth_chainId':
         return numberToHex(current)
       case 'wallet_switchEthereumChain':
@@ -82,7 +92,12 @@ function walletOn(chainId: number, behavior: Behavior = 'switches', account = AC
         return knowsSent ? { hash: HASH, from: active, nonce: '0x7' } : null
       case 'eth_signTypedData_v4':
         if (behavior === 'dismisses') throw Object.assign(new Error('Request cancelled'), { code: 4001 })
-        return `0x${'11'.repeat(65)}`
+        if (behavior === 'denies-signature') {
+          throw Object.assign(new Error('MetaMask Typed Message Signature: User denied message signature.'), {
+            code: 4001
+          })
+        }
+        return `0x${'11'.repeat(64)}1b`
     }
     throw new Error(`Unexpected ${method}`)
   })
@@ -192,30 +207,64 @@ describe('when sending a transaction from the wallet itself', () => {
 })
 
 describe('when the wallet is on another chain than the contract', () => {
-  const contract = { ...getContract(ContractName.ERC721CollectionV2, 80002), address: COLLECTION }
+  const contract = getCollectionContract(80002, COLLECTION)
   const transfer = { contract, method: 'transferCreatorship', args: [OTHER] }
+  const RELAYER = 'https://transactions-api.decentraland.zone/v1/transactions'
 
-  it('should relay the exact calldata as a Polygon meta-transaction', async () => {
-    const { session } = walletOn(1)
-    await expect(sendContractTransaction(session, transfer)).resolves.toBe('0xrelayed')
-    const [provider, , data, target, options] = vi.mocked(sendMetaTransaction).mock.calls[0]
-    expect(provider).toBe(session.provider)
-    expect(target).toBe(contract)
-    expect({ data, options }).toEqual({
-      data: '0x6d2e4b1b00000000000000000000000000000000000000000000000000000000000000bb',
-      options: { serverURL: 'https://transactions-api.decentraland.zone/v1' }
+  /** The read node answering the nonce, and the relayer answering `relay`; returns what each was sent. */
+  function nodeAndRelayer(relay: object = { ok: true, txHash: HASH }) {
+    const fetch = vi.fn(async (url: string, init: { body: string }) => {
+      if (url === RELAYER) return new Response(JSON.stringify(relay), { status: 200 })
+      const body = JSON.parse(init.body) as { id: number; method: string }
+      return new Response(JSON.stringify({ jsonrpc: '2.0', id: body.id, result: numberToHex(3, { size: 32 }) }))
     })
+    vi.stubGlobal('fetch', fetch)
+    const bodies = (relayed: boolean) =>
+      fetch.mock.calls.filter(([url]) => (url === RELAYER) === relayed).map(([, init]) => JSON.parse(init.body))
+    return { relayed: () => bodies(true), nodeCalls: () => bodies(false) }
+  }
+
+  it('should relay the exact calldata as a Polygon meta-transaction, gas paid by the relayer', async () => {
+    const { relayed } = nodeAndRelayer()
+    const { session, sent } = walletOn(1)
+    await expect(sendContractTransaction(session, transfer)).resolves.toBe(HASH)
+    expect(sent()).toHaveLength(0)
+    const [{ transactionData }] = relayed()
+    expect(transactionData.from).toBe(ACCOUNT)
+    expect(transactionData.params[0]).toBe(COLLECTION)
+    expect(transactionData.params[1]).toContain(
+      '6d2e4b1b00000000000000000000000000000000000000000000000000000000000000bb'
+    )
   })
 
-  it("should read the meta-transaction nonce from the contract's chain, not the wallet's", async () => {
-    const node = readNode({ eth_call: numberToHex(3, { size: 32 }) })
-    await sendContractTransaction(walletOn(1).session, transfer)
-    const [, metaTransactionProvider] = vi.mocked(sendMetaTransaction).mock.lastCall!
-    const nonceRead = { method: 'eth_call', params: [{ to: COLLECTION, data: '0x2d0335ab' }, 'latest'] }
-    await expect(
-      (metaTransactionProvider as { request: (args: Request) => Promise<unknown> }).request(nonceRead)
-    ).resolves.toBe(numberToHex(3, { size: 32 }))
-    expect(JSON.parse(node.mock.calls[0][1].body)).toMatchObject(nonceRead)
+  it("should sign the nonce read from the contract's chain, not the wallet's", async () => {
+    const { nodeCalls } = nodeAndRelayer()
+    const { session, request } = walletOn(1)
+    await sendContractTransaction(session, transfer)
+    expect(nodeCalls()).toEqual([
+      expect.objectContaining({
+        method: 'eth_call',
+        params: [{ data: `0x2d0335ab${ACCOUNT.slice(2).padStart(64, '0')}`, to: COLLECTION }, 'latest']
+      })
+    ])
+    const signing = request.mock.calls.find(([{ method }]) => method === 'eth_signTypedData_v4')!
+    expect(JSON.parse(signing[0].params![1] as string)).toMatchObject({ message: { nonce: 3, from: ACCOUNT } })
+  })
+
+  it('should report a dismissed signature as a wallet rejection and relay nothing', async () => {
+    const { relayed } = nodeAndRelayer()
+    const error = await sendContractTransaction(walletOn(1, 'denies-signature').session, transfer).catch(e => e)
+    expect(error).toMatchObject({ code: 'user_denied' })
+    expect(isWalletRejection(error)).toBe(true)
+    expect(relayed()).toHaveLength(0)
+  })
+
+  it('should pass on what the relayer refused the transaction for', async () => {
+    nodeAndRelayer({ ok: false, message: 'Max limit reached', code: 'user_limit_reached' })
+    await expect(sendContractTransaction(walletOn(1).session, transfer)).rejects.toMatchObject({
+      message: 'Max limit reached',
+      code: 'user_limit_reached'
+    })
   })
 })
 

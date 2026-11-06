@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ContractName, getCouponManager } from 'decentraland-transactions'
+import { parseAbi } from 'viem'
+import { ContractName, getCouponManager } from '~/lib/chain/contracts'
 
 // The production networks set no tip floor: the wallet's own fee estimate goes through untouched.
 vi.mock('~/config', async () => {
@@ -25,7 +26,10 @@ describe('when the environment sets no tip floor', () => {
       return `0x${'ab'.repeat(32)}`
     })
     const session = { address: ACCOUNT, provider: { request } } as unknown as Session
-    const manager = { ...getCouponManager(ContractName.OffChainMarketplaceV3, 80002), chainId: 80002 }
+    const manager = {
+      ...getCouponManager(ContractName.OffChainMarketplaceV3, 80002),
+      abi: parseAbi(['function increaseSignerSignatureIndex()'])
+    }
 
     await sendWalletTransaction(session, { contract: manager, method: 'increaseSignerSignatureIndex', args: [] })
 

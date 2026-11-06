@@ -1,5 +1,5 @@
 // MANA (Polygon) balance and allowance reads plus the approve call a MANA payment may need first.
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
 import { readContract, type ContractCall } from '~/lib/auth'
 
 export function getManaContract(chainId: number) {

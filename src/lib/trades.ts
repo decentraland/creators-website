@@ -9,7 +9,7 @@ import {
   type TradeChecks,
   type TradeCreation
 } from '@dcl/schemas'
-import { ContractName, getContract, getContractName } from 'decentraland-transactions'
+import { ContractName, getContract, getMarketplaceName } from '~/lib/chain/contracts'
 import { numberToHex, pad, zeroAddress, type Hex } from 'viem'
 import { config } from '~/config'
 import { readContract, signedFetch, type ContractData, type TypedDataDomain, type TypedDataTypes } from '~/lib/auth'
@@ -130,12 +130,6 @@ export function toTradeTypedValues(trade: UnsignedTrade): Record<string, unknown
   }
 }
 
-const MARKETPLACE_CONTRACTS = new Set<ContractName>([
-  ContractName.OffChainMarketplace,
-  ContractName.OffChainMarketplaceV2,
-  ContractName.OffChainMarketplaceV3
-])
-
 /** The stored order's marketplace names a contract this client does not know. */
 export class UnknownTradeContractError extends Error {
   constructor(message: string) {
@@ -154,15 +148,8 @@ export function getTradeContract(trade: Pick<Trade, 'contract' | 'chainId'>) {
   if (Number(trade.chainId) !== expectedChainId) {
     throw new UnknownTradeContractError(`Trade is on chain ${trade.chainId}, expected ${expectedChainId}`)
   }
-  let name: ContractName
-  try {
-    name = getContractName(trade.contract)
-  } catch {
-    throw new UnknownTradeContractError(`Trade contract ${trade.contract} is not a known marketplace`)
-  }
-  if (!MARKETPLACE_CONTRACTS.has(name)) {
-    throw new UnknownTradeContractError(`Trade contract ${trade.contract} is ${name}, not a marketplace`)
-  }
+  const name = getMarketplaceName(trade.contract)
+  if (!name) throw new UnknownTradeContractError(`Trade contract ${trade.contract} is not a known marketplace`)
   const contract = getContract(name, trade.chainId)
   if (contract.address.toLowerCase() !== trade.contract.toLowerCase()) {
     throw new UnknownTradeContractError(`Trade contract ${trade.contract} does not match ${name} on this chain`)

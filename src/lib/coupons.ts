@@ -3,7 +3,14 @@
 // discount ends by itself when its window closes. marketplace-server stores and validates the coupon
 // (`/v1/coupons`); this module builds, signs, stores, lists and ends one. Ported from the shop's lib/coupons.
 import { Network, type TradeChecks } from '@dcl/schemas'
-import { ContractName, getContract, getContractName, getCouponManager } from 'decentraland-transactions'
+import {
+  ContractName,
+  getContract,
+  getCouponManager,
+  getMarketplaceName,
+  type ContractData,
+  type MarketplaceName
+} from '~/lib/chain/contracts'
 import { StandardMerkleTree } from '@openzeppelin/merkle-tree'
 import { encodeAbiParameters, numberToHex, parseAbiParameters, recoverTypedDataAddress, toHex, type Hex } from 'viem'
 import { config } from '~/config'
@@ -12,7 +19,6 @@ import {
   WrongChainError,
   signedFetch,
   type ContractCall,
-  type ContractData,
   type TypedDataDomain,
   type TypedDataTypes
 } from '~/lib/auth'
@@ -67,7 +73,7 @@ export type CouponCreation = {
 
 type CouponContracts = { couponManager: ContractData & { name: string; version: string }; coupon: string }
 
-function managerOf(marketplace: ContractName, chainId: number): CouponContracts['couponManager'] {
+function managerOf(marketplace: MarketplaceName, chainId: number): CouponContracts['couponManager'] {
   const manager = getCouponManager(marketplace, chainId)
   return { ...manager, chainId }
 }
@@ -79,9 +85,10 @@ function managerOf(marketplace: ContractName, chainId: number): CouponContracts[
  */
 export function getCouponContracts(chainId: number): CouponContracts | null {
   try {
-    const marketplace = getOffchainMarketplaceContract(chainId)
+    const marketplace = getMarketplaceName(getOffchainMarketplaceContract(chainId).address)
+    if (!marketplace) return null
     return {
-      couponManager: managerOf(getContractName(marketplace.address), chainId),
+      couponManager: managerOf(marketplace, chainId),
       coupon: getContract(ContractName.CollectionDiscountCoupon, chainId).address
     }
   } catch {
@@ -94,14 +101,16 @@ export function getCouponContracts(chainId: number): CouponContracts | null {
  * pairs with none. A discount reaches a listing only when this is the manager it was signed against.
  */
 export function getCouponManagerForMarketplace(marketplaceAddress: string, chainId: number): string | null {
+  const marketplace = getMarketplaceName(marketplaceAddress)
+  if (!marketplace) return null
   try {
-    return getCouponManager(getContractName(marketplaceAddress), chainId).address.toLowerCase()
+    return getCouponManager(marketplace, chainId).address.toLowerCase()
   } catch {
     return null
   }
 }
 
-const MARKETPLACES_WITH_COUPONS = [ContractName.OffChainMarketplaceV2, ContractName.OffChainMarketplaceV3]
+const MARKETPLACES_WITH_COUPONS = [ContractName.OffChainMarketplaceV2, ContractName.OffChainMarketplaceV3] as const
 
 /** The registry's manager at `address` on `chainId`, so a cancellation is only ever sent to a contract it vouches for. */
 function findCouponManager(chainId: number, address: string): CouponContracts['couponManager'] | null {
