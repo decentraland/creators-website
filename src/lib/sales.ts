@@ -319,13 +319,14 @@ export type SellItemDeps = {
   createTrade: (trade: TradeCreation) => Promise<string>
   /** The wallet prompt is over; the order is being stored. */
   onSigned?: () => void
+  randomSalt?: () => string
 }
 
 /** Reads the marketplace's signature indexes, signs the order, stores it. Answers the listing as the collection page shows it. */
 export async function sellItem(params: SellItemParams, deps: SellItemDeps): Promise<ItemListing> {
   try {
     const indexes = await deps.fetchSignatureIndexes(params.address, params.chainId)
-    const trade = buildItemOrder(params, indexes, randomSalt())
+    const trade = buildItemOrder(params, indexes, (deps.randomSalt ?? randomSalt)())
     const signature = await deps.signTrade(trade)
     deps.onSigned?.()
     const tradeId = await deps.createTrade({ ...trade, signature })

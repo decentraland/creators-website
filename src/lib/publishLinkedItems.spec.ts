@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ethers } from 'ethers'
 import { type ContractNetwork } from '@dcl/schemas'
+import { TEST_SIGNER, signTypedDataWithTestKey, typedDataDigest } from '~/test/chain'
 import { encodeContractCall } from './auth/transactions'
 import { BuilderServerError, type SlotsCheque } from './builder'
 import { CurationStatus, type Collection } from './collections'
@@ -207,6 +208,9 @@ describe('buildChequeTypedData', () => {
       { name: 'salt', type: 'bytes32' }
     ])
     expect(typed.value).toEqual({ thirdPartyId: THIRD_PARTY_ID, qty: 3, salt })
+    expect(typedDataDigest(typed.domain, typed.types, typed.value)).toBe(
+      '0xa96ab1f5e7bde3bee11f939568e08b49d8fcdc039b990c25f672be61acd8c97b'
+    )
   })
 })
 
@@ -222,18 +226,12 @@ describe('createChequeSalt', () => {
 
 describe('signSlotsCheque', () => {
   it('signs the typed data and answers a cheque builder-server can recover the signer from', async () => {
-    const wallet = ethers.Wallet.createRandom()
-    const signed = await signSlotsCheque(
-      { signTypedData: (domain, types, value) => wallet._signTypedData(domain, types, value) },
-      CHAIN_ID,
-      THIRD_PARTY_ID,
-      5
-    )
+    const signed = await signSlotsCheque({ signTypedData: signTypedDataWithTestKey }, CHAIN_ID, THIRD_PARTY_ID, 5)
 
     expect(signed.qty).toBe(5)
     expect(signed.salt).toMatch(/^0x[0-9a-f]{64}$/)
     const { domain, types, value } = buildChequeTypedData(CHAIN_ID, THIRD_PARTY_ID, signed.qty, signed.salt)
-    expect(ethers.utils.verifyTypedData(domain, types, value, signed.signature)).toBe(wallet.address)
+    expect(ethers.utils.verifyTypedData(domain, types, value, signed.signature)).toBe(TEST_SIGNER)
   })
 })
 
