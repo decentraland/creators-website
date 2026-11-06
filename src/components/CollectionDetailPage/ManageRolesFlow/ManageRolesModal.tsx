@@ -66,7 +66,7 @@ export function ManageRolesModal({
         </S.Description>
         <S.List>
           {addresses.map((address, index) => (
-            <S.Row key={address} data-testid="role-row">
+            <S.Row key={address} data-testid="role-row" data-address={address}>
               <BeneficiaryInput
                 value={address}
                 onChange={() => onRemove(address)}
