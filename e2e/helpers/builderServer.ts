@@ -1,10 +1,18 @@
-import { RARITIES, collection, wearable, type RemoteCollectionRow, type RemoteItemRow } from '../fixtures'
+import {
+  RARITIES,
+  collection,
+  wearable,
+  type RemoteCollectionRow,
+  type RemoteItemRow,
+  type RemoteThirdPartyRow
+} from '../fixtures'
 
 export type BuilderSeed = {
   collections?: RemoteCollectionRow[]
   items?: RemoteItemRow[]
   /** Addresses seated on the curation committee. */
   committee?: string[]
+  thirdParties?: RemoteThirdPartyRow[]
 }
 
 export type BuilderResponse = { status: number; body: unknown }
@@ -77,6 +85,7 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
   const collections = new Map((seed.collections ?? []).map(row => [row.id, structuredClone(row)]))
   const items = new Map((seed.items ?? []).map(row => [row.id, structuredClone(row)]))
   const committee = seed.committee ?? []
+  const thirdParties = new Map((seed.thirdParties ?? []).map(row => [row.id, row]))
 
   const itemsOf = (collectionId: string) => [...items.values()].filter(item => item.collection_id === collectionId)
   const withCount = (row: RemoteCollectionRow): RemoteCollectionRow => ({
@@ -109,6 +118,10 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
     if (method === 'GET' && parts.length === 1 && head === 'rarities') return ok(RARITIES)
     if (method === 'GET' && parts.length === 1 && head === 'curations') return ok([])
     if (method === 'GET' && parts.length === 1 && head === 'thirdParties') return ok([])
+    if (method === 'GET' && parts.length === 2 && head === 'thirdParties') {
+      const row = thirdParties.get(decodeURIComponent(id))
+      return row ? ok(row) : notFound('third party')
+    }
     if (method === 'GET' && parts.length === 2 && /^0x[0-9a-f]{40}$/i.test(head) && id === 'collections') {
       return listCollections(head.toLowerCase(), query)
     }

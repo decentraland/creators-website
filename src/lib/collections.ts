@@ -359,8 +359,8 @@ export function hasCollectionRole(collection: Collection, address: string | unde
 }
 
 /**
- * Published collections are public: any signer may view them read-only, as builder-server serves them.
- * Drafts stay private to the addresses with a role, so the detail page and editor show "not found" otherwise.
+ * Whether the item editor opens this collection: published collections are public there, read-only to any signer as
+ * builder-server serves them, while drafts stay private to the addresses with a role. The detail page is roles-only.
  */
 export function canViewCollection(collection: Collection, address: string | undefined): boolean {
   return !!address && (collection.isPublished || hasCollectionRole(collection, address))

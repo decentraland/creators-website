@@ -82,7 +82,7 @@ A Segment `page` call per pathname change, named from a fixed map in `lib/pageVi
 | `Credits checkout canceled` | back from Stripe with the checkout cancelled; the order is cancelled server-side | `collectionId`, `orderId` |
 | `Credits checkout settled` | back from Stripe, once the order's outcome is known (nothing while confirming) | `orderId`, `status` (a settled order status: `credited` / `failed` / `abandoned`; `initiated` when nobody paid by the poll's deadline; `pending` when the order was paid but still processing at the deadline, or the read failed), `credits` (granted, else `null`) |
 | `Filter linked collections` | the Linked chip on My collections is selected | `count` |
-| `View linked collection` | a linked (third-party) collection's detail loads | `collectionId`, `item_count`, `network`, `is_reader` (the signer is not a manager: the public read-only view) |
+| `View linked collection` | a linked (third-party) collection's detail loads | `collectionId`, `item_count`, `network` |
 | `Copy linked contract address` | the linked contract address is copied on the detail | `collectionId`, `network` |
 | `Create TP Collection` | a linked collection is created (legacy name and props) | `collectionId`, `thirdPartyId`, `linkedContractAddress`, `linkedContractNetwork`, `collectionName` |
 | `Change TP Collection URN` / `Change TP Item URN` | a linked collection's or item's URN suffix is saved (legacy names) | `oldURN`, `newURN` |
