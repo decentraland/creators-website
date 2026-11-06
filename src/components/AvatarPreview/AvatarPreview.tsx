@@ -12,7 +12,6 @@ import { config } from '~/config'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { type AvatarAttributes } from '~/lib/avatar'
 import {
-  PREVIEW_BASE_URL,
   PREVIEW_WHEEL_START,
   PREVIEW_WHEEL_ZOOM,
   buildPreviewOptions,
@@ -143,7 +142,6 @@ function MountedPreview({
         unity={snapshot.unity}
         unityMode={PreviewUnityMode.BUILDER}
         dev={config.is(Env.DEVELOPMENT)}
-        baseUrl={PREVIEW_BASE_URL}
         onLoad={renderer => {
           setLoading(false)
           onLoadRef.current?.(renderer)
