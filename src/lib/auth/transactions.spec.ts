@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { ethers } from 'ethers'
 import { ContractName, getContract, getCouponManager, sendMetaTransaction } from 'decentraland-transactions'
 import { type Session } from './auth'
 import {
@@ -7,10 +8,13 @@ import {
   readWalletChainId,
   sendContractTransaction,
   sendWalletTransaction,
+  signTypedData,
   subscribeWalletChain,
   switchWalletChain,
   watchTransaction
 } from './transactions'
+import { OFFCHAIN_MARKETPLACE_TYPES, getTradeDomain } from '~/lib/trades'
+import { typedDataDigest } from '~/test/chain'
 
 vi.mock('decentraland-transactions', async () => {
   const actual = await vi.importActual<typeof import('decentraland-transactions')>('decentraland-transactions')
@@ -243,5 +247,71 @@ describe('when watching a transaction until it settles', () => {
     await expect(watchTransaction(unknown.reader, HASH, { ...options, ...unknown.clock })).resolves.toBe('pending')
     const down = chain({ fail: true })
     await expect(watchTransaction(down.reader, HASH, { ...options, ...down.clock })).resolves.toBe('pending')
+  })
+})
+
+describe('signTypedData', () => {
+  it('asks the wallet for an eth_signTypedData_v4 signature whose payload hashes to the order digest', async () => {
+    const request = vi.fn(async ({ method }: { method: string; params?: unknown[] }) => {
+      if (method === 'eth_chainId') return '0x13882'
+      if (method === 'eth_accounts') return [ACCOUNT]
+      if (method === 'eth_signTypedData_v4') return '0xsignature'
+      throw new Error(`Unexpected ${method}`)
+    })
+    const web3Provider = new ethers.providers.Web3Provider({ request }, 'any')
+    const session = { address: ACCOUNT, web3Provider, signer: web3Provider.getSigner() } as unknown as Session
+    const order = {
+      checks: {
+        uses: 90,
+        expiration: 4102444800,
+        effective: 1757500000,
+        salt: '0x' + '00'.repeat(31) + '01',
+        contractSignatureIndex: 2,
+        signerSignatureIndex: 3,
+        allowedRoot: '0x' + '00'.repeat(32),
+        externalChecks: []
+      },
+      sent: [{ assetType: 4, contractAddress: '0x00000000000000000000000000000000000000cc', value: '7', extra: '0x' }],
+      received: [
+        {
+          assetType: 2,
+          contractAddress: getContract(ContractName.MANAToken, 80002).address,
+          value: '500000000000000000',
+          extra: '0x',
+          beneficiary: ACCOUNT
+        }
+      ]
+    }
+
+    await expect(signTypedData(session, getTradeDomain(80002), OFFCHAIN_MARKETPLACE_TYPES, order)).resolves.toBe(
+      '0xsignature'
+    )
+
+    const params = request.mock.calls.find(([args]) => args.method === 'eth_signTypedData_v4')?.[0].params
+    const [signer, json] = params as [string, string]
+    expect(signer).toBe(ACCOUNT)
+    const payload = JSON.parse(json) as {
+      primaryType: string
+      domain: Record<string, string>
+      types: Record<string, ethers.TypedDataField[]>
+      message: Record<string, unknown>
+    }
+    expect(payload.primaryType).toBe('Trade')
+    expect(payload.domain).toEqual({
+      name: 'DecentralandMarketplacePolygon',
+      version: '1.0.0',
+      salt: '0x0000000000000000000000000000000000000000000000000000000000013882',
+      verifyingContract: getContract(ContractName.OffChainMarketplaceV3, 80002).address
+    })
+    expect(payload.types.EIP712Domain).toEqual([
+      { name: 'name', type: 'string' },
+      { name: 'version', type: 'string' },
+      { name: 'verifyingContract', type: 'address' },
+      { name: 'salt', type: 'bytes32' }
+    ])
+    const types = Object.fromEntries(Object.entries(payload.types).filter(([name]) => name !== 'EIP712Domain'))
+    expect(typedDataDigest(payload.domain, types, payload.message)).toBe(
+      '0xfc5244b13838fde268d232e2e06c9720b233590078a5dbd7c2ce17bebe156e9f'
+    )
   })
 })

@@ -123,11 +123,13 @@ const EXTERNAL_CALL_TTL_MS = 24 * 60 * 60 * 1000
  * The CreditsManager external call that runs createCollection on the creator's behalf. Byte-compatible
  * with decentraland-dapps' `buildCollectionManagerExternalCall`: selector + ABI-encoded params.
  */
+const randomSalt = () => ethers.utils.hexlify(ethers.utils.randomBytes(32))
+
 export function buildCollectionManagerExternalCall(
   chainId: number,
   args: CreateCollectionArgs,
   now = Date.now(),
-  salt = ethers.utils.hexlify(ethers.utils.randomBytes(32))
+  salt = randomSalt()
 ): ExternalCall {
   const manager = getContract(ContractName.CollectionManager, chainId)
   const contractInterface = new ethers.utils.Interface(manager.abi)
@@ -304,7 +306,12 @@ export async function publishCollection(params: PublishParams, deps: PublishDeps
     const args = buildCreateCollectionArgs(collection, items, address, chainId)
     let txHash: string
     if (paymentMethod === 'credits') {
-      const externalCall = buildCollectionManagerExternalCall(chainId, args, Date.now(), deps.randomSalt?.())
+      const externalCall = buildCollectionManagerExternalCall(
+        chainId,
+        args,
+        Date.now(),
+        (deps.randomSalt ?? randomSalt)()
+      )
       const authorization = await deps.authorizePublication({
         usdPriceCents: weiToUsdCents(fee.total.usdWei),
         chainId,
