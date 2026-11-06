@@ -26,6 +26,61 @@ export async function testIdsStartingWith(page: Page, prefix: string): Promise<s
   return page.$$eval(`[data-testid^="${prefix}"]`, els => els.map(el => el.getAttribute('data-testid') ?? ''))
 }
 
+/** Opens a `~/components/Select` and picks the option with `value`. */
+export async function selectOption(page: Page, testId: string, value: string): Promise<void> {
+  await clickTestId(page, testId)
+  await clickTestId(page, `${testId}-option-${value}`)
+}
+
+/** The values a `~/components/Select` offers, read from its open listbox (closed again afterwards). */
+export async function selectOptions(page: Page, testId: string): Promise<string[]> {
+  await clickTestId(page, testId)
+  await waitForTestId(page, `${testId}-listbox`)
+  const values = await testIdsStartingWith(page, `${testId}-option-`)
+  await page.keyboard.press('Escape')
+  return values.map(id => id.slice(`${testId}-option-`.length))
+}
+
+/** Waits until the element is present and enabled (neither `disabled` nor `aria-disabled`). */
+export async function waitForEnabled(page: Page, id: string, timeout = 20_000): Promise<void> {
+  await page.waitForFunction(
+    (selector: string) => {
+      const el = document.querySelector(selector)
+      return !!el && !el.hasAttribute('disabled') && el.getAttribute('aria-disabled') !== 'true'
+    },
+    { timeout },
+    byTestId(id)
+  )
+}
+
+/** Whether the element is on the page but not visible: false when it is missing, so a renamed test id fails. */
+export async function isHidden(page: Page, id: string): Promise<boolean> {
+  const handle = await page.$(byTestId(id))
+  return handle ? !(await handle.isVisible()) : false
+}
+
+/** Waits for a toast of the given type, without depending on its copy. */
+export async function waitForToast(page: Page, type: 'success' | 'warn' | 'error' | 'info' = 'success') {
+  await page.waitForSelector(`[data-testid="toast"][data-type="${type}"]`, { timeout: 20_000 })
+}
+
+/** Waits until the item editor has loaded an item in edit mode. */
+export async function waitForEditor(page: Page): Promise<void> {
+  await page.waitForSelector('[data-testid="item-editor-page"][data-mode="edit"]', { timeout: 30_000 })
+}
+
+/** Whether an element with the test id is on the page and visible (not `display: none`, zero-sized or hidden). */
+export async function isShown(page: Page, id: string): Promise<boolean> {
+  const handle = await page.$(byTestId(id))
+  return handle ? handle.isVisible() : false
+}
+
+/** Toggles a `~/components/Checkbox`, whose input is visually hidden behind its label. */
+export async function check(page: Page, testId: string): Promise<void> {
+  await page.waitForSelector(byTestId(testId))
+  await page.$eval(byTestId(testId), el => (el as HTMLInputElement).click())
+}
+
 /** Picks files in the next file chooser the page opens after `trigger`. */
 export async function uploadFiles(page: Page, trigger: () => Promise<void>, paths: string[]): Promise<void> {
   const [chooser] = await Promise.all([page.waitForFileChooser({ timeout: 10_000 }), trigger()])
