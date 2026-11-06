@@ -96,6 +96,29 @@ export const NameCell = styled.div`
   }
 `
 
+export const Warning = styled.div`
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border: 1px solid ${theme.colors.amber};
+  border-radius: ${theme.radius.btn};
+  background: ${theme.colors.overlayLight};
+  font-size: 13px;
+  line-height: 1.5;
+  color: ${theme.colors.softWhite};
+
+  & > svg {
+    flex: none;
+    font-size: 18px;
+    margin-top: 1px;
+    color: ${theme.colors.amber};
+  }
+
+  & p {
+    margin: 0;
+  }
+`
+
 export const Footer = styled(Shared.Footer)`
   margin-top: 16px;
 

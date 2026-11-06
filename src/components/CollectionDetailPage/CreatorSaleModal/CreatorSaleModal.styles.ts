@@ -1,5 +1,4 @@
 import styled from '@emotion/styled'
-import { SaleButton as Button } from './SaleButton'
 import { SaleIcon as Icon } from './SaleIcon'
 import { SaleCountdown } from './SaleCountdown'
 import { SaleTag } from '../SaleTag'
@@ -13,37 +12,25 @@ const radius = { ...theme.radius, btn: '8px' }
 const raised = 'rgba(255, 255, 255, 0.06)'
 const hairline = 'rgba(255, 255, 255, 0.12)'
 
-export const Scrim = styled.div`
-  position: fixed;
-  inset: 0;
-  z-index: ${theme.z.overlay};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  background: rgba(22, 21, 24, 0.6);
-`
+export { Scrim, Title, CloseButton as Close } from '~/components/Modal/Modal.styles'
 
-// The card's own padding, which the pinned actions bleed back out over to reach its edges.
-const CARD_PAD = 20
-const CARD_PAD_MOBILE = 16
+// Modal's `compact` padding.
+const CARD_PAD_TOP = 12
+const CARD_PAD = 16
 
 export const Card = styled.div`
   width: 560px;
-  max-width: 100%;
-  max-height: 92vh;
-  max-height: 92dvh;
-  overflow-y: auto;
-  /* Keeps a focused field clear of the pinned actions when the browser scrolls it into view. */
-  scroll-padding-bottom: 104px;
-  background: ${colors.fieldBottomWashed};
-  border: 1px solid ${hairline};
+  max-width: 80vw;
+  max-height: 90vh;
+  max-height: 90dvh;
+  overflow: hidden;
+  background: ${colors.modalSurface};
   border-radius: ${radius.modal};
-  padding: 16px ${CARD_PAD}px ${CARD_PAD}px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  padding: ${CARD_PAD_TOP}px ${CARD_PAD}px ${CARD_PAD}px;
+  box-shadow: 0 16px 48px ${colors.overlayStrong};
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   color: ${colors.softWhite};
   font-family: ${font.sans};
 
@@ -69,8 +56,7 @@ export const Card = styled.div`
   }
 
   ${media.maxWidth('mobile')} {
-    padding: 14px ${CARD_PAD_MOBILE}px ${CARD_PAD_MOBILE}px;
-    gap: 16px;
+    max-width: 100%;
   }
 `
 
@@ -78,50 +64,23 @@ export const Head = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 16px;
 `
 
-export const Title = styled.h2`
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.4;
-  letter-spacing: -0.01em;
-  color: ${colors.white};
-`
-
-export const Close = styled.button`
+export const Divider = styled.hr`
   flex: none;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  margin-right: -8px;
+  width: 100%;
+  margin: 0;
   border: 0;
-  border-radius: 50%;
-  background: none;
-  cursor: pointer;
-  color: ${colors.softWhite};
+  border-top: 1px solid ${colors.glassHover};
+`
 
-  .ico {
-    width: 18px;
-    height: 18px;
-  }
-  &:hover:not(:disabled) {
-    background: ${raised};
-  }
-  &:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
-  &:focus-visible {
-    outline: 2px solid ${colors.softWhite};
-    outline-offset: 2px;
-  }
+export const Steps = styled.div`
+  padding: 8px 0 4px;
 `
 
 export const Subtitle = styled.p`
-  margin: -8px 0 0;
+  margin: 0;
   font-size: 14px;
   line-height: 1.55;
   color: ${colors.gray4};
@@ -562,40 +521,46 @@ export const Marked = styled.b`
   white-space: nowrap;
 
   .ico {
-    margin-right: 2px;
+    margin-right: 0.3em;
   }
 `
 
-export const Status = styled.p`
-  margin: 0;
-  font-size: 14px;
-  color: ${colors.gray4};
-  text-align: center;
+/** Everything between the stepper and the actions: the only part that scrolls, so both stay in view. */
+export const Body = styled.div`
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  /* Room for the focus rings the scroll box would otherwise clip. */
+  margin: -4px;
+  padding: 4px;
 `
 
-/**
- * The modal's foot: ruled off from the form, the way out on the left and the way on at the right. Pinned to
- * the bottom of the card, so a form taller than the screen never hides the button that moves it on — nor
- * the reason that button is disabled, which rides in the foot above it.
- */
 export const Actions = styled.div`
-  position: sticky;
-  bottom: -${CARD_PAD}px;
-  z-index: 3;
+  flex: none;
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0 -${CARD_PAD}px -${CARD_PAD}px;
-  padding: 16px ${CARD_PAD}px ${CARD_PAD}px;
-  border-top: 0.5px solid rgba(255, 255, 255, 0.3);
-  background: ${colors.fieldBottomWashed};
-  box-shadow: 0 -12px 24px -12px rgba(0, 0, 0, 0.45);
+  gap: 16px;
+  padding-top: ${CARD_PAD}px;
+  border-top: 1px solid ${colors.glassHover};
+
+  & > button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
 
   ${media.maxWidth('mobile')} {
-    bottom: -${CARD_PAD_MOBILE}px;
-    margin: 0 -${CARD_PAD_MOBILE}px -${CARD_PAD_MOBILE}px;
-    padding: 12px ${CARD_PAD_MOBILE}px ${CARD_PAD_MOBILE}px;
+    gap: 12px;
+
+    & > button {
+      flex-basis: 100%;
+    }
+    & > button[data-variant='secondary'] {
+      order: 1;
+    }
   }
 `
 
@@ -606,85 +571,9 @@ export const ActionsNote = styled.div`
   gap: 8px;
 `
 
-export const ActionBtn = styled(Button)`
-  flex: 0 1 242px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: 46px;
-  padding: 0 12px;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.46px;
-
-  /* The secondary action is an outline on this card, not a white slab. */
-  &[data-variant='white'] {
-    border: 0.5px solid ${colors.softWhite};
-    background: transparent;
-    color: ${colors.softWhite};
-  }
-  &[data-variant='white']:hover:not(:disabled),
-  &[data-variant='white']:active:not(:disabled) {
-    background: ${colors.glassFaint};
-  }
-
-  /* Side by side on a phone: the way on takes the room the way out leaves, and a label longer than that
-     (the busy status, German) wraps inside a taller button. */
-  ${media.maxWidth('mobile')} {
-    flex: 1 1 0;
-    min-width: 0;
-    height: auto;
-    min-height: 46px;
-    padding-block: 6px;
-    line-height: 1.3;
-    text-align: center;
-
-    &[data-variant='white'] {
-      flex: 0 0 auto;
-      padding-inline: 20px;
-    }
-  }
-`
-
-export const SuccessBanner = styled.div`
+export const SuccessDetail = styled.span`
+  margin-top: 8px;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  padding: 24px 16px;
-  border-radius: ${radius.modal};
-  background: ${raised};
-  border: 1px solid ${hairline};
-  text-align: center;
-`
-
-export const SuccessCheck = styled.div`
-  display: grid;
-  place-items: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: ${colors.ok};
-  color: ${colors.white};
-
-  .ico {
-    width: 34px;
-    height: 34px;
-  }
-`
-
-export const SuccessText = styled.p`
-  margin: 0;
-  font-size: 22px;
-  line-height: 1.4;
-  color: ${colors.white};
-`
-
-export const SuccessDetail = styled.p`
-  margin: 0;
-  display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
   justify-content: center;
@@ -870,11 +759,14 @@ export const UnaffectedInfo = styled(Icon)`
 `
 
 export const ReviewFoot = styled.p`
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   margin: 0;
   padding: 12px 14px;
   border-radius: ${radius.card};
-  background: rgba(255, 45, 85, 0.14);
-  border: 1px solid rgba(255, 45, 85, 0.32);
+  background: ${raised};
+  border: 1px solid ${hairline};
   font-size: 14px;
   line-height: 1.45;
   color: ${colors.softWhite};
@@ -882,6 +774,10 @@ export const ReviewFoot = styled.p`
   b {
     font-weight: 700;
     color: ${colors.white};
+  }
+  svg {
+    flex: none;
+    color: ${colors.gray4};
   }
 `
 

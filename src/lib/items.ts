@@ -8,7 +8,7 @@ import {
   isCollectionLocked,
   type Collection
 } from './collections'
-import { type SpringBonesData } from '@dcl/schemas'
+import { type Mappings, type SpringBonesData } from '@dcl/schemas'
 import { type ItemListing } from './listings'
 import { getRarityMaxSupply } from './rarities'
 
@@ -76,6 +76,16 @@ export type ItemMetrics = {
   additionalArmatures?: number
 }
 
+/** Texture wearables have no mesh to measure: fixed metrics, as the legacy builder stored them. */
+export const IMAGE_WEARABLE_METRICS: ItemMetrics = {
+  triangles: 100,
+  materials: 1,
+  textures: 1,
+  meshes: 1,
+  bodies: 1,
+  entities: 1
+}
+
 export type RemoteItem = {
   id: string
   name: string
@@ -94,13 +104,17 @@ export type RemoteItem = {
   is_approved: boolean
   in_catalyst: boolean
   utility?: string | null
-  mappings?: unknown
+  mappings?: Mappings | null
+  /** Linked items: whether the latest item curation covered a mapping (`isMappingComplete` on the wire). */
+  isMappingComplete?: boolean
   type: ItemType
   data: ItemData
   metrics?: ItemMetrics
   contents: Record<string, string>
   content_hash?: string | null
   local_content_hash?: string | null
+  /** Linked items: the hash of the entity the Catalyst holds, null until the item is approved. */
+  catalyst_content_hash?: string | null
   created_at: string
   updated_at: string
 }
@@ -130,7 +144,11 @@ export type Item = {
   isApproved: boolean
   inCatalyst: boolean
   /** Linked items only: which tokens of the linked contract unlock the item (`@dcl/schemas` Mappings). */
-  mappings?: unknown
+  mappings?: Mappings | null
+  /** Linked items only: false when the item was published before mappings existed and its mapping awaits review. */
+  isMappingComplete?: boolean
+  /** Linked items only: the content hash of the entity the Catalyst holds, once approved. */
+  catalystContentHash?: string
   type: ItemType
   data: ItemData
   metrics?: ItemMetrics
@@ -168,6 +186,8 @@ export function fromRemoteItem(remote: RemoteItem): Item {
   if (remote.local_content_hash) item.currentContentHash = remote.local_content_hash
   if (remote.content_hash) item.blockchainContentHash = remote.content_hash
   if (remote.mappings) item.mappings = remote.mappings
+  if (remote.isMappingComplete !== undefined) item.isMappingComplete = remote.isMappingComplete
+  if (remote.catalyst_content_hash) item.catalystContentHash = remote.catalyst_content_hash
   return item
 }
 
@@ -193,7 +213,7 @@ export function toRemoteItem(item: Item): Omit<RemoteItem, 'created_at' | 'updat
     is_published: false,
     is_approved: false,
     utility: item.utility || null,
-    mappings: null,
+    mappings: item.mappings ?? null,
     type: item.type,
     data: item.data,
     metrics: item.metrics,
@@ -223,7 +243,7 @@ export function getItemBodyShapeType(item: Item): BodyShapeType | null {
 }
 
 /** The body shape an item is still missing (male/female), or null when it's already unisex. */
-export function getMissingBodyShapeType(item: Item): BodyShapeType | null {
+export function getMissingBodyShapeType(item: Item): BodyShapeType.MALE | BodyShapeType.FEMALE | null {
   const bodyShapeType = getItemBodyShapeType(item)
   if (bodyShapeType === BodyShapeType.MALE) return BodyShapeType.FEMALE
   if (bodyShapeType === BodyShapeType.FEMALE) return BodyShapeType.MALE

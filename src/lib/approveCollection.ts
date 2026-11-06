@@ -34,25 +34,26 @@ export async function buildMissingImage(item: Item, deps: ImageDeps): Promise<Mi
 }
 
 export class ApprovalError extends Error {
-  reason: 'reverted' | 'not_indexed' | 'no_identity' | 'deploy_failed'
+  reason:
+    | 'reverted'
+    | 'not_indexed'
+    | 'no_identity'
+    | 'deploy_failed'
+    | 'nothing_pending'
+    | 'missing_hash'
+    | 'invalid_cheque'
+    | 'changed'
+    | 'unsubmitted'
+    | 'has_video'
+  /** The items the error is about, when the curator must be told which. */
+  items?: Item[]
 
-  constructor(reason: ApprovalError['reason'], message: string) {
+  constructor(reason: ApprovalError['reason'], message: string, items?: Item[]) {
     super(message)
     this.name = 'ApprovalError'
     this.reason = reason
+    this.items = items
   }
-}
-
-export type TokenIdDeps = {
-  publishCollectionItems: () => Promise<unknown>
-  fetchItems: () => Promise<Item[]>
-}
-
-/** Items of a collection whose creator left before the publish finished have no token id; the server backfills them. */
-export async function ensureTokenIds(items: Item[], deps: TokenIdDeps): Promise<Item[]> {
-  if (items.every(item => item.tokenId)) return items
-  await deps.publishCollectionItems()
-  return deps.fetchItems()
 }
 
 /**
@@ -95,7 +96,7 @@ export type RescueDeps = {
 }
 
 const INDEXER_POLL_MS = 2000
-const INDEXER_TIMEOUT_MS = 10 * 60_000
+export const INDEXER_TIMEOUT_MS = 10 * 60_000
 /** How long the approval waits for builder-server to read the collection as approved before showing success anyway. */
 export const APPROVAL_INDEX_TIMEOUT_MS = 2 * 60_000
 
@@ -227,6 +228,12 @@ export async function approveOnChain(collection: Collection, deps: ApproveDeps):
   if (!(await deps.waitForTransaction(txHash))) throw new ApprovalError('reverted', `Approval ${txHash} reverted`)
   return txHash
 }
+
+/** Cache key for measureItems: a new content hash re-measures the item. */
+export const itemSizesKey = (items: Item[]) => [
+  'approval-item-sizes',
+  items.map(item => `${item.id}:${item.currentContentHash ?? ''}`)
+]
 
 /** Bytes each item uploads, by item id. Files shared between items are measured once; unmeasurable ones count 0. */
 export async function measureItems(

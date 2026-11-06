@@ -1,7 +1,7 @@
 // The properties form's local draft: a pure reducer over the editable fields of an item plus the
 // blobs picked while editing, and the projection back into a saveable Item (legacy RightPanel state).
-import { type SpringBonesData, WearableCategory } from '@dcl/schemas'
-import { getWearableCategoryOptions, hidesForCategory } from './wearableCategories'
+import { type Mappings, type SpringBonesData, WearableCategory } from '@dcl/schemas'
+import { hidesForCategory } from './wearableCategories'
 import { computeHashes, withCatalystImageForRarity, withThumbnail, type BuiltItem } from './itemFactory'
 import { THUMBNAIL_PATH, VIDEO_PATH } from './itemFiles'
 import { ItemType, tracksVideoOnSave, type Item } from './items'
@@ -40,8 +40,8 @@ export type ItemDraft = {
   thumbnail: Blob | null
   /** A new smart-wearable preview video, uploaded on save. */
   video: Blob | null
-  /** A change-file / add-representation import; its item replaces the saved contents on save. */
-  fileUpdate: BuiltItem | null
+  /** Linked items only: the token mapping as edited; null leaves the saved one alone. */
+  mappings: Mappings | null
 }
 
 export type ItemDraftAction =
@@ -55,7 +55,7 @@ export type ItemDraftAction =
   | { type: 'setFlag'; field: 'blockVrmExport' | 'outlineCompatible'; value: boolean }
   | { type: 'setThumbnail'; thumbnail: Blob | null }
   | { type: 'setVideo'; video: Blob | null }
-  | { type: 'setFileUpdate'; update: BuiltItem | null }
+  | { type: 'setMappings'; mappings: Mappings | null }
 
 export function unique<T>(values: T[]): T[] {
   return Array.from(new Set(values))
@@ -81,7 +81,7 @@ export function createItemDraft(item: Item): ItemDraft {
     outlineCompatible: item.data.outlineCompatible ?? true,
     thumbnail: null,
     video: null,
-    fileUpdate: null
+    mappings: item.mappings ?? null
   }
 }
 
@@ -107,23 +107,8 @@ export function itemDraftReducer(draft: ItemDraft, action: ItemDraftAction): Ite
       return { ...draft, thumbnail: action.thumbnail }
     case 'setVideo':
       return { ...draft, video: action.video }
-    case 'setFileUpdate': {
-      const update = action.update
-      if (!update || update.item.type !== ItemType.WEARABLE) return { ...draft, fileUpdate: update }
-      // Image and model wearables take disjoint categories: switching kinds leaves the old one invalid.
-      const categories = getWearableCategoryOptions(update.item.contents)
-      if (draft.category === null) {
-        // Switching back to the stored kind (model → image → model) brings the stored category back.
-        const stored = createItemDraft(update.item)
-        const fits = stored.category !== null && categories.includes(stored.category)
-        return fits
-          ? { ...draft, fileUpdate: update, category: stored.category, hides: stored.hides }
-          : { ...draft, fileUpdate: update }
-      }
-      if (categories.includes(draft.category)) return { ...draft, fileUpdate: update }
-      // Image wearables hide nothing, so a switch either way leaves no hide that still applies.
-      return { ...draft, fileUpdate: update, category: null, hides: [] }
-    }
+    case 'setMappings':
+      return { ...draft, mappings: action.mappings }
   }
 }
 
@@ -147,7 +132,7 @@ export function isItemDraftDirty(draft: ItemDraft, item: Item): boolean {
     draft.outlineCompatible !== pristine.outlineCompatible ||
     draft.thumbnail !== null ||
     draft.video !== null ||
-    draft.fileUpdate !== null
+    JSON.stringify(draft.mappings) !== JSON.stringify(pristine.mappings)
   )
 }
 
@@ -171,20 +156,20 @@ function applyUtility(item: Item, utility: string): Item {
  * the item-level lists in its overrides.
  */
 export function applyDraftToItem(item: Item, draft: ItemDraft): Item {
-  const base = draft.fileUpdate?.item ?? item
   const shared = {
-    ...base,
+    ...item,
     name: draft.name.trim(),
     description: draft.description.trim(),
-    rarity: draft.rarity ?? base.rarity
+    rarity: draft.rarity ?? item.rarity,
+    ...(draft.mappings ? { mappings: draft.mappings } : {})
   }
-  if (base.type === ItemType.EMOTE) {
+  if (item.type === ItemType.EMOTE) {
     return applyUtility(
       {
         ...shared,
         data: {
-          ...base.data,
-          category: draft.category ?? base.data.category,
+          ...item.data,
+          category: draft.category ?? item.data.category,
           tags: draft.tags,
           loop: draft.loop
         }
@@ -195,15 +180,15 @@ export function applyDraftToItem(item: Item, draft: ItemDraft): Item {
   const next: Item = {
     ...shared,
     data: {
-      ...base.data,
-      category: draft.category ?? base.data.category,
+      ...item.data,
+      category: draft.category ?? item.data.category,
       hides: draft.hides,
       replaces: [],
       removesDefaultHiding: computeRemovesDefaultHiding(draft.category, draft.hides),
       tags: draft.tags,
       blockVrmExport: draft.blockVrmExport,
       outlineCompatible: draft.outlineCompatible,
-      representations: base.data.representations.map(representation => ({
+      representations: item.data.representations.map(representation => ({
         ...representation,
         overrideHides: draft.hides,
         overrideReplaces: []
@@ -238,7 +223,7 @@ export type SaveOptions = {
 /** The item to PUT plus the files to upload: fields applied, new thumbnail/video hashed, spring bones merged. */
 export async function toSaveableItem(item: Item, draft: ItemDraft, options: SaveOptions = {}): Promise<BuiltItem> {
   let next = applyDraftToItem(item, draft)
-  let blobs: Record<string, Blob> = { ...(draft.fileUpdate?.blobs ?? {}) }
+  let blobs: Record<string, Blob> = {}
 
   if (draft.thumbnail) {
     const built = await withThumbnail(next, draft.thumbnail)
@@ -262,4 +247,28 @@ export async function toSaveableItem(item: Item, draft: ItemDraft, options: Save
     next = { ...next, data: { ...next.data, springBones: options.springBones ?? undefined } }
   }
   return { item: { ...next, updatedAt: Date.now() }, blobs }
+}
+
+/** What the change-file modal decided: the built item and files, plus a render and a category when taken. */
+export type ItemFileChange = {
+  update: BuiltItem
+  thumbnail: Blob | null
+  category: string | null
+}
+
+/**
+ * The PUT for a file change alone, built from the saved item: whatever the panel holds unsaved stays
+ * there, as the legacy builder's modal did.
+ */
+export async function toFileChangeSaveable(
+  item: Item,
+  change: ItemFileChange,
+  options: SaveOptions = {}
+): Promise<BuiltItem> {
+  let draft = createItemDraft(change.update.item)
+  if (change.thumbnail) draft = itemDraftReducer(draft, { type: 'setThumbnail', thumbnail: change.thumbnail })
+  // A category picked in the modal means the file switched kinds: a texture hides nothing.
+  if (change.category) draft = { ...draft, category: change.category, hides: [] }
+  const built = await toSaveableItem({ ...change.update.item, rarity: item.rarity }, draft, options)
+  return { item: built.item, blobs: { ...change.update.blobs, ...built.blobs } }
 }

@@ -18,11 +18,6 @@ export const Pill = styled.span`
     border-color: ${theme.colors.green};
     background: ${theme.colors.greenTint};
   }
-  &[data-state='under_review'] {
-    color: ${theme.colors.amber};
-    border-color: ${theme.colors.amber};
-    background: ${theme.colors.orangeTint};
-  }
   &[data-state='to_review'] {
     color: ${theme.colors.infoLighter};
     border-color: ${theme.colors.infoLight};

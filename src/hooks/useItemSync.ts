@@ -6,9 +6,15 @@ import { type Collection } from '~/lib/collections'
 import { ItemSyncStatus, getItemSyncStatus, mapEntitiesByItemId, type ItemSync } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
 
+/** The deployed entities of a collection's items, shared with the approval flow so it plans from what the editor shows. */
+export function itemEntitiesKey(collectionId: string | undefined, pointers: string[]) {
+  return ['item-entities', collectionId, pointers] as const
+}
+
 /**
- * Each item's Catalyst sync status. Only published items have anything deployed, so drafts cost no
- * request; the collection's pending curation turns "unsynced" into "under review".
+ * Each item's Catalyst sync status, as every view shows it: tags are left out, since a tag edit is live
+ * without a review (the approval's deploy plan still compares them). Only published items have anything
+ * deployed, so drafts cost no request; the collection's pending curation turns "unsynced" into "under review".
  */
 export function useItemSyncs(
   address: string | undefined,
@@ -23,7 +29,7 @@ export function useItemSyncs(
   )
 
   const entitiesQuery = useQuery({
-    queryKey: ['item-entities', collectionId, pointers],
+    queryKey: itemEntitiesKey(collectionId, pointers),
     queryFn: () => fetchEntitiesByPointers(pointers),
     enabled: pointers.length > 0,
     staleTime: 30_000
@@ -48,7 +54,8 @@ export function useItemSyncs(
       const status = getItemSyncStatus(item, entity, {
         isCurationPending: curationPending,
         curationLoaded,
-        entitiesLoaded
+        entitiesLoaded,
+        ignoreTags: true
       })
       if (entity) syncs.set(item.id, { status, entity })
       else if (lookupFailed && status === ItemSyncStatus.LOADING) syncs.set(item.id, { status, lookupFailed })

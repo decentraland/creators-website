@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState, type Dispatch } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react'
 import {
   CameraAlt as CameraIcon,
   ChangeHistory as TriangleIcon,
@@ -9,14 +8,12 @@ import {
   SentimentSatisfiedAlt as SmileIcon,
   Storage as SizeIcon,
   VideocamOutlined as VideoIcon,
-  SwapHorizOutlined as ChangeFileIcon,
   Texture as TextureIcon,
   ThirtyFpsSelect as FpsIcon
 } from '@mui/icons-material'
 import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
 import { Button } from '~/components/Button'
 import { CategorySelect } from '~/components/CategorySelect'
-import { ConfirmModal } from '~/components/ConfirmModal'
 import { ClockIcon, ImageIcon, LoopIcon, PlayOnceIcon, SmartIcon } from '~/components/Icons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { RaritySelect } from '~/components/RaritySelect'
@@ -27,29 +24,39 @@ import { VideoDropzone, VideoModal } from '~/components/VideoModal'
 import { useCampaign } from '~/hooks/useCampaign'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useObjectURL } from '~/hooks/useObjectURL'
+import { useItemVideo } from '~/hooks/useItem'
 import { useDeleteItem } from '~/hooks/usePublishCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useTranslation } from '~/intl'
-import { fetchContent, fetchItemContents, getContentsStorageUrl } from '~/lib/builder'
+import { getContentsStorageUrl } from '~/lib/builder'
 import { FeatureFlag } from '~/lib/featureFlags'
 import {
   ITEM_DESCRIPTION_MAX_LENGTH,
   ITEM_UTILITY_MAX_LENGTH,
   isValidItemDescription,
   type ItemDraft,
-  type ItemDraftAction
+  type ItemDraftAction,
+  type ItemFileChange
 } from '~/lib/itemDraft'
-import { buildItemZip, getItemZipName } from '~/lib/itemDownload'
+import { downloadItem } from '~/lib/itemDownload'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
-import { ITEM_EXTENSIONS, ItemFileError, hasFacialExpressions, THUMBNAIL_PATH, VIDEO_PATH, toMB } from '~/lib/itemFiles'
-import { pickFile } from '~/lib/filePicker'
-import { importItemModel, type ModelImportKind } from '~/lib/itemModelImport'
-import { ItemType, getMissingBodyShapeType, isMissingSmartWearableVideo, isSmartWearable, type Item } from '~/lib/items'
-import { downloadBlob } from '~/lib/navigation'
+import { hasFacialExpressions, THUMBNAIL_PATH, VIDEO_PATH, toMB } from '~/lib/itemFiles'
+import {
+  BodyShapeType,
+  ItemType,
+  getMissingBodyShapeType,
+  isMissingSmartWearableVideo,
+  isSmartWearable,
+  type Item
+} from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import { type SpringBoneParamsByName } from '~/lib/springBones'
 import { getEmoteCategoryOptions, getWearableCategoryOptions } from '~/lib/wearableCategories'
+import { buildItemMappings, getItemMapping } from '~/lib/mappings'
+import { type LinkedContract } from '~/lib/thirdParty'
+import { MappingEditor } from '~/components/MappingEditor'
 import { DeleteItemModal } from '~/components/CollectionDetailPage/DeleteItemModal'
+import { ChangeFileModal } from '../ChangeFileModal'
 import { EditorSection } from '../EditorSection'
 import { HidesEditor } from '../HidesEditor'
 import { SpringBonesEditor, type SpringBonesModel } from '../SpringBonesEditor'
@@ -72,15 +79,21 @@ type Props = {
   /** Review mode hides the read-only note: curators know the editor is locked. */
   showReadOnlyNote?: boolean
   /** Why the viewer cannot edit: no manage role, or the collection's publish lock. */
-  readOnlyReason?: 'role' | 'lock'
+  readOnlyReason?: 'role' | 'linked' | 'lock'
   /** Owner of a draft collection: the only one who may delete items here. */
   canDelete: boolean
+  /** Only the people behind the collection and curators get the source files; anyone else could re-upload them as their own. */
+  canDownload: boolean
   draft: ItemDraft
   dispatch: Dispatch<ItemDraftAction>
   isDirty: boolean
   isSaving: boolean
   springBones: SpringBonesFormProps | null
+  /** Linked collections: the contract the item's mapping targets (null when the collection has none); undefined otherwise. */
+  linkedContract?: LinkedContract | null
   onSave: () => void
+  /** Persists a file change from the modal on its own; rejects when the save fails. */
+  onSaveFile: (change: ItemFileChange) => Promise<void>
   onRevert: () => void
   onDeleted: () => void
   testId?: string
@@ -93,23 +106,32 @@ export function PropertiesPanel({
   showReadOnlyNote = true,
   readOnlyReason = 'role',
   canDelete,
+  canDownload,
   draft,
   dispatch,
   isDirty,
   isSaving,
   springBones,
+  linkedContract,
   onSave,
+  onSaveFile,
   onRevert,
   onDeleted,
   testId = 'properties-panel'
 }: Props) {
-  const { t } = useTranslation()
+  const { t, rich } = useTranslation()
+  const isLinked = linkedContract !== undefined
+  const [mappingInvalid, setMappingInvalid] = useState(false)
+  // Bumped by Revert: the mapping editor keeps a half-typed draft of its own, which only a remount discards.
+  const [revision, setRevision] = useState(0)
   const showToast = useNotifications(state => state.showToast)
-  const [isImporting, setImporting] = useState(false)
-  const [importError, setImportError] = useState<string | null>(null)
+  const [changeFile, setChangeFile] = useState<{ lockedBodyShape?: BodyShapeType.MALE | BodyShapeType.FEMALE } | null>(
+    null
+  )
   const [isVideoOpen, setVideoOpen] = useState(false)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
   const [isDownloading, setDownloading] = useState(false)
+  const tagsFieldRef = useRef<HTMLInputElement>(null)
   const deleteItem = useDeleteItem(address)
   const campaign = useCampaign()
   const utilityFlag = useFeatureFlag(FeatureFlag.WEARABLE_UTILITY)
@@ -122,7 +144,7 @@ export function PropertiesPanel({
   const isWearable = item.type === ItemType.WEARABLE
   const isSmart = isSmartWearable(item)
   const disabled = !editable
-  const contents = draft.fileUpdate?.item.contents ?? item.contents
+  const contents = item.contents
   const categories = useMemo(
     () => (isEmote ? getEmoteCategoryOptions() : getWearableCategoryOptions(contents)),
     [isEmote, contents]
@@ -130,11 +152,6 @@ export function PropertiesPanel({
   const missingShape = useMemo(
     () => (isWearable && !isSmart ? getMissingBodyShapeType(item) : null),
     [isWearable, isSmart, item]
-  )
-  // Only a new file can leave the category without a valid value; stored items keep saving as they are.
-  const categoryMissing = useMemo(
-    () => isWearable && draft.fileUpdate !== null && !categories.includes(draft.category ?? ''),
-    [isWearable, draft.fileUpdate, draft.category, categories]
   )
   const nameInvalid = draft.name.length > 0 && !isValidItemName(draft.name)
   const descriptionInvalid = !isValidItemDescription(draft.description)
@@ -148,34 +165,13 @@ export function PropertiesPanel({
   const [videoDuration, setVideoDuration] = useState<number | null>(null)
   // A new video must not flash the previous one's duration until its metadata loads.
   useEffect(() => setVideoDuration(null), [videoUrl])
-  const storedVideo = useQuery({
-    queryKey: ['item-video', videoHash],
-    queryFn: () => fetchContent(videoHash),
-    enabled: isVideoOpen && !draft.video && !!videoHash,
-    staleTime: Infinity
-  })
-  const metrics = draft.fileUpdate?.item.metrics ?? item.metrics
-
-  async function importModel(kind: ModelImportKind) {
-    const file = await pickFile({ accept: ITEM_EXTENSIONS.join(',') })
-    if (!file) return
-    setImporting(true)
-    try {
-      dispatch({ type: 'setFileUpdate', update: await importItemModel(file, item, kind) })
-    } catch (error) {
-      const key = error instanceof ItemFileError ? error.messageKey : 'invalid_model_file'
-      const params = error instanceof ItemFileError ? error.messageParams : undefined
-      if (!(error instanceof ItemFileError)) console.error('Model import failed:', error)
-      setImportError(t(`add_items_modal.file_error.${key}`, params))
-    } finally {
-      setImporting(false)
-    }
-  }
+  const storedVideo = useItemVideo(videoHash, isVideoOpen && !draft.video)
+  const metrics = item.metrics
 
   async function download() {
     setDownloading(true)
     try {
-      downloadBlob(await buildItemZip(await fetchItemContents(item)), getItemZipName(item))
+      await downloadItem(item)
     } catch (error) {
       console.error('Item download failed:', error)
       showToast(t('item_editor.details.download_error'), { type: 'error' })
@@ -219,43 +215,49 @@ export function PropertiesPanel({
             </Tooltip>
           )}
         </S.PanelTitleRow>
-        <ActionsMenu label={t('item_editor.actions.label')} variant="row" tone="dark" testId={`${testId}-actions`}>
-          <ActionsMenuItem testId={`${testId}-download`} disabled={isDownloading} onClick={() => void download()}>
-            {t('item_editor.details.download')}
-          </ActionsMenuItem>
-          {editable && (
-            <ActionsMenuItem
-              testId={`${testId}-change-file`}
-              disabled={isImporting}
-              onClick={() => void importModel({ kind: 'replace' })}
-            >
-              {t('item_editor.details.change_file')}
-            </ActionsMenuItem>
-          )}
-          {editable && missingShape && (
-            <ActionsMenuItem
-              testId={`${testId}-add-representation`}
-              disabled={isImporting}
-              onClick={() => void importModel({ kind: 'add-representation', bodyShape: missingShape })}
-            >
-              {t('item_editor.details.add_representation', {
-                shape: t(`add_items_modal.body_shape_option.${missingShape}`)
-              })}
-            </ActionsMenuItem>
-          )}
-          {canDelete && (
-            <>
-              <ActionsMenuDivider />
-              <ActionsMenuItem testId={`${testId}-delete`} onClick={() => setDeleteOpen(true)}>
-                {t('item_editor.danger.delete')}
+        {(canDownload || editable) && (
+          <ActionsMenu label={t('item_editor.actions.label')} variant="row" tone="dark" testId={`${testId}-actions`}>
+            {canDownload && (
+              <ActionsMenuItem testId={`${testId}-download`} disabled={isDownloading} onClick={() => void download()}>
+                {t('item_editor.details.download')}
               </ActionsMenuItem>
-            </>
-          )}
-        </ActionsMenu>
+            )}
+            {editable && (
+              <ActionsMenuItem testId={`${testId}-change-file`} disabled={isSaving} onClick={() => setChangeFile({})}>
+                {t('item_editor.details.change_file')}
+              </ActionsMenuItem>
+            )}
+            {editable && missingShape && (
+              <ActionsMenuItem
+                testId={`${testId}-add-representation`}
+                disabled={isSaving}
+                onClick={() => setChangeFile({ lockedBodyShape: missingShape })}
+              >
+                {t('item_editor.details.add_representation', {
+                  shape: t(`add_items_modal.body_shape_option.${missingShape}`)
+                })}
+              </ActionsMenuItem>
+            )}
+            {canDelete && (
+              <>
+                <ActionsMenuDivider />
+                <ActionsMenuItem testId={`${testId}-delete`} onClick={() => setDeleteOpen(true)}>
+                  {t('item_editor.danger.delete')}
+                </ActionsMenuItem>
+              </>
+            )}
+          </ActionsMenu>
+        )}
       </S.PanelHeader>
       {!editable && showReadOnlyNote && (
         <S.ReadOnlyNote data-testid={`${testId}-readonly`}>
-          {t(readOnlyReason === 'lock' ? 'item_editor.read_only_locked' : 'item_editor.read_only')}
+          {t(
+            readOnlyReason === 'lock'
+              ? 'item_editor.read_only_locked'
+              : readOnlyReason === 'linked'
+                ? 'item_editor.read_only_linked'
+                : 'item_editor.read_only'
+          )}
         </S.ReadOnlyNote>
       )}
 
@@ -314,12 +316,6 @@ export function PropertiesPanel({
             </S.Metrics>
           )}
         </S.DetailsRow>
-        {draft.fileUpdate && (
-          <S.Warning data-testid={`${testId}-file-update`}>
-            <ChangeFileIcon fontSize="small" />
-            {t('item_editor.details.file_update_pending')}
-          </S.Warning>
-        )}
         {isSmart && (
           <S.VideoPane data-testid={`${testId}-video`}>
             <S.FieldLabel>
@@ -470,28 +466,42 @@ export function PropertiesPanel({
             testId={`${testId}-category`}
             onChange={category => dispatch({ type: 'setCategory', category })}
           />
-          {categoryMissing && editable && (
-            <S.ErrorText data-testid={`${testId}-category-error`}>
-              {t('item_editor.basics.category_required')}
-            </S.ErrorText>
-          )}
         </S.Field>
-        <S.Field as="div">
-          <S.FieldLabel>
-            <S.LabelText>
-              {t('item_editor.basics.rarity')}{' '}
-              <InfoTooltip content={t('add_items_modal.rarity_tooltip')} testId={`${testId}-rarity-hint`} />
-            </S.LabelText>
-          </S.FieldLabel>
-          <RaritySelect
-            value={draft.rarity ?? ''}
-            disabled={disabled || item.isPublished}
-            tone="dark"
-            testId={`${testId}-rarity`}
-            onChange={rarity => dispatch({ type: 'setRarity', rarity })}
-          />
-        </S.Field>
+        {!isLinked && (
+          <S.Field as="div">
+            <S.FieldLabel>
+              <S.LabelText>
+                {t('item_editor.basics.rarity')}{' '}
+                <InfoTooltip content={t('add_items_modal.rarity_tooltip')} testId={`${testId}-rarity-hint`} />
+              </S.LabelText>
+            </S.FieldLabel>
+            <RaritySelect
+              value={draft.rarity ?? ''}
+              disabled={disabled || item.isPublished}
+              tone="dark"
+              testId={`${testId}-rarity`}
+              onChange={rarity => dispatch({ type: 'setRarity', rarity })}
+            />
+          </S.Field>
+        )}
       </EditorSection>
+
+      {isLinked && linkedContract && (
+        <EditorSection title={t('mapping_editor.label')} testId={`${testId}-mapping`}>
+          <MappingEditor
+            key={`${item.id}:${revision}`}
+            value={getItemMapping(draft.mappings, linkedContract)}
+            disabled={disabled}
+            tone="dark"
+            testId={`${testId}-mapping-editor`}
+            onChange={mapping => {
+              setMappingInvalid(mapping === null)
+              if (mapping) dispatch({ type: 'setMappings', mappings: buildItemMappings(mapping, linkedContract) })
+            }}
+          />
+          <S.SectionNote>{t('add_items_modal.mapping_hint')}</S.SectionNote>
+        </EditorSection>
+      )}
 
       {isWearable && (
         <EditorSection title={t('item_editor.overrides.title')} testId={`${testId}-overrides`}>
@@ -554,10 +564,36 @@ export function PropertiesPanel({
       )}
 
       <EditorSection title={t('item_editor.tags.title')} testId={`${testId}-tags`}>
-        <TagsInput tags={draft.tags} disabled={disabled} onChange={tags => dispatch({ type: 'setTags', tags })} />
+        <TagsInput
+          tags={draft.tags}
+          disabled={disabled}
+          inputRef={tagsFieldRef}
+          onChange={tags => dispatch({ type: 'setTags', tags })}
+        />
         {editable && campaign && (
           <S.SectionNote data-testid={`${testId}-campaign-hint`}>
-            {t('item_editor.tags.campaign_hint', { tag: campaign.mainTag, name: campaign.name })}
+            {rich('item_editor.tags.campaign_hint', {
+              tag: campaign.mainTag,
+              name: campaign.name,
+              hl: chunks =>
+                draft.tags.includes(campaign.mainTag) ? (
+                  <strong>{chunks}</strong>
+                ) : (
+                  <Tooltip content={t('item_editor.tags.campaign_add')} asChild describeChild>
+                    <S.CampaignTag
+                      type="button"
+                      data-testid={`${testId}-campaign-tag`}
+                      onClick={() => {
+                        dispatch({ type: 'setTags', tags: [...draft.tags, campaign.mainTag] })
+                        // The button unmounts once the tag is on the draft, so keyboard focus would fall to the body.
+                        tagsFieldRef.current?.focus()
+                      }}
+                    >
+                      {chunks}
+                    </S.CampaignTag>
+                  </Tooltip>
+                )
+            })}
           </S.SectionNote>
         )}
       </EditorSection>
@@ -596,15 +632,20 @@ export function PropertiesPanel({
       )}
 
       <S.IntercomClearance aria-hidden />
-      {editable && isDirty && (
+      {/* An invalid mapping draft never reaches the item, so it doesn't make it dirty: Revert must still undo it. */}
+      {editable && (isDirty || mappingInvalid) && (
         <S.Footer data-testid={`${testId}-footer`}>
           <Button
             type="button"
             variant="secondary"
             size="sm"
-            disabled={!isDirty || isSaving}
+            disabled={!(isDirty || mappingInvalid) || isSaving}
             data-testid={`${testId}-revert`}
-            onClick={onRevert}
+            onClick={() => {
+              setMappingInvalid(false)
+              setRevision(current => current + 1)
+              onRevert()
+            }}
           >
             {t('item_editor.revert')}
           </Button>
@@ -612,7 +653,7 @@ export function PropertiesPanel({
             type="button"
             variant="primary"
             size="sm"
-            disabled={!isDirty || nameInvalid || descriptionInvalid || categoryMissing || draft.name.trim() === ''}
+            disabled={!isDirty || nameInvalid || descriptionInvalid || mappingInvalid || draft.name.trim() === ''}
             loading={isSaving}
             data-testid={`${testId}-save`}
             onClick={onSave}
@@ -631,17 +672,13 @@ export function PropertiesPanel({
           onClose={() => setVideoOpen(false)}
         />
       )}
-      {importError && (
-        <ConfirmModal
-          title={t('item_editor.details.import_error_title')}
-          description={importError}
-          onClose={() => setImportError(null)}
-          confirm={{
-            label: t('item_editor.details.import_error_close'),
-            onClick: () => setImportError(null),
-            testId: `${testId}-import-error-close`
-          }}
-          testId={`${testId}-import-error`}
+      {changeFile && (
+        <ChangeFileModal
+          item={item}
+          lockedBodyShape={changeFile.lockedBodyShape}
+          linked={isLinked}
+          onSave={onSaveFile}
+          onClose={() => setChangeFile(null)}
         />
       )}
       {isDeleteOpen && (

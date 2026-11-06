@@ -49,6 +49,114 @@ function discountOf(id: string, signer: string) {
   } as unknown as CollectionDiscount
 }
 
+describe('when the creator backs out of the wallet prompt without closing the End dialog', () => {
+  it('should go back to the confirmation, and show the same request again on End instead of sending a second', async () => {
+    const { wrapper, session } = setup()
+    let mine: () => void = () => {}
+    vi.mocked(endDiscount).mockImplementation(
+      (_, deps) =>
+        new Promise<void>(resolve => {
+          mine = () => {
+            deps.onSigned?.()
+            resolve()
+          }
+        })
+    )
+    render(
+      <EndDiscountFlow
+        discount={discountOf('backed-out', session.address)}
+        collection={collection}
+        session={session}
+        onClose={vi.fn()}
+      />,
+      { wrapper }
+    )
+
+    await userEvent.click(screen.getByTestId('end-discount-confirm'))
+    await userEvent.click(screen.getByTestId('end-discount-pending-cancel'))
+    expect(screen.getByTestId('end-discount-modal')).toBeInTheDocument()
+    expect(screen.queryByTestId('end-discount-in-flight')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByTestId('end-discount-confirm'))
+    expect(screen.getByTestId('end-discount-pending-label')).toHaveTextContent(/wallet/i)
+
+    await act(async () => mine())
+    expect(await screen.findByTestId('success-modal-title')).toHaveTextContent(/discount ended/i)
+    expect(endDiscount).toHaveBeenCalledTimes(1)
+  })
+
+  it('should celebrate a request backed out of that is signed anyway', async () => {
+    const { wrapper, session } = setup()
+    let mine: () => void = () => {}
+    vi.mocked(endDiscount).mockImplementation(
+      (_, deps) =>
+        new Promise<void>(resolve => {
+          mine = () => {
+            deps.onSigned?.()
+            resolve()
+          }
+        })
+    )
+    render(
+      <EndDiscountFlow
+        discount={discountOf('signed-anyway', session.address)}
+        collection={collection}
+        session={session}
+        onClose={vi.fn()}
+      />,
+      { wrapper }
+    )
+
+    await userEvent.click(screen.getByTestId('end-discount-confirm'))
+    await userEvent.click(screen.getByTestId('end-discount-pending-cancel'))
+    await act(async () => mine())
+    expect(await screen.findByTestId('success-modal-title')).toHaveTextContent(/discount ended/i)
+  })
+  it('should explain a request backed out of that later fails', async () => {
+    const { wrapper, session } = setup()
+    let fail: () => void = () => {}
+    vi.mocked(endDiscount).mockImplementation(
+      () => new Promise<void>((_, reject) => (fail = () => reject(new DiscountError('generic'))))
+    )
+    render(
+      <EndDiscountFlow
+        discount={discountOf('failed-later', session.address)}
+        collection={collection}
+        session={session}
+        onClose={vi.fn()}
+      />,
+      { wrapper }
+    )
+
+    await userEvent.click(screen.getByTestId('end-discount-confirm'))
+    await userEvent.click(screen.getByTestId('end-discount-pending-cancel'))
+    await act(async () => fail())
+    expect(screen.queryByTestId('end-discount-confirm')).not.toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toHaveTextContent(/couldn't end your discount/i)
+  })
+
+  it('should show a request backed out of as mining once it is signed, no longer offering End', async () => {
+    const { wrapper, session } = setup()
+    let sign: () => void = () => {}
+    vi.mocked(endDiscount).mockImplementation((_, deps) => new Promise<void>(() => (sign = () => deps.onSigned?.())))
+    render(
+      <EndDiscountFlow
+        discount={discountOf('signed-later', session.address)}
+        collection={collection}
+        session={session}
+        onClose={vi.fn()}
+      />,
+      { wrapper }
+    )
+
+    await userEvent.click(screen.getByTestId('end-discount-confirm'))
+    await userEvent.click(screen.getByTestId('end-discount-pending-cancel'))
+    await act(async () => sign())
+    expect(screen.queryByTestId('end-discount-modal')).not.toBeInTheDocument()
+    expect(screen.getByTestId('end-discount-pending-label')).not.toHaveTextContent(/wallet/i)
+  })
+})
+
 describe('when the creator closes the End dialog with the wallet prompt still open and opens it again', () => {
   // Each attempt is a paid cancellation: a reopened dialog must never send a second one.
   it('should wait on the first attempt and celebrate once it mines, sending nothing else', async () => {
@@ -222,7 +330,7 @@ describe('when the creator creates a discount while the page watches the discoun
     await userEvent.click(screen.getByTestId('creator-sale-continue'))
     await userEvent.click(screen.getByTestId('creator-sale-submit'))
 
-    expect(await screen.findByTestId('creator-sale-success')).toBeInTheDocument()
+    expect(await screen.findByTestId('creator-sale-success-modal')).toBeInTheDocument()
     expect(screen.queryByTestId('creator-sale-modal')).not.toBeInTheDocument()
     expect(createDiscount).toHaveBeenCalledTimes(1)
   })

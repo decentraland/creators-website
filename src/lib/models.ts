@@ -3,7 +3,7 @@
 // thumbnails) is NOT done here — that comes from the WearablePreview iframe controller.
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { ArmatureId, WearableCategory } from '@dcl/schemas'
-import { ItemType, type ItemMetrics } from './items'
+import { ItemType } from './items'
 import { ItemFileError, MAX_EMOTE_DURATION, isImageFile } from './itemFiles'
 import { suggestWearableCategory } from './suggestWearableCategory'
 import { captureError } from './monitoring'
@@ -149,6 +149,13 @@ export async function analyzeModel(
       return { type: ItemType.EMOTE, validationIssues: issues, suggestedCategory: null, emoteMetrics }
     }
 
+    // A wearable without geometry can't be previewed or published; the hidden preview would wait for it forever.
+    let hasMesh = false
+    gltf.scene.traverse(object => {
+      if ((object as { isMesh?: boolean }).isMesh) hasMesh = true
+    })
+    if (!hasMesh) throw new ItemFileError('invalid_model_file')
+
     // Suggestion only — a throw on malformed geometry must never fail the import.
     let suggestedCategory: WearableCategory | null = null
     try {
@@ -169,29 +176,3 @@ export async function analyzeModel(
     revokeObjectURLs(mappings)
   }
 }
-
-/** Render stats of a wearable model (the numbers the preview controller reports for uploads). */
-export function getModelMetrics(gltf: GLTF): ItemMetrics {
-  let triangles = 0
-  let meshes = 0
-  const materials = new Set<unknown>()
-  const textures = new Set<unknown>()
-  gltf.scene.traverse(object => {
-    const mesh = object as { isMesh?: boolean; geometry?: GeometryLike; material?: MaterialLike | MaterialLike[] }
-    if (!mesh.isMesh || !mesh.geometry) return
-    meshes++
-    const { index, attributes } = mesh.geometry
-    const vertices = index ? index.count : (attributes.position?.count ?? 0)
-    triangles += Math.floor(vertices / 3)
-    for (const material of Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : []) {
-      materials.add(material)
-      for (const value of Object.values(material)) {
-        if (value && typeof value === 'object' && (value as { isTexture?: boolean }).isTexture) textures.add(value)
-      }
-    }
-  })
-  return { triangles, materials: materials.size, textures: textures.size, meshes, bodies: 1, entities: 1 }
-}
-
-type GeometryLike = { index: { count: number } | null; attributes: { position?: { count: number } } }
-type MaterialLike = Record<string, unknown>

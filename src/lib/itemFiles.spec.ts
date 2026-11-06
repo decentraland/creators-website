@@ -369,6 +369,66 @@ describe('loadItemFile', () => {
       ])
     })
 
+    it('flattens a single body-shape folder of a scene zip: the model serves both shapes', async () => {
+      const result = await loadItemFile(
+        await zipFile({ 'scene.json': scene(), 'female/model.glb': 'glb', 'bin/game.js': 'code' })
+      )
+      expect(result.model).toBe('model.glb')
+      expect(result.bodyShape).toBe(BodyShapeType.BOTH)
+      expect(Object.keys(result.contents).sort()).toEqual(['bin/game.js', 'model.glb', 'scene.json'])
+    })
+
+    it('takes the 3D model of a downloaded item zip, not its catalyst image or thumbnail', async () => {
+      const result = await loadItemFile(
+        await zipFile({ 'image.png': 'catalyst', 'thumbnail.png': 'thumb', 'male/hat.glb': 'glb' })
+      )
+      expect(result.model).toBe('hat.glb')
+      expect(result.bodyShape).toBe(BodyShapeType.MALE)
+      expect(Object.keys(result.contents).sort()).toEqual(['hat.glb', 'image.png', 'thumbnail.png'])
+    })
+
+    it('keeps a scene zip own folders: only a body-shape folder is stripped', async () => {
+      const result = await loadItemFile(
+        await zipFile({
+          'scene.json': scene(),
+          'models/hat.glb': 'glb',
+          'models/hat.bin': 'bin',
+          'images/a/tex.png': 'a',
+          'images/b/tex.png': 'b',
+          'bin/game.js': 'code'
+        })
+      )
+      expect(result.model).toBe('models/hat.glb')
+      expect(Object.keys(result.contents).sort()).toEqual([
+        'bin/game.js',
+        'images/a/tex.png',
+        'images/b/tex.png',
+        'models/hat.bin',
+        'models/hat.glb',
+        'scene.json'
+      ])
+      const nested = await loadItemFile(
+        await zipFile({
+          'scene.json': scene(),
+          'female/models/hat.glb': 'glb',
+          'female/models/hat.bin': 'bin',
+          'bin/game.js': 'code'
+        })
+      )
+      expect(nested.model).toBe('models/hat.glb')
+      expect(Object.keys(nested.contents).sort()).toEqual([
+        'bin/game.js',
+        'models/hat.bin',
+        'models/hat.glb',
+        'scene.json'
+      ])
+    })
+
+    it('still takes a texture called image.png inside a body-shape folder', async () => {
+      const result = await loadItemFile(await zipFile({ 'male/image.png': 'png' }))
+      expect(result.model).toBe('image.png')
+    })
+
     it('rejects a nested scene.json next to a root wearable.json', async () => {
       await expectItemFileError(
         loadItemFile(
@@ -383,12 +443,100 @@ describe('loadItemFile', () => {
       )
     })
 
+    it('rejects per-body-shape scene.json copies that are not inside the same folder', async () => {
+      await expectItemFileError(
+        loadItemFile(
+          await zipFile({
+            'a/male/scene.json': scene(),
+            'a/male/bin/game.js': 'code',
+            'a/male/model.glb': 'glb',
+            'b/female/scene.json': scene(),
+            'b/female/bin/game.js': 'code',
+            'b/female/model.glb': 'glb'
+          })
+        ),
+        'scene_manifest_missing'
+      )
+    })
+
     it('finds the scene.json of a zipped project folder', async () => {
       const result = await loadItemFile(
         await zipFile({ 'my-sw/scene.json': scene(), 'my-sw/model.glb': 'glb', 'my-sw/bin/game.js': 'code' })
       )
       expect(result.scene?.main).toBe('bin/game.js')
       expect(Object.keys(result.contents).sort()).toEqual(['bin/game.js', 'model.glb', 'scene.json'])
+    })
+
+    it('round-trips a downloaded smart wearable: scene and code duplicated under male/ and female/', async () => {
+      const result = await loadItemFile(
+        await zipFile({
+          'anime/thumbnail.png': 'thumb',
+          'anime/image.png': 'catalyst',
+          'anime/male/scene.json': scene(),
+          'anime/male/bin/game.js': 'code',
+          'anime/male/long.glb': 'glb-m',
+          'anime/female/scene.json': JSON.stringify(JSON.parse(scene()), null, 2),
+          'anime/female/bin/game.js': 'code',
+          'anime/female/short.glb': 'glb-f'
+        })
+      )
+      expect(result.scene?.main).toBe('bin/game.js')
+      expect(result.bodyShape).toBe(BodyShapeType.BOTH)
+      expect(Object.keys(result.contents).sort()).toEqual([
+        'female/bin/game.js',
+        'female/short.glb',
+        'image.png',
+        'male/bin/game.js',
+        'male/long.glb',
+        'scene.json',
+        'thumbnail.png'
+      ])
+    })
+
+    it('rejects a downloaded smart wearable whose male and female code differ', async () => {
+      await expectItemFileError(
+        loadItemFile(
+          await zipFile({
+            'male/scene.json': scene(),
+            'male/bin/game.js': 'code A',
+            'male/model.glb': 'glb',
+            'female/scene.json': scene(),
+            'female/bin/game.js': 'code B',
+            'female/model.glb': 'glb'
+          })
+        ),
+        'scene_code_mismatch'
+      )
+    })
+
+    it('rejects a downloaded smart wearable whose scene.json copies differ', async () => {
+      await expectItemFileError(
+        loadItemFile(
+          await zipFile({
+            'male/scene.json': scene(),
+            'male/bin/game.js': 'code',
+            'male/model.glb': 'glb',
+            'female/scene.json': scene({ requiredPermissions: ['USE_FETCH'] }),
+            'female/bin/game.js': 'code',
+            'female/model.glb': 'glb'
+          })
+        ),
+        'scene_code_mismatch'
+      )
+    })
+
+    it('requires the code in every body-shape folder when it is not at the root', async () => {
+      const promise = loadItemFile(
+        await zipFile({
+          'male/scene.json': scene(),
+          'male/bin/game.js': 'code',
+          'male/model.glb': 'glb',
+          'female/scene.json': scene(),
+          'female/model.glb': 'glb'
+        })
+      )
+      await expectItemFileError(promise, 'manifest_file_missing')
+      await expect(promise).rejects.toMatchObject({ messageParams: { fileName: 'female/bin/game.js' } })
     })
 
     it('keeps a bundled video.mp4 without counting it toward the size cap', async () => {

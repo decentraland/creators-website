@@ -1,4 +1,4 @@
-// Overview page analytics (spec: design/TRACKING_SPEC.md "Overview"). The page moved here from the sites
+// Overview page analytics (spec: docs/TRACKING_SPEC.md "Overview"). The page moved here from the sites
 // repo, so the event names and sites' props are kept for warehouse continuity.
 import type { SyntheticEvent } from 'react'
 import { SITE_PATH } from '~/config'

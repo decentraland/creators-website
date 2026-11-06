@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { TranslationProvider } from '~/intl'
 import { type Collection } from '~/lib/collections'
@@ -53,6 +53,14 @@ describe('CurationRow', () => {
     )
   })
 
+  it('tells a first review from an update to an approved collection', () => {
+    renderRow(pending)
+    expect(screen.getByTestId('review-type')).toHaveAttribute('data-type', 'new')
+    cleanup()
+    renderRow(pending, { ...collection, isApproved: true })
+    expect(screen.getByTestId('review-type')).toHaveAttribute('data-type', 'updates')
+  })
+
   it('links the collection forum post', () => {
     renderRow(pending, { ...collection, forumLink: 'https://forum.decentraland.org/t/hats/77' })
     fireEvent.click(screen.getByTestId('curation-row-forum-link'))
@@ -75,7 +83,7 @@ describe('CurationRow', () => {
   it('shows the assigned curator, marked when it is the signed-in one, with an edit button', () => {
     const assigned = { ...pending, assignee: ME }
     const onAssign = renderRow(assigned)
-    expect(screen.getByTestId('curation-state')).toHaveAttribute('data-state', 'under_review')
+    expect(screen.getByTestId('curation-state')).toHaveAttribute('data-state', 'to_review')
     expect(screen.getByTestId('curation-row-curator')).toHaveTextContent('(you)')
     fireEvent.click(screen.getByTestId('curation-row-edit-assignee'))
     expect(onAssign).toHaveBeenCalledWith(collection, assigned, 'edit')

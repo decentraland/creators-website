@@ -31,7 +31,7 @@ export type UploadOperation = {
   isExistingItemUpdate: boolean
 }
 
-export type UploadFailureReason = 'locked' | 'published' | 'too_big' | 'generic'
+export type UploadFailureReason = 'locked' | 'published' | 'urn_taken' | 'duplicate_urn' | 'too_big' | 'generic'
 
 export type UploadResult = {
   savedDraftIds: string[]
@@ -39,19 +39,40 @@ export type UploadResult = {
   failureReason: UploadFailureReason | null
 }
 
+/** Drafts whose linked URN an earlier draft of the batch already takes: uploading both would overwrite or fail one. */
+export function findDuplicateUrns(drafts: UploadDraft[]): string[] {
+  const seen = new Set<string>()
+  return drafts.flatMap(draft => {
+    if (!draft.urn || draft.variantTargetId) return []
+    if (seen.has(draft.urn)) return [draft.id]
+    seen.add(draft.urn)
+    return []
+  })
+}
+
 /**
  * Builds the ordered operation list: base items first (batch variants merged into them), then
- * representation appends onto existing collection items.
+ * representation appends onto existing collection items. `replaceByUrn` (linked edit in bulk) turns a draft with an
+ * existing item's URN into an update of that item; otherwise it stays a new item, which the server refuses.
  */
-export async function planUpload(drafts: UploadDraft[], existingItems: Item[]): Promise<UploadOperation[]> {
+export async function planUpload(
+  drafts: UploadDraft[],
+  existingItems: Item[],
+  { replaceByUrn = false }: { replaceByUrn?: boolean } = {}
+): Promise<UploadOperation[]> {
   const operations: UploadOperation[] = []
   const builtByDraftId = new Map<string, UploadOperation>()
 
   for (const draft of drafts.filter(candidate => !candidate.variantTargetId)) {
+    const built = await buildItem(draft)
+    // A linked item re-uploaded under its own URN replaces the existing item (legacy "edit in bulk").
+    const existing = replaceByUrn && draft.urn ? existingItems.find(item => item.urn === draft.urn) : undefined
     const operation: UploadOperation = {
-      built: await buildItem(draft),
+      built: existing
+        ? { ...built, item: { ...built.item, id: existing.id, owner: existing.owner, createdAt: existing.createdAt } }
+        : built,
       draftIds: [draft.id],
-      isExistingItemUpdate: false
+      isExistingItemUpdate: !!existing
     }
     operations.push(operation)
     builtByDraftId.set(draft.id, operation)
@@ -79,10 +100,16 @@ export async function planUpload(drafts: UploadDraft[], existingItems: Item[]): 
   return operations
 }
 
+const URN_TAKEN_PATTERN = /belong to another item/i
+
 function toFailureReason(error: unknown): UploadFailureReason {
   if (error instanceof BuilderServerError) {
     if (error.status === COLLECTION_LOCKED_STATUS) return 'locked'
-    if (error.status === ALREADY_PUBLISHED_STATUS) return 'published'
+    // builder-server answers a URN another item holds (URNAlreadyInUseError) with the same status as a published
+    // collection; only its message tells them apart, and it sends no error code.
+    if (error.status === ALREADY_PUBLISHED_STATUS) {
+      return URN_TAKEN_PATTERN.test(error.message) ? 'urn_taken' : 'published'
+    }
   }
   if (error instanceof ItemFileError) return 'too_big'
   return 'generic'

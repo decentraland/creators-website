@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import {
   Check as CheckIcon,
   ChevronRight as ChevronRightIcon,
@@ -7,7 +6,7 @@ import {
 } from '@mui/icons-material'
 import approvedArt from '~/assets/send-success.png'
 import errorArt from '~/assets/modal-error.png'
-import { useTranslation, type Translate } from '~/intl'
+import { useTranslation } from '~/intl'
 import { Button } from '~/components/Button'
 import { CollectionMosaic } from '~/components/CollectionMosaic'
 import { ConfirmModal } from '~/components/ConfirmModal'
@@ -18,18 +17,19 @@ import { RarityPill } from '~/components/RarityPill'
 import { StepIndicator } from '~/components/StepIndicator'
 import { SuccessModal } from '~/components/SuccessModal'
 import { Tooltip } from '~/components/Tooltip'
-import { ProgressModal } from './ProgressModal'
+import { ProgressModal } from '~/components/ProgressModal'
 import { PendingModal } from '~/components/PendingModal'
+import { useItemSizes } from '~/hooks/useItemSizes'
 import { useApprovalFlow, type ApprovalMode, type ApprovalPlan, type ApprovalStep } from '~/hooks/useApprovalFlow'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { track } from '~/lib/analytics'
-import { measureItems } from '~/lib/approveCollection'
 import { isSocialLogin, type Session } from '~/lib/auth'
 import { copyToClipboard } from '~/lib/clipboard'
-import { fetchContentSize, getContentsStorageUrl } from '~/lib/builder'
+import { getContentsStorageUrl } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
 import { getItemBodyShapeType, type Item } from '~/lib/items'
+import { formatSize } from './formatSize'
 import * as S from './ApprovalFlowModal.styles'
 
 type Props = {
@@ -42,14 +42,7 @@ type Props = {
   onClose: () => void
 }
 
-const MB = 1024 * 1024
 const COPIED_FEEDBACK_MS = 1500
-
-function formatSize(t: Translate, bytes: number): string {
-  return bytes >= MB
-    ? t('approval_flow.size_mb', { size: (bytes / MB).toFixed(1) })
-    : t('approval_flow.size_kb', { size: (bytes / 1024).toFixed(1) })
-}
 
 const shortHash = (hash: string) => `${hash.slice(0, 6)}...${hash.slice(-6)}`
 
@@ -220,13 +213,7 @@ function ItemName({ item }: { item: Item }) {
 
 function StepTable({ step, plan, collection }: { step: ApprovalStep; plan: ApprovalPlan; collection: Collection }) {
   const { t } = useTranslation()
-  const deployIds = useMemo(() => plan.deploy.map(item => item.id), [plan.deploy])
-  const sizes = useQuery({
-    queryKey: ['approval-item-sizes', deployIds],
-    queryFn: () => measureItems(plan.deploy, fetchContentSize),
-    enabled: step === 'deploy',
-    staleTime: Infinity
-  })
+  const sizes = useItemSizes(plan.deploy, step === 'deploy')
   const column = (key: string, optional = false) => (
     <span data-optional={optional || undefined}>{t(`approval_flow.columns.${key}`)}</span>
   )

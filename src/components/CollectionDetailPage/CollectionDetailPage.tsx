@@ -20,6 +20,7 @@ import {
   useSaveCollection
 } from '~/hooks/useCollection'
 import { BuilderServerError } from '~/lib/builder'
+import { isSocialLogin } from '~/lib/auth'
 import { FeatureFlag } from '~/lib/featureFlags'
 import {
   CollectionDisplayStatus,
@@ -33,6 +34,7 @@ import {
 } from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
 import { track } from '~/lib/analytics'
+import { previewCollectionFromDetail } from '~/lib/explorer'
 import { isForumPostRelevant, openForumPost } from '~/lib/forumPost'
 import { cancelCreditsOrder } from '~/lib/credits'
 import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'
@@ -81,7 +83,6 @@ import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { Tooltip } from '~/components/Tooltip'
 import { EmoteIcon, OpenEditorIcon, WearableIcon } from '~/components/Icons'
-import { PreviewCollectionButton } from '~/components/PreviewCollectionButton'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { CollectionRolePill } from '~/components/CollectionRolePill'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
@@ -90,7 +91,7 @@ import { ValidationResultsModal, toValidationSubject } from '~/components/Valida
 import addItemsArt from '~/assets/add-items.png'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { useThirdParty } from '~/hooks/useLinkedCollection'
-import { getThirdPartyId, isThirdPartyManager } from '~/lib/linkedCollections'
+import { canViewLinkedCollection, getThirdPartyId, isThirdPartyManager } from '~/lib/thirdParty'
 import { AddItemsModal } from './AddItemsModal'
 import { LinkedCollectionView } from './LinkedCollectionView'
 import { ItemActionsMenu } from './ItemActionsMenu'
@@ -99,6 +100,7 @@ import { PublishCollectionModal, PublishSuccessModal, type PublishResume } from 
 import { ValidationGate } from './PublishCollectionModal/ValidationGate'
 import { SellItemFlow, UpdatePriceFlow } from './SellItemFlow'
 import { ManageRolesFlow } from './ManageRolesFlow'
+import { TransferOwnershipFlow } from './TransferOwnershipFlow'
 import { SendItemsFlow } from './SendItemsFlow'
 import { CollectionDiscounts, DiscountFlow, EndDiscountFlow } from './DiscountFlow'
 import * as S from './CollectionDetailPage.styles'
@@ -154,7 +156,12 @@ const CollectionDetailPage = () => {
   }, [topUpReturn, restored, session, collectionId, setSearchParams])
 
   const collectionQuery = useCollection(address, collectionId)
-  const itemsQuery = useAllCollectionItems(address, collectionId)
+  // Linked collections page their items server-side (they can hold thousands): the whole-list query starts with the
+  // collection's, so standard pages load both in parallel, and stops once the collection turns out to be linked.
+  const itemsQuery = useAllCollectionItems(
+    address,
+    collectionQuery.data && isLinkedCollection(collectionQuery.data) ? undefined : collectionId
+  )
   const saveCollection = useSaveCollection(address)
   const updateItem = useSaveItem(address)
   const showToast = useNotifications(state => state.showToast)
@@ -175,6 +182,7 @@ const CollectionDetailPage = () => {
   const isLinked = !!collection && isLinkedCollection(collection)
   const standardCollection = isLinked ? undefined : collection
   const thirdParty = useThirdParty(address, isLinked ? collection : undefined)
+  const isLinkedManager = !!thirdParty.data && isThirdPartyManager(thirdParty.data, address)
   const allItems = itemsQuery.data
   const total = allItems?.length ?? 0
   const counts = useMemo(() => countItemsByType(allItems ?? []), [allItems])
@@ -190,7 +198,8 @@ const CollectionDetailPage = () => {
   const withPlayMode = useMemo(() => results.some(item => item.type === ItemType.EMOTE), [results])
   const canManage = !!standardCollection && canManageCollectionItems(standardCollection, address)
   // A reader holds no role: they reached a published collection by link and only browse it.
-  const isReader = !!collection && !hasCollectionRole(collection, address)
+  // Readers hold no role: a linked collection's roles are its third party's managers.
+  const isReader = !!collection && (isLinked ? !isLinkedManager : !hasCollectionRole(collection, address))
   // builder-server serves a collection's curation to its owner, collaborators and the committee only.
   const committee = useCommittee(address)
   const curationAddress = canManage || committee.isCurator ? address : undefined
@@ -219,6 +228,7 @@ const CollectionDetailPage = () => {
   )
   const [isSending, setSending] = useState(false)
   const [managingRoles, setManagingRoles] = useState<RoleKind | null>(null)
+  const [isTransferring, setTransferring] = useState(false)
   const listingsQuery = useCollectionListings(withMarket ? standardCollection.contractAddress : undefined)
   const listings = listingsQuery.data
   // `undefined` keeps the price cell blank while the catalog loads; a failed request shows no price rather than an error.
@@ -272,8 +282,9 @@ const CollectionDetailPage = () => {
   useBeforeUnloadGuard(useAnyDiscountInFlight())
   const [endingDiscount, setEndingDiscount] = useState<CollectionDiscount | null>(null)
   const openDiscount = useCallback(
-    (source: 'header' | 'menu') => {
-      if (collection) track(DISCOUNT_OPENED_EVENT, { collectionId: collection.id, source })
+    (trigger: 'header' | 'menu') => {
+      // Not `source`: that prop is reserved for the app discriminator and would overwrite this one.
+      if (collection) track(DISCOUNT_OPENED_EVENT, { collectionId: collection.id, trigger })
       setDiscountOpen(true)
     },
     [collection]
@@ -352,12 +363,15 @@ const CollectionDetailPage = () => {
   )
 
   const isLoading =
-    !restored || (!!address && (collectionQuery.isLoading || itemsQuery.isLoading || thirdParty.isLoading))
+    !restored ||
+    (!!address &&
+      (collectionQuery.isLoading || (!isLinked && !!collection && itemsQuery.isLoading) || thirdParty.isLoading))
   const isThirdPartyNotFound =
     thirdParty.isError &&
     thirdParty.error instanceof BuilderServerError &&
     NOT_FOUND_STATUSES.includes(thirdParty.error.status)
-  // A draft is private: addresses with no role on it get the same "not found" as a rejected request.
+  // A draft is private: addresses with no role on it get the same "not found" as a rejected request. Published
+  // collections, linked ones included, open read-only to any signer.
   const isNotFound =
     !collectionId ||
     (collectionQuery.isError &&
@@ -367,9 +381,9 @@ const CollectionDetailPage = () => {
       (isLinked
         ? !getThirdPartyId(collection) ||
           isThirdPartyNotFound ||
-          (!!thirdParty.data && !isThirdPartyManager(thirdParty.data, address))
+          (!!thirdParty.data && !canViewLinkedCollection(collection, thirdParty.data, address))
         : !canViewCollection(collection, address)))
-  const isError = !isNotFound && (collectionQuery.isError || itemsQuery.isError || thirdParty.isError)
+  const isError = !isNotFound && (collectionQuery.isError || (!isLinked && itemsQuery.isError) || thirdParty.isError)
   const isEmpty = filteredTotal === 0
   const hasItems = total > 0
   const canRename = !!collection && !collection.isPublished && !isCollectionLocked(collection)
@@ -516,12 +530,12 @@ const CollectionDetailPage = () => {
             {t('collection_detail_page.error.retry')}
           </Button>
         </S.Panel>
-      ) : isLinked && address ? (
+      ) : isLinked && session ? (
         <LinkedCollectionView
           collection={collection}
-          thirdPartyName={thirdParty.data?.name}
-          items={allItems ?? []}
-          address={address}
+          thirdParty={thirdParty.data}
+          session={session}
+          isReader={isReader}
           page={page}
           onBack={() => navigate({ pathname: '/collections', search: listState?.listSearch })}
           onPageChange={goToPage}
@@ -572,14 +586,6 @@ const CollectionDetailPage = () => {
                     data-testid="validation-spinner"
                   />
                 </Tooltip>
-              )}
-              {!isReader && (
-                <PreviewCollectionButton
-                  collectionId={collection.id}
-                  disabled={!hasItems}
-                  data-desktop-only
-                  data-testid="preview-collection"
-                />
               )}
               {showForumPost && (
                 <Button
@@ -635,6 +641,18 @@ const CollectionDetailPage = () => {
                   {t('collection_detail_page.send_items')}
                 </Button>
               )}
+              {canCreateDiscount && (
+                <Button
+                  type="button"
+                  variant="dark"
+                  data-desktop-only
+                  data-testid="create-discount"
+                  onClick={() => openDiscount('header')}
+                >
+                  <DiscountIcon fontSize="small" />
+                  {t('collection_discount.create')}
+                </Button>
+              )}
               {showPushChanges && (
                 <Tooltip
                   content={
@@ -660,34 +678,30 @@ const CollectionDetailPage = () => {
                   </Button>
                 </Tooltip>
               )}
-              {canCreateDiscount && (
-                <Button
-                  type="button"
-                  variant="dark"
-                  data-desktop-only
-                  data-testid="create-discount"
-                  onClick={() => openDiscount('header')}
-                >
-                  <DiscountIcon fontSize="small" />
-                  {t('collection_discount.create')}
-                </Button>
-              )}
               {address && (
                 <CollectionActionsMenu
                   collection={collection}
                   address={address}
+                  onPreviewInWorld={
+                    !isReader && hasItems ? () => previewCollectionFromDetail(collection.id, total) : undefined
+                  }
                   onSendItems={canSend ? () => setSending(true) : undefined}
                   onCreateDiscount={canCreateDiscount ? () => openDiscount('menu') : undefined}
                   onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
                   forumLink={showForumPost ? collection.forumLink : undefined}
                   onManageRoles={setManagingRoles}
+                  onTransferOwnership={() => setTransferring(true)}
                   onDeleted={() => navigate('/collections', { replace: true })}
                 />
               )}
             </S.HeaderActions>
           </S.Header>
           {canManageDiscounts && openDiscounts && (
-            <CollectionDiscounts discounts={openDiscounts} now={discountsNow} onEnd={setEndingDiscount} />
+            <CollectionDiscounts
+              discounts={openDiscounts}
+              now={discountsNow}
+              onEnd={session && !isSocialLogin(session) ? setEndingDiscount : undefined}
+            />
           )}
 
           <S.SubHeader>
@@ -933,6 +947,14 @@ const CollectionDetailPage = () => {
               kind={managingRoles}
               session={session}
               onClose={() => setManagingRoles(null)}
+            />
+          )}
+          {isTransferring && session && (
+            <TransferOwnershipFlow
+              collection={collection}
+              session={session}
+              onDone={() => navigate('/collections', { replace: true })}
+              onClose={() => setTransferring(false)}
             />
           )}
           {validationItem && (

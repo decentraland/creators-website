@@ -1,18 +1,37 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FeatureFlag } from '~/lib/featureFlags'
 import { setFeatureFlags } from '~/test/featureFlags'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BodyShape } from '@dcl/schemas'
 import { Providers } from '~/components/CollectionDetailPage/SellItemFlow/testUtils'
 import { ItemType, type Item } from '~/lib/items'
 import { useItemForm } from '../useItemForm'
+import { type ItemFileChange } from '~/lib/itemDraft'
+import { useNotifications } from '~/lib/notifications'
 import { PropertiesPanel } from './PropertiesPanel'
 
-const pickFile = vi.fn()
-const importItemModel = vi.fn()
-vi.mock('~/lib/filePicker', () => ({ pickFile: (...args: unknown[]) => pickFile(...args) }))
-vi.mock('~/lib/itemModelImport', () => ({ importItemModel: (...args: unknown[]) => importItemModel(...args) }))
+// The change-file modal has its own spec; here it hands back whatever result the test prepared.
+const fileChange = vi.hoisted<{ result: ItemFileChange | null }>(() => ({ result: null }))
+vi.mock('../ChangeFileModal', () => ({
+  ChangeFileModal: ({ item, onSave }: { item: Item; onSave: (result: ItemFileChange) => Promise<void> }) => (
+    <button
+      type="button"
+      data-testid="mock-change-file-apply"
+      data-shapes={item.data.representations.length}
+      onClick={() => fileChange.result && void onSave(fileChange.result)}
+    />
+  )
+}))
+const builder = vi.hoisted(() => ({ fetchItemContents: vi.fn() }))
+vi.mock('~/lib/builder', async () => ({
+  ...(await vi.importActual<typeof import('~/lib/builder')>('~/lib/builder')),
+  fetchContent: () => Promise.resolve(new Blob()),
+  fetchItemContents: builder.fetchItemContents
+}))
+
+const campaign = vi.hoisted(() => ({ current: null as { name: string; mainTag: string } | null }))
+vi.mock('~/hooks/useCampaign', () => ({ useCampaign: () => campaign.current }))
 
 vi.mock('~/lib/featureFlags', async () => {
   const actual = await vi.importActual<typeof import('~/lib/featureFlags')>('~/lib/featureFlags')
@@ -20,7 +39,13 @@ vi.mock('~/lib/featureFlags', async () => {
   return { ...actual, getIsFeatureEnabled: mock.getIsFeatureEnabled }
 })
 
-beforeEach(() => setFeatureFlags(FeatureFlag.WEARABLE_UTILITY, FeatureFlag.VRM_OPTOUT))
+beforeEach(() => {
+  setFeatureFlags(FeatureFlag.WEARABLE_UTILITY, FeatureFlag.VRM_OPTOUT)
+  campaign.current = null
+  // jsdom's createObjectURL only accepts its own Blob class.
+  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:thumbnail')
+  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
+})
 
 const item: Item = {
   id: 'w1',
@@ -45,20 +70,25 @@ const item: Item = {
   createdAt: 1,
   updatedAt: 1
 }
-const noSpringBones = { isLoading: false, models: [], initialParams: {}, bonesByHash: {} }
 
 function Harness({
   editable = true,
+  canDownload = true,
   readOnlyReason,
   onSave = vi.fn(),
+  onSaveFile = () => Promise.resolve(),
+  isSaving = false,
   subject = item
 }: {
   editable?: boolean
+  canDownload?: boolean
   readOnlyReason?: 'role' | 'lock'
   onSave?: () => void
+  onSaveFile?: (change: ItemFileChange) => Promise<void>
+  isSaving?: boolean
   subject?: Item
 }) {
-  const form = useItemForm(subject, noSpringBones)
+  const form = useItemForm(subject)
   return (
     <PropertiesPanel
       item={subject}
@@ -66,12 +96,14 @@ function Harness({
       editable={editable}
       readOnlyReason={readOnlyReason}
       canDelete={editable}
+      canDownload={canDownload}
       draft={form.draft}
       dispatch={form.dispatch}
       isDirty={form.isDirty}
-      isSaving={false}
+      isSaving={isSaving}
       springBones={null}
       onSave={onSave}
+      onSaveFile={onSaveFile}
       onRevert={() => form.reset(subject)}
       onDeleted={vi.fn()}
     />
@@ -108,6 +140,35 @@ describe('PropertiesPanel', () => {
     expect(screen.getByTestId('properties-panel-delete')).toBeInTheDocument()
   })
 
+  it('keeps the download for a read-only viewer who may still have the files', async () => {
+    render(<Harness editable={false} />, { wrapper: Providers })
+    await userEvent.click(screen.getByTestId('properties-panel-actions'))
+    expect(screen.getByTestId('properties-panel-download')).toBeInTheDocument()
+    expect(screen.queryByTestId('properties-panel-change-file')).not.toBeInTheDocument()
+  })
+
+  it('drops the download and the empty menu for someone outside the collection', () => {
+    render(<Harness editable={false} canDownload={false} />, { wrapper: Providers })
+    expect(screen.queryByTestId('properties-panel-actions')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('properties-panel-download')).not.toBeInTheDocument()
+  })
+
+  it('tells the creator a download failed even after they left the panel', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    let fail: (error: Error) => void = () => undefined
+    builder.fetchItemContents.mockReturnValue(new Promise((_, reject) => (fail = reject)))
+    const { unmount } = render(<Harness />, { wrapper: Providers })
+    await userEvent.click(screen.getByTestId('properties-panel-actions'))
+    await userEvent.click(screen.getByTestId('properties-panel-download'))
+    unmount()
+    fail(new Error('storage down'))
+    await vi.waitFor(() =>
+      expect(useNotifications.getState().toasts).toContainEqual(
+        expect.objectContaining({ type: 'error', message: "We couldn't download the item. Please try again." })
+      )
+    )
+  })
+
   it('exposes the wearable options as switches', async () => {
     render(<Harness />, { wrapper: Providers })
     const vrm = await screen.findByTestId('properties-panel-vrm-export')
@@ -135,18 +196,30 @@ describe('PropertiesPanel', () => {
     expect(screen.getByTestId('properties-panel-save')).toBeDisabled()
   })
 
-  it('asks for a category when a new file does not fit the current one', async () => {
-    pickFile.mockResolvedValue(new File(['png'], 'eyes.png'))
-    importItemModel.mockResolvedValue({ item: { ...item, contents: { 'male/eyes.png': 'bafyeyes' } }, blobs: {} })
-    render(<Harness />, { wrapper: Providers })
+  it('hands a file change to the editor to save on its own, from the saved item', async () => {
+    fileChange.result = {
+      update: { item: { ...item, contents: { 'male/cap.glb': 'bafycap' } }, blobs: {} },
+      thumbnail: null,
+      category: null
+    }
+    const onSaveFile = vi.fn().mockResolvedValue(undefined)
+    render(<Harness onSaveFile={onSaveFile} />, { wrapper: Providers })
+    // Unsaved panel edits are not part of what the modal saves.
+    await userEvent.type(screen.getByTestId('properties-panel-name'), ' 2')
     await userEvent.click(screen.getByTestId('properties-panel-actions'))
     await userEvent.click(screen.getByTestId('properties-panel-change-file'))
-    expect(await screen.findByTestId('properties-panel-category-error')).toBeInTheDocument()
-    expect(screen.getByTestId('properties-panel-save')).toBeDisabled()
-    await userEvent.click(screen.getByTestId('properties-panel-category'))
-    await userEvent.click(screen.getByTestId('properties-panel-category-option-eyes'))
-    expect(screen.queryByTestId('properties-panel-category-error')).not.toBeInTheDocument()
+    expect(screen.getByTestId('mock-change-file-apply')).toHaveAttribute('data-shapes', '1')
+    await userEvent.click(screen.getByTestId('mock-change-file-apply'))
+    expect(onSaveFile).toHaveBeenCalledWith(fileChange.result)
+    expect(screen.getByTestId('properties-panel-name')).toHaveValue('Hat 2')
     expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
+  })
+
+  it('keeps the file actions out of reach while a save is in flight', async () => {
+    render(<Harness isSaving />, { wrapper: Providers })
+    await userEvent.click(screen.getByTestId('properties-panel-actions'))
+    expect(screen.getByTestId('properties-panel-change-file')).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByTestId('properties-panel-add-representation')).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('keeps saving a stored item whose category the editor does not offer', async () => {
@@ -209,5 +282,28 @@ describe('PropertiesPanel', () => {
     expect(screen.getAllByTestId('tags-input-tag').map(tag => tag.textContent)).toEqual(['cool', 'pirate'])
     await userEvent.click(screen.getByTestId('tags-input-remove-cool'))
     expect(screen.getAllByTestId('tags-input-tag')).toHaveLength(1)
+  })
+
+  it('adds the campaign tag from the hint and stops offering it once present', async () => {
+    campaign.current = { name: 'Summer Fest', mainTag: 'summer' }
+    render(<Harness />, { wrapper: Providers })
+    const hint = screen.getByTestId('properties-panel-campaign-hint')
+    expect(hint).toHaveTextContent('Add the summer tag to enter this item in Summer Fest.')
+    const tagButton = screen.getByTestId('properties-panel-campaign-tag')
+    await userEvent.hover(tagButton)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Click to add')
+    await userEvent.click(tagButton)
+    expect(screen.getAllByTestId('tags-input-tag').map(tag => tag.textContent)).toEqual(['cool', 'summer'])
+    expect(screen.queryByTestId('properties-panel-campaign-tag')).not.toBeInTheDocument()
+    expect(hint).toHaveTextContent('Add the summer tag to enter this item in Summer Fest.')
+    expect(within(hint).getByText('summer').tagName).toBe('STRONG')
+    expect(screen.getByTestId('tags-input-field')).toHaveFocus()
+    expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
+  })
+
+  it('keeps the campaign hint out of the read-only panel', () => {
+    campaign.current = { name: 'Summer Fest', mainTag: 'summer' }
+    render(<Harness editable={false} />, { wrapper: Providers })
+    expect(screen.queryByTestId('properties-panel-campaign-hint')).not.toBeInTheDocument()
   })
 })

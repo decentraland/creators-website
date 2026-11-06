@@ -55,6 +55,12 @@
       "title": "Algo salió mal",
       "description": "No pudimos cargar tus colecciones. Inténtalo de nuevo.",
       "retry": "Intentar de nuevo"
+    },
+    "new_linked_collection": "Nueva colección vinculada",
+    "linked_empty": {
+      "title": "Vincula tu primera colección NFT",
+      "description": "Las colecciones vinculadas convierten los tokens de un contrato NFT que administras en wearables que sus dueños pueden usar en Decentraland.",
+      "create_first": "Crear colección vinculada"
     }
   },
   "collection_role": {
@@ -93,7 +99,7 @@
     "subtitle": "Este es el nombre que la gente verá en el Shop.",
     "name_placeholder": "p. ej. Halloween",
     "cancel": "Cancelar",
-    "submit": "{variant, select, create {Continuar} other {Guardar}}",
+    "submit": "{variant, select, create {Crear} other {Guardar}}",
     "error_invalid_character": "El carácter \":\" no se puede usar en nombres de colecciones.",
     "error_name_taken": "Ese nombre ya está en uso. Prueba con otro.",
     "error_generic": "{variant, select, create {No pudimos crear tu colección. Inténtalo de nuevo.} other {No pudimos renombrar tu colección. Inténtalo de nuevo.}}"
@@ -113,6 +119,7 @@
       "copy_address": "Copiar dirección del contrato",
       "collaborators": "Colaboradores",
       "senders": "Emisores",
+      "transfer_ownership": "Transferir propiedad",
       "delete": "Eliminar colección",
       "copied_urn": "URN copiado al portapapeles",
       "copied_address": "Dirección del contrato copiada al portapapeles",
@@ -287,7 +294,8 @@
         "cancel": "Conservar cambios",
         "confirm": "Restablecer ítem",
         "done": "“{name}” se restableció a su versión aprobada"
-      }
+      },
+      "open_in_editor": "Abrir en el editor"
     },
     "send_items": "Enviar ítems",
     "smart_wearable": "Smart Wearable",
@@ -388,7 +396,7 @@
       "fee_error": "No pudimos cargar la tarifa de publicación.",
       "retry": "Intentar de nuevo",
       "approve_error": "La aprobación de MANA no se completó. Inténtalo de nuevo.",
-      "checkbox": "Garantizo que los ítems enviados cumplen plenamente con los <terms>Términos de uso</terms> y la <policy>Política de contenido</policy>, que reconozco y acepto. Reconozco que la DAO puede negarse a aprobarlos si infringen alguno de ellos y que la tarifa de publicación no se reembolsará si son rechazados.",
+      "checkbox": "Garantizo que los ítems enviados son obra original mía y que cumplen plenamente con los <terms>Términos de uso</terms> y la <policy>Política de contenido</policy>, que reconozco y acepto. Reconozco que la DAO puede negarse a aprobarlos si copian el trabajo de otra persona o infringen alguno de ellos y que la tarifa de publicación no se reembolsará si son rechazados.",
       "submit": "Publicar y pagar"
     },
     "buy_credits": {
@@ -456,6 +464,7 @@
       "placeholder": "Pega o selecciona el ID de usuario del beneficiario",
       "open": "Mostrar amigos",
       "clear": "Quitar beneficiario",
+      "you": "Tú",
       "friends_loading": "Cargando tus amigos…",
       "no_matches": "Ningún amigo coincide. Pega una dirección de wallet (0x…) en su lugar.",
       "invalid": "Ingresa una dirección de wallet válida (0x…)."
@@ -502,7 +511,9 @@
       "title_senders": "No pudimos actualizar los emisores",
       "description_senders": "Algo salió mal al guardar los emisores de esta colección. Por favor, inténtalo de nuevo.",
       "title_collaborators": "No pudimos actualizar los colaboradores",
-      "description_collaborators": "Algo salió mal al guardar los colaboradores de esta colección. Por favor, inténtalo de nuevo."
+      "description_collaborators": "Algo salió mal al guardar los colaboradores de esta colección. Por favor, inténtalo de nuevo.",
+      "title_transfer": "No pudimos transferir la propiedad",
+      "description_transfer": "Algo salió mal al transferir esta colección. Comprueba quién es el dueño antes de intentarlo de nuevo."
     },
     "remove": {
       "title": "¿Quitar de la venta?",
@@ -608,7 +619,11 @@
       "description_locked": "No se pueden agregar ítems mientras la colección está en revisión. Tus archivos no se guardaron; podrás agregarlos cuando termine la revisión.",
       "description_published": "Las colecciones publicadas no admiten ítems nuevos. Tus archivos no se guardaron; crea una nueva colección para agregarlos.",
       "try_again": "Intentar de nuevo",
-      "got_it": "Entendido"
+      "got_it": "Entendido",
+      "title_urn_taken": "Una URN ya está en uso",
+      "description_urn_taken": "Otro ítem ya usa una de estas URN. Cambia el \"id\" del wearable.json o el nombre del ítem, o usa Editar en bloque para actualizar el ítem existente.",
+      "title_duplicate_urn": "Algunos ítems comparten una URN",
+      "description_duplicate_urn": "Dos o más ítems de esta carga tienen la misma URN, por el \"id\" del wearable.json o por el mismo nombre. No se subió nada: quita o renombra los duplicados y vuelve a intentarlo."
     },
     "leave": {
       "save_title": "¿Guardar antes de salir?",
@@ -638,6 +653,7 @@
       "allowed_media_hostnames_empty": "scene.json pide ALLOW_MEDIA_HOSTNAMES pero no lista ningún hostname.",
       "scene_manifest_missing": "Este ZIP incluye código de escena pero no scene.json. Los smart wearables necesitan su scene.json.",
       "scene_manifest_nested": "Con un wearable.json, scene.json debe estar en la raíz del ZIP, junto a él.",
+      "scene_code_mismatch": "Las carpetas male y female traen versiones distintas de {fileName}. Un smart wearable tiene un solo código, así que ambas copias deben coincidir.",
       "scene_main_not_code": "scene.json apunta main a {fileName}, pero debe ser el bundle de JavaScript.",
       "emote_duration_too_long": "Los emotes pueden durar hasta {seconds} segundos.",
       "emote_with_mesh": "Este emote incluye la malla del avatar. Exporta solo el esqueleto y la animación.",
@@ -651,8 +667,24 @@
       "video_too_big": "El video es demasiado grande — el tamaño máximo es {size}MB.",
       "video_wrong_format": "El video debe ser un archivo MP4.",
       "invalid_video": "Tu video parece estar dañado o no es válido. Revisa el archivo e inténtalo de nuevo.",
-      "invalid_model_file_type": "El archivo es de otro tipo de ítem. Un wearable solo puede reemplazarse por un wearable y un emote por un emote."
-    }
+      "invalid_model_file_type": "El archivo es de otro tipo de ítem. Un wearable solo puede reemplazarse por un wearable y un emote por un emote.",
+      "linked_emote": "Las colecciones vinculadas solo pueden tener wearables, no emotes.",
+      "linked_smart_wearable": "Las colecciones vinculadas no pueden tener smart wearables.",
+      "linked_urn_mismatch": "La URN de wearable.json no pertenece a esta colección.",
+      "linked_mapping_invalid": "El mapeo de wearable.json no es válido. Revisa su tipo y los IDs de token.",
+      "bulk_edit_missing_urn": "Agrega la URN del ítem como \"id\" en wearable.json para actualizarlo.",
+      "bulk_edit_no_match": "Ningún ítem de esta colección tiene la URN de este wearable.json.",
+      "linked_urn_invalid": "El identificador del ítem al final de la URN del wearable.json no es válido: no puede contener espacios, \":\" ni \"|\"."
+    },
+    "mapping_hint": "Qué tokens del contrato vinculado desbloquean este wearable.",
+    "bulk_edit": {
+      "title": "{count, plural, one {Actualizar # ítem} other {Actualizar # ítems}}",
+      "form_heading": "Actualización del ítem",
+      "success_toast": "{count, plural, one {# ítem actualizado} other {# ítems actualizados}}",
+      "target": "Actualiza {name} ({urn})"
+    },
+    "items_error": "No pudimos cargar los ítems de esta colección, que hacen falta para asociar cada archivo con su ítem. Inténtalo de nuevo.",
+    "items_loading": "Los ítems de esta colección todavía se están cargando. Intenta guardar de nuevo en un momento."
   },
   "video_modal": {
     "title": "Video de vista previa",
@@ -680,6 +712,7 @@
     "mobile_hint": "La edición está disponible en escritorio. Aquí puedes previsualizar los ítems.",
     "read_only": "Este ítem es de solo lectura: solo el dueño y los colaboradores de la colección pueden editarlo.",
     "read_only_locked": "Este ítem es de solo lectura mientras la colección se está publicando.",
+    "read_only_linked": "Este ítem es de solo lectura: solo los administradores de la colección vinculada pueden editarlo.",
     "save": "Guardar",
     "revert": "Descartar",
     "save_success": "Se guardó “{name}”.",
@@ -699,7 +732,14 @@
       "undress": "Quitar {name} del avatar",
       "no_representation": "Este ítem no tiene versión para la forma de cuerpo actual. Cambia la forma de cuerpo para previsualizarlo.",
       "male_only": "Solo para la forma de cuerpo masculina",
-      "female_only": "Solo para la forma de cuerpo femenina"
+      "female_only": "Solo para la forma de cuerpo femenina",
+      "to_review": "Por revisar ({count})",
+      "rest": "Otros ítems ({count})",
+      "review_tag": {
+        "new": "Nuevo",
+        "changes": "Cambios"
+      },
+      "reviewed": "Revisado"
     },
     "picker": {
       "title": "Colecciones",
@@ -833,11 +873,8 @@
       "edit_thumbnail": "Editar miniatura",
       "download": "Descargar ítem",
       "watch_video": "Ver video de vista previa",
-      "change_file": "Cambiar archivo",
-      "add_representation": "Agregar representación {shape}",
-      "file_update_pending": "Hay un modelo nuevo listo. Guarda para subirlo.",
-      "import_error_title": "No pudimos usar ese archivo",
-      "import_error_close": "OK",
+      "change_file": "Reemplazar modelo",
+      "add_representation": "Agregar modelo {shape}",
       "download_error": "No pudimos descargar el ítem. Inténtalo de nuevo.",
       "video_required": "Se necesita un video de vista previa para publicar un smart wearable.",
       "video_hint": "Un video corto que muestra lo que hace el smart wearable en el mundo."
@@ -850,7 +887,6 @@
       "utility": "Utilidad",
       "utility_hint": "Una descripción corta de lo que hace este ítem en el mundo, visible para los coleccionistas.",
       "category": "Categoría",
-      "category_required": "Elige una categoría para el nuevo archivo.",
       "rarity": "Rareza"
     },
     "overrides": {
@@ -897,7 +933,8 @@
       "placeholder": "Escribe una etiqueta y presiona Enter",
       "remove": "Quitar etiqueta {tag}",
       "empty": "Este ítem no tiene etiquetas.",
-      "campaign_hint": "Agrega la etiqueta “{tag}” para participar con este ítem en {name}."
+      "campaign_hint": "Agrega la etiqueta <hl>{tag}</hl> para participar con este ítem en {name}.",
+      "campaign_add": "Haz clic para agregar"
     },
     "options": {
       "title": "Opciones",
@@ -911,6 +948,49 @@
     },
     "actions": {
       "label": "Acciones del ítem"
+    },
+    "change_file": {
+      "heading": "Nuevo modelo",
+      "drop_description": "Arrastra y suelta tu archivo aquí, o <browse>explora tu dispositivo</browse>.",
+      "effect": {
+        "replace_all": "Reemplaza el modelo para ambos tipos de cuerpo.",
+        "replace_shape": "Reemplaza solo el modelo {shape}. El otro tipo de cuerpo conserva su modelo actual.",
+        "add_representation": "Agrega un modelo {shape}. El ítem quedará disponible para ambos tipos de cuerpo.",
+        "replace_only_shape": "Reemplaza el modelo {shape}."
+      },
+      "locked_hint": "Esta representación está fijada para este cambio.",
+      "use_thumbnail": "Actualizar la miniatura",
+      "category_hint": "El nuevo archivo no encaja en la categoría actual del ítem. Elige una.",
+      "discard_title": "¿Descartar el nuevo modelo?",
+      "discard_description": "El modelo que cargaste no se aplicará al ítem.",
+      "discard": "Descartar"
+    },
+    "linked_review": {
+      "nothing_pending": "No hay ítems esperando revisión",
+      "reviewed": "Revisados {count}/{threshold} ítems",
+      "review_next": "Revisar siguiente",
+      "approve_blocked": "Abre al menos {threshold} de los ítems pendientes antes de aprobar.",
+      "reject_description": "{count, plural, one {El ítem pendiente se marcará} other {Los # ítems pendientes se marcarán}} como rechazados; el creador podrá corregirlos y volver a publicarlos. Cuéntale el motivo en el post del foro.",
+      "disable_third_party": "Deshabilitar tercero",
+      "enable_third_party": "Habilitar tercero",
+      "disable": {
+        "title": "¿Deshabilitar {name}?",
+        "description": "Este tercero y todas sus colecciones dejarán de estar disponibles en Decentraland. Puedes habilitarlo de nuevo más tarde.",
+        "confirm": "Deshabilitar",
+        "error": "No pudimos deshabilitar el tercero. Inténtalo de nuevo.",
+        "success": "{name} fue deshabilitado",
+        "signing": "Confirma en tu wallet para deshabilitar el tercero.",
+        "pending": "Deshabilitando tercero…"
+      },
+      "enable": {
+        "title": "¿Habilitar {name}?",
+        "description": "Este tercero y sus ítems aprobados volverán a estar disponibles en Decentraland.",
+        "confirm": "Habilitar",
+        "error": "No pudimos habilitar el tercero. Inténtalo de nuevo.",
+        "success": "{name} fue habilitado",
+        "signing": "Confirma en tu wallet para habilitar el tercero.",
+        "pending": "Habilitando tercero…"
+      }
     }
   },
   "zoom_controls": {
@@ -920,21 +1000,29 @@
   "curation_page": {
     "title": "Curaduría",
     "sign_in": "Inicia sesión para revisar colecciones",
-    "search_placeholder": "Busca por nombre o dirección del dueño",
+    "search_placeholder": "Buscar por nombre",
     "filter": {
-      "all": "Todas",
       "to_review": "Por revisar",
-      "under_review": "En revisión",
       "approved": "Aprobadas",
       "rejected": "Rechazadas",
+      "disabled": "Deshabilitadas",
       "all_assignees": "Todos los curadores",
       "you": "{name} (tú)",
       "assignee": "Curador asignado",
-      "sort": "Ordenar por"
+      "sort": "Ordenar por",
+      "all_statuses": "Todos los estados",
+      "status": "Estado",
+      "unassigned": "Sin asignar",
+      "review_type": {
+        "all": "Todas",
+        "new": "Nuevas",
+        "updates": "Cambios"
+      }
     },
     "sort": {
+      "REQUESTED_AT_DESC": "Solicitudes más recientes",
+      "REQUESTED_AT_ASC": "Solicitudes más antiguas",
       "MOST_RELEVANT": "Más relevantes",
-      "LAST_ACTIVITY_DESC": "Actividad reciente",
       "CREATED_AT_DESC": "Colecciones más recientes",
       "NAME_ASC": "Nombre A-Z",
       "NAME_DESC": "Nombre Z-A"
@@ -943,7 +1031,7 @@
       "collection": "Colección",
       "owner": "Dueño",
       "date": "Solicitada",
-      "last_update": "Última actualización",
+      "type": "Tipo",
       "status": "Estado",
       "assignee": "Curador",
       "requested": "Revisión solicitada",
@@ -953,7 +1041,8 @@
       "edit_assignee": "Cambiar el curador asignado",
       "discussion": "Discusión",
       "forum_post": "Foro",
-      "not_posted": "Sin publicar"
+      "not_posted": "Sin publicar",
+      "third_party": "Tercero"
     },
     "error": {
       "title": "No pudimos cargar las colecciones",
@@ -962,7 +1051,13 @@
     },
     "empty": "Todavía no hay colecciones para revisar.",
     "no_results": "Ninguna colección coincide con estos filtros.",
-    "showing": "Mostrando {range} de {total} {total, plural, one {colección} other {colecciones}}"
+    "showing": "Mostrando {range} de {total} {total, plural, one {colección} other {colecciones}}",
+    "type": {
+      "label": "Tipo",
+      "all": "Todos los tipos",
+      "standard": "Estándar",
+      "linked": "Vinculadas"
+    }
   },
   "maintenance_page": {
     "title": "Volvemos enseguida",
@@ -1003,13 +1098,20 @@
     "linkEthics": "Código de ética"
   },
   "send_items_modal": {
+    "discard": {
+      "title": "¿Descartar este envío?",
+      "description": "Si sales ahora, los destinatarios y las copias que ingresaste no se conservarán.",
+      "leave": "Descartar",
+      "keep": "Seguir editando"
+    },
     "title": "Enviar ítems",
     "step_select": "Seleccionar ítems",
     "step_confirm": "Confirmar ítems",
     "transfer": "Envío {n}",
     "remove_transfer": "Quitar envío",
-    "recipient_placeholder": "Selecciona o pega el User ID del destinatario",
+    "recipient_placeholder": "Selecciona o pega uno o más User IDs de destinatarios",
     "add_recipient": "Agregar otro destinatario",
+    "clear_recipients": "Quitar todos",
     "duplicate_recipient": "Este destinatario ya está en este envío.",
     "items_for_recipient": "Ítems para este destinatario",
     "available": "{available} / {total} disponibles",
@@ -1021,6 +1123,9 @@
     "add_transfer": "Agregar otro envío",
     "total": "{count} / {max} ítems",
     "limit_reached": "Puedes enviar hasta {max} ítems a la vez. Quita algunas copias para continuar.",
+    "paste_added": "{count, plural, one {# destinatario agregado} other {# destinatarios agregados}}.",
+    "paste_skipped": "{count, plural, one {# destinatario agregado} other {# destinatarios agregados}}, {skipped, plural, one {# omitido: inválido o ya agregado} other {# omitidos: inválidos o ya agregados}}.",
+    "paste_cut": "{count, plural, one {# destinatario agregado} other {# destinatarios agregados}}. Puedes enviar hasta {max} ítems a la vez.",
     "continue": "Continuar",
     "back": "Atrás",
     "submit": "Enviar ítems",
@@ -1060,6 +1165,26 @@
       "leave": "Descartar cambios",
       "keep": "Seguir editando"
     }
+  },
+  "transfer_ownership_modal": {
+    "title": "Transferir propiedad",
+    "description": "El nuevo dueño toma el control total de “{name}”: editar sus ítems, publicar cambios, las ventas y las listas de emisores y colaboradores. Si además tienes uno de esos roles, lo conservas.",
+    "step_details": "Detalles",
+    "step_confirm": "Confirmar",
+    "confirm_intro": "Estás a punto de entregar “{name}” a esta billetera. Por favor, asegúrate de que sea la correcta, ya que esto no se puede revertir.",
+    "warning": "Esto no se puede deshacer. Solo el nuevo dueño podría devolverte la colección.",
+    "new_owner": "Nuevo dueño",
+    "placeholder": "Selecciona o copia el User ID del nuevo dueño",
+    "clear": "Quitar nuevo dueño",
+    "self": "Esa es tu propia dirección: esta colección ya es tuya.",
+    "zero": "Esa es la dirección cero: la colección se perdería para siempre.",
+    "system": "Esta dirección pertenece a la Tienda de Decentraland: una colección enviada allí no se puede recuperar.",
+    "contract": "Esa es la dirección del contrato de esta colección: una colección enviada allí no se puede recuperar.",
+    "confirm_label": "Escribe “{name}” para confirmar",
+    "submit": "Transferir propiedad",
+    "saving": "Transfiriendo la propiedad...",
+    "success_title": "¡Propiedad transferida!",
+    "success_description": "“{name}” ahora pertenece a {owner}. Seguirá en tus colecciones solo si eres colaborador o emisor."
   },
   "required_permissions": {
     "title": "Permisos requeridos",
@@ -1353,10 +1478,16 @@
   },
   "curation_state": {
     "to_review": "Por revisar",
-    "under_review": "En revisión",
     "approved": "Aprobada",
     "rejected": "Rechazada",
     "disabled": "Deshabilitada"
+  },
+  "review_type": {
+    "new": "Nueva",
+    "updates": "Cambios"
+  },
+  "multi_select": {
+    "summary": "{first} +{count}"
   },
   "assign_curator_modal": {
     "title_self": "Revisar {collection}",
@@ -1476,7 +1607,6 @@
     }
   },
   "linked_collection": {
-    "edit_in_builder": "Editar en el Builder",
     "third_party": "Tercero",
     "network": "Red",
     "contract": "Contrato vinculado",
@@ -1494,16 +1624,18 @@
       "ape_mainnet": "ApeChain",
       "ape_caldera": "ApeChain Curtis"
     },
-    "no_items": "Los ítems de esta colección vinculada se agregan y editan en el Builder.",
     "list": {
       "status": "Estado",
       "mapping": "Tokens vinculados"
     },
     "item_status": {
-      "published": "Publicado",
+      "ready_to_publish": "Listo para publicar",
       "under_review": "En revisión",
       "rejected": "Rechazado",
-      "not_published": "Sin publicar",
+      "published": "Publicado",
+      "ready_to_push": "Listo para enviar cambios",
+      "pending_mapping": "Falta el mapeo",
+      "pending_migration": "Migración pendiente",
       "retry": "No se pudo cargar · Reintentar"
     },
     "mapping": {
@@ -1511,20 +1643,78 @@
       "any": "Cualquier token",
       "single": "Token #{id}",
       "range": "Tokens #{from}–#{to}",
-      "multiple": "{count, plural, one {# token} other {# tokens}}",
-      "rules": "{count, plural, one {# regla} other {# reglas}}"
-    }
+      "multiple": "Tokens {ids}"
+    },
+    "kind_label": "Tipo de tercero",
+    "kind": {
+      "standard": "Estándar",
+      "programmatic": "Programático"
+    },
+    "filter": {
+      "all": "Todos los ítems",
+      "published": "Publicados",
+      "ready_to_push": "Listos para enviar cambios",
+      "pending_mapping": "Falta el mapeo",
+      "pending_migration": "Migración pendiente",
+      "draft": "Borrador",
+      "under_review": "En revisión"
+    },
+    "migration_banner": "Uno o más ítems de esta colección se publicaron antes de que existiera el mapeo de tokens. Agrega un mapeo a cada uno y publica los cambios.",
+    "publish_action": {
+      "publish": "{count, plural, =0 {Publicar} other {Publicar (#)}}",
+      "push": "{count, plural, =0 {Enviar cambios} other {Enviar cambios (#)}}",
+      "publish_and_push": "{count, plural, =0 {Publicar y enviar cambios} other {Publicar y enviar cambios (#)}}"
+    },
+    "publish_blocker": {
+      "no_selection": "Selecciona los ítems para publicar o enviar.",
+      "under_review": "Esta colección sigue en revisión. Cuando termine podrás publicar más ítems.",
+      "saving_mappings": "Algunos cambios de mapeo aún no se guardaron. Corrígelos o termínalos antes de publicar."
+    },
+    "empty": {
+      "title": "Empieza a agregar ítems a tu colección vinculada",
+      "description": "Suelta tus wearables aquí. No podrás quitar ítems después de publicarlos."
+    },
+    "no_results": {
+      "title": "Ningún ítem coincide con este filtro",
+      "description": "Prueba otro filtro para encontrar lo que buscas."
+    },
+    "selected": "{count, plural, one {# ítem seleccionado} other {# ítems seleccionados}}",
+    "selected_all": "{count, plural, one {Está seleccionado el único ítem publicable} other {Están seleccionados los # ítems publicables}}",
+    "clear_selection": "Limpiar selección",
+    "select_all": "Seleccionar todos los ítems publicables de esta página",
+    "select_across": "Seleccionar los {total} ítems",
+    "select_all_error": "No pudimos seleccionar todos los ítems. Inténtalo de nuevo.",
+    "select_item": "Seleccionar {name}",
+    "urn_saved": "URN actualizada",
+    "urn_error": "No pudimos actualizar la URN. Puede que ya esté en uso o que el ítem esté publicado.",
+    "mapping_error": "No pudimos guardar el mapeo de {name}. Inténtalo de nuevo.",
+    "actions": {
+      "edit_urn": "Editar URN",
+      "edit_in_bulk": "Editar en bloque",
+      "edit_contract": "Cambiar contrato vinculado"
+    },
+    "item_actions": {
+      "edit_urn": "Editar URN"
+    },
+    "load_error": {
+      "title": "No pudimos cargar los ítems",
+      "description": "Revisa tu conexión e inténtalo de nuevo.",
+      "retry": "Reintentar"
+    },
+    "mapping_retry": "No se guardó · Reintentar",
+    "mapping_for": "Mapeo de tokens de {name}",
+    "mapping_retry_for": "Reintentar guardar el mapeo de tokens de {name}"
   },
   "success_modal": {
     "done": "Listo"
   },
   "preview_collection_button": {
-    "label": "Ver en Decentraland"
+    "label": "Ver en el mundo"
   },
   "collection_discount": {
-    "create": "Crear descuento",
+    "create": "Crear descuentos",
     "cancel": "Cancelar",
-    "confirm_in_wallet": "Confirma en tu wallet",
+    "confirm_in_wallet": "Confirma en tu wallet...",
     "saving": "Creando tu descuento…",
     "success": {
       "title": "Tu descuento está activo",
@@ -1556,8 +1746,7 @@
       "error_title": "No pudimos terminar tu descuento",
       "error_description": "La transacción no se completó. Revisa que tu wallet tenga POL en Polygon e inténtalo de nuevo.",
       "description_multi": "Este descuento del {pct}% también cubre {others, plural, one {# colección más} other {# colecciones más}}, y terminarlo lo termina también ahí. Terminarlo es una transacción en Polygon desde tu wallet, así que necesita un poco de POL para el gas.",
-      "social_description": "Terminar un descuento antes es una transacción en Polygon pagada desde una wallet, y las cuentas con inicio de sesión social no pueden enviarla. Termina en su fecha; para terminarlo antes, inicia sesión con una wallet como MetaMask.",
-      "close": "Cerrar",
+      "got_it": "Entendido",
       "slow_title": "Seguimos terminando tu descuento",
       "slow_description": "Tu transacción se envió, pero está tardando más de lo normal. Todavía puede completarse: vuelve a revisar en unos minutos. No la envíes de nuevo o pagarás el gas dos veces.",
       "error_description_wallet": "Tu wallet está en otra cuenta o red. Cámbiala a la cuenta con la que iniciaste sesión, en Polygon, e inténtalo de nuevo.",
@@ -1576,15 +1765,16 @@
     "in_flight": "Una solicitud anterior para esta colección sigue en curso. Esto se actualiza en cuanto termine."
   },
   "creator_sale": {
+    "request_open": "Tu solicitud sigue abierta en tu wallet. Confírmala o recházala allí para cambiar los términos.",
     "back": "Atrás",
+    "blocked_title": "Los descuentos necesitan precios en Créditos",
     "blocked_body": "Nada de lo publicado en esta colección puede tener descuento todavía. Pasa {count, plural, one {la publicación} other {esas publicaciones}} a un precio en <c>Créditos</c> y el descuento va a quedar listo.",
-    "blocked_cta": "Actualizar precios",
+    "blocked_dismiss": "Entendido",
     "cancel": "Cancelar",
     "cap_hint": "Opcional. Déjalo vacío para rebajar {count, plural, one {tu # copia publicada} other {las # copias publicadas}}.",
     "cap_label": "Copias al precio rebajado",
     "cap_placeholder": "Sin límite",
     "collection_listed": "{count, plural, one {# artículo publicado} other {# artículos publicados}}",
-    "confirm": "Confirma para iniciar el descuento",
     "continue": "Continuar",
     "custom_pct": "Otro",
     "discount": "Descuento",
@@ -1598,7 +1788,6 @@
     "error_start_passed": "La fecha de inicio ya pasó. Vuelve y elige las fechas de nuevo.",
     "error_uses": "Introduce un número entero de unidades, al menos 1.",
     "error_window": "La oferta tiene que terminar después de empezar.",
-    "finishing": "Finalizando…",
     "off_pct": "{pct}% de descuento",
     "pct_label": "Porcentaje de descuento",
     "pct_tag": "-{pct}%",
@@ -1618,19 +1807,19 @@
     "review_on_sale": "{count, plural, one {# ítem recibe el descuento} other {# ítems reciben el descuento}}",
     "review_starts": "Empieza",
     "review_starts_now": "Ahora",
-    "review_title": "Revisa tu descuento",
+    "step_setup": "Configurar descuento",
+    "step_review": "Revisar descuento",
     "review_untouched": "{count, plural, one {# ítem no está en venta y queda igual} other {# ítems no están en venta y quedan igual}}",
-    "starting": "Iniciando tu descuento…",
     "starts_on": "Empieza el {date}",
     "submit": "Iniciar descuento",
     "submit_scheduled": "Programar descuento",
-    "subtitle": "Elige un descuento y cuánto dura. Tus artículos publicados mostrarán el precio rebajado hasta que termine y después volverán solos a su precio normal.",
+    "subtitle": "Elige un descuento y cuánto dura. Tus artículos publicados mostrarán el precio rebajado hasta que termine y después volverán automáticamente a su precio normal.",
     "success_body": "{count, plural, one {# colección} other {# colecciones}} con {pct}% de descuento",
     "success_ends": "Termina en",
     "success_scheduled_title": "Tu descuento quedó programado",
     "success_starts": "Empieza el {date}",
-    "success_title": "¡Tu descuento ya está activo! 🎉",
-    "title": "Aplica un descuento a esta colección",
+    "success_title": "¡Tu descuento ya está activo!",
+    "title": "Crea un descuento",
     "toast_live": "¡Tu descuento ya está activo!",
     "toast_scheduled": "Tu descuento quedó programado.",
     "view_store": "Ver tu tienda",
@@ -1650,5 +1839,210 @@
     "unit_minutes": "m",
     "unit_seconds": "s",
     "when_aria": "{label}: {value}"
+  },
+  "create_linked_collection_modal": {
+    "title": "Nueva colección vinculada",
+    "heading": "Vincula una colección NFT",
+    "subtitle": "Los wearables de esta colección se desbloquean con los tokens de un contrato NFT externo.",
+    "learn_more": "Más información",
+    "name_placeholder": "p. ej. Bored Hats",
+    "network": "Red",
+    "network_placeholder": "Elige la red del contrato NFT",
+    "contract": "Dirección del smart contract",
+    "contract_hint": "El contrato ERC-721 o ERC-1155 cuyos tokens desbloquean los wearables. Una colección por contrato.",
+    "error_not_nft": "Este contrato no es un token ERC-721 ni ERC-1155. Revisa la red y la dirección.",
+    "error_contract_check": "No pudimos verificar este contrato. Revisa la red y la dirección e inténtalo de nuevo.",
+    "error_contract_in_use": "Este contrato ya está vinculado a otra colección. Solo se puede vincular una colección por contrato.",
+    "error_generic": "No pudimos crear tu colección vinculada. Inténtalo de nuevo.",
+    "submit": "Crear",
+    "contract_placeholder": "Dirección del contrato 0x…"
+  },
+  "edit_contract_modal": {
+    "title": "Cambiar contrato vinculado",
+    "heading": "Vincular otro contrato NFT",
+    "subtitle": "Úsalo cuando el contrato NFT se volvió a desplegar. Los ítems mapeados conservan sus token ids bajo el nuevo contrato y vuelven a pasar por revisión.",
+    "submit": "Cambiar contrato",
+    "running": {
+      "working": "Actualizando el contrato vinculado…"
+    },
+    "success": {
+      "title": "Contrato cambiado",
+      "body": "{count, plural, =0 {La colección ahora vincula el nuevo contrato. Ningún ítem tenía mapping que mover, así que no hay nada que enviar.} one {1 ítem ahora apunta al nuevo contrato y está listo para enviar a revisión. Se verá en el mundo cuando lo aprueben.} other {# ítems ahora apuntan al nuevo contrato y están listos para enviar a revisión. Se verán en el mundo cuando los aprueben.}}"
+    },
+    "error": {
+      "title": "No pudimos cambiar el contrato",
+      "body": "Lo que ya se completó no se pierde. Intenta de nuevo para terminar el cambio."
+    }
+  },
+  "edit_urn_modal": {
+    "title": {
+      "collection": "Editar URN de la colección",
+      "item": "Editar URN del ítem"
+    },
+    "heading": {
+      "collection": "Elige el identificador de la colección",
+      "item": "Elige el identificador del ítem"
+    },
+    "subtitle": {
+      "collection": "La última parte de la URN de la colección. No se puede cambiar una vez publicado un ítem.",
+      "item": "La última parte de la URN del ítem. No se puede cambiar una vez publicado."
+    },
+    "label": "Identificador",
+    "error_invalid": "Los identificadores no pueden tener espacios, \":\" ni \"|\".",
+    "submit": "Guardar"
+  },
+  "mapping_editor": {
+    "label": "Vinculado a",
+    "type": {
+      "any": "Todos los NFTs",
+      "single": "Uno",
+      "multiple": "Varios",
+      "range": "Rango"
+    },
+    "single_placeholder": "ID de token, p. ej. 123456",
+    "multiple_placeholder": "IDs de token separados por comas, p. ej. 1, 2, 3",
+    "from": "Desde",
+    "to": "Hasta",
+    "invalid": "Ingresa IDs de token válidos: solo dígitos, sin repetir y un rango de menor a mayor.",
+    "help": {
+      "title": "Vincula NFTs a este wearable",
+      "any": "todos los tokens de la colección NFT.",
+      "single": "un ID de token específico, p. ej. 123456.",
+      "multiple": "varios IDs de token separados por comas, p. ej. 123456, 123457.",
+      "range": "todos los IDs de token entre dos números, p. ej. 1 a 1000."
+    }
+  },
+  "publish_linked_modal": {
+    "title": "Publicar ítems vinculados",
+    "items_step": {
+      "title": "Confirma los ítems a enviar",
+      "description": "Una vez publicados, los ítems no se pueden quitar de la colección. El nombre, la descripción, la categoría y el mapeo siguen siendo editables: los cambios vuelven a revisión.",
+      "columns": {
+        "item": "{count, plural, one {# ítem a publicar} other {# ítems a publicar}}",
+        "changed": "{count, plural, one {# ítem modificado} other {# ítems modificados}}",
+        "linked_to": "Vinculado a"
+      },
+      "checkbox": "Entiendo que una vez publicados no podré quitar estos ítems de la colección.",
+      "sign": "Firmar y continuar",
+      "sign_error": "La wallet no firmó la solicitud. Inténtalo de nuevo cuando estés listo."
+    },
+    "kind_step": {
+      "title": "Elige cómo publicar",
+      "description": "Esta elección aplica a todas las colecciones de este tercero y no se puede cambiar después.",
+      "standard_description": "Wearables hechos a mano. Pagas una tarifa por cada wearable que publiques.",
+      "programmatic_description": "Wearables generados en masa. Pagas una única tarifa por toda la colección y publicas todos los wearables que necesites.",
+      "standard_price": "{price} por wearable",
+      "programmatic_price": "{price} una sola vez ({slots} cupos incluidos)",
+      "confirm": "Continuar"
+    },
+    "payment_step": {
+      "title": "Confirmar y pagar",
+      "description": "Estás por enviar a revisión {count, plural, =0 {ningún ítem nuevo} one {# ítem} other {# ítems}} de “{name}”{pushed, plural, =0 {} one { y enviar # ítem modificado} other { y enviar # ítems modificados}}.",
+      "columns": {
+        "slots": "Cupos a comprar"
+      },
+      "free": "Sin costo",
+      "standard_note": "Cada ítem nuevo necesita un cupo de {price}. Todavía tienes {available, plural, one {# cupo libre} other {# cupos libres}}.",
+      "programmatic_first": "Los terceros programáticos compran {slots} cupos de una vez y luego publican sin costo.",
+      "programmatic_published": "Tu tercero programático ya pagó su tarifa: estos ítems se publican sin costo.",
+      "price_error": "No pudimos cargar la tarifa de publicación.",
+      "checkbox": "Garantizo que los ítems enviados cumplen plenamente los <terms>Términos de uso</terms> y la <policy>Política de contenido</policy>, que tengo los derechos de propiedad intelectual para crear wearables basados en esta colección NFT, y reconozco que la DAO puede rechazar su aprobación y que la tarifa no se reembolsará si se rechazan.",
+      "submit": "Publicar y pagar",
+      "submit_free": "Publicar",
+      "resuming": "Ya enviaste un pago anterior. Primero lo confirmaremos y solo cobraremos los cupos que aún falten.",
+      "submit_resume": "Terminar publicación",
+      "fee_changed": "La tarifa cambió porque cambiaron los cupos libres de tu tercero. Revísala y vuelve a enviar."
+    },
+    "running": {
+      "title": "Publicando tus ítems",
+      "tos": "Registrando tu aceptación de los términos…",
+      "kind": "Guardando cómo publicas…",
+      "allowance": "Confirma la aprobación de MANA en tu wallet…",
+      "register": "Confirma el registro en tu wallet…",
+      "buy_slots": "Confirma la compra de cupos en tu wallet…",
+      "wait_tx": "Esperando que se confirme la transacción…",
+      "delete_virtual": "Esperando que la red indexe tu tercero…",
+      "publish": "Enviando tus ítems a revisión…",
+      "push": "Enviando tus cambios a revisión…",
+      "check": "Revisando tus ítems…",
+      "phase": {
+        "prepare": "Preparar",
+        "pay": "Pagar",
+        "submit": "Enviar"
+      }
+    },
+    "error": {
+      "title": "No pudimos publicar tus ítems",
+      "rejected": "Se canceló la solicitud en tu wallet. No se envió nada.",
+      "reverted": "La transacción falló o se canceló, y no se cobró nada. Inténtalo de nuevo.",
+      "insufficient_slots": "Tu tercero tiene menos cupos que los ítems seleccionados. Inténtalo de nuevo para comprar los que faltan.",
+      "pending_review": "Hay ítems de esta colección en revisión. Espera a que termine antes de publicar más.",
+      "tos_failed": "No pudimos registrar tu aceptación de los términos. Revisa tu correo y vuelve a intentarlo.",
+      "generic": "Algo salió mal al publicar tus ítems. Inténtalo de nuevo.",
+      "payment_pending": "Tu pago aún no se confirmó. Vuelve a intentarlo en unos minutos: lo retomaremos sin volver a cobrarte.",
+      "fee_changed": "La tarifa subió desde que la confirmaste, así que no se cobró nada. Vuelve a intentarlo para revisar la nueva tarifa.",
+      "push_failed": "Algunos cambios no se pudieron enviar a revisión. Lo que publicaste se envió correctamente. Inténtalo de nuevo para reenviar el resto.",
+      "forget_payment": "Olvidar este pago",
+      "forget_payment_note": "Solo si lo cancelaste en tu wallet: si igual se confirma, pagarías esos cupos dos veces."
+    }
+  },
+  "push_linked_modal": {
+    "title": "Enviar cambios",
+    "description": "{count, plural, one {# ítem cambió} other {# ítems cambiaron}} desde la última aprobación. Para verlos en el mundo, deben revisarse y aprobarse de nuevo. ¿Los envías a revisión?",
+    "terms": {
+      "title": "Confirma tus datos",
+      "description": "Te escribiremos por correo sobre la revisión de tus cambios.",
+      "checkbox": "Garantizo que los ítems modificados cumplen plenamente los <terms>Términos de uso</terms> y la <policy>Política de contenido</policy>, que tengo los derechos de propiedad intelectual para crear wearables basados en esta colección NFT, y reconozco que la DAO puede rechazar la aprobación de los cambios."
+    },
+    "submit": "Enviar a revisión",
+    "running": {
+      "heading": "Enviando tus cambios",
+      "description": "Cada ítem abre una nueva solicitud de revisión.",
+      "label": "Ítems enviados…"
+    },
+    "success": "{count, plural, one {# ítem enviado} other {# ítems enviados}} a revisión",
+    "partial": "{count, plural, one {No se pudo enviar # ítem} other {No se pudieron enviar # ítems}} a revisión. Vuelve a intentarlo con esos.",
+    "error": "No pudimos enviar tus cambios. Inténtalo de nuevo."
+  },
+  "linked_approval_flow": {
+    "root": {
+      "title": "Aprobar ítems",
+      "body": "Aprobar registra en la blockchain la huella de cada ítem revisado y consume {slots, plural, =0 {el cheque del creador} one {# cupo del creador} other {# cupos del creador}}. {count, plural, one {Hay # ítem esperando} other {Hay # ítems esperando}}.",
+      "action": "Aprobar en la blockchain",
+      "signing": "Confirma la aprobación en tu wallet.",
+      "pending": "Esperando que se confirme la aprobación…",
+      "reenables": "Este tercero está deshabilitado. Aprobar estos ítems lo habilita, junto con todas sus colecciones."
+    },
+    "deploy": {
+      "title": "Subir archivos",
+      "body": "Sube {count, plural, one {el ítem aprobado} other {los # ítems aprobados}} a los servidores de contenido para que aparezcan en Decentraland.",
+      "action": "Subir"
+    },
+    "columns": {
+      "urn": "Identificador"
+    },
+    "more_items": "Y {count, plural, one {# ítem más} other {# ítems más}}",
+    "success": {
+      "title": "¡Ítems aprobados!",
+      "body": "Los ítems revisados de {collection} ya están disponibles en Decentraland."
+    },
+    "error": {
+      "prepare": "No pudimos preparar la aprobación. Revisa que la colección tenga ítems esperando revisión e inténtalo de nuevo.",
+      "root": "No se pudo registrar la aprobación en la blockchain. No se subió nada; inténtalo de nuevo.",
+      "deploy": "Algunos ítems no se pudieron subir o aprobar. Inténtalo de nuevo para reintentar los que fallaron."
+    },
+    "changed": "Los ítems pendientes cambiaron desde que los abriste: se agregaron o editaron ítems. Revísalos de nuevo antes de aprobar.",
+    "failed_items": "Ítems que no se pudieron completar",
+    "stage": {
+      "build": "su contenido cambió o no se pudo preparar",
+      "deploy": "falló la subida a los servidores de contenido",
+      "curation": "se subió, pero no se pudo marcar como aprobado",
+      "changed": "el creador lo editó durante la aprobación, así que se le devolvió para que lo envíe de nuevo"
+    },
+    "unsubmitted": "El creador guardó cambios en ítems después de enviarlos y no envió esos cambios a revisión. Debe volver a enviarlos antes de que estos ítems se puedan aprobar.",
+    "has_video": {
+      "title": "Estos ítems aún no se pueden aprobar",
+      "description": "{items} incluyen un video de vista previa, que los servidores de contenido no aceptan en ítems vinculados. No se registró nada en la blockchain. El creador debe volver a subirlos sin el video."
+    }
   }
 }

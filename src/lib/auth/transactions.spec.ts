@@ -1,7 +1,16 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ContractName, getCouponManager } from 'decentraland-transactions'
 import { type Session } from './auth'
-import { WrongAccountError, WrongChainError, sendWalletTransaction } from './transactions'
+import {
+  WrongAccountError,
+  WrongChainError,
+  readWalletChainId,
+  sendContractTransaction,
+  sendWalletTransaction,
+  subscribeWalletChain,
+  switchWalletChain,
+  watchTransaction
+} from './transactions'
 
 const manager = { ...getCouponManager(ContractName.OffChainMarketplaceV3, 80002), chainId: 80002 }
 const call = { contract: manager, method: 'increaseSignerSignatureIndex', args: [] }
@@ -93,5 +102,119 @@ describe('when sending a transaction from the wallet itself', () => {
     const { session, sendTransaction } = walletOn(80002)
     await sendWalletTransaction(session, call)
     expect(sendTransaction.mock.calls[0][0].maxPriorityFeePerGas.toString()).toBe('30000000000')
+  })
+
+  it('should floor the tip on the regular path too, when the wallet is already on the contract chain', async () => {
+    const { session, sendTransaction } = walletOn(80002)
+    await sendContractTransaction({ ...session, signer: { sendTransaction } } as unknown as Session, call)
+    expect(sendTransaction.mock.calls[0][0].maxPriorityFeePerGas.toString()).toBe('30000000000')
+  })
+})
+
+describe('when the navbar asks where the wallet is', () => {
+  const sessionAnswering = (answer: unknown) =>
+    ({ web3Provider: { send: vi.fn(async () => answer) } }) as unknown as Session
+
+  it('should read the live chain, however the wallet encodes it', async () => {
+    await expect(readWalletChainId(sessionAnswering('0x13882'))).resolves.toBe(80002)
+    await expect(readWalletChainId(sessionAnswering(137))).resolves.toBe(137)
+    await expect(readWalletChainId(sessionAnswering('137'))).resolves.toBe(137)
+  })
+
+  it('should throw rather than guess on an unusable answer', async () => {
+    await expect(readWalletChainId(sessionAnswering('not-a-chain'))).rejects.toThrow(/unusable/)
+    await expect(readWalletChainId(sessionAnswering(null))).rejects.toThrow(/unusable/)
+    await expect(readWalletChainId(sessionAnswering('0x0'))).rejects.toThrow(/unusable/)
+  })
+
+  it('should follow chain and account changes until unsubscribed', () => {
+    const on = vi.fn()
+    const removeListener = vi.fn()
+    const session = { web3Provider: { provider: { on, removeListener } } } as unknown as Session
+    const onChange = vi.fn()
+    const unsubscribe = subscribeWalletChain(session, onChange)
+    expect(on).toHaveBeenCalledWith('chainChanged', onChange)
+    expect(on).toHaveBeenCalledWith('accountsChanged', onChange)
+    unsubscribe()
+    expect(removeListener).toHaveBeenCalledWith('chainChanged', onChange)
+    expect(removeListener).toHaveBeenCalledWith('accountsChanged', onChange)
+  })
+
+  it('should subscribe to nothing on a provider without events', () => {
+    const session = { web3Provider: { provider: {} } } as unknown as Session
+    expect(() => subscribeWalletChain(session, vi.fn())()).not.toThrow()
+  })
+
+  it('should let a refusal through when switching on request', async () => {
+    const { session } = walletOn(1, 'refuses')
+    await expect(switchWalletChain(session, 80002)).rejects.toMatchObject({ code: 4001 })
+  })
+})
+
+describe('when watching a transaction until it settles', () => {
+  const HASH = '0xpaid'
+  const options = { timeoutMs: 10_000, pollMs: 1_000 }
+
+  function chain(state: {
+    receipt?: { status: number } | null
+    tx?: { from: string; nonce: number } | null
+    count?: number
+    fail?: boolean
+  }) {
+    let time = 0
+    const read = <T>(value: T) => (state.fail ? Promise.reject(new Error('rpc down')) : Promise.resolve(value))
+    return {
+      reader: {
+        getTransactionReceipt: vi.fn(() => read(state.receipt ?? null)),
+        getTransaction: vi.fn(() => read(state.tx ?? null)),
+        getTransactionCount: vi.fn(() => read(state.count ?? 0))
+      } as never,
+      clock: {
+        now: () => time,
+        sleep: vi.fn(async (ms: number) => {
+          time += ms
+        })
+      }
+    }
+  }
+
+  it('should answer how a mined transaction ended', async () => {
+    const { reader, clock } = chain({ receipt: { status: 1 } })
+    await expect(watchTransaction(reader, HASH, { ...options, ...clock })).resolves.toBe('mined')
+    const reverted = chain({ receipt: { status: 0 } })
+    await expect(watchTransaction(reverted.reader, HASH, { ...options, ...reverted.clock })).resolves.toBe('reverted')
+  })
+
+  it('should answer dropped once another transaction used its nonce, as a wallet speed-up or cancel does', async () => {
+    const { reader, clock } = chain({ tx: { from: ACCOUNT, nonce: 4 }, count: 5 })
+    await expect(watchTransaction(reader, HASH, { ...options, ...clock })).resolves.toBe('dropped')
+  })
+
+  it('should answer dropped from the sender recorded at send time once the node forgot the transaction', async () => {
+    const forgotten = chain({ count: 5 })
+    await expect(
+      watchTransaction(forgotten.reader, HASH, { ...options, ...forgotten.clock, sender: { from: ACCOUNT, nonce: 4 } })
+    ).resolves.toBe('dropped')
+  })
+
+  it('should hand over the sender the first time the node returns the transaction', async () => {
+    const { reader, clock } = chain({ tx: { from: ACCOUNT, nonce: 4 }, count: 4 })
+    const onSeen = vi.fn()
+    await watchTransaction(reader, HASH, { ...options, ...clock, onSeen })
+    expect(onSeen).toHaveBeenCalledTimes(1)
+    expect(onSeen).toHaveBeenCalledWith({ from: ACCOUNT, nonce: 4 })
+  })
+
+  it('should stop waiting at the timeout, as pending while the node still holds it', async () => {
+    const { reader, clock } = chain({ tx: { from: ACCOUNT, nonce: 4 }, count: 4 })
+    await expect(watchTransaction(reader, HASH, { ...options, ...clock })).resolves.toBe('pending')
+    expect(clock.sleep).toHaveBeenCalledTimes(10)
+  })
+
+  it('should never call a transaction the node never saw dropped, nor one it could not read', async () => {
+    const unknown = chain({})
+    await expect(watchTransaction(unknown.reader, HASH, { ...options, ...unknown.clock })).resolves.toBe('pending')
+    const down = chain({ fail: true })
+    await expect(watchTransaction(down.reader, HASH, { ...options, ...down.clock })).resolves.toBe('pending')
   })
 })

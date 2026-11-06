@@ -17,8 +17,11 @@ import {
   consolidatePublishedCollection,
   PublishTransactionRevertedError,
   getAvailablePaymentMethods,
+  getManaApprovalNeeded,
   syncPublishedItems,
   getPublishBlocker,
+  isRecentPublication,
+  openFirstReviewRequest,
   publishCollection,
   toPublishError,
   type PublishDeps
@@ -164,6 +167,30 @@ describe('payment methods', () => {
     expect(canPayWith('credits', fee, { credits: 99, manaWei: 0n })).toBe(false)
     expect(canPayWith('mana', fee, { credits: 0, manaWei: 1000n * ETHER })).toBe(true)
     expect(canPayWith('mana', fee, { credits: 0, manaWei: 999n * ETHER })).toBe(false)
+  })
+})
+
+describe('getManaApprovalNeeded', () => {
+  // What the contract pulls: 3% above a 1000 MANA quote, still within the verification tolerance.
+  const onChainTotal = 1030n * ETHER
+  const padded = 1081n * ETHER + ETHER / 2n
+
+  it('approves the on-chain total plus the fee tolerance when the allowance only covers the quote', async () => {
+    await expect(getManaApprovalNeeded(onChainTotal, () => Promise.resolve(1000n * ETHER))).resolves.toBe(padded)
+  })
+
+  it('asks for no approval once the allowance covers the padded on-chain total', async () => {
+    await expect(getManaApprovalNeeded(onChainTotal, () => Promise.resolve(padded))).resolves.toBeNull()
+  })
+
+  it('treats a failed allowance read as no allowance', async () => {
+    await expect(getManaApprovalNeeded(onChainTotal, () => Promise.reject(new Error('rpc down')))).resolves.toBe(padded)
+  })
+
+  it('neither reads nor approves a free fee', async () => {
+    const read = vi.fn()
+    await expect(getManaApprovalNeeded(0n, read)).resolves.toBeNull()
+    expect(read).not.toHaveBeenCalled()
   })
 })
 
@@ -366,6 +393,60 @@ describe('syncPublishedItems', () => {
     await failure
     expect(publish).toHaveBeenCalledTimes(721)
     vi.useRealTimers()
+  })
+})
+
+describe('isRecentPublication', () => {
+  const now = Date.UTC(2026, 10, 5)
+  const day = 24 * 60 * 60_000
+
+  it('counts a collection published this month', () => {
+    expect(isRecentPublication({ lock: now - 3 * day, updatedAt: now - 10 * day }, now)).toBe(true)
+  })
+
+  it('leaves out a collection published over a month ago', () => {
+    expect(isRecentPublication({ lock: undefined, updatedAt: now - 45 * day }, now)).toBe(false)
+  })
+})
+
+describe('openFirstReviewRequest', () => {
+  const pending = { collectionId: 'col-1', status: 'pending' }
+
+  it('opens the request when the collection has none and hands back the pending curation', async () => {
+    const pushCollectionCuration = vi.fn().mockResolvedValue(pending)
+    const fetchCollectionCuration = vi.fn().mockResolvedValue(null)
+    await expect(openFirstReviewRequest('col-1', { fetchCollectionCuration, pushCollectionCuration })).resolves.toBe(
+      pending
+    )
+    expect(pushCollectionCuration).toHaveBeenCalledWith('col-1')
+  })
+
+  it('keeps a request that already exists, so a curator decision is never reopened', async () => {
+    const rejected = { collectionId: 'col-1', status: 'rejected' }
+    const pushCollectionCuration = vi.fn()
+    const fetchCollectionCuration = vi.fn().mockResolvedValue(rejected)
+    await expect(openFirstReviewRequest('col-1', { fetchCollectionCuration, pushCollectionCuration })).resolves.toBe(
+      rejected
+    )
+    expect(pushCollectionCuration).not.toHaveBeenCalled()
+  })
+
+  it('hands back the request another tab opened in the meantime', async () => {
+    const pushCollectionCuration = vi
+      .fn()
+      .mockRejectedValue(new BuilderServerError('There is already an ongoing review request', 400))
+    const fetchCollectionCuration = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(pending)
+    await expect(openFirstReviewRequest('col-1', { fetchCollectionCuration, pushCollectionCuration })).resolves.toBe(
+      pending
+    )
+  })
+
+  it('surfaces any other failure', async () => {
+    const pushCollectionCuration = vi.fn().mockRejectedValue(new BuilderServerError('Unauthorized', 401))
+    const fetchCollectionCuration = vi.fn().mockResolvedValue(null)
+    await expect(
+      openFirstReviewRequest('col-1', { fetchCollectionCuration, pushCollectionCuration })
+    ).rejects.toBeInstanceOf(BuilderServerError)
   })
 })
 

@@ -1,13 +1,18 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { hashV1 } from '@dcl/hashing'
+import { hashV1, keccak256Hash } from '@dcl/hashing'
+import { MappingType } from '@dcl/schemas'
 import { type Collection } from './collections'
 import {
   buildDeploymentForm,
   buildItemEntity,
   buildItemEntityMetadata,
+  buildLinkedItemEntity,
+  buildLinkedItemEntityMetadata,
   computeItemContentHash,
-  getEntityContent
+  computeLinkedItemContentHash,
+  getEntityContent,
+  getLinkedEntityContent
 } from './catalystEntity'
 import { ItemType, type Item } from './items'
 
@@ -139,5 +144,130 @@ describe('buildDeploymentForm', () => {
     expect(form.get('authChain[1][signature]')).toBe('0xsig')
     expect(form.has('bafentity')).toBe(true)
     expect(form.has('bafmodel')).toBe(true)
+  })
+})
+
+const linkedCollection = {
+  id: 'lc1',
+  urn: 'urn:decentraland:amoy:collections-thirdparty:brand:lc1'
+} as Collection
+
+const linked: Item = {
+  ...live,
+  id: 'li1',
+  rarity: undefined,
+  tokenId: undefined,
+  urn: `${linkedCollection.urn}:hat-1`,
+  contents: { ...live.contents, 'video.mp4': 'bafvideo', 'folder/': 'x', 'empty.txt': EMPTY },
+  mappings: { amoy: { '0xabc': [{ type: MappingType.ANY }] } }
+}
+
+const proof = { index: 1, proof: ['0xaa', '0xbb'], entityHash: 'deadbeef' }
+
+describe('buildLinkedItemEntityMetadata', () => {
+  it('keeps the legacy key order and hashes every key but the proof', () => {
+    const metadata = buildLinkedItemEntityMetadata(linkedCollection, linked, proof)
+    expect(Object.keys(metadata)).toEqual([
+      'id',
+      'name',
+      'description',
+      'i18n',
+      'data',
+      'image',
+      'thumbnail',
+      'metrics',
+      'content',
+      'mappings',
+      'merkleProof'
+    ])
+    expect(metadata.merkleProof).toEqual({
+      index: 1,
+      proof: ['0xaa', '0xbb'],
+      hashingKeys: [
+        'id',
+        'name',
+        'description',
+        'i18n',
+        'data',
+        'image',
+        'thumbnail',
+        'metrics',
+        'content',
+        'mappings'
+      ],
+      entityHash: 'deadbeef'
+    })
+    expect(Object.keys(metadata.merkleProof)).toEqual(['index', 'proof', 'hashingKeys', 'entityHash'])
+  })
+
+  it('hashes the stored contents without directories and empty files, video included', () => {
+    const metadata = buildLinkedItemEntityMetadata(linkedCollection, linked, proof)
+    expect(metadata.content).toEqual({ ...live.contents, 'video.mp4': 'bafvideo' })
+    expect(metadata.id).toBe(linked.urn)
+    expect(metadata).not.toHaveProperty('collectionAddress')
+    expect(metadata).not.toHaveProperty('rarity')
+  })
+
+  it('leaves mappings out when the item has none', () => {
+    const metadata = buildLinkedItemEntityMetadata(linkedCollection, { ...linked, mappings: undefined }, proof)
+    expect(metadata).not.toHaveProperty('mappings')
+    expect(metadata.merkleProof.hashingKeys).not.toContain('mappings')
+  })
+
+  it('refuses items outside the collection, unpublished ones and emotes', () => {
+    expect(() => buildLinkedItemEntityMetadata(linkedCollection, { ...linked, urn: undefined }, proof)).toThrow()
+    expect(() => buildLinkedItemEntityMetadata(linkedCollection, { ...linked, urn: live.urn }, proof)).toThrow()
+    expect(() => buildLinkedItemEntityMetadata(linkedCollection, { ...linked, type: ItemType.EMOTE }, proof)).toThrow()
+  })
+})
+
+describe('computeLinkedItemContentHash', () => {
+  // builder-server's buildTPWearableEntityMetadata (src/Item/hashes.ts) for `linked`, after sanitizeItemContents,
+  // hashed as calculateTPItemContentHash does: keccak256Hash(metadata, Object.keys(metadata)).
+  const serverMetadata = {
+    id: linked.urn,
+    name: linked.name,
+    description: linked.description,
+    i18n: [{ code: 'en', text: linked.name }],
+    data: {
+      replaces: linked.data.replaces,
+      hides: linked.data.hides,
+      removesDefaultHiding: undefined,
+      tags: linked.data.tags,
+      category: linked.data.category,
+      representations: linked.data.representations,
+      blockVrmExport: undefined,
+      outlineCompatible: undefined
+    },
+    image: 'image.png',
+    thumbnail: 'thumbnail.png',
+    metrics: linked.metrics,
+    content: { ...live.contents, 'video.mp4': 'bafvideo' },
+    mappings: linked.mappings
+  }
+  const SERVER_HASH = '617b25aa0fab28486a151fc299a2707e14ac00c0dc7433dbe2fb7c224c7f3bba'
+
+  it('matches the content_hash builder-server stores for the item', () => {
+    expect(keccak256Hash(serverMetadata, Object.keys(serverMetadata))).toBe(SERVER_HASH)
+    expect(computeLinkedItemContentHash(linkedCollection, linked)).toBe(SERVER_HASH)
+  })
+
+  it('changes with the mappings, which are part of what curators approve', () => {
+    const remapped: Item = { ...linked, mappings: { amoy: { '0xabc': [{ type: MappingType.SINGLE, id: '7' }] } } }
+    expect(computeLinkedItemContentHash(linkedCollection, remapped)).not.toBe(SERVER_HASH)
+  })
+})
+
+describe('buildLinkedItemEntity', () => {
+  it('deploys a wearable pointed at the item urn whose files are exactly the content its metadata declares', async () => {
+    const entity = await buildLinkedItemEntity(linkedCollection, linked, getLinkedEntityContent(linked), proof, 123)
+    expect(entity.entityId).toBe(await hashV1(entity.entityFile))
+    const parsed = JSON.parse(new TextDecoder().decode(entity.entityFile))
+    expect(parsed).toMatchObject({ version: 'v3', type: 'wearable', pointers: [linked.urn], timestamp: 123 })
+    expect(parsed.metadata.merkleProof.entityHash).toBe('deadbeef')
+    // The Catalyst's third-party validator refuses any difference, in either direction.
+    expect(
+      Object.fromEntries(parsed.content.map((entry: { file: string; hash: string }) => [entry.file, entry.hash]))
+    ).toEqual(parsed.metadata.content)
   })
 })

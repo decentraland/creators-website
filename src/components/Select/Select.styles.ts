@@ -164,6 +164,9 @@ export const OptionLabel = styled.span`
 export const Listbox = styled.ul`
   position: fixed;
   z-index: ${theme.z.tooltip};
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   max-height: min(360px, calc(100vh - 16px));
   margin: 0;
   overflow-y: auto;

@@ -67,6 +67,11 @@ export const ModalActions = styled.div`
     flex: 1 1 0;
     min-width: fit-content;
   }
+  /* A lone acknowledgement sizes to its label, centered, like the success dialog's DONE. */
+  &[data-single] > button {
+    flex: 0 0 auto;
+    margin-inline: auto;
+  }
 `
 
 // Shared shell for the sign-in / empty / error / no-results states.

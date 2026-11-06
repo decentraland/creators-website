@@ -1,4 +1,4 @@
-// Segment wrapper for the creator funnel (spec: design/TRACKING_SPEC.md). This is the ONLY place the
+// Segment wrapper for the creator funnel (spec: docs/TRACKING_SPEC.md). This is the ONLY place the
 // app talks to Segment: callers use `track`/`identify`/`trackPage`/`sendDirect`, never `window.analytics`.
 //
 // Events land in the SAME Segment source as the legacy builder, and reuse its event names wherever a

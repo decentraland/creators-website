@@ -6,12 +6,14 @@ import { ethers } from 'ethers'
 import { ContractName, getContract } from 'decentraland-transactions'
 import { config } from '~/config'
 import { type ContractCall } from '~/lib/auth'
-import { BuilderServerError, COLLECTION_LOCKED_STATUS } from '~/lib/builder'
+import { BuilderServerError, COLLECTION_LOCKED_STATUS, isRefusedRequest } from '~/lib/builder'
 import { isCollectionLocked, type Collection } from '~/lib/collections'
+import { type CollectionCuration } from '~/lib/curation'
 import { CreditsServerError, type ExternalCall, type PublicationAuthorization } from '~/lib/credits'
-import { PublicationFeeMismatchError } from '~/lib/feeVerification'
+import { PublicationFeeMismatchError, withFeeTolerance } from '~/lib/feeVerification'
 import { hasOldHashedContents } from '~/lib/itemFactory'
 import { isMissingSmartWearableVideo, type Item } from '~/lib/items'
+import { fetchManaAllowance } from '~/lib/mana'
 import { weiToUsdCents, type PublicationFee } from '~/lib/publishFee'
 import { isWalletRejection } from '~/lib/walletErrors'
 import { getCollectionSymbol, toInitializeItems, type InitializeItem } from '~/lib/saveCollection'
@@ -66,6 +68,28 @@ export function canPayWith(method: PaymentMethod, fee: PublicationFee, balances:
 }
 
 export type CreditsAndMana = { credits: number; manaWei: bigint }
+
+/** How much MANA the CollectionManager may pull from `address` right now, read from the chain. */
+export async function fetchCollectionManagerAllowance(address: string): Promise<bigint> {
+  const chainId = getMaticChainId()
+  return fetchManaAllowance(address, getContract(ContractName.CollectionManager, chainId).address, chainId)
+}
+
+/**
+ * The MANA approval a publish paid in MANA still needs, or null when the allowance already covers it. The
+ * CollectionManager pulls the on-chain total (which a verified quote may sit below), so that total plus the same
+ * tolerance the verification grants the oracle is what must fit. A failed allowance read counts as no allowance: an
+ * extra approval prompt beats a publish that reverts.
+ */
+export async function getManaApprovalNeeded(
+  onChainTotalWei: bigint,
+  fetchAllowance: () => Promise<bigint>
+): Promise<bigint | null> {
+  const required = withFeeTolerance(onChainTotalWei)
+  if (required === 0n) return null
+  const allowance = await fetchAllowance().catch(() => 0n)
+  return allowance < required ? required : null
+}
 
 // CollectionManager.createCollection(forwarder, factory, salt, name, symbol, baseURI, creator, items).
 export type CreateCollectionArgs = [string, string, string, string, string, string, string, InitializeItem[]]
@@ -208,10 +232,7 @@ async function retry<T>(
   throw lastError
 }
 
-// A 4xx is the server rejecting what was sent (e.g. the email): the same request will fail again.
-function isTransientFailure(error: unknown): boolean {
-  return !(error instanceof BuilderServerError && error.status >= 400 && error.status < 500)
-}
+const isTransientFailure = (error: unknown) => !isRefusedRequest(error)
 
 export type PublishParams = {
   address: string
@@ -318,7 +339,8 @@ export type ConsolidateDeps = SyncDeps & {
   onSynced?: () => void
 }
 
-// One hour of 5s polls: the subgraph can lag well past a couple of minutes on a busy Polygon day.
+// One hour of 5s polls: the subgraph can lag well past a couple of minutes on a busy Polygon day. Forum post
+// recovery (`RECOVERY_GRACE_MS` in forumPost.ts) waits this out, so keep it shorter than that grace.
 const CONSOLIDATE_RETRY_DELAY_MS = 5000
 const CONSOLIDATE_RETRIES = (60 * 60 * 1000) / CONSOLIDATE_RETRY_DELAY_MS
 
@@ -341,6 +363,43 @@ export async function syncPublishedItems(
       if (!notIndexedYet || attempt >= retries) throw error
       await new Promise(resolve => setTimeout(resolve, retryDelayMs))
     }
+  }
+}
+
+// Matches the forum post's recovery window: older collections keep reading To review without a request.
+const REVIEW_RECOVERY_MAX_AGE_MS = 30 * 24 * 60 * 60_000
+
+/** Whether a publish finished on a later visit still gets its review request: only within a month of publishing. */
+export function isRecentPublication(collection: Pick<Collection, 'lock' | 'updatedAt'>, now = Date.now()): boolean {
+  return now - Math.max(collection.lock ?? 0, collection.updatedAt) < REVIEW_RECOVERY_MAX_AGE_MS
+}
+
+export type ReviewRequestDeps = {
+  fetchCollectionCuration: (collectionId: string) => Promise<CollectionCuration | null>
+  pushCollectionCuration: (collectionId: string) => Promise<CollectionCuration>
+}
+
+const ALREADY_REQUESTED_STATUS = 400
+
+/**
+ * Opens a published collection's first review request and returns the collection's latest one; a request that
+ * already exists (a retry, or a curator who acted first) is returned as is, never reopened.
+ */
+export async function openFirstReviewRequest(
+  collectionId: string,
+  deps: ReviewRequestDeps
+): Promise<CollectionCuration | null> {
+  const existing = await deps.fetchCollectionCuration(collectionId)
+  if (existing) return existing
+  try {
+    return await deps.pushCollectionCuration(collectionId)
+  } catch (error) {
+    const openedMeanwhile =
+      error instanceof BuilderServerError &&
+      error.status === ALREADY_REQUESTED_STATUS &&
+      error.message.includes('ongoing review request')
+    if (openedMeanwhile) return deps.fetchCollectionCuration(collectionId)
+    throw error
   }
 }
 

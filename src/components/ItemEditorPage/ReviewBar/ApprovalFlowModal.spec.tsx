@@ -34,7 +34,10 @@ vi.mock('~/hooks/useApprovalFlow', () => ({
     reloadItems: state.reloadItems
   })
 }))
-vi.mock('~/lib/approveCollection', () => ({ measureItems: vi.fn().mockResolvedValue(new Map([['i1', 819_100]])) }))
+vi.mock('~/lib/approveCollection', async importOriginal => ({
+  ...(await importOriginal<typeof import('~/lib/approveCollection')>()),
+  measureItems: vi.fn().mockResolvedValue(new Map([['i1', 819_100]]))
+}))
 vi.mock('~/components/CollectionMosaic', () => ({ CollectionMosaic: () => null }))
 vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
 const clipboard = vi.hoisted(() => ({ copyToClipboard: vi.fn() }))

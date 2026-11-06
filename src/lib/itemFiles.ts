@@ -15,6 +15,7 @@ import {
   type JSONSchema
 } from '@dcl/schemas'
 import { BodyShapeType, IMAGE_PATH, VIDEO_PATH, hasSceneCode, isSceneCodeFile } from './items'
+import { blobsAreEqual } from './blobs'
 
 export const THUMBNAIL_PATH = 'thumbnail.png'
 /** A smart wearable's scene manifest; kept inside the item contents so the explorer can run it. */
@@ -147,7 +148,8 @@ export function isModelFile(fileName: string): boolean {
 export function isModelPath(fileName: string): boolean {
   const lower = fileName.toLowerCase()
   if (lower.endsWith('.glb') || lower.endsWith('.gltf')) return true
-  if (lower.indexOf(THUMBNAIL_PATH) !== -1) return false
+  // The item's own thumbnail and catalyst image (as a downloaded item zip ships them) are never a texture.
+  if (lower.indexOf(THUMBNAIL_PATH) !== -1 || lower === IMAGE_PATH) return false
   // `_mask.png` also covers `_expressions_mask.png` by construction.
   if (lower.endsWith('_mask.png') || lower.endsWith('_expressions.png')) return false
   return lower.endsWith('.png')
@@ -253,6 +255,14 @@ export function getBodyShapeTypeFromContents(contents: Record<string, unknown>):
   return null
 }
 
+/** Drops a `male/` or `female/` prefix from the paths under it; everything else keeps its path. */
+function stripBodyShapeFolder(contents: Record<string, Blob>, shape: BodyShapeType): Record<string, Blob> {
+  const prefix = `${shape}/`
+  return Object.fromEntries(
+    Object.entries(contents).map(([path, blob]) => [path.startsWith(prefix) ? path.slice(prefix.length) : path, blob])
+  )
+}
+
 export function getModelFileNameFromSubfolder(modelPath: string): string {
   return modelPath.split('/').pop()!
 }
@@ -284,6 +294,8 @@ export function cleanContentModelKeys(
 
 /** wearable.json manifest — the subset of the legacy WearableConfig this app reads. */
 export type WearableManifest = {
+  /** Linked wearables: the item's URN, whose last segment becomes its URN suffix. */
+  id?: string | null
   name: string
   description?: string
   /** Not in the legacy format: this app's addition, saved as the item's utility. */
@@ -303,6 +315,8 @@ export type WearableManifest = {
       overrideReplaces?: string[]
     }>
   }
+  /** Linked wearables: the token mapping, as the docs describe it (a single `Mapping`). */
+  mapping?: unknown
 }
 
 /** emote.json manifest. */
@@ -443,12 +457,26 @@ function toSceneManifest(value: unknown): SceneManifest {
   }
 }
 
-/** The zip's scene.json: at the root, or the single one inside a zipped project folder. */
-function findSceneFile(zip: JSZip): JSZip.JSZipObject | null {
+/**
+ * The zip's scene.json: at the root, the single one inside a zipped project folder, or the copies a
+ * downloaded item carries under male/ and female/ (one manifest stored per body shape, so they must match).
+ */
+async function findSceneFile(
+  zip: JSZip,
+  readText: (entry: JSZip.JSZipObject) => Promise<string>
+): Promise<JSZip.JSZipObject | null> {
   const root = zip.file(SCENE_PATH)
   if (root) return root
   const nested = zip.file(/(^|\/)scene\.json$/)
-  return nested.length === 1 ? nested[0] : null
+  if (nested.length === 1) return nested[0]
+  // Exactly the download layout: one copy under female/ and one under male/, inside the same folder.
+  const names = nested.map(file => file.name).sort()
+  if (names.length !== 2 || names[0].replace(/(^|\/)female\/scene\.json$/, '$1male/scene.json') !== names[1])
+    return null
+  // Compared as parsed JSON so a reformatted copy still counts as the same manifest.
+  const texts = await Promise.all(nested.map(async file => JSON.stringify(parseJson(await readText(file), SCENE_PATH))))
+  if (texts[0] !== texts[1]) throw new ItemFileError('scene_code_mismatch', { fileName: SCENE_PATH })
+  return nested[0]
 }
 
 /** Parses and validates the scene manifest, checks its code bundle shipped, and returns the normalized file to store. */
@@ -461,7 +489,16 @@ async function loadScene(
   const scene = toSceneManifest(rawScene)
   // The entry point is what makes the wearable "smart" downstream (hasSceneCode), so it must be code.
   if (!isSceneCodeFile(scene.main)) throw new ItemFileError('scene_main_not_code', { fileName: scene.main })
-  if (!content[scene.main]) throw new ItemFileError('manifest_file_missing', { fileName: scene.main })
+  // The bundle sits at the root or, in a downloaded item, in every body-shape folder: one code for every shape.
+  const shape = getBodyShapeTypeFromContents(content)
+  const folders = shape === BodyShapeType.BOTH ? [BodyShapeType.MALE, BodyShapeType.FEMALE] : shape ? [shape] : []
+  const paths =
+    content[scene.main] || folders.length === 0 ? [scene.main] : folders.map(folder => `${folder}/${scene.main}`)
+  const missing = paths.find(path => !content[path])
+  if (missing) throw new ItemFileError('manifest_file_missing', { fileName: missing })
+  if (paths.length === 2 && !(await blobsAreEqual(content[paths[0]], content[paths[1]]))) {
+    throw new ItemFileError('scene_code_mismatch', { fileName: scene.main })
+  }
   return { scene, blob: new Blob([JSON.stringify(rawScene)], { type: 'application/json' }) }
 }
 
@@ -493,7 +530,6 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
     throw new ItemFileError('invalid_zip')
   }
 
-  const sceneFile = findSceneFile(zip)
   const wearableFile = zip.file(WEARABLE_MANIFEST)
   const emoteFile = zip.file(EMOTE_MANIFEST)
 
@@ -513,6 +549,7 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
   // Manifests share the budget: a bogus wearable.json is as good a bomb as any model file.
   const inflater = createZipInflater(MAX_ZIP_CONTENTS_SIZE)
   const readText = async (entry: JSZip.JSZipObject) => (await inflater.inflate(entry)).text()
+  const sceneFile = await findSceneFile(zip, readText)
   const rawContent: Record<string, Blob> = {}
   for (const { path, entry } of entries) {
     const blob = await inflater.inflate(entry)
@@ -598,16 +635,23 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
   // the form supplies name, category and rarity. Always unisex.
   if (sceneFile) {
     const { scene, blob } = await loadScene(sceneFile, content, readText)
-    const keys = Object.keys(content)
+    // A single body-shape folder is just where the model sits: it serves both shapes, so that one prefix
+    // goes; other folders (models/, images/) are the scene's own layout and stay as the code expects them.
+    const shape = getBodyShapeTypeFromContents(content)
+    const files =
+      shape === BodyShapeType.MALE || shape === BodyShapeType.FEMALE ? stripBodyShapeFolder(content, shape) : content
+    const keys = Object.keys(files)
     const model = keys.find(isModelFile) ?? keys.find(isModelPath)
     if (!model) throw new ItemFileError('missing_model_file')
     if (contentsSize > MAX_WEARABLE_FILE_SIZE) {
       throw new ItemFileError('file_too_big', { size: toMB(MAX_WEARABLE_FILE_SIZE) })
     }
-    return { contents: withVideo({ ...content, [SCENE_PATH]: blob }), model, bodyShape: BodyShapeType.BOTH, scene }
+    return { contents: withVideo({ ...files, [SCENE_PATH]: blob }), model, bodyShape: BodyShapeType.BOTH, scene }
   }
 
-  const model = Object.keys(content).find(isModelPath)
+  // A 3D model is the item's main file whenever there is one; a PNG only makes a texture item on its own.
+  const keys = Object.keys(content)
+  const model = keys.find(isModelFile) ?? keys.find(isModelPath)
   if (!model) throw new ItemFileError('missing_model_file')
 
   if (isImageFile(model)) assertNoOrphanedAuxiliaryFiles(content)

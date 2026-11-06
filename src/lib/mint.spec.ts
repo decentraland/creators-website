@@ -11,8 +11,12 @@ import {
   copiesPerRecipient,
   flattenTransfers,
   getStock,
+  hasSendDraft,
   isSendableItem,
+  holdsAddresses,
   maxAmount,
+  parseRecipientList,
+  sendBatchSize,
   totalCopies,
   type Transfer
 } from './mint'
@@ -92,9 +96,26 @@ describe('allocation math', () => {
     { recipients: ['0xc'], amounts: { hat: 2 } }
   ]
 
+  it('has a draft once any transfer names a recipient or sets a copy', () => {
+    expect(hasSendDraft([{ recipients: [], amounts: {} }])).toBe(false)
+    expect(hasSendDraft([{ recipients: [], amounts: { a: 0 } }])).toBe(false)
+    expect(
+      hasSendDraft([
+        { recipients: [], amounts: {} },
+        { recipients: [MINTER], amounts: {} }
+      ])
+    ).toBe(true)
+    expect(hasSendDraft([{ recipients: [], amounts: { a: 1 } }])).toBe(true)
+  })
+
   it('counts copies as recipients × amounts across transfers', () => {
     expect(totalCopies(transfers)).toBe(2 * 4 + 2)
     expect(copiesPerItem(transfers)).toEqual({ hat: 8, cap: 2 })
+    expect(sendBatchSize([...transfers, { recipients: ['0xA'], amounts: { hat: 0 } }])).toEqual({
+      item_count: 2,
+      copies: 10,
+      recipient_count: 3
+    })
   })
 
   it('merges what every wallet receives across transfers, skipping empty ones', () => {
@@ -135,8 +156,11 @@ describe('flattenTransfers / buildIssueTokensCall', () => {
   })
 
   it('refuses more copies than one transaction can mint', () => {
-    const transfers: Transfer[] = [{ recipients: ['0xa'], amounts: { hat: MAX_ITEMS_PER_SEND + 1 } }]
-    expect(() => flattenTransfers(transfers, [hat])).toThrow(/more than/)
+    const atCap: Transfer[] = [{ recipients: ['0xa'], amounts: { hat: MAX_ITEMS_PER_SEND } }]
+    expect(flattenTransfers(atCap, [hat]).beneficiaries).toHaveLength(MAX_ITEMS_PER_SEND)
+
+    const overCap: Transfer[] = [{ recipients: ['0xa'], amounts: { hat: MAX_ITEMS_PER_SEND + 1 } }]
+    expect(() => flattenTransfers(overCap, [hat])).toThrow(/more than/)
   })
 
   it('encodes issueTokens on the collection contract and refuses a collection without one', () => {
@@ -147,5 +171,47 @@ describe('flattenTransfers / buildIssueTokensCall', () => {
     expect(() => buildIssueTokensCall({ ...collection, contractAddress: undefined }, [], [], CHAIN_ID)).toThrow(
       /no contract/
     )
+  })
+})
+
+describe('parseRecipientList', () => {
+  const A = '0x00000000000000000000000000000000000000a1'
+  const B = '0x00000000000000000000000000000000000000b2'
+  const C = '0x00000000000000000000000000000000000000c3'
+
+  it('takes the addresses out of a pasted sheet, whatever surrounds them, lowercased and deduped', () => {
+    const sheet = `wallet\tname\n${A.toUpperCase().replace('0X', '0x')}\tJane\n"${B}", ${C};${A}\n${B}\n`
+    expect(parseRecipientList(sheet)).toEqual({ added: [A, B, C], invalid: 0, repeated: 2, cut: 0 })
+  })
+
+  it('counts repeats of the transfer apart from wrong checksums and mistyped or overlong hex runs', () => {
+    const badChecksum = '0xd8da6bf26964af9d7eed9e03e53415d37aa96045'.replace('d8da', 'D8dA')
+    const short = A.slice(0, -1)
+    const hash = `0x${'ab'.repeat(32)}`
+    expect(parseRecipientList(`${A}\n${badChecksum}\n${short}, ${hash}\n${B}`, [A])).toEqual({
+      added: [B],
+      invalid: 3,
+      repeated: 1,
+      cut: 0
+    })
+  })
+
+  it('cuts a list that would take the transfer past the send cap, and reports the cut', () => {
+    const list = Array.from({ length: 5 }, (_, i) => `0x${String(i + 1).padStart(40, '0')}`).join(', ')
+    expect(parseRecipientList(list, [A], 3)).toEqual({
+      added: ['0x' + '1'.padStart(40, '0'), '0x' + '2'.padStart(40, '0')],
+      invalid: 0,
+      repeated: 0,
+      cut: 3
+    })
+    expect(parseRecipientList(list, [A, B, C], 3)).toEqual({ added: [], invalid: 0, repeated: 0, cut: 5 })
+    expect(parseRecipientList(list).added).toHaveLength(5)
+  })
+
+  it('tells text that carries an address from text that does not', () => {
+    expect(holdsAddresses(`name, ${A}`)).toBe(true)
+    expect(holdsAddresses(`${A}${B}`)).toBe(false)
+    expect(holdsAddresses('0x1234')).toBe(false)
+    expect(holdsAddresses(`0x${'ab'.repeat(32)}`)).toBe(false)
   })
 })

@@ -71,6 +71,7 @@ export function DisableCollectionFlow({ session, collection, onClose, onDisabled
       busy={disable.isPending && !awaitingWallet}
       // Closing would lose track of the open request; a second Disable would revert and cost gas.
       onClose={disable.isPending ? () => undefined : onClose}
+      fillActions
       cancel={
         disable.isPending
           ? undefined

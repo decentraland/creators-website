@@ -15,7 +15,8 @@ import { fetchFriends } from '~/lib/friends'
 import { type Item } from '~/lib/items'
 import { fetchItemTradeId, type ItemListing } from '~/lib/listings'
 import { fetchManaUsdRate } from '~/lib/manaRate'
-import { buildIssueTokensCall, copiesPerItem, flattenTransfers, type Transfer } from '~/lib/mint'
+import { buildIssueTokensCall, copiesPerItem, flattenTransfers, sendBatchSize, type Transfer } from '~/lib/mint'
+import { captureError } from '~/lib/monitoring'
 import { getMaticChainId } from '~/lib/publishCollection'
 import {
   buildEnableSalesCall,
@@ -263,20 +264,20 @@ export function useSendItems(session: Session | null) {
     },
     onSuccess: (_, { collection, transfers }) => {
       const copies = copiesPerItem(transfers)
-      track('Mint items', {
-        collectionId: collection.id,
-        item_count: Object.keys(copies).length,
-        copies: Object.values(copies).reduce((total, amount) => total + amount, 0),
-        recipient_count: new Set(transfers.flatMap(transfer => transfer.recipients.map(to => to.toLowerCase()))).size
-      })
+      track('Mint items', { collectionId: collection.id, ...sendBatchSize(transfers) })
       queryClient.setQueryData<Item[]>(allCollectionItemsKey(session?.address, collection.id), current =>
         current?.map(item =>
           copies[item.id] ? { ...item, totalSupply: (item.totalSupply ?? 0) + copies[item.id] } : item
         )
       )
     },
-    onError: (error, { collection }) =>
-      track('Mint items error', { collectionId: collection.id, error: errorCode(error) })
+    onError: (error, { collection, transfers }) => {
+      const size = sendBatchSize(transfers)
+      const code = errorCode(error)
+      track('Mint items error', { collectionId: collection.id, error: code, ...size })
+      // A wallet cancel is the creator's choice; anything else (revert, relayer refusal, RPC) is ours to see.
+      if (code !== 'rejected') captureError(error, { flow: 'send_items', collectionId: collection.id, ...size })
+    }
   })
 }
 

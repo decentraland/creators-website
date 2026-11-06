@@ -107,13 +107,20 @@ export const Index = styled.span`
   color: ${theme.colors.white};
 `
 
+export const RecipientActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 24px;
+  margin-left: 32px;
+`
+
 export const LinkButton = styled.button`
   display: inline-flex;
   align-items: center;
   gap: 4px;
   align-self: flex-start;
   min-height: 44px;
-  margin-left: 32px;
   padding: 0;
   border: 0;
   background: none;
@@ -302,8 +309,12 @@ export const RecipientCard = styled.div`
   display: flex;
   flex-direction: column;
   padding: 12px;
-  border: 1px solid ${theme.colors.glassLine};
+  border: 1px solid ${theme.colors.glassHover};
   border-radius: ${theme.radius.card};
+
+  & > ul > li:first-child {
+    border-top: 0;
+  }
 `
 
 export const RecipientLine = styled.div`

@@ -9,10 +9,11 @@ type Props = {
   discounts: CollectionDiscount[]
   /** The same clock the list was filtered with, so a discount's status and its presence agree. */
   now: number
-  onEnd: (discount: CollectionDiscount) => void
+  /** Omitted when the creator can't end a discount early (a social login can't pay the Polygon gas). */
+  onEnd?: (discount: CollectionDiscount) => void
 }
 
-/** The collection's running and scheduled discounts, each with a way to end it early. */
+/** The collection's running and scheduled discounts, each with a way to end it early when the creator can. */
 export function CollectionDiscounts({ discounts, now, onEnd }: Props) {
   const { t } = useTranslation()
   const intl = useIntl()
@@ -47,17 +48,19 @@ export function CollectionDiscounts({ discounts, now, onEnd }: Props) {
                 </span>
               )}
             </S.DiscountTerms>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              data-testid="end-discount"
-              // Its cancellation is already on its way: a second one would only cost gas.
-              disabled={discount.ending}
-              onClick={() => onEnd(discount)}
-            >
-              {t('collection_discount.end.action')}
-            </Button>
+            {onEnd && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                data-testid="end-discount"
+                // Its cancellation is already on its way: a second one would only cost gas.
+                disabled={discount.ending}
+                onClick={() => onEnd(discount)}
+              >
+                {t('collection_discount.end.action')}
+              </Button>
+            )}
           </S.DiscountChip>
         )
       })}

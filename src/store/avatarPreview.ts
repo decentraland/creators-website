@@ -147,6 +147,7 @@ export function selectAvatarAttributes(state: AvatarSelection): AvatarAttributes
     skin: state.skin,
     eyes: state.eyes,
     hair: state.hair,
-    baseWearableUrns: toBaseWearableUrns(state.baseWearables?.[state.bodyShape], state.bodyShape)
+    baseWearableUrns: toBaseWearableUrns(state.baseWearables?.[state.bodyShape], state.bodyShape),
+    hasOutfit: state.baseWearables !== null
   }
 }

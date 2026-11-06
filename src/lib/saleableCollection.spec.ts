@@ -3,7 +3,7 @@ import { ContractName, getContract } from 'decentraland-transactions'
 import { type Collection } from './collections'
 import { ItemType, type Item } from './items'
 import { type ItemListing } from './listings'
-import { manaToCredits, toSaleableCollection } from './saleableCollection'
+import { discountedPriceCredits, manaToCredits, toSaleableCollection, type SaleItem } from './saleableCollection'
 
 const CHAIN_ID = 80002
 const V3 = getContract(ContractName.OffChainMarketplaceV3, CHAIN_ID).address.toLowerCase()
@@ -64,5 +64,38 @@ describe('when converting MANA to credits', () => {
     expect(manaToCredits(10n * MANA + 5n * 10n ** 16n, 10n ** 17n)).toBe(11)
     // Never below one credit, the Shop's floor for any price.
     expect(manaToCredits(1n, 10n ** 17n)).toBe(1)
+  })
+})
+
+describe('when quoting a discounted item in credits', () => {
+  const rate = 11n * 10n ** 16n // $0.11 per MANA
+
+  // The contract discounts the MANA amount, and the Shop converts what it sells for: 0.7 MANA is $0.077, 1 credit.
+  // Discounting the rounded 2-credit list price instead would quote 2.
+  it('should discount a MANA price in MANA before converting it', () => {
+    const item: SaleItem = {
+      key: 'k',
+      name: 'Hat',
+      thumbnail: '',
+      priceCredits: manaToCredits(MANA, rate),
+      manaWei: MANA,
+      state: 'discounted',
+      mana: true,
+      remainingSupply: 1
+    }
+    expect(item.priceCredits).toBe(2)
+    expect(discountedPriceCredits(item, 30, rate)).toBe(1)
+  })
+
+  it('should discount a credits price the way checkout rounds it', () => {
+    const item: SaleItem = {
+      key: 'k',
+      name: 'Hat',
+      thumbnail: '',
+      priceCredits: 5,
+      state: 'discounted',
+      remainingSupply: 1
+    }
+    expect(discountedPriceCredits(item, 30, undefined)).toBe(4)
   })
 })
