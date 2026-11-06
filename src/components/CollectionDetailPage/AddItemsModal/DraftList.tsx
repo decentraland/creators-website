@@ -24,6 +24,8 @@ export function DraftList({ drafts, selectedId, onSelect, onRemove }: Props) {
           key={draft.id}
           type="button"
           data-testid={`draft-${draft.id}`}
+          data-file-name={draft.fileName}
+          data-status={draft.status}
           data-selected={draft.id === selectedId || undefined}
           data-failed={draft.status === 'failed' || undefined}
           data-checked={draft.checked || undefined}
