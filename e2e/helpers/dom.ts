@@ -53,6 +53,22 @@ export async function waitForEnabled(page: Page, id: string, timeout = 20_000): 
   )
 }
 
+/** Whether the element is on the page but not visible: false when it is missing, so a renamed test id fails. */
+export async function isHidden(page: Page, id: string): Promise<boolean> {
+  const handle = await page.$(byTestId(id))
+  return handle ? !(await handle.isVisible()) : false
+}
+
+/** Waits for a toast of the given type, without depending on its copy. */
+export async function waitForToast(page: Page, type: 'success' | 'warn' | 'error' | 'info' = 'success') {
+  await page.waitForSelector(`[data-testid="toast"][data-type="${type}"]`, { timeout: 20_000 })
+}
+
+/** Waits until the item editor has loaded an item in edit mode. */
+export async function waitForEditor(page: Page): Promise<void> {
+  await page.waitForSelector('[data-testid="item-editor-page"][data-mode="edit"]', { timeout: 30_000 })
+}
+
 /** Whether an element with the test id is on the page and visible (not `display: none`, zero-sized or hidden). */
 export async function isShown(page: Page, id: string): Promise<boolean> {
   const handle = await page.$(byTestId(id))
