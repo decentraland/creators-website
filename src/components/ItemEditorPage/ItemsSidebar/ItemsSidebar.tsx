@@ -30,6 +30,8 @@ import { BodyShapeType, ItemType, getItemBodyShapeType, isSmartWearable, type It
 import { EditorSection } from '../EditorSection'
 import * as S from './ItemsSidebar.styles'
 
+export type EditorBack = { to: string; label: string }
+
 type Props = {
   collection: Collection
   /** Hidden until known, so the pill never flips once shown. */
@@ -50,6 +52,8 @@ type Props = {
   /** Draft collections the viewer manages: a pencil next to the name opens the rename dialog. */
   onRename?: () => void
   onSelect: (item: Item) => void
+  /** Where the back link leads and its name; a visitor with nowhere to go back to (no role, not a curator) gets none. */
+  back?: EditorBack
   /** Asked before the back link leaves the editor; false keeps the user here (unsaved changes). */
   onLeave?: (to: string) => boolean
   onToggleDressed: (item: Item) => void
@@ -79,6 +83,7 @@ export function ItemsSidebar({
   onAddItems,
   onRename,
   onSelect,
+  back,
   onLeave,
   onToggleDressed,
   onToggleEmotePlay,
@@ -106,8 +111,6 @@ export function ItemsSidebar({
     [review, items]
   )
   const grouped = groups.wearables.length > 0 && groups.emotes.length > 0
-  const backTo = `/collections/${collection.id}`
-  const showBack = mode === 'edit'
   const showAddItems = mode === 'edit' && canAddItems
 
   function onRowClick(item: Item) {
@@ -253,20 +256,15 @@ export function ItemsSidebar({
         <S.Header>
           {/* The review bar carries its own back link, so the review sidebar only names the collection. */}
           <S.HeaderRow>
-            {showBack && (
-              <Tooltip
-                content={t('item_editor.sidebar.back')}
-                placement="right"
-                asChild
-                testId={`${testId}-back-tooltip`}
-              >
+            {mode === 'edit' && back && (
+              <Tooltip content={back.label} placement="right" asChild testId={`${testId}-back-tooltip`}>
                 <S.IconLink
-                  to={backTo}
-                  aria-label={t('item_editor.sidebar.back')}
+                  to={back.to}
+                  aria-label={back.label}
                   data-testid={`${testId}-back`}
                   // A router link never reaches the unload guard, so leaving is asked about here.
                   onClick={event => {
-                    if (onLeave && !onLeave(backTo)) event.preventDefault()
+                    if (onLeave && !onLeave(back.to)) event.preventDefault()
                   }}
                 >
                   <BackIcon fontSize="small" />

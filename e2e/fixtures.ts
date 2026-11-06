@@ -29,6 +29,13 @@ export type RemoteCollectionRow = {
   last_activity_at?: string
 }
 
+export type RemoteThirdPartyRow = {
+  id: string
+  name: string
+  managers: string[]
+  published: boolean
+}
+
 export type RemoteItemRow = {
   id: string
   name: string
@@ -93,6 +100,27 @@ export function publishedCollection(overrides: Partial<RemoteCollectionRow> = {}
     is_approved: true,
     reviewed_at: NOW,
     curation_status: 'approved',
+    ...overrides
+  })
+}
+
+const THIRD_PARTY_ID = 'urn:decentraland:amoy:collections-thirdparty:brand-x'
+
+export function thirdParty(overrides: Partial<RemoteThirdPartyRow> = {}): RemoteThirdPartyRow {
+  return { id: THIRD_PARTY_ID, name: 'Brand X', managers: [TEST_ADDRESS], published: true, ...overrides }
+}
+
+/** A linked collection with a submitted item: what builder-server marks published. */
+export function linkedCollection(overrides: Partial<RemoteCollectionRow> = {}): RemoteCollectionRow {
+  const id = overrides.id ?? nextId()
+  return collection({
+    id,
+    eth_address: '',
+    urn: `${THIRD_PARTY_ID}:${id.slice(-4)}`,
+    is_published: true,
+    linked_contract_address: '0x' + 'c3'.repeat(20),
+    linked_contract_network: 'amoy',
+    is_mapping_complete: true,
     ...overrides
   })
 }
