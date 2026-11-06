@@ -64,6 +64,7 @@ function renderSidebar(overrides: Partial<ComponentProps<typeof ItemsSidebar>> =
     bodyShape: BodyShape.MALE,
     isPlaying: false,
     mode: 'edit',
+    backTo: '/collections/c1',
     collapsed: false,
     onToggleCollapsed: vi.fn(),
     canAddItems: true,
@@ -124,6 +125,12 @@ describe('ItemsSidebar', () => {
     renderSidebar({ onLeave: vi.fn().mockReturnValue(true) })
     await userEvent.click(screen.getByTestId('items-sidebar-back'))
     expect(screen.getByTestId('location')).toHaveTextContent('/collections/c1')
+  })
+
+  it('shows no back link to a visitor with nowhere to go back to', () => {
+    renderSidebar({ backTo: undefined })
+    expect(screen.queryByTestId('items-sidebar-back')).not.toBeInTheDocument()
+    expect(screen.getByTestId('items-sidebar-collection')).toHaveTextContent('Pirate Hats')
   })
 
   it('hides the header actions and the back link in review mode, where the review bar has them', () => {
