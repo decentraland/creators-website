@@ -17,8 +17,11 @@ import {
   switchWalletChain,
   waitForReceipt,
   waitForTransaction,
-  watchTransaction
+  watchTransaction,
+  type TypedDataTypes
 } from './transactions'
+import { OFFCHAIN_MARKETPLACE_TYPES, getTradeDomain } from '~/lib/trades'
+import { typedDataDigest } from '~/test/chain'
 
 vi.mock('decentraland-transactions', async () => {
   const actual = await vi.importActual<typeof import('decentraland-transactions')>('decentraland-transactions')
@@ -237,6 +240,63 @@ describe('when signing typed data', () => {
     expect(signer).toBe(ACCOUNT)
     expect(hashTypedData(JSON.parse(payload))).toBe(
       '0xa96ab1f5e7bde3bee11f939568e08b49d8fcdc039b990c25f672be61acd8c97b'
+    )
+  })
+
+  it('should send an eth_signTypedData_v4 request whose order payload hashes to the pinned order digest', async () => {
+    const { session, request } = walletOn(80002)
+    const order = {
+      checks: {
+        uses: 90,
+        expiration: 4102444800,
+        effective: 1757500000,
+        salt: '0x' + '00'.repeat(31) + '01',
+        contractSignatureIndex: 2,
+        signerSignatureIndex: 3,
+        allowedRoot: '0x' + '00'.repeat(32),
+        externalChecks: []
+      },
+      sent: [{ assetType: 4, contractAddress: '0x00000000000000000000000000000000000000cc', value: '7', extra: '0x' }],
+      received: [
+        {
+          assetType: 2,
+          contractAddress: getContract(ContractName.MANAToken, 80002).address,
+          value: '500000000000000000',
+          extra: '0x',
+          beneficiary: ACCOUNT
+        }
+      ]
+    }
+
+    await expect(
+      signTypedData(session, getTradeDomain(80002), OFFCHAIN_MARKETPLACE_TYPES, 'Trade', order)
+    ).resolves.toBe(`0x${'11'.repeat(65)}`)
+
+    const [{ params }] = request.mock.calls.find(([{ method }]) => method === 'eth_signTypedData_v4')!
+    const [signer, json] = params as [string, string]
+    expect(signer).toBe(ACCOUNT)
+    const payload = JSON.parse(json) as {
+      primaryType: string
+      domain: Record<string, string>
+      types: TypedDataTypes
+      message: Record<string, unknown>
+    }
+    expect(payload.primaryType).toBe('Trade')
+    expect(payload.domain).toEqual({
+      name: 'DecentralandMarketplacePolygon',
+      version: '1.0.0',
+      salt: '0x0000000000000000000000000000000000000000000000000000000000013882',
+      verifyingContract: getContract(ContractName.OffChainMarketplaceV3, 80002).address
+    })
+    expect(payload.types.EIP712Domain).toEqual([
+      { name: 'name', type: 'string' },
+      { name: 'version', type: 'string' },
+      { name: 'verifyingContract', type: 'address' },
+      { name: 'salt', type: 'bytes32' }
+    ])
+    const types = Object.fromEntries(Object.entries(payload.types).filter(([name]) => name !== 'EIP712Domain'))
+    expect(typedDataDigest(payload.domain, types, payload.message)).toBe(
+      '0xfc5244b13838fde268d232e2e06c9720b233590078a5dbd7c2ce17bebe156e9f'
     )
   })
 })
