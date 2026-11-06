@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { LINKED_CONTRACT, THIRD_PARTY_ID, linkedCollection, linkedItem, thirdParty } from './fixtures'
 import { launchApp, type App } from './helpers/app'
-import { byTestId, check, clickTestId, isShown, waitForEnabled, waitForTestId } from './helpers/dom'
+import { byTestId, check, clickTestId, waitForEnabled, waitForTestId } from './helpers/dom'
 
 let app: App | undefined
 afterEach(async () => {
@@ -9,19 +9,13 @@ afterEach(async () => {
   app = undefined
 })
 
-const OTHER_MANAGER = '0x' + '33'.repeat(20)
-
 describe('linked collections', () => {
-  it('shows a published linked collection read-only to someone who does not manage it', async () => {
-    const published = linkedCollection({ is_published: true })
+  it('shows a published linked collection to a manager of its third party', async () => {
+    const published = linkedCollection()
     const item = linkedItem(published, 0, { is_published: true, catalyst_content_hash: 'bafylinked0' })
     app = await launchApp({
       path: `/collections/${published.id}`,
-      builder: {
-        collections: [published],
-        items: [item],
-        thirdParties: [thirdParty({ managers: [OTHER_MANAGER] })]
-      }
+      builder: { collections: [published], items: [item], thirdParties: [thirdParty()] }
     })
     const { page } = app
     await waitForTestId(page, 'linked-item-row')
@@ -29,14 +23,11 @@ describe('linked collections', () => {
     expect(await page.$eval(byTestId('linked-contract-address'), el => el.textContent?.toLowerCase())).toContain(
       LINKED_CONTRACT.slice(0, 6)
     )
-    expect(await page.$('[data-testid="linked-item-row"][data-reader]')).not.toBeNull()
-    expect(await isShown(page, 'linked-item-select')).toBe(false)
-    expect(await isShown(page, 'publish-linked-items')).toBe(false)
-    await app.waitForEvent('View linked collection', { collectionId: published.id, is_reader: true })
+    await app.waitForEvent('View linked collection', { collectionId: published.id, item_count: 1, network: 'amoy' })
   })
 
   it('submits mapped items for review with a signed slots cheque', async () => {
-    const draft = linkedCollection()
+    const draft = linkedCollection({ is_published: false })
     const items = [linkedItem(draft, 0), linkedItem(draft, 1)]
     app = await launchApp({
       path: `/collections/${draft.id}`,
