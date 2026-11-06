@@ -1,1 +1,1 @@
-export { ItemsSidebar } from './ItemsSidebar'
+export { ItemsSidebar, type EditorBack } from './ItemsSidebar'
