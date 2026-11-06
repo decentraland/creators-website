@@ -1,4 +1,5 @@
-// For specs that pin chain outputs (calldata, EIP-712 digests, signatures) as literals.
+// For specs that pin chain outputs (calldata, EIP-712 digests, signatures) as literals. The literals are the
+// reference, not these helpers: a port of this file must leave every pinned value passing unchanged.
 import { decodeFunctionData, hashTypedData, recoverTypedDataAddress, type Hex, type TypedDataDefinition } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { encodeContractCall, type ContractCall } from '~/lib/auth/transactions'

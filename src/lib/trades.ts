@@ -64,6 +64,19 @@ export function getOffchainMarketplaceContract(chainId: number) {
   return getContract(ContractName.OffChainMarketplaceV3, chainId)
 }
 
+type SignTypedData = (
+  domain: TypedDataDomain,
+  types: TypedDataTypes,
+  primaryType: string,
+  value: Record<string, unknown>
+) => Promise<string>
+
+/** Signs an order under the marketplace's domain and types with the given typed-data signer. */
+export function tradeSigner(sign: SignTypedData, chainId: number) {
+  return (trade: UnsignedTrade) =>
+    sign(getTradeDomain(chainId), OFFCHAIN_MARKETPLACE_TYPES, 'Trade', toTradeTypedValues(trade))
+}
+
 /** The marketplace's EIP-712 domain: the chain id travels in `salt`, Decentraland's meta-tx convention. */
 export function getTradeDomain(chainId: number): TypedDataDomain {
   const contract = getOffchainMarketplaceContract(chainId)

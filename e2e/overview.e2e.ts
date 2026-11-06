@@ -29,10 +29,11 @@ describe('overview (creator home)', () => {
       'https://decentraland.zone/places/place/-5,33'
     ])
 
+    // Like a visitor, stay on a section until it counts as viewed before scrolling on.
+    await app.waitForEvent('Section Viewed', { section_viewed: 'Creators Live Scenes', mobile: false })
+
     await page.$eval(byTestId('overview-blog'), el => el.scrollIntoView())
     await waitForText(page, 'Creator spotlight')
-
-    await app.waitForEvent('Section Viewed', { section_viewed: 'Creators Live Scenes', mobile: false })
     await app.waitForEvent('Section Viewed', { section_viewed: 'Creators Blog', mobile: false })
   })
 

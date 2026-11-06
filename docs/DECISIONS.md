@@ -31,7 +31,7 @@ Rules for this file:
 
 ## Collection detail
 
-- **Published collections are public.** Any signed-in address can open a published collection read-only (as in the legacy Builder, so the Foundation can look at what is being created). Readers see no edit, publish, sales, roles or curation action, no item status column and no status pill (builder-server rejects their curation request). Drafts show the not-found panel to anyone without a role.
+- **Only the item editor is public** (2026-11-06, narrows the earlier "published collections are public" rule). The detail page is for the collection's roles only (owner, collaborators, senders; a linked collection's third-party managers): anyone else, curators included, gets the not-found panel, drafts and published collections alike. Any signed-in address can still open a published collection read-only in the item editor (as in the legacy Builder, so the Foundation can look at what is being created). There the back arrow leads to the detail page for a role, to the Curation list for a curator without one, and is hidden for anyone else, who has nowhere to go back to.
 - **Rename only while unpublished.** Renaming regenerates the `initialize` calldata over every item, so it is hidden once `isPublished` and while the one-day publish lock holds.
 - **Preview in World** opens the desktop explorer with a `decentraland://` deep link straight into the per-environment preview world with the backpack open, skipping the legacy location chooser; the web explorer no longer exists. If the tab keeps focus for ~750ms no client handled the link and the download page opens.
 - **Items are filtered and paged client-side** because builder-server cannot filter items by type.
@@ -171,7 +171,7 @@ Rules for this file:
 
 - **Ported from the legacy Builder's live flow only** (flags `linked-wearables-v2` and `linked-wearables-payments` on); pre-V2 branches are not ported. L1 collections, emotes and smart wearables in linked collections, and the item-level "See in Decentraland" are out.
 - **Started read-only** (Linked chip, owner-only, an "Edit in Builder" link) and became a full migration in one PR with no flag (PR #142, with builder-server #823 for drafts), so the legacy Builder can be retired for this surface.
-- **Editing is for the third party's managers, never the collection roles.** A published linked collection (one with a submitted item) opens read-only to any signer (PR #172); item curations and slots stay manager-only because builder-server serves them to managers only.
+- **Editing is for the third party's managers, never the collection roles.** A published linked collection (one with a submitted item) opens read-only in the item editor to any signer (PR #172), never on the detail page; item curations and slots stay manager-only because builder-server serves them to managers only.
 - **A zip whose `wearable.json` has no `mapping` gets All NFTs**, shown before upload. Legacy refused such zips with `missing_mapping`.
 - **The contract check probes ERC-721 and ERC-1155 interface ids** through ERC-165; legacy probed the ERC-165 id itself, which was a bug.
 - **Review threshold:** every item under 50, else max(50, 1%) capped at 300; Approve is blocked until it is reached. Approve on chain only when the Merkle root changed.
