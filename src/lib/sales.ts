@@ -2,9 +2,9 @@
 // off-chain marketplace becomes a minter of the collection contract) and signing the item's primary
 // order, priced in credits (USD-pegged MANA) or plain MANA. Ported from the legacy builder's
 // SellCollectionModal + PutForSaleOffchainModal.
-import { ethers } from 'ethers'
 import { Network, TradeAssetType, TradeType, type Trade, type TradeCreation } from '@dcl/schemas'
 import { ContractName, getContract } from 'decentraland-transactions'
+import { isAddress, maxUint256, parseEther, toHex, zeroAddress } from 'viem'
 import { type ContractCall, type ContractData } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { getItemSales, type Item } from '~/lib/items'
@@ -68,12 +68,9 @@ export function sanitizeManaInput(value: string): string {
 
 /** A typed MANA amount as wei, or null when it is empty or not a plain decimal number. */
 export function parseManaAmount(value: string): bigint | null {
-  if (!/^(\d+\.?\d*|\.\d+)$/.test(value)) return null
-  try {
-    return BigInt(ethers.utils.parseEther(value).toString())
-  } catch {
-    return null
-  }
+  // viem rounds digits past the 18th instead of refusing them.
+  if (!/^(\d+(\.\d{0,18})?|\.\d{1,18})$/.test(value)) return null
+  return parseEther(value)
 }
 
 /** The form's currency + typed amount as a price, or null while it is missing or out of bounds. */
@@ -130,8 +127,9 @@ export function formatManaAsUsd(manaWei: bigint, rate: bigint): string {
   return formatUsd(Number(usdCents) / 100)
 }
 
+/** A 0x address in one case, or mixed case with a valid checksum; callers lowercase it before use. */
 export function isValidAddress(value: string): boolean {
-  return ethers.utils.isAddress(value)
+  return isAddress(value) || /^0x[0-9A-F]{40}$/.test(value)
 }
 
 /** Dates are picked in the creator's local time and expire at the end of the chosen day. */
@@ -275,7 +273,7 @@ function toReceivedAsset(price: SalePrice, mana: string, beneficiary: string): U
         contractAddress: mana,
         amount: '0',
         extra: '',
-        beneficiary: ethers.constants.AddressZero
+        beneficiary: zeroAddress
       }
     case 'mana':
       return {
@@ -309,7 +307,7 @@ export function toListing(itemId: string, tradeId: string, price: SalePrice): It
 }
 
 export function randomSalt(): string {
-  return ethers.utils.hexlify(ethers.utils.randomBytes(32))
+  return toHex(crypto.getRandomValues(new Uint8Array(32)))
 }
 
 /** The chain reads, wallet signature and server call the sequence needs, so it can run against fakes in tests. */
@@ -397,7 +395,7 @@ export type ListingTerms = { beneficiary: string; expiresAt: number }
 export function getListingTerms(trade: Trade, fallbackBeneficiary: string): ListingTerms {
   const beneficiary = trade.received[0]?.beneficiary
   return {
-    beneficiary: beneficiary && beneficiary !== ethers.constants.AddressZero ? beneficiary : fallbackBeneficiary,
+    beneficiary: beneficiary && beneficiary !== zeroAddress ? beneficiary : fallbackBeneficiary,
     expiresAt: trade.checks.expiration
   }
 }
@@ -514,7 +512,7 @@ export function buildStoreDelistCall(
   return {
     contract,
     method: 'editItemsData',
-    args: [[item.tokenId], [ethers.constants.MaxUint256.toString()], [current.beneficiary], [current.metadata]]
+    args: [[item.tokenId], [maxUint256.toString()], [current.beneficiary], [current.metadata]]
   }
 }
 

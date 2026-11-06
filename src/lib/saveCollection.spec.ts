@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ethers } from 'ethers'
+import { decodeAbiParameters, parseAbiParameters, slice, zeroAddress, type Hex } from 'viem'
 import { config } from '~/config'
 import { ItemType, type Item } from './items'
 import {
@@ -10,7 +10,7 @@ import {
   toInitializeItems
 } from './saveCollection'
 
-// Lowercase like every address that leaves lib/auth (mixed case would fail ethers' checksum).
+// Lowercase like every address that leaves lib/auth (mixed case would fail the checksum).
 const OWNER = '0xabc0000000000000000000000000000000000001'
 
 function makeItem(overrides: Partial<Item> = {}): Item {
@@ -84,7 +84,7 @@ describe('toInitializeItems', () => {
       makeItem({ id: 'older', createdAt: 1000 })
     ]
     expect(toInitializeItems(items)).toEqual([
-      ['legendary', '0', ethers.constants.AddressZero, '1:w:Pirate Hat:Yarr:hat:BaseMale'],
+      ['legendary', '0', zeroAddress, '1:w:Pirate Hat:Yarr:hat:BaseMale'],
       ['legendary', '5', '0x0000000000000000000000000000000000000002', '1:w:Pirate Hat:Yarr:hat:BaseMale']
     ])
   })
@@ -95,9 +95,9 @@ describe('buildCollectionInitializeData', () => {
     const collection = buildNewCollection('Pirate Hats', OWNER)
     const data = buildCollectionInitializeData(collection, [makeItem()], OWNER)
 
-    const decoded = ethers.utils.defaultAbiCoder.decode(
-      ['string', 'string', 'string', 'address', 'bool', 'bool', 'address', 'tuple(string,uint256,address,string)[]'],
-      ethers.utils.hexDataSlice(data, 4)
+    const decoded = decodeAbiParameters(
+      parseAbiParameters('string, string, string, address, bool, bool, address, (string,uint256,address,string)[]'),
+      slice(data as Hex, 4)
     )
     expect(decoded[0]).toBe('Pirate Hats')
     expect(decoded[1]).toBe('DCL-PRTHTS')

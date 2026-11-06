@@ -1,8 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ethers } from 'ethers'
 import { ContractName, getContract } from 'decentraland-transactions'
-import { toTransaction } from '~/test/chain'
-import { encodeContractCall } from './auth/transactions'
+import { decodeAbiParameters, maxUint256, parseAbiParameters, toFunctionSelector } from 'viem'
+import { decodeCall, toTransaction } from '~/test/chain'
 import { BuilderServerError } from './builder'
 import { type Collection } from './collections'
 import { CreditsServerError } from './credits'
@@ -58,7 +57,7 @@ function makeItem(id: string, createdAt: number): Item {
     owner: ADDRESS,
     collectionId: collection.id,
     rarity: 'legendary',
-    price: ethers.constants.MaxUint256.toString(),
+    price: maxUint256.toString(),
     beneficiary: ADDRESS,
     isPublished: false,
     isApproved: false,
@@ -222,23 +221,16 @@ describe('createCollection encoding', () => {
     const manager = getContract(ContractName.CollectionManager, CHAIN_ID)
     expect(call.target).toBe(manager.address)
     expect(call.selector).toBe(
-      ethers.utils
-        .id('createCollection(address,address,bytes32,string,string,string,address,(string,uint256,address,string)[])')
-        .slice(0, 10)
+      toFunctionSelector(
+        'createCollection(address,address,bytes32,string,string,string,address,(string,uint256,address,string)[])'
+      )
     )
     expect(call.expiresAt).toBe(now / 1000 + 24 * 60 * 60)
-    const decoded = ethers.utils.defaultAbiCoder.decode(
-      [
-        'address',
-        'address',
-        'bytes32',
-        'string',
-        'string',
-        'string',
-        'address',
-        'tuple(string,uint256,address,string)[]'
-      ],
-      call.data
+    const decoded = decodeAbiParameters(
+      parseAbiParameters(
+        'address, address, bytes32, string, string, string, address, (string,uint256,address,string)[]'
+      ),
+      call.data as `0x${string}`
     )
     expect(decoded[3]).toBe('Halloween')
     expect(decoded[7]).toHaveLength(2)
@@ -249,11 +241,10 @@ describe('createCollection encoding', () => {
     const externalCall = buildCollectionManagerExternalCall(CHAIN_ID, args)
     const call = buildUseCreditsCall(CHAIN_ID, authorization, externalCall)
     expect(call.contract.address).toBe(getContract(ContractName.CreditsManager, CHAIN_ID).address)
-    const data = encodeContractCall(call)
-    const decoded = new ethers.utils.Interface(call.contract.abi).decodeFunctionData('useCredits', data)
-    expect(decoded._args.maxUncreditedValue.toString()).toBe('0')
-    expect(decoded._args.maxCreditedValue.toString()).toBe(authorization.credit.amount)
-    expect(decoded._args.customExternalCallSignature).toBe(authorization.externalCallSignature)
+    const [useCredits] = decodeCall(call) as any[]
+    expect(useCredits.maxUncreditedValue).toBe(0n)
+    expect(useCredits.maxCreditedValue).toBe(BigInt(authorization.credit.amount))
+    expect(useCredits.customExternalCallSignature).toBe(authorization.externalCallSignature)
   })
 })
 

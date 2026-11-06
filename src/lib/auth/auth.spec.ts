@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
-import { ethers } from 'ethers'
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { Authenticator, type AuthIdentity, type AuthLink } from '@dcl/crypto'
 import { localStorageStoreIdentity, localStorageClearIdentity } from '@dcl/single-sign-on-client'
 import { ProviderType } from '@dcl/schemas'
@@ -11,17 +11,18 @@ vi.mock('decentraland-connect', () => ({
 }))
 
 async function makeStoredIdentity(): Promise<{ address: string; identity: AuthIdentity }> {
-  const owner = ethers.Wallet.createRandom()
-  const ephemeral = ethers.Wallet.createRandom()
+  const owner = privateKeyToAccount(generatePrivateKey())
+  const ephemeralKey = generatePrivateKey()
+  const ephemeral = privateKeyToAccount(ephemeralKey)
   const identity = await Authenticator.initializeAuthChain(
     owner.address,
     {
       address: ephemeral.address,
-      publicKey: ethers.utils.hexlify(ephemeral.publicKey),
-      privateKey: ethers.utils.hexlify(ephemeral.privateKey)
+      publicKey: ephemeral.publicKey,
+      privateKey: ephemeralKey
     },
     600,
-    message => owner.signMessage(message)
+    message => owner.signMessage({ message })
   )
   const address = owner.address.toLowerCase()
   localStorageStoreIdentity(address, identity)

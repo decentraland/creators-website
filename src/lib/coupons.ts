@@ -2,10 +2,10 @@
 // marketplace applies it to the collection's listings at checkout, so the listings keep their price and the
 // discount ends by itself when its window closes. marketplace-server stores and validates the coupon
 // (`/v1/coupons`); this module builds, signs, stores, lists and ends one. Ported from the shop's lib/coupons.
-import { ethers } from 'ethers'
 import { Network, type TradeChecks } from '@dcl/schemas'
 import { ContractName, getContract, getContractName, getCouponManager } from 'decentraland-transactions'
 import { StandardMerkleTree } from '@openzeppelin/merkle-tree'
+import { encodeAbiParameters, numberToHex, parseAbiParameters, recoverTypedDataAddress, toHex, type Hex } from 'viem'
 import { config } from '~/config'
 import {
   WrongAccountError,
@@ -137,10 +137,14 @@ export function collectionsRoot(collections: string[]): string {
 
 /** `abi.encode(CollectionDiscountCouponData)`: what the creator signs and the contract decodes. */
 export function encodeCouponData(discount: number, root: string, discountType = DISCOUNT_TYPE_RATE): string {
-  return ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256', 'bytes32'], [discountType, discount, root])
+  return encodeAbiParameters(parseAbiParameters('uint256, uint256, bytes32'), [
+    BigInt(discountType),
+    BigInt(discount),
+    root as Hex
+  ])
 }
 
-export const COUPON_TYPES: Record<string, ethers.TypedDataField[]> = {
+export const COUPON_TYPES: TypedDataTypes = {
   Coupon: [
     { name: 'checks', type: 'Checks' },
     { name: 'couponAddress', type: 'address' },
@@ -154,7 +158,7 @@ export function couponDomain(chainId: number, contracts: CouponContracts): Typed
   return {
     name: contracts.couponManager.name,
     version: contracts.couponManager.version,
-    salt: ethers.utils.hexZeroPad(ethers.utils.hexlify(chainId), 32),
+    salt: numberToHex(chainId, { size: 32 }),
     verifyingContract: contracts.couponManager.address
   }
 }
@@ -271,7 +275,7 @@ export async function createDiscount(
       uses: params.uses ?? UNCAPPED_USES,
       expiration: params.endsAtMs,
       effective: params.startsAtMs ?? now,
-      salt: deps.randomSalt ? deps.randomSalt() : ethers.utils.hexlify(ethers.utils.randomBytes(32)),
+      salt: deps.randomSalt ? deps.randomSalt() : toHex(crypto.getRandomValues(new Uint8Array(32))),
       contractSignatureIndex: indexes.contractSignatureIndex,
       signerSignatureIndex: indexes.signerSignatureIndex,
       allowedRoot: '0x',
@@ -441,7 +445,7 @@ export function discountPct(discount: Pick<CollectionDiscount, 'discount'>): num
  * manager succeeds and changes nothing where the coupon redeems. The CouponManager takes no meta-transactions, so
  * this has to be sent from the wallet on the coupon's chain.
  */
-export function buildEndDiscountCall(discount: CollectionDiscount): ContractCall {
+export async function buildEndDiscountCall(discount: CollectionDiscount): Promise<ContractCall> {
   const manager = findCouponManager(discount.chainId, discount.couponManager)
   if (!manager) {
     throw new DiscountError('generic', `Unknown coupon manager ${discount.couponManager} on chain ${discount.chainId}`)
@@ -454,12 +458,13 @@ export function buildEndDiscountCall(discount: CollectionDiscount): ContractCall
   const domain = couponDomain(discount.chainId, { couponManager: manager, coupon: discount.couponAddress })
   let recovered: string
   try {
-    recovered = ethers.utils.verifyTypedData(
+    recovered = await recoverTypedDataAddress({
       domain,
-      COUPON_TYPES,
-      { checks, couponAddress: discount.couponAddress, data },
-      discount.signature
-    )
+      types: COUPON_TYPES,
+      primaryType: 'Coupon',
+      message: { checks, couponAddress: discount.couponAddress, data },
+      signature: discount.signature as Hex
+    } as Parameters<typeof recoverTypedDataAddress>[0])
   } catch {
     recovered = ''
   }
@@ -496,7 +501,7 @@ export type EndDiscountDeps = {
 export async function endDiscount(discount: CollectionDiscount, deps: EndDiscountDeps): Promise<void> {
   // Once the cancellation is broadcast, only a confirmed revert is a failure: a timeout, an RPC error while
   // polling or a wallet that throws after broadcasting all leave it possibly mining, and a retry would pay twice.
-  const call = buildEndDiscountCall(discount)
+  const call = await buildEndDiscountCall(discount)
   let txHash: string
   let nonce: number | undefined
   try {
