@@ -1,11 +1,15 @@
 import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
 
-export const ITEM_COLUMNS = 'minmax(0, 2fr) minmax(90px, 1fr) minmax(110px, 1fr) minmax(130px, 1fr) 88px'
+const DATA_COLUMNS = 'minmax(0, 2fr) minmax(90px, 1fr) minmax(110px, 1fr) minmax(130px, 1fr)'
+
+export function itemColumns(withActions: boolean): string {
+  return withActions ? `${DATA_COLUMNS} 88px` : DATA_COLUMNS
+}
 
 export const Row = styled.div`
   display: grid;
-  grid-template-columns: ${ITEM_COLUMNS};
+  grid-template-columns: ${itemColumns(true)};
   align-items: center;
   gap: 12px;
   padding: 12px;
@@ -14,6 +18,10 @@ export const Row = styled.div`
   background: ${theme.colors.overlay};
   font-size: 13px;
   color: ${theme.colors.softWhite};
+
+  &[data-no-actions] {
+    grid-template-columns: ${itemColumns(false)};
+  }
 
   &[data-editing] {
     border-color: ${theme.colors.softWhite};
