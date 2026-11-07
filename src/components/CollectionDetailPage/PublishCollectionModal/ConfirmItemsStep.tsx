@@ -13,7 +13,7 @@ import { type ThumbnailPatch } from '~/components/ThumbnailModal'
 import { Checkbox } from '~/components/Checkbox'
 import { DeleteItemModal } from '../DeleteItemModal'
 import { PublishItemRow } from './PublishItemRow'
-import { ITEM_COLUMNS } from './PublishItemRow.styles'
+import { itemColumns } from './PublishItemRow.styles'
 import * as S from './PublishCollectionModal.styles'
 
 type Props = {
@@ -52,6 +52,7 @@ export function ConfirmItemsStep({
     if (subject.kind === 'item' && subject.item.id === editingId) setThumbnailPatch(patch)
   })
 
+  const withActions = !readOnly
   const canContinue = accepted && items.length > 0 && editingId === null
 
   const isBusy = updateItem.isPending || deleteItem.isPending
@@ -96,12 +97,16 @@ export function ConfirmItemsStep({
         <S.Text>{t('publish_collection_modal.items_step.description')}</S.Text>
       </div>
       <S.Table>
-        <S.TableHeader style={{ gridTemplateColumns: ITEM_COLUMNS }}>
+        <S.TableHeader style={{ gridTemplateColumns: itemColumns(withActions) }}>
           <span>{t('publish_collection_modal.items_step.columns.item')}</span>
           <span>{t('publish_collection_modal.items_step.columns.body_shape')}</span>
           <span>{t('publish_collection_modal.items_step.columns.category')}</span>
           <span>{t('publish_collection_modal.items_step.columns.rarity')}</span>
-          <span>{t('publish_collection_modal.items_step.columns.actions')}</span>
+          {withActions && (
+            <span data-testid="publish-items-actions-column">
+              {t('publish_collection_modal.items_step.columns.actions')}
+            </span>
+          )}
         </S.TableHeader>
         <S.TableBody data-testid="publish-items-list">
           {items.length === 0 ? (
@@ -116,6 +121,7 @@ export function ConfirmItemsStep({
                 isEditing={editingId === item.id}
                 isSaving={editingId === item.id && updateItem.isPending}
                 saveError={editingId === item.id && updateItem.isError}
+                withActions={withActions}
                 canEdit={!readOnly}
                 canDelete={!readOnly && items.length > 1 && canDeleteItem(collection, address)}
                 locked={editingId !== null && editingId !== item.id}

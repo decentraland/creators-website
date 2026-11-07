@@ -191,11 +191,12 @@ describe('ConfirmItemsStep', () => {
     expect(screen.queryByTestId('publish-item-delete')).not.toBeInTheDocument()
   })
 
-  it('only confirms the items of a collection locked by a publish: no edit or delete', async () => {
+  it('only confirms the items of a collection locked by a publish: no actions column', async () => {
     const { onConfirm } = renderStep(items, ADDRESS, true)
     expect(screen.getAllByTestId('publish-item-row')).toHaveLength(2)
     expect(screen.queryByTestId('publish-item-edit')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('publish-item-delete')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('publish-items-actions-column')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('publish-item-actions')).not.toBeInTheDocument()
     await userEvent.click(screen.getByTestId('publish-items-accept'))
     await userEvent.click(screen.getByTestId('publish-items-confirm'))
     expect(onConfirm).toHaveBeenCalled()
