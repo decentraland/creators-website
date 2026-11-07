@@ -103,6 +103,11 @@ export type RemoteCurationRow = {
 }
 
 const conflict = (error: string, data?: unknown): BuilderResponse => ({ status: 409, body: { ok: false, error, data } })
+const locked = (): BuilderResponse => ({ status: 423, body: { ok: false, error: 'The collection is locked' } })
+const LOCK_MS = 24 * 60 * 60 * 1000
+// builder-server refuses writes to an unpublished collection for a day after its publish transaction was sent.
+const isLocked = (row: RemoteCollectionRow | undefined) =>
+  !!row?.lock && !row.is_published && Date.parse(row.lock) + LOCK_MS > Date.now()
 const now = () => new Date().toISOString()
 const hashOf = (text: string) => ethers.utils.keccak256(ethers.utils.toUtf8Bytes(text))
 
@@ -204,6 +209,7 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
   function saveCollection(id: string, body: unknown): BuilderResponse {
     const { collection: sent = {}, data } = (body ?? {}) as { collection?: Partial<RemoteCollectionRow>; data?: string }
     const row = collections.get(id)
+    if (isLocked(row)) return locked()
     const name = sent.name ?? row?.name
     const taken = [...collections.values()].some(
       other => other.id !== id && other.name.toLowerCase() === name?.toLowerCase()
@@ -270,6 +276,7 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
     if (!row) return notFound('collection')
     if (method === 'GET' && !sub) return ok(withCount(row))
     if (method === 'DELETE' && !sub) {
+      if (isLocked(row)) return locked()
       collections.delete(id)
       return ok(true)
     }
@@ -370,8 +377,11 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
 
   function handleItem(method: string, id: string, sub: string | undefined, body: unknown) {
     const row = items.get(id)
+    const collectionOf = (collectionId: string | null | undefined) =>
+      collectionId ? collections.get(collectionId) : undefined
     if (method === 'PUT' && !sub) {
       const sent = (body as { item?: Partial<RemoteItemRow> } | undefined)?.item ?? {}
+      if (isLocked(collectionOf(sent.collection_id ?? row?.collection_id))) return locked()
       const saved: RemoteItemRow = {
         ...(row ?? wearable({ created_at: now() })),
         ...withoutFields(sent, SERVER_OWNED_ITEM_FIELDS),
@@ -384,6 +394,7 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
     if (!row) return notFound('item')
     if (method === 'GET' && !sub) return ok(row)
     if (method === 'DELETE' && !sub) {
+      if (isLocked(collectionOf(row.collection_id))) return locked()
       items.delete(id)
       return ok(true)
     }

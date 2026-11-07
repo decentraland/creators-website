@@ -75,8 +75,9 @@ A Segment `page` call per pathname change, named from a fixed map in `lib/pageVi
 | `Delete collection error` |  | `collectionId`, `error` |
 | `Preview In World` | a **Preview in World** launch settles (desktop only) | `collectionId`, `itemCount`, `launched` (the desktop explorer opened; `false` = sent to the download page), `trigger` (`detail` = the collection page's ⋯ menu, `editor` = item editor preview bar; not `source`, which the app sets on every event) |
 | `Publish details confirmed` | step 1 of the publish wizard was confirmed and left (after a rename saved) | `collectionId`, `nameChanged`, `emailSource` (`profile` = kept the profile email, `edited` = changed it, `typed` = no profile email) |
-| `Publish collection` | the publish transaction was sent and the collection locked | `collectionId`, `txHash`, `isFiat` (always `false` — no fiat publish here), `usedCredits`, `creditsAmount`, `item_count` |
-| `Publish collection error` |  | `collectionId`, `isFiat`, `usedCredits`, `error` |
+| `Publish collection` | the publish transaction was sent and the collection locked | `collectionId`, `txHash`, `isFiat` (always `false` — no fiat publish here), `usedCredits`, `creditsAmount`, `item_count`, `isRetry` (the collection was still locked by an earlier publish) |
+| `Publish collection error` |  | `collectionId`, `isFiat`, `usedCredits`, `isRetry`, `error` |
+| `Publish collection reverted` | the publish transaction was mined but reverted (and no earlier attempt had deployed the collection); nothing was charged and the creator can publish again | `collectionId`, `txHash`, `usedCredits` |
 | `Open buy credits` | the credits top-up opened from the publish payment step because the balance falls short | `collectionId`, `shortfall` |
 | `Start credits checkout` | the creator leaves for Stripe's hosted checkout (the wizard state is saved to resume on return) | `collectionId`, `orderId`, `packId`, `quantity`, `credits`, `usd`, `shortfall`, `resumeSaved` |
 | `Credits checkout canceled` | back from Stripe with the checkout cancelled; the order is cancelled server-side | `collectionId`, `orderId` |
@@ -125,6 +126,7 @@ Legacy prop names, so the events line up with the old editor's.
 | `Play Emote` | an emote is picked in the playback bar — one event per wearable on the avatar, as in the legacy editor. Where legacy emits nothing at all on a bare avatar, this app emits one event with null wearable props | `EMOTE_PLAYED_BASE` (a default animation rather than a collection emote), `EMOTE_PLAYED_ITEM_ID`, `EMOTE_PLAYED_NAME`, `PREVIEWED_WEARABLE_ITEM_ID`, `PREVIEWED_WEARABLE_NAME` |
 | `Change item file` | the change-file modal saved a new model for the item (after the `Save item` of that PUT) | `itemId`, `bodyShape` (`both` / `male` / `female`), `mode` (`replace_all` / `replace_shape` / `add_representation`), `fileKind` (`glb` / `gltf` / `zip` / `png`), `thumbnailRegenerated` |
 | `Change item file error` | the picked file was rejected or the import threw | `itemId`, `error` (the `ItemFileError` key, or `errorCode` for a throw) |
+| `Toggle scene boundaries` | the scene boundaries cylinder is shown or hidden over the preview | `visible` (the new state), `trigger` (`editor` / `live_preview`) |
 
 ### Item validation
 

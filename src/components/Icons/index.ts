@@ -1,6 +1,7 @@
 export { ChevronDownIcon } from './ChevronDownIcon'
 export { CircleAndArrowIcon } from './CircleAndArrowIcon'
 export { ClockIcon } from './ClockIcon'
+export { CylinderIcon } from './CylinderIcon'
 export { EmoteIcon } from './EmoteIcon'
 export { FilmReelIcon } from './FilmReelIcon'
 export { ImageIcon } from './ImageIcon'

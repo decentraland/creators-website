@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { BodyShape, PreviewRenderer, type ContractNetwork, type IPreviewController } from '@dcl/schemas'
+import { BodyShape, type ContractNetwork, type IPreviewController } from '@dcl/schemas'
 import { ArrowBackIosNew, PersonOutline as PersonOutlineIcon } from '@mui/icons-material'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { AvatarPreview } from '~/components/AvatarPreview'
@@ -28,7 +28,6 @@ import { modelValidationKey, useModelValidation } from '~/hooks/useModelValidati
 import { useRerunValidation } from '~/hooks/useRerunValidation'
 import { useObjectURL } from '~/hooks/useObjectURL'
 import { thumbnailValidationKey, useThumbnailValidation } from '~/hooks/useThumbnailValidation'
-import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { fetchStoredThumbnail, useSaveItem } from '~/hooks/useSaveItem'
 import { captureError } from '~/lib/monitoring'
 import { springBonesFetcher } from '~/hooks/useSpringBones'
@@ -50,7 +49,7 @@ import { type BuiltItem } from '~/lib/itemFactory'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
 import { pickFiles } from '~/lib/filePicker'
 import { IMAGE_PATH, ITEM_EXTENSIONS } from '~/lib/itemFiles'
-import { ItemType, canDeleteItem, canEditItemDetails, isSocialEmote, type Item } from '~/lib/items'
+import { ItemType, canDeleteItem, canEditItemDetails, type Item } from '~/lib/items'
 import { isLinkedItemPublished } from '~/lib/linkedItemStatus'
 import {
   LINKED_COLLECTION_NAME_MAX_LENGTH,
@@ -75,6 +74,7 @@ import { AvatarCustomizerDrawer, AvatarCustomizerToggle } from './AvatarCustomiz
 import { CollectionPicker } from './CollectionPicker'
 import { ItemsSidebar, type EditorBack } from './ItemsSidebar'
 import { MobilePreview } from './MobilePreview'
+import { SceneBoundariesToggle } from './SceneBoundariesToggle'
 import { PlaybackBar } from './PlaybackBar'
 import { PropertiesPanel, type SpringBonesFormProps } from './PropertiesPanel'
 import { EditorPreviewLaunch } from './EditorPreviewLaunch'
@@ -141,7 +141,6 @@ const ItemEditorPage = () => {
   const collectionStatus = useCollectionStatus(canReadCuration ? address : undefined, collectionQuery.data)
   const itemsQuery = useAllCollectionItems(address, collectionId ?? undefined)
   const baseWearables = useBaseWearables()
-  const pickedRenderer = usePreviewRenderer()
   const saveItem = useSaveItem(address)
   const saveCollection = useSaveCollection(address)
   const [isRenameOpen, setRenameOpen] = useState(false)
@@ -160,8 +159,6 @@ const ItemEditorPage = () => {
     [pendingLinked.data, reviewedIds]
   )
   const selected = useMemo(() => resolveSelectedItem(items, itemParam), [items, itemParam])
-  // Unity cannot play a social emote's extra armatures: those items always preview in Babylon.
-  const renderer = selected && isSocialEmote(selected) ? PreviewRenderer.BABYLON : pickedRenderer
 
   // Avatar state (session-only store).
   const bodyShape = useAvatarPreview(state => state.bodyShape)
@@ -522,42 +519,39 @@ const ItemEditorPage = () => {
     !!collectionId &&
     (collectionQuery.isError || itemsQuery.isError || (thirdParty.isError && !isThirdPartyNotFound))
 
-  const preview =
-    renderer === undefined ? null : (
-      <AvatarPreview
-        // The renderer is baked into the iframe URL at mount, so a switch has to remount the preview.
-        key={renderer}
-        id={PREVIEW_ID}
-        source={source}
-        avatar={avatar}
-        emote={emote}
-        unity={renderer === PreviewRenderer.UNITY}
-        onLoad={onPreviewLoad}
-        onError={onPreviewError}
-        onController={setController}
-      >
-        <PlaybackBar
-          previewId={PREVIEW_ID}
-          controller={controller}
-          collectionEmotes={collectionEmotes}
-          previewedWearables={previewedWearables}
-          subjectEmoteId={subjectEmote?.id ?? null}
+  const preview = (
+    <AvatarPreview
+      id={PREVIEW_ID}
+      source={source}
+      avatar={avatar}
+      emote={emote}
+      onLoad={onPreviewLoad}
+      onError={onPreviewError}
+      onController={setController}
+    >
+      <PlaybackBar
+        previewId={PREVIEW_ID}
+        controller={controller}
+        collectionEmotes={collectionEmotes}
+        previewedWearables={previewedWearables}
+        subjectEmoteId={subjectEmote?.id ?? null}
+      />
+      <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />
+      <SceneBoundariesToggle trigger="editor" />
+      {selected && (
+        <ValidationBadge
+          status={validationStatus}
+          issues={validationIssues ?? []}
+          subject={validationSubject}
+          onRerun={rerunSelectedValidation}
+          onOpen={onValidationOpen}
         />
-        <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />
-        {selected && (
-          <ValidationBadge
-            status={validationStatus}
-            issues={validationIssues ?? []}
-            subject={validationSubject}
-            onRerun={rerunSelectedValidation}
-            onOpen={onValidationOpen}
-          />
-        )}
-        {collection && (mode === 'review' || (mode === 'edit' && hasRole)) && (
-          <EditorPreviewLaunch collectionId={collection.id} itemCount={items.length} reviewing={mode === 'review'} />
-        )}
-      </AvatarPreview>
-    )
+      )}
+      {collection && (mode === 'review' || (mode === 'edit' && hasRole)) && (
+        <EditorPreviewLaunch collectionId={collection.id} itemCount={items.length} reviewing={mode === 'review'} />
+      )}
+    </AvatarPreview>
+  )
 
   if (restored && !session) {
     return (
@@ -783,10 +777,7 @@ const ItemEditorPage = () => {
                 <>
                   <S.PreviewArea>
                     {preview}
-                    {/* Babylon only: Unity has no live zoom over the bridge (see ZoomControls). */}
-                    {loadCount > 0 && controller && renderer === PreviewRenderer.BABYLON && (
-                      <ZoomControls controller={controller} />
-                    )}
+                    {loadCount > 0 && controller && <ZoomControls controller={controller} />}
                   </S.PreviewArea>
                   {isCustomizerOpen && (
                     <AvatarCustomizerDrawer catalog={baseWearables.data} onClose={closeCustomizer} />
