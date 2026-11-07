@@ -78,7 +78,6 @@ export function ManageRolesFlow({ collection, kind, session, onClose }: Props) {
       return (
         <>
           <ManageRolesModal
-            collection={collection}
             kind={kind}
             addresses={addresses}
             friends={friends.data}

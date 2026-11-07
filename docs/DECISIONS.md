@@ -135,6 +135,7 @@ Rules for this file:
 
 - **On-chain minters are "Senders" and managers are "Collaborators"** everywhere in creator-facing copy.
 - **The Shop's minter contracts are hidden from the Senders list** (OffChainMarketplace V1/V2/V3 and the legacy CollectionStore): removing one would silently take the collection off sale. They are kept untouched on save and refused if pasted.
+- **The owner may list themselves** as a sender or collaborator, so the role survives a transfer of ownership; on-chain both are plain address lists.
 - **One transaction with only the diff**, awaited in-dialog with success and error feedback; legacy redirected to Activity.
 - **Cut:** per-item minter and manager allowances, ENS resolution (friends cover the common case).
 

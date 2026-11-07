@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Add as AddIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
-import { type Collection } from '~/lib/collections'
 import { getRoleAddressError, type RoleKind } from '~/lib/collectionRoles'
 import { type Friend } from '~/lib/friends'
 import { getMaticChainId } from '~/lib/publishCollection'
@@ -12,7 +11,6 @@ import * as Sell from '../SellItemFlow/SellItemModal.styles'
 import * as S from './ManageRolesModal.styles'
 
 type Props = {
-  collection: Collection
   kind: RoleKind
   /** The draft list, lowercased. */
   addresses: string[]
@@ -30,7 +28,6 @@ type Props = {
 
 /** The role's address list: one chip per holder, a picker row to add another, SAVE CHANGES once the list differs. */
 export function ManageRolesModal({
-  collection,
   kind,
   addresses,
   friends,
@@ -47,7 +44,7 @@ export function ManageRolesModal({
   const showInput = addresses.length === 0 || adding
 
   function rejection(address: string): string | null {
-    const error = getRoleAddressError(collection, kind, addresses, address, getMaticChainId())
+    const error = getRoleAddressError(kind, addresses, address, getMaticChainId())
     return error ? t(`manage_roles_modal.${error}`) : null
   }
 

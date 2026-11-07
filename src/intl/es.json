@@ -1157,7 +1157,6 @@
       "success_description": "Los cambios sobre quién puede editar esta colección ya están activos."
     },
     "duplicate": "Esta dirección ya está en la lista.",
-    "owner": "Esa es tu propia dirección: como dueño ya tienes todos los permisos.",
     "system": "Esta dirección pertenece a la Tienda de Decentraland y no se puede cambiar aquí.",
     "save": "Guardar cambios",
     "saving": "Guardando cambios...",
