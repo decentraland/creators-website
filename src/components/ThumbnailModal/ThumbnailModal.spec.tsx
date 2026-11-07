@@ -1,11 +1,29 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { type ReactNode } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import { PreviewRenderer } from '@dcl/schemas'
 import userEvent from '@testing-library/user-event'
 import { TranslationProvider } from '~/intl'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { ItemType } from '~/lib/items'
 import { ThumbnailModal } from './ThumbnailModal'
+
+let renderer: PreviewRenderer | undefined
+vi.mock('~/hooks/usePreviewRenderer', () => ({ usePreviewRenderer: () => renderer }))
+
+type PreviewProps = { id: string; unity?: boolean; onLoad?: () => void }
+let previewProps: PreviewProps | null = null
+const getScreenshot = vi.fn()
+vi.mock('decentraland-ui2', async importOriginal => {
+  function WearablePreview(props: PreviewProps) {
+    previewProps = props
+    return <iframe id={props.id} title="preview" />
+  }
+  WearablePreview.createController = () => ({ scene: { getScreenshot }, emote: { pause: vi.fn() } })
+  return { ...(await importOriginal<typeof import('decentraland-ui2')>()), WearablePreview }
+})
+vi.mock('~/components/PreviewControls', () => ({ EmoteControls: () => null, TranslationControls: () => null }))
+vi.mock('~/components/ZoomControls', () => ({ ZoomControls: () => null }))
 
 // jsdom has no canvas: resizing hands back a fixed PNG data URL.
 const PNG_DATA_URL = 'data:image/png;base64,iVBORw0KGgo='
@@ -16,14 +34,20 @@ vi.mock('~/lib/media', async importOriginal => ({
   blobToDataURL: vi.fn().mockResolvedValue('data:image/png;base64,iVBORw0KGgo=')
 }))
 
-function renderModal() {
+function renderModal(contents: Record<string, Blob> | null = null) {
   const onSave = vi.fn()
   const wrapper = ({ children }: { children: ReactNode }) => <TranslationProvider>{children}</TranslationProvider>
-  render(<ThumbnailModal type={ItemType.WEARABLE} contents={null} onSave={onSave} onClose={vi.fn()} />, {
+  render(<ThumbnailModal type={ItemType.WEARABLE} contents={contents} onSave={onSave} onClose={vi.fn()} />, {
     wrapper
   })
   return { onSave }
 }
+
+beforeEach(() => {
+  renderer = undefined
+  previewProps = null
+  getScreenshot.mockReset()
+})
 
 describe('ThumbnailModal', () => {
   it('lets a picture be uploaded while the item files and preview are still loading', async () => {
@@ -56,5 +80,21 @@ describe('ThumbnailModal', () => {
     expect(upload).toHaveAttribute('aria-busy', 'true')
     expect(upload).toBeDisabled()
     expect(screen.getByTestId('thumbnail-capture')).toBeDisabled()
+  })
+
+  it('captures the Unity preview, waiting out a reload that overtook the capture', async () => {
+    renderer = PreviewRenderer.UNITY
+    getScreenshot
+      .mockRejectedValueOnce(new Error('The preview reloaded during the capture'))
+      .mockResolvedValue(PNG_DATA_URL)
+    const { onSave } = renderModal({ 'hat.glb': new Blob(['glb']) })
+
+    expect(previewProps?.unity).toBe(true)
+    act(() => previewProps?.onLoad?.())
+    await userEvent.click(screen.getByTestId('thumbnail-capture'))
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled(), { timeout: 3000 })
+    expect(onSave.mock.calls[0][0]).toMatchObject({ thumbnail: PNG_DATA_URL, isAutoThumbnail: false })
+    expect(screen.queryByTestId('thumbnail-error')).not.toBeInTheDocument()
   })
 })

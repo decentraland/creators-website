@@ -126,6 +126,7 @@ Legacy prop names, so the events line up with the old editor's.
 | `Play Emote` | an emote is picked in the playback bar — one event per wearable on the avatar, as in the legacy editor. Where legacy emits nothing at all on a bare avatar, this app emits one event with null wearable props | `EMOTE_PLAYED_BASE` (a default animation rather than a collection emote), `EMOTE_PLAYED_ITEM_ID`, `EMOTE_PLAYED_NAME`, `PREVIEWED_WEARABLE_ITEM_ID`, `PREVIEWED_WEARABLE_NAME` |
 | `Change item file` | the change-file modal saved a new model for the item (after the `Save item` of that PUT) | `itemId`, `bodyShape` (`both` / `male` / `female`), `mode` (`replace_all` / `replace_shape` / `add_representation`), `fileKind` (`glb` / `gltf` / `zip` / `png`), `thumbnailRegenerated` |
 | `Change item file error` | the picked file was rejected or the import threw | `itemId`, `error` (the `ItemFileError` key, or `errorCode` for a throw) |
+| `Toggle scene boundaries` | the scene boundaries cylinder is shown or hidden over the preview | `visible` (the new state), `trigger` (`editor` / `live_preview`) |
 
 ### Item validation
 

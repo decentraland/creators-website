@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, render } from '@testing-library/react'
+import { PreviewRenderer } from '@dcl/schemas'
 import { ItemType } from '~/lib/items'
 import { type PreviewDraft } from '~/lib/draftPreview'
 
@@ -19,6 +20,8 @@ vi.mock('decentraland-ui2', () => {
   WearablePreview.createController = vi.fn(() => controller)
   return { WearablePreview }
 })
+
+vi.mock('~/hooks/usePreviewRenderer', () => ({ usePreviewRenderer: () => PreviewRenderer.BABYLON }))
 
 const { DraftProcessor } = await import('./DraftProcessor')
 
@@ -92,6 +95,21 @@ describe('DraftProcessor', () => {
     await iframeLoads()
     expect(onError).not.toHaveBeenCalled()
     expect(onResult).toHaveBeenCalledTimes(1)
+    expect(onResult.mock.calls[0][1].metrics).toEqual(REAL_METRICS)
+  })
+
+  it('treats the Unity boot scene having no item as the empty scene, not as a failed attempt', async () => {
+    getMetrics.mockRejectedValueOnce(new Error('No requested item is loaded')).mockResolvedValue(REAL_METRICS)
+    const onResult = vi.fn()
+    const onError = vi.fn()
+    render(<DraftProcessor draft={wearableDraft()} onResult={onResult} onError={onError} />)
+
+    await iframeLoads()
+    await elapse(10_000)
+    expect(onResult).not.toHaveBeenCalled()
+    expect(onError).not.toHaveBeenCalled()
+
+    await iframeLoads()
     expect(onResult.mock.calls[0][1].metrics).toEqual(REAL_METRICS)
   })
 
