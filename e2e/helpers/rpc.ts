@@ -91,6 +91,16 @@ export function createChain(opts: ChainOptions = {}, signer = new ethers.Wallet(
       return abi.encode(['tuple(string,uint256,uint256)'], [[rarity.name, rarity.maxSupply, rarity.prices.MANA]])
     },
     [selector('contractSignatureIndex()')]: () => abi.encode(['uint256'], [0]),
+    // ThirdPartyRegistry: an approved third party already on chain, and its slot price in USD.
+    [selector('thirdParties(string)')]: () =>
+      abi.encode(
+        ['bool', 'bytes32', 'uint256', 'uint256', 'uint256', 'string', 'string'],
+        [true, ethers.constants.HashZero, 100, 0, 1, '', '']
+      ),
+    [selector('itemSlotPrice()')]: () => abi.encode(['uint256'], [ethers.utils.parseEther('100')]),
+    [selector('programmaticBasePurchasedSlots()')]: () => abi.encode(['uint256'], [0]),
+    // ChainlinkOracle: USD per MANA at 18 decimals.
+    [selector('getRate()')]: () => abi.encode(['uint256'], [ethers.utils.parseEther('0.27')]),
     [selector('signerSignatureIndex(address)')]: () => abi.encode(['uint256'], [0])
   }
 
