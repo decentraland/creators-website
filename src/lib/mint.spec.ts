@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ContractName, getContract } from 'decentraland-transactions'
-import { encodeContractCall } from './auth/transactions'
+import { toTransaction } from '~/test/chain'
 import { type Collection } from './collections'
 import { ItemType, type Item } from './items'
 import {
@@ -165,9 +164,17 @@ describe('flattenTransfers / buildIssueTokensCall', () => {
 
   it('encodes issueTokens on the collection contract and refuses a collection without one', () => {
     const call = buildIssueTokensCall(collection, ['0x00000000000000000000000000000000000000ee'], ['1'], CHAIN_ID)
-    expect(call.contract.address).toBe(CONTRACT)
-    expect(call.contract.abi).toBe(getContract(ContractName.ERC721CollectionV2, CHAIN_ID).abi)
-    expect(encodeContractCall(call).startsWith('0x')).toBe(true)
+    expect(toTransaction(call)).toEqual({
+      to: '0x00000000000000000000000000000000000000dd',
+      data:
+        '0x7c8f76a1' +
+        '0000000000000000000000000000000000000000000000000000000000000040' +
+        '0000000000000000000000000000000000000000000000000000000000000080' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '00000000000000000000000000000000000000000000000000000000000000ee' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000001'
+    })
     expect(() => buildIssueTokensCall({ ...collection, contractAddress: undefined }, [], [], CHAIN_ID)).toThrow(
       /no contract/
     )
