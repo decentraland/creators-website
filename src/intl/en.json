@@ -1157,7 +1157,6 @@
       "success_description": "The changes to who can edit this collection are live."
     },
     "duplicate": "This address is already on the list.",
-    "owner": "That’s your own address: as the owner you already have every permission.",
     "system": "This address belongs to the Decentraland Shop and can’t be changed here.",
     "save": "Save changes",
     "saving": "Saving changes...",

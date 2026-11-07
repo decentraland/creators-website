@@ -62,13 +62,20 @@ describe('ManageRolesFlow', () => {
     expect(screen.getByTestId('role-save')).toBeEnabled()
   })
 
-  it('refuses the owner, a repeated address and the Shop contract with an inline reason', async () => {
+  it('lets the owner add themselves, so the role survives a transfer of ownership', async () => {
+    renderFlow()
+    await userEvent.click(screen.getByTestId('role-add'))
+    await userEvent.type(screen.getByTestId('role-new-input'), ADDRESS)
+    expect(screen.queryByTestId('role-new-error')).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('role-row')).toHaveLength(2)
+    await userEvent.click(screen.getByTestId('role-save'))
+    expect(last(save.mutate)[0].next).toEqual([MINTER, ADDRESS.toLowerCase()])
+  })
+
+  it('refuses a repeated address and the Shop contract with an inline reason', async () => {
     renderFlow()
     await userEvent.click(screen.getByTestId('role-add'))
     const input = screen.getByTestId('role-new-input')
-    await userEvent.type(input, ADDRESS)
-    expect(screen.getByTestId('role-new-error')).toHaveTextContent(/owner/i)
-    await userEvent.clear(input)
     await userEvent.type(input, MINTER)
     expect(screen.getByTestId('role-new-error')).toHaveTextContent(/already/i)
     await userEvent.clear(input)
