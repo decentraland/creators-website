@@ -484,7 +484,8 @@ export function buildEndDiscountCall(discount: CollectionDiscount): ContractCall
 }
 
 export type EndDiscountDeps = {
-  sendTransaction: (call: ContractCall) => Promise<{ hash: string; nonce?: number }>
+  /** `onSent` gets the hash the moment the wallet returns it, before the send call itself resolves. */
+  sendTransaction: (call: ContractCall, onSent: (txHash: string) => void) => Promise<{ hash: string; nonce?: number }>
   waitForTransaction: (txHash: string) => Promise<boolean>
   /** The wallet prompt is over; the cancellation is mining. */
   onSigned?: () => void
@@ -497,18 +498,19 @@ export async function endDiscount(discount: CollectionDiscount, deps: EndDiscoun
   // Once the cancellation is broadcast, only a confirmed revert is a failure: a timeout, an RPC error while
   // polling or a wallet that throws after broadcasting all leave it possibly mining, and a retry would pay twice.
   const call = buildEndDiscountCall(discount)
+  let broadcast: string | undefined
   let txHash: string
   let nonce: number | undefined
   try {
-    ;({ hash: txHash, nonce } = await deps.sendTransaction(call))
+    ;({ hash: txHash, nonce } = await deps.sendTransaction(call, hash => {
+      broadcast = hash
+      deps.onBroadcast?.(hash)
+    }))
   } catch (error) {
-    const broadcast = (error as { transactionHash?: string } | null)?.transactionHash
-    if (broadcast) {
-      deps.onBroadcast?.(broadcast)
-      throw new DiscountError('pending', `The end discount transaction ${broadcast} may still mine`)
-    }
+    if (broadcast) throw new DiscountError('pending', `The end discount transaction ${broadcast} may still mine`)
     throw toDiscountError(error)
   }
+  // Recorded again with the nonce, which lets a later check tell a replaced cancellation from a pending one.
   deps.onBroadcast?.(txHash, nonce)
   deps.onSigned?.()
   let mined: boolean

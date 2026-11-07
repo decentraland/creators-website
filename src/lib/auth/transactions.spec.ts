@@ -117,6 +117,13 @@ describe('when sending a transaction from the wallet itself', () => {
     ])
   })
 
+  it('should hand out the hash before reading its nonce', async () => {
+    const { session } = walletOn(80002)
+    const onSent = vi.fn()
+    await expect(sendWalletTransaction(session, call, onSent)).resolves.toEqual({ hash: HASH, nonce: 7 })
+    expect(onSent).toHaveBeenCalledWith(HASH)
+  })
+
   it('should move the wallet to the contract chain first', async () => {
     const { session, request, sent } = walletOn(1)
     await sendWalletTransaction(session, call)

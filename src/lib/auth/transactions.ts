@@ -219,10 +219,12 @@ function gasOverrides(chainId: number): { maxPriorityFeePerGas?: bigint; maxFeeP
  * meta-transactions: the wallet pays the gas. Call it from a click, since wallets refuse unprompted chain switches.
  * The network is read again after the switch: some providers (Magic) answer it without moving the wallet. It is
  * sent from the session's account only: a call keyed by its caller, like a cancellation, does nothing from another.
+ * `onSent` gets the hash as soon as the wallet returns it, before the nonce is read, so a caller can record it first.
  */
 export async function sendWalletTransaction(
   session: Session,
-  call: ContractCall
+  call: ContractCall,
+  onSent?: (hash: string) => void
 ): Promise<{ hash: string; nonce?: number }> {
   const chainId = Number(call.contract.chainId)
   await requireAccount(session)
@@ -235,6 +237,7 @@ export async function sendWalletTransaction(
   }
   // Sent from the session's address, so the wallet refuses to send it from any other account.
   const hash = await sendFromWallet(session, chainId, call)
+  onSent?.(hash)
   return { hash, nonce: await readSentNonce(session, chainId, hash) }
 }
 

@@ -523,11 +523,12 @@ describe('when ending a discount', () => {
   it.each([
     ['an RPC error while polling for the receipt', { waitForTransaction: vi.fn().mockRejectedValue(new Error('429')) }],
     [
-      'a wallet that throws after broadcasting',
+      'a send that fails after the wallet returned the hash',
       {
-        sendTransaction: vi
-          .fn()
-          .mockRejectedValue(Object.assign(new Error('poll failed'), { transactionHash: '0xhash' })),
+        sendTransaction: vi.fn(async (_call: unknown, onSent: (hash: string) => void) => {
+          onSent('0xhash')
+          throw new Error('nonce read failed')
+        }),
         waitForTransaction: vi.fn()
       }
     ]
@@ -542,6 +543,23 @@ describe('when ending a discount', () => {
         )
       )
     ).rejects.toMatchObject({ reason: 'pending' })
+  })
+
+  it('should record the cancellation as soon as the wallet returns its hash, then again with its nonce', async () => {
+    const discount = await signedDiscount()
+    const onBroadcast = vi.fn()
+    let recordedWhileSending: unknown[][] = []
+    await endDiscount(discount, {
+      sendTransaction: async (_call, onSent) => {
+        onSent('0xhash')
+        recordedWhileSending = [...onBroadcast.mock.calls]
+        return { hash: '0xhash', nonce: 7 }
+      },
+      waitForTransaction: vi.fn().mockResolvedValue(true),
+      onBroadcast
+    })
+    expect(recordedWhileSending).toEqual([['0xhash']])
+    expect(onBroadcast).toHaveBeenLastCalledWith('0xhash', 7)
   })
 
   it('should read a dismissed wallet prompt as the creator backing out', async () => {
