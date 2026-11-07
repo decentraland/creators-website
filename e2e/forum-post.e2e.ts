@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { publishedCollection, publishedItem } from './fixtures'
 import { launchApp, type App } from './helpers/app'
 import { clickTestId, waitForTestId } from './helpers/dom'
@@ -32,7 +32,8 @@ describe('forum post', () => {
     await app.waitForEvent('Create forum post', { collectionId: pending.id, trigger: 'recovery', existing: false })
 
     await clickTestId(page, 'forum-post')
-    expect(app.openedUrls).toEqual([link])
+    // The page's window.open reaches node asynchronously.
+    await vi.waitFor(() => expect(app!.openedUrls).toEqual([link]), { timeout: 10_000 })
     await app.waitForEvent('Forum post opened', { collectionId: pending.id, surface: 'detail' })
   })
 })
