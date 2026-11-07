@@ -371,7 +371,7 @@ const CollectionDetailPage = () => {
     NOT_FOUND_STATUSES.includes(thirdParty.error.status)
   // The detail page is for the collection's roles only (a linked collection's are its third party's managers):
   // anyone else gets the same "not found" as a rejected request, even once published, when only the editor is public.
-  // A finished transfer drops the owner's role at once, so the page holds until its success modal is dismissed.
+  // A finished transfer can drop the owner's role at once, so the page holds until its success modal is dismissed.
   const isNotFound =
     !collectionId ||
     (collectionQuery.isError &&
