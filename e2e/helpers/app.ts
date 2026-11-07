@@ -6,6 +6,7 @@ import { createMarket, type Market, type MarketSeed } from './market'
 import {
   DEFAULT_EXTERNAL_DATA,
   route,
+  type Bridge,
   type Credits,
   type ExternalData,
   type Flags,
@@ -54,6 +55,8 @@ export type LaunchOptions = {
   market?: MarketSeed
   chain?: ChainOptions
   credits?: Partial<Credits>
+  /** A fake Blender bridge on a localhost port, for `/live-preview?bridge=<port>`. */
+  bridge?: Bridge
   /** Flag values served by the flag service, keyed `${application}-${flag}`. Everything else is off. */
   flags?: Flags
   variants?: Variants
@@ -121,6 +124,7 @@ async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
   const builder = createBuilderServer(opts.builder)
   chain.onTransaction(tx => builder.applyTransaction(tx))
   const market = createMarket(opts.market)
+  chain.onTransaction(tx => market.applyTransaction(tx))
 
   await browser.defaultBrowserContext().overridePermissions(BASE, ['clipboard-read', 'clipboard-write'])
   const page = await browser.newPage()
@@ -164,6 +168,7 @@ async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
     chain,
     market,
     credits: { balanceCents: 0, credits: 0, ...opts.credits },
+    bridge: opts.bridge,
     flags: opts.flags ?? {},
     variants: opts.variants ?? {},
     errors: opts.errors ?? {},
@@ -212,7 +217,10 @@ async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
         e => e.event === event && Object.entries(match).every(([key, value]) => e.props[key] === value)
       )
       if (found) return found
-      if (Date.now() > deadline) throw new Error(`no "${event}" event matching ${JSON.stringify(match)}`)
+      if (Date.now() > deadline) {
+        const seen = tracked.filter(e => e.event === event).map(e => JSON.stringify(e.props))
+        throw new Error(`no "${event}" event matching ${JSON.stringify(match)}; seen: ${seen.join(' | ') || 'none'}`)
+      }
       await new Promise(r => setTimeout(r, 200))
     }
   }

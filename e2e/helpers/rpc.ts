@@ -48,6 +48,8 @@ export type ChainOptions = {
   manaBalanceWei?: string
   /** MANA allowance (wei) every spender has. Default unlimited, so no approve is needed. */
   manaAllowanceWei?: string
+  /** Functions whose first transaction reverts (receipt status 0, never applied); later ones succeed. */
+  revertOnce?: string[]
 }
 
 export const MANA_USD_AGGREGATOR = '0x' + 'ae'.repeat(20)
@@ -69,6 +71,8 @@ export function decodeTransaction(tx: Omit<SentTransaction, 'fn' | 'args'>): Sen
 export function createChain(opts: ChainOptions = {}, signer = new ethers.Wallet(TEST_PRIVATE_KEY)) {
   const transactions: SentTransaction[] = []
   const listeners: Array<(tx: SentTransaction) => void> = []
+  const reverted = new Set<string>()
+  const pendingReverts = new Set(opts.revertOnce ?? [])
 
   const reads: Record<string, (data: string, to: string) => string> = {
     [selector('balanceOf(address)')]: () => abi.encode(['uint256'], [opts.manaBalanceWei ?? 0]),
@@ -87,6 +91,16 @@ export function createChain(opts: ChainOptions = {}, signer = new ethers.Wallet(
       return abi.encode(['tuple(string,uint256,uint256)'], [[rarity.name, rarity.maxSupply, rarity.prices.MANA]])
     },
     [selector('contractSignatureIndex()')]: () => abi.encode(['uint256'], [0]),
+    // ThirdPartyRegistry: an approved third party already on chain, and its slot price in USD.
+    [selector('thirdParties(string)')]: () =>
+      abi.encode(
+        ['bool', 'bytes32', 'uint256', 'uint256', 'uint256', 'string', 'string'],
+        [true, ethers.constants.HashZero, 100, 0, 1, '', '']
+      ),
+    [selector('itemSlotPrice()')]: () => abi.encode(['uint256'], [ethers.utils.parseEther('100')]),
+    [selector('programmaticBasePurchasedSlots()')]: () => abi.encode(['uint256'], [0]),
+    // ChainlinkOracle: USD per MANA at 18 decimals.
+    [selector('getRate()')]: () => abi.encode(['uint256'], [ethers.utils.parseEther('0.27')]),
     [selector('signerSignatureIndex(address)')]: () => abi.encode(['uint256'], [0])
   }
 
@@ -116,7 +130,7 @@ export function createChain(opts: ChainOptions = {}, signer = new ethers.Wallet(
   const receipt = (hash: string) => {
     const tx = transactions.find(t => t.hash === hash)
     return {
-      status: '0x1',
+      status: reverted.has(hash) ? '0x0' : '0x1',
       transactionHash: hash,
       transactionIndex: '0x0',
       blockNumber: '0x1',
@@ -184,7 +198,8 @@ export function createChain(opts: ChainOptions = {}, signer = new ethers.Wallet(
         const hash = ethers.utils.id(`e2e-tx-${transactions.length}-${data}`)
         const tx = decodeTransaction({ hash, from: from.toLowerCase(), to: to.toLowerCase(), data })
         transactions.push(tx)
-        for (const listener of listeners) listener(tx)
+        if (tx.fn && pendingReverts.delete(tx.fn)) reverted.add(hash)
+        else for (const listener of listeners) listener(tx)
         return hash
       }
       case 'personal_sign': {

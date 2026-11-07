@@ -423,6 +423,12 @@ export async function waitForReceipt(
   }
 }
 
+/** Whether a contract is deployed at `address`. */
+export async function isContractDeployed(chainId: number, address: string): Promise<boolean> {
+  const code = await (await getReadClient(chainId)).getCode({ address: address as Address })
+  return !!code && code !== '0x'
+}
+
 /** Resolves true when the transaction is mined successfully, false when it reverted; see `waitForReceipt`. */
 export async function waitForTransaction(chainId: number, txHash: string, timeoutMs?: number): Promise<boolean> {
   return waitForReceipt(await getReadClient(chainId), txHash, { timeoutMs })

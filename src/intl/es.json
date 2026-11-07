@@ -112,6 +112,8 @@
     "open_preview": "Abrir vista previa",
     "forum_post": "Publicación en el foro",
     "publish": "Publicar colección",
+    "publish_again": "Publicar de nuevo",
+    "publish_again_hint": "Es posible que la última publicación de esta colección no se haya completado. Puedes publicarla de nuevo: solo se te cobrará una vez.",
     "more_actions": "Más acciones",
     "actions": {
       "preview_items": "Previsualizar ítems",
@@ -439,7 +441,7 @@
       "try_again": "Intentar de nuevo"
     },
     "consolidation": {
-      "reverted": "La publicación de “{name}” no se completó en la blockchain, así que no se cobró nada. La colección se desbloquea en 24 horas; entonces podrás publicarla de nuevo.",
+      "reverted": "La publicación de “{name}” no se completó en la blockchain, así que no se cobró nada. Ya puedes publicarla de nuevo.",
       "sync_failed": "“{name}” se publicó, pero no pudimos terminar de sincronizarla con la blockchain. Actualiza la página en unos minutos; si sigue sin estar en revisión, contacta a soporte."
     }
   },
@@ -804,6 +806,10 @@
       "description": "Tienes cambios sin guardar en este ítem. Si cambias de ítem se perderán.",
       "stay": "Seguir editando",
       "confirm": "Descartar"
+    },
+    "scene_boundaries": {
+      "show": "Mostrar límites de la escena",
+      "hide": "Ocultar límites de la escena"
     },
     "customizer": {
       "title": "Avatar",

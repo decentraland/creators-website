@@ -32,7 +32,13 @@ export type RemoteCollectionRow = {
 export type RemoteThirdPartyRow = {
   id: string
   name: string
+  description: string
+  root: string
   managers: string[]
+  isApproved: boolean
+  isProgrammatic: boolean
+  maxItems: string
+  contracts: Array<{ network: string; address: string }>
   published: boolean
 }
 
@@ -57,6 +63,8 @@ export type RemoteItemRow = {
   contents: Record<string, string>
   content_hash?: string | null
   local_content_hash?: string | null
+  catalyst_content_hash?: string | null
+  mappings?: Record<string, unknown> | null
   urn: string | null
   created_at: string
   updated_at: string
@@ -125,10 +133,24 @@ export function publishedCollection(overrides: Partial<RemoteCollectionRow> = {}
   })
 }
 
-const THIRD_PARTY_ID = 'urn:decentraland:amoy:collections-thirdparty:brand-x'
+export const THIRD_PARTY_ID = 'urn:decentraland:amoy:collections-thirdparty:brand-x'
+/** The NFT contract every linked fixture maps its items to. */
+export const LINKED_CONTRACT = '0x' + 'c3'.repeat(20)
 
 export function thirdParty(overrides: Partial<RemoteThirdPartyRow> = {}): RemoteThirdPartyRow {
-  return { id: THIRD_PARTY_ID, name: 'Brand X', managers: [TEST_ADDRESS], published: true, ...overrides }
+  return {
+    id: THIRD_PARTY_ID,
+    name: 'Brand X',
+    description: 'Linked wearables for e2e runs',
+    root: '',
+    managers: [TEST_ADDRESS],
+    isApproved: true,
+    isProgrammatic: false,
+    maxItems: '100',
+    contracts: [{ network: 'amoy', address: LINKED_CONTRACT }],
+    published: true,
+    ...overrides
+  }
 }
 
 /** A linked collection with a submitted item: what builder-server marks published. */
@@ -139,7 +161,7 @@ export function linkedCollection(overrides: Partial<RemoteCollectionRow> = {}): 
     eth_address: '',
     urn: `${THIRD_PARTY_ID}:${id.slice(-4)}`,
     is_published: true,
-    linked_contract_address: '0x' + 'c3'.repeat(20),
+    linked_contract_address: LINKED_CONTRACT,
     linked_contract_network: 'amoy',
     is_mapping_complete: true,
     ...overrides
@@ -244,6 +266,19 @@ export function publishedItem(
     is_published: true,
     is_approved: true,
     in_catalyst: true,
+    ...overrides
+  })
+}
+
+/** An item of a linked collection, mapped to any token of its contract. */
+export function linkedItem(parent: RemoteCollectionRow, index: number, overrides: Partial<RemoteItemRow> = {}) {
+  return wearable({
+    name: `Linked Hat ${index}`,
+    collection_id: parent.id,
+    urn: `${parent.urn}:item-${index}`,
+    rarity: null,
+    mappings: { amoy: { [LINKED_CONTRACT]: [{ type: 'any' }] } },
+    local_content_hash: `bafylinked${index}`,
     ...overrides
   })
 }
