@@ -5,7 +5,7 @@ import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { dataURLToBlob } from '~/lib/media'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { ItemType, type ItemMetrics } from '~/lib/items'
-import { retryWhilePreviewReloads, toEmoteWithBlobs, toWearableWithBlobs } from '~/lib/preview'
+import { isPreviewEmpty, retryWhilePreviewReloads, toEmoteWithBlobs, toWearableWithBlobs } from '~/lib/preview'
 import { renderPosedThumbnail } from '~/lib/renderPosedThumbnail'
 import { getThumbnailPose, isAutoThumbnailStale } from '~/lib/thumbnailPose'
 import { type PreviewDraft } from '~/lib/draftPreview'
@@ -74,14 +74,17 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
         // Waiting out a Unity reload is not a failed attempt: the item is still on its way into the scene.
         const screenshot = () =>
           retryWhilePreviewReloads(() => controller.scene.getScreenshot(THUMBNAIL_SIZE, THUMBNAIL_SIZE))
-        const metrics: ItemMetrics =
-          draft.type === ItemType.WEARABLE
-            ? await retryWhilePreviewReloads(() => controller.scene.getMetrics())
-            : (draft.metrics ?? {})
         // The iframe also announces its initial, model-less render, and that LOAD can land after the UPDATE
-        // was sent: metrics read against that empty scene are all zeros. Not a failure, the model just isn't
-        // in yet; the real render's own LOAD starts the next read.
-        if (draft.type === ItemType.WEARABLE && !metrics.meshes) return
+        // was sent: metrics read against that empty scene are all zeros on Babylon, an error on Unity. Not a
+        // failure, the model just isn't in yet; the real render's own LOAD starts the next read.
+        const metrics: ItemMetrics | null =
+          draft.type === ItemType.WEARABLE
+            ? await retryWhilePreviewReloads(() => controller.scene.getMetrics()).catch((error: unknown) => {
+                if (isPreviewEmpty(error)) return null
+                throw error
+              })
+            : (draft.metrics ?? {})
+        if (!metrics || (draft.type === ItemType.WEARABLE && !metrics.meshes)) return
 
         const patch: Partial<PreviewDraft> = { metrics }
         if (!draft.thumbnail || isAutoThumbnailStale(draft)) {

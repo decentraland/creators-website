@@ -6,18 +6,19 @@ import { useAvatarPreview } from '~/store/avatarPreview'
 import * as S from './SceneBoundariesToggle.styles'
 
 type Props = {
+  trigger: 'editor' | 'live_preview'
   testId?: string
 }
 
 /** Shows or hides the scene boundaries (the cylinder an item has to fit in) around the avatar. */
-export function SceneBoundariesToggle({ testId = 'scene-boundaries-toggle' }: Props) {
+export function SceneBoundariesToggle({ trigger, testId = 'scene-boundaries-toggle' }: Props) {
   const { t } = useTranslation()
   const visible = useAvatarPreview(state => state.showSceneBoundaries)
   const toggle = useAvatarPreview(state => state.toggleSceneBoundaries)
   const label = t(visible ? 'item_editor.scene_boundaries.hide' : 'item_editor.scene_boundaries.show')
 
   function onClick() {
-    track('Toggle scene boundaries', { visible: !visible })
+    track('Toggle scene boundaries', { visible: !visible, trigger })
     toggle()
   }
 

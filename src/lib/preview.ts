@@ -281,12 +281,19 @@ export function buildPreviewOptions(
   return options
 }
 
-// The Unity renderer refuses scene queries (screenshot, metrics) while a reload is in flight, and its
-// first LOAD can belong to the scene it booted with, before the item sent by UPDATE was applied.
-const PREVIEW_RELOADING_REASON = 'The preview is reloading'
+// The Unity renderer refuses scene queries (screenshot, metrics) while a reload is in flight, aborts a
+// capture that a reload overtook, and its first LOAD can belong to the scene it booted with, before the
+// item sent by UPDATE was applied.
+const PREVIEW_RELOADING_REASONS = ['The preview is reloading', 'The preview reloaded during the capture']
+const PREVIEW_EMPTY_REASON = 'No requested item is loaded'
 
 export function isPreviewReloading(error: unknown): boolean {
-  return error instanceof Error && error.message === PREVIEW_RELOADING_REASON
+  return error instanceof Error && PREVIEW_RELOADING_REASONS.includes(error.message)
+}
+
+/** Unity's answer to a metrics read against its boot scene, where Babylon reports all zeros. */
+export function isPreviewEmpty(error: unknown): boolean {
+  return error instanceof Error && error.message === PREVIEW_EMPTY_REASON
 }
 
 /** Runs a preview query, asking again while the renderer is still reloading, up to `maxWaitMs`. */

@@ -18,7 +18,7 @@ beforeEach(() => {
 
 describe('SceneBoundariesToggle', () => {
   it('shows the boundaries around the avatar and hides them again', async () => {
-    render(<SceneBoundariesToggle />, { wrapper })
+    render(<SceneBoundariesToggle trigger="editor" />, { wrapper })
     const button = screen.getByTestId('scene-boundaries-toggle')
     expect(button).toHaveAttribute('aria-pressed', 'false')
     expect(button).toHaveAccessibleName('Show scene boundaries')
@@ -27,10 +27,10 @@ describe('SceneBoundariesToggle', () => {
     expect(useAvatarPreview.getState().showSceneBoundaries).toBe(true)
     expect(button).toHaveAttribute('aria-pressed', 'true')
     expect(button).toHaveAccessibleName('Hide scene boundaries')
-    expect(track).toHaveBeenCalledWith('Toggle scene boundaries', { visible: true })
+    expect(track).toHaveBeenCalledWith('Toggle scene boundaries', { visible: true, trigger: 'editor' })
 
     await userEvent.click(button)
     expect(useAvatarPreview.getState().showSceneBoundaries).toBe(false)
-    expect(track).toHaveBeenLastCalledWith('Toggle scene boundaries', { visible: false })
+    expect(track).toHaveBeenLastCalledWith('Toggle scene boundaries', { visible: false, trigger: 'editor' })
   })
 })

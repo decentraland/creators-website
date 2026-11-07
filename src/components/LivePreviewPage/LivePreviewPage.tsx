@@ -335,7 +335,7 @@ const LivePreviewPage = () => {
         subjectEmoteId={isEmote ? definitionId : null}
       />
       <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />
-      <SceneBoundariesToggle />
+      <SceneBoundariesToggle trigger="live_preview" />
       <ValidationBadge
         status={validationStatus}
         issues={validation.data?.issues ?? []}

@@ -201,6 +201,14 @@ describe('retryWhilePreviewReloads', () => {
     expect(query).toHaveBeenCalledTimes(3)
   })
 
+  it('asks again when a reload overtook the capture', async () => {
+    const query = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('The preview reloaded during the capture'))
+      .mockResolvedValue('data:image/png;base64,')
+    await expect(retryWhilePreviewReloads(query, { delayMs: 1 })).resolves.toBe('data:image/png;base64,')
+  })
+
   it('fails right away on any other error', async () => {
     const query = vi.fn().mockRejectedValue(new Error('The scene was disposed'))
     await expect(retryWhilePreviewReloads(query, { delayMs: 1 })).rejects.toThrow('The scene was disposed')

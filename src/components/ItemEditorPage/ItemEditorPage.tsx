@@ -537,7 +537,7 @@ const ItemEditorPage = () => {
         subjectEmoteId={subjectEmote?.id ?? null}
       />
       <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />
-      <SceneBoundariesToggle />
+      <SceneBoundariesToggle trigger="editor" />
       {selected && (
         <ValidationBadge
           status={validationStatus}
