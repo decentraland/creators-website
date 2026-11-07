@@ -121,12 +121,12 @@ export function buildCreateCollectionCall(chainId: number, args: CreateCollectio
 
 const EXTERNAL_CALL_TTL_MS = 24 * 60 * 60 * 1000
 
+const randomSalt = () => ethers.utils.hexlify(ethers.utils.randomBytes(32))
+
 /**
  * The CreditsManager external call that runs createCollection on the creator's behalf. Byte-compatible
  * with decentraland-dapps' `buildCollectionManagerExternalCall`: selector + ABI-encoded params.
  */
-const randomSalt = () => ethers.utils.hexlify(ethers.utils.randomBytes(32))
-
 export function buildCollectionManagerExternalCall(
   chainId: number,
   args: CreateCollectionArgs,

@@ -7,7 +7,15 @@ import { Network, type TradeChecks } from '@dcl/schemas'
 import { ContractName, getContract, getContractName, getCouponManager } from 'decentraland-transactions'
 import { StandardMerkleTree } from '@openzeppelin/merkle-tree'
 import { config } from '~/config'
-import { WrongAccountError, WrongChainError, signedFetch, type ContractCall, type ContractData } from '~/lib/auth'
+import {
+  WrongAccountError,
+  WrongChainError,
+  signedFetch,
+  type ContractCall,
+  type ContractData,
+  type TypedDataDomain,
+  type TypedDataTypes
+} from '~/lib/auth'
 import { OFFCHAIN_MARKETPLACE_TYPES, getOffchainMarketplaceContract, toTypedChecks } from '~/lib/trades'
 import { isWalletRejection } from '~/lib/walletErrors'
 
@@ -142,7 +150,7 @@ export const COUPON_TYPES: Record<string, ethers.TypedDataField[]> = {
   ExternalCheck: OFFCHAIN_MARKETPLACE_TYPES.ExternalCheck
 }
 
-export function couponDomain(chainId: number, contracts: CouponContracts): ethers.TypedDataDomain {
+export function couponDomain(chainId: number, contracts: CouponContracts): TypedDataDomain {
   return {
     name: contracts.couponManager.name,
     version: contracts.couponManager.version,
@@ -229,8 +237,9 @@ export type CreateDiscountDeps = {
     signer: string
   ) => Promise<{ contractSignatureIndex: number; signerSignatureIndex: number }>
   signTypedData: (
-    domain: ethers.TypedDataDomain,
-    types: Record<string, ethers.TypedDataField[]>,
+    domain: TypedDataDomain,
+    types: TypedDataTypes,
+    primaryType: string,
     value: Record<string, unknown>
   ) => Promise<string>
   postCoupon: (payload: CouponCreation) => Promise<CollectionDiscount>
@@ -273,6 +282,7 @@ export async function createDiscount(
     const signature = await deps.signTypedData(
       couponDomain(params.chainId, contracts),
       COUPON_TYPES,
+      'Coupon',
       couponTypedValues(checks, contracts.coupon, data)
     )
     deps.onSigned?.()
@@ -474,7 +484,8 @@ export function buildEndDiscountCall(discount: CollectionDiscount): ContractCall
 }
 
 export type EndDiscountDeps = {
-  sendTransaction: (call: ContractCall) => Promise<{ hash: string; nonce?: number }>
+  /** `onSent` gets the hash the moment the wallet returns it, before the send call itself resolves. */
+  sendTransaction: (call: ContractCall, onSent: (txHash: string) => void) => Promise<{ hash: string; nonce?: number }>
   waitForTransaction: (txHash: string) => Promise<boolean>
   /** The wallet prompt is over; the cancellation is mining. */
   onSigned?: () => void
@@ -487,18 +498,19 @@ export async function endDiscount(discount: CollectionDiscount, deps: EndDiscoun
   // Once the cancellation is broadcast, only a confirmed revert is a failure: a timeout, an RPC error while
   // polling or a wallet that throws after broadcasting all leave it possibly mining, and a retry would pay twice.
   const call = buildEndDiscountCall(discount)
+  let broadcast: string | undefined
   let txHash: string
   let nonce: number | undefined
   try {
-    ;({ hash: txHash, nonce } = await deps.sendTransaction(call))
+    ;({ hash: txHash, nonce } = await deps.sendTransaction(call, hash => {
+      broadcast = hash
+      deps.onBroadcast?.(hash)
+    }))
   } catch (error) {
-    const broadcast = (error as { transactionHash?: string } | null)?.transactionHash
-    if (broadcast) {
-      deps.onBroadcast?.(broadcast)
-      throw new DiscountError('pending', `The end discount transaction ${broadcast} may still mine`)
-    }
+    if (broadcast) throw new DiscountError('pending', `The end discount transaction ${broadcast} may still mine`)
     throw toDiscountError(error)
   }
+  // Recorded again with the nonce, which lets a later check tell a replaced cancellation from a pending one.
   deps.onBroadcast?.(txHash, nonce)
   deps.onSigned?.()
   let mined: boolean

@@ -13,21 +13,25 @@ vi.mock('~/config', async () => {
 import { type Session } from './auth'
 import { sendWalletTransaction } from './transactions'
 
+const ACCOUNT = '0x00000000000000000000000000000000000000aa'
+
 describe('when the environment sets no tip floor', () => {
   it('should leave the fees to the wallet', async () => {
-    const sendTransaction = vi.fn().mockResolvedValue({ hash: '0xhash', nonce: 1 })
-    const session = {
-      address: '0x00000000000000000000000000000000000000aa',
-      web3Provider: {
-        getNetwork: async () => ({ chainId: 80002 }),
-        send: async () => ['0x00000000000000000000000000000000000000aa'],
-        getSigner: () => ({ sendTransaction })
-      }
-    } as unknown as Session
+    const request = vi.fn(async ({ method }: { method: string }): Promise<unknown> => {
+      if (method === 'eth_accounts') return [ACCOUNT]
+      if (method === 'eth_chainId') return '0x13882'
+      if (method === 'eth_estimateGas') return '0x5208'
+      if (method === 'eth_getTransactionByHash') return { hash: `0x${'ab'.repeat(32)}`, from: ACCOUNT, nonce: '0x1' }
+      return `0x${'ab'.repeat(32)}`
+    })
+    const session = { address: ACCOUNT, provider: { request } } as unknown as Session
     const manager = { ...getCouponManager(ContractName.OffChainMarketplaceV3, 80002), chainId: 80002 }
 
     await sendWalletTransaction(session, { contract: manager, method: 'increaseSignerSignatureIndex', args: [] })
 
-    expect(sendTransaction.mock.calls[0][0]).not.toHaveProperty('maxPriorityFeePerGas')
+    const send = request.mock.calls.find(([{ method }]) => method === 'eth_sendTransaction')
+    expect(send?.[0]).toMatchObject({
+      params: [expect.not.objectContaining({ maxPriorityFeePerGas: expect.anything() })]
+    })
   })
 })

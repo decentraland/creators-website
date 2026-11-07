@@ -1,7 +1,15 @@
 // The ONLY module allowed to import decentraland-connect, @dcl/single-sign-on-client or @dcl/crypto,
 // or to hold an EIP-1193 provider (see CONVENTIONS.md, host-portability seams). Everything else uses
 // the wallet store plus the helpers exported here.
-import { ethers } from 'ethers'
+import {
+  createWalletClient,
+  custom,
+  type Account,
+  type Address,
+  type CustomTransport,
+  type Hex,
+  type WalletClient
+} from 'viem'
 import { ChainId, ProviderType } from '@dcl/schemas'
 import { Authenticator, type AuthChain, type AuthIdentity } from '@dcl/crypto'
 import {
@@ -23,15 +31,38 @@ async function getConnection() {
   return (await import('decentraland-connect')).connection
 }
 
+/** A wallet's raw EIP-1193 provider; providers without events (Magic) leave `on` out. */
+export type Eip1193Provider = {
+  request: (args: { method: string; params?: readonly unknown[] | object }) => Promise<unknown>
+  on?: (event: string, listener: (...args: unknown[]) => void) => void
+  removeListener?: (event: string, listener: (...args: unknown[]) => void) => void
+}
+
 export type Session = {
   address: string
   chainId: number
-  signer: ethers.providers.JsonRpcSigner
-  web3Provider: ethers.providers.Web3Provider
+  provider: Eip1193Provider
   identity: AuthIdentity
   providerType: ProviderType
   /** The wallet behind the provider ("Trust Wallet" over WalletConnect, …), when it names itself. */
   walletName?: string
+}
+
+// Never retried: a wallet request may be a prompt, and a retry would show it again.
+export function walletClientOf(
+  provider: Eip1193Provider,
+  address: string
+): WalletClient<CustomTransport, undefined, Account> {
+  return createWalletClient({ account: address as Address, transport: custom(provider, { retryCount: 0 }) })
+}
+
+/** The key pair the auth chain delegates to: a fresh random one unless `privateKey` is given. */
+export async function createEphemeralIdentity(privateKey?: Hex) {
+  // Only signing in needs the curve code, so it stays off the first load.
+  const { generatePrivateKey, privateKeyToAccount } = await import('viem/accounts')
+  const key = privateKey ?? generatePrivateKey()
+  const account = privateKeyToAccount(key)
+  return { address: account.address, publicKey: account.publicKey, privateKey: key }
 }
 
 async function toSession(res: {
@@ -42,28 +73,22 @@ async function toSession(res: {
 }): Promise<Session> {
   if (!res.account) throw new Error('No account returned by the wallet')
   const address = res.account.toLowerCase()
-  // 'any' lets ethers follow wallet network changes instead of locking to the first-seen network.
-  const web3Provider = new ethers.providers.Web3Provider(res.provider as ethers.providers.ExternalProvider, 'any')
-  const signer = web3Provider.getSigner()
+  const provider = res.provider as Eip1193Provider
 
   // Reuse a valid stored identity, otherwise create one (a single wallet signature).
   let identity = localStorageGetIdentity(address)
   if (!identity) {
-    const ephemeral = ethers.Wallet.createRandom()
+    const wallet = walletClientOf(provider, address)
     identity = await Authenticator.initializeAuthChain(
       address,
-      {
-        address: ephemeral.address,
-        publicKey: ethers.utils.hexlify(ephemeral.publicKey),
-        privateKey: ethers.utils.hexlify(ephemeral.privateKey)
-      },
+      await createEphemeralIdentity(),
       IDENTITY_EXPIRATION_MINUTES,
-      message => signer.signMessage(message)
+      message => wallet.signMessage({ message })
     )
     localStorageStoreIdentity(address, identity)
   }
 
-  return { address, chainId: res.chainId, signer, web3Provider, identity, providerType: res.providerType }
+  return { address, chainId: res.chainId, provider, identity, providerType: res.providerType }
 }
 
 /**

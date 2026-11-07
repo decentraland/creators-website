@@ -474,6 +474,16 @@ export async function updatePrice(params: UpdatePriceParams, deps: UpdatePriceDe
 /** What `editItemsData` must carry over untouched when only the price changes. */
 export type StoreItemData = { beneficiary: string; metadata: string }
 
+type StoreItemOutputs = readonly [
+  rarity: string,
+  maxSupply: bigint,
+  totalSupply: bigint,
+  price: bigint,
+  beneficiary: string,
+  metadata: string,
+  contentHash: string
+]
+
 /** The item's current on-chain data, so delisting rewrites nothing but the price. */
 export async function readStoreItem(
   collection: Collection,
@@ -484,8 +494,8 @@ export async function readStoreItem(
   if (!collection.contractAddress || !item.tokenId)
     throw new SellItemError('not_published', `Item "${item.id}" is not published`)
   const contract = { ...getContract(ContractName.ERC721CollectionV2, chainId), address: collection.contractAddress }
-  const data = await read<{ beneficiary: string; metadata: string }>(contract, 'items', [item.tokenId])
-  return { beneficiary: data.beneficiary, metadata: data.metadata }
+  const [, , , , beneficiary, metadata] = await read<StoreItemOutputs>(contract, 'items', [item.tokenId])
+  return { beneficiary, metadata }
 }
 
 /**

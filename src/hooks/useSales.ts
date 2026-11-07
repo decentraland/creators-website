@@ -89,7 +89,10 @@ function orderDeps(session: Session, chainId: number) {
     fetchSignatureIndexes,
     sendTransaction: (call: ContractCall) => sendContractTransaction(session, call),
     waitForTransaction: (hash: string) => waitForTransaction(chainId, hash),
-    signTrade: tradeSigner((domain, types, value) => signTypedData(session, domain, types, value), chainId),
+    signTrade: tradeSigner(
+      (domain, types, primaryType, value) => signTypedData(session, domain, types, primaryType, value),
+      chainId
+    ),
     createTrade: (trade: TradeCreation) => createTrade(session.address, trade)
   }
 }

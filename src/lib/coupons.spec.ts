@@ -8,7 +8,7 @@ vi.mock('~/lib/auth', async () => {
 })
 
 import { signedFetch } from '~/lib/auth'
-import { TEST_PRIVATE_KEY, toTransaction, typedDataDigest } from '~/test/chain'
+import { TEST_PRIVATE_KEY, signTypedDataWithTestKey, toTransaction, typedDataDigest } from '~/test/chain'
 import {
   COUPON_TYPES,
   DiscountError,
@@ -64,7 +64,7 @@ function stored(payload: CouponCreation, overrides: Partial<CollectionDiscount> 
 function makeDeps(overrides: Partial<CreateDiscountDeps> = {}): CreateDiscountDeps {
   return {
     readIndexes: vi.fn().mockResolvedValue({ contractSignatureIndex: 2, signerSignatureIndex: 5 }),
-    signTypedData: vi.fn((domain, types, value) => wallet._signTypedData(domain, types, value)),
+    signTypedData: vi.fn(signTypedDataWithTestKey),
     postCoupon: vi.fn(payload => Promise.resolve(stored(payload))),
     findStored: vi.fn().mockResolvedValue(undefined),
     onSigned: vi.fn(),
@@ -142,7 +142,7 @@ describe('when creating a discount', () => {
         signerSignatureIndex: 5
       }
     })
-    const [domain, , value] = vi.mocked(deps.signTypedData).mock.calls[0]
+    const [domain, , , value] = vi.mocked(deps.signTypedData).mock.calls[0]
     expect(domain.verifyingContract).toBe(V3_MANAGER)
     // The contract reads the window in seconds.
     expect(value).toMatchObject({ checks: { effective: NOW / 1000, expiration: (NOW + 7 * DAY) / 1000 } })
@@ -154,7 +154,7 @@ describe('when creating a discount', () => {
   it('should sign the exact coupon and post it as plain JSON', async () => {
     const deps = makeDeps()
     await createDiscount({ ...terms, signer: wallet.address, chainId: CHAIN_ID }, deps)
-    const [domain, types, value] = vi.mocked(deps.signTypedData).mock.calls[0]
+    const [domain, types, , value] = vi.mocked(deps.signTypedData).mock.calls[0]
     expect(value.data).toBe(
       '0x0000000000000000000000000000000000000000000000000000000000000001' +
         '00000000000000000000000000000000000000000000000000000000000493e0' +
@@ -523,11 +523,12 @@ describe('when ending a discount', () => {
   it.each([
     ['an RPC error while polling for the receipt', { waitForTransaction: vi.fn().mockRejectedValue(new Error('429')) }],
     [
-      'a wallet that throws after broadcasting',
+      'a send that fails after the wallet returned the hash',
       {
-        sendTransaction: vi
-          .fn()
-          .mockRejectedValue(Object.assign(new Error('poll failed'), { transactionHash: '0xhash' })),
+        sendTransaction: vi.fn(async (_call: unknown, onSent: (hash: string) => void) => {
+          onSent('0xhash')
+          throw new Error('nonce read failed')
+        }),
         waitForTransaction: vi.fn()
       }
     ]
@@ -542,6 +543,23 @@ describe('when ending a discount', () => {
         )
       )
     ).rejects.toMatchObject({ reason: 'pending' })
+  })
+
+  it('should record the cancellation as soon as the wallet returns its hash, then again with its nonce', async () => {
+    const discount = await signedDiscount()
+    const onBroadcast = vi.fn()
+    let recordedWhileSending: unknown[][] = []
+    await endDiscount(discount, {
+      sendTransaction: async (_call, onSent) => {
+        onSent('0xhash')
+        recordedWhileSending = [...onBroadcast.mock.calls]
+        return { hash: '0xhash', nonce: 7 }
+      },
+      waitForTransaction: vi.fn().mockResolvedValue(true),
+      onBroadcast
+    })
+    expect(recordedWhileSending).toEqual([['0xhash']])
+    expect(onBroadcast).toHaveBeenLastCalledWith('0xhash', 7)
   })
 
   it('should read a dismissed wallet prompt as the creator backing out', async () => {
