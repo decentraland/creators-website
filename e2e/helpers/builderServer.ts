@@ -27,8 +27,17 @@ export type BuilderSeed = {
   /** Item slots each third party has left, by id. */
   slots?: Record<string, number>
   itemCurations?: RemoteItemCurationRow[]
+  /** What GET /collections/:id/approvalData answers, by collection id (linked collections). */
+  approvalData?: Record<string, LinkedApprovalDataRow>
   /** Addresses seated on the curation committee. */
   committee?: string[]
+}
+
+export type LinkedApprovalDataRow = {
+  cheque: { signature: string; qty: number; salt: string }
+  root: string | null
+  content_hashes: Record<string, string>
+  chequeWasConsumed: boolean
 }
 
 export type BuilderResponse = { status: number; body: unknown }
@@ -123,6 +132,7 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
   const thirdParties = new Map((seed.thirdParties ?? []).map(row => [row.id, structuredClone(row)]))
   const slots = { ...seed.slots }
   const itemCurations = new Map((seed.itemCurations ?? []).map(row => [row.item_id, structuredClone(row)]))
+  const approvalData = new Map(Object.entries(structuredClone(seed.approvalData ?? {})))
 
   const itemsOf = (collectionId: string) => [...items.values()].filter(item => item.collection_id === collectionId)
   const withCount = (row: RemoteCollectionRow): RemoteCollectionRow => ({
@@ -244,6 +254,10 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
       )
       row[key] = [...next]
     }
+    if (tx.fn === 'reviewThirdPartyWithRoot' && args) {
+      const thirdParty = thirdParties.get(String(args.thirdPartyId))
+      if (thirdParty) thirdParty.root = String(args.root)
+    }
     if (tx.fn === 'manageCollection' && args) {
       const target = byContract(String(args.collection))
       for (const call of args.data as string[]) {
@@ -364,6 +378,10 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
       setCuration(id, curation)
       return ok(curation)
     }
+    if (method === 'GET' && sub === 'approvalData') {
+      const data = approvalData.get(id)
+      return data ? ok(data) : notFound('approval data')
+    }
     if (method === 'GET' && sub === 'itemCurations') {
       const ids = new Set(query.getAll('itemIds[]'))
       return ok(
@@ -398,7 +416,21 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
       items.delete(id)
       return ok(true)
     }
-    if (method === 'GET' && sub === 'curation') return ok(null)
+    if (method === 'GET' && sub === 'curation') return ok(itemCurations.get(id) ?? null)
+    if (method === 'PATCH' && sub === 'curation') {
+      const current = itemCurations.get(id)
+      if (!current) return notFound('item curation')
+      const { status } = (body as { curation?: Partial<RemoteItemCurationRow> })?.curation ?? {}
+      const curation = { ...current, ...(status && { status }), updated_at: now() }
+      // builder-server stamps the item's current hash on an approval, which the app checks against what it deployed.
+      if (curation.status === 'approved') {
+        curation.content_hash = row.local_content_hash ?? null
+        row.is_approved = true
+        row.catalyst_content_hash = curation.content_hash
+      }
+      itemCurations.set(id, curation)
+      return ok(curation)
+    }
     return null
   }
 
@@ -438,7 +470,17 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
     return null
   }
 
-  return { handle, applyTransaction, collections, items, curations, thirdParties, slots, itemCurations }
+  return {
+    handle,
+    applyTransaction,
+    collections,
+    items,
+    curations,
+    thirdParties,
+    slots,
+    itemCurations,
+    approvalData
+  }
 }
 
 export type BuilderServer = ReturnType<typeof createBuilderServer>
