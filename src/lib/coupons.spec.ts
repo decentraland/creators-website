@@ -534,31 +534,39 @@ describe('when ending a discount', () => {
     ]
   ])('should treat %s as still pending, never as a failure to retry', async (_, deps) => {
     const discount = await signedDiscount()
+    const onBroadcast = vi.fn()
     await expect(
       endDiscount(
         discount,
         Object.assign(
-          { sendTransaction: vi.fn().mockResolvedValue({ hash: '0xhash' }), waitForTransaction: vi.fn() },
+          { sendTransaction: vi.fn().mockResolvedValue({ hash: '0xhash' }), waitForTransaction: vi.fn(), onBroadcast },
           deps
         )
       )
     ).rejects.toMatchObject({ reason: 'pending' })
+    expect(onBroadcast.mock.calls.map(([hash]) => hash as string)).toContain('0xhash')
   })
 
-  it('should record the cancellation as soon as the wallet returns its hash, then again with its nonce', async () => {
+  it('should record the cancellation and leave the wallet step as soon as the hash is back, then record the nonce', async () => {
     const discount = await signedDiscount()
     const onBroadcast = vi.fn()
+    const onSigned = vi.fn()
     let recordedWhileSending: unknown[][] = []
+    let signedWhileSending = 0
     await endDiscount(discount, {
       sendTransaction: async (_call, onSent) => {
         onSent('0xhash')
         recordedWhileSending = [...onBroadcast.mock.calls]
+        signedWhileSending = onSigned.mock.calls.length
         return { hash: '0xhash', nonce: 7 }
       },
       waitForTransaction: vi.fn().mockResolvedValue(true),
-      onBroadcast
+      onBroadcast,
+      onSigned
     })
     expect(recordedWhileSending).toEqual([['0xhash']])
+    expect(signedWhileSending).toBe(1)
+    expect(onSigned).toHaveBeenCalledTimes(1)
     expect(onBroadcast).toHaveBeenLastCalledWith('0xhash', 7)
   })
 

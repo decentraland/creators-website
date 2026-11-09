@@ -505,6 +505,7 @@ export async function endDiscount(discount: CollectionDiscount, deps: EndDiscoun
     ;({ hash: txHash, nonce } = await deps.sendTransaction(call, hash => {
       broadcast = hash
       deps.onBroadcast?.(hash)
+      deps.onSigned?.()
     }))
   } catch (error) {
     if (broadcast) throw new DiscountError('pending', `The end discount transaction ${broadcast} may still mine`)
@@ -512,7 +513,7 @@ export async function endDiscount(discount: CollectionDiscount, deps: EndDiscoun
   }
   // Recorded again with the nonce, which lets a later check tell a replaced cancellation from a pending one.
   deps.onBroadcast?.(txHash, nonce)
-  deps.onSigned?.()
+  if (!broadcast) deps.onSigned?.()
   let mined: boolean
   try {
     mined = await deps.waitForTransaction(txHash)
