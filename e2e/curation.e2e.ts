@@ -107,3 +107,123 @@ describe('curation', () => {
     expect(await isShown(app.page, 'nav-curation')).toBe(false)
   })
 })
+
+describe('curation of a collection already approved once', () => {
+  const T0 = new Date(Date.now() - 30 * 24 * 60 * 60_000).toISOString()
+  const T1 = new Date(Date.now() - 20 * 24 * 60 * 60_000).toISOString()
+  // On the market since its first approval: reviewed after it was created.
+  const approvedOnce = (overrides: Parameters<typeof collection>[0] = {}) =>
+    collection({
+      name: 'Neon Streetwear',
+      eth_address: CREATOR,
+      contract_address: '0x' + 'c1'.repeat(20),
+      is_published: true,
+      is_approved: true,
+      created_at: T0,
+      reviewed_at: T1,
+      updated_at: T1,
+      ...overrides
+    })
+  const curationOf = (collectionId: string, status: 'pending' | 'approved') => ({
+    id: `curation-${collectionId}`,
+    collection_id: collectionId,
+    status,
+    assignee: TEST_ADDRESS,
+    created_at: T1,
+    updated_at: T1
+  })
+  const reviewing = (collectionId: string) => `/collections/editor?collection=${collectionId}&reviewing=true`
+  const reviewState = (a: App, state: string) =>
+    a.page.waitForFunction(
+      (expected: string) =>
+        document
+          .querySelector('[data-testid="review-bar"] [data-testid="curation-state"]')
+          ?.getAttribute('data-state') === expected,
+      { timeout: 30_000 },
+      state
+    )
+
+  it('rescues changed items on chain before deploying them', async () => {
+    const updated = approvedOnce()
+    // The creator changed both items: their stored files no longer match the hashes on chain.
+    const changed = [0, 1].map(index =>
+      publishedItem(updated, index, { content_hash: `bafyonchain${index}`, local_content_hash: `bafychanged${index}` })
+    )
+    app = await launchApp({
+      path: reviewing(updated.id),
+      builder: {
+        collections: [updated],
+        items: changed,
+        curations: [curationOf(updated.id, 'pending')],
+        committee: [TEST_ADDRESS]
+      }
+    })
+    const { page } = app
+    await waitForTestId(page, 'review-bar', 30_000)
+    await clickTestId(page, 'review-action-approve')
+    // Changed items start with the rescue; the collection is already approved, so no approval follows the deploy.
+    await waitForTestId(page, 'approval-step-rescue', 30_000)
+
+    await clickTestId(page, 'approval-rescue')
+    await waitForTestId(page, 'approval-deploy', 60_000)
+    const rescue = app.transactions.find(tx => tx.fn === 'manageCollection')
+    expect(String(rescue?.args?.collection).toLowerCase()).toBe(updated.contract_address)
+    // The indexer saw the rescue: every item's on-chain hash is the one the curator approved.
+    for (const item of changed) expect(app.builder.items.get(item.id)?.content_hash).not.toBe(item.content_hash)
+
+    await clickTestId(page, 'approval-deploy')
+    await waitForTestId(page, 'success-modal-modal', 60_000)
+    expect(app.writes.filter(write => write === 'POST /content/entities')).toHaveLength(changed.length)
+    expect(app.transactions.filter(tx => tx.fn === 'manageCollection')).toHaveLength(1)
+    expect(app.builder.curations.get(updated.id)?.status).toBe('approved')
+    await app.waitForEvent('Rescue items', { collectionId: updated.id, item_count: changed.length })
+  })
+
+  it('disables an approved collection on chain', async () => {
+    const approved = approvedOnce()
+    app = await launchApp({
+      path: reviewing(approved.id),
+      builder: {
+        collections: [approved],
+        items: [publishedItem(approved, 0)],
+        curations: [curationOf(approved.id, 'approved')],
+        committee: [TEST_ADDRESS]
+      }
+    })
+    const { page } = app
+    await waitForTestId(page, 'review-bar', 30_000)
+    await clickTestId(page, 'review-action-disable')
+    await clickTestId(page, 'review-disable-confirm')
+
+    await reviewState(app, 'disabled')
+    expect(app.builder.collections.get(approved.id)?.is_approved).toBe(false)
+    expect(app.transactions.map(tx => tx.fn)).toEqual(['manageCollection'])
+    await app.waitForEvent('Reject collection', { collectionId: approved.id })
+  })
+
+  it('enables a disabled collection again', async () => {
+    const disabled = approvedOnce({ is_approved: false })
+    const items = [publishedItem(disabled, 0, { content_hash: 'bafyitem0', local_content_hash: 'bafyitem0' })]
+    app = await launchApp({
+      path: reviewing(disabled.id),
+      builder: {
+        collections: [disabled],
+        items,
+        curations: [curationOf(disabled.id, 'approved')],
+        committee: [TEST_ADDRESS]
+      }
+    })
+    const { page } = app
+    await waitForTestId(page, 'review-bar', 30_000)
+    await clickTestId(page, 'review-action-enable')
+    // Enabling switches the collection back on as last approved: one approval, nothing redeployed.
+    await waitForTestId(page, 'approval-step-approve', 30_000)
+    await clickTestId(page, 'approval-approve')
+    await waitForTestId(page, 'success-modal-modal', 60_000)
+    expect(app.transactions.map(tx => tx.fn)).toEqual(['manageCollection'])
+    expect(app.writes).not.toContain('POST /content/entities')
+
+    expect(app.builder.collections.get(disabled.id)?.is_approved).toBe(true)
+    await app.waitForEvent('Enable collection', { collectionId: disabled.id })
+  })
+})
