@@ -23,8 +23,8 @@ const items = [
 
 const statusOf = (a: App) => a.page.$eval(byTestId('collection-status'), el => el.getAttribute('data-status'))
 
-/** Walks the wizard from the detail page's publish button to the success modal, paying in MANA. */
-async function publishThroughWizard({ page }: App) {
+/** Walks the wizard from the detail page's publish button to the success modal, paying with `method`. */
+async function publishThroughWizard({ page }: App, method: 'mana' | 'credits' = 'mana') {
   await clickTestId(page, 'publish-collection')
 
   await waitForTestId(page, 'publish-name-step', 30_000)
@@ -38,13 +38,17 @@ async function publishThroughWizard({ page }: App) {
   await clickTestId(page, 'publish-items-confirm')
 
   await waitForTestId(page, 'publish-payment-step')
-  await page.waitForSelector('[data-testid="payment-method-mana"][data-selected]')
+  await page.waitForSelector(`[data-testid="payment-method-${method}"][data-selected]`)
   await check(page, 'publish-terms-accept')
   await waitForEnabled(page, 'publish-submit')
   await clickTestId(page, 'publish-submit')
 
   await waitForTestId(page, 'publish-success-modal', 30_000)
 }
+
+/** CreditsManager on Amoy: what a credits payment calls, with the publish as its external call. */
+const CREDITS_MANAGER = '0x8052a560e6e6ac86eeb7e711a4497f639b322fb3'
+const CREATE_COLLECTION_SELECTOR = '35a629c2'
 
 describe('publish a collection', () => {
   it('pays the fee in MANA, publishes on chain and opens the first review', async () => {
@@ -91,6 +95,30 @@ describe('publish a collection', () => {
     expect(published.forum_link).toBeTruthy()
     expect(app.builder.curations.get(draft.id)?.status).toBe('pending')
     expect(await statusOf(app)).toBe('under_review')
+  })
+
+  it('pays the fee with credits, which publish the collection through the credits manager', async () => {
+    app = await launchApp({
+      path: `/collections/${draft.id}`,
+      builder: { collections: [draft], items },
+      flags: { 'builder-shop-credits-for-collections-fee': true },
+      credits: { credits: 100, balanceCents: 1000 }
+    })
+    const { page } = app
+    await waitForEnabled(page, 'publish-collection', 30_000)
+    // Two items at 1 USD (10 credits) each.
+    await publishThroughWizard(app, 'credits')
+
+    await app.waitForEvent('Publish collection', { collectionId: draft.id, usedCredits: true, creditsAmount: 20 })
+    expect(app.writes).toContain('POST /credits/authorize-publication')
+    // The credits manager runs the publish itself: no createCollection is sent from the wallet.
+    expect(app.transactions.map(tx => tx.fn)).toEqual(['useCredits'])
+    const [payment] = app.transactions
+    expect(payment.to).toBe(CREDITS_MANAGER)
+    expect(payment.data).toContain(CREATE_COLLECTION_SELECTOR)
+
+    await clickTestId(page, 'publish-success-done')
+    await page.waitForSelector('[data-testid="collection-status"][data-status="under_review"]', { timeout: 30_000 })
   })
 
   it('publishes again, without edits, after the publish transaction reverted', async () => {
