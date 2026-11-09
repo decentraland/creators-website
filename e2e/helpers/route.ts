@@ -221,6 +221,10 @@ export function route(req: HTTPRequest, ctx: RouteContext): Promise<void> {
     if (answer) return json(req, answer.body, answer.status)
   }
 
+  if (hostname.startsWith('transactions-api.') && method === 'POST' && pathname.endsWith('/transactions')) {
+    return json(req, ctx.chain.relay(req.postData() ?? '{}'))
+  }
+
   // The read-only provider: no chain is ever reached.
   if (hostname.startsWith('rpc-') || hostname.includes('rpc.') || pathname.includes('/rpc')) {
     return json(req, ctx.chain.handleRpc(req.postData() ?? '{}'))
