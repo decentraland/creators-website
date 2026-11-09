@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { collection, upperBody, wearable } from './fixtures'
 import { launchApp, type App } from './helpers/app'
 import { byTestId, check, clickTestId, waitForEnabled, waitForTestId } from './helpers/dom'
+import { decodeTransaction } from './helpers/rpc'
 
 let app: App | undefined
 afterEach(async () => {
@@ -48,7 +49,8 @@ async function publishThroughWizard({ page }: App, method: 'mana' | 'credits' = 
 
 /** CreditsManager on Amoy: what a credits payment calls, with the publish as its external call. */
 const CREDITS_MANAGER = '0x8052a560e6e6ac86eeb7e711a4497f639b322fb3'
-const CREATE_COLLECTION_SELECTOR = '35a629c2'
+const COLLECTION_MANAGER = '0x5309ae874fc4eb21adcd63f8b6c3f766cc3b1849'
+const CREATE_COLLECTION_SELECTOR = '0x35a629c2'
 
 describe('publish a collection', () => {
   it('pays the fee in MANA, publishes on chain and opens the first review', async () => {
@@ -115,7 +117,13 @@ describe('publish a collection', () => {
     expect(app.transactions.map(tx => tx.fn)).toEqual(['useCredits'])
     const [payment] = app.transactions
     expect(payment.to).toBe(CREDITS_MANAGER)
-    expect(payment.data).toContain(CREATE_COLLECTION_SELECTOR)
+    // Its external call is the publish itself: createCollection on the collection manager.
+    const { externalCall } = payment.args!.args as { externalCall: { target: string; selector: string; data: string } }
+    expect(externalCall.target.toLowerCase()).toBe(COLLECTION_MANAGER)
+    expect(externalCall.selector).toBe(CREATE_COLLECTION_SELECTOR)
+    // The call's arguments travel apart from its selector.
+    const publish = decodeTransaction({ ...payment, data: externalCall.selector + externalCall.data.slice(2) })
+    expect(publish.args?.name).toBe('Summer Drop')
 
     await clickTestId(page, 'publish-success-done')
     await page.waitForSelector('[data-testid="collection-status"][data-status="under_review"]', { timeout: 30_000 })

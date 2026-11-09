@@ -43,6 +43,8 @@ export function previewPageHtml(): string {
         var key = request.namespace + '.' + request.method;
         var result = key === 'emote.hasSound' ? hasSound : RESULTS[key];
         send('controller_response', { id: request.id, ok: true, result: result });
+        // Lets a spec wait for the answer itself instead of a fixed delay (see app.previewAnswers).
+        if (key === 'emote.hasSound') fetch('/__e2e/answer?method=' + key + '&result=' + result).catch(function () {});
       }
     });
     // The parent may attach its listener after this frame boots, so READY is repeated for a moment.

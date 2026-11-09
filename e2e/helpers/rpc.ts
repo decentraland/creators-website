@@ -20,12 +20,12 @@ export const CONTRACT_FUNCTIONS = new ethers.utils.Interface([
   'function manageCollection(address manager, address forwarder, address collection, bytes[] data)',
   'function setApproved(bool value)',
   'function rescueItems(uint256[] itemIds, string[] contentHashes, string[] metadata)',
+  'function useCredits(((uint256 value, uint256 expiresAt, bytes32 salt)[] credits, bytes[] creditsSignatures, (address target, bytes4 selector, bytes data, uint256 expiresAt, bytes32 salt) externalCall, bytes customExternalCallSignature, uint256 maxUncreditedValue, uint256 maxCreditedValue) args)',
   'function reviewThirdPartyWithRoot(string thirdPartyId, bytes32 root, (uint256 qty, bytes32 salt, bytes32 sigR, bytes32 sigS, uint8 sigV)[] slots)'
 ])
 
 /** Selectors the app sends whose arguments no spec reads yet: named only. */
 const NAMED_SELECTORS: Record<string, string> = {
-  '0x1863572d': 'useCredits',
   '0x6f773280': 'cancelSignature',
   '0xd41feedf': 'cancelSignature',
   '0xdb9aa95c': 'addThirdParties',
@@ -241,7 +241,10 @@ export function createChain(opts: ChainOptions = {}, signer = new ethers.Wallet(
     return hash
   }
 
-  /** The transactions relayer: unwraps the meta-transaction and runs its inner call as the signer. */
+  /**
+   * The transactions relayer: unwraps the meta-transaction and runs its inner call as the signer. It doesn't verify
+   * the signature (signer, domain or nonce), so a relayed spec covers the routing, not the signing.
+   */
   function relay(body: string): { ok: true; txHash: string } {
     const { transactionData } = JSON.parse(body) as { transactionData: { from: string; params: [string, string] } }
     const [contract, metaData] = transactionData.params

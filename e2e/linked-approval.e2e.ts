@@ -1,3 +1,4 @@
+import { ethers } from 'ethers'
 import { afterEach, describe, expect, it } from 'vitest'
 import { THIRD_PARTY_ID, linkedCollection, linkedItem, thirdParty } from './fixtures'
 import { launchApp, type App } from './helpers/app'
@@ -11,6 +12,8 @@ afterEach(async () => {
 })
 
 const CREATOR = '0x' + '44'.repeat(20)
+// A cheque the creator signed for two new slots.
+const CHEQUE = { signature: '0x' + 'ab'.repeat(32) + '11'.repeat(32) + '1b', qty: 2, salt: '0x' + '01'.repeat(32) }
 const NOW = new Date().toISOString()
 const submitted = linkedCollection({ name: 'Brand X Hats' })
 // Submitted for review and never approved: no Catalyst entity yet.
@@ -73,8 +76,7 @@ describe('linked collection approval', () => {
       app!.builder.itemCurations.get(item.id)!.content_hash = hashes[index]
     })
     app.builder.approvalData.set(submitted.id, {
-      // A cheque the creator signed for two new slots.
-      cheque: { signature: '0x' + 'ab'.repeat(32) + '11'.repeat(32) + '1b', qty: 2, salt: '0x' + '01'.repeat(32) },
+      cheque: CHEQUE,
       root: null,
       content_hashes: Object.fromEntries(items.map((item, index) => [item.id, hashes[index]])),
       chequeWasConsumed: false
@@ -92,7 +94,10 @@ describe('linked collection approval', () => {
     await waitForTestId(page, 'approval-deploy', 60_000)
     const rootTx = app.transactions.find(tx => tx.fn === 'reviewThirdPartyWithRoot')
     expect(rootTx?.args?.thirdPartyId).toBe(THIRD_PARTY_ID)
-    expect(app.builder.thirdParties.get(THIRD_PARTY_ID)?.root).toBe(rootTx?.args?.root)
+    expect(rootTx?.args?.root).not.toBe(ethers.constants.HashZero)
+    // The root transaction spends the creator's cheque: its two slots, under the salt they signed.
+    const slots = rootTx?.args?.slots as Array<{ qty: ethers.BigNumber; salt: string }>
+    expect(slots.map(slot => [slot.qty.toNumber(), slot.salt])).toEqual([[CHEQUE.qty, CHEQUE.salt]])
 
     await clickTestId(page, 'approval-deploy')
     await waitForTestId(page, 'success-modal-modal', 60_000)

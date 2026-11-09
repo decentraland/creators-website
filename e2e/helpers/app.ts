@@ -37,6 +37,8 @@ export type App = {
   transactions: SentTransaction[]
   /** URLs the page tried to open in a new tab or window. */
   openedUrls: string[]
+  /** Answers the fake preview gave to controller questions the app asked (`emote.hasSound`), in order. */
+  previewAnswers: Array<{ method: string; result: string }>
   /** Messages of the browser dialogs (confirm, beforeunload) the page raised; each one is accepted. */
   dialogs: string[]
   /** The Segment `track` calls made so far, across reloads. */
@@ -169,6 +171,7 @@ async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
     market,
     credits: { balanceCents: 0, credits: 0, ...opts.credits },
     bridge: opts.bridge,
+    previewAnswers: [],
     flags: opts.flags ?? {},
     variants: opts.variants ?? {},
     errors: opts.errors ?? {},
@@ -234,6 +237,7 @@ async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
     writes,
     transactions: chain.transactions,
     openedUrls,
+    previewAnswers: ctx.previewAnswers,
     dialogs,
     events,
     pageViews: () => [...pages],

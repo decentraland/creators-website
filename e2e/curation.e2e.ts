@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { collection, publishedItem } from './fixtures'
 import { launchApp, type App } from './helpers/app'
 import { clickTestId, isShown, waitForTestId } from './helpers/dom'
+import { decodeTransaction } from './helpers/rpc'
 import { TEST_ADDRESS } from './helpers/session'
 
 let app: App | undefined
@@ -168,8 +169,19 @@ describe('curation of a collection already approved once', () => {
     await waitForTestId(page, 'approval-deploy', 60_000)
     const rescue = app.transactions.find(tx => tx.fn === 'manageCollection')
     expect(String(rescue?.args?.collection).toLowerCase()).toBe(updated.contract_address)
-    // The indexer saw the rescue: every item's on-chain hash is the one the curator approved.
-    for (const item of changed) expect(app.builder.items.get(item.id)?.content_hash).not.toBe(item.content_hash)
+    // The rescue puts each changed item's current hash on chain, and the indexer reports exactly those hashes.
+    const inner = decodeTransaction({ ...rescue!, data: (rescue!.args!.data as string[])[0] })
+    expect(inner.fn).toBe('rescueItems')
+    const sent = Object.fromEntries(
+      (inner.args!.itemIds as Array<{ toString(): string }>).map((id, index) => [
+        String(id),
+        (inner.args!.contentHashes as string[])[index]
+      ])
+    )
+    for (const item of changed) {
+      expect(sent[item.blockchain_item_id!]).toBe(item.local_content_hash)
+      expect(app.builder.items.get(item.id)?.content_hash).toBe(item.local_content_hash)
+    }
 
     await clickTestId(page, 'approval-deploy')
     await waitForTestId(page, 'success-modal-modal', 60_000)

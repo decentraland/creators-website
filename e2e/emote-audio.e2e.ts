@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { type ElementHandle } from 'puppeteer'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { collection, emote as silentEmote } from './fixtures'
 import { launchApp, type App } from './helpers/app'
 import { byTestId, clickTestId, selectOption, waitForEditor, waitForEnabled, waitForTestId } from './helpers/dom'
@@ -51,7 +51,11 @@ describe('emote audio', () => {
     })
     await waitForEditor(app.page)
     await waitForTestId(app.page, 'playback-bar-emote-controls', 30_000)
-    // The sound check answers asynchronously, so give it time to show up before calling it absent.
-    await expect(app.page.waitForSelector(byTestId('playback-bar-sound'), { timeout: 3_000 })).rejects.toThrow()
+    // The control depends on the preview's answer, so wait for that answer, then for the render after it.
+    await vi.waitFor(() => expect(app!.previewAnswers).toContainEqual({ method: 'emote.hasSound', result: 'false' }), {
+      timeout: 15_000
+    })
+    await app.page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve(null))))
+    expect(await app.page.$(byTestId('playback-bar-sound'))).toBeNull()
   })
 })

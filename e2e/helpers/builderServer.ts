@@ -420,13 +420,15 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
     if (method === 'PATCH' && sub === 'curation') {
       const current = itemCurations.get(id)
       if (!current) return notFound('item curation')
-      const changes = (body as { curation?: Partial<RemoteItemCurationRow> })?.curation ?? {}
-      const curation = { ...current, ...changes, updated_at: now() }
-      itemCurations.set(id, curation)
+      const { status } = (body as { curation?: Partial<RemoteItemCurationRow> })?.curation ?? {}
+      const curation = { ...current, ...(status && { status }), updated_at: now() }
+      // builder-server stamps the item's current hash on an approval, which the app checks against what it deployed.
       if (curation.status === 'approved') {
+        curation.content_hash = row.local_content_hash ?? null
         row.is_approved = true
         row.catalyst_content_hash = curation.content_hash
       }
+      itemCurations.set(id, curation)
       return ok(curation)
     }
     return null
