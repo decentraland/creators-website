@@ -19,7 +19,8 @@ export const CONTRACT_FUNCTIONS = new ethers.utils.Interface([
   'function editItemsData(uint256[] itemIds, uint256[] prices, address[] beneficiaries, string[] metadata)',
   'function manageCollection(address manager, address forwarder, address collection, bytes[] data)',
   'function setApproved(bool value)',
-  'function rescueItems(uint256[] itemIds, string[] contentHashes, string[] metadata)'
+  'function rescueItems(uint256[] itemIds, string[] contentHashes, string[] metadata)',
+  'function reviewThirdPartyWithRoot(string thirdPartyId, bytes32 root, (uint256 qty, bytes32 salt, bytes32 sigR, bytes32 sigS, uint8 sigV)[] slots)'
 ])
 
 /** Selectors the app sends whose arguments no spec reads yet: named only. */
@@ -27,7 +28,6 @@ const NAMED_SELECTORS: Record<string, string> = {
   '0x1863572d': 'useCredits',
   '0x6f773280': 'cancelSignature',
   '0xd41feedf': 'cancelSignature',
-  '0x3cb681b0': 'reviewThirdPartyWithRoot',
   '0xdb9aa95c': 'addThirdParties',
   '0xd8f0f3c1': 'buyItemSlots'
 }
