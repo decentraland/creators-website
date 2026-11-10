@@ -1725,8 +1725,7 @@
     "error": {
       "title": "We couldn't create your discount",
       "description": "Something went wrong while saving it. Nothing was charged; please try again.",
-      "try_again": "Try again",
-      "description_wallet": "Your wallet switched to another account or network. Switch it back to the account you signed in with and try again."
+      "try_again": "Try again"
     },
     "list_label": "Discounts",
     "chip": {
@@ -1833,7 +1832,6 @@
     "range_cancel": "Cancel",
     "range_pick_end": "{from} – pick the last day",
     "range_pick_start": "Pick the first day",
-    "error_wallet": "Your wallet switched to another account or network. Switch it back to the account you signed in with and try again.",
     "social_note": "Signed in with a social account, you can't end this discount early: it runs until its end date.",
     "unit_days": "d",
     "unit_hours": "h",
@@ -2045,5 +2043,8 @@
       "title": "These items can't be approved yet",
       "description": "{items} include a preview video, which the content servers don't accept for linked items. Nothing was put on chain. The creator needs to upload them again without the video."
     }
+  },
+  "wallet_error": {
+    "wrong_account": "Your wallet switched to another account or network. Switch it back to the account you signed in with and try again."
   }
 }

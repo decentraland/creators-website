@@ -8,6 +8,8 @@ import { type CollectionCuration } from '~/lib/curation'
 import { type Item } from '~/lib/items'
 import { allCollectionItemsKey } from '~/hooks/useCollection'
 import { itemEntitiesKey } from '~/hooks/useItemSync'
+import { captureError } from '~/lib/monitoring'
+import { WrongAccountError } from '~/lib/walletErrors'
 
 const flow = vi.hoisted(() => ({
   APPROVAL_INDEX_TIMEOUT_MS: 1000,
@@ -233,6 +235,16 @@ describe('useApprovalFlow', () => {
     await act(() => result.current.start())
     await act(() => result.current.runApprove())
     expect(result.current.view).toEqual({ kind: 'step', step: 'approve', phase: { kind: 'idle' } })
+  })
+
+  it('asks the curator to switch the wallet back, without reporting it, when it sits on another account', async () => {
+    vi.mocked(captureError).mockClear()
+    auth.sendContractTransaction.mockRejectedValue(new WrongAccountError('0xme', '0xother'))
+    const { result } = renderFlow()
+    await act(() => result.current.start())
+    await act(() => result.current.runApprove())
+    expect(result.current.view).toMatchObject({ kind: 'error', step: 'approve', detail: null, wallet: true })
+    expect(captureError).not.toHaveBeenCalled()
   })
 
   it('backing out of the wallet prompt hides it, and confirming again shows it instead of sending twice', async () => {

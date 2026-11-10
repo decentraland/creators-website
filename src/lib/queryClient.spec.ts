@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { HttpError } from '~/lib/http'
 import { setErrorForwarder } from '~/lib/monitoring'
+import { toSellItemError } from '~/lib/sales'
+import { WrongAccountError, WrongChainError } from '~/lib/walletErrors'
 import { createQueryClient } from './queryClient'
 
 const reported = vi.fn()
@@ -136,6 +138,18 @@ describe('createQueryClient', () => {
     })
 
     await mutation.execute(undefined).catch(() => undefined)
+
+    expect(reported).not.toHaveBeenCalled()
+  })
+
+  it('does not report a wallet sitting on another account or network, even wrapped by the flow', async () => {
+    const client = createQueryClient()
+    const failures = [new WrongAccountError('0xme', '0xother'), toSellItemError(new WrongChainError(137, 1))]
+
+    for (const failure of failures) {
+      const mutation = client.getMutationCache().build(client, { mutationFn: () => Promise.reject(failure) })
+      await mutation.execute(undefined).catch(() => undefined)
+    }
 
     expect(reported).not.toHaveBeenCalled()
   })

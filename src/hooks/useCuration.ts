@@ -21,7 +21,7 @@ import { captureError } from '~/lib/monitoring'
 import { postAssignee } from '~/hooks/useForumPost'
 import { useProfiles } from '~/hooks/useProfile'
 import { getMaticChainId } from '~/lib/publishCollection'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { isExpectedWalletError } from '~/lib/walletErrors'
 
 // Same refresh cadence as builder-server's own committee cache.
 const COMMITTEE_STALE_MS = 60 * 60_000
@@ -231,7 +231,7 @@ export function useDisableCollection(session: Session | null) {
     },
     onError: (error, { collection }) => {
       track('Reject collection error', { collectionId: collection.id, error: errorCode(error) })
-      if (!isWalletRejection(error)) {
+      if (!isExpectedWalletError(error)) {
         captureError(error, { flow: 'curation_disable', collectionId: collection.id })
       }
     }

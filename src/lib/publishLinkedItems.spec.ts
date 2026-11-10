@@ -31,6 +31,7 @@ import {
 } from './publishLinkedItems'
 import { type ThirdParty } from './thirdParty'
 import { getThirdPartyRegistry, type ThirdPartyPrice } from './thirdPartyRegistry'
+import { WrongAccountError } from './walletErrors'
 
 const CHAIN_ID = 80002
 const ADDRESS = '0x00000000000000000000000000000000000000aa'
@@ -1097,6 +1098,7 @@ describe('toLinkedPublishError', () => {
     })
     expect(toLinkedPublishError(PENDING_REVIEW, 'publish').reason).toBe('pending_review')
     expect(toLinkedPublishError({ code: 'ACTION_REJECTED' }, 'buy_slots').reason).toBe('rejected')
+    expect(toLinkedPublishError(new WrongAccountError('0xme', '0xother'), 'buy_slots').reason).toBe('wallet')
     expect(toLinkedPublishError(new Error('boom'), 'tos').reason).toBe('tos_failed')
     expect(toLinkedPublishError(new Error('boom'), 'push')).toMatchObject({
       step: 'push',

@@ -22,7 +22,10 @@ import { ProviderType } from '@dcl/schemas'
 import { config } from '~/config'
 import { type ContractData } from '~/lib/chain/contracts'
 import { sendMetaTransaction, type MetaTransactionWallet } from '~/lib/chain/metaTransaction'
+import { WrongAccountError, WrongChainError } from '~/lib/walletErrors'
 import { walletClientOf, type Session } from './auth'
+
+export { WrongAccountError, WrongChainError }
 
 export type { ContractData }
 
@@ -197,28 +200,6 @@ export function subscribeWalletChain(session: Session, onChange: () => void): ()
   return () => {
     wallet.removeListener?.('chainChanged', onChange)
     wallet.removeListener?.('accountsChanged', onChange)
-  }
-}
-
-/** The wallet is still on another chain after being asked to switch: nothing was sent. */
-export class WrongChainError extends Error {
-  constructor(
-    public expected: number,
-    public actual: number
-  ) {
-    super(`The wallet is on chain ${actual}, not ${expected}`)
-    this.name = 'WrongChainError'
-  }
-}
-
-/** The wallet's active account is not the session's: sending would act as somebody else. Nothing was sent. */
-export class WrongAccountError extends Error {
-  constructor(
-    public expected: string,
-    public actual: string
-  ) {
-    super(`The wallet's active account is ${actual}, not ${expected}`)
-    this.name = 'WrongAccountError'
   }
 }
 

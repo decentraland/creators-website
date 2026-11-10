@@ -6,6 +6,7 @@ import { TEST_SIGNER, signTypedDataWithTestKey, toTransaction } from '~/test/cha
 import { TradeConflictError, TradeNotFoundError, tradeSigner } from './trades'
 import { type Collection } from './collections'
 import { ItemType, type Item } from './items'
+import { WrongAccountError, WrongChainError } from './walletErrors'
 import {
   NO_EXPIRATION,
   SellItemError,
@@ -407,6 +408,11 @@ describe('sellItem', () => {
     expect(toSellItemError(new SellItemError('sold_out')).reason).toBe('sold_out')
     expect(toSellItemError(new Error('500')).reason).toBe('generic')
     expect(toSellItemError('ACTION_REJECTED')).toMatchObject({ reason: 'generic' })
+  })
+
+  it('tells a wallet on another account or network apart, so the creator is asked to switch it back', () => {
+    expect(toSellItemError(new WrongAccountError(ADDRESS, BENEFICIARY)).reason).toBe('wallet')
+    expect(toSellItemError(new WrongChainError(CHAIN_ID, 1)).reason).toBe('wallet')
   })
 })
 

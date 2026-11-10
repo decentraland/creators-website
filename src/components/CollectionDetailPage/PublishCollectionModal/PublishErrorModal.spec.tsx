@@ -22,6 +22,12 @@ describe('PublishErrorModal', () => {
     expect(screen.getByTestId('publish-error-retry')).toBeInTheDocument()
   })
 
+  it('asks to switch the wallet back to the signed-in account, and offers a retry', () => {
+    render(<PublishErrorModal reason="wallet" onCancel={vi.fn()} onRetry={vi.fn()} />, { wrapper })
+    expect(screen.getByTestId('publish-error-modal-description')).toHaveTextContent(/switch it back to the account/i)
+    expect(screen.getByTestId('publish-error-retry')).toBeInTheDocument()
+  })
+
   it('drops the retry action when retrying can never succeed', () => {
     render(<PublishErrorModal reason="locked" onCancel={vi.fn()} onRetry={vi.fn()} />, { wrapper })
     expect(screen.queryByTestId('publish-error-retry')).not.toBeInTheDocument()
