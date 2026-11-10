@@ -12,7 +12,7 @@ import { ValidationGate } from './ValidationGate'
 const rerun = vi.fn()
 vi.mock('~/hooks/useCollectionValidation', () => ({ useRerunItemValidation: () => rerun }))
 vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
-const itemSizes: ItemSizes = { sizes: new Map(), isMeasuring: false }
+const itemSizes: ItemSizes = { sizes: new Map(), unknown: new Set(), isMeasuring: false }
 vi.mock('~/hooks/useItemSize', () => ({ useCatalystItemSizes: () => itemSizes }))
 
 function makeItem(id: string): Item {

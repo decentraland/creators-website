@@ -1523,6 +1523,8 @@
     "item_count": "{count, plural, one {# ítem} other {# ítems}}",
     "size_kb": "{size}KB",
     "size_mb": "{size}MB",
+    "size_measuring": "Midiendo…",
+    "size_unknown": "Desconocido",
     "rescue": {
       "title": "Aprobar ítems",
       "body": "{count, plural, one {# ítem debe aprobarse} other {# ítems deben aprobarse}} en el contrato de la colección. Tendrás que confirmar esta acción en tu wallet.",

@@ -19,7 +19,9 @@ const profile = vi.hoisted(() => ({ data: undefined as { email?: string } | unde
 vi.mock('~/hooks/useProfile', () => ({ useProfile: () => profile }))
 vi.mock('~/hooks/useCollectionValidation', () => ({ useRerunItemValidation: () => rerun }))
 vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
-vi.mock('~/hooks/useItemSize', () => ({ useCatalystItemSizes: () => ({ sizes: new Map(), isMeasuring: false }) }))
+vi.mock('~/hooks/useItemSize', () => ({
+  useCatalystItemSizes: () => ({ sizes: new Map(), unknown: new Set(), isMeasuring: false })
+}))
 vi.mock('./ConfirmNameStep', () => ({
   ConfirmNameStep: (props: { initialEmail: string; onConfirm: (details: { name: string; email: string }) => void }) => (
     <div data-testid="confirm-name-step" data-email={props.initialEmail}>

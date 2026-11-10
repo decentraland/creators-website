@@ -11,7 +11,7 @@ import { PendingModal } from '~/components/PendingModal'
 import { StepIndicator } from '~/components/StepIndicator'
 import { SuccessModal } from '~/components/SuccessModal'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
-import { useItemSizes } from '~/hooks/useItemSizes'
+import { useCatalystItemSizes } from '~/hooks/useItemSize'
 import { useLinkedApprovalFlow } from '~/hooks/useLinkedReview'
 import { isSocialLogin, type Session } from '~/lib/auth'
 import { getContentsStorageUrl } from '~/lib/builder'
@@ -20,7 +20,7 @@ import { type Item } from '~/lib/items'
 import { decodeLinkedUrn, type ThirdParty } from '~/lib/thirdParty'
 import { type ReviewedContent } from '~/lib/approveLinkedCollection'
 import { ProgressModal } from '~/components/ProgressModal'
-import { formatSize } from './formatSize'
+import { formatItemBytes } from './formatSize'
 import * as S from './ApprovalFlowModal.styles'
 
 type Props = {
@@ -51,7 +51,8 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, revie
   )
   useBeforeUnloadGuard(view.kind === 'step' && (view.phase.kind !== 'idle' || flow.running))
   const pendingItems = plan?.pendingItems
-  const sizes = useItemSizes(pendingItems, view.kind === 'step' && view.step === 'deploy')
+  const sizeItems = useMemo(() => pendingItems ?? [], [pendingItems])
+  const sizes = useCatalystItemSizes(sizeItems, { enabled: view.kind === 'step' && view.step === 'deploy' })
 
   useEffect(() => {
     void start()
@@ -193,12 +194,11 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, revie
             </S.Header>
             <S.TableBody>
               {items.slice(0, SHOWN_ITEMS).map(item => {
-                const bytes = sizes.data?.get(item.id)
                 return (
                   <S.Row key={item.id} data-table="deploy" data-testid="approval-item-row">
                     <ItemName item={item} />
                     {step === 'deploy' ? (
-                      <span data-testid="approval-item-size">{bytes === undefined ? '—' : formatSize(t, bytes)}</span>
+                      <span data-testid="approval-item-size">{formatItemBytes(t, sizes, item.id)}</span>
                     ) : (
                       <span title={item.urn}>{decodeLinkedUrn(item.urn)?.itemSuffix ?? item.urn}</span>
                     )}

@@ -16,7 +16,6 @@ import {
   type MissingImage
 } from '~/lib/catalystEntity'
 import { isItemSynced } from '~/lib/itemSync'
-import { measureItemBytes } from '~/lib/itemSize'
 import { ItemType, getItemMetadata, type Item } from '~/lib/items'
 
 export { buildMissingImage, type ImageDeps, type MissingImage }
@@ -217,38 +216,4 @@ export async function approveOnChain(collection: Collection, deps: ApproveDeps):
   const txHash = await deps.sendTransaction(buildSetApprovedCall(deps.chainId, collection, true))
   if (!(await deps.waitForTransaction(txHash))) throw new ApprovalError('reverted', `Approval ${txHash} reverted`)
   return txHash
-}
-
-/** Cache key for measureItems: a new content hash re-measures the item. */
-export const itemSizesKey = (items: Item[]) => [
-  'approval-item-sizes',
-  items.map(item => `${item.id}:${item.currentContentHash ?? ''}`)
-]
-
-/**
- * Each item's size as the catalyst counts it (lib/itemSize), by item id. Files shared between items are fetched
- * once; unmeasurable ones count 0. `imageOf` renders the image.png the deploy adds for a standard item saved without
- * one (pass the deploy's own `buildMissingImage` deps; one that can't be rendered counts 0); linked items never get one.
- */
-export async function measureItems(
-  items: Item[],
-  sizeOf: (hash: string) => Promise<number>,
-  imageOf?: (item: Item) => Promise<MissingImage | null>
-): Promise<Map<string, number>> {
-  const sizes = new Map<string, Promise<number>>()
-  const measure = (hash: string) => {
-    if (!sizes.has(hash))
-      sizes.set(
-        hash,
-        sizeOf(hash).catch(() => 0)
-      )
-    return sizes.get(hash)!
-  }
-  const renderImage = imageOf && ((item: Item) => imageOf(item).catch(() => null))
-  const totals = await Promise.all(
-    items.map(
-      async item => [item.id, await measureItemBytes({ item }, { sizeOf: measure, imageOf: renderImage })] as const
-    )
-  )
-  return new Map(totals)
 }

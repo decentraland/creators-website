@@ -1523,6 +1523,8 @@
     "item_count": "{count, plural, one {# 个物品} other {# 个物品}}",
     "size_kb": "{size}KB",
     "size_mb": "{size}MB",
+    "size_measuring": "正在计算…",
+    "size_unknown": "未知",
     "rescue": {
       "title": "批准物品",
       "body": "{count, plural, one {# 个物品} other {# 个物品}}需要在系列合约上获得批准。您需要在钱包中确认此操作。",

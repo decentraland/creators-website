@@ -34,10 +34,16 @@ vi.mock('~/hooks/useApprovalFlow', () => ({
     reloadItems: state.reloadItems
   })
 }))
-vi.mock('~/lib/approveCollection', async importOriginal => ({
-  ...(await importOriginal<typeof import('~/lib/approveCollection')>()),
-  measureItems: vi.fn().mockResolvedValue(new Map([['i1', 819_100]]))
+const storedSizes = vi.hoisted(() => new Map<string, number>([['Qmmodel', 819_100]]))
+vi.mock('~/lib/builder', async importOriginal => ({
+  ...(await importOriginal<typeof import('~/lib/builder')>()),
+  fetchContentSize: vi.fn(async (hash: string) => {
+    const size = storedSizes.get(hash)
+    if (size === undefined) throw new Error('storage down')
+    return size
+  })
 }))
+vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
 vi.mock('~/components/CollectionMosaic', () => ({ CollectionMosaic: () => null }))
 vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
 const clipboard = vi.hoisted(() => ({ copyToClipboard: vi.fn() }))
@@ -105,12 +111,20 @@ describe('ApprovalFlowModal', () => {
   })
 
   it('hides the stepper when the run has a single step, and shows each upload’s size', async () => {
-    plan = { steps: ['deploy'], rescue: [], deploy: [item] }
+    plan = { steps: ['deploy'], rescue: [], deploy: [{ ...item, contents: { 'm.glb': 'Qmmodel' } }] }
     view = { kind: 'step', step: 'deploy', phase: { kind: 'idle' } }
     renderModal()
     expect(screen.queryByTestId('approval-steps')).not.toBeInTheDocument()
     expect(screen.getByRole('dialog')).toHaveAccessibleName('Upload files')
     expect(await screen.findByText('799.9KB')).toBeInTheDocument()
+  })
+
+  it('says a size is unknown when it could not be measured, never a made-up one', async () => {
+    plan = { steps: ['deploy'], rescue: [], deploy: [{ ...item, contents: { 'm.glb': 'Qmmissing' } }] }
+    view = { kind: 'step', step: 'deploy', phase: { kind: 'idle' } }
+    renderModal()
+    expect(screen.getByTestId('approval-item-size')).toHaveTextContent('Measuring…')
+    await waitFor(() => expect(screen.getByTestId('approval-item-size')).toHaveTextContent('Unknown'))
   })
 
   it('shows the upload progress with no way to close it, and guards the page while it runs', () => {

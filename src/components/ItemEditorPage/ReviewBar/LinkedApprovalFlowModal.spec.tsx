@@ -19,12 +19,14 @@ const pending = [
     id: 'i1',
     name: 'Gold Hat',
     urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats:gold',
+    data: { category: 'hat', representations: [] },
     contents: { 'a.glb': 'Qma' }
   },
   {
     id: 'i2',
     name: 'Silver Hat',
     urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats:silver',
+    data: { category: 'hat', representations: [] },
     contents: { 'b.glb': 'Qmb' }
   }
 ] as unknown as Item[]

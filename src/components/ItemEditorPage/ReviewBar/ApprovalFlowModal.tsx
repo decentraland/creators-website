@@ -19,23 +19,18 @@ import { SuccessModal } from '~/components/SuccessModal'
 import { Tooltip } from '~/components/Tooltip'
 import { ProgressModal } from '~/components/ProgressModal'
 import { PendingModal } from '~/components/PendingModal'
-import { useItemSizes } from '~/hooks/useItemSizes'
+import { useCatalystItemSizes } from '~/hooks/useItemSize'
 import { useApprovalFlow, type ApprovalMode, type ApprovalPlan, type ApprovalStep } from '~/hooks/useApprovalFlow'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
-import { catalystImageDeps } from '~/hooks/useItemSize'
 import { track } from '~/lib/analytics'
-import { buildMissingImage } from '~/lib/approveCollection'
 import { isSocialLogin, type Session } from '~/lib/auth'
 import { copyToClipboard } from '~/lib/clipboard'
 import { getContentsStorageUrl } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
 import { getItemBodyShapeType, type Item } from '~/lib/items'
-import { formatSize } from './formatSize'
+import { formatItemBytes } from './formatSize'
 import * as S from './ApprovalFlowModal.styles'
-
-/** The image.png the deploy renders for an item saved without one, so the sizes shown count it. */
-const imageOf = (item: Item) => buildMissingImage(item, catalystImageDeps)
 
 type Props = {
   session: Session
@@ -218,8 +213,7 @@ function ItemName({ item }: { item: Item }) {
 
 function StepTable({ step, plan, collection }: { step: ApprovalStep; plan: ApprovalPlan; collection: Collection }) {
   const { t } = useTranslation()
-  // The image.png the deploy renders for an item saved without one counts, rendered the deploy's way.
-  const sizes = useItemSizes(plan.deploy, step === 'deploy', imageOf)
+  const sizes = useCatalystItemSizes(plan.deploy, { enabled: step === 'deploy' })
   const column = (key: string, optional = false) => (
     <span data-optional={optional || undefined}>{t(`approval_flow.columns.${key}`)}</span>
   )
@@ -253,11 +247,10 @@ function StepTable({ step, plan, collection }: { step: ApprovalStep; plan: Appro
         </S.Header>
         <S.TableBody>
           {plan.deploy.map(item => {
-            const bytes = sizes.data?.get(item.id)
             return (
               <S.Row key={item.id} data-table={step} data-testid="approval-item-row">
                 <ItemName item={item} />
-                <span data-testid="approval-item-size">{bytes === undefined ? '—' : formatSize(t, bytes)}</span>
+                <span data-testid="approval-item-size">{formatItemBytes(t, sizes, item.id)}</span>
               </S.Row>
             )
           })}

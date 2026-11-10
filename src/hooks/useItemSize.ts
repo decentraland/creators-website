@@ -116,13 +116,18 @@ export const itemSizeKey = (item: Item) =>
   ] as const
 
 export type ItemSizes = {
-  /** By item id; an item missing here is still being measured or could not be. */
+  /** By item id; an item in neither this nor `unknown` is still being measured. */
   sizes: Map<string, ItemSize>
+  /** The ids of the items whose size could not be measured. */
+  unknown: Set<string>
   isMeasuring: boolean
 }
 
-/** The saved items' sizes as the catalyst counts them. A measurement that fails is reported and leaves the item out. */
-export function useCatalystItemSizes(items: Item[]): ItemSizes {
+/**
+ * The saved items' sizes as the catalyst counts them, measured once `enabled`. A measurement that fails is reported
+ * and leaves the item in `unknown`, never at a made-up size.
+ */
+export function useCatalystItemSizes(items: Item[], { enabled = true }: { enabled?: boolean } = {}): ItemSizes {
   const deps = useItemSizeDeps()
   const queries = useMemo(
     () =>
@@ -133,21 +138,26 @@ export function useCatalystItemSizes(items: Item[]): ItemSizes {
             captureError(error, { flow: 'item_size', itemId: item.id })
             throw error
           }),
+        enabled,
         staleTime: Infinity,
         retry: false
       })),
-    [items, deps]
+    [items, deps, enabled]
   )
   // Stable, so the combined result keeps its identity until a size actually changes.
   const combine = useCallback(
     (results: UseQueryResult<ItemSize>[]): ItemSizes => {
       const sizes = new Map<string, ItemSize>()
+      const unknown = new Set<string>()
       results.forEach((result, index) => {
-        if (result.data && items[index]) sizes.set(items[index].id, result.data)
+        const id = items[index]?.id
+        if (!id) return
+        if (result.data) sizes.set(id, result.data)
+        else if (result.isError) unknown.add(id)
       })
-      return { sizes, isMeasuring: results.some(result => result.isPending) }
+      return { sizes, unknown, isMeasuring: enabled && results.some(result => result.isPending) }
     },
-    [items]
+    [items, enabled]
   )
   return useQueries({ queries, combine })
 }

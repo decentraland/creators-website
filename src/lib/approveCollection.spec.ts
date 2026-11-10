@@ -10,7 +10,6 @@ import {
   findItemsToRescue,
   rescueItems,
   waitForIndexer,
-  measureItems,
   type DeployDeps
 } from './approveCollection'
 import { computeItemContentHash, getEntityContent } from './catalystEntity'
@@ -225,27 +224,5 @@ describe('waitForIndexer', () => {
     ).rejects.toMatchObject({
       reason: 'not_indexed'
     })
-  })
-})
-
-describe('measureItems', () => {
-  it('adds up each item’s files, measuring a shared file once and an unreadable one as 0', async () => {
-    const sizeOf = vi.fn(async (hash: string) => {
-      if (hash === 'bafimage') throw new Error('404')
-      return hash === 'bafthumb' ? 10 : 100
-    })
-    const sizes = await measureItems([item('1'), item('2')], sizeOf)
-    expect(sizes.get('1')).toBe(110)
-    expect(sizes.get('2')).toBe(110)
-    expect(sizeOf.mock.calls.filter(([hash]) => hash === 'bafthumb')).toHaveLength(1)
-  })
-
-  it('counts the image.png the deploy renders for an item saved without one, and 0 when it cannot be rendered', async () => {
-    const legacy = item('1', { contents: { 'thumbnail.png': 'bafthumb', 'model.glb': 'bafmodel1' } })
-    const sizeOf = vi.fn(async (hash: string) => (hash === 'bafthumb' ? 10 : 100))
-    const imageOf = vi.fn(async () => ({ hash: 'bafrendered', blob: new Blob([new Uint8Array(7)]) }))
-    expect((await measureItems([legacy], sizeOf, imageOf)).get('1')).toBe(117)
-    const broken = vi.fn(async () => Promise.reject(new Error('thumbnail gone')))
-    expect((await measureItems([legacy], sizeOf, broken)).get('1')).toBe(110)
   })
 })

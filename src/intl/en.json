@@ -1523,6 +1523,8 @@
     "item_count": "{count, plural, one {# item} other {# items}}",
     "size_kb": "{size}KB",
     "size_mb": "{size}MB",
+    "size_measuring": "Measuring…",
+    "size_unknown": "Unknown",
     "rescue": {
       "title": "Approve items",
       "body": "{count, plural, one {# item needs} other {# items need}} to be approved on the collection contract. You'll need to confirm this action in your wallet.",
