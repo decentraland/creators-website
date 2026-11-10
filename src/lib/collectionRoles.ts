@@ -51,18 +51,19 @@ export function getRoleAddresses(collection: Collection, kind: RoleKind, chainId
   return addresses
 }
 
-export type RoleAddressError = 'owner' | 'duplicate' | 'system'
+export type RoleAddressError = 'duplicate' | 'system'
 
-/** Why an address can't be added to the list, if it can't. */
+/**
+ * Why an address can't be added to the list, if it can't. The owner may list themselves, so the role survives a
+ * transfer of ownership.
+ */
 export function getRoleAddressError(
-  collection: Collection,
   kind: RoleKind,
   current: string[],
   address: string,
   chainId: number
 ): RoleAddressError | null {
   const target = address.toLowerCase()
-  if (isCollectionOwner(collection, target)) return 'owner'
   if (current.includes(target)) return 'duplicate'
   if (kind === 'senders' && getSystemMinters(chainId).has(target)) return 'system'
   return null

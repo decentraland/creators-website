@@ -382,6 +382,13 @@ describe('canManageCollectionItems', () => {
     expect(canManageCollectionItems(roleCollection, '0xminter')).toBe(false)
     expect(canManageCollectionItems(roleCollection, undefined)).toBe(false)
   })
+
+  it('keeps a former owner who listed themselves as a collaborator able to edit after a transfer', () => {
+    const transferred = { ...roleCollection, owner: '0xnewowner', managers: ['0xOwner'] }
+    expect(canManageCollectionItems(transferred, '0xowner')).toBe(true)
+    expect(getCollectionRole(transferred, '0xowner')).toBe(CollectionRole.COLLABORATOR)
+    expect(getCollectionRole({ ...roleCollection, managers: ['0xOwner'] }, '0xowner')).toBeNull()
+  })
 })
 
 describe('canSellCollectionItems', () => {

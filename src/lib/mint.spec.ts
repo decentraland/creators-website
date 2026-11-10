@@ -75,6 +75,12 @@ describe('canSendCollectionItems', () => {
     expect(canSendCollectionItems(collection, undefined)).toBe(false)
     expect(canSendCollectionItems({ ...collection, isApproved: false, reviewedAt: 1, createdAt: 1 }, OWNER)).toBe(false)
   })
+
+  it('keeps a former owner who listed themselves as a sender able to send after a transfer', () => {
+    const transferred = { ...collection, owner: MANAGER, minters: [OWNER] }
+    expect(canSendCollectionItems(transferred, OWNER)).toBe(true)
+    expect(canSendCollectionItems({ ...transferred, minters: [] }, OWNER)).toBe(false)
+  })
 })
 
 describe('isSendableItem / getStock', () => {

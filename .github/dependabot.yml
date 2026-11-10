@@ -39,8 +39,9 @@ updates:
       - dependency-name: '@dcl/schemas'
         update-types: ['version-update:semver-major']
       # Deliberate migrations with code changes, not drive-by bumps.
-      - dependency-name: 'ethers'
-        update-types: ['version-update:semver-major']
+      # Held on 2.55: decentraland-connect's wallet stack imports a module later minors removed.
+      - dependency-name: 'viem'
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
       - dependency-name: 'react-router*'
         update-types: ['version-update:semver-major']
       - dependency-name: 'react-resizable-panels'
