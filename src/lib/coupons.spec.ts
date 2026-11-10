@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ContractName, getContract, getCouponManager } from 'decentraland-transactions'
+import { ContractName, getContract, getCouponManager } from '~/lib/chain/contracts'
 
 vi.mock('~/lib/auth', async () => {
   const actual = await vi.importActual<typeof import('~/lib/auth')>('~/lib/auth')

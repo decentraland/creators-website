@@ -2,8 +2,8 @@
 // CreditsManager external call, payment-method availability, and the publish sequence itself,
 // ported from the legacy builder's publish saga (the forum post lives in hooks/useForumPost).
 // Server and chain access is injected so the sequence is unit-testable end to end.
-import { ContractName, getContract } from 'decentraland-transactions'
-import { encodeAbiParameters, getAbiItem, toFunctionSelector, toHex, type Abi, type AbiFunction } from 'viem'
+import { ContractName, getContract } from '~/lib/chain/contracts'
+import { encodeAbiParameters, getAbiItem, toFunctionSelector, toHex, type AbiFunction } from 'viem'
 import { config } from '~/config'
 import { toBytes32 } from '~/lib/bytes32'
 import { type ContractCall } from '~/lib/auth'
@@ -135,7 +135,7 @@ export function buildCollectionManagerExternalCall(
   salt: string = randomSalt()
 ): ExternalCall {
   const manager = getContract(ContractName.CollectionManager, chainId)
-  const createCollection = getAbiItem({ abi: manager.abi as Abi, name: 'createCollection' }) as AbiFunction
+  const createCollection = getAbiItem({ abi: manager.abi, name: 'createCollection' }) as AbiFunction
   return {
     target: manager.address,
     selector: toFunctionSelector(createCollection),

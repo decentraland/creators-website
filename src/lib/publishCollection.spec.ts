@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
 import { decodeAbiParameters, maxUint256, parseAbiParameters, toFunctionSelector } from 'viem'
 import { decodeCall, toTransaction } from '~/test/chain'
 import { BuilderServerError } from './builder'

@@ -2,7 +2,7 @@
 // charges whatever RaritiesWithOracle says at execution. Before any wallet prompt the quote is checked
 // against that contract, so a wrong or poisoned server figure can neither over-approve MANA nor
 // over-debit credits.
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
 import { readContract } from '~/lib/auth'
 import { type Item } from './items'
 import { type PublicationFee } from './publishFee'

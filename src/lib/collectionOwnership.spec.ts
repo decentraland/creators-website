@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { toTransaction } from '~/test/chain'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
 import { BuilderServerError } from './builder'
 import { type Collection } from './collections'
 import {

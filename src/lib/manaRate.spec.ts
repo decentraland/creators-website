@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
 import { fetchManaUsdRate, type ReadContract } from './manaRate'
 
 const CHAIN_ID = 80002
