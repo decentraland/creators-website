@@ -1,4 +1,4 @@
-import { ethers } from 'ethers'
+import { zeroHash } from 'viem'
 import { afterEach, describe, expect, it } from 'vitest'
 import { THIRD_PARTY_ID, linkedCollection, linkedItem, thirdParty } from './fixtures'
 import { launchApp, type App } from './helpers/app'
@@ -94,10 +94,10 @@ describe('linked collection approval', () => {
     await waitForTestId(page, 'approval-deploy', 60_000)
     const rootTx = app.transactions.find(tx => tx.fn === 'reviewThirdPartyWithRoot')
     expect(rootTx?.args?.thirdPartyId).toBe(THIRD_PARTY_ID)
-    expect(rootTx?.args?.root).not.toBe(ethers.constants.HashZero)
+    expect(rootTx?.args?.root).not.toBe(zeroHash)
     // The root transaction spends the creator's cheque: its two slots, under the salt they signed.
-    const slots = rootTx?.args?.slots as Array<{ qty: ethers.BigNumber; salt: string }>
-    expect(slots.map(slot => [slot.qty.toNumber(), slot.salt])).toEqual([[CHEQUE.qty, CHEQUE.salt]])
+    const slots = rootTx?.args?.slots as Array<{ qty: bigint; salt: string }>
+    expect(slots.map(slot => [Number(slot.qty), slot.salt])).toEqual([[CHEQUE.qty, CHEQUE.salt]])
 
     await clickTestId(page, 'approval-deploy')
     await waitForTestId(page, 'success-modal-modal', 60_000)

@@ -220,6 +220,13 @@ export default tseslint.config(
     files: DYNAMIC_ALL_ALLOWED,
     rules: { 'no-restricted-syntax': ['error', DYNAMIC_ETHERS] }
   },
+  {
+    files: ['e2e/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [ETHERS] }],
+      'no-restricted-syntax': ['error', DYNAMIC_ETHERS]
+    }
+  },
 
   // Mocks and fixtures legitimately traffic in `any` and unbound methods, so the
   // no-unsafe-* family is high-noise here — real source stays strict.

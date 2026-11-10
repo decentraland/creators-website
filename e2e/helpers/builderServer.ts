@@ -1,4 +1,4 @@
-import { ethers } from 'ethers'
+import { keccak256, toHex } from 'viem'
 import {
   RARITIES,
   collection,
@@ -118,7 +118,7 @@ const LOCK_MS = 24 * 60 * 60 * 1000
 const isLocked = (row: RemoteCollectionRow | undefined) =>
   !!row?.lock && !row.is_published && Date.parse(row.lock) + LOCK_MS > Date.now()
 const now = () => new Date().toISOString()
-const hashOf = (text: string) => ethers.utils.keccak256(ethers.utils.toUtf8Bytes(text))
+const hashOf = (text: string) => keccak256(toHex(text))
 
 /**
  * An in-memory builder-server: reads answer from the store and writes mutate it, so a reload shows what was
@@ -267,7 +267,7 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
           target.reviewed_at = now()
         }
         if (target && inner.fn === 'rescueItems' && inner.args) {
-          const ids = (inner.args.itemIds as ethers.BigNumber[]).map(String)
+          const ids = (inner.args.itemIds as bigint[]).map(String)
           const hashes = inner.args.contentHashes as string[]
           for (const item of itemsOf(target.id)) {
             const index = ids.indexOf(String(item.blockchain_item_id))
