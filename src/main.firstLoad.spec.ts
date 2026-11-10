@@ -15,8 +15,9 @@ const FORBIDDEN_PACKAGES = [/^viem(\/|$)/, /^@dcl\/crypto(\/|$)/, /^decentraland
 const FORBIDDEN_FILES = [/^src\/lib\/chain\//]
 // Declared dependencies the first load never loads. Imported for types only (checked below):
 const TYPE_ONLY_DEPENDENCIES: Record<string, string[]> = { '@dcl/single-sign-on-client': ['@dcl/crypto'] }
-// Tree-shaken (checked by hand in the build): only @dcl/hooks' notifications client imports it, and no
-// decentraland-ui2 component on the first load uses that client.
+// Tree-shaken, which nothing here can check: only @dcl/hooks' notifications client imports it, and no
+// decentraland-ui2 component on the first load uses that client. Using a new ui2 component on the overview or in
+// the shell means checking the built first-load chunks for @dcl/crypto again.
 const TREE_SHAKEN_DEPENDENCIES: Record<string, string[]> = { '@dcl/hooks': ['decentraland-crypto-fetch'] }
 
 const packageName = (specifier: string) =>
