@@ -36,6 +36,8 @@ async function publishThroughWizard({ page }: App, method: 'mana' | 'credits' = 
 
   await waitForTestId(page, 'publish-items-step')
   await check(page, 'publish-items-accept')
+  // Continue stays disabled until every item's size is measured.
+  await waitForEnabled(page, 'publish-items-confirm')
   await clickTestId(page, 'publish-items-confirm')
 
   await waitForTestId(page, 'publish-payment-step')
@@ -72,6 +74,7 @@ describe('publish a collection', () => {
     await waitForTestId(page, 'publish-items-step')
     expect(await page.$$eval(byTestId('publish-item-row'), rows => rows.length)).toBe(2)
     await check(page, 'publish-items-accept')
+    await waitForEnabled(page, 'publish-items-confirm')
     await clickTestId(page, 'publish-items-confirm')
 
     await waitForTestId(page, 'publish-payment-step')
