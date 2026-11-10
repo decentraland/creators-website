@@ -54,7 +54,10 @@ const MUI = {
     'The monorepo has no MUI; only @mui/icons-material is allowed. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 
-const ETHERS = { regex: '^ethers(/|$)', message: 'Chain code uses viem; ethers is not a dependency.' }
+const ETHERS = {
+  regex: '^(ethers(/|$)|@ethersproject/)',
+  message: 'Chain code uses viem; ethers is only installed as a dependency of other packages.'
+}
 
 // no-restricted-imports does not see import(), so lazy-loaded usage needs its own rule.
 const DYNAMIC_EMOTION_MUI = {
@@ -66,7 +69,7 @@ const DYNAMIC_UI2 = {
   message: UI2_MESSAGE
 }
 const DYNAMIC_ETHERS = {
-  selector: 'ImportExpression[source.value=/^ethers(\\/|$)/]',
+  selector: 'ImportExpression[source.value=/^(ethers(\\/|$)|@ethersproject\\/)/]',
   message: ETHERS.message
 }
 const DYNAMIC_UI2_ALLOWED = ['src/components/TopNav/TopNav.tsx']

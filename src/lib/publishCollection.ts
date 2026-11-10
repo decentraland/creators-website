@@ -3,17 +3,9 @@
 // ported from the legacy builder's publish saga (the forum post lives in hooks/useForumPost).
 // Server and chain access is injected so the sequence is unit-testable end to end.
 import { ContractName, getContract } from 'decentraland-transactions'
-import {
-  encodeAbiParameters,
-  getAbiItem,
-  pad,
-  toFunctionSelector,
-  toHex,
-  type Abi,
-  type AbiFunction,
-  type Hex
-} from 'viem'
+import { encodeAbiParameters, getAbiItem, toFunctionSelector, toHex, type Abi, type AbiFunction } from 'viem'
 import { config } from '~/config'
+import { toBytes32 } from '~/lib/bytes32'
 import { type ContractCall } from '~/lib/auth'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS, isRefusedRequest } from '~/lib/builder'
 import { isCollectionLocked, type Collection } from '~/lib/collections'
@@ -165,7 +157,7 @@ export function buildUseCreditsCall(
     method: 'useCredits',
     args: [
       {
-        credits: [{ value: credit.amount, expiresAt: credit.expiresAt, salt: pad(credit.id as Hex, { size: 32 }) }],
+        credits: [{ value: credit.amount, expiresAt: credit.expiresAt, salt: toBytes32(credit.id) }],
         creditsSignatures: [credit.signature],
         externalCall,
         customExternalCallSignature: externalCallSignature,
