@@ -48,13 +48,13 @@ describe('role lists', () => {
     expect(isCollectionOwner(collection, undefined)).toBe(false)
   })
 
-  it('refuses the owner, an address already listed and the sale contracts', () => {
+  it('refuses an address already listed and the sale contracts, but lets the owner list themselves', () => {
     const current = [MINTER]
-    expect(getRoleAddressError(collection, 'senders', current, OWNER, CHAIN_ID)).toBe('owner')
-    expect(getRoleAddressError(collection, 'senders', current, MINTER.toUpperCase(), CHAIN_ID)).toBe('duplicate')
-    expect(getRoleAddressError(collection, 'senders', current, MARKETPLACE, CHAIN_ID)).toBe('system')
-    expect(getRoleAddressError(collection, 'collaborators', current, MARKETPLACE, CHAIN_ID)).toBeNull()
-    expect(getRoleAddressError(collection, 'senders', current, OTHER, CHAIN_ID)).toBeNull()
+    expect(getRoleAddressError('senders', current, MINTER.toUpperCase(), CHAIN_ID)).toBe('duplicate')
+    expect(getRoleAddressError('senders', current, MARKETPLACE, CHAIN_ID)).toBe('system')
+    expect(getRoleAddressError('collaborators', current, MARKETPLACE, CHAIN_ID)).toBeNull()
+    expect(getRoleAddressError('senders', current, OTHER, CHAIN_ID)).toBeNull()
+    expect(getRoleAddressError('senders', current, OWNER, CHAIN_ID)).toBeNull()
   })
 })
 

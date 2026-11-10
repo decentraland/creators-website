@@ -124,12 +124,16 @@ function makeDeps(overrides: Partial<PublishDeps> = {}): PublishDeps & { calls: 
 }
 
 describe('getPublishBlocker', () => {
-  it('only lets an unlocked draft with 1..50 items publish', () => {
+  it('only lets a draft with 1..50 items publish', () => {
     expect(getPublishBlocker(collection, 3, [])).toBeNull()
     expect(getPublishBlocker(collection, 0, [])).toBe('no_items')
     expect(getPublishBlocker(collection, MAX_PUBLISH_ITEMS + 1, [])).toBe('too_many_items')
     expect(getPublishBlocker({ ...collection, isPublished: true }, 3, [])).toBe('not_draft')
-    expect(getPublishBlocker({ ...collection, lock: Date.now() }, 3, [])).toBe('not_draft')
+  })
+
+  it('lets a locked draft publish again, since its last transaction may have reverted', () => {
+    expect(getPublishBlocker({ ...collection, lock: Date.now() }, 3, [])).toBeNull()
+    expect(getPublishBlocker({ ...collection, lock: Date.now(), isPublished: true }, 3, [])).toBe('not_draft')
   })
 
   it('blocks publishing while a smart wearable has no preview video', () => {
@@ -644,6 +648,37 @@ describe('consolidatePublishedCollection', () => {
       0
     )
     expect(publish).toHaveBeenCalledTimes(2)
+  })
+
+  it('syncs a retry that reverted because an earlier attempt already deployed the collection', async () => {
+    const onSynced = vi.fn()
+    await consolidatePublishedCollection(
+      'col-1',
+      '0xretry',
+      {
+        waitForTransaction: async () => false,
+        isCollectionDeployed: async () => true,
+        publishCollectionItems: vi.fn().mockResolvedValue({}),
+        onSynced
+      },
+      0,
+      0
+    )
+    expect(onSynced).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports a revert when the collection is not on chain or that cannot be read', async () => {
+    for (const isCollectionDeployed of [async () => false, async () => Promise.reject(new Error('rpc down'))]) {
+      await expect(
+        consolidatePublishedCollection(
+          'col-1',
+          '0xtx',
+          { waitForTransaction: async () => false, isCollectionDeployed, publishCollectionItems: vi.fn() },
+          0,
+          0
+        )
+      ).rejects.toBeInstanceOf(PublishTransactionRevertedError)
+    }
   })
 
   it('gives up on a reverted transaction or a non-401 failure', async () => {

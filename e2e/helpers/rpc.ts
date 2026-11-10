@@ -19,15 +19,15 @@ export const CONTRACT_FUNCTIONS = new ethers.utils.Interface([
   'function editItemsData(uint256[] itemIds, uint256[] prices, address[] beneficiaries, string[] metadata)',
   'function manageCollection(address manager, address forwarder, address collection, bytes[] data)',
   'function setApproved(bool value)',
-  'function rescueItems(uint256[] itemIds, string[] contentHashes, string[] metadata)'
+  'function rescueItems(uint256[] itemIds, string[] contentHashes, string[] metadata)',
+  'function useCredits(((uint256 value, uint256 expiresAt, bytes32 salt)[] credits, bytes[] creditsSignatures, (address target, bytes4 selector, bytes data, uint256 expiresAt, bytes32 salt) externalCall, bytes customExternalCallSignature, uint256 maxUncreditedValue, uint256 maxCreditedValue) args)',
+  'function reviewThirdPartyWithRoot(string thirdPartyId, bytes32 root, (uint256 qty, bytes32 salt, bytes32 sigR, bytes32 sigS, uint8 sigV)[] slots)'
 ])
 
 /** Selectors the app sends whose arguments no spec reads yet: named only. */
 const NAMED_SELECTORS: Record<string, string> = {
-  '0x1863572d': 'useCredits',
   '0x6f773280': 'cancelSignature',
   '0xd41feedf': 'cancelSignature',
-  '0x3cb681b0': 'reviewThirdPartyWithRoot',
   '0xdb9aa95c': 'addThirdParties',
   '0xd8f0f3c1': 'buyItemSlots'
 }
@@ -41,13 +41,23 @@ export type SentTransaction = {
   fn?: string
   /** Decoded arguments, when the function is in CONTRACT_FUNCTIONS. */
   args?: ethers.utils.Result
+  /** Sent through the transactions relayer as a meta-transaction rather than from the wallet. */
+  relayed?: boolean
 }
+
+// The two executeMetaTransaction layouts decentraland-transactions encodes: r/s/v apart, or one signature blob.
+const META_TRANSACTION = new ethers.utils.Interface([
+  'function executeMetaTransaction(address userAddress, bytes functionSignature, bytes32 sigR, bytes32 sigS, uint8 sigV)',
+  'function executeMetaTransaction(address userAddress, bytes functionData, bytes signature)'
+])
 
 export type ChainOptions = {
   /** MANA balance (wei) of every account. Default 0. */
   manaBalanceWei?: string
   /** MANA allowance (wei) every spender has. Default unlimited, so no approve is needed. */
   manaAllowanceWei?: string
+  /** Functions whose first transaction reverts (receipt status 0, never applied); later ones succeed. */
+  revertOnce?: string[]
 }
 
 export const MANA_USD_AGGREGATOR = '0x' + 'ae'.repeat(20)
@@ -69,6 +79,8 @@ export function decodeTransaction(tx: Omit<SentTransaction, 'fn' | 'args'>): Sen
 export function createChain(opts: ChainOptions = {}, signer = new ethers.Wallet(TEST_PRIVATE_KEY)) {
   const transactions: SentTransaction[] = []
   const listeners: Array<(tx: SentTransaction) => void> = []
+  const reverted = new Set<string>()
+  const pendingReverts = new Set(opts.revertOnce ?? [])
 
   const reads: Record<string, (data: string, to: string) => string> = {
     [selector('balanceOf(address)')]: () => abi.encode(['uint256'], [opts.manaBalanceWei ?? 0]),
@@ -87,7 +99,19 @@ export function createChain(opts: ChainOptions = {}, signer = new ethers.Wallet(
       return abi.encode(['tuple(string,uint256,uint256)'], [[rarity.name, rarity.maxSupply, rarity.prices.MANA]])
     },
     [selector('contractSignatureIndex()')]: () => abi.encode(['uint256'], [0]),
-    [selector('signerSignatureIndex(address)')]: () => abi.encode(['uint256'], [0])
+    // ThirdPartyRegistry: an approved third party already on chain, and its slot price in USD.
+    [selector('thirdParties(string)')]: () =>
+      abi.encode(
+        ['bool', 'bytes32', 'uint256', 'uint256', 'uint256', 'string', 'string'],
+        [true, ethers.constants.HashZero, 100, 0, 1, '', '']
+      ),
+    [selector('itemSlotPrice()')]: () => abi.encode(['uint256'], [ethers.utils.parseEther('100')]),
+    [selector('programmaticBasePurchasedSlots()')]: () => abi.encode(['uint256'], [0]),
+    // ChainlinkOracle: USD per MANA at 18 decimals.
+    [selector('getRate()')]: () => abi.encode(['uint256'], [ethers.utils.parseEther('0.27')]),
+    [selector('signerSignatureIndex(address)')]: () => abi.encode(['uint256'], [0]),
+    // Every contract's meta-transaction nonce for the signer.
+    [selector('getNonce(address)')]: () => abi.encode(['uint256'], [0])
   }
 
   const transactionResult = (hash: string) => {
@@ -116,7 +140,7 @@ export function createChain(opts: ChainOptions = {}, signer = new ethers.Wallet(
   const receipt = (hash: string) => {
     const tx = transactions.find(t => t.hash === hash)
     return {
-      status: '0x1',
+      status: reverted.has(hash) ? '0x0' : '0x1',
       transactionHash: hash,
       transactionIndex: '0x0',
       blockNumber: '0x1',
@@ -181,11 +205,7 @@ export function createChain(opts: ChainOptions = {}, signer = new ethers.Wallet(
         return [signer.address.toLowerCase()]
       case 'eth_sendTransaction': {
         const { from = signer.address, to = '', data = '0x' } = (params[0] ?? {}) as Partial<SentTransaction>
-        const hash = ethers.utils.id(`e2e-tx-${transactions.length}-${data}`)
-        const tx = decodeTransaction({ hash, from: from.toLowerCase(), to: to.toLowerCase(), data })
-        transactions.push(tx)
-        for (const listener of listeners) listener(tx)
-        return hash
+        return record({ from, to, data })
       }
       case 'personal_sign': {
         const message = params[0] as string
@@ -212,9 +232,31 @@ export function createChain(opts: ChainOptions = {}, signer = new ethers.Wallet(
     }
   }
 
+  function record({ from, to, data, relayed }: Pick<SentTransaction, 'from' | 'to' | 'data' | 'relayed'>): string {
+    const hash = ethers.utils.id(`e2e-tx-${transactions.length}-${data}`)
+    const tx = { ...decodeTransaction({ hash, from: from.toLowerCase(), to: to.toLowerCase(), data }), relayed }
+    transactions.push(tx)
+    if (tx.fn && pendingReverts.delete(tx.fn)) reverted.add(hash)
+    else for (const listener of listeners) listener(tx)
+    return hash
+  }
+
+  /**
+   * The transactions relayer: unwraps the meta-transaction and runs its inner call as the signer. It doesn't verify
+   * the signature (signer, domain or nonce), so a relayed spec covers the routing, not the signing.
+   */
+  function relay(body: string): { ok: true; txHash: string } {
+    const { transactionData } = JSON.parse(body) as { transactionData: { from: string; params: [string, string] } }
+    const [contract, metaData] = transactionData.params
+    const parsed = META_TRANSACTION.parseTransaction({ data: metaData })
+    const inner = String(parsed.args[1])
+    return { ok: true, txHash: record({ from: String(parsed.args[0]), to: contract, data: inner, relayed: true }) }
+  }
+
   return {
     handleRpc,
     walletRequest,
+    relay,
     transactions,
     onTransaction: (listener: (tx: SentTransaction) => void) => listeners.push(listener)
   }

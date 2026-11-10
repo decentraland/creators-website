@@ -304,8 +304,7 @@ export function isSmartWearable(item: Item): boolean {
 }
 
 /**
- * A multi-armature "social" emote (two avatars and/or props). The Unity renderer does not play these,
- * so the preview falls back to Babylon for them, as the legacy builder does.
+ * A multi-armature "social" emote (two avatars and/or props). Replacing such an emote's file is blocked.
  */
 export function isSocialEmote(item: Item): boolean {
   return item.type === ItemType.EMOTE && (!!item.metrics?.additionalArmatures || item.data.startAnimation !== undefined)

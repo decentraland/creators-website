@@ -1,7 +1,7 @@
 import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import reactHooks from 'eslint-plugin-react-hooks'
-import importX from 'eslint-plugin-import-x'
+import importX, { createNodeResolver } from 'eslint-plugin-import-x'
 import prettier from 'eslint-config-prettier'
 import globals from 'globals'
 
@@ -124,6 +124,23 @@ export default tseslint.config(
         {
           selector: 'function',
           format: ['PascalCase', 'camelCase']
+        }
+      ]
+    }
+  },
+
+  // The e2e harness (fake wallet key, fake back ends) is test-only: nothing under src may pull it into the bundle.
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    // The rule only sees imports it can resolve, and the default resolver skips .ts files.
+    settings: { 'import-x/resolver-next': [createNodeResolver({ extensions: ['.ts', '.tsx', '.js'] })] },
+    rules: {
+      'import/no-restricted-paths': [
+        'error',
+        {
+          zones: [
+            { target: './src', from: './e2e', message: 'The e2e harness is test-only; never import it from src.' }
+          ]
         }
       ]
     }

@@ -9,13 +9,35 @@ import {
 } from '../fixtures'
 import { decodeTransaction, type SentTransaction } from './rpc'
 
+export type RemoteItemCurationRow = {
+  id: string
+  item_id: string
+  status: 'pending' | 'approved' | 'rejected'
+  content_hash: string | null
+  is_mapping_complete: boolean
+  created_at: string
+  updated_at: string
+}
+
 export type BuilderSeed = {
   collections?: RemoteCollectionRow[]
   items?: RemoteItemRow[]
   curations?: RemoteCurationRow[]
+  thirdParties?: RemoteThirdPartyRow[]
+  /** Item slots each third party has left, by id. */
+  slots?: Record<string, number>
+  itemCurations?: RemoteItemCurationRow[]
+  /** What GET /collections/:id/approvalData answers, by collection id (linked collections). */
+  approvalData?: Record<string, LinkedApprovalDataRow>
   /** Addresses seated on the curation committee. */
   committee?: string[]
-  thirdParties?: RemoteThirdPartyRow[]
+}
+
+export type LinkedApprovalDataRow = {
+  cheque: { signature: string; qty: number; salt: string }
+  root: string | null
+  content_hashes: Record<string, string>
+  chequeWasConsumed: boolean
 }
 
 export type BuilderResponse = { status: number; body: unknown }
@@ -90,6 +112,11 @@ export type RemoteCurationRow = {
 }
 
 const conflict = (error: string, data?: unknown): BuilderResponse => ({ status: 409, body: { ok: false, error, data } })
+const locked = (): BuilderResponse => ({ status: 423, body: { ok: false, error: 'The collection is locked' } })
+const LOCK_MS = 24 * 60 * 60 * 1000
+// builder-server refuses writes to an unpublished collection for a day after its publish transaction was sent.
+const isLocked = (row: RemoteCollectionRow | undefined) =>
+  !!row?.lock && !row.is_published && Date.parse(row.lock) + LOCK_MS > Date.now()
 const now = () => new Date().toISOString()
 const hashOf = (text: string) => ethers.utils.keccak256(ethers.utils.toUtf8Bytes(text))
 
@@ -102,7 +129,10 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
   const items = new Map((seed.items ?? []).map(row => [row.id, structuredClone(row)]))
   const curations = new Map((seed.curations ?? []).map(row => [row.collection_id, structuredClone(row)]))
   const committee = seed.committee ?? []
-  const thirdParties = new Map((seed.thirdParties ?? []).map(row => [row.id, row]))
+  const thirdParties = new Map((seed.thirdParties ?? []).map(row => [row.id, structuredClone(row)]))
+  const slots = { ...seed.slots }
+  const itemCurations = new Map((seed.itemCurations ?? []).map(row => [row.item_id, structuredClone(row)]))
+  const approvalData = new Map(Object.entries(structuredClone(seed.approvalData ?? {})))
 
   const itemsOf = (collectionId: string) => [...items.values()].filter(item => item.collection_id === collectionId)
   const withCount = (row: RemoteCollectionRow): RemoteCollectionRow => ({
@@ -136,9 +166,60 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
     return ok({ ...paginate(rows, query), counts })
   }
 
+  // builder-server's curation filters (Collection.model getCurationStatusStatement), standard collections only.
+  function curationStatusMatches(row: RemoteCollectionRow, status: string): boolean {
+    const curation = curations.get(row.id)
+    const onChain = !!row.contract_address && row.is_published
+    const reviewed = row.reviewed_at !== null && row.reviewed_at !== row.created_at
+    switch (status) {
+      case 'pending':
+        return curation ? curation.status === 'pending' && !row.is_approved : !row.is_approved
+      case 'approved':
+        return curation ? curation.status === 'approved' && row.is_approved : row.is_approved
+      case 'rejected':
+        return curation?.status === 'rejected' && onChain
+      case 'to_review':
+        return (
+          !curation?.assignee &&
+          onChain &&
+          (curation?.status === 'pending' || (!curation && !row.is_approved && !reviewed))
+        )
+      case 'under_review':
+        return !!curation?.assignee && curation.status === 'pending'
+      case 'disabled':
+        return !row.is_approved && (curation?.status === 'approved' || (!curation && reviewed))
+      default:
+        return false
+    }
+  }
+
+  function listCurationCollections(query: URLSearchParams): BuilderResponse {
+    const statuses = query.getAll('status')
+    const assignees = query.getAll('assignee').map(a => a.toLowerCase())
+    const reviewType = query.get('review_type')
+    const q = query.get('q')?.toLowerCase()
+    const rows = [...collections.values()]
+      .filter(row => row.is_published && !isLinked(row))
+      .filter(row => !q || row.name.toLowerCase().includes(q))
+      .filter(row => statuses.length === 0 || statuses.some(status => curationStatusMatches(row, status)))
+      .filter(row => {
+        if (assignees.length === 0) return true
+        const assignee = curations.get(row.id)?.assignee?.toLowerCase() ?? null
+        return assignees.some(a => (a === 'unassigned' ? assignee === null : a === assignee))
+      })
+      .filter(row => {
+        if (!reviewType) return true
+        const approvedBefore = row.is_approved || (row.reviewed_at !== null && row.reviewed_at !== row.created_at)
+        return reviewType === 'updates' ? approvedBefore : !approvedBefore
+      })
+      .map(withCount)
+    return ok(paginate(rows, query))
+  }
+
   function saveCollection(id: string, body: unknown): BuilderResponse {
     const { collection: sent = {}, data } = (body ?? {}) as { collection?: Partial<RemoteCollectionRow>; data?: string }
     const row = collections.get(id)
+    if (isLocked(row)) return locked()
     const name = sent.name ?? row?.name
     const taken = [...collections.values()].some(
       other => other.id !== id && other.name.toLowerCase() === name?.toLowerCase()
@@ -173,6 +254,10 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
       )
       row[key] = [...next]
     }
+    if (tx.fn === 'reviewThirdPartyWithRoot' && args) {
+      const thirdParty = thirdParties.get(String(args.thirdPartyId))
+      if (thirdParty) thirdParty.root = String(args.root)
+    }
     if (tx.fn === 'manageCollection' && args) {
       const target = byContract(String(args.collection))
       for (const call of args.data as string[]) {
@@ -205,17 +290,54 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
     if (!row) return notFound('collection')
     if (method === 'GET' && !sub) return ok(withCount(row))
     if (method === 'DELETE' && !sub) {
+      if (isLocked(row)) return locked()
       collections.delete(id)
       return ok(true)
     }
     if (method === 'GET' && sub === 'items') {
+      const status = query.get('status')
+      const synced = query.get('synced')
+      const mappingStatus = query.get('mappingStatus')
       const rows = itemsOf(id)
+        .filter(item => !status || itemCurations.get(item.id)?.status === status)
+        .filter(
+          item =>
+            synced === null ||
+            (synced === 'true') ===
+              (!!item.catalyst_content_hash && item.catalyst_content_hash === item.local_content_hash)
+        )
+        .filter(item => mappingStatus !== 'missing_mapping' || !item.mappings)
+        // No fixture has a mapping waiting for migration.
+        .filter(() => mappingStatus !== 'unpublished_mapping')
       return ok(query.has('page') ? paginate(rows, query) : rows)
     }
     if (method === 'POST' && sub === 'tos') return { status: 200, body: { ok: true } }
     if (method === 'POST' && sub === 'lock') {
       row.lock = now()
       return ok(row.lock)
+    }
+    if (method === 'POST' && sub === 'publish' && isLinked(row)) {
+      const { itemIds = [] } = (body ?? {}) as { itemIds?: string[] }
+      const thirdPartyId = row.urn.split(':').slice(0, 5).join(':')
+      if ((slots[thirdPartyId] ?? 0) < itemIds.length) return conflict('Not enough slots')
+      slots[thirdPartyId] = (slots[thirdPartyId] ?? 0) - itemIds.length
+      row.is_published = true
+      const published = itemIds.map(itemId => {
+        const item = items.get(itemId)!
+        item.is_published = true
+        const curation: RemoteItemCurationRow = {
+          id: `item-curation-${itemId}`,
+          item_id: itemId,
+          status: 'pending',
+          content_hash: item.local_content_hash ?? null,
+          is_mapping_complete: true,
+          created_at: now(),
+          updated_at: now()
+        }
+        itemCurations.set(itemId, curation)
+        return curation
+      })
+      return ok({ collection: withCount(row), items: itemsOf(id), itemCurations: published })
     }
     if (method === 'POST' && sub === 'publish') {
       row.is_published = true
@@ -256,14 +378,28 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
       setCuration(id, curation)
       return ok(curation)
     }
-    if (method === 'GET' && sub === 'itemCurations') return ok([])
+    if (method === 'GET' && sub === 'approvalData') {
+      const data = approvalData.get(id)
+      return data ? ok(data) : notFound('approval data')
+    }
+    if (method === 'GET' && sub === 'itemCurations') {
+      const ids = new Set(query.getAll('itemIds[]'))
+      return ok(
+        itemsOf(id)
+          .filter(item => ids.size === 0 || ids.has(item.id))
+          .flatMap(item => itemCurations.get(item.id) ?? [])
+      )
+    }
     return null
   }
 
   function handleItem(method: string, id: string, sub: string | undefined, body: unknown) {
     const row = items.get(id)
+    const collectionOf = (collectionId: string | null | undefined) =>
+      collectionId ? collections.get(collectionId) : undefined
     if (method === 'PUT' && !sub) {
       const sent = (body as { item?: Partial<RemoteItemRow> } | undefined)?.item ?? {}
+      if (isLocked(collectionOf(sent.collection_id ?? row?.collection_id))) return locked()
       const saved: RemoteItemRow = {
         ...(row ?? wearable({ created_at: now() })),
         ...withoutFields(sent, SERVER_OWNED_ITEM_FIELDS),
@@ -276,10 +412,25 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
     if (!row) return notFound('item')
     if (method === 'GET' && !sub) return ok(row)
     if (method === 'DELETE' && !sub) {
+      if (isLocked(collectionOf(row.collection_id))) return locked()
       items.delete(id)
       return ok(true)
     }
-    if (method === 'GET' && sub === 'curation') return ok(null)
+    if (method === 'GET' && sub === 'curation') return ok(itemCurations.get(id) ?? null)
+    if (method === 'PATCH' && sub === 'curation') {
+      const current = itemCurations.get(id)
+      if (!current) return notFound('item curation')
+      const { status } = (body as { curation?: Partial<RemoteItemCurationRow> })?.curation ?? {}
+      const curation = { ...current, ...(status && { status }), updated_at: now() }
+      // builder-server stamps the item's current hash on an approval, which the app checks against what it deployed.
+      if (curation.status === 'approved') {
+        curation.content_hash = row.local_content_hash ?? null
+        row.is_approved = true
+        row.catalyst_content_hash = curation.content_hash
+      }
+      itemCurations.set(id, curation)
+      return ok(curation)
+    }
     return null
   }
 
@@ -291,10 +442,17 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
       return ok(committee.map(address => ({ address })))
     if (method === 'GET' && parts.length === 1 && head === 'rarities') return ok(RARITIES)
     if (method === 'GET' && parts.length === 1 && head === 'curations') return ok([...curations.values()])
-    if (method === 'GET' && parts.length === 1 && head === 'thirdParties') return ok([])
-    if (method === 'GET' && parts.length === 2 && head === 'thirdParties') {
-      const row = thirdParties.get(decodeURIComponent(id))
-      return row ? ok(row) : notFound('third party')
+    if (method === 'GET' && parts.length === 1 && head === 'thirdParties') return ok([...thirdParties.values()])
+    if (head === 'thirdParties' && id) {
+      const thirdPartyId = decodeURIComponent(id)
+      const row = thirdParties.get(thirdPartyId)
+      if (!row) return notFound('third party')
+      if (method === 'GET' && !sub) return ok(row)
+      if (method === 'GET' && sub === 'slots') return ok(slots[thirdPartyId] ?? 0)
+      if (method === 'PATCH' && !sub) {
+        Object.assign(row, (body as { thirdParty?: Partial<RemoteThirdPartyRow> })?.thirdParty ?? body)
+        return ok(row)
+      }
     }
     if (method === 'GET' && parts.length === 2 && /^0x[0-9a-f]{40}$/i.test(head) && id === 'collections') {
       return listCollections(head.toLowerCase(), query)
@@ -303,12 +461,26 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
       const row = collections.get(id)
       return row ? ok(withCount(row)) : notFound('collection')
     }
+    if (method === 'GET' && parts.length === 1 && head === 'collections') return listCurationCollections(query)
+    if (head === 'collections' && id && sub === 'curation' && subPath === 'post' && method === 'POST') {
+      return collections.has(id) ? { status: 200, body: { ok: true } } : notFound('collection')
+    }
     if (head === 'collections' && id) return handleCollection(method, id, sub, query, body)
     if (head === 'items' && id) return handleItem(method, id, sub, body)
     return null
   }
 
-  return { handle, applyTransaction, collections, items, curations }
+  return {
+    handle,
+    applyTransaction,
+    collections,
+    items,
+    curations,
+    thirdParties,
+    slots,
+    itemCurations,
+    approvalData
+  }
 }
 
 export type BuilderServer = ReturnType<typeof createBuilderServer>

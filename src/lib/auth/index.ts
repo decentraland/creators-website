@@ -9,6 +9,7 @@ export {
 } from './auth'
 export {
   encodeContractCall,
+  isContractDeployed,
   readContract,
   readTransactionOutcome,
   readWalletChainId,
