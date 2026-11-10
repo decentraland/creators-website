@@ -1,6 +1,7 @@
 // Raw EIP-1193 requests the navbar needs on the first load (the wallet's network, and switching it), kept free of
 // viem so that it stays out of the overview's bundle. Everything that encodes, signs or sends lives in ./transactions.
 import { config } from '~/config'
+import { WrongAccountError } from '~/lib/walletErrors'
 import { type Session } from './auth'
 
 const toHex = (value: number) => `0x${value.toString(16)}`
@@ -78,28 +79,6 @@ export function subscribeWalletChain(session: Session, onChange: () => void): ()
   return () => {
     wallet.removeListener?.('chainChanged', onChange)
     wallet.removeListener?.('accountsChanged', onChange)
-  }
-}
-
-/** The wallet is still on another chain after being asked to switch: nothing was sent. */
-export class WrongChainError extends Error {
-  constructor(
-    public expected: number,
-    public actual: number
-  ) {
-    super(`The wallet is on chain ${actual}, not ${expected}`)
-    this.name = 'WrongChainError'
-  }
-}
-
-/** The wallet's active account is not the session's: sending would act as somebody else. Nothing was sent. */
-export class WrongAccountError extends Error {
-  constructor(
-    public expected: string,
-    public actual: string
-  ) {
-    super(`The wallet's active account is ${actual}, not ${expected}`)
-    this.name = 'WrongAccountError'
   }
 }
 

@@ -111,7 +111,7 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, revie
       return (
         <ConfirmModal
           title={t('approval_flow.error.title_approve')}
-          description={t(`linked_approval_flow.error.${view.step}`)}
+          description={t(view.wallet ? 'wallet_error.wrong_account' : `linked_approval_flow.error.${view.step}`)}
           art={{ src: errorArt }}
           onClose={onClose}
           cancel={{ label: t('approval_flow.cancel'), onClick: onClose, testId: 'approval-error-cancel' }}

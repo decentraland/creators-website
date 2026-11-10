@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { type ReactNode } from 'react'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
+import { type Session } from '~/lib/auth'
+import { WrongAccountError } from '~/lib/walletErrors'
 
 const api = vi.hoisted(() => ({
   fetchCommittee: vi.fn(),
@@ -19,8 +21,14 @@ vi.mock('~/lib/builder', () => ({
 }))
 vi.mock('~/lib/analytics', () => ({ track: vi.fn(), errorCode: () => 'unknown' }))
 vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
+const auth = vi.hoisted(() => ({
+  sendContractTransaction: vi.fn(),
+  waitForTransaction: vi.fn()
+}))
+vi.mock('~/lib/auth', () => auth)
 
-const { useAssignCurator, useRejectCuration } = await import('./useCuration')
+const { useAssignCurator, useDisableCollection, useRejectCuration } = await import('./useCuration')
+const { captureError } = await import('~/lib/monitoring')
 
 const ADDRESS = '0xCurator'
 const collection = { id: 'c1', name: 'Hats', isPublished: true } as Collection
@@ -98,5 +106,34 @@ describe('useAssignCurator', () => {
     await act(() => result.current.mutateAsync({ collection: posted, curation: pending, assignee: null }))
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     await waitFor(() => expect(api.createCurationForumReply).toHaveBeenCalled())
+  })
+})
+
+describe('useDisableCollection', () => {
+  const session = { address: ADDRESS } as Session
+  const approved = { ...collection, isApproved: true, contractAddress: '0x00000000000000000000000000000000000000cc' }
+
+  beforeEach(() => vi.mocked(captureError).mockClear())
+
+  it('fails without reporting it when the wallet sits on another account', async () => {
+    auth.sendContractTransaction.mockRejectedValue(new WrongAccountError(ADDRESS, '0xother'))
+    const { result } = renderHook(() => useDisableCollection(session), { wrapper })
+
+    await act(() => result.current.mutateAsync({ collection: approved }).catch(() => undefined))
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(captureError).not.toHaveBeenCalled()
+  })
+
+  it('reports any other failure', async () => {
+    auth.sendContractTransaction.mockRejectedValue(new Error('relayer down'))
+    const { result } = renderHook(() => useDisableCollection(session), { wrapper })
+
+    await act(() => result.current.mutateAsync({ collection: approved }).catch(() => undefined))
+    await waitFor(() =>
+      expect(captureError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'relayer down' }),
+        expect.objectContaining({ flow: 'curation_disable' })
+      )
+    )
   })
 })

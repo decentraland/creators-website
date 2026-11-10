@@ -18,8 +18,9 @@ import { ProviderType } from '@dcl/schemas'
 import { config } from '~/config'
 import { encodeContractCall, type ContractCall, type ContractData } from '~/lib/chain/contracts'
 import { sendMetaTransaction, type MetaTransactionWallet } from '~/lib/chain/metaTransaction'
+import { WrongAccountError, WrongChainError } from '~/lib/walletErrors'
 import { type Session } from './auth'
-import { readWalletChainId, requireAccount, switchWalletChain, WrongAccountError, WrongChainError } from './provider'
+import { readWalletChainId, requireAccount, switchWalletChain } from './provider'
 import { walletClientOf } from './signer'
 
 export type { ContractCall, ContractData }

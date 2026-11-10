@@ -13,7 +13,7 @@ import { createAnonymousIdResolver, readStoredId } from '~/lib/segmentAnonymousI
 import { APP_VERSION, config, currentSearch } from '~/config'
 import { currentAddress } from '~/lib/currentAddress'
 import { postToSegment, type SegmentCall } from '~/lib/segmentHttp'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { isWalletRejection, isWalletStateError } from '~/lib/walletErrors'
 
 type Props = Record<string, unknown>
 
@@ -104,6 +104,7 @@ export function errorCode(error: unknown): string {
   const reason = (error as { reason?: unknown } | null)?.reason
   if (typeof reason === 'string' && reason !== '') return reason
   if (isWalletRejection(error)) return 'rejected'
+  if (isWalletStateError(error)) return 'wallet'
   return 'unknown'
 }
 

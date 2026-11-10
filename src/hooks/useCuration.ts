@@ -21,7 +21,7 @@ import { postAssignee } from '~/hooks/useForumPost'
 import { useCommittee } from '~/hooks/useCommittee'
 import { useProfiles } from '~/hooks/useProfile'
 import { getMaticChainId } from '~/lib/publishCollection'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { isExpectedWalletError } from '~/lib/walletErrors'
 
 /** The committee as picker options, the signed-in curator first and marked, after `leading` and a divider. */
 type CuratorOption = { value: string; label: string; dividerBefore?: boolean }
@@ -209,7 +209,7 @@ export function useDisableCollection(session: Session | null) {
     },
     onError: (error, { collection }) => {
       track('Reject collection error', { collectionId: collection.id, error: errorCode(error) })
-      if (!isWalletRejection(error)) {
+      if (!isExpectedWalletError(error)) {
         captureError(error, { flow: 'curation_disable', collectionId: collection.id })
       }
     }

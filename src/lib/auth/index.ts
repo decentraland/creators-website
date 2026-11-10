@@ -3,14 +3,7 @@ import { restoreSession as restoreAuthSession, type Session } from './auth'
 import type * as Transactions from './transactions'
 
 export { isSocialLogin, logout, signInRedirect, signedFetch, signWithIdentity, type Session } from './auth'
-export {
-  readWalletChainId,
-  requireAccount,
-  subscribeWalletChain,
-  switchWalletChain,
-  WrongAccountError,
-  WrongChainError
-} from './provider'
+export { readWalletChainId, requireAccount, subscribeWalletChain, switchWalletChain } from './provider'
 export type {
   ContractCall,
   ContractData,
