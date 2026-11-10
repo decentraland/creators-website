@@ -64,8 +64,8 @@ export async function readContract<T>(contract: ContractData, method: string, ar
 export async function sendContractTransaction(session: Session, call: ContractCall): Promise<string> {
   const chainId = await readWalletChainId(session)
   if (chainId === Number(call.contract.chainId)) return sendFromWallet(session, chainId, call)
-  // Read the way the meta-transaction signer reads it: the account that signs must be the session's.
   const wallet = metaTransactionWallet(session)
+  // The account checked here is the one that signs, as the wallet spelled it (the relayed calldata keeps its case).
   const [active = ''] = await wallet.accounts()
   if (active.toLowerCase() !== session.address.toLowerCase()) {
     throw new WrongAccountError(session.address, active.toLowerCase())
@@ -75,6 +75,7 @@ export async function sendContractTransaction(session: Session, call: ContractCa
     target.request({ method: 'eth_call', params: [tx as { data: Hex; to: Address }, 'latest'] })
   return sendMetaTransaction(
     wallet,
+    active,
     callContract,
     encodeContractCall(call),
     call.contract,
@@ -83,7 +84,7 @@ export async function sendContractTransaction(session: Session, call: ContractCa
 }
 
 // An empty answer counts as a failed request, and legacy providers wrap theirs in `result`.
-function metaTransactionWallet(session: Session): MetaTransactionWallet {
+function metaTransactionWallet(session: Session): MetaTransactionWallet & { accounts: () => Promise<string[]> } {
   const request = async (method: string, params: unknown[]) => {
     const answer = await session.provider.request({ method, params })
     if (!answer) throw new Error(`The wallet gave no answer to ${method}`)

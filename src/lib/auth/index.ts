@@ -1,14 +1,8 @@
+import { afterLoadIdle } from '~/lib/idle'
+import { restoreSession as restoreAuthSession, type Session } from './auth'
 import type * as Transactions from './transactions'
 
-export {
-  isSocialLogin,
-  logout,
-  restoreSession,
-  signInRedirect,
-  signedFetch,
-  signWithIdentity,
-  type Session
-} from './auth'
+export { isSocialLogin, logout, signInRedirect, signedFetch, signWithIdentity, type Session } from './auth'
 export {
   readWalletChainId,
   requireAccount,
@@ -28,6 +22,14 @@ export type {
 
 // viem's clients, signing and the contract registry load on the first read or write, never with the overview.
 const transactions = () => import('./transactions')
+
+// Fetched ahead for a signed-in creator, so a first write doesn't wait on the download and a popup wallet
+// still sees the click's user gesture when the request reaches it.
+export async function restoreSession(): Promise<Session | null> {
+  const session = await restoreAuthSession()
+  if (session) afterLoadIdle(() => void transactions().catch(() => undefined))
+  return session
+}
 
 export async function readContract<T>(...args: Parameters<typeof Transactions.readContract>): Promise<T> {
   return (await transactions()).readContract<T>(...args)

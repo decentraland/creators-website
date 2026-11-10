@@ -23,8 +23,6 @@ import { useProfiles } from '~/hooks/useProfile'
 import { getMaticChainId } from '~/lib/publishCollection'
 import { isWalletRejection } from '~/lib/walletErrors'
 
-export { useCommittee }
-
 /** The committee as picker options, the signed-in curator first and marked, after `leading` and a divider. */
 type CuratorOption = { value: string; label: string; dividerBefore?: boolean }
 

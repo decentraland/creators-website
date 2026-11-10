@@ -4,9 +4,9 @@ import { isCommitteeMember } from '~/lib/curation'
 // Same refresh cadence as builder-server's own committee cache.
 const COMMITTEE_STALE_MS = 60 * 60_000
 
-/** Whether the signed-in wallet sits on the curation committee. Fails closed: loading or errored is not a curator. */
 const NO_MEMBERS: string[] = []
 
+/** Whether the signed-in wallet sits on the curation committee. Fails closed: loading or errored is not a curator. */
 export function useCommittee(address: string | undefined) {
   // Signed-out visitors can't be curators, so they never ask.
   const query = useQuery({
