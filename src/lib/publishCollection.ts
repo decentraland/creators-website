@@ -16,7 +16,7 @@ import { hasOldHashedContents } from '~/lib/itemFactory'
 import { isMissingSmartWearableVideo, type Item } from '~/lib/items'
 import { fetchManaAllowance } from '~/lib/mana'
 import { weiToUsdCents, type PublicationFee } from '~/lib/publishFee'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { isWalletRejection, isWalletStateError } from '~/lib/walletErrors'
 import { getCollectionSymbol, toInitializeItems, type InitializeItem } from '~/lib/saveCollection'
 
 /** 'card' (buying credits with Stripe) is the planned third method; only these two ship today. */
@@ -176,6 +176,7 @@ export type PublishFailureReason =
   | 'fee_mismatch'
   | 'tos_failed'
   | 'rejected'
+  | 'wallet'
   | 'generic'
 
 export class PublishCollectionError extends Error {
@@ -203,6 +204,7 @@ export function toPublishError(error: unknown): PublishCollectionError {
   }
   const message = error instanceof Error ? error.message : String(error)
   if (isWalletRejection(error)) return new PublishCollectionError('rejected', message)
+  if (isWalletStateError(error)) return new PublishCollectionError('wallet', message, error)
   return new PublishCollectionError('generic', message)
 }
 

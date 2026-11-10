@@ -2,11 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { TransactionNotFoundError, TransactionReceiptNotFoundError, hashTypedData, numberToHex, parseAbi } from 'viem'
 import { ContractName, getCollectionContract, getContract, getCouponManager } from '~/lib/chain/contracts'
 import { buildChequeTypedData } from '~/lib/publishLinkedItems'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { WrongAccountError, WrongChainError, isWalletRejection } from '~/lib/walletErrors'
 import { type Session } from './auth'
 import {
-  WrongAccountError,
-  WrongChainError,
   readContract,
   readTransactionOutcome,
   readWalletChainId,

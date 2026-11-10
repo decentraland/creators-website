@@ -12,6 +12,7 @@ import { ItemType, type Item } from '~/lib/items'
 import { type ItemCuration, type LinkedItemsQuery } from '~/lib/linkedItemStatus'
 import { RelinkCancelledError, type RelinkDeps } from '~/lib/relinkCollection'
 import { type ThirdParty } from '~/lib/thirdParty'
+import { WrongAccountError } from '~/lib/walletErrors'
 import { LinkedCollectionView } from './LinkedCollectionView'
 
 vi.mock('~/lib/builder', async importOriginal => ({
@@ -25,6 +26,10 @@ vi.mock('~/lib/relinkCollection', async importOriginal => ({
   ...(await importOriginal<typeof import('~/lib/relinkCollection')>()),
   relinkCollection: vi.fn()
 }))
+vi.mock('~/lib/monitoring', async importOriginal => ({
+  ...(await importOriginal<typeof import('~/lib/monitoring')>()),
+  captureError: vi.fn()
+}))
 vi.mock('~/lib/linkedContract', async importOriginal => ({
   ...(await importOriginal<typeof import('~/lib/linkedContract')>()),
   checkLinkedContract: vi.fn(async () => 'ok' as const)
@@ -32,6 +37,7 @@ vi.mock('~/lib/linkedContract', async importOriginal => ({
 
 import { fetchAllLinkedCollectionItems, fetchItemCurations, fetchLinkedCollectionItems } from '~/lib/builder'
 import { relinkCollection } from '~/lib/relinkCollection'
+import { captureError } from '~/lib/monitoring'
 
 const ADDRESS = '0xabc0000000000000000000000000000000000001'
 const CONTRACT = '0x1d9fb685c257e74f869ba302e260c0b68f5ebb37'
@@ -383,6 +389,23 @@ describe('LinkedCollectionView', () => {
       expect(screen.getByTestId('edit-contract-submit')).toBeDisabled()
       run.finish()
       await screen.findByTestId('success-modal-modal')
+    })
+
+    it('asks to switch the wallet back when it sits on another account, without reporting it', async () => {
+      vi.mocked(captureError).mockClear()
+      const run = parkedRun()
+      renderView()
+      await rows()
+      await submitContract()
+      run.fail(new WrongAccountError(ADDRESS, NEW))
+      await screen.findByTestId('edit-contract-error')
+      expect(screen.getByTestId('edit-contract-error-description')).toHaveTextContent(/switch it back to the account/i)
+      expect(captureError).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ flow: 'linked_collection_contract' })
+      )
+      await userEvent.click(screen.getByTestId('edit-contract-error-retry'))
+      expect(screen.getByTestId('linked-contract-address-input')).toHaveValue(NEW)
     })
 
     it('offers a retry from the error modal that reopens the form on the same contract', async () => {

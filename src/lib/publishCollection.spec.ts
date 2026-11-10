@@ -7,6 +7,7 @@ import { type Collection } from './collections'
 import { CreditsServerError } from './credits'
 import { ItemType, type Item, BODY_SHAPE_FEMALE } from './items'
 import { getPublicationFee } from './publishFee'
+import { WrongAccountError, WrongChainError } from './walletErrors'
 import {
   MAX_PUBLISH_ITEMS,
   PublishCollectionError,
@@ -302,6 +303,11 @@ describe('toPublishError', () => {
     )
     expect(toPublishError(new Error('boom')).reason).toBe('generic')
     expect(toPublishError(new PublishCollectionError('unsynced')).reason).toBe('unsynced')
+  })
+
+  it('tells a wallet on another account or network apart, so the creator is asked to switch it back', () => {
+    expect(toPublishError(new WrongAccountError('0xme', '0xother')).reason).toBe('wallet')
+    expect(toPublishError(new WrongChainError(137, 1)).reason).toBe('wallet')
   })
 })
 

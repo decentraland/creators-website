@@ -6,6 +6,7 @@ import { ContractName, getContract } from '~/lib/chain/contracts'
 import { type Collection } from '~/lib/collections'
 import { type RoleKind } from '~/lib/collectionRoles'
 import { SellItemError } from '~/lib/sales'
+import { WrongAccountError } from '~/lib/walletErrors'
 import { ManageRolesFlow } from './ManageRolesFlow'
 import { ADDRESS, FRIEND, Providers, collection, makeSession } from '../SellItemFlow/testUtils'
 
@@ -164,5 +165,16 @@ describe('ManageRolesFlow', () => {
     await userEvent.click(screen.getByTestId('sale-error-retry'))
     expect(screen.getAllByTestId('role-row')).toHaveLength(2)
     expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('asks to switch the wallet back when it sits on another account, keeping the draft for a retry', async () => {
+    renderFlow('collaborators')
+    await userEvent.click(screen.getByTestId('role-add'))
+    await userEvent.type(screen.getByTestId('role-new-input'), FRIEND)
+    await userEvent.click(screen.getByTestId('role-save'))
+    await act(async () => last(save.mutate)[1].onError?.(new WrongAccountError(ADDRESS, FRIEND)))
+    expect(screen.getByTestId('sale-error-modal-description')).toHaveTextContent(/switch it back to the account/i)
+    await userEvent.click(screen.getByTestId('sale-error-retry'))
+    expect(screen.getAllByTestId('role-row')).toHaveLength(2)
   })
 })

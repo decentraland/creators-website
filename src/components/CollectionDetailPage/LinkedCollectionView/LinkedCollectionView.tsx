@@ -32,7 +32,7 @@ import { isContractInUseError } from '~/lib/linkedContract'
 import { type Mappings } from '~/lib/mappings'
 import { getMaticChainId } from '~/lib/publishCollection'
 import { RelinkCancelledError, loadRelinkFrom, relinkCollection, type RelinkStep } from '~/lib/relinkCollection'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { isWalletRejection, isWalletStateError } from '~/lib/walletErrors'
 import errorArt from '~/assets/modal-error.png'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { PendingModal } from '~/components/PendingModal'
@@ -87,7 +87,7 @@ type RelinkView =
   | { kind: 'form'; last?: LinkedContract }
   | { kind: 'running'; step: RelinkStep; to: LinkedContract }
   | { kind: 'success'; linked: number }
-  | { kind: 'error'; inUse: boolean; to: LinkedContract }
+  | { kind: 'error'; inUse: boolean; wallet: boolean; to: LinkedContract }
 
 // In the order an item goes through them.
 const BASE_FILTERS = [
@@ -375,8 +375,9 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
         return
       }
       const inUse = isContractInUseError(error)
-      if (!inUse) captureError(error, { flow: 'linked_collection_contract', collectionId: collection.id })
-      show({ kind: 'error', inUse, to: next })
+      const wallet = isWalletStateError(error)
+      if (!inUse && !wallet) captureError(error, { flow: 'linked_collection_contract', collectionId: collection.id })
+      show({ kind: 'error', inUse, wallet, to: next })
     } finally {
       // A run that stopped halfway has already changed the collection, the registry or some items.
       void queryClient.invalidateQueries({ queryKey: thirdPartyKey(address, thirdParty.id) })
@@ -845,7 +846,11 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
         <ConfirmModal
           title={t('edit_contract_modal.error.title')}
           description={t(
-            errorView.inUse ? 'create_linked_collection_modal.error_contract_in_use' : 'edit_contract_modal.error.body'
+            errorView.inUse
+              ? 'create_linked_collection_modal.error_contract_in_use'
+              : errorView.wallet
+                ? 'wallet_error.wrong_account'
+                : 'edit_contract_modal.error.body'
           )}
           art={{ src: errorArt }}
           onClose={closeContract}

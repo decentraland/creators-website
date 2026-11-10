@@ -106,7 +106,7 @@ export function ApprovalFlowModal({ session, collection, curation, mode, items, 
       return (
         <ConfirmModal
           title={t(`approval_flow.error.title_${mode}`)}
-          description={t(`approval_flow.error.${view.step}`)}
+          description={t(view.wallet ? 'wallet_error.wrong_account' : `approval_flow.error.${view.step}`)}
           art={{ src: errorArt }}
           onClose={onClose}
           cancel={{ label: t('approval_flow.cancel'), onClick: onClose, testId: 'approval-error-cancel' }}
