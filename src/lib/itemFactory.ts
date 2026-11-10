@@ -3,7 +3,7 @@
 // buildRepresentations) and modules/deployment/contentUtils (computeHashes).
 import { hashV1 } from '@dcl/hashing'
 import { type Mappings } from '@dcl/schemas'
-import { ethers } from 'ethers'
+import { maxUint256 } from 'viem'
 import {
   BODY_SHAPE_FEMALE,
   BODY_SHAPE_MALE,
@@ -350,7 +350,7 @@ export async function buildItem(draft: ItemDraftPayload): Promise<BuiltItem> {
     metrics: draft.metrics,
     contents,
     // "Not for sale" defaults, as the legacy modal saves standard items.
-    price: ethers.constants.MaxUint256.toString(),
+    price: maxUint256.toString(),
     beneficiary: draft.owner,
     createdAt: now,
     updatedAt: now

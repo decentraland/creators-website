@@ -1,7 +1,6 @@
 // Off-chain marketplace orders: the EIP-712 encoding a creator signs and the
 // marketplace-server endpoint that stores the signed order. Ported from the legacy builder's
 // lib/trades + TradeService; the shop reads these orders back through its unified catalog.
-import { ethers } from 'ethers'
 import {
   TradeAssetType,
   type OnChainTrade,
@@ -11,12 +10,14 @@ import {
   type TradeCreation
 } from '@dcl/schemas'
 import { ContractName, getContract, getContractName } from 'decentraland-transactions'
+import { numberToHex, zeroAddress } from 'viem'
+import { toBytes32 } from '~/lib/bytes32'
 import { config } from '~/config'
-import { readContract, signedFetch, type ContractData, type TypedDataDomain } from '~/lib/auth'
+import { readContract, signedFetch, type ContractData, type TypedDataDomain, type TypedDataTypes } from '~/lib/auth'
 
 export type UnsignedTrade = Omit<TradeCreation, 'signature'>
 
-export const OFFCHAIN_MARKETPLACE_TYPES: Record<string, ethers.TypedDataField[]> = {
+export const OFFCHAIN_MARKETPLACE_TYPES: TypedDataTypes = {
   Trade: [
     { name: 'checks', type: 'Checks' },
     { name: 'sent', type: 'AssetWithoutBeneficiary[]' },
@@ -66,7 +67,7 @@ export function getOffchainMarketplaceContract(chainId: number) {
 
 type SignTypedData = (
   domain: TypedDataDomain,
-  types: Record<string, ethers.TypedDataField[]>,
+  types: TypedDataTypes,
   primaryType: string,
   value: Record<string, unknown>
 ) => Promise<string>
@@ -83,7 +84,7 @@ export function getTradeDomain(chainId: number): TypedDataDomain {
   return {
     name: contract.name,
     version: contract.version,
-    salt: ethers.utils.hexZeroPad(ethers.utils.hexlify(chainId), 32),
+    salt: numberToHex(chainId, { size: 32 }),
     verifyingContract: contract.address
   }
 }
@@ -110,10 +111,10 @@ export function toTypedChecks(checks: TradeChecks) {
     uses: checks.uses,
     expiration: toSeconds(checks.expiration),
     effective: toSeconds(checks.effective),
-    salt: ethers.utils.hexZeroPad(checks.salt, 32),
+    salt: toBytes32(checks.salt),
     contractSignatureIndex: checks.contractSignatureIndex,
     signerSignatureIndex: checks.signerSignatureIndex,
-    allowedRoot: ethers.utils.hexZeroPad(bytes(checks.allowedRoot), 32),
+    allowedRoot: toBytes32(bytes(checks.allowedRoot)),
     externalChecks: (checks.externalChecks ?? []).map(check => ({
       contractAddress: check.contractAddress,
       selector: check.selector,
@@ -192,7 +193,7 @@ export function toOnChainTrade(trade: Trade): OnChainTrade {
     ...values,
     checks: { ...values.checks, allowedProof: [] },
     // Nobody receives the sent asset when cancelling.
-    sent: values.sent.map(asset => ({ ...asset, beneficiary: ethers.constants.AddressZero }))
+    sent: values.sent.map(asset => ({ ...asset, beneficiary: zeroAddress }))
   }
 }
 

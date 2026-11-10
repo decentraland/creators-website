@@ -1,10 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ethers } from 'ethers'
 import { type ContractNetwork } from '@dcl/schemas'
 import { ContractName, getContract } from 'decentraland-transactions'
+import { zeroHash, parseSignature, serializeCompactSignature, signatureToCompactSignature } from 'viem'
 import { readContract } from '~/lib/auth'
-import { toTransaction } from '~/test/chain'
-import { encodeContractCall } from './auth/transactions'
+import { decodeCall, toTransaction } from '~/test/chain'
 import { type ThirdParty } from './thirdParty'
 import {
   buildAddThirdPartyCall,
@@ -46,9 +45,9 @@ const thirdParty: ThirdParty = {
 }
 
 /** Encodes the call with the registry ABI and decodes it back: proves the args fit the contract's signature. */
-function roundTrip(call: ReturnType<typeof buildBuyItemSlotsCall>) {
+function roundTrip(call: ReturnType<typeof buildBuyItemSlotsCall>): any[] {
   expect(call.contract.address).toBe(REGISTRY.address)
-  return new ethers.utils.Interface(call.contract.abi).decodeFunctionData(call.method, encodeContractCall(call))
+  return decodeCall(call) as any[]
 }
 
 describe('buildAddThirdPartyCall', () => {
@@ -58,15 +57,15 @@ describe('buildAddThirdPartyCall', () => {
     expect(call.method).toBe('addThirdParties')
     const [parties, programmatic, maxPrices] = roundTrip(call)
     expect(parties).toHaveLength(1)
-    const [id, metadata, resolver, managers, enabled, slots] = parties[0]
+    const { id, metadata, resolver, managers, managerValues, slots } = parties[0]
     expect(id).toBe(THIRD_PARTY_ID)
     expect(metadata).toBe(`tp:1:Brand:A brand:amoy-${'0x' + '1'.repeat(40)}`)
     expect(resolver).toBe('Disabled')
     expect(managers.map((manager: string) => manager.toLowerCase())).toEqual([MANAGER])
-    expect(enabled).toEqual([true])
-    expect(slots.toString()).toBe('200')
+    expect(managerValues).toEqual([true])
+    expect(slots).toBe(200n)
     expect(programmatic).toEqual([true])
-    expect(maxPrices.map((value: ethers.BigNumber) => BigInt(value.toString()))).toEqual([603n * ETHER])
+    expect(maxPrices).toEqual([603n * ETHER])
     expect(toTransaction(call)).toEqual({
       to: '0x7d7c0b9d97385bada5fec6861e97d0df414af3c3',
       data:
@@ -106,8 +105,8 @@ describe('buildAddThirdPartyCall', () => {
     const other = '0x00000000000000000000000000000000000000bb'
     const call = buildAddThirdPartyCall(CHAIN_ID, { ...thirdParty, managers: [MANAGER, other] }, 1, ETHER)
     const [parties] = roundTrip(call)
-    expect(parties[0][3]).toHaveLength(2)
-    expect(parties[0][4]).toEqual([true, true])
+    expect(parties[0].managers).toHaveLength(2)
+    expect(parties[0].managerValues).toEqual([true, true])
   })
 })
 
@@ -119,13 +118,13 @@ describe('buildUpdateThirdPartyCall', () => {
     expect(call.method).toBe('updateThirdParties')
     const [parties] = roundTrip(call)
     expect(parties).toHaveLength(1)
-    const [id, metadata, resolver, managers, enabled, slots] = parties[0]
+    const { id, metadata, resolver, managers, managerValues, slots } = parties[0]
     expect(id).toBe(THIRD_PARTY_ID)
     expect(metadata).toBe(`tp:1:Brand:A brand:mainnet-${next.address}`)
     expect(resolver).toBe('')
     expect(managers).toEqual([])
-    expect(enabled).toEqual([])
-    expect(slots.toString()).toBe('0')
+    expect(managerValues).toEqual([])
+    expect(slots).toBe(0n)
     expect(toTransaction(call)).toEqual({
       to: '0x7d7c0b9d97385bada5fec6861e97d0df414af3c3',
       data:
@@ -160,8 +159,8 @@ describe('buildBuyItemSlotsCall', () => {
     expect(call.method).toBe('buyItemSlots')
     const [id, qty, maxPrice] = roundTrip(call)
     expect(id).toBe(THIRD_PARTY_ID)
-    expect(qty.toString()).toBe('3')
-    expect(BigInt(maxPrice.toString())).toBe(603n * ETHER)
+    expect(qty).toBe(3n)
+    expect(maxPrice).toBe(603n * ETHER)
     expect(toTransaction(call)).toEqual({
       to: '0x7d7c0b9d97385bada5fec6861e97d0df414af3c3',
       data:
@@ -186,6 +185,13 @@ describe('toChequeSlot', () => {
       28
     ])
   })
+
+  it('splits a compact 64-byte signature into the same tuple', () => {
+    const compact = serializeCompactSignature(signatureToCompactSignature(parseSignature(CHEQUE_SIGNATURE)))
+    expect(toChequeSlot({ signature: compact, qty: 7, salt: CHEQUE_SALT })).toEqual(
+      toChequeSlot({ signature: CHEQUE_SIGNATURE, qty: 7, salt: CHEQUE_SALT })
+    )
+  })
 })
 
 describe('buildReviewThirdPartyWithRootCall', () => {
@@ -201,9 +207,9 @@ describe('buildReviewThirdPartyWithRootCall', () => {
     expect(id).toBe(THIRD_PARTY_ID)
     expect(decodedRoot).toBe(root)
     expect(slots).toHaveLength(1)
-    expect(slots[0][0].toString()).toBe('7')
-    expect(slots[0][1]).toBe(salt)
-    expect(slots[0][4]).toBe(slot[4])
+    expect(slots[0].qty).toBe(7n)
+    expect(slots[0].salt).toBe(salt)
+    expect(slots[0].sigV).toBe(slot[4])
     expect(toTransaction(call)).toEqual({
       to: '0x7d7c0b9d97385bada5fec6861e97d0df414af3c3',
       data:
@@ -237,8 +243,8 @@ describe('buildReviewThirdPartyCall', () => {
     expect(call.method).toBe('reviewThirdParties')
     const [reviews] = roundTrip(call)
     expect(reviews).toHaveLength(1)
-    expect(reviews[0][0]).toBe(THIRD_PARTY_ID)
-    expect(reviews[0][1]).toBe(false)
+    expect(reviews[0].id).toBe(THIRD_PARTY_ID)
+    expect(reviews[0].value).toBe(false)
     expect(toTransaction(call)).toEqual({
       to: '0x7d7c0b9d97385bada5fec6861e97d0df414af3c3',
       data:
@@ -296,7 +302,7 @@ describe('fetchThirdPartyPrice', () => {
 
 /** The registry's `thirdParties` outputs, as the chain returns them. */
 function thirdPartyRecord({
-  root = ethers.constants.HashZero,
+  root = zeroHash,
   maxItems = 0n,
   registered = 0n,
   metadata = ''

@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { ethers } from 'ethers'
 import { ContractName, getContract } from 'decentraland-transactions'
+import { decodeFunctionData, type Abi, type Hex } from 'viem'
 import { toTransaction } from '~/test/chain'
 import { type Collection } from './collections'
 import { buildRescueItemsCalls, buildSetApprovedCall, RESCUE_CHUNK_SIZE } from './collectionApproval'
 
 const CHAIN_ID = 80002
 const collection = { id: 'c1', contractAddress: '0x' + '1'.repeat(40) } as Collection
-const collectionAbi = new ethers.utils.Interface(getContract(ContractName.ERC721CollectionV2, CHAIN_ID).abi)
+const collectionAbi = getContract(ContractName.ERC721CollectionV2, CHAIN_ID).abi as Abi
 
 function innerCall(call: ReturnType<typeof buildSetApprovedCall>) {
   const [, , target, data] = call.args as [string, string, string, string[]]
-  return { target, decoded: collectionAbi.parseTransaction({ data: data[0] }) }
+  return { target, decoded: decodeFunctionData({ abi: collectionAbi, data: data[0] as Hex }) as any }
 }
 
 describe('buildSetApprovedCall', () => {
@@ -21,7 +21,7 @@ describe('buildSetApprovedCall', () => {
     expect(call.method).toBe('manageCollection')
     const { target, decoded } = innerCall(call)
     expect(target).toBe(collection.contractAddress)
-    expect(decoded.name).toBe('setApproved')
+    expect(decoded.functionName).toBe('setApproved')
     expect(decoded.args[0]).toBe(false)
   })
 
@@ -57,7 +57,7 @@ describe('buildRescueItemsCalls', () => {
     const calls = buildRescueItemsCalls(CHAIN_ID, collection, entries)
     expect(calls).toHaveLength(2)
     const { decoded } = innerCall(calls[1])
-    expect(decoded.name).toBe('rescueItems')
+    expect(decoded.functionName).toBe('rescueItems')
     expect(decoded.args[0].map(String)).toEqual([String(RESCUE_CHUNK_SIZE), String(RESCUE_CHUNK_SIZE + 1)])
     expect(decoded.args[1]).toEqual([`hash${RESCUE_CHUNK_SIZE}`, `hash${RESCUE_CHUNK_SIZE + 1}`])
     expect(decoded.args[2]).toEqual([`meta${RESCUE_CHUNK_SIZE}`, `meta${RESCUE_CHUNK_SIZE + 1}`])

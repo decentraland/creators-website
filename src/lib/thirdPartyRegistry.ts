@@ -1,8 +1,8 @@
 // Calls on the ThirdPartyRegistry (Polygon), ported from the legacy builder's thirdParty sagas and the TP approval
 // flow: creators register their third party and buy item slots when publishing; curators set the Merkle root of the
 // approved items (consuming the creator's cheque) and enable or disable a third party.
-import { ethers } from 'ethers'
 import { ContractName, getContract } from 'decentraland-transactions'
+import { compactSignatureToSignature, parseCompactSignature, parseSignature, size, zeroHash, type Hex } from 'viem'
 import { readContract, type ContractCall } from '~/lib/auth'
 import { type SlotsCheque } from '~/lib/builder'
 import { contractsFromRawMetadata, toRawMetadata, type LinkedContract, type ThirdParty } from '~/lib/thirdParty'
@@ -77,8 +77,13 @@ export function buildBuyItemSlotsCall(
 export type ChequeSlot = [string, string, string, string, number]
 
 export function toChequeSlot(cheque: SlotsCheque): ChequeSlot {
-  const { r, s, v } = ethers.utils.splitSignature(cheque.signature)
-  return [String(cheque.qty), cheque.salt, r, s, v]
+  const signature = cheque.signature as Hex
+  // A 64-byte EIP-2098 signature packs the recovery bit into `s`; the registry needs it split out.
+  const { r, s, yParity } =
+    size(signature) === 64 ? compactSignatureToSignature(parseCompactSignature(signature)) : parseSignature(signature)
+  if (yParity === undefined) throw new Error('The cheque signature has no recovery id')
+  // The registry takes the legacy 27/28 recovery id, whichever form the wallet answered.
+  return [String(cheque.qty), cheque.salt, r, s, 27 + yParity]
 }
 
 /**
@@ -115,7 +120,7 @@ export type RegisteredThirdParty = {
   root: string
 }
 
-const EMPTY_ROOT = ethers.constants.HashZero
+const EMPTY_ROOT = zeroHash
 
 type ThirdPartyRecord = { registered: bigint; maxItems: bigint; root: string; metadata: string }
 

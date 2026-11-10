@@ -1,9 +1,10 @@
 import { Authenticator } from '@dcl/crypto'
-import { ethers } from 'ethers'
+import type { Hex } from 'viem'
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 
 // A deterministic, obviously fake key for the test wallet. Never a real account.
-export const TEST_PRIVATE_KEY = '0x' + '11'.repeat(32)
-export const TEST_ADDRESS = new ethers.Wallet(TEST_PRIVATE_KEY).address.toLowerCase()
+export const TEST_PRIVATE_KEY: Hex = `0x${'11'.repeat(32)}`
+export const TEST_ADDRESS = privateKeyToAccount(TEST_PRIVATE_KEY).address.toLowerCase()
 export const POLYGON_AMOY = 80002
 
 export type TestSession = { address: string; identityJson: string }
@@ -13,17 +14,18 @@ let cached: Promise<TestSession> | undefined
 /** A real AuthIdentity for the test wallet, so signed builder-server requests are well formed. */
 export function testSession(): Promise<TestSession> {
   cached ??= (async () => {
-    const user = new ethers.Wallet(TEST_PRIVATE_KEY)
-    const ephemeral = ethers.Wallet.createRandom()
+    const user = privateKeyToAccount(TEST_PRIVATE_KEY)
+    const ephemeralKey = generatePrivateKey()
+    const ephemeral = privateKeyToAccount(ephemeralKey)
     const identity = await Authenticator.initializeAuthChain(
       user.address,
       {
         address: ephemeral.address,
-        publicKey: ethers.utils.hexlify(ephemeral.publicKey),
-        privateKey: ethers.utils.hexlify(ephemeral.privateKey)
+        publicKey: ephemeral.publicKey,
+        privateKey: ephemeralKey
       },
       31 * 24 * 60,
-      message => user.signMessage(message)
+      message => user.signMessage({ message })
     )
     return { address: TEST_ADDRESS, identityJson: JSON.stringify(identity) }
   })()
