@@ -6,7 +6,6 @@ import { type ValidationIssue } from '~/lib/validation'
 import { type Mapping, type Mappings } from '~/lib/mappings'
 import { VIDEO_PATH, cleanAssetName, isImageFile, isModelFile } from '~/lib/itemFiles'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
-import { identityKey } from '~/lib/blobs'
 import { getItemSizeLimit, isOverSizeLimit, type ItemSize } from '~/lib/itemSize'
 import { BodyShapeType, ItemType, getMissingBodyShapeType, type Item, type ItemMetrics } from '~/lib/items'
 import { type UploadFailureReason } from '~/lib/uploadItems'
@@ -309,10 +308,10 @@ export function getDraftSizeLimit(draft: ItemDraft, drafts: ItemDraft[], collect
 
 /**
  * What a draft's size depends on, across the batch (a variant is saved inside its target): the files, the rarity its
- * image is rendered for and how the drafts pair up. A query key: names, descriptions and tags never measure again.
+ * image is rendered for and how the drafts pair up. Names, descriptions and tags never measure again.
  */
-export function draftSizeKey(drafts: ItemDraft[]): unknown[] {
-  return drafts.map(draft => [
+export function draftSizeInputs(drafts: ItemDraft[]): unknown[] {
+  return drafts.flatMap(draft => [
     draft.id,
     draft.status,
     draft.type,
@@ -321,7 +320,7 @@ export function draftSizeKey(drafts: ItemDraft[]): unknown[] {
     draft.model,
     draft.isVariant,
     draft.variantTargetId,
-    identityKey(draft.contents)
+    draft.contents
   ])
 }
 

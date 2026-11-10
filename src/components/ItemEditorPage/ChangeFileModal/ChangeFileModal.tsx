@@ -10,7 +10,6 @@ import { useMeasuredBytes } from '~/hooks/useItemSize'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useTranslation } from '~/intl'
 import { errorCode, track } from '~/lib/analytics'
-import { identityKey } from '~/lib/blobs'
 import { imageThumbnailPatch, needsPreviewData, type PreviewDraft } from '~/lib/draftPreview'
 import { pickFile } from '~/lib/filePicker'
 import { toFileChangeSaveable, type ItemFileChange } from '~/lib/itemDraft'
@@ -131,7 +130,7 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
             category: null
           })
       : null,
-    [identityKey(item), identityKey(file), bodyShape, identityKey(newThumbnail)],
+    [item, file, bodyShape, newThumbnail],
     'item_file_change'
   )
   const sizeCategory = (needsCategory ? category : null) ?? item.data.category

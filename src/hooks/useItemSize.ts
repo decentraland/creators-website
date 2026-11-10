@@ -1,7 +1,7 @@
 // Item sizes on screen (lib/itemSize): stored files measured by content hash through the query cache, and the item
 // a save would send measured before it is sent, so what the editor shows is what the save enforces.
-import { useCallback, useMemo } from 'react'
-import { useQueries, useQuery, useQueryClient, type QueryClient, type UseQueryResult } from '@tanstack/react-query'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useQueries, useQueryClient, type QueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { fetchContent, fetchContentSize } from '~/lib/builder'
 import { buildMissingImage, type ImageDeps } from '~/lib/catalystEntity'
 import { ItemFileError } from '~/lib/itemFiles'
@@ -58,36 +58,49 @@ export function useItemSizeDeps(): MeasureDeps {
   return useMemo(() => itemSizeDeps(queryClient), [queryClient])
 }
 
+const sameInputs = (a: readonly unknown[], b: readonly unknown[]) =>
+  a.length === b.length && a.every((value, index) => Object.is(value, b[index]))
+
 /**
  * The bytes of the item `build` resolves to, counted as the catalyst counts them: what a save would send, measured
- * before it is sent; null while unknown. `key` names the inputs that change the files (use `identityKey` for blobs
- * and items); a new key measures again with that render's `build`, and `build` null measures nothing. A build that
- * can't be made yet (an ItemFileError) is null. A measurement that fails is reported and stays failed, so a later
- * mount tries again; nothing is blocked on it, and the save re-checks.
+ * before it is sent; null while unknown. It measures again when one of `inputs` changes, compared by reference, so
+ * they list the very objects the files come from. A build that can't be made yet (an ItemFileError) is null; a
+ * measurement that fails is reported and null. Nothing is blocked on it: the save checks again.
  */
 export function useMeasuredBytes(
   build: (() => Promise<MeasurableItem | null>) | null,
-  key: readonly unknown[],
+  inputs: readonly unknown[],
   flow: string
 ): number | null {
   const deps = useItemSizeDeps()
-  const query = useQuery({
-    queryKey: ['measured-item-size', flow, ...key],
-    queryFn: async () => {
-      try {
-        const built = await build!()
-        return built ? await measureItemBytes(built, deps) : null
-      } catch (error) {
-        if (error instanceof ItemFileError) return null
-        captureError(error, { flow, step: 'measure_size' })
-        throw error
-      }
-    },
-    enabled: build !== null,
-    staleTime: Infinity,
-    retry: false
+  const [current, setCurrent] = useState(inputs)
+  if (!sameInputs(current, inputs)) setCurrent(inputs)
+  const buildRef = useRef(build)
+  useEffect(() => {
+    buildRef.current = build
   })
-  return build ? (query.data ?? null) : null
+  const enabled = build !== null
+  const [result, setResult] = useState<{ inputs: readonly unknown[]; bytes: number | null } | null>(null)
+
+  useEffect(() => {
+    const run = buildRef.current
+    if (!run) return
+    let cancelled = false
+    void run()
+      .then(built => (built ? measureItemBytes(built, deps) : null))
+      .catch((error: unknown) => {
+        if (!(error instanceof ItemFileError)) captureError(error, { flow, step: 'measure_size' })
+        return null
+      })
+      .then(bytes => {
+        if (!cancelled) setResult({ inputs: current, bytes })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [current, enabled, deps, flow])
+
+  return enabled && result?.inputs === current ? result.bytes : null
 }
 
 /** A saved item's size key: its stored files plus what decides its limit and a missing rarity image. */

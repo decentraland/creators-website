@@ -51,16 +51,27 @@ beforeEach(() => {
 })
 
 describe('useMeasuredBytes', () => {
-  it('measures what the build resolves to and measures again when the key changes', async () => {
+  it('measures what the build resolves to and measures again when an input changes', async () => {
     const { result, rerender } = renderHook(
-      ({ built, key }: { built: Item; key: string }) => useMeasuredBytes(async () => ({ item: built }), [key], 'test'),
-      { wrapper: wrapperWith(), initialProps: { built: hat, key: 'a' } }
+      ({ built }: { built: Item }) => useMeasuredBytes(async () => ({ item: built }), [built], 'test'),
+      { wrapper: wrapperWith(), initialProps: { built: hat } }
     )
     await waitFor(() => expect(result.current).toBe(2_250_000))
 
     const lighter = { ...hat, contents: { ...hat.contents, 'male/hat.glb': 'bafthumb' } }
-    rerender({ built: lighter, key: 'b' })
+    rerender({ built: lighter })
     await waitFor(() => expect(result.current).toBe(250_000))
+  })
+
+  it('keeps its result while the inputs are the same objects', async () => {
+    const build = vi.fn(async () => ({ item: hat }))
+    const { result, rerender } = renderHook(() => useMeasuredBytes(build, [hat, 'male'], 'test'), {
+      wrapper: wrapperWith()
+    })
+    await waitFor(() => expect(result.current).toBe(2_250_000))
+    rerender()
+    expect(result.current).toBe(2_250_000)
+    expect(build).toHaveBeenCalledTimes(1)
   })
 
   it('measures nothing without a build', () => {
@@ -77,28 +88,19 @@ describe('useMeasuredBytes', () => {
     expect(captureError).not.toHaveBeenCalled()
   })
 
-  it('reports a failed measurement and tries again on a later mount', async () => {
-    const client = new QueryClient()
+  it('reports a failed measurement and stays unknown', async () => {
     const broken = item('broken', {
       'male/hat.glb': 'bafmissing',
       'thumbnail.png': 'bafthumb',
       'image.png': 'bafimage'
     })
-    const first = renderHook(() => useMeasuredBytes(async () => ({ item: broken }), ['broken'], 'test'), {
-      wrapper: wrapperWith(client)
+    const { result } = renderHook(() => useMeasuredBytes(async () => ({ item: broken }), [broken], 'test'), {
+      wrapper: wrapperWith()
     })
     await waitFor(() =>
       expect(captureError).toHaveBeenCalledWith(expect.any(Error), { flow: 'test', step: 'measure_size' })
     )
-    expect(first.result.current).toBeNull()
-    first.unmount()
-
-    STORED.bafmissing = 1_000
-    const second = renderHook(() => useMeasuredBytes(async () => ({ item: broken }), ['broken'], 'test'), {
-      wrapper: wrapperWith(client)
-    })
-    await waitFor(() => expect(second.result.current).toBe(251_000))
-    delete STORED.bafmissing
+    expect(result.current).toBeNull()
   })
 })
 

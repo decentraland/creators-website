@@ -8,7 +8,6 @@ import { itemCurationsKey, linkedItemsKey } from '~/hooks/useLinkedCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { useItemSizeDeps, useMeasuredBytes } from '~/hooks/useItemSize'
-import { identityKey } from '~/lib/blobs'
 import { installBackGuard } from '~/lib/backGuard'
 import { ItemFileError, VIDEO_PATH } from '~/lib/itemFiles'
 import { type EmotePlayMode, type ItemDraftPayload } from '~/lib/itemFactory'
@@ -31,7 +30,7 @@ import {
   addItemsReducer,
   createDraft,
   createInitialState,
-  draftSizeKey,
+  draftSizeInputs,
   getDraftSizeLimit,
   isDraftComplete,
   isValidationStale,
@@ -235,15 +234,15 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
   // The item the selected draft will be saved as, built exactly as the upload builds it (thumbnail quantized, rarity
   // image rendered, a variant merged into its target) and measured the catalyst way (lib/itemSize).
   const sizeDeps = useItemSizeDeps()
-  const sizeKey = useMemo(
-    () => [selected?.id ?? null, identityKey(collectionItems), draftSizeKey(drafts)],
+  const sizeInputs = useMemo(
+    () => [selected?.id ?? null, collectionItems, ...draftSizeInputs(drafts)],
     [selected?.id, collectionItems, drafts]
   )
   const measuredBytes = useMeasuredBytes(
     selected?.status === 'ready' && selected.type
       ? async () => (await planDraftUpload(selected.id, drafts.map(toPayload), collectionItems))?.built ?? null
       : null,
-    sizeKey,
+    sizeInputs,
     'add_items'
   )
   const selectedSize = useMemo<ItemSize | null>(

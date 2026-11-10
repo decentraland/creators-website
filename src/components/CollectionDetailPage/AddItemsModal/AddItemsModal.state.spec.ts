@@ -4,7 +4,7 @@ import {
   addItemsReducer,
   createDraft,
   createInitialState,
-  draftSizeKey,
+  draftSizeInputs,
   getCategoryOptions,
   getDraftSizeLimit,
   isImageWearable,
@@ -284,16 +284,17 @@ describe('getDraftSizeLimit', () => {
   })
 })
 
-describe('draftSizeKey', () => {
+describe('draftSizeInputs', () => {
+  const same = (a: unknown[], b: unknown[]) => a.length === b.length && a.every((value, i) => Object.is(value, b[i]))
+
   it('changes with the files or the rarity, never with the name', () => {
     const draft = readyDraft()
-    const key = JSON.stringify(draftSizeKey([draft]))
-    expect(JSON.stringify(draftSizeKey([{ ...draft, name: 'Other' }]))).toBe(key)
-    expect(JSON.stringify(draftSizeKey([{ ...draft, rarity: 'mythic' }]))).not.toBe(key)
-    expect(JSON.stringify(draftSizeKey([{ ...draft, contents: { ...draft.contents } }]))).not.toBe(key)
+    const inputs = draftSizeInputs([draft])
+    expect(same(draftSizeInputs([{ ...draft, name: 'Other' }]), inputs)).toBe(true)
+    expect(same(draftSizeInputs([{ ...draft, rarity: 'mythic' }]), inputs)).toBe(false)
+    expect(same(draftSizeInputs([{ ...draft, contents: { ...draft.contents } }]), inputs)).toBe(false)
   })
 })
-
 describe('smart wearable drafts', () => {
   it('need a preview video to be saved and never act as variant targets', () => {
     const smart = smartDraft()
