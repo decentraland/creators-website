@@ -214,7 +214,7 @@ Committee actions keep the legacy names (the on-chain disable was "Reject collec
 | `Review Validation Opened` | the curator opened the collection's validation results | `collectionId`, `status` (`warnings` \| `errors`) |
 | `Review Preview In World` | a **Preview in World** launch from the editor in review mode settles (desktop only) | `collectionId`, `itemCount`, `launched` (the desktop explorer opened; `false` = sent to the download page) |
 
-Sentry flows: `curation_assign`, `curation_reject`, `curation_disable`, `curation_push`, `curation_approve` (with `step`). Wallet rejections are events only.
+Sentry flows: `curation_assign`, `curation_reject`, `curation_disable`, `curation_push`, `curation_approve` (with `step`). Wallet rejections and a wallet on the wrong account or network are events only.
 
 Linked collections (curator side):
 
