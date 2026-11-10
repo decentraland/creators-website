@@ -64,7 +64,7 @@ export type SentTransaction = {
   relayed?: boolean
 }
 
-// The two executeMetaTransaction layouts decentraland-transactions encodes: r/s/v apart, or one signature blob.
+// The two executeMetaTransaction layouts lib/chain/metaTransaction encodes: r/s/v apart, or one signature blob.
 const META_TRANSACTION = parseAbi([
   'function executeMetaTransaction(address userAddress, bytes functionSignature, bytes32 sigR, bytes32 sigS, uint8 sigV)',
   'function executeMetaTransaction(address userAddress, bytes functionData, bytes signature)'
