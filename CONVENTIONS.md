@@ -19,9 +19,9 @@ The app is a standalone web app today. In the future it may also be embedded ins
 Only `src/lib/auth/` (and the wallet zustand store it feeds) may import `decentraland-connect`, `@dcl/single-sign-on-client`, or `@dcl/crypto`, or hold an EIP-1193 provider. The rest of the app consumes:
 
 - the wallet store (address, connection state), and
-- `~/lib/auth` helpers: `getIdentity()` (AuthChain identity) and `signedFetch()`.
+- `~/lib/auth` helpers: `signedFetch()` and `signWithIdentity()` (AuthChain, both async), and the chain calls (`readContract`, `sendContractTransaction`, `signTypedData`, …), which load viem on first use.
 
-Every builder-server client in `lib/` signs requests through that single chokepoint — never ad-hoc signing in components or hooks. The interface stays **async and provider-shaped**: where the identity comes from (local login vs. handed over by a host) and where on-chain calls are signed (local provider vs. proxied `request({ method, params })`) must be swappable behind it without touching consumers.
+Every builder-server client in `lib/` signs requests through that single chokepoint — never ad-hoc signing in components or hooks. The interface stays **async and provider-shaped**: the session carries the wallet's EIP-1193 `provider` and viem clients are built over it only inside `lib/auth`'s lazily loaded modules, so where the identity comes from (local login vs. handed over by a host) and where on-chain calls are signed (local provider vs. proxied `request({ method, params })`) stay swappable without touching consumers. `lib/chain` is protocol code (contract registry, meta-transaction encoding) and never sees the provider: `lib/auth` hands it the wallet requests it needs.
 
 ### 2. Host-facing side effects go through `lib/` modules
 
