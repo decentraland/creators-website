@@ -336,7 +336,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
       const result = await executeUpload(address, operations, sizeDeps)
 
       // One event per upload rather than per item: the legacy builder's per-item `Save item` on creation
-      // reads here as `item_count` (see design/TRACKING_SPEC.md).
+      // reads here as `item_count` (see docs/TRACKING_SPEC.md).
       if (updateOnly) {
         // Legacy event name, so bulk edits line up with the old builder's.
         track('Edit TP Items', {
@@ -508,7 +508,10 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
                 linked={isLinked ? { contract: linkedContract, updating: updateOnly } : undefined}
               />
             ) : (
-              <S.ProcessingPane data-testid="draft-processing">
+              <S.ProcessingPane
+                data-testid="draft-processing"
+                data-error={selected?.status === 'failed' ? (selected.errorKey ?? 'invalid_model_file') : undefined}
+              >
                 {selected?.status === 'failed' ? (
                   t(`add_items_modal.file_error.${selected.errorKey ?? 'invalid_model_file'}`, selected.errorParams)
                 ) : (

@@ -288,7 +288,7 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
                   <S.Field as="div" data-hinted>
                     <S.FieldLabel>
                       {t('add_items_modal.body_shape')}
-                      <S.FieldHint data-testid="change-file-effect">
+                      <S.FieldHint data-testid="change-file-effect" data-mode={mode}>
                         <HintIcon />
                         {lockHint ??
                           t(

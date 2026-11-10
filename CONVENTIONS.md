@@ -12,7 +12,7 @@ There is no separate `pages/` folder — page components live in `src/components
 
 ## Architecture: host-portability seams (hard rules)
 
-The app is a standalone web app today. In the future it may also be embedded inside the creator-hub Electron app — rendered in an iframe and talking to the host over a two-way postMessage/`@dcl/mini-rpc` channel, the same pattern creator-hub uses for `@dcl/inspector`. We build **none** of that now (no RPC layer, no host adapter, no electron-mode flag). Instead, these four seams stay clean so a future embed is a bounded integration instead of a rewrite:
+The app is a standalone web app today. In the future it may also be embedded inside the creator-hub Electron app — rendered in an iframe and talking to the host over a two-way postMessage/`@dcl/mini-rpc` channel, the same pattern creator-hub uses for `@dcl/inspector`. We build **none** of that now (no RPC layer, no host adapter, no electron-mode flag). Instead, these seams stay clean so a future embed is a bounded integration instead of a rewrite:
 
 ### 1. Auth is a sealed module
 
@@ -38,6 +38,10 @@ Only `src/config/` may read `window.location.search`, query params, or `window.p
 ### 4. The router is created at one call site
 
 One file creates the router, with `basename` taken from config. No other module constructs routers or assumes how the app is served (path, host, hash), so serving from a different origin/path under a host is a one-file change.
+
+### 5. Back-end clients are folders with one transport
+
+Each back end the app calls has its client under `src/lib/<server>/`: a `transport.ts` that owns the base URL, request signing and envelope parsing, endpoint modules beside it, and an `index.ts` that re-exports them. Only the client's own folder imports its transport, so moving to a server with another base path or routes touches that folder alone. Components get data through hooks: from `~/lib/builder` they import URL helpers, error classification and any type, never endpoint functions. ESLint enforces it for the static `~/` imports the codebase uses. Today only builder-server (`src/lib/builder/`) follows it; marketplace-server (`lib/coupons`, `lib/trades`, `lib/listings`) and credits-server (`lib/credits`, `lib/creditPacks`) are the follow-ups.
 
 ## Icons
 

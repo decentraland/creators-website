@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { BodyShape, PreviewRenderer, type ContractNetwork, type IPreviewController } from '@dcl/schemas'
+import { BodyShape, type ContractNetwork, type IPreviewController } from '@dcl/schemas'
 import { ArrowBackIosNew, PersonOutline as PersonOutlineIcon } from '@mui/icons-material'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { AvatarPreview } from '~/components/AvatarPreview'
@@ -28,7 +28,6 @@ import { modelValidationKey, useModelValidation } from '~/hooks/useModelValidati
 import { useRerunValidation } from '~/hooks/useRerunValidation'
 import { useObjectURL } from '~/hooks/useObjectURL'
 import { thumbnailValidationKey, useThumbnailValidation } from '~/hooks/useThumbnailValidation'
-import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { useMeasuredBytes } from '~/hooks/useItemSize'
 import { fetchStoredThumbnail, useSaveItem } from '~/hooks/useSaveItem'
 import { captureError } from '~/lib/monitoring'
@@ -59,7 +58,7 @@ import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/item
 import { pickFiles } from '~/lib/filePicker'
 import { IMAGE_PATH, ITEM_EXTENSIONS } from '~/lib/itemFiles'
 import { getItemSizeLimit, isItemTooBigError, type ItemSize } from '~/lib/itemSize'
-import { ItemType, canDeleteItem, canEditItemDetails, isSocialEmote, type Item } from '~/lib/items'
+import { ItemType, canDeleteItem, canEditItemDetails, type Item } from '~/lib/items'
 import { isLinkedItemPublished } from '~/lib/linkedItemStatus'
 import {
   LINKED_COLLECTION_NAME_MAX_LENGTH,
@@ -82,8 +81,9 @@ import { useWallet } from '~/store/wallet'
 import { theme } from '~/styles/theme'
 import { AvatarCustomizerDrawer, AvatarCustomizerToggle } from './AvatarCustomizer'
 import { CollectionPicker } from './CollectionPicker'
-import { ItemsSidebar } from './ItemsSidebar'
+import { ItemsSidebar, type EditorBack } from './ItemsSidebar'
 import { MobilePreview } from './MobilePreview'
+import { SceneBoundariesToggle } from './SceneBoundariesToggle'
 import { PlaybackBar } from './PlaybackBar'
 import { PropertiesPanel, type SpringBonesFormProps } from './PropertiesPanel'
 import { EditorPreviewLaunch } from './EditorPreviewLaunch'
@@ -150,12 +150,13 @@ const ItemEditorPage = () => {
   const collectionStatus = useCollectionStatus(canReadCuration ? address : undefined, collectionQuery.data)
   const itemsQuery = useAllCollectionItems(address, collectionId ?? undefined)
   const baseWearables = useBaseWearables()
-  const pickedRenderer = usePreviewRenderer()
   const saveItem = useSaveItem(address)
   const saveCollection = useSaveCollection(address)
   const [isRenameOpen, setRenameOpen] = useState(false)
 
   const collection = collectionQuery.data
+  // Linked collections have no owner: their third party's managers are who works on them.
+  const hasRole = !!collection && (isLinked ? isManager : hasCollectionRole(collection, address))
   const mobileCuration = useCollectionCuration(mode === 'review' ? address : undefined, collection)
   const items = itemsQuery.data ?? EMPTY_ITEMS
   // A linked collection under review: the sidebar sets apart the items this review is about.
@@ -167,8 +168,6 @@ const ItemEditorPage = () => {
     [pendingLinked.data, reviewedIds]
   )
   const selected = useMemo(() => resolveSelectedItem(items, itemParam), [items, itemParam])
-  // Unity cannot play a social emote's extra armatures: those items always preview in Babylon.
-  const renderer = selected && isSocialEmote(selected) ? PreviewRenderer.BABYLON : pickedRenderer
 
   // Avatar state (session-only store).
   const bodyShape = useAvatarPreview(state => state.bodyShape)
@@ -537,7 +536,9 @@ const ItemEditorPage = () => {
   const isLoading =
     !restored ||
     isResolvingReviewer ||
-    (!!address && !!collectionId && (collectionQuery.isLoading || itemsQuery.isLoading || thirdParty.isLoading))
+    (!!address && !!collectionId && (collectionQuery.isLoading || itemsQuery.isLoading || thirdParty.isLoading)) ||
+    // Whether a viewer without a role gets a back link depends on the committee, so wait for it.
+    (mode === 'edit' && !!collection && !hasRole && committee.isLoading)
   const isThirdPartyNotFound =
     thirdParty.isError &&
     thirdParty.error instanceof BuilderServerError &&
@@ -548,8 +549,9 @@ const ItemEditorPage = () => {
       ((collectionQuery.isError &&
         collectionQuery.error instanceof BuilderServerError &&
         NOT_FOUND_STATUSES.includes(collectionQuery.error.status)) ||
-        // Drafts are private to their roles; published collections, linked ones included, open read-only to any
-        // signer (curators review through mode === 'review', which skips the gate).
+        // Drafts are private to their roles; published collections, linked ones included, open read-only here to any
+        // signer, the editor being their only public view (curators review through mode === 'review', which skips
+        // the gate).
         (!!collection &&
           mode === 'edit' &&
           (isLinked
@@ -561,45 +563,39 @@ const ItemEditorPage = () => {
     !!collectionId &&
     (collectionQuery.isError || itemsQuery.isError || (thirdParty.isError && !isThirdPartyNotFound))
 
-  const preview =
-    renderer === undefined ? null : (
-      <AvatarPreview
-        // The renderer is baked into the iframe URL at mount, so a switch has to remount the preview.
-        key={renderer}
-        id={PREVIEW_ID}
-        source={source}
-        avatar={avatar}
-        emote={emote}
-        unity={renderer === PreviewRenderer.UNITY}
-        onLoad={onPreviewLoad}
-        onError={onPreviewError}
-        onController={setController}
-      >
-        <PlaybackBar
-          previewId={PREVIEW_ID}
-          controller={controller}
-          collectionEmotes={collectionEmotes}
-          previewedWearables={previewedWearables}
-          subjectEmoteId={subjectEmote?.id ?? null}
+  const preview = (
+    <AvatarPreview
+      id={PREVIEW_ID}
+      source={source}
+      avatar={avatar}
+      emote={emote}
+      onLoad={onPreviewLoad}
+      onError={onPreviewError}
+      onController={setController}
+    >
+      <PlaybackBar
+        previewId={PREVIEW_ID}
+        controller={controller}
+        collectionEmotes={collectionEmotes}
+        previewedWearables={previewedWearables}
+        subjectEmoteId={subjectEmote?.id ?? null}
+      />
+      <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />
+      <SceneBoundariesToggle trigger="editor" />
+      {selected && (
+        <ValidationBadge
+          status={validationStatus}
+          issues={validationIssues ?? []}
+          subject={validationSubject}
+          onRerun={rerunSelectedValidation}
+          onOpen={onValidationOpen}
         />
-        <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />
-        {selected && (
-          <ValidationBadge
-            status={validationStatus}
-            issues={validationIssues ?? []}
-            subject={validationSubject}
-            onRerun={rerunSelectedValidation}
-            onOpen={onValidationOpen}
-          />
-        )}
-        {/* Linked collections have no owner: their third party's managers are who works on them. */}
-        {collection &&
-          (mode === 'review' ||
-            (mode === 'edit' && (isLinked ? isManager : hasCollectionRole(collection, address)))) && (
-            <EditorPreviewLaunch collectionId={collection.id} itemCount={items.length} reviewing={mode === 'review'} />
-          )}
-      </AvatarPreview>
-    )
+      )}
+      {collection && (mode === 'review' || (mode === 'edit' && hasRole)) && (
+        <EditorPreviewLaunch collectionId={collection.id} itemCount={items.length} reviewing={mode === 'review'} />
+      )}
+    </AvatarPreview>
+  )
 
   if (restored && !session) {
     return (
@@ -709,25 +705,37 @@ const ItemEditorPage = () => {
       />
     ) : null
 
-  const collectionUrl = collection ? `/collections/${collection.id}` : ''
-  const leaveEditor = () => {
+  // The detail page is for the collection's roles; a curator with none goes back to the curation list, and anyone
+  // else reached a published collection by link and has nowhere to go back to.
+  const editBack: EditorBack | undefined = collection
+    ? hasRole
+      ? { to: `/collections/${collection.id}`, label: t('item_editor.sidebar.back') }
+      : isCurator
+        ? { to: curationListUrl(), label: t('item_editor.review.back') }
+        : undefined
+    : undefined
+  const mobileBack: EditorBack | undefined =
+    mode === 'review' ? { to: curationListUrl(), label: t('item_editor.review.back') } : editBack
+  const leaveEditor = (to: string) => {
     if (!form.isDirty) return true
-    setPending({ kind: 'away', to: collectionUrl })
+    setPending({ kind: 'away', to })
     return false
   }
   // Phones get no sidebar and no review bar, so this strip is the only way back out of the editor.
   const mobileHeader = collection ? (
     <S.MobileEditorHeader data-testid="mobile-editor-header">
-      <S.MobileBackLink
-        to={mode === 'review' ? curationListUrl() : collectionUrl}
-        aria-label={t(mode === 'review' ? 'item_editor.review.back' : 'item_editor.sidebar.back')}
-        data-testid="mobile-editor-back"
-        onClick={event => {
-          if (mode === 'edit' && !leaveEditor()) event.preventDefault()
-        }}
-      >
-        <ArrowBackIosNew fontSize="small" />
-      </S.MobileBackLink>
+      {mobileBack && (
+        <S.MobileBackLink
+          to={mobileBack.to}
+          aria-label={mobileBack.label}
+          data-testid="mobile-editor-back"
+          onClick={event => {
+            if (mode === 'edit' && !leaveEditor(mobileBack.to)) event.preventDefault()
+          }}
+        >
+          <ArrowBackIosNew fontSize="small" />
+        </S.MobileBackLink>
+      )}
       <S.MobileCollectionName title={collection.name} data-testid="mobile-editor-collection">
         {collection.name}
       </S.MobileCollectionName>
@@ -788,11 +796,8 @@ const ItemEditorPage = () => {
         addItems().catch((error: unknown) => console.error('Add items failed:', error))
       }}
       onSelect={selectItem}
-      onLeave={to => {
-        if (!form.isDirty) return true
-        setPending({ kind: 'away', to })
-        return false
-      }}
+      back={editBack}
+      onLeave={leaveEditor}
       onToggleDressed={item => toggleDressed({ id: item.id, type: item.type, category: item.data.category })}
       onToggleEmotePlay={toggleEmotePlay}
     />
@@ -817,10 +822,7 @@ const ItemEditorPage = () => {
                 <>
                   <S.PreviewArea>
                     {preview}
-                    {/* Babylon only: Unity has no live zoom over the bridge (see ZoomControls). */}
-                    {loadCount > 0 && controller && renderer === PreviewRenderer.BABYLON && (
-                      <ZoomControls controller={controller} />
-                    )}
+                    {loadCount > 0 && controller && <ZoomControls controller={controller} />}
                   </S.PreviewArea>
                   {isCustomizerOpen && (
                     <AvatarCustomizerDrawer catalog={baseWearables.data} onClose={closeCustomizer} />

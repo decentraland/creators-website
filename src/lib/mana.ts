@@ -18,7 +18,7 @@ export async function fetchManaAllowance(owner: string, spender: string, chainId
 }
 
 /**
- * ERC20 approve so `spender` can pull exactly `amountWei` (the publication fee). Never unlimited: an
+ * ERC20 approve so `spender` can pull up to `amountWei` (a fee plus its drift headroom). Never unlimited: an
  * open-ended allowance would outlive the publish and expose the wallet's whole balance to the spender.
  */
 export function buildManaApproveCall(chainId: number, spender: string, amountWei: bigint): ContractCall {

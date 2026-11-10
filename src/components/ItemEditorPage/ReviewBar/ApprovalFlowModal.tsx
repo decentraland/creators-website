@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import {
   Check as CheckIcon,
   ChevronRight as ChevronRightIcon,
@@ -20,19 +19,23 @@ import { SuccessModal } from '~/components/SuccessModal'
 import { Tooltip } from '~/components/Tooltip'
 import { ProgressModal } from '~/components/ProgressModal'
 import { PendingModal } from '~/components/PendingModal'
+import { useItemSizes } from '~/hooks/useItemSizes'
 import { useApprovalFlow, type ApprovalMode, type ApprovalPlan, type ApprovalStep } from '~/hooks/useApprovalFlow'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { catalystImageDeps } from '~/hooks/useItemSize'
 import { track } from '~/lib/analytics'
-import { buildMissingImage, itemSizesKey, measureItems } from '~/lib/approveCollection'
+import { buildMissingImage } from '~/lib/approveCollection'
 import { isSocialLogin, type Session } from '~/lib/auth'
 import { copyToClipboard } from '~/lib/clipboard'
-import { fetchContentSize, getContentsStorageUrl } from '~/lib/builder'
+import { getContentsStorageUrl } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
 import { getItemBodyShapeType, type Item } from '~/lib/items'
 import { formatSize } from './formatSize'
 import * as S from './ApprovalFlowModal.styles'
+
+/** The image.png the deploy renders for an item saved without one, so the sizes shown count it. */
+const imageOf = (item: Item) => buildMissingImage(item, catalystImageDeps)
 
 type Props = {
   session: Session
@@ -215,14 +218,8 @@ function ItemName({ item }: { item: Item }) {
 
 function StepTable({ step, plan, collection }: { step: ApprovalStep; plan: ApprovalPlan; collection: Collection }) {
   const { t } = useTranslation()
-  const sizesKey = useMemo(() => itemSizesKey(plan.deploy), [plan.deploy])
-  const sizes = useQuery({
-    queryKey: sizesKey,
-    // The image.png the deploy renders for an item saved without one counts, rendered the deploy's way.
-    queryFn: () => measureItems(plan.deploy, fetchContentSize, item => buildMissingImage(item, catalystImageDeps)),
-    enabled: step === 'deploy',
-    staleTime: Infinity
-  })
+  // The image.png the deploy renders for an item saved without one counts, rendered the deploy's way.
+  const sizes = useItemSizes(plan.deploy, step === 'deploy', imageOf)
   const column = (key: string, optional = false) => (
     <span data-optional={optional || undefined}>{t(`approval_flow.columns.${key}`)}</span>
   )

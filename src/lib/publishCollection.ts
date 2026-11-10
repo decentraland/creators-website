@@ -8,10 +8,12 @@ import { config } from '~/config'
 import { type ContractCall } from '~/lib/auth'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS, isRefusedRequest } from '~/lib/builder'
 import { isCollectionLocked, type Collection } from '~/lib/collections'
+import { type CollectionCuration } from '~/lib/curation'
 import { CreditsServerError, type ExternalCall, type PublicationAuthorization } from '~/lib/credits'
-import { PublicationFeeMismatchError } from '~/lib/feeVerification'
+import { PublicationFeeMismatchError, withFeeTolerance } from '~/lib/feeVerification'
 import { hasOldHashedContents } from '~/lib/itemFactory'
 import { isMissingSmartWearableVideo, type Item } from '~/lib/items'
+import { fetchManaAllowance } from '~/lib/mana'
 import { weiToUsdCents, type PublicationFee } from '~/lib/publishFee'
 import { isWalletRejection } from '~/lib/walletErrors'
 import { getCollectionSymbol, toInitializeItems, type InitializeItem } from '~/lib/saveCollection'
@@ -28,7 +30,9 @@ export type PublishBlocker =
 
 /**
  * `items` are the collection's items; a smart wearable without its preview video blocks publishing, and so do
- * items with validation errors when the caller says they block (`hasInvalidItems`).
+ * items with validation errors when the caller says they block (`hasInvalidItems`). A locked draft stays
+ * publishable, as in legacy: its last transaction may have reverted, and a retry reuses the frozen salt, so at
+ * most one createCollection can land.
  */
 export function getPublishBlocker(
   collection: Collection,
@@ -36,7 +40,7 @@ export function getPublishBlocker(
   items: Item[],
   { hasInvalidItems = false }: { hasInvalidItems?: boolean } = {}
 ): PublishBlocker | null {
-  if (collection.isPublished || isCollectionLocked(collection)) return 'not_draft'
+  if (collection.isPublished) return 'not_draft'
   if (itemCount === 0) return 'no_items'
   if (itemCount > MAX_PUBLISH_ITEMS) return 'too_many_items'
   if (items.some(isMissingSmartWearableVideo)) return 'missing_smart_wearable_video'
@@ -66,6 +70,28 @@ export function canPayWith(method: PaymentMethod, fee: PublicationFee, balances:
 }
 
 export type CreditsAndMana = { credits: number; manaWei: bigint }
+
+/** How much MANA the CollectionManager may pull from `address` right now, read from the chain. */
+export async function fetchCollectionManagerAllowance(address: string): Promise<bigint> {
+  const chainId = getMaticChainId()
+  return fetchManaAllowance(address, getContract(ContractName.CollectionManager, chainId).address, chainId)
+}
+
+/**
+ * The MANA approval a publish paid in MANA still needs, or null when the allowance already covers it. The
+ * CollectionManager pulls the on-chain total (which a verified quote may sit below), so that total plus the same
+ * tolerance the verification grants the oracle is what must fit. A failed allowance read counts as no allowance: an
+ * extra approval prompt beats a publish that reverts.
+ */
+export async function getManaApprovalNeeded(
+  onChainTotalWei: bigint,
+  fetchAllowance: () => Promise<bigint>
+): Promise<bigint | null> {
+  const required = withFeeTolerance(onChainTotalWei)
+  if (required === 0n) return null
+  const allowance = await fetchAllowance().catch(() => 0n)
+  return allowance < required ? required : null
+}
 
 // CollectionManager.createCollection(forwarder, factory, salt, name, symbol, baseURI, creator, items).
 export type CreateCollectionArgs = [string, string, string, string, string, string, string, InitializeItem[]]
@@ -99,11 +125,13 @@ const EXTERNAL_CALL_TTL_MS = 24 * 60 * 60 * 1000
  * The CreditsManager external call that runs createCollection on the creator's behalf. Byte-compatible
  * with decentraland-dapps' `buildCollectionManagerExternalCall`: selector + ABI-encoded params.
  */
+const randomSalt = () => ethers.utils.hexlify(ethers.utils.randomBytes(32))
+
 export function buildCollectionManagerExternalCall(
   chainId: number,
   args: CreateCollectionArgs,
   now = Date.now(),
-  salt = ethers.utils.hexlify(ethers.utils.randomBytes(32))
+  salt = randomSalt()
 ): ExternalCall {
   const manager = getContract(ContractName.CollectionManager, chainId)
   const contractInterface = new ethers.utils.Interface(manager.abi)
@@ -236,6 +264,7 @@ export type PublishDeps = {
   }) => Promise<PublicationAuthorization>
   sendTransaction: (call: ContractCall) => Promise<string>
   lockCollection: (collectionId: string) => Promise<number>
+  randomSalt?: () => string
 }
 
 export type PublishResult = {
@@ -279,7 +308,12 @@ export async function publishCollection(params: PublishParams, deps: PublishDeps
     const args = buildCreateCollectionArgs(collection, items, address, chainId)
     let txHash: string
     if (paymentMethod === 'credits') {
-      const externalCall = buildCollectionManagerExternalCall(chainId, args)
+      const externalCall = buildCollectionManagerExternalCall(
+        chainId,
+        args,
+        Date.now(),
+        (deps.randomSalt ?? randomSalt)()
+      )
       const authorization = await deps.authorizePublication({
         usdPriceCents: weiToUsdCents(fee.total.usdWei),
         chainId,
@@ -311,6 +345,8 @@ export type SyncDeps = {
 
 export type ConsolidateDeps = SyncDeps & {
   waitForTransaction: (txHash: string) => Promise<boolean>
+  /** Whether the collection's contract exists on chain: a retry can revert because an earlier attempt landed. */
+  isCollectionDeployed?: () => Promise<boolean>
   /** Runs once the server holds the published items, e.g. to open the collection's forum topic. */
   onSynced?: () => void
 }
@@ -342,6 +378,43 @@ export async function syncPublishedItems(
   }
 }
 
+// Matches the forum post's recovery window: older collections keep reading To review without a request.
+const REVIEW_RECOVERY_MAX_AGE_MS = 30 * 24 * 60 * 60_000
+
+/** Whether a publish finished on a later visit still gets its review request: only within a month of publishing. */
+export function isRecentPublication(collection: Pick<Collection, 'lock' | 'updatedAt'>, now = Date.now()): boolean {
+  return now - Math.max(collection.lock ?? 0, collection.updatedAt) < REVIEW_RECOVERY_MAX_AGE_MS
+}
+
+export type ReviewRequestDeps = {
+  fetchCollectionCuration: (collectionId: string) => Promise<CollectionCuration | null>
+  pushCollectionCuration: (collectionId: string) => Promise<CollectionCuration>
+}
+
+const ALREADY_REQUESTED_STATUS = 400
+
+/**
+ * Opens a published collection's first review request and returns the collection's latest one; a request that
+ * already exists (a retry, or a curator who acted first) is returned as is, never reopened.
+ */
+export async function openFirstReviewRequest(
+  collectionId: string,
+  deps: ReviewRequestDeps
+): Promise<CollectionCuration | null> {
+  const existing = await deps.fetchCollectionCuration(collectionId)
+  if (existing) return existing
+  try {
+    return await deps.pushCollectionCuration(collectionId)
+  } catch (error) {
+    const openedMeanwhile =
+      error instanceof BuilderServerError &&
+      error.status === ALREADY_REQUESTED_STATUS &&
+      error.message.includes('ongoing review request')
+    if (openedMeanwhile) return deps.fetchCollectionCuration(collectionId)
+    throw error
+  }
+}
+
 /** The publish transaction was mined but reverted: nothing was charged and nothing went on chain. */
 export class PublishTransactionRevertedError extends Error {
   txHash: string
@@ -362,7 +435,11 @@ export async function consolidatePublishedCollection(
   retryDelayMs = CONSOLIDATE_RETRY_DELAY_MS
 ): Promise<void> {
   const mined = await deps.waitForTransaction(txHash)
-  if (!mined) throw new PublishTransactionRevertedError(txHash)
+  // Code at the address can only be this exact collection: the factory derives it from the salt, its caller (the
+  // CollectionManager's forwarder) and the full initialize calldata, creator included.
+  if (!mined && !(await deps.isCollectionDeployed?.().catch(() => false))) {
+    throw new PublishTransactionRevertedError(txHash)
+  }
   await syncPublishedItems(collectionId, deps, retries, retryDelayMs)
   deps.onSynced?.()
 }

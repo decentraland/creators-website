@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { ContractName, getContract } from 'decentraland-transactions'
 import { errorCode, track } from '~/lib/analytics'
 import { captureError } from '~/lib/monitoring'
@@ -11,22 +11,26 @@ import {
   fetchRarities,
   lockCollection,
   publishCollectionItems,
+  fetchCollectionCuration,
+  pushCollectionCuration,
   saveCollection,
   saveCollectionTOS,
   saveItem
 } from '~/lib/builder'
-import { sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
-import { type Collection } from '~/lib/collections'
+import { isContractDeployed, sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
+import { isCollectionLocked, isLinkedCollection, type Collection } from '~/lib/collections'
 import { authorizePublication } from '~/lib/credits'
 import { withRehashedContents } from '~/lib/itemFactory'
 import { type Item } from '~/lib/items'
-import { buildManaApproveCall, fetchManaAllowance } from '~/lib/mana'
+import { buildManaApproveCall } from '~/lib/mana'
 import { useNotifications } from '~/lib/notifications'
 import {
   PublishCollectionError,
   PublishTransactionRevertedError,
   consolidatePublishedCollection,
   getMaticChainId,
+  isRecentPublication,
+  openFirstReviewRequest,
   publishCollection,
   syncPublishedItems,
   type PaymentMethod,
@@ -36,6 +40,8 @@ import { type PublicationFee } from '~/lib/publishFee'
 import { buildCollectionInitializeData } from '~/lib/saveCollection'
 import { useTranslation } from '~/intl'
 import { postToForum } from '~/hooks/useForumPost'
+import { storeCuration } from '~/hooks/useCuration'
+import { isPublishSyncing, usePublishSyncStore } from '~/store/publishSync'
 
 export function useRarities(address: string | undefined) {
   return useQuery({
@@ -46,21 +52,8 @@ export function useRarities(address: string | undefined) {
   })
 }
 
-/** How much MANA the CollectionManager may pull from the wallet — the publish fee must fit in it. */
-export function useManaAllowance(address: string | undefined, enabled = true) {
-  const chainId = getMaticChainId()
-  const spender = getContract(ContractName.CollectionManager, chainId).address
-  return useQuery({
-    queryKey: ['mana-allowance', address, chainId, spender],
-    queryFn: () => fetchManaAllowance(address!, spender, chainId),
-    enabled: !!address && enabled,
-    staleTime: 30_000
-  })
-}
-
-/** Approves the CollectionManager to spend exactly `amountWei` of MANA and waits until the approval is mined. */
+/** Approves the CollectionManager to spend `amountWei` of MANA (never unlimited) and waits until the approval is mined. */
 export function useApproveMana(session: Session | null) {
-  const queryClient = useQueryClient()
   const chainId = getMaticChainId()
   return useMutation({
     mutationFn: async (amountWei: bigint) => {
@@ -69,9 +62,6 @@ export function useApproveMana(session: Session | null) {
       const txHash = await sendContractTransaction(session, buildManaApproveCall(chainId, spender, amountWei))
       const mined = await waitForTransaction(chainId, txHash)
       if (!mined) throw new Error('MANA approval reverted')
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['mana-allowance', session?.address] })
     }
   })
 }
@@ -148,7 +138,7 @@ export function usePublishCollection(session: Session | null) {
         }
       )
     },
-    onSuccess: ({ collection, txHash }, { paymentMethod, fee }) => {
+    onSuccess: ({ collection, txHash }, { collection: submitted, paymentMethod, fee }) => {
       // Legacy prop names (txHash, collectionId, usedCredits, creditsAmount) so the event lines up with
       // the same one from the old builder; `isFiat` is always false here — this app has no fiat publish.
       track('Publish collection', {
@@ -157,7 +147,8 @@ export function usePublishCollection(session: Session | null) {
         isFiat: false,
         usedCredits: paymentMethod === 'credits',
         creditsAmount: paymentMethod === 'credits' ? fee.total.credits : 0,
-        item_count: fee.itemCount
+        item_count: fee.itemCount,
+        isRetry: isCollectionLocked(submitted)
       })
       const address = session?.address
       queryClient.setQueryData(['collection', address, collection.id], collection)
@@ -165,27 +156,39 @@ export function usePublishCollection(session: Session | null) {
       void queryClient.invalidateQueries({ queryKey: ['credits-balance', address] })
       void queryClient.invalidateQueries({ queryKey: ['mana-balance', address] })
       // Detached on purpose: the modal closes right away and the server catches up on its own.
-      syncing.add(collection.id)
+      usePublishSyncStore.getState().start(collection.id)
+      const { contractAddress } = collection
       consolidatePublishedCollection(collection.id, txHash, {
         waitForTransaction: hash => waitForTransaction(chainId, hash),
+        isCollectionDeployed: contractAddress ? () => isContractDeployed(chainId, contractAddress) : undefined,
         publishCollectionItems: collectionId => publishCollectionItems(address!, collectionId),
         // Not awaited: the forum's retries must not hold the sync's cleanup below.
-        onSynced: () => void postToForum(queryClient, address!, collection, 'publish')
+        onSynced: () => {
+          void postToForum(queryClient, address!, collection, 'publish')
+          void requestFirstReview(queryClient, address!, collection)
+        }
       })
         .catch((error: unknown) => {
           console.error('Collection consolidation failed', error)
+          const reverted = error instanceof PublishTransactionRevertedError
+          if (reverted) {
+            track('Publish collection reverted', {
+              collectionId: collection.id,
+              txHash,
+              usedCredits: paymentMethod === 'credits'
+            })
+          }
           // The modal is long gone: a lasting toast is the only way the creator learns the publish did not land.
-          const key =
-            error instanceof PublishTransactionRevertedError
-              ? 'publish_collection_modal.consolidation.reverted'
-              : 'publish_collection_modal.consolidation.sync_failed'
+          const key = reverted
+            ? 'publish_collection_modal.consolidation.reverted'
+            : 'publish_collection_modal.consolidation.sync_failed'
           useNotifications.getState().showToast(t(key, { name: collection.name }), {
             type: 'error',
             durationMs: CONSOLIDATION_TOAST_MS
           })
         })
         .finally(() => {
-          syncing.delete(collection.id)
+          usePublishSyncStore.getState().end(collection.id)
           invalidateCollectionItems(queryClient, collection.id)
         })
     },
@@ -194,6 +197,7 @@ export function usePublishCollection(session: Session | null) {
         collectionId: collection.id,
         isFiat: false,
         usedCredits: paymentMethod === 'credits',
+        isRetry: isCollectionLocked(collection),
         error: errorCode(error)
       })
       // Every publish needs the ToS record, so a failure to write it blocks creators until someone looks.
@@ -206,8 +210,23 @@ export function usePublishCollection(session: Session | null) {
 
 const CONSOLIDATION_TOAST_MS = 20_000
 
-// Collections whose chain→server sync is running in this tab, so a page mount doesn't start a second one.
-const syncing = new Set<string>()
+/** Opens the collection's first review request once it is published; never fails the publish. */
+export async function requestFirstReview(
+  queryClient: QueryClient,
+  address: string,
+  collection: Pick<Collection, 'id' | 'urn'>
+): Promise<void> {
+  if (isLinkedCollection(collection)) return
+  try {
+    const curation = await openFirstReviewRequest(collection.id, {
+      fetchCollectionCuration: id => fetchCollectionCuration(address, id),
+      pushCollectionCuration: id => pushCollectionCuration(address, id)
+    })
+    if (curation) storeCuration(queryClient, address, curation)
+  } catch (error) {
+    captureError(error, { flow: 'publish_review_request', collectionId: collection.id })
+  }
+}
 
 /**
  * Recovery for a publish whose consolidation never finished (tab closed before the transaction was
@@ -217,19 +236,39 @@ const syncing = new Set<string>()
 export function useSyncPublishedItems(address: string | undefined, collection: Collection | undefined, items: Item[]) {
   const queryClient = useQueryClient()
   const collectionId = collection?.id
+  const urn = collection?.urn
   const isPublished = !!collection?.isPublished
   const needsSync = useMemo(() => isPublished && items.some(item => !item.tokenId), [isPublished, items])
+  const opensReview = useMemo(() => !!collection && isRecentPublication(collection), [collection])
 
   useEffect(() => {
-    if (!address || !collectionId || !needsSync || syncing.has(collectionId)) return
-    syncing.add(collectionId)
+    if (!address || !collectionId || !urn || !needsSync || isPublishSyncing(collectionId)) return
+    usePublishSyncStore.getState().start(collectionId)
     syncPublishedItems(collectionId, { publishCollectionItems: id => publishCollectionItems(address, id) })
+      .then(async () => {
+        if (opensReview) await requestFirstReview(queryClient, address, { id: collectionId, urn })
+      })
       .catch(error => console.error('Collection items sync failed', error))
       .finally(() => {
-        syncing.delete(collectionId)
+        usePublishSyncStore.getState().end(collectionId)
         invalidateCollectionItems(queryClient, collectionId)
       })
-  }, [address, collectionId, needsSync, queryClient])
+  }, [address, collectionId, urn, needsSync, opensReview, queryClient])
+}
+
+/**
+ * Whether a locked draft's contract is already on chain: an earlier attempt landed but isn't indexed yet, so a retry
+ * would only revert. Off for any other collection.
+ */
+export function useLockedCollectionDeployed(collection: Collection | undefined) {
+  const chainId = getMaticChainId()
+  const contractAddress = collection && isCollectionLocked(collection) ? collection.contractAddress : undefined
+  return useQuery({
+    queryKey: ['collection-deployed', chainId, contractAddress],
+    queryFn: () => isContractDeployed(chainId, contractAddress!),
+    enabled: !!contractAddress,
+    staleTime: 30_000
+  })
 }
 
 /** The files of a saved item as blobs, for the thumbnail editor; off until an item is given. */

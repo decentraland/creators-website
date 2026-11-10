@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import {
   CameraAlt as CameraIcon,
   ChangeHistory as TriangleIcon,
@@ -25,10 +24,11 @@ import { VideoDropzone, VideoModal } from '~/components/VideoModal'
 import { useCampaign } from '~/hooks/useCampaign'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useObjectURL } from '~/hooks/useObjectURL'
+import { useItemVideo } from '~/hooks/useItem'
 import { useDeleteItem } from '~/hooks/usePublishCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useTranslation } from '~/intl'
-import { fetchContent, fetchItemContents, getContentsStorageUrl } from '~/lib/builder'
+import { getContentsStorageUrl } from '~/lib/builder'
 import { FeatureFlag } from '~/lib/featureFlags'
 import {
   ITEM_DESCRIPTION_MAX_LENGTH,
@@ -38,7 +38,7 @@ import {
   type ItemDraftAction,
   type ItemFileChange
 } from '~/lib/itemDraft'
-import { buildItemZip, getItemZipName } from '~/lib/itemDownload'
+import { downloadItem } from '~/lib/itemDownload'
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
 import { hasFacialExpressions, THUMBNAIL_PATH, VIDEO_PATH, toMB } from '~/lib/itemFiles'
 import { formatItemSize, isOverSizeLimit, type ItemSize } from '~/lib/itemSize'
@@ -50,7 +50,6 @@ import {
   isSmartWearable,
   type Item
 } from '~/lib/items'
-import { downloadBlob } from '~/lib/navigation'
 import { useNotifications } from '~/lib/notifications'
 import { type SpringBoneParamsByName } from '~/lib/springBones'
 import { getEmoteCategoryOptions, getWearableCategoryOptions } from '~/lib/wearableCategories'
@@ -170,12 +169,7 @@ export function PropertiesPanel({
   const [videoDuration, setVideoDuration] = useState<number | null>(null)
   // A new video must not flash the previous one's duration until its metadata loads.
   useEffect(() => setVideoDuration(null), [videoUrl])
-  const storedVideo = useQuery({
-    queryKey: ['item-video', videoHash],
-    queryFn: () => fetchContent(videoHash),
-    enabled: isVideoOpen && !draft.video && !!videoHash,
-    staleTime: Infinity
-  })
+  const storedVideo = useItemVideo(videoHash, isVideoOpen && !draft.video)
   const metrics = item.metrics
   const sizeText = useMemo(() => (size ? formatItemSize(size) : null), [size])
   const sizeExceeded = !!size && isOverSizeLimit(size)
@@ -183,7 +177,7 @@ export function PropertiesPanel({
   async function download() {
     setDownloading(true)
     try {
-      downloadBlob(await buildItemZip(await fetchItemContents(item)), getItemZipName(item))
+      await downloadItem(item)
     } catch (error) {
       console.error('Item download failed:', error)
       showToast(t('item_editor.details.download_error'), { type: 'error' })

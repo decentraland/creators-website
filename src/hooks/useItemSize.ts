@@ -109,7 +109,7 @@ export type ItemSizes = {
 }
 
 /** The saved items' sizes as the catalyst counts them. A measurement that fails is reported and leaves the item out. */
-export function useItemSizes(items: Item[]): ItemSizes {
+export function useCatalystItemSizes(items: Item[]): ItemSizes {
   const deps = useItemSizeDeps()
   const queries = useMemo(
     () =>

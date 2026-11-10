@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
-import { useItemSizes } from '~/hooks/useItemSize'
+import { useCatalystItemSizes } from '~/hooks/useItemSize'
 import { useDeleteItem } from '~/hooks/usePublishCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useSaveItem } from '~/hooks/useSaveItem'
@@ -15,20 +15,30 @@ import { type ThumbnailPatch } from '~/components/ThumbnailModal'
 import { Checkbox } from '~/components/Checkbox'
 import { DeleteItemModal } from '../DeleteItemModal'
 import { PublishItemRow } from './PublishItemRow'
-import { ITEM_COLUMNS } from './PublishItemRow.styles'
+import { itemColumns } from './PublishItemRow.styles'
 import * as S from './PublishCollectionModal.styles'
 
 type Props = {
   address: string
   collection: Collection
   items: Item[]
+  /** Items can't be edited or removed: the collection is locked by a publish. */
+  readOnly?: boolean
   onBusyChange: (busy: boolean) => void
   onBack: () => void
   onConfirm: () => void
 }
 
 /** Step 2: review every item; names and rarities are editable in place, items can be removed. */
-export function ConfirmItemsStep({ address, collection, items, onBusyChange, onBack, onConfirm }: Props) {
+export function ConfirmItemsStep({
+  address,
+  collection,
+  items,
+  readOnly = false,
+  onBusyChange,
+  onBack,
+  onConfirm
+}: Props) {
   const { t } = useTranslation()
   const showToast = useNotifications(state => state.showToast)
   const [accepted, setAccepted] = useState(false)
@@ -44,9 +54,10 @@ export function ConfirmItemsStep({ address, collection, items, onBusyChange, onB
     if (subject.kind === 'item' && subject.item.id === editingId) setThumbnailPatch(patch)
   })
 
+  const withActions = !readOnly
   // Every item's size as the catalyst counts it, thumbnail and rarity image included: the catalyst refuses any item
   // over its limit at deploy, so none can be published. A size that couldn't be measured blocks nothing.
-  const { sizes, isMeasuring } = useItemSizes(items)
+  const { sizes, isMeasuring } = useCatalystItemSizes(items)
   const hasOversized = useMemo(
     () =>
       items.some(item => {
@@ -102,12 +113,16 @@ export function ConfirmItemsStep({ address, collection, items, onBusyChange, onB
         <S.Text>{t('publish_collection_modal.items_step.description')}</S.Text>
       </div>
       <S.Table>
-        <S.TableHeader style={{ gridTemplateColumns: ITEM_COLUMNS }}>
+        <S.TableHeader style={{ gridTemplateColumns: itemColumns(withActions) }}>
           <span>{t('publish_collection_modal.items_step.columns.item')}</span>
           <span>{t('publish_collection_modal.items_step.columns.body_shape')}</span>
           <span>{t('publish_collection_modal.items_step.columns.category')}</span>
           <span>{t('publish_collection_modal.items_step.columns.rarity')}</span>
-          <span>{t('publish_collection_modal.items_step.columns.actions')}</span>
+          {withActions && (
+            <span data-testid="publish-items-actions-column">
+              {t('publish_collection_modal.items_step.columns.actions')}
+            </span>
+          )}
         </S.TableHeader>
         <S.TableBody data-testid="publish-items-list">
           {items.length === 0 ? (
@@ -124,7 +139,9 @@ export function ConfirmItemsStep({ address, collection, items, onBusyChange, onB
                 saveError={editingId === item.id && updateItem.isError}
                 saveErrorMessage={saveErrorMessage}
                 size={sizes.get(item.id) ?? null}
-                canDelete={items.length > 1 && canDeleteItem(collection, address)}
+                withActions={withActions}
+                canEdit={!readOnly}
+                canDelete={!readOnly && items.length > 1 && canDeleteItem(collection, address)}
                 locked={editingId !== null && editingId !== item.id}
                 pendingThumbnail={editingId === item.id ? (thumbnailPatch?.thumbnail ?? null) : null}
                 onEdit={() => {

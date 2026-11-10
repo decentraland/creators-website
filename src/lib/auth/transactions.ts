@@ -327,6 +327,12 @@ export async function readTransactionSender(chainId: number, txHash: string): Pr
   return undefined
 }
 
+/** Whether a contract is deployed at `address`. */
+export async function isContractDeployed(chainId: number, address: string): Promise<boolean> {
+  const provider = await getReadProvider(chainId)
+  return (await provider.getCode(address)) !== '0x'
+}
+
 /** Resolves true when the transaction is mined successfully, false when it reverted. */
 export async function waitForTransaction(chainId: number, txHash: string, timeoutMs?: number): Promise<boolean> {
   const provider = await getReadProvider(chainId)

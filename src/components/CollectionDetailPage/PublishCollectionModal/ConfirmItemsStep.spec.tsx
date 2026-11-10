@@ -90,7 +90,7 @@ const collection: Collection = {
   updatedAt: 1
 }
 
-function renderStep(list = items, address = ADDRESS) {
+function renderStep(list = items, address = ADDRESS, readOnly = false) {
   const onConfirm = vi.fn()
   const onBack = vi.fn()
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -104,6 +104,7 @@ function renderStep(list = items, address = ADDRESS) {
       address={address}
       collection={collection}
       items={list}
+      readOnly={readOnly}
       onBusyChange={vi.fn()}
       onBack={onBack}
       onConfirm={onConfirm}
@@ -234,6 +235,17 @@ describe('ConfirmItemsStep', () => {
   it('never offers to delete the last item', () => {
     renderStep([items[0]])
     expect(screen.queryByTestId('publish-item-delete')).not.toBeInTheDocument()
+  })
+
+  it('only confirms the items of a collection locked by a publish: no actions column', async () => {
+    const { onConfirm } = renderStep(items, ADDRESS, true)
+    expect(screen.getAllByTestId('publish-item-row')).toHaveLength(2)
+    expect(screen.queryByTestId('publish-item-edit')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('publish-items-actions-column')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('publish-item-actions')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('publish-items-accept'))
+    await userEvent.click(screen.getByTestId('publish-items-confirm'))
+    expect(onConfirm).toHaveBeenCalled()
   })
 
   it('cannot continue with no items', async () => {

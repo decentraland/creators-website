@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { ethers } from 'ethers'
 import {
   EmotePlayMode,
   addRepresentationToItem,
@@ -91,7 +90,7 @@ describe('buildItem', () => {
     expect(item.id).toBe('draft-1')
     expect(item.rarity).toBe('epic')
     expect(item.collectionId).toBe('col-1')
-    expect(item.price).toBe(ethers.constants.MaxUint256.toString())
+    expect(item.price).toBe('115792089237316195423570985008687907853269984665640564039457584007913129639935')
     expect(item.beneficiary).toBe('0xowner')
     expect(item.data.representations).toHaveLength(2)
     expect(item.data.category).toBe('hat')

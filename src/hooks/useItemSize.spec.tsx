@@ -7,7 +7,7 @@ import { ItemFileError } from '~/lib/itemFiles'
 import { MAX_CONCURRENT_MEASUREMENTS } from '~/lib/itemSize'
 import { ItemType, type Item } from '~/lib/items'
 import { captureError } from '~/lib/monitoring'
-import { itemSizeDeps, useItemSizes, useMeasuredBytes } from './useItemSize'
+import { itemSizeDeps, useCatalystItemSizes, useMeasuredBytes } from './useItemSize'
 
 vi.mock('~/lib/builder', () => ({ fetchContent: vi.fn(), fetchContentSize: vi.fn() }))
 vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
@@ -102,10 +102,10 @@ describe('useMeasuredBytes', () => {
   })
 })
 
-describe('useItemSizes', () => {
+describe('useCatalystItemSizes', () => {
   it('measures every item and leaves out one that failed, without staying pending', async () => {
     const broken = item('broken', { 'male/hat.glb': 'bafgone', 'thumbnail.png': 'bafthumb', 'image.png': 'bafimage' })
-    const { result } = renderHook(() => useItemSizes([hat, broken]), { wrapper: wrapperWith() })
+    const { result } = renderHook(() => useCatalystItemSizes([hat, broken]), { wrapper: wrapperWith() })
     await waitFor(() => expect(result.current.isMeasuring).toBe(false))
     expect(result.current.sizes.get('hat')).toEqual({ bytes: 2_250_000, limit: 3 * 1024 * 1024 })
     expect(result.current.sizes.has('broken')).toBe(false)

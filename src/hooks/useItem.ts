@@ -1,7 +1,7 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type Entity } from '@dcl/schemas'
 import { errorCode, track } from '~/lib/analytics'
-import { saveItem } from '~/lib/builder'
+import { fetchContent, saveItem } from '~/lib/builder'
 import { fetchCatalystContent } from '~/lib/catalyst'
 import { buildResetItem } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
@@ -49,5 +49,15 @@ export function useResetItem(address: string | undefined) {
       void queryClient.invalidateQueries({ queryKey: ['item-entities'] })
     },
     onError: (error, { item }) => track('Reset changes error', { itemId: item.id, error: errorCode(error) })
+  })
+}
+
+/** A stored video by hash, read once per hash. */
+export function useItemVideo(hash: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ['item-video', hash],
+    queryFn: () => fetchContent(hash!),
+    enabled: enabled && !!hash,
+    staleTime: Infinity
   })
 }

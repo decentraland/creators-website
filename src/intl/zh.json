@@ -112,6 +112,8 @@
     "open_preview": "打开预览",
     "forum_post": "论坛帖子",
     "publish": "发布系列",
+    "publish_again": "再次发布",
+    "publish_again_hint": "该系列的上一次发布可能未能完成。您可以再次发布：费用只会收取一次。",
     "more_actions": "更多操作",
     "actions": {
       "preview_items": "预览物品",
@@ -440,7 +442,7 @@
       "try_again": "重试"
     },
     "consolidation": {
-      "reverted": "“{name}”的发布未能在区块链上完成，因此未产生任何费用。该系列将在 24 小时后解锁，届时您可以再次发布。",
+      "reverted": "“{name}”的发布未能在区块链上完成，因此未产生任何费用。您现在可以再次发布。",
       "sync_failed": "“{name}”已发布，但我们无法完成与区块链的同步。请在几分钟后刷新页面；如果它仍未显示为审核中，请联系支持团队。"
     }
   },
@@ -806,6 +808,10 @@
       "stay": "继续编辑",
       "confirm": "放弃"
     },
+    "scene_boundaries": {
+      "show": "显示场景边界",
+      "hide": "隐藏场景边界"
+    },
     "customizer": {
       "title": "虚拟形象",
       "body_shape": "体型",
@@ -1152,7 +1158,6 @@
       "success_description": "关于谁可以编辑此系列的更改已生效。"
     },
     "duplicate": "此地址已在列表中。",
-    "owner": "这是您自己的地址：作为所有者，您已拥有所有权限。",
     "system": "此地址属于 Decentraland Shop，无法在此处更改。",
     "save": "保存更改",
     "saving": "正在保存更改……",

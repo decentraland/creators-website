@@ -31,15 +31,7 @@ import {
   type PricedSale,
   type SalePrice
 } from '~/lib/sales'
-import {
-  OFFCHAIN_MARKETPLACE_TYPES,
-  createTrade,
-  fetchSignatureIndexes,
-  fetchTrade,
-  getTradeDomain,
-  toTradeTypedValues,
-  type UnsignedTrade
-} from '~/lib/trades'
+import { createTrade, fetchSignatureIndexes, fetchTrade, tradeSigner } from '~/lib/trades'
 
 // Collections whose sales this tab enabled: builder-server reports minters from the subgraph, which
 // lags the transaction by a while, so a refetch in between must not bring the Enable Sales step back.
@@ -97,8 +89,7 @@ function orderDeps(session: Session, chainId: number) {
     fetchSignatureIndexes,
     sendTransaction: (call: ContractCall) => sendContractTransaction(session, call),
     waitForTransaction: (hash: string) => waitForTransaction(chainId, hash),
-    signTrade: (trade: UnsignedTrade) =>
-      signTypedData(session, getTradeDomain(chainId), OFFCHAIN_MARKETPLACE_TYPES, toTradeTypedValues(trade)),
+    signTrade: tradeSigner((domain, types, value) => signTypedData(session, domain, types, value), chainId),
     createTrade: (trade: TradeCreation) => createTrade(session.address, trade)
   }
 }

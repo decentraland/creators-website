@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ethers } from 'ethers'
 import { ContractName, getContract } from 'decentraland-transactions'
+import { toTransaction } from '~/test/chain'
 import { encodeContractCall } from './auth/transactions'
 import { BuilderServerError } from './builder'
 import { type Collection } from './collections'
@@ -17,8 +18,11 @@ import {
   consolidatePublishedCollection,
   PublishTransactionRevertedError,
   getAvailablePaymentMethods,
+  getManaApprovalNeeded,
   syncPublishedItems,
   getPublishBlocker,
+  isRecentPublication,
+  openFirstReviewRequest,
   publishCollection,
   toPublishError,
   type PublishDeps
@@ -27,6 +31,7 @@ import {
 const CHAIN_ID = 80002
 const ADDRESS = '0x00000000000000000000000000000000000000aa'
 const SALT = '0x' + '11'.repeat(32)
+const EXTERNAL_SALT = '0x' + '22'.repeat(32)
 const ETHER = 10n ** 18n
 
 const collection: Collection = {
@@ -120,12 +125,16 @@ function makeDeps(overrides: Partial<PublishDeps> = {}): PublishDeps & { calls: 
 }
 
 describe('getPublishBlocker', () => {
-  it('only lets an unlocked draft with 1..50 items publish', () => {
+  it('only lets a draft with 1..50 items publish', () => {
     expect(getPublishBlocker(collection, 3, [])).toBeNull()
     expect(getPublishBlocker(collection, 0, [])).toBe('no_items')
     expect(getPublishBlocker(collection, MAX_PUBLISH_ITEMS + 1, [])).toBe('too_many_items')
     expect(getPublishBlocker({ ...collection, isPublished: true }, 3, [])).toBe('not_draft')
-    expect(getPublishBlocker({ ...collection, lock: Date.now() }, 3, [])).toBe('not_draft')
+  })
+
+  it('lets a locked draft publish again, since its last transaction may have reverted', () => {
+    expect(getPublishBlocker({ ...collection, lock: Date.now() }, 3, [])).toBeNull()
+    expect(getPublishBlocker({ ...collection, lock: Date.now(), isPublished: true }, 3, [])).toBe('not_draft')
   })
 
   it('blocks publishing while a smart wearable has no preview video', () => {
@@ -164,6 +173,30 @@ describe('payment methods', () => {
     expect(canPayWith('credits', fee, { credits: 99, manaWei: 0n })).toBe(false)
     expect(canPayWith('mana', fee, { credits: 0, manaWei: 1000n * ETHER })).toBe(true)
     expect(canPayWith('mana', fee, { credits: 0, manaWei: 999n * ETHER })).toBe(false)
+  })
+})
+
+describe('getManaApprovalNeeded', () => {
+  // What the contract pulls: 3% above a 1000 MANA quote, still within the verification tolerance.
+  const onChainTotal = 1030n * ETHER
+  const padded = 1081n * ETHER + ETHER / 2n
+
+  it('approves the on-chain total plus the fee tolerance when the allowance only covers the quote', async () => {
+    await expect(getManaApprovalNeeded(onChainTotal, () => Promise.resolve(1000n * ETHER))).resolves.toBe(padded)
+  })
+
+  it('asks for no approval once the allowance covers the padded on-chain total', async () => {
+    await expect(getManaApprovalNeeded(onChainTotal, () => Promise.resolve(padded))).resolves.toBeNull()
+  })
+
+  it('treats a failed allowance read as no allowance', async () => {
+    await expect(getManaApprovalNeeded(onChainTotal, () => Promise.reject(new Error('rpc down')))).resolves.toBe(padded)
+  })
+
+  it('neither reads nor approves a free fee', async () => {
+    const read = vi.fn()
+    await expect(getManaApprovalNeeded(0n, read)).resolves.toBeNull()
+    expect(read).not.toHaveBeenCalled()
   })
 })
 
@@ -270,9 +303,15 @@ describe('publishCollection', () => {
   })
 
   it('charges the fee in cents and sends the useCredits transaction to the CreditsManager', async () => {
+    vi.useFakeTimers({ now: 1_700_000_000_000, toFake: ['Date'] })
     const authorize = vi.fn().mockResolvedValue(authorization)
     const send = vi.fn().mockResolvedValue('0xtx')
-    await publishCollection(params, makeDeps({ authorizePublication: authorize, sendTransaction: send }))
+    const deps = makeDeps({ authorizePublication: authorize, sendTransaction: send, randomSalt: () => EXTERNAL_SALT })
+    try {
+      await publishCollection(params, deps)
+    } finally {
+      vi.useRealTimers()
+    }
     expect(authorize).toHaveBeenCalledWith(
       expect.objectContaining({
         usdPriceCents: 1000,
@@ -280,7 +319,116 @@ describe('publishCollection', () => {
         creditsManagerAddress: getContract(ContractName.CreditsManager, CHAIN_ID).address
       })
     )
-    expect(send.mock.calls[0][0].method).toBe('useCredits')
+    // The credits server co-signs this exact call.
+    expect(authorize.mock.calls[0][0].externalCall).toEqual({
+      target: '0x5309ae874fc4eb21adcd63f8b6c3f766cc3b1849',
+      selector: '0x35a629c2',
+      data:
+        '0x0000000000000000000000007b1fe9de545b22cb553766817b84d655ce8121c9' +
+        '000000000000000000000000802de0c509add2ee29de24de7225daaff4741c43' +
+        '1111111111111111111111111111111111111111111111111111111111111111' +
+        '0000000000000000000000000000000000000000000000000000000000000100' +
+        '0000000000000000000000000000000000000000000000000000000000000140' +
+        '0000000000000000000000000000000000000000000000000000000000000180' +
+        '00000000000000000000000000000000000000000000000000000000000000aa' +
+        '0000000000000000000000000000000000000000000000000000000000000200' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '48616c6c6f7765656e0000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '44434c2d484c4c574e0000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000043' +
+        '68747470733a2f2f706565722e646563656e7472616c616e642e7a6f6e652f6c' +
+        '616d626461732f636f6c6c656374696f6e732f7374616e646172642f65726337' +
+        '32312f0000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000002' +
+        '0000000000000000000000000000000000000000000000000000000000000040' +
+        '0000000000000000000000000000000000000000000000000000000000000140' +
+        '0000000000000000000000000000000000000000000000000000000000000080' +
+        'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' +
+        '00000000000000000000000000000000000000000000000000000000000000aa' +
+        '00000000000000000000000000000000000000000000000000000000000000c0' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '6c6567656e646172790000000000000000000000000000000000000000000000' +
+        '000000000000000000000000000000000000000000000000000000000000001a' +
+        '313a773a4974656d20613a3a6861743a4261736546656d616c65000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000080' +
+        'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' +
+        '00000000000000000000000000000000000000000000000000000000000000aa' +
+        '00000000000000000000000000000000000000000000000000000000000000c0' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '6c6567656e646172790000000000000000000000000000000000000000000000' +
+        '000000000000000000000000000000000000000000000000000000000000001a' +
+        '313a773a4974656d20623a3a6861743a4261736546656d616c65000000000000',
+      expiresAt: 1700086400,
+      salt: '0x2222222222222222222222222222222222222222222222222222222222222222'
+    })
+    expect(toTransaction(send.mock.calls[0][0])).toEqual({
+      to: '0x8052a560e6e6ac86eeb7e711a4497f639b322fb3',
+      data:
+        '0x1863572d' +
+        '0000000000000000000000000000000000000000000000000000000000000020' +
+        '00000000000000000000000000000000000000000000000000000000000000c0' +
+        '0000000000000000000000000000000000000000000000000000000000000140' +
+        '0000000000000000000000000000000000000000000000000000000000000200' +
+        '0000000000000000000000000000000000000000000000000000000000000720' +
+        '0000000000000000000000000000000000000000000000000000000000000000' +
+        '00000000000000000000000000000000000000000000003635c9adc5dea00000' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '00000000000000000000000000000000000000000000003635c9adc5dea00000' +
+        '000000000000000000000000000000000000000000000000000000006553f100' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000020' +
+        '0000000000000000000000000000000000000000000000000000000000000041' +
+        'abababababababababababababababababababababababababababababababab' +
+        'abababababababababababababababababababababababababababababababab' +
+        'ab00000000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000005309ae874fc4eb21adcd63f8b6c3f766cc3b1849' +
+        '35a629c200000000000000000000000000000000000000000000000000000000' +
+        '00000000000000000000000000000000000000000000000000000000000000a0' +
+        '0000000000000000000000000000000000000000000000000000000065554280' +
+        '2222222222222222222222222222222222222222222222222222222222222222' +
+        '0000000000000000000000000000000000000000000000000000000000000460' +
+        '0000000000000000000000007b1fe9de545b22cb553766817b84d655ce8121c9' +
+        '000000000000000000000000802de0c509add2ee29de24de7225daaff4741c43' +
+        '1111111111111111111111111111111111111111111111111111111111111111' +
+        '0000000000000000000000000000000000000000000000000000000000000100' +
+        '0000000000000000000000000000000000000000000000000000000000000140' +
+        '0000000000000000000000000000000000000000000000000000000000000180' +
+        '00000000000000000000000000000000000000000000000000000000000000aa' +
+        '0000000000000000000000000000000000000000000000000000000000000200' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '48616c6c6f7765656e0000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '44434c2d484c4c574e0000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000043' +
+        '68747470733a2f2f706565722e646563656e7472616c616e642e7a6f6e652f6c' +
+        '616d626461732f636f6c6c656374696f6e732f7374616e646172642f65726337' +
+        '32312f0000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000002' +
+        '0000000000000000000000000000000000000000000000000000000000000040' +
+        '0000000000000000000000000000000000000000000000000000000000000140' +
+        '0000000000000000000000000000000000000000000000000000000000000080' +
+        'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' +
+        '00000000000000000000000000000000000000000000000000000000000000aa' +
+        '00000000000000000000000000000000000000000000000000000000000000c0' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '6c6567656e646172790000000000000000000000000000000000000000000000' +
+        '000000000000000000000000000000000000000000000000000000000000001a' +
+        '313a773a4974656d20613a3a6861743a4261736546656d616c65000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000080' +
+        'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' +
+        '00000000000000000000000000000000000000000000000000000000000000aa' +
+        '00000000000000000000000000000000000000000000000000000000000000c0' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '6c6567656e646172790000000000000000000000000000000000000000000000' +
+        '000000000000000000000000000000000000000000000000000000000000001a' +
+        '313a773a4974656d20623a3a6861743a4261736546656d616c65000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000041' +
+        'cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd' +
+        'cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd' +
+        'cd00000000000000000000000000000000000000000000000000000000000000'
+    })
   })
 
   it('pays with MANA by calling createCollection directly', async () => {
@@ -288,8 +436,46 @@ describe('publishCollection', () => {
     const deps = makeDeps({ sendTransaction: send })
     await publishCollection({ ...params, paymentMethod: 'mana' }, deps)
     expect(deps.calls).not.toContain('authorizePublication')
-    expect(send.mock.calls[0][0].method).toBe('createCollection')
-    expect(send.mock.calls[0][0].contract.address).toBe(getContract(ContractName.CollectionManager, CHAIN_ID).address)
+    expect(toTransaction(send.mock.calls[0][0])).toEqual({
+      to: '0x5309ae874fc4eb21adcd63f8b6c3f766cc3b1849',
+      data:
+        '0x35a629c2' +
+        '0000000000000000000000007b1fe9de545b22cb553766817b84d655ce8121c9' +
+        '000000000000000000000000802de0c509add2ee29de24de7225daaff4741c43' +
+        '1111111111111111111111111111111111111111111111111111111111111111' +
+        '0000000000000000000000000000000000000000000000000000000000000100' +
+        '0000000000000000000000000000000000000000000000000000000000000140' +
+        '0000000000000000000000000000000000000000000000000000000000000180' +
+        '00000000000000000000000000000000000000000000000000000000000000aa' +
+        '0000000000000000000000000000000000000000000000000000000000000200' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '48616c6c6f7765656e0000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '44434c2d484c4c574e0000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000043' +
+        '68747470733a2f2f706565722e646563656e7472616c616e642e7a6f6e652f6c' +
+        '616d626461732f636f6c6c656374696f6e732f7374616e646172642f65726337' +
+        '32312f0000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000002' +
+        '0000000000000000000000000000000000000000000000000000000000000040' +
+        '0000000000000000000000000000000000000000000000000000000000000140' +
+        '0000000000000000000000000000000000000000000000000000000000000080' +
+        'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' +
+        '00000000000000000000000000000000000000000000000000000000000000aa' +
+        '00000000000000000000000000000000000000000000000000000000000000c0' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '6c6567656e646172790000000000000000000000000000000000000000000000' +
+        '000000000000000000000000000000000000000000000000000000000000001a' +
+        '313a773a4974656d20613a3a6861743a4261736546656d616c65000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000080' +
+        'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' +
+        '00000000000000000000000000000000000000000000000000000000000000aa' +
+        '00000000000000000000000000000000000000000000000000000000000000c0' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '6c6567656e646172790000000000000000000000000000000000000000000000' +
+        '000000000000000000000000000000000000000000000000000000000000001a' +
+        '313a773a4974656d20623a3a6861743a4261736546656d616c65000000000000'
+    })
   })
 
   it('skips the re-save while the collection is locked', async () => {
@@ -369,6 +555,60 @@ describe('syncPublishedItems', () => {
   })
 })
 
+describe('isRecentPublication', () => {
+  const now = Date.UTC(2026, 10, 5)
+  const day = 24 * 60 * 60_000
+
+  it('counts a collection published this month', () => {
+    expect(isRecentPublication({ lock: now - 3 * day, updatedAt: now - 10 * day }, now)).toBe(true)
+  })
+
+  it('leaves out a collection published over a month ago', () => {
+    expect(isRecentPublication({ lock: undefined, updatedAt: now - 45 * day }, now)).toBe(false)
+  })
+})
+
+describe('openFirstReviewRequest', () => {
+  const pending = { collectionId: 'col-1', status: 'pending' }
+
+  it('opens the request when the collection has none and hands back the pending curation', async () => {
+    const pushCollectionCuration = vi.fn().mockResolvedValue(pending)
+    const fetchCollectionCuration = vi.fn().mockResolvedValue(null)
+    await expect(openFirstReviewRequest('col-1', { fetchCollectionCuration, pushCollectionCuration })).resolves.toBe(
+      pending
+    )
+    expect(pushCollectionCuration).toHaveBeenCalledWith('col-1')
+  })
+
+  it('keeps a request that already exists, so a curator decision is never reopened', async () => {
+    const rejected = { collectionId: 'col-1', status: 'rejected' }
+    const pushCollectionCuration = vi.fn()
+    const fetchCollectionCuration = vi.fn().mockResolvedValue(rejected)
+    await expect(openFirstReviewRequest('col-1', { fetchCollectionCuration, pushCollectionCuration })).resolves.toBe(
+      rejected
+    )
+    expect(pushCollectionCuration).not.toHaveBeenCalled()
+  })
+
+  it('hands back the request another tab opened in the meantime', async () => {
+    const pushCollectionCuration = vi
+      .fn()
+      .mockRejectedValue(new BuilderServerError('There is already an ongoing review request', 400))
+    const fetchCollectionCuration = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(pending)
+    await expect(openFirstReviewRequest('col-1', { fetchCollectionCuration, pushCollectionCuration })).resolves.toBe(
+      pending
+    )
+  })
+
+  it('surfaces any other failure', async () => {
+    const pushCollectionCuration = vi.fn().mockRejectedValue(new BuilderServerError('Unauthorized', 401))
+    const fetchCollectionCuration = vi.fn().mockResolvedValue(null)
+    await expect(
+      openFirstReviewRequest('col-1', { fetchCollectionCuration, pushCollectionCuration })
+    ).rejects.toBeInstanceOf(BuilderServerError)
+  })
+})
+
 describe('consolidatePublishedCollection', () => {
   it('runs onSynced only once the server holds the published items', async () => {
     const onSynced = vi.fn()
@@ -417,6 +657,37 @@ describe('consolidatePublishedCollection', () => {
       0
     )
     expect(publish).toHaveBeenCalledTimes(2)
+  })
+
+  it('syncs a retry that reverted because an earlier attempt already deployed the collection', async () => {
+    const onSynced = vi.fn()
+    await consolidatePublishedCollection(
+      'col-1',
+      '0xretry',
+      {
+        waitForTransaction: async () => false,
+        isCollectionDeployed: async () => true,
+        publishCollectionItems: vi.fn().mockResolvedValue({}),
+        onSynced
+      },
+      0,
+      0
+    )
+    expect(onSynced).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports a revert when the collection is not on chain or that cannot be read', async () => {
+    for (const isCollectionDeployed of [async () => false, async () => Promise.reject(new Error('rpc down'))]) {
+      await expect(
+        consolidatePublishedCollection(
+          'col-1',
+          '0xtx',
+          { waitForTransaction: async () => false, isCollectionDeployed, publishCollectionItems: vi.fn() },
+          0,
+          0
+        )
+      ).rejects.toBeInstanceOf(PublishTransactionRevertedError)
+    }
   })
 
   it('gives up on a reverted transaction or a non-401 failure', async () => {
