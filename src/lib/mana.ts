@@ -1,5 +1,4 @@
 // MANA (Polygon) balance and allowance reads plus the approve call a MANA payment may need first.
-import { type ethers } from 'ethers'
 import { ContractName, getContract } from 'decentraland-transactions'
 import { readContract, type ContractCall } from '~/lib/auth'
 
@@ -8,13 +7,11 @@ export function getManaContract(chainId: number) {
 }
 
 export async function fetchManaBalance(address: string, chainId: number): Promise<bigint> {
-  const balance = await readContract<ethers.BigNumber>(getManaContract(chainId), 'balanceOf', [address])
-  return BigInt(balance.toString())
+  return readContract<bigint>(getManaContract(chainId), 'balanceOf', [address])
 }
 
 export async function fetchManaAllowance(owner: string, spender: string, chainId: number): Promise<bigint> {
-  const allowance = await readContract<ethers.BigNumber>(getManaContract(chainId), 'allowance', [owner, spender])
-  return BigInt(allowance.toString())
+  return readContract<bigint>(getManaContract(chainId), 'allowance', [owner, spender])
 }
 
 /**

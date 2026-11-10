@@ -4,7 +4,13 @@
 // cheque to builder-server, which opens one item curation per item, and finally push changes of already-reviewed
 // items. Server and chain access is injected so the sequence runs against fakes in tests.
 import { ethers } from 'ethers'
-import { type ContractCall, type TransactionSender, type TransactionSettlement } from '~/lib/auth'
+import {
+  type ContractCall,
+  type TransactionSender,
+  type TransactionSettlement,
+  type TypedDataDomain,
+  type TypedDataTypes
+} from '~/lib/auth'
 import { BuilderServerError, isRefusedRequest, type PublishLinkedItemsResult, type SlotsCheque } from '~/lib/builder'
 import { CurationStatus, type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
@@ -196,8 +202,8 @@ export function getPublishState(
 }
 
 export type ChequeTypedData = {
-  domain: ethers.TypedDataDomain
-  types: Record<string, ethers.TypedDataField[]>
+  domain: TypedDataDomain
+  types: TypedDataTypes
   value: { thirdPartyId: string; qty: number; salt: string }
 }
 
@@ -237,8 +243,9 @@ export function createChequeSalt(): string {
 
 export type SignChequeDeps = {
   signTypedData: (
-    domain: ethers.TypedDataDomain,
-    types: Record<string, ethers.TypedDataField[]>,
+    domain: TypedDataDomain,
+    types: TypedDataTypes,
+    primaryType: string,
     value: Record<string, unknown>
   ) => Promise<string>
 }
@@ -252,7 +259,7 @@ export async function signSlotsCheque(
 ): Promise<SlotsCheque> {
   const salt = createChequeSalt()
   const { domain, types, value } = buildChequeTypedData(chainId, thirdPartyId, qty, salt)
-  const signature = await deps.signTypedData(domain, types, value)
+  const signature = await deps.signTypedData(domain, types, 'ConsumeSlots', value)
   return { signature, qty, salt }
 }
 

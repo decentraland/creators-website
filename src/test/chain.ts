@@ -22,10 +22,14 @@ export function typedDataDigest(
   return ethers.utils._TypedDataEncoder.hash(domain, types, value)
 }
 
+/** Signs like a wallet would; refuses a `primaryType` that is not the root of `types`, as a wallet does. */
 export function signTypedDataWithTestKey(
   domain: ethers.TypedDataDomain,
   types: Record<string, ethers.TypedDataField[]>,
+  primaryType: string,
   value: Record<string, unknown>
 ): Promise<string> {
+  const root = ethers.utils._TypedDataEncoder.from(types).primaryType
+  if (root !== primaryType) throw new Error(`primaryType ${primaryType} is not the root type ${root}`)
   return testWallet._signTypedData(domain, types, value)
 }

@@ -681,7 +681,9 @@ describe('withConflictRetry', () => {
 })
 
 describe('removing a legacy store listing', () => {
-  const onChain = { beneficiary: BENEFICIARY, metadata: '1:w:Pirate Hat:Yarr:hat:BaseMale' }
+  const metadata = '1:w:Pirate Hat:Yarr:hat:BaseMale'
+  // The collection's `items` outputs: rarity, maxSupply, totalSupply, price, beneficiary, metadata, contentHash.
+  const onChain = ['epic', 1000n, 3n, 10n ** 18n, BENEFICIARY, metadata, '']
 
   it('reads the item on chain and clears only its price, keeping beneficiary and metadata', async () => {
     const deps = {

@@ -274,13 +274,13 @@ describe('fetchThirdPartyPrice', () => {
     const oracle = getContract(ContractName.ChainlinkOracle, CHAIN_ID)
     vi.mocked(readContract).mockImplementation(async (contract, method) => {
       if (contract.address === REGISTRY.address && method === 'itemSlotPrice') {
-        return ethers.BigNumber.from((100n * ETHER).toString())
+        return 100n * ETHER
       }
       if (contract.address === REGISTRY.address && method === 'programmaticBasePurchasedSlots') {
-        return ethers.BigNumber.from(200)
+        return 200n
       }
       if (contract.address === oracle.address && method === 'getRate') {
-        return ethers.BigNumber.from((ETHER / 2n).toString())
+        return ETHER / 2n
       }
       throw new Error(`Unexpected read ${method}`)
     })
@@ -294,33 +294,50 @@ describe('fetchThirdPartyPrice', () => {
   })
 })
 
+/** The registry's `thirdParties` outputs, as the chain returns them. */
+function thirdPartyRecord({
+  root = ethers.constants.HashZero,
+  maxItems = 0n,
+  registered = 0n,
+  metadata = ''
+}: {
+  root?: string
+  maxItems?: bigint
+  registered?: bigint
+  metadata?: string
+}) {
+  return [false, root, maxItems, 0n, registered, metadata, '']
+}
+
 describe('fetchRegisteredContracts', () => {
   it('lists the contracts of the registry record, lower-cased, and none for a bare record', async () => {
-    vi.mocked(readContract).mockResolvedValueOnce({
-      metadata: `tp:1:Brand:A brand:mainnet-0x${'A'.repeat(40)};matic-0x${'b'.repeat(40)}`
-    })
+    vi.mocked(readContract).mockResolvedValueOnce(
+      thirdPartyRecord({ metadata: `tp:1:Brand:A brand:mainnet-0x${'A'.repeat(40)};matic-0x${'b'.repeat(40)}` })
+    )
     await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([
       { network: 'mainnet', address: '0x' + 'a'.repeat(40) },
       { network: 'matic', address: '0x' + 'b'.repeat(40) }
     ])
-    vi.mocked(readContract).mockResolvedValueOnce({ metadata: 'tp:1:Brand:A brand' })
+    vi.mocked(readContract).mockResolvedValueOnce(thirdPartyRecord({ metadata: 'tp:1:Brand:A brand' }))
     await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([])
   })
 
   it('does not mistake description text for a contract', async () => {
-    vi.mocked(readContract).mockResolvedValueOnce({ metadata: 'tp:1:Brand:Shop: limited-edition' })
+    vi.mocked(readContract).mockResolvedValueOnce(thirdPartyRecord({ metadata: 'tp:1:Brand:Shop: limited-edition' }))
     await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([])
   })
 
   it('refuses a record whose contract segment is only partly readable', async () => {
-    vi.mocked(readContract).mockResolvedValueOnce({
-      metadata: `tp:1:Brand:A brand:mainnet-0x${'a'.repeat(40)};moon-0x1`
-    })
+    vi.mocked(readContract).mockResolvedValueOnce(
+      thirdPartyRecord({ metadata: `tp:1:Brand:A brand:mainnet-0x${'a'.repeat(40)};moon-0x1` })
+    )
     await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).rejects.toThrow('could not be parsed')
   })
 
   it('still reads the contracts when a legacy description contains a colon', async () => {
-    vi.mocked(readContract).mockResolvedValueOnce({ metadata: `tp:1:Brand:Note: legacy:matic-0x${'b'.repeat(40)}` })
+    vi.mocked(readContract).mockResolvedValueOnce(
+      thirdPartyRecord({ metadata: `tp:1:Brand:Note: legacy:matic-0x${'b'.repeat(40)}` })
+    )
     await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([
       { network: 'matic', address: '0x' + 'b'.repeat(40) }
     ])
@@ -333,7 +350,7 @@ describe('fetchRegisteredThirdParty', () => {
     vi.mocked(readContract).mockImplementation(async (_contract, method, args) => {
       expect(method).toBe('thirdParties')
       expect(args).toEqual([THIRD_PARTY_ID])
-      return { registered: ethers.BigNumber.from(1), maxItems: ethers.BigNumber.from(12), root }
+      return thirdPartyRecord({ registered: 1n, maxItems: 12n, root })
     })
     await expect(fetchRegisteredThirdParty(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual({
       registered: true,
@@ -343,11 +360,7 @@ describe('fetchRegisteredThirdParty', () => {
   })
 
   it('reads an unknown third party as unregistered, with no slots and no root', async () => {
-    vi.mocked(readContract).mockResolvedValue({
-      registered: ethers.BigNumber.from(0),
-      maxItems: ethers.BigNumber.from(0),
-      root: ethers.constants.HashZero
-    })
+    vi.mocked(readContract).mockResolvedValue(thirdPartyRecord({}))
     await expect(fetchRegisteredThirdParty(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual({
       registered: false,
       maxItems: 0,
