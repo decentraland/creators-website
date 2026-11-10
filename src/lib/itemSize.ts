@@ -26,8 +26,11 @@ export type SizeOf = (hash: string) => Promise<number>
 /** The image.png an item saved without one gets at deploy (lib/catalystEntity#buildMissingImage). */
 export type ImageOf = (item: Item) => Promise<MissingImage | null>
 
-/** How stored files are measured: their bytes by hash, and the image.png a legacy item would get at deploy. */
-export type MeasureDeps = { sizeOf: SizeOf; imageOf?: ImageOf }
+/**
+ * How stored files are measured: their bytes by hash, and the image.png a legacy item would get at deploy. `remember`
+ * is told the bytes of every file measured from memory (an upload or a generated image), so storage need not be asked.
+ */
+export type MeasureDeps = { sizeOf: SizeOf; imageOf?: ImageOf; remember?: (hash: string, bytes: number) => void }
 
 /** An item, with the files a save is about to upload (keyed by path) when there are any. */
 export type MeasurableItem = Pick<BuiltItem, 'item'> & { blobs?: Record<string, Blob> }
@@ -59,7 +62,7 @@ export function isLinkedItem(item: Pick<Item, 'urn'>): boolean {
  */
 export async function measureItemBytes(
   { item, blobs = {} }: MeasurableItem,
-  { sizeOf, imageOf }: MeasureDeps
+  { sizeOf, imageOf, remember }: MeasureDeps
 ): Promise<number> {
   const linked = isLinkedItem(item)
   const image = !linked && !item.contents[IMAGE_PATH] && imageOf ? await imageOf(item) : null
@@ -69,6 +72,7 @@ export async function measureItemBytes(
   for (const [path, hash] of Object.entries(content)) {
     if (blobs[path]) known.set(hash, blobs[path].size)
   }
+  for (const [hash, bytes] of known) remember?.(hash, bytes)
   const hashes = [...new Set(Object.values(content))]
   const files = await Promise.all(hashes.map(async hash => ({ hash, bytes: known.get(hash) ?? (await sizeOf(hash)) })))
   return sumUniqueContent(files)

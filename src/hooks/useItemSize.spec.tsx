@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import { fetchContentSize } from '~/lib/builder'
 import { ItemFileError } from '~/lib/itemFiles'
-import { MAX_CONCURRENT_MEASUREMENTS } from '~/lib/itemSize'
+import { MAX_CONCURRENT_MEASUREMENTS, measureItemBytes } from '~/lib/itemSize'
 import { ItemType, type Item } from '~/lib/items'
 import { captureError } from '~/lib/monitoring'
 import { itemSizeDeps, useCatalystItemSizes, useMeasuredBytes } from './useItemSize'
@@ -116,6 +116,17 @@ describe('useCatalystItemSizes', () => {
 })
 
 describe('itemSizeDeps', () => {
+  it('reads a stored file once for the session, and never one whose bytes it measured before an upload', async () => {
+    const client = new QueryClient()
+    const deps = itemSizeDeps(client)
+    const upload = { ...hat, contents: { ...hat.contents, 'male/hat.glb': 'bafnew' } }
+    await measureItemBytes({ item: upload, blobs: { 'male/hat.glb': new Blob([new Uint8Array(500)]) } }, deps)
+    vi.mocked(fetchContentSize).mockClear()
+
+    expect(await measureItemBytes({ item: upload }, itemSizeDeps(client))).toBe(250_500)
+    expect(fetchContentSize).not.toHaveBeenCalled()
+  })
+
   it('gives up on a stored file whose size never arrives, as an error rather than a pending state', async () => {
     vi.mocked(fetchContentSize).mockImplementation(
       (_hash, signal) =>

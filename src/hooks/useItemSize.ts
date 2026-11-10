@@ -22,14 +22,16 @@ import { captureError } from '~/lib/monitoring'
 /** How the approval flow renders the image.png an item saved without one deploys; measuring renders it the same way. */
 export const catalystImageDeps: ImageDeps = { fetchContent, renderCatalystImage: generateCatalystImage }
 
-export const contentSizeKey = (hash: string) => ['content-size', hash] as const
+const CONTENT_SIZE = 'content-size'
+export const contentSizeKey = (hash: string) => [CONTENT_SIZE, hash] as const
 
 // One queue for every measurement in the app, so a whole collection's sizes never open dozens of requests together.
 const limited = createLimiter(MAX_CONCURRENT_MEASUREMENTS)
 
 /**
- * Measuring for the app: a content hash names bytes that never change, so each stored file's size is read once and
- * cached; a standard item saved without image.png gets the one the approval flow would render for it at deploy.
+ * Measuring for the app: a content hash names bytes that never change, so each file's size is read once (or taken from
+ * the upload or render that produced it) and kept for the session; a standard item saved without image.png gets the one
+ * the approval flow would render for it at deploy.
  * Requests wait their turn in one queue and each gets `timeoutMs` once it starts: a stalled one fails (and blocks
  * nothing) instead of staying pending.
  */
@@ -37,6 +39,7 @@ export function itemSizeDeps(
   queryClient: QueryClient,
   { timeoutMs = MEASUREMENT_TIMEOUT_MS }: { timeoutMs?: number } = {}
 ): MeasureDeps {
+  queryClient.setQueryDefaults([CONTENT_SIZE], { staleTime: Infinity, gcTime: Infinity })
   const imageDeps: ImageDeps = {
     ...catalystImageDeps,
     fetchContent: hash => limited(() => fetchContent(hash, AbortSignal.timeout(timeoutMs)))
@@ -46,9 +49,9 @@ export function itemSizeDeps(
       queryClient.fetchQuery({
         queryKey: contentSizeKey(hash),
         queryFn: () => limited(() => fetchContentSize(hash, AbortSignal.timeout(timeoutMs))),
-        staleTime: Infinity,
         retry: false
       }),
+    remember: (hash, bytes) => queryClient.setQueryData(contentSizeKey(hash), bytes),
     imageOf: item => (item.contents[item.thumbnail] ? buildMissingImage(item, imageDeps) : Promise.resolve(null))
   }
 }
