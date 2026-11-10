@@ -5,7 +5,6 @@ import { ItemFileError } from './itemFiles'
 import { BODY_SHAPE_FEMALE, BODY_SHAPE_MALE, BodyShapeType, ItemType, type Item } from './items'
 import {
   assertItemSize,
-  createLimiter,
   formatItemSize,
   getItemSizeLimit,
   guardItemSize,
@@ -195,30 +194,6 @@ describe('linked items', () => {
     const { bytes: total } = await measureItem({ item: linked }, { sizeOf, imageOf })
     expect(total).toBe(BULL_AND_BEAR.male + BULL_AND_BEAR.female + BULL_AND_BEAR.thumbnail)
     expect(imageOf).not.toHaveBeenCalled()
-  })
-})
-
-describe('createLimiter', () => {
-  it('runs at most the given number of tasks at once and runs every one', async () => {
-    const limited = createLimiter(2)
-    let inFlight = 0
-    let peak = 0
-    const task = async (value: number) => {
-      inFlight++
-      peak = Math.max(peak, inFlight)
-      await new Promise(resolve => setTimeout(resolve, 2))
-      inFlight--
-      return value
-    }
-    const results = await Promise.all([1, 2, 3, 4, 5].map(value => limited(() => task(value))))
-    expect(results).toEqual([1, 2, 3, 4, 5])
-    expect(peak).toBe(2)
-  })
-
-  it('frees the slot of a task that fails', async () => {
-    const limited = createLimiter(1)
-    await expect(limited(async () => Promise.reject(new Error('boom')))).rejects.toThrow('boom')
-    await expect(limited(async () => 'next')).resolves.toBe('next')
   })
 })
 

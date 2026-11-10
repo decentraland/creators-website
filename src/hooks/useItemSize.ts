@@ -8,7 +8,6 @@ import { ItemFileError } from '~/lib/itemFiles'
 import {
   MAX_CONCURRENT_MEASUREMENTS,
   MEASUREMENT_TIMEOUT_MS,
-  createLimiter,
   measureItem,
   measureItemBytes,
   type ItemSize,
@@ -16,6 +15,7 @@ import {
   type MeasureDeps
 } from '~/lib/itemSize'
 import { type Item } from '~/lib/items'
+import { createLimiter } from '~/lib/limiter'
 import { generateCatalystImage } from '~/lib/media'
 import { captureError } from '~/lib/monitoring'
 

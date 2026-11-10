@@ -125,23 +125,3 @@ export async function guardItemSize(built: MeasurableItem, deps: MeasureDeps, fl
     captureError(error, { flow, step: 'measure_size', itemId: built.item.id })
   }
 }
-
-/**
- * Runs at most `max` tasks at once; the others wait their turn, first come first served. A finished task hands its
- * slot straight to the next one waiting.
- */
-export function createLimiter(max: number) {
-  let running = 0
-  const waiting: Array<() => void> = []
-  return async function limited<T>(task: () => Promise<T>): Promise<T> {
-    if (running < max) running++
-    else await new Promise<void>(resolve => waiting.push(resolve))
-    try {
-      return await task()
-    } finally {
-      const next = waiting.shift()
-      if (next) next()
-      else running--
-    }
-  }
-}
