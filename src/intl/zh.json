@@ -1157,7 +1157,6 @@
       "success_description": "关于谁可以编辑此系列的更改已生效。"
     },
     "duplicate": "此地址已在列表中。",
-    "owner": "这是您自己的地址：作为所有者，您已拥有所有权限。",
     "system": "此地址属于 Decentraland Shop，无法在此处更改。",
     "save": "保存更改",
     "saving": "正在保存更改……",

@@ -33,6 +33,8 @@ export type RouteContext = {
   market: Market
   credits: Credits
   bridge?: Bridge
+  /** Controller answers the fake preview reported, in order. */
+  previewAnswers: Array<{ method: string; result: string }>
   flags: Flags
   variants: Variants
   errors: ForcedErrors
@@ -221,6 +223,10 @@ export function route(req: HTTPRequest, ctx: RouteContext): Promise<void> {
     if (answer) return json(req, answer.body, answer.status)
   }
 
+  if (hostname.startsWith('transactions-api.') && method === 'POST' && pathname.endsWith('/transactions')) {
+    return json(req, ctx.chain.relay(req.postData() ?? '{}'))
+  }
+
   // The read-only provider: no chain is ever reached.
   if (hostname.startsWith('rpc-') || hostname.includes('rpc.') || pathname.includes('/rpc')) {
     return json(req, ctx.chain.handleRpc(req.postData() ?? '{}'))
@@ -238,6 +244,13 @@ export function route(req: HTTPRequest, ctx: RouteContext): Promise<void> {
   if (hostname.includes('intercom')) return empty(req, 'application/javascript')
 
   // The preview iframe can't render headless; this page speaks its protocol instead.
+  if (hostname.startsWith('wearable-preview') && pathname === '/__e2e/answer') {
+    ctx.previewAnswers.push({
+      method: url.searchParams.get('method') ?? '',
+      result: url.searchParams.get('result') ?? ''
+    })
+    return req.respond({ status: 204, headers: CORS })
+  }
   if (hostname.startsWith('wearable-preview')) {
     return req.respond({ status: 200, headers: { 'content-type': 'text/html', ...CORS }, body: previewPageHtml() })
   }

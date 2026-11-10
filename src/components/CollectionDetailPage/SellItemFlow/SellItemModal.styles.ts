@@ -389,11 +389,8 @@ export const ComboToggle = styled.button`
 `
 
 export const Options = styled.ul`
-  position: absolute;
-  z-index: 1;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
+  position: fixed;
+  z-index: ${theme.z.tooltip};
   max-height: 220px;
   margin: 0;
   padding: 4px;

@@ -17,7 +17,7 @@ Rules for this file:
 - **Raw errors never reach the user.** Failures map to friendly copy, go to Sentry with a `flow` tag, and retries are offered only when a retry can succeed (a locked or already-published collection gets no TRY AGAIN). Curators are the one exception: the approval flow shows them the raw error with a Copy button for support.
 - **Mobile is a viewer.** Below the `noActions` breakpoint (900px) collection management actions are hidden, and below 768px the editor is preview-only. Curation actions are desktop-only too.
 - **Event names reuse the legacy Builder's verbatim** where an event for the same intent exists, props included, so a warehouse query written for the old Builder also counts this app. See `TRACKING_SPEC.md`.
-- **e2e tests never touch a real environment.** They run against an in-memory builder-server and mocked services, wallet and chain, so a spec can neither depend on nor change shared data. Flows that predate the harness keep their component specs until their e2e spec lands; a missing one is a known gap, not a decision.
+- **e2e tests never touch a real environment.** They run against an in-memory builder-server and mocked services, wallet and chain, so a spec can neither depend on nor change shared data. Every user-facing flow has its happy path there; a new flow ships with its spec.
 - **Pre-monorepo refactor.** The app is being prepared to move into the dcl-one monorepo, whose web apps use CSS Modules and have no Emotion, MUI or decentraland-ui2. Until the move, no new Emotion, MUI (icons excepted for now) or decentraland-ui2 usage is added, static or lazy-loaded: ESLint rejects it outside the files that already depend on it, and styled defs live only in `*.styles.ts`. The targets are CSS Modules for styling, viem for chain code, and components that never call a back-end transport directly (hooks and `lib/` do). For builder-server this is done: its client is one folder with a single transport, and components never call it directly (ESLint enforces it). viem is held on the 2.55 line with a `~` range: decentraland-connect's wallet stack imports a viem module removed in 2.56, so newer viem breaks the build until decentraland-connect ships a newer wagmi.
 
 ## Collections list and status model
@@ -135,6 +135,7 @@ Rules for this file:
 
 - **On-chain minters are "Senders" and managers are "Collaborators"** everywhere in creator-facing copy.
 - **The Shop's minter contracts are hidden from the Senders list** (OffChainMarketplace V1/V2/V3 and the legacy CollectionStore): removing one would silently take the collection off sale. They are kept untouched on save and refused if pasted.
+- **The owner may list themselves** as a sender or collaborator, so the role survives a transfer of ownership; on-chain both are plain address lists.
 - **One transaction with only the diff**, awaited in-dialog with success and error feedback; legacy redirected to Activity.
 - **Cut:** per-item minter and manager allowances, ENS resolution (friends cover the common case).
 
