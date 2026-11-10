@@ -372,7 +372,6 @@
       "save_error": "We couldn't save the item. Please try again.",
       "empty": "This collection has no items left to publish. Add items before publishing.",
       "checkbox": "I understand that once published I won't be able to add or remove items, or change their rarity.",
-      "oversized": "Some items are over their size limit and can't be published. Change their files in the item editor, then come back.",
       "confirm": "Confirm Items"
     },
     "payment_step": {
@@ -1576,7 +1575,8 @@
   },
   "item_size": {
     "label": "Total size (thumbnail and rarity image included)",
-    "value": "{size} / {limit} MB"
+    "value": "{size} / {limit} MB",
+    "check_title": "Item size"
   },
   "item_validation": {
     "checking": "Checking your items…",

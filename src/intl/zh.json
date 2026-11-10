@@ -372,7 +372,6 @@
       "save_error": "我们无法保存该物品，请重试。",
       "empty": "此系列已没有可发布的物品。请先添加物品再发布。",
       "checkbox": "我了解发布后将无法添加或移除物品，也无法更改其稀有度。",
-      "oversized": "部分物品超出了大小限制，无法发布。请在物品编辑器中更换其文件后再返回。",
       "confirm": "确认物品"
     },
     "payment_step": {
@@ -1576,7 +1575,8 @@
   },
   "item_size": {
     "label": "总大小（含缩略图和稀有度图片）",
-    "value": "{size} / {limit} MB"
+    "value": "{size} / {limit} MB",
+    "check_title": "物品大小"
   },
   "item_validation": {
     "checking": "正在检查您的物品……",

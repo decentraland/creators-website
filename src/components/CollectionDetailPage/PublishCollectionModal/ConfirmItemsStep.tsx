@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
-import { useCatalystItemSizes } from '~/hooks/useItemSize'
 import { useDeleteItem } from '~/hooks/usePublishCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useSaveItem } from '~/hooks/useSaveItem'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { type Collection } from '~/lib/collections'
-import { isItemTooBigError, isOverSizeLimit } from '~/lib/itemSize'
+import { isItemTooBigError } from '~/lib/itemSize'
 import { canDeleteItem, type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import { Button } from '~/components/Button'
@@ -55,18 +54,8 @@ export function ConfirmItemsStep({
   })
 
   const withActions = !readOnly
-  // Every item's size as the catalyst counts it, thumbnail and rarity image included: the catalyst refuses any item
-  // over its limit at deploy, so none can be published. A size that couldn't be measured blocks nothing.
-  const { sizes, isMeasuring } = useCatalystItemSizes(items)
-  const hasOversized = useMemo(
-    () =>
-      items.some(item => {
-        const size = sizes.get(item.id)
-        return !!size && isOverSizeLimit(size)
-      }),
-    [items, sizes]
-  )
-  const canContinue = accepted && items.length > 0 && editingId === null && !isMeasuring && !hasOversized
+  const canContinue = accepted && items.length > 0 && editingId === null
+  // A new thumbnail or rarity changes the item's files: the save refuses one that leaves it over its size limit.
   const saveErrorMessage = isItemTooBigError(updateItem.error)
     ? t('add_items_modal.file_error.size_exceeded', updateItem.error.messageParams)
     : undefined
@@ -138,7 +127,6 @@ export function ConfirmItemsStep({
                 isSaving={editingId === item.id && updateItem.isPending}
                 saveError={editingId === item.id && updateItem.isError}
                 saveErrorMessage={saveErrorMessage}
-                size={sizes.get(item.id) ?? null}
                 withActions={withActions}
                 canEdit={!readOnly}
                 canDelete={!readOnly && items.length > 1 && canDeleteItem(collection, address)}
@@ -160,11 +148,6 @@ export function ConfirmItemsStep({
           )}
         </S.TableBody>
       </S.Table>
-      {hasOversized && (
-        <S.ErrorText role="alert" data-testid="publish-items-oversized">
-          {t('publish_collection_modal.items_step.oversized')}
-        </S.ErrorText>
-      )}
       <Checkbox checked={accepted} onChange={setAccepted} testId="publish-items-accept">
         {t('publish_collection_modal.items_step.checkbox')}
       </Checkbox>

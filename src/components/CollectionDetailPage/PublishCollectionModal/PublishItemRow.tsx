@@ -1,10 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Check as CheckIcon, Close as CloseIcon, Edit as EditIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
-import { formatItemSize, isOverSizeLimit, type ItemSize } from '~/lib/itemSize'
 import { getItemBodyShapeType, type Item } from '~/lib/items'
 import { DEFAULT_RARITY, isRarity, type RarityName } from '~/lib/rarities'
 import { TrashIcon } from '~/components/Icons'
@@ -21,8 +20,6 @@ type Props = {
   saveError: boolean
   /** Replaces the generic save error, for a failure the creator can act on (an item over its size limit). */
   saveErrorMessage?: string
-  /** The item's size as the catalyst counts it; null while unknown. */
-  size?: ItemSize | null
   /** False when no row can act, so the table drops the actions column. */
   withActions: boolean
   canEdit: boolean
@@ -45,7 +42,6 @@ export function PublishItemRow({
   isSaving,
   saveError,
   saveErrorMessage,
-  size = null,
   withActions,
   canEdit,
   canDelete,
@@ -65,8 +61,6 @@ export function PublishItemRow({
   const thumbnailUrl = pendingThumbnail ?? (thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null)
   const bodyShape = getItemBodyShapeType(item)
   const nameValid = isValidItemName(name)
-  const sizeText = useMemo(() => (size ? formatItemSize(size) : null), [size])
-  const sizeExceeded = !!size && isOverSizeLimit(size)
 
   function startEditing() {
     setName(item.name)
@@ -108,36 +102,29 @@ export function PublishItemRow({
             <ItemThumbnail src={thumbnailUrl} rarity={item.rarity} testId="publish-item" />
           </Shared.Thumb>
         )}
-        <S.NameStack>
-          {isEditing ? (
-            <S.NameInput
-              value={name}
-              maxLength={ITEM_NAME_MAX_LENGTH}
-              disabled={isSaving}
-              autoFocus
-              aria-label={t('publish_collection_modal.items_step.name_placeholder')}
-              placeholder={t('publish_collection_modal.items_step.name_placeholder')}
-              data-invalid={name && !nameValid ? true : undefined}
-              data-testid="publish-item-name-input"
-              onChange={event => setName(event.target.value)}
-              onKeyDown={event => {
-                if (event.key === 'Enter') {
-                  event.preventDefault()
-                  save()
-                }
-              }}
-            />
-          ) : (
-            <S.Name title={item.name} data-testid="publish-item-name">
-              {item.name}
-            </S.Name>
-          )}
-          {sizeText && (
-            <S.Size data-testid="publish-item-size" data-exceeded={sizeExceeded || undefined}>
-              {t('item_size.value', sizeText)}
-            </S.Size>
-          )}
-        </S.NameStack>
+        {isEditing ? (
+          <S.NameInput
+            value={name}
+            maxLength={ITEM_NAME_MAX_LENGTH}
+            disabled={isSaving}
+            autoFocus
+            aria-label={t('publish_collection_modal.items_step.name_placeholder')}
+            placeholder={t('publish_collection_modal.items_step.name_placeholder')}
+            data-invalid={name && !nameValid ? true : undefined}
+            data-testid="publish-item-name-input"
+            onChange={event => setName(event.target.value)}
+            onKeyDown={event => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                save()
+              }
+            }}
+          />
+        ) : (
+          <S.Name title={item.name} data-testid="publish-item-name">
+            {item.name}
+          </S.Name>
+        )}
       </S.NameCell>
       <span data-testid="publish-item-body-type">
         {bodyShape ? <BodyShapeIcon bodyShape={bodyShape} withLabel /> : '—'}
@@ -215,11 +202,6 @@ export function PublishItemRow({
       {isEditing && saveError && (
         <S.RowError data-testid="publish-item-error">
           {saveErrorMessage ?? t('publish_collection_modal.items_step.save_error')}
-        </S.RowError>
-      )}
-      {sizeExceeded && sizeText && !(isEditing && saveError) && (
-        <S.RowError data-testid="publish-item-size-error">
-          {t('add_items_modal.file_error.size_exceeded', sizeText)}
         </S.RowError>
       )}
     </S.Row>

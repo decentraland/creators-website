@@ -20,7 +20,7 @@ vi.mock('~/lib/builder', async importOriginal => ({
 }))
 
 // Stored file sizes by content hash; anything else is a small file.
-const STORED_SIZES: Record<string, number> = { Qmmodel: 2_800_000, Qmthumb: 200_000, Qmimage: 40_000, Qmbig: 3_100_000 }
+const STORED_SIZES: Record<string, number> = { Qmmodel: 2_800_000, Qmthumb: 200_000, Qmimage: 40_000 }
 
 // The real editor renders a WearablePreview iframe; stand in with a button that hands back a fixed PNG.
 const NEW_THUMBNAIL = new Blob(['png'], { type: 'image/png' })
@@ -135,32 +135,8 @@ describe('ConfirmItemsStep', () => {
     const confirm = screen.getByTestId('publish-items-confirm')
     expect(confirm).toBeDisabled()
     await userEvent.click(screen.getByTestId('publish-items-accept'))
-    await waitFor(() => expect(confirm).toBeEnabled())
     await userEvent.click(confirm)
     expect(onConfirm).toHaveBeenCalled()
-  })
-
-  it('shows each item size as the catalyst counts it, thumbnail and rarity image included', async () => {
-    renderStep()
-    const row = screen.getAllByTestId('publish-item-row')[0]
-    // 2,800,000 model + 200,000 thumbnail + 40,000 rarity image bytes.
-    expect(await within(row).findByTestId('publish-item-size')).toHaveTextContent('2.90 / 3.00 MB')
-    expect(within(row).getByTestId('publish-item-size')).not.toHaveAttribute('data-exceeded')
-    expect(screen.queryByTestId('publish-items-oversized')).not.toBeInTheDocument()
-  })
-
-  it('blocks publishing while an item is over its size limit, and says the thumbnail counts', async () => {
-    const big = { ...makeItem('b', 'Ghost Cape'), contents: { ...items[1].contents, 'm.glb': 'Qmbig' } }
-    renderStep([items[0], big])
-    const row = screen.getAllByTestId('publish-item-row')[1]
-    expect(await within(row).findByTestId('publish-item-size')).toHaveAttribute('data-exceeded', 'true')
-    expect(within(row).getByTestId('publish-item-size')).toHaveTextContent('3.19 / 3.00 MB')
-    expect(within(row).getByTestId('publish-item-size-error')).toHaveTextContent(
-      'This item is 3.19 MB, over its 3.00 MB limit. The thumbnail and the rarity image count toward it'
-    )
-    expect(screen.getByTestId('publish-items-oversized')).toBeInTheDocument()
-    await userEvent.click(screen.getByTestId('publish-items-accept'))
-    expect(screen.getByTestId('publish-items-confirm')).toBeDisabled()
   })
 
   it('refuses a row edit that would take the item over its limit, with the reason', async () => {
@@ -169,7 +145,6 @@ describe('ConfirmItemsStep', () => {
     vi.mocked(fetchContent).mockResolvedValue(new Blob([new Uint8Array(200_000)], { type: 'image/png' }))
     renderStep()
     const row = screen.getAllByTestId('publish-item-row')[0]
-    await within(row).findByTestId('publish-item-size')
     await userEvent.click(within(row).getByTestId('publish-item-edit'))
     await userEvent.click(within(row).getByTestId('rarity-select'))
     await userEvent.click(screen.getByTestId('rarity-select-option-epic'))

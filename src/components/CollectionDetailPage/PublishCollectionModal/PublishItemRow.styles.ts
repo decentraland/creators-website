@@ -41,24 +41,6 @@ export const NameCell = styled.div`
   min-width: 0;
 `
 
-export const NameStack = styled.div`
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-`
-
-/** The item's size against its limit, under its name. */
-export const Size = styled.span`
-  font-size: 12px;
-  color: ${theme.colors.gray4};
-
-  &[data-exceeded] {
-    color: ${theme.colors.errLight};
-  }
-`
-
 export const Name = styled.span`
   font-weight: 500;
   min-width: 0;

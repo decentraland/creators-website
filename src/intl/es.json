@@ -372,7 +372,6 @@
       "save_error": "No pudimos guardar el ítem. Inténtalo de nuevo.",
       "empty": "Esta colección no tiene ítems para publicar. Agrega ítems antes de publicar.",
       "checkbox": "Entiendo que una vez publicada no podré agregar ni quitar ítems, ni cambiar su rareza.",
-      "oversized": "Algunos ítems superan su límite de tamaño y no se pueden publicar. Cambia sus archivos en el editor de ítems y vuelve.",
       "confirm": "Confirmar ítems"
     },
     "payment_step": {
@@ -1576,7 +1575,8 @@
   },
   "item_size": {
     "label": "Tamaño total (con miniatura e imagen de rareza)",
-    "value": "{size} / {limit} MB"
+    "value": "{size} / {limit} MB",
+    "check_title": "Tamaño del ítem"
   },
   "item_validation": {
     "checking": "Revisando tus ítems…",

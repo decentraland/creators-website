@@ -133,7 +133,7 @@ Legacy prop names, so the events line up with the old editor's.
 | event | when | props |
 | --- | --- | --- |
 | `Publish Validation Started` | the publish modal opens (not when resuming from a credits purchase) or the push-changes modal opens | `collectionId`, `flow` (`publish` \| `push_changes`), `itemCount` |
-| `Publish Validation Result` | the pre-step's checks finished and the modal moved on | `collectionId`, `flow`, `errors`, `warnings`, `itemsWithIssues`, `blocking` (flag on and errors), `durationMs` (from opening) |
+| `Publish Validation Result` | the pre-step's checks finished and the modal moved on | `collectionId`, `flow`, `errors`, `warnings`, `itemsWithIssues`, `oversizedItems` (over their size limit), `blocking` (errors that block: flag on, or an item over its size limit), `durationMs` (from opening) |
 | `Publish Validation Resolved` | the creator left the issues view | `collectionId`, `flow`, `action` (`continue` \| `back`; the × counts as `back`), `errors`, `warnings` |
 | `Item Validation Details Opened` | an item's validation details modal opens | `itemId`, `status`, `trigger` (`row` \| `editor`) |
 | `Item Validation Rerun` | a re-run finished | `itemId`, `trigger` (`details` \| `publish` \| `push_changes`; not `source`, which the app sets on every event), `previousStatus`, `newStatus` |

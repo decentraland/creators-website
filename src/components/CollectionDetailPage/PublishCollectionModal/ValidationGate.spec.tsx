@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TranslationProvider } from '~/intl'
 import { track } from '~/lib/analytics'
+import { type ItemSizes } from '~/hooks/useItemSize'
 import { ItemType, type Item } from '~/lib/items'
 import { ValidationSeverity, type ValidationIssue } from '~/lib/validation'
 import { ValidationGate } from './ValidationGate'
@@ -11,6 +12,8 @@ import { ValidationGate } from './ValidationGate'
 const rerun = vi.fn()
 vi.mock('~/hooks/useCollectionValidation', () => ({ useRerunItemValidation: () => rerun }))
 vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
+const itemSizes: ItemSizes = { sizes: new Map(), isMeasuring: false }
+vi.mock('~/hooks/useItemSize', () => ({ useCatalystItemSizes: () => itemSizes }))
 
 function makeItem(id: string): Item {
   return {
@@ -62,6 +65,8 @@ beforeEach(() => {
   onClose.mockReset()
   rerun.mockReset().mockResolvedValue([])
   vi.mocked(track).mockReset()
+  itemSizes.sizes = new Map()
+  itemSizes.isMeasuring = false
 })
 
 describe('ValidationGate', () => {
@@ -70,6 +75,42 @@ describe('ValidationGate', () => {
     expect(screen.getByTestId('publish-validating')).toBeInTheDocument()
     expect(onPass).not.toHaveBeenCalled()
     update({ validation: { isValidating: false, results: [{ item: clean, issues: [] }] } })
+    expect(onPass).toHaveBeenCalled()
+  })
+
+  it('waits for the items to be measured before deciding', () => {
+    itemSizes.isMeasuring = true
+    const { update } = renderGate({ validation: { isValidating: false, results: [{ item: clean, issues: [] }] } })
+    expect(screen.getByTestId('publish-validating')).toBeInTheDocument()
+    itemSizes.isMeasuring = false
+    update({ validation: { isValidating: false, results: [{ item: clean, issues: [] }] } })
+    expect(onPass).toHaveBeenCalled()
+  })
+
+  it('lists an item over its size limit and offers no way past it, even when errors do not block', () => {
+    itemSizes.sizes = new Map([['meh', { bytes: 3_243_672, limit: 3 * 1024 * 1024 }]])
+    renderGate({
+      blockOnErrors: false,
+      validation: {
+        isValidating: false,
+        results: [
+          { item: meh, issues: [warning] },
+          { item: clean, issues: [] }
+        ]
+      }
+    })
+    const card = screen.getByTestId('publish-validation-meh-card')
+    expect(card).toHaveTextContent('This item is 3.09 MB, over its 3.00 MB limit')
+    expect(screen.queryByTestId('publish-validation-clean-card')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('publish-validation-continue')).not.toBeInTheDocument()
+    expect(track).toHaveBeenCalledWith(
+      'Publish Validation Result',
+      expect.objectContaining({ oversizedItems: 1, blocking: true })
+    )
+  })
+
+  it('passes an item whose size could not be measured', () => {
+    renderGate({ validation: { isValidating: false, results: [{ item: clean, issues: [] }] } })
     expect(onPass).toHaveBeenCalled()
   })
 

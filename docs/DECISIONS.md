@@ -50,7 +50,7 @@ Rules for this file:
 - **Rarity defaults to Epic.** Price and beneficiary are set to "not for sale" at upload, so the legacy "items must be complete" publish check always passes here.
 - **`removesDefaultHiding: [hands]`** is written for upper-body items (and anything hiding the upper body), as legacy did; the editor recomputes it on save.
 - **Thumbnails are always 1024×1024.** Categories with a thumbnail pose (`upper_body`, `skin`) are rendered offscreen with three.js, falling back to the preview screenshot. Zip-provided or user-picked thumbnails are never regenerated.
-- **Zip budgets:** at most 500 entries, a shared inflate budget of about 259MB that aborts mid-entry, and per-type size caps (wearable 3MB, skin 8MB, emote 3MB, thumbnail 1MB). A single wrapping folder is stripped recursively, never `male/` or `female/`.
+- **Zip budgets:** at most 500 entries, a shared inflate budget of about 259MB that aborts mid-entry, and per-type size caps (wearable 3MB, skin 9MB, emote 3MB, thumbnail 1MB). A single wrapping folder is stripped recursively, never `male/` or `female/`.
 - **Social emotes (an `Armature_Other` armature) are rejected at import** (PR #116): unreleased and unsupported platform-wide. Support is a low-priority follow-up; never point the copy at the legacy Builder as a workaround.
 - **Legacy `replaces` is folded into `hides`** on load, and `overrideHides` / `overrideReplaces` on every representation mirror `hides` / `replaces` (zip manifests included).
 - **Cut on purpose (v1):** the "Allow to promote in events?" toggle (no schema field yet), description and utility fields at import (the editor has them), spring-bone seeding from zips.
@@ -97,6 +97,7 @@ Rules for this file:
 - **Results for saved items are cached in IndexedDB** (`idb-keyval`), keyed by content hashes plus type, category, hides, loop and body shapes, and cleared whenever the cache revision or validator version changes. Failed runs are never persisted. The editor, the collection page, the publish modal and the curators' badge share it.
 - **Validation is desktop-only.** Nothing runs at or below 900px on the collection page or at 768px in the editor; widening the window starts it.
 - **The publish gate is a flag** (`block-publish-on-validation-errors`, builder): on, a finished result with errors disables PUBLISH and Publish changes; off, the creator sees the issues and may continue anyway. Warnings never block.
+- **Item size is counted the catalyst's way** (every distinct content hash once, thumbnail and rarity image included, preview video excluded; 3MB for wearables and emotes, 9MB for skins) and an oversized item always blocks, whatever the flag says. The publish and Publish changes pre-step refuses it; a save is checked only when it changes the item's files or moves its limit (a category to or from skin), so an oversized item's details can still be edited. The editor shows the stored size and leaves the exact count to the save.
 - **Curators get a collection validation badge** only while the collection is To review or Under review, over the items with pending changes (PR #119). It never blocks an action.
 
 ## Publish collection
