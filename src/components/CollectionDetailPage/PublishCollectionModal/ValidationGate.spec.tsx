@@ -100,7 +100,7 @@ describe('ValidationGate', () => {
       }
     })
     const card = screen.getByTestId('publish-validation-meh-card')
-    expect(card).toHaveTextContent('This item is 3.09 MB, over its 3.00 MB limit')
+    expect(card).toHaveTextContent('This item is 3.09 MB, over the 3.00 MB limit')
     expect(screen.queryByTestId('publish-validation-clean-card')).not.toBeInTheDocument()
     expect(screen.queryByTestId('publish-validation-continue')).not.toBeInTheDocument()
     expect(track).toHaveBeenCalledWith(

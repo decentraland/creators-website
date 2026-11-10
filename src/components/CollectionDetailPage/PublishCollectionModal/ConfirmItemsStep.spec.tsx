@@ -150,7 +150,7 @@ describe('ConfirmItemsStep', () => {
     await userEvent.click(screen.getByTestId('rarity-select-option-epic'))
     await userEvent.click(within(row).getByTestId('publish-item-save'))
 
-    expect(await within(row).findByTestId('publish-item-error')).toHaveTextContent('over its 3.00 MB limit')
+    expect(await within(row).findByTestId('publish-item-error')).toHaveTextContent('over the 3.00 MB limit')
     expect(saveItem).not.toHaveBeenCalled()
   })
 

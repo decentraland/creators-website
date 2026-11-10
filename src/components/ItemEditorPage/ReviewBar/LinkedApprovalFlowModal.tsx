@@ -198,7 +198,11 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, revie
                   <S.Row key={item.id} data-table="deploy" data-testid="approval-item-row">
                     <ItemName item={item} />
                     {step === 'deploy' ? (
-                      <span data-testid="approval-item-size">{formatItemBytes(t, sizes, item.id)}</span>
+                      <span data-testid="approval-item-size">
+                        {formatItemBytes(t, sizes, item.id) ?? (
+                          <S.SizeSpinner role="status" aria-label={t('approval_flow.size_measuring')} />
+                        )}
+                      </span>
                     ) : (
                       <span title={item.urn}>{decodeLinkedUrn(item.urn)?.itemSuffix ?? item.urn}</span>
                     )}

@@ -250,7 +250,11 @@ function StepTable({ step, plan, collection }: { step: ApprovalStep; plan: Appro
             return (
               <S.Row key={item.id} data-table={step} data-testid="approval-item-row">
                 <ItemName item={item} />
-                <span data-testid="approval-item-size">{formatItemBytes(t, sizes, item.id)}</span>
+                <span data-testid="approval-item-size">
+                  {formatItemBytes(t, sizes, item.id) ?? (
+                    <S.SizeSpinner role="status" aria-label={t('approval_flow.size_measuring')} />
+                  )}
+                </span>
               </S.Row>
             )
           })}

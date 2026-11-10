@@ -56,7 +56,7 @@ export function ValidationGate({ collectionId, flow, validation, blockOnErrors, 
         const sizeIssue = {
           code: SIZE_ISSUE_CODE,
           severity: ValidationSeverity.ERROR,
-          title: t('item_size.check_title'),
+          title: t('item_size.label'),
           message: t('add_items_modal.file_error.size_exceeded', formatItemSize(size))
         }
         return { ...check, issues: [sizeIssue, ...check.issues] }

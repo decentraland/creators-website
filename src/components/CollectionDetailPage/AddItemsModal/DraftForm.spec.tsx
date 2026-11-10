@@ -74,11 +74,11 @@ describe('DraftForm size', () => {
     expect(screen.queryByTestId('size-error')).not.toBeInTheDocument()
   })
 
-  it('explains an item over its limit, thumbnail and rarity image included', () => {
+  it('explains an item over its limit, thumbnail included', () => {
     renderForm({}, { size: { bytes: 3_243_672, limit: 3 * 1024 * 1024 } })
     expect(screen.getByTestId('draft-size')).toHaveAttribute('data-exceeded', 'true')
     expect(screen.getByTestId('size-error')).toHaveTextContent(
-      'This item is 3.09 MB, over its 3.00 MB limit. The thumbnail and the rarity image count toward it'
+      'This item is 3.09 MB, over the 3.00 MB limit (thumbnail included). Reduce its textures or geometry.'
     )
   })
 })

@@ -190,7 +190,7 @@ describe('ChangeFileModal', () => {
     await waitFor(() => expect(screen.getByTestId('change-file-size')).toHaveTextContent('3.09 / 3.00 MB'))
     expect(screen.getByTestId('change-file-size')).toHaveAttribute('data-exceeded', 'true')
     expect(screen.getByTestId('change-file-size-error')).toHaveTextContent(
-      'This item is 3.09 MB, over its 3.00 MB limit. The thumbnail and the rarity image count toward it'
+      'This item is 3.09 MB, over the 3.00 MB limit (thumbnail included). Reduce its textures or geometry.'
     )
     expect(screen.getByTestId('change-file-save')).toBeDisabled()
     expect(onApply).not.toHaveBeenCalled()

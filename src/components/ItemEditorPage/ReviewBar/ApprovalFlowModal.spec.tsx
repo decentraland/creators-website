@@ -123,7 +123,7 @@ describe('ApprovalFlowModal', () => {
     plan = { steps: ['deploy'], rescue: [], deploy: [{ ...item, contents: { 'm.glb': 'Qmmissing' } }] }
     view = { kind: 'step', step: 'deploy', phase: { kind: 'idle' } }
     renderModal()
-    expect(screen.getByTestId('approval-item-size')).toHaveTextContent('Measuring…')
+    expect(screen.getByRole('status', { name: 'Measuring size' })).toBeInTheDocument()
     await waitFor(() => expect(screen.getByTestId('approval-item-size')).toHaveTextContent('Unknown'))
   })
 
