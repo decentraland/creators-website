@@ -4,7 +4,7 @@ import { getCollectionContract, getContract, type ContractData } from '~/lib/cha
 import { isWalletRejection } from '~/lib/walletErrors'
 import { TEST_SIGNER, testAccount } from '~/test/chain'
 import { type Session } from './auth'
-import { WrongAccountError, sendContractTransaction } from './transactions'
+import { WrongAccountError, sendContractTransaction } from '.'
 
 vi.mock('decentraland-connect', () => ({ getRpcUrls: () => ({ 80002: 'https://rpc.example.com' }) }))
 

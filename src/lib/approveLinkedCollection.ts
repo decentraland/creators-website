@@ -290,7 +290,7 @@ async function deployLinkedItem(
       throw new ApprovalError('changed', `Item ${item.id} changed since it was curated`)
     }
     const entity = await buildLinkedItemEntity(collection, item, content, proof)
-    const authChain = deps.sign(entity.entityId)
+    const authChain = await deps.sign(entity.entityId)
     if (!authChain) throw new ApprovalError('no_identity', 'The session has no signing identity')
     return { entity, authChain, content }
   })

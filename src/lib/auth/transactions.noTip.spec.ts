@@ -12,7 +12,7 @@ vi.mock('~/config', async () => {
 })
 
 import { type Session } from './auth'
-import { sendWalletTransaction } from './transactions'
+import { sendWalletTransaction } from '.'
 
 const ACCOUNT = '0x00000000000000000000000000000000000000aa'
 

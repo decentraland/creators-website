@@ -15,11 +15,10 @@ import {
   signTypedData,
   subscribeWalletChain,
   switchWalletChain,
-  waitForReceipt,
   waitForTransaction,
-  watchTransaction,
   type TypedDataTypes
-} from './transactions'
+} from '.'
+import { waitForReceipt, watchTransaction } from './transactions'
 import { OFFCHAIN_MARKETPLACE_TYPES, getTradeDomain } from '~/lib/trades'
 import { typedDataDigest } from '~/test/chain'
 
