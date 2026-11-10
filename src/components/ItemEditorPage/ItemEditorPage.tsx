@@ -28,7 +28,7 @@ import { modelValidationKey, useModelValidation } from '~/hooks/useModelValidati
 import { useRerunValidation } from '~/hooks/useRerunValidation'
 import { useObjectURL } from '~/hooks/useObjectURL'
 import { thumbnailValidationKey, useThumbnailValidation } from '~/hooks/useThumbnailValidation'
-import { useMeasuredBytes } from '~/hooks/useItemSize'
+import { useCatalystItemSizes } from '~/hooks/useItemSize'
 import { fetchStoredThumbnail, useSaveItem } from '~/hooks/useSaveItem'
 import { captureError } from '~/lib/monitoring'
 import { springBonesFetcher } from '~/hooks/useSpringBones'
@@ -45,14 +45,7 @@ import {
 } from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
 import { getCurationState, curationListUrl } from '~/lib/curation'
-import { identityKey } from '~/lib/blobs'
-import {
-  createItemDraft,
-  toFileChangeSaveable,
-  toPreviewItem,
-  toSaveableItem,
-  type ItemFileChange
-} from '~/lib/itemDraft'
+import { toFileChangeSaveable, toPreviewItem, toSaveableItem, type ItemFileChange } from '~/lib/itemDraft'
 import { type BuiltItem } from '~/lib/itemFactory'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
 import { pickFiles } from '~/lib/filePicker'
@@ -268,34 +261,18 @@ const ItemEditorPage = () => {
     () => getValidationStatus(validationIssues, validation.isLoading || thumbnailValidation.isLoading),
     [validationIssues, validation.isLoading, thumbnailValidation.isLoading]
   )
-  // The item's size as a save would leave it: only a new thumbnail or a rarity change (a new rarity image) touches
-  // its files, so only those measure again; the category only moves the limit (skins get 9 MB).
-  const draftThumbnail = form.draft.thumbnail
-  const draftRarity = form.draft.rarity
-  const sizeBuild = useMemo(
-    () =>
-      selected
-        ? () =>
-            toSaveableItem(
-              selected,
-              { ...createItemDraft(selected), thumbnail: draftThumbnail, rarity: draftRarity },
-              { fetchThumbnail: fetchStoredThumbnail }
-            )
-        : null,
-    [selected, draftThumbnail, draftRarity]
-  )
-  const measuredBytes = useMeasuredBytes(
-    sizeBuild,
-    [identityKey(selected), identityKey(draftThumbnail), draftRarity],
-    'item_editor'
-  )
+  // The stored files' size, against the limit of the category being edited (skins get 9 MB). A new thumbnail or
+  // rarity image is measured exactly when it is saved.
+  const sizeItems = useMemo(() => (selected ? [selected] : []), [selected])
+  const storedSizes = useCatalystItemSizes(sizeItems)
+  const storedBytes = selected ? storedSizes.sizes.get(selected.id)?.bytes : undefined
   const sizeCategory = form.draft.category ?? selected?.data.category
   const itemSize = useMemo<ItemSize | null>(
     () =>
-      selected && measuredBytes !== null
-        ? { bytes: measuredBytes, limit: getItemSizeLimit(selected.type, sizeCategory) }
+      selected && storedBytes !== undefined
+        ? { bytes: storedBytes, limit: getItemSizeLimit(selected.type, sizeCategory) }
         : null,
-    [selected, measuredBytes, sizeCategory]
+    [selected, storedBytes, sizeCategory]
   )
   const rerunValidation = useRerunValidation()
   const rerunSelectedValidation = useCallback(async () => {
