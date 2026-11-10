@@ -5,6 +5,7 @@ import { ItemFileError } from './itemFiles'
 import { BODY_SHAPE_FEMALE, BODY_SHAPE_MALE, BodyShapeType, ItemType, type Item } from './items'
 import {
   assertItemSize,
+  changesItemSize,
   formatItemSize,
   getItemSizeLimit,
   guardItemSize,
@@ -194,6 +195,26 @@ describe('linked items', () => {
     const { bytes: total } = await measureItem({ item: linked }, { sizeOf, imageOf })
     expect(total).toBe(BULL_AND_BEAR.male + BULL_AND_BEAR.female + BULL_AND_BEAR.thumbnail)
     expect(imageOf).not.toHaveBeenCalled()
+  })
+})
+
+describe('changesItemSize', () => {
+  const hat = { type: ItemType.WEARABLE, data: { category: 'hat' }, contents: {} } as unknown as Item
+  const skin = { ...hat, data: { category: 'skin' } } as unknown as Item
+
+  it('is true for a save that uploads files, and false for one that only uploads the preview video', () => {
+    expect(changesItemSize({ item: hat, blobs: { 'thumbnail.png': new Blob(['x']) } }, hat)).toBe(true)
+    expect(changesItemSize({ item: hat, blobs: { 'video.mp4': new Blob(['x']) } }, hat)).toBe(false)
+  })
+
+  it('is true for a change of category that moves the limit, and false for one that keeps it', () => {
+    expect(changesItemSize({ item: hat }, skin)).toBe(true)
+    expect(changesItemSize({ item: hat }, { ...hat, data: { category: 'mask' } } as unknown as Item)).toBe(false)
+  })
+
+  it('is false for an edit of the details alone', () => {
+    expect(changesItemSize({ item: { ...hat, name: 'Cap' } }, hat)).toBe(false)
+    expect(changesItemSize({ item: hat })).toBe(false)
   })
 })
 

@@ -6,7 +6,7 @@
 import { getEntityContent, getLinkedEntityContent, type MissingImage } from './catalystEntity'
 import { type BuiltItem } from './itemFactory'
 import { ItemFileError, MAX_EMOTE_FILE_SIZE, MAX_SKIN_FILE_SIZE, MAX_WEARABLE_FILE_SIZE } from './itemFiles'
-import { IMAGE_PATH, ItemType, type Item } from './items'
+import { IMAGE_PATH, ItemType, VIDEO_PATH, type Item } from './items'
 import { captureError } from './monitoring'
 import { THIRD_PARTY_URN_TYPE } from './thirdParty'
 
@@ -110,6 +110,16 @@ export async function assertItemSize(built: MeasurableItem, deps: MeasureDeps): 
   const size = await measureItem(built, deps)
   if (isOverSizeLimit(size)) throw itemTooBigError(size)
   return size
+}
+
+/**
+ * Whether a save can change the item's size or its limit: it uploads files other than the preview video, or it moves
+ * the item to another limit (to or from a skin). Any other edit saves an item as big as it already was.
+ */
+export function changesItemSize({ item, blobs = {} }: MeasurableItem, previous?: Item): boolean {
+  if (Object.keys(blobs).some(path => path !== VIDEO_PATH)) return true
+  if (!previous) return false
+  return getItemSizeLimit(previous.type, previous.data.category) !== getItemSizeLimit(item.type, item.data.category)
 }
 
 /**

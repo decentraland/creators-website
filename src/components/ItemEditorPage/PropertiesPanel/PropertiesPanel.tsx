@@ -670,14 +670,7 @@ export function PropertiesPanel({
             type="button"
             variant="primary"
             size="sm"
-            disabled={
-              !isDirty ||
-              nameInvalid ||
-              descriptionInvalid ||
-              mappingInvalid ||
-              sizeExceeded ||
-              draft.name.trim() === ''
-            }
+            disabled={!isDirty || nameInvalid || descriptionInvalid || mappingInvalid || draft.name.trim() === ''}
             loading={isSaving}
             data-testid={`${testId}-save`}
             onClick={onSave}

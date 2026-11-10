@@ -109,11 +109,32 @@ describe('useSaveItem size guard', () => {
     expect(saveItem).not.toHaveBeenCalled()
   })
 
+  it('saves an edit that changes neither the files nor the size limit of an item already over it', async () => {
+    vi.mocked(fetchContentSize).mockResolvedValue(2 * 1024 * 1024)
+    vi.mocked(saveItem).mockResolvedValue(item)
+    const save = renderSave()
+    await expect(save.current.mutateAsync({ item: { ...item, name: 'Cap' }, previous: item })).resolves.toBe(item)
+    expect(saveItem).toHaveBeenCalledTimes(1)
+  })
+
+  it('refuses a change of category that moves an item to a lower limit it is over', async () => {
+    const skin: Item = { ...item, data: { ...item.data, category: 'skin' } }
+    vi.mocked(fetchContentSize).mockResolvedValue(2 * 1024 * 1024)
+    const save = renderSave()
+    await expect(save.current.mutateAsync({ item: item, previous: skin })).rejects.toMatchObject({
+      messageKey: 'size_exceeded',
+      messageParams: { limit: '3.00' }
+    })
+    expect(saveItem).not.toHaveBeenCalled()
+  })
+
   it('saves through, reported, when storage cannot be measured', async () => {
     vi.mocked(fetchContentSize).mockRejectedValue(new Error('storage down'))
     vi.mocked(saveItem).mockResolvedValue(item)
     const save = renderSave()
-    await expect(save.current.mutateAsync({ item: { ...item, name: 'Cap' } })).resolves.toBe(item)
+    await expect(
+      save.current.mutateAsync({ item: { ...item, name: 'Cap' }, blobs: { 'thumbnail.png': png() } })
+    ).resolves.toBe(item)
     expect(saveItem).toHaveBeenCalledTimes(1)
     expect(captureError).toHaveBeenCalledWith(
       expect.any(Error),

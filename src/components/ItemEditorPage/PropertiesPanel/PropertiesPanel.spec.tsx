@@ -198,14 +198,14 @@ describe('PropertiesPanel', () => {
     expect(screen.queryByTestId('properties-panel-size-error')).not.toBeInTheDocument()
   })
 
-  it('keeps an item over its size limit from being saved, and says what counts', async () => {
+  it('says what counts when an item is over its size limit, and still lets an edit of its details be saved', async () => {
     render(<Harness size={{ bytes: 3_243_672, limit: 3 * 1024 * 1024 }} />, { wrapper: Providers })
     expect(screen.getByTestId('properties-panel-size')).toHaveAttribute('data-exceeded', 'true')
     expect(screen.getByTestId('properties-panel-size-error')).toHaveTextContent(
       'This item is 3.09 MB, over its 3.00 MB limit. The thumbnail and the rarity image count toward it'
     )
     await userEvent.type(screen.getByTestId('properties-panel-name'), ' 2')
-    expect(screen.getByTestId('properties-panel-save')).toBeDisabled()
+    expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
   })
 
   it('keeps a name without characters from being saved', async () => {

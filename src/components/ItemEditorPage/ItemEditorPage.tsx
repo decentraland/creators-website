@@ -433,7 +433,7 @@ const ItemEditorPage = () => {
 
   /** PUTs the built item, refreshes the cached list and toasts. */
   async function commit(item: Item, built: BuiltItem): Promise<Item> {
-    const saved = await saveItem.mutateAsync({ ...built, previousVideo: item.video })
+    const saved = await saveItem.mutateAsync({ ...built, previous: item, previousVideo: item.video })
     queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collectionId ?? undefined), current =>
       current?.map(candidate => (candidate.id === saved.id ? saved : candidate))
     )
