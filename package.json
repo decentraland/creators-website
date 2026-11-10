@@ -43,7 +43,7 @@
     "@mui/icons-material": "^5.18.0",
     "@openzeppelin/merkle-tree": "1.0.8",
     "@segment/analytics-next": "^1.84.3",
-    "@sentry/react": "^9.47.1",
+    "@sentry/react": "^11.11.0",
     "@tanstack/react-query": "^5.103.1",
     "buffer": "6.0.3",
     "date-fns": "^4.4.0",
