@@ -25,8 +25,6 @@ import { sendMetaTransaction, type MetaTransactionWallet } from '~/lib/chain/met
 import { WrongAccountError, WrongChainError } from '~/lib/walletErrors'
 import { walletClientOf, type Session } from './auth'
 
-export { WrongAccountError, WrongChainError }
-
 export type { ContractData }
 
 /** An EIP-712 domain; `verifyingContract` and `salt` are hex strings. */

@@ -321,7 +321,7 @@ Item validation reports a crashed rule-book worker once per page load with `flow
 
 Linked collections report with `flow: 'linked_publish'` from `step: 'sign_cheque'` (a cheque signature that fails for a reason other than a wallet rejection) and from the payment on (`wait_tx`, `delete_virtual`, `publish`, `push`: the creator may have paid, so a failure there needs someone to look, a payment still unconfirmed after the wait included; `txHash` in extra). The `linked_publish` flow itself skips a rejected wallet prompt and a reverted transaction (nothing was charged), but a `pending_review` or `insufficient_slots` refusal at the `publish` step still reaches it, and the mutation reporter (below) still sends every failure of the publish that is not a wallet rejection or a wallet on the wrong account or network, reverted transactions and early-step refusals included, as `flow: 'mutation'`. The curator side reports with `flow: 'linked_curation_approve'` (`step`: `prepare` / `root` / `deploy`), `'linked_curation_reject'` and `'linked_curation_review'` (enable / disable a third party). A wallet rejection or a wallet on the wrong account or network is never reported; a non-NFT contract or an invalid mapping is refused in the form before any request and is a Segment event only.
 
-Every `flow` tag the app sends, with what it covers. A wallet rejection is never reported under any of them. The feature flows skip the refusals named in their section, but the mutation reporter (`flow: 'mutation'`) filters wallet rejections only, so a refusal the creator can fix (a locked collection on save, a linked publish's `pending_review` / `insufficient_slots`, a discount's `pending` / `unconfirmed`, a reverted transaction) still reaches Sentry under `mutation` whenever it fails a react-query mutation:
+Every `flow` tag the app sends, with what it covers. A wallet rejection or a wallet on the wrong account or network is never reported under any of them. The feature flows skip the refusals named in their section, but the mutation reporter (`flow: 'mutation'`) filters only those two, so a refusal the creator can fix (a locked collection on save, a linked publish's `pending_review` / `insufficient_slots`, a discount's `pending` / `unconfirmed`, a reverted transaction) still reaches Sentry under `mutation` whenever it fails a react-query mutation:
 
 | flow | reported from |
 | --- | --- |
@@ -331,7 +331,7 @@ Every `flow` tag the app sends, with what it covers. A wallet rejection is never
 | `add_items` | the add-items modal: a model that could not be analysed (`step: 'validate'`) or re-validated after a category change (`step: 'revalidate'`) |
 | `save-item` / `item_save` | saving an item: the mutation's reporter (`save-item`) and the editor's save path (`item_save`) |
 | `item_file_change` | the change-file modal's import or save |
-| `send_items` | a send that failed for a reason other than a wallet rejection (`collectionId`, the batch size) |
+| `send_items` | a send that failed for a reason other than a wallet rejection or a wallet on the wrong account or network (`collectionId`, the batch size) |
 | `transfer_ownership` | the detached owner sync after a transfer gave up |
 | `create_collection_discount` / `end_collection_discount` | signing or storing a collection discount, ending one early |
 | `network-selector` | reading or switching the wallet's chain (`step: 'read-chain'` / `'switch-chain'`) |

@@ -22,8 +22,6 @@ export {
   subscribeWalletChain,
   switchWalletChain,
   waitForTransaction,
-  WrongAccountError,
-  WrongChainError,
   type ContractCall,
   type TransactionSender,
   type TransactionSettlement,

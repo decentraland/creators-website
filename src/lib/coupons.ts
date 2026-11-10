@@ -218,21 +218,24 @@ export function validateDiscountTerms(terms: DiscountTerms, now = Date.now()): v
 export type DiscountFailureReason = 'rejected' | 'pending' | 'wallet' | 'unconfirmed' | 'refused' | 'generic'
 
 export class DiscountError extends Error {
-  constructor(
-    public reason: DiscountFailureReason,
-    message: string = reason
-  ) {
+  reason: DiscountFailureReason
+  /** The underlying failure, when this one wraps it. */
+  cause?: unknown
+
+  constructor(reason: DiscountFailureReason, message: string = reason, cause?: unknown) {
     super(message)
     this.name = 'DiscountError'
+    this.reason = reason
+    this.cause = cause
   }
 }
 
 export function toDiscountError(error: unknown): DiscountError {
   if (error instanceof DiscountError) return error
   const message = error instanceof Error ? error.message : String(error)
-  if (isWalletRejection(error)) return new DiscountError('rejected', message)
-  if (isWalletStateError(error)) return new DiscountError('wallet', message)
-  return new DiscountError('generic', message)
+  if (isWalletRejection(error)) return new DiscountError('rejected', message, error)
+  if (isWalletStateError(error)) return new DiscountError('wallet', message, error)
+  return new DiscountError('generic', message, error)
 }
 
 export type CreateDiscountDeps = {
