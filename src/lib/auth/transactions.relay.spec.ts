@@ -26,12 +26,17 @@ type Scenario = {
   signError?: unknown
   noRequestAccounts?: boolean
   activeAccount?: string
+  wrapsAnswers?: boolean
   relay?: { status: number; body: object }
 }
 
 /** A wallet on Ethereum signing with the test key, a Polygon read node answering the nonce, and the relayer. */
 function world(scenario: Scenario = {}) {
   const walletLog: Request[] = []
+  const accounts = () => {
+    const list = [scenario.activeAccount ?? TEST_SIGNER]
+    return scenario.wrapsAnswers ? { result: list } : list
+  }
   const request = async ({ method, params = [] }: Request): Promise<unknown> => {
     if (method !== 'eth_chainId') walletLog.push({ method, params })
     switch (method) {
@@ -39,9 +44,9 @@ function world(scenario: Scenario = {}) {
         return '0x1'
       case 'eth_requestAccounts':
         if (scenario.noRequestAccounts) throw new Error('Unsupported method')
-        return [TEST_SIGNER]
+        return accounts()
       case 'eth_accounts':
-        return [scenario.activeAccount ?? TEST_SIGNER]
+        return accounts()
       case 'eth_getCode':
         return scenario.code ?? '0x'
       case 'eth_signTypedData_v4': {
@@ -145,7 +150,7 @@ describe('when a call goes gasless through the relayer', () => {
     const { outcome, walletLog, nodeCalls, relayed } = await run()
     expect(outcome).toEqual({ hash: HASH })
     expect(walletLog).toEqual([
-      { method: 'eth_accounts', params: [] },
+      { method: 'eth_requestAccounts', params: [] },
       { method: 'eth_requestAccounts', params: [] },
       { method: 'eth_getCode', params: [TEST_SIGNER.toLowerCase(), 'latest'] },
       { method: 'eth_signTypedData_v4', params: [TEST_SIGNER, expected.typedData] }
@@ -169,7 +174,7 @@ describe('when a call goes gasless through the relayer', () => {
   it('should fall back to eth_accounts for a wallet that refuses eth_requestAccounts', async () => {
     const { outcome, walletLog } = await sendTransfer({ noRequestAccounts: true })
     expect(outcome).toEqual({ hash: HASH })
-    expect(walletLog.slice(1, 3).map(({ method }) => method)).toEqual(['eth_requestAccounts', 'eth_accounts'])
+    expect(walletLog.slice(0, 2).map(({ method }) => method)).toEqual(['eth_requestAccounts', 'eth_accounts'])
   })
 
   it('should accept an EIP-7702 delegated account, which still signs with its own key', async () => {
@@ -229,6 +234,11 @@ describe('when a call goes gasless through the relayer', () => {
     }).catch((e: unknown) => e)
     expect(isWalletRejection(error)).toBe(true)
     expect((error as Error).message).toBe('whatever')
+  })
+
+  it('should accept a legacy wallet that wraps its accounts in `result`', async () => {
+    const { outcome } = await sendTransfer({ wrapsAnswers: true })
+    expect(outcome).toEqual({ hash: HASH })
   })
 
   it("should refuse to sign when the wallet's active account is not the session's", async () => {
