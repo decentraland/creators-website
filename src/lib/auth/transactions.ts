@@ -77,11 +77,17 @@ export async function readContract<T>(contract: ContractData, method: string, ar
 export async function sendContractTransaction(session: Session, call: ContractCall): Promise<string> {
   const chainId = await readWalletChainId(session)
   if (chainId === Number(call.contract.chainId)) return sendFromWallet(session, chainId, call)
+  // Read the way the meta-transaction signer reads it: the account that signs must be the session's.
+  const wallet = metaTransactionWallet(session)
+  const [active = ''] = await wallet.accounts()
+  if (active.toLowerCase() !== session.address.toLowerCase()) {
+    throw new WrongAccountError(session.address, active.toLowerCase())
+  }
   const target = await getReadClient(call.contract.chainId)
   const callContract = (tx: { data: string; to: string }) =>
     target.request({ method: 'eth_call', params: [tx as { data: Hex; to: Address }, 'latest'] })
   return sendMetaTransaction(
-    metaTransactionWallet(session),
+    wallet,
     callContract,
     encodeContractCall(call),
     call.contract,
@@ -237,10 +243,12 @@ function gasOverrides(chainId: number): { maxPriorityFeePerGas?: bigint; maxFeeP
  * meta-transactions: the wallet pays the gas. Call it from a click, since wallets refuse unprompted chain switches.
  * The network is read again after the switch: some providers (Magic) answer it without moving the wallet. It is
  * sent from the session's account only: a call keyed by its caller, like a cancellation, does nothing from another.
+ * `onSent` gets the hash as soon as the wallet returns it, before the nonce is read, so a caller can record it first.
  */
 export async function sendWalletTransaction(
   session: Session,
-  call: ContractCall
+  call: ContractCall,
+  onSent?: (hash: string) => void
 ): Promise<{ hash: string; nonce?: number }> {
   const chainId = Number(call.contract.chainId)
   await requireAccount(session)
@@ -253,6 +261,7 @@ export async function sendWalletTransaction(
   }
   // Sent from the session's address, so the wallet refuses to send it from any other account.
   const hash = await sendFromWallet(session, chainId, call)
+  onSent?.(hash)
   return { hash, nonce: await readSentNonce(session, chainId, hash) }
 }
 
@@ -439,6 +448,12 @@ export async function waitForReceipt(
     if (now() >= deadline) throw new Error(`Transaction ${txHash} was not mined within ${timeoutMs}ms`)
     await sleep(pollMs)
   }
+}
+
+/** Whether a contract is deployed at `address`. */
+export async function isContractDeployed(chainId: number, address: string): Promise<boolean> {
+  const code = await (await getReadClient(chainId)).getCode({ address: address as Address })
+  return !!code && code !== '0x'
 }
 
 /** Resolves true when the transaction is mined successfully, false when it reverted; see `waitForReceipt`. */

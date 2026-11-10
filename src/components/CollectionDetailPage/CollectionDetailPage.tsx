@@ -56,7 +56,8 @@ import {
 import { MAX_PUBLISH_ITEMS, getPublishBlocker } from '~/lib/publishCollection'
 import { useSaveItem } from '~/hooks/useSaveItem'
 import { useForumPostRecovery } from '~/hooks/useForumPost'
-import { useSyncPublishedItems } from '~/hooks/usePublishCollection'
+import { useLockedCollectionDeployed, useSyncPublishedItems } from '~/hooks/usePublishCollection'
+import { usePublishInFlight } from '~/store/publishSync'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useCollectionListings } from '~/hooks/useCollectionListings'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
@@ -370,6 +371,7 @@ const CollectionDetailPage = () => {
     NOT_FOUND_STATUSES.includes(thirdParty.error.status)
   // The detail page is for the collection's roles only (a linked collection's are its third party's managers):
   // anyone else gets the same "not found" as a rejected request, even once published, when only the editor is public.
+  // A finished transfer can drop the owner's role at once, so the page holds until its success modal is dismissed.
   const isNotFound =
     !collectionId ||
     (collectionQuery.isError &&
@@ -379,16 +381,23 @@ const CollectionDetailPage = () => {
       (isLinked
         ? // A third-party request that failed otherwise is a retryable error, not a missing role.
           !getThirdPartyId(collection) || isThirdPartyNotFound || (!thirdParty.isError && !hasRole)
-        : !hasRole))
+        : !hasRole && !isTransferring))
   const isError = !isNotFound && (collectionQuery.isError || (!isLinked && itemsQuery.isError) || thirdParty.isError)
   const isEmpty = filteredTotal === 0
   const hasItems = total > 0
   const canRename = !!collection && !collection.isPublished && !isCollectionLocked(collection)
   const canAddItems = canRename
   const hasInvalidItems = blockOnErrors && invalidCount > 0
-  const publishBlocker = collection
-    ? getPublishBlocker(collection, total, allItems ?? [], { hasInvalidItems })
-    : 'not_draft'
+  // A locked draft's last transaction may have reverted: publishing again is safe, as at most one can land.
+  const isPublishRetry = !!collection && isCollectionLocked(collection)
+  const publishInFlight = usePublishInFlight(collection?.id)
+  // A retry is hidden once an earlier attempt is known to have landed; a failed read still offers it.
+  const deployed = useLockedCollectionDeployed(isPublishRetry ? collection : undefined)
+  const retryLanded = isPublishRetry && (deployed.isLoading || deployed.data === true)
+  const publishBlocker =
+    collection && !publishInFlight && !retryLanded
+      ? getPublishBlocker(collection, total, allItems ?? [], { hasInvalidItems })
+      : 'not_draft'
   const pushBlocked = hasInvalidItems
 
   function openFileBrowser() {
@@ -603,7 +612,9 @@ const CollectionDetailPage = () => {
                           max: MAX_PUBLISH_ITEMS,
                           count: invalidCount
                         })
-                      : null
+                      : isPublishRetry
+                        ? t('collection_detail_page.publish_again_hint')
+                        : null
                   }
                   placement="bottom"
                   asChild
@@ -615,6 +626,7 @@ const CollectionDetailPage = () => {
                     data-desktop-only
                     data-testid="publish-collection"
                     data-blocker={publishBlocker ?? undefined}
+                    data-retry={isPublishRetry || undefined}
                     aria-disabled={publishBlocker ? true : undefined}
                     onClick={() => {
                       if (publishBlocker) return
@@ -622,7 +634,7 @@ const CollectionDetailPage = () => {
                       setPublishView('wizard')
                     }}
                   >
-                    {t('collection_detail_page.publish')}
+                    {t(isPublishRetry ? 'collection_detail_page.publish_again' : 'collection_detail_page.publish')}
                   </Button>
                 </Tooltip>
               )}

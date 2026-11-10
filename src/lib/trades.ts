@@ -10,7 +10,8 @@ import {
   type TradeCreation
 } from '@dcl/schemas'
 import { ContractName, getContract, getMarketplaceName } from '~/lib/chain/contracts'
-import { numberToHex, pad, zeroAddress, type Hex } from 'viem'
+import { numberToHex, zeroAddress } from 'viem'
+import { toBytes32 } from '~/lib/bytes32'
 import { config } from '~/config'
 import { readContract, signedFetch, type ContractData, type TypedDataDomain, type TypedDataTypes } from '~/lib/auth'
 
@@ -110,10 +111,10 @@ export function toTypedChecks(checks: TradeChecks) {
     uses: checks.uses,
     expiration: toSeconds(checks.expiration),
     effective: toSeconds(checks.effective),
-    salt: pad(checks.salt as Hex, { size: 32 }),
+    salt: toBytes32(checks.salt),
     contractSignatureIndex: checks.contractSignatureIndex,
     signerSignatureIndex: checks.signerSignatureIndex,
-    allowedRoot: pad(bytes(checks.allowedRoot) as Hex, { size: 32 }),
+    allowedRoot: toBytes32(bytes(checks.allowedRoot)),
     externalChecks: (checks.externalChecks ?? []).map(check => ({
       contractAddress: check.contractAddress,
       selector: check.selector,

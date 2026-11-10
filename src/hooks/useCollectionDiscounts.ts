@@ -368,7 +368,7 @@ export function useEndDiscount(session: Session | null) {
         )
       }
       return endDiscount(discount, {
-        sendTransaction: call => sendWalletTransaction(session, call),
+        sendTransaction: (call, onSent) => sendWalletTransaction(session, call, onSent),
         waitForTransaction: hash => waitForTransaction(discount.chainId, hash, END_TIMEOUT_MS),
         onSigned,
         onBroadcast: (txHash, nonce) =>

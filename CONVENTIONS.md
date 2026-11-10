@@ -21,7 +21,7 @@ Only `src/lib/auth/` (and the wallet zustand store it feeds) may import `decentr
 - the wallet store (address, connection state), and
 - `~/lib/auth` helpers: `getIdentity()` (AuthChain identity) and `signedFetch()`.
 
-Every builder-server client in `lib/` signs requests through that single chokepoint — never ad-hoc signing in components or hooks. On-chain calls go through `~/lib/auth` too (`readContract`, `sendContractTransaction`, `signTypedData`, …). The interface stays **async and provider-shaped**: the session carries the wallet's EIP-1193 `provider` and viem clients are built over it only inside `lib/auth`, so where the identity comes from (local login vs. handed over by a host) and where on-chain calls are signed (local provider vs. proxied `request({ method, params })`) stay swappable without touching consumers. `lib/chain` holds protocol code (contract registry, meta-transaction encoding) and never sees the provider: `lib/auth` hands it the wallet requests it needs.
+Every builder-server client in `lib/` signs requests through that single chokepoint — never ad-hoc signing in components or hooks. The interface stays **async and provider-shaped**: where the identity comes from (local login vs. handed over by a host) and where on-chain calls are signed (local provider vs. proxied `request({ method, params })`) must be swappable behind it without touching consumers.
 
 ### 2. Host-facing side effects go through `lib/` modules
 

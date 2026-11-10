@@ -12,7 +12,7 @@ export type ContractData<TAbi extends Abi = Abi> = {
   version: string
   chainId: number
   abi: TAbi
-  /** Absent when the contract takes no meta-transactions. */
+  /** How a meta-transaction to it encodes the call; absent is sent as `functionSignature`, as the package did. */
   metaTransaction?: MetaTransactionStyle
 }
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { type ContractNetwork } from '@dcl/schemas'
 import { ContractName, getContract } from '~/lib/chain/contracts'
-import { zeroHash } from 'viem'
+import { zeroHash, parseSignature, serializeCompactSignature, signatureToCompactSignature } from 'viem'
 import { readContract } from '~/lib/auth'
 import { decodeCall, toTransaction } from '~/test/chain'
 import { type ThirdParty } from './thirdParty'
@@ -184,6 +184,13 @@ describe('toChequeSlot', () => {
       '0x02091e78bd3af41ca07b70402079d52fca7db57a373c3d8425f71f75d1be88d9',
       28
     ])
+  })
+
+  it('splits a compact 64-byte signature into the same tuple', () => {
+    const compact = serializeCompactSignature(signatureToCompactSignature(parseSignature(CHEQUE_SIGNATURE)))
+    expect(toChequeSlot({ signature: compact, qty: 7, salt: CHEQUE_SALT })).toEqual(
+      toChequeSlot({ signature: CHEQUE_SIGNATURE, qty: 7, salt: CHEQUE_SALT })
+    )
   })
 })
 

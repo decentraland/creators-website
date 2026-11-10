@@ -538,25 +538,51 @@ describe('when ending a discount', () => {
   it.each([
     ['an RPC error while polling for the receipt', { waitForTransaction: vi.fn().mockRejectedValue(new Error('429')) }],
     [
-      'a wallet that throws after broadcasting',
+      'a send that fails after the wallet returned the hash',
       {
-        sendTransaction: vi
-          .fn()
-          .mockRejectedValue(Object.assign(new Error('poll failed'), { transactionHash: '0xhash' })),
+        sendTransaction: vi.fn(async (_call: unknown, onSent: (hash: string) => void) => {
+          onSent('0xhash')
+          throw new Error('nonce read failed')
+        }),
         waitForTransaction: vi.fn()
       }
     ]
   ])('should treat %s as still pending, never as a failure to retry', async (_, deps) => {
     const discount = await signedDiscount()
+    const onBroadcast = vi.fn()
     await expect(
       endDiscount(
         discount,
         Object.assign(
-          { sendTransaction: vi.fn().mockResolvedValue({ hash: '0xhash' }), waitForTransaction: vi.fn() },
+          { sendTransaction: vi.fn().mockResolvedValue({ hash: '0xhash' }), waitForTransaction: vi.fn(), onBroadcast },
           deps
         )
       )
     ).rejects.toMatchObject({ reason: 'pending' })
+    expect(onBroadcast.mock.calls.map(([hash]) => hash as string)).toContain('0xhash')
+  })
+
+  it('should record the cancellation and leave the wallet step as soon as the hash is back, then record the nonce', async () => {
+    const discount = await signedDiscount()
+    const onBroadcast = vi.fn()
+    const onSigned = vi.fn()
+    let recordedWhileSending: unknown[][] = []
+    let signedWhileSending = 0
+    await endDiscount(discount, {
+      sendTransaction: async (_call, onSent) => {
+        onSent('0xhash')
+        recordedWhileSending = [...onBroadcast.mock.calls]
+        signedWhileSending = onSigned.mock.calls.length
+        return { hash: '0xhash', nonce: 7 }
+      },
+      waitForTransaction: vi.fn().mockResolvedValue(true),
+      onBroadcast,
+      onSigned
+    })
+    expect(recordedWhileSending).toEqual([['0xhash']])
+    expect(signedWhileSending).toBe(1)
+    expect(onSigned).toHaveBeenCalledTimes(1)
+    expect(onBroadcast).toHaveBeenLastCalledWith('0xhash', 7)
   })
 
   it('should read a dismissed wallet prompt as the creator backing out', async () => {

@@ -4,7 +4,7 @@ import { getCollectionContract, getContract, type ContractData } from '~/lib/cha
 import { isWalletRejection } from '~/lib/walletErrors'
 import { TEST_SIGNER, testAccount } from '~/test/chain'
 import { type Session } from './auth'
-import { sendContractTransaction } from './transactions'
+import { WrongAccountError, sendContractTransaction } from './transactions'
 
 vi.mock('decentraland-connect', () => ({ getRpcUrls: () => ({ 80002: 'https://rpc.example.com' }) }))
 
@@ -25,12 +25,18 @@ type Scenario = {
   denies?: boolean
   signError?: unknown
   noRequestAccounts?: boolean
+  activeAccount?: string
+  wrapsAnswers?: boolean
   relay?: { status: number; body: object }
 }
 
 /** A wallet on Ethereum signing with the test key, a Polygon read node answering the nonce, and the relayer. */
 function world(scenario: Scenario = {}) {
   const walletLog: Request[] = []
+  const accounts = () => {
+    const list = [scenario.activeAccount ?? TEST_SIGNER]
+    return scenario.wrapsAnswers ? { result: list } : list
+  }
   const request = async ({ method, params = [] }: Request): Promise<unknown> => {
     if (method !== 'eth_chainId') walletLog.push({ method, params })
     switch (method) {
@@ -38,9 +44,9 @@ function world(scenario: Scenario = {}) {
         return '0x1'
       case 'eth_requestAccounts':
         if (scenario.noRequestAccounts) throw new Error('Unsupported method')
-        return [TEST_SIGNER]
+        return accounts()
       case 'eth_accounts':
-        return [TEST_SIGNER]
+        return accounts()
       case 'eth_getCode':
         return scenario.code ?? '0x'
       case 'eth_signTypedData_v4': {
@@ -145,6 +151,7 @@ describe('when a call goes gasless through the relayer', () => {
     expect(outcome).toEqual({ hash: HASH })
     expect(walletLog).toEqual([
       { method: 'eth_requestAccounts', params: [] },
+      { method: 'eth_requestAccounts', params: [] },
       { method: 'eth_getCode', params: [TEST_SIGNER.toLowerCase(), 'latest'] },
       { method: 'eth_signTypedData_v4', params: [TEST_SIGNER, expected.typedData] }
     ])
@@ -199,6 +206,18 @@ describe('when a call goes gasless through the relayer', () => {
       { relay: { status: 500, body: { ok: false } } },
       { message: 'HTTP Error. Status: 500.', code: 'unknown' },
       1
+    ],
+    [
+      'the relayer fails with a body of another shape',
+      { relay: { status: 502, body: { error: 'Bad gateway' } } },
+      { message: 'HTTP Error. Status: 502.', code: 'unknown' },
+      1
+    ],
+    [
+      'the relayer answers without a transaction hash',
+      { relay: { status: 200, body: { ok: true } } },
+      { message: 'The relayer answered without a transaction hash', code: 'unknown' },
+      1
     ]
   ])('should fail with a coded error when %s', async (_, scenario, error, relays) => {
     const { outcome, relayed } = await sendTransfer(scenario)
@@ -214,5 +233,23 @@ describe('when a call goes gasless through the relayer', () => {
       args: [...transfer[2]]
     }).catch((e: unknown) => e)
     expect(isWalletRejection(error)).toBe(true)
+    expect((error as Error).message).toBe('whatever')
+  })
+
+  it('should accept a legacy wallet that wraps its accounts in `result`', async () => {
+    const { outcome } = await sendTransfer({ wrapsAnswers: true })
+    expect(outcome).toEqual({ hash: HASH })
+  })
+
+  it("should refuse to sign when the wallet's active account is not the session's", async () => {
+    const w = world({ activeAccount: '0x00000000000000000000000000000000000000bb' })
+    const error = await sendContractTransaction(w.session, {
+      contract: transfer[0],
+      method: transfer[1],
+      args: [...transfer[2]]
+    }).catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(WrongAccountError)
+    expect(w.walletLog.map(({ method }) => method)).not.toContain('eth_signTypedData_v4')
+    expect(w.relayed).toHaveLength(0)
   })
 })

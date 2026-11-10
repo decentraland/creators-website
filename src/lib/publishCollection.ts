@@ -3,8 +3,9 @@
 // ported from the legacy builder's publish saga (the forum post lives in hooks/useForumPost).
 // Server and chain access is injected so the sequence is unit-testable end to end.
 import { ContractName, getContract } from '~/lib/chain/contracts'
-import { encodeAbiParameters, getAbiItem, pad, toFunctionSelector, toHex, type AbiFunction, type Hex } from 'viem'
+import { encodeAbiParameters, getAbiItem, toFunctionSelector, toHex, type AbiFunction } from 'viem'
 import { config } from '~/config'
+import { toBytes32 } from '~/lib/bytes32'
 import { type ContractCall } from '~/lib/auth'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS, isRefusedRequest } from '~/lib/builder'
 import { isCollectionLocked, type Collection } from '~/lib/collections'
@@ -30,7 +31,9 @@ export type PublishBlocker =
 
 /**
  * `items` are the collection's items; a smart wearable without its preview video blocks publishing, and so do
- * items with validation errors when the caller says they block (`hasInvalidItems`).
+ * items with validation errors when the caller says they block (`hasInvalidItems`). A locked draft stays
+ * publishable, as in legacy: its last transaction may have reverted, and a retry reuses the frozen salt, so at
+ * most one createCollection can land.
  */
 export function getPublishBlocker(
   collection: Collection,
@@ -38,7 +41,7 @@ export function getPublishBlocker(
   items: Item[],
   { hasInvalidItems = false }: { hasInvalidItems?: boolean } = {}
 ): PublishBlocker | null {
-  if (collection.isPublished || isCollectionLocked(collection)) return 'not_draft'
+  if (collection.isPublished) return 'not_draft'
   if (itemCount === 0) return 'no_items'
   if (itemCount > MAX_PUBLISH_ITEMS) return 'too_many_items'
   if (items.some(isMissingSmartWearableVideo)) return 'missing_smart_wearable_video'
@@ -154,7 +157,7 @@ export function buildUseCreditsCall(
     method: 'useCredits',
     args: [
       {
-        credits: [{ value: credit.amount, expiresAt: credit.expiresAt, salt: pad(credit.id as Hex, { size: 32 }) }],
+        credits: [{ value: credit.amount, expiresAt: credit.expiresAt, salt: toBytes32(credit.id) }],
         creditsSignatures: [credit.signature],
         externalCall,
         customExternalCallSignature: externalCallSignature,
@@ -331,6 +334,8 @@ export type SyncDeps = {
 
 export type ConsolidateDeps = SyncDeps & {
   waitForTransaction: (txHash: string) => Promise<boolean>
+  /** Whether the collection's contract exists on chain: a retry can revert because an earlier attempt landed. */
+  isCollectionDeployed?: () => Promise<boolean>
   /** Runs once the server holds the published items, e.g. to open the collection's forum topic. */
   onSynced?: () => void
 }
@@ -419,7 +424,11 @@ export async function consolidatePublishedCollection(
   retryDelayMs = CONSOLIDATE_RETRY_DELAY_MS
 ): Promise<void> {
   const mined = await deps.waitForTransaction(txHash)
-  if (!mined) throw new PublishTransactionRevertedError(txHash)
+  // Code at the address can only be this exact collection: the factory derives it from the salt, its caller (the
+  // CollectionManager's forwarder) and the full initialize calldata, creator included.
+  if (!mined && !(await deps.isCollectionDeployed?.().catch(() => false))) {
+    throw new PublishTransactionRevertedError(txHash)
+  }
   await syncPublishedItems(collectionId, deps, retries, retryDelayMs)
   deps.onSynced?.()
 }

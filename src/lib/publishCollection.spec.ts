@@ -124,12 +124,16 @@ function makeDeps(overrides: Partial<PublishDeps> = {}): PublishDeps & { calls: 
 }
 
 describe('getPublishBlocker', () => {
-  it('only lets an unlocked draft with 1..50 items publish', () => {
+  it('only lets a draft with 1..50 items publish', () => {
     expect(getPublishBlocker(collection, 3, [])).toBeNull()
     expect(getPublishBlocker(collection, 0, [])).toBe('no_items')
     expect(getPublishBlocker(collection, MAX_PUBLISH_ITEMS + 1, [])).toBe('too_many_items')
     expect(getPublishBlocker({ ...collection, isPublished: true }, 3, [])).toBe('not_draft')
-    expect(getPublishBlocker({ ...collection, lock: Date.now() }, 3, [])).toBe('not_draft')
+  })
+
+  it('lets a locked draft publish again, since its last transaction may have reverted', () => {
+    expect(getPublishBlocker({ ...collection, lock: Date.now() }, 3, [])).toBeNull()
+    expect(getPublishBlocker({ ...collection, lock: Date.now(), isPublished: true }, 3, [])).toBe('not_draft')
   })
 
   it('blocks publishing while a smart wearable has no preview video', () => {
@@ -234,6 +238,45 @@ describe('createCollection encoding', () => {
     )
     expect(decoded[3]).toBe('Halloween')
     expect(decoded[7]).toHaveLength(2)
+    // Encoded by ethers before the move to viem: the bytes the credits server co-signs must not change.
+    expect(call.data).toBe(
+      '0x' +
+        '0000000000000000000000007b1fe9de545b22cb553766817b84d655ce8121c9' +
+        '000000000000000000000000802de0c509add2ee29de24de7225daaff4741c43' +
+        '1111111111111111111111111111111111111111111111111111111111111111' +
+        '0000000000000000000000000000000000000000000000000000000000000100' +
+        '0000000000000000000000000000000000000000000000000000000000000140' +
+        '0000000000000000000000000000000000000000000000000000000000000180' +
+        '00000000000000000000000000000000000000000000000000000000000000aa' +
+        '0000000000000000000000000000000000000000000000000000000000000200' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '48616c6c6f7765656e0000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '44434c2d484c4c574e0000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000043' +
+        '68747470733a2f2f706565722e646563656e7472616c616e642e7a6f6e652f6c' +
+        '616d626461732f636f6c6c656374696f6e732f7374616e646172642f65726337' +
+        '32312f0000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000002' +
+        '0000000000000000000000000000000000000000000000000000000000000040' +
+        '0000000000000000000000000000000000000000000000000000000000000140' +
+        '0000000000000000000000000000000000000000000000000000000000000080' +
+        'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' +
+        '00000000000000000000000000000000000000000000000000000000000000aa' +
+        '00000000000000000000000000000000000000000000000000000000000000c0' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '6c6567656e646172790000000000000000000000000000000000000000000000' +
+        '000000000000000000000000000000000000000000000000000000000000001a' +
+        '313a773a4974656d20613a3a6861743a4261736546656d616c65000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000080' +
+        'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' +
+        '00000000000000000000000000000000000000000000000000000000000000aa' +
+        '00000000000000000000000000000000000000000000000000000000000000c0' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '6c6567656e646172790000000000000000000000000000000000000000000000' +
+        '000000000000000000000000000000000000000000000000000000000000001a' +
+        '313a773a4974656d20623a3a6861743a4261736546656d616c65000000000000'
+    )
   })
 
   it('produces a useCredits call the CreditsManager ABI accepts, with no MANA from the wallet', () => {
@@ -644,6 +687,37 @@ describe('consolidatePublishedCollection', () => {
       0
     )
     expect(publish).toHaveBeenCalledTimes(2)
+  })
+
+  it('syncs a retry that reverted because an earlier attempt already deployed the collection', async () => {
+    const onSynced = vi.fn()
+    await consolidatePublishedCollection(
+      'col-1',
+      '0xretry',
+      {
+        waitForTransaction: async () => false,
+        isCollectionDeployed: async () => true,
+        publishCollectionItems: vi.fn().mockResolvedValue({}),
+        onSynced
+      },
+      0,
+      0
+    )
+    expect(onSynced).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports a revert when the collection is not on chain or that cannot be read', async () => {
+    for (const isCollectionDeployed of [async () => false, async () => Promise.reject(new Error('rpc down'))]) {
+      await expect(
+        consolidatePublishedCollection(
+          'col-1',
+          '0xtx',
+          { waitForTransaction: async () => false, isCollectionDeployed, publishCollectionItems: vi.fn() },
+          0,
+          0
+        )
+      ).rejects.toBeInstanceOf(PublishTransactionRevertedError)
+    }
   })
 
   it('gives up on a reverted transaction or a non-401 failure', async () => {

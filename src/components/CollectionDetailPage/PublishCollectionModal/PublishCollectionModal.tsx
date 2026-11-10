@@ -4,7 +4,7 @@ import { useAllCollectionItems, useSaveCollection } from '~/hooks/useCollection'
 import { useProfile } from '~/hooks/useProfile'
 import { track } from '~/lib/analytics'
 import { type Session } from '~/lib/auth'
-import { type Collection } from '~/lib/collections'
+import { isCollectionLocked, type Collection } from '~/lib/collections'
 import { type TopUpResume } from '~/lib/creditsTopUp'
 import { type PaymentMethod, type PublishCollectionError, type PublishResult } from '~/lib/publishCollection'
 import { Modal } from '~/components/Modal'
@@ -127,6 +127,8 @@ export function PublishCollectionModal({
   }
 
   const busy = saveCollection.isPending || isStepBusy
+  // builder-server refuses every save while the publish lock holds, so a retry can only confirm what was sent.
+  const readOnly = isCollectionLocked(collection)
 
   return (
     <Modal
@@ -149,6 +151,7 @@ export function PublishCollectionModal({
               initialEmail={email || profileEmail}
               isSaving={saveCollection.isPending}
               saveError={saveCollection.error?.message ?? null}
+              nameDisabled={readOnly}
               onCancel={onClose}
               onConfirm={confirmDetails}
             />
@@ -163,6 +166,7 @@ export function PublishCollectionModal({
               address={address}
               collection={collection}
               items={items}
+              readOnly={readOnly}
               onBusyChange={setStepBusy}
               onBack={() => setStep(Step.Name)}
               onConfirm={() => setStep(Step.Payment)}

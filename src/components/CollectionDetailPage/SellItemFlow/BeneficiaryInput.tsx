@@ -1,5 +1,15 @@
 import { shortenAddress } from '~/lib/address'
-import { useId, useMemo, useState, type ClipboardEvent, type KeyboardEvent } from 'react'
+import {
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type CSSProperties,
+  type KeyboardEvent
+} from 'react'
+import { createPortal } from 'react-dom'
 import { Close as CloseIcon, ExpandMore as ChevronIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { useProfile } from '~/hooks/useProfile'
@@ -7,6 +17,9 @@ import { type Friend } from '~/lib/friends'
 import { isValidAddress } from '~/lib/sales'
 import { holdsAddresses } from '~/lib/mint'
 import * as S from './SellItemModal.styles'
+
+const LIST_GAP = 6
+const VIEWPORT_MARGIN = 8
 
 type Props = {
   /** The chosen address (lowercased), or '' while none is chosen. */
@@ -63,6 +76,9 @@ export function BeneficiaryInput({
   const [active, setActive] = useState(0)
   const [touched, setTouched] = useState(false)
   const [listError, setListError] = useState<string | null>(null)
+  const boxRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLUListElement>(null)
+  const [listStyle, setListStyle] = useState<CSSProperties>()
 
   const selfProfile = useProfile(self)
   const youLabel = t('sell_item_modal.beneficiary.you')
@@ -103,6 +119,30 @@ export function BeneficiaryInput({
   const invalid = touched && trimmed !== '' && !isValidAddress(trimmed)
   // Without anyone left to pick from the field is a plain address input.
   const withFriends = isLoadingFriends || available.length > 0
+  const showList = withFriends && open
+
+  // The list is portaled so the modal's scrolling body can't clip it: anchor it to the field, upward when there's no room below.
+  useLayoutEffect(() => {
+    if (!showList) return
+    function position() {
+      const box = boxRef.current?.getBoundingClientRect()
+      if (!box) return
+      const height = listRef.current?.offsetHeight ?? 0
+      const fitsBelow = box.bottom + LIST_GAP + height <= window.innerHeight - VIEWPORT_MARGIN
+      setListStyle({
+        left: box.left,
+        width: box.width,
+        top: fitsBelow ? box.bottom + LIST_GAP : Math.max(VIEWPORT_MARGIN, box.top - LIST_GAP - height)
+      })
+    }
+    position()
+    window.addEventListener('resize', position)
+    window.addEventListener('scroll', position, true)
+    return () => {
+      window.removeEventListener('resize', position)
+      window.removeEventListener('scroll', position, true)
+    }
+  }, [showList, matches.length, isLoadingFriends])
 
   function reset() {
     setQuery('')
@@ -198,7 +238,7 @@ export function BeneficiaryInput({
 
   return (
     <S.Combo>
-      <S.Box data-invalid={invalid || !!duplicate || undefined} data-disabled={disabled || undefined}>
+      <S.Box ref={boxRef} data-invalid={invalid || !!duplicate || undefined} data-disabled={disabled || undefined}>
         <input
           type="text"
           role={withFriends ? 'combobox' : undefined}
@@ -235,40 +275,42 @@ export function BeneficiaryInput({
             <ChevronIcon />
           </S.ComboToggle>
         )}
-        {withFriends && open && (
-          <S.Options role="listbox" id={listId} data-testid={`${testId}-options`}>
-            {matches.length === 0 && !isLoadingFriends ? (
-              <S.OptionNote data-testid={`${testId}-no-matches`}>
-                {t('sell_item_modal.beneficiary.no_matches')}
-              </S.OptionNote>
-            ) : (
-              matches.map((friend, index) => (
-                <S.Option
-                  key={friend.address}
-                  role="option"
-                  aria-selected={index === active}
-                  data-active={index === active || undefined}
-                  data-testid={`${testId}-option`}
-                  onMouseDown={event => event.preventDefault()}
-                  onMouseEnter={() => setActive(index)}
-                  onClick={() => commit(friend.address)}
-                >
-                  {friend.avatarUrl ? <S.Avatar src={friend.avatarUrl} alt="" /> : <S.AvatarFallback aria-hidden />}
-                  {friend.name && <span>{friend.name}</span>}
-                  {friend.address === self && <S.YouTag>{youLabel}</S.YouTag>}
-                  <S.OptionAddress>{shortenAddress(friend.address)}</S.OptionAddress>
-                </S.Option>
-              ))
-            )}
-            {/* Self is known at once; the friends join the list under the note when they arrive. */}
-            {isLoadingFriends && (
-              <S.OptionNote>
-                <S.Spinner aria-hidden />
-                {t('sell_item_modal.beneficiary.friends_loading')}
-              </S.OptionNote>
-            )}
-          </S.Options>
-        )}
+        {showList &&
+          createPortal(
+            <S.Options ref={listRef} role="listbox" id={listId} data-testid={`${testId}-options`} style={listStyle}>
+              {matches.length === 0 && !isLoadingFriends ? (
+                <S.OptionNote data-testid={`${testId}-no-matches`}>
+                  {t('sell_item_modal.beneficiary.no_matches')}
+                </S.OptionNote>
+              ) : (
+                matches.map((friend, index) => (
+                  <S.Option
+                    key={friend.address}
+                    role="option"
+                    aria-selected={index === active}
+                    data-active={index === active || undefined}
+                    data-testid={`${testId}-option`}
+                    onMouseDown={event => event.preventDefault()}
+                    onMouseEnter={() => setActive(index)}
+                    onClick={() => commit(friend.address)}
+                  >
+                    {friend.avatarUrl ? <S.Avatar src={friend.avatarUrl} alt="" /> : <S.AvatarFallback aria-hidden />}
+                    {friend.name && <span>{friend.name}</span>}
+                    {friend.address === self && <S.YouTag>{youLabel}</S.YouTag>}
+                    <S.OptionAddress>{shortenAddress(friend.address)}</S.OptionAddress>
+                  </S.Option>
+                ))
+              )}
+              {/* Self is known at once; the friends join the list under the note when they arrive. */}
+              {isLoadingFriends && (
+                <S.OptionNote>
+                  <S.Spinner aria-hidden />
+                  {t('sell_item_modal.beneficiary.friends_loading')}
+                </S.OptionNote>
+              )}
+            </S.Options>,
+            document.body
+          )}
       </S.Box>
       {listError ? (
         <S.ErrorText data-testid={`${testId}-error`}>{listError}</S.ErrorText>

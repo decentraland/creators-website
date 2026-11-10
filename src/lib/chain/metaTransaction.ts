@@ -160,15 +160,24 @@ export async function sendMetaTransaction(
       body: JSON.stringify({ transactionData: { from: account, params: [contract.address, txData] } }),
       method: 'POST'
     })
-    const body = (await response.json()) as { ok?: boolean; message?: string; code?: string; txHash?: string }
-    if (body.ok === false) {
+    const body = (await response.json().catch(() => ({}))) as {
+      ok?: boolean
+      message?: string
+      code?: string
+      txHash?: string
+    }
+    if (body.ok === false || !response.ok) {
       if (body.message && body.code) throw new MetaTransactionError(body.message, body.code)
       throw new Error(`HTTP Error. Status: ${response.status}.`)
     }
-    return body.txHash as string
+    // Waiting on a missing hash would poll forever.
+    if (typeof body.txHash !== 'string') throw new Error('The relayer answered without a transaction hash')
+    return body.txHash
   } catch (error) {
     if (error instanceof MetaTransactionError) throw error
-    const message = error instanceof Error ? error.message : String(error)
+    // EIP-1193 wallets often reject with a plain `{ code, message }` object rather than an Error.
+    const reason = (error as { message?: unknown } | null)?.message
+    const message = typeof reason === 'string' ? reason : String(error)
     const denied = message.includes('User denied message signature')
     throw new MetaTransactionError(
       message,

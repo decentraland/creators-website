@@ -1,7 +1,7 @@
 import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import reactHooks from 'eslint-plugin-react-hooks'
-import importX from 'eslint-plugin-import-x'
+import importX, { createNodeResolver } from 'eslint-plugin-import-x'
 import prettier from 'eslint-config-prettier'
 import globals from 'globals'
 
@@ -54,7 +54,10 @@ const MUI = {
     'The monorepo has no MUI; only @mui/icons-material is allowed. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 
-const ETHERS = { regex: '^ethers(/|$)', message: 'Chain code uses viem; ethers is not a dependency.' }
+const ETHERS = {
+  regex: '^(ethers(/|$)|@ethersproject/)',
+  message: 'Chain code uses viem; ethers is only installed as a dependency of other packages.'
+}
 const DCL_TRANSACTIONS = {
   regex: '^decentraland-transactions(/|$)',
   message: 'Contract data lives in ~/lib/chain/contracts and meta-transactions in ~/lib/chain/metaTransaction.'
@@ -70,7 +73,7 @@ const DYNAMIC_UI2 = {
   message: UI2_MESSAGE
 }
 const DYNAMIC_ETHERS = {
-  selector: 'ImportExpression[source.value=/^ethers(\\/|$)/]',
+  selector: 'ImportExpression[source.value=/^(ethers(\\/|$)|@ethersproject\\/)/]',
   message: ETHERS.message
 }
 const DYNAMIC_DCL_TRANSACTIONS = {
@@ -132,6 +135,23 @@ export default tseslint.config(
         {
           selector: 'function',
           format: ['PascalCase', 'camelCase']
+        }
+      ]
+    }
+  },
+
+  // The e2e harness (fake wallet key, fake back ends) is test-only: nothing under src may pull it into the bundle.
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    // The rule only sees imports it can resolve, and the default resolver skips .ts files.
+    settings: { 'import-x/resolver-next': [createNodeResolver({ extensions: ['.ts', '.tsx', '.js'] })] },
+    rules: {
+      'import/no-restricted-paths': [
+        'error',
+        {
+          zones: [
+            { target: './src', from: './e2e', message: 'The e2e harness is test-only; never import it from src.' }
+          ]
         }
       ]
     }
@@ -217,6 +237,13 @@ export default tseslint.config(
   {
     files: DYNAMIC_ALL_ALLOWED,
     rules: { 'no-restricted-syntax': ['error', DYNAMIC_ETHERS, DYNAMIC_DCL_TRANSACTIONS] }
+  },
+  {
+    files: ['e2e/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [ETHERS, DCL_TRANSACTIONS] }],
+      'no-restricted-syntax': ['error', DYNAMIC_ETHERS, DYNAMIC_DCL_TRANSACTIONS]
+    }
   },
 
   // Mocks and fixtures legitimately traffic in `any` and unbound methods, so the
