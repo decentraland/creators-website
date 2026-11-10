@@ -77,6 +77,8 @@ export async function readContract<T>(contract: ContractData, method: string, ar
 export async function sendContractTransaction(session: Session, call: ContractCall): Promise<string> {
   const chainId = await readWalletChainId(session)
   if (chainId === Number(call.contract.chainId)) return sendFromWallet(session, chainId, call)
+  // The meta-transaction is signed by the wallet's active account: it must be the session's.
+  await requireAccount(session)
   const target = await getReadClient(call.contract.chainId)
   const callContract = (tx: { data: string; to: string }) =>
     target.request({ method: 'eth_call', params: [tx as { data: Hex; to: Address }, 'latest'] })
