@@ -1,17 +1,9 @@
-// The ONLY module allowed to import decentraland-connect, @dcl/single-sign-on-client or @dcl/crypto,
+// lib/auth is the ONLY place allowed to import decentraland-connect, @dcl/single-sign-on-client or @dcl/crypto,
 // or to hold an EIP-1193 provider (see CONVENTIONS.md, host-portability seams). Everything else uses
-// the wallet store plus the helpers exported here.
-import {
-  createWalletClient,
-  custom,
-  type Account,
-  type Address,
-  type CustomTransport,
-  type Hex,
-  type WalletClient
-} from 'viem'
-import { ChainId, ProviderType } from '@dcl/schemas'
-import { Authenticator, type AuthChain, type AuthIdentity } from '@dcl/crypto'
+// the wallet store plus the helpers exported from its index.
+import { type ChainId } from '@dcl/schemas/dist/dapps/chain-id'
+import { ProviderType } from '@dcl/schemas/dist/dapps/provider-type'
+import { type AuthChain, type AuthIdentity } from '@dcl/crypto'
 import {
   localStorageClearIdentity,
   localStorageGetIdentity,
@@ -48,23 +40,6 @@ export type Session = {
   walletName?: string
 }
 
-// Never retried: a wallet request may be a prompt, and a retry would show it again.
-export function walletClientOf(
-  provider: Eip1193Provider,
-  address: string
-): WalletClient<CustomTransport, undefined, Account> {
-  return createWalletClient({ account: address as Address, transport: custom(provider, { retryCount: 0 }) })
-}
-
-/** The key pair the auth chain delegates to: a fresh random one unless `privateKey` is given. */
-export async function createEphemeralIdentity(privateKey?: Hex) {
-  // Only signing in needs the curve code, so it stays off the first load.
-  const { generatePrivateKey, privateKeyToAccount } = await import('viem/accounts')
-  const key = privateKey ?? generatePrivateKey()
-  const account = privateKeyToAccount(key)
-  return { address: account.address, publicKey: account.publicKey, privateKey: key }
-}
-
 async function toSession(res: {
   account: string | null
   provider: unknown
@@ -78,13 +53,8 @@ async function toSession(res: {
   // Reuse a valid stored identity, otherwise create one (a single wallet signature).
   let identity = localStorageGetIdentity(address)
   if (!identity) {
-    const wallet = walletClientOf(provider, address)
-    identity = await Authenticator.initializeAuthChain(
-      address,
-      await createEphemeralIdentity(),
-      IDENTITY_EXPIRATION_MINUTES,
-      message => wallet.signMessage({ message })
-    )
+    const { createIdentity } = await import('./signer')
+    identity = await createIdentity(provider, address, IDENTITY_EXPIRATION_MINUTES)
     localStorageStoreIdentity(address, identity)
   }
 
@@ -133,10 +103,16 @@ export function getIdentity(address: string): AuthIdentity | null {
   return localStorageGetIdentity(address.toLowerCase())
 }
 
+// The curve code behind it is only needed once there is an identity to sign with, never on a visitor's first load.
+async function signPayload(identity: AuthIdentity, payload: string): Promise<AuthChain> {
+  const { Authenticator } = await import('@dcl/crypto')
+  return Authenticator.signPayload(identity, payload)
+}
+
 /** Signs `payload` (a Catalyst entity id) with the wallet's ephemeral identity; null when the session has none. */
-export function signWithIdentity(address: string, payload: string): AuthChain | null {
+export async function signWithIdentity(address: string, payload: string): Promise<AuthChain | null> {
   const identity = getIdentity(address)
-  return identity ? Authenticator.signPayload(identity, payload) : null
+  return identity ? signPayload(identity, payload) : null
 }
 
 const AUTH_TIMESTAMP_HEADER = 'x-identity-timestamp'
@@ -147,19 +123,19 @@ const AUTH_METADATA_HEADER = 'x-identity-metadata'
  * lowercased, and the timestamp/metadata travel as headers so the server can rebuild the payload.
  * `path` is the full URL pathname (API base included), without the query string.
  */
-export function createAuthHeaders(
+export async function createAuthHeaders(
   address: string,
   method: string,
   path: string,
   metadata: Record<string, string> = {}
-): Record<string, string> {
+): Promise<Record<string, string>> {
   const headers: Record<string, string> = {}
   const identity = getIdentity(address)
   if (!identity) return headers
   const timestamp = String(Date.now())
   const metadataJson = JSON.stringify(metadata)
   const payload = `${method}:${path}:${timestamp}:${metadataJson}`.toLowerCase()
-  const authChain = Authenticator.signPayload(identity, payload)
+  const authChain = await signPayload(identity, payload)
   for (let i = 0; i < authChain.length; i++) {
     headers[`${AUTH_CHAIN_HEADER_PREFIX}${i}`] = JSON.stringify(authChain[i])
   }
@@ -182,7 +158,7 @@ export async function signedFetch(
 ): Promise<Response> {
   const method = (init.method ?? 'GET').toUpperCase()
   const url = `${baseUrl}${path}`
-  const authHeaders = address ? createAuthHeaders(address, method, new URL(url).pathname, metadata) : {}
+  const authHeaders = address ? await createAuthHeaders(address, method, new URL(url).pathname, metadata) : {}
   return fetch(url, {
     ...init,
     method,

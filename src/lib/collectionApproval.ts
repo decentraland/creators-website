@@ -1,8 +1,13 @@
 // On-chain committee writes on a standard collection, ported from the legacy builder's
 // changeCollectionStatus / handleRescueItemsRequest: every call goes through
 // Committee.manageCollection so the collection sees the committee as the caller.
-import { ContractName, getCollectionContract, getContract } from '~/lib/chain/contracts'
-import { encodeContractCall, type ContractCall } from '~/lib/auth'
+import {
+  ContractName,
+  encodeContractCall,
+  getCollectionContract,
+  getContract,
+  type ContractCall
+} from '~/lib/chain/contracts'
 import { type Collection } from '~/lib/collections'
 
 // Same chunk size as the legacy rescue, which keeps each transaction under the block gas limit.

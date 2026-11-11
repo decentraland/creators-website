@@ -98,7 +98,7 @@ vi.mock('~/hooks/useWalletChain', () => ({
 vi.mock('~/lib/overviewSegment', () => ({ sendOverviewTrack: vi.fn(), sendOverviewPage: vi.fn() }))
 
 const committee = vi.hoisted(() => ({ isCurator: false }))
-vi.mock('~/hooks/useCuration', () => ({ useCommittee: () => ({ isCurator: committee.isCurator }) }))
+vi.mock('~/hooks/useCommittee', () => ({ useCommittee: () => ({ isCurator: committee.isCurator }) }))
 
 beforeEach(() => {
   committee.isCurator = false
