@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyPreviewResult, type PreviewDraft, type PreviewResult } from './draftPreview'
+import { applyPreviewResult, isThumbnailGenerating, type PreviewDraft, type PreviewResult } from './draftPreview'
 import { ItemType } from './items'
 import { THUMBNAIL_PATH, VIDEO_PATH } from './itemFiles'
 
@@ -27,6 +27,27 @@ function generating(overrides: Partial<PreviewDraft> = {}): PreviewDraft {
 }
 
 const rendered: PreviewResult = { metrics: METRICS, thumbnail: AUTO, thumbnailCategory: 'hat' }
+
+describe('isThumbnailGenerating', () => {
+  it('is true while a model has no thumbnail yet', () => {
+    expect(isThumbnailGenerating(generating())).toBe(true)
+  })
+
+  it('is false for a thumbnail shipped in the zip, even while the metrics are still being measured', () => {
+    expect(isThumbnailGenerating(generating({ thumbnail: PICKED }))).toBe(false)
+  })
+
+  it('is true again when a category change needs the auto thumbnail in another pose', () => {
+    const draft = generating({
+      thumbnail: AUTO,
+      isAutoThumbnail: true,
+      autoThumbnailCategory: 'hat',
+      category: 'upper_body',
+      metrics: METRICS
+    })
+    expect(isThumbnailGenerating(draft)).toBe(true)
+  })
+})
 
 describe('applyPreviewResult', () => {
   it('gives the draft its metrics and the rendered thumbnail, also as its thumbnail file', () => {

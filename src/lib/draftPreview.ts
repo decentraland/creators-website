@@ -60,6 +60,11 @@ export function needsPreviewData(draft: PreviewDraft): boolean {
   return !draft.metrics || !draft.thumbnail || isAutoThumbnailStale(draft)
 }
 
+/** True while the preview still owes the draft its auto thumbnail; a zip-provided one only waits for metrics. */
+export function isThumbnailGenerating(draft: PreviewDraft): boolean {
+  return needsPreviewData(draft) && (!draft.thumbnail || isAutoThumbnailStale(draft))
+}
+
 /** Canvas-padded thumbnail for an image wearable (legacy updateThumbnailByCategory). */
 export async function imageThumbnailPatch(
   contents: Record<string, Blob>,

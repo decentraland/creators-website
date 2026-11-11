@@ -16,7 +16,7 @@ import { useThumbnailValidation } from '~/hooks/useThumbnailValidation'
 import { useTranslation } from '~/intl'
 import { THUMBNAIL_PATH, hasFacialExpressions } from '~/lib/itemFiles'
 import { ItemType } from '~/lib/items'
-import { needsPreviewData, type PreviewDraft } from '~/lib/draftPreview'
+import { isThumbnailGenerating, type PreviewDraft } from '~/lib/draftPreview'
 import * as S from './ItemDraftModal.styles'
 
 type Props = {
@@ -34,7 +34,7 @@ export function DraftPreviewPane({ draft, thumbnailLocked = false, onOpenThumbna
   const isEmote = draft.type === ItemType.EMOTE
   const isWearable = draft.type === ItemType.WEARABLE
   const isSmart = isWearable && draft.isSmart
-  const isGenerating = needsPreviewData(draft)
+  const isGenerating = isThumbnailGenerating(draft)
 
   const thumbnailBlob = draft.contents[THUMBNAIL_PATH]
   const thumbnailSource = useMemo(
