@@ -13,6 +13,7 @@ import {
   type ForcedErrors,
   type RouteContext
 } from './route'
+import { type PreviewOptions } from './preview'
 import { createChain, type ChainOptions, type SentTransaction } from './rpc'
 import { OFFLINE_WEBSOCKET_SCRIPT, POLYGON_AMOY, sessionInitScript, testSession } from './session'
 
@@ -61,6 +62,8 @@ export type LaunchOptions = {
   /** Flag values served by the flag service, keyed `${application}-${flag}`. Everything else is off. */
   flags?: Flags
   errors?: ForcedErrors
+  /** How the fake wearable-preview iframe behaves. */
+  preview?: PreviewOptions
   /** Builder storage files by content hash, on top of the fixture files. */
   storage?: Record<string, Buffer>
   data?: Partial<ExternalData>
@@ -172,6 +175,7 @@ async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
     previewAnswers: [],
     flags: opts.flags ?? {},
     errors: opts.errors ?? {},
+    preview: opts.preview ?? {},
     storage,
     data: { ...DEFAULT_EXTERNAL_DATA, ...opts.data }
   }
