@@ -33,7 +33,7 @@ export type RouteContext = {
   market: Market
   credits: Credits
   bridge?: Bridge
-  /** Controller answers the fake preview reported, in order. */
+  /** Controller answers and held loads the fake preview reported, in order. */
   previewAnswers: Array<{ method: string; result: string }>
   flags: Flags
   variants: Variants
