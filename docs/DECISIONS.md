@@ -180,7 +180,7 @@ Rules for this file:
 - **The contract check probes ERC-721 and ERC-1155 interface ids** through ERC-165; legacy probed the ERC-165 id itself, which was a bug.
 - **Review threshold:** every item under 50, else max(50, 1%) capped at 300; Approve is blocked until it is reached. Approve on chain only when the Merkle root changed.
 
-## Overview (creator home) and pre-launch gate
+## Overview (creator home)
 
 - **The overview moved here from the sites repo** and is served by path at `decentraland.org/create`; `/overview` survives as a redirect. The router `basename` is `/create` whenever the page URL starts with it and `/` otherwise, so one build serves local dev, Vercel previews and the CDN.
 - **Its events go to sites' Segment source**, not this app's, with the `Section Viewed` and `Click` names kept, so sites' dashboards keep working. Everything else in the app reports to the Builder source.
@@ -188,8 +188,6 @@ Rules for this file:
 - **Poster first, no video on phones** (PR #117): the landscape poster paints first and the video mounts after load and idle on desktop only; phones, reduced motion and Save-Data keep the poster.
 - **Feed failures are reported only for non-2xx responses**, once, through react-query's cache-level reporter; a request that never got a response (offline, ad blocker, timeout) is not, as sites swallowed every feed failure.
 - **Lighthouse targets on `.org`:** performance ≥ 0.85 mobile and desktop, CLS < 0.1, SEO ≥ 0.92. `.zone` is served `noindex` and Vercel previews sit behind auth, so neither can be scored; compare `main` and the branch served locally.
-- **The pre-launch gate fails open.** `builder-creators-prelaunch` on means curtained: only the flag's address-list variant gets the full app, everyone else gets the overview alone and every other route redirects to `/`. Off, absent or unreachable means launched, so a flag outage on launch day never curtains the site. Which deployments are gated is decided only in the flag dashboard; there is no hostname check. It is a curtain, not a lock: the bundle is static and builder-server is public.
-- **The overview never waits for the gate**: it renders at once without the sub-nav, which slides in when the flag answers (an accepted shift). Other routes show the spinner until the flag and the wallet restore have answered.
 
 ## Blender live preview
 

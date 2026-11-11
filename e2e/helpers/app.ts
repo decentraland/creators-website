@@ -11,8 +11,7 @@ import {
   type ExternalData,
   type Flags,
   type ForcedErrors,
-  type RouteContext,
-  type Variants
+  type RouteContext
 } from './route'
 import { type PreviewOptions } from './preview'
 import { createChain, type ChainOptions, type SentTransaction } from './rpc'
@@ -62,7 +61,6 @@ export type LaunchOptions = {
   bridge?: Bridge
   /** Flag values served by the flag service, keyed `${application}-${flag}`. Everything else is off. */
   flags?: Flags
-  variants?: Variants
   errors?: ForcedErrors
   /** How the fake wearable-preview iframe behaves. */
   preview?: PreviewOptions
@@ -176,7 +174,6 @@ async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
     bridge: opts.bridge,
     previewAnswers: [],
     flags: opts.flags ?? {},
-    variants: opts.variants ?? {},
     errors: opts.errors ?? {},
     preview: opts.preview ?? {},
     storage,
