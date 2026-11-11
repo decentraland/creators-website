@@ -128,6 +128,7 @@ Legacy prop names, so the events line up with the old editor's.
 | `Change item file` | the change-file modal saved a new model for the item (after the `Save item` of that PUT) | `itemId`, `bodyShape` (`both` / `male` / `female`), `mode` (`replace_all` / `replace_shape` / `add_representation`), `fileKind` (`glb` / `gltf` / `zip` / `png`), `thumbnailRegenerated` |
 | `Change item file error` | the picked file was rejected or the import threw | `itemId`, `error` (the `ItemFileError` key, or `errorCode` for a throw) |
 | `Toggle scene boundaries` | the scene boundaries cylinder is shown or hidden over the preview | `visible` (the new state), `trigger` (`editor` / `live_preview`) |
+| `Item metrics repaired` | once per item per visit, when the editor replaces a wearable's stored metrics that have no geometry with ones counted from its model. A failure to fetch the model goes to Sentry (`flow: 'item_metrics_repair'`), as does a failed background save | `itemId`, `saved` (the corrected metrics are written back: editor of an unpublished, unlocked collection with no unsaved edits) |
 
 ### Item validation
 
@@ -332,6 +333,7 @@ Every `flow` tag the app sends, with what it covers. A wallet rejection or a wal
 | `add_items` | the add-items modal: a model that could not be analysed (`step: 'validate'`) or re-validated after a category change (`step: 'revalidate'`) |
 | `save-item` / `item_save` | saving an item: the mutation's reporter (`save-item`) and the editor's save path (`item_save`) |
 | `item_file_change` | the change-file modal's import or save |
+| `item_metrics_repair` | the item editor's metrics repair: fetching the model to count, or the background save of the counted metrics |
 | `send_items` | a send that failed for a reason other than a wallet rejection or a wallet on the wrong account or network (`collectionId`, the batch size) |
 | `transfer_ownership` | the detached owner sync after a transfer gave up |
 | `create_collection_discount` / `end_collection_discount` | signing or storing a collection discount, ending one early |

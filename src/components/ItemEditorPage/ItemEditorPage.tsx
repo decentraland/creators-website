@@ -28,6 +28,7 @@ import { track } from '~/lib/analytics'
 import { modelValidationKey, useModelValidation } from '~/hooks/useModelValidation'
 import { useRerunValidation } from '~/hooks/useRerunValidation'
 import { useObjectURL } from '~/hooks/useObjectURL'
+import { useRepairedItemMetrics } from '~/hooks/useRepairedItemMetrics'
 import { thumbnailValidationKey, useThumbnailValidation } from '~/hooks/useThumbnailValidation'
 import { fetchStoredThumbnail, useSaveItem } from '~/hooks/useSaveItem'
 import { captureError } from '~/lib/monitoring'
@@ -143,6 +144,8 @@ const ItemEditorPage = () => {
   const itemsQuery = useAllCollectionItems(address, collectionId ?? undefined)
   const baseWearables = useBaseWearables()
   const saveItem = useSaveItem(address)
+  // Its own mutation, so the background save doesn't put the Save button in its saving state.
+  const { mutateAsync: saveRepairedItem } = useSaveItem(address)
   const saveCollection = useSaveCollection(address)
   const [isRenameOpen, setRenameOpen] = useState(false)
 
@@ -159,7 +162,12 @@ const ItemEditorPage = () => {
       pendingLinked.data ? { pendingIds: new Set(pendingLinked.data.map(item => item.id)), reviewedIds } : undefined,
     [pendingLinked.data, reviewedIds]
   )
-  const selected = useMemo(() => resolveSelectedItem(items, itemParam), [items, itemParam])
+  const resolved = useMemo(() => resolveSelectedItem(items, itemParam), [items, itemParam])
+  const repairedMetrics = useRepairedItemMetrics(resolved)
+  const selected = useMemo(
+    () => (resolved && repairedMetrics ? { ...resolved, metrics: repairedMetrics } : resolved),
+    [resolved, repairedMetrics]
+  )
 
   // Avatar state (session-only store).
   const bodyShape = useAvatarPreview(state => state.bodyShape)
@@ -378,6 +386,39 @@ const ItemEditorPage = () => {
     (isLinked
       ? linkedCurations.isSuccess && !isLinkedItemPublished(selected, linkedCurations.data.get(selected.id) ?? null)
       : canDeleteItem(collection, address))
+
+  // Metrics are part of the Catalyst entity hash: writing them to a published or locked collection would flag the
+  // item as changed and send it back to curation, so there the corrected numbers are only shown.
+  const repairAttemptedRef = useRef(new Set<string>())
+  useEffect(() => {
+    if (!selected || !repairedMetrics || repairAttemptedRef.current.has(selected.id)) return
+    if (!collection || isResolvingReviewer || (isLinked && thirdParty.isLoading)) return
+    repairAttemptedRef.current.add(selected.id)
+    const save = editable && isDraftCollection && !form.isDirty
+    track('Item metrics repaired', { itemId: selected.id, saved: save })
+    if (!save) return
+    saveRepairedItem({ item: selected, blobs: {} })
+      .then(saved =>
+        queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collectionId ?? undefined), current =>
+          current?.map(candidate => (candidate.id === saved.id ? saved : candidate))
+        )
+      )
+      .catch((error: unknown) => captureError(error, { flow: 'item_metrics_repair', itemId: selected.id }))
+  }, [
+    selected,
+    repairedMetrics,
+    collection,
+    isResolvingReviewer,
+    isLinked,
+    thirdParty.isLoading,
+    editable,
+    isDraftCollection,
+    form.isDirty,
+    saveRepairedItem,
+    queryClient,
+    address,
+    collectionId
+  ])
 
   async function persist(item: Item) {
     const built = await toSaveableItem(item, form.draft, {

@@ -4,7 +4,7 @@ import { WearablePreview } from 'decentraland-ui2'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { track } from '~/lib/analytics'
 import { captureError } from '~/lib/monitoring'
-import { ItemType, type ItemMetrics } from '~/lib/items'
+import { ItemType, hasEmptyModelMetrics, type ItemMetrics } from '~/lib/items'
 import { isPreviewEmpty, retryWhilePreviewReloads, toEmoteWithBlobs, toWearableWithBlobs } from '~/lib/preview'
 import { renderPosedThumbnail } from '~/lib/renderPosedThumbnail'
 import { getThumbnailPose, isAutoThumbnailStale } from '~/lib/thumbnailPose'
@@ -184,7 +184,7 @@ export function DraftProcessor({ draft, flow, batchSize = 1, onResult, onError }
         const screenshot = () =>
           retryWhilePreviewReloads(() => controller.scene.getScreenshot(THUMBNAIL_SIZE, THUMBNAIL_SIZE))
         // The iframe also announces its initial, model-less render, and that LOAD can land after the UPDATE
-        // was sent: metrics read against that empty scene are all zeros on Babylon, an error on Unity. Not a
+        // was sent: metrics read against that empty scene have no geometry on Babylon, an error on Unity. Not a
         // failure, the model just isn't in yet; the real render's own LOAD starts the next read.
         const metrics: ItemMetrics | null =
           draft.type === ItemType.WEARABLE
@@ -193,7 +193,7 @@ export function DraftProcessor({ draft, flow, batchSize = 1, onResult, onError }
                 throw error
               })
             : (draft.metrics ?? {})
-        if (!metrics || (draft.type === ItemType.WEARABLE && !metrics.meshes)) return
+        if (!metrics || (draft.type === ItemType.WEARABLE && hasEmptyModelMetrics(metrics))) return
 
         const result: PreviewResult = { metrics, thumbnail: null, thumbnailCategory: draft.category }
         if (!draft.thumbnail || isAutoThumbnailStale(draft)) {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { collection, upperBody, wearable } from './fixtures'
+import { collection, publishedCollection, publishedItem, upperBody, wearable } from './fixtures'
 import { launchApp, type App } from './helpers/app'
 import { byTestId, clickTestId, selectOption, waitForEditor, waitForTestId, waitForToast } from './helpers/dom'
 
@@ -20,6 +20,13 @@ async function openEditor(itemId: string): Promise<App> {
   await waitForEditor(launched.page)
   return launched
 }
+
+// What a preview read of its model-less boot scene used to store for a real model.
+const BOOT_SCENE_METRICS = { triangles: 0, materials: 0, textures: 0, meshes: 1, bodies: 1, entities: 1 }
+const HAT_METRICS = { triangles: 540, materials: 1, textures: 1, meshes: 1, bodies: 1, entities: 1 }
+
+const metricsText = (a: App) =>
+  a.page.$eval(byTestId('properties-panel-metrics'), el => el.textContent ?? '').catch(() => '')
 
 const badgeStatus = (a: App, status: string) =>
   a.page.waitForSelector(`[data-testid="validation-badge"][data-status="${status}"]`, { timeout: 30_000 })
@@ -66,5 +73,30 @@ describe('item editor', () => {
       '[data-testid="validation-badge-modal"] [data-severity="error"][data-code="texture-size"]'
     )
     await app.waitForEvent('Item Validation Details Opened', { itemId: polo.id, status: 'errors', trigger: 'editor' })
+  })
+
+  it('counts the metrics of a wearable saved without geometry and stores them', async () => {
+    const zeroed = wearable({ collection_id: draft.id, name: 'Zeroed Hat', metrics: BOOT_SCENE_METRICS })
+    app = await launchApp({ path: editorPath(zeroed.id), builder: { collections: [draft], items: [zeroed] } })
+    await waitForEditor(app.page)
+
+    await app.waitForEvent('Item metrics repaired', { itemId: zeroed.id, saved: true })
+    expect(await metricsText(app)).toContain('540')
+    await app.waitForEvent('Save item', { itemId: zeroed.id })
+    expect(app.builder.items.get(zeroed.id)!.metrics).toEqual(HAT_METRICS)
+  })
+
+  it('shows counted metrics on a published collection without storing them', async () => {
+    const live = publishedCollection({ name: 'Live Drop' })
+    const zeroed = publishedItem(live, 0, { name: 'Zeroed Hat', metrics: BOOT_SCENE_METRICS })
+    app = await launchApp({
+      path: `/collections/editor?collection=${live.id}&item=${zeroed.id}`,
+      builder: { collections: [live], items: [zeroed] }
+    })
+    await waitForEditor(app.page)
+
+    await app.waitForEvent('Item metrics repaired', { itemId: zeroed.id, saved: false })
+    expect(await metricsText(app)).toContain('540')
+    expect(app.builder.items.get(zeroed.id)!.metrics).toEqual(BOOT_SCENE_METRICS)
   })
 })

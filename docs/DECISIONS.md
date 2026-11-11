@@ -75,6 +75,7 @@ Rules for this file:
 - **Camera range (both renderers; the page's zoom buttons replace Unity's in-canvas ones):** `zoom` scaled by 3 with `wheelZoom = 5`, `wheelStart = 50`, which keeps the legacy starting radius (`radius / 1.75`) while the wheel zooms 3× in, like Unity's FOV range, and about 1.7× out. The JUMP emote keeps its wider framing (legacy quirk).
 - **The campaign tag hint** comes from Contentful through Decentraland's CMS proxy behind the `builder-campaign` flag, exactly as legacy read it. No campaign, flag off or CMS down shows nothing and never errors.
 - **Review mode is read-only for curators too** (2026-09-25, user feedback). A curator must not approve by previewing the model without reading each item's metadata, so the properties panel is always shown, never collapsible, fully disabled.
+- **Wearables saved without geometry are repaired on open.** A preview read of the model-less boot scene could store metrics with no triangles, materials or textures. The editor counts them from the model's glTF JSON instead (colliders left out) and shows those; it writes them back only for an editor of an unpublished, unlocked collection with no unsaved edits, because metrics are part of the Catalyst entity hash and a write elsewhere would flag the item as changed and in need of curation.
 - **Out (v1):** orphan items and social-emote editing (start animation, outcomes).
 
 ## Replace model and add representation
