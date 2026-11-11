@@ -14,30 +14,47 @@ function getImportedName(path: string): string {
   return (isModelFile(path) || isImageFile(path) ? getModelFileNameFromSubfolder(path) : path).toLowerCase()
 }
 
+const stripFolder = (path: string): string | null => {
+  const folder = [MALE_FOLDER, FEMALE_FOLDER].find(prefix => path.startsWith(prefix))
+  return folder ? path.slice(folder.length) : null
+}
+
+/** Folds `male/` and `female/` into their parent when both hold the same files, or returns null when they don't. */
+function foldBodyShapes(files: Map<string, string>): Map<string, string> | null {
+  const shapes = [MALE_FOLDER, FEMALE_FOLDER].map(
+    folder =>
+      new Map([...files].filter(([path]) => path.startsWith(folder)).map(([path, hash]) => [stripFolder(path)!, hash]))
+  )
+  const [male, female] = shapes
+  if (male.size === 0 || male.size !== female.size) return null
+  for (const [path, hash] of male) if (female.get(path) !== hash || files.has(path)) return null
+  return new Map([...[...files].filter(([path]) => stripFolder(path) === null), ...male])
+}
+
 /**
  * Maps each stored path to its path in the zip: when both body shapes hold the same files, they fold into the root
  * instead of shipping twice. `contents` is the item's path → hash map.
  */
 function getItemZipPaths(contents: Record<string, string>): Record<string, string> {
-  const paths = Object.keys(contents)
-  const male = paths.filter(path => path.startsWith(MALE_FOLDER)).map(path => path.slice(MALE_FOLDER.length))
-  const femaleCount = paths.filter(path => path.startsWith(FEMALE_FOLDER)).length
+  const stored = Object.keys(contents)
+  const root = stored.filter(path => stripFolder(path) === null)
+  let files = new Map(Object.entries(contents))
+  let depth = 0
+  // Some stored emotes nest the body shape folders twice, so the fold repeats until it reaches the files.
+  for (let folded = foldBodyShapes(files); folded; folded = foldBodyShapes(files)) {
+    files = folded
+    depth++
+  }
   // Names are compared the way a case-insensitive file system and the importer see them, so no folded file lands
-  // on the item's own files or on another folded one.
-  const taken = new Set([...ITEM_FILES, ...paths.filter(path => !path.includes('/')).map(path => path.toLowerCase())])
-  const fold =
-    male.length > 0 &&
-    male.length === femaleCount &&
-    male.every(path => {
-      const name = getImportedName(path)
-      if (taken.has(name) || contents[MALE_FOLDER + path] !== contents[FEMALE_FOLDER + path]) return false
-      taken.add(name)
-      return true
-    })
+  // on the item's own files or on another file.
+  const names = [...files.keys()].filter(path => !root.includes(path)).map(getImportedName)
+  const taken = new Set([...ITEM_FILES, ...root.map(path => path.toLowerCase())])
+  if (new Set(names).size !== names.length || names.some(name => taken.has(name))) depth = 0
   return Object.fromEntries(
-    paths.map(path => {
-      const folder = fold && [MALE_FOLDER, FEMALE_FOLDER].find(prefix => path.startsWith(prefix))
-      return [path, folder ? path.slice(folder.length) : path]
+    stored.map(path => {
+      let zipPath = path
+      for (let level = 0; level < depth; level++) zipPath = stripFolder(zipPath) ?? zipPath
+      return [path, zipPath]
     })
   )
 }

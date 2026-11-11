@@ -118,6 +118,11 @@ describe('add items to a collection', () => {
     const [item] = await savedItems(app)
     expect(item).toMatchObject({ type: 'emote', data: { category: 'greetings' } })
     expect(item.data.representations).toHaveLength(2)
+    expect(
+      Object.keys(item.contents)
+        .filter(path => path.endsWith('.glb'))
+        .sort()
+    ).toEqual(['female/emote.glb', 'male/emote.glb'])
     expect(uploaded(app, item.contents)).toBe(true)
   })
 

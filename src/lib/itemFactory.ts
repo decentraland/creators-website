@@ -271,6 +271,28 @@ export function assertUploadSize(item: Item, blobs: Record<string, Blob>, stored
   if (size !== null) throw new ItemFileError('size_exceeded', { size })
 }
 
+/**
+ * An emote has one model for both body shapes: from a zip with a folder per body shape, only the folder of the
+ * picked model is kept, moved to the root.
+ */
+function toSingleModel(
+  contents: Record<string, Blob>,
+  model: string
+): { contents: Record<string, Blob>; model: string } {
+  if (getBodyShapeTypeFromContents(contents) !== BodyShapeType.BOTH) return { contents, model }
+  const [kept, dropped] = [BodyShapeType.MALE, BodyShapeType.FEMALE].map(shape => `${shape}/`)
+  const [keep, drop] = model.startsWith(dropped) ? [dropped, kept] : [kept, dropped]
+  const strip = (path: string) => (path.startsWith(keep) ? path.slice(keep.length) : path)
+  return {
+    contents: Object.fromEntries(
+      Object.entries(contents)
+        .filter(([path]) => !path.startsWith(drop))
+        .map(([path, blob]) => [strip(path), blob])
+    ),
+    model: strip(model)
+  }
+}
+
 /** An item to persist plus the blobs to upload, keyed by content path. */
 export type BuiltItem = {
   item: Item
@@ -282,6 +304,7 @@ export type BuiltItem = {
  * body shape and hashed, representations derived, and the item is priced as "not for sale".
  */
 export async function buildItem(draft: ItemDraftPayload): Promise<BuiltItem> {
+  if (draft.type === ItemType.EMOTE) draft = { ...draft, ...toSingleModel(draft.contents, draft.model) }
   const isBothZip =
     draft.type === ItemType.WEARABLE && getBodyShapeTypeFromContents(draft.contents) === BodyShapeType.BOTH
   const sorted = isBothZip
@@ -475,7 +498,9 @@ export type ReplacementModel = {
  * thumbnail, catalyst image and video stay. Callers reject a wearable↔emote type switch before getting here.
  */
 export async function withReplacedModel(item: Item, replacement: ReplacementModel): Promise<BuiltItem> {
-  const { bodyShape, contents: files, model } = replacement
+  const { bodyShape } = replacement
+  const { contents: files, model } =
+    item.type === ItemType.EMOTE ? toSingleModel(replacement.contents, replacement.model) : replacement
   const isBothZip = getBodyShapeTypeFromContents(files) === BodyShapeType.BOTH
   const sorted = isBothZip ? sortContentZipBothBodyShape(bodyShape, files) : sortContent(bodyShape, files)
   const representations = isBothZip

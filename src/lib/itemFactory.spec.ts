@@ -176,6 +176,28 @@ describe('buildItem', () => {
     expect(item.data.representations).toHaveLength(2)
   })
 
+  it('builds an emote from a zip with a folder per body shape out of one model, the first', async () => {
+    const { item, blobs } = await buildItem({
+      ...baseDraft,
+      type: ItemType.EMOTE,
+      category: 'dance',
+      model: 'male/dance.glb',
+      contents: { 'male/dance.glb': blob('first'), 'female/dance.glb': blob('second'), 'thumbnail.png': blob('thumb') }
+    })
+    expect(Object.keys(item.contents).sort()).toEqual([
+      'female/dance.glb',
+      'image.png',
+      'male/dance.glb',
+      'thumbnail.png'
+    ])
+    expect(item.contents['female/dance.glb']).toBe(item.contents['male/dance.glb'])
+    expect(await blobs['female/dance.glb'].text()).toBe('first')
+    expect(item.data.representations.map(representation => representation.mainFile)).toEqual([
+      'male/dance.glb',
+      'female/dance.glb'
+    ])
+  })
+
   it('ships scene code per body shape and keeps the video at the root of a smart wearable', async () => {
     const { item, blobs } = await buildItem({
       ...baseDraft,

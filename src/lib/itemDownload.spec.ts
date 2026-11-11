@@ -67,6 +67,19 @@ describe('item download', () => {
     ])
   })
 
+  it('ships the model once, at the root, when the body shape folders are stored nested twice', async () => {
+    const stored = {
+      'male/male/dance.glb': 'glb',
+      'male/female/dance.glb': 'glb',
+      'female/male/dance.glb': 'glb',
+      'female/female/dance.glb': 'glb',
+      'thumbnail.png': 'thumb',
+      'image.png': 'catalyst'
+    }
+    expect(filesIn(await zipOf(stored))).toEqual(['dance.glb', 'image.png', 'thumbnail.png'])
+    expect((await reimport(stored)).model).toBe('dance.glb')
+  })
+
   it('keeps the folder of an item made for one body shape', async () => {
     const zip = await zipOf({ 'male/hat.glb': 'glb', 'thumbnail.png': 'thumb' })
     expect(filesIn(zip)).toEqual(['male/hat.glb', 'thumbnail.png'])
