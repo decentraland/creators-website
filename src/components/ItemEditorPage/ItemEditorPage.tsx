@@ -406,22 +406,29 @@ const ItemEditorPage = () => {
     (!!selected &&
       linkedCurations.isSuccess &&
       !isLinkedItemPublished(selected, linkedCurations.data.get(selected.id) ?? null))
+  // A linked item's status is its content hash, so on one sent for review the corrected metrics would ask for a push.
+  const saveBase = isLinkedItemDraft ? selected : resolved
   const isResolvingRepairGate =
     isResolvingReviewer || isSaving || (isLinked && (thirdParty.isLoading || linkedCurations.isLoading))
   useEffect(() => {
     if (!selected || !repairedMetrics || repairAttemptedRef.current.has(selected.id)) return
     if (!collection || isResolvingRepairGate) return
     repairAttemptedRef.current.add(selected.id)
-    const save = editable && isDraftCollection && !selected.isPublished && isLinkedItemDraft && !form.isDirty
-    track('Item metrics repaired', { itemId: selected.id, saved: save })
-    if (!save) return
-    runSave(() => saveItemAsync({ item: selected, blobs: {}, background: true }))
-      .then(saved =>
+    const itemId = selected.id
+    if (!(editable && isDraftCollection && !selected.isPublished && isLinkedItemDraft && !form.isDirty)) {
+      track('Item metrics repaired', { itemId, saved: false })
+      return
+    }
+    // A failed save is reported by the query client's mutation handler.
+    runSave(() => saveItemAsync({ item: selected, blobs: {}, background: true })).then(
+      saved => {
         queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collectionId ?? undefined), current =>
           current?.map(candidate => (candidate.id === saved.id ? saved : candidate))
         )
-      )
-      .catch((error: unknown) => captureError(error, { flow: 'item_metrics_repair', itemId: selected.id }))
+        track('Item metrics repaired', { itemId, saved: true })
+      },
+      () => track('Item metrics repaired', { itemId, saved: false })
+    )
   }, [
     selected,
     repairedMetrics,
@@ -481,8 +488,8 @@ const ItemEditorPage = () => {
   // model, so they move with the file); every other unsaved panel edit stays pending, except what the
   // file change decided (category, thumbnail).
   async function saveFileChange(change: ItemFileChange): Promise<void> {
-    if (!selected) throw new Error('No item selected')
-    const base = selected
+    if (!saveBase) throw new Error('No item selected')
+    const base = saveBase
     await runSave(() => applyFileChange(base, change))
   }
 
@@ -515,9 +522,9 @@ const ItemEditorPage = () => {
   // A new thumbnail saves on confirm, like a file change, so the size the panel shows is always the stored one.
   // The modal shows a failure itself and stays open.
   async function saveThumbnail(thumbnail: Blob): Promise<void> {
-    if (!selected) return
+    if (!selected || !saveBase) return
     try {
-      await runSave(() => commit(selected, { item: selected, thumbnail }))
+      await runSave(() => commit(saveBase, { item: saveBase, thumbnail }))
     } catch (error) {
       const expected =
         isItemTooBigError(error) ||
@@ -529,14 +536,14 @@ const ItemEditorPage = () => {
   }
 
   function save() {
-    if (!selected) return
+    if (!selected || !saveBase) return
     const missing = getShapesMissingSpringBones(form.springBoneParams, springBones.bonesByHash)
     if (missing.length > 0 && !springWarning) {
       setSpringWarning(true)
       return
     }
     setSpringWarning(false)
-    runSave(() => persist(selected)).catch((error: unknown) => {
+    runSave(() => persist(saveBase)).catch((error: unknown) => {
       if (!(error instanceof SaveInProgressError)) reportSaveError(error, 'item_save')
     })
   }

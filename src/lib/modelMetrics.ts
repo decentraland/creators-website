@@ -10,7 +10,7 @@ type Gltf = {
 }
 
 const GLB_MAGIC = 0x46546c67
-const isCollider = (name?: string) => !!name && name.toLowerCase().includes('collider')
+const isCollider = (name?: unknown) => typeof name === 'string' && name.toLowerCase().includes('collider')
 
 const TRIANGLES = 4
 const TRIANGLE_STRIP = 5
@@ -28,8 +28,11 @@ async function readGltf(file: Blob): Promise<Gltf> {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   const isGlb = bytes.byteLength >= 20 && view.getUint32(0, true) === GLB_MAGIC
   const json = isGlb ? bytes.subarray(20, 20 + view.getUint32(12, true)) : bytes
-  return JSON.parse(new TextDecoder().decode(json)) as Gltf
+  // Some exporters pad the JSON chunk with NULs, where the spec asks for spaces.
+  return JSON.parse(new TextDecoder().decode(json).replace(/\0+$/, '')) as Gltf
 }
+
+const list = <T>(value: T[] | undefined): T[] => (Array.isArray(value) ? value : [])
 
 /**
  * Counts a model's render metrics from its glTF JSON, without rendering it; colliders are left out, as the preview
@@ -45,24 +48,27 @@ export async function countModelMetrics(file: Blob): Promise<ItemMetrics | null>
   }
   if (!gltf || typeof gltf !== 'object') return null
 
+  const accessors = list(gltf.accessors)
+  const gltfMeshes = list(gltf.meshes)
   let triangles = 0
   let meshes = 0
-  for (const node of gltf.nodes ?? []) {
-    if (node.mesh === undefined) continue
-    const mesh = gltf.meshes?.[node.mesh]
+  for (const node of list(gltf.nodes)) {
+    if (typeof node?.mesh !== 'number') continue
+    const mesh = gltfMeshes[node.mesh]
     if (!mesh || isCollider(node.name) || isCollider(mesh.name)) continue
-    for (const primitive of mesh.primitives ?? []) {
-      const accessor = primitive.indices ?? primitive.attributes?.POSITION
-      const vertices = accessor === undefined ? 0 : (gltf.accessors?.[accessor]?.count ?? 0)
-      triangles += countTriangles(primitive.mode ?? TRIANGLES, vertices)
+    for (const primitive of list(mesh.primitives)) {
+      const accessor = primitive?.indices ?? primitive?.attributes?.POSITION
+      const count = typeof accessor === 'number' ? accessors[accessor]?.count : undefined
+      const vertices = typeof count === 'number' && Number.isFinite(count) ? count : 0
+      triangles += countTriangles(primitive?.mode ?? TRIANGLES, vertices)
       meshes++
     }
   }
 
   const metrics: ItemMetrics = {
     triangles,
-    materials: gltf.materials?.length ?? 0,
-    textures: gltf.textures?.length ?? 0,
+    materials: list(gltf.materials).length,
+    textures: list(gltf.textures).length,
     meshes,
     bodies: meshes,
     entities: 1

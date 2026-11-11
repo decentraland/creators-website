@@ -1,6 +1,15 @@
 import { type ElementHandle } from 'puppeteer'
 import { afterEach, describe, expect, it } from 'vitest'
-import { collection, publishedCollection, publishedItem, upperBody, wearable } from './fixtures'
+import {
+  collection,
+  linkedCollection,
+  linkedItem,
+  publishedCollection,
+  publishedItem,
+  thirdParty,
+  upperBody,
+  wearable
+} from './fixtures'
 import { launchApp, type App } from './helpers/app'
 import { FIXTURE } from './helpers/files'
 import { byTestId, clickTestId, selectOption, waitForEditor, waitForTestId, waitForToast } from './helpers/dom'
@@ -127,5 +136,34 @@ describe('item editor', () => {
     await clickTestId(page, 'properties-panel-save')
     await waitForToast(page)
     expect(app.builder.items.get(zeroed.id)!.metrics).toEqual(HAT_METRICS)
+  })
+
+  it('keeps the stored metrics of a linked item already sent for review, whatever its manager saves', async () => {
+    const linked = linkedCollection({ name: 'Linked Drop' })
+    const zeroed = linkedItem(linked, 0, { metrics: BOOT_SCENE_METRICS })
+    const curation = {
+      id: `curation-${zeroed.id}`,
+      item_id: zeroed.id,
+      status: 'approved' as const,
+      content_hash: zeroed.local_content_hash ?? null,
+      is_mapping_complete: true,
+      created_at: new Date(0).toISOString(),
+      updated_at: new Date(0).toISOString()
+    }
+    app = await launchApp({
+      path: `/collections/editor?collection=${linked.id}&item=${zeroed.id}`,
+      builder: { collections: [linked], items: [zeroed], thirdParties: [thirdParty()], itemCurations: [curation] },
+      flags: { 'dapps-wearable-utility': true }
+    })
+    const { page } = app
+    await waitForEditor(page)
+
+    await app.waitForEvent('Item metrics repaired', { itemId: zeroed.id, saved: false })
+    expect(await metricsText(app)).toContain('540')
+
+    await page.type(byTestId('properties-panel-utility'), 'Glows in the dark')
+    await clickTestId(page, 'properties-panel-save')
+    await waitForToast(page)
+    expect(app.builder.items.get(zeroed.id)!.metrics).toEqual(BOOT_SCENE_METRICS)
   })
 })

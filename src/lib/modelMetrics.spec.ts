@@ -40,6 +40,24 @@ describe('countModelMetrics', () => {
     expect(await countModelMetrics(glb(model))).toMatchObject({ triangles: 20, meshes: 4 })
   })
 
+  it('reads a GLB whose JSON chunk is padded with NULs', async () => {
+    const padded = new Uint8Array(await glb(hat).arrayBuffer())
+    for (let i = padded.length - 1; padded[i] === 0x20; i--) padded[i] = 0
+    expect(await countModelMetrics(new Blob([padded]))).toMatchObject({ triangles: 210 })
+  })
+
+  it('counts nothing for the malformed parts of a file', async () => {
+    const model = { ...hat, accessors: [{ count: 400 }, { count: {} }, { count: 31 }], materials: 'xxxx', textures: 7 }
+    expect(await countModelMetrics(glb(model))).toEqual({
+      triangles: 10,
+      materials: 0,
+      textures: 0,
+      meshes: 2,
+      bodies: 2,
+      entities: 1
+    })
+  })
+
   it('leaves colliders out, by node or mesh name', async () => {
     const withColliders = {
       ...hat,

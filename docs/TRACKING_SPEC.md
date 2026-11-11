@@ -120,7 +120,7 @@ Legacy prop names, so the events line up with the old editor's.
 | `Change item file` | the change-file modal saved a new model for the item (after the `Save item` of that PUT) | `itemId`, `bodyShape` (`both` / `male` / `female`), `mode` (`replace_all` / `replace_shape` / `add_representation`), `fileKind` (`glb` / `gltf` / `zip` / `png`), `thumbnailRegenerated` |
 | `Change item file error` | the picked file was rejected or the import threw | `itemId`, `error` (the `ItemFileError` key, or `errorCode` for a throw) |
 | `Toggle scene boundaries` | the scene boundaries cylinder is shown or hidden over the preview | `visible` (the new state), `trigger` (`editor` / `live_preview`) |
-| `Item metrics repaired` | once per item per visit, when the editor replaces a wearable's stored metrics that have no geometry with ones counted from its model. A failure to fetch the model goes to Sentry (`flow: 'item_metrics_repair'`), as does a failed background save, which sends neither `Save item` nor `Save item error` | `itemId`, `saved` (the corrected metrics are written back at once: editor of an unpublished, unlocked collection with no unsaved edits) |
+| `Item metrics repaired` | once per item per editor mount, after any write-back has settled, when the editor replaces a wearable's stored metrics that have no geometry with ones counted from its model. A failure to fetch the model goes to Sentry (`flow: 'item_metrics_repair'`), and a failed background save through the app's mutation handler (`flow: 'mutation'`); that save sends neither `Save item` nor `Save item error` | `itemId`, `saved` (the corrected metrics were written back at once: editor of an unpublished, unlocked collection with no unsaved edits; `false` when that save failed) |
 
 ### Item validation
 
