@@ -9,7 +9,7 @@ import { Modal } from '~/components/Modal'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useTranslation } from '~/intl'
 import { errorCode, track } from '~/lib/analytics'
-import { imageThumbnailPatch, needsPreviewData, type PreviewDraft } from '~/lib/draftPreview'
+import { applyPreviewResult, imageThumbnailPatch, needsPreviewData, type PreviewDraft } from '~/lib/draftPreview'
 import { pickFile } from '~/lib/filePicker'
 import { type ItemFileChange } from '~/lib/itemDraft'
 import { type BuiltItem } from '~/lib/itemFactory'
@@ -260,7 +260,7 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
                   <S.Field as="div" data-hinted>
                     <S.FieldLabel>
                       {t('add_items_modal.body_shape')}
-                      <S.FieldHint data-testid="change-file-effect">
+                      <S.FieldHint data-testid="change-file-effect" data-mode={mode}>
                         <HintIcon />
                         {lockHint ??
                           t(
@@ -369,21 +369,26 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
             </S.PickActions>
           </S.PickStep>
         )}
+        {draft && needsPreviewData(draft) && (
+          <DraftProcessor
+            draft={draft}
+            flow="item_file_change"
+            onResult={(id, result) =>
+              setDraft(current => (current && current.id === id ? applyPreviewResult(current, result) : current))
+            }
+            onError={(_id, reason) => {
+              setDraft(null)
+              setLoaded(null)
+              // A timeout is already reported to Sentry by the processor.
+              reportError(
+                reason === 'timeout'
+                  ? new ItemFileError('preview_timeout')
+                  : new Error('The preview could not process the model')
+              )
+            }}
+          />
+        )}
       </Modal>
-
-      {draft && needsPreviewData(draft) && (
-        <DraftProcessor
-          draft={draft}
-          onResult={(id, patch) =>
-            setDraft(current => (current && current.id === id ? { ...current, ...patch } : current))
-          }
-          onError={() => {
-            setDraft(null)
-            setLoaded(null)
-            reportError(new Error('The preview could not process the model'))
-          }}
-        />
-      )}
 
       {thumbnailEditor.modal}
 

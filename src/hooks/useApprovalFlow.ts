@@ -35,7 +35,7 @@ import { type Item } from '~/lib/items'
 import { generateCatalystImage } from '~/lib/media'
 import { captureError } from '~/lib/monitoring'
 import { getMaticChainId } from '~/lib/publishCollection'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { isWalletRejection, isWalletStateError } from '~/lib/walletErrors'
 
 /**
  * `approve` runs the whole flow; `enable` only switches a disabled collection back on as last approved, so changes the
@@ -59,7 +59,14 @@ export type ApprovalView =
   | { kind: 'loading' }
   | { kind: 'step'; step: ApprovalStep; phase: StepPhase }
   | { kind: 'success' }
-  | { kind: 'error'; step: ApprovalFailure; detail: string | null; failed: DeployFailure[] }
+  | {
+      kind: 'error'
+      step: ApprovalFailure
+      detail: string | null
+      failed: DeployFailure[]
+      /** The wallet sits on another account or network: the curator switches it back and retries. */
+      wallet?: boolean
+    }
 
 export type ApprovalPlan = { steps: ApprovalStep[]; rescue: RescueTarget[]; deploy: Item[] }
 
@@ -149,8 +156,9 @@ export function useApprovalFlow(
       if (isWalletRejection(error) && step !== 'prepare' && step !== 'changed') {
         return setView({ kind: 'step', step, phase: IDLE })
       }
-      captureError(error, { flow: 'curation_approve', step, collectionId: collection.id })
       track('Approval flow error', { collectionId: collection.id, step, error: errorCode(error) })
+      if (isWalletStateError(error)) return setView({ kind: 'error', step, detail: null, failed, wallet: true })
+      captureError(error, { flow: 'curation_approve', step, collectionId: collection.id })
       setView({ kind: 'error', step, detail: errorDetail(error), failed })
     },
     [collection.id]

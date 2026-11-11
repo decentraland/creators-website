@@ -28,7 +28,6 @@ import {
   canManageCollectionItems,
   canSellCollectionItems,
   hasBeenApproved,
-  canViewCollection,
   hasCollectionRole,
   isCollectionLocked,
   isLinkedCollection
@@ -58,7 +57,8 @@ import {
 import { MAX_PUBLISH_ITEMS, getPublishBlocker } from '~/lib/publishCollection'
 import { useSaveItem } from '~/hooks/useSaveItem'
 import { useForumPostRecovery } from '~/hooks/useForumPost'
-import { useSyncPublishedItems } from '~/hooks/usePublishCollection'
+import { useLockedCollectionDeployed, useSyncPublishedItems } from '~/hooks/usePublishCollection'
+import { usePublishInFlight } from '~/store/publishSync'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useCollectionListings } from '~/hooks/useCollectionListings'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
@@ -74,7 +74,8 @@ import { useItemSyncs } from '~/hooks/useItemSync'
 import { useCollectionValidation, useRerunItemValidation, type ItemValidation } from '~/hooks/useCollectionValidation'
 import { ItemSyncStatus, getItemRowStatus, hasPendingChanges, showsItemStatusColumn } from '~/lib/itemSync'
 import { ReviewStage, canPushChanges, getReviewStage, isRejectedStage } from '~/lib/curation'
-import { useCollectionCuration, useCommittee, usePushCuration } from '~/hooks/useCuration'
+import { useCommittee } from '~/hooks/useCommittee'
+import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
 import { useCollectionEvents } from '~/hooks/useCollectionEvents'
 import { getAiIssuesByItem } from '~/lib/events'
 import { pageRangeLabel } from '~/lib/pagination'
@@ -94,7 +95,7 @@ import { ValidationResultsModal, toValidationSubject } from '~/components/Valida
 import addItemsArt from '~/assets/add-items.png'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { useThirdParty } from '~/hooks/useLinkedCollection'
-import { canViewLinkedCollection, getThirdPartyId, isThirdPartyManager } from '~/lib/thirdParty'
+import { getThirdPartyId, isThirdPartyManager } from '~/lib/thirdParty'
 import { AddItemsModal } from './AddItemsModal'
 import { LinkedCollectionView } from './LinkedCollectionView'
 import { ReviewFlow, type ReviewFlowRequest } from './ReviewFlow'
@@ -187,6 +188,7 @@ const CollectionDetailPage = () => {
   const standardCollection = isLinked ? undefined : collection
   const thirdParty = useThirdParty(address, isLinked ? collection : undefined)
   const isLinkedManager = !!thirdParty.data && isThirdPartyManager(thirdParty.data, address)
+  const hasRole = !!collection && (isLinked ? isLinkedManager : hasCollectionRole(collection, address))
   const allItems = itemsQuery.data
   const total = allItems?.length ?? 0
   const counts = useMemo(() => countItemsByType(allItems ?? []), [allItems])
@@ -201,17 +203,15 @@ const CollectionDetailPage = () => {
   // Play Mode is an emote-only attribute; the column exists only while the visible page has emotes.
   const withPlayMode = useMemo(() => results.some(item => item.type === ItemType.EMOTE), [results])
   const canManage = !!standardCollection && canManageCollectionItems(standardCollection, address)
-  // A reader holds no role: they reached a published collection by link and only browse it.
-  // Readers hold no role: a linked collection's roles are its third party's managers.
-  const isReader = !!collection && (isLinked ? !isLinkedManager : !hasCollectionRole(collection, address))
   // builder-server serves a collection's curation to its owner, collaborators and the committee only.
   const committee = useCommittee(address)
-  const curationAddress = canManage || committee.isCurator ? address : undefined
+  // Without a role the page is "not found", so curators only read it where they hold one.
+  const curationAddress = canManage || (committee.isCurator && hasRole) ? address : undefined
   useSyncPublishedItems(canManage ? address : undefined, standardCollection, allItems ?? [])
   useForumPostRecovery(address, standardCollection, allItems ?? [])
   // Price, Sales and Sale Status exist once the collection is published; the owner can put items on sale
   // once it has been approved at least once, even if it is under review again.
-  const withMarket = !!standardCollection?.isPublished
+  const withMarket = !!standardCollection?.isPublished && hasRole
   const status = useCollectionStatus(curationAddress, standardCollection)
   const showForumPost = !!standardCollection && isForumPostRelevant(standardCollection, status)
   const statusHint =
@@ -347,8 +347,8 @@ const CollectionDetailPage = () => {
     [results, syncs, curation]
   )
   const withStatus = useMemo(
-    () => !!standardCollection && !isReader && showsItemStatusColumn(standardCollection, rowStatuses.values()),
-    [standardCollection, isReader, rowStatuses]
+    () => !!standardCollection && showsItemStatusColumn(standardCollection, rowStatuses.values()),
+    [standardCollection, rowStatuses]
   )
 
   // Drafts check every item; published collections only the items with changes waiting for approval.
@@ -411,8 +411,9 @@ const CollectionDetailPage = () => {
     thirdParty.isError &&
     thirdParty.error instanceof BuilderServerError &&
     NOT_FOUND_STATUSES.includes(thirdParty.error.status)
-  // A draft is private: addresses with no role on it get the same "not found" as a rejected request. Published
-  // collections, linked ones included, open read-only to any signer.
+  // The detail page is for the collection's roles only (a linked collection's are its third party's managers):
+  // anyone else gets the same "not found" as a rejected request, even once published, when only the editor is public.
+  // A finished transfer can drop the owner's role at once, so the page holds until its success modal is dismissed.
   const isNotFound =
     !collectionId ||
     (collectionQuery.isError &&
@@ -420,19 +421,25 @@ const CollectionDetailPage = () => {
       NOT_FOUND_STATUSES.includes(collectionQuery.error.status)) ||
     (!!collection &&
       (isLinked
-        ? !getThirdPartyId(collection) ||
-          isThirdPartyNotFound ||
-          (!!thirdParty.data && !canViewLinkedCollection(collection, thirdParty.data, address))
-        : !canViewCollection(collection, address)))
+        ? // A third-party request that failed otherwise is a retryable error, not a missing role.
+          !getThirdPartyId(collection) || isThirdPartyNotFound || (!thirdParty.isError && !hasRole)
+        : !hasRole && !isTransferring))
   const isError = !isNotFound && (collectionQuery.isError || (!isLinked && itemsQuery.isError) || thirdParty.isError)
   const isEmpty = filteredTotal === 0
   const hasItems = total > 0
   const canRename = !!collection && !collection.isPublished && !isCollectionLocked(collection)
   const canAddItems = canRename
   const hasInvalidItems = blockOnErrors && invalidCount > 0
-  const publishBlocker = collection
-    ? getPublishBlocker(collection, total, allItems ?? [], { hasInvalidItems })
-    : 'not_draft'
+  // A locked draft's last transaction may have reverted: publishing again is safe, as at most one can land.
+  const isPublishRetry = !!collection && isCollectionLocked(collection)
+  const publishInFlight = usePublishInFlight(collection?.id)
+  // A retry is hidden once an earlier attempt is known to have landed; a failed read still offers it.
+  const deployed = useLockedCollectionDeployed(isPublishRetry ? collection : undefined)
+  const retryLanded = isPublishRetry && (deployed.isLoading || deployed.data === true)
+  const publishBlocker =
+    collection && !publishInFlight && !retryLanded
+      ? getPublishBlocker(collection, total, allItems ?? [], { hasInvalidItems })
+      : 'not_draft'
   const pushBlocked = hasInvalidItems || reviewLocked
 
   function openFileBrowser() {
@@ -576,7 +583,6 @@ const CollectionDetailPage = () => {
           collection={collection}
           thirdParty={thirdParty.data}
           session={session}
-          isReader={isReader}
           page={page}
           onBack={() => navigate({ pathname: '/collections', search: listState?.listSearch })}
           onPageChange={goToPage}
@@ -585,23 +591,23 @@ const CollectionDetailPage = () => {
         <>
           <S.Header>
             <S.HeaderLeft>
-              {!isReader && (
-                <S.BackLink
-                  type="button"
-                  aria-label={t('collection_detail_page.back')}
-                  data-testid="back-to-collections"
-                  onClick={() =>
-                    navigate({
-                      pathname: '/collections',
-                      search: listState?.listSearch
-                    })
-                  }
-                >
-                  <ArrowBackIcon />
-                </S.BackLink>
-              )}
+              <S.BackLink
+                type="button"
+                aria-label={t('collection_detail_page.back')}
+                data-testid="back-to-collections"
+                onClick={() =>
+                  navigate({
+                    pathname: '/collections',
+                    search: listState?.listSearch
+                  })
+                }
+              >
+                <ArrowBackIcon />
+              </S.BackLink>
               <S.TitleGroup>
-                <S.Title title={collection.name}>{collection.name}</S.Title>
+                <S.Title data-testid="collection-name" title={collection.name}>
+                  {collection.name}
+                </S.Title>
                 {canRename && (
                   <S.RenameButton
                     type="button"
@@ -648,7 +654,9 @@ const CollectionDetailPage = () => {
                           max: MAX_PUBLISH_ITEMS,
                           count: invalidCount
                         })
-                      : null
+                      : isPublishRetry
+                        ? t('collection_detail_page.publish_again_hint')
+                        : null
                   }
                   placement="bottom"
                   asChild
@@ -659,6 +667,8 @@ const CollectionDetailPage = () => {
                     variant="primary"
                     data-desktop-only
                     data-testid="publish-collection"
+                    data-blocker={publishBlocker ?? undefined}
+                    data-retry={isPublishRetry || undefined}
                     aria-disabled={publishBlocker ? true : undefined}
                     onClick={() => {
                       if (publishBlocker) return
@@ -666,7 +676,7 @@ const CollectionDetailPage = () => {
                       setPublishView('wizard')
                     }}
                   >
-                    {t('collection_detail_page.publish')}
+                    {t(isPublishRetry ? 'collection_detail_page.publish_again' : 'collection_detail_page.publish')}
                   </Button>
                 </Tooltip>
               )}
@@ -725,9 +735,7 @@ const CollectionDetailPage = () => {
                 <CollectionActionsMenu
                   collection={collection}
                   address={address}
-                  onPreviewInWorld={
-                    !isReader && hasItems ? () => previewCollectionFromDetail(collection.id, total) : undefined
-                  }
+                  onPreviewInWorld={hasItems ? () => previewCollectionFromDetail(collection.id, total) : undefined}
                   items={allItems}
                   onSendItems={canSend ? () => setSending(true) : undefined}
                   onCreateDiscount={canCreateDiscount ? () => openDiscount('menu') : undefined}

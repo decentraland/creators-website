@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import JSZip from 'jszip'
+import { HASH } from '../fixtures'
 
 const FILES = resolve(import.meta.dirname, '../fixtures/files')
 const MALE = 'urn:decentraland:off-chain:base-avatars:BaseMale'
@@ -14,6 +15,7 @@ const FEMALE = 'urn:decentraland:off-chain:base-avatars:BaseFemale'
  * - poloMale / poloFemale: an upper_body model per shape; both FAIL texture-size (a 2048px texture, cap 1024).
  * - hairSpringBones: female hair with DCL spring bones, passes.
  * - emote / emoteWithProps: pass looping or not; the second carries a prop armature and its own animation.
+ * - emoteWithPropsAudio: the Money emote's sound (mp3), which passes the rule book's audio check with it.
  * - eyes / eyesMask: a 256×256 facial-feature texture and its mask. The rule book skips texture-only items.
  * - thumbnail: 1024×1024 PNG, passes the thumbnail rule.
  * - smartWearable: the hat as a smart wearable, packed by `sdk-commands pack-smart-wearable` (SDK 7.32,
@@ -29,6 +31,7 @@ export const FIXTURE = {
   hairSpringBones: join(FILES, 'hair-spring-bones.glb'),
   emote: join(FILES, 'emote.glb'),
   emoteWithProps: join(FILES, 'emote-props.glb'),
+  emoteWithPropsAudio: join(FILES, 'emote-props.mp3'),
   eyes: join(FILES, 'eyes.png'),
   eyesMask: join(FILES, 'eyes_mask.png'),
   thumbnail: join(FILES, 'thumbnail.png'),
@@ -37,6 +40,19 @@ export const FIXTURE = {
 } as const
 
 const read = (path: string) => readFileSync(path)
+
+/** The bytes behind every fixture content hash, served by the fake builder storage. */
+export function fixtureStorage(): Record<string, Buffer> {
+  return {
+    [HASH.hat]: read(FIXTURE.hat),
+    [HASH.tshirtMale]: read(FIXTURE.tshirtMale),
+    [HASH.tshirtFemale]: read(FIXTURE.tshirtFemale),
+    [HASH.poloMale]: read(FIXTURE.poloMale),
+    [HASH.poloFemale]: read(FIXTURE.poloFemale),
+    [HASH.emote]: read(FIXTURE.emote),
+    [HASH.thumbnail]: read(FIXTURE.thumbnail)
+  }
+}
 
 // One directory per run, so two worktrees running at once never overwrite each other's zips.
 let outputDir: string | undefined
@@ -82,6 +98,14 @@ export function legacyWearableZip(): Promise<string> {
 /** The eyes texture with its mask: a mask only travels with its texture inside a zip. */
 export function eyesWithMaskZip(): Promise<string> {
   return writeZip('eyes-with-mask.zip', { 'eyes.png': read(FIXTURE.eyes), 'eyes_mask.png': read(FIXTURE.eyesMask) })
+}
+
+/** The Money emote with its sound, as a creator zips them: model and audio side by side. */
+export function emoteWithAudioZip(): Promise<string> {
+  return writeZip('emote-with-audio.zip', {
+    'money.glb': read(FIXTURE.emoteWithProps),
+    'money.mp3': read(FIXTURE.emoteWithPropsAudio)
+  })
 }
 
 /** An emote laid out as the app's "Download" exports it: the model under male/ and female/, plus the thumbnail. */

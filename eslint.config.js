@@ -1,7 +1,7 @@
 import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import reactHooks from 'eslint-plugin-react-hooks'
-import importX from 'eslint-plugin-import-x'
+import importX, { createNodeResolver } from 'eslint-plugin-import-x'
 import prettier from 'eslint-config-prettier'
 import globals from 'globals'
 
@@ -54,6 +54,15 @@ const MUI = {
     'The monorepo has no MUI; only @mui/icons-material is allowed. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 
+const ETHERS = {
+  regex: '^(ethers(/|$)|@ethersproject/)',
+  message: 'Chain code uses viem; ethers is only installed as a dependency of other packages.'
+}
+const DCL_TRANSACTIONS = {
+  regex: '^decentraland-transactions(/|$)',
+  message: 'Contract data lives in ~/lib/chain/contracts and meta-transactions in ~/lib/chain/metaTransaction.'
+}
+
 // no-restricted-imports does not see import(), so lazy-loaded usage needs its own rule.
 const DYNAMIC_EMOTION_MUI = {
   selector: 'ImportExpression[source.value=/^(@emotion\\/|@mui\\/(?!icons-material(\\/|$)))/]',
@@ -62,6 +71,14 @@ const DYNAMIC_EMOTION_MUI = {
 const DYNAMIC_UI2 = {
   selector: 'ImportExpression[source.value=/^decentraland-ui2(\\/|$)/]',
   message: UI2_MESSAGE
+}
+const DYNAMIC_ETHERS = {
+  selector: 'ImportExpression[source.value=/^(ethers(\\/|$)|@ethersproject\\/)/]',
+  message: ETHERS.message
+}
+const DYNAMIC_DCL_TRANSACTIONS = {
+  selector: 'ImportExpression[source.value=/^decentraland-transactions(\\/|$)/]',
+  message: DCL_TRANSACTIONS.message
 }
 const DYNAMIC_UI2_ALLOWED = ['src/components/TopNav/TopNav.tsx']
 const DYNAMIC_ALL_ALLOWED = ['src/components/PreviewControls/PreviewControls.tsx']
@@ -131,6 +148,23 @@ export default tseslint.config(
     }
   },
 
+  // The e2e harness (fake wallet key, fake back ends) is test-only: nothing under src may pull it into the bundle.
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    // The rule only sees imports it can resolve, and the default resolver skips .ts files.
+    settings: { 'import-x/resolver-next': [createNodeResolver({ extensions: ['.ts', '.tsx', '.js'] })] },
+    rules: {
+      'import/no-restricted-paths': [
+        'error',
+        {
+          zones: [
+            { target: './src', from: './e2e', message: 'The e2e harness is test-only; never import it from src.' }
+          ]
+        }
+      ]
+    }
+  },
+
   // Auth is a sealed module (CONVENTIONS.md): only src/lib/auth may touch the wallet and identity
   // libraries. Types are fine anywhere; a provider or identity instance is not.
   // The pre-monorepo fence (docs/DECISIONS.md, "Pre-monorepo refactor") shares this rule: decentraland-ui2
@@ -167,11 +201,13 @@ export default tseslint.config(
   {
     files: ['src/**/*.{ts,tsx}'],
     ignores: [...STYLES_FILES, 'src/lib/builder/**'],
-    rules: { 'no-restricted-imports': ['error', { patterns: [EMOTION_ALL, MUI, BUILDER_TRANSPORT] }] }
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [EMOTION_ALL, MUI, BUILDER_TRANSPORT, ETHERS, DCL_TRANSACTIONS] }]
+    }
   },
   {
     files: ['src/lib/builder/**/*.{ts,tsx}'],
-    rules: { 'no-restricted-imports': ['error', { patterns: [EMOTION_ALL, MUI] }] }
+    rules: { 'no-restricted-imports': ['error', { patterns: [EMOTION_ALL, MUI, ETHERS, DCL_TRANSACTIONS] }] }
   },
   {
     files: ['src/components/**/*.{ts,tsx}'],
@@ -181,23 +217,41 @@ export default tseslint.config(
         'error',
         {
           paths: BUILDER_IN_COMPONENTS.paths,
-          patterns: [EMOTION_ALL, MUI, ...BUILDER_IN_COMPONENTS.patterns]
+          patterns: [EMOTION_ALL, MUI, ETHERS, DCL_TRANSACTIONS, ...BUILDER_IN_COMPONENTS.patterns]
         }
       ]
     }
   },
   {
     files: STYLES_FILES,
-    rules: { 'no-restricted-imports': ['error', { patterns: [EMOTION_EXCEPT_STYLED, MUI, BUILDER_TRANSPORT] }] }
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: [EMOTION_EXCEPT_STYLED, MUI, BUILDER_TRANSPORT, ETHERS, DCL_TRANSACTIONS] }
+      ]
+    }
   },
   {
     files: ['src/**/*.{ts,tsx}'],
     ignores: [...DYNAMIC_UI2_ALLOWED, ...DYNAMIC_ALL_ALLOWED],
-    rules: { 'no-restricted-syntax': ['error', DYNAMIC_EMOTION_MUI, DYNAMIC_UI2] }
+    rules: {
+      'no-restricted-syntax': ['error', DYNAMIC_EMOTION_MUI, DYNAMIC_UI2, DYNAMIC_ETHERS, DYNAMIC_DCL_TRANSACTIONS]
+    }
   },
   {
     files: DYNAMIC_UI2_ALLOWED,
-    rules: { 'no-restricted-syntax': ['error', DYNAMIC_EMOTION_MUI] }
+    rules: { 'no-restricted-syntax': ['error', DYNAMIC_EMOTION_MUI, DYNAMIC_ETHERS, DYNAMIC_DCL_TRANSACTIONS] }
+  },
+  {
+    files: DYNAMIC_ALL_ALLOWED,
+    rules: { 'no-restricted-syntax': ['error', DYNAMIC_ETHERS, DYNAMIC_DCL_TRANSACTIONS] }
+  },
+  {
+    files: ['e2e/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [ETHERS, DCL_TRANSACTIONS] }],
+      'no-restricted-syntax': ['error', DYNAMIC_ETHERS, DYNAMIC_DCL_TRANSACTIONS]
+    }
   },
 
   // Mocks and fixtures legitimately traffic in `any` and unbound methods, so the

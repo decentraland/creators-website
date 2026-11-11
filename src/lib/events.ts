@@ -2,8 +2,8 @@
 // (`GET /collections/:id/events`). The review stage, the validator's verdict and the daily retry
 // allowance are all read off these rows; nothing here is stored on the client.
 
-import { BodyShape as BodyShapeId } from '@dcl/schemas'
-import { type Item } from '~/lib/items'
+import { type BodyShape as BodyShapeUrn } from '@dcl/schemas'
+import { BODY_SHAPE_FEMALE, BODY_SHAPE_MALE, type Item } from '~/lib/items'
 import { ValidationSeverity, type ValidationIssue } from '~/lib/validation/types'
 
 export const COLLECTION_EVENT_TYPES = [
@@ -295,7 +295,9 @@ export function toValidationIssue(finding: ValidationFinding): ValidationIssue {
     message: finding.fix ? `${finding.message} ${finding.fix}` : finding.message,
     title: finding.check,
     where: finding.where,
-    bodyShapes: finding.bodyShape ? [finding.bodyShape === 'male' ? BodyShapeId.MALE : BodyShapeId.FEMALE] : undefined,
+    bodyShapes: finding.bodyShape
+      ? [(finding.bodyShape === 'male' ? BODY_SHAPE_MALE : BODY_SHAPE_FEMALE) as BodyShapeUrn]
+      : undefined,
     source: 'ai'
   }
 }

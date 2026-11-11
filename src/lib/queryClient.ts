@@ -1,7 +1,7 @@
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query'
 import { HttpError } from '~/lib/http'
 import { captureError } from '~/lib/monitoring'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { isExpectedWalletError } from '~/lib/walletErrors'
 
 /**
  * The app's QueryClient. react-query swallows every query and mutation failure (it becomes `error`
@@ -13,7 +13,7 @@ export function createQueryClient(): QueryClient {
     defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } },
     queryCache: new QueryCache({
       onError: (error, query) => {
-        if (isWalletRejection(error)) return
+        if (isExpectedWalletError(error)) return
         // Third-party feeds report only a server's error response: anything else is the visitor's network
         // (offline, ad blockers, CORS, timeouts).
         if (query.meta?.reportOnlyHttpErrors && !(error instanceof HttpError)) return
@@ -26,8 +26,8 @@ export function createQueryClient(): QueryClient {
     }),
     mutationCache: new MutationCache({
       onError: (error, _variables, _context, mutation) => {
-        // Dismissing the wallet prompt is a choice, not a failure.
-        if (isWalletRejection(error)) return
+        // Dismissing the wallet prompt is a choice; a wallet on the wrong account or network is the creator's to fix.
+        if (isExpectedWalletError(error)) return
         captureError(error, { flow: 'mutation', mutation_key: nameOf(mutation.options.mutationKey) })
       }
     })

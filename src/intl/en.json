@@ -112,6 +112,8 @@
     "open_preview": "Open Preview",
     "forum_post": "Forum post",
     "publish": "Publish Collection",
+    "publish_again": "Publish Again",
+    "publish_again_hint": "This collection's last publication may not have gone through. You can publish it again: you'll only be charged once.",
     "more_actions": "More actions",
     "actions": {
       "preview_items": "Preview items",
@@ -443,7 +445,7 @@
       "try_again": "Try again"
     },
     "consolidation": {
-      "reverted": "The publication of “{name}” didn't go through on the blockchain, so nothing was charged. The collection unlocks in 24 hours; you can publish it again then.",
+      "reverted": "The publication of “{name}” didn't go through on the blockchain, so nothing was charged. You can publish it again now.",
       "sync_failed": "“{name}” was published, but we couldn't finish syncing it with the blockchain. Refresh the page in a few minutes; if it still isn't under review, contact support."
     }
   },
@@ -665,6 +667,7 @@
       "emote_animations_out_of_sync": "The avatar and prop animations must have the same duration.",
       "missing_external_resources": "The model references files that aren't included: {fileNames}.",
       "invalid_model_file": "We couldn't load this 3D model. Check the file and try again.",
+      "preview_timeout": "We couldn't render a preview of this file in time. Check the model, or try again later.",
       "invalid_representation": "This file can't be used as a body shape variant of that item.",
       "representation_category_mismatch": "This file doesn't fit the item's category. Use the same kind of file as the other body shape: a 3D model, or a texture for eyes, eyebrows or mouth.",
       "multiple_videos": "The ZIP includes more than one video. Keep only the preview video.",
@@ -808,6 +811,10 @@
       "description": "You have unsaved changes on this item. Switching items will discard them.",
       "stay": "Keep editing",
       "confirm": "Discard"
+    },
+    "scene_boundaries": {
+      "show": "Show scene boundaries",
+      "hide": "Hide scene boundaries"
     },
     "customizer": {
       "title": "Avatar",
@@ -1156,7 +1163,6 @@
       "success_description": "The changes to who can edit this collection are live."
     },
     "duplicate": "This address is already on the list.",
-    "owner": "That’s your own address: as the owner you already have every permission.",
     "system": "This address belongs to the Decentraland Shop and can’t be changed here.",
     "save": "Save changes",
     "saving": "Saving changes...",
@@ -1725,8 +1731,7 @@
     "error": {
       "title": "We couldn't create your discount",
       "description": "Something went wrong while saving it. Nothing was charged; please try again.",
-      "try_again": "Try again",
-      "description_wallet": "Your wallet switched to another account or network. Switch it back to the account you signed in with and try again."
+      "try_again": "Try again"
     },
     "list_label": "Discounts",
     "chip": {
@@ -1833,7 +1838,6 @@
     "range_cancel": "Cancel",
     "range_pick_end": "{from} – pick the last day",
     "range_pick_start": "Pick the first day",
-    "error_wallet": "Your wallet switched to another account or network. Switch it back to the account you signed in with and try again.",
     "social_note": "Signed in with a social account, you can't end this discount early: it runs until its end date.",
     "unit_days": "d",
     "unit_hours": "h",
@@ -2209,5 +2213,11 @@
     },
     "show_findings": "Show findings",
     "hide_findings": "Hide findings"
+  },
+  "wallet_error": {
+    "wrong_account": "Your wallet switched to another account or network. Switch it back to the account you signed in with and try again."
+  },
+  "item_thumbnail": {
+    "generating": "Generating thumbnail…"
   }
 }

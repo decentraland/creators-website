@@ -29,7 +29,7 @@ vi.mock('~/hooks/useCollectionEvents', () => ({
     refetch: vi.fn()
   })
 }))
-vi.mock('~/hooks/useCuration', () => ({ useCommittee: () => ({ isCurator: state.isCurator }) }))
+vi.mock('~/hooks/useCommittee', () => ({ useCommittee: () => ({ isCurator: state.isCurator }) }))
 vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: { name: 'Curator Jane' } }) }))
 vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
 

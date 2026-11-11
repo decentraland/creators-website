@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ethers } from 'ethers'
+import { decodeAbiParameters, parseAbiParameters, slice, zeroAddress, type Hex } from 'viem'
 import { config } from '~/config'
 import { ItemType, type Item } from './items'
 import {
@@ -10,7 +10,7 @@ import {
   toInitializeItems
 } from './saveCollection'
 
-// Lowercase like every address that leaves lib/auth (mixed case would fail ethers' checksum).
+// Lowercase like every address that leaves lib/auth (mixed case would fail the checksum).
 const OWNER = '0xabc0000000000000000000000000000000000001'
 
 function makeItem(overrides: Partial<Item> = {}): Item {
@@ -84,7 +84,7 @@ describe('toInitializeItems', () => {
       makeItem({ id: 'older', createdAt: 1000 })
     ]
     expect(toInitializeItems(items)).toEqual([
-      ['legendary', '0', ethers.constants.AddressZero, '1:w:Pirate Hat:Yarr:hat:BaseMale'],
+      ['legendary', '0', zeroAddress, '1:w:Pirate Hat:Yarr:hat:BaseMale'],
       ['legendary', '5', '0x0000000000000000000000000000000000000002', '1:w:Pirate Hat:Yarr:hat:BaseMale']
     ])
   })
@@ -95,9 +95,9 @@ describe('buildCollectionInitializeData', () => {
     const collection = buildNewCollection('Pirate Hats', OWNER)
     const data = buildCollectionInitializeData(collection, [makeItem()], OWNER)
 
-    const decoded = ethers.utils.defaultAbiCoder.decode(
-      ['string', 'string', 'string', 'address', 'bool', 'bool', 'address', 'tuple(string,uint256,address,string)[]'],
-      ethers.utils.hexDataSlice(data, 4)
+    const decoded = decodeAbiParameters(
+      parseAbiParameters('string, string, string, address, bool, bool, address, (string,uint256,address,string)[]'),
+      slice(data as Hex, 4)
     )
     expect(decoded[0]).toBe('Pirate Hats')
     expect(decoded[1]).toBe('DCL-PRTHTS')
@@ -111,12 +111,36 @@ describe('buildCollectionInitializeData', () => {
     expect(decoded[7][0][3]).toBe('1:w:Pirate Hat:Yarr:hat:BaseMale')
   })
 
-  it('starts with the initialize selector', () => {
-    const collection = buildNewCollection('X', OWNER)
-    const data = buildCollectionInitializeData(collection, [], OWNER)
-    const selector = ethers.utils
-      .id('initialize(string,string,string,address,bool,bool,address,(string,uint256,address,string)[])')
-      .slice(0, 10)
-    expect(data.startsWith(selector)).toBe(true)
+  it('encodes the exact calldata builder-server derives the contract address from', () => {
+    const collection = buildNewCollection('Pirate Hats', OWNER)
+    expect(buildCollectionInitializeData(collection, [makeItem()], OWNER)).toBe(
+      '0xd14fee77' +
+        '0000000000000000000000000000000000000000000000000000000000000100' +
+        '0000000000000000000000000000000000000000000000000000000000000140' +
+        '0000000000000000000000000000000000000000000000000000000000000180' +
+        '000000000000000000000000abc0000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000000' +
+        '00000000000000000000000025b6b4bac4adb582a0abd475439da6730777fbf7' +
+        '0000000000000000000000000000000000000000000000000000000000000200' +
+        '000000000000000000000000000000000000000000000000000000000000000b' +
+        '5069726174652048617473000000000000000000000000000000000000000000' +
+        '000000000000000000000000000000000000000000000000000000000000000a' +
+        '44434c2d50525448545300000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000043' +
+        '68747470733a2f2f706565722e646563656e7472616c616e642e7a6f6e652f6c' +
+        '616d626461732f636f6c6c656374696f6e732f7374616e646172642f65726337' +
+        '32312f0000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000020' +
+        '0000000000000000000000000000000000000000000000000000000000000080' +
+        '0000000000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000000' +
+        '00000000000000000000000000000000000000000000000000000000000000c0' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '6c6567656e646172790000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000020' +
+        '313a773a506972617465204861743a596172723a6861743a426173654d616c65'
+    )
   })
 })

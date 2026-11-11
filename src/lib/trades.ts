@@ -1,7 +1,6 @@
 // Off-chain marketplace orders: the EIP-712 encoding a creator signs and the
 // marketplace-server endpoint that stores the signed order. Ported from the legacy builder's
 // lib/trades + TradeService; the shop reads these orders back through its unified catalog.
-import { ethers } from 'ethers'
 import {
   TradeAssetType,
   type OnChainTrade,
@@ -10,13 +9,15 @@ import {
   type TradeChecks,
   type TradeCreation
 } from '@dcl/schemas'
-import { ContractName, getContract, getContractName } from 'decentraland-transactions'
+import { ContractName, getContract, getMarketplaceName } from '~/lib/chain/contracts'
+import { numberToHex, zeroAddress } from 'viem'
+import { toBytes32 } from '~/lib/bytes32'
 import { config } from '~/config'
-import { readContract, signedFetch, type ContractData } from '~/lib/auth'
+import { readContract, signedFetch, type ContractData, type TypedDataDomain, type TypedDataTypes } from '~/lib/auth'
 
 export type UnsignedTrade = Omit<TradeCreation, 'signature'>
 
-export const OFFCHAIN_MARKETPLACE_TYPES: Record<string, ethers.TypedDataField[]> = {
+export const OFFCHAIN_MARKETPLACE_TYPES: TypedDataTypes = {
   Trade: [
     { name: 'checks', type: 'Checks' },
     { name: 'sent', type: 'AssetWithoutBeneficiary[]' },
@@ -64,13 +65,26 @@ export function getOffchainMarketplaceContract(chainId: number) {
   return getContract(ContractName.OffChainMarketplaceV3, chainId)
 }
 
+type SignTypedData = (
+  domain: TypedDataDomain,
+  types: TypedDataTypes,
+  primaryType: string,
+  value: Record<string, unknown>
+) => Promise<string>
+
+/** Signs an order under the marketplace's domain and types with the given typed-data signer. */
+export function tradeSigner(sign: SignTypedData, chainId: number) {
+  return (trade: UnsignedTrade) =>
+    sign(getTradeDomain(chainId), OFFCHAIN_MARKETPLACE_TYPES, 'Trade', toTradeTypedValues(trade))
+}
+
 /** The marketplace's EIP-712 domain: the chain id travels in `salt`, Decentraland's meta-tx convention. */
-export function getTradeDomain(chainId: number): ethers.TypedDataDomain {
+export function getTradeDomain(chainId: number): TypedDataDomain {
   const contract = getOffchainMarketplaceContract(chainId)
   return {
     name: contract.name,
     version: contract.version,
-    salt: ethers.utils.hexZeroPad(ethers.utils.hexlify(chainId), 32),
+    salt: numberToHex(chainId, { size: 32 }),
     verifyingContract: contract.address
   }
 }
@@ -97,10 +111,10 @@ export function toTypedChecks(checks: TradeChecks) {
     uses: checks.uses,
     expiration: toSeconds(checks.expiration),
     effective: toSeconds(checks.effective),
-    salt: ethers.utils.hexZeroPad(checks.salt, 32),
+    salt: toBytes32(checks.salt),
     contractSignatureIndex: checks.contractSignatureIndex,
     signerSignatureIndex: checks.signerSignatureIndex,
-    allowedRoot: ethers.utils.hexZeroPad(bytes(checks.allowedRoot), 32),
+    allowedRoot: toBytes32(bytes(checks.allowedRoot)),
     externalChecks: (checks.externalChecks ?? []).map(check => ({
       contractAddress: check.contractAddress,
       selector: check.selector,
@@ -130,12 +144,6 @@ export function toTradeTypedValues(trade: UnsignedTrade): Record<string, unknown
   }
 }
 
-const MARKETPLACE_CONTRACTS = new Set<ContractName>([
-  ContractName.OffChainMarketplace,
-  ContractName.OffChainMarketplaceV2,
-  ContractName.OffChainMarketplaceV3
-])
-
 /** The stored order's marketplace names a contract this client does not know. */
 export class UnknownTradeContractError extends Error {
   constructor(message: string) {
@@ -154,15 +162,8 @@ export function getTradeContract(trade: Pick<Trade, 'contract' | 'chainId'>) {
   if (Number(trade.chainId) !== expectedChainId) {
     throw new UnknownTradeContractError(`Trade is on chain ${trade.chainId}, expected ${expectedChainId}`)
   }
-  let name: ContractName
-  try {
-    name = getContractName(trade.contract)
-  } catch {
-    throw new UnknownTradeContractError(`Trade contract ${trade.contract} is not a known marketplace`)
-  }
-  if (!MARKETPLACE_CONTRACTS.has(name)) {
-    throw new UnknownTradeContractError(`Trade contract ${trade.contract} is ${name}, not a marketplace`)
-  }
+  const name = getMarketplaceName(trade.contract)
+  if (!name) throw new UnknownTradeContractError(`Trade contract ${trade.contract} is not a known marketplace`)
   const contract = getContract(name, trade.chainId)
   if (contract.address.toLowerCase() !== trade.contract.toLowerCase()) {
     throw new UnknownTradeContractError(`Trade contract ${trade.contract} does not match ${name} on this chain`)
@@ -179,7 +180,7 @@ export function toOnChainTrade(trade: Trade): OnChainTrade {
     ...values,
     checks: { ...values.checks, allowedProof: [] },
     // Nobody receives the sent asset when cancelling.
-    sent: values.sent.map(asset => ({ ...asset, beneficiary: ethers.constants.AddressZero }))
+    sent: values.sent.map(asset => ({ ...asset, beneficiary: zeroAddress }))
   }
 }
 
@@ -193,10 +194,10 @@ export function fetchSignatureIndexes(signer: string, chainId: number): Promise<
 /** A signatures contract's current indexes for `signer` (a marketplace or a coupon manager). */
 export async function readSignatureIndexes(contract: ContractData, signer: string): Promise<SignatureIndexes> {
   const [contractIndex, signerIndex] = await Promise.all([
-    readContract<ethers.BigNumber>(contract, 'contractSignatureIndex'),
-    readContract<ethers.BigNumber>(contract, 'signerSignatureIndex', [signer])
+    readContract<bigint>(contract, 'contractSignatureIndex'),
+    readContract<bigint>(contract, 'signerSignatureIndex', [signer])
   ])
-  return { contractSignatureIndex: contractIndex.toNumber(), signerSignatureIndex: signerIndex.toNumber() }
+  return { contractSignatureIndex: Number(contractIndex), signerSignatureIndex: Number(signerIndex) }
 }
 
 /** The server retires an order (re-signing it as supply shrinks, or after it is cancelled), so a cached id can vanish. */

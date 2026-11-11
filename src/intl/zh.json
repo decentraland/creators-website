@@ -112,6 +112,8 @@
     "open_preview": "打开预览",
     "forum_post": "论坛帖子",
     "publish": "发布系列",
+    "publish_again": "再次发布",
+    "publish_again_hint": "该系列的上一次发布可能未能完成。您可以再次发布：费用只会收取一次。",
     "more_actions": "更多操作",
     "actions": {
       "preview_items": "预览物品",
@@ -443,7 +445,7 @@
       "try_again": "重试"
     },
     "consolidation": {
-      "reverted": "“{name}”的发布未能在区块链上完成，因此未产生任何费用。该系列将在 24 小时后解锁，届时您可以再次发布。",
+      "reverted": "“{name}”的发布未能在区块链上完成，因此未产生任何费用。您现在可以再次发布。",
       "sync_failed": "“{name}”已发布，但我们无法完成与区块链的同步。请在几分钟后刷新页面；如果它仍未显示为审核中，请联系支持团队。"
     }
   },
@@ -665,6 +667,7 @@
       "emote_animations_out_of_sync": "虚拟形象和道具的动画时长必须相同。",
       "missing_external_resources": "模型引用了未包含的文件：{fileNames}。",
       "invalid_model_file": "我们无法加载此 3D 模型。请检查文件后重试。",
+      "preview_timeout": "我们未能及时生成此文件的预览。请检查模型，或稍后重试。",
       "invalid_representation": "此文件不能用作该物品的体型变体。",
       "representation_category_mismatch": "此文件与该物品的类别不符。请使用与另一体型相同类型的文件：3D 模型，或用于眼睛、眉毛或嘴巴的贴图。",
       "multiple_videos": "ZIP 中包含多个视频。请仅保留预览视频。",
@@ -808,6 +811,10 @@
       "description": "此物品有未保存的更改。切换物品将放弃这些更改。",
       "stay": "继续编辑",
       "confirm": "放弃"
+    },
+    "scene_boundaries": {
+      "show": "显示场景边界",
+      "hide": "隐藏场景边界"
     },
     "customizer": {
       "title": "虚拟形象",
@@ -1156,7 +1163,6 @@
       "success_description": "关于谁可以编辑此系列的更改已生效。"
     },
     "duplicate": "此地址已在列表中。",
-    "owner": "这是您自己的地址：作为所有者，您已拥有所有权限。",
     "system": "此地址属于 Decentraland Shop，无法在此处更改。",
     "save": "保存更改",
     "saving": "正在保存更改……",
@@ -1725,8 +1731,7 @@
     "error": {
       "title": "无法创建您的折扣",
       "description": "保存时出现问题，未产生任何费用，请重试。",
-      "try_again": "重试",
-      "description_wallet": "您的钱包切换到了其他账户或网络。请切换回您登录时使用的账户，然后重试。"
+      "try_again": "重试"
     },
     "list_label": "折扣",
     "chip": {
@@ -1833,7 +1838,6 @@
     "range_cancel": "取消",
     "range_pick_end": "{from} – 选择最后一天",
     "range_pick_start": "选择第一天",
-    "error_wallet": "您的钱包切换到了其他账户或网络。请切换回您登录时使用的账户，然后重试。",
     "social_note": "您使用社交账号登录，无法提前结束此折扣：它将持续到结束日期。",
     "unit_days": "天",
     "unit_hours": "小时",
@@ -2209,5 +2213,11 @@
     },
     "show_findings": "显示检查结果",
     "hide_findings": "隐藏检查结果"
+  },
+  "wallet_error": {
+    "wrong_account": "您的钱包切换到了其他账户或网络。请切换回您登录时使用的账户，然后重试。"
+  },
+  "item_thumbnail": {
+    "generating": "正在生成缩略图…"
   }
 }

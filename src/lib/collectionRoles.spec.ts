@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { ContractName, getContract } from 'decentraland-transactions'
-import { encodeContractCall } from './auth/transactions'
+import { toTransaction } from '~/test/chain'
+import { ContractName, getContract } from '~/lib/chain/contracts'
 import { type Collection } from './collections'
 import {
   buildSetRolesCall,
@@ -48,13 +48,13 @@ describe('role lists', () => {
     expect(isCollectionOwner(collection, undefined)).toBe(false)
   })
 
-  it('refuses the owner, an address already listed and the sale contracts', () => {
+  it('refuses an address already listed and the sale contracts, but lets the owner list themselves', () => {
     const current = [MINTER]
-    expect(getRoleAddressError(collection, 'senders', current, OWNER, CHAIN_ID)).toBe('owner')
-    expect(getRoleAddressError(collection, 'senders', current, MINTER.toUpperCase(), CHAIN_ID)).toBe('duplicate')
-    expect(getRoleAddressError(collection, 'senders', current, MARKETPLACE, CHAIN_ID)).toBe('system')
-    expect(getRoleAddressError(collection, 'collaborators', current, MARKETPLACE, CHAIN_ID)).toBeNull()
-    expect(getRoleAddressError(collection, 'senders', current, OTHER, CHAIN_ID)).toBeNull()
+    expect(getRoleAddressError('senders', current, MINTER.toUpperCase(), CHAIN_ID)).toBe('duplicate')
+    expect(getRoleAddressError('senders', current, MARKETPLACE, CHAIN_ID)).toBe('system')
+    expect(getRoleAddressError('collaborators', current, MARKETPLACE, CHAIN_ID)).toBeNull()
+    expect(getRoleAddressError('senders', current, OTHER, CHAIN_ID)).toBeNull()
+    expect(getRoleAddressError('senders', current, OWNER, CHAIN_ID)).toBeNull()
   })
 })
 
@@ -76,11 +76,35 @@ describe('saving roles', () => {
       [MINTER, OTHER],
       [false, true]
     ])
-    expect(encodeContractCall(senders)).toMatch(/^0x[0-9a-f]+$/)
+    expect(toTransaction(senders)).toEqual({
+      to: '0x00000000000000000000000000000000000000ee',
+      data:
+        '0x41bceced' +
+        '0000000000000000000000000000000000000000000000000000000000000040' +
+        '00000000000000000000000000000000000000000000000000000000000000a0' +
+        '0000000000000000000000000000000000000000000000000000000000000002' +
+        '00000000000000000000000000000000000000000000000000000000000000bb' +
+        '00000000000000000000000000000000000000000000000000000000000000dd' +
+        '0000000000000000000000000000000000000000000000000000000000000002' +
+        '0000000000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000001'
+    })
 
     const collaborators = buildSetRolesCall(collection, 'collaborators', diff, CHAIN_ID)
     expect(collaborators.method).toBe('setManagers')
-    expect(encodeContractCall(collaborators)).toMatch(/^0x[0-9a-f]+$/)
+    expect(toTransaction(collaborators)).toEqual({
+      to: '0x00000000000000000000000000000000000000ee',
+      data:
+        '0x3bdcc923' +
+        '0000000000000000000000000000000000000000000000000000000000000040' +
+        '00000000000000000000000000000000000000000000000000000000000000a0' +
+        '0000000000000000000000000000000000000000000000000000000000000002' +
+        '00000000000000000000000000000000000000000000000000000000000000bb' +
+        '00000000000000000000000000000000000000000000000000000000000000dd' +
+        '0000000000000000000000000000000000000000000000000000000000000002' +
+        '0000000000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000001'
+    })
   })
 
   it('refuses a collection without a contract', () => {

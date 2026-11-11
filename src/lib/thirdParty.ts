@@ -117,8 +117,8 @@ export function isThirdPartyManager(thirdParty: Pick<ThirdParty, 'managers'>, ad
 }
 
 /**
- * Like standard collections, a published linked collection (one with a submitted item) is public: any signer may
- * view it read-only, as builder-server serves it. Before that, only the third party's managers may.
+ * Whether the item editor opens this linked collection: like standard ones, once published (one submitted item) any
+ * signer may view it read-only there; before that, only the third party's managers. The detail page is managers-only.
  */
 export function canViewLinkedCollection(
   collection: Pick<Collection, 'isPublished'>,

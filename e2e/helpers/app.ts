@@ -1,7 +1,21 @@
 import puppeteer, { type Browser, type Page } from 'puppeteer'
 import { createBuilderServer, type BuilderSeed, type BuilderServer } from './builderServer'
 import { BASE } from './env'
-import { DEFAULT_EXTERNAL_DATA, route, type ExternalData, type Flags, type ForcedErrors, type Variants } from './route'
+import { fixtureStorage } from './files'
+import { createMarket, type Market, type MarketSeed } from './market'
+import {
+  DEFAULT_EXTERNAL_DATA,
+  route,
+  type Bridge,
+  type Credits,
+  type ExternalData,
+  type Flags,
+  type ForcedErrors,
+  type RouteContext,
+  type Variants
+} from './route'
+import { type PreviewOptions } from './preview'
+import { createChain, type ChainOptions, type SentTransaction } from './rpc'
 import { OFFLINE_WEBSOCKET_SCRIPT, POLYGON_AMOY, sessionInitScript, testSession } from './session'
 
 export const VIEWPORTS = {
@@ -15,10 +29,23 @@ export type App = {
   browser: Browser
   page: Page
   builder: BuilderServer
+  market: Market
+  /** Builder storage by content hash: fixture files plus everything the app uploaded. */
+  storage: Record<string, Buffer>
   /** Every write the app sent to a mocked service (`METHOD /path`), in order; chain reads and analytics excluded. */
   writes: string[]
-  /** The Segment `track` calls made so far, through analytics.js or the direct HTTP beacon. */
+  /** Every transaction the wallet sent, decoded where the function is known. */
+  transactions: SentTransaction[]
+  /** URLs the page tried to open in a new tab or window. */
+  openedUrls: string[]
+  /** Answers the fake preview gave to controller questions the app asked (`emote.hasSound`), in order. */
+  previewAnswers: Array<{ method: string; result: string }>
+  /** Messages of the browser dialogs (confirm, beforeunload) the page raised; each one is accepted. */
+  dialogs: string[]
+  /** The Segment `track` calls made so far, across reloads. */
   events: () => Promise<TrackedEvent[]>
+  /** The Segment page view names, across reloads. */
+  pageViews: () => string[]
   /** Resolves with the first tracked `event` whose props match, polling until `timeout`. */
   waitForEvent: (event: string, match?: Record<string, unknown>, timeout?: number) => Promise<TrackedEvent>
   close: () => Promise<void>
@@ -28,11 +55,18 @@ export type LaunchOptions = {
   path?: string
   signedOut?: boolean
   builder?: BuilderSeed
+  market?: MarketSeed
+  chain?: ChainOptions
+  credits?: Partial<Credits>
+  /** A fake Blender bridge on a localhost port, for `/live-preview?bridge=<port>`. */
+  bridge?: Bridge
   /** Flag values served by the flag service, keyed `${application}-${flag}`. Everything else is off. */
   flags?: Flags
   variants?: Variants
   errors?: ForcedErrors
-  /** Builder storage files by content hash. */
+  /** How the fake wearable-preview iframe behaves. */
+  preview?: PreviewOptions
+  /** Builder storage files by content hash, on top of the fixture files. */
   storage?: Record<string, Buffer>
   data?: Partial<ExternalData>
   chainId?: number
@@ -40,20 +74,49 @@ export type LaunchOptions = {
   waitUntil?: 'load' | 'domcontentloaded' | 'networkidle0' | 'networkidle2'
 }
 
+/**
+ * Request interception never sees the bytes of a Blob in a multipart body, so item uploads are read in the page,
+ * before they leave, and handed to node (`__e2eUpload`) to store by content hash.
+ */
+const UPLOAD_CAPTURE_SCRIPT = `(() => {
+  const realFetch = window.fetch;
+  const toBase64 = async blob => {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(binary);
+  };
+  window.fetch = async function (input, init) {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    const upload = /\\/items\\/([^/?]+)\\/(files|videos)$/.exec(new URL(url, location.href).pathname);
+    if (upload && init && init.body instanceof FormData) {
+      for (const [name, value] of init.body.entries()) {
+        if (value instanceof Blob) await window.__e2eUpload(upload[1], name, await toBase64(value));
+      }
+    }
+    return realFetch.call(this, input, init);
+  };
+})()`
+
+// The page has no tab to open, and a real one would escape the request mocks.
+const WINDOW_OPEN_SCRIPT = `window.open = function (url) { window.__e2eOpen && window.__e2eOpen(String(url)); return null; };`
+
 /** A headless page on the e2e dev server with the wallet and every off-origin request mocked. */
 export async function launchApp(opts: LaunchOptions = {}): Promise<App> {
-  const builder = createBuilderServer(opts.builder)
   const browser = await puppeteer.launch({
     headless: true,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
       // CI machines report no hover and a coarse pointer, which would run every hover rule's touch branch.
-      '--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4'
+      '--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4',
+      // Software WebGL, for the posed thumbnail render on machines without a GPU.
+      '--enable-unsafe-swiftshader',
+      '--use-angle=swiftshader'
     ]
   })
   try {
-    return await openPage(browser, builder, opts)
+    return await openPage(browser, opts)
   } catch (error) {
     // The spec never gets an App to close, so a failed launch would leave Chrome running.
     await browser.close()
@@ -61,25 +124,62 @@ export async function launchApp(opts: LaunchOptions = {}): Promise<App> {
   }
 }
 
-async function openPage(browser: Browser, builder: BuilderServer, opts: LaunchOptions): Promise<App> {
+async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
+  const chain = createChain(opts.chain)
+  const builder = createBuilderServer(opts.builder)
+  chain.onTransaction(tx => builder.applyTransaction(tx))
+  const market = createMarket(opts.market)
+  chain.onTransaction(tx => market.applyTransaction(tx))
+
+  await browser.defaultBrowserContext().overridePermissions(BASE, ['clipboard-read', 'clipboard-write'])
   const page = await browser.newPage()
   await page.setViewport(VIEWPORTS[opts.viewport ?? 'desktop'])
   // isbot reads "HeadlessChrome" as a crawler, and the app turns analytics off for crawlers.
   await page.setUserAgent((await browser.userAgent()).replace('HeadlessChrome', 'Chrome'))
+  // Leaving a page with unsaved work asks first; specs that reload mean to, and can assert what was asked.
+  const dialogs: string[] = []
+  page.on('dialog', dialog => {
+    dialogs.push(dialog.type() === 'beforeunload' ? 'beforeunload' : dialog.message())
+    void dialog.accept().catch(() => {})
+  })
+
+  const storage = { ...fixtureStorage(), ...opts.storage }
+  const tracked: TrackedEvent[] = []
+  const pages: string[] = []
+  const openedUrls: string[] = []
+  await page.exposeFunction('__e2eWallet', (method: string, params: unknown[]) => chain.walletRequest(method, params))
+  await page.exposeFunction('__e2eUpload', (itemId: string, name: string, base64: string) => {
+    // Files go under their content hash; the video goes under `video.mp4`, whose hash the item already names.
+    const hash = builder.items.get(itemId)?.contents[name] ?? name
+    storage[hash] = Buffer.from(base64, 'base64')
+  })
+  await page.exposeFunction('__e2eOpen', (url: string) => void openedUrls.push(url))
+  await page.exposeFunction('__e2eAnalytics', (method: string, args: unknown[]) => {
+    if (method === 'track')
+      tracked.push({ event: args[0] as string, props: (args[1] ?? {}) as Record<string, unknown> })
+    if (method === 'page') pages.push(args[0] as string)
+  })
   await page.evaluateOnNewDocument(OFFLINE_WEBSOCKET_SCRIPT)
+  await page.evaluateOnNewDocument(WINDOW_OPEN_SCRIPT)
+  await page.evaluateOnNewDocument(UPLOAD_CAPTURE_SCRIPT)
   if (!opts.signedOut) {
     await page.evaluateOnNewDocument(sessionInitScript(await testSession(), opts.chainId ?? POLYGON_AMOY))
   }
 
   const writes: string[] = []
-  const beaconEvents: TrackedEvent[] = []
-  const ctx = {
+  const ctx: RouteContext = {
     appOrigin: new URL(BASE).origin,
     builder,
+    chain,
+    market,
+    credits: { balanceCents: 0, credits: 0, ...opts.credits },
+    bridge: opts.bridge,
+    previewAnswers: [],
     flags: opts.flags ?? {},
     variants: opts.variants ?? {},
     errors: opts.errors ?? {},
-    storage: opts.storage ?? {},
+    preview: opts.preview ?? {},
+    storage,
     data: { ...DEFAULT_EXTERNAL_DATA, ...opts.data }
   }
   await page.setRequestInterception(true)
@@ -87,11 +187,11 @@ async function openPage(browser: Browser, builder: BuilderServer, opts: LaunchOp
     const url = new URL(req.url())
     const body = req.postData() ?? ''
     if (url.hostname.startsWith('api.e.') && url.pathname.endsWith('/track')) {
-      // A sendBeacon body is a Blob, which Chrome doesn't inline into the request event.
+      // Direct HTTP beacons (the overview's events). A sendBeacon body is a Blob, which Chrome doesn't inline.
       void (req.hasPostData() && !body ? req.fetchPostData() : Promise.resolve(body))
         .then(raw => {
           const call = JSON.parse(raw || '{}') as { event?: string; properties?: Record<string, unknown> }
-          if (call.event) beaconEvents.push({ event: call.event, props: call.properties ?? {} })
+          if (call.event) tracked.push({ event: call.event, props: call.properties ?? {} })
         })
         .catch((error: unknown) => process.stderr.write(`[e2e] unreadable analytics beacon: ${String(error)}\n`))
     } else if (
@@ -115,29 +215,37 @@ async function openPage(browser: Browser, builder: BuilderServer, opts: LaunchOp
 
   await page.goto(`${BASE}${opts.path ?? '/'}`, { waitUntil: opts.waitUntil ?? 'networkidle2', timeout: 45_000 })
 
-  // analytics.js is served empty, so its snippet keeps every queued call.
-  const events = async () => {
-    const queued = await page.evaluate(() => {
-      const queue = (window as unknown as { analytics?: unknown[] }).analytics
-      if (!Array.isArray(queue)) return []
-      return queue
-        .filter((call): call is unknown[] => Array.isArray(call) && call[0] === 'track')
-        .map(call => ({ event: call[1] as string, props: (call[2] ?? {}) as Record<string, unknown> }))
-    })
-    return [...beaconEvents, ...queued]
-  }
+  const events = () => Promise.resolve([...tracked])
 
   const waitForEvent = async (event: string, match: Record<string, unknown> = {}, timeout = 10_000) => {
     const deadline = Date.now() + timeout
     for (;;) {
-      const found = (await events()).find(
+      const found = tracked.find(
         e => e.event === event && Object.entries(match).every(([key, value]) => e.props[key] === value)
       )
       if (found) return found
-      if (Date.now() > deadline) throw new Error(`no "${event}" event matching ${JSON.stringify(match)}`)
+      if (Date.now() > deadline) {
+        const seen = tracked.filter(e => e.event === event).map(e => JSON.stringify(e.props))
+        throw new Error(`no "${event}" event matching ${JSON.stringify(match)}; seen: ${seen.join(' | ') || 'none'}`)
+      }
       await new Promise(r => setTimeout(r, 200))
     }
   }
 
-  return { browser, page, builder, writes, events, waitForEvent, close: () => browser.close() }
+  return {
+    browser,
+    page,
+    builder,
+    market,
+    storage: ctx.storage,
+    writes,
+    transactions: chain.transactions,
+    openedUrls,
+    previewAnswers: ctx.previewAnswers,
+    dialogs,
+    events,
+    pageViews: () => [...pages],
+    waitForEvent,
+    close: () => browser.close()
+  }
 }

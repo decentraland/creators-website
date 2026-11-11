@@ -3,8 +3,14 @@
 // ThirdPartyRegistry when needed (registering the third party on its first publish), then hand the signed slots
 // cheque to builder-server, which opens one item curation per item, and finally push changes of already-reviewed
 // items. Server and chain access is injected so the sequence runs against fakes in tests.
-import { ethers } from 'ethers'
-import { type ContractCall, type TransactionSender, type TransactionSettlement } from '~/lib/auth'
+import { numberToHex, toHex } from 'viem'
+import {
+  type ContractCall,
+  type TransactionSender,
+  type TransactionSettlement,
+  type TypedDataDomain,
+  type TypedDataTypes
+} from '~/lib/auth'
 import { BuilderServerError, isRefusedRequest, type PublishLinkedItemsResult, type SlotsCheque } from '~/lib/builder'
 import { CurationStatus, type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
@@ -19,7 +25,7 @@ import {
   type RegisteredThirdParty,
   type ThirdPartyPrice
 } from '~/lib/thirdPartyRegistry'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { isWalletRejection, isWalletStateError } from '~/lib/walletErrors'
 
 export type LinkedPublishStep =
   'check' | 'tos' | 'kind' | 'allowance' | 'register' | 'buy_slots' | 'wait_tx' | 'delete_virtual' | 'publish' | 'push'
@@ -54,6 +60,7 @@ export function getLinkedPublishPhases(pays: boolean, current?: LinkedPublishSte
 
 export type LinkedPublishFailureReason =
   | 'rejected'
+  | 'wallet'
   | 'reverted'
   | 'payment_pending'
   | 'fee_changed'
@@ -142,6 +149,7 @@ function wrapLinkedPublishError(error: unknown, step: LinkedPublishStep, txHash?
   const message = error instanceof Error ? error.message : String(error)
   if (step === 'tos') return new LinkedPublishError(step, 'tos_failed', message, error, txHash)
   if (isWalletRejection(error)) return new LinkedPublishError(step, 'rejected', message, error, txHash)
+  if (isWalletStateError(error)) return new LinkedPublishError(step, 'wallet', message, error, txHash)
   if (isInsufficientSlotsError(error)) return new LinkedPublishError(step, 'insufficient_slots', message, error, txHash)
   if (isPendingReviewError(error)) return new LinkedPublishError(step, 'pending_review', message, error, txHash)
   return new LinkedPublishError(step, 'generic', message, error, txHash)
@@ -196,8 +204,8 @@ export function getPublishState(
 }
 
 export type ChequeTypedData = {
-  domain: ethers.TypedDataDomain
-  types: Record<string, ethers.TypedDataField[]>
+  domain: TypedDataDomain
+  types: TypedDataTypes
   value: { thirdPartyId: string; qty: number; salt: string }
 }
 
@@ -217,7 +225,7 @@ export function buildChequeTypedData(
       name: registry.name,
       version: registry.version,
       verifyingContract: registry.address,
-      salt: ethers.utils.hexZeroPad(ethers.utils.hexlify(chainId), 32)
+      salt: numberToHex(chainId, { size: 32 })
     },
     types: {
       ConsumeSlots: [
@@ -232,15 +240,17 @@ export function buildChequeTypedData(
 
 /** A random 32-byte hex salt; the registry rejects a cheque whose salt was consumed before. */
 export function createChequeSalt(): string {
-  return ethers.utils.hexlify(crypto.getRandomValues(new Uint8Array(32)))
+  return toHex(crypto.getRandomValues(new Uint8Array(32)))
 }
 
 export type SignChequeDeps = {
   signTypedData: (
-    domain: ethers.TypedDataDomain,
-    types: Record<string, ethers.TypedDataField[]>,
+    domain: TypedDataDomain,
+    types: TypedDataTypes,
+    primaryType: string,
     value: Record<string, unknown>
   ) => Promise<string>
+  randomSalt?: () => string
 }
 
 /** Signs a cheque for `qty` slots; the wizard asks for it before the paid steps so the wallet prompt comes first. */
@@ -250,9 +260,9 @@ export async function signSlotsCheque(
   thirdPartyId: string,
   qty: number
 ): Promise<SlotsCheque> {
-  const salt = createChequeSalt()
+  const salt = (deps.randomSalt ?? createChequeSalt)()
   const { domain, types, value } = buildChequeTypedData(chainId, thirdPartyId, qty, salt)
-  const signature = await deps.signTypedData(domain, types, value)
+  const signature = await deps.signTypedData(domain, types, 'ConsumeSlots', value)
   return { signature, qty, salt }
 }
 

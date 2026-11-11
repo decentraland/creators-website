@@ -2,9 +2,10 @@
 // CreditsManager external call, payment-method availability, and the publish sequence itself,
 // ported from the legacy builder's publish saga (the forum post lives in hooks/useForumPost).
 // Server and chain access is injected so the sequence is unit-testable end to end.
-import { ethers } from 'ethers'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
+import { encodeAbiParameters, getAbiItem, toFunctionSelector, toHex, type AbiFunction } from 'viem'
 import { config } from '~/config'
+import { toBytes32 } from '~/lib/bytes32'
 import { type ContractCall } from '~/lib/auth'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS, isRefusedRequest } from '~/lib/builder'
 import { isCollectionLocked, type Collection } from '~/lib/collections'
@@ -15,7 +16,7 @@ import { hasOldHashedContents } from '~/lib/itemFactory'
 import { isMissingSmartWearableVideo, type Item } from '~/lib/items'
 import { fetchManaAllowance } from '~/lib/mana'
 import { weiToUsdCents, type PublicationFee } from '~/lib/publishFee'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { isWalletRejection, isWalletStateError } from '~/lib/walletErrors'
 import { getCollectionSymbol, toInitializeItems, type InitializeItem } from '~/lib/saveCollection'
 
 /** 'card' (buying credits with Stripe) is the planned third method; only these two ship today. */
@@ -30,7 +31,9 @@ export type PublishBlocker =
 
 /**
  * `items` are the collection's items; a smart wearable without its preview video blocks publishing, and so do
- * items with validation errors when the caller says they block (`hasInvalidItems`).
+ * items with validation errors when the caller says they block (`hasInvalidItems`). A locked draft stays
+ * publishable, as in legacy: its last transaction may have reverted, and a retry reuses the frozen salt, so at
+ * most one createCollection can land.
  */
 export function getPublishBlocker(
   collection: Collection,
@@ -38,7 +41,7 @@ export function getPublishBlocker(
   items: Item[],
   { hasInvalidItems = false }: { hasInvalidItems?: boolean } = {}
 ): PublishBlocker | null {
-  if (collection.isPublished || isCollectionLocked(collection)) return 'not_draft'
+  if (collection.isPublished) return 'not_draft'
   if (itemCount === 0) return 'no_items'
   if (itemCount > MAX_PUBLISH_ITEMS) return 'too_many_items'
   if (items.some(isMissingSmartWearableVideo)) return 'missing_smart_wearable_video'
@@ -119,6 +122,8 @@ export function buildCreateCollectionCall(chainId: number, args: CreateCollectio
 
 const EXTERNAL_CALL_TTL_MS = 24 * 60 * 60 * 1000
 
+const randomSalt = () => toHex(crypto.getRandomValues(new Uint8Array(32)))
+
 /**
  * The CreditsManager external call that runs createCollection on the creator's behalf. Byte-compatible
  * with decentraland-dapps' `buildCollectionManagerExternalCall`: selector + ABI-encoded params.
@@ -127,26 +132,14 @@ export function buildCollectionManagerExternalCall(
   chainId: number,
   args: CreateCollectionArgs,
   now = Date.now(),
-  salt = ethers.utils.hexlify(ethers.utils.randomBytes(32))
+  salt: string = randomSalt()
 ): ExternalCall {
   const manager = getContract(ContractName.CollectionManager, chainId)
-  const contractInterface = new ethers.utils.Interface(manager.abi)
+  const createCollection = getAbiItem({ abi: manager.abi, name: 'createCollection' }) as AbiFunction
   return {
     target: manager.address,
-    selector: contractInterface.getSighash('createCollection'),
-    data: ethers.utils.defaultAbiCoder.encode(
-      [
-        'address',
-        'address',
-        'bytes32',
-        'string',
-        'string',
-        'string',
-        'address',
-        'tuple(string,uint256,address,string)[]'
-      ],
-      args
-    ),
+    selector: toFunctionSelector(createCollection),
+    data: encodeAbiParameters(createCollection.inputs, args),
     expiresAt: Math.floor((now + EXTERNAL_CALL_TTL_MS) / 1000),
     salt
   }
@@ -164,7 +157,7 @@ export function buildUseCreditsCall(
     method: 'useCredits',
     args: [
       {
-        credits: [{ value: credit.amount, expiresAt: credit.expiresAt, salt: ethers.utils.hexZeroPad(credit.id, 32) }],
+        credits: [{ value: credit.amount, expiresAt: credit.expiresAt, salt: toBytes32(credit.id) }],
         creditsSignatures: [credit.signature],
         externalCall,
         customExternalCallSignature: externalCallSignature,
@@ -183,6 +176,7 @@ export type PublishFailureReason =
   | 'fee_mismatch'
   | 'tos_failed'
   | 'rejected'
+  | 'wallet'
   | 'generic'
 
 export class PublishCollectionError extends Error {
@@ -210,6 +204,7 @@ export function toPublishError(error: unknown): PublishCollectionError {
   }
   const message = error instanceof Error ? error.message : String(error)
   if (isWalletRejection(error)) return new PublishCollectionError('rejected', message)
+  if (isWalletStateError(error)) return new PublishCollectionError('wallet', message, error)
   return new PublishCollectionError('generic', message)
 }
 
@@ -260,6 +255,7 @@ export type PublishDeps = {
   }) => Promise<PublicationAuthorization>
   sendTransaction: (call: ContractCall) => Promise<string>
   lockCollection: (collectionId: string) => Promise<number>
+  randomSalt?: () => string
 }
 
 export type PublishResult = {
@@ -303,7 +299,12 @@ export async function publishCollection(params: PublishParams, deps: PublishDeps
     const args = buildCreateCollectionArgs(collection, items, address, chainId)
     let txHash: string
     if (paymentMethod === 'credits') {
-      const externalCall = buildCollectionManagerExternalCall(chainId, args)
+      const externalCall = buildCollectionManagerExternalCall(
+        chainId,
+        args,
+        Date.now(),
+        (deps.randomSalt ?? randomSalt)()
+      )
       const authorization = await deps.authorizePublication({
         usdPriceCents: weiToUsdCents(fee.total.usdWei),
         chainId,
@@ -335,6 +336,8 @@ export type SyncDeps = {
 
 export type ConsolidateDeps = SyncDeps & {
   waitForTransaction: (txHash: string) => Promise<boolean>
+  /** Whether the collection's contract exists on chain: a retry can revert because an earlier attempt landed. */
+  isCollectionDeployed?: () => Promise<boolean>
   /** Runs once the server holds the published items, e.g. to open the collection's forum topic. */
   onSynced?: () => void
 }
@@ -423,7 +426,11 @@ export async function consolidatePublishedCollection(
   retryDelayMs = CONSOLIDATE_RETRY_DELAY_MS
 ): Promise<void> {
   const mined = await deps.waitForTransaction(txHash)
-  if (!mined) throw new PublishTransactionRevertedError(txHash)
+  // Code at the address can only be this exact collection: the factory derives it from the salt, its caller (the
+  // CollectionManager's forwarder) and the full initialize calldata, creator included.
+  if (!mined && !(await deps.isCollectionDeployed?.().catch(() => false))) {
+    throw new PublishTransactionRevertedError(txHash)
+  }
   await syncPublishedItems(collectionId, deps, retries, retryDelayMs)
   deps.onSynced?.()
 }

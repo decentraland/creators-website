@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { type ReactNode } from 'react'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
+import { type Session } from '~/lib/auth'
+import { WrongAccountError } from '~/lib/walletErrors'
 
 const api = vi.hoisted(() => ({
   fetchCommittee: vi.fn(),
@@ -25,10 +27,15 @@ vi.mock('~/lib/builder', async importOriginal => {
 })
 vi.mock('~/lib/analytics', () => ({ track: vi.fn(), errorCode: () => 'unknown' }))
 vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
+const auth = vi.hoisted(() => ({
+  sendContractTransaction: vi.fn(),
+  waitForTransaction: vi.fn()
+}))
+vi.mock('~/lib/auth', () => auth)
+
+const { useAssignCurator, useDisableCollection, usePushCuration, useRejectCuration } = await import('./useCuration')
 const { captureError } = await import('~/lib/monitoring')
 const { BuilderServerError, ValidationLimitError } = await import('~/lib/builder')
-
-const { useAssignCurator, useCommittee, usePushCuration, useRejectCuration } = await import('./useCuration')
 
 const ADDRESS = '0xCurator'
 const collection = { id: 'c1', name: 'Hats', isPublished: true } as Collection
@@ -55,22 +62,6 @@ beforeEach(() => {
   api.updateCollectionCuration.mockImplementation((_a: string, _c: string, change: object) =>
     Promise.resolve({ ...pending, ...change })
   )
-})
-
-describe('useCommittee', () => {
-  it('is not a curator until the committee loads, then matches the wallet case-insensitively', async () => {
-    api.fetchCommittee.mockResolvedValue(['0xcurator'])
-    const { result } = renderHook(() => useCommittee(ADDRESS), { wrapper })
-    expect(result.current.isCurator).toBe(false)
-    await waitFor(() => expect(result.current.isCurator).toBe(true))
-  })
-
-  it('fails closed when the committee cannot be read', async () => {
-    api.fetchCommittee.mockRejectedValue(new Error('down'))
-    const { result } = renderHook(() => useCommittee(ADDRESS), { wrapper })
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.isCurator).toBe(false)
-  })
 })
 
 const decision = { rejectionReasons: ['clipping' as const], rejectionMessage: 'Clips through the torso' }
@@ -164,5 +155,34 @@ describe('usePushCuration', () => {
     api.pushCollectionCuration.mockRejectedValueOnce(new BuilderServerError('Service unavailable', 503))
     await act(() => result.current.mutateAsync(collection).catch(() => undefined))
     expect(captureError).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('useDisableCollection', () => {
+  const session = { address: ADDRESS } as Session
+  const approved = { ...collection, isApproved: true, contractAddress: '0x00000000000000000000000000000000000000cc' }
+
+  beforeEach(() => vi.mocked(captureError).mockClear())
+
+  it('fails without reporting it when the wallet sits on another account', async () => {
+    auth.sendContractTransaction.mockRejectedValue(new WrongAccountError(ADDRESS, '0xother'))
+    const { result } = renderHook(() => useDisableCollection(session), { wrapper })
+
+    await act(() => result.current.mutateAsync({ collection: approved }).catch(() => undefined))
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(captureError).not.toHaveBeenCalled()
+  })
+
+  it('reports any other failure', async () => {
+    auth.sendContractTransaction.mockRejectedValue(new Error('relayer down'))
+    const { result } = renderHook(() => useDisableCollection(session), { wrapper })
+
+    await act(() => result.current.mutateAsync({ collection: approved }).catch(() => undefined))
+    await waitFor(() =>
+      expect(captureError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'relayer down' }),
+        expect.objectContaining({ flow: 'curation_disable' })
+      )
+    )
   })
 })

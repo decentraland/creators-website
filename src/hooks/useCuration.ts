@@ -9,7 +9,6 @@ import {
   ValidationLimitError,
   fetchCollection,
   fetchCollectionCuration,
-  fetchCommittee,
   fetchCurationCollections,
   fetchCurations,
   pushCollectionCuration,
@@ -18,36 +17,15 @@ import {
 import { type Collection } from '~/lib/collections'
 import { buildSetApprovedCall } from '~/lib/collectionApproval'
 import { APPROVAL_INDEX_TIMEOUT_MS, waitForIndexer } from '~/lib/approveCollection'
-import { isCommitteeMember, orderCurators, type CollectionCuration, type CurationFilters } from '~/lib/curation'
+import { orderCurators, type CollectionCuration, type CurationFilters } from '~/lib/curation'
 import { shortenAddress } from '~/lib/address'
 import { type RejectReasonCode } from '~/lib/events'
 import { captureError } from '~/lib/monitoring'
 import { postAssignee } from '~/hooks/useForumPost'
+import { useCommittee } from '~/hooks/useCommittee'
 import { useProfiles } from '~/hooks/useProfile'
 import { getMaticChainId } from '~/lib/publishCollection'
-import { isWalletRejection } from '~/lib/walletErrors'
-
-// Same refresh cadence as builder-server's own committee cache.
-const COMMITTEE_STALE_MS = 60 * 60_000
-
-/** Whether the signed-in wallet sits on the curation committee. Fails closed: loading or errored is not a curator. */
-const NO_MEMBERS: string[] = []
-
-export function useCommittee(address: string | undefined) {
-  // Signed-out visitors can't be curators, so they never ask.
-  const query = useQuery({
-    queryKey: ['committee'],
-    queryFn: fetchCommittee,
-    staleTime: COMMITTEE_STALE_MS,
-    enabled: !!address
-  })
-  const members = query.data
-  return {
-    members: members ?? NO_MEMBERS,
-    isCurator: isCommitteeMember(members, address),
-    isLoading: query.isLoading
-  }
-}
+import { isExpectedWalletError } from '~/lib/walletErrors'
 
 /** The committee as picker options, the signed-in curator first and marked, after `leading` and a divider. */
 type CuratorOption = { value: string; label: string; dividerBefore?: boolean }
@@ -260,7 +238,7 @@ export function useDisableCollection(session: Session | null) {
     },
     onError: (error, { collection }) => {
       track('Reject collection error', { collectionId: collection.id, error: errorCode(error) })
-      if (!isWalletRejection(error)) {
+      if (!isExpectedWalletError(error)) {
         captureError(error, { flow: 'curation_disable', collectionId: collection.id })
       }
     }

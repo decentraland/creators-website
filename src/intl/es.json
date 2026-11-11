@@ -112,6 +112,8 @@
     "open_preview": "Abrir vista previa",
     "forum_post": "Publicación en el foro",
     "publish": "Publicar colección",
+    "publish_again": "Publicar de nuevo",
+    "publish_again_hint": "Es posible que la última publicación de esta colección no se haya completado. Puedes publicarla de nuevo: solo se te cobrará una vez.",
     "more_actions": "Más acciones",
     "actions": {
       "preview_items": "Previsualizar ítems",
@@ -443,7 +445,7 @@
       "try_again": "Intentar de nuevo"
     },
     "consolidation": {
-      "reverted": "La publicación de “{name}” no se completó en la blockchain, así que no se cobró nada. La colección se desbloquea en 24 horas; entonces podrás publicarla de nuevo.",
+      "reverted": "La publicación de “{name}” no se completó en la blockchain, así que no se cobró nada. Ya puedes publicarla de nuevo.",
       "sync_failed": "“{name}” se publicó, pero no pudimos terminar de sincronizarla con la blockchain. Actualiza la página en unos minutos; si sigue sin estar en revisión, contacta a soporte."
     }
   },
@@ -665,6 +667,7 @@
       "emote_animations_out_of_sync": "Las animaciones del avatar y del prop deben tener la misma duración.",
       "missing_external_resources": "El modelo referencia archivos que no están incluidos: {fileNames}.",
       "invalid_model_file": "No pudimos cargar este modelo 3D. Revisa el archivo e inténtalo de nuevo.",
+      "preview_timeout": "No pudimos generar la vista previa de este archivo a tiempo. Revisa el modelo o inténtalo de nuevo más tarde.",
       "invalid_representation": "Este archivo no puede usarse como variante de tipo de cuerpo de ese ítem.",
       "representation_category_mismatch": "Este archivo no corresponde a la categoría del ítem. Usa el mismo tipo de archivo que el otro tipo de cuerpo: un modelo 3D, o una textura para ojos, cejas o boca.",
       "multiple_videos": "El ZIP incluye más de un video. Deja solo el video de vista previa.",
@@ -808,6 +811,10 @@
       "description": "Tienes cambios sin guardar en este ítem. Si cambias de ítem se perderán.",
       "stay": "Seguir editando",
       "confirm": "Descartar"
+    },
+    "scene_boundaries": {
+      "show": "Mostrar límites de la escena",
+      "hide": "Ocultar límites de la escena"
     },
     "customizer": {
       "title": "Avatar",
@@ -1156,7 +1163,6 @@
       "success_description": "Los cambios sobre quién puede editar esta colección ya están activos."
     },
     "duplicate": "Esta dirección ya está en la lista.",
-    "owner": "Esa es tu propia dirección: como dueño ya tienes todos los permisos.",
     "system": "Esta dirección pertenece a la Tienda de Decentraland y no se puede cambiar aquí.",
     "save": "Guardar cambios",
     "saving": "Guardando cambios...",
@@ -1725,8 +1731,7 @@
     "error": {
       "title": "No pudimos crear tu descuento",
       "description": "Algo salió mal al guardarlo. No se cobró nada; inténtalo de nuevo.",
-      "try_again": "Intentar de nuevo",
-      "description_wallet": "Tu wallet cambió a otra cuenta o red. Vuelve a la cuenta con la que iniciaste sesión e inténtalo de nuevo."
+      "try_again": "Intentar de nuevo"
     },
     "list_label": "Descuentos",
     "chip": {
@@ -1833,7 +1838,6 @@
     "range_cancel": "Cancelar",
     "range_pick_end": "{from} – elige el último día",
     "range_pick_start": "Elige el primer día",
-    "error_wallet": "Tu wallet cambió a otra cuenta o red. Vuelve a la cuenta con la que iniciaste sesión e inténtalo de nuevo.",
     "social_note": "Como iniciaste sesión con una cuenta social, no podrás terminar este descuento antes: dura hasta su fecha de fin.",
     "unit_days": "d",
     "unit_hours": "h",
@@ -2209,5 +2213,11 @@
     },
     "show_findings": "Ver hallazgos",
     "hide_findings": "Ocultar hallazgos"
+  },
+  "wallet_error": {
+    "wrong_account": "Tu wallet cambió a otra cuenta o red. Vuelve a la cuenta con la que iniciaste sesión e inténtalo de nuevo."
+  },
+  "item_thumbnail": {
+    "generating": "Generando miniatura…"
   }
 }

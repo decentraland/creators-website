@@ -1,9 +1,9 @@
-// The ONLY module allowed to import decentraland-connect, @dcl/single-sign-on-client or @dcl/crypto,
+// lib/auth is the ONLY place allowed to import decentraland-connect, @dcl/single-sign-on-client or @dcl/crypto,
 // or to hold an EIP-1193 provider (see CONVENTIONS.md, host-portability seams). Everything else uses
-// the wallet store plus the helpers exported here.
-import { ethers } from 'ethers'
-import { ChainId, ProviderType } from '@dcl/schemas'
-import { Authenticator, type AuthChain, type AuthIdentity } from '@dcl/crypto'
+// the wallet store plus the helpers exported from its index.
+import { type ChainId } from '@dcl/schemas/dist/dapps/chain-id'
+import { ProviderType } from '@dcl/schemas/dist/dapps/provider-type'
+import { type AuthChain, type AuthIdentity } from '@dcl/crypto'
 import {
   localStorageClearIdentity,
   localStorageGetIdentity,
@@ -23,11 +23,17 @@ async function getConnection() {
   return (await import('decentraland-connect')).connection
 }
 
+/** A wallet's raw EIP-1193 provider; providers without events (Magic) leave `on` out. */
+export type Eip1193Provider = {
+  request: (args: { method: string; params?: readonly unknown[] | object }) => Promise<unknown>
+  on?: (event: string, listener: (...args: unknown[]) => void) => void
+  removeListener?: (event: string, listener: (...args: unknown[]) => void) => void
+}
+
 export type Session = {
   address: string
   chainId: number
-  signer: ethers.providers.JsonRpcSigner
-  web3Provider: ethers.providers.Web3Provider
+  provider: Eip1193Provider
   identity: AuthIdentity
   providerType: ProviderType
   /** The wallet behind the provider ("Trust Wallet" over WalletConnect, …), when it names itself. */
@@ -42,28 +48,17 @@ async function toSession(res: {
 }): Promise<Session> {
   if (!res.account) throw new Error('No account returned by the wallet')
   const address = res.account.toLowerCase()
-  // 'any' lets ethers follow wallet network changes instead of locking to the first-seen network.
-  const web3Provider = new ethers.providers.Web3Provider(res.provider as ethers.providers.ExternalProvider, 'any')
-  const signer = web3Provider.getSigner()
+  const provider = res.provider as Eip1193Provider
 
   // Reuse a valid stored identity, otherwise create one (a single wallet signature).
   let identity = localStorageGetIdentity(address)
   if (!identity) {
-    const ephemeral = ethers.Wallet.createRandom()
-    identity = await Authenticator.initializeAuthChain(
-      address,
-      {
-        address: ephemeral.address,
-        publicKey: ethers.utils.hexlify(ephemeral.publicKey),
-        privateKey: ethers.utils.hexlify(ephemeral.privateKey)
-      },
-      IDENTITY_EXPIRATION_MINUTES,
-      message => signer.signMessage(message)
-    )
+    const { createIdentity } = await import('./signer')
+    identity = await createIdentity(provider, address, IDENTITY_EXPIRATION_MINUTES)
     localStorageStoreIdentity(address, identity)
   }
 
-  return { address, chainId: res.chainId, signer, web3Provider, identity, providerType: res.providerType }
+  return { address, chainId: res.chainId, provider, identity, providerType: res.providerType }
 }
 
 /**
@@ -108,10 +103,16 @@ export function getIdentity(address: string): AuthIdentity | null {
   return localStorageGetIdentity(address.toLowerCase())
 }
 
+// The curve code behind it is only needed once there is an identity to sign with, never on a visitor's first load.
+async function signPayload(identity: AuthIdentity, payload: string): Promise<AuthChain> {
+  const { Authenticator } = await import('@dcl/crypto')
+  return Authenticator.signPayload(identity, payload)
+}
+
 /** Signs `payload` (a Catalyst entity id) with the wallet's ephemeral identity; null when the session has none. */
-export function signWithIdentity(address: string, payload: string): AuthChain | null {
+export async function signWithIdentity(address: string, payload: string): Promise<AuthChain | null> {
   const identity = getIdentity(address)
-  return identity ? Authenticator.signPayload(identity, payload) : null
+  return identity ? signPayload(identity, payload) : null
 }
 
 const AUTH_TIMESTAMP_HEADER = 'x-identity-timestamp'
@@ -122,19 +123,19 @@ const AUTH_METADATA_HEADER = 'x-identity-metadata'
  * lowercased, and the timestamp/metadata travel as headers so the server can rebuild the payload.
  * `path` is the full URL pathname (API base included), without the query string.
  */
-export function createAuthHeaders(
+export async function createAuthHeaders(
   address: string,
   method: string,
   path: string,
   metadata: Record<string, string> = {}
-): Record<string, string> {
+): Promise<Record<string, string>> {
   const headers: Record<string, string> = {}
   const identity = getIdentity(address)
   if (!identity) return headers
   const timestamp = String(Date.now())
   const metadataJson = JSON.stringify(metadata)
   const payload = `${method}:${path}:${timestamp}:${metadataJson}`.toLowerCase()
-  const authChain = Authenticator.signPayload(identity, payload)
+  const authChain = await signPayload(identity, payload)
   for (let i = 0; i < authChain.length; i++) {
     headers[`${AUTH_CHAIN_HEADER_PREFIX}${i}`] = JSON.stringify(authChain[i])
   }
@@ -157,7 +158,7 @@ export async function signedFetch(
 ): Promise<Response> {
   const method = (init.method ?? 'GET').toUpperCase()
   const url = `${baseUrl}${path}`
-  const authHeaders = address ? createAuthHeaders(address, method, new URL(url).pathname, metadata) : {}
+  const authHeaders = address ? await createAuthHeaders(address, method, new URL(url).pathname, metadata) : {}
   return fetch(url, {
     ...init,
     method,
