@@ -11,8 +11,7 @@ import {
   type ExternalData,
   type Flags,
   type ForcedErrors,
-  type RouteContext,
-  type Variants
+  type RouteContext
 } from './route'
 import { createChain, type ChainOptions, type SentTransaction } from './rpc'
 import { OFFLINE_WEBSOCKET_SCRIPT, POLYGON_AMOY, sessionInitScript, testSession } from './session'
@@ -61,7 +60,6 @@ export type LaunchOptions = {
   bridge?: Bridge
   /** Flag values served by the flag service, keyed `${application}-${flag}`. Everything else is off. */
   flags?: Flags
-  variants?: Variants
   errors?: ForcedErrors
   /** Builder storage files by content hash, on top of the fixture files. */
   storage?: Record<string, Buffer>
@@ -173,7 +171,6 @@ async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
     bridge: opts.bridge,
     previewAnswers: [],
     flags: opts.flags ?? {},
-    variants: opts.variants ?? {},
     errors: opts.errors ?? {},
     storage,
     data: { ...DEFAULT_EXTERNAL_DATA, ...opts.data }

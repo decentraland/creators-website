@@ -48,9 +48,6 @@
     --sub-nav-h: 64px;
   }
 }
-body[data-no-subnav] {
-  --sub-nav-h: 0px;
-}
 * {
   box-sizing: border-box;
 }

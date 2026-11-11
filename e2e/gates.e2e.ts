@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { collection } from './fixtures'
 import { launchApp, type App } from './helpers/app'
 import { clickTestId, isShown, waitForTestId } from './helpers/dom'
-import { TEST_ADDRESS } from './helpers/session'
 
 let app: App | undefined
 afterEach(async () => {
@@ -11,35 +10,18 @@ afterEach(async () => {
 })
 
 const builder = { collections: [collection({ name: 'Summer Drop' })] }
-const PRELAUNCH = 'builder-creators-prelaunch'
 
-describe('pre-launch gate', () => {
-  it('sends a wallet off the allowlist back to the overview', async () => {
-    app = await launchApp({
-      path: '/collections?utm_source=e2e',
-      builder,
-      flags: { [PRELAUNCH]: true },
-      variants: { [PRELAUNCH]: '0x' + '22'.repeat(20) }
-    })
+describe('navigation', () => {
+  it('gives a visitor the section tabs on the overview', async () => {
+    app = await launchApp({ path: '/', builder, signedOut: true })
     await waitForTestId(app.page, 'overview-page')
-    const url = new URL(app.page.url())
-    expect(url.pathname).toBe('/')
-    // Campaign parameters survive the redirect, so the overview's page view keeps them.
-    expect(url.searchParams.get('utm_source')).toBe('e2e')
-    expect(await isShown(app.page, 'subnav')).toBe(false)
-    await app.waitForEvent('Prelaunch gate', { outcome: 'hidden' })
+    expect(await isShown(app.page, 'subnav')).toBe(true)
   })
 
-  it('opens the app to an allowlisted wallet', async () => {
-    app = await launchApp({
-      path: '/collections',
-      builder,
-      flags: { [PRELAUNCH]: true },
-      variants: { [PRELAUNCH]: `0x${'22'.repeat(20)}, ${TEST_ADDRESS}` }
-    })
+  it('opens a direct link to an inner page with its tabs', async () => {
+    app = await launchApp({ path: '/collections', builder })
     await waitForTestId(app.page, 'collections-grid')
     expect(await isShown(app.page, 'subnav')).toBe(true)
-    await app.waitForEvent('Prelaunch gate', { outcome: 'open' })
   })
 })
 

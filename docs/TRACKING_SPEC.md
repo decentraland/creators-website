@@ -53,14 +53,6 @@ Failure events use `errorCode(error)`: the domain error's own `reason` (`locked`
 
 Switching accounts in an injected wallet reloads the page, and `analytics.reset()` runs first so the two accounts don't end up sharing one anonymous visitor.
 
-### Pre-launch gate
-
-| event | when | props |
-| --- | --- | --- |
-| `Prelaunch gate` | the `creators-prelaunch` gate answered while armed: once per wallet per page load (a sign-out after a counted visit is not a new visitor and is not sent) | `outcome` (`open` = wallet on the allowlist, `hidden` = overview only). `address` / `is_signed_in` come from the common props |
-
-Not sent when the flag is off: after launch every visitor is `open` and the event would only be noise. A curtained visitor is redirected to the overview from any other route, so their only page view is the overview's.
-
 ### Page views
 
 A Segment `page` call per pathname change, named from a fixed map in `lib/pageViews.ts`: `collections`, `collection_detail`, `item_editor`, `curation`, `live_preview`, `other`. The legacy builder sends the url only, so the url comparison still works and the name is an extra. The overview (`/`) is named `/create`, sites' name for it, and goes to sites' source (see "Overview"). Redirect-only paths (`/overview`) send nothing: the page they land on sends its own view, so an old link counts once.
