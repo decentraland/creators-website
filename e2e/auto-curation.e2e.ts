@@ -86,6 +86,11 @@ describe('automatic review', () => {
     await clickTestId(page, 'ai-issues-back')
     await page.waitForFunction(() => !document.querySelector('[data-testid="ai-issues-modal"]'))
 
+    // Seen once: while the rejection still stands, a reload shows the page, not the same verdict again.
+    await page.reload({ waitUntil: 'networkidle2' })
+    await waitForTestId(page, 'review-notice', 30_000)
+    expect(await isShown(page, 'ai-issues-modal')).toBe(false)
+
     const chip = await waitForTestId(page, 'item-row-validation')
     expect(await chip.evaluate(el => el.getAttribute('data-status'))).toBe('errors')
     expect(await isShown(page, 'item-row-edit-name')).toBe(true)
@@ -97,11 +102,6 @@ describe('automatic review', () => {
     expect(app.builder.curations.get(collection.id)?.status).toBe('pending')
     expect(app.builder.events.map(row => row.type)).toContain('review.appeal_requested')
     await app.waitForEvent('Appeal curation', { collectionId: collection.id })
-
-    // Seen once: a reload shows the page, not the same verdict again.
-    await page.reload({ waitUntil: 'networkidle2' })
-    await waitForTestId(page, 'review-notice', 30_000)
-    expect(await isShown(page, 'ai-issues-modal')).toBe(false)
   })
 
   it('pauses item editing while the automatic review runs', async () => {

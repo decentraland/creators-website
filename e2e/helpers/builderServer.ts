@@ -508,6 +508,11 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
     if (method === 'GET' && parts.length === 1 && head === 'collections') return listCurationCollections(query)
     // An appeal opens a new pending request over the rejection, as builder-server does.
     if (head === 'collections' && id && sub === 'curation' && subPath === 'appeal' && method === 'POST') {
+      // The same answers as builder-server, which the client tells apart by message.
+      const latest = eventsOf(id)[0]
+      if (latest?.type === 'review.appeal_requested' && curations.get(id)?.status === 'pending') {
+        return conflict('There is already an open appeal for this collection')
+      }
       if (curations.get(id)?.status !== 'rejected') return conflict('Only rejected collections can be appealed')
       const note = (body as { note?: string } | undefined)?.note ?? ''
       recordEvent(id, 'review.appeal_requested', 'creator', { note })
