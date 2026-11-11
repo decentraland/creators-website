@@ -21,6 +21,7 @@ vi.mock('~/lib/builder', async importOriginal => {
     ValidationLimitError: actual.ValidationLimitError,
     isCollectionBusy: actual.isCollectionBusy,
     isReviewConflict: actual.isReviewConflict,
+    isValidationRunning: actual.isValidationRunning,
     fetchCollectionCuration: vi.fn(),
     fetchCurationCollections: vi.fn(),
     fetchCurations: vi.fn()
