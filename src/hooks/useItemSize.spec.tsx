@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { fetchContentSize } from '~/lib/builder'
 import { ItemFileError } from '~/lib/itemFiles'
 import { MAX_CONCURRENT_MEASUREMENTS, measureItemBytes } from '~/lib/itemSize'
@@ -112,6 +112,18 @@ describe('useCatalystItemSizes', () => {
     expect(result.current.sizes.get('hat')).toEqual({ bytes: 2_250_000, limit: 3 * 1024 * 1024 })
     expect(result.current.sizes.has('broken')).toBe(false)
     expect(captureError).toHaveBeenCalledWith(expect.any(Error), { flow: 'item_size', itemId: 'broken' })
+  })
+
+  it('measures an item that failed again on request, once storage answers', async () => {
+    const flaky = item('flaky', { 'male/hat.glb': 'bafflaky', 'thumbnail.png': 'bafthumb', 'image.png': 'bafimage' })
+    const { result } = renderHook(() => useCatalystItemSizes([flaky]), { wrapper: wrapperWith() })
+    await waitFor(() => expect(result.current.unknown.has('flaky')).toBe(true))
+
+    STORED.bafflaky = 1_000_000
+    await act(() => result.current.remeasure(flaky))
+    await waitFor(() => expect(result.current.sizes.get('flaky')?.bytes).toBe(1_250_000))
+    expect(result.current.unknown.has('flaky')).toBe(false)
+    delete STORED.bafflaky
   })
 })
 

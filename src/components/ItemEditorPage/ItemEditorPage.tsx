@@ -29,6 +29,7 @@ import { modelValidationKey, useModelValidation } from '~/hooks/useModelValidati
 import { useRerunValidation } from '~/hooks/useRerunValidation'
 import { thumbnailValidationKey, useThumbnailValidation } from '~/hooks/useThumbnailValidation'
 import { useCatalystItemSizes } from '~/hooks/useItemSize'
+import { SaveInProgressError, useExclusiveSave } from '~/hooks/useExclusiveSave'
 import { fetchStoredThumbnail, useSaveItem, type SaveItemVariables } from '~/hooks/useSaveItem'
 import { captureError } from '~/lib/monitoring'
 import { springBonesFetcher } from '~/hooks/useSpringBones'
@@ -143,17 +144,7 @@ const ItemEditorPage = () => {
   const itemsQuery = useAllCollectionItems(address, collectionId ?? undefined)
   const baseWearables = useBaseWearables()
   const saveItem = useSaveItem(address)
-  // Every save is a full-item PUT built from the stored item, so one running from its build until its PUT settles
-  // keeps the others (Save, Change file, thumbnail) disabled: two in flight would overwrite each other.
-  const [pendingSaves, setPendingSaves] = useState(0)
-  async function whileSaving<T>(task: () => Promise<T>): Promise<T> {
-    setPendingSaves(count => count + 1)
-    try {
-      return await task()
-    } finally {
-      setPendingSaves(count => count - 1)
-    }
-  }
+  const { isSaving, run: runSave } = useExclusiveSave()
   const saveCollection = useSaveCollection(address)
   const [isRenameOpen, setRenameOpen] = useState(false)
 
@@ -445,7 +436,7 @@ const ItemEditorPage = () => {
   async function saveFileChange(change: ItemFileChange): Promise<void> {
     if (!selected) throw new Error('No item selected')
     const base = selected
-    await whileSaving(() => applyFileChange(base, change))
+    await runSave(() => applyFileChange(base, change))
   }
 
   async function applyFileChange(base: Item, change: ItemFileChange): Promise<void> {
@@ -479,10 +470,12 @@ const ItemEditorPage = () => {
   async function saveThumbnail(thumbnail: Blob): Promise<void> {
     if (!selected) return
     try {
-      await whileSaving(() => commit(selected, { item: selected, thumbnail }))
+      await runSave(() => commit(selected, { item: selected, thumbnail }))
     } catch (error) {
       const expected =
-        isItemTooBigError(error) || (error instanceof BuilderServerError && error.status === COLLECTION_LOCKED_STATUS)
+        isItemTooBigError(error) ||
+        error instanceof SaveInProgressError ||
+        (error instanceof BuilderServerError && error.status === COLLECTION_LOCKED_STATUS)
       if (!expected) captureError(error, { flow: 'item_save', itemId: selected.id })
       throw error
     }
@@ -496,7 +489,9 @@ const ItemEditorPage = () => {
       return
     }
     setSpringWarning(false)
-    whileSaving(() => persist(selected)).catch((error: unknown) => reportSaveError(error, 'item_save'))
+    runSave(() => persist(selected)).catch((error: unknown) => {
+      if (!(error instanceof SaveInProgressError)) reportSaveError(error, 'item_save')
+    })
   }
 
   // Read off `form` before the memo: `form` itself is a fresh object every render, so depending on it
@@ -695,7 +690,7 @@ const ItemEditorPage = () => {
         draft={form.draft}
         dispatch={form.dispatch}
         isDirty={form.isDirty}
-        isSaving={pendingSaves > 0}
+        isSaving={isSaving}
         size={itemSize}
         springBones={springBonesForm}
         linkedContract={isLinked ? linkedContract : undefined}

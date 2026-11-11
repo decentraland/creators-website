@@ -120,6 +120,8 @@ export type ItemSizes = {
   /** The ids of the items whose size could not be measured. */
   unknown: Set<string>
   isMeasuring: boolean
+  /** Measures the item again: a failed measurement is not retried on its own. */
+  remeasure: (item: Item) => Promise<void>
 }
 
 /**
@@ -127,6 +129,7 @@ export type ItemSizes = {
  * and leaves the item in `unknown`, never at a made-up size.
  */
 export function useCatalystItemSizes(items: Item[], { enabled = true }: { enabled?: boolean } = {}): ItemSizes {
+  const queryClient = useQueryClient()
   const deps = useItemSizeDeps()
   const queries = useMemo(
     () =>
@@ -144,6 +147,10 @@ export function useCatalystItemSizes(items: Item[], { enabled = true }: { enable
     [items, deps, enabled]
   )
   // Stable, so the combined result keeps its identity until a size actually changes.
+  const remeasure = useCallback(
+    (item: Item) => queryClient.refetchQueries({ queryKey: itemSizeKey(item), exact: true }),
+    [queryClient]
+  )
   const combine = useCallback(
     (results: UseQueryResult<ItemSize>[]): ItemSizes => {
       const sizes = new Map<string, ItemSize>()
@@ -154,9 +161,9 @@ export function useCatalystItemSizes(items: Item[], { enabled = true }: { enable
         if (result.data) sizes.set(id, result.data)
         else if (result.isError) unknown.add(id)
       })
-      return { sizes, unknown, isMeasuring: enabled && results.some(result => result.isPending) }
+      return { sizes, unknown, isMeasuring: enabled && results.some(result => result.isPending), remeasure }
     },
-    [items, enabled]
+    [items, enabled, remeasure]
   )
   return useQueries({ queries, combine })
 }

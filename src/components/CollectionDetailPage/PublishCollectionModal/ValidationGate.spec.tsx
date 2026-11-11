@@ -12,7 +12,7 @@ import { ValidationGate } from './ValidationGate'
 const rerun = vi.fn()
 vi.mock('~/hooks/useCollectionValidation', () => ({ useRerunItemValidation: () => rerun }))
 vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
-const itemSizes: ItemSizes = { sizes: new Map(), unknown: new Set(), isMeasuring: false }
+const itemSizes: ItemSizes = { sizes: new Map(), unknown: new Set(), isMeasuring: false, remeasure: vi.fn() }
 vi.mock('~/hooks/useItemSize', () => ({ useCatalystItemSizes: () => itemSizes }))
 
 function makeItem(id: string): Item {
@@ -68,6 +68,7 @@ beforeEach(() => {
   itemSizes.sizes = new Map()
   itemSizes.unknown = new Set()
   itemSizes.isMeasuring = false
+  itemSizes.remeasure = vi.fn().mockResolvedValue(undefined)
 })
 
 describe('ValidationGate', () => {
@@ -117,6 +118,13 @@ describe('ValidationGate', () => {
     expect(screen.getByTestId('publish-validation-clean-card')).toHaveTextContent("We couldn't check this item's size")
     await userEvent.click(screen.getByTestId('publish-validation-continue'))
     expect(onPass).toHaveBeenCalled()
+  })
+
+  it('measures an unmeasured item again when its checks are re-run', async () => {
+    itemSizes.unknown = new Set(['clean'])
+    renderGate({ validation: { isValidating: false, results: [{ item: clean, issues: [] }] } })
+    await userEvent.click(screen.getByTestId('publish-validation-clean-rerun'))
+    expect(itemSizes.remeasure).toHaveBeenCalledWith(clean)
   })
 
   it('reports a re-run against the rule book verdict alone, not the size issue', async () => {

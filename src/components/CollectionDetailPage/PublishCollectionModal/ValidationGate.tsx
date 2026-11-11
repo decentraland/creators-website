@@ -122,16 +122,19 @@ export function ValidationGate({ collectionId, flow, validation, blockOnErrors, 
   const rerunItemValidation = useRerunItemValidation()
   const rerun = useCallback(
     // The re-run reports the rule book's verdict it replaces, without the size issues this step adds.
-    (check: ItemCheck) =>
-      rerunItemValidation(
+    (check: ItemCheck) => {
+      // A size that could not be measured is measured again with the checks.
+      if (sizes.unknown.has(check.item.id)) void sizes.remeasure(check.item)
+      return rerunItemValidation(
         check.item,
         flow,
         getValidationStatus(
           check.issues.filter(issue => !isSizeIssue(issue)),
           false
         )
-      ),
-    [rerunItemValidation, flow]
+      )
+    },
+    [rerunItemValidation, flow, sizes]
   )
   function resolveIssues(action: 'continue' | 'back') {
     track('Publish Validation Resolved', { collectionId, flow, action, ...totals(flaggedChecks) })
