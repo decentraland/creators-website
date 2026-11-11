@@ -122,7 +122,7 @@ describe('add items to a collection', () => {
     await waitForTestId(app.page, 'draft-thumbnail-loading')
 
     await vi.waitFor(() => expect(app!.previewAnswers).toContainEqual({ method: 'load', result: 'held' }), {
-      timeout: 30_000
+      timeout: 15_000
     })
     await app.page.evaluate(() =>
       document
