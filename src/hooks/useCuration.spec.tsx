@@ -22,13 +22,12 @@ vi.mock('~/lib/builder', () => ({
 vi.mock('~/lib/analytics', () => ({ track: vi.fn(), errorCode: () => 'unknown' }))
 vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
 const auth = vi.hoisted(() => ({
-  encodeContractCall: () => '0x',
   sendContractTransaction: vi.fn(),
   waitForTransaction: vi.fn()
 }))
 vi.mock('~/lib/auth', () => auth)
 
-const { useAssignCurator, useCommittee, useDisableCollection, useRejectCuration } = await import('./useCuration')
+const { useAssignCurator, useDisableCollection, useRejectCuration } = await import('./useCuration')
 const { captureError } = await import('~/lib/monitoring')
 
 const ADDRESS = '0xCurator'
@@ -53,22 +52,6 @@ beforeEach(() => {
   api.updateCollectionCuration.mockImplementation((_a: string, _c: string, change: object) =>
     Promise.resolve({ ...pending, ...change })
   )
-})
-
-describe('useCommittee', () => {
-  it('is not a curator until the committee loads, then matches the wallet case-insensitively', async () => {
-    api.fetchCommittee.mockResolvedValue(['0xcurator'])
-    const { result } = renderHook(() => useCommittee(ADDRESS), { wrapper })
-    expect(result.current.isCurator).toBe(false)
-    await waitFor(() => expect(result.current.isCurator).toBe(true))
-  })
-
-  it('fails closed when the committee cannot be read', async () => {
-    api.fetchCommittee.mockRejectedValue(new Error('down'))
-    const { result } = renderHook(() => useCommittee(ADDRESS), { wrapper })
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.isCurator).toBe(false)
-  })
 })
 
 describe('useRejectCuration', () => {

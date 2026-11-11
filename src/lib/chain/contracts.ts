@@ -1,6 +1,6 @@
 // The contracts this app calls, per chain, with their EIP-712 domain and only the ABI functions used here.
 // Values from decentraland-transactions@3.3.0 (Apache-2.0).
-import { parseAbi, type Abi } from 'viem'
+import { encodeFunctionData, parseAbi, type Abi } from 'viem'
 
 /** How a contract's `executeMetaTransaction` takes the call: r/s/v split, or one signature blob. */
 export type MetaTransactionStyle = 'functionSignature' | 'functionData'
@@ -14,6 +14,17 @@ export type ContractData<TAbi extends Abi = Abi> = {
   abi: TAbi
   /** How a meta-transaction to it encodes the call; absent is sent as `functionSignature`, as the package did. */
   metaTransaction?: MetaTransactionStyle
+}
+
+export type ContractCall = {
+  contract: ContractData
+  method: string
+  args: unknown[]
+}
+
+/** ABI-encoded calldata for a contract call. */
+export function encodeContractCall({ contract, method, args }: ContractCall): string {
+  return encodeFunctionData({ abi: contract.abi, functionName: method, args })
 }
 
 const MANA_ABI = parseAbi([
