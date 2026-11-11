@@ -1,5 +1,5 @@
 import { Suspense, lazy, useState } from 'react'
-import * as S from './Confetti.styles'
+import styles from './Confetti.module.css'
 
 // The shop's purchase burst, played once. Loaded on demand: it only matters on the one dialog that
 // celebrates a purchase.
@@ -12,10 +12,10 @@ export function Confetti() {
   if (!play) return null
 
   return (
-    <S.Layer aria-hidden data-testid="confetti">
+    <div className={styles.layer} aria-hidden data-testid="confetti">
       <Suspense fallback={null}>
         <LottieBurst />
       </Suspense>
-    </S.Layer>
+    </div>
   )
 }

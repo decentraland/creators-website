@@ -14,7 +14,7 @@ Ported from shop's config:
 
 - **Core:** Vite + React 18 + TypeScript strict, React Router v6, `~` → `src/` path alias.
 - **State:** `@tanstack/react-query` for server state (builder-server data), `zustand` for client/session state. No redux.
-- **Styling:** Emotion `styled` + a `src/styles/theme.ts` token file (shop's palette), `decentraland-ui2` (MUI-based) where it fits. The item editor's resizable columns use `react-resizable-panels` (creator-hub inspector's choice).
+- **Styling:** CSS Modules over design tokens as custom properties (`src/styles/tokens.css`, generated from the `src/styles/theme.ts` token file: shop's palette); files not yet converted still use Emotion `styled`. `decentraland-ui2` (MUI-based) where it fits. The item editor's resizable columns use `react-resizable-panels` (creator-hub inspector's choice).
 - **i18n:** `react-intl` with `en.json` / `es.json` / `zh.json`.
 - **Auth and chain:** `decentraland-connect` + `@dcl/single-sign-on-client` + a zustand wallet store; builder-server requests signed with `@dcl/crypto` AuthChain; on-chain reads, writes and typed-data signatures through `viem`.
 - **Monitoring:** Sentry (`@sentry/react`).
@@ -29,6 +29,7 @@ Current commands (keep this section in sync with `package.json`):
 - `npm run start` (or `npm run dev`) — Vite dev server
 - `npm run build` — `tsc -b` type-check + Vite build (runs `scripts/prebuild.cjs` first)
 - `npm run typecheck` — `tsc -b` only
+- `npm run tokens` — regenerate `src/styles/tokens.css` from `src/styles/theme.ts` (a spec fails while it is stale)
 - `npm run test` — run all Vitest tests once; `npm run test:watch` for watch mode; `npm run test:coverage` for coverage
 - `npx vitest run src/path/to/file.spec.ts` — run a single test file; add `-t 'name'` to filter by test name
 - `npm run test:e2e` — browser e2e suite; starts its own Vite dev server on port 5283 (`E2E_PORT=<port>` to move it). One spec: `npm run test:e2e -- e2e/collections.e2e.ts`. Chrome comes from Puppeteer's postinstall; after an `--ignore-scripts` install run `npx puppeteer browsers install chrome`
@@ -95,11 +96,14 @@ Prefer friendly copy and hide blockchain plumbing where possible. Wallet/MANA/tr
 
 ### Styling
 
-- Every component is a folder — `components/Foo/{Foo.tsx, Foo.styles.ts, Foo.spec.tsx, index.ts}` — with `index.ts` re-exporting so consumers import `~/components/Foo`. Styled defs live only in the `.styles.ts` file (`import * as S from './Foo.styles'`), never inline in a `.tsx`.
-- Pull colors/radii/breakpoints from the theme, never re-hardcode hexes or pixel breakpoints. **Import the theme directly** (`import { theme } from '~/styles/theme'`), never via ThemeProvider or `({ theme }) =>` callbacks — there is no runtime theming, and the direct import keeps unit tests provider-free.
-- Media queries via `theme.media.maxWidth(bp)` / `.minWidth(bp)`; raw `@media` strings only for genuinely non-canonical values.
+New and converted components use CSS Modules; Emotion (`*.styles.ts`) remains only in files not yet converted, and no new one is added (`src/styles/migration.spec.ts` lists them). Full rules in "Styling" in `CONVENTIONS.md`.
+
+- Every component is a folder — `components/Foo/{Foo.tsx, Foo.module.css, Foo.spec.tsx, index.ts}` — with `index.ts` re-exporting so consumers import `~/components/Foo`. `import styles from './Foo.module.css'` and `className={styles.root}`; merge a consumer's `className` with `cx` from `~/lib/cx`.
+- Values come from the tokens, never re-hardcoded hexes or radii: `var(--color-dcl-red)`, `var(--radius-btn)`, … in modules (`src/styles/tokens.css`, generated from `src/styles/theme.ts` by `npm run tokens`; edit the theme, then regenerate). TypeScript and unconverted `*.styles.ts` files import the theme object directly (`import { theme } from '~/styles/theme'`), never via ThemeProvider or `({ theme }) =>` callbacks.
+- Media queries use the canonical breakpoints of `theme.ts` as literals (custom properties can't appear in media conditions): `@media (max-width: 768px)`, and `@media not all and (max-width: 768px)` for the exact complement. A spec fails on any other width unless it is allowlisted there.
+- Cascade layers: `@layer reset, foundations` (declared once in `index.html`). Shared components that others restyle (Button, `shared.module.css`, small atoms) put their rules in `@layer foundations`; feature modules stay unlayered, so a consumer's class always beats a foundation's. Rules that style an element another library styles (a MUI icon's `svg`) stay unlayered.
 - State and variants are `data-*` attributes (`data-open`, `data-variant`, `data-selected`) styled via `&[data-…]` selectors — never `is-*`/BEM-modifier classNames.
-- **Buttons**: every action button/link is `~/components/Button` (`variant` / `size` / `loading`, polymorphic `as`). Layout-only tweaks go through `styled(Button)`; never re-declare a button's colors or variants in a page's styles.
+- **Buttons**: every action button/link is `~/components/Button` (`variant` / `size` / `loading`, polymorphic `as`). Layout-only tweaks go through `className` (or `styled(Button)` in an unconverted file); never re-declare a button's colors or variants in a page's styles.
 - **Icons**: Material glyphs from `@mui/icons-material`; Figma-specific glyphs as inline-SVG components in `~/components/Icons` — see "Icons" in `CONVENTIONS.md`.
 - **Never use a styled component as a selector** inside another styled template (`${Name} { … }`): it compiles in the Vite build but throws in Vitest. Target a stable `[data-testid]` / `[data-*]` hook instead.
 

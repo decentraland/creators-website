@@ -7,7 +7,8 @@ import type {
   ReactElement,
   ReactNode
 } from 'react'
-import * as S from './Button.styles'
+import { cx } from '~/lib/cx'
+import styles from './Button.module.css'
 
 export type ButtonVariant = 'primary' | 'gradient' | 'secondary' | 'dark' | 'glass' | 'light' | 'ghost'
 export type ButtonSize = 'md' | 'sm' | 'icon' | 'compact' | 'lg' | 'hero'
@@ -19,6 +20,8 @@ type ButtonOwnProps = {
   loading?: boolean
   disabled?: boolean
   children?: ReactNode
+  /** Merged after the button's own class: layout tweaks from a consumer's module win over the foundation layer. */
+  className?: string
   // Pinned explicitly so it stays typed when the polymorphic element type widens to ElementType.
   onClick?: MouseEventHandler<HTMLElement>
 }
@@ -30,23 +33,22 @@ type ButtonProps<C extends ElementType> = ButtonOwnProps & { as?: C } & Omit<
   >
 
 function ButtonInner<C extends ElementType = 'button'>(
-  { as, variant = 'primary', size = 'md', loading = false, disabled, children, ...rest }: ButtonProps<C>,
+  { as, variant = 'primary', size = 'md', loading = false, disabled, className, children, ...rest }: ButtonProps<C>,
   ref: ForwardedRef<Element>
 ) {
-  // The styled tag is `button`; polymorphic `as` + ref can't be statically reconciled with it, so the
-  // strict typing lives on the exported signature and this alias just forwards.
-  const Root = S.Root as ElementType
+  // Polymorphic `as` + ref can't be statically reconciled, so the strict typing lives on the exported signature.
+  const Root: ElementType = as ?? 'button'
   return (
     <Root
-      as={as}
       ref={ref}
+      className={cx(styles.root, className)}
       data-variant={variant}
       data-size={size}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       {...rest}
     >
-      {loading ? <S.Spinner data-testid="button-spinner" aria-hidden /> : children}
+      {loading ? <span className={styles.spinner} data-testid="button-spinner" aria-hidden /> : children}
     </Root>
   )
 }

@@ -1,3 +1,4 @@
+@import "./tokens.css";
 /* Inter (SIL OFL 1.1, see assets/fonts/LICENSE-Inter.txt), served with the app so page views leak nothing to Google. */
 @font-face {
   font-family: "Inter";
@@ -51,9 +52,6 @@
 body[data-no-subnav] {
   --sub-nav-h: 0px;
 }
-* {
-  box-sizing: border-box;
-}
 html {
   /* `clip` rather than `hidden`: hidden turns the root into a scroll container and breaks
      `position: sticky` on the sub-nav. */
@@ -83,17 +81,23 @@ body {
   flex-direction: column;
   min-height: calc(100vh - var(--nav-h));
 }
-a {
-  color: inherit;
-  text-decoration: none;
-}
-button {
-  font-family: inherit;
-  cursor: pointer;
-}
-h1,
-h2 {
-  margin: 0;
+/* Under the foundations layer (order declared in index.html), so these element rules never beat a component's. */
+@layer reset {
+  * {
+    box-sizing: border-box;
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+  h1,
+  h2 {
+    margin: 0;
+  }
 }
 
 .page {

@@ -15,6 +15,7 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
     "typecheck": "tsc -b",
+    "tokens": "node scripts/gen-tokens.mjs",
     "prepare": "simple-git-hooks",
     "format": "prettier --check \"**/*.{js,mjs,cjs,ts,tsx,json,css,html,md,mdx}\" --log-level=error",
     "format:fix": "prettier --write \"**/*.{js,mjs,cjs,ts,tsx,json,css,html,md,mdx}\" --log-level=error",

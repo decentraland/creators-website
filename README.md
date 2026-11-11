@@ -34,7 +34,7 @@ Related projects:
 
 ## Tech Stack
 
-Vite + React 18 + TypeScript (strict), React Router, @tanstack/react-query (server state), zustand (client state), react-intl (en/es), Emotion + decentraland-ui2 for styling (shop's theme and color palette), Vitest + Testing Library for unit tests, Puppeteer for browser e2e tests. Auth via decentraland-connect + single sign-on, with AuthChain-signed requests to builder-server. Errors are reported to Sentry.
+Vite + React 18 + TypeScript (strict), React Router, @tanstack/react-query (server state), zustand (client state), react-intl (en/es), CSS Modules over design-token custom properties for styling (shop's theme and color palette; Emotion in files not yet converted), Vitest + Testing Library for unit tests, Puppeteer for browser e2e tests. Auth via decentraland-connect + single sign-on, with AuthChain-signed requests to builder-server. Errors are reported to Sentry.
 
 ## Getting Started
 
