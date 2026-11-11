@@ -105,6 +105,7 @@ Linked funnel: Linked chip → `Create TP Collection` → `Add items` → `Publi
 | --- | --- | --- |
 | `Add items` | an upload that creates items finished in the add-items modal. One event per upload, **not** per item: the legacy builder's per-item `Save item` on creation reads here as `item_count` | `collectionId`, `item_count`, `failed_count`, `error` (only when some failed) |
 | `Edit TP Items` | an update-only upload finished (every draft edits an existing linked item; legacy name, so bulk edits line up with the old builder's) | `collectionId`, `item_count`, `failed_count` |
+| `Item preview processed` | the hidden preview finished a file's metrics and auto thumbnail, or gave up on it (add items and the change-file modal). A `timeout` also goes to Sentry (`step: 'preview_timeout'`, with `flow`, `renderer` and `itemType`) | `flow` (`add_items` / `item_file_change`), `renderer` (`unity` / `babylon`), `item_type`, `outcome` (`ok` / `timeout` / `error`), `duration_ms` (from the file's turn to the result, not the wait in the queue), `attempts` (iframes used: `2` after a remount), `batch_size` |
 | `Add items error` | the upload threw before producing a result, or was refused because drafts share a linked URN (`error: duplicate_urn`) | `collectionId`, `item_count`, `error` |
 | `Save item` | a single item was saved from the editor | `itemId` |
 | `Save item error` |  | `itemId`, `error` |

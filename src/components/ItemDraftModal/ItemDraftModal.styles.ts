@@ -363,13 +363,17 @@ export const ProcessingSpinner = styled.span`
   animation: spin 0.8s linear infinite;
 `
 
-/* Hosts the metrics/screenshot WearablePreview iframe without showing it. */
+/**
+ * Sits behind the modal's opaque surface (rendered inside the dialog, which clips it) rather than off-screen:
+ * Chrome throttles a cross-origin iframe outside the viewport or at opacity 0, which made Unity ~10x slower.
+ */
 export const HiddenPreview = styled.div`
-  position: fixed;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
   width: 1024px;
   height: 1024px;
-  left: -10000px;
-  top: 0;
   pointer-events: none;
-  opacity: 0;
+  opacity: 0.01;
 `

@@ -19,6 +19,7 @@ function renderForm(patch: Partial<ItemDraft>, extra: Partial<Parameters<typeof 
     category: 'upper_body',
     bodyShape: BodyShapeType.MALE,
     thumbnail: 'data:image/png;base64,AAAA',
+    metrics: { triangles: 708, materials: 3, meshes: 5, textures: 4, bodies: 5, entities: 1 },
     ...patch
   }
   const onOpenThumbnail = vi.fn()
@@ -41,6 +42,13 @@ function renderForm(patch: Partial<ItemDraft>, extra: Partial<Parameters<typeof 
 describe('DraftForm thumbnail', () => {
   it('opens the thumbnail editor for a regular item', async () => {
     const { onOpenThumbnail } = renderForm({ isVariant: false })
+    await userEvent.click(screen.getByTestId('edit-thumbnail'))
+    expect(onOpenThumbnail).toHaveBeenCalled()
+  })
+
+  it('lets the creator pick a thumbnail while the auto one is still being generated', async () => {
+    const { onOpenThumbnail } = renderForm({ isVariant: false, thumbnail: null, metrics: null })
+    expect(screen.getByTestId('draft-thumbnail-loading')).toBeInTheDocument()
     await userEvent.click(screen.getByTestId('edit-thumbnail'))
     expect(onOpenThumbnail).toHaveBeenCalled()
   })

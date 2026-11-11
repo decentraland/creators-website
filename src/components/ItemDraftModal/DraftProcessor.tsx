@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PreviewProjection, PreviewRenderer } from '@dcl/schemas'
 import { WearablePreview } from 'decentraland-ui2'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
-import { dataURLToBlob } from '~/lib/media'
-import { THUMBNAIL_PATH } from '~/lib/itemFiles'
+import { track } from '~/lib/analytics'
+import { captureError } from '~/lib/monitoring'
 import { ItemType, type ItemMetrics } from '~/lib/items'
 import { isPreviewEmpty, retryWhilePreviewReloads, toEmoteWithBlobs, toWearableWithBlobs } from '~/lib/preview'
 import { renderPosedThumbnail } from '~/lib/renderPosedThumbnail'
 import { getThumbnailPose, isAutoThumbnailStale } from '~/lib/thumbnailPose'
-import { type PreviewDraft } from '~/lib/draftPreview'
+import { type PreviewDraft, type PreviewResult } from '~/lib/draftPreview'
 import * as S from './ItemDraftModal.styles'
 
 const PREVIEW_ID = 'draft-processor'
@@ -17,11 +17,32 @@ const THUMBNAIL_SIZE = 1024
 // has replaced it"); a few attempts absorb that without hiding a genuinely broken file.
 const MAX_ATTEMPTS = 4
 const RETRY_DELAY_MS = 750
+// A Unity scene that never loads wedges the instance for every later draft, so a run that overruns its budget
+// remounts the iframe once and then fails the draft instead of holding the queue. A fresh iframe has to boot first.
+export const BOOT_BUDGET_MS = 45_000
+export const RUN_BUDGET_MS = 20_000
+
+export type PreviewFailure = 'timeout' | 'error'
 
 type Props = {
   draft: PreviewDraft
-  onResult: (id: string, patch: Partial<PreviewDraft>) => void
-  onError: (id: string) => void
+  /** Tags the Sentry report and the analytics event. */
+  flow: 'add_items' | 'item_file_change'
+  /** Files in the batch the draft belongs to. */
+  batchSize?: number
+  /** Apply with `applyPreviewResult`, onto the draft as it is by then. */
+  onResult: (id: string, result: PreviewResult) => void
+  onError: (id: string, reason: PreviewFailure) => void
+}
+
+type Run = {
+  runKey: string
+  done: boolean
+  busy: boolean
+  attempts: number
+  retryTimer: number
+  startedAt: number
+  mounts: number
 }
 
 type LoadPhase = 'idle' | 'update-sent' | 'loaded'
@@ -32,18 +53,61 @@ type LoadPhase = 'idle' | 'update-sent' | 'loaded'
  * thumbnail pose are rendered offscreen instead of screenshotting the preview, and re-rendered
  * when the category change alters the pose.
  */
-export function DraftProcessor({ draft, onResult, onError }: Props) {
+export function DraftProcessor({ draft, flow, batchSize = 1, onResult, onError }: Props) {
   const renderer = usePreviewRenderer()
+  const [mountCount, setMountCount] = useState(0)
   // A controller call can still fail mid-flight when the scene is being replaced, so attempts are
   // retried until one round-trip completes against a live scene.
   const pose = draft.type === ItemType.WEARABLE ? getThumbnailPose(draft.category) : null
   // A pose change on an already-processed draft is a new run against the same iframe.
   const runKey = `${draft.id}:${pose ?? ''}`
-  const runRef = useRef({ runKey: '', done: false, busy: false, attempts: 0, retryTimer: 0 })
+  const runRef = useRef<Run>({
+    runKey: '',
+    done: false,
+    busy: false,
+    attempts: 0,
+    retryTimer: 0,
+    startedAt: 0,
+    mounts: 1
+  })
 
   if (runRef.current.runKey !== runKey) {
     window.clearTimeout(runRef.current.retryTimer)
-    runRef.current = { runKey, done: false, busy: false, attempts: 0, retryTimer: 0 }
+    runRef.current = {
+      runKey,
+      done: false,
+      busy: false,
+      attempts: 0,
+      retryTimer: 0,
+      startedAt: performance.now(),
+      mounts: 1
+    }
+  }
+
+  const isEmote = draft.type === ItemType.EMOTE
+  // Emote-only options are URL params, so a type switch is a fresh iframe too.
+  const iframeKey = `${isEmote ? 'emote' : 'wearable'}-${mountCount}`
+  // Until a fresh iframe's first LOAD, the run's budget also covers the boot.
+  const bootedRef = useRef({ iframeKey: '', booted: false })
+  if (bootedRef.current.iframeKey !== iframeKey) bootedRef.current = { iframeKey, booted: false }
+
+  const report = (run: Run, outcome: 'ok' | PreviewFailure) => {
+    track('Item preview processed', {
+      flow,
+      renderer: renderer ?? null,
+      item_type: draft.type,
+      outcome,
+      duration_ms: Math.round(performance.now() - run.startedAt),
+      attempts: run.mounts,
+      batch_size: batchSize
+    })
+  }
+
+  const fail = (run: Run, reason: PreviewFailure) => {
+    run.done = true
+    window.clearTimeout(run.retryTimer)
+    report(run, reason)
+    onError(draft.id, reason)
   }
 
   // The iframe is kept across drafts (a remount reboots the whole preview app), so a new draft's
@@ -86,31 +150,26 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
             : (draft.metrics ?? {})
         if (!metrics || (draft.type === ItemType.WEARABLE && !metrics.meshes)) return
 
-        const patch: Partial<PreviewDraft> = { metrics }
+        const result: PreviewResult = { metrics, thumbnail: null, thumbnailCategory: draft.category }
         if (!draft.thumbnail || isAutoThumbnailStale(draft)) {
-          const thumbnail = pose
+          result.thumbnail = pose
             ? await renderPosedThumbnail(draft.contents, draft.model, pose).catch((error: unknown) => {
                 console.warn('Posed thumbnail render failed, falling back to preview screenshot', error)
                 return screenshot()
               })
             : await screenshot()
-          const thumbnailBlob = dataURLToBlob(thumbnail)
-          patch.thumbnail = thumbnail
-          patch.isAutoThumbnail = true
-          patch.autoThumbnailCategory = draft.category
-          if (thumbnailBlob) patch.contents = { ...draft.contents, [THUMBNAIL_PATH]: thumbnailBlob }
         }
 
         if (runRef.current !== run || run.done) return
         run.done = true
-        onResult(draft.id, patch)
+        report(run, 'ok')
+        onResult(draft.id, result)
       } catch (error) {
         if (runRef.current !== run || run.done) return
         run.attempts++
         if (run.attempts >= MAX_ATTEMPTS) {
           console.error('Preview processing failed:', error)
-          run.done = true
-          onError(draft.id)
+          fail(run, 'error')
           return
         }
         run.retryTimer = window.setTimeout(attempt, RETRY_DELAY_MS)
@@ -126,7 +185,32 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runKey])
 
-  const isEmote = draft.type === ItemType.EMOTE
+  useEffect(() => {
+    if (renderer === undefined) return
+    const run = runRef.current
+    const budget = bootedRef.current.booted ? RUN_BUDGET_MS : BOOT_BUDGET_MS
+    const timer = window.setTimeout(() => {
+      if (runRef.current !== run || run.done) return
+      if (run.mounts > 1) {
+        captureError(new Error('The preview did not process the model in time'), {
+          flow,
+          step: 'preview_timeout',
+          renderer,
+          itemType: draft.type
+        })
+        fail(run, 'timeout')
+        return
+      }
+      // A fresh run object orphans whatever the wedged iframe still owes the old one.
+      window.clearTimeout(run.retryTimer)
+      runRef.current = { ...run, busy: false, attempts: 0, retryTimer: 0, mounts: run.mounts + 1 }
+      loadRef.current = { draftId: draft.id, phase: 'idle' }
+      setMountCount(count => count + 1)
+    }, budget)
+    return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runKey, iframeKey, renderer])
+
   // Rewrapping the same contents each render would reload the iframe endlessly.
   const blob = useMemo(
     () => (isEmote ? toEmoteWithBlobs(draft.contents, draft.id) : toWearableWithBlobs(draft.contents, draft.id)),
@@ -135,10 +219,9 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
 
   return (
     <S.HiddenPreview aria-hidden data-testid="draft-processor">
-      {/* Emote-only options are URL params, so a type switch is the one case that needs a fresh iframe. */}
       {renderer !== undefined && (
         <WearablePreview
-          key={isEmote ? 'emote' : 'wearable'}
+          key={iframeKey}
           id={PREVIEW_ID}
           blob={blob}
           unity={renderer === PreviewRenderer.UNITY}
@@ -150,6 +233,7 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
             if (loadRef.current.phase === 'idle') loadRef.current.phase = 'update-sent'
           }}
           onLoad={() => {
+            bootedRef.current.booted = true
             if (loadRef.current.phase === 'idle') return
             loadRef.current.phase = 'loaded'
             attempt()
@@ -160,8 +244,7 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
             if (run.done || run.busy) return
             run.attempts++
             if (run.attempts >= MAX_ATTEMPTS) {
-              run.done = true
-              onError(draft.id)
+              fail(run, 'error')
             } else {
               window.clearTimeout(run.retryTimer)
               run.retryTimer = window.setTimeout(attempt, RETRY_DELAY_MS)

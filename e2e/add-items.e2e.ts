@@ -1,7 +1,7 @@
 import { type ElementHandle } from 'puppeteer'
 import { afterEach, describe, expect, it } from 'vitest'
 import { collection } from './fixtures'
-import { launchApp, type App } from './helpers/app'
+import { launchApp, type App, type LaunchOptions } from './helpers/app'
 import {
   byTestId,
   clickTestId,
@@ -22,8 +22,8 @@ afterEach(async () => {
 
 const draft = collection({ name: 'Summer Drop' })
 
-async function openWithFiles(paths: string[]): Promise<App> {
-  const launched = await launchApp({ path: `/collections/${draft.id}`, builder: { collections: [draft] } })
+async function openWithFiles(paths: string[], opts: Partial<LaunchOptions> = {}): Promise<App> {
+  const launched = await launchApp({ path: `/collections/${draft.id}`, builder: { collections: [draft] }, ...opts })
   await waitForTestId(launched.page, 'collection-empty')
   const input = (await launched.page.$(byTestId('add-items-input'))) as ElementHandle<HTMLInputElement>
   await input.uploadFile(...paths)
@@ -113,6 +113,21 @@ describe('add items to a collection', () => {
     expect(item.metrics).toEqual(PREVIEW_METRICS)
     expect(uploaded(app, item.contents)).toBe(true)
     await app.page.waitForFunction(() => document.querySelectorAll('[data-testid="item-row"]').length === 1)
+  })
+
+  it('shows the thumbnail as being generated until the preview has rendered it', async () => {
+    app = await openWithFiles([FIXTURE.hat], { preview: { holdLoads: true } })
+
+    await readyDraft(app)
+    await waitForTestId(app.page, 'draft-thumbnail-loading')
+
+    await app.page.evaluate(() =>
+      document
+        .querySelector<HTMLIFrameElement>('[data-testid="draft-processor"] iframe')
+        ?.contentWindow?.postMessage({ type: 'e2e_release' }, '*')
+    )
+    await waitForTestId(app.page, 'draft-thumbnail-img')
+    expect(await app.page.$(byTestId('draft-thumbnail-loading'))).toBeNull()
   })
 
   it('requires the preview video of a smart wearable', async () => {

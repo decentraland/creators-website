@@ -21,9 +21,12 @@ vi.mock('decentraland-ui2', () => {
   return { WearablePreview }
 })
 
-vi.mock('~/hooks/usePreviewRenderer', () => ({ usePreviewRenderer: () => PreviewRenderer.BABYLON }))
+vi.mock('~/hooks/usePreviewRenderer', () => ({ usePreviewRenderer: () => PreviewRenderer.UNITY }))
 
-const { DraftProcessor } = await import('./DraftProcessor')
+const { captureError } = vi.hoisted(() => ({ captureError: vi.fn() }))
+vi.mock('~/lib/monitoring', () => ({ captureError }))
+
+const { DraftProcessor, BOOT_BUDGET_MS } = await import('./DraftProcessor')
 
 const REAL_METRICS = { triangles: 708, materials: 3, meshes: 5, textures: 4, bodies: 5, entities: 1 }
 const EMPTY_SCENE_METRICS = { triangles: 0, materials: 0, meshes: 0, textures: 0, bodies: 0, entities: 1 }
@@ -66,6 +69,7 @@ beforeEach(() => {
   vi.useFakeTimers()
   previewProps.length = 0
   getMetrics.mockReset()
+  captureError.mockReset()
 })
 afterEach(() => {
   vi.useRealTimers()
@@ -75,19 +79,22 @@ describe('DraftProcessor', () => {
   it('fills the draft with the metrics the preview reports once it has loaded the model', async () => {
     getMetrics.mockResolvedValue(REAL_METRICS)
     const onResult = vi.fn()
-    render(<DraftProcessor draft={wearableDraft()} onResult={onResult} onError={vi.fn()} />)
+    render(<DraftProcessor draft={wearableDraft()} flow="add_items" onResult={onResult} onError={vi.fn()} />)
 
     await iframeLoads()
 
     expect(onResult).toHaveBeenCalledTimes(1)
-    expect(onResult.mock.calls[0][1]).toMatchObject({ metrics: REAL_METRICS, isAutoThumbnail: true })
+    expect(onResult.mock.calls[0][1]).toMatchObject({
+      metrics: REAL_METRICS,
+      thumbnail: expect.stringMatching(/^data:image\/png/)
+    })
   })
 
   it('ignores a LOAD announced for the empty scene and reads the metrics off the render that follows', async () => {
     getMetrics.mockResolvedValueOnce(EMPTY_SCENE_METRICS).mockResolvedValue(REAL_METRICS)
     const onResult = vi.fn()
     const onError = vi.fn()
-    render(<DraftProcessor draft={wearableDraft()} onResult={onResult} onError={onError} />)
+    render(<DraftProcessor draft={wearableDraft()} flow="add_items" onResult={onResult} onError={onError} />)
 
     await iframeLoads()
     expect(onResult).not.toHaveBeenCalled()
@@ -102,7 +109,7 @@ describe('DraftProcessor', () => {
     getMetrics.mockRejectedValueOnce(new Error('No requested item is loaded')).mockResolvedValue(REAL_METRICS)
     const onResult = vi.fn()
     const onError = vi.fn()
-    render(<DraftProcessor draft={wearableDraft()} onResult={onResult} onError={onError} />)
+    render(<DraftProcessor draft={wearableDraft()} flow="add_items" onResult={onResult} onError={onError} />)
 
     await iframeLoads()
     await elapse(10_000)
@@ -117,7 +124,7 @@ describe('DraftProcessor', () => {
     getMetrics.mockResolvedValueOnce(EMPTY_SCENE_METRICS).mockResolvedValue(REAL_METRICS)
     const onResult = vi.fn()
     const onError = vi.fn()
-    render(<DraftProcessor draft={wearableDraft()} onResult={onResult} onError={onError} />)
+    render(<DraftProcessor draft={wearableDraft()} flow="add_items" onResult={onResult} onError={onError} />)
 
     await iframeLoads()
     await elapse(10_000)
@@ -131,7 +138,7 @@ describe('DraftProcessor', () => {
     getMetrics.mockRejectedValue(new Error('The scene was disposed, a newer render has replaced it'))
     const onResult = vi.fn()
     const onError = vi.fn()
-    render(<DraftProcessor draft={wearableDraft()} onResult={onResult} onError={onError} />)
+    render(<DraftProcessor draft={wearableDraft()} flow="add_items" onResult={onResult} onError={onError} />)
 
     await iframeLoads()
     await elapse(5000)
@@ -141,5 +148,53 @@ describe('DraftProcessor', () => {
     await iframeLoads()
     expect(onResult).not.toHaveBeenCalled()
     expect(onError).toHaveBeenCalledTimes(1)
+  })
+
+  it('reboots a preview that never loads the model and processes the draft on the fresh one', async () => {
+    getMetrics.mockResolvedValue(REAL_METRICS)
+    const onResult = vi.fn()
+    const onError = vi.fn()
+    render(<DraftProcessor draft={wearableDraft()} flow="add_items" onResult={onResult} onError={onError} />)
+    const wedged = document.querySelector('iframe')
+
+    await elapse(BOOT_BUDGET_MS)
+    expect(document.querySelector('iframe')).not.toBe(wedged)
+
+    await iframeLoads()
+    expect(onResult).toHaveBeenCalledTimes(1)
+    expect(onError).not.toHaveBeenCalled()
+  })
+
+  it('fails the draft as timed out when the fresh preview does not load it either, so the queue moves on', async () => {
+    const onResult = vi.fn()
+    const onError = vi.fn()
+    render(<DraftProcessor draft={wearableDraft()} flow="add_items" onResult={onResult} onError={onError} />)
+
+    await elapse(BOOT_BUDGET_MS)
+    await elapse(BOOT_BUDGET_MS)
+
+    expect(onError).toHaveBeenCalledWith('draft-1', 'timeout')
+    expect(captureError).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({ flow: 'add_items', step: 'preview_timeout' })
+    )
+    expect(onResult).not.toHaveBeenCalled()
+  })
+
+  it('ignores an answer the wedged preview sends after it was replaced', async () => {
+    let answerLate: (metrics: typeof REAL_METRICS) => void = () => {}
+    getMetrics
+      .mockImplementationOnce(() => new Promise(resolve => (answerLate = resolve)))
+      .mockResolvedValue(REAL_METRICS)
+    const onResult = vi.fn()
+    render(<DraftProcessor draft={wearableDraft()} flow="add_items" onResult={onResult} onError={vi.fn()} />)
+
+    await iframeLoads()
+    await elapse(BOOT_BUDGET_MS)
+    await act(async () => answerLate(REAL_METRICS))
+    expect(onResult).not.toHaveBeenCalled()
+
+    await iframeLoads()
+    expect(onResult).toHaveBeenCalledTimes(1)
   })
 })

@@ -16,7 +16,7 @@ import { useThumbnailValidation } from '~/hooks/useThumbnailValidation'
 import { useTranslation } from '~/intl'
 import { THUMBNAIL_PATH, hasFacialExpressions } from '~/lib/itemFiles'
 import { ItemType } from '~/lib/items'
-import { type PreviewDraft } from '~/lib/draftPreview'
+import { needsPreviewData, type PreviewDraft } from '~/lib/draftPreview'
 import * as S from './ItemDraftModal.styles'
 
 type Props = {
@@ -34,6 +34,7 @@ export function DraftPreviewPane({ draft, thumbnailLocked = false, onOpenThumbna
   const isEmote = draft.type === ItemType.EMOTE
   const isWearable = draft.type === ItemType.WEARABLE
   const isSmart = isWearable && draft.isSmart
+  const isGenerating = needsPreviewData(draft)
 
   const thumbnailBlob = draft.contents[THUMBNAIL_PATH]
   const thumbnailSource = useMemo(
@@ -55,7 +56,12 @@ export function DraftPreviewPane({ draft, thumbnailLocked = false, onOpenThumbna
       <S.ThumbnailWrap>
         {thumbnailLocked ? (
           <S.ThumbnailBox as="div">
-            <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId="draft-thumbnail" />
+            <ItemThumbnail
+              src={draft.thumbnail}
+              rarity={draft.rarity}
+              testId="draft-thumbnail"
+              loading={isGenerating}
+            />
           </S.ThumbnailBox>
         ) : (
           <S.ThumbnailBox
@@ -64,7 +70,7 @@ export function DraftPreviewPane({ draft, thumbnailLocked = false, onOpenThumbna
             data-testid="edit-thumbnail"
             onClick={onOpenThumbnail}
           >
-            <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId="draft-thumbnail">
+            <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId="draft-thumbnail" loading={isGenerating}>
               <S.ThumbnailOverlay data-thumb-overlay>
                 <CameraIcon />
               </S.ThumbnailOverlay>
