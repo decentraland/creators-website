@@ -8,10 +8,12 @@ import {
   keccak256Hash
 } from '@dcl/hashing'
 import { EntityType } from '@dcl/schemas'
+import { fetchContent } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { IMAGE_PATH, ItemType, VIDEO_PATH, type Item, type ItemData, type ItemRepresentation } from '~/lib/items'
 import { getDeployableFiles } from '~/lib/itemSync'
+import { generateCatalystImage } from '~/lib/media'
 const EMPTY_ITEM_METRICS = { triangles: 0, materials: 0, textures: 0, meshes: 0, bodies: 0, entities: 1 }
 
 export type EntityContent = Record<string, string>
@@ -22,6 +24,12 @@ export type MissingImage = { hash: string; blob: Blob }
 export type ImageDeps = {
   fetchContent: (hash: string) => Promise<Blob>
   renderCatalystImage: (thumbnail: Blob, rarity: string) => Promise<Blob>
+}
+
+/** How the approval flow renders the image.png an item saved without one deploys; measuring renders it the same way. */
+export const catalystImageDeps: ImageDeps = {
+  fetchContent: hash => fetchContent(hash),
+  renderCatalystImage: (thumbnail, rarity) => generateCatalystImage(thumbnail, rarity)
 }
 
 export async function buildMissingImage(item: Item, deps: ImageDeps): Promise<MissingImage | null> {

@@ -143,6 +143,17 @@ const ItemEditorPage = () => {
   const itemsQuery = useAllCollectionItems(address, collectionId ?? undefined)
   const baseWearables = useBaseWearables()
   const saveItem = useSaveItem(address)
+  // Every save is a full-item PUT built from the stored item, so one running from its build until its PUT settles
+  // keeps the others (Save, Change file, thumbnail) disabled: two in flight would overwrite each other.
+  const [pendingSaves, setPendingSaves] = useState(0)
+  async function whileSaving<T>(task: () => Promise<T>): Promise<T> {
+    setPendingSaves(count => count + 1)
+    try {
+      return await task()
+    } finally {
+      setPendingSaves(count => count - 1)
+    }
+  }
   const saveCollection = useSaveCollection(address)
   const [isRenameOpen, setRenameOpen] = useState(false)
 
@@ -434,6 +445,10 @@ const ItemEditorPage = () => {
   async function saveFileChange(change: ItemFileChange): Promise<void> {
     if (!selected) throw new Error('No item selected')
     const base = selected
+    await whileSaving(() => applyFileChange(base, change))
+  }
+
+  async function applyFileChange(base: Item, change: ItemFileChange): Promise<void> {
     try {
       const springBonesData = await carrySpringBonesForSave(
         springBonesFetcher(queryClient),
@@ -464,7 +479,7 @@ const ItemEditorPage = () => {
   async function saveThumbnail(thumbnail: Blob): Promise<void> {
     if (!selected) return
     try {
-      await commit(selected, { item: selected, thumbnail })
+      await whileSaving(() => commit(selected, { item: selected, thumbnail }))
     } catch (error) {
       const expected =
         isItemTooBigError(error) || (error instanceof BuilderServerError && error.status === COLLECTION_LOCKED_STATUS)
@@ -481,7 +496,7 @@ const ItemEditorPage = () => {
       return
     }
     setSpringWarning(false)
-    persist(selected).catch((error: unknown) => reportSaveError(error, 'item_save'))
+    whileSaving(() => persist(selected)).catch((error: unknown) => reportSaveError(error, 'item_save'))
   }
 
   // Read off `form` before the memo: `form` itself is a fresh object every render, so depending on it
@@ -680,7 +695,7 @@ const ItemEditorPage = () => {
         draft={form.draft}
         dispatch={form.dispatch}
         isDirty={form.isDirty}
-        isSaving={saveItem.isPending}
+        isSaving={pendingSaves > 0}
         size={itemSize}
         springBones={springBonesForm}
         linkedContract={isLinked ? linkedContract : undefined}

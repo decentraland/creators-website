@@ -66,6 +66,7 @@ beforeEach(() => {
   rerun.mockReset().mockResolvedValue([])
   vi.mocked(track).mockReset()
   itemSizes.sizes = new Map()
+  itemSizes.unknown = new Set()
   itemSizes.isMeasuring = false
 })
 
@@ -109,9 +110,20 @@ describe('ValidationGate', () => {
     )
   })
 
-  it('passes an item whose size could not be measured', () => {
+  it('warns about an item whose size could not be measured, without blocking', async () => {
+    itemSizes.unknown = new Set(['clean'])
     renderGate({ validation: { isValidating: false, results: [{ item: clean, issues: [] }] } })
+    expect(onPass).not.toHaveBeenCalled()
+    expect(screen.getByTestId('publish-validation-clean-card')).toHaveTextContent("We couldn't check this item's size")
+    await userEvent.click(screen.getByTestId('publish-validation-continue'))
     expect(onPass).toHaveBeenCalled()
+  })
+
+  it('reports a re-run against the rule book verdict alone, not the size issue', async () => {
+    itemSizes.sizes = new Map([['meh', { bytes: 3_243_672, limit: 3 * 1024 * 1024 }]])
+    renderGate({ validation: { isValidating: false, results: [{ item: meh, issues: [warning] }] } })
+    await userEvent.click(screen.getByTestId('publish-validation-meh-rerun'))
+    expect(rerun).toHaveBeenCalledWith(meh, 'publish', 'warnings')
   })
 
   it('closes from the waiting spinner', async () => {

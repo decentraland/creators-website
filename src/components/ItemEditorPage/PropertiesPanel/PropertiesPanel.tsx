@@ -272,7 +272,7 @@ export function PropertiesPanel({
           <S.ThumbButton
             type="button"
             aria-label={t('item_editor.details.edit_thumbnail')}
-            disabled={disabled}
+            disabled={disabled || isSaving}
             data-testid={`${testId}-thumbnail`}
             onClick={() => thumbnailEditor.edit({ kind: 'item', item })}
           >

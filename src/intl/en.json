@@ -1578,7 +1578,8 @@
   "item_size": {
     "label": "Item size",
     "value": "{size} / {limit} MB",
-    "exceeded": "Over the size limit (thumbnail included). Reduce its textures or geometry."
+    "exceeded": "Over the size limit (thumbnail included). Reduce its textures or geometry.",
+    "unknown_warning": "We couldn't check this item's size. If it's over the limit, it can't be approved."
   },
   "item_validation": {
     "checking": "Checking your items…",

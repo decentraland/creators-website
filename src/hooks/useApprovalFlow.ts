@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { type Entity } from '@dcl/schemas'
 import { allCollectionItemsKey } from '~/hooks/useCollection'
 import { collectionCurationKey } from '~/hooks/useCuration'
-import { catalystImageDeps as imageDeps } from '~/hooks/useItemSize'
+import { catalystImageDeps as imageDeps } from '~/lib/catalystEntity'
 import { itemEntitiesKey } from '~/hooks/useItemSync'
 import { errorCode, track } from '~/lib/analytics'
 import {

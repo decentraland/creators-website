@@ -192,6 +192,13 @@ describe('PropertiesPanel', () => {
     expect(screen.queryByTestId('properties-panel-utility')).not.toBeInTheDocument()
   })
 
+  it('keeps the thumbnail from being changed while a save runs, so two saves never overwrite each other', () => {
+    const { rerender } = render(<Harness isSaving />, { wrapper: Providers })
+    expect(screen.getByTestId('properties-panel-thumbnail')).toBeDisabled()
+    rerender(<Harness />)
+    expect(screen.getByTestId('properties-panel-thumbnail')).toBeEnabled()
+  })
+
   it('shows the item size against its limit, thumbnail and rarity image included', () => {
     render(<Harness size={{ bytes: 3_093_299, limit: 3 * 1024 * 1024 }} />, { wrapper: Providers })
     expect(screen.getByTestId('properties-panel-size')).toHaveTextContent('2.95 / 3.00 MB')

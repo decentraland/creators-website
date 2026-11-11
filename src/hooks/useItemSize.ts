@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQueries, useQueryClient, type QueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { fetchContent, fetchContentSize } from '~/lib/builder'
-import { buildMissingImage, type ImageDeps } from '~/lib/catalystEntity'
+import { buildMissingImage, catalystImageDeps, type ImageDeps } from '~/lib/catalystEntity'
 import { ItemFileError } from '~/lib/itemFiles'
 import {
   MAX_CONCURRENT_MEASUREMENTS,
@@ -16,14 +16,10 @@ import {
 } from '~/lib/itemSize'
 import { type Item } from '~/lib/items'
 import { createLimiter } from '~/lib/limiter'
-import { generateCatalystImage } from '~/lib/media'
 import { captureError } from '~/lib/monitoring'
 
-/** How the approval flow renders the image.png an item saved without one deploys; measuring renders it the same way. */
-export const catalystImageDeps: ImageDeps = { fetchContent, renderCatalystImage: generateCatalystImage }
-
 const CONTENT_SIZE = 'content-size'
-export const contentSizeKey = (hash: string) => [CONTENT_SIZE, hash] as const
+const contentSizeKey = (hash: string) => [CONTENT_SIZE, hash] as const
 
 // One queue for every measurement in the app, so a whole collection's sizes never open dozens of requests together.
 const limited = createLimiter(MAX_CONCURRENT_MEASUREMENTS)
@@ -107,7 +103,7 @@ export function useMeasuredBytes(
 }
 
 /** A saved item's size key: its stored files plus what decides its limit and a missing rarity image. */
-export const itemSizeKey = (item: Item) =>
+const itemSizeKey = (item: Item) =>
   [
     'item-size',
     item.id,

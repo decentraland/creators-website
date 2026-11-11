@@ -4,7 +4,7 @@ import { useRerunItemValidation } from '~/hooks/useCollectionValidation'
 import { useCatalystItemSizes } from '~/hooks/useItemSize'
 import { track } from '~/lib/analytics'
 import { formatItemSize, isOverSizeLimit } from '~/lib/itemSize'
-import { ValidationSeverity, countIssues, getValidationStatus, hasErrors } from '~/lib/validation'
+import { ValidationSeverity, countIssues, getValidationStatus, hasErrors, type ValidationIssue } from '~/lib/validation'
 import { PendingModal } from '~/components/PendingModal'
 import { ValidationIssuesView, type ItemCheck } from './ValidationIssuesView'
 
@@ -22,6 +22,8 @@ type Props = {
 }
 
 const SIZE_ISSUE_CODE = 'item_size'
+const SIZE_UNKNOWN_CODE = 'item_size_unknown'
+const isSizeIssue = (issue: ValidationIssue) => issue.code === SIZE_ISSUE_CODE || issue.code === SIZE_UNKNOWN_CODE
 
 function totals(checks: ItemCheck[]) {
   return countIssues(checks.flatMap(check => check.issues))
@@ -51,6 +53,16 @@ export function ValidationGate({ collectionId, flow, validation, blockOnErrors, 
   const checks = useMemo(
     () =>
       validation.results.map(check => {
+        // Unmeasured is not clean: the catalyst still counts the size at deploy, so the creator hears it can fail.
+        if (sizes.unknown.has(check.item.id)) {
+          const unknownIssue = {
+            code: SIZE_UNKNOWN_CODE,
+            severity: ValidationSeverity.WARNING,
+            title: t('item_size.label'),
+            message: t('item_size.unknown_warning')
+          }
+          return { ...check, issues: [...check.issues, unknownIssue] }
+        }
         const size = sizes.sizes.get(check.item.id)
         if (!size || !isOverSizeLimit(size)) return check
         const sizeIssue = {
@@ -61,7 +73,7 @@ export function ValidationGate({ collectionId, flow, validation, blockOnErrors, 
         }
         return { ...check, issues: [sizeIssue, ...check.issues] }
       }),
-    [validation.results, sizes.sizes, t]
+    [validation.results, sizes.sizes, sizes.unknown, t]
   )
   const oversizedCount = useMemo(
     () => checks.filter(check => check.issues.some(issue => issue.code === SIZE_ISSUE_CODE)).length,
@@ -109,7 +121,16 @@ export function ValidationGate({ collectionId, flow, validation, blockOnErrors, 
   }, [flaggedIds, checks])
   const rerunItemValidation = useRerunItemValidation()
   const rerun = useCallback(
-    (check: ItemCheck) => rerunItemValidation(check.item, flow, getValidationStatus(check.issues, false)),
+    // The re-run reports the rule book's verdict it replaces, without the size issues this step adds.
+    (check: ItemCheck) =>
+      rerunItemValidation(
+        check.item,
+        flow,
+        getValidationStatus(
+          check.issues.filter(issue => !isSizeIssue(issue)),
+          false
+        )
+      ),
     [rerunItemValidation, flow]
   )
   function resolveIssues(action: 'continue' | 'back') {

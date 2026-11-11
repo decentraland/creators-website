@@ -18,7 +18,7 @@ import {
 import { isItemSynced } from '~/lib/itemSync'
 import { ItemType, getItemMetadata, type Item } from '~/lib/items'
 
-export { buildMissingImage, type ImageDeps, type MissingImage }
+export { buildMissingImage }
 
 export type RescueTarget = { item: Item; contentHash: string }
 

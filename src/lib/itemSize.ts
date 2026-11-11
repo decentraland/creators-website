@@ -51,7 +51,7 @@ export function sumUniqueContent(files: Iterable<{ hash: string; bytes: number }
 }
 
 /** A linked (third-party) item: its URN, like its collection's, is a `collections-thirdparty` one. */
-export function isLinkedItem(item: Pick<Item, 'urn'>): boolean {
+function isLinkedItem(item: Pick<Item, 'urn'>): boolean {
   return item.urn?.split(':')[3] === THIRD_PARTY_URN_TYPE
 }
 
@@ -101,7 +101,7 @@ export function formatItemSize({ bytes, limit }: ItemSize): { size: string; limi
 }
 
 /** The error a save refuses an item over its limit with: `add_items_modal.file_error.size_exceeded`. */
-export function itemTooBigError(size: ItemSize): ItemFileError {
+function itemTooBigError(size: ItemSize): ItemFileError {
   return new ItemFileError('size_exceeded', formatItemSize(size))
 }
 
