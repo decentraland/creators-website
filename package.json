@@ -93,11 +93,6 @@
     "vite": "^8.3.0",
     "vitest": "^4.1.11"
   },
-  "overrides": {
-    "@dcl/social-rpc-client": {
-      "decentraland-crypto-fetch": "3.0.2"
-    }
-  },
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/decentraland/creators-website.git"
@@ -118,5 +113,10 @@
   "engines": {
     "node": ">=24",
     "npm": ">=8"
+  },
+  "overrides": {
+    "@dcl/social-rpc-client": {
+      "decentraland-crypto-fetch": "3.0.2"
+    }
   }
 }
