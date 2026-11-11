@@ -158,6 +158,24 @@ describe('usePushCuration', () => {
     expect(client.getQueryState(eventsKey)?.isInvalidated).toBe(true)
   })
 
+  it('rereads the review timeline when the push is refused because a review is running', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+    const eventsKey = collectionEventsKey(ADDRESS, collection.id)
+    client.setQueryData(eventsKey, { pages: [], pageParams: [] })
+    api.pushCollectionCuration.mockRejectedValueOnce(
+      new BuilderServerError('A validation is already in progress for this collection', 409)
+    )
+    const { result } = renderHook(() => usePushCuration(ADDRESS), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      )
+    })
+
+    await act(() => result.current.mutateAsync(collection).catch(() => undefined))
+
+    expect(client.getQueryState(eventsKey)?.isInvalidated).toBe(true)
+  })
+
   it("reports a failure, but not the answers the creator acts on: a running review, today's limit or a busy collection", async () => {
     vi.mocked(captureError).mockClear()
     const { result } = renderHook(() => usePushCuration(ADDRESS), { wrapper })

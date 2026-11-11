@@ -187,6 +187,7 @@ export function useRejectCuration(address: string | undefined) {
 
 /** The creator's "Publish changes": asks the committee to review the collection's changes again. */
 export function usePushCuration(address: string | undefined) {
+  const queryClient = useQueryClient()
   const store = useStoreCuration(address)
   return useMutation({
     mutationFn: (collection: Collection) => {
@@ -201,7 +202,13 @@ export function usePushCuration(address: string | undefined) {
       track('Push curation error', { collectionId: collection.id, error: errorCode(error) })
       // A running review, the daily limit and a busy collection are answers the creator acts on, not failures.
       const expected = error instanceof ValidationLimitError || isValidationRunning(error) || isCollectionBusy(error)
-      if (!expected) captureError(error, { flow: 'curation_push', collectionId: collection.id })
+      if (!expected) {
+        captureError(error, { flow: 'curation_push', collectionId: collection.id })
+        return
+      }
+      // The answer says the review moved on (a run started, the day's runs were spent): show it.
+      void queryClient.invalidateQueries({ queryKey: collectionEventsKey(address, collection.id) })
+      void queryClient.invalidateQueries({ queryKey: collectionCurationKey(address, collection.id) })
     }
   })
 }
