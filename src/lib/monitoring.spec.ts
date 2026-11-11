@@ -124,6 +124,7 @@ describe('scrubEvent', () => {
           span_id: 'span-1',
           trace_id: 'trace-1',
           start_timestamp: 0,
+          status: 'ok',
           description: `GET ${HEX32}`,
           data: { 'http.url': `https://x.test/?k=${HEX32}` }
         }
