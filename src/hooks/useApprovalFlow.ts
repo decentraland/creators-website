@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { type Entity } from '@dcl/schemas'
 import { allCollectionItemsKey } from '~/hooks/useCollection'
 import { collectionCurationKey } from '~/hooks/useCuration'
+import { catalystImageDeps as imageDeps } from '~/lib/catalystEntity'
 import { itemEntitiesKey } from '~/hooks/useItemSync'
 import { errorCode, track } from '~/lib/analytics'
 import {
@@ -22,7 +23,6 @@ import { sendContractTransaction, signWithIdentity, waitForTransaction, type Ses
 import {
   fetchAllCollectionItems,
   fetchCollection,
-  fetchContent,
   publishCollectionItems,
   pushCollectionCuration,
   updateCollectionCuration
@@ -32,7 +32,6 @@ import { RESCUE_CHUNK_SIZE } from '~/lib/collectionApproval'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
 import { type Item } from '~/lib/items'
-import { generateCatalystImage } from '~/lib/media'
 import { captureError } from '~/lib/monitoring'
 import { getMaticChainId } from '~/lib/publishCollection'
 import { isWalletRejection, isWalletStateError } from '~/lib/walletErrors'
@@ -108,7 +107,6 @@ function matchesReviewedContent(items: Item[], reviewed: Item[]): boolean {
   const seen = new Map(reviewed.map(item => [item.id, contentOf(item)]))
   return items.length === seen.size && items.every(item => seen.get(item.id) === contentOf(item))
 }
-const imageDeps = { fetchContent, renderCatalystImage: generateCatalystImage }
 
 /** The raw failure, for curators to send to support: wallets and RPCs often throw plain objects. */
 function errorDetail(error: unknown): string | null {

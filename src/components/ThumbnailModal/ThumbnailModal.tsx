@@ -8,7 +8,9 @@ import { EmoteControls, TranslationControls } from '~/components/PreviewControls
 import { ZoomControls } from '~/components/ZoomControls'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { useTranslation } from '~/intl'
+import { BuilderServerError, COLLECTION_LOCKED_STATUS } from '~/lib/builder'
 import { MAX_THUMBNAIL_FILE_SIZE, THUMBNAIL_PATH, toMB } from '~/lib/itemFiles'
+import { isItemTooBigError } from '~/lib/itemSize'
 import { ItemType } from '~/lib/items'
 import { ImageType, dataURLToBlob, getImageType, resizeImage, blobToDataURL } from '~/lib/media'
 import { retryWhilePreviewReloads, toEmoteWithBlobs, toWearableWithBlobs } from '~/lib/preview'
@@ -28,11 +30,14 @@ export type ThumbnailPatch = {
 export class ThumbnailFormatError extends Error {}
 export class ThumbnailTooBigError extends Error {}
 
-/** The i18n key (with params) for a failed capture or upload. */
+/** The i18n key (with params) for a failed capture, upload or save. */
 export function getThumbnailErrorMessage(err: unknown): { key: string; params?: Record<string, string | number> } {
   if (err instanceof ThumbnailFormatError) return { key: 'thumbnail_modal.wrong_format' }
   if (err instanceof ThumbnailTooBigError)
     return { key: 'thumbnail_modal.too_big', params: { size: toMB(MAX_THUMBNAIL_FILE_SIZE) } }
+  if (isItemTooBigError(err)) return { key: 'add_items_modal.file_error.size_exceeded', params: err.messageParams }
+  if (err instanceof BuilderServerError && err.status === COLLECTION_LOCKED_STATUS)
+    return { key: 'item_editor.save_error_locked' }
   return { key: 'thumbnail_modal.capture_failed' }
 }
 
@@ -60,7 +65,8 @@ type Props = {
   contents: Record<string, Blob> | null
   /** Shown in place of the preview when the files could not be fetched. */
   loadError?: boolean
-  onSave: (patch: ThumbnailPatch) => void
+  /** A rejection keeps the modal open with the error. */
+  onSave: (patch: ThumbnailPatch) => void | Promise<void>
   onClose: () => void
 }
 
@@ -112,7 +118,7 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
         const screenshot = await retryWhilePreviewReloads(() =>
           controller.scene.getScreenshot(THUMBNAIL_SIZE, THUMBNAIL_SIZE)
         )
-        onSave(thumbnailPatchFromDataURL(contents!, screenshot))
+        await onSave(thumbnailPatchFromDataURL(contents!, screenshot))
       } catch (err) {
         setError(errorText(err))
         setSaving(null)
@@ -128,7 +134,7 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
     void (async () => {
       try {
         // A picked file needs neither the item files nor the preview.
-        onSave(await thumbnailPatchFromFile(contents ?? {}, file))
+        await onSave(await thumbnailPatchFromFile(contents ?? {}, file))
       } catch (err) {
         setError(errorText(err))
         setSaving(null)

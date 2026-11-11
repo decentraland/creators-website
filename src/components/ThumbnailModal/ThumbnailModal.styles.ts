@@ -159,6 +159,9 @@ export const Actions = styled.div`
 `
 
 export const ErrorText = styled.p`
+  /* Wraps to the preview's width instead of widening the modal. */
+  width: 0;
+  min-width: 100%;
   margin: 0;
   font-size: 13px;
   color: ${theme.colors.errStrong};

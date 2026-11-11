@@ -18,6 +18,8 @@ type Props = {
   isEditing: boolean
   isSaving: boolean
   saveError: boolean
+  /** Replaces the generic save error, for a failure the creator can act on (an item over its size limit). */
+  saveErrorMessage?: string
   /** False when no row can act, so the table drops the actions column. */
   withActions: boolean
   canEdit: boolean
@@ -39,6 +41,7 @@ export function PublishItemRow({
   isEditing,
   isSaving,
   saveError,
+  saveErrorMessage,
   withActions,
   canEdit,
   canDelete,
@@ -197,7 +200,9 @@ export function PublishItemRow({
         </S.Actions>
       )}
       {isEditing && saveError && (
-        <S.RowError data-testid="publish-item-error">{t('publish_collection_modal.items_step.save_error')}</S.RowError>
+        <S.RowError data-testid="publish-item-error">
+          {saveErrorMessage ?? t('publish_collection_modal.items_step.save_error')}
+        </S.RowError>
       )}
     </S.Row>
   )

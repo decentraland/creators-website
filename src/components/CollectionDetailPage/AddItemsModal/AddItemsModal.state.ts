@@ -5,7 +5,8 @@ import { EmoteCategory, WearableCategory } from '@dcl/schemas'
 import { type ValidationIssue } from '~/lib/validation'
 import { type Mapping, type Mappings } from '~/lib/mappings'
 import { VIDEO_PATH, cleanAssetName, isImageFile, isModelFile } from '~/lib/itemFiles'
-import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
+import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
+import { getItemSizeLimit, isOverSizeLimit, type ItemSize } from '~/lib/itemSize'
 import { BodyShapeType, ItemType, getMissingBodyShapeType, type Item, type ItemMetrics } from '~/lib/items'
 import { applyPreviewResult, type PreviewResult } from '~/lib/draftPreview'
 import { type UploadFailureReason } from '~/lib/uploadItems'
@@ -296,20 +297,51 @@ export type DraftRules = {
   requiresMapping?: boolean
 }
 
-/** Whether the draft satisfies every requirement to be saved (mirrors legacy validateItemDraft). */
+/**
+ * The size limit of the item a draft will be saved as. A body-shape variant joins its target, so the target's
+ * category decides (9 MB for a skin, 3 MB otherwise).
+ */
+export function getDraftSizeLimit(draft: ItemDraft, drafts: ItemDraft[], collectionItems: Item[]): number {
+  if (!draft.isVariant) return getItemSizeLimit(draft.type, draft.category)
+  const batchTarget = drafts.find(candidate => candidate.id === draft.variantTargetId)
+  const category = batchTarget
+    ? batchTarget.category
+    : collectionItems.find(item => item.id === draft.variantTargetId)?.data.category
+  return getItemSizeLimit(draft.type, category)
+}
+
+/**
+ * What a draft's size depends on, across the batch (a variant is saved inside its target): the files, the rarity its
+ * image is rendered for and how the drafts pair up. Names, descriptions and tags never measure again.
+ */
+export function draftSizeInputs(drafts: ItemDraft[]): unknown[] {
+  return drafts.flatMap(draft => [
+    draft.id,
+    draft.status,
+    draft.type,
+    draft.bodyShape,
+    draft.rarity,
+    draft.model,
+    draft.isVariant,
+    draft.variantTargetId,
+    draft.contents
+  ])
+}
+
+/**
+ * Whether the draft satisfies every requirement to be saved (mirrors legacy validateItemDraft). `size` is the item
+ * the draft will be saved as, measured the catalyst way (lib/itemSize); unknown, it blocks nothing, since the upload
+ * measures again.
+ */
 export function isDraftComplete(
   draft: ItemDraft,
   drafts: ItemDraft[],
   collectionItems: Item[],
-  rules: DraftRules = {}
+  rules: DraftRules = {},
+  size: ItemSize | null = null
 ): boolean {
   if (draft.status !== 'ready' || !draft.type || !draft.thumbnail || !draft.metrics) return false
-  if (
-    draft.type === ItemType.WEARABLE &&
-    getSizeError(draft.type, draft.category ?? undefined, draft.contents) !== null
-  )
-    return false
-  if (draft.type === ItemType.EMOTE && getSizeError(draft.type, undefined, draft.contents) !== null) return false
+  if (size && isOverSizeLimit(size)) return false
   // Legacy UploadVideoStep made the preview video mandatory for smart wearables.
   if (draft.isSmart && !draft.contents[VIDEO_PATH]) return false
 
