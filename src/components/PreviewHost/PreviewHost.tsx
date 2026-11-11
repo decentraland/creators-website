@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react'
+import type { IPreviewController } from '@dcl/schemas'
 import { WearablePreview } from 'decentraland-ui2'
 import type { EmoteControlsProps, PreviewController, PreviewHostProps, TranslationControlsProps } from './types'
 
@@ -9,6 +10,10 @@ export function PreviewHost(props: PreviewHostProps) {
 export function createPreviewController(id: string): PreviewController {
   return WearablePreview.createController(id)
 }
+
+// Every controller in the app comes from createPreviewController, which returns ui2's whole one; its controls
+// call more of it than the app's narrower type lists.
+const full = (controller: PreviewController | undefined) => controller as IPreviewController | undefined
 
 // ui2's preview controls are MUI components: their styles read `theme.spacing()` and the Button
 // reads `palette.mode`, and this app mounts no MUI theme. ui2's theme is a CSS-vars theme, so it
@@ -26,7 +31,7 @@ const EmoteControlsLazy = lazy(async () => {
   return {
     default: ({ previewId, controller, ...props }: EmoteControlsProps) => (
       <CssVarsProvider theme={theme}>
-        <EmoteControls {...props} wearablePreviewId={previewId} wearablePreviewController={controller} />
+        <EmoteControls {...props} wearablePreviewId={previewId} wearablePreviewController={full(controller)} />
       </CssVarsProvider>
     )
   }
@@ -43,7 +48,7 @@ const TranslationControlsLazy = lazy(async () => {
         <TranslationControls
           {...props}
           wearablePreviewId={previewId}
-          wearablePreviewController={controller}
+          wearablePreviewController={full(controller)}
           verticalPosition={verticalPosition === 'left' ? VerticalPosition.LEFT : VerticalPosition.RIGHT}
         />
       </CssVarsProvider>

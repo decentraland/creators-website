@@ -9,8 +9,15 @@ import type {
   WearableWithBlobs
 } from '@dcl/schemas'
 
-/** The wearable-preview controller protocol; any host has to answer it for the editor's controls to work. */
-export type PreviewController = IPreviewController
+/** The part of the wearable-preview controller protocol the app calls; another host has to answer exactly these. */
+export type PreviewController = {
+  emote: Pick<
+    IPreviewController['emote'],
+    'events' | 'getLength' | 'goTo' | 'play' | 'pause' | 'stop' | 'hasSound' | 'enableSound' | 'disableSound'
+  >
+  scene: Pick<IPreviewController['scene'], 'getScreenshot' | 'getMetrics' | 'changeZoom'>
+  physics: Pick<IPreviewController['physics'], 'setSpringBonesParams'>
+}
 
 /**
  * Options the host bakes into the preview at mount. It renders an iframe with `id` that speaks the

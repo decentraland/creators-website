@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { BodyShape, type ContractNetwork, type IPreviewController } from '@dcl/schemas'
+import { BodyShape, type ContractNetwork } from '@dcl/schemas'
 import { ArrowBackIosNew, PersonOutline as PersonOutlineIcon } from '@mui/icons-material'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { AvatarPreview } from '~/components/AvatarPreview'
@@ -86,6 +86,7 @@ import { getValidationStatus, itemValidationContext, type ValidationSource } fro
 import { useEditorLayout } from './useEditorLayout'
 import { useItemForm } from './useItemForm'
 import * as S from './ItemEditorPage.styles'
+import { type PreviewController } from '~/components/PreviewHost'
 
 const PREVIEW_ID = 'item-editor-preview'
 const NOT_FOUND_STATUSES = [401, 403, 404]
@@ -279,7 +280,7 @@ const ItemEditorPage = () => {
   )
 
   // Preview controller: spring bones are pushed on edits (debounced), on every load and on play.
-  const [controller, setController] = useState<IPreviewController | null>(null)
+  const [controller, setController] = useState<PreviewController | null>(null)
   const [loadCount, setLoadCount] = useState(0)
   const onPreviewLoad = useCallback(() => setLoadCount(count => count + 1), [])
   // Reported for diagnostics only: the iframe shows its own error state.

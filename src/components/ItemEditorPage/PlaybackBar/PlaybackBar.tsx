@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { PreviewEmote, PreviewEmoteEventType, type IPreviewController } from '@dcl/schemas'
+import { PreviewEmote, PreviewEmoteEventType } from '@dcl/schemas'
 import {
   Bookmark as CollectionIcon,
   Stop as StopIcon,
   VolumeOff as VolumeOffIcon,
   VolumeUp as VolumeUpIcon
 } from '@mui/icons-material'
-import { EmoteControls } from '~/components/PreviewHost'
+import { EmoteControls, type PreviewController } from '~/components/PreviewHost'
 import { Select } from '~/components/Select'
 import { Tooltip } from '~/components/Tooltip'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
@@ -19,7 +19,7 @@ import * as S from './PlaybackBar.styles'
 
 type Props = {
   previewId: string
-  controller: IPreviewController | null
+  controller: PreviewController | null
   /** The collection's emotes, offered next to the default animations. */
   collectionEmotes: Item[]
   /** The wearables currently on the avatar — reported alongside the emote, as the legacy editor does. */
@@ -38,7 +38,7 @@ const DEFAULT_EMOTES = Object.values(PreviewEmote).filter(
  * Whether the subject emote has audio, and its mute toggle. ui2's own sound button asks once, on mount,
  * before the iframe has loaded the emote, so it never shows; this asks again on every play instead.
  */
-function useEmoteSound(controller: IPreviewController | null, subjectEmoteId: string | null) {
+function useEmoteSound(controller: PreviewController | null, subjectEmoteId: string | null) {
   const [hasSound, setHasSound] = useState(false)
   const [muted, setMuted] = useState(false)
   const mutedRef = useRef(muted)
