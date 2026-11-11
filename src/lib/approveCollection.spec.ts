@@ -165,7 +165,7 @@ describe('findItemsToDeploy', () => {
 describe('deployItems', () => {
   function deps(overrides: Partial<DeployDeps> = {}): DeployDeps {
     return {
-      sign: vi.fn(() => [{ type: 'SIGNER', payload: '0xme', signature: '' }]),
+      sign: vi.fn(async () => [{ type: 'SIGNER', payload: '0xme', signature: '' }]),
       fetchAvailableContent: vi.fn().mockResolvedValue(new Set(['bafthumb', 'bafimage'])),
       fetchContent: vi.fn().mockResolvedValue(new Blob(['x'])),
       renderCatalystImage: vi.fn(),
@@ -192,7 +192,9 @@ describe('deployItems', () => {
   })
 
   it('stops when the session cannot sign', async () => {
-    await expect(deployItems(collection, [item('1')], deps({ sign: () => null }))).rejects.toBeInstanceOf(ApprovalError)
+    await expect(deployItems(collection, [item('1')], deps({ sign: async () => null }))).rejects.toBeInstanceOf(
+      ApprovalError
+    )
   })
 })
 

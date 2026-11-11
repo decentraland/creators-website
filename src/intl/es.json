@@ -662,6 +662,7 @@
       "emote_animations_out_of_sync": "Las animaciones del avatar y del prop deben tener la misma duración.",
       "missing_external_resources": "El modelo referencia archivos que no están incluidos: {fileNames}.",
       "invalid_model_file": "No pudimos cargar este modelo 3D. Revisa el archivo e inténtalo de nuevo.",
+      "preview_timeout": "No pudimos generar la vista previa de este archivo a tiempo. Revisa el modelo o inténtalo de nuevo más tarde.",
       "invalid_representation": "Este archivo no puede usarse como variante de tipo de cuerpo de ese ítem.",
       "representation_category_mismatch": "Este archivo no corresponde a la categoría del ítem. Usa el mismo tipo de archivo que el otro tipo de cuerpo: un modelo 3D, o una textura para ojos, cejas o boca.",
       "multiple_videos": "El ZIP incluye más de un video. Deja solo el video de vista previa.",
@@ -1731,8 +1732,7 @@
     "error": {
       "title": "No pudimos crear tu descuento",
       "description": "Algo salió mal al guardarlo. No se cobró nada; inténtalo de nuevo.",
-      "try_again": "Intentar de nuevo",
-      "description_wallet": "Tu wallet cambió a otra cuenta o red. Vuelve a la cuenta con la que iniciaste sesión e inténtalo de nuevo."
+      "try_again": "Intentar de nuevo"
     },
     "list_label": "Descuentos",
     "chip": {
@@ -1839,7 +1839,6 @@
     "range_cancel": "Cancelar",
     "range_pick_end": "{from} – elige el último día",
     "range_pick_start": "Elige el primer día",
-    "error_wallet": "Tu wallet cambió a otra cuenta o red. Vuelve a la cuenta con la que iniciaste sesión e inténtalo de nuevo.",
     "social_note": "Como iniciaste sesión con una cuenta social, no podrás terminar este descuento antes: dura hasta su fecha de fin.",
     "unit_days": "d",
     "unit_hours": "h",
@@ -2051,5 +2050,11 @@
       "title": "Estos ítems aún no se pueden aprobar",
       "description": "{items} incluyen un video de vista previa, que los servidores de contenido no aceptan en ítems vinculados. No se registró nada en la blockchain. El creador debe volver a subirlos sin el video."
     }
+  },
+  "wallet_error": {
+    "wrong_account": "Tu wallet cambió a otra cuenta o red. Vuelve a la cuenta con la que iniciaste sesión e inténtalo de nuevo."
+  },
+  "item_thumbnail": {
+    "generating": "Generando miniatura…"
   }
 }

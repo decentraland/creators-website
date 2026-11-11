@@ -19,6 +19,7 @@ function renderForm(patch: Partial<ItemDraft>, extra: Partial<Parameters<typeof 
     category: 'upper_body',
     bodyShape: BodyShapeType.MALE,
     thumbnail: 'data:image/png;base64,AAAA',
+    metrics: { triangles: 708, materials: 3, meshes: 5, textures: 4, bodies: 5, entities: 1 },
     ...patch
   }
   const onOpenThumbnail = vi.fn()
@@ -45,10 +46,23 @@ describe('DraftForm thumbnail', () => {
     expect(onOpenThumbnail).toHaveBeenCalled()
   })
 
+  it('lets the creator pick a thumbnail while the auto one is still being generated', async () => {
+    const { onOpenThumbnail } = renderForm({ isVariant: false, thumbnail: null, metrics: null })
+    expect(screen.getByTestId('draft-thumbnail-loading')).toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('edit-thumbnail'))
+    expect(onOpenThumbnail).toHaveBeenCalled()
+  })
+
   it('only previews the thumbnail of a body shape variant, since its target keeps its own', () => {
     renderForm({ isVariant: true })
     expect(screen.getByTestId('draft-thumbnail')).toBeInTheDocument()
     expect(screen.queryByTestId('edit-thumbnail')).not.toBeInTheDocument()
+  })
+
+  it('holds the metrics row with placeholders until the preview has measured the model', () => {
+    renderForm({ isVariant: false, metrics: null })
+    expect(screen.getAllByTestId('draft-metrics-loading')).toHaveLength(3)
+    expect(screen.queryByTestId('draft-thumbnail-loading')).not.toBeInTheDocument()
   })
 })
 

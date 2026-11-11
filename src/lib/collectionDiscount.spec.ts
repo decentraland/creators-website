@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract, getCouponManager, type MarketplaceName } from '~/lib/chain/contracts'
 import { discountedCredits, discountedManaWei, runningDiscountPpm, takesDiscount } from './collectionDiscount'
-import { getCouponManager } from 'decentraland-transactions'
 import { type CollectionDiscount } from './coupons'
 import { type ItemListing } from './listings'
 
@@ -68,7 +67,7 @@ describe('when pricing the example line', () => {
 describe('when picking the running discount a buyer gets on a listing', () => {
   const NOW = Date.UTC(2026, 9, 19)
   const DAY = 86_400_000
-  const managerOf = (name: ContractName) => getCouponManager(name, CHAIN_ID).address.toLowerCase()
+  const managerOf = (name: MarketplaceName) => getCouponManager(name, CHAIN_ID).address.toLowerCase()
   const discount = (ppm: number, overrides: Partial<CollectionDiscount> = {}) =>
     ({
       id: `d-${ppm}`,

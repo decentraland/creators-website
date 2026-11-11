@@ -2,9 +2,10 @@
 // CreditsManager external call, payment-method availability, and the publish sequence itself,
 // ported from the legacy builder's publish saga (the forum post lives in hooks/useForumPost).
 // Server and chain access is injected so the sequence is unit-testable end to end.
-import { ethers } from 'ethers'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
+import { encodeAbiParameters, getAbiItem, toFunctionSelector, toHex, type AbiFunction } from 'viem'
 import { config } from '~/config'
+import { toBytes32 } from '~/lib/bytes32'
 import { type ContractCall } from '~/lib/auth'
 import { BuilderServerError, COLLECTION_LOCKED_STATUS, isRefusedRequest } from '~/lib/builder'
 import { isCollectionLocked, type Collection } from '~/lib/collections'
@@ -15,7 +16,7 @@ import { hasOldHashedContents } from '~/lib/itemFactory'
 import { isMissingSmartWearableVideo, type Item } from '~/lib/items'
 import { fetchManaAllowance } from '~/lib/mana'
 import { weiToUsdCents, type PublicationFee } from '~/lib/publishFee'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { isWalletRejection, isWalletStateError } from '~/lib/walletErrors'
 import { getCollectionSymbol, toInitializeItems, type InitializeItem } from '~/lib/saveCollection'
 
 /** 'card' (buying credits with Stripe) is the planned third method; only these two ship today. */
@@ -121,36 +122,24 @@ export function buildCreateCollectionCall(chainId: number, args: CreateCollectio
 
 const EXTERNAL_CALL_TTL_MS = 24 * 60 * 60 * 1000
 
+const randomSalt = () => toHex(crypto.getRandomValues(new Uint8Array(32)))
+
 /**
  * The CreditsManager external call that runs createCollection on the creator's behalf. Byte-compatible
  * with decentraland-dapps' `buildCollectionManagerExternalCall`: selector + ABI-encoded params.
  */
-const randomSalt = () => ethers.utils.hexlify(ethers.utils.randomBytes(32))
-
 export function buildCollectionManagerExternalCall(
   chainId: number,
   args: CreateCollectionArgs,
   now = Date.now(),
-  salt = randomSalt()
+  salt: string = randomSalt()
 ): ExternalCall {
   const manager = getContract(ContractName.CollectionManager, chainId)
-  const contractInterface = new ethers.utils.Interface(manager.abi)
+  const createCollection = getAbiItem({ abi: manager.abi, name: 'createCollection' }) as AbiFunction
   return {
     target: manager.address,
-    selector: contractInterface.getSighash('createCollection'),
-    data: ethers.utils.defaultAbiCoder.encode(
-      [
-        'address',
-        'address',
-        'bytes32',
-        'string',
-        'string',
-        'string',
-        'address',
-        'tuple(string,uint256,address,string)[]'
-      ],
-      args
-    ),
+    selector: toFunctionSelector(createCollection),
+    data: encodeAbiParameters(createCollection.inputs, args),
     expiresAt: Math.floor((now + EXTERNAL_CALL_TTL_MS) / 1000),
     salt
   }
@@ -168,7 +157,7 @@ export function buildUseCreditsCall(
     method: 'useCredits',
     args: [
       {
-        credits: [{ value: credit.amount, expiresAt: credit.expiresAt, salt: ethers.utils.hexZeroPad(credit.id, 32) }],
+        credits: [{ value: credit.amount, expiresAt: credit.expiresAt, salt: toBytes32(credit.id) }],
         creditsSignatures: [credit.signature],
         externalCall,
         customExternalCallSignature: externalCallSignature,
@@ -187,6 +176,7 @@ export type PublishFailureReason =
   | 'fee_mismatch'
   | 'tos_failed'
   | 'rejected'
+  | 'wallet'
   | 'generic'
 
 export class PublishCollectionError extends Error {
@@ -214,6 +204,7 @@ export function toPublishError(error: unknown): PublishCollectionError {
   }
   const message = error instanceof Error ? error.message : String(error)
   if (isWalletRejection(error)) return new PublishCollectionError('rejected', message)
+  if (isWalletStateError(error)) return new PublishCollectionError('wallet', message, error)
   return new PublishCollectionError('generic', message)
 }
 

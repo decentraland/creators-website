@@ -78,6 +78,13 @@ describe('LinkedApprovalFlowModal', () => {
     expect(dialog).toHaveTextContent('Nothing was put on chain')
   })
 
+  it('asks the curator to switch the wallet back when it sits on another account', () => {
+    flow.view = { kind: 'error', step: 'root', failed: [], wallet: true }
+    renderModal()
+    expect(screen.getByTestId('approval-error-description')).toHaveTextContent(/switch it back to the account/i)
+    expect(screen.getByTestId('approval-retry')).toBeInTheDocument()
+  })
+
   it('lists the item identifiers on the root step and the file sizes on the upload step', async () => {
     flow.plan = { pendingItems: pending, slots: [], approvalData: { cheque: { qty: 0 } } }
     flow.steps = ['root', 'deploy']

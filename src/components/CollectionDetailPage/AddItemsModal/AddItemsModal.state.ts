@@ -8,6 +8,7 @@ import { VIDEO_PATH, cleanAssetName, isImageFile, isModelFile } from '~/lib/item
 import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
 import { getItemSizeLimit, isOverSizeLimit, type ItemSize } from '~/lib/itemSize'
 import { BodyShapeType, ItemType, getMissingBodyShapeType, type Item, type ItemMetrics } from '~/lib/items'
+import { applyPreviewResult, type PreviewResult } from '~/lib/draftPreview'
 import { type UploadFailureReason } from '~/lib/uploadItems'
 import { type AnimationMetrics } from '~/lib/models'
 import { DEFAULT_RARITY } from '~/lib/rarities'
@@ -127,6 +128,7 @@ export function createInitialState(drafts: ItemDraft[]): AddItemsState {
 export type AddItemsAction =
   | { type: 'draftsAdded'; drafts: ItemDraft[] }
   | { type: 'draftAnalyzed'; id: string; patch: Partial<ItemDraft> }
+  | { type: 'draftPreviewed'; id: string; result: PreviewResult }
   | { type: 'draftFailed'; id: string; errorKey: string; errorParams?: Record<string, string | number> }
   | { type: 'draftSelected'; id: string }
   | { type: 'draftRemoved'; id: string }
@@ -158,6 +160,8 @@ export function addItemsReducer(state: AddItemsState, action: AddItemsAction): A
     }
     case 'draftAnalyzed':
       return updateDraft(state, action.id, draft => ({ ...draft, ...action.patch, status: 'ready' }))
+    case 'draftPreviewed':
+      return updateDraft(state, action.id, draft => applyPreviewResult(draft, action.result))
     case 'draftFailed':
       return updateDraft(state, action.id, draft => ({
         ...draft,

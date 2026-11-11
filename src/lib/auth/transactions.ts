@@ -2,175 +2,123 @@
 // provider never leaks: consumers describe a call (contract + method + args) and get a tx hash back.
 // Writes go straight through the wallet when it already sits on the target chain, and otherwise as
 // a Polygon meta-transaction through Decentraland's relayer — the same path the legacy builder uses.
-import { ethers } from 'ethers'
+import {
+  TransactionNotFoundError,
+  TransactionReceiptNotFoundError,
+  createPublicClient,
+  http,
+  parseUnits,
+  type Address,
+  type Hash,
+  type Hex,
+  type PublicClient
+} from 'viem'
+import { estimateGas, getTransaction } from 'viem/actions'
 import { ProviderType } from '@dcl/schemas'
-import { sendMetaTransaction, type ContractData } from 'decentraland-transactions'
 import { config } from '~/config'
+import { encodeContractCall, type ContractCall, type ContractData } from '~/lib/chain/contracts'
+import { sendMetaTransaction, type MetaTransactionWallet } from '~/lib/chain/metaTransaction'
+import { WrongAccountError, WrongChainError } from '~/lib/walletErrors'
 import { type Session } from './auth'
+import { readWalletChainId, requireAccount, switchWalletChain } from './provider'
+import { walletClientOf } from './walletClient'
 
-export type { ContractData }
+export type { ContractCall, ContractData }
 
-export type ContractCall = {
-  contract: ContractData
-  method: string
-  args: unknown[]
+/** An EIP-712 domain; `verifyingContract` and `salt` are hex strings. */
+export type TypedDataDomain = {
+  name?: string
+  version?: string
+  chainId?: number | bigint
+  verifyingContract?: string
+  salt?: string
 }
 
-const readProviders = new Map<number, ethers.providers.JsonRpcProvider>()
+export type TypedDataTypes = Record<string, { name: string; type: string }[]>
 
-async function getReadProvider(chainId: number): Promise<ethers.providers.JsonRpcProvider> {
-  const cached = readProviders.get(chainId)
+const readClients = new Map<number, PublicClient>()
+
+async function getReadClient(chainId: number): Promise<PublicClient> {
+  const cached = readClients.get(chainId)
   if (cached) return cached
   const { getRpcUrls } = await import('decentraland-connect')
   const url = getRpcUrls(ProviderType.INJECTED)[chainId]
   if (!url) throw new Error(`No RPC url configured for chain ${chainId}`)
-  const provider = new ethers.providers.StaticJsonRpcProvider(url, chainId)
-  readProviders.set(chainId, provider)
-  return provider
+  const client = createPublicClient({ transport: http(url) })
+  readClients.set(chainId, client)
+  return client
 }
 
-/** ABI-encoded calldata for a contract call. */
-export function encodeContractCall({ contract, method, args }: ContractCall): string {
-  return new ethers.utils.Interface(contract.abi).encodeFunctionData(method, args)
-}
-
+/** A view call: integers wider than 48 bits come back as `bigint`, several outputs as an array. */
 export async function readContract<T>(contract: ContractData, method: string, args: unknown[] = []): Promise<T> {
-  const provider = await getReadProvider(contract.chainId)
-  const instance = new ethers.Contract(contract.address, contract.abi, provider)
-  const fn = instance[method] as (...callArgs: unknown[]) => Promise<T>
-  return fn(...args)
+  const client = await getReadClient(contract.chainId)
+  const result: unknown = await client.readContract({
+    address: contract.address as Address,
+    abi: contract.abi,
+    functionName: method,
+    args
+  })
+  return result as T
 }
 
 /** Sends the call and resolves with the transaction hash (not the receipt). */
 export async function sendContractTransaction(session: Session, call: ContractCall): Promise<string> {
-  const data = encodeContractCall(call)
-  const network = await session.web3Provider.getNetwork()
-  if (network.chainId === Number(call.contract.chainId)) {
-    const tx = await session.signer.sendTransaction({
-      to: call.contract.address,
-      data,
-      ...gasOverrides(network.chainId)
-    })
-    return tx.hash
+  const chainId = await readWalletChainId(session)
+  if (chainId === Number(call.contract.chainId)) return sendFromWallet(session, chainId, call)
+  const wallet = metaTransactionWallet(session)
+  // The account checked here is the one that signs, as the wallet spelled it (the relayed calldata keeps its case).
+  const [active = ''] = await wallet.accounts()
+  if (active.toLowerCase() !== session.address.toLowerCase()) {
+    throw new WrongAccountError(session.address, active.toLowerCase())
   }
-  const targetProvider = await getReadProvider(call.contract.chainId)
+  const target = await getReadClient(call.contract.chainId)
+  const callContract = (tx: { data: string; to: string }) =>
+    target.request({ method: 'eth_call', params: [tx as { data: Hex; to: Address }, 'latest'] })
   return sendMetaTransaction(
-    session.web3Provider.provider as Parameters<typeof sendMetaTransaction>[0],
-    targetProvider,
-    data,
+    wallet,
+    active,
+    callContract,
+    encodeContractCall(call),
     call.contract,
-    { serverURL: config.get('TRANSACTIONS_API_URL') }
+    config.get('TRANSACTIONS_API_URL')
   )
 }
 
-// Wallets that don't know the chain yet (EIP-3085) answer a switch with 4902 and need it added first. Only this
-// environment's Polygon is ever added; its details live in the env config.
-function addChainParams(chainId: number): object | undefined {
-  if (chainId !== Number(config.get('MATIC_CHAIN_ID'))) return undefined
+// An empty answer counts as a failed request, and legacy providers wrap theirs in `result`.
+function metaTransactionWallet(session: Session): MetaTransactionWallet & { accounts: () => Promise<string[]> } {
+  const request = async (method: string, params: unknown[]) => {
+    const answer = await session.provider.request({ method, params })
+    if (!answer) throw new Error(`The wallet gave no answer to ${method}`)
+    return (answer as { result?: unknown }).result || answer
+  }
   return {
-    chainId: ethers.utils.hexValue(chainId),
-    chainName: config.get('MATIC_CHAIN_NAME'),
-    nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
-    rpcUrls: [config.get('MATIC_RPC_URL')],
-    blockExplorerUrls: [config.get('MATIC_EXPLORER_URL')]
+    // Some wallets only answer eth_accounts.
+    accounts: async () =>
+      (await request('eth_requestAccounts', []).catch(() => request('eth_accounts', []))) as string[],
+    code: async address => (await request('eth_getCode', [address, 'latest'])) as string,
+    signTypedData: async (address, typedData) => (await request('eth_signTypedData_v4', [address, typedData])) as string
   }
 }
 
-// MetaMask mobile wraps the 4902 in an internal error.
-function isUnknownChain(error: unknown): boolean {
-  const { code, data } = (error ?? {}) as { code?: number; data?: { originalError?: { code?: number } } }
-  return code === 4902 || data?.originalError?.code === 4902
-}
-
-/**
- * Asks the wallet to move to `chainId`, adding this environment's Polygon first when the wallet doesn't know it.
- * Call it from a click: wallets refuse `wallet_*` requests they can't attribute to a user action. A refusal
- * (code 4001) propagates: the user answered, nothing moved.
- */
-export async function switchWalletChain(session: Session, chainId: number): Promise<void> {
-  try {
-    await session.web3Provider.send('wallet_switchEthereumChain', [{ chainId: ethers.utils.hexValue(chainId) }])
-  } catch (error) {
-    const add = addChainParams(chainId)
-    if (!isUnknownChain(error) || !add) throw error
-    await session.web3Provider.send('wallet_addEthereumChain', [add])
+// Estimated before sending, so a call that would revert fails here instead of reaching the wallet prompt.
+async function sendFromWallet(session: Session, chainId: number, call: ContractCall): Promise<Hash> {
+  const wallet = walletClientOf(session.provider, session.address)
+  const request = {
+    to: call.contract.address as Address,
+    data: encodeContractCall(call) as Hex,
+    ...gasOverrides(chainId)
   }
-}
-
-/**
- * The chain the wallet is on right now, asked over `eth_chainId` so the answer is the wallet's and not a
- * network ethers detected earlier. Throws on anything that is not a positive chain id (a wallet answering
- * null would otherwise read as chain 0).
- */
-export async function readWalletChainId(session: Session): Promise<number> {
-  const raw: unknown = await session.web3Provider.send('eth_chainId', [])
-  let parsed: number
-  try {
-    parsed = ethers.BigNumber.from(raw).toNumber()
-  } catch {
-    parsed = 0
-  }
-  if (parsed <= 0) throw new Error(`Wallet answered eth_chainId with an unusable value: ${String(raw)}`)
-  return parsed
-}
-
-type Eip1193Events = {
-  on?: (event: string, cb: (...args: unknown[]) => void) => void
-  removeListener?: (event: string, cb: (...args: unknown[]) => void) => void
-}
-
-/**
- * Runs `onChange` whenever the wallet announces a chain change, and on an account change too, since another
- * account can sit on another chain without the wallet re-announcing it. Returns the unsubscribe; a provider
- * without events (Magic) subscribes to nothing.
- */
-export function subscribeWalletChain(session: Session, onChange: () => void): () => void {
-  const wallet = session.web3Provider.provider as Eip1193Events | undefined
-  if (!wallet?.on || !wallet.removeListener) return () => undefined
-  wallet.on('chainChanged', onChange)
-  wallet.on('accountsChanged', onChange)
-  return () => {
-    wallet.removeListener?.('chainChanged', onChange)
-    wallet.removeListener?.('accountsChanged', onChange)
-  }
-}
-
-/** The wallet is still on another chain after being asked to switch: nothing was sent. */
-export class WrongChainError extends Error {
-  constructor(
-    public expected: number,
-    public actual: number
-  ) {
-    super(`The wallet is on chain ${actual}, not ${expected}`)
-    this.name = 'WrongChainError'
-  }
-}
-
-/** The wallet's active account is not the session's: sending would act as somebody else. Nothing was sent. */
-export class WrongAccountError extends Error {
-  constructor(
-    public expected: string,
-    public actual: string
-  ) {
-    super(`The wallet's active account is ${actual}, not ${expected}`)
-    this.name = 'WrongAccountError'
-  }
-}
-
-/** Throws `WrongAccountError` unless the wallet's active account is the session's. */
-export async function requireAccount(session: Session): Promise<void> {
-  const accounts = (await session.web3Provider.send('eth_accounts', [])) as string[]
-  const active = (accounts[0] ?? '').toLowerCase()
-  if (active !== session.address.toLowerCase()) throw new WrongAccountError(session.address, active)
+  const gas = await estimateGas(wallet, { ...request, prepare: false })
+  return wallet.sendTransaction({ ...request, gas, chain: null })
 }
 
 // Some networks (Amoy) enforce a minimum tip above what wallets propose, so the RPC rejects the transaction. The
 // floor, when there is one, comes from the env config.
-function gasOverrides(chainId: number): ethers.providers.TransactionRequest {
+function gasOverrides(chainId: number): { maxPriorityFeePerGas?: bigint; maxFeePerGas?: bigint } {
   const minTip = config.get('MATIC_MIN_TIP_GWEI')
   if (!minTip || chainId !== Number(config.get('MATIC_CHAIN_ID'))) return {}
-  const tip = ethers.utils.parseUnits(minTip, 'gwei')
-  return { maxPriorityFeePerGas: tip, maxFeePerGas: tip.add(ethers.utils.parseUnits('50', 'gwei')) }
+  const tip = parseUnits(minTip, 9)
+  return { maxPriorityFeePerGas: tip, maxFeePerGas: tip + parseUnits('50', 9) }
 }
 
 /**
@@ -178,38 +126,51 @@ function gasOverrides(chainId: number): ethers.providers.TransactionRequest {
  * meta-transactions: the wallet pays the gas. Call it from a click, since wallets refuse unprompted chain switches.
  * The network is read again after the switch: some providers (Magic) answer it without moving the wallet. It is
  * sent from the session's account only: a call keyed by its caller, like a cancellation, does nothing from another.
+ * `onSent` gets the hash as soon as the wallet returns it, before the nonce is read, so a caller can record it first.
  */
 export async function sendWalletTransaction(
   session: Session,
-  call: ContractCall
-): Promise<{ hash: string; nonce: number }> {
+  call: ContractCall,
+  onSent?: (hash: string) => void
+): Promise<{ hash: string; nonce?: number }> {
   const chainId = Number(call.contract.chainId)
   await requireAccount(session)
-  if ((await session.web3Provider.getNetwork()).chainId !== chainId) {
+  if ((await readWalletChainId(session)) !== chainId) {
     await switchWalletChain(session, chainId)
-    const current = (await session.web3Provider.getNetwork()).chainId
+    const current = await readWalletChainId(session)
     if (current !== chainId) throw new WrongChainError(chainId, current)
     // Switching hands control to the wallet, where the account can change too.
     await requireAccount(session)
   }
-  // Bound to the session's address, so the wallet refuses to send it from any other account.
-  const tx = await session.web3Provider.getSigner(session.address).sendTransaction({
-    from: session.address,
-    to: call.contract.address,
-    data: encodeContractCall(call),
-    ...gasOverrides(chainId)
-  })
-  return { hash: tx.hash, nonce: tx.nonce }
+  // Sent from the session's address, so the wallet refuses to send it from any other account.
+  const hash = await sendFromWallet(session, chainId, call)
+  onSent?.(hash)
+  return { hash, nonce: await readSentNonce(session, chainId, hash) }
+}
+
+// The wallet knows the transaction it just sent before a read node may; undefined when neither returns it.
+async function readSentNonce(session: Session, chainId: number, hash: Hash): Promise<number | undefined> {
+  try {
+    return (await getTransaction(walletClientOf(session.provider, session.address), { hash })).nonce
+  } catch {
+    return (await readTransactionSender(chainId, hash).catch(() => undefined))?.nonce
+  }
 }
 
 /** EIP-712 signature of `value` by the connected wallet (an off-chain order, not a transaction). */
 export async function signTypedData(
   session: Session,
-  domain: ethers.TypedDataDomain,
-  types: Record<string, ethers.TypedDataField[]>,
+  domain: TypedDataDomain,
+  types: TypedDataTypes,
+  primaryType: string,
   value: Record<string, unknown>
 ): Promise<string> {
-  return session.signer._signTypedData(domain, types, value)
+  return walletClientOf(session.provider, session.address).signTypedData({
+    domain,
+    types,
+    primaryType,
+    message: value
+  } as Parameters<ReturnType<typeof walletClientOf>['signTypedData']>[0])
 }
 
 /**
@@ -224,12 +185,14 @@ export async function readTransactionOutcome(
   nonce?: number
 ): Promise<'mined' | 'reverted' | 'superseded' | 'unknown'> {
   try {
-    const provider = await getReadProvider(chainId)
-    const receipt = await provider.getTransactionReceipt(txHash)
-    if (receipt) return receipt.status === 1 ? 'mined' : 'reverted'
-    const known = nonce ?? (await provider.getTransaction(txHash))?.nonce
+    const client = await getReadClient(chainId)
+    const hash = txHash as Hash
+    const receipt = await receiptOf(client, hash)
+    if (receipt) return receipt.status === 'success' ? 'mined' : 'reverted'
+    const known = nonce ?? (await transactionOf(client, hash))?.nonce
     if (known === undefined) return 'unknown'
-    return (await provider.getTransactionCount(from, 'latest')) > known ? 'superseded' : 'unknown'
+    const used = await client.getTransactionCount({ address: from as Address, blockTag: 'latest' })
+    return used > known ? 'superseded' : 'unknown'
   } catch {
     return 'unknown'
   }
@@ -237,10 +200,22 @@ export async function readTransactionOutcome(
 
 export type TransactionSettlement = 'mined' | 'reverted' | 'dropped' | 'pending'
 
-type TransactionReader = Pick<
-  ethers.providers.Provider,
-  'getTransactionReceipt' | 'getTransaction' | 'getTransactionCount'
->
+type TransactionReader = Pick<PublicClient, 'getTransactionReceipt' | 'getTransaction' | 'getTransactionCount'>
+
+// A transaction or receipt the node doesn't have is null here; viem throws for it.
+function receiptOf(reader: Pick<TransactionReader, 'getTransactionReceipt'>, hash: Hash) {
+  return reader.getTransactionReceipt({ hash }).catch((error: unknown) => {
+    if (error instanceof TransactionReceiptNotFoundError) return null
+    throw error
+  })
+}
+
+function transactionOf(reader: Pick<TransactionReader, 'getTransaction'>, hash: Hash) {
+  return reader.getTransaction({ hash }).catch((error: unknown) => {
+    if (error instanceof TransactionNotFoundError) return null
+    throw error
+  })
+}
 
 /** Who sent a transaction and with which nonce: once the nonce is used, the transaction can never run. */
 export type TransactionSender = { from: string; nonce: number }
@@ -269,22 +244,25 @@ export async function watchTransaction(
   { timeoutMs, pollMs, sender, onSeen, sleep = defaultSleep, now = Date.now }: WatchOptions
 ): Promise<TransactionSettlement> {
   const deadline = now() + timeoutMs
-  const fromReceipt = (receipt: ethers.providers.TransactionReceipt) => (receipt.status === 1 ? 'mined' : 'reverted')
+  const hash = txHash as Hash
+  const fromReceipt = (receipt: { status: 'success' | 'reverted' }) =>
+    receipt.status === 'success' ? 'mined' : 'reverted'
   let seen = false
   for (;;) {
     try {
-      const receipt = await reader.getTransactionReceipt(txHash)
+      const receipt = await receiptOf(reader, hash)
       if (receipt) return fromReceipt(receipt)
-      const tx = await reader.getTransaction(txHash)
+      const tx = await transactionOf(reader, hash)
       if (tx && !sender && !seen) {
         seen = true
         onSeen?.({ from: tx.from, nonce: tx.nonce })
       }
       const known = tx ? { from: tx.from, nonce: tx.nonce } : sender
       if (known) {
-        if ((await reader.getTransactionCount(known.from, 'latest')) > known.nonce) {
+        const used = await reader.getTransactionCount({ address: known.from as Address, blockTag: 'latest' })
+        if (used > known.nonce) {
           // It may have been mined between the two reads.
-          const late = await reader.getTransactionReceipt(txHash)
+          const late = await receiptOf(reader, hash)
           return late ? fromReceipt(late) : 'dropped'
         }
       }
@@ -305,7 +283,7 @@ export async function settleTransaction(
   sender?: TransactionSender,
   onSeen?: (sender: TransactionSender) => void
 ): Promise<TransactionSettlement> {
-  return watchTransaction(await getReadProvider(chainId), txHash, {
+  return watchTransaction(await getReadClient(chainId), txHash, {
     timeoutMs: SETTLE_TIMEOUT_MS,
     pollMs: SETTLE_POLL_MS,
     sender,
@@ -318,24 +296,50 @@ const SENDER_READ_DELAY_MS = 2_000
 
 /** The sender and nonce of a transaction just sent, once the read node has it; undefined if it never shows up. */
 export async function readTransactionSender(chainId: number, txHash: string): Promise<TransactionSender | undefined> {
-  const provider = await getReadProvider(chainId)
+  const client = await getReadClient(chainId)
   for (let read = 0; read < SENDER_READS; read++) {
     if (read > 0) await defaultSleep(SENDER_READ_DELAY_MS)
-    const tx = await provider.getTransaction(txHash).catch(() => null)
+    const tx = await transactionOf(client, txHash as Hash).catch(() => null)
     if (tx) return { from: tx.from, nonce: tx.nonce }
   }
   return undefined
 }
 
-/** Whether a contract is deployed at `address`. */
-export async function isContractDeployed(chainId: number, address: string): Promise<boolean> {
-  const provider = await getReadProvider(chainId)
-  return (await provider.getCode(address)) !== '0x'
+const RECEIPT_POLL_MS = 4_000
+
+type ReceiptWaitOptions = {
+  timeoutMs?: number
+  pollMs?: number
+  sleep?: (ms: number) => Promise<void>
+  now?: () => number
 }
 
-/** Resolves true when the transaction is mined successfully, false when it reverted. */
+/**
+ * Polls for this hash's receipt: true once mined successfully, false once reverted. A failed read (network, 5xx,
+ * rate limit) is retried, never thrown; only `timeoutMs`, when given, ends the wait without an outcome, as an error.
+ * A replacement's receipt never stands in for this transaction's.
+ */
+export async function waitForReceipt(
+  reader: Pick<TransactionReader, 'getTransactionReceipt'>,
+  txHash: string,
+  { timeoutMs, pollMs = RECEIPT_POLL_MS, sleep = defaultSleep, now = Date.now }: ReceiptWaitOptions = {}
+): Promise<boolean> {
+  const deadline = timeoutMs === undefined ? Infinity : now() + timeoutMs
+  for (;;) {
+    const receipt = await receiptOf(reader, txHash as Hash).catch(() => null)
+    if (receipt) return receipt.status === 'success'
+    if (now() >= deadline) throw new Error(`Transaction ${txHash} was not mined within ${timeoutMs}ms`)
+    await sleep(pollMs)
+  }
+}
+
+/** Whether a contract is deployed at `address`. */
+export async function isContractDeployed(chainId: number, address: string): Promise<boolean> {
+  const code = await (await getReadClient(chainId)).getCode({ address: address as Address })
+  return !!code && code !== '0x'
+}
+
+/** Resolves true when the transaction is mined successfully, false when it reverted; see `waitForReceipt`. */
 export async function waitForTransaction(chainId: number, txHash: string, timeoutMs?: number): Promise<boolean> {
-  const provider = await getReadProvider(chainId)
-  const receipt = await provider.waitForTransaction(txHash, 1, timeoutMs)
-  return receipt.status === 1
+  return waitForReceipt(await getReadClient(chainId), txHash, { timeoutMs })
 }

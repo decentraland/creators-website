@@ -1,4 +1,4 @@
-import { ethers } from 'ethers'
+import { keccak256, parseEther, toHex } from 'viem'
 import { afterEach, describe, expect, it } from 'vitest'
 import { collection, upperBody, wearable } from './fixtures'
 import { launchApp, type App } from './helpers/app'
@@ -14,7 +14,7 @@ afterEach(async () => {
 // A draft that was saved once: the server has derived its salt and contract address.
 const draft = collection({
   name: 'Summer Drop',
-  salt: ethers.utils.id('summer-drop'),
+  salt: keccak256(toHex('summer-drop')),
   contract_address: '0x' + 'c0'.repeat(20)
 })
 const items = [
@@ -57,7 +57,7 @@ describe('publish a collection', () => {
     app = await launchApp({
       path: `/collections/${draft.id}`,
       builder: { collections: [draft], items },
-      chain: { manaBalanceWei: ethers.utils.parseEther('100').toString() }
+      chain: { manaBalanceWei: parseEther('100').toString() }
     })
     const { page } = app
     await waitForEnabled(page, 'publish-collection', 30_000)
@@ -133,7 +133,7 @@ describe('publish a collection', () => {
     app = await launchApp({
       path: `/collections/${draft.id}`,
       builder: { collections: [draft], items },
-      chain: { manaBalanceWei: ethers.utils.parseEther('100').toString(), revertOnce: ['createCollection'] }
+      chain: { manaBalanceWei: parseEther('100').toString(), revertOnce: ['createCollection'] }
     })
     const { page } = app
     await waitForEnabled(page, 'publish-collection', 30_000)

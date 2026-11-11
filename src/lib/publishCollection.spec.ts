@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ethers } from 'ethers'
-import { ContractName, getContract } from 'decentraland-transactions'
-import { toTransaction } from '~/test/chain'
-import { encodeContractCall } from './auth/transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
+import { decodeAbiParameters, maxUint256, parseAbiParameters, toFunctionSelector } from 'viem'
+import { decodeCall, toTransaction } from '~/test/chain'
 import { BuilderServerError } from './builder'
 import { type Collection } from './collections'
 import { CreditsServerError } from './credits'
 import { ItemType, type Item, BODY_SHAPE_FEMALE } from './items'
 import { getPublicationFee } from './publishFee'
+import { WrongAccountError, WrongChainError } from './walletErrors'
 import {
   MAX_PUBLISH_ITEMS,
   PublishCollectionError,
@@ -58,7 +58,7 @@ function makeItem(id: string, createdAt: number): Item {
     owner: ADDRESS,
     collectionId: collection.id,
     rarity: 'legendary',
-    price: ethers.constants.MaxUint256.toString(),
+    price: maxUint256.toString(),
     beneficiary: ADDRESS,
     isPublished: false,
     isApproved: false,
@@ -226,26 +226,58 @@ describe('createCollection encoding', () => {
     const manager = getContract(ContractName.CollectionManager, CHAIN_ID)
     expect(call.target).toBe(manager.address)
     expect(call.selector).toBe(
-      ethers.utils
-        .id('createCollection(address,address,bytes32,string,string,string,address,(string,uint256,address,string)[])')
-        .slice(0, 10)
+      toFunctionSelector(
+        'createCollection(address,address,bytes32,string,string,string,address,(string,uint256,address,string)[])'
+      )
     )
     expect(call.expiresAt).toBe(now / 1000 + 24 * 60 * 60)
-    const decoded = ethers.utils.defaultAbiCoder.decode(
-      [
-        'address',
-        'address',
-        'bytes32',
-        'string',
-        'string',
-        'string',
-        'address',
-        'tuple(string,uint256,address,string)[]'
-      ],
-      call.data
+    const decoded = decodeAbiParameters(
+      parseAbiParameters(
+        'address, address, bytes32, string, string, string, address, (string,uint256,address,string)[]'
+      ),
+      call.data as `0x${string}`
     )
     expect(decoded[3]).toBe('Halloween')
     expect(decoded[7]).toHaveLength(2)
+    // Encoded by ethers before the move to viem: the bytes the credits server co-signs must not change.
+    expect(call.data).toBe(
+      '0x' +
+        '0000000000000000000000007b1fe9de545b22cb553766817b84d655ce8121c9' +
+        '000000000000000000000000802de0c509add2ee29de24de7225daaff4741c43' +
+        '1111111111111111111111111111111111111111111111111111111111111111' +
+        '0000000000000000000000000000000000000000000000000000000000000100' +
+        '0000000000000000000000000000000000000000000000000000000000000140' +
+        '0000000000000000000000000000000000000000000000000000000000000180' +
+        '00000000000000000000000000000000000000000000000000000000000000aa' +
+        '0000000000000000000000000000000000000000000000000000000000000200' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '48616c6c6f7765656e0000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '44434c2d484c4c574e0000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000043' +
+        '68747470733a2f2f706565722e646563656e7472616c616e642e7a6f6e652f6c' +
+        '616d626461732f636f6c6c656374696f6e732f7374616e646172642f65726337' +
+        '32312f0000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000002' +
+        '0000000000000000000000000000000000000000000000000000000000000040' +
+        '0000000000000000000000000000000000000000000000000000000000000140' +
+        '0000000000000000000000000000000000000000000000000000000000000080' +
+        'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' +
+        '00000000000000000000000000000000000000000000000000000000000000aa' +
+        '00000000000000000000000000000000000000000000000000000000000000c0' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '6c6567656e646172790000000000000000000000000000000000000000000000' +
+        '000000000000000000000000000000000000000000000000000000000000001a' +
+        '313a773a4974656d20613a3a6861743a4261736546656d616c65000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000080' +
+        'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' +
+        '00000000000000000000000000000000000000000000000000000000000000aa' +
+        '00000000000000000000000000000000000000000000000000000000000000c0' +
+        '0000000000000000000000000000000000000000000000000000000000000009' +
+        '6c6567656e646172790000000000000000000000000000000000000000000000' +
+        '000000000000000000000000000000000000000000000000000000000000001a' +
+        '313a773a4974656d20623a3a6861743a4261736546656d616c65000000000000'
+    )
   })
 
   it('produces a useCredits call the CreditsManager ABI accepts, with no MANA from the wallet', () => {
@@ -253,11 +285,10 @@ describe('createCollection encoding', () => {
     const externalCall = buildCollectionManagerExternalCall(CHAIN_ID, args)
     const call = buildUseCreditsCall(CHAIN_ID, authorization, externalCall)
     expect(call.contract.address).toBe(getContract(ContractName.CreditsManager, CHAIN_ID).address)
-    const data = encodeContractCall(call)
-    const decoded = new ethers.utils.Interface(call.contract.abi).decodeFunctionData('useCredits', data)
-    expect(decoded._args.maxUncreditedValue.toString()).toBe('0')
-    expect(decoded._args.maxCreditedValue.toString()).toBe(authorization.credit.amount)
-    expect(decoded._args.customExternalCallSignature).toBe(authorization.externalCallSignature)
+    const [useCredits] = decodeCall(call) as any[]
+    expect(useCredits.maxUncreditedValue).toBe(0n)
+    expect(useCredits.maxCreditedValue).toBe(BigInt(authorization.credit.amount))
+    expect(useCredits.customExternalCallSignature).toBe(authorization.externalCallSignature)
   })
 })
 
@@ -272,6 +303,11 @@ describe('toPublishError', () => {
     )
     expect(toPublishError(new Error('boom')).reason).toBe('generic')
     expect(toPublishError(new PublishCollectionError('unsynced')).reason).toBe('unsynced')
+  })
+
+  it('tells a wallet on another account or network apart, so the creator is asked to switch it back', () => {
+    expect(toPublishError(new WrongAccountError('0xme', '0xother')).reason).toBe('wallet')
+    expect(toPublishError(new WrongChainError(137, 1)).reason).toBe('wallet')
   })
 })
 

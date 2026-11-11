@@ -1,4 +1,4 @@
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getCollectionContract, getContract } from '~/lib/chain/contracts'
 import { type ContractCall } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { SellItemError } from '~/lib/sales'
@@ -100,7 +100,7 @@ export function buildSetRolesCall(
   chainId: number
 ): ContractCall {
   if (!collection.contractAddress) throw new SellItemError('not_published', 'The collection has no contract yet')
-  const contract = { ...getContract(ContractName.ERC721CollectionV2, chainId), address: collection.contractAddress }
+  const contract = getCollectionContract(chainId, collection.contractAddress)
   return { contract, method: METHOD[kind], args: [diff.addresses, diff.values] }
 }
 

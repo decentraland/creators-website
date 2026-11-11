@@ -1,8 +1,8 @@
 // Calls on the ThirdPartyRegistry (Polygon), ported from the legacy builder's thirdParty sagas and the TP approval
 // flow: creators register their third party and buy item slots when publishing; curators set the Merkle root of the
 // approved items (consuming the creator's cheque) and enable or disable a third party.
-import { ethers } from 'ethers'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
+import { compactSignatureToSignature, parseCompactSignature, parseSignature, size, zeroHash, type Hex } from 'viem'
 import { readContract, type ContractCall } from '~/lib/auth'
 import { type SlotsCheque } from '~/lib/builder'
 import { contractsFromRawMetadata, toRawMetadata, type LinkedContract, type ThirdParty } from '~/lib/thirdParty'
@@ -77,8 +77,13 @@ export function buildBuyItemSlotsCall(
 export type ChequeSlot = [string, string, string, string, number]
 
 export function toChequeSlot(cheque: SlotsCheque): ChequeSlot {
-  const { r, s, v } = ethers.utils.splitSignature(cheque.signature)
-  return [String(cheque.qty), cheque.salt, r, s, v]
+  const signature = cheque.signature as Hex
+  // A 64-byte EIP-2098 signature packs the recovery bit into `s`; the registry needs it split out.
+  const { r, s, yParity } =
+    size(signature) === 64 ? compactSignatureToSignature(parseCompactSignature(signature)) : parseSignature(signature)
+  if (yParity === undefined) throw new Error('The cheque signature has no recovery id')
+  // The registry takes the legacy 27/28 recovery id, whichever form the wallet answered.
+  return [String(cheque.qty), cheque.salt, r, s, 27 + yParity]
 }
 
 /**
@@ -115,19 +120,34 @@ export type RegisteredThirdParty = {
   root: string
 }
 
-const EMPTY_ROOT = ethers.constants.HashZero
+const EMPTY_ROOT = zeroHash
 
-type ThirdPartyRecord = { registered: ethers.BigNumber; maxItems: ethers.BigNumber; root: string; metadata: string }
+type ThirdPartyRecord = { registered: bigint; maxItems: bigint; root: string; metadata: string }
 
-function readThirdPartyRecord(chainId: number, thirdPartyId: string): Promise<ThirdPartyRecord> {
-  return readContract<ThirdPartyRecord>(getThirdPartyRegistry(chainId), 'thirdParties', [thirdPartyId])
+type ThirdPartyOutputs = readonly [
+  isApproved: boolean,
+  root: string,
+  maxItems: bigint,
+  consumedSlots: bigint,
+  registered: bigint,
+  metadata: string,
+  resolver: string
+]
+
+async function readThirdPartyRecord(chainId: number, thirdPartyId: string): Promise<ThirdPartyRecord> {
+  const [, root, maxItems, , registered, metadata] = await readContract<ThirdPartyOutputs>(
+    getThirdPartyRegistry(chainId),
+    'thirdParties',
+    [thirdPartyId]
+  )
+  return { registered, maxItems, root, metadata }
 }
 
 export async function fetchRegisteredThirdParty(chainId: number, thirdPartyId: string): Promise<RegisteredThirdParty> {
   const record = await readThirdPartyRecord(chainId, thirdPartyId)
   return {
-    registered: !record.registered.isZero(),
-    maxItems: Number(record.maxItems.toString()),
+    registered: record.registered !== 0n,
+    maxItems: Number(record.maxItems),
     root: record.root === EMPTY_ROOT ? '' : record.root
   }
 }
@@ -154,17 +174,15 @@ export async function fetchThirdPartyPrice(chainId: number): Promise<ThirdPartyP
   const registry = getThirdPartyRegistry(chainId)
   const oracle = getContract(ContractName.ChainlinkOracle, chainId)
   const [slotPrice, minSlots, rate] = await Promise.all([
-    readContract<ethers.BigNumber>(registry, 'itemSlotPrice'),
-    readContract<ethers.BigNumber>(registry, 'programmaticBasePurchasedSlots'),
-    readContract<ethers.BigNumber>(oracle, 'getRate')
+    readContract<bigint>(registry, 'itemSlotPrice'),
+    readContract<bigint>(registry, 'programmaticBasePurchasedSlots'),
+    readContract<bigint>(oracle, 'getRate')
   ])
-  const itemSlotUsdWei = BigInt(slotPrice.toString())
-  const usdPerManaWei = BigInt(rate.toString())
   return {
-    itemSlotUsdWei,
-    itemSlotManaWei: usdToMana(itemSlotUsdWei, usdPerManaWei),
-    programmaticMinSlots: Number(minSlots.toString()),
-    usdPerManaWei
+    itemSlotUsdWei: slotPrice,
+    itemSlotManaWei: usdToMana(slotPrice, rate),
+    programmaticMinSlots: Number(minSlots),
+    usdPerManaWei: rate
   }
 }
 

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ethers } from 'ethers'
 import { Network, TradeAssetType, TradeType, type Trade, type TradeCreation } from '@dcl/schemas'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
+import { zeroAddress } from 'viem'
 
 vi.mock('~/lib/auth', async () => {
   const actual = await vi.importActual<typeof import('~/lib/auth')>('~/lib/auth')
@@ -65,7 +65,7 @@ describe('getTradeDomain', () => {
     expect(getTradeDomain(CHAIN_ID)).toEqual({
       name: contract.name,
       version: contract.version,
-      salt: ethers.utils.hexZeroPad(ethers.utils.hexlify(CHAIN_ID), 32),
+      salt: '0x' + CHAIN_ID.toString(16).padStart(64, '0'),
       verifyingContract: contract.address
     })
   })
@@ -98,7 +98,7 @@ describe('toTradeTypedValues', () => {
 describe('fetchSignatureIndexes', () => {
   it('reads both indexes from the marketplace contract', async () => {
     vi.mocked(readContract).mockImplementation(async (_contract, method) =>
-      ethers.BigNumber.from(method === 'contractSignatureIndex' ? 1 : 4)
+      method === 'contractSignatureIndex' ? 1n : 4n
     )
     await expect(fetchSignatureIndexes(SIGNER, CHAIN_ID)).resolves.toEqual({
       contractSignatureIndex: 1,
@@ -182,7 +182,7 @@ describe('toOnChainTrade', () => {
     expect(onChain.signature).toBe('0xsig')
     expect(onChain.checks.allowedProof).toEqual([])
     expect(onChain.checks.expiration).toBe(4102444800)
-    expect(onChain.sent[0]).toMatchObject({ value: '7', beneficiary: ethers.constants.AddressZero })
+    expect(onChain.sent[0]).toMatchObject({ value: '7', beneficiary: zeroAddress })
     expect(onChain.received[0]).toMatchObject({ beneficiary: SIGNER })
   })
 })

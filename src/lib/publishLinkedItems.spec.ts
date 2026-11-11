@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ethers } from 'ethers'
 import { type ContractNetwork } from '@dcl/schemas'
-import { TEST_SIGNER, signTypedDataWithTestKey, typedDataDigest } from '~/test/chain'
-import { encodeContractCall } from './auth/transactions'
+import {
+  TEST_SIGNER,
+  decodeCall,
+  recoverTypedDataSigner,
+  signTypedDataWithTestKey,
+  typedDataDigest
+} from '~/test/chain'
 import { BuilderServerError, type SlotsCheque } from './builder'
 import { CurationStatus, type Collection } from './collections'
 import { ItemType, type Item } from './items'
@@ -27,6 +31,7 @@ import {
 } from './publishLinkedItems'
 import { type ThirdParty } from './thirdParty'
 import { getThirdPartyRegistry, type ThirdPartyPrice } from './thirdPartyRegistry'
+import { WrongAccountError } from './walletErrors'
 
 const CHAIN_ID = 80002
 const ADDRESS = '0x00000000000000000000000000000000000000aa'
@@ -163,10 +168,9 @@ function sentMethods(deps: Deps): string[] {
   return deps.sendTransaction.mock.calls.map(([call]) => `${call.method}`)
 }
 
-function decodeSent(deps: Deps, index: number) {
+function decodeSent(deps: Deps, index: number): any[] {
   const [call] = deps.sendTransaction.mock.calls[index]
-  const contractInterface = new ethers.utils.Interface(call.contract.abi)
-  return contractInterface.decodeFunctionData(call.method, encodeContractCall(call))
+  return decodeCall(call) as any[]
 }
 
 function steps(deps: Deps): LinkedPublishStep[] {
@@ -225,13 +229,30 @@ describe('createChequeSalt', () => {
 })
 
 describe('signSlotsCheque', () => {
+  it('signs the ConsumeSlots cheque with the given salt, byte for byte', async () => {
+    const salt = '0x' + '33'.repeat(32)
+    const signed = await signSlotsCheque(
+      { signTypedData: signTypedDataWithTestKey, randomSalt: () => salt },
+      CHAIN_ID,
+      THIRD_PARTY_ID,
+      5
+    )
+
+    expect(signed).toEqual({
+      qty: 5,
+      salt,
+      signature:
+        '0x4fcfe12a7f648caab7cfde9184b5f28a6a7130f8111c67a71158e8f241eb1e19204092bbd56a0db39c11dcc5340b59bfd5bb1fc32732da56f7ff147b6dffdfc21b'
+    })
+  })
+
   it('signs the typed data and answers a cheque builder-server can recover the signer from', async () => {
     const signed = await signSlotsCheque({ signTypedData: signTypedDataWithTestKey }, CHAIN_ID, THIRD_PARTY_ID, 5)
 
     expect(signed.qty).toBe(5)
     expect(signed.salt).toMatch(/^0x[0-9a-f]{64}$/)
     const { domain, types, value } = buildChequeTypedData(CHAIN_ID, THIRD_PARTY_ID, signed.qty, signed.salt)
-    expect(ethers.utils.verifyTypedData(domain, types, value, signed.signature)).toBe(TEST_SIGNER)
+    expect(await recoverTypedDataSigner(domain, types, value, signed.signature)).toBe(TEST_SIGNER)
   })
 })
 
@@ -297,16 +318,16 @@ describe('publishLinkedItems', () => {
     expect(sentMethods(deps)).toEqual(['approve', 'addThirdParties'])
     const approve = decodeSent(deps, 0)
     expect(approve[0].toLowerCase()).toBe(REGISTRY.address.toLowerCase())
-    expect(BigInt(approve[1].toString())).toBe(603n * ETHER)
+    expect(approve[1]).toBe(603n * ETHER)
     const add = decodeSent(deps, 1)
     const [registered] = add[0]
-    expect(registered[0]).toBe(THIRD_PARTY_ID)
-    expect(registered[1]).toBe(`tp:1:Brand:A brand:amoy-${'0x' + '1'.repeat(40)}`)
-    expect(registered[3].map((manager: string) => manager.toLowerCase())).toEqual([ADDRESS])
-    expect(registered[4]).toEqual([true])
-    expect(registered[5].toString()).toBe('3')
+    expect(registered.id).toBe(THIRD_PARTY_ID)
+    expect(registered.metadata).toBe(`tp:1:Brand:A brand:amoy-${'0x' + '1'.repeat(40)}`)
+    expect(registered.managers.map((manager: string) => manager.toLowerCase())).toEqual([ADDRESS])
+    expect(registered.managerValues).toEqual([true])
+    expect(registered.slots).toBe(3n)
     expect(add[1]).toEqual([false])
-    expect(add[2].map((value: ethers.BigNumber) => BigInt(value.toString()))).toEqual([603n * ETHER])
+    expect(add[2]).toEqual([603n * ETHER])
     expect(deps.settleTransaction.mock.calls.map(([hash]) => hash)).toEqual(['0xtx1', '0xtx2'])
     expect(deps.deleteVirtualThirdParty).toHaveBeenCalledWith(THIRD_PARTY_ID)
     expect(deps.publishLinkedItems).toHaveBeenCalledWith(collection.id, ['a', 'b', 'c'], cheque)
@@ -329,9 +350,9 @@ describe('publishLinkedItems', () => {
     expect(deps.setThirdPartyKind).toHaveBeenCalledWith(THIRD_PARTY_ID, true)
     expect(sentMethods(deps)).toEqual(['addThirdParties'])
     const add = decodeSent(deps, 0)
-    expect(add[0][0][5].toString()).toBe('200')
+    expect(add[0][0].slots).toBe(200n)
     expect(add[1]).toEqual([true])
-    expect(BigInt(add[2][0].toString())).toBe(getLinkedPublishFee(200, price).maxManaWei)
+    expect(add[2][0]).toBe(getLinkedPublishFee(200, price).maxManaWei)
     expect(steps(deps)).toEqual([
       'check',
       'tos',
@@ -356,8 +377,8 @@ describe('publishLinkedItems', () => {
     expect(sentMethods(deps)).toEqual(['buyItemSlots'])
     const buy = decodeSent(deps, 0)
     expect(buy[0]).toBe(THIRD_PARTY_ID)
-    expect(buy[1].toString()).toBe('2')
-    expect(BigInt(buy[2].toString())).toBe(getLinkedPublishFee(2, price).maxManaWei)
+    expect(buy[1]).toBe(2n)
+    expect(buy[2]).toBe(getLinkedPublishFee(2, price).maxManaWei)
     expect(deps.setThirdPartyKind).not.toHaveBeenCalled()
     expect(deps.deleteVirtualThirdParty).not.toHaveBeenCalled()
     expect(result.txHash).toBe('0xtx1')
@@ -575,8 +596,8 @@ describe('publishLinkedItems', () => {
     expect(deps.fetchManaAllowance).not.toHaveBeenCalled()
     expect(sentMethods(deps)).toEqual(['buyItemSlots'])
     const buy = decodeSent(deps, 0)
-    expect(buy[1].toString()).toBe('3')
-    expect(buy[2].toString()).toBe('0')
+    expect(buy[1]).toBe(3n)
+    expect(buy[2]).toBe(0n)
   })
 
   it('carries a sent payment on any later failure, so a retry resumes from it', async () => {
@@ -624,7 +645,7 @@ describe('publishLinkedItems', () => {
 
     expect(deps.settleTransaction).toHaveBeenCalledWith('0xold', undefined, expect.any(Function))
     expect(sentMethods(deps)).toEqual(['buyItemSlots'])
-    expect(decodeSent(deps, 0)[1].toString()).toBe('1')
+    expect(decodeSent(deps, 0)[1]).toBe(1n)
   })
 
   it('buys nothing when a resumed payment was sped up and its slots are on chain under another hash', async () => {
@@ -1077,6 +1098,7 @@ describe('toLinkedPublishError', () => {
     })
     expect(toLinkedPublishError(PENDING_REVIEW, 'publish').reason).toBe('pending_review')
     expect(toLinkedPublishError({ code: 'ACTION_REJECTED' }, 'buy_slots').reason).toBe('rejected')
+    expect(toLinkedPublishError(new WrongAccountError('0xme', '0xother'), 'buy_slots').reason).toBe('wallet')
     expect(toLinkedPublishError(new Error('boom'), 'tos').reason).toBe('tos_failed')
     expect(toLinkedPublishError(new Error('boom'), 'push')).toMatchObject({
       step: 'push',

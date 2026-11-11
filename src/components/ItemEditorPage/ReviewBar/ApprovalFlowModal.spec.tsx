@@ -170,6 +170,15 @@ describe('ApprovalFlowModal', () => {
     expect(state.start).toHaveBeenCalledTimes(2)
   })
 
+  it('asks the curator to switch the wallet back, with nothing to copy, when it sits on another account', () => {
+    view = { kind: 'error', step: 'approve', detail: null, failed: [], wallet: true }
+    renderModal()
+    expect(screen.getByTestId('approval-error-description')).toHaveTextContent(/switch it back to the account/i)
+    expect(screen.queryByTestId('approval-error-detail')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('approval-retry'))
+    expect(state.start).toHaveBeenCalledTimes(2)
+  })
+
   it('sends the curator back to the latest items when the creator changed them mid-review', () => {
     view = { kind: 'error', step: 'changed', detail: null, failed: [] }
     const onClose = vi.fn()

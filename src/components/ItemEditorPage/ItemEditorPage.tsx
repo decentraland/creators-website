@@ -21,7 +21,8 @@ import {
   useCollectionStatus,
   useSaveCollection
 } from '~/hooks/useCollection'
-import { useCollectionCuration, useCommittee } from '~/hooks/useCuration'
+import { useCommittee } from '~/hooks/useCommittee'
+import { useCollectionCuration } from '~/hooks/useCuration'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { track } from '~/lib/analytics'
 import { modelValidationKey, useModelValidation } from '~/hooks/useModelValidation'

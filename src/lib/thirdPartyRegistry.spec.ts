@@ -1,10 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ethers } from 'ethers'
 import { type ContractNetwork } from '@dcl/schemas'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
+import { zeroHash, parseSignature, serializeCompactSignature, signatureToCompactSignature } from 'viem'
 import { readContract } from '~/lib/auth'
-import { toTransaction } from '~/test/chain'
-import { encodeContractCall } from './auth/transactions'
+import { decodeCall, toTransaction } from '~/test/chain'
 import { type ThirdParty } from './thirdParty'
 import {
   buildAddThirdPartyCall,
@@ -46,9 +45,9 @@ const thirdParty: ThirdParty = {
 }
 
 /** Encodes the call with the registry ABI and decodes it back: proves the args fit the contract's signature. */
-function roundTrip(call: ReturnType<typeof buildBuyItemSlotsCall>) {
+function roundTrip(call: ReturnType<typeof buildBuyItemSlotsCall>): any[] {
   expect(call.contract.address).toBe(REGISTRY.address)
-  return new ethers.utils.Interface(call.contract.abi).decodeFunctionData(call.method, encodeContractCall(call))
+  return decodeCall(call) as any[]
 }
 
 describe('buildAddThirdPartyCall', () => {
@@ -58,15 +57,15 @@ describe('buildAddThirdPartyCall', () => {
     expect(call.method).toBe('addThirdParties')
     const [parties, programmatic, maxPrices] = roundTrip(call)
     expect(parties).toHaveLength(1)
-    const [id, metadata, resolver, managers, enabled, slots] = parties[0]
+    const { id, metadata, resolver, managers, managerValues, slots } = parties[0]
     expect(id).toBe(THIRD_PARTY_ID)
     expect(metadata).toBe(`tp:1:Brand:A brand:amoy-${'0x' + '1'.repeat(40)}`)
     expect(resolver).toBe('Disabled')
     expect(managers.map((manager: string) => manager.toLowerCase())).toEqual([MANAGER])
-    expect(enabled).toEqual([true])
-    expect(slots.toString()).toBe('200')
+    expect(managerValues).toEqual([true])
+    expect(slots).toBe(200n)
     expect(programmatic).toEqual([true])
-    expect(maxPrices.map((value: ethers.BigNumber) => BigInt(value.toString()))).toEqual([603n * ETHER])
+    expect(maxPrices).toEqual([603n * ETHER])
     expect(toTransaction(call)).toEqual({
       to: '0x7d7c0b9d97385bada5fec6861e97d0df414af3c3',
       data:
@@ -106,8 +105,8 @@ describe('buildAddThirdPartyCall', () => {
     const other = '0x00000000000000000000000000000000000000bb'
     const call = buildAddThirdPartyCall(CHAIN_ID, { ...thirdParty, managers: [MANAGER, other] }, 1, ETHER)
     const [parties] = roundTrip(call)
-    expect(parties[0][3]).toHaveLength(2)
-    expect(parties[0][4]).toEqual([true, true])
+    expect(parties[0].managers).toHaveLength(2)
+    expect(parties[0].managerValues).toEqual([true, true])
   })
 })
 
@@ -119,13 +118,13 @@ describe('buildUpdateThirdPartyCall', () => {
     expect(call.method).toBe('updateThirdParties')
     const [parties] = roundTrip(call)
     expect(parties).toHaveLength(1)
-    const [id, metadata, resolver, managers, enabled, slots] = parties[0]
+    const { id, metadata, resolver, managers, managerValues, slots } = parties[0]
     expect(id).toBe(THIRD_PARTY_ID)
     expect(metadata).toBe(`tp:1:Brand:A brand:mainnet-${next.address}`)
     expect(resolver).toBe('')
     expect(managers).toEqual([])
-    expect(enabled).toEqual([])
-    expect(slots.toString()).toBe('0')
+    expect(managerValues).toEqual([])
+    expect(slots).toBe(0n)
     expect(toTransaction(call)).toEqual({
       to: '0x7d7c0b9d97385bada5fec6861e97d0df414af3c3',
       data:
@@ -160,8 +159,8 @@ describe('buildBuyItemSlotsCall', () => {
     expect(call.method).toBe('buyItemSlots')
     const [id, qty, maxPrice] = roundTrip(call)
     expect(id).toBe(THIRD_PARTY_ID)
-    expect(qty.toString()).toBe('3')
-    expect(BigInt(maxPrice.toString())).toBe(603n * ETHER)
+    expect(qty).toBe(3n)
+    expect(maxPrice).toBe(603n * ETHER)
     expect(toTransaction(call)).toEqual({
       to: '0x7d7c0b9d97385bada5fec6861e97d0df414af3c3',
       data:
@@ -186,6 +185,13 @@ describe('toChequeSlot', () => {
       28
     ])
   })
+
+  it('splits a compact 64-byte signature into the same tuple', () => {
+    const compact = serializeCompactSignature(signatureToCompactSignature(parseSignature(CHEQUE_SIGNATURE)))
+    expect(toChequeSlot({ signature: compact, qty: 7, salt: CHEQUE_SALT })).toEqual(
+      toChequeSlot({ signature: CHEQUE_SIGNATURE, qty: 7, salt: CHEQUE_SALT })
+    )
+  })
 })
 
 describe('buildReviewThirdPartyWithRootCall', () => {
@@ -201,9 +207,9 @@ describe('buildReviewThirdPartyWithRootCall', () => {
     expect(id).toBe(THIRD_PARTY_ID)
     expect(decodedRoot).toBe(root)
     expect(slots).toHaveLength(1)
-    expect(slots[0][0].toString()).toBe('7')
-    expect(slots[0][1]).toBe(salt)
-    expect(slots[0][4]).toBe(slot[4])
+    expect(slots[0].qty).toBe(7n)
+    expect(slots[0].salt).toBe(salt)
+    expect(slots[0].sigV).toBe(slot[4])
     expect(toTransaction(call)).toEqual({
       to: '0x7d7c0b9d97385bada5fec6861e97d0df414af3c3',
       data:
@@ -237,8 +243,8 @@ describe('buildReviewThirdPartyCall', () => {
     expect(call.method).toBe('reviewThirdParties')
     const [reviews] = roundTrip(call)
     expect(reviews).toHaveLength(1)
-    expect(reviews[0][0]).toBe(THIRD_PARTY_ID)
-    expect(reviews[0][1]).toBe(false)
+    expect(reviews[0].id).toBe(THIRD_PARTY_ID)
+    expect(reviews[0].value).toBe(false)
     expect(toTransaction(call)).toEqual({
       to: '0x7d7c0b9d97385bada5fec6861e97d0df414af3c3',
       data:
@@ -274,13 +280,13 @@ describe('fetchThirdPartyPrice', () => {
     const oracle = getContract(ContractName.ChainlinkOracle, CHAIN_ID)
     vi.mocked(readContract).mockImplementation(async (contract, method) => {
       if (contract.address === REGISTRY.address && method === 'itemSlotPrice') {
-        return ethers.BigNumber.from((100n * ETHER).toString())
+        return 100n * ETHER
       }
       if (contract.address === REGISTRY.address && method === 'programmaticBasePurchasedSlots') {
-        return ethers.BigNumber.from(200)
+        return 200n
       }
       if (contract.address === oracle.address && method === 'getRate') {
-        return ethers.BigNumber.from((ETHER / 2n).toString())
+        return ETHER / 2n
       }
       throw new Error(`Unexpected read ${method}`)
     })
@@ -294,33 +300,50 @@ describe('fetchThirdPartyPrice', () => {
   })
 })
 
+/** The registry's `thirdParties` outputs, as the chain returns them. */
+function thirdPartyRecord({
+  root = zeroHash,
+  maxItems = 0n,
+  registered = 0n,
+  metadata = ''
+}: {
+  root?: string
+  maxItems?: bigint
+  registered?: bigint
+  metadata?: string
+}) {
+  return [false, root, maxItems, 0n, registered, metadata, '']
+}
+
 describe('fetchRegisteredContracts', () => {
   it('lists the contracts of the registry record, lower-cased, and none for a bare record', async () => {
-    vi.mocked(readContract).mockResolvedValueOnce({
-      metadata: `tp:1:Brand:A brand:mainnet-0x${'A'.repeat(40)};matic-0x${'b'.repeat(40)}`
-    })
+    vi.mocked(readContract).mockResolvedValueOnce(
+      thirdPartyRecord({ metadata: `tp:1:Brand:A brand:mainnet-0x${'A'.repeat(40)};matic-0x${'b'.repeat(40)}` })
+    )
     await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([
       { network: 'mainnet', address: '0x' + 'a'.repeat(40) },
       { network: 'matic', address: '0x' + 'b'.repeat(40) }
     ])
-    vi.mocked(readContract).mockResolvedValueOnce({ metadata: 'tp:1:Brand:A brand' })
+    vi.mocked(readContract).mockResolvedValueOnce(thirdPartyRecord({ metadata: 'tp:1:Brand:A brand' }))
     await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([])
   })
 
   it('does not mistake description text for a contract', async () => {
-    vi.mocked(readContract).mockResolvedValueOnce({ metadata: 'tp:1:Brand:Shop: limited-edition' })
+    vi.mocked(readContract).mockResolvedValueOnce(thirdPartyRecord({ metadata: 'tp:1:Brand:Shop: limited-edition' }))
     await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([])
   })
 
   it('refuses a record whose contract segment is only partly readable', async () => {
-    vi.mocked(readContract).mockResolvedValueOnce({
-      metadata: `tp:1:Brand:A brand:mainnet-0x${'a'.repeat(40)};moon-0x1`
-    })
+    vi.mocked(readContract).mockResolvedValueOnce(
+      thirdPartyRecord({ metadata: `tp:1:Brand:A brand:mainnet-0x${'a'.repeat(40)};moon-0x1` })
+    )
     await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).rejects.toThrow('could not be parsed')
   })
 
   it('still reads the contracts when a legacy description contains a colon', async () => {
-    vi.mocked(readContract).mockResolvedValueOnce({ metadata: `tp:1:Brand:Note: legacy:matic-0x${'b'.repeat(40)}` })
+    vi.mocked(readContract).mockResolvedValueOnce(
+      thirdPartyRecord({ metadata: `tp:1:Brand:Note: legacy:matic-0x${'b'.repeat(40)}` })
+    )
     await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([
       { network: 'matic', address: '0x' + 'b'.repeat(40) }
     ])
@@ -333,7 +356,7 @@ describe('fetchRegisteredThirdParty', () => {
     vi.mocked(readContract).mockImplementation(async (_contract, method, args) => {
       expect(method).toBe('thirdParties')
       expect(args).toEqual([THIRD_PARTY_ID])
-      return { registered: ethers.BigNumber.from(1), maxItems: ethers.BigNumber.from(12), root }
+      return thirdPartyRecord({ registered: 1n, maxItems: 12n, root })
     })
     await expect(fetchRegisteredThirdParty(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual({
       registered: true,
@@ -343,11 +366,7 @@ describe('fetchRegisteredThirdParty', () => {
   })
 
   it('reads an unknown third party as unregistered, with no slots and no root', async () => {
-    vi.mocked(readContract).mockResolvedValue({
-      registered: ethers.BigNumber.from(0),
-      maxItems: ethers.BigNumber.from(0),
-      root: ethers.constants.HashZero
-    })
+    vi.mocked(readContract).mockResolvedValue(thirdPartyRecord({}))
     await expect(fetchRegisteredThirdParty(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual({
       registered: false,
       maxItems: 0,

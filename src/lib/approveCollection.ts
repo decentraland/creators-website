@@ -159,7 +159,7 @@ export function findItemsToDeploy(items: Item[], entities: Entity[], missingOnly
 }
 
 export type DeployDeps = ImageDeps & {
-  sign: (entityId: string) => AuthLink[] | null
+  sign: (entityId: string) => Promise<AuthLink[] | null>
   fetchAvailableContent: (hashes: string[]) => Promise<Set<string>>
   deployEntity: (form: FormData) => Promise<void>
 }
@@ -168,7 +168,7 @@ async function deployItem(collection: Collection, item: Item, deps: DeployDeps):
   const image = await buildMissingImage(item, deps)
   const content = getEntityContent(item, image?.hash)
   const entity = await buildItemEntity(collection, item, content)
-  const authChain = deps.sign(entity.entityId)
+  const authChain = await deps.sign(entity.entityId)
   if (!authChain) throw new ApprovalError('no_identity', 'The session has no signing identity')
 
   const hashes = [...new Set(Object.values(content))]

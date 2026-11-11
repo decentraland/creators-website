@@ -406,7 +406,7 @@ export function CreatorSaleModal({
       else if (reason === 'unconfirmed') onUnconfirmed()
       // Dismissing the wallet prompt is the creator changing their mind: back to the review, nothing to report.
       else if (reason !== 'rejected') {
-        setError(reason === 'wallet' ? t('creator_sale.error_wallet') : t('creator_sale.error_generic'))
+        setError(reason === 'wallet' ? t('wallet_error.wrong_account') : t('creator_sale.error_generic'))
       }
     } finally {
       unsettled.current = false

@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ethers } from 'ethers'
 import { Network, TradeAssetType, TradeType, type Trade } from '@dcl/schemas'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
+import { zeroAddress } from 'viem'
 import { TEST_SIGNER, signTypedDataWithTestKey, toTransaction } from '~/test/chain'
 import { TradeConflictError, TradeNotFoundError, tradeSigner } from './trades'
 import { type Collection } from './collections'
 import { ItemType, type Item } from './items'
+import { WrongAccountError, WrongChainError } from './walletErrors'
 import {
   NO_EXPIRATION,
   SellItemError,
@@ -124,6 +125,7 @@ describe('price and date helpers', () => {
     expect(parseManaAmount('.5')).toBe(500_000_000_000_000_000n)
     expect(parseManaAmount('')).toBeNull()
     expect(parseManaAmount('1.')).toBe(1_000_000_000_000_000_000n)
+    expect(parseManaAmount('0.' + '9'.repeat(19))).toBeNull()
     expect(isValidManaWei(MIN_SALE_MANA_WEI)).toBe(true)
     expect(isValidManaWei(MIN_SALE_MANA_WEI - 1n)).toBe(false)
     expect(isValidManaWei(MAX_SALE_MANA_WEI)).toBe(true)
@@ -157,6 +159,9 @@ describe('price and date helpers', () => {
     expect(isValidAddress(BENEFICIARY)).toBe(true)
     expect(isValidAddress('0x123')).toBe(false)
     expect(isValidAddress('pirate.dcl.eth')).toBe(false)
+    expect(isValidAddress(BENEFICIARY.toUpperCase().replace('0X', '0x'))).toBe(true)
+    expect(isValidAddress('0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2a')).toBe(false)
+    expect(isValidAddress(BENEFICIARY.slice(2))).toBe(false)
   })
 
   it('expires at the end of the picked day, and only accepts dates from tomorrow on', () => {
@@ -285,7 +290,7 @@ describe('buildItemOrder', () => {
         contractAddress: MANA,
         amount: '0',
         extra: '',
-        beneficiary: ethers.constants.AddressZero
+        beneficiary: zeroAddress
       }
     ])
   })
@@ -403,6 +408,11 @@ describe('sellItem', () => {
     expect(toSellItemError(new SellItemError('sold_out')).reason).toBe('sold_out')
     expect(toSellItemError(new Error('500')).reason).toBe('generic')
     expect(toSellItemError('ACTION_REJECTED')).toMatchObject({ reason: 'generic' })
+  })
+
+  it('tells a wallet on another account or network apart, so the creator is asked to switch it back', () => {
+    expect(toSellItemError(new WrongAccountError(ADDRESS, BENEFICIARY)).reason).toBe('wallet')
+    expect(toSellItemError(new WrongChainError(CHAIN_ID, 1)).reason).toBe('wallet')
   })
 })
 
@@ -681,7 +691,9 @@ describe('withConflictRetry', () => {
 })
 
 describe('removing a legacy store listing', () => {
-  const onChain = { beneficiary: BENEFICIARY, metadata: '1:w:Pirate Hat:Yarr:hat:BaseMale' }
+  const metadata = '1:w:Pirate Hat:Yarr:hat:BaseMale'
+  // The collection's `items` outputs: rarity, maxSupply, totalSupply, price, beneficiary, metadata, contentHash.
+  const onChain = ['epic', 1000n, 3n, 10n ** 18n, BENEFICIARY, metadata, '']
 
   it('reads the item on chain and clears only its price, keeping beneficiary and metadata', async () => {
     const deps = {
