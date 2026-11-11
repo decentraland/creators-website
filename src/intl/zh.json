@@ -306,7 +306,6 @@
       "edit_thumbnail": "编辑缩略图",
       "name_placeholder": "物品名称",
       "rename_error": "我们无法重命名“{name}”，请重试。",
-      "thumbnail_error": "我们无法更新“{name}”的缩略图，请重试。",
       "cancel_edit": "取消",
       "save": "保存名称"
     },

@@ -4,7 +4,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import { PreviewRenderer } from '@dcl/schemas'
 import userEvent from '@testing-library/user-event'
 import { TranslationProvider } from '~/intl'
-import { THUMBNAIL_PATH } from '~/lib/itemFiles'
+import { ItemFileError, THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { ItemType } from '~/lib/items'
 import { ThumbnailModal } from './ThumbnailModal'
 
@@ -34,8 +34,7 @@ vi.mock('~/lib/media', async importOriginal => ({
   blobToDataURL: vi.fn().mockResolvedValue('data:image/png;base64,iVBORw0KGgo=')
 }))
 
-function renderModal(contents: Record<string, Blob> | null = null) {
-  const onSave = vi.fn()
+function renderModal(contents: Record<string, Blob> | null = null, onSave = vi.fn()) {
   const wrapper = ({ children }: { children: ReactNode }) => <TranslationProvider>{children}</TranslationProvider>
   render(<ThumbnailModal type={ItemType.WEARABLE} contents={contents} onSave={onSave} onClose={vi.fn()} />, {
     wrapper
@@ -80,6 +79,21 @@ describe('ThumbnailModal', () => {
     expect(upload).toHaveAttribute('aria-busy', 'true')
     expect(upload).toBeDisabled()
     expect(screen.getByTestId('thumbnail-capture')).toBeDisabled()
+  })
+
+  it('stays open with the reason when the save fails, ready to try again', async () => {
+    const onSave = vi.fn().mockRejectedValue(new ItemFileError('size_exceeded', { size: '3.63', limit: '3.00' }))
+    renderModal(null, onSave)
+
+    await userEvent.upload(
+      screen.getByTestId('thumbnail-file-input'),
+      new File(['png'], 'thumb.png', { type: 'image/png' })
+    )
+
+    expect(await screen.findByTestId('thumbnail-error')).toHaveTextContent(
+      'This item is 3.63 MB, over the 3.00 MB limit (thumbnail included).'
+    )
+    expect(screen.getByTestId('thumbnail-upload')).toBeEnabled()
   })
 
   it('captures the Unity preview, waiting out a reload that overtook the capture', async () => {

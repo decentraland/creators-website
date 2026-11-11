@@ -459,9 +459,17 @@ const ItemEditorPage = () => {
   }
 
   // A new thumbnail saves on confirm, like a file change, so the size the panel shows is always the stored one.
+  // The modal shows a failure itself and stays open.
   async function saveThumbnail(thumbnail: Blob): Promise<void> {
     if (!selected) return
-    await commit(selected, { item: selected, thumbnail }).catch((error: unknown) => reportSaveError(error, 'item_save'))
+    try {
+      await commit(selected, { item: selected, thumbnail })
+    } catch (error) {
+      const expected =
+        isItemTooBigError(error) || (error instanceof BuilderServerError && error.status === COLLECTION_LOCKED_STATUS)
+      if (!expected) captureError(error, { flow: 'item_save', itemId: selected.id })
+      throw error
+    }
   }
 
   function save() {
