@@ -80,3 +80,19 @@ describe('DraftForm in edit in bulk', () => {
     expect(screen.getByTestId('bulk-edit-target')).toHaveAttribute('title', urn)
   })
 })
+
+describe('DraftForm size', () => {
+  it('shows the size the item will be saved with, against its limit', () => {
+    renderForm({}, { size: { bytes: 3_093_299, limit: 3 * 1024 * 1024 } })
+    expect(screen.getByTestId('draft-size')).toHaveTextContent('2.95 / 3.00 MB')
+    expect(screen.queryByTestId('size-error')).not.toBeInTheDocument()
+  })
+
+  it('explains an item over its limit, thumbnail included', () => {
+    renderForm({}, { size: { bytes: 3_243_672, limit: 3 * 1024 * 1024 } })
+    expect(screen.getByTestId('draft-size')).toHaveAttribute('data-exceeded', 'true')
+    expect(screen.getByTestId('size-error')).toHaveTextContent(
+      'This item is 3.09 MB, over the 3.00 MB limit (thumbnail included). Reduce its textures or geometry.'
+    )
+  })
+})

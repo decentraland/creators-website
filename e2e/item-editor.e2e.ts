@@ -1,6 +1,8 @@
+import { type ElementHandle } from 'puppeteer'
 import { afterEach, describe, expect, it } from 'vitest'
 import { collection, upperBody, wearable } from './fixtures'
 import { launchApp, type App } from './helpers/app'
+import { FIXTURE } from './helpers/files'
 import { byTestId, clickTestId, selectOption, waitForEditor, waitForTestId, waitForToast } from './helpers/dom'
 
 let app: App | undefined
@@ -54,6 +56,27 @@ describe('item editor', () => {
       'Bandana Deluxe'
     )
     expect(app.pageViews()).toEqual(['item_editor', 'item_editor'])
+  })
+
+  it('saves a new thumbnail as soon as it is confirmed, leaving unsaved details pending', async () => {
+    app = await openEditor(hat.id)
+    const { page } = app
+    const before = app.builder.items.get(hat.id)!.contents['thumbnail.png']
+
+    await page.click(byTestId('properties-panel-name'), { count: 3 })
+    await page.keyboard.type('Unsaved Name')
+    await clickTestId(page, 'properties-panel-thumbnail')
+    await waitForTestId(page, 'thumbnail-modal')
+    const input = (await page.$(byTestId('thumbnail-file-input'))) as ElementHandle<HTMLInputElement>
+    await input.uploadFile(FIXTURE.thumbnail)
+
+    await app.waitForEvent('Save item', { itemId: hat.id })
+    const saved = app.builder.items.get(hat.id)!
+    expect(saved.contents['thumbnail.png']).not.toBe(before)
+    expect(saved.name).toBe(hat.name)
+    expect(await page.$eval(byTestId('properties-panel-name'), el => (el as HTMLInputElement).value)).toBe(
+      'Unsaved Name'
+    )
   })
 
   it('shows the rule book errors of an invalid model', async () => {
