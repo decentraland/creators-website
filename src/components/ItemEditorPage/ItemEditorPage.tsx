@@ -145,8 +145,7 @@ const ItemEditorPage = () => {
   const itemsQuery = useAllCollectionItems(address, collectionId ?? undefined)
   const baseWearables = useBaseWearables()
   const saveItem = useSaveItem(address)
-  // Its own mutation, so the background save doesn't put the Save button in its saving state.
-  const { mutateAsync: saveRepairedItem } = useSaveItem(address)
+  const saveItemAsync = saveItem.mutateAsync
   const { isSaving, run: runSave } = useExclusiveSave()
   const saveCollection = useSaveCollection(address)
   const [isRenameOpen, setRenameOpen] = useState(false)
@@ -399,17 +398,24 @@ const ItemEditorPage = () => {
       ? linkedCurations.isSuccess && !isLinkedItemPublished(selected, linkedCurations.data.get(selected.id) ?? null)
       : canDeleteItem(collection, address))
 
-  // Metrics are part of the Catalyst entity hash: writing them to a published or locked collection would flag the
-  // item as changed and send it back to curation, so there the corrected numbers are only shown.
+  // Metrics are part of the Catalyst entity hash, so nothing published is rewritten behind its owner's back: there
+  // the corrected numbers are shown and ride along with the owner's next save.
   const repairAttemptedRef = useRef(new Set<string>())
+  const isLinkedItemDraft =
+    !isLinked ||
+    (!!selected &&
+      linkedCurations.isSuccess &&
+      !isLinkedItemPublished(selected, linkedCurations.data.get(selected.id) ?? null))
+  const isResolvingRepairGate =
+    isResolvingReviewer || isSaving || (isLinked && (thirdParty.isLoading || linkedCurations.isLoading))
   useEffect(() => {
     if (!selected || !repairedMetrics || repairAttemptedRef.current.has(selected.id)) return
-    if (!collection || isResolvingReviewer || (isLinked && thirdParty.isLoading)) return
+    if (!collection || isResolvingRepairGate) return
     repairAttemptedRef.current.add(selected.id)
-    const save = editable && isDraftCollection && !form.isDirty
+    const save = editable && isDraftCollection && !selected.isPublished && isLinkedItemDraft && !form.isDirty
     track('Item metrics repaired', { itemId: selected.id, saved: save })
     if (!save) return
-    saveRepairedItem({ item: selected, blobs: {} })
+    runSave(() => saveItemAsync({ item: selected, blobs: {}, background: true }))
       .then(saved =>
         queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collectionId ?? undefined), current =>
           current?.map(candidate => (candidate.id === saved.id ? saved : candidate))
@@ -420,13 +426,13 @@ const ItemEditorPage = () => {
     selected,
     repairedMetrics,
     collection,
-    isResolvingReviewer,
-    isLinked,
-    thirdParty.isLoading,
+    isResolvingRepairGate,
     editable,
     isDraftCollection,
+    isLinkedItemDraft,
     form.isDirty,
-    saveRepairedItem,
+    runSave,
+    saveItemAsync,
     queryClient,
     address,
     collectionId
@@ -449,7 +455,7 @@ const ItemEditorPage = () => {
 
   /** PUTs the built item, refreshes the cached list and toasts. */
   async function commit(item: Item, save: SaveItemVariables): Promise<Item> {
-    const saved = await saveItem.mutateAsync({ ...save, previous: item, previousVideo: item.video })
+    const saved = await saveItemAsync({ ...save, previous: item, previousVideo: item.video })
     queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collectionId ?? undefined), current =>
       current?.map(candidate => (candidate.id === saved.id ? saved : candidate))
     )

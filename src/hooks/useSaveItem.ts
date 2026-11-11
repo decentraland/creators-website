@@ -21,6 +21,8 @@ export type SaveItemVariables = Partial<BuiltItem> & {
   previousVideo?: string
   /** The item as stored before the edit, so that a change of category that moves its size limit is checked too. */
   previous?: Item
+  /** A save the app made on its own: it has its own event, so it is not counted as the user's `Save item`. */
+  background?: boolean
 }
 
 /** A rarity change that could not refresh the catalyst image, because the stored thumbnail could not be loaded. */
@@ -69,14 +71,16 @@ export function useSaveItem(address: string | undefined) {
       if (wasImageRefreshSkipped(variables, built)) showToast(t('item_editor.image_refresh_skipped'), { type: 'warn' })
       return saveItem(address, built.item, built.blobs, { previousVideo: variables.previousVideo })
     },
-    onSuccess: item => {
-      track('Save item', { itemId: item.id })
+    onSuccess: (item, { background }) => {
+      if (!background) track('Save item', { itemId: item.id })
       if (item.collectionId) invalidateCollectionItems(queryClient, item.collectionId)
     },
-    onError: (error, { item }) =>
+    onError: (error, { item, background }) => {
+      if (background) return
       track('Save item error', {
         itemId: item.id,
         error: isItemTooBigError(error) ? 'size_exceeded' : errorCode(error)
       })
+    }
   })
 }

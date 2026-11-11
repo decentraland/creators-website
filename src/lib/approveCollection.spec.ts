@@ -160,6 +160,21 @@ describe('findItemsToDeploy', () => {
     expect(rescue.map(target => target.item)).toEqual([retagged])
     expect(findItemsToDeploy([retagged], [entityOf(approved)])).toEqual([retagged])
   })
+
+  it('deploys corrected metrics together with their rescue', async () => {
+    const approved = item('1', { metrics: { triangles: 0, materials: 0, textures: 0, meshes: 1 } })
+    const approvedHash = await computeItemContentHash(collection, approved, getEntityContent(approved), 'v1')
+    const repaired = {
+      ...approved,
+      metrics: { triangles: 540, materials: 1, textures: 1, meshes: 1 },
+      blockchainContentHash: approvedHash
+    }
+    const deployed = entityOf(approved)
+    deployed.metadata = { ...deployed.metadata, metrics: approved.metrics }
+    const rescue = await findItemsToRescue(collection, [repaired], async () => null)
+    expect(rescue.map(target => target.item)).toEqual([repaired])
+    expect(findItemsToDeploy([repaired], [deployed])).toEqual([repaired])
+  })
 })
 
 describe('deployItems', () => {

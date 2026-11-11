@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook } from '@testing-library/react'
 import { TranslationProvider } from '~/intl'
 import { fetchContent, fetchContentSize, saveItem } from '~/lib/builder'
+import { track } from '~/lib/analytics'
 import { captureError } from '~/lib/monitoring'
 import { ItemType, type Item } from '~/lib/items'
 import { buildSaveItem, fetchStoredThumbnail, useSaveItem, wasImageRefreshSkipped } from './useSaveItem'
@@ -35,6 +36,7 @@ beforeEach(() => {
   vi.mocked(fetchContentSize).mockReset()
   vi.mocked(saveItem).mockReset()
   vi.mocked(captureError).mockReset()
+  vi.mocked(track).mockReset()
 })
 
 describe('buildSaveItem', () => {
@@ -115,6 +117,15 @@ describe('useSaveItem size guard', () => {
     const save = renderSave()
     await expect(save.current.mutateAsync({ item: { ...item, name: 'Cap' }, previous: item })).resolves.toBe(item)
     expect(saveItem).toHaveBeenCalledTimes(1)
+  })
+
+  it("counts a save as the user's unless the app made it on its own", async () => {
+    vi.mocked(saveItem).mockResolvedValue(item)
+    const save = renderSave()
+    await save.current.mutateAsync({ item, background: true })
+    expect(track).not.toHaveBeenCalled()
+    await save.current.mutateAsync({ item })
+    expect(track).toHaveBeenCalledWith('Save item', { itemId: item.id })
   })
 
   it('refuses a change of category that moves an item to a lower limit it is over', async () => {

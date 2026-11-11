@@ -34,6 +34,12 @@ describe('countModelMetrics', () => {
     })
   })
 
+  it('counts strips and fans by their shared vertices, and no triangles for points or lines', async () => {
+    const primitives = [5, 6, 0, 1].map(mode => ({ mode, attributes: { POSITION: 0 } }))
+    const model = { ...hat, meshes: [{ name: 'Hat', primitives }], accessors: [{ count: 12 }] }
+    expect(await countModelMetrics(glb(model))).toMatchObject({ triangles: 20, meshes: 4 })
+  })
+
   it('leaves colliders out, by node or mesh name', async () => {
     const withColliders = {
       ...hat,

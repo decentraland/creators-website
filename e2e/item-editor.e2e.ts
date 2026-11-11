@@ -105,21 +105,27 @@ describe('item editor', () => {
 
     await app.waitForEvent('Item metrics repaired', { itemId: zeroed.id, saved: true })
     expect(await metricsText(app)).toContain('540')
-    await app.waitForEvent('Save item', { itemId: zeroed.id })
-    expect(app.builder.items.get(zeroed.id)!.metrics).toEqual(HAT_METRICS)
+    await expect.poll(() => app!.builder.items.get(zeroed.id)!.metrics).toEqual(HAT_METRICS)
   })
 
-  it('shows counted metrics on a published collection without storing them', async () => {
+  it("stores counted metrics on a published collection only with the owner's own save", async () => {
     const live = publishedCollection({ name: 'Live Drop' })
     const zeroed = publishedItem(live, 0, { name: 'Zeroed Hat', metrics: BOOT_SCENE_METRICS })
     app = await launchApp({
       path: `/collections/editor?collection=${live.id}&item=${zeroed.id}`,
-      builder: { collections: [live], items: [zeroed] }
+      builder: { collections: [live], items: [zeroed] },
+      flags: { 'dapps-wearable-utility': true }
     })
-    await waitForEditor(app.page)
+    const { page } = app
+    await waitForEditor(page)
 
     await app.waitForEvent('Item metrics repaired', { itemId: zeroed.id, saved: false })
     expect(await metricsText(app)).toContain('540')
     expect(app.builder.items.get(zeroed.id)!.metrics).toEqual(BOOT_SCENE_METRICS)
+
+    await page.type(byTestId('properties-panel-utility'), 'Glows in the dark')
+    await clickTestId(page, 'properties-panel-save')
+    await waitForToast(page)
+    expect(app.builder.items.get(zeroed.id)!.metrics).toEqual(HAT_METRICS)
   })
 })
