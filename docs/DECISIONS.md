@@ -51,15 +51,15 @@ Rules for this file:
 - **`removesDefaultHiding: [hands]`** is written for upper-body items (and anything hiding the upper body), as legacy did; the editor recomputes it on save.
 - **Thumbnails are always 1024×1024.** Categories with a thumbnail pose (`upper_body`, `skin`) are rendered offscreen with three.js, falling back to the preview screenshot. Zip-provided or user-picked thumbnails are never regenerated.
 - **Metrics and auto thumbnails come from one hidden preview iframe per modal, one file at a time** (2026-11-10). It sits behind the dialog's surface at opacity 0.01, never off-screen or at opacity 0: Chrome throttles a cross-origin iframe in either state, and Unity took ~6s per item instead of ~0.6s. A run gets 45s on a freshly booted iframe and 20s after to see its model's LOAD, then 75s to read it (Unity reloads can stall reads); on overrun the iframe is remounted once (a Unity scene that never loads wedges the instance for every later file), and a second overrun fails that file with its own message and remounts again so the queue moves on. After the file on screen, pending files of the iframe's current type go first, since a wearable ↔ emote switch reboots it.
-- **Zip budgets:** at most 500 entries, a shared inflate budget of about 259MB that aborts mid-entry, and per-type size caps (wearable 3MB, skin 8MB, emote 3MB, thumbnail 1MB). A single wrapping folder is stripped recursively, never `male/` or `female/`.
+- **Zip budgets:** at most 500 entries, a shared inflate budget of about 259MB that aborts mid-entry, and per-type size caps (wearable 3MB, skin 9MB, emote 3MB, thumbnail 1MB). A single wrapping folder is stripped recursively, never `male/` or `female/`.
 - **Social emotes (an `Armature_Other` armature) are rejected at import** (PR #116): unreleased and unsupported platform-wide. Support is a low-priority follow-up; never point the copy at the legacy Builder as a workaround.
 - **Legacy `replaces` is folded into `hides`** on load, and `overrideHides` / `overrideReplaces` on every representation mirror `hides` / `replaces` (zip manifests included).
 - **Cut on purpose (v1):** the "Allow to promote in events?" toggle (no schema field yet), description and utility fields at import (the editor has them), spring-bone seeding from zips.
 
 ## Smart wearables
 
-- **A zip is smart when it carries `scene.json`** at the root, inside a single project folder, or duplicated under `male/` and `female/` the way a downloaded item ships it, so a download round-trips (2026-11-03, PR #182). `wearable.json` is optional; legacy required it when the scene was at the root and otherwise dropped the scene silently.
-- **One code per item.** Two `scene.main` copies that differ are rejected (`scene_code_mismatch`). The normalized `scene.json` and the JS ship under both `male/` and `female/` like every other file.
+- **A zip is smart when it carries `scene.json`** at the root (where a downloaded unisex item ships it), inside a single project folder, or duplicated under `male/` and `female/` (a download whose body shapes differ, and every download made before 2026-11-11), so a download round-trips (2026-11-03, PR #182). `wearable.json` is optional; legacy required it when the scene was at the root and otherwise dropped the scene silently.
+- **One code per item.** Two `scene.main` copies that differ are rejected (`scene_code_mismatch`). The normalized `scene.json` and the JS are stored under both `male/` and `female/` like every other file.
 - **The preview video is required to save a smart draft** (2026-09-14), matching legacy's `required: true`. A single `.mp4` in the zip pre-fills it (legacy never read one; an addition); more than one fails the file; a plain zip drops any `.mp4` silently. The 250MB video is excluded from the 3MB model cap. No duration cap: legacy defined the copy but never enforced one.
 - **Video uploads go to `POST /items/:id/videos`**, and `item.video` is set only until the item is approved: afterwards a new upload replaces `contents['video.mp4']` alone so the item reads as changed and goes through review (builder-server copies the hash on approval).
 - **Linked collections take no smart zip** (`linked_smart_wearable`), as legacy refused them.
@@ -75,6 +75,7 @@ Rules for this file:
 - **Camera range (both renderers; the page's zoom buttons replace Unity's in-canvas ones):** `zoom` scaled by 3 with `wheelZoom = 5`, `wheelStart = 50`, which keeps the legacy starting radius (`radius / 1.75`) while the wheel zooms 3× in, like Unity's FOV range, and about 1.7× out. The JUMP emote keeps its wider framing (legacy quirk).
 - **The campaign tag hint** comes from Contentful through Decentraland's CMS proxy behind the `builder-campaign` flag, exactly as legacy read it. No campaign, flag off or CMS down shows nothing and never errors.
 - **Review mode is read-only for curators too** (2026-09-25, user feedback). A curator must not approve by previewing the model without reading each item's metadata, so the properties panel is always shown, never collapsible, fully disabled.
+- **Download folds identical body shapes into the zip root** (2026-11-11), as legacy does: when `male/` and `female/` hold the same paths with the same hashes, each file ships once at the root next to `thumbnail.png`, `image.png` and `video.mp4`. A single shape keeps its folder, and so do shapes that differ in any file. Stricter than legacy, which compared bare hashes and so folded same-bytes-different-names; folding is also skipped when a file would land, once imported back, on one of the item's own files (`thumbnail.png`, `image.png`, `video.mp4`), on another root file or on another folded file, names compared without case. Re-importing a folded wearable opens it as both body shapes, still editable. An emote has one model for both body shapes: from a zip with a folder per body shape only the first model's folder is used, even when the two differ (legacy stored both, nested). Emotes imported before 2026-11-11 from such a zip were stored with the folders nested twice (`male/male/…`); the fold repeats, so they download as one model at the root too. The zip is named after the item's slug, not legacy's underscored name.
 - **Out (v1):** orphan items and social-emote editing (start animation, outcomes).
 
 ## Replace model and add representation
@@ -98,6 +99,7 @@ Rules for this file:
 - **Results for saved items are cached in IndexedDB** (`idb-keyval`), keyed by content hashes plus type, category, hides, loop and body shapes, and cleared whenever the cache revision or validator version changes. Failed runs are never persisted. The editor, the collection page, the publish modal and the curators' badge share it.
 - **Validation is desktop-only.** Nothing runs at or below 900px on the collection page or at 768px in the editor; widening the window starts it.
 - **The publish gate is a flag** (`block-publish-on-validation-errors`, builder): on, a finished result with errors disables PUBLISH and Publish changes; off, the creator sees the issues and may continue anyway. Warnings never block.
+- **Item size is counted the catalyst's way** (every distinct content hash once, thumbnail and rarity image included, preview video excluded; 3MB for wearables and emotes, 9MB for skins) and an oversized item always blocks, whatever the flag says: while one remains the issues view offers no Continue, so its other errors block too. An item whose size could not be measured gets a warning, not a block. The publish and Publish changes pre-step refuses it; a save is checked only when it changes the item's files or moves its limit (a category to or from skin), so an oversized item's details can still be edited. The editor shows the stored size and leaves the exact count to the save; a new thumbnail saves as soon as it is confirmed, like a file change, so no file waits unsaved behind that size.
 - **Curators get a collection validation badge** only while the collection is To review or Under review, over the items with pending changes (PR #119). It never blocks an action.
 
 ## Publish collection
@@ -179,7 +181,7 @@ Rules for this file:
 - **The contract check probes ERC-721 and ERC-1155 interface ids** through ERC-165; legacy probed the ERC-165 id itself, which was a bug.
 - **Review threshold:** every item under 50, else max(50, 1%) capped at 300; Approve is blocked until it is reached. Approve on chain only when the Merkle root changed.
 
-## Overview (creator home) and pre-launch gate
+## Overview (creator home)
 
 - **The overview moved here from the sites repo** and is served by path at `decentraland.org/create`; `/overview` survives as a redirect. The router `basename` is `/create` whenever the page URL starts with it and `/` otherwise, so one build serves local dev, Vercel previews and the CDN.
 - **Its events go to sites' Segment source**, not this app's, with the `Section Viewed` and `Click` names kept, so sites' dashboards keep working. Everything else in the app reports to the Builder source.
@@ -187,8 +189,6 @@ Rules for this file:
 - **Poster first, no video on phones** (PR #117): the landscape poster paints first and the video mounts after load and idle on desktop only; phones, reduced motion and Save-Data keep the poster.
 - **Feed failures are reported only for non-2xx responses**, once, through react-query's cache-level reporter; a request that never got a response (offline, ad blocker, timeout) is not, as sites swallowed every feed failure.
 - **Lighthouse targets on `.org`:** performance ≥ 0.85 mobile and desktop, CLS < 0.1, SEO ≥ 0.92. `.zone` is served `noindex` and Vercel previews sit behind auth, so neither can be scored; compare `main` and the branch served locally.
-- **The pre-launch gate fails open.** `builder-creators-prelaunch` on means curtained: only the flag's address-list variant gets the full app, everyone else gets the overview alone and every other route redirects to `/`. Off, absent or unreachable means launched, so a flag outage on launch day never curtains the site. Which deployments are gated is decided only in the flag dashboard; there is no hostname check. It is a curtain, not a lock: the bundle is static and builder-server is public.
-- **The overview never waits for the gate**: it renders at once without the sub-nav, which slides in when the flag answers (an accepted shift). Other routes show the spinner until the flag and the wallet restore have answered.
 
 ## Blender live preview
 

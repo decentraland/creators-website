@@ -12,7 +12,8 @@ export {
   FormHeading,
   FormPane,
   Layout,
-  Main
+  Main,
+  SizeLine
 } from '~/components/ItemDraftModal/ItemDraftModal.styles'
 
 /** The file step: the video modal's width and drop area, the details step then widens the modal. */

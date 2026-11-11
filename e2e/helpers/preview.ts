@@ -5,7 +5,11 @@ import { FIXTURE } from './files'
 export const PREVIEW_METRICS = { triangles: 1234, materials: 2, textures: 2, meshes: 1, bodies: 1, entities: 1 }
 
 export type PreviewOptions = {
-  /** Holds every model's LOAD until the page posts `{ type: 'e2e_release' }` to the iframe. */
+  /**
+   * Holds every model's LOAD until the page posts `{ type: 'e2e_release' }` to the iframe. Each held load is
+   * reported as a `load: held` answer (see app.previewAnswers): release only after one, or the message can reach
+   * the iframe before this page has loaded and be lost.
+   */
   holdLoads?: boolean
 }
 
@@ -43,8 +47,10 @@ export function previewPageHtml({ holdLoads = false }: PreviewOptions = {}): str
         // Saved items arrive as base64 definitions, decoded the way wearable-preview does.
         (options.base64s || []).forEach(function (encoded) { try { text += atob(encoded); } catch (e) {} });
         hasSound = /\\.(mp3|ogg|wav)"/i.test(text);
-        if (held) pending++;
-        else loaded();
+        if (held) {
+          pending++;
+          fetch('/__e2e/answer?method=load&result=held').catch(function () {});
+        } else loaded();
         // An emote autoplays once loaded; the editor asks about its sound when it starts.
         if (/emoteDataADR74/.test(text)) send('emote_event', { type: 'animation_play', payload: {} });
       }

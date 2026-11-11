@@ -108,10 +108,19 @@ export function emoteWithAudioZip(): Promise<string> {
   })
 }
 
-/** An emote laid out as the app's "Download" exports it: the model under male/ and female/, plus the thumbnail. */
+/** An emote as the app's "Download" exports it: both body shapes hold the same model, so it ships once at the root. */
 export function downloadedEmoteZip(model: string = FIXTURE.emote): Promise<string> {
-  const glb = read(model)
   return writeZip('downloaded-emote.zip', {
+    'emote.glb': read(model),
+    'thumbnail.png': read(FIXTURE.thumbnail),
+    'image.png': read(FIXTURE.thumbnail)
+  })
+}
+
+/** An emote download that keeps a folder per body shape: the model under male/ and female/, plus the thumbnail. */
+export function downloadedEmoteFoldersZip(model: string = FIXTURE.emote): Promise<string> {
+  const glb = read(model)
+  return writeZip('downloaded-emote-folders.zip', {
     'male/emote.glb': glb,
     'female/emote.glb': glb,
     'thumbnail.png': read(FIXTURE.thumbnail)

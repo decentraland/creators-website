@@ -17,7 +17,6 @@ const PNG = Buffer.from(
 )
 
 export type Flags = Record<string, boolean>
-export type Variants = Record<string, string>
 /** Forced responses keyed `[METHOD ]path-suffix`, e.g. `{ 'POST /collections/<id>/tos': { status: 500 } }`. */
 export type ForcedErrors = Record<string, { status: number; body?: unknown }>
 
@@ -33,10 +32,9 @@ export type RouteContext = {
   market: Market
   credits: Credits
   bridge?: Bridge
-  /** Controller answers the fake preview reported, in order. */
+  /** Controller answers and held loads the fake preview reported, in order. */
   previewAnswers: Array<{ method: string; result: string }>
   flags: Flags
-  variants: Variants
   errors: ForcedErrors
   preview: PreviewOptions
   /** Builder storage files by content hash. */
@@ -159,12 +157,7 @@ export function route(req: HTTPRequest, ctx: RouteContext): Promise<void> {
   if (forced) return json(req, forced[1].body ?? { ok: false, error: 'forced e2e error' }, forced[1].status)
 
   if (hostname.startsWith('feature-flags.')) {
-    return json(req, {
-      flags: ctx.flags,
-      variants: Object.fromEntries(
-        Object.entries(ctx.variants).map(([flag, value]) => [flag, { enabled: true, payload: { value } }])
-      )
-    })
+    return json(req, { flags: ctx.flags })
   }
 
   if (hostname.startsWith('builder-api.')) {

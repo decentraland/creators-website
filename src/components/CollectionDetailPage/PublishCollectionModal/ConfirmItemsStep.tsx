@@ -6,6 +6,7 @@ import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useSaveItem } from '~/hooks/useSaveItem'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { type Collection } from '~/lib/collections'
+import { isItemTooBigError } from '~/lib/itemSize'
 import { canDeleteItem, type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import { Button } from '~/components/Button'
@@ -54,6 +55,10 @@ export function ConfirmItemsStep({
 
   const withActions = !readOnly
   const canContinue = accepted && items.length > 0 && editingId === null
+  // A new thumbnail or rarity changes the item's files: the save refuses one that leaves it over its size limit.
+  const saveErrorMessage = isItemTooBigError(updateItem.error)
+    ? t('add_items_modal.file_error.size_exceeded', updateItem.error.messageParams)
+    : undefined
 
   const isBusy = updateItem.isPending || deleteItem.isPending
   useEffect(() => {
@@ -121,6 +126,7 @@ export function ConfirmItemsStep({
                 isEditing={editingId === item.id}
                 isSaving={editingId === item.id && updateItem.isPending}
                 saveError={editingId === item.id && updateItem.isError}
+                saveErrorMessage={saveErrorMessage}
                 withActions={withActions}
                 canEdit={!readOnly}
                 canDelete={!readOnly && items.length > 1 && canDeleteItem(collection, address)}

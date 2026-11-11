@@ -26,12 +26,7 @@ function weiToMana(wei: bigint): number {
   return Number(`${digits.slice(0, -18)}.${digits.slice(-18)}`)
 }
 
-type Props = {
-  /** Off behind the pre-launch gate: only the ui2 top bar renders, like sites' creator landing. */
-  subnav?: boolean
-}
-
-const NavBar = ({ subnav = true }: Props) => {
+const NavBar = () => {
   const { t } = useTranslation()
   const { session, connecting, signIn, disconnect } = useWallet()
   const address = session?.address
@@ -94,25 +89,23 @@ const NavBar = ({ subnav = true }: Props) => {
         onClickSignOut={() => void disconnect()}
       />
 
-      {subnav && (
-        <S.Subnav data-testid="subnav">
-          <S.Tabs data-testid="subnav-tabs">
-            <NavLink to="/" end>
-              {t('nav.overview')}
+      <S.Subnav data-testid="subnav">
+        <S.Tabs data-testid="subnav-tabs">
+          <NavLink to="/" end>
+            {t('nav.overview')}
+          </NavLink>
+          <NavLink to="/collections" className={() => (collectionsActive ? 'active' : '')}>
+            {t('nav.collections')}
+          </NavLink>
+          {isCurator && (
+            <NavLink to="/curation" data-testid="nav-curation">
+              {t('nav.curation')}
             </NavLink>
-            <NavLink to="/collections" className={() => (collectionsActive ? 'active' : '')}>
-              {t('nav.collections')}
-            </NavLink>
-            {isCurator && (
-              <NavLink to="/curation" data-testid="nav-curation">
-                {t('nav.curation')}
-              </NavLink>
-            )}
-            <a href={`${builderUrl}/scenes`}>{t('nav.scenes')}</a>
-            <a href={`${builderUrl}/land`}>{t('nav.land')}</a>
-          </S.Tabs>
-        </S.Subnav>
-      )}
+          )}
+          <a href={`${builderUrl}/scenes`}>{t('nav.scenes')}</a>
+          <a href={`${builderUrl}/land`}>{t('nav.land')}</a>
+        </S.Tabs>
+      </S.Subnav>
     </>
   )
 }
