@@ -20,7 +20,6 @@ export const COLLECTION_EVENT_TYPES = [
   'changes.submitted',
   'collection.disabled'
 ] as const
-export type CollectionEventType = (typeof COLLECTION_EVENT_TYPES)[number]
 
 export type CollectionEventActor = 'creator' | 'curator' | 'validator' | 'system'
 
@@ -90,21 +89,19 @@ export type ValidationVerdictPayload = {
   staleItemIds?: string[]
 }
 
-export type CurationDecisionPayload = {
+type CurationDecisionPayload = {
   rejectionReasons?: RejectReasonCode[]
   rejectionMessage?: string
 }
 
-export type HumanRequiredReason = 'third_party' | 'unsupported_items' | 'validator_error'
-
 /** `review.ai_error` reasons the server never resends: only a curator or a new request moves the review on. */
 export type FinalAiErrorReason = 'sweep_exhausted' | 'too_large'
 /** The request never reached the validator; the server's sweep sends it again within minutes. */
-export const PUBLISH_FAILED_REASON = 'publish_failed'
+const PUBLISH_FAILED_REASON = 'publish_failed'
 
 export type CollectionEventPayload = Omit<Partial<ValidationVerdictPayload>, 'reason'> &
   CurationDecisionPayload & {
-    /** `HumanRequiredReason` on `review.human_required`, `FinalAiErrorReason` on `review.ai_error`; open for newer ones. */
+    /** `third_party` / `unsupported_items` / `validator_error` on `review.human_required`, `FinalAiErrorReason` on `review.ai_error`; open for newer ones. */
     reason?: string
     trigger?: string
     itemIds?: string[]
@@ -210,14 +207,14 @@ export function getValidationAttemptsLeft(events: CollectionEvent[], now = Date.
 }
 
 /** Events that say nothing about the review stage: an assignment or a submitted change leaves it where it was. */
-export const STAGE_NEUTRAL_EVENT_TYPES = new Set(['review.assigned', 'changes.submitted'])
+const STAGE_NEUTRAL_EVENT_TYPES = new Set(['review.assigned', 'changes.submitted'])
 
 export function latestStageEvent(events: CollectionEvent[]): CollectionEvent | undefined {
   return events.find(event => !STAGE_NEUTRAL_EVENT_TYPES.has(event.type))
 }
 
 /** `review.human_required` written because the validator cannot check some items (e.g. facial-feature PNGs). */
-export const UNSUPPORTED_ITEMS_REASON = 'unsupported_items'
+const UNSUPPORTED_ITEMS_REASON = 'unsupported_items'
 
 export function isUnsupportedItemsReview(event: CollectionEvent | undefined): boolean {
   return event?.type === 'review.human_required' && event.payload.reason === UNSUPPORTED_ITEMS_REASON
@@ -225,7 +222,11 @@ export function isUnsupportedItemsReview(event: CollectionEvent | undefined): bo
 
 export const VALIDATOR_ERROR_REASON = 'validator_error'
 export const SWEEP_EXHAUSTED_REASON = 'sweep_exhausted'
-const FINAL_AI_ERROR_REASONS: readonly string[] = [SWEEP_EXHAUSTED_REASON, 'too_large'] satisfies FinalAiErrorReason[]
+export const TOO_LARGE_REASON = 'too_large'
+const FINAL_AI_ERROR_REASONS: readonly string[] = [
+  SWEEP_EXHAUSTED_REASON,
+  TOO_LARGE_REASON
+] satisfies FinalAiErrorReason[]
 
 /** The validator gave up on the latest request: no verdict will come without a curator or a new request. */
 export function isFinalValidationError(event: CollectionEvent | undefined): boolean {
@@ -281,7 +282,7 @@ export function isRejectReasonCode(code: unknown): code is RejectReasonCode {
   return typeof code === 'string' && (REJECT_REASON_CODES as readonly string[]).includes(code)
 }
 
-export const VALIDATION_TRIGGERS = ['publish', 'retry', 'changes', 'sweep'] as const
+const VALIDATION_TRIGGERS = ['publish', 'retry', 'changes', 'sweep'] as const
 export type ValidationTrigger = (typeof VALIDATION_TRIGGERS)[number]
 
 export function isValidationTrigger(value: unknown): value is ValidationTrigger {
@@ -289,7 +290,7 @@ export function isValidationTrigger(value: unknown): value is ValidationTrigger 
 }
 
 /** One validator finding as the item checks show it, so the automatic review reads like the browser's. */
-export function toValidationIssue(finding: ValidationFinding): ValidationIssue {
+function toValidationIssue(finding: ValidationFinding): ValidationIssue {
   return {
     code: finding.rule,
     severity: finding.severity === 'error' ? ValidationSeverity.ERROR : ValidationSeverity.WARNING,
@@ -298,8 +299,7 @@ export function toValidationIssue(finding: ValidationFinding): ValidationIssue {
     where: finding.where,
     bodyShapes: finding.bodyShape
       ? [(finding.bodyShape === 'male' ? BODY_SHAPE_MALE : BODY_SHAPE_FEMALE) as BodyShapeUrn]
-      : undefined,
-    source: 'ai'
+      : undefined
   }
 }
 
@@ -314,6 +314,14 @@ export function getAiIssuesByItem(
   const verdict = getLatestVerdict(events)
   const issues = new Map<string, ValidationIssue[]>()
   if (!verdict || verdict.payload.verdict !== 'rejected') return issues
+  // A curator decided after the run (an appeal, a confirmation): their decision is what stands, not the findings.
+  const decidedSince = events
+    .slice(
+      0,
+      events.findIndex(event => event.id === verdict.id)
+    )
+    .some(event => HUMAN_DECISION_TYPES.has(event.type))
+  if (decidedSince) return issues
   const stale = new Set(verdict.payload.staleItemIds ?? [])
   // An item saved since the run carries another hash: its findings were about content that is gone.
   const currentHashes = new Map(items.map(item => [item.id, item.currentContentHash]))

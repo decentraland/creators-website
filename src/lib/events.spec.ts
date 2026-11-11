@@ -136,8 +136,7 @@ describe('getAiIssuesByItem', () => {
         message: 'Too many triangles. Decimate the mesh.',
         title: 'Triangle count',
         where: 'male/hat.glb',
-        bodyShapes: [BodyShape.MALE],
-        source: 'ai'
+        bodyShapes: [BodyShape.MALE]
       }
     ])
   })
@@ -171,6 +170,18 @@ describe('getAiIssuesByItem', () => {
       event('review.ai_rejected', NOW, {
         verdict: 'rejected',
         items: [{ itemId: 'i1', contentHash: 'h', passed: false } as unknown as ValidationItemResult]
+      })
+    ]
+    expect(getAiIssuesByItem(events, []).size).toBe(0)
+  })
+
+  it('drops the findings once a curator decided after the run, as on an appeal they approved', () => {
+    const events = [
+      event('review.approved', NOW),
+      event('review.appeal_requested', NOW - 1_000),
+      event('review.ai_rejected', NOW - 2_000, {
+        verdict: 'rejected',
+        items: [{ itemId: 'i1', contentHash: 'h', passed: false, findings: [finding] }]
       })
     ]
     expect(getAiIssuesByItem(events, []).size).toBe(0)

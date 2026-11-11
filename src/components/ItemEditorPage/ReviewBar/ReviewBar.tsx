@@ -71,10 +71,14 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
   const curationQuery = useCollectionCuration(address, collection)
   const curation = curationQuery.data ?? null
   const syncs = useItemSyncs(address, collection, items)
-  const { events, isAvailable } = useCollectionEvents(address, collection)
-  // A server without the timeline refuses the rejection fields (schema) whatever the flag says, so the
-  // reason form only replaces the plain confirm where the timeline answered.
-  const withReasons = useFeatureFlag(FeatureFlag.AUTO_CURATION).enabled && isAvailable
+  const eventsQuery = useCollectionEvents(address, collection)
+  const { events } = eventsQuery
+  const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION).enabled
+  // Only a server that answered without a timeline (a 404) refuses the rejection fields: anywhere else the
+  // reason form is the rejection, and it waits for the timeline's first answer.
+  const timelineMissing = eventsQuery.isSuccess && !eventsQuery.isAvailable
+  const withReasons = autoCuration && !timelineMissing
+  const reasonsPending = withReasons && eventsQuery.isPending
   const reject = useRejectCuration(address)
   const [dialog, setDialog] = useState<Dialog>(null)
   const [approval, setApproval] = useState<ApprovalMode | null>(null)
@@ -268,6 +272,7 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
               size="sm"
               variant={PRIMARY.has(action) ? 'primary' : 'dark'}
               data-testid={`review-action-${action}`}
+              disabled={action === ReviewAction.REJECT && reasonsPending}
               onClick={() => onAction(action)}
             >
               {t(`item_editor.review.action.${action}`)}

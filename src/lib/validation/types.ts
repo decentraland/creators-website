@@ -17,8 +17,6 @@ export type ValidationIssue = {
   where?: string
   /** Set when the item has a separate model per body shape and only these shapes' model has the issue. */
   bodyShapes?: BodyShape[]
-  /** Who found it: the browser's rule book (absent) or builder-server's automatic review. */
-  source?: 'ai'
 }
 
 /** One model to check and the body shapes that wear it; `contents` scopes its audio files (default: all of them). */

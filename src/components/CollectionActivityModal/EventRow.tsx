@@ -12,7 +12,8 @@ import {
   isRejectReasonCode,
   isUnsupportedItemsReview,
   isValidationTrigger,
-  type CollectionEvent
+  type CollectionEvent,
+  TOO_LARGE_REASON
 } from '~/lib/events'
 import { shortenAddress } from '~/lib/address'
 import { type Item } from '~/lib/items'
@@ -65,7 +66,7 @@ export function EventRow({ event, items, isCurator }: Props) {
         return t('activity_modal.event.review.ai_rejected', { count: countFailedItems(payload.items ?? []) })
       case 'review.ai_error':
         if (payload.reason === SWEEP_EXHAUSTED_REASON) return t('activity_modal.event.review.ai_error_exhausted')
-        if (payload.reason === 'too_large') return t('activity_modal.event.review.ai_error_too_large')
+        if (payload.reason === TOO_LARGE_REASON) return t('activity_modal.event.review.ai_error_too_large')
         return t(isCurator ? 'activity_modal.event.review.ai_error_curator' : 'activity_modal.event.review.ai_error')
       case 'review.human_required':
         if (isUnsupportedItemsReview(event)) return t('activity_modal.event.review.human_required_unsupported')

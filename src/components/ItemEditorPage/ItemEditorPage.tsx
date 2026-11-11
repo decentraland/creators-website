@@ -153,10 +153,12 @@ const ItemEditorPage = () => {
   const collection = collectionQuery.data
   // Linked collections have no owner: their third party's managers are who works on them.
   const hasRole = !!collection && (isLinked ? isManager : hasCollectionRole(collection, address))
-  const mobileCuration = useCollectionCuration(mode === 'review' ? address : undefined, collection)
   // The automatic review locks the items it judges and dresses them with its findings.
   const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION).enabled
-  const reviewCuration = useCollectionCuration(canReadCuration && autoCuration ? address : undefined, collection)
+  const reviewCuration = useCollectionCuration(
+    mode === 'review' || (canReadCuration && autoCuration) ? address : undefined,
+    collection
+  )
   const { events: reviewEvents } = useCollectionEvents(canReadCuration ? address : undefined, collection)
   const reviewStage = useMemo(
     () => (collection ? getReviewStage(collection, reviewCuration.data ?? null, reviewEvents) : null),
@@ -714,9 +716,9 @@ const ItemEditorPage = () => {
         {collection.name}
       </S.MobileCollectionName>
       {mode === 'review'
-        ? !mobileCuration.isLoading &&
-          !mobileCuration.isError && (
-            <CurationStatePill state={getCurationState(collection, mobileCuration.data ?? null)} />
+        ? !reviewCuration.isLoading &&
+          !reviewCuration.isError && (
+            <CurationStatePill state={getCurationState(collection, reviewCuration.data ?? null)} />
           )
         : collectionStatus && <CollectionStatusPill collection={collection} status={collectionStatus} />}
     </S.MobileEditorHeader>

@@ -3,7 +3,7 @@ import { BuilderServerError, request } from './transport'
 
 const REVIEW_CONFLICT_STATUS = 409
 const COLLECTION_BUSY_STATUS = 503
-export const VALIDATION_LIMIT_STATUS = 429
+const VALIDATION_LIMIT_STATUS = 429
 const VALIDATION_RUNNING_MESSAGE = 'A validation is already in progress for this collection'
 const COLLECTION_BUSY_MESSAGE = 'The collection is being updated, try again in a moment'
 

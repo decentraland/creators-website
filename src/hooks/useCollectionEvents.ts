@@ -17,13 +17,11 @@ import { getValidationAttemptsLeft, isValidationInProgress, type CollectionEvent
 import { FeatureFlag } from '~/lib/featureFlags'
 import { captureError } from '~/lib/monitoring'
 
-export { collectionEventsKey }
-
 /**
  * Enough rows for the stage, the latest verdict and today's attempts in the first page. The server offsets
  * by `limit * (page - 1)`, so every page must ask for the same size or they overlap.
  */
-export const EVENTS_PAGE_SIZE = 50
+const EVENTS_PAGE_SIZE = 50
 
 /** While a verdict is pending (running, or errored and about to be resent), the page polls so it shows without a reload. */
 const RUNNING_POLL_MS = 10_000

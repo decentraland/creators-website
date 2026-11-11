@@ -26,6 +26,21 @@ describe('review modal memory', () => {
     })
 
     expect(() => markReviewModalSeen('c1', 'verdict:e1')).not.toThrow()
-    expect(wasReviewModalSeen('c1', 'verdict:e1')).toBe(false)
+    // Remembered for the rest of the visit, so closing it does not reopen it.
+    expect(wasReviewModalSeen('c1', 'verdict:e1')).toBe(true)
+  })
+
+  it('keeps a closed modal closed when the browser blocks storage altogether', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('Blocked', 'SecurityError')
+    })
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('Blocked', 'SecurityError')
+    })
+
+    markReviewModalSeen('c9', 'handoff:e1')
+
+    expect(wasReviewModalSeen('c9', 'handoff:e1')).toBe(true)
+    expect(wasReviewModalSeen('c9', 'handoff:e2')).toBe(false)
   })
 })

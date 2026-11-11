@@ -355,10 +355,6 @@ const CollectionDetailPage = () => {
   )
   const validation = useCollectionValidation(validationItems, validates)
   const blockOnErrors = useFeatureFlag(FeatureFlag.BLOCK_PUBLISH_ON_VALIDATION_ERRORS).enabled
-  const invalidCount = useMemo(
-    () => [...validation.results.values()].filter(result => result.status === 'errors').length,
-    [validation.results]
-  )
   const publishValidation = useMemo(
     () => ({
       // A background refetch (back from saving in the editor) may bring new hashes the modal must wait for.
@@ -380,6 +376,11 @@ const CollectionDetailPage = () => {
     }
     return merged
   }, [validation.results, aiIssues])
+  // Counted from what the rows show, so the push is blocked by the same errors the rows say block it.
+  const invalidCount = useMemo(
+    () => [...rowValidations.values()].filter(result => result.status === 'errors').length,
+    [rowValidations]
+  )
   const rowValidation = useCallback((item: Item) => rowValidations.get(item.id), [rowValidations])
   const [validationItem, setValidationItem] = useState<Item | null>(null)
   const showValidation = useCallback(

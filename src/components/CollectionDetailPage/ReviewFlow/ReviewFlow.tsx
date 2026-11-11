@@ -25,7 +25,8 @@ import {
   isValidationInProgress,
   latestStageEvent,
   startOfUtcDay,
-  type CollectionEvent
+  type CollectionEvent,
+  TOO_LARGE_REASON
 } from '~/lib/events'
 import { type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
@@ -35,10 +36,10 @@ import {
   DailyLimitModal,
   RequestCuratorReviewModal,
   ReviewingModal,
-  SentForReviewModal,
-  type AiItemIssues
+  SentForReviewModal
 } from './ReviewModals'
 import { markReviewModalSeen, wasReviewModalSeen } from '~/lib/reviewModalMemory'
+import { type ItemCheck } from '../PublishCollectionModal/ValidationIssuesView'
 import * as S from './ReviewFlow.styles'
 
 /** A modal the page asks for: right after publishing, or when submitted changes hit the daily limit. */
@@ -82,7 +83,7 @@ export function ReviewFlow({
   const timeline = useMemo(() => events ?? [], [events])
   const stage = useMemo(() => getReviewStage(collection, curation, events), [collection, curation, events])
   const verdict = useMemo(() => getLatestVerdict(timeline), [timeline])
-  const aiResults = useMemo<AiItemIssues[]>(() => {
+  const aiResults = useMemo<ItemCheck[]>(() => {
     const byItem = getAiIssuesByItem(timeline, items)
     return items.filter(item => byItem.has(item.id)).map(item => ({ item, issues: byItem.get(item.id)! }))
   }, [timeline, items])
@@ -221,7 +222,7 @@ export function ReviewFlow({
       text = t(
         isUnsupportedItemsReview(cause)
           ? 'review_flow.notice.unsupported_items'
-          : cause?.type === 'review.ai_error' && cause.payload.reason === 'too_large'
+          : cause?.type === 'review.ai_error' && cause.payload.reason === TOO_LARGE_REASON
             ? 'review_flow.notice.too_large'
             : isFinalValidationError(cause)
               ? 'review_flow.notice.validator_failed'

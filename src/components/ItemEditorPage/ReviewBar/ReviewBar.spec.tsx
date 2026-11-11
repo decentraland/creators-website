@@ -18,6 +18,7 @@ const state = vi.hoisted(() => ({
   curationLoading: false,
   refetch: vi.fn(),
   events: null as CollectionEvent[] | null,
+  eventsStatus: 'success',
   autoCuration: true,
   syncs: new Map<string, { status: string; entity?: object; lookupFailed?: true }>(),
   reject: vi.fn(),
@@ -43,7 +44,12 @@ vi.mock('~/hooks/useCuration', () => ({
   useDisableCollection: () => ({ mutate: state.disable, isPending: false, isError: false, reset: vi.fn() })
 }))
 vi.mock('~/hooks/useCollectionEvents', () => ({
-  useCollectionEvents: () => ({ events: state.events, isAvailable: state.events !== null })
+  useCollectionEvents: () => ({
+    events: state.events,
+    isAvailable: state.events !== null,
+    isSuccess: state.eventsStatus === 'success',
+    isPending: state.eventsStatus === 'pending'
+  })
 }))
 vi.mock('~/hooks/useFeatureFlag', () => ({
   useFeatureFlag: () => ({ enabled: state.autoCuration, isLoading: false })
@@ -108,6 +114,7 @@ const actions = () => screen.queryAllByTestId(/^review-action-/).map(button => b
 beforeEach(() => {
   state.curation = null
   state.events = null
+  state.eventsStatus = 'success'
   state.autoCuration = true
   state.curationError = false
   state.curationLoading = false
@@ -198,6 +205,20 @@ describe('ReviewBar', () => {
     fireEvent.click(screen.getByTestId('assign-continue'))
     expect(screen.getByTestId('review-reject-confirm')).toBeInTheDocument()
     expect(screen.queryByTestId('reject-curation-confirm')).toBeNull()
+  })
+
+  it('waits for the timeline before letting the curator reject, so a rejection never skips its reasons', () => {
+    state.eventsStatus = 'pending'
+    renderBar()
+    expect(screen.getByTestId('review-action-reject')).toBeDisabled()
+  })
+
+  it('still asks for reasons when the timeline failed to load: only a server without one refuses them', () => {
+    state.eventsStatus = 'error'
+    renderBar()
+    fireEvent.click(screen.getByTestId('review-action-reject'))
+    fireEvent.click(screen.getByTestId('assign-continue'))
+    expect(screen.getByTestId('reject-curation-confirm')).toBeInTheDocument()
   })
 
   it('rejects only with at least one reason and a message, and sends both', () => {

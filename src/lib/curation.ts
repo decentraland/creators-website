@@ -24,7 +24,7 @@ export type RemoteCollectionCuration = {
 }
 
 /** `reviewed_by` value when the automatic review, not a committee member, decided. */
-export const VALIDATOR_REVIEWER = 'validator'
+const VALIDATOR_REVIEWER = 'validator'
 
 export type CollectionCuration = {
   id: string
