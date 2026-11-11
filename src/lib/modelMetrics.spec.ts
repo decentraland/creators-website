@@ -47,7 +47,7 @@ describe('countModelMetrics', () => {
   })
 
   it('counts nothing for the malformed parts of a file', async () => {
-    const model = { ...hat, accessors: [{ count: 400 }, { count: {} }, { count: 31 }], materials: 'xxxx', textures: 7 }
+    const model = { ...hat, accessors: [{ count: -9 }, { count: {} }, { count: 31 }], materials: 'xxxx', textures: 7 }
     expect(await countModelMetrics(glb(model))).toEqual({
       triangles: 10,
       materials: 0,

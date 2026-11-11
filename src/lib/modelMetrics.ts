@@ -59,7 +59,7 @@ export async function countModelMetrics(file: Blob): Promise<ItemMetrics | null>
     for (const primitive of list(mesh.primitives)) {
       const accessor = primitive?.indices ?? primitive?.attributes?.POSITION
       const count = typeof accessor === 'number' ? accessors[accessor]?.count : undefined
-      const vertices = typeof count === 'number' && Number.isFinite(count) ? count : 0
+      const vertices = typeof count === 'number' && Number.isFinite(count) && count > 0 ? count : 0
       triangles += countTriangles(primitive?.mode ?? TRIANGLES, vertices)
       meshes++
     }
