@@ -228,12 +228,12 @@ const FINAL_AI_ERROR_REASONS: readonly string[] = [
   TOO_LARGE_REASON
 ] satisfies FinalAiErrorReason[]
 
-/** The validator gave up on the latest request: no verdict will come without a curator or a new request. */
 /** The request was too large to send: a curator reviews it, and an edit does not unblock a retry. */
 export function isTooLargeError(event: CollectionEvent | undefined): boolean {
   return event?.type === 'review.ai_error' && event.payload.reason === TOO_LARGE_REASON
 }
 
+/** The validator gave up on the latest request: no verdict will come without a curator or a new request. */
 export function isFinalValidationError(event: CollectionEvent | undefined): boolean {
   if (event?.type === 'review.ai_error') return FINAL_AI_ERROR_REASONS.includes(event.payload.reason ?? '')
   return event?.type === 'review.human_required' && event.payload.reason === VALIDATOR_ERROR_REASON
