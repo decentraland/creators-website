@@ -4,7 +4,8 @@ import { Authenticator, type AuthIdentity, type AuthLink } from '@dcl/crypto'
 import { localStorageStoreIdentity, localStorageClearIdentity } from '@dcl/single-sign-on-client'
 import { ProviderType } from '@dcl/schemas'
 import { TEST_PRIVATE_KEY, TEST_SIGNER } from '~/test/chain'
-import { createAuthHeaders, createEphemeralIdentity, getIdentity, isSocialLogin, logout, signedFetch } from './auth'
+import { createAuthHeaders, getIdentity, isSocialLogin, logout, signedFetch } from './auth'
+import { createEphemeralIdentity } from './signer'
 
 vi.mock('decentraland-connect', () => ({
   connection: { disconnect: vi.fn().mockResolvedValue(undefined) }
@@ -53,8 +54,8 @@ describe('auth', () => {
     expect(getIdentity('0x0000000000000000000000000000000000000000')).toBeNull()
   })
 
-  it('createAuthHeaders signs the ADR-44 payload and sends the timestamp and metadata it used', () => {
-    const headers = createAuthHeaders(address, 'GET', `/v1/${address}/collections`)
+  it('createAuthHeaders signs the ADR-44 payload and sends the timestamp and metadata it used', async () => {
+    const headers = await createAuthHeaders(address, 'GET', `/v1/${address}/collections`)
     const chain = parseAuthChain(headers)
     expect(chain.length).toBeGreaterThanOrEqual(2)
     // The last link carries the signed payload the server rebuilds from method, path and these headers.
@@ -65,8 +66,8 @@ describe('auth', () => {
     expect(JSON.parse(headers['x-identity-metadata'])).toEqual({})
   })
 
-  it('createAuthHeaders returns no headers without a stored identity', () => {
-    expect(createAuthHeaders('0x0000000000000000000000000000000000000000', 'GET', '/x')).toEqual({})
+  it('createAuthHeaders returns no headers without a stored identity', async () => {
+    await expect(createAuthHeaders('0x0000000000000000000000000000000000000000', 'GET', '/x')).resolves.toEqual({})
   })
 
   it('signedFetch signs the full pathname without its query string and fetches the full URL', async () => {
@@ -124,14 +125,14 @@ describe('auth', () => {
   })
 
   // The auth chain stores these strings as they are: their format is what servers and other dapps parse.
-  it('createEphemeralIdentity answers the checksummed address and the uncompressed public key of its key', async () => {
-    await expect(createEphemeralIdentity(TEST_PRIVATE_KEY)).resolves.toEqual({
+  it('createEphemeralIdentity answers the checksummed address and the uncompressed public key of its key', () => {
+    expect(createEphemeralIdentity(TEST_PRIVATE_KEY)).toEqual({
       address: TEST_SIGNER,
       publicKey:
         '0x044f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aa385b6b1b8ead809ca67454d9683fcf2ba03456d6fe2c4abe2b07f0fbdbb2f1c1',
       privateKey: TEST_PRIVATE_KEY
     })
-    const fresh = await createEphemeralIdentity()
+    const fresh = createEphemeralIdentity()
     expect(fresh.privateKey).toMatch(/^0x[0-9a-f]{64}$/)
     expect(fresh.publicKey).toMatch(/^0x04[0-9a-f]{128}$/)
     expect(fresh.address).toMatch(/^0x[0-9a-fA-F]{40}$/)

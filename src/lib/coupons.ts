@@ -14,16 +14,9 @@ import {
 import { StandardMerkleTree } from '@openzeppelin/merkle-tree'
 import { encodeAbiParameters, numberToHex, parseAbiParameters, recoverTypedDataAddress, toHex, type Hex } from 'viem'
 import { config } from '~/config'
-import {
-  WrongAccountError,
-  WrongChainError,
-  signedFetch,
-  type ContractCall,
-  type TypedDataDomain,
-  type TypedDataTypes
-} from '~/lib/auth'
+import { signedFetch, type ContractCall, type TypedDataDomain, type TypedDataTypes } from '~/lib/auth'
 import { OFFCHAIN_MARKETPLACE_TYPES, getOffchainMarketplaceContract, toTypedChecks } from '~/lib/trades'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { isWalletRejection, isWalletStateError } from '~/lib/walletErrors'
 
 /** Percentage discount, in parts per million on-chain: 30% is 300_000. The only type this app signs. */
 export const DISCOUNT_TYPE_RATE = 1
@@ -225,22 +218,24 @@ export function validateDiscountTerms(terms: DiscountTerms, now = Date.now()): v
 export type DiscountFailureReason = 'rejected' | 'pending' | 'wallet' | 'unconfirmed' | 'refused' | 'generic'
 
 export class DiscountError extends Error {
-  constructor(
-    public reason: DiscountFailureReason,
-    message: string = reason
-  ) {
+  reason: DiscountFailureReason
+  /** The underlying failure, when this one wraps it. */
+  cause?: unknown
+
+  constructor(reason: DiscountFailureReason, message: string = reason, cause?: unknown) {
     super(message)
     this.name = 'DiscountError'
+    this.reason = reason
+    this.cause = cause
   }
 }
 
 export function toDiscountError(error: unknown): DiscountError {
   if (error instanceof DiscountError) return error
   const message = error instanceof Error ? error.message : String(error)
-  if (isWalletRejection(error)) return new DiscountError('rejected', message)
-  if (error instanceof WrongAccountError || error instanceof WrongChainError)
-    return new DiscountError('wallet', message)
-  return new DiscountError('generic', message)
+  if (isWalletRejection(error)) return new DiscountError('rejected', message, error)
+  if (isWalletStateError(error)) return new DiscountError('wallet', message, error)
+  return new DiscountError('generic', message, error)
 }
 
 export type CreateDiscountDeps = {

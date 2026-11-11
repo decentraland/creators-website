@@ -6,11 +6,7 @@ import {
   TransactionNotFoundError,
   TransactionReceiptNotFoundError,
   createPublicClient,
-  encodeFunctionData,
-  hexToNumber,
   http,
-  isHex,
-  numberToHex,
   parseUnits,
   type Address,
   type Hash,
@@ -20,11 +16,14 @@ import {
 import { estimateGas, getTransaction } from 'viem/actions'
 import { ProviderType } from '@dcl/schemas'
 import { config } from '~/config'
-import { type ContractData } from '~/lib/chain/contracts'
+import { encodeContractCall, type ContractCall, type ContractData } from '~/lib/chain/contracts'
 import { sendMetaTransaction, type MetaTransactionWallet } from '~/lib/chain/metaTransaction'
-import { walletClientOf, type Session } from './auth'
+import { WrongAccountError, WrongChainError } from '~/lib/walletErrors'
+import { type Session } from './auth'
+import { readWalletChainId, requireAccount, switchWalletChain } from './provider'
+import { walletClientOf } from './walletClient'
 
-export type { ContractData }
+export type { ContractCall, ContractData }
 
 /** An EIP-712 domain; `verifyingContract` and `salt` are hex strings. */
 export type TypedDataDomain = {
@@ -37,12 +36,6 @@ export type TypedDataDomain = {
 
 export type TypedDataTypes = Record<string, { name: string; type: string }[]>
 
-export type ContractCall = {
-  contract: ContractData
-  method: string
-  args: unknown[]
-}
-
 const readClients = new Map<number, PublicClient>()
 
 async function getReadClient(chainId: number): Promise<PublicClient> {
@@ -54,11 +47,6 @@ async function getReadClient(chainId: number): Promise<PublicClient> {
   const client = createPublicClient({ transport: http(url) })
   readClients.set(chainId, client)
   return client
-}
-
-/** ABI-encoded calldata for a contract call. */
-export function encodeContractCall({ contract, method, args }: ContractCall): string {
-  return encodeFunctionData({ abi: contract.abi, functionName: method, args })
 }
 
 /** A view call: integers wider than 48 bits come back as `bigint`, several outputs as an array. */
@@ -77,8 +65,8 @@ export async function readContract<T>(contract: ContractData, method: string, ar
 export async function sendContractTransaction(session: Session, call: ContractCall): Promise<string> {
   const chainId = await readWalletChainId(session)
   if (chainId === Number(call.contract.chainId)) return sendFromWallet(session, chainId, call)
-  // Read the way the meta-transaction signer reads it: the account that signs must be the session's.
   const wallet = metaTransactionWallet(session)
+  // The account checked here is the one that signs, as the wallet spelled it (the relayed calldata keeps its case).
   const [active = ''] = await wallet.accounts()
   if (active.toLowerCase() !== session.address.toLowerCase()) {
     throw new WrongAccountError(session.address, active.toLowerCase())
@@ -88,6 +76,7 @@ export async function sendContractTransaction(session: Session, call: ContractCa
     target.request({ method: 'eth_call', params: [tx as { data: Hex; to: Address }, 'latest'] })
   return sendMetaTransaction(
     wallet,
+    active,
     callContract,
     encodeContractCall(call),
     call.contract,
@@ -96,7 +85,7 @@ export async function sendContractTransaction(session: Session, call: ContractCa
 }
 
 // An empty answer counts as a failed request, and legacy providers wrap theirs in `result`.
-function metaTransactionWallet(session: Session): MetaTransactionWallet {
+function metaTransactionWallet(session: Session): MetaTransactionWallet & { accounts: () => Promise<string[]> } {
   const request = async (method: string, params: unknown[]) => {
     const answer = await session.provider.request({ method, params })
     if (!answer) throw new Error(`The wallet gave no answer to ${method}`)
@@ -121,112 +110,6 @@ async function sendFromWallet(session: Session, chainId: number, call: ContractC
   }
   const gas = await estimateGas(wallet, { ...request, prepare: false })
   return wallet.sendTransaction({ ...request, gas, chain: null })
-}
-
-// Wallets that don't know the chain yet (EIP-3085) answer a switch with 4902 and need it added first. Only this
-// environment's Polygon is ever added; its details live in the env config.
-function addChainParams(chainId: number): object | undefined {
-  if (chainId !== Number(config.get('MATIC_CHAIN_ID'))) return undefined
-  return {
-    chainId: numberToHex(chainId),
-    chainName: config.get('MATIC_CHAIN_NAME'),
-    nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
-    rpcUrls: [config.get('MATIC_RPC_URL')],
-    blockExplorerUrls: [config.get('MATIC_EXPLORER_URL')]
-  }
-}
-
-// MetaMask mobile wraps the 4902 in an internal error.
-function isUnknownChain(error: unknown): boolean {
-  const { code, data } = (error ?? {}) as { code?: number; data?: { originalError?: { code?: number } } }
-  return code === 4902 || data?.originalError?.code === 4902
-}
-
-/**
- * Asks the wallet to move to `chainId`, adding this environment's Polygon first when the wallet doesn't know it.
- * Call it from a click: wallets refuse `wallet_*` requests they can't attribute to a user action. A refusal
- * (code 4001) propagates: the user answered, nothing moved.
- */
-export async function switchWalletChain(session: Session, chainId: number): Promise<void> {
-  try {
-    await session.provider.request({
-      method: 'wallet_switchEthereumChain',
-      params: [{ chainId: numberToHex(chainId) }]
-    })
-  } catch (error) {
-    const add = addChainParams(chainId)
-    if (!isUnknownChain(error) || !add) throw error
-    await session.provider.request({ method: 'wallet_addEthereumChain', params: [add] })
-  }
-}
-
-// Wallets answer in hex, as EIP-1193 says, but some answer a number or a decimal string.
-function toChainId(raw: unknown): number {
-  try {
-    if (typeof raw === 'number') return Number.isSafeInteger(raw) ? raw : 0
-    if (typeof raw === 'string' && isHex(raw)) return hexToNumber(raw)
-    if (typeof raw === 'string' && /^\d+$/.test(raw)) return Number(raw)
-  } catch {
-    // Not a chain id.
-  }
-  return 0
-}
-
-/**
- * The chain the wallet is on right now, asked over `eth_chainId` so the answer is the wallet's and not one
- * read earlier. Throws on anything that is not a positive chain id (a wallet answering null would otherwise
- * read as chain 0).
- */
-export async function readWalletChainId(session: Session): Promise<number> {
-  const raw = await session.provider.request({ method: 'eth_chainId', params: [] })
-  const parsed = toChainId(raw)
-  if (parsed <= 0) throw new Error(`Wallet answered eth_chainId with an unusable value: ${String(raw)}`)
-  return parsed
-}
-
-/**
- * Runs `onChange` whenever the wallet announces a chain change, and on an account change too, since another
- * account can sit on another chain without the wallet re-announcing it. Returns the unsubscribe; a provider
- * without events (Magic) subscribes to nothing.
- */
-export function subscribeWalletChain(session: Session, onChange: () => void): () => void {
-  const wallet = session.provider
-  if (!wallet.on || !wallet.removeListener) return () => undefined
-  wallet.on('chainChanged', onChange)
-  wallet.on('accountsChanged', onChange)
-  return () => {
-    wallet.removeListener?.('chainChanged', onChange)
-    wallet.removeListener?.('accountsChanged', onChange)
-  }
-}
-
-/** The wallet is still on another chain after being asked to switch: nothing was sent. */
-export class WrongChainError extends Error {
-  constructor(
-    public expected: number,
-    public actual: number
-  ) {
-    super(`The wallet is on chain ${actual}, not ${expected}`)
-    this.name = 'WrongChainError'
-  }
-}
-
-/** The wallet's active account is not the session's: sending would act as somebody else. Nothing was sent. */
-export class WrongAccountError extends Error {
-  constructor(
-    public expected: string,
-    public actual: string
-  ) {
-    super(`The wallet's active account is ${actual}, not ${expected}`)
-    this.name = 'WrongAccountError'
-  }
-}
-
-/** Throws `WrongAccountError` unless the wallet's active account is the session's. */
-export async function requireAccount(session: Session): Promise<void> {
-  const accounts = (await session.provider.request({ method: 'eth_accounts', params: [] })) as string[]
-  const active = (accounts[0] ?? '').toLowerCase()
-  if (active !== session.address.toLowerCase()) throw new WrongAccountError(session.address, active)
 }
 
 // Some networks (Amoy) enforce a minimum tip above what wallets propose, so the RPC rejects the transaction. The

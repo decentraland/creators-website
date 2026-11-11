@@ -186,11 +186,7 @@ export function DiscountFlow({ collection, session, sale, onClose }: Props) {
       return (
         <ConfirmModal
           title={t('collection_discount.error.title')}
-          description={t(
-            failure === 'wallet'
-              ? 'collection_discount.error.description_wallet'
-              : 'collection_discount.error.description'
-          )}
+          description={t(failure === 'wallet' ? 'wallet_error.wrong_account' : 'collection_discount.error.description')}
           art={{ src: errorArt }}
           onClose={onClose}
           cancel={{ label: t('collection_discount.cancel'), onClick: onClose, testId: 'discount-error-cancel' }}

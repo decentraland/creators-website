@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { TranslationProvider } from '~/intl'
 import { type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
+import { WrongAccountError } from '~/lib/walletErrors'
 import { DisableCollectionFlow } from './DisableCollectionFlow'
 
 type Callbacks = { onSuccess: () => void; onError: (error: unknown) => void }
@@ -12,14 +13,16 @@ const state = vi.hoisted(() => ({
   mutate: vi.fn(),
   showToast: vi.fn(),
   isError: false,
-  isPending: false
+  isPending: false,
+  error: null as Error | null
 }))
 vi.mock('~/hooks/useCuration', () => ({
   useDisableCollection: () => ({
     mutate: state.mutate,
     reset: vi.fn(),
     isPending: state.isPending,
-    isError: state.isError
+    isError: state.isError,
+    error: state.error
   })
 }))
 vi.mock('~/lib/notifications', () => ({
@@ -48,6 +51,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   state.isError = false
   state.isPending = false
+  state.error = null
 })
 
 describe('DisableCollectionFlow', () => {
@@ -82,6 +86,17 @@ describe('DisableCollectionFlow', () => {
     fireEvent.click(screen.getByTestId('review-disable-confirm'))
     act(() => lastCall()[1].onError({ code: 4001 }))
     expect(screen.getByTestId('review-disable')).toBeInTheDocument()
+  })
+
+  it('asks the curator to switch the wallet back when it sits on another account', () => {
+    state.isError = true
+    state.error = new WrongAccountError('0xme', '0xother')
+    renderFlow()
+    expect(screen.getByTestId('review-disable-error')).toHaveTextContent(/switch it back to the account/i)
+
+    state.error = new Error('execution reverted')
+    renderFlow()
+    expect(screen.getAllByTestId('review-disable-error')[1]).not.toHaveTextContent(/switch it back/i)
   })
 
   it('skips the wallet prompt screen for social logins', () => {

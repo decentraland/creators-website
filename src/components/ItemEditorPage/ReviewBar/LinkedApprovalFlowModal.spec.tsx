@@ -19,12 +19,14 @@ const pending = [
     id: 'i1',
     name: 'Gold Hat',
     urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats:gold',
+    data: { category: 'hat', representations: [] },
     contents: { 'a.glb': 'Qma' }
   },
   {
     id: 'i2',
     name: 'Silver Hat',
     urn: 'urn:decentraland:amoy:collections-thirdparty:brand:hats:silver',
+    data: { category: 'hat', representations: [] },
     contents: { 'b.glb': 'Qmb' }
   }
 ] as unknown as Item[]
@@ -74,6 +76,13 @@ describe('LinkedApprovalFlowModal', () => {
     const dialog = screen.getByTestId('approval-has-video')
     expect(dialog).toHaveTextContent('Gold Hat, Silver Hat')
     expect(dialog).toHaveTextContent('Nothing was put on chain')
+  })
+
+  it('asks the curator to switch the wallet back when it sits on another account', () => {
+    flow.view = { kind: 'error', step: 'root', failed: [], wallet: true }
+    renderModal()
+    expect(screen.getByTestId('approval-error-description')).toHaveTextContent(/switch it back to the account/i)
+    expect(screen.getByTestId('approval-retry')).toBeInTheDocument()
   })
 
   it('lists the item identifiers on the root step and the file sizes on the upload step', async () => {

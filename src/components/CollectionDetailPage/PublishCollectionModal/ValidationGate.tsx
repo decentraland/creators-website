@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from '~/intl'
 import { useRerunItemValidation } from '~/hooks/useCollectionValidation'
+import { useCatalystItemSizes } from '~/hooks/useItemSize'
 import { track } from '~/lib/analytics'
-import { countIssues, getValidationStatus, hasErrors } from '~/lib/validation'
+import { formatItemSize, isOverSizeLimit } from '~/lib/itemSize'
+import { ValidationSeverity, countIssues, getValidationStatus, hasErrors, type ValidationIssue } from '~/lib/validation'
 import { PendingModal } from '~/components/PendingModal'
 import { ValidationIssuesView, type ItemCheck } from './ValidationIssuesView'
 
@@ -19,13 +21,18 @@ type Props = {
   onClose: () => void
 }
 
+const SIZE_ISSUE_CODE = 'item_size'
+const SIZE_UNKNOWN_CODE = 'item_size_unknown'
+const isSizeIssue = (issue: ValidationIssue) => issue.code === SIZE_ISSUE_CODE || issue.code === SIZE_UNKNOWN_CODE
+
 function totals(checks: ItemCheck[]) {
   return countIssues(checks.flatMap(check => check.issues))
 }
 
 /**
- * The pre-step before publishing or sending changes for review: waits for the item checks, then shows
- * anything they found. Clean results pass straight through; the decision is made once per opening.
+ * The pre-step before publishing or sending changes for review: waits for the item checks and the items' sizes, then
+ * shows anything they found. Clean results pass straight through; the decision is made once per opening. An item over
+ * its size limit always blocks, whatever the flag says: the catalyst would refuse it at deploy.
  */
 export function ValidationGate({ collectionId, flow, validation, blockOnErrors, onPass, onClose }: Props) {
   const { t } = useTranslation()
@@ -41,9 +48,42 @@ export function ValidationGate({ collectionId, flow, validation, blockOnErrors, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const items = useMemo(() => validation.results.map(check => check.item), [validation.results])
+  const sizes = useCatalystItemSizes(items)
+  const checks = useMemo(
+    () =>
+      validation.results.map(check => {
+        // Unmeasured is not clean: the catalyst still counts the size at deploy, so the creator hears it can fail.
+        if (sizes.unknown.has(check.item.id)) {
+          const unknownIssue = {
+            code: SIZE_UNKNOWN_CODE,
+            severity: ValidationSeverity.WARNING,
+            title: t('item_size.label'),
+            message: t('item_size.unknown_warning')
+          }
+          return { ...check, issues: [...check.issues, unknownIssue] }
+        }
+        const size = sizes.sizes.get(check.item.id)
+        if (!size || !isOverSizeLimit(size)) return check
+        const sizeIssue = {
+          code: SIZE_ISSUE_CODE,
+          severity: ValidationSeverity.ERROR,
+          title: t('item_size.label'),
+          message: t('add_items_modal.file_error.size_exceeded', formatItemSize(size))
+        }
+        return { ...check, issues: [sizeIssue, ...check.issues] }
+      }),
+    [validation.results, sizes.sizes, sizes.unknown, t]
+  )
+  const oversizedCount = useMemo(
+    () => checks.filter(check => check.issues.some(issue => issue.code === SIZE_ISSUE_CODE)).length,
+    [checks]
+  )
+  const blocking = blockOnErrors || oversizedCount > 0
+
   useEffect(() => {
-    if (decided || validation.isValidating) return
-    const flagged = validation.results.filter(check => check.issues.length > 0)
+    if (decided || validation.isValidating || sizes.isMeasuring) return
+    const flagged = checks.filter(check => check.issues.length > 0)
     const { errors, warnings } = totals(flagged)
     track('Publish Validation Result', {
       collectionId,
@@ -51,7 +91,8 @@ export function ValidationGate({ collectionId, flow, validation, blockOnErrors, 
       errors,
       warnings,
       itemsWithIssues: flagged.length,
-      blocking: blockOnErrors && errors > 0,
+      oversizedItems: oversizedCount,
+      blocking: blocking && errors > 0,
       durationMs: Date.now() - openedAt.current
     })
     setDecided(true)
@@ -62,16 +103,38 @@ export function ValidationGate({ collectionId, flow, validation, blockOnErrors, 
     const withErrors = flagged.filter(check => hasErrors(check.issues))
     const withWarnings = flagged.filter(check => !hasErrors(check.issues))
     setFlaggedIds([...withErrors, ...withWarnings].map(({ item }) => item.id))
-  }, [decided, validation, blockOnErrors, collectionId, flow, onPass])
+  }, [
+    decided,
+    validation.isValidating,
+    sizes.isMeasuring,
+    checks,
+    oversizedCount,
+    blocking,
+    collectionId,
+    flow,
+    onPass
+  ])
 
   const flaggedChecks = useMemo(() => {
-    const byId = new Map(validation.results.map(check => [check.item.id, check]))
+    const byId = new Map(checks.map(check => [check.item.id, check]))
     return flaggedIds.flatMap(id => byId.get(id) ?? [])
-  }, [flaggedIds, validation.results])
+  }, [flaggedIds, checks])
   const rerunItemValidation = useRerunItemValidation()
   const rerun = useCallback(
-    (check: ItemCheck) => rerunItemValidation(check.item, flow, getValidationStatus(check.issues, false)),
-    [rerunItemValidation, flow]
+    // The re-run reports the rule book's verdict it replaces, without the size issues this step adds.
+    (check: ItemCheck) => {
+      // A size that could not be measured is measured again with the checks.
+      if (sizes.unknown.has(check.item.id)) void sizes.remeasure(check.item)
+      return rerunItemValidation(
+        check.item,
+        flow,
+        getValidationStatus(
+          check.issues.filter(issue => !isSizeIssue(issue)),
+          false
+        )
+      )
+    },
+    [rerunItemValidation, flow, sizes]
   )
   function resolveIssues(action: 'continue' | 'back') {
     track('Publish Validation Resolved', { collectionId, flow, action, ...totals(flaggedChecks) })
@@ -87,7 +150,7 @@ export function ValidationGate({ collectionId, flow, validation, blockOnErrors, 
     <ValidationIssuesView
       checks={flaggedChecks}
       flow={flow}
-      blockOnErrors={blockOnErrors}
+      blockOnErrors={blocking}
       onRerun={rerun}
       onBack={() => resolveIssues('back')}
       onContinue={() => resolveIssues('continue')}

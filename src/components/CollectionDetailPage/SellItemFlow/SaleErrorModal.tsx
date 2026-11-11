@@ -20,11 +20,13 @@ export function SaleErrorModal({ stage, reason, onCancel, onRetry }: Props) {
   const { t } = useTranslation()
   const canRetry = !UNRETRIABLE_REASONS.includes(reason)
   const description =
-    reason === 'sold_out' || reason === 'not_listed' ? `description_${reason}` : `description_${stage}`
+    reason === 'wallet'
+      ? 'wallet_error.wrong_account'
+      : `sell_item_modal.error.description_${reason === 'sold_out' || reason === 'not_listed' ? reason : stage}`
   return (
     <ConfirmModal
       title={t(`sell_item_modal.error.title_${stage}`)}
-      description={t(`sell_item_modal.error.${description}`)}
+      description={t(description)}
       art={{ src: errorArt }}
       onClose={onCancel}
       cancel={{ label: t('sell_item_modal.cancel'), onClick: onCancel, testId: 'sale-error-cancel' }}

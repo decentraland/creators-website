@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { parseAbi } from 'viem'
 import { getCollectionContract, getContract, type ContractData } from '~/lib/chain/contracts'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { WrongAccountError, isWalletRejection } from '~/lib/walletErrors'
 import { TEST_SIGNER, testAccount } from '~/test/chain'
 import { type Session } from './auth'
-import { WrongAccountError, sendContractTransaction } from './transactions'
+import { sendContractTransaction } from '.'
 
 vi.mock('decentraland-connect', () => ({ getRpcUrls: () => ({ 80002: 'https://rpc.example.com' }) }))
 
@@ -26,6 +26,8 @@ type Scenario = {
   signError?: unknown
   noRequestAccounts?: boolean
   activeAccount?: string
+  /** The account the wallet answers from its second accounts request on. */
+  switchesTo?: string
   wrapsAnswers?: boolean
   relay?: { status: number; body: object }
 }
@@ -33,8 +35,10 @@ type Scenario = {
 /** A wallet on Ethereum signing with the test key, a Polygon read node answering the nonce, and the relayer. */
 function world(scenario: Scenario = {}) {
   const walletLog: Request[] = []
+  let answered = 0
   const accounts = () => {
-    const list = [scenario.activeAccount ?? TEST_SIGNER]
+    const active = answered++ > 0 && scenario.switchesTo ? scenario.switchesTo : (scenario.activeAccount ?? TEST_SIGNER)
+    const list = [active]
     return scenario.wrapsAnswers ? { result: list } : list
   }
   const request = async ({ method, params = [] }: Request): Promise<unknown> => {
@@ -151,7 +155,6 @@ describe('when a call goes gasless through the relayer', () => {
     expect(outcome).toEqual({ hash: HASH })
     expect(walletLog).toEqual([
       { method: 'eth_requestAccounts', params: [] },
-      { method: 'eth_requestAccounts', params: [] },
       { method: 'eth_getCode', params: [TEST_SIGNER.toLowerCase(), 'latest'] },
       { method: 'eth_signTypedData_v4', params: [TEST_SIGNER, expected.typedData] }
     ])
@@ -239,6 +242,15 @@ describe('when a call goes gasless through the relayer', () => {
   it('should accept a legacy wallet that wraps its accounts in `result`', async () => {
     const { outcome } = await sendTransfer({ wrapsAnswers: true })
     expect(outcome).toEqual({ hash: HASH })
+  })
+
+  it('should sign with the account it checked even if the wallet would answer another one next', async () => {
+    const { outcome, walletLog, relayed } = await sendTransfer({
+      switchesTo: '0x00000000000000000000000000000000000000bb'
+    })
+    expect(outcome).toEqual({ hash: HASH })
+    expect(walletLog.find(({ method }) => method === 'eth_signTypedData_v4')?.params?.[0]).toBe(TEST_SIGNER)
+    expect(relayed).toEqual([{ transactionData: expect.objectContaining({ from: TEST_SIGNER }) }])
   })
 
   it("should refuse to sign when the wallet's active account is not the session's", async () => {

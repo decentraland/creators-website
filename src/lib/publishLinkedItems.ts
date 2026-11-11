@@ -25,7 +25,7 @@ import {
   type RegisteredThirdParty,
   type ThirdPartyPrice
 } from '~/lib/thirdPartyRegistry'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { isWalletRejection, isWalletStateError } from '~/lib/walletErrors'
 
 export type LinkedPublishStep =
   'check' | 'tos' | 'kind' | 'allowance' | 'register' | 'buy_slots' | 'wait_tx' | 'delete_virtual' | 'publish' | 'push'
@@ -60,6 +60,7 @@ export function getLinkedPublishPhases(pays: boolean, current?: LinkedPublishSte
 
 export type LinkedPublishFailureReason =
   | 'rejected'
+  | 'wallet'
   | 'reverted'
   | 'payment_pending'
   | 'fee_changed'
@@ -148,6 +149,7 @@ function wrapLinkedPublishError(error: unknown, step: LinkedPublishStep, txHash?
   const message = error instanceof Error ? error.message : String(error)
   if (step === 'tos') return new LinkedPublishError(step, 'tos_failed', message, error, txHash)
   if (isWalletRejection(error)) return new LinkedPublishError(step, 'rejected', message, error, txHash)
+  if (isWalletStateError(error)) return new LinkedPublishError(step, 'wallet', message, error, txHash)
   if (isInsufficientSlotsError(error)) return new LinkedPublishError(step, 'insufficient_slots', message, error, txHash)
   if (isPendingReviewError(error)) return new LinkedPublishError(step, 'pending_review', message, error, txHash)
   return new LinkedPublishError(step, 'generic', message, error, txHash)
