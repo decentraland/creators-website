@@ -11,7 +11,7 @@ import {
   requestCollectionValidation
 } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
-import { collectionCurationKey, collectionEventsKey } from '~/hooks/useCuration'
+import { collectionCurationKey, collectionEventsKey, refreshReview } from '~/hooks/useCuration'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { getValidationAttemptsLeft, isValidationInProgress, type CollectionEvent } from '~/lib/events'
 import { FeatureFlag } from '~/lib/featureFlags'
@@ -119,11 +119,7 @@ export function useRecentCollectionEvents(
 
 function useRefreshReview(address: string | undefined) {
   const queryClient = useQueryClient()
-  return (collectionId: string) => {
-    void queryClient.invalidateQueries({ queryKey: collectionEventsKey(address, collectionId) })
-    void queryClient.invalidateQueries({ queryKey: collectionCurationKey(address, collectionId) })
-    void queryClient.invalidateQueries({ queryKey: ['curations', address] })
-  }
+  return (collectionId: string) => refreshReview(queryClient, address, collectionId)
 }
 
 export type RequestValidationVariables = { collection: Collection; events: CollectionEvent[] }

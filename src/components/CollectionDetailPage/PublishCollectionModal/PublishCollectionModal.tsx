@@ -14,7 +14,7 @@ import { PaymentStep } from './PaymentStep'
 import { PublishErrorModal } from './PublishErrorModal'
 import { TopUpOutcome } from './TopUpOutcome'
 import { ValidationGate } from './ValidationGate'
-import { type ItemCheck } from './ValidationIssuesView'
+import { type ItemCheck } from '~/lib/validation'
 import { StepIndicator } from '~/components/StepIndicator'
 import * as S from './PublishCollectionModal.styles'
 

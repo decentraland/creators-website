@@ -175,7 +175,7 @@ describe('getAiIssuesByItem', () => {
     expect(getAiIssuesByItem(events, []).size).toBe(0)
   })
 
-  it('drops the findings once a curator decided after the run, as on an appeal they approved', () => {
+  it('drops the findings once a curator approves after the run, as on an appeal', () => {
     const events = [
       event('review.approved', NOW),
       event('review.appeal_requested', NOW - 1_000),
@@ -185,6 +185,17 @@ describe('getAiIssuesByItem', () => {
       })
     ]
     expect(getAiIssuesByItem(events, []).size).toBe(0)
+  })
+
+  it("keeps the findings when a curator confirms the validator's rejection: they still say what to fix", () => {
+    const events = [
+      event('review.rejected', NOW),
+      event('review.ai_rejected', NOW - 2_000, {
+        verdict: 'rejected',
+        items: [{ itemId: 'i1', contentHash: 'h', passed: false, findings: [finding] }]
+      })
+    ]
+    expect([...getAiIssuesByItem(events, []).keys()]).toEqual(['i1'])
   })
 })
 

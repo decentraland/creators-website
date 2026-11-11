@@ -9,8 +9,8 @@ import { SuccessModal } from '~/components/SuccessModal'
 import { ItemValidationCard, toValidationSubject } from '~/components/ValidationBadge'
 import { useTranslation } from '~/intl'
 import { VALIDATION_ATTEMPTS_PER_DAY } from '~/lib/events'
-import { type ItemCheck } from '../PublishCollectionModal/ValidationIssuesView'
 import * as Issues from '../PublishCollectionModal/ValidationIssuesView.styles'
+import { type ItemCheck } from '~/lib/validation'
 import * as S from './ReviewFlow.styles'
 
 type AttemptsProps = { used: number; testId: string }

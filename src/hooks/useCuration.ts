@@ -96,6 +96,13 @@ export function useCurationCollections(address: string | undefined, filters: Cur
   })
 }
 
+/** Rereads a collection's review: its timeline, its request and the request list. */
+export function refreshReview(queryClient: QueryClient, address: string | undefined, collectionId: string) {
+  void queryClient.invalidateQueries({ queryKey: collectionEventsKey(address, collectionId) })
+  void queryClient.invalidateQueries({ queryKey: collectionCurationKey(address, collectionId) })
+  void queryClient.invalidateQueries({ queryKey: ['curations', address] })
+}
+
 /** Shows a collection's new latest curation everywhere it is read, without refetching. */
 export function storeCuration(queryClient: QueryClient, address: string | undefined, curation: CollectionCuration) {
   queryClient.setQueryData(collectionCurationKey(address, curation.collectionId), curation)
@@ -207,9 +214,7 @@ export function usePushCuration(address: string | undefined) {
         return
       }
       // The answer says the review moved on (a run started, the day's runs spent) or will (busy): reread it.
-      void queryClient.invalidateQueries({ queryKey: collectionEventsKey(address, collection.id) })
-      void queryClient.invalidateQueries({ queryKey: collectionCurationKey(address, collection.id) })
-      void queryClient.invalidateQueries({ queryKey: ['curations', address] })
+      refreshReview(queryClient, address, collection.id)
     }
   })
 }

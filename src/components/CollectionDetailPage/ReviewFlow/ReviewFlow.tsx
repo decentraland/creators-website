@@ -26,7 +26,7 @@ import {
   latestStageEvent,
   startOfUtcDay,
   type CollectionEvent,
-  TOO_LARGE_REASON
+  isTooLargeError
 } from '~/lib/events'
 import { type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
@@ -39,7 +39,7 @@ import {
   SentForReviewModal
 } from './ReviewModals'
 import { markReviewModalSeen, wasReviewModalSeen } from '~/lib/reviewModalMemory'
-import { type ItemCheck } from '../PublishCollectionModal/ValidationIssuesView'
+import { type ItemCheck } from '~/lib/validation'
 import * as S from './ReviewFlow.styles'
 
 /** A modal the page asks for: right after publishing, or when submitted changes hit the daily limit. */
@@ -222,7 +222,7 @@ export function ReviewFlow({
       text = t(
         isUnsupportedItemsReview(cause)
           ? 'review_flow.notice.unsupported_items'
-          : cause?.type === 'review.ai_error' && cause.payload.reason === TOO_LARGE_REASON
+          : isTooLargeError(cause)
             ? 'review_flow.notice.too_large'
             : isFinalValidationError(cause)
               ? 'review_flow.notice.validator_failed'

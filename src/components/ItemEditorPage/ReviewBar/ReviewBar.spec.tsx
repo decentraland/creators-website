@@ -20,6 +20,7 @@ const state = vi.hoisted(() => ({
   events: null as CollectionEvent[] | null,
   eventsStatus: 'success',
   autoCuration: true,
+  flagLoading: false,
   syncs: new Map<string, { status: string; entity?: object; lookupFailed?: true }>(),
   reject: vi.fn(),
   disable: vi.fn(),
@@ -52,7 +53,7 @@ vi.mock('~/hooks/useCollectionEvents', () => ({
   })
 }))
 vi.mock('~/hooks/useFeatureFlag', () => ({
-  useFeatureFlag: () => ({ enabled: state.autoCuration, isLoading: false })
+  useFeatureFlag: () => ({ enabled: state.autoCuration, isLoading: state.flagLoading })
 }))
 vi.mock('~/hooks/useItemSync', () => ({ useItemSyncs: () => state.syncs }))
 // Checks exactly the items it is handed, like the real hook, with canned results.
@@ -116,6 +117,7 @@ beforeEach(() => {
   state.events = null
   state.eventsStatus = 'success'
   state.autoCuration = true
+  state.flagLoading = false
   state.curationError = false
   state.curationLoading = false
   state.syncs = new Map()
@@ -209,6 +211,13 @@ describe('ReviewBar', () => {
 
   it('waits for the timeline before letting the curator reject, so a rejection never skips its reasons', () => {
     state.eventsStatus = 'pending'
+    renderBar()
+    expect(screen.getByTestId('review-action-reject')).toBeDisabled()
+  })
+
+  it('waits for the flag too before letting the curator reject', () => {
+    state.autoCuration = false
+    state.flagLoading = true
     renderBar()
     expect(screen.getByTestId('review-action-reject')).toBeDisabled()
   })

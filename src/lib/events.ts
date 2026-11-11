@@ -222,13 +222,18 @@ export function isUnsupportedItemsReview(event: CollectionEvent | undefined): bo
 
 export const VALIDATOR_ERROR_REASON = 'validator_error'
 export const SWEEP_EXHAUSTED_REASON = 'sweep_exhausted'
-export const TOO_LARGE_REASON = 'too_large'
+const TOO_LARGE_REASON = 'too_large'
 const FINAL_AI_ERROR_REASONS: readonly string[] = [
   SWEEP_EXHAUSTED_REASON,
   TOO_LARGE_REASON
 ] satisfies FinalAiErrorReason[]
 
 /** The validator gave up on the latest request: no verdict will come without a curator or a new request. */
+/** The request was too large to send: a curator reviews it, and an edit does not unblock a retry. */
+export function isTooLargeError(event: CollectionEvent | undefined): boolean {
+  return event?.type === 'review.ai_error' && event.payload.reason === TOO_LARGE_REASON
+}
+
 export function isFinalValidationError(event: CollectionEvent | undefined): boolean {
   if (event?.type === 'review.ai_error') return FINAL_AI_ERROR_REASONS.includes(event.payload.reason ?? '')
   return event?.type === 'review.human_required' && event.payload.reason === VALIDATOR_ERROR_REASON
@@ -314,14 +319,10 @@ export function getAiIssuesByItem(
   const verdict = getLatestVerdict(events)
   const issues = new Map<string, ValidationIssue[]>()
   if (!verdict || verdict.payload.verdict !== 'rejected') return issues
-  // A curator decided after the run (an appeal, a confirmation): their decision is what stands, not the findings.
-  const decidedSince = events
-    .slice(
-      0,
-      events.findIndex(event => event.id === verdict.id)
-    )
-    .some(event => HUMAN_DECISION_TYPES.has(event.type))
-  if (decidedSince) return issues
+  // A curator approved after the run (an appeal): the findings no longer stand. A curator's rejection keeps
+  // them, since they still say what to fix.
+  const verdictIndex = events.findIndex(event => event.id === verdict.id)
+  if (events.slice(0, verdictIndex).some(event => event.type === 'review.approved')) return issues
   const stale = new Set(verdict.payload.staleItemIds ?? [])
   // An item saved since the run carries another hash: its findings were about content that is gone.
   const currentHashes = new Map(items.map(item => [item.id, item.currentContentHash]))

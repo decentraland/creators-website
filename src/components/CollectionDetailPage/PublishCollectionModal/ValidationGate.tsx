@@ -4,7 +4,8 @@ import { useRerunItemValidation } from '~/hooks/useCollectionValidation'
 import { track } from '~/lib/analytics'
 import { countIssues, getValidationStatus, hasErrors } from '~/lib/validation'
 import { PendingModal } from '~/components/PendingModal'
-import { ValidationIssuesView, type ItemCheck } from './ValidationIssuesView'
+import { type ItemCheck } from '~/lib/validation'
+import { ValidationIssuesView } from './ValidationIssuesView'
 
 export type ValidationFlow = 'publish' | 'push_changes'
 
