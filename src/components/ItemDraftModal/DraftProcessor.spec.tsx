@@ -26,7 +26,7 @@ vi.mock('~/hooks/usePreviewRenderer', () => ({ usePreviewRenderer: () => Preview
 const { captureError } = vi.hoisted(() => ({ captureError: vi.fn() }))
 vi.mock('~/lib/monitoring', () => ({ captureError }))
 
-const { DraftProcessor, BOOT_BUDGET_MS } = await import('./DraftProcessor')
+const { DraftProcessor, BOOT_BUDGET_MS, READ_BUDGET_MS, RUN_BUDGET_MS } = await import('./DraftProcessor')
 
 const REAL_METRICS = { triangles: 708, materials: 3, meshes: 5, textures: 4, bodies: 5, entities: 1 }
 const EMPTY_SCENE_METRICS = { triangles: 0, materials: 0, meshes: 0, textures: 0, bodies: 0, entities: 1 }
@@ -171,9 +171,12 @@ describe('DraftProcessor', () => {
     render(<DraftProcessor draft={wearableDraft()} flow="add_items" onResult={onResult} onError={onError} />)
 
     await elapse(BOOT_BUDGET_MS)
+    const retried = document.querySelector('iframe')
     await elapse(BOOT_BUDGET_MS)
 
     expect(onError).toHaveBeenCalledWith('draft-1', 'timeout')
+    // The next file starts on a fresh iframe instead of the wedged one.
+    expect(document.querySelector('iframe')).not.toBe(retried)
     expect(captureError).toHaveBeenCalledWith(
       expect.any(Error),
       expect.objectContaining({ flow: 'add_items', step: 'preview_timeout' })
@@ -190,11 +193,44 @@ describe('DraftProcessor', () => {
     render(<DraftProcessor draft={wearableDraft()} flow="add_items" onResult={onResult} onError={vi.fn()} />)
 
     await iframeLoads()
-    await elapse(BOOT_BUDGET_MS)
+    await elapse(READ_BUDGET_MS)
     await act(async () => answerLate(REAL_METRICS))
     expect(onResult).not.toHaveBeenCalled()
 
     await iframeLoads()
     expect(onResult).toHaveBeenCalledTimes(1)
+  })
+
+  it('gives a model that has loaded time to be read, beyond the budget for a scene that never loads', async () => {
+    getMetrics.mockImplementation(
+      () => new Promise(resolve => setTimeout(() => resolve(REAL_METRICS), RUN_BUDGET_MS + 10_000))
+    )
+    const onResult = vi.fn()
+    const onError = vi.fn()
+    render(<DraftProcessor draft={wearableDraft()} flow="add_items" onResult={onResult} onError={onError} />)
+    const iframe = document.querySelector('iframe')
+
+    await iframeLoads()
+    await elapse(RUN_BUDGET_MS + 10_000)
+
+    expect(onResult).toHaveBeenCalledTimes(1)
+    expect(onError).not.toHaveBeenCalled()
+    expect(document.querySelector('iframe')).toBe(iframe)
+  })
+
+  it('reads the model again when its LOAD lands while the empty scene is still being read', async () => {
+    let answerEmpty: (metrics: typeof EMPTY_SCENE_METRICS) => void = () => {}
+    getMetrics
+      .mockImplementationOnce(() => new Promise(resolve => (answerEmpty = resolve)))
+      .mockResolvedValue(REAL_METRICS)
+    const onResult = vi.fn()
+    render(<DraftProcessor draft={wearableDraft()} flow="add_items" onResult={onResult} onError={vi.fn()} />)
+
+    await iframeLoads()
+    await act(async () => previewProps[previewProps.length - 1].onLoad?.())
+    await act(async () => answerEmpty(EMPTY_SCENE_METRICS))
+
+    expect(onResult).toHaveBeenCalledTimes(1)
+    expect(onResult.mock.calls[0][1].metrics).toEqual(REAL_METRICS)
   })
 })

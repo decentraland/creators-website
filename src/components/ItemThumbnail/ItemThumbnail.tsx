@@ -14,12 +14,12 @@ type Props = {
   loading?: boolean
 }
 
-/** An item's artwork over its rarity-tinted media field; neutral when the rarity is unknown or missing. */
 function LoadingSpinner({ testId }: { testId: string }) {
   const { t } = useTranslation()
   return <S.Spinner role="status" aria-label={t('item_thumbnail.generating')} data-testid={testId} />
 }
 
+/** An item's artwork over its rarity-tinted media field; neutral when the rarity is unknown or missing. */
 export function ItemThumbnail({ src, rarity, children, className, testId = 'item-thumbnail', loading = false }: Props) {
   const backgroundImage = getRarityMediaBackground(rarity)
   return (

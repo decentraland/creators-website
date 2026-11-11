@@ -21,6 +21,8 @@ const RETRY_DELAY_MS = 750
 // remounts the iframe once and then fails the draft instead of holding the queue. A fresh iframe has to boot first.
 export const BOOT_BUDGET_MS = 45_000
 export const RUN_BUDGET_MS = 20_000
+// Once the model's LOAD is in, the reads may still wait out Unity reloads (up to 30s each) and retries.
+export const READ_BUDGET_MS = 75_000
 
 export type PreviewFailure = 'timeout' | 'error'
 
@@ -39,6 +41,8 @@ type Run = {
   runKey: string
   done: boolean
   busy: boolean
+  /** A LOAD landed while an attempt was running; that attempt may have read the previous scene. */
+  loadPending: boolean
   attempts: number
   retryTimer: number
   startedAt: number
@@ -65,6 +69,7 @@ export function DraftProcessor({ draft, flow, batchSize = 1, onResult, onError }
     runKey: '',
     done: false,
     busy: false,
+    loadPending: false,
     attempts: 0,
     retryTimer: 0,
     startedAt: 0,
@@ -72,15 +77,18 @@ export function DraftProcessor({ draft, flow, batchSize = 1, onResult, onError }
   })
 
   if (runRef.current.runKey !== runKey) {
-    window.clearTimeout(runRef.current.retryTimer)
+    const previous = runRef.current
+    window.clearTimeout(previous.retryTimer)
     runRef.current = {
       runKey,
       done: false,
       busy: false,
+      loadPending: false,
       attempts: 0,
       retryTimer: 0,
       startedAt: performance.now(),
-      mounts: 1
+      // A pose change on the same draft keeps its remount count, so "remount once, then fail" still holds.
+      mounts: previous.runKey.startsWith(`${draft.id}:`) ? previous.mounts : 1
     }
   }
 
@@ -118,9 +126,46 @@ export function DraftProcessor({ draft, flow, batchSize = 1, onResult, onError }
     loadRef.current = { draftId: draft.id, phase: 'idle' }
   }
 
+  const watchdogRef = useRef(0)
+  const armWatchdog = (budget: number) => {
+    window.clearTimeout(watchdogRef.current)
+    const run = runRef.current
+    watchdogRef.current = window.setTimeout(() => {
+      if (runRef.current !== run || run.done) return
+      if (run.mounts > 1) {
+        captureError(new Error('The preview did not process the model in time'), {
+          flow,
+          step: 'preview_timeout',
+          renderer,
+          itemType: draft.type
+        })
+        fail(run, 'timeout')
+        // The wedged instance would otherwise make the next draft wait out a whole budget too.
+        setMountCount(count => count + 1)
+        return
+      }
+      // A fresh run object orphans whatever the wedged iframe still owes the old one.
+      window.clearTimeout(run.retryTimer)
+      runRef.current = {
+        ...run,
+        busy: false,
+        loadPending: false,
+        attempts: 0,
+        retryTimer: 0,
+        mounts: run.mounts + 1
+      }
+      loadRef.current = { draftId: draft.id, phase: 'idle' }
+      setMountCount(count => count + 1)
+    }, budget)
+  }
+
   const attempt = () => {
     const run = runRef.current
-    if (run.done || run.busy) return
+    if (run.done) return
+    if (run.busy) {
+      run.loadPending = true
+      return
+    }
     run.busy = true
 
     void (async () => {
@@ -175,6 +220,10 @@ export function DraftProcessor({ draft, flow, batchSize = 1, onResult, onError }
         run.retryTimer = window.setTimeout(attempt, RETRY_DELAY_MS)
       } finally {
         run.busy = false
+        if (run.loadPending && runRef.current === run && !run.done) {
+          run.loadPending = false
+          attempt()
+        }
       }
     })()
   }
@@ -187,27 +236,8 @@ export function DraftProcessor({ draft, flow, batchSize = 1, onResult, onError }
 
   useEffect(() => {
     if (renderer === undefined) return
-    const run = runRef.current
-    const budget = bootedRef.current.booted ? RUN_BUDGET_MS : BOOT_BUDGET_MS
-    const timer = window.setTimeout(() => {
-      if (runRef.current !== run || run.done) return
-      if (run.mounts > 1) {
-        captureError(new Error('The preview did not process the model in time'), {
-          flow,
-          step: 'preview_timeout',
-          renderer,
-          itemType: draft.type
-        })
-        fail(run, 'timeout')
-        return
-      }
-      // A fresh run object orphans whatever the wedged iframe still owes the old one.
-      window.clearTimeout(run.retryTimer)
-      runRef.current = { ...run, busy: false, attempts: 0, retryTimer: 0, mounts: run.mounts + 1 }
-      loadRef.current = { draftId: draft.id, phase: 'idle' }
-      setMountCount(count => count + 1)
-    }, budget)
-    return () => window.clearTimeout(timer)
+    armWatchdog(bootedRef.current.booted ? RUN_BUDGET_MS : BOOT_BUDGET_MS)
+    return () => window.clearTimeout(watchdogRef.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runKey, iframeKey, renderer])
 
@@ -233,8 +263,11 @@ export function DraftProcessor({ draft, flow, batchSize = 1, onResult, onError }
             if (loadRef.current.phase === 'idle') loadRef.current.phase = 'update-sent'
           }}
           onLoad={() => {
-            bootedRef.current.booted = true
+            // LOADs are told apart by origin only, so one from another preview on the page (the thumbnail editor)
+            // also lands here: only a LOAD after this iframe's own UPDATE says it has booted.
             if (loadRef.current.phase === 'idle') return
+            bootedRef.current.booted = true
+            if (loadRef.current.phase === 'update-sent') armWatchdog(READ_BUDGET_MS)
             loadRef.current.phase = 'loaded'
             attempt()
           }}
