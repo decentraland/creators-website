@@ -181,9 +181,11 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
     () => pickPreviewDraft(drafts, selected?.id ?? null, processingIdRef.current),
     [drafts, selected?.id]
   )
+  const previewDraftId = previewDraft?.id ?? null
   useEffect(() => {
-    processingIdRef.current = previewDraft?.id ?? null
-  }, [previewDraft?.id])
+    // Kept once the queue drains, so the next file finishes the type the iframe is mounted for.
+    if (previewDraftId) processingIdRef.current = previewDraftId
+  }, [previewDraftId])
 
   // Image wearables are padded per category, so a category change re-pads our auto thumbnail.
   const repaddingIdsRef = useRef(new Set<string>())
@@ -559,15 +561,22 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
             </S.Footer>
           </S.Main>
         </S.Layout>
+        {previewDraft && (
+          <DraftProcessor
+            draft={previewDraft}
+            flow="add_items"
+            batchSize={drafts.length}
+            onResult={(id, result) => dispatch({ type: 'draftPreviewed', id, result })}
+            onError={(id, reason) =>
+              dispatch({
+                type: 'draftFailed',
+                id,
+                errorKey: reason === 'timeout' ? 'preview_timeout' : 'invalid_model_file'
+              })
+            }
+          />
+        )}
       </Modal>
-
-      {previewDraft && (
-        <DraftProcessor
-          draft={previewDraft}
-          onResult={(id, patch) => dispatch({ type: 'draftAnalyzed', id, patch })}
-          onError={id => dispatch({ type: 'draftFailed', id, errorKey: 'invalid_model_file' })}
-        />
-      )}
 
       {thumbnailEditor.modal}
 

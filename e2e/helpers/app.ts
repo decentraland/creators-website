@@ -14,6 +14,7 @@ import {
   type RouteContext,
   type Variants
 } from './route'
+import { type PreviewOptions } from './preview'
 import { createChain, type ChainOptions, type SentTransaction } from './rpc'
 import { OFFLINE_WEBSOCKET_SCRIPT, POLYGON_AMOY, sessionInitScript, testSession } from './session'
 
@@ -63,6 +64,8 @@ export type LaunchOptions = {
   flags?: Flags
   variants?: Variants
   errors?: ForcedErrors
+  /** How the fake wearable-preview iframe behaves. */
+  preview?: PreviewOptions
   /** Builder storage files by content hash, on top of the fixture files. */
   storage?: Record<string, Buffer>
   data?: Partial<ExternalData>
@@ -175,6 +178,7 @@ async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
     flags: opts.flags ?? {},
     variants: opts.variants ?? {},
     errors: opts.errors ?? {},
+    preview: opts.preview ?? {},
     storage,
     data: { ...DEFAULT_EXTERNAL_DATA, ...opts.data }
   }

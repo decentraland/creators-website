@@ -151,17 +151,18 @@ export function isImageThumbnailStale(draft: ItemDraft): boolean {
 
 /**
  * Next draft for the DraftProcessor. Switching the processor mid-load throws that load away, so a
- * draft already in flight keeps its turn; otherwise the one on screen goes before the rest.
+ * draft already in flight keeps its turn; otherwise the one on screen goes before the rest, and the rest
+ * finish the type the iframe was last mounted for (`lastId`), since a type switch reboots the preview.
  */
 export function pickPreviewDraft(
   drafts: ItemDraft[],
   selectedId: string | null,
-  inFlightId: string | null
+  lastId: string | null
 ): ItemDraft | null {
   const pending = (draft: ItemDraft) => draft.status === 'ready' && needsPreviewData(draft)
-  const inFlight = drafts.find(draft => draft.id === inFlightId)
-  if (inFlight && pending(inFlight)) return inFlight
+  const last = drafts.find(draft => draft.id === lastId)
+  if (last && pending(last)) return last
   const selected = drafts.find(draft => draft.id === selectedId)
   if (selected && pending(selected)) return selected
-  return drafts.find(pending) ?? null
+  return drafts.find(draft => pending(draft) && draft.type === last?.type) ?? drafts.find(pending) ?? null
 }

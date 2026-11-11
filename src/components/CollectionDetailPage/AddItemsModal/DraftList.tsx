@@ -1,6 +1,7 @@
 import { Check as CheckIcon, ErrorRounded as ErrorIcon } from '@mui/icons-material'
 import { EmoteIcon, SmartIcon, TrashIcon, WearableIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
+import { isThumbnailGenerating } from '~/lib/draftPreview'
 import { ItemType } from '~/lib/items'
 import { type ItemDraft } from './AddItemsModal.state'
 import * as S from './AddItemsModal.styles'
@@ -32,7 +33,12 @@ export function DraftList({ drafts, selectedId, onSelect, onRemove }: Props) {
           onClick={() => onSelect(draft.id)}
         >
           <S.DraftThumbWrap>
-            <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId={`draft-thumbnail-${draft.id}`} />
+            <ItemThumbnail
+              src={draft.thumbnail}
+              rarity={draft.rarity}
+              testId={`draft-thumbnail-${draft.id}`}
+              loading={draft.status === 'processing' || (draft.status === 'ready' && isThumbnailGenerating(draft))}
+            />
             {draft.status !== 'failed' && (
               <S.DraftCheck data-checked={draft.checked || undefined} data-testid={`draft-check-${draft.id}`}>
                 {draft.checked && <CheckIcon />}
