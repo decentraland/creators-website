@@ -284,6 +284,17 @@ describe('ItemActionsMenu', () => {
     expect(screen.getByTestId('move-item-confirm')).toBeDisabled()
   })
 
+  it('offers no reset while an automatic review judges the collection', async () => {
+    renderMenu({
+      item: publishedItem,
+      collection: published,
+      sync: { status: ItemSyncStatus.UNSYNCED, entity },
+      reviewLocked: true
+    })
+    const menu = await openMenu()
+    expect(ids(menu)).not.toContain('item-reset')
+  })
+
   it('resets an unsynced item to the approved version deployed on the catalyst', async () => {
     const edited = {
       ...publishedItem,

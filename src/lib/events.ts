@@ -171,7 +171,8 @@ export function getLatestVerdict(
       validationId: event.payload.validationId,
       verdict: event.payload.verdict ?? (event.type === 'review.ai_passed' ? 'passed' : 'rejected'),
       rulesVersion: event.payload.rulesVersion,
-      items: event.payload.items,
+      // An older or malformed row may lack findings; every consumer reads them as a list.
+      items: event.payload.items.map(item => (Array.isArray(item.findings) ? item : { ...item, findings: [] })),
       staleItemIds: event.payload.staleItemIds
     }
   }

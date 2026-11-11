@@ -19,7 +19,7 @@ import {
   useCollectionStatus,
   useSaveCollection
 } from '~/hooks/useCollection'
-import { BuilderServerError, VALIDATION_RUNNING_STATUS, ValidationLimitError } from '~/lib/builder'
+import { BuilderServerError, ValidationLimitError, isCollectionBusy, isValidationRunning } from '~/lib/builder'
 import { isSocialLogin } from '~/lib/auth'
 import { FeatureFlag } from '~/lib/featureFlags'
 import { getValidationStatus } from '~/lib/validation'
@@ -318,15 +318,6 @@ const CollectionDetailPage = () => {
   const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION).enabled
   const [reviewRequest, setReviewRequest] = useState<ReviewFlowRequest | null>(null)
   const clearReviewRequest = useCallback(() => setReviewRequest(null), [])
-  // After publishing, the review modal needs a server that keeps the timeline; without one the plain success shows.
-  const [awaitingReviewStart, setAwaitingReviewStart] = useState(false)
-  const timelineSettled = eventsQuery.isFetched || eventsQuery.isError
-  useEffect(() => {
-    if (!awaitingReviewStart || !timelineSettled) return
-    setAwaitingReviewStart(false)
-    if (eventsQuery.isAvailable) setReviewRequest('reviewing')
-    else setPublishView('success')
-  }, [awaitingReviewStart, timelineSettled, eventsQuery.isAvailable])
   // The validator's findings dress the rows and the details modal like the browser's checks do.
   const aiIssues = useMemo(() => getAiIssuesByItem(events ?? [], allItems ?? []), [events, allItems])
   // Until the request loads, a pending one looks like none and the push would duplicate it. A rejection the
@@ -737,6 +728,7 @@ const CollectionDetailPage = () => {
                   address={address}
                   onPreviewInWorld={hasItems ? () => previewCollectionFromDetail(collection.id, total) : undefined}
                   items={allItems}
+                  showActivity={autoCuration && !!curationAddress && !!standardCollection?.isPublished}
                   onSendItems={canSend ? () => setSending(true) : undefined}
                   onCreateDiscount={canCreateDiscount ? () => openDiscount('menu') : undefined}
                   onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
@@ -903,6 +895,7 @@ const CollectionDetailPage = () => {
                           address={address}
                           sync={syncs.get(item.id)}
                           listing={withMarket ? listingFor(item) : undefined}
+                          reviewLocked={reviewLocked}
                         />
                       )
                     }
@@ -958,9 +951,11 @@ const CollectionDetailPage = () => {
               blockOnErrors={blockOnErrors}
               onClose={() => setPublishView('closed')}
               onPublished={() => {
-                setPublishView('closed')
-                if (autoCuration) setAwaitingReviewStart(true)
-                else setPublishView('success')
+                // With auto curation the review starts with the publication, so its modal is the confirmation.
+                if (autoCuration) {
+                  setPublishView('closed')
+                  setReviewRequest('reviewing')
+                } else setPublishView('success')
               }}
             />
           )}
@@ -1001,9 +996,12 @@ const CollectionDetailPage = () => {
                       if (error instanceof ValidationLimitError) {
                         closePush()
                         setReviewRequest('limit')
-                      } else if (error instanceof BuilderServerError && error.status === VALIDATION_RUNNING_STATUS) {
+                      } else if (isValidationRunning(error)) {
                         closePush()
                         showToast(t('review_flow.running'), { type: 'warn' })
+                      } else if (isCollectionBusy(error)) {
+                        closePush()
+                        showToast(t('review_flow.busy'), { type: 'warn' })
                       }
                     }
                   }),

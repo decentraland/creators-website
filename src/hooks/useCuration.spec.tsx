@@ -19,7 +19,8 @@ vi.mock('~/lib/builder', async importOriginal => {
     ...api,
     BuilderServerError: actual.BuilderServerError,
     ValidationLimitError: actual.ValidationLimitError,
-    VALIDATION_RUNNING_STATUS: actual.VALIDATION_RUNNING_STATUS,
+    isCollectionBusy: actual.isCollectionBusy,
+    isReviewConflict: actual.isReviewConflict,
     fetchCollectionCuration: vi.fn(),
     fetchCurationCollections: vi.fn(),
     fetchCurations: vi.fn()
@@ -33,7 +34,8 @@ const auth = vi.hoisted(() => ({
 }))
 vi.mock('~/lib/auth', () => auth)
 
-const { useAssignCurator, useDisableCollection, usePushCuration, useRejectCuration } = await import('./useCuration')
+const { collectionEventsKey, useAssignCurator, useDisableCollection, usePushCuration, useRejectCuration } =
+  await import('./useCuration')
 const { captureError } = await import('~/lib/monitoring')
 const { BuilderServerError, ValidationLimitError } = await import('~/lib/builder')
 
@@ -140,7 +142,22 @@ describe('useAssignCurator', () => {
 })
 
 describe('usePushCuration', () => {
-  it("reports a failure, but not the answers the creator acts on: a running review or today's limit", async () => {
+  it('rereads the review timeline once the changes are sent, so the review they started shows', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+    const eventsKey = collectionEventsKey(ADDRESS, collection.id)
+    client.setQueryData(eventsKey, { pages: [], pageParams: [] })
+    const { result } = renderHook(() => usePushCuration(ADDRESS), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      )
+    })
+
+    await act(() => result.current.mutateAsync(collection))
+
+    expect(client.getQueryState(eventsKey)?.isInvalidated).toBe(true)
+  })
+
+  it("reports a failure, but not the answers the creator acts on: a running review, today's limit or a busy collection", async () => {
     vi.mocked(captureError).mockClear()
     const { result } = renderHook(() => usePushCuration(ADDRESS), { wrapper })
 
@@ -150,9 +167,13 @@ describe('usePushCuration', () => {
     await act(() => result.current.mutateAsync(collection).catch(() => undefined))
     api.pushCollectionCuration.mockRejectedValueOnce(new BuilderServerError('A validation is already in progress', 409))
     await act(() => result.current.mutateAsync(collection).catch(() => undefined))
+    api.pushCollectionCuration.mockRejectedValueOnce(
+      new BuilderServerError('The collection is being updated, try again in a moment', 503)
+    )
+    await act(() => result.current.mutateAsync(collection).catch(() => undefined))
     expect(captureError).not.toHaveBeenCalled()
 
-    api.pushCollectionCuration.mockRejectedValueOnce(new BuilderServerError('Service unavailable', 503))
+    api.pushCollectionCuration.mockRejectedValueOnce(new BuilderServerError('Internal error', 500))
     await act(() => result.current.mutateAsync(collection).catch(() => undefined))
     expect(captureError).toHaveBeenCalledTimes(1)
   })

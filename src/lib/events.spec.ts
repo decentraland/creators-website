@@ -191,6 +191,13 @@ describe('getLatestVerdict', () => {
     expect(getLatestVerdict([event('review.ai_started', NOW)])).toBeNull()
   })
 
+  it('reads an item without findings as one with none, so every consumer can list them', () => {
+    // A row as an older server wrote it: the item carries no findings list.
+    const items = [{ itemId: 'i1', contentHash: 'h', passed: false }] as unknown as ValidationItemResult[]
+    const verdict = getLatestVerdict([event('review.ai_rejected', NOW, { verdict: 'rejected', items })])
+    expect(verdict?.payload.items[0].findings).toEqual([])
+  })
+
   it('fills in the verdict from the event type when the payload lacks it', () => {
     expect(getLatestVerdict([event('review.ai_passed', NOW, { items: [] })])?.payload.verdict).toBe('passed')
   })

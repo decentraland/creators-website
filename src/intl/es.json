@@ -330,8 +330,6 @@
       "success": "Tu colección se envió a revisión"
     },
     "review_notice": {
-      "waiting": "Tu colección está esperando a un curador.",
-      "reviewing": "Un curador está revisando tu colección.",
       "rejected": "El comité de curaduría rechazó la última versión de esta colección. Actualiza tus ítems y envíalos a revisión de nuevo."
     },
     "push_blocker": {
@@ -2087,8 +2085,8 @@
     },
     "limit": {
       "title": "Alcanzaste el límite diario de revisiones automáticas",
-      "description": "Alcanzaste el límite de {max} revisiones automáticas por día. Puedes pedir una revisión manual a un curador de Decentraland, que puede tardar un poco más, o esperar 24 horas para intentarlo de nuevo.",
-      "description_wait": "Alcanzaste el límite de {max} revisiones automáticas por día. Vuelve a intentarlo en 24 horas.",
+      "description": "Alcanzaste el límite de {max} revisiones automáticas por día. Puedes pedir una revisión manual a un curador de Decentraland, que puede tardar un poco más, o intentarlo de nuevo cuando el límite se reinicie a las 00:00 UTC.",
+      "description_wait": "Alcanzaste el límite de {max} revisiones automáticas por día. Vuelve a intentarlo cuando el límite se reinicie a las 00:00 UTC.",
       "not_now": "Ahora no",
       "request": "Pedir revisión de un curador"
     },
@@ -2099,6 +2097,8 @@
     "validate_again": "Validar de nuevo ({left} de {max} restantes hoy)",
     "request_review": "Pedir revisión de un curador",
     "running": "Ya hay una revisión en curso. Inténtalo cuando termine.",
+    "nothing_to_validate": "No hay nada nuevo para revisar automáticamente. Edita un ítem y publica tus cambios, o pide una revisión de un curador.",
+    "busy": "La colección se está actualizando. Inténtalo de nuevo en un momento.",
     "appeal_open": "Ya se pidió una revisión de un curador para esta colección.",
     "appeal_error": "No pudimos enviar tu solicitud. Inténtalo de nuevo.",
     "validation_started": "Revisión automática iniciada. Actualizaremos esta página cuando termine.",

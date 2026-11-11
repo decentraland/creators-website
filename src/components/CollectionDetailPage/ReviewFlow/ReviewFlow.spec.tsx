@@ -187,7 +187,7 @@ describe('ReviewFlow', () => {
     expect(screen.queryByTestId('daily-limit-request')).toBeNull()
   })
 
-  it('explains a 429 and a 409 answered by the server', () => {
+  it('explains a 429 and each 409 answered by the server', () => {
     renderFlow(rejectedByValidator, [verdict()])
     fireEvent.click(screen.getByTestId('ai-issues-back'))
     mocks.validate.mockImplementationOnce((_, { onError }) =>
@@ -197,11 +197,24 @@ describe('ReviewFlow', () => {
     expect(screen.getByTestId('daily-limit-modal')).toBeInTheDocument()
     fireEvent.click(screen.getByTestId('daily-limit-not-now'))
 
-    mocks.validate.mockImplementationOnce((_, { onError }) => onError(new BuilderServerError('Running', 409)))
+    mocks.validate.mockImplementationOnce((_, { onError }) =>
+      onError(new BuilderServerError('A validation is already in progress for this collection', 409))
+    )
     fireEvent.click(screen.getByTestId('validate-again'))
     expect(mocks.toast).toHaveBeenCalledWith('A review is already running. Try again when it finishes.', {
       type: 'warn'
     })
+
+    mocks.validate.mockImplementationOnce((_, { onError }) =>
+      onError(
+        new BuilderServerError('Nothing changed since the last validation: edit an item or appeal the decision', 409)
+      )
+    )
+    fireEvent.click(screen.getByTestId('validate-again'))
+    expect(mocks.toast).toHaveBeenLastCalledWith(
+      "There's nothing new to review automatically. Edit an item and publish your changes, or request a curator review.",
+      { type: 'warn' }
+    )
   })
 
   it('asks for a curator after confirming, then says the collection was sent', () => {
@@ -275,8 +288,8 @@ describe('ReviewFlow', () => {
     expect(screen.getByTestId('review-notice')).toHaveAttribute('data-stage', 'rejected_by_validator')
   })
 
-  it('falls back to the legacy notice without a timeline', () => {
+  it('shows no notice without a timeline, as without auto curation', () => {
     renderFlow({ ...pending, assignee: '0xcurator' }, null)
-    expect(screen.getByTestId('review-notice')).toHaveTextContent('A curator is reviewing your collection.')
+    expect(screen.queryByTestId('review-notice')).toBeNull()
   })
 })

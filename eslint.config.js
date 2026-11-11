@@ -99,8 +99,10 @@ const BUILDER_IN_COMPONENTS = {
         'BuilderServerError',
         'COLLECTION_LOCKED_STATUS',
         'ValidationLimitError',
-        'VALIDATION_RUNNING_STATUS',
-        'isAppealAlreadyOpen'
+        'isAppealAlreadyOpen',
+        'isCollectionBusy',
+        'isReviewConflict',
+        'isValidationRunning'
       ],
       allowTypeImports: true,
       message: BUILDER_IN_COMPONENTS_MESSAGE

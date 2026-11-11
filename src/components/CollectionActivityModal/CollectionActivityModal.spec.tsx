@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { TranslationProvider } from '~/intl'
 import { type Collection } from '~/lib/collections'
 import { type CollectionEvent } from '~/lib/events'
@@ -133,6 +133,24 @@ describe('CollectionActivityModal', () => {
     renderModal()
     expect(screen.getByTestId('activity-validation-id')).toHaveTextContent('val-9')
     expect(screen.getByTestId('activity-line')).toHaveTextContent('Automatic review restarted')
+  })
+
+  it("keeps the validator's own failure text to curators; creators read the item's status", () => {
+    state.events = [
+      event('review.ai_rejected', 'validator', {
+        verdict: 'rejected',
+        items: [{ itemId: 'i1', contentHash: 'h', passed: null, findings: [], error: 'render server timed out' }]
+      })
+    ]
+    renderModal()
+    fireEvent.click(screen.getByTestId('activity-toggle-findings'))
+    expect(screen.queryByTestId('activity-findings-item-error')).toBeNull()
+    cleanup()
+
+    state.isCurator = true
+    renderModal()
+    fireEvent.click(screen.getByTestId('activity-toggle-findings'))
+    expect(screen.getByTestId('activity-findings-item-error')).toHaveTextContent('render server timed out')
   })
 
   it('explains items the validator could not check, with their findings and the id for curators', () => {

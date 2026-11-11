@@ -330,9 +330,7 @@
       "success": "您的系列已提交审核"
     },
     "review_notice": {
-      "rejected": "审核委员会拒绝了此系列的最新版本。请更新您的物品并重新提交审核。",
-      "waiting": "您的系列正在等待审核员。",
-      "reviewing": "审核员正在审核您的系列。"
+      "rejected": "审核委员会拒绝了此系列的最新版本。请更新您的物品并重新提交审核。"
     },
     "push_blocker": {
       "has_invalid_items": "请先修复标为红色的 {count, plural, one {# 个物品} other {# 个物品}}才能提交审核。",
@@ -2087,8 +2085,8 @@
     },
     "limit": {
       "title": "已达到每日自动审核上限",
-      "description": "您已达到每日 {max} 次自动审核的上限。您可以申请 Decentraland 审核员进行人工审核（可能需要更长时间），或等待 24 小时后再试。",
-      "description_wait": "您已达到每天 {max} 次自动审核的上限。请在 24 小时后重试。",
+      "description": "您已达到每日 {max} 次自动审核的上限。您可以申请 Decentraland 审核员进行人工审核（可能需要更长时间），或在额度于 UTC 00:00 重置后再试。",
+      "description_wait": "您已达到每天 {max} 次自动审核的上限。请在额度于 UTC 00:00 重置后重试。",
       "not_now": "暂不",
       "request": "申请审核员审核"
     },
@@ -2099,6 +2097,8 @@
     "validate_again": "重新验证（今日剩余 {left}/{max} 次）",
     "request_review": "申请审核员审核",
     "running": "已有一次审核正在进行，请在完成后再试。",
+    "nothing_to_validate": "没有可自动审核的新内容。请编辑物品并发布更改，或申请审核员审核。",
+    "busy": "系列正在更新，请稍后重试。",
     "appeal_open": "此系列已申请过审核员审核。",
     "appeal_error": "我们无法发送您的申请，请重试。",
     "validation_started": "自动审核已开始。完成后我们会更新此页面。",

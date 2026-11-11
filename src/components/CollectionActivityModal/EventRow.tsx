@@ -141,7 +141,14 @@ export function EventRow({ event, items, isCurator }: Props) {
               >
                 {t(showFindings ? 'activity_modal.hide_findings' : 'activity_modal.show_findings')}
               </S.Toggle>
-              {showFindings && <ItemFindingsList results={failedItems} items={items} testId="activity-findings" />}
+              {showFindings && (
+                <ItemFindingsList
+                  results={failedItems}
+                  items={items}
+                  showErrors={isCurator}
+                  testId="activity-findings"
+                />
+              )}
             </>
           )}
         </S.Details>

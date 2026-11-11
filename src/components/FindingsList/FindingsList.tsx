@@ -74,11 +74,19 @@ type GroupedProps = {
   items?: Item[]
   /** Hides the pass/fail label per item (the pre-fee checks have no verdict). */
   showStatus?: boolean
+  /** The validator's own failure text for an unchecked item: committee views only, creators see the status. */
+  showErrors?: boolean
   testId?: string
 }
 
 /** Findings grouped by item, with the item's thumbnail, name and (optionally) its pass/fail and visual summary. */
-export function ItemFindingsList({ results, items = [], showStatus = true, testId = 'item-findings' }: GroupedProps) {
+export function ItemFindingsList({
+  results,
+  items = [],
+  showStatus = true,
+  showErrors = false,
+  testId = 'item-findings'
+}: GroupedProps) {
   const { t } = useTranslation()
   const byId = useMemo(() => new Map(items.map(item => [item.id, item])), [items])
   return (
@@ -106,7 +114,7 @@ export function ItemFindingsList({ results, items = [], showStatus = true, testI
                 </S.ItemStatus>
               )}
             </S.ItemHead>
-            {result.passed === null && result.error && (
+            {showErrors && result.passed === null && result.error && (
               <S.ItemError data-testid={`${testId}-item-error`}>
                 {t('findings.item_error', { error: result.error })}
               </S.ItemError>

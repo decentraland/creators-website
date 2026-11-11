@@ -1,8 +1,25 @@
 import { fromRemoteEvent, type CollectionEventsPage, type RemoteCollectionEvent } from '~/lib/events'
 import { BuilderServerError, request } from './transport'
 
-export const VALIDATION_RUNNING_STATUS = 409
+const REVIEW_CONFLICT_STATUS = 409
+const COLLECTION_BUSY_STATUS = 503
 export const VALIDATION_LIMIT_STATUS = 429
+const VALIDATION_RUNNING_MESSAGE = 'A validation is already in progress for this collection'
+
+/** A 409 from the review endpoints (a run in progress, nothing new to validate, an open appeal): an answer, not a failure. */
+export function isReviewConflict(error: unknown): boolean {
+  return error instanceof BuilderServerError && error.status === REVIEW_CONFLICT_STATUS
+}
+
+/** The 409 that means an automatic review of the collection is running right now. */
+export function isValidationRunning(error: unknown): boolean {
+  return isReviewConflict(error) && (error as BuilderServerError).message === VALIDATION_RUNNING_MESSAGE
+}
+
+/** builder-server is busy with another update of the collection: the same action works on retry. */
+export function isCollectionBusy(error: unknown): boolean {
+  return error instanceof BuilderServerError && error.status === COLLECTION_BUSY_STATUS
+}
 
 /** Today's automatic reviews are spent: the creator waits for tomorrow or asks a curator. */
 export class ValidationLimitError extends BuilderServerError {

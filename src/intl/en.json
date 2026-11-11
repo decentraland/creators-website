@@ -330,8 +330,6 @@
       "success": "Your collection was sent for review"
     },
     "review_notice": {
-      "waiting": "Your collection is waiting for a curator.",
-      "reviewing": "A curator is reviewing your collection.",
       "rejected": "The curation committee rejected the latest version of this collection. Update your items and send them for review again."
     },
     "push_blocker": {
@@ -2087,8 +2085,8 @@
     },
     "limit": {
       "title": "Daily automated review limit reached",
-      "description": "You've reached the limit of {max} automated reviews per day. You can request a manual review from a Decentraland curator, which may take a little longer, or wait 24 hours to try again.",
-      "description_wait": "You've reached the limit of {max} automated reviews per day. Try again in 24 hours.",
+      "description": "You've reached the limit of {max} automated reviews per day. You can request a manual review from a Decentraland curator, which may take a little longer, or try again after the allowance resets at 00:00 UTC.",
+      "description_wait": "You've reached the limit of {max} automated reviews per day. Try again after the allowance resets at 00:00 UTC.",
       "not_now": "Not now",
       "request": "Request curator review"
     },
@@ -2099,6 +2097,8 @@
     "validate_again": "Validate again ({left} of {max} left today)",
     "request_review": "Request curator review",
     "running": "A review is already running. Try again when it finishes.",
+    "nothing_to_validate": "There's nothing new to review automatically. Edit an item and publish your changes, or request a curator review.",
+    "busy": "The collection is being updated, try again in a moment.",
     "appeal_open": "A curator review was already requested for this collection.",
     "appeal_error": "We couldn't send your request. Please try again.",
     "validation_started": "Automatic review started. We'll update this page when it finishes.",

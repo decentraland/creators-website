@@ -3,7 +3,8 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import { errorCode, track } from '~/lib/analytics'
 import {
   BuilderServerError,
-  VALIDATION_RUNNING_STATUS,
+  isCollectionBusy,
+  isReviewConflict,
   ValidationLimitError,
   appealCollectionCuration,
   fetchCollectionEvents,
@@ -138,14 +139,12 @@ export function useRequestValidation(address: string | undefined) {
       return requestCollectionValidation(address, collection.id)
     },
     onSuccess: (_, { collection, events }) => {
-      track('Request validation', { collectionId: collection.id, attemptsLeft: getValidationAttemptsLeft(events) - 1 })
+      track('Request validation', { collectionId: collection.id, attempts_left: getValidationAttemptsLeft(events) - 1 })
       refresh(collection.id)
     },
     onError: (error, { collection }) => {
       track('Request validation error', { collectionId: collection.id, error: errorCode(error) })
-      const expected =
-        error instanceof ValidationLimitError ||
-        (error instanceof BuilderServerError && error.status === VALIDATION_RUNNING_STATUS)
+      const expected = error instanceof ValidationLimitError || isReviewConflict(error) || isCollectionBusy(error)
       if (expected) refresh(collection.id)
       else captureError(error, { flow: 'curation_validate', collectionId: collection.id })
     }
@@ -168,7 +167,7 @@ export function useAppealCuration(address: string | undefined) {
     },
     onError: (error, { collection }) => {
       track('Appeal curation error', { collectionId: collection.id, error: errorCode(error) })
-      if (error instanceof BuilderServerError && error.status === VALIDATION_RUNNING_STATUS) refresh(collection.id)
+      if (isReviewConflict(error) || isCollectionBusy(error)) refresh(collection.id)
       else captureError(error, { flow: 'curation_appeal', collectionId: collection.id })
     }
   })

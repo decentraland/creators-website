@@ -4,25 +4,21 @@ import { useTranslation } from '~/intl'
 import { Button } from '~/components/Button'
 import { useAppealCuration, useRequestValidation } from '~/hooks/useCollectionEvents'
 import { track } from '~/lib/analytics'
-import { BuilderServerError, VALIDATION_RUNNING_STATUS, ValidationLimitError, isAppealAlreadyOpen } from '~/lib/builder'
+import { ValidationLimitError, isAppealAlreadyOpen, isReviewConflict, isValidationRunning } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
-import {
-  ReviewStage,
-  getCreatorReviewNotice,
-  getReviewStage,
-  isRejectedStage,
-  type CollectionCuration
-} from '~/lib/curation'
+import { ReviewStage, getReviewStage, isRejectedStage, type CollectionCuration } from '~/lib/curation'
 import {
   VALIDATION_ATTEMPTS_PER_DAY,
   countValidationAttempts,
   getAiIssuesByItem,
+  getValidationAttemptsLeft,
   getLatestVerdict,
   hasOpenAppeal,
   isFinalValidationError,
   isUnsupportedItemsReview,
   isValidationInProgress,
   latestStageEvent,
+  startOfUtcDay,
   type CollectionEvent
 } from '~/lib/events'
 import { type Item } from '~/lib/items'
@@ -48,7 +44,7 @@ type Props = {
   collection: Collection
   address: string
   curation: CollectionCuration | null
-  /** `null` while the timeline is unavailable: only the legacy notice shows then. */
+  /** `null` while the timeline is unavailable: no notice shows then, as without auto curation. */
   events: CollectionEvent[] | null
   items: Item[]
   /** Owner or collaborator: may validate again and ask for a curator. */
@@ -84,8 +80,10 @@ export function ReviewFlow({
     const byItem = getAiIssuesByItem(timeline, items)
     return items.filter(item => byItem.has(item.id)).map(item => ({ item, issues: byItem.get(item.id)! }))
   }, [timeline, items])
-  const attemptsUsed = useMemo(() => countValidationAttempts(timeline), [timeline])
-  const attemptsLeft = Math.max(0, VALIDATION_ATTEMPTS_PER_DAY - attemptsUsed)
+  // The allowance resets at 00:00 UTC, so the count is redone when the day changes, not only when events do.
+  const today = startOfUtcDay(Date.now())
+  const attemptsUsed = useMemo(() => countValidationAttempts(timeline, today), [timeline, today])
+  const attemptsLeft = useMemo(() => getValidationAttemptsLeft(timeline, today), [timeline, today])
   const running = useMemo(() => isValidationInProgress(timeline), [timeline])
   const appealOpen = useMemo(() => hasOpenAppeal(timeline), [timeline])
   const cause = useMemo(() => latestStageEvent(timeline), [timeline])
@@ -140,9 +138,9 @@ export function ReviewFlow({
         onSuccess: () => showToast(t('review_flow.validation_started')),
         onError: error => {
           if (error instanceof ValidationLimitError) open('limit')
-          else if (error instanceof BuilderServerError && error.status === VALIDATION_RUNNING_STATUS) {
-            showToast(t('review_flow.running'), { type: 'warn' })
-          } else showToast(t('review_flow.validation_error'), { type: 'error' })
+          else if (isValidationRunning(error)) showToast(t('review_flow.running'), { type: 'warn' })
+          else if (isReviewConflict(error)) showToast(t('review_flow.nothing_to_validate'), { type: 'warn' })
+          else showToast(t('review_flow.validation_error'), { type: 'error' })
         }
       }
     )
@@ -233,14 +231,10 @@ export function ReviewFlow({
       text = t('review_flow.notice.rejected_by_curator')
       tone = 'error'
       break
-    default: {
-      const legacy = getCreatorReviewNotice(collection, curation)
-      if (legacy) text = t(`collection_detail_page.review_notice.${legacy}`)
-    }
   }
   if (!text) return modals
 
-  const rejected = stage === ReviewStage.REJECTED_BY_VALIDATOR || stage === ReviewStage.REJECTED_BY_CURATOR
+  const rejected = isRejectedStage(stage)
 
   return (
     <>

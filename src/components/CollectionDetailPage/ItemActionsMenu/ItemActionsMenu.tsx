@@ -36,6 +36,8 @@ type Props = {
   sync?: ItemSync
   /** The item's primary listing, when the collection is on the market: `null` when not on sale. */
   listing?: ItemListing | null
+  /** An automatic review is judging the collection's content: resetting it would change what is judged. */
+  reviewLocked?: boolean
 }
 
 // The sale dialogs keep the listing they opened with: the flows themselves rewrite the listings cache
@@ -48,7 +50,7 @@ type Dialog =
   | { kind: 'remove-listing'; listing: ItemListing; session: Session }
   | null
 
-export function ItemActionsMenu({ item, collection, address, sync, listing }: Props) {
+export function ItemActionsMenu({ item, collection, address, sync, listing, reviewLocked = false }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const showToast = useNotifications(state => state.showToast)
@@ -77,7 +79,7 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
       ? canListItems && canSellCollectionItems(collection, address)
       : canManageCollectionItems(collection, address))
   const canEditPrice = canListItems && !!session && canEditItemPrice(collection, item, listing, address)
-  const canReset = !compact && canManage && sync?.status === ItemSyncStatus.UNSYNCED && !!sync.entity
+  const canReset = !compact && canManage && !reviewLocked && sync?.status === ItemSyncStatus.UNSYNCED && !!sync.entity
   const canPreview = !compact
 
   async function copyUrn() {

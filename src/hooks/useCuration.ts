@@ -4,8 +4,8 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClie
 import { errorCode, track } from '~/lib/analytics'
 import { sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
 import {
-  BuilderServerError,
-  VALIDATION_RUNNING_STATUS,
+  isCollectionBusy,
+  isReviewConflict,
   ValidationLimitError,
   fetchCollection,
   fetchCollectionCuration,
@@ -199,10 +199,8 @@ export function usePushCuration(address: string | undefined) {
     },
     onError: (error, collection) => {
       track('Push curation error', { collectionId: collection.id, error: errorCode(error) })
-      // A running review (409) and the daily limit (429) are answers the creator acts on, not failures.
-      const expected =
-        error instanceof ValidationLimitError ||
-        (error instanceof BuilderServerError && error.status === VALIDATION_RUNNING_STATUS)
+      // A running review, the daily limit and a busy collection are answers the creator acts on, not failures.
+      const expected = error instanceof ValidationLimitError || isReviewConflict(error) || isCollectionBusy(error)
       if (!expected) captureError(error, { flow: 'curation_push', collectionId: collection.id })
     }
   })

@@ -2,8 +2,6 @@ import { useState } from 'react'
 import { OpenInNew as OpenInNewIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { useDeleteCollection } from '~/hooks/useCollection'
-import { useFeatureFlag } from '~/hooks/useFeatureFlag'
-import { FeatureFlag } from '~/lib/featureFlags'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { copyToClipboard } from '~/lib/clipboard'
 import { hasBeenApproved, isCollectionLocked, isLinkedCollection, type Collection } from '~/lib/collections'
@@ -31,6 +29,8 @@ type Props = {
   onPreviewInWorld?: () => void
   /** The collection's items, so the activity timeline can name them in validator findings. */
   items?: Item[]
+  /** The review timeline entry: published collections, for the people who can read it (roles and the committee). */
+  showActivity?: boolean
   /** Opens the Send Items flow; the header button covers this on desktop, so the item shows only when compact. */
   onSendItems?: () => void
   /** Opens the items in the editor; the header button covers this on desktop, so the item shows only when compact. */
@@ -60,6 +60,7 @@ export function CollectionActionsMenu({
   label,
   onPreviewInWorld,
   items,
+  showActivity = false,
   onSendItems,
   onPreviewItems,
   onCreateDiscount,
@@ -76,8 +77,6 @@ export function CollectionActionsMenu({
   const deleteCollection = useDeleteCollection(address)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
   const [isActivityOpen, setActivityOpen] = useState(false)
-  // The timeline only exists once builder-server's automatic review is on.
-  const hasActivity = useFeatureFlag(FeatureFlag.AUTO_CURATION).enabled
 
   // Small screens are mostly a viewer: copying and the role lists stay, deleting is desktop-only.
   const compact = useMediaQuery(theme.media.noActions)
@@ -202,7 +201,7 @@ export function CollectionActionsMenu({
                 <OpenInNewIcon aria-hidden />
               </ActionsMenuItem>
             )}
-            {hasActivity && (
+            {showActivity && (
               <ActionsMenuItem testId="collection-activity" onClick={() => setActivityOpen(true)}>
                 {t('collection_detail_page.actions.activity')}
               </ActionsMenuItem>
