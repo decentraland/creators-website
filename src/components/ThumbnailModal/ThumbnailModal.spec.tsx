@@ -14,12 +14,12 @@ vi.mock('~/hooks/usePreviewRenderer', () => ({ usePreviewRenderer: () => rendere
 type PreviewProps = { id: string; unity?: boolean; onLoad?: () => void }
 let previewProps: PreviewProps | null = null
 const getScreenshot = vi.fn()
-vi.mock('~/components/PreviewHost', () => ({
-  PreviewHost(props: PreviewProps) {
+vi.mock('~/components/WearablePreview', () => ({
+  WearablePreview(props: PreviewProps) {
     previewProps = props
     return <iframe id={props.id} title="preview" />
   },
-  createPreviewController: () => ({ scene: { getScreenshot }, emote: { pause: vi.fn() } }),
+  createWearablePreviewController: () => ({ scene: { getScreenshot }, emote: { pause: vi.fn() } }),
   EmoteControls: () => null,
   TranslationControls: () => null
 }))

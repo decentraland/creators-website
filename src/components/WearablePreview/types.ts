@@ -9,8 +9,8 @@ import type {
   WearableWithBlobs
 } from '@dcl/schemas'
 
-/** The part of the wearable-preview controller protocol the app calls; another host has to answer exactly these. */
-export type PreviewController = {
+/** The part of the wearable-preview controller protocol the app calls; another implementation has to answer exactly these. */
+export type WearablePreviewController = {
   emote: Pick<
     IPreviewController['emote'],
     'events' | 'getLength' | 'goTo' | 'play' | 'pause' | 'stop' | 'hasSound' | 'enableSound' | 'disableSound'
@@ -20,10 +20,10 @@ export type PreviewController = {
 }
 
 /**
- * Options the host bakes into the preview at mount. It renders an iframe with `id` that speaks the
- * wearable-preview postMessage protocol, so `lib/previewBridge` and `createPreviewController` can reach it.
+ * Options baked into the preview at mount. It renders an iframe with `id` that speaks the
+ * wearable-preview postMessage protocol, so `lib/previewBridge` and `createWearablePreviewController` can reach it.
  */
-export type PreviewHostProps = {
+export type WearablePreviewProps = {
   id: string
   blob?: WearableWithBlobs | EmoteWithBlobs
   profile?: string
@@ -47,14 +47,14 @@ export type PreviewHostProps = {
   dev?: boolean
   onLoad?: (renderer?: PreviewRenderer) => void
   onError?: (error: Error) => void
-  /** Fired when the host sends the iframe new options. */
+  /** Fired when the iframe is sent new options. */
   onUpdate?: () => void
 }
 
 type ControlsProps = {
   previewId: string
   /** Share the page's controller: a second one drops the requests the first has in flight. */
-  controller?: PreviewController
+  controller?: WearablePreviewController
   className?: string
 }
 

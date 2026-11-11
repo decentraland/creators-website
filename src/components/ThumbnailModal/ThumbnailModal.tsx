@@ -4,11 +4,11 @@ import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import {
   EmoteControls,
-  PreviewHost,
+  WearablePreview,
   TranslationControls,
-  createPreviewController,
-  type PreviewController
-} from '~/components/PreviewHost'
+  createWearablePreviewController,
+  type WearablePreviewController
+} from '~/components/WearablePreview'
 import { ZoomControls } from '~/components/ZoomControls'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { useTranslation } from '~/intl'
@@ -75,7 +75,7 @@ type Props = {
 export function ThumbnailModal({ type, contents, loadError = false, onSave, onClose }: Props) {
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [controller, setController] = useState<PreviewController | null>(null)
+  const [controller, setController] = useState<WearablePreviewController | null>(null)
   const [isLoaded, setLoaded] = useState(false)
   const isReady = controller !== null && isLoaded
   // Which button started the save, so its spinner shows while the caller's save settles.
@@ -97,7 +97,7 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
   // play/pause stuck until the emote ends.
   const isMounted = blob !== null && renderer !== undefined
   useEffect(() => {
-    setController(isMounted ? createPreviewController(PREVIEW_ID) : null)
+    setController(isMounted ? createWearablePreviewController(PREVIEW_ID) : null)
     if (!isMounted) setLoaded(false)
   }, [isMounted])
 
@@ -155,7 +155,7 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
             <S.LoadError data-testid="thumbnail-load-error">{t('thumbnail_modal.load_failed')}</S.LoadError>
           )}
           {isMounted && (
-            <PreviewHost
+            <WearablePreview
               id={PREVIEW_ID}
               blob={blob}
               unity={renderer === PreviewRenderer.UNITY}

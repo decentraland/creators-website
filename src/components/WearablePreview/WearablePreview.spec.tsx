@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { BodyShape } from '@dcl/schemas'
-import { type PreviewController } from './types'
+import { type WearablePreviewController } from './types'
 
 const controlProps: Record<string, Record<string, unknown>> = {}
 vi.mock('decentraland-ui2/dist/components/WearablePreview/EmoteControls', () => ({
@@ -27,12 +27,13 @@ vi.stubGlobal('matchMedia', () => ({
   removeEventListener: () => undefined
 }))
 
-const { PreviewHost, createPreviewController, EmoteControls, TranslationControls } = await import('./PreviewHost')
+const { WearablePreview, createWearablePreviewController, EmoteControls, TranslationControls } =
+  await import('./WearablePreview')
 
-describe('PreviewHost', () => {
+describe('WearablePreview', () => {
   it('mounts an iframe under the given id with the options baked into its URL', () => {
-    render(<PreviewHost id="host" bodyShape={BodyShape.FEMALE} skin="aabbcc" unity />)
-    const iframe = document.getElementById('host')
+    render(<WearablePreview id="preview" bodyShape={BodyShape.FEMALE} skin="aabbcc" unity />)
+    const iframe = document.getElementById('preview')
     expect(iframe).toBeInstanceOf(HTMLIFrameElement)
     const params = new URL((iframe as HTMLIFrameElement).src).searchParams
     expect(params.get('skin')).toBe('aabbcc')
@@ -41,29 +42,29 @@ describe('PreviewHost', () => {
   })
 
   it('creates a controller for the mounted preview', () => {
-    render(<PreviewHost id="host" />)
-    const controller = createPreviewController('host')
+    render(<WearablePreview id="preview" />)
+    const controller = createWearablePreviewController('preview')
     expect(controller.emote.events.on).toBeTypeOf('function')
     expect(controller.scene.getScreenshot).toBeTypeOf('function')
   })
 
   it('points the controls at the preview and the shared controller', async () => {
-    const controller = {} as PreviewController
+    const controller = {} as WearablePreviewController
     render(
       <>
-        <EmoteControls previewId="host" controller={controller} hideSoundButton />
-        <TranslationControls previewId="host" controller={controller} vertical verticalPosition="left" />
+        <EmoteControls previewId="preview" controller={controller} hideSoundButton />
+        <TranslationControls previewId="preview" controller={controller} vertical verticalPosition="left" />
       </>
     )
     await screen.findByTestId('emote-controls')
     await screen.findByTestId('translation-controls')
     expect(controlProps.emote).toMatchObject({
-      wearablePreviewId: 'host',
+      wearablePreviewId: 'preview',
       wearablePreviewController: controller,
       hideSoundButton: true
     })
     expect(controlProps.translation).toMatchObject({
-      wearablePreviewId: 'host',
+      wearablePreviewId: 'preview',
       wearablePreviewController: controller,
       vertical: true,
       verticalPosition: 'left'

@@ -11,11 +11,11 @@ import { type ValidationContext, type ValidationSource } from '~/lib/validation'
 import { useWallet } from '~/store/wallet'
 
 // ui2 lazy-loads MUI and talks to a real iframe; the page's own behaviour is what's under test.
-vi.mock('~/components/PreviewHost', () => ({
-  PreviewHost: ({ id }: { id: string }) => (
+vi.mock('~/components/WearablePreview', () => ({
+  WearablePreview: ({ id }: { id: string }) => (
     <iframe id={id} src="https://wearable-preview.decentraland.zone/?x=1" title="preview" />
   ),
-  createPreviewController: vi.fn(() => ({
+  createWearablePreviewController: vi.fn(() => ({
     emote: {
       events: { on: vi.fn(), off: vi.fn() },
       play: vi.fn(),

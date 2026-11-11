@@ -12,12 +12,12 @@ const controller = {
   emote: { getLength: vi.fn(async () => 0), goTo: vi.fn() }
 }
 
-vi.mock('~/components/PreviewHost', () => ({
-  PreviewHost(props: PreviewProps) {
+vi.mock('~/components/WearablePreview', () => ({
+  WearablePreview(props: PreviewProps) {
     previewProps.push(props)
     return <iframe id={props.id} title="preview" />
   },
-  createPreviewController: vi.fn(() => controller)
+  createWearablePreviewController: vi.fn(() => controller)
 }))
 
 vi.mock('~/hooks/usePreviewRenderer', () => ({ usePreviewRenderer: () => PreviewRenderer.UNITY }))

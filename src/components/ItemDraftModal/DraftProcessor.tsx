@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PreviewProjection, PreviewRenderer } from '@dcl/schemas'
-import { PreviewHost, createPreviewController } from '~/components/PreviewHost'
+import { WearablePreview, createWearablePreviewController } from '~/components/WearablePreview'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { track } from '~/lib/analytics'
 import { captureError } from '~/lib/monitoring'
@@ -170,7 +170,7 @@ export function DraftProcessor({ draft, flow, batchSize = 1, onResult, onError }
 
     void (async () => {
       try {
-        const controller = createPreviewController(PREVIEW_ID)
+        const controller = createWearablePreviewController(PREVIEW_ID)
 
         if (draft.type === ItemType.EMOTE) {
           // Screenshot a random frame, like the legacy modal.
@@ -250,7 +250,7 @@ export function DraftProcessor({ draft, flow, batchSize = 1, onResult, onError }
   return (
     <S.HiddenPreview aria-hidden data-testid="draft-processor">
       {renderer !== undefined && (
-        <PreviewHost
+        <WearablePreview
           key={iframeKey}
           id={PREVIEW_ID}
           blob={blob}
