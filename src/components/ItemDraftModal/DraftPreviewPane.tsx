@@ -89,7 +89,11 @@ export function DraftPreviewPane({ draft, thumbnailLocked = false, onOpenThumbna
           </Tooltip>
         )}
       </S.ThumbnailWrap>
-      <S.MetricsRow data-testid="draft-metrics" data-compact={isEmote || undefined}>
+      <S.MetricsRow
+        data-testid="draft-metrics"
+        data-compact={isEmote || undefined}
+        aria-busy={!draft.metrics || undefined}
+      >
         {isEmote && draft.metrics ? (
           <>
             <S.MetricPill>
@@ -124,7 +128,9 @@ export function DraftPreviewPane({ draft, thumbnailLocked = false, onOpenThumbna
               {t('add_items_modal.metrics.textures', { count: draft.metrics.textures ?? 0 })}
             </S.MetricPill>
           </>
-        ) : null}
+        ) : (
+          [0, 1, 2].map(i => <S.MetricSkeleton key={i} className="skeleton" data-testid="draft-metrics-loading" />)
+        )}
       </S.MetricsRow>
       {isSmart && <RequiredPermissions permissions={draft.requiredPermissions} testId="draft-permissions" />}
       {children}

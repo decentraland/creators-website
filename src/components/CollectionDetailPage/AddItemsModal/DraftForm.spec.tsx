@@ -58,6 +58,12 @@ describe('DraftForm thumbnail', () => {
     expect(screen.getByTestId('draft-thumbnail')).toBeInTheDocument()
     expect(screen.queryByTestId('edit-thumbnail')).not.toBeInTheDocument()
   })
+
+  it('holds the metrics row with placeholders until the preview has measured the model', () => {
+    renderForm({ isVariant: false, metrics: null })
+    expect(screen.getAllByTestId('draft-metrics-loading')).toHaveLength(3)
+    expect(screen.queryByTestId('draft-thumbnail-loading')).not.toBeInTheDocument()
+  })
 })
 
 describe('DraftForm in edit in bulk', () => {

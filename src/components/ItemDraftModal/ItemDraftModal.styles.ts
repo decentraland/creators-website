@@ -142,6 +142,12 @@ export const MetricsRow = styled.div`
   }
 `
 
+// Same box as a MetricPill, so the row keeps its height when the metrics land.
+export const MetricSkeleton = styled.span`
+  height: 40px;
+  border-radius: ${theme.radius.btnSm};
+`
+
 export const MetricPill = styled.span`
   display: inline-flex;
   align-items: center;
