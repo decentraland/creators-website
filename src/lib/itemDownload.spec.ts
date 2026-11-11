@@ -1,15 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import JSZip from 'jszip'
 import { buildItemZip, getItemZipName } from './itemDownload'
-import { ItemType, type Item } from './items'
+import { loadItemFile } from './itemFiles'
+import { BodyShapeType, ItemType, type Item } from './items'
 
 const item = { id: 'abc-1', name: 'My Hat!', type: ItemType.WEARABLE } as Item
 
 /** Zips an item whose stored files are given as path → bytes; equal bytes are the same stored file. */
-async function zipOf(stored: Record<string, string>): Promise<JSZip> {
+async function zipBlobOf(stored: Record<string, string>): Promise<Blob> {
   const contents = Object.fromEntries(Object.entries(stored).map(([path, bytes]) => [path, `hash-of-${bytes}`]))
   const files = Object.fromEntries(Object.entries(stored).map(([path, bytes]) => [path, new Blob([bytes])]))
-  return JSZip.loadAsync(await (await buildItemZip({ contents }, files)).arrayBuffer())
+  return buildItemZip({ contents }, files)
+}
+
+async function zipOf(stored: Record<string, string>): Promise<JSZip> {
+  return JSZip.loadAsync(await (await zipBlobOf(stored)).arrayBuffer())
+}
+
+/** Downloads the item and imports the zip back. */
+async function reimport(stored: Record<string, string>) {
+  return loadItemFile(new File([await (await zipBlobOf(stored)).arrayBuffer()], 'item.zip'))
 }
 
 const filesIn = (zip: JSZip) =>
@@ -87,6 +97,59 @@ describe('item download', () => {
   it('keeps both folders when a file would land on a root file of the same name', async () => {
     const stored = { 'male/thumbnail.png': 'texture', 'female/thumbnail.png': 'texture', 'thumbnail.png': 'thumb' }
     expect(filesIn(await zipOf(stored))).toEqual(Object.keys(stored).sort())
+  })
+
+  it('keeps both folders when a file differs from a root file only by case', async () => {
+    const stored = { 'male/Thumbnail.png': 'texture', 'female/Thumbnail.png': 'texture', 'thumbnail.png': 'thumb' }
+    expect(filesIn(await zipOf(stored))).toEqual(Object.keys(stored).sort())
+  })
+
+  it("keeps both folders when a texture has the name of one of the item's own files", async () => {
+    const stored = {
+      'male/hat.glb': 'glb',
+      'male/image.png': 'texture',
+      'female/hat.glb': 'glb',
+      'female/image.png': 'texture'
+    }
+    expect(filesIn(await zipOf(stored))).toEqual(Object.keys(stored).sort())
+  })
+
+  it('keeps both folders when two textures share a file name in different folders', async () => {
+    const stored = {
+      'male/hat.glb': 'glb',
+      'male/a.png': 'texture-1',
+      'male/textures/a.png': 'texture-2',
+      'female/hat.glb': 'glb',
+      'female/a.png': 'texture-1',
+      'female/textures/a.png': 'texture-2'
+    }
+    expect(filesIn(await zipOf(stored))).toEqual(Object.keys(stored).sort())
+    const imported = await reimport(stored)
+    expect(imported.bodyShape).toBe(BodyShapeType.BOTH)
+    expect(Object.keys(imported.contents).sort()).toEqual(Object.keys(stored).sort())
+  })
+
+  it('imports a folded download back with every file, its nested textures by their file name', async () => {
+    const imported = await reimport({
+      'male/hat.glb': 'glb',
+      'male/textures/hat.png': 'texture',
+      'male/sound.mp3': 'audio',
+      'female/hat.glb': 'glb',
+      'female/textures/hat.png': 'texture',
+      'female/sound.mp3': 'audio',
+      'thumbnail.png': 'thumb',
+      'image.png': 'catalyst'
+    })
+    expect(imported.model).toBe('hat.glb')
+    expect(imported.bodyShape).toBeNull()
+    expect(Object.keys(imported.contents).sort()).toEqual([
+      'hat.glb',
+      'hat.png',
+      'image.png',
+      'sound.mp3',
+      'thumbnail.png'
+    ])
+    expect(await imported.contents['hat.png'].text()).toBe('texture')
   })
 
   it('names the archive after the item', () => {

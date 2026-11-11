@@ -160,7 +160,7 @@ describe('loadItemFile', () => {
     expect(Object.keys(result.contents).sort()).toEqual(['model.glb', 'texture.png'])
   })
 
-  it('takes back a downloaded item whose body shapes were folded into the root, leaving the shape to pick', async () => {
+  it('takes back a downloaded item whose body shapes were folded into the root, with no body shape set', async () => {
     const result = await loadItemFile(
       await zipFile({ 'hat.glb': 'glb', 'hat.png': 'texture', 'thumbnail.png': 'thumb', 'image.png': 'catalyst' })
     )

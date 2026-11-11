@@ -1,27 +1,39 @@
 // "Download item": every stored file of an item, zipped the way the importer accepts it back.
 import JSZip from 'jszip'
 import { fetchItemContents } from '~/lib/builder'
-import { type Item } from './items'
+import { THUMBNAIL_PATH, getModelFileNameFromSubfolder, isImageFile, isModelFile } from './itemFiles'
+import { BodyShapeType, IMAGE_PATH, VIDEO_PATH, type Item } from './items'
 import { downloadBlob } from './navigation'
 
-const MALE_FOLDER = 'male/'
-const FEMALE_FOLDER = 'female/'
+const MALE_FOLDER = `${BodyShapeType.MALE}/`
+const FEMALE_FOLDER = `${BodyShapeType.FEMALE}/`
+const ITEM_FILES = [THUMBNAIL_PATH, IMAGE_PATH, VIDEO_PATH]
+
+/** The name the importer gives a root-level file: it flattens the models and images of a zip without body shape folders. */
+function getImportedName(path: string): string {
+  return (isModelFile(path) || isImageFile(path) ? getModelFileNameFromSubfolder(path) : path).toLowerCase()
+}
 
 /**
  * Maps each stored path to its path in the zip: when both body shapes hold the same files, they fold into the root
  * instead of shipping twice. `contents` is the item's path → hash map.
  */
-export function getItemZipPaths(contents: Record<string, string>): Record<string, string> {
+function getItemZipPaths(contents: Record<string, string>): Record<string, string> {
   const paths = Object.keys(contents)
   const male = paths.filter(path => path.startsWith(MALE_FOLDER)).map(path => path.slice(MALE_FOLDER.length))
   const femaleCount = paths.filter(path => path.startsWith(FEMALE_FOLDER)).length
+  // Names are compared the way a case-insensitive file system and the importer see them, so no folded file lands
+  // on the item's own files or on another folded one.
+  const taken = new Set([...ITEM_FILES, ...paths.filter(path => !path.includes('/')).map(path => path.toLowerCase())])
   const fold =
     male.length > 0 &&
     male.length === femaleCount &&
-    male.every(
-      // A root file of the same name (the thumbnail, the video) must not be overwritten.
-      path => !(path in contents) && contents[MALE_FOLDER + path] === contents[FEMALE_FOLDER + path]
-    )
+    male.every(path => {
+      const name = getImportedName(path)
+      if (taken.has(name) || contents[MALE_FOLDER + path] !== contents[FEMALE_FOLDER + path]) return false
+      taken.add(name)
+      return true
+    })
   return Object.fromEntries(
     paths.map(path => {
       const folder = fold && [MALE_FOLDER, FEMALE_FOLDER].find(prefix => path.startsWith(prefix))
