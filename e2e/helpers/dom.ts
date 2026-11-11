@@ -18,7 +18,10 @@ export async function waitForTestId(page: Page, id: string, timeout = 20_000): P
 }
 
 export async function clickTestId(page: Page, id: string, timeout = 20_000): Promise<void> {
-  await (await waitForTestId(page, id, timeout)).click()
+  const handle = await waitForTestId(page, id, timeout)
+  // Centered first: an element at the edge of a scrolling panel can sit under a sticky footer, which would take the click.
+  await handle.evaluate(el => el.scrollIntoView({ block: 'center' }))
+  await handle.click()
 }
 
 /** The `data-testid` values currently on the page that start with `prefix`. */

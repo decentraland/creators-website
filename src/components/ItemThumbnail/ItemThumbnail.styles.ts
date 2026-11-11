@@ -21,3 +21,13 @@ export const Img = styled.img`
   display: block;
   filter: drop-shadow(1px 4px 5px rgba(0, 0, 0, 0.1));
 `
+
+export const Spinner = styled.span`
+  position: absolute;
+  width: min(40px, 36%);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px solid ${theme.colors.glassFaint};
+  border-top-color: ${theme.colors.dclRed};
+  animation: spin 0.8s linear infinite;
+`

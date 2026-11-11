@@ -12,7 +12,8 @@ import { InfoTooltip, Tooltip } from '~/components/Tooltip'
 import { VideoDropzone } from '~/components/VideoModal'
 import { useObjectURL } from '~/hooks/useObjectURL'
 import { useTranslation } from '~/intl'
-import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
+import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
+import { formatItemSize, isOverSizeLimit, type ItemSize } from '~/lib/itemSize'
 import { toMB } from '~/lib/itemFiles'
 import { BodyShapeType, ItemType, VIDEO_PATH, type Item } from '~/lib/items'
 import { type Mapping } from '~/lib/mappings'
@@ -34,6 +35,8 @@ type Props = {
   onVideoChange: (video: File) => void
   /** Linked collections: no rarity, and the mapping field when the collection has a linked contract. */
   linked?: { contract: LinkedContract | null; updating?: boolean }
+  /** The item this draft will be saved as, measured the catalyst way; null while unknown. */
+  size?: ItemSize | null
 }
 
 export function DraftForm({
@@ -44,7 +47,8 @@ export function DraftForm({
   onOpenThumbnail,
   onOpenVideo,
   onVideoChange,
-  linked
+  linked,
+  size = null
 }: Props) {
   const { t } = useTranslation()
 
@@ -71,10 +75,8 @@ export function DraftForm({
   )
   const variantTargetShape = draft.bodyShape === BodyShapeType.MALE ? BodyShapeType.FEMALE : BodyShapeType.MALE
   const showItemFields = !draft.isVariant
-  const sizeError = useMemo(
-    () => (draft.type ? getSizeError(draft.type, draft.category ?? undefined, draft.contents) : null),
-    [draft.type, draft.category, draft.contents]
-  )
+  const sizeText = useMemo(() => (size ? formatItemSize(size) : null), [size])
+  const sizeExceeded = !!size && isOverSizeLimit(size)
   const nameInvalid = draft.name.length > 0 && !isValidItemName(draft.name)
   const categories = useMemo(() => getCategoryOptions(draft), [draft])
 
@@ -329,9 +331,15 @@ export function DraftForm({
           </S.Field>
         )}
 
-        {sizeError !== null && (
-          <S.ErrorText data-testid="size-error">
-            {t('add_items_modal.file_error.size_exceeded', { size: sizeError })}
+        {sizeText && (
+          <S.SizeLine data-testid="draft-size" data-exceeded={sizeExceeded || undefined}>
+            {t('item_size.label')}
+            <strong>{t('item_size.value', sizeText)}</strong>
+          </S.SizeLine>
+        )}
+        {sizeExceeded && sizeText && (
+          <S.ErrorText role="alert" data-testid="size-error">
+            {t('add_items_modal.file_error.size_exceeded', sizeText)}
           </S.ErrorText>
         )}
       </S.FormPane>

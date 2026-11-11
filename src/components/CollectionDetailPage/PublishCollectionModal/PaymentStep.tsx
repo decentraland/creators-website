@@ -27,6 +27,7 @@ import {
   toPublishError,
   type PaymentMethod,
   type PublishCollectionError,
+  type PublishFailureReason,
   type PublishResult
 } from '~/lib/publishCollection'
 import { formatCredits, formatMana, getPublicationFee } from '~/lib/publishFee'
@@ -98,7 +99,7 @@ export function PaymentStep({
   const publish = usePublishCollection(session)
 
   const [status, setStatus] = useState<Status>('idle')
-  const [approveFailed, setApproveFailed] = useState(false)
+  const [approveFailure, setApproveFailure] = useState<PublishFailureReason | null>(null)
   const [isBuyingCredits, setBuyingCredits] = useState(false)
   const isSubmitting = status !== 'idle'
 
@@ -124,7 +125,7 @@ export function PaymentStep({
 
   async function handleSubmit() {
     if (!fee || !paymentMethod || !canSubmit) return
-    setApproveFailed(false)
+    setApproveFailure(null)
     // The quote is builder-server's word; the contract's own price decides whether a wallet prompt is warranted.
     setStatus('checking')
     let onChainTotal: bigint
@@ -147,7 +148,8 @@ export function PaymentStep({
         await approve.mutateAsync(approval)
       } catch (error) {
         setStatus('idle')
-        if (toPublishError(error).reason !== 'rejected') setApproveFailed(true)
+        const { reason } = toPublishError(error)
+        if (reason !== 'rejected') setApproveFailure(reason)
         return
       }
     }
@@ -304,9 +306,13 @@ export function PaymentStep({
               ))}
             </Methods>
           )}
-          {approveFailed && (
+          {approveFailure && (
             <S.ErrorText data-testid="publish-approve-error">
-              {t('publish_collection_modal.payment_step.approve_error')}
+              {t(
+                approveFailure === 'wallet'
+                  ? 'wallet_error.wrong_account'
+                  : 'publish_collection_modal.payment_step.approve_error'
+              )}
             </S.ErrorText>
           )}
         </S.PaymentMethods>

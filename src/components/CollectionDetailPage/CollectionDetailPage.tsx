@@ -73,7 +73,8 @@ import { useItemSyncs } from '~/hooks/useItemSync'
 import { useCollectionValidation, useRerunItemValidation } from '~/hooks/useCollectionValidation'
 import { ItemSyncStatus, getItemRowStatus, hasPendingChanges, showsItemStatusColumn } from '~/lib/itemSync'
 import { canPushChanges } from '~/lib/curation'
-import { useCollectionCuration, useCommittee, usePushCuration } from '~/hooks/useCuration'
+import { useCommittee } from '~/hooks/useCommittee'
+import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS, THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { type ItemListing } from '~/lib/listings'
@@ -168,11 +169,7 @@ const CollectionDetailPage = () => {
   const thumbnailEditor = useThumbnailEditor(async (patch, subject) => {
     if (subject.kind !== 'item') return
     const { item } = subject
-    await updateItem
-      .mutateAsync({ item, thumbnail: patch.contents[THUMBNAIL_PATH] })
-      .catch(() =>
-        showToast(t('collection_detail_page.item_row.thumbnail_error', { name: item.name }), { type: 'error' })
-      )
+    await updateItem.mutateAsync({ item, thumbnail: patch.contents[THUMBNAIL_PATH] })
   })
   // Small screens are a viewer: the in-row edit shortcuts are desktop-only, like the menu's edit actions.
   const compact = useMediaQuery(theme.media.noActions)

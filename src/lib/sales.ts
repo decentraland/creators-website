@@ -20,7 +20,7 @@ import {
   type SignatureIndexes,
   type UnsignedTrade
 } from '~/lib/trades'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { isWalletRejection, isWalletStateError } from '~/lib/walletErrors'
 
 // 1 credit = $0.10 = 1e17 USD wei (the shop's fixed peg; marketplace-server rounds up to whole credits).
 const USD_WEI_PER_CREDIT = 10n ** 17n
@@ -185,15 +185,18 @@ export function withSalesEnabled(collection: Collection, chainId: number): Colle
   return { ...collection, minters: [...collection.minters, minter] }
 }
 
-export type SellFailureReason = 'rejected' | 'sold_out' | 'not_published' | 'not_listed' | 'generic'
+export type SellFailureReason = 'rejected' | 'wallet' | 'sold_out' | 'not_published' | 'not_listed' | 'generic'
 
 export class SellItemError extends Error {
   reason: SellFailureReason
+  /** The underlying failure, when this one wraps it. */
+  cause?: unknown
 
-  constructor(reason: SellFailureReason, message: string = reason) {
+  constructor(reason: SellFailureReason, message: string = reason, cause?: unknown) {
     super(message)
     this.name = 'SellItemError'
     this.reason = reason
+    this.cause = cause
   }
 }
 
@@ -201,6 +204,7 @@ export function toSellItemError(error: unknown): SellItemError {
   if (error instanceof SellItemError) return error
   const message = error instanceof Error ? error.message : String(error)
   if (isWalletRejection(error)) return new SellItemError('rejected', message)
+  if (isWalletStateError(error)) return new SellItemError('wallet', message, error)
   return new SellItemError('generic', message)
 }
 

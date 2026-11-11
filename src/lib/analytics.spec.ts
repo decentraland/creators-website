@@ -324,6 +324,15 @@ describe('errorCode', () => {
     expect(errorCode(Object.assign(new Error('nope'), { code: 4001 }))).toBe('rejected')
     expect(errorCode(new Error('something exploded'))).toBe('unknown')
   })
+
+  it('separates a wallet on the wrong account or network, wrapped or not', async () => {
+    const { errorCode } = await loadAnalytics()
+    const { WrongAccountError, WrongChainError } = await import('./walletErrors')
+    const wrapped = Object.assign(new Error('failed'), { cause: new WrongAccountError('0xme', '0xother') })
+
+    expect(errorCode(new WrongChainError(137, 1))).toBe('wallet')
+    expect(errorCode(wrapped)).toBe('wallet')
+  })
 })
 
 describe('when a direct event reads legacy identified-user storage', () => {

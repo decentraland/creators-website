@@ -19,7 +19,7 @@ import { SuccessModal } from '~/components/SuccessModal'
 import { Tooltip } from '~/components/Tooltip'
 import { ProgressModal } from '~/components/ProgressModal'
 import { PendingModal } from '~/components/PendingModal'
-import { useItemSizes } from '~/hooks/useItemSizes'
+import { useCatalystItemSizes } from '~/hooks/useItemSize'
 import { useApprovalFlow, type ApprovalMode, type ApprovalPlan, type ApprovalStep } from '~/hooks/useApprovalFlow'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { track } from '~/lib/analytics'
@@ -29,7 +29,7 @@ import { getContentsStorageUrl } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
 import { getItemBodyShapeType, type Item } from '~/lib/items'
-import { formatSize } from './formatSize'
+import { formatItemBytes } from './formatSize'
 import * as S from './ApprovalFlowModal.styles'
 
 type Props = {
@@ -106,7 +106,7 @@ export function ApprovalFlowModal({ session, collection, curation, mode, items, 
       return (
         <ConfirmModal
           title={t(`approval_flow.error.title_${mode}`)}
-          description={t(`approval_flow.error.${view.step}`)}
+          description={t(view.wallet ? 'wallet_error.wrong_account' : `approval_flow.error.${view.step}`)}
           art={{ src: errorArt }}
           onClose={onClose}
           cancel={{ label: t('approval_flow.cancel'), onClick: onClose, testId: 'approval-error-cancel' }}
@@ -213,7 +213,7 @@ function ItemName({ item }: { item: Item }) {
 
 function StepTable({ step, plan, collection }: { step: ApprovalStep; plan: ApprovalPlan; collection: Collection }) {
   const { t } = useTranslation()
-  const sizes = useItemSizes(plan.deploy, step === 'deploy')
+  const sizes = useCatalystItemSizes(plan.deploy, { enabled: step === 'deploy' })
   const column = (key: string, optional = false) => (
     <span data-optional={optional || undefined}>{t(`approval_flow.columns.${key}`)}</span>
   )
@@ -247,11 +247,14 @@ function StepTable({ step, plan, collection }: { step: ApprovalStep; plan: Appro
         </S.Header>
         <S.TableBody>
           {plan.deploy.map(item => {
-            const bytes = sizes.data?.get(item.id)
             return (
               <S.Row key={item.id} data-table={step} data-testid="approval-item-row">
                 <ItemName item={item} />
-                <span data-testid="approval-item-size">{bytes === undefined ? '—' : formatSize(t, bytes)}</span>
+                <span data-testid="approval-item-size">
+                  {formatItemBytes(t, sizes, item.id) ?? (
+                    <S.SizeSpinner role="status" aria-label={t('approval_flow.size_measuring')} />
+                  )}
+                </span>
               </S.Row>
             )
           })}

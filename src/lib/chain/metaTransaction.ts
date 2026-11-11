@@ -27,8 +27,6 @@ export class MetaTransactionError extends Error {
 
 /** The wallet requests a meta-transaction makes; lib/auth answers them over the session's provider. */
 export type MetaTransactionWallet = {
-  /** `eth_requestAccounts`, or `eth_accounts` where the wallet refuses it. */
-  accounts: () => Promise<string[]>
   /** `eth_getCode` at the latest block. */
   code: (address: string) => Promise<string>
   /** `eth_signTypedData_v4` of the JSON-serialized typed data. */
@@ -105,11 +103,12 @@ function functionDataCall(account: string, signature: string, calldata: string):
 }
 
 /**
- * Signs `calldata` as a meta-transaction on `contract` and hands it to the relayer at `serverURL`, which pays
- * the gas. Resolves with the relayed transaction's hash; every failure is a `MetaTransactionError`.
+ * Has `account` sign `calldata` as a meta-transaction on `contract` and hands it to the relayer at `serverURL`,
+ * which pays the gas. Resolves with the relayed transaction's hash; every failure is a `MetaTransactionError`.
  */
 export async function sendMetaTransaction(
   wallet: MetaTransactionWallet,
+  account: string,
   callContract: ContractCaller,
   calldata: string,
   contract: ContractData,
@@ -122,7 +121,6 @@ export async function sendMetaTransaction(
     )
   }
   try {
-    const [account] = await wallet.accounts()
     if (!account) throw new Error('Could not find a valid connected account')
     if (isContractCode(await wallet.code(account.toLowerCase()))) {
       throw new MetaTransactionError('Contract accounts are not supported', MetaTransactionErrorCode.CONTRACT_ACCOUNT)

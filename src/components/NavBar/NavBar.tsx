@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { Network } from '@dcl/schemas'
-import { formatEther } from 'viem'
+import { Network } from '@dcl/schemas/dist/dapps/network'
 import { TopNav } from '~/components/TopNav'
 import { useWallet } from '~/store/wallet'
 import { useCreditsBalance, useManaBalance } from '~/hooks/useBalances'
-import { useCommittee } from '~/hooks/useCuration'
+import { useCommittee } from '~/hooks/useCommittee'
 import { useProfile } from '~/hooks/useProfile'
 import { useWalletChain } from '~/hooks/useWalletChain'
 import { track } from '~/lib/analytics'
@@ -21,12 +20,13 @@ const builderUrl = config.get('BUILDER_URL')
 const shopCreditsUrl = `${config.get('SHOP_URL')}/credits`
 const accountUrl = config.get('ACCOUNT_URL')
 
-type Props = {
-  /** Off behind the pre-launch gate: only the ui2 top bar renders, like sites' creator landing. */
-  subnav?: boolean
+// Parsed from the exact decimal string, as viem's formatEther would give it, without loading viem on the overview.
+function weiToMana(wei: bigint): number {
+  const digits = wei.toString().padStart(19, '0')
+  return Number(`${digits.slice(0, -18)}.${digits.slice(-18)}`)
 }
 
-const NavBar = ({ subnav = true }: Props) => {
+const NavBar = () => {
   const { t } = useTranslation()
   const { session, connecting, signIn, disconnect } = useWallet()
   const address = session?.address
@@ -46,10 +46,7 @@ const NavBar = ({ subnav = true }: Props) => {
   )
   // Polygon only: it's the network publishing pays on. Like the legacy builder, an empty wallet shows
   // no MANA chip at all; ui2 renders whole units.
-  const manaBalances = useMemo(
-    () => (manaWei ? { [Network.MATIC]: Number(formatEther(manaWei)) } : undefined),
-    [manaWei]
-  )
+  const manaBalances = useMemo(() => (manaWei ? { [Network.MATIC]: weiToMana(manaWei) } : undefined), [manaWei])
   const { pathname } = useLocation()
   // Collections stays active across the collection detail / item detail / editor pages too, not just
   // the /collections list — a NavLink to /collections alone wouldn't light up on the nested routes.
@@ -92,25 +89,23 @@ const NavBar = ({ subnav = true }: Props) => {
         onClickSignOut={() => void disconnect()}
       />
 
-      {subnav && (
-        <S.Subnav data-testid="subnav">
-          <S.Tabs data-testid="subnav-tabs">
-            <NavLink to="/" end>
-              {t('nav.overview')}
+      <S.Subnav data-testid="subnav">
+        <S.Tabs data-testid="subnav-tabs">
+          <NavLink to="/" end>
+            {t('nav.overview')}
+          </NavLink>
+          <NavLink to="/collections" className={() => (collectionsActive ? 'active' : '')}>
+            {t('nav.collections')}
+          </NavLink>
+          {isCurator && (
+            <NavLink to="/curation" data-testid="nav-curation">
+              {t('nav.curation')}
             </NavLink>
-            <NavLink to="/collections" className={() => (collectionsActive ? 'active' : '')}>
-              {t('nav.collections')}
-            </NavLink>
-            {isCurator && (
-              <NavLink to="/curation" data-testid="nav-curation">
-                {t('nav.curation')}
-              </NavLink>
-            )}
-            <a href={`${builderUrl}/scenes`}>{t('nav.scenes')}</a>
-            <a href={`${builderUrl}/land`}>{t('nav.land')}</a>
-          </S.Tabs>
-        </S.Subnav>
-      )}
+          )}
+          <a href={`${builderUrl}/scenes`}>{t('nav.scenes')}</a>
+          <a href={`${builderUrl}/land`}>{t('nav.land')}</a>
+        </S.Tabs>
+      </S.Subnav>
     </>
   )
 }

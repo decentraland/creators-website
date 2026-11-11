@@ -3,6 +3,7 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ProviderType } from '@dcl/schemas'
 import { SellItemError } from '~/lib/sales'
+import { WrongAccountError } from '~/lib/walletErrors'
 import { TransferOwnershipFlow } from './TransferOwnershipFlow'
 import { ADDRESS, FRIEND, Providers, collection, makeSession } from '../SellItemFlow/testUtils'
 
@@ -149,5 +150,15 @@ describe('TransferOwnershipFlow', () => {
     await userEvent.click(screen.getByTestId('sale-error-retry'))
     expect(screen.getByTestId('transfer-confirm-owner')).toHaveTextContent('Ana')
     expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('asks to switch the wallet back when it sits on another account, keeping the form for a retry', async () => {
+    renderFlow()
+    await fillIn()
+    await userEvent.click(screen.getByTestId('transfer-submit'))
+    await act(async () => last(transfer.mutate)[1].onError?.(new WrongAccountError(ADDRESS, FRIEND)))
+    expect(screen.getByTestId('sale-error-modal-description')).toHaveTextContent(/switch it back to the account/i)
+    await userEvent.click(screen.getByTestId('sale-error-retry'))
+    expect(screen.getByTestId('transfer-confirm-owner')).toHaveTextContent('Ana')
   })
 })

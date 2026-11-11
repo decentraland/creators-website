@@ -2,7 +2,7 @@
 // reference, not these helpers: a port of this file must leave every pinned value passing unchanged.
 import { decodeFunctionData, hashTypedData, recoverTypedDataAddress, type Hex, type TypedDataDefinition } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { encodeContractCall, type ContractCall } from '~/lib/auth/transactions'
+import { encodeContractCall, type ContractCall } from '~/lib/chain/contracts'
 import { type TypedDataDomain, type TypedDataTypes } from '~/lib/auth'
 
 /** A throwaway key, so pinned signatures come out the same on every run. */

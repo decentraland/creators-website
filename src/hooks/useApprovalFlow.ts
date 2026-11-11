@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { type Entity } from '@dcl/schemas'
 import { allCollectionItemsKey } from '~/hooks/useCollection'
 import { collectionCurationKey } from '~/hooks/useCuration'
+import { catalystImageDeps as imageDeps } from '~/lib/catalystEntity'
 import { itemEntitiesKey } from '~/hooks/useItemSync'
 import { errorCode, track } from '~/lib/analytics'
 import {
@@ -22,7 +23,6 @@ import { sendContractTransaction, signWithIdentity, waitForTransaction, type Ses
 import {
   fetchAllCollectionItems,
   fetchCollection,
-  fetchContent,
   publishCollectionItems,
   pushCollectionCuration,
   updateCollectionCuration
@@ -32,10 +32,9 @@ import { RESCUE_CHUNK_SIZE } from '~/lib/collectionApproval'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
 import { type Item } from '~/lib/items'
-import { generateCatalystImage } from '~/lib/media'
 import { captureError } from '~/lib/monitoring'
 import { getMaticChainId } from '~/lib/publishCollection'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { isWalletRejection, isWalletStateError } from '~/lib/walletErrors'
 
 /**
  * `approve` runs the whole flow; `enable` only switches a disabled collection back on as last approved, so changes the
@@ -59,7 +58,14 @@ export type ApprovalView =
   | { kind: 'loading' }
   | { kind: 'step'; step: ApprovalStep; phase: StepPhase }
   | { kind: 'success' }
-  | { kind: 'error'; step: ApprovalFailure; detail: string | null; failed: DeployFailure[] }
+  | {
+      kind: 'error'
+      step: ApprovalFailure
+      detail: string | null
+      failed: DeployFailure[]
+      /** The wallet sits on another account or network: the curator switches it back and retries. */
+      wallet?: boolean
+    }
 
 export type ApprovalPlan = { steps: ApprovalStep[]; rescue: RescueTarget[]; deploy: Item[] }
 
@@ -101,7 +107,6 @@ function matchesReviewedContent(items: Item[], reviewed: Item[]): boolean {
   const seen = new Map(reviewed.map(item => [item.id, contentOf(item)]))
   return items.length === seen.size && items.every(item => seen.get(item.id) === contentOf(item))
 }
-const imageDeps = { fetchContent, renderCatalystImage: generateCatalystImage }
 
 /** The raw failure, for curators to send to support: wallets and RPCs often throw plain objects. */
 function errorDetail(error: unknown): string | null {
@@ -149,8 +154,9 @@ export function useApprovalFlow(
       if (isWalletRejection(error) && step !== 'prepare' && step !== 'changed') {
         return setView({ kind: 'step', step, phase: IDLE })
       }
-      captureError(error, { flow: 'curation_approve', step, collectionId: collection.id })
       track('Approval flow error', { collectionId: collection.id, step, error: errorCode(error) })
+      if (isWalletStateError(error)) return setView({ kind: 'error', step, detail: null, failed, wallet: true })
+      captureError(error, { flow: 'curation_approve', step, collectionId: collection.id })
       setView({ kind: 'error', step, detail: errorDetail(error), failed })
     },
     [collection.id]

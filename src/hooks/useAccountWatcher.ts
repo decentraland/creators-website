@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { ProviderType } from '@dcl/schemas'
+import { ProviderType } from '@dcl/schemas/dist/dapps/provider-type'
 import { reset as resetAnalytics } from '~/lib/analytics'
 import { useWallet } from '~/store/wallet'
 
