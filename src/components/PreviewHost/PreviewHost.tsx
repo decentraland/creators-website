@@ -1,6 +1,14 @@
-import { lazy, Suspense, type ComponentProps } from 'react'
-import type { EmoteControls as EmoteControlsComponent } from 'decentraland-ui2/dist/components/WearablePreview/EmoteControls'
-import type { TranslationControls as TranslationControlsComponent } from 'decentraland-ui2/dist/components/WearablePreview/TranslationControls'
+import { lazy, Suspense } from 'react'
+import { WearablePreview } from 'decentraland-ui2'
+import type { EmoteControlsProps, PreviewController, PreviewHostProps, TranslationControlsProps } from './types'
+
+export function PreviewHost(props: PreviewHostProps) {
+  return <WearablePreview {...props} />
+}
+
+export function createPreviewController(id: string): PreviewController {
+  return WearablePreview.createController(id)
+}
 
 // ui2's preview controls are MUI components: their styles read `theme.spacing()` and the Button
 // reads `palette.mode`, and this app mounts no MUI theme. ui2's theme is a CSS-vars theme, so it
@@ -16,29 +24,34 @@ const EmoteControlsLazy = lazy(async () => {
     loadTheme()
   ])
   return {
-    default: (props: ComponentProps<typeof EmoteControlsComponent>) => (
+    default: ({ previewId, controller, ...props }: EmoteControlsProps) => (
       <CssVarsProvider theme={theme}>
-        <EmoteControls {...props} />
+        <EmoteControls {...props} wearablePreviewId={previewId} wearablePreviewController={controller} />
       </CssVarsProvider>
     )
   }
 })
 
 const TranslationControlsLazy = lazy(async () => {
-  const [{ TranslationControls }, { CssVarsProvider, theme }] = await Promise.all([
+  const [{ TranslationControls, VerticalPosition }, { CssVarsProvider, theme }] = await Promise.all([
     import('decentraland-ui2/dist/components/WearablePreview/TranslationControls'),
     loadTheme()
   ])
   return {
-    default: (props: ComponentProps<typeof TranslationControlsComponent>) => (
+    default: ({ previewId, controller, verticalPosition, ...props }: TranslationControlsProps) => (
       <CssVarsProvider theme={theme}>
-        <TranslationControls {...props} />
+        <TranslationControls
+          {...props}
+          wearablePreviewId={previewId}
+          wearablePreviewController={controller}
+          verticalPosition={verticalPosition === 'left' ? VerticalPosition.LEFT : VerticalPosition.RIGHT}
+        />
       </CssVarsProvider>
     )
   }
 })
 
-export function EmoteControls(props: ComponentProps<typeof EmoteControlsComponent>) {
+export function EmoteControls(props: EmoteControlsProps) {
   return (
     <Suspense fallback={null}>
       <EmoteControlsLazy {...props} />
@@ -46,7 +59,7 @@ export function EmoteControls(props: ComponentProps<typeof EmoteControlsComponen
   )
 }
 
-export function TranslationControls(props: ComponentProps<typeof TranslationControlsComponent>) {
+export function TranslationControls(props: TranslationControlsProps) {
   return (
     <Suspense fallback={null}>
       <TranslationControlsLazy {...props} />

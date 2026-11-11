@@ -10,7 +10,7 @@ import { useAvatarPreview } from '~/store/avatarPreview'
 import { PlaybackBar } from './PlaybackBar'
 
 // ui2's scrubber lazy-loads MUI and talks to an iframe; the bar's own controls are what's under test.
-vi.mock('~/components/PreviewControls', () => ({
+vi.mock('~/components/PreviewHost', () => ({
   EmoteControls: () => <div data-testid="ui2-emote-controls" />
 }))
 

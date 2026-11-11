@@ -12,14 +12,13 @@ const controller = {
   emote: { getLength: vi.fn(async () => 0), goTo: vi.fn() }
 }
 
-vi.mock('decentraland-ui2', () => {
-  function WearablePreview(props: PreviewProps) {
+vi.mock('~/components/PreviewHost', () => ({
+  PreviewHost(props: PreviewProps) {
     previewProps.push(props)
     return <iframe id={props.id} title="preview" />
-  }
-  WearablePreview.createController = vi.fn(() => controller)
-  return { WearablePreview }
-})
+  },
+  createPreviewController: vi.fn(() => controller)
+}))
 
 vi.mock('~/hooks/usePreviewRenderer', () => ({ usePreviewRenderer: () => PreviewRenderer.BABYLON }))
 

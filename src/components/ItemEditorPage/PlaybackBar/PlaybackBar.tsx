@@ -6,7 +6,7 @@ import {
   VolumeOff as VolumeOffIcon,
   VolumeUp as VolumeUpIcon
 } from '@mui/icons-material'
-import { EmoteControls } from '~/components/PreviewControls'
+import { EmoteControls } from '~/components/PreviewHost'
 import { Select } from '~/components/Select'
 import { Tooltip } from '~/components/Tooltip'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
@@ -189,7 +189,7 @@ export function PlaybackBar({
     return (
       <S.EmoteControlsWrap data-testid={`${testId}-emote-controls`}>
         {/* The frame counter is what gives way when the row has to fit a phone. */}
-        <EmoteControls key={subjectEmoteId} wearablePreviewId={previewId} hideFrameInput={isMobile} hideSoundButton />
+        <EmoteControls key={subjectEmoteId} previewId={previewId} hideFrameInput={isMobile} hideSoundButton />
         {soundButton}
         {stopButton}
       </S.EmoteControlsWrap>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { PreviewProjection, PreviewRenderer } from '@dcl/schemas'
-import { WearablePreview } from 'decentraland-ui2'
+import { PreviewHost, createPreviewController } from '~/components/PreviewHost'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { dataURLToBlob } from '~/lib/media'
 import { THUMBNAIL_PATH } from '~/lib/itemFiles'
@@ -61,7 +61,7 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
 
     void (async () => {
       try {
-        const controller = WearablePreview.createController(PREVIEW_ID)
+        const controller = createPreviewController(PREVIEW_ID)
 
         if (draft.type === ItemType.EMOTE) {
           // Screenshot a random frame, like the legacy modal.
@@ -137,7 +137,7 @@ export function DraftProcessor({ draft, onResult, onError }: Props) {
     <S.HiddenPreview aria-hidden data-testid="draft-processor">
       {/* Emote-only options are URL params, so a type switch is the one case that needs a fresh iframe. */}
       {renderer !== undefined && (
-        <WearablePreview
+        <PreviewHost
           key={isEmote ? 'emote' : 'wearable'}
           id={PREVIEW_ID}
           blob={blob}

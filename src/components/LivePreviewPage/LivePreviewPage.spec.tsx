@@ -11,12 +11,11 @@ import { type ValidationContext, type ValidationSource } from '~/lib/validation'
 import { useWallet } from '~/store/wallet'
 
 // ui2 lazy-loads MUI and talks to a real iframe; the page's own behaviour is what's under test.
-vi.mock('decentraland-ui2', async () => {
-  const actual = await vi.importActual<typeof import('decentraland-ui2')>('decentraland-ui2')
-  function WearablePreview({ id }: { id: string }) {
-    return <iframe id={id} src="https://wearable-preview.decentraland.zone/?x=1" title="preview" />
-  }
-  WearablePreview.createController = vi.fn(() => ({
+vi.mock('~/components/PreviewHost', () => ({
+  PreviewHost: ({ id }: { id: string }) => (
+    <iframe id={id} src="https://wearable-preview.decentraland.zone/?x=1" title="preview" />
+  ),
+  createPreviewController: vi.fn(() => ({
     emote: {
       events: { on: vi.fn(), off: vi.fn() },
       play: vi.fn(),
@@ -26,10 +25,9 @@ vi.mock('decentraland-ui2', async () => {
     },
     scene: {},
     physics: { setSpringBonesParams: vi.fn().mockResolvedValue(undefined) }
-  }))
-  return { ...actual, WearablePreview }
-})
-vi.mock('~/components/PreviewControls', () => ({ EmoteControls: () => <div data-testid="ui2-emote-controls" /> }))
+  })),
+  EmoteControls: () => <div data-testid="ui2-emote-controls" />
+}))
 vi.mock('~/lib/featureFlags', async () => {
   const actual = await vi.importActual<typeof import('~/lib/featureFlags')>('~/lib/featureFlags')
   const mock = await import('~/test/featureFlags')

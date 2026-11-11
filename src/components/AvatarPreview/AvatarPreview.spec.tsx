@@ -14,14 +14,13 @@ const controller = {
   physics: { setSpringBonesParams: vi.fn() }
 }
 
-vi.mock('decentraland-ui2', () => {
-  function WearablePreview(props: PreviewProps) {
+vi.mock('~/components/PreviewHost', () => ({
+  PreviewHost(props: PreviewProps) {
     previewProps.push(props)
     return <iframe id={props.id} src="https://wearable-preview.decentraland.zone/?x=1" title="preview" />
-  }
-  WearablePreview.createController = vi.fn(() => controller)
-  return { WearablePreview }
-})
+  },
+  createPreviewController: vi.fn(() => controller)
+}))
 
 let renderer: PreviewRenderer | undefined = PreviewRenderer.UNITY
 vi.mock('~/hooks/usePreviewRenderer', () => ({ usePreviewRenderer: () => renderer }))

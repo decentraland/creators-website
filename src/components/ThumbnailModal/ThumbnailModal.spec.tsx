@@ -14,15 +14,15 @@ vi.mock('~/hooks/usePreviewRenderer', () => ({ usePreviewRenderer: () => rendere
 type PreviewProps = { id: string; unity?: boolean; onLoad?: () => void }
 let previewProps: PreviewProps | null = null
 const getScreenshot = vi.fn()
-vi.mock('decentraland-ui2', async importOriginal => {
-  function WearablePreview(props: PreviewProps) {
+vi.mock('~/components/PreviewHost', () => ({
+  PreviewHost(props: PreviewProps) {
     previewProps = props
     return <iframe id={props.id} title="preview" />
-  }
-  WearablePreview.createController = () => ({ scene: { getScreenshot }, emote: { pause: vi.fn() } })
-  return { ...(await importOriginal<typeof import('decentraland-ui2')>()), WearablePreview }
-})
-vi.mock('~/components/PreviewControls', () => ({ EmoteControls: () => null, TranslationControls: () => null }))
+  },
+  createPreviewController: () => ({ scene: { getScreenshot }, emote: { pause: vi.fn() } }),
+  EmoteControls: () => null,
+  TranslationControls: () => null
+}))
 vi.mock('~/components/ZoomControls', () => ({ ZoomControls: () => null }))
 
 // jsdom has no canvas: resizing hands back a fixed PNG data URL.
