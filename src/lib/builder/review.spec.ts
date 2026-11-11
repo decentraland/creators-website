@@ -5,6 +5,9 @@ import {
   appealCollectionCuration,
   fetchCollectionEvents,
   isAppealAlreadyOpen,
+  isCollectionBusy,
+  isReviewConflict,
+  isValidationRunning,
   requestCollectionValidation
 } from './review'
 
@@ -85,5 +88,27 @@ describe('collection events and review requests', () => {
     ).toBe(true)
     expect(isAppealAlreadyOpen(new BuilderServerError('Only rejected collections can be appealed', 409))).toBe(false)
     expect(isAppealAlreadyOpen(null)).toBe(false)
+  })
+})
+
+describe('review answers', () => {
+  const running = new BuilderServerError('A validation is already in progress for this collection', 409)
+  const nothingNew = new BuilderServerError(
+    'Nothing changed since the last validation: edit an item or appeal the decision',
+    409
+  )
+
+  it('tells a running review from the other conflicts', () => {
+    expect(isValidationRunning(running)).toBe(true)
+    expect(isValidationRunning(nothingNew)).toBe(false)
+    expect(isReviewConflict(nothingNew)).toBe(true)
+    expect(isReviewConflict(new BuilderServerError('Bad request', 400))).toBe(false)
+  })
+
+  it("knows builder-server's busy collection, not a gateway that is down", () => {
+    expect(
+      isCollectionBusy(new BuilderServerError('The collection is being updated, try again in a moment', 503))
+    ).toBe(true)
+    expect(isCollectionBusy(new BuilderServerError('builder-server answered a non-JSON response', 503))).toBe(false)
   })
 })

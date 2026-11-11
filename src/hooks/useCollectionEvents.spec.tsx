@@ -110,7 +110,9 @@ describe('useCollectionEvents', () => {
 
 describe('useRequestValidation', () => {
   it('reports unexpected failures but not the 409 the creator can act on', async () => {
-    api.requestCollectionValidation.mockRejectedValueOnce(new BuilderServerError('running', 409))
+    api.requestCollectionValidation.mockRejectedValueOnce(
+      new BuilderServerError('A validation is already in progress for this collection', 409)
+    )
     const { result } = renderHook(() => useRequestValidation('0xme'), { wrapper })
     await act(() => result.current.mutateAsync({ collection, events: [] }).catch(() => undefined))
     expect(captureError).not.toHaveBeenCalled()

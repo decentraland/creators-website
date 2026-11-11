@@ -5,7 +5,7 @@ import { errorCode, track } from '~/lib/analytics'
 import { sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
 import {
   isCollectionBusy,
-  isReviewConflict,
+  isValidationRunning,
   ValidationLimitError,
   fetchCollection,
   fetchCollectionCuration,
@@ -200,7 +200,7 @@ export function usePushCuration(address: string | undefined) {
     onError: (error, collection) => {
       track('Push curation error', { collectionId: collection.id, error: errorCode(error) })
       // A running review, the daily limit and a busy collection are answers the creator acts on, not failures.
-      const expected = error instanceof ValidationLimitError || isReviewConflict(error) || isCollectionBusy(error)
+      const expected = error instanceof ValidationLimitError || isValidationRunning(error) || isCollectionBusy(error)
       if (!expected) captureError(error, { flow: 'curation_push', collectionId: collection.id })
     }
   })

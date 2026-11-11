@@ -200,6 +200,7 @@ Rules for this file:
 
 ## Automatic review (auto-curation)
 
+- **Rollout order: builder-server first, then the flag.** With `auto-curation` on, the publish confirmation is the review modal, which assumes the server runs the review; the flag is turned on only where builder-server ships it.
 - **Stages are derived, never stored**: the latest review request plus the newest stage-defining timeline event (`GET /collections/:id/events`), behind the `auto-curation` flag. Without a timeline every surface keeps the legacy curation state, so one build serves before and after the server rollout.
 - **The first review request is opened by the publish flow**, through the existing request endpoint right after `/publish` syncs; the "already an ongoing review request" 400 is ignored. builder-server never creates it.
 - **The validator's findings look like the browser's checks**: they are mapped to the same issue shape (`source: 'ai'`) and shown by the same rows, badge and cards; items edited while the run was in flight (`staleItemIds`) are left out.

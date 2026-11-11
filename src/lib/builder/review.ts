@@ -5,6 +5,7 @@ const REVIEW_CONFLICT_STATUS = 409
 const COLLECTION_BUSY_STATUS = 503
 export const VALIDATION_LIMIT_STATUS = 429
 const VALIDATION_RUNNING_MESSAGE = 'A validation is already in progress for this collection'
+const COLLECTION_BUSY_MESSAGE = 'The collection is being updated, try again in a moment'
 
 /** A 409 from the review endpoints (a run in progress, nothing new to validate, an open appeal): an answer, not a failure. */
 export function isReviewConflict(error: unknown): boolean {
@@ -16,9 +17,13 @@ export function isValidationRunning(error: unknown): boolean {
   return isReviewConflict(error) && (error as BuilderServerError).message === VALIDATION_RUNNING_MESSAGE
 }
 
-/** builder-server is busy with another update of the collection: the same action works on retry. */
+/** builder-server is busy with another update of the collection: the same action works on retry. A gateway 503 is not. */
 export function isCollectionBusy(error: unknown): boolean {
-  return error instanceof BuilderServerError && error.status === COLLECTION_BUSY_STATUS
+  return (
+    error instanceof BuilderServerError &&
+    error.status === COLLECTION_BUSY_STATUS &&
+    error.message === COLLECTION_BUSY_MESSAGE
+  )
 }
 
 /** Today's automatic reviews are spent: the creator waits for tomorrow or asks a curator. */

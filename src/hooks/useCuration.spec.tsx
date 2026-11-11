@@ -165,7 +165,9 @@ describe('usePushCuration', () => {
       new ValidationLimitError(new BuilderServerError('Daily limit', 429))
     )
     await act(() => result.current.mutateAsync(collection).catch(() => undefined))
-    api.pushCollectionCuration.mockRejectedValueOnce(new BuilderServerError('A validation is already in progress', 409))
+    api.pushCollectionCuration.mockRejectedValueOnce(
+      new BuilderServerError('A validation is already in progress for this collection', 409)
+    )
     await act(() => result.current.mutateAsync(collection).catch(() => undefined))
     api.pushCollectionCuration.mockRejectedValueOnce(
       new BuilderServerError('The collection is being updated, try again in a moment', 503)

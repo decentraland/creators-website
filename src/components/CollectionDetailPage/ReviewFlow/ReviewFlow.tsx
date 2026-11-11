@@ -4,7 +4,13 @@ import { useTranslation } from '~/intl'
 import { Button } from '~/components/Button'
 import { useAppealCuration, useRequestValidation } from '~/hooks/useCollectionEvents'
 import { track } from '~/lib/analytics'
-import { ValidationLimitError, isAppealAlreadyOpen, isReviewConflict, isValidationRunning } from '~/lib/builder'
+import {
+  ValidationLimitError,
+  isAppealAlreadyOpen,
+  isCollectionBusy,
+  isReviewConflict,
+  isValidationRunning
+} from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { ReviewStage, getReviewStage, isRejectedStage, type CollectionCuration } from '~/lib/curation'
 import {
@@ -128,7 +134,8 @@ export function ReviewFlow({
       showToast(t('review_flow.running'), { type: 'warn' })
       return
     }
-    if (attemptsLeft === 0) {
+    // Counted now, not from the last render: a tab left open past 00:00 UTC has its allowance back.
+    if (getValidationAttemptsLeft(timeline) === 0) {
       open('limit')
       return
     }
@@ -140,6 +147,7 @@ export function ReviewFlow({
           if (error instanceof ValidationLimitError) open('limit')
           else if (isValidationRunning(error)) showToast(t('review_flow.running'), { type: 'warn' })
           else if (isReviewConflict(error)) showToast(t('review_flow.nothing_to_validate'), { type: 'warn' })
+          else if (isCollectionBusy(error)) showToast(t('review_flow.busy'), { type: 'warn' })
           else showToast(t('review_flow.validation_error'), { type: 'error' })
         }
       }
@@ -160,9 +168,11 @@ export function ReviewFlow({
 
   const appealError = isAppealAlreadyOpen(appeal.error)
     ? t('review_flow.appeal_open')
-    : appeal.isError
-      ? t('review_flow.appeal_error')
-      : null
+    : isCollectionBusy(appeal.error)
+      ? t('review_flow.busy')
+      : appeal.isError
+        ? t('review_flow.appeal_error')
+        : null
   // Only a rejection can be sent to a curator; the limit modal on submitted changes just says to wait.
   const canAppeal = canManage && isRejectedStage(stage)
 
