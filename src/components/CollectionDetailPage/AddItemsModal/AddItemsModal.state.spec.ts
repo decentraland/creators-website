@@ -147,6 +147,30 @@ describe('review flow', () => {
   })
 })
 
+describe('preview results', () => {
+  it('keeps the thumbnail the creator saved while the preview was still rendering it', () => {
+    const draft = readyDraft({ thumbnail: null, metrics: null, contents: { 'model.glb': blob() } })
+    const picked = blob('picked')
+    let state = stateWith([draft])
+    state = addItemsReducer(state, {
+      type: 'draftUpdated',
+      id: draft.id,
+      patch: {
+        thumbnail: 'data:image/png;base64,cGlja2Vk',
+        isAutoThumbnail: false,
+        contents: { 'model.glb': blob(), 'thumbnail.png': picked }
+      }
+    })
+    state = addItemsReducer(state, {
+      type: 'draftPreviewed',
+      id: draft.id,
+      result: { metrics: { triangles: 200 }, thumbnail: 'data:image/png;base64,iVBORw0KGgo=', thumbnailCategory: 'hat' }
+    })
+    expect(state.drafts[0]).toMatchObject({ thumbnail: 'data:image/png;base64,cGlja2Vk', metrics: { triangles: 200 } })
+    expect(state.drafts[0].contents['thumbnail.png']).toBe(picked)
+  })
+})
+
 describe('getVariantTargets', () => {
   it('offers batch drafts of the opposite shape and unpublished collection items missing the shape', () => {
     const femaleDraft = readyDraft({ bodyShape: BodyShapeType.FEMALE, name: 'hat 2' })
