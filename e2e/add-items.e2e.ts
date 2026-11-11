@@ -1,5 +1,5 @@
 import { type ElementHandle } from 'puppeteer'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { collection } from './fixtures'
 import { launchApp, type App, type LaunchOptions } from './helpers/app'
 import {
@@ -121,6 +121,9 @@ describe('add items to a collection', () => {
     await readyDraft(app)
     await waitForTestId(app.page, 'draft-thumbnail-loading')
 
+    await vi.waitFor(() => expect(app!.previewAnswers).toContainEqual({ method: 'load', result: 'held' }), {
+      timeout: 30_000
+    })
     await app.page.evaluate(() =>
       document
         .querySelector<HTMLIFrameElement>('[data-testid="draft-processor"] iframe')
