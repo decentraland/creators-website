@@ -9,7 +9,6 @@ export function hermeticViteEnv(): NodeJS.ProcessEnv {
   return {
     ...process.env,
     VITE_DCL_DEFAULT_ENV: 'dev',
-    VITE_FEATURE_FLAG_OVERRIDES: '',
-    VITE_FEATURE_FLAG_VARIANT_OVERRIDES: ''
+    VITE_FEATURE_FLAG_OVERRIDES: ''
   }
 }

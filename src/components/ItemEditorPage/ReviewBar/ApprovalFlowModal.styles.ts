@@ -1,5 +1,6 @@
 import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
+import { Spinner } from '~/styles/shared'
 import * as Shared from '~/components/CollectionDetailPage/PublishCollectionModal/PublishCollectionModal.styles'
 
 export {
@@ -191,4 +192,10 @@ export const CopyButton = styled.button`
       transform: scale(1.25);
     }
   }
+`
+
+export const SizeSpinner = styled(Spinner)`
+  display: inline-block;
+  width: 14px;
+  height: 14px;
 `

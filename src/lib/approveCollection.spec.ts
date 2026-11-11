@@ -10,7 +10,6 @@ import {
   findItemsToRescue,
   rescueItems,
   waitForIndexer,
-  measureItems,
   type DeployDeps
 } from './approveCollection'
 import { computeItemContentHash, getEntityContent } from './catalystEntity'
@@ -227,18 +226,5 @@ describe('waitForIndexer', () => {
     ).rejects.toMatchObject({
       reason: 'not_indexed'
     })
-  })
-})
-
-describe('measureItems', () => {
-  it('adds up each item’s files, measuring a shared file once and an unreadable one as 0', async () => {
-    const sizeOf = vi.fn(async (hash: string) => {
-      if (hash === 'bafimage') throw new Error('404')
-      return hash === 'bafthumb' ? 10 : 100
-    })
-    const sizes = await measureItems([item('1'), item('2')], sizeOf)
-    expect(sizes.get('1')).toBe(110)
-    expect(sizes.get('2')).toBe(110)
-    expect(sizeOf.mock.calls.filter(([hash]) => hash === 'bafthumb')).toHaveLength(1)
   })
 })

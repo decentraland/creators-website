@@ -2,11 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   EmotePlayMode,
   addRepresentationToItem,
-  assertUploadSize,
+  assertThumbnailSize,
   buildItem,
   buildRepresentations,
   computeHashes,
-  getSizeError,
   isValidItemName,
   sortContent,
   sortContentZipBothBodyShape,
@@ -82,22 +81,6 @@ describe('computeHashes', () => {
     const hashes = await computeHashes({ 'a.glb': blob('same'), 'b.glb': blob('same') })
     expect(hashes['a.glb']).toMatch(/^baf/)
     expect(hashes['a.glb']).toBe(hashes['b.glb'])
-  })
-})
-
-describe('getSizeError', () => {
-  const bigBlob = new Blob([new Uint8Array(4 * 1024 * 1024)])
-
-  it('caps wearables at 3MB, skins at 8MB and emotes at 3MB', () => {
-    expect(getSizeError(ItemType.WEARABLE, 'hat', { 'model.glb': bigBlob })).toBe(3)
-    expect(getSizeError(ItemType.WEARABLE, 'skin', { 'model.glb': bigBlob })).toBeNull()
-    expect(getSizeError(ItemType.EMOTE, undefined, { 'model.glb': bigBlob })).toBe(3)
-    expect(getSizeError(ItemType.WEARABLE, 'hat', { 'model.glb': blob() })).toBeNull()
-  })
-
-  it('caps smart wearables at 3MB without counting the preview video', () => {
-    expect(getSizeError(ItemType.WEARABLE, 'hat', { 'model.glb': bigBlob, 'bin/game.js': blob() })).toBe(3)
-    expect(getSizeError(ItemType.WEARABLE, 'hat', { 'model.glb': blob(), 'video.mp4': bigBlob })).toBeNull()
   })
 })
 
@@ -367,23 +350,12 @@ describe('withRehashedContents', () => {
   })
 })
 
-describe('assertUploadSize', () => {
-  it('counts a blob shared by both body shapes once', async () => {
-    const model = new Blob([new Uint8Array(2 * 1024 * 1024)])
-    const { item, blobs } = await buildItem({
-      ...baseDraft,
-      contents: { 'model.glb': model, 'thumbnail.png': blob('t') }
-    })
-    expect(Object.keys(blobs).filter(path => path.endsWith('model.glb'))).toHaveLength(2)
-    expect(() => assertUploadSize(item, blobs)).not.toThrow()
-  })
-
-  it('re-checks the thumbnail cap and the item cap including files already stored', async () => {
-    const { item, blobs } = await buildItem(baseDraft)
-    expect(() => assertUploadSize(item, blobs)).not.toThrow()
-    expect(() =>
-      assertUploadSize(item, { ...blobs, 'thumbnail.png': new Blob([new Uint8Array(1024 * 1024 + 1)]) })
-    ).toThrow(/thumbnail_too_big/)
-    expect(() => assertUploadSize(item, blobs, [3 * 1024 * 1024])).toThrow(/size_exceeded/)
+describe('assertThumbnailSize', () => {
+  it('refuses a thumbnail over its own 1MB cap', () => {
+    expect(() => assertThumbnailSize({ 'thumbnail.png': blob('t') })).not.toThrow()
+    expect(() => assertThumbnailSize({ 'male/model.glb': new Blob([new Uint8Array(2 * 1024 * 1024)]) })).not.toThrow()
+    expect(() => assertThumbnailSize({ 'thumbnail.png': new Blob([new Uint8Array(1024 * 1024 + 1)]) })).toThrow(
+      /thumbnail_too_big/
+    )
   })
 })

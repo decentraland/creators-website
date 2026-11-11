@@ -12,7 +12,6 @@ import { FeatureFlag } from '~/lib/featureFlags'
 import { trackPageView } from '~/lib/pageViews'
 import { setCanonical } from '~/lib/seo'
 import { useAccountWatcher } from '~/hooks/useAccountWatcher'
-import { useCreatorsPrelaunch } from '~/hooks/useCreatorsPrelaunch'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useWallet } from '~/store/wallet'
 
@@ -41,15 +40,10 @@ const App = () => {
   const location = useLocation()
   const maintenance = useFeatureFlag(FeatureFlag.MAINTENANCE)
   const livePreview = useFeatureFlag(FeatureFlag.BLENDER_LIVE_PREVIEW)
-  // Behind the pre-launch gate only the overview exists; see `useCreatorsPrelaunch`.
-  const prelaunch = useCreatorsPrelaunch()
   const path = location.pathname.replace(/\/+$/, '')
   // With its flag off the live preview route is a not-found page, which keeps the shell.
   const isFullscreen =
-    prelaunch === 'open' &&
-    !maintenance.enabled &&
-    FULLSCREEN_PATHS.includes(path) &&
-    (path !== '/live-preview' || livePreview.enabled)
+    !maintenance.enabled && FULLSCREEN_PATHS.includes(path) && (path !== '/live-preview' || livePreview.enabled)
 
   // Auth bootstrap lives at the app root so the silent session restore (and the return from /auth)
   // doesn't depend on any layout component staying mounted.
@@ -64,17 +58,13 @@ const App = () => {
     window.scrollTo({ top: 0 })
   }, [location.pathname])
 
-  // One view per pathname (the gate re-deciding on the same page, as on sign-out, is not a new view). The overview
-  // renders whatever the gate says, so it counts at once; any other page counts once the gate has let it render.
-  // A curtained visitor is sent to the overview, which counts there.
+  // One view per pathname, so StrictMode's effect replay doesn't count a page twice.
   const seenPathname = useRef<string>()
   useEffect(() => {
-    const isOverview = !path
-    if (!isOverview && prelaunch !== 'open') return
     if (seenPathname.current === location.pathname) return
     seenPathname.current = location.pathname
     trackPageView(location.pathname)
-  }, [location.pathname, path, prelaunch])
+  }, [location.pathname])
 
   useEffect(() => {
     if (isFullscreen) document.body.dataset.fullscreen = ''
@@ -97,18 +87,9 @@ const App = () => {
     }
   }, [path])
 
-  // Behind the gate there is no sub-nav, so everything sized against it (hero, violet strip) collapses the gap.
-  useEffect(() => {
-    if (prelaunch === 'open') delete document.body.dataset.noSubnav
-    else document.body.dataset.noSubnav = ''
-    return () => {
-      delete document.body.dataset.noSubnav
-    }
-  }, [prelaunch])
-
   return (
     <TranslationProvider>
-      {!isFullscreen && <NavBar subnav={prelaunch === 'open'} />}
+      {!isFullscreen && <NavBar />}
       {/* The route is exposed so a page can opt out of shell-level CSS by path if it ever needs to. */}
       <main className="page" data-route={location.pathname} data-fullscreen={isFullscreen || undefined}>
         <ErrorBoundary>
@@ -119,39 +100,23 @@ const App = () => {
               <Routes>
                 <Route path="/" element={<OverviewPage />} />
                 <Route path="/overview" element={<Navigate to="/" replace />} />
-                {prelaunch === 'open' ? (
-                  <>
-                    <Route path="/collections" element={<CollectionsPage />} />
-                    <Route path="/collections/editor" element={<ItemEditorPage />} />
-                    <Route path="/collections/:collectionId" element={<CollectionDetailPage />} />
-                    <Route path="/curation" element={<CurationPage />} />
-                    <Route
-                      path="/live-preview"
-                      element={
-                        livePreview.enabled ? (
-                          <LivePreviewPage />
-                        ) : livePreview.isLoading ? (
-                          <PageFallback />
-                        ) : (
-                          <NotFoundPage />
-                        )
-                      }
-                    />
-                    <Route path="*" element={<NotFoundPage />} />
-                  </>
-                ) : (
-                  <Route
-                    path="*"
-                    element={
-                      prelaunch === 'pending' ? (
-                        <PageFallback />
-                      ) : (
-                        // The query string survives so campaign parameters reach the overview's page view.
-                        <Navigate to={{ pathname: '/', search: location.search }} replace />
-                      )
-                    }
-                  />
-                )}
+                <Route path="/collections" element={<CollectionsPage />} />
+                <Route path="/collections/editor" element={<ItemEditorPage />} />
+                <Route path="/collections/:collectionId" element={<CollectionDetailPage />} />
+                <Route path="/curation" element={<CurationPage />} />
+                <Route
+                  path="/live-preview"
+                  element={
+                    livePreview.enabled ? (
+                      <LivePreviewPage />
+                    ) : livePreview.isLoading ? (
+                      <PageFallback />
+                    ) : (
+                      <NotFoundPage />
+                    )
+                  }
+                />
+                <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Suspense>
           )}
