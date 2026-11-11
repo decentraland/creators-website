@@ -26,10 +26,9 @@ import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { track } from '~/lib/analytics'
 import { modelValidationKey, useModelValidation } from '~/hooks/useModelValidation'
 import { useRerunValidation } from '~/hooks/useRerunValidation'
-import { useObjectURL } from '~/hooks/useObjectURL'
 import { thumbnailValidationKey, useThumbnailValidation } from '~/hooks/useThumbnailValidation'
 import { useCatalystItemSizes } from '~/hooks/useItemSize'
-import { fetchStoredThumbnail, useSaveItem } from '~/hooks/useSaveItem'
+import { fetchStoredThumbnail, useSaveItem, type SaveItemVariables } from '~/hooks/useSaveItem'
 import { captureError } from '~/lib/monitoring'
 import { springBonesFetcher } from '~/hooks/useSpringBones'
 import { useTranslation } from '~/intl'
@@ -46,7 +45,6 @@ import {
 import { parseUuidParam } from '~/lib/ids'
 import { getCurationState, curationListUrl } from '~/lib/curation'
 import { toFileChangeSaveable, toPreviewItem, toSaveableItem, type ItemFileChange } from '~/lib/itemDraft'
-import { type BuiltItem } from '~/lib/itemFactory'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
 import { pickFiles } from '~/lib/filePicker'
 import { IMAGE_PATH, ITEM_EXTENSIONS } from '~/lib/itemFiles'
@@ -231,14 +229,11 @@ const ItemEditorPage = () => {
     [previewSelected]
   )
   const validation = useModelValidation(validationSource, validationCtx)
-  // An unsaved thumbnail is checked as picked; otherwise the stored one.
   const thumbnailSource = useMemo(() => {
     if (isMobile) return null
-    if (form.draft.thumbnail) return { kind: 'blob', blob: form.draft.thumbnail } as const
     return selected?.contents[selected.thumbnail] ? ({ kind: 'item', item: selected } as const) : null
-  }, [form.draft.thumbnail, selected, isMobile])
+  }, [selected, isMobile])
   const thumbnailValidation = useThumbnailValidation(thumbnailSource)
-  const draftThumbnailUrl = useObjectURL(form.draft.thumbnail)
   const validationSubject = useMemo(() => {
     if (!previewSelected) return undefined
     const storedThumbnail = previewSelected.contents[previewSelected.thumbnail]
@@ -247,9 +242,9 @@ const ItemEditorPage = () => {
       type: previewSelected.type,
       category: previewSelected.data.category,
       rarity: previewSelected.rarity,
-      thumbnail: draftThumbnailUrl ?? (storedThumbnail ? getContentsStorageUrl(storedThumbnail) : null)
+      thumbnail: storedThumbnail ? getContentsStorageUrl(storedThumbnail) : null
     }
-  }, [previewSelected, draftThumbnailUrl])
+  }, [previewSelected])
   const validationIssues = useMemo(
     () =>
       validation.data || thumbnailValidation.data
@@ -399,7 +394,7 @@ const ItemEditorPage = () => {
         springBones.models.length > 0 ? (mergeSpringBonesIntoItem(form.springBoneParams) ?? null) : undefined,
       fetchThumbnail: fetchStoredThumbnail
     })
-    if (form.draft.rarity !== item.rarity && !form.draft.thumbnail && !built.blobs[IMAGE_PATH]) {
+    if (form.draft.rarity !== item.rarity && !built.blobs[IMAGE_PATH]) {
       showToast(t('item_editor.image_refresh_skipped'), { type: 'warn' })
     }
     const saved = await commit(item, built)
@@ -409,8 +404,8 @@ const ItemEditorPage = () => {
   }
 
   /** PUTs the built item, refreshes the cached list and toasts. */
-  async function commit(item: Item, built: BuiltItem): Promise<Item> {
-    const saved = await saveItem.mutateAsync({ ...built, previous: item, previousVideo: item.video })
+  async function commit(item: Item, save: SaveItemVariables): Promise<Item> {
+    const saved = await saveItem.mutateAsync({ ...save, previous: item, previousVideo: item.video })
     queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collectionId ?? undefined), current =>
       current?.map(candidate => (candidate.id === saved.id ? saved : candidate))
     )
@@ -455,13 +450,18 @@ const ItemEditorPage = () => {
           form.dispatch({ type: 'setCategory', category: change.category })
           form.dispatch({ type: 'setHides', hides: saved.data.hides ?? [] })
         }
-        if (change.thumbnail) form.dispatch({ type: 'setThumbnail', thumbnail: null })
       }
     } catch (error) {
       // The modal shows an oversized result itself, next to the file that caused it.
       if (!isItemTooBigError(error)) reportSaveError(error, 'item_file_change')
       throw error
     }
+  }
+
+  // A new thumbnail saves on confirm, like a file change, so the size the panel shows is always the stored one.
+  async function saveThumbnail(thumbnail: Blob): Promise<void> {
+    if (!selected) return
+    await commit(selected, { item: selected, thumbnail }).catch((error: unknown) => reportSaveError(error, 'item_save'))
   }
 
   function save() {
@@ -677,6 +677,7 @@ const ItemEditorPage = () => {
         linkedContract={isLinked ? linkedContract : undefined}
         onSave={save}
         onSaveFile={saveFileChange}
+        onSaveThumbnail={saveThumbnail}
         onRevert={() => form.reset(selected)}
         onDeleted={() => navigateToItem(null)}
       />

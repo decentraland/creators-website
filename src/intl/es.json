@@ -1577,7 +1577,8 @@
   },
   "item_size": {
     "label": "Tamaño del ítem",
-    "value": "{size} / {limit} MB"
+    "value": "{size} / {limit} MB",
+    "exceeded": "Supera el límite de tamaño (miniatura incluida). Reduce sus texturas o su geometría."
   },
   "item_validation": {
     "checking": "Revisando tus ítems…",

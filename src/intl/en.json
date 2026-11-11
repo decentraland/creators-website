@@ -1577,7 +1577,8 @@
   },
   "item_size": {
     "label": "Item size",
-    "value": "{size} / {limit} MB"
+    "value": "{size} / {limit} MB",
+    "exceeded": "Over the size limit (thumbnail included). Reduce its textures or geometry."
   },
   "item_validation": {
     "checking": "Checking your items…",

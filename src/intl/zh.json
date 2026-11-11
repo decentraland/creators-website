@@ -1577,7 +1577,8 @@
   },
   "item_size": {
     "label": "物品大小",
-    "value": "{size} / {limit} MB"
+    "value": "{size} / {limit} MB",
+    "exceeded": "超出大小限制（含缩略图）。请减少其纹理或几何体。"
   },
   "item_validation": {
     "checking": "正在检查您的物品……",

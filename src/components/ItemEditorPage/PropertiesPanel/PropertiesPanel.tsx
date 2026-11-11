@@ -89,7 +89,7 @@ type Props = {
   dispatch: Dispatch<ItemDraftAction>
   isDirty: boolean
   isSaving: boolean
-  /** The item's size as a save would leave it (thumbnail and rarity image included); null while unknown. */
+  /** The stored item's size against the limit of the category being edited; null while unknown. */
   size?: ItemSize | null
   springBones: SpringBonesFormProps | null
   /** Linked collections: the contract the item's mapping targets (null when the collection has none); undefined otherwise. */
@@ -97,6 +97,8 @@ type Props = {
   onSave: () => void
   /** Persists a file change from the modal on its own; rejects when the save fails. */
   onSaveFile: (change: ItemFileChange) => Promise<void>
+  /** Persists a new thumbnail on its own, as soon as it is confirmed; reports its own errors. */
+  onSaveThumbnail: (thumbnail: Blob) => Promise<void>
   onRevert: () => void
   onDeleted: () => void
   testId?: string
@@ -119,6 +121,7 @@ export function PropertiesPanel({
   linkedContract,
   onSave,
   onSaveFile,
+  onSaveThumbnail,
   onRevert,
   onDeleted,
   testId = 'properties-panel'
@@ -140,9 +143,7 @@ export function PropertiesPanel({
   const campaign = useCampaign()
   const utilityFlag = useFeatureFlag(FeatureFlag.WEARABLE_UTILITY)
   const vrmFlag = useFeatureFlag(FeatureFlag.VRM_OPTOUT)
-  const thumbnailEditor = useThumbnailEditor(patch =>
-    dispatch({ type: 'setThumbnail', thumbnail: patch.contents[THUMBNAIL_PATH] })
-  )
+  const thumbnailEditor = useThumbnailEditor(patch => onSaveThumbnail(patch.contents[THUMBNAIL_PATH]))
 
   const isEmote = item.type === ItemType.EMOTE
   const isWearable = item.type === ItemType.WEARABLE
@@ -159,7 +160,6 @@ export function PropertiesPanel({
   )
   const nameInvalid = draft.name.length > 0 && !isValidItemName(draft.name)
   const descriptionInvalid = !isValidItemDescription(draft.description)
-  const thumbnailUrl = useObjectURL(draft.thumbnail)
   const thumbnailHash = item.contents[item.thumbnail]
   const videoHash = item.contents[VIDEO_PATH]
   const draftVideoUrl = useObjectURL(draft.video)
@@ -276,10 +276,7 @@ export function PropertiesPanel({
             data-testid={`${testId}-thumbnail`}
             onClick={() => thumbnailEditor.edit({ kind: 'item', item })}
           >
-            <ItemThumbnail
-              src={thumbnailUrl ?? (thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null)}
-              rarity={item.rarity}
-            />
+            <ItemThumbnail src={thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null} rarity={item.rarity} />
             {editable && (
               <S.ThumbOverlay aria-hidden>
                 <CameraIcon />
@@ -328,9 +325,9 @@ export function PropertiesPanel({
             </S.Metrics>
           )}
         </S.DetailsRow>
-        {sizeExceeded && sizeText && (
+        {sizeExceeded && (
           <S.ErrorText role="alert" data-testid={`${testId}-size-error`}>
-            {t('add_items_modal.file_error.size_exceeded', sizeText)}
+            {t('item_size.exceeded')}
           </S.ErrorText>
         )}
         {isSmart && (
