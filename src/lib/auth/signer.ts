@@ -1,24 +1,9 @@
-// viem's wallet client and key code, loaded on demand: the overview's first load restores a session without them.
-import {
-  createWalletClient,
-  custom,
-  type Account,
-  type Address,
-  type CustomTransport,
-  type Hex,
-  type WalletClient
-} from 'viem'
+// The key code only creating an identity needs, loaded on demand: reads, writes and session restores go without it.
+import { type Hex } from 'viem'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { Authenticator, type AuthIdentity } from '@dcl/crypto'
 import { type Eip1193Provider } from './auth'
-
-// Never retried: a wallet request may be a prompt, and a retry would show it again.
-export function walletClientOf(
-  provider: Eip1193Provider,
-  address: string
-): WalletClient<CustomTransport, undefined, Account> {
-  return createWalletClient({ account: address as Address, transport: custom(provider, { retryCount: 0 }) })
-}
+import { walletClientOf } from './walletClient'
 
 /** The key pair the auth chain delegates to: a fresh random one unless `privateKey` is given. */
 export function createEphemeralIdentity(privateKey?: Hex) {

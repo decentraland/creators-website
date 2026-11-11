@@ -13,6 +13,8 @@ const ENTRY = resolve(SRC, 'main.tsx')
 
 const FORBIDDEN_PACKAGES = [/^viem(\/|$)/, /^@dcl\/crypto(\/|$)/, /^decentraland-connect(\/|$)/, /^jszip(\/|$)/]
 const FORBIDDEN_FILES = [/^src\/lib\/chain\//]
+// Exact specifiers: the package's deep imports are fine, its root barrel is not.
+const FORBIDDEN_SPECIFIERS = [/^@dcl\/schemas$/]
 // Declared dependencies the first load never loads. Imported for types only (checked below):
 const TYPE_ONLY_DEPENDENCIES: Record<string, string[]> = { '@dcl/single-sign-on-client': ['@dcl/crypto'] }
 // Tree-shaken, which nothing here can check: only @dcl/hooks' notifications client imports it, and no
@@ -133,7 +135,9 @@ describe("the overview's first load", () => {
 
   it('loads no wallet client, signing, curve or chain code', () => {
     const leaks = [...graph.entries()]
-      .filter(([key]) => [...FORBIDDEN_PACKAGES, ...FORBIDDEN_FILES].some(pattern => pattern.test(key)))
+      .filter(([key]) =>
+        [...FORBIDDEN_PACKAGES, ...FORBIDDEN_FILES, ...FORBIDDEN_SPECIFIERS].some(pattern => pattern.test(key))
+      )
       .map(([, path]) => path.join(' > '))
     expect(leaks).toEqual([])
   })
