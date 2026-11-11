@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import {
-  PreviewEmote,
-  PreviewEmoteEventType,
-  PreviewRenderer,
-  PreviewUnityMode,
-  type IPreviewController
-} from '@dcl/schemas'
+import { PreviewEmote, PreviewEmoteEventType, PreviewRenderer, PreviewUnityMode } from '@dcl/schemas'
 import { Env } from '@dcl/ui-env'
-import { WearablePreview } from 'decentraland-ui2'
+import {
+  WearablePreview,
+  createWearablePreviewController,
+  type WearablePreviewController
+} from '~/components/WearablePreview'
 import { config } from '~/config'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { type AvatarAttributes } from '~/lib/avatar'
@@ -33,14 +31,14 @@ type Props = {
   emote?: PreviewEmote
   onLoad?: (renderer?: PreviewRenderer) => void
   onError?: (error: Error) => void
-  onController?: (controller: IPreviewController) => void
+  onController?: (controller: WearablePreviewController) => void
   /** Overlay slot along the bottom (playback, customizer, badges). */
   children?: ReactNode
   testId?: string
 }
 
 /**
- * The shared avatar preview. Picks the renderer once (`usePreviewRenderer`), then mounts ui2's
+ * The shared avatar preview. Picks the renderer once (`usePreviewRenderer`), then mounts the
  * WearablePreview once with a frozen snapshot of the URL-bound options and pushes every later change
  * through `lib/previewBridge`, so avatar and item changes never reload the iframe.
  */
@@ -88,7 +86,7 @@ function MountedPreview({
   const onControllerRef = useRef(onController)
   onControllerRef.current = onController
 
-  // The iframe exists once ui2 has committed; the bridge and the controller attach to it by id.
+  // The iframe exists once the preview has committed; the bridge and the controller attach to it by id.
   useEffect(() => {
     const iframe = document.getElementById(id)
     if (!(iframe instanceof HTMLIFrameElement)) return
@@ -98,7 +96,7 @@ function MountedPreview({
     bridge.update(optionsRef.current)
 
     // Created at mount, not in onLoad: Babylon fires PLAY right after LOAD and a late subscriber misses it.
-    const controller = WearablePreview.createController(id)
+    const controller = createWearablePreviewController(id)
     const { setPlaying, endEmote } = useAvatarPreview.getState()
     const onPlay = () => setPlaying(true)
     const onPause = () => setPlaying(false)

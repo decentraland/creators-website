@@ -1,7 +1,7 @@
-import { type IPreviewController } from '@dcl/schemas'
 import { Add as ZoomInIcon, Remove as ZoomOutIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import * as S from './ZoomControls.styles'
+import { type WearablePreviewController } from '~/components/WearablePreview'
 
 /**
  * Inertial camera-radius nudge per click. Babylon's inertia (0.9) carries it ~10× further, so this moves
@@ -10,7 +10,7 @@ import * as S from './ZoomControls.styles'
 export const ZOOM_STEP = 0.075
 
 type Props = {
-  controller: IPreviewController
+  controller: WearablePreviewController
   /** Layout-only override (offsets); the look is fixed. */
   className?: string
   testId?: string

@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { PreviewProjection, PreviewRenderer, type IPreviewController } from '@dcl/schemas'
-import { WearablePreview } from 'decentraland-ui2'
-import { VerticalPosition } from 'decentraland-ui2/dist/components/WearablePreview/TranslationControls'
+import { PreviewProjection, PreviewRenderer } from '@dcl/schemas'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
-import { EmoteControls, TranslationControls } from '~/components/PreviewControls'
+import {
+  EmoteControls,
+  WearablePreview,
+  TranslationControls,
+  createWearablePreviewController,
+  type WearablePreviewController
+} from '~/components/WearablePreview'
 import { ZoomControls } from '~/components/ZoomControls'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { useTranslation } from '~/intl'
@@ -71,13 +75,13 @@ type Props = {
 }
 
 /**
- * Interactive thumbnail editor: pose/zoom the item in a live WearablePreview and capture, or
+ * Interactive thumbnail editor: pose/zoom the item in a live preview and capture, or
  * (wearables only) upload a PNG instead. Image-only wearables never reach this modal.
  */
 export function ThumbnailModal({ type, contents, loadError = false, onSave, onClose }: Props) {
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [controller, setController] = useState<IPreviewController | null>(null)
+  const [controller, setController] = useState<WearablePreviewController | null>(null)
   const [isLoaded, setLoaded] = useState(false)
   const isReady = controller !== null && isLoaded
   // Which button started the save, so its spinner shows while the caller's save settles.
@@ -93,13 +97,13 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
     [isEmote, contents]
   )
 
-  // One controller, created as soon as the iframe exists and shared with the ui2 controls: every
+  // One controller, created as soon as the iframe exists and shared with the preview controls: every
   // createController call drops the requests in flight, and a late one (in onLoad, or a control
   // mounting after it) swallows the length EmoteControls asks for on the autoplay PLAY, leaving its
   // play/pause stuck until the emote ends.
   const isMounted = blob !== null && renderer !== undefined
   useEffect(() => {
-    setController(isMounted ? WearablePreview.createController(PREVIEW_ID) : null)
+    setController(isMounted ? createWearablePreviewController(PREVIEW_ID) : null)
     if (!isMounted) setLoaded(false)
   }, [isMounted])
 
@@ -185,9 +189,9 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
               <TranslationControls
                 className="translation-controls"
                 vertical
-                verticalPosition={VerticalPosition.LEFT}
-                wearablePreviewId={PREVIEW_ID}
-                wearablePreviewController={controller}
+                verticalPosition="left"
+                previewId={PREVIEW_ID}
+                controller={controller}
               />
             </>
           )}
@@ -195,11 +199,7 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
         {/* Mounted before the iframe loads so the PLAY event fired at load time is delivered. */}
         {isEmote && controller && (
           <S.EmoteBar data-testid="thumbnail-emote-controls" data-ready={isReady}>
-            <EmoteControls
-              className="emote-controls"
-              wearablePreviewId={PREVIEW_ID}
-              wearablePreviewController={controller}
-            />
+            <EmoteControls className="emote-controls" previewId={PREVIEW_ID} controller={controller} />
           </S.EmoteBar>
         )}
         {error && <S.ErrorText data-testid="thumbnail-error">{error}</S.ErrorText>}

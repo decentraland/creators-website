@@ -26,12 +26,8 @@ const UI2 = {
   paths: [{ name: 'decentraland-ui2', message: UI2_MESSAGE, allowTypeImports: true }],
   patterns: [{ group: ['decentraland-ui2/*'], message: UI2_MESSAGE, allowTypeImports: true }]
 }
-const UI2_ALLOWED = [
-  'src/components/AvatarPreview/AvatarPreview.tsx',
-  'src/components/ItemDraftModal/DraftProcessor.tsx',
-  'src/components/ThumbnailModal/ThumbnailModal.tsx',
-  'src/components/Tooltip/Tooltip.styles.ts'
-]
+const WEARABLE_PREVIEW = 'src/components/WearablePreview/WearablePreview.tsx'
+const UI2_ALLOWED = [WEARABLE_PREVIEW, 'src/components/Tooltip/Tooltip.styles.ts']
 const UI2_STYLING = {
   name: 'decentraland-ui2',
   importNames: ['styled', 'keyframes', 'GlobalStyles'],
@@ -81,7 +77,7 @@ const DYNAMIC_DCL_TRANSACTIONS = {
   message: DCL_TRANSACTIONS.message
 }
 const DYNAMIC_UI2_ALLOWED = ['src/components/TopNav/TopNav.tsx']
-const DYNAMIC_ALL_ALLOWED = ['src/components/PreviewControls/PreviewControls.tsx']
+const DYNAMIC_ALL_ALLOWED = [WEARABLE_PREVIEW]
 
 const SEAM_5 = 'See CONVENTIONS.md seam 5.'
 const BUILDER_TRANSPORT = {

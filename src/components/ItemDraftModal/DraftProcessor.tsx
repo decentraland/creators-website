@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PreviewProjection, PreviewRenderer } from '@dcl/schemas'
-import { WearablePreview } from 'decentraland-ui2'
+import { WearablePreview, createWearablePreviewController } from '~/components/WearablePreview'
 import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { track } from '~/lib/analytics'
 import { captureError } from '~/lib/monitoring'
@@ -52,7 +52,7 @@ type Run = {
 type LoadPhase = 'idle' | 'update-sent' | 'loaded'
 
 /**
- * Off-screen WearablePreview that fills a draft's metrics and auto thumbnail, one draft at a
+ * Off-screen preview that fills a draft's metrics and auto thumbnail, one draft at a
  * time (the parent passes the next draft that still needs preview data). Categories with a
  * thumbnail pose are rendered offscreen instead of screenshotting the preview, and re-rendered
  * when the category change alters the pose.
@@ -170,7 +170,7 @@ export function DraftProcessor({ draft, flow, batchSize = 1, onResult, onError }
 
     void (async () => {
       try {
-        const controller = WearablePreview.createController(PREVIEW_ID)
+        const controller = createWearablePreviewController(PREVIEW_ID)
 
         if (draft.type === ItemType.EMOTE) {
           // Screenshot a random frame, like the legacy modal.
