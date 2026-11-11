@@ -11,8 +11,7 @@ import {
   type ExternalData,
   type Flags,
   type ForcedErrors,
-  type RouteContext,
-  type Variants
+  type RouteContext
 } from './route'
 import { type PreviewOptions } from './preview'
 import { createChain, type ChainOptions, type SentTransaction } from './rpc'
@@ -38,7 +37,7 @@ export type App = {
   transactions: SentTransaction[]
   /** URLs the page tried to open in a new tab or window. */
   openedUrls: string[]
-  /** Answers the fake preview gave to controller questions the app asked (`emote.hasSound`), in order. */
+  /** What the fake preview reported, in order: its answers to controller questions (`emote.hasSound`) and held `load`s. */
   previewAnswers: Array<{ method: string; result: string }>
   /** Messages of the browser dialogs (confirm, beforeunload) the page raised; each one is accepted. */
   dialogs: string[]
@@ -62,7 +61,6 @@ export type LaunchOptions = {
   bridge?: Bridge
   /** Flag values served by the flag service, keyed `${application}-${flag}`. Everything else is off. */
   flags?: Flags
-  variants?: Variants
   errors?: ForcedErrors
   /** How the fake wearable-preview iframe behaves. */
   preview?: PreviewOptions
@@ -176,7 +174,6 @@ async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
     bridge: opts.bridge,
     previewAnswers: [],
     flags: opts.flags ?? {},
-    variants: opts.variants ?? {},
     errors: opts.errors ?? {},
     preview: opts.preview ?? {},
     storage,

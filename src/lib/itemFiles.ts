@@ -25,9 +25,13 @@ export { IMAGE_PATH, VIDEO_PATH }
 export const ITEM_EXTENSIONS = ['.zip', '.gltf', '.glb', '.png']
 export const VIDEO_EXTENSIONS = ['.mp4']
 
+// The caps mirror the wearable-validator manifest (`manifest.fileSize`), the catalyst's ADR-51 limits; the rule book
+// parity specs keep them equal. They are not read from the manifest at runtime: importing it would pull the whole
+// rule book, which loads lazily, into the editor chunks.
 export const MAX_THUMBNAIL_FILE_SIZE = 1024 * 1024 // 1MB
+/** A wearable's whole deployment (lib/itemSize): models, textures, thumbnail and rarity image. */
 export const MAX_WEARABLE_FILE_SIZE = 3 * 1024 * 1024 // 3MB
-export const MAX_SKIN_FILE_SIZE = 8 * 1024 * 1024 // 8MB
+export const MAX_SKIN_FILE_SIZE = 9 * 1024 * 1024 // 9MB
 export const MAX_EMOTE_FILE_SIZE = 3 * 1024 * 1024 // 3MB
 export const MAX_VIDEO_FILE_SIZE = 262144000 // 250MB
 export const MAX_EMOTE_DURATION = 10 // seconds
@@ -656,7 +660,7 @@ async function loadZip(file: File): Promise<LoadedItemFile> {
 
   if (isImageFile(model)) assertNoOrphanedAuxiliaryFiles(content)
 
-  // Import-time cap: the most permissive model budget (8MB); the exact per-category/type cap is
+  // Import-time cap: the most permissive model budget (9MB); the exact per-category/type cap is
   // re-checked at the details step once the type and category are known.
   if (contentsSize > MAX_SKIN_FILE_SIZE) {
     throw new ItemFileError('file_too_big', { size: toMB(MAX_SKIN_FILE_SIZE) })

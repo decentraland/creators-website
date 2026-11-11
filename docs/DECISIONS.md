@@ -51,7 +51,7 @@ Rules for this file:
 - **`removesDefaultHiding: [hands]`** is written for upper-body items (and anything hiding the upper body), as legacy did; the editor recomputes it on save.
 - **Thumbnails are always 1024×1024.** Categories with a thumbnail pose (`upper_body`, `skin`) are rendered offscreen with three.js, falling back to the preview screenshot. Zip-provided or user-picked thumbnails are never regenerated.
 - **Metrics and auto thumbnails come from one hidden preview iframe per modal, one file at a time** (2026-11-10). It sits behind the dialog's surface at opacity 0.01, never off-screen or at opacity 0: Chrome throttles a cross-origin iframe in either state, and Unity took ~6s per item instead of ~0.6s. A run gets 45s on a freshly booted iframe and 20s after to see its model's LOAD, then 75s to read it (Unity reloads can stall reads); on overrun the iframe is remounted once (a Unity scene that never loads wedges the instance for every later file), and a second overrun fails that file with its own message and remounts again so the queue moves on. After the file on screen, pending files of the iframe's current type go first, since a wearable ↔ emote switch reboots it.
-- **Zip budgets:** at most 500 entries, a shared inflate budget of about 259MB that aborts mid-entry, and per-type size caps (wearable 3MB, skin 8MB, emote 3MB, thumbnail 1MB). A single wrapping folder is stripped recursively, never `male/` or `female/`.
+- **Zip budgets:** at most 500 entries, a shared inflate budget of about 259MB that aborts mid-entry, and per-type size caps (wearable 3MB, skin 9MB, emote 3MB, thumbnail 1MB). A single wrapping folder is stripped recursively, never `male/` or `female/`.
 - **Social emotes (an `Armature_Other` armature) are rejected at import** (PR #116): unreleased and unsupported platform-wide. Support is a low-priority follow-up; never point the copy at the legacy Builder as a workaround.
 - **Legacy `replaces` is folded into `hides`** on load, and `overrideHides` / `overrideReplaces` on every representation mirror `hides` / `replaces` (zip manifests included).
 - **Cut on purpose (v1):** the "Allow to promote in events?" toggle (no schema field yet), description and utility fields at import (the editor has them), spring-bone seeding from zips.
@@ -99,6 +99,7 @@ Rules for this file:
 - **Results for saved items are cached in IndexedDB** (`idb-keyval`), keyed by content hashes plus type, category, hides, loop and body shapes, and cleared whenever the cache revision or validator version changes. Failed runs are never persisted. The editor, the collection page, the publish modal and the curators' badge share it.
 - **Validation is desktop-only.** Nothing runs at or below 900px on the collection page or at 768px in the editor; widening the window starts it.
 - **The publish gate is a flag** (`block-publish-on-validation-errors`, builder): on, a finished result with errors disables PUBLISH and Publish changes; off, the creator sees the issues and may continue anyway. Warnings never block.
+- **Item size is counted the catalyst's way** (every distinct content hash once, thumbnail and rarity image included, preview video excluded; 3MB for wearables and emotes, 9MB for skins) and an oversized item always blocks, whatever the flag says: while one remains the issues view offers no Continue, so its other errors block too. An item whose size could not be measured gets a warning, not a block. The publish and Publish changes pre-step refuses it; a save is checked only when it changes the item's files or moves its limit (a category to or from skin), so an oversized item's details can still be edited. The editor shows the stored size and leaves the exact count to the save; a new thumbnail saves as soon as it is confirmed, like a file change, so no file waits unsaved behind that size.
 - **Curators get a collection validation badge** only while the collection is To review or Under review, over the items with pending changes (PR #119). It never blocks an action.
 
 ## Publish collection
@@ -180,7 +181,7 @@ Rules for this file:
 - **The contract check probes ERC-721 and ERC-1155 interface ids** through ERC-165; legacy probed the ERC-165 id itself, which was a bug.
 - **Review threshold:** every item under 50, else max(50, 1%) capped at 300; Approve is blocked until it is reached. Approve on chain only when the Merkle root changed.
 
-## Overview (creator home) and pre-launch gate
+## Overview (creator home)
 
 - **The overview moved here from the sites repo** and is served by path at `decentraland.org/create`; `/overview` survives as a redirect. The router `basename` is `/create` whenever the page URL starts with it and `/` otherwise, so one build serves local dev, Vercel previews and the CDN.
 - **Its events go to sites' Segment source**, not this app's, with the `Section Viewed` and `Click` names kept, so sites' dashboards keep working. Everything else in the app reports to the Builder source.
@@ -188,8 +189,6 @@ Rules for this file:
 - **Poster first, no video on phones** (PR #117): the landscape poster paints first and the video mounts after load and idle on desktop only; phones, reduced motion and Save-Data keep the poster.
 - **Feed failures are reported only for non-2xx responses**, once, through react-query's cache-level reporter; a request that never got a response (offline, ad blocker, timeout) is not, as sites swallowed every feed failure.
 - **Lighthouse targets on `.org`:** performance ≥ 0.85 mobile and desktop, CLS < 0.1, SEO ≥ 0.92. `.zone` is served `noindex` and Vercel previews sit behind auth, so neither can be scored; compare `main` and the branch served locally.
-- **The pre-launch gate fails open.** `builder-creators-prelaunch` on means curtained: only the flag's address-list variant gets the full app, everyone else gets the overview alone and every other route redirects to `/`. Off, absent or unreachable means launched, so a flag outage on launch day never curtains the site. Which deployments are gated is decided only in the flag dashboard; there is no hostname check. It is a curtain, not a lock: the bundle is static and builder-server is public.
-- **The overview never waits for the gate**: it renders at once without the sub-nav, which slides in when the flag answers (an accepted shift). Other routes show the spinner until the flag and the wallet restore have answered.
 
 ## Blender live preview
 

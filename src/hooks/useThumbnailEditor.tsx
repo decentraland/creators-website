@@ -30,7 +30,8 @@ function isTextureOnlySubject(subject: ThumbnailSubject): boolean {
 
 /**
  * The one way to change an item's thumbnail: `edit(subject)` opens the file picker for texture-only
- * wearables and the posing modal for everything else; render `modal` once. `onSave` reports its own errors.
+ * wearables and the posing modal for everything else; render `modal` once. A rejected `onSave` keeps the modal open
+ * with its error (a toast for a picked texture).
  */
 export function useThumbnailEditor(
   onSave: (patch: ThumbnailPatch, subject: ThumbnailSubject) => void | Promise<void>
@@ -56,7 +57,12 @@ export function useThumbnailEditor(
       showToast(t(key, params), { type: 'error' })
       return
     }
-    await onSaveRef.current(patch, subject)
+    try {
+      await onSaveRef.current(patch, subject)
+    } catch (error) {
+      const { key, params } = getThumbnailErrorMessage(error)
+      showToast(t(key, params), { type: 'error' })
+    }
   }
 
   function edit(subject: ThumbnailSubject) {
@@ -70,9 +76,9 @@ export function useThumbnailEditor(
       contents={open.kind === 'files' ? open.contents : (itemContents.data ?? null)}
       loadError={open.kind === 'item' && itemContents.isError}
       onClose={() => setOpen(null)}
-      onSave={patch => {
-        // The modal stays in its saving state until the caller's save settles.
-        void Promise.resolve(onSaveRef.current(patch, open)).finally(() => setOpen(null))
+      onSave={async patch => {
+        await onSaveRef.current(patch, open)
+        setOpen(null)
       }}
     />
   )
