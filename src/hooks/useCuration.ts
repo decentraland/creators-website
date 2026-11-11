@@ -206,9 +206,10 @@ export function usePushCuration(address: string | undefined) {
         captureError(error, { flow: 'curation_push', collectionId: collection.id })
         return
       }
-      // The answer says the review moved on (a run started, the day's runs were spent): show it.
+      // The answer says the review moved on (a run started, the day's runs spent) or will (busy): reread it.
       void queryClient.invalidateQueries({ queryKey: collectionEventsKey(address, collection.id) })
       void queryClient.invalidateQueries({ queryKey: collectionCurationKey(address, collection.id) })
+      void queryClient.invalidateQueries({ queryKey: ['curations', address] })
     }
   })
 }

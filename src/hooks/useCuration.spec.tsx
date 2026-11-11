@@ -35,8 +35,14 @@ const auth = vi.hoisted(() => ({
 }))
 vi.mock('~/lib/auth', () => auth)
 
-const { collectionEventsKey, useAssignCurator, useDisableCollection, usePushCuration, useRejectCuration } =
-  await import('./useCuration')
+const {
+  collectionCurationKey,
+  collectionEventsKey,
+  useAssignCurator,
+  useDisableCollection,
+  usePushCuration,
+  useRejectCuration
+} = await import('./useCuration')
 const { captureError } = await import('~/lib/monitoring')
 const { BuilderServerError, ValidationLimitError } = await import('~/lib/builder')
 
@@ -161,7 +167,9 @@ describe('usePushCuration', () => {
   it('rereads the review timeline when the push is refused because a review is running', async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
     const eventsKey = collectionEventsKey(ADDRESS, collection.id)
+    const curationKey = collectionCurationKey(ADDRESS, collection.id)
     client.setQueryData(eventsKey, { pages: [], pageParams: [] })
+    client.setQueryData(curationKey, pending)
     api.pushCollectionCuration.mockRejectedValueOnce(
       new BuilderServerError('A validation is already in progress for this collection', 409)
     )
@@ -174,6 +182,23 @@ describe('usePushCuration', () => {
     await act(() => result.current.mutateAsync(collection).catch(() => undefined))
 
     expect(client.getQueryState(eventsKey)?.isInvalidated).toBe(true)
+    expect(client.getQueryState(curationKey)?.isInvalidated).toBe(true)
+  })
+
+  it('leaves the review as it is when the push fails for another reason', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+    const eventsKey = collectionEventsKey(ADDRESS, collection.id)
+    client.setQueryData(eventsKey, { pages: [], pageParams: [] })
+    api.pushCollectionCuration.mockRejectedValueOnce(new BuilderServerError('Internal error', 500))
+    const { result } = renderHook(() => usePushCuration(ADDRESS), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      )
+    })
+
+    await act(() => result.current.mutateAsync(collection).catch(() => undefined))
+
+    expect(client.getQueryState(eventsKey)?.isInvalidated).toBe(false)
   })
 
   it("reports a failure, but not the answers the creator acts on: a running review, today's limit or a busy collection", async () => {
