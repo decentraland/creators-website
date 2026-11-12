@@ -5,15 +5,12 @@ import {
   ReportProblemOutlined as ErrorIcon
 } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
-import { type Item } from '~/lib/items'
-import { hasErrors as anyErrors, type ValidationIssue } from '~/lib/validation'
+import { hasErrors as anyErrors, type ItemCheck } from '~/lib/validation'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { ItemValidationCard, toValidationSubject } from '~/components/ValidationBadge'
 import { type ValidationFlow } from './ValidationGate'
 import * as S from './ValidationIssuesView.styles'
-
-export type ItemCheck = { item: Item; issues: ValidationIssue[] }
 
 type Props = {
   checks: ItemCheck[]

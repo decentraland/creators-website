@@ -13,6 +13,8 @@ import { useNotifications } from '~/lib/notifications'
 import { theme } from '~/styles/theme'
 import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
 import { JumpInIcon } from '~/components/Icons'
+import { CollectionActivityModal } from '~/components/CollectionActivityModal'
+import { type Item } from '~/lib/items'
 import { DeleteCollectionModal } from './DeleteCollectionModal'
 
 type Props = {
@@ -25,6 +27,10 @@ type Props = {
   label?: string
   /** Launches the collection in the desktop explorer; desktop-only, since phones would only reach the download page. */
   onPreviewInWorld?: () => void
+  /** The collection's items, so the activity timeline can name them in validator findings. */
+  items?: Item[]
+  /** The review timeline entry: published collections, for the people who can read it (roles and the committee). */
+  showActivity?: boolean
   /** Opens the Send Items flow; the header button covers this on desktop, so the item shows only when compact. */
   onSendItems?: () => void
   /** Opens the items in the editor; the header button covers this on desktop, so the item shows only when compact. */
@@ -53,6 +59,8 @@ export function CollectionActionsMenu({
   showRoles = true,
   label,
   onPreviewInWorld,
+  items,
+  showActivity = false,
   onSendItems,
   onPreviewItems,
   onCreateDiscount,
@@ -68,6 +76,7 @@ export function CollectionActionsMenu({
   const showToast = useNotifications(state => state.showToast)
   const deleteCollection = useDeleteCollection(address)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
+  const [isActivityOpen, setActivityOpen] = useState(false)
 
   // Small screens are mostly a viewer: copying and the role lists stay, deleting is desktop-only.
   const compact = useMediaQuery(theme.media.noActions)
@@ -192,6 +201,11 @@ export function CollectionActionsMenu({
                 <OpenInNewIcon aria-hidden />
               </ActionsMenuItem>
             )}
+            {showActivity && (
+              <ActionsMenuItem testId="collection-activity" onClick={() => setActivityOpen(true)}>
+                {t('collection_detail_page.actions.activity')}
+              </ActionsMenuItem>
+            )}
           </>
         )}
         {isOnChain && isOwner && showRoles && onManageRoles && (
@@ -220,6 +234,14 @@ export function CollectionActionsMenu({
         )}
       </ActionsMenu>
 
+      {isActivityOpen && (
+        <CollectionActivityModal
+          collection={collection}
+          address={address}
+          items={items}
+          onClose={() => setActivityOpen(false)}
+        />
+      )}
       {isDeleteOpen && (
         <DeleteCollectionModal
           name={collection.name}

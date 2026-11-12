@@ -4,6 +4,9 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClie
 import { errorCode, track } from '~/lib/analytics'
 import { sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
 import {
+  isCollectionBusy,
+  isValidationRunning,
+  ValidationLimitError,
   fetchCollection,
   fetchCollectionCuration,
   fetchCurationCollections,
@@ -16,6 +19,7 @@ import { buildSetApprovedCall } from '~/lib/collectionApproval'
 import { APPROVAL_INDEX_TIMEOUT_MS, waitForIndexer } from '~/lib/approveCollection'
 import { orderCurators, type CollectionCuration, type CurationFilters } from '~/lib/curation'
 import { shortenAddress } from '~/lib/address'
+import { type RejectReasonCode } from '~/lib/events'
 import { captureError } from '~/lib/monitoring'
 import { postAssignee } from '~/hooks/useForumPost'
 import { useCommittee } from '~/hooks/useCommittee'
@@ -50,6 +54,10 @@ export function useCuratorOptions(address: string | undefined, leading: CuratorO
 
 export function collectionCurationKey(address: string | undefined, collectionId: string | undefined) {
   return ['collection-curation', address, collectionId] as const
+}
+
+export function collectionEventsKey(address: string | undefined, collectionId: string | undefined) {
+  return ['collection-events', address, collectionId] as const
 }
 
 /** The collection's latest review request, `null` when it was never requested. */
@@ -88,6 +96,13 @@ export function useCurationCollections(address: string | undefined, filters: Cur
   })
 }
 
+/** Rereads a collection's review: its timeline, its request and the request list. */
+export function refreshReview(queryClient: QueryClient, address: string | undefined, collectionId: string) {
+  void queryClient.invalidateQueries({ queryKey: collectionEventsKey(address, collectionId) })
+  void queryClient.invalidateQueries({ queryKey: collectionCurationKey(address, collectionId) })
+  void queryClient.invalidateQueries({ queryKey: ['curations', address] })
+}
+
 /** Shows a collection's new latest curation everywhere it is read, without refetching. */
 export function storeCuration(queryClient: QueryClient, address: string | undefined, curation: CollectionCuration) {
   queryClient.setQueryData(collectionCurationKey(address, curation.collectionId), curation)
@@ -95,6 +110,7 @@ export function storeCuration(queryClient: QueryClient, address: string | undefi
     current ? [...current.filter(existing => existing.collectionId !== curation.collectionId), curation] : current
   )
   void queryClient.invalidateQueries({ queryKey: ['curation-collections'] })
+  void queryClient.invalidateQueries({ queryKey: collectionEventsKey(address, curation.collectionId) })
 }
 
 function useStoreCuration(address: string | undefined) {
@@ -131,7 +147,14 @@ export function useAssignCurator(address: string | undefined) {
   })
 }
 
-export type RejectVariables = { collection: Collection; curation: CollectionCuration | null }
+export type RejectDecision = { rejectionReasons: RejectReasonCode[]; rejectionMessage: string }
+
+export type RejectVariables = {
+  collection: Collection
+  curation: CollectionCuration | null
+  /** The reasons and message the creator reads; only sent where builder-server's auto-curation accepts them. */
+  decision?: RejectDecision
+}
 
 /**
  * Rejects the collection's review request. A collection nobody requested a review for has no request to
@@ -141,13 +164,22 @@ export function useRejectCuration(address: string | undefined) {
   const queryClient = useQueryClient()
   const store = useStoreCuration(address)
   return useMutation({
-    mutationFn: async ({ collection, curation }: RejectVariables) => {
+    mutationFn: async ({ collection, curation, decision }: RejectVariables) => {
       if (!address) throw new Error('Wallet disconnected')
-      const current = curation?.status === 'pending' ? curation : await pushCollectionCuration(address, collection.id)
-      return updateCollectionCuration(address, current.collectionId, { status: 'rejected' })
+      let current = curation
+      if (current?.status !== 'pending') {
+        current = await pushCollectionCuration(address, collection.id)
+        // Kept even if the PATCH below fails, so a retry patches this request instead of opening another.
+        store(current)
+      }
+      return updateCollectionCuration(address, current.collectionId, { status: 'rejected', ...decision })
     },
-    onSuccess: (curation, { collection, curation: previous }) => {
-      track('Reject curation', { collectionId: collection.id, first_review: !previous })
+    onSuccess: (curation, { collection, curation: previous, decision }) => {
+      track('Reject curation', {
+        collectionId: collection.id,
+        first_review: !previous,
+        reasons: decision?.rejectionReasons ?? []
+      })
       store(curation)
     },
     onError: (error, { collection }) => {
@@ -162,6 +194,7 @@ export function useRejectCuration(address: string | undefined) {
 
 /** The creator's "Publish changes": asks the committee to review the collection's changes again. */
 export function usePushCuration(address: string | undefined) {
+  const queryClient = useQueryClient()
   const store = useStoreCuration(address)
   return useMutation({
     mutationFn: (collection: Collection) => {
@@ -174,7 +207,14 @@ export function usePushCuration(address: string | undefined) {
     },
     onError: (error, collection) => {
       track('Push curation error', { collectionId: collection.id, error: errorCode(error) })
-      captureError(error, { flow: 'curation_push', collectionId: collection.id })
+      // A running review, the daily limit and a busy collection are answers the creator acts on, not failures.
+      const expected = error instanceof ValidationLimitError || isValidationRunning(error) || isCollectionBusy(error)
+      if (!expected) {
+        captureError(error, { flow: 'curation_push', collectionId: collection.id })
+        return
+      }
+      // The answer says the review moved on (a run started, the day's runs spent) or will (busy): reread it.
+      refreshReview(queryClient, address, collection.id)
     }
   })
 }

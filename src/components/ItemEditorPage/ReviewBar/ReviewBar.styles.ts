@@ -2,6 +2,8 @@ import styled from '@emotion/styled'
 import { Link } from 'react-router-dom'
 import { theme } from '~/styles/theme'
 
+const mobile = theme.media.maxWidth('mobile')
+
 export const ReviewBar = styled.div`
   display: flex;
   align-items: center;
@@ -77,6 +79,10 @@ export const AssigneeChip = styled.button`
   }
   &:disabled {
     cursor: default;
+  }
+
+  ${mobile} {
+    min-height: 44px;
   }
 `
 

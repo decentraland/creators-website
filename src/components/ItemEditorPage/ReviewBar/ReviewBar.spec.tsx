@@ -8,6 +8,7 @@ import { type Item } from '~/lib/items'
 import { openExternal } from '~/lib/navigation'
 import { ValidationSeverity, type ValidationIssue } from '~/lib/validation'
 import { type CollectionCuration } from '~/lib/curation'
+import { type CollectionEvent } from '~/lib/events'
 import { ItemSyncStatus } from '~/lib/itemSync'
 import { ReviewBar } from './ReviewBar'
 
@@ -16,6 +17,10 @@ const state = vi.hoisted(() => ({
   curationError: false,
   curationLoading: false,
   refetch: vi.fn(),
+  events: null as CollectionEvent[] | null,
+  eventsStatus: 'success',
+  autoCuration: true,
+  flagLoading: false,
   syncs: new Map<string, { status: string; entity?: object; lookupFailed?: true }>(),
   reject: vi.fn(),
   disable: vi.fn(),
@@ -24,7 +29,10 @@ const state = vi.hoisted(() => ({
   selectItem: vi.fn(),
   track: vi.fn()
 }))
-vi.mock('~/lib/navigation', () => ({ openExternal: vi.fn() }))
+vi.mock('~/lib/navigation', () => ({
+  openExternal: vi.fn(),
+  isWebUrl: (url?: string) => /^https?:\/\//.test(url ?? '')
+}))
 vi.mock('~/lib/analytics', () => ({ track: state.track }))
 vi.mock('~/hooks/useCuration', () => ({
   useCollectionCuration: () => ({
@@ -35,6 +43,17 @@ vi.mock('~/hooks/useCuration', () => ({
   }),
   useRejectCuration: () => ({ mutate: state.reject, isPending: false, isError: false, reset: vi.fn() }),
   useDisableCollection: () => ({ mutate: state.disable, isPending: false, isError: false, reset: vi.fn() })
+}))
+vi.mock('~/hooks/useCollectionEvents', () => ({
+  useCollectionEvents: () => ({
+    events: state.events,
+    isAvailable: state.events !== null,
+    isSuccess: state.eventsStatus === 'success',
+    isPending: state.eventsStatus === 'pending'
+  })
+}))
+vi.mock('~/hooks/useFeatureFlag', () => ({
+  useFeatureFlag: () => ({ enabled: state.autoCuration, isLoading: state.flagLoading })
 }))
 vi.mock('~/hooks/useItemSync', () => ({ useItemSyncs: () => state.syncs }))
 // Checks exactly the items it is handed, like the real hook, with canned results.
@@ -95,6 +114,10 @@ const actions = () => screen.queryAllByTestId(/^review-action-/).map(button => b
 
 beforeEach(() => {
   state.curation = null
+  state.events = null
+  state.eventsStatus = 'success'
+  state.autoCuration = true
+  state.flagLoading = false
   state.curationError = false
   state.curationLoading = false
   state.syncs = new Map()
@@ -149,7 +172,8 @@ describe('ReviewBar', () => {
     expect(screen.getByTestId('approval-flow')).toHaveAttribute('data-mode', 'enable')
   })
 
-  it('rejects after confirming', () => {
+  it('rejects with a plain confirmation while auto-curation is off, sending no reasons', () => {
+    state.autoCuration = false
     renderBar()
     fireEvent.click(screen.getByTestId('review-action-reject'))
     fireEvent.click(screen.getByTestId('assign-continue'))
@@ -174,6 +198,117 @@ describe('ReviewBar', () => {
     fireEvent.click(screen.getByTestId('assign-continue'))
     fireEvent.click(screen.getByTestId('review-reject-confirm'))
     expect(screen.queryByTestId('review-verdict')).not.toBeInTheDocument()
+  })
+
+  it('also keeps the plain confirmation when the server has no timeline, whatever the flag says', () => {
+    state.events = null
+    renderBar()
+    fireEvent.click(screen.getByTestId('review-action-reject'))
+    fireEvent.click(screen.getByTestId('assign-continue'))
+    expect(screen.getByTestId('review-reject-confirm')).toBeInTheDocument()
+    expect(screen.queryByTestId('reject-curation-confirm')).toBeNull()
+  })
+
+  it('waits for the timeline before letting the curator reject, so a rejection never skips its reasons', () => {
+    state.eventsStatus = 'pending'
+    renderBar()
+    expect(screen.getByTestId('review-action-reject')).toBeDisabled()
+  })
+
+  it('waits for the flag too before letting the curator reject', () => {
+    state.autoCuration = false
+    state.flagLoading = true
+    renderBar()
+    expect(screen.getByTestId('review-action-reject')).toBeDisabled()
+  })
+
+  it('still asks for reasons when the timeline failed to load: only a server without one refuses them', () => {
+    state.eventsStatus = 'error'
+    renderBar()
+    fireEvent.click(screen.getByTestId('review-action-reject'))
+    fireEvent.click(screen.getByTestId('assign-continue'))
+    expect(screen.getByTestId('reject-curation-confirm')).toBeInTheDocument()
+  })
+
+  it('rejects only with at least one reason and a message, and sends both', () => {
+    state.events = []
+    renderBar()
+    fireEvent.click(screen.getByTestId('review-action-reject'))
+    fireEvent.click(screen.getByTestId('assign-continue'))
+    const confirm = screen.getByTestId('reject-curation-confirm')
+    expect(confirm).toBeDisabled()
+    fireEvent.click(screen.getByTestId('reject-reason-clipping'))
+    expect(confirm).toBeDisabled()
+    fireEvent.change(screen.getByTestId('rejection-message'), { target: { value: '  Clips through the torso ' } })
+    expect(confirm).toBeEnabled()
+    fireEvent.click(confirm)
+    expect(state.reject).toHaveBeenCalledWith(
+      {
+        collection: base,
+        curation: null,
+        decision: { rejectionReasons: ['clipping'], rejectionMessage: 'Clips through the torso' }
+      },
+      expect.anything()
+    )
+  })
+
+  it('also points the curator to the forum post after rejecting with reasons', () => {
+    state.events = []
+    state.reject.mockImplementation((_vars: unknown, options: { onSuccess: () => void }) => options.onSuccess())
+    renderBar({ ...base, forumLink: 'https://forum.decentraland.org/t/hats/77' })
+    fireEvent.click(screen.getByTestId('review-action-reject'))
+    fireEvent.click(screen.getByTestId('assign-continue'))
+    fireEvent.click(screen.getByTestId('reject-reason-clipping'))
+    fireEvent.change(screen.getByTestId('rejection-message'), { target: { value: 'Clips through the torso' } })
+    fireEvent.click(screen.getByTestId('reject-curation-confirm'))
+    fireEvent.click(screen.getByTestId('review-verdict-forum-link'))
+    expect(openExternal).toHaveBeenCalledWith('https://forum.decentraland.org/t/hats/77')
+  })
+
+  it('shows the derived stage and opens the AI verdict with its findings', () => {
+    state.curation = {
+      id: 'r1',
+      collectionId: 'c1',
+      status: 'pending',
+      assignee: null,
+      reviewedBy: null,
+      rejectionReasons: null,
+      rejectionMessage: null,
+      createdAt: 1,
+      updatedAt: 1
+    }
+    state.events = [
+      {
+        id: 'e1',
+        collectionId: 'c1',
+        type: 'review.ai_passed',
+        actor: 'validator',
+        actorAddress: null,
+        createdAt: Date.now(),
+        payload: {
+          validationId: 'val-1',
+          verdict: 'passed',
+          items: [
+            {
+              itemId: 'i1',
+              contentHash: 'h',
+              passed: true,
+              findings: [{ rule: 'M-04', severity: 'warning', message: 'Large texture', measured: 2048, limit: 1024 }],
+              visualSummary: 'Looks fine on both shapes.'
+            },
+            { itemId: 'i2', contentHash: 'h2', passed: null, findings: [] }
+          ]
+        }
+      }
+    ]
+    renderBar()
+    expect(screen.getByTestId('review-stage')).toHaveAttribute('data-stage', 'awaiting_curator')
+    fireEvent.click(screen.getByTestId('review-ai-verdict'))
+    expect(screen.getByTestId('ai-verdict-headline')).toHaveAttribute('data-passed', 'true')
+    expect(screen.getByTestId('ai-verdict-validation-id')).toHaveTextContent('val-1')
+    expect(screen.getByTestId('ai-verdict-modal')).toHaveTextContent('Every item passed')
+    expect(screen.getByTestId('ai-verdict-items-i1-finding')).toHaveTextContent('M-04')
+    expect(screen.getByTestId('ai-verdict-items-visual-summary')).toHaveTextContent('Looks fine')
   })
 
   it('disables an approved collection after confirming, and offers the missing entities deploy', () => {

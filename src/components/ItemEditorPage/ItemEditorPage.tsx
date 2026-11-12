@@ -23,6 +23,8 @@ import {
 } from '~/hooks/useCollection'
 import { useCommittee } from '~/hooks/useCommittee'
 import { useCollectionCuration } from '~/hooks/useCuration'
+import { useFeatureFlag } from '~/hooks/useFeatureFlag'
+import { FeatureFlag } from '~/lib/featureFlags'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { track } from '~/lib/analytics'
 import { modelValidationKey, useModelValidation } from '~/hooks/useModelValidation'
@@ -46,7 +48,9 @@ import {
   type Collection
 } from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
-import { getCurationState, curationListUrl } from '~/lib/curation'
+import { ReviewStage, getCurationState, getReviewStage, curationListUrl } from '~/lib/curation'
+import { useCollectionEvents } from '~/hooks/useCollectionEvents'
+import { getAiIssuesByItem } from '~/lib/events'
 import { toFileChangeSaveable, toPreviewItem, toSaveableItem, type ItemFileChange } from '~/lib/itemDraft'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
 import { pickFiles } from '~/lib/filePicker'
@@ -154,7 +158,22 @@ const ItemEditorPage = () => {
   const collection = collectionQuery.data
   // Linked collections have no owner: their third party's managers are who works on them.
   const hasRole = !!collection && (isLinked ? isManager : hasCollectionRole(collection, address))
-  const mobileCuration = useCollectionCuration(mode === 'review' ? address : undefined, collection)
+  // The automatic review locks the items it judges and dresses them with its findings.
+  const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION).enabled
+  const reviewCuration = useCollectionCuration(
+    mode === 'review' || (canReadCuration && autoCuration) ? address : undefined,
+    collection
+  )
+  const { events: reviewEvents } = useCollectionEvents(canReadCuration ? address : undefined, collection)
+  const reviewStage = useMemo(
+    () => (collection ? getReviewStage(collection, reviewCuration.data ?? null, reviewEvents) : null),
+    [collection, reviewCuration.data, reviewEvents]
+  )
+  const reviewLocked = reviewStage === ReviewStage.AI_REVIEWING
+  const aiIssues = useMemo(
+    () => getAiIssuesByItem(reviewEvents ?? [], itemsQuery.data ?? EMPTY_ITEMS),
+    [reviewEvents, itemsQuery.data]
+  )
   const items = itemsQuery.data ?? EMPTY_ITEMS
   // A linked collection under review: the sidebar sets apart the items this review is about.
   const pendingLinked = usePendingLinkedItems(address, mode === 'review' && isLinked ? collection : undefined)
@@ -256,13 +275,11 @@ const ItemEditorPage = () => {
       thumbnail: storedThumbnail ? getContentsStorageUrl(storedThumbnail) : null
     }
   }, [previewSelected])
-  const validationIssues = useMemo(
-    () =>
-      validation.data || thumbnailValidation.data
-        ? [...(validation.data?.issues ?? []), ...(thumbnailValidation.data?.issues ?? [])]
-        : undefined,
-    [validation.data, thumbnailValidation.data]
-  )
+  const validationIssues = useMemo(() => {
+    const ai = selectedId ? aiIssues.get(selectedId) : undefined
+    if (!validation.data && !thumbnailValidation.data && !ai) return undefined
+    return [...(validation.data?.issues ?? []), ...(thumbnailValidation.data?.issues ?? []), ...(ai ?? [])]
+  }, [validation.data, thumbnailValidation.data, aiIssues, selectedId])
   const validationStatus = useMemo(
     () => getValidationStatus(validationIssues, validation.isLoading || thumbnailValidation.isLoading),
     [validationIssues, validation.isLoading, thumbnailValidation.isLoading]
@@ -391,6 +408,7 @@ const ItemEditorPage = () => {
     !!collection &&
     !!selected &&
     !!address &&
+    !reviewLocked &&
     (isLinked ? isManager && !isCollectionLocked(collection) : canEditItemDetails(collection, selected, address))
   const canDelete =
     editable &&
@@ -739,7 +757,9 @@ const ItemEditorPage = () => {
         address={address}
         editable={editable}
         showReadOnlyNote={mode !== 'review'}
-        readOnlyReason={isCollectionLocked(collection) ? 'lock' : isLinked ? 'linked' : 'role'}
+        readOnlyReason={
+          isCollectionLocked(collection) ? 'lock' : reviewLocked ? 'reviewing' : isLinked ? 'linked' : 'role'
+        }
         canDelete={canDelete}
         canDownload={canManageCollectionItems(collection, address) || isManager || isCurator}
         draft={form.draft}
@@ -792,9 +812,9 @@ const ItemEditorPage = () => {
         {collection.name}
       </S.MobileCollectionName>
       {mode === 'review'
-        ? !mobileCuration.isLoading &&
-          !mobileCuration.isError && (
-            <CurationStatePill state={getCurationState(collection, mobileCuration.data ?? null)} />
+        ? !reviewCuration.isLoading &&
+          !reviewCuration.isError && (
+            <CurationStatePill state={getCurationState(collection, reviewCuration.data ?? null)} />
           )
         : collectionStatus && <CollectionStatusPill collection={collection} status={collectionStatus} />}
     </S.MobileEditorHeader>

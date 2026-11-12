@@ -13,12 +13,20 @@ const api = vi.hoisted(() => ({
   updateCollectionCuration: vi.fn(),
   createCurationForumReply: vi.fn()
 }))
-vi.mock('~/lib/builder', () => ({
-  ...api,
-  fetchCollectionCuration: vi.fn(),
-  fetchCurationCollections: vi.fn(),
-  fetchCurations: vi.fn()
-}))
+vi.mock('~/lib/builder', async importOriginal => {
+  const actual = await importOriginal<typeof import('~/lib/builder')>()
+  return {
+    ...api,
+    BuilderServerError: actual.BuilderServerError,
+    ValidationLimitError: actual.ValidationLimitError,
+    isCollectionBusy: actual.isCollectionBusy,
+    isReviewConflict: actual.isReviewConflict,
+    isValidationRunning: actual.isValidationRunning,
+    fetchCollectionCuration: vi.fn(),
+    fetchCurationCollections: vi.fn(),
+    fetchCurations: vi.fn()
+  }
+})
 vi.mock('~/lib/analytics', () => ({ track: vi.fn(), errorCode: () => 'unknown' }))
 vi.mock('~/lib/monitoring', () => ({ captureError: vi.fn() }))
 const auth = vi.hoisted(() => ({
@@ -27,8 +35,16 @@ const auth = vi.hoisted(() => ({
 }))
 vi.mock('~/lib/auth', () => auth)
 
-const { useAssignCurator, useDisableCollection, useRejectCuration } = await import('./useCuration')
+const {
+  collectionCurationKey,
+  collectionEventsKey,
+  useAssignCurator,
+  useDisableCollection,
+  usePushCuration,
+  useRejectCuration
+} = await import('./useCuration')
 const { captureError } = await import('~/lib/monitoring')
+const { BuilderServerError, ValidationLimitError } = await import('~/lib/builder')
 
 const ADDRESS = '0xCurator'
 const collection = { id: 'c1', name: 'Hats', isPublished: true } as Collection
@@ -37,6 +53,9 @@ const pending: CollectionCuration = {
   collectionId: 'c1',
   status: 'pending',
   assignee: null,
+  reviewedBy: null,
+  rejectionReasons: null,
+  rejectionMessage: null,
   createdAt: 1,
   updatedAt: 1
 }
@@ -54,19 +73,39 @@ beforeEach(() => {
   )
 })
 
+const decision = { rejectionReasons: ['clipping' as const], rejectionMessage: 'Clips through the torso' }
+const withDecision = { decision }
+
 describe('useRejectCuration', () => {
-  it('rejects the pending request', async () => {
+  it('rejects the pending request with the reasons and message the creator will read', async () => {
+    const { result } = renderHook(() => useRejectCuration(ADDRESS), { wrapper })
+    await act(() => result.current.mutateAsync({ collection, curation: pending, ...withDecision }))
+    expect(api.pushCollectionCuration).not.toHaveBeenCalled()
+    expect(api.updateCollectionCuration).toHaveBeenCalledWith(ADDRESS, 'c1', { status: 'rejected', ...decision })
+  })
+
+  it('sends only the status when there is no decision to attach (auto-curation off)', async () => {
     const { result } = renderHook(() => useRejectCuration(ADDRESS), { wrapper })
     await act(() => result.current.mutateAsync({ collection, curation: pending }))
-    expect(api.pushCollectionCuration).not.toHaveBeenCalled()
     expect(api.updateCollectionCuration).toHaveBeenCalledWith(ADDRESS, 'c1', { status: 'rejected' })
   })
 
   it('opens a request first when nobody asked for a review, so the rejection reaches the creator', async () => {
     const { result } = renderHook(() => useRejectCuration(ADDRESS), { wrapper })
-    const rejected = await act(() => result.current.mutateAsync({ collection, curation: null }))
+    const rejected = await act(() => result.current.mutateAsync({ collection, curation: null, ...withDecision }))
     expect(api.pushCollectionCuration).toHaveBeenCalledWith(ADDRESS, 'c1')
     expect(rejected.status).toBe('rejected')
+  })
+})
+
+describe('useRejectCuration after a half-success', () => {
+  it('patches the request it already opened instead of opening another', async () => {
+    api.updateCollectionCuration.mockRejectedValueOnce(new Error('down'))
+    const { result } = renderHook(() => useRejectCuration(ADDRESS), { wrapper })
+    await act(() => result.current.mutateAsync({ collection, curation: null, ...withDecision }).catch(() => undefined))
+    expect(api.pushCollectionCuration).toHaveBeenCalledTimes(1)
+    await act(() => result.current.mutateAsync({ collection, curation: pending, ...withDecision }))
+    expect(api.pushCollectionCuration).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -106,6 +145,83 @@ describe('useAssignCurator', () => {
     await act(() => result.current.mutateAsync({ collection: posted, curation: pending, assignee: null }))
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     await waitFor(() => expect(api.createCurationForumReply).toHaveBeenCalled())
+  })
+})
+
+describe('usePushCuration', () => {
+  it('rereads the review timeline once the changes are sent, so the review they started shows', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+    const eventsKey = collectionEventsKey(ADDRESS, collection.id)
+    client.setQueryData(eventsKey, { pages: [], pageParams: [] })
+    const { result } = renderHook(() => usePushCuration(ADDRESS), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      )
+    })
+
+    await act(() => result.current.mutateAsync(collection))
+
+    expect(client.getQueryState(eventsKey)?.isInvalidated).toBe(true)
+  })
+
+  it('rereads the review timeline when the push is refused because a review is running', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+    const eventsKey = collectionEventsKey(ADDRESS, collection.id)
+    const curationKey = collectionCurationKey(ADDRESS, collection.id)
+    client.setQueryData(eventsKey, { pages: [], pageParams: [] })
+    client.setQueryData(curationKey, pending)
+    api.pushCollectionCuration.mockRejectedValueOnce(
+      new BuilderServerError('A validation is already in progress for this collection', 409)
+    )
+    const { result } = renderHook(() => usePushCuration(ADDRESS), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      )
+    })
+
+    await act(() => result.current.mutateAsync(collection).catch(() => undefined))
+
+    expect(client.getQueryState(eventsKey)?.isInvalidated).toBe(true)
+    expect(client.getQueryState(curationKey)?.isInvalidated).toBe(true)
+  })
+
+  it('leaves the review as it is when the push fails for another reason', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+    const eventsKey = collectionEventsKey(ADDRESS, collection.id)
+    client.setQueryData(eventsKey, { pages: [], pageParams: [] })
+    api.pushCollectionCuration.mockRejectedValueOnce(new BuilderServerError('Internal error', 500))
+    const { result } = renderHook(() => usePushCuration(ADDRESS), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      )
+    })
+
+    await act(() => result.current.mutateAsync(collection).catch(() => undefined))
+
+    expect(client.getQueryState(eventsKey)?.isInvalidated).toBe(false)
+  })
+
+  it("reports a failure, but not the answers the creator acts on: a running review, today's limit or a busy collection", async () => {
+    vi.mocked(captureError).mockClear()
+    const { result } = renderHook(() => usePushCuration(ADDRESS), { wrapper })
+
+    api.pushCollectionCuration.mockRejectedValueOnce(
+      new ValidationLimitError(new BuilderServerError('Daily limit', 429))
+    )
+    await act(() => result.current.mutateAsync(collection).catch(() => undefined))
+    api.pushCollectionCuration.mockRejectedValueOnce(
+      new BuilderServerError('A validation is already in progress for this collection', 409)
+    )
+    await act(() => result.current.mutateAsync(collection).catch(() => undefined))
+    api.pushCollectionCuration.mockRejectedValueOnce(
+      new BuilderServerError('The collection is being updated, try again in a moment', 503)
+    )
+    await act(() => result.current.mutateAsync(collection).catch(() => undefined))
+    expect(captureError).not.toHaveBeenCalled()
+
+    api.pushCollectionCuration.mockRejectedValueOnce(new BuilderServerError('Internal error', 500))
+    await act(() => result.current.mutateAsync(collection).catch(() => undefined))
+    expect(captureError).toHaveBeenCalledTimes(1)
   })
 })
 
