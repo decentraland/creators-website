@@ -8,7 +8,9 @@ import { formatLongDate } from '~/lib/time'
 import { useLocale } from '~/store/locale'
 import { AnimatedSection } from '../AnimatedSection'
 import { highlight } from '../highlight'
-import * as S from './FromTheBlog.styles'
+import { cx } from '~/lib/cx'
+import overview from '../OverviewPage.module.css'
+import styles from './FromTheBlog.module.css'
 
 const FromTheBlog = () => {
   const { t, rich } = useTranslation()
@@ -20,11 +22,12 @@ const FromTheBlog = () => {
 
   return (
     <AnimatedSection section={OverviewSection.BLOG}>
-      <S.Section data-testid="overview-blog">
-        <S.Title>{rich('overview.blog.title', highlight)}</S.Title>
-        <S.Posts>
+      <section className={styles.section} data-testid="overview-blog">
+        <h2 className={cx(overview.sectionTitle, styles.title)}>{rich('overview.blog.title', highlight)}</h2>
+        <div className={styles.posts}>
           {posts.map(post => (
-            <S.PostCard
+            <a
+              className={styles.postCard}
               key={post.id}
               href={post.url}
               data-testid="overview-blog-card"
@@ -32,21 +35,22 @@ const FromTheBlog = () => {
               data-title={post.title}
               onClick={trackClick}
             >
-              <S.PostImage>
+              <div className={styles.postImage}>
                 {post.imageUrl && <img src={contentfulImage(post.imageUrl, { width: 380 })} alt="" loading="lazy" />}
-              </S.PostImage>
-              <S.PostInfo>
-                <S.PostMeta>
-                  {post.categoryTitle && <S.PostCategory>{post.categoryTitle}</S.PostCategory>}
-                  <S.PostDate>{formatLongDate(post.publishedDate, locale)}</S.PostDate>
-                </S.PostMeta>
-                <S.PostTitle>{post.title}</S.PostTitle>
-              </S.PostInfo>
-            </S.PostCard>
+              </div>
+              <div className={styles.postInfo}>
+                <div className={styles.postMeta}>
+                  {post.categoryTitle && <span className={styles.postCategory}>{post.categoryTitle}</span>}
+                  <span className={styles.postDate}>{formatLongDate(post.publishedDate, locale)}</span>
+                </div>
+                <h3 className={styles.postTitle}>{post.title}</h3>
+              </div>
+            </a>
           ))}
-        </S.Posts>
-        <S.Centered>
-          <S.ViewAllLink
+        </div>
+        <div className={overview.centered}>
+          <a
+            className={overview.viewAllLink}
             href={blogUrl()}
             data-testid="overview-blog-all"
             data-place={OverviewSection.BLOG}
@@ -55,9 +59,9 @@ const FromTheBlog = () => {
           >
             {t('overview.blog.view_all')}
             <ChevronRightIcon />
-          </S.ViewAllLink>
-        </S.Centered>
-      </S.Section>
+          </a>
+        </div>
+      </section>
     </AnimatedSection>
   )
 }

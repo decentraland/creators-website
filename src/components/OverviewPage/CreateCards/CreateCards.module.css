@@ -1,15 +1,4 @@
-import styled from '@emotion/styled'
-import { theme } from '~/styles/theme'
-import { SectionTitle, hitArea } from '../OverviewPage.styles'
-
-const { colors, font, media, radius } = theme
-
-const tablet = media.maxWidth('tablet')
-const laptop = media.maxWidth('laptop')
-const desktop = media.maxWidth('desktop')
-const mobile = media.maxWidth('mobile')
-
-export const Section = styled.section`
+.section {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -17,40 +6,40 @@ export const Section = styled.section`
   width: 100%;
   margin: 40px 0;
 
-  ${tablet} {
+  @media (max-width: 991px) {
     padding: 0 32px;
     overflow: hidden;
   }
-`
+}
 
-export const Title = styled(SectionTitle)`
+.title {
   margin-bottom: 32px;
-`
+}
 
-export const Card = styled.div`
+.card {
   display: flex;
   align-items: center;
   width: 100%;
   height: 100%;
   padding: 32px;
-  border-radius: ${radius.banner};
-  background: ${colors.text2};
-  color: ${colors.white};
+  border-radius: var(--radius-banner);
+  background: var(--color-text2);
+  color: var(--color-white);
 
-  ${laptop} {
+  @media (max-width: 1024px) {
     flex-direction: column;
     height: auto;
     padding: 0;
   }
-`
+}
 
-export const Figure = styled.div`
+.figure {
   flex-shrink: 0;
   width: 35%;
   height: 100%;
   min-height: 530px;
   margin-right: 24px;
-  border-radius: ${radius.cardLg};
+  border-radius: var(--radius-card-lg);
   background-repeat: no-repeat;
   background-position: center;
   background-size: cover;
@@ -68,13 +57,13 @@ export const Figure = styled.div`
     }
   }
 
-  ${laptop} {
+  @media (max-width: 1024px) {
     position: relative;
     width: 100%;
     height: 223px;
     min-height: 223px;
     margin-right: 0;
-    border-radius: ${radius.banner} ${radius.banner} 0 0;
+    border-radius: var(--radius-banner) var(--radius-banner) 0 0;
     background-size: 100%;
     overflow: hidden;
 
@@ -87,167 +76,173 @@ export const Figure = styled.div`
       transform: translate(-50%, -50%);
     }
   }
-`
+}
 
-export const Info = styled.div`
+.info {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   width: calc(65% - 24px);
 
-  ${laptop} {
+  @media (max-width: 1024px) {
     width: calc(100% - 16px);
     margin: 0 8px 8px;
     padding: 32px 0;
   }
-`
+}
 
-export const CardTitle = styled.h3`
+.cardTitle {
   margin: 0 0 8px;
   font-size: 24px;
   font-weight: 600;
   line-height: 30px;
-  letter-spacing: ${font.tracking};
+  letter-spacing: var(--font-tracking);
 
-  ${desktop} {
+  @media (max-width: 1280px) {
     font-size: 20px;
     line-height: 16px;
   }
-`
+}
 
-export const CardDescription = styled.p`
+.cardDescription {
   margin: 0 0 16px;
   font-size: 18px;
   font-weight: 400;
   line-height: 24px;
-  letter-spacing: ${font.tracking};
-  color: ${colors.muted2};
+  letter-spacing: var(--font-tracking);
+  color: var(--color-muted2);
 
-  ${desktop} {
+  @media (max-width: 1280px) {
     font-size: 16px;
   }
-`
+}
 
-export const Tabs = styled.div`
+.tabs {
   display: flex;
   height: 24px;
   margin-bottom: 24px;
 
-  ${tablet} {
+  @media (max-width: 991px) {
     justify-content: center;
   }
-`
+}
 
-export const Tab = styled.button`
+.tab {
   margin-right: 24px;
   padding: 0 0 8px;
   border: 0;
   border-bottom: 2px solid transparent;
   background: none;
-  color: ${colors.muted};
+  color: var(--color-muted);
   font-size: 14px;
   font-weight: 500;
   line-height: 16px;
   text-transform: uppercase;
   cursor: pointer;
-  ${hitArea(10)}
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -10px 0;
+  }
 
   &[data-selected] {
-    border-bottom-color: ${colors.white};
-    color: ${colors.white};
+    border-bottom-color: var(--color-white);
+    color: var(--color-white);
     font-weight: 600;
   }
   &:focus-visible {
-    outline: 2px solid ${colors.softWhite};
+    outline: 2px solid var(--color-soft-white);
     outline-offset: 2px;
   }
 
-  ${tablet} {
+  @media (max-width: 991px) {
     margin-right: 16px;
     padding: 8px 0 0;
     font-size: 16px;
   }
-`
+}
 
-export const TabPanel = styled.div`
+.tabPanel {
   display: flex;
   flex-direction: column;
-`
+}
 
-export const InfoBlock = styled.div`
+.infoBlock {
   margin-bottom: 8px;
   padding: 16px 24px;
-  border-radius: ${radius.cardLg};
-  background: ${colors.gray0Half};
+  border-radius: var(--radius-card-lg);
+  background: var(--color-gray0-half);
 
   &:last-child {
     margin-bottom: 0;
   }
-`
+}
 
-export const InfoTitle = styled.h4`
+.infoTitle {
   margin: 0 0 12px;
   font-size: 18px;
   font-weight: 500;
   line-height: 20px;
-  letter-spacing: ${font.tracking};
-`
+  letter-spacing: var(--font-tracking);
+}
 
-export const InfoBody = styled.p`
+.infoBody {
   margin: 0;
   font-size: 18px;
   font-weight: 400;
   line-height: 24px;
-  letter-spacing: ${font.tracking};
-  color: ${colors.gray4};
-`
+  letter-spacing: var(--font-tracking);
+  color: var(--color-gray4);
+}
 
-export const Skills = styled.div`
+.skills {
   display: flex;
   flex-wrap: wrap;
-`
+}
 
-export const Skill = styled.span`
+.skill {
   margin: 0 8px 8px 0;
   padding: 8px 16px;
-  border-radius: ${radius.cardLg};
-  background: ${colors.gray0};
+  border-radius: var(--radius-card-lg);
+  background: var(--color-gray0);
   font-size: 13px;
   font-weight: 600;
   line-height: normal;
   text-transform: uppercase;
-`
+}
 
-export const Links = styled.div`
+.links {
   display: flex;
   flex-wrap: wrap;
 
-  ${laptop} {
+  @media (max-width: 1024px) {
     flex-direction: column;
   }
-`
+}
 
-export const Link = styled.a`
+.link {
   display: block;
   width: 50%;
 
-  ${mobile} {
+  @media (max-width: 768px) {
     width: 100%;
   }
   margin-bottom: 8px;
   font-size: 16px;
   font-weight: 500;
   line-height: 24px;
-  color: ${colors.apricot};
+  color: var(--color-apricot);
   text-decoration: underline;
 
   &:hover,
   &:active,
   &:visited {
-    color: ${colors.apricot};
+    color: var(--color-apricot);
   }
   &:focus-visible {
-    outline: 2px solid ${colors.softWhite};
+    outline: 2px solid var(--color-soft-white);
     outline-offset: 2px;
   }
-`
+}

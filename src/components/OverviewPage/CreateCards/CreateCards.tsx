@@ -7,7 +7,9 @@ import { AnimatedSection } from '../AnimatedSection'
 import { Carousel } from '../Carousel'
 import { createCards, type CreateCard as CreateCardData, type CreateTab } from '../data'
 import { highlight, plainText } from '../highlight'
-import * as S from './CreateCards.styles'
+import { cx } from '~/lib/cx'
+import overview from '../OverviewPage.module.css'
+import styles from './CreateCards.module.css'
 
 // Widest the figure renders: 35% of the 1200px slide on desktop, the full stacked card below `laptop`.
 const FIGURE_MAX_WIDTH = 520
@@ -24,26 +26,34 @@ const TabContent = ({ card, tab, slide }: TabContentProps) => {
   const prefix = `overview.create.cards.${card.id}.tabs.${tab.id}`
 
   return (
-    <S.TabPanel role="tabpanel" id={panelId(card, tab, slide)} data-testid="overview-create-tab-panel">
-      <S.InfoBlock>
-        <S.InfoTitle>{t(`${prefix}.heading`)}</S.InfoTitle>
-        <S.InfoBody>{t(`${prefix}.body`)}</S.InfoBody>
-      </S.InfoBlock>
-      <S.InfoBlock>
-        <S.InfoTitle>{t('overview.create.required_skills')}</S.InfoTitle>
-        <S.Skills>
+    <div
+      className={styles.tabPanel}
+      role="tabpanel"
+      id={panelId(card, tab, slide)}
+      data-testid="overview-create-tab-panel"
+    >
+      <div className={styles.infoBlock}>
+        <h4 className={styles.infoTitle}>{t(`${prefix}.heading`)}</h4>
+        <p className={styles.infoBody}>{t(`${prefix}.body`)}</p>
+      </div>
+      <div className={styles.infoBlock}>
+        <h4 className={styles.infoTitle}>{t('overview.create.required_skills')}</h4>
+        <div className={styles.skills}>
           {tab.skills.map(skill => (
-            <S.Skill key={skill}>{t(`overview.create.skills.${skill}`)}</S.Skill>
+            <span className={styles.skill} key={skill}>
+              {t(`overview.create.skills.${skill}`)}
+            </span>
           ))}
-        </S.Skills>
-      </S.InfoBlock>
-      <S.InfoBlock>
-        <S.InfoTitle>{t('overview.create.useful_links')}</S.InfoTitle>
-        <S.Links>
+        </div>
+      </div>
+      <div className={styles.infoBlock}>
+        <h4 className={styles.infoTitle}>{t('overview.create.useful_links')}</h4>
+        <div className={styles.links}>
           {links.map(link => {
             const labelKey = `${prefix}.links.${link.id}`
             return (
-              <S.Link
+              <a
+                className={styles.link}
                 key={link.id}
                 href={link.url}
                 target="_blank"
@@ -56,12 +66,12 @@ const TabContent = ({ card, tab, slide }: TabContentProps) => {
                 onClick={trackClick}
               >
                 {t(labelKey)}
-              </S.Link>
+              </a>
             )
           })}
-        </S.Links>
-      </S.InfoBlock>
-    </S.TabPanel>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -75,17 +85,21 @@ const CreateCard = ({ card, slide }: { card: CreateCardData; slide: number }) =>
   const title = t(`overview.create.cards.${card.id}.title`)
 
   return (
-    <S.Card data-testid="overview-create-card" data-card={card.id}>
-      <S.Figure style={{ backgroundImage: `url(${contentfulImage(card.background, { width: FIGURE_MAX_WIDTH })})` }}>
+    <div className={styles.card} data-testid="overview-create-card" data-card={card.id}>
+      <div
+        className={styles.figure}
+        style={{ backgroundImage: `url(${contentfulImage(card.background, { width: FIGURE_MAX_WIDTH })})` }}
+      >
         <img src={contentfulImage(card.image, { width: FIGURE_MAX_WIDTH })} alt="" loading="lazy" />
-      </S.Figure>
-      <S.Info>
-        <S.CardTitle>{title}</S.CardTitle>
-        <S.CardDescription>{t(`overview.create.cards.${card.id}.description`)}</S.CardDescription>
+      </div>
+      <div className={styles.info}>
+        <h3 className={styles.cardTitle}>{title}</h3>
+        <p className={styles.cardDescription}>{t(`overview.create.cards.${card.id}.description`)}</p>
         {card.tabs.length > 1 && (
-          <S.Tabs role="tablist" aria-label={title}>
+          <div className={styles.tabs} role="tablist" aria-label={title}>
             {card.tabs.map(tab => (
-              <S.Tab
+              <button
+                className={styles.tab}
                 key={tab.id}
                 type="button"
                 role="tab"
@@ -102,13 +116,13 @@ const CreateCard = ({ card, slide }: { card: CreateCardData; slide: number }) =>
                 }}
               >
                 {t(`overview.create.cards.${card.id}.tabs.${tab.id}.title`)}
-              </S.Tab>
+              </button>
             ))}
-          </S.Tabs>
+          </div>
         )}
         <TabContent card={card} tab={activeTab} slide={slide} />
-      </S.Info>
-    </S.Card>
+      </div>
+    </div>
   )
 }
 
@@ -119,8 +133,8 @@ const CreateCards = () => {
   const renderCard = useCallback((card: CreateCardData, slide: number) => <CreateCard card={card} slide={slide} />, [])
   return (
     <AnimatedSection section={OverviewSection.CREATE}>
-      <S.Section data-testid="overview-create">
-        <S.Title>{rich('overview.create.title', highlight)}</S.Title>
+      <section className={styles.section} data-testid="overview-create">
+        <h2 className={cx(overview.sectionTitle, styles.title)}>{rich('overview.create.title', highlight)}</h2>
         <Carousel
           items={createCards}
           renderItem={renderCard}
@@ -128,7 +142,7 @@ const CreateCards = () => {
           label={t('overview.create.title', plainText)}
           slideWidth={1200}
         />
-      </S.Section>
+      </section>
     </AnimatedSection>
   )
 }

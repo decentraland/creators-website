@@ -1,56 +1,43 @@
-import styled from '@emotion/styled'
-import { theme } from '~/styles/theme'
-import { SectionTitle } from '../OverviewPage.styles'
-
-const { colors, font, gradients, media } = theme
-
-const mobile = media.maxWidth('mobile')
-const tablet = media.maxWidth('tablet')
-
-export const Section = styled.section`
+.section {
   position: relative;
   width: 100%;
   padding: 80px 160px;
-  color: ${colors.offWhite};
+  color: var(--color-off-white);
 
-  ${tablet} {
+  @media (max-width: 991px) {
     padding: 48px 32px 80px;
   }
-`
+}
 
-const corner = (to: string, size: string) =>
-  `linear-gradient(to ${to}, ${colors.offWhite} ${size}, transparent ${size})`
-
-/* Four L-shaped corner marks drawn with gradients, one per corner of the frame. */
-export const Frame = styled.div`
+.frame {
   background:
-    ${corner('right', '4px')} 0 0,
-    ${corner('right', '4px')} 0 100%,
-    ${corner('left', '4px')} 100% 0,
-    ${corner('left', '4px')} 100% 100%,
-    ${corner('bottom', '4px')} 0 0,
-    ${corner('bottom', '4px')} 100% 0,
-    ${corner('top', '4px')} 0 100%,
-    ${corner('top', '4px')} 100% 100%;
+    linear-gradient(to right, var(--color-off-white) 4px, transparent 4px) 0 0,
+    linear-gradient(to right, var(--color-off-white) 4px, transparent 4px) 0 100%,
+    linear-gradient(to left, var(--color-off-white) 4px, transparent 4px) 100% 0,
+    linear-gradient(to left, var(--color-off-white) 4px, transparent 4px) 100% 100%,
+    linear-gradient(to bottom, var(--color-off-white) 4px, transparent 4px) 0 0,
+    linear-gradient(to bottom, var(--color-off-white) 4px, transparent 4px) 100% 0,
+    linear-gradient(to top, var(--color-off-white) 4px, transparent 4px) 0 100%,
+    linear-gradient(to top, var(--color-off-white) 4px, transparent 4px) 100% 100%;
   background-repeat: no-repeat;
   background-size: 20px 20px;
 
-  ${tablet} {
+  @media (max-width: 991px) {
     background:
-      ${corner('right', '2px')} 0 0,
-      ${corner('right', '2px')} 0 100%,
-      ${corner('left', '2px')} 100% 0,
-      ${corner('left', '2px')} 100% 100%,
-      ${corner('bottom', '2px')} 0 0,
-      ${corner('bottom', '2px')} 100% 0,
-      ${corner('top', '2px')} 0 100%,
-      ${corner('top', '2px')} 100% 100%;
+      linear-gradient(to right, var(--color-off-white) 2px, transparent 2px) 0 0,
+      linear-gradient(to right, var(--color-off-white) 2px, transparent 2px) 0 100%,
+      linear-gradient(to left, var(--color-off-white) 2px, transparent 2px) 100% 0,
+      linear-gradient(to left, var(--color-off-white) 2px, transparent 2px) 100% 100%,
+      linear-gradient(to bottom, var(--color-off-white) 2px, transparent 2px) 0 0,
+      linear-gradient(to bottom, var(--color-off-white) 2px, transparent 2px) 100% 0,
+      linear-gradient(to top, var(--color-off-white) 2px, transparent 2px) 0 100%,
+      linear-gradient(to top, var(--color-off-white) 2px, transparent 2px) 100% 100%;
     background-repeat: no-repeat;
     background-size: 10px 10px;
   }
-`
+}
 
-export const Container = styled.div`
+.container {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -58,27 +45,27 @@ export const Container = styled.div`
   margin: auto;
   padding: 64px 0 80px;
 
-  ${tablet} {
+  @media (max-width: 991px) {
     padding: 48px 0 64px;
   }
-`
+}
 
-export const Subtitle = styled.p`
+.subtitle {
   margin: 0;
   text-align: center;
   font-size: 14px;
   font-weight: 600;
   line-height: 19px;
-  letter-spacing: ${font.tracking};
+  letter-spacing: var(--font-tracking);
   text-transform: uppercase;
-  color: ${colors.offWhiteMuted};
-`
+  color: var(--color-off-white-muted);
+}
 
-export const Title = styled(SectionTitle)`
+.title {
   padding-bottom: 0.5em;
-`
+}
 
-export const Row = styled.div`
+.row {
   position: relative;
   z-index: 1;
   display: flex;
@@ -87,17 +74,17 @@ export const Row = styled.div`
   margin-bottom: 12px;
   padding: 12px 32px;
   border-radius: 32px;
-  background: ${colors.text2};
+  background: var(--color-text2);
   cursor: pointer;
   overflow: hidden;
 
   /* The hover sweep fades in over the flat surface rather than swapping backgrounds abruptly. */
   &::after {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
     z-index: -1;
-    background: ${gradients.dusk};
+    background: var(--gradient-dusk);
     opacity: 0;
     transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
@@ -105,7 +92,7 @@ export const Row = styled.div`
     opacity: 1;
   }
   &:focus-visible {
-    outline: 2px solid ${colors.softWhite};
+    outline: 2px solid var(--color-soft-white);
     outline-offset: 2px;
   }
 
@@ -113,21 +100,21 @@ export const Row = styled.div`
     flex: none;
     width: 40px;
     height: 40px;
-    color: ${colors.white};
+    color: var(--color-white);
     transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   }
   &[data-open] svg {
     transform: rotate(180deg);
   }
   &[data-open] svg circle {
-    fill: ${colors.white};
+    fill: var(--color-white);
     opacity: 1;
   }
   &[data-open] svg path {
-    fill: ${colors.text2};
+    fill: var(--color-text2);
   }
 
-  ${mobile} {
+  @media (max-width: 768px) {
     margin-bottom: 8px;
     padding: 16px 24px;
     border-radius: 24px;
@@ -137,29 +124,29 @@ export const Row = styled.div`
       height: 36px;
     }
   }
-`
+}
 
-export const Question = styled.div`
+.question {
   display: flex;
   align-items: center;
   justify-content: space-between;
-`
+}
 
-export const QuestionText = styled.h3`
+.questionText {
   margin: 0;
   font-size: 26px;
   font-weight: 300;
   line-height: 28px;
   letter-spacing: -0.011em;
-  color: ${colors.offWhiteMuted};
+  color: var(--color-off-white-muted);
 
-  ${tablet} {
+  @media (max-width: 991px) {
     font-size: 16px;
     letter-spacing: -0.01em;
   }
-`
+}
 
-export const Answer = styled.div`
+.answer {
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
@@ -173,28 +160,28 @@ export const Answer = styled.div`
     margin-top: 8px;
     opacity: 1;
   }
-`
+}
 
-export const AnswerText = styled.p`
+.answerText {
   min-height: 0;
   margin: 0;
   overflow: hidden;
   font-size: 16px;
   font-weight: 400;
   line-height: 165%;
-  letter-spacing: ${font.tracking};
+  letter-spacing: var(--font-tracking);
   white-space: pre-line;
-  color: ${colors.offWhite};
-`
+  color: var(--color-off-white);
+}
 
-export const Cta = styled.div`
+.cta {
   display: flex;
   justify-content: center;
   margin-top: 40px;
 
-  ${mobile} {
+  @media (max-width: 768px) {
     & a {
       width: 100%;
     }
   }
-`
+}

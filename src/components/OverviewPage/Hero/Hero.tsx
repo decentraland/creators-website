@@ -22,7 +22,7 @@ import {
   trackClick
 } from '~/lib/overviewAnalytics'
 import { CREATOR_DOCS_URL, CREATOR_HUB_DOWNLOAD_URL, heroData } from '../data'
-import * as S from './Hero.styles'
+import styles from './Hero.module.css'
 
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
 
@@ -88,8 +88,8 @@ const Hero = () => {
 
   return (
     <>
-      <S.Hero data-testid="overview-hero">
-        <S.Background>
+      <section className={styles.hero} data-testid="overview-hero">
+        <div className={styles.background}>
           {!posterFailed && (
             <img
               src={poster.url}
@@ -103,16 +103,16 @@ const Hero = () => {
             />
           )}
           {showVideo && <HeroVideo />}
-        </S.Background>
-        <S.Content>
-          <S.Title>
+        </div>
+        <div className={styles.content}>
+          <h1 className={styles.title}>
             {t('overview.hero.title_first_line')}
             <br />
             <span data-testid="overview-hero-word">{currentWord}</span>
             <br />
             {t('overview.hero.title_last_line')}
-          </S.Title>
-          <S.Subtitle>{t('overview.hero.subtitle')}</S.Subtitle>
+          </h1>
+          <p className={styles.subtitle}>{t('overview.hero.subtitle')}</p>
           {mobile ? (
             // The Creator Hub only ships desktop installers, so phones get the docs instead of a dead end.
             <Button
@@ -150,20 +150,21 @@ const Hero = () => {
                 >
                   {t('overview.hero.download_cta')}
                   {download && (
-                    <S.OsIcon data-testid="overview-hero-os-icon" data-os={download.os}>
+                    <span className={styles.osIcon} data-testid="overview-hero-os-icon" data-os={download.os}>
                       <DownloadOsIcon os={download.os} />
-                    </S.OsIcon>
+                    </span>
                   )}
                 </Button>
               </Tooltip>
               {others.length > 0 && (
-                <S.AlsoAvailable data-testid="overview-hero-also-available">
+                <div className={styles.alsoAvailable} data-testid="overview-hero-also-available">
                   {t('overview.hero.also_available')}
                   {others.map(other => {
                     const name = buildName(other)
                     return (
                       <Tooltip key={name} content={t(`overview.hero.download_for.${name}`)} asChild>
-                        <S.AltDownload
+                        <a
+                          className={styles.altDownload}
                           href={other.href}
                           aria-label={t(`overview.hero.download_for.${name}`)}
                           onClick={event => onDownloadClick(event, other, 'alternative')}
@@ -178,17 +179,18 @@ const Hero = () => {
                         >
                           <DownloadOsIcon os={other.os} />
                           {other.os === 'macOS' && <span>{t(`overview.hero.build_label.${name}`)}</span>}
-                        </S.AltDownload>
+                        </a>
                       </Tooltip>
                     )
                   })}
-                </S.AlsoAvailable>
+                </div>
               )}
             </>
           )}
-        </S.Content>
-      </S.Hero>
-      <S.ScrollButton
+        </div>
+      </section>
+      <button
+        className={styles.scrollButton}
         type="button"
         aria-label={t('overview.hero.scroll_label')}
         data-testid="overview-hero-scroll"
@@ -200,7 +202,7 @@ const Hero = () => {
         }}
       >
         <ChevronDownIcon />
-      </S.ScrollButton>
+      </button>
     </>
   )
 }

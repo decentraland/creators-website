@@ -1,22 +1,13 @@
-import styled from '@emotion/styled'
-import { theme } from '~/styles/theme'
-import gridBackground from '~/assets/overview/connect-grid.webp'
-import { SectionTitle } from '../OverviewPage.styles'
-
-const { colors, font, media } = theme
-
-const tablet = media.maxWidth('tablet')
-
-export const Section = styled.section`
+.section {
   position: relative;
   width: 100%;
-  background: url(${gridBackground}) center / cover no-repeat;
+  background: url("../../../assets/overview/connect-grid.webp") center / cover no-repeat;
   overflow: hidden;
 
   /* Fades the grid out at the edges so the slides in the wings read as background. */
   &::before,
   &::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     width: 15%;
@@ -26,24 +17,24 @@ export const Section = styled.section`
   }
   &::before {
     left: 0;
-    background: linear-gradient(90deg, ${colors.inkFade} 0%, transparent 100%);
+    background: linear-gradient(90deg, var(--color-ink-fade) 0%, transparent 100%);
   }
   &::after {
     right: 0;
-    background: linear-gradient(270deg, ${colors.inkFade} 0%, transparent 100%);
+    background: linear-gradient(270deg, var(--color-ink-fade) 0%, transparent 100%);
   }
-`
+}
 
-export const Title = styled(SectionTitle)`
+.title {
   margin: 56px auto 40px;
 
-  ${tablet} {
+  @media (max-width: 991px) {
     margin: 41px auto 36px;
     padding: 0 20px;
   }
-`
+}
 
-export const Card = styled.a`
+.card {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -51,8 +42,8 @@ export const Card = styled.a`
   width: 100%;
   padding: 32px 24px;
   border-radius: 20px;
-  background: ${colors.softWhite};
-  color: ${colors.text};
+  background: var(--color-soft-white);
+  color: var(--color-text);
   cursor: pointer;
   transition: transform 0.3s ease-in-out;
 
@@ -62,31 +53,31 @@ export const Card = styled.a`
     }
   }
   &:focus-visible {
-    outline: 2px solid ${colors.softWhite};
+    outline: 2px solid var(--color-soft-white);
     outline-offset: 2px;
   }
 
-  ${tablet} {
+  @media (max-width: 991px) {
     padding: 24px;
   }
-`
+}
 
-export const Quote = styled.p`
+.quote {
   margin: 0;
   font-size: 16px;
   font-weight: 400;
   font-style: italic;
   line-height: 24px;
-  letter-spacing: ${font.tracking};
+  letter-spacing: var(--font-tracking);
 
-  ${tablet} {
+  @media (max-width: 991px) {
     font-size: 20px;
     line-height: 30px;
     text-align: center;
   }
-`
+}
 
-export const Author = styled.div`
+.author {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -101,35 +92,35 @@ export const Author = styled.div`
     object-fit: cover;
   }
 
-  ${tablet} {
+  @media (max-width: 991px) {
     align-items: center;
     margin-top: 24px;
   }
-`
+}
 
-export const AuthorName = styled.span`
+.authorName {
   max-width: 100%;
   margin-top: 8px;
   font-size: 18px;
   font-weight: 700;
   line-height: 1.5;
-  letter-spacing: ${font.tracking};
+  letter-spacing: var(--font-tracking);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-`
+}
 
-export const Discord = styled.a`
+.discord {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   margin: 56px 0 32px;
-  color: ${colors.white};
+  color: var(--color-white);
   cursor: pointer;
 
   &:focus-visible {
-    outline: 2px solid ${colors.softWhite};
+    outline: 2px solid var(--color-soft-white);
     outline-offset: 2px;
   }
 
@@ -149,13 +140,12 @@ export const Discord = styled.a`
     transform: scale(1.1);
   }
 
-  ${tablet} {
+  @media (max-width: 991px) {
     margin-top: 43px;
   }
-`
+}
 
-/* The image stays inline so its line box keeps the descender gap the design was measured with. */
-export const DiscordIcon = styled.span`
+.discordIcon {
   display: block;
 
   & img {
@@ -171,24 +161,24 @@ export const DiscordIcon = styled.span`
     }
   }
 
-  ${tablet} {
+  @media (max-width: 991px) {
     & img {
       width: 50px;
       margin-top: 0;
     }
   }
-`
+}
 
-export const DiscordTitle = styled.span`
+.discordTitle {
   font-size: 20px;
   font-weight: 600;
   line-height: 1.5;
-  letter-spacing: ${font.tracking};
+  letter-spacing: var(--font-tracking);
   text-align: center;
-  text-shadow: 0 4px 20px ${colors.overlayHover};
+  text-shadow: 0 4px 20px var(--color-overlay-hover);
   text-underline-offset: 4px;
 
-  ${tablet} {
+  @media (max-width: 991px) {
     font-size: 18px;
   }
-`
+}

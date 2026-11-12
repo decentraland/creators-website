@@ -9,7 +9,9 @@ import { useLocale } from '~/store/locale'
 import { AnimatedSection } from '../AnimatedSection'
 import { SUBMIT_TUTORIAL_URL, YOUTUBE_CHANNEL_URL, learnCards, learnVideo } from '../data'
 import { highlight } from '../highlight'
-import * as S from './Learn.styles'
+import { cx } from '~/lib/cx'
+import overview from '../OverviewPage.module.css'
+import styles from './Learn.module.css'
 
 const Learn = () => {
   const { t, rich } = useTranslation()
@@ -28,11 +30,12 @@ const Learn = () => {
 
   return (
     <AnimatedSection section={OverviewSection.LEARN}>
-      <S.Section data-testid="overview-learn">
-        <S.Title>{rich('overview.learn.title', highlight)}</S.Title>
-        <S.Rail>
+      <section className={styles.section} data-testid="overview-learn">
+        <h2 className={cx(overview.sectionTitle, styles.title)}>{rich('overview.learn.title', highlight)}</h2>
+        <div className={overview.rail}>
           {cards.map(card => (
-            <S.VideoCard
+            <a
+              className={styles.videoCard}
               key={card.id}
               href={card.url}
               target="_blank"
@@ -42,13 +45,13 @@ const Learn = () => {
               data-title={card.analyticsTitle}
               onClick={trackClick}
             >
-              <S.Thumbnail>
+              <div className={styles.thumbnail}>
                 <img src={card.thumbnail} alt="" loading="lazy" />
                 <PlayIcon />
-              </S.Thumbnail>
-              <S.VideoInfo>
-                <S.VideoMeta>
-                  <S.VideoAuthor>
+              </div>
+              <div className={styles.videoInfo}>
+                <div className={styles.videoMeta}>
+                  <div className={styles.videoAuthor}>
                     <img
                       src={contentfulImage(card.authorImage, { width: 40 })}
                       alt=""
@@ -57,16 +60,16 @@ const Learn = () => {
                       loading="lazy"
                     />
                     <span>{card.author}</span>
-                  </S.VideoAuthor>
-                  <S.VideoDate>{card.date}</S.VideoDate>
-                </S.VideoMeta>
-                <S.VideoTitle>{card.title}</S.VideoTitle>
-              </S.VideoInfo>
-            </S.VideoCard>
+                  </div>
+                  <span className={styles.videoDate}>{card.date}</span>
+                </div>
+                <h3 className={styles.videoTitle}>{card.title}</h3>
+              </div>
+            </a>
           ))}
-        </S.Rail>
-        <S.Extras>
-          <S.Extra>
+        </div>
+        <div className={styles.extras}>
+          <div className={styles.extra}>
             {t('overview.learn.watch_more')}
             <Button
               as="a"
@@ -81,8 +84,8 @@ const Learn = () => {
             >
               {t('overview.learn.watch_more_button')}
             </Button>
-          </S.Extra>
-          <S.Extra>
+          </div>
+          <div className={styles.extra}>
             {t('overview.learn.your_tutorial')}
             <Button
               as="a"
@@ -98,9 +101,9 @@ const Learn = () => {
             >
               {t('overview.learn.your_tutorial_button')}
             </Button>
-          </S.Extra>
-        </S.Extras>
-      </S.Section>
+          </div>
+        </div>
+      </section>
     </AnimatedSection>
   )
 }

@@ -1,31 +1,21 @@
-import styled from '@emotion/styled'
-import { theme } from '~/styles/theme'
-import { SectionTitle } from '../OverviewPage.styles'
-
-export { Centered, ViewAllLink } from '../OverviewPage.styles'
-
-const { colors, font, gradients, media } = theme
-
-const laptop = media.maxWidth('laptop')
-
-export const Section = styled.section`
+.section {
   position: relative;
   width: 100%;
   padding: 40px 0 100px;
   overflow: hidden;
-`
+}
 
-export const Title = styled(SectionTitle)`
+.title {
   margin-bottom: 62px;
-`
+}
 
-export const Posts = styled.div`
+.posts {
   display: flex;
   justify-content: center;
   gap: 20px;
   padding: 0 100px;
 
-  ${laptop} {
+  @media (max-width: 1024px) {
     justify-content: flex-start;
     padding: 0 16px;
     overflow-x: auto;
@@ -35,17 +25,17 @@ export const Posts = styled.div`
       display: none;
     }
   }
-`
+}
 
-export const PostCard = styled.a`
+.postCard {
   display: flex;
   flex-direction: column;
   flex-shrink: 1;
   width: 380px;
   min-width: 300px;
   border-radius: 20px;
-  background: ${colors.text2};
-  color: ${colors.white};
+  background: var(--color-text2);
+  color: var(--color-white);
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.35s ease-in-out;
@@ -56,20 +46,20 @@ export const PostCard = styled.a`
     }
   }
   &:focus-visible {
-    outline: 2px solid ${colors.softWhite};
+    outline: 2px solid var(--color-soft-white);
     outline-offset: 2px;
   }
 
-  ${laptop} {
+  @media (max-width: 1024px) {
     flex-shrink: 0;
     width: 300px;
   }
-`
+}
 
-export const PostImage = styled.div`
+.postImage {
   width: 100%;
   height: 200px;
-  background: ${gradients.orchid};
+  background: var(--gradient-orchid);
 
   & img {
     display: block;
@@ -77,44 +67,44 @@ export const PostImage = styled.div`
     height: 100%;
     object-fit: cover;
   }
-`
+}
 
-export const PostInfo = styled.div`
+.postInfo {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 18px 24px 28px;
-`
+}
 
-export const PostMeta = styled.div`
+.postMeta {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-`
+}
 
-export const PostCategory = styled.span`
+.postCategory {
   font-size: 13px;
   font-weight: 700;
   line-height: 1.5;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  color: ${colors.dclRed};
-`
+  color: var(--color-dcl-red);
+}
 
-export const PostDate = styled.span`
+.postDate {
   font-size: 14px;
   font-weight: 600;
   line-height: 1.5;
-  letter-spacing: ${font.tracking};
-  color: ${colors.muted2};
-`
+  letter-spacing: var(--font-tracking);
+  color: var(--color-muted2);
+}
 
-export const PostTitle = styled.h3`
+.postTitle {
   margin: 0;
   font-size: 20px;
   font-weight: 700;
   line-height: 28px;
-  letter-spacing: ${font.tracking};
-  color: ${colors.softWhite};
-`
+  letter-spacing: var(--font-tracking);
+  color: var(--color-soft-white);
+}

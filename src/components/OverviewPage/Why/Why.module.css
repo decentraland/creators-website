@@ -1,62 +1,54 @@
-import styled from '@emotion/styled'
-import { theme } from '~/styles/theme'
-import { SectionTitle } from '../OverviewPage.styles'
-
-const { colors, font, gradients, media, radius } = theme
-
-const tablet = media.maxWidth('tablet')
-
-export const Section = styled.section`
+.section {
   display: flex;
   flex-direction: column;
   gap: 1em;
   width: 100%;
   padding-bottom: 100px;
 
-  ${tablet} {
+  @media (max-width: 991px) {
     padding: 0 32px 40px;
     overflow: hidden;
   }
-`
+}
 
-export const Title = styled(SectionTitle)`
+.title {
   margin-bottom: 32px;
-`
+}
 
-export const Grid = styled.div`
+.grid {
   display: flex;
   justify-content: center;
 
-  ${tablet} {
+  @media (max-width: 991px) {
     flex-direction: column;
     gap: 20px;
   }
-`
+}
 
-export const Card = styled.a`
+.card {
   display: flex;
   flex: 1;
   max-width: 450px;
   margin-right: 24px;
-  border-radius: ${radius.banner};
-  color: ${colors.white};
+  border-radius: var(--radius-banner);
+  color: var(--color-white);
   /* Reveals the CTA on hover; devices without hover keep it always shown. */
   --cta-reveal: 1;
 
   &:last-child {
     margin-right: 0;
   }
-  &[data-gradient='orchid'] {
-    background: ${gradients.orchid};
+  &[data-gradient="orchid"] {
+    background: var(--gradient-orchid);
   }
-  &[data-gradient='apricot'] {
-    background: ${gradients.apricot};
+  &[data-gradient="apricot"] {
+    background: var(--gradient-apricot);
   }
-  &[data-gradient='raspberry'] {
-    background: ${gradients.raspberry};
+  &[data-gradient="raspberry"] {
+    background: var(--gradient-raspberry);
   }
   &:focus-visible {
-    outline: 2px solid ${colors.softWhite};
+    outline: 2px solid var(--color-soft-white);
     outline-offset: 2px;
   }
 
@@ -68,14 +60,14 @@ export const Card = styled.a`
     }
   }
 
-  ${tablet} {
+  @media (max-width: 991px) {
     width: 100%;
     max-width: 100%;
     margin-right: 0;
   }
-`
+}
 
-export const CardInner = styled.div`
+.cardInner {
   position: relative;
   display: flex;
   flex: 1;
@@ -94,19 +86,19 @@ export const CardInner = styled.div`
     }
   }
 
-  ${tablet} {
+  @media (max-width: 991px) {
     justify-content: flex-start;
     padding: 26px 24px;
   }
-`
+}
 
-export const CardImage = styled.div`
+.cardImage {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
   margin-bottom: 24px;
-  border-radius: ${radius.cardLg};
+  border-radius: var(--radius-card-lg);
   overflow: hidden;
 
   & img {
@@ -117,7 +109,7 @@ export const CardImage = styled.div`
     object-fit: contain;
   }
 
-  ${tablet} {
+  @media (max-width: 991px) {
     height: 138px;
     min-height: 138px;
     margin-bottom: 16px;
@@ -128,47 +120,47 @@ export const CardImage = styled.div`
       min-height: 100%;
     }
   }
-`
+}
 
-export const CardText = styled.div`
+.cardText {
   display: flex;
   flex: 1;
   flex-direction: column;
   align-self: flex-start;
   justify-content: flex-start;
-`
+}
 
-export const CardTitle = styled.h3`
+.cardTitle {
   margin: 0 0 8px;
   padding: 0 10px;
   font-size: 24px;
   font-weight: 600;
   line-height: 30px;
-  letter-spacing: ${font.tracking};
+  letter-spacing: var(--font-tracking);
 
-  ${tablet} {
+  @media (max-width: 991px) {
     font-size: 20px;
     font-weight: 700;
     line-height: 28px;
   }
-`
+}
 
-export const CardDescription = styled.p`
+.cardDescription {
   margin: 0;
   padding: 0 10px;
   font-size: 18px;
   font-weight: 400;
   line-height: 24px;
-  letter-spacing: ${font.tracking};
-`
+  letter-spacing: var(--font-tracking);
+}
 
-export const CardCta = styled.span`
+.cardCta {
   align-self: flex-start;
   margin: 16px 10px 0;
   padding: 10px 24px;
-  border-radius: ${radius.btn};
-  background: ${colors.white};
-  color: ${colors.text2};
+  border-radius: var(--radius-btn);
+  background: var(--color-white);
+  color: var(--color-text2);
   font-size: 14px;
   font-weight: 600;
   line-height: 20px;
@@ -181,10 +173,10 @@ export const CardCta = styled.span`
     transform 0.3s ease-in-out;
 
   &:hover {
-    background: ${colors.media};
+    background: var(--color-media);
   }
 
-  ${tablet} {
+  @media (max-width: 991px) {
     margin-top: 12px;
   }
-`
+}
