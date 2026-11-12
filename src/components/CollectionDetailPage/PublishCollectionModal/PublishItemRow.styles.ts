@@ -80,6 +80,12 @@ export const SelectCell = styled.div`
     border-radius: 4px;
     border-color: ${theme.colors.softWhite};
 
+    /* The Select's own focus/open border; layered now, it would otherwise lose to the line above. */
+    &:focus-visible,
+    &[aria-expanded='true'] {
+      border-color: ${theme.colors.white};
+    }
+
     & span {
       gap: 4px;
       font-size: 12px;

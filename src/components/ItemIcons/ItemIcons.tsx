@@ -33,7 +33,7 @@ import emoteStunt from '~/assets/icons/emote-stunt.svg'
 import genderFemale from '~/assets/icons/gender-female.svg'
 import genderMale from '~/assets/icons/gender-male.svg'
 import genderUnisex from '~/assets/icons/gender-unisex.svg'
-import * as S from './ItemIcons.styles'
+import styles from './ItemIcons.module.css'
 
 // Wearable categories + emote categories share one namespace, like the i18n labels.
 const CATEGORY_ICONS: Record<string, string> = {
@@ -89,13 +89,13 @@ export function CategoryIcon({ category, withLabel = false, testId = 'category-i
   const { t } = useTranslation()
   const url = CATEGORY_ICONS[category]
   const label = t(`collection_detail_page.category.${category}`)
-  const icon = url ? <S.MaskIcon role="img" aria-label={label} style={iconStyle(url)} /> : null
+  const icon = url ? <span className={styles.maskIcon} role="img" aria-label={label} style={iconStyle(url)} /> : null
   if (!withLabel) return icon
   return (
-    <S.Labeled data-testid={testId} data-category={category}>
+    <span className={styles.labeled} data-testid={testId} data-category={category}>
       {icon}
       <span>{label}</span>
-    </S.Labeled>
+    </span>
   )
 }
 
@@ -109,13 +109,15 @@ type BodyShapeProps = {
 export function BodyShapeIcon({ bodyShape, withLabel = false, testId = 'body-shape-icon' }: BodyShapeProps) {
   const { t } = useTranslation()
   const label = t(`collection_detail_page.body_type.${bodyShape}`)
-  const icon = <S.MaskIcon role="img" aria-label={label} style={iconStyle(BODY_SHAPE_ICONS[bodyShape])} />
+  const icon = (
+    <span className={styles.maskIcon} role="img" aria-label={label} style={iconStyle(BODY_SHAPE_ICONS[bodyShape])} />
+  )
   if (!withLabel) return icon
   return (
-    <S.Labeled data-testid={testId} data-body-shape={bodyShape}>
+    <span className={styles.labeled} data-testid={testId} data-body-shape={bodyShape}>
       {icon}
       <span>{label}</span>
-    </S.Labeled>
+    </span>
   )
 }
 
@@ -133,9 +135,9 @@ export function PlayModeIcon({ playMode, withLabel = false, testId = 'play-mode-
   const icon = <Glyph role="img" aria-label={label} aria-hidden={false} />
   if (!withLabel) return icon
   return (
-    <S.Labeled data-testid={testId} data-play-mode={playMode}>
+    <span className={styles.labeled} data-testid={testId} data-play-mode={playMode}>
       {icon}
       <span>{label}</span>
-    </S.Labeled>
+    </span>
   )
 }

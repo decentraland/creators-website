@@ -1,6 +1,7 @@
 import { AddIcon as ZoomInIcon, RemoveIcon as ZoomOutIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
-import * as S from './ZoomControls.styles'
+import { cx } from '~/lib/cx'
+import styles from './ZoomControls.module.css'
 import { type WearablePreviewController } from '~/components/WearablePreview'
 
 /**
@@ -24,23 +25,25 @@ export function ZoomControls({ controller, className, testId = 'zoom-controls' }
   const { t } = useTranslation()
   const step = (delta: number) => controller.scene.changeZoom(delta).catch(() => undefined)
   return (
-    <S.Wrap className={className} data-testid={testId}>
-      <S.ZoomButton
+    <div className={cx(styles.wrap, className)} data-testid={testId}>
+      <button
+        className={styles.zoomButton}
         type="button"
         aria-label={t('zoom_controls.in')}
         data-testid={`${testId}-in`}
         onClick={() => void step(ZOOM_STEP)}
       >
         <ZoomInIcon fontSize="small" />
-      </S.ZoomButton>
-      <S.ZoomButton
+      </button>
+      <button
+        className={styles.zoomButton}
         type="button"
         aria-label={t('zoom_controls.out')}
         data-testid={`${testId}-out`}
         onClick={() => void step(-ZOOM_STEP)}
       >
         <ZoomOutIcon fontSize="small" />
-      </S.ZoomButton>
-    </S.Wrap>
+      </button>
+    </div>
   )
 }

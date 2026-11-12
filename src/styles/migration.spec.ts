@@ -36,7 +36,6 @@ const REMAINING = [
   'src/components/CollectionDetailPage/TransferOwnershipFlow/TransferOwnershipModal.styles.ts',
   'src/components/CollectionNameInput/CollectionNameInput.styles.ts',
   'src/components/CollectionNameModal/CollectionNameModal.styles.ts',
-  'src/components/CollectionRolePill/CollectionRolePill.styles.ts',
   'src/components/CollectionsPage/CollectionCard/CollectionCard.styles.ts',
   'src/components/CollectionsPage/CollectionListRow/CollectionListRow.styles.ts',
   'src/components/CollectionsPage/CollectionsPage.styles.ts',
@@ -60,13 +59,10 @@ const REMAINING = [
   'src/components/ItemEditorPage/SceneBoundariesToggle/SceneBoundariesToggle.styles.ts',
   'src/components/ItemEditorPage/SpringBonesEditor/BoneTreePicker/BoneTreePicker.styles.ts',
   'src/components/ItemEditorPage/SpringBonesEditor/SpringBonesEditor.styles.ts',
-  'src/components/ItemIcons/ItemIcons.styles.ts',
-  'src/components/ItemThumbnail/ItemThumbnail.styles.ts',
   'src/components/LinkedContractFields/LinkedContractFields.styles.ts',
   'src/components/LivePreviewPage/LivePreviewPage.styles.ts',
   'src/components/MappingEditor/MappingEditor.styles.ts',
   'src/components/Modal/Modal.styles.ts',
-  'src/components/MultiSelect/MultiSelect.styles.ts',
   'src/components/NavBar/NavBar.styles.ts',
   'src/components/OverviewPage/AnimatedSection/AnimatedSection.styles.ts',
   'src/components/OverviewPage/Carousel/Carousel.styles.ts',
@@ -81,7 +77,6 @@ const REMAINING = [
   'src/components/OverviewPage/Why/Why.styles.ts',
   'src/components/PendingModal/PendingModal.styles.ts',
   'src/components/ProgressModal/ProgressModal.styles.ts',
-  'src/components/Select/Select.styles.ts',
   'src/components/SuccessModal/SuccessModal.styles.ts',
   'src/components/ThumbnailModal/ThumbnailModal.styles.ts',
   'src/components/Tooltip/Tooltip.styles.ts',
@@ -90,8 +85,7 @@ const REMAINING = [
   'src/components/ValidationBadge/ValidationBadge.styles.ts',
   'src/components/ValidationBadge/ValidationResultsModal.styles.ts',
   'src/components/VideoModal/VideoDropzone.styles.ts',
-  'src/components/VideoModal/VideoModal.styles.ts',
-  'src/components/ZoomControls/ZoomControls.styles.ts'
+  'src/components/VideoModal/VideoModal.styles.ts'
 ]
 
 const files = (readdirSync('src', { recursive: true }) as string[]).map(path => `src/${path.replace(/\\/g, '/')}`)
