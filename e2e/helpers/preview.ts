@@ -29,9 +29,11 @@ export function previewPageHtml({ holdLoads = false }: PreviewOptions = {}): str
     var pending = 0;
     var SCREENSHOT = 'data:image/png;base64,${readFileSync(FIXTURE.thumbnail).toString('base64')}';
     var METRICS = ${JSON.stringify(PREVIEW_METRICS)};
+    // The boot render has no model, and the real renderer measures it as an empty scene.
+    var EMPTY_METRICS = { triangles: 0, materials: 0, textures: 0, meshes: 0, bodies: 0, entities: 1 };
+    var hasModel = false;
     var RESULTS = {
       'scene.getScreenshot': SCREENSHOT,
-      'scene.getMetrics': METRICS,
       'emote.getLength': 2,
       'emote.isPlaying': false
     };
@@ -39,6 +41,7 @@ export function previewPageHtml({ holdLoads = false }: PreviewOptions = {}): str
     var hasSound = false;
     function send(type, payload) { parent.postMessage({ type: type, payload: payload }, '*'); }
     function loaded() { send('load', { renderer: 'babylon' }); }
+    function modelLoaded() { hasModel = true; loaded(); }
     window.addEventListener('message', function (event) {
       var message = event.data || {};
       if (message.type === 'update') {
@@ -50,18 +53,19 @@ export function previewPageHtml({ holdLoads = false }: PreviewOptions = {}): str
         if (held) {
           pending++;
           fetch('/__e2e/answer?method=load&result=held').catch(function () {});
-        } else loaded();
+        } else modelLoaded();
         // An emote autoplays once loaded; the editor asks about its sound when it starts.
         if (/emoteDataADR74/.test(text)) send('emote_event', { type: 'animation_play', payload: {} });
       }
       if (message.type === 'e2e_release') {
         held = false;
-        for (; pending > 0; pending--) loaded();
+        for (; pending > 0; pending--) modelLoaded();
       }
       if (message.type === 'controller_request') {
         var request = message.payload || {};
         var key = request.namespace + '.' + request.method;
-        var result = key === 'emote.hasSound' ? hasSound : RESULTS[key];
+        var result =
+          key === 'emote.hasSound' ? hasSound : key === 'scene.getMetrics' ? (hasModel ? METRICS : EMPTY_METRICS) : RESULTS[key];
         send('controller_response', { id: request.id, ok: true, result: result });
         // Lets a spec wait for the answer itself instead of a fixed delay (see app.previewAnswers).
         if (key === 'emote.hasSound') fetch('/__e2e/answer?method=' + key + '&result=' + result).catch(function () {});
