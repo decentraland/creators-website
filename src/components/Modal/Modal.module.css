@@ -1,20 +1,15 @@
-import styled from '@emotion/styled'
-import { theme } from '~/styles/theme'
-
-const mobile = theme.media.maxWidth('mobile')
-
-export const Scrim = styled.div`
+.scrim {
   position: fixed;
   inset: 0;
-  z-index: ${theme.z.overlay};
+  z-index: var(--z-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: ${theme.colors.scrim};
-`
+  background: var(--color-scrim);
+}
 
-export const Dialog = styled.div`
+.dialog {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -23,22 +18,22 @@ export const Dialog = styled.div`
   height: max-content;
   max-height: 90vh;
   padding: 32px;
-  border-radius: ${theme.radius.modal};
-  background: ${theme.colors.modalSurface};
-  color: ${theme.colors.white};
-  box-shadow: 0 16px 48px ${theme.colors.overlayStrong};
+  border-radius: var(--radius-modal);
+  background: var(--color-modal-surface);
+  color: var(--color-white);
+  box-shadow: 0 16px 48px var(--color-overlay-strong);
   overflow: hidden;
   outline: none;
 
-  &[data-size='large'] {
+  &[data-size="large"] {
     width: 860px;
   }
 
-  &[data-size='wide'] {
+  &[data-size="wide"] {
     width: max-content;
   }
 
-  ${mobile} {
+  @media (max-width: 768px) {
     padding: 24px 16px;
     max-width: 100%;
     max-height: 100%;
@@ -51,9 +46,9 @@ export const Dialog = styled.div`
   &[data-flush] {
     padding: 0;
   }
-`
+}
 
-export const TitleBar = styled.div`
+.titleBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -67,43 +62,43 @@ export const TitleBar = styled.div`
   [data-flush] > & {
     padding: 16px;
   }
-`
+}
 
-export const Title = styled.h2`
+.title {
   margin: 0;
   font-size: 20px;
   font-weight: 600;
   line-height: 1.6;
-  color: ${theme.colors.softWhite};
-`
+  color: var(--color-soft-white);
+}
 
-export const CloseButton = styled.button`
+.closeButton {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
   border: 0;
-  border-radius: ${theme.radius.btn};
+  border-radius: var(--radius-btn);
   background: none;
-  color: ${theme.colors.white};
+  color: var(--color-white);
 
   &:hover {
-    background: ${theme.colors.glassFaint};
+    background: var(--color-glass-faint);
   }
   &:disabled {
     opacity: 0.4;
     cursor: default;
   }
-`
+}
 
-export const FloatingClose = styled.div`
+.floatingClose {
   position: absolute;
   top: 16px;
   right: 16px;
-`
+}
 
-export const Body = styled.div`
+.body {
   /* Owns the dialog's remaining height: panes that shrink (min-height: 0) scroll themselves, anything taller
      (a form on a short window) scrolls the body so the footer stays reachable. */
   display: flex;
@@ -112,4 +107,4 @@ export const Body = styled.div`
   flex-direction: column;
   overflow-x: hidden;
   overflow-y: auto;
-`
+}

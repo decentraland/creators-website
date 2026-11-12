@@ -8,7 +8,8 @@ import { useAssignCurator, useCuratorOptions } from '~/hooks/useCuration'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
 import { useNotifications } from '~/lib/notifications'
-import * as S from './AssignCuratorModal.styles'
+import styles from './AssignCuratorModal.module.css'
+import shared from '~/styles/shared.module.css'
 
 const UNASSIGN = 'unassign'
 
@@ -70,13 +71,13 @@ export function AssignCuratorModal({ collection, curation, address, mode, onClos
       closeDisabled={assign.isPending}
       testId="assign-curator-modal"
     >
-      <S.Form onSubmit={submit}>
+      <form className={styles.form} onSubmit={submit}>
         {mode === 'self' ? (
-          <S.Text data-testid="assign-curator-body">
+          <p className={styles.text} data-testid="assign-curator-body">
             {current
               ? t('assign_curator_modal.take_over_body', { assignee: currentName })
               : t('assign_curator_modal.self_body')}
-          </S.Text>
+          </p>
         ) : (
           <Select
             value={choice}
@@ -86,8 +87,12 @@ export function AssignCuratorModal({ collection, curation, address, mode, onClos
             testId="assign-curator-select"
           />
         )}
-        {assign.isError && <S.Error data-testid="assign-curator-error">{t('assign_curator_modal.error')}</S.Error>}
-        <S.Actions>
+        {assign.isError && (
+          <p className={styles.error} data-testid="assign-curator-error">
+            {t('assign_curator_modal.error')}
+          </p>
+        )}
+        <div className={shared.modalActions}>
           <Button type="button" variant="secondary" disabled={assign.isPending} onClick={onClose}>
             {t('assign_curator_modal.cancel')}
           </Button>
@@ -95,8 +100,8 @@ export function AssignCuratorModal({ collection, curation, address, mode, onClos
             {t(onAssigned ? 'assign_curator_modal.submit_continue' : `assign_curator_modal.submit_${mode}`)}
             {onAssigned && <ChevronRightIcon fontSize="small" />}
           </Button>
-        </S.Actions>
-      </S.Form>
+        </div>
+      </form>
     </Modal>
   )
 }

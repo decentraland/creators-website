@@ -1,5 +1,5 @@
 import { Modal } from '~/components/Modal'
-import * as S from './ProgressModal.styles'
+import styles from './ProgressModal.module.css'
 
 type Props = {
   title: string
@@ -24,23 +24,24 @@ export function ProgressModal({ title, heading, description, label, done, total,
       hideClose={!onClose}
       testId={testId}
     >
-      <S.Wrap role="status" aria-live="polite">
-        <S.Heading>{heading}</S.Heading>
-        <S.Description>{description}</S.Description>
-        <S.Label>{label}</S.Label>
-        <S.Row>
-          <S.Bar
+      <div className={styles.wrap} role="status" aria-live="polite">
+        <h3 className={styles.heading}>{heading}</h3>
+        <p className={styles.description}>{description}</p>
+        <p className={styles.label}>{label}</p>
+        <div className={styles.row}>
+          <progress
+            className={styles.bar}
             value={done}
             max={total}
             aria-label={label}
             data-active={done < total || undefined}
             data-testid={`${testId}-bar`}
           />
-          <S.Count data-testid={`${testId}-count`}>
+          <span className={styles.count} data-testid={`${testId}-count`}>
             {done}/{total}
-          </S.Count>
-        </S.Row>
-      </S.Wrap>
+          </span>
+        </div>
+      </div>
     </Modal>
   )
 }

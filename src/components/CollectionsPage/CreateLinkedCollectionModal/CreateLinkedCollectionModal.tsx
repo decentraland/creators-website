@@ -13,8 +13,10 @@ import { Button } from '~/components/Button'
 import { CollectionNameInput } from '~/components/CollectionNameInput'
 import { EMPTY_LINKED_CONTRACT, LinkedContractFields } from '~/components/LinkedContractFields'
 import { Modal } from '~/components/Modal'
-import * as N from '~/components/CollectionNameInput/CollectionNameInput.styles'
-import * as S from './CreateLinkedCollectionModal.styles'
+import nameInput from '~/components/CollectionNameInput/CollectionNameInput.module.css'
+import styles from './CreateLinkedCollectionModal.module.css'
+import nameModal from '~/components/CollectionNameModal/CollectionNameModal.module.css'
+import shared from '~/styles/shared.module.css'
 
 type Props = {
   isPending: boolean
@@ -63,12 +65,13 @@ export function CreateLinkedCollectionModal({ isPending, error, onSubmit, onClos
       closeDisabled={isPending}
       testId="create-linked-collection-modal"
     >
-      <S.Form onSubmit={handleSubmit}>
-        <S.Intro>
-          <S.Heading>{t('create_linked_collection_modal.heading')}</S.Heading>
-          <S.Subtitle>
+      <form className={nameModal.form} onSubmit={handleSubmit}>
+        <div className={nameModal.intro}>
+          <h3 className={nameModal.heading}>{t('create_linked_collection_modal.heading')}</h3>
+          <p className={nameModal.subtitle}>
             {t('create_linked_collection_modal.subtitle')}{' '}
-            <S.LearnMore
+            <a
+              className={styles.learnMore}
               href={learnMoreUrl}
               data-testid="linked-learn-more"
               onClick={event => {
@@ -77,10 +80,10 @@ export function CreateLinkedCollectionModal({ isPending, error, onSubmit, onClos
               }}
             >
               {t('create_linked_collection_modal.learn_more')}
-            </S.LearnMore>
-          </S.Subtitle>
-        </S.Intro>
-        <S.Fields>
+            </a>
+          </p>
+        </div>
+        <div className={styles.fields}>
           <CollectionNameInput
             value={name}
             error={nameError}
@@ -102,9 +105,13 @@ export function CreateLinkedCollectionModal({ isPending, error, onSubmit, onClos
               if (next.network !== network || next.address !== address) setEditedSinceSubmit(true)
             }}
           />
-          {serverError && <N.ErrorText data-testid="linked-collection-error">{serverError}</N.ErrorText>}
-        </S.Fields>
-        <S.Actions>
+          {serverError && (
+            <p className={nameInput.errorText} data-testid="linked-collection-error">
+              {serverError}
+            </p>
+          )}
+        </div>
+        <div className={shared.modalActions}>
           <Button
             type="button"
             variant="secondary"
@@ -117,8 +124,8 @@ export function CreateLinkedCollectionModal({ isPending, error, onSubmit, onClos
           <Button type="submit" data-testid="linked-collection-submit" loading={isPending} disabled={!canSubmit}>
             {t('create_linked_collection_modal.submit')}
           </Button>
-        </S.Actions>
-      </S.Form>
+        </div>
+      </form>
     </Modal>
   )
 }

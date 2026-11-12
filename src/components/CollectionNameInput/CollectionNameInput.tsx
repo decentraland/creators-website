@@ -2,7 +2,7 @@ import { useId } from 'react'
 import { InfoOutlinedIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { COLLECTION_NAME_MAX_LENGTH } from '~/lib/collections'
-import * as S from './CollectionNameInput.styles'
+import styles from './CollectionNameInput.module.css'
 
 type Props = {
   value: string
@@ -35,10 +35,10 @@ export function CollectionNameInput({
   const { t } = useTranslation()
   const errorId = useId()
   return (
-    <S.Field>
-      <S.Label>
+    <div className={styles.field}>
+      <label className={styles.label}>
         {t('collection_name_input.label')}
-        <S.Box data-invalid={error ? true : undefined}>
+        <div className={styles.box} data-invalid={error ? true : undefined}>
           <input
             value={value}
             placeholder={placeholder}
@@ -50,21 +50,21 @@ export function CollectionNameInput({
             data-testid={`${testId}-input`}
             onChange={event => onChange(event.target.value)}
           />
-          <S.CharCount data-testid={`${testId}-count`}>
+          <span className={styles.charCount} data-testid={`${testId}-count`}>
             {t('collection_name_input.char_count', { count: value.length, max: maxLength })}
-          </S.CharCount>
-        </S.Box>
-      </S.Label>
+          </span>
+        </div>
+      </label>
       {error ? (
-        <S.ErrorText id={errorId} data-testid={`${testId}-error`}>
+        <p className={styles.errorText} id={errorId} data-testid={`${testId}-error`}>
           {error}
-        </S.ErrorText>
+        </p>
       ) : hideHint ? null : (
-        <S.HintText data-testid={`${testId}-hint`}>
+        <p className={styles.hintText} data-testid={`${testId}-hint`}>
           <InfoOutlinedIcon fontSize="inherit" aria-hidden />
           {t('collection_name_input.unique_hint')}
-        </S.HintText>
+        </p>
       )}
-    </S.Field>
+    </div>
   )
 }

@@ -1,34 +1,31 @@
-import styled from '@emotion/styled'
-import { theme } from '~/styles/theme'
-
-export const Field = styled.div`
+.field {
   display: flex;
   flex-direction: column;
   gap: 8px;
-`
+}
 
-export const Label = styled.label`
+.label {
   display: flex;
   flex-direction: column;
   gap: 8px;
   font-size: 16px;
   line-height: 1.5;
-  color: ${theme.colors.gray4};
-`
+  color: var(--color-gray4);
+}
 
-export const Box = styled.div`
+.box {
   display: flex;
   align-items: center;
   gap: 8px;
   height: 54px;
   padding: 0 16px;
-  border: 1.5px solid ${theme.colors.white};
+  border: 1.5px solid var(--color-white);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.05);
 
   &[data-invalid] {
-    background: ${theme.colors.errOverlay};
-    border-color: ${theme.colors.errLight};
+    background: var(--color-err-overlay);
+    border-color: var(--color-err-light);
   }
 
   & input {
@@ -40,39 +37,39 @@ export const Box = styled.div`
     font: inherit;
     font-size: 20px;
     font-weight: 600;
-    color: ${theme.colors.white};
+    color: var(--color-white);
 
     &::placeholder {
       font-weight: 400;
-      color: ${theme.colors.gray4};
+      color: var(--color-gray4);
     }
   }
-`
+}
 
-export const CharCount = styled.span`
+.charCount {
   flex: none;
   font-size: 14px;
-  color: ${theme.colors.media};
-`
+  color: var(--color-media);
+}
 
-export const ErrorText = styled.p`
+.errorText {
   margin: 0;
   font-size: 13px;
   line-height: 1.4;
-  color: ${theme.colors.errLight};
-`
+  color: var(--color-err-light);
+}
 
-export const HintText = styled.p`
+.hintText {
   display: flex;
   align-items: center;
   gap: 4px;
   margin: 0;
   font-size: 13px;
   line-height: 1.4;
-  color: ${theme.colors.gray4};
+  color: var(--color-gray4);
 
   & svg {
     flex: none;
     font-size: 16px;
   }
-`
+}

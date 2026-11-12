@@ -4,7 +4,7 @@ import successArt from '~/assets/sale-success.png'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { useTranslation } from '~/intl'
-import * as S from './SuccessModal.styles'
+import styles from './SuccessModal.module.css'
 
 type Props = {
   title: string
@@ -28,11 +28,15 @@ export function SuccessModal({
   const { t } = useTranslation()
   return (
     <Modal title={title} onClose={onDone} hideTitle testId={`${testId}-modal`}>
-      <S.Wrap>
-        <S.Art src={art} alt="" />
-        <S.Heading data-testid={`${testId}-title`}>{title}</S.Heading>
-        <S.Text data-testid={`${testId}-description`}>{description}</S.Text>
-        <S.Actions>
+      <div className={styles.wrap}>
+        <img className={styles.art} src={art} alt="" />
+        <h3 className={styles.heading} data-testid={`${testId}-title`}>
+          {title}
+        </h3>
+        <p className={styles.text} data-testid={`${testId}-description`}>
+          {description}
+        </p>
+        <div className={styles.actions}>
           {action && (
             <Button type="button" variant="secondary" data-testid={action.testId} onClick={action.onClick}>
               {action.label}
@@ -43,8 +47,8 @@ export function SuccessModal({
             {t('success_modal.done')}
             <CheckIcon fontSize="small" />
           </Button>
-        </S.Actions>
-      </S.Wrap>
+        </div>
+      </div>
     </Modal>
   )
 }

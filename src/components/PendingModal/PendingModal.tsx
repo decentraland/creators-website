@@ -1,7 +1,7 @@
 import { Modal } from '~/components/Modal'
 import { StepIndicator } from '~/components/StepIndicator'
 import { useTranslation } from '~/intl'
-import * as S from './PendingModal.styles'
+import styles from './PendingModal.module.css'
 
 type Props = {
   label: string
@@ -18,31 +18,34 @@ export function PendingModal({ label, title, steps, onCancel, testId }: Props) {
   const { t } = useTranslation()
   return (
     <Modal title={title ?? label} onClose={() => undefined} closeDisabled hideTitle testId={testId}>
-      <S.Wrap
+      <div
+        className={styles.wrap}
         role="status"
         aria-live="polite"
         data-with-steps={steps ? '' : undefined}
         data-signature={title && !steps ? '' : undefined}
       >
-        {title && <S.Title>{title}</S.Title>}
+        {title && <h3 className={styles.title}>{title}</h3>}
         {steps && (
-          <S.Stepper>
+          <div className={styles.stepper}>
             <StepIndicator
               current={steps.current}
               total={steps.labels.length}
               labels={steps.labels}
               testId={`${testId}-step`}
             />
-          </S.Stepper>
+          </div>
         )}
-        <S.BigSpinner aria-hidden />
-        <S.Label data-testid={`${testId}-label`}>{label}</S.Label>
+        <span className={styles.bigSpinner} aria-hidden />
+        <p className={styles.label} data-testid={`${testId}-label`}>
+          {label}
+        </p>
         {onCancel && (
-          <S.CancelLink type="button" data-testid={`${testId}-cancel`} onClick={onCancel}>
+          <button className={styles.cancelLink} type="button" data-testid={`${testId}-cancel`} onClick={onCancel}>
             {t('sell_item_modal.cancel')}
-          </S.CancelLink>
+          </button>
         )}
-      </S.Wrap>
+      </div>
     </Modal>
   )
 }
