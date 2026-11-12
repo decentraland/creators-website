@@ -173,11 +173,7 @@ const CollectionDetailPage = () => {
   const thumbnailEditor = useThumbnailEditor(async (patch, subject) => {
     if (subject.kind !== 'item') return
     const { item } = subject
-    await updateItem
-      .mutateAsync({ item, thumbnail: patch.contents[THUMBNAIL_PATH] })
-      .catch(() =>
-        showToast(t('collection_detail_page.item_row.thumbnail_error', { name: item.name }), { type: 'error' })
-      )
+    await updateItem.mutateAsync({ item, thumbnail: patch.contents[THUMBNAIL_PATH] })
   })
   // Small screens are a viewer: the in-row edit shortcuts are desktop-only, like the menu's edit actions.
   const compact = useMediaQuery(theme.media.noActions)

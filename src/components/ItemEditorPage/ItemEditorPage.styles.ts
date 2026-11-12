@@ -466,6 +466,11 @@ export const Metric = styled.li`
     height: 16px;
     color: ${theme.editor.label};
   }
+
+  &[data-exceeded],
+  &[data-exceeded] > svg {
+    color: ${theme.colors.errLight};
+  }
 `
 
 export const VideoPane = styled.div`

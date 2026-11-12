@@ -307,7 +307,6 @@
       "edit_thumbnail": "Editar miniatura",
       "name_placeholder": "Nombre del ítem",
       "rename_error": "No pudimos renombrar “{name}”. Inténtalo de nuevo.",
-      "thumbnail_error": "No pudimos actualizar la miniatura de “{name}”. Inténtalo de nuevo.",
       "cancel_edit": "Cancelar",
       "save": "Guardar nombre"
     },
@@ -619,7 +618,7 @@
       "title_locked": "Esta colección está en revisión",
       "title_published": "Esta colección ya está publicada",
       "description_generic": "Algo salió mal al subir tus ítems. Inténtalo de nuevo.",
-      "description_too_big": "Uno de tus ítems supera su límite de tamaño al combinarlo con los archivos ya guardados. Reduce el tamaño del archivo e inténtalo de nuevo.",
+      "description_too_big": "Uno de tus ítems supera su límite de tamaño. Reduce sus texturas o su geometría e inténtalo de nuevo.",
       "description_locked": "No se pueden agregar ítems mientras la colección está en revisión. Tus archivos no se guardaron; podrás agregarlos cuando termine la revisión.",
       "description_published": "Las colecciones publicadas no admiten ítems nuevos. Tus archivos no se guardaron; crea una nueva colección para agregarlos.",
       "try_again": "Intentar de nuevo",
@@ -644,7 +643,7 @@
       "wrong_extension": "Este tipo de archivo no es compatible. Usa {extensions}.",
       "file_too_big": "El archivo es demasiado grande: el tamaño máximo es {size}MB.",
       "thumbnail_too_big": "La miniatura es demasiado grande: el tamaño máximo es {size}MB.",
-      "size_exceeded": "Este ítem es demasiado grande: el tamaño máximo es {size}MB incluyendo la miniatura.",
+      "size_exceeded": "Este ítem pesa {size} MB y supera el límite de {limit} MB (miniatura incluida). Reduce sus texturas o su geometría.",
       "missing_model_file": "No encontramos un modelo 3D o una textura dentro de este archivo.",
       "invalid_zip": "No pudimos leer este archivo ZIP.",
       "too_many_files": "Este ZIP tiene demasiados archivos — el máximo es {max}.",
@@ -1527,6 +1526,8 @@
     "item_count": "{count, plural, one {# ítem} other {# ítems}}",
     "size_kb": "{size}KB",
     "size_mb": "{size}MB",
+    "size_measuring": "Calculando el tamaño",
+    "size_unknown": "Desconocido",
     "rescue": {
       "title": "Aprobar ítems",
       "body": "{count, plural, one {# ítem debe aprobarse} other {# ítems deben aprobarse}} en el contrato de la colección. Tendrás que confirmar esta acción en tu wallet.",
@@ -1576,6 +1577,12 @@
       "confirm": "Revisar cambios"
     },
     "enable_body": "Habilita la colección para que sus ítems se puedan mintear de nuevo, tal como se aprobaron por última vez. Los cambios que el creador no envió a revisión quedan afuera. Confirma en tu wallet."
+  },
+  "item_size": {
+    "label": "Tamaño del ítem",
+    "value": "{size} / {limit} MB",
+    "exceeded": "Supera el límite de tamaño (miniatura incluida). Reduce sus texturas o su geometría.",
+    "unknown_warning": "No pudimos comprobar el tamaño de este ítem. Si supera el límite, no podrá aprobarse."
   },
   "item_validation": {
     "checking": "Revisando tus ítems…",

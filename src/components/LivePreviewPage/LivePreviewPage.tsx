@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
-import { BodyShape, type IPreviewController } from '@dcl/schemas'
+import { BodyShape } from '@dcl/schemas'
 import {
   Check as CheckIcon,
   Close as CloseIcon,
@@ -53,6 +53,7 @@ import { useWallet } from '~/store/wallet'
 import { theme } from '~/styles/theme'
 import { AddToCollectionFlow } from './AddToCollectionFlow'
 import * as S from './LivePreviewPage.styles'
+import { type WearablePreviewController } from '~/components/WearablePreview'
 
 const PREVIEW_ID = 'live-preview'
 // The streamed model has no storage hash; the spring bones editor just needs a stable key.
@@ -229,7 +230,7 @@ const LivePreviewPage = () => {
   }, [])
 
   // Preview controller: spring bones are pushed on edits (debounced), on every load and on play.
-  const [controller, setController] = useState<IPreviewController | null>(null)
+  const [controller, setController] = useState<WearablePreviewController | null>(null)
   const [loadCount, setLoadCount] = useState(0)
   const onPreviewLoad = useCallback(() => setLoadCount(count => count + 1), [])
   const onPreviewError = useCallback(

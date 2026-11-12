@@ -225,7 +225,15 @@ export function initSentry(): void {
     tracesSampleRate: 0.01,
     replaysSessionSampleRate: REPLAY_SESSION_RATE / REPLAY_LOAD_RATE,
     replaysOnErrorSampleRate: 1,
-    sendDefaultPii: false,
+    // Every category defaults to on.
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: false,
+      httpBodies: [],
+      urlQueryParams: false,
+      stackFrameVariables: false
+    },
     // Expected user actions, not bugs.
     ignoreErrors: [/user rejected/i, /user denied/i, 'ResizeObserver loop limit exceeded'],
     beforeSend: scrubEvent,

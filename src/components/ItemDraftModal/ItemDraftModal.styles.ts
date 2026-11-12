@@ -321,6 +321,26 @@ export const ErrorText = styled.p`
   color: ${theme.colors.errStrong};
 `
 
+/** The item's size against its limit, as saving would leave it. */
+export const SizeLine = styled.p`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+  color: ${theme.colors.muted2};
+
+  strong {
+    font-weight: 600;
+    color: inherit;
+  }
+
+  &[data-exceeded] strong {
+    color: ${theme.colors.errStrong};
+  }
+`
+
 export const Footer = styled.div`
   display: flex;
   flex-shrink: 0;

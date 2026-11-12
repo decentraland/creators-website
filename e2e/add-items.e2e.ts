@@ -1,5 +1,5 @@
 import { type ElementHandle } from 'puppeteer'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { collection } from './fixtures'
 import { launchApp, type App, type LaunchOptions } from './helpers/app'
 import {
@@ -11,7 +11,13 @@ import {
   waitForTestId,
   waitForToast
 } from './helpers/dom'
-import { FIXTURE, downloadedEmoteZip, eyesWithMaskZip, legacyWearableZip } from './helpers/files'
+import {
+  FIXTURE,
+  downloadedEmoteFoldersZip,
+  downloadedEmoteZip,
+  eyesWithMaskZip,
+  legacyWearableZip
+} from './helpers/files'
 import { PREVIEW_METRICS } from './helpers/preview'
 
 let app: App | undefined
@@ -88,7 +94,10 @@ describe('add items to a collection', () => {
       data: { category: 'upper_body' }
     })
     expect(byName['Yellow T-Shirt'].data.representations).toHaveLength(2)
-    expect(items.find(item => item.type === 'emote')?.data).toMatchObject({ category: 'greetings' })
+    const emote = items.find(item => item.type === 'emote')
+    expect(emote?.data).toMatchObject({ category: 'greetings' })
+    // The downloaded emote ships its model once, at the root, and comes back serving both body shapes.
+    expect(emote?.data.representations).toHaveLength(2)
     const eyes = items.find(item => item.data.category === 'eyes')
     expect(Object.keys(eyes?.contents ?? {}).some(path => path.endsWith('eyes_mask.png'))).toBe(true)
     expect(items.every(item => uploaded(app!, item.contents))).toBe(true)
@@ -96,6 +105,25 @@ describe('add items to a collection', () => {
     await waitForToast(app.page)
     await app.waitForEvent('Add items', { collectionId: draft.id, item_count: 3, failed_count: 0 })
     await app.page.waitForFunction(() => document.querySelectorAll('[data-testid="item-row"]').length === 3)
+  })
+
+  it('imports an emote downloaded with a folder per body shape', async () => {
+    app = await openWithFiles([await downloadedEmoteFoldersZip()])
+
+    await readyDraft(app)
+    await selectOption(app.page, 'item-category', 'greetings')
+    await waitForEnabled(app.page, 'add-items-finish')
+    await clickTestId(app.page, 'add-items-finish')
+
+    const [item] = await savedItems(app)
+    expect(item).toMatchObject({ type: 'emote', data: { category: 'greetings' } })
+    expect(item.data.representations).toHaveLength(2)
+    expect(
+      Object.keys(item.contents)
+        .filter(path => path.endsWith('.glb'))
+        .sort()
+    ).toEqual(['female/emote.glb', 'male/emote.glb'])
+    expect(uploaded(app, item.contents)).toBe(true)
   })
 
   it('saves a single model with the picked category and rarity', async () => {
@@ -121,6 +149,9 @@ describe('add items to a collection', () => {
     await readyDraft(app)
     await waitForTestId(app.page, 'draft-thumbnail-loading')
 
+    await vi.waitFor(() => expect(app!.previewAnswers).toContainEqual({ method: 'load', result: 'held' }), {
+      timeout: 15_000
+    })
     await app.page.evaluate(() =>
       document
         .querySelector<HTMLIFrameElement>('[data-testid="draft-processor"] iframe')

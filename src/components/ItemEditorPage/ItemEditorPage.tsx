@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { BodyShape, type ContractNetwork, type IPreviewController } from '@dcl/schemas'
+import { BodyShape, type ContractNetwork } from '@dcl/schemas'
 import { ArrowBackIosNew, PersonOutline as PersonOutlineIcon } from '@mui/icons-material'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { AvatarPreview } from '~/components/AvatarPreview'
@@ -29,9 +29,11 @@ import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { track } from '~/lib/analytics'
 import { modelValidationKey, useModelValidation } from '~/hooks/useModelValidation'
 import { useRerunValidation } from '~/hooks/useRerunValidation'
-import { useObjectURL } from '~/hooks/useObjectURL'
+import { useRepairedItemMetrics } from '~/hooks/useRepairedItemMetrics'
 import { thumbnailValidationKey, useThumbnailValidation } from '~/hooks/useThumbnailValidation'
-import { fetchStoredThumbnail, useSaveItem } from '~/hooks/useSaveItem'
+import { useCatalystItemSizes } from '~/hooks/useItemSize'
+import { SaveInProgressError, useExclusiveSave } from '~/hooks/useExclusiveSave'
+import { fetchStoredThumbnail, useSaveItem, type SaveItemVariables } from '~/hooks/useSaveItem'
 import { captureError } from '~/lib/monitoring'
 import { springBonesFetcher } from '~/hooks/useSpringBones'
 import { useTranslation } from '~/intl'
@@ -50,10 +52,10 @@ import { ReviewStage, getCurationState, getReviewStage, curationListUrl } from '
 import { useCollectionEvents } from '~/hooks/useCollectionEvents'
 import { getAiIssuesByItem } from '~/lib/events'
 import { toFileChangeSaveable, toPreviewItem, toSaveableItem, type ItemFileChange } from '~/lib/itemDraft'
-import { type BuiltItem } from '~/lib/itemFactory'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
 import { pickFiles } from '~/lib/filePicker'
 import { IMAGE_PATH, ITEM_EXTENSIONS } from '~/lib/itemFiles'
+import { getItemSizeLimit, isItemTooBigError, type ItemSize } from '~/lib/itemSize'
 import { ItemType, canDeleteItem, canEditItemDetails, type Item } from '~/lib/items'
 import { isLinkedItemPublished } from '~/lib/linkedItemStatus'
 import {
@@ -90,6 +92,7 @@ import { getValidationStatus, itemValidationContext, type ValidationSource } fro
 import { useEditorLayout } from './useEditorLayout'
 import { useItemForm } from './useItemForm'
 import * as S from './ItemEditorPage.styles'
+import { type WearablePreviewController } from '~/components/WearablePreview'
 
 const PREVIEW_ID = 'item-editor-preview'
 const NOT_FOUND_STATUSES = [401, 403, 404]
@@ -147,6 +150,8 @@ const ItemEditorPage = () => {
   const itemsQuery = useAllCollectionItems(address, collectionId ?? undefined)
   const baseWearables = useBaseWearables()
   const saveItem = useSaveItem(address)
+  const saveItemAsync = saveItem.mutateAsync
+  const { isSaving, run: runSave } = useExclusiveSave()
   const saveCollection = useSaveCollection(address)
   const [isRenameOpen, setRenameOpen] = useState(false)
 
@@ -178,7 +183,12 @@ const ItemEditorPage = () => {
       pendingLinked.data ? { pendingIds: new Set(pendingLinked.data.map(item => item.id)), reviewedIds } : undefined,
     [pendingLinked.data, reviewedIds]
   )
-  const selected = useMemo(() => resolveSelectedItem(items, itemParam), [items, itemParam])
+  const resolved = useMemo(() => resolveSelectedItem(items, itemParam), [items, itemParam])
+  const repairedMetrics = useRepairedItemMetrics(resolved)
+  const selected = useMemo(
+    () => (resolved && repairedMetrics ? { ...resolved, metrics: repairedMetrics } : resolved),
+    [resolved, repairedMetrics]
+  )
 
   // Avatar state (session-only store).
   const bodyShape = useAvatarPreview(state => state.bodyShape)
@@ -249,14 +259,11 @@ const ItemEditorPage = () => {
     [previewSelected]
   )
   const validation = useModelValidation(validationSource, validationCtx)
-  // An unsaved thumbnail is checked as picked; otherwise the stored one.
   const thumbnailSource = useMemo(() => {
     if (isMobile) return null
-    if (form.draft.thumbnail) return { kind: 'blob', blob: form.draft.thumbnail } as const
     return selected?.contents[selected.thumbnail] ? ({ kind: 'item', item: selected } as const) : null
-  }, [form.draft.thumbnail, selected, isMobile])
+  }, [selected, isMobile])
   const thumbnailValidation = useThumbnailValidation(thumbnailSource)
-  const draftThumbnailUrl = useObjectURL(form.draft.thumbnail)
   const validationSubject = useMemo(() => {
     if (!previewSelected) return undefined
     const storedThumbnail = previewSelected.contents[previewSelected.thumbnail]
@@ -265,9 +272,9 @@ const ItemEditorPage = () => {
       type: previewSelected.type,
       category: previewSelected.data.category,
       rarity: previewSelected.rarity,
-      thumbnail: draftThumbnailUrl ?? (storedThumbnail ? getContentsStorageUrl(storedThumbnail) : null)
+      thumbnail: storedThumbnail ? getContentsStorageUrl(storedThumbnail) : null
     }
-  }, [previewSelected, draftThumbnailUrl])
+  }, [previewSelected])
   const validationIssues = useMemo(() => {
     const ai = selectedId ? aiIssues.get(selectedId) : undefined
     if (!validation.data && !thumbnailValidation.data && !ai) return undefined
@@ -276,6 +283,19 @@ const ItemEditorPage = () => {
   const validationStatus = useMemo(
     () => getValidationStatus(validationIssues, validation.isLoading || thumbnailValidation.isLoading),
     [validationIssues, validation.isLoading, thumbnailValidation.isLoading]
+  )
+  // The stored files' size, against the limit of the category being edited (skins get 9 MB). A new thumbnail or
+  // rarity image is measured exactly when it is saved.
+  const sizeItems = useMemo(() => (selected ? [selected] : []), [selected])
+  const storedSizes = useCatalystItemSizes(sizeItems)
+  const storedBytes = selected ? storedSizes.sizes.get(selected.id)?.bytes : undefined
+  const sizeCategory = form.draft.category ?? selected?.data.category
+  const itemSize = useMemo<ItemSize | null>(
+    () =>
+      selected && storedBytes !== undefined
+        ? { bytes: storedBytes, limit: getItemSizeLimit(selected.type, sizeCategory) }
+        : null,
+    [selected, storedBytes, sizeCategory]
   )
   const rerunValidation = useRerunValidation()
   const rerunSelectedValidation = useCallback(async () => {
@@ -296,7 +316,7 @@ const ItemEditorPage = () => {
   )
 
   // Preview controller: spring bones are pushed on edits (debounced), on every load and on play.
-  const [controller, setController] = useState<IPreviewController | null>(null)
+  const [controller, setController] = useState<WearablePreviewController | null>(null)
   const [loadCount, setLoadCount] = useState(0)
   const onPreviewLoad = useCallback(() => setLoadCount(count => count + 1), [])
   // Reported for diagnostics only: the iframe shows its own error state.
@@ -397,13 +417,60 @@ const ItemEditorPage = () => {
       ? linkedCurations.isSuccess && !isLinkedItemPublished(selected, linkedCurations.data.get(selected.id) ?? null)
       : canDeleteItem(collection, address))
 
+  // Metrics are part of the Catalyst entity hash, so nothing published is rewritten behind its owner's back: there
+  // the corrected numbers are shown and ride along with the owner's next save.
+  const repairAttemptedRef = useRef(new Set<string>())
+  const isLinkedItemDraft =
+    !isLinked ||
+    (!!selected &&
+      linkedCurations.isSuccess &&
+      !isLinkedItemPublished(selected, linkedCurations.data.get(selected.id) ?? null))
+  // A linked item's status is its content hash, so on one sent for review the corrected metrics would ask for a push.
+  const saveBase = isLinkedItemDraft ? selected : resolved
+  const isResolvingRepairGate =
+    isResolvingReviewer || isSaving || (isLinked && (thirdParty.isLoading || linkedCurations.isLoading))
+  useEffect(() => {
+    if (!selected || !repairedMetrics || repairAttemptedRef.current.has(selected.id)) return
+    if (!collection || isResolvingRepairGate) return
+    repairAttemptedRef.current.add(selected.id)
+    const itemId = selected.id
+    if (!(editable && isDraftCollection && !selected.isPublished && isLinkedItemDraft && !form.isDirty)) {
+      track('Item metrics repaired', { itemId, saved: false })
+      return
+    }
+    // A failed save is reported by the query client's mutation handler.
+    runSave(() => saveItemAsync({ item: selected, blobs: {}, background: true })).then(
+      saved => {
+        queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collectionId ?? undefined), current =>
+          current?.map(candidate => (candidate.id === saved.id ? saved : candidate))
+        )
+        track('Item metrics repaired', { itemId, saved: true })
+      },
+      () => track('Item metrics repaired', { itemId, saved: false })
+    )
+  }, [
+    selected,
+    repairedMetrics,
+    collection,
+    isResolvingRepairGate,
+    editable,
+    isDraftCollection,
+    isLinkedItemDraft,
+    form.isDirty,
+    runSave,
+    saveItemAsync,
+    queryClient,
+    address,
+    collectionId
+  ])
+
   async function persist(item: Item) {
     const built = await toSaveableItem(item, form.draft, {
       springBones:
         springBones.models.length > 0 ? (mergeSpringBonesIntoItem(form.springBoneParams) ?? null) : undefined,
       fetchThumbnail: fetchStoredThumbnail
     })
-    if (form.draft.rarity !== item.rarity && !form.draft.thumbnail && !built.blobs[IMAGE_PATH]) {
+    if (form.draft.rarity !== item.rarity && !built.blobs[IMAGE_PATH]) {
       showToast(t('item_editor.image_refresh_skipped'), { type: 'warn' })
     }
     const saved = await commit(item, built)
@@ -413,8 +480,8 @@ const ItemEditorPage = () => {
   }
 
   /** PUTs the built item, refreshes the cached list and toasts. */
-  async function commit(item: Item, built: BuiltItem): Promise<Item> {
-    const saved = await saveItem.mutateAsync({ ...built, previousVideo: item.video })
+  async function commit(item: Item, save: SaveItemVariables): Promise<Item> {
+    const saved = await saveItemAsync({ ...save, previous: item, previousVideo: item.video })
     queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collectionId ?? undefined), current =>
       current?.map(candidate => (candidate.id === saved.id ? saved : candidate))
     )
@@ -422,8 +489,13 @@ const ItemEditorPage = () => {
     return saved
   }
 
-  // A locked collection is the creator's to wait out; anything else is ours to look into.
+  // A locked collection is the creator's to wait out, an item over its size limit the creator's to slim down;
+  // anything else is ours to look into.
   function reportSaveError(error: unknown, flow: 'item_save' | 'item_file_change') {
+    if (isItemTooBigError(error)) {
+      showToast(t('add_items_modal.file_error.size_exceeded', error.messageParams), { type: 'error' })
+      return
+    }
     console.error('Item save failed:', error)
     const locked = error instanceof BuilderServerError && error.status === COLLECTION_LOCKED_STATUS
     if (!locked) captureError(error, { flow, itemId: selectedIdRef.current ?? undefined })
@@ -435,8 +507,12 @@ const ItemEditorPage = () => {
   // model, so they move with the file); every other unsaved panel edit stays pending, except what the
   // file change decided (category, thumbnail).
   async function saveFileChange(change: ItemFileChange): Promise<void> {
-    if (!selected) throw new Error('No item selected')
-    const base = selected
+    if (!saveBase) throw new Error('No item selected')
+    const base = saveBase
+    await runSave(() => applyFileChange(base, change))
+  }
+
+  async function applyFileChange(base: Item, change: ItemFileChange): Promise<void> {
     try {
       const springBonesData = await carrySpringBonesForSave(
         springBonesFetcher(queryClient),
@@ -454,23 +530,41 @@ const ItemEditorPage = () => {
           form.dispatch({ type: 'setCategory', category: change.category })
           form.dispatch({ type: 'setHides', hides: saved.data.hides ?? [] })
         }
-        if (change.thumbnail) form.dispatch({ type: 'setThumbnail', thumbnail: null })
       }
     } catch (error) {
-      reportSaveError(error, 'item_file_change')
+      // The modal shows an oversized result itself, next to the file that caused it.
+      if (!isItemTooBigError(error)) reportSaveError(error, 'item_file_change')
+      throw error
+    }
+  }
+
+  // A new thumbnail saves on confirm, like a file change, so the size the panel shows is always the stored one.
+  // The modal shows a failure itself and stays open.
+  async function saveThumbnail(thumbnail: Blob): Promise<void> {
+    if (!selected || !saveBase) return
+    try {
+      await runSave(() => commit(saveBase, { item: saveBase, thumbnail }))
+    } catch (error) {
+      const expected =
+        isItemTooBigError(error) ||
+        error instanceof SaveInProgressError ||
+        (error instanceof BuilderServerError && error.status === COLLECTION_LOCKED_STATUS)
+      if (!expected) captureError(error, { flow: 'item_save', itemId: selected.id })
       throw error
     }
   }
 
   function save() {
-    if (!selected) return
+    if (!selected || !saveBase) return
     const missing = getShapesMissingSpringBones(form.springBoneParams, springBones.bonesByHash)
     if (missing.length > 0 && !springWarning) {
       setSpringWarning(true)
       return
     }
     setSpringWarning(false)
-    persist(selected).catch((error: unknown) => reportSaveError(error, 'item_save'))
+    runSave(() => persist(saveBase)).catch((error: unknown) => {
+      if (!(error instanceof SaveInProgressError)) reportSaveError(error, 'item_save')
+    })
   }
 
   // Read off `form` before the memo: `form` itself is a fresh object every render, so depending on it
@@ -671,11 +765,13 @@ const ItemEditorPage = () => {
         draft={form.draft}
         dispatch={form.dispatch}
         isDirty={form.isDirty}
-        isSaving={saveItem.isPending}
+        isSaving={isSaving}
+        size={itemSize}
         springBones={springBonesForm}
         linkedContract={isLinked ? linkedContract : undefined}
         onSave={save}
         onSaveFile={saveFileChange}
+        onSaveThumbnail={saveThumbnail}
         onRevert={() => form.reset(selected)}
         onDeleted={() => navigateToItem(null)}
       />

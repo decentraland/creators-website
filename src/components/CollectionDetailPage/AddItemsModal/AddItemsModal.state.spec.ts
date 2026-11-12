@@ -4,7 +4,9 @@ import {
   addItemsReducer,
   createDraft,
   createInitialState,
+  draftSizeInputs,
   getCategoryOptions,
+  getDraftSizeLimit,
   isImageWearable,
   getVariantTargets,
   isDraftComplete,
@@ -275,13 +277,48 @@ describe('isDraftComplete', () => {
     expect(isDraftComplete({ ...variant, variantTargetId: null }, [variant, maleDraft], [])).toBe(false)
   })
 
-  it('rejects items over their size cap', () => {
-    const big = readyDraft({ contents: { 'model.glb': new Blob([new Uint8Array(4 * 1024 * 1024)]) } })
-    expect(isDraftComplete(big, [], [])).toBe(false)
-    expect(isDraftComplete({ ...big, category: 'skin' }, [], [])).toBe(true)
+  it('rejects a draft whose measured size is over its limit, and never blocks on a size not measured yet', () => {
+    const limit = 3 * 1024 * 1024
+    expect(isDraftComplete(readyDraft(), [], [], {}, { bytes: 3_243_672, limit })).toBe(false)
+    expect(isDraftComplete(readyDraft(), [], [], {}, { bytes: limit, limit })).toBe(true)
+    expect(isDraftComplete(readyDraft(), [], [], {}, null)).toBe(true)
   })
 })
 
+describe('getDraftSizeLimit', () => {
+  const MB = 1024 * 1024
+
+  it('gives wearables and emotes 3 MB and skins 9 MB', () => {
+    expect(getDraftSizeLimit(readyDraft(), [], [])).toBe(3 * MB)
+    expect(getDraftSizeLimit(readyDraft({ category: 'skin' }), [], [])).toBe(9 * MB)
+    expect(getDraftSizeLimit(readyDraft({ type: ItemType.EMOTE, category: 'dance' }), [], [])).toBe(3 * MB)
+  })
+
+  it('gives a body-shape variant the limit of the item it joins', () => {
+    const skin = readyDraft({ category: 'skin', bodyShape: BodyShapeType.MALE })
+    const variant = readyDraft({
+      bodyShape: BodyShapeType.FEMALE,
+      isVariant: true,
+      variantTargetId: skin.id,
+      category: null
+    })
+    expect(getDraftSizeLimit(variant, [skin, variant], [])).toBe(9 * MB)
+    const saved = { id: 'saved', data: { category: 'skin', representations: [] } } as unknown as Item
+    expect(getDraftSizeLimit({ ...variant, variantTargetId: 'saved' }, [variant], [saved])).toBe(9 * MB)
+  })
+})
+
+describe('draftSizeInputs', () => {
+  const same = (a: unknown[], b: unknown[]) => a.length === b.length && a.every((value, i) => Object.is(value, b[i]))
+
+  it('changes with the files or the rarity, never with the name', () => {
+    const draft = readyDraft()
+    const inputs = draftSizeInputs([draft])
+    expect(same(draftSizeInputs([{ ...draft, name: 'Other' }]), inputs)).toBe(true)
+    expect(same(draftSizeInputs([{ ...draft, rarity: 'mythic' }]), inputs)).toBe(false)
+    expect(same(draftSizeInputs([{ ...draft, contents: { ...draft.contents } }]), inputs)).toBe(false)
+  })
+})
 describe('smart wearable drafts', () => {
   it('need a preview video to be saved and never act as variant targets', () => {
     const smart = smartDraft()
