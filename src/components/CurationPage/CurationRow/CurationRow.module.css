@@ -1,43 +1,38 @@
-import styled from '@emotion/styled'
-import { Link } from 'react-router-dom'
-import { theme } from '~/styles/theme'
-import { curationColumns } from '../CurationPage.styles'
-
-const card = theme.media.maxWidth('tablet')
-const table = theme.media.minWidth('tablet')
-
-export const Row = styled.article`
-  ${curationColumns};
+.row {
+  display: grid;
+  grid-template-columns: var(--list-columns);
+  align-items: center;
+  gap: 12px;
   position: relative;
   padding: 12px 24px 12px 12px;
-  border-radius: ${theme.radius.card};
-  background: ${theme.colors.overlay};
-  color: ${theme.colors.softWhite};
+  border-radius: var(--radius-card);
+  background: var(--color-overlay);
+  color: var(--color-soft-white);
   transition:
     background 0.15s ease,
     box-shadow 0.15s ease;
 
   &:hover,
   &:focus-within {
-    background: ${theme.colors.overlayHover};
-    box-shadow: 0 0 8px ${theme.colors.brandViolet};
+    background: var(--color-overlay-hover);
+    box-shadow: 0 0 8px var(--color-brand-violet);
   }
 
-  ${card} {
+  @media (max-width: 991px) {
     display: grid;
     grid-template-columns: 88px 1fr auto;
     grid-template-areas:
-      'thumb name pills'
-      'thumb owner owner'
-      'thumb requested requested'
-      'thumb discussion discussion'
-      'assignee assignee assignee';
+      "thumb name pills"
+      "thumb owner owner"
+      "thumb requested requested"
+      "thumb discussion discussion"
+      "assignee assignee assignee";
     gap: 8px 12px;
     padding: 12px;
   }
-`
+}
 
-export const RowLink = styled(Link)`
+.rowLink {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -46,43 +41,43 @@ export const RowLink = styled(Link)`
   text-decoration: none;
   outline: none;
 
-  ${card} {
+  @media (max-width: 991px) {
     grid-area: name;
   }
 
   &::after {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
   }
-`
+}
 
-export const NameCell = styled.div`
+.nameCell {
   display: flex;
   align-items: center;
   gap: 12px;
   min-width: 0;
 
-  ${card} {
+  @media (max-width: 991px) {
     display: contents;
   }
-`
+}
 
-export const Thumb = styled.div`
+.thumb {
   flex: none;
   width: 74px;
   height: 74px;
   border-radius: 6px;
   overflow: hidden;
 
-  ${card} {
+  @media (max-width: 991px) {
     grid-area: thumb;
     width: 88px;
     height: 88px;
   }
-`
+}
 
-export const Name = styled.h3`
+.name {
   margin: 0;
   min-width: 0;
   font-size: 16px;
@@ -91,14 +86,14 @@ export const Name = styled.h3`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-`
+}
 
-export const Sub = styled.span`
+.sub {
   font-size: 12px;
-  color: ${theme.colors.gray4};
-`
+  color: var(--color-gray4);
+}
 
-export const Cell = styled.div`
+.cell {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -107,16 +102,16 @@ export const Cell = styled.div`
   font-weight: 600;
   line-height: 1.57;
 
-  ${table} {
+  @media not all and (max-width: 991px) {
     align-items: center;
     text-align: center;
   }
 
-  ${card} {
-    &[data-cell='owner'] {
+  @media (max-width: 991px) {
+    &[data-cell="owner"] {
       grid-area: owner;
     }
-    &[data-cell='requested'] {
+    &[data-cell="requested"] {
       grid-area: requested;
       flex-direction: row;
       align-items: center;
@@ -124,15 +119,14 @@ export const Cell = styled.div`
       font-weight: 400;
     }
   }
-`
+}
 
-/* The two pills: separate columns in the table, stacked top-right on cards. */
-export const Pills = styled.div`
-  ${table} {
+.pills {
+  @media not all and (max-width: 991px) {
     display: contents;
   }
 
-  ${card} {
+  @media (max-width: 991px) {
     grid-area: pills;
     display: flex;
     flex-direction: column;
@@ -140,10 +134,9 @@ export const Pills = styled.div`
     align-self: start;
     gap: 4px;
   }
-`
+}
 
-/* Sits above the row's stretched link so the forum link stays clickable. */
-export const DiscussionCell = styled.div`
+.discussionCell {
   position: relative;
   z-index: 1;
   display: flex;
@@ -152,7 +145,7 @@ export const DiscussionCell = styled.div`
   min-width: 0;
   font-size: 14px;
 
-  ${table} {
+  @media not all and (max-width: 991px) {
     justify-content: center;
 
     & > [data-mobile-only] {
@@ -160,19 +153,18 @@ export const DiscussionCell = styled.div`
     }
   }
 
-  ${card} {
+  @media (max-width: 991px) {
     grid-area: discussion;
   }
-`
+}
 
-export const CellLabel = styled.span`
+.cellLabel {
   font-size: 12px;
   font-weight: 400;
-  color: ${theme.colors.gray4};
-`
+  color: var(--color-gray4);
+}
 
-/* Sits above the row's stretched link so its buttons stay clickable. */
-export const AssigneeCell = styled.div`
+.assigneeCell {
   position: relative;
   z-index: 1;
   display: flex;
@@ -183,7 +175,7 @@ export const AssigneeCell = styled.div`
   font-size: 14px;
   font-weight: 600;
 
-  ${table} {
+  @media not all and (max-width: 991px) {
     &[data-unassigned] {
       flex-direction: column;
       align-items: flex-end;
@@ -191,20 +183,20 @@ export const AssigneeCell = styled.div`
     }
   }
 
-  ${card} {
+  @media (max-width: 991px) {
     grid-area: assignee;
     justify-content: space-between;
     padding-top: 8px;
-    border-top: 1px solid ${theme.colors.glassFaint};
+    border-top: 1px solid var(--color-glass-faint);
   }
-`
+}
 
-export const Unassigned = styled.span`
-  color: ${theme.colors.gray4};
+.unassigned {
+  color: var(--color-gray4);
   font-weight: 400;
-`
+}
 
-export const IconAction = styled.button`
+.iconAction {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -214,41 +206,41 @@ export const IconAction = styled.button`
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: ${theme.colors.white};
+  color: var(--color-white);
 
   &:hover,
   &:focus-visible {
-    background: ${theme.colors.glassFaint};
+    background: var(--color-glass-faint);
   }
-`
+}
 
-export const TextAction = styled.button`
+.textAction {
   min-height: 44px;
   padding: 0 8px;
   border: 0;
   background: transparent;
-  color: ${theme.colors.white};
+  color: var(--color-white);
   font-size: 14px;
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
   white-space: nowrap;
 
-  ${table} {
+  @media not all and (max-width: 991px) {
     /* Flush with the column's right edge despite the button's own padding. */
     margin-right: -8px;
   }
-`
+}
 
-// Shares TextAction's look; on cards its tap area overhangs the line instead of making the row taller.
-export const ForumLink = styled(TextAction)`
-  ${table} {
+/* Shares TextAction's look; on cards its tap area overhangs the line instead of making the row taller. */
+.forumLink {
+  @media not all and (max-width: 991px) {
     margin-right: 0;
   }
 
-  ${card} {
+  @media (max-width: 991px) {
     min-height: 0;
     margin: -12px 0;
     padding: 12px 0;
   }
-`
+}

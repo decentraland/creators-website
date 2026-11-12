@@ -41,7 +41,9 @@ import emptyCollectionsArt from '~/assets/empty-collections.png'
 import { Button } from '~/components/Button'
 import { CollectionCard } from './CollectionCard'
 import { CollectionListRow } from './CollectionListRow'
-import * as S from './CollectionsPage.styles'
+import { cx } from '~/lib/cx'
+import shared from '~/styles/shared.module.css'
+import styles from './CollectionsPage.module.css'
 
 const STATUS_FILTERS = [
   CollectionStatusFilter.ALL,
@@ -223,11 +225,11 @@ const CollectionsPage = () => {
   const isSearching = searchInput.trim() !== search || (!!search && collections.isFetching)
 
   return (
-    <S.Page data-testid="collections-page">
-      <S.Header>
-        <S.Title>{t('collections_page.title')}</S.Title>
-        <S.HeaderActions>
-          <S.SearchBox>
+    <div className={shared.page} data-testid="collections-page">
+      <div className={shared.header}>
+        <h1 className={shared.title}>{t('collections_page.title')}</h1>
+        <div className={styles.headerActions}>
+          <div className={shared.searchBox}>
             <SearchIcon fontSize="small" />
             <input
               value={searchInput}
@@ -236,8 +238,8 @@ const CollectionsPage = () => {
               data-testid="collections-search"
               onChange={e => onSearchChange(e.target.value)}
             />
-            {isSearching && <S.Spinner data-testid="search-spinner" aria-hidden />}
-          </S.SearchBox>
+            {isSearching && <span className={shared.spinner} data-testid="search-spinner" aria-hidden />}
+          </div>
           <Button
             type="button"
             variant="primary"
@@ -248,14 +250,15 @@ const CollectionsPage = () => {
             <AddIcon fontSize="small" />
             {t(isLinkedSection ? 'collections_page.new_linked_collection' : 'collections_page.new_collection')}
           </Button>
-        </S.HeaderActions>
-      </S.Header>
+        </div>
+      </div>
 
-      <S.FilterRow>
-        <S.Chips data-testid="status-filters">
+      <div className={styles.filterRow}>
+        <div className={shared.chips} data-testid="status-filters">
           {counts &&
             STATUS_FILTERS.filter(filter => filter === status || isStatusFilterShown(filter, counts)).map(filter => (
-              <S.Chip
+              <button
+                className={shared.chip}
                 key={filter}
                 type="button"
                 data-active={status === filter || undefined}
@@ -266,14 +269,15 @@ const CollectionsPage = () => {
                   count: filter === CollectionStatusFilter.ALL ? allCount : counts[filter]
                 })}
                 {filter === CollectionStatusFilter.REJECTED && !!counts.rejected && (
-                  <S.ChipDot data-testid="rejected-dot" aria-hidden />
+                  <span className={styles.chipDot} data-testid="rejected-dot" aria-hidden />
                 )}
-              </S.Chip>
+              </button>
             ))}
           {counts && (
             <>
-              <S.ChipDivider aria-hidden />
-              <S.Chip
+              <span className={styles.chipDivider} aria-hidden />
+              <button
+                className={shared.chip}
                 type="button"
                 data-active={status === LINKED_FILTER || undefined}
                 data-testid={`status-filter-${LINKED_FILTER}`}
@@ -284,12 +288,13 @@ const CollectionsPage = () => {
               >
                 <LinkIcon fontSize="small" />
                 {t('collections_page.filter.linked', { count: linkedTotal })}
-              </S.Chip>
+              </button>
             </>
           )}
-        </S.Chips>
-        <S.ViewToggle role="group" aria-label={t('collections_page.view_mode')}>
-          <S.ViewButton
+        </div>
+        <div className={styles.viewToggle} role="group" aria-label={t('collections_page.view_mode')}>
+          <button
+            className={styles.viewButton}
             type="button"
             data-active={view === 'grid' || undefined}
             aria-pressed={view === 'grid'}
@@ -298,8 +303,9 @@ const CollectionsPage = () => {
             onClick={() => setView('grid')}
           >
             <GridViewIcon fontSize="small" />
-          </S.ViewButton>
-          <S.ViewButton
+          </button>
+          <button
+            className={styles.viewButton}
             type="button"
             data-active={view === 'list' || undefined}
             aria-pressed={view === 'list'}
@@ -308,41 +314,45 @@ const CollectionsPage = () => {
             onClick={() => setView('list')}
           >
             <FormatListBulletedIcon fontSize="small" />
-          </S.ViewButton>
-        </S.ViewToggle>
-      </S.FilterRow>
+          </button>
+        </div>
+      </div>
 
       {restored && !session ? (
-        <S.Panel data-testid="sign-in-panel">
-          <S.SignInIcon aria-hidden>
+        <section className={shared.panel} data-testid="sign-in-panel">
+          <div className={shared.signInIcon} aria-hidden>
             <PersonOutlineIcon />
-          </S.SignInIcon>
-          <S.PanelTitle>{t('collections_page.sign_in.title')}</S.PanelTitle>
+          </div>
+          <h2 className={shared.panelTitle}>{t('collections_page.sign_in.title')}</h2>
           <Button type="button" variant="primary" data-testid="sign-in" onClick={() => signIn()}>
             {t('collections_page.sign_in.action')}
           </Button>
-        </S.Panel>
+        </section>
       ) : isLoading ? (
-        <S.Grid data-testid="collections-loading" aria-hidden>
+        <div className={styles.grid} data-testid="collections-loading" aria-hidden>
           {Array.from({ length: COLLECTIONS_PAGE_SIZE }, (_, i) => (
-            <S.SkeletonCard key={i} className="skeleton" />
+            <div className={cx(styles.skeletonCard, 'skeleton')} key={i} />
           ))}
-        </S.Grid>
+        </div>
       ) : collections.isError ? (
-        <S.Panel data-testid="collections-error">
-          <S.PanelTitle>{t('collections_page.error.title')}</S.PanelTitle>
-          <S.PanelText>{t('collections_page.error.description')}</S.PanelText>
+        <section className={shared.panel} data-testid="collections-error">
+          <h2 className={shared.panelTitle}>{t('collections_page.error.title')}</h2>
+          <p className={shared.panelText}>{t('collections_page.error.description')}</p>
           <Button type="button" variant="secondary" onClick={() => void collections.refetch()}>
             {t('collections_page.error.retry')}
           </Button>
-        </S.Panel>
+        </section>
       ) : isEmpty ? (
-        <S.Panel data-testid="collections-empty">
-          <S.EmptyArt src={emptyCollectionsArt} alt="" />
-          <S.PanelTitle>{t('collections_page.empty.title')}</S.PanelTitle>
-          <S.PanelText data-desktop>{t('collections_page.empty.description')}</S.PanelText>
-          <S.PanelText data-mobile>{t('collections_page.empty.description_mobile')}</S.PanelText>
-          <S.EmptyActions>
+        <section className={shared.panel} data-testid="collections-empty">
+          <img className={styles.emptyArt} src={emptyCollectionsArt} alt="" />
+          <h2 className={shared.panelTitle}>{t('collections_page.empty.title')}</h2>
+          <p className={shared.panelText} data-desktop>
+            {t('collections_page.empty.description')}
+          </p>
+          <p className={shared.panelText} data-mobile>
+            {t('collections_page.empty.description_mobile')}
+          </p>
+          <div className={styles.emptyActions}>
             <Button as="a" variant="secondary" href={LEARN_MORE_URL} target="_blank" rel="noopener noreferrer">
               {t('collections_page.empty.learn_more')}
             </Button>
@@ -350,15 +360,19 @@ const CollectionsPage = () => {
               <AddIcon fontSize="small" />
               {t('collections_page.empty.create_first')}
             </Button>
-          </S.EmptyActions>
-        </S.Panel>
+          </div>
+        </section>
       ) : isLinkedEmpty ? (
-        <S.Panel data-testid="linked-collections-empty">
-          <S.EmptyArt src={emptyCollectionsArt} alt="" />
-          <S.PanelTitle>{t('collections_page.linked_empty.title')}</S.PanelTitle>
-          <S.PanelText data-desktop>{t('collections_page.linked_empty.description')}</S.PanelText>
-          <S.PanelText data-mobile>{t('collections_page.empty.description_mobile')}</S.PanelText>
-          <S.EmptyActions>
+        <section className={shared.panel} data-testid="linked-collections-empty">
+          <img className={styles.emptyArt} src={emptyCollectionsArt} alt="" />
+          <h2 className={shared.panelTitle}>{t('collections_page.linked_empty.title')}</h2>
+          <p className={shared.panelText} data-desktop>
+            {t('collections_page.linked_empty.description')}
+          </p>
+          <p className={shared.panelText} data-mobile>
+            {t('collections_page.empty.description_mobile')}
+          </p>
+          <div className={styles.emptyActions}>
             <Button
               as="a"
               variant="secondary"
@@ -379,43 +393,43 @@ const CollectionsPage = () => {
               <AddIcon fontSize="small" />
               {t('collections_page.linked_empty.create_first')}
             </Button>
-          </S.EmptyActions>
-        </S.Panel>
+          </div>
+        </section>
       ) : noResults ? (
-        <S.Panel data-testid="collections-no-results">
-          <S.EmptyArt src={emptyCollectionsArt} alt="" />
-          <S.PanelTitle>{t('collections_page.no_results.title')}</S.PanelTitle>
-          <S.PanelText>{t('collections_page.no_results.description')}</S.PanelText>
-        </S.Panel>
+        <section className={shared.panel} data-testid="collections-no-results">
+          <img className={styles.emptyArt} src={emptyCollectionsArt} alt="" />
+          <h2 className={shared.panelTitle}>{t('collections_page.no_results.title')}</h2>
+          <p className={shared.panelText}>{t('collections_page.no_results.description')}</p>
+        </section>
       ) : (
         <>
           {view === 'grid' ? (
-            <S.Grid data-testid="collections-grid">
+            <div className={styles.grid} data-testid="collections-grid">
               {data?.results.map(collection => (
                 <CollectionCard key={collection.id} collection={collection} />
               ))}
-            </S.Grid>
+            </div>
           ) : (
-            <S.List data-testid="collections-list">
-              <S.ListHeader>
+            <div className={styles.list} data-testid="collections-list">
+              <div className={styles.listHeader}>
                 <span>{t('collections_page.list.collection')}</span>
                 <span>{t('collections_page.list.items')}</span>
                 <span>{t('collections_page.list.status')}</span>
                 <span>{t('collections_page.list.last_updated')}</span>
                 <span>{t('collections_page.list.created')}</span>
-                <S.ListHeaderActions>{t('collections_page.list.actions')}</S.ListHeaderActions>
-              </S.ListHeader>
+                <span className={styles.listHeaderActions}>{t('collections_page.list.actions')}</span>
+              </div>
               {data?.results.map(collection => (
                 <CollectionListRow key={collection.id} collection={collection} />
               ))}
-            </S.List>
+            </div>
           )}
-          <S.FooterRow>
-            <S.ShowingCount data-testid="collections-count">
+          <div className={shared.footerRow}>
+            <span className={shared.showingCount} data-testid="collections-count">
               {t('collections_page.showing', { range: pageRangeLabel(page, COLLECTIONS_PAGE_SIZE, shown), total })}
-            </S.ShowingCount>
+            </span>
             {pages > 1 && <Pagination page={page} pages={pages} onPageChange={goToPage} />}
-          </S.FooterRow>
+          </div>
         </>
       )}
 
@@ -436,7 +450,7 @@ const CollectionsPage = () => {
           onClose={closeCreateModal}
         />
       )}
-    </S.Page>
+    </div>
   )
 }
 
