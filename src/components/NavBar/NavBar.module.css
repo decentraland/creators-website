@@ -1,11 +1,4 @@
-import styled from '@emotion/styled'
-import { breakpoints, theme } from '~/styles/theme'
-
-const { colors, media } = theme
-
-const mobile = media.maxWidth('mobile')
-
-export const Subnav = styled.div`
+.subnav {
   position: sticky;
   /* Pinned under the ui2 navbar — see --nav-h in styles/index.css for why this is a var and not
      a pair of numbers on our own breakpoint. */
@@ -18,19 +11,19 @@ export const Subnav = styled.div`
      express). Keep the height in sync with --sub-nav-h in styles/index.css. */
   height: 56px;
   padding: 0 16px;
-  background: ${colors.subnavOverlay};
+  background: var(--color-subnav-overlay);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 
-  @media (min-width: ${breakpoints.laptop}px) {
+  @media (min-width: 1024px) {
     height: 64px;
     padding: 0 64px;
   }
-`
+}
 
-export const Tabs = styled.nav`
+.tabs {
   display: flex;
   gap: 40px;
   height: 100%;
@@ -54,18 +47,19 @@ export const Tabs = styled.nav`
     letter-spacing: 0.03em;
     font-size: 15px;
     font-weight: 600;
-    color: ${colors.muted2};
+    color: var(--color-muted2);
     border-bottom: 4px solid transparent;
   }
   & a:hover {
-    color: ${colors.white};
+    color: var(--color-white);
   }
-  & a.active {
-    color: ${colors.white};
-    border-bottom-color: ${colors.orange};
+  /* NavLink's own active marker; a module would hash react-router's global `active` class. */
+  & a[aria-current="page"] {
+    color: var(--color-white);
+    border-bottom-color: var(--color-orange);
   }
 
-  ${mobile} {
+  @media (max-width: 768px) {
     gap: 16px;
     mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
 
@@ -74,4 +68,4 @@ export const Tabs = styled.nav`
       letter-spacing: 0.038em;
     }
   }
-`
+}
