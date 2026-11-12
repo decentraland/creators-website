@@ -117,6 +117,18 @@ describe('isItemSynced', () => {
     expect(isItemSynced(untagged, entity, { ignoreTags: true })).toBe(true)
   })
 
+  it('is out of sync when the metrics were corrected, unless asked to ignore them', () => {
+    const zeroed = {
+      ...wearable,
+      metrics: { triangles: 0, materials: 0, textures: 0, meshes: 1, bodies: 1, entities: 1 }
+    }
+    const entity = entityFor(zeroed, { metrics: zeroed.metrics })
+    const repaired = { ...zeroed, metrics: { ...zeroed.metrics, triangles: 540, materials: 1, textures: 1 } }
+    expect(isItemSynced(zeroed, entity)).toBe(true)
+    expect(isItemSynced(repaired, entity)).toBe(false)
+    expect(isItemSynced(repaired, entity, { ignoreMetrics: true })).toBe(true)
+  })
+
   it('does not confuse a tag containing a comma with two tags', () => {
     expect(
       isItemSynced(

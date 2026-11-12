@@ -17,6 +17,7 @@ import {
   getItemMetadata,
   getItemSales,
   getMissingBodyShapeType,
+  hasEmptyModelMetrics,
   ItemType,
   toRemoteItem,
   type Item,
@@ -374,5 +375,22 @@ describe('canEditItemPrice', () => {
     expect(canEditItemPrice(approved, item, undefined, '0xowner')).toBe(false)
     expect(canEditItemPrice(approved, { ...item, totalSupply: 100 }, order, '0xowner')).toBe(false)
     expect(canEditItemPrice({ ...approved, isApproved: false }, item, order, '0xowner')).toBe(false)
+  })
+})
+
+describe('hasEmptyModelMetrics', () => {
+  it('flags the empty boot scene reading, which still counts one mesh', () => {
+    expect(hasEmptyModelMetrics({ triangles: 0, materials: 0, textures: 0, meshes: 1, bodies: 1, entities: 1 })).toBe(
+      true
+    )
+  })
+
+  it('flags metrics with no geometry fields at all', () => {
+    expect(hasEmptyModelMetrics({})).toBe(true)
+  })
+
+  it('accepts a model with geometry', () => {
+    expect(hasEmptyModelMetrics({ triangles: 540, materials: 1, textures: 0, meshes: 1 })).toBe(false)
+    expect(hasEmptyModelMetrics({ triangles: 0, materials: 1, textures: 0 })).toBe(false)
   })
 })

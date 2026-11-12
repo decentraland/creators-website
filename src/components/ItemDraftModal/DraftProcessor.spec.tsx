@@ -29,6 +29,8 @@ const { DraftProcessor, BOOT_BUDGET_MS, READ_BUDGET_MS, RUN_BUDGET_MS } = await 
 
 const REAL_METRICS = { triangles: 708, materials: 3, meshes: 5, textures: 4, bodies: 5, entities: 1 }
 const EMPTY_SCENE_METRICS = { triangles: 0, materials: 0, meshes: 0, textures: 0, bodies: 0, entities: 1 }
+// Babylon's boot scene holds one empty mesh.
+const BOOT_SCENE_METRICS = { triangles: 0, materials: 0, meshes: 1, textures: 0, bodies: 1, entities: 1 }
 
 function wearableDraft(): PreviewDraft {
   const file = new File([new Blob(['glb'])], 'hat.glb')
@@ -100,6 +102,19 @@ describe('DraftProcessor', () => {
 
     await iframeLoads()
     expect(onError).not.toHaveBeenCalled()
+    expect(onResult).toHaveBeenCalledTimes(1)
+    expect(onResult.mock.calls[0][1].metrics).toEqual(REAL_METRICS)
+  })
+
+  it('ignores a reading of the boot scene that counts one empty mesh', async () => {
+    getMetrics.mockResolvedValueOnce(BOOT_SCENE_METRICS).mockResolvedValue(REAL_METRICS)
+    const onResult = vi.fn()
+    render(<DraftProcessor draft={wearableDraft()} flow="add_items" onResult={onResult} onError={vi.fn()} />)
+
+    await iframeLoads()
+    expect(onResult).not.toHaveBeenCalled()
+
+    await iframeLoads()
     expect(onResult).toHaveBeenCalledTimes(1)
     expect(onResult.mock.calls[0][1].metrics).toEqual(REAL_METRICS)
   })

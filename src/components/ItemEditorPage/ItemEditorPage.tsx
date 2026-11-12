@@ -27,6 +27,7 @@ import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { track } from '~/lib/analytics'
 import { modelValidationKey, useModelValidation } from '~/hooks/useModelValidation'
 import { useRerunValidation } from '~/hooks/useRerunValidation'
+import { useRepairedItemMetrics } from '~/hooks/useRepairedItemMetrics'
 import { thumbnailValidationKey, useThumbnailValidation } from '~/hooks/useThumbnailValidation'
 import { useCatalystItemSizes } from '~/hooks/useItemSize'
 import { SaveInProgressError, useExclusiveSave } from '~/hooks/useExclusiveSave'
@@ -145,6 +146,7 @@ const ItemEditorPage = () => {
   const itemsQuery = useAllCollectionItems(address, collectionId ?? undefined)
   const baseWearables = useBaseWearables()
   const saveItem = useSaveItem(address)
+  const saveItemAsync = saveItem.mutateAsync
   const { isSaving, run: runSave } = useExclusiveSave()
   const saveCollection = useSaveCollection(address)
   const [isRenameOpen, setRenameOpen] = useState(false)
@@ -162,7 +164,12 @@ const ItemEditorPage = () => {
       pendingLinked.data ? { pendingIds: new Set(pendingLinked.data.map(item => item.id)), reviewedIds } : undefined,
     [pendingLinked.data, reviewedIds]
   )
-  const selected = useMemo(() => resolveSelectedItem(items, itemParam), [items, itemParam])
+  const resolved = useMemo(() => resolveSelectedItem(items, itemParam), [items, itemParam])
+  const repairedMetrics = useRepairedItemMetrics(resolved)
+  const selected = useMemo(
+    () => (resolved && repairedMetrics ? { ...resolved, metrics: repairedMetrics } : resolved),
+    [resolved, repairedMetrics]
+  )
 
   // Avatar state (session-only store).
   const bodyShape = useAvatarPreview(state => state.bodyShape)
@@ -392,6 +399,53 @@ const ItemEditorPage = () => {
       ? linkedCurations.isSuccess && !isLinkedItemPublished(selected, linkedCurations.data.get(selected.id) ?? null)
       : canDeleteItem(collection, address))
 
+  // Metrics are part of the Catalyst entity hash, so nothing published is rewritten behind its owner's back: there
+  // the corrected numbers are shown and ride along with the owner's next save.
+  const repairAttemptedRef = useRef(new Set<string>())
+  const isLinkedItemDraft =
+    !isLinked ||
+    (!!selected &&
+      linkedCurations.isSuccess &&
+      !isLinkedItemPublished(selected, linkedCurations.data.get(selected.id) ?? null))
+  // A linked item's status is its content hash, so on one sent for review the corrected metrics would ask for a push.
+  const saveBase = isLinkedItemDraft ? selected : resolved
+  const isResolvingRepairGate =
+    isResolvingReviewer || isSaving || (isLinked && (thirdParty.isLoading || linkedCurations.isLoading))
+  useEffect(() => {
+    if (!selected || !repairedMetrics || repairAttemptedRef.current.has(selected.id)) return
+    if (!collection || isResolvingRepairGate) return
+    repairAttemptedRef.current.add(selected.id)
+    const itemId = selected.id
+    if (!(editable && isDraftCollection && !selected.isPublished && isLinkedItemDraft && !form.isDirty)) {
+      track('Item metrics repaired', { itemId, saved: false })
+      return
+    }
+    // A failed save is reported by the query client's mutation handler.
+    runSave(() => saveItemAsync({ item: selected, blobs: {}, background: true })).then(
+      saved => {
+        queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collectionId ?? undefined), current =>
+          current?.map(candidate => (candidate.id === saved.id ? saved : candidate))
+        )
+        track('Item metrics repaired', { itemId, saved: true })
+      },
+      () => track('Item metrics repaired', { itemId, saved: false })
+    )
+  }, [
+    selected,
+    repairedMetrics,
+    collection,
+    isResolvingRepairGate,
+    editable,
+    isDraftCollection,
+    isLinkedItemDraft,
+    form.isDirty,
+    runSave,
+    saveItemAsync,
+    queryClient,
+    address,
+    collectionId
+  ])
+
   async function persist(item: Item) {
     const built = await toSaveableItem(item, form.draft, {
       springBones:
@@ -409,7 +463,7 @@ const ItemEditorPage = () => {
 
   /** PUTs the built item, refreshes the cached list and toasts. */
   async function commit(item: Item, save: SaveItemVariables): Promise<Item> {
-    const saved = await saveItem.mutateAsync({ ...save, previous: item, previousVideo: item.video })
+    const saved = await saveItemAsync({ ...save, previous: item, previousVideo: item.video })
     queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collectionId ?? undefined), current =>
       current?.map(candidate => (candidate.id === saved.id ? saved : candidate))
     )
@@ -435,8 +489,8 @@ const ItemEditorPage = () => {
   // model, so they move with the file); every other unsaved panel edit stays pending, except what the
   // file change decided (category, thumbnail).
   async function saveFileChange(change: ItemFileChange): Promise<void> {
-    if (!selected) throw new Error('No item selected')
-    const base = selected
+    if (!saveBase) throw new Error('No item selected')
+    const base = saveBase
     await runSave(() => applyFileChange(base, change))
   }
 
@@ -469,9 +523,9 @@ const ItemEditorPage = () => {
   // A new thumbnail saves on confirm, like a file change, so the size the panel shows is always the stored one.
   // The modal shows a failure itself and stays open.
   async function saveThumbnail(thumbnail: Blob): Promise<void> {
-    if (!selected) return
+    if (!selected || !saveBase) return
     try {
-      await runSave(() => commit(selected, { item: selected, thumbnail }))
+      await runSave(() => commit(saveBase, { item: saveBase, thumbnail }))
     } catch (error) {
       const expected =
         isItemTooBigError(error) ||
@@ -483,14 +537,14 @@ const ItemEditorPage = () => {
   }
 
   function save() {
-    if (!selected) return
+    if (!selected || !saveBase) return
     const missing = getShapesMissingSpringBones(form.springBoneParams, springBones.bonesByHash)
     if (missing.length > 0 && !springWarning) {
       setSpringWarning(true)
       return
     }
     setSpringWarning(false)
-    runSave(() => persist(selected)).catch((error: unknown) => {
+    runSave(() => persist(saveBase)).catch((error: unknown) => {
       if (!(error instanceof SaveInProgressError)) reportSaveError(error, 'item_save')
     })
   }
