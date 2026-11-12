@@ -109,13 +109,6 @@ export const Quote = styled.blockquote`
   overflow-wrap: anywhere;
 `
 
-export const Mono = styled.span`
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
-  color: ${theme.colors.gray4};
-  overflow-wrap: anywhere;
-`
-
 export const Toggle = styled.button`
   align-self: flex-start;
   min-height: 32px;

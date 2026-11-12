@@ -24,7 +24,7 @@ import * as S from './CollectionActivityModal.styles'
 type Props = {
   event: CollectionEvent
   items: Item[]
-  /** Committee members read the technical detail (failed validations, validation ids). */
+  /** Committee members read the validator's own failure text. */
   isCurator: boolean
 }
 
@@ -98,7 +98,6 @@ export function EventRow({ event, items, isCurator }: Props) {
       </S.Actor>
     )
   const quote = payload.rejectionMessage ?? payload.note
-  const rulesVersion = isCurator ? payload.rulesVersion : undefined
 
   return (
     <S.Row data-testid="activity-event" data-type={event.type}>
@@ -112,7 +111,7 @@ export function EventRow({ event, items, isCurator }: Props) {
       >
         {formatTimeAgo(event.createdAt, intl.locale)}
       </S.Time>
-      {(reasons.length > 0 || quote || payload.validationId || rulesVersion || failedItems.length > 0) && (
+      {(reasons.length > 0 || quote || failedItems.length > 0) && (
         <S.Details>
           {reasons.length > 0 && (
             <S.Reasons data-testid="activity-reasons">
@@ -122,16 +121,6 @@ export function EventRow({ event, items, isCurator }: Props) {
             </S.Reasons>
           )}
           {quote && <S.Quote data-testid="activity-quote">{quote}</S.Quote>}
-          {payload.validationId && (
-            <S.Mono data-testid="activity-validation-id">
-              {t('ai_verdict.validation_id', { id: payload.validationId })}
-            </S.Mono>
-          )}
-          {rulesVersion && (
-            <S.Mono data-testid="activity-rules-version">
-              {t('ai_verdict.rules_version', { version: rulesVersion })}
-            </S.Mono>
-          )}
           {failedItems.length > 0 && (
             <>
               <S.Toggle

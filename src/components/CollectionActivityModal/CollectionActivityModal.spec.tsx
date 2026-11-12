@@ -128,10 +128,9 @@ describe('CollectionActivityModal', () => {
     expect(screen.queryByTestId('activity-error')).toBeNull()
   })
 
-  it('shows the validation id only when the server sent it, and softens errors for creators', () => {
+  it('softens validator errors for creators', () => {
     state.events = [event('review.ai_error', 'validator', { validationId: 'val-9', verdict: 'error', items: [] })]
     renderModal()
-    expect(screen.getByTestId('activity-validation-id')).toHaveTextContent('val-9')
     expect(screen.getByTestId('activity-line')).toHaveTextContent('Automatic review restarted')
   })
 
@@ -153,7 +152,7 @@ describe('CollectionActivityModal', () => {
     expect(screen.getByTestId('activity-findings-item-error')).toHaveTextContent('render server timed out')
   })
 
-  it('explains items the validator could not check, with their findings and the id for curators', () => {
+  it('explains items the validator could not check, with their findings', () => {
     state.isCurator = true
     state.events = [
       event('review.human_required', 'system', {
@@ -175,7 +174,6 @@ describe('CollectionActivityModal', () => {
     const lines = screen.getAllByTestId('activity-line').map(line => line.textContent)
     expect(lines[0]).toBe("Some items can't be reviewed automatically, a curator will review them")
     expect(lines[1]).toBe('Sent to the curation committee (third-party collection)')
-    expect(screen.getByTestId('activity-validation-id')).toHaveTextContent('val-3')
     fireEvent.click(screen.getByTestId('activity-toggle-findings'))
     expect(screen.getByTestId('activity-findings-i1-finding')).toHaveTextContent('S-01')
   })
@@ -193,16 +191,24 @@ describe('CollectionActivityModal', () => {
     renderModal()
     const lines = screen.getAllByTestId('activity-line').map(line => line.textContent)
     expect(lines[0]).toBe('Automatic review gave up after several tries, a curator will review the collection')
-    expect(screen.queryByTestId('activity-rules-version')).toBeNull()
     fireEvent.click(screen.getByTestId('activity-toggle-findings'))
     expect(screen.getByTestId('activity-findings-item')).toHaveTextContent("Can't be checked automatically")
   })
 
-  it('shows the rules version to curators', () => {
+  it('keeps run metadata out of the timeline, even for curators', () => {
     state.isCurator = true
-    state.events = [event('review.ai_passed', 'validator', { verdict: 'passed', rulesVersion: '0.4.0', items: [] })]
+    state.events = [
+      event('review.ai_passed', 'validator', {
+        verdict: 'passed',
+        validationId: 'val-7',
+        rulesVersion: '0.8.0',
+        items: []
+      })
+    ]
     renderModal()
-    expect(screen.getByTestId('activity-rules-version')).toHaveTextContent('Rules 0.4.0')
+    const row = screen.getByTestId('activity-event')
+    expect(row).not.toHaveTextContent('val-7')
+    expect(row).not.toHaveTextContent('0.8.0')
   })
 
   it('tells curators about validator failures', () => {
@@ -210,7 +216,6 @@ describe('CollectionActivityModal', () => {
     state.events = [event('review.ai_error', 'validator', { verdict: 'error', items: [] })]
     renderModal()
     expect(screen.getByTestId('activity-line')).toHaveTextContent('failed and will be retried')
-    expect(screen.queryByTestId('activity-validation-id')).toBeNull()
   })
 
   it('loads the next page on demand and shows the empty and error states', () => {
