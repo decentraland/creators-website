@@ -71,7 +71,9 @@ export default defineConfig(({ command, mode }) => {
       // Without it every icon ships wherever the `~/components/Icons` barrel lands (the entry chunk), not only
       // in the chunks that render it.
       rolldownOptions: {
-        treeshake: { moduleSideEffects: [{ test: /\/src\/components\/Icons\/.*\.tsx$/, sideEffects: false }] }
+        treeshake: {
+          moduleSideEffects: [{ test: /[\\/]src[\\/]components[\\/]Icons[\\/].*\.tsx$/, sideEffects: false }]
+        }
       }
     },
     server: {
