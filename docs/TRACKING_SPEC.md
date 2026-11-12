@@ -53,14 +53,6 @@ Failure events use `errorCode(error)`: the domain error's own `reason` (`locked`
 
 Switching accounts in an injected wallet reloads the page, and `analytics.reset()` runs first so the two accounts don't end up sharing one anonymous visitor.
 
-### Pre-launch gate
-
-| event | when | props |
-| --- | --- | --- |
-| `Prelaunch gate` | the `creators-prelaunch` gate answered while armed: once per wallet per page load (a sign-out after a counted visit is not a new visitor and is not sent) | `outcome` (`open` = wallet on the allowlist, `hidden` = overview only). `address` / `is_signed_in` come from the common props |
-
-Not sent when the flag is off: after launch every visitor is `open` and the event would only be noise. A curtained visitor is redirected to the overview from any other route, so their only page view is the overview's.
-
 ### Page views
 
 A Segment `page` call per pathname change, named from a fixed map in `lib/pageViews.ts`: `collections`, `collection_detail`, `item_editor`, `curation`, `live_preview`, `other`. The legacy builder sends the url only, so the url comparison still works and the name is an extra. The overview (`/`) is named `/create`, sites' name for it, and goes to sites' source (see "Overview"). Redirect-only paths (`/overview`) send nothing: the page they land on sends its own view, so an old link counts once.
@@ -105,6 +97,7 @@ Linked funnel: Linked chip → `Create TP Collection` → `Add items` → `Publi
 | --- | --- | --- |
 | `Add items` | an upload that creates items finished in the add-items modal. One event per upload, **not** per item: the legacy builder's per-item `Save item` on creation reads here as `item_count` | `collectionId`, `item_count`, `failed_count`, `error` (only when some failed) |
 | `Edit TP Items` | an update-only upload finished (every draft edits an existing linked item; legacy name, so bulk edits line up with the old builder's) | `collectionId`, `item_count`, `failed_count` |
+| `Item preview processed` | the hidden preview finished a file's metrics and auto thumbnail, or gave up on it (add items and the change-file modal). A `timeout` also goes to Sentry (`step: 'preview_timeout'`, with `flow`, `renderer` and `itemType`) | `flow` (`add_items` / `item_file_change`), `renderer` (`unity` / `babylon`), `item_type`, `outcome` (`ok` / `timeout` / `error`), `duration_ms` (from the file's turn to the result, not the wait in the queue), `attempts` (iframes used: `2` after a remount), `batch_size` |
 | `Add items error` | the upload threw before producing a result, or was refused because drafts share a linked URN (`error: duplicate_urn`) | `collectionId`, `item_count`, `error` |
 | `Save item` | a single item was saved from the editor | `itemId` |
 | `Save item error` |  | `itemId`, `error` |
@@ -127,13 +120,14 @@ Legacy prop names, so the events line up with the old editor's.
 | `Change item file` | the change-file modal saved a new model for the item (after the `Save item` of that PUT) | `itemId`, `bodyShape` (`both` / `male` / `female`), `mode` (`replace_all` / `replace_shape` / `add_representation`), `fileKind` (`glb` / `gltf` / `zip` / `png`), `thumbnailRegenerated` |
 | `Change item file error` | the picked file was rejected or the import threw | `itemId`, `error` (the `ItemFileError` key, or `errorCode` for a throw) |
 | `Toggle scene boundaries` | the scene boundaries cylinder is shown or hidden over the preview | `visible` (the new state), `trigger` (`editor` / `live_preview`) |
+| `Item metrics repaired` | once per item per editor mount, after any write-back has settled, when the editor replaces a wearable's stored metrics that have no geometry with ones counted from its model. A failure to fetch the model goes to Sentry (`flow: 'item_metrics_repair'`), and a failed background save through the app's mutation handler (`flow: 'mutation'`); that save sends neither `Save item` nor `Save item error` | `itemId`, `saved` (the corrected metrics were written back at once: editor of an unpublished, unlocked collection with no unsaved edits; `false` when that save failed) |
 
 ### Item validation
 
 | event | when | props |
 | --- | --- | --- |
 | `Publish Validation Started` | the publish modal opens (not when resuming from a credits purchase) or the push-changes modal opens | `collectionId`, `flow` (`publish` \| `push_changes`), `itemCount` |
-| `Publish Validation Result` | the pre-step's checks finished and the modal moved on | `collectionId`, `flow`, `errors`, `warnings`, `itemsWithIssues`, `blocking` (flag on and errors), `durationMs` (from opening) |
+| `Publish Validation Result` | the pre-step's checks finished and the modal moved on | `collectionId`, `flow`, `errors`, `warnings` (an item whose size could not be measured adds one), `itemsWithIssues`, `oversizedItems` (over their size limit), `blocking` (errors that block: flag on, or an item over its size limit), `durationMs` (from opening) |
 | `Publish Validation Resolved` | the creator left the issues view | `collectionId`, `flow`, `action` (`continue` \| `back`; the × counts as `back`), `errors`, `warnings` |
 | `Item Validation Details Opened` | an item's validation details modal opens | `itemId`, `status`, `trigger` (`row` \| `editor`) |
 | `Item Validation Rerun` | a re-run finished | `itemId`, `trigger` (`details` \| `publish` \| `push_changes`; not `source`, which the app sets on every event), `previousStatus`, `newStatus` |
@@ -331,6 +325,7 @@ Every `flow` tag the app sends, with what it covers. A wallet rejection or a wal
 | `add_items` | the add-items modal: a model that could not be analysed (`step: 'validate'`) or re-validated after a category change (`step: 'revalidate'`) |
 | `save-item` / `item_save` | saving an item: the mutation's reporter (`save-item`) and the editor's save path (`item_save`) |
 | `item_file_change` | the change-file modal's import or save |
+| `item_metrics_repair` | the item editor's metrics repair: fetching the model to count, or the background save of the counted metrics |
 | `send_items` | a send that failed for a reason other than a wallet rejection or a wallet on the wrong account or network (`collectionId`, the batch size) |
 | `transfer_ownership` | the detached owner sync after a transfer gave up |
 | `create_collection_discount` / `end_collection_discount` | signing or storing a collection discount, ending one early |

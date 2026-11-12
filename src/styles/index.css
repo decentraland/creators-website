@@ -49,9 +49,6 @@
     --sub-nav-h: 64px;
   }
 }
-body[data-no-subnav] {
-  --sub-nav-h: 0px;
-}
 html {
   /* `clip` rather than `hidden`: hidden turns the root into a scroll container and breaks
      `position: sticky` on the sub-nav. */

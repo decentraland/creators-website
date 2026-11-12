@@ -142,6 +142,12 @@ export const MetricsRow = styled.div`
   }
 `
 
+// Same box as a MetricPill, so the row keeps its height when the metrics land.
+export const MetricSkeleton = styled.span`
+  height: 40px;
+  border-radius: ${theme.radius.btnSm};
+`
+
 export const MetricPill = styled.span`
   display: inline-flex;
   align-items: center;
@@ -315,6 +321,26 @@ export const ErrorText = styled.p`
   color: ${theme.colors.errStrong};
 `
 
+/** The item's size against its limit, as saving would leave it. */
+export const SizeLine = styled.p`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+  color: ${theme.colors.muted2};
+
+  strong {
+    font-weight: 600;
+    color: inherit;
+  }
+
+  &[data-exceeded] strong {
+    color: ${theme.colors.errStrong};
+  }
+`
+
 export const Footer = styled.div`
   display: flex;
   flex-shrink: 0;
@@ -363,13 +389,17 @@ export const ProcessingSpinner = styled.span`
   animation: spin 0.8s linear infinite;
 `
 
-/* Hosts the metrics/screenshot WearablePreview iframe without showing it. */
+/**
+ * Sits behind the modal's opaque surface (rendered inside the dialog, which clips it) rather than off-screen:
+ * Chrome throttles a cross-origin iframe outside the viewport or at opacity 0, which made Unity ~10x slower.
+ */
 export const HiddenPreview = styled.div`
-  position: fixed;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
   width: 1024px;
   height: 1024px;
-  left: -10000px;
-  top: 0;
   pointer-events: none;
-  opacity: 0;
+  opacity: 0.01;
 `

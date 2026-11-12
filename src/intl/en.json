@@ -306,7 +306,6 @@
       "edit_thumbnail": "Edit thumbnail",
       "name_placeholder": "Item name",
       "rename_error": "We couldn't rename “{name}”. Please try again.",
-      "thumbnail_error": "We couldn't update the thumbnail of “{name}”. Please try again.",
       "cancel_edit": "Cancel",
       "save": "Save name"
     },
@@ -617,7 +616,7 @@
       "title_locked": "This collection is under review",
       "title_published": "This collection is already published",
       "description_generic": "Something went wrong while uploading your items. Please try again.",
-      "description_too_big": "One of your items exceeds its size limit once combined with the files already saved. Reduce the file size and try again.",
+      "description_too_big": "One of your items is over its size limit. Reduce its textures or geometry and try again.",
       "description_locked": "Items can't be added while the collection is being reviewed. Your files weren't saved — you can add them once the review is done.",
       "description_published": "Published collections can't receive new items. Your files weren't saved — create a new collection to add them.",
       "try_again": "Try again",
@@ -642,7 +641,7 @@
       "wrong_extension": "This file type isn't supported. Use {extensions}.",
       "file_too_big": "The file is too big — the maximum size is {size}MB.",
       "thumbnail_too_big": "The thumbnail is too big — the maximum size is {size}MB.",
-      "size_exceeded": "This item is too big — the maximum size is {size}MB including the thumbnail.",
+      "size_exceeded": "This item is {size} MB, over the {limit} MB limit (thumbnail included). Reduce its textures or geometry.",
       "missing_model_file": "We couldn't find a 3D model or texture inside this file.",
       "invalid_zip": "We couldn't read this ZIP file.",
       "too_many_files": "This ZIP has too many files — the maximum is {max}.",
@@ -663,6 +662,7 @@
       "emote_animations_out_of_sync": "The avatar and prop animations must have the same duration.",
       "missing_external_resources": "The model references files that aren't included: {fileNames}.",
       "invalid_model_file": "We couldn't load this 3D model. Check the file and try again.",
+      "preview_timeout": "We couldn't render a preview of this file in time. Check the model, or try again later.",
       "invalid_representation": "This file can't be used as a body shape variant of that item.",
       "representation_category_mismatch": "This file doesn't fit the item's category. Use the same kind of file as the other body shape: a 3D model, or a texture for eyes, eyebrows or mouth.",
       "multiple_videos": "The ZIP includes more than one video. Keep only the preview video.",
@@ -1523,6 +1523,8 @@
     "item_count": "{count, plural, one {# item} other {# items}}",
     "size_kb": "{size}KB",
     "size_mb": "{size}MB",
+    "size_measuring": "Measuring size",
+    "size_unknown": "Unknown",
     "rescue": {
       "title": "Approve items",
       "body": "{count, plural, one {# item needs} other {# items need}} to be approved on the collection contract. You'll need to confirm this action in your wallet.",
@@ -1572,6 +1574,12 @@
       "confirm": "Review changes"
     },
     "enable_body": "Enable the collection so its items can be minted again, as last approved. Changes the creator hasn't sent for review stay out. Please confirm in your wallet."
+  },
+  "item_size": {
+    "label": "Item size",
+    "value": "{size} / {limit} MB",
+    "exceeded": "Over the size limit (thumbnail included). Reduce its textures or geometry.",
+    "unknown_warning": "We couldn't check this item's size. If it's over the limit, it can't be approved."
   },
   "item_validation": {
     "checking": "Checking your items…",
@@ -2046,5 +2054,8 @@
   },
   "wallet_error": {
     "wrong_account": "Your wallet switched to another account or network. Switch it back to the account you signed in with and try again."
+  },
+  "item_thumbnail": {
+    "generating": "Generating thumbnail…"
   }
 }

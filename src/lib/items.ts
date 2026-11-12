@@ -76,6 +76,14 @@ export type ItemMetrics = {
   additionalArmatures?: number
 }
 
+/**
+ * Metrics with no geometry: what a read of the preview's model-less boot scene reports (Babylon keeps one empty
+ * mesh there, so meshes alone can't tell it from a real model).
+ */
+export function hasEmptyModelMetrics(metrics: ItemMetrics): boolean {
+  return !metrics.triangles && !metrics.materials && !metrics.textures
+}
+
 /** Texture wearables have no mesh to measure: fixed metrics, as the legacy builder stored them. */
 export const IMAGE_WEARABLE_METRICS: ItemMetrics = {
   triangles: 100,

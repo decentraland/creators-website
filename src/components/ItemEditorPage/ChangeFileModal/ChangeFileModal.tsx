@@ -6,12 +6,13 @@ import { Checkbox } from '~/components/Checkbox'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { BodyShapePicker, DraftPreviewPane, DraftProcessor } from '~/components/ItemDraftModal'
 import { Modal } from '~/components/Modal'
+import { useMeasuredBytes } from '~/hooks/useItemSize'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useTranslation } from '~/intl'
 import { errorCode, track } from '~/lib/analytics'
-import { imageThumbnailPatch, needsPreviewData, type PreviewDraft } from '~/lib/draftPreview'
+import { applyPreviewResult, imageThumbnailPatch, needsPreviewData, type PreviewDraft } from '~/lib/draftPreview'
 import { pickFile } from '~/lib/filePicker'
-import { type ItemFileChange } from '~/lib/itemDraft'
+import { toFileChangeSaveable, type ItemFileChange } from '~/lib/itemDraft'
 import { type BuiltItem } from '~/lib/itemFactory'
 import { ITEM_EXTENSIONS, ItemFileError, THUMBNAIL_PATH, getExtension, isImageFile } from '~/lib/itemFiles'
 import {
@@ -25,6 +26,7 @@ import {
   needsNewCategory,
   type LoadedItemModel
 } from '~/lib/itemModelImport'
+import { formatItemSize, getItemSizeLimit, isItemTooBigError, isOverSizeLimit, type ItemSize } from '~/lib/itemSize'
 import {
   BodyShapeType,
   IMAGE_WEARABLE_METRICS,
@@ -116,8 +118,30 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
   const needsCategory = useMemo(() => !!file && needsNewCategory(file, item, bodyShape), [file, item, bodyShape])
   const categories = useMemo(() => (file ? getWearableCategoryOptions(file.contents) : []), [file])
   const shapeLabel = t(`add_items_modal.body_shape_option.${bodyShape}`)
+  // The item as Save would leave it, measured the catalyst way: the new files plus everything it keeps (the other
+  // body shape's files, the thumbnail, new or kept, and the rarity image).
+  const newThumbnail = keepThumbnail ? (draft?.contents[THUMBNAIL_PATH] ?? null) : null
+  const measuredBytes = useMeasuredBytes(
+    file && !pickError
+      ? async () =>
+          toFileChangeSaveable(item, {
+            update: await buildModelUpdate(file, item, bodyShape, {}),
+            thumbnail: newThumbnail,
+            category: null
+          })
+      : null,
+    [item, file, bodyShape, newThumbnail],
+    'item_file_change'
+  )
+  const sizeCategory = (needsCategory ? category : null) ?? item.data.category
+  const size = useMemo<ItemSize | null>(
+    () => (measuredBytes !== null ? { bytes: measuredBytes, limit: getItemSizeLimit(item.type, sizeCategory) } : null),
+    [measuredBytes, item.type, sizeCategory]
+  )
+  const sizeText = useMemo(() => (size ? formatItemSize(size) : null), [size])
+  const sizeExceeded = !!size && isOverSizeLimit(size)
   const isReady = !!draft && !!draft.metrics && !!draft.thumbnail
-  const canSave = isReady && !pickError && (!needsCategory || category !== null) && !isSaving
+  const canSave = isReady && !pickError && (!needsCategory || category !== null) && !sizeExceeded && !isSaving
 
   function reportError(err: unknown) {
     const key = err instanceof ItemFileError ? err.messageKey : 'invalid_model_file'
@@ -205,9 +229,12 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
     const thumbnail = keepThumbnail ? (draft.contents[THUMBNAIL_PATH] ?? null) : null
     try {
       await onSave({ update, thumbnail, category: needsCategory ? category : null })
-    } catch {
-      // The editor reported the failed save; the loaded file stays for another try.
-      if (mountedRef.current) setSaving(false)
+    } catch (err) {
+      // The editor reported any other failed save; the loaded file stays for another try.
+      if (mountedRef.current) {
+        if (isItemTooBigError(err)) reportError(err)
+        setSaving(false)
+      }
       return
     }
     track('Change item file', {
@@ -300,6 +327,17 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
                       />
                     </S.Field>
                   )}
+                  {sizeText && (
+                    <S.SizeLine data-testid="change-file-size" data-exceeded={sizeExceeded || undefined}>
+                      {t('item_size.label')}
+                      <strong>{t('item_size.value', sizeText)}</strong>
+                    </S.SizeLine>
+                  )}
+                  {sizeExceeded && sizeText && (
+                    <S.ErrorText role="alert" data-testid="change-file-size-error">
+                      {t('add_items_modal.file_error.size_exceeded', sizeText)}
+                    </S.ErrorText>
+                  )}
                   {error && <S.ErrorText data-testid="change-file-error">{error}</S.ErrorText>}
                 </S.FormPane>
               </S.Content>
@@ -369,21 +407,26 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
             </S.PickActions>
           </S.PickStep>
         )}
+        {draft && needsPreviewData(draft) && (
+          <DraftProcessor
+            draft={draft}
+            flow="item_file_change"
+            onResult={(id, result) =>
+              setDraft(current => (current && current.id === id ? applyPreviewResult(current, result) : current))
+            }
+            onError={(_id, reason) => {
+              setDraft(null)
+              setLoaded(null)
+              // A timeout is already reported to Sentry by the processor.
+              reportError(
+                reason === 'timeout'
+                  ? new ItemFileError('preview_timeout')
+                  : new Error('The preview could not process the model')
+              )
+            }}
+          />
+        )}
       </Modal>
-
-      {draft && needsPreviewData(draft) && (
-        <DraftProcessor
-          draft={draft}
-          onResult={(id, patch) =>
-            setDraft(current => (current && current.id === id ? { ...current, ...patch } : current))
-          }
-          onError={() => {
-            setDraft(null)
-            setLoaded(null)
-            reportError(new Error('The preview could not process the model'))
-          }}
-        />
-      )}
 
       {thumbnailEditor.modal}
 

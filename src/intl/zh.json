@@ -306,7 +306,6 @@
       "edit_thumbnail": "编辑缩略图",
       "name_placeholder": "物品名称",
       "rename_error": "我们无法重命名“{name}”，请重试。",
-      "thumbnail_error": "我们无法更新“{name}”的缩略图，请重试。",
       "cancel_edit": "取消",
       "save": "保存名称"
     },
@@ -617,7 +616,7 @@
       "title_locked": "此系列正在审核中",
       "title_published": "此系列已发布",
       "description_generic": "上传您的物品时出错了，请重试。",
-      "description_too_big": "您的某个物品与已保存的文件合并后超出了大小限制。请减小文件大小后重试。",
+      "description_too_big": "您的某个物品超出了大小限制。请减少其纹理或几何体后重试。",
       "description_locked": "系列审核期间无法添加物品。您的文件未保存，审核完成后即可添加。",
       "description_published": "已发布的系列无法添加新物品。您的文件未保存，请创建一个新系列来添加它们。",
       "try_again": "重试",
@@ -642,7 +641,7 @@
       "wrong_extension": "不支持此文件类型。请使用 {extensions}。",
       "file_too_big": "文件过大，最大为 {size}MB。",
       "thumbnail_too_big": "缩略图过大，最大为 {size}MB。",
-      "size_exceeded": "此物品过大，包括缩略图在内最大为 {size}MB。",
+      "size_exceeded": "此物品大小为 {size} MB，超出了 {limit} MB 的限制（含缩略图）。请减少其纹理或几何体。",
       "missing_model_file": "我们在此文件中未找到 3D 模型或贴图。",
       "invalid_zip": "我们无法读取此 ZIP 文件。",
       "too_many_files": "此 ZIP 包含的文件过多，最多 {max} 个。",
@@ -663,6 +662,7 @@
       "emote_animations_out_of_sync": "虚拟形象和道具的动画时长必须相同。",
       "missing_external_resources": "模型引用了未包含的文件：{fileNames}。",
       "invalid_model_file": "我们无法加载此 3D 模型。请检查文件后重试。",
+      "preview_timeout": "我们未能及时生成此文件的预览。请检查模型，或稍后重试。",
       "invalid_representation": "此文件不能用作该物品的体型变体。",
       "representation_category_mismatch": "此文件与该物品的类别不符。请使用与另一体型相同类型的文件：3D 模型，或用于眼睛、眉毛或嘴巴的贴图。",
       "multiple_videos": "ZIP 中包含多个视频。请仅保留预览视频。",
@@ -1523,6 +1523,8 @@
     "item_count": "{count, plural, one {# 个物品} other {# 个物品}}",
     "size_kb": "{size}KB",
     "size_mb": "{size}MB",
+    "size_measuring": "正在计算大小",
+    "size_unknown": "未知",
     "rescue": {
       "title": "批准物品",
       "body": "{count, plural, one {# 个物品} other {# 个物品}}需要在系列合约上获得批准。您需要在钱包中确认此操作。",
@@ -1572,6 +1574,12 @@
       "confirm": "查看更改"
     },
     "enable_body": "启用该系列，使其物品可以按上一个已批准版本重新铸造。创作者尚未提交审核的更改不会包含在内。请在钱包中确认。"
+  },
+  "item_size": {
+    "label": "物品大小",
+    "value": "{size} / {limit} MB",
+    "exceeded": "超出大小限制（含缩略图）。请减少其纹理或几何体。",
+    "unknown_warning": "我们无法检查此物品的大小。如果超出限制，它将无法获得批准。"
   },
   "item_validation": {
     "checking": "正在检查您的物品……",
@@ -2046,5 +2054,8 @@
   },
   "wallet_error": {
     "wrong_account": "您的钱包切换到了其他账户或网络。请切换回您登录时使用的账户，然后重试。"
+  },
+  "item_thumbnail": {
+    "generating": "正在生成缩略图…"
   }
 }
