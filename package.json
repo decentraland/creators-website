@@ -41,7 +41,6 @@
     "@dcl/ui-env": "^2.1.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@mui/icons-material": "^5.18.0",
     "@openzeppelin/merkle-tree": "1.0.8",
     "@segment/analytics-next": "^1.84.3",
     "@sentry/react": "^11.11.0",

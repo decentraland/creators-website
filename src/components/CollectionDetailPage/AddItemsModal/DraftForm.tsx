@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
+import { CategorySelect } from '~/components/CategorySelect'
 import {
+  LoopIcon,
+  PlayOnceIcon,
   ErrorOutline as HintIcon,
   InfoOutlined as InfoIcon,
   PlayArrow as PlayIcon,
   VideocamOutlined as VideoIcon
-} from '@mui/icons-material'
-import { CategorySelect } from '~/components/CategorySelect'
-import { LoopIcon, PlayOnceIcon } from '~/components/Icons'
+} from '~/components/Icons'
 import { RaritySelect } from '~/components/RaritySelect'
 import { InfoTooltip, Tooltip } from '~/components/Tooltip'
 import { VideoDropzone } from '~/components/VideoModal'

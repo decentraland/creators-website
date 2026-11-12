@@ -1,4 +1,4 @@
-import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '@mui/icons-material'
+import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { pageWindow } from '~/lib/pagination'
 import * as S from './Pagination.styles'

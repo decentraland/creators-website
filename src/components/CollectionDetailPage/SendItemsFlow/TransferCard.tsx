@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Add as AddIcon, Close as CloseIcon, Remove as RemoveIcon } from '@mui/icons-material'
+import { Add as AddIcon, Close as CloseIcon, Remove as RemoveIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
 import { getContentsStorageUrl } from '~/lib/builder'

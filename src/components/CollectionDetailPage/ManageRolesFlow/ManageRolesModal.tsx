@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Add as AddIcon } from '@mui/icons-material'
+import { Add as AddIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { getRoleAddressError, type RoleKind } from '~/lib/collectionRoles'
 import { type Friend } from '~/lib/friends'

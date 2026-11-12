@@ -5,7 +5,7 @@ import {
   ErrorRounded as ErrorIcon,
   InfoRounded as InfoIcon,
   WarningRounded as WarnIcon
-} from '@mui/icons-material'
+} from '~/components/Icons'
 import { useNotifications, type Toast, type ToastType } from '~/lib/notifications'
 import { useTranslation } from '~/intl'
 import * as S from './Toasts.styles'

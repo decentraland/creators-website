@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
-import { ErrorOutline as HintIcon, UploadFileOutlined as UploadIcon } from '@mui/icons-material'
+import { ErrorOutline as HintIcon, UploadFileOutlined as UploadIcon } from '~/components/Icons'
 import { Button } from '~/components/Button'
 import { CategorySelect } from '~/components/CategorySelect'
 import { Checkbox } from '~/components/Checkbox'

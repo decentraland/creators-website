@@ -4,7 +4,7 @@ import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   ExpandMore as ExpandIcon
-} from '@mui/icons-material'
+} from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { useFriends } from '~/hooks/useSales'
 import { useProfile } from '~/hooks/useProfile'

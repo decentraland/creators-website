@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react'
+import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
+import { Button } from '~/components/Button'
+import { CategorySelect } from '~/components/CategorySelect'
 import {
+  ClockIcon,
+  ImageIcon,
+  LoopIcon,
+  PlayOnceIcon,
+  SmartIcon,
   CameraAlt as CameraIcon,
   ChangeHistory as TriangleIcon,
   Circle as MaterialIcon,
@@ -10,11 +18,7 @@ import {
   VideocamOutlined as VideoIcon,
   Texture as TextureIcon,
   ThirtyFpsSelect as FpsIcon
-} from '@mui/icons-material'
-import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
-import { Button } from '~/components/Button'
-import { CategorySelect } from '~/components/CategorySelect'
-import { ClockIcon, ImageIcon, LoopIcon, PlayOnceIcon, SmartIcon } from '~/components/Icons'
+} from '~/components/Icons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { RaritySelect } from '~/components/RaritySelect'
 import { RequiredPermissions } from '~/components/RequiredPermissions'

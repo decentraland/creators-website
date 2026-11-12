@@ -1,12 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import {
-  Add as AddIcon,
-  ArrowBackIosNew as ArrowBackIcon,
-  ContentCopy as ContentCopyIcon,
-  Edit as EditIcon,
-  ReportProblemOutlined as WarningIcon
-} from '@mui/icons-material'
 import { ContractNetwork } from '@dcl/schemas'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
@@ -71,7 +64,14 @@ import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
 import { EditContractModal } from './EditContractModal'
 import { EditUrnModal } from './EditUrnModal'
-import { OpenEditorIcon } from '~/components/Icons'
+import {
+  OpenEditorIcon,
+  Add as AddIcon,
+  ArrowBackIosNew as ArrowBackIcon,
+  ContentCopy as ContentCopyIcon,
+  Edit as EditIcon,
+  ReportProblemOutlined as WarningIcon
+} from '~/components/Icons'
 import { Pagination } from '~/components/Pagination'
 import { Tooltip } from '~/components/Tooltip'
 import addItemsArt from '~/assets/add-items.png'

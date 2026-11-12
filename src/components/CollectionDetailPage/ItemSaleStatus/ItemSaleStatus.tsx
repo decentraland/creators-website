@@ -1,9 +1,8 @@
-import { Check as CheckIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { type ItemSales } from '~/lib/items'
 import { type ItemListing } from '~/lib/listings'
 import { openExternal } from '~/lib/navigation'
-import { PriceTagIcon } from '~/components/Icons'
+import { PriceTagIcon, Check as CheckIcon, OpenInNew as OpenInNewIcon } from '~/components/Icons'
 import * as S from './ItemSaleStatus.styles'
 
 const EMPTY = '—'

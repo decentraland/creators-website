@@ -1,5 +1,5 @@
 import { useIntl } from 'react-intl'
-import { Edit as EditIcon } from '@mui/icons-material'
+import { Edit as EditIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { CollectionMosaic } from '~/components/CollectionMosaic'
 import { CurationStatePill } from '~/components/CurationStatePill'

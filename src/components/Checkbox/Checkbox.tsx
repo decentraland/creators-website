@@ -1,5 +1,5 @@
 import { type ComponentPropsWithoutRef, type ReactNode } from 'react'
-import { Check as CheckIcon } from '@mui/icons-material'
+import { Check as CheckIcon } from '~/components/Icons'
 import { cx } from '~/lib/cx'
 import styles from './Checkbox.module.css'
 

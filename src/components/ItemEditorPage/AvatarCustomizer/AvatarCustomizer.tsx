@@ -6,7 +6,7 @@ import {
   Female as FemaleIcon,
   Male as MaleIcon,
   Person as PersonIcon
-} from '@mui/icons-material'
+} from '~/components/Icons'
 import { Button } from '~/components/Button'
 import { Select } from '~/components/Select'
 import { useScrollFades } from '~/hooks/useScrollFades'

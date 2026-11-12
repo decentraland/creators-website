@@ -9,7 +9,7 @@ import {
   type ReactNode
 } from 'react'
 import { createPortal } from 'react-dom'
-import { MoreHoriz as MoreHorizIcon } from '@mui/icons-material'
+import { MoreHoriz as MoreHorizIcon } from '~/components/Icons'
 import * as S from './ActionsMenu.styles'
 
 type MenuContextValue = { close: () => void }

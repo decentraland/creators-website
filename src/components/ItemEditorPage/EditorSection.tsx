@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { ExpandMore as ChevronIcon } from '@mui/icons-material'
+import { ExpandMore as ChevronIcon } from '~/components/Icons'
 import { Tooltip } from '~/components/Tooltip'
 import * as S from './ItemEditorPage.styles'
 

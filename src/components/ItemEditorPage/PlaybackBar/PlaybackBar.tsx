@@ -5,7 +5,7 @@ import {
   Stop as StopIcon,
   VolumeOff as VolumeOffIcon,
   VolumeUp as VolumeUpIcon
-} from '@mui/icons-material'
+} from '~/components/Icons'
 import { EmoteControls, type WearablePreviewController } from '~/components/WearablePreview'
 import { Select } from '~/components/Select'
 import { Tooltip } from '~/components/Tooltip'

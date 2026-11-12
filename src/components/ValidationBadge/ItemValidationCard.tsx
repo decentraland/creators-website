@@ -4,7 +4,7 @@ import {
   ErrorOutline as WarningIcon,
   Refresh as RerunIcon,
   ReportProblemOutlined as ErrorIcon
-} from '@mui/icons-material'
+} from '~/components/Icons'
 import { Tooltip } from '~/components/Tooltip'
 import { useTranslation } from '~/intl'
 import { type ItemType } from '~/lib/items'

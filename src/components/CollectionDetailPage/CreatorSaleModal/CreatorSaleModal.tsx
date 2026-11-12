@@ -5,7 +5,7 @@ import {
   ChevronRight as ChevronRightIcon,
   Close as CloseIcon,
   InfoOutlined as InfoOutlinedIcon
-} from '@mui/icons-material'
+} from '~/components/Icons'
 import { useIntl } from 'react-intl'
 import { useTranslation, type Translate } from '~/intl'
 import { isSocialLogin, type Session } from '~/lib/auth'

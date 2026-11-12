@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChevronRight as ChevronRightIcon } from '@mui/icons-material'
+import { ChevronRight as ChevronRightIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'

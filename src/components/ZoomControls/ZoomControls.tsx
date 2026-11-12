@@ -1,4 +1,4 @@
-import { Add as ZoomInIcon, Remove as ZoomOutIcon } from '@mui/icons-material'
+import { Add as ZoomInIcon, Remove as ZoomOutIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import * as S from './ZoomControls.styles'
 import { type WearablePreviewController } from '~/components/WearablePreview'

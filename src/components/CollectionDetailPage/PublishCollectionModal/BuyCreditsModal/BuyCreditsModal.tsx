@@ -4,7 +4,7 @@ import {
   ChevronRight as ChevronRightIcon,
   Remove as RemoveIcon,
   Star as StarIcon
-} from '@mui/icons-material'
+} from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { useCreditPacks } from '~/hooks/useCreditPacks'
 import {

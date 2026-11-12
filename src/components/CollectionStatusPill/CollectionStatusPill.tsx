@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Link as LinkIcon } from '@mui/icons-material'
+import { Link as LinkIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { InfoTooltip } from '~/components/Tooltip'
 import { CollectionDisplayStatus, getCollectionDisplayStatus, type Collection } from '~/lib/collections'

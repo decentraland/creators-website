@@ -10,7 +10,7 @@ import {
   type KeyboardEvent
 } from 'react'
 import { createPortal } from 'react-dom'
-import { Close as CloseIcon, ExpandMore as ChevronIcon } from '@mui/icons-material'
+import { Close as CloseIcon, ExpandMore as ChevronIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { useProfile } from '~/hooks/useProfile'
 import { type Friend } from '~/lib/friends'

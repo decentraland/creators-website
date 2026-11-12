@@ -1,4 +1,4 @@
-import { Check as CheckIcon } from '@mui/icons-material'
+import { Check as CheckIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { Button } from '~/components/Button'
 import { CurrencyAmount } from '~/components/CurrencyAmount'

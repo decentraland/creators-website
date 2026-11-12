@@ -1,5 +1,11 @@
-import { Check as CheckIcon, ErrorRounded as ErrorIcon } from '@mui/icons-material'
-import { EmoteIcon, SmartIcon, TrashIcon, WearableIcon } from '~/components/Icons'
+import {
+  EmoteIcon,
+  SmartIcon,
+  TrashIcon,
+  WearableIcon,
+  Check as CheckIcon,
+  ErrorRounded as ErrorIcon
+} from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { isThumbnailGenerating } from '~/lib/draftPreview'
 import { ItemType } from '~/lib/items'

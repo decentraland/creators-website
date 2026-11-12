@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { type BodyShape } from '@dcl/schemas'
+import { Button } from '~/components/Button'
+import { CollectionStatusPill } from '~/components/CollectionStatusPill'
 import {
+  EmoteIcon,
+  WearableIcon,
   Add as AddIcon,
   ArrowBackIosNew as BackIcon,
   CheckCircle as ReviewedIcon,
@@ -14,10 +18,7 @@ import {
   Male as MaleIcon,
   Visibility as DressedIcon,
   VisibilityOff as UndressedIcon
-} from '@mui/icons-material'
-import { Button } from '~/components/Button'
-import { CollectionStatusPill } from '~/components/CollectionStatusPill'
-import { EmoteIcon, WearableIcon } from '~/components/Icons'
+} from '~/components/Icons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { Tooltip } from '~/components/Tooltip'
 import { useScrollFades } from '~/hooks/useScrollFades'

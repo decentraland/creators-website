@@ -10,7 +10,7 @@ import {
   LibraryAddOutlined as AddToCollectionIcon,
   Refresh as RefreshIcon,
   WarningAmberOutlined as WarningIcon
-} from '@mui/icons-material'
+} from '~/components/Icons'
 import { AvatarPreview } from '~/components/AvatarPreview'
 import { Button } from '~/components/Button'
 import { CategorySelect } from '~/components/CategorySelect'
