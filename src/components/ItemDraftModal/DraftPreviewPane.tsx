@@ -1,15 +1,17 @@
 import { useMemo, type ReactNode } from 'react'
-import {
-  CameraAlt as CameraIcon,
-  ChangeHistory as TriangleIcon,
-  Circle as MaterialIcon,
-  ReportProblemOutlined as WarningIcon,
-  SentimentSatisfiedAlt as SmileIcon,
-  Texture as TextureIcon,
-  ThirtyFpsSelect as FpsIcon
-} from '@mui/icons-material'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
-import { ClockIcon, FilmReelIcon, ImageIcon } from '~/components/Icons'
+import {
+  ClockIcon,
+  FilmReelIcon,
+  ImageIcon,
+  CameraAltIcon as CameraIcon,
+  ChangeHistoryIcon as TriangleIcon,
+  CircleIcon as MaterialIcon,
+  ReportProblemOutlinedIcon as WarningIcon,
+  SentimentSatisfiedAltIcon as SmileIcon,
+  TextureIcon,
+  ThirtyFpsSelectIcon as FpsIcon
+} from '~/components/Icons'
 import { RequiredPermissions } from '~/components/RequiredPermissions'
 import { Tooltip } from '~/components/Tooltip'
 import { useThumbnailValidation } from '~/hooks/useThumbnailValidation'

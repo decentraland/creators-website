@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { BodyShape, type ContractNetwork } from '@dcl/schemas'
-import { ArrowBackIosNew, PersonOutline as PersonOutlineIcon } from '@mui/icons-material'
+import { ArrowBackIosNewIcon, PersonOutlineIcon } from '~/components/Icons'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { AvatarPreview } from '~/components/AvatarPreview'
 import { Button } from '~/components/Button'
@@ -785,7 +785,7 @@ const ItemEditorPage = () => {
             if (mode === 'edit' && !leaveEditor(mobileBack.to)) event.preventDefault()
           }}
         >
-          <ArrowBackIosNew fontSize="small" />
+          <ArrowBackIosNewIcon fontSize="small" />
         </S.MobileBackLink>
       )}
       <S.MobileCollectionName title={collection.name} data-testid="mobile-editor-collection">

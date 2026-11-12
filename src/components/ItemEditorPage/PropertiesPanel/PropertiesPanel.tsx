@@ -1,20 +1,24 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react'
-import {
-  CameraAlt as CameraIcon,
-  ChangeHistory as TriangleIcon,
-  Circle as MaterialIcon,
-  PlayArrow as PlayIcon,
-  ReportProblemOutlined as WarningIcon,
-  SentimentSatisfiedAlt as SmileIcon,
-  Storage as SizeIcon,
-  VideocamOutlined as VideoIcon,
-  Texture as TextureIcon,
-  ThirtyFpsSelect as FpsIcon
-} from '@mui/icons-material'
 import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
 import { Button } from '~/components/Button'
 import { CategorySelect } from '~/components/CategorySelect'
-import { ClockIcon, ImageIcon, LoopIcon, PlayOnceIcon, SmartIcon } from '~/components/Icons'
+import {
+  ClockIcon,
+  ImageIcon,
+  LoopIcon,
+  PlayOnceIcon,
+  SmartIcon,
+  CameraAltIcon as CameraIcon,
+  ChangeHistoryIcon as TriangleIcon,
+  CircleIcon as MaterialIcon,
+  PlayArrowIcon as PlayIcon,
+  ReportProblemOutlinedIcon as WarningIcon,
+  SentimentSatisfiedAltIcon as SmileIcon,
+  StorageIcon as SizeIcon,
+  VideocamOutlinedIcon as VideoIcon,
+  TextureIcon,
+  ThirtyFpsSelectIcon as FpsIcon
+} from '~/components/Icons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { RaritySelect } from '~/components/RaritySelect'
 import { RequiredPermissions } from '~/components/RequiredPermissions'

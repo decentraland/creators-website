@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { BodyShape } from '@dcl/schemas'
 import {
-  ErrorOutline as WarningIcon,
-  Refresh as RerunIcon,
-  ReportProblemOutlined as ErrorIcon
-} from '@mui/icons-material'
+  ErrorOutlineIcon as WarningIcon,
+  RefreshIcon as RerunIcon,
+  ReportProblemOutlinedIcon as ErrorIcon
+} from '~/components/Icons'
 import { Tooltip } from '~/components/Tooltip'
 import { useTranslation } from '~/intl'
 import { type ItemType } from '~/lib/items'

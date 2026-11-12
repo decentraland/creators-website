@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { OpenInNew as OpenInNewIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { useDeleteCollection } from '~/hooks/useCollection'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
@@ -12,7 +11,7 @@ import { shopCollectionUrl } from '~/lib/shop'
 import { useNotifications } from '~/lib/notifications'
 import { theme } from '~/styles/theme'
 import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
-import { JumpInIcon } from '~/components/Icons'
+import { JumpInIcon, OpenInNewIcon } from '~/components/Icons'
 import { DeleteCollectionModal } from './DeleteCollectionModal'
 
 type Props = {

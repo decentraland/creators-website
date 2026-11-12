@@ -231,17 +231,16 @@
   .signInIcon {
     display: flex;
     color: var(--color-white);
-  }
-}
 
-/* Unlayered: the icon is MUI's, whose own unlayered size class would beat any layered rule. */
-.signInIcon svg {
-  width: 140px;
-  height: 140px;
+    & svg {
+      width: 140px;
+      height: 140px;
 
-  @media (max-width: 768px) {
-    width: 100px;
-    height: 100px;
+      @media (max-width: 768px) {
+        width: 100px;
+        height: 100px;
+      }
+    }
   }
 }
 

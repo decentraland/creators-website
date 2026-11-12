@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Check as CheckIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material'
+import { CheckIcon, OpenInNewIcon } from '~/components/Icons'
 import successArt from '~/assets/sale-success.png'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'

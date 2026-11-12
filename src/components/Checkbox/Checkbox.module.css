@@ -57,14 +57,13 @@
     input:focus-visible + & {
       box-shadow: 0 0 0 2px var(--color-glass-line);
     }
-  }
-}
 
-/* Unlayered: the icon is MUI's, whose own unlayered size class would beat any layered rule. */
-.box svg {
-  font-size: 16px;
-  opacity: 0;
-}
-input:checked + .box svg {
-  opacity: 1;
+    & svg {
+      font-size: 16px;
+      opacity: 0;
+    }
+    input:checked + & svg {
+      opacity: 1;
+    }
+  }
 }

@@ -66,7 +66,16 @@ export default defineConfig(({ command, mode }) => {
     ...(command === 'build' ? { base: envVariables.VITE_BASE_URL?.replace(/([^/])$/, '$1/') } : undefined),
     // 'hidden': the maps are written for the upload but no `sourceMappingURL` comment is emitted, so
     // the shipped bundles don't point the CDN at files that were deleted right after they went up.
-    build: { sourcemap: sentryUpload ? 'hidden' : false },
+    build: {
+      sourcemap: sentryUpload ? 'hidden' : false,
+      // Without it every icon ships wherever the `~/components/Icons` barrel lands (the entry chunk), not only
+      // in the chunks that render it.
+      rolldownOptions: {
+        treeshake: {
+          moduleSideEffects: [{ test: /[\\/]src[\\/]components[\\/]Icons[\\/].*\.tsx$/, sideEffects: false }]
+        }
+      }
+    },
     server: {
       // Proxy the auth app so sign-in stays same-origin on localhost (shared identity storage).
       // Vercel previews get the same via the rewrite in vercel.json — keep the two in step. Real

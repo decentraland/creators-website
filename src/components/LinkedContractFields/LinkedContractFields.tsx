@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef } from 'react'
-import { InfoOutlined as InfoOutlinedIcon } from '@mui/icons-material'
+import { InfoOutlinedIcon } from '~/components/Icons'
 import { type ContractNetwork } from '@dcl/schemas'
 import { config } from '~/config'
 import { useTranslation } from '~/intl'

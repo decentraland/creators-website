@@ -45,9 +45,9 @@ const EMOTION_EXCEPT_STYLED = {
   message: 'Only @emotion/styled is allowed, and only in *.styles.ts. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 const MUI = {
-  regex: '^@mui/(?!icons-material(/|$))',
+  regex: '^@mui/',
   message:
-    'The monorepo has no MUI; only @mui/icons-material is allowed. See docs/DECISIONS.md (Pre-monorepo refactor).'
+    'The monorepo has no MUI; Material glyphs live in ~/components/Icons. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 
 const ETHERS = {
@@ -61,7 +61,7 @@ const DCL_TRANSACTIONS = {
 
 // no-restricted-imports does not see import(), so lazy-loaded usage needs its own rule.
 const DYNAMIC_EMOTION_MUI = {
-  selector: 'ImportExpression[source.value=/^(@emotion\\/|@mui\\/(?!icons-material(\\/|$)))/]',
+  selector: 'ImportExpression[source.value=/^(@emotion\\/|@mui\\/)/]',
   message: 'No new Emotion or MUI, lazy-loaded included. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 const DYNAMIC_UI2 = {
