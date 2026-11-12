@@ -2,6 +2,7 @@
 // Import this object directly and interpolate it — `styled.span\`color: ${theme.colors.muted}\``,
 // `theme.media.maxWidth('mobile')`. It's a plain const, so no ThemeProvider is needed; this also keeps
 // unit tests provider-free. Components must NOT re-hardcode hexes, radii, or px breakpoints.
+// scripts/gen-tokens.mjs loads this file through Node's type stripping: keep it free of imports and enums.
 
 const colors = {
   bg: '#ffffff',

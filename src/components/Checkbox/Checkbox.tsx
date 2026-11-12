@@ -1,6 +1,7 @@
-import { type ReactNode } from 'react'
+import { type ComponentPropsWithoutRef, type ReactNode } from 'react'
 import { Check as CheckIcon } from '@mui/icons-material'
-import * as S from './Checkbox.styles'
+import { cx } from '~/lib/cx'
+import styles from './Checkbox.module.css'
 
 type Props = {
   checked: boolean
@@ -12,7 +13,7 @@ type Props = {
 
 export function Checkbox({ checked, onChange, disabled, children, testId }: Props) {
   return (
-    <S.CheckboxRow data-disabled={disabled || undefined} data-testid="checkbox-label">
+    <label className={styles.row} data-disabled={disabled || undefined} data-testid="checkbox-label">
       <input
         type="checkbox"
         checked={checked}
@@ -20,10 +21,15 @@ export function Checkbox({ checked, onChange, disabled, children, testId }: Prop
         data-testid={testId}
         onChange={event => onChange(event.target.checked)}
       />
-      <S.CheckboxBox aria-hidden>
+      <CheckboxBox aria-hidden>
         <CheckIcon />
-      </S.CheckboxBox>
+      </CheckboxBox>
       <span>{children}</span>
-    </S.CheckboxRow>
+    </label>
   )
+}
+
+/** The drawn box, for a custom control that sits right after its own checked `input`. */
+export function CheckboxBox({ className, ...props }: ComponentPropsWithoutRef<'span'>) {
+  return <span className={cx(styles.box, className)} {...props} />
 }

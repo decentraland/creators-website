@@ -1,4 +1,4 @@
-import * as S from './Switch.styles'
+import styles from './Switch.module.css'
 
 type Props = {
   checked: boolean
@@ -10,7 +10,8 @@ type Props = {
 
 export function Switch({ checked, onChange, disabled, label, testId }: Props) {
   return (
-    <S.Track
+    <button
+      className={styles.track}
       type="button"
       role="switch"
       aria-checked={checked}
@@ -20,7 +21,7 @@ export function Switch({ checked, onChange, disabled, label, testId }: Props) {
       data-testid={testId}
       onClick={() => onChange(!checked)}
     >
-      <S.Knob aria-hidden />
-    </S.Track>
+      <span className={styles.knob} aria-hidden />
+    </button>
   )
 }

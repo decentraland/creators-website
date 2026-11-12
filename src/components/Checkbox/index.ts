@@ -1,2 +1,1 @@
-export { Checkbox } from './Checkbox'
-export { CheckboxBox } from './Checkbox.styles'
+export { Checkbox, CheckboxBox } from './Checkbox'
