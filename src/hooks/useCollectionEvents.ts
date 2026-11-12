@@ -8,12 +8,13 @@ import {
   ValidationLimitError,
   appealCollectionCuration,
   fetchCollectionEvents,
+  postCollectionComment,
   requestCollectionValidation
 } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { collectionCurationKey, collectionEventsKey, refreshReview } from '~/hooks/useCuration'
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
-import { getValidationAttemptsLeft, isValidationInProgress, type CollectionEvent } from '~/lib/events'
+import { getValidationAttemptsLeft, isValidationInProgress, type CollectionEvent, type ReviewParty } from '~/lib/events'
 import { FeatureFlag } from '~/lib/featureFlags'
 import { captureError } from '~/lib/monitoring'
 
@@ -145,24 +146,54 @@ export function useRequestValidation(address: string | undefined) {
   })
 }
 
-export type AppealVariables = { collection: Collection }
+export type AppealVariables = { collection: Collection; note?: string }
 
 /** The creator's "Request curator review": sends the rejection back to the committee. */
 export function useAppealCuration(address: string | undefined) {
   const refresh = useRefreshReview(address)
   return useMutation({
-    mutationFn: ({ collection }: AppealVariables) => {
+    mutationFn: ({ collection, note }: AppealVariables) => {
       if (!address) throw new Error('Wallet disconnected')
-      return appealCollectionCuration(address, collection.id)
+      return note
+        ? appealCollectionCuration(address, collection.id, note)
+        : appealCollectionCuration(address, collection.id)
     },
-    onSuccess: (_, { collection }) => {
-      track('Appeal curation', { collectionId: collection.id })
+    onSuccess: (_, { collection, note }) => {
+      track('Appeal curation', { collectionId: collection.id, has_note: !!note })
       refresh(collection.id)
     },
     onError: (error, { collection }) => {
       track('Appeal curation error', { collectionId: collection.id, error: errorCode(error) })
       if (isReviewConflict(error) || isCollectionBusy(error)) refresh(collection.id)
       else captureError(error, { flow: 'curation_appeal', collectionId: collection.id })
+    }
+  })
+}
+
+export type CommentVariables = {
+  collection: Collection
+  message: string
+  itemId?: string
+  /** Which side of the review is writing. */
+  role: ReviewParty
+}
+
+/** Writes a comment on the collection's review timeline, for the creator's side and the committee alike. */
+export function usePostComment(address: string | undefined) {
+  const refresh = useRefreshReview(address)
+  return useMutation({
+    mutationFn: ({ collection, message, itemId }: CommentVariables) => {
+      if (!address) throw new Error('Wallet disconnected')
+      return postCollectionComment(address, collection.id, itemId ? { message, itemId } : { message })
+    },
+    onSuccess: (_, { collection, role, itemId, message }) => {
+      track('Post review comment', { collectionId: collection.id, role, has_item: !!itemId, length: message.length })
+      refresh(collection.id)
+    },
+    onError: (error, { collection, role }) => {
+      track('Post review comment error', { collectionId: collection.id, role, error: errorCode(error) })
+      if (isCollectionBusy(error)) refresh(collection.id)
+      else captureError(error, { flow: 'curation_comment', collectionId: collection.id })
     }
   })
 }

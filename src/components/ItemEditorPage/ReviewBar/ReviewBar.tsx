@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useIntl } from 'react-intl'
-import { ArrowBack as ArrowBackIcon, Edit as EditIcon, PersonAddAlt as AssignIcon } from '@mui/icons-material'
+import {
+  ArrowBack as ArrowBackIcon,
+  ChatBubbleOutline as ActivityIcon,
+  Edit as EditIcon,
+  PersonAddAlt as AssignIcon
+} from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { AssignCuratorModal } from '~/components/AssignCuratorModal'
 import { Button } from '~/components/Button'
+import { CollectionActivityModal } from '~/components/CollectionActivityModal'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { CurationStatePill } from '~/components/CurationStatePill'
 import { ProfileBadge } from '~/components/ProfileBadge'
@@ -30,7 +36,7 @@ import {
   getReviewActions,
   getReviewStage
 } from '~/lib/curation'
-import { getCuratorVerdict } from '~/lib/events'
+import { getAwaitedReply, getCuratorVerdict } from '~/lib/events'
 import { FeatureFlag } from '~/lib/featureFlags'
 import { ItemSyncStatus, hasPendingChanges } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
@@ -51,7 +57,7 @@ type Props = {
   onSelectItem: (item: Item) => void
 }
 
-type Dialog = 'assign' | 'reject' | 'disable' | 'verdict' | null
+type Dialog = 'assign' | 'reject' | 'disable' | 'verdict' | 'activity' | null
 
 const DECISIONS = [ReviewAction.APPROVE, ReviewAction.ENABLE, ReviewAction.REJECT]
 // The constructive actions, as in the legacy panel; Reject and Disable stay dark.
@@ -96,6 +102,7 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
   const automatedVerdict = useMemo(() => (events ? getCuratorVerdict(events) : null), [events])
   const automatedRunning = stage === ReviewStage.AUTOMATED_REVIEWING
   const automatedStatus = automatedRunning ? 'running' : automatedVerdict?.outcome
+  const creatorReplied = useMemo(() => !!events && getAwaitedReply(events) === 'curator', [events])
   const actions = collection.isPublished ? getReviewActions(collection, curation, hasMissingEntities) : []
   const assignee = curation?.assignee ?? null
   // A first-review rejection opens the request itself, so its creation time only means something while pending.
@@ -248,6 +255,17 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
                 </S.AssigneeChip>
               </Tooltip>
             )}
+            {events && (
+              <S.AssigneeChip
+                type="button"
+                data-awaited={creatorReplied ? '' : undefined}
+                data-testid="review-activity"
+                onClick={() => setDialog('activity')}
+              >
+                <ActivityIcon fontSize="small" />
+                {t(creatorReplied ? 'item_editor.review.creator_replied' : 'item_editor.review.activity')}
+              </S.AssigneeChip>
+            )}
             {assignee ? (
               <S.AssigneeChip
                 type="button"
@@ -299,15 +317,7 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
         />
       )}
       {dialog === 'reject' && withReasons && (
-        <RejectCurationModal
-          collection={collection}
-          curation={curation}
-          address={address}
-          onClose={closeDialog}
-          onRejected={() => {
-            if (collection.forumLink) setForumVerdict(true)
-          }}
-        />
+        <RejectCurationModal collection={collection} curation={curation} address={address} onClose={closeDialog} />
       )}
       {dialog === 'reject' && !withReasons && (
         <ConfirmModal
@@ -356,7 +366,8 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
           collection={collection}
           onClose={closeDialog}
           onDisabled={() => {
-            if (collection.forumLink) setForumVerdict(true)
+            // With the timeline the creator reads the decision in the app; the forum is no longer where it goes.
+            if (collection.forumLink && !withReasons) setForumVerdict(true)
           }}
         />
       )}
@@ -364,6 +375,15 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
         <ForumVerdictModal
           collection={{ ...collection, forumLink: collection.forumLink }}
           onClose={() => setForumVerdict(false)}
+        />
+      )}
+      {dialog === 'activity' && (
+        <CollectionActivityModal
+          collection={collection}
+          address={address}
+          items={items}
+          canComment
+          onClose={closeDialog}
         />
       )}
       {dialog === 'verdict' && automatedVerdict && (
@@ -381,6 +401,7 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
           curation={curation}
           mode={approval}
           items={items}
+          withNote={withReasons}
           onClose={() => setApproval(null)}
         />
       )}

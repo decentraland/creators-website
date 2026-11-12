@@ -168,4 +168,48 @@ describe('automated review', () => {
     expect(stored?.rejection_reasons).toEqual(['thumbnail'])
     expect(stored?.rejection_message ?? null).toBeNull()
   })
+
+  it("shows the fixes a curator asked for and carries the creator's written answer to the timeline", async () => {
+    const curator = '0x' + '33'.repeat(20)
+    const question = {
+      ...event('review.comment', minutesAgo(2), { message: 'Is the hat meant to hide the hair?' }, 'curator'),
+      actor_address: curator
+    }
+    const builder = {
+      collections: [collection],
+      items: [hat],
+      curations: [
+        curation({
+          status: 'rejected',
+          reviewed_by: curator,
+          rejection_reasons: ['clipping'],
+          rejection_message: 'The brim clips through the head.'
+        })
+      ],
+      events: [start, event('review.rejected', minutesAgo(10), {}, 'curator'), question]
+    }
+    app = await launchApp({ path: `/collections/${collection.id}`, builder, flags: FLAGS })
+    const { page } = app
+
+    const message = await waitForTestId(page, 'review-rejection-message', 30_000)
+    expect(await message.evaluate(el => el.textContent)).toBe('The brim clips through the head.')
+    const comment = await waitForTestId(page, 'review-curator-comment')
+    expect(await comment.evaluate(el => el.textContent)).toBe('Is the hat meant to hide the hair?')
+
+    await clickTestId(page, 'review-reply')
+    await waitForTestId(page, 'activity-comment-input')
+    await page.type('[data-testid="activity-comment-input"]', 'Yes, it replaces the hair on purpose.')
+    await clickTestId(page, 'activity-comment-send')
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-testid="activity-quote"]')?.textContent ===
+        'Yes, it replaces the hair on purpose.'
+    )
+    expect(app.builder.events.at(-1)).toMatchObject({
+      type: 'review.comment',
+      actor: 'creator',
+      payload: { message: 'Yes, it replaces the hair on purpose.' }
+    })
+    await app.waitForEvent('Post review comment', { collectionId: collection.id, role: 'creator' })
+  })
 })

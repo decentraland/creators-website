@@ -9,7 +9,7 @@ import { ProfileBadge } from '~/components/ProfileBadge'
 import { AutomatedReviewIcon } from '~/components/AutomatedReviewIcon'
 import { Tooltip } from '~/components/Tooltip'
 import { useRecentCollectionEvents } from '~/hooks/useCollectionEvents'
-import { getCuratorVerdict, type CollectionEvent } from '~/lib/events'
+import { getAwaitedReply, getCuratorVerdict, type CollectionEvent } from '~/lib/events'
 import { isLinkedCollection, type Collection } from '~/lib/collections'
 import { openForumPost } from '~/lib/forumPost'
 import {
@@ -18,7 +18,8 @@ import {
   getReviewType,
   type CollectionCuration,
   getCuratorState,
-  ReviewStage
+  ReviewStage,
+  VALIDATOR_REVIEWER
 } from '~/lib/curation'
 import { formatTimeAgo } from '~/lib/time'
 import * as S from './CurationRow.styles'
@@ -42,7 +43,10 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
   // Only a pending request needs the timeline to tell its step. A decided one carries its reviewer, which
   // only a server with the timeline writes, so its stage needs no request per row.
   const pending = curation?.status === 'pending'
-  const recent = useRecentCollectionEvents(address, collection.id, pending)
+  // A curator's request for fixes is the other case with a conversation: the creator may answer it in writing.
+  const fixesRequested =
+    curation?.status === 'rejected' && !!curation.reviewedBy && curation.reviewedBy !== VALIDATOR_REVIEWER
+  const recent = useRecentCollectionEvents(address, collection.id, pending || fixesRequested)
   const events = pending ? (recent.data ?? null) : recent.flagEnabled && curation?.reviewedBy ? NO_EVENTS : null
   const stage = useMemo(() => getReviewStage(collection, curation, events), [collection, curation, events])
   const curatorState = getCuratorState(collection, curation, stage)
@@ -53,6 +57,7 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
   }, [events, curation])
   const automatedStatus =
     stage === ReviewStage.REJECTED_BY_VALIDATOR ? 'rejected' : pending && verdict ? verdict.outcome : null
+  const creatorReplied = useMemo(() => !!recent.data && getAwaitedReply(recent.data) === 'curator', [recent.data])
   const assignee = curation?.assignee ?? null
   const canAssign = canEditAssignee(collection, curation)
 
@@ -107,6 +112,9 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
       </S.Pills>
       <S.DiscussionCell data-testid="curation-row-discussion">
         <S.CellLabel data-mobile-only>{t('curation_page.list.discussion')}</S.CellLabel>
+        {creatorReplied && (
+          <S.Replied data-testid="curation-row-replied">{t('curation_page.list.creator_replied')}</S.Replied>
+        )}
         {collection.forumLink ? (
           <S.ForumLink
             type="button"

@@ -1,4 +1,9 @@
-import { fromRemoteEvent, type CollectionEventsPage, type RemoteCollectionEvent } from '~/lib/events'
+import {
+  fromRemoteEvent,
+  type CollectionEvent,
+  type CollectionEventsPage,
+  type RemoteCollectionEvent
+} from '~/lib/events'
 import { BuilderServerError, request } from './transport'
 
 const REVIEW_CONFLICT_STATUS = 409
@@ -64,8 +69,30 @@ export function isAppealAlreadyOpen(error: unknown): boolean {
  * Escalates a rejection to a human curator: POST /collections/{id}/curation/appeal. 409 while an appeal is
  * open (`isAppealAlreadyOpen`) or when the latest request is not rejected.
  */
-export async function appealCollectionCuration(address: string, collectionId: string): Promise<void> {
-  await request<unknown>(address, 'POST', `/collections/${collectionId}/curation/appeal`, '', {}, false)
+export async function appealCollectionCuration(address: string, collectionId: string, note?: string): Promise<void> {
+  const body = note ? { note } : {}
+  await request<unknown>(address, 'POST', `/collections/${collectionId}/curation/appeal`, '', body, false)
+}
+
+export type CollectionComment = { message: string; itemId?: string }
+
+/**
+ * Writes on the collection's review timeline: POST /collections/{id}/comments. Open to the collection's
+ * role holders and the committee; answers the stored `review.comment` event.
+ */
+export async function postCollectionComment(
+  address: string,
+  collectionId: string,
+  comment: CollectionComment
+): Promise<CollectionEvent> {
+  const remote = await request<RemoteCollectionEvent>(
+    address,
+    'POST',
+    `/collections/${collectionId}/comments`,
+    '',
+    comment
+  )
+  return fromRemoteEvent(remote)
 }
 
 /**

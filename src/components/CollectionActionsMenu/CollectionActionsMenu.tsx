@@ -31,6 +31,8 @@ type Props = {
   items?: Item[]
   /** The review timeline entry: published collections, for the people who can read it (roles and the committee). */
   showActivity?: boolean
+  /** Whether the viewer may write on the timeline (role holders and the committee). */
+  canComment?: boolean
   /** Opens the Send Items flow; the header button covers this on desktop, so the item shows only when compact. */
   onSendItems?: () => void
   /** Opens the items in the editor; the header button covers this on desktop, so the item shows only when compact. */
@@ -39,6 +41,8 @@ type Props = {
   onCreateDiscount?: () => void
   /** The collection's forum post; the header button covers it on desktop, so the item shows only when compact. */
   forumLink?: string
+  /** The menu is the forum post's only entry on every screen size, once reviews are discussed in the app. */
+  forumInMenu?: boolean
   /** Opens the collaborators / senders list; without it the owner-only entries are not rendered. */
   onManageRoles?: (kind: RoleKind) => void
   /** Opens the transfer-ownership dialog; without it the owner-only entry is not rendered. */
@@ -61,10 +65,12 @@ export function CollectionActionsMenu({
   onPreviewInWorld,
   items,
   showActivity = false,
+  canComment = false,
   onSendItems,
   onPreviewItems,
   onCreateDiscount,
   forumLink,
+  forumInMenu = false,
   onManageRoles,
   onTransferOwnership,
   onEditUrn,
@@ -94,7 +100,7 @@ export function CollectionActionsMenu({
   const showSend = compact && !!onSendItems
   // Same for the header's Open Editor button; on mobile the editor is a viewer, hence "Preview".
   const showPreview = compact && !!onPreviewItems
-  const showForum = compact && !!forumLink
+  const showForum = (compact || forumInMenu) && !!forumLink
   const showDiscount = compact && !!onCreateDiscount
   const showEditUrn = !compact && isLinked && !isOnChain && !!onEditUrn
   const showEditContract = !compact && isLinked && !!onEditContract
@@ -239,6 +245,7 @@ export function CollectionActionsMenu({
           collection={collection}
           address={address}
           items={items}
+          canComment={canComment}
           onClose={() => setActivityOpen(false)}
         />
       )}

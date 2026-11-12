@@ -13,6 +13,7 @@ import { ConfirmModal } from '~/components/ConfirmModal'
 import { BodyShapeIcon, CategoryIcon } from '~/components/ItemIcons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { Modal } from '~/components/Modal'
+import { NoteField } from '~/components/NoteField'
 import { RarityPill } from '~/components/RarityPill'
 import { StepIndicator } from '~/components/StepIndicator'
 import { SuccessModal } from '~/components/SuccessModal'
@@ -28,6 +29,7 @@ import { copyToClipboard } from '~/lib/clipboard'
 import { getContentsStorageUrl } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
+import { NOTE_MAX_LENGTH } from '~/lib/events'
 import { getItemBodyShapeType, type Item } from '~/lib/items'
 import { formatItemBytes } from './formatSize'
 import * as S from './ApprovalFlowModal.styles'
@@ -39,6 +41,8 @@ type Props = {
   mode: ApprovalMode
   /** The items as the curator reviewed them: approving stops if the creator saved changes since. */
   items: Item[]
+  /** Offers a note for the creator on the approving step, where builder-server keeps it. */
+  withNote?: boolean
   onClose: () => void
 }
 
@@ -47,9 +51,10 @@ const COPIED_FEEDBACK_MS = 1500
 const shortHash = (hash: string) => `${hash.slice(0, 6)}...${hash.slice(-6)}`
 
 /** The committee's approval: one stepper screen per transaction or upload. */
-export function ApprovalFlowModal({ session, collection, curation, mode, items, onClose }: Props) {
+export function ApprovalFlowModal({ session, collection, curation, mode, items, withNote = false, onClose }: Props) {
   const { t } = useTranslation()
-  const flow = useApprovalFlow(session, collection, curation, mode, items)
+  const [note, setNote] = useState('')
+  const flow = useApprovalFlow(session, collection, curation, mode, items, note)
   const { view, plan, start, stop } = flow
   const errorText = useMemo(
     () =>
@@ -178,6 +183,17 @@ export function ApprovalFlowModal({ session, collection, curation, mode, items, 
             {t(mode === 'enable' ? 'approval_flow.enable_body' : `approval_flow.${step}.body`, { count })}
           </S.Text>
           <StepTable step={step} plan={plan} collection={collection} />
+          {withNote && mode === 'approve' && isLast && (
+            <NoteField
+              label={t('approval_flow.note.label')}
+              value={note}
+              onChange={setNote}
+              maxLength={NOTE_MAX_LENGTH}
+              placeholder={t('approval_flow.note.placeholder')}
+              disabled={busy}
+              testId="approval-note"
+            />
+          )}
           <S.Footer>
             <Button type="button" variant="secondary" disabled={busy} onClick={onClose}>
               {t('approval_flow.cancel')}

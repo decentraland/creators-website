@@ -1,6 +1,7 @@
 import styled from '@emotion/styled'
 import { Link } from 'react-router-dom'
 import { CollectionRolePill } from '~/components/CollectionRolePill'
+import { ReviewReplyBadge } from '~/components/ReviewReplyBadge'
 import { theme } from '~/styles/theme'
 
 const mobile = theme.media.maxWidth('mobile')
@@ -83,6 +84,14 @@ export const RoleBadge = styled(CollectionRolePill)`
   position: absolute;
   right: 8px;
   bottom: 8px;
+`
+
+export const ReplyBadge = styled(ReviewReplyBadge)`
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  /* The mosaic behind is arbitrary art: the tint alone would not keep the label readable. */
+  background: ${theme.colors.overlay};
 `
 
 export const Body = styled.div`

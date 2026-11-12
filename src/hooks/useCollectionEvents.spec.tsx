@@ -7,7 +7,8 @@ import { type Collection } from '~/lib/collections'
 const api = vi.hoisted(() => ({
   fetchCollectionEvents: vi.fn(),
   requestCollectionValidation: vi.fn(),
-  appealCollectionCuration: vi.fn()
+  appealCollectionCuration: vi.fn(),
+  postCollectionComment: vi.fn()
 }))
 vi.mock('~/lib/builder', async importOriginal => ({ ...(await importOriginal<object>()), ...api }))
 vi.mock('~/lib/analytics', () => ({ track: vi.fn(), errorCode: () => 'unknown' }))
@@ -17,7 +18,8 @@ vi.mock('~/hooks/useFeatureFlag', () => ({ useFeatureFlag: () => ({ enabled: fla
 
 const { BuilderServerError } = await import('~/lib/builder')
 const { captureError } = await import('~/lib/monitoring')
-const { useAppealCuration, useCollectionEvents, useRequestValidation } = await import('./useCollectionEvents')
+const { useAppealCuration, useCollectionEvents, usePostComment, useRequestValidation } =
+  await import('./useCollectionEvents')
 
 const collection = { id: 'c1', name: 'Hats', isPublished: true } as Collection
 const remote = (id: string) => ({
@@ -129,5 +131,32 @@ describe('useAppealCuration', () => {
     const { result } = renderHook(() => useAppealCuration('0xme'), { wrapper })
     await act(() => result.current.mutateAsync({ collection }))
     expect(api.appealCollectionCuration).toHaveBeenCalledWith('0xme', 'c1')
+  })
+
+  it('sends the note the creator wrote with it', async () => {
+    api.appealCollectionCuration.mockResolvedValue(undefined)
+    const { result } = renderHook(() => useAppealCuration('0xme'), { wrapper })
+    await act(() => result.current.mutateAsync({ collection, note: 'Meant to clip' }))
+    expect(api.appealCollectionCuration).toHaveBeenCalledWith('0xme', 'c1', 'Meant to clip')
+  })
+})
+
+describe('usePostComment', () => {
+  it('posts the comment, anchored to an item when one is given', async () => {
+    api.postCollectionComment.mockResolvedValue({})
+    const { result } = renderHook(() => usePostComment('0xme'), { wrapper })
+    await act(() => result.current.mutateAsync({ collection, message: 'Fixed', role: 'creator' }))
+    expect(api.postCollectionComment).toHaveBeenLastCalledWith('0xme', 'c1', { message: 'Fixed' })
+    await act(() => result.current.mutateAsync({ collection, message: 'Legs', itemId: 'i1', role: 'curator' }))
+    expect(api.postCollectionComment).toHaveBeenLastCalledWith('0xme', 'c1', { message: 'Legs', itemId: 'i1' })
+  })
+
+  it('reports a comment that could not be stored', async () => {
+    api.postCollectionComment.mockRejectedValueOnce(new Error('boom'))
+    const { result } = renderHook(() => usePostComment('0xme'), { wrapper })
+    await act(() =>
+      result.current.mutateAsync({ collection, message: 'Fixed', role: 'creator' }).catch(() => undefined)
+    )
+    expect(captureError).toHaveBeenCalledWith(expect.any(Error), { flow: 'curation_comment', collectionId: 'c1' })
   })
 })

@@ -16,7 +16,7 @@
       "published": "已发布（{count}）",
       "draft": "草稿（{count}）",
       "under_review": "审核中（{count}）",
-      "rejected": "已拒绝（{count}）",
+      "rejected": "需修改（{count}）",
       "disabled": "已暂停（{count}）",
       "linked": "已关联（{count}）"
     },
@@ -73,7 +73,7 @@
     "under_review": "审核中",
     "under_review_hint": "您的系列正在审核中。审核完成后我们会通知您。",
     "published": "已发布",
-    "rejected": "已拒绝",
+    "rejected": "需修改",
     "disabled": "已暂停",
     "disabled_hint": "您的系列已被审核团队暂停。请联系为您指派的审核员进行复查。",
     "linked": "已关联"
@@ -163,11 +163,11 @@
     "item_status": {
       "published": "已发布",
       "modified": "已修改",
-      "rejected": "已拒绝",
+      "rejected": "需修改",
       "under_review": "审核中",
       "missing": "不完整",
       "modified_hint": "更改已保存，但尚未提交给审核委员会。请提交审核以发布这些更改。",
-      "rejected_hint": "审核委员会已拒绝最新的更改。在更新后的更改获得批准之前，买家看到的仍是上一个已批准版本。",
+      "rejected_hint": "审核委员会要求修改最新的更改。在更新后的更改获得批准之前，买家看到的仍是上一个已批准版本。",
       "under_review_hint": "更改已提交给审核委员会。在更改获得批准之前，买家看到的仍是上一个已批准版本。",
       "missing_hint": "此物品的文件未上线，可能无法在世界中正常使用。请将系列提交审核或联系审核人员，以重新部署该物品。"
     },
@@ -322,18 +322,22 @@
     "request_review": {
       "action": "再次申请审核",
       "title": "再次申请审核",
-      "description": "审核委员会将再次审核您的系列。请先确保您已解决被拒绝的原因。",
+      "description": "审核委员会将再次审核您的系列。请先确保您已完成对方要求的修改。",
       "confirm": "申请审核",
       "cancel": "取消",
       "error": "我们无法申请新的审核，请重试。",
       "success": "您的系列已提交审核"
     },
     "review_notice": {
-      "rejected": "审核委员会拒绝了此系列的最新版本。请更新您的物品并重新提交审核。"
+      "rejected": "审核委员会要求修改此系列的最新版本。请更新您的物品并重新提交审核。"
     },
     "push_blocker": {
       "has_invalid_items": "请先修复标为红色的 {count, plural, one {# 个物品} other {# 个物品}}才能提交审核。",
       "reviewing": "您的系列正在自动审核中。审核完成后（约 5 分钟）即可发布更改。"
+    },
+    "push_note": {
+      "label": "修改了什么？（可选）",
+      "placeholder": "告诉审核员您修改了什么，例如“只添加了一个标签”"
     }
   },
   "publish_collection_modal": {
@@ -762,13 +766,13 @@
       "requested": "{time}申请审核",
       "created": "{time}创建",
       "approved": "{time}批准",
-      "rejected": "{time}拒绝",
+      "rejected": "{time}要求修改",
       "change_assignee": "更改指派的审核员",
       "assign_to_me": "指派给我",
       "cancel": "取消",
       "action": {
         "approve": "批准",
-        "reject": "拒绝",
+        "reject": "要求修改",
         "enable": "启用",
         "disable": "禁用",
         "deploy_missing": "上传缺失的物品"
@@ -780,12 +784,12 @@
         "done": "完成"
       },
       "reject": {
-        "title": "要拒绝 {collection} 吗？",
-        "first": "该系列将无法铸造。创作者会看到它被拒绝。",
-        "changes": "该系列将保留其已批准的版本。创作者会看到更改被拒绝。",
-        "confirm": "拒绝",
-        "error": "我们无法拒绝该系列，请重试。",
-        "success": "{collection} 已被拒绝"
+        "title": "要求修改 {collection} 吗？",
+        "first": "该系列将无法铸造。创作者会看到它需要修改。",
+        "changes": "该系列将保留其已批准的版本。创作者会看到更改需要修改。",
+        "confirm": "要求修改",
+        "error": "我们无法发送该请求，请重试。",
+        "success": "已要求修改 {collection}"
       },
       "disable": {
         "title": "要禁用 {collection} 吗？",
@@ -801,7 +805,9 @@
         "pass": "所有物品都通过了所有检查。",
         "warnings": "部分物品存在警告。点击查看。",
         "errors": "部分物品存在错误。点击查看。"
-      }
+      },
+      "activity": "活动记录",
+      "creator_replied": "创作者已回复"
     },
     "discard": {
       "title": "放弃您的更改？",
@@ -996,7 +1002,10 @@
         "pending": "正在启用第三方…"
       }
     },
-    "read_only_reviewing": "系列自动审核进行期间（约 5 分钟），此物品为只读。"
+    "read_only_reviewing": "系列自动审核进行期间（约 5 分钟），此物品为只读。",
+    "curator_request": {
+      "title": "审核员要求修改"
+    }
   },
   "zoom_controls": {
     "in": "放大",
@@ -1010,7 +1019,7 @@
       "to_review": "待审核",
       "auto_reviewing": "自动审核中",
       "approved": "已批准",
-      "rejected": "已拒绝",
+      "rejected": "需修改",
       "disabled": "已禁用",
       "all_assignees": "所有审核员",
       "you": "{name}（您）",
@@ -1048,7 +1057,8 @@
       "discussion": "讨论",
       "forum_post": "论坛帖子",
       "not_posted": "未发帖",
-      "third_party": "第三方"
+      "third_party": "第三方",
+      "creator_replied": "创作者已回复"
     },
     "error": {
       "title": "我们无法加载系列",
@@ -1485,7 +1495,7 @@
     "to_review": "待审核",
     "auto_reviewing": "自动审核中",
     "approved": "已批准",
-    "rejected": "已拒绝",
+    "rejected": "需修改",
     "disabled": "已禁用"
   },
   "review_type": {
@@ -1578,7 +1588,11 @@
       "description": "在您打开此系列后，创作者保存了部分物品的更改。请在批准前查看最新版本。",
       "confirm": "查看更改"
     },
-    "enable_body": "启用该系列，使其物品可以按上一个已批准版本重新铸造。创作者尚未提交审核的更改不会包含在内。请在钱包中确认。"
+    "enable_body": "启用该系列，使其物品可以按上一个已批准版本重新铸造。创作者尚未提交审核的更改不会包含在内。请在钱包中确认。",
+    "note": {
+      "label": "给创作者的备注（可选）",
+      "placeholder": "创作者需要了解或稍后修复的事项"
+    }
   },
   "item_size": {
     "label": "物品大小",
@@ -2068,7 +2082,8 @@
       "validator_failed": "自动审核无法检查您的系列。审核员将进行审核。",
       "too_large": "您的系列过大，无法自动审核。审核员将进行审核。",
       "rejected_by_validator": "自动审核在您的物品中发现了问题。请修复后重新审核，或申请审核员审核您的系列。",
-      "rejected_by_curator": "审核员拒绝了您的系列。请修复其指出的问题并发布更改，或申请再次审核。"
+      "rejected_by_curator": "审核员要求修改您的系列。请完成修改并发布更改，或申请再次审核。",
+      "curator_comment": "审核员给您留了一条评论："
     },
     "reviewing": {
       "title": "正在审核系列",
@@ -2088,7 +2103,9 @@
       "title": "申请审核员审核？",
       "description": "如果您认为检测到的问题有误，可以申请 Decentraland 审核员进行审核。审核员审核需要更多时间。审核完成后我们会通知您。",
       "cancel": "取消",
-      "confirm": "申请审核"
+      "confirm": "申请审核",
+      "note": "给审核员的留言（可选）",
+      "note_placeholder": "说明您认为这些问题不适用的原因"
     },
     "sent": {
       "title": "系列已送审！",
@@ -2113,7 +2130,10 @@
     "appeal_open": "此系列已申请过审核员审核。",
     "appeal_error": "我们无法发送您的申请，请重试。",
     "validation_started": "自动审核已开始。完成后我们会更新此页面。",
-    "validation_error": "我们无法启动自动审核，请重试。"
+    "validation_error": "我们无法启动自动审核，请重试。",
+    "reply": "回复",
+    "message_curator": "给审核员留言",
+    "curator_replied": "审核员评论"
   },
   "reject_reason": {
     "clipping": "穿模问题",
@@ -2151,18 +2171,18 @@
     }
   },
   "reject_curation_modal": {
-    "title": "拒绝系列",
-    "heading": "选择拒绝原因",
-    "reasons": "拒绝原因",
+    "title": "要求修改",
+    "heading": "选择原因",
+    "reasons": "原因",
     "reasons_placeholder": "选择一个或多个原因",
     "reasons_selected": "已选 {count} 项",
     "remove_reason": "移除 {reason}",
     "message": "详情（可选）",
     "message_placeholder": "告诉创作者需要修复什么。对方会看到这条消息，请尽量具体。",
     "cancel": "取消",
-    "confirm": "拒绝系列",
-    "error": "我们无法拒绝该系列，请重试。",
-    "success": "{collection} 已被拒绝"
+    "confirm": "要求修改",
+    "error": "我们无法发送该请求，请重试。",
+    "success": "已要求修改 {collection}"
   },
   "automated_verdict": {
     "title": "自动审核",
@@ -2212,7 +2232,7 @@
       "review.assigned": "将审核指派给了 {assignee}",
       "review.unassigned": "取消了审核指派",
       "review.approved": "批准了该系列",
-      "review.rejected": "拒绝了该系列",
+      "review.rejected": "要求修改",
       "changes.submitted": "提交了 {count, plural, other {# 个物品}}的更改",
       "collection.disabled": "停用了该系列",
       "unknown": "{type}",
@@ -2220,10 +2240,19 @@
         "automated_error_exhausted": "自动审核多次尝试后已放弃，审核员将审核该系列",
         "automated_error_too_large": "该系列过大，无法自动审核，审核员将进行审核",
         "human_required_validator_error": "自动审核无法检查该系列，审核员将进行审核"
-      }
+      },
+      "review.comment": "发表了评论"
     },
     "show_findings": "显示检查结果",
-    "hide_findings": "隐藏检查结果"
+    "hide_findings": "隐藏检查结果",
+    "comment": {
+      "label_creator": "给审核员留言",
+      "label_curator": "给创作者留言",
+      "placeholder_creator": "提问、说明您修改了什么，或回复审核员的评论",
+      "placeholder_curator": "提问，或告诉创作者需要注意什么",
+      "send": "发送",
+      "error": "我们无法发送您的留言，请重试。"
+    }
   },
   "wallet_error": {
     "wrong_account": "您的钱包切换到了其他账户或网络。请切换回您登录时使用的账户，然后重试。"

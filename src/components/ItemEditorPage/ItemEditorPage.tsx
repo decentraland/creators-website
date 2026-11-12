@@ -170,6 +170,11 @@ const ItemEditorPage = () => {
     [collection, reviewCuration.data, reviewEvents]
   )
   const reviewLocked = reviewStage === ReviewStage.AUTOMATED_REVIEWING
+  const curatorRequest = useMemo(() => {
+    const request = reviewCuration.data
+    if (mode === 'review' || reviewStage !== ReviewStage.REJECTED_BY_CURATOR || !request) return undefined
+    return { reasons: request.rejectionReasons ?? [], message: request.rejectionMessage }
+  }, [mode, reviewStage, reviewCuration.data])
   const automatedIssues = useMemo(
     () => getAutomatedIssuesByItem(reviewEvents ?? [], itemsQuery.data ?? EMPTY_ITEMS),
     [reviewEvents, itemsQuery.data]
@@ -757,6 +762,7 @@ const ItemEditorPage = () => {
         address={address}
         editable={editable}
         showReadOnlyNote={mode !== 'review'}
+        curatorRequest={curatorRequest}
         readOnlyReason={
           isCollectionLocked(collection) ? 'lock' : reviewLocked ? 'reviewing' : isLinked ? 'linked' : 'role'
         }

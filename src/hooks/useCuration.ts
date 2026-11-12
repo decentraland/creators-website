@@ -193,19 +193,27 @@ export function useRejectCuration(address: string | undefined) {
 }
 
 /** The creator's "Publish changes": asks the committee to review the collection's changes again. */
+export type PushVariables = {
+  collection: Collection
+  /** What changed, for the curator; only a server with the review timeline keeps it. */
+  note?: string
+}
+
 export function usePushCuration(address: string | undefined) {
   const queryClient = useQueryClient()
   const store = useStoreCuration(address)
   return useMutation({
-    mutationFn: (collection: Collection) => {
+    mutationFn: ({ collection, note }: PushVariables) => {
       if (!address) throw new Error('Wallet disconnected')
-      return pushCollectionCuration(address, collection.id)
+      return note
+        ? pushCollectionCuration(address, collection.id, undefined, note)
+        : pushCollectionCuration(address, collection.id)
     },
-    onSuccess: (curation, collection) => {
-      track('Push curation', { collectionId: collection.id, first_review: !collection.isApproved })
+    onSuccess: (curation, { collection, note }) => {
+      track('Push curation', { collectionId: collection.id, first_review: !collection.isApproved, has_note: !!note })
       store(curation)
     },
-    onError: (error, collection) => {
+    onError: (error, { collection }) => {
       track('Push curation error', { collectionId: collection.id, error: errorCode(error) })
       // A running review, the daily limit and a busy collection are answers the creator acts on, not failures.
       const expected = error instanceof ValidationLimitError || isValidationRunning(error) || isCollectionBusy(error)

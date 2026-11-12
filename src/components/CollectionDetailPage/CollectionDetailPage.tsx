@@ -77,7 +77,7 @@ import { ReviewStage, canPushChanges, getReviewStage, isRejectedStage } from '~/
 import { useCommittee } from '~/hooks/useCommittee'
 import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
 import { useCollectionEvents } from '~/hooks/useCollectionEvents'
-import { getAutomatedIssuesByItem } from '~/lib/events'
+import { NOTE_MAX_LENGTH, getAutomatedIssuesByItem } from '~/lib/events'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS, THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { type ItemListing } from '~/lib/listings'
@@ -85,6 +85,7 @@ import { useNotifications } from '~/lib/notifications'
 import { theme } from '~/styles/theme'
 import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
+import { NoteField } from '~/components/NoteField'
 import { Tooltip } from '~/components/Tooltip'
 import { EmoteIcon, OpenEditorIcon, WearableIcon } from '~/components/Icons'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
@@ -301,8 +302,10 @@ const CollectionDetailPage = () => {
     () => [...syncs.values()].some(sync => sync.status === ItemSyncStatus.UNSYNCED),
     [syncs]
   )
+  const [pushNote, setPushNote] = useState('')
   const closePush = () => {
     setPushView('closed')
+    setPushNote('')
     pushCuration.reset()
   }
   const stage = useMemo(
@@ -313,6 +316,8 @@ const CollectionDetailPage = () => {
   const reviewLocked = stage === ReviewStage.AUTOMATED_REVIEWING
   const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION).enabled
   const [reviewRequest, setReviewRequest] = useState<ReviewFlowRequest | null>(null)
+  // Only a server with the review timeline keeps the note.
+  const withPushNote = autoCuration && events !== null
   const clearReviewRequest = useCallback(() => setReviewRequest(null), [])
   // The validator's findings dress the rows and the details modal like the browser's checks do.
   const automatedIssues = useMemo(() => getAutomatedIssuesByItem(events ?? [], allItems ?? []), [events, allItems])
@@ -622,7 +627,7 @@ const CollectionDetailPage = () => {
                   />
                 </Tooltip>
               )}
-              {showForumPost && (
+              {showForumPost && !autoCuration && (
                 <Button
                   type="button"
                   variant="dark"
@@ -726,6 +731,8 @@ const CollectionDetailPage = () => {
                   onPreviewInWorld={hasItems ? () => previewCollectionFromDetail(collection.id, total) : undefined}
                   items={allItems}
                   showActivity={autoCuration && !!curationAddress && !!standardCollection?.isPublished}
+                  canComment={canManage || committee.isCurator}
+                  forumInMenu={autoCuration}
                   onSendItems={canSend ? () => setSending(true) : undefined}
                   onCreateDiscount={canCreateDiscount ? () => openDiscount('menu') : undefined}
                   onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
@@ -983,29 +990,44 @@ const CollectionDetailPage = () => {
               confirm={{
                 label: t(`collection_detail_page.${pushCopy}.confirm`),
                 onClick: () =>
-                  pushCuration.mutate(collection, {
-                    onSuccess: () => {
-                      setPushView('closed')
-                      showToast(t(`collection_detail_page.${pushCopy}.success`))
-                    },
-                    // The automated review answers for itself: the day's reviews are spent, or one is running.
-                    onError: error => {
-                      if (error instanceof ValidationLimitError) {
+                  pushCuration.mutate(
+                    { collection, note: (withPushNote && pushNote.trim()) || undefined },
+                    {
+                      onSuccess: () => {
                         closePush()
-                        setReviewRequest('limit')
-                      } else if (isValidationRunning(error)) {
-                        closePush()
-                        showToast(t('review_flow.running'), { type: 'warn' })
-                      } else if (isCollectionBusy(error)) {
-                        closePush()
-                        showToast(t('review_flow.busy'), { type: 'warn' })
+                        showToast(t(`collection_detail_page.${pushCopy}.success`))
+                      },
+                      // The automated review answers for itself: the day's reviews are spent, or one is running.
+                      onError: error => {
+                        if (error instanceof ValidationLimitError) {
+                          closePush()
+                          setReviewRequest('limit')
+                        } else if (isValidationRunning(error)) {
+                          closePush()
+                          showToast(t('review_flow.running'), { type: 'warn' })
+                        } else if (isCollectionBusy(error)) {
+                          closePush()
+                          showToast(t('review_flow.busy'), { type: 'warn' })
+                        }
                       }
                     }
-                  }),
+                  ),
                 testId: 'push-changes-confirm'
               }}
               testId="push-changes-modal"
-            />
+            >
+              {withPushNote && (
+                <NoteField
+                  label={t('collection_detail_page.push_note.label')}
+                  value={pushNote}
+                  onChange={setPushNote}
+                  maxLength={NOTE_MAX_LENGTH}
+                  placeholder={t('collection_detail_page.push_note.placeholder')}
+                  disabled={pushCuration.isPending}
+                  testId="push-changes-note"
+                />
+              )}
+            </ConfirmModal>
           )}
           {isSending && session && (
             <SendItemsFlow

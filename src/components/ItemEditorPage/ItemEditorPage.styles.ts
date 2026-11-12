@@ -603,6 +603,24 @@ export const ReadOnlyNote = styled.p`
   color: ${theme.editor.label};
 `
 
+export const CuratorRequest = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: ${theme.radius.chip};
+  background: ${theme.colors.errorOverlay};
+  font-size: 13px;
+  line-height: 1.4;
+  color: ${theme.colors.errLight};
+
+  q {
+    color: ${theme.colors.softWhite};
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+`
+
 export const SectionNote = styled.p`
   margin: 0;
   font-size: 12px;

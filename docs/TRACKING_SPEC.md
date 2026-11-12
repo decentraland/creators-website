@@ -191,9 +191,11 @@ Committee actions keep the legacy names (the on-chain disable was "Reject collec
 | `Reject curation error` |  | `collectionId`, `error` |
 | `Request validation` | the creator asked for another automated review (**Review again**) and builder-server accepted it | `collectionId`, `attempts_left` (after this one) |
 | `Request validation error` | the request failed, 429 and 409 included (they are answers, not Sentry errors) | `collectionId`, `error` |
-| `Appeal curation` | the creator asked for a curator review of a rejected collection and builder-server accepted it | `collectionId` |
+| `Appeal curation` | the creator asked for a curator review of a rejected collection and builder-server accepted it | `collectionId`, `has_note` |
 | `Appeal curation error` |  | `collectionId`, `error` |
-| `Review Modal Opened` | one of the review flow's modals opened, by the review itself or by the creator | `collectionId`, `stage` (the review stage, `null` without a timeline), `modal` (`reviewing` \| `issues` \| `request` \| `sent` \| `limit` \| `additional`) |
+| `Review Modal Opened` | one of the review flow's modals opened, by the review itself or by the creator | `collectionId`, `stage` (the review stage, `null` without a timeline), `modal` (`reviewing` \| `issues` \| `request` \| `sent` \| `limit` \| `additional` \| `activity`) |
+| `Post review comment` | a creator or a curator wrote on the collection's review timeline and builder-server stored it | `collectionId`, `role` (`creator` \| `curator`), `has_item`, `length` |
+| `Post review comment error` |  | `collectionId`, `role`, `error` |
 | `Open activity` | the collection's Activity timeline modal opened | `collectionId` |
 | `Reject collection` | a collection was disabled on chain | `collectionId`, `txHash` |
 | `Reject collection error` |  | `collectionId`, `error` |
@@ -207,14 +209,14 @@ Committee actions keep the legacy names (the on-chain disable was "Reject collec
 | `Approval error details copied` | the curator copied a failure's raw details for support | `collectionId` |
 | `Approve collection` | the collection was approved (or enabled) on chain | `collectionId`, `txHash` |
 | `Approve collection error` |  | `collectionId`, `error` |
-| `Approve curation` | the pending review request was marked approved | `collectionId` |
-| `Push curation` | a creator sent a collection back to the committee: an approved one's changes, or a rejected first review again | `collectionId`, `first_review` |
+| `Approve curation` | the pending review request was marked approved | `collectionId`, `has_note` |
+| `Push curation` | a creator sent a collection back to the committee: an approved one's changes, or a rejected first review again | `collectionId`, `first_review`, `has_note` |
 | `Push curation error` |  | `collectionId`, `error` |
 | `Review Validation Result` | the review bar's checks of a collection's pending items first settle, once per collection opened (cached results included) | `collectionId`, `itemCount`, `errors`, `warnings`, `itemsWithIssues`, `durationMs` (from opening) |
 | `Review Validation Opened` | the curator opened the collection's validation results | `collectionId`, `status` (`warnings` \| `errors`) |
 | `Review Preview In World` | a **Preview in World** launch from the editor in review mode settles (desktop only) | `collectionId`, `itemCount`, `launched` (the desktop explorer opened; `false` = sent to the download page) |
 
-Sentry flows: `curation_assign`, `curation_reject`, `curation_disable`, `curation_push`, `curation_approve` (with `step`). Wallet rejections and a wallet on the wrong account or network are events only.
+Sentry flows: `curation_assign`, `curation_reject`, `curation_comment`, `curation_disable`, `curation_push`, `curation_approve` (with `step`). Wallet rejections and a wallet on the wrong account or network are events only.
 
 Linked collections (curator side):
 

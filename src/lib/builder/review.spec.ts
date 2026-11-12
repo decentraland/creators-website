@@ -8,6 +8,7 @@ import {
   isCollectionBusy,
   isReviewConflict,
   isValidationRunning,
+  postCollectionComment,
   requestCollectionValidation
 } from './review'
 
@@ -80,6 +81,40 @@ describe('collection events and review requests', () => {
     await appealCollectionCuration(ADDRESS, 'a1b2')
     expect(signedFetchMock.mock.calls[0][2]).toBe('/collections/a1b2/curation/appeal')
     expect(signedFetchMock.mock.calls[0][3]).toMatchObject({ method: 'POST', body: JSON.stringify({}) })
+  })
+
+  it('sends the creator note along with the appeal', async () => {
+    signedFetchMock.mockResolvedValue(jsonResponse({ ok: true }))
+    await appealCollectionCuration(ADDRESS, 'a1b2', 'The cape is meant to clip')
+    expect(signedFetchMock.mock.calls[0][3]).toMatchObject({
+      body: JSON.stringify({ note: 'The cape is meant to clip' })
+    })
+  })
+
+  it('posts a comment and answers the stored event', async () => {
+    signedFetchMock.mockResolvedValue(
+      okResponse({
+        id: 'e9',
+        collection_id: 'a1b2',
+        type: 'review.comment',
+        actor: 'creator',
+        actor_address: '0xABC',
+        payload: { message: 'Fixed the weights', itemId: 'i1' },
+        created_at: '2026-11-12T10:00:00Z'
+      })
+    )
+    const event = await postCollectionComment(ADDRESS, 'a1b2', { message: 'Fixed the weights', itemId: 'i1' })
+    expect(signedFetchMock.mock.calls[0][2]).toBe('/collections/a1b2/comments')
+    expect(signedFetchMock.mock.calls[0][3]).toMatchObject({
+      method: 'POST',
+      body: JSON.stringify({ message: 'Fixed the weights', itemId: 'i1' })
+    })
+    expect(event).toMatchObject({
+      type: 'review.comment',
+      actor: 'creator',
+      actorAddress: '0xabc',
+      payload: { message: 'Fixed the weights', itemId: 'i1' }
+    })
   })
 
   it('tells an appeal already open from the other refusals', () => {

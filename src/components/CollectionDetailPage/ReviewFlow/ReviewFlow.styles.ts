@@ -73,3 +73,44 @@ export const Attempts = styled.div`
   font-size: 13px;
   color: ${theme.colors.gray4};
 `
+
+export const NoticeDetails = styled.div`
+  display: flex;
+  flex: 1 1 100%;
+  flex-direction: column;
+  gap: 8px;
+  order: 3;
+  min-width: 0;
+`
+
+export const Reasons = styled.ul`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+`
+
+export const Reason = styled.li`
+  padding: 2px 10px;
+  border-radius: ${theme.radius.pill};
+  background: ${theme.colors.glass};
+  font-size: 12px;
+  font-weight: 500;
+  color: ${theme.colors.softWhite};
+`
+
+export const QuoteLabel = styled.span`
+  font-size: 13px;
+  font-weight: 600;
+`
+
+export const Quote = styled.blockquote`
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 3px solid currentColor;
+  color: ${theme.colors.softWhite};
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+`

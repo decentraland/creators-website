@@ -144,3 +144,40 @@ export const More = styled.div`
   display: flex;
   justify-content: center;
 `
+
+export const Composer = styled.form`
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid ${theme.colors.glassFaint};
+`
+
+export const ComposerError = styled.p`
+  margin: 0;
+  font-size: 14px;
+  color: ${theme.colors.errLight};
+`
+
+export const ComposerActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+
+  ${mobile} {
+    & > * {
+      flex: 1 1 auto;
+      min-height: 44px;
+    }
+  }
+`
+
+export const ItemTag = styled.span`
+  align-self: flex-start;
+  padding: 2px 10px;
+  border-radius: ${theme.radius.pill};
+  background: ${theme.colors.glass};
+  font-size: 12px;
+  font-weight: 500;
+  color: ${theme.colors.softWhite};
+`

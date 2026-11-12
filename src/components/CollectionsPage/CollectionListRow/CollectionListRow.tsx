@@ -8,6 +8,7 @@ import { CollectionMosaic } from '~/components/CollectionMosaic'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { CollectionRolePill } from '~/components/CollectionRolePill'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
+import { ReviewReplyBadge } from '~/components/ReviewReplyBadge'
 import * as S from './CollectionListRow.styles'
 
 type Props = {
@@ -39,6 +40,7 @@ export function CollectionListRow({ collection }: Props) {
       </S.Cell>
       <S.Cell>
         <CollectionStatusPill collection={collection} />
+        <ReviewReplyBadge collection={collection} address={address} />
       </S.Cell>
       <S.DateCell data-testid="collection-row-updated">
         <strong>{formatTimeAgo(collection.lastActivityAt ?? collection.updatedAt, intl.locale)}</strong>

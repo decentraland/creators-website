@@ -13,7 +13,9 @@ const state = vi.hoisted(() => ({
   isFetchNextPageError: false,
   isAvailable: true,
   fetchNextPage: vi.fn(),
-  isCurator: false
+  isCurator: false,
+  post: vi.fn(),
+  postError: false
 }))
 vi.mock('~/hooks/useCollectionEvents', () => ({
   useCollectionEvents: () => ({
@@ -27,7 +29,8 @@ vi.mock('~/hooks/useCollectionEvents', () => ({
     isFetchingNextPage: false,
     fetchNextPage: state.fetchNextPage,
     refetch: vi.fn()
-  })
+  }),
+  usePostComment: () => ({ mutate: state.post, isPending: false, isError: state.postError })
 }))
 vi.mock('~/hooks/useCommittee', () => ({ useCommittee: () => ({ isCurator: state.isCurator }) }))
 vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: { name: 'Curator Jane' } }) }))
@@ -52,10 +55,10 @@ function event(
   }
 }
 
-function renderModal() {
+function renderModal(canComment = false) {
   render(
     <TranslationProvider>
-      <CollectionActivityModal collection={collection} address="0xme" onClose={vi.fn()} />
+      <CollectionActivityModal collection={collection} address="0xme" canComment={canComment} onClose={vi.fn()} />
     </TranslationProvider>
   )
 }
@@ -69,6 +72,8 @@ beforeEach(() => {
   state.isAvailable = true
   state.isCurator = false
   state.fetchNextPage.mockReset()
+  state.post.mockReset()
+  state.postError = false
 })
 
 describe('CollectionActivityModal', () => {
@@ -95,7 +100,7 @@ describe('CollectionActivityModal', () => {
     renderModal()
     const lines = screen.getAllByTestId('activity-line').map(line => line.textContent)
     expect(lines).toEqual([
-      'rejected the collection',
+      'requested fixes',
       'requested a human review',
       'Automated review found issues in 1 item',
       'assigned the review to Curator Jane',
@@ -243,5 +248,50 @@ describe('CollectionActivityModal', () => {
     renderModal()
     expect(screen.getByTestId('activity-unavailable')).toBeInTheDocument()
     expect(screen.queryByTestId('activity-empty')).toBeNull()
+  })
+
+  it('shows a comment with its author and text', () => {
+    state.events = [event('review.comment', 'curator', { message: 'Is the tail meant to be a tiara?' })]
+    renderModal()
+    expect(screen.getByTestId('activity-line')).toHaveTextContent('commented')
+    expect(screen.getByTestId('activity-actor')).toBeInTheDocument()
+    expect(screen.getByTestId('activity-quote')).toHaveTextContent('Is the tail meant to be a tiara?')
+  })
+
+  it('sends what a creator writes, trimmed, and clears the box once it is stored', () => {
+    state.post.mockImplementation((_vars: unknown, options: { onSuccess: () => void }) => options.onSuccess())
+    renderModal(true)
+    const input = screen.getByTestId('activity-comment-input')
+    fireEvent.change(input, { target: { value: '  Only added a tag  ' } })
+    fireEvent.click(screen.getByTestId('activity-comment-send'))
+    expect(state.post.mock.calls[0][0]).toMatchObject({ collection, message: 'Only added a tag', role: 'creator' })
+    expect(input).toHaveValue('')
+  })
+
+  it('writes as a curator for committee members and never sends an empty message', () => {
+    state.isCurator = true
+    renderModal(true)
+    expect(screen.getByTestId('activity-comment-send')).toBeDisabled()
+    fireEvent.change(screen.getByTestId('activity-comment-input'), { target: { value: 'Please reweight the legs' } })
+    fireEvent.click(screen.getByTestId('activity-comment-send'))
+    expect(state.post.mock.calls[0][0]).toMatchObject({ role: 'curator' })
+  })
+
+  it('keeps the text and says so when the message could not be sent', () => {
+    state.postError = true
+    renderModal(true)
+    fireEvent.change(screen.getByTestId('activity-comment-input'), { target: { value: 'Hello' } })
+    fireEvent.click(screen.getByTestId('activity-comment-send'))
+    expect(screen.getByTestId('activity-comment-error')).toBeInTheDocument()
+    expect(screen.getByTestId('activity-comment-input')).toHaveValue('Hello')
+  })
+
+  it('offers no box to readers, nor where the collection has no timeline', () => {
+    renderModal()
+    expect(screen.queryByTestId('activity-composer')).not.toBeInTheDocument()
+    cleanup()
+    state.isAvailable = false
+    renderModal(true)
+    expect(screen.queryByTestId('activity-composer')).not.toBeInTheDocument()
   })
 })

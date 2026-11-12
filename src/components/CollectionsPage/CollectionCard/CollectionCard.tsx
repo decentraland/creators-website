@@ -27,6 +27,7 @@ export function CollectionCard({ collection }: Props) {
       <S.Media>
         <CollectionMosaic collectionId={collection.id} itemCount={collection.itemCount} />
         {address && <S.RoleBadge collection={collection} address={address} />}
+        <S.ReplyBadge collection={collection} address={address} />
       </S.Media>
       <S.Body>
         <S.NameRow>

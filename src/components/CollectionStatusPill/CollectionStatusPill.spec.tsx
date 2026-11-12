@@ -43,9 +43,9 @@ describe('CollectionStatusPill', () => {
     expect(screen.queryByTestId('collection-status-hint-trigger')).not.toBeInTheDocument()
   })
 
-  it('reads Rejected from the latest review request', () => {
+  it('reads Needs fixes from the latest review request', () => {
     renderPill({ collection: { ...underReview, curationStatus: CurationStatus.REJECTED } })
     expect(screen.getByTestId('collection-status')).toHaveAttribute('data-status', 'rejected')
-    expect(screen.getByTestId('collection-status')).toHaveTextContent(/rejected/i)
+    expect(screen.getByTestId('collection-status')).toHaveTextContent(/needs fixes/i)
   })
 })

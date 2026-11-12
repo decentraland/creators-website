@@ -18,6 +18,7 @@ export const COLLECTION_EVENT_TYPES = [
   'review.approved',
   'review.rejected',
   'changes.submitted',
+  'review.comment',
   'collection.disabled'
 ] as const
 
@@ -109,6 +110,9 @@ export type CollectionEventPayload = Omit<Partial<ValidationVerdictPayload>, 're
     contentHashes?: Record<string, string>
     note?: string
     assignee?: string | null
+    /** `review.comment`: the text, and the item it is about when the author anchored it to one. */
+    message?: string
+    itemId?: string
   }
 
 export type RemoteCollectionEvent = {
@@ -237,8 +241,12 @@ export function getValidationAttemptsLeft(events: CollectionEvent[], now = Date.
   return Math.max(0, VALIDATION_ATTEMPTS_PER_DAY - countValidationAttempts(events, now))
 }
 
-/** Events that say nothing about the review stage: an assignment or a submitted change leaves it where it was. */
-const STAGE_NEUTRAL_EVENT_TYPES = new Set(['review.assigned', 'changes.submitted'])
+export const COMMENT_EVENT_TYPE = 'review.comment'
+export const COMMENT_MAX_LENGTH = 2000
+export const NOTE_MAX_LENGTH = 2000
+
+/** Events that say nothing about the review stage: an assignment, a submitted change or a comment leaves it where it was. */
+const STAGE_NEUTRAL_EVENT_TYPES = new Set(['review.assigned', 'changes.submitted', COMMENT_EVENT_TYPE])
 
 export function latestStageEvent(events: CollectionEvent[]): CollectionEvent | undefined {
   return events.find(event => !STAGE_NEUTRAL_EVENT_TYPES.has(event.type))
@@ -282,7 +290,36 @@ export function isValidationInProgress(events: CollectionEvent[]): boolean {
 
 /** The appeal endpoint answers 409 while the latest event is still the open appeal. */
 export function hasOpenAppeal(events: CollectionEvent[]): boolean {
-  return events[0]?.type === 'review.appeal_requested'
+  return events.find(event => event.type !== COMMENT_EVENT_TYPE)?.type === 'review.appeal_requested'
+}
+
+export type ReviewParty = 'creator' | 'curator'
+
+/** Events by which one side of the review answers the other; the automated review and assignments are neither. */
+const CONVERSATION_EVENT_TYPES = new Set([
+  COMMENT_EVENT_TYPE,
+  'review.rejected',
+  'review.approved',
+  'review.appeal_requested',
+  'changes.submitted'
+])
+
+/**
+ * Who owes the next answer in the creator–curator conversation: the side that did not write the newest comment.
+ * `null` when the newest exchange is not a comment (a decision, an appeal or new changes already answer it).
+ * `events` newest first.
+ */
+export function getAwaitedReply(events: CollectionEvent[]): ReviewParty | null {
+  const latest = events.find(event => CONVERSATION_EVENT_TYPES.has(event.type))
+  if (latest?.type !== COMMENT_EVENT_TYPE) return null
+  if (latest.actor === 'curator') return 'creator'
+  return latest.actor === 'creator' ? 'curator' : null
+}
+
+/** The newest comment the other side wrote that `party` has not answered yet. */
+export function getUnansweredComment(events: CollectionEvent[], party: ReviewParty): CollectionEvent | null {
+  if (getAwaitedReply(events) !== party) return null
+  return events.find(event => event.type === COMMENT_EVENT_TYPE) ?? null
 }
 
 /** The items the validator did not pass, in payload order; `null` (not checked) is listed too, never as a pass. */

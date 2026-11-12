@@ -16,7 +16,7 @@
       "published": "Published ({count})",
       "draft": "Draft ({count})",
       "under_review": "Under review ({count})",
-      "rejected": "Rejected ({count})",
+      "rejected": "Needs fixes ({count})",
       "disabled": "Paused ({count})",
       "linked": "Linked ({count})"
     },
@@ -73,7 +73,7 @@
     "under_review": "Under review",
     "under_review_hint": "Your collection is being reviewed for approval. We’ll notify you once the review is complete.",
     "published": "Published",
-    "rejected": "Rejected",
+    "rejected": "Needs fixes",
     "disabled": "Paused",
     "disabled_hint": "Your collection was paused by the curation team. Please get in touch with your assigned curator to review it.",
     "linked": "Linked"
@@ -163,11 +163,11 @@
     "item_status": {
       "published": "Published",
       "modified": "Modified",
-      "rejected": "Rejected",
+      "rejected": "Needs fixes",
       "under_review": "Under review",
       "missing": "Incomplete",
       "modified_hint": "Changes saved but not sent to the curation committee yet. Send them for review to publish them.",
-      "rejected_hint": "The curation committee rejected the latest changes. Buyers get the last approved version until updated changes are approved.",
+      "rejected_hint": "The curation committee requested fixes on the latest changes. Buyers get the last approved version until updated changes are approved.",
       "under_review_hint": "Changes sent to the curation committee. Buyers get the last approved version until the changes are approved.",
       "missing_hint": "This item’s files aren’t live, so it may not work in-world. Send the collection for review or get in touch with a curator to get it redeployed."
     },
@@ -322,18 +322,22 @@
     "request_review": {
       "action": "Request review again",
       "title": "Request review again",
-      "description": "The curation committee will review your collection again. Make sure you've addressed the reasons for the rejection first.",
+      "description": "The curation committee will review your collection again. Make sure you've made the fixes they asked for first.",
       "confirm": "Request review",
       "cancel": "Cancel",
       "error": "We couldn't request a new review. Please try again.",
       "success": "Your collection was sent for review"
     },
     "review_notice": {
-      "rejected": "The curation committee rejected the latest version of this collection. Update your items and send them for review again."
+      "rejected": "The curation committee requested fixes on the latest version of this collection. Update your items and send them for review again."
     },
     "push_blocker": {
       "has_invalid_items": "Fix {count, plural, one {# item} other {# items}} marked in red before sending for review.",
       "reviewing": "Your collection is in automated review. You can publish changes once it finishes (about 5 minutes)."
+    },
+    "push_note": {
+      "label": "What changed? (optional)",
+      "placeholder": "Tell the curator what you changed, for example \"only added a tag\""
     }
   },
   "publish_collection_modal": {
@@ -762,13 +766,13 @@
       "requested": "Review requested {time}",
       "created": "Created {time}",
       "approved": "Approved {time}",
-      "rejected": "Rejected {time}",
+      "rejected": "Fixes requested {time}",
       "change_assignee": "Change the assigned curator",
       "assign_to_me": "Assign to me",
       "cancel": "Cancel",
       "action": {
         "approve": "Approve",
-        "reject": "Reject",
+        "reject": "Request fixes",
         "enable": "Enable",
         "disable": "Disable",
         "deploy_missing": "Deploy missing items"
@@ -780,12 +784,12 @@
         "done": "Done"
       },
       "reject": {
-        "title": "Reject {collection}?",
-        "first": "The collection won't be mintable. The creator will see it as rejected.",
-        "changes": "The collection keeps its approved version. The creator will see the changes as rejected.",
-        "confirm": "Reject",
-        "error": "We couldn't reject the collection. Please try again.",
-        "success": "{collection} was rejected"
+        "title": "Request fixes on {collection}?",
+        "first": "The collection won't be mintable. The creator will see that it needs fixes.",
+        "changes": "The collection keeps its approved version. The creator will see that the changes need fixes.",
+        "confirm": "Request fixes",
+        "error": "We couldn't send the request. Please try again.",
+        "success": "Fixes requested on {collection}"
       },
       "disable": {
         "title": "Disable {collection}?",
@@ -801,7 +805,9 @@
         "pass": "Every item passes every check.",
         "warnings": "Some items have warnings. Click to see them.",
         "errors": "Some items have errors. Click to see them."
-      }
+      },
+      "activity": "Activity",
+      "creator_replied": "Creator replied"
     },
     "discard": {
       "title": "Discard your changes?",
@@ -996,7 +1002,10 @@
         "pending": "Enabling third party…"
       }
     },
-    "read_only_reviewing": "This item is read-only while the collection's automated review runs (about 5 minutes)."
+    "read_only_reviewing": "This item is read-only while the collection's automated review runs (about 5 minutes).",
+    "curator_request": {
+      "title": "A curator requested fixes"
+    }
   },
   "zoom_controls": {
     "in": "Zoom in",
@@ -1010,7 +1019,7 @@
       "to_review": "To review",
       "auto_reviewing": "Auto-reviewing",
       "approved": "Approved",
-      "rejected": "Rejected",
+      "rejected": "Needs fixes",
       "disabled": "Disabled",
       "all_assignees": "All assignees",
       "you": "{name} (you)",
@@ -1048,7 +1057,8 @@
       "discussion": "Discussion",
       "forum_post": "Forum post",
       "not_posted": "Not posted",
-      "third_party": "Third party"
+      "third_party": "Third party",
+      "creator_replied": "Creator replied"
     },
     "error": {
       "title": "We couldn't load the collections",
@@ -1485,7 +1495,7 @@
     "to_review": "To review",
     "auto_reviewing": "Auto-reviewing",
     "approved": "Approved",
-    "rejected": "Rejected",
+    "rejected": "Needs fixes",
     "disabled": "Disabled"
   },
   "review_type": {
@@ -1578,7 +1588,11 @@
       "description": "The creator saved changes to some items after you opened this collection. Review the latest version before approving it.",
       "confirm": "Review changes"
     },
-    "enable_body": "Enable the collection so its items can be minted again, as last approved. Changes the creator hasn't sent for review stay out. Please confirm in your wallet."
+    "enable_body": "Enable the collection so its items can be minted again, as last approved. Changes the creator hasn't sent for review stay out. Please confirm in your wallet.",
+    "note": {
+      "label": "Note for the creator (optional)",
+      "placeholder": "Anything the creator should know or fix later"
+    }
   },
   "item_size": {
     "label": "Item size",
@@ -2068,7 +2082,8 @@
       "validator_failed": "The automated review couldn't check your collection. A curator will review it.",
       "too_large": "Your collection is too large for the automated review. A curator will review it.",
       "rejected_by_validator": "The automated review found issues in your items. Fix them and review again, or ask a curator to review your collection.",
-      "rejected_by_curator": "A curator rejected your collection. Fix what they pointed out and publish your changes, or ask for another review."
+      "rejected_by_curator": "A curator requested fixes on your collection. Make them and publish your changes, or ask for another review.",
+      "curator_comment": "A curator left you a comment:"
     },
     "reviewing": {
       "title": "Reviewing collection",
@@ -2088,7 +2103,9 @@
       "title": "Request curator review?",
       "description": "If you believe the detected issues are incorrect, you can request a review from a Decentraland curator. Curator reviews take more time. We'll notify you once the review is complete.",
       "cancel": "Cancel",
-      "confirm": "Request review"
+      "confirm": "Request review",
+      "note": "Message for the curator (optional)",
+      "note_placeholder": "Say why you think the issues don't apply"
     },
     "sent": {
       "title": "Collection sent for review!",
@@ -2113,7 +2130,10 @@
     "appeal_open": "A curator review was already requested for this collection.",
     "appeal_error": "We couldn't send your request. Please try again.",
     "validation_started": "Automated review started. We'll update this page when it finishes.",
-    "validation_error": "We couldn't start the automated review. Please try again."
+    "validation_error": "We couldn't start the automated review. Please try again.",
+    "reply": "Reply",
+    "message_curator": "Message curator",
+    "curator_replied": "Curator comment"
   },
   "reject_reason": {
     "clipping": "Clipping issues",
@@ -2151,18 +2171,18 @@
     }
   },
   "reject_curation_modal": {
-    "title": "Reject Collection",
-    "heading": "Select Reject Reason",
-    "reasons": "Reject reason",
+    "title": "Request fixes",
+    "heading": "Select the reasons",
+    "reasons": "Reasons",
     "reasons_placeholder": "Select one or more reasons",
     "reasons_selected": "{count} Selected",
     "remove_reason": "Remove {reason}",
     "message": "Details (optional)",
     "message_placeholder": "Tell the creator what to fix. They'll see this, so be specific.",
     "cancel": "Cancel",
-    "confirm": "Reject collection",
-    "error": "We couldn't reject the collection. Please try again.",
-    "success": "{collection} was rejected"
+    "confirm": "Request fixes",
+    "error": "We couldn't send the request. Please try again.",
+    "success": "Fixes requested on {collection}"
   },
   "automated_verdict": {
     "title": "Automated review",
@@ -2212,7 +2232,7 @@
       "review.assigned": "assigned the review to {assignee}",
       "review.unassigned": "unassigned the review",
       "review.approved": "approved the collection",
-      "review.rejected": "rejected the collection",
+      "review.rejected": "requested fixes",
       "changes.submitted": "submitted changes to {count, plural, one {# item} other {# items}}",
       "collection.disabled": "disabled the collection",
       "unknown": "{type}",
@@ -2220,10 +2240,19 @@
         "automated_error_exhausted": "Automated review gave up after several tries, a curator will review the collection",
         "automated_error_too_large": "The collection is too large for the automated review, a curator will review it",
         "human_required_validator_error": "The automated review couldn't check the collection, a curator will review it"
-      }
+      },
+      "review.comment": "commented"
     },
     "show_findings": "Show findings",
-    "hide_findings": "Hide findings"
+    "hide_findings": "Hide findings",
+    "comment": {
+      "label_creator": "Write to the curators",
+      "label_curator": "Write to the creator",
+      "placeholder_creator": "Ask a question, say what you changed or answer a curator's comment",
+      "placeholder_curator": "Ask a question or tell the creator what to look at",
+      "send": "Send",
+      "error": "We couldn't send your message. Please try again."
+    }
   },
   "wallet_error": {
     "wrong_account": "Your wallet switched to another account or network. Switch it back to the account you signed in with and try again."

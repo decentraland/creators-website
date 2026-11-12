@@ -7,6 +7,7 @@ import { useCommittee } from '~/hooks/useCommittee'
 import { track } from '~/lib/analytics'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
+import { CommentComposer } from './CommentComposer'
 import { EventRow } from './EventRow'
 import * as S from './CollectionActivityModal.styles'
 
@@ -15,11 +16,13 @@ type Props = {
   address: string
   /** The collection's items, when the caller has them, so findings show item names. */
   items?: Item[]
+  /** The collection's role holders and the committee write here; anyone else only reads. */
+  canComment?: boolean
   onClose: () => void
 }
 
-/** The collection's review timeline, newest first, from Collection details → Actions → Activity. */
-export function CollectionActivityModal({ collection, address, items = [], onClose }: Props) {
+/** The collection's review timeline, newest first, and the box creators and curators write to each other from. */
+export function CollectionActivityModal({ collection, address, items = [], canComment = false, onClose }: Props) {
   const { t } = useTranslation()
   const { isCurator } = useCommittee(address)
   const query = useCollectionEvents(address, collection)
@@ -32,6 +35,10 @@ export function CollectionActivityModal({ collection, address, items = [], onClo
   useEffect(() => {
     track('Open activity', { collectionId: collection.id })
   }, [collection.id])
+
+  const composer = canComment && isAvailable && (
+    <CommentComposer collection={collection} address={address} role={isCurator ? 'curator' : 'creator'} />
+  )
 
   return (
     <Modal title={t('activity_modal.title')} onClose={onClose} size="large" testId="activity-modal">
@@ -54,9 +61,13 @@ export function CollectionActivityModal({ collection, address, items = [], onClo
         ) : !isAvailable ? (
           <S.State data-testid="activity-unavailable">{t('activity_modal.unavailable')}</S.State>
         ) : events.length === 0 ? (
-          <S.State data-testid="activity-empty">{t('activity_modal.empty')}</S.State>
+          <>
+            {composer}
+            <S.State data-testid="activity-empty">{t('activity_modal.empty')}</S.State>
+          </>
         ) : (
           <>
+            {composer}
             <S.Timeline data-testid="activity-timeline">
               {events.map(event => (
                 <EventRow key={event.id} event={event} items={items} isCurator={isCurator} />

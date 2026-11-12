@@ -80,6 +80,10 @@ export const AssigneeChip = styled.button`
   &:disabled {
     cursor: default;
   }
+  &[data-awaited] {
+    border-color: ${theme.colors.warningText};
+    color: ${theme.colors.warningText};
+  }
 
   ${mobile} {
     min-height: 44px;

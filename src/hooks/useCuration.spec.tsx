@@ -159,9 +159,15 @@ describe('usePushCuration', () => {
       )
     })
 
-    await act(() => result.current.mutateAsync(collection))
+    await act(() => result.current.mutateAsync({ collection }))
 
     expect(client.getQueryState(eventsKey)?.isInvalidated).toBe(true)
+  })
+
+  it('sends what changed along with the changes when the creator wrote it', async () => {
+    const { result } = renderHook(() => usePushCuration(ADDRESS), { wrapper })
+    await act(() => result.current.mutateAsync({ collection, note: 'Only added a tag' }))
+    expect(api.pushCollectionCuration).toHaveBeenCalledWith(ADDRESS, 'c1', undefined, 'Only added a tag')
   })
 
   it('rereads the review timeline when the push is refused because a review is running', async () => {
@@ -179,7 +185,7 @@ describe('usePushCuration', () => {
       )
     })
 
-    await act(() => result.current.mutateAsync(collection).catch(() => undefined))
+    await act(() => result.current.mutateAsync({ collection }).catch(() => undefined))
 
     expect(client.getQueryState(eventsKey)?.isInvalidated).toBe(true)
     expect(client.getQueryState(curationKey)?.isInvalidated).toBe(true)
@@ -196,7 +202,7 @@ describe('usePushCuration', () => {
       )
     })
 
-    await act(() => result.current.mutateAsync(collection).catch(() => undefined))
+    await act(() => result.current.mutateAsync({ collection }).catch(() => undefined))
 
     expect(client.getQueryState(eventsKey)?.isInvalidated).toBe(false)
   })
@@ -208,19 +214,19 @@ describe('usePushCuration', () => {
     api.pushCollectionCuration.mockRejectedValueOnce(
       new ValidationLimitError(new BuilderServerError('Daily limit', 429))
     )
-    await act(() => result.current.mutateAsync(collection).catch(() => undefined))
+    await act(() => result.current.mutateAsync({ collection }).catch(() => undefined))
     api.pushCollectionCuration.mockRejectedValueOnce(
       new BuilderServerError('A validation is already in progress for this collection', 409)
     )
-    await act(() => result.current.mutateAsync(collection).catch(() => undefined))
+    await act(() => result.current.mutateAsync({ collection }).catch(() => undefined))
     api.pushCollectionCuration.mockRejectedValueOnce(
       new BuilderServerError('The collection is being updated, try again in a moment', 503)
     )
-    await act(() => result.current.mutateAsync(collection).catch(() => undefined))
+    await act(() => result.current.mutateAsync({ collection }).catch(() => undefined))
     expect(captureError).not.toHaveBeenCalled()
 
     api.pushCollectionCuration.mockRejectedValueOnce(new BuilderServerError('Internal error', 500))
-    await act(() => result.current.mutateAsync(collection).catch(() => undefined))
+    await act(() => result.current.mutateAsync({ collection }).catch(() => undefined))
     expect(captureError).toHaveBeenCalledTimes(1)
   })
 })

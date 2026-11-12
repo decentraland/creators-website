@@ -395,6 +395,11 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
       return ok(row.forum_link)
     }
     if (method === 'GET' && sub === 'events') return ok(paginate(eventsOf(id), query))
+    if (method === 'POST' && sub === 'comments') {
+      const { message, itemId } = body as { message: string; itemId?: string }
+      const actor = (seed.committee ?? []).length > 0 ? 'curator' : 'creator'
+      return ok(recordEvent(id, 'review.comment', actor, { message: message.trim(), ...(itemId ? { itemId } : {}) }))
+    }
     if (method === 'POST' && sub === 'validations') {
       return ok(
         recordEvent(id, 'review.automated_started', 'validator', { validationId: `validation-${events.length + 1}` })

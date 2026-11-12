@@ -1,15 +1,16 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { InfoOutlined as InfoIcon, ReportProblemOutlined as ErrorIcon } from '@mui/icons-material'
 import reviewArt from '~/assets/publish-success.png'
 import limitArt from '~/assets/modal-error.png'
 import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { Modal } from '~/components/Modal'
+import { NoteField } from '~/components/NoteField'
 import { SuccessModal } from '~/components/SuccessModal'
 import { Tooltip } from '~/components/Tooltip'
 import { ItemValidationCard, toValidationSubject } from '~/components/ValidationBadge'
 import { useTranslation } from '~/intl'
-import { VALIDATION_ATTEMPTS_PER_DAY } from '~/lib/events'
+import { NOTE_MAX_LENGTH, VALIDATION_ATTEMPTS_PER_DAY } from '~/lib/events'
 import * as Issues from '../PublishCollectionModal/ValidationIssuesView.styles'
 import { type ItemCheck } from '~/lib/validation'
 import * as S from './ReviewFlow.styles'
@@ -80,11 +81,12 @@ export function SentForReviewModal({ onDone }: { onDone: () => void }) {
   )
 }
 
-type RequestProps = { busy: boolean; error: string | null; onConfirm: () => void; onClose: () => void }
+type RequestProps = { busy: boolean; error: string | null; onConfirm: (note: string) => void; onClose: () => void }
 
 /** Confirms the appeal before sending the rejected collection to a curator. */
 export function RequestCuratorReviewModal({ busy, error, onConfirm, onClose }: RequestProps) {
   const { t } = useTranslation()
+  const [note, setNote] = useState('')
   return (
     <ConfirmModal
       icon={<ErrorIcon />}
@@ -94,9 +96,23 @@ export function RequestCuratorReviewModal({ busy, error, onConfirm, onClose }: R
       busy={busy}
       onClose={onClose}
       cancel={{ label: t('review_flow.request.cancel'), onClick: onClose, testId: 'request-review-cancel' }}
-      confirm={{ label: t('review_flow.request.confirm'), onClick: onConfirm, testId: 'request-review-confirm' }}
+      confirm={{
+        label: t('review_flow.request.confirm'),
+        onClick: () => onConfirm(note.trim()),
+        testId: 'request-review-confirm'
+      }}
       testId="request-review-modal"
-    />
+    >
+      <NoteField
+        label={t('review_flow.request.note')}
+        value={note}
+        onChange={setNote}
+        maxLength={NOTE_MAX_LENGTH}
+        placeholder={t('review_flow.request.note_placeholder')}
+        disabled={busy}
+        testId="request-review-note"
+      />
+    </ConfirmModal>
   )
 }
 

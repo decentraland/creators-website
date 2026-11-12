@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ErrorOutline as ErrorIcon, InfoOutlined as InfoIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { Button } from '~/components/Button'
+import { CollectionActivityModal } from '~/components/CollectionActivityModal'
 import { useAppealCuration, useRequestValidation } from '~/hooks/useCollectionEvents'
 import { track } from '~/lib/analytics'
 import {
@@ -19,6 +20,7 @@ import {
   getAutomatedIssuesByItem,
   getValidationAttemptsLeft,
   getLatestVerdict,
+  getUnansweredComment,
   hasOpenAppeal,
   isFinalValidationError,
   isUnsupportedItemsReview,
@@ -45,7 +47,15 @@ import * as S from './ReviewFlow.styles'
 /** A modal the page asks for: right after publishing, or when submitted changes hit the daily limit. */
 export type ReviewFlowRequest = 'reviewing' | 'limit'
 
-type ReviewModal = ReviewFlowRequest | 'issues' | 'request' | 'sent' | 'additional'
+type ReviewModal = ReviewFlowRequest | 'issues' | 'request' | 'sent' | 'additional' | 'activity'
+
+/** Stages in which a curator is on the other side, so the creator has someone to write to. */
+const CURATOR_STAGES: (ReviewStage | null)[] = [
+  ReviewStage.AWAITING_CURATOR,
+  ReviewStage.NEEDS_CURATOR,
+  ReviewStage.APPEALED,
+  ReviewStage.REJECTED_BY_CURATOR
+]
 
 type Props = {
   collection: Collection
@@ -94,6 +104,7 @@ export function ReviewFlow({
   const running = useMemo(() => isValidationInProgress(timeline), [timeline])
   const appealOpen = useMemo(() => hasOpenAppeal(timeline), [timeline])
   const cause = useMemo(() => latestStageEvent(timeline), [timeline])
+  const curatorComment = useMemo(() => getUnansweredComment(timeline, 'creator'), [timeline])
 
   const open = useCallback(
     (next: ReviewModal) => {
@@ -163,8 +174,8 @@ export function ReviewFlow({
     open('request')
   }
 
-  function confirmReview() {
-    appeal.mutate({ collection }, { onSuccess: () => open('sent') })
+  function confirmReview(note: string) {
+    appeal.mutate({ collection, note: note || undefined }, { onSuccess: () => open('sent') })
   }
 
   const appealError = isAppealAlreadyOpen(appeal.error)
@@ -204,6 +215,15 @@ export function ReviewFlow({
         />
       )}
       {modal === 'additional' && <AdditionalReviewModal onDone={close} />}
+      {modal === 'activity' && (
+        <CollectionActivityModal
+          collection={collection}
+          address={address}
+          items={items}
+          canComment={canManage}
+          onClose={close}
+        />
+      )}
     </>
   )
 
@@ -247,23 +267,47 @@ export function ReviewFlow({
       tone = 'error'
       break
   }
-  if (!text) return modals
+  const curatorMessage = curatorComment?.payload.message
+  if (!text && !curatorMessage) return modals
 
   const rejected = isRejectedStage(stage)
+  const curatorRejection = stage === ReviewStage.REJECTED_BY_CURATOR ? curation : null
+  const reasons = curatorRejection?.rejectionReasons ?? []
+  const canWrite = canManage && events !== null && (CURATOR_STAGES.includes(stage) || !!curatorMessage)
 
   return (
     <>
-      <S.Notice data-testid="review-notice" data-stage={stage ?? undefined} data-tone={tone}>
+      <S.Notice data-testid="review-notice" data-stage={stage ?? undefined} data-tone={tone ?? 'info'}>
         <S.NoticeText>
           {tone === 'error' ? <ErrorIcon fontSize="small" aria-hidden /> : <InfoIcon fontSize="small" aria-hidden />}
-          <span>{text}</span>
+          <span>{text ?? t('review_flow.notice.curator_comment')}</span>
           {stage === ReviewStage.REJECTED_BY_VALIDATOR && automatedResults.length > 0 && (
             <S.SeeIssues type="button" data-testid="review-see-issues" onClick={() => open('issues')}>
               {t('review_flow.issues.see')}
             </S.SeeIssues>
           )}
         </S.NoticeText>
-        {rejected && canManage && (
+        {(reasons.length > 0 || curatorRejection?.rejectionMessage || curatorMessage) && (
+          <S.NoticeDetails>
+            {reasons.length > 0 && (
+              <S.Reasons data-testid="review-rejection-reasons">
+                {reasons.map(code => (
+                  <S.Reason key={code}>{t(`reject_reason.${code}`)}</S.Reason>
+                ))}
+              </S.Reasons>
+            )}
+            {curatorRejection?.rejectionMessage && (
+              <S.Quote data-testid="review-rejection-message">{curatorRejection.rejectionMessage}</S.Quote>
+            )}
+            {curatorMessage && (
+              <>
+                {text && <S.QuoteLabel>{t('review_flow.notice.curator_comment')}</S.QuoteLabel>}
+                <S.Quote data-testid="review-curator-comment">{curatorMessage}</S.Quote>
+              </>
+            )}
+          </S.NoticeDetails>
+        )}
+        {canManage && (rejected || canWrite) && (
           <S.NoticeActions>
             {stage === ReviewStage.REJECTED_BY_VALIDATOR && (
               <Button
@@ -277,9 +321,29 @@ export function ReviewFlow({
                 {t('review_flow.validate_again', { left: attemptsLeft, max: VALIDATION_ATTEMPTS_PER_DAY })}
               </Button>
             )}
-            <Button type="button" variant="dark" size="sm" data-testid="request-curator-review" onClick={requestReview}>
-              {t('review_flow.request_review')}
-            </Button>
+            {rejected && (
+              <Button
+                type="button"
+                variant="dark"
+                size="sm"
+                data-testid="request-curator-review"
+                onClick={requestReview}
+              >
+                {t('review_flow.request_review')}
+              </Button>
+            )}
+            {canWrite && (
+              <Button
+                type="button"
+                variant="dark"
+                size="sm"
+                data-testid="review-reply"
+                data-awaited={curatorMessage ? '' : undefined}
+                onClick={() => open('activity')}
+              >
+                {t(curatorMessage ? 'review_flow.reply' : 'review_flow.message_curator')}
+              </Button>
+            )}
           </S.NoticeActions>
         )}
       </S.Notice>

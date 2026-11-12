@@ -26,6 +26,11 @@ vi.mock('~/hooks/useCollectionEvents', () => ({
     error: mocks.appealError
   })
 }))
+vi.mock('~/components/CollectionActivityModal', () => ({
+  CollectionActivityModal: ({ canComment }: { canComment: boolean }) => (
+    <div data-testid="activity-modal-stub" data-can-comment={String(canComment)} />
+  )
+}))
 vi.mock('~/lib/notifications', () => ({
   useNotifications: (selector: (state: { showToast: typeof mocks.toast }) => unknown) =>
     selector({ showToast: mocks.toast })
@@ -293,5 +298,51 @@ describe('ReviewFlow', () => {
   it('shows no notice without a timeline, as without auto curation', () => {
     renderFlow({ ...pending, assignee: '0xcurator' }, null)
     expect(screen.queryByTestId('review-notice')).toBeNull()
+  })
+
+  it('shows the creator the reasons and the message of the curator who asked for fixes', () => {
+    renderFlow(
+      {
+        ...rejectedByCurator,
+        rejectionReasons: ['clipping', 'thumbnail'],
+        rejectionMessage: 'The straps clip the arm'
+      },
+      [event('review.rejected')]
+    )
+    expect(screen.getByTestId('review-notice')).toHaveAttribute('data-stage', 'rejected_by_curator')
+    expect(screen.getByTestId('review-rejection-reasons')).toHaveTextContent('Clipping')
+    expect(screen.getByTestId('review-rejection-reasons')).toHaveTextContent('Thumbnail')
+    expect(screen.getByTestId('review-rejection-message')).toHaveTextContent('The straps clip the arm')
+  })
+
+  it('surfaces a curator comment waiting for an answer and opens the timeline to reply', () => {
+    const comment = {
+      ...event('review.comment', { message: 'Is the tail meant to be a tiara?' }),
+      actor: 'curator' as const,
+      actorAddress: '0xcurator'
+    }
+    renderFlow(pending, [comment, event('review.automated_passed', { verdict: 'passed', items: [] }, 1000)])
+    expect(screen.getByTestId('review-curator-comment')).toHaveTextContent('Is the tail meant to be a tiara?')
+    const reply = screen.getByTestId('review-reply')
+    expect(reply).toHaveTextContent('Reply')
+    fireEvent.click(reply)
+    expect(screen.getByTestId('activity-modal-stub')).toHaveAttribute('data-can-comment', 'true')
+  })
+
+  it('lets the creator write to the curator who is reviewing, and not while only the automated review runs', () => {
+    const { unmount } = renderFlow(pending, [event('review.automated_passed', { verdict: 'passed', items: [] })])
+    expect(screen.getByTestId('review-reply')).toHaveTextContent('Message curator')
+    unmount()
+    renderFlow(pending, [event('review.automated_started', { trigger: 'publish' })])
+    expect(screen.queryByTestId('review-reply')).not.toBeInTheDocument()
+  })
+
+  it('sends the note the creator writes along with the request for a curator', () => {
+    renderFlow(rejectedByValidator, [verdict()])
+    fireEvent.click(screen.getByTestId('automated-issues-back'))
+    fireEvent.click(screen.getByTestId('request-curator-review'))
+    fireEvent.change(screen.getByTestId('request-review-note'), { target: { value: ' The cape is meant to clip ' } })
+    fireEvent.click(screen.getByTestId('request-review-confirm'))
+    expect(mocks.appeal.mock.calls[0][0]).toMatchObject({ collection, note: 'The cape is meant to clip' })
   })
 })

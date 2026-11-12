@@ -66,6 +66,9 @@ vi.mock('~/hooks/useCollectionValidation', () => ({
   })
 }))
 vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: undefined }) }))
+vi.mock('~/components/CollectionActivityModal', () => ({
+  CollectionActivityModal: () => <div data-testid="activity-modal-stub" />
+}))
 vi.mock('./ApprovalFlowModal', () => ({
   ApprovalFlowModal: ({ mode }: { mode: string }) => <div data-testid="approval-flow" data-mode={mode} />
 }))
@@ -275,7 +278,7 @@ describe('ReviewBar', () => {
     )
   })
 
-  it('also points the curator to the forum post after rejecting with reasons', () => {
+  it('keeps the curator in the app after requesting fixes with reasons, without pointing to the forum', () => {
     state.events = []
     state.reject.mockImplementation((_vars: unknown, options: { onSuccess: () => void }) => options.onSuccess())
     renderBar({ ...base, forumLink: 'https://forum.decentraland.org/t/hats/77' })
@@ -283,8 +286,25 @@ describe('ReviewBar', () => {
     fireEvent.click(screen.getByTestId('assign-continue'))
     pickReason('clipping')
     fireEvent.click(screen.getByTestId('reject-curation-confirm'))
-    fireEvent.click(screen.getByTestId('review-verdict-forum-link'))
-    expect(openExternal).toHaveBeenCalledWith('https://forum.decentraland.org/t/hats/77')
+    expect(screen.queryByTestId('review-verdict-forum-link')).not.toBeInTheDocument()
+  })
+
+  it('tells the curator when the creator answered and opens the timeline to reply', () => {
+    state.events = [
+      {
+        id: 'c2',
+        collectionId: 'c1',
+        type: 'review.comment',
+        actor: 'creator',
+        actorAddress: '0xowner',
+        createdAt: 2,
+        payload: { message: 'Fixed the clipping' }
+      }
+    ]
+    renderBar()
+    expect(screen.getByTestId('review-activity')).toHaveTextContent('Creator replied')
+    fireEvent.click(screen.getByTestId('review-activity'))
+    expect(screen.getByTestId('activity-modal-stub')).toBeInTheDocument()
   })
 
   it('shows the derived stage and opens the automated review verdict with its findings', () => {
@@ -525,7 +545,7 @@ describe('ReviewBar', () => {
   it('dates a rejection by when it happened, not by the request it opened', () => {
     state.curation = { status: 'rejected', assignee: null, createdAt: 1, updatedAt: Date.now() } as CollectionCuration
     renderBar()
-    expect(screen.getByTestId('review-requested')).toHaveTextContent(/^Rejected/)
+    expect(screen.getByTestId('review-requested')).toHaveTextContent(/^Fixes requested/)
   })
 
   it('stops offering the assignment once the collection and its request are approved', () => {

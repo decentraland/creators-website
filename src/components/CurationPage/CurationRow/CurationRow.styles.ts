@@ -258,3 +258,13 @@ export const StateWithReview = styled.span`
   align-items: center;
   gap: 6px;
 `
+
+export const Replied = styled.span`
+  padding: 2px 8px;
+  border-radius: ${theme.radius.pill};
+  background: ${theme.colors.warningOverlay};
+  color: ${theme.colors.warningText};
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+`

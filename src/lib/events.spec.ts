@@ -6,6 +6,8 @@ import {
   fromRemoteEvent,
   getAutomatedIssuesByItem,
   getCuratorVerdict,
+  getAwaitedReply,
+  getUnansweredComment,
   getFailedItems,
   getLatestVerdict,
   getValidationAttemptsLeft,
@@ -381,5 +383,46 @@ describe('mergeBodyShapeFindings', () => {
       ['"hat.glb" › Albedo', ['male']],
       ['"hat.glb" › Albedo', ['female']]
     ])
+  })
+})
+
+describe('review conversation', () => {
+  const comment = (actor: CollectionEvent['actor'], createdAt: number, message = 'hi'): CollectionEvent => ({
+    ...event('review.comment', createdAt, { message }),
+    actor,
+    actorAddress: '0xabc'
+  })
+
+  it('expects an answer from the side that did not write the newest comment', () => {
+    expect(getAwaitedReply([comment('curator', NOW)])).toBe('creator')
+    expect(getAwaitedReply([comment('creator', NOW), comment('curator', NOW - 1)])).toBe('curator')
+    expect(getAwaitedReply([])).toBeNull()
+  })
+
+  it('takes new changes, an appeal or a decision after a comment as its answer', () => {
+    for (const type of ['changes.submitted', 'review.appeal_requested', 'review.rejected', 'review.approved']) {
+      expect(getAwaitedReply([event(type, NOW), comment('curator', NOW - 1)])).toBeNull()
+    }
+  })
+
+  it('still expects the answer after an assignment or an automated run', () => {
+    const events = [
+      event('review.assigned', NOW),
+      event('review.automated_started', NOW - 1),
+      comment('curator', NOW - 2)
+    ]
+    expect(getAwaitedReply(events)).toBe('creator')
+  })
+
+  it('hands the creator the curator comment waiting for them, and nothing once answered', () => {
+    const waiting = comment('curator', NOW, 'Is the tail meant to be a tiara?')
+    expect(getUnansweredComment([waiting], 'creator')?.payload.message).toBe('Is the tail meant to be a tiara?')
+    expect(getUnansweredComment([waiting], 'curator')).toBeNull()
+    expect(getUnansweredComment([comment('creator', NOW + 1), waiting], 'creator')).toBeNull()
+  })
+
+  it('keeps an appeal open and a review running while people comment on it', () => {
+    expect(hasOpenAppeal([comment('curator', NOW), event('review.appeal_requested', NOW - 1)])).toBe(true)
+    expect(isValidationInProgress([comment('creator', NOW), event('review.automated_started', NOW - 1)])).toBe(true)
   })
 })

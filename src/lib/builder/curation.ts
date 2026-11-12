@@ -56,14 +56,17 @@ export async function fetchCurations(address: string): Promise<CollectionCuratio
 
 /**
  * Opens a new review request: POST /collections/{id}/curation. Creators use it to push changes of an
- * approved collection; the committee to assign a collection that was never requested. 400 while one is pending.
+ * approved collection, optionally with a note saying what changed; the committee to assign a collection that
+ * was never requested. 400 while one is pending.
  */
 export async function pushCollectionCuration(
   address: string,
   collectionId: string,
-  assignee?: string | null
+  assignee?: string | null,
+  note?: string
 ): Promise<CollectionCuration> {
-  const body = assignee === undefined ? undefined : { curation: { assignee } }
+  const curation = { ...(assignee === undefined ? {} : { assignee }), ...(note ? { note } : {}) }
+  const body = Object.keys(curation).length > 0 ? { curation } : undefined
   try {
     const remote = await request<RemoteCollectionCuration>(
       address,
@@ -84,6 +87,8 @@ export type CurationUpdate = {
   assignee?: string | null
   rejectionReasons?: RejectReasonCode[]
   rejectionMessage?: string
+  /** Kept with an approval only: what the curator wants the creator to know. */
+  note?: string
 }
 
 /** Updates the latest request: PATCH /collections/{id}/curation. Status changes and assignees are committee-only. */

@@ -36,6 +36,7 @@ const ACTOR_LED = new Set([
   'review.approved',
   'review.rejected',
   'changes.submitted',
+  'review.comment',
   'collection.disabled'
 ])
 
@@ -99,7 +100,11 @@ export function EventRow({ event, items, isCurator }: Props) {
     ) : (
       <S.Actor data-testid="activity-actor">{t('activity_modal.actor.system')}</S.Actor>
     )
-  const quote = payload.rejectionMessage ?? payload.note
+  const quote = payload.rejectionMessage ?? payload.message ?? payload.note
+  const aboutItem = useMemo(
+    () => (payload.itemId ? items.find(item => item.id === payload.itemId) : undefined),
+    [payload.itemId, items]
+  )
 
   return (
     <S.Row data-testid="activity-event" data-type={event.type}>
@@ -115,6 +120,7 @@ export function EventRow({ event, items, isCurator }: Props) {
       </S.Time>
       {(reasons.length > 0 || quote || failedItems.length > 0) && (
         <S.Details>
+          {aboutItem && <S.ItemTag data-testid="activity-item">{aboutItem.name}</S.ItemTag>}
           {reasons.length > 0 && (
             <S.Reasons data-testid="activity-reasons">
               {reasons.map(code => (

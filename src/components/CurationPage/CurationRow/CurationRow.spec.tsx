@@ -10,7 +10,11 @@ import { CurationRow } from './CurationRow'
 vi.mock('~/lib/navigation', () => ({ openExternal: vi.fn() }))
 vi.mock('~/components/CollectionMosaic', () => ({ CollectionMosaic: () => null }))
 vi.mock('~/hooks/useProfile', () => ({ useProfile: () => ({ data: undefined }) }))
-const latest = vi.hoisted(() => ({ event: null as { type: string } | null, timeline: true, fetched: [] as boolean[] }))
+const latest = vi.hoisted(() => ({
+  event: null as { type: string; actor?: string } | null,
+  timeline: true,
+  fetched: [] as boolean[]
+}))
 vi.mock('~/hooks/useCollectionEvents', () => ({
   useRecentCollectionEvents: (_address: string, _id: string, enabled: boolean) => {
     latest.fetched.push(enabled)
@@ -140,5 +144,19 @@ describe('CurationRow', () => {
     renderRow({ ...pending, status: 'approved' }, { ...collection, isApproved: true })
     expect(screen.getByTestId('curation-row-assignee')).toHaveTextContent('Unassigned')
     expect(screen.queryByTestId('curation-row-assign-me')).toBeNull()
+  })
+
+  it('marks a collection whose creator answered in writing, also after fixes were requested', () => {
+    latest.event = { type: 'review.comment', actor: 'creator' }
+    renderRow(pending)
+    expect(screen.getByTestId('curation-row-replied')).toHaveTextContent('Creator replied')
+    cleanup()
+    renderRow({ ...pending, status: 'rejected', reviewedBy: '0xcurator' })
+    expect(screen.getByTestId('curation-row-replied')).toBeInTheDocument()
+    cleanup()
+    latest.event = { type: 'review.comment', actor: 'curator' }
+    renderRow(pending)
+    expect(screen.queryByTestId('curation-row-replied')).toBeNull()
+    latest.event = null
   })
 })
