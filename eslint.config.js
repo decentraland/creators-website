@@ -35,7 +35,7 @@ const UI2_STYLING = {
     'Styled defs live only in *.styles.ts, through @emotion/styled. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 
-const STYLES_FILES = ['src/**/*.styles.ts', 'src/styles/**/*.ts']
+const STYLES_FILES = ['src/**/*.styles.ts']
 const EMOTION_ALL = {
   regex: '^@emotion/',
   message: 'Styling is migrating to CSS Modules; add no new Emotion. See docs/DECISIONS.md (Pre-monorepo refactor).'
@@ -183,7 +183,7 @@ export default tseslint.config(
   },
 
   // Pre-monorepo fence (docs/DECISIONS.md, "Pre-monorepo refactor"): the monorepo has no Emotion or MUI,
-  // so no new usage; @emotion/styled stays in *.styles.ts and src/styles until the CSS Modules migration.
+  // so no new usage; @emotion/styled stays in *.styles.ts until the CSS Modules migration.
   // The same rule keeps the builder-server transport inside src/lib/builder and components off its endpoints
   // (CONVENTIONS.md seam 5); component specs import endpoints to mock them, so they stay out of that block.
   {

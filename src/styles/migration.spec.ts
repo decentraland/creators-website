@@ -109,6 +109,7 @@ const files = (readdirSync('src', { recursive: true }) as string[]).map(path => 
 
 describe('CSS Modules migration', () => {
   it('adds no new Emotion styles file', () => {
+    expect(files.length).toBeGreaterThan(0)
     const added = files.filter(path => path.endsWith('.styles.ts') && !REMAINING.includes(path))
     expect(added, 'New styles go in a Component.module.css').toEqual([])
   })

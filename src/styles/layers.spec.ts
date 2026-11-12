@@ -14,9 +14,10 @@ describe('cascade layers', () => {
   })
 
   it('are only the declared ones', () => {
+    expect(stylesheets.length).toBeGreaterThan(0)
     const undeclared = stylesheets.flatMap(path =>
-      [...readFileSync(path, 'utf8').matchAll(/@layer\s+([\w-]+)/g)]
-        .map(match => match[1])
+      [...readFileSync(path, 'utf8').matchAll(/@layer\s+([\w\s,-]+?)\s*[;{]/g)]
+        .flatMap(match => match[1].split(/\s*,\s*/))
         .filter(name => !declared.includes(name))
         .map(name => `${path}: ${name}`)
     )
