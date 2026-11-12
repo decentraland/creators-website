@@ -1,7 +1,9 @@
 import { SparklesIcon } from '~/components/Icons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { useTranslation } from '~/intl'
-import * as S from './ThumbnailMosaic.styles'
+import { cx } from '~/lib/cx'
+import { EMPTY_MEDIA_BACKGROUND } from '~/lib/rarities'
+import styles from './ThumbnailMosaic.module.css'
 
 export type MosaicThumbnail = {
   url: string
@@ -33,21 +35,27 @@ export function ThumbnailMosaic({
   const urls = thumbnails.slice(0, 4)
   const isEmpty = empty && !loading
   return (
-    <S.Mosaic className={className} data-testid={testId} data-count={urls.length} data-empty={isEmpty || undefined}>
+    <div
+      className={cx(styles.mosaic, className)}
+      style={isEmpty ? { backgroundImage: EMPTY_MEDIA_BACKGROUND } : undefined}
+      data-testid={testId}
+      data-count={urls.length}
+      data-empty={isEmpty || undefined}
+    >
       {isEmpty ? (
-        <S.Empty data-testid={`${testId}-empty`}>
+        <div className={styles.empty} data-testid={`${testId}-empty`}>
           <SparklesIcon />
           {showEmptyLabel && t('thumbnail_mosaic.no_items')}
-        </S.Empty>
+        </div>
       ) : loading ? (
-        <S.Loading className="skeleton" data-testid={`${testId}-loading`} aria-hidden />
+        <div className={cx(styles.loading, 'skeleton')} data-testid={`${testId}-loading`} aria-hidden />
       ) : (
         urls.map(({ url, rarity }, index) => (
-          <S.Cell key={`${index}-${url}`} data-testid={`${testId}-cell`}>
+          <div className={styles.cell} key={`${index}-${url}`} data-testid={`${testId}-cell`}>
             <ItemThumbnail src={url} rarity={rarity} testId={`${testId}-thumbnail`} />
-          </S.Cell>
+          </div>
         ))
       )}
-    </S.Mosaic>
+    </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useTranslation } from '~/intl'
-import * as S from './RequiredPermissions.styles'
+import styles from './RequiredPermissions.module.css'
 
 type Props = {
   permissions: string[]
@@ -13,24 +13,24 @@ const DOCS_URL =
 export function RequiredPermissions({ permissions, testId = 'required-permissions' }: Props) {
   const { t } = useTranslation()
   return (
-    <S.Wrap data-testid={testId}>
-      <S.Title>
+    <div className={styles.wrap} data-testid={testId}>
+      <span className={styles.title}>
         {t('required_permissions.title')}
-        <S.DocsLink href={DOCS_URL} target="_blank" rel="noreferrer">
+        <a className={styles.docsLink} href={DOCS_URL} target="_blank" rel="noreferrer">
           {t('required_permissions.learn_more')}
-        </S.DocsLink>
-      </S.Title>
+        </a>
+      </span>
       {permissions.length === 0 ? (
-        <S.Empty>{t('required_permissions.none')}</S.Empty>
+        <span>{t('required_permissions.none')}</span>
       ) : (
-        <S.List>
+        <ul className={styles.list}>
           {permissions.map(permission => (
-            <S.Chip key={permission} data-testid={`${testId}-${permission}`}>
+            <li className={styles.chip} key={permission} data-testid={`${testId}-${permission}`}>
               {t(`required_permissions.permission.${permission}`)}
-            </S.Chip>
+            </li>
           ))}
-        </S.List>
+        </ul>
       )}
-    </S.Wrap>
+    </div>
   )
 }

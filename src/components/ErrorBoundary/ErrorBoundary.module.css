@@ -1,7 +1,4 @@
-import styled from '@emotion/styled'
-import { theme } from '~/styles/theme'
-
-export const Panel = styled.section`
+.panel {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -9,25 +6,25 @@ export const Panel = styled.section`
   gap: 16px;
   padding: 120px 24px;
   text-align: center;
-`
+}
 
-export const Title = styled.h2`
+.title {
   font-size: 20px;
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0.46px;
-  color: ${theme.colors.white};
-`
+  color: var(--color-white);
+}
 
-export const Text = styled.p`
+.text {
   margin: 0;
   max-width: 640px;
   font-size: 16px;
   line-height: 1.6;
-  color: ${theme.colors.softWhite};
-`
+  color: var(--color-soft-white);
+}
 
-export const RetryButton = styled.button`
+.retryButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -35,9 +32,9 @@ export const RetryButton = styled.button`
   min-width: 180px;
   padding: 0 12px;
   border: 0;
-  border-radius: ${theme.radius.btn};
-  background: ${theme.colors.dclRed};
-  color: ${theme.colors.white};
+  border-radius: var(--radius-btn);
+  background: var(--color-dcl-red);
+  color: var(--color-white);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.46px;
@@ -45,6 +42,6 @@ export const RetryButton = styled.button`
   transition: background 0.15s ease;
 
   &:hover {
-    background: ${theme.colors.dclRedHover};
+    background: var(--color-dcl-red-hover);
   }
-`
+}

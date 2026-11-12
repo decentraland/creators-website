@@ -1,5 +1,5 @@
 import { useTranslation } from '~/intl'
-import * as S from './StepIndicator.styles'
+import styles from './StepIndicator.module.css'
 
 type Props = {
   /** 1-based current step. */
@@ -14,7 +14,8 @@ type Props = {
 export function StepIndicator({ current, total, labels, testId = 'steps' }: Props) {
   const { t } = useTranslation()
   return (
-    <S.Steps
+    <ol
+      className={styles.steps}
       aria-label={t('step_indicator.label', { step: current, total })}
       data-labelled={labels ? '' : undefined}
       data-testid={testId}
@@ -24,18 +25,23 @@ export function StepIndicator({ current, total, labels, testId = 'steps' }: Prop
         const state = step < current ? 'done' : step === current ? 'current' : 'todo'
         const align = index === 0 ? 'start' : index === total - 1 ? 'end' : 'center'
         return (
-          <S.StepNode
+          <li
+            className={styles.stepNode}
             key={step}
             data-reached={step < current || undefined}
             aria-current={step === current || undefined}
           >
-            <S.StepDot data-state={state} data-testid={`${testId}-${step}`}>
+            <span className={styles.stepDot} data-state={state} data-testid={`${testId}-${step}`}>
               {step}
-            </S.StepDot>
-            {labels?.[index] && <S.StepLabel data-align={align}>{labels[index]}</S.StepLabel>}
-          </S.StepNode>
+            </span>
+            {labels?.[index] && (
+              <span className={styles.stepLabel} data-align={align}>
+                {labels[index]}
+              </span>
+            )}
+          </li>
         )
       })}
-    </S.Steps>
+    </ol>
   )
 }

@@ -1,7 +1,7 @@
 import { type CSSProperties, type ReactNode } from 'react'
 import creditsGlyph from '~/assets/icons/credits.svg'
 import manaGlyph from '~/assets/icons/mana-matic.svg'
-import * as S from './CurrencyAmount.styles'
+import styles from './CurrencyAmount.module.css'
 
 export type Currency = 'credits' | 'mana'
 
@@ -16,7 +16,11 @@ type Props = {
 export function CurrencyAmount({ currency, children }: Props) {
   return (
     <>
-      <S.Mark aria-hidden style={{ '--icon-url': `url("${GLYPHS[currency]}")` } as CSSProperties} />
+      <span
+        className={styles.mark}
+        aria-hidden
+        style={{ '--icon-url': `url("${GLYPHS[currency]}")` } as CSSProperties}
+      />
       {children}
     </>
   )

@@ -1,7 +1,7 @@
 import { useProfile } from '~/hooks/useProfile'
 import { useTranslation } from '~/intl'
 import { shortenAddress } from '~/lib/address'
-import * as S from './ProfileBadge.styles'
+import styles from './ProfileBadge.module.css'
 
 type Props = {
   address: string
@@ -17,10 +17,10 @@ export function ProfileBadge({ address, self = false, testId = 'profile-badge' }
   const face = profile?.avatar?.snapshots?.face256
   const name = profile?.name || shortenAddress(address)
   return (
-    <S.Badge data-testid={testId} title={address}>
-      {face ? <S.Face src={face} alt="" /> : <S.FaceFallback aria-hidden />}
-      <S.Name>{name}</S.Name>
-      {self && <S.You>{t('profile_badge.you')}</S.You>}
-    </S.Badge>
+    <span className={styles.badge} data-testid={testId} title={address}>
+      {face ? <img className={styles.face} src={face} alt="" /> : <span className={styles.faceFallback} aria-hidden />}
+      <span className={styles.name}>{name}</span>
+      {self && <span className={styles.you}>{t('profile_badge.you')}</span>}
+    </span>
   )
 }
