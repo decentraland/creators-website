@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '~/components/Icons'
+import { ChevronLeftIcon, ChevronRightIcon } from '~/components/Icons'
 import { type ContractNetwork } from '@dcl/schemas'
 import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'

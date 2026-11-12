@@ -1,5 +1,5 @@
 import { useRef, useState, type DragEvent, type ReactNode } from 'react'
-import { VideocamOutlined as VideoIcon } from '~/components/Icons'
+import { VideocamOutlinedIcon as VideoIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { ItemFileError, MAX_VIDEO_FILE_SIZE, VIDEO_EXTENSIONS, toMB, validateVideoFile } from '~/lib/itemFiles'
 import { loadVideoMetadata } from '~/lib/media'

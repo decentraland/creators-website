@@ -1,4 +1,4 @@
-import { InfoOutlined as InfoOutlinedIcon } from '~/components/Icons'
+import { InfoOutlinedIcon } from '~/components/Icons'
 import type { ComponentProps } from 'react'
 import styles from './InfoTooltip.module.css'
 import { Tooltip } from './Tooltip'

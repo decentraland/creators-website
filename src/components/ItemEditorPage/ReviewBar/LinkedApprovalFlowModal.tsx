@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { ChevronRight as ChevronRightIcon, WarningAmberOutlined as WarningIcon } from '~/components/Icons'
+import { ChevronRightIcon, WarningAmberOutlinedIcon as WarningIcon } from '~/components/Icons'
 import approvedArt from '~/assets/send-success.png'
 import errorArt from '~/assets/modal-error.png'
 import { useTranslation } from '~/intl'

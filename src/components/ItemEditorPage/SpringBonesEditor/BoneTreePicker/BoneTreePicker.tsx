@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDropDown as ChevronIcon, ChevronRight as CaretIcon, Close as ClearIcon } from '~/components/Icons'
+import {
+  ArrowDropDownIcon as ChevronIcon,
+  ChevronRightIcon as CaretIcon,
+  CloseIcon as ClearIcon
+} from '~/components/Icons'
 import { useListbox } from '~/components/Select/useListbox'
 import { type BoneNode, type BoneTreeNode } from '~/lib/springBones'
 import * as S from './BoneTreePicker.styles'

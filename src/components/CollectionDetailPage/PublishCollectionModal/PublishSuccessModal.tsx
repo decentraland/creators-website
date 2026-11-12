@@ -1,4 +1,4 @@
-import { Check as CheckIcon } from '~/components/Icons'
+import { CheckIcon } from '~/components/Icons'
 import { Modal } from '~/components/Modal'
 import { Button } from '~/components/Button'
 import { useTranslation } from '~/intl'

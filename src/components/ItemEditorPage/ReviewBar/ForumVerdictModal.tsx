@@ -1,4 +1,4 @@
-import { ForumOutlined as ForumIcon, OpenInNew as OpenInNewIcon } from '~/components/Icons'
+import { ForumOutlinedIcon as ForumIcon, OpenInNewIcon } from '~/components/Icons'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { useTranslation } from '~/intl'

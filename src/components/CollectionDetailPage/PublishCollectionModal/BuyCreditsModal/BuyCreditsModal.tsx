@@ -1,10 +1,5 @@
 import { useMemo, useState } from 'react'
-import {
-  Add as AddIcon,
-  ChevronRight as ChevronRightIcon,
-  Remove as RemoveIcon,
-  Star as StarIcon
-} from '~/components/Icons'
+import { AddIcon, ChevronRightIcon, RemoveIcon, StarIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { useCreditPacks } from '~/hooks/useCreditPacks'
 import {

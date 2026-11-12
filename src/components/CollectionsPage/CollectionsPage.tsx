@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Add as AddIcon,
-  FormatListBulleted as FormatListBulletedIcon,
-  GridView as GridViewIcon,
-  Link as LinkIcon,
-  PersonOutline as PersonOutlineIcon,
-  Search as SearchIcon
+  AddIcon,
+  FormatListBulletedIcon,
+  GridViewIcon,
+  LinkIcon,
+  PersonOutlineIcon,
+  SearchIcon
 } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { clearTopUpResume, parseTopUpReturn, readTopUpResume, stripTopUpReturn } from '~/lib/creditsTopUp'

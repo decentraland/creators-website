@@ -3,8 +3,8 @@ import {
   SmartIcon,
   TrashIcon,
   WearableIcon,
-  Check as CheckIcon,
-  ErrorRounded as ErrorIcon
+  CheckIcon,
+  ErrorRoundedIcon as ErrorIcon
 } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { isThumbnailGenerating } from '~/lib/draftPreview'

@@ -8,16 +8,16 @@ import {
   LoopIcon,
   PlayOnceIcon,
   SmartIcon,
-  CameraAlt as CameraIcon,
-  ChangeHistory as TriangleIcon,
-  Circle as MaterialIcon,
-  PlayArrow as PlayIcon,
-  ReportProblemOutlined as WarningIcon,
-  SentimentSatisfiedAlt as SmileIcon,
-  Storage as SizeIcon,
-  VideocamOutlined as VideoIcon,
-  Texture as TextureIcon,
-  ThirtyFpsSelect as FpsIcon
+  CameraAltIcon as CameraIcon,
+  ChangeHistoryIcon as TriangleIcon,
+  CircleIcon as MaterialIcon,
+  PlayArrowIcon as PlayIcon,
+  ReportProblemOutlinedIcon as WarningIcon,
+  SentimentSatisfiedAltIcon as SmileIcon,
+  StorageIcon as SizeIcon,
+  VideocamOutlinedIcon as VideoIcon,
+  TextureIcon,
+  ThirtyFpsSelectIcon as FpsIcon
 } from '~/components/Icons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { RaritySelect } from '~/components/RaritySelect'

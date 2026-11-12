@@ -4,13 +4,13 @@ import {
   ClockIcon,
   FilmReelIcon,
   ImageIcon,
-  CameraAlt as CameraIcon,
-  ChangeHistory as TriangleIcon,
-  Circle as MaterialIcon,
-  ReportProblemOutlined as WarningIcon,
-  SentimentSatisfiedAlt as SmileIcon,
-  Texture as TextureIcon,
-  ThirtyFpsSelect as FpsIcon
+  CameraAltIcon as CameraIcon,
+  ChangeHistoryIcon as TriangleIcon,
+  CircleIcon as MaterialIcon,
+  ReportProblemOutlinedIcon as WarningIcon,
+  SentimentSatisfiedAltIcon as SmileIcon,
+  TextureIcon,
+  ThirtyFpsSelectIcon as FpsIcon
 } from '~/components/Icons'
 import { RequiredPermissions } from '~/components/RequiredPermissions'
 import { Tooltip } from '~/components/Tooltip'

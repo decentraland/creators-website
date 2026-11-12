@@ -1,5 +1,5 @@
 import { useId, useState } from 'react'
-import { Sync as SyncIcon } from '~/components/Icons'
+import { SyncIcon } from '~/components/Icons'
 import { useIntl } from 'react-intl'
 import { config } from '~/config'
 import { useTranslation } from '~/intl'

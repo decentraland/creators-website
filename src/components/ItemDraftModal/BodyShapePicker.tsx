@@ -1,5 +1,5 @@
 import { type KeyboardEvent, type ReactNode } from 'react'
-import { Female as FemaleIcon, Male as MaleIcon, Transgender as BothIcon } from '~/components/Icons'
+import { FemaleIcon, MaleIcon, TransgenderIcon as BothIcon } from '~/components/Icons'
 import { Tooltip } from '~/components/Tooltip'
 import { useTranslation } from '~/intl'
 import { BodyShapeType } from '~/lib/items'

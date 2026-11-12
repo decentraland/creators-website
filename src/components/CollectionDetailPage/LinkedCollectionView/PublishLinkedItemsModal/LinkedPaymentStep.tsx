@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { ChevronLeft as ChevronLeftIcon } from '~/components/Icons'
+import { ChevronLeftIcon } from '~/components/Icons'
 import { useIntl } from 'react-intl'
 import { config } from '~/config'
 import { useTranslation } from '~/intl'

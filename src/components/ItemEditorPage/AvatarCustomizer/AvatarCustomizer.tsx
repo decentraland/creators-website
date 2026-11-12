@@ -1,12 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { BodyShape, WearableCategory } from '@dcl/schemas'
-import {
-  Casino as RandomIcon,
-  Close as CloseIcon,
-  Female as FemaleIcon,
-  Male as MaleIcon,
-  Person as PersonIcon
-} from '~/components/Icons'
+import { CasinoIcon as RandomIcon, CloseIcon, FemaleIcon, MaleIcon, PersonIcon } from '~/components/Icons'
 import { Button } from '~/components/Button'
 import { Select } from '~/components/Select'
 import { useScrollFades } from '~/hooks/useScrollFades'

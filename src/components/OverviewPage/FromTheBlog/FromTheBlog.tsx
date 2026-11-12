@@ -1,4 +1,4 @@
-import { ChevronRight as ChevronRightIcon } from '~/components/Icons'
+import { ChevronRightIcon } from '~/components/Icons'
 import { useLatestBlogPosts } from '~/hooks/useLatestBlogPosts'
 import { useTranslation } from '~/intl'
 import { blogUrl } from '~/lib/blog'

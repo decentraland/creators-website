@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent, type RefObject } from 'react'
-import { Close as RemoveIcon } from '~/components/Icons'
+import { CloseIcon as RemoveIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import * as S from '../ItemEditorPage.styles'
 

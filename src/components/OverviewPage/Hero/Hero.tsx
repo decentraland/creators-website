@@ -1,7 +1,7 @@
 import { type MouseEvent, useEffect, useMemo, useState } from 'react'
 import { Button } from '~/components/Button'
 import { Tooltip } from '~/components/Tooltip'
-import { ChevronDownIcon, Apple as AppleIcon, Microsoft as MicrosoftIcon } from '~/components/Icons'
+import { ChevronDownIcon, AppleIcon, MicrosoftIcon } from '~/components/Icons'
 import { useAfterLoadIdle } from '~/hooks/useAfterLoadIdle'
 import { useCreatorHubDownload } from '~/hooks/useCreatorHubDownload'
 import { useMediaQuery } from '~/hooks/useMediaQuery'

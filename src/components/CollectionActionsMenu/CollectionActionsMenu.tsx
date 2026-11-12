@@ -11,7 +11,7 @@ import { shopCollectionUrl } from '~/lib/shop'
 import { useNotifications } from '~/lib/notifications'
 import { theme } from '~/styles/theme'
 import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
-import { JumpInIcon, OpenInNew as OpenInNewIcon } from '~/components/Icons'
+import { JumpInIcon, OpenInNewIcon } from '~/components/Icons'
 import { DeleteCollectionModal } from './DeleteCollectionModal'
 
 type Props = {

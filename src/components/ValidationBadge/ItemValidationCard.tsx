@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { BodyShape } from '@dcl/schemas'
 import {
-  ErrorOutline as WarningIcon,
-  Refresh as RerunIcon,
-  ReportProblemOutlined as ErrorIcon
+  ErrorOutlineIcon as WarningIcon,
+  RefreshIcon as RerunIcon,
+  ReportProblemOutlinedIcon as ErrorIcon
 } from '~/components/Icons'
 import { Tooltip } from '~/components/Tooltip'
 import { useTranslation } from '~/intl'

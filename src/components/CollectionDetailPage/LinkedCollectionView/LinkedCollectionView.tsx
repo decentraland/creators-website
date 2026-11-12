@@ -66,11 +66,11 @@ import { EditContractModal } from './EditContractModal'
 import { EditUrnModal } from './EditUrnModal'
 import {
   OpenEditorIcon,
-  Add as AddIcon,
-  ArrowBackIosNew as ArrowBackIcon,
-  ContentCopy as ContentCopyIcon,
-  Edit as EditIcon,
-  ReportProblemOutlined as WarningIcon
+  AddIcon,
+  ArrowBackIosNewIcon as ArrowBackIcon,
+  ContentCopyIcon,
+  EditIcon,
+  ReportProblemOutlinedIcon as WarningIcon
 } from '~/components/Icons'
 import { Pagination } from '~/components/Pagination'
 import { Tooltip } from '~/components/Tooltip'

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDropDown as ChevronIcon, Check as CheckIcon, ExpandMore as CompactChevronIcon } from '~/components/Icons'
+import { ArrowDropDownIcon as ChevronIcon, CheckIcon, ExpandMoreIcon as CompactChevronIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import * as Base from '~/components/Select/Select.styles'
 import { useListbox } from '~/components/Select/useListbox'

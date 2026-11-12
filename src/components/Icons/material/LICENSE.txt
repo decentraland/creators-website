@@ -1,5 +1,5 @@
 The glyphs in this folder are Material Design icons by Google (https://github.com/google/material-design-icons),
-copied from @mui/icons-material 5.18.0 under its export names. The icons are licensed under the Apache License, Version 2.0, and
+copied from @mui/icons-material 5.18.0, each named after its export there plus an Icon suffix. The icons are licensed under the Apache License, Version 2.0, and
 @mui/icons-material under the MIT License; both are reproduced below.
 
 -----------------------------------------------------------

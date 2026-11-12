@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '~/components/Icons'
+import { ChevronLeftIcon, ChevronRightIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { useDeleteItem } from '~/hooks/usePublishCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'

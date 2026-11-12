@@ -5,19 +5,19 @@ import { CollectionStatusPill } from '~/components/CollectionStatusPill'
 import {
   EmoteIcon,
   WearableIcon,
-  Add as AddIcon,
-  ArrowBackIosNew as BackIcon,
-  CheckCircle as ReviewedIcon,
-  Inventory2Outlined as RestIcon,
-  RateReviewOutlined as ToReviewIcon,
-  GraphicEq as PlayingIcon,
-  KeyboardDoubleArrowLeft as CollapseIcon,
-  KeyboardDoubleArrowRight as ExpandIcon,
-  Edit as EditIcon,
-  Female as FemaleIcon,
-  Male as MaleIcon,
-  Visibility as DressedIcon,
-  VisibilityOff as UndressedIcon
+  AddIcon,
+  ArrowBackIosNewIcon as BackIcon,
+  CheckCircleIcon as ReviewedIcon,
+  Inventory2OutlinedIcon as RestIcon,
+  RateReviewOutlinedIcon as ToReviewIcon,
+  GraphicEqIcon as PlayingIcon,
+  KeyboardDoubleArrowLeftIcon as CollapseIcon,
+  KeyboardDoubleArrowRightIcon as ExpandIcon,
+  EditIcon,
+  FemaleIcon,
+  MaleIcon,
+  VisibilityIcon as DressedIcon,
+  VisibilityOffIcon as UndressedIcon
 } from '~/components/Icons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { Tooltip } from '~/components/Tooltip'

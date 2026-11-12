@@ -3,13 +3,13 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { BodyShape } from '@dcl/schemas'
 import {
-  Check as CheckIcon,
-  Close as CloseIcon,
-  DesktopWindowsOutlined as DesktopIcon,
-  InfoOutlined as InfoIcon,
-  LibraryAddOutlined as AddToCollectionIcon,
-  Refresh as RefreshIcon,
-  WarningAmberOutlined as WarningIcon
+  CheckIcon,
+  CloseIcon,
+  DesktopWindowsOutlinedIcon as DesktopIcon,
+  InfoOutlinedIcon as InfoIcon,
+  LibraryAddOutlinedIcon as AddToCollectionIcon,
+  RefreshIcon,
+  WarningAmberOutlinedIcon as WarningIcon
 } from '~/components/Icons'
 import { AvatarPreview } from '~/components/AvatarPreview'
 import { Button } from '~/components/Button'

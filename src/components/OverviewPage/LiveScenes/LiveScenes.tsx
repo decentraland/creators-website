@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { ChevronRight as ChevronRightIcon } from '~/components/Icons'
+import { ChevronRightIcon } from '~/components/Icons'
 import { useHotScenes } from '~/hooks/useHotScenes'
 import { useTranslation } from '~/intl'
 import { placeUrl, placesUrl, sceneCoordinates, selectLiveScenes } from '~/lib/hotScenes'

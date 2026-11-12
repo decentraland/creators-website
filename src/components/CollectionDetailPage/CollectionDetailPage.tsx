@@ -78,13 +78,13 @@ import {
   EmoteIcon,
   OpenEditorIcon,
   WearableIcon,
-  Add as AddIcon,
-  ArrowBackIosNew as ArrowBackIcon,
-  Edit as EditIcon,
-  ForumOutlined as ForumIcon,
-  LocalOfferOutlined as DiscountIcon,
-  PersonOutline as PersonOutlineIcon,
-  Sync as SyncIcon
+  AddIcon,
+  ArrowBackIosNewIcon as ArrowBackIcon,
+  EditIcon,
+  ForumOutlinedIcon as ForumIcon,
+  LocalOfferOutlinedIcon as DiscountIcon,
+  PersonOutlineIcon,
+  SyncIcon
 } from '~/components/Icons'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { CollectionRolePill } from '~/components/CollectionRolePill'

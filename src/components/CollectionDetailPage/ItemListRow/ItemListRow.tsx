@@ -14,11 +14,11 @@ import { shopItemUrl } from '~/lib/shop'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
 import {
   SmartIcon,
-  Check as CheckIcon,
-  Close as CloseIcon,
-  Edit as EditIcon,
-  ErrorOutline as WarningIcon,
-  ReportProblemOutlined as ErrorIcon
+  CheckIcon,
+  CloseIcon,
+  EditIcon,
+  ErrorOutlineIcon as WarningIcon,
+  ReportProblemOutlinedIcon as ErrorIcon
 } from '~/components/Icons'
 import { Tooltip } from '~/components/Tooltip'
 import { BodyShapeIcon, CategoryIcon, PlayModeIcon } from '~/components/ItemIcons'
