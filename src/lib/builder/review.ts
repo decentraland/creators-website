@@ -12,7 +12,7 @@ export function isReviewConflict(error: unknown): boolean {
   return error instanceof BuilderServerError && error.status === REVIEW_CONFLICT_STATUS
 }
 
-/** The 409 that means an automatic review of the collection is running right now. */
+/** The 409 that means an automated review of the collection is running right now. */
 export function isValidationRunning(error: unknown): boolean {
   return isReviewConflict(error) && (error as BuilderServerError).message === VALIDATION_RUNNING_MESSAGE
 }
@@ -26,7 +26,7 @@ export function isCollectionBusy(error: unknown): boolean {
   )
 }
 
-/** Today's automatic reviews are spent: the creator waits for tomorrow or asks a curator. */
+/** Today's automated reviews are spent: the creator waits for tomorrow or asks a curator. */
 export class ValidationLimitError extends BuilderServerError {
   constructor(error: BuilderServerError) {
     super(error.message, error.status, error.data)
@@ -42,7 +42,7 @@ export function toValidationLimitError(error: unknown): unknown {
 }
 
 /**
- * Asks for another automatic review: POST /collections/{id}/validations. 409 while one is running,
+ * Asks for another automated review: POST /collections/{id}/validations. 409 while one is running,
  * 429 (`ValidationLimitError`) once today's three are spent.
  */
 export async function requestCollectionValidation(address: string, collectionId: string): Promise<void> {

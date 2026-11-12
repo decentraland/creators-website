@@ -396,7 +396,9 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
     }
     if (method === 'GET' && sub === 'events') return ok(paginate(eventsOf(id), query))
     if (method === 'POST' && sub === 'validations') {
-      return ok(recordEvent(id, 'review.ai_started', 'validator', { validationId: `validation-${events.length + 1}` }))
+      return ok(
+        recordEvent(id, 'review.automated_started', 'validator', { validationId: `validation-${events.length + 1}` })
+      )
     }
     if (method === 'GET' && sub === 'curation') return ok(curations.get(id) ?? null)
     if (method === 'POST' && sub === 'curation') {

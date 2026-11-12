@@ -25,7 +25,7 @@ export const Pill = styled.span`
     border-color: ${theme.colors.amber};
     background: ${theme.colors.orangeTint};
   }
-  &[data-stage='ai_reviewing'] {
+  &[data-stage='automated_reviewing'] {
     color: ${theme.colors.infoLighter};
     border-color: ${theme.colors.infoLight};
     background: ${theme.colors.infoTint};

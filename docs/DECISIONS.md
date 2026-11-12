@@ -199,12 +199,12 @@ Rules for this file:
 - **Signed-out creators can preview**; signing in is asked only when adding to a collection, which reuses the add-items modal with category, hides, spring bones or play mode pre-filled.
 - **Out (v1):** third-party collections, a nav entry point, saving outside the add-items flow, remote bridges, scene and prop previews.
 
-## Automatic review (auto-curation)
+## Automated review (auto-curation)
 
 - **Rollout order: builder-server first, then the flag.** With `auto-curation` on, the publish confirmation is the review modal, which assumes the server runs the review; the flag is turned on only where builder-server ships it.
 - **Stages are derived, never stored**: the latest review request plus the newest stage-defining timeline event (`GET /collections/:id/events`), behind the `auto-curation` flag. Without a timeline every surface keeps the legacy curation state, so one build serves before and after the server rollout.
 - **The first review request is opened by the publish flow**, through the existing request endpoint right after `/publish` syncs; the "already an ongoing review request" 400 is ignored. builder-server never creates it.
 - **The validator's findings look like the browser's checks**: they are mapped to the same issue shape and shown by the same rows, badge and cards; items edited while the run was in flight (`staleItemIds`) or saved since are left out. A curator's approval after the run (an appeal) clears them; a curator's rejection keeps them, since they still say what to fix. With `block-publish-on-validation-errors` on, the validator's errors block Publish changes like the browser's.
 - **Editing is locked while a run is in flight** (about 5 minutes): the validator judges a snapshot, so rows, the editor's save and Publish changes wait for the verdict.
-- **Three automatic reviews per UTC day**, counted as the server does: every run the creator caused (publish, retry, submitted changes), never a sweep re-send nor a run whose request never reached the validator, reset by a curator decision. At the limit the creator asks a curator instead; the appeal carries no note.
+- **Three automated reviews per UTC day**, counted as the server does: every run the creator caused (publish, retry, submitted changes), never a sweep re-send nor a run whose request never reached the validator, reset by a curator decision. At the limit the creator asks a curator instead; the appeal carries no note.
 - **The verdict announces itself once** (the findings modal, the hand-off to a curator), remembered per collection in local storage and, for the visit, in memory, so a browser that blocks storage still keeps a closed modal closed; the notice reopens the findings any time.

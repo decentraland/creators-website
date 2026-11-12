@@ -28,7 +28,7 @@ function Attempts({ used, testId }: AttemptsProps) {
   )
 }
 
-/** Right after publishing: the automatic review is running, the creator can close and wait. */
+/** Right after publishing: the automated review is running, the creator can close and wait. */
 export function ReviewingModal({ attemptsUsed, onDone }: { attemptsUsed: number; onDone: () => void }) {
   const { t } = useTranslation()
   return (
@@ -102,7 +102,7 @@ type LimitProps = {
   onClose: () => void
 }
 
-/** The day's automatic reviews are spent: wait, or ask a curator instead. */
+/** The day's automated reviews are spent: wait, or ask a curator instead. */
 export function DailyLimitModal({ attemptsUsed, onRequestReview, onClose }: LimitProps) {
   const { t } = useTranslation()
   return (
@@ -134,7 +134,7 @@ type IssuesProps = {
 }
 
 /** The validator's findings per item, in the same dress as the browser's checks before publishing. */
-export function AiIssuesModal({ results, onRequestReview, onClose }: IssuesProps) {
+export function AutomatedIssuesModal({ results, onRequestReview, onClose }: IssuesProps) {
   const { t } = useTranslation()
   const sorted = useMemo(() => [...results].sort((a, b) => a.item.name.localeCompare(b.item.name)), [results])
   return (
@@ -144,14 +144,14 @@ export function AiIssuesModal({ results, onRequestReview, onClose }: IssuesProps
       hideTitle
       showClose
       onClose={onClose}
-      testId="ai-issues-modal"
+      testId="automated-issues-modal"
     >
-      <Issues.Content data-variant="errors_blocking" data-testid="ai-issues-content">
+      <Issues.Content data-variant="errors_blocking" data-testid="automated-issues-content">
         <Issues.Header>
           <Issues.HeaderIcon data-variant="errors" aria-hidden>
             <ErrorIcon />
           </Issues.HeaderIcon>
-          <Issues.Title data-testid="ai-issues-title">{t('review_flow.issues.title')}</Issues.Title>
+          <Issues.Title data-testid="automated-issues-title">{t('review_flow.issues.title')}</Issues.Title>
         </Issues.Header>
         <Issues.Intro>{t('review_flow.issues.intro')}</Issues.Intro>
         <Issues.List>
@@ -160,17 +160,22 @@ export function AiIssuesModal({ results, onRequestReview, onClose }: IssuesProps
               key={result.item.id}
               subject={toValidationSubject(result.item)}
               issues={result.issues}
-              testId={`ai-issues-${result.item.id}`}
+              testId={`automated-issues-${result.item.id}`}
             />
           ))}
         </Issues.List>
         <Issues.Footer data-single={onRequestReview ? undefined : ''}>
           {onRequestReview && (
-            <Button type="button" variant="secondary" data-testid="ai-issues-request-review" onClick={onRequestReview}>
+            <Button
+              type="button"
+              variant="secondary"
+              data-testid="automated-issues-request-review"
+              onClick={onRequestReview}
+            >
               {t('review_flow.issues.request')}
             </Button>
           )}
-          <Button type="button" variant="primary" data-testid="ai-issues-back" onClick={onClose}>
+          <Button type="button" variant="primary" data-testid="automated-issues-back" onClick={onClose}>
             {t('review_flow.issues.back')}
           </Button>
         </Issues.Footer>

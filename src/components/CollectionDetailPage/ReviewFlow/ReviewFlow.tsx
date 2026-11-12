@@ -16,7 +16,7 @@ import { ReviewStage, getReviewStage, isRejectedStage, type CollectionCuration }
 import {
   VALIDATION_ATTEMPTS_PER_DAY,
   countValidationAttempts,
-  getAiIssuesByItem,
+  getAutomatedIssuesByItem,
   getValidationAttemptsLeft,
   getLatestVerdict,
   hasOpenAppeal,
@@ -32,7 +32,7 @@ import { type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import {
   AdditionalReviewModal,
-  AiIssuesModal,
+  AutomatedIssuesModal,
   DailyLimitModal,
   RequestCuratorReviewModal,
   ReviewingModal,
@@ -54,7 +54,7 @@ type Props = {
   /** `null` while the timeline is unavailable: no notice shows then, as without auto curation. */
   events: CollectionEvent[] | null
   items: Item[]
-  /** Owner or collaborator: may validate again and ask for a curator. */
+  /** Owner or collaborator: may review again and ask for a curator. */
   canManage: boolean
   request: ReviewFlowRequest | null
   onRequestHandled: () => void
@@ -83,8 +83,8 @@ export function ReviewFlow({
   const timeline = useMemo(() => events ?? [], [events])
   const stage = useMemo(() => getReviewStage(collection, curation, events), [collection, curation, events])
   const verdict = useMemo(() => getLatestVerdict(timeline), [timeline])
-  const aiResults = useMemo<ItemCheck[]>(() => {
-    const byItem = getAiIssuesByItem(timeline, items)
+  const automatedResults = useMemo<ItemCheck[]>(() => {
+    const byItem = getAutomatedIssuesByItem(timeline, items)
     return items.filter(item => byItem.has(item.id)).map(item => ({ item, issues: byItem.get(item.id)! }))
   }, [timeline, items])
   // The allowance resets at 00:00 UTC, so the count is redone when the day changes, not only when events do.
@@ -112,7 +112,7 @@ export function ReviewFlow({
   // The verdict and the hand-off announce themselves once; the notice reopens the findings any time.
   useEffect(() => {
     if (modal || !canManage) return
-    if (stage === ReviewStage.REJECTED_BY_VALIDATOR && verdict && aiResults.length > 0) {
+    if (stage === ReviewStage.REJECTED_BY_VALIDATOR && verdict && automatedResults.length > 0) {
       const key = `verdict:${verdict.id}`
       if (wasReviewModalSeen(collection.id, key)) return
       markReviewModalSeen(collection.id, key)
@@ -123,7 +123,7 @@ export function ReviewFlow({
       markReviewModalSeen(collection.id, key)
       open('additional')
     }
-  }, [modal, canManage, stage, verdict, aiResults.length, cause, collection.id, open])
+  }, [modal, canManage, stage, verdict, automatedResults.length, cause, collection.id, open])
 
   const close = () => {
     setModal(null)
@@ -181,7 +181,11 @@ export function ReviewFlow({
     <>
       {modal === 'reviewing' && <ReviewingModal attemptsUsed={Math.max(attemptsUsed, 1)} onDone={close} />}
       {modal === 'issues' && (
-        <AiIssuesModal results={aiResults} onRequestReview={canManage ? requestReview : undefined} onClose={close} />
+        <AutomatedIssuesModal
+          results={automatedResults}
+          onRequestReview={canManage ? requestReview : undefined}
+          onClose={close}
+        />
       )}
       {modal === 'request' && (
         <RequestCuratorReviewModal
@@ -208,8 +212,8 @@ export function ReviewFlow({
   let text: string | null = null
   let tone: 'info' | 'error' | undefined
   switch (stage) {
-    case ReviewStage.AI_REVIEWING:
-      text = t('review_flow.notice.ai_reviewing')
+    case ReviewStage.AUTOMATED_REVIEWING:
+      text = t('review_flow.notice.automated_reviewing')
       tone = 'info'
       break
     case ReviewStage.AWAITING_CURATOR:
@@ -253,7 +257,7 @@ export function ReviewFlow({
         <S.NoticeText>
           {tone === 'error' ? <ErrorIcon fontSize="small" aria-hidden /> : <InfoIcon fontSize="small" aria-hidden />}
           <span>{text}</span>
-          {stage === ReviewStage.REJECTED_BY_VALIDATOR && aiResults.length > 0 && (
+          {stage === ReviewStage.REJECTED_BY_VALIDATOR && automatedResults.length > 0 && (
             <S.SeeIssues type="button" data-testid="review-see-issues" onClick={() => open('issues')}>
               {t('review_flow.issues.see')}
             </S.SeeIssues>

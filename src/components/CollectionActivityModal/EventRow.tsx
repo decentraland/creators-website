@@ -58,16 +58,20 @@ export function EventRow({ event, items, isCurator }: Props) {
 
   function line() {
     switch (event.type) {
-      case 'review.ai_started':
-        return t('activity_modal.event.review.ai_started', {
+      case 'review.automated_started':
+        return t('activity_modal.event.review.automated_started', {
           trigger: t(`activity_modal.trigger.${isValidationTrigger(payload.trigger) ? payload.trigger : 'publish'}`)
         })
-      case 'review.ai_rejected':
-        return t('activity_modal.event.review.ai_rejected', { count: countFailedItems(payload.items ?? []) })
-      case 'review.ai_error':
-        if (payload.reason === SWEEP_EXHAUSTED_REASON) return t('activity_modal.event.review.ai_error_exhausted')
-        if (isTooLargeError(event)) return t('activity_modal.event.review.ai_error_too_large')
-        return t(isCurator ? 'activity_modal.event.review.ai_error_curator' : 'activity_modal.event.review.ai_error')
+      case 'review.automated_rejected':
+        return t('activity_modal.event.review.automated_rejected', { count: countFailedItems(payload.items ?? []) })
+      case 'review.automated_error':
+        if (payload.reason === SWEEP_EXHAUSTED_REASON) return t('activity_modal.event.review.automated_error_exhausted')
+        if (isTooLargeError(event)) return t('activity_modal.event.review.automated_error_too_large')
+        return t(
+          isCurator
+            ? 'activity_modal.event.review.automated_error_curator'
+            : 'activity_modal.event.review.automated_error'
+        )
       case 'review.human_required':
         if (isUnsupportedItemsReview(event)) return t('activity_modal.event.review.human_required_unsupported')
         return t(
@@ -93,9 +97,7 @@ export function EventRow({ event, items, isCurator }: Props) {
     event.actorAddress && (event.actor === 'creator' || event.actor === 'curator') ? (
       <ProfileBadge address={event.actorAddress} testId="activity-actor" />
     ) : (
-      <S.Actor data-testid="activity-actor">
-        {t(`activity_modal.actor.${event.actor === 'validator' ? 'validator' : 'system'}`)}
-      </S.Actor>
+      <S.Actor data-testid="activity-actor">{t('activity_modal.actor.system')}</S.Actor>
     )
   const quote = payload.rejectionMessage ?? payload.note
 

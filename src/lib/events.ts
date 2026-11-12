@@ -9,10 +9,10 @@ import { ValidationSeverity, type ValidationIssue } from '~/lib/validation/types
 export const COLLECTION_EVENT_TYPES = [
   'collection.published',
   'review.human_required',
-  'review.ai_started',
-  'review.ai_passed',
-  'review.ai_rejected',
-  'review.ai_error',
+  'review.automated_started',
+  'review.automated_passed',
+  'review.automated_rejected',
+  'review.automated_error',
   'review.appeal_requested',
   'review.assigned',
   'review.approved',
@@ -74,7 +74,7 @@ export type ValidationItemResult = {
 export type ValidationVerdict = 'passed' | 'rejected' | 'error'
 
 /**
- * Payload of `review.ai_passed` / `review.ai_rejected` / `review.ai_error`: the validator's whole result.
+ * Payload of `review.automated_passed` / `review.automated_rejected` / `review.automated_error`: the validator's whole result.
  * `validationId` only reaches the committee; `collectionId` and `rulesVersion` are missing on older rows.
  */
 export type ValidationVerdictPayload = {
@@ -94,18 +94,18 @@ type CurationDecisionPayload = {
   rejectionMessage?: string
 }
 
-/** `review.ai_error` reasons the server never resends: only a curator or a new request moves the review on. */
-export type FinalAiErrorReason = 'sweep_exhausted' | 'too_large'
+/** `review.automated_error` reasons the server never resends: only a curator or a new request moves the review on. */
+export type FinalAutomatedErrorReason = 'sweep_exhausted' | 'too_large'
 /** The request never reached the validator; the server's sweep sends it again within minutes. */
 const PUBLISH_FAILED_REASON = 'publish_failed'
 
 export type CollectionEventPayload = Omit<Partial<ValidationVerdictPayload>, 'reason'> &
   CurationDecisionPayload & {
-    /** `third_party` / `unsupported_items` / `validator_error` on `review.human_required`, `FinalAiErrorReason` on `review.ai_error`; open for newer ones. */
+    /** `third_party` / `unsupported_items` / `validator_error` on `review.human_required`, `FinalAutomatedErrorReason` on `review.automated_error`; open for newer ones. */
     reason?: string
     trigger?: string
     itemIds?: string[]
-    /** `review.ai_started`: the content hash of every item sent, so a later run can tell what changed. */
+    /** `review.automated_started`: the content hash of every item sent, so a later run can tell what changed. */
     contentHashes?: Record<string, string>
     note?: string
     assignee?: string | null
@@ -151,7 +151,7 @@ export function fromRemoteEvent(remote: RemoteCollectionEvent): CollectionEvent 
   }
 }
 
-const VERDICT_TYPES = new Set(['review.ai_passed', 'review.ai_rejected'])
+const VERDICT_TYPES = new Set(['review.automated_passed', 'review.automated_rejected'])
 const HUMAN_DECISION_TYPES = new Set(['review.approved', 'review.rejected'])
 
 export const VALIDATION_ATTEMPTS_PER_DAY = 3
@@ -166,7 +166,7 @@ export function getLatestVerdict(
     ...event,
     payload: {
       validationId: event.payload.validationId,
-      verdict: event.payload.verdict ?? (event.type === 'review.ai_passed' ? 'passed' : 'rejected'),
+      verdict: event.payload.verdict ?? (event.type === 'review.automated_passed' ? 'passed' : 'rejected'),
       rulesVersion: event.payload.rulesVersion,
       // An older or malformed row may lack findings; every consumer reads them as a list.
       items: event.payload.items.map(item => (Array.isArray(item.findings) ? item : { ...item, findings: [] })),
@@ -181,7 +181,7 @@ export function startOfUtcDay(now: number): number {
 }
 
 /**
- * Automatic reviews used today: every run the creator caused (the publish, a retry, submitted changes; never
+ * Automated reviews used today: every run the creator caused (the publish, a retry, submitted changes; never
  * the server's own re-sends) newer than the later of today 00:00 UTC and the newest curator decision. A run
  * whose request never reached the validator doesn't count. The server counts the same way, so the counter
  * and the 429 agree. `events` newest first.
@@ -193,8 +193,8 @@ export function countValidationAttempts(events: CollectionEvent[], now = Date.no
   let attempts = 0
   for (const event of events) {
     if (event.createdAt < dayStart || HUMAN_DECISION_TYPES.has(event.type)) break
-    if (event.type === 'review.ai_error' && event.payload.reason === PUBLISH_FAILED_REASON) unsentStarts++
-    else if (event.type === 'review.ai_started') {
+    if (event.type === 'review.automated_error' && event.payload.reason === PUBLISH_FAILED_REASON) unsentStarts++
+    else if (event.type === 'review.automated_started') {
       if (unsentStarts > 0) unsentStarts--
       else if (event.payload.trigger !== 'sweep') attempts++
     }
@@ -223,26 +223,30 @@ export function isUnsupportedItemsReview(event: CollectionEvent | undefined): bo
 export const VALIDATOR_ERROR_REASON = 'validator_error'
 export const SWEEP_EXHAUSTED_REASON = 'sweep_exhausted'
 const TOO_LARGE_REASON = 'too_large'
-const FINAL_AI_ERROR_REASONS: readonly string[] = [
+const FINAL_AUTOMATED_ERROR_REASONS: readonly string[] = [
   SWEEP_EXHAUSTED_REASON,
   TOO_LARGE_REASON
-] satisfies FinalAiErrorReason[]
+] satisfies FinalAutomatedErrorReason[]
 
 /** The request was too large to send: a curator reviews it, and an edit does not unblock a retry. */
 export function isTooLargeError(event: CollectionEvent | undefined): boolean {
-  return event?.type === 'review.ai_error' && event.payload.reason === TOO_LARGE_REASON
+  return event?.type === 'review.automated_error' && event.payload.reason === TOO_LARGE_REASON
 }
 
 /** The validator gave up on the latest request: no verdict will come without a curator or a new request. */
 export function isFinalValidationError(event: CollectionEvent | undefined): boolean {
-  if (event?.type === 'review.ai_error') return FINAL_AI_ERROR_REASONS.includes(event.payload.reason ?? '')
+  if (event?.type === 'review.automated_error')
+    return FINAL_AUTOMATED_ERROR_REASONS.includes(event.payload.reason ?? '')
   return event?.type === 'review.human_required' && event.payload.reason === VALIDATOR_ERROR_REASON
 }
 
 /** A verdict is still to come: the validator is working, or failed and the server's sweep will resend. */
 export function isValidationInProgress(events: CollectionEvent[]): boolean {
   const latest = latestStageEvent(events)
-  return latest?.type === 'review.ai_started' || (latest?.type === 'review.ai_error' && !isFinalValidationError(latest))
+  return (
+    latest?.type === 'review.automated_started' ||
+    (latest?.type === 'review.automated_error' && !isFinalValidationError(latest))
+  )
 }
 
 /** The appeal endpoint answers 409 while the latest event is still the open appeal. */
@@ -294,7 +298,7 @@ export function isValidationTrigger(value: unknown): value is ValidationTrigger 
   return typeof value === 'string' && (VALIDATION_TRIGGERS as readonly string[]).includes(value)
 }
 
-/** One validator finding as the item checks show it, so the automatic review reads like the browser's. */
+/** One validator finding as the item checks show it, so the automated review reads like the browser's. */
 function toValidationIssue(finding: ValidationFinding): ValidationIssue {
   return {
     code: finding.rule,
@@ -312,7 +316,7 @@ function toValidationIssue(finding: ValidationFinding): ValidationIssue {
  * The newest rejection's findings per item that did not pass, keyed by item id; empty once the validator
  * passed the collection or while no verdict exists. Items edited during the run or saved since are left out.
  */
-export function getAiIssuesByItem(
+export function getAutomatedIssuesByItem(
   events: CollectionEvent[],
   items: Pick<Item, 'id' | 'currentContentHash'>[]
 ): Map<string, ValidationIssue[]> {

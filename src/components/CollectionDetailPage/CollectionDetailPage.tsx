@@ -77,7 +77,7 @@ import { ReviewStage, canPushChanges, getReviewStage, isRejectedStage } from '~/
 import { useCommittee } from '~/hooks/useCommittee'
 import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
 import { useCollectionEvents } from '~/hooks/useCollectionEvents'
-import { getAiIssuesByItem } from '~/lib/events'
+import { getAutomatedIssuesByItem } from '~/lib/events'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS, THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { type ItemListing } from '~/lib/listings'
@@ -310,14 +310,14 @@ const CollectionDetailPage = () => {
     [standardCollection, curation, events]
   )
   // The validator judges a snapshot: nothing changes under it (Figma: "block edit settings during these 5 mins").
-  const reviewLocked = stage === ReviewStage.AI_REVIEWING
+  const reviewLocked = stage === ReviewStage.AUTOMATED_REVIEWING
   const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION).enabled
   const [reviewRequest, setReviewRequest] = useState<ReviewFlowRequest | null>(null)
   const clearReviewRequest = useCallback(() => setReviewRequest(null), [])
   // The validator's findings dress the rows and the details modal like the browser's checks do.
-  const aiIssues = useMemo(() => getAiIssuesByItem(events ?? [], allItems ?? []), [events, allItems])
+  const automatedIssues = useMemo(() => getAutomatedIssuesByItem(events ?? [], allItems ?? []), [events, allItems])
   // Until the request loads, a pending one looks like none and the push would duplicate it. A rejection the
-  // automatic review tracks is resubmitted from the review panel (validate again / appeal), never from here.
+  // automated review tracks is resubmitted from the review panel (review again / appeal), never from here.
   const curationLoaded = curationQuery.isSuccess
   const showPushChanges = useMemo(
     () =>
@@ -362,16 +362,16 @@ const CollectionDetailPage = () => {
   const rerunItemValidation = useRerunItemValidation()
   const rowValidations = useMemo(() => {
     const merged = new Map<string, ItemValidation>(validation.results)
-    for (const [itemId, ai] of aiIssues) {
+    for (const [itemId, automated] of automatedIssues) {
       const local = validation.results.get(itemId)
-      const issues = [...(local?.issues ?? []), ...ai]
+      const issues = [...(local?.issues ?? []), ...automated]
       merged.set(itemId, {
         status: local?.status === 'loading' ? 'loading' : getValidationStatus(issues, false),
         issues
       })
     }
     return merged
-  }, [validation.results, aiIssues])
+  }, [validation.results, automatedIssues])
   // Counted from what the rows show, so the push is blocked by the same errors the rows say block it.
   const invalidCount = useMemo(
     () => [...rowValidations.values()].filter(result => result.status === 'errors').length,
@@ -988,7 +988,7 @@ const CollectionDetailPage = () => {
                       setPushView('closed')
                       showToast(t(`collection_detail_page.${pushCopy}.success`))
                     },
-                    // The automatic review answers for itself: the day's reviews are spent, or one is running.
+                    // The automated review answers for itself: the day's reviews are spent, or one is running.
                     onError: error => {
                       if (error instanceof ValidationLimitError) {
                         closePush()

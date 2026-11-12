@@ -100,9 +100,9 @@ describe('CurationRow', () => {
   })
 
   it('shows the derived stage over the legacy state when the timeline tells it apart', () => {
-    latest.event = { type: 'review.ai_started' }
+    latest.event = { type: 'review.automated_started' }
     renderRow(pending)
-    expect(screen.getByTestId('review-stage')).toHaveAttribute('data-stage', 'ai_reviewing')
+    expect(screen.getByTestId('review-stage')).toHaveAttribute('data-stage', 'automated_reviewing')
     expect(screen.queryByTestId('curation-state')).toBeNull()
     latest.event = null
   })

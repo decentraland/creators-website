@@ -2057,7 +2057,7 @@
   },
   "review_flow": {
     "notice": {
-      "ai_reviewing": "Estamos revisando tu colección automáticamente. Suele tardar unos minutos.",
+      "automated_reviewing": "Estamos revisando tu colección automáticamente. Suele tardar unos minutos.",
       "awaiting_curator": "La revisión automática pasó. Ahora la revisará un curador.",
       "awaiting_curator_assigned": "La revisión automática pasó. Un curador está revisando tu colección.",
       "human_review": "Un curador revisará tu colección.",
@@ -2065,7 +2065,7 @@
       "appealed": "Pediste una revisión humana. Un curador revisará tu colección.",
       "validator_failed": "La revisión automática no pudo revisar tu colección. La revisará un curador.",
       "too_large": "Tu colección es demasiado grande para la revisión automática. La revisará un curador.",
-      "rejected_by_validator": "La revisión automática encontró problemas en tus ítems. Corrígelos y valida de nuevo, o pide que un curador revise tu colección.",
+      "rejected_by_validator": "La revisión automática encontró problemas en tus ítems. Corrígelos y revisa de nuevo, o pide que un curador revise tu colección.",
       "rejected_by_curator": "Un curador rechazó tu colección. Corrige lo que señaló y publica tus cambios, o pide otra revisión."
     },
     "reviewing": {
@@ -2101,7 +2101,7 @@
       "title": "Tu colección necesita una revisión adicional",
       "description": "Parte del contenido de tu colección requiere una mirada más detallada. La enviamos a un curador de Decentraland para su revisión, que puede tardar hasta 48 horas. Te avisaremos cuando se apruebe o si hace falta algún cambio."
     },
-    "validate_again": "Validar de nuevo ({left} de {max} restantes hoy)",
+    "validate_again": "Revisar de nuevo ({left} de {max} restantes hoy)",
     "request_review": "Pedir revisión de un curador",
     "running": "Ya hay una revisión en curso. Inténtalo cuando termine.",
     "nothing_to_validate": "No hay nada nuevo para revisar automáticamente. Edita un ítem y publica tus cambios, o pide una revisión de un curador.",
@@ -2112,9 +2112,9 @@
     "validation_error": "No pudimos iniciar la revisión automática. Inténtalo de nuevo."
   },
   "review_stage": {
-    "ai_reviewing": "Revisión automática",
-    "awaiting_curator": "Aprobada por la IA, espera curador",
-    "rejected_by_validator": "Rechazada por el validador",
+    "automated_reviewing": "En revisión automática",
+    "awaiting_curator": "Revisión automática aprobada, espera curador",
+    "rejected_by_validator": "Revisión automática: problemas encontrados",
     "appealed": "Apelada",
     "rejected_by_curator": "Rechazada por un curador",
     "approved": "Aprobada",
@@ -2149,7 +2149,7 @@
     "unknown_item": "Ítem {id}",
     "visual_summary": "Revisión visual",
     "item_unsupported": "No se puede revisar automáticamente",
-    "item_error": "No se pudo validar: {error}",
+    "item_error": "La revisión automática no pudo comprobarlo: {error}",
     "body_shape": {
       "male": "Masculino",
       "female": "Femenino"
@@ -2168,8 +2168,8 @@
     "error": "No pudimos rechazar la colección. Inténtalo de nuevo.",
     "success": "{collection} fue rechazada"
   },
-  "ai_verdict": {
-    "button": "Veredicto de la IA",
+  "automated_verdict": {
+    "button": "Resultado de la revisión automática",
     "title": "Revisión automática",
     "passed": "Aprobada {time}",
     "rejected": "Rechazada {time}",
@@ -2186,7 +2186,6 @@
     "retry": "Intentar de nuevo",
     "load_more": "Cargar más",
     "actor": {
-      "validator": "Validador",
       "system": "Sistema"
     },
     "trigger": {
@@ -2199,11 +2198,11 @@
       "collection.published": "publicó la colección",
       "review.human_required": "Enviada al comité de curaduría (colección de terceros)",
       "review.human_required_unsupported": "Algunos ítems no se pueden revisar automáticamente, un curador los revisará",
-      "review.ai_started": "Revisión automática iniciada ({trigger})",
-      "review.ai_passed": "La revisión automática pasó",
-      "review.ai_rejected": "La revisión automática encontró problemas en {count, plural, one {# ítem} other {# ítems}}",
-      "review.ai_error": "Revisión automática reiniciada",
-      "review.ai_error_curator": "La revisión automática falló y se reintentará",
+      "review.automated_started": "Revisión automática iniciada ({trigger})",
+      "review.automated_passed": "La revisión automática pasó",
+      "review.automated_rejected": "La revisión automática encontró problemas en {count, plural, one {# ítem} other {# ítems}}",
+      "review.automated_error": "Revisión automática reiniciada",
+      "review.automated_error_curator": "La revisión automática falló y se reintentará",
       "review.appeal_requested": "pidió una revisión humana",
       "review.assigned": "asignó la revisión a {assignee}",
       "review.unassigned": "quitó la asignación de la revisión",
@@ -2213,8 +2212,8 @@
       "collection.disabled": "deshabilitó la colección",
       "unknown": "{type}",
       "review": {
-        "ai_error_exhausted": "La revisión automática se rindió tras varios intentos, un curador revisará la colección",
-        "ai_error_too_large": "La colección es demasiado grande para la revisión automática, la revisará un curador",
+        "automated_error_exhausted": "La revisión automática se rindió tras varios intentos, un curador revisará la colección",
+        "automated_error_too_large": "La colección es demasiado grande para la revisión automática, la revisará un curador",
         "human_required_validator_error": "La revisión automática no pudo revisar la colección, la revisará un curador"
       }
     },

@@ -265,7 +265,7 @@ describe('ReviewBar', () => {
     expect(openExternal).toHaveBeenCalledWith('https://forum.decentraland.org/t/hats/77')
   })
 
-  it('shows the derived stage and opens the AI verdict with its findings', () => {
+  it('shows the derived stage and opens the automated review verdict with its findings', () => {
     state.curation = {
       id: 'r1',
       collectionId: 'c1',
@@ -281,7 +281,7 @@ describe('ReviewBar', () => {
       {
         id: 'e1',
         collectionId: 'c1',
-        type: 'review.ai_passed',
+        type: 'review.automated_passed',
         actor: 'validator',
         actorAddress: null,
         createdAt: Date.now(),
@@ -303,12 +303,12 @@ describe('ReviewBar', () => {
     ]
     renderBar()
     expect(screen.getByTestId('review-stage')).toHaveAttribute('data-stage', 'awaiting_curator')
-    fireEvent.click(screen.getByTestId('review-ai-verdict'))
-    expect(screen.getByTestId('ai-verdict-headline')).toHaveAttribute('data-passed', 'true')
-    expect(screen.getByTestId('ai-verdict-validation-id')).toHaveTextContent('val-1')
-    expect(screen.getByTestId('ai-verdict-modal')).toHaveTextContent('Every item passed')
-    expect(screen.getByTestId('ai-verdict-items-i1-finding')).toHaveTextContent('M-04')
-    expect(screen.getByTestId('ai-verdict-items-visual-summary')).toHaveTextContent('Looks fine')
+    fireEvent.click(screen.getByTestId('review-automated-verdict'))
+    expect(screen.getByTestId('automated-verdict-headline')).toHaveAttribute('data-passed', 'true')
+    expect(screen.getByTestId('automated-verdict-validation-id')).toHaveTextContent('val-1')
+    expect(screen.getByTestId('automated-verdict-modal')).toHaveTextContent('Every item passed')
+    expect(screen.getByTestId('automated-verdict-items-i1-finding')).toHaveTextContent('M-04')
+    expect(screen.getByTestId('automated-verdict-items-visual-summary')).toHaveTextContent('Looks fine')
   })
 
   it('disables an approved collection after confirming, and offers the missing entities deploy', () => {

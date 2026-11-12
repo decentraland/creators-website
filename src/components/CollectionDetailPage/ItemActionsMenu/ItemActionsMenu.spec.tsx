@@ -284,7 +284,7 @@ describe('ItemActionsMenu', () => {
     expect(screen.getByTestId('move-item-confirm')).toBeDisabled()
   })
 
-  it('offers no reset while an automatic review judges the collection', async () => {
+  it('offers no reset while an automated review judges the collection', async () => {
     renderMenu({
       item: publishedItem,
       collection: published,

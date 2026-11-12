@@ -2057,7 +2057,7 @@
   },
   "review_flow": {
     "notice": {
-      "ai_reviewing": "我们正在自动检查您的系列，通常需要几分钟。",
+      "automated_reviewing": "我们正在自动检查您的系列，通常需要几分钟。",
       "awaiting_curator": "自动检查已通过。接下来审核员将审核您的系列。",
       "awaiting_curator_assigned": "自动检查已通过。审核员正在审核您的系列。",
       "human_review": "审核员将审核您的系列。",
@@ -2065,7 +2065,7 @@
       "appealed": "您已申请人工审核。审核员将查看您的系列。",
       "validator_failed": "自动审核无法检查您的系列。审核员将进行审核。",
       "too_large": "您的系列过大，无法自动审核。审核员将进行审核。",
-      "rejected_by_validator": "自动审核在您的物品中发现了问题。请修复后重新验证，或申请审核员审核您的系列。",
+      "rejected_by_validator": "自动审核在您的物品中发现了问题。请修复后重新审核，或申请审核员审核您的系列。",
       "rejected_by_curator": "审核员拒绝了您的系列。请修复其指出的问题并发布更改，或申请再次审核。"
     },
     "reviewing": {
@@ -2101,7 +2101,7 @@
       "title": "您的系列需要额外审核",
       "description": "您系列中的部分内容需要进一步查看。我们已将其发送给 Decentraland 审核员审核，最多可能需要 48 小时。获得批准或需要修改时，我们会通知您。"
     },
-    "validate_again": "重新验证（今日剩余 {left}/{max} 次）",
+    "validate_again": "重新审核（今日剩余 {left}/{max} 次）",
     "request_review": "申请审核员审核",
     "running": "已有一次审核正在进行，请在完成后再试。",
     "nothing_to_validate": "没有可自动审核的新内容。请编辑物品并发布更改，或申请审核员审核。",
@@ -2112,9 +2112,9 @@
     "validation_error": "我们无法启动自动审核，请重试。"
   },
   "review_stage": {
-    "ai_reviewing": "AI 审核中",
+    "automated_reviewing": "自动审核中",
     "awaiting_curator": "已通过，等待审核员",
-    "rejected_by_validator": "被验证器拒绝",
+    "rejected_by_validator": "自动审核未通过",
     "appealed": "已申诉",
     "rejected_by_curator": "被审核员拒绝",
     "approved": "已批准",
@@ -2149,7 +2149,7 @@
     "unknown_item": "物品 {id}",
     "visual_summary": "视觉审核",
     "item_unsupported": "无法自动检查",
-    "item_error": "无法验证：{error}",
+    "item_error": "自动审核无法检查：{error}",
     "body_shape": {
       "male": "男性",
       "female": "女性"
@@ -2168,8 +2168,8 @@
     "error": "我们无法拒绝该系列，请重试。",
     "success": "{collection} 已被拒绝"
   },
-  "ai_verdict": {
-    "button": "AI 审核结果",
+  "automated_verdict": {
+    "button": "自动审核结果",
     "title": "自动审核",
     "passed": "{time}通过",
     "rejected": "{time}拒绝",
@@ -2186,7 +2186,6 @@
     "retry": "重试",
     "load_more": "加载更多",
     "actor": {
-      "validator": "验证器",
       "system": "系统"
     },
     "trigger": {
@@ -2199,11 +2198,11 @@
       "collection.published": "发布了该系列",
       "review.human_required": "已提交审核委员会（第三方系列）",
       "review.human_required_unsupported": "部分物品无法自动审核，审核员将进行审核",
-      "review.ai_started": "自动审核已开始（{trigger}）",
-      "review.ai_passed": "自动审核已通过",
-      "review.ai_rejected": "自动审核在 {count, plural, other {# 个物品}}中发现了问题",
-      "review.ai_error": "自动审核已重新开始",
-      "review.ai_error_curator": "自动审核失败，将会重试",
+      "review.automated_started": "自动审核已开始（{trigger}）",
+      "review.automated_passed": "自动审核已通过",
+      "review.automated_rejected": "自动审核在 {count, plural, other {# 个物品}}中发现了问题",
+      "review.automated_error": "自动审核已重新开始",
+      "review.automated_error_curator": "自动审核失败，将会重试",
       "review.appeal_requested": "申请了人工审核",
       "review.assigned": "将审核指派给了 {assignee}",
       "review.unassigned": "取消了审核指派",
@@ -2213,8 +2212,8 @@
       "collection.disabled": "停用了该系列",
       "unknown": "{type}",
       "review": {
-        "ai_error_exhausted": "自动审核多次尝试后已放弃，审核员将审核该系列",
-        "ai_error_too_large": "该系列过大，无法自动审核，审核员将进行审核",
+        "automated_error_exhausted": "自动审核多次尝试后已放弃，审核员将审核该系列",
+        "automated_error_too_large": "该系列过大，无法自动审核，审核员将进行审核",
         "human_required_validator_error": "自动审核无法检查该系列，审核员将进行审核"
       }
     },

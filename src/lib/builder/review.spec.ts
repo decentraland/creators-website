@@ -32,7 +32,7 @@ describe('collection events and review requests', () => {
           {
             id: 'e1',
             collection_id: 'a1b2',
-            type: 'review.ai_started',
+            type: 'review.automated_started',
             actor: 'validator',
             actor_address: null,
             payload: { trigger: 'publish' },
@@ -48,10 +48,10 @@ describe('collection events and review requests', () => {
     const page = await fetchCollectionEvents(ADDRESS, 'a1b2', { page: 2, limit: 20 })
     expect(signedFetchMock.mock.calls[0][2]).toBe('/collections/a1b2/events?page=2&limit=20')
     expect(page.total).toBe(1)
-    expect(page.results[0]).toMatchObject({ type: 'review.ai_started', payload: { trigger: 'publish' } })
+    expect(page.results[0]).toMatchObject({ type: 'review.automated_started', payload: { trigger: 'publish' } })
   })
 
-  it('asks for another automatic review', async () => {
+  it('asks for another automated review', async () => {
     signedFetchMock.mockResolvedValue(jsonResponse({ ok: true }))
     await requestCollectionValidation(ADDRESS, 'a1b2')
     expect(signedFetchMock.mock.calls[0][2]).toBe('/collections/a1b2/validations')

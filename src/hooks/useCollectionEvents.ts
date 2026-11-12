@@ -124,7 +124,7 @@ function useRefreshReview(address: string | undefined) {
 
 export type RequestValidationVariables = { collection: Collection; events: CollectionEvent[] }
 
-/** The creator's "Validate again". 409 and 429 are answers the creator can act on, not failures to report. */
+/** The creator's "Review again". 409 and 429 are answers the creator can act on, not failures to report. */
 export function useRequestValidation(address: string | undefined) {
   const refresh = useRefreshReview(address)
   return useMutation({

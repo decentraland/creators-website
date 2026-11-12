@@ -333,7 +333,7 @@
     },
     "push_blocker": {
       "has_invalid_items": "Fix {count, plural, one {# item} other {# items}} marked in red before sending for review.",
-      "reviewing": "Your collection is being reviewed automatically. You can publish changes once it finishes (about 5 minutes)."
+      "reviewing": "Your collection is in automated review. You can publish changes once it finishes (about 5 minutes)."
     }
   },
   "publish_collection_modal": {
@@ -996,7 +996,7 @@
         "pending": "Enabling third party…"
       }
     },
-    "read_only_reviewing": "This item is read-only while the automatic review of the collection runs (about 5 minutes)."
+    "read_only_reviewing": "This item is read-only while the collection's automated review runs (about 5 minutes)."
   },
   "zoom_controls": {
     "in": "Zoom in",
@@ -2057,15 +2057,15 @@
   },
   "review_flow": {
     "notice": {
-      "ai_reviewing": "We're checking your collection automatically. This usually takes a few minutes.",
-      "awaiting_curator": "Automatic checks passed. A curator will review your collection next.",
-      "awaiting_curator_assigned": "Automatic checks passed. A curator is reviewing your collection.",
+      "automated_reviewing": "We're running an automated review of your collection. This usually takes a few minutes.",
+      "awaiting_curator": "Automated review passed. A curator will review your collection next.",
+      "awaiting_curator_assigned": "Automated review passed. A curator is reviewing your collection.",
       "human_review": "A curator will review your collection.",
-      "unsupported_items": "Some items can't be reviewed automatically. A curator will review your collection.",
+      "unsupported_items": "Some items can't go through the automated review. A curator will review your collection.",
       "appealed": "You asked for a human review. A curator will look at your collection.",
-      "validator_failed": "The automatic review couldn't check your collection. A curator will review it.",
-      "too_large": "Your collection is too large for the automatic review. A curator will review it.",
-      "rejected_by_validator": "The automatic review found issues in your items. Fix them and validate again, or ask a curator to review your collection.",
+      "validator_failed": "The automated review couldn't check your collection. A curator will review it.",
+      "too_large": "Your collection is too large for the automated review. A curator will review it.",
+      "rejected_by_validator": "The automated review found issues in your items. Fix them and review again, or ask a curator to review your collection.",
       "rejected_by_curator": "A curator rejected your collection. Fix what they pointed out and publish your changes, or ask for another review."
     },
     "reviewing": {
@@ -2101,20 +2101,20 @@
       "title": "Your collection needs an additional review",
       "description": "Some content in your collection requires a closer look. We've sent it to a Decentraland curator for review, which may take up to 48 hours. We'll notify you once it's approved or if any changes are needed."
     },
-    "validate_again": "Validate again ({left} of {max} left today)",
+    "validate_again": "Review again ({left} of {max} left today)",
     "request_review": "Request curator review",
     "running": "A review is already running. Try again when it finishes.",
-    "nothing_to_validate": "There's nothing new to review automatically. Edit an item and publish your changes, or request a curator review.",
+    "nothing_to_validate": "There's nothing new for the automated review. Edit an item and publish your changes, or request a curator review.",
     "busy": "The collection is being updated, try again in a moment.",
     "appeal_open": "A curator review was already requested for this collection.",
     "appeal_error": "We couldn't send your request. Please try again.",
-    "validation_started": "Automatic review started. We'll update this page when it finishes.",
-    "validation_error": "We couldn't start the automatic review. Please try again."
+    "validation_started": "Automated review started. We'll update this page when it finishes.",
+    "validation_error": "We couldn't start the automated review. Please try again."
   },
   "review_stage": {
-    "ai_reviewing": "AI reviewing",
+    "automated_reviewing": "In automated review",
     "awaiting_curator": "Passed, awaiting curator",
-    "rejected_by_validator": "Rejected by validator",
+    "rejected_by_validator": "Automated review: issues found",
     "appealed": "Appealed",
     "rejected_by_curator": "Rejected by curator",
     "approved": "Approved",
@@ -2148,8 +2148,8 @@
     "item_unchecked": "Not checked",
     "unknown_item": "Item {id}",
     "visual_summary": "Visual review",
-    "item_unsupported": "Can't be checked automatically",
-    "item_error": "Couldn't be validated: {error}",
+    "item_unsupported": "Not covered by the automated review",
+    "item_error": "The automated review couldn't check it: {error}",
     "body_shape": {
       "male": "Male",
       "female": "Female"
@@ -2168,9 +2168,9 @@
     "error": "We couldn't reject the collection. Please try again.",
     "success": "{collection} was rejected"
   },
-  "ai_verdict": {
-    "button": "AI verdict",
-    "title": "Automatic review",
+  "automated_verdict": {
+    "button": "Automated review results",
+    "title": "Automated review",
     "passed": "Passed {time}",
     "rejected": "Rejected {time}",
     "summary": "{failed, plural, =0 {Every item passed} one {# item failed} other {# items failed}} · {errors, plural, one {# error} other {# errors}} · {warnings, plural, one {# warning} other {# warnings}}",
@@ -2186,7 +2186,6 @@
     "retry": "Try again",
     "load_more": "Load more",
     "actor": {
-      "validator": "Validator",
       "system": "System"
     },
     "trigger": {
@@ -2198,12 +2197,12 @@
     "event": {
       "collection.published": "published the collection",
       "review.human_required": "Sent to the curation committee (third-party collection)",
-      "review.human_required_unsupported": "Some items can't be reviewed automatically, a curator will review them",
-      "review.ai_started": "Automatic review started ({trigger})",
-      "review.ai_passed": "Automatic review passed",
-      "review.ai_rejected": "Automatic review found issues in {count, plural, one {# item} other {# items}}",
-      "review.ai_error": "Automatic review restarted",
-      "review.ai_error_curator": "Automatic review failed and will be retried",
+      "review.human_required_unsupported": "Some items can't go through the automated review, a curator will review them",
+      "review.automated_started": "Automated review started ({trigger})",
+      "review.automated_passed": "Automated review passed",
+      "review.automated_rejected": "Automated review found issues in {count, plural, one {# item} other {# items}}",
+      "review.automated_error": "Automated review restarted",
+      "review.automated_error_curator": "Automated review failed and will be retried",
       "review.appeal_requested": "requested a human review",
       "review.assigned": "assigned the review to {assignee}",
       "review.unassigned": "unassigned the review",
@@ -2213,9 +2212,9 @@
       "collection.disabled": "disabled the collection",
       "unknown": "{type}",
       "review": {
-        "ai_error_exhausted": "Automatic review gave up after several tries, a curator will review the collection",
-        "ai_error_too_large": "The collection is too large for the automatic review, a curator will review it",
-        "human_required_validator_error": "The automatic review couldn't check the collection, a curator will review it"
+        "automated_error_exhausted": "Automated review gave up after several tries, a curator will review the collection",
+        "automated_error_too_large": "The collection is too large for the automated review, a curator will review it",
+        "human_required_validator_error": "The automated review couldn't check the collection, a curator will review it"
       }
     },
     "show_findings": "Show findings",

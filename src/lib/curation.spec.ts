@@ -370,57 +370,57 @@ describe('getReviewStage', () => {
   const approvedOnChain = collection({ isApproved: true })
 
   it.each([
-    ['nothing without a request', collection(), null, [event('review.ai_started')], null],
+    ['nothing without a request', collection(), null, [event('review.automated_started')], null],
     ['nothing without a timeline', collection(), curation(), null, null],
     [
-      'AI reviewing while the validator works',
+      'in automated review while the validator works',
       collection(),
       curation(),
-      [event('review.ai_started')],
-      ReviewStage.AI_REVIEWING
+      [event('review.automated_started')],
+      ReviewStage.AUTOMATED_REVIEWING
     ],
     [
-      'still AI reviewing after a validator error',
+      'still in automated review after a validator error',
       collection(),
       curation(),
-      [event('review.ai_error')],
-      ReviewStage.AI_REVIEWING
+      [event('review.automated_error')],
+      ReviewStage.AUTOMATED_REVIEWING
     ],
     [
-      'awaiting a curator once the AI passed',
+      'awaiting a curator once the automated review passed',
       collection(),
       curation(),
-      [event('review.ai_passed')],
+      [event('review.automated_passed')],
       ReviewStage.AWAITING_CURATOR
     ],
     [
-      'needing a curator when a third-party collection skips the AI',
+      'needing a curator when a third-party collection skips the automated review',
       collection(),
       curation(),
-      [event('review.human_required'), event('review.ai_error'), event('review.ai_started')],
+      [event('review.human_required'), event('review.automated_error'), event('review.automated_started')],
       ReviewStage.NEEDS_CURATOR
     ],
     [
       'needing a curator once the server gives up resending',
       collection(),
       curation(),
-      [event('review.ai_error', { reason: 'sweep_exhausted' }), event('review.ai_error')],
+      [event('review.automated_error', { reason: 'sweep_exhausted' }), event('review.automated_error')],
       ReviewStage.NEEDS_CURATOR
     ],
     [
       'needing a curator for a collection too large to send',
       collection(),
       curation(),
-      [event('review.ai_error', { reason: 'too_large' }), event('review.ai_started')],
+      [event('review.automated_error', { reason: 'too_large' }), event('review.automated_started')],
       ReviewStage.NEEDS_CURATOR
     ],
     ['appealed', collection(), curation(), [event('review.appeal_requested')], ReviewStage.APPEALED],
     [
-      'AI reviewing again after a retry: the server opens a new pending request over the rejected one',
+      'in automated review again after a retry: the server opens a new pending request over the rejected one',
       collection(),
       curation(),
-      [event('review.ai_started'), event('review.ai_rejected')],
-      ReviewStage.AI_REVIEWING
+      [event('review.automated_started'), event('review.automated_rejected')],
+      ReviewStage.AUTOMATED_REVIEWING
     ],
     [
       'appealed after a rejection: the appeal also reopens the request as pending',
@@ -441,7 +441,7 @@ describe('getReviewStage', () => {
       'awaiting a curator through a later assignment',
       collection(),
       curation({ assignee: '0xc' }),
-      [event('review.assigned'), event('changes.submitted'), event('review.ai_passed')],
+      [event('review.assigned'), event('changes.submitted'), event('review.automated_passed')],
       ReviewStage.AWAITING_CURATOR
     ],
     [
@@ -455,7 +455,7 @@ describe('getReviewStage', () => {
       'rejected by the validator',
       collection(),
       curation({ status: 'rejected', reviewedBy: 'validator' }),
-      [event('review.ai_rejected')],
+      [event('review.automated_rejected')],
       ReviewStage.REJECTED_BY_VALIDATOR
     ],
     [

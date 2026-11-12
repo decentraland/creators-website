@@ -7,7 +7,7 @@ import { Modal } from '~/components/Modal'
 import { countFailedItems, type CollectionEvent, type ValidationVerdictPayload } from '~/lib/events'
 import { type Item } from '~/lib/items'
 import { formatTimeAgo } from '~/lib/time'
-import * as S from './AiVerdictModal.styles'
+import * as S from './AutomatedVerdictModal.styles'
 
 type Props = {
   verdict: CollectionEvent & { payload: ValidationVerdictPayload }
@@ -16,7 +16,7 @@ type Props = {
 }
 
 /** The validator's latest verdict for the curator: per item pass/fail, findings and the visual summary. */
-export function AiVerdictModal({ verdict, items, onClose }: Props) {
+export function AutomatedVerdictModal({ verdict, items, onClose }: Props) {
   const { t } = useTranslation()
   const intl = useIntl()
   const passed = verdict.payload.verdict === 'passed'
@@ -30,28 +30,28 @@ export function AiVerdictModal({ verdict, items, onClose }: Props) {
   }, [verdict])
 
   return (
-    <Modal title={t('ai_verdict.title')} onClose={onClose} size="large" testId="ai-verdict-modal">
+    <Modal title={t('automated_verdict.title')} onClose={onClose} size="large" testId="automated-verdict-modal">
       <S.Body>
-        <S.Headline data-passed={passed} data-testid="ai-verdict-headline">
-          {t(passed ? 'ai_verdict.passed' : 'ai_verdict.rejected', {
+        <S.Headline data-passed={passed} data-testid="automated-verdict-headline">
+          {t(passed ? 'automated_verdict.passed' : 'automated_verdict.rejected', {
             time: formatTimeAgo(verdict.createdAt, intl.locale)
           })}
         </S.Headline>
-        <S.Summary>{t('ai_verdict.summary', totals)}</S.Summary>
+        <S.Summary>{t('automated_verdict.summary', totals)}</S.Summary>
         {verdict.payload.validationId && (
-          <S.ValidationId data-testid="ai-verdict-validation-id">
-            {t('ai_verdict.validation_id', { id: verdict.payload.validationId })}
+          <S.ValidationId data-testid="automated-verdict-validation-id">
+            {t('automated_verdict.validation_id', { id: verdict.payload.validationId })}
           </S.ValidationId>
         )}
         {verdict.payload.rulesVersion && (
-          <S.ValidationId data-testid="ai-verdict-rules-version">
-            {t('ai_verdict.rules_version', { version: verdict.payload.rulesVersion })}
+          <S.ValidationId data-testid="automated-verdict-rules-version">
+            {t('automated_verdict.rules_version', { version: verdict.payload.rulesVersion })}
           </S.ValidationId>
         )}
-        <ItemFindingsList results={verdict.payload.items} items={items} showErrors testId="ai-verdict-items" />
+        <ItemFindingsList results={verdict.payload.items} items={items} showErrors testId="automated-verdict-items" />
         <S.Actions>
           <Button type="button" variant="secondary" onClick={onClose}>
-            {t('ai_verdict.close')}
+            {t('automated_verdict.close')}
           </Button>
         </S.Actions>
       </S.Body>

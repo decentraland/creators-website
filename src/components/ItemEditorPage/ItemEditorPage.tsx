@@ -50,7 +50,7 @@ import {
 import { parseUuidParam } from '~/lib/ids'
 import { ReviewStage, getCurationState, getReviewStage, curationListUrl } from '~/lib/curation'
 import { useCollectionEvents } from '~/hooks/useCollectionEvents'
-import { getAiIssuesByItem } from '~/lib/events'
+import { getAutomatedIssuesByItem } from '~/lib/events'
 import { toFileChangeSaveable, toPreviewItem, toSaveableItem, type ItemFileChange } from '~/lib/itemDraft'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
 import { pickFiles } from '~/lib/filePicker'
@@ -158,7 +158,7 @@ const ItemEditorPage = () => {
   const collection = collectionQuery.data
   // Linked collections have no owner: their third party's managers are who works on them.
   const hasRole = !!collection && (isLinked ? isManager : hasCollectionRole(collection, address))
-  // The automatic review locks the items it judges and dresses them with its findings.
+  // The automated review locks the items it judges and dresses them with its findings.
   const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION).enabled
   const reviewCuration = useCollectionCuration(
     mode === 'review' || (canReadCuration && autoCuration) ? address : undefined,
@@ -169,9 +169,9 @@ const ItemEditorPage = () => {
     () => (collection ? getReviewStage(collection, reviewCuration.data ?? null, reviewEvents) : null),
     [collection, reviewCuration.data, reviewEvents]
   )
-  const reviewLocked = reviewStage === ReviewStage.AI_REVIEWING
-  const aiIssues = useMemo(
-    () => getAiIssuesByItem(reviewEvents ?? [], itemsQuery.data ?? EMPTY_ITEMS),
+  const reviewLocked = reviewStage === ReviewStage.AUTOMATED_REVIEWING
+  const automatedIssues = useMemo(
+    () => getAutomatedIssuesByItem(reviewEvents ?? [], itemsQuery.data ?? EMPTY_ITEMS),
     [reviewEvents, itemsQuery.data]
   )
   const items = itemsQuery.data ?? EMPTY_ITEMS
@@ -276,10 +276,10 @@ const ItemEditorPage = () => {
     }
   }, [previewSelected])
   const validationIssues = useMemo(() => {
-    const ai = selectedId ? aiIssues.get(selectedId) : undefined
-    if (!validation.data && !thumbnailValidation.data && !ai) return undefined
-    return [...(validation.data?.issues ?? []), ...(thumbnailValidation.data?.issues ?? []), ...(ai ?? [])]
-  }, [validation.data, thumbnailValidation.data, aiIssues, selectedId])
+    const automated = selectedId ? automatedIssues.get(selectedId) : undefined
+    if (!validation.data && !thumbnailValidation.data && !automated) return undefined
+    return [...(validation.data?.issues ?? []), ...(thumbnailValidation.data?.issues ?? []), ...(automated ?? [])]
+  }, [validation.data, thumbnailValidation.data, automatedIssues, selectedId])
   const validationStatus = useMemo(
     () => getValidationStatus(validationIssues, validation.isLoading || thumbnailValidation.isLoading),
     [validationIssues, validation.isLoading, thumbnailValidation.isLoading]

@@ -132,7 +132,7 @@ describe('fetchItemCurations', () => {
   })
 })
 
-describe('review requests under the automatic review', () => {
+describe('review requests under the automated review', () => {
   it("turns the daily limit on a creator's request into the daily-limit error", async () => {
     signedFetchMock.mockResolvedValue(
       jsonResponse({ ok: false, error: 'Too many attempts', data: { retryAt: '2026-09-30T00:00:00Z' } }, false, 429)

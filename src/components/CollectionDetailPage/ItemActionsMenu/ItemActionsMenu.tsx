@@ -36,7 +36,7 @@ type Props = {
   sync?: ItemSync
   /** The item's primary listing, when the collection is on the market: `null` when not on sale. */
   listing?: ItemListing | null
-  /** An automatic review is judging the collection's content: resetting it would change what is judged. */
+  /** An automated review is judging the collection's content: resetting it would change what is judged. */
   reviewLocked?: boolean
 }
 

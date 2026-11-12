@@ -74,7 +74,7 @@ export async function pushCollectionCuration(
     )
     return fromRemoteCuration(remote)
   } catch (error) {
-    // A creator's changes wait for the day's automatic reviews like a retry does.
+    // A creator's changes wait for the day's automated reviews like a retry does.
     throw toValidationLimitError(error)
   }
 }

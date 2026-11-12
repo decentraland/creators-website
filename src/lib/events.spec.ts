@@ -4,7 +4,7 @@ import { ValidationSeverity } from '~/lib/validation'
 import {
   countValidationAttempts,
   fromRemoteEvent,
-  getAiIssuesByItem,
+  getAutomatedIssuesByItem,
   getFailedItems,
   getLatestVerdict,
   getValidationAttemptsLeft,
@@ -53,13 +53,13 @@ describe('fromRemoteEvent', () => {
 describe('countValidationAttempts', () => {
   it('counts the runs the creator caused, never the sweep re-sends nor the verdicts', () => {
     const events = [
-      event('review.ai_started', NOW, { trigger: 'sweep' }),
-      event('review.ai_rejected', NOW - 1000),
-      event('review.ai_started', NOW - 2000, { trigger: 'retry' }),
-      event('review.ai_error', NOW - 3000),
-      event('review.ai_started', NOW - 4000, { trigger: 'changes' }),
-      event('review.ai_passed', NOW - 5000),
-      event('review.ai_started', NOW - 6000, { trigger: 'publish' })
+      event('review.automated_started', NOW, { trigger: 'sweep' }),
+      event('review.automated_rejected', NOW - 1000),
+      event('review.automated_started', NOW - 2000, { trigger: 'retry' }),
+      event('review.automated_error', NOW - 3000),
+      event('review.automated_started', NOW - 4000, { trigger: 'changes' }),
+      event('review.automated_passed', NOW - 5000),
+      event('review.automated_started', NOW - 6000, { trigger: 'publish' })
     ]
     expect(countValidationAttempts(events, NOW)).toBe(3)
     expect(getValidationAttemptsLeft(events, NOW)).toBe(0)
@@ -67,23 +67,26 @@ describe('countValidationAttempts', () => {
 
   it("doesn't count a run whose request never reached the validator", () => {
     const events = [
-      event('review.ai_error', NOW, { reason: 'publish_failed' }),
-      event('review.ai_started', NOW - 1, { trigger: 'retry' }),
-      event('review.ai_started', NOW - 1000, { trigger: 'publish' })
+      event('review.automated_error', NOW, { reason: 'publish_failed' }),
+      event('review.automated_started', NOW - 1, { trigger: 'retry' }),
+      event('review.automated_started', NOW - 1000, { trigger: 'publish' })
     ]
     expect(countValidationAttempts(events, NOW)).toBe(1)
   })
 
   it('reads one review used right after publishing', () => {
-    const events = [event('review.ai_started', NOW, { trigger: 'publish' }), event('collection.published', NOW - 1)]
+    const events = [
+      event('review.automated_started', NOW, { trigger: 'publish' }),
+      event('collection.published', NOW - 1)
+    ]
     expect(countValidationAttempts(events, NOW)).toBe(1)
     expect(getValidationAttemptsLeft(events, NOW)).toBe(2)
   })
 
   it('resets at 00:00 UTC', () => {
     const events = [
-      event('review.ai_started', TODAY + 1, { trigger: 'retry' }),
-      event('review.ai_started', TODAY - 1, { trigger: 'retry' })
+      event('review.automated_started', TODAY + 1, { trigger: 'retry' }),
+      event('review.automated_started', TODAY - 1, { trigger: 'retry' })
     ]
     expect(startOfUtcDay(NOW)).toBe(TODAY)
     expect(countValidationAttempts(events, NOW)).toBe(1)
@@ -91,21 +94,21 @@ describe('countValidationAttempts', () => {
 
   it('resets after a curator decision', () => {
     const events = [
-      event('review.ai_started', NOW - 1000, { trigger: 'retry' }),
+      event('review.automated_started', NOW - 1000, { trigger: 'retry' }),
       event('review.approved', NOW - 2000),
-      event('review.ai_started', NOW - 3000, { trigger: 'retry' }),
-      event('review.ai_started', NOW - 4000, { trigger: 'publish' })
+      event('review.automated_started', NOW - 3000, { trigger: 'retry' }),
+      event('review.automated_started', NOW - 4000, { trigger: 'publish' })
     ]
     expect(countValidationAttempts(events, NOW)).toBe(1)
   })
 
   it('clamps the attempts left at zero', () => {
-    const events = Array.from({ length: 4 }, (_, i) => event('review.ai_started', NOW - i, { trigger: 'retry' }))
+    const events = Array.from({ length: 4 }, (_, i) => event('review.automated_started', NOW - i, { trigger: 'retry' }))
     expect(getValidationAttemptsLeft(events, NOW)).toBe(0)
   })
 })
 
-describe('getAiIssuesByItem', () => {
+describe('getAutomatedIssuesByItem', () => {
   const finding: ValidationFinding = {
     rule: 'M-01',
     check: 'Triangle count',
@@ -118,7 +121,7 @@ describe('getAiIssuesByItem', () => {
 
   it("dresses the newest rejection's findings per failed item like the browser's checks", () => {
     const events = [
-      event('review.ai_rejected', NOW, {
+      event('review.automated_rejected', NOW, {
         verdict: 'rejected',
         items: [
           { itemId: 'i1', contentHash: 'h', passed: false, findings: [finding] },
@@ -127,7 +130,7 @@ describe('getAiIssuesByItem', () => {
         ]
       })
     ]
-    const issues = getAiIssuesByItem(events, [])
+    const issues = getAutomatedIssuesByItem(events, [])
     expect([...issues.keys()]).toEqual(['i1'])
     expect(issues.get('i1')).toEqual([
       {
@@ -143,11 +146,13 @@ describe('getAiIssuesByItem', () => {
 
   it('shows nothing after a pass, without a verdict, or for items edited while the validator ran', () => {
     const rejected = { itemId: 'i1', contentHash: 'h', passed: false, findings: [finding] }
-    expect(getAiIssuesByItem([event('review.ai_passed', NOW, { verdict: 'passed', items: [] })], []).size).toBe(0)
-    expect(getAiIssuesByItem([event('review.ai_started', NOW)], []).size).toBe(0)
     expect(
-      getAiIssuesByItem(
-        [event('review.ai_rejected', NOW, { verdict: 'rejected', items: [rejected], staleItemIds: ['i1'] })],
+      getAutomatedIssuesByItem([event('review.automated_passed', NOW, { verdict: 'passed', items: [] })], []).size
+    ).toBe(0)
+    expect(getAutomatedIssuesByItem([event('review.automated_started', NOW)], []).size).toBe(0)
+    expect(
+      getAutomatedIssuesByItem(
+        [event('review.automated_rejected', NOW, { verdict: 'rejected', items: [rejected], staleItemIds: ['i1'] })],
         []
       ).size
     ).toBe(0)
@@ -155,47 +160,47 @@ describe('getAiIssuesByItem', () => {
 
   it('drops the findings of an item saved since the run, and keeps them while its content is the one judged', () => {
     const rejected = [
-      event('review.ai_rejected', NOW, {
+      event('review.automated_rejected', NOW, {
         verdict: 'rejected',
         items: [{ itemId: 'i1', contentHash: 'judged', passed: false, findings: [finding] }]
       })
     ]
-    expect(getAiIssuesByItem(rejected, [{ id: 'i1', currentContentHash: 'fixed' }]).size).toBe(0)
-    expect(getAiIssuesByItem(rejected, [{ id: 'i1', currentContentHash: 'judged' }]).size).toBe(1)
-    expect(getAiIssuesByItem(rejected, [{ id: 'i1', currentContentHash: undefined }]).size).toBe(1)
+    expect(getAutomatedIssuesByItem(rejected, [{ id: 'i1', currentContentHash: 'fixed' }]).size).toBe(0)
+    expect(getAutomatedIssuesByItem(rejected, [{ id: 'i1', currentContentHash: 'judged' }]).size).toBe(1)
+    expect(getAutomatedIssuesByItem(rejected, [{ id: 'i1', currentContentHash: undefined }]).size).toBe(1)
   })
 
   it('reads a malformed item without findings as having none', () => {
     const events = [
-      event('review.ai_rejected', NOW, {
+      event('review.automated_rejected', NOW, {
         verdict: 'rejected',
         items: [{ itemId: 'i1', contentHash: 'h', passed: false } as unknown as ValidationItemResult]
       })
     ]
-    expect(getAiIssuesByItem(events, []).size).toBe(0)
+    expect(getAutomatedIssuesByItem(events, []).size).toBe(0)
   })
 
   it('drops the findings once a curator approves after the run, as on an appeal', () => {
     const events = [
       event('review.approved', NOW),
       event('review.appeal_requested', NOW - 1_000),
-      event('review.ai_rejected', NOW - 2_000, {
+      event('review.automated_rejected', NOW - 2_000, {
         verdict: 'rejected',
         items: [{ itemId: 'i1', contentHash: 'h', passed: false, findings: [finding] }]
       })
     ]
-    expect(getAiIssuesByItem(events, []).size).toBe(0)
+    expect(getAutomatedIssuesByItem(events, []).size).toBe(0)
   })
 
   it("keeps the findings when a curator confirms the validator's rejection: they still say what to fix", () => {
     const events = [
       event('review.rejected', NOW),
-      event('review.ai_rejected', NOW - 2_000, {
+      event('review.automated_rejected', NOW - 2_000, {
         verdict: 'rejected',
         items: [{ itemId: 'i1', contentHash: 'h', passed: false, findings: [finding] }]
       })
     ]
-    expect([...getAiIssuesByItem(events, []).keys()]).toEqual(['i1'])
+    expect([...getAutomatedIssuesByItem(events, []).keys()]).toEqual(['i1'])
   })
 })
 
@@ -204,51 +209,57 @@ describe('getLatestVerdict', () => {
     const items = [{ itemId: 'i1', contentHash: 'h', passed: false, findings: [] }]
     const events = [
       event('review.appeal_requested', NOW),
-      event('review.ai_rejected', NOW - 1000, { verdict: 'rejected', items }),
-      event('review.ai_passed', NOW - 2000, { verdict: 'passed', items: [] })
+      event('review.automated_rejected', NOW - 1000, { verdict: 'rejected', items }),
+      event('review.automated_passed', NOW - 2000, { verdict: 'passed', items: [] })
     ]
     const verdict = getLatestVerdict(events)
     expect(verdict?.payload.verdict).toBe('rejected')
     expect(getFailedItems(verdict!.payload)).toEqual(items)
-    expect(getLatestVerdict([event('review.ai_started', NOW)])).toBeNull()
+    expect(getLatestVerdict([event('review.automated_started', NOW)])).toBeNull()
   })
 
   it('reads an item without findings as one with none, so every consumer can list them', () => {
     // A row as an older server wrote it: the item carries no findings list.
     const items = [{ itemId: 'i1', contentHash: 'h', passed: false }] as unknown as ValidationItemResult[]
-    const verdict = getLatestVerdict([event('review.ai_rejected', NOW, { verdict: 'rejected', items })])
+    const verdict = getLatestVerdict([event('review.automated_rejected', NOW, { verdict: 'rejected', items })])
     expect(verdict?.payload.items[0].findings).toEqual([])
   })
 
   it('fills in the verdict from the event type when the payload lacks it', () => {
-    expect(getLatestVerdict([event('review.ai_passed', NOW, { items: [] })])?.payload.verdict).toBe('passed')
+    expect(getLatestVerdict([event('review.automated_passed', NOW, { items: [] })])?.payload.verdict).toBe('passed')
   })
 })
 
 describe('latest-event flags', () => {
   it('knows when a validation is running and when an appeal is open', () => {
-    expect(isValidationInProgress([event('review.assigned', NOW), event('review.ai_started', NOW - 1)])).toBe(true)
-    expect(isValidationInProgress([event('review.ai_rejected', NOW)])).toBe(false)
+    expect(isValidationInProgress([event('review.assigned', NOW), event('review.automated_started', NOW - 1)])).toBe(
+      true
+    )
+    expect(isValidationInProgress([event('review.automated_rejected', NOW)])).toBe(false)
     expect(hasOpenAppeal([event('review.appeal_requested', NOW)])).toBe(true)
     expect(hasOpenAppeal([])).toBe(false)
   })
 
   it('keeps a verdict pending through a validator error and an assignment, until it lands', () => {
-    expect(isValidationInProgress([event('review.assigned', NOW), event('review.ai_error', NOW - 1)])).toBe(true)
-    expect(isValidationInProgress([event('review.ai_started', NOW)])).toBe(true)
-    expect(isValidationInProgress([event('review.ai_rejected', NOW), event('review.ai_started', NOW - 1)])).toBe(false)
+    expect(isValidationInProgress([event('review.assigned', NOW), event('review.automated_error', NOW - 1)])).toBe(true)
+    expect(isValidationInProgress([event('review.automated_started', NOW)])).toBe(true)
+    expect(
+      isValidationInProgress([event('review.automated_rejected', NOW), event('review.automated_started', NOW - 1)])
+    ).toBe(false)
   })
 
   it('stops waiting once the server gave up on the request', () => {
     for (const reason of ['sweep_exhausted', 'too_large']) {
-      const gaveUp = event('review.ai_error', NOW, { reason, validationId: 'v1' })
+      const gaveUp = event('review.automated_error', NOW, { reason, validationId: 'v1' })
       expect(isFinalValidationError(gaveUp)).toBe(true)
       expect(isValidationInProgress([event('review.assigned', NOW), gaveUp])).toBe(false)
     }
     const validatorError = event('review.human_required', NOW, { reason: 'validator_error' })
     expect(isFinalValidationError(validatorError)).toBe(true)
     expect(isFinalValidationError(event('review.human_required', NOW, { reason: 'third_party' }))).toBe(false)
-    expect(isFinalValidationError(event('review.ai_error', NOW, { verdict: 'error', retryable: true }))).toBe(false)
+    expect(isFinalValidationError(event('review.automated_error', NOW, { verdict: 'error', retryable: true }))).toBe(
+      false
+    )
   })
 })
 

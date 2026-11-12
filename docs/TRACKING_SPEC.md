@@ -189,7 +189,7 @@ Committee actions keep the legacy names (the on-chain disable was "Reject collec
 | `Assign curator error` |  | `collectionId`, `error` |
 | `Reject curation` | a review request was rejected | `collectionId`, `first_review`, `reasons` (the reason codes, empty without the reasons form) |
 | `Reject curation error` |  | `collectionId`, `error` |
-| `Request validation` | the creator asked for another automatic review (**Validate again**) and builder-server accepted it | `collectionId`, `attempts_left` (after this one) |
+| `Request validation` | the creator asked for another automated review (**Review again**) and builder-server accepted it | `collectionId`, `attempts_left` (after this one) |
 | `Request validation error` | the request failed, 429 and 409 included (they are answers, not Sentry errors) | `collectionId`, `error` |
 | `Appeal curation` | the creator asked for a curator review of a rejected collection and builder-server accepted it | `collectionId` |
 | `Appeal curation error` |  | `collectionId`, `error` |

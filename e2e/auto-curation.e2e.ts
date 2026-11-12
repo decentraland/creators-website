@@ -38,12 +38,12 @@ const event = (
   created_at: createdAt
 })
 
-const start = event('review.ai_started', minutesAgo(20), {
+const start = event('review.automated_started', minutesAgo(20), {
   validationId: 'v1',
   trigger: 'publish',
   itemIds: [hat.id]
 })
-const rejection = event('review.ai_rejected', minutesAgo(15), {
+const rejection = event('review.automated_rejected', minutesAgo(15), {
   validationId: 'v1',
   verdict: 'rejected',
   rulesVersion: '0.7.0',
@@ -70,7 +70,7 @@ const curation = (overrides: Partial<RemoteCurationRow>): RemoteCurationRow => (
 })
 const rejectedByValidator = curation({ status: 'rejected', reviewed_by: 'validator' })
 
-describe('automatic review', () => {
+describe('automated review', () => {
   it("shows the validator's findings once and sends the collection to a curator on request", async () => {
     const builder = {
       collections: [collection],
@@ -81,15 +81,15 @@ describe('automatic review', () => {
     app = await launchApp({ path: `/collections/${collection.id}`, builder, flags: FLAGS })
     const { page } = app
 
-    await waitForTestId(page, 'ai-issues-modal', 30_000)
-    await waitForTestId(page, `ai-issues-${hat.id}-card`)
-    await clickTestId(page, 'ai-issues-back')
-    await page.waitForFunction(() => !document.querySelector('[data-testid="ai-issues-modal"]'))
+    await waitForTestId(page, 'automated-issues-modal', 30_000)
+    await waitForTestId(page, `automated-issues-${hat.id}-card`)
+    await clickTestId(page, 'automated-issues-back')
+    await page.waitForFunction(() => !document.querySelector('[data-testid="automated-issues-modal"]'))
 
     // Seen once: while the rejection still stands, a reload shows the page, not the same verdict again.
     await page.reload({ waitUntil: 'networkidle2' })
     await waitForTestId(page, 'review-notice', 30_000)
-    expect(await isShown(page, 'ai-issues-modal')).toBe(false)
+    expect(await isShown(page, 'automated-issues-modal')).toBe(false)
 
     const chip = await waitForTestId(page, 'item-row-validation')
     expect(await chip.evaluate(el => el.getAttribute('data-status'))).toBe('errors')
@@ -104,18 +104,20 @@ describe('automatic review', () => {
     await app.waitForEvent('Appeal curation', { collectionId: collection.id })
   })
 
-  it('pauses item editing while the automatic review runs', async () => {
+  it('pauses item editing while the automated review runs', async () => {
     const builder = {
       collections: [collection],
       items: [hat],
       curations: [curation({ updated_at: minutesAgo(1) })],
-      events: [event('review.ai_started', minutesAgo(1), { validationId: 'v2', trigger: 'publish', itemIds: [hat.id] })]
+      events: [
+        event('review.automated_started', minutesAgo(1), { validationId: 'v2', trigger: 'publish', itemIds: [hat.id] })
+      ]
     }
     app = await launchApp({ path: `/collections/${collection.id}`, builder, flags: FLAGS })
     const { page } = app
 
     const notice = await waitForTestId(page, 'review-notice', 30_000)
-    expect(await notice.evaluate(el => el.getAttribute('data-stage'))).toBe('ai_reviewing')
+    expect(await notice.evaluate(el => el.getAttribute('data-stage'))).toBe('automated_reviewing')
     await waitForTestId(page, 'item-row')
     expect(await isShown(page, 'item-row-edit-name')).toBe(false)
     expect(await isShown(page, 'item-row-edit-thumbnail')).toBe(false)
@@ -138,10 +140,10 @@ describe('automatic review', () => {
     const { page } = app
 
     await waitForTestId(page, 'review-bar', 30_000)
-    await clickTestId(page, 'review-ai-verdict')
-    const headline = await waitForTestId(page, 'ai-verdict-headline')
+    await clickTestId(page, 'review-automated-verdict')
+    const headline = await waitForTestId(page, 'automated-verdict-headline')
     expect(await headline.evaluate(el => el.getAttribute('data-passed'))).toBe('false')
-    await clickTestId(page, 'ai-verdict-modal-close')
+    await clickTestId(page, 'automated-verdict-modal-close')
 
     await page.waitForFunction(
       () => !document.querySelector<HTMLButtonElement>('[data-testid="review-action-reject"]')?.disabled

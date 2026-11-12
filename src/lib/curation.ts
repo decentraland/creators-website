@@ -23,7 +23,7 @@ export type RemoteCollectionCuration = {
   updated_at: string
 }
 
-/** `reviewed_by` value when the automatic review, not a committee member, decided. */
+/** `reviewed_by` value when the automated review, not a committee member, decided. */
 const VALIDATOR_REVIEWER = 'validator'
 
 export type CollectionCuration = {
@@ -59,7 +59,7 @@ export function fromRemoteCuration(remote: RemoteCollectionCuration): Collection
 }
 
 export enum ReviewStage {
-  AI_REVIEWING = 'ai_reviewing',
+  AUTOMATED_REVIEWING = 'automated_reviewing',
   AWAITING_CURATOR = 'awaiting_curator',
   /** The validator did not pass it (skipped, could not check, or gave up): a curator decides. */
   NEEDS_CURATOR = 'needs_curator',
@@ -88,11 +88,11 @@ export function getReviewStage(
   }
   const latest = latestStageEvent(events)
   switch (latest?.type) {
-    case 'review.ai_started':
-      return ReviewStage.AI_REVIEWING
-    case 'review.ai_error':
-      return isFinalValidationError(latest) ? ReviewStage.NEEDS_CURATOR : ReviewStage.AI_REVIEWING
-    case 'review.ai_passed':
+    case 'review.automated_started':
+      return ReviewStage.AUTOMATED_REVIEWING
+    case 'review.automated_error':
+      return isFinalValidationError(latest) ? ReviewStage.NEEDS_CURATOR : ReviewStage.AUTOMATED_REVIEWING
+    case 'review.automated_passed':
       return ReviewStage.AWAITING_CURATOR
     case 'review.human_required':
       return ReviewStage.NEEDS_CURATOR
@@ -103,7 +103,7 @@ export function getReviewStage(
   }
 }
 
-/** Stages in which the creator may ask for another automatic review or a human one. */
+/** Stages in which the creator may ask for another automated review or a human one. */
 export function isRejectedStage(stage: ReviewStage | null): boolean {
   return stage === ReviewStage.REJECTED_BY_VALIDATOR || stage === ReviewStage.REJECTED_BY_CURATOR
 }

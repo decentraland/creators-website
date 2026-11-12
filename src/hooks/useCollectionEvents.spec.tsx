@@ -23,7 +23,7 @@ const collection = { id: 'c1', name: 'Hats', isPublished: true } as Collection
 const remote = (id: string) => ({
   id,
   collectionId: 'c1',
-  type: 'review.ai_started',
+  type: 'review.automated_started',
   actor: 'validator' as const,
   actorAddress: null,
   payload: {},

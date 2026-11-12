@@ -72,7 +72,7 @@ function event(type: string, payload: CollectionEvent['payload'] = {}, ageMs = 0
 }
 
 const verdict = () =>
-  event('review.ai_rejected', {
+  event('review.automated_rejected', {
     verdict: 'rejected',
     items: [
       {
@@ -111,45 +111,48 @@ describe('ReviewFlow', () => {
     mocks.appealError = null
   })
 
-  it('tells the creator the automatic review is running, with nothing to do', () => {
-    renderFlow(pending, [event('review.ai_started', { trigger: 'publish' })])
-    expect(screen.getByTestId('review-notice')).toHaveAttribute('data-stage', 'ai_reviewing')
+  it('tells the creator the automated review is running, with nothing to do', () => {
+    renderFlow(pending, [event('review.automated_started', { trigger: 'publish' })])
+    expect(screen.getByTestId('review-notice')).toHaveAttribute('data-stage', 'automated_reviewing')
     expect(screen.queryByTestId('validate-again')).toBeNull()
     expect(screen.queryByTestId('request-curator-review')).toBeNull()
   })
 
   it('keeps the review running through a failed send the server re-sends', () => {
-    renderFlow(pending, [event('review.ai_error', { reason: 'publish_failed' }), event('review.ai_started')])
-    expect(screen.getByTestId('review-notice')).toHaveAttribute('data-stage', 'ai_reviewing')
+    renderFlow(pending, [
+      event('review.automated_error', { reason: 'publish_failed' }),
+      event('review.automated_started')
+    ])
+    expect(screen.getByTestId('review-notice')).toHaveAttribute('data-stage', 'automated_reviewing')
   })
 
   it("opens the validator's findings once per verdict and lets the creator reopen them", () => {
     const sameVerdict = verdict()
     const { unmount } = renderFlow(rejectedByValidator, [sameVerdict])
-    expect(screen.getByTestId('ai-issues-title')).toHaveTextContent('Some items need your attention')
-    expect(screen.getByTestId('ai-issues-i1-issues')).toHaveTextContent('Too many triangles')
-    expect(screen.queryByTestId('ai-issues-i2-card')).toBeNull()
+    expect(screen.getByTestId('automated-issues-title')).toHaveTextContent('Some items need your attention')
+    expect(screen.getByTestId('automated-issues-i1-issues')).toHaveTextContent('Too many triangles')
+    expect(screen.queryByTestId('automated-issues-i2-card')).toBeNull()
     expect(mocks.track).toHaveBeenCalledWith('Review Modal Opened', {
       collectionId: 'c1',
       stage: 'rejected_by_validator',
       modal: 'issues'
     })
 
-    fireEvent.click(screen.getByTestId('ai-issues-back'))
-    expect(screen.queryByTestId('ai-issues-modal')).toBeNull()
+    fireEvent.click(screen.getByTestId('automated-issues-back'))
+    expect(screen.queryByTestId('automated-issues-modal')).toBeNull()
     unmount()
 
     renderFlow(rejectedByValidator, [sameVerdict])
-    expect(screen.queryByTestId('ai-issues-modal')).toBeNull()
+    expect(screen.queryByTestId('automated-issues-modal')).toBeNull()
     fireEvent.click(screen.getByTestId('review-see-issues'))
-    expect(screen.getByTestId('ai-issues-modal')).toBeInTheDocument()
+    expect(screen.getByTestId('automated-issues-modal')).toBeInTheDocument()
   })
 
   it('validates again with the attempts left on the button', () => {
-    renderFlow(rejectedByValidator, [verdict(), event('review.ai_started', { trigger: 'publish' }, 1000)])
-    fireEvent.click(screen.getByTestId('ai-issues-back'))
+    renderFlow(rejectedByValidator, [verdict(), event('review.automated_started', { trigger: 'publish' }, 1000)])
+    fireEvent.click(screen.getByTestId('automated-issues-back'))
     const button = screen.getByTestId('validate-again')
-    expect(button).toHaveTextContent('Validate again (2 of 3 left today)')
+    expect(button).toHaveTextContent('Review again (2 of 3 left today)')
     fireEvent.click(button)
     expect(mocks.validate).toHaveBeenCalledWith(expect.objectContaining({ collection }), expect.anything())
   })
@@ -157,12 +160,12 @@ describe('ReviewFlow', () => {
   it('opens the daily limit modal at the limit, and sends the creator to a curator from it', () => {
     const events = [
       verdict(),
-      event('review.ai_started', { trigger: 'retry' }, 1000),
-      event('review.ai_started', { trigger: 'retry' }, 2000),
-      event('review.ai_started', { trigger: 'publish' }, 3000)
+      event('review.automated_started', { trigger: 'retry' }, 1000),
+      event('review.automated_started', { trigger: 'retry' }, 2000),
+      event('review.automated_started', { trigger: 'publish' }, 3000)
     ]
     renderFlow(rejectedByValidator, events)
-    fireEvent.click(screen.getByTestId('ai-issues-back'))
+    fireEvent.click(screen.getByTestId('automated-issues-back'))
     fireEvent.click(screen.getByTestId('validate-again'))
     expect(mocks.validate).not.toHaveBeenCalled()
     expect(screen.getByTestId('daily-limit-attempts')).toHaveTextContent('3 of 3 used today')
@@ -173,8 +176,8 @@ describe('ReviewFlow', () => {
   })
 
   it('says a review is running instead of opening the limit modal while one is in progress', () => {
-    renderFlow(rejectedByValidator, [event('review.ai_started', { trigger: 'retry' }), verdict()])
-    fireEvent.click(screen.getByTestId('ai-issues-back'))
+    renderFlow(rejectedByValidator, [event('review.automated_started', { trigger: 'retry' }), verdict()])
+    fireEvent.click(screen.getByTestId('automated-issues-back'))
     fireEvent.click(screen.getByTestId('validate-again'))
     expect(mocks.validate).not.toHaveBeenCalled()
     expect(screen.queryByTestId('daily-limit-modal')).toBeNull()
@@ -182,14 +185,14 @@ describe('ReviewFlow', () => {
   })
 
   it('only asks the creator to wait when submitted changes hit the limit outside a rejection', () => {
-    renderFlow(pending, [event('review.ai_passed', { verdict: 'passed', items: [] })], { request: 'limit' })
+    renderFlow(pending, [event('review.automated_passed', { verdict: 'passed', items: [] })], { request: 'limit' })
     expect(screen.getByTestId('daily-limit-modal')).toBeInTheDocument()
     expect(screen.queryByTestId('daily-limit-request')).toBeNull()
   })
 
   it('explains a 429 and each 409 answered by the server', () => {
     renderFlow(rejectedByValidator, [verdict()])
-    fireEvent.click(screen.getByTestId('ai-issues-back'))
+    fireEvent.click(screen.getByTestId('automated-issues-back'))
     mocks.validate.mockImplementationOnce((_, { onError }) =>
       onError(new ValidationLimitError(new BuilderServerError('Limit', 429, { retryAt: '2026-09-30T00:00:00Z' })))
     )
@@ -212,7 +215,7 @@ describe('ReviewFlow', () => {
     )
     fireEvent.click(screen.getByTestId('validate-again'))
     expect(mocks.toast).toHaveBeenLastCalledWith(
-      "There's nothing new to review automatically. Edit an item and publish your changes, or request a curator review.",
+      "There's nothing new for the automated review. Edit an item and publish your changes, or request a curator review.",
       { type: 'warn' }
     )
   })
@@ -259,7 +262,7 @@ describe('ReviewFlow', () => {
 
   it('shows the reviewing and the limit modals the page asks for, once', async () => {
     const onRequestHandled = vi.fn()
-    const events = [event('review.ai_started', { trigger: 'publish' })]
+    const events = [event('review.automated_started', { trigger: 'publish' })]
     const { rerender } = renderFlow(pending, events, { request: 'reviewing', onRequestHandled })
     expect(screen.getByTestId('reviewing-attempts')).toHaveTextContent('1 of 3 used today')
     await waitFor(() => expect(onRequestHandled).toHaveBeenCalled())
@@ -283,7 +286,7 @@ describe('ReviewFlow', () => {
 
   it('offers viewers without rights neither actions nor the findings modal', () => {
     renderFlow(rejectedByValidator, [verdict()], { canManage: false })
-    expect(screen.queryByTestId('ai-issues-modal')).toBeNull()
+    expect(screen.queryByTestId('automated-issues-modal')).toBeNull()
     expect(screen.queryByTestId('validate-again')).toBeNull()
     expect(screen.getByTestId('review-notice')).toHaveAttribute('data-stage', 'rejected_by_validator')
   })

@@ -39,7 +39,7 @@ import { type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import { formatTimeAgo } from '~/lib/time'
 import { countIssues, getValidationStatus } from '~/lib/validation'
-import { AiVerdictModal } from './AiVerdictModal'
+import { AutomatedVerdictModal } from './AutomatedVerdictModal'
 import { ApprovalFlowModal } from './ApprovalFlowModal'
 import { DisableCollectionFlow } from './DisableCollectionFlow'
 import { ForumVerdictModal } from './ForumVerdictModal'
@@ -94,7 +94,7 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
   )
   const state = getCurationState(collection, curation)
   const stage = useMemo(() => getReviewStage(collection, curation, events), [collection, curation, events])
-  const aiVerdict = useMemo(() => (events ? getLatestVerdict(events) : null), [events])
+  const automatedVerdict = useMemo(() => (events ? getLatestVerdict(events) : null), [events])
   const actions = collection.isPublished ? getReviewActions(collection, curation, hasMissingEntities) : []
   const assignee = curation?.assignee ?? null
   // A first-review rejection opens the request itself, so its creation time only means something while pending.
@@ -230,15 +230,15 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
             <span data-testid="review-requested">
               {t(`item_editor.review.${timeKey}`, { time: formatTimeAgo(time, intl.locale) })}
             </span>
-            {aiVerdict && (
+            {automatedVerdict && (
               <S.AssigneeChip
                 type="button"
-                data-verdict={aiVerdict.payload.verdict}
-                data-testid="review-ai-verdict"
+                data-verdict={automatedVerdict.payload.verdict}
+                data-testid="review-automated-verdict"
                 onClick={() => setDialog('verdict')}
               >
                 <VerdictIcon fontSize="small" />
-                {t('ai_verdict.button')}
+                {t('automated_verdict.button')}
               </S.AssigneeChip>
             )}
             {assignee ? (
@@ -359,7 +359,9 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
           onClose={() => setForumVerdict(false)}
         />
       )}
-      {dialog === 'verdict' && aiVerdict && <AiVerdictModal verdict={aiVerdict} items={items} onClose={closeDialog} />}
+      {dialog === 'verdict' && automatedVerdict && (
+        <AutomatedVerdictModal verdict={automatedVerdict} items={items} onClose={closeDialog} />
+      )}
       {approval && (
         <ApprovalFlowModal
           session={session}

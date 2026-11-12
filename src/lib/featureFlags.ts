@@ -37,7 +37,7 @@ export enum FeatureFlag {
   /** The Shop also discounts MANA listings, so a discount reaches them and not only credits listings. */
   SHOP_LEGACY_COUPONS = 'shop-legacy-coupons',
   /**
-   * builder-server's automatic review of published collections: the timeline, reason-coded rejections,
+   * builder-server's automated review of published collections: the timeline, reason-coded rejections,
    * retries and appeals. Mirrors the server's flag so the app never calls what the server doesn't serve.
    */
   AUTO_CURATION = 'auto-curation'
