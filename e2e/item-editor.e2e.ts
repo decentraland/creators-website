@@ -13,6 +13,7 @@ import {
 import { launchApp, type App } from './helpers/app'
 import { FIXTURE } from './helpers/files'
 import { byTestId, clickTestId, selectOption, waitForEditor, waitForTestId, waitForToast } from './helpers/dom'
+import { BOOT_SCENE_METRICS } from './helpers/preview'
 
 let app: App | undefined
 afterEach(async () => {
@@ -32,8 +33,6 @@ async function openEditor(itemId: string): Promise<App> {
   return launched
 }
 
-// What a preview read of its model-less boot scene used to store for a real model.
-const BOOT_SCENE_METRICS = { triangles: 0, materials: 0, textures: 0, meshes: 1, bodies: 1, entities: 1 }
 const HAT_METRICS = { triangles: 540, materials: 1, textures: 1, meshes: 1, bodies: 1, entities: 1 }
 
 const metricsText = (a: App) =>
