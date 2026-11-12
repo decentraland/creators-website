@@ -4,6 +4,9 @@ import { FIXTURE } from './files'
 /** Metrics the fake renderer reports for any model, with values no fixture row uses so they can be traced. */
 export const PREVIEW_METRICS = { triangles: 1234, materials: 2, textures: 2, meshes: 1, bodies: 1, entities: 1 }
 
+/** What the renderer measures for its model-less boot scene: Babylon keeps one empty mesh, with no geometry. */
+export const BOOT_SCENE_METRICS = { triangles: 0, materials: 0, textures: 0, meshes: 1, bodies: 1, entities: 1 }
+
 export type PreviewOptions = {
   /**
    * Holds every model's LOAD until the page posts `{ type: 'e2e_release' }` to the iframe. Each held load is
@@ -19,7 +22,7 @@ const pages = new Map<boolean, string>()
  * Stands in for the wearable-preview app, which can't render headless. It speaks the same postMessage protocol
  * (`@dcl/schemas` PreviewMessageType): READY on boot, LOAD after boot and after every UPDATE (plus a play event for
  * emotes), and an answer to every controller request, with the fixture thumbnail as the screenshot and sound
- * reported when the item ships an audio file.
+ * reported when the item ships an audio file. Metrics read the boot scene until a model sent in an UPDATE has loaded.
  */
 export function previewPageHtml({ holdLoads = false }: PreviewOptions = {}): string {
   const cached = pages.get(holdLoads)
@@ -29,8 +32,8 @@ export function previewPageHtml({ holdLoads = false }: PreviewOptions = {}): str
     var pending = 0;
     var SCREENSHOT = 'data:image/png;base64,${readFileSync(FIXTURE.thumbnail).toString('base64')}';
     var METRICS = ${JSON.stringify(PREVIEW_METRICS)};
-    // The boot render has no model, and the real renderer measures it as an empty scene.
-    var EMPTY_METRICS = { triangles: 0, materials: 0, textures: 0, meshes: 0, bodies: 0, entities: 1 };
+    var BOOT_SCENE_METRICS = ${JSON.stringify(BOOT_SCENE_METRICS)};
+    // Whether a model sent in an UPDATE has loaded; until then metrics read the model-less boot scene.
     var hasModel = false;
     var RESULTS = {
       'scene.getScreenshot': SCREENSHOT,
@@ -42,6 +45,11 @@ export function previewPageHtml({ holdLoads = false }: PreviewOptions = {}): str
     function send(type, payload) { parent.postMessage({ type: type, payload: payload }, '*'); }
     function loaded() { send('load', { renderer: 'babylon' }); }
     function modelLoaded() { hasModel = true; loaded(); }
+    function answer(key) {
+      if (key === 'emote.hasSound') return hasSound;
+      if (key === 'scene.getMetrics') return hasModel ? METRICS : BOOT_SCENE_METRICS;
+      return RESULTS[key];
+    }
     window.addEventListener('message', function (event) {
       var message = event.data || {};
       if (message.type === 'update') {
@@ -64,8 +72,7 @@ export function previewPageHtml({ holdLoads = false }: PreviewOptions = {}): str
       if (message.type === 'controller_request') {
         var request = message.payload || {};
         var key = request.namespace + '.' + request.method;
-        var result =
-          key === 'emote.hasSound' ? hasSound : key === 'scene.getMetrics' ? (hasModel ? METRICS : EMPTY_METRICS) : RESULTS[key];
+        var result = answer(key);
         send('controller_response', { id: request.id, ok: true, result: result });
         // Lets a spec wait for the answer itself instead of a fixed delay (see app.previewAnswers).
         if (key === 'emote.hasSound') fetch('/__e2e/answer?method=' + key + '&result=' + result).catch(function () {});
