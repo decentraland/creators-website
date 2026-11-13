@@ -2135,6 +2135,10 @@
     "message_curator": "Escribir al curador",
     "curator_replied": "Comentario del curador"
   },
+  "review_stage_hint": {
+    "rejected_by_validator": "Cambios pedidos por la revisión automática.",
+    "rejected_by_curator": "Cambios pedidos por un curador."
+  },
   "reject_reason": {
     "clipping": "Problemas de clipping",
     "thumbnail": "Problemas con la miniatura",

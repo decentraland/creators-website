@@ -2135,6 +2135,10 @@
     "message_curator": "Message curator",
     "curator_replied": "Curator comment"
   },
+  "review_stage_hint": {
+    "rejected_by_validator": "Fixes requested by the automated review.",
+    "rejected_by_curator": "Fixes requested by a curator."
+  },
   "reject_reason": {
     "clipping": "Clipping issues",
     "thumbnail": "Thumbnail issues",

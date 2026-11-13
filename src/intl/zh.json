@@ -2135,6 +2135,10 @@
     "message_curator": "给审核员留言",
     "curator_replied": "审核员评论"
   },
+  "review_stage_hint": {
+    "rejected_by_validator": "自动审核要求修改。",
+    "rejected_by_curator": "审核员要求修改。"
+  },
   "reject_reason": {
     "clipping": "穿模问题",
     "thumbnail": "缩略图问题",

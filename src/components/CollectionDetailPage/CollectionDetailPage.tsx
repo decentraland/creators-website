@@ -100,6 +100,7 @@ import { getThirdPartyId, isThirdPartyManager } from '~/lib/thirdParty'
 import { AddItemsModal } from './AddItemsModal'
 import { LinkedCollectionView } from './LinkedCollectionView'
 import { ReviewFlow, type ReviewFlowRequest } from './ReviewFlow'
+import { getMockReviewRequest } from './ReviewFlow/reviewMock'
 import { ItemActionsMenu } from './ItemActionsMenu'
 import { ItemListRow } from './ItemListRow'
 import { PublishCollectionModal, PublishSuccessModal, type PublishResume } from './PublishCollectionModal'
@@ -211,14 +212,6 @@ const CollectionDetailPage = () => {
   const withMarket = !!standardCollection?.isPublished && hasRole
   const status = useCollectionStatus(curationAddress, standardCollection)
   const showForumPost = !!standardCollection && isForumPostRelevant(standardCollection, status)
-  const statusHint =
-    status === CollectionDisplayStatus.REJECTED
-      ? t('collection_detail_page.review_notice.rejected')
-      : status === CollectionDisplayStatus.UNDER_REVIEW
-        ? t('collection_status.under_review_hint')
-        : status === CollectionDisplayStatus.DISABLED
-          ? t('collection_status.disabled_hint')
-          : null
   // Sales here are off-chain public orders only: with the flag off there is no other way to list an item.
   const canListItems = useFeatureFlag(FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS).enabled
   const isApprovedForSale = canListItems && !!collection && hasBeenApproved(collection)
@@ -312,10 +305,20 @@ const CollectionDetailPage = () => {
     () => (standardCollection ? getReviewStage(standardCollection, curation, events) : null),
     [standardCollection, curation, events]
   )
+  const statusHint =
+    status === CollectionDisplayStatus.REJECTED
+      ? isRejectedStage(stage)
+        ? t(`review_stage_hint.${stage}`)
+        : t('collection_detail_page.review_notice.rejected')
+      : status === CollectionDisplayStatus.UNDER_REVIEW
+        ? t('collection_status.under_review_hint')
+        : status === CollectionDisplayStatus.DISABLED
+          ? t('collection_status.disabled_hint')
+          : null
   // The validator judges a snapshot: nothing changes under it (Figma: "block edit settings during these 5 mins").
   const reviewLocked = stage === ReviewStage.AUTOMATED_REVIEWING
   const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION).enabled
-  const [reviewRequest, setReviewRequest] = useState<ReviewFlowRequest | null>(null)
+  const [reviewRequest, setReviewRequest] = useState<ReviewFlowRequest | null>(() => getMockReviewRequest(collectionId))
   // Only a server with the review timeline keeps the note.
   const withPushNote = autoCuration && events !== null
   const clearReviewRequest = useCallback(() => setReviewRequest(null), [])
