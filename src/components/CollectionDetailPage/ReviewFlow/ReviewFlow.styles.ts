@@ -38,6 +38,20 @@ export const NoticeText = styled.p`
   }
 `
 
+export const NoticeSpinner = styled.span`
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 2s;
+  }
+`
+
 export const NoticeActions = styled.div`
   display: flex;
   flex-wrap: wrap;

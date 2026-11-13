@@ -1002,7 +1002,7 @@
         "pending": "Enabling third party…"
       }
     },
-    "read_only_reviewing": "This item is read-only while the collection's automated review runs (about 5 minutes).",
+    "read_only_reviewing": "This item is read-only while the collection's automated review runs.",
     "curator_request": {
       "title": "A curator requested fixes"
     }

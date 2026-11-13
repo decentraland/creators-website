@@ -59,9 +59,8 @@ export const Row = styled.article`
 
   /* Inset shadows, not borders, so flagged rows stay aligned with the header's columns. */
   &[data-validation='errors'] {
-    box-shadow: inset 0 0 0 1px ${theme.colors.errLight};
-    background:
-      linear-gradient(90deg, ${theme.colors.errorOverlay}, ${theme.colors.errOverlay}), ${theme.colors.overlay};
+    box-shadow: inset 3px 0 0 ${theme.colors.errorAccent};
+    background: ${theme.colors.errorSurface};
   }
 
   &[data-validation='warnings'] {

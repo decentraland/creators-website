@@ -1002,7 +1002,7 @@
         "pending": "正在启用第三方…"
       }
     },
-    "read_only_reviewing": "系列自动审核进行期间（约 5 分钟），此物品为只读。",
+    "read_only_reviewing": "系列自动审核进行期间，此物品为只读。",
     "curator_request": {
       "title": "审核员要求修改"
     }

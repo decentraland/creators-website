@@ -1002,7 +1002,7 @@
         "pending": "Habilitando tercero…"
       }
     },
-    "read_only_reviewing": "Este ítem es de solo lectura mientras se ejecuta la revisión automática de la colección (unos 5 minutos).",
+    "read_only_reviewing": "Este ítem es de solo lectura mientras se ejecuta la revisión automática de la colección.",
     "curator_request": {
       "title": "Un curador pidió cambios"
     }

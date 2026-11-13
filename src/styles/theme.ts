@@ -53,6 +53,8 @@ const colors = {
   warningText: '#ffe1b7',
   // Inline validation errors on dark surfaces (Figma System/Error).
   errorOverlay: 'rgba(233, 113, 119, 0.2)',
+  errorAccent: '#ec303a', // System/Error red-dark-1 — left edge of a list row with errors
+  errorSurface: 'rgba(24, 0, 0, 0.4)', // fill of a list row with errors
   successOverlay: 'rgba(48, 205, 0, 0.12)',
   errorText: '#ffcdd4',
   white: '#ffffff',

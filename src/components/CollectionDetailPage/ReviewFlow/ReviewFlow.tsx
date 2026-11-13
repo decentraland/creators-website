@@ -287,6 +287,9 @@ export function ReviewFlow({
             </S.SeeIssues>
           )}
         </S.NoticeText>
+        {stage === ReviewStage.AUTOMATED_REVIEWING && (
+          <S.NoticeSpinner data-testid="review-notice-spinner" aria-hidden />
+        )}
         {(reasons.length > 0 || curatorRejection?.rejectionMessage || curatorMessage) && (
           <S.NoticeDetails>
             {reasons.length > 0 && (
