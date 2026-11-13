@@ -2074,8 +2074,7 @@
   "review_flow": {
     "notice": {
       "automated_reviewing": "我们正在自动检查您的系列，通常需要几分钟。",
-      "awaiting_curator": "自动检查已通过。接下来审核员将审核您的系列。",
-      "awaiting_curator_assigned": "自动检查已通过。审核员正在审核您的系列。",
+      "awaiting_curator": "自动审核已通过。您的系列正在等待审核员审核。",
       "human_review": "审核员将审核您的系列。",
       "unsupported_items": "部分物品无法自动审核。审核员将审核您的系列。",
       "appealed": "您已申请人工审核。审核员将查看您的系列。",

@@ -237,9 +237,7 @@ export function ReviewFlow({
       tone = 'info'
       break
     case ReviewStage.AWAITING_CURATOR:
-      text = t(
-        curation?.assignee ? 'review_flow.notice.awaiting_curator_assigned' : 'review_flow.notice.awaiting_curator'
-      )
+      text = t('review_flow.notice.awaiting_curator')
       tone = 'info'
       break
     case ReviewStage.NEEDS_CURATOR:
