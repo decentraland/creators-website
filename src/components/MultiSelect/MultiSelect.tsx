@@ -2,9 +2,9 @@ import { useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowDropDownIcon as ChevronIcon, CheckIcon, ExpandMoreIcon as CompactChevronIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
-import * as Base from '~/components/Select/Select.styles'
+import base from '~/components/Select/Select.module.css'
 import { useListbox } from '~/components/Select/useListbox'
-import * as S from './MultiSelect.styles'
+import styles from './MultiSelect.module.css'
 
 export type MultiSelectOption<T extends string> = { value: T; label: string }
 
@@ -54,8 +54,9 @@ export function MultiSelect<T extends string>({
         : selected.map(option => option.label).join(', ')
 
   return (
-    <Base.Wrap ref={wrapRef} onKeyDown={onKeyDown}>
-      <Base.Trigger
+    <div className={base.wrap} ref={wrapRef} onKeyDown={onKeyDown}>
+      <button
+        className={base.trigger}
         type="button"
         role="combobox"
         aria-haspopup="listbox"
@@ -69,14 +70,15 @@ export function MultiSelect<T extends string>({
         data-count={values.length}
         onClick={toggle}
       >
-        <Base.TriggerLabel data-placeholder={selected.length === 0 ? true : undefined}>
-          <S.Summary>{summary}</S.Summary>
-        </Base.TriggerLabel>
+        <span className={base.triggerLabel} data-placeholder={selected.length === 0 ? true : undefined}>
+          <span className={styles.summary}>{summary}</span>
+        </span>
         {variant === 'compact' ? <CompactChevronIcon /> : <ChevronIcon />}
-      </Base.Trigger>
+      </button>
       {open &&
         createPortal(
-          <Base.Listbox
+          <ul
+            className={base.listbox}
             ref={listRef}
             role="listbox"
             aria-multiselectable="true"
@@ -89,8 +91,9 @@ export function MultiSelect<T extends string>({
             {options.map(option => {
               const checked = values.includes(option.value)
               return (
-                <Base.OptionGroup key={option.value}>
-                  <Base.Option
+                <li className={base.optionGroup} key={option.value}>
+                  <div
+                    className={base.option}
                     role="option"
                     aria-selected={checked}
                     data-active={option.value === active || undefined}
@@ -98,19 +101,19 @@ export function MultiSelect<T extends string>({
                     onMouseEnter={() => setActive(option.value)}
                     onClick={() => pick(option.value)}
                   >
-                    <Base.OptionLabel>
-                      <S.Check aria-hidden data-checked={checked || undefined}>
+                    <span className={base.optionLabel}>
+                      <span className={styles.check} aria-hidden data-checked={checked || undefined}>
                         {checked && <CheckIcon />}
-                      </S.Check>
+                      </span>
                       <span>{option.label}</span>
-                    </Base.OptionLabel>
-                  </Base.Option>
-                </Base.OptionGroup>
+                    </span>
+                  </div>
+                </li>
               )
             })}
-          </Base.Listbox>,
+          </ul>,
           document.body
         )}
-    </Base.Wrap>
+    </div>
   )
 }

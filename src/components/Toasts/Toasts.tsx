@@ -8,7 +8,7 @@ import {
 } from '~/components/Icons'
 import { useNotifications, type Toast, type ToastType } from '~/lib/notifications'
 import { useTranslation } from '~/intl'
-import * as S from './Toasts.styles'
+import styles from './Toasts.module.css'
 
 const ICONS: Record<NonNullable<ToastType>, typeof SuccessIcon> = {
   success: SuccessIcon,
@@ -28,21 +28,27 @@ function ToastItem({ toast }: { toast: Toast }) {
   }, [toast.id, toast.durationMs, dismissToast])
 
   return (
-    <S.ToastCard
+    <div
+      className={styles.toastCard}
       role={toast.type === 'error' ? 'alert' : 'status'}
       data-testid="toast"
       data-type={toast.type ?? undefined}
     >
       {Icon && (
-        <S.TypeIcon data-type={toast.type} data-testid="toast-icon">
+        <span className={styles.typeIcon} data-type={toast.type} data-testid="toast-icon">
           <Icon fontSize="small" />
-        </S.TypeIcon>
+        </span>
       )}
       {toast.message}
-      <S.DismissButton type="button" aria-label={t('modal.close')} onClick={() => dismissToast(toast.id)}>
+      <button
+        className={styles.dismissButton}
+        type="button"
+        aria-label={t('modal.close')}
+        onClick={() => dismissToast(toast.id)}
+      >
         <CloseIcon fontSize="small" />
-      </S.DismissButton>
-    </S.ToastCard>
+      </button>
+    </div>
   )
 }
 
@@ -51,10 +57,10 @@ export function Toasts() {
   const toasts = useNotifications(state => state.toasts)
   if (toasts.length === 0) return null
   return (
-    <S.Stack data-testid="toasts">
+    <div className={styles.stack} data-testid="toasts">
       {toasts.map(toast => (
         <ToastItem key={toast.id} toast={toast} />
       ))}
-    </S.Stack>
+    </div>
   )
 }

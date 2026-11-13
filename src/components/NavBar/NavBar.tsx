@@ -13,7 +13,7 @@ import { openExternal } from '~/lib/navigation'
 import { isOverviewPath, LandingPlace, trackLandingClick } from '~/lib/overviewAnalytics'
 import { useTranslation } from '~/intl'
 import { config } from '~/config'
-import * as S from './NavBar.styles'
+import styles from './NavBar.module.css'
 
 // Scenes and Land live in the legacy builder web app, not in this SPA, so both are plain same-tab links.
 const builderUrl = config.get('BUILDER_URL')
@@ -89,8 +89,8 @@ const NavBar = () => {
         onClickSignOut={() => void disconnect()}
       />
 
-      <S.Subnav data-testid="subnav">
-        <S.Tabs data-testid="subnav-tabs">
+      <div className={styles.subnav} data-testid="subnav">
+        <nav className={styles.tabs} data-testid="subnav-tabs">
           <NavLink to="/" end>
             {t('nav.overview')}
           </NavLink>
@@ -104,8 +104,8 @@ const NavBar = () => {
           )}
           <a href={`${builderUrl}/scenes`}>{t('nav.scenes')}</a>
           <a href={`${builderUrl}/land`}>{t('nav.land')}</a>
-        </S.Tabs>
-      </S.Subnav>
+        </nav>
+      </div>
     </>
   )
 }

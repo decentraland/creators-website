@@ -1,5 +1,5 @@
 import { useIntl } from 'react-intl'
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
 import { formatTimeAgo } from '~/lib/time'
@@ -8,7 +8,7 @@ import { CollectionMosaic } from '~/components/CollectionMosaic'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { CollectionRolePill } from '~/components/CollectionRolePill'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
-import * as S from './CollectionListRow.styles'
+import styles from './CollectionListRow.module.css'
 
 type Props = {
   collection: Collection
@@ -23,29 +23,33 @@ export function CollectionListRow({ collection }: Props) {
   const { search } = useLocation()
 
   return (
-    <S.Row data-testid="collection-row">
-      <S.NameCell>
-        <S.Thumb>
+    <article className={styles.row} data-testid="collection-row">
+      <div className={styles.nameCell}>
+        <div className={styles.thumb}>
           <CollectionMosaic collectionId={collection.id} itemCount={collection.itemCount} showEmptyLabel={false} />
-        </S.Thumb>
+        </div>
         {/* Stretched over the whole row (see RowLink) so the row is one real link. */}
-        <S.RowLink to={`/collections/${collection.id}`} state={{ listSearch: search }}>
-          <S.Name title={collection.name}>{collection.name}</S.Name>
-        </S.RowLink>
+        <Link className={styles.rowLink} to={`/collections/${collection.id}`} state={{ listSearch: search }}>
+          <h3 className={styles.name} title={collection.name}>
+            {collection.name}
+          </h3>
+        </Link>
         {address && <CollectionRolePill collection={collection} address={address} />}
-      </S.NameCell>
-      <S.Cell data-testid="collection-row-items">
+      </div>
+      <div className={styles.cell} data-testid="collection-row-items">
         {t('collections_page.item_count', { count: collection.itemCount })}
-      </S.Cell>
-      <S.Cell>
+      </div>
+      <div className={styles.cell}>
         <CollectionStatusPill collection={collection} />
-      </S.Cell>
-      <S.DateCell data-testid="collection-row-updated">
+      </div>
+      <div className={styles.dateCell} data-testid="collection-row-updated">
         <strong>{formatTimeAgo(collection.lastActivityAt ?? collection.updatedAt, intl.locale)}</strong>
         <span>{intl.formatDate(collection.lastActivityAt ?? collection.updatedAt, DATE_FORMAT)}</span>
-      </S.DateCell>
-      <S.Cell data-testid="collection-row-created">{intl.formatDate(collection.createdAt, DATE_FORMAT)}</S.Cell>
-      <S.ActionsCell>
+      </div>
+      <div className={styles.cell} data-testid="collection-row-created">
+        {intl.formatDate(collection.createdAt, DATE_FORMAT)}
+      </div>
+      <div className={styles.actionsCell}>
         {address && (
           <CollectionActionsMenu
             collection={collection}
@@ -55,7 +59,7 @@ export function CollectionListRow({ collection }: Props) {
             label={t('collections_page.row_actions')}
           />
         )}
-      </S.ActionsCell>
-    </S.Row>
+      </div>
+    </article>
   )
 }

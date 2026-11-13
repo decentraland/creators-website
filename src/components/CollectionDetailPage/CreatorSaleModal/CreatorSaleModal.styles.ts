@@ -12,8 +12,6 @@ const radius = { ...theme.radius, btn: '8px' }
 const raised = 'rgba(255, 255, 255, 0.06)'
 const hairline = 'rgba(255, 255, 255, 0.12)'
 
-export { Scrim, Title, CloseButton as Close } from '~/components/Modal/Modal.styles'
-
 // Modal's `compact` padding.
 const CARD_PAD_TOP = 12
 const CARD_PAD = 16

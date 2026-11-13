@@ -1,12 +1,13 @@
 import { useIntl } from 'react-intl'
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
 import { formatTimeAgo } from '~/lib/time'
 import { type Collection } from '~/lib/collections'
 import { CollectionMosaic } from '~/components/CollectionMosaic'
+import { CollectionRolePill } from '~/components/CollectionRolePill'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
-import * as S from './CollectionCard.styles'
+import styles from './CollectionCard.module.css'
 
 type Props = {
   collection: Collection
@@ -23,30 +24,35 @@ export function CollectionCard({ collection }: Props) {
   const { search } = useLocation()
 
   return (
-    <S.Card data-testid="collection-card" to={`/collections/${collection.id}`} state={{ listSearch: search }}>
-      <S.Media>
+    <Link
+      className={styles.card}
+      data-testid="collection-card"
+      to={`/collections/${collection.id}`}
+      state={{ listSearch: search }}
+    >
+      <div className={styles.media}>
         <CollectionMosaic collectionId={collection.id} itemCount={collection.itemCount} />
-        {address && <S.RoleBadge collection={collection} address={address} />}
-      </S.Media>
-      <S.Body>
-        <S.NameRow>
-          <S.Name data-testid="collection-card-name" title={collection.name}>
+        {address && <CollectionRolePill className={styles.roleBadge} collection={collection} address={address} />}
+      </div>
+      <div className={styles.body}>
+        <div className={styles.nameRow}>
+          <h3 className={styles.name} data-testid="collection-card-name" title={collection.name}>
             {collection.name}
-          </S.Name>
+          </h3>
           <CollectionStatusPill collection={collection} />
-        </S.NameRow>
-        <S.Meta data-testid="collection-card-items">
+        </div>
+        <span className={styles.meta} data-testid="collection-card-items">
           {t('collections_page.item_count', { count: collection.itemCount })}
-        </S.Meta>
-        <S.Meta data-testid="collection-card-updated">
+        </span>
+        <span className={styles.meta} data-testid="collection-card-updated">
           {t('collections_page.updated_ago', {
             timeAgo: formatTimeAgo(collection.lastActivityAt ?? collection.updatedAt, locale)
           })}
-        </S.Meta>
-        <S.Manage data-testid="collection-card-manage" aria-hidden>
+        </span>
+        <span className={styles.manage} data-testid="collection-card-manage" aria-hidden>
           {t('collections_page.manage')}
-        </S.Manage>
-      </S.Body>
-    </S.Card>
+        </span>
+      </div>
+    </Link>
   )
 }

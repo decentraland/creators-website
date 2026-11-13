@@ -5,7 +5,8 @@ import { validateLinkedCollectionName } from '~/lib/thirdParty'
 import { Modal } from '~/components/Modal'
 import { Button } from '~/components/Button'
 import { CollectionNameInput } from '~/components/CollectionNameInput'
-import * as S from './CollectionNameModal.styles'
+import styles from './CollectionNameModal.module.css'
+import shared from '~/styles/shared.module.css'
 
 type Props = {
   variant: 'create' | 'rename'
@@ -65,11 +66,11 @@ export function CollectionNameModal({
       closeDisabled={isPending}
       testId="collection-name-modal"
     >
-      <S.Form onSubmit={handleSubmit}>
-        <S.Intro>
-          <S.Heading>{t('collection_name_modal.heading', { variant })}</S.Heading>
-          <S.Subtitle>{t('collection_name_modal.subtitle')}</S.Subtitle>
-        </S.Intro>
+      <form className={styles.form} onSubmit={handleSubmit}>
+        <div className={styles.intro}>
+          <h3 className={styles.heading}>{t('collection_name_modal.heading', { variant })}</h3>
+          <p className={styles.subtitle}>{t('collection_name_modal.subtitle')}</p>
+        </div>
         <CollectionNameInput
           value={name}
           error={shownError}
@@ -84,7 +85,7 @@ export function CollectionNameModal({
             setEditedSinceSubmit(true)
           }}
         />
-        <S.Actions>
+        <div className={shared.modalActions}>
           <Button
             type="button"
             variant="secondary"
@@ -97,8 +98,8 @@ export function CollectionNameModal({
           <Button type="submit" data-testid="collection-name-submit" loading={isPending} disabled={!trimmed}>
             {t('collection_name_modal.submit', { variant })}
           </Button>
-        </S.Actions>
-      </S.Form>
+        </div>
+      </form>
     </Modal>
   )
 }

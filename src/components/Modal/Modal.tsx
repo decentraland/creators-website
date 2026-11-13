@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { CloseIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
-import * as S from './Modal.styles'
+import styles from './Modal.module.css'
 
 // Refcounted scroll lock: modals can stack (add-items + its confirm dialogs), and a
 // last-writer-wins restore would leave the page locked after closing both. The lock goes on <html>:
@@ -140,7 +140,8 @@ export function Modal({
   const { t } = useTranslation()
 
   const closeButton = (
-    <S.CloseButton
+    <button
+      className={styles.closeButton}
       type="button"
       aria-label={t('modal.close')}
       data-testid={`${testId}-close`}
@@ -148,12 +149,13 @@ export function Modal({
       onClick={onClose}
     >
       <CloseIcon fontSize="small" />
-    </S.CloseButton>
+    </button>
   )
 
   return createPortal(
-    <S.Scrim data-testid={`${testId}-scrim`} onClick={() => !closeDisabled && onClose()}>
-      <S.Dialog
+    <div className={styles.scrim} data-testid={`${testId}-scrim`} onClick={() => !closeDisabled && onClose()}>
+      <div
+        className={styles.dialog}
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
@@ -166,17 +168,17 @@ export function Modal({
         onClick={event => event.stopPropagation()}
       >
         {!hideTitle && (
-          <S.TitleBar>
-            <S.Title>{title}</S.Title>
+          <div className={styles.titleBar}>
+            <h2 className={styles.title}>{title}</h2>
             {!hideClose && closeButton}
-          </S.TitleBar>
+          </div>
         )}
-        {hideTitle && showClose && <S.FloatingClose>{closeButton}</S.FloatingClose>}
-        <S.Body data-titleless={hideTitle || undefined}>
+        {hideTitle && showClose && <div className={styles.floatingClose}>{closeButton}</div>}
+        <div className={styles.body} data-titleless={hideTitle || undefined}>
           <ModalDepthContext.Provider value={depth + 1}>{children}</ModalDepthContext.Provider>
-        </S.Body>
-      </S.Dialog>
-    </S.Scrim>,
+        </div>
+      </div>
+    </div>,
     document.body
   )
 }

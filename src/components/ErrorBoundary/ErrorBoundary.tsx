@@ -2,7 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
 import { captureError } from '~/lib/monitoring'
-import * as S from './ErrorBoundary.styles'
+import styles from './ErrorBoundary.module.css'
 
 type Props = { children: ReactNode }
 type State = { hasError: boolean }
@@ -29,12 +29,17 @@ export class ErrorBoundary extends Component<Props, State> {
 function ErrorFallback() {
   const { t } = useTranslation()
   return (
-    <S.Panel data-testid="error-boundary">
-      <S.Title>{t('error_boundary.title')}</S.Title>
-      <S.Text>{t('error_boundary.description')}</S.Text>
-      <S.RetryButton type="button" data-testid="error-boundary-retry" onClick={() => window.location.reload()}>
+    <section className={styles.panel} data-testid="error-boundary">
+      <h2 className={styles.title}>{t('error_boundary.title')}</h2>
+      <p className={styles.text}>{t('error_boundary.description')}</p>
+      <button
+        className={styles.retryButton}
+        type="button"
+        data-testid="error-boundary-retry"
+        onClick={() => window.location.reload()}
+      >
         {t('error_boundary.retry')}
-      </S.RetryButton>
-    </S.Panel>
+      </button>
+    </section>
   )
 }

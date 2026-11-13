@@ -34,6 +34,7 @@ import { ErrorNotice } from './ErrorNotice'
 import { formatDateTime } from './dates'
 import { RangePicker, type RangePickerHandle } from './RangePicker'
 import { SaleIcon as Icon } from './SaleIcon'
+import modal from '~/components/Modal/Modal.module.css'
 import * as S from './CreatorSaleModal.styles'
 
 const PCT_PRESETS = [10, 20, 30, 50]
@@ -526,7 +527,7 @@ export function CreatorSaleModal({
   if (step === 'review') {
     const shown = reviewed ?? terms
     return (
-      <S.Scrim onClick={onClose} role="presentation">
+      <div className={modal.scrim} onClick={onClose} role="presentation">
         <S.Card
           ref={card}
           tabIndex={-1}
@@ -537,10 +538,10 @@ export function CreatorSaleModal({
           aria-label={t('creator_sale.title')}
         >
           <S.Head>
-            <S.Title>{t('creator_sale.title')}</S.Title>
-            <S.Close type="button" onClick={onClose} aria-label={t('creator_sale.cancel')}>
+            <h2 className={modal.title}>{t('creator_sale.title')}</h2>
+            <button className={modal.closeButton} type="button" onClick={onClose} aria-label={t('creator_sale.cancel')}>
               <CloseIcon fontSize="small" />
-            </S.Close>
+            </button>
           </S.Head>
           <S.Divider />
           {steps(2)}
@@ -698,7 +699,7 @@ export function CreatorSaleModal({
             </Button>
           </S.Actions>
         </S.Card>
-      </S.Scrim>
+      </div>
     )
   }
 
@@ -730,7 +731,8 @@ export function CreatorSaleModal({
   }
 
   return (
-    <S.Scrim
+    <div
+      className={modal.scrim}
       // The calendar folds on the press, before this click lands (at once with reduced motion, or on a long press):
       // a click that started with it open only ever folds it, never the whole modal.
       onPointerDown={() => {
@@ -753,10 +755,10 @@ export function CreatorSaleModal({
         aria-label={t('creator_sale.title')}
       >
         <S.Head>
-          <S.Title>{t('creator_sale.title')}</S.Title>
-          <S.Close type="button" onClick={onClose} aria-label={t('creator_sale.cancel')}>
+          <h2 className={modal.title}>{t('creator_sale.title')}</h2>
+          <button className={modal.closeButton} type="button" onClick={onClose} aria-label={t('creator_sale.cancel')}>
             <CloseIcon fontSize="small" />
-          </S.Close>
+          </button>
         </S.Head>
         <S.Divider />
         {steps(1)}
@@ -1045,6 +1047,6 @@ export function CreatorSaleModal({
           </Button>
         </S.Actions>
       </S.Card>
-    </S.Scrim>
+    </div>
   )
 }

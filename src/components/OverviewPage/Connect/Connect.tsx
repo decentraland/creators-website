@@ -7,7 +7,9 @@ import { AnimatedSection } from '../AnimatedSection'
 import { Carousel } from '../Carousel'
 import { DISCORD_URL, testimonials, type Testimonial } from '../data'
 import { highlight, plainText } from '../highlight'
-import * as S from './Connect.styles'
+import { cx } from '~/lib/cx'
+import overview from '../OverviewPage.module.css'
+import styles from './Connect.module.css'
 
 const AUTOPLAY_MS = 5000
 
@@ -17,7 +19,8 @@ const Connect = () => {
   const { t, rich } = useTranslation()
   const renderCard = useCallback(
     (card: Testimonial) => (
-      <S.Card
+      <a
+        className={styles.card}
         href={card.url}
         target="_blank"
         rel="noopener noreferrer"
@@ -26,20 +29,20 @@ const Connect = () => {
         data-title={card.name}
         onClick={trackClick}
       >
-        <S.Quote>&ldquo;{t(`overview.connect.cards.${card.id}`)}&rdquo;</S.Quote>
-        <S.Author>
+        <p className={styles.quote}>&ldquo;{t(`overview.connect.cards.${card.id}`)}&rdquo;</p>
+        <div className={styles.author}>
           <img src={contentfulImage(card.image, { width: 40 })} alt="" width={40} height={40} loading="lazy" />
-          <S.AuthorName>{card.name}</S.AuthorName>
-        </S.Author>
-      </S.Card>
+          <span className={styles.authorName}>{card.name}</span>
+        </div>
+      </a>
     ),
     [t]
   )
 
   return (
     <AnimatedSection section={OverviewSection.CONNECT}>
-      <S.Section data-testid="overview-connect">
-        <S.Title>{rich('overview.connect.title', highlight)}</S.Title>
+      <section className={styles.section} data-testid="overview-connect">
+        <h2 className={cx(overview.sectionTitle, styles.title)}>{rich('overview.connect.title', highlight)}</h2>
         <Carousel
           items={testimonials}
           renderItem={renderCard}
@@ -49,7 +52,8 @@ const Connect = () => {
           autoplayMs={AUTOPLAY_MS}
           alignItems="center"
         />
-        <S.Discord
+        <a
+          className={styles.discord}
           href={DISCORD_URL}
           target="_blank"
           rel="noopener noreferrer"
@@ -58,12 +62,14 @@ const Connect = () => {
           data-title="join-discord"
           onClick={trackClick}
         >
-          <S.DiscordTitle data-discord-title>{t('overview.connect.join_the_community')}</S.DiscordTitle>
-          <S.DiscordIcon data-discord-icon>
+          <span className={styles.discordTitle} data-discord-title>
+            {t('overview.connect.join_the_community')}
+          </span>
+          <span className={styles.discordIcon} data-discord-icon>
             <img src={discordIcon} alt="" />
-          </S.DiscordIcon>
-        </S.Discord>
-      </S.Section>
+          </span>
+        </a>
+      </section>
     </AnimatedSection>
   )
 }
