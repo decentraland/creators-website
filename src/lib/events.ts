@@ -436,6 +436,23 @@ export function toCuratorIssues(
 }
 
 /**
+ * Whether an item was saved or added after the newest verdict judged the collection. The same content always gets
+ * the same result, so only then is another automated review worth asking for (the server refuses it otherwise).
+ */
+export function hasChangesSinceVerdict(
+  events: CollectionEvent[],
+  items: Pick<Item, 'id' | 'currentContentHash'>[]
+): boolean {
+  const verdict = getLatestVerdict(events)
+  if (!verdict) return false
+  const judged = new Map(verdict.payload.items.map(result => [result.itemId, result.contentHash]))
+  return items.some(item => {
+    if (!judged.has(item.id)) return true
+    return item.currentContentHash !== undefined && item.currentContentHash !== judged.get(item.id)
+  })
+}
+
+/**
  * The newest rejection's findings per item that did not pass, keyed by item id; empty once the validator
  * passed the collection or while no verdict exists. Items edited during the run or saved since are left out.
  */

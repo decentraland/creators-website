@@ -22,7 +22,11 @@ export const Notice = styled.div`
 
   &[data-tone='error'] {
     background: ${theme.colors.errorOverlay};
-    color: ${theme.colors.errLight};
+    color: ${theme.colors.errorText};
+
+    & > p > svg {
+      color: ${theme.colors.errLight};
+    }
   }
 `
 
@@ -52,6 +56,11 @@ export const NoticeSpinner = styled.span`
   }
 `
 
+export const RequestNote = styled.div`
+  width: 100%;
+  margin-top: 20px;
+`
+
 export const NoticeActions = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -65,18 +74,6 @@ export const NoticeActions = styled.div`
       min-height: 44px;
     }
   }
-`
-
-export const SeeIssues = styled.button`
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  font-weight: 600;
-  text-decoration: underline;
-  cursor: pointer;
-  min-height: 24px;
 `
 
 export const Attempts = styled.div`

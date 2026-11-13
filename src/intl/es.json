@@ -2093,10 +2093,10 @@
     "attempts_info": "Cómo funciona el límite diario",
     "issues": {
       "title": "Algunos ítems necesitan tu atención",
-      "intro": "Encontramos algunos problemas que hay que resolver antes de publicar tu colección. Puedes corregirlos e intentarlo de nuevo, o pedir una revisión de un curador si crees que se marcaron por error.",
+      "intro": "Encontramos algunos problemas que hay que resolver antes de que tu colección pase a un curador. Corrígelos y revisa de nuevo, o pide una revisión de un curador si crees que se marcaron por error.",
       "request": "Pedir revisión de un curador",
       "back": "Volver a la colección",
-      "see": "Ver los problemas"
+      "see": "Ver comentarios"
     },
     "request": {
       "title": "¿Pedir una revisión de un curador?",
@@ -2121,7 +2121,8 @@
       "title": "Tu colección necesita una revisión adicional",
       "description": "Parte del contenido de tu colección requiere una mirada más detallada. La enviamos a un curador de Decentraland para su revisión. Las revisiones de curadores llevan más tiempo. Te avisaremos cuando se apruebe o si hace falta algún cambio."
     },
-    "validate_again": "Revisar de nuevo ({left} de {max} restantes hoy)",
+    "validate_again": "Revisar de nuevo",
+    "attempts_left": "Te quedan {left} de {max} revisiones automáticas hoy",
     "request_review": "Pedir revisión de un curador",
     "running": "Ya hay una revisión en curso. Inténtalo cuando termine.",
     "nothing_to_validate": "No hay nada nuevo para revisar automáticamente. Edita un ítem y publica tus cambios, o pide una revisión de un curador.",

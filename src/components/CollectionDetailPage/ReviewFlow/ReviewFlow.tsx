@@ -15,7 +15,6 @@ import {
 import { type Collection } from '~/lib/collections'
 import { ReviewStage, getReviewStage, isRejectedStage, type CollectionCuration } from '~/lib/curation'
 import {
-  VALIDATION_ATTEMPTS_PER_DAY,
   countValidationAttempts,
   getAutomatedIssuesByItem,
   getValidationAttemptsLeft,
@@ -44,10 +43,10 @@ import { markReviewModalSeen, wasReviewModalSeen } from '~/lib/reviewModalMemory
 import { type ItemCheck } from '~/lib/validation'
 import * as S from './ReviewFlow.styles'
 
-/** A modal the page asks for: right after publishing, or when submitted changes hit the daily limit. */
-export type ReviewFlowRequest = 'reviewing' | 'limit'
+/** What the page asks for: a modal (right after publishing, or at the daily limit) or another automated review. */
+export type ReviewFlowRequest = 'reviewing' | 'limit' | 'validate'
 
-type ReviewModal = ReviewFlowRequest | 'issues' | 'request' | 'sent' | 'additional' | 'activity'
+type ReviewModal = Exclude<ReviewFlowRequest, 'validate'> | 'issues' | 'request' | 'sent' | 'additional' | 'activity'
 
 /** Stages in which a curator is on the other side, so the creator has someone to write to. */
 const CURATOR_STAGES: (ReviewStage | null)[] = [
@@ -100,7 +99,6 @@ export function ReviewFlow({
   // The allowance resets at 00:00 UTC, so the count is redone when the day changes, not only when events do.
   const today = startOfUtcDay(Date.now())
   const attemptsUsed = useMemo(() => countValidationAttempts(timeline, today), [timeline, today])
-  const attemptsLeft = useMemo(() => getValidationAttemptsLeft(timeline, today), [timeline, today])
   const running = useMemo(() => isValidationInProgress(timeline), [timeline])
   const appealOpen = useMemo(() => hasOpenAppeal(timeline), [timeline])
   const cause = useMemo(() => latestStageEvent(timeline), [timeline])
@@ -114,11 +112,38 @@ export function ReviewFlow({
     [collection.id, stage]
   )
 
+  const { mutate: startValidation } = requestValidation
+  const validateAgain = useCallback(() => {
+    if (running) {
+      showToast(t('review_flow.running'), { type: 'warn' })
+      return
+    }
+    // Counted now, not from the last render: a tab left open past 00:00 UTC has its allowance back.
+    if (getValidationAttemptsLeft(timeline) === 0) {
+      open('limit')
+      return
+    }
+    startValidation(
+      { collection, events: timeline },
+      {
+        onSuccess: () => showToast(t('review_flow.validation_started')),
+        onError: error => {
+          if (error instanceof ValidationLimitError) open('limit')
+          else if (isValidationRunning(error)) showToast(t('review_flow.running'), { type: 'warn' })
+          else if (isReviewConflict(error)) showToast(t('review_flow.nothing_to_validate'), { type: 'warn' })
+          else if (isCollectionBusy(error)) showToast(t('review_flow.busy'), { type: 'warn' })
+          else showToast(t('review_flow.validation_error'), { type: 'error' })
+        }
+      }
+    )
+  }, [running, timeline, collection, startValidation, showToast, t, open])
+
   useEffect(() => {
     if (!request) return
-    open(request)
+    if (request === 'validate') validateAgain()
+    else open(request)
     onRequestHandled()
-  }, [request, open, onRequestHandled])
+  }, [request, open, validateAgain, onRequestHandled])
 
   // The verdict and the hand-off announce themselves once; the notice reopens the findings any time.
   useEffect(() => {
@@ -139,31 +164,6 @@ export function ReviewFlow({
   const close = () => {
     setModal(null)
     appeal.reset()
-  }
-
-  function validateAgain() {
-    if (running) {
-      showToast(t('review_flow.running'), { type: 'warn' })
-      return
-    }
-    // Counted now, not from the last render: a tab left open past 00:00 UTC has its allowance back.
-    if (getValidationAttemptsLeft(timeline) === 0) {
-      open('limit')
-      return
-    }
-    requestValidation.mutate(
-      { collection, events: timeline },
-      {
-        onSuccess: () => showToast(t('review_flow.validation_started')),
-        onError: error => {
-          if (error instanceof ValidationLimitError) open('limit')
-          else if (isValidationRunning(error)) showToast(t('review_flow.running'), { type: 'warn' })
-          else if (isReviewConflict(error)) showToast(t('review_flow.nothing_to_validate'), { type: 'warn' })
-          else if (isCollectionBusy(error)) showToast(t('review_flow.busy'), { type: 'warn' })
-          else showToast(t('review_flow.validation_error'), { type: 'error' })
-        }
-      }
-    )
   }
 
   function requestReview() {
@@ -269,6 +269,8 @@ export function ReviewFlow({
   if (!text && !curatorMessage) return modals
 
   const rejected = isRejectedStage(stage)
+  // The findings modal carries the creator's next steps, so the notice only opens it.
+  const hasIssues = stage === ReviewStage.REJECTED_BY_VALIDATOR && automatedResults.length > 0
   const curatorRejection = stage === ReviewStage.REJECTED_BY_CURATOR ? curation : null
   const reasons = curatorRejection?.rejectionReasons ?? []
   const canWrite = canManage && events !== null && (CURATOR_STAGES.includes(stage) || !!curatorMessage)
@@ -279,11 +281,6 @@ export function ReviewFlow({
         <S.NoticeText>
           {tone === 'error' ? <ErrorIcon fontSize="small" aria-hidden /> : <InfoIcon fontSize="small" aria-hidden />}
           <span>{text ?? t('review_flow.notice.curator_comment')}</span>
-          {stage === ReviewStage.REJECTED_BY_VALIDATOR && automatedResults.length > 0 && (
-            <S.SeeIssues type="button" data-testid="review-see-issues" onClick={() => open('issues')}>
-              {t('review_flow.issues.see')}
-            </S.SeeIssues>
-          )}
         </S.NoticeText>
         {stage === ReviewStage.AUTOMATED_REVIEWING && (
           <S.NoticeSpinner data-testid="review-notice-spinner" aria-hidden />
@@ -308,21 +305,20 @@ export function ReviewFlow({
             )}
           </S.NoticeDetails>
         )}
-        {canManage && (rejected || canWrite) && (
+        {(hasIssues || (canManage && (rejected || canWrite))) && (
           <S.NoticeActions>
-            {stage === ReviewStage.REJECTED_BY_VALIDATOR && (
+            {hasIssues && (
               <Button
                 type="button"
                 variant="primary"
                 size="sm"
-                loading={requestValidation.isPending}
-                data-testid="validate-again"
-                onClick={validateAgain}
+                data-testid="review-see-issues"
+                onClick={() => open('issues')}
               >
-                {t('review_flow.validate_again', { left: attemptsLeft, max: VALIDATION_ATTEMPTS_PER_DAY })}
+                {t('review_flow.issues.see')}
               </Button>
             )}
-            {rejected && (
+            {canManage && !hasIssues && rejected && (
               <Button
                 type="button"
                 variant="dark"
@@ -333,7 +329,7 @@ export function ReviewFlow({
                 {t('review_flow.request_review')}
               </Button>
             )}
-            {canWrite && (
+            {canManage && canWrite && (
               <Button
                 type="button"
                 variant="dark"

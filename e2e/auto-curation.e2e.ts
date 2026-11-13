@@ -95,7 +95,8 @@ describe('automated review', () => {
     expect(await chip.evaluate(el => el.getAttribute('data-status'))).toBe('errors')
     expect(await isShown(page, 'item-row-edit-name')).toBe(true)
 
-    await clickTestId(page, 'request-curator-review')
+    await clickTestId(page, 'review-see-issues')
+    await clickTestId(page, 'automated-issues-request-review')
     await waitForTestId(page, 'request-review-modal')
     await clickTestId(page, 'request-review-confirm')
     await waitForTestId(page, 'sent-for-review-modal-modal')

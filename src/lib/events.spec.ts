@@ -7,6 +7,7 @@ import {
   getAutomatedIssuesByItem,
   getCuratorVerdict,
   getAwaitedReply,
+  hasChangesSinceVerdict,
   getUnansweredComment,
   getFailedItems,
   getLatestVerdict,
@@ -200,6 +201,36 @@ describe('countValidationAttempts', () => {
   it('clamps the attempts left at zero', () => {
     const events = Array.from({ length: 6 }, (_, i) => event('review.automated_started', NOW - i, { trigger: 'retry' }))
     expect(getValidationAttemptsLeft(events, NOW)).toBe(0)
+  })
+})
+
+describe('hasChangesSinceVerdict', () => {
+  const verdict = (items: { itemId: string; contentHash: string }[]): CollectionEvent => ({
+    id: 'v1',
+    collectionId: 'c1',
+    type: 'review.automated_rejected',
+    actor: 'validator',
+    actorAddress: null,
+    createdAt: 10,
+    payload: { verdict: 'rejected', items: items.map(item => ({ ...item, passed: false, findings: [] })) }
+  })
+
+  it('finds nothing new while every item still has the content that was judged', () => {
+    const events = [verdict([{ itemId: 'i1', contentHash: 'a' }])]
+    expect(hasChangesSinceVerdict(events, [{ id: 'i1', currentContentHash: 'a' }])).toBe(false)
+    expect(hasChangesSinceVerdict(events, [{ id: 'i1' }])).toBe(false)
+    expect(hasChangesSinceVerdict([], [{ id: 'i1', currentContentHash: 'a' }])).toBe(false)
+  })
+
+  it('finds a change once an item was saved again or added after the verdict', () => {
+    const events = [verdict([{ itemId: 'i1', contentHash: 'a' }])]
+    expect(hasChangesSinceVerdict(events, [{ id: 'i1', currentContentHash: 'b' }])).toBe(true)
+    expect(
+      hasChangesSinceVerdict(events, [
+        { id: 'i1', currentContentHash: 'a' },
+        { id: 'i2', currentContentHash: 'c' }
+      ])
+    ).toBe(true)
   })
 })
 

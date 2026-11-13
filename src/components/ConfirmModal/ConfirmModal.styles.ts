@@ -44,9 +44,9 @@ export const Body = styled.div`
 
 export const Text = styled.p`
   margin: 0;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 500;
-  line-height: 1.3;
+  line-height: 1.5;
   color: ${theme.colors.softWhite};
 
   /* Illustrated notices carry longer copy, so they read at body size. */

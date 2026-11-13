@@ -77,7 +77,13 @@ import { ReviewStage, canPushChanges, getReviewStage, isRejectedStage } from '~/
 import { useCommittee } from '~/hooks/useCommittee'
 import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
 import { useCollectionEvents } from '~/hooks/useCollectionEvents'
-import { NOTE_MAX_LENGTH, getAutomatedIssuesByItem } from '~/lib/events'
+import {
+  NOTE_MAX_LENGTH,
+  VALIDATION_ATTEMPTS_PER_DAY,
+  getAutomatedIssuesByItem,
+  getValidationAttemptsLeft,
+  hasChangesSinceVerdict
+} from '~/lib/events'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS, THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { type ItemListing } from '~/lib/listings'
@@ -100,7 +106,7 @@ import { getThirdPartyId, isThirdPartyManager } from '~/lib/thirdParty'
 import { AddItemsModal } from './AddItemsModal'
 import { LinkedCollectionView } from './LinkedCollectionView'
 import { ReviewFlow, type ReviewFlowRequest } from './ReviewFlow'
-import { getMockReviewRequest } from '~/lib/reviewMock'
+import { getMockReviewRequest, mockHasChanges, withMockReviewEvents } from '~/lib/reviewMock'
 import { ItemActionsMenu } from './ItemActionsMenu'
 import { ItemListRow } from './ItemListRow'
 import { PublishCollectionModal, PublishSuccessModal, type PublishResume } from './PublishCollectionModal'
@@ -287,7 +293,10 @@ const CollectionDetailPage = () => {
   const curationQuery = useCollectionCuration(curationAddress, standardCollection)
   const curation = curationQuery.data ?? null
   const eventsQuery = useCollectionEvents(curationAddress, standardCollection)
-  const { events } = eventsQuery
+  const events = useMemo(
+    () => withMockReviewEvents(collectionId, eventsQuery.events, allItems),
+    [collectionId, eventsQuery.events, allItems]
+  )
   const pushCuration = usePushCuration(address)
   // Sending changes for review runs the same item checks as publishing before its confirm modal.
   const [pushView, setPushView] = useState<'closed' | 'gate' | 'confirm'>('closed')
@@ -325,7 +334,7 @@ const CollectionDetailPage = () => {
   // The validator's findings dress the rows and the details modal like the browser's checks do.
   const automatedIssues = useMemo(() => getAutomatedIssuesByItem(events ?? [], allItems ?? []), [events, allItems])
   // Until the request loads, a pending one looks like none and the push would duplicate it. A rejection the
-  // automated review tracks is resubmitted from the review panel (review again / appeal), never from here.
+  // automated review tracks is never pushed: it is reviewed again or sent to a curator.
   const curationLoaded = curationQuery.isSuccess
   const showPushChanges = useMemo(
     () =>
@@ -335,6 +344,16 @@ const CollectionDetailPage = () => {
       canPushChanges(standardCollection, curation, hasUnsyncedItems, canManage),
     [standardCollection, curationLoaded, stage, curation, hasUnsyncedItems, canManage]
   )
+  // The same content always gets the same result, so another automated review waits for a saved or added item.
+  const showReviewAgain = useMemo(
+    () =>
+      canManage &&
+      curationLoaded &&
+      stage === ReviewStage.REJECTED_BY_VALIDATOR &&
+      (hasChangesSinceVerdict(events ?? [], allItems ?? []) || mockHasChanges(collectionId)),
+    [canManage, curationLoaded, stage, events, allItems, collectionId]
+  )
+  const reviewsLeft = useMemo(() => getValidationAttemptsLeft(events ?? []), [events])
   // After a rejection the creator asks for a review again, whether it was the first one or a pushed update.
   const pushCopy = curation?.status === 'rejected' ? 'request_review' : 'push_changes'
   const rowStatuses = useMemo(
@@ -724,6 +743,24 @@ const CollectionDetailPage = () => {
                     }}
                   >
                     {t(`collection_detail_page.${pushCopy}.action`)}
+                  </Button>
+                </Tooltip>
+              )}
+              {showReviewAgain && (
+                <Tooltip
+                  content={t('review_flow.attempts_left', { left: reviewsLeft, max: VALIDATION_ATTEMPTS_PER_DAY })}
+                  placement="bottom"
+                  asChild
+                  testId="validate-again-quota"
+                >
+                  <Button
+                    type="button"
+                    variant="primary"
+                    data-desktop-only
+                    data-testid="validate-again"
+                    onClick={() => setReviewRequest('validate')}
+                  >
+                    {t('review_flow.validate_again')}
                   </Button>
                 </Tooltip>
               )}

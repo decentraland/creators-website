@@ -103,15 +103,17 @@ export function RequestCuratorReviewModal({ busy, error, onConfirm, onClose }: R
       }}
       testId="request-review-modal"
     >
-      <NoteField
-        label={t('review_flow.request.note')}
-        value={note}
-        onChange={setNote}
-        maxLength={NOTE_MAX_LENGTH}
-        placeholder={t('review_flow.request.note_placeholder')}
-        disabled={busy}
-        testId="request-review-note"
-      />
+      <S.RequestNote>
+        <NoteField
+          label={t('review_flow.request.note')}
+          value={note}
+          onChange={setNote}
+          maxLength={NOTE_MAX_LENGTH}
+          placeholder={t('review_flow.request.note_placeholder')}
+          disabled={busy}
+          testId="request-review-note"
+        />
+      </S.RequestNote>
     </ConfirmModal>
   )
 }

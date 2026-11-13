@@ -90,7 +90,15 @@ const verdict = () =>
     ]
   })
 
-type Options = { canManage?: boolean; request?: ReviewFlowRequest | null; onRequestHandled?: () => void }
+type Options = {
+  canManage?: boolean
+  request?: ReviewFlowRequest | null
+  onRequestHandled?: () => void
+  items?: Item[]
+}
+
+/** The failed item was saved again after the verdict: its findings are gone and there is something new to judge. */
+const editedItems = () => items.map(item => (item.id === 'i1' ? { ...item, currentContentHash: 'edited' } : item))
 
 function renderFlow(curation: CollectionCuration | null, events: CollectionEvent[] | null, options: Options = {}) {
   return render(
@@ -100,13 +108,20 @@ function renderFlow(curation: CollectionCuration | null, events: CollectionEvent
         address="0xme"
         curation={curation}
         events={events}
-        items={items}
+        items={options.items ?? items}
         canManage={options.canManage ?? true}
         request={options.request ?? null}
         onRequestHandled={options.onRequestHandled ?? (() => undefined)}
       />
     </TranslationProvider>
   )
+}
+
+const handled = () => undefined
+
+/** The page's "Review again", on a rejection whose failed item was saved since. */
+function reviewAgain(events: CollectionEvent[], onRequestHandled = handled) {
+  return renderFlow(rejectedByValidator, events, { items: editedItems(), request: 'validate', onRequestHandled })
 }
 
 describe('ReviewFlow', () => {
@@ -119,7 +134,6 @@ describe('ReviewFlow', () => {
   it('tells the creator the automated review is running, with nothing to do', () => {
     renderFlow(pending, [event('review.automated_started', { trigger: 'publish' })])
     expect(screen.getByTestId('review-notice')).toHaveAttribute('data-stage', 'automated_reviewing')
-    expect(screen.queryByTestId('validate-again')).toBeNull()
     expect(screen.queryByTestId('request-curator-review')).toBeNull()
   })
 
@@ -153,13 +167,18 @@ describe('ReviewFlow', () => {
     expect(screen.getByTestId('automated-issues-modal')).toBeInTheDocument()
   })
 
-  it('validates again with the attempts left on the button', () => {
-    renderFlow(rejectedByValidator, [verdict(), event('review.automated_started', { trigger: 'publish' }, 1000)])
+  it('leaves only the way into the findings on the notice of an automated rejection', () => {
+    renderFlow(rejectedByValidator, [verdict()])
     fireEvent.click(screen.getByTestId('automated-issues-back'))
-    const button = screen.getByTestId('validate-again')
-    expect(button).toHaveTextContent('Review again (4 of 5 left today)')
-    fireEvent.click(button)
+    expect(screen.getByTestId('review-see-issues')).toBeInTheDocument()
+    expect(screen.queryByTestId('request-curator-review')).toBeNull()
+  })
+
+  it('starts another automated review when the page asks for one', () => {
+    const onRequestHandled = vi.fn()
+    reviewAgain([verdict(), event('review.automated_started', { trigger: 'publish' }, 1000)], onRequestHandled)
     expect(mocks.validate).toHaveBeenCalledWith(expect.objectContaining({ collection }), expect.anything())
+    expect(onRequestHandled).toHaveBeenCalled()
   })
 
   it('opens the daily limit modal at the limit, and sends the creator to a curator from it', () => {
@@ -168,9 +187,7 @@ describe('ReviewFlow', () => {
       ...[1000, 2000, 3000, 4000].map(at => event('review.automated_started', { trigger: 'retry' }, at)),
       event('review.automated_started', { trigger: 'publish' }, 5000)
     ]
-    renderFlow(rejectedByValidator, events)
-    fireEvent.click(screen.getByTestId('automated-issues-back'))
-    fireEvent.click(screen.getByTestId('validate-again'))
+    reviewAgain(events)
     expect(mocks.validate).not.toHaveBeenCalled()
     expect(screen.getByTestId('daily-limit-attempts')).toHaveTextContent('5 of 5 used today')
 
@@ -180,9 +197,7 @@ describe('ReviewFlow', () => {
   })
 
   it('says a review is running instead of opening the limit modal while one is in progress', () => {
-    renderFlow(rejectedByValidator, [event('review.automated_started', { trigger: 'retry' }), verdict()])
-    fireEvent.click(screen.getByTestId('automated-issues-back'))
-    fireEvent.click(screen.getByTestId('validate-again'))
+    reviewAgain([event('review.automated_started', { trigger: 'retry' }), verdict()])
     expect(mocks.validate).not.toHaveBeenCalled()
     expect(screen.queryByTestId('daily-limit-modal')).toBeNull()
     expect(mocks.toast).toHaveBeenCalledWith(expect.any(String), { type: 'warn' })
@@ -195,19 +210,16 @@ describe('ReviewFlow', () => {
   })
 
   it('explains a 429 and each 409 answered by the server', () => {
-    renderFlow(rejectedByValidator, [verdict()])
-    fireEvent.click(screen.getByTestId('automated-issues-back'))
     mocks.validate.mockImplementationOnce((_, { onError }) =>
       onError(new ValidationLimitError(new BuilderServerError('Limit', 429, { retryAt: '2026-09-30T00:00:00Z' })))
     )
-    fireEvent.click(screen.getByTestId('validate-again'))
-    expect(screen.getByTestId('daily-limit-modal')).toBeInTheDocument()
-    fireEvent.click(screen.getByTestId('daily-limit-not-now'))
+    reviewAgain([verdict()]).unmount()
+    expect(mocks.validate).toHaveBeenCalledTimes(1)
 
     mocks.validate.mockImplementationOnce((_, { onError }) =>
       onError(new BuilderServerError('A validation is already in progress for this collection', 409))
     )
-    fireEvent.click(screen.getByTestId('validate-again'))
+    reviewAgain([verdict()]).unmount()
     expect(mocks.toast).toHaveBeenCalledWith('A review is already running. Try again when it finishes.', {
       type: 'warn'
     })
@@ -217,7 +229,7 @@ describe('ReviewFlow', () => {
         new BuilderServerError('Nothing changed since the last validation: edit an item or appeal the decision', 409)
       )
     )
-    fireEvent.click(screen.getByTestId('validate-again'))
+    reviewAgain([verdict()])
     expect(mocks.toast).toHaveBeenLastCalledWith(
       "There's nothing new for the automated review. Edit an item and publish your changes, or request a curator review.",
       { type: 'warn' }
@@ -226,7 +238,6 @@ describe('ReviewFlow', () => {
 
   it('asks for a curator after confirming, then says the collection was sent', () => {
     renderFlow(rejectedByCurator, [event('review.rejected', { rejectionReasons: ['clipping'] })])
-    expect(screen.queryByTestId('validate-again')).toBeNull()
     fireEvent.click(screen.getByTestId('request-curator-review'))
     mocks.appeal.mockImplementationOnce((_, { onSuccess }) => onSuccess())
     fireEvent.click(screen.getByTestId('request-review-confirm'))
@@ -249,7 +260,7 @@ describe('ReviewFlow', () => {
 
   it('warns instead of asking twice while an appeal is open', () => {
     renderFlow(rejectedByValidator, [event('review.appeal_requested'), verdict()])
-    fireEvent.click(screen.getByTestId('request-curator-review'))
+    fireEvent.click(screen.getByTestId('automated-issues-request-review'))
     expect(screen.queryByTestId('request-review-modal')).toBeNull()
     expect(mocks.toast).toHaveBeenCalledWith(expect.stringContaining('already requested'), { type: 'warn' })
   })
@@ -291,7 +302,6 @@ describe('ReviewFlow', () => {
   it('offers viewers without rights neither actions nor the findings modal', () => {
     renderFlow(rejectedByValidator, [verdict()], { canManage: false })
     expect(screen.queryByTestId('automated-issues-modal')).toBeNull()
-    expect(screen.queryByTestId('validate-again')).toBeNull()
     expect(screen.getByTestId('review-notice')).toHaveAttribute('data-stage', 'rejected_by_validator')
   })
 
@@ -339,8 +349,7 @@ describe('ReviewFlow', () => {
 
   it('sends the note the creator writes along with the request for a curator', () => {
     renderFlow(rejectedByValidator, [verdict()])
-    fireEvent.click(screen.getByTestId('automated-issues-back'))
-    fireEvent.click(screen.getByTestId('request-curator-review'))
+    fireEvent.click(screen.getByTestId('automated-issues-request-review'))
     fireEvent.change(screen.getByTestId('request-review-note'), { target: { value: ' The cape is meant to clip ' } })
     fireEvent.click(screen.getByTestId('request-review-confirm'))
     expect(mocks.appeal.mock.calls[0][0]).toMatchObject({ collection, note: 'The cape is meant to clip' })

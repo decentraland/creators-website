@@ -2093,10 +2093,10 @@
     "attempts_info": "How the daily limit works",
     "issues": {
       "title": "Some items need your attention",
-      "intro": "We found a few issues that need to be resolved before your collection can be published. You can fix them and try again, or request a curator review if you believe the issues were flagged incorrectly.",
+      "intro": "We found a few issues that need to be resolved before your collection can move on to a curator. Fix them and review again, or request a curator review if you think they were flagged by mistake.",
       "request": "Request curator review",
       "back": "Back to collection",
-      "see": "See the issues"
+      "see": "View feedback"
     },
     "request": {
       "title": "Request curator review?",
@@ -2121,7 +2121,8 @@
       "title": "Your collection needs an additional review",
       "description": "Some content in your collection requires a closer look. We've sent it to a Decentraland curator for review. Curator reviews take more time. We'll notify you once it's approved or if any changes are needed."
     },
-    "validate_again": "Review again ({left} of {max} left today)",
+    "validate_again": "Review again",
+    "attempts_left": "{left} of {max} automated reviews left today",
     "request_review": "Request curator review",
     "running": "A review is already running. Try again when it finishes.",
     "nothing_to_validate": "There's nothing new for the automated review. Edit an item and publish your changes, or request a curator review.",
