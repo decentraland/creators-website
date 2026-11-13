@@ -99,36 +99,35 @@ describe('CurationRow', () => {
     expect(onAssign).toHaveBeenCalledWith(collection, assigned, 'edit')
   })
 
-  it('shows the derived stage over the legacy state when the timeline tells it apart', () => {
+  it('keeps a request out of the curator queue while its automated review runs', () => {
     latest.event = { type: 'review.automated_started' }
     renderRow(pending)
-    expect(screen.getByTestId('review-stage')).toHaveAttribute('data-stage', 'automated_reviewing')
-    expect(screen.queryByTestId('curation-state')).toBeNull()
+    expect(screen.getByTestId('curation-state')).toHaveAttribute('data-state', 'auto_reviewing')
     latest.event = null
   })
 
-  it('names the validator on its rejections', () => {
-    renderRow({ ...pending, status: 'rejected', reviewedBy: 'validator' })
-    expect(screen.getByTestId('review-stage')).toHaveAttribute('data-stage', 'rejected_by_validator')
-  })
-
-  it('shows Approved from the timeline on an approved collection', () => {
-    renderRow({ ...pending, status: 'approved', reviewedBy: '0xcurator' }, { ...collection, isApproved: true })
-    expect(screen.getByTestId('review-stage')).toHaveAttribute('data-stage', 'approved')
-  })
-
-  it('reads the stage of a decided request without asking the server for its timeline', () => {
+  it('marks a request the validator rejected, without asking the server for its timeline', () => {
     latest.fetched = []
     renderRow({ ...pending, status: 'rejected', reviewedBy: 'validator' })
-    expect(screen.getByTestId('review-stage')).toBeInTheDocument()
+    expect(screen.getByTestId('curation-state')).toHaveAttribute('data-state', 'rejected')
+    expect(screen.getByTestId('curation-row-automated-trigger').querySelector('[data-status]')).toHaveAttribute(
+      'data-status',
+      'rejected'
+    )
     expect(latest.fetched.every(fetched => !fetched)).toBe(true)
+  })
+
+  it('shows an approved collection as approved, with no automated mark', () => {
+    renderRow({ ...pending, status: 'approved', reviewedBy: '0xcurator' }, { ...collection, isApproved: true })
+    expect(screen.getByTestId('curation-state')).toHaveAttribute('data-state', 'approved')
+    expect(screen.queryByTestId('curation-row-automated-trigger')).toBeNull()
   })
 
   it('keeps the legacy state without a timeline, even when the server names the reviewer', () => {
     latest.timeline = false
     renderRow({ ...pending, status: 'rejected', reviewedBy: '0xcurator' })
-    expect(screen.queryByTestId('review-stage')).toBeNull()
     expect(screen.getByTestId('curation-state')).toHaveAttribute('data-state', 'rejected')
+    expect(screen.queryByTestId('curation-row-automated-trigger')).toBeNull()
     latest.timeline = true
   })
 

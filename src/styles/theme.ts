@@ -53,6 +53,7 @@ const colors = {
   warningText: '#ffe1b7',
   // Inline validation errors on dark surfaces (Figma System/Error).
   errorOverlay: 'rgba(233, 113, 119, 0.2)',
+  successOverlay: 'rgba(48, 205, 0, 0.12)',
   errorText: '#ffcdd4',
   white: '#ffffff',
   // Hairline on a translucent field over the purple (search box border).

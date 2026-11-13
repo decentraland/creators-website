@@ -1,18 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useIntl } from 'react-intl'
-import {
-  ArrowBack as ArrowBackIcon,
-  AutoAwesome as VerdictIcon,
-  Edit as EditIcon,
-  PersonAddAlt as AssignIcon
-} from '@mui/icons-material'
+import { ArrowBack as ArrowBackIcon, Edit as EditIcon, PersonAddAlt as AssignIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { AssignCuratorModal } from '~/components/AssignCuratorModal'
 import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { CurationStatePill } from '~/components/CurationStatePill'
 import { ProfileBadge } from '~/components/ProfileBadge'
-import { ReviewStagePill } from '~/components/ReviewStagePill'
+import { AutomatedReviewIcon } from '~/components/AutomatedReviewIcon'
+import { Tooltip } from '~/components/Tooltip'
 import { ValidationBadge, toValidationSubject, type ItemResult } from '~/components/ValidationBadge'
 import { useCollectionEvents } from '~/hooks/useCollectionEvents'
 import { useCollectionValidation } from '~/hooks/useCollectionValidation'
@@ -28,11 +24,13 @@ import {
   ReviewAction,
   canEditAssignee,
   curationListUrl,
+  ReviewStage,
   getCurationState,
+  getCuratorState,
   getReviewActions,
   getReviewStage
 } from '~/lib/curation'
-import { getLatestVerdict } from '~/lib/events'
+import { getCuratorVerdict } from '~/lib/events'
 import { FeatureFlag } from '~/lib/featureFlags'
 import { ItemSyncStatus, hasPendingChanges } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
@@ -94,7 +92,10 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
   )
   const state = getCurationState(collection, curation)
   const stage = useMemo(() => getReviewStage(collection, curation, events), [collection, curation, events])
-  const automatedVerdict = useMemo(() => (events ? getLatestVerdict(events) : null), [events])
+  const curatorState = getCuratorState(collection, curation, stage)
+  const automatedVerdict = useMemo(() => (events ? getCuratorVerdict(events) : null), [events])
+  const automatedRunning = stage === ReviewStage.AUTOMATED_REVIEWING
+  const automatedStatus = automatedRunning ? 'running' : automatedVerdict?.outcome
   const actions = collection.isPublished ? getReviewActions(collection, curation, hasMissingEntities) : []
   const assignee = curation?.assignee ?? null
   // A first-review rejection opens the request itself, so its creation time only means something while pending.
@@ -197,9 +198,7 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
           <ArrowBackIcon fontSize="small" />
         </S.BackLink>
         <S.Name title={collection.name}>{collection.name}</S.Name>
-        {!isLoading &&
-          !isCurationError &&
-          (stage ? <ReviewStagePill stage={stage} /> : <CurationStatePill state={state} />)}
+        {!isLoading && !isCurationError && <CurationStatePill state={curatorState} />}
         <ValidationBadge
           status={validationStatus}
           results={validationResults}
@@ -230,16 +229,24 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
             <span data-testid="review-requested">
               {t(`item_editor.review.${timeKey}`, { time: formatTimeAgo(time, intl.locale) })}
             </span>
-            {automatedVerdict && (
-              <S.AssigneeChip
-                type="button"
-                data-verdict={automatedVerdict.payload.verdict}
-                data-testid="review-automated-verdict"
-                onClick={() => setDialog('verdict')}
+            {automatedStatus && (
+              <Tooltip
+                content={t(`automated_verdict.button_${automatedStatus}`)}
+                describeChild
+                asChild
+                testId="review-automated-verdict-tooltip"
               >
-                <VerdictIcon fontSize="small" />
-                {t('automated_verdict.button')}
-              </S.AssigneeChip>
+                <S.AssigneeChip
+                  type="button"
+                  aria-disabled={automatedRunning || undefined}
+                  data-status={automatedStatus}
+                  data-testid="review-automated-verdict"
+                  onClick={() => !automatedRunning && setDialog('verdict')}
+                >
+                  <AutomatedReviewIcon status={automatedStatus} />
+                  {t('automated_verdict.button')}
+                </S.AssigneeChip>
+              </Tooltip>
             )}
             {assignee ? (
               <S.AssigneeChip
@@ -360,7 +367,12 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
         />
       )}
       {dialog === 'verdict' && automatedVerdict && (
-        <AutomatedVerdictModal verdict={automatedVerdict} items={items} onClose={closeDialog} />
+        <AutomatedVerdictModal
+          verdict={automatedVerdict}
+          requestedByCreator={stage === ReviewStage.APPEALED}
+          items={items}
+          onClose={closeDialog}
+        />
       )}
       {approval && (
         <ApprovalFlowModal

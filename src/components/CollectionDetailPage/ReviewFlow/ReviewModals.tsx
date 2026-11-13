@@ -1,11 +1,12 @@
 import { useMemo } from 'react'
-import { ReportProblemOutlined as ErrorIcon } from '@mui/icons-material'
+import { InfoOutlined as InfoIcon, ReportProblemOutlined as ErrorIcon } from '@mui/icons-material'
 import reviewArt from '~/assets/publish-success.png'
 import limitArt from '~/assets/modal-error.png'
 import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { Modal } from '~/components/Modal'
 import { SuccessModal } from '~/components/SuccessModal'
+import { Tooltip } from '~/components/Tooltip'
 import { ItemValidationCard, toValidationSubject } from '~/components/ValidationBadge'
 import { useTranslation } from '~/intl'
 import { VALIDATION_ATTEMPTS_PER_DAY } from '~/lib/events'
@@ -15,15 +16,23 @@ import * as S from './ReviewFlow.styles'
 
 type AttemptsProps = { used: number; testId: string }
 
-/** "Automated reviews: N of 3 used today", under the copy of the review modals. */
+/** "Automated reviews: N of 5 used today", under the copy of the review modals, with how the limit works. */
 function Attempts({ used, testId }: AttemptsProps) {
   const { t } = useTranslation()
   return (
-    <S.Attempts data-testid={testId}>
-      {t('review_flow.attempts', {
-        used: Math.min(used, VALIDATION_ATTEMPTS_PER_DAY),
-        max: VALIDATION_ATTEMPTS_PER_DAY
-      })}
+    <S.Attempts>
+      <span data-testid={testId}>
+        {t('review_flow.attempts', {
+          used: Math.min(used, VALIDATION_ATTEMPTS_PER_DAY),
+          max: VALIDATION_ATTEMPTS_PER_DAY
+        })}
+      </span>
+      <Tooltip
+        content={t('review_flow.attempts_tooltip', { max: VALIDATION_ATTEMPTS_PER_DAY })}
+        testId={`${testId}-tooltip`}
+      >
+        <InfoIcon fontSize="inherit" aria-label={t('review_flow.attempts_info')} />
+      </Tooltip>
     </S.Attempts>
   )
 }
@@ -34,12 +43,8 @@ export function ReviewingModal({ attemptsUsed, onDone }: { attemptsUsed: number;
   return (
     <SuccessModal
       title={t('review_flow.reviewing.title')}
-      description={
-        <>
-          {t('review_flow.reviewing.description')}
-          <Attempts used={attemptsUsed} testId="reviewing-attempts" />
-        </>
-      }
+      description={t('review_flow.reviewing.description')}
+      note={<Attempts used={attemptsUsed} testId="reviewing-attempts" />}
       art={reviewArt}
       onDone={onDone}
       testId="reviewing-modal"

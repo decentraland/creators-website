@@ -16,6 +16,7 @@ import {
   rememberCurationSearch,
   fromRemoteCuration,
   getCurationState,
+  getCuratorState,
   getReviewActions,
   getReviewType,
   getReviewStage,
@@ -95,6 +96,18 @@ describe('isCommitteeMember', () => {
     expect(isCommitteeMember(['0xabc'], '0xdef')).toBe(false)
     expect(isCommitteeMember(undefined, '0xabc')).toBe(false)
     expect(isCommitteeMember(['0xabc'], undefined)).toBe(false)
+  })
+})
+
+describe('getCuratorState', () => {
+  it('holds a pending request back while its automated review runs, and reads the curation state otherwise', () => {
+    expect(getCuratorState(collection(), curation(), ReviewStage.AUTOMATED_REVIEWING)).toBe(
+      CurationState.AUTO_REVIEWING
+    )
+    expect(getCuratorState(collection(), curation(), ReviewStage.AWAITING_CURATOR)).toBe(CurationState.TO_REVIEW)
+    expect(getCuratorState(collection(), curation({ status: 'rejected' }), ReviewStage.REJECTED_BY_VALIDATOR)).toBe(
+      CurationState.REJECTED
+    )
   })
 })
 

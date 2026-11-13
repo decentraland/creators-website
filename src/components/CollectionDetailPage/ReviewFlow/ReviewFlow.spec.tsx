@@ -152,7 +152,7 @@ describe('ReviewFlow', () => {
     renderFlow(rejectedByValidator, [verdict(), event('review.automated_started', { trigger: 'publish' }, 1000)])
     fireEvent.click(screen.getByTestId('automated-issues-back'))
     const button = screen.getByTestId('validate-again')
-    expect(button).toHaveTextContent('Review again (2 of 3 left today)')
+    expect(button).toHaveTextContent('Review again (4 of 5 left today)')
     fireEvent.click(button)
     expect(mocks.validate).toHaveBeenCalledWith(expect.objectContaining({ collection }), expect.anything())
   })
@@ -160,15 +160,14 @@ describe('ReviewFlow', () => {
   it('opens the daily limit modal at the limit, and sends the creator to a curator from it', () => {
     const events = [
       verdict(),
-      event('review.automated_started', { trigger: 'retry' }, 1000),
-      event('review.automated_started', { trigger: 'retry' }, 2000),
-      event('review.automated_started', { trigger: 'publish' }, 3000)
+      ...[1000, 2000, 3000, 4000].map(at => event('review.automated_started', { trigger: 'retry' }, at)),
+      event('review.automated_started', { trigger: 'publish' }, 5000)
     ]
     renderFlow(rejectedByValidator, events)
     fireEvent.click(screen.getByTestId('automated-issues-back'))
     fireEvent.click(screen.getByTestId('validate-again'))
     expect(mocks.validate).not.toHaveBeenCalled()
-    expect(screen.getByTestId('daily-limit-attempts')).toHaveTextContent('3 of 3 used today')
+    expect(screen.getByTestId('daily-limit-attempts')).toHaveTextContent('5 of 5 used today')
 
     fireEvent.click(screen.getByTestId('daily-limit-request'))
     fireEvent.click(screen.getByTestId('request-review-confirm'))
@@ -264,7 +263,7 @@ describe('ReviewFlow', () => {
     const onRequestHandled = vi.fn()
     const events = [event('review.automated_started', { trigger: 'publish' })]
     const { rerender } = renderFlow(pending, events, { request: 'reviewing', onRequestHandled })
-    expect(screen.getByTestId('reviewing-attempts')).toHaveTextContent('1 of 3 used today')
+    expect(screen.getByTestId('reviewing-attempts')).toHaveTextContent('1 of 5 used today')
     await waitFor(() => expect(onRequestHandled).toHaveBeenCalled())
 
     rerender(

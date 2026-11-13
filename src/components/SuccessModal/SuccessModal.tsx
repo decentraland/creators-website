@@ -9,6 +9,8 @@ import * as S from './SuccessModal.styles'
 type Props = {
   title: string
   description: ReactNode
+  /** A secondary line under the description. */
+  note?: ReactNode
   art?: string
   /** A way on from the success, shown before DONE. */
   action?: { label: string; onClick: () => void; testId: string; external?: boolean }
@@ -20,6 +22,7 @@ type Props = {
 export function SuccessModal({
   title,
   description,
+  note,
   art = successArt,
   action,
   onDone,
@@ -27,11 +30,14 @@ export function SuccessModal({
 }: Props) {
   const { t } = useTranslation()
   return (
-    <Modal title={title} onClose={onDone} hideTitle testId={`${testId}-modal`}>
+    <Modal title={title} onClose={onDone} hideTitle size="medium" testId={`${testId}-modal`}>
       <S.Wrap>
         <S.Art src={art} alt="" />
         <S.Heading data-testid={`${testId}-title`}>{title}</S.Heading>
-        <S.Text data-testid={`${testId}-description`}>{description}</S.Text>
+        <S.Body>
+          <S.Text data-testid={`${testId}-description`}>{description}</S.Text>
+          {note}
+        </S.Body>
         <S.Actions>
           {action && (
             <Button type="button" variant="secondary" data-testid={action.testId} onClick={action.onClick}>

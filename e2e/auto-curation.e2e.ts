@@ -142,7 +142,7 @@ describe('automated review', () => {
     await waitForTestId(page, 'review-bar', 30_000)
     await clickTestId(page, 'review-automated-verdict')
     const headline = await waitForTestId(page, 'automated-verdict-headline')
-    expect(await headline.evaluate(el => el.getAttribute('data-passed'))).toBe('false')
+    expect(await headline.evaluate(el => el.getAttribute('data-outcome'))).toBe('rejected')
     await clickTestId(page, 'automated-verdict-modal-close')
 
     await page.waitForFunction(
@@ -155,6 +155,17 @@ describe('automated review', () => {
     await page.waitForFunction(() => !document.querySelector('[data-testid="assign-curator-modal"]'))
     expect(app.builder.curations.get(collection.id)?.assignee).toBe(TEST_ADDRESS)
     await waitForTestId(page, 'reject-curation-modal')
-    await waitForTestId(page, 'reject-reasons')
+    await clickTestId(page, 'reject-reasons')
+    await clickTestId(page, 'reject-reasons-option-clipping')
+    await clickTestId(page, 'reject-reasons-option-thumbnail')
+    // The list stays open between picks; the trigger closes it.
+    await clickTestId(page, 'reject-reasons')
+    await clickTestId(page, 'reject-reason-pill-clipping-remove')
+    await clickTestId(page, 'reject-curation-confirm')
+    await page.waitForFunction(() => !document.querySelector('[data-testid="reject-curation-modal"]'))
+    const stored = app.builder.curations.get(collection.id)
+    expect(stored?.status).toBe('rejected')
+    expect(stored?.rejection_reasons).toEqual(['thumbnail'])
+    expect(stored?.rejection_message ?? null).toBeNull()
   })
 })

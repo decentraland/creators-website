@@ -25,8 +25,16 @@ export const Heading = styled.h3`
   color: ${theme.colors.white};
 `
 
+export const Body = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+`
+
 export const Text = styled.p`
-  margin: 0 0 32px;
+  margin: 0;
   max-width: 615px;
   font-size: 18px;
   line-height: 1.5;

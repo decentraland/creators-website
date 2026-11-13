@@ -419,8 +419,15 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
     if (method === 'PATCH' && sub === 'curation') {
       const current = curations.get(id)
       if (!current) return notFound('curation')
-      const changes = (body as { curation?: Partial<RemoteCurationRow> })?.curation ?? {}
-      const curation = { ...current, ...changes, updated_at: now() }
+      const { rejectionReasons, rejectionMessage, ...changes } =
+        (body as { curation?: Partial<RemoteCurationRow> & { rejectionReasons?: string[]; rejectionMessage?: string } })
+          ?.curation ?? {}
+      // builder-server stores the rejection feedback snake-cased, and only on a rejection.
+      const feedback =
+        changes.status === 'rejected'
+          ? { rejection_reasons: rejectionReasons ?? null, rejection_message: rejectionMessage ?? null }
+          : {}
+      const curation = { ...current, ...changes, ...feedback, updated_at: now() }
       setCuration(id, curation)
       return ok(curation)
     }

@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
+import { Close as RemoveIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { Button } from '~/components/Button'
-import { Checkbox } from '~/components/Checkbox'
 import { Modal } from '~/components/Modal'
+import { MultiSelect } from '~/components/MultiSelect'
 import { useRejectCuration } from '~/hooks/useCuration'
 import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
@@ -10,7 +11,7 @@ import { REJECT_REASON_CODES, type RejectReasonCode } from '~/lib/events'
 import { useNotifications } from '~/lib/notifications'
 import * as S from './RejectCurationModal.styles'
 
-export const REJECTION_MESSAGE_MAX_LENGTH = 1000
+export const REJECTION_MESSAGE_MAX_LENGTH = 3000
 
 type Props = {
   collection: Collection
@@ -21,26 +22,33 @@ type Props = {
   onRejected?: () => void
 }
 
-/** The committee's rejection: one or more fixed reasons plus a message, both required, both shown to the creator. */
+/** The committee's rejection: one or more fixed reasons, required, plus optional details, both shown to the creator. */
 export function RejectCurationModal({ collection, curation, address, onClose, onRejected }: Props) {
   const { t } = useTranslation()
   const showToast = useNotifications(state => state.showToast)
   const reject = useRejectCuration(address)
   const [reasons, setReasons] = useState<RejectReasonCode[]>([])
   const [message, setMessage] = useState('')
-  const selected = useMemo(() => new Set(reasons), [reasons])
+  const options = useMemo(
+    () => REJECT_REASON_CODES.map(code => ({ value: code, label: t(`reject_reason.${code}`) })),
+    [t]
+  )
   const trimmed = message.trim()
-  const canSubmit = reasons.length > 0 && trimmed.length > 0
+  const canSubmit = reasons.length > 0
 
-  function toggle(code: RejectReasonCode, checked: boolean) {
-    setReasons(current => (checked ? [...current, code] : current.filter(reason => reason !== code)))
+  function remove(code: RejectReasonCode) {
+    setReasons(current => current.filter(reason => reason !== code))
   }
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
     if (!canSubmit) return
     reject.mutate(
-      { collection, curation, decision: { rejectionReasons: reasons, rejectionMessage: trimmed } },
+      {
+        collection,
+        curation,
+        decision: { rejectionReasons: reasons, ...(trimmed ? { rejectionMessage: trimmed } : {}) }
+      },
       {
         onSuccess: () => {
           showToast(t('reject_curation_modal.success', { collection: collection.name }))
@@ -53,47 +61,59 @@ export function RejectCurationModal({ collection, curation, address, onClose, on
 
   return (
     <Modal
-      title={t('reject_curation_modal.title', { collection: collection.name })}
+      title={t('reject_curation_modal.title')}
       onClose={onClose}
       closeDisabled={reject.isPending}
       testId="reject-curation-modal"
     >
       <S.Form onSubmit={submit}>
-        <S.Text>{t(collection.isApproved ? 'reject_curation_modal.changes' : 'reject_curation_modal.first')}</S.Text>
-        <S.Fieldset>
-          <S.Legend>
-            {t('reject_curation_modal.reasons')}
-            <S.Hint>{t('reject_curation_modal.reasons_hint')}</S.Hint>
-          </S.Legend>
-          <S.Reasons data-testid="reject-reasons">
-            {REJECT_REASON_CODES.map(code => (
-              <Checkbox
-                key={code}
-                checked={selected.has(code)}
-                disabled={reject.isPending}
-                onChange={checked => toggle(code, checked)}
-                testId={`reject-reason-${code}`}
-              >
-                {t(`reject_reason.${code}`)}
-              </Checkbox>
-            ))}
-          </S.Reasons>
-        </S.Fieldset>
+        <S.Heading>{t('reject_curation_modal.heading')}</S.Heading>
         <S.Field>
-          <label htmlFor="rejection-message">{t('reject_curation_modal.message')}</label>
+          <S.Label id="reject-reasons-label">{t('reject_curation_modal.reasons')}</S.Label>
+          <MultiSelect<RejectReasonCode>
+            values={reasons}
+            options={options}
+            onChange={setReasons}
+            placeholder={t('reject_curation_modal.reasons_placeholder')}
+            summary={t('reject_curation_modal.reasons_selected', { count: reasons.length })}
+            disabled={reject.isPending}
+            ariaLabel={t('reject_curation_modal.reasons')}
+            testId="reject-reasons"
+          />
+          {reasons.length > 0 && (
+            <S.Pills data-testid="reject-reason-pills">
+              {reasons.map(code => (
+                <S.Pill key={code} data-testid={`reject-reason-pill-${code}`}>
+                  {t(`reject_reason.${code}`)}
+                  <S.PillRemove
+                    type="button"
+                    aria-label={t('reject_curation_modal.remove_reason', { reason: t(`reject_reason.${code}`) })}
+                    disabled={reject.isPending}
+                    data-testid={`reject-reason-pill-${code}-remove`}
+                    onClick={() => remove(code)}
+                  >
+                    <RemoveIcon fontSize="inherit" />
+                  </S.PillRemove>
+                </S.Pill>
+              ))}
+            </S.Pills>
+          )}
+        </S.Field>
+        <S.Details>
+          <S.DetailsLegend>{t('reject_curation_modal.message')}</S.DetailsLegend>
           <S.TextArea
-            id="rejection-message"
             value={message}
             maxLength={REJECTION_MESSAGE_MAX_LENGTH}
             placeholder={t('reject_curation_modal.message_placeholder')}
+            aria-label={t('reject_curation_modal.message')}
             disabled={reject.isPending}
             data-testid="rejection-message"
             onChange={event => setMessage(event.target.value)}
           />
-          <S.CharCount>
-            {message.length}/{REJECTION_MESSAGE_MAX_LENGTH}
-          </S.CharCount>
-        </S.Field>
+        </S.Details>
+        <S.CharCount>
+          {message.length}/{REJECTION_MESSAGE_MAX_LENGTH}
+        </S.CharCount>
         {reject.isError && <S.Error data-testid="reject-curation-error">{t('reject_curation_modal.error')}</S.Error>}
         <S.Actions>
           <Button

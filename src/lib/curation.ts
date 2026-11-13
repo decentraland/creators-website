@@ -117,6 +117,8 @@ export function isCommitteeMember(members: string[] | undefined, address: string
 /** A pending request is "to review" whether or not a curator has it: the assignee says who, the state doesn't. */
 export enum CurationState {
   TO_REVIEW = 'to_review',
+  /** Pending, but the automated review is still running: not a curator's turn yet. */
+  AUTO_REVIEWING = 'auto_reviewing',
   APPROVED = 'approved',
   REJECTED = 'rejected',
   DISABLED = 'disabled'
@@ -142,6 +144,17 @@ export function getCurationState(collection: Collection, curation: CollectionCur
     if (curation?.status === 'rejected') return CurationState.REJECTED
   }
   return CurationState.TO_REVIEW
+}
+
+/** The curator-facing state: the curation state, except a pending request still in its automated review. */
+export function getCuratorState(
+  collection: Collection,
+  curation: CollectionCuration | null,
+  stage: ReviewStage | null
+): CurationState {
+  return stage === ReviewStage.AUTOMATED_REVIEWING
+    ? CurationState.AUTO_REVIEWING
+    : getCurationState(collection, curation)
 }
 
 export enum ReviewAction {
@@ -180,6 +193,7 @@ export function canEditAssignee(collection: Collection, curation: CollectionCura
 /** The status picker's options: one "to review" covers a pending request whether or not a curator has it. */
 export enum CurationStatusFilter {
   TO_REVIEW = 'to_review',
+  AUTO_REVIEWING = 'auto_reviewing',
   APPROVED = 'approved',
   REJECTED = 'rejected',
   DISABLED = 'disabled'
@@ -192,6 +206,7 @@ export const DEFAULT_STATUS_FILTERS = [CurationStatusFilter.TO_REVIEW]
 // builder-server splits a pending request by assignee; the picker doesn't, since the assignee filter already does.
 const SERVER_STATUSES: Record<CurationStatusFilter, string[]> = {
   [CurationStatusFilter.TO_REVIEW]: ['to_review', 'under_review'],
+  [CurationStatusFilter.AUTO_REVIEWING]: ['auto_reviewing'],
   [CurationStatusFilter.APPROVED]: ['approved'],
   [CurationStatusFilter.REJECTED]: ['rejected'],
   [CurationStatusFilter.DISABLED]: ['disabled']

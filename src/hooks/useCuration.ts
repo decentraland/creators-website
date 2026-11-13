@@ -147,7 +147,7 @@ export function useAssignCurator(address: string | undefined) {
   })
 }
 
-export type RejectDecision = { rejectionReasons: RejectReasonCode[]; rejectionMessage: string }
+export type RejectDecision = { rejectionReasons: RejectReasonCode[]; rejectionMessage?: string }
 
 export type RejectVariables = {
   collection: Collection

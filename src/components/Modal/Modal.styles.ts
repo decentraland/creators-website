@@ -30,6 +30,10 @@ export const Dialog = styled.div`
   overflow: hidden;
   outline: none;
 
+  &[data-size='medium'] {
+    width: 678px;
+  }
+
   &[data-size='large'] {
     width: 860px;
   }

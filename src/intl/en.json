@@ -1008,6 +1008,7 @@
     "search_placeholder": "Search by name",
     "filter": {
       "to_review": "To review",
+      "auto_reviewing": "Auto-reviewing",
       "approved": "Approved",
       "rejected": "Rejected",
       "disabled": "Disabled",
@@ -1482,6 +1483,7 @@
   },
   "curation_state": {
     "to_review": "To review",
+    "auto_reviewing": "Auto-reviewing",
     "approved": "Approved",
     "rejected": "Rejected",
     "disabled": "Disabled"
@@ -2073,6 +2075,8 @@
       "description": "Your collection is being reviewed for approval. This may take up to 5 minutes. We'll notify you once the review is complete."
     },
     "attempts": "Automated reviews: {used} of {max} used today",
+    "attempts_tooltip": "You can run up to {max} automated reviews per day. Once you reach the limit, you can request a curator review or wait until the next day (00:00 UTC) to try again.",
+    "attempts_info": "How the daily limit works",
     "issues": {
       "title": "Some items need your attention",
       "intro": "We found a few issues that need to be resolved before your collection can be published. You can fix them and try again, or request a curator review if you believe the issues were flagged incorrectly.",
@@ -2082,13 +2086,13 @@
     },
     "request": {
       "title": "Request curator review?",
-      "description": "If you believe the detected issues are incorrect, you can request a review from a Decentraland curator. This may take up to 48 hours. We'll notify you once the review is complete.",
+      "description": "If you believe the detected issues are incorrect, you can request a review from a Decentraland curator. Curator reviews take more time. We'll notify you once the review is complete.",
       "cancel": "Cancel",
       "confirm": "Request review"
     },
     "sent": {
       "title": "Collection sent for review!",
-      "description": "Your collection has been sent to a Decentraland curator for review. This may take up to 48 hours. We'll notify you once the review is complete, whether your collection is approved or needs changes."
+      "description": "Your collection has been sent to a Decentraland curator for review. Curator reviews take more time. We'll notify you once the review is complete, whether your collection is approved or needs changes."
     },
     "limit": {
       "title": "Daily automated review limit reached",
@@ -2099,7 +2103,7 @@
     },
     "additional": {
       "title": "Your collection needs an additional review",
-      "description": "Some content in your collection requires a closer look. We've sent it to a Decentraland curator for review, which may take up to 48 hours. We'll notify you once it's approved or if any changes are needed."
+      "description": "Some content in your collection requires a closer look. We've sent it to a Decentraland curator for review. Curator reviews take more time. We'll notify you once it's approved or if any changes are needed."
     },
     "validate_again": "Review again ({left} of {max} left today)",
     "request_review": "Request curator review",
@@ -2111,27 +2115,18 @@
     "validation_started": "Automated review started. We'll update this page when it finishes.",
     "validation_error": "We couldn't start the automated review. Please try again."
   },
-  "review_stage": {
-    "automated_reviewing": "In automated review",
-    "awaiting_curator": "Passed, awaiting curator",
-    "rejected_by_validator": "Automated review: issues found",
-    "appealed": "Appealed",
-    "rejected_by_curator": "Rejected by curator",
-    "approved": "Approved",
-    "needs_curator": "Needs a curator"
-  },
   "reject_reason": {
-    "clipping": "Clipping",
-    "thumbnail": "Thumbnail",
-    "category_hides": "Category, hides and replaces",
-    "rigging": "Skin weights or rigging",
-    "triangle_count": "Triangle count",
+    "clipping": "Clipping issues",
+    "thumbnail": "Thumbnail issues",
+    "category_hides": "Incorrect category or hide settings",
+    "rigging": "Rigging or skin weight issue",
+    "triangle_count": "Triangle limit exceeded",
     "emote": "Emote issues",
-    "file_size": "File size",
-    "textures_materials": "Textures or materials",
-    "reversed_faces": "Reversed faces or draw order",
-    "smart_wearable_files": "Smart wearable files",
-    "content_policy_ip": "Content policy or IP",
+    "file_size": "File size exceeded",
+    "textures_materials": "Texture or material limits exceeded",
+    "reversed_faces": "Face or draw order issues",
+    "smart_wearable_files": "Invalid smart wearable files",
+    "content_policy_ip": "Content policy issues",
     "other": "Other"
   },
   "findings": {
@@ -2156,27 +2151,37 @@
     }
   },
   "reject_curation_modal": {
-    "title": "Reject {collection}",
-    "first": "The collection won't be mintable. The creator will see it as rejected, with the reasons below.",
-    "changes": "The collection keeps its approved version. The creator will see the changes as rejected, with the reasons below.",
-    "reasons": "Reasons",
-    "reasons_hint": "Pick every reason that applies.",
-    "message": "Message for the creator",
-    "message_placeholder": "What should the creator fix?",
+    "title": "Reject Collection",
+    "heading": "Select Reject Reason",
+    "reasons": "Reject reason",
+    "reasons_placeholder": "Select one or more reasons",
+    "reasons_selected": "{count} Selected",
+    "remove_reason": "Remove {reason}",
+    "message": "Details (optional)",
+    "message_placeholder": "Tell the creator what to fix. They'll see this, so be specific.",
     "cancel": "Cancel",
-    "confirm": "Reject",
+    "confirm": "Reject collection",
     "error": "We couldn't reject the collection. Please try again.",
     "success": "{collection} was rejected"
   },
   "automated_verdict": {
-    "button": "Automated review results",
     "title": "Automated review",
-    "passed": "Passed {time}",
-    "rejected": "Rejected {time}",
-    "summary": "{failed, plural, =0 {Every item passed} one {# item failed} other {# items failed}} · {errors, plural, one {# error} other {# errors}} · {warnings, plural, one {# warning} other {# warnings}}",
-    "validation_id": "Validation {id}",
-    "close": "Close",
-    "rules_version": "Rules {version}"
+    "banner_passed": "Passed",
+    "banner_issues": "Issues in {failed} of {total, plural, one {# item} other {# items}}",
+    "unchecked_group": "Not checked ({count})",
+    "passed_group": "Passed ({count})",
+    "errors": "{count, plural, one {# error} other {# errors}}",
+    "warnings": "{count, plural, one {# warning} other {# warnings}}",
+    "measured_of_limit": "{measured} / {limit} limit",
+    "button_passed": "Automated review passed. Click to see the details.",
+    "button": "Automated review",
+    "status_passed": "Automated review passed",
+    "status_rejected": "Automated review found issues",
+    "status_unsupported": "Some items can't be reviewed automatically",
+    "reason_requested": "The creator requested a curator review",
+    "button_unsupported": "Some items can't be reviewed automatically. Click to see the details.",
+    "button_running": "Automated review running…",
+    "button_rejected": "Automated review found issues. Click to see the details."
   },
   "activity_modal": {
     "title": "Activity",

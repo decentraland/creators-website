@@ -154,7 +154,7 @@ export function fromRemoteEvent(remote: RemoteCollectionEvent): CollectionEvent 
 const VERDICT_TYPES = new Set(['review.automated_passed', 'review.automated_rejected'])
 const HUMAN_DECISION_TYPES = new Set(['review.approved', 'review.rejected'])
 
-export const VALIDATION_ATTEMPTS_PER_DAY = 3
+export const VALIDATION_ATTEMPTS_PER_DAY = 5
 
 /** The newest verdict the validator produced, if any. `events` newest first, as the server lists them. */
 export function getLatestVerdict(
@@ -169,6 +169,37 @@ export function getLatestVerdict(
       verdict: event.payload.verdict ?? (event.type === 'review.automated_passed' ? 'passed' : 'rejected'),
       rulesVersion: event.payload.rulesVersion,
       // An older or malformed row may lack findings; every consumer reads them as a list.
+      items: event.payload.items.map(item => (Array.isArray(item.findings) ? item : { ...item, findings: [] })),
+      staleItemIds: event.payload.staleItemIds
+    }
+  }
+}
+
+export type CuratorVerdictOutcome = 'passed' | 'rejected' | 'unsupported'
+
+export type CuratorVerdict = CollectionEvent & { payload: ValidationVerdictPayload; outcome: CuratorVerdictOutcome }
+
+/**
+ * The newest automated result a curator can open: a pass, a rejection, or a run that left items it can't judge
+ * to a curator. `events` newest first.
+ */
+export function getCuratorVerdict(events: CollectionEvent[]): CuratorVerdict | null {
+  const event = events.find(candidate => VERDICT_TYPES.has(candidate.type) || isUnsupportedItemsReview(candidate))
+  if (!event || !Array.isArray(event.payload.items)) return null
+  const outcome: CuratorVerdictOutcome =
+    event.type === 'review.automated_passed'
+      ? 'passed'
+      : event.type === 'review.automated_rejected'
+        ? 'rejected'
+        : 'unsupported'
+  return {
+    ...event,
+    outcome,
+    payload: {
+      validationId: event.payload.validationId,
+      verdict:
+        event.payload.verdict ?? (outcome === 'passed' ? 'passed' : outcome === 'rejected' ? 'rejected' : 'error'),
+      rulesVersion: event.payload.rulesVersion,
       items: event.payload.items.map(item => (Array.isArray(item.findings) ? item : { ...item, findings: [] })),
       staleItemIds: event.payload.staleItemIds
     }
@@ -266,6 +297,17 @@ export function countFailedItems(items: ValidationItemResult[]): number {
   return items.filter(item => item.passed === false).length
 }
 
+/** A verdict's items split by what a curator should look at first: failures, then undecided, then passes. */
+export function groupVerdictItems<T extends Pick<ValidationItemResult, 'passed'>>(
+  items: T[]
+): { failed: T[]; unchecked: T[]; passed: T[] } {
+  return {
+    failed: items.filter(item => item.passed === false),
+    unchecked: items.filter(item => item.passed === null),
+    passed: items.filter(item => item.passed === true)
+  }
+}
+
 const BODY_SHAPE_FOLDER = /^("?)(male|female)\//i
 
 /**
@@ -310,6 +352,50 @@ function toValidationIssue(finding: ValidationFinding): ValidationIssue {
       ? [(finding.bodyShape === 'male' ? BODY_SHAPE_MALE : BODY_SHAPE_FEMALE) as BodyShapeUrn]
       : undefined
   }
+}
+
+/**
+ * A finding on a body shape whose model file is the very same file as the other shape's (the usual one-model item
+ * stored under both folders) is about the item, not that shape: it loses its shape and the folder in its texts, so
+ * both copies merge into one.
+ */
+function unshapeSharedModelFinding(finding: ValidationFinding, contents: Record<string, string>): ValidationFinding {
+  const match = finding.bodyShape && finding.where ? BODY_SHAPE_FOLDER.exec(finding.where) : null
+  if (!match || !finding.where) return finding
+  const quote = match[1]
+  const tail = finding.where.slice(match[0].length)
+  const path = quote && tail.endsWith(quote) ? tail.slice(0, -quote.length) : tail
+  const other = `${finding.bodyShape === 'male' ? 'female' : 'male'}/${path}`
+  const own = `${finding.bodyShape}/${path}`
+  if (!contents[own] || contents[own] !== contents[other]) return finding
+  return {
+    ...finding,
+    bodyShape: undefined,
+    where: `${quote}${path}${quote}`,
+    message: finding.message.split(own).join(path),
+    ...(finding.fix ? { fix: finding.fix.split(own).join(path) } : {})
+  }
+}
+
+/**
+ * An item's findings as validation issues for a curator: one per finding across body shapes, without the fix. With
+ * the item's `contents`, findings about a model both shapes share are shown once, for the item.
+ */
+export function toCuratorIssues(
+  findings: ValidationFinding[],
+  contents: Record<string, string> = {}
+): ValidationIssue[] {
+  const shown = findings.map(finding => unshapeSharedModelFinding(finding, contents))
+  return mergeBodyShapeFindings(shown).map(finding => ({
+    code: finding.rule,
+    severity: finding.severity === 'error' ? ValidationSeverity.ERROR : ValidationSeverity.WARNING,
+    message: finding.message,
+    title: finding.check,
+    where: finding.where,
+    bodyShapes: finding.bodyShapes.map(
+      shape => (shape === 'male' ? BODY_SHAPE_MALE : BODY_SHAPE_FEMALE) as BodyShapeUrn
+    )
+  }))
 }
 
 /**

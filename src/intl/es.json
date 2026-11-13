@@ -1008,6 +1008,7 @@
     "search_placeholder": "Buscar por nombre",
     "filter": {
       "to_review": "Por revisar",
+      "auto_reviewing": "En revisión automática",
       "approved": "Aprobadas",
       "rejected": "Rechazadas",
       "disabled": "Deshabilitadas",
@@ -1482,6 +1483,7 @@
   },
   "curation_state": {
     "to_review": "Por revisar",
+    "auto_reviewing": "Revisión automática",
     "approved": "Aprobada",
     "rejected": "Rechazada",
     "disabled": "Deshabilitada"
@@ -2073,6 +2075,8 @@
       "description": "Tu colección se está revisando para su aprobación. Puede tardar hasta 5 minutos. Te avisaremos cuando la revisión termine."
     },
     "attempts": "Revisiones automáticas: {used} de {max} usadas hoy",
+    "attempts_tooltip": "Puedes hacer hasta {max} revisiones automáticas por día. Cuando llegues al límite, puedes pedir la revisión de un curador o esperar al día siguiente (00:00 UTC) para intentarlo de nuevo.",
+    "attempts_info": "Cómo funciona el límite diario",
     "issues": {
       "title": "Algunos ítems necesitan tu atención",
       "intro": "Encontramos algunos problemas que hay que resolver antes de publicar tu colección. Puedes corregirlos e intentarlo de nuevo, o pedir una revisión de un curador si crees que se marcaron por error.",
@@ -2082,13 +2086,13 @@
     },
     "request": {
       "title": "¿Pedir una revisión de un curador?",
-      "description": "Si crees que los problemas detectados no son correctos, puedes pedir una revisión a un curador de Decentraland. Puede tardar hasta 48 horas. Te avisaremos cuando la revisión termine.",
+      "description": "Si crees que los problemas detectados no son correctos, puedes pedir una revisión a un curador de Decentraland. Las revisiones de curadores llevan más tiempo. Te avisaremos cuando la revisión termine.",
       "cancel": "Cancelar",
       "confirm": "Pedir revisión"
     },
     "sent": {
       "title": "¡Colección enviada a revisión!",
-      "description": "Tu colección se envió a un curador de Decentraland para su revisión. Puede tardar hasta 48 horas. Te avisaremos cuando termine, tanto si tu colección se aprueba como si necesita cambios."
+      "description": "Tu colección se envió a un curador de Decentraland para su revisión. Las revisiones de curadores llevan más tiempo. Te avisaremos cuando termine, tanto si tu colección se aprueba como si necesita cambios."
     },
     "limit": {
       "title": "Alcanzaste el límite diario de revisiones automáticas",
@@ -2099,7 +2103,7 @@
     },
     "additional": {
       "title": "Tu colección necesita una revisión adicional",
-      "description": "Parte del contenido de tu colección requiere una mirada más detallada. La enviamos a un curador de Decentraland para su revisión, que puede tardar hasta 48 horas. Te avisaremos cuando se apruebe o si hace falta algún cambio."
+      "description": "Parte del contenido de tu colección requiere una mirada más detallada. La enviamos a un curador de Decentraland para su revisión. Las revisiones de curadores llevan más tiempo. Te avisaremos cuando se apruebe o si hace falta algún cambio."
     },
     "validate_again": "Revisar de nuevo ({left} de {max} restantes hoy)",
     "request_review": "Pedir revisión de un curador",
@@ -2111,27 +2115,18 @@
     "validation_started": "Revisión automática iniciada. Actualizaremos esta página cuando termine.",
     "validation_error": "No pudimos iniciar la revisión automática. Inténtalo de nuevo."
   },
-  "review_stage": {
-    "automated_reviewing": "En revisión automática",
-    "awaiting_curator": "Revisión automática aprobada, espera curador",
-    "rejected_by_validator": "Revisión automática: problemas encontrados",
-    "appealed": "Apelada",
-    "rejected_by_curator": "Rechazada por un curador",
-    "approved": "Aprobada",
-    "needs_curator": "Necesita un curador"
-  },
   "reject_reason": {
-    "clipping": "Clipping",
-    "thumbnail": "Miniatura",
-    "category_hides": "Categoría, ocultamientos y reemplazos",
-    "rigging": "Pesos de piel o rigging",
-    "triangle_count": "Cantidad de triángulos",
+    "clipping": "Problemas de clipping",
+    "thumbnail": "Problemas con la miniatura",
+    "category_hides": "Categoría u ocultamiento incorrectos",
+    "rigging": "Problema de rigging o skin weights",
+    "triangle_count": "Límite de triángulos superado",
     "emote": "Problemas del emote",
-    "file_size": "Tamaño del archivo",
-    "textures_materials": "Texturas o materiales",
-    "reversed_faces": "Caras invertidas u orden de dibujado",
-    "smart_wearable_files": "Archivos del smart wearable",
-    "content_policy_ip": "Política de contenido o propiedad intelectual",
+    "file_size": "Tamaño de archivo superado",
+    "textures_materials": "Límites de texturas o materiales superados",
+    "reversed_faces": "Problemas de caras u orden de dibujado",
+    "smart_wearable_files": "Archivos de smart wearable no válidos",
+    "content_policy_ip": "Problemas de política de contenido",
     "other": "Otro"
   },
   "findings": {
@@ -2156,27 +2151,37 @@
     }
   },
   "reject_curation_modal": {
-    "title": "Rechazar {collection}",
-    "first": "La colección no se podrá mintear. El creador la verá como rechazada, con los motivos de abajo.",
-    "changes": "La colección conserva su versión aprobada. El creador verá los cambios como rechazados, con los motivos de abajo.",
-    "reasons": "Motivos",
-    "reasons_hint": "Marca todos los motivos que apliquen.",
-    "message": "Mensaje para el creador",
-    "message_placeholder": "¿Qué debería corregir el creador?",
+    "title": "Rechazar colección",
+    "heading": "Selecciona el motivo del rechazo",
+    "reasons": "Motivo del rechazo",
+    "reasons_placeholder": "Selecciona uno o más motivos",
+    "reasons_selected": "{count} seleccionados",
+    "remove_reason": "Quitar {reason}",
+    "message": "Detalles (opcional)",
+    "message_placeholder": "Dile al creador qué debe corregir. Lo verá, así que sé específico.",
     "cancel": "Cancelar",
-    "confirm": "Rechazar",
+    "confirm": "Rechazar colección",
     "error": "No pudimos rechazar la colección. Inténtalo de nuevo.",
     "success": "{collection} fue rechazada"
   },
   "automated_verdict": {
-    "button": "Resultado de la revisión automática",
     "title": "Revisión automática",
-    "passed": "Aprobada {time}",
-    "rejected": "Rechazada {time}",
-    "summary": "{failed, plural, =0 {Todos los ítems pasaron} one {# ítem falló} other {# ítems fallaron}} · {errors, plural, one {# error} other {# errores}} · {warnings, plural, one {# advertencia} other {# advertencias}}",
-    "validation_id": "Validación {id}",
-    "close": "Cerrar",
-    "rules_version": "Reglas {version}"
+    "banner_passed": "Aprobada",
+    "banner_issues": "Problemas en {failed} de {total, plural, one {# ítem} other {# ítems}}",
+    "unchecked_group": "Sin revisar ({count})",
+    "passed_group": "Aprobados ({count})",
+    "errors": "{count, plural, one {# error} other {# errores}}",
+    "warnings": "{count, plural, one {# advertencia} other {# advertencias}}",
+    "measured_of_limit": "{measured} / límite {limit}",
+    "button_passed": "La revisión automática aprobó la colección. Haz clic para ver los detalles.",
+    "button": "Revisión automática",
+    "status_passed": "La revisión automática aprobó la colección",
+    "status_rejected": "La revisión automática encontró problemas",
+    "status_unsupported": "Algunos ítems no se pueden revisar automáticamente",
+    "reason_requested": "El creador pidió la revisión de un curador",
+    "button_unsupported": "Algunos ítems no se pueden revisar automáticamente. Haz clic para ver los detalles.",
+    "button_running": "Revisión automática en curso…",
+    "button_rejected": "La revisión automática encontró problemas. Haz clic para ver los detalles."
   },
   "activity_modal": {
     "title": "Actividad",

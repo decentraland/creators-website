@@ -120,7 +120,7 @@ export const IssueList = styled.ul`
 
 export const Issue = styled.li`
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   padding: 12px 8px;
   border: 1px solid transparent;
@@ -157,6 +157,7 @@ export const IssueTitle = styled.span`
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  margin-bottom: 4px;
 
   & strong {
     font-weight: 700;

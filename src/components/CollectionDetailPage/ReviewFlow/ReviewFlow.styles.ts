@@ -65,7 +65,10 @@ export const SeeIssues = styled.button`
   min-height: 24px;
 `
 
-export const Attempts = styled.p`
+export const Attempts = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   margin: 0;
   font-size: 13px;
   color: ${theme.colors.gray4};

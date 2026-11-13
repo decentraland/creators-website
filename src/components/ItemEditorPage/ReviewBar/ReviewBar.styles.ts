@@ -84,6 +84,10 @@ export const AssigneeChip = styled.button`
   ${mobile} {
     min-height: 44px;
   }
+
+  &[aria-disabled] {
+    cursor: default;
+  }
 `
 
 export const Actions = styled.div`

@@ -43,7 +43,7 @@ export function toValidationLimitError(error: unknown): unknown {
 
 /**
  * Asks for another automated review: POST /collections/{id}/validations. 409 while one is running,
- * 429 (`ValidationLimitError`) once today's three are spent.
+ * 429 (`ValidationLimitError`) once today's reviews are spent.
  */
 export async function requestCollectionValidation(address: string, collectionId: string): Promise<void> {
   try {

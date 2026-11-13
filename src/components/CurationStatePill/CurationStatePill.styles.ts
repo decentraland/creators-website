@@ -23,6 +23,11 @@ export const Pill = styled.span`
     border-color: ${theme.colors.infoLight};
     background: ${theme.colors.infoTint};
   }
+  &[data-state='auto_reviewing'] {
+    color: ${theme.colors.warningText};
+    border-color: ${theme.colors.amber};
+    background: ${theme.colors.warningOverlay};
+  }
   &[data-state='rejected'] {
     color: ${theme.colors.redBright};
     border-color: ${theme.colors.redBright};

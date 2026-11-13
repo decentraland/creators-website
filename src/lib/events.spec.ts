@@ -5,14 +5,17 @@ import {
   countValidationAttempts,
   fromRemoteEvent,
   getAutomatedIssuesByItem,
+  getCuratorVerdict,
   getFailedItems,
   getLatestVerdict,
   getValidationAttemptsLeft,
+  groupVerdictItems,
   hasOpenAppeal,
   isFinalValidationError,
   isValidationInProgress,
   mergeBodyShapeFindings,
   startOfUtcDay,
+  toCuratorIssues,
   type CollectionEvent,
   type ValidationFinding,
   type ValidationItemResult
@@ -50,6 +53,96 @@ describe('fromRemoteEvent', () => {
   })
 })
 
+describe('toCuratorIssues', () => {
+  it('shows a finding once across body shapes, without the fix', () => {
+    const finding = {
+      rule: 'M-01',
+      check: 'Triangles',
+      severity: 'error' as const,
+      message: 'Too many',
+      fix: 'Decimate'
+    }
+    const issues = toCuratorIssues([
+      { ...finding, bodyShape: 'male' },
+      { ...finding, bodyShape: 'female' },
+      { rule: 'T-02', severity: 'warning', message: 'Large texture', bodyShape: 'female' }
+    ])
+    expect(issues).toEqual([
+      expect.objectContaining({
+        severity: ValidationSeverity.ERROR,
+        title: 'Triangles',
+        message: 'Too many',
+        bodyShapes: [BodyShape.MALE, BodyShape.FEMALE]
+      }),
+      expect.objectContaining({ severity: ValidationSeverity.WARNING, bodyShapes: [BodyShape.FEMALE] })
+    ])
+  })
+})
+
+describe('toCuratorIssues with the item contents', () => {
+  it('shows a finding about a model both shapes share once, for the item', () => {
+    const contents = { 'male/jacket.glb': 'Qm1', 'female/jacket.glb': 'Qm1' }
+    const triangles = (shape: 'male' | 'female') => ({
+      rule: 'M-01',
+      severity: 'warning' as const,
+      message: `"${shape}/jacket.glb" has 1594 triangles`,
+      where: `${shape}/jacket.glb`,
+      bodyShape: shape
+    })
+    const issues = toCuratorIssues(
+      [
+        triangles('male'),
+        triangles('female'),
+        { rule: 'V-03', severity: 'warning', message: 'Sleeve clips', where: 'male/jacket.glb', bodyShape: 'male' }
+      ],
+      contents
+    )
+    expect(issues.map(issue => [issue.message, issue.bodyShapes])).toEqual([
+      ['"jacket.glb" has 1594 triangles', []],
+      ['Sleeve clips', []]
+    ])
+  })
+
+  it('keeps the shape of a finding when each shape has its own model', () => {
+    const contents = { 'male/jacket.glb': 'Qm1', 'female/jacket.glb': 'Qm2' }
+    const issues = toCuratorIssues(
+      [{ rule: 'V-03', severity: 'warning', message: 'Sleeve clips', where: 'male/jacket.glb', bodyShape: 'male' }],
+      contents
+    )
+    expect(issues[0].bodyShapes).toEqual([BodyShape.MALE])
+  })
+})
+
+describe('getCuratorVerdict', () => {
+  const item = { itemId: 'i1', contentHash: 'h', passed: null, findings: [] }
+  it('reads a pass, a rejection, or a run that left items to a curator', () => {
+    expect(getCuratorVerdict([event('review.automated_passed', NOW, { items: [item] })])?.outcome).toBe('passed')
+    expect(getCuratorVerdict([event('review.automated_rejected', NOW, { items: [item] })])?.outcome).toBe('rejected')
+    expect(
+      getCuratorVerdict([event('review.human_required', NOW, { reason: 'unsupported_items', items: [item] })])?.outcome
+    ).toBe('unsupported')
+  })
+
+  it('has nothing to open for a hand-off without items', () => {
+    expect(getCuratorVerdict([event('review.human_required', NOW, { reason: 'third_party' })])).toBeNull()
+  })
+})
+
+describe('groupVerdictItems', () => {
+  it('splits the items into failed, unchecked and passed, keeping their order', () => {
+    const items = [
+      { id: 'a', passed: true },
+      { id: 'b', passed: false },
+      { id: 'c', passed: null },
+      { id: 'd', passed: false }
+    ]
+    const groups = groupVerdictItems(items)
+    expect(groups.failed.map(item => item.id)).toEqual(['b', 'd'])
+    expect(groups.unchecked.map(item => item.id)).toEqual(['c'])
+    expect(groups.passed.map(item => item.id)).toEqual(['a'])
+  })
+})
+
 describe('countValidationAttempts', () => {
   it('counts the runs the creator caused, never the sweep re-sends nor the verdicts', () => {
     const events = [
@@ -62,7 +155,7 @@ describe('countValidationAttempts', () => {
       event('review.automated_started', NOW - 6000, { trigger: 'publish' })
     ]
     expect(countValidationAttempts(events, NOW)).toBe(3)
-    expect(getValidationAttemptsLeft(events, NOW)).toBe(0)
+    expect(getValidationAttemptsLeft(events, NOW)).toBe(2)
   })
 
   it("doesn't count a run whose request never reached the validator", () => {
@@ -80,7 +173,7 @@ describe('countValidationAttempts', () => {
       event('collection.published', NOW - 1)
     ]
     expect(countValidationAttempts(events, NOW)).toBe(1)
-    expect(getValidationAttemptsLeft(events, NOW)).toBe(2)
+    expect(getValidationAttemptsLeft(events, NOW)).toBe(4)
   })
 
   it('resets at 00:00 UTC', () => {
@@ -103,7 +196,7 @@ describe('countValidationAttempts', () => {
   })
 
   it('clamps the attempts left at zero', () => {
-    const events = Array.from({ length: 4 }, (_, i) => event('review.automated_started', NOW - i, { trigger: 'retry' }))
+    const events = Array.from({ length: 6 }, (_, i) => event('review.automated_started', NOW - i, { trigger: 'retry' }))
     expect(getValidationAttemptsLeft(events, NOW)).toBe(0)
   })
 })

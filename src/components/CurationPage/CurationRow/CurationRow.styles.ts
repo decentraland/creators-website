@@ -252,3 +252,9 @@ export const ForumLink = styled(TextAction)`
     padding: 12px 0;
   }
 `
+
+export const StateWithReview = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+`

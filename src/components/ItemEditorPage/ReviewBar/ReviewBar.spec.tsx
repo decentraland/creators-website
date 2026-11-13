@@ -230,17 +230,22 @@ describe('ReviewBar', () => {
     expect(screen.getByTestId('reject-curation-confirm')).toBeInTheDocument()
   })
 
-  it('rejects only with at least one reason and a message, and sends both', () => {
+  function pickReason(code: string) {
+    // The list stays open between picks.
+    if (!screen.queryByTestId('reject-reasons-listbox')) fireEvent.click(screen.getByTestId('reject-reasons'))
+    fireEvent.click(screen.getByTestId(`reject-reasons-option-${code}`))
+  }
+
+  it('rejects only with at least one reason, and sends the details when given', () => {
     state.events = []
     renderBar()
     fireEvent.click(screen.getByTestId('review-action-reject'))
     fireEvent.click(screen.getByTestId('assign-continue'))
     const confirm = screen.getByTestId('reject-curation-confirm')
     expect(confirm).toBeDisabled()
-    fireEvent.click(screen.getByTestId('reject-reason-clipping'))
-    expect(confirm).toBeDisabled()
-    fireEvent.change(screen.getByTestId('rejection-message'), { target: { value: '  Clips through the torso ' } })
+    pickReason('clipping')
     expect(confirm).toBeEnabled()
+    fireEvent.change(screen.getByTestId('rejection-message'), { target: { value: '  Clips through the torso ' } })
     fireEvent.click(confirm)
     expect(state.reject).toHaveBeenCalledWith(
       {
@@ -252,14 +257,31 @@ describe('ReviewBar', () => {
     )
   })
 
+  it('lists the picked reasons as pills that drop them, and leaves the details out when empty', () => {
+    state.events = []
+    renderBar()
+    fireEvent.click(screen.getByTestId('review-action-reject'))
+    fireEvent.click(screen.getByTestId('assign-continue'))
+    pickReason('clipping')
+    pickReason('thumbnail')
+    expect(screen.getByTestId('reject-reasons')).toHaveTextContent('2 Selected')
+    expect(screen.getByTestId('reject-reason-pills')).toHaveTextContent('Clipping issues')
+    fireEvent.click(screen.getByTestId('reject-reason-pill-clipping-remove'))
+    expect(screen.queryByTestId('reject-reason-pill-clipping')).toBeNull()
+    fireEvent.click(screen.getByTestId('reject-curation-confirm'))
+    expect(state.reject).toHaveBeenCalledWith(
+      { collection: base, curation: null, decision: { rejectionReasons: ['thumbnail'] } },
+      expect.anything()
+    )
+  })
+
   it('also points the curator to the forum post after rejecting with reasons', () => {
     state.events = []
     state.reject.mockImplementation((_vars: unknown, options: { onSuccess: () => void }) => options.onSuccess())
     renderBar({ ...base, forumLink: 'https://forum.decentraland.org/t/hats/77' })
     fireEvent.click(screen.getByTestId('review-action-reject'))
     fireEvent.click(screen.getByTestId('assign-continue'))
-    fireEvent.click(screen.getByTestId('reject-reason-clipping'))
-    fireEvent.change(screen.getByTestId('rejection-message'), { target: { value: 'Clips through the torso' } })
+    pickReason('clipping')
     fireEvent.click(screen.getByTestId('reject-curation-confirm'))
     fireEvent.click(screen.getByTestId('review-verdict-forum-link'))
     expect(openExternal).toHaveBeenCalledWith('https://forum.decentraland.org/t/hats/77')
@@ -302,13 +324,175 @@ describe('ReviewBar', () => {
       }
     ]
     renderBar()
-    expect(screen.getByTestId('review-stage')).toHaveAttribute('data-stage', 'awaiting_curator')
+    expect(screen.getByTestId('curation-state')).toHaveAttribute('data-state', 'to_review')
+    expect(screen.getByTestId('review-automated-verdict')).toHaveTextContent('Automated review')
+    expect(screen.getByTestId('review-automated-verdict')).toHaveAttribute('data-status', 'passed')
     fireEvent.click(screen.getByTestId('review-automated-verdict'))
-    expect(screen.getByTestId('automated-verdict-headline')).toHaveAttribute('data-passed', 'true')
-    expect(screen.getByTestId('automated-verdict-validation-id')).toHaveTextContent('val-1')
-    expect(screen.getByTestId('automated-verdict-modal')).toHaveTextContent('Every item passed')
-    expect(screen.getByTestId('automated-verdict-items-i1-finding')).toHaveTextContent('M-04')
+    expect(screen.getByTestId('automated-verdict-headline')).toHaveAttribute('data-outcome', 'passed')
+    expect(screen.getByTestId('automated-verdict-modal')).not.toHaveTextContent('val-1')
+    expect(screen.getByTestId('automated-verdict-items-i1-issues')).toHaveTextContent('Large texture')
+    expect(screen.getByTestId('automated-verdict-items-i1-issues')).not.toHaveTextContent('M-04')
+    expect(screen.getByTestId('automated-verdict-items-i1')).not.toHaveAttribute('open')
+    expect(screen.getByTestId('automated-verdict-unchecked')).not.toHaveAttribute('open')
     expect(screen.getByTestId('automated-verdict-items-visual-summary')).toHaveTextContent('Looks fine')
+  })
+
+  it('shows the automated review as running, with nothing to open yet', () => {
+    state.curation = {
+      id: 'r1',
+      collectionId: 'c1',
+      status: 'pending',
+      assignee: null,
+      reviewedBy: null,
+      rejectionReasons: null,
+      rejectionMessage: null,
+      createdAt: 1,
+      updatedAt: 1
+    }
+    state.events = [
+      {
+        id: 'e1',
+        collectionId: 'c1',
+        type: 'review.automated_started',
+        actor: 'validator',
+        actorAddress: null,
+        createdAt: Date.now(),
+        payload: { trigger: 'publish' }
+      }
+    ]
+    renderBar()
+    expect(screen.getByTestId('curation-state')).toHaveAttribute('data-state', 'auto_reviewing')
+    const chip = screen.getByTestId('review-automated-verdict')
+    expect(chip).toHaveAttribute('data-status', 'running')
+    fireEvent.click(chip)
+    expect(screen.queryByTestId('automated-verdict-modal')).toBeNull()
+  })
+
+  it('tells the curator when the creator asked for them after the automated review', () => {
+    state.curation = {
+      id: 'r1',
+      collectionId: 'c1',
+      status: 'pending',
+      assignee: null,
+      reviewedBy: null,
+      rejectionReasons: null,
+      rejectionMessage: null,
+      createdAt: 1,
+      updatedAt: 1
+    }
+    state.events = [
+      {
+        id: 'e2',
+        collectionId: 'c1',
+        type: 'review.appeal_requested',
+        actor: 'creator',
+        actorAddress: '0xcreator',
+        createdAt: Date.now(),
+        payload: { note: '' }
+      },
+      {
+        id: 'e1',
+        collectionId: 'c1',
+        type: 'review.automated_rejected',
+        actor: 'validator',
+        actorAddress: null,
+        createdAt: Date.now() - 1000,
+        payload: {
+          verdict: 'rejected',
+          items: [{ itemId: 'i1', contentHash: 'h1', passed: false, findings: [] }]
+        }
+      }
+    ]
+    renderBar()
+    expect(screen.getByTestId('curation-state')).toHaveAttribute('data-state', 'to_review')
+    fireEvent.click(screen.getByTestId('review-automated-verdict'))
+    expect(screen.getByTestId('automated-verdict-reason')).toHaveTextContent('The creator requested a curator review')
+  })
+
+  it('leads the verdict with the failed items and folds the passed ones', () => {
+    state.events = [
+      {
+        id: 'e1',
+        collectionId: 'c1',
+        type: 'review.automated_rejected',
+        actor: 'validator',
+        actorAddress: null,
+        createdAt: Date.now(),
+        payload: {
+          validationId: 'val-2',
+          verdict: 'rejected',
+          items: [
+            { itemId: 'i1', contentHash: 'h1', passed: true, findings: [] },
+            {
+              itemId: 'i2',
+              contentHash: 'h2',
+              passed: false,
+              findings: [
+                { rule: 'M-01', severity: 'error', message: 'Too many triangles', measured: 12400, limit: 10000 }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+    renderBar()
+    fireEvent.click(screen.getByTestId('review-automated-verdict'))
+    expect(screen.getByTestId('automated-verdict-headline')).toHaveTextContent('Issues in 1 of 2 items')
+    const rows = screen.getAllByTestId(/^automated-verdict-items-i\d$/)
+    expect(rows.map(row => row.getAttribute('data-testid'))).toEqual([
+      'automated-verdict-items-i2',
+      'automated-verdict-items-i1'
+    ])
+    expect(screen.getByTestId('automated-verdict-items-i2')).toHaveAttribute('open')
+    expect(screen.getByTestId('automated-verdict-items-i2-status')).toContainHTML('aria-label="1 error"')
+    expect(screen.getByTestId('automated-verdict-passed')).not.toHaveAttribute('open')
+  })
+
+  it('lists the items without sections when they all share one outcome', () => {
+    state.events = [
+      {
+        id: 'e1',
+        collectionId: 'c1',
+        type: 'review.automated_passed',
+        actor: 'validator',
+        actorAddress: null,
+        createdAt: Date.now(),
+        payload: {
+          validationId: 'val-3',
+          verdict: 'passed',
+          items: [
+            { itemId: 'i1', contentHash: 'h1', passed: true, findings: [] },
+            { itemId: 'i2', contentHash: 'h2', passed: true, findings: [] }
+          ]
+        }
+      }
+    ]
+    renderBar()
+    fireEvent.click(screen.getByTestId('review-automated-verdict'))
+    expect(screen.queryByTestId('automated-verdict-passed')).toBeNull()
+    expect(screen.getByTestId('automated-verdict-items-i1')).toBeInTheDocument()
+    expect(screen.getByTestId('automated-verdict-items-i2')).toBeInTheDocument()
+  })
+
+  it('opens a lone item, whatever its outcome', () => {
+    state.events = [
+      {
+        id: 'e1',
+        collectionId: 'c1',
+        type: 'review.automated_passed',
+        actor: 'validator',
+        actorAddress: null,
+        createdAt: Date.now(),
+        payload: {
+          validationId: 'val-4',
+          verdict: 'passed',
+          items: [{ itemId: 'i1', contentHash: 'h1', passed: true, findings: [] }]
+        }
+      }
+    ]
+    renderBar()
+    fireEvent.click(screen.getByTestId('review-automated-verdict'))
+    expect(screen.getByTestId('automated-verdict-items-i1')).toHaveAttribute('open')
   })
 
   it('disables an approved collection after confirming, and offers the missing entities deploy', () => {

@@ -1,75 +1,109 @@
 import styled from '@emotion/styled'
 import { theme } from '~/styles/theme'
 
-const mobile = theme.media.maxWidth('mobile')
-
 export const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  margin-top: 16px;
+  gap: 24px;
+  margin-top: 8px;
 `
 
-export const Text = styled.p`
+export const Heading = styled.h3`
   margin: 0;
-  font-size: 16px;
+  font-size: 24px;
+  font-weight: 700;
   line-height: 1.5;
   color: ${theme.colors.softWhite};
-`
-
-export const Fieldset = styled.fieldset`
-  margin: 0;
-  padding: 0;
-  border: 0;
-  min-width: 0;
-`
-
-export const Legend = styled.legend`
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-bottom: 12px;
-  padding: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: ${theme.colors.white};
-`
-
-export const Hint = styled.span`
-  font-size: 13px;
-  font-weight: 400;
-  color: ${theme.colors.gray4};
-`
-
-export const Reasons = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px 16px;
-
-  & [data-testid='checkbox-label'] {
-    min-height: 32px;
-  }
-
-  ${mobile} {
-    grid-template-columns: 1fr;
-  }
 `
 
 export const Field = styled.div`
   display: flex;
   flex-direction: column;
   gap: 8px;
+`
+
+export const Label = styled.span`
+  font-size: 14px;
+  line-height: 1.57;
+  color: ${theme.colors.softWhite};
+`
+
+export const Pills = styled.ul`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+`
+
+export const Pill = styled.li`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 4px 8px;
+  border-radius: ${theme.radius.chip};
+  background: ${theme.colors.overlay};
   font-size: 14px;
   font-weight: 600;
-  color: ${theme.colors.white};
+  color: ${theme.colors.softWhite};
+`
+
+export const PillRemove = styled.button`
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 16px;
+  cursor: pointer;
+
+  /* A 44px touch target around the small glyph. */
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -14px;
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+`
+
+export const Details = styled.fieldset`
+  /* 48px from the reasons, on top of the form's 24px gap. */
+  margin: 24px 0 0;
+  padding: 0 12px 12px;
+  min-width: 0;
+  border: 1px solid ${theme.colors.muted2};
+  border-radius: ${theme.radius.input};
+
+  &:focus-within {
+    border-color: ${theme.colors.white};
+  }
+`
+
+export const DetailsLegend = styled.legend`
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.15px;
+  text-transform: uppercase;
+  color: ${theme.colors.muted2};
 `
 
 export const TextArea = styled.textarea`
-  min-height: 110px;
-  padding: 12px 16px;
-  border: 1.5px solid ${theme.colors.glassLine};
-  border-radius: ${theme.radius.btnSm};
-  background: rgba(255, 255, 255, 0.05);
+  display: block;
+  width: 100%;
+  min-height: 180px;
+  padding: 8px 0 0;
+  border: 0;
+  background: none;
   color: ${theme.colors.white};
   font: inherit;
   font-size: 16px;
@@ -77,11 +111,10 @@ export const TextArea = styled.textarea`
   resize: vertical;
 
   &::placeholder {
-    color: ${theme.colors.gray4};
+    color: ${theme.colors.muted2};
   }
   &:focus {
     outline: 0;
-    border-color: ${theme.colors.white};
   }
   &:disabled {
     opacity: 0.6;
@@ -90,8 +123,8 @@ export const TextArea = styled.textarea`
 
 export const CharCount = styled.span`
   align-self: flex-end;
+  margin-top: -16px;
   font-size: 12px;
-  font-weight: 400;
   color: ${theme.colors.gray4};
 `
 

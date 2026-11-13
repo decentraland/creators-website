@@ -13,6 +13,8 @@ type Props<T extends string> = {
   options: MultiSelectOption<T>[]
   onChange: (values: T[]) => void
   placeholder?: string
+  /** Trigger text once something is picked, instead of the comma list of labels. */
+  summary?: string
   disabled?: boolean
   tone?: 'default' | 'dark'
   /** `compact` is the short uppercase toolbar trigger, as in `Select`. */
@@ -29,6 +31,7 @@ export function MultiSelect<T extends string>({
   options,
   onChange,
   placeholder,
+  summary: summaryOverride,
   disabled = false,
   tone = 'default',
   variant = 'default',
@@ -49,9 +52,11 @@ export function MultiSelect<T extends string>({
   const summary =
     selected.length === 0
       ? placeholder
-      : variant === 'compact' && selected.length > 1
-        ? t('multi_select.summary', { first: selected[0].label, count: selected.length - 1 })
-        : selected.map(option => option.label).join(', ')
+      : summaryOverride
+        ? summaryOverride
+        : variant === 'compact' && selected.length > 1
+          ? t('multi_select.summary', { first: selected[0].label, count: selected.length - 1 })
+          : selected.map(option => option.label).join(', ')
 
   return (
     <Base.Wrap ref={wrapRef} onKeyDown={onKeyDown}>
