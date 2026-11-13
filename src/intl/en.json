@@ -2087,7 +2087,7 @@
     },
     "reviewing": {
       "title": "Reviewing collection",
-      "description": "Your collection is being reviewed for approval. This may take up to 5 minutes. We'll notify you once the review is complete."
+      "description": "An automated review is checking your collection. In about 5 minutes you'll know whether it's ready for a curator or needs fixes."
     },
     "attempts": "Automated reviews: {used} of {max} used today",
     "attempts_tooltip": "You can run up to {max} automated reviews per day. Once you reach the limit, you can request a curator review or wait until the next day (00:00 UTC) to try again.",

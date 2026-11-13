@@ -2087,7 +2087,7 @@
     },
     "reviewing": {
       "title": "Revisando la colección",
-      "description": "Tu colección se está revisando para su aprobación. Puede tardar hasta 5 minutos. Te avisaremos cuando la revisión termine."
+      "description": "Una revisión automática está comprobando tu colección. En unos 5 minutos sabrás si está lista para un curador o si necesita cambios."
     },
     "attempts": "Revisiones automáticas: {used} de {max} usadas hoy",
     "attempts_tooltip": "Puedes hacer hasta {max} revisiones automáticas por día. Cuando llegues al límite, puedes pedir la revisión de un curador o esperar al día siguiente (00:00 UTC) para intentarlo de nuevo.",
