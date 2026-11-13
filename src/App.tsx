@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { ErrorBoundary } from '~/components/ErrorBoundary'
-import { Footer } from '~/components/Footer'
+import { DeferredFooter } from '~/components/DeferredFooter'
 import { Intercom } from '~/components/Intercom'
 import { MaintenancePage } from '~/components/MaintenancePage'
 import { NavBar } from '~/components/NavBar'
@@ -122,7 +122,7 @@ const App = () => {
           )}
         </ErrorBoundary>
       </main>
-      {!isFullscreen && <Footer />}
+      {!isFullscreen && <DeferredFooter />}
       <Toasts />
       <Intercom />
     </TranslationProvider>

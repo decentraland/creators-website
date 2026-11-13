@@ -38,7 +38,7 @@ describe('App', () => {
     renderApp('/collections')
     await screen.findByTestId('collections')
     expect(screen.getByTestId('navbar')).toBeInTheDocument()
-    expect(screen.getByTestId('footer')).toBeInTheDocument()
+    expect(await screen.findByTestId('footer')).toBeInTheDocument()
     await waitFor(() => expect(trackPageView).toHaveBeenCalledWith('/collections'))
     expect(trackPageView).toHaveBeenCalledTimes(1)
   })
