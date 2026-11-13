@@ -106,7 +106,6 @@ import { getThirdPartyId, isThirdPartyManager } from '~/lib/thirdParty'
 import { AddItemsModal } from './AddItemsModal'
 import { LinkedCollectionView } from './LinkedCollectionView'
 import { ReviewFlow, type ReviewFlowRequest } from './ReviewFlow'
-import { getMockReviewRequest, mockHasChanges, withMockReviewEvents } from '~/lib/reviewMock'
 import { ItemActionsMenu } from './ItemActionsMenu'
 import { ItemListRow } from './ItemListRow'
 import { PublishCollectionModal, PublishSuccessModal, type PublishResume } from './PublishCollectionModal'
@@ -293,10 +292,7 @@ const CollectionDetailPage = () => {
   const curationQuery = useCollectionCuration(curationAddress, standardCollection)
   const curation = curationQuery.data ?? null
   const eventsQuery = useCollectionEvents(curationAddress, standardCollection)
-  const events = useMemo(
-    () => withMockReviewEvents(collectionId, eventsQuery.events, allItems),
-    [collectionId, eventsQuery.events, allItems]
-  )
+  const { events } = eventsQuery
   const pushCuration = usePushCuration(address)
   // Sending changes for review runs the same item checks as publishing before its confirm modal.
   const [pushView, setPushView] = useState<'closed' | 'gate' | 'confirm'>('closed')
@@ -327,7 +323,7 @@ const CollectionDetailPage = () => {
   // The validator judges a snapshot: nothing changes under it (Figma: "block edit settings during these 5 mins").
   const reviewLocked = stage === ReviewStage.AUTOMATED_REVIEWING
   const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION).enabled
-  const [reviewRequest, setReviewRequest] = useState<ReviewFlowRequest | null>(() => getMockReviewRequest(collectionId))
+  const [reviewRequest, setReviewRequest] = useState<ReviewFlowRequest | null>(null)
   // Only a server with the review timeline keeps the note.
   const withPushNote = autoCuration && events !== null
   const clearReviewRequest = useCallback(() => setReviewRequest(null), [])
@@ -350,8 +346,8 @@ const CollectionDetailPage = () => {
       canManage &&
       curationLoaded &&
       stage === ReviewStage.REJECTED_BY_VALIDATOR &&
-      (hasChangesSinceVerdict(events ?? [], allItems ?? []) || mockHasChanges(collectionId)),
-    [canManage, curationLoaded, stage, events, allItems, collectionId]
+      hasChangesSinceVerdict(events ?? [], allItems ?? []),
+    [canManage, curationLoaded, stage, events, allItems]
   )
   const reviewsLeft = useMemo(() => getValidationAttemptsLeft(events ?? []), [events])
   // After a rejection the creator asks for a review again, whether it was the first one or a pushed update.

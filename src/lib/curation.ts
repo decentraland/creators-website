@@ -8,7 +8,6 @@ import {
   type CollectionEvent,
   type RejectReasonCode
 } from '~/lib/events'
-import { getMockReviewStage } from '~/lib/reviewMock'
 
 export type CurationRequestStatus = 'pending' | 'approved' | 'rejected'
 
@@ -81,8 +80,6 @@ export function getReviewStage(
   curation: CollectionCuration | null,
   events: CollectionEvent[] | null
 ): ReviewStage | null {
-  const mocked = getMockReviewStage(collection.id)
-  if (mocked) return mocked as ReviewStage
   if (!curation || !events) return null
   if (curation.status === 'approved') return collection.isApproved ? ReviewStage.APPROVED : null
   if (curation.status === 'rejected') {
