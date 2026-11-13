@@ -1,1 +1,0 @@
-export { DeferredFooter } from './DeferredFooter'

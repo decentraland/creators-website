@@ -1,8 +1,0 @@
-/* The collapsed footer's height, so the page keeps its length when the real one replaces it. */
-.placeholder {
-  height: 493px;
-
-  @media (max-width: 900px) {
-    height: 753px;
-  }
-}
