@@ -66,7 +66,7 @@ import { EditorSection } from '../EditorSection'
 import { HidesEditor } from '../HidesEditor'
 import { SpringBonesEditor, type SpringBonesModel } from '../SpringBonesEditor'
 import { TagsInput } from './TagsInput'
-import * as S from '../ItemEditorPage.styles'
+import styles from '../ItemEditorPage.module.css'
 
 export type SpringBonesFormProps = {
   models: SpringBonesModel[]
@@ -202,15 +202,17 @@ export function PropertiesPanel({
   }
 
   return (
-    <S.PanelBody data-testid={testId} data-editable={editable || undefined}>
-      <S.PanelHeader data-testid={`${testId}-header`}>
-        <S.PanelTitleRow>
-          <S.PanelTitle title={item.name}>{item.name}</S.PanelTitle>
+    <div className={styles.panelBody} data-testid={testId} data-editable={editable || undefined}>
+      <div className={styles.panelHeader} data-testid={`${testId}-header`}>
+        <div className={styles.panelTitleRow}>
+          <h2 className={styles.panelTitle} title={item.name}>
+            {item.name}
+          </h2>
           {isSmart && (
             <Tooltip content={t('collection_detail_page.smart_wearable')} asChild testId={`${testId}-smart-tooltip`}>
-              <S.HeaderBadge data-testid={`${testId}-smart`} tabIndex={0}>
+              <span className={styles.headerBadge} data-testid={`${testId}-smart`} tabIndex={0}>
                 <SmartIcon />
-              </S.HeaderBadge>
+              </span>
             </Tooltip>
           )}
           {isWearable && hasFacialExpressions(contents) && (
@@ -219,12 +221,12 @@ export function PropertiesPanel({
               asChild
               testId={`${testId}-facial-expressions-tooltip`}
             >
-              <S.HeaderBadge data-testid={`${testId}-facial-expressions`} tabIndex={0}>
+              <span className={styles.headerBadge} data-testid={`${testId}-facial-expressions`} tabIndex={0}>
                 <SmileIcon />
-              </S.HeaderBadge>
+              </span>
             </Tooltip>
           )}
-        </S.PanelTitleRow>
+        </div>
         {(canDownload || editable) && (
           <ActionsMenu label={t('item_editor.actions.label')} variant="row" tone="dark" testId={`${testId}-actions`}>
             {canDownload && (
@@ -258,9 +260,9 @@ export function PropertiesPanel({
             )}
           </ActionsMenu>
         )}
-      </S.PanelHeader>
+      </div>
       {!editable && showReadOnlyNote && (
-        <S.ReadOnlyNote data-testid={`${testId}-readonly`}>
+        <p className={styles.readOnlyNote} data-testid={`${testId}-readonly`}>
           {t(
             readOnlyReason === 'lock'
               ? 'item_editor.read_only_locked'
@@ -268,12 +270,13 @@ export function PropertiesPanel({
                 ? 'item_editor.read_only_linked'
                 : 'item_editor.read_only'
           )}
-        </S.ReadOnlyNote>
+        </p>
       )}
 
       <EditorSection title={t('item_editor.details.title')} testId={`${testId}-details`}>
-        <S.DetailsRow>
-          <S.ThumbButton
+        <div className={styles.detailsRow}>
+          <button
+            className={styles.thumbButton}
             type="button"
             aria-label={t('item_editor.details.edit_thumbnail')}
             disabled={disabled || isSaving}
@@ -282,75 +285,77 @@ export function PropertiesPanel({
           >
             <ItemThumbnail src={thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null} rarity={item.rarity} />
             {editable && (
-              <S.ThumbOverlay aria-hidden>
+              <span className={styles.thumbOverlay} aria-hidden>
                 <CameraIcon />
-              </S.ThumbOverlay>
+              </span>
             )}
-          </S.ThumbButton>
+          </button>
           {(metrics || sizeText) && (
-            <S.Metrics data-testid={`${testId}-metrics`}>
+            <ul className={styles.metrics} data-testid={`${testId}-metrics`}>
               {!metrics ? null : isEmote ? (
                 <>
-                  <S.Metric>
+                  <li className={styles.metric}>
                     <ClockIcon />
                     {t('add_items_modal.metrics.duration', { count: Math.round((metrics.duration ?? 0) * 10) / 10 })}
-                  </S.Metric>
-                  <S.Metric>
+                  </li>
+                  <li className={styles.metric}>
                     <ImageIcon />
                     {t('add_items_modal.metrics.frames', { count: metrics.frames ?? 0 })}
-                  </S.Metric>
-                  <S.Metric>
+                  </li>
+                  <li className={styles.metric}>
                     <FpsIcon />
                     {t('add_items_modal.metrics.fps', { count: Math.round((metrics.fps ?? 0) * 10) / 10 })}
-                  </S.Metric>
+                  </li>
                 </>
               ) : (
                 <>
-                  <S.Metric>
+                  <li className={styles.metric}>
                     <TriangleIcon />
                     {t('add_items_modal.metrics.triangles', { count: metrics.triangles ?? 0 })}
-                  </S.Metric>
-                  <S.Metric>
+                  </li>
+                  <li className={styles.metric}>
                     <MaterialIcon />
                     {t('add_items_modal.metrics.materials', { count: metrics.materials ?? 0 })}
-                  </S.Metric>
-                  <S.Metric>
+                  </li>
+                  <li className={styles.metric}>
                     <TextureIcon />
                     {t('add_items_modal.metrics.textures', { count: metrics.textures ?? 0 })}
-                  </S.Metric>
+                  </li>
                 </>
               )}
               {sizeText && (
-                <S.Metric data-testid={`${testId}-size`} data-exceeded={sizeExceeded || undefined}>
+                <li className={styles.metric} data-testid={`${testId}-size`} data-exceeded={sizeExceeded || undefined}>
                   <SizeIcon />
                   {t('item_size.value', sizeText)}
-                </S.Metric>
+                </li>
               )}
-            </S.Metrics>
+            </ul>
           )}
-        </S.DetailsRow>
+        </div>
         {sizeExceeded && (
-          <S.ErrorText role="alert" data-testid={`${testId}-size-error`}>
+          <span className={styles.errorText} role="alert" data-testid={`${testId}-size-error`}>
             {t('item_size.exceeded')}
-          </S.ErrorText>
+          </span>
         )}
         {isSmart && (
-          <S.VideoPane data-testid={`${testId}-video`}>
-            <S.FieldLabel>
-              <S.LabelText>
+          <div className={styles.videoPane} data-testid={`${testId}-video`}>
+            <span className={styles.fieldLabel}>
+              <span className={styles.labelText}>
                 {t('add_items_modal.video.label')}
                 <InfoTooltip content={t('item_editor.details.video_hint')} testId={`${testId}-video-hint`} />
-              </S.LabelText>
-            </S.FieldLabel>
+              </span>
+            </span>
             {videoUrl ? (
-              <S.DetailsRow>
-                <S.ThumbButton
+              <div className={styles.detailsRow}>
+                <button
+                  className={styles.thumbButton}
                   type="button"
                   aria-label={t(canEditVideo ? 'add_items_modal.video.edit' : 'item_editor.details.watch_video')}
                   data-testid={`${testId}-video-preview`}
                   onClick={() => setVideoOpen(true)}
                 >
-                  <S.VideoPoster
+                  <video
+                    className={styles.videoPoster}
                     key={videoUrl}
                     src={videoUrl}
                     preload="metadata"
@@ -363,39 +368,41 @@ export function PropertiesPanel({
                   />
                   {/* Storage streams the mp4 without ranges, so the first frame can take a while: mark the wait. */}
                   {videoDuration === null ? (
-                    <S.PosterPlaceholder aria-hidden data-testid={`${testId}-video-loading`}>
+                    <span className={styles.posterPlaceholder} aria-hidden data-testid={`${testId}-video-loading`}>
                       <VideoIcon />
-                    </S.PosterPlaceholder>
+                    </span>
                   ) : (
-                    <S.PlayBadge aria-hidden>
+                    <span className={styles.playBadge} aria-hidden>
                       <PlayIcon />
-                    </S.PlayBadge>
+                    </span>
                   )}
                   {canEditVideo && (
-                    <S.ThumbOverlay aria-hidden>
+                    <span className={styles.thumbOverlay} aria-hidden>
                       <VideoIcon />
-                    </S.ThumbOverlay>
+                    </span>
                   )}
-                </S.ThumbButton>
-                <S.Metrics data-testid={`${testId}-video-meta`}>
-                  <S.Metric>
+                </button>
+                <ul className={styles.metrics} data-testid={`${testId}-video-meta`}>
+                  <li className={styles.metric}>
                     <VideoIcon />
-                    <S.MetricText title={videoName}>{videoName}</S.MetricText>
-                  </S.Metric>
+                    <span className={styles.metricText} title={videoName}>
+                      {videoName}
+                    </span>
+                  </li>
                   {videoDuration !== null && (
-                    <S.Metric>
+                    <li className={styles.metric}>
                       <ClockIcon />
                       {t('add_items_modal.video.duration', { seconds: Math.round(videoDuration) })}
-                    </S.Metric>
+                    </li>
                   )}
                   {draft.video && (
-                    <S.Metric>
+                    <li className={styles.metric}>
                       <SizeIcon />
                       {t('add_items_modal.video.size', { size: toMB(draft.video.size) })}
-                    </S.Metric>
+                    </li>
                   )}
-                </S.Metrics>
-              </S.DetailsRow>
+                </ul>
+              </div>
             ) : canEditVideo ? (
               <VideoDropzone
                 compact
@@ -404,24 +411,25 @@ export function PropertiesPanel({
               />
             ) : null}
             {isMissingSmartWearableVideo(item) && !draft.video && (
-              <S.Warning data-testid={`${testId}-video-missing`}>
+              <div className={styles.warning} data-testid={`${testId}-video-missing`}>
                 <WarningIcon fontSize="small" />
                 {t('item_editor.details.video_required')}
-              </S.Warning>
+              </div>
             )}
-          </S.VideoPane>
+          </div>
         )}
       </EditorSection>
 
       <EditorSection title={t('item_editor.basics.title')} testId={`${testId}-basics`}>
-        <S.Field>
-          <S.FieldLabel>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>
             {t('item_editor.basics.name')}
-            <S.CharCount>
+            <span className={styles.charCount}>
               {t('add_items_modal.char_count', { count: draft.name.length, max: ITEM_NAME_MAX_LENGTH })}
-            </S.CharCount>
-          </S.FieldLabel>
-          <S.TextInput
+            </span>
+          </span>
+          <input
+            className={styles.textInput}
             value={draft.name}
             maxLength={ITEM_NAME_MAX_LENGTH}
             disabled={disabled}
@@ -430,17 +438,20 @@ export function PropertiesPanel({
             onChange={event => dispatch({ type: 'setText', field: 'name', value: event.target.value })}
           />
           {nameInvalid && (
-            <S.ErrorText data-testid={`${testId}-name-error`}>{t('add_items_modal.invalid_name')}</S.ErrorText>
+            <span className={styles.errorText} data-testid={`${testId}-name-error`}>
+              {t('add_items_modal.invalid_name')}
+            </span>
           )}
-        </S.Field>
-        <S.Field>
-          <S.FieldLabel>
+        </label>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>
             {t('item_editor.basics.description')}
-            <S.CharCount>
+            <span className={styles.charCount}>
               {t('add_items_modal.char_count', { count: draft.description.length, max: ITEM_DESCRIPTION_MAX_LENGTH })}
-            </S.CharCount>
-          </S.FieldLabel>
-          <S.TextArea
+            </span>
+          </span>
+          <textarea
+            className={styles.textArea}
             value={draft.description}
             maxLength={ITEM_DESCRIPTION_MAX_LENGTH}
             disabled={disabled}
@@ -449,33 +460,34 @@ export function PropertiesPanel({
             onChange={event => dispatch({ type: 'setText', field: 'description', value: event.target.value })}
           />
           {descriptionInvalid && (
-            <S.ErrorText data-testid={`${testId}-description-error`}>
+            <span className={styles.errorText} data-testid={`${testId}-description-error`}>
               {t('item_editor.basics.invalid_description')}
-            </S.ErrorText>
+            </span>
           )}
-        </S.Field>
+        </label>
         {utilityFlag.enabled && (
-          <S.Field>
-            <S.FieldLabel>
-              <S.LabelText>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>
+              <span className={styles.labelText}>
                 {t('item_editor.basics.utility')}{' '}
                 <InfoTooltip content={t('item_editor.basics.utility_hint')} testId={`${testId}-utility-hint`} />
-              </S.LabelText>
-              <S.CharCount>
+              </span>
+              <span className={styles.charCount}>
                 {t('add_items_modal.char_count', { count: draft.utility.length, max: ITEM_UTILITY_MAX_LENGTH })}
-              </S.CharCount>
-            </S.FieldLabel>
-            <S.TextInput
+              </span>
+            </span>
+            <input
+              className={styles.textInput}
               value={draft.utility}
               maxLength={ITEM_UTILITY_MAX_LENGTH}
               disabled={disabled}
               data-testid={`${testId}-utility`}
               onChange={event => dispatch({ type: 'setText', field: 'utility', value: event.target.value })}
             />
-          </S.Field>
+          </label>
         )}
-        <S.Field as="div">
-          <S.FieldLabel>{t('item_editor.basics.category')}</S.FieldLabel>
+        <div className={styles.field}>
+          <span className={styles.fieldLabel}>{t('item_editor.basics.category')}</span>
           <CategorySelect
             value={draft.category}
             categories={categories}
@@ -484,15 +496,15 @@ export function PropertiesPanel({
             testId={`${testId}-category`}
             onChange={category => dispatch({ type: 'setCategory', category })}
           />
-        </S.Field>
+        </div>
         {!isLinked && (
-          <S.Field as="div">
-            <S.FieldLabel>
-              <S.LabelText>
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>
+              <span className={styles.labelText}>
                 {t('item_editor.basics.rarity')}{' '}
                 <InfoTooltip content={t('add_items_modal.rarity_tooltip')} testId={`${testId}-rarity-hint`} />
-              </S.LabelText>
-            </S.FieldLabel>
+              </span>
+            </span>
             <RaritySelect
               value={draft.rarity ?? ''}
               disabled={disabled || item.isPublished}
@@ -500,7 +512,7 @@ export function PropertiesPanel({
               testId={`${testId}-rarity`}
               onChange={rarity => dispatch({ type: 'setRarity', rarity })}
             />
-          </S.Field>
+          </div>
         )}
       </EditorSection>
 
@@ -517,7 +529,7 @@ export function PropertiesPanel({
               if (mapping) dispatch({ type: 'setMappings', mappings: buildItemMappings(mapping, linkedContract) })
             }}
           />
-          <S.SectionNote>{t('add_items_modal.mapping_hint')}</S.SectionNote>
+          <p className={styles.sectionNote}>{t('add_items_modal.mapping_hint')}</p>
         </EditorSection>
       )}
 
@@ -536,11 +548,12 @@ export function PropertiesPanel({
 
       {isEmote && (
         <EditorSection title={t('item_editor.animation.title')} testId={`${testId}-animation`}>
-          <S.Segmented role="radiogroup" aria-label={t('add_items_modal.play_mode')}>
+          <div className={styles.segmented} role="radiogroup" aria-label={t('add_items_modal.play_mode')}>
             {[EmotePlayMode.LOOP, EmotePlayMode.SIMPLE].map(mode => {
               const selected = draft.loop === (mode === EmotePlayMode.LOOP)
               return (
-                <S.SegmentButton
+                <button
+                  className={styles.segmentButton}
                   key={mode}
                   type="button"
                   role="radio"
@@ -552,10 +565,10 @@ export function PropertiesPanel({
                 >
                   {mode === EmotePlayMode.LOOP ? <LoopIcon /> : <PlayOnceIcon />}
                   {t(`add_items_modal.play_mode_option.${mode}`)}
-                </S.SegmentButton>
+                </button>
               )
             })}
-          </S.Segmented>
+          </div>
         </EditorSection>
       )}
 
@@ -589,7 +602,7 @@ export function PropertiesPanel({
           onChange={tags => dispatch({ type: 'setTags', tags })}
         />
         {editable && campaign && (
-          <S.SectionNote data-testid={`${testId}-campaign-hint`}>
+          <p className={styles.sectionNote} data-testid={`${testId}-campaign-hint`}>
             {rich('item_editor.tags.campaign_hint', {
               tag: campaign.mainTag,
               name: campaign.name,
@@ -598,7 +611,8 @@ export function PropertiesPanel({
                   <strong>{chunks}</strong>
                 ) : (
                   <Tooltip content={t('item_editor.tags.campaign_add')} asChild describeChild>
-                    <S.CampaignTag
+                    <button
+                      className={styles.campaignTag}
                       type="button"
                       data-testid={`${testId}-campaign-tag`}
                       onClick={() => {
@@ -608,22 +622,22 @@ export function PropertiesPanel({
                       }}
                     >
                       {chunks}
-                    </S.CampaignTag>
+                    </button>
                   </Tooltip>
                 )
             })}
-          </S.SectionNote>
+          </p>
         )}
       </EditorSection>
 
       {isWearable && (
         <EditorSection title={t('item_editor.options.title')} testId={`${testId}-options`}>
           {vrmFlag.enabled && (
-            <S.Toggle>
-              <S.LabelText>
+            <div className={styles.toggle}>
+              <span className={styles.labelText}>
                 {t('item_editor.options.vrm_export')}
                 <InfoTooltip content={t('item_editor.options.vrm_export_hint')} testId={`${testId}-vrm-hint`} />
-              </S.LabelText>
+              </span>
               <Switch
                 checked={!draft.blockVrmExport}
                 disabled={disabled}
@@ -631,13 +645,13 @@ export function PropertiesPanel({
                 testId={`${testId}-vrm-export`}
                 onChange={checked => dispatch({ type: 'setFlag', field: 'blockVrmExport', value: !checked })}
               />
-            </S.Toggle>
+            </div>
           )}
-          <S.Toggle>
-            <S.LabelText>
+          <div className={styles.toggle}>
+            <span className={styles.labelText}>
               {t('item_editor.options.outline')}
               <InfoTooltip content={t('item_editor.options.outline_hint')} testId={`${testId}-outline-hint`} />
-            </S.LabelText>
+            </span>
             <Switch
               checked={draft.outlineCompatible}
               disabled={disabled}
@@ -645,14 +659,14 @@ export function PropertiesPanel({
               testId={`${testId}-outline`}
               onChange={checked => dispatch({ type: 'setFlag', field: 'outlineCompatible', value: checked })}
             />
-          </S.Toggle>
+          </div>
         </EditorSection>
       )}
 
-      <S.IntercomClearance aria-hidden />
+      <div className={styles.intercomClearance} aria-hidden />
       {/* An invalid mapping draft never reaches the item, so it doesn't make it dirty: Revert must still undo it. */}
       {editable && (isDirty || mappingInvalid) && (
-        <S.Footer data-testid={`${testId}-footer`}>
+        <div className={styles.footer} data-testid={`${testId}-footer`}>
           <Button
             type="button"
             variant="secondary"
@@ -678,7 +692,7 @@ export function PropertiesPanel({
           >
             {t('item_editor.save')}
           </Button>
-        </S.Footer>
+        </div>
       )}
 
       {thumbnailEditor.modal}
@@ -710,6 +724,6 @@ export function PropertiesPanel({
           onConfirm={confirmDelete}
         />
       )}
-    </S.PanelBody>
+    </div>
   )
 }

@@ -1,27 +1,23 @@
-import styled from '@emotion/styled'
-import { Link } from 'react-router-dom'
-import { theme } from '~/styles/theme'
-
-export const ReviewBar = styled.div`
+.reviewBar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px 16px;
   min-height: 56px;
   padding: 8px 12px;
-  border-bottom: 1px solid ${theme.editor.line};
-  background: ${theme.editor.surface};
-  color: ${theme.colors.white};
-`
+  border-bottom: 1px solid var(--editor-line);
+  background: var(--editor-surface);
+  color: var(--color-white);
+}
 
-export const Identity = styled.div`
+.identity {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
-`
+}
 
-export const BackLink = styled(Link)`
+.backLink {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -30,15 +26,15 @@ export const BackLink = styled(Link)`
   height: 44px;
   margin: -6px 0;
   border-radius: 50%;
-  color: ${theme.colors.white};
+  color: var(--color-white);
 
   &:hover,
   &:focus-visible {
-    background: ${theme.editor.surfaceHover};
+    background: var(--editor-surface-hover);
   }
-`
+}
 
-export const Name = styled.h1`
+.name {
   margin: 0;
   min-width: 0;
   font-size: 16px;
@@ -46,42 +42,42 @@ export const Name = styled.h1`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-`
+}
 
-export const Meta = styled.div`
+.meta {
   display: flex;
   align-items: center;
   gap: 12px;
   min-width: 0;
   font-size: 14px;
-  color: ${theme.editor.label};
-`
+  color: var(--editor-label);
+}
 
-export const AssigneeChip = styled.button`
+.assigneeChip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
   height: 36px;
   padding: 0 12px;
-  border: 1px solid ${theme.editor.line};
-  border-radius: ${theme.radius.pill};
+  border: 1px solid var(--editor-line);
+  border-radius: var(--radius-pill);
   background: transparent;
-  color: ${theme.colors.white};
+  color: var(--color-white);
   font-size: 14px;
   font-weight: 600;
 
   &:hover:not(:disabled),
   &:focus-visible {
-    background: ${theme.editor.surfaceHover};
+    background: var(--editor-surface-hover);
   }
   &:disabled {
     cursor: default;
   }
-`
+}
 
-export const Actions = styled.div`
+.actions {
   display: flex;
   gap: 8px;
   margin-left: auto;
-`
+}

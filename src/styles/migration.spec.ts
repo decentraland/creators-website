@@ -3,22 +3,7 @@ import { readdirSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 // Emotion files still waiting for their CSS Modules conversion. A conversion deletes its entry; nothing new joins.
-const REMAINING = [
-  'src/components/ItemEditorPage/AvatarCustomizer/AvatarCustomizer.styles.ts',
-  'src/components/ItemEditorPage/EditorPreviewLaunch/EditorPreviewLaunch.styles.ts',
-  'src/components/ItemEditorPage/HidesEditor/HidesEditor.styles.ts',
-  'src/components/ItemEditorPage/ItemEditorPage.styles.ts',
-  'src/components/ItemEditorPage/ItemsSidebar/ItemsSidebar.styles.ts',
-  'src/components/ItemEditorPage/PlaybackBar/PlaybackBar.styles.ts',
-  'src/components/ItemEditorPage/ReviewBar/ForumVerdictModal.styles.ts',
-  'src/components/ItemEditorPage/ReviewBar/ReviewBar.styles.ts',
-  'src/components/ItemEditorPage/SceneBoundariesToggle/SceneBoundariesToggle.styles.ts',
-  'src/components/ItemEditorPage/SpringBonesEditor/BoneTreePicker/BoneTreePicker.styles.ts',
-  'src/components/ItemEditorPage/SpringBonesEditor/SpringBonesEditor.styles.ts',
-  'src/components/LivePreviewPage/LivePreviewPage.styles.ts',
-  'src/components/Tooltip/Tooltip.styles.ts',
-  'src/components/TopNav/TopNav.styles.ts'
-]
+const REMAINING = ['src/components/Tooltip/Tooltip.styles.ts', 'src/components/TopNav/TopNav.styles.ts']
 
 const files = (readdirSync('src', { recursive: true }) as string[]).map(path => `src/${path.replace(/\\/g, '/')}`)
 

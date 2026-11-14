@@ -10,7 +10,7 @@ import { track } from '~/lib/analytics'
 import { ItemType, type Item } from '~/lib/items'
 import { useAvatarPreview } from '~/store/avatarPreview'
 import { theme } from '~/styles/theme'
-import * as S from './PlaybackBar.styles'
+import styles from './PlaybackBar.module.css'
 
 type Props = {
   previewId: string
@@ -101,9 +101,14 @@ export function PlaybackBar({
         label: item.name,
         trailing: (
           <Tooltip content={t('item_editor.playback.from_collection')} asChild testId={`${testId}-from-collection`}>
-            <S.CollectionBadge data-icon-badge tabIndex={0} aria-label={t('item_editor.playback.from_collection')}>
+            <span
+              className={styles.collectionBadge}
+              data-icon-badge
+              tabIndex={0}
+              aria-label={t('item_editor.playback.from_collection')}
+            >
               <CollectionIcon />
-            </S.CollectionBadge>
+            </span>
           </Tooltip>
         )
       })),
@@ -153,21 +158,23 @@ export function PlaybackBar({
 
   const stopButton = (
     <Tooltip content={t('item_editor.playback.stop')} asChild testId={`${testId}-stop-tooltip`}>
-      <S.Control
+      <button
+        className={styles.control}
         type="button"
         aria-label={t('item_editor.playback.stop')}
         data-testid={`${testId}-stop`}
         onClick={stop}
       >
         <StopIcon fontSize="small" />
-      </S.Control>
+      </button>
     </Tooltip>
   )
 
   const soundLabel = t(sound.muted ? 'item_editor.playback.unmute' : 'item_editor.playback.mute')
   const soundButton = sound.hasSound && (
     <Tooltip content={soundLabel} asChild testId={`${testId}-sound-tooltip`}>
-      <S.Control
+      <button
+        className={styles.control}
         type="button"
         aria-label={soundLabel}
         aria-pressed={sound.muted}
@@ -176,25 +183,25 @@ export function PlaybackBar({
         onClick={sound.toggle}
       >
         {sound.muted ? <VolumeOffIcon fontSize="small" /> : <VolumeUpIcon fontSize="small" />}
-      </S.Control>
+      </button>
     </Tooltip>
   )
 
   if (subjectEmoteId) {
     return (
-      <S.EmoteControlsWrap data-testid={`${testId}-emote-controls`}>
+      <div className={styles.emoteControlsWrap} data-testid={`${testId}-emote-controls`}>
         {/* The frame counter is what gives way when the row has to fit a phone. */}
         <EmoteControls key={subjectEmoteId} previewId={previewId} hideFrameInput={isMobile} hideSoundButton />
         {soundButton}
         {stopButton}
-      </S.EmoteControlsWrap>
+      </div>
     )
   }
 
   const isEmoteActive = emote !== PreviewEmote.IDLE || dressedEmote !== null
 
   return (
-    <S.Wrap data-testid={testId} data-playing={isEmoteActive || undefined}>
+    <div className={styles.wrap} data-testid={testId} data-playing={isEmoteActive || undefined}>
       <Select
         value={dressedEmote?.id ?? (isEmoteActive ? emote : null)}
         options={options}
@@ -205,11 +212,11 @@ export function PlaybackBar({
         onChange={select}
       />
       {isEmoteActive && (
-        <S.StopButton type="button" data-testid={`${testId}-stop`} onClick={stop}>
+        <button className={styles.stopButton} type="button" data-testid={`${testId}-stop`} onClick={stop}>
           <StopIcon fontSize="small" />
           {t('item_editor.playback.stop')}
-        </S.StopButton>
+        </button>
       )}
-    </S.Wrap>
+    </div>
   )
 }

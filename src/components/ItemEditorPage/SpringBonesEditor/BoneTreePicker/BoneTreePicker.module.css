@@ -1,11 +1,8 @@
-import styled from '@emotion/styled'
-import { theme } from '~/styles/theme'
-
-export const Wrap = styled.div`
+.wrap {
   position: relative;
-`
+}
 
-export const Trigger = styled.button`
+.trigger {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -13,41 +10,41 @@ export const Trigger = styled.button`
   width: 100%;
   min-height: 32px;
   padding: 0 8px;
-  border: 1px solid ${theme.editor.line};
-  border-radius: ${theme.radius.chip};
-  background: ${theme.editor.bg};
-  color: ${theme.colors.white};
+  border: 1px solid var(--editor-line);
+  border-radius: var(--radius-chip);
+  background: var(--editor-bg);
+  color: var(--color-white);
   font: inherit;
   font-size: 12px;
   text-align: left;
   cursor: pointer;
 
-  > span {
+  & > span {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  > svg {
+  & > svg {
     flex: none;
     width: 18px;
     height: 18px;
   }
 
   &[data-placeholder] {
-    color: ${theme.editor.label};
+    color: var(--editor-label);
   }
   &:focus-visible,
-  &[aria-expanded='true'] {
-    border-color: ${theme.editor.label};
+  &[aria-expanded="true"] {
+    border-color: var(--editor-label);
     outline: 0;
   }
   &:disabled {
     cursor: default;
     opacity: 0.5;
   }
-`
+}
 
-export const Clear = styled.button`
+.clear {
   position: absolute;
   top: 50%;
   right: 4px;
@@ -58,79 +55,79 @@ export const Clear = styled.button`
   height: 24px;
   transform: translateY(-50%);
   border: 0;
-  border-radius: ${theme.radius.chip};
+  border-radius: var(--radius-chip);
   background: transparent;
-  color: ${theme.editor.label};
+  color: var(--editor-label);
   cursor: pointer;
 
-  > svg {
+  & > svg {
     width: 16px;
     height: 16px;
   }
   &:hover,
   &:focus-visible {
-    color: ${theme.colors.white};
+    color: var(--color-white);
   }
-`
+}
 
-// Portaled to <body> and positioned from the trigger's rect, so the editor's panels can't clip it.
-export const Tree = styled.ul`
+/* Portaled to <body> and positioned from the trigger's rect, so the editor's panels can't clip it. */
+.tree {
   position: fixed;
-  z-index: ${theme.z.tooltip};
+  z-index: var(--z-tooltip);
   max-height: min(320px, calc(100vh - 16px));
   margin: 0;
   overflow: auto;
   padding: 6px;
   list-style: none;
-  border: 1px solid ${theme.editor.line};
-  border-radius: ${theme.radius.btnSm};
-  background: ${theme.editor.surface};
-  box-shadow: 0 8px 32px ${theme.colors.overlayStrong};
-`
+  border: 1px solid var(--editor-line);
+  border-radius: var(--radius-btn-sm);
+  background: var(--editor-surface);
+  box-shadow: 0 8px 32px var(--color-overlay-strong);
+}
 
-export const Row = styled.li`
+.row {
   display: flex;
   align-items: center;
   gap: 4px;
   min-height: 32px;
   padding-right: 8px;
-  border-radius: ${theme.radius.chip};
-  color: ${theme.colors.white};
+  border-radius: var(--radius-chip);
+  color: var(--color-white);
   font-size: 12px;
   cursor: pointer;
 
-  > span:last-of-type {
+  & > span:last-of-type {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   &[data-active] {
-    background: ${theme.editor.surfaceHover};
+    background: var(--editor-surface-hover);
   }
-  &[aria-selected='true'] {
-    color: ${theme.editor.accent};
+  &[aria-selected="true"] {
+    color: var(--editor-accent);
   }
   &[data-disabled] {
-    color: ${theme.editor.label};
+    color: var(--editor-label);
     cursor: default;
   }
 
   @media (pointer: coarse) {
     min-height: 44px;
   }
-`
+}
 
-export const Caret = styled.span`
+.caret {
   display: inline-flex;
   flex: none;
   align-items: center;
   justify-content: center;
   width: 16px;
   height: 16px;
-  color: ${theme.editor.label};
+  color: var(--editor-label);
 
-  > svg {
+  & > svg {
     width: 16px;
     height: 16px;
     transition: transform 0.15s ease;
@@ -141,4 +138,4 @@ export const Caret = styled.span`
   &[data-hidden] > svg {
     display: none;
   }
-`
+}

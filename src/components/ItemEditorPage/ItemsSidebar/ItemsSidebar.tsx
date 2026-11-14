@@ -29,7 +29,9 @@ import { isLinkedCollection, type Collection, type CollectionDisplayStatus } fro
 import { groupItemsByType, hasRepresentationFor, type EditorMode } from '~/lib/itemEditor'
 import { BodyShapeType, ItemType, getItemBodyShapeType, isSmartWearable, type Item } from '~/lib/items'
 import { EditorSection } from '../EditorSection'
-import * as S from './ItemsSidebar.styles'
+import { cx } from '~/lib/cx'
+import styles from './ItemsSidebar.module.css'
+import { Link } from 'react-router-dom'
 
 export type EditorBack = { to: string; label: string }
 
@@ -146,55 +148,63 @@ export function ItemsSidebar({
     const shape = singleBodyShape(item)
     const shapeLabel = shape ? t(`item_editor.sidebar.${shape}_only`) : null
     const row = (
-      <S.Row
+      <div
+        className={styles.row}
         key={item.id}
         data-testid={`${testId}-row-${item.id}`}
         data-selected={item.id === selectedId || undefined}
         data-dressed={dressed || undefined}
         data-unavailable={!available || undefined}
       >
-        <S.RowButton
+        <button
+          className={styles.rowButton}
           type="button"
           aria-current={item.id === selectedId || undefined}
           aria-label={collapsed ? item.name : undefined}
           data-testid={`${testId}-select-${item.id}`}
           onClick={() => onRowClick(item)}
         >
-          <S.Thumb data-dressed={dressed || undefined}>
+          <span className={styles.thumb} data-dressed={dressed || undefined}>
             <ItemThumbnail src={thumbnail ? getContentsStorageUrl(thumbnail) : null} rarity={item.rarity} />
-          </S.Thumb>
-          <S.RowName title={item.name}>{item.name}</S.RowName>
+          </span>
+          <span className={styles.rowName} title={item.name}>
+            {item.name}
+          </span>
           {review?.pendingIds.has(item.id) && (
             <>
               {/* An item already live comes back with changes; any other is new to the collection. */}
-              <S.RowTag data-testid={`${testId}-tag-${item.id}`}>
+              <span className={styles.rowTag} data-testid={`${testId}-tag-${item.id}`}>
                 {t(item.isApproved ? 'item_editor.sidebar.review_tag.changes' : 'item_editor.sidebar.review_tag.new')}
-              </S.RowTag>
+              </span>
               {review.reviewedIds.has(item.id) && (
-                <S.RowGlyph
+                <span
+                  className={styles.rowGlyph}
                   data-reviewed
                   role="img"
                   aria-label={t('item_editor.sidebar.reviewed')}
                   data-testid={`${testId}-reviewed-${item.id}`}
                 >
                   <ReviewedIcon />
-                </S.RowGlyph>
+                </span>
               )}
             </>
           )}
           {playing && (
-            <S.RowGlyph data-playing data-testid={`${testId}-playing-${item.id}`}>
+            <span className={styles.rowGlyph} data-playing data-testid={`${testId}-playing-${item.id}`}>
               <PlayingIcon />
-            </S.RowGlyph>
+            </span>
           )}
-        </S.RowButton>
+        </button>
         {/* Collapsed, the row's own tooltip names the shape; this one's trigger would still take room beside the thumb. */}
         {shape && !collapsed && (
           <Tooltip content={shapeLabel} testId={`${testId}-shape-${item.id}`}>
-            <S.RowGlyph data-shape={shape}>{shape === BodyShapeType.MALE ? <MaleIcon /> : <FemaleIcon />}</S.RowGlyph>
+            <span className={styles.rowGlyph} data-shape={shape}>
+              {shape === BodyShapeType.MALE ? <MaleIcon /> : <FemaleIcon />}
+            </span>
           </Tooltip>
         )}
-        <S.DressButton
+        <button
+          className={styles.dressButton}
           type="button"
           aria-pressed={dressed}
           aria-label={t(dressed ? 'item_editor.sidebar.undress' : 'item_editor.sidebar.dress', { name: item.name })}
@@ -203,8 +213,8 @@ export function ItemsSidebar({
           onClick={() => onToggleDressed(item)}
         >
           {dressed ? <DressedIcon fontSize="small" /> : <UndressedIcon fontSize="small" />}
-        </S.DressButton>
-      </S.Row>
+        </button>
+      </div>
     )
     // Collapsed rows have no visible name or glyph, so the tooltip carries them (and the body-shape note when relevant).
     const note = available ? null : t('item_editor.sidebar.no_representation')
@@ -231,7 +241,7 @@ export function ItemsSidebar({
         iconOnly={collapsed}
         testId={`${testId}-${kind}`}
       >
-        <S.Rows>{groupItems.map(renderRow)}</S.Rows>
+        <div className={styles.rows}>{groupItems.map(renderRow)}</div>
       </EditorSection>
     )
   }
@@ -244,7 +254,7 @@ export function ItemsSidebar({
         iconOnly={collapsed}
         testId={`${testId}-${kind}`}
       >
-        <S.Rows>{groupItems.map(renderRow)}</S.Rows>
+        <div className={styles.rows}>{groupItems.map(renderRow)}</div>
       </EditorSection>
     )
   }
@@ -252,14 +262,15 @@ export function ItemsSidebar({
   const toggleLabel = t(collapsed ? 'item_editor.sidebar.expand' : 'item_editor.sidebar.collapse')
 
   return (
-    <S.Shell>
-      <S.Wrap data-testid={testId} data-collapsed={collapsed || undefined}>
-        <S.Header>
+    <div className={styles.shell}>
+      <aside className={styles.wrap} data-testid={testId} data-collapsed={collapsed || undefined}>
+        <div className={styles.header}>
           {/* The review bar carries its own back link, so the review sidebar only names the collection. */}
-          <S.HeaderRow>
+          <div className={styles.headerRow}>
             {mode === 'edit' && back && (
               <Tooltip content={back.label} placement="right" asChild testId={`${testId}-back-tooltip`}>
-                <S.IconLink
+                <Link
+                  className={styles.iconButton}
                   to={back.to}
                   aria-label={back.label}
                   data-testid={`${testId}-back`}
@@ -269,33 +280,34 @@ export function ItemsSidebar({
                   }}
                 >
                   <BackIcon fontSize="small" />
-                </S.IconLink>
+                </Link>
               </Tooltip>
             )}
-            <S.CollectionName>
-              <S.TitleGroup>
-                <S.CollectionTitle title={collection.name} data-testid={`${testId}-collection`}>
+            <div className={styles.collectionName}>
+              <div className={styles.titleGroup}>
+                <h2 className={styles.collectionTitle} title={collection.name} data-testid={`${testId}-collection`}>
                   {collection.name}
-                </S.CollectionTitle>
+                </h2>
                 {mode === 'edit' && onRename && (
-                  <S.RenameButton
+                  <button
+                    className={styles.renameButton}
                     type="button"
                     aria-label={t('collection_detail_page.rename')}
                     data-testid={`${testId}-rename`}
                     onClick={onRename}
                   >
                     <EditIcon />
-                  </S.RenameButton>
+                  </button>
                 )}
-              </S.TitleGroup>
+              </div>
               {/* The review bar shows the curation state instead. */}
               {mode === 'edit' && collectionStatus && (
                 <CollectionStatusPill collection={collection} status={collectionStatus} />
               )}
-            </S.CollectionName>
-          </S.HeaderRow>
+            </div>
+          </div>
           {showAddItems && (
-            <S.HeaderMeta>
+            <div className={styles.headerMeta}>
               {collapsed ? (
                 <Tooltip
                   content={t('item_editor.sidebar.add_items')}
@@ -326,18 +338,22 @@ export function ItemsSidebar({
                   {t('item_editor.sidebar.add_items')}
                 </Button>
               )}
-            </S.HeaderMeta>
+            </div>
           )}
-        </S.Header>
-        <S.List ref={listRef}>
+        </div>
+        <div className={styles.list} ref={listRef}>
           {isLoading ? (
-            <S.Rows aria-busy="true" data-testid={`${testId}-loading`}>
+            <div className={styles.rows} aria-busy="true" data-testid={`${testId}-loading`}>
               {Array.from({ length: 5 }, (_, index) => (
-                <S.SkeletonRow key={index} className="skeleton" />
+                <div className={cx(styles.skeletonRow, 'skeleton')} key={index} />
               ))}
-            </S.Rows>
+            </div>
           ) : items.length === 0 ? (
-            !collapsed && <S.Empty data-testid={`${testId}-empty`}>{t('item_editor.sidebar.empty')}</S.Empty>
+            !collapsed && (
+              <p className={styles.empty} data-testid={`${testId}-empty`}>
+                {t('item_editor.sidebar.empty')}
+              </p>
+            )
           ) : reviewGroups ? (
             <>
               {renderReviewGroup('to_review', reviewGroups.toReview)}
@@ -349,13 +365,14 @@ export function ItemsSidebar({
               {renderGroup('emotes', groups.emotes)}
             </>
           ) : (
-            <S.Rows>{items.map(renderRow)}</S.Rows>
+            <div className={styles.rows}>{items.map(renderRow)}</div>
           )}
-        </S.List>
-      </S.Wrap>
+        </div>
+      </aside>
       {/* Half outside the panel edge, level with the back button, so it reads as the panel's own handle. */}
       <Tooltip content={toggleLabel} placement="right" asChild testId={`${testId}-toggle-tooltip`}>
-        <S.FloatingToggle
+        <button
+          className={styles.floatingToggle}
           type="button"
           aria-label={toggleLabel}
           aria-expanded={!collapsed}
@@ -363,8 +380,8 @@ export function ItemsSidebar({
           onClick={onToggleCollapsed}
         >
           {collapsed ? <ExpandIcon fontSize="small" /> : <CollapseIcon fontSize="small" />}
-        </S.FloatingToggle>
+        </button>
       </Tooltip>
-    </S.Shell>
+    </div>
   )
 }
