@@ -265,16 +265,16 @@
   background: transparent;
   color: var(--color-soft-white);
   font-family: var(--font-sans);
-
-  /* It takes focus as a dialog does; the ring belongs to the controls inside it. */
-  &:focus {
-    outline: none;
-  }
   font-size: 16px;
   font-weight: 600;
   line-height: 24px;
   text-align: left;
   cursor: pointer;
+
+  /* It takes focus as a dialog does; the ring belongs to the controls inside it. */
+  &:focus {
+    outline: none;
+  }
 
   & > span:not([data-sale-icon]) {
     flex: 1;

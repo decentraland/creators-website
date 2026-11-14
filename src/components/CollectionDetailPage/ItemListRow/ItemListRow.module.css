@@ -126,6 +126,11 @@
   white-space: nowrap;
   cursor: pointer;
   transition: background 0.15s ease;
+  min-width: 0;
+  max-width: calc(100% + 8px);
+  margin-left: -8px;
+  padding: 0 4px 0 8px;
+  text-align: left;
 
   & > svg {
     flex: none;
@@ -149,11 +154,6 @@
     width: 18px;
     opacity: 1;
   }
-  min-width: 0;
-  max-width: calc(100% + 8px);
-  margin-left: -8px;
-  padding: 0 4px 0 8px;
-  text-align: left;
 }
 
 .nameEditor {
@@ -283,6 +283,7 @@
   white-space: nowrap;
   cursor: pointer;
   transition: background 0.15s ease;
+  padding: 0 10px;
 
   & > svg {
     flex: none;
@@ -306,7 +307,6 @@
     width: 18px;
     opacity: 1;
   }
-  padding: 0 10px;
 }
 
 .smartBadge {

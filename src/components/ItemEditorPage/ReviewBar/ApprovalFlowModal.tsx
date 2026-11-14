@@ -26,7 +26,10 @@ import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
 import { getItemBodyShapeType, type Item } from '~/lib/items'
 import { formatItemBytes } from './formatSize'
-import * as S from './ApprovalFlowModal.styles'
+import { cx } from '~/lib/cx'
+import publishModal from '~/components/CollectionDetailPage/PublishCollectionModal/PublishCollectionModal.module.css'
+import styles from './ApprovalFlowModal.module.css'
+import shared from '~/styles/shared.module.css'
 
 type Props = {
   session: Session
@@ -164,17 +167,17 @@ export function ApprovalFlowModal({ session, collection, curation, mode, items, 
       size="large"
       testId="approval-flow-modal"
     >
-      <S.Main data-single={single || undefined}>
+      <div className={cx(publishModal.main, styles.main)} data-single={single || undefined}>
         {!single && (
           <StepIndicator current={plan.steps.indexOf(step) + 1} total={plan.steps.length} testId="approval-steps" />
         )}
-        <S.Step data-testid={`approval-step-${step}`}>
-          {!single && <S.Heading>{t(`approval_flow.${step}.title`)}</S.Heading>}
-          <S.Text>
+        <div className={cx(publishModal.step, styles.step)} data-testid={`approval-step-${step}`}>
+          {!single && <h3 className={publishModal.heading}>{t(`approval_flow.${step}.title`)}</h3>}
+          <p className={publishModal.text}>
             {t(mode === 'enable' ? 'approval_flow.enable_body' : `approval_flow.${step}.body`, { count })}
-          </S.Text>
+          </p>
           <StepTable step={step} plan={plan} collection={collection} />
-          <S.Footer>
+          <div className={cx(publishModal.footer, styles.footer)}>
             <Button type="button" variant="secondary" disabled={busy} onClick={onClose}>
               {t('approval_flow.cancel')}
             </Button>
@@ -188,9 +191,9 @@ export function ApprovalFlowModal({ session, collection, curation, mode, items, 
               {t(`approval_flow.${step}.action`)}
               {!isLast && <ChevronRightIcon fontSize="small" />}
             </Button>
-          </S.Footer>
-        </S.Step>
-      </S.Main>
+          </div>
+        </div>
+      </div>
     </Modal>
   )
 }
@@ -198,12 +201,12 @@ export function ApprovalFlowModal({ session, collection, curation, mode, items, 
 function ItemName({ item }: { item: Item }) {
   const thumbnail = item.contents[item.thumbnail]
   return (
-    <S.NameCell>
-      <S.Thumb>
+    <div className={styles.nameCell}>
+      <span className={publishModal.thumb}>
         <ItemThumbnail src={thumbnail ? getContentsStorageUrl(thumbnail) : null} rarity={item.rarity} />
-      </S.Thumb>
+      </span>
       <span title={item.name}>{item.name}</span>
-    </S.NameCell>
+    </div>
   )
 }
 
@@ -216,63 +219,67 @@ function StepTable({ step, plan, collection }: { step: ApprovalStep; plan: Appro
 
   if (step === 'approve') {
     return (
-      <S.Table>
-        <S.Header data-table={step}>
+      <div className={cx(publishModal.table, styles.table)}>
+        <div className={cx(publishModal.tableHeader, styles.header)} data-table={step}>
           {column('collection')}
           {column('items')}
-        </S.Header>
-        <S.Row data-table={step} data-testid="approval-collection-row">
-          <S.NameCell>
-            <S.MosaicFrame>
+        </div>
+        <div className={styles.row} data-table={step} data-testid="approval-collection-row">
+          <div className={styles.nameCell}>
+            <span className={publishModal.mosaicFrame}>
               <CollectionMosaic collectionId={collection.id} itemCount={collection.itemCount} />
-            </S.MosaicFrame>
+            </span>
             <span title={collection.name}>{collection.name}</span>
-          </S.NameCell>
+          </div>
           <span>{t('approval_flow.item_count', { count: collection.itemCount })}</span>
-        </S.Row>
-      </S.Table>
+        </div>
+      </div>
     )
   }
 
   if (step === 'deploy') {
     return (
-      <S.Table>
-        <S.Header data-table={step}>
+      <div className={cx(publishModal.table, styles.table)}>
+        <div className={cx(publishModal.tableHeader, styles.header)} data-table={step}>
           {column('item')}
           {column('size')}
-        </S.Header>
-        <S.TableBody>
+        </div>
+        <div className={publishModal.tableBody}>
           {plan.deploy.map(item => {
             return (
-              <S.Row key={item.id} data-table={step} data-testid="approval-item-row">
+              <div className={styles.row} key={item.id} data-table={step} data-testid="approval-item-row">
                 <ItemName item={item} />
                 <span data-testid="approval-item-size">
                   {formatItemBytes(t, sizes, item.id) ?? (
-                    <S.SizeSpinner role="status" aria-label={t('approval_flow.size_measuring')} />
+                    <span
+                      className={cx(shared.spinner, styles.sizeSpinner)}
+                      role="status"
+                      aria-label={t('approval_flow.size_measuring')}
+                    />
                   )}
                 </span>
-              </S.Row>
+              </div>
             )
           })}
-        </S.TableBody>
-      </S.Table>
+        </div>
+      </div>
     )
   }
 
   return (
-    <S.Table>
-      <S.Header data-table={step}>
+    <div className={cx(publishModal.table, styles.table)}>
+      <div className={cx(publishModal.tableHeader, styles.header)} data-table={step}>
         {column('item')}
         {column('body_shape', true)}
         {column('category', true)}
         {column('rarity')}
         {column('hash', true)}
-      </S.Header>
-      <S.TableBody>
+      </div>
+      <div className={publishModal.tableBody}>
         {plan.rescue.map(({ item, contentHash }) => {
           const bodyShape = getItemBodyShapeType(item)
           return (
-            <S.Row key={item.id} data-table={step} data-testid="approval-item-row">
+            <div className={styles.row} key={item.id} data-table={step} data-testid="approval-item-row">
               <ItemName item={item} />
               <span data-optional>{bodyShape ? <BodyShapeIcon bodyShape={bodyShape} withLabel /> : '—'}</span>
               <span data-optional>
@@ -282,11 +289,11 @@ function StepTable({ step, plan, collection }: { step: ApprovalStep; plan: Appro
               <span data-optional title={contentHash}>
                 {shortHash(contentHash)}
               </span>
-            </S.Row>
+            </div>
           )
         })}
-      </S.TableBody>
-    </S.Table>
+      </div>
+    </div>
   )
 }
 
@@ -305,11 +312,12 @@ function ErrorDetail({ text, collectionId }: { text: string; collectionId: strin
       ? t('approval_flow.error.copy')
       : t(copied ? 'approval_flow.error.copied' : 'collection_detail_page.actions.copy_failed')
   return (
-    <S.Detail>
-      <S.DetailHeader>
+    <div className={styles.detail}>
+      <div className={styles.detailHeader}>
         <span>{t('approval_flow.error.details')}</span>
         <Tooltip content={label} asChild placement="top">
-          <S.CopyButton
+          <button
+            className={styles.copyButton}
             type="button"
             aria-label={label}
             data-copied={copied || undefined}
@@ -320,10 +328,12 @@ function ErrorDetail({ text, collectionId }: { text: string; collectionId: strin
             }}
           >
             {copied ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
-          </S.CopyButton>
+          </button>
         </Tooltip>
-      </S.DetailHeader>
-      <S.DetailText data-testid="approval-error-detail">{text}</S.DetailText>
-    </S.Detail>
+      </div>
+      <pre className={styles.detailText} data-testid="approval-error-detail">
+        {text}
+      </pre>
+    </div>
   )
 }

@@ -1,42 +1,39 @@
-import styled from '@emotion/styled'
-import { theme } from '~/styles/theme'
-
-export const Methods = styled.div`
+.methods {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 12px;
   padding: 0 2px;
-`
+}
 
-export const Card = styled.label`
+.card {
   position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
   min-height: 64px;
   padding: 12px;
-  border: 1px solid ${theme.colors.softWhite};
-  border-radius: ${theme.radius.btn};
-  background: ${theme.colors.glassFaint};
+  border: 1px solid var(--color-soft-white);
+  border-radius: var(--radius-btn);
+  background: var(--color-glass-faint);
   cursor: pointer;
   transition:
     border-color 0.15s ease,
     background 0.15s ease;
 
   &:hover:not([data-disabled]) {
-    background: ${theme.colors.glass};
+    background: var(--color-glass);
   }
   &[data-selected] {
     border-color: transparent;
-    background: ${theme.colors.glass};
+    background: var(--color-glass);
 
     &::before {
-      content: '';
+      content: "";
       position: absolute;
       inset: -2px;
       padding: 3px;
       border-radius: 13px;
-      background: ${theme.gradients.ember};
+      background: var(--gradient-ember);
       -webkit-mask:
         linear-gradient(#000 0 0) content-box,
         linear-gradient(#000 0 0);
@@ -60,63 +57,63 @@ export const Card = styled.label`
     visibility: hidden;
     position: absolute;
   }
-`
+}
 
-export const Mark = styled.img`
+.mark {
   flex: none;
   width: 36px;
   height: 36px;
   object-fit: contain;
-`
+}
 
-export const Info = styled.span`
+.info {
   display: flex;
   flex: 1;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-`
+}
 
-export const Title = styled.span`
+.title {
   font-size: 15px;
   font-weight: 700;
-  color: ${theme.colors.softWhite};
-`
+  color: var(--color-soft-white);
+}
 
-export const Balance = styled.span`
+.balance {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: ${theme.colors.gray4};
+  color: var(--color-gray4);
 
   & span {
     font-size: 11px;
     display: inline-flex;
     align-items: center;
     gap: 2px;
-    color: ${theme.colors.softWhite};
+    color: var(--color-soft-white);
   }
-`
+}
 
-export const Price = styled.span`
+.price {
   position: relative;
-`
+}
 
-export const Amount = styled.span`
+.amount {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-size: 20px;
   font-weight: 600;
-  color: ${theme.colors.softWhite};
-`
+  color: var(--color-soft-white);
+}
 
-export const Rate = styled.span`
+.rate {
   position: absolute;
   top: 100%;
   right: 0;
   width: max-content;
   font-size: 12px;
-  color: ${theme.colors.gray4};
-`
+  color: var(--color-gray4);
+}

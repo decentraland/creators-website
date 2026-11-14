@@ -1,39 +1,34 @@
-import styled from '@emotion/styled'
-import { theme } from '~/styles/theme'
-
-const mobile = theme.media.maxWidth('mobile')
-
-export const Wrap = styled.div`
+.wrap {
   display: flex;
   flex-direction: column;
   gap: 24px;
   padding: 8px 0 0;
-`
+}
 
-export const Header = styled.div`
+.header {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
   text-align: center;
-`
+}
 
-export const Heading = styled.h3`
+.heading {
   margin: 0;
   font-size: 24px;
   font-weight: 700;
   line-height: 1.3;
-  color: ${theme.colors.white};
-`
+  color: var(--color-white);
+}
 
-export const Balance = styled.p`
+.balance {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   margin: 0;
   font-size: 16px;
   line-height: 1.5;
-  color: ${theme.colors.softWhite};
+  color: var(--color-soft-white);
 
   & span {
     display: inline-flex;
@@ -41,32 +36,32 @@ export const Balance = styled.p`
     gap: 2px;
     font-weight: 600;
   }
-`
+}
 
-export const Packs = styled.div`
+.packs {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   padding: 16px 2px 0;
 
-  ${theme.media.maxWidth('lg')} {
+  @media (max-width: 900px) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     row-gap: 28px;
   }
-`
+}
 
-// A tile is a whole-card button; the stepper inside it stops the click so it does not double as a select.
-export const Pack = styled.div`
+/* A tile is a whole-card button; the stepper inside it stops the click so it does not double as a select. */
+.pack {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
   padding: 24px 12px 16px;
-  border: 1px solid ${theme.colors.glassLine};
-  border-radius: ${theme.radius.cardLg};
-  background: ${theme.colors.overlayLight};
-  color: ${theme.colors.white};
+  border: 1px solid var(--color-glass-line);
+  border-radius: var(--radius-card-lg);
+  background: var(--color-overlay-light);
+  color: var(--color-white);
   text-align: center;
   cursor: pointer;
   transition:
@@ -74,20 +69,20 @@ export const Pack = styled.div`
     border-color 0.15s ease;
 
   &:hover {
-    background: ${theme.colors.glassFaint};
+    background: var(--color-glass-faint);
   }
 
   &[data-selected] {
     border-color: transparent;
-    background: ${theme.colors.accent};
+    background: var(--color-accent);
 
     &::before {
-      content: '';
+      content: "";
       position: absolute;
       inset: -2px;
       padding: 3px;
       border-radius: 18px;
-      background: ${theme.gradients.ember};
+      background: var(--gradient-ember);
       -webkit-mask:
         linear-gradient(#000 0 0) content-box,
         linear-gradient(#000 0 0);
@@ -110,43 +105,43 @@ export const Pack = styled.div`
     pointer-events: none;
   }
 
-  ${mobile} {
+  @media (max-width: 768px) {
     padding: 20px 8px 12px;
   }
-`
+}
 
-export const SkeletonLine = styled.span`
+.skeletonLine {
   display: block;
   height: 16px;
   width: 64px;
 
-  &[data-size='amount'] {
+  &[data-size="amount"] {
     height: 28px;
     width: 80px;
   }
-  &[data-size='label'] {
+  &[data-size="label"] {
     height: 12px;
     width: 56px;
   }
-  &[data-size='price'] {
+  &[data-size="price"] {
     height: 20px;
     width: 64px;
   }
-`
+}
 
-export const SkeletonArt = styled.span`
+.skeletonArt {
   display: block;
   width: 96px;
   height: 96px;
-  border-radius: ${theme.radius.card};
+  border-radius: var(--radius-card);
 
-  ${mobile} {
+  @media (max-width: 768px) {
     width: 72px;
     height: 72px;
   }
-`
+}
 
-export const Badge = styled.span`
+.badge {
   position: absolute;
   top: -14px;
   left: 50%;
@@ -156,66 +151,66 @@ export const Badge = styled.span`
   align-items: center;
   gap: 4px;
   padding: 4px 12px 4px 8px;
-  border-radius: ${theme.radius.pill};
-  background: ${theme.gradients.flare};
+  border-radius: var(--radius-pill);
+  background: var(--gradient-flare);
   font-size: 12px;
   font-weight: 500;
   line-height: 18px;
-  color: ${theme.colors.white};
+  color: var(--color-white);
   white-space: nowrap;
 
   & svg {
     font-size: 14px;
   }
-`
+}
 
-export const Credits = styled.span`
+.credits {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-`
+}
 
-export const CreditsAmount = styled.span`
+.creditsAmount {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 26px;
   font-weight: 700;
   line-height: 1.2;
-`
+}
 
-export const CreditsLabel = styled.span`
+.creditsLabel {
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: ${theme.colors.softWhite};
-`
+  color: var(--color-soft-white);
+}
 
-export const Art = styled.img`
+.art {
   width: 96px;
   height: 96px;
   object-fit: contain;
 
-  ${mobile} {
+  @media (max-width: 768px) {
     width: 72px;
     height: 72px;
   }
-`
+}
 
-export const Price = styled.span`
+.price {
   font-size: 18px;
   font-weight: 700;
   line-height: 1.3;
-`
+}
 
-export const Stepper = styled.div`
+.stepper {
   display: inline-flex;
   align-items: stretch;
   height: 36px;
-  border-radius: ${theme.radius.btnSm};
-  background: ${theme.colors.overlayStrong};
+  border-radius: var(--radius-btn-sm);
+  background: var(--color-overlay-strong);
   overflow: hidden;
 
   & > span {
@@ -225,35 +220,35 @@ export const Stepper = styled.div`
     min-width: 40px;
     font-size: 14px;
     font-weight: 600;
-    color: ${theme.colors.white};
+    color: var(--color-white);
   }
-`
+}
 
-export const StepButton = styled.button`
+.stepButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 36px;
   border: 0;
-  background: ${theme.colors.glassFaint};
-  color: ${theme.colors.white};
+  background: var(--color-glass-faint);
+  color: var(--color-white);
   cursor: pointer;
 
   &:hover:not(:disabled) {
-    background: ${theme.colors.glass};
+    background: var(--color-glass);
   }
 
   &:disabled {
-    color: ${theme.colors.muted2};
+    color: var(--color-muted2);
     cursor: default;
   }
 
   & svg {
     font-size: 16px;
   }
-`
+}
 
-export const Total = styled.p`
+.total {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -261,41 +256,41 @@ export const Total = styled.p`
   margin: 0;
   font-size: 16px;
   line-height: 1.5;
-  color: ${theme.colors.softWhite};
+  color: var(--color-soft-white);
 
   & span {
     display: inline-flex;
     align-items: center;
     gap: 4px;
     font-weight: 700;
-    color: ${theme.colors.white};
+    color: var(--color-white);
   }
-`
+}
 
-export const ErrorText = styled.p`
+.errorText {
   margin: 0;
   font-size: 13px;
   line-height: 1.4;
   text-align: right;
-  color: ${theme.colors.errLight};
-`
+  color: var(--color-err-light);
+}
 
-export const Footer = styled.div`
+.footer {
   display: flex;
   justify-content: space-between;
   gap: 16px;
   padding-top: 24px;
-  border-top: 1px solid ${theme.colors.glassHover};
+  border-top: 1px solid var(--color-glass-hover);
 
   & > button {
     min-width: 250px;
   }
 
-  ${mobile} {
+  @media (max-width: 768px) {
     flex-direction: column-reverse;
 
     & > button {
       min-width: 0;
     }
   }
-`
+}
