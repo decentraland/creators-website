@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { collection } from './fixtures'
 import { launchApp, type App } from './helpers/app'
 import { byTestId, clickTestId, selectOption, waitForEnabled, waitForTestId } from './helpers/dom'
+import { waitForProcessedAction } from './helpers/preview'
 import { FIXTURE } from './helpers/files'
 
 let app: App | undefined
@@ -43,7 +44,7 @@ describe('Blender live preview', () => {
     // The model and the panel's tuning arrive in the add-items modal; the name is the creator's to give.
     await waitForTestId(page, 'draft-form', 30_000)
     await page.type(byTestId('item-name'), 'Bandana')
-    await waitForEnabled(page, 'add-items-finish', 30_000)
+    await waitForProcessedAction(app, 'add-items-finish')
     await clickTestId(page, 'add-items-finish')
 
     await page.waitForFunction(

@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { HASH, collection, upperBody } from './fixtures'
 import { launchApp, type App } from './helpers/app'
-import { clickTestId, uploadFiles, waitForEditor, waitForEnabled, waitForTestId, waitForToast } from './helpers/dom'
+import { clickTestId, uploadFiles, waitForEditor, waitForTestId, waitForToast } from './helpers/dom'
+import { waitForProcessedAction } from './helpers/preview'
 import { FIXTURE } from './helpers/files'
 
 let app: App | undefined
@@ -34,7 +35,7 @@ describe('replace a model', () => {
     await waitForTestId(page, 'change-file-form', 30_000)
     await clickTestId(page, 'body-shape-male')
     await page.waitForSelector('[data-testid="change-file-effect"][data-mode="replace_shape"]')
-    await waitForEnabled(page, 'change-file-save')
+    await waitForProcessedAction(app, 'change-file-save')
     await clickTestId(page, 'change-file-save')
 
     await waitForToast(page)
