@@ -85,6 +85,12 @@ export const Attempts = styled.div`
   color: ${theme.colors.gray4};
 `
 
+export const LimitAttempts = styled.div`
+  display: flex;
+  justify-content: center;
+  padding-top: 12px;
+`
+
 export const NoticeDetails = styled.div`
   display: flex;
   flex: 1 1 100%;

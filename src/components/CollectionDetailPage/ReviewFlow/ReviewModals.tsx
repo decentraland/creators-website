@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { InfoOutlined as InfoIcon, ReportProblemOutlined as ErrorIcon } from '@mui/icons-material'
 import reviewArt from '~/assets/publish-success.png'
-import limitArt from '~/assets/modal-error.png'
+import limitArt from '~/assets/review-limit.png'
 import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { Modal } from '~/components/Modal'
@@ -10,7 +10,7 @@ import { SuccessModal } from '~/components/SuccessModal'
 import { Tooltip } from '~/components/Tooltip'
 import { ItemValidationCard, toValidationSubject } from '~/components/ValidationBadge'
 import { useTranslation } from '~/intl'
-import { NOTE_MAX_LENGTH, VALIDATION_ATTEMPTS_PER_DAY } from '~/lib/events'
+import { NOTE_MAX_LENGTH, VALIDATION_ATTEMPTS_PER_DAY, getValidationResetIn } from '~/lib/events'
 import * as Issues from '../PublishCollectionModal/ValidationIssuesView.styles'
 import { type ItemCheck } from '~/lib/validation'
 import * as S from './ReviewFlow.styles'
@@ -120,21 +120,27 @@ export function RequestCuratorReviewModal({ busy, error, onConfirm, onClose }: R
 
 type LimitProps = {
   attemptsUsed: number
+  busy?: boolean
+  error?: string | null
   /** Only when the collection was rejected: a curator can't review submitted changes ahead of the queue. */
   onRequestReview?: () => void
   onClose: () => void
 }
 
 /** The day's automated reviews are spent: wait, or ask a curator instead. */
-export function DailyLimitModal({ attemptsUsed, onRequestReview, onClose }: LimitProps) {
+export function DailyLimitModal({ attemptsUsed, busy, error, onRequestReview, onClose }: LimitProps) {
   const { t } = useTranslation()
+  const reset = useMemo(() => getValidationResetIn(), [])
   return (
     <ConfirmModal
       art={{ src: limitArt }}
       title={t('review_flow.limit.title')}
       description={t(onRequestReview ? 'review_flow.limit.description' : 'review_flow.limit.description_wait', {
-        max: VALIDATION_ATTEMPTS_PER_DAY
+        max: VALIDATION_ATTEMPTS_PER_DAY,
+        time: t(`review_flow.limit.reset_${reset.unit}`, { count: reset.count })
       })}
+      error={error}
+      busy={busy}
       onClose={onClose}
       cancel={{ label: t('review_flow.limit.not_now'), onClick: onClose, testId: 'daily-limit-not-now' }}
       confirm={
@@ -142,9 +148,13 @@ export function DailyLimitModal({ attemptsUsed, onRequestReview, onClose }: Limi
           ? { label: t('review_flow.limit.request'), onClick: onRequestReview, testId: 'daily-limit-request' }
           : undefined
       }
+      size="medium"
+      spreadActions
       testId="daily-limit-modal"
     >
-      <Attempts used={attemptsUsed} testId="daily-limit-attempts" />
+      <S.LimitAttempts>
+        <Attempts used={attemptsUsed} testId="daily-limit-attempts" />
+      </S.LimitAttempts>
     </ConfirmModal>
   )
 }

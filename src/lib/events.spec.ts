@@ -7,6 +7,7 @@ import {
   getAutomatedIssuesByItem,
   getCuratorVerdict,
   getAwaitedReply,
+  getValidationResetIn,
   hasChangesSinceVerdict,
   getUnansweredComment,
   getFailedItems,
@@ -143,6 +144,18 @@ describe('groupVerdictItems', () => {
     expect(groups.failed.map(item => item.id)).toEqual(['b', 'd'])
     expect(groups.unchecked.map(item => item.id)).toEqual(['c'])
     expect(groups.passed.map(item => item.id)).toEqual(['a'])
+  })
+})
+
+describe('getValidationResetIn', () => {
+  it('counts the hours left until 00:00 UTC, rounded up', () => {
+    expect(getValidationResetIn(Date.UTC(2026, 10, 14, 1, 16))).toEqual({ unit: 'hours', count: 23 })
+    expect(getValidationResetIn(Date.UTC(2026, 10, 14, 0, 0))).toEqual({ unit: 'hours', count: 24 })
+  })
+
+  it('switches to minutes in the last hour', () => {
+    expect(getValidationResetIn(Date.UTC(2026, 10, 14, 23, 0))).toEqual({ unit: 'minutes', count: 60 })
+    expect(getValidationResetIn(Date.UTC(2026, 10, 14, 23, 59, 30))).toEqual({ unit: 'minutes', count: 1 })
   })
 })
 

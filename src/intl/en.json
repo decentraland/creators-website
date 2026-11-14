@@ -2112,8 +2112,10 @@
     },
     "limit": {
       "title": "Daily automated review limit reached",
-      "description": "You've reached the limit of {max} automated reviews per day. You can request a manual review from a Decentraland curator, which may take a little longer, or try again after the allowance resets at 00:00 UTC.",
-      "description_wait": "You've reached the limit of {max} automated reviews per day. Try again after the allowance resets at 00:00 UTC.",
+      "description": "You've reached the limit of {max} automated reviews per day. You can request a manual review from a Decentraland curator, which may take a little longer, or try again in {time}, when your reviews reset.",
+      "description_wait": "You've reached the limit of {max} automated reviews per day. Try again in {time}, when your reviews reset.",
+      "reset_hours": "{count, plural, one {# hour} other {# hours}}",
+      "reset_minutes": "{count, plural, one {# minute} other {# minutes}}",
       "not_now": "Not now",
       "request": "Request curator review"
     },

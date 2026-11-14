@@ -215,6 +215,17 @@ export function startOfUtcDay(now: number): number {
   return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
 }
 
+const HOUR_MS = 3_600_000
+const MINUTE_MS = 60_000
+
+/** How long until the day's automated reviews are back (00:00 UTC), rounded up so nobody returns too early. */
+export function getValidationResetIn(now = Date.now()): { unit: 'hours' | 'minutes'; count: number } {
+  const left = startOfUtcDay(now) + 24 * HOUR_MS - now
+  return left > HOUR_MS
+    ? { unit: 'hours', count: Math.ceil(left / HOUR_MS) }
+    : { unit: 'minutes', count: Math.max(1, Math.ceil(left / MINUTE_MS)) }
+}
+
 /**
  * Automated reviews used today: every run the creator caused (the publish, a retry, submitted changes; never
  * the server's own re-sends) newer than the later of today 00:00 UTC and the newest curator decision. A run

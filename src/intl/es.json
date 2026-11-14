@@ -2112,8 +2112,10 @@
     },
     "limit": {
       "title": "Alcanzaste el límite diario de revisiones automáticas",
-      "description": "Alcanzaste el límite de {max} revisiones automáticas por día. Puedes pedir una revisión manual a un curador de Decentraland, que puede tardar un poco más, o intentarlo de nuevo cuando el límite se reinicie a las 00:00 UTC.",
-      "description_wait": "Alcanzaste el límite de {max} revisiones automáticas por día. Vuelve a intentarlo cuando el límite se reinicie a las 00:00 UTC.",
+      "description": "Alcanzaste el límite de {max} revisiones automáticas por día. Puedes pedir una revisión manual a un curador de Decentraland, que puede tardar un poco más, o intentarlo de nuevo en {time}, cuando se reinicien tus revisiones.",
+      "description_wait": "Alcanzaste el límite de {max} revisiones automáticas por día. Vuelve a intentarlo en {time}, cuando se reinicien tus revisiones.",
+      "reset_hours": "{count, plural, one {# hora} other {# horas}}",
+      "reset_minutes": "{count, plural, one {# minuto} other {# minutos}}",
       "not_now": "Ahora no",
       "request": "Pedir revisión de un curador"
     },

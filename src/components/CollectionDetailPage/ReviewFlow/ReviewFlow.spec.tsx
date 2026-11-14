@@ -191,9 +191,11 @@ describe('ReviewFlow', () => {
     expect(mocks.validate).not.toHaveBeenCalled()
     expect(screen.getByTestId('daily-limit-attempts')).toHaveTextContent('5 of 5 used today')
 
+    mocks.appeal.mockImplementationOnce((_, { onSuccess }) => onSuccess())
     fireEvent.click(screen.getByTestId('daily-limit-request'))
-    fireEvent.click(screen.getByTestId('request-review-confirm'))
+    expect(screen.queryByTestId('request-review-modal')).toBeNull()
     expect(mocks.appeal).toHaveBeenCalledWith({ collection }, expect.anything())
+    expect(screen.getByTestId('sent-for-review-modal-title')).toBeInTheDocument()
   })
 
   it('says a review is running instead of opening the limit modal while one is in progress', () => {

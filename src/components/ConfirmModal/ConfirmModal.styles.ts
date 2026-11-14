@@ -1,4 +1,5 @@
 import styled from '@emotion/styled'
+import { ModalActions } from '~/styles/shared'
 import { theme } from '~/styles/theme'
 
 export const Wrap = styled.div`
@@ -57,4 +58,13 @@ export const Text = styled.p`
   }
 `
 
-export { ModalActions as Actions } from '~/styles/shared'
+export const Actions = styled(ModalActions)`
+  &[data-spread] {
+    justify-content: space-between;
+
+    & > button {
+      flex: 0 1 250px;
+      min-width: 0;
+    }
+  }
+`

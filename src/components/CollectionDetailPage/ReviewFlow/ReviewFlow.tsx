@@ -178,6 +178,15 @@ export function ReviewFlow({
     appeal.mutate({ collection, note: note || undefined }, { onSuccess: () => open('sent') })
   }
 
+  /** From the limit modal: its copy already says what a curator review means, so it asks without a second dialog. */
+  function requestReviewNow() {
+    if (appealOpen) {
+      showToast(t('review_flow.appeal_open'), { type: 'warn' })
+      return
+    }
+    confirmReview('')
+  }
+
   const appealError = isAppealAlreadyOpen(appeal.error)
     ? t('review_flow.appeal_open')
     : isCollectionBusy(appeal.error)
@@ -210,7 +219,9 @@ export function ReviewFlow({
       {modal === 'limit' && (
         <DailyLimitModal
           attemptsUsed={attemptsUsed}
-          onRequestReview={canAppeal ? requestReview : undefined}
+          busy={appeal.isPending}
+          error={appealError}
+          onRequestReview={canAppeal ? requestReviewNow : undefined}
           onClose={close}
         />
       )}

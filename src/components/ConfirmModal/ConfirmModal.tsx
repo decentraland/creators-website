@@ -31,6 +31,10 @@ type Props = {
   onClose: () => void
   cancel?: Action
   confirm?: Action
+  /** A wider dialog, for an illustrated notice with longer copy. */
+  size?: 'default' | 'medium'
+  /** Sizes the two actions to their labels' column and pushes them to the edges, instead of filling the row. */
+  spreadActions?: boolean
   /** Keeps a lone action full width, for a dialog that hides Cancel only while its request is open. */
   fillActions?: boolean
   testId: string
@@ -50,6 +54,8 @@ export function ConfirmModal({
   onClose,
   cancel,
   confirm,
+  size = 'default',
+  spreadActions = false,
   fillActions = false,
   testId
 }: Props) {
@@ -59,7 +65,15 @@ export function ConfirmModal({
   }, [error, showToast])
 
   return (
-    <Modal title={title} onClose={onClose} closeDisabled={busy} hideTitle showClose={showClose} testId={testId}>
+    <Modal
+      title={title}
+      size={size}
+      onClose={onClose}
+      closeDisabled={busy}
+      hideTitle
+      showClose={showClose}
+      testId={testId}
+    >
       {celebrate && <Confetti />}
       <S.Wrap data-art={art ? 'image' : 'icon'}>
         {art ? <S.Art src={art.src} alt="" /> : <S.IconWrap aria-hidden>{icon ?? <WarningIcon />}</S.IconWrap>}
@@ -68,7 +82,10 @@ export function ConfirmModal({
           <S.Text data-testid={`${testId}-description`}>{description}</S.Text>
           {children}
         </S.Body>
-        <S.Actions data-single={(!cancel || !confirm) && !fillActions ? '' : undefined}>
+        <S.Actions
+          data-single={(!cancel || !confirm) && !fillActions ? '' : undefined}
+          data-spread={spreadActions && cancel && confirm ? '' : undefined}
+        >
           {cancel && (
             <Button
               type="button"
