@@ -9,8 +9,9 @@ import { CategoryIcon } from '~/components/ItemIcons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { MappingEditor } from '~/components/MappingEditor'
 import pill from '~/components/CollectionStatusPill/CollectionStatusPill.module.css'
-import * as R from '../ItemListRow/ItemListRow.styles'
-import * as S from './LinkedCollectionView.styles'
+import linked from './LinkedCollectionView.module.css'
+import row from '../ItemListRow/ItemListRow.module.css'
+import shared from '~/styles/shared.module.css'
 
 const EMPTY = '—'
 const MAPPING_SAVE_DEBOUNCE_MS = 1000
@@ -169,8 +170,8 @@ export function LinkedItemRow({
   }
 
   return (
-    <S.Row data-testid="linked-item-row" data-selected={selected || undefined}>
-      <S.SelectCell>
+    <article className={linked.row} data-testid="linked-item-row" data-selected={selected || undefined}>
+      <div className={linked.selectCell}>
         <input
           type="checkbox"
           checked={selected}
@@ -179,24 +180,24 @@ export function LinkedItemRow({
           data-testid="linked-item-select"
           onChange={event => onSelectedChange(event.target.checked)}
         />
-      </S.SelectCell>
-      <R.Thumb>
+      </div>
+      <div className={row.thumb}>
         <ItemThumbnail src={thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null} rarity={item.rarity} />
-      </R.Thumb>
-      <S.NameCell>
-        <R.NameText data-testid="item-row-name" title={item.name}>
+      </div>
+      <div className={linked.nameCell}>
+        <span className={row.nameText} data-testid="item-row-name" title={item.name}>
           {item.name}
-        </R.NameText>
+        </span>
         {item.urn && (
-          <S.Urn title={item.urn} data-testid="linked-item-urn">
+          <span className={linked.urn} title={item.urn} data-testid="linked-item-urn">
             {decodeLinkedUrn(item.urn)?.itemSuffix ?? item.urn}
-          </S.Urn>
+          </span>
         )}
-      </S.NameCell>
-      <R.Cell data-testid="item-row-category">
+      </div>
+      <div className={row.cell} data-testid="item-row-category">
         {category ? <CategoryIcon category={category} withLabel /> : EMPTY}
-      </R.Cell>
-      <R.Cell data-testid="linked-item-status-cell">
+      </div>
+      <div className={row.cell} data-testid="linked-item-status-cell">
         {status ? (
           <span className={pill.pill} data-testid="linked-item-status" data-status={status}>
             {t(`linked_collection.item_status.${status}`)}
@@ -204,8 +205,8 @@ export function LinkedItemRow({
         ) : (
           EMPTY
         )}
-      </R.Cell>
-      <S.MappingCell data-testid="linked-item-mapping" data-saving={isSaving || undefined}>
+      </div>
+      <div className={linked.mappingCell} data-testid="linked-item-mapping" data-saving={isSaving || undefined}>
         {contract ? (
           <MappingEditor
             value={mapping}
@@ -219,9 +220,10 @@ export function LinkedItemRow({
         ) : (
           t('linked_collection.mapping.none')
         )}
-        {isSaving && <R.Spinner data-testid="linked-item-mapping-saving" aria-hidden />}
+        {isSaving && <span className={shared.spinner} data-testid="linked-item-mapping-saving" aria-hidden />}
         {failedSave && !isSaving && (
-          <S.StatusRetry
+          <button
+            className={linked.statusRetry}
             type="button"
             aria-label={t('linked_collection.mapping_retry_for', { name: item.name })}
             data-testid="linked-item-mapping-retry"
@@ -232,10 +234,10 @@ export function LinkedItemRow({
             }}
           >
             {t('linked_collection.mapping_retry')}
-          </S.StatusRetry>
+          </button>
         )}
-      </S.MappingCell>
-      <R.ActionsCell>{actions}</R.ActionsCell>
-    </S.Row>
+      </div>
+      <div className={row.actionsCell}>{actions}</div>
+    </article>
   )
 }

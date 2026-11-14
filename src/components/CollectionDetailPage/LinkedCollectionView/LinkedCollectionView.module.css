@@ -1,41 +1,35 @@
-import styled from '@emotion/styled'
-import { theme } from '~/styles/theme'
-
-const mobile = theme.media.maxWidth('mobile')
-const card = theme.media.noActions
-
-export const ContractRow = styled.div`
+.contractRow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 12px 32px;
   margin-bottom: 24px;
   padding: 16px 24px;
-  border-radius: ${theme.radius.card};
-  background: ${theme.colors.overlay};
+  border-radius: var(--radius-card);
+  background: var(--color-overlay);
 
-  ${mobile} {
+  @media (max-width: 768px) {
     padding: 12px 16px;
     gap: 8px 24px;
   }
-`
+}
 
-export const ContractField = styled.div`
+.contractField {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-`
+}
 
-export const ContractLabel = styled.span`
+.contractLabel {
   font-size: 12px;
   font-weight: 600;
   line-height: 1.5;
   text-transform: uppercase;
-  color: ${theme.colors.offWhiteMuted};
-`
+  color: var(--color-off-white-muted);
+}
 
-export const ContractValue = styled.span`
+.contractValue {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -43,10 +37,10 @@ export const ContractValue = styled.span`
   font-size: 14px;
   font-weight: 600;
   line-height: 1.57;
-  color: ${theme.colors.softWhite};
-`
+  color: var(--color-soft-white);
+}
 
-export const CopyButton = styled.button`
+.copyButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -54,66 +48,62 @@ export const CopyButton = styled.button`
   height: 44px;
   margin: -10px -10px -10px 0;
   border: 0;
-  border-radius: ${theme.radius.pill};
+  border-radius: var(--radius-pill);
   background: none;
   color: inherit;
   cursor: pointer;
 
   &:hover,
   &:focus-visible {
-    background: ${theme.colors.glassFaint};
+    background: var(--color-glass-faint);
   }
-`
+}
 
-export const Banner = styled.div`
+.banner {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 24px;
   padding: 12px 16px;
-  border-radius: ${theme.radius.card};
-  background: ${theme.colors.warningOverlay};
-  color: ${theme.colors.warningText};
+  border-radius: var(--radius-card);
+  background: var(--color-warning-overlay);
+  color: var(--color-warning-text);
   font-size: 14px;
   line-height: 1.5;
 
   & svg {
     flex: none;
   }
-`
+}
 
-// Checkbox · thumbnail · name · category · status · linked to · actions. The mapping editor gets the widest track
-// since it holds a select and an input side by side.
-const columns = `
-  display: grid;
-  grid-template-columns: 36px 74px minmax(0, 1.4fr) minmax(0, 1fr) minmax(136px, 1fr) minmax(260px, 2fr) minmax(56px, auto);
-  align-items: center;
-  gap: 16px;
-`
-
-export const List = styled.div`
+.list {
   display: flex;
   flex-direction: column;
   gap: 12px;
 
-  ${theme.media.withActions} {
+  @media not all and (max-width: 900px) {
     overflow-x: auto;
 
     & > * {
       min-width: 1100px;
     }
   }
-`
+}
 
-export const ListHeader = styled.div`
-  ${columns};
+.listHeader {
+  display: grid;
+  grid-template-columns:
+    36px 74px minmax(0, 1.4fr) minmax(0, 1fr)
+    minmax(136px, 1fr) minmax(260px, 2fr) minmax(56px, auto);
+  align-items: center;
+  gap: 16px;
   padding: 12px 24px 12px 12px;
-  border-radius: ${theme.radius.card};
-  background: ${theme.colors.overlayStrong};
+  border-radius: var(--radius-card);
+  background: var(--color-overlay-strong);
   font-size: 14px;
   font-weight: 600;
   line-height: 1.57;
-  color: ${theme.colors.softWhite};
+  color: var(--color-soft-white);
 
   & > span {
     text-align: center;
@@ -130,38 +120,38 @@ export const ListHeader = styled.div`
 
   /* With items selected the row reads as a toolbar for them, in place of the column labels. */
   &[data-selecting] {
-    box-shadow: inset 0 0 0 1px ${theme.colors.glassLine};
+    box-shadow: inset 0 0 0 1px var(--color-glass-line);
   }
 
-  ${card} {
+  @media (max-width: 900px) {
     display: none;
   }
-`
+}
 
-export const SelectionSummary = styled.div`
+.selectionSummary {
   grid-column: 2 / -1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   min-width: 0;
-`
+}
 
-export const SelectionCount = styled.span`
+.selectionCount {
   font-size: 16px;
   font-weight: 700;
   line-height: 1.5;
-  color: ${theme.colors.softWhite};
+  color: var(--color-soft-white);
   white-space: nowrap;
-`
+}
 
-export const SelectionActions = styled.div`
+.selectionActions {
   display: flex;
   align-items: center;
   gap: 8px;
-`
+}
 
-export const HeaderSelect = styled.span`
+.headerSelect {
   display: flex;
   justify-content: center;
 
@@ -169,31 +159,36 @@ export const HeaderSelect = styled.span`
     width: 20px;
     height: 20px;
     margin: 0;
-    accent-color: ${theme.colors.accent};
+    accent-color: var(--color-accent);
     cursor: pointer;
   }
-`
+}
 
-export const Row = styled.article`
-  ${columns};
+.row {
+  display: grid;
+  grid-template-columns:
+    36px 74px minmax(0, 1.4fr) minmax(0, 1fr)
+    minmax(136px, 1fr) minmax(260px, 2fr) minmax(56px, auto);
+  align-items: center;
+  gap: 16px;
   padding: 12px 24px 12px 12px;
-  border-radius: ${theme.radius.card};
-  background: ${theme.colors.overlay};
+  border-radius: var(--radius-card);
+  background: var(--color-overlay);
 
   &[data-selected] {
-    box-shadow: inset 0 0 0 1px ${theme.colors.glassLine};
+    box-shadow: inset 0 0 0 1px var(--color-glass-line);
   }
 
-  ${card} {
+  @media (max-width: 900px) {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 12px;
     padding: 12px;
   }
-`
+}
 
-export const SelectCell = styled.div`
+.selectCell {
   display: flex;
   justify-content: center;
 
@@ -201,7 +196,7 @@ export const SelectCell = styled.div`
     width: 20px;
     height: 20px;
     margin: 0;
-    accent-color: ${theme.colors.accent};
+    accent-color: var(--color-accent);
     cursor: pointer;
 
     &:disabled {
@@ -210,12 +205,12 @@ export const SelectCell = styled.div`
     }
   }
 
-  ${card} {
+  @media (max-width: 900px) {
     display: none;
   }
-`
+}
 
-export const NameCell = styled.div`
+.nameCell {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -223,49 +218,49 @@ export const NameCell = styled.div`
   font-size: 14px;
   font-weight: 700;
   line-height: 1.2;
-  color: ${theme.colors.softWhite};
+  color: var(--color-soft-white);
 
-  ${card} {
+  @media (max-width: 900px) {
     flex: 1 1 160px;
   }
-`
+}
 
-export const Urn = styled.span`
+.urn {
   font-size: 12px;
   font-weight: 400;
-  color: ${theme.colors.offWhiteMuted};
+  color: var(--color-off-white-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-`
+}
 
-export const MappingCell = styled.div`
+.mappingCell {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
   font-size: 14px;
-  color: ${theme.colors.softWhite};
+  color: var(--color-soft-white);
 
-  ${card} {
+  @media (max-width: 900px) {
     flex: 1 1 100%;
   }
-`
+}
 
-export const ItemCount = styled.h2`
+.itemCount {
   margin: 0;
   font-size: 20px;
   font-weight: 700;
   line-height: 1.4;
-  color: ${theme.colors.softWhite};
-`
+  color: var(--color-soft-white);
+}
 
-export const StatusRetry = styled.button`
+.statusRetry {
   min-height: 44px;
   padding: 0 8px;
   border: 0;
   background: none;
-  color: ${theme.colors.softWhite};
+  color: var(--color-soft-white);
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
@@ -274,4 +269,4 @@ export const StatusRetry = styled.button`
     opacity: 0.6;
     cursor: progress;
   }
-`
+}

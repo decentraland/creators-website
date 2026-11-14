@@ -4,7 +4,7 @@ import { isValidUrnSuffix } from '~/lib/thirdParty'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import nameInput from '~/components/CollectionNameInput/CollectionNameInput.module.css'
-import * as S from './EditUrnModal.styles'
+import styles from './EditUrnModal.module.css'
 import nameModal from '~/components/CollectionNameModal/CollectionNameModal.module.css'
 import shared from '~/styles/shared.module.css'
 
@@ -76,9 +76,9 @@ export function EditUrnModal({ kind, urnPrefix, initialSuffix, isPending, error,
               {shownError}
             </p>
           ) : (
-            <S.Preview data-testid="urn-preview" title={`${urnPrefix}:${trimmed}`}>
+            <p className={styles.preview} data-testid="urn-preview" title={`${urnPrefix}:${trimmed}`}>
               {urnPrefix}:<strong>{trimmed || '…'}</strong>
-            </S.Preview>
+            </p>
           )}
         </div>
         <div className={shared.modalActions}>

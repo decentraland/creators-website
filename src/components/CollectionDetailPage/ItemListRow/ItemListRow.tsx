@@ -27,7 +27,9 @@ import { RarityPill } from '~/components/RarityPill'
 import { ItemSaleStatus } from '../ItemSaleStatus'
 import { ItemSyncPill } from '../ItemSyncPill'
 import { SaleTag } from '../SaleTag'
-import * as S from './ItemListRow.styles'
+import { cx } from '~/lib/cx'
+import styles from './ItemListRow.module.css'
+import shared from '~/styles/shared.module.css'
 
 const EMPTY = '—'
 
@@ -167,14 +169,15 @@ export function ItemListRow({
     // A cheap item can round a discount away; then there is nothing to show but its price.
     if (sale === amount) {
       return (
-        <S.Amount title={title}>
+        <span className={styles.amount} title={title}>
           <CurrencyAmount currency={currency}>{amount}</CurrencyAmount>
-        </S.Amount>
+        </span>
       )
     }
     const discountPct = discountPpm! / 10_000
     return (
-      <S.Amount
+      <span
+        className={styles.amount}
         title={t('collection_detail_page.price.discounted', {
           amount: sale,
           original: amount,
@@ -184,11 +187,11 @@ export function ItemListRow({
         data-testid="item-row-discounted-price"
       >
         <SaleTag pct={discountPct} />
-        <S.SalePrice>
+        <span className={styles.salePrice}>
           <CurrencyAmount currency={currency}>{sale}</CurrencyAmount>
-        </S.SalePrice>
-        <S.OriginalPrice>{amount}</S.OriginalPrice>
-      </S.Amount>
+        </span>
+        <s className={styles.originalPrice}>{amount}</s>
+      </span>
     )
   }
 
@@ -198,7 +201,8 @@ export function ItemListRow({
     const amount = renderAmount(listing)
     if (!onEditPrice) return amount
     return (
-      <S.PriceButton
+      <button
+        className={styles.priceButton}
         type="button"
         title={t('collection_detail_page.item_actions.edit_price')}
         aria-label={t('collection_detail_page.item_actions.edit_price')}
@@ -207,7 +211,7 @@ export function ItemListRow({
       >
         {amount}
         <EditIcon aria-hidden />
-      </S.PriceButton>
+      </button>
     )
   }
 
@@ -217,7 +221,8 @@ export function ItemListRow({
 
   const validationChip = flagged && validationCopy && (
     <Tooltip content={validationCopy} asChild testId="item-row-validation-tooltip">
-      <S.ValidationChip
+      <button
+        className={styles.validationChip}
         type="button"
         aria-label={validationCopy}
         data-status={flagged.status}
@@ -225,21 +230,23 @@ export function ItemListRow({
         onClick={() => onShowValidation?.(item)}
       >
         {flagged.status === 'errors' ? <ErrorIcon /> : <WarningIcon />}
-      </S.ValidationChip>
+      </button>
     </Tooltip>
   )
 
   return (
-    <S.Row
+    <article
+      className={cx(styles.columns, styles.row)}
       data-testid="item-row"
       data-with-play-mode={withPlayMode || undefined}
       data-with-market={withMarket || undefined}
       data-with-status={withStatus || undefined}
       data-validation={flagged?.status}
     >
-      <S.Thumb>
+      <div className={styles.thumb}>
         {canEditThumbnail ? (
-          <S.ThumbButton
+          <button
+            className={styles.thumbButton}
             type="button"
             title={t('collection_detail_page.item_row.edit_thumbnail')}
             aria-label={t('collection_detail_page.item_row.edit_thumbnail')}
@@ -247,18 +254,19 @@ export function ItemListRow({
             onClick={() => onEditThumbnail?.(item)}
           >
             {thumbnail}
-            <S.ThumbBadge aria-hidden>
+            <span className={styles.thumbBadge} aria-hidden>
               <EditIcon />
-            </S.ThumbBadge>
-          </S.ThumbButton>
+            </span>
+          </button>
         ) : (
           thumbnail
         )}
-      </S.Thumb>
-      <S.Content>
+      </div>
+      <div className={styles.content}>
         {isEditingName ? (
-          <S.NameEditor data-testid="item-row-name-editor">
-            <S.NameInput
+          <div className={styles.nameEditor} data-testid="item-row-name-editor">
+            <input
+              className={styles.nameInput}
               value={draftName}
               maxLength={ITEM_NAME_MAX_LENGTH}
               disabled={isSaving}
@@ -270,7 +278,8 @@ export function ItemListRow({
               onChange={event => setDraftName(event.target.value)}
               onKeyDown={onNameKeyDown}
             />
-            <S.EditorButton
+            <button
+              className={styles.editorButton}
               type="button"
               data-variant="cancel"
               title={t('collection_detail_page.item_row.cancel_edit')}
@@ -280,8 +289,9 @@ export function ItemListRow({
               onClick={stopEditing}
             >
               <CloseIcon />
-            </S.EditorButton>
-            <S.EditorButton
+            </button>
+            <button
+              className={styles.editorButton}
               type="button"
               data-variant="save"
               title={t('collection_detail_page.item_row.save')}
@@ -291,65 +301,71 @@ export function ItemListRow({
               data-testid="item-row-name-save"
               onClick={() => void saveName()}
             >
-              {isSaving ? <S.Spinner aria-hidden /> : <CheckIcon />}
-            </S.EditorButton>
-          </S.NameEditor>
+              {isSaving ? <span className={shared.spinner} aria-hidden /> : <CheckIcon />}
+            </button>
+          </div>
         ) : (
-          <S.Name>
+          <span className={styles.name}>
             {canRename ? (
-              <S.NameButton
+              <button
+                className={styles.nameButton}
                 type="button"
                 title={t('collection_detail_page.item_row.edit_name')}
                 data-testid="item-row-edit-name"
                 onClick={startEditing}
               >
-                <S.NameText data-testid="item-row-name">{item.name}</S.NameText>
+                <span className={styles.nameText} data-testid="item-row-name">
+                  {item.name}
+                </span>
                 <EditIcon aria-hidden />
-              </S.NameButton>
+              </button>
             ) : (
-              <S.NameText data-testid="item-row-name" title={item.name}>
+              <span className={styles.nameText} data-testid="item-row-name" title={item.name}>
                 {item.name}
-              </S.NameText>
+              </span>
             )}
             {isSmart && (
               <Tooltip content={t('collection_detail_page.smart_wearable')} asChild testId="item-row-smart-tooltip">
-                <S.SmartBadge data-testid="item-row-smart" tabIndex={0}>
+                <span className={styles.smartBadge} data-testid="item-row-smart" tabIndex={0}>
                   <SmartIcon />
-                </S.SmartBadge>
+                </span>
               </Tooltip>
             )}
             {validationChip}
-          </S.Name>
+          </span>
         )}
-        <S.Cell data-testid="item-row-body-shape">
+        <div className={styles.cell} data-testid="item-row-body-shape">
           {bodyShapeType ? <BodyShapeIcon bodyShape={bodyShapeType} withLabel /> : EMPTY}
-        </S.Cell>
-        <S.Cell data-testid="item-row-category">
+        </div>
+        <div className={styles.cell} data-testid="item-row-category">
           {category ? <CategoryIcon category={category} withLabel /> : EMPTY}
-        </S.Cell>
+        </div>
         {withPlayMode && (
-          <S.Cell data-testid="item-row-play-mode" data-empty={!isEmote || undefined}>
+          <div className={styles.cell} data-testid="item-row-play-mode" data-empty={!isEmote || undefined}>
             {isEmote ? (
               <PlayModeIcon playMode={item.data.loop ? EmotePlayMode.LOOP : EmotePlayMode.SIMPLE} withLabel />
             ) : (
               EMPTY
             )}
-          </S.Cell>
+          </div>
         )}
-        <S.Cell data-testid="item-row-rarity">{item.rarity && <RarityPill rarity={item.rarity} />}</S.Cell>
+        <div className={styles.cell} data-testid="item-row-rarity">
+          {item.rarity && <RarityPill rarity={item.rarity} />}
+        </div>
         {withMarket && (
           <>
-            <S.Cell
+            <div
+              className={styles.cell}
               data-testid="item-row-price"
               data-currency={listing?.currency}
               data-empty={listing === null || undefined}
             >
               {renderPrice()}
-            </S.Cell>
-            <S.Cell data-testid="item-row-sales" data-empty={!sales || undefined}>
+            </div>
+            <div className={styles.cell} data-testid="item-row-sales" data-empty={!sales || undefined}>
               {sales ? `${intl.formatNumber(sales.minted)}/${intl.formatNumber(sales.maxSupply)}` : EMPTY}
-            </S.Cell>
-            <S.Cell data-testid="item-row-sale-status" data-empty={isSaleStatusEmpty || undefined}>
+            </div>
+            <div className={styles.cell} data-testid="item-row-sale-status" data-empty={isSaleStatusEmpty || undefined}>
               <ItemSaleStatus
                 sales={sales}
                 listing={listing}
@@ -357,16 +373,16 @@ export function ItemListRow({
                 onPutOnSale={onPutOnSale && (() => onPutOnSale(item))}
                 shopUrl={shopUrl}
               />
-            </S.Cell>
+            </div>
           </>
         )}
         {withStatus && (
-          <S.Cell data-testid="item-row-status" data-empty={!syncStatus || undefined}>
+          <div className={styles.cell} data-testid="item-row-status" data-empty={!syncStatus || undefined}>
             {syncStatus && <ItemSyncPill status={syncStatus} />}
-          </S.Cell>
+          </div>
         )}
-      </S.Content>
-      <S.ActionsCell>{actions}</S.ActionsCell>
-    </S.Row>
+      </div>
+      <div className={styles.actionsCell}>{actions}</div>
+    </article>
   )
 }

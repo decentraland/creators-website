@@ -3,7 +3,9 @@ import { type ItemSales } from '~/lib/items'
 import { type ItemListing } from '~/lib/listings'
 import { openExternal } from '~/lib/navigation'
 import { PriceTagIcon, CheckIcon, OpenInNewIcon } from '~/components/Icons'
-import * as S from './ItemSaleStatus.styles'
+import { cx } from '~/lib/cx'
+import { Button } from '~/components/Button'
+import styles from './ItemSaleStatus.module.css'
 
 const EMPTY = '—'
 
@@ -25,24 +27,25 @@ export function ItemSaleStatus({ sales, listing, canSell = false, onPutOnSale, s
 
   if (sales && sales.minted >= sales.maxSupply) {
     return (
-      <S.Pill data-testid="item-sale-status" data-status="sold_out">
+      <span className={styles.pill} data-testid="item-sale-status" data-status="sold_out">
         {t('collection_detail_page.sale_status.sold_out')}
-      </S.Pill>
+      </span>
     )
   }
   if (listing === undefined) return null
   if (listing) {
     if (!shopUrl) {
       return (
-        <S.Pill data-testid="item-sale-status" data-status="on_sale">
+        <span className={styles.pill} data-testid="item-sale-status" data-status="on_sale">
           <CheckIcon aria-hidden />
           {t('collection_detail_page.sale_status.on_sale')}
-          <S.Dot aria-hidden />
-        </S.Pill>
+          <span className={styles.dot} aria-hidden />
+        </span>
       )
     }
     return (
-      <S.PillLink
+      <a
+        className={cx(styles.pill, styles.pillLink)}
         href={shopUrl}
         title={t('collection_detail_page.actions.view_in_shop')}
         data-testid="item-sale-status"
@@ -55,11 +58,11 @@ export function ItemSaleStatus({ sales, listing, canSell = false, onPutOnSale, s
         <CheckIcon aria-hidden />
         {t('collection_detail_page.sale_status.on_sale')}
         {/* The dot gives way to the external-link glyph on hover/focus, so the pill reads as a link. */}
-        <S.Trailing aria-hidden>
-          <S.Dot />
+        <span className={styles.trailing} aria-hidden>
+          <span className={styles.dot} />
           <OpenInNewIcon />
-        </S.Trailing>
-      </S.PillLink>
+        </span>
+      </a>
     )
   }
   if (!onPutOnSale)
@@ -69,7 +72,8 @@ export function ItemSaleStatus({ sales, listing, canSell = false, onPutOnSale, s
       </span>
     )
   return (
-    <S.PutOnSale
+    <Button
+      className={styles.putOnSale}
       data-testid="item-sale-status"
       data-status="not_on_sale"
       type="button"
@@ -79,6 +83,6 @@ export function ItemSaleStatus({ sales, listing, canSell = false, onPutOnSale, s
     >
       <PriceTagIcon />
       {t('collection_detail_page.sale_status.put_on_sale')}
-    </S.PutOnSale>
+    </Button>
   )
 }
