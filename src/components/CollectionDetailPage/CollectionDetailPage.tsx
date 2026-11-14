@@ -79,7 +79,7 @@ import {
   hasUpdatesSinceRejection,
   showsItemStatusColumn
 } from '~/lib/itemSync'
-import { ReviewStage, canPushChanges, getReviewStage, isRejectedStage } from '~/lib/curation'
+import { ReviewStage, canPushChanges, getReviewStage, hasReviewConversation, isRejectedStage } from '~/lib/curation'
 import { useCommittee } from '~/hooks/useCommittee'
 import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
 import { useCollectionEvents } from '~/hooks/useCollectionEvents'
@@ -346,6 +346,14 @@ const CollectionDetailPage = () => {
       canPushChanges(standardCollection, curation, hasUnsyncedItems, canManage),
     [standardCollection, curationLoaded, stage, curation, hasUnsyncedItems, canManage]
   )
+  // An approval ends the conversation for both sides, as the server does.
+  const commentAs = !hasReviewConversation(curation)
+    ? undefined
+    : canManage
+      ? ('creator' as const)
+      : committee.isCurator
+        ? ('curator' as const)
+        : undefined
   const showReviewAgain = canManage && curationLoaded && stage === ReviewStage.REJECTED_BY_VALIDATOR
   // After a curator's request for fixes, reading the feedback is the main action until an item is updated.
   const awaitsFixes = useMemo(
@@ -782,7 +790,7 @@ const CollectionDetailPage = () => {
                   onPreviewInWorld={hasItems ? () => previewCollectionFromDetail(collection.id, total) : undefined}
                   items={allItems}
                   showActivity={autoCuration && !!curationAddress && !!standardCollection?.isPublished}
-                  commentAs={canManage ? 'creator' : committee.isCurator ? 'curator' : undefined}
+                  commentAs={commentAs}
                   forumInMenu={autoCuration}
                   onSendItems={canSend ? () => setSending(true) : undefined}
                   onCreateDiscount={canCreateDiscount ? () => openDiscount('menu') : undefined}

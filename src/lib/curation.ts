@@ -103,6 +103,11 @@ export function getReviewStage(
   }
 }
 
+/** A review is open or was sent back, so the creator has a curator to write to; an approved one is closed. */
+export function hasReviewConversation(curation: CollectionCuration | null): boolean {
+  return curation?.status === 'pending' || curation?.status === 'rejected'
+}
+
 /** Stages in which the creator may ask for another automated review or a human one. */
 export function isRejectedStage(stage: ReviewStage | null): boolean {
   return stage === ReviewStage.REJECTED_BY_VALIDATOR || stage === ReviewStage.REJECTED_BY_CURATOR

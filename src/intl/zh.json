@@ -2208,7 +2208,7 @@
   },
   "activity_modal": {
     "title": "活动记录",
-    "empty": "暂无活动。",
+    "empty": "暂无活动记录。",
     "unavailable": "此系列尚无活动记录。",
     "error": "我们无法加载此系列的活动记录。",
     "retry": "重试",

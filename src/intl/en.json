@@ -2208,7 +2208,7 @@
   },
   "activity_modal": {
     "title": "Activity",
-    "empty": "No activity yet.",
+    "empty": "No activity recorded yet.",
     "unavailable": "This collection has no activity timeline yet.",
     "error": "We couldn't load the activity of this collection.",
     "retry": "Try again",

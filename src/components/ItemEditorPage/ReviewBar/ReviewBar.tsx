@@ -34,7 +34,8 @@ import {
   getCurationState,
   getCuratorState,
   getReviewActions,
-  getReviewStage
+  getReviewStage,
+  hasReviewConversation
 } from '~/lib/curation'
 import { getAwaitedReply, getCuratorVerdict } from '~/lib/events'
 import { FeatureFlag } from '~/lib/featureFlags'
@@ -382,7 +383,7 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
           collection={collection}
           address={address}
           items={items}
-          commentAs="curator"
+          commentAs={hasReviewConversation(curation) ? 'curator' : undefined}
           onClose={closeDialog}
         />
       )}

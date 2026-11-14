@@ -18,7 +18,13 @@ import {
   isValidationRunning
 } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
-import { ReviewStage, getReviewStage, isRejectedStage, type CollectionCuration } from '~/lib/curation'
+import {
+  getReviewStage,
+  hasReviewConversation,
+  isRejectedStage,
+  ReviewStage,
+  type CollectionCuration
+} from '~/lib/curation'
 import {
   countUnansweredComments,
   countValidationAttempts,
@@ -231,7 +237,7 @@ export function ReviewFlow({
           collection={collection}
           address={address}
           items={items}
-          commentAs={canManage ? 'creator' : undefined}
+          commentAs={canManage && hasReviewConversation(curation) ? 'creator' : undefined}
           onClose={close}
         />
       )}

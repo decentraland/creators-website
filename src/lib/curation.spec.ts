@@ -20,6 +20,7 @@ import {
   getReviewActions,
   getReviewType,
   getReviewStage,
+  hasReviewConversation,
   isCommitteeMember,
   orderCurators,
   parseCurationFilters,
@@ -521,5 +522,19 @@ describe('getReviewStage', () => {
       rejectionReasons: ['clipping', 'other'],
       rejectionMessage: 'Fix the sleeves'
     })
+  })
+})
+
+describe('hasReviewConversation', () => {
+  const request = (status: CollectionCuration['status']) => ({ status }) as CollectionCuration
+
+  it('holds while a review is open or was sent back', () => {
+    expect(hasReviewConversation(request('pending'))).toBe(true)
+    expect(hasReviewConversation(request('rejected'))).toBe(true)
+  })
+
+  it('ends with the approval, and never started without a request', () => {
+    expect(hasReviewConversation(request('approved'))).toBe(false)
+    expect(hasReviewConversation(null)).toBe(false)
   })
 })
