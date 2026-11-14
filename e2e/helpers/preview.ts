@@ -25,15 +25,18 @@ const pages = new Map<boolean, string>()
  * (`@dcl/schemas` PreviewMessageType): READY on boot, LOAD after boot and after every UPDATE (plus a play event for
  * emotes), and an answer to every controller request, with the fixture thumbnail as the screenshot and sound
  * reported when the item ships an audio file. Metrics read the boot scene until a model sent in an UPDATE has loaded.
- * Each frame also reports its numbered steps (`frame` answers: `<id>:<n>:booted`, `ready`, `update`, `model-loaded`) so a spec
- * that times out can tell which step a preview never reached (see `waitForProcessedAction`).
+ * Each frame also reports its numbered steps (`frame` answers: `<kind>-<id>:<n>:<step>`, steps `booted`, `ready`, `update`,
+ * `model-loaded`) so a spec that times out can tell where a preview stopped (see `waitForProcessedAction`).
  */
 export function previewPageHtml({ holdLoads = false }: PreviewOptions = {}): string {
   const cached = pages.get(holdLoads)
   if (cached) return cached
   const html = `<!doctype html><title>preview</title><script>
     var held = ${holdLoads};
-    var FRAME = Math.random().toString(36).slice(2, 8);
+    // The draft processor's iframe is the orthographic one without background or rotation.
+    var KIND = /projection=orthographic/.test(location.search) && /disableAutoRotate=true/.test(location.search) &&
+      /disableBackground=true/.test(location.search) ? 'processor' : 'preview';
+    var FRAME = KIND + '-' + Math.random().toString(36).slice(2, 6);
     function report(method, result) {
       fetch('/__e2e/answer?method=' + method + '&result=' + encodeURIComponent(result)).catch(function () {});
     }
@@ -108,9 +111,17 @@ export function previewPageHtml({ holdLoads = false }: PreviewOptions = {}): str
   return html
 }
 
-const STEPS = ['booted', 'ready', 'update', 'model-loaded']
+const BOOT_STEPS = ['booted', 'ready', 'update']
 
-/** Each preview frame's steps, in the order it reported them, naming the first one it never reached. */
+/** Where a frame stopped: a boot step it never reached, or a model it got in its last UPDATE and never loaded. */
+function stalledBefore(steps: Array<string | undefined>): string | undefined {
+  const lastUpdate = steps.lastIndexOf('update')
+  if (lastUpdate < 0) return BOOT_STEPS.find(step => !steps.includes(step))
+  // One iframe processes a batch one draft after another, so only what followed the latest UPDATE counts.
+  return steps.slice(lastUpdate).includes('model-loaded') ? undefined : 'model-loaded'
+}
+
+/** Each preview frame's steps, in the order it took them, naming where it stopped. */
 export function describePreviewFrames(answers: App['previewAnswers']): string {
   const frames = new Map<string, string[]>()
   for (const { method, result } of answers) {
@@ -123,27 +134,31 @@ export function describePreviewFrames(answers: App['previewAnswers']): string {
   if (frames.size === 0) return 'No preview frame booted.'
   return [...frames]
     .map(([id, steps]) => {
-      const missing = STEPS.find(step => !steps.includes(step))
-      return `frame ${id}: ${steps.filter(Boolean).join(' → ')}${missing ? ` (never reached ${missing})` : ''}`
+      const stalled = stalledBefore(steps)
+      // A gap is a report still in flight or lost, not a step the frame skipped.
+      const taken = Array.from(steps, step => step ?? '?').join(' → ')
+      return `${id}: ${taken}${stalled ? ` (stopped before ${stalled})` : ''}`
     })
     .join('\n')
 }
 
 /**
  * Waits for an action the draft processing gates (Save, Finish). When it stays disabled, the error lists what every
- * preview frame on the page got through, so a timeout says where the processing stalled.
+ * preview frame on the page got through, so a timeout says whether the processing stalled and where.
  */
 export async function waitForProcessedAction(
   app: Pick<App, 'page' | 'previewAnswers'>,
   id: string,
-  timeout = 30_000
+  timeout?: number
 ): Promise<void> {
   try {
     await waitForEnabled(app.page, id, timeout)
   } catch (error) {
     throw new Error(
-      `[data-testid="${id}"] stayed disabled: the draft preview never finished processing.\n${describePreviewFrames(app.previewAnswers)}`,
-      { cause: error }
+      `[data-testid="${id}"] stayed disabled. Preview frames:\n${describePreviewFrames(app.previewAnswers)}`,
+      {
+        cause: error
+      }
     )
   }
 }

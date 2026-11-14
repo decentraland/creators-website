@@ -44,7 +44,7 @@ describe('Blender live preview', () => {
     // The model and the panel's tuning arrive in the add-items modal; the name is the creator's to give.
     await waitForTestId(page, 'draft-form', 30_000)
     await page.type(byTestId('item-name'), 'Bandana')
-    await waitForProcessedAction(app, 'add-items-finish')
+    await waitForProcessedAction(app, 'add-items-finish', 30_000)
     await clickTestId(page, 'add-items-finish')
 
     await page.waitForFunction(
