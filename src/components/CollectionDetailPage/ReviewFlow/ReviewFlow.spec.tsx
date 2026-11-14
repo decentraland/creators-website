@@ -327,16 +327,17 @@ describe('ReviewFlow', () => {
     expect(screen.getByTestId('review-rejection-message')).toHaveTextContent('The straps clip the arm')
   })
 
-  it('surfaces a curator comment waiting for an answer and opens the timeline to reply', () => {
+  it('flags a curator comment waiting for an answer and opens the timeline to read it', () => {
     const comment = {
       ...event('review.comment', { message: 'Is the tail meant to be a tiara?' }),
       actor: 'curator' as const,
       actorAddress: '0xcurator'
     }
     renderFlow(pending, [comment, event('review.automated_passed', { verdict: 'passed', items: [] }, 1000)])
-    expect(screen.getByTestId('review-curator-comment')).toHaveTextContent('Is the tail meant to be a tiara?')
+    expect(screen.getByTestId('review-comment-count')).toHaveTextContent('1')
+    expect(screen.getByTestId('review-notice')).not.toHaveTextContent('Is the tail meant to be a tiara?')
     const reply = screen.getByTestId('review-reply')
-    expect(reply).toHaveTextContent('Reply')
+    expect(reply).toHaveTextContent('View comment')
     fireEvent.click(reply)
     expect(screen.getByTestId('activity-modal-stub')).toHaveAttribute('data-comment-as', 'creator')
   })

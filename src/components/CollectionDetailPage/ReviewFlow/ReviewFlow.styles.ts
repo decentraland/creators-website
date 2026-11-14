@@ -118,9 +118,13 @@ export const Reason = styled.li`
   color: ${theme.colors.softWhite};
 `
 
-export const QuoteLabel = styled.span`
-  font-size: 13px;
+export const CommentCount = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
   font-weight: 600;
+  cursor: default;
 `
 
 export const Quote = styled.blockquote`

@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ErrorOutline as ErrorIcon, InfoOutlined as InfoIcon } from '@mui/icons-material'
+import {
+  ChatBubbleOutline as CommentIcon,
+  ErrorOutline as ErrorIcon,
+  InfoOutlined as InfoIcon
+} from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { Button } from '~/components/Button'
 import { CollectionActivityModal } from '~/components/CollectionActivityModal'
+import { Tooltip } from '~/components/Tooltip'
 import { useAppealCuration, useRequestValidation } from '~/hooks/useCollectionEvents'
 import { track } from '~/lib/analytics'
 import {
@@ -15,11 +20,11 @@ import {
 import { type Collection } from '~/lib/collections'
 import { ReviewStage, getReviewStage, isRejectedStage, type CollectionCuration } from '~/lib/curation'
 import {
+  countUnansweredComments,
   countValidationAttempts,
   getAutomatedIssuesByItem,
   getValidationAttemptsLeft,
   getLatestVerdict,
-  getUnansweredComment,
   hasOpenAppeal,
   isFinalValidationError,
   isUnsupportedItemsReview,
@@ -93,7 +98,7 @@ export function ReviewFlow({
   const running = useMemo(() => isValidationInProgress(timeline), [timeline])
   const appealOpen = useMemo(() => hasOpenAppeal(timeline), [timeline])
   const cause = useMemo(() => latestStageEvent(timeline), [timeline])
-  const curatorComment = useMemo(() => getUnansweredComment(timeline, 'creator'), [timeline])
+  const curatorComments = useMemo(() => countUnansweredComments(timeline, 'creator'), [timeline])
 
   const open = useCallback(
     (next: ReviewModal) => {
@@ -263,28 +268,28 @@ export function ReviewFlow({
       tone = 'error'
       break
   }
-  const curatorMessage = curatorComment?.payload.message
-  if (!text && !curatorMessage) return modals
+  if (!text && curatorComments === 0) return modals
 
   const rejected = isRejectedStage(stage)
   // The findings modal carries the creator's next steps, so the notice only opens it.
   const hasIssues = stage === ReviewStage.REJECTED_BY_VALIDATOR && automatedResults.length > 0
   const curatorRejection = stage === ReviewStage.REJECTED_BY_CURATOR ? curation : null
   const reasons = curatorRejection?.rejectionReasons ?? []
-  // Only a curator's unanswered comment asks for a reply here; writing first is done from the activity.
-  const canReply = canManage && events !== null && !!curatorMessage
+  // Only a curator's unanswered comments are flagged here; writing first is done from the activity.
+  const canReply = canManage && events !== null && curatorComments > 0
+  const commentsHint = t('review_flow.notice.curator_comments', { count: curatorComments })
 
   return (
     <>
       <S.Notice data-testid="review-notice" data-stage={stage ?? undefined} data-tone={tone ?? 'info'}>
         <S.NoticeText>
           {tone === 'error' ? <ErrorIcon fontSize="small" aria-hidden /> : <InfoIcon fontSize="small" aria-hidden />}
-          <span>{text ?? t('review_flow.notice.curator_comment')}</span>
+          <span>{text ?? commentsHint}</span>
         </S.NoticeText>
         {stage === ReviewStage.AUTOMATED_REVIEWING && (
           <S.NoticeSpinner data-testid="review-notice-spinner" aria-hidden />
         )}
-        {(reasons.length > 0 || curatorRejection?.rejectionMessage || curatorMessage) && (
+        {(reasons.length > 0 || curatorRejection?.rejectionMessage) && (
           <S.NoticeDetails>
             {reasons.length > 0 && (
               <S.Reasons data-testid="review-rejection-reasons">
@@ -295,12 +300,6 @@ export function ReviewFlow({
             )}
             {curatorRejection?.rejectionMessage && (
               <S.Quote data-testid="review-rejection-message">{curatorRejection.rejectionMessage}</S.Quote>
-            )}
-            {curatorMessage && (
-              <>
-                {text && <S.QuoteLabel>{t('review_flow.notice.curator_comment')}</S.QuoteLabel>}
-                <S.Quote data-testid="review-curator-comment">{curatorMessage}</S.Quote>
-              </>
             )}
           </S.NoticeDetails>
         )}
@@ -329,16 +328,23 @@ export function ReviewFlow({
               </Button>
             )}
             {canReply && (
-              <Button
-                type="button"
-                variant="dark"
-                size="sm"
-                data-testid="review-reply"
-                data-awaited=""
-                onClick={() => open('activity')}
-              >
-                {t('review_flow.reply')}
-              </Button>
+              <>
+                <Tooltip content={commentsHint} describeChild asChild testId="review-comment-count-tooltip">
+                  <S.CommentCount tabIndex={0} data-testid="review-comment-count">
+                    <CommentIcon fontSize="small" aria-hidden />
+                    {curatorComments}
+                  </S.CommentCount>
+                </Tooltip>
+                <Button
+                  type="button"
+                  variant="dark"
+                  size="sm"
+                  data-testid="review-reply"
+                  onClick={() => open('activity')}
+                >
+                  {t('review_flow.view_comments', { count: curatorComments })}
+                </Button>
+              </>
             )}
           </S.NoticeActions>
         )}

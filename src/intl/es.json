@@ -2080,7 +2080,7 @@
       "appealed": "Pediste una revisión humana. Un curador revisará tu colección.",
       "rejected_by_validator": "La revisión automática encontró problemas en tus ítems. Corrígelos y revisa de nuevo, o pide que un curador revise tu colección.",
       "rejected_by_curator": "Un curador pidió cambios en tu colección. Hazlos y publica tus cambios, o pide otra revisión.",
-      "curator_comment": "Un curador te dejó un comentario:"
+      "curator_comments": "{count, plural, one {Un curador te dejó un comentario} other {Un curador te dejó # comentarios}}"
     },
     "reviewing": {
       "title": "Revisando la colección",
@@ -2131,7 +2131,7 @@
     "appeal_error": "No pudimos enviar tu solicitud. Inténtalo de nuevo.",
     "validation_started": "Revisión automática iniciada. Actualizaremos esta página cuando termine.",
     "validation_error": "No pudimos iniciar la revisión automática. Inténtalo de nuevo.",
-    "reply": "Responder",
+    "view_comments": "{count, plural, one {Ver comentario} other {Ver comentarios}}",
     "curator_replied": "Comentario del curador"
   },
   "review_stage_hint": {

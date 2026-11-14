@@ -194,8 +194,8 @@ describe('automated review', () => {
 
     const message = await waitForTestId(page, 'review-rejection-message', 30_000)
     expect(await message.evaluate(el => el.textContent)).toBe('The brim clips through the head.')
-    const comment = await waitForTestId(page, 'review-curator-comment')
-    expect(await comment.evaluate(el => el.textContent)).toBe('Is the hat meant to hide the hair?')
+    const comments = await waitForTestId(page, 'review-comment-count')
+    expect(await comments.evaluate(el => el.textContent)).toBe('1')
 
     await clickTestId(page, 'review-reply')
     await waitForTestId(page, 'activity-comment-input')

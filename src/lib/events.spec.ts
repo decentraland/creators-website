@@ -6,6 +6,7 @@ import {
   fromRemoteEvent,
   getAutomatedIssuesByItem,
   getCuratorVerdict,
+  countUnansweredComments,
   getAwaitedReply,
   getValidationResetIn,
   hasChangesSinceVerdict,
@@ -144,6 +145,37 @@ describe('groupVerdictItems', () => {
     expect(groups.failed.map(item => item.id)).toEqual(['b', 'd'])
     expect(groups.unchecked.map(item => item.id)).toEqual(['c'])
     expect(groups.passed.map(item => item.id)).toEqual(['a'])
+  })
+})
+
+describe('countUnansweredComments', () => {
+  const at = (type: string, actor: CollectionEvent['actor'], createdAt: number): CollectionEvent => ({
+    id: `${type}-${createdAt}`,
+    collectionId: 'c1',
+    type,
+    actor,
+    actorAddress: null,
+    createdAt,
+    payload: {}
+  })
+
+  it("counts the curator's comments the creator has not answered, skipping what is not conversation", () => {
+    const events = [
+      at('review.comment', 'curator', 5),
+      at('review.assigned', 'curator', 4),
+      at('review.comment', 'curator', 3),
+      at('review.comment', 'creator', 2),
+      at('review.comment', 'curator', 1)
+    ]
+    expect(countUnansweredComments(events, 'creator')).toBe(2)
+    expect(countUnansweredComments(events, 'curator')).toBe(0)
+  })
+
+  it('counts nothing once a decision or new changes answered the conversation', () => {
+    expect(
+      countUnansweredComments([at('changes.submitted', 'creator', 2), at('review.comment', 'curator', 1)], 'creator')
+    ).toBe(0)
+    expect(countUnansweredComments([], 'creator')).toBe(0)
   })
 })
 

@@ -327,6 +327,18 @@ export function getAwaitedReply(events: CollectionEvent[]): ReviewParty | null {
   return latest.actor === 'creator' ? 'curator' : null
 }
 
+/** How many comments the other side wrote in a row that `party` has not answered yet. */
+export function countUnansweredComments(events: CollectionEvent[], party: ReviewParty): number {
+  if (getAwaitedReply(events) !== party) return 0
+  let count = 0
+  for (const event of events) {
+    if (!CONVERSATION_EVENT_TYPES.has(event.type)) continue
+    if (event.type !== COMMENT_EVENT_TYPE || event.actor === party) break
+    count++
+  }
+  return count
+}
+
 /** The newest comment the other side wrote that `party` has not answered yet. */
 export function getUnansweredComment(events: CollectionEvent[], party: ReviewParty): CollectionEvent | null {
   if (getAwaitedReply(events) !== party) return null
