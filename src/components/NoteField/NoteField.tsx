@@ -10,11 +10,23 @@ type Props = {
   disabled?: boolean
   /** For a caller that shows the length itself. */
   hideCount?: boolean
+  /** Keeps the box at its height, without the drag handle. */
+  fixedSize?: boolean
   testId?: string
 }
 
 /** A labelled free-text box with its length counter, for the messages creators and curators send each other. */
-export function NoteField({ label, value, onChange, maxLength, placeholder, disabled, hideCount, testId }: Props) {
+export function NoteField({
+  label,
+  value,
+  onChange,
+  maxLength,
+  placeholder,
+  disabled,
+  hideCount,
+  fixedSize,
+  testId
+}: Props) {
   const id = useId()
   return (
     <S.Field>
@@ -25,6 +37,7 @@ export function NoteField({ label, value, onChange, maxLength, placeholder, disa
         maxLength={maxLength}
         placeholder={placeholder}
         disabled={disabled}
+        data-fixed={fixedSize ? '' : undefined}
         data-testid={testId}
         onChange={event => onChange(event.target.value)}
       />

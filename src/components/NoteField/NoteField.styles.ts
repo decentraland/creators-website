@@ -26,6 +26,10 @@ export const TextArea = styled.textarea`
   line-height: 1.5;
   resize: vertical;
 
+  &[data-fixed] {
+    resize: none;
+  }
+
   &::placeholder {
     color: ${theme.colors.gray4};
   }

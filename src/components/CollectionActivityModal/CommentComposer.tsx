@@ -40,6 +40,7 @@ export function CommentComposer({ collection, address, role }: Props) {
         placeholder={t(`activity_modal.comment.placeholder_${role}`)}
         disabled={post.isPending}
         hideCount
+        fixedSize
         testId="activity-comment-input"
       />
       {post.isError && (

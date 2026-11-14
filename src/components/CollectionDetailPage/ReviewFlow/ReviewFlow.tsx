@@ -26,8 +26,7 @@ import {
   isValidationInProgress,
   latestStageEvent,
   startOfUtcDay,
-  type CollectionEvent,
-  isTooLargeError
+  type CollectionEvent
 } from '~/lib/events'
 import { type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
@@ -47,14 +46,6 @@ import * as S from './ReviewFlow.styles'
 export type ReviewFlowRequest = 'reviewing' | 'limit' | 'validate'
 
 type ReviewModal = Exclude<ReviewFlowRequest, 'validate'> | 'issues' | 'request' | 'sent' | 'additional' | 'activity'
-
-/** Stages in which a curator is on the other side, so the creator has someone to write to. */
-const CURATOR_STAGES: (ReviewStage | null)[] = [
-  ReviewStage.AWAITING_CURATOR,
-  ReviewStage.NEEDS_CURATOR,
-  ReviewStage.APPEALED,
-  ReviewStage.REJECTED_BY_CURATOR
-]
 
 type Props = {
   collection: Collection
@@ -253,13 +244,9 @@ export function ReviewFlow({
       break
     case ReviewStage.NEEDS_CURATOR:
       text = t(
-        isUnsupportedItemsReview(cause)
-          ? 'review_flow.notice.unsupported_items'
-          : isTooLargeError(cause)
-            ? 'review_flow.notice.too_large'
-            : isFinalValidationError(cause)
-              ? 'review_flow.notice.validator_failed'
-              : 'review_flow.notice.human_review'
+        isUnsupportedItemsReview(cause) || isFinalValidationError(cause)
+          ? 'review_flow.notice.needs_curator'
+          : 'review_flow.notice.human_review'
       )
       tone = 'info'
       break
@@ -284,7 +271,8 @@ export function ReviewFlow({
   const hasIssues = stage === ReviewStage.REJECTED_BY_VALIDATOR && automatedResults.length > 0
   const curatorRejection = stage === ReviewStage.REJECTED_BY_CURATOR ? curation : null
   const reasons = curatorRejection?.rejectionReasons ?? []
-  const canWrite = canManage && events !== null && (CURATOR_STAGES.includes(stage) || !!curatorMessage)
+  // Only a curator's unanswered comment asks for a reply here; writing first is done from the activity.
+  const canReply = canManage && events !== null && !!curatorMessage
 
   return (
     <>
@@ -316,7 +304,7 @@ export function ReviewFlow({
             )}
           </S.NoticeDetails>
         )}
-        {(hasIssues || (canManage && (rejected || canWrite))) && (
+        {(hasIssues || (canManage && (rejected || canReply))) && (
           <S.NoticeActions>
             {hasIssues && (
               <Button
@@ -340,16 +328,16 @@ export function ReviewFlow({
                 {t('review_flow.request_review')}
               </Button>
             )}
-            {canManage && canWrite && (
+            {canReply && (
               <Button
                 type="button"
                 variant="dark"
                 size="sm"
                 data-testid="review-reply"
-                data-awaited={curatorMessage ? '' : undefined}
+                data-awaited=""
                 onClick={() => open('activity')}
               >
-                {t(curatorMessage ? 'review_flow.reply' : 'review_flow.message_curator')}
+                {t('review_flow.reply')}
               </Button>
             )}
           </S.NoticeActions>

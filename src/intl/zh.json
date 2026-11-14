@@ -2076,10 +2076,8 @@
       "automated_reviewing": "我们正在自动检查您的系列，通常需要几分钟。",
       "awaiting_curator": "自动审核已通过。您的系列正在等待审核员审核。",
       "human_review": "审核员将审核您的系列。",
-      "unsupported_items": "部分物品无法自动审核。审核员将审核您的系列。",
+      "needs_curator": "无法对您的系列进行自动审核。它正在等待审核员审核。",
       "appealed": "您已申请人工审核。审核员将查看您的系列。",
-      "validator_failed": "自动审核无法检查您的系列。审核员将进行审核。",
-      "too_large": "您的系列过大，无法自动审核。审核员将进行审核。",
       "rejected_by_validator": "自动审核在您的物品中发现了问题。请修复后重新审核，或申请审核员审核您的系列。",
       "rejected_by_curator": "审核员要求修改您的系列。请完成修改并发布更改，或申请再次审核。",
       "curator_comment": "审核员给您留了一条评论："
@@ -2134,7 +2132,6 @@
     "validation_started": "自动审核已开始。完成后我们会更新此页面。",
     "validation_error": "我们无法启动自动审核，请重试。",
     "reply": "回复",
-    "message_curator": "给审核员留言",
     "curator_replied": "审核员评论"
   },
   "review_stage_hint": {

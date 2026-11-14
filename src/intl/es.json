@@ -2076,10 +2076,8 @@
       "automated_reviewing": "Estamos revisando tu colección automáticamente. Suele tardar unos minutos.",
       "awaiting_curator": "La revisión automática pasó. Tu colección ahora espera la revisión de un curador.",
       "human_review": "Un curador revisará tu colección.",
-      "unsupported_items": "Algunos ítems no se pueden revisar automáticamente. Un curador revisará tu colección.",
+      "needs_curator": "No se pudo hacer la revisión automática de tu colección. Ahora espera la revisión de un curador.",
       "appealed": "Pediste una revisión humana. Un curador revisará tu colección.",
-      "validator_failed": "La revisión automática no pudo revisar tu colección. La revisará un curador.",
-      "too_large": "Tu colección es demasiado grande para la revisión automática. La revisará un curador.",
       "rejected_by_validator": "La revisión automática encontró problemas en tus ítems. Corrígelos y revisa de nuevo, o pide que un curador revise tu colección.",
       "rejected_by_curator": "Un curador pidió cambios en tu colección. Hazlos y publica tus cambios, o pide otra revisión.",
       "curator_comment": "Un curador te dejó un comentario:"
@@ -2134,7 +2132,6 @@
     "validation_started": "Revisión automática iniciada. Actualizaremos esta página cuando termine.",
     "validation_error": "No pudimos iniciar la revisión automática. Inténtalo de nuevo.",
     "reply": "Responder",
-    "message_curator": "Escribir al curador",
     "curator_replied": "Comentario del curador"
   },
   "review_stage_hint": {

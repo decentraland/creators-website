@@ -341,11 +341,8 @@ describe('ReviewFlow', () => {
     expect(screen.getByTestId('activity-modal-stub')).toHaveAttribute('data-comment-as', 'creator')
   })
 
-  it('lets the creator write to the curator who is reviewing, and not while only the automated review runs', () => {
-    const { unmount } = renderFlow(pending, [event('review.automated_passed', { verdict: 'passed', items: [] })])
-    expect(screen.getByTestId('review-reply')).toHaveTextContent('Message curator')
-    unmount()
-    renderFlow(pending, [event('review.automated_started', { trigger: 'publish' })])
+  it('offers no way to write from the notice until a curator comment waits for an answer', () => {
+    renderFlow(pending, [event('review.automated_passed', { verdict: 'passed', items: [] })])
     expect(screen.queryByTestId('review-reply')).not.toBeInTheDocument()
   })
 
