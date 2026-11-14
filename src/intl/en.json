@@ -2241,9 +2241,7 @@
       "collection.disabled": "disabled the collection",
       "unknown": "{type}",
       "review": {
-        "automated_error_exhausted": "Automated review gave up after several tries, a curator will review the collection",
-        "automated_error_too_large": "The collection is too large for the automated review, a curator will review it",
-        "human_required_validator_error": "The automated review couldn't check the collection, a curator will review it"
+        "automated_error_final": "The automated review couldn't run on this collection, a curator will review it"
       },
       "review.comment": "commented"
     },

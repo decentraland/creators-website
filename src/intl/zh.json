@@ -2241,9 +2241,7 @@
       "collection.disabled": "停用了该系列",
       "unknown": "{type}",
       "review": {
-        "automated_error_exhausted": "自动审核多次尝试后已放弃，审核员将审核该系列",
-        "automated_error_too_large": "该系列过大，无法自动审核，审核员将进行审核",
-        "human_required_validator_error": "自动审核无法检查该系列，审核员将进行审核"
+        "automated_error_final": "无法对该系列进行自动审核，审核员将进行审核"
       },
       "review.comment": "发表了评论"
     },

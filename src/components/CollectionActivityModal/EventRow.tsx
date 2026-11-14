@@ -2,18 +2,17 @@ import { useMemo, useState } from 'react'
 import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
 import { ItemFindingsList } from '~/components/FindingsList'
+import { AutomatedReviewIcon } from '~/components/AutomatedReviewIcon'
 import { ProfileBadge } from '~/components/ProfileBadge'
 import {
   COLLECTION_EVENT_TYPES,
   countFailedItems,
   getFailedItems,
-  SWEEP_EXHAUSTED_REASON,
-  VALIDATOR_ERROR_REASON,
   isRejectReasonCode,
   isUnsupportedItemsReview,
   isValidationTrigger,
   type CollectionEvent,
-  isTooLargeError
+  isFinalValidationError
 } from '~/lib/events'
 import { shortenAddress } from '~/lib/address'
 import { type Item } from '~/lib/items'
@@ -39,6 +38,13 @@ const ACTOR_LED = new Set([
   'review.comment',
   'collection.disabled'
 ])
+
+const OUTCOMES: Record<string, 'passed' | 'rejected' | undefined> = {
+  'review.automated_passed': 'passed',
+  'review.approved': 'passed',
+  'review.automated_rejected': 'rejected',
+  'review.rejected': 'rejected'
+}
 
 function AssigneeName({ address }: { address: string }) {
   const { data: profile } = useProfile(address)
@@ -66,8 +72,7 @@ export function EventRow({ event, items, isCurator }: Props) {
       case 'review.automated_rejected':
         return t('activity_modal.event.review.automated_rejected', { count: countFailedItems(payload.items ?? []) })
       case 'review.automated_error':
-        if (payload.reason === SWEEP_EXHAUSTED_REASON) return t('activity_modal.event.review.automated_error_exhausted')
-        if (isTooLargeError(event)) return t('activity_modal.event.review.automated_error_too_large')
+        if (isFinalValidationError(event)) return t('activity_modal.event.review.automated_error_final')
         return t(
           isCurator
             ? 'activity_modal.event.review.automated_error_curator'
@@ -75,11 +80,8 @@ export function EventRow({ event, items, isCurator }: Props) {
         )
       case 'review.human_required':
         if (isUnsupportedItemsReview(event)) return t('activity_modal.event.review.human_required_unsupported')
-        return t(
-          payload.reason === VALIDATOR_ERROR_REASON
-            ? 'activity_modal.event.review.human_required_validator_error'
-            : 'activity_modal.event.review.human_required'
-        )
+        if (isFinalValidationError(event)) return t('activity_modal.event.review.automated_error_final')
+        return t('activity_modal.event.review.human_required')
       case 'review.assigned':
         return payload.assignee
           ? intl.formatMessage(
@@ -94,6 +96,8 @@ export function EventRow({ event, items, isCurator }: Props) {
     }
   }
 
+  // Every decision on the collection, automated or a curator's, leads with the same pass/fail mark.
+  const outcome = OUTCOMES[event.type]
   const actor =
     event.actorAddress && (event.actor === 'creator' || event.actor === 'curator') ? (
       <ProfileBadge address={event.actorAddress} testId="activity-actor" />
@@ -109,6 +113,7 @@ export function EventRow({ event, items, isCurator }: Props) {
   return (
     <S.Row data-testid="activity-event" data-type={event.type}>
       <S.Line>
+        {outcome && <AutomatedReviewIcon status={outcome} />}
         {ACTOR_LED.has(event.type) && actor}
         <span data-testid="activity-line">{line()}</span>
       </S.Line>

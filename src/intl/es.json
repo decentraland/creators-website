@@ -2241,9 +2241,7 @@
       "collection.disabled": "deshabilitó la colección",
       "unknown": "{type}",
       "review": {
-        "automated_error_exhausted": "La revisión automática se rindió tras varios intentos, un curador revisará la colección",
-        "automated_error_too_large": "La colección es demasiado grande para la revisión automática, la revisará un curador",
-        "human_required_validator_error": "La revisión automática no pudo revisar la colección, la revisará un curador"
+        "automated_error_final": "No se pudo hacer la revisión automática de esta colección, la revisará un curador"
       },
       "review.comment": "comentó"
     },

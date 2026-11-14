@@ -185,7 +185,7 @@ describe('CollectionActivityModal', () => {
     expect(screen.getByTestId('activity-findings-i1-finding')).toHaveTextContent('S-01')
   })
 
-  it('says when the automated review gave up, and labels items it cannot judge', () => {
+  it('says when the automated review could not run, and labels items it cannot judge', () => {
     state.events = [
       event('review.automated_error', 'system', { reason: 'sweep_exhausted', validationId: 'val-4' }),
       event('review.human_required', 'system', {
@@ -197,7 +197,7 @@ describe('CollectionActivityModal', () => {
     ]
     renderModal()
     const lines = screen.getAllByTestId('activity-line').map(line => line.textContent)
-    expect(lines[0]).toBe('Automated review gave up after several tries, a curator will review the collection')
+    expect(lines[0]).toBe("The automated review couldn't run on this collection, a curator will review it")
     fireEvent.click(screen.getByTestId('activity-toggle-findings'))
     expect(screen.getByTestId('activity-findings-item')).toHaveTextContent('Not covered by the automated review')
   })
@@ -216,6 +216,37 @@ describe('CollectionActivityModal', () => {
     const row = screen.getByTestId('activity-event')
     expect(row).not.toHaveTextContent('val-7')
     expect(row).not.toHaveTextContent('0.8.0')
+  })
+
+  it("marks every decision, automated or a curator's, with its outcome icon", () => {
+    state.events = [
+      event('review.approved', 'curator'),
+      event('review.rejected', 'curator', { rejectionReasons: ['clipping'] }),
+      event('review.automated_rejected', 'validator', { verdict: 'rejected', items: [] }),
+      event('review.automated_passed', 'validator', { verdict: 'passed', items: [] }),
+      event('collection.published', 'creator')
+    ]
+    renderModal()
+    const rows = screen.getAllByTestId('activity-event')
+    expect(rows.map(row => row.querySelector('[data-status]')?.getAttribute('data-status') ?? null)).toEqual([
+      'passed',
+      'rejected',
+      'rejected',
+      'passed',
+      null
+    ])
+  })
+
+  it('names every final automated failure the same way', () => {
+    state.events = [
+      event('review.automated_error', 'system', { reason: 'too_large' }),
+      event('review.human_required', 'system', { reason: 'validator_error' })
+    ]
+    renderModal()
+    const lines = screen.getAllByTestId('activity-line').map(line => line.textContent)
+    expect(new Set(lines)).toEqual(
+      new Set(["The automated review couldn't run on this collection, a curator will review it"])
+    )
   })
 
   it('tells curators about validator failures', () => {
