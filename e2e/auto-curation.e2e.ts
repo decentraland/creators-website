@@ -170,7 +170,7 @@ describe('automated review', () => {
     expect(stored?.rejection_message ?? null).toBeNull()
   })
 
-  it("shows the fixes a curator asked for and carries the creator's written answer to the timeline", async () => {
+  it("opens the activity from a curator's request for fixes and carries the creator's written answer to the timeline", async () => {
     const curator = '0x' + '33'.repeat(20)
     const question = {
       ...event('review.comment', minutesAgo(2), { message: 'Is the hat meant to hide the hair?' }, 'curator'),
@@ -192,12 +192,11 @@ describe('automated review', () => {
     app = await launchApp({ path: `/collections/${collection.id}`, builder, flags: FLAGS })
     const { page } = app
 
-    const message = await waitForTestId(page, 'review-rejection-message', 30_000)
-    expect(await message.evaluate(el => el.textContent)).toBe('The brim clips through the head.')
+    await waitForTestId(page, 'review-view-feedback', 30_000)
     const comments = await waitForTestId(page, 'review-comment-count')
     expect(await comments.evaluate(el => el.textContent)).toBe('1')
 
-    await clickTestId(page, 'review-reply')
+    await clickTestId(page, 'review-view-feedback')
     await waitForTestId(page, 'activity-comment-input')
     await page.type('[data-testid="activity-comment-input"]', 'Yes, it replaces the hair on purpose.')
     await clickTestId(page, 'activity-comment-send')

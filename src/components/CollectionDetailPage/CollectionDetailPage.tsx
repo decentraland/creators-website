@@ -72,7 +72,13 @@ import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
 import { useCollectionValidation, useRerunItemValidation, type ItemValidation } from '~/hooks/useCollectionValidation'
-import { ItemSyncStatus, getItemRowStatus, hasPendingChanges, showsItemStatusColumn } from '~/lib/itemSync'
+import {
+  ItemSyncStatus,
+  getItemRowStatus,
+  hasPendingChanges,
+  hasUpdatesSinceRejection,
+  showsItemStatusColumn
+} from '~/lib/itemSync'
 import { ReviewStage, canPushChanges, getReviewStage, isRejectedStage } from '~/lib/curation'
 import { useCommittee } from '~/hooks/useCommittee'
 import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
@@ -329,18 +335,23 @@ const CollectionDetailPage = () => {
   const clearReviewRequest = useCallback(() => setReviewRequest(null), [])
   // The validator's findings dress the rows and the details modal like the browser's checks do.
   const automatedIssues = useMemo(() => getAutomatedIssuesByItem(events ?? [], allItems ?? []), [events, allItems])
-  // Until the request loads, a pending one looks like none and the push would duplicate it. A rejection the
-  // automated review tracks is never pushed: it is reviewed again or sent to a curator.
+  // Until the request loads, a pending one looks like none and the push would duplicate it. An automated
+  // rejection of a first review is never pushed: it is reviewed again or sent to a curator.
   const curationLoaded = curationQuery.isSuccess
   const showPushChanges = useMemo(
     () =>
       !!standardCollection &&
       curationLoaded &&
-      !(isRejectedStage(stage) && !standardCollection.isApproved) &&
+      !(stage === ReviewStage.REJECTED_BY_VALIDATOR && !standardCollection.isApproved) &&
       canPushChanges(standardCollection, curation, hasUnsyncedItems, canManage),
     [standardCollection, curationLoaded, stage, curation, hasUnsyncedItems, canManage]
   )
   const showReviewAgain = canManage && curationLoaded && stage === ReviewStage.REJECTED_BY_VALIDATOR
+  // After a curator's request for fixes, reading the feedback is the main action until an item is updated.
+  const awaitsFixes = useMemo(
+    () => stage === ReviewStage.REJECTED_BY_CURATOR && !hasUpdatesSinceRejection(curation, allItems ?? []),
+    [stage, curation, allItems]
+  )
   // The same content always gets the same result, so another automated review waits for a saved or added item.
   const hasNewContent = useMemo(() => hasChangesSinceVerdict(events ?? [], allItems ?? []), [events, allItems])
   const reviewsUsed = useMemo(() => countValidationAttempts(events ?? []), [events])
@@ -724,7 +735,7 @@ const CollectionDetailPage = () => {
                 >
                   <Button
                     type="button"
-                    variant="primary"
+                    variant={awaitsFixes ? 'dark' : 'primary'}
                     data-desktop-only
                     data-testid="push-changes"
                     aria-disabled={pushBlocked || undefined}
@@ -1010,7 +1021,13 @@ const CollectionDetailPage = () => {
               flow="push_changes"
               validation={publishValidation}
               blockOnErrors={blockOnErrors}
-              onPass={() => setPushView('confirm')}
+              onPass={() => {
+                // A curator who asked for fixes sees them next: the request skips the automated review.
+                if (stage === ReviewStage.REJECTED_BY_CURATOR) {
+                  closePush()
+                  setReviewRequest('appeal')
+                } else setPushView('confirm')
+              }}
               onClose={closePush}
             />
           )}

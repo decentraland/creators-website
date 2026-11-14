@@ -81,17 +81,26 @@ export function SentForReviewModal({ onDone }: { onDone: () => void }) {
   )
 }
 
-type RequestProps = { busy: boolean; error: string | null; onConfirm: (note: string) => void; onClose: () => void }
+type RequestProps = {
+  /** After a curator's request for fixes: the creator made them and asks for the next review. */
+  afterFixes?: boolean
+  busy: boolean
+  error: string | null
+  onConfirm: (note: string) => void
+  onClose: () => void
+}
 
 /** Confirms the appeal before sending the rejected collection to a curator. */
-export function RequestCuratorReviewModal({ busy, error, onConfirm, onClose }: RequestProps) {
+export function RequestCuratorReviewModal({ afterFixes, busy, error, onConfirm, onClose }: RequestProps) {
   const { t } = useTranslation()
   const [note, setNote] = useState('')
   return (
     <ConfirmModal
       icon={<ErrorIcon />}
-      title={t('review_flow.request.title')}
-      description={t('review_flow.request.description')}
+      title={t(afterFixes ? 'collection_detail_page.request_review.title' : 'review_flow.request.title')}
+      description={t(
+        afterFixes ? 'collection_detail_page.request_review.description' : 'review_flow.request.description'
+      )}
       error={error}
       busy={busy}
       onClose={onClose}
@@ -105,11 +114,13 @@ export function RequestCuratorReviewModal({ busy, error, onConfirm, onClose }: R
     >
       <S.RequestNote>
         <NoteField
-          label={t('review_flow.request.note')}
+          label={t(afterFixes ? 'collection_detail_page.push_note.label' : 'review_flow.request.note')}
           value={note}
           onChange={setNote}
           maxLength={NOTE_MAX_LENGTH}
-          placeholder={t('review_flow.request.note_placeholder')}
+          placeholder={t(
+            afterFixes ? 'collection_detail_page.push_note.placeholder' : 'review_flow.request.note_placeholder'
+          )}
           disabled={busy}
           testId="request-review-note"
         />

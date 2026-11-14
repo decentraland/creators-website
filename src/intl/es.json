@@ -2079,7 +2079,7 @@
       "needs_curator": "No se pudo hacer la revisión automática de tu colección. Ahora espera la revisión de un curador.",
       "appealed": "Pediste una revisión humana. Un curador revisará tu colección.",
       "rejected_by_validator": "La revisión automática encontró problemas en tus ítems. Corrígelos y revisa de nuevo, o pide que un curador revise tu colección.",
-      "rejected_by_curator": "Un curador pidió cambios en tu colección. Hazlos y publica tus cambios, o pide otra revisión.",
+      "rejected_by_curator": "Un curador pidió cambios en tu colección. Actualiza tus ítems y luego pide la revisión de nuevo.",
       "curator_comments": "{count, plural, one {Un curador te dejó un comentario} other {Un curador te dejó # comentarios}}"
     },
     "reviewing": {

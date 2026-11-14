@@ -238,9 +238,12 @@ describe('ReviewFlow', () => {
     )
   })
 
-  it('asks for a curator after confirming, then says the collection was sent', () => {
-    renderFlow(rejectedByCurator, [event('review.rejected', { rejectionReasons: ['clipping'] })])
-    fireEvent.click(screen.getByTestId('request-curator-review'))
+  it('asks the curators again when the page requests it after their fixes, then says the collection was sent', () => {
+    renderFlow(rejectedByCurator, [event('review.rejected', { rejectionReasons: ['clipping'] })], {
+      request: 'appeal',
+      onRequestHandled: handled
+    })
+    expect(screen.getByTestId('request-review-modal-title')).toHaveTextContent('Request review again')
     mocks.appeal.mockImplementationOnce((_, { onSuccess }) => onSuccess())
     fireEvent.click(screen.getByTestId('request-review-confirm'))
     expect(mocks.appeal).toHaveBeenCalledWith({ collection }, expect.anything())
@@ -249,14 +252,15 @@ describe('ReviewFlow', () => {
 
   it('tells an appeal already open from one the server refuses for another reason', () => {
     mocks.appealError = new BuilderServerError('There is already an open appeal for this collection', 409)
-    const { unmount } = renderFlow(rejectedByCurator, [event('review.rejected')])
-    fireEvent.click(screen.getByTestId('request-curator-review'))
+    const { unmount } = renderFlow(rejectedByCurator, [event('review.rejected')], {
+      request: 'appeal',
+      onRequestHandled: handled
+    })
     expect(mocks.toast).toHaveBeenLastCalledWith(expect.stringContaining('already requested'), { type: 'error' })
     unmount()
 
     mocks.appealError = new BuilderServerError('Only rejected collections can be appealed', 409)
-    renderFlow(rejectedByCurator, [event('review.rejected')])
-    fireEvent.click(screen.getByTestId('request-curator-review'))
+    renderFlow(rejectedByCurator, [event('review.rejected')], { request: 'appeal', onRequestHandled: handled })
     expect(mocks.toast).toHaveBeenLastCalledWith(expect.not.stringContaining('already requested'), { type: 'error' })
   })
 
@@ -312,7 +316,7 @@ describe('ReviewFlow', () => {
     expect(screen.queryByTestId('review-notice')).toBeNull()
   })
 
-  it('shows the creator the reasons and the message of the curator who asked for fixes', () => {
+  it("points the creator to the activity for a curator's reasons and message, without quoting them", () => {
     renderFlow(
       {
         ...rejectedByCurator,
@@ -322,9 +326,10 @@ describe('ReviewFlow', () => {
       [event('review.rejected')]
     )
     expect(screen.getByTestId('review-notice')).toHaveAttribute('data-stage', 'rejected_by_curator')
-    expect(screen.getByTestId('review-rejection-reasons')).toHaveTextContent('Clipping')
-    expect(screen.getByTestId('review-rejection-reasons')).toHaveTextContent('Thumbnail')
-    expect(screen.getByTestId('review-rejection-message')).toHaveTextContent('The straps clip the arm')
+    expect(screen.getByTestId('review-notice')).not.toHaveTextContent('The straps clip the arm')
+    expect(screen.queryByTestId('request-curator-review')).toBeNull()
+    fireEvent.click(screen.getByTestId('review-view-feedback'))
+    expect(screen.getByTestId('activity-modal-stub')).toHaveAttribute('data-comment-as', 'creator')
   })
 
   it('flags a curator comment waiting for an answer and opens the timeline to read it', () => {

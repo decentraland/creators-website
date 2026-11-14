@@ -2079,7 +2079,7 @@
       "needs_curator": "无法对您的系列进行自动审核。它正在等待审核员审核。",
       "appealed": "您已申请人工审核。审核员将查看您的系列。",
       "rejected_by_validator": "自动审核在您的物品中发现了问题。请修复后重新审核，或申请审核员审核您的系列。",
-      "rejected_by_curator": "审核员要求修改您的系列。请完成修改并发布更改，或申请再次审核。",
+      "rejected_by_curator": "审核员要求修改您的系列。请更新您的物品后再次申请审核。",
       "curator_comments": "审核员给您留了 {count} 条评论"
     },
     "reviewing": {

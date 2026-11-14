@@ -197,6 +197,22 @@ export enum ItemRowStatus {
 /** What the row status needs from the collection's latest review request. */
 export type RowStatusCuration = Pick<CollectionCuration, 'status' | 'updatedAt'>
 
+/** An edit the committee never saw: the item was saved or added after its request was sent back. */
+export function wasEditedAfterRejection(
+  item: Pick<Item, 'updatedAt'>,
+  curation: RowStatusCuration | null | undefined
+): boolean {
+  return curation?.status === 'rejected' && item.updatedAt > curation.updatedAt
+}
+
+/** Whether the creator has something new to show since the request was sent back. */
+export function hasUpdatesSinceRejection(
+  curation: RowStatusCuration | null | undefined,
+  items: Pick<Item, 'updatedAt'>[]
+): boolean {
+  return items.some(item => wasEditedAfterRejection(item, curation))
+}
+
 /**
  * Null while the sync is unknown, and for an unapproved item outside a review: the collection pill tells that
  * story. An edited item reads "rejected" when the committee turned the changes down, which only covers edits
@@ -210,7 +226,7 @@ export function getItemRowStatus(
   curation: RowStatusCuration | null | undefined
 ): ItemRowStatus | null {
   const pending = curation?.status === 'pending'
-  const rejected = curation?.status === 'rejected' && item.updatedAt <= curation.updatedAt
+  const rejected = curation?.status === 'rejected' && !wasEditedAfterRejection(item, curation)
   switch (sync?.status) {
     case ItemSyncStatus.SYNCED:
       return ItemRowStatus.PUBLISHED

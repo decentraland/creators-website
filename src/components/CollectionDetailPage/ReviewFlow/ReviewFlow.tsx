@@ -33,6 +33,7 @@ import {
   startOfUtcDay,
   type CollectionEvent
 } from '~/lib/events'
+import { hasUpdatesSinceRejection } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import {
@@ -47,10 +48,11 @@ import { markReviewModalSeen, wasReviewModalSeen } from '~/lib/reviewModalMemory
 import { type ItemCheck } from '~/lib/validation'
 import * as S from './ReviewFlow.styles'
 
-/** What the page asks for: a modal (right after publishing, or at the daily limit) or another automated review. */
-export type ReviewFlowRequest = 'reviewing' | 'limit' | 'validate'
+/** What the page asks for: a modal (right after publishing, or at the daily limit), another automated review, or a curator's. */
+export type ReviewFlowRequest = 'reviewing' | 'limit' | 'validate' | 'appeal'
 
-type ReviewModal = Exclude<ReviewFlowRequest, 'validate'> | 'issues' | 'request' | 'sent' | 'additional' | 'activity'
+type ReviewModal =
+  Exclude<ReviewFlowRequest, 'validate' | 'appeal'> | 'issues' | 'request' | 'sent' | 'additional' | 'activity'
 
 type Props = {
   collection: Collection
@@ -134,12 +136,21 @@ export function ReviewFlow({
     )
   }, [running, timeline, collection, startValidation, showToast, t, open])
 
+  const requestReview = useCallback(() => {
+    if (appealOpen) {
+      showToast(t('review_flow.appeal_open'), { type: 'warn' })
+      return
+    }
+    open('request')
+  }, [appealOpen, showToast, t, open])
+
   useEffect(() => {
     if (!request) return
     if (request === 'validate') validateAgain()
+    else if (request === 'appeal') requestReview()
     else open(request)
     onRequestHandled()
-  }, [request, open, validateAgain, onRequestHandled])
+  }, [request, open, validateAgain, requestReview, onRequestHandled])
 
   // The verdict and the hand-off announce themselves once; the notice reopens the findings any time.
   useEffect(() => {
@@ -160,14 +171,6 @@ export function ReviewFlow({
   const close = () => {
     setModal(null)
     appeal.reset()
-  }
-
-  function requestReview() {
-    if (appealOpen) {
-      showToast(t('review_flow.appeal_open'), { type: 'warn' })
-      return
-    }
-    open('request')
   }
 
   function confirmReview(note: string) {
@@ -205,6 +208,7 @@ export function ReviewFlow({
       )}
       {modal === 'request' && (
         <RequestCuratorReviewModal
+          afterFixes={stage === ReviewStage.REJECTED_BY_CURATOR}
           busy={appeal.isPending}
           error={appealError}
           onConfirm={confirmReview}
@@ -270,11 +274,12 @@ export function ReviewFlow({
   }
   if (!text && curatorComments === 0) return modals
 
-  const rejected = isRejectedStage(stage)
   // The findings modal carries the creator's next steps, so the notice only opens it.
   const hasIssues = stage === ReviewStage.REJECTED_BY_VALIDATOR && automatedResults.length > 0
-  const curatorRejection = stage === ReviewStage.REJECTED_BY_CURATOR ? curation : null
-  const reasons = curatorRejection?.rejectionReasons ?? []
+  // A curator's reasons and message are read in the activity, and the next review is asked for from the page.
+  const curatorFixes = stage === ReviewStage.REJECTED_BY_CURATOR
+  // Reading the feedback comes first; once items were updated, asking for the review does.
+  const fixesMade = curatorFixes && hasUpdatesSinceRejection(curation, items)
   // Only a curator's unanswered comments are flagged here; writing first is done from the activity.
   const canReply = canManage && events !== null && curatorComments > 0
   const commentsHint = t('review_flow.notice.curator_comments', { count: curatorComments })
@@ -289,21 +294,7 @@ export function ReviewFlow({
         {stage === ReviewStage.AUTOMATED_REVIEWING && (
           <S.NoticeSpinner data-testid="review-notice-spinner" aria-hidden />
         )}
-        {(reasons.length > 0 || curatorRejection?.rejectionMessage) && (
-          <S.NoticeDetails>
-            {reasons.length > 0 && (
-              <S.Reasons data-testid="review-rejection-reasons">
-                {reasons.map(code => (
-                  <S.Reason key={code}>{t(`reject_reason.${code}`)}</S.Reason>
-                ))}
-              </S.Reasons>
-            )}
-            {curatorRejection?.rejectionMessage && (
-              <S.Quote data-testid="review-rejection-message">{curatorRejection.rejectionMessage}</S.Quote>
-            )}
-          </S.NoticeDetails>
-        )}
-        {(hasIssues || (canManage && (rejected || canReply))) && (
+        {(hasIssues || curatorFixes || (canManage && (stage === ReviewStage.REJECTED_BY_VALIDATOR || canReply))) && (
           <S.NoticeActions>
             {hasIssues && (
               <Button
@@ -316,7 +307,7 @@ export function ReviewFlow({
                 {t('review_flow.issues.see')}
               </Button>
             )}
-            {canManage && !hasIssues && rejected && (
+            {canManage && !hasIssues && stage === ReviewStage.REJECTED_BY_VALIDATOR && (
               <Button
                 type="button"
                 variant="dark"
@@ -335,16 +326,29 @@ export function ReviewFlow({
                     {curatorComments}
                   </S.CommentCount>
                 </Tooltip>
-                <Button
-                  type="button"
-                  variant="dark"
-                  size="sm"
-                  data-testid="review-reply"
-                  onClick={() => open('activity')}
-                >
-                  {t('review_flow.view_comments', { count: curatorComments })}
-                </Button>
+                {!curatorFixes && (
+                  <Button
+                    type="button"
+                    variant="dark"
+                    size="sm"
+                    data-testid="review-reply"
+                    onClick={() => open('activity')}
+                  >
+                    {t('review_flow.view_comments', { count: curatorComments })}
+                  </Button>
+                )}
               </>
+            )}
+            {curatorFixes && (
+              <Button
+                type="button"
+                variant={fixesMade ? 'dark' : 'primary'}
+                size="sm"
+                data-testid="review-view-feedback"
+                onClick={() => open('activity')}
+              >
+                {t('review_flow.issues.see')}
+              </Button>
             )}
           </S.NoticeActions>
         )}
