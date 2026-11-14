@@ -6,6 +6,7 @@ import { useCollectionEvents } from '~/hooks/useCollectionEvents'
 import { useCommittee } from '~/hooks/useCommittee'
 import { track } from '~/lib/analytics'
 import { type Collection } from '~/lib/collections'
+import { type ReviewParty } from '~/lib/events'
 import { type Item } from '~/lib/items'
 import { CommentComposer } from './CommentComposer'
 import { EventRow } from './EventRow'
@@ -16,13 +17,13 @@ type Props = {
   address: string
   /** The collection's items, when the caller has them, so findings show item names. */
   items?: Item[]
-  /** The collection's role holders and the committee write here; anyone else only reads. */
-  canComment?: boolean
+  /** The side the viewer writes as: the collection's role holders as its creator, the committee as a curator. Without it they only read. */
+  commentAs?: ReviewParty
   onClose: () => void
 }
 
 /** The collection's review timeline, newest first, and the box creators and curators write to each other from. */
-export function CollectionActivityModal({ collection, address, items = [], canComment = false, onClose }: Props) {
+export function CollectionActivityModal({ collection, address, items = [], commentAs, onClose }: Props) {
   const { t } = useTranslation()
   const { isCurator } = useCommittee(address)
   const query = useCollectionEvents(address, collection)
@@ -36,8 +37,8 @@ export function CollectionActivityModal({ collection, address, items = [], canCo
     track('Open activity', { collectionId: collection.id })
   }, [collection.id])
 
-  const composer = canComment && isAvailable && (
-    <CommentComposer collection={collection} address={address} role={isCurator ? 'curator' : 'creator'} />
+  const composer = commentAs && isAvailable && (
+    <CommentComposer collection={collection} address={address} role={commentAs} />
   )
 
   return (

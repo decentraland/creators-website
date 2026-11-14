@@ -6,6 +6,7 @@ import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { copyToClipboard } from '~/lib/clipboard'
 import { hasBeenApproved, isCollectionLocked, isLinkedCollection, type Collection } from '~/lib/collections'
 import { isCollectionOwner, type RoleKind } from '~/lib/collectionRoles'
+import { type ReviewParty } from '~/lib/events'
 import { openForumPost } from '~/lib/forumPost'
 import { openExternal } from '~/lib/navigation'
 import { shopCollectionUrl } from '~/lib/shop'
@@ -31,8 +32,8 @@ type Props = {
   items?: Item[]
   /** The review timeline entry: published collections, for the people who can read it (roles and the committee). */
   showActivity?: boolean
-  /** Whether the viewer may write on the timeline (role holders and the committee). */
-  canComment?: boolean
+  /** The side the viewer writes on the timeline as; without it they only read. */
+  commentAs?: ReviewParty
   /** Opens the Send Items flow; the header button covers this on desktop, so the item shows only when compact. */
   onSendItems?: () => void
   /** Opens the items in the editor; the header button covers this on desktop, so the item shows only when compact. */
@@ -65,7 +66,7 @@ export function CollectionActionsMenu({
   onPreviewInWorld,
   items,
   showActivity = false,
-  canComment = false,
+  commentAs,
   onSendItems,
   onPreviewItems,
   onCreateDiscount,
@@ -245,7 +246,7 @@ export function CollectionActionsMenu({
           collection={collection}
           address={address}
           items={items}
-          canComment={canComment}
+          commentAs={commentAs}
           onClose={() => setActivityOpen(false)}
         />
       )}

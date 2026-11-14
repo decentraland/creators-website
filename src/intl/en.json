@@ -2122,7 +2122,7 @@
       "description": "Some content in your collection requires a closer look. We've sent it to a Decentraland curator for review. Curator reviews take more time. We'll notify you once it's approved or if any changes are needed."
     },
     "validate_again": "Review again",
-    "attempts_left": "{left} of {max} automated reviews left today",
+    "no_changes": "Nothing has changed since the last automated review. Update your items to review again.",
     "request_review": "Request curator review",
     "running": "A review is already running. Try again when it finishes.",
     "nothing_to_validate": "There's nothing new for the automated review. Edit an item and publish your changes, or request a curator review.",

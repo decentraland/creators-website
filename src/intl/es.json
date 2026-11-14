@@ -2122,7 +2122,7 @@
       "description": "Parte del contenido de tu colección requiere una mirada más detallada. La enviamos a un curador de Decentraland para su revisión. Las revisiones de curadores llevan más tiempo. Te avisaremos cuando se apruebe o si hace falta algún cambio."
     },
     "validate_again": "Revisar de nuevo",
-    "attempts_left": "Te quedan {left} de {max} revisiones automáticas hoy",
+    "no_changes": "No hay cambios desde la última revisión automática. Actualiza tus ítems para revisar de nuevo.",
     "request_review": "Pedir revisión de un curador",
     "running": "Ya hay una revisión en curso. Inténtalo cuando termine.",
     "nothing_to_validate": "No hay nada nuevo para revisar automáticamente. Edita un ítem y publica tus cambios, o pide una revisión de un curador.",

@@ -27,8 +27,8 @@ vi.mock('~/hooks/useCollectionEvents', () => ({
   })
 }))
 vi.mock('~/components/CollectionActivityModal', () => ({
-  CollectionActivityModal: ({ canComment }: { canComment: boolean }) => (
-    <div data-testid="activity-modal-stub" data-can-comment={String(canComment)} />
+  CollectionActivityModal: ({ commentAs }: { commentAs?: string }) => (
+    <div data-testid="activity-modal-stub" data-comment-as={commentAs} />
   )
 }))
 vi.mock('~/lib/notifications', () => ({
@@ -249,13 +249,13 @@ describe('ReviewFlow', () => {
     mocks.appealError = new BuilderServerError('There is already an open appeal for this collection', 409)
     const { unmount } = renderFlow(rejectedByCurator, [event('review.rejected')])
     fireEvent.click(screen.getByTestId('request-curator-review'))
-    expect(screen.getByTestId('request-review-modal')).toHaveTextContent('already requested')
+    expect(mocks.toast).toHaveBeenLastCalledWith(expect.stringContaining('already requested'), { type: 'error' })
     unmount()
 
     mocks.appealError = new BuilderServerError('Only rejected collections can be appealed', 409)
     renderFlow(rejectedByCurator, [event('review.rejected')])
     fireEvent.click(screen.getByTestId('request-curator-review'))
-    expect(screen.getByTestId('request-review-modal')).not.toHaveTextContent('already requested')
+    expect(mocks.toast).toHaveBeenLastCalledWith(expect.not.stringContaining('already requested'), { type: 'error' })
   })
 
   it('warns instead of asking twice while an appeal is open', () => {
@@ -336,7 +336,7 @@ describe('ReviewFlow', () => {
     const reply = screen.getByTestId('review-reply')
     expect(reply).toHaveTextContent('Reply')
     fireEvent.click(reply)
-    expect(screen.getByTestId('activity-modal-stub')).toHaveAttribute('data-can-comment', 'true')
+    expect(screen.getByTestId('activity-modal-stub')).toHaveAttribute('data-comment-as', 'creator')
   })
 
   it('lets the creator write to the curator who is reviewing, and not while only the automated review runs', () => {

@@ -81,7 +81,7 @@ import {
   NOTE_MAX_LENGTH,
   VALIDATION_ATTEMPTS_PER_DAY,
   getAutomatedIssuesByItem,
-  getValidationAttemptsLeft,
+  countValidationAttempts,
   hasChangesSinceVerdict
 } from '~/lib/events'
 import { pageRangeLabel } from '~/lib/pagination'
@@ -340,16 +340,10 @@ const CollectionDetailPage = () => {
       canPushChanges(standardCollection, curation, hasUnsyncedItems, canManage),
     [standardCollection, curationLoaded, stage, curation, hasUnsyncedItems, canManage]
   )
+  const showReviewAgain = canManage && curationLoaded && stage === ReviewStage.REJECTED_BY_VALIDATOR
   // The same content always gets the same result, so another automated review waits for a saved or added item.
-  const showReviewAgain = useMemo(
-    () =>
-      canManage &&
-      curationLoaded &&
-      stage === ReviewStage.REJECTED_BY_VALIDATOR &&
-      hasChangesSinceVerdict(events ?? [], allItems ?? []),
-    [canManage, curationLoaded, stage, events, allItems]
-  )
-  const reviewsLeft = useMemo(() => getValidationAttemptsLeft(events ?? []), [events])
+  const hasNewContent = useMemo(() => hasChangesSinceVerdict(events ?? [], allItems ?? []), [events, allItems])
+  const reviewsUsed = useMemo(() => countValidationAttempts(events ?? []), [events])
   // After a rejection the creator asks for a review again, whether it was the first one or a pushed update.
   const pushCopy = curation?.status === 'rejected' ? 'request_review' : 'push_changes'
   const rowStatuses = useMemo(
@@ -744,17 +738,27 @@ const CollectionDetailPage = () => {
               )}
               {showReviewAgain && (
                 <Tooltip
-                  content={t('review_flow.attempts_left', { left: reviewsLeft, max: VALIDATION_ATTEMPTS_PER_DAY })}
+                  content={
+                    hasNewContent
+                      ? t('review_flow.attempts', {
+                          used: Math.min(reviewsUsed, VALIDATION_ATTEMPTS_PER_DAY),
+                          max: VALIDATION_ATTEMPTS_PER_DAY
+                        })
+                      : t('review_flow.no_changes')
+                  }
                   placement="bottom"
                   asChild
-                  testId="validate-again-quota"
+                  testId="validate-again-tooltip"
                 >
                   <Button
                     type="button"
                     variant="primary"
                     data-desktop-only
                     data-testid="validate-again"
-                    onClick={() => setReviewRequest('validate')}
+                    aria-disabled={!hasNewContent || undefined}
+                    onClick={() => {
+                      if (hasNewContent) setReviewRequest('validate')
+                    }}
                   >
                     {t('review_flow.validate_again')}
                   </Button>
@@ -767,7 +771,7 @@ const CollectionDetailPage = () => {
                   onPreviewInWorld={hasItems ? () => previewCollectionFromDetail(collection.id, total) : undefined}
                   items={allItems}
                   showActivity={autoCuration && !!curationAddress && !!standardCollection?.isPublished}
-                  canComment={canManage || committee.isCurator}
+                  commentAs={canManage ? 'creator' : committee.isCurator ? 'curator' : undefined}
                   forumInMenu={autoCuration}
                   onSendItems={canSend ? () => setSending(true) : undefined}
                   onCreateDiscount={canCreateDiscount ? () => openDiscount('menu') : undefined}

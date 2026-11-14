@@ -92,11 +92,13 @@ describe('DisableCollectionFlow', () => {
     state.isError = true
     state.error = new WrongAccountError('0xme', '0xother')
     renderFlow()
-    expect(screen.getByTestId('review-disable-error')).toHaveTextContent(/switch it back to the account/i)
+    expect(state.showToast).toHaveBeenLastCalledWith(expect.stringMatching(/switch it back to the account/i), {
+      type: 'error'
+    })
 
     state.error = new Error('execution reverted')
     renderFlow()
-    expect(screen.getAllByTestId('review-disable-error')[1]).not.toHaveTextContent(/switch it back/i)
+    expect(state.showToast).toHaveBeenLastCalledWith(expect.not.stringMatching(/switch it back/i), { type: 'error' })
   })
 
   it('skips the wallet prompt screen for social logins', () => {

@@ -8,11 +8,13 @@ type Props = {
   maxLength: number
   placeholder?: string
   disabled?: boolean
+  /** For a caller that shows the length itself. */
+  hideCount?: boolean
   testId?: string
 }
 
 /** A labelled free-text box with its length counter, for the messages creators and curators send each other. */
-export function NoteField({ label, value, onChange, maxLength, placeholder, disabled, testId }: Props) {
+export function NoteField({ label, value, onChange, maxLength, placeholder, disabled, hideCount, testId }: Props) {
   const id = useId()
   return (
     <S.Field>
@@ -26,9 +28,11 @@ export function NoteField({ label, value, onChange, maxLength, placeholder, disa
         data-testid={testId}
         onChange={event => onChange(event.target.value)}
       />
-      <S.CharCount>
-        {value.length}/{maxLength}
-      </S.CharCount>
+      {!hideCount && (
+        <S.CharCount>
+          {value.length}/{maxLength}
+        </S.CharCount>
+      )}
     </S.Field>
   )
 }

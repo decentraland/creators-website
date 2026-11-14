@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { TranslationProvider } from '~/intl'
 import { type Collection } from '~/lib/collections'
-import { type CollectionEvent } from '~/lib/events'
+import { type CollectionEvent, type ReviewParty } from '~/lib/events'
 import { CollectionActivityModal } from './CollectionActivityModal'
 
 const state = vi.hoisted(() => ({
@@ -55,10 +55,10 @@ function event(
   }
 }
 
-function renderModal(canComment = false) {
+function renderModal(commentAs?: ReviewParty) {
   render(
     <TranslationProvider>
-      <CollectionActivityModal collection={collection} address="0xme" canComment={canComment} onClose={vi.fn()} />
+      <CollectionActivityModal collection={collection} address="0xme" commentAs={commentAs} onClose={vi.fn()} />
     </TranslationProvider>
   )
 }
@@ -291,7 +291,7 @@ describe('CollectionActivityModal', () => {
 
   it('sends what a creator writes, trimmed, and clears the box once it is stored', () => {
     state.post.mockImplementation((_vars: unknown, options: { onSuccess: () => void }) => options.onSuccess())
-    renderModal(true)
+    renderModal('creator')
     const input = screen.getByTestId('activity-comment-input')
     fireEvent.change(input, { target: { value: '  Only added a tag  ' } })
     fireEvent.click(screen.getByTestId('activity-comment-send'))
@@ -299,18 +299,36 @@ describe('CollectionActivityModal', () => {
     expect(input).toHaveValue('')
   })
 
-  it('writes as a curator for committee members and never sends an empty message', () => {
+  it('lets a committee member write as the creator of their own collection', () => {
     state.isCurator = true
-    renderModal(true)
+    renderModal('creator')
+    expect(screen.getByTestId('activity-composer')).toHaveTextContent('Write to the curators')
+    fireEvent.change(screen.getByTestId('activity-comment-input'), { target: { value: 'Fixed the hat' } })
+    fireEvent.click(screen.getByTestId('activity-comment-send'))
+    expect(state.post.mock.calls[0][0]).toMatchObject({ role: 'creator' })
+  })
+
+  it('writes as a curator from the review and never sends an empty message', () => {
+    state.isCurator = true
+    renderModal('curator')
     expect(screen.getByTestId('activity-comment-send')).toBeDisabled()
     fireEvent.change(screen.getByTestId('activity-comment-input'), { target: { value: 'Please reweight the legs' } })
     fireEvent.click(screen.getByTestId('activity-comment-send'))
     expect(state.post.mock.calls[0][0]).toMatchObject({ role: 'curator' })
   })
 
+  it('shows the length of a message only once it is close to the limit', () => {
+    renderModal('creator')
+    const input = screen.getByTestId('activity-comment-input')
+    fireEvent.change(input, { target: { value: 'Short' } })
+    expect(screen.queryByTestId('activity-comment-count')).not.toBeInTheDocument()
+    fireEvent.change(input, { target: { value: 'a'.repeat(1600) } })
+    expect(screen.getByTestId('activity-comment-count')).toHaveTextContent('1600/2000')
+  })
+
   it('keeps the text and says so when the message could not be sent', () => {
     state.postError = true
-    renderModal(true)
+    renderModal('creator')
     fireEvent.change(screen.getByTestId('activity-comment-input'), { target: { value: 'Hello' } })
     fireEvent.click(screen.getByTestId('activity-comment-send'))
     expect(screen.getByTestId('activity-comment-error')).toBeInTheDocument()
@@ -322,7 +340,7 @@ describe('CollectionActivityModal', () => {
     expect(screen.queryByTestId('activity-composer')).not.toBeInTheDocument()
     cleanup()
     state.isAvailable = false
-    renderModal(true)
+    renderModal('creator')
     expect(screen.queryByTestId('activity-composer')).not.toBeInTheDocument()
   })
 })

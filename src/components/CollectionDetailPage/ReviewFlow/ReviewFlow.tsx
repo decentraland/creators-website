@@ -220,7 +220,7 @@ export function ReviewFlow({
           collection={collection}
           address={address}
           items={items}
-          canComment={canManage}
+          commentAs={canManage ? 'creator' : undefined}
           onClose={close}
         />
       )}

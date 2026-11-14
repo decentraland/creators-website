@@ -7,6 +7,9 @@ import { type Collection } from '~/lib/collections'
 import { COMMENT_MAX_LENGTH, type ReviewParty } from '~/lib/events'
 import * as S from './CollectionActivityModal.styles'
 
+// The limit rarely matters, so the length only shows once it is close.
+const COUNT_FROM = COMMENT_MAX_LENGTH * 0.8
+
 type Props = {
   collection: Collection
   address: string
@@ -36,12 +39,18 @@ export function CommentComposer({ collection, address, role }: Props) {
         maxLength={COMMENT_MAX_LENGTH}
         placeholder={t(`activity_modal.comment.placeholder_${role}`)}
         disabled={post.isPending}
+        hideCount
         testId="activity-comment-input"
       />
       {post.isError && (
         <S.ComposerError data-testid="activity-comment-error">{t('activity_modal.comment.error')}</S.ComposerError>
       )}
       <S.ComposerActions>
+        {message.length >= COUNT_FROM && (
+          <S.ComposerCount data-testid="activity-comment-count">
+            {message.length}/{COMMENT_MAX_LENGTH}
+          </S.ComposerCount>
+        )}
         <Button
           type="submit"
           size="sm"

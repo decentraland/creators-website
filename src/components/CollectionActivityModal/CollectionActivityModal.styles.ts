@@ -162,14 +162,23 @@ export const ComposerError = styled.p`
 
 export const ComposerActions = styled.div`
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 12px;
 
   ${mobile} {
-    & > * {
+    & > button {
       flex: 1 1 auto;
       min-height: 44px;
     }
   }
+`
+
+export const ComposerCount = styled.span`
+  align-self: flex-start;
+  margin-right: auto;
+  font-size: 12px;
+  color: ${theme.colors.gray4};
 `
 
 export const ItemTag = styled.span`

@@ -382,7 +382,7 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
           collection={collection}
           address={address}
           items={items}
-          canComment
+          commentAs="curator"
           onClose={closeDialog}
         />
       )}

@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Button } from '~/components/Button'
 import { Confetti } from '~/components/Confetti'
 import { WarningIcon } from '~/components/Icons'
 import { Modal } from '~/components/Modal'
+import { useNotifications } from '~/lib/notifications'
 import * as S from './ConfirmModal.styles'
 
 type Action = {
@@ -18,7 +19,7 @@ type Props = {
   art?: { src: string }
   /** Glyph shown instead of the warning one, for confirmations that aren't warnings. */
   icon?: ReactNode
-  /** Failure copy shown under the description after a rejected confirm. */
+  /** Failure copy of a rejected confirm, shown as an error toast so the dialog keeps its shape. */
   error?: string | null
   /** Extra content under the description, e.g. an error's technical details. */
   children?: ReactNode
@@ -52,6 +53,11 @@ export function ConfirmModal({
   fillActions = false,
   testId
 }: Props) {
+  const showToast = useNotifications(state => state.showToast)
+  useEffect(() => {
+    if (error) showToast(error, { type: 'error' })
+  }, [error, showToast])
+
   return (
     <Modal title={title} onClose={onClose} closeDisabled={busy} hideTitle showClose={showClose} testId={testId}>
       {celebrate && <Confetti />}
@@ -60,7 +66,6 @@ export function ConfirmModal({
         <S.Heading data-testid={`${testId}-title`}>{title}</S.Heading>
         <S.Body>
           <S.Text data-testid={`${testId}-description`}>{description}</S.Text>
-          {error && <S.Text data-testid={`${testId}-error`}>{error}</S.Text>}
           {children}
         </S.Body>
         <S.Actions data-single={(!cancel || !confirm) && !fillActions ? '' : undefined}>
