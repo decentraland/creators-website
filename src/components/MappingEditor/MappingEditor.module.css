@@ -1,7 +1,4 @@
-import styled from '@emotion/styled'
-import { theme } from '~/styles/theme'
-
-export const Editor = styled.div`
+.editor {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -13,35 +10,33 @@ export const Editor = styled.div`
     flex-wrap: wrap;
     gap: 8px;
   }
-`
+}
 
-export const TypeCell = styled.div`
+.typeCell {
   display: flex;
   align-items: center;
   gap: 8px;
-`
+}
 
-const COMPACT_TOKEN_ID_WIDTH = '104px'
-
-export const Input = styled.input`
+.input {
   width: 100%;
   min-width: 0;
   min-height: 44px;
   padding: 10px 12px;
-  border: 1px solid ${theme.colors.glassLine};
+  border: 1px solid var(--color-glass-line);
   border-radius: 8px;
-  background: ${theme.colors.glassFaint};
+  background: var(--color-glass-faint);
   font: inherit;
   font-size: 14px;
-  color: ${theme.colors.white};
+  color: var(--color-white);
   resize: vertical;
 
   &::placeholder {
-    color: ${theme.colors.offWhiteMuted};
+    color: var(--color-off-white-muted);
   }
 
   &:focus-visible {
-    outline: 2px solid ${theme.colors.white};
+    outline: 2px solid var(--color-white);
     outline-offset: -1px;
   }
 
@@ -51,8 +46,8 @@ export const Input = styled.input`
   }
 
   &[data-invalid] {
-    border-color: ${theme.colors.errLight};
-    background: ${theme.colors.errOverlay};
+    border-color: var(--color-err-light);
+    background: var(--color-err-overlay);
   }
 
   [data-compact] > & {
@@ -60,51 +55,51 @@ export const Input = styled.input`
   }
 
   /* One token id and each bound of a range share one fixed width, so the column lines up whatever the type. */
-  [data-compact] > &[data-size='short'],
+  [data-compact] > &[data-size="short"],
   [data-compact] [data-range] > & {
     flex: none;
-    width: ${COMPACT_TOKEN_ID_WIDTH};
+    width: 104px;
   }
 
-  [data-tone='dark'] & {
-    background: ${theme.colors.chipDark};
-    border-color: ${theme.colors.gray0};
+  [data-tone="dark"] & {
+    background: var(--color-chip-dark);
+    border-color: var(--color-gray0);
   }
 
   /* Full-size on the default surface (the add-items form): the same box as that form's other text fields. */
-  [data-tone='default']:not([data-compact]) & {
+  [data-tone="default"]:not([data-compact]) & {
     min-height: 56px;
     padding: 0 12px;
-    border-color: ${theme.colors.muted2};
-    border-radius: ${theme.radius.input};
+    border-color: var(--color-muted2);
+    border-radius: var(--radius-input);
     background: transparent;
     font-size: 16px;
     font-weight: 600;
     line-height: 24px;
-    color: ${theme.colors.softWhite};
+    color: var(--color-soft-white);
 
     &::placeholder {
-      color: ${theme.colors.muted2};
+      color: var(--color-muted2);
       font-weight: 600;
     }
 
     &:focus-visible {
       outline: 0;
-      border-color: ${theme.colors.white};
+      border-color: var(--color-white);
     }
 
     &[data-invalid] {
-      border-color: ${theme.colors.errStrong};
+      border-color: var(--color-err-strong);
       background: transparent;
     }
   }
 
-  [data-tone='default']:not([data-compact]) textarea& {
+  [data-tone="default"]:not([data-compact]) textarea& {
     padding: 16px 12px;
   }
-`
+}
 
-export const RangeRow = styled.div`
+.rangeRow {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -113,21 +108,21 @@ export const RangeRow = styled.div`
   [data-compact] > & {
     flex: none;
   }
-`
+}
 
-export const RangeDash = styled.span`
+.rangeDash {
   flex: none;
-  color: ${theme.colors.offWhiteMuted};
-`
+  color: var(--color-off-white-muted);
+}
 
-export const ErrorText = styled.p`
+.errorText {
   margin: 0;
   font-size: 13px;
   line-height: 1.4;
-  color: ${theme.colors.errLight};
-`
+  color: var(--color-err-light);
+}
 
-export const Help = styled.span`
+.help {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -135,7 +130,7 @@ export const Help = styled.span`
   line-height: 1.4;
   text-align: left;
 
-  strong {
+  & strong {
     margin-bottom: 4px;
   }
-`
+}

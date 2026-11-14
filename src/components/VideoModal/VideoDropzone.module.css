@@ -1,9 +1,4 @@
-import styled from '@emotion/styled'
-import { theme } from '~/styles/theme'
-
-const mobile = theme.media.maxWidth('mobile')
-
-export const Zone = styled.div`
+.zone {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -12,9 +7,9 @@ export const Zone = styled.div`
   gap: 8px;
   min-height: 280px;
   padding: 32px 24px;
-  border: 2px dashed ${theme.colors.glassLine};
-  border-radius: ${theme.radius.dropzone};
-  background: ${theme.colors.glassFaint};
+  border: 2px dashed var(--color-glass-line);
+  border-radius: var(--radius-dropzone);
+  background: var(--color-glass-faint);
   text-align: center;
 
   &[data-compact] {
@@ -23,8 +18,8 @@ export const Zone = styled.div`
   }
 
   &[data-dragging] {
-    border-color: ${theme.colors.white};
-    background: ${theme.colors.glass};
+    border-color: var(--color-white);
+    background: var(--color-glass);
   }
 
   &[data-busy] > :not([data-spinner]) {
@@ -35,7 +30,7 @@ export const Zone = styled.div`
   &[data-empty] > svg {
     width: 32px;
     height: 32px;
-    color: ${theme.colors.gray4};
+    color: var(--color-gray4);
   }
 
   /* Filled: the caller's card, still a drop target for a replacement. */
@@ -45,49 +40,49 @@ export const Zone = styled.div`
     gap: 16px;
     padding: 12px;
     border-style: solid;
-    border-color: ${theme.colors.glassFaint};
+    border-color: var(--color-glass-faint);
     text-align: left;
   }
 
-  ${mobile} {
+  @media (max-width: 768px) {
     min-height: 200px;
     padding: 24px 16px;
 
-    [data-desktop] {
+    & [data-desktop] {
       display: none;
     }
   }
-`
+}
 
-export const DropText = styled.span`
+.dropText {
   font-size: 14px;
   line-height: 1.5;
-  color: ${theme.colors.softWhite};
-`
+  color: var(--color-soft-white);
+}
 
-export const Hint = styled.span`
+.hint {
   font-size: 12px;
   font-weight: 400;
-  color: ${theme.colors.gray4};
-`
+  color: var(--color-gray4);
+}
 
-export const BrowseLink = styled.button`
+.browseLink {
   padding: 0;
   border: 0;
   background: none;
   font: inherit;
   font-weight: 700;
-  color: ${theme.colors.white};
+  color: var(--color-white);
   text-decoration: underline;
   cursor: pointer;
 
   &:hover,
   &:focus-visible {
-    color: ${theme.colors.gray4};
+    color: var(--color-gray4);
   }
-`
+}
 
-export const Spinner = styled.span`
+.spinner {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -95,13 +90,19 @@ export const Spinner = styled.span`
   height: 28px;
   margin: -14px 0 0 -14px;
   border-radius: 50%;
-  border: 3px solid ${theme.colors.glass};
-  border-top-color: ${theme.colors.white};
+  border: 3px solid var(--color-glass);
+  border-top-color: var(--color-white);
   animation: spin 0.8s linear infinite;
-`
+}
 
-export const ErrorText = styled.p`
+.errorText {
   margin: 8px 0 0;
   font-size: 13px;
-  color: ${theme.colors.errStrong};
-`
+  color: var(--color-err-strong);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -16,7 +16,7 @@ import {
 } from '~/lib/mappings'
 import { Select, type SelectOption } from '~/components/Select'
 import { InfoTooltip } from '~/components/Tooltip'
-import * as S from './MappingEditor.styles'
+import styles from './MappingEditor.module.css'
 
 type Props = {
   value: Mapping | null
@@ -56,6 +56,8 @@ export function MappingEditor({
   testId = 'mapping-editor'
 }: Props) {
   const { t } = useTranslation()
+  // A one-line field in compact rows, a textarea where there is room for a long list of ids.
+  const IdsField = compact ? 'input' : 'textarea'
   const [draft, setDraft] = useState<MappingDraft>(() => toMappingDraft(value))
   // A value coming back from the server replaces the draft only while the draft still shows the previous value: what
   // the user typed while a save was in flight wins over that save's refetch. Drafts are compared, not mappings, so an
@@ -82,14 +84,15 @@ export function MappingEditor({
   }
 
   return (
-    <S.Editor
+    <div
+      className={styles.editor}
       role={groupLabel ? 'group' : undefined}
       aria-label={groupLabel}
       data-compact={compact || undefined}
       data-tone={tone}
       data-testid={testId}
     >
-      <S.TypeCell>
+      <div className={styles.typeCell}>
         <Select
           value={draft.type}
           options={options}
@@ -103,21 +106,22 @@ export function MappingEditor({
         {withHelp && !compact && (
           <InfoTooltip
             content={
-              <S.Help>
+              <span className={styles.help}>
                 <strong>{t('mapping_editor.help.title')}</strong>
                 {TYPES.map(type => (
                   <span key={type}>
                     <b>{t(`mapping_editor.type.${type}`)}</b>: {t(`mapping_editor.help.${type}`)}
                   </span>
                 ))}
-              </S.Help>
+              </span>
             }
             testId={`${testId}-help`}
           />
         )}
-      </S.TypeCell>
+      </div>
       {draft.type === MappingType.SINGLE && (
-        <S.Input
+        <input
+          className={styles.input}
           value={draft.id}
           inputMode="numeric"
           maxLength={TOKEN_ID_MAX_LENGTH}
@@ -131,8 +135,8 @@ export function MappingEditor({
         />
       )}
       {draft.type === MappingType.MULTIPLE && (
-        <S.Input
-          as={compact ? 'input' : 'textarea'}
+        <IdsField
+          className={styles.input}
           value={draft.ids}
           placeholder={t('mapping_editor.multiple_placeholder')}
           aria-label={t('mapping_editor.type.multiple')}
@@ -143,8 +147,9 @@ export function MappingEditor({
         />
       )}
       {draft.type === MappingType.RANGE && (
-        <S.RangeRow data-range>
-          <S.Input
+        <div className={styles.rangeRow} data-range>
+          <input
+            className={styles.input}
             value={draft.from}
             inputMode="numeric"
             maxLength={TOKEN_ID_MAX_LENGTH}
@@ -155,8 +160,11 @@ export function MappingEditor({
             data-testid={`${testId}-from`}
             onChange={event => update({ from: event.target.value.replace(DIGITS, '') })}
           />
-          <S.RangeDash aria-hidden>–</S.RangeDash>
-          <S.Input
+          <span className={styles.rangeDash} aria-hidden>
+            –
+          </span>
+          <input
+            className={styles.input}
             value={draft.to}
             inputMode="numeric"
             maxLength={TOKEN_ID_MAX_LENGTH}
@@ -167,9 +175,13 @@ export function MappingEditor({
             data-testid={`${testId}-to`}
             onChange={event => update({ to: event.target.value.replace(DIGITS, '') })}
           />
-        </S.RangeRow>
+        </div>
       )}
-      {invalid && !compact && <S.ErrorText data-testid={`${testId}-error`}>{t('mapping_editor.invalid')}</S.ErrorText>}
-    </S.Editor>
+      {invalid && !compact && (
+        <p className={styles.errorText} data-testid={`${testId}-error`}>
+          {t('mapping_editor.invalid')}
+        </p>
+      )}
+    </div>
   )
 }

@@ -1,7 +1,4 @@
-import styled from '@emotion/styled'
-import { theme } from '~/styles/theme'
-
-export const Layout = styled.div`
+.layout {
   display: flex;
   width: 100%;
   height: min(750px, 90vh); /* limit height to avoid overflowing the viewport on small screens */
@@ -11,18 +8,17 @@ export const Layout = styled.div`
     pointer-events: none;
     opacity: 0.7;
   }
-`
+}
 
-/* Right-hand column: the form/processing pane plus the actions, so the sidebar spans full height. */
-export const Main = styled.div`
+.main {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-width: 0;
   min-height: 0;
-`
+}
 
-export const Content = styled.section`
+.content {
   display: flex;
   flex: 1;
   align-items: flex-start;
@@ -36,14 +32,14 @@ export const Content = styled.section`
     padding-left: 16px;
   }
 
-  ${theme.media.maxWidth('mobile')} {
+  @media (max-width: 768px) {
     flex-direction: column;
     align-items: stretch;
     padding: 16px;
   }
-`
+}
 
-export const PreviewPane = styled.div`
+.previewPane {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -51,20 +47,20 @@ export const PreviewPane = styled.div`
   max-width: 50%;
   flex-shrink: 0;
   padding: 24px;
-  border-radius: ${theme.radius.banner};
-  background: ${theme.colors.overlayLight};
+  border-radius: var(--radius-banner);
+  background: var(--color-overlay-light);
 
-  ${theme.media.maxWidth('mobile')} {
+  @media (max-width: 768px) {
     width: 100%;
     max-width: none;
   }
-`
+}
 
-export const ThumbnailWrap = styled.div`
+.thumbnailWrap {
   position: relative;
-`
+}
 
-export const ThumbnailBadge = styled.span`
+.thumbnailBadge {
   position: absolute;
   top: 12px;
   right: 12px;
@@ -74,23 +70,23 @@ export const ThumbnailBadge = styled.span`
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: ${theme.colors.overlayStrong};
-  color: ${theme.colors.white};
+  background: var(--color-overlay-strong);
+  color: var(--color-white);
   cursor: default;
 
-  svg {
+  & svg {
     width: 22px;
     height: 22px;
   }
-`
+}
 
-export const ThumbnailBox = styled.button`
+.thumbnailBox {
   position: relative;
   width: 100%;
   aspect-ratio: 1;
   padding: 0;
   border: 0;
-  border-radius: ${theme.radius.banner};
+  border-radius: var(--radius-banner);
   overflow: hidden;
   cursor: pointer;
 
@@ -103,149 +99,148 @@ export const ThumbnailBox = styled.button`
   &:focus-visible [data-thumb-overlay] {
     opacity: 1;
   }
-`
+}
 
-export const ThumbnailOverlay = styled.span`
+.thumbnailOverlay {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: ${theme.colors.overlayStrong};
+  background: var(--color-overlay-strong);
   opacity: 0;
   transition: opacity 0.3s ease;
 
-  svg {
+  & svg {
     font-size: 60px;
-    color: ${theme.colors.white};
+    color: var(--color-white);
   }
-`
+}
 
-/* Wearable pills share the row equally; the emote set (four pills) hugs its content instead. */
-export const MetricsRow = styled.div`
+.metricsRow {
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
 
-  > * {
+  & > * {
     flex: 1;
   }
   &[data-compact] > * {
     gap: 4px;
     font-size: 12px;
-    color: ${theme.colors.gray4};
+    color: var(--color-gray4);
 
-    svg {
+    & svg {
       width: 16px;
       height: 16px;
     }
   }
-`
+}
 
-// Same box as a MetricPill, so the row keeps its height when the metrics land.
-export const MetricSkeleton = styled.span`
+/* Same box as a MetricPill, so the row keeps its height when the metrics land. */
+.metricSkeleton {
   height: 40px;
-  border-radius: ${theme.radius.btnSm};
-`
+  border-radius: var(--radius-btn-sm);
+}
 
-export const MetricPill = styled.span`
+.metricPill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
   padding: 8px;
-  border-radius: ${theme.radius.btnSm};
-  background: ${theme.colors.glassFaint};
-  color: ${theme.colors.softWhite};
+  border-radius: var(--radius-btn-sm);
+  background: var(--color-glass-faint);
+  color: var(--color-soft-white);
   font-size: 14px;
   line-height: 1.5;
   white-space: nowrap;
 
-  svg {
+  & svg {
     width: 24px;
     height: 24px;
     flex-shrink: 0;
   }
-`
+}
 
-export const WarningsList = styled.div`
+.warningsList {
   display: flex;
   flex-direction: column;
   gap: 8px;
-`
+}
 
-export const WarningCard = styled.div`
+.warningCard {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 12px 8px;
-  border-radius: ${theme.radius.btnSm};
-  background: ${theme.colors.warningOverlay};
-  color: ${theme.colors.warningText};
+  border-radius: var(--radius-btn-sm);
+  background: var(--color-warning-overlay);
+  color: var(--color-warning-text);
   font-size: 12px;
   line-height: 1.334;
   overflow-wrap: anywhere;
 
-  svg {
+  & svg {
     flex-shrink: 0;
     width: 24px;
     height: 24px;
-    color: ${theme.colors.amber};
+    color: var(--color-amber);
   }
-`
+}
 
-export const FormPane = styled.div`
+.formPane {
   display: flex;
   flex-direction: column;
   gap: 32px;
   flex: 1;
   min-width: 0;
-`
+}
 
-export const FormHeading = styled.h3`
+.formHeading {
   margin: 0;
   font-size: 24px;
   font-weight: 500;
   line-height: 1.334;
-  color: ${theme.colors.softWhite};
-`
+  color: var(--color-soft-white);
+}
 
-export const Field = styled.label`
+.field {
   display: flex;
   flex-direction: column;
   gap: 8px;
   font-size: 14px;
   font-weight: 400;
   line-height: 1.57;
-  color: ${theme.colors.softWhite};
+  color: var(--color-soft-white);
 
   &[data-hinted] {
     gap: 12px;
   }
-`
+}
 
-export const FieldLabel = styled.span`
+.fieldLabel {
   display: flex;
   flex-direction: column;
   gap: 2px;
-`
+}
 
-export const FieldHint = styled.span`
+.fieldHint {
   display: flex;
   align-items: center;
   gap: 4px;
   font-size: 12px;
   line-height: normal;
-  color: ${theme.colors.muted2};
+  color: var(--color-muted2);
 
-  svg {
+  & svg {
     width: 15px;
     height: 15px;
     flex-shrink: 0;
   }
-`
+}
 
-export const Segmented = styled.div`
+.segmented {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
@@ -254,33 +249,33 @@ export const Segmented = styled.div`
   &[data-joined] {
     gap: 0;
 
-    > * {
+    & > * {
       padding: 0 12px;
       border-radius: 0;
     }
-    > * + * {
+    & > * + * {
       margin-left: -1px;
     }
-    > :first-of-type {
-      border-radius: ${theme.radius.input} 0 0 ${theme.radius.input};
+    & > :first-of-type {
+      border-radius: var(--radius-input) 0 0 var(--radius-input);
     }
-    > :last-of-type {
-      border-radius: 0 ${theme.radius.input} ${theme.radius.input} 0;
+    & > :last-of-type {
+      border-radius: 0 var(--radius-input) var(--radius-input) 0;
     }
   }
-`
+}
 
-export const SegmentButton = styled.button`
+.segmentButton {
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   height: 48px;
   padding: 0 16px 0 12px;
-  border: 1px solid ${theme.colors.muted2};
-  border-radius: ${theme.radius.input};
+  border: 1px solid var(--color-muted2);
+  border-radius: var(--radius-input);
   background: none;
-  color: ${theme.colors.muted2};
+  color: var(--color-muted2);
   font: inherit;
   font-size: 16px;
   font-weight: 600;
@@ -290,14 +285,14 @@ export const SegmentButton = styled.button`
   /* The 2px selected stroke is border + inset shadow so the box never grows. */
   &[data-selected] {
     z-index: 1;
-    border-color: ${theme.colors.white};
-    box-shadow: inset 0 0 0 1px ${theme.colors.white};
-    background: ${theme.colors.glassFaint};
-    color: ${theme.colors.white};
+    border-color: var(--color-white);
+    box-shadow: inset 0 0 0 1px var(--color-white);
+    background: var(--color-glass-faint);
+    color: var(--color-white);
   }
 
   &:hover:not([aria-disabled]) {
-    background: ${theme.colors.glassFaint};
+    background: var(--color-glass-faint);
   }
 
   &[aria-disabled] {
@@ -308,92 +303,87 @@ export const SegmentButton = styled.button`
     cursor: not-allowed;
   }
 
-  svg {
+  & svg {
     width: 24px;
     height: 24px;
     flex-shrink: 0;
   }
-`
+}
 
-export const ErrorText = styled.p`
+.errorText {
   margin: 0;
   font-size: 13px;
-  color: ${theme.colors.errStrong};
-`
+  color: var(--color-err-strong);
+}
 
-/** The item's size against its limit, as saving would leave it. */
-export const SizeLine = styled.p`
+.sizeLine {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 6px;
   margin: 0;
   font-size: 13px;
-  color: ${theme.colors.muted2};
+  color: var(--color-muted2);
 
-  strong {
+  & strong {
     font-weight: 600;
     color: inherit;
   }
 
   &[data-exceeded] strong {
-    color: ${theme.colors.errStrong};
+    color: var(--color-err-strong);
   }
-`
+}
 
-export const Footer = styled.div`
+.footer {
   display: flex;
   flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   padding-top: 24px;
-  border-top: 1px solid ${theme.colors.gray4};
+  border-top: 1px solid var(--color-gray4);
 
   [data-flush] & {
     padding: 24px;
   }
 
-  ${theme.media.maxWidth('xl')} {
-    button {
+  @media (max-width: 1200px) {
+    & button {
       min-width: 0;
     }
   }
-`
+}
 
-export const FooterRight = styled.div`
+.footerRight {
   display: flex;
   gap: 16px;
-`
+}
 
-export const ProcessingPane = styled.div`
+.processingPane {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 24px;
-  color: ${theme.colors.softWhite};
+  color: var(--color-soft-white);
   font-size: 16px;
   text-align: center;
   flex: 1;
   width: 1045px;
   max-width: 100%;
-`
+}
 
-export const ProcessingSpinner = styled.span`
+.processingSpinner {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 3px solid ${theme.colors.glassFaint};
-  border-top-color: ${theme.colors.dclRed};
+  border: 3px solid var(--color-glass-faint);
+  border-top-color: var(--color-dcl-red);
   animation: spin 0.8s linear infinite;
-`
+}
 
-/**
- * Sits behind the modal's opaque surface (rendered inside the dialog, which clips it) rather than off-screen:
- * Chrome throttles a cross-origin iframe outside the viewport or at opacity 0, which made Unity ~10x slower.
- */
-export const HiddenPreview = styled.div`
+.hiddenPreview {
   position: absolute;
   top: 0;
   left: 0;
@@ -402,4 +392,10 @@ export const HiddenPreview = styled.div`
   height: 1024px;
   pointer-events: none;
   opacity: 0.01;
-`
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -4,11 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 // Emotion files still waiting for their CSS Modules conversion. A conversion deletes its entry; nothing new joins.
 const REMAINING = [
-  'src/components/AvatarPreview/AvatarPreview.styles.ts',
-  'src/components/CollectionDetailPage/AddItemsModal/AddItemsModal.styles.ts',
-  'src/components/ItemDraftModal/ItemDraftModal.styles.ts',
   'src/components/ItemEditorPage/AvatarCustomizer/AvatarCustomizer.styles.ts',
-  'src/components/ItemEditorPage/ChangeFileModal/ChangeFileModal.styles.ts',
   'src/components/ItemEditorPage/EditorPreviewLaunch/EditorPreviewLaunch.styles.ts',
   'src/components/ItemEditorPage/HidesEditor/HidesEditor.styles.ts',
   'src/components/ItemEditorPage/ItemEditorPage.styles.ts',
@@ -20,15 +16,8 @@ const REMAINING = [
   'src/components/ItemEditorPage/SpringBonesEditor/BoneTreePicker/BoneTreePicker.styles.ts',
   'src/components/ItemEditorPage/SpringBonesEditor/SpringBonesEditor.styles.ts',
   'src/components/LivePreviewPage/LivePreviewPage.styles.ts',
-  'src/components/MappingEditor/MappingEditor.styles.ts',
-  'src/components/ThumbnailModal/ThumbnailModal.styles.ts',
   'src/components/Tooltip/Tooltip.styles.ts',
-  'src/components/TopNav/TopNav.styles.ts',
-  'src/components/ValidationBadge/ItemValidationCard.styles.ts',
-  'src/components/ValidationBadge/ValidationBadge.styles.ts',
-  'src/components/ValidationBadge/ValidationResultsModal.styles.ts',
-  'src/components/VideoModal/VideoDropzone.styles.ts',
-  'src/components/VideoModal/VideoModal.styles.ts'
+  'src/components/TopNav/TopNav.styles.ts'
 ]
 
 const files = (readdirSync('src', { recursive: true }) as string[]).map(path => `src/${path.replace(/\\/g, '/')}`)

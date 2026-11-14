@@ -1,40 +1,37 @@
-import styled from '@emotion/styled'
-import { ItemThumbnail } from '~/components/ItemThumbnail'
-import { theme } from '~/styles/theme'
-
-export const Card = styled.section`
+.card {
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 12px;
-  border-radius: ${theme.radius.card};
-  background: ${theme.colors.overlay};
-`
+  border-radius: var(--radius-card);
+  background: var(--color-overlay);
+}
 
-export const Header = styled.div`
+.header {
   display: flex;
   align-items: center;
   gap: 12px;
-`
+}
 
-const subject = `
+.subject {
   display: flex;
   flex: 1;
   align-items: center;
   gap: 12px;
   min-width: 0;
-`
+}
 
-export const Subject = styled.div`
-  ${subject}
-`
+.subjectButton {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 
-export const SubjectButton = styled.button`
-  ${subject}
   min-height: 44px;
   padding: 0;
   border: none;
-  border-radius: ${theme.radius.chip};
+  border-radius: var(--radius-chip);
   background: none;
   color: inherit;
   font: inherit;
@@ -43,44 +40,44 @@ export const SubjectButton = styled.button`
 
   &:hover,
   &:focus-visible {
-    background: ${theme.colors.overlayLight};
+    background: var(--color-overlay-light);
   }
-`
+}
 
-export const Thumbnail = styled(ItemThumbnail)`
+.thumbnail {
   flex: none;
   width: 46px;
   height: 46px;
-  border-radius: ${theme.radius.chip};
-`
+  border-radius: var(--radius-chip);
+}
 
-export const SubjectText = styled.span`
+.subjectText {
   display: flex;
   flex: 1;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
   line-height: 1.57;
-`
+}
 
-export const SubjectName = styled.span`
+.subjectName {
   overflow: hidden;
-  color: ${theme.colors.softWhite};
+  color: var(--color-soft-white);
   font-size: 16px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
-`
+}
 
-export const SubjectMeta = styled.span`
+.subjectMeta {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  color: ${theme.colors.gray4};
+  color: var(--color-gray4);
   font-size: 12px;
-`
+}
 
-export const Rerun = styled.button`
+.rerun {
   flex: none;
   display: inline-flex;
   align-items: center;
@@ -91,12 +88,12 @@ export const Rerun = styled.button`
   border: 0;
   border-radius: 50%;
   background: none;
-  color: ${theme.colors.softWhite};
+  color: var(--color-soft-white);
   cursor: pointer;
 
   &:hover:not([aria-disabled]),
   &:focus-visible {
-    background: ${theme.colors.glassFaint};
+    background: var(--color-glass-faint);
   }
 
   &[aria-disabled] {
@@ -107,52 +104,52 @@ export const Rerun = styled.button`
   &[data-running] svg {
     animation: spin 0.8s linear infinite;
   }
-`
+}
 
-export const IssueList = styled.ul`
+.issueList {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
-`
+}
 
-export const Issue = styled.li`
+.issue {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 12px 8px;
   border: 1px solid transparent;
-  border-radius: ${theme.radius.btnSm};
-  background: ${theme.colors.warningOverlay};
-  color: ${theme.colors.warningText};
+  border-radius: var(--radius-btn-sm);
+  background: var(--color-warning-overlay);
+  color: var(--color-warning-text);
   font-size: 12px;
   line-height: 1.334;
 
   & > svg {
     flex: none;
-    color: ${theme.colors.amber};
+    color: var(--color-amber);
   }
 
-  &[data-severity='error'] {
-    border-color: ${theme.colors.redRejected};
-    background: ${theme.colors.errorOverlay};
-    color: ${theme.colors.errorText};
+  &[data-severity="error"] {
+    border-color: var(--color-red-rejected);
+    background: var(--color-error-overlay);
+    color: var(--color-error-text);
   }
-  &[data-severity='error'] > svg {
-    color: ${theme.colors.errLight};
+  &[data-severity="error"] > svg {
+    color: var(--color-err-light);
   }
-`
+}
 
-export const IssueText = styled.span`
+.issueText {
   display: flex;
   flex-direction: column;
   min-width: 0;
   overflow-wrap: anywhere;
-`
+}
 
-export const IssueTitle = styled.span`
+.issueTitle {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -161,17 +158,23 @@ export const IssueTitle = styled.span`
   & strong {
     font-weight: 700;
   }
-`
+}
 
-export const ShapeLabel = styled.span`
+.shapeLabel {
   padding: 0 6px;
   border: 1px solid currentColor;
-  border-radius: ${theme.radius.chip};
+  border-radius: var(--radius-chip);
   font-size: 11px;
   line-height: 16px;
-`
+}
 
-export const Empty = styled.p`
+.empty {
   margin: 0;
-  color: ${theme.colors.softWhite};
-`
+  color: var(--color-soft-white);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
