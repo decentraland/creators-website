@@ -26,7 +26,7 @@ const pages = new Map<boolean, string>()
  * emotes), and an answer to every controller request, with the fixture thumbnail as the screenshot and sound
  * reported when the item ships an audio file. Metrics read the boot scene until a model sent in an UPDATE has loaded.
  * Each frame also reports its numbered steps (`frame` answers: `<kind>-<id>:<n>:<step>`, steps `booted`, `ready`, `update`,
- * `model-loaded`) so a spec that times out can tell where a preview stopped (see `waitForProcessedAction`).
+ * `model-loaded`, and `gone` when it unloads) so a spec that times out can tell where a preview stopped (see `waitForProcessedAction`).
  */
 export function previewPageHtml({ holdLoads = false }: PreviewOptions = {}): string {
   const cached = pages.get(holdLoads)
@@ -38,12 +38,14 @@ export function previewPageHtml({ holdLoads = false }: PreviewOptions = {}): str
       /disableBackground=true/.test(location.search) ? 'processor' : 'preview';
     var FRAME = KIND + '-' + Math.random().toString(36).slice(2, 6);
     function report(method, result) {
-      fetch('/__e2e/answer?method=' + method + '&result=' + encodeURIComponent(result)).catch(function () {});
+      fetch('/__e2e/answer?method=' + method + '&result=' + encodeURIComponent(result), { keepalive: true }).catch(function () {});
     }
     var steps = 0;
     // Numbered, because the reports travel as separate requests and can land out of order.
     function step(name) { report('frame', FRAME + ':' + steps++ + ':' + name); }
     step('booted');
+    // A frame that unmounted can't be the one stalling.
+    window.addEventListener('pagehide', function () { step('gone'); });
     var pending = 0;
     var SCREENSHOT = 'data:image/png;base64,${readFileSync(FIXTURE.thumbnail).toString('base64')}';
     var METRICS = ${JSON.stringify(PREVIEW_METRICS)};
@@ -115,8 +117,13 @@ const BOOT_STEPS = ['booted', 'ready', 'update']
 
 /** Where a frame stopped: a boot step it never reached, or a model it got in its last UPDATE and never loaded. */
 function stalledBefore(steps: Array<string | undefined>): string | undefined {
+  if (steps.includes('gone')) return undefined
   const lastUpdate = steps.lastIndexOf('update')
-  if (lastUpdate < 0) return BOOT_STEPS.find(step => !steps.includes(step))
+  if (lastUpdate < 0) {
+    // A later step proves the earlier ones, even when their reports were lost.
+    const reached = Math.max(...steps.map(step => BOOT_STEPS.indexOf(step ?? '')))
+    return BOOT_STEPS[reached + 1]
+  }
   // One iframe processes a batch one draft after another, so only what followed the latest UPDATE counts.
   return steps.slice(lastUpdate).includes('model-loaded') ? undefined : 'model-loaded'
 }
