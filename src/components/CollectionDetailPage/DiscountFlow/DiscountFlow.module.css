@@ -1,28 +1,23 @@
-import styled from '@emotion/styled'
-import { theme } from '~/styles/theme'
-
-export { Note } from '../SellItemFlow/SellItemModal.styles'
-
-export const Discounts = styled.ul`
+.discounts {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin: 0 0 16px;
   padding: 0;
   list-style: none;
-`
+}
 
-export const DiscountChip = styled.li`
+.discountChip {
   display: flex;
   align-items: center;
   gap: 12px;
   min-height: 44px;
   padding: 4px 4px 4px 16px;
-  border: 1px solid ${theme.colors.glassHover};
-  border-radius: ${theme.radius.btn};
-  background: ${theme.colors.overlayLight};
+  border: 1px solid var(--color-glass-hover);
+  border-radius: var(--radius-btn);
+  background: var(--color-overlay-light);
   font-size: 14px;
-  color: ${theme.colors.softWhite};
+  color: var(--color-soft-white);
 
   /* The tight right edge is sized for the End button; without it the terms need the same room as the left. */
   &:not(:has(> button)) {
@@ -30,29 +25,29 @@ export const DiscountChip = styled.li`
   }
 
   & span {
-    color: ${theme.colors.gray4};
+    color: var(--color-gray4);
     font-size: 13px;
   }
 
-  ${theme.media.maxWidth('mobile')} {
+  @media (max-width: 768px) {
     width: 100%;
     justify-content: space-between;
   }
-`
+}
 
-export const DiscountTerms = styled.div`
+.discountTerms {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 4px 10px;
-`
+}
 
-export const TextButton = styled.button`
+.textButton {
   padding: 0;
   border: 0;
   background: none;
   font: inherit;
-  color: ${theme.colors.softWhite};
+  color: var(--color-soft-white);
   text-decoration: underline;
   cursor: pointer;
-`
+}

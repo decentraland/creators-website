@@ -6,7 +6,7 @@ import { SmartIcon } from '~/components/Icons'
 import { BodyShapeIcon, CategoryIcon, PlayModeIcon } from '~/components/ItemIcons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { RarityPill } from '~/components/RarityPill'
-import * as S from './SellItemModal.styles'
+import styles from './SellItemModal.module.css'
 
 type Props = {
   item: Item
@@ -25,52 +25,64 @@ export function SellItemCard({ item, showAvailability = false }: Props) {
   const isSmart = isSmartWearable(item)
 
   return (
-    <S.Card data-testid="sell-item-card">
-      <S.CardThumb>
+    <div className={styles.card} data-testid="sell-item-card">
+      <div className={styles.cardThumb}>
         <ItemThumbnail src={thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null} rarity={item.rarity} />
-      </S.CardThumb>
-      <S.CardBody>
-        <S.CardName title={item.name}>{item.name}</S.CardName>
-        <S.Badges>
+      </div>
+      <div className={styles.cardBody}>
+        <h3 className={styles.cardName} title={item.name}>
+          {item.name}
+        </h3>
+        <div className={styles.badges}>
           {item.rarity && <RarityPill rarity={item.rarity} />}
           {category && (
-            <S.Badge data-testid="sell-item-badge-category" title={t(`collection_detail_page.category.${category}`)}>
+            <span
+              className={styles.badge}
+              data-testid="sell-item-badge-category"
+              title={t(`collection_detail_page.category.${category}`)}
+            >
               <CategoryIcon category={category} />
-            </S.Badge>
+            </span>
           )}
           {bodyShape && (
-            <S.Badge
+            <span
+              className={styles.badge}
               data-testid="sell-item-badge-body-shape"
               title={t(`collection_detail_page.body_type.${bodyShape}`)}
             >
               <BodyShapeIcon bodyShape={bodyShape} />
-            </S.Badge>
+            </span>
           )}
           {isEmote && (
-            <S.Badge
+            <span
+              className={styles.badge}
               data-testid="sell-item-badge-play-mode"
               title={t(
                 `collection_detail_page.play_mode.${item.data.loop ? EmotePlayMode.LOOP : EmotePlayMode.SIMPLE}`
               )}
             >
               <PlayModeIcon playMode={item.data.loop ? EmotePlayMode.LOOP : EmotePlayMode.SIMPLE} />
-            </S.Badge>
+            </span>
           )}
           {isSmart && (
-            <S.Badge data-testid="sell-item-badge-smart" title={t('sell_item_modal.smart_wearable')}>
+            <span
+              className={styles.badge}
+              data-testid="sell-item-badge-smart"
+              title={t('sell_item_modal.smart_wearable')}
+            >
               <SmartIcon />
-            </S.Badge>
+            </span>
           )}
-        </S.Badges>
+        </div>
         {sales && (
-          <S.Availability data-testid="sell-item-availability">
+          <span className={styles.availability} data-testid="sell-item-availability">
             {t('sell_item_modal.update_price.available', {
               available: sales.maxSupply - sales.minted,
               total: sales.maxSupply
             })}
-          </S.Availability>
+          </span>
         )}
-      </S.CardBody>
-    </S.Card>
+      </div>
+    </div>
   )
 }

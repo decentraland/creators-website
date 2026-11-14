@@ -33,9 +33,10 @@ import { CurrencyIcon } from './CurrencyIcon'
 import { ErrorNotice } from './ErrorNotice'
 import { formatDateTime } from './dates'
 import { RangePicker, type RangePickerHandle } from './RangePicker'
+import { SaleCountdown } from './SaleCountdown'
 import { SaleIcon as Icon } from './SaleIcon'
 import modal from '~/components/Modal/Modal.module.css'
-import * as S from './CreatorSaleModal.styles'
+import styles from './CreatorSaleModal.module.css'
 
 const PCT_PRESETS = [10, 20, 30, 50]
 const DURATION_PRESETS = [
@@ -458,16 +459,20 @@ export function CreatorSaleModal({
         description={
           <>
             {t('creator_sale.success_body', { count: created.collections.length, pct: created.discount / 10_000 })}
-            <S.SuccessDetail>
+            <span className={styles.successDetail}>
               {scheduled ? (
                 t('creator_sale.success_starts', { date: formatDateTime(created.checks.effective, intl.locale) })
               ) : (
                 <>
                   {t('creator_sale.success_ends')}{' '}
-                  <S.SuccessCountdown until={created.checks.expiration} testId="creator-sale-countdown" />
+                  <SaleCountdown
+                    className={styles.successCountdown}
+                    until={created.checks.expiration}
+                    testId="creator-sale-countdown"
+                  />
                 </>
               )}
-            </S.SuccessDetail>
+            </span>
           </>
         }
         action={{
@@ -491,10 +496,10 @@ export function CreatorSaleModal({
    * and the word it used to carry cannot drift out of step with the currency's name.
    */
   const marked = (chunks: ReactNode[]) => (
-    <S.Marked>
-      <CurrencyIcon className="ccy-mark" />
+    <b className={styles.marked}>
+      <CurrencyIcon inline />
       {chunks}
-    </S.Marked>
+    </b>
   )
 
   /** How many copies the sale price can cover: the cap when set, otherwise the listed items' own supply. */
@@ -504,14 +509,14 @@ export function CreatorSaleModal({
       : tNode('creator_sale.review_no_cap', { b: bold, count: review.supply })
 
   const steps = (current: number) => (
-    <S.Steps>
+    <div className={styles.steps}>
       <StepIndicator
         current={current}
         total={2}
         labels={[t('creator_sale.step_setup'), t('creator_sale.step_review')]}
         testId="creator-sale-steps"
       />
-    </S.Steps>
+    </div>
   )
 
   if (busy) {
@@ -528,7 +533,8 @@ export function CreatorSaleModal({
     const shown = reviewed ?? terms
     return (
       <div className={modal.scrim} onClick={onClose} role="presentation">
-        <S.Card
+        <div
+          className={styles.card}
           ref={card}
           tabIndex={-1}
           data-testid="creator-sale-review"
@@ -537,95 +543,98 @@ export function CreatorSaleModal({
           aria-modal="true"
           aria-label={t('creator_sale.title')}
         >
-          <S.Head>
+          <div className={styles.head}>
             <h2 className={modal.title}>{t('creator_sale.title')}</h2>
             <button className={modal.closeButton} type="button" onClick={onClose} aria-label={t('creator_sale.cancel')}>
               <CloseIcon fontSize="small" />
             </button>
-          </S.Head>
-          <S.Divider />
+          </div>
+          <hr className={styles.divider} />
           {steps(2)}
-          <S.Body ref={body}>
+          <div className={styles.body} ref={body}>
             {/* Three labelled rows sharing one column, so the discount, the start and the end line up as
               the same kind of fact. Each end of the window carries how long until it: a date alone does
               not answer "when does this actually happen", which is what a creator is checking here. */}
-            <S.ReviewSummary>
-              <S.ReviewWhenRow data-testid="creator-sale-review-discount">
-                <S.ReviewWhenLabel>{t('creator_sale.discount')}</S.ReviewWhenLabel>
-                <S.ReviewPct>
+            <div className={styles.reviewSummary}>
+              <div className={styles.reviewWhenRow} data-testid="creator-sale-review-discount">
+                <span className={styles.reviewWhenLabel}>{t('creator_sale.discount')}</span>
+                <span className={styles.reviewPct}>
                   <SaleTag pct={pct} testId="creator-sale-review-pct" />
-                </S.ReviewPct>
-              </S.ReviewWhenRow>
-              <S.ReviewWhenRow data-testid="creator-sale-review-starts">
-                <S.ReviewWhenLabel>{t('creator_sale.review_starts')}</S.ReviewWhenLabel>
-                <S.ReviewWhenValue>
+                </span>
+              </div>
+              <div className={styles.reviewWhenRow} data-testid="creator-sale-review-starts">
+                <span className={styles.reviewWhenLabel}>{t('creator_sale.review_starts')}</span>
+                <b className={styles.reviewWhenValue}>
                   {shown.startsAtMs
                     ? formatDateTime(shown.startsAtMs, intl.locale)
                     : t('creator_sale.review_starts_now')}
-                </S.ReviewWhenValue>
-                {shown.startsAtMs ? <S.ReviewWhenLeft until={shown.startsAtMs} /> : null}
-              </S.ReviewWhenRow>
-              <S.ReviewWhenRow data-testid="creator-sale-review-ends">
-                <S.ReviewWhenLabel>{t('creator_sale.review_ends')}</S.ReviewWhenLabel>
-                <S.ReviewWhenValue>{formatDateTime(shown.endsAtMs, intl.locale)}</S.ReviewWhenValue>
-                <S.ReviewWhenLeft until={shown.endsAtMs} />
-              </S.ReviewWhenRow>
-            </S.ReviewSummary>
+                </b>
+                {shown.startsAtMs ? <SaleCountdown className={styles.reviewWhenLeft} until={shown.startsAtMs} /> : null}
+              </div>
+              <div className={styles.reviewWhenRow} data-testid="creator-sale-review-ends">
+                <span className={styles.reviewWhenLabel}>{t('creator_sale.review_ends')}</span>
+                <b className={styles.reviewWhenValue}>{formatDateTime(shown.endsAtMs, intl.locale)}</b>
+                <SaleCountdown className={styles.reviewWhenLeft} until={shown.endsAtMs} />
+              </div>
+            </div>
 
-            <S.ReviewGroup>
-              <S.ReviewGroupTitle>
+            <div className={styles.reviewGroup}>
+              <h3 className={styles.reviewGroupTitle}>
                 {t('creator_sale.review_on_sale', { count: review.listed.length })}
-              </S.ReviewGroupTitle>
-              <S.ReviewList data-testid="creator-sale-review-items">
+              </h3>
+              <ul className={styles.reviewList} data-testid="creator-sale-review-items">
                 {review.listed.map(i => (
-                  <S.ReviewRow key={i.key} data-testid="creator-sale-review-item">
-                    <S.ReviewThumb src={i.thumbnail} alt="" />
-                    <S.ReviewName data-testid="review-name">{i.name}</S.ReviewName>
+                  <li className={styles.reviewRow} key={i.key} data-testid="creator-sale-review-item">
+                    <img className={styles.reviewThumb} src={i.thumbnail} alt="" />
+                    <span className={styles.reviewName} data-testid="review-name">
+                      {i.name}
+                    </span>
                     {/* A MANA listing with no rate yet to quote it in credits shows its own currency instead. */}
                     {i.priceCredits === null && i.manaWei !== undefined ? (
-                      <S.ReviewPrices>
-                        <S.ReviewWas data-testid="review-was">
+                      <span className={styles.reviewPrices}>
+                        <span className={styles.reviewWas} data-testid="review-was">
                           <CurrencyIcon currency="mana" size={14} />
                           {formatMana(i.manaWei)}
-                        </S.ReviewWas>
-                        <S.ReviewNow data-testid="review-now">
+                        </span>
+                        <span className={styles.reviewNow} data-testid="review-now">
                           <CurrencyIcon currency="mana" size={16} />
                           {formatMana(discountedManaWei(i.manaWei, pct))}
-                        </S.ReviewNow>
-                      </S.ReviewPrices>
+                        </span>
+                      </span>
                     ) : (
-                      <S.ReviewPrices>
-                        <S.ReviewWas data-testid="review-was">
+                      <span className={styles.reviewPrices}>
+                        <span className={styles.reviewWas} data-testid="review-was">
                           <CurrencyIcon size={14} />
                           {formatCredits(i.priceCredits as number)}
-                        </S.ReviewWas>
-                        <S.ReviewNow data-testid="review-now">
+                        </span>
+                        <span className={styles.reviewNow} data-testid="review-now">
                           <CurrencyIcon size={16} />
                           {formatCredits(discountedPriceCredits(i, pct, current.manaRate) as number)}
-                        </S.ReviewNow>
-                      </S.ReviewPrices>
+                        </span>
+                      </span>
                     )}
-                  </S.ReviewRow>
+                  </li>
                 ))}
-              </S.ReviewList>
-            </S.ReviewGroup>
+              </ul>
+            </div>
 
             {/* Its own section, above the unlisted ones: this is the group the creator can DO something about,
               and the one where "not for sale" would have been a lie. */}
             {review.classic.length > 0 ? (
-              <S.ReviewGroup>
-                <S.ReviewGroupTitle>
+              <div className={styles.reviewGroup}>
+                <h3 className={styles.reviewGroupTitle}>
                   {t('creator_sale.review_classic', { count: review.classic.length })}
-                </S.ReviewGroupTitle>
-                <S.ReviewList data-testid="creator-sale-review-classic">
+                </h3>
+                <ul className={styles.reviewList} data-testid="creator-sale-review-classic">
                   {review.classic.map(i => (
-                    <S.ReviewRow key={i.key} data-muted>
-                      <S.ReviewThumb src={i.thumbnail} alt="" />
-                      <S.ReviewName>{i.name}</S.ReviewName>
-                      <S.ReviewUnaffected>
+                    <li className={styles.reviewRow} key={i.key} data-muted>
+                      <img className={styles.reviewThumb} src={i.thumbnail} alt="" />
+                      <span className={styles.reviewName}>{i.name}</span>
+                      <span className={styles.reviewUnaffected}>
                         {t('creator_sale.review_classic_tag')}
                         <Tooltip content={t('creator_sale.review_classic_why')}>
-                          <S.UnaffectedInfo
+                          <Icon
+                            className={styles.unaffectedInfo}
                             name="info"
                             role="img"
                             aria-label={t('creator_sale.review_classic_why')}
@@ -633,51 +642,51 @@ export function CreatorSaleModal({
                             data-testid="creator-sale-classic-why"
                           />
                         </Tooltip>
-                      </S.ReviewUnaffected>
-                    </S.ReviewRow>
+                      </span>
+                    </li>
                   ))}
-                </S.ReviewList>
-                <S.ReviewFootNote>{tNode('creator_sale.review_classic_hint', { c: marked })}</S.ReviewFootNote>
-              </S.ReviewGroup>
+                </ul>
+                <p className={styles.reviewFootNote}>{tNode('creator_sale.review_classic_hint', { c: marked })}</p>
+              </div>
             ) : null}
 
             {/* Named explicitly rather than left out: an item the creator did not list is untouched by the
               sale, and silence there reads as "everything is covered". */}
             {review.unlisted.length > 0 ? (
-              <S.ReviewGroup>
-                <S.ReviewGroupTitle>
+              <div className={styles.reviewGroup}>
+                <h3 className={styles.reviewGroupTitle}>
                   {t('creator_sale.review_untouched', { count: review.unlisted.length })}
-                </S.ReviewGroupTitle>
-                <S.ReviewList data-testid="creator-sale-review-untouched">
+                </h3>
+                <ul className={styles.reviewList} data-testid="creator-sale-review-untouched">
                   {review.unlisted.map(i => (
-                    <S.ReviewRow key={i.key} data-muted>
-                      <S.ReviewThumb src={i.thumbnail} alt="" />
-                      <S.ReviewName>{i.name}</S.ReviewName>
-                      <S.ReviewUnaffected>{t('creator_sale.review_not_listed')}</S.ReviewUnaffected>
-                    </S.ReviewRow>
+                    <li className={styles.reviewRow} key={i.key} data-muted>
+                      <img className={styles.reviewThumb} src={i.thumbnail} alt="" />
+                      <span className={styles.reviewName}>{i.name}</span>
+                      <span className={styles.reviewUnaffected}>{t('creator_sale.review_not_listed')}</span>
+                    </li>
                   ))}
-                </S.ReviewList>
-              </S.ReviewGroup>
+                </ul>
+              </div>
             ) : null}
 
-            <S.ReviewFoot>
+            <p className={styles.reviewFoot}>
               <InfoOutlinedIcon fontSize="small" aria-hidden />
               <span>{capCopy}</span>
-            </S.ReviewFoot>
-          </S.Body>
+            </p>
+          </div>
 
-          <S.Actions>
+          <div className={styles.actions}>
             {error ? (
-              <S.ActionsNote>
+              <div className={styles.actionsNote}>
                 <ErrorNotice message={error} testId="creator-sale-error" />
-              </S.ActionsNote>
+              </div>
             ) : heldOpen ? (
-              <S.ActionsNote>
-                <S.ReviewFoot data-testid="creator-sale-request-open">
+              <div className={styles.actionsNote}>
+                <p className={styles.reviewFoot} data-testid="creator-sale-request-open">
                   <InfoOutlinedIcon fontSize="small" aria-hidden />
                   <span>{t('creator_sale.request_open')}</span>
-                </S.ReviewFoot>
-              </S.ActionsNote>
+                </p>
+              </div>
             ) : null}
             <Button
               type="button"
@@ -697,8 +706,8 @@ export function CreatorSaleModal({
             <Button type="button" data-testid="creator-sale-submit" onClick={() => void submit()} disabled={busy}>
               {shown.startsAtMs ? t('creator_sale.submit_scheduled') : t('creator_sale.submit')}
             </Button>
-          </S.Actions>
-        </S.Card>
+          </div>
+        </div>
       </div>
     )
   }
@@ -745,7 +754,8 @@ export function CreatorSaleModal({
       }}
       role="presentation"
     >
-      <S.Card
+      <div
+        className={styles.card}
         ref={card}
         tabIndex={-1}
         data-testid="creator-sale-modal"
@@ -754,34 +764,42 @@ export function CreatorSaleModal({
         aria-modal="true"
         aria-label={t('creator_sale.title')}
       >
-        <S.Head>
+        <div className={styles.head}>
           <h2 className={modal.title}>{t('creator_sale.title')}</h2>
           <button className={modal.closeButton} type="button" onClick={onClose} aria-label={t('creator_sale.cancel')}>
             <CloseIcon fontSize="small" />
           </button>
-        </S.Head>
-        <S.Divider />
+        </div>
+        <hr className={styles.divider} />
         {steps(1)}
-        <S.Body ref={body}>
-          <S.Subtitle>{t('creator_sale.subtitle')}</S.Subtitle>
+        <div className={styles.body} ref={body}>
+          <p className={styles.subtitle}>{t('creator_sale.subtitle')}</p>
 
           {/* Read-only: the sale is scoped to the collection the creator opened it from, so this states the
             context rather than offering a choice. */}
-          <S.CollectionRow data-testid="creator-sale-collections">
-            <S.RowThumb>
+          <div className={styles.collectionRow} data-testid="creator-sale-collections">
+            <span className={styles.rowThumb}>
               <CollectionMosaic collectionId={current.collectionId} itemCount={current.itemCount} />
-            </S.RowThumb>
-            <S.RowText>
-              <S.RowName>{current.name}</S.RowName>
-              <S.RowMeta>{t('creator_sale.collection_listed', { count: current.listedCount })}</S.RowMeta>
-            </S.RowText>
-          </S.CollectionRow>
+            </span>
+            <span className={styles.rowText}>
+              <span className={styles.rowName}>{current.name}</span>
+              <span className={styles.rowMeta}>
+                {t('creator_sale.collection_listed', { count: current.listedCount })}
+              </span>
+            </span>
+          </div>
 
-          <S.Field>
-            <S.FieldLabel>{t('creator_sale.discount')}</S.FieldLabel>
-            <S.Chips role="group" aria-label={t('creator_sale.discount')} data-testid="creator-sale-discounts">
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>{t('creator_sale.discount')}</span>
+            <div
+              className={styles.chips}
+              role="group"
+              aria-label={t('creator_sale.discount')}
+              data-testid="creator-sale-discounts"
+            >
               {PCT_PRESETS.map(p => (
-                <S.Chip
+                <button
+                  className={styles.chip}
                   key={p}
                   type="button"
                   data-selected={pctPreset === p || undefined}
@@ -795,10 +813,11 @@ export function CreatorSaleModal({
                   data-testid={`creator-sale-pct-${p}`}
                 >
                   {t('creator_sale.pct_tag', { pct: p })}
-                </S.Chip>
+                </button>
               ))}
               {customPctOpen ? (
-                <S.InlineInput
+                <span
+                  className={styles.inlineInput}
                   data-selected
                   aria-invalid={touched && terms.problem === 'pct' ? true : undefined}
                   data-testid="creator-sale-custom-pct-field"
@@ -823,9 +842,10 @@ export function CreatorSaleModal({
                     }}
                   />
                   <span aria-hidden>%</span>
-                </S.InlineInput>
+                </span>
               ) : (
-                <S.Chip
+                <button
+                  className={styles.chip}
                   type="button"
                   disabled={busy}
                   onClick={() => {
@@ -835,15 +855,16 @@ export function CreatorSaleModal({
                   data-testid="creator-sale-custom-pct-chip"
                 >
                   {t('creator_sale.custom_pct')}
-                </S.Chip>
+                </button>
               )}
-            </S.Chips>
-          </S.Field>
+            </div>
+          </div>
 
-          <S.Field>
-            <S.FieldLabel>{t('creator_sale.when')}</S.FieldLabel>
-            <S.WhenWrap>
-              <S.WhenTrigger
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>{t('creator_sale.when')}</span>
+            <div className={styles.whenWrap}>
+              <button
+                className={styles.whenTrigger}
                 type="button"
                 aria-expanded={whenOpen}
                 aria-haspopup="dialog"
@@ -857,10 +878,10 @@ export function CreatorSaleModal({
                 <Icon name="calendar" size={20} aria-hidden />
                 <span>{whenLabel}</span>
                 <Icon name="arrow-drop-down" size={24} aria-hidden data-open={whenOpen ? '' : undefined} />
-              </S.WhenTrigger>
+              </button>
               {whenOpen && whenAnchor
                 ? createPortal(
-                    <S.WhenAnchor ref={anchor} style={whenAnchor}>
+                    <div className={styles.whenAnchor} ref={anchor} style={whenAnchor}>
                       <RangePicker
                         stretch
                         handle={whenPicker}
@@ -880,21 +901,23 @@ export function CreatorSaleModal({
                         }}
                         onClose={() => setWhenOpen(false)}
                       />
-                    </S.WhenAnchor>,
+                    </div>,
                     document.body
                   )
                 : null}
-            </S.WhenWrap>
+            </div>
             {terms.startsAtMs ? (
-              <S.FieldHint data-testid="creator-sale-when-hint">
+              <p className={styles.fieldHint} data-testid="creator-sale-when-hint">
                 {t('creator_sale.starts_on', { date: formatDateTime(terms.startsAtMs, intl.locale) })}
-              </S.FieldHint>
+              </p>
             ) : null}
-          </S.Field>
+          </div>
 
-          <S.Field>
-            <S.CapLabel htmlFor="creator-sale-cap">{t('creator_sale.cap_label')}</S.CapLabel>
-            <S.CapInput data-disabled={busy || undefined}>
+          <div className={styles.field}>
+            <label className={styles.capLabel} htmlFor="creator-sale-cap">
+              {t('creator_sale.cap_label')}
+            </label>
+            <div className={styles.capInput} data-disabled={busy || undefined}>
               <input
                 id="creator-sale-cap"
                 type="text"
@@ -917,33 +940,34 @@ export function CreatorSaleModal({
                   {terms.uses ?? 0}/{review.supply}
                 </span>
               ) : null}
-            </S.CapInput>
+            </div>
             {review.supply > 0 ? (
-              <S.CapHint id="creator-sale-cap-hint">
+              <p className={styles.capHint} id="creator-sale-cap-hint">
                 <Icon name="circle-warning" size={15} aria-hidden />
                 <span>{t('creator_sale.cap_hint', { count: review.supply })}</span>
-              </S.CapHint>
+              </p>
             ) : null}
             {/* Not in the Shop's modal: there a social login can't end a discount either, but here it is the only place
               to say so before signing. */}
             {isManaged ? (
-              <S.CapHint data-testid="creator-sale-social-note">
+              <p className={styles.capHint} data-testid="creator-sale-social-note">
                 <Icon name="circle-warning" size={15} aria-hidden />
                 <span>{t('creator_sale.social_note')}</span>
-              </S.CapHint>
+              </p>
             ) : null}
-          </S.Field>
+          </div>
 
           {/* The collection as a buyer will meet it: the same tag and struck price the Shop's cards wear. */}
           {previewItems.length > 0 ? (
-            <S.Field>
-              <S.PreviewHead>
-                <S.FieldLabel>
+            <div className={styles.field}>
+              <div className={styles.previewHead}>
+                <span className={styles.fieldLabel}>
                   {t('creator_sale.preview_title')} · {t('creator_sale.preview_count', { count: previewItems.length })}
-                </S.FieldLabel>
+                </span>
                 {stripEdges.start && stripEdges.end ? null : (
-                  <S.StripArrows>
-                    <S.StripArrow
+                  <div className={styles.stripArrows}>
+                    <button
+                      className={styles.stripArrow}
                       type="button"
                       aria-label={t('creator_sale.preview_prev')}
                       disabled={stripEdges.start}
@@ -951,8 +975,9 @@ export function CreatorSaleModal({
                       data-testid="creator-sale-preview-prev"
                     >
                       <Icon name="chevron-down" size={16} aria-hidden style={{ transform: 'rotate(90deg)' }} />
-                    </S.StripArrow>
-                    <S.StripArrow
+                    </button>
+                    <button
+                      className={styles.stripArrow}
                       type="button"
                       aria-label={t('creator_sale.preview_next')}
                       disabled={stripEdges.end}
@@ -960,47 +985,54 @@ export function CreatorSaleModal({
                       data-testid="creator-sale-preview-next"
                     >
                       <Icon name="chevron-down" size={16} aria-hidden style={{ transform: 'rotate(-90deg)' }} />
-                    </S.StripArrow>
-                  </S.StripArrows>
+                    </button>
+                  </div>
                 )}
-              </S.PreviewHead>
-              <S.PreviewStrip ref={strip} onScroll={measureStrip} data-testid="creator-sale-preview">
+              </div>
+              <div
+                className={styles.previewStrip}
+                ref={strip}
+                onScroll={measureStrip}
+                data-testid="creator-sale-preview"
+              >
                 {previewItems.map(item => {
                   const price = item.priceCredits as number
                   const sale = discountedPriceCredits(item, previewPct, current.manaRate) as number
                   return (
-                    <S.PreviewCard key={item.key} data-testid="creator-sale-preview-item">
-                      <S.PreviewMedia>
+                    <div className={styles.previewCard} key={item.key} data-testid="creator-sale-preview-item">
+                      <div className={styles.previewMedia}>
                         {item.thumbnail ? <img src={item.thumbnail} alt="" /> : null}
-                        {sale < price ? <S.PreviewTag pct={previewPct} /> : null}
-                      </S.PreviewMedia>
-                      <S.PreviewName>{item.name}</S.PreviewName>
-                      <S.PreviewPrices>
-                        <S.PreviewNow data-testid="creator-sale-preview-now">
-                          <CurrencyIcon size={14} className="ccy-mark" />
+                        {sale < price ? <SaleTag className={styles.previewTag} pct={previewPct} /> : null}
+                      </div>
+                      <span className={styles.previewName}>{item.name}</span>
+                      <span className={styles.previewPrices}>
+                        <span className={styles.previewNow} data-testid="creator-sale-preview-now">
+                          <CurrencyIcon size={14} inline />
                           {formatCredits(sale)}
-                        </S.PreviewNow>
+                        </span>
                         {sale < price ? (
-                          <S.PreviewWas data-testid="creator-sale-preview-was">{formatCredits(price)}</S.PreviewWas>
+                          <span className={styles.previewWas} data-testid="creator-sale-preview-was">
+                            {formatCredits(price)}
+                          </span>
                         ) : null}
-                      </S.PreviewPrices>
-                    </S.PreviewCard>
+                      </span>
+                    </div>
                   )
                 })}
-              </S.PreviewStrip>
+              </div>
               {rounded ? (
-                <S.FieldHint data-testid="creator-sale-preview-rounding">
+                <p className={styles.fieldHint} data-testid="creator-sale-preview-rounding">
                   {t('creator_sale.preview_rounding')}
-                </S.FieldHint>
+                </p>
               ) : null}
-            </S.Field>
+            </div>
           ) : null}
-        </S.Body>
-        <S.Actions>
+        </div>
+        <div className={styles.actions}>
           {error || inlineProblem ? (
-            <S.ActionsNote>
+            <div className={styles.actionsNote}>
               <ErrorNotice message={error ?? inlineProblem} testId="creator-sale-error" />
-            </S.ActionsNote>
+            </div>
           ) : null}
           <Button type="button" variant="secondary" onClick={onClose} disabled={busy} data-testid="creator-sale-cancel">
             {t('creator_sale.cancel')}
@@ -1045,8 +1077,8 @@ export function CreatorSaleModal({
             {t('creator_sale.continue')}
             <ChevronRightIcon fontSize="small" />
           </Button>
-        </S.Actions>
-      </S.Card>
+        </div>
+      </div>
     </div>
   )
 }
