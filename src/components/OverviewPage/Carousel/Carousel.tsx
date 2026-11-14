@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useTranslation } from '~/intl'
-import { theme } from '~/styles/theme'
+import { media } from '~/styles/theme'
 import styles from './Carousel.module.css'
 
 const SWIPE_THRESHOLD = 50
@@ -57,7 +57,7 @@ function Carousel<T>({
   alignItems = 'stretch'
 }: CarouselProps<T>) {
   const { t } = useTranslation()
-  const desktop = useMediaQuery(theme.media.minWidth('tablet'))
+  const desktop = useMediaQuery(media.minWidth('tablet'))
   const phone = useMediaQuery(PHONE)
   const total = items.length
   const slides = useMemo(() => [...items, ...items, ...items], [items])

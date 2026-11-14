@@ -72,7 +72,7 @@ import {
 } from '~/lib/springBones'
 import { selectAvatarAttributes, useAvatarPreview } from '~/store/avatarPreview'
 import { useWallet } from '~/store/wallet'
-import { theme } from '~/styles/theme'
+import { media } from '~/styles/theme'
 import { AvatarCustomizerDrawer, AvatarCustomizerToggle } from './AvatarCustomizer'
 import { CollectionPicker } from './CollectionPicker'
 import { ItemsSidebar, type EditorBack } from './ItemsSidebar'
@@ -122,7 +122,7 @@ const ItemEditorPage = () => {
   // Until the committee answers, a review link can't tell a curator from someone with no access.
   const isResolvingReviewer = searchParams.get('reviewing') === 'true' && !!address && committee.isLoading
   const showToast = useNotifications(state => state.showToast)
-  const isMobile = useMediaQuery(theme.media.maxWidth('mobile'))
+  const isMobile = useMediaQuery(media.maxWidth('mobile'))
 
   const collectionQuery = useCollection(address, collectionId ?? undefined)
   // Linked collections belong to a third party: its managers, not the collection's roles, may edit them.

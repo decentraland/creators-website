@@ -50,7 +50,7 @@ import { getWearableCategoryOptions } from '~/lib/wearableCategories'
 import { selectAvatarAttributes, useAvatarPreview } from '~/store/avatarPreview'
 import { useLocale } from '~/store/locale'
 import { useWallet } from '~/store/wallet'
-import { theme } from '~/styles/theme'
+import { media } from '~/styles/theme'
 import { AddToCollectionFlow } from './AddToCollectionFlow'
 import styles from './LivePreviewPage.module.css'
 import editor from '../ItemEditorPage/ItemEditorPage.module.css'
@@ -147,7 +147,7 @@ const LivePreviewPage = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const isMobile = useMediaQuery(theme.media.maxWidth('mobile'))
+  const isMobile = useMediaQuery(media.maxWidth('mobile'))
   const [bridgeUrl, setBridgeUrl] = useState(() => resolveBridgeUrl(searchParams.get('bridge')))
   const bridge = useLiveBridge(bridgeUrl)
   const { state, glb } = bridge

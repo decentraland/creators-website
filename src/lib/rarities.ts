@@ -1,5 +1,5 @@
 // Rarity constants shared by every rarity control (pill, select, forms).
-import { theme } from '~/styles/theme'
+import { rarities } from '~/styles/theme'
 
 export const RARITIES = ['unique', 'mythic', 'exotic', 'legendary', 'epic', 'rare', 'uncommon', 'common'] as const
 
@@ -23,10 +23,10 @@ export function isRarity(value: string | null | undefined): value is RarityName 
   return !!value && (RARITIES as readonly string[]).includes(value)
 }
 
-/** The design palette color of a rarity (theme.rarities); undefined for an unknown rarity. */
+/** The design palette color of a rarity; undefined for an unknown rarity. */
 function getRarityColor(rarity: string | null | undefined): string | undefined {
   const key = rarity?.toLowerCase()
-  return isRarity(key) ? theme.rarities[key] : undefined
+  return isRarity(key) ? rarities[key] : undefined
 }
 
 function parseHex(color: string): [number, number, number] {
@@ -49,9 +49,6 @@ function mediaWash(color: string): string {
   const stop = (alpha: number) => `rgba(${r}, ${g}, ${b}, ${alpha})`
   return `radial-gradient(circle at 50% 38%, ${stop(0.04)} 0%, ${stop(0.3)} 50%, ${stop(0.62)} 100%)`
 }
-
-/** The rarity wash in neutral gray, for media with no artwork yet (an empty collection's cover). */
-export const EMPTY_MEDIA_BACKGROUND = mediaWash(theme.colors.muted2)
 
 export function getRarityMaxSupply(rarity: string | null | undefined): number | undefined {
   return isRarity(rarity) ? RARITY_MAX_SUPPLY[rarity] : undefined

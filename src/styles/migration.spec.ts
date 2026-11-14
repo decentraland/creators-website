@@ -2,7 +2,8 @@
 import { readdirSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-// Emotion files still waiting for their CSS Modules conversion. A conversion deletes its entry; nothing new joins.
+// The only Emotion files left: they style decentraland-ui2's Tooltip and Navbar until the monorepo replaces both.
+// Nothing new joins.
 const REMAINING = ['src/components/Tooltip/Tooltip.styles.ts', 'src/components/TopNav/TopNav.styles.ts']
 
 const files = (readdirSync('src', { recursive: true }) as string[]).map(path => `src/${path.replace(/\\/g, '/')}`)

@@ -70,7 +70,7 @@ import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS, THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { type ItemListing } from '~/lib/listings'
 import { useNotifications } from '~/lib/notifications'
-import { theme } from '~/styles/theme'
+import { media } from '~/styles/theme'
 import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { Tooltip } from '~/components/Tooltip'
@@ -177,7 +177,7 @@ const CollectionDetailPage = () => {
     await updateItem.mutateAsync({ item, thumbnail: patch.contents[THUMBNAIL_PATH] })
   })
   // Small screens are a viewer: the in-row edit shortcuts are desktop-only, like the menu's edit actions.
-  const compact = useMediaQuery(theme.media.noActions)
+  const compact = useMediaQuery(media.noActions)
 
   const collection = collectionQuery.data
   // Linked collections are read-only here: none of the publishing, sales or sync machinery runs for them.

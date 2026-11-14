@@ -9,7 +9,7 @@ import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
 import { ItemType, type Item } from '~/lib/items'
 import { useAvatarPreview } from '~/store/avatarPreview'
-import { theme } from '~/styles/theme'
+import { media } from '~/styles/theme'
 import styles from './PlaybackBar.module.css'
 
 type Props = {
@@ -82,7 +82,7 @@ export function PlaybackBar({
   testId = 'playback-bar'
 }: Props) {
   const { t } = useTranslation()
-  const isMobile = useMediaQuery(theme.media.maxWidth('mobile'))
+  const isMobile = useMediaQuery(media.maxWidth('mobile'))
   const emote = useAvatarPreview(state => state.emote)
   const dressedItemIds = useAvatarPreview(state => state.dressedItemIds)
   const setEmote = useAvatarPreview(state => state.setEmote)

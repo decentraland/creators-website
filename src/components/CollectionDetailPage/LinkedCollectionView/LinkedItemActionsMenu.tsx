@@ -13,7 +13,7 @@ import { useNotifications } from '~/lib/notifications'
 import { buildLinkedItemUrn, decodeLinkedUrn } from '~/lib/thirdParty'
 import { isRefusedRequest } from '~/lib/builder'
 import { captureError } from '~/lib/monitoring'
-import { theme } from '~/styles/theme'
+import { media } from '~/styles/theme'
 import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
 import { EditUrnModal } from './EditUrnModal'
 import { DeleteItemModal } from '../DeleteItemModal'
@@ -50,7 +50,7 @@ export function LinkedItemActionsMenu({
   const deleteItem = useDeleteItem(address)
   const [dialog, setDialog] = useState<Dialog>(null)
   // Small screens are a viewer: only copying the URN stays available there.
-  const compact = useMediaQuery(theme.media.noActions)
+  const compact = useMediaQuery(media.noActions)
 
   // Until its curation is known the item is treated as published: a locked action is better than a 409.
   const isPublished = curation === undefined || isLinkedItemPublished(item, curation)

@@ -57,7 +57,7 @@ import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { useSaveItem } from '~/hooks/useSaveItem'
 import { createItemSaveQueue } from '~/lib/itemSaveQueue'
-import { theme } from '~/styles/theme'
+import { media } from '~/styles/theme'
 import { Button } from '~/components/Button'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
@@ -118,7 +118,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   const showToast = useNotifications(state => state.showToast)
   const [searchParams, setSearchParams] = useSearchParams()
   const filter = parseLinkedItemFilter(searchParams.get('filter'))
-  const compact = useMediaQuery(theme.media.noActions)
+  const compact = useMediaQuery(media.noActions)
   const filesInputRef = useRef<HTMLInputElement>(null)
 
   const itemsPage = useLinkedCollectionItems(address, collection, page, filter)

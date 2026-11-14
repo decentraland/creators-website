@@ -2,7 +2,6 @@ import { SparklesIcon } from '~/components/Icons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { useTranslation } from '~/intl'
 import { cx } from '~/lib/cx'
-import { EMPTY_MEDIA_BACKGROUND } from '~/lib/rarities'
 import styles from './ThumbnailMosaic.module.css'
 
 export type MosaicThumbnail = {
@@ -37,7 +36,6 @@ export function ThumbnailMosaic({
   return (
     <div
       className={cx(styles.mosaic, className)}
-      style={isEmpty ? { backgroundImage: EMPTY_MEDIA_BACKGROUND } : undefined}
       data-testid={testId}
       data-count={urls.length}
       data-empty={isEmpty || undefined}
