@@ -10,6 +10,7 @@ import {
   localStorageStoreIdentity
 } from '@dcl/single-sign-on-client'
 import { config } from '~/config'
+import { resyncServerClock, serverNow } from './serverClock'
 
 // ~31 days, same as the legacy builder and marketplace webapps.
 const IDENTITY_EXPIRATION_MINUTES = 31 * 24 * 60
@@ -132,7 +133,8 @@ export async function createAuthHeaders(
   const headers: Record<string, string> = {}
   const identity = getIdentity(address)
   if (!identity) return headers
-  const timestamp = String(Date.now())
+  // Corrected by the measured server clock offset: see serverClock.
+  const timestamp = String(serverNow())
   const metadataJson = JSON.stringify(metadata)
   const payload = `${method}:${path}:${timestamp}:${metadataJson}`.toLowerCase()
   const authChain = await signPayload(identity, payload)
@@ -158,11 +160,23 @@ export async function signedFetch(
 ): Promise<Response> {
   const method = (init.method ?? 'GET').toUpperCase()
   const url = `${baseUrl}${path}`
-  const authHeaders = address ? await createAuthHeaders(address, method, new URL(url).pathname, metadata) : {}
-  return fetch(url, {
-    ...init,
-    method,
-    // Caller headers win by design (e.g. Content-Type); no caller sets x-identity-* keys.
-    headers: { ...authHeaders, ...init.headers }
-  })
+  const pathname = new URL(url).pathname
+  const send = async () => {
+    const authHeaders = address ? await createAuthHeaders(address, method, pathname, metadata) : {}
+    const signed = Object.keys(authHeaders).length > 0
+    const response = await fetch(url, {
+      ...init,
+      method,
+      // Caller headers win by design (e.g. Content-Type); no caller sets x-identity-* keys.
+      headers: { ...authHeaders, ...init.headers }
+    })
+    return { response, signed }
+  }
+
+  const { response, signed } = await send()
+  // A signed request refused as unauthenticated may only mean the device clock is off: re-measure it and,
+  // when the correction changed, sign again once. Every other refusal is returned as it came.
+  if (response.status !== 401 || !signed || !(await resyncServerClock())) return response
+  await response.body?.cancel().catch(() => undefined)
+  return (await send()).response
 }
