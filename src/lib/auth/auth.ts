@@ -10,7 +10,7 @@ import {
   localStorageStoreIdentity
 } from '@dcl/single-sign-on-client'
 import { config } from '~/config'
-import { resyncServerClock, serverNow } from './serverClock'
+import { resyncServerClock, serverClockOffset, serverNow } from './serverClock'
 
 // ~31 days, same as the legacy builder and marketplace webapps.
 const IDENTITY_EXPIRATION_MINUTES = 31 * 24 * 60
@@ -163,20 +163,23 @@ export async function signedFetch(
   const pathname = new URL(url).pathname
   const send = async () => {
     const authHeaders = address ? await createAuthHeaders(address, method, pathname, metadata) : {}
-    const signed = Object.keys(authHeaders).length > 0
-    const response = await fetch(url, {
+    return fetch(url, {
       ...init,
       method,
       // Caller headers win by design (e.g. Content-Type); no caller sets x-identity-* keys.
       headers: { ...authHeaders, ...init.headers }
     })
-    return { response, signed }
   }
 
-  const { response, signed } = await send()
-  // A signed request refused as unauthenticated may only mean the device clock is off: re-measure it and,
-  // when the correction changed, sign again once. Every other refusal is returned as it came.
-  if (response.status !== 401 || !signed || !(await resyncServerClock())) return response
+  const signed = Boolean(address && getIdentity(address))
+  const signedWithOffset = serverClockOffset()
+  const response = await send()
+  if (response.status !== 401 || !signed) return response
+  // A signed request refused as unauthenticated may only mean the device clock is off. Bring the clock
+  // correction up to date and, when it differs from the one this request was signed with, sign again once.
+  // Every other refusal is returned as it came.
+  await resyncServerClock()
+  if (serverClockOffset() === signedWithOffset) return response
   await response.body?.cancel().catch(() => undefined)
-  return (await send()).response
+  return send()
 }

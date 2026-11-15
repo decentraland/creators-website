@@ -135,11 +135,12 @@ describe('auth', () => {
     beforeEach(() => {
       refusedCancel = vi.fn().mockResolvedValue(undefined)
       fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<unknown>>()
-      global.fetch = fetchMock as unknown as typeof fetch
+      vi.stubGlobal('fetch', fetchMock)
     })
 
     afterEach(() => {
       resetServerClock()
+      vi.unstubAllGlobals()
     })
 
     describe('and the device clock is hours behind the server', () => {
@@ -169,6 +170,57 @@ describe('auth', () => {
 
       it('should release the refused response body', () => {
         expect(refusedCancel).toHaveBeenCalled()
+      })
+    })
+
+    describe('and it is a write with a body', () => {
+      const body = JSON.stringify({ name: 'My collection' })
+      const signal = new AbortController().signal
+
+      beforeEach(async () => {
+        fetchMock.mockImplementation((url: string) => {
+          if (STATUS_URL.test(url)) {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ currentTime: Date.now() + behindMs }) })
+          }
+          const isRetry = fetchMock.mock.calls.filter(([u]) => !STATUS_URL.test(u)).length > 1
+          return Promise.resolve(isRetry ? { ok: true, status: 200 } : { ok: false, status: 401 })
+        })
+        await signedFetch(address, 'https://builder-api.example/v1', '/collections', { method: 'PUT', body, signal })
+      })
+
+      it('should send the same body and signal again', () => {
+        const retried = fetchMock.mock.calls.filter(([u]) => !STATUS_URL.test(u))[1][1]
+        expect(retried).toEqual(expect.objectContaining({ method: 'PUT', body, signal }))
+      })
+    })
+
+    describe('and it was signed before a concurrent refusal corrected the clock', () => {
+      let releaseSlowRequest: () => void
+      let slow: Promise<Response>
+      let signedRequests: number
+
+      beforeEach(async () => {
+        signedRequests = 0
+        fetchMock.mockImplementation((url: string) => {
+          if (STATUS_URL.test(url)) {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ currentTime: Date.now() + behindMs }) })
+          }
+          signedRequests++
+          if (url.endsWith('/slow') && signedRequests <= 2) {
+            // The first request's refusal arrives only after the other request already corrected the clock.
+            return new Promise(resolve => {
+              releaseSlowRequest = () => resolve({ ok: false, status: 401 })
+            })
+          }
+          return Promise.resolve(signedRequests <= 2 ? { ok: false, status: 401 } : { ok: true, status: 200 })
+        })
+        slow = signedFetch(address, 'https://builder-api.example/v1', '/slow')
+        await signedFetch(address, 'https://builder-api.example/v1', '/fast')
+        releaseSlowRequest()
+      })
+
+      it('should still sign the late-refused request again with the corrected time', async () => {
+        await expect(slow).resolves.toEqual(expect.objectContaining({ status: 200 }))
       })
     })
 
