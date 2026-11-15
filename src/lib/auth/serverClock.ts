@@ -19,9 +19,9 @@ const MAX_UNCORRECTED_DRIFT_MS = 30 * 1000
 const MAX_CORRECTION_MS = 7 * 24 * 60 * 60 * 1000
 
 /**
- * How long a measurement stands. builder-server also answers 401 for reasons that aren't the clock (a
- * publish polls it while the subgraph catches up), so refusals inside this window reuse the last
- * measurement instead of reading the server time again.
+ * How long a measurement (or a failed attempt) stands. builder-server also answers 401 for reasons that
+ * aren't the clock (a publish polls it while the subgraph catches up), so refusals inside this window
+ * reuse the last measurement instead of reading the server time again.
  */
 const MEASUREMENT_TTL_MS = 60 * 1000
 
@@ -62,11 +62,12 @@ export function resyncServerClock(): Promise<void> {
     try {
       const measured = await measureOffset()
       if (measured === null || Math.abs(measured) > MAX_CORRECTION_MS) return
-      measuredAt = Date.now()
       offsetMs = Math.abs(measured) > MAX_UNCORRECTED_DRIFT_MS ? Math.round(measured) : 0
     } catch {
       // The server time couldn't be read: keep signing as before.
     } finally {
+      // A failed read starts the window too, so an unreachable /status isn't asked again on every 401.
+      measuredAt = Date.now()
       pending = null
     }
   })()

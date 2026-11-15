@@ -100,6 +100,17 @@ describe('serverClock', () => {
     it('should keep signing with the device clock', () => {
       expect(serverNow()).toBe(NOW)
     })
+
+    describe('and another request is refused within a minute', () => {
+      beforeEach(async () => {
+        vi.advanceTimersByTime(20_000)
+        await resyncServerClock()
+      })
+
+      it('should not read the server time again', () => {
+        expect(fetchMock).toHaveBeenCalledTimes(1)
+      })
+    })
   })
 
   describe('when several refused requests resync at once', () => {
