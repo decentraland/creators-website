@@ -157,19 +157,6 @@
   }
 }
 
-.headerRow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 28px;
-  margin: 0;
-
-  @media (max-width: 720px) {
-    height: 40px;
-  }
-}
-
 .body {
   display: flex;
 

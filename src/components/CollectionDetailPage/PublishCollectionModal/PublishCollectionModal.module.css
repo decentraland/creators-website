@@ -102,13 +102,6 @@
   color: var(--color-gray4);
 }
 
-.tooltipText {
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.5;
-  color: var(--color-soft-white);
-}
-
 /* The "publication fee" term in the step intro: highlighted, with its info tooltip glued to it. */
 .feeTerm {
   display: inline-flex;
