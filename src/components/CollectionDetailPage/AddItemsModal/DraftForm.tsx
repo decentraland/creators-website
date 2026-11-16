@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CategorySelect } from '~/components/CategorySelect'
 import {
+  ExpandMoreIcon,
   LoopIcon,
   PlayOnceIcon,
   ErrorOutlineIcon as HintIcon,
@@ -194,23 +195,26 @@ export function DraftForm({
 
         {draft.isVariant && variantTargets.length > 0 && (
           <div className={draftModal.field}>
-            <select
-              className={styles.select}
-              value={draft.variantTargetId ?? ''}
-              aria-label={t('add_items_modal.select_item')}
-              data-testid="variant-target"
-              onChange={event => onUpdate(draft.id, { variantTargetId: event.target.value || null })}
-            >
-              <option value="">{t('add_items_modal.select_item')}</option>
-              {variantTargets.map(target => (
-                <option key={target.id} value={target.id}>
-                  {t('add_items_modal.variant_target_label', {
-                    name: target.label,
-                    bodyShape: t(`add_items_modal.body_shape_option.${target.bodyShape}`)
-                  })}
-                </option>
-              ))}
-            </select>
+            <div className={styles.selectField}>
+              <select
+                className={styles.select}
+                value={draft.variantTargetId ?? ''}
+                aria-label={t('add_items_modal.select_item')}
+                data-testid="variant-target"
+                onChange={event => onUpdate(draft.id, { variantTargetId: event.target.value || null })}
+              >
+                <option value="">{t('add_items_modal.select_item')}</option>
+                {variantTargets.map(target => (
+                  <option key={target.id} value={target.id}>
+                    {t('add_items_modal.variant_target_label', {
+                      name: target.label,
+                      bodyShape: t(`add_items_modal.body_shape_option.${target.bodyShape}`)
+                    })}
+                  </option>
+                ))}
+              </select>
+              <ExpandMoreIcon className={styles.selectChevron} />
+            </div>
           </div>
         )}
 
