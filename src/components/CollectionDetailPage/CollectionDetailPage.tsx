@@ -331,7 +331,7 @@ const CollectionDetailPage = () => {
           : null
   // The validator judges a snapshot: nothing changes under it (Figma: "block edit settings during these 5 mins").
   const reviewLocked = stage === ReviewStage.AUTOMATED_REVIEWING
-  const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION).enabled
+  const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION_REVIEW_FLOW).enabled
   const [reviewRequest, setReviewRequest] = useState<ReviewFlowRequest | null>(null)
   // Only a server with the review timeline keeps the note.
   const withPushNote = autoCuration && events !== null

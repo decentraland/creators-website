@@ -159,7 +159,7 @@ const ItemEditorPage = () => {
   // Linked collections have no owner: their third party's managers are who works on them.
   const hasRole = !!collection && (isLinked ? isManager : hasCollectionRole(collection, address))
   // The automated review locks the items it judges and dresses them with its findings.
-  const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION).enabled
+  const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION_REVIEW_FLOW).enabled
   const reviewCuration = useCollectionCuration(
     mode === 'review' || (canReadCuration && autoCuration) ? address : undefined,
     collection

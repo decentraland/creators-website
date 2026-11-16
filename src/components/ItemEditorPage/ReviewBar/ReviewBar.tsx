@@ -78,7 +78,7 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
   const syncs = useItemSyncs(address, collection, items)
   const eventsQuery = useCollectionEvents(address, collection)
   const { events } = eventsQuery
-  const autoCurationFlag = useFeatureFlag(FeatureFlag.AUTO_CURATION)
+  const autoCurationFlag = useFeatureFlag(FeatureFlag.AUTO_CURATION_REVIEW_FLOW)
   const autoCuration = autoCurationFlag.enabled
   // Only a server that answered without a timeline (a 404) refuses the rejection fields: anywhere else the
   // reason form is the rejection, and it waits for the flag and the timeline's first answer.

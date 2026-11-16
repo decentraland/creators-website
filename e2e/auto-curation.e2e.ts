@@ -11,7 +11,7 @@ afterEach(async () => {
   app = undefined
 })
 
-const FLAGS = { 'builder-auto-curation': true }
+const FLAGS = { 'builder-auto-curation-review-flow': true }
 const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString()
 
 const collection = publishedCollection({

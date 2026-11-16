@@ -48,13 +48,13 @@ function dedupe(events: CollectionEvent[]): CollectionEvent[] {
 }
 
 /**
- * The collection's timeline, newest first, page by page, behind the auto-curation flag. `events` is `null`
+ * The collection's timeline, newest first, page by page, behind the review flow's flag. `events` is `null`
  * until the timeline is known to exist (flag on, first page loaded, server serves it), so every consumer
  * falls back to the legacy curation state meanwhile. `pages[0]` doubles as the source of the review stage
  * and the validator's verdict.
  */
 export function useCollectionEvents(address: string | undefined, collection: Collection | undefined, enabled = true) {
-  const flag = useFeatureFlag(FeatureFlag.AUTO_CURATION)
+  const flag = useFeatureFlag(FeatureFlag.AUTO_CURATION_REVIEW_FLOW)
   const queryClient = useQueryClient()
   const collectionId = collection?.id
   const query = useInfiniteQuery({
@@ -105,7 +105,7 @@ export function useRecentCollectionEvents(
   collectionId: string | undefined,
   enabled: boolean
 ) {
-  const flag = useFeatureFlag(FeatureFlag.AUTO_CURATION)
+  const flag = useFeatureFlag(FeatureFlag.AUTO_CURATION_REVIEW_FLOW)
   const query = useQuery({
     queryKey: [...collectionEventsKey(address, collectionId), 'recent'],
     queryFn: async (): Promise<CollectionEvent[] | null> => {
