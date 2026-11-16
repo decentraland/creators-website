@@ -322,6 +322,13 @@ describe('getCurrentVerdict', () => {
     expect(getCurrentVerdict([verdict], { createdAt: 15 })).toBeNull()
     expect(getCurrentVerdict([verdict], null)).toBeNull()
   })
+
+  it('keeps the result the creator asked a curator to look past, but not one a curator already decided on', () => {
+    const appeal = { ...verdict, id: 'a1', type: 'review.appeal_requested', actor: 'creator' as const, createdAt: 20 }
+    const decision = { ...verdict, id: 'd1', type: 'review.rejected', actor: 'curator' as const, createdAt: 15 }
+    expect(getCurrentVerdict([appeal, verdict], { createdAt: 20 })?.id).toBe('v1')
+    expect(getCurrentVerdict([appeal, decision, verdict], { createdAt: 20 })).toBeNull()
+  })
 })
 
 describe('getAutomatedIssuesByItem', () => {

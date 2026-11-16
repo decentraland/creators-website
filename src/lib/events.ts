@@ -210,13 +210,24 @@ export function getCuratorVerdict(events: CollectionEvent[]): CuratorVerdict | n
   }
 }
 
-/** The newest automated result of the current review request; an older run belongs to another request. */
+/**
+ * The newest automated result of the current review request; an older run belongs to another request, unless the
+ * creator opened this one by asking a curator to look past that result. `events` newest first.
+ */
 export function getCurrentVerdict(
   events: CollectionEvent[],
   curation: { createdAt: number } | null
 ): CuratorVerdict | null {
   const latest = getCuratorVerdict(events)
-  return latest && curation && latest.createdAt >= curation.createdAt ? latest : null
+  if (!latest || !curation) return null
+  if (latest.createdAt >= curation.createdAt) return latest
+  let appealed = false
+  for (const event of events) {
+    if (event.id === latest.id) break
+    if (HUMAN_DECISION_TYPES.has(event.type)) return null
+    if (event.type === 'review.appeal_requested') appealed = true
+  }
+  return appealed ? latest : null
 }
 
 export function startOfUtcDay(now: number): number {
