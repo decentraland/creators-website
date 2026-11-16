@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { useSectionViewed } from '~/hooks/useSectionViewed'
 import type { OverviewSection } from '~/lib/overviewAnalytics'
-import * as S from './AnimatedSection.styles'
+import styles from './AnimatedSection.module.css'
 
 type AnimatedSectionProps = {
   section: OverviewSection
@@ -16,9 +16,14 @@ const AnimatedSection = ({ section, children, threshold = 0.1 }: AnimatedSection
   const { ref, inView } = useInView({ triggerOnce: true, threshold })
   useSectionViewed(section, inView)
   return (
-    <S.Reveal ref={ref} data-testid={`overview-section-${section}`} data-visible={inView || undefined}>
+    <div
+      className={styles.reveal}
+      ref={ref}
+      data-testid={`overview-section-${section}`}
+      data-visible={inView || undefined}
+    >
       {children}
-    </S.Reveal>
+    </div>
   )
 }
 

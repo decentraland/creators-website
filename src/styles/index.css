@@ -33,7 +33,7 @@
   /* Height of the ui2 navbar everything offsets against (body top padding, sub-nav sticky top,
      viewport-filling min-heights). 991px is UI2'S OWN Navbar breakpoint, not one of ours. */
   --nav-h: 92px;
-  /* Height of the sub-nav band (NavBar.styles.ts): 56px, 64px from ui2's md breakpoint. */
+  /* Height of the sub-nav band (NavBar.module.css): 56px, 64px from ui2's md breakpoint. */
   --sub-nav-h: 56px;
   --sans: "Inter", "Inter Fallback", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
@@ -42,7 +42,7 @@
     --nav-h: 64px;
   }
 }
-/* 1024px is breakpoints.laptop in src/styles/theme.ts, where the sub-nav (NavBar.styles.ts) grows to 64px.
+/* 1024px is breakpoints.laptop in src/styles/theme.ts, where the sub-nav (NavBar.module.css) grows to 64px.
    CSS can't import that constant, so change both together. */
 @media (min-width: 1024px) {
   :root {
@@ -154,40 +154,43 @@ body[data-route="/"]::before {
     background-position: -200% 0;
   }
 }
-/* Content-shaped loading placeholder over dark surfaces. */
-.skeleton {
-  border-radius: 6px;
-  background: linear-gradient(
-    100deg,
-    rgba(255, 255, 255, 0.12) 30%,
-    rgba(255, 255, 255, 0.24) 50%,
-    rgba(255, 255, 255, 0.12) 70%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite linear;
-}
-@media (prefers-reduced-motion: reduce) {
+/* Layered so a component's own border-radius/height on the same element wins whatever the stylesheet order. */
+@layer foundations {
+  /* Content-shaped loading placeholder over dark surfaces. */
   .skeleton {
-    animation: none;
+    border-radius: 6px;
+    background: linear-gradient(
+      100deg,
+      rgba(255, 255, 255, 0.12) 30%,
+      rgba(255, 255, 255, 0.24) 50%,
+      rgba(255, 255, 255, 0.12) 70%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite linear;
   }
-}
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton {
+      animation: none;
+    }
+  }
 
-.spinner {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.25);
-  border-top-color: #fcfcfc;
-  animation: spin 0.8s linear infinite;
+  .spinner {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.25);
+    border-top-color: #fcfcfc;
+    animation: spin 0.8s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .spinner {
+      animation-duration: 2s;
+    }
+  }
 }
 @keyframes spin {
   to {
     transform: rotate(360deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .spinner {
-    animation-duration: 2s;
   }
 }
 

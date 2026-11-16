@@ -3,8 +3,10 @@ import { useTranslation } from '~/intl'
 import { isValidUrnSuffix } from '~/lib/thirdParty'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
-import * as N from '~/components/CollectionNameInput/CollectionNameInput.styles'
+import nameInput from '~/components/CollectionNameInput/CollectionNameInput.module.css'
 import * as S from './EditUrnModal.styles'
+import nameModal from '~/components/CollectionNameModal/CollectionNameModal.module.css'
+import shared from '~/styles/shared.module.css'
 
 type Props = {
   /** Which URN is edited; only the copy changes. */
@@ -45,15 +47,15 @@ export function EditUrnModal({ kind, urnPrefix, initialSuffix, isPending, error,
       closeDisabled={isPending}
       testId="edit-urn-modal"
     >
-      <S.Form onSubmit={handleSubmit}>
-        <S.Intro>
-          <S.Heading>{t(`edit_urn_modal.heading.${kind}`)}</S.Heading>
-          <S.Subtitle>{t(`edit_urn_modal.subtitle.${kind}`)}</S.Subtitle>
-        </S.Intro>
-        <N.Field>
-          <N.Label>
+      <form className={nameModal.form} onSubmit={handleSubmit}>
+        <div className={nameModal.intro}>
+          <h3 className={nameModal.heading}>{t(`edit_urn_modal.heading.${kind}`)}</h3>
+          <p className={nameModal.subtitle}>{t(`edit_urn_modal.subtitle.${kind}`)}</p>
+        </div>
+        <div className={nameInput.field}>
+          <label className={nameInput.label}>
             {t('edit_urn_modal.label')}
-            <N.Box data-invalid={shownError ? true : undefined}>
+            <div className={nameInput.box} data-invalid={shownError ? true : undefined}>
               <input
                 value={suffix}
                 autoFocus
@@ -67,27 +69,27 @@ export function EditUrnModal({ kind, urnPrefix, initialSuffix, isPending, error,
                   setEdited(true)
                 }}
               />
-            </N.Box>
-          </N.Label>
+            </div>
+          </label>
           {shownError ? (
-            <N.ErrorText id={errorId} data-testid="urn-suffix-error">
+            <p className={nameInput.errorText} id={errorId} data-testid="urn-suffix-error">
               {shownError}
-            </N.ErrorText>
+            </p>
           ) : (
             <S.Preview data-testid="urn-preview" title={`${urnPrefix}:${trimmed}`}>
               {urnPrefix}:<strong>{trimmed || '…'}</strong>
             </S.Preview>
           )}
-        </N.Field>
-        <S.Actions>
+        </div>
+        <div className={shared.modalActions}>
           <Button type="button" variant="secondary" data-testid="urn-cancel" disabled={isPending} onClick={onClose}>
             {t('collection_name_modal.cancel')}
           </Button>
           <Button type="submit" data-testid="urn-submit" loading={isPending} disabled={!canSubmit}>
             {t('edit_urn_modal.submit')}
           </Button>
-        </S.Actions>
-      </S.Form>
+        </div>
+      </form>
     </Modal>
   )
 }

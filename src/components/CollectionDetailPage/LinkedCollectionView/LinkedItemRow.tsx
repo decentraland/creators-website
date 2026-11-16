@@ -8,7 +8,7 @@ import { decodeLinkedUrn, type LinkedContract } from '~/lib/thirdParty'
 import { CategoryIcon } from '~/components/ItemIcons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { MappingEditor } from '~/components/MappingEditor'
-import { Pill } from '~/components/CollectionStatusPill/CollectionStatusPill.styles'
+import pill from '~/components/CollectionStatusPill/CollectionStatusPill.module.css'
 import * as R from '../ItemListRow/ItemListRow.styles'
 import * as S from './LinkedCollectionView.styles'
 
@@ -198,9 +198,9 @@ export function LinkedItemRow({
       </R.Cell>
       <R.Cell data-testid="linked-item-status-cell">
         {status ? (
-          <Pill data-testid="linked-item-status" data-status={status}>
+          <span className={pill.pill} data-testid="linked-item-status" data-status={status}>
             {t(`linked_collection.item_status.${status}`)}
-          </Pill>
+          </span>
         ) : (
           EMPTY
         )}

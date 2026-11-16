@@ -12,7 +12,7 @@ import {
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useTranslation } from '~/intl'
 import { theme } from '~/styles/theme'
-import * as S from './Carousel.styles'
+import styles from './Carousel.module.css'
 
 const SWIPE_THRESHOLD = 50
 const SLIDE_MS = 400
@@ -242,8 +242,16 @@ function Carousel<T>({
   const position = (i: number) => (i === pos ? 'active' : i === pos - 1 ? 'prev' : i === pos + 1 ? 'next' : undefined)
 
   return (
-    <S.Wrapper ref={wrapperRef} role="region" aria-roledescription="carousel" aria-label={label} data-testid="carousel">
-      <S.Track
+    <div
+      className={styles.wrapper}
+      ref={wrapperRef}
+      role="region"
+      aria-roledescription="carousel"
+      aria-label={label}
+      data-testid="carousel"
+    >
+      <div
+        className={styles.track}
         data-testid="carousel-track"
         style={{
           transform: `translateX(${translateX}px)`,
@@ -260,7 +268,8 @@ function Carousel<T>({
         onTransitionEnd={onTransitionEnd}
       >
         {slides.map((item, i) => (
-          <S.Slide
+          <div
+            className={styles.slide}
             key={`${keyExtractor(item)}-${i}`}
             data-testid="carousel-slide"
             data-position={position(i)}
@@ -271,12 +280,13 @@ function Carousel<T>({
             style={{ width: slideWidth || undefined, transition: animated ? undefined : 'none' }}
           >
             {renderItem(item, i)}
-          </S.Slide>
+          </div>
         ))}
-      </S.Track>
-      <S.Dots data-testid="carousel-dots">
+      </div>
+      <div className={styles.dots} data-testid="carousel-dots">
         {items.map((item, i) => (
-          <S.Dot
+          <button
+            className={styles.dot}
             key={keyExtractor(item)}
             type="button"
             data-active={i === realIndex || undefined}
@@ -285,8 +295,9 @@ function Carousel<T>({
             onClick={() => goTo(i)}
           />
         ))}
-      </S.Dots>
-      <S.Arrow
+      </div>
+      <button
+        className={styles.arrow}
         type="button"
         data-direction="prev"
         aria-label={t('overview.carousel.previous')}
@@ -296,8 +307,9 @@ function Carousel<T>({
         }}
       >
         &#8249;
-      </S.Arrow>
-      <S.Arrow
+      </button>
+      <button
+        className={styles.arrow}
         type="button"
         data-direction="next"
         aria-label={t('overview.carousel.next')}
@@ -307,8 +319,8 @@ function Carousel<T>({
         }}
       >
         &#8250;
-      </S.Arrow>
-    </S.Wrapper>
+      </button>
+    </div>
   )
 }
 

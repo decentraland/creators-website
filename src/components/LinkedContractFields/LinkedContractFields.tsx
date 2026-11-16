@@ -11,8 +11,10 @@ import {
 } from '~/lib/linkedContract'
 import { getLinkedContractNetworks } from '~/lib/thirdParty'
 import { Select } from '~/components/Select'
-import * as N from '~/components/CollectionNameInput/CollectionNameInput.styles'
-import * as S from './LinkedContractFields.styles'
+import nameInput from '~/components/CollectionNameInput/CollectionNameInput.module.css'
+import { cx } from '~/lib/cx'
+import shared from '~/styles/shared.module.css'
+import styles from './LinkedContractFields.module.css'
 
 const CONTRACT_CHECK_DEBOUNCE_MS = 1000
 
@@ -79,8 +81,8 @@ export function LinkedContractFields({ value, onChange }: Props) {
 
   return (
     <>
-      <N.Field>
-        <N.Label as="div">
+      <div className={nameInput.field}>
+        <div className={nameInput.label}>
           {t('create_linked_collection_modal.network')}
           <Select
             value={network}
@@ -90,12 +92,12 @@ export function LinkedContractFields({ value, onChange }: Props) {
             testId="linked-network"
             onChange={next => onChange({ network: next, address, check })}
           />
-        </N.Label>
-      </N.Field>
-      <N.Field>
-        <N.Label>
+        </div>
+      </div>
+      <div className={nameInput.field}>
+        <label className={nameInput.label}>
           {t('create_linked_collection_modal.contract')}
-          <N.Box data-invalid={contractError ? true : undefined}>
+          <div className={nameInput.box} data-invalid={contractError ? true : undefined}>
             <input
               value={address}
               placeholder={t('create_linked_collection_modal.contract_placeholder')}
@@ -110,20 +112,22 @@ export function LinkedContractFields({ value, onChange }: Props) {
                 onChange({ network, address: next, check })
               }}
             />
-            {check === 'checking' && <S.Spinner data-testid="linked-contract-checking" aria-hidden />}
-          </N.Box>
-        </N.Label>
+            {check === 'checking' && (
+              <span className={cx(shared.spinner, styles.spinner)} data-testid="linked-contract-checking" aria-hidden />
+            )}
+          </div>
+        </label>
         {contractError ? (
-          <N.ErrorText id={contractErrorId} data-testid="linked-contract-error">
+          <p className={nameInput.errorText} id={contractErrorId} data-testid="linked-contract-error">
             {contractError}
-          </N.ErrorText>
+          </p>
         ) : (
-          <N.HintText data-testid="linked-contract-hint">
+          <p className={nameInput.hintText} data-testid="linked-contract-hint">
             <InfoOutlinedIcon fontSize="inherit" aria-hidden />
             {t('create_linked_collection_modal.contract_hint')}
-          </N.HintText>
+          </p>
         )}
-      </N.Field>
+      </div>
     </>
   )
 }
