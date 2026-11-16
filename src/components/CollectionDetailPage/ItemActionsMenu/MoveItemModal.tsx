@@ -5,7 +5,8 @@ import { type Item } from '~/lib/items'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { Select } from '~/components/Select'
-import * as S from './MoveItemModal.styles'
+import styles from './MoveItemModal.module.css'
+import shared from '~/styles/shared.module.css'
 
 type Props = {
   item: Item
@@ -35,19 +36,21 @@ export function MoveItemModal({ item, collections, isMoving, isLoading, onConfir
       closeDisabled={isMoving}
       testId="move-item-modal"
     >
-      <S.Body>
-        <S.Text data-testid="move-item-modal-description">
+      <div className={styles.body}>
+        <p className={styles.text} data-testid="move-item-modal-description">
           {t('collection_detail_page.item_actions.move_modal.description', { name: item.name })}
-        </S.Text>
+        </p>
         {isLoading ? (
-          <S.Loading role="status" data-testid="move-item-loading">
-            <S.Spinner aria-hidden />
+          <div className={styles.loading} role="status" data-testid="move-item-loading">
+            <span className={shared.spinner} aria-hidden />
             {t('collection_detail_page.item_actions.move_modal.loading')}
-          </S.Loading>
+          </div>
         ) : targets.length === 0 ? (
-          <S.Text data-testid="move-item-empty">{t('collection_detail_page.item_actions.move_modal.empty')}</S.Text>
+          <p className={styles.text} data-testid="move-item-empty">
+            {t('collection_detail_page.item_actions.move_modal.empty')}
+          </p>
         ) : (
-          <S.Field>
+          <label className={styles.field}>
             {t('collection_detail_page.item_actions.move_modal.collection')}
             <Select
               value={targetId}
@@ -56,9 +59,9 @@ export function MoveItemModal({ item, collections, isMoving, isLoading, onConfir
               onChange={setTargetId}
               testId="move-item-target"
             />
-          </S.Field>
+          </label>
         )}
-        <S.Actions>
+        <div className={shared.modalActions}>
           <Button
             type="button"
             variant="secondary"
@@ -80,8 +83,8 @@ export function MoveItemModal({ item, collections, isMoving, isLoading, onConfir
           >
             {t('collection_detail_page.item_actions.move_modal.confirm')}
           </Button>
-        </S.Actions>
-      </S.Body>
+        </div>
+      </div>
     </Modal>
   )
 }

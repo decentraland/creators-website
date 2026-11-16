@@ -14,8 +14,9 @@ import { type ThumbnailPatch } from '~/components/ThumbnailModal'
 import { Checkbox } from '~/components/Checkbox'
 import { DeleteItemModal } from '../DeleteItemModal'
 import { PublishItemRow } from './PublishItemRow'
-import { itemColumns } from './PublishItemRow.styles'
-import * as S from './PublishCollectionModal.styles'
+import { cx } from '~/lib/cx'
+import publishModal from './PublishCollectionModal.module.css'
+import itemRow from './PublishItemRow.module.css'
 
 type Props = {
   address: string
@@ -95,14 +96,14 @@ export function ConfirmItemsStep({
   }
 
   return (
-    <S.Step data-testid="publish-items-step">
-      <S.Heading>{t('publish_collection_modal.items_step.title')}</S.Heading>
+    <div className={publishModal.step} data-testid="publish-items-step">
+      <h3 className={publishModal.heading}>{t('publish_collection_modal.items_step.title')}</h3>
       <div>
-        <S.Lead>{t('publish_collection_modal.items_step.subtitle')}</S.Lead>
-        <S.Text>{t('publish_collection_modal.items_step.description')}</S.Text>
+        <p className={publishModal.lead}>{t('publish_collection_modal.items_step.subtitle')}</p>
+        <p className={publishModal.text}>{t('publish_collection_modal.items_step.description')}</p>
       </div>
-      <S.Table>
-        <S.TableHeader style={{ gridTemplateColumns: itemColumns(withActions) }}>
+      <div className={publishModal.table}>
+        <div className={cx(publishModal.tableHeader, itemRow.columns)} data-no-actions={!withActions || undefined}>
           <span>{t('publish_collection_modal.items_step.columns.item')}</span>
           <span>{t('publish_collection_modal.items_step.columns.body_shape')}</span>
           <span>{t('publish_collection_modal.items_step.columns.category')}</span>
@@ -112,12 +113,12 @@ export function ConfirmItemsStep({
               {t('publish_collection_modal.items_step.columns.actions')}
             </span>
           )}
-        </S.TableHeader>
-        <S.TableBody data-testid="publish-items-list">
+        </div>
+        <div className={publishModal.tableBody} data-testid="publish-items-list">
           {items.length === 0 ? (
-            <S.InlineNote data-testid="publish-items-empty">
+            <p className={publishModal.inlineNote} data-testid="publish-items-empty">
               {t('publish_collection_modal.items_step.empty')}
-            </S.InlineNote>
+            </p>
           ) : (
             items.map(item => (
               <PublishItemRow
@@ -146,12 +147,12 @@ export function ConfirmItemsStep({
               />
             ))
           )}
-        </S.TableBody>
-      </S.Table>
+        </div>
+      </div>
       <Checkbox checked={accepted} onChange={setAccepted} testId="publish-items-accept">
         {t('publish_collection_modal.items_step.checkbox')}
       </Checkbox>
-      <S.Footer>
+      <div className={publishModal.footer}>
         <Button type="button" variant="secondary" data-testid="publish-back" onClick={onBack}>
           <ChevronLeftIcon fontSize="small" />
           {t('publish_collection_modal.back')}
@@ -160,7 +161,7 @@ export function ConfirmItemsStep({
           {t('publish_collection_modal.items_step.confirm')}
           <ChevronRightIcon fontSize="small" />
         </Button>
-      </S.Footer>
+      </div>
 
       {thumbnailEditor.modal}
 
@@ -172,6 +173,6 @@ export function ConfirmItemsStep({
           onConfirm={confirmDelete}
         />
       )}
-    </S.Step>
+    </div>
   )
 }

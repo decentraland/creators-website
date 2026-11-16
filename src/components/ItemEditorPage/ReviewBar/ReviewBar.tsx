@@ -31,7 +31,8 @@ import { countIssues, getValidationStatus } from '~/lib/validation'
 import { ApprovalFlowModal } from './ApprovalFlowModal'
 import { DisableCollectionFlow } from './DisableCollectionFlow'
 import { ForumVerdictModal } from './ForumVerdictModal'
-import * as S from './ReviewBar.styles'
+import styles from './ReviewBar.module.css'
+import { Link } from 'react-router-dom'
 
 type Props = {
   session: Session
@@ -167,12 +168,24 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
   }
 
   return (
-    <S.ReviewBar role="toolbar" aria-label={t('item_editor.review.title')} data-testid="review-bar">
-      <S.Identity>
-        <S.BackLink to={curationListUrl()} aria-label={t('item_editor.review.back')} data-testid="review-back">
+    <div
+      className={styles.reviewBar}
+      role="toolbar"
+      aria-label={t('item_editor.review.title')}
+      data-testid="review-bar"
+    >
+      <div className={styles.identity}>
+        <Link
+          className={styles.backLink}
+          to={curationListUrl()}
+          aria-label={t('item_editor.review.back')}
+          data-testid="review-back"
+        >
           <ArrowBackIcon fontSize="small" />
-        </S.BackLink>
-        <S.Name title={collection.name}>{collection.name}</S.Name>
+        </Link>
+        <h1 className={styles.name} title={collection.name}>
+          {collection.name}
+        </h1>
         {!isLoading && !isCurationError && <CurationStatePill state={state} />}
         <ValidationBadge
           status={validationStatus}
@@ -181,9 +194,9 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
           onOpen={() => track('Review Validation Opened', { collectionId: collection.id, status: validationStatus })}
           testId="review-validation"
         />
-      </S.Identity>
+      </div>
 
-      <S.Meta>
+      <div className={styles.meta}>
         {!collection.isPublished ? (
           <span data-testid="review-unpublished">{t('item_editor.review.unpublished')}</span>
         ) : isLoading ? null : isCurationError ? (
@@ -205,7 +218,8 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
               {t(`item_editor.review.${timeKey}`, { time: formatTimeAgo(time, intl.locale) })}
             </span>
             {assignee ? (
-              <S.AssigneeChip
+              <button
+                className={styles.assigneeChip}
                 type="button"
                 disabled={!canAssign}
                 aria-label={t('item_editor.review.change_assignee')}
@@ -214,21 +228,26 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
               >
                 <ProfileBadge address={assignee} self={assignee === address.toLowerCase()} />
                 {canAssign && <EditIcon fontSize="inherit" />}
-              </S.AssigneeChip>
+              </button>
             ) : (
               canAssign && (
-                <S.AssigneeChip type="button" data-testid="review-assign-me" onClick={() => setDialog('assign')}>
+                <button
+                  className={styles.assigneeChip}
+                  type="button"
+                  data-testid="review-assign-me"
+                  onClick={() => setDialog('assign')}
+                >
                   <AssignIcon fontSize="small" />
                   {t('item_editor.review.assign_to_me')}
-                </S.AssigneeChip>
+                </button>
               )
             )}
           </>
         )}
-      </S.Meta>
+      </div>
 
       {showActions && (
-        <S.Actions>
+        <div className={styles.actions}>
           {actions.map(action => (
             <Button
               key={action}
@@ -241,7 +260,7 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
               {t(`item_editor.review.action.${action}`)}
             </Button>
           ))}
-        </S.Actions>
+        </div>
       )}
 
       {dialog === 'assign' && (
@@ -320,6 +339,6 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
           onClose={() => setApproval(null)}
         />
       )}
-    </S.ReviewBar>
+    </div>
   )
 }

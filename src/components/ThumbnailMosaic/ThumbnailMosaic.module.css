@@ -8,6 +8,10 @@
   background: var(--color-media);
   overflow: hidden;
 
+  &[data-empty] {
+    background-image: var(--gradient-media-empty);
+  }
+
   &[data-count="1"] > * {
     grid-column: 1 / -1;
     grid-row: 1 / -1;

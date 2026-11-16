@@ -17,7 +17,7 @@ import {
   type SpringBoneParamsByName
 } from '~/lib/springBones'
 import { BoneTreePicker } from './BoneTreePicker'
-import * as S from './SpringBonesEditor.styles'
+import styles from './SpringBonesEditor.module.css'
 
 export type SpringBonesModel = {
   hash: string
@@ -108,11 +108,12 @@ export function SpringBonesEditor({
   }
 
   return (
-    <S.Wrap data-testid={testId}>
+    <div className={styles.wrap} data-testid={testId}>
       {models.length > 1 && (
-        <S.Tabs role="tablist" aria-label={t('item_editor.spring_bones.body_shape')}>
+        <div className={styles.tabs} role="tablist" aria-label={t('item_editor.spring_bones.body_shape')}>
           {models.map(candidate => (
-            <S.Tab
+            <button
+              className={styles.tab}
               key={candidate.hash}
               type="button"
               role="tab"
@@ -121,20 +122,26 @@ export function SpringBonesEditor({
               onClick={() => onActiveHashChange(candidate.hash)}
             >
               {t(`item_editor.customizer.shape.${shapeLabel(candidate.bodyShapes)}`)}
-            </S.Tab>
+            </button>
           ))}
-        </S.Tabs>
+        </div>
       )}
-      <S.Counter data-over={configured > MAX_SPRING_BONES || undefined} data-testid={`${testId}-counter`}>
+      <span
+        className={styles.counter}
+        data-over={configured > MAX_SPRING_BONES || undefined}
+        data-testid={`${testId}-counter`}
+      >
         {t('item_editor.spring_bones.counter', { count: configured, max: MAX_SPRING_BONES })}
-      </S.Counter>
+      </span>
       {names.map(name => {
         const bone = params[name]
         return (
-          <S.Card key={name} data-testid={`${testId}-bone-${name}`}>
-            <S.CardHeader>
+          <div className={styles.card} key={name} data-testid={`${testId}-bone-${name}`}>
+            <div className={styles.cardHeader}>
               <span title={name}>{name}</span>
-              <S.Counter>{t('item_editor.spring_bones.bones', { count: subtreeSizes.get(name) ?? 1 })}</S.Counter>
+              <span className={styles.counter}>
+                {t('item_editor.spring_bones.bones', { count: subtreeSizes.get(name) ?? 1 })}
+              </span>
               <ActionsMenu
                 label={t('item_editor.spring_bones.actions')}
                 variant="row"
@@ -159,9 +166,9 @@ export function SpringBonesEditor({
                   {t('item_editor.spring_bones.remove')}
                 </ActionsMenuItem>
               </ActionsMenu>
-            </S.CardHeader>
+            </div>
             {SLIDERS.map(({ field, min, max }) => (
-              <S.Param key={field}>
+              <label className={styles.param} key={field}>
                 <span>{t(`item_editor.spring_bones.${field}`)}</span>
                 <input
                   type="range"
@@ -175,7 +182,8 @@ export function SpringBonesEditor({
                   data-testid={`${testId}-${name}-${field}`}
                   onChange={event => update(name, { [field]: Number(event.target.value) })}
                 />
-                <S.NumberInput
+                <input
+                  className={styles.numberInput}
                   type="number"
                   min={min}
                   max={max}
@@ -185,15 +193,16 @@ export function SpringBonesEditor({
                   aria-label={t(`item_editor.spring_bones.${field}`)}
                   onChange={event => update(name, { [field]: clamp(Number(event.target.value) || 0, min, max) })}
                 />
-              </S.Param>
+              </label>
             ))}
-            <S.Param as="div">
+            <div className={styles.param}>
               <span>{t('item_editor.spring_bones.gravityDir')}</span>
-              <S.Vector style={{ gridColumn: '1 / -1' }}>
+              <div className={styles.vector} style={{ gridColumn: '1 / -1' }}>
                 {AXES.map((axis, index) => (
                   <label key={axis}>
                     {axis.toUpperCase()}
-                    <S.NumberInput
+                    <input
+                      className={styles.numberInput}
                       type="number"
                       min={RANGES.gravityDir[0]}
                       max={RANGES.gravityDir[1]}
@@ -210,9 +219,9 @@ export function SpringBonesEditor({
                     />
                   </label>
                 ))}
-              </S.Vector>
-            </S.Param>
-            <S.Param as="div">
+              </div>
+            </div>
+            <div className={styles.param}>
               <span>{t('item_editor.spring_bones.center')}</span>
               <div style={{ gridColumn: '1 / -1' }}>
                 <BoneTreePicker
@@ -227,12 +236,12 @@ export function SpringBonesEditor({
                   onChange={center => update(name, { center })}
                 />
               </div>
-            </S.Param>
-          </S.Card>
+            </div>
+          </div>
         )
       })}
       {!disabled && addable.length > 0 && (
-        <S.AddRow>
+        <div className={styles.addRow}>
           <Select
             value={null}
             options={addable}
@@ -242,8 +251,8 @@ export function SpringBonesEditor({
             testId={`${testId}-add`}
             onChange={name => onChange({ ...params, [name]: getDefaultSpringBoneParams() })}
           />
-        </S.AddRow>
+        </div>
       )}
-    </S.Wrap>
+    </div>
   )
 }

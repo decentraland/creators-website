@@ -4,7 +4,7 @@ import { Modal } from '~/components/Modal'
 import { useObjectURL } from '~/hooks/useObjectURL'
 import { useTranslation } from '~/intl'
 import { VideoDropzone } from './VideoDropzone'
-import * as S from './VideoModal.styles'
+import styles from './VideoModal.module.css'
 
 type Props = {
   /** The current preview video, or null when the item has none yet. */
@@ -28,10 +28,11 @@ export function VideoModal({ video, viewOnly = false, onChange, onClose }: Props
 
   return (
     <Modal title={t('video_modal.title')} onClose={onClose} testId="video-modal">
-      <S.Wrap>
+      <div className={styles.wrap}>
         {showPlayer && videoUrl ? (
           <>
-            <S.Player
+            <video
+              className={styles.player}
               src={videoUrl}
               controls
               controlsList="nodownload noremoteplayback"
@@ -39,7 +40,7 @@ export function VideoModal({ video, viewOnly = false, onChange, onClose }: Props
               playsInline
               data-testid="video-modal-player"
             />
-            <S.Actions>
+            <div className={styles.actions}>
               {!viewOnly && (
                 <Button
                   type="button"
@@ -53,16 +54,21 @@ export function VideoModal({ video, viewOnly = false, onChange, onClose }: Props
               <Button type="button" variant="primary" data-testid="video-modal-done" onClick={onClose}>
                 {t('video_modal.done')}
               </Button>
-            </S.Actions>
+            </div>
           </>
         ) : viewOnly ? (
           // The stored video is still being fetched: a watcher never gets the dropzone.
-          <S.Loading aria-busy="true" aria-label={t('video_modal.loading')} data-testid="video-modal-loading">
+          <div
+            className={styles.loading}
+            aria-busy="true"
+            aria-label={t('video_modal.loading')}
+            data-testid="video-modal-loading"
+          >
             <span className="spinner" aria-hidden />
-          </S.Loading>
+          </div>
         ) : (
           <>
-            <S.Description>{t('video_modal.description')}</S.Description>
+            <p className={styles.description}>{t('video_modal.description')}</p>
             <VideoDropzone
               testId="video-modal-dropzone"
               onPick={file => {
@@ -71,7 +77,7 @@ export function VideoModal({ video, viewOnly = false, onChange, onClose }: Props
               }}
             />
             {isReplacing && (
-              <S.Actions>
+              <div className={styles.actions}>
                 <Button
                   type="button"
                   variant="secondary"
@@ -80,11 +86,11 @@ export function VideoModal({ video, viewOnly = false, onChange, onClose }: Props
                 >
                   {t('video_modal.cancel')}
                 </Button>
-              </S.Actions>
+              </div>
             )}
           </>
         )}
-      </S.Wrap>
+      </div>
     </Modal>
   )
 }

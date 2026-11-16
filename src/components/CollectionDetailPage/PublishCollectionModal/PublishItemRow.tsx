@@ -9,8 +9,10 @@ import { TrashIcon, CheckIcon, CloseIcon, EditIcon } from '~/components/Icons'
 import { BodyShapeIcon, CategoryIcon } from '~/components/ItemIcons'
 import { RarityPill } from '~/components/RarityPill'
 import { RaritySelect } from '~/components/RaritySelect'
-import * as Shared from './PublishCollectionModal.styles'
-import * as S from './PublishItemRow.styles'
+import { cx } from '~/lib/cx'
+import styles from './PublishItemRow.module.css'
+import publishModal from './PublishCollectionModal.module.css'
+import shared from '~/styles/shared.module.css'
 
 type Props = {
   item: Item
@@ -73,15 +75,17 @@ export function PublishItemRow({
   }
 
   return (
-    <S.Row
+    <div
+      className={cx(styles.columns, styles.row)}
       data-testid="publish-item-row"
       data-item-id={item.id}
       data-editing={isEditing || undefined}
       data-no-actions={!withActions || undefined}
     >
-      <S.NameCell>
+      <div className={styles.nameCell}>
         {isEditing ? (
-          <S.ThumbButton
+          <button
+            className={styles.thumbButton}
             type="button"
             title={t('publish_collection_modal.items_step.edit_thumbnail')}
             aria-label={t('publish_collection_modal.items_step.edit_thumbnail')}
@@ -89,20 +93,21 @@ export function PublishItemRow({
             data-testid="publish-item-edit-thumbnail"
             onClick={onEditThumbnail}
           >
-            <Shared.Thumb>
+            <span className={publishModal.thumb}>
               <ItemThumbnail src={thumbnailUrl} rarity={item.rarity} testId="publish-item" />
-            </Shared.Thumb>
-            <S.ThumbBadge aria-hidden>
+            </span>
+            <span className={styles.thumbBadge} aria-hidden>
               <EditIcon />
-            </S.ThumbBadge>
-          </S.ThumbButton>
+            </span>
+          </button>
         ) : (
-          <Shared.Thumb>
+          <span className={publishModal.thumb}>
             <ItemThumbnail src={thumbnailUrl} rarity={item.rarity} testId="publish-item" />
-          </Shared.Thumb>
+          </span>
         )}
         {isEditing ? (
-          <S.NameInput
+          <input
+            className={styles.nameInput}
             value={name}
             maxLength={ITEM_NAME_MAX_LENGTH}
             disabled={isSaving}
@@ -120,11 +125,11 @@ export function PublishItemRow({
             }}
           />
         ) : (
-          <S.Name title={item.name} data-testid="publish-item-name">
+          <span className={styles.name} title={item.name} data-testid="publish-item-name">
             {item.name}
-          </S.Name>
+          </span>
         )}
-      </S.NameCell>
+      </div>
       <span data-testid="publish-item-body-type">
         {bodyShape ? <BodyShapeIcon bodyShape={bodyShape} withLabel /> : '—'}
       </span>
@@ -133,18 +138,19 @@ export function PublishItemRow({
       </span>
       <span data-testid="publish-item-rarity">
         {isEditing ? (
-          <S.SelectCell>
+          <div className={styles.selectCell}>
             <RaritySelect value={rarity} onChange={setRarity} />
-          </S.SelectCell>
+          </div>
         ) : (
           item.rarity && <RarityPill rarity={item.rarity} />
         )}
       </span>
       {withActions && (
-        <S.Actions data-testid="publish-item-actions">
+        <div className={styles.actions} data-testid="publish-item-actions">
           {isEditing ? (
             <>
-              <S.IconButton
+              <button
+                className={styles.iconButton}
                 type="button"
                 data-variant="cancel"
                 title={t('publish_collection_modal.items_step.cancel_edit')}
@@ -154,8 +160,9 @@ export function PublishItemRow({
                 onClick={onCancelEdit}
               >
                 <CloseIcon />
-              </S.IconButton>
-              <S.IconButton
+              </button>
+              <button
+                className={styles.iconButton}
                 type="button"
                 data-variant="save"
                 title={t('publish_collection_modal.items_step.save')}
@@ -165,13 +172,14 @@ export function PublishItemRow({
                 data-testid="publish-item-save"
                 onClick={save}
               >
-                {isSaving ? <Shared.Spinner aria-hidden /> : <CheckIcon />}
-              </S.IconButton>
+                {isSaving ? <span className={shared.spinner} aria-hidden /> : <CheckIcon />}
+              </button>
             </>
           ) : (
             <>
               {canEdit && (
-                <S.IconButton
+                <button
+                  className={styles.iconButton}
                   type="button"
                   title={t('publish_collection_modal.items_step.edit')}
                   aria-label={t('publish_collection_modal.items_step.edit')}
@@ -180,10 +188,11 @@ export function PublishItemRow({
                   onClick={startEditing}
                 >
                   <EditIcon />
-                </S.IconButton>
+                </button>
               )}
               {canDelete && (
-                <S.IconButton
+                <button
+                  className={styles.iconButton}
                   type="button"
                   title={t('publish_collection_modal.items_step.delete')}
                   aria-label={t('publish_collection_modal.items_step.delete')}
@@ -192,17 +201,17 @@ export function PublishItemRow({
                   onClick={onDelete}
                 >
                   <TrashIcon />
-                </S.IconButton>
+                </button>
               )}
             </>
           )}
-        </S.Actions>
+        </div>
       )}
       {isEditing && saveError && (
-        <S.RowError data-testid="publish-item-error">
+        <p className={styles.rowError} data-testid="publish-item-error">
           {saveErrorMessage ?? t('publish_collection_modal.items_step.save_error')}
-        </S.RowError>
+        </p>
       )}
-    </S.Row>
+    </div>
   )
 }

@@ -9,7 +9,7 @@ import { useTranslation } from '~/intl'
 import { type ValidationIssue, type ValidationStatus } from '~/lib/validation'
 import { type ValidationSubject } from './ItemValidationCard'
 import { ValidationResultsModal, type ItemResult } from './ValidationResultsModal'
-import * as S from './ValidationBadge.styles'
+import styles from './ValidationBadge.module.css'
 
 type Props = {
   status: ValidationStatus
@@ -48,7 +48,8 @@ export function ValidationBadge({
   return (
     <>
       <Tooltip content={tooltip} asChild testId={`${testId}-tooltip`}>
-        <S.Badge
+        <button
+          className={styles.badge}
           type="button"
           data-status={status}
           data-testid={testId}
@@ -60,12 +61,12 @@ export function ValidationBadge({
             onOpen?.()
           }}
         >
-          {status === 'loading' && <S.Spinner aria-hidden />}
+          {status === 'loading' && <span className={styles.spinner} aria-hidden />}
           {status === 'pass' && <PassIcon fontSize="small" />}
           {status === 'warnings' && <WarningIcon fontSize="small" />}
           {status === 'errors' && <ErrorIcon fontSize="small" />}
           {t(`item_editor.validation.label.${status}`, { count: shownIssues.length })}
-        </S.Badge>
+        </button>
       </Tooltip>
       {isOpen && (
         <ValidationResultsModal

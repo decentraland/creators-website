@@ -9,7 +9,7 @@ import { isPreviewEmpty, retryWhilePreviewReloads, toEmoteWithBlobs, toWearableW
 import { renderPosedThumbnail } from '~/lib/renderPosedThumbnail'
 import { getThumbnailPose, isAutoThumbnailStale } from '~/lib/thumbnailPose'
 import { type PreviewDraft, type PreviewResult } from '~/lib/draftPreview'
-import * as S from './ItemDraftModal.styles'
+import styles from './ItemDraftModal.module.css'
 
 const PREVIEW_ID = 'draft-processor'
 const THUMBNAIL_SIZE = 1024
@@ -248,7 +248,7 @@ export function DraftProcessor({ draft, flow, batchSize = 1, onResult, onError }
   )
 
   return (
-    <S.HiddenPreview aria-hidden data-testid="draft-processor">
+    <div className={styles.hiddenPreview} aria-hidden data-testid="draft-processor">
       {renderer !== undefined && (
         <WearablePreview
           key={iframeKey}
@@ -285,6 +285,6 @@ export function DraftProcessor({ draft, flow, batchSize = 1, onResult, onError }
           }}
         />
       )}
-    </S.HiddenPreview>
+    </div>
   )
 }

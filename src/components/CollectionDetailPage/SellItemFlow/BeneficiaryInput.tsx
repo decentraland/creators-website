@@ -16,7 +16,8 @@ import { useProfile } from '~/hooks/useProfile'
 import { type Friend } from '~/lib/friends'
 import { isValidAddress } from '~/lib/sales'
 import { holdsAddresses } from '~/lib/mint'
-import * as S from './SellItemModal.styles'
+import styles from './SellItemModal.module.css'
+import shared from '~/styles/shared.module.css'
 
 const LIST_GAP = 6
 const VIEWPORT_MARGIN = 8
@@ -215,15 +216,33 @@ export function BeneficiaryInput({
     const avatar = selectedFriend?.avatarUrl ?? profile.data?.avatar?.snapshots?.face256
     const compact = variant === 'compact'
     return (
-      <S.Box data-testid={`${testId}-selected`} data-variant={variant} data-disabled={disabled || undefined}>
-        {avatar ? <S.Avatar src={avatar} alt="" /> : <S.AvatarFallback aria-hidden />}
-        <S.ChipName data-testid={`${testId}-name`}>{known ?? shortenAddress(value)}</S.ChipName>
-        {value === self && <S.YouTag data-testid={`${testId}-you`}>{youLabel}</S.YouTag>}
+      <div
+        className={styles.box}
+        data-testid={`${testId}-selected`}
+        data-variant={variant}
+        data-disabled={disabled || undefined}
+      >
+        {avatar ? (
+          <img className={styles.avatar} src={avatar} alt="" />
+        ) : (
+          <span className={styles.avatarFallback} aria-hidden />
+        )}
+        <span className={styles.chipName} data-testid={`${testId}-name`}>
+          {known ?? shortenAddress(value)}
+        </span>
+        {value === self && (
+          <span className={styles.youTag} data-testid={`${testId}-you`}>
+            {youLabel}
+          </span>
+        )}
         {/* Without a name the compact pill would repeat the shortened address, so it shows it once. */}
         {(known || !compact) && (
-          <S.ChipAddress title={value}>({compact ? shortenAddress(value) : value})</S.ChipAddress>
+          <span className={styles.chipAddress} title={value}>
+            ({compact ? shortenAddress(value) : value})
+          </span>
         )}
-        <S.ChipClear
+        <button
+          className={styles.chipClear}
           type="button"
           aria-label={clearLabel ?? t('sell_item_modal.beneficiary.clear')}
           disabled={disabled}
@@ -231,14 +250,19 @@ export function BeneficiaryInput({
           onClick={() => onChange('')}
         >
           <CloseIcon fontSize="small" />
-        </S.ChipClear>
-      </S.Box>
+        </button>
+      </div>
     )
   }
 
   return (
-    <S.Combo>
-      <S.Box ref={boxRef} data-invalid={invalid || !!duplicate || undefined} data-disabled={disabled || undefined}>
+    <div className={styles.combo}>
+      <div
+        className={styles.box}
+        ref={boxRef}
+        data-invalid={invalid || !!duplicate || undefined}
+        data-disabled={disabled || undefined}
+      >
         <input
           type="text"
           role={withFriends ? 'combobox' : undefined}
@@ -260,7 +284,8 @@ export function BeneficiaryInput({
           }}
         />
         {withFriends && (
-          <S.ComboToggle
+          <button
+            className={styles.comboToggle}
             type="button"
             aria-label={t('sell_item_modal.beneficiary.open')}
             aria-expanded={open}
@@ -273,18 +298,26 @@ export function BeneficiaryInput({
             onClick={() => setOpen(current => !current)}
           >
             <ChevronIcon />
-          </S.ComboToggle>
+          </button>
         )}
         {showList &&
           createPortal(
-            <S.Options ref={listRef} role="listbox" id={listId} data-testid={`${testId}-options`} style={listStyle}>
+            <ul
+              className={styles.options}
+              ref={listRef}
+              role="listbox"
+              id={listId}
+              data-testid={`${testId}-options`}
+              style={listStyle}
+            >
               {matches.length === 0 && !isLoadingFriends ? (
-                <S.OptionNote data-testid={`${testId}-no-matches`}>
+                <li className={styles.optionNote} data-testid={`${testId}-no-matches`}>
                   {t('sell_item_modal.beneficiary.no_matches')}
-                </S.OptionNote>
+                </li>
               ) : (
                 matches.map((friend, index) => (
-                  <S.Option
+                  <li
+                    className={styles.option}
                     key={friend.address}
                     role="option"
                     aria-selected={index === active}
@@ -294,31 +327,43 @@ export function BeneficiaryInput({
                     onMouseEnter={() => setActive(index)}
                     onClick={() => commit(friend.address)}
                   >
-                    {friend.avatarUrl ? <S.Avatar src={friend.avatarUrl} alt="" /> : <S.AvatarFallback aria-hidden />}
+                    {friend.avatarUrl ? (
+                      <img className={styles.avatar} src={friend.avatarUrl} alt="" />
+                    ) : (
+                      <span className={styles.avatarFallback} aria-hidden />
+                    )}
                     {friend.name && <span>{friend.name}</span>}
-                    {friend.address === self && <S.YouTag>{youLabel}</S.YouTag>}
-                    <S.OptionAddress>{shortenAddress(friend.address)}</S.OptionAddress>
-                  </S.Option>
+                    {friend.address === self && <span className={styles.youTag}>{youLabel}</span>}
+                    <span className={styles.optionAddress}>{shortenAddress(friend.address)}</span>
+                  </li>
                 ))
               )}
               {/* Self is known at once; the friends join the list under the note when they arrive. */}
               {isLoadingFriends && (
-                <S.OptionNote>
-                  <S.Spinner aria-hidden />
+                <li className={styles.optionNote}>
+                  <span className={shared.spinner} aria-hidden />
                   {t('sell_item_modal.beneficiary.friends_loading')}
-                </S.OptionNote>
+                </li>
               )}
-            </S.Options>,
+            </ul>,
             document.body
           )}
-      </S.Box>
+      </div>
       {listError ? (
-        <S.ErrorText data-testid={`${testId}-error`}>{listError}</S.ErrorText>
+        <p className={styles.errorText} data-testid={`${testId}-error`}>
+          {listError}
+        </p>
       ) : invalid ? (
-        <S.ErrorText data-testid={`${testId}-error`}>{t('sell_item_modal.beneficiary.invalid')}</S.ErrorText>
+        <p className={styles.errorText} data-testid={`${testId}-error`}>
+          {t('sell_item_modal.beneficiary.invalid')}
+        </p>
       ) : (
-        duplicate && <S.ErrorText data-testid={`${testId}-error`}>{duplicate}</S.ErrorText>
+        duplicate && (
+          <p className={styles.errorText} data-testid={`${testId}-error`}>
+            {duplicate}
+          </p>
+        )
       )}
-    </S.Combo>
+    </div>
   )
 }

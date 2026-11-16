@@ -7,8 +7,10 @@ import { getMaticChainId } from '~/lib/publishCollection'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { BeneficiaryInput } from '../SellItemFlow/BeneficiaryInput'
-import * as Sell from '../SellItemFlow/SellItemModal.styles'
-import * as S from './ManageRolesModal.styles'
+import { cx } from '~/lib/cx'
+import sell from '../SellItemFlow/SellItemModal.module.css'
+import send from '../SendItemsFlow/SendItemsModal.module.css'
+import styles from './ManageRolesModal.module.css'
 
 type Props = {
   kind: RoleKind
@@ -59,14 +61,19 @@ export function ManageRolesModal({
       compact
       testId="manage-roles-modal"
     >
-      <Sell.Divider />
-      <S.Body data-busy={busy || undefined} aria-busy={busy || undefined} {...(busy ? { inert: '' } : {})}>
-        <S.Description data-testid="manage-roles-description">
+      <hr className={sell.divider} />
+      <div
+        className={send.body}
+        data-busy={busy || undefined}
+        aria-busy={busy || undefined}
+        {...(busy ? { inert: '' } : {})}
+      >
+        <p className={styles.description} data-testid="manage-roles-description">
           {t(`manage_roles_modal.${kind}.description`)}
-        </S.Description>
-        <S.List>
+        </p>
+        <ul className={styles.list}>
           {addresses.map((address, index) => (
-            <S.Row key={address} data-testid="role-row" data-address={address}>
+            <li className={styles.row} key={address} data-testid="role-row" data-address={address}>
               <BeneficiaryInput
                 value={address}
                 onChange={() => onRemove(address)}
@@ -77,10 +84,10 @@ export function ManageRolesModal({
                 variant="compact"
                 testId={`role-${index + 1}`}
               />
-            </S.Row>
+            </li>
           ))}
           {showInput && (
-            <S.Row>
+            <li className={styles.row}>
               <BeneficiaryInput
                 value=""
                 onChange={address => {
@@ -94,16 +101,22 @@ export function ManageRolesModal({
                 duplicateError={rejection}
                 testId="role-new"
               />
-            </S.Row>
+            </li>
           )}
-        </S.List>
-        <S.LinkButton type="button" disabled={showInput} data-testid="role-add" onClick={() => setAdding(true)}>
+        </ul>
+        <button
+          className={cx(send.linkButton, styles.linkButton)}
+          type="button"
+          disabled={showInput}
+          data-testid="role-add"
+          onClick={() => setAdding(true)}
+        >
           <AddIcon />
           {t(`manage_roles_modal.${kind}.add`)}
-        </S.LinkButton>
-      </S.Body>
+        </button>
+      </div>
 
-      <Sell.Footer>
+      <div className={sell.footer}>
         <Button type="button" variant="secondary" disabled={busy} data-testid="role-cancel" onClick={onClose}>
           {t('sell_item_modal.cancel')}
         </Button>
@@ -117,7 +130,7 @@ export function ManageRolesModal({
         >
           {t('manage_roles_modal.save')}
         </Button>
-      </Sell.Footer>
+      </div>
     </Modal>
   )
 }

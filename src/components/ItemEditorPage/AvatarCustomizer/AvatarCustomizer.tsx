@@ -17,7 +17,7 @@ import {
   type BaseWearableCategory
 } from '~/lib/avatar'
 import { useAvatarPreview } from '~/store/avatarPreview'
-import * as S from './AvatarCustomizer.styles'
+import styles from './AvatarCustomizer.module.css'
 
 type ToggleProps = {
   open: boolean
@@ -29,7 +29,8 @@ type ToggleProps = {
 export function AvatarCustomizerToggle({ open, onToggle, testId = 'avatar-customizer' }: ToggleProps) {
   const { t } = useTranslation()
   return (
-    <S.ToggleButton
+    <button
+      className={styles.toggleButton}
       type="button"
       aria-expanded={open}
       data-open={open || undefined}
@@ -38,7 +39,7 @@ export function AvatarCustomizerToggle({ open, onToggle, testId = 'avatar-custom
     >
       <PersonIcon fontSize="small" />
       {t('item_editor.customizer.title')}
-    </S.ToggleButton>
+    </button>
   )
 }
 
@@ -55,9 +56,10 @@ function SwatchRow({ label, colors, value, onChange, testId }: SwatchRowProps) {
   const ref = useRef<HTMLDivElement>(null)
   useScrollFades(ref)
   return (
-    <S.Swatches ref={ref} role="radiogroup" aria-label={label}>
+    <div className={styles.swatches} ref={ref} role="radiogroup" aria-label={label}>
       {colors.map(hex => (
-        <S.Swatch
+        <button
+          className={styles.swatch}
           key={hex}
           type="button"
           role="radio"
@@ -69,7 +71,7 @@ function SwatchRow({ label, colors, value, onChange, testId }: SwatchRowProps) {
           onClick={() => onChange(hex)}
         />
       ))}
-    </S.Swatches>
+    </div>
   )
 }
 
@@ -145,13 +147,14 @@ export function AvatarCustomizerDrawer({ catalog, onClose, testId = 'avatar-cust
   function renderSlot(slot: Slot) {
     if (slot.kind === 'shape') {
       return (
-        <S.FieldBox key="shape">
-          <S.Label>{t('item_editor.customizer.body_shape')}</S.Label>
-          <S.Segmented role="radiogroup" aria-label={t('item_editor.customizer.body_shape')}>
+        <div className={styles.fieldBox} key="shape">
+          <span className={styles.label}>{t('item_editor.customizer.body_shape')}</span>
+          <div className={styles.segmented} role="radiogroup" aria-label={t('item_editor.customizer.body_shape')}>
             {BODY_SHAPES.map(shape => {
               const name = shape === BodyShape.MALE ? 'male' : 'female'
               return (
-                <S.SegmentButton
+                <button
+                  className={styles.segmentButton}
                   key={shape}
                   type="button"
                   role="radio"
@@ -162,17 +165,17 @@ export function AvatarCustomizerDrawer({ catalog, onClose, testId = 'avatar-cust
                 >
                   {shape === BodyShape.MALE ? <MaleIcon fontSize="small" /> : <FemaleIcon fontSize="small" />}
                   {t(`item_editor.customizer.shape.${name}`)}
-                </S.SegmentButton>
+                </button>
               )
             })}
-          </S.Segmented>
-        </S.FieldBox>
+          </div>
+        </div>
       )
     }
     if (slot.kind === 'color') {
       return (
-        <S.FieldBox key={slot.slot}>
-          <S.Label>{t(`item_editor.customizer.${slot.slot}`)}</S.Label>
+        <div className={styles.fieldBox} key={slot.slot}>
+          <span className={styles.label}>{t(`item_editor.customizer.${slot.slot}`)}</span>
           <SwatchRow
             label={t(`item_editor.customizer.${slot.slot}`)}
             colors={slot.colors}
@@ -180,7 +183,7 @@ export function AvatarCustomizerDrawer({ catalog, onClose, testId = 'avatar-cust
             testId={`${testId}-${slot.slot}`}
             onChange={hex => setColor(slot.slot, hex)}
           />
-        </S.FieldBox>
+        </div>
       )
     }
     const options = optionsByCategory[slot.category]
@@ -190,7 +193,7 @@ export function AvatarCustomizerDrawer({ catalog, onClose, testId = 'avatar-cust
         ? t('item_editor.customizer.hair_style')
         : t(`collection_detail_page.category.${slot.category}`)
     return (
-      <S.Field key={slot.category} data-select>
+      <div className={styles.field} key={slot.category} data-select>
         <Select
           value={selection ? (selection[slot.category] ?? NONE) : null}
           options={options}
@@ -200,14 +203,19 @@ export function AvatarCustomizerDrawer({ catalog, onClose, testId = 'avatar-cust
           testId={`${testId}-${slot.category}`}
           onChange={value => setBaseWearable(bodyShape, slot.category, value === NONE ? null : value)}
         />
-      </S.Field>
+      </div>
     )
   }
 
   return (
-    <S.Drawer role="region" aria-label={t('item_editor.customizer.drawer_title')} data-testid={`${testId}-drawer`}>
-      <S.DrawerHeader>
-        <S.DrawerTitle>{t('item_editor.customizer.drawer_title')}</S.DrawerTitle>
+    <div
+      className={styles.drawer}
+      role="region"
+      aria-label={t('item_editor.customizer.drawer_title')}
+      data-testid={`${testId}-drawer`}
+    >
+      <div className={styles.drawerHeader}>
+        <span className={styles.drawerTitle}>{t('item_editor.customizer.drawer_title')}</span>
         <Button
           type="button"
           variant="secondary"
@@ -219,11 +227,17 @@ export function AvatarCustomizerDrawer({ catalog, onClose, testId = 'avatar-cust
           <RandomIcon fontSize="small" />
           {t('item_editor.customizer.randomize')}
         </Button>
-        <S.CloseButton type="button" aria-label={t('modal.close')} data-testid={`${testId}-close`} onClick={onClose}>
+        <button
+          className={styles.closeButton}
+          type="button"
+          aria-label={t('modal.close')}
+          data-testid={`${testId}-close`}
+          onClick={onClose}
+        >
           <CloseIcon fontSize="small" />
-        </S.CloseButton>
-      </S.DrawerHeader>
-      <S.Grid>{SLOTS.map(renderSlot)}</S.Grid>
-    </S.Drawer>
+        </button>
+      </div>
+      <div className={styles.grid}>{SLOTS.map(renderSlot)}</div>
+    </div>
   )
 }

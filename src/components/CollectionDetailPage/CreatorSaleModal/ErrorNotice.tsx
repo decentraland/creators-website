@@ -1,4 +1,5 @@
-import * as S from './ErrorNotice.styles'
+import { cx } from '~/lib/cx'
+import styles from './ErrorNotice.module.css'
 import { SaleIcon } from './SaleIcon'
 
 /** An inline error, or nothing without a message; announced when it appears. */
@@ -13,9 +14,9 @@ export function ErrorNotice({
 }) {
   if (!message) return null
   return (
-    <S.Notice className={className} data-testid={testId} role="alert">
+    <p className={cx(styles.notice, className)} data-testid={testId} role="alert">
       <SaleIcon name="alert" size={18} />
-      <S.Message>{message}</S.Message>
-    </S.Notice>
+      <span className={styles.message}>{message}</span>
+    </p>
   )
 }
