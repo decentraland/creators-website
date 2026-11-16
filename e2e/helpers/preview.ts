@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { type Page } from 'puppeteer'
 import { type App } from './app'
 import { waitForEnabled } from './dom'
 import { FIXTURE } from './files'
@@ -168,4 +169,20 @@ export async function waitForProcessedAction(
       }
     )
   }
+}
+
+/**
+ * From now on, the moment a draft-processing preview mounts, another preview on the page announces READY: the worst
+ * moment for it, since the processor's own page is not listening yet.
+ */
+export async function announceReadyFromAnotherPreview(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    new MutationObserver(() => {
+      const frame = document.querySelector<HTMLIFrameElement>('[data-testid="draft-processor"] iframe')
+      if (!frame || frame.dataset.announced) return
+      frame.dataset.announced = 'true'
+      const origin = new URL(frame.src).origin
+      window.dispatchEvent(new MessageEvent('message', { data: { type: 'ready' }, origin }))
+    }).observe(document.body, { childList: true, subtree: true })
+  })
 }

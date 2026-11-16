@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { HASH, collection, upperBody } from './fixtures'
 import { launchApp, type App } from './helpers/app'
 import { clickTestId, uploadFiles, waitForEditor, waitForTestId, waitForToast } from './helpers/dom'
-import { waitForProcessedAction } from './helpers/preview'
+import { announceReadyFromAnotherPreview, waitForProcessedAction } from './helpers/preview'
 import { FIXTURE } from './helpers/files'
 
 let app: App | undefined
@@ -51,5 +51,23 @@ describe('replace a model', () => {
     const stored = app.storage[after.contents[male.mainFile]]
     const original = app.storage[HASH.poloMale]
     expect(stored?.equals(original)).toBe(true)
+  })
+
+  it('processes the new model when another preview announces itself first', async () => {
+    app = await launchApp({
+      path: `/collections/editor?collection=${draft.id}&item=${shirt.id}`,
+      builder: { collections: [draft], items: [shirt] }
+    })
+    const { page } = app
+    await waitForEditor(page)
+    await announceReadyFromAnotherPreview(page)
+
+    await clickTestId(page, 'properties-panel-actions')
+    await clickTestId(page, 'properties-panel-change-file')
+    await waitForTestId(page, 'change-file-modal')
+    await uploadFiles(page, () => clickTestId(page, 'change-file-browse'), [FIXTURE.poloMale])
+    await waitForTestId(page, 'change-file-form', 30_000)
+
+    await waitForProcessedAction(app, 'change-file-save')
   })
 })
