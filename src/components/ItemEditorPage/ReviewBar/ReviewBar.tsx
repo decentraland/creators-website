@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useIntl } from 'react-intl'
 import {
-  ArrowBack as ArrowBackIcon,
-  ChatBubbleOutline as ActivityIcon,
-  Edit as EditIcon,
-  PersonAddAlt as AssignIcon
-} from '@mui/icons-material'
+  ArrowBackIcon,
+  ChatBubbleOutlineIcon as ActivityIcon,
+  EditIcon,
+  PersonAddAltIcon as AssignIcon
+} from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { AssignCuratorModal } from '~/components/AssignCuratorModal'
 import { Button } from '~/components/Button'

@@ -1,19 +1,19 @@
 import {
-  CheckCircleOutline as PassedIcon,
-  HelpOutline as UnsupportedIcon,
-  ReportProblemOutlined as IssuesIcon
-} from '@mui/icons-material'
+  CheckCircleOutlineIcon as PassedIcon,
+  HelpOutlineIcon as UnsupportedIcon,
+  ReportProblemOutlinedIcon as IssuesIcon
+} from '~/components/Icons'
 import { type CuratorVerdictOutcome } from '~/lib/events'
-import * as S from './AutomatedReviewIcon.styles'
+import styles from './AutomatedReviewIcon.module.css'
 
 export type AutomatedReviewStatus = CuratorVerdictOutcome | 'running'
 
 /** The automated review's outcome as one colored glyph, or a spinner while it runs. */
 export function AutomatedReviewIcon({ status }: { status: AutomatedReviewStatus }) {
   return (
-    <S.Glyph data-status={status} aria-hidden>
+    <span className={styles.glyph} data-status={status} aria-hidden>
       {status === 'running' ? (
-        <S.Spinner />
+        <span className={styles.spinner} />
       ) : status === 'passed' ? (
         <PassedIcon fontSize="inherit" />
       ) : status === 'rejected' ? (
@@ -21,6 +21,6 @@ export function AutomatedReviewIcon({ status }: { status: AutomatedReviewStatus 
       ) : (
         <UnsupportedIcon fontSize="inherit" />
       )}
-    </S.Glyph>
+    </span>
   )
 }

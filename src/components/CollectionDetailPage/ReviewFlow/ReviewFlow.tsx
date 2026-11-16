@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  ChatBubbleOutline as CommentIcon,
-  ErrorOutline as ErrorIcon,
-  InfoOutlined as InfoIcon
-} from '@mui/icons-material'
+  ChatBubbleOutlineIcon as CommentIcon,
+  ErrorOutlineIcon as ErrorIcon,
+  InfoOutlinedIcon as InfoIcon
+} from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { Button } from '~/components/Button'
 import { CollectionActivityModal } from '~/components/CollectionActivityModal'
@@ -52,7 +52,7 @@ import {
 } from './ReviewModals'
 import { markReviewModalSeen, wasReviewModalSeen } from '~/lib/reviewModalMemory'
 import { type ItemCheck } from '~/lib/validation'
-import * as S from './ReviewFlow.styles'
+import styles from './ReviewFlow.module.css'
 
 /** What the page asks for: a modal (right after publishing, or at the daily limit), another automated review, or a curator's. */
 export type ReviewFlowRequest = 'reviewing' | 'limit' | 'validate' | 'appeal'
@@ -292,16 +292,21 @@ export function ReviewFlow({
 
   return (
     <>
-      <S.Notice data-testid="review-notice" data-stage={stage ?? undefined} data-tone={tone ?? 'info'}>
-        <S.NoticeText>
+      <div
+        className={styles.notice}
+        data-testid="review-notice"
+        data-stage={stage ?? undefined}
+        data-tone={tone ?? 'info'}
+      >
+        <p className={styles.noticeText}>
           {tone === 'error' ? <ErrorIcon fontSize="small" aria-hidden /> : <InfoIcon fontSize="small" aria-hidden />}
           <span>{text ?? commentsHint}</span>
-        </S.NoticeText>
+        </p>
         {stage === ReviewStage.AUTOMATED_REVIEWING && (
-          <S.NoticeSpinner data-testid="review-notice-spinner" aria-hidden />
+          <span className={styles.noticeSpinner} data-testid="review-notice-spinner" aria-hidden />
         )}
         {(hasIssues || curatorFixes || (canManage && (stage === ReviewStage.REJECTED_BY_VALIDATOR || canReply))) && (
-          <S.NoticeActions>
+          <div className={styles.noticeActions}>
             {hasIssues && (
               <Button
                 type="button"
@@ -327,10 +332,10 @@ export function ReviewFlow({
             {canReply && (
               <>
                 <Tooltip content={commentsHint} describeChild asChild testId="review-comment-count-tooltip">
-                  <S.CommentCount tabIndex={0} data-testid="review-comment-count">
+                  <span className={styles.commentCount} tabIndex={0} data-testid="review-comment-count">
                     <CommentIcon fontSize="small" aria-hidden />
                     {curatorComments}
-                  </S.CommentCount>
+                  </span>
                 </Tooltip>
                 {!curatorFixes && (
                   <Button
@@ -356,9 +361,9 @@ export function ReviewFlow({
                 {t('review_flow.issues.see')}
               </Button>
             )}
-          </S.NoticeActions>
+          </div>
         )}
-      </S.Notice>
+      </div>
       {modals}
     </>
   )

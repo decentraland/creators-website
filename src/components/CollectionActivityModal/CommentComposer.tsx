@@ -5,7 +5,7 @@ import { NoteField } from '~/components/NoteField'
 import { usePostComment } from '~/hooks/useCollectionEvents'
 import { type Collection } from '~/lib/collections'
 import { COMMENT_MAX_LENGTH, type ReviewParty } from '~/lib/events'
-import * as S from './CollectionActivityModal.styles'
+import styles from './CollectionActivityModal.module.css'
 
 // The limit rarely matters, so the length only shows once it is close.
 const COUNT_FROM = COMMENT_MAX_LENGTH * 0.8
@@ -31,7 +31,7 @@ export function CommentComposer({ collection, address, role }: Props) {
   }
 
   return (
-    <S.Composer onSubmit={submit} data-testid="activity-composer">
+    <form className={styles.composer} onSubmit={submit} data-testid="activity-composer">
       <NoteField
         label={t(`activity_modal.comment.label_${role}`)}
         value={message}
@@ -44,15 +44,18 @@ export function CommentComposer({ collection, address, role }: Props) {
         testId="activity-comment-input"
       />
       {post.isError && (
-        <S.ComposerError data-testid="activity-comment-error">{t('activity_modal.comment.error')}</S.ComposerError>
+        <p className={styles.composerError} data-testid="activity-comment-error">
+          {t('activity_modal.comment.error')}
+        </p>
       )}
-      <S.ComposerActions>
+      <div className={styles.composerActions}>
         {message.length >= COUNT_FROM && (
-          <S.ComposerCount data-testid="activity-comment-count">
+          <span className={styles.composerCount} data-testid="activity-comment-count">
             {message.length}/{COMMENT_MAX_LENGTH}
-          </S.ComposerCount>
+          </span>
         )}
         <Button
+          className={styles.composerSend}
           type="submit"
           size="sm"
           loading={post.isPending}
@@ -61,7 +64,7 @@ export function CommentComposer({ collection, address, role }: Props) {
         >
           {t('activity_modal.comment.send')}
         </Button>
-      </S.ComposerActions>
-    </S.Composer>
+      </div>
+    </form>
   )
 }

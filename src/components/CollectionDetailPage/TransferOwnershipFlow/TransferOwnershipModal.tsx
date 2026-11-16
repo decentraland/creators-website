@@ -1,8 +1,4 @@
-import {
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon,
-  WarningAmberOutlined as WarningIcon
-} from '@mui/icons-material'
+import { ChevronLeftIcon, ChevronRightIcon, WarningAmberOutlinedIcon as WarningIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { type Collection } from '~/lib/collections'
 import { getNewOwnerError } from '~/lib/collectionOwnership'

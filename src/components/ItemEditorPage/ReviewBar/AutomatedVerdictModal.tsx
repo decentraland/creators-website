@@ -1,11 +1,11 @@
 import { useMemo } from 'react'
 import { useIntl } from 'react-intl'
 import {
-  CheckCircleOutline as PassedIcon,
-  ErrorOutline as WarningIcon,
-  HelpOutline as UncheckedIcon,
-  ReportProblemOutlined as IssuesIcon
-} from '@mui/icons-material'
+  CheckCircleOutlineIcon as PassedIcon,
+  ErrorOutlineIcon as WarningIcon,
+  HelpOutlineIcon as UncheckedIcon,
+  ReportProblemOutlinedIcon as IssuesIcon
+} from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { Modal } from '~/components/Modal'
 import { ItemValidationCard } from '~/components/ValidationBadge'
@@ -19,7 +19,7 @@ import {
 } from '~/lib/events'
 import { type Item } from '~/lib/items'
 import { formatTimeAgo } from '~/lib/time'
-import * as S from './AutomatedVerdictModal.styles'
+import styles from './AutomatedVerdictModal.module.css'
 
 type Props = {
   verdict: CuratorVerdict
@@ -58,9 +58,9 @@ export function AutomatedVerdictModal({ verdict, requestedByCreator = false, ite
       compact
       testId="automated-verdict-modal"
     >
-      <S.Body>
-        <S.Banner data-outcome={outcome} data-testid="automated-verdict-headline">
-          <S.BannerLine>
+      <div className={styles.body}>
+        <div className={styles.banner} data-outcome={outcome} data-testid="automated-verdict-headline">
+          <p className={styles.bannerLine}>
             {outcome === 'passed' ? (
               <PassedIcon aria-hidden />
             ) : outcome === 'rejected' ? (
@@ -75,38 +75,40 @@ export function AutomatedVerdictModal({ verdict, requestedByCreator = false, ite
                   ? t('automated_verdict.banner_issues', { failed: countFailedItems(results), total: results.length })
                   : t('automated_verdict.status_unsupported')}
             </span>
-            <S.Time>{formatTimeAgo(verdict.createdAt, intl.locale)}</S.Time>
-          </S.BannerLine>
+            <span className={styles.time}>{formatTimeAgo(verdict.createdAt, intl.locale)}</span>
+          </p>
           {requestedByCreator && (
-            <S.Reason data-testid="automated-verdict-reason">{t('automated_verdict.reason_requested')}</S.Reason>
+            <p className={styles.reason} data-testid="automated-verdict-reason">
+              {t('automated_verdict.reason_requested')}
+            </p>
           )}
-        </S.Banner>
-        <S.Items data-testid="automated-verdict-items">
+        </div>
+        <div className={styles.items} data-testid="automated-verdict-items">
           {flat ? (
             results.map(row)
           ) : (
             <>
               {groups.failed.map(row)}
               {groups.unchecked.length > 0 && (
-                <S.Group data-testid="automated-verdict-unchecked">
-                  <S.GroupSummary>
+                <details className={styles.group} data-testid="automated-verdict-unchecked">
+                  <summary className={styles.groupSummary}>
                     {t('automated_verdict.unchecked_group', { count: groups.unchecked.length })}
-                  </S.GroupSummary>
-                  <S.GroupItems>{groups.unchecked.map(row)}</S.GroupItems>
-                </S.Group>
+                  </summary>
+                  <div className={styles.groupItems}>{groups.unchecked.map(row)}</div>
+                </details>
               )}
               {groups.passed.length > 0 && (
-                <S.Group data-testid="automated-verdict-passed">
-                  <S.GroupSummary>
+                <details className={styles.group} data-testid="automated-verdict-passed">
+                  <summary className={styles.groupSummary}>
                     {t('automated_verdict.passed_group', { count: groups.passed.length })}
-                  </S.GroupSummary>
-                  <S.GroupItems>{groups.passed.map(row)}</S.GroupItems>
-                </S.Group>
+                  </summary>
+                  <div className={styles.groupItems}>{groups.passed.map(row)}</div>
+                </details>
               )}
             </>
           )}
-        </S.Items>
-      </S.Body>
+        </div>
+      </div>
     </Modal>
   )
 }
@@ -133,57 +135,74 @@ function ItemRow({ result, item, defaultOpen }: RowProps) {
   const testId = `automated-verdict-items-${result.itemId}`
 
   return (
-    <S.Item open={defaultOpen || undefined} data-outcome={outcome} data-testid={testId}>
-      <S.ItemSummary>
-        {thumbnail ? <S.Thumb src={getContentsStorageUrl(thumbnail)} alt="" /> : <S.ThumbPlaceholder />}
-        <S.ItemName>{item?.name ?? t('findings.unknown_item', { id: result.itemId.slice(0, 8) })}</S.ItemName>
-        <S.Status data-testid={`${testId}-status`}>
+    <details className={styles.item} open={defaultOpen || undefined} data-outcome={outcome} data-testid={testId}>
+      <summary className={styles.itemSummary}>
+        {thumbnail ? (
+          <img className={styles.thumb} src={getContentsStorageUrl(thumbnail)} alt="" />
+        ) : (
+          <span className={styles.thumbPlaceholder} />
+        )}
+        <span className={styles.itemName}>
+          {item?.name ?? t('findings.unknown_item', { id: result.itemId.slice(0, 8) })}
+        </span>
+        <span className={styles.status} data-testid={`${testId}-status`}>
           {outcome === 'unchecked' ? (
-            <S.Count data-kind="unchecked" title={unchecked} aria-label={unchecked}>
+            <span className={styles.count} data-kind="unchecked" title={unchecked} aria-label={unchecked}>
               <UncheckedIcon fontSize="small" />
-            </S.Count>
+            </span>
           ) : errors === 0 && warnings === 0 ? (
-            <S.Count data-kind="passed" title={t('findings.item_passed')} aria-label={t('findings.item_passed')}>
+            <span
+              className={styles.count}
+              data-kind="passed"
+              title={t('findings.item_passed')}
+              aria-label={t('findings.item_passed')}
+            >
               <PassedIcon fontSize="small" />
-            </S.Count>
+            </span>
           ) : (
             <>
               {errors > 0 && (
-                <S.Count
+                <span
+                  className={styles.count}
                   data-kind="error"
                   title={t('automated_verdict.errors', { count: errors })}
                   aria-label={t('automated_verdict.errors', { count: errors })}
                 >
                   <IssuesIcon fontSize="small" />
                   {errors}
-                </S.Count>
+                </span>
               )}
               {warnings > 0 && (
-                <S.Count
+                <span
+                  className={styles.count}
                   data-kind="warning"
                   title={t('automated_verdict.warnings', { count: warnings })}
                   aria-label={t('automated_verdict.warnings', { count: warnings })}
                 >
                   <WarningIcon fontSize="small" />
                   {warnings}
-                </S.Count>
+                </span>
               )}
             </>
           )}
-        </S.Status>
-      </S.ItemSummary>
-      <S.ItemBody>
-        {result.passed === null && result.error && <S.Note>{t('findings.item_error', { error: result.error })}</S.Note>}
+        </span>
+      </summary>
+      <div className={styles.itemBody}>
+        {result.passed === null && result.error && (
+          <p className={styles.note}>{t('findings.item_error', { error: result.error })}</p>
+        )}
         {visualRows.length > 0 && (
-          <S.Visual data-testid="automated-verdict-items-visual-summary">
-            <S.VisualTitle>{t('findings.visual_summary')}</S.VisualTitle>
+          <div className={styles.visual} data-testid="automated-verdict-items-visual-summary">
+            <span className={styles.visualTitle}>{t('findings.visual_summary')}</span>
             {visualRows.map((line, index) => (
-              <S.VisualLine key={index}>{line}</S.VisualLine>
+              <p className={styles.visualLine} key={index}>
+                {line}
+              </p>
             ))}
-          </S.Visual>
+          </div>
         )}
         {(issues.length > 0 || outcome !== 'unchecked') && <ItemValidationCard issues={issues} testId={testId} />}
-      </S.ItemBody>
-    </S.Item>
+      </div>
+    </details>
   )
 }

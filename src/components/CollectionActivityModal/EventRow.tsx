@@ -18,7 +18,7 @@ import { shortenAddress } from '~/lib/address'
 import { type Item } from '~/lib/items'
 import { formatTimeAgo } from '~/lib/time'
 import { useProfile } from '~/hooks/useProfile'
-import * as S from './CollectionActivityModal.styles'
+import styles from './CollectionActivityModal.module.css'
 
 type Props = {
   event: CollectionEvent
@@ -102,7 +102,9 @@ export function EventRow({ event, items, isCurator }: Props) {
     event.actorAddress && (event.actor === 'creator' || event.actor === 'curator') ? (
       <ProfileBadge address={event.actorAddress} testId="activity-actor" />
     ) : (
-      <S.Actor data-testid="activity-actor">{t('activity_modal.actor.system')}</S.Actor>
+      <span className={styles.actor} data-testid="activity-actor">
+        {t('activity_modal.actor.system')}
+      </span>
     )
   const quote = payload.rejectionMessage ?? payload.message ?? payload.note
   const aboutItem = useMemo(
@@ -111,39 +113,51 @@ export function EventRow({ event, items, isCurator }: Props) {
   )
 
   return (
-    <S.Row data-testid="activity-event" data-type={event.type}>
-      <S.Line>
+    <li className={styles.row} data-testid="activity-event" data-type={event.type}>
+      <div className={styles.line}>
         {outcome && <AutomatedReviewIcon status={outcome} />}
         {ACTOR_LED.has(event.type) && actor}
         <span data-testid="activity-line">{line()}</span>
-      </S.Line>
-      <S.Time
+      </div>
+      <time
+        className={styles.time}
         dateTime={new Date(event.createdAt).toISOString()}
         title={intl.formatDate(event.createdAt, { dateStyle: 'medium', timeStyle: 'short' })}
       >
         {formatTimeAgo(event.createdAt, intl.locale)}
-      </S.Time>
+      </time>
       {(reasons.length > 0 || quote || failedItems.length > 0) && (
-        <S.Details>
-          {aboutItem && <S.ItemTag data-testid="activity-item">{aboutItem.name}</S.ItemTag>}
-          {reasons.length > 0 && (
-            <S.Reasons data-testid="activity-reasons">
-              {reasons.map(code => (
-                <S.Reason key={code}>{t(`reject_reason.${code}`)}</S.Reason>
-              ))}
-            </S.Reasons>
+        <div className={styles.details}>
+          {aboutItem && (
+            <span className={styles.itemTag} data-testid="activity-item">
+              {aboutItem.name}
+            </span>
           )}
-          {quote && <S.Quote data-testid="activity-quote">{quote}</S.Quote>}
+          {reasons.length > 0 && (
+            <ul className={styles.reasons} data-testid="activity-reasons">
+              {reasons.map(code => (
+                <li className={styles.reason} key={code}>
+                  {t(`reject_reason.${code}`)}
+                </li>
+              ))}
+            </ul>
+          )}
+          {quote && (
+            <blockquote className={styles.quote} data-testid="activity-quote">
+              {quote}
+            </blockquote>
+          )}
           {failedItems.length > 0 && (
             <>
-              <S.Toggle
+              <button
+                className={styles.toggle}
                 type="button"
                 aria-expanded={showFindings}
                 data-testid="activity-toggle-findings"
                 onClick={() => setShowFindings(open => !open)}
               >
                 {t(showFindings ? 'activity_modal.hide_findings' : 'activity_modal.show_findings')}
-              </S.Toggle>
+              </button>
               {showFindings && (
                 <ItemFindingsList
                   results={failedItems}
@@ -154,8 +168,8 @@ export function EventRow({ event, items, isCurator }: Props) {
               )}
             </>
           )}
-        </S.Details>
+        </div>
       )}
-    </S.Row>
+    </li>
   )
 }

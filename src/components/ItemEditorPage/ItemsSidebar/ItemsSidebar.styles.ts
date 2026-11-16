@@ -198,7 +198,7 @@ export const HeaderMeta = styled.div`
     padding: 0;
   }
 
-  & > button {
+  & > button:not([data-size='icon']) {
     width: 100%;
   }
 `

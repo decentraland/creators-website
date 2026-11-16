@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Close as RemoveIcon } from '@mui/icons-material'
+import { CloseIcon as RemoveIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
@@ -9,7 +9,8 @@ import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
 import { REJECT_REASON_CODES, type RejectReasonCode } from '~/lib/events'
 import { useNotifications } from '~/lib/notifications'
-import * as S from './RejectCurationModal.styles'
+import { ModalActions } from '~/styles/shared'
+import styles from './RejectCurationModal.module.css'
 
 export const REJECTION_MESSAGE_MAX_LENGTH = 3000
 
@@ -66,10 +67,12 @@ export function RejectCurationModal({ collection, curation, address, onClose, on
       closeDisabled={reject.isPending}
       testId="reject-curation-modal"
     >
-      <S.Form onSubmit={submit}>
-        <S.Heading>{t('reject_curation_modal.heading')}</S.Heading>
-        <S.Field>
-          <S.Label id="reject-reasons-label">{t('reject_curation_modal.reasons')}</S.Label>
+      <form className={styles.form} onSubmit={submit}>
+        <h3 className={styles.heading}>{t('reject_curation_modal.heading')}</h3>
+        <div className={styles.field}>
+          <span className={styles.label} id="reject-reasons-label">
+            {t('reject_curation_modal.reasons')}
+          </span>
           <MultiSelect<RejectReasonCode>
             values={reasons}
             options={options}
@@ -81,11 +84,12 @@ export function RejectCurationModal({ collection, curation, address, onClose, on
             testId="reject-reasons"
           />
           {reasons.length > 0 && (
-            <S.Pills data-testid="reject-reason-pills">
+            <ul className={styles.pills} data-testid="reject-reason-pills">
               {reasons.map(code => (
-                <S.Pill key={code} data-testid={`reject-reason-pill-${code}`}>
+                <li className={styles.pill} key={code} data-testid={`reject-reason-pill-${code}`}>
                   {t(`reject_reason.${code}`)}
-                  <S.PillRemove
+                  <button
+                    className={styles.pillRemove}
                     type="button"
                     aria-label={t('reject_curation_modal.remove_reason', { reason: t(`reject_reason.${code}`) })}
                     disabled={reject.isPending}
@@ -93,15 +97,16 @@ export function RejectCurationModal({ collection, curation, address, onClose, on
                     onClick={() => remove(code)}
                   >
                     <RemoveIcon fontSize="inherit" />
-                  </S.PillRemove>
-                </S.Pill>
+                  </button>
+                </li>
               ))}
-            </S.Pills>
+            </ul>
           )}
-        </S.Field>
-        <S.Details>
-          <S.DetailsLegend>{t('reject_curation_modal.message')}</S.DetailsLegend>
-          <S.TextArea
+        </div>
+        <fieldset className={styles.details}>
+          <legend className={styles.detailsLegend}>{t('reject_curation_modal.message')}</legend>
+          <textarea
+            className={styles.textArea}
             value={message}
             maxLength={REJECTION_MESSAGE_MAX_LENGTH}
             placeholder={t('reject_curation_modal.message_placeholder')}
@@ -110,12 +115,16 @@ export function RejectCurationModal({ collection, curation, address, onClose, on
             data-testid="rejection-message"
             onChange={event => setMessage(event.target.value)}
           />
-        </S.Details>
-        <S.CharCount>
+        </fieldset>
+        <span className={styles.charCount}>
           {message.length}/{REJECTION_MESSAGE_MAX_LENGTH}
-        </S.CharCount>
-        {reject.isError && <S.Error data-testid="reject-curation-error">{t('reject_curation_modal.error')}</S.Error>}
-        <S.Actions>
+        </span>
+        {reject.isError && (
+          <p className={styles.error} data-testid="reject-curation-error">
+            {t('reject_curation_modal.error')}
+          </p>
+        )}
+        <ModalActions>
           <Button
             type="button"
             variant="secondary"
@@ -128,8 +137,8 @@ export function RejectCurationModal({ collection, curation, address, onClose, on
           <Button type="submit" loading={reject.isPending} disabled={!canSubmit} data-testid="reject-curation-confirm">
             {t('reject_curation_modal.confirm')}
           </Button>
-        </S.Actions>
-      </S.Form>
+        </ModalActions>
+      </form>
     </Modal>
   )
 }

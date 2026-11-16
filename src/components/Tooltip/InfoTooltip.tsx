@@ -1,5 +1,6 @@
-import { InfoOutlined as InfoOutlinedIcon } from '@mui/icons-material'
+import { InfoOutlinedIcon } from '~/components/Icons'
 import type { ComponentProps } from 'react'
+import styles from './InfoTooltip.module.css'
 import { Tooltip } from './Tooltip'
 
 type Props = Omit<ComponentProps<typeof Tooltip>, 'children' | 'asChild'>
@@ -8,7 +9,7 @@ type Props = Omit<ComponentProps<typeof Tooltip>, 'children' | 'asChild'>
 export function InfoTooltip(props: Props) {
   return (
     <Tooltip {...props}>
-      <InfoOutlinedIcon sx={{ fontSize: 16 }} />
+      <InfoOutlinedIcon className={styles.icon} />
     </Tooltip>
   )
 }

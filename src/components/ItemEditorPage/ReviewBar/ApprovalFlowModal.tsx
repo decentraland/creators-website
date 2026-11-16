@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import {
-  Check as CheckIcon,
-  ChevronRight as ChevronRightIcon,
-  ContentCopy as ContentCopyIcon
-} from '@mui/icons-material'
+import { CheckIcon, ChevronRightIcon, ContentCopyIcon } from '~/components/Icons'
 import approvedArt from '~/assets/send-success.png'
 import errorArt from '~/assets/modal-error.png'
 import { useTranslation } from '~/intl'

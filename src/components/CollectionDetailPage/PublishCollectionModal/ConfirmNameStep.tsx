@@ -1,5 +1,5 @@
 import { useId, useState } from 'react'
-import { ChevronRight as ChevronRightIcon } from '@mui/icons-material'
+import { ChevronRightIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { NAME_ALREADY_IN_USE_ERROR, validateCollectionName } from '~/lib/collections'
 import { validateLinkedCollectionName } from '~/lib/thirdParty'

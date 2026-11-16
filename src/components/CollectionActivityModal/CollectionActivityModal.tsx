@@ -10,7 +10,7 @@ import { type ReviewParty } from '~/lib/events'
 import { type Item } from '~/lib/items'
 import { CommentComposer } from './CommentComposer'
 import { EventRow } from './EventRow'
-import * as S from './CollectionActivityModal.styles'
+import styles from './CollectionActivityModal.module.css'
 
 type Props = {
   collection: Collection
@@ -43,42 +43,50 @@ export function CollectionActivityModal({ collection, address, items = [], comme
 
   return (
     <Modal title={t('activity_modal.title')} onClose={onClose} size="large" testId="activity-modal">
-      <S.Body>
+      <div className={styles.body}>
         {isLoading ? (
-          <S.Timeline aria-busy="true" data-testid="activity-loading">
+          <ol className={styles.timeline} aria-busy="true" data-testid="activity-loading">
             {Array.from({ length: 4 }, (_, i) => (
-              <S.SkeletonRow key={i} className="skeleton" />
+              <div key={i} className={`${styles.skeletonRow} skeleton`} />
             ))}
-          </S.Timeline>
+          </ol>
         ) : isError ? (
           <>
-            <S.State data-testid="activity-error">{t('activity_modal.error')}</S.State>
-            <S.StateActions>
+            <p className={styles.state} data-testid="activity-error">
+              {t('activity_modal.error')}
+            </p>
+            <div className={styles.stateActions}>
               <Button type="button" variant="secondary" onClick={() => void refetch()}>
                 {t('activity_modal.retry')}
               </Button>
-            </S.StateActions>
+            </div>
           </>
         ) : !isAvailable ? (
-          <S.State data-testid="activity-unavailable">{t('activity_modal.unavailable')}</S.State>
+          <p className={styles.state} data-testid="activity-unavailable">
+            {t('activity_modal.unavailable')}
+          </p>
         ) : events.length === 0 ? (
           <>
             {composer}
-            <S.State data-testid="activity-empty">{t('activity_modal.empty')}</S.State>
+            <p className={styles.state} data-testid="activity-empty">
+              {t('activity_modal.empty')}
+            </p>
           </>
         ) : (
           <>
             {composer}
-            <S.Timeline data-testid="activity-timeline">
+            <ol className={styles.timeline} data-testid="activity-timeline">
               {events.map(event => (
                 <EventRow key={event.id} event={event} items={items} isCurator={isCurator} />
               ))}
-            </S.Timeline>
+            </ol>
             {isFetchNextPageError && (
-              <S.State data-testid="activity-load-more-error">{t('activity_modal.error')}</S.State>
+              <p className={styles.state} data-testid="activity-load-more-error">
+                {t('activity_modal.error')}
+              </p>
             )}
             {hasNextPage && (
-              <S.More>
+              <div className={styles.more}>
                 <Button
                   type="button"
                   variant="secondary"
@@ -89,11 +97,11 @@ export function CollectionActivityModal({ collection, address, items = [], comme
                 >
                   {t(isFetchNextPageError ? 'activity_modal.retry' : 'activity_modal.load_more')}
                 </Button>
-              </S.More>
+              </div>
             )}
           </>
         )}
-      </S.Body>
+      </div>
     </Modal>
   )
 }

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  AllInclusive as AnyIcon,
-  FormatListNumbered as MultipleIcon,
-  LinearScale as RangeIcon,
-  Tag as SingleIcon
-} from '@mui/icons-material'
+  AllInclusiveIcon as AnyIcon,
+  FormatListNumberedIcon as MultipleIcon,
+  LinearScaleIcon as RangeIcon,
+  TagIcon as SingleIcon
+} from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import {
   MappingType,

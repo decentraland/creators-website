@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Add as AddIcon, ArrowBackIosNew as BackIcon, Search as SearchIcon } from '@mui/icons-material'
+import { AddIcon, ArrowBackIosNewIcon as BackIcon, SearchIcon } from '~/components/Icons'
 import { Button } from '~/components/Button'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'

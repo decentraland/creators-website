@@ -19,10 +19,9 @@ export const Body = styled.div`
   }
 `
 
-/* Inside the scrolling body the button must keep its height, and the mockup draws it borderless. */
+/* Inside the scrolling body the button must keep its height. */
 export const AddTransfer = styled(Button)`
   flex-shrink: 0;
-  border: 0;
 `
 
 export const Steps = styled.div`

@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent, type RefObject } from 'react'
-import { Close as RemoveIcon } from '@mui/icons-material'
+import { CloseIcon as RemoveIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import * as S from '../ItemEditorPage.styles'
 
@@ -48,7 +48,7 @@ export function TagsInput({ tags, disabled = false, onChange, inputRef, testId =
                 data-testid={`${testId}-remove-${tag}`}
                 onClick={() => onChange(tags.filter(candidate => candidate !== tag))}
               >
-                <RemoveIcon sx={{ fontSize: 14 }} />
+                <RemoveIcon style={{ fontSize: 14 }} />
               </button>
             )}
           </S.TagChip>

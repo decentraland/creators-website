@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
 import {
-  ChevronRight as ChevronRightIcon,
-  ErrorOutline as WarningIcon,
-  ReportProblemOutlined as ErrorIcon
-} from '@mui/icons-material'
+  ChevronRightIcon,
+  ErrorOutlineIcon as WarningIcon,
+  ReportProblemOutlinedIcon as ErrorIcon
+} from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { hasErrors as anyErrors, type ItemCheck } from '~/lib/validation'
 import { Button } from '~/components/Button'

@@ -1,10 +1,5 @@
 import { useMemo } from 'react'
-import {
-  Add as AddIcon,
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon,
-  ExpandMore as ExpandIcon
-} from '@mui/icons-material'
+import { AddIcon, ChevronLeftIcon, ChevronRightIcon, ExpandMoreIcon as ExpandIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { useFriends } from '~/hooks/useSales'
 import { useProfile } from '~/hooks/useProfile'

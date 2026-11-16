@@ -1,11 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon,
-  Close as CloseIcon,
-  InfoOutlined as InfoOutlinedIcon
-} from '@mui/icons-material'
+import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, InfoOutlinedIcon } from '~/components/Icons'
 import { useIntl } from 'react-intl'
 import { useTranslation, type Translate } from '~/intl'
 import { isSocialLogin, type Session } from '~/lib/auth'

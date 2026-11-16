@@ -35,7 +35,7 @@ const UI2_STYLING = {
     'Styled defs live only in *.styles.ts, through @emotion/styled. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 
-const STYLES_FILES = ['src/**/*.styles.ts', 'src/styles/**/*.ts']
+const STYLES_FILES = ['src/**/*.styles.ts']
 const EMOTION_ALL = {
   regex: '^@emotion/',
   message: 'Styling is migrating to CSS Modules; add no new Emotion. See docs/DECISIONS.md (Pre-monorepo refactor).'
@@ -45,9 +45,9 @@ const EMOTION_EXCEPT_STYLED = {
   message: 'Only @emotion/styled is allowed, and only in *.styles.ts. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 const MUI = {
-  regex: '^@mui/(?!icons-material(/|$))',
+  regex: '^@mui/',
   message:
-    'The monorepo has no MUI; only @mui/icons-material is allowed. See docs/DECISIONS.md (Pre-monorepo refactor).'
+    'The monorepo has no MUI; Material glyphs live in ~/components/Icons. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 
 const ETHERS = {
@@ -61,7 +61,7 @@ const DCL_TRANSACTIONS = {
 
 // no-restricted-imports does not see import(), so lazy-loaded usage needs its own rule.
 const DYNAMIC_EMOTION_MUI = {
-  selector: 'ImportExpression[source.value=/^(@emotion\\/|@mui\\/(?!icons-material(\\/|$)))/]',
+  selector: 'ImportExpression[source.value=/^(@emotion\\/|@mui\\/)/]',
   message: 'No new Emotion or MUI, lazy-loaded included. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 const DYNAMIC_UI2 = {
@@ -193,7 +193,7 @@ export default tseslint.config(
   },
 
   // Pre-monorepo fence (docs/DECISIONS.md, "Pre-monorepo refactor"): the monorepo has no Emotion or MUI,
-  // so no new usage; @emotion/styled stays in *.styles.ts and src/styles until the CSS Modules migration.
+  // so no new usage; @emotion/styled stays in *.styles.ts until the CSS Modules migration.
   // The same rule keeps the builder-server transport inside src/lib/builder and components off its endpoints
   // (CONVENTIONS.md seam 5); component specs import endpoints to mock them, so they stay out of that block.
   {

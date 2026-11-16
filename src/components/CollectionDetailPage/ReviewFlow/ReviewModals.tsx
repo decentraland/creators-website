@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { InfoOutlined as InfoIcon, ReportProblemOutlined as ErrorIcon } from '@mui/icons-material'
+import { InfoOutlinedIcon as InfoIcon, ReportProblemOutlinedIcon as ErrorIcon } from '~/components/Icons'
 import reviewArt from '~/assets/publish-success.png'
 import limitArt from '~/assets/review-limit.png'
 import { Button } from '~/components/Button'
@@ -13,7 +13,7 @@ import { useTranslation } from '~/intl'
 import { NOTE_MAX_LENGTH, VALIDATION_ATTEMPTS_PER_DAY, getValidationResetIn } from '~/lib/events'
 import * as Issues from '../PublishCollectionModal/ValidationIssuesView.styles'
 import { type ItemCheck } from '~/lib/validation'
-import * as S from './ReviewFlow.styles'
+import styles from './ReviewFlow.module.css'
 
 type AttemptsProps = { used: number; testId: string }
 
@@ -21,7 +21,7 @@ type AttemptsProps = { used: number; testId: string }
 function Attempts({ used, testId }: AttemptsProps) {
   const { t } = useTranslation()
   return (
-    <S.Attempts>
+    <div className={styles.attempts}>
       <span data-testid={testId}>
         {t('review_flow.attempts', {
           used: Math.min(used, VALIDATION_ATTEMPTS_PER_DAY),
@@ -34,7 +34,7 @@ function Attempts({ used, testId }: AttemptsProps) {
       >
         <InfoIcon fontSize="inherit" aria-label={t('review_flow.attempts_info')} />
       </Tooltip>
-    </S.Attempts>
+    </div>
   )
 }
 
@@ -112,7 +112,7 @@ export function RequestCuratorReviewModal({ afterFixes, busy, error, onConfirm, 
       }}
       testId="request-review-modal"
     >
-      <S.RequestNote>
+      <div className={styles.requestNote}>
         <NoteField
           label={t(afterFixes ? 'collection_detail_page.push_note.label' : 'review_flow.request.note')}
           value={note}
@@ -124,7 +124,7 @@ export function RequestCuratorReviewModal({ afterFixes, busy, error, onConfirm, 
           disabled={busy}
           testId="request-review-note"
         />
-      </S.RequestNote>
+      </div>
     </ConfirmModal>
   )
 }
@@ -163,9 +163,9 @@ export function DailyLimitModal({ attemptsUsed, busy, error, onRequestReview, on
       spreadActions
       testId="daily-limit-modal"
     >
-      <S.LimitAttempts>
+      <div className={styles.limitAttempts}>
         <Attempts used={attemptsUsed} testId="daily-limit-attempts" />
-      </S.LimitAttempts>
+      </div>
     </ConfirmModal>
   )
 }

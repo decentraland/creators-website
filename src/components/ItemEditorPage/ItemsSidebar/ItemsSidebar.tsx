@@ -1,23 +1,24 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { type BodyShape } from '@dcl/schemas'
-import {
-  Add as AddIcon,
-  ArrowBackIosNew as BackIcon,
-  CheckCircle as ReviewedIcon,
-  Inventory2Outlined as RestIcon,
-  RateReviewOutlined as ToReviewIcon,
-  GraphicEq as PlayingIcon,
-  KeyboardDoubleArrowLeft as CollapseIcon,
-  KeyboardDoubleArrowRight as ExpandIcon,
-  Edit as EditIcon,
-  Female as FemaleIcon,
-  Male as MaleIcon,
-  Visibility as DressedIcon,
-  VisibilityOff as UndressedIcon
-} from '@mui/icons-material'
 import { Button } from '~/components/Button'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
-import { EmoteIcon, WearableIcon } from '~/components/Icons'
+import {
+  EmoteIcon,
+  WearableIcon,
+  AddIcon,
+  ArrowBackIosNewIcon as BackIcon,
+  CheckCircleIcon as ReviewedIcon,
+  Inventory2OutlinedIcon as RestIcon,
+  RateReviewOutlinedIcon as ToReviewIcon,
+  GraphicEqIcon as PlayingIcon,
+  KeyboardDoubleArrowLeftIcon as CollapseIcon,
+  KeyboardDoubleArrowRightIcon as ExpandIcon,
+  EditIcon,
+  FemaleIcon,
+  MaleIcon,
+  VisibilityIcon as DressedIcon,
+  VisibilityOffIcon as UndressedIcon
+} from '~/components/Icons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { Tooltip } from '~/components/Tooltip'
 import { useScrollFades } from '~/hooks/useScrollFades'

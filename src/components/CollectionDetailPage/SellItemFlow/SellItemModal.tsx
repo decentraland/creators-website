@@ -1,9 +1,9 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import {
-  CalendarTodayOutlined as CalendarIcon,
-  InfoOutlined as InfoIcon,
-  WarningAmberOutlined as WarningIcon
-} from '@mui/icons-material'
+  CalendarTodayOutlinedIcon as CalendarIcon,
+  InfoOutlinedIcon as InfoIcon,
+  WarningAmberOutlinedIcon as WarningIcon
+} from '~/components/Icons'
 import DatePicker from 'react-datepicker'
 import { enUS, es, zhCN, type Locale as DateLocale } from 'date-fns/locale'
 import { useIntl } from 'react-intl'

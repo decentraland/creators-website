@@ -1,4 +1,4 @@
-import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '@mui/icons-material'
+import { ChevronLeftIcon, ChevronRightIcon } from '~/components/Icons'
 import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
 import { weiToUsdCents } from '~/lib/publishFee'

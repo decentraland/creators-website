@@ -1,11 +1,11 @@
 import { useEffect } from 'react'
 import {
-  CheckCircleRounded as SuccessIcon,
-  Close as CloseIcon,
-  ErrorRounded as ErrorIcon,
-  InfoRounded as InfoIcon,
-  WarningRounded as WarnIcon
-} from '@mui/icons-material'
+  CheckCircleRoundedIcon as SuccessIcon,
+  CloseIcon,
+  ErrorRoundedIcon as ErrorIcon,
+  InfoRoundedIcon as InfoIcon,
+  WarningRoundedIcon as WarnIcon
+} from '~/components/Icons'
 import { useNotifications, type Toast, type ToastType } from '~/lib/notifications'
 import { useTranslation } from '~/intl'
 import * as S from './Toasts.styles'

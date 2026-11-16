@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { PersonOutline as PersonOutlineIcon, Search as SearchIcon } from '@mui/icons-material'
+import { PersonOutlineIcon, SearchIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { Button } from '~/components/Button'
 import { AssignCuratorModal } from '~/components/AssignCuratorModal'

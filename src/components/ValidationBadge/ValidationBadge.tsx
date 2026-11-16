@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import {
-  CheckCircleOutline as PassIcon,
-  ErrorOutline as WarningIcon,
-  ReportProblemOutlined as ErrorIcon
-} from '@mui/icons-material'
+  CheckCircleOutlineIcon as PassIcon,
+  ErrorOutlineIcon as WarningIcon,
+  ReportProblemOutlinedIcon as ErrorIcon
+} from '~/components/Icons'
 import { Tooltip } from '~/components/Tooltip'
 import { useTranslation } from '~/intl'
 import { type ValidationIssue, type ValidationStatus } from '~/lib/validation'

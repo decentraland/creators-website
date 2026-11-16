@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft as ChevronLeftIcon } from '@mui/icons-material'
+import { ChevronLeftIcon } from '~/components/Icons'
 import { useIntl } from 'react-intl'
 import { config } from '~/config'
 import { useTranslation } from '~/intl'

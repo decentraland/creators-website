@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import * as S from './NoteField.styles'
+import styles from './NoteField.module.css'
 
 type Props = {
   label: string
@@ -29,9 +29,10 @@ export function NoteField({
 }: Props) {
   const id = useId()
   return (
-    <S.Field>
+    <div className={styles.field}>
       <label htmlFor={id}>{label}</label>
-      <S.TextArea
+      <textarea
+        className={styles.textArea}
         id={id}
         value={value}
         maxLength={maxLength}
@@ -42,10 +43,10 @@ export function NoteField({
         onChange={event => onChange(event.target.value)}
       />
       {!hideCount && (
-        <S.CharCount>
+        <span className={styles.charCount}>
           {value.length}/{maxLength}
-        </S.CharCount>
+        </span>
       )}
-    </S.Field>
+    </div>
   )
 }

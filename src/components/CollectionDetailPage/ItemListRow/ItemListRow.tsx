@@ -1,11 +1,4 @@
 import { useState, type KeyboardEvent, type ReactNode } from 'react'
-import {
-  Check as CheckIcon,
-  Close as CloseIcon,
-  Edit as EditIcon,
-  ErrorOutline as WarningIcon,
-  ReportProblemOutlined as ErrorIcon
-} from '@mui/icons-material'
 import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'
@@ -19,7 +12,14 @@ import { discountedCreditsPpm, discountedManaWeiPpm } from '~/lib/collectionDisc
 import { formatCredits, formatMana } from '~/lib/publishFee'
 import { shopItemUrl } from '~/lib/shop'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
-import { SmartIcon } from '~/components/Icons'
+import {
+  SmartIcon,
+  CheckIcon,
+  CloseIcon,
+  EditIcon,
+  ErrorOutlineIcon as WarningIcon,
+  ReportProblemOutlinedIcon as ErrorIcon
+} from '~/components/Icons'
 import { Tooltip } from '~/components/Tooltip'
 import { BodyShapeIcon, CategoryIcon, PlayModeIcon } from '~/components/ItemIcons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'

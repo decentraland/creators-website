@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import { InfoOutlined as InfoOutlinedIcon } from '@mui/icons-material'
+import { InfoOutlinedIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { COLLECTION_NAME_MAX_LENGTH } from '~/lib/collections'
 import * as S from './CollectionNameInput.styles'

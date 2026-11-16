@@ -1,14 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import {
-  Add as AddIcon,
-  ArrowBackIosNew as ArrowBackIcon,
-  Edit as EditIcon,
-  ForumOutlined as ForumIcon,
-  LocalOfferOutlined as DiscountIcon,
-  PersonOutline as PersonOutlineIcon,
-  Sync as SyncIcon
-} from '@mui/icons-material'
 import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
 import { useWallet } from '~/store/wallet'
@@ -99,7 +90,18 @@ import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { NoteField } from '~/components/NoteField'
 import { Tooltip } from '~/components/Tooltip'
-import { EmoteIcon, OpenEditorIcon, WearableIcon } from '~/components/Icons'
+import {
+  EmoteIcon,
+  OpenEditorIcon,
+  WearableIcon,
+  AddIcon,
+  ArrowBackIosNewIcon as ArrowBackIcon,
+  EditIcon,
+  ForumOutlinedIcon as ForumIcon,
+  LocalOfferOutlinedIcon as DiscountIcon,
+  PersonOutlineIcon,
+  SyncIcon
+} from '~/components/Icons'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
 import { CollectionRolePill } from '~/components/CollectionRolePill'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'

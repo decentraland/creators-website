@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { type BodyShape } from '@dcl/schemas'
-import { Close as CloseIcon, DesktopWindowsOutlined as DesktopIcon } from '@mui/icons-material'
+import { CloseIcon, DesktopWindowsOutlinedIcon as DesktopIcon } from '~/components/Icons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'

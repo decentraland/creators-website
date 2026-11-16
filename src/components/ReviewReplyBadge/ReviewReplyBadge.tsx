@@ -3,7 +3,8 @@ import { useTranslation } from '~/intl'
 import { useRecentCollectionEvents } from '~/hooks/useCollectionEvents'
 import { CollectionDisplayStatus, getCollectionDisplayStatus, type Collection } from '~/lib/collections'
 import { getAwaitedReply } from '~/lib/events'
-import * as S from './ReviewReplyBadge.styles'
+import { cx } from '~/lib/cx'
+import styles from './ReviewReplyBadge.module.css'
 
 /** Collections whose review is still open: the only ones worth a timeline request per list row. */
 const IN_REVIEW: CollectionDisplayStatus[] = [CollectionDisplayStatus.UNDER_REVIEW, CollectionDisplayStatus.REJECTED]
@@ -18,8 +19,8 @@ export function ReviewReplyBadge({ collection, address, className }: Props) {
   const awaited = useMemo(() => !!recent.data && getAwaitedReply(recent.data) === 'creator', [recent.data])
   if (!awaited) return null
   return (
-    <S.Badge className={className} data-testid="review-reply-badge">
+    <span className={cx(styles.badge, className)} data-testid="review-reply-badge">
       {t('review_flow.curator_replied')}
-    </S.Badge>
+    </span>
   )
 }

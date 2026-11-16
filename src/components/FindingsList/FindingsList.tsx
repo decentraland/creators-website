@@ -4,7 +4,7 @@ import { getContentsStorageUrl } from '~/lib/builder'
 import { mergeBodyShapeFindings, type ValidationFinding, type ValidationItemResult } from '~/lib/events'
 import { type Item } from '~/lib/items'
 import { isWebUrl, openExternal } from '~/lib/navigation'
-import * as S from './FindingsList.styles'
+import styles from './FindingsList.module.css'
 
 type ShownFinding = Omit<ValidationFinding, 'measured' | 'limit'> & {
   measured?: number | string
@@ -22,33 +22,41 @@ export function FindingsList({ findings, testId = 'findings' }: ListProps) {
   const rows = useMemo(() => mergeBodyShapeFindings(findings), [findings])
   if (rows.length === 0) return null
   return (
-    <S.List data-testid={testId}>
+    <ul className={styles.list} data-testid={testId}>
       {rows.map((finding, index) => (
-        <S.Finding key={`${finding.rule}-${index}`} data-severity={finding.severity} data-testid={`${testId}-finding`}>
-          <S.Head>
-            <S.Severity data-severity={finding.severity}>{t(`findings.severity.${finding.severity}`)}</S.Severity>
-            <S.Rule>{finding.rule}</S.Rule>
+        <li
+          className={styles.finding}
+          key={`${finding.rule}-${index}`}
+          data-severity={finding.severity}
+          data-testid={`${testId}-finding`}
+        >
+          <div className={styles.head}>
+            <span className={styles.severity} data-severity={finding.severity}>
+              {t(`findings.severity.${finding.severity}`)}
+            </span>
+            <span className={styles.rule}>{finding.rule}</span>
             {finding.bodyShapes.length > 0 && (
-              <S.BodyShapes data-testid={`${testId}-body-shapes`}>
+              <span className={styles.bodyShapes} data-testid={`${testId}-body-shapes`}>
                 {finding.bodyShapes.map(shape => t(`findings.body_shape.${shape}`)).join(' · ')}
-              </S.BodyShapes>
+              </span>
             )}
-            {finding.where && <S.Where>{finding.where}</S.Where>}
-          </S.Head>
-          <S.Message>{finding.message}</S.Message>
+            {finding.where && <span className={styles.where}>{finding.where}</span>}
+          </div>
+          <p className={styles.message}>{finding.message}</p>
           {(finding.measured !== undefined || finding.limit !== undefined) && (
-            <S.Meta>
+            <p className={styles.meta}>
               {finding.measured !== undefined && <span>{t('findings.measured', { measured: finding.measured })}</span>}
               {finding.limit !== undefined && <span>{t('findings.limit', { limit: finding.limit })}</span>}
-            </S.Meta>
+            </p>
           )}
           {finding.fix && (
-            <S.Fix>
+            <p className={styles.fix}>
               <strong>{t('findings.fix')}:</strong> {finding.fix}
-            </S.Fix>
+            </p>
           )}
           {isWebUrl(finding.docs) && (
-            <S.DocsLink
+            <a
+              className={styles.docsLink}
               href={finding.docs}
               onClick={event => {
                 event.preventDefault()
@@ -56,11 +64,11 @@ export function FindingsList({ findings, testId = 'findings' }: ListProps) {
               }}
             >
               {t('findings.docs')}
-            </S.DocsLink>
+            </a>
           )}
-        </S.Finding>
+        </li>
       ))}
-    </S.List>
+    </ul>
   )
 }
 
@@ -90,18 +98,23 @@ export function ItemFindingsList({
   const { t } = useTranslation()
   const byId = useMemo(() => new Map(items.map(item => [item.id, item])), [items])
   return (
-    <S.Groups data-testid={testId}>
+    <div className={styles.groups} data-testid={testId}>
       {results.map(result => {
         const item = byId.get(result.itemId)
         const thumbnail = item?.contents[item.thumbnail]
         const passed = result.passed === undefined ? undefined : result.passed
         return (
-          <S.ItemGroup key={result.itemId} data-testid={`${testId}-item`} data-item-id={result.itemId}>
-            <S.ItemHead>
-              {thumbnail && <S.ItemThumb src={getContentsStorageUrl(thumbnail)} alt="" />}
+          <section
+            className={styles.itemGroup}
+            key={result.itemId}
+            data-testid={`${testId}-item`}
+            data-item-id={result.itemId}
+          >
+            <header className={styles.itemHead}>
+              {thumbnail && <img className={styles.itemThumb} src={getContentsStorageUrl(thumbnail)} alt="" />}
               <span>{item?.name ?? t('findings.unknown_item', { id: result.itemId.slice(0, 8) })}</span>
               {showStatus && passed !== undefined && (
-                <S.ItemStatus data-passed={String(passed)}>
+                <span className={styles.itemStatus} data-passed={String(passed)}>
                   {t(
                     passed === true
                       ? 'findings.item_passed'
@@ -111,23 +124,23 @@ export function ItemFindingsList({
                           ? 'findings.item_unsupported'
                           : 'findings.item_unchecked'
                   )}
-                </S.ItemStatus>
+                </span>
               )}
-            </S.ItemHead>
+            </header>
             {showErrors && result.passed === null && result.error && (
-              <S.ItemError data-testid={`${testId}-item-error`}>
+              <p className={styles.itemError} data-testid={`${testId}-item-error`}>
                 {t('findings.item_error', { error: result.error })}
-              </S.ItemError>
+              </p>
             )}
             <FindingsList findings={result.findings} testId={`${testId}-${result.itemId}`} />
             {result.visualSummary && (
-              <S.Summary data-testid={`${testId}-visual-summary`}>
+              <p className={styles.summary} data-testid={`${testId}-visual-summary`}>
                 <strong>{t('findings.visual_summary')}:</strong> {result.visualSummary}
-              </S.Summary>
+              </p>
             )}
-          </S.ItemGroup>
+          </section>
         )
       })}
-    </S.Groups>
+    </div>
   )
 }
