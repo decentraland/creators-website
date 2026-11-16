@@ -79,7 +79,8 @@ import {
   VALIDATION_ATTEMPTS_PER_DAY,
   getAutomatedIssuesByItem,
   countValidationAttempts,
-  hasChangesSinceVerdict
+  hasChangesSinceVerdict,
+  startOfUtcDay
 } from '~/lib/events'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS, THUMBNAIL_PATH } from '~/lib/itemFiles'
@@ -364,7 +365,8 @@ const CollectionDetailPage = () => {
   )
   // The same content always gets the same result, so another automated review waits for a saved or added item.
   const hasNewContent = useMemo(() => hasChangesSinceVerdict(events ?? [], allItems ?? []), [events, allItems])
-  const reviewsUsed = useMemo(() => countValidationAttempts(events ?? []), [events])
+  const today = startOfUtcDay(Date.now())
+  const reviewsUsed = useMemo(() => countValidationAttempts(events ?? [], today), [events, today])
   // After a rejection the creator asks for a review again, whether it was the first one or a pushed update.
   const pushCopy = curation?.status === 'rejected' ? 'request_review' : 'push_changes'
   const rowStatuses = useMemo(

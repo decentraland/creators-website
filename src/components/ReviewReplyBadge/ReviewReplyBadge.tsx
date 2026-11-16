@@ -1,7 +1,12 @@
 import { useMemo } from 'react'
 import { useTranslation } from '~/intl'
 import { useRecentCollectionEvents } from '~/hooks/useCollectionEvents'
-import { CollectionDisplayStatus, getCollectionDisplayStatus, type Collection } from '~/lib/collections'
+import {
+  CollectionDisplayStatus,
+  canManageCollectionItems,
+  getCollectionDisplayStatus,
+  type Collection
+} from '~/lib/collections'
 import { getAwaitedReply } from '~/lib/events'
 import { cx } from '~/lib/cx'
 import styles from './ReviewReplyBadge.module.css'
@@ -14,7 +19,9 @@ type Props = { collection: Collection; address: string | undefined; className?: 
 /** Marks a collection in the creator's lists when a curator's comment is waiting for an answer. */
 export function ReviewReplyBadge({ collection, address, className }: Props) {
   const { t } = useTranslation()
-  const inReview = IN_REVIEW.includes(getCollectionDisplayStatus(collection))
+  // Minters can't read the timeline (builder-server answers 401), so only the collection's managers ask.
+  const inReview =
+    IN_REVIEW.includes(getCollectionDisplayStatus(collection)) && canManageCollectionItems(collection, address)
   const recent = useRecentCollectionEvents(address, collection.id, inReview)
   const awaited = useMemo(() => !!recent.data && getAwaitedReply(recent.data) === 'creator', [recent.data])
   if (!awaited) return null

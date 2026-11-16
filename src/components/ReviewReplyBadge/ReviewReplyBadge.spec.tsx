@@ -12,7 +12,16 @@ vi.mock('~/hooks/useCollectionEvents', () => ({
   }
 }))
 
-const underReview = { id: 'c1', isPublished: true, isApproved: false, createdAt: 1, reviewedAt: 1 } as Collection
+const underReview = {
+  id: 'c1',
+  owner: '0xme',
+  managers: [],
+  minters: [],
+  isPublished: true,
+  isApproved: false,
+  createdAt: 1,
+  reviewedAt: 1
+} as unknown as Collection
 
 function renderBadge(collection: Collection) {
   render(
@@ -36,6 +45,12 @@ describe('ReviewReplyBadge', () => {
     ]
     renderBadge(underReview)
     expect(screen.queryByTestId('review-reply-badge')).toBeNull()
+  })
+
+  it("asks for no timeline of a collection the user only sends items of: the server won't show it", () => {
+    recent.asked = []
+    renderBadge({ ...underReview, owner: '0xowner', minters: ['0xme'] })
+    expect(recent.asked).toEqual([false])
   })
 
   it('asks for no timeline of a draft', () => {

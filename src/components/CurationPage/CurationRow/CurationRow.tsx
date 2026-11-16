@@ -9,7 +9,7 @@ import { ProfileBadge } from '~/components/ProfileBadge'
 import { AutomatedReviewIcon } from '~/components/AutomatedReviewIcon'
 import { Tooltip } from '~/components/Tooltip'
 import { useRecentCollectionEvents } from '~/hooks/useCollectionEvents'
-import { getAwaitedReply, getCuratorVerdict, type CollectionEvent } from '~/lib/events'
+import { getAwaitedReply, getCurrentVerdict, type CollectionEvent } from '~/lib/events'
 import { isLinkedCollection, type Collection } from '~/lib/collections'
 import { openForumPost } from '~/lib/forumPost'
 import {
@@ -51,10 +51,7 @@ export function CurationRow({ collection, curation, address, onAssign }: Props) 
   const stage = useMemo(() => getReviewStage(collection, curation, events), [collection, curation, events])
   const curatorState = getCuratorState(collection, curation, stage)
   // Only the current request's result says why it is in the queue; an older run belongs to another request.
-  const verdict = useMemo(() => {
-    const latest = events ? getCuratorVerdict(events) : null
-    return latest && curation && latest.createdAt >= curation.createdAt ? latest : null
-  }, [events, curation])
+  const verdict = useMemo(() => (events ? getCurrentVerdict(events, curation) : null), [events, curation])
   const automatedStatus =
     stage === ReviewStage.REJECTED_BY_VALIDATOR ? 'rejected' : pending && verdict ? verdict.outcome : null
   const creatorReplied = useMemo(() => !!recent.data && getAwaitedReply(recent.data) === 'curator', [recent.data])

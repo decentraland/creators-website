@@ -57,7 +57,7 @@ export function EventRow({ event, items, isCurator }: Props) {
   const [showFindings, setShowFindings] = useState(false)
   const { payload } = event
   const failedItems = useMemo(
-    () => (payload.items ? getFailedItems({ verdict: 'rejected', items: payload.items }) : []),
+    () => (Array.isArray(payload.items) ? getFailedItems({ verdict: 'rejected', items: payload.items }) : []),
     [payload.items]
   )
   const reasons = useMemo(() => (payload.rejectionReasons ?? []).filter(isRejectReasonCode), [payload.rejectionReasons])
@@ -70,7 +70,9 @@ export function EventRow({ event, items, isCurator }: Props) {
           trigger: t(`activity_modal.trigger.${isValidationTrigger(payload.trigger) ? payload.trigger : 'publish'}`)
         })
       case 'review.automated_rejected':
-        return t('activity_modal.event.review.automated_rejected', { count: countFailedItems(payload.items ?? []) })
+        return t('activity_modal.event.review.automated_rejected', {
+          count: countFailedItems(Array.isArray(payload.items) ? payload.items : [])
+        })
       case 'review.automated_error':
         if (isFinalValidationError(event)) return t('activity_modal.event.review.automated_error_final')
         return t(

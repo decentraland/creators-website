@@ -6,6 +6,7 @@ import {
   fromRemoteEvent,
   getAutomatedIssuesByItem,
   getCuratorVerdict,
+  getCurrentVerdict,
   countUnansweredComments,
   getAwaitedReply,
   getValidationResetIn,
@@ -276,6 +277,50 @@ describe('hasChangesSinceVerdict', () => {
         { id: 'i2', currentContentHash: 'c' }
       ])
     ).toBe(true)
+  })
+})
+
+describe('hasChangesSinceVerdict across runs', () => {
+  const run = (id: string, createdAt: number, items: { itemId: string; contentHash: string }[]): CollectionEvent => ({
+    id,
+    collectionId: 'c1',
+    type: 'review.automated_rejected',
+    actor: 'validator',
+    actorAddress: null,
+    createdAt,
+    payload: { verdict: 'rejected', items: items.map(item => ({ ...item, passed: false, findings: [] })) }
+  })
+
+  it('judges an item by the newest run that saw it, not only by the latest one', () => {
+    // The latest run only judged the updated item; the other one was judged by the first review.
+    const events = [
+      run('v2', 20, [{ itemId: 'i2', contentHash: 'b' }]),
+      run('v1', 10, [{ itemId: 'i1', contentHash: 'a' }])
+    ]
+    const items = [
+      { id: 'i1', currentContentHash: 'a' },
+      { id: 'i2', currentContentHash: 'b' }
+    ]
+    expect(hasChangesSinceVerdict(events, items)).toBe(false)
+    expect(hasChangesSinceVerdict(events, [items[0], { id: 'i2', currentContentHash: 'c' }])).toBe(true)
+  })
+})
+
+describe('getCurrentVerdict', () => {
+  const verdict: CollectionEvent = {
+    id: 'v1',
+    collectionId: 'c1',
+    type: 'review.automated_rejected',
+    actor: 'validator',
+    actorAddress: null,
+    createdAt: 10,
+    payload: { verdict: 'rejected', items: [] }
+  }
+
+  it('reads the result of the current request only', () => {
+    expect(getCurrentVerdict([verdict], { createdAt: 5 })?.outcome).toBe('rejected')
+    expect(getCurrentVerdict([verdict], { createdAt: 15 })).toBeNull()
+    expect(getCurrentVerdict([verdict], null)).toBeNull()
   })
 })
 

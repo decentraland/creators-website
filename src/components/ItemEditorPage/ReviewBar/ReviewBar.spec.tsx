@@ -430,6 +430,18 @@ describe('ReviewBar', () => {
   })
 
   it('leads the verdict with the failed items and folds the passed ones', () => {
+    // A run always belongs to a review request.
+    state.curation = {
+      id: 'r1',
+      collectionId: 'c1',
+      status: 'pending',
+      assignee: null,
+      reviewedBy: null,
+      rejectionReasons: null,
+      rejectionMessage: null,
+      createdAt: 1,
+      updatedAt: 1
+    }
     state.events = [
       {
         id: 'e1',
@@ -469,6 +481,18 @@ describe('ReviewBar', () => {
   })
 
   it('lists the items without sections when they all share one outcome', () => {
+    // A run always belongs to a review request.
+    state.curation = {
+      id: 'r1',
+      collectionId: 'c1',
+      status: 'pending',
+      assignee: null,
+      reviewedBy: null,
+      rejectionReasons: null,
+      rejectionMessage: null,
+      createdAt: 1,
+      updatedAt: 1
+    }
     state.events = [
       {
         id: 'e1',
@@ -495,6 +519,18 @@ describe('ReviewBar', () => {
   })
 
   it('opens a lone item, whatever its outcome', () => {
+    // A run always belongs to a review request.
+    state.curation = {
+      id: 'r1',
+      collectionId: 'c1',
+      status: 'pending',
+      assignee: null,
+      reviewedBy: null,
+      rejectionReasons: null,
+      rejectionMessage: null,
+      createdAt: 1,
+      updatedAt: 1
+    }
     state.events = [
       {
         id: 'e1',

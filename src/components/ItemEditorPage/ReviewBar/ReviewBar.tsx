@@ -37,7 +37,7 @@ import {
   getReviewStage,
   hasReviewConversation
 } from '~/lib/curation'
-import { getAwaitedReply, getCuratorVerdict } from '~/lib/events'
+import { getAwaitedReply, getCurrentVerdict } from '~/lib/events'
 import { FeatureFlag } from '~/lib/featureFlags'
 import { ItemSyncStatus, hasPendingChanges } from '~/lib/itemSync'
 import { type Item } from '~/lib/items'
@@ -100,7 +100,7 @@ export function ReviewBar({ session, collection, items, onSelectItem }: Props) {
   const state = getCurationState(collection, curation)
   const stage = useMemo(() => getReviewStage(collection, curation, events), [collection, curation, events])
   const curatorState = getCuratorState(collection, curation, stage)
-  const automatedVerdict = useMemo(() => (events ? getCuratorVerdict(events) : null), [events])
+  const automatedVerdict = useMemo(() => (events ? getCurrentVerdict(events, curation) : null), [events, curation])
   const automatedRunning = stage === ReviewStage.AUTOMATED_REVIEWING
   const automatedStatus = automatedRunning ? 'running' : automatedVerdict?.outcome
   const creatorReplied = useMemo(() => !!events && getAwaitedReply(events) === 'curator', [events])

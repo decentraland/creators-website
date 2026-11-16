@@ -210,6 +210,15 @@ export function getCuratorVerdict(events: CollectionEvent[]): CuratorVerdict | n
   }
 }
 
+/** The newest automated result of the current review request; an older run belongs to another request. */
+export function getCurrentVerdict(
+  events: CollectionEvent[],
+  curation: { createdAt: number } | null
+): CuratorVerdict | null {
+  const latest = getCuratorVerdict(events)
+  return latest && curation && latest.createdAt >= curation.createdAt ? latest : null
+}
+
 export function startOfUtcDay(now: number): number {
   const date = new Date(now)
   return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
@@ -459,16 +468,24 @@ export function toCuratorIssues(
 }
 
 /**
- * Whether an item was saved or added after the newest verdict judged the collection. The same content always gets
+ * Whether an item was saved or added after the automated review last judged it. The same content always gets
  * the same result, so only then is another automated review worth asking for (the server refuses it otherwise).
  */
 export function hasChangesSinceVerdict(
   events: CollectionEvent[],
   items: Pick<Item, 'id' | 'currentContentHash'>[]
 ): boolean {
-  const verdict = getLatestVerdict(events)
-  if (!verdict) return false
-  const judged = new Map(verdict.payload.items.map(result => [result.itemId, result.contentHash]))
+  if (!getLatestVerdict(events)) return false
+  // A run only carries the items it was sent (a submitted update sends the changed ones), so each item's baseline
+  // is the newest run that judged it, as builder-server compares.
+  const judged = new Map<string, string>()
+  for (const event of events) {
+    if (!VERDICT_TYPES.has(event.type) && !isUnsupportedItemsReview(event)) continue
+    if (!Array.isArray(event.payload.items)) continue
+    for (const result of event.payload.items) {
+      if (!judged.has(result.itemId)) judged.set(result.itemId, result.contentHash)
+    }
+  }
   return items.some(item => {
     if (!judged.has(item.id)) return true
     return item.currentContentHash !== undefined && item.currentContentHash !== judged.get(item.id)

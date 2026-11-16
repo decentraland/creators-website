@@ -39,9 +39,12 @@ export class ValidationLimitError extends BuilderServerError {
   }
 }
 
-/** Rethrows a 429 as the daily-limit error. */
+/** Rethrows the daily-limit 429, the one carrying `retryAt`; the per-minute rate limit's 429 stays a failure. */
 export function toValidationLimitError(error: unknown): unknown {
-  return error instanceof BuilderServerError && error.status === VALIDATION_LIMIT_STATUS
+  const retryAt = (error as BuilderServerError | undefined)?.data as { retryAt?: unknown } | undefined
+  return error instanceof BuilderServerError &&
+    error.status === VALIDATION_LIMIT_STATUS &&
+    typeof retryAt?.retryAt === 'string'
     ? new ValidationLimitError(error)
     : error
 }

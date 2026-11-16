@@ -192,7 +192,8 @@ export function usePostComment(address: string | undefined) {
     },
     onError: (error, { collection, role }) => {
       track('Post review comment error', { collectionId: collection.id, role, error: errorCode(error) })
-      if (isCollectionBusy(error)) refresh(collection.id)
+      // A 409 is the review closing under the writer (approved meanwhile): fresh state hides the composer.
+      if (isCollectionBusy(error) || isReviewConflict(error)) refresh(collection.id)
       else captureError(error, { flow: 'curation_comment', collectionId: collection.id })
     }
   })

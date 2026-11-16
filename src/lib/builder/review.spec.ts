@@ -68,6 +68,15 @@ describe('collection events and review requests', () => {
     expect((error as ValidationLimitError).status).toBe(429)
   })
 
+  it("keeps the per-minute rate limit's 429 apart from the daily limit", async () => {
+    signedFetchMock.mockResolvedValue(
+      jsonResponse({ ok: false, error: 'Too many requests, try again in a minute' }, false, 429)
+    )
+    const error = await requestCollectionValidation(ADDRESS, 'a1b2').catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(BuilderServerError)
+    expect(error).not.toBeInstanceOf(ValidationLimitError)
+  })
+
   it('keeps a running validation as a plain 409', async () => {
     signedFetchMock.mockResolvedValue(jsonResponse({ ok: false, error: 'Running' }, false, 409))
     const error = await requestCollectionValidation(ADDRESS, 'a1b2').catch((e: unknown) => e)
