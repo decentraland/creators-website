@@ -33,6 +33,7 @@ const UI2_ORIGIN_CHECK = /if \(origin !== baseUrl \|\| !event\.data\?\.type\)\s*
 function ui2PreviewSenderCheck(mustApply: boolean): Plugin {
   let applied = false
   return {
+    // The dev pre-bundle cache keys on this name, not on the rewrite: after changing it, run `vite --force`.
     name: 'ui2-preview-sender-check',
     enforce: 'pre',
     transform(code, id) {
@@ -43,7 +44,8 @@ function ui2PreviewSenderCheck(mustApply: boolean): Plugin {
       applied = true
       const patched = code.replace(
         UI2_ORIGIN_CHECK,
-        check => `${check}\n        if (event.source !== iframeRef.current?.contentWindow) return;`
+        // On the same line, so the module's source map still points at the right lines.
+        check => `${check} if (event.source !== iframeRef.current?.contentWindow) return;`
       )
       return { code: patched, map: null }
     },

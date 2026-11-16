@@ -122,7 +122,7 @@ function stalledBefore(steps: Array<string | undefined>): string | undefined {
   const lastUpdate = steps.lastIndexOf('update')
   if (lastUpdate < 0) {
     // A later step proves the earlier ones, even when their reports were lost.
-    const reached = Math.max(...steps.map(step => BOOT_STEPS.indexOf(step ?? '')))
+    const reached = Math.max(...Array.from(steps, step => BOOT_STEPS.indexOf(step ?? '')))
     return BOOT_STEPS[reached + 1]
   }
   // One iframe processes a batch one draft after another, so only what followed the latest UPDATE counts.
@@ -172,8 +172,8 @@ export async function waitForProcessedAction(
 }
 
 /**
- * From now on, the moment a draft-processing preview mounts, another preview on the page announces READY: the worst
- * moment for it, since the processor's own page is not listening yet.
+ * From now on, while a draft-processing preview is loading its page, another preview on the page keeps announcing
+ * READY: the worst moment for it, since the processor's own page is not listening yet.
  */
 export async function announceReadyFromAnotherPreview(page: Page): Promise<void> {
   await page.evaluate(() => {
@@ -182,7 +182,11 @@ export async function announceReadyFromAnotherPreview(page: Page): Promise<void>
       if (!frame || frame.dataset.announced) return
       frame.dataset.announced = 'true'
       const origin = new URL(frame.src).origin
-      window.dispatchEvent(new MessageEvent('message', { data: { type: 'ready' }, origin }))
+      const announce = () => window.dispatchEvent(new MessageEvent('message', { data: { type: 'ready' }, origin }))
+      // Repeated until the page is in, so one lands after the app starts listening whenever that is.
+      const repeating = window.setInterval(announce, 20)
+      frame.addEventListener('load', () => window.clearInterval(repeating), { once: true })
+      announce()
     }).observe(document.body, { childList: true, subtree: true })
   })
 }
