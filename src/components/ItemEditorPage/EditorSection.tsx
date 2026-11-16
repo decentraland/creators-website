@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { ExpandMoreIcon as ChevronIcon } from '~/components/Icons'
 import { Tooltip } from '~/components/Tooltip'
-import * as S from './ItemEditorPage.styles'
+import styles from './ItemEditorPage.module.css'
 
 type Props = {
   title: string
@@ -28,7 +28,8 @@ export function EditorSection({
 }: Props) {
   const [isOpen, setOpen] = useState(defaultOpen)
   const header = (
-    <S.SectionHeader
+    <button
+      className={styles.sectionHeader}
       type="button"
       aria-expanded={isOpen}
       aria-label={iconOnly ? title : undefined}
@@ -36,14 +37,18 @@ export function EditorSection({
       data-testid={`${testId}-toggle`}
       onClick={() => setOpen(open => !open)}
     >
-      {icon && <S.SectionIcon aria-hidden>{icon}</S.SectionIcon>}
-      {!iconOnly && <S.SectionTitle>{title}</S.SectionTitle>}
+      {icon && (
+        <span className={styles.sectionIcon} aria-hidden>
+          {icon}
+        </span>
+      )}
+      {!iconOnly && <span className={styles.sectionTitle}>{title}</span>}
       {!iconOnly && adornment}
       {!iconOnly && <ChevronIcon data-chevron fontSize="small" />}
-    </S.SectionHeader>
+    </button>
   )
   return (
-    <S.Section data-testid={testId} data-open={isOpen || undefined}>
+    <section className={styles.section} data-testid={testId} data-open={isOpen || undefined}>
       {iconOnly ? (
         <Tooltip content={title} placement="right" asChild testId={`${testId}-tooltip`}>
           {header}
@@ -51,7 +56,11 @@ export function EditorSection({
       ) : (
         header
       )}
-      {isOpen && <S.SectionBody data-testid={`${testId}-body`}>{children}</S.SectionBody>}
-    </S.Section>
+      {isOpen && (
+        <div className={styles.sectionBody} data-testid={`${testId}-body`}>
+          {children}
+        </div>
+      )}
+    </section>
   )
 }

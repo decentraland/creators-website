@@ -9,9 +9,11 @@ import { useSaveCollection } from '~/hooks/useCollection'
 import { useCollections } from '~/hooks/useCollections'
 import { CollectionStatusFilter, type Collection } from '~/lib/collections'
 import { buildNewCollection } from '~/lib/saveCollection'
-import { SearchBox } from '~/styles/shared'
-import * as S from '../ItemEditorPage.styles'
-import * as Sidebar from '../ItemsSidebar/ItemsSidebar.styles'
+import { cx } from '~/lib/cx'
+import sidebar from '../ItemsSidebar/ItemsSidebar.module.css'
+import shared from '~/styles/shared.module.css'
+import editor from '../ItemEditorPage.module.css'
+import { Link } from 'react-router-dom'
 
 // The picker's rows are shorter than the collections page's cards, so it fits more per page.
 const PICKER_PAGE_SIZE = 12
@@ -44,17 +46,22 @@ export function CollectionPicker({ address, onPick, testId = 'collection-picker'
   }
 
   return (
-    <Sidebar.Wrap data-testid={testId}>
-      <Sidebar.Header>
-        <Sidebar.HeaderRow>
-          <Sidebar.IconLink to="/collections" aria-label={t('item_editor.picker.back')} data-testid={`${testId}-back`}>
+    <aside className={sidebar.wrap} data-testid={testId}>
+      <div className={sidebar.header}>
+        <div className={sidebar.headerRow}>
+          <Link
+            className={sidebar.iconButton}
+            to="/collections"
+            aria-label={t('item_editor.picker.back')}
+            data-testid={`${testId}-back`}
+          >
             <BackIcon fontSize="small" />
-          </Sidebar.IconLink>
-          <Sidebar.CollectionName>
-            <Sidebar.CollectionTitle>{t('item_editor.picker.title')}</Sidebar.CollectionTitle>
-          </Sidebar.CollectionName>
-        </Sidebar.HeaderRow>
-        <SearchBox style={{ width: '100%', height: 40 }}>
+          </Link>
+          <div className={sidebar.collectionName}>
+            <h2 className={sidebar.collectionTitle}>{t('item_editor.picker.title')}</h2>
+          </div>
+        </div>
+        <div className={shared.searchBox} style={{ width: '100%', height: 40 }}>
           <SearchIcon fontSize="small" />
           <input
             value={search}
@@ -66,7 +73,7 @@ export function CollectionPicker({ address, onPick, testId = 'collection-picker'
               setPage(1)
             }}
           />
-        </SearchBox>
+        </div>
         <Button
           type="button"
           variant="secondary"
@@ -77,40 +84,47 @@ export function CollectionPicker({ address, onPick, testId = 'collection-picker'
           <AddIcon fontSize="small" />
           {t('item_editor.picker.create')}
         </Button>
-      </Sidebar.Header>
-      <Sidebar.List>
+      </div>
+      <div className={sidebar.list}>
         {query.isLoading ? (
-          <Sidebar.Rows aria-busy="true" data-testid={`${testId}-loading`}>
+          <div className={sidebar.rows} aria-busy="true" data-testid={`${testId}-loading`}>
             {Array.from({ length: PICKER_PAGE_SIZE }, (_, index) => (
-              <Sidebar.SkeletonRow key={index} className="skeleton" />
+              <div className={cx(sidebar.skeletonRow, 'skeleton')} key={index} />
             ))}
-          </Sidebar.Rows>
+          </div>
         ) : query.isError ? (
-          <S.StateText data-testid={`${testId}-error`}>{t('item_editor.picker.error')}</S.StateText>
+          <p className={editor.stateText} data-testid={`${testId}-error`}>
+            {t('item_editor.picker.error')}
+          </p>
         ) : collections.length === 0 ? (
-          <Sidebar.Empty data-testid={`${testId}-empty`}>{t('item_editor.picker.empty')}</Sidebar.Empty>
+          <p className={sidebar.empty} data-testid={`${testId}-empty`}>
+            {t('item_editor.picker.empty')}
+          </p>
         ) : (
-          <Sidebar.Rows>
+          <div className={sidebar.rows}>
             {collections.map(collection => (
-              <Sidebar.Row key={collection.id} data-testid={`${testId}-row-${collection.id}`}>
-                <Sidebar.RowButton
+              <div className={sidebar.row} key={collection.id} data-testid={`${testId}-row-${collection.id}`}>
+                <button
+                  className={sidebar.rowButton}
                   type="button"
                   data-testid={`${testId}-pick-${collection.id}`}
                   onClick={() => onPick(collection)}
                 >
-                  <Sidebar.RowName title={collection.name}>{collection.name}</Sidebar.RowName>
+                  <span className={sidebar.rowName} title={collection.name}>
+                    {collection.name}
+                  </span>
                   <CollectionStatusPill collection={collection} />
-                </Sidebar.RowButton>
-              </Sidebar.Row>
+                </button>
+              </div>
             ))}
-          </Sidebar.Rows>
+          </div>
         )}
         {pages > 1 && (
-          <Sidebar.PaginationWrap>
+          <div className={sidebar.paginationWrap}>
             <Pagination page={page} pages={pages} onPageChange={setPage} />
-          </Sidebar.PaginationWrap>
+          </div>
         )}
-      </Sidebar.List>
+      </div>
       {isCreateOpen && (
         <CollectionNameModal
           variant="create"
@@ -128,6 +142,6 @@ export function CollectionPicker({ address, onPick, testId = 'collection-picker'
           onClose={closeCreate}
         />
       )}
-    </Sidebar.Wrap>
+    </aside>
   )
 }

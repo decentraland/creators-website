@@ -50,9 +50,10 @@ import { getWearableCategoryOptions } from '~/lib/wearableCategories'
 import { selectAvatarAttributes, useAvatarPreview } from '~/store/avatarPreview'
 import { useLocale } from '~/store/locale'
 import { useWallet } from '~/store/wallet'
-import { theme } from '~/styles/theme'
+import { media } from '~/styles/theme'
 import { AddToCollectionFlow } from './AddToCollectionFlow'
-import * as S from './LivePreviewPage.styles'
+import styles from './LivePreviewPage.module.css'
+import editor from '../ItemEditorPage/ItemEditorPage.module.css'
 import { type WearablePreviewController } from '~/components/WearablePreview'
 
 const PREVIEW_ID = 'live-preview'
@@ -91,14 +92,15 @@ function UpdatedLabel({ timestamp, checkedAt }: { timestamp: number; checkedAt: 
   }, [checkedAt])
   const timeAgo = now - timestamp < JUST_NOW_MS ? t('live_preview.updated_now') : formatTimeAgo(timestamp, locale, now)
   return (
-    <S.Meta
+    <span
+      className={styles.meta}
       data-testid="live-preview-updated"
       data-up-to-date={upToDate || undefined}
       title={new Date(timestamp).toLocaleTimeString(locale)}
     >
       {upToDate && <CheckIcon aria-hidden />}
       {t(upToDate ? 'live_preview.up_to_date' : 'live_preview.updated', { time_ago: timeAgo })}
-    </S.Meta>
+    </span>
   )
 }
 
@@ -110,7 +112,7 @@ function PermissionCard({ state, onRetry }: { state: 'prompt' | 'denied'; onRetr
   const { t } = useTranslation()
   const denied = state === 'denied'
   return (
-    <S.PermissionCard data-state={state} data-testid="live-preview-permission">
+    <div className={styles.permissionCard} data-state={state} data-testid="live-preview-permission">
       {denied ? <WarningIcon /> : <InfoIcon />}
       <h2>{t(`live_preview.local_network.${state}.title`)}</h2>
       <p>{t(`live_preview.local_network.${state}.description`)}</p>
@@ -121,7 +123,7 @@ function PermissionCard({ state, onRetry }: { state: 'prompt' | 'denied'; onRetr
             <li>{t('live_preview.local_network.denied.step_allow')}</li>
             <li>{t('live_preview.local_network.denied.step_reload')}</li>
           </ol>
-          <S.CardActions>
+          <div className={styles.cardActions}>
             <Button type="button" size="sm" onClick={() => window.location.reload()}>
               {t('live_preview.local_network.denied.reload')}
             </Button>
@@ -134,10 +136,10 @@ function PermissionCard({ state, onRetry }: { state: 'prompt' | 'denied'; onRetr
             >
               {t('live_preview.local_network.denied.retry')}
             </Button>
-          </S.CardActions>
+          </div>
         </>
       )}
-    </S.PermissionCard>
+    </div>
   )
 }
 
@@ -145,7 +147,7 @@ const LivePreviewPage = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const isMobile = useMediaQuery(theme.media.maxWidth('mobile'))
+  const isMobile = useMediaQuery(media.maxWidth('mobile'))
   const [bridgeUrl, setBridgeUrl] = useState(() => resolveBridgeUrl(searchParams.get('bridge')))
   const bridge = useLiveBridge(bridgeUrl)
   const { state, glb } = bridge
@@ -359,10 +361,14 @@ const LivePreviewPage = () => {
 
   const center = (
     <>
-      <S.PreviewArea>
-        {preview ?? <S.PreviewEmpty data-testid="live-preview-empty">{placeholder}</S.PreviewEmpty>}
+      <div className={editor.previewArea}>
+        {preview ?? (
+          <div className={editor.previewEmpty} data-testid="live-preview-empty">
+            {placeholder}
+          </div>
+        )}
         {preview && loadCount > 0 && controller && <ZoomControls controller={controller} />}
-      </S.PreviewArea>
+      </div>
       {isCustomizerOpen && <AvatarCustomizerDrawer catalog={baseWearables.data} onClose={closeCustomizer} />}
     </>
   )
@@ -378,17 +384,17 @@ const LivePreviewPage = () => {
 
   if (isMobile) {
     return (
-      <S.MobileWorkspace data-testid="live-preview-mobile">
-        <S.MobilePreviewArea>{center}</S.MobilePreviewArea>
+      <div className={editor.mobileWorkspace} data-testid="live-preview-mobile">
+        <div className={editor.mobilePreviewArea}>{center}</div>
         <MobileHint />
         {modals}
-      </S.MobileWorkspace>
+      </div>
     )
   }
 
   return (
-    <S.Workspace data-testid="live-preview-page">
-      <S.Columns>
+    <div className={editor.workspace} data-testid="live-preview-page">
+      <div className={editor.columns}>
         <PanelGroup
           direction="horizontal"
           autoSaveId="live-preview"
@@ -396,22 +402,23 @@ const LivePreviewPage = () => {
           style={{ flex: 1, minWidth: 0 }}
         >
           <Panel id="live-preview-panel" defaultSize={LEFT_DEFAULT_PCT} minSize={LEFT_MIN_PCT} order={1}>
-            <S.SidePanel>
-              <S.PanelBody>
+            <aside className={styles.sidePanel}>
+              <div className={editor.panelBody}>
                 <EditorSection
                   title={t('live_preview.title')}
                   testId="live-preview-connection"
                   adornment={
-                    <S.StatusPill data-status={bridge.status} data-testid="live-preview-status">
+                    <span className={styles.statusPill} data-status={bridge.status} data-testid="live-preview-status">
                       {t(`live_preview.status.${bridge.status}`)}
-                    </S.StatusPill>
+                    </span>
                   }
                 >
                   {/* A div, not the usual label: two labelable controls may not share one label. */}
-                  <S.Field as="div">
-                    <S.FieldLabel>{t('live_preview.bridge_url')}</S.FieldLabel>
-                    <S.InputRow>
-                      <S.TextInput
+                  <div className={editor.field}>
+                    <span className={editor.fieldLabel}>{t('live_preview.bridge_url')}</span>
+                    <div className={styles.inputRow}>
+                      <input
+                        className={editor.textInput}
                         value={bridgeUrl}
                         disabled={isConnected}
                         placeholder="http://localhost:8080"
@@ -420,7 +427,8 @@ const LivePreviewPage = () => {
                         onChange={event => setBridgeUrl(event.target.value)}
                       />
                       {isConnected ? (
-                        <S.ConnectButton
+                        <Button
+                          className={styles.connectButton}
                           type="button"
                           size="sm"
                           variant="secondary"
@@ -428,21 +436,22 @@ const LivePreviewPage = () => {
                           onClick={bridge.disconnect}
                         >
                           {t('live_preview.disconnect')}
-                        </S.ConnectButton>
+                        </Button>
                       ) : (
-                        <S.ConnectButton
+                        <Button
+                          className={styles.connectButton}
                           type="button"
                           size="sm"
                           data-testid="live-preview-connect"
                           onClick={bridge.connect}
                         >
                           {t('live_preview.connect')}
-                        </S.ConnectButton>
+                        </Button>
                       )}
-                    </S.InputRow>
-                  </S.Field>
+                    </div>
+                  </div>
                   {isConnected && (
-                    <S.Row>
+                    <div className={styles.row}>
                       <Button
                         type="button"
                         size="sm"
@@ -457,18 +466,18 @@ const LivePreviewPage = () => {
                       {bridge.lastUpdateAt !== null && (
                         <UpdatedLabel timestamp={bridge.lastUpdateAt} checkedAt={bridge.lastCheckedAt} />
                       )}
-                    </S.Row>
+                    </div>
                   )}
                   {bridge.errorCode && (
-                    <S.ErrorText data-testid="live-preview-error">
+                    <p className={styles.errorText} data-testid="live-preview-error">
                       {t(`live_preview.errors.${bridge.errorCode}`)}
-                    </S.ErrorText>
+                    </p>
                   )}
                 </EditorSection>
 
                 {state && isEmote && (
                   <EditorSection title={t('item_editor.animation.title')} testId="live-preview-animation">
-                    <S.Toggle>
+                    <div className={editor.toggle}>
                       <span>{t('live_preview.loop')}</span>
                       <Switch
                         checked={loop}
@@ -479,15 +488,15 @@ const LivePreviewPage = () => {
                           trackTune('loop')
                         }}
                       />
-                    </S.Toggle>
+                    </div>
                   </EditorSection>
                 )}
 
                 {state && !isEmote && (
                   <>
                     <EditorSection title={t('live_preview.properties')} testId="live-preview-properties">
-                      <S.Field>
-                        <S.FieldLabel>{t('item_editor.basics.category')}</S.FieldLabel>
+                      <label className={editor.field}>
+                        <span className={editor.fieldLabel}>{t('item_editor.basics.category')}</span>
                         <CategorySelect
                           value={category}
                           categories={categories}
@@ -498,7 +507,7 @@ const LivePreviewPage = () => {
                             trackTune('category')
                           }}
                         />
-                      </S.Field>
+                      </label>
                     </EditorSection>
                     <EditorSection title={t('item_editor.overrides.title')} testId="live-preview-overrides">
                       <HidesEditor
@@ -529,8 +538,9 @@ const LivePreviewPage = () => {
                   </>
                 )}
 
-                <S.Footer>
-                  <S.AddButton
+                <div className={editor.footer}>
+                  <Button
+                    className={styles.addButton}
                     type="button"
                     disabled={!definition}
                     data-testid="live-preview-add"
@@ -538,21 +548,23 @@ const LivePreviewPage = () => {
                   >
                     <AddToCollectionIcon fontSize="small" />
                     {t('live_preview.add_to_collection')}
-                  </S.AddButton>
-                </S.Footer>
-              </S.PanelBody>
-            </S.SidePanel>
+                  </Button>
+                </div>
+              </div>
+            </aside>
           </Panel>
           <PanelResizeHandle>
-            <S.Handle data-testid="resize-handle-left" />
+            <div className={editor.handle} data-testid="resize-handle-left" />
           </PanelResizeHandle>
           <Panel id="live-preview-center" minSize={CENTER_MIN_PCT} order={2}>
-            <S.CenterPanel data-testid="live-preview-center">{center}</S.CenterPanel>
+            <div className={editor.centerPanel} data-testid="live-preview-center">
+              {center}
+            </div>
           </Panel>
         </PanelGroup>
-      </S.Columns>
+      </div>
       {modals}
-    </S.Workspace>
+    </div>
   )
 }
 
@@ -561,13 +573,13 @@ function MobileHint() {
   const [dismissed, setDismissed] = useState(false)
   if (dismissed) return null
   return (
-    <S.MobileHint data-testid="live-preview-mobile-hint">
+    <div className={editor.mobileHint} data-testid="live-preview-mobile-hint">
       <DesktopIcon fontSize="small" />
       <span>{t('live_preview.mobile_hint')}</span>
       <button type="button" aria-label={t('modal.close')} onClick={() => setDismissed(true)}>
         <CloseIcon fontSize="small" />
       </button>
-    </S.MobileHint>
+    </div>
   )
 }
 

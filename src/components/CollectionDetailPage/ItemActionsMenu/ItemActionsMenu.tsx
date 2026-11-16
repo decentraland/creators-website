@@ -21,7 +21,7 @@ import { canDeleteItem, canEditItemPrice, canManageItem, type Item } from '~/lib
 import { type Session } from '~/lib/auth'
 import { type ItemListing } from '~/lib/listings'
 import { useNotifications } from '~/lib/notifications'
-import { theme } from '~/styles/theme'
+import { media } from '~/styles/theme'
 import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
 import { DeleteItemModal } from '../DeleteItemModal'
 import { MoveItemModal } from './MoveItemModal'
@@ -61,7 +61,7 @@ export function ItemActionsMenu({ item, collection, address, sync, listing }: Pr
   const drafts = useDraftCollections(address, dialog === 'move')
 
   // Small screens are mostly a viewer: only copying the URN and the sale actions stay available there.
-  const compact = useMediaQuery(theme.media.noActions)
+  const compact = useMediaQuery(media.noActions)
 
   const canManage = canManageItem(collection, item, address)
   const canCopyUrn = !!item.urn

@@ -6,7 +6,7 @@ import { useMorphFrom } from '~/hooks/useMorphFrom'
 import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
 import { breakpoints } from '~/styles/theme'
-import * as S from './RangePicker.styles'
+import styles from './RangePicker.module.css'
 
 // The calendar's weekday and month names in the viewer's language.
 const DATE_LOCALES: Record<string, DateLocale> = { en: enUS, es, zh: zhCN }
@@ -150,7 +150,8 @@ export function RangePicker({
     : t('creator_sale.range_pick_start')
 
   return (
-    <S.Root
+    <div
+      className={styles.root}
       ref={ref}
       role="dialog"
       aria-modal="true"
@@ -159,11 +160,12 @@ export function RangePicker({
       data-stretch={stretch ? '' : undefined}
       data-testid={`${testId}-picker`}
     >
-      <S.Body>
+      <div className={styles.body}>
         {presets?.length ? (
-          <S.Presets role="group" aria-label={t('creator_sale.range_presets')}>
+          <div className={styles.presets} role="group" aria-label={t('creator_sale.range_presets')}>
             {presets.map(preset => (
-              <S.Preset
+              <button
+                className={styles.preset}
                 key={preset.key}
                 type="button"
                 aria-pressed={preset.active}
@@ -172,9 +174,9 @@ export function RangePicker({
                 data-testid={`${presetTestId}-${preset.key}`}
               >
                 {preset.label}
-              </S.Preset>
+              </button>
             ))}
-          </S.Presets>
+          </div>
         ) : null}
         <DatePicker
           inline
@@ -192,14 +194,15 @@ export function RangePicker({
           calendarStartDay={1}
           locale={DATE_LOCALES[locale] ?? enUS}
         />
-      </S.Body>
-      <S.Foot>
+      </div>
+      <div className={styles.foot}>
         <span data-testid={`${testId}-summary`}>{summary}</span>
-        <S.Actions>
-          <S.Btn type="button" onClick={close}>
+        <div className={styles.actions}>
+          <button className={styles.btn} type="button" onClick={close}>
             {t('creator_sale.range_cancel')}
-          </S.Btn>
-          <S.Btn
+          </button>
+          <button
+            className={styles.btn}
             type="button"
             data-variant="primary"
             disabled={!start || !end}
@@ -207,9 +210,9 @@ export function RangePicker({
             data-testid={`${testId}-apply`}
           >
             {t('creator_sale.range_apply')}
-          </S.Btn>
-        </S.Actions>
-      </S.Foot>
-    </S.Root>
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

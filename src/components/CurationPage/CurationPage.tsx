@@ -33,7 +33,9 @@ import {
 import { pageRangeLabel } from '~/lib/pagination'
 import { useWallet } from '~/store/wallet'
 import { CurationRow } from './CurationRow'
-import * as S from './CurationPage.styles'
+import { cx } from '~/lib/cx'
+import shared from '~/styles/shared.module.css'
+import styles from './CurationPage.module.css'
 
 // The chip that clears the review type, and what a cleared status or assignee picker reports to analytics.
 const ALL = 'all'
@@ -139,17 +141,17 @@ const CurationPage = () => {
 
   if (!session) {
     return (
-      <S.Page data-testid="curation-page">
-        <S.Panel data-testid="sign-in-panel">
-          <S.SignInIcon aria-hidden>
+      <div className={shared.page} data-testid="curation-page">
+        <section className={shared.panel} data-testid="sign-in-panel">
+          <div className={shared.signInIcon} aria-hidden>
             <PersonOutlineIcon />
-          </S.SignInIcon>
-          <S.PanelTitle>{t('curation_page.sign_in')}</S.PanelTitle>
+          </div>
+          <h2 className={shared.panelTitle}>{t('curation_page.sign_in')}</h2>
           <Button type="button" variant="primary" data-testid="sign-in" onClick={() => signIn()}>
             {t('collections_page.sign_in.action')}
           </Button>
-        </S.Panel>
-      </S.Page>
+        </section>
+      </div>
     )
   }
 
@@ -173,10 +175,10 @@ const CurationPage = () => {
   const isSearching = searchInput.trim() !== filters.search || (!!filters.search && collections.isFetching)
 
   return (
-    <S.Page data-testid="curation-page">
-      <S.Header>
-        <S.Title>{t('curation_page.title')}</S.Title>
-        <S.SearchBox>
+    <div className={shared.page} data-testid="curation-page">
+      <div className={shared.header}>
+        <h1 className={shared.title}>{t('curation_page.title')}</h1>
+        <div className={shared.searchBox}>
           <SearchIcon fontSize="small" />
           <input
             value={searchInput}
@@ -185,14 +187,15 @@ const CurationPage = () => {
             data-testid="curation-search"
             onChange={e => onSearchChange(e.target.value)}
           />
-          {isSearching && <S.Spinner aria-hidden />}
-        </S.SearchBox>
-      </S.Header>
+          {isSearching && <span className={shared.spinner} aria-hidden />}
+        </div>
+      </div>
 
-      <S.FilterRow>
-        <S.Chips data-testid="curation-review-type-filters">
+      <div className={styles.filterRow}>
+        <div className={shared.chips} data-testid="curation-review-type-filters">
           {REVIEW_TYPE_FILTERS.map(type => (
-            <S.Chip
+            <button
+              className={shared.chip}
               key={type}
               type="button"
               aria-pressed={(filters.reviewType ?? ALL) === type}
@@ -201,12 +204,12 @@ const CurationPage = () => {
               onClick={() => changeFilter('review_type', type === ALL ? null : type)}
             >
               {t(`curation_page.filter.review_type.${type}`)}
-            </S.Chip>
+            </button>
           ))}
-        </S.Chips>
-        <S.Controls>
+        </div>
+        <div className={styles.controls}>
           {campaign && (
-            <S.CampaignToggle>
+            <label className={styles.campaignToggle}>
               <Switch
                 checked={filters.tag === campaign.mainTag}
                 onChange={checked => changeFilter('tag', checked ? campaign.mainTag : null)}
@@ -214,9 +217,9 @@ const CurationPage = () => {
                 testId="curation-campaign-filter"
               />
               <span>{campaign.name}</span>
-            </S.CampaignToggle>
+            </label>
           )}
-          <S.Selects>
+          <div className={styles.selects}>
             <Select
               value={filters.type}
               options={typeOptions}
@@ -251,20 +254,20 @@ const CurationPage = () => {
               variant="compact"
               testId="curation-sort"
             />
-          </S.Selects>
-        </S.Controls>
-      </S.FilterRow>
+          </div>
+        </div>
+      </div>
 
       {isLoading ? (
-        <S.List data-testid="curation-loading-rows" aria-hidden>
+        <div className={styles.list} data-testid="curation-loading-rows" aria-hidden>
           {Array.from({ length: 6 }, (_, i) => (
-            <S.SkeletonRow key={i} className="skeleton" />
+            <div className={cx(styles.skeletonRow, 'skeleton')} key={i} />
           ))}
-        </S.List>
+        </div>
       ) : isError ? (
-        <S.Panel data-testid="curation-error">
-          <S.PanelTitle>{t('curation_page.error.title')}</S.PanelTitle>
-          <S.PanelText>{t('curation_page.error.description')}</S.PanelText>
+        <section className={shared.panel} data-testid="curation-error">
+          <h2 className={shared.panelTitle}>{t('curation_page.error.title')}</h2>
+          <p className={shared.panelText}>{t('curation_page.error.description')}</p>
           <Button
             data-testid="curation-retry"
             type="button"
@@ -276,15 +279,17 @@ const CurationPage = () => {
           >
             {t('curation_page.error.retry')}
           </Button>
-        </S.Panel>
+        </section>
       ) : total === 0 ? (
-        <S.Panel data-testid="curation-empty">
-          <S.PanelTitle>{t(hasActiveFilters ? 'curation_page.no_results' : 'curation_page.empty')}</S.PanelTitle>
-        </S.Panel>
+        <section className={shared.panel} data-testid="curation-empty">
+          <h2 className={shared.panelTitle}>
+            {t(hasActiveFilters ? 'curation_page.no_results' : 'curation_page.empty')}
+          </h2>
+        </section>
       ) : (
         <>
-          <S.List data-testid="curation-list">
-            <S.ListHeader>
+          <div className={styles.list} data-testid="curation-list">
+            <div className={styles.listHeader}>
               <span>{t('curation_page.list.collection')}</span>
               <span>{t('curation_page.list.owner')}</span>
               <span>{t('curation_page.list.date')}</span>
@@ -292,7 +297,7 @@ const CurationPage = () => {
               <span>{t('curation_page.list.status')}</span>
               <span>{t('curation_page.list.discussion')}</span>
               <span>{t('curation_page.list.assignee')}</span>
-            </S.ListHeader>
+            </div>
             {data?.results.map(collection => (
               <CurationRow
                 key={collection.id}
@@ -302,13 +307,13 @@ const CurationPage = () => {
                 onAssign={(target, curation, mode) => setAssigning({ collection: target, curation, mode })}
               />
             ))}
-          </S.List>
-          <S.FooterRow>
-            <S.ShowingCount data-testid="curation-count">
+          </div>
+          <div className={shared.footerRow}>
+            <span className={shared.showingCount} data-testid="curation-count">
               {t('curation_page.showing', { range: pageRangeLabel(filters.page, CURATION_PAGE_SIZE, shown), total })}
-            </S.ShowingCount>
+            </span>
             {(data?.pages ?? 0) > 1 && <Pagination page={filters.page} pages={data!.pages} onPageChange={goToPage} />}
-          </S.FooterRow>
+          </div>
         </>
       )}
 
@@ -321,7 +326,7 @@ const CurationPage = () => {
           onClose={() => setAssigning(null)}
         />
       )}
-    </S.Page>
+    </div>
   )
 }
 

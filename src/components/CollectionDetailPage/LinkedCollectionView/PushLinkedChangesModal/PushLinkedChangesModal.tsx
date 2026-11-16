@@ -16,7 +16,7 @@ import { Checkbox } from '~/components/Checkbox'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { Modal } from '~/components/Modal'
 import { ProgressModal } from '~/components/ProgressModal'
-import * as S from '../../PublishCollectionModal/PublishCollectionModal.styles'
+import styles from '~/components/CollectionDetailPage/PublishCollectionModal/PublishCollectionModal.module.css'
 
 type Props = {
   collection: Collection
@@ -106,14 +106,19 @@ export function PushLinkedChangesModal({ collection, session, items, onClose, on
 
   return (
     <Modal title={t('push_linked_modal.title')} size="large" onClose={onClose} testId="push-linked-terms-modal">
-      <S.Main>
-        <S.Step as="form" onSubmit={event => (event.preventDefault(), submit())} data-testid="push-linked-terms-step">
-          <S.Heading>{t('push_linked_modal.terms.title')}</S.Heading>
-          <S.Text>{t('push_linked_modal.terms.description')}</S.Text>
-          <S.InputWrapper>
-            <S.EmailField>
+      <div className={styles.main}>
+        <form
+          className={styles.step}
+          onSubmit={event => (event.preventDefault(), submit())}
+          data-testid="push-linked-terms-step"
+        >
+          <h3 className={styles.heading}>{t('push_linked_modal.terms.title')}</h3>
+          <p className={styles.text}>{t('push_linked_modal.terms.description')}</p>
+          <div className={styles.inputWrapper}>
+            <label className={styles.emailField}>
               {t('publish_collection_modal.name_step.email_label')}
-              <S.EmailInput
+              <input
+                className={styles.emailInput}
                 type="text"
                 inputMode="email"
                 spellCheck={false}
@@ -131,12 +136,12 @@ export function PushLinkedChangesModal({ collection, session, items, onClose, on
                 onBlur={() => setEmailBlurred(true)}
               />
               {showEmailError && (
-                <S.ErrorText id={emailErrorId} role="alert">
+                <p className={styles.errorText} id={emailErrorId} role="alert">
                   {t('publish_collection_modal.name_step.invalid_email')}
-                </S.ErrorText>
+                </p>
               )}
-            </S.EmailField>
-          </S.InputWrapper>
+            </label>
+          </div>
           <Checkbox checked={accepted} onChange={setAccepted} testId="push-linked-terms-accept">
             {intl.formatMessage(
               { id: 'push_linked_modal.terms.checkbox' },
@@ -154,17 +159,21 @@ export function PushLinkedChangesModal({ collection, session, items, onClose, on
               }
             )}
           </Checkbox>
-          {push.isError && <S.ErrorText data-testid="push-linked-error">{t('push_linked_modal.error')}</S.ErrorText>}
-          <S.Footer>
+          {push.isError && (
+            <p className={styles.errorText} data-testid="push-linked-error">
+              {t('push_linked_modal.error')}
+            </p>
+          )}
+          <div className={styles.footer}>
             <Button type="button" variant="secondary" data-testid="push-linked-back" onClick={() => setView('confirm')}>
               {t('publish_collection_modal.back')}
             </Button>
             <Button type="submit" disabled={!accepted || !emailValid} data-testid="push-linked-submit">
               {t('push_linked_modal.submit')}
             </Button>
-          </S.Footer>
-        </S.Step>
-      </S.Main>
+          </div>
+        </form>
+      </div>
     </Modal>
   )
 }

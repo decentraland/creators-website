@@ -7,7 +7,7 @@ import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { PriceField, type PriceFormValues } from './PriceField'
 import { SellItemCard } from './SellItemCard'
-import * as S from './SellItemModal.styles'
+import styles from './SellItemModal.module.css'
 
 type Props = {
   item: Item
@@ -34,28 +34,28 @@ export function UpdatePriceModal({ item, listing, initialValues, onSubmit, onClo
 
   return (
     <Modal title={t('sell_item_modal.update_price.title')} compact onClose={onClose} testId="update-price-modal">
-      <S.Divider />
-      <S.Form onSubmit={handleSubmit} data-testid="update-price-form">
-        <S.Fields>
+      <hr className={styles.divider} />
+      <form className={styles.form} onSubmit={handleSubmit} data-testid="update-price-form">
+        <div className={styles.fields}>
           <SellItemCard item={item} showAvailability />
-          <S.Field>
+          <div className={styles.field}>
             <PriceField
               label={t('sell_item_modal.update_price.price_label')}
               values={values}
               onChange={setValues}
               testId="update-price"
             />
-          </S.Field>
-        </S.Fields>
-        <S.Footer>
+          </div>
+        </div>
+        <div className={styles.footer}>
           <Button type="button" variant="secondary" data-testid="update-price-cancel" onClick={onClose}>
             {t('sell_item_modal.cancel')}
           </Button>
           <Button type="submit" disabled={!canSubmit} data-testid="update-price-submit">
             {t('sell_item_modal.update_price.submit')}
           </Button>
-        </S.Footer>
-      </S.Form>
+        </div>
+      </form>
     </Modal>
   )
 }

@@ -38,7 +38,8 @@ import {
 import { captureError } from '~/lib/monitoring'
 import { DEFAULT_RARITY } from '~/lib/rarities'
 import { getWearableCategoryOptions } from '~/lib/wearableCategories'
-import * as S from './ChangeFileModal.styles'
+import draftModal from '~/components/ItemDraftModal/ItemDraftModal.module.css'
+import styles from './ChangeFileModal.module.css'
 
 type Props = {
   item: Item
@@ -267,27 +268,27 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
         testId="change-file-modal"
       >
         {draft && loaded ? (
-          <S.Layout>
-            <S.Main>
-              <S.Content data-testid="change-file-form">
+          <div className={draftModal.layout}>
+            <div className={draftModal.main}>
+              <section className={draftModal.content} data-testid="change-file-form">
                 <DraftPreviewPane
                   draft={draft}
                   onOpenThumbnail={() =>
                     thumbnailEditor.edit({ kind: 'files', id: draft.id, type: draft.type, contents: draft.contents })
                   }
                 >
-                  <S.ThumbnailToggle>
+                  <div className={styles.thumbnailToggle}>
                     <Checkbox checked={keepThumbnail} onChange={setKeepThumbnail} testId="change-file-keep-thumbnail">
                       {t('item_editor.change_file.use_thumbnail')}
                     </Checkbox>
-                  </S.ThumbnailToggle>
+                  </div>
                 </DraftPreviewPane>
-                <S.FormPane>
-                  <S.FormHeading>{t('item_editor.change_file.heading')}</S.FormHeading>
-                  <S.Field as="div" data-hinted>
-                    <S.FieldLabel>
+                <div className={draftModal.formPane}>
+                  <h3 className={draftModal.formHeading}>{t('item_editor.change_file.heading')}</h3>
+                  <div className={draftModal.field} data-hinted>
+                    <span className={draftModal.fieldLabel}>
                       {t('add_items_modal.body_shape')}
-                      <S.FieldHint data-testid="change-file-effect" data-mode={mode}>
+                      <span className={draftModal.fieldHint} data-testid="change-file-effect" data-mode={mode}>
                         <HintIcon />
                         {lockHint ??
                           t(
@@ -296,8 +297,8 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
                               : `item_editor.change_file.effect.${mode}`,
                             { shape: shapeLabel }
                           )}
-                      </S.FieldHint>
-                    </S.FieldLabel>
+                      </span>
+                    </span>
                     <BodyShapePicker
                       value={bodyShape}
                       locked={locked}
@@ -305,43 +306,51 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
                       onChange={pickShape}
                     />
                     {pickError && (
-                      <S.ErrorText data-testid="change-file-pick-error">
+                      <p className={draftModal.errorText} data-testid="change-file-pick-error">
                         {t(`add_items_modal.file_error.${pickError}`)}
-                      </S.ErrorText>
+                      </p>
                     )}
-                  </S.Field>
+                  </div>
                   {needsCategory && (
-                    <S.Field as="div">
-                      <S.FieldLabel>
+                    <div className={draftModal.field}>
+                      <span className={draftModal.fieldLabel}>
                         {t('add_items_modal.category')}
-                        <S.FieldHint>
+                        <span className={draftModal.fieldHint}>
                           <HintIcon />
                           {t('item_editor.change_file.category_hint')}
-                        </S.FieldHint>
-                      </S.FieldLabel>
+                        </span>
+                      </span>
                       <CategorySelect
                         value={category}
                         categories={categories}
                         testId="change-file-category"
                         onChange={setCategory}
                       />
-                    </S.Field>
+                    </div>
                   )}
                   {sizeText && (
-                    <S.SizeLine data-testid="change-file-size" data-exceeded={sizeExceeded || undefined}>
+                    <p
+                      className={draftModal.sizeLine}
+                      data-testid="change-file-size"
+                      data-exceeded={sizeExceeded || undefined}
+                    >
                       {t('item_size.label')}
                       <strong>{t('item_size.value', sizeText)}</strong>
-                    </S.SizeLine>
+                    </p>
                   )}
                   {sizeExceeded && sizeText && (
-                    <S.ErrorText role="alert" data-testid="change-file-size-error">
+                    <p className={draftModal.errorText} role="alert" data-testid="change-file-size-error">
                       {t('add_items_modal.file_error.size_exceeded', sizeText)}
-                    </S.ErrorText>
+                    </p>
                   )}
-                  {error && <S.ErrorText data-testid="change-file-error">{error}</S.ErrorText>}
-                </S.FormPane>
-              </S.Content>
-              <S.Footer>
+                  {error && (
+                    <p className={draftModal.errorText} data-testid="change-file-error">
+                      {error}
+                    </p>
+                  )}
+                </div>
+              </section>
+              <div className={draftModal.footer}>
                 <Button
                   type="button"
                   variant="secondary"
@@ -351,7 +360,7 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
                 >
                   {t('add_items_modal.cancel')}
                 </Button>
-                <S.FooterRight>
+                <div className={draftModal.footerRight}>
                   <Button
                     type="button"
                     variant="primary"
@@ -362,13 +371,14 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
                   >
                     {t('add_items_modal.save')}
                   </Button>
-                </S.FooterRight>
-              </S.Footer>
-            </S.Main>
-          </S.Layout>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
-          <S.PickStep>
-            <S.Dropzone
+          <div className={styles.pickStep}>
+            <div
+              className={styles.dropzone}
               data-testid="change-file-dropzone"
               data-dragging={isDragging || undefined}
               data-busy={isLoading || undefined}
@@ -379,33 +389,40 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
               onDragLeave={() => setDragging(false)}
               onDrop={handleDrop}
             >
-              {isLoading && <S.Spinner aria-hidden data-spinner data-testid="change-file-processing" />}
-              <S.DropIcon>
+              {isLoading && (
+                <span className={styles.spinner} aria-hidden data-spinner data-testid="change-file-processing" />
+              )}
+              <span className={styles.dropIcon}>
                 <UploadIcon />
-              </S.DropIcon>
-              <S.DropText>
+              </span>
+              <span className={styles.dropText}>
                 {rich('item_editor.change_file.drop_description', {
                   browse: chunks => (
-                    <S.BrowseLink
+                    <button
+                      className={styles.browseLink}
                       type="button"
                       data-testid="change-file-browse"
                       disabled={isLoading}
                       onClick={() => void browse()}
                     >
                       {chunks}
-                    </S.BrowseLink>
+                    </button>
                   )
                 })}
-              </S.DropText>
-              <S.DropFormats>{t('collection_detail_page.empty.formats')}</S.DropFormats>
-            </S.Dropzone>
-            {error && <S.DropError data-testid="change-file-error">{error}</S.DropError>}
-            <S.PickActions>
+              </span>
+              <span className={styles.dropFormats}>{t('collection_detail_page.empty.formats')}</span>
+            </div>
+            {error && (
+              <p className={styles.dropError} data-testid="change-file-error">
+                {error}
+              </p>
+            )}
+            <div className={styles.pickActions}>
               <Button type="button" variant="secondary" data-testid="change-file-cancel" onClick={requestClose}>
                 {t('add_items_modal.cancel')}
               </Button>
-            </S.PickActions>
-          </S.PickStep>
+            </div>
+          </div>
         )}
         {draft && needsPreviewData(draft) && (
           <DraftProcessor

@@ -70,7 +70,7 @@ import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS, THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { type ItemListing } from '~/lib/listings'
 import { useNotifications } from '~/lib/notifications'
-import { theme } from '~/styles/theme'
+import { media } from '~/styles/theme'
 import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { Tooltip } from '~/components/Tooltip'
@@ -106,7 +106,10 @@ import { ManageRolesFlow } from './ManageRolesFlow'
 import { TransferOwnershipFlow } from './TransferOwnershipFlow'
 import { SendItemsFlow } from './SendItemsFlow'
 import { CollectionDiscounts, DiscountFlow, EndDiscountFlow } from './DiscountFlow'
-import * as S from './CollectionDetailPage.styles'
+import { cx } from '~/lib/cx'
+import styles from './CollectionDetailPage.module.css'
+import row from './ItemListRow/ItemListRow.module.css'
+import shared from '~/styles/shared.module.css'
 
 const NOT_FOUND_STATUSES = [401, 403, 404]
 const NO_ITEMS: Item[] = []
@@ -174,7 +177,7 @@ const CollectionDetailPage = () => {
     await updateItem.mutateAsync({ item, thumbnail: patch.contents[THUMBNAIL_PATH] })
   })
   // Small screens are a viewer: the in-row edit shortcuts are desktop-only, like the menu's edit actions.
-  const compact = useMediaQuery(theme.media.noActions)
+  const compact = useMediaQuery(media.noActions)
 
   const collection = collectionQuery.data
   // Linked collections are read-only here: none of the publishing, sales or sync machinery runs for them.
@@ -470,59 +473,59 @@ const CollectionDetailPage = () => {
   }
 
   return (
-    <S.Page data-testid="collection-detail-page">
+    <div className={styles.page} data-testid="collection-detail-page">
       {restored && !session ? (
-        <S.Panel data-testid="sign-in-panel">
-          <S.SignInIconWrap aria-hidden>
+        <section className={shared.panel} data-testid="sign-in-panel">
+          <div className={styles.signInIconWrap} aria-hidden>
             <PersonOutlineIcon />
-          </S.SignInIconWrap>
-          <S.PanelTitle>{t('collection_detail_page.sign_in.title')}</S.PanelTitle>
+          </div>
+          <h2 className={shared.panelTitle}>{t('collection_detail_page.sign_in.title')}</h2>
           <Button type="button" variant="primary" data-testid="sign-in" onClick={() => signIn()}>
             {t('collection_detail_page.sign_in.action')}
           </Button>
-        </S.Panel>
+        </section>
       ) : isLoading ? (
-        <S.Loading aria-hidden data-testid="collection-detail-loading">
-          <S.Header>
-            <S.HeaderLeft>
-              <S.SkeletonTitle className="skeleton" />
-            </S.HeaderLeft>
-            <S.HeaderActions>
-              <S.SkeletonButton className="skeleton" data-desktop-only />
-              <S.SkeletonButton className="skeleton" data-desktop-only />
-              <S.SkeletonButton className="skeleton" data-icon />
-            </S.HeaderActions>
-          </S.Header>
-          <S.SubHeader>
-            <S.FilterChips>
-              <S.SkeletonChip className="skeleton" />
-              <S.SkeletonChip className="skeleton" />
-              <S.SkeletonChip className="skeleton" />
-            </S.FilterChips>
-            <S.SubActions>
-              <S.SkeletonButton className="skeleton" data-compact />
-              <S.SkeletonButton className="skeleton" data-compact />
-            </S.SubActions>
-          </S.SubHeader>
-          <S.List>
-            <S.SkeletonListHeader className="skeleton" />
+        <div className={styles.loading} aria-hidden data-testid="collection-detail-loading">
+          <div className={styles.header}>
+            <div className={styles.headerLeft}>
+              <div className={cx(styles.skeletonTitle, 'skeleton')} />
+            </div>
+            <div className={styles.headerActions}>
+              <div className={cx(styles.skeletonButton, 'skeleton')} data-desktop-only />
+              <div className={cx(styles.skeletonButton, 'skeleton')} data-desktop-only />
+              <div className={cx(styles.skeletonButton, 'skeleton')} data-icon />
+            </div>
+          </div>
+          <div className={styles.subHeader}>
+            <div className={styles.filterChips}>
+              <div className={cx(styles.skeletonChip, 'skeleton')} />
+              <div className={cx(styles.skeletonChip, 'skeleton')} />
+              <div className={cx(styles.skeletonChip, 'skeleton')} />
+            </div>
+            <div className={styles.subActions}>
+              <div className={cx(styles.skeletonButton, 'skeleton')} data-compact />
+              <div className={cx(styles.skeletonButton, 'skeleton')} data-compact />
+            </div>
+          </div>
+          <div className={styles.list}>
+            <div className={cx(styles.skeletonListHeader, 'skeleton')} />
             {Array.from({ length: 5 }, (_, i) => (
-              <S.SkeletonRow key={i} className="skeleton" />
+              <div className={cx(styles.skeletonRow, 'skeleton')} key={i} />
             ))}
-          </S.List>
-        </S.Loading>
+          </div>
+        </div>
       ) : isNotFound ? (
-        <S.Panel data-testid="collection-not-found">
-          <S.PanelTitle>{t('collection_detail_page.not_found.title')}</S.PanelTitle>
-          <S.PanelText>{t('collection_detail_page.not_found.description')}</S.PanelText>
+        <section className={shared.panel} data-testid="collection-not-found">
+          <h2 className={shared.panelTitle}>{t('collection_detail_page.not_found.title')}</h2>
+          <p className={shared.panelText}>{t('collection_detail_page.not_found.description')}</p>
           <Button type="button" variant="secondary" onClick={() => navigate('/collections')}>
             {t('collection_detail_page.not_found.back')}
           </Button>
-        </S.Panel>
+        </section>
       ) : isError || !collection ? (
-        <S.Panel data-testid="collection-detail-error">
-          <S.PanelTitle>{t('collection_detail_page.error.title')}</S.PanelTitle>
-          <S.PanelText>{t('collection_detail_page.error.description')}</S.PanelText>
+        <section className={shared.panel} data-testid="collection-detail-error">
+          <h2 className={shared.panelTitle}>{t('collection_detail_page.error.title')}</h2>
+          <p className={shared.panelText}>{t('collection_detail_page.error.description')}</p>
           <Button
             type="button"
             variant="secondary"
@@ -534,7 +537,7 @@ const CollectionDetailPage = () => {
           >
             {t('collection_detail_page.error.retry')}
           </Button>
-        </S.Panel>
+        </section>
       ) : isLinked && session ? (
         <LinkedCollectionView
           collection={collection}
@@ -546,9 +549,10 @@ const CollectionDetailPage = () => {
         />
       ) : (
         <>
-          <S.Header>
-            <S.HeaderLeft>
-              <S.BackLink
+          <div className={styles.header}>
+            <div className={styles.headerLeft}>
+              <button
+                className={styles.backLink}
                 type="button"
                 aria-label={t('collection_detail_page.back')}
                 data-testid="back-to-collections"
@@ -560,29 +564,31 @@ const CollectionDetailPage = () => {
                 }
               >
                 <ArrowBackIcon />
-              </S.BackLink>
-              <S.TitleGroup>
-                <S.Title data-testid="collection-name" title={collection.name}>
+              </button>
+              <div className={styles.titleGroup}>
+                <h1 className={styles.title} data-testid="collection-name" title={collection.name}>
                   {collection.name}
-                </S.Title>
+                </h1>
                 {canRename && (
-                  <S.RenameButton
+                  <button
+                    className={styles.renameButton}
                     type="button"
                     aria-label={t('collection_detail_page.rename')}
                     data-testid="rename-collection"
                     onClick={() => setRenameOpen(true)}
                   >
                     <EditIcon fontSize="small" />
-                  </S.RenameButton>
+                  </button>
                 )}
-              </S.TitleGroup>
+              </div>
               {status && <CollectionStatusPill collection={collection} status={status} hint={statusHint} />}
               {address && <CollectionRolePill collection={collection} address={address} />}
-            </S.HeaderLeft>
-            <S.HeaderActions>
+            </div>
+            <div className={styles.headerActions}>
               {validation.isValidating && (
                 <Tooltip content={t('item_validation.checking')} asChild testId="validation-spinner-tooltip">
-                  <S.ValidationSpinner
+                  <span
+                    className={cx(shared.spinner, styles.validationSpinner)}
                     role="status"
                     aria-label={t('item_validation.checking')}
                     tabIndex={0}
@@ -700,8 +706,8 @@ const CollectionDetailPage = () => {
                   onDeleted={() => navigate('/collections', { replace: true })}
                 />
               )}
-            </S.HeaderActions>
-          </S.Header>
+            </div>
+          </div>
           {canManageDiscounts && openDiscounts && (
             <CollectionDiscounts
               discounts={openDiscounts}
@@ -710,10 +716,11 @@ const CollectionDetailPage = () => {
             />
           )}
 
-          <S.SubHeader>
-            <S.FilterChips data-testid="type-filters">
+          <div className={styles.subHeader}>
+            <div className={styles.filterChips} data-testid="type-filters">
               {ITEM_TYPE_FILTERS.map(filter => (
-                <S.FilterChip
+                <button
+                  className={styles.filterChip}
                   key={filter}
                   type="button"
                   data-active={typeFilter === filter || undefined}
@@ -723,10 +730,10 @@ const CollectionDetailPage = () => {
                   {filter === ItemTypeFilter.WEARABLE && <WearableIcon />}
                   {filter === ItemTypeFilter.EMOTE && <EmoteIcon />}
                   {t(`collection_detail_page.filter.${filter}`, { count: counts[filter] })}
-                </S.FilterChip>
+                </button>
               ))}
-            </S.FilterChips>
-            <S.SubActions>
+            </div>
+            <div className={styles.subActions}>
               <Button
                 variant="secondary"
                 type="button"
@@ -742,18 +749,19 @@ const CollectionDetailPage = () => {
                   {t('collection_detail_page.add_items')}
                 </Button>
               )}
-            </S.SubActions>
-          </S.SubHeader>
+            </div>
+          </div>
 
           {isEmpty && !canAddItems ? (
-            <S.Panel data-testid="collection-no-items">
-              <S.DropArt src={addItemsArt} alt="" />
-              <S.PanelTitle>{t(`collection_detail_page.no_items.${typeFilter}`)}</S.PanelTitle>
-              <S.PanelText>{t('collection_detail_page.no_items.description')}</S.PanelText>
-            </S.Panel>
+            <section className={shared.panel} data-testid="collection-no-items">
+              <img className={styles.dropArt} src={addItemsArt} alt="" />
+              <h2 className={shared.panelTitle}>{t(`collection_detail_page.no_items.${typeFilter}`)}</h2>
+              <p className={shared.panelText}>{t('collection_detail_page.no_items.description')}</p>
+            </section>
           ) : isEmpty ? (
             <>
-              <S.Dropzone
+              <section
+                className={styles.dropzone}
                 data-testid="collection-empty"
                 data-dragging={isDragging || undefined}
                 onDragOver={event => {
@@ -763,29 +771,41 @@ const CollectionDetailPage = () => {
                 onDragLeave={() => setDragging(false)}
                 onDrop={onDropzoneDrop}
               >
-                <S.DropArt src={addItemsArt} alt="" />
-                <S.DropTitle data-desktop>{t('collection_detail_page.empty.title')}</S.DropTitle>
-                <S.DropTitle data-mobile>{t('collection_detail_page.empty.title_mobile')}</S.DropTitle>
-                <S.DropText data-desktop>
+                <img className={styles.dropArt} src={addItemsArt} alt="" />
+                <h3 className={styles.dropTitle} data-desktop>
+                  {t('collection_detail_page.empty.title')}
+                </h3>
+                <h3 className={styles.dropTitle} data-mobile>
+                  {t('collection_detail_page.empty.title_mobile')}
+                </h3>
+                <p className={styles.dropText} data-desktop>
                   {intl.formatMessage(
                     { id: 'collection_detail_page.empty.description' },
                     {
                       browse: chunks => (
-                        <S.BrowseLink type="button" data-testid="browse-files" onClick={openFileBrowser}>
+                        <button
+                          className={styles.browseLink}
+                          type="button"
+                          data-testid="browse-files"
+                          onClick={openFileBrowser}
+                        >
                           {chunks}
-                        </S.BrowseLink>
+                        </button>
                       )
                     }
                   )}
-                </S.DropText>
-                <S.DropText data-mobile>{t('collection_detail_page.empty.description_mobile')}</S.DropText>
-                <S.DropFormats>{t('collection_detail_page.empty.formats')}</S.DropFormats>
-              </S.Dropzone>
+                </p>
+                <p className={styles.dropText} data-mobile>
+                  {t('collection_detail_page.empty.description_mobile')}
+                </p>
+                <p className={styles.dropFormats}>{t('collection_detail_page.empty.formats')}</p>
+              </section>
             </>
           ) : (
             <>
-              <S.List data-testid="items-list">
-                <S.ListHeader
+              <div className={styles.list} data-testid="items-list">
+                <div
+                  className={cx(row.columns, styles.listHeader)}
                   data-with-play-mode={withPlayMode || undefined}
                   data-with-market={withMarket || undefined}
                   data-with-status={withStatus || undefined}
@@ -807,8 +827,8 @@ const CollectionDetailPage = () => {
                   {withStatus && (
                     <span data-testid="list-header-status">{t('collection_detail_page.list.status')}</span>
                   )}
-                  <S.ListHeaderActions>{t('collection_detail_page.list.actions')}</S.ListHeaderActions>
-                </S.ListHeader>
+                  <span className={styles.listHeaderActions}>{t('collection_detail_page.list.actions')}</span>
+                </div>
                 {results.map(item => (
                   <ItemListRow
                     key={item.id}
@@ -849,16 +869,16 @@ const CollectionDetailPage = () => {
                     }
                   />
                 ))}
-              </S.List>
-              <S.FooterRow>
-                <S.ShowingCount data-testid="items-showing">
+              </div>
+              <div className={shared.footerRow}>
+                <span className={shared.showingCount} data-testid="items-showing">
                   {t('collection_detail_page.showing', {
                     range: pageRangeLabel(page, ITEMS_PAGE_SIZE, results.length),
                     total: filteredTotal
                   })}
-                </S.ShowingCount>
+                </span>
                 {pages > 1 && <Pagination page={page} pages={pages} onPageChange={goToPage} />}
-              </S.FooterRow>
+              </div>
             </>
           )}
 
@@ -1015,7 +1035,7 @@ const CollectionDetailPage = () => {
           )}
         </>
       )}
-    </S.Page>
+    </div>
   )
 }
 

@@ -6,7 +6,9 @@ import { placeUrl, placesUrl, sceneCoordinates, selectLiveScenes } from '~/lib/h
 import { OverviewSection, trackClick } from '~/lib/overviewAnalytics'
 import { AnimatedSection } from '../AnimatedSection'
 import { highlight } from '../highlight'
-import * as S from './LiveScenes.styles'
+import { cx } from '~/lib/cx'
+import overview from '../OverviewPage.module.css'
+import styles from './LiveScenes.module.css'
 
 const LiveScenes = () => {
   const { t, rich } = useTranslation()
@@ -18,11 +20,12 @@ const LiveScenes = () => {
 
   return (
     <AnimatedSection section={OverviewSection.LIVE_SCENES}>
-      <S.Section data-testid="overview-live-scenes">
-        <S.Title>{rich('overview.live_scenes.title', highlight)}</S.Title>
-        <S.Rail>
+      <section className={styles.section} data-testid="overview-live-scenes">
+        <h2 className={cx(overview.sectionTitle, styles.title)}>{rich('overview.live_scenes.title', highlight)}</h2>
+        <div className={overview.rail}>
           {scenes.map(scene => (
-            <S.SceneCard
+            <a
+              className={styles.sceneCard}
               key={scene.id}
               href={placeUrl(scene)}
               data-testid="overview-scene-card"
@@ -30,19 +33,22 @@ const LiveScenes = () => {
               data-title={scene.name}
               onClick={trackClick}
             >
-              <S.SceneImage>
+              <div className={styles.sceneImage}>
                 <img src={scene.thumbnail} alt="" loading="lazy" />
-                <S.OnlineBadge>{t('overview.live_scenes.online', { count: scene.usersTotalCount })}</S.OnlineBadge>
-              </S.SceneImage>
-              <S.SceneInfo>
-                <S.SceneName>{scene.name}</S.SceneName>
-                <S.SceneCoords>{sceneCoordinates(scene)}</S.SceneCoords>
-              </S.SceneInfo>
-            </S.SceneCard>
+                <span className={styles.onlineBadge}>
+                  {t('overview.live_scenes.online', { count: scene.usersTotalCount })}
+                </span>
+              </div>
+              <div className={styles.sceneInfo}>
+                <h3 className={styles.sceneName}>{scene.name}</h3>
+                <span className={styles.sceneCoords}>{sceneCoordinates(scene)}</span>
+              </div>
+            </a>
           ))}
-        </S.Rail>
-        <S.Centered>
-          <S.ViewAllLink
+        </div>
+        <div className={overview.centered}>
+          <a
+            className={overview.viewAllLink}
             href={placesUrl()}
             data-testid="overview-live-scenes-all"
             data-place={OverviewSection.LIVE_SCENES}
@@ -51,9 +57,9 @@ const LiveScenes = () => {
           >
             {t('overview.live_scenes.view_all')}
             <ChevronRightIcon />
-          </S.ViewAllLink>
-        </S.Centered>
-      </S.Section>
+          </a>
+        </div>
+      </section>
     </AnimatedSection>
   )
 }

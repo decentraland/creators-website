@@ -2,11 +2,10 @@ import { type CSSProperties } from 'react'
 import { Rarity } from '@dcl/schemas'
 import { useTranslation } from '~/intl'
 import { formatRarityLabel, isRarity } from '~/lib/rarities'
-import { theme } from '~/styles/theme'
 import styles from './RarityPill.module.css'
 
 const LIGHT_OVERRIDES: Partial<Record<string, string>> = {
-  legendary: theme.colors.rarityLegendaryLight
+  legendary: 'var(--color-rarity-legendary-light)'
 }
 
 type Props = {

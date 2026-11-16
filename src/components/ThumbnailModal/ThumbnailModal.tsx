@@ -18,7 +18,7 @@ import { isItemTooBigError } from '~/lib/itemSize'
 import { ItemType } from '~/lib/items'
 import { ImageType, dataURLToBlob, getImageType, resizeImage, blobToDataURL } from '~/lib/media'
 import { retryWhilePreviewReloads, toEmoteWithBlobs, toWearableWithBlobs } from '~/lib/preview'
-import * as S from './ThumbnailModal.styles'
+import styles from './ThumbnailModal.module.css'
 
 const PREVIEW_ID = 'thumbnail-editor'
 const THUMBNAIL_SIZE = 1024
@@ -154,11 +154,13 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
       size="wide"
       testId="thumbnail-modal"
     >
-      <S.Wrap>
-        <S.PreviewArea data-testid="thumbnail-preview">
-          {!isMounted && !loadError && <S.Spinner aria-hidden data-testid="thumbnail-loading" />}
+      <div className={styles.wrap}>
+        <div className={styles.previewArea} data-testid="thumbnail-preview">
+          {!isMounted && !loadError && <span className={styles.spinner} aria-hidden data-testid="thumbnail-loading" />}
           {loadError && (
-            <S.LoadError data-testid="thumbnail-load-error">{t('thumbnail_modal.load_failed')}</S.LoadError>
+            <p className={styles.loadError} data-testid="thumbnail-load-error">
+              {t('thumbnail_modal.load_failed')}
+            </p>
           )}
           {isMounted && (
             <WearablePreview
@@ -182,12 +184,12 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
               onLoad={() => setLoaded(true)}
             />
           )}
-          <S.Frame aria-hidden data-testid="thumbnail-frame" />
+          <div className={styles.frame} aria-hidden data-testid="thumbnail-frame" />
           {isReady && (
             <>
-              <ZoomControls className="zoom-controls" controller={controller} />
+              <ZoomControls className={styles.zoomControls} controller={controller} />
               <TranslationControls
-                className="translation-controls"
+                className={styles.translationControls}
                 vertical
                 verticalPosition="left"
                 previewId={PREVIEW_ID}
@@ -195,15 +197,19 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
               />
             </>
           )}
-        </S.PreviewArea>
+        </div>
         {/* Mounted before the iframe loads so the PLAY event fired at load time is delivered. */}
         {isEmote && controller && (
-          <S.EmoteBar data-testid="thumbnail-emote-controls" data-ready={isReady}>
-            <EmoteControls className="emote-controls" previewId={PREVIEW_ID} controller={controller} />
-          </S.EmoteBar>
+          <div className={styles.emoteBar} data-testid="thumbnail-emote-controls" data-ready={isReady}>
+            <EmoteControls className={styles.emoteControls} previewId={PREVIEW_ID} controller={controller} />
+          </div>
         )}
-        {error && <S.ErrorText data-testid="thumbnail-error">{error}</S.ErrorText>}
-        <S.Actions>
+        {error && (
+          <p className={styles.errorText} data-testid="thumbnail-error">
+            {error}
+          </p>
+        )}
+        <div className={styles.actions}>
           {!isEmote && (
             <>
               <input
@@ -239,8 +245,8 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
           >
             {t('thumbnail_modal.capture')}
           </Button>
-        </S.Actions>
-      </S.Wrap>
+        </div>
+      </div>
     </Modal>
   )
 }

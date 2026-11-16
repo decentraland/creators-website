@@ -15,7 +15,8 @@ import { Button } from '~/components/Button'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
 import { Modal } from '~/components/Modal'
 import { artForPack } from '../packArt'
-import * as S from './BuyCreditsModal.styles'
+import { cx } from '~/lib/cx'
+import styles from './BuyCreditsModal.module.css'
 
 // The catalogue has four packs; the placeholders keep the grid's shape while it loads.
 const SKELETON_PACKS = 4
@@ -77,33 +78,34 @@ export function BuyCreditsModal({ balance, shortfall, onCancel, onBuy }: Props) 
       onClose={onCancel}
       testId="buy-credits-modal"
     >
-      <S.Wrap>
-        <S.Header>
-          <S.Heading>{t('publish_collection_modal.buy_credits.title')}</S.Heading>
-          <S.Balance data-testid="buy-credits-balance">
+      <div className={styles.wrap}>
+        <div className={styles.header}>
+          <h3 className={styles.heading}>{t('publish_collection_modal.buy_credits.title')}</h3>
+          <p className={styles.balance} data-testid="buy-credits-balance">
             {t('publish_collection_modal.buy_credits.balance')}
             <span>
               <CurrencyAmount currency="credits">{formatCredits(balance)}</CurrencyAmount>
             </span>
-          </S.Balance>
-        </S.Header>
+          </p>
+        </div>
 
-        <S.Packs data-testid="credit-packs" aria-busy={!catalogue || undefined}>
+        <div className={styles.packs} data-testid="credit-packs" aria-busy={!catalogue || undefined}>
           {!catalogue &&
             Array.from({ length: SKELETON_PACKS }, (_, index) => (
-              <S.Pack key={index} data-skeleton data-testid="credit-pack-skeleton" aria-hidden>
-                <S.Credits>
-                  <S.SkeletonLine className="skeleton" data-size="amount" />
-                  <S.SkeletonLine className="skeleton" data-size="label" />
-                </S.Credits>
-                <S.SkeletonArt className="skeleton" />
-                <S.SkeletonLine className="skeleton" data-size="price" />
-              </S.Pack>
+              <div className={styles.pack} key={index} data-skeleton data-testid="credit-pack-skeleton" aria-hidden>
+                <span className={styles.credits}>
+                  <span className={cx(styles.skeletonLine, 'skeleton')} data-size="amount" />
+                  <span className={cx(styles.skeletonLine, 'skeleton')} data-size="label" />
+                </span>
+                <span className={cx(styles.skeletonArt, 'skeleton')} />
+                <span className={cx(styles.skeletonLine, 'skeleton')} data-size="price" />
+              </div>
             ))}
           {packs.map((pack, index) => {
             const quantity = quantityOf(pack.id)
             return (
-              <S.Pack
+              <div
+                className={styles.pack}
                 key={pack.id}
                 role="button"
                 tabIndex={0}
@@ -124,22 +126,27 @@ export function BuyCreditsModal({ balance, shortfall, onCancel, onBuy }: Props) 
                 }}
               >
                 {recommended?.packId === pack.id && (
-                  <S.Badge data-testid="credit-pack-recommended" aria-hidden>
+                  <span className={styles.badge} data-testid="credit-pack-recommended" aria-hidden>
                     <StarIcon />
                     {t('publish_collection_modal.buy_credits.recommended')}
-                  </S.Badge>
+                  </span>
                 )}
-                <S.Credits>
-                  <S.CreditsAmount>
+                <span className={styles.credits}>
+                  <span className={styles.creditsAmount}>
                     <CurrencyAmount currency="credits">{formatCredits(pack.credits)}</CurrencyAmount>
-                  </S.CreditsAmount>
-                  <S.CreditsLabel>{t('publish_collection_modal.buy_credits.credits')}</S.CreditsLabel>
-                </S.Credits>
-                <S.Art src={artForPack(pack, index)} alt="" />
-                <S.Price>{formatUsd(pack.usd)}</S.Price>
+                  </span>
+                  <span className={styles.creditsLabel}>{t('publish_collection_modal.buy_credits.credits')}</span>
+                </span>
+                <img className={styles.art} src={artForPack(pack, index)} alt="" />
+                <span className={styles.price}>{formatUsd(pack.usd)}</span>
                 {withQuantities && (
-                  <S.Stepper onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
-                    <S.StepButton
+                  <div
+                    className={styles.stepper}
+                    onClick={event => event.stopPropagation()}
+                    onKeyDown={event => event.stopPropagation()}
+                  >
+                    <button
+                      className={styles.stepButton}
                       type="button"
                       disabled={quantity === 0 || isBuying}
                       aria-label={t('publish_collection_modal.buy_credits.decrease', {
@@ -149,9 +156,10 @@ export function BuyCreditsModal({ balance, shortfall, onCancel, onBuy }: Props) 
                       onClick={() => setQuantity(pack.id, quantity - 1)}
                     >
                       <RemoveIcon />
-                    </S.StepButton>
+                    </button>
                     <span data-testid={`credit-pack-${pack.id}-quantity`}>{quantity}</span>
-                    <S.StepButton
+                    <button
+                      className={styles.stepButton}
                       type="button"
                       disabled={quantity >= MAX_PACK_QUANTITY || isBuying}
                       aria-label={t('publish_collection_modal.buy_credits.increase', {
@@ -161,26 +169,28 @@ export function BuyCreditsModal({ balance, shortfall, onCancel, onBuy }: Props) 
                       onClick={() => setQuantity(pack.id, quantity + 1)}
                     >
                       <AddIcon />
-                    </S.StepButton>
-                  </S.Stepper>
+                    </button>
+                  </div>
                 )}
-              </S.Pack>
+              </div>
             )
           })}
-        </S.Packs>
+        </div>
 
-        <S.Total data-testid="buy-credits-total">
+        <p className={styles.total} data-testid="buy-credits-total">
           {t('publish_collection_modal.buy_credits.total')}
           <span>
             <CurrencyAmount currency="credits">{formatCredits(totals.credits)}</CurrencyAmount>
           </span>
           <span data-testid="buy-credits-total-usd">{formatUsd(totals.usd)}</span>
-        </S.Total>
+        </p>
         {failed && (
-          <S.ErrorText data-testid="buy-credits-error">{t('publish_collection_modal.buy_credits.error')}</S.ErrorText>
+          <p className={styles.errorText} data-testid="buy-credits-error">
+            {t('publish_collection_modal.buy_credits.error')}
+          </p>
         )}
 
-        <S.Footer>
+        <div className={styles.footer}>
           <Button
             type="button"
             variant="secondary"
@@ -200,8 +210,8 @@ export function BuyCreditsModal({ balance, shortfall, onCancel, onBuy }: Props) 
             {t('publish_collection_modal.buy_credits.buy', { credits: formatCredits(totals.credits) })}
             <ChevronRightIcon fontSize="small" />
           </Button>
-        </S.Footer>
-      </S.Wrap>
+        </div>
+      </div>
     </Modal>
   )
 }

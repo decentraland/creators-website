@@ -4,7 +4,8 @@ import { type LinkedContract } from '~/lib/thirdParty'
 import { Button } from '~/components/Button'
 import { EMPTY_LINKED_CONTRACT, LinkedContractFields } from '~/components/LinkedContractFields'
 import { Modal } from '~/components/Modal'
-import * as S from '~/components/CollectionNameModal/CollectionNameModal.styles'
+import nameModal from '~/components/CollectionNameModal/CollectionNameModal.module.css'
+import shared from '~/styles/shared.module.css'
 
 type Props = {
   /** The contract a previous attempt submitted, so a retry starts from it. */
@@ -38,13 +39,13 @@ export function EditContractModal({ initial, isPending, onSubmit, onClose }: Pro
       closeDisabled={isPending}
       testId="edit-contract-modal"
     >
-      <S.Form onSubmit={handleSubmit}>
-        <S.Intro>
-          <S.Heading>{t('edit_contract_modal.heading')}</S.Heading>
-          <S.Subtitle>{t('edit_contract_modal.subtitle')}</S.Subtitle>
-        </S.Intro>
+      <form className={nameModal.form} onSubmit={handleSubmit}>
+        <div className={nameModal.intro}>
+          <h3 className={nameModal.heading}>{t('edit_contract_modal.heading')}</h3>
+          <p className={nameModal.subtitle}>{t('edit_contract_modal.subtitle')}</p>
+        </div>
         <LinkedContractFields value={contract} onChange={setContract} />
-        <S.Actions>
+        <div className={shared.modalActions}>
           <Button
             type="button"
             variant="secondary"
@@ -57,8 +58,8 @@ export function EditContractModal({ initial, isPending, onSubmit, onClose }: Pro
           <Button type="submit" data-testid="edit-contract-submit" loading={isPending} disabled={!canSubmit}>
             {t('edit_contract_modal.submit')}
           </Button>
-        </S.Actions>
-      </S.Form>
+        </div>
+      </form>
     </Modal>
   )
 }

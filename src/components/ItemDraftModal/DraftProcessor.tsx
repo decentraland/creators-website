@@ -9,7 +9,7 @@ import { isPreviewEmpty, retryWhilePreviewReloads, toEmoteWithBlobs, toWearableW
 import { renderPosedThumbnail } from '~/lib/renderPosedThumbnail'
 import { getThumbnailPose, isAutoThumbnailStale } from '~/lib/thumbnailPose'
 import { type PreviewDraft, type PreviewResult } from '~/lib/draftPreview'
-import * as S from './ItemDraftModal.styles'
+import styles from './ItemDraftModal.module.css'
 
 const PREVIEW_ID = 'draft-processor'
 const THUMBNAIL_SIZE = 1024
@@ -248,7 +248,7 @@ export function DraftProcessor({ draft, flow, batchSize = 1, onResult, onError }
   )
 
   return (
-    <S.HiddenPreview aria-hidden data-testid="draft-processor">
+    <div className={styles.hiddenPreview} aria-hidden data-testid="draft-processor">
       {renderer !== undefined && (
         <WearablePreview
           key={iframeKey}
@@ -263,8 +263,8 @@ export function DraftProcessor({ draft, flow, batchSize = 1, onResult, onError }
             if (loadRef.current.phase === 'idle') loadRef.current.phase = 'update-sent'
           }}
           onLoad={() => {
-            // LOADs are told apart by origin only, so one from another preview on the page (the thumbnail editor)
-            // also lands here: only a LOAD after this iframe's own UPDATE says it has booted.
+            // A LOAD before this iframe's UPDATE went out is its model-less boot scene: only a later one says the
+            // model is on its way in.
             if (loadRef.current.phase === 'idle') return
             bootedRef.current.booted = true
             if (loadRef.current.phase === 'update-sent') armWatchdog(READ_BUDGET_MS)
@@ -285,6 +285,6 @@ export function DraftProcessor({ draft, flow, batchSize = 1, onResult, onError }
           }}
         />
       )}
-    </S.HiddenPreview>
+    </div>
   )
 }

@@ -10,7 +10,8 @@ import { useTranslation } from '~/intl'
 import { isCollectionLocked, type Collection } from '~/lib/collections'
 import { buildNewCollection } from '~/lib/saveCollection'
 import { useWallet } from '~/store/wallet'
-import * as S from './LivePreviewPage.styles'
+import styles from './LivePreviewPage.module.css'
+import shared from '~/styles/shared.module.css'
 
 type Props = {
   /** The streamed GLB, snapshotted when the flow opened. */
@@ -42,14 +43,14 @@ export function AddToCollectionFlow({ file, prefill, onClose, onDone }: Props) {
   if (!address) {
     return (
       <Modal title={t('live_preview.sign_in.title')} onClose={onClose} testId="live-preview-sign-in">
-        <S.ModalBody>
-          <S.ModalText>{t('live_preview.sign_in.description')}</S.ModalText>
-          <S.ModalActions>
+        <div className={styles.modalBody}>
+          <p className={styles.modalText}>{t('live_preview.sign_in.description')}</p>
+          <div className={shared.modalActions}>
             <Button type="button" variant="primary" data-testid="live-preview-sign-in-action" onClick={() => signIn()}>
               {t('collection_detail_page.sign_in.action')}
             </Button>
-          </S.ModalActions>
-        </S.ModalBody>
+          </div>
+        </div>
       </Modal>
     )
   }
@@ -87,16 +88,18 @@ export function AddToCollectionFlow({ file, prefill, onClose, onDone }: Props) {
 
   return (
     <Modal title={t('live_preview.add.title')} onClose={onClose} testId="live-preview-pick-collection">
-      <S.ModalBody>
-        <S.ModalText>{t('live_preview.add.description')}</S.ModalText>
+      <div className={styles.modalBody}>
+        <p className={styles.modalText}>{t('live_preview.add.description')}</p>
         {drafts.isLoading ? (
-          <S.ModalText role="status" data-testid="live-preview-pick-loading">
+          <p className={styles.modalText} role="status" data-testid="live-preview-pick-loading">
             {t('collection_detail_page.item_actions.move_modal.loading')}
-          </S.ModalText>
+          </p>
         ) : targets.length === 0 ? (
-          <S.ModalText data-testid="live-preview-pick-empty">{t('live_preview.add.empty')}</S.ModalText>
+          <p className={styles.modalText} data-testid="live-preview-pick-empty">
+            {t('live_preview.add.empty')}
+          </p>
         ) : (
-          <S.ModalField>
+          <label className={styles.modalField}>
             {t('collection_detail_page.item_actions.move_modal.collection')}
             <Select
               value={targetId}
@@ -105,9 +108,9 @@ export function AddToCollectionFlow({ file, prefill, onClose, onDone }: Props) {
               onChange={setTargetId}
               testId="live-preview-pick-target"
             />
-          </S.ModalField>
+          </label>
         )}
-        <S.ModalActions>
+        <div className={shared.modalActions}>
           <Button
             type="button"
             variant="secondary"
@@ -127,8 +130,8 @@ export function AddToCollectionFlow({ file, prefill, onClose, onDone }: Props) {
           >
             {t('live_preview.add.continue')}
           </Button>
-        </S.ModalActions>
-      </S.ModalBody>
+        </div>
+      </div>
     </Modal>
   )
 }
