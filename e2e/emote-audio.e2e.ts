@@ -3,7 +3,8 @@ import { type ElementHandle } from 'puppeteer'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { collection, emote as silentEmote } from './fixtures'
 import { launchApp, type App } from './helpers/app'
-import { byTestId, clickTestId, selectOption, waitForEditor, waitForEnabled, waitForTestId } from './helpers/dom'
+import { byTestId, clickTestId, selectOption, waitForEditor, waitForTestId } from './helpers/dom'
+import { waitForProcessedAction } from './helpers/preview'
 import { FIXTURE, emoteWithAudioZip } from './helpers/files'
 
 let app: App | undefined
@@ -24,7 +25,7 @@ describe('emote audio', () => {
 
     await waitForTestId(page, 'draft-form', 30_000)
     await selectOption(page, 'item-category', 'fun')
-    await waitForEnabled(page, 'add-items-finish')
+    await waitForProcessedAction(app, 'add-items-finish')
     await clickTestId(page, 'add-items-finish')
     await page.waitForFunction(() => !document.querySelector('[data-testid="add-items-modal"]'), { timeout: 30_000 })
 

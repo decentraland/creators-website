@@ -263,8 +263,8 @@ export function DraftProcessor({ draft, flow, batchSize = 1, onResult, onError }
             if (loadRef.current.phase === 'idle') loadRef.current.phase = 'update-sent'
           }}
           onLoad={() => {
-            // LOADs are told apart by origin only, so one from another preview on the page (the thumbnail editor)
-            // also lands here: only a LOAD after this iframe's own UPDATE says it has booted.
+            // A LOAD before this iframe's UPDATE went out is its model-less boot scene: only a later one says the
+            // model is on its way in.
             if (loadRef.current.phase === 'idle') return
             bootedRef.current.booted = true
             if (loadRef.current.phase === 'update-sent') armWatchdog(READ_BUDGET_MS)
