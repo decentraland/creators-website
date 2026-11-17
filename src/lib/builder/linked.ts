@@ -25,12 +25,6 @@ export async function fetchThirdParty(address: string, thirdPartyId: string): Pr
   return fromRemoteThirdParty(remote)
 }
 
-/** Every third party the signer manages (on chain or virtual): GET /thirdParties. */
-export async function fetchThirdParties(address: string): Promise<ThirdParty[]> {
-  const remote = await request<RemoteThirdParty[]>(address, 'GET', '/thirdParties')
-  return remote.map(fromRemoteThirdParty)
-}
-
 /**
  * Item slots the third party still has: GET /thirdParties/{id}/slots (bought slots minus items ever submitted).
  * builder-server answers 0 on any internal failure, so 0 is also "unknown".

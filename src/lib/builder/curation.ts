@@ -160,24 +160,6 @@ function chunk<T>(list: T[], size: number): T[][] {
   return chunks.length > 0 ? chunks : [[]]
 }
 
-/** The latest curation of one linked item: GET /items/{id}/curation (null before its first publish). */
-export async function fetchItemCuration(address: string, itemId: string): Promise<ItemCuration | null> {
-  try {
-    const remote = await request<RemoteItemCuration | null>(
-      address,
-      'GET',
-      `/items/${itemId}/curation`,
-      '',
-      undefined,
-      false
-    )
-    return remote ? fromRemoteItemCuration(remote) : null
-  } catch (error) {
-    if (error instanceof BuilderServerError && error.status === UNPUBLISHED_COLLECTION_STATUS) return null
-    throw error
-  }
-}
-
 /** Sends an already-curated linked item's changes for review again: POST /items/{id}/curation (no cheque). */
 export async function pushItemCuration(address: string, itemId: string): Promise<ItemCuration> {
   const remote = await request<RemoteItemCuration>(address, 'POST', `/items/${itemId}/curation`)
