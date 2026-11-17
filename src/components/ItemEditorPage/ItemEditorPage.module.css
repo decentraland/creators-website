@@ -619,6 +619,24 @@
   color: var(--editor-label);
 }
 
+.curatorRequest {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: var(--radius-chip);
+  background: var(--color-error-overlay);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-err-light);
+
+  & q {
+    color: var(--color-soft-white);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}
+
 .sectionNote {
   margin: 0;
   font-size: 12px;

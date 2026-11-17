@@ -6,6 +6,9 @@ export enum ValidationSeverity {
   WARNING = 'warning'
 }
 
+/** An item with the issues found on it, as the publish gate and the review findings list them. */
+export type ItemCheck = { item: Item; issues: ValidationIssue[] }
+
 /** One problem found in an item, with the rule book's creator-facing English message. */
 export type ValidationIssue = {
   code: string

@@ -44,8 +44,8 @@
 
   /* Inset shadows, not borders, so flagged rows stay aligned with the header's columns. */
   &[data-validation="errors"] {
-    box-shadow: inset 0 0 0 1px var(--color-err-light);
-    background: linear-gradient(90deg, var(--color-error-overlay), var(--color-err-overlay)), var(--color-overlay);
+    box-shadow: inset 3px 0 0 var(--color-error-accent);
+    background: var(--color-error-surface);
   }
 
   &[data-validation="warnings"] {

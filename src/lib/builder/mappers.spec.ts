@@ -5,6 +5,7 @@ import { ItemType, type Item } from '~/lib/items'
 import {
   fromRemoteCollection,
   fromRemoteCuration,
+  fromRemoteEvent,
   fromRemoteItem,
   fromRemoteItemCuration,
   fromRemoteLinkedApprovalData,
@@ -259,8 +260,54 @@ describe('fromRemoteCuration', () => {
       collectionId: 'c1',
       status: 'pending',
       assignee: '0xabc',
+      reviewedBy: null,
+      rejectionReasons: null,
+      rejectionMessage: null,
       createdAt: Date.parse('2026-01-01T00:00:00Z'),
       updatedAt: Date.parse('2026-01-02T00:00:00Z')
+    })
+  })
+
+  it('maps the reviewer and the rejection fields from the row', () => {
+    expect(
+      fromRemoteCuration({
+        id: 'r1',
+        collection_id: 'c1',
+        status: 'rejected',
+        reviewed_by: '0xCURATOR',
+        rejection_reasons: ['clipping', 'bogus', 'other'],
+        rejection_message: 'Fix the sleeves',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-02T00:00:00Z'
+      })
+    ).toMatchObject({
+      reviewedBy: '0xcurator',
+      rejectionReasons: ['clipping', 'other'],
+      rejectionMessage: 'Fix the sleeves'
+    })
+  })
+})
+
+describe('fromRemoteEvent', () => {
+  it('maps the row, lowercases the actor and defaults an empty payload', () => {
+    expect(
+      fromRemoteEvent({
+        id: 'e1',
+        collection_id: 'c1',
+        type: 'review.approved',
+        actor: 'curator',
+        actor_address: '0xABC',
+        payload: null,
+        created_at: '2026-09-29T10:00:00Z'
+      })
+    ).toEqual({
+      id: 'e1',
+      collectionId: 'c1',
+      type: 'review.approved',
+      actor: 'curator',
+      actorAddress: '0xabc',
+      payload: {},
+      createdAt: Date.parse('2026-09-29T10:00:00Z')
     })
   })
 })

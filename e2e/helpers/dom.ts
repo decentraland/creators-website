@@ -29,16 +29,34 @@ export async function testIdsStartingWith(page: Page, prefix: string): Promise<s
   return page.$$eval(`[data-testid^="${prefix}"]`, els => els.map(el => el.getAttribute('data-testid') ?? ''))
 }
 
+/**
+ * Opens a `~/components/Select`, clicking again until its listbox shows: async processing results can reflow a
+ * modal between locating the trigger and clicking it, and that click then lands beside it.
+ */
+async function openSelect(page: Page, testId: string, timeout = 20_000): Promise<void> {
+  const listbox = byTestId(`${testId}-listbox`)
+  const deadline = Date.now() + timeout
+  for (;;) {
+    if (await page.$(listbox)) return
+    await clickTestId(page, testId, Math.max(deadline - Date.now(), 1))
+    try {
+      await page.waitForSelector(listbox, { visible: true, timeout: 2_000 })
+      return
+    } catch (error) {
+      if (Date.now() >= deadline) throw error
+    }
+  }
+}
+
 /** Opens a `~/components/Select` and picks the option with `value`. */
 export async function selectOption(page: Page, testId: string, value: string): Promise<void> {
-  await clickTestId(page, testId)
+  await openSelect(page, testId)
   await clickTestId(page, `${testId}-option-${value}`)
 }
 
 /** The values a `~/components/Select` offers, read from its open listbox (closed again afterwards). */
 export async function selectOptions(page: Page, testId: string): Promise<string[]> {
-  await clickTestId(page, testId)
-  await waitForTestId(page, `${testId}-listbox`)
+  await openSelect(page, testId)
   const values = await testIdsStartingWith(page, `${testId}-option-`)
   await page.keyboard.press('Escape')
   return values.map(id => id.slice(`${testId}-option-`.length))

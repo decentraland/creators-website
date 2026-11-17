@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CollectionSort, type Collection } from './collections'
+import { type CollectionEvent } from './events'
 import {
   CurationState,
   CurationStatusFilter,
@@ -7,14 +8,18 @@ import {
   ReviewAction,
   ReviewType,
   UNASSIGNED,
+  ReviewStage,
   canEditAssignee,
   canPushChanges,
   curationListUrl,
   defaultAssignees,
   rememberCurationSearch,
   getCurationState,
+  getCuratorState,
   getReviewActions,
   getReviewType,
+  getReviewStage,
+  hasReviewConversation,
   isCommitteeMember,
   orderCurators,
   parseCurationFilters,
@@ -43,7 +48,18 @@ function collection(overrides: Partial<Collection> = {}): Collection {
 }
 
 function curation(overrides: Partial<CollectionCuration> = {}): CollectionCuration {
-  return { id: 'r1', collectionId: 'c1', status: 'pending', assignee: null, createdAt: 1, updatedAt: 2, ...overrides }
+  return {
+    id: 'r1',
+    collectionId: 'c1',
+    status: 'pending',
+    assignee: null,
+    reviewedBy: null,
+    rejectionReasons: null,
+    rejectionMessage: null,
+    createdAt: 1,
+    updatedAt: 2,
+    ...overrides
+  }
 }
 
 const reviewedBefore = { reviewedAt: CREATED + 1000 }
@@ -54,6 +70,18 @@ describe('isCommitteeMember', () => {
     expect(isCommitteeMember(['0xabc'], '0xdef')).toBe(false)
     expect(isCommitteeMember(undefined, '0xabc')).toBe(false)
     expect(isCommitteeMember(['0xabc'], undefined)).toBe(false)
+  })
+})
+
+describe('getCuratorState', () => {
+  it('holds a pending request back while its automated review runs, and reads the curation state otherwise', () => {
+    expect(getCuratorState(collection(), curation(), ReviewStage.AUTOMATED_REVIEWING)).toBe(
+      CurationState.AUTO_REVIEWING
+    )
+    expect(getCuratorState(collection(), curation(), ReviewStage.AWAITING_CURATOR)).toBe(CurationState.TO_REVIEW)
+    expect(getCuratorState(collection(), curation({ status: 'rejected' }), ReviewStage.REJECTED_BY_VALIDATOR)).toBe(
+      CurationState.REJECTED
+    )
   })
 })
 
@@ -274,5 +302,154 @@ describe('curationListUrl', () => {
     expect(curationListUrl()).toBe('/curation')
     rememberCurationSearch('?status=approved&page=2')
     expect(curationListUrl()).toBe('/curation?status=approved&page=2')
+  })
+})
+
+describe('getReviewStage', () => {
+  const event = (type: string, payload: CollectionEvent['payload'] = {}) => ({
+    id: 'e',
+    collectionId: 'c1',
+    type,
+    actor: 'validator' as const,
+    actorAddress: null,
+    payload,
+    createdAt: 1
+  })
+  const approvedOnChain = collection({ isApproved: true })
+
+  it.each([
+    ['nothing without a request', collection(), null, [event('review.automated_started')], null],
+    ['nothing without a timeline', collection(), curation(), null, null],
+    [
+      'in automated review while the validator works',
+      collection(),
+      curation(),
+      [event('review.automated_started')],
+      ReviewStage.AUTOMATED_REVIEWING
+    ],
+    [
+      'still in automated review after a validator error',
+      collection(),
+      curation(),
+      [event('review.automated_error')],
+      ReviewStage.AUTOMATED_REVIEWING
+    ],
+    [
+      'awaiting a curator once the automated review passed',
+      collection(),
+      curation(),
+      [event('review.automated_passed')],
+      ReviewStage.AWAITING_CURATOR
+    ],
+    [
+      'needing a curator when a third-party collection skips the automated review',
+      collection(),
+      curation(),
+      [event('review.human_required'), event('review.automated_error'), event('review.automated_started')],
+      ReviewStage.NEEDS_CURATOR
+    ],
+    [
+      'needing a curator once the server gives up resending',
+      collection(),
+      curation(),
+      [event('review.automated_error', { reason: 'sweep_exhausted' }), event('review.automated_error')],
+      ReviewStage.NEEDS_CURATOR
+    ],
+    [
+      'needing a curator for a collection too large to send',
+      collection(),
+      curation(),
+      [event('review.automated_error', { reason: 'too_large' }), event('review.automated_started')],
+      ReviewStage.NEEDS_CURATOR
+    ],
+    ['appealed', collection(), curation(), [event('review.appeal_requested')], ReviewStage.APPEALED],
+    [
+      'in automated review again after a retry: the server opens a new pending request over the rejected one',
+      collection(),
+      curation(),
+      [event('review.automated_started'), event('review.automated_rejected')],
+      ReviewStage.AUTOMATED_REVIEWING
+    ],
+    [
+      'appealed after a rejection: the appeal also reopens the request as pending',
+      collection(),
+      curation(),
+      [event('review.appeal_requested'), event('review.rejected')],
+      ReviewStage.APPEALED
+    ],
+    [
+      'nothing for a pending request without a telling event',
+      collection(),
+      curation(),
+      [event('review.assigned')],
+      null
+    ],
+    ['nothing for a pending request with an empty timeline', collection(), curation(), [], null],
+    [
+      'awaiting a curator through a later assignment',
+      collection(),
+      curation({ assignee: '0xc' }),
+      [event('review.assigned'), event('changes.submitted'), event('review.automated_passed')],
+      ReviewStage.AWAITING_CURATOR
+    ],
+    [
+      'appealed through a later assignment',
+      collection(),
+      curation(),
+      [event('review.assigned'), event('review.appeal_requested')],
+      ReviewStage.APPEALED
+    ],
+    [
+      'rejected by the validator',
+      collection(),
+      curation({ status: 'rejected', reviewedBy: 'validator' }),
+      [event('review.automated_rejected')],
+      ReviewStage.REJECTED_BY_VALIDATOR
+    ],
+    [
+      'rejected by a curator',
+      collection(),
+      curation({ status: 'rejected', reviewedBy: '0xcurator' }),
+      [event('review.rejected')],
+      ReviewStage.REJECTED_BY_CURATOR
+    ],
+    [
+      'nothing for a curator rejection without a timeline, so the legacy state stays',
+      collection(),
+      curation({ status: 'rejected', reviewedBy: '0xcurator' }),
+      null,
+      null
+    ],
+    ['nothing for a legacy rejection', collection(), curation({ status: 'rejected' }), [], null],
+    [
+      'approved',
+      approvedOnChain,
+      curation({ status: 'approved', reviewedBy: '0xcurator' }),
+      [event('review.approved')],
+      ReviewStage.APPROVED
+    ],
+    [
+      'nothing for an approved request on a collection disabled on chain',
+      collection(reviewedBefore),
+      curation({ status: 'approved', reviewedBy: '0xcurator' }),
+      [event('review.approved')],
+      null
+    ]
+  ])('%s', (_, subject, request, events, expected) => {
+    expect(getReviewStage(subject, request, events)).toBe(expected)
+  })
+})
+
+describe('hasReviewConversation', () => {
+  const request = (status: CollectionCuration['status']) => ({ status }) as CollectionCuration
+
+  it('holds while a review is open or was sent back', () => {
+    expect(hasReviewConversation(request('pending'))).toBe(true)
+    expect(hasReviewConversation(request('rejected'))).toBe(true)
+  })
+
+  it('ends with the approval, and never started without a request', () => {
+    expect(hasReviewConversation(request('approved'))).toBe(false)
+    expect(hasReviewConversation(null)).toBe(false)
   })
 })

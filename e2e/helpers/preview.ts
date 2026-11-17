@@ -155,18 +155,49 @@ export function describePreviewFrames(answers: App['previewAnswers']): string {
  * preview frame on the page got through, so a timeout says whether the processing stalled and where.
  */
 export async function waitForProcessedAction(
-  app: Pick<App, 'page' | 'previewAnswers'>,
+  app: Pick<App, 'page' | 'previewAnswers'> & Partial<Pick<App, 'events' | 'consoleErrors'>>,
   id: string,
   timeout?: number
 ): Promise<void> {
   try {
     await waitForEnabled(app.page, id, timeout)
   } catch (error) {
+    const processed = ((await app.events?.()) ?? [])
+      .filter(event => event.event === 'Item preview processed')
+      .map(({ props }) =>
+        JSON.stringify({
+          item_type: props.item_type,
+          outcome: props.outcome,
+          duration_ms: props.duration_ms,
+          attempts: props.attempts
+        })
+      )
+    // The form fields a draft needs before it can be saved, as the page shows them now.
+    const form = await app.page
+      .$$eval('[data-testid="add-items-modal"] [data-testid]', els =>
+        els
+          .filter(el => /^(item-|draft-|add-items-finish)/.test(el.getAttribute('data-testid') ?? ''))
+          .map(el => {
+            const input = el as HTMLInputElement
+            const value = 'value' in input && typeof input.value === 'string' ? `=${JSON.stringify(input.value)}` : ''
+            const state = [...el.attributes]
+              .filter(attr => attr.name.startsWith('data-') && attr.name !== 'data-testid')
+              .map(attr => `${attr.name}=${attr.value}`)
+              .join(',')
+            return `${el.getAttribute('data-testid')}${value}${state ? `[${state}]` : ''}${input.disabled ? '(disabled)' : ''}`
+          })
+          .slice(0, 40)
+      )
+      .catch(() => ['add-items modal not found'])
     throw new Error(
-      `[data-testid="${id}"] stayed disabled. Preview frames:\n${describePreviewFrames(app.previewAnswers)}`,
-      {
-        cause: error
-      }
+      [
+        `[data-testid="${id}"] stayed disabled.`,
+        `Preview frames:\n${describePreviewFrames(app.previewAnswers)}`,
+        `Item preview processed: ${processed.join(' | ') || 'none'}`,
+        `Form: ${form.join(' ') || 'none'}`,
+        `Console errors:\n${app.consoleErrors?.slice(-8).join('\n') || 'none'}`
+      ].join('\n'),
+      { cause: error }
     )
   }
 }

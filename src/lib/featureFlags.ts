@@ -35,7 +35,13 @@ export enum FeatureFlag {
   /** The Shop applies creator discounts for buyers: the one switch that takes every discount away. */
   SHOP_CREATOR_SALES = 'shop-creator-sales',
   /** The Shop also discounts MANA listings, so a discount reaches them and not only credits listings. */
-  SHOP_LEGACY_COUPONS = 'shop-legacy-coupons'
+  SHOP_LEGACY_COUPONS = 'shop-legacy-coupons',
+  /**
+   * The automated review as creators and curators see it: the timeline, reason-coded rejections, retries and
+   * appeals. Mirrors the server's flag so the app never calls what the server doesn't serve. The reviews the
+   * server runs in the background for the curators' channel have their own flag, which the app never reads.
+   */
+  AUTO_CURATION_REVIEW_FLOW = 'auto-curation-review-flow'
 }
 
 /** Each flag lives under the application that owns it, and is fetched from that application's file. */
@@ -52,7 +58,8 @@ const APPLICATION: Record<FeatureFlag, string> = {
   [FeatureFlag.BLOCK_PUBLISH_ON_VALIDATION_ERRORS]: 'builder',
   [FeatureFlag.COLLECTION_DISCOUNTS]: 'builder',
   [FeatureFlag.SHOP_CREATOR_SALES]: 'dapps',
-  [FeatureFlag.SHOP_LEGACY_COUPONS]: 'dapps'
+  [FeatureFlag.SHOP_LEGACY_COUPONS]: 'dapps',
+  [FeatureFlag.AUTO_CURATION_REVIEW_FLOW]: 'builder'
 }
 
 const TTL_MS = 60_000

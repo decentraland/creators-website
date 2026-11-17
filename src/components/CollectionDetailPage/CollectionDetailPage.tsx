@@ -10,9 +10,10 @@ import {
   useCollectionStatus,
   useSaveCollection
 } from '~/hooks/useCollection'
-import { BuilderServerError } from '~/lib/builder'
+import { BuilderServerError, ValidationLimitError, isCollectionBusy, isValidationRunning } from '~/lib/builder'
 import { isSocialLogin } from '~/lib/auth'
 import { FeatureFlag } from '~/lib/featureFlags'
+import { getValidationStatus } from '~/lib/validation'
 import {
   CollectionDisplayStatus,
   canManageCollectionItems,
@@ -61,11 +62,26 @@ import {
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
-import { useCollectionValidation, useRerunItemValidation } from '~/hooks/useCollectionValidation'
-import { ItemSyncStatus, getItemRowStatus, hasPendingChanges, showsItemStatusColumn } from '~/lib/itemSync'
-import { canPushChanges } from '~/lib/curation'
+import { useCollectionValidation, useRerunItemValidation, type ItemValidation } from '~/hooks/useCollectionValidation'
+import {
+  ItemSyncStatus,
+  getItemRowStatus,
+  hasPendingChanges,
+  hasUpdatesSinceRejection,
+  showsItemStatusColumn
+} from '~/lib/itemSync'
+import { ReviewStage, canPushChanges, getReviewStage, hasReviewConversation, isRejectedStage } from '~/lib/curation'
 import { useCommittee } from '~/hooks/useCommittee'
 import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
+import { useCollectionEvents } from '~/hooks/useCollectionEvents'
+import {
+  NOTE_MAX_LENGTH,
+  VALIDATION_ATTEMPTS_PER_DAY,
+  getAutomatedIssuesByItem,
+  countValidationAttempts,
+  hasChangesSinceVerdict,
+  startOfUtcDay
+} from '~/lib/events'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS, THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { type ItemListing } from '~/lib/listings'
@@ -73,6 +89,7 @@ import { useNotifications } from '~/lib/notifications'
 import { media } from '~/styles/theme'
 import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
+import { NoteField } from '~/components/NoteField'
 import { Tooltip } from '~/components/Tooltip'
 import {
   EmoteIcon,
@@ -97,6 +114,7 @@ import { useThirdParty } from '~/hooks/useLinkedCollection'
 import { getThirdPartyId, isThirdPartyManager } from '~/lib/thirdParty'
 import { AddItemsModal } from './AddItemsModal'
 import { LinkedCollectionView } from './LinkedCollectionView'
+import { ReviewFlow, type ReviewFlowRequest } from './ReviewFlow'
 import { ItemActionsMenu } from './ItemActionsMenu'
 import { ItemListRow } from './ItemListRow'
 import { PublishCollectionModal, PublishSuccessModal, type PublishResume } from './PublishCollectionModal'
@@ -211,14 +229,6 @@ const CollectionDetailPage = () => {
   const withMarket = !!standardCollection?.isPublished && hasRole
   const status = useCollectionStatus(curationAddress, standardCollection)
   const showForumPost = !!standardCollection && isForumPostRelevant(standardCollection, status)
-  const statusHint =
-    status === CollectionDisplayStatus.REJECTED
-      ? t('collection_detail_page.review_notice.rejected')
-      : status === CollectionDisplayStatus.UNDER_REVIEW
-        ? t('collection_status.under_review_hint')
-        : status === CollectionDisplayStatus.DISABLED
-          ? t('collection_status.disabled_hint')
-          : null
   // Sales here are off-chain public orders only: with the flag off there is no other way to list an item.
   const canListItems = useFeatureFlag(FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS).enabled
   const isApprovedForSale = canListItems && !!collection && hasBeenApproved(collection)
@@ -293,6 +303,8 @@ const CollectionDetailPage = () => {
   const syncs = useItemSyncs(curationAddress, standardCollection, allItems ?? [])
   const curationQuery = useCollectionCuration(curationAddress, standardCollection)
   const curation = curationQuery.data ?? null
+  const eventsQuery = useCollectionEvents(curationAddress, standardCollection)
+  const { events } = eventsQuery
   const pushCuration = usePushCuration(address)
   // Sending changes for review runs the same item checks as publishing before its confirm modal.
   const [pushView, setPushView] = useState<'closed' | 'gate' | 'confirm'>('closed')
@@ -300,19 +312,64 @@ const CollectionDetailPage = () => {
     () => [...syncs.values()].some(sync => sync.status === ItemSyncStatus.UNSYNCED),
     [syncs]
   )
+  const [pushNote, setPushNote] = useState('')
   const closePush = () => {
     setPushView('closed')
+    setPushNote('')
     pushCuration.reset()
   }
-  // Until the request loads, a pending one looks like none and the push would duplicate it.
+  const stage = useMemo(
+    () => (standardCollection ? getReviewStage(standardCollection, curation, events) : null),
+    [standardCollection, curation, events]
+  )
+  const statusHint =
+    status === CollectionDisplayStatus.REJECTED
+      ? isRejectedStage(stage)
+        ? t(`review_stage_hint.${stage}`)
+        : t('collection_detail_page.review_notice.rejected')
+      : status === CollectionDisplayStatus.UNDER_REVIEW
+        ? t('collection_status.under_review_hint')
+        : status === CollectionDisplayStatus.DISABLED
+          ? t('collection_status.disabled_hint')
+          : null
+  // The validator judges a snapshot: nothing changes under it (Figma: "block edit settings during these 5 mins").
+  const reviewLocked = stage === ReviewStage.AUTOMATED_REVIEWING
+  const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION_REVIEW_FLOW).enabled
+  const [reviewRequest, setReviewRequest] = useState<ReviewFlowRequest | null>(null)
+  // Only a server with the review timeline keeps the note.
+  const withPushNote = autoCuration && events !== null
+  const clearReviewRequest = useCallback(() => setReviewRequest(null), [])
+  // The validator's findings dress the rows and the details modal like the browser's checks do.
+  const automatedIssues = useMemo(() => getAutomatedIssuesByItem(events ?? [], allItems ?? []), [events, allItems])
+  // Until the request loads, a pending one looks like none and the push would duplicate it. An automated
+  // rejection of a first review is never pushed: it is reviewed again or sent to a curator.
   const curationLoaded = curationQuery.isSuccess
   const showPushChanges = useMemo(
     () =>
       !!standardCollection &&
       curationLoaded &&
+      !(stage === ReviewStage.REJECTED_BY_VALIDATOR && !standardCollection.isApproved) &&
       canPushChanges(standardCollection, curation, hasUnsyncedItems, canManage),
-    [standardCollection, curationLoaded, curation, hasUnsyncedItems, canManage]
+    [standardCollection, curationLoaded, stage, curation, hasUnsyncedItems, canManage]
   )
+  // An approval ends the conversation for both sides, as the server does.
+  const commentAs = !hasReviewConversation(curation)
+    ? undefined
+    : canManage
+      ? ('creator' as const)
+      : committee.isCurator
+        ? ('curator' as const)
+        : undefined
+  const showReviewAgain = canManage && curationLoaded && stage === ReviewStage.REJECTED_BY_VALIDATOR
+  // After a curator's request for fixes, reading the feedback is the main action until an item is updated.
+  const awaitsFixes = useMemo(
+    () => stage === ReviewStage.REJECTED_BY_CURATOR && !hasUpdatesSinceRejection(curation, allItems ?? []),
+    [stage, curation, allItems]
+  )
+  // The same content always gets the same result, so another automated review waits for a saved or added item.
+  const hasNewContent = useMemo(() => hasChangesSinceVerdict(events ?? [], allItems ?? []), [events, allItems])
+  const today = startOfUtcDay(Date.now())
+  const reviewsUsed = useMemo(() => countValidationAttempts(events ?? [], today), [events, today])
   // After a rejection the creator asks for a review again, whether it was the first one or a pushed update.
   const pushCopy = curation?.status === 'rejected' ? 'request_review' : 'push_changes'
   const rowStatuses = useMemo(
@@ -337,10 +394,6 @@ const CollectionDetailPage = () => {
   )
   const validation = useCollectionValidation(validationItems, validates)
   const blockOnErrors = useFeatureFlag(FeatureFlag.BLOCK_PUBLISH_ON_VALIDATION_ERRORS).enabled
-  const invalidCount = useMemo(
-    () => [...validation.results.values()].filter(result => result.status === 'errors').length,
-    [validation.results]
-  )
   const publishValidation = useMemo(
     () => ({
       // A background refetch (back from saving in the editor) may bring new hashes the modal must wait for.
@@ -350,17 +403,35 @@ const CollectionDetailPage = () => {
     [itemsQuery.isFetching, validation, validationItems]
   )
   const rerunItemValidation = useRerunItemValidation()
+  const rowValidations = useMemo(() => {
+    const merged = new Map<string, ItemValidation>(validation.results)
+    for (const [itemId, automated] of automatedIssues) {
+      const local = validation.results.get(itemId)
+      const issues = [...(local?.issues ?? []), ...automated]
+      merged.set(itemId, {
+        status: local?.status === 'loading' ? 'loading' : getValidationStatus(issues, false),
+        issues
+      })
+    }
+    return merged
+  }, [validation.results, automatedIssues])
+  // Counted from what the rows show, so the push is blocked by the same errors the rows say block it.
+  const invalidCount = useMemo(
+    () => [...rowValidations.values()].filter(result => result.status === 'errors').length,
+    [rowValidations]
+  )
+  const rowValidation = useCallback((item: Item) => rowValidations.get(item.id), [rowValidations])
   const [validationItem, setValidationItem] = useState<Item | null>(null)
   const showValidation = useCallback(
     (item: Item) => {
       setValidationItem(item)
       track('Item Validation Details Opened', {
         itemId: item.id,
-        status: validation.results.get(item.id)?.status ?? 'idle',
+        status: rowValidation(item)?.status ?? 'idle',
         trigger: 'row'
       })
     },
-    [validation.results]
+    [rowValidation]
   )
 
   const isLoading =
@@ -400,7 +471,7 @@ const CollectionDetailPage = () => {
     collection && !publishInFlight && !retryLanded
       ? getPublishBlocker(collection, total, allItems ?? [], { hasInvalidItems })
       : 'not_draft'
-  const pushBlocked = hasInvalidItems
+  const pushBlocked = hasInvalidItems || reviewLocked
 
   function openFileBrowser() {
     filesInputRef.current?.click()
@@ -597,7 +668,7 @@ const CollectionDetailPage = () => {
                   />
                 </Tooltip>
               )}
-              {showForumPost && (
+              {showForumPost && !autoCuration && (
                 <Button
                   type="button"
                   variant="dark"
@@ -670,9 +741,11 @@ const CollectionDetailPage = () => {
               {showPushChanges && (
                 <Tooltip
                   content={
-                    pushBlocked
-                      ? t('collection_detail_page.push_blocker.has_invalid_items', { count: invalidCount })
-                      : null
+                    reviewLocked
+                      ? t('collection_detail_page.push_blocker.reviewing')
+                      : pushBlocked
+                        ? t('collection_detail_page.push_blocker.has_invalid_items', { count: invalidCount })
+                        : null
                   }
                   placement="bottom"
                   asChild
@@ -680,7 +753,7 @@ const CollectionDetailPage = () => {
                 >
                   <Button
                     type="button"
-                    variant="primary"
+                    variant={awaitsFixes ? 'dark' : 'primary'}
                     data-desktop-only
                     data-testid="push-changes"
                     aria-disabled={pushBlocked || undefined}
@@ -692,11 +765,43 @@ const CollectionDetailPage = () => {
                   </Button>
                 </Tooltip>
               )}
+              {showReviewAgain && (
+                <Tooltip
+                  content={
+                    hasNewContent
+                      ? t('review_flow.attempts', {
+                          used: Math.min(reviewsUsed, VALIDATION_ATTEMPTS_PER_DAY),
+                          max: VALIDATION_ATTEMPTS_PER_DAY
+                        })
+                      : t('review_flow.no_changes')
+                  }
+                  placement="bottom"
+                  asChild
+                  testId="validate-again-tooltip"
+                >
+                  <Button
+                    type="button"
+                    variant="primary"
+                    data-desktop-only
+                    data-testid="validate-again"
+                    aria-disabled={!hasNewContent || undefined}
+                    onClick={() => {
+                      if (hasNewContent) setReviewRequest('validate')
+                    }}
+                  >
+                    {t('review_flow.validate_again')}
+                  </Button>
+                </Tooltip>
+              )}
               {address && (
                 <CollectionActionsMenu
                   collection={collection}
                   address={address}
                   onPreviewInWorld={hasItems ? () => previewCollectionFromDetail(collection.id, total) : undefined}
+                  items={allItems}
+                  showActivity={autoCuration && !!curationAddress && !!standardCollection?.isPublished}
+                  commentAs={commentAs}
+                  forumInMenu={autoCuration}
                   onSendItems={canSend ? () => setSending(true) : undefined}
                   onCreateDiscount={canCreateDiscount ? () => openDiscount('menu') : undefined}
                   onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
@@ -713,6 +818,19 @@ const CollectionDetailPage = () => {
               discounts={openDiscounts}
               now={discountsNow}
               onEnd={session && !isSocialLogin(session) ? setEndingDiscount : undefined}
+            />
+          )}
+
+          {address && standardCollection && (
+            <ReviewFlow
+              collection={standardCollection}
+              address={address}
+              curation={curation}
+              events={events}
+              items={allItems ?? []}
+              canManage={canManage}
+              request={reviewRequest}
+              onRequestHandled={clearReviewRequest}
             />
           )}
 
@@ -849,11 +967,11 @@ const CollectionDetailPage = () => {
                         ? openPriceEdit
                         : undefined
                     }
-                    editable={!compact && canEditItemDetails(collection, item, address)}
+                    editable={!compact && !reviewLocked && canEditItemDetails(collection, item, address)}
                     onRename={renameItem}
                     onEditThumbnail={item => thumbnailEditor.edit({ kind: 'item', item })}
                     contractAddress={collection.contractAddress}
-                    validation={validation.results.get(item.id)}
+                    validation={rowValidation(item)}
                     validationBlocks={blockOnErrors}
                     onShowValidation={showValidation}
                     actions={
@@ -864,6 +982,7 @@ const CollectionDetailPage = () => {
                           address={address}
                           sync={syncs.get(item.id)}
                           listing={withMarket ? listingFor(item) : undefined}
+                          reviewLocked={reviewLocked}
                         />
                       )
                     }
@@ -918,7 +1037,13 @@ const CollectionDetailPage = () => {
               validation={publishValidation}
               blockOnErrors={blockOnErrors}
               onClose={() => setPublishView('closed')}
-              onPublished={() => setPublishView('success')}
+              onPublished={() => {
+                // With auto curation the review starts with the publication, so its modal is the confirmation.
+                if (autoCuration) {
+                  setPublishView('closed')
+                  setReviewRequest('reviewing')
+                } else setPublishView('success')
+              }}
             />
           )}
           {publishView === 'success' && <PublishSuccessModal onDone={() => setPublishView('closed')} />}
@@ -928,7 +1053,13 @@ const CollectionDetailPage = () => {
               flow="push_changes"
               validation={publishValidation}
               blockOnErrors={blockOnErrors}
-              onPass={() => setPushView('confirm')}
+              onPass={() => {
+                // A curator who asked for fixes sees them next: the request skips the automated review.
+                if (stage === ReviewStage.REJECTED_BY_CURATOR) {
+                  closePush()
+                  setReviewRequest('appeal')
+                } else setPushView('confirm')
+              }}
               onClose={closePush}
             />
           )}
@@ -948,16 +1079,44 @@ const CollectionDetailPage = () => {
               confirm={{
                 label: t(`collection_detail_page.${pushCopy}.confirm`),
                 onClick: () =>
-                  pushCuration.mutate(collection, {
-                    onSuccess: () => {
-                      setPushView('closed')
-                      showToast(t(`collection_detail_page.${pushCopy}.success`))
+                  pushCuration.mutate(
+                    { collection, note: (withPushNote && pushNote.trim()) || undefined },
+                    {
+                      onSuccess: () => {
+                        closePush()
+                        showToast(t(`collection_detail_page.${pushCopy}.success`))
+                      },
+                      // The automated review answers for itself: the day's reviews are spent, or one is running.
+                      onError: error => {
+                        if (error instanceof ValidationLimitError) {
+                          closePush()
+                          setReviewRequest('limit')
+                        } else if (isValidationRunning(error)) {
+                          closePush()
+                          showToast(t('review_flow.running'), { type: 'warn' })
+                        } else if (isCollectionBusy(error)) {
+                          closePush()
+                          showToast(t('review_flow.busy'), { type: 'warn' })
+                        }
+                      }
                     }
-                  }),
+                  ),
                 testId: 'push-changes-confirm'
               }}
               testId="push-changes-modal"
-            />
+            >
+              {withPushNote && (
+                <NoteField
+                  label={t('collection_detail_page.push_note.label')}
+                  value={pushNote}
+                  onChange={setPushNote}
+                  maxLength={NOTE_MAX_LENGTH}
+                  placeholder={t('collection_detail_page.push_note.placeholder')}
+                  disabled={pushCuration.isPending}
+                  testId="push-changes-note"
+                />
+              )}
+            </ConfirmModal>
           )}
           {isSending && session && (
             <SendItemsFlow
@@ -986,7 +1145,7 @@ const CollectionDetailPage = () => {
           {validationItem && (
             <ValidationResultsModal
               subject={toValidationSubject(validationItem)}
-              issues={validation.results.get(validationItem.id)?.issues ?? []}
+              issues={rowValidation(validationItem)?.issues ?? []}
               onRerun={() =>
                 rerunItemValidation(
                   validationItem,

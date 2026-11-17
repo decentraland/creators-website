@@ -3,6 +3,7 @@
 import type { Mappings } from '@dcl/schemas'
 import type { CollectionStatusCounts, CurationStatus, PaginatedResource } from '~/lib/collections'
 import type { CurationRequestStatus } from '~/lib/curation'
+import type { CollectionEventActor, CollectionEventPayload } from '~/lib/events'
 import type { ItemData, ItemMetrics, ItemType } from '~/lib/items'
 import type { ThirdParty } from '~/lib/thirdParty'
 import type { SlotsCheque } from './linked'
@@ -75,8 +76,28 @@ export type RemoteCollectionCuration = {
   collection_id: string
   status: CurationRequestStatus
   assignee?: string | null
+  reviewed_by?: string | null
+  rejection_reasons?: string[] | null
+  rejection_message?: string | null
   created_at: string
   updated_at: string
+}
+
+export type RemoteCollectionEvent = {
+  id: string
+  collection_id: string
+  type: string
+  actor: CollectionEventActor
+  actor_address?: string | null
+  payload?: CollectionEventPayload | null
+  created_at: string
+}
+
+export type RemoteCollectionEventsPage = {
+  results: RemoteCollectionEvent[]
+  total: number
+  page: number
+  limit: number
 }
 
 export type RemoteItemCuration = {
@@ -117,6 +138,14 @@ export type RemoteTOSBody = {
 
 export type RemoteLockBody = { collection_address: string }
 
-export type RemoteCollectionCurationBody = { curation: { status?: CurationRequestStatus; assignee?: string | null } }
+export type RemoteCollectionCurationBody = {
+  curation: {
+    status?: CurationRequestStatus
+    assignee?: string | null
+    rejectionReasons?: string[]
+    rejectionMessage?: string
+    note?: string
+  }
+}
 
 export type RemoteItemCurationBody = { curation: { status: CurationRequestStatus } }

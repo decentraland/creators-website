@@ -7,6 +7,7 @@ import { type Collection } from '~/lib/collections'
 import { CollectionMosaic } from '~/components/CollectionMosaic'
 import { CollectionRolePill } from '~/components/CollectionRolePill'
 import { CollectionStatusPill } from '~/components/CollectionStatusPill'
+import { ReviewReplyBadge } from '~/components/ReviewReplyBadge'
 import styles from './CollectionCard.module.css'
 
 type Props = {
@@ -33,6 +34,7 @@ export function CollectionCard({ collection }: Props) {
       <div className={styles.media}>
         <CollectionMosaic collectionId={collection.id} itemCount={collection.itemCount} />
         {address && <CollectionRolePill className={styles.roleBadge} collection={collection} address={address} />}
+        <ReviewReplyBadge className={styles.replyBadge} collection={collection} address={address} />
       </div>
       <div className={styles.body}>
         <div className={styles.nameRow}>

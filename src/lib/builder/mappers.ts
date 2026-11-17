@@ -8,6 +8,7 @@ import {
   type CollectionCuration,
   type CurationFilters
 } from '~/lib/curation'
+import { isRejectReasonCode, type CollectionEvent, type RejectReasonCode } from '~/lib/events'
 import type { Item } from '~/lib/items'
 import type { ItemCuration, LinkedItemsQuery } from '~/lib/linkedItemStatus'
 import type { ThirdParty } from '~/lib/thirdParty'
@@ -17,6 +18,7 @@ import type { LinkedApprovalData } from './linked'
 import type {
   RemoteCollection,
   RemoteCollectionCuration,
+  RemoteCollectionEvent,
   RemoteItem,
   RemoteItemCuration,
   RemoteLinkedApprovalData,
@@ -167,20 +169,41 @@ export function toCollectionItemPreviews(items: RemoteItem[]): CollectionItemPre
     }))
 }
 
+function toRejectReasons(codes: string[] | null | undefined): RejectReasonCode[] | null {
+  if (!codes) return null
+  return codes.filter(isRejectReasonCode)
+}
+
 export function fromRemoteCuration(remote: RemoteCollectionCuration): CollectionCuration {
   return {
     id: remote.id,
     collectionId: remote.collection_id,
     status: remote.status,
     assignee: remote.assignee ? remote.assignee.toLowerCase() : null,
+    reviewedBy: remote.reviewed_by ? remote.reviewed_by.toLowerCase() : null,
+    rejectionReasons: toRejectReasons(remote.rejection_reasons),
+    rejectionMessage: remote.rejection_message ?? null,
     createdAt: +new Date(remote.created_at),
     updatedAt: +new Date(remote.updated_at)
+  }
+}
+
+export function fromRemoteEvent(remote: RemoteCollectionEvent): CollectionEvent {
+  return {
+    id: remote.id,
+    collectionId: remote.collection_id,
+    type: remote.type,
+    actor: remote.actor,
+    actorAddress: remote.actor_address ? remote.actor_address.toLowerCase() : null,
+    payload: remote.payload ?? {},
+    createdAt: +new Date(remote.created_at)
   }
 }
 
 // builder-server splits a pending request by assignee; the picker doesn't, since the assignee filter already does.
 const SERVER_STATUSES: Record<CurationStatusFilter, string[]> = {
   [CurationStatusFilter.TO_REVIEW]: ['to_review', 'under_review'],
+  [CurationStatusFilter.AUTO_REVIEWING]: ['auto_reviewing'],
   [CurationStatusFilter.APPROVED]: ['approved'],
   [CurationStatusFilter.REJECTED]: ['rejected'],
   [CurationStatusFilter.DISABLED]: ['disabled']

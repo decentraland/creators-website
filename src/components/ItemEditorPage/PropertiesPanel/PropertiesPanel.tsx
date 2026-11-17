@@ -66,6 +66,7 @@ import { EditorSection } from '../EditorSection'
 import { HidesEditor } from '../HidesEditor'
 import { SpringBonesEditor, type SpringBonesModel } from '../SpringBonesEditor'
 import { TagsInput } from './TagsInput'
+import { type RejectReasonCode } from '~/lib/events'
 import styles from '../ItemEditorPage.module.css'
 
 export type SpringBonesFormProps = {
@@ -84,7 +85,9 @@ type Props = {
   /** Review mode hides the read-only note: curators know the editor is locked. */
   showReadOnlyNote?: boolean
   /** Why the viewer cannot edit: no manage role, or the collection's publish lock. */
-  readOnlyReason?: 'role' | 'linked' | 'lock'
+  readOnlyReason?: 'role' | 'linked' | 'lock' | 'reviewing'
+  /** The fixes a curator asked for on the collection, shown to the people who can make them. */
+  curatorRequest?: { reasons: RejectReasonCode[]; message: string | null }
   /** Owner of a draft collection: the only one who may delete items here. */
   canDelete: boolean
   /** Only the people behind the collection and curators get the source files; anyone else could re-upload them as their own. */
@@ -114,6 +117,7 @@ export function PropertiesPanel({
   editable,
   showReadOnlyNote = true,
   readOnlyReason = 'role',
+  curatorRequest,
   canDelete,
   canDownload,
   draft,
@@ -266,11 +270,22 @@ export function PropertiesPanel({
           {t(
             readOnlyReason === 'lock'
               ? 'item_editor.read_only_locked'
-              : readOnlyReason === 'linked'
-                ? 'item_editor.read_only_linked'
-                : 'item_editor.read_only'
+              : readOnlyReason === 'reviewing'
+                ? 'item_editor.read_only_reviewing'
+                : readOnlyReason === 'linked'
+                  ? 'item_editor.read_only_linked'
+                  : 'item_editor.read_only'
           )}
         </p>
+      )}
+      {curatorRequest && (
+        <div className={styles.curatorRequest} data-testid={`${testId}-curator-request`}>
+          <strong>{t('item_editor.curator_request.title')}</strong>
+          {curatorRequest.reasons.length > 0 && (
+            <span>{curatorRequest.reasons.map(code => t(`reject_reason.${code}`)).join(' · ')}</span>
+          )}
+          {curatorRequest.message && <q>{curatorRequest.message}</q>}
+        </div>
       )}
 
       <EditorSection title={t('item_editor.details.title')} testId={`${testId}-details`}>
